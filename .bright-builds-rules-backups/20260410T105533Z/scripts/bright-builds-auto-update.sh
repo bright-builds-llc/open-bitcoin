@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 # bright-builds-rules-managed-file: scripts/bright-builds-auto-update.sh
-# Managed upstream by bright-builds-rules.
-# If this helper needs a fix, open an upstream PR or issue instead of editing the downstream managed copy.
 set -euo pipefail
 
 audit_path="bright-builds-rules.audit.md"

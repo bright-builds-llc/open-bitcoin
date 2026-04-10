@@ -2,8 +2,6 @@
 
 <!-- bright-builds-rules-managed-file: .github/pull_request_template.md -->
 
-This template is managed upstream by `bright-builds-rules`. If it needs a fix, open an upstream PR or issue instead of editing the downstream managed copy.
-
 ## Summary
 
 Describe the behavior change and why it is needed.

@@ -4,21 +4,19 @@
 
 This file records that this repository is using the Bright Builds Rules and shows where the managed adoption files came from.
 
-This audit trail is managed upstream by `bright-builds-rules`. If the managed audit format or content needs a fix, open an upstream PR or issue instead of editing the downstream copy directly.
-
 ## Current installation
 
 - Source repository: `https://github.com/bright-builds-llc/bright-builds-rules`
 - Version pin: `main`
-- Exact commit: `fa6cd165d31d6ad20344fcc93a9e1c42b4dbb04f`
+- Exact commit: `bf5657e7432e21857b9bb7c3755f4bc8e3054890`
 - Canonical entrypoint: `https://github.com/bright-builds-llc/bright-builds-rules/blob/main/standards/index.md`
 - Managed sidecar path: `AGENTS.bright-builds.md`
 - AGENTS integration mode: `append-only managed block`
 - Audit manifest path: `bright-builds-rules.audit.md`
 - Auto-update: `enabled`
 - Auto-update reason: `trusted repo owner bright-builds-llc`
-- Last operation: `install`
-- Last updated (UTC): `2026-04-10T10:55:34Z`
+- Last operation: `update`
+- Last updated (UTC): `2026-04-10T07:18:56Z`
 
 ## Managed files
 
