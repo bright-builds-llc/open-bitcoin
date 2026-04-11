@@ -1,0 +1,12 @@
+[package]
+name = "open-bitcoin-node"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+open-bitcoin-core = { path = "../open-bitcoin-core" }
