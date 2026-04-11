@@ -12,7 +12,11 @@ When a behavior is in scope, Open Bitcoin must behave like the pinned Knots base
 
 ### Validated
 
-(None yet — ship to validate)
+- Phase 2 validated the shared pure-core domain and codec surface for typed
+  amounts, hashes, scripts, transactions, blocks, and foundational P2P message
+  framing (`ARCH-03`, `CONS-01`).
+- Phase 2 seeded the living reference catalog under `docs/parity/catalog/`
+  (`REF-03`).
 
 ### Active
 
@@ -35,7 +39,8 @@ When a behavior is in scope, Open Bitcoin must behave like the pinned Knots base
 
 ## Context
 
-- This is a greenfield repository with seed prompts under `seed-prompts/` but no first-party production implementation yet.
+- The repository now has first-party pure-core domain and codec crates under
+  `packages/`, plus seeded parity catalog artifacts under `docs/parity/catalog/`.
 - Bitcoin Knots `29.3.knots20260210` is the pinned behavioral reference baseline for the initial milestone.
 - First-party code should live in well-bounded packages, with Bazelisk and Bazel/Bzlmod as the top-level build entrypoint unless a later decision replaces that choice.
 - The project explicitly avoids existing Rust Bitcoin libraries in the production path and instead exports first-party Rust Bitcoin libraries from this repository.
@@ -80,4 +85,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-11 after initialization*
+*Last updated: 2026-04-11 after Phase 2 execution*
