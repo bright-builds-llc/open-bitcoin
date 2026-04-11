@@ -14,14 +14,14 @@
 ### Architecture & Workspace
 
 - [x] **ARCH-01**: Contributors can build first-party packages from the repository root with Bazelisk and Bazel/Bzlmod.
-- [ ] **ARCH-02**: Pure-core crates and modules reject direct filesystem, socket, wall-clock, environment, process, thread, async-runtime, and randomness dependencies.
+- [x] **ARCH-02**: Pure-core crates and modules reject direct filesystem, socket, wall-clock, environment, process, thread, async-runtime, and randomness dependencies.
 - [ ] **ARCH-03**: First-party Rust Bitcoin libraries parse raw inputs into invariant-bearing domain types instead of re-validating primitives at call sites.
-- [ ] **ARCH-04**: The production implementation path uses first-party Rust Bitcoin libraries rather than third-party Rust Bitcoin libraries.
+- [x] **ARCH-04**: The production implementation path uses first-party Rust Bitcoin libraries rather than third-party Rust Bitcoin libraries.
 
 ### Verification
 
-- [ ] **VER-01**: Contributors can run a repo-native verification flow that enforces formatting, linting, build, tests, and architecture-policy checks for changed paths.
-- [ ] **VER-02**: CI fails when pure-core packages lose 100% unit-test coverage or leak forbidden I/O/runtime dependencies.
+- [x] **VER-01**: Contributors can run a repo-native verification flow that enforces formatting, linting, build, tests, and architecture-policy checks for changed paths.
+- [x] **VER-02**: CI fails when pure-core packages lose 100% unit-test coverage or leak forbidden I/O/runtime dependencies.
 - [ ] **VER-03**: The same black-box functional test harness can run against both Bitcoin Knots and Open Bitcoin.
 - [ ] **VER-04**: Integration tests isolate ports, processes, data directories, and temporary state so they are parallel-safe and hermetic.
 
@@ -85,10 +85,10 @@
 | REF-01 | Phase 1 | Complete |
 | REF-02 | Phase 1 | Pending |
 | ARCH-01 | Phase 1 | Complete |
-| ARCH-02 | Phase 1 | Pending |
-| ARCH-04 | Phase 1 | Pending |
-| VER-01 | Phase 1 | Pending |
-| VER-02 | Phase 1 | Pending |
+| ARCH-02 | Phase 1 | Complete |
+| ARCH-04 | Phase 1 | Complete |
+| VER-01 | Phase 1 | Complete |
+| VER-02 | Phase 1 | Complete |
 | REF-03 | Phase 2 | Pending |
 | ARCH-03 | Phase 2 | Pending |
 | CONS-01 | Phase 2 | Pending |
