@@ -1,6 +1,67 @@
 {
   "baseline": "29.3.knots20260210",
   "deviations": [],
+  "catalog": {
+    "readme": "catalog/README.md",
+    "documents": [
+      {
+        "id": "core-domain-and-serialization",
+        "title": "Core Domain and Serialization Foundations",
+        "path": "catalog/core-domain-and-serialization.md",
+        "phase": "02-core-domain-and-serialization-foundations",
+        "status": "seeded",
+        "scope": [
+          "major-features",
+          "subsystems",
+          "quirks",
+          "known-bugs",
+          "suspected-unknowns"
+        ],
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/consensus/amount.h",
+            "packages/bitcoin-knots/src/uint256.h",
+            "packages/bitcoin-knots/src/serialize.h",
+            "packages/bitcoin-knots/src/streams.h",
+            "packages/bitcoin-knots/src/script/script.h",
+            "packages/bitcoin-knots/src/primitives/transaction.h",
+            "packages/bitcoin-knots/src/primitives/block.h",
+            "packages/bitcoin-knots/src/protocol.h"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/src/test/serialize_tests.cpp",
+            "packages/bitcoin-knots/src/test/transaction_tests.cpp",
+            "packages/bitcoin-knots/src/test/script_tests.cpp",
+            "packages/bitcoin-knots/src/test/txpackage_tests.cpp",
+            "packages/bitcoin-knots/src/test/data/script_tests.json",
+            "packages/bitcoin-knots/src/test/data/tx_valid.json",
+            "packages/bitcoin-knots/src/test/data/tx_invalid.json",
+            "packages/bitcoin-knots/src/test/data/sighash.json",
+            "packages/bitcoin-knots/src/test/fuzz/deserialize.cpp",
+            "packages/bitcoin-knots/src/test/fuzz/protocol.cpp",
+            "packages/bitcoin-knots/src/test/fuzz/primitives_transaction.cpp"
+          ]
+        },
+        "highlights": {
+          "quirks": [
+            "MoneyRange depends on the exact MAX_MONEY ceiling even though MAX_MONEY is a sanity bound rather than a supply counter.",
+            "base_blob and uint256 hex uses reverse-byte display order relative to typical byte-array tools.",
+            "CompactSize rejects non-canonical encodings and enforces MAX_SIZE while vector allocation grows in 5 MiB batches.",
+            "Transaction serialization keeps explicit witness and non-witness modes and rejects superfluous witness encodings.",
+            "CBlockLocator serializes an unused DUMMY_VERSION field for historical compatibility.",
+            "P2P relay keeps txid and wtxid distinctions visible through GenTxid, CInv, and WTXIDRELAY."
+          ],
+          "known_bugs": [],
+          "known_bugs_status": "none-confirmed",
+          "suspected_unknowns": [
+            "Which in-scope interfaces still require deprecated hex-acceptance behavior instead of strict FromHex or FromUserHex parsing.",
+            "Which additional serializer parameter contexts beyond transaction witness mode need explicit Rust types once disk and networking adapters land.",
+            "Which protocol and address-codec edge cases need dedicated repo-owned fixtures beyond the imported unit and fuzz coverage."
+          ]
+        }
+      }
+    ]
+  },
   "surfaces": [
     {
       "name": "consensus",
