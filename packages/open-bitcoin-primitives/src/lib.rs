@@ -14,11 +14,13 @@ pub use block::{Block, BlockHeader};
 pub use hash::{BlockHash, Hash32, HashLengthError, MerkleRoot, Txid, Wtxid};
 pub use network::{
     BlockLocator,
+    BLOCK_LOCATOR_DUMMY_VERSION,
     InventoryType,
     InventoryVector,
     MessageCommand,
     MessageCommandError,
     MessageHeader,
+    MESSAGE_TYPE_SIZE,
     NetworkAddress,
     NetworkMagic,
 };
