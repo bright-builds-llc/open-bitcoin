@@ -1,0 +1,98 @@
+use core::fmt;
+
+/// Maximum number of bytes pushable to the stack.
+pub const MAX_SCRIPT_ELEMENT_SIZE: usize = 520;
+
+/// Maximum number of non-push operations per script.
+pub const MAX_OPS_PER_SCRIPT: usize = 201;
+
+/// Maximum number of public keys per multisig.
+pub const MAX_PUBKEYS_PER_MULTISIG: usize = 20;
+
+/// Maximum script length in bytes.
+pub const MAX_SCRIPT_SIZE: usize = 10_000;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ScriptError {
+    TooLarge(usize),
+}
+
+impl fmt::Display for ScriptError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::TooLarge(size) => write!(f, "script too large: {size}"),
+        }
+    }
+}
+
+impl std::error::Error for ScriptError {}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
+pub struct ScriptBuf(Vec<u8>);
+
+impl ScriptBuf {
+    pub fn from_bytes(bytes: Vec<u8>) -> Result<Self, ScriptError> {
+        if bytes.len() > MAX_SCRIPT_SIZE {
+            return Err(ScriptError::TooLarge(bytes.len()));
+        }
+
+        Ok(Self(bytes))
+    }
+
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.0
+    }
+
+    pub fn into_bytes(self) -> Vec<u8> {
+        self.0
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ScriptWitness {
+    stack: Vec<Vec<u8>>,
+}
+
+impl ScriptWitness {
+    pub fn new(stack: Vec<Vec<u8>>) -> Self {
+        Self { stack }
+    }
+
+    pub fn stack(&self) -> &[Vec<u8>] {
+        &self.stack
+    }
+
+    pub fn into_stack(self) -> Vec<Vec<u8>> {
+        self.stack
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.stack.iter().all(Vec::is_empty)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ScriptBuf, ScriptError, ScriptWitness, MAX_SCRIPT_SIZE};
+
+    #[test]
+    fn script_buf_rejects_oversized_scripts() {
+        let oversized = vec![0_u8; MAX_SCRIPT_SIZE + 1];
+
+        assert_eq!(
+            ScriptBuf::from_bytes(oversized),
+            Err(ScriptError::TooLarge(MAX_SCRIPT_SIZE + 1)),
+        );
+    }
+
+    #[test]
+    fn script_witness_empty_detects_all_empty_items() {
+        let witness = ScriptWitness::new(vec![vec![], vec![]]);
+
+        assert!(witness.is_empty());
+    }
+}

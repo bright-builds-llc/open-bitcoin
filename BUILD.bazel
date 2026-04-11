@@ -5,6 +5,18 @@ alias(
 )
 
 alias(
+    name = "primitives",
+    actual = "//packages/open-bitcoin-primitives:open_bitcoin_primitives_lib",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "codec",
+    actual = "//packages/open-bitcoin-codec:open_bitcoin_codec_lib",
+    visibility = ["//visibility:public"],
+)
+
+alias(
     name = "node",
     actual = "//packages/open-bitcoin-node:open_bitcoin_node_lib",
     visibility = ["//visibility:public"],

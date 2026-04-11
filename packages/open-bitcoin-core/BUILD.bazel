@@ -5,5 +5,9 @@ rust_library(
     srcs = ["src/lib.rs"],
     crate_name = "open_bitcoin_core",
     edition = "2024",
+    deps = [
+        "//packages/open-bitcoin-codec:open_bitcoin_codec_lib",
+        "//packages/open-bitcoin-primitives:open_bitcoin_primitives_lib",
+    ],
     visibility = ["//visibility:public"],
 )

@@ -1,0 +1,10 @@
+load("@rules_rust//rust:defs.bzl", "rust_library")
+
+rust_library(
+    name = "open_bitcoin_codec_lib",
+    srcs = glob(["src/**/*.rs"]),
+    crate_name = "open_bitcoin_codec",
+    edition = "2024",
+    deps = ["//packages/open-bitcoin-primitives:open_bitcoin_primitives_lib"],
+    visibility = ["//visibility:public"],
+)

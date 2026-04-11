@@ -1,5 +1,5 @@
 [package]
-name = "open-bitcoin-core"
+name = "open-bitcoin-codec"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
@@ -9,5 +9,4 @@ version.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
-open-bitcoin-codec = { path = "../open-bitcoin-codec" }
 open-bitcoin-primitives = { path = "../open-bitcoin-primitives" }

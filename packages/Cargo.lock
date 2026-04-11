@@ -3,8 +3,19 @@
 version = 4
 
 [[package]]
+name = "open-bitcoin-codec"
+version = "0.1.0"
+dependencies = [
+ "open-bitcoin-primitives",
+]
+
+[[package]]
 name = "open-bitcoin-core"
 version = "0.1.0"
+dependencies = [
+ "open-bitcoin-codec",
+ "open-bitcoin-primitives",
+]
 
 [[package]]
 name = "open-bitcoin-node"
@@ -12,3 +23,7 @@ version = "0.1.0"
 dependencies = [
  "open-bitcoin-core",
 ]
+
+[[package]]
+name = "open-bitcoin-primitives"
+version = "0.1.0"

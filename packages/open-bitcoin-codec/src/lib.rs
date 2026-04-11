@@ -1,9 +1,6 @@
 #![forbid(unsafe_code)]
 
-//! Pure-core domain crate for Open Bitcoin.
-
-pub use open_bitcoin_codec as codec;
-pub use open_bitcoin_primitives as primitives;
+//! Byte-level Bitcoin codecs for the Open Bitcoin pure core.
 
 pub const fn crate_ready() -> bool {
     true
