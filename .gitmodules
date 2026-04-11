@@ -1,0 +1,3 @@
+[submodule "packages/bitcoin-knots"]
+	path = packages/bitcoin-knots
+	url = https://github.com/bitcoinknots/bitcoin
