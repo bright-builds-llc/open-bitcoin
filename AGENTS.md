@@ -30,6 +30,12 @@ Use this routing map when deciding what to load next:
 - If instructions elsewhere in `AGENTS.md` conflict with `AGENTS.bright-builds.md`, follow the repo-local instructions and treat them as an explicit local exception.
 <!-- bright-builds-rules-managed:end -->
 
+## Repo-Local Guidance
+
+- Use `git submodule update --init --recursive` to materialize the pinned Knots baseline under `packages/bitcoin-knots`.
+- Use `bash scripts/verify.sh` as the repo-native verification contract for first-party code.
+- Record intentional in-scope behavior differences from Bitcoin Knots in `docs/parity/index.json` and companion docs under `docs/parity/`.
+
 <!-- GSD:project-start source:PROJECT.md -->
 ## Project
 
