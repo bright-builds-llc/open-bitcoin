@@ -2,18 +2,28 @@
 phase: 02-core-domain-and-serialization-foundations
 plan: 03
 subsystem: testing
-tags: [rust, coverage, fixtures, verification]
+tags:
+  - rust
+  - coverage
+  - fixtures
+  - verification
 requires:
   - phase: 02-02
     provides: foundational domain and codec modules
 provides:
   - fixture-backed codec tests
   - repo-native coverage gate for all pure-core crates
-  - 100 percent pure-core line coverage for Phase 2 code
-affects: [ci, contributor-workflow, future pure-core crates]
+  - "100 percent pure-core line coverage for Phase 2 code"
+affects:
+  - ci
+  - contributor-workflow
+  - "future pure-core crates"
 tech-stack:
-  added: [repo-owned fixture hex files]
-  patterns: [fixture provenance, allowlist-driven coverage]
+  added:
+    - "repo-owned fixture hex files"
+  patterns:
+    - "fixture provenance"
+    - "allowlist-driven coverage"
 key-files:
   created:
     - packages/open-bitcoin-codec/testdata/transaction_valid.hex
@@ -30,7 +40,8 @@ key-decisions:
 patterns-established:
   - "Pure-core coverage is verified for every allowlisted crate through `scripts/pure-core-crates.txt`."
   - "Codec edge cases get deterministic unit tests before later fuzzing and black-box parity phases."
-requirements-completed: [CONS-01]
+requirements-completed:
+  - CONS-01
 generated_by: gsd-execute-plan
 lifecycle_mode: yolo
 phase_lifecycle_id: 2-2026-04-11T14-58-23
@@ -87,8 +98,6 @@ Each task was committed atomically:
 - **Files modified:** `scripts/verify.sh`
 - **Verification:** `bash scripts/verify.sh` completed successfully with the new loop and reported 100% pure-core line coverage.
 - **Committed in:** `003d5a4` (Task 2 commit)
-
----
 
 **Total deviations:** 1 auto-fixed (1 blocking)
 **Impact on plan:** No scope creep. The portability fix was required to make the planned verification contract usable on the local contributor environment.

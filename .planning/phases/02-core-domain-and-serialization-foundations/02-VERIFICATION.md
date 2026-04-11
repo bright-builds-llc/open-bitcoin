@@ -1,19 +1,19 @@
 ---
 phase: 02-core-domain-and-serialization-foundations
-verified: 2026-04-11T15:25:48.127Z
+verified: 2026-04-11T15:33:12.000Z
 status: passed
 score: 4/4 must-haves verified
 generated_by: gsd-verifier
 lifecycle_mode: yolo
 phase_lifecycle_id: 2-2026-04-11T14-58-23
-generated_at: 2026-04-11T15:25:48.127Z
+generated_at: 2026-04-11T15:33:12.000Z
 lifecycle_validated: true
 ---
 
 # Phase 2: Core Domain and Serialization Foundations Verification Report
 
 **Phase Goal:** Build the strongly typed Bitcoin domain libraries and parsing/serialization layer that later consensus, chainstate, networking, and wallet work will reuse.
-**Verified:** 2026-04-11T15:25:48.127Z
+**Verified:** 2026-04-11T15:33:12.000Z
 **Status:** passed
 
 ## Goal Achievement
@@ -85,5 +85,5 @@ None — all verifiable items checked programmatically.
 **Total verification time:** 1 min
 
 ---
-*Verified: 2026-04-11T15:25:48.127Z*
+*Verified: 2026-04-11T15:33:12.000Z*
 *Verifier: the agent (inline fallback)*
