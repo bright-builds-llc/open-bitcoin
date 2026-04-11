@@ -13,7 +13,7 @@
 
 ### Architecture & Workspace
 
-- [ ] **ARCH-01**: Contributors can build first-party packages from the repository root with Bazelisk and Bazel/Bzlmod.
+- [x] **ARCH-01**: Contributors can build first-party packages from the repository root with Bazelisk and Bazel/Bzlmod.
 - [ ] **ARCH-02**: Pure-core crates and modules reject direct filesystem, socket, wall-clock, environment, process, thread, async-runtime, and randomness dependencies.
 - [ ] **ARCH-03**: First-party Rust Bitcoin libraries parse raw inputs into invariant-bearing domain types instead of re-validating primitives at call sites.
 - [ ] **ARCH-04**: The production implementation path uses first-party Rust Bitcoin libraries rather than third-party Rust Bitcoin libraries.
@@ -84,7 +84,7 @@
 |-------------|-------|--------|
 | REF-01 | Phase 1 | Complete |
 | REF-02 | Phase 1 | Pending |
-| ARCH-01 | Phase 1 | Pending |
+| ARCH-01 | Phase 1 | Complete |
 | ARCH-02 | Phase 1 | Pending |
 | ARCH-04 | Phase 1 | Pending |
 | VER-01 | Phase 1 | Pending |
