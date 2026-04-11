@@ -1,0 +1,11 @@
+alias(
+    name = "core",
+    actual = "//packages/open-bitcoin-core:open_bitcoin_core_lib",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "node",
+    actual = "//packages/open-bitcoin-node:open_bitcoin_node_lib",
+    visibility = ["//visibility:public"],
+)

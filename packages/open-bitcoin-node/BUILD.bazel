@@ -1,0 +1,10 @@
+load("@rules_rust//rust:defs.bzl", "rust_library")
+
+rust_library(
+    name = "open_bitcoin_node_lib",
+    srcs = ["src/lib.rs"],
+    crate_name = "open_bitcoin_node",
+    edition = "2024",
+    deps = ["//packages/open-bitcoin-core:open_bitcoin_core_lib"],
+    visibility = ["//visibility:public"],
+)
