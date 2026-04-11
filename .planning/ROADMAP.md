@@ -12,7 +12,7 @@ The roadmap starts by pinning the reference baseline and enforcing workspace and
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Workspace, Baseline, and Guardrails** - Pin the reference, bootstrap the workspace, and install architecture enforcement.
+- [x] **Phase 1: Workspace, Baseline, and Guardrails** - Pin the reference, bootstrap the workspace, and install architecture enforcement. (completed 2026-04-11)
 - [ ] **Phase 2: Core Domain and Serialization Foundations** - Build the typed Bitcoin libraries that every later phase depends on.
 - [ ] **Phase 3: Consensus Validation Engine** - Match baseline script, transaction, and block validation behavior.
 - [ ] **Phase 4: Chainstate and UTXO Engine** - Implement baseline-compatible chainstate, UTXO tracking, and reorg handling.
@@ -40,7 +40,7 @@ Plans:
 - [x] 01-01: Vendor the Knots baseline and define first-party package layout under the workspace.
 - [x] 01-02: Bootstrap Bazelisk, Bazel/Bzlmod, and top-level targets for first-party packages.
 - [x] 01-03: Implement verification entrypoints, coverage checks, and architecture-policy enforcement.
-- [ ] 01-04: Add the initial deviation ledger and contributor workflow documentation.
+- [x] 01-04: Add the initial deviation ledger and contributor workflow documentation.
 
 ### Phase 2: Core Domain and Serialization Foundations
 **Goal**: Build the strongly typed Bitcoin domain libraries and parsing/serialization layer that later consensus, chainstate, networking, and wallet work will reuse.
@@ -193,7 +193,7 @@ Phases execute in numeric order: 2 → 2.1 → 2.2 → 3 → 3.1 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Workspace, Baseline, and Guardrails | 3/4 | In Progress|  |
+| 1. Workspace, Baseline, and Guardrails | 4/4 | Complete   | 2026-04-11 |
 | 2. Core Domain and Serialization Foundations | 0/4 | Not started | - |
 | 3. Consensus Validation Engine | 0/4 | Not started | - |
 | 4. Chainstate and UTXO Engine | 0/3 | Not started | - |
