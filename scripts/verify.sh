@@ -17,4 +17,15 @@ cargo fmt --manifest-path packages/Cargo.toml --all --check
 cargo clippy --manifest-path packages/Cargo.toml --workspace --all-targets --all-features -- -D warnings
 cargo build --manifest-path packages/Cargo.toml --workspace --all-targets --all-features
 cargo test --manifest-path packages/Cargo.toml --workspace --all-features
-cargo llvm-cov --manifest-path packages/Cargo.toml --package open-bitcoin-core --fail-under-lines 100 --summary-only
+
+pure_core_crates=()
+while IFS= read -r crate_name; do
+  [[ -z "$crate_name" ]] && continue
+  pure_core_crates+=("$crate_name")
+done < scripts/pure-core-crates.txt
+llvm_cov_args=()
+for crate_name in "${pure_core_crates[@]}"; do
+  llvm_cov_args+=(--package "$crate_name")
+done
+
+cargo llvm-cov --manifest-path packages/Cargo.toml "${llvm_cov_args[@]}" --fail-under-lines 100 --summary-only

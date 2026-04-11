@@ -1,17 +1,11 @@
 use open_bitcoin_primitives::{
-    Amount,
-    OutPoint,
-    ScriptBuf,
-    ScriptWitness,
-    Transaction,
-    TransactionInput,
-    TransactionOutput,
+    Amount, OutPoint, ScriptBuf, ScriptWitness, Transaction, TransactionInput, TransactionOutput,
     Txid,
 };
 
 use crate::compact_size::{compact_size_to_usize, read_compact_size, write_compact_size};
 use crate::error::CodecError;
-use crate::primitives::{write_i64_le, write_u32_le, Reader, write_i32_le};
+use crate::primitives::{Reader, write_i32_le, write_i64_le, write_u32_le};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TransactionEncoding {
@@ -85,8 +79,7 @@ pub fn encode_transaction(
     let mut out = Vec::new();
     write_i32_le(&mut out, transaction.version);
 
-    let include_witness =
-        encoding == TransactionEncoding::WithWitness && transaction.has_witness();
+    let include_witness = encoding == TransactionEncoding::WithWitness && transaction.has_witness();
     if include_witness {
         out.push(0x00);
         out.push(0x01);
@@ -106,7 +99,7 @@ pub fn encode_transaction(
 }
 
 fn parse_inputs(reader: &mut Reader<'_>) -> Result<Vec<TransactionInput>, CodecError> {
-    let count = compact_size_to_usize(read_compact_size(reader)?, "transaction input count")?;
+    let count = compact_size_to_usize(read_compact_size(reader)?, "transaction input count");
     let mut inputs = Vec::with_capacity(count);
     for _ in 0..count {
         let previous_output = OutPoint {
@@ -137,7 +130,7 @@ fn encode_inputs(out: &mut Vec<u8>, inputs: &[TransactionInput]) -> Result<(), C
 }
 
 fn parse_outputs(reader: &mut Reader<'_>) -> Result<Vec<TransactionOutput>, CodecError> {
-    let count = compact_size_to_usize(read_compact_size(reader)?, "transaction output count")?;
+    let count = compact_size_to_usize(read_compact_size(reader)?, "transaction output count");
     let mut outputs = Vec::with_capacity(count);
     for _ in 0..count {
         let value = Amount::from_sats(reader.read_i64_le()?)?;
@@ -160,7 +153,7 @@ fn encode_outputs(out: &mut Vec<u8>, outputs: &[TransactionOutput]) -> Result<()
 }
 
 fn parse_script(reader: &mut Reader<'_>) -> Result<ScriptBuf, CodecError> {
-    let len = compact_size_to_usize(read_compact_size(reader)?, "script length")?;
+    let len = compact_size_to_usize(read_compact_size(reader)?, "script length");
     Ok(ScriptBuf::from_bytes(reader.read_vec(len)?)?)
 }
 
@@ -171,10 +164,10 @@ fn encode_script(out: &mut Vec<u8>, script: &ScriptBuf) -> Result<(), CodecError
 }
 
 fn parse_witness(reader: &mut Reader<'_>) -> Result<ScriptWitness, CodecError> {
-    let count = compact_size_to_usize(read_compact_size(reader)?, "witness item count")?;
+    let count = compact_size_to_usize(read_compact_size(reader)?, "witness item count");
     let mut stack = Vec::with_capacity(count);
     for _ in 0..count {
-        let len = compact_size_to_usize(read_compact_size(reader)?, "witness item length")?;
+        let len = compact_size_to_usize(read_compact_size(reader)?, "witness item length");
         stack.push(reader.read_vec(len)?);
     }
     Ok(ScriptWitness::new(stack))
@@ -193,7 +186,14 @@ fn encode_witness(out: &mut Vec<u8>, witness: &ScriptWitness) -> Result<(), Code
 mod tests {
     use open_bitcoin_primitives::{Amount, ScriptBuf, ScriptWitness};
 
-    use super::{encode_transaction, parse_transaction, Transaction, TransactionEncoding, TransactionInput, TransactionOutput, OutPoint, Txid};
+    use crate::test_support::decode_hex;
+
+    use super::{
+        OutPoint, Transaction, TransactionEncoding, TransactionInput, TransactionOutput, Txid,
+        encode_transaction, parse_transaction, parse_transaction_without_witness,
+    };
+
+    const GENESIS_TRANSACTION_HEX: &str = include_str!("../testdata/transaction_valid.hex");
 
     #[test]
     fn transaction_round_trips_without_witness() {
@@ -215,9 +215,46 @@ mod tests {
             lock_time: 0,
         };
 
-        let encoded =
-            encode_transaction(&transaction, TransactionEncoding::WithoutWitness)
-                .expect("transaction should encode");
+        let encoded = encode_transaction(&transaction, TransactionEncoding::WithoutWitness)
+            .expect("transaction should encode");
+        let decoded = parse_transaction(&encoded).expect("transaction should decode");
+
+        assert_eq!(decoded, transaction);
+    }
+
+    #[test]
+    fn transaction_fixture_round_trips_byte_for_byte() {
+        let bytes = decode_hex(GENESIS_TRANSACTION_HEX);
+        let decoded = parse_transaction_without_witness(&bytes)
+            .expect("fixture should decode without witness");
+        let reencoded = encode_transaction(&decoded, TransactionEncoding::WithoutWitness)
+            .expect("fixture should re-encode");
+
+        assert_eq!(reencoded, bytes);
+    }
+
+    #[test]
+    fn transaction_round_trips_with_witness() {
+        let transaction = Transaction {
+            version: 2,
+            inputs: vec![TransactionInput {
+                previous_output: OutPoint {
+                    txid: Txid::from_byte_array([2_u8; 32]),
+                    vout: 1,
+                },
+                script_sig: ScriptBuf::from_bytes(vec![]).expect("valid script"),
+                sequence: TransactionInput::SEQUENCE_FINAL,
+                witness: ScriptWitness::new(vec![vec![0x01, 0x02], vec![0x51]]),
+            }],
+            outputs: vec![TransactionOutput {
+                value: Amount::from_sats(42).expect("valid amount"),
+                script_pubkey: ScriptBuf::from_bytes(vec![0x51, 0xac]).expect("valid script"),
+            }],
+            lock_time: 0,
+        };
+
+        let encoded = encode_transaction(&transaction, TransactionEncoding::WithWitness)
+            .expect("transaction should encode");
         let decoded = parse_transaction(&encoded).expect("transaction should decode");
 
         assert_eq!(decoded, transaction);
@@ -225,10 +262,29 @@ mod tests {
 
     #[test]
     fn transaction_rejects_superfluous_witness_records() {
-        let bytes = [
-            1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff, 0xff, 0xff, 0, 0, 0, 0, 0, 1, 0,
-        ];
-        // Minimal invalid marker+flag transaction with empty witness stacks.
-        assert!(parse_transaction(&bytes).is_err());
+        let bytes = decode_hex(
+            "0200000000010102020202020202020202020202020202020202020202020202020202020202020100000000ffffffff012a0000000000000001510000000000",
+        );
+        let error = parse_transaction(&bytes).expect_err("empty witness stacks are invalid");
+
+        assert_eq!(error.to_string(), "superfluous witness record");
+    }
+
+    #[test]
+    fn transaction_accepts_empty_vin_marker_without_witness_flag() {
+        let bytes = decode_hex("01000000000000000000");
+        let transaction = parse_transaction(&bytes).expect("empty transaction marker should parse");
+
+        assert!(transaction.inputs.is_empty());
+        assert!(transaction.outputs.is_empty());
+        assert_eq!(transaction.lock_time, 0);
+    }
+
+    #[test]
+    fn transaction_rejects_unknown_witness_flags() {
+        let bytes = decode_hex("0100000000020000000000");
+        let error = parse_transaction(&bytes).expect_err("unknown witness flags must fail");
+
+        assert_eq!(error.to_string(), "invalid witness flag: 2");
     }
 }

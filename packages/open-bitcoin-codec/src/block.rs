@@ -1,9 +1,9 @@
-use open_bitcoin_primitives::{Block, BlockHeader, BlockHash, MerkleRoot};
+use open_bitcoin_primitives::{Block, BlockHash, BlockHeader, MerkleRoot};
 
 use crate::compact_size::{compact_size_to_usize, read_compact_size, write_compact_size};
 use crate::error::CodecError;
-use crate::primitives::{write_i32_le, write_u32_le, Reader};
-use crate::transaction::{encode_transaction, parse_transaction_from_reader, TransactionEncoding};
+use crate::primitives::{Reader, write_i32_le, write_u32_le};
+use crate::transaction::{TransactionEncoding, encode_transaction, parse_transaction_from_reader};
 
 pub fn parse_block_header(bytes: &[u8]) -> Result<BlockHeader, CodecError> {
     let mut reader = Reader::new(bytes);
@@ -45,45 +45,49 @@ pub fn parse_block(bytes: &[u8]) -> Result<Block, CodecError> {
 
 fn parse_block_from_reader(reader: &mut Reader<'_>) -> Result<Block, CodecError> {
     let header = parse_block_header_from_reader(reader)?;
-    let count = compact_size_to_usize(read_compact_size(reader)?, "block transaction count")?;
+    let count = compact_size_to_usize(read_compact_size(reader)?, "block transaction count");
     let mut transactions = Vec::with_capacity(count);
     for _ in 0..count {
         transactions.push(parse_transaction_from_reader(reader, true)?);
     }
-    Ok(Block { header, transactions })
+    Ok(Block {
+        header,
+        transactions,
+    })
 }
 
 pub fn encode_block(block: &Block) -> Result<Vec<u8>, CodecError> {
     let mut out = encode_block_header(&block.header);
     write_compact_size(&mut out, block.transactions.len() as u64)?;
     for transaction in &block.transactions {
-        out.extend_from_slice(&encode_transaction(
-            transaction,
-            TransactionEncoding::WithWitness,
-        )?);
+        let encoded_transaction =
+            encode_transaction(transaction, TransactionEncoding::WithWitness)?;
+        out.extend_from_slice(&encoded_transaction);
     }
     Ok(out)
 }
 
 #[cfg(test)]
 mod tests {
-    use open_bitcoin_primitives::{Amount, ScriptBuf, Transaction, TransactionInput, TransactionOutput, OutPoint, Txid};
+    use open_bitcoin_primitives::{
+        Amount, OutPoint, ScriptBuf, Transaction, TransactionInput, TransactionOutput, Txid,
+    };
 
-    use super::{encode_block, parse_block, parse_block_header, Block, BlockHeader, BlockHash, MerkleRoot};
+    use crate::test_support::decode_hex;
+
+    use super::{
+        Block, BlockHash, BlockHeader, MerkleRoot, encode_block, parse_block, parse_block_header,
+    };
+
+    const GENESIS_BLOCK_HEADER_HEX: &str = include_str!("../testdata/block_header.hex");
 
     #[test]
     fn block_header_round_trips() {
-        let header = BlockHeader {
-            version: 1,
-            previous_block_hash: BlockHash::from_byte_array([0_u8; 32]),
-            merkle_root: MerkleRoot::from_byte_array([1_u8; 32]),
-            time: 2,
-            bits: 3,
-            nonce: 4,
-        };
+        let bytes = decode_hex(GENESIS_BLOCK_HEADER_HEX);
+        let header = parse_block_header(&bytes).expect("fixture should decode");
+        let reencoded = super::encode_block_header(&header);
 
-        let encoded = super::encode_block_header(&header);
-        assert_eq!(parse_block_header(&encoded), Ok(header));
+        assert_eq!(reencoded, bytes);
     }
 
     #[test]
@@ -121,5 +125,14 @@ mod tests {
         let decoded = parse_block(&encoded).expect("block should decode");
 
         assert_eq!(decoded, block);
+    }
+
+    #[test]
+    fn block_rejects_trailing_bytes() {
+        let mut bytes = decode_hex(GENESIS_BLOCK_HEADER_HEX);
+        bytes.push(0x00);
+
+        let error = parse_block_header(&bytes).expect_err("trailing bytes must be rejected");
+        assert_eq!(error.to_string(), "trailing data: 1 bytes");
     }
 }

@@ -92,12 +92,15 @@ define_hash_wrapper!(MerkleRoot);
 
 #[cfg(test)]
 mod tests {
-    use super::{Hash32, HashLengthError, Txid};
+    use super::{BlockHash, Hash32, HashLengthError, MerkleRoot, Txid, Wtxid};
 
     #[test]
     fn hash32_from_slice_requires_exact_length() {
         let valid = [7_u8; 32];
-        assert_eq!(Hash32::from_slice(&valid), Ok(Hash32::from_byte_array(valid)));
+        assert_eq!(
+            Hash32::from_slice(&valid),
+            Ok(Hash32::from_byte_array(valid))
+        );
         assert_eq!(
             Hash32::from_slice(&valid[..31]),
             Err(HashLengthError {
@@ -111,8 +114,27 @@ mod tests {
     fn wrappers_preserve_underlying_bytes() {
         let bytes = [9_u8; 32];
         let txid = Txid::from_byte_array(bytes);
+        let wtxid = Wtxid::from_slice(&bytes).expect("valid wtxid bytes");
+        let block_hash = BlockHash::from(Hash32::from_byte_array(bytes));
+        let merkle_root = MerkleRoot::from_slice(&bytes).expect("valid merkle root");
 
         assert_eq!(txid.as_bytes(), &bytes);
         assert_eq!(txid.to_byte_array(), bytes);
+        assert_eq!(wtxid.as_bytes(), &bytes);
+        assert_eq!(Hash32::from(block_hash).to_byte_array(), bytes);
+        assert_eq!(Hash32::from(merkle_root).to_byte_array(), bytes);
+    }
+
+    #[test]
+    fn hash_length_error_display_is_descriptive() {
+        let error = HashLengthError {
+            expected: 32,
+            actual: 12,
+        };
+
+        assert_eq!(
+            error.to_string(),
+            "invalid hash length: expected 32, got 12",
+        );
     }
 }

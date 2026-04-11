@@ -13,25 +13,12 @@ pub use amount::{Amount, AmountError, COIN, MAX_MONEY};
 pub use block::{Block, BlockHeader};
 pub use hash::{BlockHash, Hash32, HashLengthError, MerkleRoot, Txid, Wtxid};
 pub use network::{
-    BlockLocator,
-    BLOCK_LOCATOR_DUMMY_VERSION,
-    InventoryType,
-    InventoryVector,
-    MessageCommand,
-    MessageCommandError,
-    MessageHeader,
-    MESSAGE_TYPE_SIZE,
-    NetworkAddress,
-    NetworkMagic,
+    BLOCK_LOCATOR_DUMMY_VERSION, BlockLocator, InventoryType, InventoryVector, MESSAGE_TYPE_SIZE,
+    MessageCommand, MessageCommandError, MessageHeader, NetworkAddress, NetworkMagic,
 };
 pub use script::{
-    ScriptBuf,
-    ScriptError,
-    ScriptWitness,
-    MAX_OPS_PER_SCRIPT,
-    MAX_PUBKEYS_PER_MULTISIG,
-    MAX_SCRIPT_ELEMENT_SIZE,
-    MAX_SCRIPT_SIZE,
+    MAX_OPS_PER_SCRIPT, MAX_PUBKEYS_PER_MULTISIG, MAX_SCRIPT_ELEMENT_SIZE, MAX_SCRIPT_SIZE,
+    ScriptBuf, ScriptError, ScriptWitness,
 };
 pub use transaction::{OutPoint, Transaction, TransactionInput, TransactionOutput};
 

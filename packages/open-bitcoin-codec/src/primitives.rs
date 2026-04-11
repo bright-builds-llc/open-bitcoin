@@ -55,9 +55,7 @@ impl<'a> Reader<'a> {
 
     pub fn read_array<const N: usize>(&mut self) -> Result<[u8; N], CodecError> {
         let slice = self.take(N)?;
-        let Ok(array) = <[u8; N]>::try_from(slice) else {
-            unreachable!("slice length already matches array length");
-        };
+        let array = <[u8; N]>::try_from(slice).expect("slice length already matches array length");
         Ok(array)
     }
 
@@ -102,4 +100,71 @@ pub fn write_i32_le(out: &mut Vec<u8>, value: i32) {
 
 pub fn write_i64_le(out: &mut Vec<u8>, value: i64) {
     out.extend_from_slice(&value.to_le_bytes());
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        Reader, write_i32_le, write_i64_le, write_u16_be, write_u16_le, write_u32_le, write_u64_le,
+    };
+
+    #[test]
+    fn reader_reads_all_supported_integer_widths() {
+        let bytes = [
+            0xaa, 0x34, 0x12, 0xbe, 0xef, 0x78, 0x56, 0x34, 0x12, 0x08, 0x07, 0x06, 0x05, 0x04,
+            0x03, 0x02, 0x01, 0xfe, 0xff, 0xff, 0xff, 0x10, 0x32, 0x54, 0x76, 0x98, 0xba, 0xdc,
+            0xfe,
+        ];
+        let mut reader = Reader::new(&bytes);
+
+        assert_eq!(reader.read_u8(), Ok(0xaa));
+        assert_eq!(reader.read_u16_le(), Ok(0x1234));
+        assert_eq!(reader.read_u16_be(), Ok(0xbeef));
+        assert_eq!(reader.read_u32_le(), Ok(0x1234_5678));
+        assert_eq!(reader.read_u64_le(), Ok(0x0102_0304_0506_0708));
+        assert_eq!(reader.read_i32_le(), Ok(-2));
+        assert_eq!(reader.read_i64_le(), Ok(-81_985_529_216_486_896));
+        assert!(reader.finish().is_ok());
+    }
+
+    #[test]
+    fn reader_and_writers_round_trip_bytes() {
+        let mut bytes = Vec::new();
+        write_u16_be(&mut bytes, 0xabcd);
+        write_u16_le(&mut bytes, 0x1234);
+        write_u32_le(&mut bytes, 0x89ab_cdef);
+        write_u64_le(&mut bytes, 0x0102_0304_0506_0708);
+        write_i32_le(&mut bytes, -4);
+        write_i64_le(&mut bytes, -5);
+
+        let mut reader = Reader::new(&bytes);
+        assert_eq!(reader.read_u16_be(), Ok(0xabcd));
+        assert_eq!(reader.read_u16_le(), Ok(0x1234));
+        assert_eq!(reader.read_u32_le(), Ok(0x89ab_cdef));
+        assert_eq!(reader.read_u64_le(), Ok(0x0102_0304_0506_0708));
+        assert_eq!(reader.read_i32_le(), Ok(-4));
+        assert_eq!(reader.read_i64_le(), Ok(-5));
+        assert!(reader.finish().is_ok());
+    }
+
+    #[test]
+    fn reader_reports_unexpected_eof_and_trailing_data() {
+        let mut reader = Reader::new(&[0x01]);
+        let error = reader
+            .read_array::<2>()
+            .expect_err("two-byte read should fail with one byte");
+        assert_eq!(
+            error.to_string(),
+            "unexpected EOF: needed 2 bytes, remaining 1",
+        );
+
+        let reader = Reader::new(&[0x01]);
+        assert_eq!(
+            reader
+                .finish()
+                .expect_err("remaining byte must be reported")
+                .to_string(),
+            "trailing data: 1 bytes",
+        );
+    }
 }

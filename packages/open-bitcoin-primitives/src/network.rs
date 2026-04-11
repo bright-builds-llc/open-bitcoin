@@ -190,8 +190,68 @@ mod tests {
 
     #[test]
     fn inventory_type_preserves_unknown_values() {
+        assert_eq!(InventoryType::from_raw(0).to_raw(), 0);
+        assert_eq!(InventoryType::from_raw(1).to_raw(), 1);
         assert_eq!(InventoryType::from_raw(2).to_raw(), 2);
+        assert_eq!(InventoryType::from_raw(3).to_raw(), 3);
+        assert_eq!(InventoryType::from_raw(4).to_raw(), 4);
+        assert_eq!(InventoryType::from_raw(0x4000_0001).to_raw(), 0x4000_0001);
+        assert_eq!(InventoryType::from_raw(0x4000_0002).to_raw(), 0x4000_0002);
         assert_eq!(InventoryType::from_raw(99).to_raw(), 99);
         assert_eq!(NetworkMagic::MAINNET.to_bytes(), [0xf9, 0xbe, 0xb4, 0xd9]);
+        assert_eq!(
+            NetworkMagic::from_bytes([0xfa, 0xbf, 0xb5, 0xda]).as_bytes(),
+            &[0xfa, 0xbf, 0xb5, 0xda],
+        );
+    }
+
+    #[test]
+    fn message_command_rejects_nul_and_non_ascii_bytes() {
+        assert_eq!(
+            MessageCommand::new("ver\0sion"),
+            Err(MessageCommandError::ContainsNul),
+        );
+        assert_eq!(
+            MessageCommand::new("vérsion"),
+            Err(MessageCommandError::NonAscii(195)),
+        );
+    }
+
+    #[test]
+    fn message_command_exposes_plain_text_value() {
+        let command = MessageCommand::new("ping").expect("valid command");
+
+        assert_eq!(command.as_str(), "ping");
+    }
+
+    #[test]
+    fn message_command_error_messages_are_human_readable() {
+        assert_eq!(
+            MessageCommandError::TooLong(14).to_string(),
+            "message command too long: 14",
+        );
+        assert_eq!(
+            MessageCommandError::ContainsNul.to_string(),
+            "message command contains NUL",
+        );
+        assert_eq!(
+            MessageCommandError::InvalidWirePadding.to_string(),
+            "message command wire padding is invalid",
+        );
+        assert_eq!(
+            MessageCommandError::NonAscii(255).to_string(),
+            "message command contains non-ascii byte: 255",
+        );
+    }
+
+    #[test]
+    fn message_command_from_wire_bytes_rejects_non_ascii_bytes() {
+        let mut wire = [0_u8; super::MESSAGE_TYPE_SIZE];
+        wire[0] = 0xff;
+
+        assert_eq!(
+            MessageCommand::from_wire_bytes(wire),
+            Err(MessageCommandError::NonAscii(255)),
+        );
     }
 }

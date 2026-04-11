@@ -77,7 +77,7 @@ impl ScriptWitness {
 
 #[cfg(test)]
 mod tests {
-    use super::{ScriptBuf, ScriptError, ScriptWitness, MAX_SCRIPT_SIZE};
+    use super::{MAX_SCRIPT_SIZE, ScriptBuf, ScriptError, ScriptWitness};
 
     #[test]
     fn script_buf_rejects_oversized_scripts() {
@@ -94,5 +94,30 @@ mod tests {
         let witness = ScriptWitness::new(vec![vec![], vec![]]);
 
         assert!(witness.is_empty());
+    }
+
+    #[test]
+    fn script_buf_round_trips_bytes_and_empty_state() {
+        let script = ScriptBuf::from_bytes(vec![0x51, 0xac]).expect("valid script");
+
+        assert_eq!(script.as_bytes(), &[0x51, 0xac]);
+        assert!(!script.is_empty());
+        assert_eq!(script.into_bytes(), vec![0x51, 0xac]);
+    }
+
+    #[test]
+    fn script_witness_exposes_stack_contents() {
+        let witness = ScriptWitness::new(vec![vec![0x01], vec![0x02, 0x03]]);
+
+        assert_eq!(witness.stack(), &[vec![0x01], vec![0x02, 0x03]]);
+        assert_eq!(witness.into_stack(), vec![vec![0x01], vec![0x02, 0x03]]);
+    }
+
+    #[test]
+    fn script_error_display_is_descriptive() {
+        assert_eq!(
+            ScriptError::TooLarge(MAX_SCRIPT_SIZE + 1).to_string(),
+            format!("script too large: {}", MAX_SCRIPT_SIZE + 1),
+        );
     }
 }
