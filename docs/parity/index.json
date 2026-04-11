@@ -1,0 +1,38 @@
+{
+  "baseline": "29.3.knots20260210",
+  "deviations": [],
+  "surfaces": [
+    {
+      "name": "consensus",
+      "status": "planned"
+    },
+    {
+      "name": "validation",
+      "status": "planned"
+    },
+    {
+      "name": "chainstate",
+      "status": "planned"
+    },
+    {
+      "name": "mempool-policy",
+      "status": "planned"
+    },
+    {
+      "name": "p2p",
+      "status": "planned"
+    },
+    {
+      "name": "wallet",
+      "status": "planned"
+    },
+    {
+      "name": "rpc",
+      "status": "planned"
+    },
+    {
+      "name": "cli-config",
+      "status": "planned"
+    }
+  ]
+}
