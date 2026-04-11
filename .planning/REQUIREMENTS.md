@@ -9,13 +9,13 @@
 
 - [x] **REF-01**: Contributors can build and test against a vendored Bitcoin Knots `29.3.knots20260210` baseline stored under `packages/`.
 - [x] **REF-02**: Contributors can inspect an explicit deviation ledger for any intentional behavior differences from the pinned baseline.
-- [ ] **REF-03**: Contributors can inspect a living catalog of the reference implementation's major features, subsystems, quirks, known bugs, and suspected unknowns.
+- [x] **REF-03**: Contributors can inspect a living catalog of the reference implementation's major features, subsystems, quirks, known bugs, and suspected unknowns.
 
 ### Architecture & Workspace
 
 - [x] **ARCH-01**: Contributors can build first-party packages from the repository root with Bazelisk and Bazel/Bzlmod.
 - [x] **ARCH-02**: Pure-core crates and modules reject direct filesystem, socket, wall-clock, environment, process, thread, async-runtime, and randomness dependencies.
-- [ ] **ARCH-03**: First-party Rust Bitcoin libraries parse raw inputs into invariant-bearing domain types instead of re-validating primitives at call sites.
+- [x] **ARCH-03**: First-party Rust Bitcoin libraries parse raw inputs into invariant-bearing domain types instead of re-validating primitives at call sites.
 - [x] **ARCH-04**: The production implementation path uses first-party Rust Bitcoin libraries rather than third-party Rust Bitcoin libraries.
 
 ### Verification
@@ -27,7 +27,7 @@
 
 ### Consensus & Validation
 
-- [ ] **CONS-01**: The project parses and serializes in-scope Bitcoin protocol data compatibly with the pinned baseline.
+- [x] **CONS-01**: The project parses and serializes in-scope Bitcoin protocol data compatibly with the pinned baseline.
 - [ ] **CONS-02**: The node validates scripts, transactions, and blocks with consensus behavior matching the pinned baseline.
 - [ ] **CONS-03**: Automated fixtures surface any consensus mismatch with the baseline before merge.
 
@@ -89,9 +89,9 @@
 | ARCH-04 | Phase 1 | Complete |
 | VER-01 | Phase 1 | Complete |
 | VER-02 | Phase 1 | Complete |
-| REF-03 | Phase 2 | Pending |
-| ARCH-03 | Phase 2 | Pending |
-| CONS-01 | Phase 2 | Pending |
+| REF-03 | Phase 2 | Complete |
+| ARCH-03 | Phase 2 | Complete |
+| CONS-01 | Phase 2 | Complete |
 | CONS-02 | Phase 3 | Pending |
 | CONS-03 | Phase 3 | Pending |
 | CHAIN-01 | Phase 4 | Pending |
@@ -118,4 +118,4 @@
 
 ---
 *Requirements defined: 2026-04-11*
-*Last updated: 2026-04-11 after initial definition*
+*Last updated: 2026-04-11 after Phase 2 execution*

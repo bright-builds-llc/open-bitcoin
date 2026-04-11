@@ -54,10 +54,10 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 02-01: Define crate boundaries, domain newtypes, and shared invariants for core Bitcoin data.
-- [ ] 02-02: Implement parsing and serialization for primitives, scripts, transactions, blocks, and messages.
-- [ ] 02-03: Add pure-core fixtures and coverage-driven unit suites for the new libraries.
-- [ ] 02-04: Seed the living reference catalog with subsystem, quirk, and unknown tracking.
+- [x] 02-01: Define crate boundaries, domain newtypes, and shared invariants for core Bitcoin data.
+- [x] 02-02: Implement parsing and serialization for primitives, scripts, transactions, blocks, and messages.
+- [x] 02-03: Add pure-core fixtures and coverage-driven unit suites for the new libraries.
+- [x] 02-04: Seed the living reference catalog with subsystem, quirk, and unknown tracking.
 
 ### Phase 3: Consensus Validation Engine
 **Goal**: Implement script, transaction, and block validation behavior that matches the pinned baseline for consensus-critical decisions.
