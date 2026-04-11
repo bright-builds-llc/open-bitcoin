@@ -5,6 +5,7 @@
 <!-- Managed upstream by bright-builds-rules. If this badge block needs a fix, open an upstream PR or issue instead of editing the downstream managed block. Keep repo-local README content outside this managed badge block. -->
 
 [![GitHub Stars](https://img.shields.io/github/stars/bright-builds-llc/open-bitcoin)](https://github.com/bright-builds-llc/open-bitcoin)
+[![CI](https://img.shields.io/github/actions/workflow/status/bright-builds-llc/open-bitcoin/ci.yml?style=flat-square&logo=github&label=CI)](https://github.com/bright-builds-llc/open-bitcoin/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/bright-builds-llc/open-bitcoin?style=flat-square)](./LICENSE)
 [![Bright Builds: Rules](https://raw.githubusercontent.com/bright-builds-llc/bright-builds-rules/main/public/badges/bright-builds-rules-flat.svg)](https://github.com/bright-builds-llc/bright-builds-rules)
 
