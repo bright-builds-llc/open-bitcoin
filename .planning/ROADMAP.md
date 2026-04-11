@@ -37,7 +37,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 4 plans
 
 Plans:
-- [ ] 01-01: Vendor the Knots baseline and define first-party package layout under the workspace.
+- [x] 01-01: Vendor the Knots baseline and define first-party package layout under the workspace.
 - [ ] 01-02: Bootstrap Bazelisk, Bazel/Bzlmod, and top-level targets for first-party packages.
 - [ ] 01-03: Implement verification entrypoints, coverage checks, and architecture-policy enforcement.
 - [ ] 01-04: Add the initial deviation ledger and contributor workflow documentation.
@@ -193,7 +193,7 @@ Phases execute in numeric order: 2 → 2.1 → 2.2 → 3 → 3.1 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Workspace, Baseline, and Guardrails | 0/4 | Not started | - |
+| 1. Workspace, Baseline, and Guardrails | 1/4 | In Progress|  |
 | 2. Core Domain and Serialization Foundations | 0/4 | Not started | - |
 | 3. Consensus Validation Engine | 0/4 | Not started | - |
 | 4. Chainstate and UTXO Engine | 0/3 | Not started | - |

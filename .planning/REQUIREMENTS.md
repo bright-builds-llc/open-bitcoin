@@ -7,7 +7,7 @@
 
 ### Reference Baseline
 
-- [ ] **REF-01**: Contributors can build and test against a vendored Bitcoin Knots `29.3.knots20260210` baseline stored under `packages/`.
+- [x] **REF-01**: Contributors can build and test against a vendored Bitcoin Knots `29.3.knots20260210` baseline stored under `packages/`.
 - [ ] **REF-02**: Contributors can inspect an explicit deviation ledger for any intentional behavior differences from the pinned baseline.
 - [ ] **REF-03**: Contributors can inspect a living catalog of the reference implementation's major features, subsystems, quirks, known bugs, and suspected unknowns.
 
@@ -82,7 +82,7 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REF-01 | Phase 1 | Pending |
+| REF-01 | Phase 1 | Complete |
 | REF-02 | Phase 1 | Pending |
 | ARCH-01 | Phase 1 | Pending |
 | ARCH-02 | Phase 1 | Pending |
