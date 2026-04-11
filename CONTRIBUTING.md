@@ -46,3 +46,30 @@ This managed block is owned upstream by `bright-builds-rules`. If this block nee
 - Note any residual risks or follow-up work.
 
 <!-- bright-builds-rules-contributing:end -->
+
+## Open Bitcoin Local Workflow
+
+### Bootstrap
+
+Run the pinned reference baseline checkout before working:
+
+```bash
+git submodule update --init --recursive
+```
+
+### Verification
+
+Use the repo-native verification entrypoint:
+
+```bash
+bash scripts/verify.sh
+```
+
+This script is the source of truth for local verification and is mirrored in CI.
+
+### Parity and deviations
+
+If you intentionally change in-scope behavior relative to Bitcoin Knots `29.3.knots20260210`, update:
+
+- `docs/parity/index.json` for the machine-readable status/deviation index
+- companion docs under `docs/parity/` that explain the change in more detail
