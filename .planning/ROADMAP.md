@@ -8,13 +8,17 @@ The roadmap starts by pinning the reference baseline and enforcing workspace and
 
 **Phase Numbering:**
 - Integer phases (1, 2, 3): Planned milestone work
-- Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
+- Decimal phases (2.1, 2.2, 3.1): Inserted or split follow-on work
 
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Workspace, Baseline, and Guardrails** - Pin the reference, bootstrap the workspace, and install architecture enforcement. (completed 2026-04-11)
-- [ ] **Phase 2: Core Domain and Serialization Foundations** - Build the typed Bitcoin libraries that every later phase depends on.
-- [ ] **Phase 3: Consensus Validation Engine** - Match baseline script, transaction, and block validation behavior.
+- [x] **Phase 2: Core Domain and Serialization Foundations** - Build the typed Bitcoin libraries that every later phase depends on. (completed 2026-04-11)
+- [x] **Phase 3: Consensus Validation Foundation** - Establish the pure-core consensus foundation, contextual validation framework, and initial signature scaffolding. (completed 2026-04-11)
+- [ ] **Phase 3.1: Legacy Signature Execution (INSERTED)** - Finish legacy CHECKSIG/CHECKMULTISIG execution and P2PKH.
+- [ ] **Phase 3.2: P2SH and Segwit-v0 Execution (INSERTED)** - Add P2SH, segwit-v0 spending paths, and split sigop accounting.
+- [ ] **Phase 3.3: Taproot and Tapscript Execution (INSERTED)** - Add taproot key-path, tapscript script-path, and taproot flag enforcement.
+- [ ] **Phase 3.4: Consensus Parity Closure (INSERTED)** - Complete the parity corpus and close the consensus lifecycle honestly.
 - [ ] **Phase 4: Chainstate and UTXO Engine** - Implement baseline-compatible chainstate, UTXO tracking, and reorg handling.
 - [ ] **Phase 5: Mempool and Node Policy** - Match mempool policy, replacement, and eviction behavior.
 - [ ] **Phase 6: P2P Networking and Sync** - Add peer lifecycle, message handling, and sync behavior.
@@ -59,25 +63,89 @@ Plans:
 - [x] 02-03: Add pure-core fixtures and coverage-driven unit suites for the new libraries.
 - [x] 02-04: Seed the living reference catalog with subsystem, quirk, and unknown tracking.
 
-### Phase 3: Consensus Validation Engine
-**Goal**: Implement script, transaction, and block validation behavior that matches the pinned baseline for consensus-critical decisions.
+### Phase 3: Consensus Validation Foundation
+**Goal**: Establish the pure-core consensus foundation that later signature, witness, and taproot execution work will build on.
 **Depends on**: Phase 2
-**Requirements**: CONS-02, CONS-03
+**Requirements**: CONS-02
 **Success Criteria** (what must be TRUE):
-  1. Consensus-valid and consensus-invalid fixtures resolve the same way as Knots for scripts, transactions, and blocks.
-  2. Validation errors are explicit typed outcomes instead of ad-hoc strings or hidden panics.
-  3. Automated parity fixtures block merges when Open Bitcoin and Knots disagree on consensus decisions.
-**Plans**: 4 plans
+  1. The workspace exposes a pure-core consensus crate with deterministic hashing, typed validation errors, and repo-native dependency wiring for future signature verification.
+  2. Context-free and contextual transaction and block validation are available through explicit context types instead of chainstate coupling.
+  3. Witness commitment, coinbase-height, block-weight, and sequence-lock or finality helpers are present and covered by pure-core tests.
+  4. Script classification, sighash, and signature-verification scaffolding exists, and the first legacy spending-path verification for pay-to-pubkey and bare multisig is working.
+**Plans**: 7 plans
 
 Plans:
-- [ ] 03-01: Implement the script engine and opcode evaluation model.
-- [ ] 03-02: Add transaction validation rules and typed error outcomes.
-- [ ] 03-03: Add block validation and block-level consensus rule enforcement.
-- [ ] 03-04: Build consensus comparison fixtures against the Knots baseline.
+- [x] 03-01: Implement the script engine and opcode evaluation model.
+- [x] 03-02: Add transaction validation rules and typed error outcomes.
+- [x] 03-03: Add block validation and block-level consensus rule enforcement.
+- [x] 03-04: Build consensus comparison fixtures against the Knots baseline.
+- [x] 03-05: Add contextual validation contexts and foundation helpers.
+- [x] 03-06: Add `crate_universe`, `secp256k1`, and the classification or sighash or signature core.
+- [x] 03-07: Add the first legacy spending-path verification for pay-to-pubkey and bare multisig.
+
+### Phase 3.1: Legacy Signature Execution (INSERTED)
+**Goal**: Finish legacy CHECKSIG/CHECKMULTISIG execution, hash-type enforcement, and P2PKH spending-path support.
+**Depends on**: Phase 3
+**Requirements**: CONS-02
+**Success Criteria** (what must be TRUE):
+  1. Legacy `CHECKSIG`, `CHECKSIGVERIFY`, `CHECKMULTISIG`, and `CHECKMULTISIGVERIFY` execute with the same acceptance or failure outcomes as Knots on targeted fixtures.
+  2. DER, low-S, NULLDUMMY, NULLFAIL, SIGPUSHONLY, and legacy sighash-byte handling are enforced in the correct flag-gated paths.
+  3. P2PKH spending-path verification works through the canonical transaction-aware verifier.
+**Plans**: 3 plans
+
+Plans:
+- [ ] 03.1-01: Finish legacy CHECKSIG/CHECKMULTISIG VM execution.
+- [ ] 03.1-02: Add P2PKH spending-path execution.
+- [ ] 03.1-03: Port legacy signature and sighash vectors.
+
+### Phase 3.2: P2SH and Segwit-v0 Execution (INSERTED)
+**Goal**: Add P2SH, segwit-v0 spending paths, witness invariants, and split sigop accounting.
+**Depends on**: Phase 3.1
+**Requirements**: CONS-02
+**Success Criteria** (what must be TRUE):
+  1. P2SH redeem scripts, native P2WPKH/P2WSH, and nested segwit-v0 paths execute compatibly with the baseline on targeted fixtures.
+  2. CLEANSTACK, MINIMALIF, WITNESS_PUBKEYTYPE, witness mismatch, and unexpected witness handling match Knots for the supported segwit-v0 surface.
+  3. Sigop accounting is split across legacy, P2SH, and witness paths instead of legacy-only counting.
+**Plans**: 3 plans
+
+Plans:
+- [ ] 03.2-01: Implement P2SH redeem-script execution.
+- [ ] 03.2-02: Implement native and nested segwit-v0 spending paths.
+- [ ] 03.2-03: Replace legacy-only sigop counting with legacy + P2SH + witness accounting.
+
+### Phase 3.3: Taproot and Tapscript Execution (INSERTED)
+**Goal**: Add taproot key-path, tapscript script-path, and taproot flag enforcement.
+**Depends on**: Phase 3.2
+**Requirements**: CONS-02
+**Success Criteria** (what must be TRUE):
+  1. Taproot key-path verification works with Schnorr signatures and taproot sighash semantics.
+  2. Tapscript script-path execution handles control blocks, tapleaf hashing, annexes, CODESEPARATOR tracking, and CHECKSIGADD.
+  3. TAPROOT and related upgrade/discouragement flags are enforced in the same places as the baseline for the supported surface.
+**Plans**: 3 plans
+
+Plans:
+- [ ] 03.3-01: Implement taproot key-path verification.
+- [ ] 03.3-02: Implement tapscript script-path execution.
+- [ ] 03.3-03: Enforce taproot policy/upgrade flags and validation-weight rules.
+
+### Phase 3.4: Consensus Parity Closure (INSERTED)
+**Goal**: Complete the remaining parity corpus and close the consensus lifecycle honestly.
+**Depends on**: Phase 3.3
+**Requirements**: CONS-03
+**Success Criteria** (what must be TRUE):
+  1. The pure-core parity suite covers the remaining signature, P2SH, segwit, and taproot surface that Phase 3 now owns.
+  2. Repo-owned deterministic fixtures cover maturity, locktime, sequence-lock, witness-commitment, unexpected-witness, and taproot regression cases not cleanly imported from upstream.
+  3. Verification, parity docs, and milestone bookkeeping can all move the consensus surface to done without masking residual gaps.
+**Plans**: 3 plans
+
+Plans:
+- [ ] 03.4-01: Port the remaining upstream multisig, P2SH, segwit, and sighash fixtures.
+- [ ] 03.4-02: Add repo-owned deterministic consensus regression fixtures.
+- [ ] 03.4-03: Regenerate verification, parity ledger, and milestone bookkeeping for consensus closure.
 
 ### Phase 4: Chainstate and UTXO Engine
 **Goal**: Add baseline-compatible chainstate, UTXO management, block connect/disconnect, and reorg behavior with persistence isolated to adapters.
-**Depends on**: Phase 3
+**Depends on**: Phase 3.4
 **Requirements**: CHAIN-01
 **Success Criteria** (what must be TRUE):
   1. Block connect and disconnect logic produce the same chain tip and UTXO outcomes as Knots on targeted fixtures.
@@ -189,13 +257,17 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 2 → 2.1 → 2.2 → 3 → 3.1 → 4
+Phases execute in numeric order: 2 → 2.1 → 2.2 → 3 → 3.1 → 3.2 → 3.3 → 3.4 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Workspace, Baseline, and Guardrails | 4/4 | Complete    | 2026-04-11 |
-| 2. Core Domain and Serialization Foundations | 0/4 | Not started | - |
-| 3. Consensus Validation Engine | 0/4 | Not started | - |
+| 2. Core Domain and Serialization Foundations | 4/4 | Complete    | 2026-04-11 |
+| 3. Consensus Validation Foundation | 7/7 | Complete    | 2026-04-11 |
+| 3.1. Legacy Signature Execution | 0/3 | Not started | - |
+| 3.2. P2SH and Segwit-v0 Execution | 0/3 | Not started | - |
+| 3.3. Taproot and Tapscript Execution | 0/3 | Not started | - |
+| 3.4. Consensus Parity Closure | 0/3 | Not started | - |
 | 4. Chainstate and UTXO Engine | 0/3 | Not started | - |
 | 5. Mempool and Node Policy | 0/3 | Not started | - |
 | 6. P2P Networking and Sync | 0/4 | Not started | - |

@@ -1,7 +1,8 @@
 # Consensus Validation Engine
 
-This entry tracks the Phase 3 consensus surface currently implemented in Open
-Bitcoin. The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
+This entry tracks the Phase 3 consensus foundation currently implemented in
+Open Bitcoin. The behavioral baseline remains Bitcoin Knots
+`29.3.knots20260210`.
 
 ## Coverage
 
@@ -14,6 +15,8 @@ Bitcoin. The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
 - explicit transaction and block validation contexts for finality, sequence
   locks, coinbase maturity, coinbase-height, witness commitment, and block
   weight checks
+- script classification, legacy/segwit sighash scaffolding, signature parsing,
+  and the first legacy pay-to-pubkey and bare multisig spending-path execution
 
 ## Knots sources
 
@@ -45,19 +48,18 @@ Bitcoin. The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
 
 ## Known gaps
 
-- `CHECKSIG`, `CHECKMULTISIG`, P2SH, and witness-program execution are not
-  implemented yet.
-- Taproot key-path, script-path, and tapscript execution are not implemented
-  yet.
+- `P2PKH`, `P2SH`, segwit-v0 witness programs, and full legacy VM signature
+  execution are still open in Phase 3.1 and 3.2.
+- Taproot key-path, script-path, and tapscript execution are still open in
+  Phase 3.3.
 - The current deterministic parity fixtures cover the implemented slice only,
-  not the full in-scope consensus surface.
+  not the full in-scope consensus surface that Phase 3.4 must close.
 
 ## Follow-up triggers
 
-Update this entry when Phase 3 or later work:
+Update this entry when Phase 3.1 through 3.4 work:
 
-- adds signature or witness-program execution
-- expands contextual validation beyond the current explicit-height and
-  explicit-time inputs
-- expands the parity fixture corpus beyond the current deterministic script and
-  block-header checks
+- adds broader legacy signature execution or `P2PKH`
+- adds `P2SH` or segwit-v0 witness-program execution
+- adds taproot or tapscript execution
+- closes the remaining parity corpus and promotes the consensus surface to done

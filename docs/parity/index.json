@@ -62,9 +62,9 @@
       },
       {
         "id": "consensus-validation",
-        "title": "Consensus Validation Engine",
+        "title": "Consensus Validation Foundation",
         "path": "catalog/consensus-validation.md",
-        "phase": "03-consensus-validation-engine",
+        "phase": "03-consensus-validation-foundation",
         "status": "seeded",
         "scope": [
           "consensus",
@@ -96,9 +96,9 @@
           "known_bugs": [],
           "known_bugs_status": "none-confirmed",
           "suspected_unknowns": [
-            "How to integrate signature verification without violating the repo's pure-core and dependency constraints.",
-            "Which contextual consensus rules should land in Phase 3 versus move with Phase 4 chainstate inputs.",
-            "Which witness and P2SH vectors should anchor the next expansion of the deterministic parity suite."
+            "Which legacy signature vectors should anchor Phase 3.1 beyond the current initial legacy execution slice.",
+            "Which P2SH and segwit vectors should anchor Phase 3.2 beyond the current foundation coverage.",
+            "Which taproot and tapscript vectors should anchor Phase 3.3 and the final parity closure in Phase 3.4."
           ]
         }
       }

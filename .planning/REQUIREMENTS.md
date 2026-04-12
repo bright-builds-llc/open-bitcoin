@@ -92,8 +92,8 @@
 | REF-03 | Phase 2 | Complete |
 | ARCH-03 | Phase 2 | Complete |
 | CONS-01 | Phase 2 | Complete |
-| CONS-02 | Phase 3 | Pending |
-| CONS-03 | Phase 3 | Pending |
+| CONS-02 | Phases 3, 3.1, 3.2, 3.3 | Pending |
+| CONS-03 | Phase 3.4 | Pending |
 | CHAIN-01 | Phase 4 | Pending |
 | MEM-01 | Phase 5 | Pending |
 | MEM-02 | Phase 5 | Pending |
@@ -118,4 +118,4 @@
 
 ---
 *Requirements defined: 2026-04-11*
-*Last updated: 2026-04-11 after Phase 2 execution*
+*Last updated: 2026-04-11 after Phase 3 roadmap split*
