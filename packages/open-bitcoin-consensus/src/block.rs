@@ -13,7 +13,7 @@ use crate::crypto::{
     block_hash, block_merkle_root, check_proof_of_work, double_sha256, transaction_txid,
     transaction_wtxid,
 };
-use crate::script::count_legacy_sigops;
+use crate::script::{count_legacy_sigops, count_p2sh_sigops, count_witness_sigops};
 use crate::transaction::{
     check_transaction, validate_transaction, validate_transaction_with_context,
 };
@@ -121,13 +121,7 @@ pub fn check_block(block: &Block) -> Result<(), BlockValidationError> {
             sigops += count_legacy_sigops(&output.script_pubkey).map_err(map_script_error)?;
         }
     }
-    if sigops.saturating_mul(WITNESS_SCALE_FACTOR) > MAX_BLOCK_SIGOPS_COST {
-        return Err(block_error(
-            BlockValidationResult::Consensus,
-            "bad-blk-sigops",
-            Some("out-of-bounds SigOpCount".to_string()),
-        ));
-    }
+    enforce_sigop_cost_limit(sigops.saturating_mul(WITNESS_SCALE_FACTOR))?;
 
     Ok(())
 }
@@ -278,7 +272,57 @@ pub fn validate_block_with_context(
         })?;
     }
 
+    let mut sigop_cost = 0_usize;
+    for transaction in &block.transactions {
+        sigop_cost = sigop_cost.saturating_add(legacy_sigop_cost(transaction)?);
+    }
+    for (transaction, transaction_context) in
+        block.transactions.iter().skip(1).zip(transaction_contexts)
+    {
+        sigop_cost = sigop_cost.saturating_add(split_sigop_cost(transaction, transaction_context)?);
+    }
+    enforce_sigop_cost_limit(sigop_cost)?;
+
     Ok(())
+}
+
+fn legacy_sigop_cost(
+    transaction: &open_bitcoin_primitives::Transaction,
+) -> Result<usize, BlockValidationError> {
+    let mut sigops = 0_usize;
+    for input in &transaction.inputs {
+        sigops = sigops
+            .saturating_add(count_legacy_sigops(&input.script_sig).map_err(map_script_error)?);
+    }
+    for output in &transaction.outputs {
+        sigops = sigops
+            .saturating_add(count_legacy_sigops(&output.script_pubkey).map_err(map_script_error)?);
+    }
+    Ok(sigops.saturating_mul(WITNESS_SCALE_FACTOR))
+}
+
+fn split_sigop_cost(
+    transaction: &open_bitcoin_primitives::Transaction,
+    transaction_context: &TransactionValidationContext,
+) -> Result<usize, BlockValidationError> {
+    let mut sigops = 0_usize;
+    for (input, input_context) in transaction.inputs.iter().zip(&transaction_context.inputs) {
+        sigops = sigops.saturating_add(
+            count_p2sh_sigops(&input.script_sig, &input_context.spent_output.script_pubkey)
+                .map_err(map_script_error)?
+                .saturating_mul(WITNESS_SCALE_FACTOR),
+        );
+        sigops = sigops.saturating_add(
+            count_witness_sigops(
+                &input.script_sig,
+                &input_context.spent_output.script_pubkey,
+                &input.witness,
+                transaction_context.verify_flags,
+            )
+            .map_err(map_script_error)?,
+        );
+    }
+    Ok(sigops)
 }
 
 fn serialized_block_size(block: &Block, include_witness: bool) -> Result<usize, CodecError> {
@@ -475,6 +519,21 @@ fn map_script_error(error: crate::script::ScriptError) -> BlockValidationError {
     )
 }
 
+fn block_sigop_overflow() -> BlockValidationError {
+    block_error(
+        BlockValidationResult::Consensus,
+        "bad-blk-sigops",
+        Some("out-of-bounds SigOpCount".to_string()),
+    )
+}
+
+fn enforce_sigop_cost_limit(sigop_cost: usize) -> Result<(), BlockValidationError> {
+    if sigop_cost > MAX_BLOCK_SIGOPS_COST {
+        return Err(block_sigop_overflow());
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use open_bitcoin_codec::parse_block_header;
@@ -484,11 +543,13 @@ mod tests {
     };
 
     use super::{
-        block_witness_merkle_root, check_block, check_block_contextual, check_block_header,
-        check_block_header_contextual, coinbase_has_height_prefix, compact_size_len,
-        map_codec_error, map_script_error, serialized_block_size, serialized_script_num,
+        block_sigop_overflow, block_witness_merkle_root, check_block, check_block_contextual,
+        check_block_header, check_block_header_contextual, coinbase_has_height_prefix,
+        compact_size_len, enforce_sigop_cost_limit, legacy_sigop_cost, map_codec_error,
+        map_script_error, serialized_block_size, serialized_script_num, split_sigop_cost,
         validate_block, validate_block_with_context, witness_commitment_index,
     };
+    use crate::MAX_BLOCK_SIGOPS_COST;
     use crate::context::{
         BlockValidationContext, ConsensusParams, ScriptVerifyFlags, SpentOutput,
         TransactionInputContext, TransactionValidationContext,
@@ -589,6 +650,69 @@ mod tests {
         }]];
 
         (block, spent_outputs)
+    }
+
+    fn p2sh_sigop_heavy_redeem_script(sigops: usize) -> ScriptBuf {
+        let mut bytes = Vec::with_capacity(sigops + 4);
+        bytes.push(0x00);
+        bytes.push(0x63);
+        bytes.extend(std::iter::repeat_n(0xac, sigops));
+        bytes.push(0x68);
+        bytes.push(0x51);
+        script(&bytes)
+    }
+
+    fn p2sh_sigop_heavy_transaction(
+        txid_byte: u8,
+        sigops: usize,
+    ) -> (Transaction, TransactionValidationContext) {
+        let redeem_script = p2sh_sigop_heavy_redeem_script(sigops);
+        let redeem_hash = crate::crypto::hash160(redeem_script.as_bytes());
+        let script_pubkey = {
+            let mut bytes = vec![0xa9, 20];
+            bytes.extend_from_slice(&redeem_hash);
+            bytes.push(0x87);
+            script(&bytes)
+        };
+        let script_sig = {
+            let mut bytes = vec![redeem_script.as_bytes().len() as u8];
+            bytes.extend_from_slice(redeem_script.as_bytes());
+            script(&bytes)
+        };
+        let transaction = Transaction {
+            version: 1,
+            inputs: vec![TransactionInput {
+                previous_output: OutPoint {
+                    txid: Txid::from_byte_array([txid_byte; 32]),
+                    vout: 0,
+                },
+                script_sig,
+                sequence: TransactionInput::SEQUENCE_FINAL,
+                witness: ScriptWitness::default(),
+            }],
+            outputs: vec![TransactionOutput {
+                value: Amount::from_sats(40).expect("valid amount"),
+                script_pubkey: script(&[0x51]),
+            }],
+            lock_time: 0,
+        };
+        let context = TransactionValidationContext {
+            inputs: vec![TransactionInputContext {
+                spent_output: SpentOutput {
+                    value: Amount::from_sats(50).expect("valid amount"),
+                    script_pubkey,
+                    is_coinbase: false,
+                },
+                created_height: 0,
+                created_median_time_past: 0,
+            }],
+            spend_height: 1,
+            block_time: 1,
+            median_time_past: 1,
+            verify_flags: ScriptVerifyFlags::P2SH,
+            consensus_params: ConsensusParams::default(),
+        };
+        (transaction, context)
     }
 
     #[test]
@@ -1272,6 +1396,69 @@ mod tests {
                 .debug_message
                 .expect("debug message")
                 .contains("failed validation")
+        );
+    }
+
+    #[test]
+    fn validate_block_with_context_rejects_split_sigop_overflow() {
+        let coinbase = coinbase_transaction();
+        let mut transactions = vec![coinbase];
+        let mut transaction_contexts = Vec::new();
+        for index in 1..=127_u8 {
+            let (transaction, context) = p2sh_sigop_heavy_transaction(index, 200);
+            transactions.push(transaction);
+            transaction_contexts.push(context);
+        }
+
+        let (merkle_root, maybe_mutated) = block_merkle_root(&transactions).expect("merkle root");
+        assert!(!maybe_mutated);
+        let mut block = Block {
+            header: BlockHeader {
+                version: 1,
+                previous_block_hash: BlockHash::from_byte_array([0_u8; 32]),
+                merkle_root,
+                time: 1_231_006_505,
+                bits: EASY_BITS,
+                nonce: 0,
+            },
+            transactions,
+        };
+        mine_header(&mut block);
+        let block_context = BlockValidationContext {
+            height: 1,
+            previous_header: BlockHeader {
+                time: block.header.time - 1,
+                ..BlockHeader::default()
+            },
+            previous_median_time_past: i64::from(block.header.time) - 1,
+            consensus_params: ConsensusParams {
+                enforce_segwit: false,
+                ..ConsensusParams::default()
+            },
+        };
+
+        let error = validate_block_with_context(&block, &transaction_contexts, &block_context)
+            .expect_err("split sigop overflow must fail");
+
+        assert_eq!(error.reject_reason, "bad-blk-sigops");
+    }
+
+    #[test]
+    fn sigop_helper_functions_are_covered_directly() {
+        let (transaction, context) = p2sh_sigop_heavy_transaction(200, 5);
+
+        assert_eq!(legacy_sigop_cost(&transaction).expect("legacy cost"), 0);
+        assert_eq!(
+            split_sigop_cost(&transaction, &context).expect("split cost"),
+            20
+        );
+        assert_eq!(block_sigop_overflow().reject_reason, "bad-blk-sigops");
+        assert_eq!(enforce_sigop_cost_limit(0), Ok(()));
+        assert_eq!(
+            enforce_sigop_cost_limit(MAX_BLOCK_SIGOPS_COST + 1)
+                .expect_err("overflow must fail")
+                .reject_reason,
+            "bad-blk-sigops"
         );
     }
 }

@@ -5,12 +5,15 @@ use open_bitcoin_primitives::{
 };
 use secp256k1::Secp256k1;
 
-use crate::classify::is_push_only;
+use crate::classify::{
+    ScriptPubKeyType, classify_script_pubkey, extract_redeem_script, is_push_only,
+};
 use crate::context::{
     PrecomputedTransactionData, ScriptExecutionData, ScriptVerifyFlags, TransactionInputContext,
     TransactionValidationContext,
 };
 use crate::crypto::{Sha256, double_sha256, hash160};
+use crate::sighash::SigVersion;
 use crate::signature::{EcdsaVerificationRequest, SignatureError, TransactionSignatureChecker};
 
 const MAX_STACK_SIZE: usize = 1_000;
@@ -21,6 +24,10 @@ const OP_1NEGATE: u8 = 0x4f;
 const OP_1: u8 = 0x51;
 const OP_16: u8 = 0x60;
 const OP_NOP: u8 = 0x61;
+const OP_IF: u8 = 0x63;
+const OP_NOTIF: u8 = 0x64;
+const OP_ELSE: u8 = 0x67;
+const OP_ENDIF: u8 = 0x68;
 const OP_VERIFY: u8 = 0x69;
 const OP_DROP: u8 = 0x75;
 const OP_DUP: u8 = 0x76;
@@ -78,9 +85,17 @@ pub enum ScriptError {
     SigPushOnly,
     StackOverflow(usize),
     TruncatedPushData,
+    UnbalancedConditional,
     UnsupportedOpcode(u8),
     VerifyFailed,
+    WitnessCleanStack,
+    WitnessMalleated,
+    WitnessMalleatedP2sh,
+    WitnessProgramMismatch,
+    WitnessProgramWitnessEmpty,
+    WitnessProgramWrongLength,
     WitnessPubKeyType,
+    WitnessUnexpected,
 }
 
 impl fmt::Display for ScriptError {
@@ -105,9 +120,19 @@ impl fmt::Display for ScriptError {
             Self::SigPushOnly => write!(f, "scriptSig is not push-only"),
             Self::StackOverflow(size) => write!(f, "stack exceeds maximum size: {size}"),
             Self::TruncatedPushData => write!(f, "truncated pushdata"),
+            Self::UnbalancedConditional => write!(f, "unbalanced conditional"),
             Self::UnsupportedOpcode(opcode) => write!(f, "unsupported opcode: 0x{opcode:02x}"),
             Self::VerifyFailed => write!(f, "VERIFY failed"),
+            Self::WitnessCleanStack => write!(f, "witness script did not leave a clean stack"),
+            Self::WitnessMalleated => write!(f, "witness program has unexpected scriptSig"),
+            Self::WitnessMalleatedP2sh => {
+                write!(f, "nested witness program scriptSig is malleated")
+            }
+            Self::WitnessProgramMismatch => write!(f, "witness program mismatch"),
+            Self::WitnessProgramWitnessEmpty => write!(f, "witness program witness stack is empty"),
+            Self::WitnessProgramWrongLength => write!(f, "witness program wrong length"),
             Self::WitnessPubKeyType => write!(f, "witness public key must be compressed"),
+            Self::WitnessUnexpected => write!(f, "unexpected witness data"),
         }
     }
 }
@@ -130,6 +155,42 @@ struct LegacyExecutionContext<'a> {
     input_index: usize,
     spent_input: &'a TransactionInputContext,
     verify_flags: ScriptVerifyFlags,
+    sig_version: SigVersion,
+}
+
+#[derive(Default)]
+struct ConditionStack(Vec<bool>);
+
+impl ConditionStack {
+    fn all_true(&self) -> bool {
+        self.0.iter().all(|value| *value)
+    }
+
+    fn push(&mut self, value: bool) {
+        self.0.push(value);
+    }
+
+    fn pop(&mut self) -> Option<bool> {
+        self.0.pop()
+    }
+
+    fn toggle_top(&mut self) -> Result<(), ScriptError> {
+        let Some(top) = self.0.last_mut() else {
+            return Err(ScriptError::UnbalancedConditional);
+        };
+        *top = !*top;
+        Ok(())
+    }
+
+    fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    fn outer_all_true(&self) -> bool {
+        self.0
+            .get(..self.0.len().saturating_sub(1))
+            .is_none_or(|values| values.iter().all(|value| *value))
+    }
 }
 
 fn eval_script_internal(
@@ -140,6 +201,7 @@ fn eval_script_internal(
     let bytes = script.as_bytes();
     let mut pc = 0;
     let mut op_count = 0;
+    let mut condition_stack = ConditionStack::default();
 
     while pc < bytes.len() {
         let instruction = read_instruction(bytes, &mut pc)?;
@@ -150,8 +212,50 @@ fn eval_script_internal(
             }
         }
 
+        let should_execute = condition_stack.all_true();
+
         if let Some(data) = instruction.maybe_data {
-            push_stack(stack, data)?;
+            if should_execute {
+                push_stack(stack, data)?;
+            }
+            continue;
+        }
+
+        if matches!(instruction.opcode, OP_IF | OP_NOTIF) {
+            if should_execute {
+                let value = pop_bytes(stack)?;
+                if maybe_context.is_some_and(|context| {
+                    context.sig_version == SigVersion::WitnessV0
+                        && context.verify_flags.contains(ScriptVerifyFlags::MINIMALIF)
+                }) && !matches!(value.as_slice(), [] | [1])
+                {
+                    return Err(ScriptError::VerifyFailed);
+                }
+                let condition = cast_to_bool(&value);
+                condition_stack.push(if instruction.opcode == OP_NOTIF {
+                    !condition
+                } else {
+                    condition
+                });
+            } else {
+                condition_stack.push(false);
+            }
+            continue;
+        }
+        if instruction.opcode == OP_ELSE {
+            if !condition_stack.outer_all_true() {
+                continue;
+            }
+            condition_stack.toggle_top()?;
+            continue;
+        }
+        if instruction.opcode == OP_ENDIF {
+            if condition_stack.pop().is_none() {
+                return Err(ScriptError::UnbalancedConditional);
+            }
+            continue;
+        }
+        if !should_execute {
             continue;
         }
 
@@ -272,6 +376,10 @@ fn eval_script_internal(
         }
     }
 
+    if !condition_stack.is_empty() {
+        return Err(ScriptError::UnbalancedConditional);
+    }
+
     Ok(())
 }
 
@@ -312,10 +420,6 @@ pub fn verify_input_script(context: ScriptInputVerificationContext<'_>) -> Resul
     {
         return Err(ScriptError::SigPushOnly);
     }
-    if !context.witness.is_empty() {
-        return Err(ScriptError::UnsupportedOpcode(OP_0NOTEQUAL));
-    }
-
     let secp = Secp256k1::verification_only();
     let checker =
         TransactionSignatureChecker::new(&secp, context.validation_context, context.precomputed);
@@ -325,20 +429,182 @@ pub fn verify_input_script(context: ScriptInputVerificationContext<'_>) -> Resul
         input_index: context.input_index,
         spent_input: context.spent_input,
         verify_flags: context.verify_flags,
+        sig_version: SigVersion::Base,
     };
 
     let mut stack = Vec::new();
+    let mut maybe_stack_copy = None;
     eval_script_internal(&mut stack, context.script_sig, Some(&execution_context))?;
+    if context.verify_flags.contains(ScriptVerifyFlags::P2SH) {
+        maybe_stack_copy = Some(stack.clone());
+    }
     eval_script_internal(&mut stack, context.script_pubkey, Some(&execution_context))?;
+    verify_top_stack_true(&stack)?;
 
+    let mut had_witness = false;
+    let script_pubkey_type = classify_script_pubkey(context.script_pubkey);
+    if context.verify_flags.contains(ScriptVerifyFlags::WITNESS)
+        && matches!(
+            script_pubkey_type,
+            ScriptPubKeyType::WitnessV0KeyHash(_) | ScriptPubKeyType::WitnessV0ScriptHash(_)
+        )
+    {
+        had_witness = true;
+        if !context.script_sig.as_bytes().is_empty() {
+            return Err(ScriptError::WitnessMalleated);
+        }
+        verify_witness_program(&mut stack, &context, &script_pubkey_type, false, &secp)?;
+    }
+
+    if context.verify_flags.contains(ScriptVerifyFlags::P2SH)
+        && matches!(script_pubkey_type, ScriptPubKeyType::PayToScriptHash(_))
+    {
+        if !is_push_only(context.script_sig) {
+            return Err(ScriptError::SigPushOnly);
+        }
+
+        let mut redeem_stack = maybe_stack_copy.ok_or(ScriptError::InvalidStackOperation)?;
+        let redeem_script =
+            extract_redeem_script(context.script_sig).ok_or(ScriptError::InvalidStackOperation)?;
+        pop_bytes(&mut redeem_stack)?;
+        eval_script_internal(&mut redeem_stack, &redeem_script, Some(&execution_context))?;
+        verify_top_stack_true(&redeem_stack)?;
+
+        if context.verify_flags.contains(ScriptVerifyFlags::WITNESS) {
+            let redeem_type = classify_script_pubkey(&redeem_script);
+            if matches!(
+                redeem_type,
+                ScriptPubKeyType::WitnessV0KeyHash(_) | ScriptPubKeyType::WitnessV0ScriptHash(_)
+            ) {
+                had_witness = true;
+                if context.script_sig.as_bytes() != single_push_script(&redeem_script).as_slice() {
+                    return Err(ScriptError::WitnessMalleatedP2sh);
+                }
+                verify_witness_program(&mut redeem_stack, &context, &redeem_type, true, &secp)?;
+            }
+        }
+        stack = redeem_stack;
+    }
+
+    if context.verify_flags.contains(ScriptVerifyFlags::CLEANSTACK) && stack.len() != 1 {
+        return Err(ScriptError::WitnessCleanStack);
+    }
+    if context.verify_flags.contains(ScriptVerifyFlags::WITNESS)
+        && !had_witness
+        && !context.witness.is_empty()
+    {
+        return Err(ScriptError::WitnessUnexpected);
+    }
+
+    Ok(())
+}
+
+fn verify_top_stack_true(stack: &[Vec<u8>]) -> Result<(), ScriptError> {
     let Some(top) = stack.last() else {
         return Err(ScriptError::EvalFalse);
     };
     if !cast_to_bool(top) {
         return Err(ScriptError::EvalFalse);
     }
-
     Ok(())
+}
+
+fn verify_witness_program(
+    stack: &mut Vec<Vec<u8>>,
+    context: &ScriptInputVerificationContext<'_>,
+    script_type: &ScriptPubKeyType,
+    is_p2sh: bool,
+    secp: &Secp256k1<secp256k1::VerifyOnly>,
+) -> Result<(), ScriptError> {
+    match script_type {
+        ScriptPubKeyType::WitnessV0KeyHash(program) => {
+            if context.witness.stack().len() != 2 {
+                return Err(ScriptError::WitnessProgramMismatch);
+            }
+            let mut exec_script_bytes = vec![OP_DUP, OP_HASH160, 20];
+            exec_script_bytes.extend_from_slice(program);
+            exec_script_bytes.extend_from_slice(&[OP_EQUALVERIFY, OP_CHECKSIG]);
+            let exec_script =
+                ScriptBuf::from_bytes(exec_script_bytes).expect("generated P2WPKH script is valid");
+            execute_witness_script(
+                stack,
+                context,
+                &exec_script,
+                context.witness.stack().to_vec(),
+                secp,
+            )
+        }
+        ScriptPubKeyType::WitnessV0ScriptHash(program) => {
+            let Some((script_bytes, witness_items)) = context.witness.stack().split_last() else {
+                return Err(ScriptError::WitnessProgramWitnessEmpty);
+            };
+            if Sha256::digest(script_bytes) != *program {
+                return Err(ScriptError::WitnessProgramMismatch);
+            }
+            let exec_script = ScriptBuf::from_bytes(script_bytes.clone())
+                .map_err(|_| ScriptError::WitnessProgramMismatch)?;
+            execute_witness_script(stack, context, &exec_script, witness_items.to_vec(), secp)
+        }
+        ScriptPubKeyType::WitnessUnknown { .. } if !is_p2sh => {
+            if context
+                .verify_flags
+                .contains(ScriptVerifyFlags::DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM)
+            {
+                return Err(ScriptError::UnsupportedOpcode(OP_0NOTEQUAL));
+            }
+            stack.clear();
+            push_stack(stack, encode_bool(true))?;
+            Ok(())
+        }
+        ScriptPubKeyType::WitnessUnknown { .. } => Ok(()),
+        _ => {
+            if matches!(script_type, ScriptPubKeyType::WitnessV1Taproot(_)) {
+                return Err(ScriptError::WitnessProgramWrongLength);
+            }
+            Err(ScriptError::WitnessProgramWrongLength)
+        }
+    }
+}
+
+fn execute_witness_script(
+    stack: &mut Vec<Vec<u8>>,
+    context: &ScriptInputVerificationContext<'_>,
+    exec_script: &ScriptBuf,
+    witness_stack: Vec<Vec<u8>>,
+    secp: &Secp256k1<secp256k1::VerifyOnly>,
+) -> Result<(), ScriptError> {
+    let mut witness_eval_stack = Vec::with_capacity(witness_stack.len());
+    for element in witness_stack {
+        if element.len() > MAX_SCRIPT_ELEMENT_SIZE {
+            return Err(ScriptError::PushSize(element.len()));
+        }
+        push_stack(&mut witness_eval_stack, element)?;
+    }
+
+    let witness_context = LegacyExecutionContext {
+        checker: TransactionSignatureChecker::new(
+            secp,
+            context.validation_context,
+            context.precomputed,
+        ),
+        transaction: context.transaction,
+        input_index: context.input_index,
+        spent_input: context.spent_input,
+        verify_flags: context.verify_flags,
+        sig_version: SigVersion::WitnessV0,
+    };
+    eval_script_internal(&mut witness_eval_stack, exec_script, Some(&witness_context))?;
+    if witness_eval_stack.len() != 1 {
+        return Err(ScriptError::WitnessCleanStack);
+    }
+    verify_top_stack_true(&witness_eval_stack)?;
+
+    *stack = witness_eval_stack;
+    Ok(())
+}
+
+fn single_push_script(script: &ScriptBuf) -> Vec<u8> {
+    encode_push_data(script.as_bytes())
 }
 
 fn execute_checksig(
@@ -360,7 +626,11 @@ fn execute_checksig(
 
     let public_key = pop_bytes(stack)?;
     let signature = pop_bytes(stack)?;
-    let script_code = remove_signature_from_script(script, &signature);
+    let script_code = if context.sig_version == SigVersion::Base {
+        remove_signature_from_script(script, &signature)
+    } else {
+        script.clone()
+    };
     let is_valid_signature = context
         .checker
         .verify_ecdsa(
@@ -371,8 +641,11 @@ fn execute_checksig(
                 spent_input: context.spent_input,
                 signature_bytes: &signature,
                 public_key_bytes: &public_key,
-                sig_version: crate::sighash::SigVersion::Base,
-                require_compressed_pubkey: false,
+                sig_version: context.sig_version,
+                require_compressed_pubkey: context.sig_version == SigVersion::WitnessV0
+                    && context
+                        .verify_flags
+                        .contains(ScriptVerifyFlags::WITNESS_PUBKEYTYPE),
             },
             context.verify_flags,
         )
@@ -444,8 +717,10 @@ fn execute_checkmultisig(
     let pubkeys = stack[sig_count_index + 1..stack.len() - 1].to_vec();
 
     let mut script_code = script.clone();
-    for signature in &signatures {
-        script_code = remove_signature_from_script(&script_code, signature);
+    if context.sig_version == SigVersion::Base {
+        for signature in &signatures {
+            script_code = remove_signature_from_script(&script_code, signature);
+        }
     }
 
     let mut remaining_pubkeys = pubkeys.iter();
@@ -467,8 +742,11 @@ fn execute_checkmultisig(
                         spent_input: context.spent_input,
                         signature_bytes: signature,
                         public_key_bytes: public_key,
-                        sig_version: crate::sighash::SigVersion::Base,
-                        require_compressed_pubkey: false,
+                        sig_version: context.sig_version,
+                        require_compressed_pubkey: context.sig_version == SigVersion::WitnessV0
+                            && context
+                                .verify_flags
+                                .contains(ScriptVerifyFlags::WITNESS_PUBKEYTYPE),
                     },
                     context.verify_flags,
                 )
@@ -516,18 +794,98 @@ fn execute_checkmultisig(
 }
 
 pub fn count_legacy_sigops(script: &ScriptBuf) -> Result<usize, ScriptError> {
+    count_sigops(script, false)
+}
+
+pub fn count_p2sh_sigops(
+    script_sig: &ScriptBuf,
+    script_pubkey: &ScriptBuf,
+) -> Result<usize, ScriptError> {
+    if !matches!(
+        classify_script_pubkey(script_pubkey),
+        ScriptPubKeyType::PayToScriptHash(_)
+    ) {
+        return Ok(0);
+    }
+    if !is_push_only(script_sig) {
+        return Ok(0);
+    }
+    let Some(redeem_script) = extract_redeem_script(script_sig) else {
+        return Ok(0);
+    };
+    count_sigops(&redeem_script, true)
+}
+
+pub fn count_witness_sigops(
+    script_sig: &ScriptBuf,
+    script_pubkey: &ScriptBuf,
+    witness: &ScriptWitness,
+    verify_flags: ScriptVerifyFlags,
+) -> Result<usize, ScriptError> {
+    if !verify_flags.contains(ScriptVerifyFlags::WITNESS) {
+        return Ok(0);
+    }
+
+    let script_type = classify_script_pubkey(script_pubkey);
+    if let Some(sigops) = witness_sigops_for_type(&script_type, witness)? {
+        return Ok(sigops);
+    }
+
+    if matches!(script_type, ScriptPubKeyType::PayToScriptHash(_)) && is_push_only(script_sig) {
+        let Some(redeem_script) = extract_redeem_script(script_sig) else {
+            return Ok(0);
+        };
+        let redeem_type = classify_script_pubkey(&redeem_script);
+        if let Some(sigops) = witness_sigops_for_type(&redeem_type, witness)? {
+            return Ok(sigops);
+        }
+    }
+
+    Ok(0)
+}
+
+fn count_sigops(script: &ScriptBuf, accurate: bool) -> Result<usize, ScriptError> {
     let bytes = script.as_bytes();
     let mut pc = 0;
     let mut sigops = 0;
+    let mut last_opcode = None;
     while pc < bytes.len() {
         let instruction = read_instruction(bytes, &mut pc)?;
         match instruction.opcode {
             OP_CHECKSIG | OP_CHECKSIGVERIFY => sigops += 1,
-            OP_CHECKMULTISIG | OP_CHECKMULTISIGVERIFY => sigops += 20,
+            OP_CHECKMULTISIG | OP_CHECKMULTISIGVERIFY => {
+                sigops += if accurate {
+                    last_opcode
+                        .and_then(decode_small_int_opcode)
+                        .unwrap_or(MAX_PUBKEYS_PER_MULTISIG)
+                } else {
+                    MAX_PUBKEYS_PER_MULTISIG
+                };
+            }
             _ => {}
         }
+        last_opcode = Some(instruction.opcode);
     }
     Ok(sigops)
+}
+
+fn witness_sigops_for_type(
+    script_type: &ScriptPubKeyType,
+    witness: &ScriptWitness,
+) -> Result<Option<usize>, ScriptError> {
+    match script_type {
+        ScriptPubKeyType::WitnessV0KeyHash(_) => Ok(Some(1)),
+        ScriptPubKeyType::WitnessV0ScriptHash(_) if !witness.stack().is_empty() => {
+            let script_bytes = witness
+                .stack()
+                .last()
+                .expect("witness stack is non-empty under the guard above");
+            let witness_script = ScriptBuf::from_bytes(script_bytes.clone())
+                .map_err(|_| ScriptError::WitnessProgramMismatch)?;
+            Ok(Some(count_sigops(&witness_script, true)?))
+        }
+        _ => Ok(None),
+    }
 }
 
 fn map_signature_error(error: SignatureError) -> ScriptError {
@@ -592,6 +950,13 @@ fn decode_small_num(bytes: &[u8]) -> Result<usize, ScriptError> {
         return Err(ScriptError::InvalidStackOperation);
     }
     Ok(value as usize)
+}
+
+fn decode_small_int_opcode(opcode: u8) -> Option<usize> {
+    match opcode {
+        0x51..=0x60 => Some(usize::from(opcode - 0x50)),
+        _ => None,
+    }
 }
 
 fn read_instruction(bytes: &[u8], pc: &mut usize) -> Result<Instruction, ScriptError> {
@@ -785,15 +1150,19 @@ mod tests {
     use crate::context::{TransactionInputContext, TransactionValidationContext};
     use open_bitcoin_primitives::ScriptBuf;
 
+    use crate::classify::ScriptPubKeyType;
     use crate::context::{PrecomputedTransactionData, ScriptExecutionData, ScriptVerifyFlags};
-    use crate::crypto::hash160;
-    use crate::sighash::{SigHashType, legacy_sighash};
+    use crate::crypto::{Sha256, hash160};
+    use crate::sighash::{SigHashType, SigVersion, legacy_sighash};
 
     use super::{
-        ScriptError, ScriptInputVerificationContext, cast_to_bool, count_legacy_sigops,
-        decode_script_num, decode_small_num, encode_push_data, encode_script_num, eval_script,
-        execute_checkmultisig, execute_checksig, is_disabled_opcode, map_signature_error,
-        remove_signature_from_script, verify_script,
+        ConditionStack, OP_1, OP_CHECKMULTISIG, OP_CHECKSIG, OP_DUP, OP_ELSE, OP_ENDIF,
+        OP_EQUALVERIFY, OP_HASH160, OP_IF, OP_NOTIF, ScriptError, ScriptInputVerificationContext,
+        cast_to_bool, count_legacy_sigops, count_p2sh_sigops, count_witness_sigops,
+        decode_script_num, decode_small_int_opcode, decode_small_num, encode_push_data,
+        encode_script_num, eval_script, execute_checkmultisig, execute_checksig,
+        is_disabled_opcode, map_signature_error, remove_signature_from_script, verify_script,
+        verify_top_stack_true, verify_witness_program, witness_sigops_for_type,
     };
 
     fn script(bytes: &[u8]) -> ScriptBuf {
@@ -860,6 +1229,32 @@ mod tests {
     ) -> Vec<u8> {
         let signing_secp = Secp256k1::new();
         let digest = legacy_sighash(script_code, transaction, 0, sighash_type);
+        let message = Message::from_digest(digest.to_byte_array());
+        let mut signature = signing_secp.sign_ecdsa(message, secret_key);
+        signature.normalize_s();
+        let serialized = signature.serialize_der();
+        let mut signature_bytes = serialized.as_ref().to_vec();
+        signature_bytes.push(sighash_type.raw() as u8);
+        signature_bytes
+    }
+
+    fn sign_witness_v0_script(
+        script_code: &ScriptBuf,
+        transaction: &Transaction,
+        spent_input: &TransactionInputContext,
+        precomputed: &PrecomputedTransactionData,
+        secret_key: &SecretKey,
+        sighash_type: SigHashType,
+    ) -> Vec<u8> {
+        let signing_secp = Secp256k1::new();
+        let digest = crate::sighash::segwit_v0_sighash(
+            script_code,
+            transaction,
+            0,
+            spent_input,
+            sighash_type,
+            precomputed,
+        );
         let message = Message::from_digest(digest.to_byte_array());
         let mut signature = signing_secp.sign_ecdsa(message, secret_key);
         signature.normalize_s();
@@ -995,15 +1390,41 @@ mod tests {
                 "stack exceeds maximum size: 1001",
             ),
             (ScriptError::TruncatedPushData, "truncated pushdata"),
+            (ScriptError::UnbalancedConditional, "unbalanced conditional"),
             (
                 ScriptError::UnsupportedOpcode(0xac),
                 "unsupported opcode: 0xac",
             ),
             (ScriptError::VerifyFailed, "VERIFY failed"),
             (
+                ScriptError::WitnessCleanStack,
+                "witness script did not leave a clean stack",
+            ),
+            (
+                ScriptError::WitnessMalleated,
+                "witness program has unexpected scriptSig",
+            ),
+            (
+                ScriptError::WitnessMalleatedP2sh,
+                "nested witness program scriptSig is malleated",
+            ),
+            (
+                ScriptError::WitnessProgramMismatch,
+                "witness program mismatch",
+            ),
+            (
+                ScriptError::WitnessProgramWitnessEmpty,
+                "witness program witness stack is empty",
+            ),
+            (
+                ScriptError::WitnessProgramWrongLength,
+                "witness program wrong length",
+            ),
+            (
                 ScriptError::WitnessPubKeyType,
                 "witness public key must be compressed",
             ),
+            (ScriptError::WitnessUnexpected, "unexpected witness data"),
         ];
 
         for (error, expected) in cases {
@@ -1024,6 +1445,89 @@ mod tests {
         assert_eq!(encode_script_num(128), vec![0x80, 0x00]);
         assert!(is_disabled_opcode(0x7e));
         assert!(!is_disabled_opcode(0x51));
+        assert_eq!(decode_small_int_opcode(0x51), Some(1));
+        assert_eq!(decode_small_int_opcode(0x61), None);
+    }
+
+    #[test]
+    fn low_level_script_helpers_cover_remaining_direct_paths() {
+        assert_eq!(
+            verify_top_stack_true(&[Vec::new()]).expect_err("false stack top must fail"),
+            ScriptError::EvalFalse
+        );
+
+        let untouched = script(&[0x51, 0x51]);
+        assert_eq!(
+            remove_signature_from_script(&untouched, &[0xaa, 0xbb]),
+            untouched
+        );
+
+        assert_eq!(
+            witness_sigops_for_type(&ScriptPubKeyType::NonStandard, &ScriptWitness::default())
+                .expect("helper should succeed"),
+            None
+        );
+    }
+
+    #[test]
+    fn condition_stack_and_control_flow_helpers_are_covered() {
+        let mut condition_stack = ConditionStack::default();
+        assert!(condition_stack.is_empty());
+        assert!(condition_stack.all_true());
+        assert!(condition_stack.outer_all_true());
+        condition_stack.push(true);
+        condition_stack.push(false);
+        assert!(!condition_stack.all_true());
+        assert!(condition_stack.outer_all_true());
+        condition_stack.toggle_top().expect("toggle should succeed");
+        assert!(condition_stack.all_true());
+        assert_eq!(condition_stack.pop(), Some(true));
+        assert_eq!(condition_stack.pop(), Some(true));
+        assert_eq!(
+            condition_stack
+                .toggle_top()
+                .expect_err("empty toggle should fail"),
+            ScriptError::UnbalancedConditional
+        );
+
+        let mut stack = Vec::new();
+        eval_script(
+            &mut stack,
+            &script(&[0x00, OP_IF, 0x01, 0x01, OP_ENDIF, OP_1]),
+        )
+        .expect("inactive branch pushes should be skipped");
+        assert_eq!(stack, vec![vec![1_u8]]);
+
+        let mut stack = Vec::new();
+        eval_script(
+            &mut stack,
+            &script(&[OP_1, OP_NOTIF, OP_1, OP_ELSE, OP_1, OP_ENDIF]),
+        )
+        .expect("NOTIF/ELSE should execute");
+        assert_eq!(stack, vec![vec![1_u8]]);
+
+        let mut stack = Vec::new();
+        eval_script(
+            &mut stack,
+            &script(&[0x00, OP_IF, OP_1, OP_IF, OP_ELSE, OP_ENDIF, OP_ENDIF, OP_1]),
+        )
+        .expect("nested inactive branches should parse and skip execution");
+        assert_eq!(stack, vec![vec![1_u8]]);
+
+        assert_eq!(
+            eval_script(&mut Vec::new(), &script(&[OP_ENDIF]))
+                .expect_err("ENDIF without IF must fail"),
+            ScriptError::UnbalancedConditional
+        );
+        assert_eq!(
+            eval_script(&mut Vec::new(), &script(&[OP_1, OP_IF]))
+                .expect_err("unterminated IF must fail"),
+            ScriptError::UnbalancedConditional
+        );
+        assert_eq!(
+            verify_top_stack_true(&[]).expect_err("empty stack must fail"),
+            ScriptError::EvalFalse
+        );
     }
 
     #[test]
@@ -1192,7 +1696,7 @@ mod tests {
     }
 
     #[test]
-    fn verify_input_script_rejects_witness_for_current_legacy_path() {
+    fn verify_input_script_rejects_unexpected_witness_data() {
         let mut execution_data = ScriptExecutionData::default();
         let transaction = Transaction::default();
         let validation_context = TransactionValidationContext {
@@ -1200,7 +1704,7 @@ mod tests {
             spend_height: 0,
             block_time: 0,
             median_time_past: 0,
-            verify_flags: ScriptVerifyFlags::WITNESS,
+            verify_flags: ScriptVerifyFlags::P2SH | ScriptVerifyFlags::WITNESS,
             consensus_params: crate::context::ConsensusParams::default(),
         };
         let spent_input = TransactionInputContext {
@@ -1223,13 +1727,13 @@ mod tests {
             spent_input: &spent_input,
             validation_context: &validation_context,
             spent_amount: Amount::from_sats(0).expect("valid amount"),
-            verify_flags: ScriptVerifyFlags::WITNESS,
+            verify_flags: ScriptVerifyFlags::P2SH | ScriptVerifyFlags::WITNESS,
             precomputed: &precomputed,
             execution_data: &mut execution_data,
         })
-        .expect_err("witness should be unsupported in current verifier");
+        .expect_err("unexpected witness data must fail");
 
-        assert_eq!(error, ScriptError::UnsupportedOpcode(0x92));
+        assert_eq!(error, ScriptError::WitnessUnexpected);
     }
 
     #[test]
@@ -1348,6 +1852,449 @@ mod tests {
             }),
             Ok(())
         );
+    }
+
+    #[test]
+    fn verify_input_script_accepts_p2sh_redeem_scripts() {
+        let signing_secp = Secp256k1::new();
+        let secret_key = SecretKey::from_byte_array([27_u8; 32]).expect("secret key");
+        let public_key = PublicKey::from_secret_key(&signing_secp, &secret_key);
+        let public_key_bytes = public_key.serialize();
+        let public_key_hash = hash160(&public_key_bytes);
+        let mut redeem_script_bytes = vec![0x76, 0xa9, 20];
+        redeem_script_bytes.extend_from_slice(&public_key_hash);
+        redeem_script_bytes.extend_from_slice(&[0x88, 0xac]);
+        let redeem_script = script(&redeem_script_bytes);
+        let redeem_hash = hash160(redeem_script.as_bytes());
+        let mut script_pubkey_bytes = vec![0xa9, 20];
+        script_pubkey_bytes.extend_from_slice(&redeem_hash);
+        script_pubkey_bytes.push(0x87);
+        let script_pubkey = script(&script_pubkey_bytes);
+        let transaction = legacy_transaction(12);
+        let (spent_input, validation_context, precomputed) =
+            legacy_context(script_pubkey.clone(), &transaction, ScriptVerifyFlags::P2SH);
+        let signature_bytes =
+            sign_legacy_script(&redeem_script, &transaction, &secret_key, SigHashType::ALL);
+        let script_sig = push_only_script(&[
+            &signature_bytes,
+            &public_key_bytes,
+            redeem_script.as_bytes(),
+        ]);
+        let mut execution_data = ScriptExecutionData::default();
+
+        assert_eq!(
+            super::verify_input_script(ScriptInputVerificationContext {
+                script_sig: &script_sig,
+                script_pubkey: &script_pubkey,
+                witness: &ScriptWitness::default(),
+                transaction: &transaction,
+                input_index: 0,
+                spent_input: &spent_input,
+                validation_context: &validation_context,
+                spent_amount: spent_input.spent_output.value,
+                verify_flags: ScriptVerifyFlags::P2SH,
+                precomputed: &precomputed,
+                execution_data: &mut execution_data,
+            }),
+            Ok(())
+        );
+    }
+
+    #[test]
+    fn verify_input_script_enforces_p2sh_push_only() {
+        let redeem_script = script(&[0x51]);
+        let redeem_hash = hash160(redeem_script.as_bytes());
+        let mut script_pubkey_bytes = vec![0xa9, 20];
+        script_pubkey_bytes.extend_from_slice(&redeem_hash);
+        script_pubkey_bytes.push(0x87);
+        let script_pubkey = script(&script_pubkey_bytes);
+        let transaction = legacy_transaction(13);
+        let (spent_input, validation_context, precomputed) =
+            legacy_context(script_pubkey.clone(), &transaction, ScriptVerifyFlags::P2SH);
+        let script_sig = script(&[0x51, 0x76, 0x01, 0x51]);
+        let mut execution_data = ScriptExecutionData::default();
+
+        let error = super::verify_input_script(ScriptInputVerificationContext {
+            script_sig: &script_sig,
+            script_pubkey: &script_pubkey,
+            witness: &ScriptWitness::default(),
+            transaction: &transaction,
+            input_index: 0,
+            spent_input: &spent_input,
+            validation_context: &validation_context,
+            spent_amount: spent_input.spent_output.value,
+            verify_flags: ScriptVerifyFlags::P2SH,
+            precomputed: &precomputed,
+            execution_data: &mut execution_data,
+        })
+        .expect_err("P2SH scriptSig must be push-only");
+
+        assert_eq!(error, ScriptError::SigPushOnly);
+    }
+
+    #[test]
+    fn verify_input_script_accepts_native_and_nested_witness_v0_programs() {
+        let signing_secp = Secp256k1::new();
+        let secret_key = SecretKey::from_byte_array([28_u8; 32]).expect("secret key");
+        let public_key = PublicKey::from_secret_key(&signing_secp, &secret_key);
+        let public_key_bytes = public_key.serialize();
+        let public_key_hash = hash160(&public_key_bytes);
+        let p2wpkh_script_pubkey = {
+            let mut bytes = vec![0x00, 20];
+            bytes.extend_from_slice(&public_key_hash);
+            script(&bytes)
+        };
+        let transaction = legacy_transaction(14);
+        let (spent_input, validation_context, precomputed) = legacy_context(
+            p2wpkh_script_pubkey.clone(),
+            &transaction,
+            ScriptVerifyFlags::P2SH
+                | ScriptVerifyFlags::WITNESS
+                | ScriptVerifyFlags::WITNESS_PUBKEYTYPE,
+        );
+        let mut script_code_bytes = vec![OP_DUP, OP_HASH160, 20];
+        script_code_bytes.extend_from_slice(&public_key_hash);
+        script_code_bytes.extend_from_slice(&[OP_EQUALVERIFY, OP_CHECKSIG]);
+        let script_code = script(&script_code_bytes);
+        let signature_bytes = sign_witness_v0_script(
+            &script_code,
+            &transaction,
+            &spent_input,
+            &precomputed,
+            &secret_key,
+            SigHashType::ALL,
+        );
+        let native_witness =
+            ScriptWitness::new(vec![signature_bytes.clone(), public_key_bytes.to_vec()]);
+        let mut execution_data = ScriptExecutionData::default();
+
+        assert_eq!(
+            super::verify_input_script(ScriptInputVerificationContext {
+                script_sig: &ScriptBuf::default(),
+                script_pubkey: &p2wpkh_script_pubkey,
+                witness: &native_witness,
+                transaction: &transaction,
+                input_index: 0,
+                spent_input: &spent_input,
+                validation_context: &validation_context,
+                spent_amount: spent_input.spent_output.value,
+                verify_flags: ScriptVerifyFlags::P2SH
+                    | ScriptVerifyFlags::WITNESS
+                    | ScriptVerifyFlags::WITNESS_PUBKEYTYPE,
+                precomputed: &precomputed,
+                execution_data: &mut execution_data,
+            }),
+            Ok(())
+        );
+
+        let redeem_script = p2wpkh_script_pubkey.clone();
+        let redeem_hash = hash160(redeem_script.as_bytes());
+        let nested_script_pubkey = {
+            let mut bytes = vec![0xa9, 20];
+            bytes.extend_from_slice(&redeem_hash);
+            bytes.push(0x87);
+            script(&bytes)
+        };
+        let (nested_spent_input, nested_validation_context, nested_precomputed) = legacy_context(
+            nested_script_pubkey.clone(),
+            &transaction,
+            ScriptVerifyFlags::P2SH
+                | ScriptVerifyFlags::WITNESS
+                | ScriptVerifyFlags::WITNESS_PUBKEYTYPE,
+        );
+        let nested_script_sig = push_only_script(&[redeem_script.as_bytes()]);
+
+        assert_eq!(
+            super::verify_input_script(ScriptInputVerificationContext {
+                script_sig: &nested_script_sig,
+                script_pubkey: &nested_script_pubkey,
+                witness: &native_witness,
+                transaction: &transaction,
+                input_index: 0,
+                spent_input: &nested_spent_input,
+                validation_context: &nested_validation_context,
+                spent_amount: nested_spent_input.spent_output.value,
+                verify_flags: ScriptVerifyFlags::P2SH
+                    | ScriptVerifyFlags::WITNESS
+                    | ScriptVerifyFlags::WITNESS_PUBKEYTYPE,
+                precomputed: &nested_precomputed,
+                execution_data: &mut execution_data,
+            }),
+            Ok(())
+        );
+    }
+
+    #[test]
+    fn verify_input_script_accepts_witness_v0_multisig() {
+        let signing_secp = Secp256k1::new();
+        let secret_key = SecretKey::from_byte_array([30_u8; 32]).expect("secret key");
+        let public_key = PublicKey::from_secret_key(&signing_secp, &secret_key);
+        let witness_script = {
+            let mut bytes = vec![0x51, 33];
+            bytes.extend_from_slice(&public_key.serialize());
+            bytes.push(0x51);
+            bytes.push(OP_CHECKMULTISIG);
+            script(&bytes)
+        };
+        let witness_hash = Sha256::digest(witness_script.as_bytes());
+        let script_pubkey = {
+            let mut bytes = vec![0x00, 32];
+            bytes.extend_from_slice(&witness_hash);
+            script(&bytes)
+        };
+        let transaction = legacy_transaction(31);
+        let (spent_input, validation_context, precomputed) = legacy_context(
+            script_pubkey.clone(),
+            &transaction,
+            ScriptVerifyFlags::P2SH
+                | ScriptVerifyFlags::WITNESS
+                | ScriptVerifyFlags::WITNESS_PUBKEYTYPE,
+        );
+        let signature_bytes = sign_witness_v0_script(
+            &witness_script,
+            &transaction,
+            &spent_input,
+            &precomputed,
+            &secret_key,
+            SigHashType::ALL,
+        );
+        let witness = ScriptWitness::new(vec![
+            Vec::new(),
+            signature_bytes,
+            witness_script.as_bytes().to_vec(),
+        ]);
+        let mut execution_data = ScriptExecutionData::default();
+
+        assert_eq!(
+            super::verify_input_script(ScriptInputVerificationContext {
+                script_sig: &ScriptBuf::default(),
+                script_pubkey: &script_pubkey,
+                witness: &witness,
+                transaction: &transaction,
+                input_index: 0,
+                spent_input: &spent_input,
+                validation_context: &validation_context,
+                spent_amount: spent_input.spent_output.value,
+                verify_flags: ScriptVerifyFlags::P2SH
+                    | ScriptVerifyFlags::WITNESS
+                    | ScriptVerifyFlags::WITNESS_PUBKEYTYPE,
+                precomputed: &precomputed,
+                execution_data: &mut execution_data,
+            }),
+            Ok(())
+        );
+    }
+
+    #[test]
+    fn verify_input_script_enforces_witness_malleation_and_pubkey_rules() {
+        let signing_secp = Secp256k1::new();
+        let secret_key = SecretKey::from_byte_array([29_u8; 32]).expect("secret key");
+        let public_key = PublicKey::from_secret_key(&signing_secp, &secret_key);
+        let public_key_hash = hash160(&public_key.serialize());
+        let script_pubkey = {
+            let mut bytes = vec![0x00, 20];
+            bytes.extend_from_slice(&public_key_hash);
+            script(&bytes)
+        };
+        let transaction = legacy_transaction(15);
+        let (spent_input, validation_context, precomputed) = legacy_context(
+            script_pubkey.clone(),
+            &transaction,
+            ScriptVerifyFlags::P2SH
+                | ScriptVerifyFlags::WITNESS
+                | ScriptVerifyFlags::WITNESS_PUBKEYTYPE,
+        );
+        let mut script_code_bytes = vec![OP_DUP, OP_HASH160, 20];
+        script_code_bytes.extend_from_slice(&public_key_hash);
+        script_code_bytes.extend_from_slice(&[OP_EQUALVERIFY, OP_CHECKSIG]);
+        let script_code = script(&script_code_bytes);
+        let signature_bytes = sign_witness_v0_script(
+            &script_code,
+            &transaction,
+            &spent_input,
+            &precomputed,
+            &secret_key,
+            SigHashType::ALL,
+        );
+        let witness = ScriptWitness::new(vec![
+            signature_bytes,
+            public_key.serialize_uncompressed().to_vec(),
+        ]);
+        let mut execution_data = ScriptExecutionData::default();
+
+        let error = super::verify_input_script(ScriptInputVerificationContext {
+            script_sig: &script(&[0x51]),
+            script_pubkey: &script_pubkey,
+            witness: &witness,
+            transaction: &transaction,
+            input_index: 0,
+            spent_input: &spent_input,
+            validation_context: &validation_context,
+            spent_amount: spent_input.spent_output.value,
+            verify_flags: ScriptVerifyFlags::P2SH
+                | ScriptVerifyFlags::WITNESS
+                | ScriptVerifyFlags::WITNESS_PUBKEYTYPE,
+            precomputed: &precomputed,
+            execution_data: &mut execution_data,
+        })
+        .expect_err("bare witness scriptSig must be empty");
+        assert_eq!(error, ScriptError::WitnessMalleated);
+
+        let error = super::verify_input_script(ScriptInputVerificationContext {
+            script_sig: &ScriptBuf::default(),
+            script_pubkey: &script_pubkey,
+            witness: &witness,
+            transaction: &transaction,
+            input_index: 0,
+            spent_input: &spent_input,
+            validation_context: &validation_context,
+            spent_amount: spent_input.spent_output.value,
+            verify_flags: ScriptVerifyFlags::P2SH
+                | ScriptVerifyFlags::WITNESS
+                | ScriptVerifyFlags::WITNESS_PUBKEYTYPE,
+            precomputed: &precomputed,
+            execution_data: &mut execution_data,
+        })
+        .expect_err("uncompressed witness pubkeys must fail");
+        assert_eq!(error, ScriptError::VerifyFailed);
+
+        let witness_script = {
+            let mut bytes = vec![65];
+            bytes.extend_from_slice(&public_key.serialize_uncompressed());
+            bytes.push(OP_CHECKSIG);
+            script(&bytes)
+        };
+        let witness_hash = Sha256::digest(witness_script.as_bytes());
+        let p2wsh_script_pubkey = {
+            let mut bytes = vec![0x00, 32];
+            bytes.extend_from_slice(&witness_hash);
+            script(&bytes)
+        };
+        let (wsh_spent_input, wsh_validation_context, wsh_precomputed) = legacy_context(
+            p2wsh_script_pubkey.clone(),
+            &transaction,
+            ScriptVerifyFlags::P2SH
+                | ScriptVerifyFlags::WITNESS
+                | ScriptVerifyFlags::WITNESS_PUBKEYTYPE,
+        );
+        let witness_signature = sign_witness_v0_script(
+            &witness_script,
+            &transaction,
+            &wsh_spent_input,
+            &wsh_precomputed,
+            &secret_key,
+            SigHashType::ALL,
+        );
+        let p2wsh_witness =
+            ScriptWitness::new(vec![witness_signature, witness_script.as_bytes().to_vec()]);
+        let error = super::verify_input_script(ScriptInputVerificationContext {
+            script_sig: &ScriptBuf::default(),
+            script_pubkey: &p2wsh_script_pubkey,
+            witness: &p2wsh_witness,
+            transaction: &transaction,
+            input_index: 0,
+            spent_input: &wsh_spent_input,
+            validation_context: &wsh_validation_context,
+            spent_amount: wsh_spent_input.spent_output.value,
+            verify_flags: ScriptVerifyFlags::P2SH
+                | ScriptVerifyFlags::WITNESS
+                | ScriptVerifyFlags::WITNESS_PUBKEYTYPE,
+            precomputed: &wsh_precomputed,
+            execution_data: &mut execution_data,
+        })
+        .expect_err("uncompressed pubkeys in witness scripts must fail");
+        assert_eq!(error, ScriptError::WitnessPubKeyType);
+    }
+
+    #[test]
+    fn verify_input_script_handles_witness_program_mismatch_minimalif_and_cleanstack() {
+        let witness_script = script(&[OP_IF, OP_1, OP_ELSE, 0x00, OP_ENDIF]);
+        let witness_hash = Sha256::digest(witness_script.as_bytes());
+        let script_pubkey = {
+            let mut bytes = vec![0x00, 32];
+            bytes.extend_from_slice(&witness_hash);
+            script(&bytes)
+        };
+        let transaction = legacy_transaction(16);
+        let (spent_input, validation_context, precomputed) = legacy_context(
+            script_pubkey.clone(),
+            &transaction,
+            ScriptVerifyFlags::P2SH | ScriptVerifyFlags::WITNESS | ScriptVerifyFlags::MINIMALIF,
+        );
+        let mut execution_data = ScriptExecutionData::default();
+
+        let mismatch_witness = ScriptWitness::new(vec![vec![1_u8], vec![OP_1]]);
+        let error = super::verify_input_script(ScriptInputVerificationContext {
+            script_sig: &ScriptBuf::default(),
+            script_pubkey: &script_pubkey,
+            witness: &mismatch_witness,
+            transaction: &transaction,
+            input_index: 0,
+            spent_input: &spent_input,
+            validation_context: &validation_context,
+            spent_amount: spent_input.spent_output.value,
+            verify_flags: ScriptVerifyFlags::P2SH
+                | ScriptVerifyFlags::WITNESS
+                | ScriptVerifyFlags::MINIMALIF,
+            precomputed: &precomputed,
+            execution_data: &mut execution_data,
+        })
+        .expect_err("witness script hash mismatch must fail");
+        assert_eq!(error, ScriptError::WitnessProgramMismatch);
+
+        let minimalif_witness =
+            ScriptWitness::new(vec![vec![2_u8], witness_script.as_bytes().to_vec()]);
+        let error = super::verify_input_script(ScriptInputVerificationContext {
+            script_sig: &ScriptBuf::default(),
+            script_pubkey: &script_pubkey,
+            witness: &minimalif_witness,
+            transaction: &transaction,
+            input_index: 0,
+            spent_input: &spent_input,
+            validation_context: &validation_context,
+            spent_amount: spent_input.spent_output.value,
+            verify_flags: ScriptVerifyFlags::P2SH
+                | ScriptVerifyFlags::WITNESS
+                | ScriptVerifyFlags::MINIMALIF,
+            precomputed: &precomputed,
+            execution_data: &mut execution_data,
+        })
+        .expect_err("MINIMALIF witness input must fail");
+        assert_eq!(error, ScriptError::VerifyFailed);
+
+        let cleanstack_script = script(&[OP_1, OP_1]);
+        let cleanstack_hash = Sha256::digest(cleanstack_script.as_bytes());
+        let cleanstack_script_pubkey = {
+            let mut bytes = vec![0x00, 32];
+            bytes.extend_from_slice(&cleanstack_hash);
+            script(&bytes)
+        };
+        let (cleanstack_spent_input, cleanstack_validation_context, cleanstack_precomputed) =
+            legacy_context(
+                cleanstack_script_pubkey.clone(),
+                &transaction,
+                ScriptVerifyFlags::P2SH
+                    | ScriptVerifyFlags::WITNESS
+                    | ScriptVerifyFlags::CLEANSTACK,
+            );
+        let cleanstack_witness = ScriptWitness::new(vec![cleanstack_script.as_bytes().to_vec()]);
+        let error = super::verify_input_script(ScriptInputVerificationContext {
+            script_sig: &ScriptBuf::default(),
+            script_pubkey: &cleanstack_script_pubkey,
+            witness: &cleanstack_witness,
+            transaction: &transaction,
+            input_index: 0,
+            spent_input: &cleanstack_spent_input,
+            validation_context: &cleanstack_validation_context,
+            spent_amount: cleanstack_spent_input.spent_output.value,
+            verify_flags: ScriptVerifyFlags::P2SH
+                | ScriptVerifyFlags::WITNESS
+                | ScriptVerifyFlags::CLEANSTACK,
+            precomputed: &cleanstack_precomputed,
+            execution_data: &mut execution_data,
+        })
+        .expect_err("witness scripts must leave a clean stack");
+        assert_eq!(error, ScriptError::WitnessCleanStack);
     }
 
     #[test]
@@ -1576,6 +2523,7 @@ mod tests {
             input_index: 0,
             spent_input: &spent_input,
             verify_flags: ScriptVerifyFlags::NONE,
+            sig_version: SigVersion::Base,
         };
         let mut execution_data = ScriptExecutionData::default();
 
@@ -1736,6 +2684,7 @@ mod tests {
             input_index: 0,
             spent_input: &spent_input,
             verify_flags: ScriptVerifyFlags::NULLFAIL,
+            sig_version: SigVersion::Base,
         };
         assert_eq!(
             execute_checkmultisig(
@@ -1811,6 +2760,427 @@ mod tests {
         assert_eq!(encode_push_data(&pushdata1)[0], 0x4c);
         assert_eq!(encode_push_data(&pushdata2)[0], 0x4d);
         assert_eq!(encode_push_data(&pushdata4)[0], 0x4e);
+    }
+
+    #[test]
+    fn witness_and_sigop_helpers_are_covered() {
+        let transaction = legacy_transaction(11);
+        let unknown_witness_script_pubkey = script(&[OP_1, 0x02, 0xaa, 0xbb]);
+        let (spent_input, validation_context, precomputed) = legacy_context(
+            unknown_witness_script_pubkey.clone(),
+            &transaction,
+            ScriptVerifyFlags::P2SH | ScriptVerifyFlags::WITNESS,
+        );
+        let mut execution_data = ScriptExecutionData::default();
+        assert_eq!(
+            super::verify_input_script(ScriptInputVerificationContext {
+                script_sig: &ScriptBuf::default(),
+                script_pubkey: &unknown_witness_script_pubkey,
+                witness: &ScriptWitness::default(),
+                transaction: &transaction,
+                input_index: 0,
+                spent_input: &spent_input,
+                validation_context: &validation_context,
+                spent_amount: spent_input.spent_output.value,
+                verify_flags: ScriptVerifyFlags::P2SH | ScriptVerifyFlags::WITNESS,
+                precomputed: &precomputed,
+                execution_data: &mut execution_data,
+            }),
+            Ok(())
+        );
+
+        let nested_unknown_redeem = unknown_witness_script_pubkey.clone();
+        let nested_unknown_hash = hash160(nested_unknown_redeem.as_bytes());
+        let nested_unknown_script_pubkey = {
+            let mut bytes = vec![0xa9, 20];
+            bytes.extend_from_slice(&nested_unknown_hash);
+            bytes.push(0x87);
+            script(&bytes)
+        };
+        let (nested_spent_input, nested_validation_context, nested_precomputed) = legacy_context(
+            nested_unknown_script_pubkey.clone(),
+            &transaction,
+            ScriptVerifyFlags::P2SH | ScriptVerifyFlags::WITNESS,
+        );
+        let nested_script_sig = push_only_script(&[nested_unknown_redeem.as_bytes()]);
+        assert_eq!(
+            super::verify_input_script(ScriptInputVerificationContext {
+                script_sig: &nested_script_sig,
+                script_pubkey: &nested_unknown_script_pubkey,
+                witness: &ScriptWitness::default(),
+                transaction: &transaction,
+                input_index: 0,
+                spent_input: &nested_spent_input,
+                validation_context: &nested_validation_context,
+                spent_amount: nested_spent_input.spent_output.value,
+                verify_flags: ScriptVerifyFlags::P2SH | ScriptVerifyFlags::WITNESS,
+                precomputed: &nested_precomputed,
+                execution_data: &mut execution_data,
+            }),
+            Ok(())
+        );
+
+        let secp = Secp256k1::verification_only();
+        let mut witness_stack = Vec::new();
+        assert_eq!(
+            verify_witness_program(
+                &mut witness_stack,
+                &ScriptInputVerificationContext {
+                    script_sig: &ScriptBuf::default(),
+                    script_pubkey: &ScriptBuf::default(),
+                    witness: &ScriptWitness::default(),
+                    transaction: &transaction,
+                    input_index: 0,
+                    spent_input: &spent_input,
+                    validation_context: &validation_context,
+                    spent_amount: spent_input.spent_output.value,
+                    verify_flags: ScriptVerifyFlags::P2SH | ScriptVerifyFlags::WITNESS,
+                    precomputed: &precomputed,
+                    execution_data: &mut execution_data,
+                },
+                &ScriptPubKeyType::WitnessV1Taproot([1_u8; 32]),
+                false,
+                &secp,
+            ),
+            Err(ScriptError::WitnessProgramWrongLength)
+        );
+        assert_eq!(
+            verify_witness_program(
+                &mut witness_stack,
+                &ScriptInputVerificationContext {
+                    script_sig: &ScriptBuf::default(),
+                    script_pubkey: &ScriptBuf::default(),
+                    witness: &ScriptWitness::default(),
+                    transaction: &transaction,
+                    input_index: 0,
+                    spent_input: &spent_input,
+                    validation_context: &validation_context,
+                    spent_amount: spent_input.spent_output.value,
+                    verify_flags: ScriptVerifyFlags::P2SH | ScriptVerifyFlags::WITNESS,
+                    precomputed: &precomputed,
+                    execution_data: &mut execution_data,
+                },
+                &ScriptPubKeyType::WitnessUnknown {
+                    version: 2,
+                    program: vec![0xaa, 0xbb],
+                },
+                false,
+                &secp,
+            ),
+            Ok(())
+        );
+        assert_eq!(witness_stack, vec![vec![1_u8]]);
+        assert_eq!(
+            verify_witness_program(
+                &mut witness_stack,
+                &ScriptInputVerificationContext {
+                    script_sig: &ScriptBuf::default(),
+                    script_pubkey: &ScriptBuf::default(),
+                    witness: &ScriptWitness::default(),
+                    transaction: &transaction,
+                    input_index: 0,
+                    spent_input: &spent_input,
+                    validation_context: &validation_context,
+                    spent_amount: spent_input.spent_output.value,
+                    verify_flags: ScriptVerifyFlags::P2SH
+                        | ScriptVerifyFlags::WITNESS
+                        | ScriptVerifyFlags::DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM,
+                    precomputed: &precomputed,
+                    execution_data: &mut execution_data,
+                },
+                &ScriptPubKeyType::WitnessUnknown {
+                    version: 2,
+                    program: vec![0xaa, 0xbb],
+                },
+                false,
+                &secp,
+            ),
+            Err(ScriptError::UnsupportedOpcode(0x92))
+        );
+        assert_eq!(
+            verify_witness_program(
+                &mut witness_stack,
+                &ScriptInputVerificationContext {
+                    script_sig: &ScriptBuf::default(),
+                    script_pubkey: &ScriptBuf::default(),
+                    witness: &ScriptWitness::default(),
+                    transaction: &transaction,
+                    input_index: 0,
+                    spent_input: &spent_input,
+                    validation_context: &validation_context,
+                    spent_amount: spent_input.spent_output.value,
+                    verify_flags: ScriptVerifyFlags::P2SH | ScriptVerifyFlags::WITNESS,
+                    precomputed: &precomputed,
+                    execution_data: &mut execution_data,
+                },
+                &ScriptPubKeyType::WitnessUnknown {
+                    version: 2,
+                    program: vec![0xaa, 0xbb],
+                },
+                true,
+                &secp,
+            ),
+            Ok(())
+        );
+        assert_eq!(
+            verify_witness_program(
+                &mut witness_stack,
+                &ScriptInputVerificationContext {
+                    script_sig: &ScriptBuf::default(),
+                    script_pubkey: &ScriptBuf::default(),
+                    witness: &ScriptWitness::default(),
+                    transaction: &transaction,
+                    input_index: 0,
+                    spent_input: &spent_input,
+                    validation_context: &validation_context,
+                    spent_amount: spent_input.spent_output.value,
+                    verify_flags: ScriptVerifyFlags::P2SH | ScriptVerifyFlags::WITNESS,
+                    precomputed: &precomputed,
+                    execution_data: &mut execution_data,
+                },
+                &ScriptPubKeyType::NonStandard,
+                false,
+                &secp,
+            ),
+            Err(ScriptError::WitnessProgramWrongLength)
+        );
+        let short_p2wpkh_context = ScriptInputVerificationContext {
+            script_sig: &ScriptBuf::default(),
+            script_pubkey: &ScriptBuf::default(),
+            witness: &ScriptWitness::new(vec![vec![1_u8]]),
+            transaction: &transaction,
+            input_index: 0,
+            spent_input: &spent_input,
+            validation_context: &validation_context,
+            spent_amount: spent_input.spent_output.value,
+            verify_flags: ScriptVerifyFlags::P2SH | ScriptVerifyFlags::WITNESS,
+            precomputed: &precomputed,
+            execution_data: &mut execution_data,
+        };
+        assert_eq!(
+            verify_witness_program(
+                &mut witness_stack,
+                &short_p2wpkh_context,
+                &ScriptPubKeyType::WitnessV0KeyHash([1_u8; 20]),
+                false,
+                &secp,
+            ),
+            Err(ScriptError::WitnessProgramMismatch)
+        );
+        let empty_p2wsh_context = ScriptInputVerificationContext {
+            script_sig: &ScriptBuf::default(),
+            script_pubkey: &ScriptBuf::default(),
+            witness: &ScriptWitness::default(),
+            transaction: &transaction,
+            input_index: 0,
+            spent_input: &spent_input,
+            validation_context: &validation_context,
+            spent_amount: spent_input.spent_output.value,
+            verify_flags: ScriptVerifyFlags::P2SH | ScriptVerifyFlags::WITNESS,
+            precomputed: &precomputed,
+            execution_data: &mut execution_data,
+        };
+        assert_eq!(
+            verify_witness_program(
+                &mut witness_stack,
+                &empty_p2wsh_context,
+                &ScriptPubKeyType::WitnessV0ScriptHash([1_u8; 32]),
+                false,
+                &secp,
+            ),
+            Err(ScriptError::WitnessProgramWitnessEmpty)
+        );
+        let oversized_witness_context = ScriptInputVerificationContext {
+            script_sig: &ScriptBuf::default(),
+            script_pubkey: &ScriptBuf::default(),
+            witness: &ScriptWitness::new(vec![
+                vec![0_u8; 521],
+                script(&[OP_1]).as_bytes().to_vec(),
+            ]),
+            transaction: &transaction,
+            input_index: 0,
+            spent_input: &spent_input,
+            validation_context: &validation_context,
+            spent_amount: spent_input.spent_output.value,
+            verify_flags: ScriptVerifyFlags::P2SH | ScriptVerifyFlags::WITNESS,
+            precomputed: &precomputed,
+            execution_data: &mut execution_data,
+        };
+        assert_eq!(
+            verify_witness_program(
+                &mut witness_stack,
+                &oversized_witness_context,
+                &ScriptPubKeyType::WitnessV0ScriptHash(Sha256::digest(script(&[OP_1]).as_bytes())),
+                false,
+                &secp,
+            ),
+            Err(ScriptError::PushSize(521))
+        );
+        let cleanstack_error = super::verify_input_script(ScriptInputVerificationContext {
+            script_sig: &script(&[0x51]),
+            script_pubkey: &script(&[0x51]),
+            witness: &ScriptWitness::default(),
+            transaction: &transaction,
+            input_index: 0,
+            spent_input: &spent_input,
+            validation_context: &TransactionValidationContext {
+                verify_flags: ScriptVerifyFlags::CLEANSTACK,
+                ..validation_context.clone()
+            },
+            spent_amount: spent_input.spent_output.value,
+            verify_flags: ScriptVerifyFlags::CLEANSTACK,
+            precomputed: &precomputed,
+            execution_data: &mut execution_data,
+        })
+        .expect_err("CLEANSTACK without a clean stack must fail");
+        assert_eq!(cleanstack_error, ScriptError::WitnessCleanStack);
+
+        assert_eq!(
+            count_p2sh_sigops(&ScriptBuf::default(), &script(&[0x51])).unwrap(),
+            0
+        );
+        assert_eq!(
+            count_p2sh_sigops(&script(&[0x51, 0x76]), &nested_unknown_script_pubkey).unwrap(),
+            0
+        );
+        let accurate_redeem = script(&[0x52, OP_CHECKMULTISIG]);
+        let accurate_script_pubkey = {
+            let redeem_hash = hash160(accurate_redeem.as_bytes());
+            let mut bytes = vec![0xa9, 20];
+            bytes.extend_from_slice(&redeem_hash);
+            bytes.push(0x87);
+            script(&bytes)
+        };
+        assert_eq!(
+            count_p2sh_sigops(&ScriptBuf::default(), &accurate_script_pubkey).unwrap(),
+            0
+        );
+        let accurate_script_sig = push_only_script(&[accurate_redeem.as_bytes()]);
+        assert_eq!(
+            count_p2sh_sigops(&accurate_script_sig, &accurate_script_pubkey).unwrap(),
+            2
+        );
+
+        assert_eq!(
+            count_witness_sigops(
+                &ScriptBuf::default(),
+                &script(&[0x51]),
+                &ScriptWitness::default(),
+                ScriptVerifyFlags::NONE,
+            )
+            .unwrap(),
+            0
+        );
+        let p2wpkh = {
+            let mut bytes = vec![0x00, 20];
+            bytes.extend_from_slice(&[2_u8; 20]);
+            script(&bytes)
+        };
+        assert_eq!(
+            count_witness_sigops(
+                &ScriptBuf::default(),
+                &p2wpkh,
+                &ScriptWitness::new(vec![vec![1_u8], vec![2_u8]]),
+                ScriptVerifyFlags::P2SH | ScriptVerifyFlags::WITNESS,
+            )
+            .unwrap(),
+            1
+        );
+        let witness_script = script(&[0x52, OP_CHECKMULTISIG]);
+        let witness_hash = Sha256::digest(witness_script.as_bytes());
+        let p2wsh = {
+            let mut bytes = vec![0x00, 32];
+            bytes.extend_from_slice(&witness_hash);
+            script(&bytes)
+        };
+        assert_eq!(
+            count_witness_sigops(
+                &ScriptBuf::default(),
+                &p2wsh,
+                &ScriptWitness::new(vec![witness_script.as_bytes().to_vec()]),
+                ScriptVerifyFlags::P2SH | ScriptVerifyFlags::WITNESS,
+            )
+            .unwrap(),
+            2
+        );
+        assert_eq!(
+            count_witness_sigops(
+                &ScriptBuf::default(),
+                &script(&[0x51]),
+                &ScriptWitness::default(),
+                ScriptVerifyFlags::P2SH | ScriptVerifyFlags::WITNESS,
+            )
+            .unwrap(),
+            0
+        );
+        let nested_witness_hash = hash160(p2wsh.as_bytes());
+        let nested_witness_script_pubkey = {
+            let mut bytes = vec![0xa9, 20];
+            bytes.extend_from_slice(&nested_witness_hash);
+            bytes.push(0x87);
+            script(&bytes)
+        };
+        let nested_witness_script_sig = push_only_script(&[p2wsh.as_bytes()]);
+        assert_eq!(
+            count_witness_sigops(
+                &nested_witness_script_sig,
+                &nested_witness_script_pubkey,
+                &ScriptWitness::new(vec![witness_script.as_bytes().to_vec()]),
+                ScriptVerifyFlags::P2SH | ScriptVerifyFlags::WITNESS,
+            )
+            .unwrap(),
+            2
+        );
+        assert_eq!(
+            count_witness_sigops(
+                &nested_script_sig,
+                &nested_unknown_script_pubkey,
+                &ScriptWitness::default(),
+                ScriptVerifyFlags::P2SH | ScriptVerifyFlags::WITNESS,
+            )
+            .unwrap(),
+            0
+        );
+        let nested_malleated_script_pubkey = {
+            let redeem_hash = hash160(p2wsh.as_bytes());
+            let mut bytes = vec![0xa9, 20];
+            bytes.extend_from_slice(&redeem_hash);
+            bytes.push(0x87);
+            script(&bytes)
+        };
+        let (malleated_spent_input, malleated_validation_context, malleated_precomputed) =
+            legacy_context(
+                nested_malleated_script_pubkey.clone(),
+                &transaction,
+                ScriptVerifyFlags::P2SH | ScriptVerifyFlags::WITNESS,
+            );
+        let malleated_script_sig = push_only_script(&[&[], p2wsh.as_bytes()]);
+        let nested_witness = ScriptWitness::new(vec![witness_script.as_bytes().to_vec()]);
+        let error = super::verify_input_script(ScriptInputVerificationContext {
+            script_sig: &malleated_script_sig,
+            script_pubkey: &nested_malleated_script_pubkey,
+            witness: &nested_witness,
+            transaction: &transaction,
+            input_index: 0,
+            spent_input: &malleated_spent_input,
+            validation_context: &malleated_validation_context,
+            spent_amount: malleated_spent_input.spent_output.value,
+            verify_flags: ScriptVerifyFlags::P2SH | ScriptVerifyFlags::WITNESS,
+            precomputed: &malleated_precomputed,
+            execution_data: &mut execution_data,
+        })
+        .expect_err("nested witness scriptSig must be an exact single push");
+        assert_eq!(error, ScriptError::WitnessMalleatedP2sh);
+        assert_eq!(
+            count_witness_sigops(
+                &ScriptBuf::default(),
+                &nested_witness_script_pubkey,
+                &ScriptWitness::default(),
+                ScriptVerifyFlags::P2SH | ScriptVerifyFlags::WITNESS,
+            )
+            .unwrap(),
+            0
+        );
     }
 
     #[test]
