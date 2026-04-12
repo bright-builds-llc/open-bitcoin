@@ -18,3 +18,4 @@ This directory is the human-readable companion to [`../index.json`](../index.jso
 | Entry | Scope | Phase |
 | --- | --- | --- |
 | [`core-domain-and-serialization.md`](core-domain-and-serialization.md) | Amounts, hashes, serialization primitives, scripts, transactions, blocks, and protocol framing reused by later phases | 2 |
+| [`consensus-validation.md`](consensus-validation.md) | Script execution, proof-of-work, merkle roots, and typed transaction or block validation outcomes currently implemented in the pure core | 3 |

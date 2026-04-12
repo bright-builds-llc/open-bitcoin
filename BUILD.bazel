@@ -17,6 +17,12 @@ alias(
 )
 
 alias(
+    name = "consensus",
+    actual = "//packages/open-bitcoin-consensus:open_bitcoin_consensus_lib",
+    visibility = ["//visibility:public"],
+)
+
+alias(
     name = "node",
     actual = "//packages/open-bitcoin-node:open_bitcoin_node_lib",
     visibility = ["//visibility:public"],

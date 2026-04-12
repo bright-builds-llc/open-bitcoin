@@ -59,17 +59,59 @@
             "Which protocol and address-codec edge cases need dedicated repo-owned fixtures beyond the imported unit and fuzz coverage."
           ]
         }
+      },
+      {
+        "id": "consensus-validation",
+        "title": "Consensus Validation Engine",
+        "path": "catalog/consensus-validation.md",
+        "phase": "03-consensus-validation-engine",
+        "status": "seeded",
+        "scope": [
+          "consensus",
+          "validation",
+          "proof-of-work",
+          "merkle-root",
+          "typed-errors"
+        ],
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/script/script.h",
+            "packages/bitcoin-knots/src/script/interpreter.cpp",
+            "packages/bitcoin-knots/src/consensus/tx_check.cpp",
+            "packages/bitcoin-knots/src/consensus/validation.h",
+            "packages/bitcoin-knots/src/validation.cpp",
+            "packages/bitcoin-knots/src/pow.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/src/test/data/script_tests.json",
+            "packages/open-bitcoin-codec/testdata/block_header.hex"
+          ]
+        },
+        "highlights": {
+          "quirks": [
+            "Compact target decoding rejects negative, zero, and overflowing targets before any hash comparison.",
+            "Merkle validation distinguishes plain root mismatch from duplicate-transaction malleation.",
+            "Transaction and block validation expose stable reject reasons instead of silent booleans."
+          ],
+          "known_bugs": [],
+          "known_bugs_status": "none-confirmed",
+          "suspected_unknowns": [
+            "How to integrate signature verification without violating the repo's pure-core and dependency constraints.",
+            "Which contextual consensus rules should land in Phase 3 versus move with Phase 4 chainstate inputs.",
+            "Which witness and P2SH vectors should anchor the next expansion of the deterministic parity suite."
+          ]
+        }
       }
     ]
   },
   "surfaces": [
     {
       "name": "consensus",
-      "status": "planned"
+      "status": "in-progress"
     },
     {
       "name": "validation",
-      "status": "planned"
+      "status": "in-progress"
     },
     {
       "name": "chainstate",

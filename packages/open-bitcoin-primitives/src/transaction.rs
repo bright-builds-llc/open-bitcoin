@@ -1,8 +1,8 @@
 use crate::amount::Amount;
-use crate::hash::{Txid, Wtxid};
+use crate::hash::Txid;
 use crate::script::{ScriptBuf, ScriptWitness};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct OutPoint {
     pub txid: Txid,
     pub vout: u32,
@@ -10,6 +10,17 @@ pub struct OutPoint {
 
 impl OutPoint {
     pub const NULL_INDEX: u32 = u32::MAX;
+
+    pub const fn null() -> Self {
+        Self {
+            txid: Txid::from_byte_array([0_u8; 32]),
+            vout: Self::NULL_INDEX,
+        }
+    }
+
+    pub fn is_null(&self) -> bool {
+        self.vout == Self::NULL_INDEX && self.txid.to_byte_array() == [0_u8; 32]
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -48,20 +59,14 @@ impl Transaction {
         self.inputs.iter().any(|input| !input.witness.is_empty())
     }
 
-    pub fn txid(&self) -> Option<Txid> {
-        self.inputs.first().map(|input| input.previous_output.txid)
-    }
-
-    pub fn wtxid(&self) -> Option<Wtxid> {
-        self.txid()
-            .map(|txid| Wtxid::from_byte_array(txid.to_byte_array()))
+    pub fn is_coinbase(&self) -> bool {
+        self.inputs.len() == 1 && self.inputs[0].previous_output.is_null()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::amount::Amount;
-    use crate::hash::Txid;
     use crate::script::{ScriptBuf, ScriptWitness};
 
     use super::{OutPoint, Transaction, TransactionInput, TransactionOutput};
@@ -71,10 +76,7 @@ mod tests {
         let tx = Transaction {
             version: 2,
             inputs: vec![TransactionInput {
-                previous_output: OutPoint {
-                    txid: Txid::from_byte_array([1_u8; 32]),
-                    vout: 0,
-                },
+                previous_output: OutPoint::null(),
                 script_sig: ScriptBuf::default(),
                 sequence: TransactionInput::SEQUENCE_FINAL,
                 witness: ScriptWitness::new(vec![vec![1_u8]]),
@@ -87,7 +89,14 @@ mod tests {
         };
 
         assert!(tx.has_witness());
-        assert_eq!(tx.txid(), Some(Txid::from_byte_array([1_u8; 32])));
-        assert!(tx.wtxid().is_some());
+        assert!(tx.is_coinbase());
+    }
+
+    #[test]
+    fn out_point_null_round_trips() {
+        let null_out_point = OutPoint::null();
+
+        assert!(null_out_point.is_null());
+        assert_eq!(null_out_point.vout, OutPoint::NULL_INDEX);
     }
 }

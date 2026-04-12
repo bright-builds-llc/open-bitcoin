@@ -1,5 +1,5 @@
 [package]
-name = "open-bitcoin-core"
+name = "open-bitcoin-consensus"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
@@ -10,5 +10,5 @@ path = "src/lib.rs"
 
 [dependencies]
 open-bitcoin-codec = { path = "../open-bitcoin-codec" }
-open-bitcoin-consensus = { path = "../open-bitcoin-consensus" }
 open-bitcoin-primitives = { path = "../open-bitcoin-primitives" }
+secp256k1 = { version = "0.31", default-features = false, features = ["std"] }
