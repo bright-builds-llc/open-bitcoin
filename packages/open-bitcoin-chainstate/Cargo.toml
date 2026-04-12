@@ -1,5 +1,5 @@
 [package]
-name = "open-bitcoin-core"
+name = "open-bitcoin-chainstate"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
@@ -9,7 +9,5 @@ version.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
-open-bitcoin-chainstate = { path = "../open-bitcoin-chainstate" }
-open-bitcoin-codec = { path = "../open-bitcoin-codec" }
 open-bitcoin-consensus = { path = "../open-bitcoin-consensus" }
 open-bitcoin-primitives = { path = "../open-bitcoin-primitives" }

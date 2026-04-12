@@ -1,4 +1,10 @@
 alias(
+    name = "chainstate",
+    actual = "//packages/open-bitcoin-chainstate:open_bitcoin_chainstate_lib",
+    visibility = ["//visibility:public"],
+)
+
+alias(
     name = "core",
     actual = "//packages/open-bitcoin-core:open_bitcoin_core_lib",
     visibility = ["//visibility:public"],

@@ -61,6 +61,43 @@
         }
       },
       {
+        "id": "chainstate",
+        "title": "Chainstate And UTXO Engine",
+        "path": "catalog/chainstate.md",
+        "phase": "04-chainstate-and-utxo-engine",
+        "status": "done",
+        "scope": [
+          "chainstate",
+          "utxo",
+          "connect-disconnect",
+          "reorg",
+          "persistence-boundary"
+        ],
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/coins.h",
+            "packages/bitcoin-knots/src/coins.cpp",
+            "packages/bitcoin-knots/src/validation.cpp",
+            "packages/bitcoin-knots/src/node/blockstorage.cpp"
+          ],
+          "tests": [
+            "packages/open-bitcoin-chainstate/tests/parity.rs"
+          ]
+        },
+        "highlights": {
+          "quirks": [
+            "Unspendable outputs stay out of the spendable UTXO view even when they appear in connected blocks.",
+            "Undo replay happens in reverse transaction and reverse input order during disconnect.",
+            "Best-chain choice is work-first, with a deterministic hash tie-break for repo-owned fixtures."
+          ],
+          "known_bugs": [],
+          "known_bugs_status": "none-confirmed",
+          "suspected_unknowns": [
+            "How much of Knots' cache-flush and multi-chainstate behavior should remain pure-core versus adapter-owned in later phases."
+          ]
+        }
+      },
+      {
         "id": "consensus-validation",
         "title": "Consensus Validation Foundation",
         "path": "catalog/consensus-validation.md",
@@ -111,7 +148,7 @@
     },
     {
       "name": "chainstate",
-      "status": "planned"
+      "status": "done"
     },
     {
       "name": "mempool-policy",

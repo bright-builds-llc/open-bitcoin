@@ -19,7 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3.2: P2SH and Segwit-v0 Execution (INSERTED)** - Add P2SH, segwit-v0 spending paths, and split sigop accounting. (completed 2026-04-12)
 - [x] **Phase 3.3: Taproot and Tapscript Execution (INSERTED)** - Add taproot key-path, tapscript script-path, and taproot flag enforcement. (completed 2026-04-12)
 - [x] **Phase 3.4: Consensus Parity Closure (INSERTED)** - Complete the parity corpus and close the consensus lifecycle honestly. (completed 2026-04-12)
-- [ ] **Phase 4: Chainstate and UTXO Engine** - Implement baseline-compatible chainstate, UTXO tracking, and reorg handling.
+- [x] **Phase 4: Chainstate and UTXO Engine** - Implement baseline-compatible chainstate, UTXO tracking, and reorg handling. (completed 2026-04-12)
 - [ ] **Phase 5: Mempool and Node Policy** - Match mempool policy, replacement, and eviction behavior.
 - [ ] **Phase 6: P2P Networking and Sync** - Add peer lifecycle, message handling, and sync behavior.
 - [ ] **Phase 7: Wallet Core and Adapters** - Implement headless wallet behavior with pure-core boundaries intact.
@@ -154,9 +154,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 04-01: Define the chainstate and UTXO data model in the pure core.
-- [ ] 04-02: Implement connect, disconnect, and reorg behavior.
-- [ ] 04-03: Add storage adapters and chainstate parity fixtures.
+- [x] 04-01: Define the chainstate and UTXO data model in the pure core.
+- [x] 04-02: Implement connect, disconnect, and reorg behavior.
+- [x] 04-03: Add storage adapters and chainstate parity fixtures.
 
 ### Phase 5: Mempool and Node Policy
 **Goal**: Implement mempool state and node policy behavior that matches baseline admission, replacement, and eviction decisions.

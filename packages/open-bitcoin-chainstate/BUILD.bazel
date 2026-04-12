@@ -1,13 +1,11 @@
 load("@rules_rust//rust:defs.bzl", "rust_library")
 
 rust_library(
-    name = "open_bitcoin_core_lib",
-    srcs = ["src/lib.rs"],
-    crate_name = "open_bitcoin_core",
+    name = "open_bitcoin_chainstate_lib",
+    srcs = glob(["src/**/*.rs"]),
+    crate_name = "open_bitcoin_chainstate",
     edition = "2024",
     deps = [
-        "//packages/open-bitcoin-chainstate:open_bitcoin_chainstate_lib",
-        "//packages/open-bitcoin-codec:open_bitcoin_codec_lib",
         "//packages/open-bitcoin-consensus:open_bitcoin_consensus_lib",
         "//packages/open-bitcoin-primitives:open_bitcoin_primitives_lib",
     ],
