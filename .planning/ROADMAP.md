@@ -18,7 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3.1: Legacy Signature Execution (INSERTED)** - Finish legacy CHECKSIG/CHECKMULTISIG execution and P2PKH. (completed 2026-04-11)
 - [x] **Phase 3.2: P2SH and Segwit-v0 Execution (INSERTED)** - Add P2SH, segwit-v0 spending paths, and split sigop accounting. (completed 2026-04-12)
 - [x] **Phase 3.3: Taproot and Tapscript Execution (INSERTED)** - Add taproot key-path, tapscript script-path, and taproot flag enforcement. (completed 2026-04-12)
-- [ ] **Phase 3.4: Consensus Parity Closure (INSERTED)** - Complete the parity corpus and close the consensus lifecycle honestly.
+- [x] **Phase 3.4: Consensus Parity Closure (INSERTED)** - Complete the parity corpus and close the consensus lifecycle honestly. (completed 2026-04-12)
 - [ ] **Phase 4: Chainstate and UTXO Engine** - Implement baseline-compatible chainstate, UTXO tracking, and reorg handling.
 - [ ] **Phase 5: Mempool and Node Policy** - Match mempool policy, replacement, and eviction behavior.
 - [ ] **Phase 6: P2P Networking and Sync** - Add peer lifecycle, message handling, and sync behavior.
@@ -139,9 +139,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 03.4-01: Port the remaining upstream multisig, P2SH, segwit, and sighash fixtures.
-- [ ] 03.4-02: Add repo-owned deterministic consensus regression fixtures.
-- [ ] 03.4-03: Regenerate verification, parity ledger, and milestone bookkeeping for consensus closure.
+- [x] 03.4-01: Port the remaining upstream multisig, P2SH, segwit, and sighash fixtures.
+- [x] 03.4-02: Add repo-owned deterministic consensus regression fixtures.
+- [x] 03.4-03: Regenerate verification, parity ledger, and milestone bookkeeping for consensus closure.
 
 ### Phase 4: Chainstate and UTXO Engine
 **Goal**: Add baseline-compatible chainstate, UTXO management, block connect/disconnect, and reorg behavior with persistence isolated to adapters.
@@ -267,7 +267,7 @@ Phases execute in numeric order: 2 → 2.1 → 2.2 → 3 → 3.1 → 3.2 → 3.3
 | 3.1. Legacy Signature Execution | 3/3 | Complete | 2026-04-11 |
 | 3.2. P2SH and Segwit-v0 Execution | 3/3 | Complete | 2026-04-12 |
 | 3.3. Taproot and Tapscript Execution | 3/3 | Complete | 2026-04-12 |
-| 3.4. Consensus Parity Closure | 0/3 | Not started | - |
+| 3.4. Consensus Parity Closure | 3/3 | Complete | 2026-04-12 |
 | 4. Chainstate and UTXO Engine | 0/3 | Not started | - |
 | 5. Mempool and Node Policy | 0/3 | Not started | - |
 | 6. P2P Networking and Sync | 0/4 | Not started | - |

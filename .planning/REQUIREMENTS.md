@@ -29,7 +29,7 @@
 
 - [x] **CONS-01**: The project parses and serializes in-scope Bitcoin protocol data compatibly with the pinned baseline.
 - [x] **CONS-02**: The node validates scripts, transactions, and blocks with consensus behavior matching the pinned baseline.
-- [ ] **CONS-03**: Automated fixtures surface any consensus mismatch with the baseline before merge.
+- [x] **CONS-03**: Automated fixtures surface any consensus mismatch with the baseline before merge.
 
 ### Chainstate & Policy
 
@@ -93,7 +93,7 @@
 | ARCH-03 | Phase 2 | Complete |
 | CONS-01 | Phase 2 | Complete |
 | CONS-02 | Phases 3, 3.1, 3.2, 3.3 | Complete |
-| CONS-03 | Phase 3.4 | Pending |
+| CONS-03 | Phase 3.4 | Complete |
 | CHAIN-01 | Phase 4 | Pending |
 | MEM-01 | Phase 5 | Pending |
 | MEM-02 | Phase 5 | Pending |
@@ -118,4 +118,4 @@
 
 ---
 *Requirements defined: 2026-04-11*
-*Last updated: 2026-04-12 after Phase 3.3 completion*
+*Last updated: 2026-04-12 after Phase 3.4 completion*

@@ -27,6 +27,13 @@ Open Bitcoin. The behavioral baseline remains Bitcoin Knots
   annex handling, CODESEPARATOR tracking, and `CHECKSIGADD`
 - taproot discouragement or upgrade-flag enforcement for supported witness-v1
   execution points
+- imported upstream `sighash.json` coverage through the first-party legacy
+  signature-hash implementation
+- imported upstream `script_tests.json` anchors for witness mismatch,
+  malleation, wrong-length, compressed-key, and witness-multisig behavior
+- repo-owned deterministic fixtures for coinbase maturity, absolute locktime,
+  sequence locks, witness commitment success or failure, and unexpected witness
+  data
 - split sigop accounting across legacy, `P2SH`, and witness paths in the
   contextual validation surface
 
@@ -60,12 +67,10 @@ Open Bitcoin. The behavioral baseline remains Bitcoin Knots
 
 ## Known gaps
 
-- The current deterministic parity fixtures still cover only the implemented
-  slice, not the full imported consensus corpus that Phase 3.4 must close.
-- The consensus surface is implemented, but it should not move to `done` in the
-  parity index until Phase 3.4 lands the remaining imported regression corpus.
+- None for the in-scope Phase 3 consensus surface. Later phases still own
+  chainstate, mempool, networking, wallet, and interface parity.
 
 ## Follow-up triggers
 
-Update this entry when Phase 3.4 work closes the remaining parity corpus and
-promotes the consensus surface to done.
+Update this entry when later phases change consensus behavior or extend the
+parity corpus beyond the current Phase 3 surface.

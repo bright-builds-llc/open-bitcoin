@@ -71,7 +71,7 @@ impl ScriptWitness {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.stack.iter().all(Vec::is_empty)
+        self.stack.is_empty()
     }
 }
 
@@ -90,10 +90,11 @@ mod tests {
     }
 
     #[test]
-    fn script_witness_empty_detects_all_empty_items() {
-        let witness = ScriptWitness::new(vec![vec![], vec![]]);
+    fn script_witness_empty_detects_empty_stack_only() {
+        let witness = ScriptWitness::default();
 
         assert!(witness.is_empty());
+        assert!(!ScriptWitness::new(vec![vec![]]).is_empty());
     }
 
     #[test]

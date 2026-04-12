@@ -65,7 +65,7 @@
         "title": "Consensus Validation Foundation",
         "path": "catalog/consensus-validation.md",
         "phase": "03-consensus-validation-foundation",
-        "status": "seeded",
+        "status": "done",
         "scope": [
           "consensus",
           "validation",
@@ -95,10 +95,7 @@
           ],
           "known_bugs": [],
           "known_bugs_status": "none-confirmed",
-          "suspected_unknowns": [
-            "Which additional legacy signature vectors beyond the current CHECKSIG or CHECKMULTISIG or P2PKH slice should remain tracked before consensus parity can move to done.",
-            "Which imported taproot and tapscript vectors should anchor the final parity closure in Phase 3.4."
-          ]
+          "suspected_unknowns": []
         }
       }
     ]
@@ -106,11 +103,11 @@
   "surfaces": [
     {
       "name": "consensus",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "name": "validation",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "name": "chainstate",

@@ -775,6 +775,12 @@ fn verify_witness_program(
             }
             Ok(())
         }
+        ScriptPubKeyType::WitnessUnknown { version: 0, .. } if !is_p2sh => {
+            Err(ScriptError::WitnessProgramWrongLength)
+        }
+        ScriptPubKeyType::WitnessUnknown { version: 0, .. } => {
+            Err(ScriptError::WitnessProgramWrongLength)
+        }
         ScriptPubKeyType::WitnessUnknown { .. } if !is_p2sh => {
             if verify_flags.contains(ScriptVerifyFlags::DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM) {
                 return Err(ScriptError::UnsupportedOpcode(OP_0NOTEQUAL));
@@ -1155,8 +1161,10 @@ fn execute_checkmultisig(
 
     let dummy_index = sig_count_index - sig_count - 1;
     let dummy = stack[dummy_index].clone();
-    let signatures = stack[dummy_index + 1..dummy_index + 1 + sig_count].to_vec();
-    let pubkeys = stack[sig_count_index + 1..stack.len() - 1].to_vec();
+    let mut signatures = stack[dummy_index + 1..dummy_index + 1 + sig_count].to_vec();
+    signatures.reverse();
+    let mut pubkeys = stack[sig_count_index + 1..stack.len() - 1].to_vec();
+    pubkeys.reverse();
 
     let mut script_code = script.clone();
     if context.sig_version == SigVersion::Base {
@@ -4338,6 +4346,26 @@ mod tests {
                 &mut execution_data,
                 &ScriptPubKeyType::WitnessV1Taproot(output_key.serialize()),
                 false,
+                &secp,
+            ),
+            Err(ScriptError::WitnessProgramWrongLength)
+        );
+        assert_eq!(
+            verify_witness_program(
+                &mut witness_stack,
+                &ScriptWitness::default(),
+                &transaction,
+                0,
+                &spent_input,
+                &validation_context,
+                &precomputed,
+                ScriptVerifyFlags::P2SH | ScriptVerifyFlags::WITNESS,
+                &mut execution_data,
+                &ScriptPubKeyType::WitnessUnknown {
+                    version: 0,
+                    program: vec![1_u8; 31],
+                },
+                true,
                 &secp,
             ),
             Err(ScriptError::WitnessProgramWrongLength)
