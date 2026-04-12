@@ -1,3 +1,4 @@
+mod ripemd160;
 mod sha256;
 
 use core::cmp::Ordering;
@@ -7,6 +8,7 @@ use open_bitcoin_codec::{
 };
 use open_bitcoin_primitives::{BlockHash, BlockHeader, MerkleRoot, Transaction, Txid, Wtxid};
 
+pub use ripemd160::Ripemd160;
 pub use sha256::Sha256;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -31,6 +33,11 @@ impl std::error::Error for CompactTargetError {}
 pub fn double_sha256(bytes: &[u8]) -> [u8; 32] {
     let first = Sha256::digest(bytes);
     Sha256::digest(&first)
+}
+
+pub fn hash160(bytes: &[u8]) -> [u8; 20] {
+    let sha = Sha256::digest(bytes);
+    Ripemd160::digest(&sha)
 }
 
 pub fn transaction_txid(transaction: &Transaction) -> Result<Txid, CodecError> {
@@ -152,8 +159,8 @@ mod tests {
     };
 
     use super::{
-        CompactTargetError, Sha256, block_hash, block_merkle_root, check_proof_of_work,
-        compact_target_bytes, double_sha256, transaction_txid, transaction_wtxid,
+        CompactTargetError, Ripemd160, Sha256, block_hash, block_merkle_root, check_proof_of_work,
+        compact_target_bytes, double_sha256, hash160, transaction_txid, transaction_wtxid,
     };
 
     const GENESIS_BLOCK_HEADER_HEX: &str =
@@ -212,6 +219,32 @@ mod tests {
                 0xbf, 0x5d, 0x3a, 0xff, 0xb7, 0x3e, 0xfd, 0x2e, 0xc6, 0xc3, 0x6a, 0xd3, 0x11, 0x2d,
                 0xd9, 0x33, 0xef, 0xed, 0x63, 0xc4, 0xe1, 0xcb, 0xff, 0xcf, 0xa8, 0x8e, 0x27, 0x59,
                 0xc1, 0x44, 0xf2, 0xd8,
+            ],
+        );
+    }
+
+    #[test]
+    fn ripemd160_matches_known_vector() {
+        let digest = Ripemd160::digest(b"abc");
+
+        assert_eq!(
+            digest,
+            [
+                0x8e, 0xb2, 0x08, 0xf7, 0xe0, 0x5d, 0x98, 0x7a, 0x9b, 0x04, 0x4a, 0x8e, 0x98, 0xc6,
+                0xb0, 0x87, 0xf1, 0x5a, 0x0b, 0xfc,
+            ],
+        );
+    }
+
+    #[test]
+    fn hash160_matches_known_vector() {
+        let digest = hash160(b"abc");
+
+        assert_eq!(
+            digest,
+            [
+                0xbb, 0x1b, 0xe9, 0x8c, 0x14, 0x24, 0x44, 0xd7, 0xa5, 0x6a, 0xa3, 0x98, 0x1c, 0x39,
+                0x42, 0xa9, 0x78, 0xe4, 0xdc, 0x33,
             ],
         );
     }

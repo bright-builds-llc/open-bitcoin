@@ -5,13 +5,13 @@ use open_bitcoin_primitives::{
 };
 use secp256k1::Secp256k1;
 
-use crate::classify::{ScriptPubKeyType, classify_script_pubkey, extract_script_sig_pushes};
+use crate::classify::is_push_only;
 use crate::context::{
     PrecomputedTransactionData, ScriptExecutionData, ScriptVerifyFlags, TransactionInputContext,
     TransactionValidationContext,
 };
-use crate::crypto::{Sha256, double_sha256};
-use crate::signature::{EcdsaVerificationRequest, TransactionSignatureChecker};
+use crate::crypto::{Sha256, double_sha256, hash160};
+use crate::signature::{EcdsaVerificationRequest, SignatureError, TransactionSignatureChecker};
 
 const MAX_STACK_SIZE: usize = 1_000;
 const OP_PUSHDATA1: u8 = 0x4c;
@@ -46,13 +46,16 @@ const OP_GREATERTHAN: u8 = 0xa0;
 const OP_MIN: u8 = 0xa3;
 const OP_MAX: u8 = 0xa4;
 const OP_WITHIN: u8 = 0xa5;
+const OP_RIPEMD160: u8 = 0xa6;
 const OP_SHA256: u8 = 0xa8;
+const OP_HASH160: u8 = 0xa9;
 const OP_HASH256: u8 = 0xaa;
 const OP_CHECKSIG: u8 = 0xac;
 const OP_CHECKSIGVERIFY: u8 = 0xad;
 const OP_CHECKMULTISIG: u8 = 0xae;
 const OP_CHECKMULTISIGVERIFY: u8 = 0xaf;
 const OP_RETURN: u8 = 0x6a;
+const MAX_PUBKEYS_PER_MULTISIG: usize = 20;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ScriptError {
@@ -63,11 +66,21 @@ pub enum ScriptError {
     NumOverflow(usize),
     OpCount,
     OpReturn,
+    PubKeyCount,
+    PubKeyType,
     PushSize(usize),
+    SigCount,
+    SigDer,
+    SigHashType,
+    SigHighS,
+    SigNullDummy,
+    SigNullFail,
+    SigPushOnly,
     StackOverflow(usize),
     TruncatedPushData,
     UnsupportedOpcode(u8),
     VerifyFailed,
+    WitnessPubKeyType,
 }
 
 impl fmt::Display for ScriptError {
@@ -80,11 +93,21 @@ impl fmt::Display for ScriptError {
             Self::NumOverflow(size) => write!(f, "script number overflow: {size} bytes"),
             Self::OpCount => write!(f, "script exceeds opcode limit"),
             Self::OpReturn => write!(f, "OP_RETURN encountered"),
+            Self::PubKeyCount => write!(f, "invalid public key count"),
+            Self::PubKeyType => write!(f, "invalid public key encoding"),
             Self::PushSize(size) => write!(f, "push exceeds stack element limit: {size} bytes"),
+            Self::SigCount => write!(f, "invalid signature count"),
+            Self::SigDer => write!(f, "invalid DER signature"),
+            Self::SigHashType => write!(f, "invalid signature hash type"),
+            Self::SigHighS => write!(f, "non-low-S signature"),
+            Self::SigNullDummy => write!(f, "non-null CHECKMULTISIG dummy argument"),
+            Self::SigNullFail => write!(f, "non-null failing signature"),
+            Self::SigPushOnly => write!(f, "scriptSig is not push-only"),
             Self::StackOverflow(size) => write!(f, "stack exceeds maximum size: {size}"),
             Self::TruncatedPushData => write!(f, "truncated pushdata"),
             Self::UnsupportedOpcode(opcode) => write!(f, "unsupported opcode: 0x{opcode:02x}"),
             Self::VerifyFailed => write!(f, "VERIFY failed"),
+            Self::WitnessPubKeyType => write!(f, "witness public key must be compressed"),
         }
     }
 }
@@ -98,6 +121,22 @@ struct Instruction {
 }
 
 pub fn eval_script(stack: &mut Vec<Vec<u8>>, script: &ScriptBuf) -> Result<(), ScriptError> {
+    eval_script_internal(stack, script, None)
+}
+
+struct LegacyExecutionContext<'a> {
+    checker: TransactionSignatureChecker<'a, secp256k1::VerifyOnly>,
+    transaction: &'a Transaction,
+    input_index: usize,
+    spent_input: &'a TransactionInputContext,
+    verify_flags: ScriptVerifyFlags,
+}
+
+fn eval_script_internal(
+    stack: &mut Vec<Vec<u8>>,
+    script: &ScriptBuf,
+    maybe_context: Option<&LegacyExecutionContext<'_>>,
+) -> Result<(), ScriptError> {
     let bytes = script.as_bytes();
     let mut pc = 0;
     let mut op_count = 0;
@@ -204,17 +243,27 @@ pub fn eval_script(stack: &mut Vec<Vec<u8>>, script: &ScriptBuf) -> Result<(), S
                 let within = value >= min && value < max;
                 push_stack(stack, encode_bool(within))?;
             }
+            OP_RIPEMD160 => return Err(ScriptError::UnsupportedOpcode(OP_RIPEMD160)),
             OP_SHA256 => {
                 let value = pop_bytes(stack)?;
                 push_stack(stack, Sha256::digest(&value).to_vec())?;
+            }
+            OP_HASH160 => {
+                let value = pop_bytes(stack)?;
+                push_stack(stack, hash160(&value).to_vec())?;
             }
             OP_HASH256 => {
                 let value = pop_bytes(stack)?;
                 push_stack(stack, double_sha256(&value).to_vec())?;
             }
             OP_RETURN => return Err(ScriptError::OpReturn),
-            OP_CHECKSIG | OP_CHECKSIGVERIFY | OP_CHECKMULTISIG | OP_CHECKMULTISIGVERIFY => {
-                return Err(ScriptError::UnsupportedOpcode(instruction.opcode));
+            OP_CHECKSIG => execute_checksig(stack, script, maybe_context, false)?,
+            OP_CHECKSIGVERIFY => execute_checksig(stack, script, maybe_context, true)?,
+            OP_CHECKMULTISIG => {
+                execute_checkmultisig(stack, script, maybe_context, &mut op_count, false)?
+            }
+            OP_CHECKMULTISIGVERIFY => {
+                execute_checkmultisig(stack, script, maybe_context, &mut op_count, true)?
             }
             opcode if is_disabled_opcode(opcode) => {
                 return Err(ScriptError::DisabledOpcode(opcode));
@@ -256,21 +305,214 @@ pub struct ScriptInputVerificationContext<'a> {
 }
 
 pub fn verify_input_script(context: ScriptInputVerificationContext<'_>) -> Result<(), ScriptError> {
+    if context
+        .verify_flags
+        .contains(ScriptVerifyFlags::SIGPUSHONLY)
+        && !is_push_only(context.script_sig)
+    {
+        return Err(ScriptError::SigPushOnly);
+    }
     if !context.witness.is_empty() {
         return Err(ScriptError::UnsupportedOpcode(OP_0NOTEQUAL));
     }
 
-    let classified = classify_script_pubkey(context.script_pubkey);
-    match classified {
-        ScriptPubKeyType::PayToPubKey { compressed, pubkey } => {
-            verify_pay_to_pubkey(context, &pubkey, compressed)
-        }
-        ScriptPubKeyType::Multisig {
-            required_signatures,
-            pubkeys,
-        } => verify_bare_multisig(context, &pubkeys, required_signatures),
-        _ => verify_script(context.script_sig, context.script_pubkey),
+    let secp = Secp256k1::verification_only();
+    let checker =
+        TransactionSignatureChecker::new(&secp, context.validation_context, context.precomputed);
+    let execution_context = LegacyExecutionContext {
+        checker,
+        transaction: context.transaction,
+        input_index: context.input_index,
+        spent_input: context.spent_input,
+        verify_flags: context.verify_flags,
+    };
+
+    let mut stack = Vec::new();
+    eval_script_internal(&mut stack, context.script_sig, Some(&execution_context))?;
+    eval_script_internal(&mut stack, context.script_pubkey, Some(&execution_context))?;
+
+    let Some(top) = stack.last() else {
+        return Err(ScriptError::EvalFalse);
+    };
+    if !cast_to_bool(top) {
+        return Err(ScriptError::EvalFalse);
     }
+
+    Ok(())
+}
+
+fn execute_checksig(
+    stack: &mut Vec<Vec<u8>>,
+    script: &ScriptBuf,
+    maybe_context: Option<&LegacyExecutionContext<'_>>,
+    verify: bool,
+) -> Result<(), ScriptError> {
+    let Some(context) = maybe_context else {
+        return Err(ScriptError::UnsupportedOpcode(if verify {
+            OP_CHECKSIGVERIFY
+        } else {
+            OP_CHECKSIG
+        }));
+    };
+    if stack.len() < 2 {
+        return Err(ScriptError::InvalidStackOperation);
+    }
+
+    let public_key = pop_bytes(stack)?;
+    let signature = pop_bytes(stack)?;
+    let script_code = remove_signature_from_script(script, &signature);
+    let is_valid_signature = context
+        .checker
+        .verify_ecdsa(
+            EcdsaVerificationRequest {
+                script_code: &script_code,
+                transaction: context.transaction,
+                input_index: context.input_index,
+                spent_input: context.spent_input,
+                signature_bytes: &signature,
+                public_key_bytes: &public_key,
+                sig_version: crate::sighash::SigVersion::Base,
+                require_compressed_pubkey: false,
+            },
+            context.verify_flags,
+        )
+        .map_err(map_signature_error)?;
+
+    if !is_valid_signature
+        && context.verify_flags.contains(ScriptVerifyFlags::NULLFAIL)
+        && !signature.is_empty()
+    {
+        return Err(ScriptError::SigNullFail);
+    }
+
+    push_stack(stack, encode_bool(is_valid_signature))?;
+    if verify {
+        if is_valid_signature {
+            pop_bytes(stack)?;
+        } else {
+            return Err(ScriptError::VerifyFailed);
+        }
+    }
+
+    Ok(())
+}
+
+fn execute_checkmultisig(
+    stack: &mut Vec<Vec<u8>>,
+    script: &ScriptBuf,
+    maybe_context: Option<&LegacyExecutionContext<'_>>,
+    op_count: &mut usize,
+    verify: bool,
+) -> Result<(), ScriptError> {
+    let Some(context) = maybe_context else {
+        return Err(ScriptError::UnsupportedOpcode(if verify {
+            OP_CHECKMULTISIGVERIFY
+        } else {
+            OP_CHECKMULTISIG
+        }));
+    };
+    if stack.is_empty() {
+        return Err(ScriptError::InvalidStackOperation);
+    }
+
+    let key_count = decode_small_num(stack.last().ok_or(ScriptError::InvalidStackOperation)?)?;
+    if key_count > MAX_PUBKEYS_PER_MULTISIG {
+        return Err(ScriptError::PubKeyCount);
+    }
+    *op_count += key_count;
+    if *op_count > MAX_OPS_PER_SCRIPT {
+        return Err(ScriptError::OpCount);
+    }
+
+    let required_stack_items = key_count + 2;
+    if stack.len() < required_stack_items {
+        return Err(ScriptError::InvalidStackOperation);
+    }
+
+    let sig_count_index = stack.len() - key_count - 2;
+    let sig_count = decode_small_num(&stack[sig_count_index])?;
+    if sig_count > key_count {
+        return Err(ScriptError::SigCount);
+    }
+    if sig_count_index < sig_count + 1 {
+        return Err(ScriptError::InvalidStackOperation);
+    }
+
+    let dummy_index = sig_count_index - sig_count - 1;
+    let dummy = stack[dummy_index].clone();
+    let signatures = stack[dummy_index + 1..dummy_index + 1 + sig_count].to_vec();
+    let pubkeys = stack[sig_count_index + 1..stack.len() - 1].to_vec();
+
+    let mut script_code = script.clone();
+    for signature in &signatures {
+        script_code = remove_signature_from_script(&script_code, signature);
+    }
+
+    let mut remaining_pubkeys = pubkeys.iter();
+    let mut signatures_iter = signatures.iter();
+    let mut maybe_signature = signatures_iter.next();
+    let mut matched_all_signatures = true;
+    let mut used_signatures = 0_usize;
+
+    while let Some(signature) = maybe_signature {
+        let mut matched = false;
+        for public_key in remaining_pubkeys.by_ref() {
+            let is_valid_signature = context
+                .checker
+                .verify_ecdsa(
+                    EcdsaVerificationRequest {
+                        script_code: &script_code,
+                        transaction: context.transaction,
+                        input_index: context.input_index,
+                        spent_input: context.spent_input,
+                        signature_bytes: signature,
+                        public_key_bytes: public_key,
+                        sig_version: crate::sighash::SigVersion::Base,
+                        require_compressed_pubkey: false,
+                    },
+                    context.verify_flags,
+                )
+                .map_err(map_signature_error)?;
+            if is_valid_signature {
+                matched = true;
+                used_signatures += 1;
+                maybe_signature = signatures_iter.next();
+                break;
+            }
+        }
+
+        if !matched {
+            matched_all_signatures = false;
+            break;
+        }
+    }
+
+    let drop_count = key_count + sig_count + 3;
+    for _ in 0..drop_count {
+        pop_bytes(stack)?;
+    }
+
+    if context.verify_flags.contains(ScriptVerifyFlags::NULLDUMMY) && !dummy.is_empty() {
+        return Err(ScriptError::SigNullDummy);
+    }
+    if !matched_all_signatures
+        && context.verify_flags.contains(ScriptVerifyFlags::NULLFAIL)
+        && signatures.iter().any(|signature| !signature.is_empty())
+    {
+        return Err(ScriptError::SigNullFail);
+    }
+
+    debug_assert!(used_signatures <= sig_count);
+    push_stack(stack, encode_bool(matched_all_signatures))?;
+    if verify {
+        if matched_all_signatures {
+            pop_bytes(stack)?;
+        } else {
+            return Err(ScriptError::VerifyFailed);
+        }
+    }
+
+    Ok(())
 }
 
 pub fn count_legacy_sigops(script: &ScriptBuf) -> Result<usize, ScriptError> {
@@ -286,6 +528,70 @@ pub fn count_legacy_sigops(script: &ScriptBuf) -> Result<usize, ScriptError> {
         }
     }
     Ok(sigops)
+}
+
+fn map_signature_error(error: SignatureError) -> ScriptError {
+    match error {
+        SignatureError::EmptySignature | SignatureError::IncorrectSignature => {
+            ScriptError::VerifyFailed
+        }
+        SignatureError::InvalidDer => ScriptError::SigDer,
+        SignatureError::InvalidHashType(_) => ScriptError::SigHashType,
+        SignatureError::InvalidPublicKey => ScriptError::PubKeyType,
+        SignatureError::NonCompressedPublicKey => ScriptError::WitnessPubKeyType,
+        SignatureError::NonLowS => ScriptError::SigHighS,
+        SignatureError::UnsupportedSigVersion => ScriptError::UnsupportedOpcode(OP_CHECKSIG),
+    }
+}
+
+fn remove_signature_from_script(script: &ScriptBuf, signature: &[u8]) -> ScriptBuf {
+    if signature.is_empty() {
+        return script.clone();
+    }
+
+    let encoded_signature = encode_push_data(signature);
+    let mut remaining = Vec::with_capacity(script.as_bytes().len());
+    let mut offset = 0;
+    while offset < script.as_bytes().len() {
+        if script.as_bytes()[offset..].starts_with(&encoded_signature) {
+            offset += encoded_signature.len();
+            continue;
+        }
+
+        remaining.push(script.as_bytes()[offset]);
+        offset += 1;
+    }
+
+    ScriptBuf::from_bytes(remaining).expect("filtered script must remain structurally valid")
+}
+
+fn encode_push_data(data: &[u8]) -> Vec<u8> {
+    let mut encoded = Vec::with_capacity(data.len() + 5);
+    match data.len() {
+        0..=0x4b => encoded.push(data.len() as u8),
+        0x4c..=0xff => {
+            encoded.push(OP_PUSHDATA1);
+            encoded.push(data.len() as u8);
+        }
+        0x100..=0xffff => {
+            encoded.push(OP_PUSHDATA2);
+            encoded.extend_from_slice(&(data.len() as u16).to_le_bytes());
+        }
+        _ => {
+            encoded.push(OP_PUSHDATA4);
+            encoded.extend_from_slice(&(data.len() as u32).to_le_bytes());
+        }
+    }
+    encoded.extend_from_slice(data);
+    encoded
+}
+
+fn decode_small_num(bytes: &[u8]) -> Result<usize, ScriptError> {
+    let value = decode_script_num(bytes)?;
+    if value < 0 {
+        return Err(ScriptError::InvalidStackOperation);
+    }
+    Ok(value as usize)
 }
 
 fn read_instruction(bytes: &[u8], pc: &mut usize) -> Result<Instruction, ScriptError> {
@@ -387,83 +693,6 @@ fn script_boolor(left: i64, right: i64) -> i64 {
     if left != 0 || right != 0 { 1 } else { 0 }
 }
 
-fn verify_pay_to_pubkey(
-    context: ScriptInputVerificationContext<'_>,
-    pubkey: &[u8],
-    require_compressed_pubkey: bool,
-) -> Result<(), ScriptError> {
-    let pushes =
-        extract_script_sig_pushes(context.script_sig).ok_or(ScriptError::InvalidStackOperation)?;
-    let signature = pushes.last().ok_or(ScriptError::InvalidStackOperation)?;
-    let secp = Secp256k1::verification_only();
-    let checker =
-        TransactionSignatureChecker::new(&secp, context.validation_context, context.precomputed);
-
-    checker
-        .verify_ecdsa(EcdsaVerificationRequest {
-            script_code: context.script_pubkey,
-            transaction: context.transaction,
-            input_index: context.input_index,
-            spent_input: context.spent_input,
-            signature_bytes: signature,
-            public_key_bytes: pubkey,
-            sig_version: crate::sighash::SigVersion::Base,
-            require_compressed_pubkey,
-        })
-        .map_err(|_| ScriptError::VerifyFailed)
-}
-
-fn verify_bare_multisig(
-    context: ScriptInputVerificationContext<'_>,
-    pubkeys: &[Vec<u8>],
-    required_signatures: usize,
-) -> Result<(), ScriptError> {
-    let pushes =
-        extract_script_sig_pushes(context.script_sig).ok_or(ScriptError::InvalidStackOperation)?;
-    let Some((dummy, signatures)) = pushes.split_first() else {
-        return Err(ScriptError::InvalidStackOperation);
-    };
-    if !dummy.is_empty() || signatures.len() < required_signatures {
-        return Err(ScriptError::VerifyFailed);
-    }
-
-    let secp = Secp256k1::verification_only();
-    let checker =
-        TransactionSignatureChecker::new(&secp, context.validation_context, context.precomputed);
-    let mut pubkey_index = 0;
-    let mut matched_signatures = 0;
-    for signature in signatures.iter().take(required_signatures) {
-        let mut matched = false;
-        while pubkey_index < pubkeys.len() {
-            if checker
-                .verify_ecdsa(EcdsaVerificationRequest {
-                    script_code: context.script_pubkey,
-                    transaction: context.transaction,
-                    input_index: context.input_index,
-                    spent_input: context.spent_input,
-                    signature_bytes: signature,
-                    public_key_bytes: &pubkeys[pubkey_index],
-                    sig_version: crate::sighash::SigVersion::Base,
-                    require_compressed_pubkey: pubkeys[pubkey_index].len() == 33,
-                })
-                .is_ok()
-            {
-                matched = true;
-                pubkey_index += 1;
-                matched_signatures += 1;
-                break;
-            }
-            pubkey_index += 1;
-        }
-        if !matched {
-            return Err(ScriptError::VerifyFailed);
-        }
-    }
-
-    debug_assert_eq!(matched_signatures, required_signatures);
-    Ok(())
-}
-
 fn encode_bool(value: bool) -> Vec<u8> {
     if value { vec![1_u8] } else { Vec::new() }
 }
@@ -557,15 +786,96 @@ mod tests {
     use open_bitcoin_primitives::ScriptBuf;
 
     use crate::context::{PrecomputedTransactionData, ScriptExecutionData, ScriptVerifyFlags};
+    use crate::crypto::hash160;
     use crate::sighash::{SigHashType, legacy_sighash};
 
     use super::{
         ScriptError, ScriptInputVerificationContext, cast_to_bool, count_legacy_sigops,
-        decode_script_num, encode_script_num, eval_script, is_disabled_opcode, verify_script,
+        decode_script_num, decode_small_num, encode_push_data, encode_script_num, eval_script,
+        execute_checkmultisig, execute_checksig, is_disabled_opcode, map_signature_error,
+        remove_signature_from_script, verify_script,
     };
 
     fn script(bytes: &[u8]) -> ScriptBuf {
         ScriptBuf::from_bytes(bytes.to_vec()).expect("valid script")
+    }
+
+    fn legacy_transaction(txid_byte: u8) -> Transaction {
+        Transaction {
+            version: 1,
+            inputs: vec![TransactionInput {
+                previous_output: open_bitcoin_primitives::OutPoint {
+                    txid: Txid::from_byte_array([txid_byte; 32]),
+                    vout: 0,
+                },
+                script_sig: ScriptBuf::default(),
+                sequence: TransactionInput::SEQUENCE_FINAL,
+                witness: Default::default(),
+            }],
+            outputs: vec![TransactionOutput {
+                value: Amount::from_sats(40).expect("valid amount"),
+                script_pubkey: script(&[0x51]),
+            }],
+            lock_time: 0,
+        }
+    }
+
+    fn legacy_context(
+        script_pubkey: ScriptBuf,
+        transaction: &Transaction,
+        verify_flags: ScriptVerifyFlags,
+    ) -> (
+        TransactionInputContext,
+        TransactionValidationContext,
+        PrecomputedTransactionData,
+    ) {
+        let spent_input = TransactionInputContext {
+            spent_output: crate::context::SpentOutput {
+                value: Amount::from_sats(50).expect("valid amount"),
+                script_pubkey,
+                is_coinbase: false,
+            },
+            created_height: 0,
+            created_median_time_past: 0,
+        };
+        let validation_context = TransactionValidationContext {
+            inputs: vec![spent_input.clone()],
+            spend_height: 1,
+            block_time: 0,
+            median_time_past: 0,
+            verify_flags,
+            consensus_params: crate::context::ConsensusParams::default(),
+        };
+        let precomputed = validation_context
+            .precompute(transaction)
+            .expect("precompute");
+        (spent_input, validation_context, precomputed)
+    }
+
+    fn sign_legacy_script(
+        script_code: &ScriptBuf,
+        transaction: &Transaction,
+        secret_key: &SecretKey,
+        sighash_type: SigHashType,
+    ) -> Vec<u8> {
+        let signing_secp = Secp256k1::new();
+        let digest = legacy_sighash(script_code, transaction, 0, sighash_type);
+        let message = Message::from_digest(digest.to_byte_array());
+        let mut signature = signing_secp.sign_ecdsa(message, secret_key);
+        signature.normalize_s();
+        let serialized = signature.serialize_der();
+        let mut signature_bytes = serialized.as_ref().to_vec();
+        signature_bytes.push(sighash_type.raw() as u8);
+        signature_bytes
+    }
+
+    fn push_only_script(pushes: &[&[u8]]) -> ScriptBuf {
+        let mut bytes = Vec::new();
+        for push in pushes {
+            bytes.push(push.len() as u8);
+            bytes.extend_from_slice(push);
+        }
+        script(&bytes)
     }
 
     #[test]
@@ -664,10 +974,22 @@ mod tests {
             ),
             (ScriptError::OpCount, "script exceeds opcode limit"),
             (ScriptError::OpReturn, "OP_RETURN encountered"),
+            (ScriptError::PubKeyCount, "invalid public key count"),
+            (ScriptError::PubKeyType, "invalid public key encoding"),
             (
                 ScriptError::PushSize(521),
                 "push exceeds stack element limit: 521 bytes",
             ),
+            (ScriptError::SigCount, "invalid signature count"),
+            (ScriptError::SigDer, "invalid DER signature"),
+            (ScriptError::SigHashType, "invalid signature hash type"),
+            (ScriptError::SigHighS, "non-low-S signature"),
+            (
+                ScriptError::SigNullDummy,
+                "non-null CHECKMULTISIG dummy argument",
+            ),
+            (ScriptError::SigNullFail, "non-null failing signature"),
+            (ScriptError::SigPushOnly, "scriptSig is not push-only"),
             (
                 ScriptError::StackOverflow(1001),
                 "stack exceeds maximum size: 1001",
@@ -678,6 +1000,10 @@ mod tests {
                 "unsupported opcode: 0xac",
             ),
             (ScriptError::VerifyFailed, "VERIFY failed"),
+            (
+                ScriptError::WitnessPubKeyType,
+                "witness public key must be compressed",
+            ),
         ];
 
         for (error, expected) in cases {
@@ -988,6 +1314,506 @@ mod tests {
     }
 
     #[test]
+    fn verify_input_script_accepts_pay_to_pubkey_hash_signatures() {
+        let signing_secp = Secp256k1::new();
+        let secret_key = SecretKey::from_byte_array([18_u8; 32]).expect("secret key");
+        let public_key = PublicKey::from_secret_key(&signing_secp, &secret_key);
+        let public_key_bytes = public_key.serialize();
+        let public_key_hash = hash160(&public_key_bytes);
+        let mut script_pubkey_bytes = vec![0x76, 0xa9, 20];
+        script_pubkey_bytes.extend_from_slice(&public_key_hash);
+        script_pubkey_bytes.extend_from_slice(&[0x88, 0xac]);
+        let script_pubkey = script(&script_pubkey_bytes);
+        let transaction = legacy_transaction(4);
+        let (spent_input, validation_context, precomputed) =
+            legacy_context(script_pubkey.clone(), &transaction, ScriptVerifyFlags::NONE);
+        let signature_bytes =
+            sign_legacy_script(&script_pubkey, &transaction, &secret_key, SigHashType::ALL);
+        let script_sig = push_only_script(&[&signature_bytes, &public_key_bytes]);
+        let mut execution_data = ScriptExecutionData::default();
+
+        assert_eq!(
+            super::verify_input_script(ScriptInputVerificationContext {
+                script_sig: &script_sig,
+                script_pubkey: &script_pubkey,
+                witness: &ScriptWitness::default(),
+                transaction: &transaction,
+                input_index: 0,
+                spent_input: &spent_input,
+                validation_context: &validation_context,
+                spent_amount: spent_input.spent_output.value,
+                verify_flags: ScriptVerifyFlags::NONE,
+                precomputed: &precomputed,
+                execution_data: &mut execution_data,
+            }),
+            Ok(())
+        );
+    }
+
+    #[test]
+    fn verify_input_script_enforces_sigpushonly() {
+        let signing_secp = Secp256k1::new();
+        let secret_key = SecretKey::from_byte_array([22_u8; 32]).expect("secret key");
+        let public_key = PublicKey::from_secret_key(&signing_secp, &secret_key);
+        let script_pubkey = {
+            let mut bytes = vec![33];
+            bytes.extend_from_slice(&public_key.serialize());
+            bytes.push(0xac);
+            script(&bytes)
+        };
+        let transaction = legacy_transaction(5);
+        let (spent_input, validation_context, precomputed) = legacy_context(
+            script_pubkey.clone(),
+            &transaction,
+            ScriptVerifyFlags::SIGPUSHONLY,
+        );
+        let signature_bytes =
+            sign_legacy_script(&script_pubkey, &transaction, &secret_key, SigHashType::ALL);
+        let mut script_sig_bytes = vec![signature_bytes.len() as u8];
+        script_sig_bytes.extend_from_slice(&signature_bytes);
+        script_sig_bytes.push(0x76);
+        let script_sig = script(&script_sig_bytes);
+        let mut execution_data = ScriptExecutionData::default();
+
+        let error = super::verify_input_script(ScriptInputVerificationContext {
+            script_sig: &script_sig,
+            script_pubkey: &script_pubkey,
+            witness: &ScriptWitness::default(),
+            transaction: &transaction,
+            input_index: 0,
+            spent_input: &spent_input,
+            validation_context: &validation_context,
+            spent_amount: spent_input.spent_output.value,
+            verify_flags: ScriptVerifyFlags::SIGPUSHONLY,
+            precomputed: &precomputed,
+            execution_data: &mut execution_data,
+        })
+        .expect_err("non-push scriptSig must fail");
+
+        assert_eq!(error, ScriptError::SigPushOnly);
+    }
+
+    #[test]
+    fn verify_input_script_enforces_nullfail_for_failed_checksig() {
+        let signing_secp = Secp256k1::new();
+        let secret_key = SecretKey::from_byte_array([23_u8; 32]).expect("secret key");
+        let public_key = PublicKey::from_secret_key(&signing_secp, &secret_key);
+        let script_pubkey = {
+            let mut bytes = vec![33];
+            bytes.extend_from_slice(&public_key.serialize());
+            bytes.extend_from_slice(&[0xac, 0x91]);
+            script(&bytes)
+        };
+        let transaction = legacy_transaction(6);
+        let (spent_input, validation_context, precomputed) = legacy_context(
+            script_pubkey.clone(),
+            &transaction,
+            ScriptVerifyFlags::NULLFAIL,
+        );
+        let script_sig = push_only_script(&[&[0x01, 0x02]]);
+        let mut execution_data = ScriptExecutionData::default();
+
+        let error = super::verify_input_script(ScriptInputVerificationContext {
+            script_sig: &script_sig,
+            script_pubkey: &script_pubkey,
+            witness: &ScriptWitness::default(),
+            transaction: &transaction,
+            input_index: 0,
+            spent_input: &spent_input,
+            validation_context: &validation_context,
+            spent_amount: spent_input.spent_output.value,
+            verify_flags: ScriptVerifyFlags::NULLFAIL,
+            precomputed: &precomputed,
+            execution_data: &mut execution_data,
+        })
+        .expect_err("NULLFAIL should reject non-empty failing signatures");
+
+        assert_eq!(error, ScriptError::SigNullFail);
+    }
+
+    #[test]
+    fn verify_input_script_enforces_nulldummy_for_multisig() {
+        let signing_secp = Secp256k1::new();
+        let secret_key = SecretKey::from_byte_array([24_u8; 32]).expect("secret key");
+        let public_key = PublicKey::from_secret_key(&signing_secp, &secret_key);
+        let script_pubkey = {
+            let mut bytes = vec![0x51, 33];
+            bytes.extend_from_slice(&public_key.serialize());
+            bytes.push(0x51);
+            bytes.push(0xae);
+            script(&bytes)
+        };
+        let transaction = legacy_transaction(7);
+        let (spent_input, validation_context, precomputed) = legacy_context(
+            script_pubkey.clone(),
+            &transaction,
+            ScriptVerifyFlags::NULLDUMMY,
+        );
+        let signature_bytes =
+            sign_legacy_script(&script_pubkey, &transaction, &secret_key, SigHashType::ALL);
+        let script_sig = push_only_script(&[&[0x01], &signature_bytes]);
+        let mut execution_data = ScriptExecutionData::default();
+
+        let error = super::verify_input_script(ScriptInputVerificationContext {
+            script_sig: &script_sig,
+            script_pubkey: &script_pubkey,
+            witness: &ScriptWitness::default(),
+            transaction: &transaction,
+            input_index: 0,
+            spent_input: &spent_input,
+            validation_context: &validation_context,
+            spent_amount: spent_input.spent_output.value,
+            verify_flags: ScriptVerifyFlags::NULLDUMMY,
+            precomputed: &precomputed,
+            execution_data: &mut execution_data,
+        })
+        .expect_err("NULLDUMMY should reject non-zero dummy arguments");
+
+        assert_eq!(error, ScriptError::SigNullDummy);
+    }
+
+    #[test]
+    fn verify_input_script_supports_checksigverify_and_checkmultisigverify() {
+        let signing_secp = Secp256k1::new();
+        let secret_key = SecretKey::from_byte_array([25_u8; 32]).expect("secret key");
+        let public_key = PublicKey::from_secret_key(&signing_secp, &secret_key);
+
+        let checksigverify_script = {
+            let mut bytes = vec![33];
+            bytes.extend_from_slice(&public_key.serialize());
+            bytes.extend_from_slice(&[0xad, 0x51]);
+            script(&bytes)
+        };
+        let checksigverify_transaction = legacy_transaction(8);
+        let (checksigverify_input, checksigverify_context, checksigverify_precomputed) =
+            legacy_context(
+                checksigverify_script.clone(),
+                &checksigverify_transaction,
+                ScriptVerifyFlags::NONE,
+            );
+        let checksigverify_signature = sign_legacy_script(
+            &checksigverify_script,
+            &checksigverify_transaction,
+            &secret_key,
+            SigHashType::ALL,
+        );
+        let checksigverify_script_sig = push_only_script(&[&checksigverify_signature]);
+        let mut execution_data = ScriptExecutionData::default();
+
+        assert_eq!(
+            super::verify_input_script(ScriptInputVerificationContext {
+                script_sig: &checksigverify_script_sig,
+                script_pubkey: &checksigverify_script,
+                witness: &ScriptWitness::default(),
+                transaction: &checksigverify_transaction,
+                input_index: 0,
+                spent_input: &checksigverify_input,
+                validation_context: &checksigverify_context,
+                spent_amount: checksigverify_input.spent_output.value,
+                verify_flags: ScriptVerifyFlags::NONE,
+                precomputed: &checksigverify_precomputed,
+                execution_data: &mut execution_data,
+            }),
+            Ok(())
+        );
+
+        let checkmultisigverify_script = {
+            let mut bytes = vec![0x51, 33];
+            bytes.extend_from_slice(&public_key.serialize());
+            bytes.extend_from_slice(&[0x51, 0xaf, 0x51]);
+            script(&bytes)
+        };
+        let checkmultisigverify_transaction = legacy_transaction(9);
+        let (
+            checkmultisigverify_input,
+            checkmultisigverify_context,
+            checkmultisigverify_precomputed,
+        ) = legacy_context(
+            checkmultisigverify_script.clone(),
+            &checkmultisigverify_transaction,
+            ScriptVerifyFlags::NONE,
+        );
+        let checkmultisigverify_signature = sign_legacy_script(
+            &checkmultisigverify_script,
+            &checkmultisigverify_transaction,
+            &secret_key,
+            SigHashType::ALL,
+        );
+        let checkmultisigverify_script_sig =
+            push_only_script(&[&[], &checkmultisigverify_signature]);
+
+        assert_eq!(
+            super::verify_input_script(ScriptInputVerificationContext {
+                script_sig: &checkmultisigverify_script_sig,
+                script_pubkey: &checkmultisigverify_script,
+                witness: &ScriptWitness::default(),
+                transaction: &checkmultisigverify_transaction,
+                input_index: 0,
+                spent_input: &checkmultisigverify_input,
+                validation_context: &checkmultisigverify_context,
+                spent_amount: checkmultisigverify_input.spent_output.value,
+                verify_flags: ScriptVerifyFlags::NONE,
+                precomputed: &checkmultisigverify_precomputed,
+                execution_data: &mut execution_data,
+            }),
+            Ok(())
+        );
+    }
+
+    #[test]
+    fn legacy_helper_error_paths_are_covered() {
+        let transaction = legacy_transaction(10);
+        let (spent_input, validation_context, precomputed) =
+            legacy_context(script(&[0x51]), &transaction, ScriptVerifyFlags::NONE);
+        let secp = Secp256k1::verification_only();
+        let execution_context = super::LegacyExecutionContext {
+            checker: crate::signature::TransactionSignatureChecker::new(
+                &secp,
+                &validation_context,
+                &precomputed,
+            ),
+            transaction: &transaction,
+            input_index: 0,
+            spent_input: &spent_input,
+            verify_flags: ScriptVerifyFlags::NONE,
+        };
+        let mut execution_data = ScriptExecutionData::default();
+
+        assert_eq!(
+            eval_script(&mut Vec::new(), &script(&[0xa6])).expect_err("RIPEMD160 is deferred"),
+            ScriptError::UnsupportedOpcode(0xa6)
+        );
+        assert_eq!(
+            super::verify_input_script(ScriptInputVerificationContext {
+                script_sig: &ScriptBuf::default(),
+                script_pubkey: &ScriptBuf::default(),
+                witness: &ScriptWitness::default(),
+                transaction: &transaction,
+                input_index: 0,
+                spent_input: &spent_input,
+                validation_context: &validation_context,
+                spent_amount: Amount::from_sats(50).expect("valid amount"),
+                verify_flags: ScriptVerifyFlags::NONE,
+                precomputed: &precomputed,
+                execution_data: &mut execution_data,
+            })
+            .expect_err("empty scripts should fail"),
+            ScriptError::EvalFalse
+        );
+
+        assert_eq!(
+            execute_checksig(&mut Vec::new(), &script(&[0xad]), None, true)
+                .expect_err("missing checker must fail"),
+            ScriptError::UnsupportedOpcode(0xad)
+        );
+        assert_eq!(
+            execute_checkmultisig(&mut Vec::new(), &script(&[0xaf]), None, &mut 0, true)
+                .expect_err("missing checker must fail"),
+            ScriptError::UnsupportedOpcode(0xaf)
+        );
+        assert_eq!(
+            execute_checkmultisig(&mut Vec::new(), &script(&[0xae]), None, &mut 0, false)
+                .expect_err("missing checker must fail"),
+            ScriptError::UnsupportedOpcode(0xae)
+        );
+        assert_eq!(
+            execute_checksig(
+                &mut vec![vec![1_u8]],
+                &script(&[0xac]),
+                Some(&execution_context),
+                false,
+            )
+            .expect_err("stack underflow must fail"),
+            ScriptError::InvalidStackOperation
+        );
+        assert_eq!(
+            execute_checkmultisig(
+                &mut Vec::new(),
+                &script(&[0xae]),
+                Some(&execution_context),
+                &mut 0,
+                false,
+            )
+            .expect_err("empty multisig stack must fail"),
+            ScriptError::InvalidStackOperation
+        );
+        assert_eq!(
+            execute_checkmultisig(
+                &mut vec![vec![21]],
+                &script(&[0xae]),
+                Some(&execution_context),
+                &mut 0,
+                false,
+            )
+            .expect_err("too many pubkeys must fail"),
+            ScriptError::PubKeyCount
+        );
+        let mut op_count = super::MAX_OPS_PER_SCRIPT;
+        assert_eq!(
+            execute_checkmultisig(
+                &mut vec![vec![1]],
+                &script(&[0xae]),
+                Some(&execution_context),
+                &mut op_count,
+                false,
+            )
+            .expect_err("sigop overflow must fail"),
+            ScriptError::OpCount
+        );
+        assert_eq!(
+            execute_checkmultisig(
+                &mut vec![vec![1]],
+                &script(&[0xae]),
+                Some(&execution_context),
+                &mut 0,
+                false,
+            )
+            .expect_err("insufficient stack must fail"),
+            ScriptError::InvalidStackOperation
+        );
+        assert_eq!(
+            execute_checkmultisig(
+                &mut vec![vec![2], vec![0x21, 0x01], vec![1]],
+                &script(&[0xae]),
+                Some(&execution_context),
+                &mut 0,
+                false,
+            )
+            .expect_err("too many signatures must fail"),
+            ScriptError::SigCount
+        );
+        let signing_secp = Secp256k1::new();
+        let secret_key = SecretKey::from_byte_array([26_u8; 32]).expect("secret key");
+        let public_key = PublicKey::from_secret_key(&signing_secp, &secret_key);
+        let checksigverify_script = {
+            let mut bytes = vec![33];
+            bytes.extend_from_slice(&public_key.serialize());
+            bytes.push(0xad);
+            script(&bytes)
+        };
+        assert_eq!(
+            execute_checksig(
+                &mut vec![vec![0x01, 0x02], public_key.serialize().to_vec()],
+                &checksigverify_script,
+                Some(&execution_context),
+                true,
+            )
+            .expect_err("failed checksigverify should fail"),
+            ScriptError::VerifyFailed
+        );
+        let checkmultisigverify_script = {
+            let mut bytes = vec![0x51, 33];
+            bytes.extend_from_slice(&public_key.serialize());
+            bytes.push(0x51);
+            bytes.push(0xaf);
+            script(&bytes)
+        };
+        assert_eq!(
+            execute_checkmultisig(
+                &mut vec![
+                    Vec::new(),
+                    vec![0x01, 0x02],
+                    vec![0x01],
+                    public_key.serialize().to_vec(),
+                    vec![0x01]
+                ],
+                &checkmultisigverify_script,
+                Some(&execution_context),
+                &mut 0,
+                true,
+            )
+            .expect_err("failed checkmultisigverify should fail"),
+            ScriptError::VerifyFailed
+        );
+        let nullfail_checker = crate::signature::TransactionSignatureChecker::new(
+            &secp,
+            &validation_context,
+            &precomputed,
+        );
+        let nullfail_multisig_context = super::LegacyExecutionContext {
+            checker: nullfail_checker,
+            transaction: &transaction,
+            input_index: 0,
+            spent_input: &spent_input,
+            verify_flags: ScriptVerifyFlags::NULLFAIL,
+        };
+        assert_eq!(
+            execute_checkmultisig(
+                &mut vec![
+                    Vec::new(),
+                    vec![0x01, 0x02],
+                    vec![0x01],
+                    public_key.serialize().to_vec(),
+                    vec![0x01]
+                ],
+                &checkmultisigverify_script,
+                Some(&nullfail_multisig_context),
+                &mut 0,
+                false,
+            )
+            .expect_err("NULLFAIL should reject failing multisig signatures"),
+            ScriptError::SigNullFail
+        );
+
+        assert_eq!(
+            decode_small_num(&[0x81]).expect_err("negative values are invalid counts"),
+            ScriptError::InvalidStackOperation
+        );
+        assert_eq!(
+            map_signature_error(crate::signature::SignatureError::EmptySignature),
+            ScriptError::VerifyFailed
+        );
+        assert_eq!(
+            map_signature_error(crate::signature::SignatureError::IncorrectSignature),
+            ScriptError::VerifyFailed
+        );
+        assert_eq!(
+            map_signature_error(crate::signature::SignatureError::InvalidDer),
+            ScriptError::SigDer
+        );
+        assert_eq!(
+            map_signature_error(crate::signature::SignatureError::InvalidHashType(4)),
+            ScriptError::SigHashType
+        );
+        assert_eq!(
+            map_signature_error(crate::signature::SignatureError::InvalidPublicKey),
+            ScriptError::PubKeyType
+        );
+        assert_eq!(
+            map_signature_error(crate::signature::SignatureError::NonCompressedPublicKey),
+            ScriptError::WitnessPubKeyType
+        );
+        assert_eq!(
+            map_signature_error(crate::signature::SignatureError::NonLowS),
+            ScriptError::SigHighS
+        );
+        assert_eq!(
+            map_signature_error(crate::signature::SignatureError::UnsupportedSigVersion),
+            ScriptError::UnsupportedOpcode(0xac)
+        );
+
+        assert_eq!(
+            remove_signature_from_script(&script(&[0x51]), &[]),
+            script(&[0x51])
+        );
+        let signature = vec![0xaa; 76];
+        let encoded_signature = encode_push_data(&signature);
+        let mut script_bytes = encoded_signature.clone();
+        script_bytes.extend_from_slice(&[0x51]);
+        assert_eq!(
+            remove_signature_from_script(&script(&script_bytes), &signature),
+            script(&[0x51])
+        );
+
+        let pushdata1 = vec![0_u8; 0x4c];
+        let pushdata2 = vec![0_u8; 0x100];
+        let pushdata4 = vec![0_u8; 0x1_0000];
+        assert_eq!(encode_push_data(&pushdata1)[0], 0x4c);
+        assert_eq!(encode_push_data(&pushdata2)[0], 0x4d);
+        assert_eq!(encode_push_data(&pushdata4)[0], 0x4e);
+    }
+
+    #[test]
     fn verify_input_script_accepts_bare_multisig_signatures() {
         let signing_secp = Secp256k1::new();
         let secret_key = SecretKey::from_byte_array([19_u8; 32]).expect("secret key");
@@ -1152,7 +1978,7 @@ mod tests {
                 precomputed: &precomputed,
                 execution_data: &mut execution_data,
             }),
-            Err(ScriptError::VerifyFailed)
+            Err(ScriptError::InvalidStackOperation)
         );
 
         let bad_signature_script_sig = script(&[0x00, 0x01, 0x02]);
@@ -1170,7 +1996,7 @@ mod tests {
                 precomputed: &precomputed,
                 execution_data: &mut execution_data,
             }),
-            Err(ScriptError::VerifyFailed)
+            Err(ScriptError::EvalFalse)
         );
     }
 }

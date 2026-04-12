@@ -8,7 +8,7 @@ use crate::context::{
     ScriptExecutionData, ScriptVerifyFlags, SpentOutput, TransactionValidationContext,
     check_tx_inputs, is_final_transaction, sequence_locks,
 };
-use crate::script::{ScriptInputVerificationContext, verify_input_script, verify_script};
+use crate::script::{ScriptInputVerificationContext, verify_input_script};
 use crate::validation::{TxValidationError, TxValidationResult, tx_error};
 
 pub fn check_transaction(transaction: &Transaction) -> Result<(), TxValidationError> {
@@ -168,7 +168,7 @@ pub fn validate_transaction(
     }
 
     let mut total_input_value = 0_i64;
-    for (input, spent_output) in transaction.inputs.iter().zip(spent_outputs) {
+    for spent_output in spent_outputs {
         total_input_value += spent_output.value.to_sats();
         if !(0..=MAX_MONEY).contains(&total_input_value) {
             return Err(tx_error(
@@ -177,14 +177,6 @@ pub fn validate_transaction(
                 None,
             ));
         }
-
-        verify_script(&input.script_sig, &spent_output.script_pubkey).map_err(|error| {
-            tx_error(
-                TxValidationResult::Consensus,
-                "mandatory-script-verify-flag-failed",
-                Some(error.to_string()),
-            )
-        })?;
     }
 
     let total_output_value: i64 = transaction

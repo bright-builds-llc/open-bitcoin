@@ -1,6 +1,6 @@
 use secp256k1::{Message, PublicKey, Secp256k1, Verification, XOnlyPublicKey, ecdsa, schnorr};
 
-use crate::context::{PrecomputedTransactionData, TransactionValidationContext};
+use crate::context::{PrecomputedTransactionData, ScriptVerifyFlags, TransactionValidationContext};
 use crate::sighash::{SigHashType, SigVersion, legacy_sighash, segwit_v0_sighash};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -134,10 +134,18 @@ impl<'a, C: Verification> TransactionSignatureChecker<'a, C> {
     pub fn verify_ecdsa(
         &self,
         request: EcdsaVerificationRequest<'_>,
-    ) -> Result<(), SignatureError> {
-        let parsed_signature = parse_ecdsa_signature(request.signature_bytes)?;
-        let public_key =
-            parse_public_key(request.public_key_bytes, request.require_compressed_pubkey)?;
+        flags: ScriptVerifyFlags,
+    ) -> Result<bool, SignatureError> {
+        let maybe_parsed_signature =
+            parse_ecdsa_signature_for_verification(request.signature_bytes, flags)?;
+        let Some(parsed_signature) = maybe_parsed_signature else {
+            return Ok(false);
+        };
+        let public_key = parse_public_key_for_verification(
+            request.public_key_bytes,
+            request.require_compressed_pubkey,
+            flags,
+        )?;
         let digest = match request.sig_version {
             SigVersion::Base => legacy_sighash(
                 request.script_code,
@@ -156,9 +164,10 @@ impl<'a, C: Verification> TransactionSignatureChecker<'a, C> {
             _ => return Err(SignatureError::UnsupportedSigVersion),
         };
         let message = Message::from_digest(digest.to_byte_array());
-        self.secp
+        Ok(self
+            .secp
             .verify_ecdsa(message, &parsed_signature.signature, &public_key)
-            .map_err(|_| SignatureError::IncorrectSignature)
+            .is_ok())
     }
 }
 
@@ -169,11 +178,105 @@ fn validate_legacy_sighash_type(sighash_type: SigHashType) -> Result<(), Signatu
     }
 }
 
+fn parse_ecdsa_signature_for_verification(
+    bytes: &[u8],
+    flags: ScriptVerifyFlags,
+) -> Result<Option<ParsedEcdsaSignature>, SignatureError> {
+    let Some((&hash_type, der)) = bytes.split_last() else {
+        return Ok(None);
+    };
+    let sighash_type = SigHashType::from_u32(u32::from(hash_type));
+
+    if flags.contains(ScriptVerifyFlags::STRICTENC) {
+        validate_legacy_sighash_type(sighash_type)?;
+    }
+
+    let signature = match ecdsa::Signature::from_der(der) {
+        Ok(signature) => signature,
+        Err(_) => {
+            if flags.contains(ScriptVerifyFlags::DERSIG)
+                || flags.contains(ScriptVerifyFlags::LOW_S)
+                || flags.contains(ScriptVerifyFlags::STRICTENC)
+            {
+                return Err(SignatureError::InvalidDer);
+            }
+            return Ok(None);
+        }
+    };
+
+    if flags.contains(ScriptVerifyFlags::LOW_S) {
+        let mut normalized = signature;
+        normalized.normalize_s();
+        if normalized != signature {
+            return Err(SignatureError::NonLowS);
+        }
+    }
+
+    Ok(Some(ParsedEcdsaSignature {
+        signature,
+        sighash_type,
+    }))
+}
+
+fn parse_public_key_for_verification(
+    bytes: &[u8],
+    require_compressed: bool,
+    flags: ScriptVerifyFlags,
+) -> Result<PublicKey, SignatureError> {
+    if flags.contains(ScriptVerifyFlags::STRICTENC) && !is_strict_public_key_encoding(bytes) {
+        return Err(SignatureError::InvalidPublicKey);
+    }
+    if require_compressed && bytes.len() != 33 {
+        return Err(SignatureError::NonCompressedPublicKey);
+    }
+
+    if let Some(normalized) = normalize_hybrid_public_key(bytes)
+        && !flags.contains(ScriptVerifyFlags::STRICTENC)
+    {
+        return PublicKey::from_slice(&normalized).map_err(|_| SignatureError::InvalidPublicKey);
+    }
+
+    if let Ok(public_key) = PublicKey::from_slice(bytes) {
+        return Ok(public_key);
+    }
+
+    if flags.contains(ScriptVerifyFlags::STRICTENC) {
+        return Err(SignatureError::InvalidPublicKey);
+    }
+
+    Err(SignatureError::IncorrectSignature)
+}
+
+fn is_strict_public_key_encoding(bytes: &[u8]) -> bool {
+    matches!(bytes, [0x02 | 0x03, ..] if bytes.len() == 33)
+        || matches!(bytes, [0x04, ..] if bytes.len() == 65)
+}
+
+fn normalize_hybrid_public_key(bytes: &[u8]) -> Option<[u8; 65]> {
+    if bytes.len() != 65 || !matches!(bytes[0], 0x06 | 0x07) {
+        return None;
+    }
+
+    let normalized_prefix = 0x04_u8;
+    let y_is_odd = (bytes[64] & 1) == 1;
+    let hybrid_is_odd = bytes[0] == 0x07;
+    if y_is_odd != hybrid_is_odd {
+        return None;
+    }
+
+    let mut normalized = [0_u8; 65];
+    normalized.copy_from_slice(bytes);
+    normalized[0] = normalized_prefix;
+    Some(normalized)
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
         EcdsaVerificationRequest, SignatureError, TransactionSignatureChecker,
-        parse_ecdsa_signature, parse_public_key, parse_schnorr_signature,
+        is_strict_public_key_encoding, normalize_hybrid_public_key, parse_ecdsa_signature,
+        parse_ecdsa_signature_for_verification, parse_public_key,
+        parse_public_key_for_verification, parse_schnorr_signature,
     };
     use crate::context::{
         ConsensusParams, ScriptVerifyFlags, SpentOutput, TransactionInputContext,
@@ -198,6 +301,12 @@ mod tests {
             let low = pair[1].to_digit(16).expect("hex fixture");
             bytes.push(((high << 4) | low) as u8);
         }
+        bytes
+    }
+
+    fn hybrid_public_key_bytes(public_key: &PublicKey) -> [u8; 65] {
+        let mut bytes = public_key.serialize_uncompressed();
+        bytes[0] = if (bytes[64] & 1) == 1 { 0x07 } else { 0x06 };
         bytes
     }
 
@@ -250,6 +359,231 @@ mod tests {
         let (xonly, _) = public_key.x_only_public_key();
         assert!(super::parse_xonly_public_key(&xonly.serialize()).is_ok());
         assert!(super::parse_xonly_public_key(&[1_u8; 31]).is_err());
+    }
+
+    #[test]
+    fn verification_helpers_follow_flag_gated_legacy_rules() {
+        let secp = Secp256k1::new();
+        let secret_key = SecretKey::from_byte_array([6_u8; 32]).expect("secret key");
+        let message = Message::from_digest([2_u8; 32]);
+        let mut signature = secp.sign_ecdsa(message, &secret_key);
+        signature.normalize_s();
+        let serialized = signature.serialize_der();
+        let mut encoded_signature = serialized.as_ref().to_vec();
+        encoded_signature.push(4);
+
+        let parsed =
+            parse_ecdsa_signature_for_verification(&encoded_signature, ScriptVerifyFlags::NONE)
+                .expect("non-strict undefined hashtype should parse");
+        assert!(parsed.is_some());
+        assert!(matches!(
+            parse_ecdsa_signature_for_verification(
+                &encoded_signature,
+                ScriptVerifyFlags::STRICTENC
+            ),
+            Err(SignatureError::InvalidHashType(4))
+        ));
+
+        assert_eq!(
+            parse_ecdsa_signature_for_verification(&[], ScriptVerifyFlags::NONE)
+                .expect("empty signatures are allowed as false"),
+            None
+        );
+        assert_eq!(
+            parse_ecdsa_signature_for_verification(&[1_u8], ScriptVerifyFlags::NONE)
+                .expect("non-strict invalid DER becomes false"),
+            None
+        );
+        assert!(matches!(
+            parse_ecdsa_signature_for_verification(&[1_u8], ScriptVerifyFlags::DERSIG),
+            Err(SignatureError::InvalidDer)
+        ));
+
+        let high_s = decode_hex(
+            "3046022100839c1fbc5304de944f697c9f4b1d01d1faeba32d751c0f7acb21ac8a0f436a72022100e89bd46bb3a5a62adc679f659b7ce876d83ee297c7a5587b2011c4fcc72eab4501",
+        );
+        assert!(
+            parse_ecdsa_signature_for_verification(&high_s, ScriptVerifyFlags::NONE)
+                .expect("high-S is accepted without LOW_S")
+                .is_some()
+        );
+        assert!(matches!(
+            parse_ecdsa_signature_for_verification(&high_s, ScriptVerifyFlags::LOW_S),
+            Err(SignatureError::NonLowS)
+        ));
+
+        let public_key = PublicKey::from_secret_key(&secp, &secret_key);
+        let hybrid_public_key = hybrid_public_key_bytes(&public_key);
+        assert!(
+            parse_public_key_for_verification(&hybrid_public_key, false, ScriptVerifyFlags::NONE)
+                .is_ok()
+        );
+        assert!(matches!(
+            parse_public_key_for_verification(
+                &hybrid_public_key,
+                false,
+                ScriptVerifyFlags::STRICTENC
+            ),
+            Err(SignatureError::InvalidPublicKey)
+        ));
+        assert!(matches!(
+            parse_public_key_for_verification(&[1_u8; 10], false, ScriptVerifyFlags::NONE),
+            Err(SignatureError::IncorrectSignature)
+        ));
+        assert!(matches!(
+            parse_public_key_for_verification(
+                &public_key.serialize_uncompressed(),
+                true,
+                ScriptVerifyFlags::NONE
+            ),
+            Err(SignatureError::NonCompressedPublicKey)
+        ));
+
+        let invalid_strict_key = {
+            let mut bytes = [0_u8; 33];
+            bytes[0] = 0x02;
+            bytes
+        };
+        assert!(matches!(
+            parse_public_key_for_verification(
+                &invalid_strict_key,
+                false,
+                ScriptVerifyFlags::STRICTENC
+            ),
+            Err(SignatureError::InvalidPublicKey)
+        ));
+        assert!(is_strict_public_key_encoding(&public_key.serialize()));
+        assert!(is_strict_public_key_encoding(
+            &public_key.serialize_uncompressed()
+        ));
+
+        let mut invalid_hybrid = public_key.serialize_uncompressed();
+        invalid_hybrid[0] = 0x06 | ((invalid_hybrid[64] ^ 1) & 1);
+        assert!(normalize_hybrid_public_key(&[1_u8; 10]).is_none());
+        assert!(normalize_hybrid_public_key(&invalid_hybrid).is_none());
+        assert_eq!(
+            normalize_hybrid_public_key(&hybrid_public_key).expect("hybrid key should normalize")
+                [0],
+            0x04
+        );
+    }
+
+    #[test]
+    fn transaction_signature_checker_covers_false_and_uncompressed_paths() {
+        let verification_secp = Secp256k1::verification_only();
+        let signing_secp = Secp256k1::new();
+        let secret_key = SecretKey::from_byte_array([12_u8; 32]).expect("secret key");
+        let public_key = PublicKey::from_secret_key(&signing_secp, &secret_key);
+        let transaction = Transaction {
+            version: 1,
+            inputs: vec![TransactionInput {
+                previous_output: open_bitcoin_primitives::OutPoint {
+                    txid: Txid::from_byte_array([3_u8; 32]),
+                    vout: 0,
+                },
+                script_sig: ScriptBuf::default(),
+                sequence: TransactionInput::SEQUENCE_FINAL,
+                witness: Default::default(),
+            }],
+            outputs: vec![TransactionOutput {
+                value: Amount::from_sats(40).expect("valid amount"),
+                script_pubkey: script(&[0x51]),
+            }],
+            lock_time: 0,
+        };
+        let script_code = {
+            let mut bytes = Vec::with_capacity(35);
+            bytes.push(33);
+            bytes.extend_from_slice(&public_key.serialize());
+            bytes.push(0xac);
+            script(&bytes)
+        };
+        let context = TransactionValidationContext {
+            inputs: vec![TransactionInputContext {
+                spent_output: SpentOutput {
+                    value: Amount::from_sats(50).expect("valid amount"),
+                    script_pubkey: script_code.clone(),
+                    is_coinbase: false,
+                },
+                created_height: 0,
+                created_median_time_past: 0,
+            }],
+            spend_height: 1,
+            block_time: 0,
+            median_time_past: 0,
+            verify_flags: ScriptVerifyFlags::NONE,
+            consensus_params: ConsensusParams::default(),
+        };
+        let precomputed = context.precompute(&transaction).expect("precompute");
+        let checker = TransactionSignatureChecker::new(&verification_secp, &context, &precomputed);
+
+        assert_eq!(
+            checker.verify_ecdsa(
+                EcdsaVerificationRequest {
+                    script_code: &script_code,
+                    transaction: &transaction,
+                    input_index: 0,
+                    spent_input: &context.inputs[0],
+                    signature_bytes: &[1_u8, 2_u8],
+                    public_key_bytes: &public_key.serialize(),
+                    sig_version: SigVersion::Base,
+                    require_compressed_pubkey: false,
+                },
+                ScriptVerifyFlags::NONE
+            ),
+            Ok(false)
+        );
+
+        let digest = crate::sighash::legacy_sighash(
+            &script_code,
+            &transaction,
+            0,
+            crate::sighash::SigHashType::ALL,
+        );
+        let message = Message::from_digest(digest.to_byte_array());
+        let mut signature = signing_secp.sign_ecdsa(message, &secret_key);
+        signature.normalize_s();
+        let serialized = signature.serialize_der();
+        let mut encoded_signature = serialized.as_ref().to_vec();
+        encoded_signature.push(1);
+
+        assert_eq!(
+            checker.verify_ecdsa(
+                EcdsaVerificationRequest {
+                    script_code: &script_code,
+                    transaction: &transaction,
+                    input_index: 0,
+                    spent_input: &context.inputs[0],
+                    signature_bytes: &encoded_signature,
+                    public_key_bytes: &public_key.serialize_uncompressed(),
+                    sig_version: SigVersion::Base,
+                    require_compressed_pubkey: false,
+                },
+                ScriptVerifyFlags::NONE
+            ),
+            Ok(true)
+        );
+        assert_eq!(
+            checker.verify_ecdsa(
+                EcdsaVerificationRequest {
+                    script_code: &script_code,
+                    transaction: &transaction,
+                    input_index: 0,
+                    spent_input: &context.inputs[0],
+                    signature_bytes: &encoded_signature,
+                    public_key_bytes: &[1_u8; 10],
+                    sig_version: SigVersion::Base,
+                    require_compressed_pubkey: false,
+                },
+                ScriptVerifyFlags::NONE
+            ),
+            Err(SignatureError::IncorrectSignature)
+        );
+
+        let parsed =
+            parse_ecdsa_signature_for_verification(&encoded_signature, ScriptVerifyFlags::LOW_S)
+                .expect("low-S signatures remain valid under LOW_S");
+        assert!(parsed.is_some());
     }
 
     #[test]
@@ -319,8 +653,8 @@ mod tests {
         let script_code = pubkey_script;
 
         assert!(
-            checker
-                .verify_ecdsa(EcdsaVerificationRequest {
+            checker.verify_ecdsa(
+                EcdsaVerificationRequest {
                     script_code: &script_code,
                     transaction: &transaction,
                     input_index: 0,
@@ -329,8 +663,9 @@ mod tests {
                     public_key_bytes: &public_key.serialize(),
                     sig_version: SigVersion::Base,
                     require_compressed_pubkey: true,
-                })
-                .is_ok()
+                },
+                ScriptVerifyFlags::NONE
+            ) == Ok(true)
         );
     }
 
@@ -429,8 +764,8 @@ mod tests {
         encoded_signature.push(1);
 
         assert!(
-            checker
-                .verify_ecdsa(EcdsaVerificationRequest {
+            checker.verify_ecdsa(
+                EcdsaVerificationRequest {
                     script_code: &script_code,
                     transaction: &transaction,
                     input_index: 0,
@@ -439,21 +774,25 @@ mod tests {
                     public_key_bytes: &public_key.serialize(),
                     sig_version: SigVersion::WitnessV0,
                     require_compressed_pubkey: true,
-                })
-                .is_ok()
+                },
+                ScriptVerifyFlags::WITNESS
+            ) == Ok(true)
         );
 
         assert!(matches!(
-            checker.verify_ecdsa(EcdsaVerificationRequest {
-                script_code: &script_code,
-                transaction: &transaction,
-                input_index: 0,
-                spent_input: &context.inputs[0],
-                signature_bytes: &encoded_signature,
-                public_key_bytes: &public_key.serialize(),
-                sig_version: SigVersion::Taproot,
-                require_compressed_pubkey: true,
-            }),
+            checker.verify_ecdsa(
+                EcdsaVerificationRequest {
+                    script_code: &script_code,
+                    transaction: &transaction,
+                    input_index: 0,
+                    spent_input: &context.inputs[0],
+                    signature_bytes: &encoded_signature,
+                    public_key_bytes: &public_key.serialize(),
+                    sig_version: SigVersion::Taproot,
+                    require_compressed_pubkey: true,
+                },
+                ScriptVerifyFlags::WITNESS
+            ),
             Err(SignatureError::UnsupportedSigVersion)
         ));
     }

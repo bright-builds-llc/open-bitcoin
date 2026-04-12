@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Workspace, Baseline, and Guardrails** - Pin the reference, bootstrap the workspace, and install architecture enforcement. (completed 2026-04-11)
 - [x] **Phase 2: Core Domain and Serialization Foundations** - Build the typed Bitcoin libraries that every later phase depends on. (completed 2026-04-11)
 - [x] **Phase 3: Consensus Validation Foundation** - Establish the pure-core consensus foundation, contextual validation framework, and initial signature scaffolding. (completed 2026-04-11)
-- [ ] **Phase 3.1: Legacy Signature Execution (INSERTED)** - Finish legacy CHECKSIG/CHECKMULTISIG execution and P2PKH.
+- [x] **Phase 3.1: Legacy Signature Execution (INSERTED)** - Finish legacy CHECKSIG/CHECKMULTISIG execution and P2PKH. (completed 2026-04-11)
 - [ ] **Phase 3.2: P2SH and Segwit-v0 Execution (INSERTED)** - Add P2SH, segwit-v0 spending paths, and split sigop accounting.
 - [ ] **Phase 3.3: Taproot and Tapscript Execution (INSERTED)** - Add taproot key-path, tapscript script-path, and taproot flag enforcement.
 - [ ] **Phase 3.4: Consensus Parity Closure (INSERTED)** - Complete the parity corpus and close the consensus lifecycle honestly.
@@ -94,9 +94,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 03.1-01: Finish legacy CHECKSIG/CHECKMULTISIG VM execution.
-- [ ] 03.1-02: Add P2PKH spending-path execution.
-- [ ] 03.1-03: Port legacy signature and sighash vectors.
+- [x] 03.1-01: Finish legacy CHECKSIG/CHECKMULTISIG VM execution.
+- [x] 03.1-02: Add P2PKH spending-path execution.
+- [x] 03.1-03: Port legacy signature and sighash vectors.
 
 ### Phase 3.2: P2SH and Segwit-v0 Execution (INSERTED)
 **Goal**: Add P2SH, segwit-v0 spending paths, witness invariants, and split sigop accounting.

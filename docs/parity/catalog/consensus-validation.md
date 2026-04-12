@@ -16,7 +16,8 @@ Open Bitcoin. The behavioral baseline remains Bitcoin Knots
   locks, coinbase maturity, coinbase-height, witness commitment, and block
   weight checks
 - script classification, legacy/segwit sighash scaffolding, signature parsing,
-  and the first legacy pay-to-pubkey and bare multisig spending-path execution
+  full legacy `CHECKSIG` or `CHECKMULTISIG` execution, `P2PKH`, and the first
+  repo-owned `HASH160` support needed by later script paths
 
 ## Knots sources
 
@@ -48,8 +49,7 @@ Open Bitcoin. The behavioral baseline remains Bitcoin Knots
 
 ## Known gaps
 
-- `P2PKH`, `P2SH`, segwit-v0 witness programs, and full legacy VM signature
-  execution are still open in Phase 3.1 and 3.2.
+- `P2SH` and segwit-v0 witness programs are still open in Phase 3.2.
 - Taproot key-path, script-path, and tapscript execution are still open in
   Phase 3.3.
 - The current deterministic parity fixtures cover the implemented slice only,
@@ -59,7 +59,6 @@ Open Bitcoin. The behavioral baseline remains Bitcoin Knots
 
 Update this entry when Phase 3.1 through 3.4 work:
 
-- adds broader legacy signature execution or `P2PKH`
 - adds `P2SH` or segwit-v0 witness-program execution
 - adds taproot or tapscript execution
 - closes the remaining parity corpus and promotes the consensus surface to done

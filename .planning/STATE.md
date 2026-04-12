@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 3 foundation complete; Phase 3.1 next
-last_updated: "2026-04-12T02:10:10Z"
+stopped_at: Phase 3.1 complete; Phase 3.2 next
+last_updated: "2026-04-12T02:45:59Z"
 last_activity: 2026-04-11
 progress:
   total_phases: 14
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 51
-  completed_plans: 15
+  completed_plans: 18
   percent: 29
 ---
 
@@ -21,11 +21,11 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-11)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 3.1 — Legacy Signature Execution
+**Current focus:** Phase 3.2 — P2SH and Segwit-v0 Execution
 
 ## Current Position
 
-Phase: 3.1
+Phase: 3.2
 Plan: Not started
 Status: Ready to execute
 Last activity: 2026-04-11
@@ -47,6 +47,7 @@ Progress: ███░░░░░░░ 29%
 | 1 | 4 | - | - |
 | 02 | 4 | - | - |
 | 03 | 7 | - | - |
+| 03.1 | 3 | - | - |
 
 **Recent Trend:**
 
@@ -80,6 +81,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-12T02:10:10.000Z
-Stopped at: Phase 3 foundation complete; Phase 3.1 next
+Last session: 2026-04-12T02:45:59.698Z
+Stopped at: Phase 3.1 complete; Phase 3.2 next
 Resume file: .planning/ROADMAP.md
