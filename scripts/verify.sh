@@ -28,4 +28,12 @@ for crate_name in "${pure_core_crates[@]}"; do
   llvm_cov_args+=(--package "$crate_name")
 done
 
-cargo llvm-cov --manifest-path packages/Cargo.toml "${llvm_cov_args[@]}" --fail-under-lines 100 --summary-only
+cargo llvm-cov clean --manifest-path packages/Cargo.toml --workspace
+coverage_report="$(mktemp)"
+trap 'rm -f "$coverage_report"' EXIT
+
+cargo llvm-cov --manifest-path packages/Cargo.toml "${llvm_cov_args[@]}" --show-missing-lines --text >"$coverage_report"
+if rg -q "^Uncovered Lines:" "$coverage_report"; then
+  sed -n '/Uncovered Lines:/,$p' "$coverage_report" >&2
+  exit 1
+fi

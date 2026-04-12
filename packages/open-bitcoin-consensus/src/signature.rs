@@ -1,7 +1,10 @@
 use secp256k1::{Message, PublicKey, Secp256k1, Verification, XOnlyPublicKey, ecdsa, schnorr};
 
-use crate::context::{PrecomputedTransactionData, ScriptVerifyFlags, TransactionValidationContext};
-use crate::sighash::{SigHashType, SigVersion, legacy_sighash, segwit_v0_sighash};
+use crate::context::{
+    PrecomputedTransactionData, ScriptExecutionData, ScriptVerifyFlags,
+    TransactionValidationContext,
+};
+use crate::sighash::{SigHashType, SigVersion, legacy_sighash, segwit_v0_sighash, taproot_sighash};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SignatureError {
@@ -103,7 +106,7 @@ pub fn parse_xonly_public_key(bytes: &[u8]) -> Result<XOnlyPublicKey, SignatureE
 
 pub struct TransactionSignatureChecker<'a, C: Verification> {
     secp: &'a Secp256k1<C>,
-    _context: &'a TransactionValidationContext,
+    context: &'a TransactionValidationContext,
     precomputed: &'a PrecomputedTransactionData,
 }
 
@@ -126,7 +129,7 @@ impl<'a, C: Verification> TransactionSignatureChecker<'a, C> {
     ) -> Self {
         Self {
             secp,
-            _context: context,
+            context,
             precomputed,
         }
     }
@@ -169,12 +172,53 @@ impl<'a, C: Verification> TransactionSignatureChecker<'a, C> {
             .verify_ecdsa(message, &parsed_signature.signature, &public_key)
             .is_ok())
     }
+
+    pub fn verify_schnorr(
+        &self,
+        signature_bytes: &[u8],
+        public_key_bytes: &[u8],
+        transaction: &open_bitcoin_primitives::Transaction,
+        input_index: usize,
+        sig_version: SigVersion,
+        execution_data: &ScriptExecutionData,
+    ) -> Result<bool, SignatureError> {
+        let parsed_signature = parse_schnorr_signature_for_verification(signature_bytes)?;
+        let public_key = parse_xonly_public_key(public_key_bytes)?;
+        let digest = taproot_sighash(
+            execution_data,
+            transaction,
+            input_index,
+            parsed_signature.sighash_type,
+            sig_version,
+            self.context,
+        )
+        .ok_or(SignatureError::InvalidHashType(
+            parsed_signature.sighash_type.raw(),
+        ))?;
+        Ok(self
+            .secp
+            .verify_schnorr(&parsed_signature.signature, digest.as_bytes(), &public_key)
+            .is_ok())
+    }
 }
 
 fn validate_legacy_sighash_type(sighash_type: SigHashType) -> Result<(), SignatureError> {
     match sighash_type.base_type() {
         1..=3 => Ok(()),
         _ => Err(SignatureError::InvalidHashType(sighash_type.raw())),
+    }
+}
+
+fn parse_schnorr_signature_for_verification(
+    bytes: &[u8],
+) -> Result<ParsedSchnorrSignature, SignatureError> {
+    let parsed = parse_schnorr_signature(bytes)?;
+    if bytes.len() == 65 && parsed.sighash_type.is_default() {
+        return Err(SignatureError::InvalidHashType(parsed.sighash_type.raw()));
+    }
+    match parsed.sighash_type.raw() {
+        0..=3 | 0x81..=0x83 => Ok(parsed),
+        _ => Err(SignatureError::InvalidHashType(parsed.sighash_type.raw())),
     }
 }
 
@@ -277,6 +321,7 @@ mod tests {
         is_strict_public_key_encoding, normalize_hybrid_public_key, parse_ecdsa_signature,
         parse_ecdsa_signature_for_verification, parse_public_key,
         parse_public_key_for_verification, parse_schnorr_signature,
+        parse_schnorr_signature_for_verification,
     };
     use crate::context::{
         ConsensusParams, ScriptVerifyFlags, SpentOutput, TransactionInputContext,
@@ -359,6 +404,22 @@ mod tests {
         let (xonly, _) = public_key.x_only_public_key();
         assert!(super::parse_xonly_public_key(&xonly.serialize()).is_ok());
         assert!(super::parse_xonly_public_key(&[1_u8; 31]).is_err());
+    }
+
+    #[test]
+    fn schnorr_verification_parsers_reject_default_suffix_and_invalid_hash_types() {
+        let default_with_suffix = [0_u8; 65];
+        assert!(matches!(
+            parse_schnorr_signature_for_verification(&default_with_suffix),
+            Err(SignatureError::InvalidHashType(0))
+        ));
+
+        let mut invalid_hash_type = [0_u8; 65];
+        invalid_hash_type[64] = 0x84;
+        assert!(matches!(
+            parse_schnorr_signature_for_verification(&invalid_hash_type),
+            Err(SignatureError::InvalidHashType(0x84))
+        ));
     }
 
     #[test]

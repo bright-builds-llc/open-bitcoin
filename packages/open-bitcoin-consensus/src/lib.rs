@@ -35,7 +35,8 @@ pub use script::{
     verify_input_script, verify_script,
 };
 pub use sighash::{
-    SigHashType, SigVersion, legacy_sighash, segwit_v0_sighash, taproot_tagged_hash,
+    SigHashType, SigVersion, legacy_sighash, segwit_v0_sighash, taproot_sighash,
+    taproot_tagged_hash,
 };
 pub use signature::{
     EcdsaVerificationRequest, ParsedEcdsaSignature, ParsedSchnorrSignature, SignatureError,

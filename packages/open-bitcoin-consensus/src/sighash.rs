@@ -1,6 +1,9 @@
 use open_bitcoin_primitives::{Hash32, ScriptBuf, Transaction, TransactionOutput};
 
-use crate::context::{PrecomputedTransactionData, TransactionInputContext};
+use crate::context::{
+    PrecomputedTransactionData, ScriptExecutionData, TransactionInputContext,
+    TransactionValidationContext,
+};
 use crate::crypto::{Sha256, double_sha256};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -158,6 +161,103 @@ pub fn taproot_tagged_hash(tag: &str, data: &[u8]) -> Hash32 {
     Hash32::from_byte_array(Sha256::digest(&preimage))
 }
 
+pub fn taproot_sighash(
+    execution_data: &ScriptExecutionData,
+    transaction: &Transaction,
+    input_index: usize,
+    sighash_type: SigHashType,
+    sig_version: SigVersion,
+    context: &TransactionValidationContext,
+) -> Option<Hash32> {
+    if input_index >= transaction.inputs.len() || context.inputs.len() != transaction.inputs.len() {
+        return None;
+    }
+    if !is_valid_taproot_sighash_type(sighash_type) {
+        return None;
+    }
+
+    let ext_flag = match sig_version {
+        SigVersion::Taproot => 0_u8,
+        SigVersion::Tapscript => 1_u8,
+        _ => return None,
+    };
+
+    let output_type = if sighash_type.is_default() {
+        SigHashType::ALL.raw()
+    } else {
+        sighash_type.base_type()
+    };
+    let input_type = sighash_type.raw() & SigHashType::ANYONECANPAY;
+
+    let mut preimage = Vec::new();
+    preimage.push(0_u8);
+    preimage.push(sighash_type.raw() as u8);
+    preimage.extend_from_slice(&transaction.version.to_le_bytes());
+    preimage.extend_from_slice(&transaction.lock_time.to_le_bytes());
+
+    if input_type != SigHashType::ANYONECANPAY {
+        preimage.extend_from_slice(&sha256_prevouts(transaction).to_byte_array());
+        preimage.extend_from_slice(&sha256_spent_amounts(context).to_byte_array());
+        preimage.extend_from_slice(&sha256_spent_scripts(context).to_byte_array());
+        preimage.extend_from_slice(&sha256_sequences(transaction).to_byte_array());
+    }
+    if output_type == SigHashType::ALL.raw() {
+        preimage.extend_from_slice(&sha256_outputs(transaction).to_byte_array());
+    }
+
+    let maybe_annex_hash = execution_data
+        .maybe_annex
+        .as_ref()
+        .map(|annex| sha256_annex(annex));
+    let spend_type = (ext_flag << 1) | u8::from(maybe_annex_hash.is_some());
+    preimage.push(spend_type);
+
+    if input_type == SigHashType::ANYONECANPAY {
+        let input = &transaction.inputs[input_index];
+        preimage.extend_from_slice(input.previous_output.txid.as_bytes());
+        preimage.extend_from_slice(&input.previous_output.vout.to_le_bytes());
+        preimage.extend_from_slice(
+            &context.inputs[input_index]
+                .spent_output
+                .value
+                .to_sats()
+                .to_le_bytes(),
+        );
+        write_script(
+            &mut preimage,
+            context.inputs[input_index]
+                .spent_output
+                .script_pubkey
+                .as_bytes(),
+        );
+        preimage.extend_from_slice(&input.sequence.to_le_bytes());
+    } else {
+        preimage.extend_from_slice(&(input_index as u32).to_le_bytes());
+    }
+    if let Some(annex_hash) = maybe_annex_hash {
+        preimage.extend_from_slice(annex_hash.as_bytes());
+    }
+
+    if output_type == SigHashType::SINGLE.raw() {
+        let output = transaction.outputs.get(input_index)?;
+        preimage.extend_from_slice(&sha256_single_output(output).to_byte_array());
+    }
+
+    if sig_version == SigVersion::Tapscript {
+        let tapleaf_hash = execution_data.maybe_tapleaf_hash?;
+        preimage.extend_from_slice(tapleaf_hash.as_bytes());
+        preimage.push(0_u8);
+        preimage.extend_from_slice(
+            &execution_data
+                .maybe_codeseparator_position
+                .unwrap_or(u32::MAX)
+                .to_le_bytes(),
+        );
+    }
+
+    Some(taproot_tagged_hash("TapSighash", &preimage))
+}
+
 fn remove_codeseparators(script: &ScriptBuf) -> Vec<u8> {
     script
         .as_bytes()
@@ -165,6 +265,64 @@ fn remove_codeseparators(script: &ScriptBuf) -> Vec<u8> {
         .copied()
         .filter(|byte| *byte != 0xab)
         .collect()
+}
+
+fn is_valid_taproot_sighash_type(sighash_type: SigHashType) -> bool {
+    matches!(sighash_type.raw(), 0..=3 | 0x81..=0x83)
+}
+
+fn sha256_prevouts(transaction: &Transaction) -> Hash32 {
+    let mut bytes = Vec::with_capacity(transaction.inputs.len() * 36);
+    for input in &transaction.inputs {
+        bytes.extend_from_slice(input.previous_output.txid.as_bytes());
+        bytes.extend_from_slice(&input.previous_output.vout.to_le_bytes());
+    }
+    Hash32::from_byte_array(Sha256::digest(&bytes))
+}
+
+fn sha256_spent_amounts(context: &TransactionValidationContext) -> Hash32 {
+    let mut bytes = Vec::with_capacity(context.inputs.len() * 8);
+    for input in &context.inputs {
+        bytes.extend_from_slice(&input.spent_output.value.to_sats().to_le_bytes());
+    }
+    Hash32::from_byte_array(Sha256::digest(&bytes))
+}
+
+fn sha256_spent_scripts(context: &TransactionValidationContext) -> Hash32 {
+    let mut bytes = Vec::new();
+    for input in &context.inputs {
+        write_script(&mut bytes, input.spent_output.script_pubkey.as_bytes());
+    }
+    Hash32::from_byte_array(Sha256::digest(&bytes))
+}
+
+fn sha256_sequences(transaction: &Transaction) -> Hash32 {
+    let mut bytes = Vec::with_capacity(transaction.inputs.len() * 4);
+    for input in &transaction.inputs {
+        bytes.extend_from_slice(&input.sequence.to_le_bytes());
+    }
+    Hash32::from_byte_array(Sha256::digest(&bytes))
+}
+
+fn sha256_outputs(transaction: &Transaction) -> Hash32 {
+    let mut bytes = Vec::new();
+    for output in &transaction.outputs {
+        write_output(&mut bytes, output);
+    }
+    Hash32::from_byte_array(Sha256::digest(&bytes))
+}
+
+fn sha256_single_output(output: &TransactionOutput) -> Hash32 {
+    let mut bytes = Vec::new();
+    write_output(&mut bytes, output);
+    Hash32::from_byte_array(Sha256::digest(&bytes))
+}
+
+fn sha256_annex(annex: &[u8]) -> Hash32 {
+    let mut bytes = Vec::new();
+    write_compact_size(&mut bytes, annex.len() as u64);
+    bytes.extend_from_slice(annex);
+    Hash32::from_byte_array(Sha256::digest(&bytes))
 }
 
 fn write_null_output(out: &mut Vec<u8>) {
@@ -208,14 +366,17 @@ fn one_hash() -> [u8; 32] {
 
 #[cfg(test)]
 mod tests {
-    use super::{SigHashType, SigVersion, legacy_sighash, segwit_v0_sighash, taproot_tagged_hash};
+    use super::{
+        SigHashType, SigVersion, legacy_sighash, segwit_v0_sighash, taproot_sighash,
+        taproot_tagged_hash,
+    };
     use crate::context::{
-        ConsensusParams, ScriptVerifyFlags, SpentOutput, TransactionInputContext,
-        TransactionValidationContext,
+        ConsensusParams, ScriptExecutionData, ScriptVerifyFlags, SpentOutput,
+        TransactionInputContext, TransactionValidationContext,
     };
     use open_bitcoin_codec::parse_transaction_without_witness;
     use open_bitcoin_primitives::{
-        Amount, ScriptBuf, Transaction, TransactionInput, TransactionOutput, Txid,
+        Amount, Hash32, ScriptBuf, Transaction, TransactionInput, TransactionOutput, Txid,
     };
 
     fn decode_hex(input: &str) -> Vec<u8> {
@@ -504,5 +665,192 @@ mod tests {
 
         let default_type = SigHashType::DEFAULT;
         assert!(default_type.is_default());
+    }
+
+    #[test]
+    fn taproot_sighash_supports_keypath_and_tapscript_inputs() {
+        let transaction = Transaction {
+            version: 2,
+            inputs: vec![TransactionInput {
+                previous_output: open_bitcoin_primitives::OutPoint {
+                    txid: Txid::from_byte_array([9_u8; 32]),
+                    vout: 0,
+                },
+                script_sig: ScriptBuf::default(),
+                sequence: 3,
+                witness: Default::default(),
+            }],
+            outputs: vec![TransactionOutput {
+                value: Amount::from_sats(40).expect("valid amount"),
+                script_pubkey: script(&[0x51]),
+            }],
+            lock_time: 0,
+        };
+        let context = TransactionValidationContext {
+            inputs: vec![TransactionInputContext {
+                spent_output: SpentOutput {
+                    value: Amount::from_sats(50).expect("valid amount"),
+                    script_pubkey: script(&[0x51]),
+                    is_coinbase: false,
+                },
+                created_height: 0,
+                created_median_time_past: 0,
+            }],
+            spend_height: 1,
+            block_time: 0,
+            median_time_past: 0,
+            verify_flags: ScriptVerifyFlags::TAPROOT,
+            consensus_params: ConsensusParams::default(),
+        };
+        let keypath = taproot_sighash(
+            &ScriptExecutionData::default(),
+            &transaction,
+            0,
+            SigHashType::DEFAULT,
+            SigVersion::Taproot,
+            &context,
+        )
+        .expect("taproot keypath sighash");
+
+        let tapscript_data = ScriptExecutionData {
+            maybe_tapleaf_hash: Some(Hash32::from_byte_array([7_u8; 32])),
+            maybe_codeseparator_position: Some(5),
+            maybe_annex: Some(vec![0x50, 0x01]),
+            ..ScriptExecutionData::default()
+        };
+        let tapscript = taproot_sighash(
+            &tapscript_data,
+            &transaction,
+            0,
+            SigHashType::SINGLE,
+            SigVersion::Tapscript,
+            &context,
+        )
+        .expect("taproot tapscript sighash");
+
+        assert_ne!(keypath, tapscript);
+        assert!(
+            taproot_sighash(
+                &ScriptExecutionData::default(),
+                &transaction,
+                0,
+                SigHashType::from_u32(0x84),
+                SigVersion::Taproot,
+                &context,
+            )
+            .is_none()
+        );
+        assert!(
+            taproot_sighash(
+                &ScriptExecutionData::default(),
+                &transaction,
+                1,
+                SigHashType::DEFAULT,
+                SigVersion::Taproot,
+                &context,
+            )
+            .is_none()
+        );
+    }
+
+    #[test]
+    fn taproot_sighash_covers_anyone_can_pay_and_invalid_sigversion_paths() {
+        let transaction = Transaction {
+            version: 2,
+            inputs: vec![
+                TransactionInput {
+                    previous_output: open_bitcoin_primitives::OutPoint {
+                        txid: Txid::from_byte_array([0x11_u8; 32]),
+                        vout: 0,
+                    },
+                    script_sig: ScriptBuf::default(),
+                    sequence: 1,
+                    witness: Default::default(),
+                },
+                TransactionInput {
+                    previous_output: open_bitcoin_primitives::OutPoint {
+                        txid: Txid::from_byte_array([0x22_u8; 32]),
+                        vout: 1,
+                    },
+                    script_sig: ScriptBuf::default(),
+                    sequence: 2,
+                    witness: Default::default(),
+                },
+            ],
+            outputs: vec![
+                TransactionOutput {
+                    value: Amount::from_sats(40).expect("valid amount"),
+                    script_pubkey: script(&[0x51]),
+                },
+                TransactionOutput {
+                    value: Amount::from_sats(41).expect("valid amount"),
+                    script_pubkey: script(&[0x52]),
+                },
+            ],
+            lock_time: 5,
+        };
+        let context = TransactionValidationContext {
+            inputs: vec![
+                TransactionInputContext {
+                    spent_output: SpentOutput {
+                        value: Amount::from_sats(50).expect("valid amount"),
+                        script_pubkey: script(&[0x51]),
+                        is_coinbase: false,
+                    },
+                    created_height: 0,
+                    created_median_time_past: 0,
+                },
+                TransactionInputContext {
+                    spent_output: SpentOutput {
+                        value: Amount::from_sats(60).expect("valid amount"),
+                        script_pubkey: script(&[0x52]),
+                        is_coinbase: false,
+                    },
+                    created_height: 0,
+                    created_median_time_past: 0,
+                },
+            ],
+            spend_height: 1,
+            block_time: 0,
+            median_time_past: 0,
+            verify_flags: ScriptVerifyFlags::TAPROOT,
+            consensus_params: ConsensusParams::default(),
+        };
+        let execution_data = ScriptExecutionData {
+            maybe_annex: Some(vec![0x50, 0x01]),
+            ..ScriptExecutionData::default()
+        };
+
+        let default_hash = taproot_sighash(
+            &execution_data,
+            &transaction,
+            1,
+            SigHashType::DEFAULT,
+            SigVersion::Taproot,
+            &context,
+        )
+        .expect("default taproot sighash");
+        let anyone_can_pay_hash = taproot_sighash(
+            &execution_data,
+            &transaction,
+            1,
+            SigHashType::from_u32(SigHashType::ALL.raw() | SigHashType::ANYONECANPAY),
+            SigVersion::Taproot,
+            &context,
+        )
+        .expect("ANYONECANPAY taproot sighash");
+
+        assert_ne!(default_hash, anyone_can_pay_hash);
+        assert!(
+            taproot_sighash(
+                &execution_data,
+                &transaction,
+                1,
+                SigHashType::DEFAULT,
+                SigVersion::Base,
+                &context,
+            )
+            .is_none()
+        );
     }
 }

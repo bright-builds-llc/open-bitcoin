@@ -97,7 +97,7 @@
           "known_bugs_status": "none-confirmed",
           "suspected_unknowns": [
             "Which additional legacy signature vectors beyond the current CHECKSIG or CHECKMULTISIG or P2PKH slice should remain tracked before consensus parity can move to done.",
-            "Which taproot and tapscript vectors should anchor Phase 3.3 and the final parity closure in Phase 3.4."
+            "Which imported taproot and tapscript vectors should anchor the final parity closure in Phase 3.4."
           ]
         }
       }

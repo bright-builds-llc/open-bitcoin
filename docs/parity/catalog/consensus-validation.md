@@ -21,6 +21,12 @@ Open Bitcoin. The behavioral baseline remains Bitcoin Knots
 - canonical `P2SH` redeem-script execution
 - native and nested segwit-v0 witness-program execution for `P2WPKH`, `P2WSH`,
   `P2SH-P2WPKH`, and `P2SH-P2WSH`
+- taproot key-path verification with repo-owned taproot sighash support and
+  Schnorr validation
+- tapscript script-path execution with control-block or tapleaf validation,
+  annex handling, CODESEPARATOR tracking, and `CHECKSIGADD`
+- taproot discouragement or upgrade-flag enforcement for supported witness-v1
+  execution points
 - split sigop accounting across legacy, `P2SH`, and witness paths in the
   contextual validation surface
 
@@ -54,14 +60,12 @@ Open Bitcoin. The behavioral baseline remains Bitcoin Knots
 
 ## Known gaps
 
-- Taproot key-path, script-path, and tapscript execution are still open in
-  Phase 3.3.
-- The current deterministic parity fixtures cover the implemented slice only,
-  not the full in-scope consensus surface that Phase 3.4 must close.
+- The current deterministic parity fixtures still cover only the implemented
+  slice, not the full imported consensus corpus that Phase 3.4 must close.
+- The consensus surface is implemented, but it should not move to `done` in the
+  parity index until Phase 3.4 lands the remaining imported regression corpus.
 
 ## Follow-up triggers
 
-Update this entry when Phase 3.1 through 3.4 work:
-
-- adds taproot or tapscript execution
-- closes the remaining parity corpus and promotes the consensus surface to done
+Update this entry when Phase 3.4 work closes the remaining parity corpus and
+promotes the consensus surface to done.

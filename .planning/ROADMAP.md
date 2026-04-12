@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Consensus Validation Foundation** - Establish the pure-core consensus foundation, contextual validation framework, and initial signature scaffolding. (completed 2026-04-11)
 - [x] **Phase 3.1: Legacy Signature Execution (INSERTED)** - Finish legacy CHECKSIG/CHECKMULTISIG execution and P2PKH. (completed 2026-04-11)
 - [x] **Phase 3.2: P2SH and Segwit-v0 Execution (INSERTED)** - Add P2SH, segwit-v0 spending paths, and split sigop accounting. (completed 2026-04-12)
-- [ ] **Phase 3.3: Taproot and Tapscript Execution (INSERTED)** - Add taproot key-path, tapscript script-path, and taproot flag enforcement.
+- [x] **Phase 3.3: Taproot and Tapscript Execution (INSERTED)** - Add taproot key-path, tapscript script-path, and taproot flag enforcement. (completed 2026-04-12)
 - [ ] **Phase 3.4: Consensus Parity Closure (INSERTED)** - Complete the parity corpus and close the consensus lifecycle honestly.
 - [ ] **Phase 4: Chainstate and UTXO Engine** - Implement baseline-compatible chainstate, UTXO tracking, and reorg handling.
 - [ ] **Phase 5: Mempool and Node Policy** - Match mempool policy, replacement, and eviction behavior.
@@ -124,9 +124,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 03.3-01: Implement taproot key-path verification.
-- [ ] 03.3-02: Implement tapscript script-path execution.
-- [ ] 03.3-03: Enforce taproot policy/upgrade flags and validation-weight rules.
+- [x] 03.3-01: Implement taproot key-path verification.
+- [x] 03.3-02: Implement tapscript script-path execution.
+- [x] 03.3-03: Enforce taproot policy/upgrade flags and validation-weight rules.
 
 ### Phase 3.4: Consensus Parity Closure (INSERTED)
 **Goal**: Complete the remaining parity corpus and close the consensus lifecycle honestly.
@@ -264,9 +264,9 @@ Phases execute in numeric order: 2 → 2.1 → 2.2 → 3 → 3.1 → 3.2 → 3.3
 | 1. Workspace, Baseline, and Guardrails | 4/4 | Complete    | 2026-04-11 |
 | 2. Core Domain and Serialization Foundations | 4/4 | Complete    | 2026-04-11 |
 | 3. Consensus Validation Foundation | 7/7 | Complete    | 2026-04-11 |
-| 3.1. Legacy Signature Execution | 0/3 | Not started | - |
-| 3.2. P2SH and Segwit-v0 Execution | 0/3 | Not started | - |
-| 3.3. Taproot and Tapscript Execution | 0/3 | Not started | - |
+| 3.1. Legacy Signature Execution | 3/3 | Complete | 2026-04-11 |
+| 3.2. P2SH and Segwit-v0 Execution | 3/3 | Complete | 2026-04-12 |
+| 3.3. Taproot and Tapscript Execution | 3/3 | Complete | 2026-04-12 |
 | 3.4. Consensus Parity Closure | 0/3 | Not started | - |
 | 4. Chainstate and UTXO Engine | 0/3 | Not started | - |
 | 5. Mempool and Node Policy | 0/3 | Not started | - |
