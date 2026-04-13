@@ -7,6 +7,7 @@
 [![GitHub Stars](https://img.shields.io/github/stars/bright-builds-llc/open-bitcoin)](https://github.com/bright-builds-llc/open-bitcoin)
 [![CI](https://img.shields.io/github/actions/workflow/status/bright-builds-llc/open-bitcoin/ci.yml?style=flat-square&logo=github&label=CI)](https://github.com/bright-builds-llc/open-bitcoin/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/bright-builds-llc/open-bitcoin?style=flat-square)](./LICENSE)
+[![Rust 1.94.1](https://img.shields.io/badge/Rust-1.94.1-000000?logo=rust&logoColor=white)](https://www.rust-lang.org/)
 [![Bright Builds: Rules](https://raw.githubusercontent.com/bright-builds-llc/bright-builds-rules/main/public/badges/bright-builds-rules-flat.svg)](https://github.com/bright-builds-llc/bright-builds-rules)
 
 <!-- bright-builds-rules-readme-badges:end -->
