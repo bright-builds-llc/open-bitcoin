@@ -5,6 +5,9 @@ rust_library(
     srcs = glob(["src/**/*.rs"]),
     crate_name = "open_bitcoin_node",
     edition = "2024",
-    deps = ["//packages/open-bitcoin-core:open_bitcoin_core_lib"],
+    deps = [
+        "//packages/open-bitcoin-core:open_bitcoin_core_lib",
+        "//packages/open-bitcoin-mempool:open_bitcoin_mempool_lib",
+    ],
     visibility = ["//visibility:public"],
 )

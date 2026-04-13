@@ -98,6 +98,46 @@
         }
       },
       {
+        "id": "mempool-policy",
+        "title": "Mempool Policy",
+        "path": "catalog/mempool-policy.md",
+        "phase": "05-mempool-and-node-policy",
+        "status": "done",
+        "scope": [
+          "mempool",
+          "policy",
+          "replacement",
+          "ancestor-descendant",
+          "eviction"
+        ],
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/txmempool.h",
+            "packages/bitcoin-knots/src/txmempool.cpp",
+            "packages/bitcoin-knots/src/policy/policy.h",
+            "packages/bitcoin-knots/src/policy/rbf.h"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/src/test/rbf_tests.cpp",
+            "packages/bitcoin-knots/src/test/txpackage_tests.cpp",
+            "packages/open-bitcoin-mempool/tests/parity.rs"
+          ]
+        },
+        "highlights": {
+          "quirks": [
+            "Admission derives prevouts from chainstate first and then from already-accepted mempool parents, keeping the policy core free of hidden node globals.",
+            "Replacement requires a higher absolute fee, a higher feerate than each direct conflict, and an incremental relay-fee bump before the conflict set is removed.",
+            "Open Bitcoin recomputes parent-child and ancestor-descendant metrics deterministically after each mutation instead of mirroring Knots' cache-heavy bookkeeping in this first slice."
+          ],
+          "known_bugs": [],
+          "known_bugs_status": "none-confirmed",
+          "suspected_unknowns": [
+            "How closely rolling minimum-fee decay and long-lived mempool pressure should mirror Knots once the node keeps a persistent runtime mempool.",
+            "How much package-relay behavior should remain pure-core versus move into later networking orchestration."
+          ]
+        }
+      },
+      {
         "id": "consensus-validation",
         "title": "Consensus Validation Foundation",
         "path": "catalog/consensus-validation.md",
@@ -152,7 +192,7 @@
     },
     {
       "name": "mempool-policy",
-      "status": "planned"
+      "status": "done"
     },
     {
       "name": "p2p",

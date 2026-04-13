@@ -1,5 +1,5 @@
 [package]
-name = "open-bitcoin-core"
+name = "open-bitcoin-mempool"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
@@ -12,5 +12,4 @@ path = "src/lib.rs"
 open-bitcoin-chainstate = { path = "../open-bitcoin-chainstate" }
 open-bitcoin-codec = { path = "../open-bitcoin-codec" }
 open-bitcoin-consensus = { path = "../open-bitcoin-consensus" }
-open-bitcoin-mempool = { path = "../open-bitcoin-mempool" }
 open-bitcoin-primitives = { path = "../open-bitcoin-primitives" }

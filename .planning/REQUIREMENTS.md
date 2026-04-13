@@ -34,8 +34,8 @@
 ### Chainstate & Policy
 
 - [x] **CHAIN-01**: The node maintains chainstate and UTXO state with baseline-compatible connect, disconnect, and reorg behavior.
-- [ ] **MEM-01**: The node enforces mempool admission, replacement, and eviction policy compatibly with the baseline.
-- [ ] **MEM-02**: Policy-related deviations are explicit, tested, and recorded instead of drifting silently.
+- [x] **MEM-01**: The node enforces mempool admission, replacement, and eviction policy compatibly with the baseline.
+- [x] **MEM-02**: Policy-related deviations are explicit, tested, and recorded instead of drifting silently.
 
 ### Networking
 
@@ -95,8 +95,8 @@
 | CONS-02 | Phases 3, 3.1, 3.2, 3.3 | Complete |
 | CONS-03 | Phase 3.4 | Complete |
 | CHAIN-01 | Phase 4 | Complete |
-| MEM-01 | Phase 5 | Pending |
-| MEM-02 | Phase 5 | Pending |
+| MEM-01 | Phase 5 | Complete |
+| MEM-02 | Phase 5 | Complete |
 | P2P-01 | Phase 6 | Pending |
 | P2P-02 | Phase 6 | Pending |
 | WAL-01 | Phase 7 | Pending |
@@ -118,4 +118,4 @@
 
 ---
 *Requirements defined: 2026-04-11*
-*Last updated: 2026-04-12 after Phase 4 completion*
+*Last updated: 2026-04-13 after Phase 5 completion*

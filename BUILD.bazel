@@ -33,3 +33,9 @@ alias(
     actual = "//packages/open-bitcoin-node:open_bitcoin_node_lib",
     visibility = ["//visibility:public"],
 )
+
+alias(
+    name = "mempool",
+    actual = "//packages/open-bitcoin-mempool:open_bitcoin_mempool_lib",
+    visibility = ["//visibility:public"],
+)

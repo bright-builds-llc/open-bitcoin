@@ -20,7 +20,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3.3: Taproot and Tapscript Execution (INSERTED)** - Add taproot key-path, tapscript script-path, and taproot flag enforcement. (completed 2026-04-12)
 - [x] **Phase 3.4: Consensus Parity Closure (INSERTED)** - Complete the parity corpus and close the consensus lifecycle honestly. (completed 2026-04-12)
 - [x] **Phase 4: Chainstate and UTXO Engine** - Implement baseline-compatible chainstate, UTXO tracking, and reorg handling. (completed 2026-04-12)
-- [ ] **Phase 5: Mempool and Node Policy** - Match mempool policy, replacement, and eviction behavior.
+- [x] **Phase 5: Mempool and Node Policy** - Match mempool policy, replacement, and eviction behavior. (completed 2026-04-13)
 - [ ] **Phase 6: P2P Networking and Sync** - Add peer lifecycle, message handling, and sync behavior.
 - [ ] **Phase 7: Wallet Core and Adapters** - Implement headless wallet behavior with pure-core boundaries intact.
 - [ ] **Phase 8: RPC, CLI, and Config Parity** - Expose node and wallet behavior through compatible operator interfaces.
@@ -169,9 +169,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 05-01: Implement mempool admission and replacement rules.
-- [ ] 05-02: Implement fee, ancestor, descendant, and eviction policy accounting.
-- [ ] 05-03: Add policy parity tests and deviation tracking hooks.
+- [x] 05-01: Implement mempool admission and replacement rules.
+- [x] 05-02: Implement fee, ancestor, descendant, and eviction policy accounting.
+- [x] 05-03: Add policy parity tests and deviation tracking hooks.
 
 ### Phase 6: P2P Networking and Sync
 **Goal**: Implement the peer manager, wire protocol handling, and sync flows needed for baseline-compatible networking behavior.
@@ -257,7 +257,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 2 → 2.1 → 2.2 → 3 → 3.1 → 3.2 → 3.3 → 3.4 → 4
+Phases execute in numeric order: 2 → 2.1 → 2.2 → 3 → 3.1 → 3.2 → 3.3 → 3.4 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -268,8 +268,8 @@ Phases execute in numeric order: 2 → 2.1 → 2.2 → 3 → 3.1 → 3.2 → 3.3
 | 3.2. P2SH and Segwit-v0 Execution | 3/3 | Complete | 2026-04-12 |
 | 3.3. Taproot and Tapscript Execution | 3/3 | Complete | 2026-04-12 |
 | 3.4. Consensus Parity Closure | 3/3 | Complete | 2026-04-12 |
-| 4. Chainstate and UTXO Engine | 0/3 | Not started | - |
-| 5. Mempool and Node Policy | 0/3 | Not started | - |
+| 4. Chainstate and UTXO Engine | 3/3 | Complete | 2026-04-12 |
+| 5. Mempool and Node Policy | 3/3 | Complete | 2026-04-13 |
 | 6. P2P Networking and Sync | 0/4 | Not started | - |
 | 7. Wallet Core and Adapters | 0/4 | Not started | - |
 | 8. RPC, CLI, and Config Parity | 0/3 | Not started | - |

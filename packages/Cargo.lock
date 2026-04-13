@@ -104,6 +104,17 @@ dependencies = [
  "open-bitcoin-chainstate",
  "open-bitcoin-codec",
  "open-bitcoin-consensus",
+ "open-bitcoin-mempool",
+ "open-bitcoin-primitives",
+]
+
+[[package]]
+name = "open-bitcoin-mempool"
+version = "0.1.0"
+dependencies = [
+ "open-bitcoin-chainstate",
+ "open-bitcoin-codec",
+ "open-bitcoin-consensus",
  "open-bitcoin-primitives",
 ]
 
@@ -112,6 +123,7 @@ name = "open-bitcoin-node"
 version = "0.1.0"
 dependencies = [
  "open-bitcoin-core",
+ "open-bitcoin-mempool",
 ]
 
 [[package]]
