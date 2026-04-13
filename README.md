@@ -28,7 +28,8 @@ Open Bitcoin is a headless Bitcoin node and wallet implementation in Rust. It is
 - `packages/open-bitcoin-core/` is the initial pure-core Rust crate, currently a scaffold for future domain logic.
 - `packages/open-bitcoin-node/` is the initial shell/runtime crate, currently a scaffold for future adapters and orchestration.
 - The repository has both a Rust workspace under `packages/` and top-level Bazelisk/Bazel+Bzlmod workspace scaffolding for first-party code.
-- `bash scripts/verify.sh` is the repo-native verification entrypoint for format, lint, build, tests, architecture-policy enforcement, and the current pure-core coverage gate.
+- `rust-toolchain.toml` pins Rust `1.94.1` as the shared Cargo, CI, and Bazel toolchain target.
+- `bash scripts/verify.sh` is the repo-native verification entrypoint for format, lint, build, tests, the Bazel smoke build, architecture-policy enforcement, and the current pure-core coverage gate.
 - `docs/parity/` contains the seeded parity and deviation ledger, with all in-scope surfaces currently marked as `planned`.
 
 ## What Is Next
@@ -43,6 +44,7 @@ After that, the roadmap layers in consensus validation, chainstate and UTXO beha
 - `packages/open-bitcoin-core/` is the pure-core Rust crate that will hold domain logic and stay free of direct I/O and runtime side effects.
 - `packages/open-bitcoin-node/` is the shell/runtime Rust crate that will own adapters, orchestration, and other effectful boundaries.
 - `docs/parity/` tracks parity status and intentional deviations from the pinned baseline.
+- `.githooks/` contains the repo-managed Git hooks used to run the local verification contract before commit.
 - `scripts/verify.sh` is the source-of-truth local verification command for first-party code.
 
 ## Contributor Quickstart
@@ -51,6 +53,12 @@ Materialize the pinned reference baseline:
 
 ```bash
 git submodule update --init --recursive
+```
+
+Install the repo-managed Git hooks once per clone:
+
+```bash
+bash scripts/install-git-hooks.sh
 ```
 
 Run the repo-native verification flow:

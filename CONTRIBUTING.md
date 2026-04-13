@@ -65,7 +65,21 @@ Use the repo-native verification entrypoint:
 bash scripts/verify.sh
 ```
 
-This script is the source of truth for local verification and is mirrored in CI.
+This script is the source of truth for local verification and is mirrored in CI. It runs the Rust workspace checks, the Bazel smoke build, and the pure-core coverage gate as one contract.
+
+### Rust toolchain
+
+The repository pins Rust `1.94.1` in `rust-toolchain.toml`. Use `rustup`-managed `cargo` and `rustc` so local development, CI, and Bazel stay aligned on the same compiler line.
+
+### Git hooks
+
+Install the repo-managed hooks once per clone:
+
+```bash
+bash scripts/install-git-hooks.sh
+```
+
+The committed `.githooks/pre-commit` hook runs `bash scripts/verify.sh` before each commit.
 
 ### Parity and deviations
 

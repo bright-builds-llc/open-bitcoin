@@ -17,8 +17,11 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install Rust
+      - name: Install Rust 1.94.1
         uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.94.1
+          components: rustfmt, clippy
 
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
@@ -29,6 +32,3 @@ jobs:
 
       - name: Run repo verification
         run: bash scripts/verify.sh
-
-      - name: Bazel smoke build
-        run: bazel build //:core //:node

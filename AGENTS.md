@@ -34,7 +34,9 @@ Use this routing map when deciding what to load next:
 ## Repo-Local Guidance
 
 - Use `git submodule update --init --recursive` to materialize the pinned Knots baseline under `packages/bitcoin-knots`.
-- Use `bash scripts/verify.sh` as the repo-native verification contract for first-party code.
+- Use `rust-toolchain.toml` as the Rust source of truth for local Cargo, CI, and Bazel. The current pinned version is `1.94.1`.
+- Use `bash scripts/verify.sh` as the repo-native verification contract for first-party code, including the Bazel smoke build.
+- Use `bash scripts/install-git-hooks.sh` once per clone to install the repo-managed Git hooks under `.githooks`.
 - Record intentional in-scope behavior differences from Bitcoin Knots in `docs/parity/index.json` and companion docs under `docs/parity/`.
 
 <!-- GSD:project-start source:PROJECT.md -->
