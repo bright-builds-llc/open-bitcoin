@@ -174,6 +174,49 @@
           "known_bugs_status": "none-confirmed",
           "suspected_unknowns": []
         }
+      },
+      {
+        "id": "p2p",
+        "title": "P2P Networking And Sync",
+        "path": "catalog/p2p.md",
+        "phase": "06-p2p-networking-and-sync",
+        "status": "done",
+        "scope": [
+          "peer-lifecycle",
+          "wire-messages",
+          "headers-sync",
+          "block-download",
+          "tx-relay"
+        ],
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/protocol.h",
+            "packages/bitcoin-knots/src/headerssync.h",
+            "packages/bitcoin-knots/src/headerssync.cpp",
+            "packages/bitcoin-knots/src/sync.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/src/test/peerman_tests.cpp",
+            "packages/bitcoin-knots/test/functional/p2p_handshake.py",
+            "packages/bitcoin-knots/test/functional/p2p_initial_headers_sync.py",
+            "packages/bitcoin-knots/test/functional/p2p_tx_download.py",
+            "packages/open-bitcoin-network/tests/parity.rs",
+            "packages/open-bitcoin-node/src/network.rs"
+          ]
+        },
+        "highlights": {
+          "quirks": [
+            "Handshake keeps `wtxidrelay` and `sendheaders` visible as first-class capability messages instead of burying them in peer metadata.",
+            "Unknown block announcements trigger locator-driven header sync before block download, matching the modern header-first flow.",
+            "Transaction relay keeps txid and wtxid identity visible and switches requested inventory type when `wtxidrelay` is negotiated."
+          ],
+          "known_bugs": [],
+          "known_bugs_status": "none-confirmed",
+          "suspected_unknowns": [
+            "How closely later phases should mirror Knots peer-eviction, timeout, and resource-governance policy once real transport adapters land.",
+            "Which discovery and address-relay behaviors should stay pure-core versus move into later shell-owned transport orchestration."
+          ]
+        }
       }
     ]
   },
@@ -196,7 +239,7 @@
     },
     {
       "name": "p2p",
-      "status": "planned"
+      "status": "done"
     },
     {
       "name": "wallet",

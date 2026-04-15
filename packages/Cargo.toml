@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "open-bitcoin-chainstate",
+    "open-bitcoin-network",
     "open-bitcoin-core",
     "open-bitcoin-consensus",
     "open-bitcoin-primitives",

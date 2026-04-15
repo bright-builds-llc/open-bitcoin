@@ -21,7 +21,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3.4: Consensus Parity Closure (INSERTED)** - Complete the parity corpus and close the consensus lifecycle honestly. (completed 2026-04-12)
 - [x] **Phase 4: Chainstate and UTXO Engine** - Implement baseline-compatible chainstate, UTXO tracking, and reorg handling. (completed 2026-04-12)
 - [x] **Phase 5: Mempool and Node Policy** - Match mempool policy, replacement, and eviction behavior. (completed 2026-04-13)
-- [ ] **Phase 6: P2P Networking and Sync** - Add peer lifecycle, message handling, and sync behavior.
+- [x] **Phase 6: P2P Networking and Sync** - Add peer lifecycle, message handling, and sync behavior. (completed 2026-04-14)
 - [ ] **Phase 7: Wallet Core and Adapters** - Implement headless wallet behavior with pure-core boundaries intact.
 - [ ] **Phase 8: RPC, CLI, and Config Parity** - Expose node and wallet behavior through compatible operator interfaces.
 - [ ] **Phase 9: Parity Harnesses and Fuzzing** - Lock down external behavior with reusable black-box and fuzz/property suites.
@@ -185,10 +185,10 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 06-01: Implement peer lifecycle, version handshake, and connection management.
-- [ ] 06-02: Implement header download, block sync, and peer selection behavior.
-- [ ] 06-03: Implement inventory, transaction relay, and message-level policy handling.
-- [ ] 06-04: Add hermetic multi-node fixtures for networking parity.
+- [x] 06-01: Implement peer lifecycle, version handshake, and connection management.
+- [x] 06-02: Implement header download, block sync, and peer selection behavior.
+- [x] 06-03: Implement inventory, transaction relay, and message-level policy handling.
+- [x] 06-04: Add hermetic multi-node fixtures for networking parity.
 
 ### Phase 7: Wallet Core and Adapters
 **Goal**: Implement headless wallet behavior that matches the in-scope baseline while keeping state transitions pure and persistence adapter-owned.

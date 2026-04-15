@@ -1,4 +1,5 @@
 open-bitcoin-chainstate
+open-bitcoin-network
 open-bitcoin-core
 open-bitcoin-primitives
 open-bitcoin-codec

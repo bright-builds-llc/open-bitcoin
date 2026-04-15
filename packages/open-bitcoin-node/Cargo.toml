@@ -11,3 +11,4 @@ path = "src/lib.rs"
 [dependencies]
 open-bitcoin-core = { path = "../open-bitcoin-core" }
 open-bitcoin-mempool = { path = "../open-bitcoin-mempool" }
+open-bitcoin-network = { path = "../open-bitcoin-network" }

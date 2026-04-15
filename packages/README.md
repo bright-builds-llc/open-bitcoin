@@ -4,6 +4,7 @@ This directory holds both the pinned upstream reference baseline and first-party
 
 - `bitcoin-knots/` is the vendored upstream behavioral baseline. Treat it as read-only from the perspective of first-party implementation work.
 - `open-bitcoin-chainstate/` is the pure-core chainstate crate that owns UTXO state, undo data, and active-chain mutation logic.
+- `open-bitcoin-network/` is the pure-core networking crate that owns peer lifecycle, wire-message handling, and sync or relay state.
 - `open-bitcoin-core/` is the first pure-core Rust crate for domain logic that must stay free of direct I/O and runtime side effects.
 - `open-bitcoin-consensus/` is the pure-core consensus and validation crate that owns script, transaction, and block checks.
 - `open-bitcoin-mempool/` is the pure-core mempool crate that owns policy admission, replacement, ancestor or descendant accounting, and eviction behavior.

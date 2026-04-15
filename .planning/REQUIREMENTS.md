@@ -39,8 +39,8 @@
 
 ### Networking
 
-- [ ] **P2P-01**: The node performs peer handshake, peer lifecycle, and message handling compatibly with the baseline.
-- [ ] **P2P-02**: The node syncs headers and blocks and relays inventory and transactions compatibly with the baseline.
+- [x] **P2P-01**: The node performs peer handshake, peer lifecycle, and message handling compatibly with the baseline.
+- [x] **P2P-02**: The node syncs headers and blocks and relays inventory and transactions compatibly with the baseline.
 
 ### Wallet
 
@@ -97,8 +97,8 @@
 | CHAIN-01 | Phase 4 | Complete |
 | MEM-01 | Phase 5 | Complete |
 | MEM-02 | Phase 5 | Complete |
-| P2P-01 | Phase 6 | Pending |
-| P2P-02 | Phase 6 | Pending |
+| P2P-01 | Phase 6 | Complete |
+| P2P-02 | Phase 6 | Complete |
 | WAL-01 | Phase 7 | Pending |
 | WAL-02 | Phase 7 | Pending |
 | WAL-03 | Phase 7 | Pending |
