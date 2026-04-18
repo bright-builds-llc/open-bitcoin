@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Completed 07.1-03-PLAN.md
-last_updated: "2026-04-18T18:03:21.250Z"
+stopped_at: Phase 07.1 complete; Phase 8 next
+last_updated: "2026-04-18T18:14:02.749Z"
 last_activity: 2026-04-18
 progress:
   total_phases: 15
@@ -21,12 +21,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-11)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 07.1 — Codebase Maintainability Refactor Wave
+**Current focus:** Phase 8 — RPC, CLI, and Config Parity
 
 ## Current Position
 
-Phase: 07.1 (Codebase Maintainability Refactor Wave) — EXECUTING
-Plan: 3 of 3
+Phase: 8
+Plan: Not started
 Status: Phase complete — ready for verification
 Last activity: 2026-04-18
 
@@ -36,7 +36,7 @@ Progress: ███████░░░ 73%
 
 **Velocity:**
 
-- Total plans completed: 41
+- Total plans completed: 44
 - Average duration: 0 min
 - Total execution time: 0.0 hours
 
@@ -55,6 +55,7 @@ Progress: ███████░░░ 73%
 | 05 | 3 | - | - |
 | 06 | 4 | - | - |
 | 07 | 4 | - | - |
+| 07.1 | 3 | - | - |
 
 **Recent Trend:**
 
@@ -106,6 +107,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-18T18:03:21.247Z
-Stopped at: Completed 07.1-03-PLAN.md
-Resume file: None
+Last session: 2026-04-18T18:14:02.747Z
+Stopped at: Phase 07.1 complete; Phase 8 next
+Resume file: .planning/ROADMAP.md
