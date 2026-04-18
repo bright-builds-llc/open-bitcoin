@@ -17,55 +17,33 @@ use crate::crypto::{Sha256, double_sha256, hash160};
 use crate::sighash::{SigVersion, taproot_tagged_hash};
 use crate::signature::{EcdsaVerificationRequest, SignatureError, TransactionSignatureChecker};
 
-const MAX_STACK_SIZE: usize = 1_000;
-const OP_PUSHDATA1: u8 = 0x4c;
-const OP_PUSHDATA2: u8 = 0x4d;
-const OP_PUSHDATA4: u8 = 0x4e;
-const OP_1NEGATE: u8 = 0x4f;
-const OP_1: u8 = 0x51;
-const OP_16: u8 = 0x60;
-const OP_NOP: u8 = 0x61;
-const OP_IF: u8 = 0x63;
-const OP_NOTIF: u8 = 0x64;
-const OP_ELSE: u8 = 0x67;
-const OP_ENDIF: u8 = 0x68;
-const OP_VERIFY: u8 = 0x69;
-const OP_DROP: u8 = 0x75;
-const OP_DUP: u8 = 0x76;
-const OP_OVER: u8 = 0x78;
-const OP_SWAP: u8 = 0x7c;
-const OP_SIZE: u8 = 0x82;
-const OP_EQUAL: u8 = 0x87;
-const OP_EQUALVERIFY: u8 = 0x88;
-const OP_1ADD: u8 = 0x8b;
-const OP_1SUB: u8 = 0x8c;
-const OP_NEGATE: u8 = 0x8f;
-const OP_NOT: u8 = 0x91;
-const OP_0NOTEQUAL: u8 = 0x92;
-const OP_ADD: u8 = 0x93;
-const OP_SUB: u8 = 0x94;
-const OP_BOOLAND: u8 = 0x9a;
-const OP_BOOLOR: u8 = 0x9b;
-const OP_NUMEQUAL: u8 = 0x9c;
-const OP_NUMEQUALVERIFY: u8 = 0x9d;
-const OP_NUMNOTEQUAL: u8 = 0x9e;
-const OP_LESSTHAN: u8 = 0x9f;
-const OP_GREATERTHAN: u8 = 0xa0;
-const OP_MIN: u8 = 0xa3;
-const OP_MAX: u8 = 0xa4;
-const OP_WITHIN: u8 = 0xa5;
-const OP_RIPEMD160: u8 = 0xa6;
-const OP_SHA256: u8 = 0xa8;
-const OP_HASH160: u8 = 0xa9;
-const OP_HASH256: u8 = 0xaa;
-const OP_CODESEPARATOR: u8 = 0xab;
-const OP_CHECKSIG: u8 = 0xac;
-const OP_CHECKSIGVERIFY: u8 = 0xad;
-const OP_CHECKMULTISIG: u8 = 0xae;
-const OP_CHECKMULTISIGVERIFY: u8 = 0xaf;
-const OP_CHECKSIGADD: u8 = 0xba;
-const OP_RETURN: u8 = 0x6a;
-const MAX_PUBKEYS_PER_MULTISIG: usize = 20;
+mod encoding;
+mod opcodes;
+mod stack;
+
+use self::encoding::{
+    encode_push_data, read_instruction, remove_signature_from_script, serialized_witness_size,
+    write_compact_size,
+};
+use self::opcodes::{
+    MAX_PUBKEYS_PER_MULTISIG, OP_0NOTEQUAL, OP_1, OP_1ADD, OP_1NEGATE, OP_1SUB, OP_16, OP_ADD,
+    OP_BOOLAND, OP_BOOLOR, OP_CHECKMULTISIG, OP_CHECKMULTISIGVERIFY, OP_CHECKSIG, OP_CHECKSIGADD,
+    OP_CHECKSIGVERIFY, OP_CODESEPARATOR, OP_DROP, OP_DUP, OP_ELSE, OP_ENDIF, OP_EQUAL,
+    OP_EQUALVERIFY, OP_GREATERTHAN, OP_HASH160, OP_HASH256, OP_IF, OP_LESSTHAN, OP_MAX, OP_MIN,
+    OP_NEGATE, OP_NOP, OP_NOT, OP_NOTIF, OP_NUMEQUAL, OP_NUMEQUALVERIFY, OP_NUMNOTEQUAL, OP_OVER,
+    OP_RETURN, OP_RIPEMD160, OP_SHA256, OP_SIZE, OP_SUB, OP_SWAP, OP_VERIFY, OP_WITHIN,
+    decode_small_int_opcode, is_disabled_opcode, is_op_success,
+};
+use self::stack::{
+    ConditionStack, MAX_STACK_SIZE, binary_num_op, cast_to_bool, decode_small_num, encode_bool,
+    encode_script_num, pop_bytes, pop_num, push_stack, script_booland, script_boolor, unary_num_op,
+};
+
+#[cfg(test)]
+use self::encoding::compact_size_len;
+#[cfg(test)]
+use self::stack::decode_script_num;
+
 const TAPROOT_LEAF_MASK: u8 = 0xfe;
 const TAPROOT_LEAF_TAPSCRIPT: u8 = 0xc0;
 const TAPROOT_CONTROL_BASE_SIZE: usize = 33;
@@ -152,12 +130,6 @@ impl fmt::Display for ScriptError {
 
 impl std::error::Error for ScriptError {}
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct Instruction {
-    opcode: u8,
-    maybe_data: Option<Vec<u8>>,
-}
-
 pub fn eval_script(stack: &mut Vec<Vec<u8>>, script: &ScriptBuf) -> Result<(), ScriptError> {
     eval_script_internal(stack, script, None, None)
 }
@@ -169,41 +141,6 @@ struct LegacyExecutionContext<'a> {
     spent_input: &'a TransactionInputContext,
     verify_flags: ScriptVerifyFlags,
     sig_version: SigVersion,
-}
-
-#[derive(Default)]
-struct ConditionStack(Vec<bool>);
-
-impl ConditionStack {
-    fn all_true(&self) -> bool {
-        self.0.iter().all(|value| *value)
-    }
-
-    fn push(&mut self, value: bool) {
-        self.0.push(value);
-    }
-
-    fn pop(&mut self) -> Option<bool> {
-        self.0.pop()
-    }
-
-    fn toggle_top(&mut self) -> Result<(), ScriptError> {
-        let Some(top) = self.0.last_mut() else {
-            return Err(ScriptError::UnbalancedConditional);
-        };
-        *top = !*top;
-        Ok(())
-    }
-
-    fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-
-    fn outer_all_true(&self) -> bool {
-        self.0
-            .get(..self.0.len().saturating_sub(1))
-            .is_none_or(|values| values.iter().all(|value| *value))
-    }
 }
 
 fn eval_script_internal(
@@ -919,53 +856,6 @@ fn verify_taproot_commitment(
         })
 }
 
-fn serialized_witness_size(witness: &ScriptWitness) -> usize {
-    let mut size = compact_size_len(witness.stack().len() as u64);
-    for item in witness.stack() {
-        size += compact_size_len(item.len() as u64);
-        size += item.len();
-    }
-    size
-}
-
-fn compact_size_len(value: u64) -> usize {
-    match value {
-        0..=252 => 1,
-        253..=0xffff => 3,
-        0x1_0000..=0xffff_ffff => 5,
-        _ => 9,
-    }
-}
-
-fn write_compact_size(out: &mut Vec<u8>, value: u64) {
-    match value {
-        0..=252 => out.push(value as u8),
-        253..=0xffff => {
-            out.push(0xfd);
-            out.extend_from_slice(&(value as u16).to_le_bytes());
-        }
-        0x1_0000..=0xffff_ffff => {
-            out.push(0xfe);
-            out.extend_from_slice(&(value as u32).to_le_bytes());
-        }
-        _ => {
-            out.push(0xff);
-            out.extend_from_slice(&value.to_le_bytes());
-        }
-    }
-}
-
-fn is_op_success(opcode: u8) -> bool {
-    opcode == 80
-        || opcode == 98
-        || (126..=129).contains(&opcode)
-        || (131..=134).contains(&opcode)
-        || (137..=138).contains(&opcode)
-        || (141..=142).contains(&opcode)
-        || (149..=153).contains(&opcode)
-        || (187..=254).contains(&opcode)
-}
-
 // Keep this helper close to the upstream tapscript boundary shape.
 #[allow(clippy::too_many_arguments)]
 fn execute_tapscript(
@@ -1423,244 +1313,6 @@ fn map_signature_error(error: SignatureError) -> ScriptError {
         SignatureError::NonLowS => ScriptError::SigHighS,
         SignatureError::UnsupportedSigVersion => ScriptError::UnsupportedOpcode(OP_CHECKSIG),
     }
-}
-
-fn remove_signature_from_script(script: &ScriptBuf, signature: &[u8]) -> ScriptBuf {
-    if signature.is_empty() {
-        return script.clone();
-    }
-
-    let encoded_signature = encode_push_data(signature);
-    let mut remaining = Vec::with_capacity(script.as_bytes().len());
-    let mut offset = 0;
-    while offset < script.as_bytes().len() {
-        if script.as_bytes()[offset..].starts_with(&encoded_signature) {
-            offset += encoded_signature.len();
-            continue;
-        }
-
-        remaining.push(script.as_bytes()[offset]);
-        offset += 1;
-    }
-
-    ScriptBuf::from_bytes(remaining).expect("filtered script must remain structurally valid")
-}
-
-fn encode_push_data(data: &[u8]) -> Vec<u8> {
-    let mut encoded = Vec::with_capacity(data.len() + 5);
-    match data.len() {
-        0..=0x4b => encoded.push(data.len() as u8),
-        0x4c..=0xff => {
-            encoded.push(OP_PUSHDATA1);
-            encoded.push(data.len() as u8);
-        }
-        0x100..=0xffff => {
-            encoded.push(OP_PUSHDATA2);
-            encoded.extend_from_slice(&(data.len() as u16).to_le_bytes());
-        }
-        _ => {
-            encoded.push(OP_PUSHDATA4);
-            encoded.extend_from_slice(&(data.len() as u32).to_le_bytes());
-        }
-    }
-    encoded.extend_from_slice(data);
-    encoded
-}
-
-fn decode_small_num(bytes: &[u8]) -> Result<usize, ScriptError> {
-    let value = decode_script_num(bytes)?;
-    if value < 0 {
-        return Err(ScriptError::InvalidStackOperation);
-    }
-    Ok(value as usize)
-}
-
-fn decode_small_int_opcode(opcode: u8) -> Option<usize> {
-    match opcode {
-        0x51..=0x60 => Some(usize::from(opcode - 0x50)),
-        _ => None,
-    }
-}
-
-fn read_instruction(bytes: &[u8], pc: &mut usize) -> Result<Instruction, ScriptError> {
-    let opcode = *bytes.get(*pc).ok_or(ScriptError::BadOpcode)?;
-    *pc += 1;
-
-    if opcode <= 0x4b {
-        let data = read_push_data(bytes, pc, opcode as usize)?;
-        return Ok(Instruction {
-            opcode,
-            maybe_data: Some(data),
-        });
-    }
-
-    let maybe_data = match opcode {
-        OP_PUSHDATA1 => {
-            let length = usize::from(*bytes.get(*pc).ok_or(ScriptError::TruncatedPushData)?);
-            *pc += 1;
-            Some(read_push_data(bytes, pc, length)?)
-        }
-        OP_PUSHDATA2 => {
-            let length_bytes = bytes
-                .get(*pc..(*pc + 2))
-                .ok_or(ScriptError::TruncatedPushData)?;
-            *pc += 2;
-            let length = usize::from(u16::from_le_bytes([length_bytes[0], length_bytes[1]]));
-            Some(read_push_data(bytes, pc, length)?)
-        }
-        OP_PUSHDATA4 => {
-            let length_bytes = bytes
-                .get(*pc..(*pc + 4))
-                .ok_or(ScriptError::TruncatedPushData)?;
-            *pc += 4;
-            let length = u32::from_le_bytes([
-                length_bytes[0],
-                length_bytes[1],
-                length_bytes[2],
-                length_bytes[3],
-            ]) as usize;
-            Some(read_push_data(bytes, pc, length)?)
-        }
-        _ => None,
-    };
-
-    Ok(Instruction { opcode, maybe_data })
-}
-
-fn read_push_data(bytes: &[u8], pc: &mut usize, length: usize) -> Result<Vec<u8>, ScriptError> {
-    let end = pc
-        .checked_add(length)
-        .ok_or(ScriptError::TruncatedPushData)?;
-    let data = bytes.get(*pc..end).ok_or(ScriptError::TruncatedPushData)?;
-    *pc = end;
-    if data.len() > MAX_SCRIPT_ELEMENT_SIZE {
-        return Err(ScriptError::PushSize(data.len()));
-    }
-    Ok(data.to_vec())
-}
-
-fn push_stack(stack: &mut Vec<Vec<u8>>, value: Vec<u8>) -> Result<(), ScriptError> {
-    stack.push(value);
-    if stack.len() > MAX_STACK_SIZE {
-        return Err(ScriptError::StackOverflow(stack.len()));
-    }
-    Ok(())
-}
-
-fn pop_bytes(stack: &mut Vec<Vec<u8>>) -> Result<Vec<u8>, ScriptError> {
-    stack.pop().ok_or(ScriptError::InvalidStackOperation)
-}
-
-fn pop_num(stack: &mut Vec<Vec<u8>>) -> Result<i64, ScriptError> {
-    let value = pop_bytes(stack)?;
-    decode_script_num(&value)
-}
-
-fn unary_num_op(
-    stack: &mut Vec<Vec<u8>>,
-    operation: impl FnOnce(i64) -> i64,
-) -> Result<(), ScriptError> {
-    let value = pop_num(stack)?;
-    push_stack(stack, encode_script_num(operation(value)))
-}
-
-fn binary_num_op(
-    stack: &mut Vec<Vec<u8>>,
-    operation: impl FnOnce(i64, i64) -> i64,
-) -> Result<(), ScriptError> {
-    let right = pop_num(stack)?;
-    let left = pop_num(stack)?;
-    push_stack(stack, encode_script_num(operation(left, right)))
-}
-
-fn script_booland(left: i64, right: i64) -> i64 {
-    if left != 0 && right != 0 { 1 } else { 0 }
-}
-
-fn script_boolor(left: i64, right: i64) -> i64 {
-    if left != 0 || right != 0 { 1 } else { 0 }
-}
-
-fn encode_bool(value: bool) -> Vec<u8> {
-    if value { vec![1_u8] } else { Vec::new() }
-}
-
-fn cast_to_bool(value: &[u8]) -> bool {
-    for (index, byte) in value.iter().enumerate() {
-        if *byte == 0 {
-            continue;
-        }
-        if index == value.len() - 1 && *byte == 0x80 {
-            return false;
-        }
-        return true;
-    }
-    false
-}
-
-fn decode_script_num(bytes: &[u8]) -> Result<i64, ScriptError> {
-    if bytes.len() > 4 {
-        return Err(ScriptError::NumOverflow(bytes.len()));
-    }
-    if bytes.is_empty() {
-        return Ok(0);
-    }
-
-    let mut value = 0_i64;
-    for (index, byte) in bytes.iter().enumerate() {
-        value |= i64::from(*byte) << (8 * index);
-    }
-
-    let last = *bytes.last().expect("non-empty checked above");
-    if (last & 0x80) != 0 {
-        let mask = !(0x80_i64 << (8 * (bytes.len() - 1)));
-        Ok(-(value & mask))
-    } else {
-        Ok(value)
-    }
-}
-
-fn encode_script_num(value: i64) -> Vec<u8> {
-    if value == 0 {
-        return Vec::new();
-    }
-
-    let negative = value < 0;
-    let mut magnitude = value.unsigned_abs();
-    let mut encoded = Vec::new();
-    while magnitude > 0 {
-        encoded.push((magnitude & 0xff) as u8);
-        magnitude >>= 8;
-    }
-
-    if encoded.last().is_some_and(|byte| (byte & 0x80) != 0) {
-        encoded.push(if negative { 0x80 } else { 0x00 });
-    } else if negative {
-        let last = encoded.last_mut().expect("non-empty because value != 0");
-        *last |= 0x80;
-    }
-
-    encoded
-}
-
-fn is_disabled_opcode(opcode: u8) -> bool {
-    matches!(
-        opcode,
-        0x7e | 0x7f
-            | 0x80
-            | 0x81
-            | 0x83
-            | 0x84
-            | 0x85
-            | 0x86
-            | 0x8d
-            | 0x8e
-            | 0x95
-            | 0x96
-            | 0x97
-            | 0x98
-            | 0x99
-    )
 }
 
 #[cfg(test)]
