@@ -8,6 +8,7 @@ pub use open_bitcoin_consensus as consensus;
 pub use open_bitcoin_mempool as mempool;
 pub use open_bitcoin_network as network;
 pub use open_bitcoin_primitives as primitives;
+pub use open_bitcoin_wallet as wallet;
 
 pub const fn crate_ready() -> bool {
     true

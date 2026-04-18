@@ -7,6 +7,7 @@ members = [
     "open-bitcoin-primitives",
     "open-bitcoin-codec",
     "open-bitcoin-mempool",
+    "open-bitcoin-wallet",
     "open-bitcoin-node",
 ]
 resolver = "3"

@@ -44,9 +44,9 @@
 
 ### Wallet
 
-- [ ] **WAL-01**: The wallet manages keys, descriptors, and addresses for the in-scope baseline behavior.
-- [ ] **WAL-02**: The wallet tracks balances and UTXOs and builds and signs transactions compatibly with the baseline.
-- [ ] **WAL-03**: Wallet persistence and recovery remain adapter-owned and tested without leaking I/O into the pure core.
+- [x] **WAL-01**: The wallet manages keys, descriptors, and addresses for the in-scope baseline behavior.
+- [x] **WAL-02**: The wallet tracks balances and UTXOs and builds and signs transactions compatibly with the baseline.
+- [x] **WAL-03**: Wallet persistence and recovery remain adapter-owned and tested without leaking I/O into the pure core.
 
 ### Interfaces
 
@@ -99,9 +99,9 @@
 | MEM-02 | Phase 5 | Complete |
 | P2P-01 | Phase 6 | Complete |
 | P2P-02 | Phase 6 | Complete |
-| WAL-01 | Phase 7 | Pending |
-| WAL-02 | Phase 7 | Pending |
-| WAL-03 | Phase 7 | Pending |
+| WAL-01 | Phase 7 | Complete |
+| WAL-02 | Phase 7 | Complete |
+| WAL-03 | Phase 7 | Complete |
 | RPC-01 | Phase 8 | Pending |
 | CLI-01 | Phase 8 | Pending |
 | CLI-02 | Phase 8 | Pending |

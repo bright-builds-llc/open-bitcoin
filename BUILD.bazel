@@ -45,3 +45,9 @@ alias(
     actual = "//packages/open-bitcoin-mempool:open_bitcoin_mempool_lib",
     visibility = ["//visibility:public"],
 )
+
+alias(
+    name = "wallet",
+    actual = "//packages/open-bitcoin-wallet:open_bitcoin_wallet_lib",
+    visibility = ["//visibility:public"],
+)

@@ -9,6 +9,7 @@ rust_library(
         "//packages/open-bitcoin-core:open_bitcoin_core_lib",
         "//packages/open-bitcoin-mempool:open_bitcoin_mempool_lib",
         "//packages/open-bitcoin-network:open_bitcoin_network_lib",
+        "//packages/open-bitcoin-wallet:open_bitcoin_wallet_lib",
     ],
     visibility = ["//visibility:public"],
 )

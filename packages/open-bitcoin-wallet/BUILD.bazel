@@ -1,18 +1,17 @@
 load("@rules_rust//rust:defs.bzl", "rust_library")
 
 rust_library(
-    name = "open_bitcoin_core_lib",
-    srcs = ["src/lib.rs"],
-    crate_name = "open_bitcoin_core",
+    name = "open_bitcoin_wallet_lib",
+    srcs = glob(["src/**/*.rs"]),
+    crate_name = "open_bitcoin_wallet",
     edition = "2024",
     deps = [
         "//packages/open-bitcoin-chainstate:open_bitcoin_chainstate_lib",
         "//packages/open-bitcoin-codec:open_bitcoin_codec_lib",
         "//packages/open-bitcoin-consensus:open_bitcoin_consensus_lib",
         "//packages/open-bitcoin-mempool:open_bitcoin_mempool_lib",
-        "//packages/open-bitcoin-network:open_bitcoin_network_lib",
         "//packages/open-bitcoin-primitives:open_bitcoin_primitives_lib",
-        "//packages/open-bitcoin-wallet:open_bitcoin_wallet_lib",
+        "@crate_index//:secp256k1",
     ],
     visibility = ["//visibility:public"],
 )

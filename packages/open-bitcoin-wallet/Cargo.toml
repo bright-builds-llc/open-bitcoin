@@ -1,5 +1,5 @@
 [package]
-name = "open-bitcoin-core"
+name = "open-bitcoin-wallet"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
@@ -13,6 +13,5 @@ open-bitcoin-chainstate = { path = "../open-bitcoin-chainstate" }
 open-bitcoin-codec = { path = "../open-bitcoin-codec" }
 open-bitcoin-consensus = { path = "../open-bitcoin-consensus" }
 open-bitcoin-mempool = { path = "../open-bitcoin-mempool" }
-open-bitcoin-network = { path = "../open-bitcoin-network" }
 open-bitcoin-primitives = { path = "../open-bitcoin-primitives" }
-open-bitcoin-wallet = { path = "../open-bitcoin-wallet" }
+secp256k1 = { version = "0.31", default-features = false, features = ["std"] }

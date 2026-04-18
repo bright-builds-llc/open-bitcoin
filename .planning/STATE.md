@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 6 complete; Phase 7 next
-last_updated: "2026-04-15T01:00:09Z"
-last_activity: 2026-04-14
+stopped_at: Phase 7 complete; Phase 8 next
+last_updated: "2026-04-18T00:33:56Z"
+last_activity: 2026-04-17
 progress:
   total_phases: 14
-  completed_phases: 10
-  total_plans: 57
-  completed_plans: 37
-  percent: 71
+  completed_phases: 11
+  total_plans: 51
+  completed_plans: 41
+  percent: 80
 ---
 
 # Project State
@@ -21,22 +21,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-11)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 7 — Wallet Core and Adapters
+**Current focus:** Phase 8 — RPC, CLI, and Config Parity
 
 ## Current Position
 
-Phase: 7
+Phase: 8
 Plan: Not started
 Status: Ready to execute
-Last activity: 2026-04-14
+Last activity: 2026-04-17
 
-Progress: ████████░░ 71%
+Progress: ████████░░ 80%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 37
+- Total plans completed: 41
 - Average duration: 0 min
 - Total execution time: 0.0 hours
 
@@ -54,10 +54,11 @@ Progress: ████████░░ 71%
 | 04 | 3 | - | - |
 | 05 | 3 | - | - |
 | 06 | 4 | - | - |
+| 07 | 4 | - | - |
 
 **Recent Trend:**
 
-- Last 5 plans: 05-03, 06-01, 06-02, 06-03, 06-04
+- Last 5 plans: 06-04, 07-01, 07-02, 07-03, 07-04
 - Trend: Stable
 
 | Phase 1 P01 | 1 min | 2 tasks | 7 files |
@@ -87,6 +88,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-15T01:00:09Z
-Stopped at: Phase 6 complete; Phase 7 next
+Last session: 2026-04-18T00:33:56Z
+Stopped at: Phase 7 complete; Phase 8 next
 Resume file: .planning/ROADMAP.md

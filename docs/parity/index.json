@@ -217,6 +217,49 @@
             "Which discovery and address-relay behaviors should stay pure-core versus move into later shell-owned transport orchestration."
           ]
         }
+      },
+      {
+        "id": "wallet",
+        "title": "Wallet Core And Adapters",
+        "path": "catalog/wallet.md",
+        "phase": "07-wallet-core-and-adapters",
+        "status": "done",
+        "scope": [
+          "descriptor-wallet",
+          "addresses",
+          "balances",
+          "coin-selection",
+          "signing",
+          "recovery"
+        ],
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/doc/descriptors.md",
+            "packages/bitcoin-knots/src/wallet/spend.cpp",
+            "packages/bitcoin-knots/src/wallet/coinselection.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/test/functional/rpc_deriveaddresses.py",
+            "packages/bitcoin-knots/test/functional/wallet_descriptor.py",
+            "packages/bitcoin-knots/test/functional/feature_segwit.py",
+            "packages/open-bitcoin-wallet/src/address.rs",
+            "packages/open-bitcoin-wallet/src/wallet.rs",
+            "packages/open-bitcoin-node/src/wallet.rs"
+          ]
+        },
+        "highlights": {
+          "quirks": [
+            "The first wallet slice keeps change explicit through internal descriptors instead of implicit keypool behavior.",
+            "Wallet balances and UTXOs rebuild from chainstate snapshots rather than coupling the wallet core to persistence.",
+            "Legacy, segwit-v0, and taproot signing reuse the canonical consensus sighash helpers instead of a second signing engine."
+          ],
+          "known_bugs": [],
+          "known_bugs_status": "none-confirmed",
+          "suspected_unknowns": [
+            "How closely future HD, multisig, and PSBT flows should mirror Knots once the interface phase exposes descriptor imports.",
+            "Which parts of Knots' coin-selection and wallet metadata surface should stay pure-core versus move into later shell-owned orchestration."
+          ]
+        }
       }
     ]
   },
@@ -243,7 +286,7 @@
     },
     {
       "name": "wallet",
-      "status": "planned"
+      "status": "done"
     },
     {
       "name": "rpc",

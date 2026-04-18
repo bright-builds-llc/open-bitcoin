@@ -22,7 +22,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 4: Chainstate and UTXO Engine** - Implement baseline-compatible chainstate, UTXO tracking, and reorg handling. (completed 2026-04-12)
 - [x] **Phase 5: Mempool and Node Policy** - Match mempool policy, replacement, and eviction behavior. (completed 2026-04-13)
 - [x] **Phase 6: P2P Networking and Sync** - Add peer lifecycle, message handling, and sync behavior. (completed 2026-04-14)
-- [ ] **Phase 7: Wallet Core and Adapters** - Implement headless wallet behavior with pure-core boundaries intact.
+- [x] **Phase 7: Wallet Core and Adapters** - Implement headless wallet behavior with pure-core boundaries intact. (completed 2026-04-17)
 - [ ] **Phase 8: RPC, CLI, and Config Parity** - Expose node and wallet behavior through compatible operator interfaces.
 - [ ] **Phase 9: Parity Harnesses and Fuzzing** - Lock down external behavior with reusable black-box and fuzz/property suites.
 - [ ] **Phase 10: Benchmarks and Audit Readiness** - Measure performance and complete the audit surfaces that track parity status.
@@ -202,10 +202,10 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 07-01: Implement wallet domain types, descriptor handling, and key/address management.
-- [ ] 07-02: Implement balance tracking, UTXO views, coin selection, and transaction building.
-- [ ] 07-03: Implement signing, persistence adapters, and recovery flows.
-- [ ] 07-04: Add wallet parity fixtures and functional test coverage.
+- [x] 07-01: Implement wallet domain types, descriptor handling, and key/address management.
+- [x] 07-02: Implement balance tracking, UTXO views, coin selection, and transaction building.
+- [x] 07-03: Implement signing, persistence adapters, and recovery flows.
+- [x] 07-04: Add wallet parity fixtures and functional test coverage.
 
 ### Phase 8: RPC, CLI, and Config Parity
 **Goal**: Expose the node and wallet through operator-facing interfaces that behave compatibly with the baseline for the in-scope surface.

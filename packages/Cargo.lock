@@ -107,6 +107,7 @@ dependencies = [
  "open-bitcoin-mempool",
  "open-bitcoin-network",
  "open-bitcoin-primitives",
+ "open-bitcoin-wallet",
 ]
 
 [[package]]
@@ -136,11 +137,24 @@ dependencies = [
  "open-bitcoin-core",
  "open-bitcoin-mempool",
  "open-bitcoin-network",
+ "open-bitcoin-wallet",
 ]
 
 [[package]]
 name = "open-bitcoin-primitives"
 version = "0.1.0"
+
+[[package]]
+name = "open-bitcoin-wallet"
+version = "0.1.0"
+dependencies = [
+ "open-bitcoin-chainstate",
+ "open-bitcoin-codec",
+ "open-bitcoin-consensus",
+ "open-bitcoin-mempool",
+ "open-bitcoin-primitives",
+ "secp256k1",
+]
 
 [[package]]
 name = "ppv-lite86"

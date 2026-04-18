@@ -5,3 +5,4 @@ open-bitcoin-primitives
 open-bitcoin-codec
 open-bitcoin-consensus
 open-bitcoin-mempool
+open-bitcoin-wallet

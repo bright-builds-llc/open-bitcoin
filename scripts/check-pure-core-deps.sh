@@ -26,7 +26,7 @@ fi
 
 metadata_json="$(cargo metadata --manifest-path "$workspace_manifest" --format-version 1 --no-deps)"
 forbidden_crates=(tokio reqwest rustls rand)
-forbidden_imports='std::fs|std::net|std::env|std::process|std::thread|tokio|reqwest|rustls|rand'
+forbidden_imports='std::fs|std::net|std::env|std::process|std::thread|tokio|reqwest|rustls|\brand\b'
 forbidden_imports_report="$(mktemp)"
 trap 'rm -f "$forbidden_imports_report"' EXIT
 
