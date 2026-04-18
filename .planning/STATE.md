@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 07.1 context gathered
-last_updated: "2026-04-18T17:02:54.879Z"
-last_activity: 2026-04-18 -- Phase 07.1 planning complete
+stopped_at: Completed 07.1-01-PLAN.md
+last_updated: "2026-04-18T17:25:06.902Z"
+last_activity: 2026-04-18
 progress:
   total_phases: 15
   completed_phases: 11
   total_plans: 44
-  completed_plans: 41
-  percent: 93
+  completed_plans: 42
+  percent: 95
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-04-11)
 
 ## Current Position
 
-Phase: 07.1 (Codebase Maintainability Refactor Wave)
-Plan: 3 plans ready
+Phase: 07.1 (Codebase Maintainability Refactor Wave) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-04-18 -- Phase 07.1 planning complete
+Last activity: 2026-04-18
 
 Progress: ███████░░░ 73%
 
@@ -65,6 +65,7 @@ Progress: ███████░░░ 73%
 | Phase 1 P02 | 1 min | 2 tasks | 8 files |
 | Phase 1 P03 | 1 min | 3 tasks | 6 files |
 | Phase 1 P04 | 1 min | 2 tasks | 5 files |
+| Phase 07.1 P01 | 9m | 4 tasks | 24 files |
 
 ## Accumulated Context
 
@@ -77,6 +78,8 @@ Recent decisions affecting current work:
 - [Init]: Keep the initial milestone headless and defer GUI work.
 - [Init]: Use functional core / imperative shell boundaries with explicit I/O adapters.
 - [Init]: Use Bazelisk and Bazel/Bzlmod for first-party workspace builds.
+- [Phase 07.1]: Keep touched Rust entry files as module roots and move only inline test bodies into sibling tests.rs files.
+- [Phase 07.1]: Treat moved fixture paths and formatter-sensitive leading newlines as task-local blocking issues and fix them inline without widening production visibility.
 
 ### Roadmap Evolution
 
@@ -97,6 +100,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-18T17:02:54.875Z
-Stopped at: Phase 07.1 context gathered
-Resume file: .planning/phases/07.1-codebase-maintainability-refactor-wave/07.1-CONTEXT.md
+Last session: 2026-04-18T17:25:06.899Z
+Stopped at: Completed 07.1-01-PLAN.md
+Resume file: None
