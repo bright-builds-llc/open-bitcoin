@@ -1,26 +1,17 @@
 use core::cmp::Ordering;
 
-use secp256k1::{Message, Secp256k1};
-
 use open_bitcoin_chainstate::ChainstateSnapshot;
-use open_bitcoin_consensus::{
-    ScriptExecutionData, SigHashType, SigVersion, TransactionInputContext,
-    TransactionValidationContext, legacy_sighash, segwit_v0_sighash, taproot_sighash,
-};
+use open_bitcoin_consensus::{TransactionInputContext, TransactionValidationContext};
 use open_bitcoin_mempool::FeeRate;
-use open_bitcoin_primitives::{
-    Amount, OutPoint, ScriptBuf, ScriptWitness, Transaction, TransactionOutput,
-};
+use open_bitcoin_primitives::{Amount, OutPoint, ScriptBuf, Transaction, TransactionOutput};
 
 use crate::WalletError;
-use crate::address::{
-    Address, AddressNetwork, PrivateKey, public_key_bytes, push_data,
-    taproot_output_key_from_private_key,
-};
+use crate::address::{Address, AddressNetwork};
 use crate::descriptor::{DescriptorRecord, DescriptorRole, SingleKeyDescriptor};
 
 mod build;
 mod scan;
+mod sign;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WalletSnapshot {
@@ -208,78 +199,7 @@ impl Wallet {
     }
 
     pub fn sign_transaction(&self, built: &BuiltTransaction) -> Result<Transaction, WalletError> {
-        let mut transaction = built.transaction.clone();
-        let input_contexts = self.input_contexts_for(built)?;
-        let validation_context = self.validation_context(&input_contexts);
-        let precomputed = validation_context.precompute(&transaction)?;
-
-        for (input_index, utxo) in built.selected_inputs.iter().enumerate() {
-            let descriptor = self
-                .descriptor(utxo.descriptor_id)
-                .ok_or(WalletError::UnknownDescriptor(utxo.descriptor_id))?;
-            match &descriptor.descriptor {
-                SingleKeyDescriptor::Pkh(key) => {
-                    let private_key = key.private_key().ok_or_else(|| {
-                        WalletError::MissingSigningKey(descriptor.original_text.clone())
-                    })?;
-                    let script_code = descriptor.descriptor.script_pubkey()?;
-                    let sighash =
-                        legacy_sighash(&script_code, &transaction, input_index, SigHashType::ALL);
-                    let signature = sign_ecdsa_low_s(private_key, &sighash.to_byte_array())?;
-                    let public_key = key.public_key();
-                    let public_key_bytes = public_key_bytes(&public_key, key.is_compressed());
-                    let script_sig =
-                        push_script(&[signature.as_slice(), public_key_bytes.as_slice()])?;
-                    transaction.inputs[input_index].script_sig = script_sig;
-                }
-                SingleKeyDescriptor::ShWpkh(key) | SingleKeyDescriptor::Wpkh(key) => {
-                    let private_key = key.private_key().ok_or_else(|| {
-                        WalletError::MissingSigningKey(descriptor.original_text.clone())
-                    })?;
-                    let public_key = key.public_key();
-                    let script_code = p2pkh_script(&public_key)?;
-                    let input_context = input_contexts[input_index].clone();
-                    let sighash = segwit_v0_sighash(
-                        &script_code,
-                        &transaction,
-                        input_index,
-                        &input_context,
-                        SigHashType::ALL,
-                        &precomputed,
-                    );
-                    let signature = sign_ecdsa_low_s(private_key, &sighash.to_byte_array())?;
-                    let public_key_bytes = public_key_bytes(&public_key, key.is_compressed());
-                    if let Some(redeem_script) = descriptor.descriptor.redeem_script()? {
-                        transaction.inputs[input_index].script_sig =
-                            push_script(&[redeem_script.as_bytes()])?;
-                    }
-                    transaction.inputs[input_index].witness =
-                        ScriptWitness::new(vec![signature, public_key_bytes]);
-                }
-                SingleKeyDescriptor::Tr(key) => {
-                    let private_key = key.private_key().ok_or_else(|| {
-                        WalletError::MissingSigningKey(descriptor.original_text.clone())
-                    })?;
-                    let secp = Secp256k1::new();
-                    let (keypair, _output_key) = taproot_output_key_from_private_key(private_key)?;
-                    let sighash = taproot_sighash(
-                        &ScriptExecutionData::default(),
-                        &transaction,
-                        input_index,
-                        SigHashType::DEFAULT,
-                        SigVersion::Taproot,
-                        &validation_context,
-                    )
-                    .expect("taproot key-path sighash should exist for built transactions");
-                    let message = Message::from_digest(sighash.to_byte_array());
-                    let signature = secp.sign_schnorr_no_aux_rand(message.as_ref(), &keypair);
-                    transaction.inputs[input_index].witness =
-                        ScriptWitness::new(vec![signature.as_ref().to_vec()]);
-                }
-            }
-        }
-
-        Ok(transaction)
+        sign::sign_transaction(self, built)
     }
 
     pub fn build_and_sign(
@@ -287,13 +207,7 @@ impl Wallet {
         request: &BuildRequest,
         coinbase_maturity: u32,
     ) -> Result<BuiltTransaction, WalletError> {
-        let built = self.build_transaction(request, coinbase_maturity)?;
-        let signed = self.sign_transaction(&built)?;
-
-        Ok(BuiltTransaction {
-            transaction: signed,
-            ..built
-        })
+        sign::build_and_sign(self, request, coinbase_maturity)
     }
 
     pub fn input_contexts_for(
@@ -350,44 +264,12 @@ fn compare_wallet_utxos(left: &WalletUtxo, right: &WalletUtxo) -> Ordering {
     build::compare_wallet_utxos(left, right)
 }
 
-fn sign_ecdsa_low_s(private_key: &PrivateKey, digest: &[u8; 32]) -> Result<Vec<u8>, WalletError> {
-    let secp = Secp256k1::new();
-    let message = Message::from_digest(*digest);
-    let mut signature = secp.sign_ecdsa(message, private_key.secret_key());
-    signature.normalize_s();
-    let mut encoded = signature.serialize_der().as_ref().to_vec();
-    encoded.push(SigHashType::ALL.raw() as u8);
-    Ok(encoded)
-}
-
 fn push_script(pushes: &[&[u8]]) -> Result<ScriptBuf, WalletError> {
-    let mut bytes = Vec::new();
-    for push in pushes {
-        bytes.extend_from_slice(&push_data(push));
-    }
-    Ok(ScriptBuf::from_bytes(bytes)?)
-}
-
-fn p2pkh_script(public_key: &secp256k1::PublicKey) -> Result<ScriptBuf, WalletError> {
-    crate::address::p2pkh_script(public_key)
+    sign::push_script(pushes)
 }
 
 fn standard_wallet_verify_flags() -> open_bitcoin_consensus::ScriptVerifyFlags {
-    open_bitcoin_consensus::ScriptVerifyFlags::P2SH
-        | open_bitcoin_consensus::ScriptVerifyFlags::STRICTENC
-        | open_bitcoin_consensus::ScriptVerifyFlags::DERSIG
-        | open_bitcoin_consensus::ScriptVerifyFlags::LOW_S
-        | open_bitcoin_consensus::ScriptVerifyFlags::NULLDUMMY
-        | open_bitcoin_consensus::ScriptVerifyFlags::SIGPUSHONLY
-        | open_bitcoin_consensus::ScriptVerifyFlags::MINIMALDATA
-        | open_bitcoin_consensus::ScriptVerifyFlags::CLEANSTACK
-        | open_bitcoin_consensus::ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
-        | open_bitcoin_consensus::ScriptVerifyFlags::CHECKSEQUENCEVERIFY
-        | open_bitcoin_consensus::ScriptVerifyFlags::WITNESS
-        | open_bitcoin_consensus::ScriptVerifyFlags::MINIMALIF
-        | open_bitcoin_consensus::ScriptVerifyFlags::NULLFAIL
-        | open_bitcoin_consensus::ScriptVerifyFlags::WITNESS_PUBKEYTYPE
-        | open_bitcoin_consensus::ScriptVerifyFlags::TAPROOT
+    sign::standard_wallet_verify_flags()
 }
 
 #[cfg(test)]
