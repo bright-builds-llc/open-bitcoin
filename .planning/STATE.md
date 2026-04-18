@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 7 complete; Phase 8 next
-last_updated: "2026-04-18T00:33:56Z"
-last_activity: 2026-04-17
+stopped_at: Phase 07.1 context gathered
+last_updated: "2026-04-18T17:02:54.879Z"
+last_activity: 2026-04-18 -- Phase 07.1 planning complete
 progress:
-  total_phases: 14
+  total_phases: 15
   completed_phases: 11
-  total_plans: 51
+  total_plans: 44
   completed_plans: 41
-  percent: 80
+  percent: 93
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-11)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 8 — RPC, CLI, and Config Parity
+**Current focus:** Phase 07.1 — Codebase Maintainability Refactor Wave
 
 ## Current Position
 
-Phase: 8
-Plan: Not started
+Phase: 07.1 (Codebase Maintainability Refactor Wave)
+Plan: 3 plans ready
 Status: Ready to execute
-Last activity: 2026-04-17
+Last activity: 2026-04-18 -- Phase 07.1 planning complete
 
-Progress: ████████░░ 80%
+Progress: ███████░░░ 73%
 
 ## Performance Metrics
 
@@ -78,6 +78,10 @@ Recent decisions affecting current work:
 - [Init]: Use functional core / imperative shell boundaries with explicit I/O adapters.
 - [Init]: Use Bazelisk and Bazel/Bzlmod for first-party workspace builds.
 
+### Roadmap Evolution
+
+- Phase 07.1 inserted after Phase 7: Codebase Maintainability Refactor Wave (URGENT)
+
 ### Pending Todos
 
 - 5 pending:
@@ -93,6 +97,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-18T00:33:56Z
-Stopped at: Phase 7 complete; Phase 8 next
-Resume file: .planning/ROADMAP.md
+Last session: 2026-04-18T17:02:54.875Z
+Stopped at: Phase 07.1 context gathered
+Resume file: .planning/phases/07.1-codebase-maintainability-refactor-wave/07.1-CONTEXT.md
