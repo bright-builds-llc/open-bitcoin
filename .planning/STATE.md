@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 07.1-01-PLAN.md
-last_updated: "2026-04-18T17:25:06.902Z"
+stopped_at: Completed 07.1-02-PLAN.md
+last_updated: "2026-04-18T17:37:15.778Z"
 last_activity: 2026-04-18
 progress:
   total_phases: 15
   completed_phases: 11
   total_plans: 44
-  completed_plans: 42
-  percent: 95
+  completed_plans: 43
+  percent: 98
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-11)
 ## Current Position
 
 Phase: 07.1 (Codebase Maintainability Refactor Wave) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-04-18
 
@@ -66,6 +66,7 @@ Progress: ███████░░░ 73%
 | Phase 1 P03 | 1 min | 3 tasks | 6 files |
 | Phase 1 P04 | 1 min | 2 tasks | 5 files |
 | Phase 07.1 P01 | 9m | 4 tasks | 24 files |
+| Phase 07.1 P02 | 6 min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -80,6 +81,8 @@ Recent decisions affecting current work:
 - [Init]: Use Bazelisk and Bazel/Bzlmod for first-party workspace builds.
 - [Phase 07.1]: Keep touched Rust entry files as module roots and move only inline test bodies into sibling tests.rs files.
 - [Phase 07.1]: Treat moved fixture paths and formatter-sensitive leading newlines as task-local blocking issues and fix them inline without widening production visibility.
+- [Phase 07.1]: Keep wallet.rs as the module root so the wallet crate's exported surface and navigation entrypoint stay stable while internals move underneath it. — Preserves downstream callers and lib.rs re-exports while making scan, build, and sign seams explicit.
+- [Phase 07.1]: Preserve private test reachability with narrow delegate shims instead of widening production visibility. — Keeps the refactor behavior-neutral and compatible with the moved wallet test suite while satisfying clippy and coverage.
 
 ### Roadmap Evolution
 
@@ -100,6 +103,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-18T17:25:06.899Z
-Stopped at: Completed 07.1-01-PLAN.md
+Last session: 2026-04-18T17:37:07.579Z
+Stopped at: Completed 07.1-02-PLAN.md
 Resume file: None

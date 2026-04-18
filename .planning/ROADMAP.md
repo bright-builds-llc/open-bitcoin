@@ -225,11 +225,11 @@ first-party Rust hotspots along coherent module boundaries.
      submodules while preserving verifier, witness, taproot, and sigop
      behavior on the existing consensus corpus.
   4. `bash scripts/verify.sh` passes after the refactor wave completes.
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [x] 07.1-01: Extract inline tests from oversized first-party Rust files.
-- [ ] 07.1-02: Refactor wallet module boundaries under `open-bitcoin-wallet`.
+- [x] 07.1-02: Refactor wallet module boundaries under `open-bitcoin-wallet`.
 - [ ] 07.1-03: Refactor consensus script engine module boundaries.
 
 ### Phase 8: RPC, CLI, and Config Parity
