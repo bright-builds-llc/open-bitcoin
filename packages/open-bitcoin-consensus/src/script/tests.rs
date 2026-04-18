@@ -1,29 +1,42 @@
 use open_bitcoin_primitives::{
-    Amount, Hash32, MAX_SCRIPT_ELEMENT_SIZE, ScriptWitness, Transaction, TransactionInput,
-    TransactionOutput, Txid,
+    Amount, Hash32, MAX_OPS_PER_SCRIPT, MAX_SCRIPT_ELEMENT_SIZE, ScriptWitness, Transaction,
+    TransactionInput, TransactionOutput, Txid,
 };
 use secp256k1::{Keypair, Message, PublicKey, Scalar, Secp256k1, SecretKey, XOnlyPublicKey};
 
-use crate::context::{SpentOutput, TransactionInputContext, TransactionValidationContext};
-use open_bitcoin_primitives::ScriptBuf;
-
 use crate::classify::ScriptPubKeyType;
 use crate::context::{PrecomputedTransactionData, ScriptExecutionData, ScriptVerifyFlags};
+use crate::context::{SpentOutput, TransactionInputContext, TransactionValidationContext};
 use crate::crypto::{Sha256, hash160};
 use crate::sighash::{SigHashType, SigVersion, legacy_sighash};
+use open_bitcoin_primitives::ScriptBuf;
 
+use super::encoding::{
+    compact_size_len, encode_push_data, remove_signature_from_script, write_compact_size,
+};
+use super::legacy::{
+    LegacyExecutionContext, eval_script_internal, execute_checkmultisig, execute_checksig,
+    map_signature_error, verify_top_stack_true,
+};
+use super::opcodes::{
+    OP_0NOTEQUAL, OP_1, OP_CHECKMULTISIG, OP_CHECKMULTISIGVERIFY, OP_CHECKSIG, OP_CHECKSIGADD,
+    OP_CHECKSIGVERIFY, OP_DUP, OP_ELSE, OP_ENDIF, OP_EQUALVERIFY, OP_HASH160, OP_IF, OP_NOTIF,
+    decode_small_int_opcode, is_disabled_opcode, is_op_success,
+};
+use super::sigops::witness_sigops_for_type;
+use super::stack::{
+    ConditionStack, MAX_STACK_SIZE, cast_to_bool, decode_script_num, decode_small_num, encode_bool,
+    encode_script_num,
+};
+use super::taproot::{
+    TAPROOT_CONTROL_BASE_SIZE, TAPROOT_LEAF_TAPSCRIPT, compute_tapbranch_hash,
+    compute_tapleaf_hash, compute_taproot_merkle_root, execute_checksigadd, execute_tapscript,
+    execute_tapscript_checksig, verify_taproot_commitment,
+};
+use super::witness::verify_witness_program;
 use super::{
-    ConditionStack, MAX_STACK_SIZE, OP_0NOTEQUAL, OP_1, OP_CHECKMULTISIG, OP_CHECKMULTISIGVERIFY,
-    OP_CHECKSIG, OP_CHECKSIGADD, OP_CHECKSIGVERIFY, OP_DUP, OP_ELSE, OP_ENDIF, OP_EQUALVERIFY,
-    OP_HASH160, OP_IF, OP_NOTIF, ScriptError, ScriptInputVerificationContext,
-    TAPROOT_CONTROL_BASE_SIZE, TAPROOT_LEAF_TAPSCRIPT, cast_to_bool, compact_size_len,
-    compute_tapbranch_hash, compute_tapleaf_hash, compute_taproot_merkle_root, count_legacy_sigops,
-    count_p2sh_sigops, count_witness_sigops, decode_script_num, decode_small_int_opcode,
-    decode_small_num, encode_bool, encode_push_data, encode_script_num, eval_script,
-    eval_script_internal, execute_checkmultisig, execute_checksig, execute_checksigadd,
-    execute_tapscript, execute_tapscript_checksig, is_disabled_opcode, is_op_success,
-    map_signature_error, remove_signature_from_script, verify_script, verify_taproot_commitment,
-    verify_top_stack_true, verify_witness_program, witness_sigops_for_type, write_compact_size,
+    ScriptError, ScriptInputVerificationContext, count_legacy_sigops, count_p2sh_sigops,
+    count_witness_sigops, eval_script, verify_script,
 };
 use crate::TransactionSignatureChecker;
 use crate::taproot_tagged_hash;
@@ -1534,7 +1547,7 @@ fn legacy_helper_error_paths_are_covered() {
     let (spent_input, validation_context, precomputed) =
         legacy_context(script(&[0x51]), &transaction, ScriptVerifyFlags::NONE);
     let secp = Secp256k1::verification_only();
-    let execution_context = super::LegacyExecutionContext {
+    let execution_context = LegacyExecutionContext {
         checker: crate::signature::TransactionSignatureChecker::new(
             &secp,
             &validation_context,
@@ -1620,7 +1633,7 @@ fn legacy_helper_error_paths_are_covered() {
         .expect_err("too many pubkeys must fail"),
         ScriptError::PubKeyCount
     );
-    let mut op_count = super::MAX_OPS_PER_SCRIPT;
+    let mut op_count = MAX_OPS_PER_SCRIPT;
     assert_eq!(
         execute_checkmultisig(
             &mut vec![vec![1]],
@@ -1707,7 +1720,7 @@ fn legacy_helper_error_paths_are_covered() {
         &validation_context,
         &precomputed,
     );
-    let nullfail_multisig_context = super::LegacyExecutionContext {
+    let nullfail_multisig_context = LegacyExecutionContext {
         checker: nullfail_checker,
         transaction: &transaction,
         input_index: 0,
@@ -2182,7 +2195,7 @@ fn eval_script_internal_dispatches_verify_and_tapscript_signature_opcodes() {
     };
     let (spent_input, validation_context, precomputed) =
         legacy_context(script_pubkey, &transaction, ScriptVerifyFlags::NONE);
-    let execution_context = super::LegacyExecutionContext {
+    let execution_context = LegacyExecutionContext {
         checker: TransactionSignatureChecker::new(&verify_secp, &validation_context, &precomputed),
         transaction: &transaction,
         input_index: 0,
@@ -2244,7 +2257,7 @@ fn eval_script_internal_dispatches_verify_and_tapscript_signature_opcodes() {
         &transaction,
         ScriptVerifyFlags::TAPROOT,
     );
-    let tapscript_context = super::LegacyExecutionContext {
+    let tapscript_context = LegacyExecutionContext {
         checker: TransactionSignatureChecker::new(
             &verify_secp,
             &taproot_validation_context,
@@ -2300,7 +2313,7 @@ fn execute_checksig_and_tapscript_paths_cover_taproot_edge_cases() {
         &transaction,
         ScriptVerifyFlags::TAPROOT | ScriptVerifyFlags::NULLFAIL,
     );
-    let taproot_context = super::LegacyExecutionContext {
+    let taproot_context = LegacyExecutionContext {
         checker: TransactionSignatureChecker::new(&verify_secp, &validation_context, &precomputed),
         transaction: &transaction,
         input_index: 0,
@@ -2806,7 +2819,7 @@ fn tapscript_opcode_edge_cases_are_covered() {
         .expect("precompute");
     let secp = Secp256k1::verification_only();
     let checker = TransactionSignatureChecker::new(&secp, &validation_context, &precomputed);
-    let tapscript_context = super::LegacyExecutionContext {
+    let tapscript_context = LegacyExecutionContext {
         checker,
         transaction: &transaction,
         input_index: 0,
@@ -2827,7 +2840,7 @@ fn tapscript_opcode_edge_cases_are_covered() {
             .expect_err("missing context must fail"),
         ScriptError::UnsupportedOpcode(OP_CHECKSIGADD)
     );
-    let base_context = super::LegacyExecutionContext {
+    let base_context = LegacyExecutionContext {
         checker: TransactionSignatureChecker::new(&secp, &validation_context, &precomputed),
         transaction: &transaction,
         input_index: 0,
@@ -2888,7 +2901,7 @@ fn tapscript_opcode_edge_cases_are_covered() {
         ScriptError::UnsupportedOpcode(OP_CHECKSIGADD)
     );
     let mut stack = vec![vec![1_u8; 64], vec![1_u8], vec![1_u8; 33]];
-    let relaxed_tapscript_context = super::LegacyExecutionContext {
+    let relaxed_tapscript_context = LegacyExecutionContext {
         checker: TransactionSignatureChecker::new(&secp, &validation_context, &precomputed),
         transaction: &transaction,
         input_index: 0,

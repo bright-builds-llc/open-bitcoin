@@ -21,39 +21,6 @@ use self::sigops::{
     count_witness_sigops as count_witness_sigops_impl,
 };
 
-#[cfg(test)]
-use self::encoding::{
-    compact_size_len, encode_push_data, remove_signature_from_script, write_compact_size,
-};
-#[cfg(test)]
-use self::legacy::{
-    LegacyExecutionContext, eval_script_internal, execute_checkmultisig, execute_checksig,
-    map_signature_error, verify_top_stack_true,
-};
-#[cfg(test)]
-use self::opcodes::{
-    OP_0NOTEQUAL, OP_1, OP_CHECKMULTISIG, OP_CHECKMULTISIGVERIFY, OP_CHECKSIG, OP_CHECKSIGADD,
-    OP_CHECKSIGVERIFY, OP_DUP, OP_ELSE, OP_ENDIF, OP_EQUALVERIFY, OP_HASH160, OP_IF, OP_NOTIF,
-    decode_small_int_opcode, is_disabled_opcode, is_op_success,
-};
-#[cfg(test)]
-use self::sigops::witness_sigops_for_type;
-#[cfg(test)]
-use self::stack::{
-    ConditionStack, MAX_STACK_SIZE, cast_to_bool, decode_script_num, decode_small_num, encode_bool,
-    encode_script_num,
-};
-#[cfg(test)]
-use self::taproot::{
-    TAPROOT_CONTROL_BASE_SIZE, TAPROOT_LEAF_TAPSCRIPT, compute_tapbranch_hash,
-    compute_tapleaf_hash, compute_taproot_merkle_root, execute_checksigadd, execute_tapscript,
-    execute_tapscript_checksig, verify_taproot_commitment,
-};
-#[cfg(test)]
-use self::witness::verify_witness_program;
-#[cfg(test)]
-use open_bitcoin_primitives::MAX_OPS_PER_SCRIPT;
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ScriptError {
     BadOpcode,
