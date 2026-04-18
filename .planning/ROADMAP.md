@@ -23,7 +23,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 5: Mempool and Node Policy** - Match mempool policy, replacement, and eviction behavior. (completed 2026-04-13)
 - [x] **Phase 6: P2P Networking and Sync** - Add peer lifecycle, message handling, and sync behavior. (completed 2026-04-14)
 - [x] **Phase 7: Wallet Core and Adapters** - Implement headless wallet behavior with pure-core boundaries intact. (completed 2026-04-17)
-- [ ] **Phase 07.1: Codebase Maintainability Refactor Wave (INSERTED)** - Reduce oversized-file pressure before Phase 8 by extracting inline tests and splitting the two largest remaining Rust hotspots.
+- [x] **Phase 07.1: Codebase Maintainability Refactor Wave (INSERTED)** - Reduce oversized-file pressure before Phase 8 by extracting inline tests and splitting the two largest remaining Rust hotspots. (completed 2026-04-18)
 - [ ] **Phase 8: RPC, CLI, and Config Parity** - Expose node and wallet behavior through compatible operator interfaces.
 - [ ] **Phase 9: Parity Harnesses and Fuzzing** - Lock down external behavior with reusable black-box and fuzz/property suites.
 - [ ] **Phase 10: Benchmarks and Audit Readiness** - Measure performance and complete the audit surfaces that track parity status.
@@ -225,12 +225,12 @@ first-party Rust hotspots along coherent module boundaries.
      submodules while preserving verifier, witness, taproot, and sigop
      behavior on the existing consensus corpus.
   4. `bash scripts/verify.sh` passes after the refactor wave completes.
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 07.1-01: Extract inline tests from oversized first-party Rust files.
 - [x] 07.1-02: Refactor wallet module boundaries under `open-bitcoin-wallet`.
-- [ ] 07.1-03: Refactor consensus script engine module boundaries.
+- [x] 07.1-03: Refactor consensus script engine module boundaries.
 
 ### Phase 8: RPC, CLI, and Config Parity
 **Goal**: Expose the node and wallet through operator-facing interfaces that behave compatibly with the baseline for the in-scope surface.
