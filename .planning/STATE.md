@@ -80,8 +80,9 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- 1 pending:
+- 2 pending:
   - AI-agent-friendly CLI surface — see `.planning/todos/pending/2026-04-18-ai-agent-friendly-cli-surface.md`
+  - Sweep panics and illegal states — see `.planning/todos/pending/2026-04-18-sweep-panics-and-illegal-states.md`
 
 ### Blockers/Concerns
 
