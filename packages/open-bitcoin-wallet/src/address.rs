@@ -1,13 +1,43 @@
 use secp256k1::{Keypair, PublicKey, Scalar, Secp256k1, SecretKey, XOnlyPublicKey};
 
 use open_bitcoin_consensus::{crypto::hash160, taproot_tagged_hash};
-use open_bitcoin_primitives::ScriptBuf;
+use open_bitcoin_primitives::{MAX_SCRIPT_ELEMENT_SIZE, ScriptBuf};
 
 use crate::WalletError;
 
 const BASE58_ALPHABET: &[u8; 58] = b"123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 const BECH32_ALPHABET: &[u8; 32] = b"qpzry9x8gf2tvdw0s3jn54khce6mua7l";
 const BECH32M_CONST: u32 = 0x2bc8_30a3;
+const WIF_PREFIX_MAINNET: u8 = 0x80;
+const WIF_PREFIX_TESTNET: u8 = 0xef;
+const CHECKSUM_SIZE: usize = 4;
+const WIF_VERSION_BYTES: usize = 1;
+const PRIVATE_KEY_BYTES: usize = 32;
+const WIF_PAYLOAD_LEN: usize = WIF_VERSION_BYTES + PRIVATE_KEY_BYTES;
+const WIF_COMPRESSED_PAYLOAD_LEN: usize = WIF_PAYLOAD_LEN + 1;
+const WIF_LEN: usize = WIF_PAYLOAD_LEN + CHECKSUM_SIZE;
+const WIF_COMPRESSED_LEN: usize = WIF_COMPRESSED_PAYLOAD_LEN + CHECKSUM_SIZE;
+const WIF_COMPRESSED_MARKER: u8 = 0x01;
+const HASH160_LEN: u8 = 20;
+const TAPROOT_KEY_LEN: u8 = 32;
+const PUSHDATA2_PREFIX_LEN: usize = 3;
+const DIRECT_PUSH_MAX: usize = 75;
+const PUSHDATA1_MAX: usize = 255;
+const P2PKH_PREFIX: [u8; 3] = [OP_DUP, OP_HASH160, HASH160_LEN];
+const P2PKH_SUFFIX: [u8; 2] = [OP_EQUALVERIFY, OP_CHECKSIG];
+const P2SH_PREFIX: [u8; 2] = [OP_HASH160, HASH160_LEN];
+const P2SH_SUFFIX: [u8; 1] = [OP_EQUAL];
+const P2WPKH_PREFIX: [u8; 2] = [OP_0, HASH160_LEN];
+const TAPROOT_PREFIX: [u8; 2] = [OP_PUSHNUM_1, TAPROOT_KEY_LEN];
+const OP_0: u8 = 0x00;
+const OP_DUP: u8 = 0x76;
+const OP_HASH160: u8 = 0xa9;
+const OP_EQUAL: u8 = 0x87;
+const OP_EQUALVERIFY: u8 = 0x88;
+const OP_CHECKSIG: u8 = 0xac;
+const OP_PUSHNUM_1: u8 = 0x51;
+const OP_PUSHDATA1: u8 = 0x4c;
+const OP_PUSHDATA2: u8 = 0x4d;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AddressNetwork {
@@ -34,8 +64,8 @@ impl AddressNetwork {
 
     pub const fn wif_prefix(self) -> u8 {
         match self {
-            Self::Mainnet => 0x80,
-            Self::Testnet | Self::Signet | Self::Regtest => 0xef,
+            Self::Mainnet => WIF_PREFIX_MAINNET,
+            Self::Testnet | Self::Signet | Self::Regtest => WIF_PREFIX_TESTNET,
         }
     }
 
@@ -49,8 +79,8 @@ impl AddressNetwork {
 
     pub fn from_wif_prefix(prefix: u8) -> Result<Self, WalletError> {
         match prefix {
-            0x80 => Ok(Self::Mainnet),
-            0xef => Ok(Self::Testnet),
+            WIF_PREFIX_MAINNET => Ok(Self::Mainnet),
+            WIF_PREFIX_TESTNET => Ok(Self::Testnet),
             _ => Err(WalletError::InvalidPrivateKey),
         }
     }
@@ -115,24 +145,27 @@ pub struct PrivateKey {
 impl PrivateKey {
     pub fn from_wif(wif: &str) -> Result<Self, WalletError> {
         let decoded = base58_decode(wif)?;
-        if decoded.len() != 37 && decoded.len() != 38 {
+        if decoded.len() != WIF_LEN && decoded.len() != WIF_COMPRESSED_LEN {
             return Err(WalletError::InvalidPrivateKey);
         }
 
-        let (payload, checksum) = decoded.split_at(decoded.len() - 4);
+        let (payload, checksum) = decoded.split_at(decoded.len() - CHECKSUM_SIZE);
         let expected = open_bitcoin_consensus::crypto::double_sha256(payload);
-        if checksum != &expected[..4] {
+        if checksum != &expected[..CHECKSUM_SIZE] {
             return Err(WalletError::InvalidChecksum);
         }
 
         let network = AddressNetwork::from_wif_prefix(payload[0])?;
         let (key_bytes, compressed) = match payload.len() {
-            33 => (&payload[1..33], false),
-            34 if payload[33] == 0x01 => (&payload[1..33], true),
+            WIF_PAYLOAD_LEN => (&payload[WIF_VERSION_BYTES..], false),
+            WIF_COMPRESSED_PAYLOAD_LEN if payload[WIF_PAYLOAD_LEN] == WIF_COMPRESSED_MARKER => {
+                (&payload[WIF_VERSION_BYTES..WIF_PAYLOAD_LEN], true)
+            }
             _ => return Err(WalletError::InvalidPrivateKey),
         };
         let secret_key = SecretKey::from_byte_array(
-            <[u8; 32]>::try_from(key_bytes).map_err(|_| WalletError::InvalidPrivateKey)?,
+            <[u8; PRIVATE_KEY_BYTES]>::try_from(key_bytes)
+                .map_err(|_| WalletError::InvalidPrivateKey)?,
         )
         .map_err(|_| WalletError::InvalidPrivateKey)?;
 
@@ -195,16 +228,18 @@ pub(crate) fn hex_encode(bytes: &[u8]) -> String {
 
 pub(crate) fn p2pkh_script(pubkey: &PublicKey) -> Result<ScriptBuf, WalletError> {
     let pubkey_hash = hash160(&public_key_bytes(pubkey, true));
-    script(&[0x76, 0xa9, 20], Some(&pubkey_hash), &[0x88, 0xac])
+    script(&P2PKH_PREFIX, Some(&pubkey_hash), &P2PKH_SUFFIX)
 }
 
-pub(crate) fn p2wpkh_program(pubkey: &PublicKey) -> Result<[u8; 20], WalletError> {
+pub(crate) fn p2wpkh_program(
+    pubkey: &PublicKey,
+) -> Result<[u8; HASH160_LEN as usize], WalletError> {
     Ok(hash160(&public_key_bytes(pubkey, true)))
 }
 
 pub(crate) fn p2wpkh_script(pubkey: &PublicKey) -> Result<ScriptBuf, WalletError> {
     let program = p2wpkh_program(pubkey)?;
-    script(&[0x00, 20], Some(&program), &[])
+    script(&P2WPKH_PREFIX, Some(&program), &[])
 }
 
 pub(crate) fn sh_wpkh_redeem_script(pubkey: &PublicKey) -> Result<ScriptBuf, WalletError> {
@@ -214,7 +249,7 @@ pub(crate) fn sh_wpkh_redeem_script(pubkey: &PublicKey) -> Result<ScriptBuf, Wal
 pub(crate) fn sh_wpkh_script(pubkey: &PublicKey) -> Result<ScriptBuf, WalletError> {
     let redeem_script = sh_wpkh_redeem_script(pubkey)?;
     let redeem_hash = hash160(redeem_script.as_bytes());
-    script(&[0xa9, 20], Some(&redeem_hash), &[0x87])
+    script(&P2SH_PREFIX, Some(&redeem_hash), &P2SH_SUFFIX)
 }
 
 pub(crate) fn taproot_output_key_from_private_key(
@@ -245,7 +280,7 @@ pub(crate) fn taproot_output_key_from_xonly(
 }
 
 pub(crate) fn taproot_script(output_key: &XOnlyPublicKey) -> Result<ScriptBuf, WalletError> {
-    script(&[0x51, 32], Some(&output_key.serialize()), &[])
+    script(&TAPROOT_PREFIX, Some(&output_key.serialize()), &[])
 }
 
 pub fn p2pkh_address(network: AddressNetwork, pubkey: &PublicKey) -> Result<Address, WalletError> {
@@ -307,18 +342,17 @@ pub fn tr_address(
 }
 
 pub(crate) fn push_data(data: &[u8]) -> Vec<u8> {
-    let mut bytes = Vec::with_capacity(data.len() + 3);
-    match data.len() {
-        0..=75 => bytes.push(data.len() as u8),
-        76..=255 => {
-            bytes.push(0x4c);
-            bytes.push(data.len() as u8);
-        }
-        256..=520 => {
-            bytes.push(0x4d);
-            bytes.extend_from_slice(&(data.len() as u16).to_le_bytes());
-        }
-        _ => panic!("push length out of supported range"),
+    let mut bytes = Vec::with_capacity(data.len() + PUSHDATA2_PREFIX_LEN);
+    if data.len() <= DIRECT_PUSH_MAX {
+        bytes.push(data.len() as u8);
+    } else if data.len() <= PUSHDATA1_MAX {
+        bytes.push(OP_PUSHDATA1);
+        bytes.push(data.len() as u8);
+    } else if data.len() <= MAX_SCRIPT_ELEMENT_SIZE {
+        bytes.push(OP_PUSHDATA2);
+        bytes.extend_from_slice(&(data.len() as u16).to_le_bytes());
+    } else {
+        panic!("push length out of supported range");
     }
     bytes.extend_from_slice(data);
     bytes
@@ -333,11 +367,11 @@ pub(crate) fn public_key_bytes(pubkey: &PublicKey, compressed: bool) -> Vec<u8> 
 }
 
 fn base58check_encode(prefix: u8, payload: &[u8]) -> String {
-    let mut data = Vec::with_capacity(payload.len() + 5);
+    let mut data = Vec::with_capacity(payload.len() + WIF_VERSION_BYTES + CHECKSUM_SIZE);
     data.push(prefix);
     data.extend_from_slice(payload);
     let checksum = open_bitcoin_consensus::crypto::double_sha256(&data);
-    data.extend_from_slice(&checksum[..4]);
+    data.extend_from_slice(&checksum[..CHECKSUM_SIZE]);
     base58_encode(&data)
 }
 

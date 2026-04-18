@@ -2,6 +2,21 @@ use std::collections::BTreeSet;
 
 use open_bitcoin_primitives::{Amount, Transaction, Txid, Wtxid};
 
+const SATOSHIS_PER_KILOVBYTE: i64 = 1_000;
+const FEE_RATE_ROUNDING_ADJUSTMENT: i64 = SATOSHIS_PER_KILOVBYTE - 1;
+
+const DEFAULT_MIN_RELAY_FEERATE_SATS_PER_KVB: i64 = SATOSHIS_PER_KILOVBYTE;
+const DEFAULT_INCREMENTAL_RELAY_FEERATE_SATS_PER_KVB: i64 = SATOSHIS_PER_KILOVBYTE;
+const DEFAULT_MAX_STANDARD_TX_WEIGHT: usize = 400_000;
+const DEFAULT_MAX_STANDARD_SIGOPS_COST: usize = 20_000;
+const DEFAULT_MAX_SCRIPT_SIG_SIZE: usize = 1_650;
+const DEFAULT_MAX_DATACARRIER_BYTES: usize = 83;
+const DEFAULT_MAX_ANCESTOR_COUNT: usize = 25;
+const DEFAULT_MAX_ANCESTOR_VIRTUAL_SIZE: usize = 101_000;
+const DEFAULT_MAX_DESCENDANT_COUNT: usize = 25;
+const DEFAULT_MAX_DESCENDANT_VIRTUAL_SIZE: usize = 101_000;
+const DEFAULT_MAX_MEMPOOL_VIRTUAL_SIZE: usize = 300_000_000;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FeeRate {
     sats_per_kvb: i64,
@@ -20,7 +35,8 @@ impl FeeRate {
         }
 
         let virtual_size = i64::try_from(virtual_size).expect("virtual size should fit i64");
-        let sats_per_kvb = (fee_sats.saturating_mul(1000) + virtual_size - 1) / virtual_size;
+        let sats_per_kvb =
+            (fee_sats.saturating_mul(SATOSHIS_PER_KILOVBYTE) + virtual_size - 1) / virtual_size;
         Self { sats_per_kvb }
     }
 
@@ -34,7 +50,8 @@ impl FeeRate {
         }
 
         let virtual_size = i64::try_from(virtual_size).expect("virtual size should fit i64");
-        (self.sats_per_kvb.saturating_mul(virtual_size) + 999) / 1000
+        (self.sats_per_kvb.saturating_mul(virtual_size) + FEE_RATE_ROUNDING_ADJUSTMENT)
+            / SATOSHIS_PER_KILOVBYTE
     }
 }
 
@@ -72,20 +89,22 @@ pub struct PolicyConfig {
 impl Default for PolicyConfig {
     fn default() -> Self {
         Self {
-            min_relay_feerate: FeeRate::from_sats_per_kvb(1000),
-            incremental_relay_feerate: FeeRate::from_sats_per_kvb(1000),
+            min_relay_feerate: FeeRate::from_sats_per_kvb(DEFAULT_MIN_RELAY_FEERATE_SATS_PER_KVB),
+            incremental_relay_feerate: FeeRate::from_sats_per_kvb(
+                DEFAULT_INCREMENTAL_RELAY_FEERATE_SATS_PER_KVB,
+            ),
             rbf_policy: RbfPolicy::Always,
-            max_standard_tx_weight: 400_000,
-            max_standard_sigops_cost: 20_000,
-            max_script_sig_size: 1650,
-            max_datacarrier_bytes: 83,
+            max_standard_tx_weight: DEFAULT_MAX_STANDARD_TX_WEIGHT,
+            max_standard_sigops_cost: DEFAULT_MAX_STANDARD_SIGOPS_COST,
+            max_script_sig_size: DEFAULT_MAX_SCRIPT_SIG_SIZE,
+            max_datacarrier_bytes: DEFAULT_MAX_DATACARRIER_BYTES,
             accept_datacarrier: true,
             permit_bare_multisig: false,
-            max_ancestor_count: 25,
-            max_ancestor_virtual_size: 101_000,
-            max_descendant_count: 25,
-            max_descendant_virtual_size: 101_000,
-            max_mempool_virtual_size: 300_000_000,
+            max_ancestor_count: DEFAULT_MAX_ANCESTOR_COUNT,
+            max_ancestor_virtual_size: DEFAULT_MAX_ANCESTOR_VIRTUAL_SIZE,
+            max_descendant_count: DEFAULT_MAX_DESCENDANT_COUNT,
+            max_descendant_virtual_size: DEFAULT_MAX_DESCENDANT_VIRTUAL_SIZE,
+            max_mempool_virtual_size: DEFAULT_MAX_MEMPOOL_VIRTUAL_SIZE,
         }
     }
 }

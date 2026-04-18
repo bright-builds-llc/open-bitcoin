@@ -1,5 +1,34 @@
 use open_bitcoin_primitives::ScriptBuf;
 
+const OP_0: u8 = 0x00;
+const OP_1NEGATE: u8 = 0x4f;
+const OP_PUSHDATA1: u8 = 0x4c;
+const OP_PUSHDATA2: u8 = 0x4d;
+const OP_PUSHDATA4: u8 = 0x4e;
+const OP_PUSHBYTES_75: u8 = OP_PUSHDATA1 - 1;
+const OP_PUSHNUM_1: u8 = 0x51;
+const OP_PUSHNUM_16: u8 = 0x60;
+const SMALL_INT_OPCODE_OFFSET: u8 = 0x50;
+const OP_DUP: u8 = 0x76;
+const OP_HASH160: u8 = 0xa9;
+const OP_EQUAL: u8 = 0x87;
+const OP_EQUALVERIFY: u8 = 0x88;
+const OP_CHECKSIG: u8 = 0xac;
+const OP_CHECKMULTISIG: u8 = 0xae;
+
+const HASH160_SIZE: u8 = 20;
+const WITNESS_PROGRAM_HASH_SIZE: u8 = 32;
+const COMPRESSED_PUBKEY_SIZE: u8 = 33;
+const UNCOMPRESSED_PUBKEY_SIZE: u8 = 65;
+const MIN_WITNESS_PROGRAM_SCRIPT_LEN: usize = 4;
+const MAX_WITNESS_PROGRAM_SCRIPT_LEN: usize = 42;
+const WITNESS_PROGRAM_HEADER_LEN: usize = 2;
+const MIN_WITNESS_PROGRAM_LEN: usize = 2;
+const MAX_WITNESS_PROGRAM_LEN: usize = 40;
+const WITNESS_V0: u8 = 0;
+const TAPROOT_WITNESS_VERSION: u8 = 1;
+const SCRIPTNUM_NEGATIVE_ONE: u8 = 0x81;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ScriptPubKeyType {
     PayToPubKey {
@@ -50,15 +79,15 @@ pub fn is_push_only(script: &ScriptBuf) -> bool {
         let opcode = bytes[pc];
         pc += 1;
         let maybe_push_len = match opcode {
-            0x00..=0x4b => Some(opcode as usize),
-            0x4c => {
+            OP_0..=OP_PUSHBYTES_75 => Some(opcode as usize),
+            OP_PUSHDATA1 => {
                 let Some(length) = bytes.get(pc) else {
                     return false;
                 };
                 pc += 1;
                 Some(usize::from(*length))
             }
-            0x4d => {
+            OP_PUSHDATA2 => {
                 let Some(length_bytes) = bytes.get(pc..pc + 2) else {
                     return false;
                 };
@@ -68,7 +97,7 @@ pub fn is_push_only(script: &ScriptBuf) -> bool {
                     length_bytes[1],
                 ])))
             }
-            0x4e => {
+            OP_PUSHDATA4 => {
                 let Some(length_bytes) = bytes.get(pc..pc + 4) else {
                     return false;
                 };
@@ -80,7 +109,7 @@ pub fn is_push_only(script: &ScriptBuf) -> bool {
                     length_bytes[3],
                 ]) as usize)
             }
-            0x4f | 0x51..=0x60 => None,
+            OP_1NEGATE | OP_PUSHNUM_1..=OP_PUSHNUM_16 => None,
             _ => return false,
         };
 
@@ -105,19 +134,19 @@ pub fn extract_script_sig_pushes(script: &ScriptBuf) -> Option<Vec<Vec<u8>>> {
         let opcode = *bytes.get(pc)?;
         pc += 1;
         match opcode {
-            0x00..=0x4b => {
+            OP_0..=OP_PUSHBYTES_75 => {
                 let end = pc.checked_add(opcode as usize)?;
                 pushes.push(bytes.get(pc..end)?.to_vec());
                 pc = end;
             }
-            0x4c => {
+            OP_PUSHDATA1 => {
                 let length = usize::from(*bytes.get(pc)?);
                 pc += 1;
                 let end = pc + length;
                 pushes.push(bytes.get(pc..end)?.to_vec());
                 pc = end;
             }
-            0x4d => {
+            OP_PUSHDATA2 => {
                 let length_bytes = bytes.get(pc..pc + 2)?;
                 pc += 2;
                 let length = usize::from(u16::from_le_bytes([length_bytes[0], length_bytes[1]]));
@@ -125,7 +154,7 @@ pub fn extract_script_sig_pushes(script: &ScriptBuf) -> Option<Vec<Vec<u8>>> {
                 pushes.push(bytes.get(pc..end)?.to_vec());
                 pc = end;
             }
-            0x4e => {
+            OP_PUSHDATA4 => {
                 let length_bytes = bytes.get(pc..pc + 4)?;
                 pc += 4;
                 let length = u32::from_le_bytes([
@@ -138,8 +167,8 @@ pub fn extract_script_sig_pushes(script: &ScriptBuf) -> Option<Vec<Vec<u8>>> {
                 pushes.push(bytes.get(pc..end)?.to_vec());
                 pc = end;
             }
-            0x4f => pushes.push(vec![0x81]),
-            0x51..=0x60 => pushes.push(vec![opcode - 0x50]),
+            OP_1NEGATE => pushes.push(vec![SCRIPTNUM_NEGATIVE_ONE]),
+            OP_PUSHNUM_1..=OP_PUSHNUM_16 => pushes.push(vec![opcode - SMALL_INT_OPCODE_OFFSET]),
             _ => return None,
         }
     }
@@ -155,51 +184,78 @@ pub fn extract_redeem_script(script_sig: &ScriptBuf) -> Option<ScriptBuf> {
 
 fn classify_pay_to_pubkey(bytes: &[u8]) -> Option<ScriptPubKeyType> {
     match bytes {
-        [33, pubkey @ .., 0xac] if pubkey.len() == 33 => Some(ScriptPubKeyType::PayToPubKey {
-            compressed: true,
-            pubkey: pubkey.to_vec(),
-        }),
-        [65, pubkey @ .., 0xac] if pubkey.len() == 65 => Some(ScriptPubKeyType::PayToPubKey {
-            compressed: false,
-            pubkey: pubkey.to_vec(),
-        }),
+        [COMPRESSED_PUBKEY_SIZE, pubkey @ .., OP_CHECKSIG]
+            if pubkey.len() == usize::from(COMPRESSED_PUBKEY_SIZE) =>
+        {
+            Some(ScriptPubKeyType::PayToPubKey {
+                compressed: true,
+                pubkey: pubkey.to_vec(),
+            })
+        }
+        [UNCOMPRESSED_PUBKEY_SIZE, pubkey @ .., OP_CHECKSIG]
+            if pubkey.len() == usize::from(UNCOMPRESSED_PUBKEY_SIZE) =>
+        {
+            Some(ScriptPubKeyType::PayToPubKey {
+                compressed: false,
+                pubkey: pubkey.to_vec(),
+            })
+        }
         _ => None,
     }
 }
 
 fn extract_p2pkh_hash(bytes: &[u8]) -> Option<[u8; 20]> {
     match bytes {
-        [0x76, 0xa9, 20, hash @ .., 0x88, 0xac] if hash.len() == 20 => Some(hash.try_into().ok()?),
+        [
+            OP_DUP,
+            OP_HASH160,
+            HASH160_SIZE,
+            hash @ ..,
+            OP_EQUALVERIFY,
+            OP_CHECKSIG,
+        ] if hash.len() == usize::from(HASH160_SIZE) => Some(hash.try_into().ok()?),
         _ => None,
     }
 }
 
 fn extract_p2sh_hash(bytes: &[u8]) -> Option<[u8; 20]> {
     match bytes {
-        [0xa9, 20, hash @ .., 0x87] if hash.len() == 20 => Some(hash.try_into().ok()?),
+        [OP_HASH160, HASH160_SIZE, hash @ .., OP_EQUAL]
+            if hash.len() == usize::from(HASH160_SIZE) =>
+        {
+            Some(hash.try_into().ok()?)
+        }
         _ => None,
     }
 }
 
 fn classify_witness_program(bytes: &[u8]) -> Option<ScriptPubKeyType> {
-    if !(4..=42).contains(&bytes.len()) {
+    if !(MIN_WITNESS_PROGRAM_SCRIPT_LEN..=MAX_WITNESS_PROGRAM_SCRIPT_LEN).contains(&bytes.len()) {
         return None;
     }
     let version = match bytes[0] {
-        0x00 => 0,
-        0x51..=0x60 => bytes[0] - 0x50,
+        OP_0 => WITNESS_V0,
+        OP_PUSHNUM_1..=OP_PUSHNUM_16 => bytes[0] - SMALL_INT_OPCODE_OFFSET,
         _ => return None,
     };
     let program_len = usize::from(bytes[1]);
-    if program_len + 2 != bytes.len() || !(2..=40).contains(&program_len) {
+    if program_len + WITNESS_PROGRAM_HEADER_LEN != bytes.len()
+        || !(MIN_WITNESS_PROGRAM_LEN..=MAX_WITNESS_PROGRAM_LEN).contains(&program_len)
+    {
         return None;
     }
-    let program = &bytes[2..];
+    let program = &bytes[WITNESS_PROGRAM_HEADER_LEN..];
 
     Some(match (version, program_len) {
-        (0, 20) => ScriptPubKeyType::WitnessV0KeyHash(program.try_into().ok()?),
-        (0, 32) => ScriptPubKeyType::WitnessV0ScriptHash(program.try_into().ok()?),
-        (1, 32) => ScriptPubKeyType::WitnessV1Taproot(program.try_into().ok()?),
+        (WITNESS_V0, len) if len == usize::from(HASH160_SIZE) => {
+            ScriptPubKeyType::WitnessV0KeyHash(program.try_into().ok()?)
+        }
+        (WITNESS_V0, len) if len == usize::from(WITNESS_PROGRAM_HASH_SIZE) => {
+            ScriptPubKeyType::WitnessV0ScriptHash(program.try_into().ok()?)
+        }
+        (TAPROOT_WITNESS_VERSION, len) if len == usize::from(WITNESS_PROGRAM_HASH_SIZE) => {
+            ScriptPubKeyType::WitnessV1Taproot(program.try_into().ok()?)
+        }
         _ => ScriptPubKeyType::WitnessUnknown {
             version,
             program: program.to_vec(),
@@ -209,7 +265,7 @@ fn classify_witness_program(bytes: &[u8]) -> Option<ScriptPubKeyType> {
 
 fn classify_multisig(bytes: &[u8]) -> Option<ScriptPubKeyType> {
     let (&last_opcode, body) = bytes.split_last()?;
-    if last_opcode != 0xae || body.len() < 2 {
+    if last_opcode != OP_CHECKMULTISIG || body.len() < 2 {
         return None;
     }
 
@@ -220,7 +276,9 @@ fn classify_multisig(bytes: &[u8]) -> Option<ScriptPubKeyType> {
     while pc < body.len() - 1 {
         let key_len = usize::from(*body.get(pc)?);
         pc += 1;
-        if !(key_len == 33 || key_len == 65) {
+        if key_len != usize::from(COMPRESSED_PUBKEY_SIZE)
+            && key_len != usize::from(UNCOMPRESSED_PUBKEY_SIZE)
+        {
             return None;
         }
         let end = pc.checked_add(key_len)?;
@@ -239,8 +297,8 @@ fn classify_multisig(bytes: &[u8]) -> Option<ScriptPubKeyType> {
 
 fn decode_small_int(opcode: u8) -> Option<usize> {
     match opcode {
-        0x00 => Some(0),
-        0x51..=0x60 => Some(usize::from(opcode - 0x50)),
+        OP_0 => Some(0),
+        OP_PUSHNUM_1..=OP_PUSHNUM_16 => Some(usize::from(opcode - SMALL_INT_OPCODE_OFFSET)),
         _ => None,
     }
 }

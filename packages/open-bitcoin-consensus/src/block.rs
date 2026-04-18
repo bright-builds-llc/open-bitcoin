@@ -19,6 +19,17 @@ use crate::transaction::{
 };
 use crate::validation::{BlockValidationError, BlockValidationResult, block_error};
 
+const WITNESS_RESERVED_VALUE_STACK_ITEMS: usize = 1;
+const WITNESS_RESERVED_VALUE_SIZE: usize = 32;
+const WITNESS_COMMITMENT_PREIMAGE_SIZE: usize = 64;
+const WITNESS_COMMITMENT_HEADER: [u8; 6] = [0x6a, 0x24, 0xaa, 0x21, 0xa9, 0xed];
+const WITNESS_COMMITMENT_HEADER_LEN: usize = WITNESS_COMMITMENT_HEADER.len();
+const WITNESS_COMMITMENT_SCRIPT_LEN: usize =
+    WITNESS_COMMITMENT_HEADER_LEN + WITNESS_RESERVED_VALUE_SIZE;
+const WITNESS_COMMITMENT_START: usize = WITNESS_COMMITMENT_HEADER_LEN;
+const WITNESS_COMMITMENT_END: usize = WITNESS_COMMITMENT_START + WITNESS_RESERVED_VALUE_SIZE;
+const HASH_CONCATENATION_SIZE: usize = 64;
+
 pub fn check_block_header(header: &BlockHeader) -> Result<(), BlockValidationError> {
     let valid =
         check_proof_of_work(block_hash(header).to_byte_array(), header.bits).map_err(|error| {
@@ -361,8 +372,8 @@ fn check_witness_commitment(
             .first()
             .and_then(|transaction| transaction.inputs.first())
             .expect("coinbase input must exist after context-free block checks");
-        if coinbase_input.witness.stack().len() != 1
-            || coinbase_input.witness.stack()[0].len() != 32
+        if coinbase_input.witness.stack().len() != WITNESS_RESERVED_VALUE_STACK_ITEMS
+            || coinbase_input.witness.stack()[0].len() != WITNESS_RESERVED_VALUE_SIZE
         {
             return Err(block_error(
                 BlockValidationResult::Mutated,
@@ -373,15 +384,17 @@ fn check_witness_commitment(
 
         let witness_root = block_witness_merkle_root(block).map_err(map_codec_error)?;
         let reserved_value = &coinbase_input.witness.stack()[0];
-        let mut commitment_preimage = [0_u8; 64];
-        commitment_preimage[..32].copy_from_slice(witness_root.as_bytes());
-        commitment_preimage[32..].copy_from_slice(reserved_value);
+        let mut commitment_preimage = [0_u8; WITNESS_COMMITMENT_PREIMAGE_SIZE];
+        commitment_preimage[..WITNESS_RESERVED_VALUE_SIZE].copy_from_slice(witness_root.as_bytes());
+        commitment_preimage[WITNESS_RESERVED_VALUE_SIZE..].copy_from_slice(reserved_value);
         let expected_commitment = double_sha256(&commitment_preimage);
 
         let commitment_script = block.transactions[0].outputs[commitment_index]
             .script_pubkey
             .as_bytes();
-        if commitment_script[6..38] != expected_commitment {
+        if commitment_script[WITNESS_COMMITMENT_START..WITNESS_COMMITMENT_END]
+            != expected_commitment
+        {
             return Err(block_error(
                 BlockValidationResult::Mutated,
                 "bad-witness-merkle-match",
@@ -412,18 +425,15 @@ fn witness_commitment_index(block: &Block) -> Option<usize> {
     let mut maybe_commitment_index = None;
     for (index, output) in coinbase_outputs {
         let bytes = output.script_pubkey.as_bytes();
-        if bytes.len() >= 38
-            && bytes[0] == 0x6a
-            && bytes[1] == 0x24
-            && bytes[2] == 0xaa
-            && bytes[3] == 0x21
-            && bytes[4] == 0xa9
-            && bytes[5] == 0xed
-        {
+        if has_witness_commitment_header(bytes) {
             maybe_commitment_index = Some(index);
         }
     }
     maybe_commitment_index
+}
+
+fn has_witness_commitment_header(bytes: &[u8]) -> bool {
+    bytes.len() >= WITNESS_COMMITMENT_SCRIPT_LEN && bytes.starts_with(&WITNESS_COMMITMENT_HEADER)
 }
 
 fn block_witness_merkle_root(
@@ -449,9 +459,9 @@ fn block_witness_merkle_root(
 
         let mut next_level = Vec::with_capacity(level.len() / 2);
         for pair in level.chunks_exact(2) {
-            let mut concatenated = [0_u8; 64];
-            concatenated[..32].copy_from_slice(&pair[0]);
-            concatenated[32..].copy_from_slice(&pair[1]);
+            let mut concatenated = [0_u8; HASH_CONCATENATION_SIZE];
+            concatenated[..WITNESS_RESERVED_VALUE_SIZE].copy_from_slice(&pair[0]);
+            concatenated[WITNESS_RESERVED_VALUE_SIZE..].copy_from_slice(&pair[1]);
             next_level.push(double_sha256(&concatenated));
         }
         level = next_level;
