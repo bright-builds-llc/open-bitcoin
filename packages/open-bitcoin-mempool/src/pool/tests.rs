@@ -577,6 +577,25 @@ fn admission_maps_validation_errors_and_replacement_policy_edges() {
     submit(&mut mempool, &snapshot, original).expect("original");
     let conflict_txid = *mempool.entries().keys().next().expect("conflict txid");
 
+    let absolute_fee_error = mempool
+        .validate_replacement(
+            &spend_transaction(
+                coinbase_txids[0],
+                0,
+                499_998_000,
+                TransactionInput::SEQUENCE_FINAL,
+            ),
+            &BTreeSet::from([conflict_txid]),
+            1_000,
+            1,
+        )
+        .expect_err("absolute fee should fail");
+    assert!(matches!(
+        absolute_fee_error,
+        MempoolError::ReplacementRejected { ref reason }
+        if reason.contains("must exceed conflicting fee")
+    ));
+
     let low_feerate_error = mempool
         .validate_replacement(
             &spend_transaction(
@@ -592,7 +611,8 @@ fn admission_maps_validation_errors_and_replacement_policy_edges() {
         .expect_err("feerate should fail");
     assert!(matches!(
         low_feerate_error,
-        MempoolError::ReplacementRejected { .. }
+        MempoolError::ReplacementRejected { ref reason }
+        if reason.contains("replacement feerate")
     ));
 
     let incremental_error = mempool
@@ -610,7 +630,8 @@ fn admission_maps_validation_errors_and_replacement_policy_edges() {
         .expect_err("incremental relay bump should fail");
     assert!(matches!(
         incremental_error,
-        MempoolError::ReplacementRejected { .. }
+        MempoolError::ReplacementRejected { ref reason }
+        if reason.contains("replacement fee bump")
     ));
 
     let stale_conflict = mempool.validate_replacement(

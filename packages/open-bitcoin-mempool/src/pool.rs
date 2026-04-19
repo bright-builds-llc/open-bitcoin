@@ -91,13 +91,7 @@ impl Mempool {
             },
         )?;
         enforce_min_relay_fee(&self.config, fee.to_sats(), virtual_size)?;
-
-        let direct_conflicts = self.direct_conflicts(&transaction);
-        let replace_set = if direct_conflicts.is_empty() {
-            BTreeSet::new()
-        } else {
-            self.validate_replacement(&transaction, &direct_conflicts, fee.to_sats(), virtual_size)?
-        };
+        let replace_set = self.replacement_set(&transaction, fee.to_sats(), virtual_size)?;
 
         let wtxid =
             transaction_wtxid(&transaction).expect("typed transactions should derive wtxid");
@@ -136,6 +130,25 @@ impl Mempool {
         })
     }
 
+    fn replacement_set(
+        &self,
+        transaction: &Transaction,
+        candidate_fee_sats: i64,
+        virtual_size: usize,
+    ) -> Result<BTreeSet<Txid>, MempoolError> {
+        let direct_conflicts = self.direct_conflicts(transaction);
+        if direct_conflicts.is_empty() {
+            return Ok(BTreeSet::new());
+        }
+
+        self.validate_replacement(
+            transaction,
+            &direct_conflicts,
+            candidate_fee_sats,
+            virtual_size,
+        )
+    }
+
     fn direct_conflicts(&self, transaction: &Transaction) -> BTreeSet<Txid> {
         let mut conflicts = BTreeSet::new();
         for input in &transaction.inputs {
@@ -155,26 +168,22 @@ impl Mempool {
         candidate_fee_sats: i64,
         virtual_size: usize,
     ) -> Result<BTreeSet<Txid>, MempoolError> {
-        match self.config.rbf_policy {
-            RbfPolicy::Never => {
-                return Err(MempoolError::ConflictNotAllowed {
-                    conflicting: direct_conflicts.iter().copied().collect(),
-                    policy: RbfPolicy::Never,
-                });
-            }
-            RbfPolicy::OptIn => {
-                let maybe_signaled = direct_conflicts
-                    .iter()
-                    .filter_map(|txid| self.entries.get(txid))
-                    .any(|entry| signals_opt_in_rbf(&entry.transaction));
-                if !maybe_signaled {
-                    return Err(MempoolError::ConflictNotAllowed {
-                        conflicting: direct_conflicts.iter().copied().collect(),
-                        policy: RbfPolicy::OptIn,
-                    });
-                }
-            }
-            RbfPolicy::Always => {}
+        if self.config.rbf_policy == RbfPolicy::Never {
+            return Err(MempoolError::ConflictNotAllowed {
+                conflicting: direct_conflicts.iter().copied().collect(),
+                policy: RbfPolicy::Never,
+            });
+        }
+
+        let has_opt_in_signal = direct_conflicts
+            .iter()
+            .filter_map(|txid| self.entries.get(txid))
+            .any(|entry| signals_opt_in_rbf(&entry.transaction));
+        if self.config.rbf_policy == RbfPolicy::OptIn && !has_opt_in_signal {
+            return Err(MempoolError::ConflictNotAllowed {
+                conflicting: direct_conflicts.iter().copied().collect(),
+                policy: RbfPolicy::OptIn,
+            });
         }
 
         let replace_set = collect_conflicts_and_descendants(&self.entries, direct_conflicts);
@@ -222,7 +231,22 @@ impl Mempool {
             });
         }
 
-        let conflicting_inputs = direct_conflicts
+        let conflicting_inputs = self.collect_conflicting_inputs(direct_conflicts);
+        let adds_new_unconfirmed_input = transaction.inputs.iter().any(|input| {
+            self.entries.contains_key(&input.previous_output.txid)
+                && !conflicting_inputs.contains(&input.previous_output)
+        });
+        if adds_new_unconfirmed_input {
+            return Err(MempoolError::ReplacementRejected {
+                reason: "replacement adds new unconfirmed inputs".to_string(),
+            });
+        }
+
+        Ok(replace_set)
+    }
+
+    fn collect_conflicting_inputs(&self, direct_conflicts: &BTreeSet<Txid>) -> HashSet<OutPoint> {
+        direct_conflicts
             .iter()
             .filter_map(|txid| self.entries.get(txid))
             .flat_map(|entry| {
@@ -233,18 +257,7 @@ impl Mempool {
                     .map(|input| input.previous_output.clone())
                     .collect::<Vec<_>>()
             })
-            .collect::<HashSet<_>>();
-        for input in &transaction.inputs {
-            if self.entries.contains_key(&input.previous_output.txid)
-                && !conflicting_inputs.contains(&input.previous_output)
-            {
-                return Err(MempoolError::ReplacementRejected {
-                    reason: "replacement adds new unconfirmed inputs".to_string(),
-                });
-            }
-        }
-
-        Ok(replace_set)
+            .collect()
     }
 }
 
