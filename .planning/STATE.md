@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Completed 07.3-03-PLAN.md
-last_updated: "2026-04-19T03:01:40.212Z"
+stopped_at: Phase 07.4 complete; Phase 8 next
+last_updated: "2026-04-19T09:57:11.742Z"
 last_activity: 2026-04-19
 progress:
-  total_phases: 17
-  completed_phases: 14
-  total_plans: 48
-  completed_plans: 48
+  total_phases: 18
+  completed_phases: 15
+  total_plans: 49
+  completed_plans: 49
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-11)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 07.3 — reduce-nesting-with-early-returns
+**Current focus:** Phase 8 — RPC, CLI, and Config Parity
 
 ## Current Position
 
 Phase: 8
 Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-04-19
+Status: Ready to plan Phase 8
+Last activity: 2026-04-19 -- Phase 07.4 complete
 
 Progress: ██████████ 100%
 
@@ -36,7 +36,7 @@ Progress: ██████████ 100%
 
 **Velocity:**
 
-- Total plans completed: 47
+- Total plans completed: 48
 - Average duration: 0 min
 - Total execution time: 0.0 hours
 
@@ -58,10 +58,11 @@ Progress: ██████████ 100%
 | 07.1 | 3 | - | - |
 | 07.2 | 1 | - | - |
 | 07.3 | 3 | - | - |
+| 07.4 | 1 | - | - |
 
 **Recent Trend:**
 
-- Last 5 plans: 07-01, 07-02, 07-03, 07-04, 07.2-01
+- Last 5 plans: 07-02, 07-03, 07-04, 07.3-01, 07.4-01
 - Trend: Stable
 
 | Phase 1 P01 | 1 min | 2 tasks | 7 files |
@@ -109,6 +110,7 @@ Recent decisions affecting current work:
 - Phase 07.1 inserted after Phase 7: Codebase Maintainability Refactor Wave (URGENT)
 - Phase 07.2 inserted after Phase 7: Protocol Constant Clarity Cleanup (URGENT)
 - Phase 07.3 inserted after Phase 07.2: Reduce nesting with early returns (URGENT)
+- Phase 07.4 inserted after Phase 07.3: Let-else opportunity sweep (URGENT)
 
 ### Pending Todos
 
@@ -123,6 +125,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-19T02:48:33.368Z
-Stopped at: Completed 07.3-03-PLAN.md
-Resume file: None
+Last session: 2026-04-19T09:57:11.739Z
+Stopped at: Phase 07.4 complete; Phase 8 next
+Resume file: .planning/ROADMAP.md
