@@ -216,9 +216,10 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     ) -> Result<Vec<WireNetworkMessage>, ManagedNetworkError> {
         let mut outbound = Vec::new();
         for action in actions {
-            if let PeerAction::Send(message) = action {
-                outbound.push(message);
-            }
+            let PeerAction::Send(message) = action else {
+                continue;
+            };
+            outbound.push(message);
         }
         Ok(outbound)
     }
@@ -287,27 +288,27 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             match request.inventory_type {
                 InventoryType::Block | InventoryType::WitnessBlock => {
                     let block_hash = BlockHash::from(request.object_hash);
-                    if let Some(block) = self.blocks_by_hash.get(&block_hash) {
-                        messages.push(WireNetworkMessage::Block(block.clone()));
-                    } else {
+                    let Some(block) = self.blocks_by_hash.get(&block_hash) else {
                         missing.push(request);
-                    }
+                        continue;
+                    };
+                    messages.push(WireNetworkMessage::Block(block.clone()));
                 }
                 InventoryType::Transaction => {
                     let txid = Txid::from(request.object_hash);
-                    if let Some(transaction) = self.transactions_by_txid.get(&txid) {
-                        messages.push(WireNetworkMessage::Tx(transaction.clone()));
-                    } else {
+                    let Some(transaction) = self.transactions_by_txid.get(&txid) else {
                         missing.push(request);
-                    }
+                        continue;
+                    };
+                    messages.push(WireNetworkMessage::Tx(transaction.clone()));
                 }
                 InventoryType::WitnessTransaction => {
                     let wtxid = Wtxid::from(request.object_hash);
-                    if let Some(transaction) = self.transactions_by_wtxid.get(&wtxid) {
-                        messages.push(WireNetworkMessage::Tx(transaction.clone()));
-                    } else {
+                    let Some(transaction) = self.transactions_by_wtxid.get(&wtxid) else {
                         missing.push(request);
-                    }
+                        continue;
+                    };
+                    messages.push(WireNetworkMessage::Tx(transaction.clone()));
                 }
                 _ => missing.push(request),
             }

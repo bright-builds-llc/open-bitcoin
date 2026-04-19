@@ -113,13 +113,14 @@ pub fn is_push_only(script: &ScriptBuf) -> bool {
             _ => return false,
         };
 
-        if let Some(push_len) = maybe_push_len {
-            let end = pc + push_len;
-            if end > bytes.len() {
-                return false;
-            }
-            pc = end;
+        let Some(push_len) = maybe_push_len else {
+            continue;
+        };
+        let end = pc + push_len;
+        if end > bytes.len() {
+            return false;
         }
+        pc = end;
     }
 
     true

@@ -41,6 +41,7 @@ pub(super) fn build_transaction(
     let maybe_change_script = maybe_change_descriptor
         .map(|descriptor| descriptor.descriptor.script_pubkey())
         .transpose()?;
+    let maybe_change_script = maybe_change_script.as_ref();
 
     let mut selected = Vec::new();
     let mut available_sats = 0_i64;
@@ -55,33 +56,8 @@ pub(super) fn build_transaction(
             continue;
         }
 
-        let maybe_change_output = if let Some(change_script) = &maybe_change_script {
-            let placeholder = TransactionOutput {
-                value: amount_from_sats(1)?,
-                script_pubkey: change_script.clone(),
-            };
-            let recipients = &request.recipients;
-            let selected_inputs = &selected;
-            let with_change_vsize =
-                estimate_change_vsize(wallet, selected_inputs, recipients, &placeholder, request)?;
-            let change_fee = request.fee_rate.fee_for_virtual_size(with_change_vsize);
-            let change_sats = available_sats - recipients_total - change_fee;
-            if change_sats > 0 {
-                let candidate_output = TransactionOutput {
-                    value: amount_from_sats(change_sats)?,
-                    script_pubkey: change_script.clone(),
-                };
-                if change_sats > dust_threshold_sats(&candidate_output) {
-                    Some(candidate_output)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        } else {
-            None
-        };
+        let maybe_change_output =
+            build_change_output(wallet, request, maybe_change_script, &selected)?;
 
         let mut outputs = request
             .recipients
@@ -231,6 +207,46 @@ pub(super) fn estimate_change_vsize(
         Some(change_output),
         request,
     )
+}
+
+fn build_change_output(
+    wallet: &Wallet,
+    request: &BuildRequest,
+    maybe_change_script: Option<&ScriptBuf>,
+    selected_inputs: &[WalletUtxo],
+) -> Result<Option<TransactionOutput>, WalletError> {
+    let Some(change_script) = maybe_change_script else {
+        return Ok(None);
+    };
+
+    let placeholder = TransactionOutput {
+        value: amount_from_sats(1)?,
+        script_pubkey: change_script.clone(),
+    };
+    let recipients = request.recipients.as_slice();
+    let with_change_vsize =
+        estimate_change_vsize(wallet, selected_inputs, recipients, &placeholder, request)?;
+    let change_fee = request.fee_rate.fee_for_virtual_size(with_change_vsize);
+    let available_sats = selected_inputs
+        .iter()
+        .fold(0_i64, |sum, utxo| sum + utxo.output.value.to_sats());
+    let recipients_total = recipients
+        .iter()
+        .fold(0_i64, |sum, recipient| sum + recipient.value.to_sats());
+    let change_sats = available_sats - recipients_total - change_fee;
+    if change_sats <= 0 {
+        return Ok(None);
+    }
+
+    let candidate_output = TransactionOutput {
+        value: amount_from_sats(change_sats)?,
+        script_pubkey: change_script.clone(),
+    };
+    if change_sats > dust_threshold_sats(&candidate_output) {
+        return Ok(Some(candidate_output));
+    }
+
+    Ok(None)
 }
 
 pub(super) fn placeholder_input(
