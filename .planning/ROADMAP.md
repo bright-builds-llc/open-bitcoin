@@ -25,7 +25,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 7: Wallet Core and Adapters** - Implement headless wallet behavior with pure-core boundaries intact. (completed 2026-04-17)
 - [x] **Phase 07.1: Codebase Maintainability Refactor Wave (INSERTED)** - Reduce oversized-file pressure before Phase 8 by extracting inline tests and splitting the two largest remaining Rust hotspots. (completed 2026-04-18)
 - [x] **Phase 07.2: Protocol Constant Clarity Cleanup (INSERTED)** - Replace remaining protocol-significant magic numbers and repeated serialized-size literals with clearer named constants before Phase 8. (completed 2026-04-19)
-- [ ] **Phase 07.3: Reduce nesting with early returns (INSERTED)** - Flatten the highest-value deeply nested control-flow hotspots before Phase 8 planning.
+- [x] **Phase 07.3: Reduce nesting with early returns (INSERTED)** - Flatten the highest-value deeply nested control-flow hotspots before Phase 8 planning. (completed 2026-04-19)
 - [ ] **Phase 8: RPC, CLI, and Config Parity** - Expose node and wallet behavior through compatible operator interfaces.
 - [ ] **Phase 9: Parity Harnesses and Fuzzing** - Lock down external behavior with reusable black-box and fuzz/property suites.
 - [ ] **Phase 10: Benchmarks and Audit Readiness** - Measure performance and complete the audit surfaces that track parity status.
@@ -251,12 +251,12 @@ Plans:
 **Goal:** Flatten the highest-value deeply nested control-flow hotspots in the existing consensus, chainstate, mempool, and networking production code before Phase 8 planning, using early returns and narrow helper extraction without changing behavior.
 **Requirements**: TBD
 **Depends on:** Phase 07.2
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 07.3-01-PLAN.md — Flatten block and chainstate validation hotspots with guard-style helper extraction.
 - [x] 07.3-02-PLAN.md — Flatten peer and mempool guard paths without rewriting protocol or policy state machines.
-- [ ] 07.3-03-PLAN.md — Apply the optional narrow `legacy.rs` cleanup and close the phase with full repo-native verification.
+- [x] 07.3-03-PLAN.md — Apply the optional narrow `legacy.rs` cleanup and close the phase with full repo-native verification.
 
 ### Phase 8: RPC, CLI, and Config Parity
 **Goal**: Expose the node and wallet through operator-facing interfaces that behave compatibly with the baseline for the in-scope surface.
