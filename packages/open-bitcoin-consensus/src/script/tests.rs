@@ -21,7 +21,7 @@ use super::legacy::{
 use super::opcodes::{
     OP_0NOTEQUAL, OP_1, OP_CHECKMULTISIG, OP_CHECKMULTISIGVERIFY, OP_CHECKSIG, OP_CHECKSIGADD,
     OP_CHECKSIGVERIFY, OP_DUP, OP_ELSE, OP_ENDIF, OP_EQUALVERIFY, OP_HASH160, OP_IF, OP_NOTIF,
-    decode_small_int_opcode, is_disabled_opcode, is_op_success,
+    OP_RESERVED, OP_VER, decode_small_int_opcode, is_disabled_opcode, is_op_success,
 };
 use super::sigops::witness_sigops_for_type;
 use super::stack::{
@@ -2791,7 +2791,25 @@ fn taproot_helper_branches_are_covered() {
     assert_eq!(compact[0], 0xfd);
     assert_eq!(compact[3], 0xfe);
     assert_eq!(compact[8], 0xff);
-    assert!(is_op_success(0x50));
+    assert!(!is_op_success(OP_CHECKSIG));
+}
+
+#[test]
+fn op_success_boundary_ranges_match_taproot_allowlist() {
+    assert_eq!(OP_RESERVED, 0x50);
+    assert_eq!(OP_VER, 0x62);
+
+    assert!(is_op_success(OP_RESERVED));
+    assert!(is_op_success(OP_VER));
+    assert!(is_op_success(0x7e));
+    assert!(is_op_success(0x81));
+    assert!(is_op_success(0xbb));
+    assert!(is_op_success(0xfe));
+
+    assert!(!is_op_success(0x7d));
+    assert!(!is_op_success(0x82));
+    assert!(!is_op_success(0xba));
+    assert!(!is_op_success(0xff));
     assert!(!is_op_success(OP_CHECKSIG));
 }
 

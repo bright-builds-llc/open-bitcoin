@@ -2,9 +2,11 @@ pub(super) const OP_PUSHDATA1: u8 = 0x4c;
 pub(super) const OP_PUSHDATA2: u8 = 0x4d;
 pub(super) const OP_PUSHDATA4: u8 = 0x4e;
 pub(super) const OP_1NEGATE: u8 = 0x4f;
+pub(super) const OP_RESERVED: u8 = 0x50;
 pub(super) const OP_1: u8 = 0x51;
 pub(super) const OP_16: u8 = 0x60;
 pub(super) const OP_NOP: u8 = 0x61;
+pub(super) const OP_VER: u8 = 0x62;
 pub(super) const OP_IF: u8 = 0x63;
 pub(super) const OP_NOTIF: u8 = 0x64;
 pub(super) const OP_ELSE: u8 = 0x67;
@@ -75,12 +77,12 @@ pub(super) fn is_disabled_opcode(opcode: u8) -> bool {
 }
 
 pub(super) fn is_op_success(opcode: u8) -> bool {
-    opcode == 80
-        || opcode == 98
-        || (126..=129).contains(&opcode)
-        || (131..=134).contains(&opcode)
-        || (137..=138).contains(&opcode)
-        || (141..=142).contains(&opcode)
-        || (149..=153).contains(&opcode)
-        || (187..=254).contains(&opcode)
+    opcode == OP_RESERVED
+        || opcode == OP_VER
+        || (0x7e..=0x81).contains(&opcode)
+        || (0x83..=0x86).contains(&opcode)
+        || (0x89..=0x8a).contains(&opcode)
+        || (0x8d..=0x8e).contains(&opcode)
+        || (0x95..=0x99).contains(&opcode)
+        || (0xbb..=0xfe).contains(&opcode)
 }

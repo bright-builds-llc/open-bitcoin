@@ -24,6 +24,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 6: P2P Networking and Sync** - Add peer lifecycle, message handling, and sync behavior. (completed 2026-04-14)
 - [x] **Phase 7: Wallet Core and Adapters** - Implement headless wallet behavior with pure-core boundaries intact. (completed 2026-04-17)
 - [x] **Phase 07.1: Codebase Maintainability Refactor Wave (INSERTED)** - Reduce oversized-file pressure before Phase 8 by extracting inline tests and splitting the two largest remaining Rust hotspots. (completed 2026-04-18)
+- [x] **Phase 07.2: Protocol Constant Clarity Cleanup (INSERTED)** - Replace remaining protocol-significant magic numbers and repeated serialized-size literals with clearer named constants before Phase 8. (completed 2026-04-19)
 - [ ] **Phase 8: RPC, CLI, and Config Parity** - Expose node and wallet behavior through compatible operator interfaces.
 - [ ] **Phase 9: Parity Harnesses and Fuzzing** - Lock down external behavior with reusable black-box and fuzz/property suites.
 - [ ] **Phase 10: Benchmarks and Audit Readiness** - Measure performance and complete the audit surfaces that track parity status.
@@ -232,6 +233,18 @@ Plans:
 - [x] 07.1-02: Refactor wallet module boundaries under `open-bitcoin-wallet`.
 - [x] 07.1-03: Refactor consensus script engine module boundaries.
 
+### Phase 07.2: Protocol Constant Clarity Cleanup (INSERTED)
+
+**Goal:** Replace the remaining audited protocol-significant magic numbers and
+repeated serialized-size literals with clearer named constants while preserving
+consensus and networking behavior.
+**Requirements**: TBD
+**Depends on:** Phase 07.1
+**Plans:** 1/1 plans complete
+
+Plans:
+- [x] 07.2-01: Replace audited protocol constants and shared wire-size literals without changing behavior.
+
 ### Phase 8: RPC, CLI, and Config Parity
 **Goal**: Expose the node and wallet through operator-facing interfaces that behave compatibly with the baseline for the in-scope surface.
 **Depends on**: Phase 7
@@ -298,6 +311,7 @@ Phases execute in numeric order: 2 → 2.1 → 2.2 → 3 → 3.1 → 3.2 → 3.3
 | 6. P2P Networking and Sync | 0/4 | Not started | - |
 | 7. Wallet Core and Adapters | 0/4 | Not started | - |
 | 7.1. Codebase Maintainability Refactor Wave | 0/3 | Not started | - |
+| 7.2. Protocol Constant Clarity Cleanup | 1/1 | Complete | 2026-04-19 |
 | 8. RPC, CLI, and Config Parity | 0/3 | Not started | - |
 | 9. Parity Harnesses and Fuzzing | 0/4 | Not started | - |
 | 10. Benchmarks and Audit Readiness | 0/3 | Not started | - |

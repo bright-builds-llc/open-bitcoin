@@ -1,4 +1,4 @@
-use open_bitcoin_primitives::{Hash32, ScriptBuf, Transaction, TransactionOutput};
+use open_bitcoin_primitives::{Hash32, OutPoint, ScriptBuf, Transaction, TransactionOutput};
 
 use crate::context::{
     PrecomputedTransactionData, ScriptExecutionData, TransactionInputContext,
@@ -272,7 +272,7 @@ fn is_valid_taproot_sighash_type(sighash_type: SigHashType) -> bool {
 }
 
 fn sha256_prevouts(transaction: &Transaction) -> Hash32 {
-    let mut bytes = Vec::with_capacity(transaction.inputs.len() * 36);
+    let mut bytes = Vec::with_capacity(transaction.inputs.len() * OutPoint::SERIALIZED_LEN);
     for input in &transaction.inputs {
         bytes.extend_from_slice(input.previous_output.txid.as_bytes());
         bytes.extend_from_slice(&input.previous_output.vout.to_le_bytes());

@@ -390,7 +390,9 @@ fn decode_inventory_payload(payload: &[u8]) -> Result<InventoryList, NetworkErro
 
     let mut inventory = Vec::with_capacity(count);
     for _ in 0..count {
-        inventory.push(parse_inventory_vector(cursor.read_slice(36)?)?);
+        let vector_bytes = cursor.read_slice(InventoryVector::SERIALIZED_LEN)?;
+        let vector = parse_inventory_vector(vector_bytes)?;
+        inventory.push(vector);
     }
     cursor.finish()?;
     Ok(InventoryList { inventory })

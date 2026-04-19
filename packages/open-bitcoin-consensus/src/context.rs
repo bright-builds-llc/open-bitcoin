@@ -3,11 +3,15 @@ use core::ops::{BitOr, BitOrAssign};
 
 use open_bitcoin_codec::CodecError;
 use open_bitcoin_primitives::{
-    Amount, BlockHeader, Hash32, MAX_MONEY, ScriptBuf, Transaction, TransactionOutput,
+    Amount, BlockHeader, Hash32, MAX_MONEY, OutPoint, ScriptBuf, Transaction, TransactionInput,
+    TransactionOutput,
 };
 
 use crate::crypto::double_sha256;
 use crate::validation::{TxValidationError, TxValidationResult, tx_error};
+
+const DEFAULT_COINBASE_MATURITY: u32 = 100;
+const LOCKTIME_TIMESTAMP_THRESHOLD: u32 = 500_000_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ConsensusParams {
@@ -22,9 +26,9 @@ pub struct ConsensusParams {
 impl Default for ConsensusParams {
     fn default() -> Self {
         Self {
-            coinbase_maturity: 100,
-            locktime_threshold: 500_000_000,
-            sequence_locktime_granularity: 9,
+            coinbase_maturity: DEFAULT_COINBASE_MATURITY,
+            locktime_threshold: LOCKTIME_TIMESTAMP_THRESHOLD,
+            sequence_locktime_granularity: TransactionInput::SEQUENCE_LOCKTIME_GRANULARITY as u32,
             enforce_bip34_height_in_coinbase: true,
             enforce_bip113_median_time_past: true,
             enforce_segwit: true,
@@ -158,7 +162,7 @@ impl PrecomputedTransactionData {
             });
         }
 
-        let mut prevouts = Vec::with_capacity(transaction.inputs.len() * 36);
+        let mut prevouts = Vec::with_capacity(transaction.inputs.len() * OutPoint::SERIALIZED_LEN);
         let mut sequences = Vec::with_capacity(transaction.inputs.len() * 4);
         for input in &transaction.inputs {
             prevouts.extend_from_slice(input.previous_output.txid.as_bytes());
@@ -220,7 +224,7 @@ pub fn is_final_transaction(
     !transaction
         .inputs
         .iter()
-        .any(|input| input.sequence != open_bitcoin_primitives::TransactionInput::SEQUENCE_FINAL)
+        .any(|input| input.sequence != TransactionInput::SEQUENCE_FINAL)
 }
 
 pub fn calculate_sequence_locks(

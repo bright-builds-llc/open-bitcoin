@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Phase 07.1 complete; Phase 8 next
-last_updated: "2026-04-18T22:21:29.962Z"
-last_activity: 2026-04-18
+stopped_at: Phase 07.2 complete; Phase 8 next
+last_updated: "2026-04-19T01:27:40.562Z"
+last_activity: 2026-04-19
 progress:
-  total_phases: 15
-  completed_phases: 12
-  total_plans: 44
-  completed_plans: 44
+  total_phases: 16
+  completed_phases: 13
+  total_plans: 45
+  completed_plans: 45
   percent: 100
 ---
 
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-04-11)
 
 Phase: 8
 Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-04-18
+Status: Phase complete — verified
+Last activity: 2026-04-19
 
 Progress: ███████░░░ 73%
 
@@ -56,10 +56,11 @@ Progress: ███████░░░ 73%
 | 06 | 4 | - | - |
 | 07 | 4 | - | - |
 | 07.1 | 3 | - | - |
+| 07.2 | 1 | - | - |
 
 **Recent Trend:**
 
-- Last 5 plans: 06-04, 07-01, 07-02, 07-03, 07-04
+- Last 5 plans: 07-01, 07-02, 07-03, 07-04, 07.2-01
 - Trend: Stable
 
 | Phase 1 P01 | 1 min | 2 tasks | 7 files |
@@ -69,6 +70,7 @@ Progress: ███████░░░ 73%
 | Phase 07.1 P01 | 9m | 4 tasks | 24 files |
 | Phase 07.1 P02 | 6 min | 3 tasks | 4 files |
 | Phase 07.1 P03 | 15 min | 3 tasks | 9 files |
+| Phase 07.2 P01 | 4 min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -87,17 +89,19 @@ Recent decisions affecting current work:
 - [Phase 07.1]: Preserve private test reachability with narrow delegate shims instead of widening production visibility. — Keeps the refactor behavior-neutral and compatible with the moved wallet test suite while satisfying clippy and coverage.
 - [Phase 07.1]: Keep script.rs as the stable public consensus script entrypoint and route behavior through thin wrappers into sibling modules.
 - [Phase 07.1]: Point script/tests.rs at child modules directly instead of preserving test-only helper exposure in the root file.
+- [Phase 07.2]: Anchor shared serialized-size constants on the owning wire types instead of spreading duplicated `36`-byte literals across callers.
+- [Phase 07.2]: Keep the Taproot `OP_SUCCESS` allowlist behavior-neutral while rewriting it in opcode-domain terms and guarding the boundary values with direct tests.
 
 ### Roadmap Evolution
 
 - Phase 07.1 inserted after Phase 7: Codebase Maintainability Refactor Wave (URGENT)
+- Phase 07.2 inserted after Phase 7: Protocol Constant Clarity Cleanup (URGENT)
 
 ### Pending Todos
 
-- 4 pending:
+- 3 pending:
   - AI-agent-friendly CLI surface — see `.planning/todos/pending/2026-04-18-ai-agent-friendly-cli-surface.md`
   - Sweep panics and illegal states — see `.planning/todos/pending/2026-04-18-sweep-panics-and-illegal-states.md`
-  - Sweep magic numbers for clarity — see `.planning/todos/pending/2026-04-18-sweep-magic-numbers-for-clarity.md`
   - Reduce nesting with early returns — see `.planning/todos/pending/2026-04-18-reduce-nesting-with-early-returns.md`
 
 ### Blockers/Concerns
@@ -107,5 +111,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-04-18T18:14:02.747Z
-Stopped at: Phase 07.1 complete; Phase 8 next
+Stopped at: Phase 07.2 complete; Phase 8 next
 Resume file: .planning/ROADMAP.md

@@ -306,6 +306,20 @@ fn decode_helpers_cover_headers_inventory_and_nonce_failures() {
             .to_string(),
         "inventory count length out of range: 50001",
     );
+
+    let expected_inventory = InventoryList::new(vec![InventoryVector {
+        inventory_type: InventoryType::Block,
+        object_hash: Hash32::from_byte_array([5_u8; 32]),
+    }]);
+    let mut inventory_payload = Vec::new();
+    open_bitcoin_codec::write_compact_size(&mut inventory_payload, 1).expect("compact size");
+    inventory_payload.extend_from_slice(&open_bitcoin_codec::encode_inventory_vector(
+        &expected_inventory.inventory[0],
+    ));
+    assert_eq!(
+        super::decode_inventory_payload(&inventory_payload).expect("inventory payload"),
+        expected_inventory,
+    );
     let encoded_tx = WireNetworkMessage::Tx(sample_transaction())
         .encode_payload()
         .expect("tx payload");

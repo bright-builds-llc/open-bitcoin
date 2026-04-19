@@ -1,5 +1,5 @@
 use crate::amount::Amount;
-use crate::hash::Txid;
+use crate::hash::{Hash32, Txid};
 use crate::script::{ScriptBuf, ScriptWitness};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -10,6 +10,7 @@ pub struct OutPoint {
 
 impl OutPoint {
     pub const NULL_INDEX: u32 = u32::MAX;
+    pub const SERIALIZED_LEN: usize = Hash32::LEN + core::mem::size_of::<u32>();
 
     pub const fn null() -> Self {
         Self {

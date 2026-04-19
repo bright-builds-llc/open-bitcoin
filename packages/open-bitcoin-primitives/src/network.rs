@@ -144,6 +144,10 @@ pub struct InventoryVector {
     pub object_hash: Hash32,
 }
 
+impl InventoryVector {
+    pub const SERIALIZED_LEN: usize = core::mem::size_of::<u32>() + Hash32::LEN;
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NetworkAddress {
     pub services: u64,
