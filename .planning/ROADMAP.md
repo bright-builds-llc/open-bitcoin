@@ -26,7 +26,6 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 07.1: Codebase Maintainability Refactor Wave (INSERTED)** - Reduce oversized-file pressure before Phase 8 by extracting inline tests and splitting the two largest remaining Rust hotspots. (completed 2026-04-18)
 - [x] **Phase 07.2: Protocol Constant Clarity Cleanup (INSERTED)** - Replace remaining protocol-significant magic numbers and repeated serialized-size literals with clearer named constants before Phase 8. (completed 2026-04-19)
 - [x] **Phase 07.3: Reduce nesting with early returns (INSERTED)** - Flatten the highest-value deeply nested control-flow hotspots before Phase 8 planning. (completed 2026-04-19)
-- [x] **Phase 07.4: Let-else opportunity sweep (INSERTED)** - Sweep remaining production-only high-confidence `let...else` opportunities before Phase 8 planning. (completed 2026-04-19)
 - [ ] **Phase 8: RPC, CLI, and Config Parity** - Expose node and wallet behavior through compatible operator interfaces.
 - [ ] **Phase 9: Parity Harnesses and Fuzzing** - Lock down external behavior with reusable black-box and fuzz/property suites.
 - [ ] **Phase 10: Benchmarks and Audit Readiness** - Measure performance and complete the audit surfaces that track parity status.
@@ -258,16 +257,6 @@ Plans:
 - [x] 07.3-01-PLAN.md — Flatten block and chainstate validation hotspots with guard-style helper extraction.
 - [x] 07.3-02-PLAN.md — Flatten peer and mempool guard paths without rewriting protocol or policy state machines.
 - [x] 07.3-03-PLAN.md — Apply the optional narrow `legacy.rs` cleanup and close the phase with full repo-native verification.
-
-### Phase 07.4: Let-else opportunity sweep (INSERTED)
-
-**Goal:** Sweep the remaining first-party production Rust code for high-confidence `let...else` opportunities before Phase 8, adopting only clearly local readability wins that preserve behavior and existing public surfaces.
-**Requirements**: TBD
-**Depends on:** Phase 07.3
-**Plans:** 1/1 plans complete
-
-Plans:
-- [x] 07.4-01-PLAN.md — Audit the shortlisted production files, adopt only the clear `let...else` wins, record deferred candidates, and close on repo-native verification.
 
 ### Phase 8: RPC, CLI, and Config Parity
 **Goal**: Expose the node and wallet through operator-facing interfaces that behave compatibly with the baseline for the in-scope surface.
