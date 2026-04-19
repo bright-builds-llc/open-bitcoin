@@ -2357,6 +2357,108 @@ fn execute_checksig_and_tapscript_paths_cover_taproot_edge_cases() {
 }
 
 #[test]
+fn execute_checksigverify_pops_the_success_result() {
+    // Arrange
+    let verify_secp = Secp256k1::verification_only();
+    let signing_secp = Secp256k1::new();
+    let secret_key = SecretKey::from_byte_array([72_u8; 32]).expect("secret key");
+    let public_key = PublicKey::from_secret_key(&signing_secp, &secret_key);
+    let transaction = legacy_transaction(73);
+    let script_pubkey = {
+        let mut bytes = vec![33];
+        bytes.extend_from_slice(&public_key.serialize());
+        bytes.push(OP_CHECKSIG);
+        script(&bytes)
+    };
+    let (spent_input, validation_context, precomputed) =
+        legacy_context(script_pubkey, &transaction, ScriptVerifyFlags::NONE);
+    let execution_context = LegacyExecutionContext {
+        checker: TransactionSignatureChecker::new(&verify_secp, &validation_context, &precomputed),
+        transaction: &transaction,
+        input_index: 0,
+        spent_input: &spent_input,
+        verify_flags: ScriptVerifyFlags::NONE,
+        sig_version: SigVersion::Base,
+    };
+    let checksigverify_script = script(&[OP_CHECKSIGVERIFY]);
+    let checksigverify_signature = sign_legacy_script(
+        &checksigverify_script,
+        &transaction,
+        &secret_key,
+        SigHashType::ALL,
+    );
+    let mut stack = vec![checksigverify_signature, public_key.serialize().to_vec()];
+
+    // Act
+    execute_checksig(
+        &mut stack,
+        &checksigverify_script,
+        Some(&execution_context),
+        None,
+        true,
+    )
+    .expect("CHECKSIGVERIFY should remove its success marker");
+
+    // Assert
+    assert!(stack.is_empty());
+}
+
+#[test]
+fn execute_checkmultisigverify_pops_the_success_result() {
+    // Arrange
+    let verify_secp = Secp256k1::verification_only();
+    let signing_secp = Secp256k1::new();
+    let secret_key = SecretKey::from_byte_array([74_u8; 32]).expect("secret key");
+    let public_key = PublicKey::from_secret_key(&signing_secp, &secret_key);
+    let transaction = legacy_transaction(75);
+    let script_pubkey = {
+        let mut bytes = vec![0x51, 33];
+        bytes.extend_from_slice(&public_key.serialize());
+        bytes.push(0x51);
+        bytes.push(OP_CHECKMULTISIG);
+        script(&bytes)
+    };
+    let (spent_input, validation_context, precomputed) =
+        legacy_context(script_pubkey, &transaction, ScriptVerifyFlags::NONE);
+    let execution_context = LegacyExecutionContext {
+        checker: TransactionSignatureChecker::new(&verify_secp, &validation_context, &precomputed),
+        transaction: &transaction,
+        input_index: 0,
+        spent_input: &spent_input,
+        verify_flags: ScriptVerifyFlags::NONE,
+        sig_version: SigVersion::Base,
+    };
+    let checkmultisigverify_script = script(&[OP_CHECKMULTISIGVERIFY]);
+    let checkmultisigverify_signature = sign_legacy_script(
+        &checkmultisigverify_script,
+        &transaction,
+        &secret_key,
+        SigHashType::ALL,
+    );
+    let mut stack = vec![
+        Vec::new(),
+        checkmultisigverify_signature,
+        encode_script_num(1),
+        public_key.serialize().to_vec(),
+        encode_script_num(1),
+    ];
+
+    // Act
+    execute_checkmultisig(
+        &mut stack,
+        &checkmultisigverify_script,
+        Some(&execution_context),
+        None,
+        &mut 0,
+        true,
+    )
+    .expect("CHECKMULTISIGVERIFY should remove its success marker");
+
+    // Assert
+    assert!(stack.is_empty());
+}
+
+#[test]
 fn taproot_witness_program_and_execution_helpers_cover_remaining_paths() {
     let transaction = legacy_transaction(65);
     let secp = Secp256k1::verification_only();

@@ -296,6 +296,22 @@ pub(super) fn verify_top_stack_true(stack: &[Vec<u8>]) -> Result<(), ScriptError
     Ok(())
 }
 
+fn push_check_result(
+    stack: &mut Vec<Vec<u8>>,
+    is_valid_signature: bool,
+    verify: bool,
+) -> Result<(), ScriptError> {
+    push_stack(stack, encode_bool(is_valid_signature))?;
+    if !verify {
+        return Ok(());
+    }
+    if !is_valid_signature {
+        return Err(ScriptError::VerifyFailed);
+    }
+    pop_bytes(stack)?;
+    Ok(())
+}
+
 pub(super) fn execute_checksig(
     stack: &mut Vec<Vec<u8>>,
     script: &ScriptBuf,
@@ -369,17 +385,7 @@ pub(super) fn execute_checksig(
     {
         return Err(ScriptError::SigNullFail);
     }
-
-    push_stack(stack, encode_bool(is_valid_signature))?;
-    if verify {
-        if is_valid_signature {
-            pop_bytes(stack)?;
-        } else {
-            return Err(ScriptError::VerifyFailed);
-        }
-    }
-
-    Ok(())
+    push_check_result(stack, is_valid_signature, verify)
 }
 
 pub(super) fn execute_checkmultisig(
@@ -400,11 +406,11 @@ pub(super) fn execute_checkmultisig(
     if context.sig_version == SigVersion::Tapscript {
         return Err(ScriptError::UnsupportedOpcode(OP_CHECKMULTISIG));
     }
-    if stack.is_empty() {
+    let Some(key_count_bytes) = stack.last() else {
         return Err(ScriptError::InvalidStackOperation);
-    }
+    };
 
-    let key_count = decode_small_num(stack.last().ok_or(ScriptError::InvalidStackOperation)?)?;
+    let key_count = decode_small_num(key_count_bytes)?;
     if key_count > MAX_PUBKEYS_PER_MULTISIG {
         return Err(ScriptError::PubKeyCount);
     }
@@ -499,16 +505,7 @@ pub(super) fn execute_checkmultisig(
     }
 
     debug_assert!(used_signatures <= sig_count);
-    push_stack(stack, encode_bool(matched_all_signatures))?;
-    if verify {
-        if matched_all_signatures {
-            pop_bytes(stack)?;
-        } else {
-            return Err(ScriptError::VerifyFailed);
-        }
-    }
-
-    Ok(())
+    push_check_result(stack, matched_all_signatures, verify)
 }
 
 pub(super) fn map_signature_error(error: SignatureError) -> ScriptError {
