@@ -8,15 +8,17 @@ use super::{
     block_sigop_overflow, block_witness_merkle_root, check_block, check_block_contextual,
     check_block_header, check_block_header_contextual, coinbase_has_height_prefix,
     compact_size_len, enforce_sigop_cost_limit, legacy_sigop_cost, map_codec_error,
-    map_script_error, serialized_block_size, serialized_script_num, split_sigop_cost,
-    validate_block, validate_block_with_context, witness_commitment_index,
+    map_script_error, map_transaction_validation_error, serialized_block_size,
+    serialized_script_num, split_sigop_cost, validate_block, validate_block_with_context,
+    witness_commitment_index,
 };
 use crate::MAX_BLOCK_SIGOPS_COST;
 use crate::context::{
     BlockValidationContext, ConsensusParams, ScriptVerifyFlags, SpentOutput,
     TransactionInputContext, TransactionValidationContext,
 };
-use crate::crypto::{block_hash, block_merkle_root};
+use crate::crypto::{block_hash, block_merkle_root, transaction_txid};
+use crate::validation::{BlockValidationResult, TxValidationResult, tx_error};
 
 const EASY_BITS: u32 = 0x207f_ffff;
 const GENESIS_BLOCK_HEADER_HEX: &str =
@@ -484,6 +486,60 @@ fn validate_block_rejects_missing_prev_groups_and_uses_default_debug_message() {
             .debug_message
             .expect("debug message")
             .contains("failed validation")
+    );
+}
+
+#[test]
+fn map_transaction_validation_error_preserves_source_debug_message() {
+    // Arrange
+    let transaction = spend_transaction(Txid::from_byte_array([7_u8; 32]));
+    let txid = format!(
+        "{:?}",
+        transaction_txid(&transaction)
+            .expect("phase-2 typed transactions should serialize for txid logging")
+            .to_byte_array()
+    );
+    let error = tx_error(
+        TxValidationResult::Consensus,
+        "bad-txns-debug",
+        Some("inner details".to_string()),
+    );
+
+    // Act
+    let mapped = map_transaction_validation_error(&transaction, error);
+
+    // Assert
+    assert_eq!(mapped.result, BlockValidationResult::Consensus);
+    assert_eq!(mapped.reject_reason, "bad-txns-debug");
+    assert_eq!(
+        mapped.debug_message,
+        Some(format!(
+            "transaction {txid} failed validation: inner details"
+        ))
+    );
+}
+
+#[test]
+fn map_transaction_validation_error_uses_default_debug_message_when_absent() {
+    // Arrange
+    let transaction = spend_transaction(Txid::from_byte_array([8_u8; 32]));
+    let txid = format!(
+        "{:?}",
+        transaction_txid(&transaction)
+            .expect("phase-2 typed transactions should serialize for txid logging")
+            .to_byte_array()
+    );
+    let error = tx_error(TxValidationResult::Consensus, "bad-txns-debug", None);
+
+    // Act
+    let mapped = map_transaction_validation_error(&transaction, error);
+
+    // Assert
+    assert_eq!(mapped.result, BlockValidationResult::Consensus);
+    assert_eq!(mapped.reject_reason, "bad-txns-debug");
+    assert_eq!(
+        mapped.debug_message,
+        Some(format!("transaction {txid} failed validation"))
     );
 }
 

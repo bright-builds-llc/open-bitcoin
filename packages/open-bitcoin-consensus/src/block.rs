@@ -17,7 +17,9 @@ use crate::script::{count_legacy_sigops, count_p2sh_sigops, count_witness_sigops
 use crate::transaction::{
     check_transaction, validate_transaction, validate_transaction_with_context,
 };
-use crate::validation::{BlockValidationError, BlockValidationResult, block_error};
+use crate::validation::{
+    BlockValidationError, BlockValidationResult, TxValidationError, block_error,
+};
 
 const WITNESS_RESERVED_VALUE_STACK_ITEMS: usize = 1;
 const WITNESS_RESERVED_VALUE_SIZE: usize = 32;
@@ -154,23 +156,8 @@ pub fn validate_block(
     for (transaction, transaction_spent_outputs) in
         block.transactions.iter().skip(1).zip(spent_outputs)
     {
-        validate_transaction(transaction, transaction_spent_outputs).map_err(|error| {
-            let txid = format!(
-                "{:?}",
-                transaction_txid(transaction)
-                    .expect("phase-2 typed transactions should serialize for txid logging")
-                    .to_byte_array()
-            );
-            let maybe_debug_message = error.debug_message.clone().map_or_else(
-                || format!("transaction {txid} failed validation"),
-                |debug_message| format!("transaction {txid} failed validation: {debug_message}"),
-            );
-            block_error(
-                BlockValidationResult::Consensus,
-                error.reject_reason,
-                Some(maybe_debug_message),
-            )
-        })?;
+        validate_transaction(transaction, transaction_spent_outputs)
+            .map_err(|error| map_transaction_validation_error(transaction, error))?;
     }
 
     Ok(())
@@ -264,23 +251,8 @@ pub fn validate_block_with_context(
     for (transaction, transaction_context) in
         block.transactions.iter().skip(1).zip(transaction_contexts)
     {
-        validate_transaction_with_context(transaction, transaction_context).map_err(|error| {
-            let txid = format!(
-                "{:?}",
-                transaction_txid(transaction)
-                    .expect("phase-2 typed transactions should serialize for txid logging")
-                    .to_byte_array()
-            );
-            let maybe_debug_message = error.debug_message.clone().map_or_else(
-                || format!("transaction {txid} failed validation"),
-                |debug_message| format!("transaction {txid} failed validation: {debug_message}"),
-            );
-            block_error(
-                BlockValidationResult::Consensus,
-                error.reject_reason,
-                Some(maybe_debug_message),
-            )
-        })?;
+        validate_transaction_with_context(transaction, transaction_context)
+            .map_err(|error| map_transaction_validation_error(transaction, error))?;
     }
 
     let mut sigop_cost = 0_usize;
@@ -364,56 +336,53 @@ fn check_witness_commitment(
     context: &BlockValidationContext,
 ) -> Result<(), BlockValidationError> {
     let maybe_commitment_index = witness_commitment_index(block);
-    if context.consensus_params.enforce_segwit
-        && let Some(commitment_index) = maybe_commitment_index
-    {
-        let coinbase_input = block
-            .transactions
-            .first()
-            .and_then(|transaction| transaction.inputs.first())
-            .expect("coinbase input must exist after context-free block checks");
-        if coinbase_input.witness.stack().len() != WITNESS_RESERVED_VALUE_STACK_ITEMS
-            || coinbase_input.witness.stack()[0].len() != WITNESS_RESERVED_VALUE_SIZE
-        {
+    let witness_present = block
+        .transactions
+        .iter()
+        .any(|transaction| transaction.has_witness());
+    if !context.consensus_params.enforce_segwit || maybe_commitment_index.is_none() {
+        if witness_present {
             return Err(block_error(
                 BlockValidationResult::Mutated,
-                "bad-witness-nonce-size",
-                Some("invalid witness reserved value size".to_string()),
-            ));
-        }
-
-        let witness_root = block_witness_merkle_root(block).map_err(map_codec_error)?;
-        let reserved_value = &coinbase_input.witness.stack()[0];
-        let mut commitment_preimage = [0_u8; WITNESS_COMMITMENT_PREIMAGE_SIZE];
-        commitment_preimage[..WITNESS_RESERVED_VALUE_SIZE].copy_from_slice(witness_root.as_bytes());
-        commitment_preimage[WITNESS_RESERVED_VALUE_SIZE..].copy_from_slice(reserved_value);
-        let expected_commitment = double_sha256(&commitment_preimage);
-
-        let commitment_script = block.transactions[0].outputs[commitment_index]
-            .script_pubkey
-            .as_bytes();
-        if commitment_script[WITNESS_COMMITMENT_START..WITNESS_COMMITMENT_END]
-            != expected_commitment
-        {
-            return Err(block_error(
-                BlockValidationResult::Mutated,
-                "bad-witness-merkle-match",
-                Some("witness merkle commitment mismatch".to_string()),
+                "unexpected-witness",
+                Some("unexpected witness data found".to_string()),
             ));
         }
 
         return Ok(());
     }
-
-    if block
+    let commitment_index =
+        maybe_commitment_index.expect("commitment index must exist after early return");
+    let coinbase_input = block
         .transactions
-        .iter()
-        .any(|transaction| transaction.has_witness())
+        .first()
+        .and_then(|transaction| transaction.inputs.first())
+        .expect("coinbase input must exist after context-free block checks");
+    if coinbase_input.witness.stack().len() != WITNESS_RESERVED_VALUE_STACK_ITEMS
+        || coinbase_input.witness.stack()[0].len() != WITNESS_RESERVED_VALUE_SIZE
     {
         return Err(block_error(
             BlockValidationResult::Mutated,
-            "unexpected-witness",
-            Some("unexpected witness data found".to_string()),
+            "bad-witness-nonce-size",
+            Some("invalid witness reserved value size".to_string()),
+        ));
+    }
+
+    let witness_root = block_witness_merkle_root(block).map_err(map_codec_error)?;
+    let reserved_value = &coinbase_input.witness.stack()[0];
+    let mut commitment_preimage = [0_u8; WITNESS_COMMITMENT_PREIMAGE_SIZE];
+    commitment_preimage[..WITNESS_RESERVED_VALUE_SIZE].copy_from_slice(witness_root.as_bytes());
+    commitment_preimage[WITNESS_RESERVED_VALUE_SIZE..].copy_from_slice(reserved_value);
+    let expected_commitment = double_sha256(&commitment_preimage);
+
+    let commitment_script = block.transactions[0].outputs[commitment_index]
+        .script_pubkey
+        .as_bytes();
+    if commitment_script[WITNESS_COMMITMENT_START..WITNESS_COMMITMENT_END] != expected_commitment {
+        return Err(block_error(
+            BlockValidationResult::Mutated,
+            "bad-witness-merkle-match",
+            Some("witness merkle commitment mismatch".to_string()),
         ));
     }
 
@@ -430,6 +399,30 @@ fn witness_commitment_index(block: &Block) -> Option<usize> {
         }
     }
     maybe_commitment_index
+}
+
+fn map_transaction_validation_error(
+    transaction: &open_bitcoin_primitives::Transaction,
+    error: TxValidationError,
+) -> BlockValidationError {
+    let txid = format!(
+        "{:?}",
+        transaction_txid(transaction)
+            .expect("phase-2 typed transactions should serialize for txid logging")
+            .to_byte_array()
+    );
+    let debug_message = error.debug_message.map_or_else(
+        || format!("transaction {txid} failed validation"),
+        |source_debug_message| {
+            format!("transaction {txid} failed validation: {source_debug_message}")
+        },
+    );
+
+    block_error(
+        BlockValidationResult::Consensus,
+        error.reject_reason,
+        Some(debug_message),
+    )
 }
 
 fn has_witness_commitment_header(bytes: &[u8]) -> bool {
