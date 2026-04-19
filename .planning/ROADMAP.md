@@ -251,10 +251,10 @@ Plans:
 **Goal:** Flatten the highest-value deeply nested control-flow hotspots in the existing consensus, chainstate, mempool, and networking production code before Phase 8 planning, using early returns and narrow helper extraction without changing behavior.
 **Requirements**: TBD
 **Depends on:** Phase 07.2
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
-- [ ] 07.3-01-PLAN.md — Flatten block and chainstate validation hotspots with guard-style helper extraction.
+- [x] 07.3-01-PLAN.md — Flatten block and chainstate validation hotspots with guard-style helper extraction.
 - [ ] 07.3-02-PLAN.md — Flatten peer and mempool guard paths without rewriting protocol or policy state machines.
 - [ ] 07.3-03-PLAN.md — Apply the optional narrow `legacy.rs` cleanup and close the phase with full repo-native verification.
 

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 07.3 context gathered
-last_updated: "2026-04-19T02:15:39.028Z"
-last_activity: 2026-04-19 -- Phase 07.3 planning complete
+stopped_at: Completed 07.3-01-PLAN.md
+last_updated: "2026-04-19T02:27:06.476Z"
+last_activity: 2026-04-19
 progress:
   total_phases: 17
   completed_phases: 13
   total_plans: 48
-  completed_plans: 45
-  percent: 94
+  completed_plans: 46
+  percent: 96
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-11)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 8 — RPC, CLI, and Config Parity
+**Current focus:** Phase 07.3 — reduce-nesting-with-early-returns
 
 ## Current Position
 
-Phase: 8
-Plan: Not started
+Phase: 07.3 (reduce-nesting-with-early-returns) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-04-19 -- Phase 07.3 planning complete
+Last activity: 2026-04-19
 
 Progress: ███████░░░ 73%
 
@@ -71,6 +71,7 @@ Progress: ███████░░░ 73%
 | Phase 07.1 P02 | 6 min | 3 tasks | 4 files |
 | Phase 07.1 P03 | 15 min | 3 tasks | 9 files |
 | Phase 07.2 P01 | 4 min | 2 tasks | 8 files |
+| Phase 07.3 P01 | 8 min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -91,6 +92,9 @@ Recent decisions affecting current work:
 - [Phase 07.1]: Point script/tests.rs at child modules directly instead of preserving test-only helper exposure in the root file.
 - [Phase 07.2]: Anchor shared serialized-size constants on the owning wire types instead of spreading duplicated `36`-byte literals across callers.
 - [Phase 07.2]: Keep the Taproot `OP_SUCCESS` allowlist behavior-neutral while rewriting it in opcode-domain terms and guarding the boundary values with direct tests.
+- [Phase 07.3]: Centralize block transaction validation error mapping in one private helper so both public entrypoints preserve identical txid-based debug text.
+- [Phase 07.3]: Keep chainstate connect and disconnect loop order intact while moving only non-coinbase mutation into private helpers.
+- [Phase 07.3]: Use local red runs for TDD in this repo when failing-test commits would violate the Rust pre-commit verification contract.
 
 ### Roadmap Evolution
 
@@ -111,6 +115,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-19T01:47:27.885Z
-Stopped at: Phase 07.3 context gathered
-Resume file: .planning/phases/07.3-reduce-nesting-with-early-returns/07.3-CONTEXT.md
+Last session: 2026-04-19T02:27:06.472Z
+Stopped at: Completed 07.3-01-PLAN.md
+Resume file: None
