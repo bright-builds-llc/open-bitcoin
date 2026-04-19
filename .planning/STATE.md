@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 07.3-01-PLAN.md
-last_updated: "2026-04-19T02:27:06.476Z"
+stopped_at: Completed 07.3-02-PLAN.md
+last_updated: "2026-04-19T02:38:44.411Z"
 last_activity: 2026-04-19
 progress:
   total_phases: 17
   completed_phases: 13
   total_plans: 48
-  completed_plans: 46
-  percent: 96
+  completed_plans: 47
+  percent: 98
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-11)
 ## Current Position
 
 Phase: 07.3 (reduce-nesting-with-early-returns) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-04-19
 
@@ -72,6 +72,7 @@ Progress: ███████░░░ 73%
 | Phase 07.1 P03 | 15 min | 3 tasks | 9 files |
 | Phase 07.2 P01 | 4 min | 2 tasks | 8 files |
 | Phase 07.3 P01 | 8 min | 2 tasks | 4 files |
+| Phase 07.3 P02 | 9 min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -95,6 +96,9 @@ Recent decisions affecting current work:
 - [Phase 07.3]: Centralize block transaction validation error mapping in one private helper so both public entrypoints preserve identical txid-based debug text.
 - [Phase 07.3]: Keep chainstate connect and disconnect loop order intact while moving only non-coinbase mutation into private helpers.
 - [Phase 07.3]: Use local red runs for TDD in this repo when failing-test commits would violate the Rust pre-commit verification contract.
+- [Phase 07.3]: Peer message handling should keep the top-level wire-message match visible while sharing only the repeated mutable peer lookup and request cleanup scaffolding.
+- [Phase 07.3]: Mempool admission should keep its existing validation and prospective-state order, with replacement selection extracted as a narrow private step before state recomputation.
+- [Phase 07.3]: Replacement-policy tests should assert guard-specific rejection reasons so future refactors cannot silently reorder absolute-fee, feerate, fee-bump, or new-unconfirmed-input checks.
 
 ### Roadmap Evolution
 
@@ -115,6 +119,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-19T02:27:06.472Z
-Stopped at: Completed 07.3-01-PLAN.md
+Last session: 2026-04-19T02:38:44.407Z
+Stopped at: Completed 07.3-02-PLAN.md
 Resume file: None
