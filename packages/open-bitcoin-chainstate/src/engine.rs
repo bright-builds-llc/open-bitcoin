@@ -88,26 +88,14 @@ impl Chainstate {
         let block_time = i64::from(block.header.time);
         for (transaction_index, transaction) in block.transactions.iter().enumerate() {
             if transaction_index > 0 {
-                let transaction_context = build_transaction_context(
+                apply_non_coinbase_transaction(
+                    &mut next_utxos,
+                    &mut block_undo,
                     transaction,
-                    &next_utxos,
-                    height,
                     block_time,
-                    previous_median_time_past,
                     verify_flags,
-                    consensus_params,
+                    &block_context,
                 )?;
-                validate_transaction_with_context(transaction, &transaction_context)
-                    .map_err(|source| ChainstateError::TransactionValidation { source })?;
-
-                let mut undo = TxUndo::default();
-                for input in &transaction.inputs {
-                    let coin = next_utxos
-                        .remove(&input.previous_output)
-                        .expect("validated transaction inputs must still exist during apply phase");
-                    undo.restored_inputs.push(coin);
-                }
-                block_undo.transactions.push(undo);
             }
 
             add_transaction_outputs(
@@ -159,21 +147,7 @@ impl Chainstate {
 
             if transaction_index > 0 {
                 let tx_undo = &block_undo.transactions[transaction_index - 1];
-                if tx_undo.restored_inputs.len() != transaction.inputs.len() {
-                    return Err(ChainstateError::UndoMismatch {
-                        expected_transactions: transaction.inputs.len(),
-                        actual_transactions: tx_undo.restored_inputs.len(),
-                    });
-                }
-
-                for input_index in (0..transaction.inputs.len()).rev() {
-                    let outpoint = transaction.inputs[input_index].previous_output.clone();
-                    if self.utxos.contains_key(&outpoint) {
-                        return Err(ChainstateError::RestoredCoinOverwrite { outpoint });
-                    }
-                    self.utxos
-                        .insert(outpoint, tx_undo.restored_inputs[input_index].clone());
-                }
+                restore_non_coinbase_inputs(&mut self.utxos, transaction, tx_undo)?;
             }
         }
 
@@ -220,6 +194,66 @@ pub fn prefer_candidate_tip(current: &ChainPosition, candidate: &ChainPosition) 
     }
 
     candidate.block_hash > current.block_hash
+}
+
+fn apply_non_coinbase_transaction(
+    next_utxos: &mut HashMap<OutPoint, Coin>,
+    block_undo: &mut BlockUndo,
+    transaction: &Transaction,
+    block_time: i64,
+    verify_flags: ScriptVerifyFlags,
+    block_context: &BlockValidationContext,
+) -> Result<(), ChainstateError> {
+    let transaction_context = build_transaction_context(
+        transaction,
+        next_utxos,
+        block_context.height,
+        block_time,
+        block_context.previous_median_time_past,
+        verify_flags,
+        block_context.consensus_params,
+    )?;
+    validate_transaction_with_context(transaction, &transaction_context)
+        .map_err(|source| ChainstateError::TransactionValidation { source })?;
+
+    let mut undo = TxUndo::default();
+    for input in &transaction.inputs {
+        let coin = next_utxos
+            .remove(&input.previous_output)
+            .expect("validated transaction inputs must still exist during apply phase");
+        undo.restored_inputs.push(coin);
+    }
+    block_undo.transactions.push(undo);
+
+    Ok(())
+}
+
+fn restore_non_coinbase_inputs(
+    utxos: &mut HashMap<OutPoint, Coin>,
+    transaction: &Transaction,
+    tx_undo: &TxUndo,
+) -> Result<(), ChainstateError> {
+    if tx_undo.restored_inputs.len() != transaction.inputs.len() {
+        return Err(ChainstateError::UndoMismatch {
+            expected_transactions: transaction.inputs.len(),
+            actual_transactions: tx_undo.restored_inputs.len(),
+        });
+    }
+
+    for (input, restored_coin) in transaction
+        .inputs
+        .iter()
+        .zip(&tx_undo.restored_inputs)
+        .rev()
+    {
+        let outpoint = input.previous_output.clone();
+        if utxos.contains_key(&outpoint) {
+            return Err(ChainstateError::RestoredCoinOverwrite { outpoint });
+        }
+        utxos.insert(outpoint, restored_coin.clone());
+    }
+
+    Ok(())
 }
 
 fn build_transaction_context(

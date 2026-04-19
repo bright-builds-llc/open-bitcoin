@@ -1,14 +1,18 @@
 use std::collections::HashMap;
 
 use open_bitcoin_consensus::{
-    ConsensusParams, ScriptVerifyFlags, block_merkle_root, check_block_header,
+    BlockValidationContext, ConsensusParams, ScriptVerifyFlags, block_merkle_root,
+    check_block_header,
 };
 use open_bitcoin_primitives::{
     Amount, Block, BlockHash, BlockHeader, OutPoint, ScriptBuf, ScriptWitness, Transaction,
     TransactionInput, TransactionOutput, Txid,
 };
 
-use super::{Chainstate, compute_median_time_past, prefer_candidate_tip};
+use super::{
+    Chainstate, apply_non_coinbase_transaction, compute_median_time_past, prefer_candidate_tip,
+    restore_non_coinbase_inputs,
+};
 use crate::{AnchoredBlock, BlockUndo, ChainPosition, Coin, TxUndo};
 
 const EASY_BITS: u32 = 0x207f_ffff;
@@ -373,6 +377,56 @@ fn connect_block_rejects_missing_prevouts_from_chainstate() {
 }
 
 #[test]
+fn apply_non_coinbase_transaction_consumes_inputs_and_records_undo() {
+    // Arrange
+    let genesis_coinbase = coinbase_transaction(0, 50);
+    let spent_txid = open_bitcoin_consensus::transaction_txid(&genesis_coinbase).expect("txid");
+    let spent_outpoint = OutPoint {
+        txid: spent_txid,
+        vout: 0,
+    };
+    let spent_coin = Coin {
+        output: genesis_coinbase.outputs[0].clone(),
+        is_coinbase: true,
+        created_height: 0,
+        created_median_time_past: 0,
+    };
+    let transaction = spend_transaction(spent_txid, 0, 40, TransactionInput::SEQUENCE_FINAL);
+    let mut next_utxos = HashMap::from([(spent_outpoint.clone(), spent_coin.clone())]);
+    let mut block_undo = BlockUndo::default();
+
+    // Act
+    apply_non_coinbase_transaction(
+        &mut next_utxos,
+        &mut block_undo,
+        &transaction,
+        1_231_006_600,
+        ScriptVerifyFlags::P2SH
+            | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
+            | ScriptVerifyFlags::CHECKSEQUENCEVERIFY,
+        &BlockValidationContext {
+            height: 1,
+            previous_header: BlockHeader::default(),
+            previous_median_time_past: 0,
+            consensus_params: ConsensusParams {
+                coinbase_maturity: 1,
+                ..ConsensusParams::default()
+            },
+        },
+    )
+    .expect("non-coinbase helper should apply cleanly");
+
+    // Assert
+    assert!(!next_utxos.contains_key(&spent_outpoint));
+    assert_eq!(
+        block_undo.transactions,
+        vec![TxUndo {
+            restored_inputs: vec![spent_coin],
+        }]
+    );
+}
+
+#[test]
 fn connect_block_skips_unspendable_outputs() {
     // Arrange
     let mut chainstate = Chainstate::new();
@@ -459,6 +513,31 @@ fn disconnect_tip_skips_unspendable_outputs_and_reports_missing_created_outputs(
     assert!(matches!(
         missing_created_output,
         crate::ChainstateError::DisconnectSpentOutputMismatch { .. }
+    ));
+}
+
+#[test]
+fn restore_non_coinbase_inputs_rejects_undo_shape_mismatch() {
+    // Arrange
+    let transaction = spend_transaction(
+        Txid::from_byte_array([9_u8; 32]),
+        0,
+        40,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let mut utxos = HashMap::new();
+
+    // Act
+    let error = restore_non_coinbase_inputs(&mut utxos, &transaction, &TxUndo::default())
+        .expect_err("missing restored inputs should fail");
+
+    // Assert
+    assert!(matches!(
+        error,
+        crate::ChainstateError::UndoMismatch {
+            expected_transactions: 1,
+            actual_transactions: 0,
+        }
     ));
 }
 
