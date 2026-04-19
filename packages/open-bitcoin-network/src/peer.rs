@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use open_bitcoin_chainstate::ChainPosition;
 use open_bitcoin_consensus::{block_hash, check_block_header, transaction_txid, transaction_wtxid};
 use open_bitcoin_primitives::{
-    Block, BlockHash, InventoryType, InventoryVector, Transaction, Txid, Wtxid,
+    Block, BlockHash, Hash32, InventoryType, InventoryVector, Transaction, Txid, Wtxid,
 };
 
 use crate::error::{DisconnectReason, NetworkError, PeerId};
@@ -75,6 +75,34 @@ pub struct PeerManager {
 }
 
 impl PeerManager {
+    fn peer_mut(
+        peers: &mut BTreeMap<PeerId, PeerState>,
+        peer_id: PeerId,
+    ) -> Result<&mut PeerState, NetworkError> {
+        peers
+            .get_mut(&peer_id)
+            .ok_or(NetworkError::UnknownPeer(peer_id))
+    }
+
+    fn forget_requested_inventory(
+        peer: &mut PeerState,
+        inventory_type: InventoryType,
+        object_hash: Hash32,
+    ) {
+        match inventory_type {
+            InventoryType::Block | InventoryType::WitnessBlock => {
+                peer.requested_blocks.remove(&BlockHash::from(object_hash));
+            }
+            InventoryType::Transaction => {
+                peer.requested_txids.remove(&Txid::from(object_hash));
+            }
+            InventoryType::WitnessTransaction => {
+                peer.requested_wtxids.remove(&Wtxid::from(object_hash));
+            }
+            _ => {}
+        }
+    }
+
     pub fn new(local_config: LocalPeerConfig) -> Self {
         Self {
             local_config,
@@ -147,9 +175,7 @@ impl PeerManager {
         peer_id: PeerId,
         nonce: u64,
     ) -> Result<WireNetworkMessage, NetworkError> {
-        let Some(peer) = self.peers.get_mut(&peer_id) else {
-            return Err(NetworkError::UnknownPeer(peer_id));
-        };
+        let peer = Self::peer_mut(&mut self.peers, peer_id)?;
         peer.last_ping_nonce = Some(nonce);
         Ok(WireNetworkMessage::Ping { nonce })
     }
@@ -214,16 +240,12 @@ impl PeerManager {
             }
             WireNetworkMessage::Verack => self.handle_verack(peer_id),
             WireNetworkMessage::WtxidRelay => {
-                let Some(peer) = self.peers.get_mut(&peer_id) else {
-                    return Err(NetworkError::UnknownPeer(peer_id));
-                };
+                let peer = Self::peer_mut(&mut self.peers, peer_id)?;
                 peer.remote_wtxidrelay = true;
                 Ok(Vec::new())
             }
             WireNetworkMessage::SendHeaders => {
-                let Some(peer) = self.peers.get_mut(&peer_id) else {
-                    return Err(NetworkError::UnknownPeer(peer_id));
-                };
+                let peer = Self::peer_mut(&mut self.peers, peer_id)?;
                 peer.remote_prefers_headers = true;
                 Ok(Vec::new())
             }
@@ -231,9 +253,7 @@ impl PeerManager {
                 Ok(vec![PeerAction::Send(WireNetworkMessage::Pong { nonce })])
             }
             WireNetworkMessage::Pong { nonce } => {
-                let Some(peer) = self.peers.get_mut(&peer_id) else {
-                    return Err(NetworkError::UnknownPeer(peer_id));
-                };
+                let peer = Self::peer_mut(&mut self.peers, peer_id)?;
                 if peer.last_ping_nonce == Some(nonce) {
                     peer.last_ping_nonce = None;
                 }
@@ -255,23 +275,9 @@ impl PeerManager {
                 Ok(vec![PeerAction::ServeInventory(inventory.inventory)])
             }
             WireNetworkMessage::NotFound(inventory) => {
-                let Some(peer) = self.peers.get_mut(&peer_id) else {
-                    return Err(NetworkError::UnknownPeer(peer_id));
-                };
+                let peer = Self::peer_mut(&mut self.peers, peer_id)?;
                 for item in inventory.inventory {
-                    match item.inventory_type {
-                        InventoryType::Block | InventoryType::WitnessBlock => {
-                            peer.requested_blocks
-                                .remove(&BlockHash::from(item.object_hash));
-                        }
-                        InventoryType::Transaction => {
-                            peer.requested_txids.remove(&Txid::from(item.object_hash));
-                        }
-                        InventoryType::WitnessTransaction => {
-                            peer.requested_wtxids.remove(&Wtxid::from(item.object_hash));
-                        }
-                        _ => {}
-                    }
+                    Self::forget_requested_inventory(peer, item.inventory_type, item.object_hash);
                 }
                 Ok(Vec::new())
             }
@@ -287,9 +293,7 @@ impl PeerManager {
         timestamp: i64,
     ) -> Result<Vec<PeerAction>, NetworkError> {
         let best_height = self.headers.best_height();
-        let Some(peer) = self.peers.get_mut(&peer_id) else {
-            return Err(NetworkError::UnknownPeer(peer_id));
-        };
+        let peer = Self::peer_mut(&mut self.peers, peer_id)?;
         if peer.remote_version_received {
             return Ok(vec![PeerAction::Disconnect(
                 DisconnectReason::DuplicateVersion,
@@ -318,9 +322,7 @@ impl PeerManager {
     fn handle_verack(&mut self, peer_id: PeerId) -> Result<Vec<PeerAction>, NetworkError> {
         let locator = self.headers.locator();
         let best_height = self.headers.best_height();
-        let Some(peer) = self.peers.get_mut(&peer_id) else {
-            return Err(NetworkError::UnknownPeer(peer_id));
-        };
+        let peer = Self::peer_mut(&mut self.peers, peer_id)?;
         peer.remote_verack_received = true;
 
         if peer.remote_start_height > best_height && !peer.getheaders_in_flight {
@@ -343,9 +345,7 @@ impl PeerManager {
         let mut tx_requests = Vec::new();
         let mut request_headers = false;
 
-        let Some(peer) = self.peers.get_mut(&peer_id) else {
-            return Err(NetworkError::UnknownPeer(peer_id));
-        };
+        let peer = Self::peer_mut(&mut self.peers, peer_id)?;
 
         for item in inventory.inventory {
             match item.inventory_type {
@@ -418,9 +418,7 @@ impl PeerManager {
             }
         }
 
-        let Some(peer) = self.peers.get_mut(&peer_id) else {
-            return Err(NetworkError::UnknownPeer(peer_id));
-        };
+        let peer = Self::peer_mut(&mut self.peers, peer_id)?;
         peer.getheaders_in_flight = false;
         for item in &requested_inventory {
             peer.requested_blocks
@@ -444,11 +442,9 @@ impl PeerManager {
         self.known_txids.insert(txid);
         self.known_wtxids.insert(wtxid);
 
-        let Some(peer) = self.peers.get_mut(&peer_id) else {
-            return Err(NetworkError::UnknownPeer(peer_id));
-        };
-        peer.requested_txids.remove(&txid);
-        peer.requested_wtxids.remove(&wtxid);
+        let peer = Self::peer_mut(&mut self.peers, peer_id)?;
+        Self::forget_requested_inventory(peer, InventoryType::Transaction, txid.into());
+        Self::forget_requested_inventory(peer, InventoryType::WitnessTransaction, wtxid.into());
 
         Ok(vec![PeerAction::ReceivedTransaction(transaction)])
     }
@@ -461,10 +457,8 @@ impl PeerManager {
         let hash = block_hash(&block.header);
         self.known_blocks.insert(hash);
 
-        let Some(peer) = self.peers.get_mut(&peer_id) else {
-            return Err(NetworkError::UnknownPeer(peer_id));
-        };
-        peer.requested_blocks.remove(&hash);
+        let peer = Self::peer_mut(&mut self.peers, peer_id)?;
+        Self::forget_requested_inventory(peer, InventoryType::Block, hash.into());
 
         Ok(vec![PeerAction::ReceivedBlock(block)])
     }

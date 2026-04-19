@@ -1,5 +1,5 @@
 use open_bitcoin_chainstate::ChainPosition;
-use open_bitcoin_consensus::check_block_header;
+use open_bitcoin_consensus::{check_block_header, transaction_txid, transaction_wtxid};
 use open_bitcoin_primitives::{Block, BlockHash, BlockHeader, Hash32, MerkleRoot, NetworkMagic};
 
 use crate::{
@@ -408,6 +408,75 @@ fn inventory_requests_and_notfound_paths_cover_tx_and_block_modes() {
         .handle_message(6, WireNetworkMessage::NotFound(not_found), 4)
         .expect("notfound");
     let peer = manager.peer_state(6).expect("peer");
+    assert!(peer.requested_txids.is_empty());
+    assert!(peer.requested_wtxids.is_empty());
+    assert!(peer.requested_blocks.is_empty());
+}
+
+#[test]
+fn received_tx_and_block_clear_requested_inventory() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_inbound_peer(8).expect("peer");
+
+    let transaction = open_bitcoin_primitives::Transaction::default();
+    let txid = transaction_txid(&transaction).expect("txid");
+    let wtxid = transaction_wtxid(&transaction).expect("wtxid");
+
+    manager
+        .handle_message(
+            8,
+            WireNetworkMessage::Inv(InventoryList::new(vec![InventoryVector {
+                inventory_type: InventoryType::Transaction,
+                object_hash: txid.into(),
+            }])),
+            1,
+        )
+        .expect("txid inventory");
+    manager
+        .handle_message(8, WireNetworkMessage::WtxidRelay, 2)
+        .expect("wtxidrelay");
+    manager
+        .handle_message(
+            8,
+            WireNetworkMessage::Inv(InventoryList::new(vec![InventoryVector {
+                inventory_type: InventoryType::WitnessTransaction,
+                object_hash: wtxid.into(),
+            }])),
+            3,
+        )
+        .expect("wtxid inventory");
+
+    let genesis = mined_header(BlockHash::from_byte_array([0_u8; 32]), 7);
+    manager.seed_local_chain(&[ChainPosition::new(genesis.clone(), 0, 1, 0)]);
+    let next = mined_header(open_bitcoin_consensus::block_hash(&genesis), 8);
+    manager
+        .handle_message(
+            8,
+            WireNetworkMessage::Headers(crate::HeadersMessage {
+                headers: vec![next.clone()],
+            }),
+            4,
+        )
+        .expect("headers");
+
+    // Act
+    manager
+        .handle_message(8, WireNetworkMessage::Tx(transaction), 5)
+        .expect("transaction");
+    manager
+        .handle_message(
+            8,
+            WireNetworkMessage::Block(Block {
+                header: next,
+                transactions: Vec::new(),
+            }),
+            6,
+        )
+        .expect("block");
+
+    // Assert
+    let peer = manager.peer_state(8).expect("peer");
     assert!(peer.requested_txids.is_empty());
     assert!(peer.requested_wtxids.is_empty());
     assert!(peer.requested_blocks.is_empty());
