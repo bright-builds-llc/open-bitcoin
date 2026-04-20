@@ -280,15 +280,15 @@ fn parse_public_key_for_verification(
         return PublicKey::from_slice(&normalized).map_err(|_| SignatureError::InvalidPublicKey);
     }
 
-    if let Ok(public_key) = PublicKey::from_slice(bytes) {
-        return Ok(public_key);
-    }
+    let Ok(public_key) = PublicKey::from_slice(bytes) else {
+        if flags.contains(ScriptVerifyFlags::STRICTENC) {
+            return Err(SignatureError::InvalidPublicKey);
+        }
 
-    if flags.contains(ScriptVerifyFlags::STRICTENC) {
-        return Err(SignatureError::InvalidPublicKey);
-    }
+        return Err(SignatureError::IncorrectSignature);
+    };
 
-    Err(SignatureError::IncorrectSignature)
+    Ok(public_key)
 }
 
 fn is_strict_public_key_encoding(bytes: &[u8]) -> bool {

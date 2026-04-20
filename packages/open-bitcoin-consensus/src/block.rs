@@ -335,12 +335,11 @@ fn check_witness_commitment(
     block: &Block,
     context: &BlockValidationContext,
 ) -> Result<(), BlockValidationError> {
-    let maybe_commitment_index = witness_commitment_index(block);
     let witness_present = block
         .transactions
         .iter()
         .any(|transaction| transaction.has_witness());
-    if !context.consensus_params.enforce_segwit || maybe_commitment_index.is_none() {
+    if !context.consensus_params.enforce_segwit {
         if witness_present {
             return Err(block_error(
                 BlockValidationResult::Mutated,
@@ -351,8 +350,17 @@ fn check_witness_commitment(
 
         return Ok(());
     }
-    let commitment_index =
-        maybe_commitment_index.expect("commitment index must exist after early return");
+    let Some(commitment_index) = witness_commitment_index(block) else {
+        if witness_present {
+            return Err(block_error(
+                BlockValidationResult::Mutated,
+                "unexpected-witness",
+                Some("unexpected witness data found".to_string()),
+            ));
+        }
+
+        return Ok(());
+    };
     let coinbase_input = block
         .transactions
         .first()

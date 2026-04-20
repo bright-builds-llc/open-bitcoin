@@ -716,6 +716,19 @@ fn witness_commitment_and_coinbase_height_paths_are_exercised() {
         "bad-witness-merkle-match",
     );
 
+    let mut missing_commitment_block = block.clone();
+    missing_commitment_block.transactions[0].outputs.pop();
+    let (missing_commitment_merkle_root, _) =
+        block_merkle_root(&missing_commitment_block.transactions).expect("merkle root");
+    missing_commitment_block.header.merkle_root = missing_commitment_merkle_root;
+    mine_header(&mut missing_commitment_block);
+    assert_eq!(
+        check_block_contextual(&missing_commitment_block, &context)
+            .expect_err("missing witness commitment must fail")
+            .reject_reason,
+        "unexpected-witness",
+    );
+
     let no_witness_context = BlockValidationContext {
         consensus_params: ConsensusParams {
             enforce_segwit: false,
