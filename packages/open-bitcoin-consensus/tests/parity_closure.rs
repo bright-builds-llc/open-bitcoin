@@ -860,10 +860,12 @@ fn repo_owned_contextual_consensus_regressions_are_covered() {
     let block_context = BlockValidationContext {
         height: 1,
         previous_header: BlockHeader {
+            bits: block.header.bits,
             time: block.header.time - 1,
             ..BlockHeader::default()
         },
         previous_median_time_past: i64::from(block.header.time) - 1,
+        current_time: i64::from(block.header.time),
         consensus_params: ConsensusParams::default(),
     };
     assert!(check_block_contextual(&block, &block_context).is_ok());

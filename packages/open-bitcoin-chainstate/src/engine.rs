@@ -78,6 +78,7 @@ impl Chainstate {
             height,
             previous_header,
             previous_median_time_past,
+            current_time: i64::from(block.header.time),
             consensus_params,
         };
         check_block_contextual(block, &block_context)

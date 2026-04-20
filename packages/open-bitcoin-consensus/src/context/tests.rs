@@ -299,14 +299,24 @@ fn check_tx_inputs_covers_mismatch_and_value_failures() {
 }
 
 #[test]
-fn block_context_carries_expected_defaults() {
+fn block_context_carries_expected_pow_and_time_fields() {
     let context = BlockValidationContext {
         height: 11,
         previous_header: BlockHeader::default(),
         previous_median_time_past: 1_000,
+        current_time: 2_000,
         consensus_params: ConsensusParams::default(),
     };
 
     assert_eq!(context.height, 11);
+    assert_eq!(context.current_time, 2_000);
+    assert_eq!(context.consensus_params.pow_limit_bits, 0x207f_ffff);
+    assert_eq!(context.consensus_params.pow_target_spacing_seconds, 600);
+    assert_eq!(
+        context.consensus_params.pow_target_timespan_seconds,
+        1_209_600
+    );
+    assert!(context.consensus_params.allow_min_difficulty_blocks);
+    assert!(context.consensus_params.no_pow_retargeting);
     assert!(context.consensus_params.enforce_segwit);
 }

@@ -7,10 +7,10 @@ use open_bitcoin_primitives::{
 use super::{
     block_sigop_overflow, block_witness_merkle_root, check_block, check_block_contextual,
     check_block_header, check_block_header_contextual, coinbase_has_height_prefix,
-    compact_size_len, enforce_sigop_cost_limit, legacy_sigop_cost, map_codec_error,
-    map_script_error, map_transaction_validation_error, serialized_block_size,
-    serialized_script_num, split_sigop_cost, validate_block, validate_block_with_context,
-    witness_commitment_index,
+    compact_size_len, difficulty_adjustment_interval, enforce_sigop_cost_limit, legacy_sigop_cost,
+    map_codec_error, map_script_error, map_transaction_validation_error, next_work_required,
+    serialized_block_size, serialized_script_num, split_sigop_cost, validate_block,
+    validate_block_with_context, witness_commitment_index,
 };
 use crate::MAX_BLOCK_SIGOPS_COST;
 use crate::context::{
@@ -569,15 +569,17 @@ fn helper_functions_cover_serialization_and_mapping_paths() {
 }
 
 #[test]
-fn contextual_block_checks_cover_time_height_and_context_mapping() {
+fn contextual_header_parity_covers_diffbits_future_time_and_mtp() {
     let (block, spent_outputs) = valid_block();
     let context = BlockValidationContext {
         height: 1,
         previous_header: BlockHeader {
+            bits: block.header.bits,
             time: block.header.time - 1,
             ..BlockHeader::default()
         },
         previous_median_time_past: i64::from(block.header.time) - 1,
+        current_time: i64::from(block.header.time),
         consensus_params: ConsensusParams {
             enforce_segwit: false,
             ..Default::default()
@@ -589,6 +591,42 @@ fn contextual_block_checks_cover_time_height_and_context_mapping() {
         Ok(())
     );
     assert_eq!(check_block_contextual(&block, &context), Ok(()));
+
+    let mut wrong_bits_header = block.header.clone();
+    wrong_bits_header.bits = wrong_bits_header.bits.saturating_sub(1);
+    let wrong_bits_error = check_block_header_contextual(&wrong_bits_header, &context)
+        .expect_err("incorrect contextual bits must fail");
+    assert_eq!(
+        wrong_bits_error.result,
+        BlockValidationResult::InvalidHeader
+    );
+    assert_eq!(wrong_bits_error.reject_reason, "bad-diffbits");
+    assert_eq!(
+        wrong_bits_error.debug_message.as_deref(),
+        Some("incorrect proof of work"),
+    );
+
+    let stale_context = BlockValidationContext {
+        previous_median_time_past: i64::from(block.header.time),
+        ..context.clone()
+    };
+    let stale_error = check_block_header_contextual(&block.header, &stale_context)
+        .expect_err("time-too-old must fail");
+    assert_eq!(stale_error.result, BlockValidationResult::InvalidHeader);
+    assert_eq!(stale_error.reject_reason, "time-too-old");
+
+    let future_context = BlockValidationContext {
+        current_time: i64::from(block.header.time) - 7_201,
+        ..context.clone()
+    };
+    let future_error = check_block_header_contextual(&block.header, &future_context)
+        .expect_err("time-too-new must fail");
+    assert_eq!(future_error.result, BlockValidationResult::TimeFuture);
+    assert_eq!(future_error.reject_reason, "time-too-new");
+    assert_eq!(
+        future_error.debug_message.as_deref(),
+        Some("block timestamp too far in the future"),
+    );
 
     let tx_contexts = vec![TransactionValidationContext {
         inputs: vec![TransactionInputContext {
@@ -609,16 +647,44 @@ fn contextual_block_checks_cover_time_height_and_context_mapping() {
         validate_block_with_context(&block, &tx_contexts, &context),
         Ok(())
     );
+}
 
-    let stale_context = BlockValidationContext {
-        previous_median_time_past: i64::from(block.header.time),
-        ..context.clone()
+#[test]
+fn contextual_block_checks_cover_context_mapping_and_nonfinal_rejection() {
+    let (block, spent_outputs) = valid_block();
+    let context = BlockValidationContext {
+        height: 1,
+        previous_header: BlockHeader {
+            bits: block.header.bits,
+            time: block.header.time - 1,
+            ..BlockHeader::default()
+        },
+        previous_median_time_past: i64::from(block.header.time) - 1,
+        current_time: i64::from(block.header.time),
+        consensus_params: ConsensusParams {
+            enforce_segwit: false,
+            ..Default::default()
+        },
     };
+
+    let tx_contexts = vec![TransactionValidationContext {
+        inputs: vec![TransactionInputContext {
+            spent_output: SpentOutput {
+                is_coinbase: false,
+                ..spent_outputs[0][0].clone()
+            },
+            created_height: 0,
+            created_median_time_past: 0,
+        }],
+        spend_height: 1,
+        block_time: i64::from(block.header.time),
+        median_time_past: i64::from(block.header.time) - 1,
+        verify_flags: ScriptVerifyFlags::NONE,
+        consensus_params: context.consensus_params,
+    }];
     assert_eq!(
-        check_block_header_contextual(&block.header, &stale_context)
-            .expect_err("time-too-old must fail")
-            .reject_reason,
-        "time-too-old",
+        validate_block_with_context(&block, &tx_contexts, &context),
+        Ok(())
     );
 
     assert_eq!(
@@ -681,10 +747,12 @@ fn witness_commitment_and_coinbase_height_paths_are_exercised() {
     let context = BlockValidationContext {
         height: 1,
         previous_header: BlockHeader {
+            bits: block.header.bits,
             time: block.header.time - 1,
             ..BlockHeader::default()
         },
         previous_median_time_past: i64::from(block.header.time) - 1,
+        current_time: i64::from(block.header.time),
         consensus_params: ConsensusParams::default(),
     };
 
@@ -741,6 +809,103 @@ fn witness_commitment_and_coinbase_height_paths_are_exercised() {
             .expect_err("unexpected witness must fail")
             .reject_reason,
         "unexpected-witness",
+    );
+}
+
+#[test]
+fn difficulty_helpers_cover_contextual_work_branches() {
+    let base_params = ConsensusParams::default();
+    let header = BlockHeader {
+        time: 10_000,
+        bits: base_params.pow_limit_bits,
+        ..BlockHeader::default()
+    };
+    let previous_header = BlockHeader {
+        bits: 0x1f00_ffff,
+        time: header.time - 1,
+        ..BlockHeader::default()
+    };
+
+    assert_eq!(
+        difficulty_adjustment_interval(&ConsensusParams {
+            pow_target_spacing_seconds: 0,
+            ..base_params
+        }),
+        1,
+    );
+    assert_eq!(
+        next_work_required(
+            &header,
+            &BlockValidationContext {
+                height: 0,
+                previous_header: previous_header.clone(),
+                previous_median_time_past: 0,
+                current_time: i64::from(header.time),
+                consensus_params: base_params,
+            },
+        ),
+        base_params.pow_limit_bits,
+    );
+    assert_eq!(
+        next_work_required(
+            &header,
+            &BlockValidationContext {
+                height: 1,
+                previous_header: previous_header.clone(),
+                previous_median_time_past: 0,
+                current_time: i64::from(header.time),
+                consensus_params: base_params,
+            },
+        ),
+        previous_header.bits,
+    );
+    assert_eq!(
+        next_work_required(
+            &header,
+            &BlockValidationContext {
+                height: 1,
+                previous_header: BlockHeader {
+                    bits: previous_header.bits,
+                    time: header.time - 1_201,
+                    ..BlockHeader::default()
+                },
+                previous_median_time_past: 0,
+                current_time: i64::from(header.time),
+                consensus_params: base_params,
+            },
+        ),
+        base_params.pow_limit_bits,
+    );
+
+    let retarget_height = difficulty_adjustment_interval(&base_params) as u32;
+    assert_eq!(
+        next_work_required(
+            &header,
+            &BlockValidationContext {
+                height: retarget_height,
+                previous_header: previous_header.clone(),
+                previous_median_time_past: 0,
+                current_time: i64::from(header.time),
+                consensus_params: base_params,
+            },
+        ),
+        previous_header.bits,
+    );
+    assert_eq!(
+        next_work_required(
+            &header,
+            &BlockValidationContext {
+                height: retarget_height,
+                previous_header,
+                previous_median_time_past: 0,
+                current_time: i64::from(header.time),
+                consensus_params: ConsensusParams {
+                    no_pow_retargeting: false,
+                    ..base_params
+                },
+            },
+        ),
+        0x1f00_ffff,
     );
 }
 
@@ -812,10 +977,12 @@ fn contextual_helpers_cover_merkle_height_and_weight_edges() {
     let no_mtp_context = BlockValidationContext {
         height: 1,
         previous_header: BlockHeader {
+            bits: heavy_block.header.bits,
             time: heavy_block.header.time - 1,
             ..BlockHeader::default()
         },
         previous_median_time_past: i64::from(heavy_block.header.time) - 10,
+        current_time: i64::from(heavy_block.header.time),
         consensus_params: ConsensusParams {
             enforce_bip113_median_time_past: false,
             enforce_segwit: true,
@@ -854,10 +1021,12 @@ fn validate_block_with_context_maps_transaction_errors() {
     let block_context = BlockValidationContext {
         height: 1,
         previous_header: BlockHeader {
+            bits: block.header.bits,
             time: block.header.time - 1,
             ..BlockHeader::default()
         },
         previous_median_time_past: i64::from(block.header.time) - 1,
+        current_time: i64::from(block.header.time),
         consensus_params: ConsensusParams {
             enforce_segwit: false,
             ..Default::default()
@@ -955,10 +1124,12 @@ fn validate_block_with_context_rejects_split_sigop_overflow() {
     let block_context = BlockValidationContext {
         height: 1,
         previous_header: BlockHeader {
+            bits: block.header.bits,
             time: block.header.time - 1,
             ..BlockHeader::default()
         },
         previous_median_time_past: i64::from(block.header.time) - 1,
+        current_time: i64::from(block.header.time),
         consensus_params: ConsensusParams {
             enforce_segwit: false,
             ..ConsensusParams::default()
