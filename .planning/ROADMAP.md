@@ -27,6 +27,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 07.2: Protocol Constant Clarity Cleanup (INSERTED)** - Replace remaining protocol-significant magic numbers and repeated serialized-size literals with clearer named constants before Phase 8. (completed 2026-04-19)
 - [x] **Phase 07.3: Reduce nesting with early returns (INSERTED)** - Flatten the highest-value deeply nested control-flow hotspots before Phase 8 planning. (completed 2026-04-19)
 - [x] **Phase 07.4: Sweep the codebase for let-else opportunities (INSERTED)** - Replace eligible Rust control-flow scaffolding with `let ... else` where it reduces nesting and improves readability before Phase 8 planning. (completed 2026-04-20)
+- [ ] **Phase 07.5: Fix consensus parity gaps in contextual header validation and lax DER signature verification (INSERTED)** - Close the known consensus parity gaps before Phase 8 builds new operator interfaces on top of them.
 - [ ] **Phase 8: RPC, CLI, and Config Parity** - Expose node and wallet behavior through compatible operator interfaces.
 - [ ] **Phase 9: Parity Harnesses and Fuzzing** - Lock down external behavior with reusable black-box and fuzz/property suites.
 - [ ] **Phase 10: Benchmarks and Audit Readiness** - Measure performance and complete the audit surfaces that track parity status.
@@ -268,6 +269,17 @@ Plans:
 
 Plans:
 - [x] 07.4-01-PLAN.md — Audit the shortlist, convert only the real consensus guard wins, and close the sweep with repo-native verification.
+
+### Phase 07.5: Fix consensus parity gaps in contextual header validation and lax DER signature verification (INSERTED)
+
+**Goal:** Close the two reviewed consensus parity gaps so the active contextual block-validation and non-strict legacy signature-verification paths match the pinned Knots baseline before Phase 8 adds operator interfaces on top.
+**Requirements**: CONS-02, CONS-03, VER-01, VER-02
+**Depends on:** Phase 07.4
+**Plans:** 2 plans
+
+Plans:
+- [ ] 07.5-01-PLAN.md — Restore contextual header parity and thread explicit `current_time` through the active block-connect path.
+- [ ] 07.5-02-PLAN.md — Restore non-strict lax DER legacy signature parity and close the phase with repo-native verification evidence.
 
 ### Phase 8: RPC, CLI, and Config Parity
 **Goal**: Expose the node and wallet through operator-facing interfaces that behave compatibly with the baseline for the in-scope surface.
