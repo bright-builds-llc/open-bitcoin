@@ -48,9 +48,10 @@ When a behavior is in scope, Open Bitcoin must behave like the pinned Knots base
 - The reference implementation's major subsystems, quirks, known bugs, deviations, and suspected unknowns should remain visible through living project artifacts instead of tribal knowledge.
 - The maintainability insertion sequence before Phase 8 is now complete: Phase
   07.1 split the largest hotspots, Phase 07.2 clarified protocol constants,
-  and Phase 07.3 flattened the selected consensus, chainstate, mempool,
+  Phase 07.3 flattened the selected consensus, chainstate, mempool,
   networking, and narrow legacy-script control-flow hotspots without changing
-  behavior.
+  behavior, and Phase 07.4 closed the remaining targeted `let ... else`
+  follow-on in consensus code without widening the shortlist sweep.
 
 ## Constraints
 
@@ -90,4 +91,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-19 after Phase 07.3 execution*
+*Last updated: 2026-04-20 after Phase 07.4 execution*
