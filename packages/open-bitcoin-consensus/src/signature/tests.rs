@@ -199,6 +199,32 @@ fn verification_helpers_follow_flag_gated_legacy_rules() {
 }
 
 #[test]
+fn non_strict_legacy_verification_accepts_knots_compatible_lax_der_vector() {
+    // Arrange
+    let lax_der = decode_hex(
+        "304502202de8c03fc525285c9c535631019a5f2af7c6454fa9eb392a3756a4917c420edd02210046130bf2baf7cfc065067c8b9e33a066d9c15edcea9feb0ca2d233e3597925b401",
+    );
+    let high_s = decode_hex(
+        "3046022100839c1fbc5304de944f697c9f4b1d01d1faeba32d751c0f7acb21ac8a0f436a72022100e89bd46bb3a5a62adc679f659b7ce876d83ee297c7a5587b2011c4fcc72eab4501",
+    );
+
+    // Act
+    let maybe_non_strict =
+        parse_ecdsa_signature_for_verification(&lax_der, ScriptVerifyFlags::NONE);
+    let strict_der = parse_ecdsa_signature_for_verification(&lax_der, ScriptVerifyFlags::DERSIG);
+    let low_s = parse_ecdsa_signature_for_verification(&high_s, ScriptVerifyFlags::LOW_S);
+
+    // Assert
+    assert!(
+        maybe_non_strict
+            .expect("non-strict path should accept lax DER")
+            .is_some()
+    );
+    assert!(matches!(strict_der, Err(SignatureError::InvalidDer)));
+    assert!(matches!(low_s, Err(SignatureError::NonLowS)));
+}
+
+#[test]
 fn transaction_signature_checker_covers_false_and_uncompressed_paths() {
     let verification_secp = Secp256k1::verification_only();
     let signing_secp = Secp256k1::new();

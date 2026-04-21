@@ -235,17 +235,17 @@ fn parse_ecdsa_signature_for_verification(
         validate_legacy_sighash_type(sighash_type)?;
     }
 
-    let signature = match ecdsa::Signature::from_der(der) {
-        Ok(signature) => signature,
-        Err(_) => {
-            if flags.contains(ScriptVerifyFlags::DERSIG)
-                || flags.contains(ScriptVerifyFlags::LOW_S)
-                || flags.contains(ScriptVerifyFlags::STRICTENC)
-            {
-                return Err(SignatureError::InvalidDer);
-            }
-            return Ok(None);
-        }
+    let require_strict_der = flags.contains(ScriptVerifyFlags::DERSIG)
+        || flags.contains(ScriptVerifyFlags::LOW_S)
+        || flags.contains(ScriptVerifyFlags::STRICTENC);
+
+    let maybe_signature: Option<ecdsa::Signature> = if require_strict_der {
+        Some(ecdsa::Signature::from_der(der).map_err(|_| SignatureError::InvalidDer)?)
+    } else {
+        ecdsa::Signature::from_der_lax(der).ok()
+    };
+    let Some(signature) = maybe_signature else {
+        return Ok(None);
     };
 
     if flags.contains(ScriptVerifyFlags::LOW_S) {
