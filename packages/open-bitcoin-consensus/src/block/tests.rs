@@ -15,8 +15,8 @@ use super::{
 };
 use crate::MAX_BLOCK_SIGOPS_COST;
 use crate::context::{
-    BlockValidationContext, ConsensusParams, RetargetAnchor, ScriptVerifyFlags, SpentOutput,
-    TransactionInputContext, TransactionValidationContext,
+    BlockValidationContext, ConsensusParams, MinDifficultyRecoveryTarget, RetargetAnchor,
+    ScriptVerifyFlags, SpentOutput, TransactionInputContext, TransactionValidationContext,
 };
 use crate::crypto::{block_hash, block_merkle_root, transaction_txid};
 use crate::validation::{BlockValidationResult, TxValidationResult, tx_error};
@@ -580,6 +580,9 @@ fn contextual_header_parity_covers_diffbits_future_time_and_mtp() {
             ..BlockHeader::default()
         },
         maybe_retarget_anchor: None,
+        maybe_min_difficulty_recovery_target: Some(MinDifficultyRecoveryTarget {
+            bits: block.header.bits,
+        }),
         previous_median_time_past: i64::from(block.header.time) - 1,
         current_time: i64::from(block.header.time),
         consensus_params: ConsensusParams {
@@ -662,6 +665,9 @@ fn contextual_block_checks_cover_context_mapping_and_nonfinal_rejection() {
             ..BlockHeader::default()
         },
         maybe_retarget_anchor: None,
+        maybe_min_difficulty_recovery_target: Some(MinDifficultyRecoveryTarget {
+            bits: block.header.bits,
+        }),
         previous_median_time_past: i64::from(block.header.time) - 1,
         current_time: i64::from(block.header.time),
         consensus_params: ConsensusParams {
@@ -755,6 +761,9 @@ fn witness_commitment_and_coinbase_height_paths_are_exercised() {
             ..BlockHeader::default()
         },
         maybe_retarget_anchor: None,
+        maybe_min_difficulty_recovery_target: Some(MinDifficultyRecoveryTarget {
+            bits: block.header.bits,
+        }),
         previous_median_time_past: i64::from(block.header.time) - 1,
         current_time: i64::from(block.header.time),
         consensus_params: ConsensusParams::default(),
@@ -846,6 +855,7 @@ fn difficulty_helpers_cover_contextual_work_branches() {
                 height: 0,
                 previous_header: previous_header.clone(),
                 maybe_retarget_anchor: None,
+                maybe_min_difficulty_recovery_target: None,
                 previous_median_time_past: 0,
                 current_time: i64::from(header.time),
                 consensus_params: base_params,
@@ -861,6 +871,9 @@ fn difficulty_helpers_cover_contextual_work_branches() {
                 height: 1,
                 previous_header: previous_header.clone(),
                 maybe_retarget_anchor: None,
+                maybe_min_difficulty_recovery_target: Some(MinDifficultyRecoveryTarget {
+                    bits: previous_header.bits,
+                }),
                 previous_median_time_past: 0,
                 current_time: i64::from(header.time),
                 consensus_params: base_params,
@@ -880,6 +893,7 @@ fn difficulty_helpers_cover_contextual_work_branches() {
                     ..BlockHeader::default()
                 },
                 maybe_retarget_anchor: None,
+                maybe_min_difficulty_recovery_target: None,
                 previous_median_time_past: 0,
                 current_time: i64::from(header.time),
                 consensus_params: base_params,
@@ -915,6 +929,9 @@ fn difficulty_helpers_cover_contextual_work_branches() {
                 height: retarget_height,
                 previous_header: previous_header.clone(),
                 maybe_retarget_anchor: None,
+                maybe_min_difficulty_recovery_target: Some(MinDifficultyRecoveryTarget {
+                    bits: previous_header.bits,
+                }),
                 previous_median_time_past: 0,
                 current_time: i64::from(retarget_header.time),
                 consensus_params: base_params,
@@ -931,6 +948,7 @@ fn difficulty_helpers_cover_contextual_work_branches() {
             maybe_retarget_anchor: Some(RetargetAnchor {
                 first_block_time: 100,
             }),
+            maybe_min_difficulty_recovery_target: None,
             previous_median_time_past: 0,
             current_time: i64::from(retarget_header.time),
             consensus_params: retarget_params,
@@ -966,6 +984,7 @@ fn contextual_header_rejects_previous_bits_at_retarget_boundary() {
         maybe_retarget_anchor: Some(RetargetAnchor {
             first_block_time: 100,
         }),
+        maybe_min_difficulty_recovery_target: None,
         previous_median_time_past: 109,
         current_time: i64::from(header.time),
         consensus_params,
@@ -976,6 +995,53 @@ fn contextual_header_rejects_previous_bits_at_retarget_boundary() {
         .expect_err("stale previous bits must fail at a retarget boundary");
 
     // Assert
+    assert_eq!(error.result, BlockValidationResult::InvalidHeader);
+    assert_eq!(error.reject_reason, "bad-diffbits");
+}
+
+#[test]
+fn contextual_header_rejects_previous_bits_after_special_min_difficulty_block() {
+    // Arrange
+    let consensus_params = ConsensusParams {
+        allow_min_difficulty_blocks: true,
+        no_pow_retargeting: false,
+        pow_target_spacing_seconds: 10,
+        pow_target_timespan_seconds: 20,
+        ..ConsensusParams::default()
+    };
+    let recovered_bits = 0x207e_ffff;
+    let recovered_header = BlockHeader {
+        time: 140,
+        bits: recovered_bits,
+        ..BlockHeader::default()
+    };
+    let stale_header = BlockHeader {
+        bits: consensus_params.pow_limit_bits,
+        ..recovered_header.clone()
+    };
+    let context = BlockValidationContext {
+        height: 3,
+        previous_header: BlockHeader {
+            bits: consensus_params.pow_limit_bits,
+            time: 131,
+            ..BlockHeader::default()
+        },
+        maybe_retarget_anchor: None,
+        maybe_min_difficulty_recovery_target: Some(MinDifficultyRecoveryTarget {
+            bits: recovered_bits,
+        }),
+        previous_median_time_past: 130,
+        current_time: i64::from(recovered_header.time),
+        consensus_params,
+    };
+
+    // Act
+    let ok_result = check_block_header_contextual(&recovered_header, &context);
+    let error = check_block_header_contextual(&stale_header, &context)
+        .expect_err("previous special bits must fail after recovery");
+
+    // Assert
+    assert_eq!(ok_result, Ok(()));
     assert_eq!(error.result, BlockValidationResult::InvalidHeader);
     assert_eq!(error.reject_reason, "bad-diffbits");
 }
@@ -1053,6 +1119,9 @@ fn contextual_helpers_cover_merkle_height_and_weight_edges() {
             ..BlockHeader::default()
         },
         maybe_retarget_anchor: None,
+        maybe_min_difficulty_recovery_target: Some(MinDifficultyRecoveryTarget {
+            bits: heavy_block.header.bits,
+        }),
         previous_median_time_past: i64::from(heavy_block.header.time) - 10,
         current_time: i64::from(heavy_block.header.time),
         consensus_params: ConsensusParams {
@@ -1098,6 +1167,9 @@ fn validate_block_with_context_maps_transaction_errors() {
             ..BlockHeader::default()
         },
         maybe_retarget_anchor: None,
+        maybe_min_difficulty_recovery_target: Some(MinDifficultyRecoveryTarget {
+            bits: block.header.bits,
+        }),
         previous_median_time_past: i64::from(block.header.time) - 1,
         current_time: i64::from(block.header.time),
         consensus_params: ConsensusParams {
@@ -1202,6 +1274,9 @@ fn validate_block_with_context_rejects_split_sigop_overflow() {
             ..BlockHeader::default()
         },
         maybe_retarget_anchor: None,
+        maybe_min_difficulty_recovery_target: Some(MinDifficultyRecoveryTarget {
+            bits: block.header.bits,
+        }),
         previous_median_time_past: i64::from(block.header.time) - 1,
         current_time: i64::from(block.header.time),
         consensus_params: ConsensusParams {

@@ -865,6 +865,11 @@ fn repo_owned_contextual_consensus_regressions_are_covered() {
             ..BlockHeader::default()
         },
         maybe_retarget_anchor: None,
+        maybe_min_difficulty_recovery_target: Some(
+            open_bitcoin_consensus::context::MinDifficultyRecoveryTarget {
+                bits: block.header.bits,
+            },
+        ),
         previous_median_time_past: i64::from(block.header.time) - 1,
         current_time: i64::from(block.header.time),
         consensus_params: ConsensusParams::default(),

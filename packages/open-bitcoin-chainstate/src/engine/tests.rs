@@ -121,6 +121,15 @@ fn mine_header(block: &mut Block) {
 }
 
 fn build_block(previous_block_hash: BlockHash, time: u32, transactions: Vec<Transaction>) -> Block {
+    build_block_with_bits(previous_block_hash, time, EASY_BITS, transactions)
+}
+
+fn build_block_with_bits(
+    previous_block_hash: BlockHash,
+    time: u32,
+    bits: u32,
+    transactions: Vec<Transaction>,
+) -> Block {
     let (merkle_root, maybe_mutated) = block_merkle_root(&transactions).expect("merkle root");
     assert!(!maybe_mutated);
 
@@ -130,7 +139,7 @@ fn build_block(previous_block_hash: BlockHash, time: u32, transactions: Vec<Tran
             previous_block_hash,
             merkle_root,
             time,
-            bits: EASY_BITS,
+            bits,
             nonce: 0,
         },
         transactions,
@@ -471,6 +480,130 @@ fn connect_block_rejects_wrong_bits_at_retarget_boundary() {
 }
 
 #[test]
+fn connect_block_recovers_last_non_special_target_after_special_min_difficulty_block() {
+    // Arrange
+    let mut chainstate = Chainstate::new();
+    let consensus_params = ConsensusParams {
+        coinbase_maturity: 1,
+        allow_min_difficulty_blocks: true,
+        no_pow_retargeting: false,
+        pow_target_spacing_seconds: 10,
+        pow_target_timespan_seconds: 40,
+        ..ConsensusParams::default()
+    };
+    let recovered_bits = 0x205f_ffff;
+    let genesis_block = build_block_with_bits(
+        BlockHash::from_byte_array([0_u8; 32]),
+        100,
+        consensus_params.pow_limit_bits,
+        vec![coinbase_transaction(0, 50)],
+    );
+    let genesis_position = chainstate
+        .connect_block(&genesis_block, 1, ScriptVerifyFlags::P2SH, consensus_params)
+        .expect("genesis block should connect");
+    let on_time_block = build_block_with_bits(
+        genesis_position.block_hash,
+        110,
+        consensus_params.pow_limit_bits,
+        vec![coinbase_transaction(1, 50)],
+    );
+    let on_time_position = chainstate
+        .connect_block(&on_time_block, 2, ScriptVerifyFlags::P2SH, consensus_params)
+        .expect("non-special block should connect");
+    let second_on_time_block = build_block_with_bits(
+        on_time_position.block_hash,
+        120,
+        consensus_params.pow_limit_bits,
+        vec![coinbase_transaction(2, 50)],
+    );
+    let second_on_time_position = chainstate
+        .connect_block(
+            &second_on_time_block,
+            3,
+            ScriptVerifyFlags::P2SH,
+            consensus_params,
+        )
+        .expect("second non-special block should connect");
+    let third_on_time_block = build_block_with_bits(
+        second_on_time_position.block_hash,
+        130,
+        consensus_params.pow_limit_bits,
+        vec![coinbase_transaction(3, 50)],
+    );
+    let third_on_time_position = chainstate
+        .connect_block(
+            &third_on_time_block,
+            4,
+            ScriptVerifyFlags::P2SH,
+            consensus_params,
+        )
+        .expect("third non-special block should connect");
+    let boundary_block = build_block_with_bits(
+        third_on_time_position.block_hash,
+        140,
+        recovered_bits,
+        vec![coinbase_transaction(4, 50)],
+    );
+    let boundary_position = chainstate
+        .connect_block(
+            &boundary_block,
+            5,
+            ScriptVerifyFlags::P2SH,
+            consensus_params,
+        )
+        .expect("boundary block should connect");
+    let special_block = build_block_with_bits(
+        boundary_position.block_hash,
+        161,
+        consensus_params.pow_limit_bits,
+        vec![coinbase_transaction(5, 50)],
+    );
+    let special_position = chainstate
+        .connect_block(&special_block, 6, ScriptVerifyFlags::P2SH, consensus_params)
+        .expect("late special block should connect");
+    let wrong_bits_block = build_block_with_bits(
+        special_position.block_hash,
+        170,
+        consensus_params.pow_limit_bits,
+        vec![coinbase_transaction(6, 50)],
+    );
+    let recovered_bits_block = build_block_with_bits(
+        special_position.block_hash,
+        170,
+        recovered_bits,
+        vec![coinbase_transaction(6, 50)],
+    );
+
+    // Act
+    let error = chainstate
+        .connect_block(
+            &wrong_bits_block,
+            7,
+            ScriptVerifyFlags::P2SH,
+            consensus_params,
+        )
+        .expect_err("previous special bits must be rejected after recovery");
+    let recovered_position = chainstate
+        .connect_block(
+            &recovered_bits_block,
+            7,
+            ScriptVerifyFlags::P2SH,
+            consensus_params,
+        )
+        .expect("last non-special target should be accepted");
+
+    // Assert
+    assert!(matches!(
+        error,
+        crate::ChainstateError::BlockValidation { source }
+            if source.reject_reason == "bad-diffbits"
+                && source.debug_message.as_deref() == Some("incorrect proof of work")
+    ));
+    assert_eq!(recovered_position.height, 6);
+    assert_eq!(recovered_position.header.bits, recovered_bits);
+}
+
+#[test]
 fn difficulty_interval_helper_clamps_non_positive_spacing() {
     let interval = difficulty_adjustment_interval(&ConsensusParams {
         pow_target_spacing_seconds: 0,
@@ -512,6 +645,7 @@ fn apply_non_coinbase_transaction_consumes_inputs_and_records_undo() {
             height: 1,
             previous_header: BlockHeader::default(),
             maybe_retarget_anchor: None,
+            maybe_min_difficulty_recovery_target: None,
             previous_median_time_past: 0,
             current_time: 1_231_006_600,
             consensus_params: ConsensusParams {

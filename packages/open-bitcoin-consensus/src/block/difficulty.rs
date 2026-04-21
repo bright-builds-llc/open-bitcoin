@@ -30,14 +30,27 @@ pub(crate) fn next_work_required(
 
     let interval = difficulty_adjustment_interval(consensus_params);
     if i64::from(context.height) % interval != 0 {
-        let allow_min_difficulty_block = consensus_params.allow_min_difficulty_blocks
-            && i64::from(header.time)
+        if consensus_params.allow_min_difficulty_blocks {
+            let allow_min_difficulty_block = i64::from(header.time)
                 > i64::from(context.previous_header.time)
                     + consensus_params
                         .pow_target_spacing_seconds
                         .saturating_mul(2);
-        if allow_min_difficulty_block {
-            return Ok(consensus_params.pow_limit_bits);
+            if allow_min_difficulty_block {
+                return Ok(consensus_params.pow_limit_bits);
+            }
+
+            let Some(recovery_target) = context.maybe_min_difficulty_recovery_target else {
+                return Err(block_error(
+                    BlockValidationResult::InvalidHeader,
+                    "bad-diffbits",
+                    Some(
+                        "missing min-difficulty recovery target for non-boundary work".to_string(),
+                    ),
+                ));
+            };
+
+            return Ok(recovery_target.bits);
         }
 
         return Ok(context.previous_header.bits);
@@ -188,7 +201,9 @@ mod tests {
         difficulty_adjustment_interval, next_work_required, target_limbs_from_bits,
         wide_target_exceeds_limit,
     };
-    use crate::context::{BlockValidationContext, ConsensusParams, RetargetAnchor};
+    use crate::context::{
+        BlockValidationContext, ConsensusParams, MinDifficultyRecoveryTarget, RetargetAnchor,
+    };
 
     fn boundary_context(consensus_params: ConsensusParams) -> BlockValidationContext {
         BlockValidationContext {
@@ -201,6 +216,7 @@ mod tests {
             maybe_retarget_anchor: Some(RetargetAnchor {
                 first_block_time: 100,
             }),
+            maybe_min_difficulty_recovery_target: None,
             previous_median_time_past: 0,
             current_time: 130,
             consensus_params,
@@ -344,5 +360,58 @@ mod tests {
         assert!(!wide_target_exceeds_limit(&lower_target, &equal_limit));
         assert!(wide_target_exceeds_limit(&higher_target, &equal_limit));
         assert!(wide_target_exceeds_limit(&high_limb_target, &equal_limit));
+    }
+
+    #[test]
+    fn next_work_required_recovers_last_non_special_target_after_special_min_difficulty_block() {
+        // Arrange
+        let consensus_params = ConsensusParams {
+            allow_min_difficulty_blocks: true,
+            no_pow_retargeting: false,
+            pow_target_spacing_seconds: 10,
+            pow_target_timespan_seconds: 20,
+            ..ConsensusParams::default()
+        };
+        let recovered_bits = 0x207e_ffff;
+        let header = BlockHeader {
+            time: 140,
+            bits: recovered_bits,
+            ..BlockHeader::default()
+        };
+        let context = BlockValidationContext {
+            height: 3,
+            previous_header: BlockHeader {
+                bits: consensus_params.pow_limit_bits,
+                time: 131,
+                ..BlockHeader::default()
+            },
+            maybe_retarget_anchor: None,
+            maybe_min_difficulty_recovery_target: Some(MinDifficultyRecoveryTarget {
+                bits: recovered_bits,
+            }),
+            previous_median_time_past: 130,
+            current_time: i64::from(header.time),
+            consensus_params,
+        };
+
+        // Act
+        let expected_bits = next_work_required(&header, &context)
+            .expect("recovery target should drive the on-time non-boundary branch");
+        let missing_recovery_error = next_work_required(
+            &header,
+            &BlockValidationContext {
+                maybe_min_difficulty_recovery_target: None,
+                ..context.clone()
+            },
+        )
+        .expect_err("missing recovery target must fail");
+
+        // Assert
+        assert_eq!(expected_bits, recovered_bits);
+        assert_eq!(missing_recovery_error.reject_reason, "bad-diffbits");
+        assert_eq!(
+            missing_recovery_error.debug_message.as_deref(),
+            Some("missing min-difficulty recovery target for non-boundary work"),
+        );
     }
 }

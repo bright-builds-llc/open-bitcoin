@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use open_bitcoin_consensus::context::RetargetAnchor;
+use open_bitcoin_consensus::context::{MinDifficultyRecoveryTarget, RetargetAnchor};
 use open_bitcoin_consensus::{
     BlockValidationContext, ConsensusParams, ScriptVerifyFlags, TransactionInputContext,
     TransactionValidationContext, block_hash, check_block_contextual, transaction_txid,
@@ -93,11 +93,14 @@ impl Chainstate {
             .map_or_else(BlockHeader::default, |tip| tip.header.clone());
         let maybe_retarget_anchor =
             maybe_retarget_anchor(&self.active_chain, height, &consensus_params);
+        let maybe_min_difficulty_recovery_target =
+            maybe_min_difficulty_recovery_target(&self.active_chain, height, &consensus_params);
         let previous_median_time_past = self.tip().map_or(0, |tip| tip.median_time_past);
         let block_context = BlockValidationContext {
             height,
             previous_header,
             maybe_retarget_anchor,
+            maybe_min_difficulty_recovery_target,
             previous_median_time_past,
             current_time,
             consensus_params,
@@ -248,6 +251,36 @@ fn maybe_retarget_anchor(
     Some(RetargetAnchor {
         first_block_time: i64::from(anchor_position.header.time),
     })
+}
+
+fn maybe_min_difficulty_recovery_target(
+    active_chain: &[ChainPosition],
+    height: u32,
+    consensus_params: &ConsensusParams,
+) -> Option<MinDifficultyRecoveryTarget> {
+    if height == 0 || !consensus_params.allow_min_difficulty_blocks {
+        return None;
+    }
+
+    let interval = difficulty_adjustment_interval(consensus_params);
+    if height.is_multiple_of(interval) {
+        return None;
+    }
+
+    let mut index = active_chain.len().checked_sub(1)?;
+    loop {
+        let position = active_chain.get(index)?;
+        let should_keep_walking = index > 0
+            && !position.height.is_multiple_of(interval)
+            && position.header.bits == consensus_params.pow_limit_bits;
+        if !should_keep_walking {
+            return Some(MinDifficultyRecoveryTarget {
+                bits: position.header.bits,
+            });
+        }
+
+        index = index.saturating_sub(1);
+    }
 }
 
 fn apply_non_coinbase_transaction(

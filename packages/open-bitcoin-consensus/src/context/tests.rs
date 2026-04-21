@@ -3,10 +3,11 @@ use open_bitcoin_primitives::{Amount, BlockHeader, ScriptBuf, Transaction};
 use open_bitcoin_primitives::{MAX_MONEY, TransactionInput, TransactionOutput, Txid};
 
 use super::{
-    BlockValidationContext, ConsensusParams, PrecomputedTransactionData, RetargetAnchor,
-    ScriptVerifyFlags, SpentOutput, TransactionInputContext, TransactionValidationContext,
-    calculate_sequence_locks, check_tx_inputs, evaluate_sequence_locks, is_final_transaction,
-    sequence_locks, write_compact_size,
+    BlockValidationContext, ConsensusParams, MinDifficultyRecoveryTarget,
+    PrecomputedTransactionData, RetargetAnchor, ScriptVerifyFlags, SpentOutput,
+    TransactionInputContext, TransactionValidationContext, calculate_sequence_locks,
+    check_tx_inputs, evaluate_sequence_locks, is_final_transaction, sequence_locks,
+    write_compact_size,
 };
 
 fn script(bytes: &[u8]) -> ScriptBuf {
@@ -306,6 +307,9 @@ fn block_context_carries_expected_pow_and_time_fields() {
         maybe_retarget_anchor: Some(RetargetAnchor {
             first_block_time: 500,
         }),
+        maybe_min_difficulty_recovery_target: Some(MinDifficultyRecoveryTarget {
+            bits: 0x207e_ffff,
+        }),
         previous_median_time_past: 1_000,
         current_time: 2_000,
         consensus_params: ConsensusParams::default(),
@@ -318,6 +322,13 @@ fn block_context_carries_expected_pow_and_time_fields() {
             .expect("retarget anchor should be present")
             .first_block_time,
         500
+    );
+    assert_eq!(
+        context
+            .maybe_min_difficulty_recovery_target
+            .expect("recovery target should be present")
+            .bits,
+        0x207e_ffff
     );
     assert_eq!(context.current_time, 2_000);
     assert_eq!(context.consensus_params.pow_limit_bits, 0x207f_ffff);
