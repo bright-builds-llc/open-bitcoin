@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use open_bitcoin_consensus::context::RetargetAnchor;
 use open_bitcoin_consensus::{
     BlockValidationContext, ConsensusParams, ScriptVerifyFlags, TransactionInputContext,
     TransactionValidationContext, block_hash, check_block_contextual, transaction_txid,
@@ -90,11 +91,13 @@ impl Chainstate {
         let previous_header = self
             .tip()
             .map_or_else(BlockHeader::default, |tip| tip.header.clone());
+        let maybe_retarget_anchor =
+            maybe_retarget_anchor(&self.active_chain, height, &consensus_params);
         let previous_median_time_past = self.tip().map_or(0, |tip| tip.median_time_past);
         let block_context = BlockValidationContext {
             height,
             previous_header,
-            maybe_retarget_anchor: None,
+            maybe_retarget_anchor,
             previous_median_time_past,
             current_time,
             consensus_params,
@@ -213,6 +216,38 @@ pub fn prefer_candidate_tip(current: &ChainPosition, candidate: &ChainPosition) 
     }
 
     candidate.block_hash > current.block_hash
+}
+
+fn difficulty_adjustment_interval(consensus_params: &ConsensusParams) -> u32 {
+    if consensus_params.pow_target_spacing_seconds <= 0 {
+        return 1;
+    }
+
+    let interval =
+        consensus_params.pow_target_timespan_seconds / consensus_params.pow_target_spacing_seconds;
+    interval.max(1) as u32
+}
+
+fn maybe_retarget_anchor(
+    active_chain: &[ChainPosition],
+    height: u32,
+    consensus_params: &ConsensusParams,
+) -> Option<RetargetAnchor> {
+    if height == 0 || consensus_params.no_pow_retargeting {
+        return None;
+    }
+
+    let interval = difficulty_adjustment_interval(consensus_params);
+    if !height.is_multiple_of(interval) {
+        return None;
+    }
+
+    let anchor_height = height.checked_sub(interval)?;
+    let anchor_position = active_chain.get(anchor_height as usize)?;
+
+    Some(RetargetAnchor {
+        first_block_time: i64::from(anchor_position.header.time),
+    })
 }
 
 fn apply_non_coinbase_transaction(

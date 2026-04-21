@@ -10,8 +10,8 @@ use open_bitcoin_primitives::{
 };
 
 use super::{
-    Chainstate, apply_non_coinbase_transaction, compute_median_time_past, prefer_candidate_tip,
-    restore_non_coinbase_inputs,
+    Chainstate, apply_non_coinbase_transaction, compute_median_time_past,
+    difficulty_adjustment_interval, prefer_candidate_tip, restore_non_coinbase_inputs,
 };
 use crate::{AnchoredBlock, BlockUndo, ChainPosition, Coin, TxUndo};
 
@@ -412,6 +412,72 @@ fn connect_block_uses_explicit_current_time_for_future_time_rejection() {
         crate::ChainstateError::BlockValidation { source }
             if source.reject_reason == "time-too-new"
     ));
+}
+
+#[test]
+fn connect_block_rejects_wrong_bits_at_retarget_boundary() {
+    // Arrange
+    let mut chainstate = Chainstate::new();
+    let consensus_params = ConsensusParams {
+        coinbase_maturity: 1,
+        allow_min_difficulty_blocks: false,
+        no_pow_retargeting: false,
+        pow_target_spacing_seconds: 10,
+        pow_target_timespan_seconds: 20,
+        ..ConsensusParams::default()
+    };
+    let genesis_block = build_block(
+        BlockHash::from_byte_array([0_u8; 32]),
+        100,
+        vec![coinbase_transaction(0, 50)],
+    );
+    connect_block(&mut chainstate, &genesis_block, 1);
+    let height_one_block = build_block(
+        open_bitcoin_consensus::block_hash(&genesis_block.header),
+        110,
+        vec![coinbase_transaction(1, 50)],
+    );
+    let height_one_position = chainstate
+        .connect_block(
+            &height_one_block,
+            2,
+            ScriptVerifyFlags::P2SH,
+            consensus_params,
+        )
+        .expect("height-one block should connect");
+    let wrong_bits_block = build_block(
+        height_one_position.block_hash,
+        120,
+        vec![coinbase_transaction(2, 50)],
+    );
+
+    // Act
+    let error = chainstate
+        .connect_block(
+            &wrong_bits_block,
+            3,
+            ScriptVerifyFlags::P2SH,
+            consensus_params,
+        )
+        .expect_err("stale retarget-boundary bits must fail");
+
+    // Assert
+    assert!(matches!(
+        error,
+        crate::ChainstateError::BlockValidation { source }
+            if source.reject_reason == "bad-diffbits"
+                && source.debug_message.as_deref() == Some("incorrect proof of work")
+    ));
+}
+
+#[test]
+fn difficulty_interval_helper_clamps_non_positive_spacing() {
+    let interval = difficulty_adjustment_interval(&ConsensusParams {
+        pow_target_spacing_seconds: 0,
+        ..ConsensusParams::default()
+    });
+
+    assert_eq!(interval, 1);
 }
 
 #[test]
