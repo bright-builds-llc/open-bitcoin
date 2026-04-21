@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 07.5 context gathered
-last_updated: "2026-04-20T13:09:37.505Z"
-last_activity: 2026-04-20 -- Phase 07.5 planning complete
+last_updated: "2026-04-21T00:56:08.815Z"
+last_activity: 2026-04-21 -- Phase 07.5 planning complete
 progress:
   total_phases: 19
   completed_phases: 15
-  total_plans: 51
-  completed_plans: 49
-  percent: 96
+  total_plans: 52
+  completed_plans: 51
+  percent: 98
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-11)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 8 — RPC, CLI, and Config Parity
+**Current focus:** Phase 07.5 — Fix consensus parity gaps in contextual header validation and lax DER signature verification
 
 ## Current Position
 
-Phase: 8
-Plan: Not started
+Phase: 07.5 (Fix consensus parity gaps in contextual header validation and lax DER signature verification) — EXECUTING
+Plan: 1 of 2
 Status: Ready to execute
-Last activity: 2026-04-20 -- Phase 07.5 planning complete
+Last activity: 2026-04-21 -- Phase 07.5 planning complete
 
 Progress: ██████████ 100%
 
