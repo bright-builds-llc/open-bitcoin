@@ -94,6 +94,7 @@ impl Chainstate {
         let block_context = BlockValidationContext {
             height,
             previous_header,
+            maybe_retarget_anchor: None,
             previous_median_time_past,
             current_time,
             consensus_params,

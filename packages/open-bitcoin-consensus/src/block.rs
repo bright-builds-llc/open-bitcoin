@@ -1,3 +1,5 @@
+mod difficulty;
+
 use open_bitcoin_codec::{
     CodecError, TransactionEncoding, encode_block_header, encode_transaction,
 };
@@ -20,6 +22,7 @@ use crate::transaction::{
 use crate::validation::{
     BlockValidationError, BlockValidationResult, TxValidationError, block_error,
 };
+use difficulty::next_work_required;
 
 const WITNESS_RESERVED_VALUE_STACK_ITEMS: usize = 1;
 const WITNESS_RESERVED_VALUE_SIZE: usize = 32;
@@ -168,7 +171,7 @@ pub fn check_block_header_contextual(
     header: &BlockHeader,
     context: &BlockValidationContext,
 ) -> Result<(), BlockValidationError> {
-    let expected_bits = next_work_required(header, context);
+    let expected_bits = next_work_required(header, context)?;
     if header.bits != expected_bits {
         return Err(block_error(
             BlockValidationResult::InvalidHeader,
@@ -289,44 +292,6 @@ pub fn validate_block_with_context(
     enforce_sigop_cost_limit(sigop_cost)?;
 
     Ok(())
-}
-
-fn difficulty_adjustment_interval(consensus_params: &crate::context::ConsensusParams) -> i64 {
-    if consensus_params.pow_target_spacing_seconds <= 0 {
-        return 1;
-    }
-
-    let interval =
-        consensus_params.pow_target_timespan_seconds / consensus_params.pow_target_spacing_seconds;
-    interval.max(1)
-}
-
-fn next_work_required(header: &BlockHeader, context: &BlockValidationContext) -> u32 {
-    let consensus_params = &context.consensus_params;
-    if context.height == 0 {
-        return consensus_params.pow_limit_bits;
-    }
-
-    let interval = difficulty_adjustment_interval(consensus_params);
-    if i64::from(context.height) % interval != 0 {
-        let allow_min_difficulty_block = consensus_params.allow_min_difficulty_blocks
-            && i64::from(header.time)
-                > i64::from(context.previous_header.time)
-                    + consensus_params
-                        .pow_target_spacing_seconds
-                        .saturating_mul(2);
-        if allow_min_difficulty_block {
-            return consensus_params.pow_limit_bits;
-        }
-
-        return context.previous_header.bits;
-    }
-
-    if consensus_params.no_pow_retargeting {
-        return context.previous_header.bits;
-    }
-
-    context.previous_header.bits
 }
 
 fn legacy_sigop_cost(

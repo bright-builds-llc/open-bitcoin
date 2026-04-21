@@ -864,6 +864,7 @@ fn repo_owned_contextual_consensus_regressions_are_covered() {
             time: block.header.time - 1,
             ..BlockHeader::default()
         },
+        maybe_retarget_anchor: None,
         previous_median_time_past: i64::from(block.header.time) - 1,
         current_time: i64::from(block.header.time),
         consensus_params: ConsensusParams::default(),

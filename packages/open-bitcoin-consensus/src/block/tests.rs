@@ -4,17 +4,18 @@ use open_bitcoin_primitives::{
     Transaction, TransactionInput, TransactionOutput, Txid,
 };
 
+use super::difficulty::{difficulty_adjustment_interval, next_work_required};
 use super::{
     block_sigop_overflow, block_witness_merkle_root, check_block, check_block_contextual,
     check_block_header, check_block_header_contextual, coinbase_has_height_prefix,
-    compact_size_len, difficulty_adjustment_interval, enforce_sigop_cost_limit, legacy_sigop_cost,
-    map_codec_error, map_script_error, map_transaction_validation_error, next_work_required,
-    serialized_block_size, serialized_script_num, split_sigop_cost, validate_block,
-    validate_block_with_context, witness_commitment_index,
+    compact_size_len, enforce_sigop_cost_limit, legacy_sigop_cost, map_codec_error,
+    map_script_error, map_transaction_validation_error, serialized_block_size,
+    serialized_script_num, split_sigop_cost, validate_block, validate_block_with_context,
+    witness_commitment_index,
 };
 use crate::MAX_BLOCK_SIGOPS_COST;
 use crate::context::{
-    BlockValidationContext, ConsensusParams, ScriptVerifyFlags, SpentOutput,
+    BlockValidationContext, ConsensusParams, RetargetAnchor, ScriptVerifyFlags, SpentOutput,
     TransactionInputContext, TransactionValidationContext,
 };
 use crate::crypto::{block_hash, block_merkle_root, transaction_txid};
@@ -578,6 +579,7 @@ fn contextual_header_parity_covers_diffbits_future_time_and_mtp() {
             time: block.header.time - 1,
             ..BlockHeader::default()
         },
+        maybe_retarget_anchor: None,
         previous_median_time_past: i64::from(block.header.time) - 1,
         current_time: i64::from(block.header.time),
         consensus_params: ConsensusParams {
@@ -659,6 +661,7 @@ fn contextual_block_checks_cover_context_mapping_and_nonfinal_rejection() {
             time: block.header.time - 1,
             ..BlockHeader::default()
         },
+        maybe_retarget_anchor: None,
         previous_median_time_past: i64::from(block.header.time) - 1,
         current_time: i64::from(block.header.time),
         consensus_params: ConsensusParams {
@@ -751,6 +754,7 @@ fn witness_commitment_and_coinbase_height_paths_are_exercised() {
             time: block.header.time - 1,
             ..BlockHeader::default()
         },
+        maybe_retarget_anchor: None,
         previous_median_time_past: i64::from(block.header.time) - 1,
         current_time: i64::from(block.header.time),
         consensus_params: ConsensusParams::default(),
@@ -814,6 +818,7 @@ fn witness_commitment_and_coinbase_height_paths_are_exercised() {
 
 #[test]
 fn difficulty_helpers_cover_contextual_work_branches() {
+    // Arrange
     let base_params = ConsensusParams::default();
     let header = BlockHeader {
         time: 10_000,
@@ -826,6 +831,7 @@ fn difficulty_helpers_cover_contextual_work_branches() {
         ..BlockHeader::default()
     };
 
+    // Act / Assert
     assert_eq!(
         difficulty_adjustment_interval(&ConsensusParams {
             pow_target_spacing_seconds: 0,
@@ -839,11 +845,13 @@ fn difficulty_helpers_cover_contextual_work_branches() {
             &BlockValidationContext {
                 height: 0,
                 previous_header: previous_header.clone(),
+                maybe_retarget_anchor: None,
                 previous_median_time_past: 0,
                 current_time: i64::from(header.time),
                 consensus_params: base_params,
             },
-        ),
+        )
+        .expect("genesis work should compute"),
         base_params.pow_limit_bits,
     );
     assert_eq!(
@@ -852,11 +860,13 @@ fn difficulty_helpers_cover_contextual_work_branches() {
             &BlockValidationContext {
                 height: 1,
                 previous_header: previous_header.clone(),
+                maybe_retarget_anchor: None,
                 previous_median_time_past: 0,
                 current_time: i64::from(header.time),
                 consensus_params: base_params,
             },
-        ),
+        )
+        .expect("non-boundary work should compute"),
         previous_header.bits,
     );
     assert_eq!(
@@ -869,44 +879,105 @@ fn difficulty_helpers_cover_contextual_work_branches() {
                     time: header.time - 1_201,
                     ..BlockHeader::default()
                 },
+                maybe_retarget_anchor: None,
                 previous_median_time_past: 0,
                 current_time: i64::from(header.time),
                 consensus_params: base_params,
             },
-        ),
+        )
+        .expect("min-difficulty work should compute"),
         base_params.pow_limit_bits,
     );
 
-    let retarget_height = difficulty_adjustment_interval(&base_params) as u32;
+    let retarget_params = ConsensusParams {
+        allow_min_difficulty_blocks: false,
+        no_pow_retargeting: false,
+        pow_target_spacing_seconds: 10,
+        pow_target_timespan_seconds: 20,
+        ..base_params
+    };
+    let retarget_height = difficulty_adjustment_interval(&retarget_params) as u32;
+    let retarget_previous_header = BlockHeader {
+        bits: base_params.pow_limit_bits,
+        time: 110,
+        ..BlockHeader::default()
+    };
+    let retarget_header = BlockHeader {
+        time: 120,
+        bits: retarget_previous_header.bits,
+        ..BlockHeader::default()
+    };
+
     assert_eq!(
         next_work_required(
-            &header,
+            &retarget_header,
             &BlockValidationContext {
                 height: retarget_height,
                 previous_header: previous_header.clone(),
+                maybe_retarget_anchor: None,
                 previous_median_time_past: 0,
-                current_time: i64::from(header.time),
+                current_time: i64::from(retarget_header.time),
                 consensus_params: base_params,
             },
-        ),
+        )
+        .expect("retarget-disabled boundary work should compute"),
         previous_header.bits,
     );
-    assert_eq!(
-        next_work_required(
-            &header,
-            &BlockValidationContext {
-                height: retarget_height,
-                previous_header,
-                previous_median_time_past: 0,
-                current_time: i64::from(header.time),
-                consensus_params: ConsensusParams {
-                    no_pow_retargeting: false,
-                    ..base_params
-                },
-            },
-        ),
-        0x1f00_ffff,
-    );
+    let retarget_bits = next_work_required(
+        &retarget_header,
+        &BlockValidationContext {
+            height: retarget_height,
+            previous_header: retarget_previous_header.clone(),
+            maybe_retarget_anchor: Some(RetargetAnchor {
+                first_block_time: 100,
+            }),
+            previous_median_time_past: 0,
+            current_time: i64::from(retarget_header.time),
+            consensus_params: retarget_params,
+        },
+    )
+    .expect("retarget-enabled boundary work should compute");
+    assert_ne!(retarget_bits, retarget_previous_header.bits,);
+}
+
+#[test]
+fn contextual_header_rejects_previous_bits_at_retarget_boundary() {
+    // Arrange
+    let consensus_params = ConsensusParams {
+        allow_min_difficulty_blocks: false,
+        no_pow_retargeting: false,
+        pow_target_spacing_seconds: 10,
+        pow_target_timespan_seconds: 20,
+        ..ConsensusParams::default()
+    };
+    let previous_header = BlockHeader {
+        bits: consensus_params.pow_limit_bits,
+        time: 110,
+        ..BlockHeader::default()
+    };
+    let header = BlockHeader {
+        time: 120,
+        bits: previous_header.bits,
+        ..BlockHeader::default()
+    };
+    let context = BlockValidationContext {
+        height: difficulty_adjustment_interval(&consensus_params) as u32,
+        previous_header,
+        maybe_retarget_anchor: Some(RetargetAnchor {
+            first_block_time: 100,
+        }),
+        previous_median_time_past: 109,
+        current_time: i64::from(header.time),
+        consensus_params,
+    };
+
+    // Act
+    let error = check_block_header_contextual(&header, &context)
+        .expect_err("stale previous bits must fail at a retarget boundary");
+
+    // Assert
+    assert_eq!(error.result, BlockValidationResult::InvalidHeader);
+    assert_eq!(error.reject_reason, "bad-diffbits");
 }
 
 #[test]
@@ -981,6 +1052,7 @@ fn contextual_helpers_cover_merkle_height_and_weight_edges() {
             time: heavy_block.header.time - 1,
             ..BlockHeader::default()
         },
+        maybe_retarget_anchor: None,
         previous_median_time_past: i64::from(heavy_block.header.time) - 10,
         current_time: i64::from(heavy_block.header.time),
         consensus_params: ConsensusParams {
@@ -1025,6 +1097,7 @@ fn validate_block_with_context_maps_transaction_errors() {
             time: block.header.time - 1,
             ..BlockHeader::default()
         },
+        maybe_retarget_anchor: None,
         previous_median_time_past: i64::from(block.header.time) - 1,
         current_time: i64::from(block.header.time),
         consensus_params: ConsensusParams {
@@ -1128,6 +1201,7 @@ fn validate_block_with_context_rejects_split_sigop_overflow() {
             time: block.header.time - 1,
             ..BlockHeader::default()
         },
+        maybe_retarget_anchor: None,
         previous_median_time_past: i64::from(block.header.time) - 1,
         current_time: i64::from(block.header.time),
         consensus_params: ConsensusParams {

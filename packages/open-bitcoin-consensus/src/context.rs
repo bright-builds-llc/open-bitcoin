@@ -139,9 +139,15 @@ impl TransactionValidationContext {
 pub struct BlockValidationContext {
     pub height: u32,
     pub previous_header: BlockHeader,
+    pub maybe_retarget_anchor: Option<RetargetAnchor>,
     pub previous_median_time_past: i64,
     pub current_time: i64,
     pub consensus_params: ConsensusParams,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RetargetAnchor {
+    pub first_block_time: i64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]

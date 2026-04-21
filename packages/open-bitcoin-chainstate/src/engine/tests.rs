@@ -445,6 +445,7 @@ fn apply_non_coinbase_transaction_consumes_inputs_and_records_undo() {
         &BlockValidationContext {
             height: 1,
             previous_header: BlockHeader::default(),
+            maybe_retarget_anchor: None,
             previous_median_time_past: 0,
             current_time: 1_231_006_600,
             consensus_params: ConsensusParams {
