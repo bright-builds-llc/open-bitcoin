@@ -58,6 +58,23 @@ impl Chainstate {
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> Result<ChainPosition, ChainstateError> {
+        self.connect_block_with_current_time(
+            block,
+            chain_work,
+            i64::from(block.header.time),
+            verify_flags,
+            consensus_params,
+        )
+    }
+
+    pub fn connect_block_with_current_time(
+        &mut self,
+        block: &Block,
+        chain_work: u128,
+        current_time: i64,
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+    ) -> Result<ChainPosition, ChainstateError> {
         let expected_previous = self
             .tip()
             .map_or(BlockHash::from_byte_array([0_u8; 32]), |tip| tip.block_hash);
@@ -78,7 +95,7 @@ impl Chainstate {
             height,
             previous_header,
             previous_median_time_past,
-            current_time: i64::from(block.header.time),
+            current_time,
             consensus_params,
         };
         check_block_contextual(block, &block_context)

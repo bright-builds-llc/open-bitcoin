@@ -260,13 +260,14 @@ fn managed_nodes_sync_blocks_and_relay_transactions_in_memory() {
         .expect("spendable");
 
     source.add_inbound_peer(7).expect("source peer");
+    let sync_timestamp = i64::from(spendable.header.time);
     let mut to_source = sink.connect_outbound_peer(7, 1).expect("connect");
-    let mut to_sink = deliver(&sink, &mut source, 7, to_source, 2);
-    to_source = deliver(&source, &mut sink, 7, to_sink, 3);
-    to_sink = deliver(&sink, &mut source, 7, to_source, 4);
-    to_source = deliver(&source, &mut sink, 7, to_sink, 5);
-    to_sink = deliver(&sink, &mut source, 7, to_source, 6);
-    let final_outbound = deliver(&source, &mut sink, 7, to_sink, 7);
+    let mut to_sink = deliver(&sink, &mut source, 7, to_source, sync_timestamp);
+    to_source = deliver(&source, &mut sink, 7, to_sink, sync_timestamp);
+    to_sink = deliver(&sink, &mut source, 7, to_source, sync_timestamp);
+    to_source = deliver(&source, &mut sink, 7, to_sink, sync_timestamp);
+    to_sink = deliver(&sink, &mut source, 7, to_source, sync_timestamp);
+    let final_outbound = deliver(&source, &mut sink, 7, to_sink, sync_timestamp);
     assert!(final_outbound.is_empty());
     assert_eq!(
         sink.chainstate().chainstate().tip().map(|tip| tip.height),
@@ -292,4 +293,40 @@ fn managed_nodes_sync_blocks_and_relay_transactions_in_memory() {
 
     let txid = transaction_txid(&transaction).expect("txid");
     assert!(sink.mempool().mempool().entry(&txid).is_some());
+}
+
+#[test]
+fn managed_network_rejects_future_block_using_message_timestamp() {
+    let mut network = ManagedPeerNetwork::new(
+        MemoryChainstateStore::default(),
+        local_config(30),
+        PolicyConfig::default(),
+    );
+    let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0, 500_000_000);
+    network
+        .connect_local_block(&genesis, verify_flags(), consensus_params())
+        .expect("genesis");
+    network.add_inbound_peer(9).expect("peer");
+
+    let future_block = build_block(
+        open_bitcoin_core::consensus::block_hash(&genesis.header),
+        10_000,
+        500_000_000,
+    );
+    let error = network
+        .receive_message(
+            9,
+            WireNetworkMessage::Block(future_block.clone()),
+            i64::from(future_block.header.time) - 7_201,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect_err("future block must use the message timestamp");
+
+    assert!(matches!(
+        error,
+        crate::network::ManagedNetworkError::Chainstate(
+            open_bitcoin_core::chainstate::ChainstateError::BlockValidation { source }
+        ) if source.reject_reason == "time-too-new"
+    ));
 }

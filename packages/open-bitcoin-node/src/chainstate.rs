@@ -61,9 +61,30 @@ impl<S: ChainstateStore> ManagedChainstate<S> {
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> Result<ChainPosition, open_bitcoin_core::chainstate::ChainstateError> {
-        let position =
-            self.chainstate
-                .connect_block(block, chain_work, verify_flags, consensus_params)?;
+        self.connect_block_with_current_time(
+            block,
+            chain_work,
+            i64::from(block.header.time),
+            verify_flags,
+            consensus_params,
+        )
+    }
+
+    pub fn connect_block_with_current_time(
+        &mut self,
+        block: &Block,
+        chain_work: u128,
+        current_time: i64,
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+    ) -> Result<ChainPosition, open_bitcoin_core::chainstate::ChainstateError> {
+        let position = self.chainstate.connect_block_with_current_time(
+            block,
+            chain_work,
+            current_time,
+            verify_flags,
+            consensus_params,
+        )?;
         self.persist();
 
         Ok(position)

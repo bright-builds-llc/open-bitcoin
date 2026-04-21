@@ -377,6 +377,44 @@ fn connect_block_rejects_missing_prevouts_from_chainstate() {
 }
 
 #[test]
+fn connect_block_uses_explicit_current_time_for_future_time_rejection() {
+    // Arrange
+    let mut chainstate = Chainstate::new();
+    let genesis_block = build_block(
+        BlockHash::from_byte_array([0_u8; 32]),
+        1_231_006_500,
+        vec![coinbase_transaction(0, 50)],
+    );
+    connect_block(&mut chainstate, &genesis_block, 1);
+    let future_block = build_block(
+        open_bitcoin_consensus::block_hash(&genesis_block.header),
+        1_231_016_500,
+        vec![coinbase_transaction(1, 50)],
+    );
+
+    // Act
+    let error = chainstate
+        .connect_block_with_current_time(
+            &future_block,
+            2,
+            i64::from(future_block.header.time) - 7_201,
+            ScriptVerifyFlags::P2SH,
+            ConsensusParams {
+                coinbase_maturity: 1,
+                ..ConsensusParams::default()
+            },
+        )
+        .expect_err("future block must respect the caller-provided time");
+
+    // Assert
+    assert!(matches!(
+        error,
+        crate::ChainstateError::BlockValidation { source }
+            if source.reject_reason == "time-too-new"
+    ));
+}
+
+#[test]
 fn apply_non_coinbase_transaction_consumes_inputs_and_records_undo() {
     // Arrange
     let genesis_coinbase = coinbase_transaction(0, 50);

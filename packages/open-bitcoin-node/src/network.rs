@@ -124,7 +124,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         let actions = self
             .peer_manager
             .handle_message(peer_id, message, timestamp)?;
-        self.process_actions(actions, verify_flags, consensus_params)
+        self.process_actions(actions, timestamp, verify_flags, consensus_params)
     }
 
     pub fn receive_wire_message(
@@ -227,6 +227,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     fn process_actions(
         &mut self,
         actions: Vec<PeerAction>,
+        timestamp: i64,
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> Result<Vec<WireNetworkMessage>, ManagedNetworkError> {
@@ -257,9 +258,10 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                 PeerAction::ReceivedBlock(block) => {
                     let block_hash = block_hash(&block.header);
                     if !self.blocks_by_hash.contains_key(&block_hash) {
-                        let position = self.chainstate.connect_block(
+                        let position = self.chainstate.connect_block_with_current_time(
                             &block,
                             self.next_chain_work(),
+                            timestamp,
                             verify_flags,
                             consensus_params,
                         )?;
