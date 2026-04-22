@@ -1,12 +1,15 @@
 use std::collections::HashMap;
 
+use open_bitcoin_consensus::block::enforce_coinbase_reward_limit;
 use open_bitcoin_consensus::context::{MinDifficultyRecoveryTarget, RetargetAnchor};
 use open_bitcoin_consensus::{
-    BlockValidationContext, ConsensusParams, ScriptVerifyFlags, TransactionInputContext,
-    TransactionValidationContext, block_hash, check_block_contextual, transaction_txid,
-    validate_transaction_with_context,
+    BlockValidationContext, BlockValidationResult, ConsensusParams, ScriptVerifyFlags,
+    TransactionInputContext, TransactionValidationContext, ValidationError, block_hash,
+    check_block_contextual, transaction_txid, validate_transaction_with_context,
 };
-use open_bitcoin_primitives::{Block, BlockHash, BlockHeader, OutPoint, ScriptBuf, Transaction};
+use open_bitcoin_primitives::{
+    Amount, Block, BlockHash, BlockHeader, OutPoint, ScriptBuf, Transaction,
+};
 
 use crate::{
     AnchoredBlock, BlockUndo, ChainPosition, ChainTransition, ChainstateError, ChainstateSnapshot,
@@ -111,9 +114,10 @@ impl Chainstate {
         let mut next_utxos = self.utxos.clone();
         let mut block_undo = BlockUndo::default();
         let block_time = i64::from(block.header.time);
+        let mut total_fees_sats = 0_i64;
         for (transaction_index, transaction) in block.transactions.iter().enumerate() {
             if transaction_index > 0 {
-                apply_non_coinbase_transaction(
+                let fee = apply_non_coinbase_transaction(
                     &mut next_utxos,
                     &mut block_undo,
                     transaction,
@@ -121,6 +125,9 @@ impl Chainstate {
                     verify_flags,
                     &block_context,
                 )?;
+                total_fees_sats = total_fees_sats
+                    .checked_add(fee.to_sats())
+                    .ok_or_else(accumulated_fee_out_of_range)?;
             }
 
             add_transaction_outputs(
@@ -130,6 +137,13 @@ impl Chainstate {
                 previous_median_time_past,
             )?;
         }
+        enforce_coinbase_reward_limit(
+            block,
+            height,
+            total_fees_sats,
+            &block_context.consensus_params,
+        )
+        .map_err(|source| ChainstateError::BlockValidation { source })?;
 
         let median_time_past =
             compute_median_time_past(&self.active_chain, Some(block.header.time));
@@ -290,7 +304,7 @@ fn apply_non_coinbase_transaction(
     block_time: i64,
     verify_flags: ScriptVerifyFlags,
     block_context: &BlockValidationContext,
-) -> Result<(), ChainstateError> {
+) -> Result<Amount, ChainstateError> {
     let transaction_context = build_transaction_context(
         transaction,
         next_utxos,
@@ -300,7 +314,7 @@ fn apply_non_coinbase_transaction(
         verify_flags,
         block_context.consensus_params,
     )?;
-    validate_transaction_with_context(transaction, &transaction_context)
+    let fee = validate_transaction_with_context(transaction, &transaction_context)
         .map_err(|source| ChainstateError::TransactionValidation { source })?;
 
     let mut undo = TxUndo::default();
@@ -312,7 +326,17 @@ fn apply_non_coinbase_transaction(
     }
     block_undo.transactions.push(undo);
 
-    Ok(())
+    Ok(fee)
+}
+
+fn accumulated_fee_out_of_range() -> ChainstateError {
+    ChainstateError::BlockValidation {
+        source: ValidationError::new(
+            BlockValidationResult::Consensus,
+            "bad-txns-accumulated-fee-outofrange",
+            Some("accumulated fee in the block out of range".to_string()),
+        ),
+    }
 }
 
 fn restore_non_coinbase_inputs(

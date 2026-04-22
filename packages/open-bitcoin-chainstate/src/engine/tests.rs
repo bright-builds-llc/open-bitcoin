@@ -10,8 +10,9 @@ use open_bitcoin_primitives::{
 };
 
 use super::{
-    Chainstate, apply_non_coinbase_transaction, compute_median_time_past,
-    difficulty_adjustment_interval, prefer_candidate_tip, restore_non_coinbase_inputs,
+    Chainstate, accumulated_fee_out_of_range, apply_non_coinbase_transaction,
+    compute_median_time_past, difficulty_adjustment_interval, prefer_candidate_tip,
+    restore_non_coinbase_inputs,
 };
 use crate::{AnchoredBlock, BlockUndo, ChainPosition, Coin, TxUndo};
 
@@ -162,6 +163,10 @@ fn connect_block(chainstate: &mut Chainstate, block: &Block, chain_work: u128) -
             },
         )
         .expect("block should connect")
+}
+
+fn subsidy_plus_fees_value(height: u32, fees_sats: i64, consensus_params: &ConsensusParams) -> i64 {
+    open_bitcoin_consensus::block::block_subsidy(height, consensus_params).to_sats() + fees_sats
 }
 
 fn assert_active_tip(chainstate: &Chainstate, expected: &ChainPosition) {
@@ -614,7 +619,7 @@ fn difficulty_interval_helper_clamps_non_positive_spacing() {
 }
 
 #[test]
-fn apply_non_coinbase_transaction_consumes_inputs_and_records_undo() {
+fn apply_non_coinbase_transaction_returns_fee_and_records_undo() {
     // Arrange
     let genesis_coinbase = coinbase_transaction(0, 50);
     let spent_txid = open_bitcoin_consensus::transaction_txid(&genesis_coinbase).expect("txid");
@@ -633,7 +638,7 @@ fn apply_non_coinbase_transaction_consumes_inputs_and_records_undo() {
     let mut block_undo = BlockUndo::default();
 
     // Act
-    apply_non_coinbase_transaction(
+    let fee = apply_non_coinbase_transaction(
         &mut next_utxos,
         &mut block_undo,
         &transaction,
@@ -657,6 +662,7 @@ fn apply_non_coinbase_transaction_consumes_inputs_and_records_undo() {
     .expect("non-coinbase helper should apply cleanly");
 
     // Assert
+    assert_eq!(fee, Amount::from_sats(10).expect("valid fee"));
     assert!(!next_utxos.contains_key(&spent_outpoint));
     assert_eq!(
         block_undo.transactions,
@@ -664,6 +670,80 @@ fn apply_non_coinbase_transaction_consumes_inputs_and_records_undo() {
             restored_inputs: vec![spent_coin],
         }]
     );
+}
+
+#[test]
+fn connect_block_maps_coinbase_overpay_to_block_validation_error() {
+    // Arrange
+    let mut chainstate = Chainstate::new();
+    let consensus_params = ConsensusParams {
+        coinbase_maturity: 1,
+        ..ConsensusParams::default()
+    };
+    let genesis_coinbase = coinbase_transaction(0, 50);
+    let genesis_block = build_block(
+        BlockHash::from_byte_array([0_u8; 32]),
+        1_231_006_500,
+        vec![genesis_coinbase.clone()],
+    );
+    let genesis_position = chainstate
+        .connect_block(
+            &genesis_block,
+            1,
+            ScriptVerifyFlags::P2SH
+                | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
+                | ScriptVerifyFlags::CHECKSEQUENCEVERIFY,
+            consensus_params,
+        )
+        .expect("genesis block should connect");
+    let spend = spend_transaction(
+        open_bitcoin_consensus::transaction_txid(&genesis_coinbase).expect("txid"),
+        0,
+        40,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let overpaying_coinbase =
+        coinbase_transaction(1, subsidy_plus_fees_value(1, 10, &consensus_params) + 1);
+    let block = build_block(
+        genesis_position.block_hash,
+        1_231_006_600,
+        vec![overpaying_coinbase, spend],
+    );
+
+    // Act
+    let error = chainstate
+        .connect_block_with_current_time(
+            &block,
+            2,
+            i64::from(block.header.time),
+            ScriptVerifyFlags::P2SH
+                | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
+                | ScriptVerifyFlags::CHECKSEQUENCEVERIFY,
+            consensus_params,
+        )
+        .expect_err("overpaying coinbase must fail");
+
+    // Assert
+    assert!(matches!(
+        error,
+        crate::ChainstateError::BlockValidation { source }
+            if source.reject_reason == "bad-cb-amount"
+    ));
+}
+
+#[test]
+fn accumulated_fee_out_of_range_maps_to_block_validation_error() {
+    // Act
+    let error = accumulated_fee_out_of_range();
+
+    // Assert
+    assert!(matches!(
+        error,
+        crate::ChainstateError::BlockValidation { source }
+            if source.reject_reason == "bad-txns-accumulated-fee-outofrange"
+                && source.debug_message.as_deref()
+                    == Some("accumulated fee in the block out of range")
+    ));
 }
 
 #[test]
