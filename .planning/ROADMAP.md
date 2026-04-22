@@ -294,11 +294,12 @@ Plans:
   2. `connect_block_with_current_time()` applies the same reward-limit rule before committing `self.utxos`, `self.undo_by_block`, or `self.active_chain`.
   3. Focused consensus and chainstate regressions prove exact-fee acceptance, `+1` overpay rejection, and unchanged live state on failure.
   4. `bash scripts/verify.sh` passes, and the Phase 07.6 summary cites the new proof strings without reopening already-green Phase 07.5 evidence.
-**Plans:** 2 plans
+**Plans:** 3 plans
 
 Plans:
 - [ ] 07.6-01-PLAN.md — Add the shared consensus reward-limit contract and pure-core regressions.
 - [ ] 07.6-02-PLAN.md — Wire pre-commit chainstate enforcement and close the reward-limit proof chain.
+- [ ] 07.6-03-PLAN.md — Close the remaining `MAX_MONEY` / MoneyRange fee-boundary gap in consensus and chainstate.
 
 ### Phase 8: RPC, CLI, and Config Parity
 **Goal**: Expose the node and wallet through operator-facing interfaces that behave compatibly with the baseline for the in-scope surface.
