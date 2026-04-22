@@ -275,13 +275,14 @@ Plans:
 **Goal:** Close the two reviewed consensus parity gaps so the active contextual block-validation and non-strict legacy signature-verification paths match the pinned Knots baseline before Phase 8 adds operator interfaces on top.
 **Requirements**: CONS-02, CONS-03, VER-01, VER-02
 **Depends on:** Phase 07.4
-**Plans:** 4 plans
+**Plans:** 5 plans
 
 Plans:
 - [ ] 07.5-01-PLAN.md — Restore contextual header parity and thread explicit `current_time` through the active block-connect path.
 - [ ] 07.5-02-PLAN.md — Restore non-strict lax DER legacy signature parity and close the phase with repo-native verification evidence.
 - [ ] 07.5-03-PLAN.md — Close the remaining retarget-boundary CR-01 gap and correct the premature closeout evidence.
 - [ ] 07.5-04-PLAN.md — Close the remaining non-boundary min-difficulty recovery gap and refresh truthful Phase 07.5 closeout evidence.
+- [ ] 07.5-05-PLAN.md — Enforce coinbase subsidy-plus-fees limits on the consensus and active chainstate paths, then supersede the prior final artifact with truthful closeout evidence.
 
 ### Phase 8: RPC, CLI, and Config Parity
 **Goal**: Expose the node and wallet through operator-facing interfaces that behave compatibly with the baseline for the in-scope surface.
