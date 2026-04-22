@@ -1459,6 +1459,40 @@ fn validate_block_with_context_rejects_coinbase_overpay_with_bad_cb_amount() {
 }
 
 #[test]
+fn validate_block_with_context_rejects_accumulated_fees_above_max_money() {
+    // Arrange
+    let mut first_spend = spend_transaction(unique_txid(10));
+    first_spend.outputs[0].value = Amount::ZERO;
+    let mut second_spend = spend_transaction(unique_txid(11));
+    second_spend.outputs[0].value = Amount::ZERO;
+    let third_spend = spend_transaction(unique_txid(12));
+    let block = mined_block(vec![
+        coinbase_transaction(),
+        first_spend,
+        second_spend,
+        third_spend,
+    ]);
+    let block_context = reward_limit_block_context(&block);
+    let transaction_contexts = vec![
+        reward_limit_transaction_context(&block, MAX_MONEY),
+        reward_limit_transaction_context(&block, 1),
+        reward_limit_transaction_context(&block, 40),
+    ];
+
+    // Act
+    let error = validate_block_with_context(&block, &transaction_contexts, &block_context)
+        .expect_err("accumulated fees above MAX_MONEY must fail");
+
+    // Assert
+    assert_eq!(error.result, BlockValidationResult::Consensus);
+    assert_eq!(error.reject_reason, "bad-txns-accumulated-fee-outofrange");
+    assert_eq!(
+        error.debug_message.as_deref(),
+        Some("accumulated fee in the block out of range"),
+    );
+}
+
+#[test]
 fn validate_block_with_context_rejects_accumulated_fee_overflow() {
     // Arrange
     let mut transactions = vec![coinbase_transaction()];

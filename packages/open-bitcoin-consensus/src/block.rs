@@ -3,7 +3,7 @@ mod difficulty;
 use open_bitcoin_codec::{
     CodecError, TransactionEncoding, encode_block_header, encode_transaction,
 };
-use open_bitcoin_primitives::{Amount, Block, BlockHeader, COIN};
+use open_bitcoin_primitives::{Amount, Block, BlockHeader, COIN, MAX_MONEY};
 
 use crate::context::{
     BlockValidationContext, ConsensusParams, SpentOutput, TransactionValidationContext,
@@ -313,9 +313,13 @@ pub fn validate_block_with_context(
     {
         let fee = validate_transaction_with_context(transaction, transaction_context)
             .map_err(|error| map_transaction_validation_error(transaction, error))?;
-        total_fees_sats = total_fees_sats
+        let next_total_fees_sats = total_fees_sats
             .checked_add(fee.to_sats())
             .ok_or_else(accumulated_fee_out_of_range)?;
+        if !(0..=MAX_MONEY).contains(&next_total_fees_sats) {
+            return Err(accumulated_fee_out_of_range());
+        }
+        total_fees_sats = next_total_fees_sats;
     }
     enforce_coinbase_reward_limit(
         block,
@@ -344,7 +348,6 @@ fn accumulated_fee_out_of_range() -> BlockValidationError {
         Some("accumulated fee in the block out of range".to_string()),
     )
 }
-
 fn legacy_sigop_cost(
     transaction: &open_bitcoin_primitives::Transaction,
 ) -> Result<usize, BlockValidationError> {
@@ -359,7 +362,6 @@ fn legacy_sigop_cost(
     }
     Ok(sigops.saturating_mul(WITNESS_SCALE_FACTOR))
 }
-
 fn split_sigop_cost(
     transaction: &open_bitcoin_primitives::Transaction,
     transaction_context: &TransactionValidationContext,
@@ -383,7 +385,6 @@ fn split_sigop_cost(
     }
     Ok(sigops)
 }
-
 fn serialized_block_size(block: &Block, include_witness: bool) -> Result<usize, CodecError> {
     let mut size = encode_block_header(&block.header).len();
     size += compact_size_len(block.transactions.len() as u64);
@@ -597,7 +598,6 @@ fn map_codec_error(error: CodecError) -> BlockValidationError {
 fn map_script_error(error: crate::script::ScriptError) -> BlockValidationError {
     consensus_error("bad-blk-script", Some(error.to_string()))
 }
-
 fn block_sigop_overflow() -> BlockValidationError {
     consensus_error(
         "bad-blk-sigops",
