@@ -1,7 +1,7 @@
 use open_bitcoin_codec::parse_block_header;
 use open_bitcoin_primitives::{
-    Amount, Block, BlockHash, BlockHeader, COIN, MerkleRoot, OutPoint, ScriptBuf, ScriptWitness,
-    Transaction, TransactionInput, TransactionOutput, Txid,
+    Amount, Block, BlockHash, BlockHeader, COIN, MAX_MONEY, MerkleRoot, OutPoint, ScriptBuf,
+    ScriptWitness, Transaction, TransactionInput, TransactionOutput, Txid,
 };
 
 use super::difficulty::{difficulty_adjustment_interval, next_work_required};
@@ -87,14 +87,9 @@ fn mine_header(block: &mut Block) {
         .expect("expected to find a nonce for easy regtest target");
 }
 
-fn valid_block() -> (Block, Vec<Vec<SpentOutput>>) {
-    let coinbase = coinbase_transaction();
-    let coinbase_txid = crate::crypto::transaction_txid(&coinbase).expect("coinbase txid");
-    let spend = spend_transaction(coinbase_txid);
-    let transactions = vec![coinbase.clone(), spend.clone()];
+fn mined_block(transactions: Vec<Transaction>) -> Block {
     let (merkle_root, maybe_mutated) = block_merkle_root(&transactions).expect("merkle root");
     assert!(!maybe_mutated);
-
     let mut block = Block {
         header: BlockHeader {
             version: 1,
@@ -107,6 +102,14 @@ fn valid_block() -> (Block, Vec<Vec<SpentOutput>>) {
         transactions,
     };
     mine_header(&mut block);
+    block
+}
+
+fn valid_block() -> (Block, Vec<Vec<SpentOutput>>) {
+    let coinbase = coinbase_transaction();
+    let coinbase_txid = crate::crypto::transaction_txid(&coinbase).expect("coinbase txid");
+    let spend = spend_transaction(coinbase_txid);
+    let block = mined_block(vec![coinbase.clone(), spend.clone()]);
 
     let spent_outputs = vec![vec![SpentOutput {
         value: coinbase.outputs[0].value,
@@ -178,6 +181,66 @@ fn p2sh_sigop_heavy_transaction(
         consensus_params: ConsensusParams::default(),
     };
     (transaction, context)
+}
+
+fn unique_txid(seed: u64) -> Txid {
+    let mut bytes = [0_u8; 32];
+    bytes[..8].copy_from_slice(&seed.to_le_bytes());
+    Txid::from_byte_array(bytes)
+}
+
+fn reward_limit_block(coinbase_value_sats: i64) -> Block {
+    let mut coinbase = coinbase_transaction();
+    coinbase.outputs[0].value = Amount::from_sats(coinbase_value_sats).expect("valid amount");
+    let spend = spend_transaction(unique_txid(1));
+
+    mined_block(vec![coinbase, spend])
+}
+
+fn reward_limit_block_context(block: &Block) -> BlockValidationContext {
+    BlockValidationContext {
+        height: 1,
+        previous_header: BlockHeader {
+            bits: block.header.bits,
+            time: block.header.time - 1,
+            ..BlockHeader::default()
+        },
+        maybe_retarget_anchor: None,
+        maybe_min_difficulty_recovery_target: Some(MinDifficultyRecoveryTarget {
+            bits: block.header.bits,
+        }),
+        previous_median_time_past: i64::from(block.header.time) - 1,
+        current_time: i64::from(block.header.time),
+        consensus_params: ConsensusParams {
+            enforce_segwit: false,
+            ..Default::default()
+        },
+    }
+}
+
+fn reward_limit_transaction_context(
+    block: &Block,
+    input_value_sats: i64,
+) -> TransactionValidationContext {
+    TransactionValidationContext {
+        inputs: vec![TransactionInputContext {
+            spent_output: SpentOutput {
+                value: Amount::from_sats(input_value_sats).expect("valid amount"),
+                script_pubkey: script(&[0x52]),
+                is_coinbase: false,
+            },
+            created_height: 0,
+            created_median_time_past: 0,
+        }],
+        spend_height: 1,
+        block_time: i64::from(block.header.time),
+        median_time_past: i64::from(block.header.time) - 1,
+        verify_flags: ScriptVerifyFlags::NONE,
+        consensus_params: ConsensusParams {
+            enforce_segwit: false,
+            ..Default::default()
+        },
+    }
 }
 
 #[test]
@@ -1358,5 +1421,84 @@ fn enforce_coinbase_reward_limit_accepts_exact_limit_and_rejects_overpay() {
     assert_eq!(
         overpay_error.debug_message.as_deref(),
         Some("coinbase pays too much (actual=5000000011 vs limit=5000000010)"),
+    );
+}
+
+#[test]
+fn validate_block_with_context_accepts_exact_coinbase_reward_limit() {
+    // Arrange
+    let block = reward_limit_block((50 * COIN) + 10);
+    let block_context = reward_limit_block_context(&block);
+    let transaction_contexts = vec![reward_limit_transaction_context(&block, 50)];
+
+    // Act
+    let result = validate_block_with_context(&block, &transaction_contexts, &block_context);
+
+    // Assert
+    assert_eq!(result, Ok(()));
+}
+
+#[test]
+fn validate_block_with_context_rejects_coinbase_overpay_with_bad_cb_amount() {
+    // Arrange
+    let block = reward_limit_block((50 * COIN) + 11);
+    let block_context = reward_limit_block_context(&block);
+    let transaction_contexts = vec![reward_limit_transaction_context(&block, 50)];
+
+    // Act
+    let error = validate_block_with_context(&block, &transaction_contexts, &block_context)
+        .expect_err("coinbase above subsidy plus fees must fail");
+
+    // Assert
+    assert_eq!(error.result, BlockValidationResult::Consensus);
+    assert_eq!(error.reject_reason, "bad-cb-amount");
+    assert_eq!(
+        error.debug_message.as_deref(),
+        Some("coinbase pays too much (actual=5000000011 vs limit=5000000010)"),
+    );
+}
+
+#[test]
+fn validate_block_with_context_rejects_accumulated_fee_overflow() {
+    // Arrange
+    let mut transactions = vec![coinbase_transaction()];
+    let mut transaction_contexts = Vec::with_capacity(8_191);
+    for seed in 0..8_191_u64 {
+        let mut transaction = spend_transaction(unique_txid(seed + 10));
+        transaction.outputs[0].value = Amount::from_sats(1).expect("valid amount");
+        transactions.push(transaction);
+        transaction_contexts.push(TransactionValidationContext {
+            inputs: vec![TransactionInputContext {
+                spent_output: SpentOutput {
+                    value: Amount::from_sats(MAX_MONEY).expect("max money"),
+                    script_pubkey: script(&[0x52]),
+                    is_coinbase: false,
+                },
+                created_height: 0,
+                created_median_time_past: 0,
+            }],
+            spend_height: 1,
+            block_time: 1_231_006_505,
+            median_time_past: 1_231_006_504,
+            verify_flags: ScriptVerifyFlags::NONE,
+            consensus_params: ConsensusParams {
+                enforce_segwit: false,
+                ..Default::default()
+            },
+        });
+    }
+    let block = mined_block(transactions);
+    let block_context = reward_limit_block_context(&block);
+
+    // Act
+    let error = validate_block_with_context(&block, &transaction_contexts, &block_context)
+        .expect_err("accumulated fees above i64 must fail");
+
+    // Assert
+    assert_eq!(error.result, BlockValidationResult::Consensus);
+    assert_eq!(error.reject_reason, "bad-txns-accumulated-fee-outofrange");
+    assert_eq!(
+        error.debug_message.as_deref(),
+        Some("accumulated fee in the block out of range"),
     );
 }

@@ -5,9 +5,6 @@ use open_bitcoin_codec::{
 };
 use open_bitcoin_primitives::{Amount, Block, BlockHeader, COIN};
 
-use crate::MAX_BLOCK_SIGOPS_COST;
-use crate::MAX_BLOCK_WEIGHT;
-use crate::WITNESS_SCALE_FACTOR;
 use crate::context::{
     BlockValidationContext, ConsensusParams, SpentOutput, TransactionValidationContext,
     is_final_transaction,
@@ -23,6 +20,7 @@ use crate::transaction::{
 use crate::validation::{
     BlockValidationError, BlockValidationResult, TxValidationError, block_error,
 };
+use crate::{MAX_BLOCK_SIGOPS_COST, MAX_BLOCK_WEIGHT, WITNESS_SCALE_FACTOR};
 use difficulty::next_work_required;
 
 const WITNESS_RESERVED_VALUE_STACK_ITEMS: usize = 1;
@@ -43,7 +41,6 @@ pub fn block_subsidy(height: u32, consensus_params: &ConsensusParams) -> Amount 
     if halvings >= 64 {
         return Amount::ZERO;
     }
-
     Amount::from_sats((50 * COIN) >> halvings).expect("subsidy remains within range")
 }
 
@@ -123,8 +120,7 @@ pub fn check_block(block: &Block) -> Result<(), BlockValidationError> {
     }
 
     if block.transactions.is_empty() {
-        return Err(block_error(
-            BlockValidationResult::Consensus,
+        return Err(consensus_error(
             "bad-blk-length",
             Some("size limits failed".to_string()),
         ));
@@ -138,16 +134,14 @@ pub fn check_block(block: &Block) -> Result<(), BlockValidationError> {
         > MAX_BLOCK_WEIGHT
         || stripped_size.saturating_mul(WITNESS_SCALE_FACTOR) > MAX_BLOCK_WEIGHT
     {
-        return Err(block_error(
-            BlockValidationResult::Consensus,
+        return Err(consensus_error(
             "bad-blk-length",
             Some("size limits failed".to_string()),
         ));
     }
 
     if !block.transactions[0].is_coinbase() {
-        return Err(block_error(
-            BlockValidationResult::Consensus,
+        return Err(consensus_error(
             "bad-cb-missing",
             Some("first tx is not coinbase".to_string()),
         ));
@@ -158,21 +152,15 @@ pub fn check_block(block: &Block) -> Result<(), BlockValidationError> {
         .skip(1)
         .any(|transaction| transaction.is_coinbase())
     {
-        return Err(block_error(
-            BlockValidationResult::Consensus,
+        return Err(consensus_error(
             "bad-cb-multiple",
             Some("more than one coinbase".to_string()),
         ));
     }
 
     for transaction in &block.transactions {
-        check_transaction(transaction).map_err(|error| {
-            block_error(
-                BlockValidationResult::Consensus,
-                error.reject_reason,
-                error.debug_message.clone(),
-            )
-        })?;
+        check_transaction(transaction)
+            .map_err(|error| consensus_error(error.reject_reason, error.debug_message.clone()))?;
     }
 
     let mut sigops = 0_usize;
@@ -319,12 +307,22 @@ pub fn validate_block_with_context(
         ));
     }
 
+    let mut total_fees_sats = 0_i64;
     for (transaction, transaction_context) in
         block.transactions.iter().skip(1).zip(transaction_contexts)
     {
-        validate_transaction_with_context(transaction, transaction_context)
+        let fee = validate_transaction_with_context(transaction, transaction_context)
             .map_err(|error| map_transaction_validation_error(transaction, error))?;
+        total_fees_sats = total_fees_sats
+            .checked_add(fee.to_sats())
+            .ok_or_else(accumulated_fee_out_of_range)?;
     }
+    enforce_coinbase_reward_limit(
+        block,
+        block_context.height,
+        total_fees_sats,
+        &block_context.consensus_params,
+    )?;
 
     let mut sigop_cost = 0_usize;
     for transaction in &block.transactions {
@@ -338,6 +336,13 @@ pub fn validate_block_with_context(
     enforce_sigop_cost_limit(sigop_cost)?;
 
     Ok(())
+}
+
+fn accumulated_fee_out_of_range() -> BlockValidationError {
+    consensus_error(
+        "bad-txns-accumulated-fee-outofrange",
+        Some("accumulated fee in the block out of range".to_string()),
+    )
 }
 
 fn legacy_sigop_cost(
@@ -586,26 +591,28 @@ fn serialized_script_num(value: i64) -> Vec<u8> {
 }
 
 fn map_codec_error(error: CodecError) -> BlockValidationError {
-    block_error(
-        BlockValidationResult::Consensus,
-        "bad-blk-serialization",
-        Some(error.to_string()),
-    )
+    consensus_error("bad-blk-serialization", Some(error.to_string()))
 }
 
 fn map_script_error(error: crate::script::ScriptError) -> BlockValidationError {
-    block_error(
-        BlockValidationResult::Consensus,
-        "bad-blk-script",
-        Some(error.to_string()),
-    )
+    consensus_error("bad-blk-script", Some(error.to_string()))
 }
 
 fn block_sigop_overflow() -> BlockValidationError {
-    block_error(
-        BlockValidationResult::Consensus,
+    consensus_error(
         "bad-blk-sigops",
         Some("out-of-bounds SigOpCount".to_string()),
+    )
+}
+
+fn consensus_error(
+    reason: &'static str,
+    maybe_debug_message: Option<String>,
+) -> BlockValidationError {
+    block_error(
+        BlockValidationResult::Consensus,
+        reason,
+        maybe_debug_message,
     )
 }
 
