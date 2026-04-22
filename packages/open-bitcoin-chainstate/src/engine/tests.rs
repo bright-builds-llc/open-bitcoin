@@ -5,8 +5,8 @@ use open_bitcoin_consensus::{
     check_block_header,
 };
 use open_bitcoin_primitives::{
-    Amount, Block, BlockHash, BlockHeader, OutPoint, ScriptBuf, ScriptWitness, Transaction,
-    TransactionInput, TransactionOutput, Txid,
+    Amount, Block, BlockHash, BlockHeader, MAX_MONEY, OutPoint, ScriptBuf, ScriptWitness,
+    Transaction, TransactionInput, TransactionOutput, Txid,
 };
 
 use super::{
@@ -800,6 +800,119 @@ fn connect_block_accepts_exact_coinbase_reward_limit() {
     // Assert
     assert_eq!(position.height, 1);
     assert_eq!(chainstate.tip(), Some(&position));
+}
+
+#[test]
+fn connect_block_rejects_accumulated_fees_above_max_money_without_mutating_snapshot() {
+    // Arrange
+    let mut initial_chainstate = Chainstate::new();
+    let consensus_params = ConsensusParams {
+        coinbase_maturity: 1,
+        ..ConsensusParams::default()
+    };
+    let genesis_coinbase = coinbase_transaction(0, 50);
+    let genesis_block = build_block(
+        BlockHash::from_byte_array([0_u8; 32]),
+        1_231_006_500,
+        vec![genesis_coinbase.clone()],
+    );
+    let genesis_position = initial_chainstate
+        .connect_block(
+            &genesis_block,
+            1,
+            ScriptVerifyFlags::P2SH
+                | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
+                | ScriptVerifyFlags::CHECKSEQUENCEVERIFY,
+            consensus_params,
+        )
+        .expect("genesis block should connect");
+    let mut seeded_snapshot = initial_chainstate.snapshot();
+    let large_fee_outpoint = OutPoint {
+        txid: Txid::from_byte_array([9_u8; 32]),
+        vout: 0,
+    };
+    seeded_snapshot.utxos.insert(
+        large_fee_outpoint.clone(),
+        Coin {
+            output: TransactionOutput {
+                value: Amount::from_sats(MAX_MONEY).expect("max money"),
+                script_pubkey: script(&[0x51]),
+            },
+            is_coinbase: false,
+            created_height: genesis_position.height,
+            created_median_time_past: genesis_position.median_time_past,
+        },
+    );
+    let one_sat_outpoint = OutPoint {
+        txid: Txid::from_byte_array([10_u8; 32]),
+        vout: 0,
+    };
+    seeded_snapshot.utxos.insert(
+        one_sat_outpoint.clone(),
+        Coin {
+            output: TransactionOutput {
+                value: Amount::from_sats(1).expect("valid amount"),
+                script_pubkey: script(&[0x51]),
+            },
+            is_coinbase: false,
+            created_height: genesis_position.height,
+            created_median_time_past: genesis_position.median_time_past,
+        },
+    );
+    let mut chainstate = Chainstate::from_snapshot(seeded_snapshot);
+    let zero_fee_spend = spend_transaction(
+        open_bitcoin_consensus::transaction_txid(&genesis_coinbase).expect("txid"),
+        0,
+        50,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let large_fee_spend = spend_transaction(
+        large_fee_outpoint.txid,
+        large_fee_outpoint.vout,
+        0,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let one_sat_fee_spend = spend_transaction(
+        one_sat_outpoint.txid,
+        one_sat_outpoint.vout,
+        0,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let block = build_block(
+        genesis_position.block_hash,
+        1_231_006_600,
+        vec![
+            coinbase_transaction(1, 50),
+            zero_fee_spend,
+            large_fee_spend,
+            one_sat_fee_spend,
+        ],
+    );
+    let snapshot_before = chainstate.snapshot();
+
+    // Act
+    let error = chainstate
+        .connect_block_with_current_time(
+            &block,
+            2,
+            i64::from(block.header.time),
+            ScriptVerifyFlags::P2SH
+                | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
+                | ScriptVerifyFlags::CHECKSEQUENCEVERIFY,
+            consensus_params,
+        )
+        .expect_err("accumulated fees above MAX_MONEY must fail");
+    let snapshot_after = chainstate.snapshot();
+
+    // Assert
+    assert!(matches!(
+        error,
+        crate::ChainstateError::BlockValidation { source }
+            if source.reject_reason == "bad-txns-accumulated-fee-outofrange"
+                && source.debug_message.as_deref()
+                    == Some("accumulated fee in the block out of range")
+    ));
+    assert_eq!(snapshot_after, snapshot_before);
 }
 
 #[test]

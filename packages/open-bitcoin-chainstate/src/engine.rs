@@ -8,7 +8,7 @@ use open_bitcoin_consensus::{
     check_block_contextual, transaction_txid, validate_transaction_with_context,
 };
 use open_bitcoin_primitives::{
-    Amount, Block, BlockHash, BlockHeader, OutPoint, ScriptBuf, Transaction,
+    Amount, Block, BlockHash, BlockHeader, MAX_MONEY, OutPoint, ScriptBuf, Transaction,
 };
 
 use crate::{
@@ -125,9 +125,13 @@ impl Chainstate {
                     verify_flags,
                     &block_context,
                 )?;
-                total_fees_sats = total_fees_sats
+                let next_total_fees_sats = total_fees_sats
                     .checked_add(fee.to_sats())
                     .ok_or_else(accumulated_fee_out_of_range)?;
+                if !(0..=MAX_MONEY).contains(&next_total_fees_sats) {
+                    return Err(accumulated_fee_out_of_range());
+                }
+                total_fees_sats = next_total_fees_sats;
             }
 
             add_transaction_outputs(
