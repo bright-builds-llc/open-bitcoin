@@ -46,12 +46,14 @@ When a behavior is in scope, Open Bitcoin must behave like the pinned Knots base
 - The project explicitly avoids existing Rust Bitcoin libraries in the production path and instead exports first-party Rust Bitcoin libraries from this repository.
 - Verification must emphasize externally observable parity, pure-core correctness, hermetic integration testing, and contributor guardrails against accidental architectural drift.
 - The reference implementation's major subsystems, quirks, known bugs, deviations, and suspected unknowns should remain visible through living project artifacts instead of tribal knowledge.
-- The maintainability insertion sequence before Phase 8 is now complete: Phase
-  07.1 split the largest hotspots, Phase 07.2 clarified protocol constants,
-  Phase 07.3 flattened the selected consensus, chainstate, mempool,
-  networking, and narrow legacy-script control-flow hotspots without changing
-  behavior, and Phase 07.4 closed the remaining targeted `let ... else`
-  follow-on in consensus code without widening the shortlist sweep.
+- The insertion sequence before Phase 8 is now complete: Phase 07.1 split the
+  largest hotspots, Phase 07.2 clarified protocol constants, Phase 07.3
+  flattened the selected consensus, chainstate, mempool, networking, and
+  narrow legacy-script control-flow hotspots without changing behavior, Phase
+  07.4 closed the remaining targeted `let ... else` follow-on in consensus
+  code, Phase 07.5 restored contextual-header and lax-DER parity, and Phase
+  07.6 closed the remaining coinbase subsidy-plus-fees reward-limit parity gap
+  on both the pure-core and live chainstate paths.
 
 ## Constraints
 
@@ -91,4 +93,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-20 after Phase 07.4 execution*
+*Last updated: 2026-04-22 after Phase 07.6 execution*
