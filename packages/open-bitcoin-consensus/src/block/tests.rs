@@ -1,17 +1,17 @@
 use open_bitcoin_codec::parse_block_header;
 use open_bitcoin_primitives::{
-    Amount, Block, BlockHash, BlockHeader, MerkleRoot, OutPoint, ScriptBuf, ScriptWitness,
+    Amount, Block, BlockHash, BlockHeader, COIN, MerkleRoot, OutPoint, ScriptBuf, ScriptWitness,
     Transaction, TransactionInput, TransactionOutput, Txid,
 };
 
 use super::difficulty::{difficulty_adjustment_interval, next_work_required};
 use super::{
-    block_sigop_overflow, block_witness_merkle_root, check_block, check_block_contextual,
-    check_block_header, check_block_header_contextual, coinbase_has_height_prefix,
-    compact_size_len, enforce_sigop_cost_limit, legacy_sigop_cost, map_codec_error,
-    map_script_error, map_transaction_validation_error, serialized_block_size,
-    serialized_script_num, split_sigop_cost, validate_block, validate_block_with_context,
-    witness_commitment_index,
+    block_sigop_overflow, block_subsidy, block_witness_merkle_root, check_block,
+    check_block_contextual, check_block_header, check_block_header_contextual,
+    coinbase_has_height_prefix, compact_size_len, enforce_coinbase_reward_limit,
+    enforce_sigop_cost_limit, legacy_sigop_cost, map_codec_error, map_script_error,
+    map_transaction_validation_error, serialized_block_size, serialized_script_num,
+    split_sigop_cost, validate_block, validate_block_with_context, witness_commitment_index,
 };
 use crate::MAX_BLOCK_SIGOPS_COST;
 use crate::context::{
@@ -1307,5 +1307,56 @@ fn sigop_helper_functions_are_covered_directly() {
             .expect_err("overflow must fail")
             .reject_reason,
         "bad-blk-sigops"
+    );
+}
+
+#[test]
+fn block_subsidy_follows_halving_schedule_and_zeroes_after_sixty_four_halvings() {
+    // Arrange
+    let default_params = ConsensusParams::default();
+    let tiny_interval_params = ConsensusParams {
+        subsidy_halving_interval: 2,
+        ..ConsensusParams::default()
+    };
+
+    // Act
+    let genesis_subsidy = block_subsidy(0, &default_params);
+    let first_tiny_halving = block_subsidy(2, &tiny_interval_params);
+    let zero_subsidy = block_subsidy(128, &tiny_interval_params);
+
+    // Assert
+    assert_eq!(genesis_subsidy.to_sats(), 50 * COIN);
+    assert_eq!(first_tiny_halving.to_sats(), 25 * COIN);
+    assert_eq!(zero_subsidy, Amount::ZERO);
+}
+
+#[test]
+fn enforce_coinbase_reward_limit_accepts_exact_limit_and_rejects_overpay() {
+    // Arrange
+    let mut exact_coinbase = coinbase_transaction();
+    exact_coinbase.outputs[0].value = Amount::from_sats((50 * COIN) + 10).expect("valid amount");
+    let exact_block = Block {
+        header: BlockHeader::default(),
+        transactions: vec![exact_coinbase],
+    };
+    let mut overpay_coinbase = coinbase_transaction();
+    overpay_coinbase.outputs[0].value = Amount::from_sats((50 * COIN) + 11).expect("valid amount");
+    let overpay_block = Block {
+        header: BlockHeader::default(),
+        transactions: vec![overpay_coinbase],
+    };
+    let consensus_params = ConsensusParams::default();
+
+    // Act
+    let exact_result = enforce_coinbase_reward_limit(&exact_block, 0, 10, &consensus_params);
+    let overpay_error = enforce_coinbase_reward_limit(&overpay_block, 0, 10, &consensus_params)
+        .expect_err("coinbase above subsidy plus fees must fail");
+
+    // Assert
+    assert_eq!(exact_result, Ok(()));
+    assert_eq!(overpay_error.reject_reason, "bad-cb-amount");
+    assert_eq!(
+        overpay_error.debug_message.as_deref(),
+        Some("coinbase pays too much (actual=5000000011 vs limit=5000000010)"),
     );
 }

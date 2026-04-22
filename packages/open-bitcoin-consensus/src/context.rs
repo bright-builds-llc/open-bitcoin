@@ -11,11 +11,14 @@ use crate::crypto::double_sha256;
 use crate::validation::{TxValidationError, TxValidationResult, tx_error};
 
 const DEFAULT_COINBASE_MATURITY: u32 = 100;
+const DEFAULT_SUBSIDY_HALVING_INTERVAL: u32 = 210_000;
 const LOCKTIME_TIMESTAMP_THRESHOLD: u32 = 500_000_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ConsensusParams {
     pub coinbase_maturity: u32,
+    /// Number of blocks between subsidy halvings.
+    pub subsidy_halving_interval: u32,
     pub locktime_threshold: u32,
     pub sequence_locktime_granularity: u32,
     pub pow_limit_bits: u32,
@@ -32,6 +35,7 @@ impl Default for ConsensusParams {
     fn default() -> Self {
         Self {
             coinbase_maturity: DEFAULT_COINBASE_MATURITY,
+            subsidy_halving_interval: DEFAULT_SUBSIDY_HALVING_INTERVAL,
             locktime_threshold: LOCKTIME_TIMESTAMP_THRESHOLD,
             sequence_locktime_granularity: TransactionInput::SEQUENCE_LOCKTIME_GRANULARITY as u32,
             pow_limit_bits: 0x207f_ffff,

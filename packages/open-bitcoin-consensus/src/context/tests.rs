@@ -301,6 +301,7 @@ fn check_tx_inputs_covers_mismatch_and_value_failures() {
 
 #[test]
 fn block_context_carries_expected_pow_and_time_fields() {
+    // Arrange
     let context = BlockValidationContext {
         height: 11,
         previous_header: BlockHeader::default(),
@@ -315,6 +316,10 @@ fn block_context_carries_expected_pow_and_time_fields() {
         consensus_params: ConsensusParams::default(),
     };
 
+    // Act
+    let consensus_params = context.consensus_params;
+
+    // Assert
     assert_eq!(context.height, 11);
     assert_eq!(
         context
@@ -331,13 +336,11 @@ fn block_context_carries_expected_pow_and_time_fields() {
         0x207e_ffff
     );
     assert_eq!(context.current_time, 2_000);
-    assert_eq!(context.consensus_params.pow_limit_bits, 0x207f_ffff);
-    assert_eq!(context.consensus_params.pow_target_spacing_seconds, 600);
-    assert_eq!(
-        context.consensus_params.pow_target_timespan_seconds,
-        1_209_600
-    );
-    assert!(context.consensus_params.allow_min_difficulty_blocks);
-    assert!(context.consensus_params.no_pow_retargeting);
-    assert!(context.consensus_params.enforce_segwit);
+    assert_eq!(consensus_params.pow_limit_bits, 0x207f_ffff);
+    assert_eq!(consensus_params.pow_target_spacing_seconds, 600);
+    assert_eq!(consensus_params.pow_target_timespan_seconds, 1_209_600);
+    assert_eq!(consensus_params.subsidy_halving_interval, 210_000);
+    assert!(consensus_params.allow_min_difficulty_blocks);
+    assert!(consensus_params.no_pow_retargeting);
+    assert!(consensus_params.enforce_segwit);
 }

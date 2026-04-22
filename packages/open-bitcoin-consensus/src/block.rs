@@ -3,13 +3,14 @@ mod difficulty;
 use open_bitcoin_codec::{
     CodecError, TransactionEncoding, encode_block_header, encode_transaction,
 };
-use open_bitcoin_primitives::{Block, BlockHeader};
+use open_bitcoin_primitives::{Amount, Block, BlockHeader, COIN};
 
 use crate::MAX_BLOCK_SIGOPS_COST;
 use crate::MAX_BLOCK_WEIGHT;
 use crate::WITNESS_SCALE_FACTOR;
 use crate::context::{
-    BlockValidationContext, SpentOutput, TransactionValidationContext, is_final_transaction,
+    BlockValidationContext, ConsensusParams, SpentOutput, TransactionValidationContext,
+    is_final_transaction,
 };
 use crate::crypto::{
     block_hash, block_merkle_root, check_proof_of_work, double_sha256, transaction_txid,
@@ -35,6 +36,51 @@ const WITNESS_COMMITMENT_START: usize = WITNESS_COMMITMENT_HEADER_LEN;
 const WITNESS_COMMITMENT_END: usize = WITNESS_COMMITMENT_START + WITNESS_RESERVED_VALUE_SIZE;
 const HASH_CONCATENATION_SIZE: usize = 64;
 const MAX_FUTURE_BLOCK_TIME_SECONDS: i64 = 7_200;
+
+/// Returns the block subsidy for `height` using the configured halving interval.
+pub fn block_subsidy(height: u32, consensus_params: &ConsensusParams) -> Amount {
+    let halvings = height / consensus_params.subsidy_halving_interval;
+    if halvings >= 64 {
+        return Amount::ZERO;
+    }
+
+    Amount::from_sats((50 * COIN) >> halvings).expect("subsidy remains within range")
+}
+
+/// Rejects coinbases that pay more than the current subsidy plus accumulated fees.
+pub fn enforce_coinbase_reward_limit(
+    block: &Block,
+    height: u32,
+    total_fees_sats: i64,
+    consensus_params: &ConsensusParams,
+) -> Result<(), BlockValidationError> {
+    let coinbase_transaction = block
+        .transactions
+        .first()
+        .expect("context-free validation guarantees a coinbase transaction");
+    let reward_limit_sats = block_subsidy(height, consensus_params)
+        .to_sats()
+        .checked_add(total_fees_sats)
+        .expect("subsidy plus fees must stay within i64");
+    let coinbase_value_sats = coinbase_transaction
+        .outputs
+        .iter()
+        .map(|output| output.value.to_sats())
+        .try_fold(0_i64, |value_sum, value| value_sum.checked_add(value))
+        .expect("context-free validation keeps coinbase outputs in range");
+
+    if coinbase_value_sats > reward_limit_sats {
+        return Err(block_error(
+            BlockValidationResult::Consensus,
+            "bad-cb-amount",
+            Some(format!(
+                "coinbase pays too much (actual={coinbase_value_sats} vs limit={reward_limit_sats})"
+            )),
+        ));
+    }
+
+    Ok(())
+}
 
 pub fn check_block_header(header: &BlockHeader) -> Result<(), BlockValidationError> {
     let valid =
