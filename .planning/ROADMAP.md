@@ -28,7 +28,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 07.3: Reduce nesting with early returns (INSERTED)** - Flatten the highest-value deeply nested control-flow hotspots before Phase 8 planning. (completed 2026-04-19)
 - [x] **Phase 07.4: Sweep the codebase for let-else opportunities (INSERTED)** - Replace eligible Rust control-flow scaffolding with `let ... else` where it reduces nesting and improves readability before Phase 8 planning. (completed 2026-04-20)
 - [ ] **Phase 07.5: Fix consensus parity gaps in contextual header validation and lax DER signature verification (INSERTED)** - Close the known consensus parity gaps before Phase 8 builds new operator interfaces on top of them.
-- [ ] **Phase 07.6: Enforce coinbase subsidy-plus-fees limits on the consensus and active chainstate paths (INSERTED)** - Close the remaining coinbase reward-limit acceptance gap before Phase 8 builds operator interfaces on top of the current block-connect surface.
+- [x] **Phase 07.6: Enforce coinbase subsidy-plus-fees limits on the consensus and active chainstate paths (INSERTED)** - Close the remaining coinbase reward-limit acceptance gap before Phase 8 builds operator interfaces on top of the current block-connect surface. (completed 2026-04-22)
 - [ ] **Phase 8: RPC, CLI, and Config Parity** - Expose node and wallet behavior through compatible operator interfaces.
 - [ ] **Phase 9: Parity Harnesses and Fuzzing** - Lock down external behavior with reusable black-box and fuzz/property suites.
 - [ ] **Phase 10: Benchmarks and Audit Readiness** - Measure performance and complete the audit surfaces that track parity status.
@@ -294,12 +294,12 @@ Plans:
   2. `connect_block_with_current_time()` applies the same reward-limit rule before committing `self.utxos`, `self.undo_by_block`, or `self.active_chain`.
   3. Focused consensus and chainstate regressions prove exact-fee acceptance, `+1` overpay rejection, and unchanged live state on failure.
   4. `bash scripts/verify.sh` passes, and the Phase 07.6 summary cites the new proof strings without reopening already-green Phase 07.5 evidence.
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
-- [ ] 07.6-01-PLAN.md — Add the shared consensus reward-limit contract and pure-core regressions.
-- [ ] 07.6-02-PLAN.md — Wire pre-commit chainstate enforcement and close the reward-limit proof chain.
-- [ ] 07.6-03-PLAN.md — Close the remaining `MAX_MONEY` / MoneyRange fee-boundary gap in consensus and chainstate.
+- [x] 07.6-01-PLAN.md — Add the shared consensus reward-limit contract and pure-core regressions.
+- [x] 07.6-02-PLAN.md — Wire pre-commit chainstate enforcement and close the reward-limit proof chain.
+- [x] 07.6-03-PLAN.md — Close the remaining `MAX_MONEY` / MoneyRange fee-boundary gap in consensus and chainstate.
 
 ### Phase 8: RPC, CLI, and Config Parity
 **Goal**: Expose the node and wallet through operator-facing interfaces that behave compatibly with the baseline for the in-scope surface.
