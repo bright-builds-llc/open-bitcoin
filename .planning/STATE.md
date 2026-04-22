@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 07.5 context gathered
-last_updated: "2026-04-21T23:39:42.446Z"
-last_activity: 2026-04-21 -- Phase 07.5 gap planning complete
+stopped_at: Phase 07.6 context gathered
+last_updated: "2026-04-22T10:25:45.541Z"
+last_activity: 2026-04-21 -- Phase 07.5 execution started
 progress:
-  total_phases: 19
-  completed_phases: 15
+  total_phases: 20
+  completed_phases: 16
   total_plans: 53
-  completed_plans: 52
-  percent: 98
+  completed_plans: 53
+  percent: 100
 ---
 
 # Project State
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-04-11)
 
 Phase: 07.5 (Fix consensus parity gaps in contextual header validation and lax DER signature verification) — EXECUTING
 Plan: 1 of 4
-Status: Ready to execute
-Last activity: 2026-04-21 -- Phase 07.5 gap planning complete
+Status: Executing Phase 07.5
+Last activity: 2026-04-21 -- Phase 07.5 execution started
 
 Progress: ██████████ 100%
 
@@ -112,6 +112,7 @@ Recent decisions affecting current work:
 - Phase 07.3 inserted after Phase 07.2: Reduce nesting with early returns (URGENT)
 - Phase 07.4 inserted after Phase 07.3: Sweep the codebase for let-else opportunities (URGENT)
 - Phase 07.5 inserted after Phase 07.4: Fix consensus parity gaps in contextual header validation and lax DER signature verification (URGENT)
+- Phase 07.6 inserted after Phase 07.5: Enforce coinbase subsidy-plus-fees limits on the consensus and active chainstate paths (URGENT)
 
 ### Pending Todos
 
@@ -126,6 +127,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-20T12:10:26.910Z
-Stopped at: Phase 07.5 context gathered
-Resume file: .planning/phases/07.5-fix-consensus-parity-gaps-in-contextual-header-validation-an/07.5-CONTEXT.md
+Last session: 2026-04-22T10:25:45.538Z
+Stopped at: Phase 07.6 context gathered
+Resume file: .planning/phases/07.6-enforce-coinbase-subsidy-plus-fees-limits-on-the-consensus-a/07.6-CONTEXT.md
