@@ -747,6 +747,124 @@ fn accumulated_fee_out_of_range_maps_to_block_validation_error() {
 }
 
 #[test]
+fn connect_block_accepts_exact_coinbase_reward_limit() {
+    // Arrange
+    let mut chainstate = Chainstate::new();
+    let consensus_params = ConsensusParams {
+        coinbase_maturity: 1,
+        ..ConsensusParams::default()
+    };
+    let genesis_coinbase = coinbase_transaction(0, 50);
+    let genesis_block = build_block(
+        BlockHash::from_byte_array([0_u8; 32]),
+        1_231_006_500,
+        vec![genesis_coinbase.clone()],
+    );
+    let genesis_position = chainstate
+        .connect_block(
+            &genesis_block,
+            1,
+            ScriptVerifyFlags::P2SH
+                | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
+                | ScriptVerifyFlags::CHECKSEQUENCEVERIFY,
+            consensus_params,
+        )
+        .expect("genesis block should connect");
+    let spend = spend_transaction(
+        open_bitcoin_consensus::transaction_txid(&genesis_coinbase).expect("txid"),
+        0,
+        40,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let exact_limit_coinbase =
+        coinbase_transaction(1, subsidy_plus_fees_value(1, 10, &consensus_params));
+    let block = build_block(
+        genesis_position.block_hash,
+        1_231_006_600,
+        vec![exact_limit_coinbase, spend],
+    );
+
+    // Act
+    let position = chainstate
+        .connect_block_with_current_time(
+            &block,
+            2,
+            i64::from(block.header.time),
+            ScriptVerifyFlags::P2SH
+                | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
+                | ScriptVerifyFlags::CHECKSEQUENCEVERIFY,
+            consensus_params,
+        )
+        .expect("exact reward limit should connect");
+
+    // Assert
+    assert_eq!(position.height, 1);
+    assert_eq!(chainstate.tip(), Some(&position));
+}
+
+#[test]
+fn connect_block_rejects_overpaying_coinbase_without_mutating_snapshot() {
+    // Arrange
+    let mut chainstate = Chainstate::new();
+    let consensus_params = ConsensusParams {
+        coinbase_maturity: 1,
+        ..ConsensusParams::default()
+    };
+    let genesis_coinbase = coinbase_transaction(0, 50);
+    let genesis_block = build_block(
+        BlockHash::from_byte_array([0_u8; 32]),
+        1_231_006_500,
+        vec![genesis_coinbase.clone()],
+    );
+    let genesis_position = chainstate
+        .connect_block(
+            &genesis_block,
+            1,
+            ScriptVerifyFlags::P2SH
+                | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
+                | ScriptVerifyFlags::CHECKSEQUENCEVERIFY,
+            consensus_params,
+        )
+        .expect("genesis block should connect");
+    let spend = spend_transaction(
+        open_bitcoin_consensus::transaction_txid(&genesis_coinbase).expect("txid"),
+        0,
+        40,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let overpaying_coinbase =
+        coinbase_transaction(1, subsidy_plus_fees_value(1, 10, &consensus_params) + 1);
+    let block = build_block(
+        genesis_position.block_hash,
+        1_231_006_600,
+        vec![overpaying_coinbase, spend],
+    );
+    let snapshot_before = chainstate.snapshot();
+
+    // Act
+    let error = chainstate
+        .connect_block_with_current_time(
+            &block,
+            2,
+            i64::from(block.header.time),
+            ScriptVerifyFlags::P2SH
+                | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
+                | ScriptVerifyFlags::CHECKSEQUENCEVERIFY,
+            consensus_params,
+        )
+        .expect_err("overpaying coinbase must fail");
+    let snapshot_after = chainstate.snapshot();
+
+    // Assert
+    assert!(matches!(
+        error,
+        crate::ChainstateError::BlockValidation { source }
+            if source.reject_reason == "bad-cb-amount"
+    ));
+    assert_eq!(snapshot_after, snapshot_before);
+}
+
+#[test]
 fn connect_block_skips_unspendable_outputs() {
     // Arrange
     let mut chainstate = Chainstate::new();
