@@ -7,6 +7,7 @@ pub mod context;
 pub mod dispatch;
 pub mod envelope;
 pub mod error;
+pub mod http;
 pub mod method;
 
 pub use config::{

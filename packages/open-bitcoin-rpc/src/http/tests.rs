@@ -1,0 +1,176 @@
+use axum::{
+    body::to_bytes,
+    http::{HeaderMap, HeaderValue, Method, StatusCode},
+};
+use base64::Engine as _;
+use serde_json::json;
+
+use crate::{
+    ManagedRpcContext, RpcAuthConfig, RuntimeConfig,
+    http::{build_http_state, handle_http_request},
+};
+
+fn auth_headers(username: &str, password: &str) -> HeaderMap {
+    let mut headers = HeaderMap::new();
+    let credentials =
+        base64::engine::general_purpose::STANDARD.encode(format!("{username}:{password}"));
+    headers.insert(
+        "authorization",
+        HeaderValue::from_str(&format!("Basic {credentials}")).expect("header"),
+    );
+    headers
+}
+
+fn state() -> crate::http::RpcHttpState {
+    let context = ManagedRpcContext::from_runtime_config(&RuntimeConfig::default());
+    build_http_state(
+        RpcAuthConfig::UserPassword {
+            username: "alice".to_string(),
+            password: "secret".to_string(),
+        },
+        context,
+    )
+    .expect("state")
+}
+
+async fn response_json(response: axum::response::Response) -> serde_json::Value {
+    let body = to_bytes(response.into_body(), usize::MAX)
+        .await
+        .expect("body");
+    serde_json::from_slice(&body).expect("json")
+}
+
+#[tokio::test]
+async fn legacy_and_json_rpc_v2_status_mapping_matches_phase_8_contract() {
+    // Arrange
+    let state = state();
+    let headers = auth_headers("alice", "secret");
+
+    // Act
+    let legacy_not_found = handle_http_request(
+        &state,
+        Method::POST,
+        &headers,
+        br#"{"method":"invalidmethod","params":[],"id":1}"#,
+    )
+    .await;
+    let legacy_invalid_params = handle_http_request(
+        &state,
+        Method::POST,
+        &headers,
+        br#"{"method":"deriveaddresses","params":["wpkh(cMec2DGaTXkYJYfi7x3ZGjRXkeqmAvYAoWzMAcWj5fdLaqudWsNi)"],"id":2}"#,
+    )
+    .await;
+    let v2_not_found = handle_http_request(
+        &state,
+        Method::POST,
+        &headers,
+        br#"{"jsonrpc":"2.0","method":"invalidmethod","params":[],"id":3}"#,
+    )
+    .await;
+
+    // Assert
+    assert_eq!(legacy_not_found.status(), StatusCode::NOT_FOUND);
+    assert_eq!(
+        response_json(legacy_not_found).await["error"]["code"],
+        json!(-32601)
+    );
+    assert_eq!(
+        legacy_invalid_params.status(),
+        StatusCode::INTERNAL_SERVER_ERROR
+    );
+    assert_eq!(v2_not_found.status(), StatusCode::OK);
+    assert_eq!(
+        response_json(v2_not_found).await["error"]["code"],
+        json!(-32601)
+    );
+}
+
+#[tokio::test]
+async fn json_rpc_v2_notifications_return_no_content_and_execute() {
+    // Arrange
+    let state = state();
+    let headers = auth_headers("alice", "secret");
+
+    // Act
+    let notification = handle_http_request(
+        &state,
+        Method::POST,
+        &headers,
+        br#"{"jsonrpc":"2.0","method":"importdescriptors","params":{"requests":[{"desc":"wpkh(cMec2DGaTXkYJYfi7x3ZGjRXkeqmAvYAoWzMAcWj5fdLaqudWsNi)","label":"receive","internal":false,"timestamp":0}]}}"#,
+    )
+    .await;
+    let follow_up = handle_http_request(
+        &state,
+        Method::POST,
+        &headers,
+        br#"{"jsonrpc":"2.0","method":"importdescriptors","params":{"requests":[{"desc":"wpkh(cMec2DGaTXkYJYfi7x3ZGjRXkeqmAvYAoWzMAcWj5fdLaqudWsNi)","label":"receive","internal":false,"timestamp":0}]},"id":1}"#,
+    )
+    .await;
+
+    // Assert
+    assert_eq!(notification.status(), StatusCode::NO_CONTENT);
+    assert_eq!(
+        response_json(follow_up).await["result"]["results"][0]["success"],
+        json!(false)
+    );
+}
+
+#[tokio::test]
+async fn mixed_version_batches_are_accepted() {
+    // Arrange
+    let state = state();
+    let headers = auth_headers("alice", "secret");
+
+    // Act
+    let response = handle_http_request(
+        &state,
+        Method::POST,
+        &headers,
+        br#"[{"method":"getwalletinfo","params":[],"id":1},{"jsonrpc":"2.0","method":"invalidmethod","params":[],"id":2}]"#,
+    )
+    .await;
+
+    // Assert
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = response_json(response).await;
+    assert_eq!(body.as_array().expect("array").len(), 2);
+    assert!(body[0].get("jsonrpc").is_none());
+    assert_eq!(body[1]["jsonrpc"], json!("2.0"));
+}
+
+#[tokio::test]
+async fn post_only_transport_rejects_unauthenticated_requests() {
+    // Arrange
+    let state = state();
+    let headers = HeaderMap::new();
+
+    // Act
+    let bad_method = handle_http_request(
+        &state,
+        Method::GET,
+        &headers,
+        br#"{"method":"getwalletinfo","params":[],"id":1}"#,
+    )
+    .await;
+    let missing_auth = handle_http_request(
+        &state,
+        Method::POST,
+        &headers,
+        br#"{"method":"getwalletinfo","params":[],"id":1}"#,
+    )
+    .await;
+    let wrong_auth = handle_http_request(
+        &state,
+        Method::POST,
+        &auth_headers("alice", "wrong"),
+        br#"{"method":"getwalletinfo","params":[],"id":1}"#,
+    )
+    .await;
+
+    // Assert
+    assert_eq!(bad_method.status(), StatusCode::METHOD_NOT_ALLOWED);
+    assert_eq!(missing_auth.status(), StatusCode::UNAUTHORIZED);
+    assert!(missing_auth.headers().contains_key("www-authenticate"));
+    assert_eq!(wrong_auth.status(), StatusCode::UNAUTHORIZED);
+}
