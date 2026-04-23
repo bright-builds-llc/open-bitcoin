@@ -3,13 +3,33 @@ use std::{
     path::PathBuf,
 };
 
-pub const DEFAULT_RPC_PORT: u16 = 8332;
+use open_bitcoin_node::core::{consensus::ConsensusParams, wallet::AddressNetwork};
+
+mod loader;
+
 pub const DEFAULT_COOKIE_AUTH_USER: &str = "__cookie__";
 pub const DEFAULT_COOKIE_FILE_NAME: &str = ".cookie";
 
-fn default_rpc_address() -> SocketAddr {
-    SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), DEFAULT_RPC_PORT)
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConfigError {
+    message: String,
 }
+
+impl ConfigError {
+    pub(super) fn new(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+        }
+    }
+}
+
+impl core::fmt::Display for ConfigError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str(&self.message)
+    }
+}
+
+impl std::error::Error for ConfigError {}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum WalletRuntimeScope {
@@ -19,22 +39,13 @@ pub enum WalletRuntimeScope {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RpcAuthConfig {
-    CookieFile {
-        username: String,
-        cookie_file: PathBuf,
-    },
-    UserPassword {
-        username: String,
-        password: String,
-    },
+    Cookie { maybe_cookie_file: Option<PathBuf> },
+    UserPassword { username: String, password: String },
 }
 
 impl RpcAuthConfig {
-    pub fn cookie_file(cookie_file: impl Into<PathBuf>) -> Self {
-        Self::CookieFile {
-            username: DEFAULT_COOKIE_AUTH_USER.to_string(),
-            cookie_file: cookie_file.into(),
-        }
+    pub fn cookie(maybe_cookie_file: Option<PathBuf>) -> Self {
+        Self::Cookie { maybe_cookie_file }
     }
 
     pub fn user_password(username: impl Into<String>, password: impl Into<String>) -> Self {
@@ -47,12 +58,13 @@ impl RpcAuthConfig {
 
 impl Default for RpcAuthConfig {
     fn default() -> Self {
-        Self::cookie_file(DEFAULT_COOKIE_FILE_NAME)
+        Self::cookie(Some(PathBuf::from(DEFAULT_COOKIE_FILE_NAME)))
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RpcServerConfig {
+    pub enabled: bool,
     pub bind_address: SocketAddr,
     pub auth: RpcAuthConfig,
 }
@@ -60,7 +72,8 @@ pub struct RpcServerConfig {
 impl Default for RpcServerConfig {
     fn default() -> Self {
         Self {
-            bind_address: default_rpc_address(),
+            enabled: true,
+            bind_address: default_rpc_address(AddressNetwork::Mainnet),
             auth: RpcAuthConfig::default(),
         }
     }
@@ -75,17 +88,71 @@ pub struct RpcClientConfig {
 impl Default for RpcClientConfig {
     fn default() -> Self {
         Self {
-            connect_address: default_rpc_address(),
+            connect_address: default_rpc_address(AddressNetwork::Mainnet),
             auth: RpcAuthConfig::default(),
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WalletRuntimeConfig {
+    pub scope: WalletRuntimeScope,
+    pub coinbase_maturity: u32,
+}
+
+impl Default for WalletRuntimeConfig {
+    fn default() -> Self {
+        Self {
+            scope: WalletRuntimeScope::LocalOperatorSingleWallet,
+            coinbase_maturity: ConsensusParams::default().coinbase_maturity,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuntimeConfig {
-    pub server: RpcServerConfig,
-    pub client: RpcClientConfig,
-    pub wallet_scope: WalletRuntimeScope,
+    pub chain: AddressNetwork,
+    pub maybe_data_dir: Option<PathBuf>,
+    pub rpc_server: RpcServerConfig,
+    pub rpc_client: RpcClientConfig,
+    pub wallet: WalletRuntimeConfig,
+}
+
+impl Default for RuntimeConfig {
+    fn default() -> Self {
+        Self {
+            chain: AddressNetwork::Mainnet,
+            maybe_data_dir: None,
+            rpc_server: RpcServerConfig::default(),
+            rpc_client: RpcClientConfig::default(),
+            wallet: WalletRuntimeConfig::default(),
+        }
+    }
+}
+
+pub fn load_runtime_config() -> Result<RuntimeConfig, ConfigError> {
+    loader::load_runtime_config()
+}
+
+#[cfg(test)]
+fn load_runtime_config_for_test(
+    cli_args: &[std::ffi::OsString],
+    default_data_dir: &std::path::Path,
+) -> Result<RuntimeConfig, ConfigError> {
+    loader::load_runtime_config_for_test(cli_args, default_data_dir)
+}
+
+pub(super) fn default_rpc_port(chain: AddressNetwork) -> u16 {
+    match chain {
+        AddressNetwork::Mainnet => 8332,
+        AddressNetwork::Testnet => 18_332,
+        AddressNetwork::Signet => 38_332,
+        AddressNetwork::Regtest => 18_443,
+    }
+}
+
+fn default_rpc_address(chain: AddressNetwork) -> SocketAddr {
+    SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), default_rpc_port(chain))
 }
 
 #[cfg(test)]
