@@ -312,9 +312,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 08-01: Implement RPC method surfaces and typed request/response mapping.
-- [ ] 08-02: Implement CLI commands, config-file parsing, and option precedence.
-- [ ] 08-03: Add end-to-end operator flows for headless node and wallet control.
+- [ ] 08-01-PLAN.md — Scaffold the new RPC and CLI shell crates plus the shared typed method or config contracts.
+- [ ] 08-02-PLAN.md — Implement the authenticated RPC server, repo-owned config loading, and the supported method handlers.
+- [ ] 08-03-PLAN.md — Implement the CLI client, prove headless operator flows, and document the supported or deferred interface surface.
 
 ### Phase 9: Parity Harnesses and Fuzzing
 **Goal**: Build reusable verification systems that compare Open Bitcoin against Knots, isolate integration runs, and stress critical protocol boundaries.
