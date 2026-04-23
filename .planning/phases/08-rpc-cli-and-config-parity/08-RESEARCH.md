@@ -385,22 +385,19 @@ fn getinfo_batch() -> [(&'static str, u64); 4] {
 | A3 | The honest wallet-mutating Phase 8 slice may need to stop at raw transaction build/sign plus `sendrawtransaction`, instead of claiming full `sendtoaddress` parity immediately. | `Common Pitfalls`, `Open Questions` | Operator-flow planning could either over-scope Phase 8 or under-scope a feasible send path. |
 | A4 | `percent-encoding` should be added only if `/wallet/<name>` path scoping lands inside the supported slice. | `Standard Stack`, `Don't Hand-Roll` | One small dependency may be unnecessary if Phase 8 stays single-wallet only. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Should Phase 8 expose `sendtoaddress`, or keep wallet send flows as CLI-local build/sign plus `sendrawtransaction`?**
-   - What we know: the current wallet can build and sign deterministic transactions, while upstream `sendtoaddress` carries a much wider parameter surface for comments, fee controls, reuse avoidance, verbosity, and wallet runtime policy. [VERIFIED: repo grep]
-   - What's unclear: whether enough of that surface can be matched honestly without inventing fee-estimation and wallet-state behavior the repo does not own yet. [ASSUMED]
-   - Recommendation: treat `sendtoaddress` as an explicit planning gate and do not let it block the clearly supportable RPC slice. [ASSUMED]
+1. **Should Phase 8 expose `sendtoaddress`, or keep wallet send flows as CLI-local build/sign plus `sendrawtransaction`? (RESOLVED)**
+   - Resolution: Keep the initial send surface at deterministic `buildtransaction` / `buildandsigntransaction` plus `sendrawtransaction`. Do not require `sendtoaddress` parity in Phase 8 because the current wallet slice does not yet own the broader fee-estimation, wallet-policy, and comment/label semantics that Knots exposes there. [VERIFIED: .planning/phases/08-rpc-cli-and-config-parity/08-CONTEXT.md; VERIFIED: repo grep]
+   - Planning impact: Plans should treat `sendtoaddress` as an explicitly deferred surface in docs and tests, while proving the end-to-end headless send flow through build/sign plus raw submission. [VERIFIED: .planning/phases/08-rpc-cli-and-config-parity/08-CONTEXT.md]
 
-2. **Does the supported auth/config slice need `rpcauth` and RPC whitelists now, or only single-operator cookie and explicit user/password auth?**
-   - What we know: upstream HTTP RPC uses POST plus Basic auth, supports `rpcauth`, wallet restrictions, and method whitelists, and the manpages document `rpcuser`, `rpcpassword`, and cookie-file options. [VERIFIED: repo grep]
-   - What's unclear: whether full multi-user parity is required for this milestone's headless operator workflows. [ASSUMED]
-   - Recommendation: plan a minimum secure local-operator slice first, and only add `rpcauth` or whitelist parity if discuss-phase or planning explicitly requires it. [ASSUMED]
+2. **Does the supported auth/config slice need `rpcauth` and RPC whitelists now, or only single-operator cookie and explicit user/password auth? (RESOLVED)**
+   - Resolution: Limit Phase 8 to the honest local-operator auth slice: cookie-file auth plus explicit `rpcuser` / `rpcpassword` handling and the related connection/config precedence. Do not include `rpcauth`, method whitelists, or broader multi-user policy in this phase. [VERIFIED: .planning/phases/08-rpc-cli-and-config-parity/08-CONTEXT.md; VERIFIED: repo grep]
+   - Planning impact: Config parsing and CLI/client behavior must cover the supported local auth paths explicitly, and parity docs must mark `rpcauth` and whitelist controls as deferred rather than silently omitting them. [VERIFIED: .planning/phases/08-rpc-cli-and-config-parity/08-CONTEXT.md]
 
-3. **Should `/wallet/<name>` routing exist at all in the initial slice?**
-   - What we know: upstream `-rpcwallet` changes the CLI endpoint path, but Phase 8 context explicitly defers multiwallet persistence semantics beyond the adapter-owned slice. [VERIFIED: repo grep]
-   - What's unclear: whether a single default wallet is enough for Phase 8 operator flows, making `-rpcwallet` a deferred compatibility edge. [ASSUMED]
-   - Recommendation: keep wallet scoping optional in the plan and gate it on whether Phase 8 introduces more than one adapter-owned wallet instance. [ASSUMED]
+3. **Should `/wallet/<name>` routing exist at all in the initial slice? (RESOLVED)**
+   - Resolution: No. Keep Phase 8 on a single active wallet slice and defer `/wallet/<name>` routing with the broader multiwallet persistence semantics that the phase context already leaves out of scope. [VERIFIED: .planning/phases/08-rpc-cli-and-config-parity/08-CONTEXT.md; VERIFIED: repo grep]
+   - Planning impact: CLI and RPC planning should reject or explicitly defer `-rpcwallet` and path-scoped multiwallet behavior, and should not add wallet-path encoding or routing dependencies in this phase. [VERIFIED: .planning/phases/08-rpc-cli-and-config-parity/08-CONTEXT.md]
 
 ## Environment Availability
 

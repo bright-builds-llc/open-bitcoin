@@ -309,12 +309,14 @@ Plans:
   1. In-scope RPC methods return compatible payloads and error semantics.
   2. CLI flags, config parsing, and precedence rules match the baseline for the supported surface.
   3. Operators can run node and wallet workflows entirely through CLI and RPC without any GUI dependency.
-**Plans**: 3 plans
+**Plans**: 5 plans
 
 Plans:
-- [ ] 08-01-PLAN.md — Scaffold the new RPC and CLI shell crates plus the shared typed method or config contracts.
-- [ ] 08-02-PLAN.md — Implement the authenticated RPC server, repo-owned config loading, and the supported method handlers.
-- [ ] 08-03-PLAN.md — Implement the CLI client, prove headless operator flows, and document the supported or deferred interface surface.
+- [ ] 08-01-PLAN.md — Scaffold the new RPC and CLI shell crates plus workspace and verification wiring.
+- [ ] 08-02-PLAN.md — Add the adapter seam and shared typed RPC or config contracts before dispatcher work.
+- [ ] 08-03-PLAN.md — Implement shared config loading, the authenticated RPC server, and the supported method handlers.
+- [ ] 08-04-PLAN.md — Implement explicit `bitcoin-cli` startup, argument parsing, and `-getinfo` precedence behavior.
+- [ ] 08-05-PLAN.md — Implement the CLI HTTP client and operator-flow proof, and document the supported or deferred interface surface.
 
 ### Phase 9: Parity Harnesses and Fuzzing
 **Goal**: Build reusable verification systems that compare Open Bitcoin against Knots, isolate integration runs, and stress critical protocol boundaries.
