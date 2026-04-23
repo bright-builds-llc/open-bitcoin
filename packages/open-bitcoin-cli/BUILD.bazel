@@ -1,4 +1,4 @@
-load("@rules_rust//rust:defs.bzl", "rust_library")
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library")
 
 rust_library(
     name = "open_bitcoin_cli_lib",
@@ -9,6 +9,24 @@ rust_library(
         "//packages/open-bitcoin-rpc:open_bitcoin_rpc_lib",
         "@crate_index//:clap",
         "@crate_index//:serde",
+        "@crate_index//:serde_json",
+        "@crate_index//:ureq",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+rust_binary(
+    name = "open_bitcoin_cli",
+    srcs = [
+        "src/client.rs",
+        "src/main.rs",
+        "src/output.rs",
+    ],
+    crate_name = "open_bitcoin_cli",
+    edition = "2024",
+    deps = [
+        ":open_bitcoin_cli_lib",
+        "//packages/open-bitcoin-rpc:open_bitcoin_rpc_lib",
         "@crate_index//:serde_json",
         "@crate_index//:ureq",
     ],
