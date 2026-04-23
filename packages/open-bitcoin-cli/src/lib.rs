@@ -3,6 +3,7 @@
 //! Shell-layer CLI crate for Phase 8 `bitcoin-cli` parsing and startup work.
 
 pub mod args;
+pub mod getinfo;
 pub mod startup;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
