@@ -89,7 +89,7 @@ cargo fmt --manifest-path packages/Cargo.toml --all --check
 cargo clippy --manifest-path packages/Cargo.toml --workspace --all-targets --all-features -- -D warnings
 cargo build --manifest-path packages/Cargo.toml --workspace --all-targets --all-features
 cargo test --manifest-path packages/Cargo.toml --workspace --all-features
-bazel build //:core //:node
+bazel build //:core //:node //:rpc //:cli
 
 pure_core_crates=()
 while IFS= read -r crate_name; do
