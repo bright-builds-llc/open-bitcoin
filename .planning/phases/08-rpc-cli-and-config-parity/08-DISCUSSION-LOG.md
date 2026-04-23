@@ -3,89 +3,101 @@
 > **Audit trail only.** Do not use as input to planning, research, or execution agents.
 > Decisions are captured in CONTEXT.md — this log preserves the alternatives considered.
 
-**Date:** 2026-04-22
+**Date:** 2026-04-23T12:45:45.574Z
 **Phase:** 08-rpc-cli-and-config-parity
 **Mode:** Yolo
-**Areas discussed:** supported RPC slice, CLI shape, config precedence, operator automation ergonomics, end-to-end proof strategy
+**Areas discussed:** phase boundary refresh, RPC gap closure, CLI/config gap closure, verification and docs, lifecycle provenance
 
 ---
 
-## Supported RPC Slice
+## Phase Boundary Refresh
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Minimal headless slice | Expose only node and wallet operations the current managed facades can back honestly | ✓ |
-| Broad baseline RPC sweep | Try to cover a much larger portion of Knots RPC surface immediately | |
-| Client-only shell | Add CLI wrappers first and defer real RPC method ownership | |
+| Keep original Phase 8 boundary and add verifier-driven gap closure | Preserve the headless RPC/CLI/config scope while making the failed verifier truths explicit planning inputs | ✓ |
+| Broaden Phase 8 into full Knots RPC parity | Expand into many baseline methods beyond the current node/wallet seams | |
+| Treat the verifier gaps as a separate future phase | Leave Phase 8 context unchanged and defer the failed truths | |
 
 **User's choice:** Auto-selected recommended default in yolo mode.
-**Notes:** Phase 8 should expose a real operator surface without pretending to support full Knots RPC coverage before the runtime and parity harness phases exist.
+**Notes:** This keeps the phase scoped to `RPC-01`, `CLI-01`, and `CLI-02` while making the verified gaps unavoidable for downstream planning.
 
 ---
 
-## CLI Shape
+## RPC Gap Closure
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Baseline-shaped operator tools | Provide node/server and client-style entrypoints aligned with the Knots mental model | ✓ |
-| Single app-specific command tree | Expose one Open Bitcoin binary with custom subcommands only | |
-| RPC-only for now | Defer CLI shape and rely on RPC transport exclusively | |
+| Reject unsupported parameters explicitly | Accept only semantics the current dispatcher and wallet/mempool seams can enforce; return deterministic invalid-params errors for the rest | ✓ |
+| Fake partial rescan support by filtering around the full snapshot | Attempt to satisfy input shape without a truthful wallet seam | |
+| Accept `maxfeerate` and `maxburnamount` until later enforcement exists | Preserve the current hollow behavior and document it later | |
 
 **User's choice:** Auto-selected recommended default in yolo mode.
-**Notes:** The CLI should stay close enough to the baseline mental model that operator documentation and parity claims are explainable.
+**Notes:** `rescanblockchain` partial ranges and explicit `sendrawtransaction` safety-limit parameters must fail before wallet or mempool mutation unless implementation can enforce them truthfully.
 
 ---
 
-## Config and Precedence
+## Cookie Auth Trust Boundary
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Baseline precedence | CLI flags override config values; explicit conf/datadir handling follows supported Knots behavior | ✓ |
-| Simplified Open Bitcoin precedence | Use a new precedence model optimized for the repo only | |
-| Environment-first | Prefer env vars and treat config files as secondary | |
+| Harden cookie auth now | Use strong shell-crate randomness and owner-only Unix file creation for new cookie files | ✓ |
+| Defer as non-blocking warning | Leave predictable fallback and default file creation for later security work | |
+| Remove cookie auth from Phase 8 | Avoid the warning by dropping the local cookie-auth surface | |
 
 **User's choice:** Auto-selected recommended default in yolo mode.
-**Notes:** Config parsing should remain shell-owned and terminate in typed runtime config.
+**Notes:** Cookie auth protects local mutating RPC methods, so weak secret creation is treated as part of the Phase 8 security/threat model.
 
 ---
 
-## Automation Ergonomics
+## CLI and Config Gap Closure
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Fold AI-agent-friendly CLI behavior into Phase 8 | Require deterministic, scriptable, machine-readable operator commands where it materially helps | ✓ |
-| Treat it as a future enhancement | Keep parity only for human operators in Phase 8 | |
-| Create a separate automation-only interface | Defer parity-shaped CLI behavior and add a new automation shell later | |
+| Preserve baseline-shaped client inputs and reject malformed RPC params before transport | Support hostname `rpcconnect`, lock port precedence, preserve duplicate named args, and gate stdin reads on stdin flags | ✓ |
+| Keep IP-only client addresses and closed-stdin test coverage | Preserve current implementation shape and accept verifier gaps | |
+| Add wrapper-level CLI behavior without changing shared config/method parsing | Patch symptoms in the CLI client while leaving shared surfaces inconsistent | |
 
 **User's choice:** Auto-selected recommended default in yolo mode.
-**Notes:** This keeps the deferred todo inside the Phase 8 boundary without inventing a separate product surface.
+**Notes:** The client path should parse hostnames without DNS lookup, reject duplicate named params through shared normalization, and avoid reading stdin unless `-stdin` or `-stdinrpcpass` requests it.
 
 ---
 
-## Operator Proof Strategy
+## Verification and Docs
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Hermetic headless flows | Prove node and wallet control through repo-owned CLI/RPC tests with hermetic fixtures | ✓ |
-| Manual proof only | Rely primarily on ad-hoc manual testing for operator flows | |
-| External daemon orchestration | Require external long-running processes as the main verification path | |
+| Add targeted regressions plus repo-native closeout verification | Prove each verifier gap directly, update parity docs, then run `bash scripts/verify.sh` | ✓ |
+| Rely on existing operator-flow tests | Keep the current closed-stdin subprocess proof as sufficient | |
+| Manual verification only | Record the risks but skip automated regressions for terminal and cookie behavior | |
 
 **User's choice:** Auto-selected recommended default in yolo mode.
-**Notes:** Phase 8 should stay hermetic and headless; the heavier black-box harness work belongs to Phase 9.
+**Notes:** Automated checks should cover the code paths that failed verification. Manual terminal/cookie inspection remains useful, but not as a replacement for targeted tests.
+
+---
+
+## Lifecycle Provenance
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Start a fresh yolo lifecycle and replan from it | Write refreshed context with a new `phase_lifecycle_id`; downstream planning should inherit it | ✓ |
+| Retrofit old summaries during discussion | Edit `08-03` through `08-05` summaries in this discuss step | |
+| Keep the previous lifecycle id | Leave context tied to the old plan/summary set that already failed lifecycle validation | |
+
+**User's choice:** Auto-selected recommended default in yolo mode.
+**Notes:** This discuss run writes a new formal context. Existing plan files from the previous lifecycle should be refreshed by a subsequent plan-phase run before execution.
 
 ---
 
 ## the agent's Discretion
 
-- Exact crate and module names for the RPC server, CLI client, and config parser
-- The exact supported method and command inventory inside the bounded headless slice
-- Whether the CLI invokes typed handlers directly or routes through a local RPC client layer
+- Exact helper names, module splits, and test fixture shape.
+- Exact deterministic invalid-params message text, as long as it is grep-verifiable.
+- Minimal shell-crate dependency choice for strong cookie randomness.
 
 ## Deferred Ideas
 
-- Full Knots RPC method coverage beyond the supported slice
-- Mining admin RPC/control work
-- External signer and richer wallet admin flows
-- GUI-facing operator surfaces
-- Phase 9 black-box harnesses and process isolation
-
+- Full Knots RPC coverage beyond the supported Phase 8 slice.
+- Mining/admin RPCs and advanced index-dependent methods.
+- External signer RPCs, PSBT orchestration, richer wallet admin flows, and broader multiwallet persistence.
+- GUI surfaces.
+- Phase 9 black-box parity harnesses and Phase 10 benchmark/audit reporting.
