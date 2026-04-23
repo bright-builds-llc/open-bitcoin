@@ -1,17 +1,17 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use open_bitcoin_core::{
-    chainstate::{ChainPosition, ChainstateError},
+    chainstate::{ChainPosition, ChainstateError, ChainstateSnapshot},
     codec::CodecError,
     consensus::{
         ConsensusParams, ScriptVerifyFlags, block_hash, transaction_txid, transaction_wtxid,
     },
-    primitives::{Block, BlockHash, InventoryType, Transaction, Txid, Wtxid},
+    primitives::{Block, BlockHash, InventoryType, NetworkMagic, Transaction, Txid, Wtxid},
 };
 use open_bitcoin_mempool::{AdmissionResult, MempoolError, PolicyConfig};
 use open_bitcoin_network::{
-    InventoryList, LocalPeerConfig, NetworkError, ParsedNetworkMessage, PeerAction, PeerId,
-    PeerManager, WireNetworkMessage,
+    ConnectionRole, InventoryList, LocalPeerConfig, NetworkError, PROTOCOL_VERSION,
+    ParsedNetworkMessage, PeerAction, PeerId, PeerManager, WireNetworkMessage,
 };
 
 use crate::{ChainstateStore, ManagedChainstate, ManagedMempool};
@@ -59,11 +59,36 @@ impl From<CodecError> for ManagedNetworkError {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ManagedMempoolInfo {
+    pub transaction_count: usize,
+    pub total_virtual_size: usize,
+    pub total_fee_sats: i64,
+    pub min_relay_feerate_sats_per_kvb: i64,
+    pub incremental_relay_feerate_sats_per_kvb: i64,
+    pub max_mempool_virtual_size: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ManagedNetworkInfo {
+    pub network_magic: NetworkMagic,
+    pub protocol_version: i32,
+    pub user_agent: String,
+    pub local_services_bits: u64,
+    pub relay: bool,
+    pub connected_peers: usize,
+    pub inbound_peers: usize,
+    pub outbound_peers: usize,
+    pub wtxidrelay_peers: usize,
+    pub header_preferring_peers: usize,
+}
+
 #[derive(Debug, Clone)]
 pub struct ManagedPeerNetwork<S> {
     chainstate: ManagedChainstate<S>,
     mempool: ManagedMempool,
     peer_manager: PeerManager,
+    peer_ids: BTreeSet<PeerId>,
     local_config: LocalPeerConfig,
     blocks_by_hash: BTreeMap<BlockHash, Block>,
     transactions_by_txid: BTreeMap<Txid, Transaction>,
@@ -80,6 +105,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             chainstate,
             mempool: ManagedMempool::new(mempool_config),
             peer_manager,
+            peer_ids: BTreeSet::new(),
             local_config,
             blocks_by_hash: BTreeMap::new(),
             transactions_by_txid: BTreeMap::new(),
@@ -99,8 +125,69 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         &self.peer_manager
     }
 
+    pub fn chainstate_snapshot(&self) -> ChainstateSnapshot {
+        self.chainstate.chainstate().snapshot()
+    }
+
+    pub fn maybe_chain_tip(&self) -> Option<ChainPosition> {
+        self.chainstate.chainstate().tip().cloned()
+    }
+
+    pub fn mempool_info(&self) -> ManagedMempoolInfo {
+        let entries = self.mempool.mempool().entries();
+        let total_fee_sats = entries.values().map(|entry| entry.fee_sats()).sum();
+        let config = self.mempool.mempool().config();
+
+        ManagedMempoolInfo {
+            transaction_count: entries.len(),
+            total_virtual_size: self.mempool.mempool().total_virtual_size(),
+            total_fee_sats,
+            min_relay_feerate_sats_per_kvb: config.min_relay_feerate.sats_per_kvb(),
+            incremental_relay_feerate_sats_per_kvb: config.incremental_relay_feerate.sats_per_kvb(),
+            max_mempool_virtual_size: config.max_mempool_virtual_size,
+        }
+    }
+
+    pub fn network_info(&self) -> ManagedNetworkInfo {
+        let mut inbound_peers = 0;
+        let mut outbound_peers = 0;
+        let mut wtxidrelay_peers = 0;
+        let mut header_preferring_peers = 0;
+
+        for peer_id in &self.peer_ids {
+            let Some(peer) = self.peer_manager.peer_state(*peer_id) else {
+                continue;
+            };
+
+            match peer.role {
+                ConnectionRole::Inbound => inbound_peers += 1,
+                ConnectionRole::Outbound => outbound_peers += 1,
+            }
+            if peer.remote_wtxidrelay {
+                wtxidrelay_peers += 1;
+            }
+            if peer.remote_prefers_headers {
+                header_preferring_peers += 1;
+            }
+        }
+
+        ManagedNetworkInfo {
+            network_magic: self.local_config.magic,
+            protocol_version: PROTOCOL_VERSION,
+            user_agent: self.local_config.user_agent.clone(),
+            local_services_bits: self.local_config.services.bits(),
+            relay: self.local_config.relay,
+            connected_peers: self.peer_ids.len(),
+            inbound_peers,
+            outbound_peers,
+            wtxidrelay_peers,
+            header_preferring_peers,
+        }
+    }
+
     pub fn add_inbound_peer(&mut self, peer_id: PeerId) -> Result<(), ManagedNetworkError> {
         self.peer_manager.add_inbound_peer(peer_id)?;
+        self.peer_ids.insert(peer_id);
         Ok(())
     }
 
@@ -110,6 +197,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         timestamp: i64,
     ) -> Result<Vec<WireNetworkMessage>, ManagedNetworkError> {
         let actions = self.peer_manager.add_outbound_peer(peer_id, timestamp)?;
+        self.peer_ids.insert(peer_id);
         self.collect_outbound(actions)
     }
 
@@ -124,7 +212,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         let actions = self
             .peer_manager
             .handle_message(peer_id, message, timestamp)?;
-        self.process_actions(actions, timestamp, verify_flags, consensus_params)
+        self.process_actions(peer_id, actions, timestamp, verify_flags, consensus_params)
     }
 
     pub fn receive_wire_message(
@@ -226,6 +314,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
 
     fn process_actions(
         &mut self,
+        peer_id: PeerId,
         actions: Vec<PeerAction>,
         timestamp: i64,
         verify_flags: ScriptVerifyFlags,
@@ -269,7 +358,9 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                         self.peer_manager.note_local_position(&position);
                     }
                 }
-                PeerAction::Disconnect(_) => {}
+                PeerAction::Disconnect(_) => {
+                    self.peer_ids.remove(&peer_id);
+                }
             }
         }
 

@@ -234,6 +234,75 @@ fn managed_network_requests_transactions_using_wtxidrelay_when_negotiated() {
 }
 
 #[test]
+fn managed_network_exposes_rpc_projection_helpers() {
+    // Arrange
+    let mut network = ManagedPeerNetwork::new(
+        MemoryChainstateStore::default(),
+        local_config(100),
+        PolicyConfig::default(),
+    );
+    let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0, 500_000_000);
+    let spendable = build_block(
+        open_bitcoin_core::consensus::block_hash(&genesis.header),
+        1,
+        500_000_000,
+    );
+    network
+        .connect_local_block(&genesis, verify_flags(), consensus_params())
+        .expect("genesis");
+    network
+        .connect_local_block(&spendable, verify_flags(), consensus_params())
+        .expect("spendable");
+    network.add_inbound_peer(7).expect("inbound peer");
+    network
+        .receive_message(
+            7,
+            WireNetworkMessage::WtxidRelay,
+            1,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("wtxidrelay");
+    network
+        .receive_message(
+            7,
+            WireNetworkMessage::SendHeaders,
+            1,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("sendheaders");
+    network.connect_outbound_peer(8, 2).expect("outbound peer");
+    let transaction = spend_transaction(
+        transaction_txid(&genesis.transactions[0]).expect("txid"),
+        499_999_000,
+    );
+    let expected_virtual_size =
+        open_bitcoin_mempool::transaction_weight_and_virtual_size(&transaction).1;
+    network
+        .submit_local_transaction(transaction, verify_flags(), consensus_params())
+        .expect("submit");
+
+    // Act
+    let snapshot = network.chainstate_snapshot();
+    let maybe_tip = network.maybe_chain_tip();
+    let mempool_info = network.mempool_info();
+    let network_info = network.network_info();
+
+    // Assert
+    assert_eq!(snapshot.active_chain.len(), 2);
+    assert_eq!(maybe_tip.expect("tip").height, 1);
+    assert_eq!(mempool_info.transaction_count, 1);
+    assert_eq!(mempool_info.total_virtual_size, expected_virtual_size);
+    assert_eq!(mempool_info.total_fee_sats, 1_000);
+    assert_eq!(network_info.connected_peers, 2);
+    assert_eq!(network_info.inbound_peers, 1);
+    assert_eq!(network_info.outbound_peers, 1);
+    assert_eq!(network_info.wtxidrelay_peers, 1);
+    assert_eq!(network_info.header_preferring_peers, 1);
+}
+
+#[test]
 fn managed_nodes_sync_blocks_and_relay_transactions_in_memory() {
     let mut source = ManagedPeerNetwork::new(
         MemoryChainstateStore::default(),
