@@ -1,5 +1,7 @@
 use std::{
+    ffi::OsString,
     net::{IpAddr, Ipv4Addr, SocketAddr},
+    path::Path,
     path::PathBuf,
 };
 
@@ -134,12 +136,11 @@ pub fn load_runtime_config() -> Result<RuntimeConfig, ConfigError> {
     loader::load_runtime_config()
 }
 
-#[cfg(test)]
-fn load_runtime_config_for_test(
-    cli_args: &[std::ffi::OsString],
-    default_data_dir: &std::path::Path,
+pub fn load_runtime_config_for_args(
+    cli_args: &[OsString],
+    default_data_dir: &Path,
 ) -> Result<RuntimeConfig, ConfigError> {
-    loader::load_runtime_config_for_test(cli_args, default_data_dir)
+    loader::load_runtime_config_for_args(cli_args, default_data_dir)
 }
 
 pub(super) fn default_rpc_port(chain: AddressNetwork) -> u16 {

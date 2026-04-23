@@ -15,6 +15,10 @@ use super::{
     RuntimeConfig, WalletRuntimeConfig, default_rpc_port,
 };
 
+mod rpc_address;
+
+use rpc_address::parse_rpc_client_address;
+
 const BITCOIN_CONF_FILE_NAME: &str = "bitcoin.conf";
 const DEFAULT_RPC_HOST: &str = "127.0.0.1";
 
@@ -54,10 +58,10 @@ struct FileSettings {
 pub(super) fn load_runtime_config() -> Result<RuntimeConfig, ConfigError> {
     let cli_args = env::args_os().skip(1).collect::<Vec<_>>();
     let default_data_dir = default_data_dir();
-    load_runtime_config_for_test(&cli_args, &default_data_dir)
+    load_runtime_config_for_args(&cli_args, &default_data_dir)
 }
 
-pub(super) fn load_runtime_config_for_test(
+pub(super) fn load_runtime_config_for_args(
     cli_args: &[OsString],
     default_data_dir: &Path,
 ) -> Result<RuntimeConfig, ConfigError> {
@@ -101,10 +105,6 @@ pub(super) fn load_runtime_config_for_test(
         )));
     }
 
-    let rpc_port = cli
-        .maybe_rpc_port
-        .or(file_settings.maybe_rpc_port)
-        .unwrap_or_else(|| default_rpc_port(chain));
     let rpc_bind = cli
         .maybe_rpc_bind
         .clone()
@@ -115,6 +115,8 @@ pub(super) fn load_runtime_config_for_test(
         .clone()
         .or(file_settings.maybe_rpc_connect)
         .unwrap_or_else(|| DEFAULT_RPC_HOST.to_string());
+    let maybe_explicit_rpc_port = cli.maybe_rpc_port.or(file_settings.maybe_rpc_port);
+    let rpc_port = maybe_explicit_rpc_port.unwrap_or_else(|| default_rpc_port(chain));
     let auth = resolve_auth(
         cli.maybe_rpc_user.clone().or(file_settings.maybe_rpc_user),
         cli.maybe_rpc_password
@@ -139,7 +141,11 @@ pub(super) fn load_runtime_config_for_test(
             auth: auth.clone(),
         },
         rpc_client: RpcClientConfig {
-            connect_address: parse_socket_address(&rpc_connect, rpc_port)?,
+            connect_address: parse_rpc_client_address(
+                &rpc_connect,
+                maybe_explicit_rpc_port,
+                default_rpc_port(chain),
+            )?,
             auth,
         },
         wallet: WalletRuntimeConfig::default(),

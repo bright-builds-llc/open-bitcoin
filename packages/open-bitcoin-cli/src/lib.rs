@@ -1,17 +1,27 @@
 #![forbid(unsafe_code)]
 
-//! Shell-layer CLI crate for future Open Bitcoin argument and client work.
+//! Shell-layer CLI crate for Phase 8 `bitcoin-cli` parsing and startup work.
 
-pub const fn crate_ready() -> bool {
-    true
+pub mod args;
+pub mod startup;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CliError {
+    message: String,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::crate_ready;
-
-    #[test]
-    fn crate_ready_reports_true() {
-        assert!(crate_ready());
+impl CliError {
+    pub(crate) fn new(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+        }
     }
 }
+
+impl core::fmt::Display for CliError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str(&self.message)
+    }
+}
+
+impl std::error::Error for CliError {}

@@ -1,0 +1,43 @@
+use std::net::SocketAddr;
+
+use super::{ConfigError, parse_port, parse_socket_address};
+
+pub(super) fn parse_rpc_client_address(
+    rpc_connect: &str,
+    maybe_explicit_port: Option<u16>,
+    default_port: u16,
+) -> Result<SocketAddr, ConfigError> {
+    let (host, maybe_embedded_port) = split_rpc_connect(rpc_connect)?;
+    let port = maybe_explicit_port
+        .or(maybe_embedded_port)
+        .unwrap_or(default_port);
+    parse_socket_address(&host, port)
+}
+
+fn split_rpc_connect(value: &str) -> Result<(String, Option<u16>), ConfigError> {
+    if let Some(stripped) = value.strip_prefix('[') {
+        let Some(end_index) = stripped.find(']') else {
+            return Err(ConfigError::new(format!("invalid rpc address: {value}")));
+        };
+        let host = stripped[..end_index].to_string();
+        let remainder = &stripped[end_index + 1..];
+        if remainder.is_empty() {
+            return Ok((host, None));
+        }
+        let Some(port) = remainder.strip_prefix(':') else {
+            return Err(ConfigError::new(format!("invalid rpc address: {value}")));
+        };
+        let port = parse_port(port)?;
+        return Ok((host, Some(port)));
+    }
+
+    if value.matches(':').count() == 1 {
+        let Some((host, port)) = value.rsplit_once(':') else {
+            return Ok((value.to_string(), None));
+        };
+        let port = parse_port(port)?;
+        return Ok((host.to_string(), Some(port)));
+    }
+
+    Ok((value.to_string(), None))
+}

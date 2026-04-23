@@ -6,6 +6,7 @@ rust_library(
     crate_name = "open_bitcoin_cli",
     edition = "2024",
     deps = [
+        "//packages/open-bitcoin-rpc:open_bitcoin_rpc_lib",
         "@crate_index//:clap",
         "@crate_index//:serde",
         "@crate_index//:serde_json",

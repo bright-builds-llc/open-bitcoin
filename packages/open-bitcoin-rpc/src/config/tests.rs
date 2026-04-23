@@ -10,7 +10,7 @@ use open_bitcoin_node::core::wallet::AddressNetwork;
 
 use super::{
     DEFAULT_COOKIE_FILE_NAME, RpcAuthConfig, RuntimeConfig, WalletRuntimeConfig,
-    WalletRuntimeScope, load_runtime_config_for_test,
+    WalletRuntimeScope, load_runtime_config_for_args,
 };
 
 static NEXT_TEST_DIRECTORY_ID: AtomicU64 = AtomicU64::new(0);
@@ -93,7 +93,7 @@ fn conf_cannot_be_set_in_configuration_files() {
 
     // Act
     let direct_error =
-        load_runtime_config_for_test(&cli_args, &sandbox.path).expect_err("conf must fail");
+        load_runtime_config_for_args(&cli_args, &sandbox.path).expect_err("conf must fail");
 
     // Assert
     assert_eq!(
@@ -112,7 +112,7 @@ fn conf_cannot_be_set_in_configuration_files() {
 
     // Act
     let include_error =
-        load_runtime_config_for_test(&cli_args, &sandbox.path).expect_err("included conf fails");
+        load_runtime_config_for_args(&cli_args, &sandbox.path).expect_err("included conf fails");
 
     // Assert
     assert_eq!(
@@ -134,7 +134,7 @@ fn rpcpassword_with_hash_is_rejected() {
     let cli_args = vec![cli_arg("conf", &conf_path)];
 
     // Act
-    let error = load_runtime_config_for_test(&cli_args, &sandbox.path).expect_err("hash must fail");
+    let error = load_runtime_config_for_args(&cli_args, &sandbox.path).expect_err("hash must fail");
 
     // Assert
     assert_eq!(
@@ -160,9 +160,9 @@ fn cli_datadir_overrides_config_datadir() {
     let base_args = vec![cli_arg("conf", &conf_path)];
 
     // Act
-    let configured_runtime = load_runtime_config_for_test(&base_args, &sandbox.path)
+    let configured_runtime = load_runtime_config_for_args(&base_args, &sandbox.path)
         .expect("config datadir should load");
-    let overridden_runtime = load_runtime_config_for_test(
+    let overridden_runtime = load_runtime_config_for_args(
         &[
             cli_arg("conf", &conf_path),
             cli_arg("datadir", &cli_data_dir),
@@ -207,11 +207,11 @@ fn auth_resolution_prefers_cookie_when_password_is_empty() {
 
     // Act
     let cookie_runtime =
-        load_runtime_config_for_test(&[cli_arg("conf", &conf_path)], &sandbox.path)
+        load_runtime_config_for_args(&[cli_arg("conf", &conf_path)], &sandbox.path)
             .expect("empty password should use cookie auth");
     fs::write(&conf_path, "rpcuser=alice\nrpcpassword=secret\n").expect("config");
     let explicit_runtime =
-        load_runtime_config_for_test(&[cli_arg("conf", &conf_path)], &sandbox.path)
+        load_runtime_config_for_args(&[cli_arg("conf", &conf_path)], &sandbox.path)
             .expect("explicit auth should load");
 
     // Assert
