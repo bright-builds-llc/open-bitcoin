@@ -1,17 +1,19 @@
 #![forbid(unsafe_code)]
 
-//! Shell-layer RPC crate for future Open Bitcoin method and transport work.
+//! Shell-layer RPC crate for Phase 8 typed contracts and runtime composition.
 
-pub const fn crate_ready() -> bool {
-    true
-}
+pub mod config;
+pub mod context;
+pub mod envelope;
+pub mod error;
+pub mod method;
 
-#[cfg(test)]
-mod tests {
-    use super::crate_ready;
-
-    #[test]
-    fn crate_ready_reports_true() {
-        assert!(crate_ready());
-    }
-}
+pub use config::{
+    RpcAuthConfig, RpcClientConfig, RpcServerConfig, RuntimeConfig, WalletRuntimeScope,
+};
+pub use context::ManagedRpcContext;
+pub use envelope::{
+    JsonRpcId, JsonRpcVersion, RpcErrorEnvelope, RpcRequestEnvelope, RpcSuccessEnvelope,
+};
+pub use error::{RpcErrorCode, RpcErrorDetail, RpcFailureKind};
+pub use method::{MethodOrigin, SupportedMethod};
