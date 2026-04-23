@@ -686,6 +686,7 @@ name = "open-bitcoin-cli"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "open-bitcoin-node",
  "open-bitcoin-rpc",
  "serde",
  "serde_json",

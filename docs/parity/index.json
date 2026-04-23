@@ -260,6 +260,42 @@
             "Which parts of Knots' coin-selection and wallet metadata surface should stay pure-core versus move into later shell-owned orchestration."
           ]
         }
+      },
+      {
+        "id": "rpc-cli-config",
+        "title": "RPC, CLI, And Config Operator Surface",
+        "path": "catalog/rpc-cli-config.md",
+        "phase": "08-rpc-cli-and-config-parity",
+        "status": "done",
+        "scope": [
+          "rpc",
+          "cli",
+          "config",
+          "auth",
+          "deferred-surfaces"
+        ],
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/bitcoin-cli.cpp",
+            "packages/bitcoin-knots/test/functional/interface_bitcoin_cli.py",
+            "packages/bitcoin-knots/test/functional/rpc_deriveaddresses.py"
+          ],
+          "tests": [
+            "packages/open-bitcoin-cli/tests/operator_flows.rs"
+          ]
+        },
+        "highlights": {
+          "quirks": [
+            "The supported operator slice is intentionally single-wallet and local-auth only; deferred surfaces are listed explicitly instead of implied by omission.",
+            "Open Bitcoin adds deterministic buildtransaction and buildandsigntransaction extension methods for the current wallet adapter slice.",
+            "The CLI keeps -getinfo as a four-call helper batch while normal method execution stays RPC-shaped."
+          ],
+          "known_bugs": [],
+          "known_bugs_status": "none-confirmed",
+          "suspected_unknowns": [
+            "How closely later phases should mirror Knots sendtoaddress, getpeerinfo, and multiwallet semantics once the adapter-owned wallet and peer surfaces grow."
+          ]
+        }
       }
     ]
   },
@@ -290,11 +326,11 @@
     },
     {
       "name": "rpc",
-      "status": "planned"
+      "status": "done"
     },
     {
       "name": "cli-config",
-      "status": "planned"
+      "status": "done"
     }
   ]
 }

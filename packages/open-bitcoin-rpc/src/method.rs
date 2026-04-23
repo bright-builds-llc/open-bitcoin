@@ -462,9 +462,9 @@ pub struct ImportDescriptorsResponse {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RescanBlockchainRequest {
-    #[serde(default)]
+    #[serde(rename = "start_height", default)]
     pub maybe_start_height: Option<u32>,
-    #[serde(default)]
+    #[serde(rename = "stop_height", default)]
     pub maybe_stop_height: Option<u32>,
 }
 

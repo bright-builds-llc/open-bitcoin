@@ -159,7 +159,10 @@ fn method_call_to_json(call: MethodCall) -> Result<Value, CliCommandFailure> {
         MethodCall::GetBalances(request) => to_json_value(request),
         MethodCall::ListUnspent(request) => to_json_value(request),
         MethodCall::ImportDescriptors(request) => to_json_value(request),
-        MethodCall::RescanBlockchain(request) => to_json_value(request),
+        MethodCall::RescanBlockchain(request) => Ok(serde_json::json!({
+            "start_height": request.maybe_start_height,
+            "stop_height": request.maybe_stop_height,
+        })),
         MethodCall::BuildTransaction(request) => to_json_value(request),
         MethodCall::BuildAndSignTransaction(request) => to_json_value(request),
     }
