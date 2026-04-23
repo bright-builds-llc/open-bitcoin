@@ -1,12 +1,13 @@
+use open_bitcoin_node::core::network::WireNetworkMessage;
 use open_bitcoin_node::core::{
     chainstate::{ChainPosition, ChainstateSnapshot},
     consensus::{ConsensusParams, ScriptVerifyFlags},
     mempool::{AdmissionResult, PolicyConfig},
     network::{LocalPeerConfig, ServiceFlags},
-    primitives::{NetworkAddress, NetworkMagic, Transaction},
+    primitives::{Block, NetworkAddress, NetworkMagic, Transaction},
     wallet::{
-        AddressNetwork, BuildRequest, BuiltTransaction, DescriptorRole, Wallet, WalletBalance,
-        WalletError, WalletUtxo,
+        Address, AddressNetwork, BuildRequest, BuiltTransaction, DescriptorRole, Wallet,
+        WalletBalance, WalletError, WalletUtxo,
     },
 };
 use open_bitcoin_node::network::{ManagedMempoolInfo, ManagedNetworkInfo};
@@ -126,14 +127,47 @@ impl ManagedRpcContext {
         self.network.network_info()
     }
 
+    pub fn add_inbound_peer(&mut self, peer_id: u64) -> Result<(), ManagedNetworkError> {
+        self.network.add_inbound_peer(peer_id)
+    }
+
+    pub fn connect_outbound_peer(
+        &mut self,
+        peer_id: u64,
+        timestamp: i64,
+    ) -> Result<Vec<WireNetworkMessage>, ManagedNetworkError> {
+        self.network.connect_outbound_peer(peer_id, timestamp)
+    }
+
+    pub fn receive_network_message(
+        &mut self,
+        peer_id: u64,
+        message: WireNetworkMessage,
+        timestamp: i64,
+    ) -> Result<Vec<WireNetworkMessage>, ManagedNetworkError> {
+        self.network.receive_message(
+            peer_id,
+            message,
+            timestamp,
+            self.verify_flags,
+            self.consensus_params,
+        )
+    }
+
+    pub fn connect_local_block(
+        &mut self,
+        block: &Block,
+    ) -> Result<ChainPosition, ManagedNetworkError> {
+        self.network
+            .connect_local_block(block, self.verify_flags, self.consensus_params)
+    }
+
     pub fn submit_local_transaction(
         &mut self,
         transaction: Transaction,
-        verify_flags: ScriptVerifyFlags,
-        consensus_params: ConsensusParams,
     ) -> Result<AdmissionResult, ManagedNetworkError> {
         self.network
-            .submit_local_transaction(transaction, verify_flags, consensus_params)
+            .submit_local_transaction(transaction, self.verify_flags, self.consensus_params)
     }
 
     pub fn wallet_info(&self) -> ManagedWalletInfo {
@@ -146,6 +180,10 @@ impl ManagedRpcContext {
 
     pub fn wallet_utxos(&self) -> &[WalletUtxo] {
         self.wallet.utxos()
+    }
+
+    pub fn descriptor_address(&self, descriptor_id: u32) -> Result<Address, WalletError> {
+        self.wallet.wallet().address_for_descriptor(descriptor_id)
     }
 
     pub fn import_descriptor(

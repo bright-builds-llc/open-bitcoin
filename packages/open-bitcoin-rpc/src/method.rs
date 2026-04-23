@@ -1,4 +1,7 @@
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use serde_json::{Map, Value};
+
+use crate::error::RpcFailure;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MethodOrigin {
@@ -77,18 +80,202 @@ impl SupportedMethod {
             _ => MethodOrigin::BaselineParity,
         }
     }
+
+    pub fn from_name(name: &str) -> Option<Self> {
+        Self::all()
+            .iter()
+            .copied()
+            .find(|method| method.name() == name)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum RequestParameters {
+    None,
+    Positional(Vec<Value>),
+    Named(Vec<(String, Value)>),
+    Mixed {
+        positional: Vec<Value>,
+        named: Vec<(String, Value)>,
+    },
+}
+
+impl RequestParameters {
+    pub fn from_json(params: Value) -> Self {
+        match params {
+            Value::Null => Self::None,
+            Value::Array(values) => Self::Positional(values),
+            Value::Object(values) => Self::Named(values.into_iter().collect()),
+            value => Self::Positional(vec![value]),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum MethodCall {
+    GetBlockchainInfo(GetBlockchainInfoRequest),
+    GetMempoolInfo(GetMempoolInfoRequest),
+    GetNetworkInfo(GetNetworkInfoRequest),
+    SendRawTransaction(SendRawTransactionRequest),
+    DeriveAddresses(DeriveAddressesRequest),
+    GetWalletInfo(GetWalletInfoRequest),
+    GetBalances(GetBalancesRequest),
+    ListUnspent(ListUnspentRequest),
+    ImportDescriptors(ImportDescriptorsRequest),
+    RescanBlockchain(RescanBlockchainRequest),
+    BuildTransaction(BuildTransactionRequest),
+    BuildAndSignTransaction(BuildAndSignTransactionRequest),
+}
+
+pub fn normalize_method_call(
+    method_name: &str,
+    params: RequestParameters,
+) -> Result<MethodCall, RpcFailure> {
+    let Some(method) = SupportedMethod::from_name(method_name) else {
+        return Err(RpcFailure::method_not_found(method_name));
+    };
+
+    match method {
+        SupportedMethod::GetBlockchainInfo => {
+            normalize_request::<GetBlockchainInfoRequest>(&[], params)
+                .map(MethodCall::GetBlockchainInfo)
+        }
+        SupportedMethod::GetMempoolInfo => {
+            normalize_request::<GetMempoolInfoRequest>(&[], params).map(MethodCall::GetMempoolInfo)
+        }
+        SupportedMethod::GetNetworkInfo => {
+            normalize_request::<GetNetworkInfoRequest>(&[], params).map(MethodCall::GetNetworkInfo)
+        }
+        SupportedMethod::SendRawTransaction => normalize_request::<SendRawTransactionRequest>(
+            &["hexstring", "maxfeerate", "maxburnamount", "ignore_rejects"],
+            params,
+        )
+        .map(MethodCall::SendRawTransaction),
+        SupportedMethod::DeriveAddresses => {
+            let request =
+                normalize_request::<DeriveAddressesRequest>(&["descriptor", "range"], params)?;
+            if !request.descriptor.contains('#') {
+                return Err(RpcFailure::invalid_params(
+                    "deriveaddresses requires a checksum-qualified descriptor",
+                ));
+            }
+            if request.maybe_range.is_some() {
+                return Err(RpcFailure::invalid_params(
+                    "ranged descriptors are deferred to later wallet phases",
+                ));
+            }
+            Ok(MethodCall::DeriveAddresses(request))
+        }
+        SupportedMethod::GetWalletInfo => {
+            normalize_request::<GetWalletInfoRequest>(&[], params).map(MethodCall::GetWalletInfo)
+        }
+        SupportedMethod::GetBalances => {
+            normalize_request::<GetBalancesRequest>(&[], params).map(MethodCall::GetBalances)
+        }
+        SupportedMethod::ListUnspent => normalize_request::<ListUnspentRequest>(
+            &[
+                "minconf",
+                "maxconf",
+                "addresses",
+                "include_unsafe",
+                "query_options",
+            ],
+            params,
+        )
+        .map(MethodCall::ListUnspent),
+        SupportedMethod::ImportDescriptors => {
+            normalize_request::<ImportDescriptorsRequest>(&["requests"], params)
+                .map(MethodCall::ImportDescriptors)
+        }
+        SupportedMethod::RescanBlockchain => {
+            normalize_request::<RescanBlockchainRequest>(&["start_height", "stop_height"], params)
+                .map(MethodCall::RescanBlockchain)
+        }
+        SupportedMethod::BuildTransaction => normalize_request::<BuildTransactionRequest>(
+            &[
+                "recipients",
+                "fee_rate_sat_per_kvb",
+                "change_descriptor_id",
+                "lock_time",
+                "replaceable",
+            ],
+            params,
+        )
+        .map(MethodCall::BuildTransaction),
+        SupportedMethod::BuildAndSignTransaction => {
+            normalize_request::<BuildAndSignTransactionRequest>(
+                &[
+                    "recipients",
+                    "fee_rate_sat_per_kvb",
+                    "change_descriptor_id",
+                    "lock_time",
+                    "replaceable",
+                ],
+                params,
+            )
+            .map(MethodCall::BuildAndSignTransaction)
+        }
+    }
+}
+
+fn normalize_request<T: DeserializeOwned>(
+    ordered_fields: &[&str],
+    params: RequestParameters,
+) -> Result<T, RpcFailure> {
+    let (positional, named) = match params {
+        RequestParameters::None => (Vec::new(), Vec::new()),
+        RequestParameters::Positional(values) => (values, Vec::new()),
+        RequestParameters::Named(values) => (Vec::new(), values),
+        RequestParameters::Mixed { positional, named } => (positional, named),
+    };
+
+    if positional.len() > ordered_fields.len() {
+        return Err(RpcFailure::invalid_params(format!(
+            "too many positional parameters: expected at most {}, got {}",
+            ordered_fields.len(),
+            positional.len()
+        )));
+    }
+
+    let mut object = Map::new();
+    for (index, value) in positional.into_iter().enumerate() {
+        object.insert(ordered_fields[index].to_string(), value);
+    }
+
+    for (name, value) in named {
+        if !ordered_fields.iter().any(|allowed| *allowed == name) {
+            return Err(RpcFailure::invalid_params(format!(
+                "unknown named parameter {name}"
+            )));
+        }
+        if object.contains_key(&name) {
+            return Err(RpcFailure::invalid_params(format!(
+                "named parameter {name} was provided multiple times or collides with a positional argument"
+            )));
+        }
+        object.insert(name, value);
+    }
+
+    serde_json::from_value(Value::Object(object))
+        .map_err(|error| RpcFailure::invalid_params(error.to_string()))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct GetBlockchainInfoRequest {}
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct GetBlockchainInfoResponse {
+    pub chain: String,
     pub blocks: u32,
     pub headers: u32,
+    #[serde(rename = "bestblockhash", skip_serializing_if = "Option::is_none")]
     pub maybe_best_block_hash: Option<String>,
+    #[serde(rename = "mediantime", skip_serializing_if = "Option::is_none")]
     pub maybe_median_time_past: Option<i64>,
+    pub verificationprogress: f64,
+    pub initialblockdownload: bool,
+    pub warnings: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -97,12 +284,14 @@ pub struct GetMempoolInfoRequest {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GetMempoolInfoResponse {
-    pub transaction_count: usize,
-    pub total_virtual_size: usize,
+    pub size: usize,
+    pub bytes: usize,
+    pub usage: usize,
     pub total_fee_sats: i64,
-    pub min_relay_feerate_sats_per_kvb: i64,
-    pub incremental_relay_feerate_sats_per_kvb: i64,
-    pub max_mempool_virtual_size: usize,
+    pub maxmempool: usize,
+    pub mempoolminfee: i64,
+    pub minrelaytxfee: i64,
+    pub loaded: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -111,24 +300,32 @@ pub struct GetNetworkInfoRequest {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GetNetworkInfoResponse {
-    pub protocol_version: i32,
+    pub version: i32,
     pub subversion: String,
-    pub local_services_bits: u64,
-    pub relay: bool,
+    pub protocolversion: i32,
+    pub localservices: String,
+    pub localrelay: bool,
     pub connections: usize,
-    pub inbound_connections: usize,
-    pub outbound_connections: usize,
-    pub wtxidrelay_connections: usize,
-    pub header_preferring_connections: usize,
+    #[serde(rename = "connections_in")]
+    pub connections_in: usize,
+    #[serde(rename = "connections_out")]
+    pub connections_out: usize,
+    pub relayfee: i64,
+    pub incrementalfee: i64,
+    pub warnings: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SendRawTransactionRequest {
+    #[serde(rename = "hexstring")]
     pub transaction_hex: String,
+    #[serde(rename = "maxfeerate", default)]
     pub maybe_max_fee_rate_sat_per_kvb: Option<i64>,
+    #[serde(rename = "maxburnamount", default)]
     pub maybe_max_burn_amount_sats: Option<i64>,
-    pub ignore_rejects: bool,
+    #[serde(default)]
+    pub ignore_rejects: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -148,8 +345,8 @@ pub struct DescriptorRange {
 #[serde(deny_unknown_fields)]
 pub struct DeriveAddressesRequest {
     pub descriptor: String,
+    #[serde(rename = "range", default)]
     pub maybe_range: Option<DescriptorRange>,
-    pub require_checksum: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -189,20 +386,30 @@ pub struct GetBalancesResponse {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ListUnspentQuery {
+    #[serde(rename = "minimumAmount", default)]
     pub maybe_minimum_amount_sats: Option<i64>,
+    #[serde(rename = "maximumAmount", default)]
     pub maybe_maximum_amount_sats: Option<i64>,
+    #[serde(rename = "maximumCount", default)]
     pub maybe_maximum_count: Option<usize>,
+    #[serde(rename = "minimumSumAmount", default)]
     pub maybe_minimum_sum_amount_sats: Option<i64>,
+    #[serde(rename = "include_immature_coinbase", default)]
     pub include_immature_coinbase: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ListUnspentRequest {
+    #[serde(rename = "minconf", default)]
     pub maybe_min_confirmations: Option<u32>,
+    #[serde(rename = "maxconf", default)]
     pub maybe_max_confirmations: Option<u32>,
+    #[serde(default)]
     pub addresses: Vec<String>,
+    #[serde(default)]
     pub include_unsafe: bool,
+    #[serde(rename = "query_options", default)]
     pub query: ListUnspentQuery,
 }
 
@@ -221,18 +428,16 @@ pub struct ListUnspentResponse {
     pub entries: Vec<ListUnspentEntry>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ImportDescriptorRole {
-    External,
-    Internal,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DescriptorImportItem {
+    #[serde(rename = "desc")]
     pub descriptor: String,
+    #[serde(default)]
     pub label: String,
-    pub role: ImportDescriptorRole,
+    #[serde(default)]
+    pub internal: bool,
+    #[serde(rename = "timestamp", default)]
     pub maybe_rescan_since_height: Option<u32>,
 }
 
@@ -257,7 +462,9 @@ pub struct ImportDescriptorsResponse {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RescanBlockchainRequest {
+    #[serde(default)]
     pub maybe_start_height: Option<u32>,
+    #[serde(default)]
     pub maybe_stop_height: Option<u32>,
 }
 
@@ -286,8 +493,11 @@ pub struct SelectedInput {
 pub struct BuildTransactionRequest {
     pub recipients: Vec<TransactionRecipient>,
     pub fee_rate_sat_per_kvb: i64,
+    #[serde(rename = "change_descriptor_id", default)]
     pub maybe_change_descriptor_id: Option<u32>,
+    #[serde(rename = "lock_time", default)]
     pub maybe_lock_time: Option<u32>,
+    #[serde(rename = "replaceable", default)]
     pub enable_rbf: bool,
 }
 
@@ -304,8 +514,11 @@ pub struct BuildTransactionResponse {
 pub struct BuildAndSignTransactionRequest {
     pub recipients: Vec<TransactionRecipient>,
     pub fee_rate_sat_per_kvb: i64,
+    #[serde(rename = "change_descriptor_id", default)]
     pub maybe_change_descriptor_id: Option<u32>,
+    #[serde(rename = "lock_time", default)]
     pub maybe_lock_time: Option<u32>,
+    #[serde(rename = "replaceable", default)]
     pub enable_rbf: bool,
 }
 

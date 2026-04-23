@@ -21,6 +21,7 @@ pub enum RpcErrorCode {
     ClientNotConnected,
     WalletNotFound,
     WalletNotSpecified,
+    VerifyRejected,
 }
 
 impl RpcErrorCode {
@@ -37,6 +38,7 @@ impl RpcErrorCode {
             Self::ClientNotConnected => -9,
             Self::WalletNotFound => -18,
             Self::WalletNotSpecified => -19,
+            Self::VerifyRejected => -26,
         }
     }
 }
@@ -57,6 +59,7 @@ impl TryFrom<i32> for RpcErrorCode {
             -32602 => Ok(Self::InvalidParams),
             -32601 => Ok(Self::MethodNotFound),
             -32600 => Ok(Self::InvalidRequest),
+            -26 => Ok(Self::VerifyRejected),
             -19 => Ok(Self::WalletNotSpecified),
             -18 => Ok(Self::WalletNotFound),
             -9 => Ok(Self::ClientNotConnected),
@@ -74,34 +77,33 @@ pub enum RpcFailureKind {
     InvalidRequest,
     MethodNotFound,
     InvalidParams,
-    WalletRequired,
-    AuthenticationFailed,
+    WalletError,
     ClientNotConnected,
+    AuthenticationFailed,
     InternalError,
 }
 
 impl RpcFailureKind {
-    pub const fn maybe_error_code(self) -> Option<RpcErrorCode> {
+    pub const fn http_status(self) -> u16 {
+        match self {
+            Self::ParseError | Self::InvalidRequest | Self::InvalidParams => HTTP_BAD_REQUEST,
+            Self::MethodNotFound => HTTP_NOT_FOUND,
+            Self::WalletError | Self::InternalError => HTTP_INTERNAL_SERVER_ERROR,
+            Self::AuthenticationFailed => HTTP_UNAUTHORIZED,
+            Self::ClientNotConnected => HTTP_SERVICE_UNAVAILABLE,
+        }
+    }
+
+    pub const fn default_error_code(self) -> Option<RpcErrorCode> {
         match self {
             Self::ParseError => Some(RpcErrorCode::ParseError),
             Self::InvalidRequest => Some(RpcErrorCode::InvalidRequest),
             Self::MethodNotFound => Some(RpcErrorCode::MethodNotFound),
             Self::InvalidParams => Some(RpcErrorCode::InvalidParams),
-            Self::WalletRequired => Some(RpcErrorCode::WalletNotSpecified),
-            // Knots rejects missing or invalid HTTP auth at the transport layer with 401.
-            Self::AuthenticationFailed => None,
+            Self::WalletError => Some(RpcErrorCode::WalletError),
             Self::ClientNotConnected => Some(RpcErrorCode::ClientNotConnected),
+            Self::AuthenticationFailed => None,
             Self::InternalError => Some(RpcErrorCode::InternalError),
-        }
-    }
-
-    pub const fn http_status(self) -> u16 {
-        match self {
-            Self::ParseError | Self::InvalidRequest | Self::InvalidParams => HTTP_BAD_REQUEST,
-            Self::MethodNotFound => HTTP_NOT_FOUND,
-            Self::WalletRequired | Self::InternalError => HTTP_INTERNAL_SERVER_ERROR,
-            Self::AuthenticationFailed => HTTP_UNAUTHORIZED,
-            Self::ClientNotConnected => HTTP_SERVICE_UNAVAILABLE,
         }
     }
 }
@@ -119,9 +121,69 @@ impl RpcErrorDetail {
             message: message.into(),
         }
     }
+}
 
-    pub fn maybe_from_kind(kind: RpcFailureKind, message: impl Into<String>) -> Option<Self> {
-        let maybe_code = kind.maybe_error_code()?;
-        Some(Self::new(maybe_code, message))
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RpcFailure {
+    pub kind: RpcFailureKind,
+    pub maybe_detail: Option<RpcErrorDetail>,
+}
+
+impl RpcFailure {
+    pub fn new(kind: RpcFailureKind, maybe_detail: Option<RpcErrorDetail>) -> Self {
+        Self { kind, maybe_detail }
+    }
+
+    pub fn from_kind(kind: RpcFailureKind, message: impl Into<String>) -> Self {
+        let maybe_detail = kind
+            .default_error_code()
+            .map(|code| RpcErrorDetail::new(code, message));
+        Self::new(kind, maybe_detail)
+    }
+
+    pub fn parse_error(message: impl Into<String>) -> Self {
+        Self::from_kind(RpcFailureKind::ParseError, message)
+    }
+
+    pub fn invalid_request(message: impl Into<String>) -> Self {
+        Self::from_kind(RpcFailureKind::InvalidRequest, message)
+    }
+
+    pub fn method_not_found(name: &str) -> Self {
+        Self::from_kind(
+            RpcFailureKind::MethodNotFound,
+            format!("method {name} is not supported in Phase 8"),
+        )
+    }
+
+    pub fn invalid_params(message: impl Into<String>) -> Self {
+        Self::from_kind(RpcFailureKind::InvalidParams, message)
+    }
+
+    pub fn wallet_error(message: impl Into<String>) -> Self {
+        Self::from_kind(RpcFailureKind::WalletError, message)
+    }
+
+    pub fn client_not_connected(message: impl Into<String>) -> Self {
+        Self::from_kind(RpcFailureKind::ClientNotConnected, message)
+    }
+
+    pub fn authentication_failed() -> Self {
+        Self::new(RpcFailureKind::AuthenticationFailed, None)
+    }
+
+    pub fn internal_error(message: impl Into<String>) -> Self {
+        Self::from_kind(RpcFailureKind::InternalError, message)
+    }
+
+    pub fn verify_rejected(message: impl Into<String>) -> Self {
+        Self::new(
+            RpcFailureKind::InvalidParams,
+            Some(RpcErrorDetail::new(RpcErrorCode::VerifyRejected, message)),
+        )
+    }
+
+    pub fn http_status(&self) -> u16 {
+        self.kind.http_status()
     }
 }

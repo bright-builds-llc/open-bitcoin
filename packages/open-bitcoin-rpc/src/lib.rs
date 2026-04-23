@@ -4,6 +4,7 @@
 
 pub mod config;
 pub mod context;
+pub mod dispatch;
 pub mod envelope;
 pub mod error;
 pub mod method;
@@ -15,5 +16,5 @@ pub use context::ManagedRpcContext;
 pub use envelope::{
     JsonRpcId, JsonRpcVersion, RpcErrorEnvelope, RpcRequestEnvelope, RpcSuccessEnvelope,
 };
-pub use error::{RpcErrorCode, RpcErrorDetail, RpcFailureKind};
+pub use error::{RpcErrorCode, RpcErrorDetail, RpcFailure, RpcFailureKind};
 pub use method::{MethodOrigin, SupportedMethod};
