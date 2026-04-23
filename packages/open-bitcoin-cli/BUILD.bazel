@@ -1,0 +1,15 @@
+load("@rules_rust//rust:defs.bzl", "rust_library")
+
+rust_library(
+    name = "open_bitcoin_cli_lib",
+    srcs = glob(["src/**/*.rs"]),
+    crate_name = "open_bitcoin_cli",
+    edition = "2024",
+    deps = [
+        "@crate_index//:clap",
+        "@crate_index//:serde",
+        "@crate_index//:serde_json",
+        "@crate_index//:ureq",
+    ],
+    visibility = ["//visibility:public"],
+)

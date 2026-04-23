@@ -9,6 +9,8 @@ members = [
     "open-bitcoin-mempool",
     "open-bitcoin-wallet",
     "open-bitcoin-node",
+    "open-bitcoin-rpc",
+    "open-bitcoin-cli",
 ]
 resolver = "3"
 

@@ -41,6 +41,18 @@ alias(
 )
 
 alias(
+    name = "rpc",
+    actual = "//packages/open-bitcoin-rpc:open_bitcoin_rpc_lib",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "cli",
+    actual = "//packages/open-bitcoin-cli:open_bitcoin_cli_lib",
+    visibility = ["//visibility:public"],
+)
+
+alias(
     name = "mempool",
     actual = "//packages/open-bitcoin-mempool:open_bitcoin_mempool_lib",
     visibility = ["//visibility:public"],
