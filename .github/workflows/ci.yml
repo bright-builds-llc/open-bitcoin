@@ -7,6 +7,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   OPEN_BITCOIN_PARITY_REPORT_DIR: ${{ github.workspace }}/packages/target/parity-reports
+  OPEN_BITCOIN_BENCHMARK_REPORT_DIR: ${{ github.workspace }}/packages/target/benchmark-reports
 
 jobs:
   verify:
@@ -53,4 +54,12 @@ jobs:
         with:
           name: parity-reports
           path: packages/target/parity-reports
+          if-no-files-found: ignore
+
+      - name: Upload benchmark reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-reports
+          path: packages/target/benchmark-reports
           if-no-files-found: ignore
