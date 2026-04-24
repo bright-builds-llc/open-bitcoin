@@ -45,6 +45,10 @@ fn cli_arg(name: &str, value: &Path) -> OsString {
     OsString::from(format!("-{name}={}", value.display()))
 }
 
+fn os(value: &str) -> OsString {
+    OsString::from(value)
+}
+
 #[test]
 fn runtime_config_defaults_to_local_single_wallet_auth() {
     // Arrange
@@ -57,7 +61,8 @@ fn runtime_config_defaults_to_local_single_wallet_auth() {
     assert_eq!(runtime.chain, AddressNetwork::Mainnet);
     assert_eq!(runtime.maybe_data_dir, None);
     assert_eq!(runtime.rpc_server.bind_address, expected_bind);
-    assert_eq!(runtime.rpc_client.connect_address, expected_bind);
+    assert_eq!(runtime.rpc_client.endpoint.host, "127.0.0.1");
+    assert_eq!(runtime.rpc_client.endpoint.port, expected_bind.port());
     assert_eq!(
         runtime.wallet.scope,
         WalletRuntimeScope::LocalOperatorSingleWallet
@@ -81,6 +86,56 @@ fn runtime_config_defaults_to_local_single_wallet_auth() {
             maybe_cookie_file: Some(_)
         }
     ));
+}
+
+#[test]
+fn rpcconnect_accepts_hostnames_and_preserves_port_precedence() {
+    // Arrange
+    let sandbox = TestDirectory::new("rpcconnect-hostnames");
+
+    // Act
+    let hostname_default =
+        load_runtime_config_for_args(&[os("-rpcconnect=localhost")], &sandbox.path)
+            .expect("hostname without port");
+    let hostname_embedded = load_runtime_config_for_args(
+        &[os("-regtest"), os("-rpcconnect=localhost:18442")],
+        &sandbox.path,
+    )
+    .expect("hostname with embedded port");
+    let explicit_port = load_runtime_config_for_args(
+        &[
+            os("-regtest"),
+            os("-rpcconnect=localhost:18442"),
+            os("-rpcport=18443"),
+        ],
+        &sandbox.path,
+    )
+    .expect("explicit port");
+    let ipv4_embedded =
+        load_runtime_config_for_args(&[os("-rpcconnect=127.0.0.1:8339")], &sandbox.path)
+            .expect("ipv4 endpoint");
+    let ipv6_embedded =
+        load_runtime_config_for_args(&[os("-rpcconnect=[::1]:8339")], &sandbox.path)
+            .expect("ipv6 endpoint");
+    let server_bind_error =
+        load_runtime_config_for_args(&[os("-rpcbind=localhost")], &sandbox.path)
+            .expect_err("server bind keeps socket-only validation");
+
+    // Assert
+    assert_eq!(hostname_default.rpc_client.endpoint.host, "localhost");
+    assert_eq!(hostname_default.rpc_client.endpoint.port, 8332);
+    assert_eq!(hostname_embedded.rpc_client.endpoint.host, "localhost");
+    assert_eq!(hostname_embedded.rpc_client.endpoint.port, 18_442);
+    assert_eq!(explicit_port.rpc_client.endpoint.host, "localhost");
+    assert_eq!(explicit_port.rpc_client.endpoint.port, 18_443);
+    assert_eq!(ipv4_embedded.rpc_client.endpoint.host, "127.0.0.1");
+    assert_eq!(ipv4_embedded.rpc_client.endpoint.port, 8339);
+    assert_eq!(ipv6_embedded.rpc_client.endpoint.host, "::1");
+    assert_eq!(ipv6_embedded.rpc_client.endpoint.port, 8339);
+    assert_eq!(
+        server_bind_error.to_string(),
+        "invalid rpc address: localhost"
+    );
 }
 
 #[test]

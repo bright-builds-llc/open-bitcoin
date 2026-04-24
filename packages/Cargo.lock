@@ -762,6 +762,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "base64",
+ "getrandom 0.3.4",
  "open-bitcoin-node",
  "serde",
  "serde_json",

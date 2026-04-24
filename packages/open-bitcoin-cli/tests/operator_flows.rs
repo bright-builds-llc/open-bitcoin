@@ -4,7 +4,7 @@ use std::{
     io::{Read, Write},
     net::{SocketAddr, TcpListener, TcpStream},
     path::{Path, PathBuf},
-    process::{Command, Output},
+    process::{Command, Output, Stdio},
     sync::{
         Arc, Mutex,
         atomic::{AtomicU64, Ordering},
@@ -586,15 +586,7 @@ fn descriptor_rescan_balance_build_sign_and_send_roundtrip() {
             format!("requests={descriptor_requests}"),
         ],
     );
-    let rescan_output = run_cli_with_rpc(
-        &server,
-        &sandbox,
-        &[
-            "rescanblockchain".to_string(),
-            "0".to_string(),
-            "0".to_string(),
-        ],
-    );
+    let rescan_output = run_cli_with_rpc(&server, &sandbox, &["rescanblockchain".to_string()]);
     let balances_output = run_cli_with_rpc(&server, &sandbox, &["getbalances".to_string()]);
     let unspent_output = run_cli_with_rpc(&server, &sandbox, &["listunspent".to_string()]);
     let import_json = assert_success_json(&import_output);
@@ -635,7 +627,7 @@ fn descriptor_rescan_balance_build_sign_and_send_roundtrip() {
     assert_eq!(import_json["results"][1]["success"], json!(true));
 
     assert_eq!(rescan_json["start_height"], json!(0));
-    assert_eq!(rescan_json["stop_height"], json!(0));
+    assert_eq!(rescan_json["stop_height"], json!(1));
 
     assert_eq!(balances_json["mine"]["trusted_sats"], json!(75_000));
 
@@ -691,6 +683,62 @@ fn deferred_surfaces_fail_explicitly() {
     assert_eq!(
         stderr_text(&rpcwallet_output).trim(),
         "-rpcwallet is deferred until wallet-scoped RPC endpoints land in a later Phase 8 plan.",
+    );
+}
+
+#[test]
+fn normal_cli_without_stdin_flags_does_not_wait_for_open_stdin() {
+    // Arrange
+    let sandbox = TestSandbox::new("open-stdin");
+    let mut command = Command::new(env!("CARGO_BIN_EXE_open-bitcoin-cli"));
+    command
+        .env("HOME", &sandbox.home)
+        .arg("-rpcconnect=127.0.0.1")
+        .arg("-rpcport=1")
+        .arg(format!("-rpcuser={RPC_USERNAME}"))
+        .arg(format!("-rpcpassword={RPC_PASSWORD}"))
+        .arg("getnetworkinfo")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut child = command.spawn().expect("spawn cli");
+    let _stdin_guard = child.stdin.take().expect("stdin pipe");
+    let deadline = Instant::now() + Duration::from_secs(2);
+
+    // Act
+    let status = loop {
+        if let Some(status) = child.try_wait().expect("poll cli") {
+            break status;
+        }
+        if Instant::now() >= deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            panic!("open stdin pipe kept no-stdin CLI invocation running");
+        }
+        thread::sleep(Duration::from_millis(10));
+    };
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    child
+        .stdout
+        .take()
+        .expect("stdout pipe")
+        .read_to_end(&mut stdout)
+        .expect("stdout");
+    child
+        .stderr
+        .take()
+        .expect("stderr pipe")
+        .read_to_end(&mut stderr)
+        .expect("stderr");
+
+    // Assert
+    assert_eq!(status.code(), Some(1));
+    assert!(stdout.is_empty());
+    assert!(
+        String::from_utf8(stderr)
+            .expect("stderr text")
+            .contains("Could not connect to the server 127.0.0.1:1")
     );
 }
 

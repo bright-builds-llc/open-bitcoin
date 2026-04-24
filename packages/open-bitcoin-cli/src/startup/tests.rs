@@ -119,3 +119,37 @@ fn client_startup_resolves_conf_datadir_and_auth_precedence() {
         }
     );
 }
+
+#[test]
+fn client_startup_preserves_rpcconnect_hostnames() {
+    // Arrange
+    let sandbox = TestDirectory::new("rpcconnect-hostname");
+    let default_data_dir = sandbox.child("default");
+    fs::create_dir_all(&default_data_dir).expect("default datadir");
+    let embedded_cli = parse_cli_args(
+        &[os("-rpcconnect=localhost:18442"), os("getnetworkinfo")],
+        "",
+    )
+    .expect("embedded rpcconnect");
+    let explicit_cli = parse_cli_args(
+        &[
+            os("-rpcconnect=localhost:18442"),
+            os("-rpcport=18443"),
+            os("getnetworkinfo"),
+        ],
+        "",
+    )
+    .expect("explicit rpcport");
+
+    // Act
+    let embedded_startup =
+        resolve_startup_config(&embedded_cli.startup, &default_data_dir).expect("embedded port");
+    let explicit_startup =
+        resolve_startup_config(&explicit_cli.startup, &default_data_dir).expect("explicit port");
+
+    // Assert
+    assert_eq!(embedded_startup.rpc.host, "localhost");
+    assert_eq!(embedded_startup.rpc.port, 18_442);
+    assert_eq!(explicit_startup.rpc.host, "localhost");
+    assert_eq!(explicit_startup.rpc.port, 18_443);
+}

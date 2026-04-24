@@ -1,6 +1,8 @@
 mod client;
 mod output;
 
+use open_bitcoin_cli::args::stdin_required_for_args;
+
 use std::{
     env,
     io::{self, Read},
@@ -10,8 +12,13 @@ use std::{
 
 fn main() -> ExitCode {
     let cli_args = env::args_os().skip(1).collect::<Vec<_>>();
-    let mut stdin = String::new();
-    io::stdin().read_to_string(&mut stdin).expect("stdin");
+    let stdin = if stdin_required_for_args(&cli_args) {
+        let mut stdin = String::new();
+        io::stdin().read_to_string(&mut stdin).expect("stdin");
+        stdin
+    } else {
+        String::new()
+    };
 
     match client::run_cli(&cli_args, &stdin, &default_data_dir()) {
         Ok(stdout) => {

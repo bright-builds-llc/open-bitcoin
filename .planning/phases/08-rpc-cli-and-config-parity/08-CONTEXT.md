@@ -1,13 +1,13 @@
 ---
 generated_by: gsd-discuss-phase
 lifecycle_mode: yolo
-phase_lifecycle_id: 08-2026-04-23T12-45-45
-generated_at: 2026-04-23T12:45:45.574Z
+phase_lifecycle_id: 08-2026-04-24T02-23-19
+generated_at: 2026-04-24T02:23:19.414Z
 ---
 
 # Phase 8: RPC, CLI, and Config Parity - Context
 
-**Gathered:** 2026-04-23
+**Gathered:** 2026-04-24
 **Status:** Ready for planning
 **Mode:** Yolo
 
@@ -131,7 +131,7 @@ external signer flows, GUI surfaces, Phase 9 black-box harness work, or Phase
 
 ### Phase 8 artifacts
 - `.planning/phases/08-rpc-cli-and-config-parity/08-RESEARCH.md` — technical research and baseline references for RPC/CLI/config parity.
-- `.planning/phases/08-rpc-cli-and-config-parity/08-VERIFICATION.md` — verifier gaps that triggered the current gap-closure discussion.
+- `.planning/phases/08-rpc-cli-and-config-parity/08-GAPS.md` — preserved verifier gaps that triggered the current gap-closure discussion.
 - `.planning/phases/08-rpc-cli-and-config-parity/08-01-SUMMARY.md` — workspace and crate scaffold already built.
 - `.planning/phases/08-rpc-cli-and-config-parity/08-02-SUMMARY.md` — adapter seam and shared typed contract work already built.
 - `.planning/phases/08-rpc-cli-and-config-parity/08-03-SUMMARY.md` — RPC/config implementation summary; missing lifecycle metadata is known.
@@ -251,4 +251,4 @@ external signer flows, GUI surfaces, Phase 9 black-box harness work, or Phase
 ---
 
 *Phase: 08-rpc-cli-and-config-parity*
-*Context gathered: 2026-04-23*
+*Context gathered: 2026-04-24*

@@ -74,7 +74,7 @@ fn ranged_descriptors_and_deferred_methods_fail_explicitly() {
 }
 
 #[test]
-fn named_params_normalize_and_reject_duplicate_or_colliding_keys() {
+fn named_params_distinguish_duplicate_keys_from_positional_collisions() {
     // Arrange
     let named_request = RequestParameters::Named(vec![(
         "descriptor".to_string(),
@@ -111,14 +111,12 @@ fn named_params_normalize_and_reject_duplicate_or_colliding_keys() {
     assert!(normalized.is_ok());
     assert_eq!(
         duplicate_error,
-        RpcFailure::invalid_params(
-            "named parameter descriptor was provided multiple times or collides with a positional argument",
-        ),
+        RpcFailure::invalid_params("named parameter descriptor was provided multiple times"),
     );
     assert_eq!(
         collision_error,
         RpcFailure::invalid_params(
-            "named parameter descriptor was provided multiple times or collides with a positional argument",
+            "named parameter descriptor collides with a positional argument"
         ),
     );
 }

@@ -35,8 +35,8 @@ pub fn resolve_startup_config(
         conf_path,
         maybe_data_dir: runtime.maybe_data_dir,
         rpc: CliRpcConfig {
-            host: runtime.rpc_client.connect_address.ip().to_string(),
-            port: runtime.rpc_client.connect_address.port(),
+            host: runtime.rpc_client.endpoint.host,
+            port: runtime.rpc_client.endpoint.port,
             auth: runtime.rpc_client.auth,
         },
     })

@@ -3,7 +3,7 @@
 > **Audit trail only.** Do not use as input to planning, research, or execution agents.
 > Decisions are captured in CONTEXT.md — this log preserves the alternatives considered.
 
-**Date:** 2026-04-23T12:45:45.574Z
+**Date:** 2026-04-24T02:23:19.414Z
 **Phase:** 08-rpc-cli-and-config-parity
 **Mode:** Yolo
 **Areas discussed:** phase boundary refresh, RPC gap closure, CLI/config gap closure, verification and docs, lifecycle provenance
@@ -79,7 +79,7 @@
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Start a fresh yolo lifecycle and replan from it | Write refreshed context with a new `phase_lifecycle_id`; downstream planning should inherit it | ✓ |
+| Start a fresh yolo lifecycle and replan from it | Write refreshed context with `phase_lifecycle_id: 08-2026-04-24T02-23-19`; downstream planning should inherit it | ✓ |
 | Retrofit old summaries during discussion | Edit `08-03` through `08-05` summaries in this discuss step | |
 | Keep the previous lifecycle id | Leave context tied to the old plan/summary set that already failed lifecycle validation | |
 

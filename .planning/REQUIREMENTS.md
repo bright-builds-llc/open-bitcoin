@@ -50,9 +50,9 @@
 
 ### Interfaces
 
-- [ ] **RPC-01**: In-scope RPC methods, result payloads, and error semantics match the pinned baseline.
-- [ ] **CLI-01**: In-scope CLI commands, config-file parsing, and option precedence match the pinned baseline.
-- [ ] **CLI-02**: Operators can run the node and wallet headlessly through CLI and RPC surfaces only.
+- [x] **RPC-01**: In-scope RPC methods, result payloads, and error semantics match the pinned baseline.
+- [x] **CLI-01**: In-scope CLI commands, config-file parsing, and option precedence match the pinned baseline.
+- [x] **CLI-02**: Operators can run the node and wallet headlessly through CLI and RPC surfaces only.
 
 ### Performance & Auditability
 
@@ -102,9 +102,9 @@
 | WAL-01 | Phase 7 | Complete |
 | WAL-02 | Phase 7 | Complete |
 | WAL-03 | Phase 7 | Complete |
-| RPC-01 | Phase 8 | Pending |
-| CLI-01 | Phase 8 | Pending |
-| CLI-02 | Phase 8 | Pending |
+| RPC-01 | Phase 8 | Complete |
+| CLI-01 | Phase 8 | Complete |
+| CLI-02 | Phase 8 | Complete |
 | VER-03 | Phase 9 | Pending |
 | VER-04 | Phase 9 | Pending |
 | PAR-01 | Phase 9 | Pending |

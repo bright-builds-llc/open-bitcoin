@@ -261,6 +261,33 @@ pub fn parse_cli_args(cli_args: &[OsString], stdin: &str) -> Result<ParsedCli, C
     })
 }
 
+pub fn stdin_required_for_args(cli_args: &[OsString]) -> bool {
+    cli_args
+        .iter()
+        .filter_map(|cli_arg| maybe_stdin_flag_enabled(&cli_arg.to_string_lossy()))
+        .any(|enabled| enabled)
+}
+
+fn maybe_stdin_flag_enabled(token: &str) -> Option<bool> {
+    if !token.starts_with('-') || token == "-" {
+        return None;
+    }
+
+    let normalized = token.trim_start_matches('-');
+    let (raw_key, maybe_value) = match normalized.split_once('=') {
+        Some((key, value)) => (key, Some(value)),
+        None => (normalized, None),
+    };
+    let (key, negated) = raw_key
+        .strip_prefix("no")
+        .map_or((raw_key, false), |stripped| (stripped, true));
+    if key != "stdin" && key != "stdinrpcpass" {
+        return None;
+    }
+
+    parse_bool_flag(maybe_value, negated, token).ok()
+}
+
 fn is_known_flag(token: &str) -> bool {
     let normalized = token.trim_start_matches('-');
     let raw_key = normalized
@@ -379,7 +406,7 @@ fn parse_named_parameters(raw_params: &[String]) -> Result<RequestParameters, Cl
             continue;
         }
 
-        set_named_value(&mut named, name.to_string(), parse_cli_value(value));
+        named.push((name.to_string(), parse_cli_value(value)));
     }
 
     let positional = maybe_explicit_args.unwrap_or(positional);
@@ -389,18 +416,6 @@ fn parse_named_parameters(raw_params: &[String]) -> Result<RequestParameters, Cl
         (true, false) => Ok(RequestParameters::Named(named)),
         (false, false) => Ok(RequestParameters::Mixed { positional, named }),
     }
-}
-
-fn set_named_value(named: &mut Vec<(String, Value)>, name: String, value: Value) {
-    if let Some((_, existing_value)) = named
-        .iter_mut()
-        .find(|(existing_name, _)| *existing_name == name)
-    {
-        *existing_value = value;
-        return;
-    }
-
-    named.push((name, value));
 }
 
 fn request_parameters_from_positional(raw_params: &[String]) -> RequestParameters {
@@ -436,20 +451,27 @@ fn map_rpc_failure(failure: RpcFailure) -> CliError {
         return CliError::new("Authentication failed");
     };
 
-    if let Some(collision_message) = positional_collision_message(&detail.message) {
-        return CliError::new(collision_message);
+    if let Some(parameter_message) = parameter_error_message(&detail.message) {
+        return CliError::new(parameter_message);
     }
 
     CliError::new(detail.message)
 }
 
-fn positional_collision_message(message: &str) -> Option<String> {
+fn parameter_error_message(message: &str) -> Option<String> {
+    let maybe_collision_name = message
+        .strip_prefix("named parameter ")?
+        .strip_suffix(" collides with a positional argument");
+    if let Some(name) = maybe_collision_name {
+        return Some(format!(
+            "Parameter {name} specified twice both as positional and named argument"
+        ));
+    }
+
     let name = message
         .strip_prefix("named parameter ")?
-        .strip_suffix(" was provided multiple times or collides with a positional argument")?;
-    Some(format!(
-        "Parameter {name} specified twice both as positional and named argument"
-    ))
+        .strip_suffix(" was provided multiple times")?;
+    Some(format!("Parameter {name} specified multiple times"))
 }
 
 #[cfg(test)]

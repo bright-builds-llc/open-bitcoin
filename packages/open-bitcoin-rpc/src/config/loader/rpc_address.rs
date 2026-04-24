@@ -1,17 +1,23 @@
-use std::net::SocketAddr;
+use crate::config::RpcClientEndpoint;
 
-use super::{ConfigError, parse_port, parse_socket_address};
+use super::{ConfigError, parse_port};
 
 pub(super) fn parse_rpc_client_address(
     rpc_connect: &str,
     maybe_explicit_port: Option<u16>,
     default_port: u16,
-) -> Result<SocketAddr, ConfigError> {
+) -> Result<RpcClientEndpoint, ConfigError> {
     let (host, maybe_embedded_port) = split_rpc_connect(rpc_connect)?;
+    if host.is_empty() {
+        return Err(ConfigError::new(format!(
+            "invalid rpc address: {rpc_connect}"
+        )));
+    }
+
     let port = maybe_explicit_port
         .or(maybe_embedded_port)
         .unwrap_or(default_port);
-    parse_socket_address(&host, port)
+    Ok(RpcClientEndpoint { host, port })
 }
 
 fn split_rpc_connect(value: &str) -> Result<(String, Option<u16>), ConfigError> {

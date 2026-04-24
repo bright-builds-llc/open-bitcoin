@@ -11,6 +11,7 @@ mod loader;
 
 pub const DEFAULT_COOKIE_AUTH_USER: &str = "__cookie__";
 pub const DEFAULT_COOKIE_FILE_NAME: &str = ".cookie";
+pub(super) const DEFAULT_RPC_HOST: &str = "127.0.0.1";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ConfigError {
@@ -83,17 +84,23 @@ impl Default for RpcServerConfig {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RpcClientConfig {
-    pub connect_address: SocketAddr,
+    pub endpoint: RpcClientEndpoint,
     pub auth: RpcAuthConfig,
 }
 
 impl Default for RpcClientConfig {
     fn default() -> Self {
         Self {
-            connect_address: default_rpc_address(AddressNetwork::Mainnet),
+            endpoint: default_rpc_endpoint(AddressNetwork::Mainnet),
             auth: RpcAuthConfig::default(),
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RpcClientEndpoint {
+    pub host: String,
+    pub port: u16,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -154,6 +161,13 @@ pub(super) fn default_rpc_port(chain: AddressNetwork) -> u16 {
 
 fn default_rpc_address(chain: AddressNetwork) -> SocketAddr {
     SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), default_rpc_port(chain))
+}
+
+fn default_rpc_endpoint(chain: AddressNetwork) -> RpcClientEndpoint {
+    RpcClientEndpoint {
+        host: DEFAULT_RPC_HOST.to_string(),
+        port: default_rpc_port(chain),
+    }
 }
 
 #[cfg(test)]

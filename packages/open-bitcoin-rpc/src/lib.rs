@@ -11,7 +11,8 @@ pub mod http;
 pub mod method;
 
 pub use config::{
-    RpcAuthConfig, RpcClientConfig, RpcServerConfig, RuntimeConfig, WalletRuntimeScope,
+    RpcAuthConfig, RpcClientConfig, RpcClientEndpoint, RpcServerConfig, RuntimeConfig,
+    WalletRuntimeScope,
 };
 pub use context::ManagedRpcContext;
 pub use envelope::{

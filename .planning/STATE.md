@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Phase 8 context gathered
-last_updated: "2026-04-23T12:48:22.089Z"
-last_activity: 2026-04-23 -- Phase 8 planning complete
+status: planning
+stopped_at: Phase 08 completed; Phase 9 ready to plan
+last_updated: "2026-04-24T09:29:50.872Z"
+last_activity: 2026-04-24 -- Phase 08 completed; Phase 9 ready to plan
 progress:
   total_phases: 20
-  completed_phases: 17
+  completed_phases: 18
   total_plans: 64
-  completed_plans: 61
-  percent: 95
+  completed_plans: 64
+  percent: 100
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-11)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 07.5 — Fix consensus parity gaps in contextual header validation and lax DER signature verification
+**Current focus:** Phase 9 — parity-harnesses-and-fuzzing
 
 ## Current Position
 
-Phase: 8
+Phase: 9
 Plan: Not started
-Status: Ready to execute
-Last activity: 2026-04-23 -- Phase 8 planning complete
+Status: Ready to plan
+Last activity: 2026-04-24 -- Phase 08 completed; Phase 9 ready to plan
 
 Progress: ██████████ 100%
 
@@ -36,7 +36,7 @@ Progress: ██████████ 100%
 
 **Velocity:**
 
-- Total plans completed: 51
+- Total plans completed: 59
 - Average duration: 0 min
 - Total execution time: 0.0 hours
 
@@ -60,6 +60,7 @@ Progress: ██████████ 100%
 | 07.3 | 3 | - | - |
 | 07.4 | 1 | - | - |
 | 07.6 | 3 | - | - |
+| 08 | 8 | - | - |
 
 **Recent Trend:**
 
@@ -128,6 +129,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-23T12:48:22.086Z
-Stopped at: Phase 8 context gathered
+Last session: 2026-04-24T02:23:49.486Z
+Stopped at: Phase 08 context gathered
 Resume file: .planning/phases/08-rpc-cli-and-config-parity/08-CONTEXT.md

@@ -312,11 +312,11 @@ Plans:
 **Plans**: 5 plans
 
 Plans:
-- [ ] 08-01-PLAN.md — Scaffold the new RPC and CLI shell crates plus workspace and verification wiring.
-- [ ] 08-02-PLAN.md — Add the adapter seam and shared typed RPC or config contracts before dispatcher work.
-- [ ] 08-03-PLAN.md — Implement shared config loading, the authenticated RPC server, and the supported method handlers.
-- [ ] 08-04-PLAN.md — Implement explicit `bitcoin-cli` startup, argument parsing, and `-getinfo` precedence behavior.
-- [ ] 08-05-PLAN.md — Implement the CLI HTTP client and operator-flow proof, and document the supported or deferred interface surface.
+- [x] 08-01-PLAN.md — Scaffold the new RPC and CLI shell crates plus workspace and verification wiring.
+- [x] 08-02-PLAN.md — Add the adapter seam and shared typed RPC or config contracts before dispatcher work.
+- [x] 08-03-PLAN.md — Implement shared config loading, the authenticated RPC server, and the supported method handlers.
+- [x] 08-04-PLAN.md — Implement explicit `bitcoin-cli` startup, argument parsing, and `-getinfo` precedence behavior.
+- [x] 08-05-PLAN.md — Implement the CLI HTTP client and operator-flow proof, and document the supported or deferred interface surface.
 
 ### Phase 9: Parity Harnesses and Fuzzing
 **Goal**: Build reusable verification systems that compare Open Bitcoin against Knots, isolate integration runs, and stress critical protocol boundaries.

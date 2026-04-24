@@ -9,6 +9,7 @@ rust_library(
         "//packages/open-bitcoin-node:open_bitcoin_node_lib",
         "@crate_index//:axum",
         "@crate_index//:base64",
+        "@crate_index//:getrandom",
         "@crate_index//:serde",
         "@crate_index//:serde_json",
         "@crate_index//:tokio",

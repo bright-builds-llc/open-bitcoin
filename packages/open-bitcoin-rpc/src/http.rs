@@ -1,9 +1,12 @@
 use std::{
     fs,
-    io::{Read, Write},
+    io::Write,
     path::{Path, PathBuf},
     sync::Arc,
 };
+
+#[cfg(unix)]
+use std::os::unix::fs::OpenOptionsExt;
 
 use axum::{
     Router,
@@ -424,27 +427,19 @@ fn read_or_create_cookie_password(path: &Path) -> std::io::Result<String> {
     {
         fs::create_dir_all(parent)?;
     }
-    let mut file = fs::File::create(path)?;
+    let mut open_options = fs::OpenOptions::new();
+    open_options.write(true).create(true).truncate(true);
+    #[cfg(unix)]
+    open_options.mode(0o600);
+    let mut file = open_options.open(path)?;
     file.write_all(format!("{DEFAULT_COOKIE_AUTH_USER}:{password}\n").as_bytes())?;
     Ok(password)
 }
 
 fn random_hex_secret() -> std::io::Result<String> {
     let mut bytes = [0_u8; 32];
-    if let Ok(mut urandom) = fs::File::open("/dev/urandom") {
-        urandom.read_exact(&mut bytes)?;
-        return Ok(hex_encode(&bytes));
-    }
-
-    let fallback = format!(
-        "{:x}{:x}",
-        std::process::id(),
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_nanos(),
-    );
-    Ok(fallback)
+    getrandom::fill(&mut bytes).map_err(|error| std::io::Error::other(error.to_string()))?;
+    Ok(hex_encode(&bytes))
 }
 
 fn hex_encode(bytes: &[u8]) -> String {

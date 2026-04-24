@@ -11,8 +11,8 @@ use std::{
 use open_bitcoin_node::core::wallet::AddressNetwork;
 
 use super::{
-    ConfigError, DEFAULT_COOKIE_FILE_NAME, RpcAuthConfig, RpcClientConfig, RpcServerConfig,
-    RuntimeConfig, WalletRuntimeConfig, default_rpc_port,
+    ConfigError, DEFAULT_COOKIE_FILE_NAME, DEFAULT_RPC_HOST, RpcAuthConfig, RpcClientConfig,
+    RpcServerConfig, RuntimeConfig, WalletRuntimeConfig, default_rpc_port,
 };
 
 mod rpc_address;
@@ -20,8 +20,6 @@ mod rpc_address;
 use rpc_address::parse_rpc_client_address;
 
 const BITCOIN_CONF_FILE_NAME: &str = "bitcoin.conf";
-const DEFAULT_RPC_HOST: &str = "127.0.0.1";
-
 #[derive(Debug, Clone, Default)]
 struct CliSettings {
     maybe_chain: Option<AddressNetwork>,
@@ -141,7 +139,7 @@ pub(super) fn load_runtime_config_for_args(
             auth: auth.clone(),
         },
         rpc_client: RpcClientConfig {
-            connect_address: parse_rpc_client_address(
+            endpoint: parse_rpc_client_address(
                 &rpc_connect,
                 maybe_explicit_rpc_port,
                 default_rpc_port(chain),

@@ -21,6 +21,12 @@ use crate::{
     },
 };
 
+const UNSUPPORTED_RESCAN_RANGE_MESSAGE: &str = "rescanblockchain height ranges are not supported in Phase 8; omit start_height and stop_height to rescan the full active snapshot";
+const UNSUPPORTED_MAX_FEE_RATE_MESSAGE: &str =
+    "sendrawtransaction maxfeerate enforcement is not supported in Phase 8; omit maxfeerate";
+const UNSUPPORTED_MAX_BURN_AMOUNT_MESSAGE: &str =
+    "sendrawtransaction maxburnamount enforcement is not supported in Phase 8; omit maxburnamount";
+
 pub fn dispatch(context: &mut ManagedRpcContext, call: MethodCall) -> Result<Value, RpcFailure> {
     match call {
         MethodCall::GetBlockchainInfo(_request) => {
@@ -265,16 +271,8 @@ fn rescan_blockchain(
     let tip_height = snapshot.tip().map_or(0, |tip| tip.height);
     let start_height = request.maybe_start_height.unwrap_or(0);
     let stop_height = request.maybe_stop_height.unwrap_or(tip_height);
-    if start_height > tip_height {
-        return Err(RpcFailure::invalid_params("Invalid start_height"));
-    }
-    if stop_height > tip_height {
-        return Err(RpcFailure::invalid_params("Invalid stop_height"));
-    }
-    if stop_height < start_height {
-        return Err(RpcFailure::invalid_params(
-            "stop_height must be greater than start_height",
-        ));
+    if start_height != 0 || stop_height != tip_height {
+        return Err(RpcFailure::invalid_params(UNSUPPORTED_RESCAN_RANGE_MESSAGE));
     }
 
     context
@@ -290,6 +288,15 @@ fn send_raw_transaction(
     context: &mut ManagedRpcContext,
     request: crate::method::SendRawTransactionRequest,
 ) -> Result<SendRawTransactionResponse, RpcFailure> {
+    if request.maybe_max_fee_rate_sat_per_kvb.is_some() {
+        return Err(RpcFailure::invalid_params(UNSUPPORTED_MAX_FEE_RATE_MESSAGE));
+    }
+    if request.maybe_max_burn_amount_sats.is_some() {
+        return Err(RpcFailure::invalid_params(
+            UNSUPPORTED_MAX_BURN_AMOUNT_MESSAGE,
+        ));
+    }
+
     let transaction_bytes = decode_hex(&request.transaction_hex)
         .map_err(|error| RpcFailure::invalid_params(error.to_string()))?;
     let transaction = parse_transaction(&transaction_bytes)

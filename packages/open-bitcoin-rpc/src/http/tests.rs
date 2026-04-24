@@ -4,9 +4,14 @@ use axum::{
 };
 use base64::Engine as _;
 use serde_json::json;
+use std::{fs, path::PathBuf};
+
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 
 use crate::{
     ManagedRpcContext, RpcAuthConfig, RuntimeConfig,
+    config::DEFAULT_COOKIE_AUTH_USER,
     http::{build_http_state, handle_http_request},
 };
 
@@ -31,6 +36,19 @@ fn state() -> crate::http::RpcHttpState {
         context,
     )
     .expect("state")
+}
+
+fn temp_cookie_path(test_name: &str) -> PathBuf {
+    let unique = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("time")
+        .as_nanos();
+    std::env::temp_dir()
+        .join(format!(
+            "open-bitcoin-rpc-{test_name}-{}-{unique}",
+            std::process::id()
+        ))
+        .join(".cookie")
 }
 
 async fn response_json(response: axum::response::Response) -> serde_json::Value {
@@ -173,4 +191,57 @@ async fn post_only_transport_rejects_unauthenticated_requests() {
     assert_eq!(missing_auth.status(), StatusCode::UNAUTHORIZED);
     assert!(missing_auth.headers().contains_key("www-authenticate"));
     assert_eq!(wrong_auth.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[test]
+fn cookie_auth_creates_owner_only_file_with_random_secret() {
+    // Arrange
+    let path = temp_cookie_path("cookie-auth-creates-owner-only-file");
+
+    // Act
+    let password = super::read_or_create_cookie_password(&path).expect("cookie password");
+
+    // Assert
+    let contents = fs::read_to_string(&path).expect("cookie contents");
+    assert_eq!(contents, format!("{DEFAULT_COOKIE_AUTH_USER}:{password}\n"));
+    assert_eq!(password.len(), 64);
+    assert!(
+        password
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)),
+        "password must be lowercase hex",
+    );
+    #[cfg(unix)]
+    assert_eq!(
+        fs::metadata(&path).expect("metadata").permissions().mode() & 0o777,
+        0o600,
+    );
+
+    let parent = path.parent().expect("parent");
+    let _ = fs::remove_dir_all(parent);
+}
+
+#[test]
+fn cookie_auth_preserves_existing_cookie_file() {
+    // Arrange
+    let path = temp_cookie_path("cookie-auth-preserves-existing-file");
+    fs::create_dir_all(path.parent().expect("parent")).expect("create parent");
+    fs::write(
+        &path,
+        format!("{DEFAULT_COOKIE_AUTH_USER}:existing-secret\n"),
+    )
+    .expect("write");
+
+    // Act
+    let password = super::read_or_create_cookie_password(&path).expect("cookie password");
+
+    // Assert
+    assert_eq!(password, "existing-secret");
+    assert_eq!(
+        fs::read_to_string(&path).expect("cookie contents"),
+        format!("{DEFAULT_COOKIE_AUTH_USER}:existing-secret\n"),
+    );
+
+    let parent = path.parent().expect("parent");
+    let _ = fs::remove_dir_all(parent);
 }

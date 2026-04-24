@@ -418,6 +418,67 @@ fn wallet_descriptor_and_rescan_methods_update_wallet_views() {
 }
 
 #[test]
+fn rescanblockchain_rejects_partial_height_ranges_without_rescanning() {
+    // Arrange
+    let mut context = empty_context();
+    context
+        .import_descriptor(
+            "receive",
+            DescriptorRole::External,
+            "wpkh(cMec2DGaTXkYJYfi7x3ZGjRXkeqmAvYAoWzMAcWj5fdLaqudWsNi)",
+        )
+        .expect("receive descriptor");
+    let reference_wallet = wallet_with_descriptors();
+    let receive_script = reference_wallet
+        .default_receive_address()
+        .expect("receive")
+        .script_pubkey;
+    let genesis = build_block(
+        BlockHash::from_byte_array([0_u8; 32]),
+        0,
+        75_000,
+        receive_script.clone(),
+    );
+    let block_one = build_block(block_hash(&genesis.header), 1, 75_000, receive_script);
+    context.connect_local_block(&genesis).expect("genesis");
+    context.connect_local_block(&block_one).expect("block one");
+
+    // Act
+    let failure = dispatch(
+        &mut context,
+        MethodCall::RescanBlockchain(RescanBlockchainRequest {
+            maybe_start_height: Some(1),
+            maybe_stop_height: Some(1),
+        }),
+    )
+    .expect_err("partial range");
+    let balances_after_rejection = dispatch(
+        &mut context,
+        MethodCall::GetBalances(GetBalancesRequest::default()),
+    )
+    .expect("balances");
+    let full_rescan = dispatch(
+        &mut context,
+        MethodCall::RescanBlockchain(RescanBlockchainRequest {
+            maybe_start_height: Some(0),
+            maybe_stop_height: Some(1),
+        }),
+    )
+    .expect("full rescan");
+
+    // Assert
+    let detail = failure.maybe_detail.expect("error detail");
+    assert_eq!(detail.code, RpcErrorCode::InvalidParams);
+    assert_eq!(
+        detail.message,
+        "rescanblockchain height ranges are not supported in Phase 8; omit start_height and stop_height to rescan the full active snapshot",
+    );
+    assert_eq!(balances_after_rejection["mine"]["trusted_sats"], json!(0),);
+    assert_eq!(full_rescan["start_height"], json!(0));
+    assert_eq!(full_rescan["stop_height"], json!(1));
+}
+
+#[test]
 fn sendrawtransaction_returns_txid_and_maps_rejections() {
     // Arrange
     let mut context = empty_context();
@@ -467,6 +528,54 @@ fn sendrawtransaction_returns_txid_and_maps_rejections() {
         failure.maybe_detail.as_ref().map(|detail| detail.code),
         Some(RpcErrorCode::VerifyRejected),
     );
+}
+
+#[test]
+fn sendrawtransaction_rejects_unenforced_fee_limits_before_mempool_submission() {
+    // Arrange
+    let mut context = empty_context();
+
+    // Act
+    let fee_limit_failure = dispatch(
+        &mut context,
+        MethodCall::SendRawTransaction(SendRawTransactionRequest {
+            transaction_hex: "not hex".to_string(),
+            maybe_max_fee_rate_sat_per_kvb: Some(1),
+            maybe_max_burn_amount_sats: None,
+            ignore_rejects: Vec::new(),
+        }),
+    )
+    .expect_err("maxfeerate");
+    let burn_limit_failure = dispatch(
+        &mut context,
+        MethodCall::SendRawTransaction(SendRawTransactionRequest {
+            transaction_hex: "not hex".to_string(),
+            maybe_max_fee_rate_sat_per_kvb: None,
+            maybe_max_burn_amount_sats: Some(1),
+            ignore_rejects: Vec::new(),
+        }),
+    )
+    .expect_err("maxburnamount");
+    let mempool = dispatch(
+        &mut context,
+        MethodCall::GetMempoolInfo(GetMempoolInfoRequest::default()),
+    )
+    .expect("mempool");
+
+    // Assert
+    let fee_detail = fee_limit_failure.maybe_detail.expect("fee detail");
+    assert_eq!(fee_detail.code, RpcErrorCode::InvalidParams);
+    assert_eq!(
+        fee_detail.message,
+        "sendrawtransaction maxfeerate enforcement is not supported in Phase 8; omit maxfeerate",
+    );
+    let burn_detail = burn_limit_failure.maybe_detail.expect("burn detail");
+    assert_eq!(burn_detail.code, RpcErrorCode::InvalidParams);
+    assert_eq!(
+        burn_detail.message,
+        "sendrawtransaction maxburnamount enforcement is not supported in Phase 8; omit maxburnamount",
+    );
+    assert_eq!(mempool["size"], json!(0));
 }
 
 #[test]

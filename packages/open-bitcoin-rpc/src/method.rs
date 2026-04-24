@@ -237,6 +237,11 @@ fn normalize_request<T: DeserializeOwned>(
         )));
     }
 
+    let positional_fields = ordered_fields
+        .iter()
+        .take(positional.len())
+        .copied()
+        .collect::<Vec<_>>();
     let mut object = Map::new();
     for (index, value) in positional.into_iter().enumerate() {
         object.insert(ordered_fields[index].to_string(), value);
@@ -249,8 +254,13 @@ fn normalize_request<T: DeserializeOwned>(
             )));
         }
         if object.contains_key(&name) {
+            if positional_fields.iter().any(|field| *field == name) {
+                return Err(RpcFailure::invalid_params(format!(
+                    "named parameter {name} collides with a positional argument"
+                )));
+            }
             return Err(RpcFailure::invalid_params(format!(
-                "named parameter {name} was provided multiple times or collides with a positional argument"
+                "named parameter {name} was provided multiple times"
             )));
         }
         object.insert(name, value);

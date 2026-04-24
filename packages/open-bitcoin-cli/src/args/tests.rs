@@ -2,7 +2,7 @@ use std::ffi::OsString;
 
 use serde_json::json;
 
-use super::{CliCommand, parse_cli_args};
+use super::{CliCommand, parse_cli_args, parse_named_parameters, stdin_required_for_args};
 use open_bitcoin_rpc::method::RequestParameters;
 
 fn os(value: &str) -> OsString {
@@ -58,6 +58,65 @@ fn invalid_rpc_ports_fail_before_request_dispatch() {
     assert_eq!(
         rpcport_error.to_string(),
         "Invalid port provided in -rpcport: notaport",
+    );
+}
+
+#[test]
+fn stdin_requirement_detection_matches_stdin_flags() {
+    // Arrange
+    let no_stdin_args = vec![os("getnetworkinfo")];
+    let stdin_args = vec![os("-stdin"), os("sendrawtransaction")];
+    let disabled_stdin_args = vec![os("-stdin=0"), os("getnetworkinfo")];
+    let stdinrpcpass_args = vec![os("-stdinrpcpass"), os("getnetworkinfo")];
+    let negated_then_enabled_args = vec![os("-nostdin"), os("-stdin=1"), os("getnetworkinfo")];
+
+    // Act
+    let no_stdin_required = stdin_required_for_args(&no_stdin_args);
+    let stdin_required = stdin_required_for_args(&stdin_args);
+    let disabled_stdin_required = stdin_required_for_args(&disabled_stdin_args);
+    let stdinrpcpass_required = stdin_required_for_args(&stdinrpcpass_args);
+    let negated_then_enabled_required = stdin_required_for_args(&negated_then_enabled_args);
+
+    // Assert
+    assert!(!no_stdin_required);
+    assert!(stdin_required);
+    assert!(!disabled_stdin_required);
+    assert!(stdinrpcpass_required);
+    assert!(negated_then_enabled_required);
+}
+
+#[test]
+fn named_arguments_reject_duplicate_keys_before_transport() {
+    // Arrange
+    let descriptor_a = "wpkh(cMec2DGaTXkYJYfi7x3ZGjRXkeqmAvYAoWzMAcWj5fdLaqudWsNi)#8fhd9pwu";
+    let descriptor_b = "wpkh(cTe1f5rdT8A8DFgVWTjyPwACsDPJM9ff4QngFxUixCSvvbg1x6sh)#8fhd9pwu";
+    let duplicate_args = vec![
+        os("-named"),
+        os("deriveaddresses"),
+        os(&format!("descriptor={descriptor_a:?}")),
+        os(&format!("descriptor={descriptor_b:?}")),
+    ];
+    let raw_params = vec![
+        format!("descriptor={descriptor_a:?}"),
+        format!("descriptor={descriptor_b:?}"),
+    ];
+
+    // Act
+    let preserved_params = parse_named_parameters(&raw_params).expect("preserved parameters");
+    let duplicate_error =
+        parse_cli_args(&duplicate_args, "").expect_err("duplicate named key must fail");
+
+    // Assert
+    assert_eq!(
+        preserved_params,
+        RequestParameters::Named(vec![
+            ("descriptor".to_string(), json!(descriptor_a)),
+            ("descriptor".to_string(), json!(descriptor_b)),
+        ]),
+    );
+    assert_eq!(
+        duplicate_error.to_string(),
+        "Parameter descriptor specified multiple times",
     );
 }
 
