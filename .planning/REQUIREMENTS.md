@@ -58,7 +58,7 @@
 
 - [ ] **PAR-01**: Parser, serialization, and protocol surfaces are covered by fuzzing or property-style tests where they materially reduce risk.
 - [x] **PAR-02**: Benchmarks measure critical node and wallet performance paths and compare against the pinned baseline where meaningful.
-- [ ] **AUD-01**: Contributors can inspect a parity checklist that reports each in-scope surface as planned, in progress, done, deferred, or out of scope.
+- [x] **AUD-01**: Contributors can inspect a parity checklist that reports each in-scope surface as planned, in progress, done, deferred, or out of scope.
 
 ## v2 Requirements
 
@@ -109,7 +109,7 @@
 | VER-04 | Phase 9 | Pending |
 | PAR-01 | Phase 9 | Pending |
 | PAR-02 | Phase 10 | Complete |
-| AUD-01 | Phase 10 | Pending |
+| AUD-01 | Phase 10 | Complete |
 
 **Coverage:**
 - v1 requirements: 28 total

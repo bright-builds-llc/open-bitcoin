@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 10-03-PLAN.md
-last_updated: "2026-04-24T12:14:10.799Z"
+stopped_at: Completed 10-04-PLAN.md
+last_updated: "2026-04-24T12:26:08.098Z"
 last_activity: 2026-04-24
 progress:
   total_phases: 20
   completed_phases: 19
   total_plans: 73
-  completed_plans: 71
-  percent: 97
+  completed_plans: 72
+  percent: 99
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-11)
 ## Current Position
 
 Phase: 10 (Benchmarks and Audit Readiness) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-04-24
 
@@ -81,6 +81,7 @@ Progress: ██████████ 100%
 | Phase 10 P01 | 10min | 2 tasks | 12 files |
 | Phase 10 P02 | 19min | 2 tasks | 20 files |
 | Phase 10 P03 | 5 min | 2 tasks | 5 files |
+| Phase 10 P04 | 537s | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -118,6 +119,9 @@ Recent decisions affecting current work:
 - [Phase 10]: Use scripts/run-benchmarks.sh as the contributor-facing benchmark entrypoint and forward only planned options through Bash arrays.
 - [Phase 10]: Keep benchmark reports as audit and trend evidence rather than release timing gates.
 - [Phase 10]: Make Knots JSON/bin inputs optional metadata enrichment while preserving mapping-only as the default comparison.
+- [Phase 10]: Keep docs/parity/index.json as the checklist source of truth and Markdown files as review views.
+- [Phase 10]: Keep benchmarks-audit-readiness in_progress until Plan 10-05 release-readiness work promotes it.
+- [Phase 10]: Fold CLI-friendly and panic/illegal-state todos into audit risk tracking without broad implementation changes.
 
 ### Roadmap Evolution
 
@@ -147,6 +151,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-24T12:14:10.796Z
-Stopped at: Completed 10-03-PLAN.md
+Last session: 2026-04-24T12:26:08.094Z
+Stopped at: Completed 10-04-PLAN.md
 Resume file: None
