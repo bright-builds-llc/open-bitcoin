@@ -1,0 +1,30 @@
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library")
+
+rust_library(
+    name = "open_bitcoin_bench_lib",
+    srcs = [
+        "src/error.rs",
+        "src/lib.rs",
+        "src/registry.rs",
+        "src/report.rs",
+        "src/runner.rs",
+    ],
+    crate_name = "open_bitcoin_bench",
+    edition = "2024",
+    deps = [
+        "@crate_index//:serde",
+        "@crate_index//:serde_json",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+rust_binary(
+    name = "open_bitcoin_bench",
+    srcs = ["src/main.rs"],
+    crate_name = "open_bitcoin_bench",
+    edition = "2024",
+    deps = [
+        ":open_bitcoin_bench_lib",
+    ],
+    visibility = ["//visibility:public"],
+)
