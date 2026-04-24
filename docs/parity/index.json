@@ -590,23 +590,23 @@
       {
         "id": "benchmarks-audit-readiness",
         "title": "Benchmarks And Audit Readiness",
-        "status": "in_progress",
+        "status": "done",
         "requirements": [
           "PAR-02",
           "AUD-01"
         ],
         "evidence": [
           "docs/parity/benchmarks.md",
+          "docs/parity/release-readiness.md",
           "scripts/run-benchmarks.sh",
-          ".planning/phases/10-benchmarks-and-audit-readiness/10-03-SUMMARY.md"
+          "scripts/verify.sh",
+          "packages/target/benchmark-reports/open-bitcoin-bench-smoke.json",
+          ".planning/phases/10-benchmarks-and-audit-readiness/10-03-SUMMARY.md",
+          ".planning/phases/10-benchmarks-and-audit-readiness/10-04-SUMMARY.md"
         ],
-        "rationale": "Benchmark evidence exists, and this plan creates the checklist; Plan 10-05 will promote readiness after release-readiness exists.",
-        "known_gaps": [
-          "Release-readiness and milestone handoff documentation remain planned for Plan 10-05."
-        ],
-        "suspected_unknowns": [
-          "Whether final release-readiness review uncovers additional follow-up items before milestone closeout."
-        ]
+        "rationale": "Benchmark evidence, checklist status, and the release-readiness handoff are in place for reviewer audit.",
+        "known_gaps": [],
+        "suspected_unknowns": []
       }
     ]
   },
@@ -620,7 +620,14 @@
     },
     "release_readiness": {
       "path": "release-readiness.md",
-      "status": "planned"
+      "status": "done",
+      "evidence": [
+        "docs/parity/release-readiness.md",
+        "docs/parity/checklist.md",
+        "docs/parity/benchmarks.md",
+        ".planning/phases/10-benchmarks-and-audit-readiness/10-03-SUMMARY.md",
+        ".planning/phases/10-benchmarks-and-audit-readiness/10-04-SUMMARY.md"
+      ]
     }
   }
 }
