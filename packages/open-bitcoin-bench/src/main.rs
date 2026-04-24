@@ -99,6 +99,7 @@ fn parse_command(args: &[String]) -> Result<Command, BenchError> {
     }
 
     let mut maybe_mode: Option<&str> = None;
+    let mut mode_count = 0;
     let mut maybe_iterations: Option<u64> = None;
     let mut output_dir = PathBuf::from(DEFAULT_OUTPUT_DIR);
     let mut maybe_knots_json: Option<PathBuf> = None;
@@ -110,10 +111,12 @@ fn parse_command(args: &[String]) -> Result<Command, BenchError> {
         match args[index].as_str() {
             "--smoke" => {
                 maybe_mode = Some("smoke");
+                mode_count += 1;
                 index += 1;
             }
             "--full" => {
                 maybe_mode = Some("full");
+                mode_count += 1;
                 index += 1;
             }
             "--iterations" => {
@@ -181,8 +184,12 @@ fn parse_command(args: &[String]) -> Result<Command, BenchError> {
         }
     }
 
-    let Some(mode) = maybe_mode else {
-        return Err(BenchError::InvalidArgument(usage()));
+    let mode = if mode_count == 1 {
+        maybe_mode.expect("mode is set when mode_count is one")
+    } else {
+        return Err(BenchError::InvalidArgument(
+            "choose exactly one of --smoke or --full".to_string(),
+        ));
     };
 
     let config = match mode {
@@ -318,5 +325,17 @@ mod tests {
             Some(missing_bin.to_string_lossy().as_ref())
         );
         fs::remove_dir_all(&output_dir).expect("remove benchmark report directory");
+    }
+
+    #[test]
+    fn run_rejects_conflicting_modes() {
+        // Arrange
+        let args = vec!["--smoke".to_string(), "--full".to_string()];
+
+        // Act
+        let error = run(&args).expect_err("conflicting modes should fail");
+
+        // Assert
+        assert_eq!(error.to_string(), "choose exactly one of --smoke or --full");
     }
 }

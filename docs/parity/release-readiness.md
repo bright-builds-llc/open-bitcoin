@@ -35,10 +35,11 @@ bash scripts/verify.sh
 - `wallet`
 - `rpc-cli-config`
 - `verification-harnesses-fuzzing`
+- `benchmarks-audit-readiness`
 
-The checklist also records the Phase 10 `benchmarks-audit-readiness` surface as
-the remaining item that this plan promotes after benchmark smoke output and this
-handoff document exist.
+The Phase 10 `benchmarks-audit-readiness` surface is complete. Generated
+benchmark reports remain inspection artifacts under `packages/target` rather
+than checked-in release gates.
 
 Primary completion evidence:
 

@@ -10,7 +10,7 @@ default_output_dir="${OPEN_BITCOIN_BENCHMARK_REPORT_DIR:-$PWD/packages/target/be
 usage() {
 	printf '%s\n' \
 		"usage: scripts/run-benchmarks.sh --list" \
-		"       scripts/run-benchmarks.sh (--smoke | --full) [--iterations N] [--output-dir PATH] [--knots-json PATH] [--knots-bin PATH]"
+		"       scripts/run-benchmarks.sh (--smoke | --full) [--iterations N] [--output-dir PATH] [--knots-json PATH] [--knots-bin PATH] [--format json|markdown]"
 }
 
 require_value() {
@@ -47,7 +47,7 @@ while [[ "$#" -gt 0 ]]; do
 		mode_count=$((mode_count + 1))
 		shift
 		;;
-	--iterations | --output-dir | --knots-json | --knots-bin)
+	--iterations | --output-dir | --knots-json | --knots-bin | --format)
 		option="$1"
 		value="${2:-}"
 		require_value "$option" "$value"
