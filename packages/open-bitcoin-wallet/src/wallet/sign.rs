@@ -78,7 +78,7 @@ pub(super) fn sign_transaction(
                     SigVersion::Taproot,
                     &validation_context,
                 )
-                .expect("taproot key-path sighash should exist for built transactions");
+                .ok_or_else(taproot_sighash_unavailable_error)?;
                 let message = Message::from_digest(sighash.to_byte_array());
                 let signature = secp.sign_schnorr_no_aux_rand(message.as_ref(), &keypair);
                 transaction.inputs[input_index].witness =
@@ -88,6 +88,12 @@ pub(super) fn sign_transaction(
     }
 
     Ok(transaction)
+}
+
+pub(super) fn taproot_sighash_unavailable_error() -> WalletError {
+    WalletError::UnsupportedSigningDescriptor(
+        "taproot key-path sighash unavailable for built transaction".to_string(),
+    )
 }
 
 pub(super) fn build_and_sign(
@@ -117,7 +123,7 @@ fn sign_ecdsa_low_s(private_key: &PrivateKey, digest: &[u8; 32]) -> Result<Vec<u
 pub(super) fn push_script(pushes: &[&[u8]]) -> Result<ScriptBuf, WalletError> {
     let mut bytes = Vec::new();
     for push in pushes {
-        bytes.extend_from_slice(&push_data(push));
+        bytes.extend_from_slice(&push_data(push)?);
     }
     Ok(ScriptBuf::from_bytes(bytes)?)
 }

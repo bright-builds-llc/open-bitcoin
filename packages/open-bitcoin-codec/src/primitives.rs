@@ -55,7 +55,8 @@ impl<'a> Reader<'a> {
 
     pub fn read_array<const N: usize>(&mut self) -> Result<[u8; N], CodecError> {
         let slice = self.take(N)?;
-        let array = <[u8; N]>::try_from(slice).expect("slice length already matches array length");
+        let mut array = [0_u8; N];
+        array.copy_from_slice(slice);
         Ok(array)
     }
 

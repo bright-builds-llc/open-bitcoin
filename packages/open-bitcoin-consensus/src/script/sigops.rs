@@ -94,11 +94,10 @@ pub(super) fn witness_sigops_for_type(
 ) -> Result<Option<usize>, ScriptError> {
     match script_type {
         ScriptPubKeyType::WitnessV0KeyHash(_) => Ok(Some(1)),
-        ScriptPubKeyType::WitnessV0ScriptHash(_) if !witness.stack().is_empty() => {
-            let script_bytes = witness
-                .stack()
-                .last()
-                .expect("witness stack is non-empty under the guard above");
+        ScriptPubKeyType::WitnessV0ScriptHash(_) => {
+            let Some(script_bytes) = witness.stack().last() else {
+                return Ok(None);
+            };
             let witness_script = ScriptBuf::from_bytes(script_bytes.clone())
                 .map_err(|_| ScriptError::WitnessProgramMismatch)?;
             Ok(Some(count_sigops(&witness_script, true)?))

@@ -323,14 +323,24 @@ fn apply_non_coinbase_transaction(
 
     let mut undo = TxUndo::default();
     for input in &transaction.inputs {
-        let coin = next_utxos
-            .remove(&input.previous_output)
-            .expect("validated transaction inputs must still exist during apply phase");
+        let coin = remove_spent_input(next_utxos, input)?;
         undo.restored_inputs.push(coin);
     }
     block_undo.transactions.push(undo);
 
     Ok(fee)
+}
+
+fn remove_spent_input(
+    next_utxos: &mut HashMap<OutPoint, Coin>,
+    input: &open_bitcoin_primitives::TransactionInput,
+) -> Result<Coin, ChainstateError> {
+    let Some(coin) = next_utxos.remove(&input.previous_output) else {
+        return Err(ChainstateError::MissingCoin {
+            outpoint: input.previous_output.clone(),
+        });
+    };
+    Ok(coin)
 }
 
 fn accumulated_fee_out_of_range() -> ChainstateError {
@@ -410,8 +420,7 @@ fn add_transaction_outputs(
     height: u32,
     created_median_time_past: i64,
 ) -> Result<(), ChainstateError> {
-    let txid = transaction_txid(transaction)
-        .expect("typed transactions should serialize for txid derivation");
+    let txid = transaction_txid(transaction).map_err(txid_serialization_error)?;
     for (vout, output) in transaction.outputs.iter().enumerate() {
         if is_unspendable_script(&output.script_pubkey) {
             continue;
@@ -444,8 +453,7 @@ fn remove_transaction_outputs(
     transaction: &Transaction,
     expected_height: u32,
 ) -> Result<(), ChainstateError> {
-    let txid = transaction_txid(transaction)
-        .expect("typed transactions should serialize for txid derivation");
+    let txid = transaction_txid(transaction).map_err(txid_serialization_error)?;
     for (vout, output) in transaction.outputs.iter().enumerate() {
         if is_unspendable_script(&output.script_pubkey) {
             continue;
@@ -467,6 +475,13 @@ fn remove_transaction_outputs(
     }
 
     Ok(())
+}
+
+fn txid_serialization_error(source: impl std::fmt::Display) -> ChainstateError {
+    ChainstateError::Serialization {
+        context: "txid derivation",
+        reason: source.to_string(),
+    }
 }
 
 fn compute_median_time_past(active_chain: &[ChainPosition], maybe_new_time: Option<u32>) -> i64 {

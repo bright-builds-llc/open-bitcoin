@@ -11,8 +11,9 @@ use open_bitcoin_primitives::{
 
 use super::{
     Chainstate, accumulated_fee_out_of_range, apply_non_coinbase_transaction,
-    compute_median_time_past, difficulty_adjustment_interval, prefer_candidate_tip,
-    restore_non_coinbase_inputs,
+    build_transaction_context, compute_median_time_past, difficulty_adjustment_interval,
+    prefer_candidate_tip, remove_spent_input, restore_non_coinbase_inputs,
+    txid_serialization_error,
 };
 use crate::{AnchoredBlock, BlockUndo, ChainPosition, Coin, TxUndo};
 
@@ -670,6 +671,58 @@ fn apply_non_coinbase_transaction_returns_fee_and_records_undo() {
             restored_inputs: vec![spent_coin],
         }]
     );
+}
+
+#[test]
+fn chainstate_helper_error_paths_return_typed_failures() {
+    // Arrange
+    let missing_outpoint = OutPoint {
+        txid: Txid::from_byte_array([7_u8; 32]),
+        vout: 0,
+    };
+    let transaction = spend_transaction(
+        missing_outpoint.txid,
+        missing_outpoint.vout,
+        40,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let mut empty_utxos = HashMap::new();
+
+    // Act
+    let remove_error = remove_spent_input(&mut empty_utxos, &transaction.inputs[0])
+        .expect_err("missing spent input should fail");
+    let context_error = build_transaction_context(
+        &transaction,
+        &HashMap::new(),
+        1,
+        1_231_006_600,
+        0,
+        ScriptVerifyFlags::P2SH,
+        ConsensusParams::default(),
+    )
+    .expect_err("missing context input should fail");
+    let serialization_error = txid_serialization_error("encoded txid failure");
+
+    // Assert
+    assert_eq!(
+        remove_error,
+        crate::ChainstateError::MissingCoin {
+            outpoint: missing_outpoint.clone(),
+        }
+    );
+    assert_eq!(
+        context_error,
+        crate::ChainstateError::MissingCoin {
+            outpoint: missing_outpoint,
+        }
+    );
+    assert!(matches!(
+        serialization_error,
+        crate::ChainstateError::Serialization {
+            context: "txid derivation",
+            ..
+        }
+    ));
 }
 
 #[test]

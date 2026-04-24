@@ -52,6 +52,9 @@ pub enum MempoolError {
     CandidateEvicted {
         txid: Txid,
     },
+    InternalInvariant {
+        reason: String,
+    },
 }
 
 impl fmt::Display for LimitDirection {
@@ -135,6 +138,9 @@ impl fmt::Display for MempoolError {
                     txid
                 )
             }
+            Self::InternalInvariant { reason } => {
+                write!(f, "mempool internal invariant violation: {reason}")
+            }
         }
     }
 }
@@ -191,6 +197,9 @@ mod tests {
                 max: 2,
             },
             MempoolError::CandidateEvicted { txid },
+            MempoolError::InternalInvariant {
+                reason: "candidate disappeared".to_string(),
+            },
         ];
 
         for error in cases {

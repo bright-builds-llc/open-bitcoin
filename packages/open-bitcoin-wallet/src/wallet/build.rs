@@ -190,7 +190,9 @@ pub(super) fn estimate_vsize(
             .unwrap_or_else(|| wallet.maybe_tip_height.unwrap_or(0)),
     };
 
-    Ok(transaction_weight_and_virtual_size(&transaction).1)
+    Ok(transaction_weight_and_virtual_size(&transaction)
+        .map_err(|source| WalletError::Codec(source.to_string()))?
+        .1)
 }
 
 pub(super) fn estimate_change_vsize(
@@ -274,10 +276,7 @@ pub(super) fn placeholder_input(
             )
         }
         SingleKeyDescriptor::ShWpkh(_) => {
-            let redeem_script = descriptor
-                .descriptor
-                .redeem_script()?
-                .expect("nested segwit always has redeem script");
+            let redeem_script = required_redeem_script(descriptor)?;
             (
                 super::push_script(&[redeem_script.as_bytes()])?,
                 ScriptWitness::new(vec![vec![0_u8; 73], vec![0_u8; 33]]),
@@ -299,6 +298,17 @@ pub(super) fn placeholder_input(
         sequence,
         witness,
     })
+}
+
+pub(super) fn required_redeem_script(
+    descriptor: &DescriptorRecord,
+) -> Result<ScriptBuf, WalletError> {
+    let Some(redeem_script) = descriptor.descriptor.redeem_script()? else {
+        return Err(WalletError::UnsupportedSigningDescriptor(
+            descriptor.original_text.clone(),
+        ));
+    };
+    Ok(redeem_script)
 }
 
 pub(super) fn amount_from_sats(sats: i64) -> Result<Amount, WalletError> {

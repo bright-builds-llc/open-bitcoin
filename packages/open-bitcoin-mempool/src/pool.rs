@@ -67,13 +67,14 @@ impl Mempool {
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> Result<AdmissionResult, MempoolError> {
-        let txid = transaction_txid(&transaction).expect("typed transactions should derive txid");
+        let txid = transaction_txid(&transaction)
+            .map_err(|source| serialization_validation_error("transaction txid", source))?;
         if self.entries.contains_key(&txid) {
             return Err(MempoolError::DuplicateTransaction { txid });
         }
 
         let input_contexts = derive_input_contexts(&transaction, chainstate, &self.entries)?;
-        let (weight, virtual_size) = transaction_weight_and_virtual_size(&transaction);
+        let (weight, virtual_size) = transaction_weight_and_virtual_size(&transaction)?;
         let sigops_cost = transaction_sigops_cost(&transaction, &input_contexts)?;
         validate_standard_transaction(
             &transaction,
@@ -93,8 +94,8 @@ impl Mempool {
         enforce_min_relay_fee(&self.config, fee.to_sats(), virtual_size)?;
         let replace_set = self.replacement_set(&transaction, fee.to_sats(), virtual_size)?;
 
-        let wtxid =
-            transaction_wtxid(&transaction).expect("typed transactions should derive wtxid");
+        let wtxid = transaction_wtxid(&transaction)
+            .map_err(|source| serialization_validation_error("transaction wtxid", source))?;
         let mut prospective_entries = self.entries.clone();
         for conflict_txid in &replace_set {
             prospective_entries.remove(conflict_txid);
@@ -330,8 +331,7 @@ fn enforce_min_relay_fee(
 ) -> Result<(), MempoolError> {
     let required_fee_sats = config.min_relay_feerate.fee_for_virtual_size(virtual_size);
     if fee_sats < required_fee_sats {
-        let fee = open_bitcoin_primitives::Amount::from_sats(fee_sats)
-            .expect("fee should be non-negative");
+        let fee = amount_from_fee_sats(fee_sats)?;
         return Err(MempoolError::RelayFeeTooLow {
             fee,
             required_fee_sats,
@@ -342,14 +342,36 @@ fn enforce_min_relay_fee(
     Ok(())
 }
 
+fn amount_from_fee_sats(fee_sats: i64) -> Result<open_bitcoin_primitives::Amount, MempoolError> {
+    open_bitcoin_primitives::Amount::from_sats(fee_sats).map_err(|source| {
+        MempoolError::Validation {
+            reason: format!("transaction fee is outside money range: {source}"),
+        }
+    })
+}
+
+fn serialization_validation_error(
+    context: &'static str,
+    source: impl std::fmt::Display,
+) -> MempoolError {
+    MempoolError::Validation {
+        reason: format!("{context} serialization failed: {source}"),
+    }
+}
+
 fn validate_limits(
     entries: &HashMap<Txid, MempoolEntry>,
     config: &PolicyConfig,
     candidate_txid: Txid,
 ) -> Result<(), MempoolError> {
-    let candidate_entry = entries
-        .get(&candidate_txid)
-        .expect("candidate should exist in prospective mempool state");
+    let Some(candidate_entry) = entries.get(&candidate_txid) else {
+        return Err(MempoolError::InternalInvariant {
+            reason: format!(
+                "candidate {:?} missing from prospective state",
+                candidate_txid
+            ),
+        });
+    };
     if candidate_entry.ancestor_stats.count > config.max_ancestor_count {
         return Err(MempoolError::LimitExceeded {
             direction: LimitDirection::Ancestor,
@@ -372,9 +394,14 @@ fn validate_limits(
     let mut candidate_ancestors = collect_ancestors(entries, candidate_txid);
     candidate_ancestors.insert(candidate_txid);
     for ancestor_txid in candidate_ancestors {
-        let entry = entries
-            .get(&ancestor_txid)
-            .expect("ancestor should exist during descendant limit validation");
+        let Some(entry) = entries.get(&ancestor_txid) else {
+            return Err(MempoolError::InternalInvariant {
+                reason: format!(
+                    "ancestor {:?} missing during descendant limit validation",
+                    ancestor_txid
+                ),
+            });
+        };
         if entry.descendant_stats.count > config.max_descendant_count {
             return Err(MempoolError::LimitExceeded {
                 direction: LimitDirection::Descendant,
@@ -418,17 +445,15 @@ fn trim_to_size(mut state: MempoolState, config: &PolicyConfig) -> (MempoolState
 }
 
 fn select_eviction_candidate(entries: &HashMap<Txid, MempoolEntry>) -> Option<Txid> {
-    let mut txids = entries.keys().copied().collect::<Vec<_>>();
-    txids.sort_unstable();
-
-    txids.into_iter().min_by(|left, right| {
-        let left_entry = entries.get(left).expect("left entry should exist");
-        let right_entry = entries.get(right).expect("right entry should exist");
-        left_entry
-            .descendant_score()
-            .cmp(&right_entry.descendant_score())
-            .then_with(|| left.cmp(right))
-    })
+    entries
+        .iter()
+        .min_by(|(left_txid, left_entry), (right_txid, right_entry)| {
+            left_entry
+                .descendant_score()
+                .cmp(&right_entry.descendant_score())
+                .then_with(|| left_txid.cmp(right_txid))
+        })
+        .map(|(txid, _entry)| *txid)
 }
 
 fn recompute_state(mut entries: HashMap<Txid, MempoolEntry>) -> MempoolState {
@@ -440,12 +465,8 @@ fn recompute_state(mut entries: HashMap<Txid, MempoolEntry>) -> MempoolState {
         entry.descendant_stats = stats;
     }
 
-    let txids = entries.keys().copied().collect::<Vec<_>>();
     let mut relations = Vec::new();
-    for txid in &txids {
-        let entry = entries
-            .get(txid)
-            .expect("txid should exist during relation scan");
+    for (txid, entry) in &entries {
         for input in &entry.transaction.inputs {
             let Some(parent_entry) = entries.get(&input.previous_output.txid) else {
                 continue;
@@ -476,51 +497,55 @@ fn recompute_state(mut entries: HashMap<Txid, MempoolEntry>) -> MempoolState {
         .values()
         .map(|entry| entry.virtual_size)
         .sum::<usize>();
-    let txids = entries.keys().copied().collect::<Vec<_>>();
-    for txid in &txids {
-        let ancestors = collect_ancestors(&entries, *txid);
-        let descendants = collect_descendants(&entries, *txid);
-        let existing_entry = entries
-            .get(txid)
-            .expect("txid should exist during stats recompute");
-        let ancestor_virtual_size = existing_entry.virtual_size
-            + ancestors
-                .iter()
-                .filter_map(|ancestor_txid| entries.get(ancestor_txid))
-                .map(|ancestor| ancestor.virtual_size)
-                .sum::<usize>();
-        let ancestor_fee_sats = existing_entry.fee_sats()
-            + ancestors
-                .iter()
-                .filter_map(|ancestor_txid| entries.get(ancestor_txid))
-                .map(MempoolEntry::fee_sats)
-                .sum::<i64>();
-        let descendant_virtual_size = existing_entry.virtual_size
-            + descendants
-                .iter()
-                .filter_map(|descendant_txid| entries.get(descendant_txid))
-                .map(|descendant| descendant.virtual_size)
-                .sum::<usize>();
-        let descendant_fee_sats = existing_entry.fee_sats()
-            + descendants
-                .iter()
-                .filter_map(|descendant_txid| entries.get(descendant_txid))
-                .map(MempoolEntry::fee_sats)
-                .sum::<i64>();
-
-        let entry = entries
-            .get_mut(txid)
-            .expect("txid should exist during stats update");
-        entry.ancestor_stats = crate::AggregateStats::new(
-            ancestors.len().saturating_add(1),
-            ancestor_virtual_size,
-            ancestor_fee_sats,
-        );
-        entry.descendant_stats = crate::AggregateStats::new(
-            descendants.len().saturating_add(1),
-            descendant_virtual_size,
-            descendant_fee_sats,
-        );
+    let updates = entries
+        .iter()
+        .map(|(txid, existing_entry)| {
+            let ancestors = collect_ancestors(&entries, *txid);
+            let descendants = collect_descendants(&entries, *txid);
+            let ancestor_virtual_size = existing_entry.virtual_size
+                + ancestors
+                    .iter()
+                    .filter_map(|ancestor_txid| entries.get(ancestor_txid))
+                    .map(|ancestor| ancestor.virtual_size)
+                    .sum::<usize>();
+            let ancestor_fee_sats = existing_entry.fee_sats()
+                + ancestors
+                    .iter()
+                    .filter_map(|ancestor_txid| entries.get(ancestor_txid))
+                    .map(MempoolEntry::fee_sats)
+                    .sum::<i64>();
+            let descendant_virtual_size = existing_entry.virtual_size
+                + descendants
+                    .iter()
+                    .filter_map(|descendant_txid| entries.get(descendant_txid))
+                    .map(|descendant| descendant.virtual_size)
+                    .sum::<usize>();
+            let descendant_fee_sats = existing_entry.fee_sats()
+                + descendants
+                    .iter()
+                    .filter_map(|descendant_txid| entries.get(descendant_txid))
+                    .map(MempoolEntry::fee_sats)
+                    .sum::<i64>();
+            (
+                *txid,
+                crate::AggregateStats::new(
+                    ancestors.len().saturating_add(1),
+                    ancestor_virtual_size,
+                    ancestor_fee_sats,
+                ),
+                crate::AggregateStats::new(
+                    descendants.len().saturating_add(1),
+                    descendant_virtual_size,
+                    descendant_fee_sats,
+                ),
+            )
+        })
+        .collect::<Vec<_>>();
+    for (txid, ancestor_stats, descendant_stats) in updates {
+        entries.entry(txid).and_modify(|entry| {
+            entry.ancestor_stats = ancestor_stats;
+            entry.descendant_stats = descendant_stats;
+        });
     }
 
     MempoolState {

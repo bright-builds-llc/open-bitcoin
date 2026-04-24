@@ -1,8 +1,9 @@
 # Deviations And Unknowns
 
 This page collects current deviations, known gaps, suspected unknowns, deferred
-surfaces, and folded todo risks for audit review. It summarizes existing parity
-artifacts and planning todos without adding new implementation scope.
+surfaces, and folded todo history for audit review. It summarizes existing
+parity artifacts and completed planning follow-ups without adding new
+implementation scope.
 
 ## Intentional Deviations
 
@@ -73,20 +74,22 @@ agent affordances remain future design work, not Phase 10 implementation scope.
 
 ### Panic And Illegal-State Exposure
 
-The pending panic and illegal-state sweep is folded into audit risk capture
-only. Phase 10 does not perform a broad codebase refactor. The relevant risk is
-that public or reusable paths may still contain panic-prone assumptions or
-convention-only invariants that deserve a focused future sweep.
+The former panic and illegal-state sweep was completed as Phase 11. The phase
+inventoried first-party production panic-like sites, replaced reachable crash
+paths with typed failures, and added a repo-owned guard for future changes.
 
 Evidence to inspect:
 
-- [Original pending todo](../../.planning/todos/pending/2026-04-18-sweep-panics-and-illegal-states.md)
+- [Phase 11 context](../../.planning/phases/11-panic-and-illegal-state-hardening/11-CONTEXT.md)
+- [Phase 11 inventory](../../.planning/phases/11-panic-and-illegal-state-hardening/11-INVENTORY.md)
+- [Original completed todo](../../.planning/todos/completed/2026-04-18-sweep-panics-and-illegal-states.md)
 - [Repo verification contract](../../scripts/verify.sh)
+- [Production panic-site guard](../../scripts/check-panic-sites.sh)
 
-Residual risk: public APIs, pure-core helpers, adapter boundaries, indexing
-assumptions, `expect`, `unwrap`, and convention-only states should be audited
-in a separate quality phase if the milestone owner wants that risk reduced
-before wider release.
+Residual risk: future production `expect`, `unwrap`, `panic!`, `unreachable!`,
+`todo!`, or `unimplemented!` sites must either be fixed or added to the narrow
+allowlist with a local invariant rationale. The allowlist is empty at Phase 11
+close.
 
 ## Follow-Up Triggers
 
@@ -98,3 +101,4 @@ Update this page when:
 - A suspected unknown is resolved by evidence and can move into a catalog entry,
   deviation record, or release-readiness note.
 - A folded todo becomes active implementation work in a dedicated phase.
+- Phase 11's panic-site allowlist gains an entry that needs audit review.

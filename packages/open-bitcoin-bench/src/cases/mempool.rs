@@ -22,7 +22,8 @@ pub const CASES: [BenchCase; 1] = [BenchCase {
 fn run_once() -> Result<(), BenchError> {
     let fixtures = BenchFixtures::shared()?;
     let transaction = fixtures.mempool.standard_spend.clone();
-    let (weight, virtual_size) = transaction_weight_and_virtual_size(&transaction);
+    let (weight, virtual_size) = transaction_weight_and_virtual_size(&transaction)
+        .map_err(|error| BenchError::case_failed(CASE_ID, error.to_string()))?;
     let sigops_cost = transaction_sigops_cost(&transaction, &fixtures.mempool.input_contexts)
         .map_err(|error| BenchError::case_failed(CASE_ID, error.to_string()))?;
     let mut mempool = Mempool::default();

@@ -36,3 +36,21 @@ Approach hints:
   risk.
 - Where a panic remains truly impossible or intentional, document why the state
   is unreachable and keep the justification narrow and explicit.
+
+## Completion Review
+
+Completed in Phase 11, `Panic and Illegal-State Hardening`.
+
+- Replaced reachable first-party production panic-like sites in mempool,
+  wallet, consensus, CLI, codec, networking, primitives, benchmark, and
+  test-harness paths with typed errors or non-panicking control flow.
+- Added `scripts/check-panic-sites.sh` and wired it into `scripts/verify.sh`.
+- Kept `scripts/panic-sites.allowlist` empty at close; future production
+  panic-like sites must be fixed or justified with a narrow local invariant.
+
+Verification evidence:
+
+- `bash scripts/check-panic-sites.sh`
+- `cargo clippy --manifest-path packages/Cargo.toml --workspace --all-targets --all-features -- -D warnings`
+- `cargo build --manifest-path packages/Cargo.toml --workspace --all-targets --all-features`
+- `cargo test --manifest-path packages/Cargo.toml --workspace --all-features`

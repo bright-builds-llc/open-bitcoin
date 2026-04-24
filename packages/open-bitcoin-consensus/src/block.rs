@@ -1,4 +1,5 @@
 mod difficulty;
+mod witness;
 
 use open_bitcoin_codec::{
     CodecError, TransactionEncoding, encode_block_header, encode_transaction,
@@ -9,10 +10,7 @@ use crate::context::{
     BlockValidationContext, ConsensusParams, SpentOutput, TransactionValidationContext,
     is_final_transaction,
 };
-use crate::crypto::{
-    block_hash, block_merkle_root, check_proof_of_work, double_sha256, transaction_txid,
-    transaction_wtxid,
-};
+use crate::crypto::{block_hash, block_merkle_root, check_proof_of_work, transaction_txid};
 use crate::script::{count_legacy_sigops, count_p2sh_sigops, count_witness_sigops};
 use crate::transaction::{
     check_transaction, validate_transaction, validate_transaction_with_context,
@@ -22,17 +20,10 @@ use crate::validation::{
 };
 use crate::{MAX_BLOCK_SIGOPS_COST, MAX_BLOCK_WEIGHT, WITNESS_SCALE_FACTOR};
 use difficulty::next_work_required;
+use witness::check_witness_commitment;
+#[cfg(test)]
+use witness::{block_witness_merkle_root, witness_commitment_index};
 
-const WITNESS_RESERVED_VALUE_STACK_ITEMS: usize = 1;
-const WITNESS_RESERVED_VALUE_SIZE: usize = 32;
-const WITNESS_COMMITMENT_PREIMAGE_SIZE: usize = 64;
-const WITNESS_COMMITMENT_HEADER: [u8; 6] = [0x6a, 0x24, 0xaa, 0x21, 0xa9, 0xed];
-const WITNESS_COMMITMENT_HEADER_LEN: usize = WITNESS_COMMITMENT_HEADER.len();
-const WITNESS_COMMITMENT_SCRIPT_LEN: usize =
-    WITNESS_COMMITMENT_HEADER_LEN + WITNESS_RESERVED_VALUE_SIZE;
-const WITNESS_COMMITMENT_START: usize = WITNESS_COMMITMENT_HEADER_LEN;
-const WITNESS_COMMITMENT_END: usize = WITNESS_COMMITMENT_START + WITNESS_RESERVED_VALUE_SIZE;
-const HASH_CONCATENATION_SIZE: usize = 64;
 const MAX_FUTURE_BLOCK_TIME_SECONDS: i64 = 7_200;
 
 /// Returns the block subsidy for `height` using the configured halving interval.
@@ -41,7 +32,7 @@ pub fn block_subsidy(height: u32, consensus_params: &ConsensusParams) -> Amount 
     if halvings >= 64 {
         return Amount::ZERO;
     }
-    Amount::from_sats((50 * COIN) >> halvings).expect("subsidy remains within range")
+    Amount::from_sats((50 * COIN) >> halvings).unwrap_or(Amount::ZERO)
 }
 
 /// Rejects coinbases that pay more than the current subsidy plus accumulated fees.
@@ -51,20 +42,27 @@ pub fn enforce_coinbase_reward_limit(
     total_fees_sats: i64,
     consensus_params: &ConsensusParams,
 ) -> Result<(), BlockValidationError> {
-    let coinbase_transaction = block
-        .transactions
-        .first()
-        .expect("context-free validation guarantees a coinbase transaction");
+    let Some(coinbase_transaction) = block.transactions.first() else {
+        return Err(consensus_error(
+            "bad-cb-missing",
+            Some("first tx is not coinbase".to_string()),
+        ));
+    };
     let reward_limit_sats = block_subsidy(height, consensus_params)
         .to_sats()
         .checked_add(total_fees_sats)
-        .expect("subsidy plus fees must stay within i64");
+        .ok_or_else(accumulated_fee_out_of_range)?;
     let coinbase_value_sats = coinbase_transaction
         .outputs
         .iter()
         .map(|output| output.value.to_sats())
         .try_fold(0_i64, |value_sum, value| value_sum.checked_add(value))
-        .expect("context-free validation keeps coinbase outputs in range");
+        .ok_or_else(|| {
+            consensus_error(
+                "bad-txns-txouttotal-toolarge",
+                Some("total output value out of range".to_string()),
+            )
+        })?;
 
     if coinbase_value_sats > reward_limit_sats {
         return Err(block_error(
@@ -408,93 +406,13 @@ fn compact_size_len(value: u64) -> usize {
     }
 }
 
-fn check_witness_commitment(
-    block: &Block,
-    context: &BlockValidationContext,
-) -> Result<(), BlockValidationError> {
-    let witness_present = block
-        .transactions
-        .iter()
-        .any(|transaction| transaction.has_witness());
-    if !context.consensus_params.enforce_segwit {
-        if witness_present {
-            return Err(block_error(
-                BlockValidationResult::Mutated,
-                "unexpected-witness",
-                Some("unexpected witness data found".to_string()),
-            ));
-        }
-
-        return Ok(());
-    }
-    let Some(commitment_index) = witness_commitment_index(block) else {
-        if witness_present {
-            return Err(block_error(
-                BlockValidationResult::Mutated,
-                "unexpected-witness",
-                Some("unexpected witness data found".to_string()),
-            ));
-        }
-
-        return Ok(());
-    };
-    let coinbase_input = block
-        .transactions
-        .first()
-        .and_then(|transaction| transaction.inputs.first())
-        .expect("coinbase input must exist after context-free block checks");
-    if coinbase_input.witness.stack().len() != WITNESS_RESERVED_VALUE_STACK_ITEMS
-        || coinbase_input.witness.stack()[0].len() != WITNESS_RESERVED_VALUE_SIZE
-    {
-        return Err(block_error(
-            BlockValidationResult::Mutated,
-            "bad-witness-nonce-size",
-            Some("invalid witness reserved value size".to_string()),
-        ));
-    }
-
-    let witness_root = block_witness_merkle_root(block).map_err(map_codec_error)?;
-    let reserved_value = &coinbase_input.witness.stack()[0];
-    let mut commitment_preimage = [0_u8; WITNESS_COMMITMENT_PREIMAGE_SIZE];
-    commitment_preimage[..WITNESS_RESERVED_VALUE_SIZE].copy_from_slice(witness_root.as_bytes());
-    commitment_preimage[WITNESS_RESERVED_VALUE_SIZE..].copy_from_slice(reserved_value);
-    let expected_commitment = double_sha256(&commitment_preimage);
-
-    let commitment_script = block.transactions[0].outputs[commitment_index]
-        .script_pubkey
-        .as_bytes();
-    if commitment_script[WITNESS_COMMITMENT_START..WITNESS_COMMITMENT_END] != expected_commitment {
-        return Err(block_error(
-            BlockValidationResult::Mutated,
-            "bad-witness-merkle-match",
-            Some("witness merkle commitment mismatch".to_string()),
-        ));
-    }
-
-    Ok(())
-}
-
-fn witness_commitment_index(block: &Block) -> Option<usize> {
-    let coinbase_outputs = block.transactions.first()?.outputs.iter().enumerate();
-    let mut maybe_commitment_index = None;
-    for (index, output) in coinbase_outputs {
-        let bytes = output.script_pubkey.as_bytes();
-        if has_witness_commitment_header(bytes) {
-            maybe_commitment_index = Some(index);
-        }
-    }
-    maybe_commitment_index
-}
-
 fn map_transaction_validation_error(
     transaction: &open_bitcoin_primitives::Transaction,
     error: TxValidationError,
 ) -> BlockValidationError {
     let txid = format!(
         "{:?}",
-        transaction_txid(transaction)
-            .expect("phase-2 typed transactions should serialize for txid logging")
-            .to_byte_array()
+        transaction_txid(transaction).map_or([0_u8; 32], |txid| txid.to_byte_array())
     );
     let debug_message = error.debug_message.map_or_else(
         || format!("transaction {txid} failed validation"),
@@ -508,46 +426,6 @@ fn map_transaction_validation_error(
         error.reject_reason,
         Some(debug_message),
     )
-}
-
-fn has_witness_commitment_header(bytes: &[u8]) -> bool {
-    bytes.len() >= WITNESS_COMMITMENT_SCRIPT_LEN && bytes.starts_with(&WITNESS_COMMITMENT_HEADER)
-}
-
-fn block_witness_merkle_root(
-    block: &Block,
-) -> Result<open_bitcoin_primitives::MerkleRoot, CodecError> {
-    if block.transactions.is_empty() {
-        return Ok(open_bitcoin_primitives::MerkleRoot::from_byte_array(
-            [0_u8; 32],
-        ));
-    }
-
-    let mut level = Vec::with_capacity(block.transactions.len());
-    level.push([0_u8; 32]);
-    for transaction in block.transactions.iter().skip(1) {
-        level.push(transaction_wtxid(transaction)?.to_byte_array());
-    }
-
-    while level.len() > 1 {
-        if level.len() % 2 == 1 {
-            let last_hash = *level.last().expect("non-empty merkle level");
-            level.push(last_hash);
-        }
-
-        let mut next_level = Vec::with_capacity(level.len() / 2);
-        for pair in level.chunks_exact(2) {
-            let mut concatenated = [0_u8; HASH_CONCATENATION_SIZE];
-            concatenated[..WITNESS_RESERVED_VALUE_SIZE].copy_from_slice(&pair[0]);
-            concatenated[WITNESS_RESERVED_VALUE_SIZE..].copy_from_slice(&pair[1]);
-            next_level.push(double_sha256(&concatenated));
-        }
-        level = next_level;
-    }
-
-    Ok(open_bitcoin_primitives::MerkleRoot::from_byte_array(
-        level[0],
-    ))
 }
 
 fn coinbase_has_height_prefix(block: &Block, height: u32) -> bool {
@@ -580,8 +458,7 @@ fn serialized_script_num(value: i64) -> Vec<u8> {
 
     if encoded.last().is_some_and(|byte| (byte & 0x80) != 0) {
         encoded.push(if negative { 0x80 } else { 0x00 });
-    } else if negative {
-        let last = encoded.last_mut().expect("non-empty because value != 0");
+    } else if negative && let Some(last) = encoded.last_mut() {
         *last |= 0x80;
     }
 

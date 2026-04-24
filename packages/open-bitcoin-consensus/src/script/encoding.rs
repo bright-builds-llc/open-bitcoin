@@ -65,7 +65,7 @@ pub(super) fn remove_signature_from_script(script: &ScriptBuf, signature: &[u8])
         offset += 1;
     }
 
-    ScriptBuf::from_bytes(remaining).expect("filtered script must remain structurally valid")
+    ScriptBuf::from_bytes(remaining).unwrap_or_else(|_| script.clone())
 }
 
 pub(super) fn encode_push_data(data: &[u8]) -> Vec<u8> {

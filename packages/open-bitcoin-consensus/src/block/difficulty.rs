@@ -103,7 +103,9 @@ fn target_limbs_from_bits(bits: u32) -> Result<TargetLimbs, BlockValidationError
     let bytes = compact_target_bytes(bits).map_err(map_compact_target_error)?;
     let mut limbs = [0_u64; 4];
     for (index, chunk) in bytes.chunks_exact(8).enumerate() {
-        limbs[index] = u64::from_le_bytes(chunk.try_into().expect("32-byte chunk split"));
+        let mut limb = [0_u8; 8];
+        limb.copy_from_slice(chunk);
+        limbs[index] = u64::from_le_bytes(limb);
     }
 
     Ok(limbs)

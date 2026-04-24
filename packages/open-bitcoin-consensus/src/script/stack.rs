@@ -117,7 +117,7 @@ pub(super) fn decode_script_num(bytes: &[u8]) -> Result<i64, ScriptError> {
         value |= i64::from(*byte) << (8 * index);
     }
 
-    let last = *bytes.last().expect("non-empty checked above");
+    let last = bytes[bytes.len() - 1];
     if (last & 0x80) != 0 {
         let mask = !(0x80_i64 << (8 * (bytes.len() - 1)));
         Ok(-(value & mask))
@@ -141,8 +141,7 @@ pub(super) fn encode_script_num(value: i64) -> Vec<u8> {
 
     if encoded.last().is_some_and(|byte| (byte & 0x80) != 0) {
         encoded.push(if negative { 0x80 } else { 0x00 });
-    } else if negative {
-        let last = encoded.last_mut().expect("non-empty because value != 0");
+    } else if negative && let Some(last) = encoded.last_mut() {
         *last |= 0x80;
     }
 

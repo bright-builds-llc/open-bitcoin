@@ -71,8 +71,9 @@ pub fn block_merkle_root(transactions: &[Transaction]) -> Result<(MerkleRoot, bo
 
     let mut maybe_mutated = false;
     while level.len() > 1 {
-        if level.len() % 2 == 1 {
-            let last_hash = *level.last().expect("non-empty merkle level");
+        if level.len() % 2 == 1
+            && let Some(last_hash) = level.last().copied()
+        {
             level.push(last_hash);
         }
 
@@ -90,7 +91,10 @@ pub fn block_merkle_root(transactions: &[Transaction]) -> Result<(MerkleRoot, bo
         level = next_level;
     }
 
-    Ok((MerkleRoot::from_byte_array(level[0]), maybe_mutated))
+    Ok((
+        MerkleRoot::from_byte_array(level.first().copied().unwrap_or([0_u8; 32])),
+        maybe_mutated,
+    ))
 }
 
 pub fn compact_target_bytes(bits: u32) -> Result<[u8; 32], CompactTargetError> {

@@ -32,6 +32,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 8: RPC, CLI, and Config Parity** - Expose node and wallet behavior through compatible operator interfaces.
 - [ ] **Phase 9: Parity Harnesses and Fuzzing** - Lock down external behavior with reusable black-box and fuzz/property suites.
 - [x] **Phase 10: Benchmarks and Audit Readiness** - Measure performance and complete the audit surfaces that track parity status. (completed 2026-04-24)
+- [x] **Phase 11: Panic and Illegal-State Hardening** - Replace reachable production panic paths with typed failures and guard against new unclassified panic-like sites. (completed 2026-04-24)
 
 ## Phase Details
 
@@ -352,6 +353,23 @@ Plans:
 - [x] 10-04-PLAN.md — Complete the parity checklist plus deviation and unknown audit artifacts for all in-scope surfaces.
 - [x] 10-05-PLAN.md — Produce release-readiness and milestone handoff documentation tied to benchmark and checklist evidence.
 
+### Phase 11: Panic and Illegal-State Hardening
+
+**Goal:** Replace reachable production panic paths in first-party Rust crates with typed errors or stricter local invariants, and add a regression guard so future production panic-like sites must be intentionally classified.
+**Requirements**: ARCH-03, VER-01, VER-02, AUD-01
+**Depends on:** Phase 10
+**Success Criteria** (what must be TRUE):
+  1. First-party production Rust panic-like sites under `packages/open-bitcoin-*/src` are inventoried and classified, excluding `tests.rs` and inline `#[cfg(test)]` sections.
+  2. Reachable caller-facing crash paths in RPC/CLI/adapters, wallet signing/building, chainstate apply/disconnect, and mempool admission/state recomputation return typed errors instead of panicking.
+  3. Remaining production `expect`, `panic!`, `unreachable!`, `unwrap`, `todo!`, and `unimplemented!` sites are narrowly allowed as proven invariants or accepted tooling boundaries.
+  4. A repo-owned guard fails on new unclassified production panic-like sites and is wired into `bash scripts/verify.sh`.
+**Plans:** 3/3 plans complete
+
+Plans:
+- [x] 11-01-PLAN.md — Inventory and classify first-party production panic-like sites.
+- [x] 11-02-PLAN.md — Replace reachable caller-facing crash paths with typed errors.
+- [x] 11-03-PLAN.md — Add the production panic-site regression guard and close verification.
+
 ## Progress
 
 **Execution Order:**
@@ -375,3 +393,4 @@ Phases execute in numeric order: 2 → 2.1 → 2.2 → 3 → 3.1 → 3.2 → 3.3
 | 8. RPC, CLI, and Config Parity | 0/3 | Not started | - |
 | 9. Parity Harnesses and Fuzzing | 0/4 | Not started | - |
 | 10. Benchmarks and Audit Readiness | 5/5 | Complete    | 2026-04-24 |
+| 11. Panic and Illegal-State Hardening | 3/3 | Complete | 2026-04-24 |

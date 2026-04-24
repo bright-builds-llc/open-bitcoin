@@ -72,7 +72,7 @@ impl MessageCommand {
         let content = &bytes[..content_len];
         let Some(invalid_byte) = content.iter().copied().find(|byte| !byte.is_ascii()) else {
             let command = core::str::from_utf8(content)
-                .expect("ASCII bytes must be valid UTF-8")
+                .map_err(|_| MessageCommandError::NonAscii(0xff))?
                 .to_owned();
             return Self::new(command);
         };

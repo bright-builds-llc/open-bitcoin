@@ -1,0 +1,5 @@
+# Format:
+# path|needle|rationale
+#
+# This allowlist is intentionally empty after Phase 11 hardening. Add entries
+# only for narrow, locally proven invariants or accepted tooling boundaries.

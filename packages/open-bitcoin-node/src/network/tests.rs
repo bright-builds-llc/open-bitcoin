@@ -278,7 +278,9 @@ fn managed_network_exposes_rpc_projection_helpers() {
         499_999_000,
     );
     let expected_virtual_size =
-        open_bitcoin_mempool::transaction_weight_and_virtual_size(&transaction).1;
+        open_bitcoin_mempool::transaction_weight_and_virtual_size(&transaction)
+            .expect("weight")
+            .1;
     network
         .submit_local_transaction(transaction, verify_flags(), consensus_params())
         .expect("submit");

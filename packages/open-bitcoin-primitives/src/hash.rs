@@ -13,11 +13,12 @@
 //!
 //! let raw = [0x11_u8; 32];
 //! let txid = Txid::from_byte_array(raw);
-//! let parsed_wtxid = Wtxid::from_slice(&raw).expect("32-byte hash");
+//! let parsed_wtxid = Wtxid::from_slice(&raw)?;
 //! let generic_hash = Hash32::from(txid);
 //!
 //! assert_eq!(parsed_wtxid.to_byte_array(), raw);
 //! assert_eq!(generic_hash.to_byte_array(), raw);
+//! # Ok::<(), open_bitcoin_primitives::HashLengthError>(())
 //! ```
 
 use core::fmt;

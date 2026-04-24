@@ -174,13 +174,11 @@ impl HeaderStore {
 
         let mut headers = Vec::new();
         for block_hash in best_chain.into_iter().skip(start_index).take(limit) {
-            let entry = self
-                .entries
-                .get(&block_hash)
-                .expect("best chain hashes must resolve to stored entries");
-            headers.push(entry.header.clone());
-            if block_hash == stop_hash {
-                break;
+            if let Some(entry) = self.entries.get(&block_hash) {
+                headers.push(entry.header.clone());
+                if block_hash == stop_hash {
+                    break;
+                }
             }
         }
         headers
@@ -204,10 +202,9 @@ impl HeaderStore {
     }
 
     fn update_best_tip(&mut self, candidate_hash: BlockHash) {
-        let candidate = self
-            .entries
-            .get(&candidate_hash)
-            .expect("candidate hash must already exist");
+        let Some(candidate) = self.entries.get(&candidate_hash) else {
+            return;
+        };
         let replace = self
             .best_tip
             .and_then(|hash| self.entries.get(&hash))
@@ -321,6 +318,19 @@ mod tests {
         let mut store = HeaderStore::default();
         assert_eq!(store.best_height(), -1);
         assert!(store.best_tip().is_none());
+        store.update_best_tip(BlockHash::from_byte_array([42_u8; 32]));
+        assert!(store.best_tip().is_none());
+        store.best_tip = Some(BlockHash::from_byte_array([43_u8; 32]));
+        store
+            .parents
+            .insert(BlockHash::from_byte_array([43_u8; 32]), None);
+        assert!(
+            store
+                .headers_after_locator(&BlockLocator::default(), BlockHash::default(), 1)
+                .is_empty()
+        );
+        store.best_tip = None;
+        store.parents.clear();
         assert!(store.locator().block_hashes.is_empty());
         assert!(
             store

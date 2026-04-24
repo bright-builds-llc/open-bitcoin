@@ -14,7 +14,10 @@ fn main() -> ExitCode {
     let cli_args = env::args_os().skip(1).collect::<Vec<_>>();
     let stdin = if stdin_required_for_args(&cli_args) {
         let mut stdin = String::new();
-        io::stdin().read_to_string(&mut stdin).expect("stdin");
+        if let Err(error) = io::stdin().read_to_string(&mut stdin) {
+            eprintln!("failed to read stdin: {error}");
+            return ExitCode::from(1);
+        }
         stdin
     } else {
         String::new()

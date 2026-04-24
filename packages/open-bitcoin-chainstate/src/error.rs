@@ -46,6 +46,10 @@ pub enum ChainstateError {
     TransactionValidation {
         source: TxValidationError,
     },
+    Serialization {
+        context: &'static str,
+        reason: String,
+    },
 }
 
 impl fmt::Display for ChainstateError {
@@ -118,6 +122,9 @@ impl fmt::Display for ChainstateError {
             ),
             Self::BlockValidation { source } => write!(f, "{source}"),
             Self::TransactionValidation { source } => write!(f, "{source}"),
+            Self::Serialization { context, reason } => {
+                write!(f, "{context} serialization failed: {reason}")
+            }
         }
     }
 }
@@ -187,6 +194,10 @@ mod tests {
                     "bad-tx",
                     Some("details".to_string()),
                 ),
+            },
+            ChainstateError::Serialization {
+                context: "txid derivation",
+                reason: "bad compact size".to_string(),
             },
         ];
 

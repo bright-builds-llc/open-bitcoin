@@ -141,10 +141,7 @@ async fn handle_single_request(state: &RpcHttpState, value: serde_json::Value) -
 
     match execute_request(state, parsed).await {
         Some((status, body)) => json_response(status, body),
-        None => Response::builder()
-            .status(StatusCode::NO_CONTENT)
-            .body(Body::empty())
-            .expect("response"),
+        None => empty_response(StatusCode::NO_CONTENT),
     }
 }
 
@@ -167,10 +164,7 @@ async fn handle_batch_request(state: &RpcHttpState, batch: Vec<serde_json::Value
     }
 
     if responses.is_empty() {
-        return Response::builder()
-            .status(StatusCode::NO_CONTENT)
-            .body(Body::empty())
-            .expect("response");
+        return empty_response(StatusCode::NO_CONTENT);
     }
 
     json_response(StatusCode::OK, serde_json::Value::Array(responses))
@@ -453,11 +447,8 @@ fn hex_encode(bytes: &[u8]) -> String {
 }
 
 fn json_response(status: StatusCode, body: serde_json::Value) -> Response {
-    let mut response = Response::builder()
-        .status(status)
-        .header("content-type", "application/json")
-        .body(Body::from(body.to_string()))
-        .expect("response");
+    let mut response = Response::new(Body::from(body.to_string()));
+    *response.status_mut() = status;
     response
         .headers_mut()
         .insert("content-type", HeaderValue::from_static("application/json"));
@@ -465,21 +456,23 @@ fn json_response(status: StatusCode, body: serde_json::Value) -> Response {
 }
 
 fn plain_response(status: StatusCode, body: &'static str) -> Response {
-    Response::builder()
-        .status(status)
-        .body(Body::from(body))
-        .expect("response")
+    let mut response = Response::new(Body::from(body));
+    *response.status_mut() = status;
+    response
 }
 
 fn unauthorized_response() -> Response {
-    let mut response = Response::builder()
-        .status(StatusCode::UNAUTHORIZED)
-        .body(Body::empty())
-        .expect("response");
+    let mut response = empty_response(StatusCode::UNAUTHORIZED);
     response.headers_mut().insert(
         "www-authenticate",
         HeaderValue::from_static(WWW_AUTH_HEADER_DATA),
     );
+    response
+}
+
+fn empty_response(status: StatusCode) -> Response {
+    let mut response = Response::new(Body::empty());
+    *response.status_mut() = status;
     response
 }
 

@@ -5,9 +5,9 @@ use open_bitcoin_primitives::{MAX_MONEY, TransactionInput, TransactionOutput, Tx
 use super::{
     BlockValidationContext, ConsensusParams, MinDifficultyRecoveryTarget,
     PrecomputedTransactionData, RetargetAnchor, ScriptVerifyFlags, SpentOutput,
-    TransactionInputContext, TransactionValidationContext, calculate_sequence_locks,
-    check_tx_inputs, evaluate_sequence_locks, is_final_transaction, sequence_locks,
-    write_compact_size,
+    TransactionInputContext, TransactionValidationContext, amount_from_checked_fee,
+    calculate_sequence_locks, check_tx_inputs, evaluate_sequence_locks, is_final_transaction,
+    sequence_locks, write_compact_size,
 };
 
 fn script(bytes: &[u8]) -> ScriptBuf {
@@ -288,6 +288,13 @@ fn check_tx_inputs_covers_mismatch_and_value_failures() {
             .expect_err("overspend must fail")
             .reject_reason,
         "bad-txns-in-belowout",
+    );
+
+    assert_eq!(
+        amount_from_checked_fee(MAX_MONEY + 1)
+            .expect_err("out-of-range fee must fail")
+            .reject_reason,
+        "bad-txns-inputvalues-outofrange",
     );
 
     let mut compact = Vec::new();

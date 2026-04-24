@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: complete
-stopped_at: Completed Phase 10 verification
-last_updated: "2026-04-24T12:54:58.855Z"
+stopped_at: Completed Phase 11 verification
+last_updated: "2026-04-24T16:10:30.000Z"
 last_activity: 2026-04-24
 progress:
-  total_phases: 20
-  completed_phases: 20
-  total_plans: 73
-  completed_plans: 73
+  total_phases: 21
+  completed_phases: 21
+  total_plans: 76
+  completed_plans: 76
   percent: 100
 ---
 
@@ -21,11 +21,11 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-24)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 10 complete — Benchmarks and Audit Readiness
+**Current focus:** Phase 11 complete — Panic and Illegal-State Hardening
 
 ## Current Position
 
-Phase: 10
+Phase: 11
 Plan: Not started
 Status: Phase complete — verification passed
 Last activity: 2026-04-24
@@ -84,6 +84,9 @@ Progress: ██████████ 100%
 | Phase 10 P03 | 5 min | 2 tasks | 5 files |
 | Phase 10 P04 | 537s | 2 tasks | 6 files |
 | Phase 10 P05 | 5m 14s | 2 tasks | 5 files |
+| Phase 11 P01 | 5 min | 3 tasks | 4 files |
+| Phase 11 P02 | 35 min | 4 tasks | 23 files |
+| Phase 11 P03 | 6 min | 4 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -127,6 +130,9 @@ Recent decisions affecting current work:
 - [Phase 10]: Keep release readiness repo-local and deterministic by linking generated benchmark report paths instead of checking timing output into git.
 - [Phase 10]: Record stale STATE.md and ROADMAP.md discrepancies in release-readiness audit notes instead of hand-rewriting unrelated planning history during Task 1.
 - [Phase 10]: Promote benchmarks-audit-readiness only after regenerating benchmark smoke output and creating the release-readiness handoff.
+- [Phase 11]: Treat reachable production panic-like sites as typed-error work instead of allowlisting them; keep `scripts/panic-sites.allowlist` empty unless a future invariant is locally proven.
+- [Phase 11]: Guard first-party production Rust under `packages/open-bitcoin-*/src` in `bash scripts/verify.sh`, while excluding vendored Knots, build output, `tests.rs`, and inline `#[cfg(test)]` sections.
+- [Phase 11]: Preserve external Bitcoin, RPC, CLI, wallet, mempool, networking, and consensus behavior while replacing internal crashes with crate-local typed errors.
 
 ### Roadmap Evolution
 
@@ -136,12 +142,12 @@ Recent decisions affecting current work:
 - Phase 07.4 inserted after Phase 07.3: Sweep the codebase for let-else opportunities (URGENT)
 - Phase 07.5 inserted after Phase 07.4: Fix consensus parity gaps in contextual header validation and lax DER signature verification (URGENT)
 - Phase 07.6 inserted after Phase 07.5: Enforce coinbase subsidy-plus-fees limits on the consensus and active chainstate paths (URGENT)
+- Phase 11 added: Panic and Illegal-State Hardening
 
 ### Pending Todos
 
-- 3 pending:
+- 2 pending:
   - AI-agent-friendly CLI surface — see `.planning/todos/pending/2026-04-18-ai-agent-friendly-cli-surface.md`
-  - Sweep panics and illegal states — see `.planning/todos/pending/2026-04-18-sweep-panics-and-illegal-states.md`
   - Reduce nesting with early returns — see `.planning/todos/pending/2026-04-18-reduce-nesting-with-early-returns.md`
 
 ### Blockers/Concerns

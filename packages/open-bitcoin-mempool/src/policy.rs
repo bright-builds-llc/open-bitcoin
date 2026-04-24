@@ -1,16 +1,19 @@
+mod output;
+
 use open_bitcoin_codec::{TransactionEncoding, encode_transaction};
 use open_bitcoin_consensus::script::{count_p2sh_sigops, count_witness_sigops};
-use open_bitcoin_consensus::{
-    ScriptPubKeyType, TransactionInputContext, classify_script_pubkey, count_legacy_sigops,
-    is_push_only,
-};
-use open_bitcoin_primitives::{Transaction, TransactionInput, TransactionOutput};
+use open_bitcoin_consensus::{TransactionInputContext, count_legacy_sigops, is_push_only};
+use open_bitcoin_primitives::{Transaction, TransactionInput};
 
 use crate::{MempoolError, PolicyConfig};
+pub use output::dust_threshold_sats;
+use output::validate_standard_output;
 
-pub fn transaction_weight_and_virtual_size(transaction: &Transaction) -> (usize, usize) {
+pub fn transaction_weight_and_virtual_size(
+    transaction: &Transaction,
+) -> Result<(usize, usize), MempoolError> {
     let stripped = encode_transaction(transaction, TransactionEncoding::WithoutWitness)
-        .expect("typed transactions should serialize without witness")
+        .map_err(|source| transaction_serialization_error("without witness", source))?
         .len();
     let total = encode_transaction(
         transaction,
@@ -20,12 +23,21 @@ pub fn transaction_weight_and_virtual_size(transaction: &Transaction) -> (usize,
             TransactionEncoding::WithoutWitness
         },
     )
-    .expect("typed transactions should serialize with selected witness mode")
+    .map_err(|source| transaction_serialization_error("with selected witness mode", source))?
     .len();
     let weight = stripped.saturating_mul(3).saturating_add(total);
     let virtual_size = weight.div_ceil(4);
 
-    (weight, virtual_size)
+    Ok((weight, virtual_size))
+}
+
+fn transaction_serialization_error(
+    context: &'static str,
+    source: open_bitcoin_codec::CodecError,
+) -> MempoolError {
+    MempoolError::Validation {
+        reason: format!("transaction serialization failed {context}: {source}"),
+    }
 }
 
 pub fn transaction_sigops_cost(
@@ -140,81 +152,6 @@ pub fn signals_opt_in_rbf(transaction: &Transaction) -> bool {
         .any(|input| input.sequence < TransactionInput::MAX_SEQUENCE_NONFINAL)
 }
 
-pub fn dust_threshold_sats(output: &TransactionOutput) -> i64 {
-    let script = output.script_pubkey.as_bytes();
-    if script.first() == Some(&0x6a) {
-        return 0;
-    }
-
-    match classify_script_pubkey(&output.script_pubkey) {
-        ScriptPubKeyType::WitnessV0KeyHash(_)
-        | ScriptPubKeyType::WitnessV0ScriptHash(_)
-        | ScriptPubKeyType::WitnessV1Taproot(_) => 330,
-        _ => 546,
-    }
-}
-
-fn validate_standard_output(
-    output: &TransactionOutput,
-    output_index: usize,
-    config: &PolicyConfig,
-) -> Result<(), MempoolError> {
-    let script = output.script_pubkey.as_bytes();
-    if script.first() == Some(&0x6a) {
-        if !config.accept_datacarrier {
-            return Err(MempoolError::NonStandard {
-                reason: format!("output {output_index} null-data scripts are disabled"),
-            });
-        }
-        if script.len() > config.max_datacarrier_bytes {
-            return Err(MempoolError::NonStandard {
-                reason: format!(
-                    "output {output_index} null-data script length {} exceeds standard limit {}",
-                    script.len(),
-                    config.max_datacarrier_bytes
-                ),
-            });
-        }
-        if output.value.to_sats() != 0 {
-            return Err(MempoolError::NonStandard {
-                reason: format!("output {output_index} null-data outputs must carry zero value"),
-            });
-        }
-        return Ok(());
-    }
-
-    match classify_script_pubkey(&output.script_pubkey) {
-        ScriptPubKeyType::PayToPubKey { .. } => {
-            return Err(MempoolError::NonStandard {
-                reason: format!("output {output_index} bare pubkey outputs are non-standard"),
-            });
-        }
-        ScriptPubKeyType::Multisig { .. } if !config.permit_bare_multisig => {
-            return Err(MempoolError::NonStandard {
-                reason: format!("output {output_index} bare multisig outputs are disabled"),
-            });
-        }
-        ScriptPubKeyType::WitnessUnknown { .. } | ScriptPubKeyType::NonStandard => {
-            return Err(MempoolError::NonStandard {
-                reason: format!("output {output_index} script is non-standard"),
-            });
-        }
-        _ => {}
-    }
-
-    let threshold = dust_threshold_sats(output);
-    if output.value.to_sats() < threshold {
-        return Err(MempoolError::NonStandard {
-            reason: format!(
-                "output {output_index} value {} is dust below threshold {threshold}",
-                output.value.to_sats()
-            ),
-        });
-    }
-
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use open_bitcoin_consensus::TransactionInputContext;
@@ -285,7 +222,8 @@ mod tests {
 
     #[test]
     fn transaction_weight_reports_expected_vsize() {
-        let (weight, virtual_size) = transaction_weight_and_virtual_size(&standard_transaction());
+        let (weight, virtual_size) =
+            transaction_weight_and_virtual_size(&standard_transaction()).expect("weight");
 
         assert!(weight > 0);
         assert_eq!(virtual_size, weight.div_ceil(4));
@@ -296,7 +234,8 @@ mod tests {
         let mut transaction = standard_transaction();
         transaction.inputs[0].witness = ScriptWitness::new(vec![vec![0x01]]);
 
-        let (weight, virtual_size) = transaction_weight_and_virtual_size(&transaction);
+        let (weight, virtual_size) =
+            transaction_weight_and_virtual_size(&transaction).expect("weight");
 
         assert!(weight > 4 * virtual_size.saturating_sub(1));
         assert!(transaction.has_witness());
@@ -314,7 +253,8 @@ mod tests {
     fn validate_standard_transaction_rejects_non_standard_outputs() {
         let mut transaction = standard_transaction();
         transaction.outputs[0].script_pubkey = script(&[0x51]);
-        let (weight, virtual_size) = transaction_weight_and_virtual_size(&transaction);
+        let (weight, virtual_size) =
+            transaction_weight_and_virtual_size(&transaction).expect("weight");
         let sigops_cost =
             transaction_sigops_cost(&transaction, &[input_context()]).expect("sigops");
         let config = PolicyConfig::default();
@@ -336,7 +276,7 @@ mod tests {
     fn validate_standard_transaction_rejects_dust_outputs() {
         let mut transaction = standard_transaction();
         transaction.outputs[0].value = Amount::from_sats(100).expect("valid amount");
-        let (weight, _) = transaction_weight_and_virtual_size(&transaction);
+        let (weight, _) = transaction_weight_and_virtual_size(&transaction).expect("weight");
         let sigops_cost =
             transaction_sigops_cost(&transaction, &[input_context()]).expect("sigops");
         let error = validate_standard_transaction(
@@ -618,5 +558,18 @@ mod tests {
 
         assert!(signals_opt_in_rbf(&replaceable));
         assert!(!signals_opt_in_rbf(&standard_transaction()));
+    }
+
+    #[test]
+    fn transaction_serialization_errors_map_to_validation_errors() {
+        // Arrange
+        let source = open_bitcoin_codec::CodecError::CompactSizeTooLarge(33_554_433);
+
+        // Act
+        let error = super::transaction_serialization_error("without witness", source);
+
+        // Assert
+        assert!(matches!(error, crate::MempoolError::Validation { .. }));
+        assert!(error.to_string().contains("without witness"));
     }
 }

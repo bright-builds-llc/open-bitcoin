@@ -11,12 +11,14 @@ use crate::case::SuiteReport;
 #[derive(Debug)]
 pub enum ReportError {
     Io(std::io::Error),
+    Json(serde_json::Error),
 }
 
 impl fmt::Display for ReportError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Io(error) => write!(f, "report I/O failed: {error}"),
+            Self::Json(error) => write!(f, "report JSON failed: {error}"),
         }
     }
 }
@@ -26,6 +28,12 @@ impl std::error::Error for ReportError {}
 impl From<std::io::Error> for ReportError {
     fn from(error: std::io::Error) -> Self {
         Self::Io(error)
+    }
+}
+
+impl From<serde_json::Error> for ReportError {
+    fn from(error: serde_json::Error) -> Self {
+        Self::Json(error)
     }
 }
 
@@ -70,10 +78,7 @@ fn write_json_report(report: &SuiteReport, path: &Path) -> Result<(), ReportErro
         "case_count": report.outcomes.len(),
         "outcomes": outcomes,
     });
-    fs::write(
-        path,
-        serde_json::to_string_pretty(&body).expect("json report"),
-    )?;
+    fs::write(path, serde_json::to_string_pretty(&body)?)?;
     Ok(())
 }
 

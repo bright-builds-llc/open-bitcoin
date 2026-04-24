@@ -188,8 +188,8 @@ pub(super) fn verify_witness_program(
             let mut exec_script_bytes = vec![OP_DUP, OP_HASH160, 20];
             exec_script_bytes.extend_from_slice(program);
             exec_script_bytes.extend_from_slice(&[OP_EQUALVERIFY, OP_CHECKSIG]);
-            let exec_script =
-                ScriptBuf::from_bytes(exec_script_bytes).expect("generated P2WPKH script is valid");
+            let exec_script = ScriptBuf::from_bytes(exec_script_bytes)
+                .map_err(|_| ScriptError::WitnessProgramMismatch)?;
             execute_witness_script(
                 stack,
                 transaction,

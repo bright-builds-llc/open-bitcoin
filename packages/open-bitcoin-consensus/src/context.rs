@@ -329,7 +329,7 @@ pub fn check_tx_inputs(
     context: &TransactionValidationContext,
 ) -> Result<Amount, TxValidationError> {
     if transaction.is_coinbase() {
-        return Ok(Amount::from_sats(0).expect("zero fee is always in range"));
+        return Ok(Amount::ZERO);
     }
 
     if context.inputs.len() != transaction.inputs.len() {
@@ -387,7 +387,17 @@ pub fn check_tx_inputs(
     }
 
     let fee = total_input_value - total_output_value;
-    Ok(Amount::from_sats(fee).expect("checked fee must stay within range"))
+    amount_from_checked_fee(fee)
+}
+
+fn amount_from_checked_fee(fee: i64) -> Result<Amount, TxValidationError> {
+    Amount::from_sats(fee).map_err(|_| {
+        tx_error(
+            TxValidationResult::Consensus,
+            "bad-txns-inputvalues-outofrange",
+            None,
+        )
+    })
 }
 
 fn encode_transaction_output(out: &mut Vec<u8>, output: &TransactionOutput) {

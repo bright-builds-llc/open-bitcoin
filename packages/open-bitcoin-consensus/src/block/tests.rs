@@ -1210,10 +1210,28 @@ fn contextual_helpers_cover_merkle_height_and_weight_edges() {
                     enforce_segwit: true,
                     ..Default::default()
                 },
-                ..no_mtp_context
+                ..no_mtp_context.clone()
             }
         )
         .expect_err("bad witness nonce size must fail")
+        .reject_reason,
+        "bad-witness-nonce-size",
+    );
+
+    let mut missing_nonce_block = heavy_block;
+    missing_nonce_block.transactions[0].inputs[0].witness = ScriptWitness::default();
+    assert_eq!(
+        check_block_contextual(
+            &missing_nonce_block,
+            &BlockValidationContext {
+                consensus_params: ConsensusParams {
+                    enforce_segwit: true,
+                    ..Default::default()
+                },
+                ..no_mtp_context
+            }
+        )
+        .expect_err("missing witness nonce must fail")
         .reject_reason,
         "bad-witness-nonce-size",
     );
@@ -1422,6 +1440,38 @@ fn enforce_coinbase_reward_limit_accepts_exact_limit_and_rejects_overpay() {
         overpay_error.debug_message.as_deref(),
         Some("coinbase pays too much (actual=5000000011 vs limit=5000000010)"),
     );
+}
+
+#[test]
+fn enforce_coinbase_reward_limit_reports_missing_and_overflowing_coinbase_values() {
+    // Arrange
+    let empty_block = Block {
+        header: BlockHeader::default(),
+        transactions: vec![],
+    };
+    let mut overflowing_coinbase = coinbase_transaction();
+    overflowing_coinbase.outputs = (0..5_000)
+        .map(|_| TransactionOutput {
+            value: Amount::from_sats(MAX_MONEY).expect("max money"),
+            script_pubkey: script(&[0x51]),
+        })
+        .collect();
+    let overflowing_block = Block {
+        header: BlockHeader::default(),
+        transactions: vec![overflowing_coinbase],
+    };
+
+    // Act
+    let missing_error =
+        enforce_coinbase_reward_limit(&empty_block, 0, 0, &ConsensusParams::default())
+            .expect_err("missing coinbase should fail");
+    let overflow_error =
+        enforce_coinbase_reward_limit(&overflowing_block, 0, 0, &ConsensusParams::default())
+            .expect_err("overflowing coinbase total should fail");
+
+    // Assert
+    assert_eq!(missing_error.reject_reason, "bad-cb-missing");
+    assert_eq!(overflow_error.reject_reason, "bad-txns-txouttotal-toolarge");
 }
 
 #[test]

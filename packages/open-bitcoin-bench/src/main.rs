@@ -184,8 +184,8 @@ fn parse_command(args: &[String]) -> Result<Command, BenchError> {
         }
     }
 
-    let mode = if mode_count == 1 {
-        maybe_mode.expect("mode is set when mode_count is one")
+    let mode = if let (1, Some(mode)) = (mode_count, maybe_mode) {
+        mode
     } else {
         return Err(BenchError::InvalidArgument(
             "choose exactly one of --smoke or --full".to_string(),

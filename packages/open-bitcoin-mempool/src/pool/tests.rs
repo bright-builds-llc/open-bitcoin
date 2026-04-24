@@ -516,6 +516,17 @@ fn direct_helper_paths_cover_internal_edge_branches() {
         .expect_err("fee floor should fail");
     assert!(matches!(relay_error, MempoolError::RelayFeeTooLow { .. }));
 
+    let invalid_fee = super::amount_from_fee_sats(-1).expect_err("negative fee should fail");
+    assert!(matches!(invalid_fee, MempoolError::Validation { .. }));
+    let serialization_error = super::serialization_validation_error(
+        "transaction txid",
+        open_bitcoin_codec::CodecError::CompactSizeTooLarge(33_554_433),
+    );
+    assert!(matches!(
+        serialization_error,
+        MempoolError::Validation { .. }
+    ));
+
     let candidate_txid = Txid::from_byte_array([7_u8; 32]);
     let candidate_transaction = spend_transaction(
         Txid::from_byte_array([6_u8; 32]),
@@ -895,4 +906,52 @@ fn recompute_state_skips_invalid_parent_links_and_candidate_eviction_is_reported
     .expect_err("tiny mempool should evict candidate");
 
     assert!(matches!(error, MempoolError::CandidateEvicted { .. }));
+}
+
+#[test]
+fn validate_limits_reports_missing_candidate_as_internal_invariant() {
+    // Arrange
+    let entries = HashMap::new();
+    let config = PolicyConfig::default();
+    let candidate_txid = Txid::from_byte_array([9_u8; 32]);
+
+    // Act
+    let error = super::validate_limits(&entries, &config, candidate_txid)
+        .expect_err("missing candidate should be reported without panicking");
+
+    // Assert
+    assert!(matches!(error, MempoolError::InternalInvariant { .. }));
+    assert!(error.to_string().contains("candidate"));
+}
+
+#[test]
+fn validate_limits_reports_missing_ancestor_as_internal_invariant() {
+    // Arrange
+    let candidate_txid = Txid::from_byte_array([9_u8; 32]);
+    let missing_ancestor_txid = Txid::from_byte_array([8_u8; 32]);
+    let transaction = spend_transaction(
+        Txid::from_byte_array([7_u8; 32]),
+        0,
+        499_999_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let mut entry = MempoolEntry::new(
+        transaction.clone(),
+        candidate_txid,
+        open_bitcoin_consensus::transaction_wtxid(&transaction).expect("wtxid"),
+        Amount::from_sats(100).expect("amount"),
+        100,
+        400,
+        0,
+    );
+    entry.parents.insert(missing_ancestor_txid);
+    let entries = HashMap::from([(candidate_txid, entry)]);
+
+    // Act
+    let error = super::validate_limits(&entries, &PolicyConfig::default(), candidate_txid)
+        .expect_err("missing ancestor should be reported without panicking");
+
+    // Assert
+    assert!(matches!(error, MempoolError::InternalInvariant { .. }));
+    assert!(error.to_string().contains("ancestor"));
 }

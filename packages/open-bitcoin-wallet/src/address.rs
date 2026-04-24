@@ -341,7 +341,7 @@ pub fn tr_address(
     })
 }
 
-pub(crate) fn push_data(data: &[u8]) -> Vec<u8> {
+pub(crate) fn push_data(data: &[u8]) -> Result<Vec<u8>, WalletError> {
     let mut bytes = Vec::with_capacity(data.len() + PUSHDATA2_PREFIX_LEN);
     if data.len() <= DIRECT_PUSH_MAX {
         bytes.push(data.len() as u8);
@@ -352,10 +352,14 @@ pub(crate) fn push_data(data: &[u8]) -> Vec<u8> {
         bytes.push(OP_PUSHDATA2);
         bytes.extend_from_slice(&(data.len() as u16).to_le_bytes());
     } else {
-        panic!("push length out of supported range");
+        return Err(WalletError::Script(format!(
+            "push length {} exceeds {} byte script element limit",
+            data.len(),
+            MAX_SCRIPT_ELEMENT_SIZE
+        )));
     }
     bytes.extend_from_slice(data);
-    bytes
+    Ok(bytes)
 }
 
 pub(crate) fn public_key_bytes(pubkey: &PublicKey, compressed: bool) -> Vec<u8> {

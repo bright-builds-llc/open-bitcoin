@@ -358,6 +358,7 @@ fn helpers_cover_bool_number_and_disabled_opcode_edges() {
     assert!(!cast_to_bool(&[0x80]));
     assert!(!cast_to_bool(&[0x00]));
     assert!(cast_to_bool(&[0x01]));
+    assert_eq!(decode_script_num(&[]), Ok(0));
     assert_eq!(decode_script_num(&[0x81]), Ok(-1));
     assert_eq!(decode_script_num(&[0x01, 0x80]), Ok(-1));
     assert_eq!(decode_script_num(&[0; 5]), Err(ScriptError::NumOverflow(5)));
@@ -386,6 +387,14 @@ fn low_level_script_helpers_cover_remaining_direct_paths() {
     assert_eq!(
         witness_sigops_for_type(&ScriptPubKeyType::NonStandard, &ScriptWitness::default())
             .expect("helper should succeed"),
+        None
+    );
+    assert_eq!(
+        witness_sigops_for_type(
+            &ScriptPubKeyType::WitnessV0ScriptHash([0_u8; 32]),
+            &ScriptWitness::default(),
+        )
+        .expect("empty witness script should not count sigops"),
         None
     );
 }

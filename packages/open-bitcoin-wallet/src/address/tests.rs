@@ -88,8 +88,8 @@ fn segwit_encoder_rejects_invalid_program_lengths() {
 
 #[test]
 fn push_data_handles_small_and_medium_pushes() {
-    assert_eq!(push_data(&[0xaa, 0xbb]), vec![2, 0xaa, 0xbb]);
-    assert_eq!(push_data(&[0_u8; 76])[..2], [0x4c, 76]);
+    assert_eq!(push_data(&[0xaa, 0xbb]).expect("push"), vec![2, 0xaa, 0xbb]);
+    assert_eq!(push_data(&[0_u8; 76]).expect("push")[..2], [0x4c, 76]);
 }
 
 #[test]
@@ -177,8 +177,11 @@ fn helper_encoders_cover_remaining_edge_cases() {
     );
     assert!(base58_decode("").is_err());
     assert!(decode_hex("0").is_err());
-    assert_eq!(push_data(&[0_u8; 300])[..3], [0x4d, 0x2c, 0x01]);
-    assert!(std::panic::catch_unwind(|| push_data(&[0_u8; 521])).is_err());
+    assert_eq!(
+        push_data(&[0_u8; 300]).expect("push")[..3],
+        [0x4d, 0x2c, 0x01]
+    );
+    assert!(push_data(&[0_u8; 521]).is_err());
 
     let high_version = encode_segwit_address("tb", 17, &[0_u8; 32]).expect_err("bad version");
     let long_program = encode_segwit_address("tb", 1, &[0_u8; 41]).expect_err("bad program length");

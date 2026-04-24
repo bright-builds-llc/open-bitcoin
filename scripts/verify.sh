@@ -89,6 +89,7 @@ mkdir -p "$OPEN_BITCOIN_BENCHMARK_REPORT_DIR"
 
 bash scripts/check-pure-core-deps.sh
 bash scripts/check-file-lengths.sh
+bash scripts/check-panic-sites.sh
 cargo fmt --manifest-path packages/Cargo.toml --all --check
 cargo clippy --manifest-path packages/Cargo.toml --workspace --all-targets --all-features -- -D warnings
 cargo build --manifest-path packages/Cargo.toml --workspace --all-targets --all-features

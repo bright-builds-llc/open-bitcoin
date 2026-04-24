@@ -480,7 +480,8 @@ impl<'a> Cursor<'a> {
 
     fn read_array<const N: usize>(&mut self) -> Result<[u8; N], CodecError> {
         let slice = self.read_slice(N)?;
-        let array = <[u8; N]>::try_from(slice).expect("slice length already validated");
+        let mut array = [0_u8; N];
+        array.copy_from_slice(slice);
         Ok(array)
     }
 

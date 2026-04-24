@@ -60,7 +60,9 @@ pub(super) fn compute_tapbranch_hash(left: &[u8; 32], right: &[u8; 32]) -> [u8; 
 pub(super) fn compute_taproot_merkle_root(control: &[u8], tapleaf_hash: [u8; 32]) -> [u8; 32] {
     let mut value = tapleaf_hash;
     for node in control[TAPROOT_CONTROL_BASE_SIZE..].chunks_exact(TAPROOT_CONTROL_NODE_SIZE) {
-        value = compute_tapbranch_hash(&value, node.try_into().expect("32-byte node"));
+        let mut node_hash = [0_u8; TAPROOT_CONTROL_NODE_SIZE];
+        node_hash.copy_from_slice(node);
+        value = compute_tapbranch_hash(&value, &node_hash);
     }
     value
 }
@@ -71,11 +73,9 @@ pub(super) fn verify_taproot_commitment(
     program: &[u8; 32],
     tapleaf_hash: [u8; 32],
 ) -> bool {
-    let Ok(internal_key) = XOnlyPublicKey::from_byte_array(
-        control[1..TAPROOT_CONTROL_BASE_SIZE]
-            .try_into()
-            .expect("32-byte internal key"),
-    ) else {
+    let mut internal_key_bytes = [0_u8; TAPROOT_CONTROL_NODE_SIZE];
+    internal_key_bytes.copy_from_slice(&control[1..TAPROOT_CONTROL_BASE_SIZE]);
+    let Ok(internal_key) = XOnlyPublicKey::from_byte_array(internal_key_bytes) else {
         return false;
     };
     let Ok(output_key) = XOnlyPublicKey::from_byte_array(*program) else {
@@ -125,14 +125,15 @@ pub(super) fn verify_taproot_program(
             .last()
             .is_some_and(|annex| !annex.is_empty() && annex[0] == ANNEX_TAG)
     {
-        let annex = taproot_stack.pop().expect("checked above");
+        let annex_index = taproot_stack.len() - 1;
+        let annex = taproot_stack.remove(annex_index);
         execution_data.maybe_annex = Some(annex);
     } else {
         execution_data.maybe_annex = None;
     }
 
     if taproot_stack.len() == 1 {
-        let signature = taproot_stack.pop().expect("checked above");
+        let signature = taproot_stack.remove(0);
         let is_valid_signature =
             TransactionSignatureChecker::new(secp, validation_context, precomputed)
                 .verify_schnorr(

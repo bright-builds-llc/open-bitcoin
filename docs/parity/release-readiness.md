@@ -52,6 +52,10 @@ Primary completion evidence:
   [`10-02-SUMMARY.md`](../../.planning/phases/10-benchmarks-and-audit-readiness/10-02-SUMMARY.md),
   [`10-03-SUMMARY.md`](../../.planning/phases/10-benchmarks-and-audit-readiness/10-03-SUMMARY.md), and
   [`10-04-SUMMARY.md`](../../.planning/phases/10-benchmarks-and-audit-readiness/10-04-SUMMARY.md)
+- Phase 11 panic and illegal-state hardening evidence:
+  [`11-INVENTORY.md`](../../.planning/phases/11-panic-and-illegal-state-hardening/11-INVENTORY.md),
+  [`11-02-SUMMARY.md`](../../.planning/phases/11-panic-and-illegal-state-hardening/11-02-SUMMARY.md), and
+  [`11-03-SUMMARY.md`](../../.planning/phases/11-panic-and-illegal-state-hardening/11-03-SUMMARY.md)
 
 ## Intentional Deferrals
 
@@ -97,12 +101,13 @@ Current suspected unknown themes from
 - Future Knots-backed harness strategy: translate upstream functional cases
   into Rust or wrap a managed baseline process.
 
-Folded todo risks remain audit notes only:
+Folded todo status:
 
 - AI-agent-friendly CLI affordances are evidenced through Phase 8, not expanded
   in Phase 10.
-- Panic and illegal-state exposure should be handled by a separate quality phase
-  if the milestone owner wants that risk reduced before wider release.
+- Panic and illegal-state exposure was handled by Phase 11. Future production
+  panic-like sites are blocked by `scripts/check-panic-sites.sh` unless fixed or
+  explicitly allowlisted.
 
 ## Verification Evidence
 
@@ -118,7 +123,9 @@ Evidence links:
 
 - [`scripts/verify.sh`](../../scripts/verify.sh) runs format, lint, build,
   tests, benchmark smoke output, Bazel smoke targets, coverage, and architecture
-  checks.
+  checks, including the production panic-site guard.
+- [`scripts/check-panic-sites.sh`](../../scripts/check-panic-sites.sh) scans
+  first-party production Rust code for unclassified panic-like sites.
 - [`scripts/run-benchmarks.sh`](../../scripts/run-benchmarks.sh) is the
   contributor-facing benchmark wrapper.
 - [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) runs
@@ -153,7 +160,9 @@ Before a release decision, inspect:
 - [`docs/parity/benchmarks.md`](benchmarks.md) for benchmark scope and report
   semantics.
 - [`docs/parity/deviations-and-unknowns.md`](deviations-and-unknowns.md) for
-  deferred surfaces and folded todo risks.
+  deferred surfaces and folded todo status.
+- [`.planning/phases/11-panic-and-illegal-state-hardening/11-INVENTORY.md`](../../.planning/phases/11-panic-and-illegal-state-hardening/11-INVENTORY.md)
+  for panic-site classification and guard scope.
 - `packages/target/benchmark-reports/open-bitcoin-bench-smoke.json` for the
   generated smoke benchmark JSON report.
 - `packages/target/benchmark-reports/open-bitcoin-bench-smoke.md` for the

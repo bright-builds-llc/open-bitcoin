@@ -34,7 +34,7 @@ impl FeeRate {
             return Self::ZERO;
         }
 
-        let virtual_size = i64::try_from(virtual_size).expect("virtual size should fit i64");
+        let virtual_size = i64::try_from(virtual_size).unwrap_or(i64::MAX);
         let sats_per_kvb =
             (fee_sats.saturating_mul(SATOSHIS_PER_KILOVBYTE) + virtual_size - 1) / virtual_size;
         Self { sats_per_kvb }
@@ -49,7 +49,7 @@ impl FeeRate {
             return 0;
         }
 
-        let virtual_size = i64::try_from(virtual_size).expect("virtual size should fit i64");
+        let virtual_size = i64::try_from(virtual_size).unwrap_or(i64::MAX);
         (self.sats_per_kvb.saturating_mul(virtual_size) + FEE_RATE_ROUNDING_ADJUSTMENT)
             / SATOSHIS_PER_KILOVBYTE
     }

@@ -79,6 +79,35 @@ fn funded_snapshot(wallet: &Wallet) -> ChainstateSnapshot {
 }
 
 #[test]
+fn signing_helper_errors_remain_typed() {
+    // Arrange
+    let mut wallet = Wallet::new(AddressNetwork::Regtest);
+    let descriptor_id = wallet
+        .import_descriptor(
+            "legacy",
+            DescriptorRole::External,
+            "pkh(cMec2DGaTXkYJYfi7x3ZGjRXkeqmAvYAoWzMAcWj5fdLaqudWsNi)",
+        )
+        .expect("legacy descriptor");
+    let descriptor = wallet.descriptor(descriptor_id).expect("descriptor");
+
+    // Act
+    let redeem_error = super::build::required_redeem_script(descriptor)
+        .expect_err("legacy descriptor has no redeem script");
+    let taproot_error = super::sign::taproot_sighash_unavailable_error();
+
+    // Assert
+    assert!(matches!(
+        redeem_error,
+        WalletError::UnsupportedSigningDescriptor(_)
+    ));
+    assert!(matches!(
+        taproot_error,
+        WalletError::UnsupportedSigningDescriptor(_)
+    ));
+}
+
+#[test]
 fn rescan_populates_wallet_balance_from_matching_chainstate_outputs() {
     let mut wallet = wallet_with_descriptors();
     wallet
@@ -132,7 +161,9 @@ fn build_and_sign_produces_a_standard_spendable_transaction() {
         &built.transaction,
         &input_contexts,
         &open_bitcoin_mempool::PolicyConfig::default(),
-        open_bitcoin_mempool::transaction_weight_and_virtual_size(&built.transaction).0,
+        open_bitcoin_mempool::transaction_weight_and_virtual_size(&built.transaction)
+            .expect("weight")
+            .0,
         open_bitcoin_mempool::transaction_sigops_cost(&built.transaction, &input_contexts)
             .expect("sigops"),
     )
