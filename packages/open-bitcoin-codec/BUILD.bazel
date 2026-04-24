@@ -1,5 +1,11 @@
 load("@rules_rust//rust:defs.bzl", "rust_library")
 
+filegroup(
+    name = "testdata",
+    srcs = glob(["testdata/*.hex"]),
+    visibility = ["//visibility:public"],
+)
+
 rust_library(
     name = "open_bitcoin_codec_lib",
     srcs = glob(["src/**/*.rs"]),

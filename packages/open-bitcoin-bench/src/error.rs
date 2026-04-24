@@ -10,9 +10,22 @@ pub enum BenchError {
     },
     MissingFullIterations,
     InvalidArgument(String),
+    CaseFailed {
+        case: &'static str,
+        reason: String,
+    },
     Io(io::Error),
     Json(serde_json::Error),
     Time(SystemTimeError),
+}
+
+impl BenchError {
+    pub fn case_failed(case: &'static str, reason: impl Into<String>) -> Self {
+        Self::CaseFailed {
+            case,
+            reason: reason.into(),
+        }
+    }
 }
 
 impl fmt::Display for BenchError {
@@ -31,6 +44,9 @@ impl fmt::Display for BenchError {
                 f.write_str("full benchmark mode requires --iterations <N>")
             }
             Self::InvalidArgument(message) => f.write_str(message),
+            Self::CaseFailed { case, reason } => {
+                write!(f, "benchmark case `{case}` failed: {reason}")
+            }
             Self::Io(error) => write!(f, "benchmark I/O failed: {error}"),
             Self::Json(error) => write!(f, "benchmark JSON failed: {error}"),
             Self::Time(error) => write!(f, "benchmark timestamp failed: {error}"),
@@ -46,7 +62,8 @@ impl std::error::Error for BenchError {
             Self::Time(error) => Some(error),
             Self::InvalidRunMode { .. }
             | Self::MissingFullIterations
-            | Self::InvalidArgument(_) => None,
+            | Self::InvalidArgument(_)
+            | Self::CaseFailed { .. } => None,
         }
     }
 }

@@ -1,4 +1,4 @@
-use crate::error::BenchError;
+use crate::{cases, error::BenchError};
 
 pub const REQUIRED_GROUP_IDS: [&str; 7] = [
     "consensus-script",
@@ -58,13 +58,13 @@ pub struct BenchGroup {
     pub cases: &'static [BenchCase],
 }
 
-const CONSENSUS_SCRIPT_MAPPING: KnotsMapping = KnotsMapping {
+pub(crate) const CONSENSUS_SCRIPT_MAPPING: KnotsMapping = KnotsMapping {
     benchmark_names: &["VerifyScriptBench"],
     source_files: &["packages/bitcoin-knots/src/bench/verify_script.cpp"],
     notes: "Maps script validation coverage to the Knots P2WPKH script verification benchmark.",
 };
 
-const BLOCK_TRANSACTION_CODEC_MAPPING: KnotsMapping = KnotsMapping {
+pub(crate) const BLOCK_TRANSACTION_CODEC_MAPPING: KnotsMapping = KnotsMapping {
     benchmark_names: &["DeserializeBlockTest", "SaveBlockBench", "ReadBlockBench"],
     source_files: &[
         "packages/bitcoin-knots/src/bench/checkblock.cpp",
@@ -73,7 +73,7 @@ const BLOCK_TRANSACTION_CODEC_MAPPING: KnotsMapping = KnotsMapping {
     notes: "Maps block and transaction codec coverage to Knots block deserialization and read/write benchmarks.",
 };
 
-const CHAINSTATE_MAPPING: KnotsMapping = KnotsMapping {
+pub(crate) const CHAINSTATE_MAPPING: KnotsMapping = KnotsMapping {
     benchmark_names: &["DeserializeAndCheckBlockTest", "ReadRawBlockBench"],
     source_files: &[
         "packages/bitcoin-knots/src/bench/checkblock.cpp",
@@ -82,13 +82,13 @@ const CHAINSTATE_MAPPING: KnotsMapping = KnotsMapping {
     notes: "Maps chainstate-adjacent validation and storage smoke coverage to Knots block check and raw-read benchmarks.",
 };
 
-const MEMPOOL_POLICY_MAPPING: KnotsMapping = KnotsMapping {
+pub(crate) const MEMPOOL_POLICY_MAPPING: KnotsMapping = KnotsMapping {
     benchmark_names: &["ComplexMemPool"],
     source_files: &["packages/bitcoin-knots/src/bench/mempool_stress.cpp"],
     notes: "Maps mempool policy smoke coverage to the Knots complex mempool stress benchmark.",
 };
 
-const NETWORK_WIRE_SYNC_MAPPING: KnotsMapping = KnotsMapping {
+pub(crate) const NETWORK_WIRE_SYNC_MAPPING: KnotsMapping = KnotsMapping {
     benchmark_names: &["AddrMan", "EvictionProtection"],
     source_files: &[
         "packages/bitcoin-knots/src/bench/addrman.cpp",
@@ -118,46 +118,6 @@ const RPC_CLI_MAPPING: KnotsMapping = KnotsMapping {
     notes: "Maps RPC and CLI dispatch smoke coverage to the Knots mempool RPC benchmark.",
 };
 
-const CONSENSUS_SCRIPT_CASES: [BenchCase; 1] = [BenchCase {
-    id: "consensus-script.registry",
-    group: BenchGroupId::ConsensusScript,
-    description: "Registry contract for consensus script validation benchmarks.",
-    knots_mapping: &CONSENSUS_SCRIPT_MAPPING,
-    run_once: metadata_case,
-}];
-
-const BLOCK_TRANSACTION_CODEC_CASES: [BenchCase; 1] = [BenchCase {
-    id: "block-transaction-codec.registry",
-    group: BenchGroupId::BlockTransactionCodec,
-    description: "Registry contract for block and transaction codec benchmarks.",
-    knots_mapping: &BLOCK_TRANSACTION_CODEC_MAPPING,
-    run_once: metadata_case,
-}];
-
-const CHAINSTATE_CASES: [BenchCase; 1] = [BenchCase {
-    id: "chainstate.registry",
-    group: BenchGroupId::Chainstate,
-    description: "Registry contract for chainstate connect, disconnect, and storage-adjacent benchmarks.",
-    knots_mapping: &CHAINSTATE_MAPPING,
-    run_once: metadata_case,
-}];
-
-const MEMPOOL_POLICY_CASES: [BenchCase; 1] = [BenchCase {
-    id: "mempool-policy.registry",
-    group: BenchGroupId::MempoolPolicy,
-    description: "Registry contract for mempool policy benchmarks.",
-    knots_mapping: &MEMPOOL_POLICY_MAPPING,
-    run_once: metadata_case,
-}];
-
-const NETWORK_WIRE_SYNC_CASES: [BenchCase; 1] = [BenchCase {
-    id: "network-wire-sync.registry",
-    group: BenchGroupId::NetworkWireSync,
-    description: "Registry contract for network wire and sync planning benchmarks.",
-    knots_mapping: &NETWORK_WIRE_SYNC_MAPPING,
-    run_once: metadata_case,
-}];
-
 const WALLET_CASES: [BenchCase; 1] = [BenchCase {
     id: "wallet.registry",
     group: BenchGroupId::Wallet,
@@ -178,27 +138,27 @@ static BENCH_GROUPS: [BenchGroup; 7] = [
     BenchGroup {
         id: BenchGroupId::ConsensusScript,
         description: "Consensus script validation",
-        cases: &CONSENSUS_SCRIPT_CASES,
+        cases: &cases::consensus::CASES,
     },
     BenchGroup {
         id: BenchGroupId::BlockTransactionCodec,
         description: "Block and transaction parsing or serialization",
-        cases: &BLOCK_TRANSACTION_CODEC_CASES,
+        cases: &cases::codec::CASES,
     },
     BenchGroup {
         id: BenchGroupId::Chainstate,
         description: "Chainstate connect, disconnect, reorg, and storage-adjacent operations",
-        cases: &CHAINSTATE_CASES,
+        cases: &cases::chainstate::CASES,
     },
     BenchGroup {
         id: BenchGroupId::MempoolPolicy,
         description: "Mempool admission, replacement, and policy accounting",
-        cases: &MEMPOOL_POLICY_CASES,
+        cases: &cases::mempool::CASES,
     },
     BenchGroup {
         id: BenchGroupId::NetworkWireSync,
         description: "Network wire encoding, address management, peer policy, and sync planning",
-        cases: &NETWORK_WIRE_SYNC_CASES,
+        cases: &cases::network::CASES,
     },
     BenchGroup {
         id: BenchGroupId::Wallet,

@@ -9,5 +9,11 @@ version.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
+open-bitcoin-chainstate = { path = "../open-bitcoin-chainstate" }
+open-bitcoin-codec = { path = "../open-bitcoin-codec" }
+open-bitcoin-consensus = { path = "../open-bitcoin-consensus" }
+open-bitcoin-mempool = { path = "../open-bitcoin-mempool" }
+open-bitcoin-network = { path = "../open-bitcoin-network" }
+open-bitcoin-primitives = { path = "../open-bitcoin-primitives" }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
