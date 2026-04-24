@@ -31,7 +31,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 07.6: Enforce coinbase subsidy-plus-fees limits on the consensus and active chainstate paths (INSERTED)** - Close the remaining coinbase reward-limit acceptance gap before Phase 8 builds operator interfaces on top of the current block-connect surface. (completed 2026-04-22)
 - [ ] **Phase 8: RPC, CLI, and Config Parity** - Expose node and wallet behavior through compatible operator interfaces.
 - [ ] **Phase 9: Parity Harnesses and Fuzzing** - Lock down external behavior with reusable black-box and fuzz/property suites.
-- [ ] **Phase 10: Benchmarks and Audit Readiness** - Measure performance and complete the audit surfaces that track parity status.
+- [x] **Phase 10: Benchmarks and Audit Readiness** - Measure performance and complete the audit surfaces that track parity status. (completed 2026-04-24)
 
 ## Phase Details
 
@@ -350,7 +350,7 @@ Plans:
 - [x] 10-02-PLAN.md — Add deterministic benchmark fixtures and cases for all critical node and wallet groups.
 - [x] 10-03-PLAN.md — Wire benchmark smoke execution into scripts, verification, CI artifacts, and docs.
 - [x] 10-04-PLAN.md — Complete the parity checklist plus deviation and unknown audit artifacts for all in-scope surfaces.
-- [ ] 10-05-PLAN.md — Produce release-readiness and milestone handoff documentation tied to benchmark and checklist evidence.
+- [x] 10-05-PLAN.md — Produce release-readiness and milestone handoff documentation tied to benchmark and checklist evidence.
 
 ## Progress
 
@@ -374,4 +374,4 @@ Phases execute in numeric order: 2 → 2.1 → 2.2 → 3 → 3.1 → 3.2 → 3.3
 | 7.2. Protocol Constant Clarity Cleanup | 1/1 | Complete | 2026-04-19 |
 | 8. RPC, CLI, and Config Parity | 0/3 | Not started | - |
 | 9. Parity Harnesses and Fuzzing | 0/4 | Not started | - |
-| 10. Benchmarks and Audit Readiness | 4/5 | In Progress|  |
+| 10. Benchmarks and Audit Readiness | 5/5 | Complete   | 2026-04-24 |

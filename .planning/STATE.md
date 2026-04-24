@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 10-04-PLAN.md
-last_updated: "2026-04-24T12:26:08.098Z"
+status: verifying
+stopped_at: Completed 10-05-PLAN.md
+last_updated: "2026-04-24T12:34:12.902Z"
 last_activity: 2026-04-24
 progress:
   total_phases: 20
-  completed_phases: 19
+  completed_phases: 20
   total_plans: 73
-  completed_plans: 72
-  percent: 99
+  completed_plans: 73
+  percent: 100
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-11)
 
 Phase: 10 (Benchmarks and Audit Readiness) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-24
 
 Progress: ██████████ 100%
@@ -82,6 +82,7 @@ Progress: ██████████ 100%
 | Phase 10 P02 | 19min | 2 tasks | 20 files |
 | Phase 10 P03 | 5 min | 2 tasks | 5 files |
 | Phase 10 P04 | 537s | 2 tasks | 6 files |
+| Phase 10 P05 | 5m 14s | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -122,6 +123,9 @@ Recent decisions affecting current work:
 - [Phase 10]: Keep docs/parity/index.json as the checklist source of truth and Markdown files as review views.
 - [Phase 10]: Keep benchmarks-audit-readiness in_progress until Plan 10-05 release-readiness work promotes it.
 - [Phase 10]: Fold CLI-friendly and panic/illegal-state todos into audit risk tracking without broad implementation changes.
+- [Phase 10]: Keep release readiness repo-local and deterministic by linking generated benchmark report paths instead of checking timing output into git.
+- [Phase 10]: Record stale STATE.md and ROADMAP.md discrepancies in release-readiness audit notes instead of hand-rewriting unrelated planning history during Task 1.
+- [Phase 10]: Promote benchmarks-audit-readiness only after regenerating benchmark smoke output and creating the release-readiness handoff.
 
 ### Roadmap Evolution
 
@@ -151,6 +155,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-24T12:26:08.094Z
-Stopped at: Completed 10-04-PLAN.md
+Last session: 2026-04-24T12:34:12.899Z
+Stopped at: Completed 10-05-PLAN.md
 Resume file: None
