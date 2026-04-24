@@ -346,7 +346,7 @@ Plans:
 **Plans**: 5 plans
 
 Plans:
-- [ ] 10-01-PLAN.md — Create the first-party benchmark crate, registry, runner, and report schema.
+- [x] 10-01-PLAN.md — Create the first-party benchmark crate, registry, runner, and report schema.
 - [ ] 10-02-PLAN.md — Add deterministic benchmark fixtures and cases for all critical node and wallet groups.
 - [ ] 10-03-PLAN.md — Wire benchmark smoke execution into scripts, verification, CI artifacts, and docs.
 - [ ] 10-04-PLAN.md — Complete the parity checklist plus deviation and unknown audit artifacts for all in-scope surfaces.
@@ -374,4 +374,4 @@ Phases execute in numeric order: 2 → 2.1 → 2.2 → 3 → 3.1 → 3.2 → 3.3
 | 7.2. Protocol Constant Clarity Cleanup | 1/1 | Complete | 2026-04-19 |
 | 8. RPC, CLI, and Config Parity | 0/3 | Not started | - |
 | 9. Parity Harnesses and Fuzzing | 0/4 | Not started | - |
-| 10. Benchmarks and Audit Readiness | 0/3 | Not started | - |
+| 10. Benchmarks and Audit Readiness | 1/5 | In Progress|  |
