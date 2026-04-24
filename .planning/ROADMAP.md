@@ -346,9 +346,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 10-01: Add benchmark suites for critical consensus, chainstate, networking, and wallet paths.
-- [ ] 10-02: Complete the parity checklist and deviation audit artifacts for all in-scope surfaces.
-- [ ] 10-03: Produce release-readiness and milestone handoff documentation.
+- [ ] 10-01-PLAN.md — Add first-party benchmark suites, smoke reporting, verification wiring, and Knots mapping docs.
+- [ ] 10-02-PLAN.md — Complete the parity checklist plus deviation and unknown audit artifacts for all in-scope surfaces.
+- [ ] 10-03-PLAN.md — Produce release-readiness and milestone handoff documentation tied to benchmark and checklist evidence.
 
 ## Progress
 
