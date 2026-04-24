@@ -17,6 +17,8 @@ When a behavior is in scope, Open Bitcoin must behave like the pinned Knots base
   framing (`ARCH-03`, `CONS-01`).
 - Phase 2 seeded the living reference catalog under `docs/parity/catalog/`
   (`REF-03`).
+- Phase 10 validated the benchmark and audit-readiness artifacts for critical
+  node and wallet paths plus parity checklist inspection (`PAR-02`, `AUD-01`).
 
 ### Active
 
@@ -28,7 +30,6 @@ When a behavior is in scope, Open Bitcoin must behave like the pinned Knots base
 - [ ] Enforce 100% unit-test coverage for pure-core code and catch I/O leakage automatically.
 - [ ] Lock down parity with black-box tests that can run against both Knots and Open Bitcoin.
 - [ ] Add fuzz/property testing for parser, serialization, and protocol surfaces where it materially reduces risk.
-- [ ] Keep benchmarks, parity checklists, and reference-catalog artifacts that make verification and auditing easier.
 
 ### Out of Scope
 
@@ -54,6 +55,9 @@ When a behavior is in scope, Open Bitcoin must behave like the pinned Knots base
   code, Phase 07.5 restored contextual-header and lax-DER parity, and Phase
   07.6 closed the remaining coinbase subsidy-plus-fees reward-limit parity gap
   on both the pure-core and live chainstate paths.
+- Phase 10 is complete: first-party benchmark smoke coverage, benchmark report
+  artifacts, parity checklist data, deviations/unknowns notes, and release
+  readiness documentation now support auditable parity review.
 
 ## Constraints
 
@@ -93,4 +97,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-22 after Phase 07.6 execution*
+*Last updated: 2026-04-24 after Phase 10 execution*
