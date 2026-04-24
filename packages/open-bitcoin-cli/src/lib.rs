@@ -1,4 +1,16 @@
 #![forbid(unsafe_code)]
+#![cfg_attr(
+    not(test),
+    deny(
+        clippy::unwrap_used,
+        clippy::expect_used,
+        clippy::panic,
+        clippy::unreachable,
+        clippy::todo,
+        clippy::unimplemented,
+        clippy::panic_in_result_fn,
+    )
+)]
 
 //! Shell-layer CLI crate for Phase 8 `bitcoin-cli` parsing and startup work.
 
