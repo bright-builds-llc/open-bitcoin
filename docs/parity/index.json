@@ -375,5 +375,252 @@
       "name": "verification-harnesses",
       "status": "done"
     }
-  ]
+  ],
+  "checklist": {
+    "path": "checklist.md",
+    "status_taxonomy": [
+      "planned",
+      "in_progress",
+      "done",
+      "deferred",
+      "out_of_scope"
+    ],
+    "surfaces": [
+      {
+        "id": "reference-baseline",
+        "title": "Reference Baseline",
+        "status": "done",
+        "requirements": [
+          "REF-01",
+          "REF-02"
+        ],
+        "evidence": [
+          ".planning/phases/01-workspace-baseline-and-guardrails/01-01-SUMMARY.md",
+          ".planning/phases/01-workspace-baseline-and-guardrails/01-04-SUMMARY.md",
+          ".planning/phases/01-workspace-baseline-and-guardrails/01-VERIFICATION.md"
+        ],
+        "rationale": "The pinned Bitcoin Knots baseline and deviation ledger are established for the initial milestone.",
+        "known_gaps": [],
+        "suspected_unknowns": []
+      },
+      {
+        "id": "architecture-workspace",
+        "title": "Architecture And Workspace Guardrails",
+        "status": "done",
+        "requirements": [
+          "ARCH-01",
+          "ARCH-02",
+          "ARCH-03",
+          "ARCH-04",
+          "VER-01",
+          "VER-02"
+        ],
+        "evidence": [
+          ".planning/phases/01-workspace-baseline-and-guardrails/01-02-SUMMARY.md",
+          ".planning/phases/01-workspace-baseline-and-guardrails/01-03-SUMMARY.md",
+          ".planning/phases/01-workspace-baseline-and-guardrails/01-VERIFICATION.md",
+          "scripts/verify.sh"
+        ],
+        "rationale": "First-party workspace, architecture-policy checks, and repo-native verification are in place.",
+        "known_gaps": [],
+        "suspected_unknowns": []
+      },
+      {
+        "id": "core-serialization",
+        "title": "Core Domain And Serialization",
+        "status": "done",
+        "requirements": [
+          "REF-03",
+          "CONS-01",
+          "ARCH-03"
+        ],
+        "evidence": [
+          "docs/parity/catalog/core-domain-and-serialization.md",
+          ".planning/phases/02-core-domain-and-serialization-foundations/02-VERIFICATION.md"
+        ],
+        "rationale": "The typed domain and codec foundations are cataloged and verified for the initial milestone surface.",
+        "known_gaps": [],
+        "suspected_unknowns": [
+          "Which user-facing interfaces still require deprecated hex acceptance instead of stricter parsing.",
+          "Which serializer parameter contexts beyond transaction witness mode need explicit Rust types.",
+          "Which protocol and address-codec edge cases need additional repo-owned fixtures."
+        ]
+      },
+      {
+        "id": "consensus-validation",
+        "title": "Consensus Validation",
+        "status": "done",
+        "requirements": [
+          "CONS-02",
+          "CONS-03"
+        ],
+        "evidence": [
+          "docs/parity/catalog/consensus-validation.md",
+          ".planning/phases/03.4-consensus-parity-closure/03.4-VERIFICATION.md",
+          ".planning/phases/07.6-enforce-coinbase-subsidy-plus-fees-limits-on-the-consensus-a/07.6-VERIFICATION.md"
+        ],
+        "rationale": "Consensus execution and later parity gap closures have verification evidence for the in-scope milestone surface.",
+        "known_gaps": [],
+        "suspected_unknowns": []
+      },
+      {
+        "id": "chainstate",
+        "title": "Chainstate And UTXO Engine",
+        "status": "done",
+        "requirements": [
+          "CHAIN-01"
+        ],
+        "evidence": [
+          "docs/parity/catalog/chainstate.md",
+          ".planning/phases/04-chainstate-and-utxo-engine/04-VERIFICATION.md"
+        ],
+        "rationale": "The pure chainstate, UTXO, connect, disconnect, and reorg slice is implemented and cataloged.",
+        "known_gaps": [
+          "Disk-backed coins databases, cache-flush policy, assumeutxo flows, mempool repair, and full chainstate-manager behavior remain outside the current slice."
+        ],
+        "suspected_unknowns": [
+          "How much of Knots cache-flush and multi-chainstate behavior should stay pure-core versus adapter-owned later."
+        ]
+      },
+      {
+        "id": "mempool-policy",
+        "title": "Mempool Policy",
+        "status": "done",
+        "requirements": [
+          "MEM-01",
+          "MEM-02"
+        ],
+        "evidence": [
+          "docs/parity/catalog/mempool-policy.md",
+          ".planning/phases/05-mempool-and-node-policy/05-VERIFICATION.md"
+        ],
+        "rationale": "Admission, replacement, accounting, eviction, and policy deviations are verified and cataloged for the current surface.",
+        "known_gaps": [
+          "Package relay, rolling minimum-fee decay, reorg-driven repair, and operator-facing mempool interfaces remain follow-up surfaces."
+        ],
+        "suspected_unknowns": [
+          "How closely long-lived mempool pressure and package-relay behavior should mirror Knots once runtime state grows."
+        ]
+      },
+      {
+        "id": "p2p-networking",
+        "title": "P2P Networking And Sync",
+        "status": "done",
+        "requirements": [
+          "P2P-01",
+          "P2P-02"
+        ],
+        "evidence": [
+          "docs/parity/catalog/p2p.md",
+          ".planning/phases/06-p2p-networking-and-sync/06-VERIFICATION.md"
+        ],
+        "rationale": "Peer lifecycle, wire handling, header and block sync, and relay behavior are covered for the current in-memory surface.",
+        "known_gaps": [
+          "Address relay, addrv2, discovery, compact blocks, encrypted transport, peer eviction, bans, and long-running socket orchestration remain deferred surfaces."
+        ],
+        "suspected_unknowns": [
+          "How closely peer-eviction, timeout, resource-governance, discovery, and address-relay behavior should mirror Knots later."
+        ]
+      },
+      {
+        "id": "wallet",
+        "title": "Wallet Core And Adapters",
+        "status": "done",
+        "requirements": [
+          "WAL-01",
+          "WAL-02",
+          "WAL-03"
+        ],
+        "evidence": [
+          "docs/parity/catalog/wallet.md",
+          ".planning/phases/07-wallet-core-and-adapters/07-VERIFICATION.md"
+        ],
+        "rationale": "The headless wallet slice for descriptors, balances, coin selection, signing, and adapter-owned persistence is verified.",
+        "known_gaps": [
+          "Ranged descriptors, HD derivation, miniscript, multisig, PSBT, encryption, external signer, real-node rescans, and broader wallet RPC semantics remain outside the current slice."
+        ],
+        "suspected_unknowns": [
+          "Which future HD, multisig, PSBT, coin-selection, and metadata behaviors should stay pure-core versus shell-owned."
+        ]
+      },
+      {
+        "id": "rpc-cli-config",
+        "title": "RPC, CLI, And Config",
+        "status": "done",
+        "requirements": [
+          "RPC-01",
+          "CLI-01",
+          "CLI-02"
+        ],
+        "evidence": [
+          "docs/parity/catalog/rpc-cli-config.md",
+          ".planning/phases/08-rpc-cli-and-config-parity/08-VERIFICATION.md"
+        ],
+        "rationale": "The supported local JSON-RPC, bitcoin-cli, config, auth, and headless operator workflow slice is verified.",
+        "known_gaps": [
+          "sendtoaddress, richer wallet-send ergonomics, getpeerinfo, -netinfo, rpcwallet, rpcauth, rpcwhitelist, rpcwait, daemon supervision, and broader process-control helpers remain deferred."
+        ],
+        "suspected_unknowns": [
+          "How closely sendtoaddress, getpeerinfo, and multiwallet semantics should mirror Knots when the adapter-owned surfaces grow."
+        ]
+      },
+      {
+        "id": "verification-harnesses-fuzzing",
+        "title": "Verification Harnesses And Fuzzing",
+        "status": "done",
+        "requirements": [
+          "VER-03",
+          "VER-04",
+          "PAR-01"
+        ],
+        "evidence": [
+          "docs/parity/catalog/verification-harnesses.md",
+          ".planning/phases/09-parity-harnesses-and-fuzzing/09-VERIFICATION.md",
+          "scripts/verify.sh"
+        ],
+        "rationale": "The shared parity harness, isolation helpers, deterministic property tests, and CI report collection are verified.",
+        "known_gaps": [
+          "The harness does not yet build or spawn the vendored Knots daemon, translate the full upstream Python suite, or use a dedicated cargo-fuzz/libFuzzer runtime."
+        ],
+        "suspected_unknowns": [
+          "How much of the upstream Python functional suite should be translated versus wrapped.",
+          "Which parser or protocol surfaces deserve a dedicated fuzzing runtime beyond deterministic generated tests."
+        ]
+      },
+      {
+        "id": "benchmarks-audit-readiness",
+        "title": "Benchmarks And Audit Readiness",
+        "status": "in_progress",
+        "requirements": [
+          "PAR-02",
+          "AUD-01"
+        ],
+        "evidence": [
+          "docs/parity/benchmarks.md",
+          "scripts/run-benchmarks.sh",
+          ".planning/phases/10-benchmarks-and-audit-readiness/10-03-SUMMARY.md"
+        ],
+        "rationale": "Benchmark evidence exists, and this plan creates the checklist; Plan 10-05 will promote readiness after release-readiness exists.",
+        "known_gaps": [
+          "Release-readiness and milestone handoff documentation remain planned for Plan 10-05."
+        ],
+        "suspected_unknowns": [
+          "Whether final release-readiness review uncovers additional follow-up items before milestone closeout."
+        ]
+      }
+    ]
+  },
+  "audit": {
+    "deviations_and_unknowns": {
+      "path": "deviations-and-unknowns.md"
+    },
+    "benchmarks": {
+      "path": "benchmarks.md",
+      "report_dir": "packages/target/benchmark-reports"
+    },
+    "release_readiness": {
+      "path": "release-readiness.md",
+      "status": "planned"
+    }
+  }
 }
