@@ -443,32 +443,29 @@ These functions are public first-party APIs and align with Phase 10's critical-p
 | A7 | Cloning prepared snapshots or reconstructing mutable structures is the right default for stateful benchmark cases. | Common Pitfalls / Benchmark Coverage Map | Planner may need a cheaper reset mechanism if cloning dominates smoke runtime. |
 | A8 | Disk blockstorage benchmark mappings should be documentation-only or deferred for current Open Bitcoin because disk-backed blockstorage is not in the implemented chainstate slice. | Benchmark Coverage Map | Planner may need to add an explicit `deferred` checklist item rather than a benchmark case. |
 | A9 | Benchmark fixtures can be adapted from existing tests without broad production visibility changes. | Benchmark Coverage Map | Planner may need to add narrow support constructors or keep some benchmark groups smaller. |
-| A10 | Open Bitcoin can ingest optional Knots JSON instead of screen-scraping tables. | State of the Art / Open Questions | Planner may need to inspect the exact Knots JSON schema before implementing import. |
-| A11 | A new first-party crate keeps benchmark registration and CLI concerns isolated from parity test helpers. | Open Questions | If shared harness code is dominant, a binary in `open-bitcoin-test-harness` may be simpler. |
-| A12 | Full local Knots benchmark builds may be too slow or environment-sensitive for default contributor verification. | Open Questions | If the build is cheap and deterministic, default comparison could be stronger than mapping-only. |
-| A13 | `scripts/run-benchmarks.sh --smoke` should be added and invoked by `scripts/verify.sh` after runtime is proven acceptable. | Open Questions | If smoke runtime is high, verification may need to check build/report schema without running all cases. |
+| A10 | Open Bitcoin can ingest optional Knots JSON instead of screen-scraping tables. | State of the Art / Resolved Benchmark Scope Choices | Planner should support an explicit optional Knots JSON path and keep mapping-only behavior as the default. |
+| A11 | A new first-party `open-bitcoin-bench` crate keeps benchmark registration and CLI concerns isolated from parity test helpers. | Resolved Benchmark Scope Choices | Use the new crate boundary; share only patterns from `open-bitcoin-test-harness`, not crate ownership. |
+| A12 | Full local Knots benchmark builds are optional and not part of default contributor verification. | Resolved Benchmark Scope Choices | Default comparison is mapping-only; optional Knots JSON/bin inputs may enrich reports when explicitly supplied. |
+| A13 | `scripts/run-benchmarks.sh --smoke` should be invoked by `scripts/verify.sh` only after smoke mode is bounded. | Resolved Benchmark Scope Choices | Plan bounded smoke iterations and report-schema checks before adding the `verify.sh` call. |
 | A14 | CMake's default generator is an acceptable fallback when Ninja is unavailable for optional Knots builds. | Environment Availability | Planner may need a more explicit platform-specific Knots build recipe. |
 | A15 | `jq` should not be required by default for report inspection. | Environment Availability | If scripts rely on shell-side JSON validation, planner must add a Rust or Node fallback. |
 | A16 | Benchmark IDs can be static registry data and Markdown cells can be escaped to mitigate report injection. | Security Domain | If benchmark names/details accept external input, stronger validation is needed. |
 | A17 | Bounded `--smoke` defaults mitigate denial-of-service risk from unbounded benchmark fixture sizes. | Security Domain | Planner may need max iteration/case count enforcement in both CLI args and scripts. |
 | A18 | Research validity dates are estimates: 30 days for repo architecture findings and 7 days for crate/security version claims. | Metadata | Planner may rely on stale dependency or security-standard facts if planning is delayed. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should `open-bitcoin-bench` live as a new crate or inside `open-bitcoin-test-harness`?**  
-   - What we know: A new first-party crate keeps benchmark registration and CLI concerns isolated from parity test helpers. [VERIFIED: packages/open-bitcoin-test-harness/src/report.rs] [ASSUMED]  
-   - What's unclear: Whether enough report/isolation code should be shared to make a new binary inside `open-bitcoin-test-harness` simpler. [ASSUMED]  
-   - Recommendation: Plan the new crate first, but allow the planner to co-locate report helpers if implementation shows minimal duplication. [ASSUMED]
+   - Resolution: Use a new first-party `open-bitcoin-bench` crate. [VERIFIED: packages/Cargo.toml] [VERIFIED: .planning/phases/10-benchmarks-and-audit-readiness/10-CONTEXT.md]
+   - Rationale: Benchmark registration, CLI flags, smoke/full mode selection, optional Knots inputs, and report schemas are Phase 10-specific concerns. Keeping them in a dedicated crate avoids turning `open-bitcoin-test-harness` into a mixed parity-plus-benchmark shell while still allowing executors to copy report-writing patterns from `packages/open-bitcoin-test-harness/src/report.rs`. [VERIFIED: packages/open-bitcoin-test-harness/src/report.rs] [ASSUMED]
 
 2. **How much Knots execution should Phase 10 support?**  
-   - What we know: Knots can build `bench_bitcoin` with CMake and run with JSON output, filters, and sanity check. [VERIFIED: packages/bitcoin-knots/doc/benchmarking.md] [VERIFIED: packages/bitcoin-knots/src/bench/bench_bitcoin.cpp]  
-   - What's unclear: Whether a full local Knots benchmark build is deterministic and fast enough for a normal contributor workflow. [ASSUMED]  
-   - Recommendation: Make Knots execution optional through an explicit `OPEN_BITCOIN_KNOTS_BENCH_JSON` or `OPEN_BITCOIN_KNOTS_BENCH_BIN` path and keep default verification mapping-only. [VERIFIED: .planning/phases/10-benchmarks-and-audit-readiness/10-CONTEXT.md] [ASSUMED]
+   - Resolution: Support optional Knots JSON and optional Knots benchmark binary paths, but keep default verification mapping-only. [VERIFIED: packages/bitcoin-knots/doc/benchmarking.md] [VERIFIED: packages/bitcoin-knots/src/bench/bench_bitcoin.cpp]
+   - Rationale: D-03 requires meaningful pinned-baseline comparison without making local verification depend on building or running the full Knots benchmark binary by default. Plans should record Knots benchmark/source mappings for every Open Bitcoin benchmark group, optionally ingest a user-provided `bench_bitcoin -output-json` file, and optionally record an explicit Knots binary path for manual report enrichment. [VERIFIED: .planning/phases/10-benchmarks-and-audit-readiness/10-CONTEXT.md]
 
 3. **Should benchmark smoke execution be in `scripts/verify.sh` or a separate script?**  
-   - What we know: D-04 requires smoke-sized verification rather than timing gates, and D-05 requires structured reports. [VERIFIED: .planning/phases/10-benchmarks-and-audit-readiness/10-CONTEXT.md]  
-   - What's unclear: The final smoke runtime after fixtures are implemented. [ASSUMED]  
-   - Recommendation: Add `scripts/run-benchmarks.sh --smoke --output-dir "$OPEN_BITCOIN_BENCHMARK_REPORT_DIR"` and have `scripts/verify.sh` invoke that smoke mode only after runtime is proven acceptable. [VERIFIED: scripts/verify.sh pattern] [ASSUMED]
+   - Resolution: Add `scripts/run-benchmarks.sh` as the dedicated entrypoint and have `scripts/verify.sh` invoke `scripts/run-benchmarks.sh --smoke` only after the benchmark crate has bounded smoke iterations and report-schema validation. [VERIFIED: scripts/verify.sh pattern] [VERIFIED: .planning/phases/10-benchmarks-and-audit-readiness/10-CONTEXT.md]
+   - Rationale: This preserves a reusable local benchmark command while keeping repo-native verification threshold-free and bounded per D-04. The script/verify wiring should live in a later plan than the crate and cases so executors can prove smoke behavior before it becomes part of `scripts/verify.sh`. [ASSUMED]
 
 ## Environment Availability
 

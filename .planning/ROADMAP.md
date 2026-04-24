@@ -343,12 +343,14 @@ Plans:
   1. Benchmarks measure critical node and wallet paths and compare to Knots where meaningful.
   2. The parity checklist reports status for every in-scope surface.
   3. Audit artifacts make remaining deviations, unknowns, and milestone readiness easy to review before execution and release decisions.
-**Plans**: 3 plans
+**Plans**: 5 plans
 
 Plans:
-- [ ] 10-01-PLAN.md — Add first-party benchmark suites, smoke reporting, verification wiring, and Knots mapping docs.
-- [ ] 10-02-PLAN.md — Complete the parity checklist plus deviation and unknown audit artifacts for all in-scope surfaces.
-- [ ] 10-03-PLAN.md — Produce release-readiness and milestone handoff documentation tied to benchmark and checklist evidence.
+- [ ] 10-01-PLAN.md — Create the first-party benchmark crate, registry, runner, and report schema.
+- [ ] 10-02-PLAN.md — Add deterministic benchmark fixtures and cases for all critical node and wallet groups.
+- [ ] 10-03-PLAN.md — Wire benchmark smoke execution into scripts, verification, CI artifacts, and docs.
+- [ ] 10-04-PLAN.md — Complete the parity checklist plus deviation and unknown audit artifacts for all in-scope surfaces.
+- [ ] 10-05-PLAN.md — Produce release-readiness and milestone handoff documentation tied to benchmark and checklist evidence.
 
 ## Progress
 
