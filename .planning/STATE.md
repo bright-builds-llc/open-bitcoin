@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 10-01-PLAN.md
-last_updated: "2026-04-24T11:44:32.779Z"
+stopped_at: Completed 10-02-PLAN.md
+last_updated: "2026-04-24T12:06:15.438Z"
 last_activity: 2026-04-24
 progress:
   total_phases: 20
   completed_phases: 19
   total_plans: 73
-  completed_plans: 69
-  percent: 95
+  completed_plans: 70
+  percent: 96
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-11)
 ## Current Position
 
 Phase: 10 (Benchmarks and Audit Readiness) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-04-24
 
@@ -79,6 +79,7 @@ Progress: ██████████ 100%
 | Phase 07.3 P02 | 9 min | 2 tasks | 4 files |
 | Phase 07.3 P03 | 6m 29s | 2 tasks | 2 files |
 | Phase 10 P01 | 10min | 2 tasks | 12 files |
+| Phase 10 P02 | 19min | 2 tasks | 20 files |
 
 ## Accumulated Context
 
@@ -110,6 +111,9 @@ Recent decisions affecting current work:
 - [Phase 10]: Use a repo-owned stable-Rust benchmark harness with serde JSON/Markdown reports instead of adding Criterion or Divan.
 - [Phase 10]: Keep TDD RED runs local-only when failing commits would violate the Rust pre-commit contract.
 - [Phase 10]: Treat MODULE.bazel.lock crate-universe refreshes as task-local Bazel metadata for new workspace members.
+- [Phase 10]: Benchmark cases compose existing public first-party APIs instead of widening production visibility.
+- [Phase 10]: Optional Knots JSON/bin inputs are recorded as report metadata only and are not read during default smoke execution.
+- [Phase 10]: The benchmark CLI writes JSON and Markdown reports by default while retaining optional stdout report formatting for compatibility.
 
 ### Roadmap Evolution
 
@@ -139,6 +143,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-24T11:44:32.775Z
-Stopped at: Completed 10-01-PLAN.md
+Last session: 2026-04-24T12:06:15.434Z
+Stopped at: Completed 10-02-PLAN.md
 Resume file: None
