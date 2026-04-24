@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 10-02-PLAN.md
-last_updated: "2026-04-24T12:06:15.438Z"
+stopped_at: Completed 10-03-PLAN.md
+last_updated: "2026-04-24T12:14:10.799Z"
 last_activity: 2026-04-24
 progress:
   total_phases: 20
   completed_phases: 19
   total_plans: 73
-  completed_plans: 70
-  percent: 96
+  completed_plans: 71
+  percent: 97
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-11)
 ## Current Position
 
 Phase: 10 (Benchmarks and Audit Readiness) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-04-24
 
@@ -80,6 +80,7 @@ Progress: ██████████ 100%
 | Phase 07.3 P03 | 6m 29s | 2 tasks | 2 files |
 | Phase 10 P01 | 10min | 2 tasks | 12 files |
 | Phase 10 P02 | 19min | 2 tasks | 20 files |
+| Phase 10 P03 | 5 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -114,6 +115,9 @@ Recent decisions affecting current work:
 - [Phase 10]: Benchmark cases compose existing public first-party APIs instead of widening production visibility.
 - [Phase 10]: Optional Knots JSON/bin inputs are recorded as report metadata only and are not read during default smoke execution.
 - [Phase 10]: The benchmark CLI writes JSON and Markdown reports by default while retaining optional stdout report formatting for compatibility.
+- [Phase 10]: Use scripts/run-benchmarks.sh as the contributor-facing benchmark entrypoint and forward only planned options through Bash arrays.
+- [Phase 10]: Keep benchmark reports as audit and trend evidence rather than release timing gates.
+- [Phase 10]: Make Knots JSON/bin inputs optional metadata enrichment while preserving mapping-only as the default comparison.
 
 ### Roadmap Evolution
 
@@ -143,6 +147,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-24T12:06:15.434Z
-Stopped at: Completed 10-02-PLAN.md
+Last session: 2026-04-24T12:14:10.796Z
+Stopped at: Completed 10-03-PLAN.md
 Resume file: None
