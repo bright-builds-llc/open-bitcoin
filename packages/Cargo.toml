@@ -11,6 +11,7 @@ members = [
     "open-bitcoin-node",
     "open-bitcoin-rpc",
     "open-bitcoin-cli",
+    "open-bitcoin-test-harness",
 ]
 resolver = "3"
 

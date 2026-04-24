@@ -63,3 +63,9 @@ alias(
     actual = "//packages/open-bitcoin-wallet:open_bitcoin_wallet_lib",
     visibility = ["//visibility:public"],
 )
+
+alias(
+    name = "test_harness",
+    actual = "//packages/open-bitcoin-test-harness:open_bitcoin_test_harness_lib",
+    visibility = ["//visibility:public"],
+)

@@ -82,6 +82,8 @@ require_command grep
 require_command node
 
 verify_start_milliseconds="$(node -e 'process.stdout.write(String(Date.now()))')"
+export OPEN_BITCOIN_PARITY_REPORT_DIR="${OPEN_BITCOIN_PARITY_REPORT_DIR:-$PWD/packages/target/parity-reports}"
+mkdir -p "$OPEN_BITCOIN_PARITY_REPORT_DIR"
 
 bash scripts/check-pure-core-deps.sh
 bash scripts/check-file-lengths.sh
@@ -89,7 +91,7 @@ cargo fmt --manifest-path packages/Cargo.toml --all --check
 cargo clippy --manifest-path packages/Cargo.toml --workspace --all-targets --all-features -- -D warnings
 cargo build --manifest-path packages/Cargo.toml --workspace --all-targets --all-features
 cargo test --manifest-path packages/Cargo.toml --workspace --all-features
-bazel build //:core //:node //:rpc //:cli
+bazel build //:core //:node //:rpc //:cli //:test_harness
 
 pure_core_crates=()
 while IFS= read -r crate_name; do

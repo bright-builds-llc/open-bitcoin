@@ -296,6 +296,45 @@
             "How closely later phases should mirror Knots sendtoaddress, getpeerinfo, and multiwallet semantics once the adapter-owned wallet and peer surfaces grow."
           ]
         }
+      },
+      {
+        "id": "verification-harnesses",
+        "title": "Verification Harnesses And Fuzzing",
+        "path": "catalog/verification-harnesses.md",
+        "phase": "09-parity-harnesses-and-fuzzing",
+        "status": "done",
+        "scope": [
+          "black-box-parity",
+          "integration-isolation",
+          "property-tests",
+          "ci-reports"
+        ],
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/test/functional/test_framework",
+            "packages/bitcoin-knots/doc/fuzzing.md"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/test/functional/interface_rpc.py",
+            "packages/bitcoin-knots/test/functional/interface_bitcoin_cli.py",
+            "packages/bitcoin-knots/src/test/fuzz/deserialize.cpp",
+            "packages/bitcoin-knots/src/test/fuzz/protocol.cpp",
+            "packages/bitcoin-knots/src/test/fuzz/primitives_transaction.cpp"
+          ]
+        },
+        "highlights": {
+          "quirks": [
+            "The same Rust functional case list can run against Open Bitcoin or an external Knots-compatible JSON-RPC endpoint.",
+            "Open Bitcoin parity coverage runs by default; Knots-backed execution is opt-in through explicit environment variables.",
+            "Property-style tests are deterministic generated tests under normal cargo test rather than a separate fuzzing runtime in this phase."
+          ],
+          "known_bugs": [],
+          "known_bugs_status": "none-confirmed",
+          "suspected_unknowns": [
+            "How much of the upstream Python functional suite should be translated versus wrapped once a built Knots daemon path is available.",
+            "Which parser or protocol surfaces deserve a dedicated fuzzing runtime beyond the deterministic generated tests."
+          ]
+        }
       }
     ]
   },
@@ -330,6 +369,10 @@
     },
     {
       "name": "cli-config",
+      "status": "done"
+    },
+    {
+      "name": "verification-harnesses",
       "status": "done"
     }
   ]

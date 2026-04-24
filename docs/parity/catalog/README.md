@@ -22,3 +22,4 @@ This directory is the human-readable companion to [`../index.json`](../index.jso
 | [`chainstate.md`](chainstate.md) | UTXO state, connect/disconnect, reorg selection, and adapter-owned persistence boundary | 4 |
 | [`mempool-policy.md`](mempool-policy.md) | Admission, replacement, accounting, eviction, and thin node-side policy orchestration | 5 |
 | [`p2p.md`](p2p.md) | Peer lifecycle, wire handling, header/block sync, and txid/wtxid-aware relay | 6 |
+| [`verification-harnesses.md`](verification-harnesses.md) | Cross-implementation parity harnesses, parallel-safe integration isolation, property-style tests, and CI report output | 9 |

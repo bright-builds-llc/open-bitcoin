@@ -6,6 +6,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  OPEN_BITCOIN_PARITY_REPORT_DIR: ${{ github.workspace }}/packages/target/parity-reports
 
 jobs:
   verify:
@@ -32,3 +33,11 @@ jobs:
 
       - name: Run repo verification
         run: bash scripts/verify.sh
+
+      - name: Upload parity reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parity-reports
+          path: packages/target/parity-reports
+          if-no-files-found: ignore

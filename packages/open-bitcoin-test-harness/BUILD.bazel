@@ -1,0 +1,14 @@
+load("@rules_rust//rust:defs.bzl", "rust_library")
+
+rust_library(
+    name = "open_bitcoin_test_harness_lib",
+    srcs = glob(["src/**/*.rs"]),
+    crate_name = "open_bitcoin_test_harness",
+    edition = "2024",
+    deps = [
+        "@crate_index//:base64",
+        "@crate_index//:serde_json",
+        "@crate_index//:ureq",
+    ],
+    visibility = ["//visibility:public"],
+)
