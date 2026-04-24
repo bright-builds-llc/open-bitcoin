@@ -13,6 +13,9 @@ Open Bitcoin targets behavioral parity with Bitcoin Knots `29.3.knots20260210` f
 ## Files
 
 - `index.json` is the machine-readable root for parity status, intentional deviations, and catalog entries.
+- `checklist.md` is the human-readable parity checklist view backed by `index.json`.
+- `deviations-and-unknowns.md` summarizes current deviations, deferred surfaces, suspected unknowns, and folded todo risks.
+- `benchmarks.md` documents the benchmark groups, Knots mappings, local commands, reports, and non-goals.
 - `catalog/README.md` explains the subsystem-level catalog structure used to satisfy `REF-03`.
 - `catalog/core-domain-and-serialization.md` is the Phase 2 seed catalog for major domain and serialization surfaces.
 - `catalog/consensus-validation.md` tracks the currently implemented Phase 3 consensus slice and its remaining gaps.
