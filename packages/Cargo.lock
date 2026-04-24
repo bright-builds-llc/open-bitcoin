@@ -678,11 +678,14 @@ name = "open-bitcoin-bench"
 version = "0.1.0"
 dependencies = [
  "open-bitcoin-chainstate",
+ "open-bitcoin-cli",
  "open-bitcoin-codec",
  "open-bitcoin-consensus",
  "open-bitcoin-mempool",
  "open-bitcoin-network",
  "open-bitcoin-primitives",
+ "open-bitcoin-rpc",
+ "open-bitcoin-wallet",
  "serde",
  "serde_json",
 ]

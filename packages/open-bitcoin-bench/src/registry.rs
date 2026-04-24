@@ -97,7 +97,7 @@ pub(crate) const NETWORK_WIRE_SYNC_MAPPING: KnotsMapping = KnotsMapping {
     notes: "Maps network wire and sync planning coverage to Knots address-manager and peer eviction benchmarks.",
 };
 
-const WALLET_MAPPING: KnotsMapping = KnotsMapping {
+pub(crate) const WALLET_MAPPING: KnotsMapping = KnotsMapping {
     benchmark_names: &[
         "WalletBalance",
         "CoinSelection",
@@ -112,27 +112,11 @@ const WALLET_MAPPING: KnotsMapping = KnotsMapping {
     notes: "Maps wallet balance, coin selection, and transaction creation coverage to the Knots wallet benchmark set.",
 };
 
-const RPC_CLI_MAPPING: KnotsMapping = KnotsMapping {
+pub(crate) const RPC_CLI_MAPPING: KnotsMapping = KnotsMapping {
     benchmark_names: &["RpcMempool"],
     source_files: &["packages/bitcoin-knots/src/bench/rpc_mempool.cpp"],
     notes: "Maps RPC and CLI dispatch smoke coverage to the Knots mempool RPC benchmark.",
 };
-
-const WALLET_CASES: [BenchCase; 1] = [BenchCase {
-    id: "wallet.registry",
-    group: BenchGroupId::Wallet,
-    description: "Registry contract for wallet balance, selection, signing, and transaction-building benchmarks.",
-    knots_mapping: &WALLET_MAPPING,
-    run_once: metadata_case,
-}];
-
-const RPC_CLI_CASES: [BenchCase; 1] = [BenchCase {
-    id: "rpc-cli.registry",
-    group: BenchGroupId::RpcCli,
-    description: "Registry contract for RPC and CLI dispatch benchmarks.",
-    knots_mapping: &RPC_CLI_MAPPING,
-    run_once: metadata_case,
-}];
 
 static BENCH_GROUPS: [BenchGroup; 7] = [
     BenchGroup {
@@ -163,12 +147,12 @@ static BENCH_GROUPS: [BenchGroup; 7] = [
     BenchGroup {
         id: BenchGroupId::Wallet,
         description: "Wallet balance, coin selection, signing, and transaction creation",
-        cases: &WALLET_CASES,
+        cases: &cases::wallet::CASES,
     },
     BenchGroup {
         id: BenchGroupId::RpcCli,
         description: "RPC and CLI request dispatch",
-        cases: &RPC_CLI_CASES,
+        cases: &cases::rpc_cli::CASES,
     },
 ];
 
@@ -185,10 +169,6 @@ pub fn group_ids() -> Vec<&'static str> {
 
 pub fn list_output() -> String {
     group_ids().join("\n") + "\n"
-}
-
-fn metadata_case() -> Result<(), BenchError> {
-    Ok(())
 }
 
 #[cfg(test)]

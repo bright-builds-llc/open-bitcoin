@@ -1,14 +1,18 @@
 use std::sync::OnceLock;
 
-use open_bitcoin_chainstate::{Chainstate, ChainstateSnapshot};
+use open_bitcoin_chainstate::{Chainstate, ChainstateSnapshot, Coin};
 use open_bitcoin_consensus::crypto::hash160;
 use open_bitcoin_consensus::{
     ConsensusParams, ScriptVerifyFlags, TransactionInputContext, block_hash, block_merkle_root,
     check_block_header, transaction_txid,
 };
+use open_bitcoin_mempool::FeeRate;
 use open_bitcoin_primitives::{
     Amount, Block, BlockHash, BlockHeader, OutPoint, ScriptBuf, ScriptWitness, Transaction,
     TransactionInput, TransactionOutput, Txid,
+};
+use open_bitcoin_wallet::{
+    AddressNetwork, BuildRequest, DescriptorRole, Recipient, Wallet, WalletSnapshot,
 };
 
 use crate::error::BenchError;
@@ -29,6 +33,7 @@ pub struct BenchFixtures {
     pub chainstate: ChainstateFixtures,
     pub mempool: MempoolFixtures,
     pub network: NetworkFixtures,
+    pub wallet: WalletFixtures,
 }
 
 #[derive(Debug, Clone)]
@@ -65,6 +70,13 @@ pub struct NetworkFixtures {
     pub active_chain: Vec<open_bitcoin_chainstate::ChainPosition>,
 }
 
+#[derive(Debug, Clone)]
+pub struct WalletFixtures {
+    pub chainstate_snapshot: ChainstateSnapshot,
+    pub wallet_snapshot: WalletSnapshot,
+    pub build_request: BuildRequest,
+}
+
 impl BenchFixtures {
     pub fn shared() -> Result<&'static Self, BenchError> {
         static FIXTURES: OnceLock<Result<BenchFixtures, String>> = OnceLock::new();
@@ -94,6 +106,7 @@ impl BenchFixtures {
         let network = NetworkFixtures {
             active_chain: chainstate.branch_a_snapshot.active_chain.clone(),
         };
+        let wallet = wallet_fixtures()?;
 
         Ok(Self {
             consensus,
@@ -101,6 +114,7 @@ impl BenchFixtures {
             chainstate,
             mempool,
             network,
+            wallet,
         })
     }
 }
@@ -216,6 +230,68 @@ fn mempool_fixtures() -> Result<MempoolFixtures, BenchError> {
     })
 }
 
+fn wallet_fixtures() -> Result<WalletFixtures, BenchError> {
+    let mut wallet = Wallet::new(AddressNetwork::Regtest);
+    let receive_id = wallet
+        .import_descriptor(
+            "bench-receive",
+            DescriptorRole::External,
+            "wpkh(cMec2DGaTXkYJYfi7x3ZGjRXkeqmAvYAoWzMAcWj5fdLaqudWsNi)",
+        )
+        .map_err(|error| BenchError::case_failed("wallet-fixture", error.to_string()))?;
+    wallet
+        .import_descriptor(
+            "bench-change",
+            DescriptorRole::Internal,
+            "sh(wpkh(cMec2DGaTXkYJYfi7x3ZGjRXkeqmAvYAoWzMAcWj5fdLaqudWsNi))",
+        )
+        .map_err(|error| BenchError::case_failed("wallet-fixture", error.to_string()))?;
+
+    let receive_script = wallet
+        .address_for_descriptor(receive_id)
+        .map_err(|error| BenchError::case_failed("wallet-fixture", error.to_string()))?
+        .script_pubkey;
+    let recipient = Recipient::from_address(
+        &wallet
+            .default_change_address()
+            .map_err(|error| BenchError::case_failed("wallet-fixture", error.to_string()))?,
+        amount(30_000)?,
+    );
+
+    let mut utxos = std::collections::HashMap::new();
+    utxos.insert(
+        OutPoint {
+            txid: Txid::from_byte_array([7_u8; 32]),
+            vout: 0,
+        },
+        Coin {
+            output: TransactionOutput {
+                value: amount(75_000)?,
+                script_pubkey: receive_script,
+            },
+            is_coinbase: false,
+            created_height: 9,
+            created_median_time_past: 1_700_000_009,
+        },
+    );
+    let chainstate_snapshot =
+        ChainstateSnapshot::new(vec![sample_tip(10)], utxos, Default::default());
+    let wallet_snapshot = wallet.snapshot();
+    let build_request = BuildRequest {
+        recipients: vec![recipient],
+        fee_rate: FeeRate::from_sats_per_kvb(2_000),
+        maybe_change_descriptor_id: None,
+        maybe_lock_time: None,
+        enable_rbf: true,
+    };
+
+    Ok(WalletFixtures {
+        chainstate_snapshot,
+        wallet_snapshot,
+        build_request,
+    })
+}
+
 fn sample_chainstate_snapshot(
     block_count: u32,
     output_script: ScriptBuf,
@@ -263,6 +339,22 @@ fn input_contexts(
         });
     }
     Ok(contexts)
+}
+
+fn sample_tip(height: u32) -> open_bitcoin_chainstate::ChainPosition {
+    open_bitcoin_chainstate::ChainPosition::new(
+        BlockHeader {
+            version: 1,
+            previous_block_hash: BlockHash::from_byte_array([0_u8; 32]),
+            merkle_root: Default::default(),
+            time: 1_700_000_000 + height,
+            bits: EASY_BITS,
+            nonce: 1,
+        },
+        height,
+        1,
+        i64::from(1_700_000_000 + height),
+    )
 }
 
 fn p2sh_script() -> Result<ScriptBuf, BenchError> {

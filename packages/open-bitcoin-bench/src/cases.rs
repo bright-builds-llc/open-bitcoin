@@ -3,6 +3,8 @@ pub mod codec;
 pub mod consensus;
 pub mod mempool;
 pub mod network;
+pub mod rpc_cli;
+pub mod wallet;
 
 use crate::registry::BenchCase;
 
@@ -13,6 +15,8 @@ pub fn registered_cases() -> Vec<BenchCase> {
     cases.extend_from_slice(&chainstate::CASES);
     cases.extend_from_slice(&mempool::CASES);
     cases.extend_from_slice(&network::CASES);
+    cases.extend_from_slice(&wallet::CASES);
+    cases.extend_from_slice(&rpc_cli::CASES);
     cases
 }
 
@@ -25,7 +29,7 @@ mod tests {
     use super::registered_cases;
 
     #[test]
-    fn registered_cases_include_core_node_groups() {
+    fn registered_cases_include_all_required_groups() {
         // Arrange
         let required = HashSet::from([
             BenchGroupId::ConsensusScript,
@@ -33,6 +37,8 @@ mod tests {
             BenchGroupId::Chainstate,
             BenchGroupId::MempoolPolicy,
             BenchGroupId::NetworkWireSync,
+            BenchGroupId::Wallet,
+            BenchGroupId::RpcCli,
         ]);
 
         // Act
@@ -47,6 +53,24 @@ mod tests {
                 groups.contains(&required_group),
                 "missing benchmark group {:?}",
                 required_group
+            );
+        }
+    }
+
+    #[test]
+    fn wallet_and_rpc_cli_cases_are_executable() {
+        // Arrange
+        let cases = registered_cases();
+
+        // Act / Assert
+        for group in [BenchGroupId::Wallet, BenchGroupId::RpcCli] {
+            let Some(case) = cases.iter().find(|case| case.group == group) else {
+                panic!("missing executable benchmark case for {:?}", group);
+            };
+            assert!(
+                (case.run_once)().is_ok(),
+                "benchmark case should succeed for {:?}",
+                group
             );
         }
     }

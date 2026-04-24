@@ -45,7 +45,10 @@ pub struct KnotsMappingReport {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct KnotsSource {
     pub baseline: String,
-    pub path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub maybe_json_path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub maybe_bin_path: Option<String>,
     pub generated_at_unix_seconds: u64,
 }
 
@@ -82,10 +85,21 @@ pub fn to_markdown(report: &BenchReport) -> String {
     ));
     if let Some(knots_source) = &report.optional_knots_source {
         markdown.push_str(&format!(
-            "- Knots source: `{}` from `{}`\n",
-            escape_markdown_table_cell(&knots_source.baseline),
-            escape_markdown_table_cell(&knots_source.path)
+            "- Knots baseline source: `{}`\n",
+            escape_markdown_table_cell(&knots_source.baseline)
         ));
+        if let Some(path) = &knots_source.maybe_json_path {
+            markdown.push_str(&format!(
+                "- Knots JSON report path: `{}`\n",
+                escape_markdown_table_cell(path)
+            ));
+        }
+        if let Some(path) = &knots_source.maybe_bin_path {
+            markdown.push_str(&format!(
+                "- Knots binary path: `{}`\n",
+                escape_markdown_table_cell(path)
+            ));
+        }
     }
     markdown.push('\n');
     markdown.push_str("| Group | Case | Iterations | Elapsed ns | Knots benchmarks | Sources |\n");
