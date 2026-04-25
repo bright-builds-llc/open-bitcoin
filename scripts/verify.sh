@@ -27,6 +27,29 @@ format_elapsed_duration() {
   fi
 }
 
+current_time_milliseconds() {
+  local maybe_epoch_realtime="${EPOCHREALTIME:-}"
+  local maybe_milliseconds=""
+  local fractional=""
+
+  if [[ "$maybe_epoch_realtime" =~ ^([0-9]+)\.([0-9]+)$ ]]; then
+    fractional="${BASH_REMATCH[2]}000"
+    printf '%s%s\n' "${BASH_REMATCH[1]}" "${fractional:0:3}"
+    return
+  fi
+
+  if command -v python3 >/dev/null 2>&1; then
+    maybe_milliseconds="$(python3 -c 'import time; print(int(time.time() * 1000))' 2>/dev/null || true)"
+    maybe_milliseconds="${maybe_milliseconds%%$'\n'*}"
+    if [[ "$maybe_milliseconds" =~ ^[0-9]+$ ]]; then
+      printf '%s\n' "$maybe_milliseconds"
+      return
+    fi
+  fi
+
+  printf '%s000\n' "$(date +%s)"
+}
+
 finish_verify() {
   local exit_status="$1"
   local verify_end_milliseconds=0
@@ -37,11 +60,7 @@ finish_verify() {
     rm -f "$coverage_report"
   fi
 
-  if command -v bun >/dev/null 2>&1; then
-    verify_end_milliseconds="$(bun --print "Date.now()")"
-  else
-    verify_end_milliseconds="$(($(date +%s) * 1000))"
-  fi
+  verify_end_milliseconds="$(current_time_milliseconds)"
 
   if [[ -z "$verify_start_milliseconds" ]]; then
     verify_start_milliseconds="$verify_end_milliseconds"
@@ -81,7 +100,7 @@ require_command git
 require_command grep
 require_command bun
 
-verify_start_milliseconds="$(bun --print "Date.now()")"
+verify_start_milliseconds="$(current_time_milliseconds)"
 export OPEN_BITCOIN_PARITY_REPORT_DIR="${OPEN_BITCOIN_PARITY_REPORT_DIR:-$PWD/packages/target/parity-reports}"
 export OPEN_BITCOIN_BENCHMARK_REPORT_DIR="${OPEN_BITCOIN_BENCHMARK_REPORT_DIR:-$PWD/packages/target/benchmark-reports}"
 export OPEN_BITCOIN_LOC_REPORT_SOURCE="${OPEN_BITCOIN_LOC_REPORT_SOURCE:-worktree}"

@@ -7,10 +7,10 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 189 |
-| Total lines | 49,397 |
-| Code/content lines | 44,669 |
+| Total lines | 49,416 |
+| Code/content lines | 44,684 |
 | Comment-only lines | 525 |
-| Blank lines | 4,203 |
+| Blank lines | 4,207 |
 
 ## Per-Crate Modules
 
@@ -38,7 +38,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Rust tests | 31 | 16,775 | 15,324 | 269 | 1,182 |
 | Fixture/data | 6 | 5,545 | 5,540 | 5 | 0 |
 | TOML/config | 16 | 1,779 | 1,583 | 0 | 196 |
-| Shell scripts | 9 | 1,159 | 929 | 21 | 209 |
+| Shell scripts | 9 | 1,178 | 944 | 21 | 213 |
 | TypeScript/Bun scripts | 1 | 561 | 491 | 0 | 70 |
 | Bazel/Starlark | 18 | 367 | 333 | 0 | 34 |
 | YAML | 2 | 104 | 83 | 4 | 17 |
@@ -76,7 +76,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 31d21f8e89f695b2b7e5ee7007d3809d5a1d78c7f7c2b65d7a41a05145e661c4 |
+| Input fingerprint | bb57408febeb1765e419dafba078a84a5e0fd45d1f6c819d54d6d71c83056a00 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |
