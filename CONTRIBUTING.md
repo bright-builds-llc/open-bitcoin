@@ -71,6 +71,10 @@ This script is the source of truth for local verification and is mirrored in CI.
 
 The repository pins Rust `1.94.1` in `rust-toolchain.toml`. Use `rustup`-managed `cargo` and `rustc` so local development, CI, and Bazel stay aligned on the same compiler line.
 
+### Bun toolchain
+
+The repository pins Bun in `.bun-version`. Install Bun locally so `bash scripts/verify.sh` can run the repo-owned TypeScript automation used for LOC reporting and pure-core dependency checks.
+
 ### Git hooks
 
 Install the repo-managed hooks once per clone:
