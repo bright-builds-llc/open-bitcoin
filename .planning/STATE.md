@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: complete
-stopped_at: Completed quick task 260425-e1c
-last_updated: "2026-04-25T15:07:59.000Z"
+stopped_at: Completed quick task 260425-kao
+last_updated: "2026-04-25T19:46:50.000Z"
 last_activity: 2026-04-25
 progress:
   total_phases: 21
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-04-24)
 Phase: 11
 Plan: Not started
 Status: Phase complete — verification passed
-Last activity: 2026-04-25 - Completed quick task 260425-e1c: Fix CI Bun provisioning
+Last activity: 2026-04-25 - Completed quick task 260425-kao: Add parity breadcrumb source anchors to first-party Rust files
 
 Progress: ██████████ 100%
 
@@ -162,6 +162,7 @@ None yet.
 | 260425-c8x | Migrate LOC generator to TypeScript and Bun | 2026-04-25 | e8d1055 | [260425-c8x-migrate-loc-generator-to-typescript-and-](./quick/260425-c8x-migrate-loc-generator-to-typescript-and-/) |
 | 260425-csn | Refresh README parity status and docs freshness guidance | 2026-04-25 | 37202da | [260425-csn-refresh-readme-parity-status-and-docs-fr](./quick/260425-csn-refresh-readme-parity-status-and-docs-fr/) |
 | 260425-e1c | Fix CI Bun provisioning | 2026-04-25 | e51c539 | [260425-e1c-fix-ci-bun-provisioning](./quick/260425-e1c-fix-ci-bun-provisioning/) |
+| 260425-kao | Add parity breadcrumb source anchors to first-party Rust files | 2026-04-25 | d2b67e3 | [260425-kao-add-parity-breadcrumb-source-anchors-to-](./quick/260425-kao-add-parity-breadcrumb-source-anchors-to-/) |
 
 ## Session Continuity
 
