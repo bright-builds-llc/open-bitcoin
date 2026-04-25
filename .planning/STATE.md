@@ -146,8 +146,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- 2 pending:
-  - AI-agent-friendly CLI surface — see `.planning/todos/pending/2026-04-18-ai-agent-friendly-cli-surface.md`
+- 1 pending:
   - Reduce nesting with early returns — see `.planning/todos/pending/2026-04-18-reduce-nesting-with-early-returns.md`
 
 ### Blockers/Concerns
