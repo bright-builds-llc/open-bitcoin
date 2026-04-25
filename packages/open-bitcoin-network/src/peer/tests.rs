@@ -1,3 +1,12 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/headerssync.cpp
+// - packages/bitcoin-knots/src/sync.cpp
+// - packages/bitcoin-knots/src/net_processing.cpp
+// - packages/bitcoin-knots/src/node/txdownloadman_impl.cpp
+// - packages/bitcoin-knots/src/node/txdownloadman.h
+// - packages/bitcoin-knots/test/functional/p2p_handshake.py
+// - packages/bitcoin-knots/test/functional/p2p_initial_headers_sync.py
+
 use open_bitcoin_chainstate::ChainPosition;
 use open_bitcoin_consensus::{check_block_header, transaction_txid, transaction_wtxid};
 use open_bitcoin_primitives::{Block, BlockHash, BlockHeader, Hash32, MerkleRoot, NetworkMagic};

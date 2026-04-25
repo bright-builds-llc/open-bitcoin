@@ -1,3 +1,12 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/headerssync.cpp
+// - packages/bitcoin-knots/src/sync.cpp
+// - packages/bitcoin-knots/src/net_processing.cpp
+// - packages/bitcoin-knots/src/node/txdownloadman_impl.cpp
+// - packages/bitcoin-knots/src/node/txdownloadman.h
+// - packages/bitcoin-knots/test/functional/p2p_handshake.py
+// - packages/bitcoin-knots/test/functional/p2p_initial_headers_sync.py
+
 use std::collections::{BTreeMap, BTreeSet};
 
 use open_bitcoin_chainstate::ChainPosition;

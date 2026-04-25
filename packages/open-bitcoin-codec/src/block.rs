@@ -1,3 +1,9 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/primitives/block.h
+// - packages/bitcoin-knots/src/primitives/block.cpp
+// - packages/bitcoin-knots/src/serialize.h
+// - packages/bitcoin-knots/src/streams.h
+
 use open_bitcoin_primitives::{Block, BlockHash, BlockHeader, MerkleRoot};
 
 use crate::compact_size::{compact_size_to_usize, read_compact_size, write_compact_size};

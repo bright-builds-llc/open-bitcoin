@@ -1,3 +1,6 @@
+// Parity breadcrumbs:
+// - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
+
 use std::{fmt, io, time::SystemTimeError};
 
 #[derive(Debug)]

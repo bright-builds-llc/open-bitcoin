@@ -1,3 +1,8 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/test/functional/test_framework
+// - packages/bitcoin-knots/test/functional/interface_rpc.py
+// - packages/bitcoin-knots/test/functional/interface_bitcoin_cli.py
+
 use std::fmt;
 
 use base64::{Engine as _, engine::general_purpose::STANDARD};

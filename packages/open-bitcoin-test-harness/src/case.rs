@@ -1,3 +1,8 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/test/functional/test_framework
+// - packages/bitcoin-knots/test/functional/interface_rpc.py
+// - packages/bitcoin-knots/test/functional/interface_bitcoin_cli.py
+
 use serde_json::Value;
 
 use crate::target::HarnessTarget;

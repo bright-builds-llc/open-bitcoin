@@ -10,6 +10,10 @@
         clippy::panic_in_result_fn,
     )
 )]
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/bitcoin-cli.cpp
+// - packages/bitcoin-knots/src/rpc/client.cpp
+// - packages/bitcoin-knots/test/functional/interface_bitcoin_cli.py
 
 mod client;
 mod output;

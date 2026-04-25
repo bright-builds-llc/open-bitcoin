@@ -1,3 +1,10 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/script/script.h
+// - packages/bitcoin-knots/src/script/script.cpp
+// - packages/bitcoin-knots/src/script/interpreter.cpp
+// - packages/bitcoin-knots/src/script/script_error.h
+// - packages/bitcoin-knots/src/test/data/script_tests.json
+
 pub(super) const OP_PUSHDATA1: u8 = 0x4c;
 pub(super) const OP_PUSHDATA2: u8 = 0x4d;
 pub(super) const OP_PUSHDATA4: u8 = 0x4e;

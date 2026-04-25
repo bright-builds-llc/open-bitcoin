@@ -23,6 +23,7 @@ Deferred and suspected follow-up work remains visible in
 ## Files
 
 - `index.json` is the machine-readable root for parity status, intentional deviations, and catalog entries.
+- `source-breadcrumbs.json` maps first-party Rust files to source-level Bitcoin Knots anchors used by parity breadcrumb comments.
 - `checklist.md` is the human-readable parity checklist view backed by `index.json`.
 - `deviations-and-unknowns.md` summarizes current deviations, deferred surfaces, suspected unknowns, and folded todo risks.
 - `benchmarks.md` documents the benchmark groups, Knots mappings, local commands, reports, and non-goals.
@@ -38,6 +39,37 @@ Deferred and suspected follow-up work remains visible in
 - `catalog/verification-harnesses.md` tracks black-box parity, integration isolation, property tests, and CI report output.
 
 Generated timing outputs live under `packages/target/benchmark-reports` rather than being checked into git.
+
+## Source breadcrumbs
+
+First-party Rust files under `packages/open-bitcoin-*/src` and
+`packages/open-bitcoin-*/tests` carry a plain comment block near the top:
+
+```rust
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/script/interpreter.cpp
+```
+
+The paths are repo-root-relative anchors into the pinned Knots baseline. They
+are evidence breadcrumbs, not claims of line-for-line ports. Files with no
+direct source anchor use an explicit `none` breadcrumb so the sweep remains
+complete and auditable.
+
+Keep `source-breadcrumbs.json` as the source of truth and run:
+
+```sh
+bun run scripts/check-parity-breadcrumbs.ts --write
+bun run scripts/check-parity-breadcrumbs.ts --check
+```
+
+The checker verifies that every in-scope Rust file has exactly one breadcrumb
+block and that every Knots path exists. `bash scripts/verify.sh` runs the check
+as part of the repo-native verification contract.
+
+VS Code and Cursor do not document raw relative source-comment paths as a
+built-in editor link contract. This repo includes a local VS Code-compatible
+helper at `.vscode/extensions/open-bitcoin-parity-breadcrumb-links/` that turns
+`packages/bitcoin-knots/...` breadcrumb paths into document links when enabled.
 
 ## Intentional deviations
 

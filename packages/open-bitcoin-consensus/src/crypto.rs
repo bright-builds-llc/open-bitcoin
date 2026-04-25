@@ -1,3 +1,9 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/hash.h
+// - packages/bitcoin-knots/src/hash.cpp
+// - packages/bitcoin-knots/src/crypto/ripemd160.cpp
+// - packages/bitcoin-knots/src/crypto/sha256.cpp
+
 mod ripemd160;
 mod sha256;
 

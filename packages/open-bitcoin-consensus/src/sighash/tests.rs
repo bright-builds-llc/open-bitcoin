@@ -1,3 +1,8 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/script/interpreter.cpp
+// - packages/bitcoin-knots/src/test/sighash_tests.cpp
+// - packages/bitcoin-knots/src/test/data/sighash.json
+
 use super::{
     SigHashType, SigVersion, legacy_sighash, segwit_v0_sighash, taproot_sighash,
     taproot_tagged_hash,

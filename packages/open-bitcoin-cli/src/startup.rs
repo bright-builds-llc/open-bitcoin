@@ -1,3 +1,9 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/bitcoin-cli.cpp
+// - packages/bitcoin-knots/src/common/args.cpp
+// - packages/bitcoin-knots/src/common/config.cpp
+// - packages/bitcoin-knots/test/functional/interface_bitcoin_cli.py
+
 use std::path::{Path, PathBuf};
 
 use open_bitcoin_rpc::config::{RpcAuthConfig, load_runtime_config_for_args};

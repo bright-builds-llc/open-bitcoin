@@ -1,3 +1,8 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/protocol.h
+// - packages/bitcoin-knots/src/netaddress.h
+// - packages/bitcoin-knots/src/netbase.h
+
 use open_bitcoin_primitives::{
     Amount, Block, BlockHash, BlockHeader, Hash32, InventoryType, MerkleRoot, MessageCommand,
     NetworkMagic, OutPoint, ScriptBuf, ScriptWitness, Transaction, TransactionInput,

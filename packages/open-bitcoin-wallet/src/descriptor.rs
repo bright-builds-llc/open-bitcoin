@@ -1,3 +1,8 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/doc/descriptors.md
+// - packages/bitcoin-knots/src/script/descriptor.cpp
+// - packages/bitcoin-knots/test/functional/wallet_descriptor.py
+
 use secp256k1::{PublicKey, XOnlyPublicKey};
 
 use crate::WalletError;

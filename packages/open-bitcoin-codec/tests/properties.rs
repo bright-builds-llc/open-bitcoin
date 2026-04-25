@@ -1,3 +1,8 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/test/fuzz/deserialize.cpp
+// - packages/bitcoin-knots/src/test/fuzz/protocol.cpp
+// - packages/bitcoin-knots/src/test/fuzz/primitives_transaction.cpp
+
 use open_bitcoin_codec::{
     TransactionEncoding, encode_message_header, encode_transaction, parse_message_header,
     parse_transaction,

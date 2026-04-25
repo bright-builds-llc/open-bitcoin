@@ -1,3 +1,10 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/script/script.h
+// - packages/bitcoin-knots/src/script/script.cpp
+// - packages/bitcoin-knots/src/script/interpreter.cpp
+// - packages/bitcoin-knots/src/script/script_error.h
+// - packages/bitcoin-knots/src/test/data/script_tests.json
+
 use open_bitcoin_primitives::{
     Amount, Hash32, MAX_OPS_PER_SCRIPT, MAX_SCRIPT_ELEMENT_SIZE, ScriptWitness, Transaction,
     TransactionInput, TransactionOutput, Txid,

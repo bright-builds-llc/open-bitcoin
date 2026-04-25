@@ -1,3 +1,9 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/net_processing.cpp
+// - packages/bitcoin-knots/src/node/txdownloadman_impl.cpp
+// - packages/bitcoin-knots/src/node/txdownloadman.h
+// - packages/bitcoin-knots/src/protocol.h
+
 use std::collections::{BTreeMap, BTreeSet};
 
 use open_bitcoin_core::{

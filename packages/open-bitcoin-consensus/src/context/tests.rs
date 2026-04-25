@@ -1,3 +1,11 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/consensus/tx_check.cpp
+// - packages/bitcoin-knots/src/consensus/tx_verify.cpp
+// - packages/bitcoin-knots/src/consensus/validation.h
+// - packages/bitcoin-knots/src/validation.cpp
+// - packages/bitcoin-knots/src/test/data/tx_valid.json
+// - packages/bitcoin-knots/src/test/data/tx_invalid.json
+
 use open_bitcoin_codec::CodecError;
 use open_bitcoin_primitives::{Amount, BlockHeader, ScriptBuf, Transaction};
 use open_bitcoin_primitives::{MAX_MONEY, TransactionInput, TransactionOutput, Txid};

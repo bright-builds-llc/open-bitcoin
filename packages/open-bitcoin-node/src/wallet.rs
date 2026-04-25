@@ -1,3 +1,8 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/wallet/wallet.cpp
+// - packages/bitcoin-knots/src/wallet/spend.cpp
+// - packages/bitcoin-knots/src/wallet/receive.cpp
+
 use open_bitcoin_core::{
     primitives::Transaction,
     wallet::{

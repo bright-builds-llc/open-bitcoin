@@ -11,6 +11,8 @@
         clippy::panic_in_result_fn,
     )
 )]
+// Parity breadcrumbs:
+// - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
 //! Invariant-bearing Bitcoin domain primitives for Open Bitcoin.
 

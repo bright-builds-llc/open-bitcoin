@@ -11,6 +11,8 @@
         clippy::panic_in_result_fn,
     )
 )]
+// Parity breadcrumbs:
+// - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
 //! Shell-layer CLI crate for Phase 8 `bitcoin-cli` parsing and startup work.
 

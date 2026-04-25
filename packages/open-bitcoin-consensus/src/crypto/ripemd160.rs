@@ -1,3 +1,9 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/hash.h
+// - packages/bitcoin-knots/src/hash.cpp
+// - packages/bitcoin-knots/src/crypto/ripemd160.cpp
+// - packages/bitcoin-knots/src/crypto/sha256.cpp
+
 const INITIAL_STATE: [u32; 5] = [
     0x6745_2301,
     0xefcd_ab89,

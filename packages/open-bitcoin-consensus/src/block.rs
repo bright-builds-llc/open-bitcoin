@@ -1,3 +1,9 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/primitives/block.h
+// - packages/bitcoin-knots/src/consensus/merkle.cpp
+// - packages/bitcoin-knots/src/pow.cpp
+// - packages/bitcoin-knots/src/validation.cpp
+
 mod difficulty;
 mod witness;
 

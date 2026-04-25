@@ -1,3 +1,8 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/script/solver.h
+// - packages/bitcoin-knots/src/script/solver.cpp
+// - packages/bitcoin-knots/src/script/script.h
+
 use open_bitcoin_primitives::ScriptBuf;
 
 const OP_0: u8 = 0x00;

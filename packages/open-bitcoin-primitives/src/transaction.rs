@@ -1,3 +1,6 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/primitives/transaction.h
+
 use crate::amount::Amount;
 use crate::hash::{Hash32, Txid};
 use crate::script::{ScriptBuf, ScriptWitness};

@@ -1,3 +1,8 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/protocol.h
+// - packages/bitcoin-knots/src/netaddress.h
+// - packages/bitcoin-knots/src/netbase.h
+
 use open_bitcoin_codec::{
     CodecError, MAX_SIZE, encode_block, encode_block_header, encode_block_locator,
     encode_inventory_vector, encode_message_header, encode_network_address, encode_transaction,

@@ -1,3 +1,9 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/bench/addrman.cpp
+// - packages/bitcoin-knots/src/bench/peer_eviction.cpp
+// - packages/bitcoin-knots/src/net_processing.cpp
+// - packages/bitcoin-knots/src/protocol.h
+
 use open_bitcoin_codec::parse_message_header;
 use open_bitcoin_network::{HeaderStore, ParsedNetworkMessage, WireNetworkMessage};
 use open_bitcoin_primitives::NetworkMagic;

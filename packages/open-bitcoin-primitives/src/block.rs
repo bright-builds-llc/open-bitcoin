@@ -1,3 +1,6 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/primitives/block.h
+
 use crate::hash::{BlockHash, MerkleRoot};
 use crate::transaction::Transaction;
 

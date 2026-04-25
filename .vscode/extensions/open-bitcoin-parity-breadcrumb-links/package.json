@@ -1,0 +1,18 @@
+{
+  "name": "open-bitcoin-parity-breadcrumb-links",
+  "displayName": "Open Bitcoin Parity Breadcrumb Links",
+  "description": "Makes Open Bitcoin parity breadcrumb paths command-clickable in Rust source comments.",
+  "version": "0.1.0",
+  "publisher": "open-bitcoin",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.88.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:rust"
+  ],
+  "main": "./extension.js"
+}

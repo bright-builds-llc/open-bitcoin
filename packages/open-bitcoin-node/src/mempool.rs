@@ -1,3 +1,8 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/txmempool.cpp
+// - packages/bitcoin-knots/src/node/mempool_args.cpp
+// - packages/bitcoin-knots/src/policy/policy.cpp
+
 use open_bitcoin_core::{
     consensus::{ConsensusParams, ScriptVerifyFlags},
     primitives::Transaction,

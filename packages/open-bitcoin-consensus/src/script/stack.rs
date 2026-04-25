@@ -1,3 +1,10 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/script/script.h
+// - packages/bitcoin-knots/src/script/script.cpp
+// - packages/bitcoin-knots/src/script/interpreter.cpp
+// - packages/bitcoin-knots/src/script/script_error.h
+// - packages/bitcoin-knots/src/test/data/script_tests.json
+
 use super::ScriptError;
 
 pub(super) const MAX_STACK_SIZE: usize = 1_000;

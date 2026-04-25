@@ -1,3 +1,8 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/bitcoin-cli.cpp
+// - packages/bitcoin-knots/src/rpc/client.cpp
+// - packages/bitcoin-knots/test/functional/interface_bitcoin_cli.py
+
 use open_bitcoin_cli::CliError;
 use open_bitcoin_rpc::{RpcErrorDetail, RpcFailure};
 use serde_json::Value;

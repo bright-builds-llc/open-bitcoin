@@ -1,0 +1,646 @@
+{
+  "version": 1,
+  "noneReason": "Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.",
+  "scope": {
+    "include": [
+      "packages/open-bitcoin-*/src/**/*.rs",
+      "packages/open-bitcoin-*/tests/**/*.rs"
+    ],
+    "exclude": [
+      "packages/bitcoin-knots/**"
+    ]
+  },
+  "groups": [
+    {
+      "label": "bench-consensus-script",
+      "files": [
+        "packages/open-bitcoin-bench/src/cases/consensus.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/bench/verify_script.cpp"
+      ]
+    },
+    {
+      "label": "bench-block-transaction-codec",
+      "files": [
+        "packages/open-bitcoin-bench/src/cases/codec.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/bench/checkblock.cpp",
+        "packages/bitcoin-knots/src/bench/readwriteblock.cpp",
+        "packages/bitcoin-knots/src/primitives/block.h",
+        "packages/bitcoin-knots/src/primitives/transaction.h"
+      ]
+    },
+    {
+      "label": "bench-chainstate",
+      "files": [
+        "packages/open-bitcoin-bench/src/cases/chainstate.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/bench/checkblock.cpp",
+        "packages/bitcoin-knots/src/bench/readwriteblock.cpp",
+        "packages/bitcoin-knots/src/bench/ccoins_caching.cpp",
+        "packages/bitcoin-knots/src/coins.cpp"
+      ]
+    },
+    {
+      "label": "bench-mempool-policy",
+      "files": [
+        "packages/open-bitcoin-bench/src/cases/mempool.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/bench/mempool_stress.cpp",
+        "packages/bitcoin-knots/src/bench/mempool_eviction.cpp",
+        "packages/bitcoin-knots/src/txmempool.cpp",
+        "packages/bitcoin-knots/src/policy/policy.cpp"
+      ]
+    },
+    {
+      "label": "bench-network-wire-sync",
+      "files": [
+        "packages/open-bitcoin-bench/src/cases/network.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/bench/addrman.cpp",
+        "packages/bitcoin-knots/src/bench/peer_eviction.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/protocol.h"
+      ]
+    },
+    {
+      "label": "bench-wallet",
+      "files": [
+        "packages/open-bitcoin-bench/src/cases/wallet.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/bench/wallet_balance.cpp",
+        "packages/bitcoin-knots/src/bench/coin_selection.cpp",
+        "packages/bitcoin-knots/src/bench/wallet_create_tx.cpp",
+        "packages/bitcoin-knots/src/wallet/spend.cpp"
+      ]
+    },
+    {
+      "label": "bench-rpc-cli",
+      "files": [
+        "packages/open-bitcoin-bench/src/cases/rpc_cli.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/bench/rpc_mempool.cpp",
+        "packages/bitcoin-knots/src/bitcoin-cli.cpp",
+        "packages/bitcoin-knots/src/rpc/server.cpp"
+      ]
+    },
+    {
+      "label": "bench-support",
+      "files": [
+        "packages/open-bitcoin-bench/src/cases.rs",
+        "packages/open-bitcoin-bench/src/error.rs",
+        "packages/open-bitcoin-bench/src/fixtures.rs",
+        "packages/open-bitcoin-bench/src/lib.rs",
+        "packages/open-bitcoin-bench/src/main.rs",
+        "packages/open-bitcoin-bench/src/registry.rs",
+        "packages/open-bitcoin-bench/src/report.rs",
+        "packages/open-bitcoin-bench/src/runner.rs"
+      ],
+      "breadcrumbs": []
+    },
+    {
+      "label": "chainstate-engine",
+      "files": [
+        "packages/open-bitcoin-chainstate/src/engine.rs",
+        "packages/open-bitcoin-chainstate/src/engine/tests.rs",
+        "packages/open-bitcoin-chainstate/src/types.rs",
+        "packages/open-bitcoin-chainstate/tests/parity.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/coins.h",
+        "packages/bitcoin-knots/src/coins.cpp",
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp",
+        "packages/bitcoin-knots/src/node/chainstate.cpp"
+      ]
+    },
+    {
+      "label": "chainstate-support",
+      "files": [
+        "packages/open-bitcoin-chainstate/src/error.rs",
+        "packages/open-bitcoin-chainstate/src/lib.rs"
+      ],
+      "breadcrumbs": []
+    },
+    {
+      "label": "cli-args-startup",
+      "files": [
+        "packages/open-bitcoin-cli/src/args.rs",
+        "packages/open-bitcoin-cli/src/args/tests.rs",
+        "packages/open-bitcoin-cli/src/startup.rs",
+        "packages/open-bitcoin-cli/src/startup/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/bitcoin-cli.cpp",
+        "packages/bitcoin-knots/src/common/args.cpp",
+        "packages/bitcoin-knots/src/common/config.cpp",
+        "packages/bitcoin-knots/test/functional/interface_bitcoin_cli.py"
+      ]
+    },
+    {
+      "label": "cli-client-output-getinfo",
+      "files": [
+        "packages/open-bitcoin-cli/src/client.rs",
+        "packages/open-bitcoin-cli/src/client/tests.rs",
+        "packages/open-bitcoin-cli/src/getinfo.rs",
+        "packages/open-bitcoin-cli/src/getinfo/tests.rs",
+        "packages/open-bitcoin-cli/src/main.rs",
+        "packages/open-bitcoin-cli/src/output.rs",
+        "packages/open-bitcoin-cli/tests/operator_flows.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/bitcoin-cli.cpp",
+        "packages/bitcoin-knots/src/rpc/client.cpp",
+        "packages/bitcoin-knots/test/functional/interface_bitcoin_cli.py"
+      ]
+    },
+    {
+      "label": "cli-support",
+      "files": [
+        "packages/open-bitcoin-cli/src/lib.rs"
+      ],
+      "breadcrumbs": []
+    },
+    {
+      "label": "codec-block",
+      "files": [
+        "packages/open-bitcoin-codec/src/block.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/primitives/block.h",
+        "packages/bitcoin-knots/src/primitives/block.cpp",
+        "packages/bitcoin-knots/src/serialize.h",
+        "packages/bitcoin-knots/src/streams.h"
+      ]
+    },
+    {
+      "label": "codec-compact-size",
+      "files": [
+        "packages/open-bitcoin-codec/src/compact_size.rs",
+        "packages/open-bitcoin-codec/src/primitives.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/serialize.h",
+        "packages/bitcoin-knots/src/streams.h"
+      ]
+    },
+    {
+      "label": "codec-network",
+      "files": [
+        "packages/open-bitcoin-codec/src/network.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/protocol.h",
+        "packages/bitcoin-knots/src/serialize.h",
+        "packages/bitcoin-knots/src/streams.h"
+      ]
+    },
+    {
+      "label": "codec-transaction",
+      "files": [
+        "packages/open-bitcoin-codec/src/transaction.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/primitives/transaction.h",
+        "packages/bitcoin-knots/src/primitives/transaction.cpp",
+        "packages/bitcoin-knots/src/serialize.h",
+        "packages/bitcoin-knots/src/streams.h"
+      ]
+    },
+    {
+      "label": "codec-properties",
+      "files": [
+        "packages/open-bitcoin-codec/tests/properties.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/test/fuzz/deserialize.cpp",
+        "packages/bitcoin-knots/src/test/fuzz/protocol.cpp",
+        "packages/bitcoin-knots/src/test/fuzz/primitives_transaction.cpp"
+      ]
+    },
+    {
+      "label": "codec-support",
+      "files": [
+        "packages/open-bitcoin-codec/src/error.rs",
+        "packages/open-bitcoin-codec/src/lib.rs"
+      ],
+      "breadcrumbs": []
+    },
+    {
+      "label": "consensus-block-validation",
+      "files": [
+        "packages/open-bitcoin-consensus/src/block.rs",
+        "packages/open-bitcoin-consensus/src/block/difficulty.rs",
+        "packages/open-bitcoin-consensus/src/block/tests.rs",
+        "packages/open-bitcoin-consensus/src/block/witness.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/primitives/block.h",
+        "packages/bitcoin-knots/src/consensus/merkle.cpp",
+        "packages/bitcoin-knots/src/pow.cpp",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
+      "label": "consensus-script-classification",
+      "files": [
+        "packages/open-bitcoin-consensus/src/classify.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/script/solver.h",
+        "packages/bitcoin-knots/src/script/solver.cpp",
+        "packages/bitcoin-knots/src/script/script.h"
+      ]
+    },
+    {
+      "label": "consensus-context-transaction-validation",
+      "files": [
+        "packages/open-bitcoin-consensus/src/context.rs",
+        "packages/open-bitcoin-consensus/src/context/tests.rs",
+        "packages/open-bitcoin-consensus/src/transaction.rs",
+        "packages/open-bitcoin-consensus/src/validation.rs",
+        "packages/open-bitcoin-consensus/tests/parity_closure.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/consensus/tx_check.cpp",
+        "packages/bitcoin-knots/src/consensus/tx_verify.cpp",
+        "packages/bitcoin-knots/src/consensus/validation.h",
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/test/data/tx_valid.json",
+        "packages/bitcoin-knots/src/test/data/tx_invalid.json"
+      ]
+    },
+    {
+      "label": "consensus-crypto",
+      "files": [
+        "packages/open-bitcoin-consensus/src/crypto.rs",
+        "packages/open-bitcoin-consensus/src/crypto/ripemd160.rs",
+        "packages/open-bitcoin-consensus/src/crypto/sha256.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/hash.h",
+        "packages/bitcoin-knots/src/hash.cpp",
+        "packages/bitcoin-knots/src/crypto/ripemd160.cpp",
+        "packages/bitcoin-knots/src/crypto/sha256.cpp"
+      ]
+    },
+    {
+      "label": "consensus-script-execution",
+      "files": [
+        "packages/open-bitcoin-consensus/src/script.rs"
+      ],
+      "patterns": [
+        "packages/open-bitcoin-consensus/src/script/*.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/script/script.h",
+        "packages/bitcoin-knots/src/script/script.cpp",
+        "packages/bitcoin-knots/src/script/interpreter.cpp",
+        "packages/bitcoin-knots/src/script/script_error.h",
+        "packages/bitcoin-knots/src/test/data/script_tests.json"
+      ]
+    },
+    {
+      "label": "consensus-sighash",
+      "files": [
+        "packages/open-bitcoin-consensus/src/sighash.rs",
+        "packages/open-bitcoin-consensus/src/sighash/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/script/interpreter.cpp",
+        "packages/bitcoin-knots/src/test/sighash_tests.cpp",
+        "packages/bitcoin-knots/src/test/data/sighash.json"
+      ]
+    },
+    {
+      "label": "consensus-signature",
+      "files": [
+        "packages/open-bitcoin-consensus/src/signature.rs",
+        "packages/open-bitcoin-consensus/src/signature/tests.rs",
+        "packages/open-bitcoin-consensus/tests/taproot.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/key.h",
+        "packages/bitcoin-knots/src/pubkey.h",
+        "packages/bitcoin-knots/src/script/interpreter.cpp",
+        "packages/bitcoin-knots/src/script/sign.cpp"
+      ]
+    },
+    {
+      "label": "consensus-support",
+      "files": [
+        "packages/open-bitcoin-consensus/src/lib.rs"
+      ],
+      "breadcrumbs": []
+    },
+    {
+      "label": "core-support",
+      "files": [
+        "packages/open-bitcoin-core/src/lib.rs"
+      ],
+      "breadcrumbs": []
+    },
+    {
+      "label": "mempool-policy",
+      "files": [
+        "packages/open-bitcoin-mempool/src/policy.rs",
+        "packages/open-bitcoin-mempool/src/policy/output.rs",
+        "packages/open-bitcoin-mempool/src/pool.rs",
+        "packages/open-bitcoin-mempool/src/pool/tests.rs",
+        "packages/open-bitcoin-mempool/src/types.rs",
+        "packages/open-bitcoin-mempool/tests/parity.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/txmempool.h",
+        "packages/bitcoin-knots/src/txmempool.cpp",
+        "packages/bitcoin-knots/src/policy/policy.h",
+        "packages/bitcoin-knots/src/policy/rbf.cpp",
+        "packages/bitcoin-knots/src/policy/packages.cpp"
+      ]
+    },
+    {
+      "label": "mempool-support",
+      "files": [
+        "packages/open-bitcoin-mempool/src/error.rs",
+        "packages/open-bitcoin-mempool/src/lib.rs"
+      ],
+      "breadcrumbs": []
+    },
+    {
+      "label": "network-message-codec",
+      "files": [
+        "packages/open-bitcoin-network/src/message.rs",
+        "packages/open-bitcoin-network/src/message/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/protocol.h",
+        "packages/bitcoin-knots/src/netaddress.h",
+        "packages/bitcoin-knots/src/netbase.h"
+      ]
+    },
+    {
+      "label": "network-peer-sync",
+      "files": [
+        "packages/open-bitcoin-network/src/header_store.rs",
+        "packages/open-bitcoin-network/src/peer.rs",
+        "packages/open-bitcoin-network/src/peer/tests.rs",
+        "packages/open-bitcoin-network/tests/parity.rs",
+        "packages/open-bitcoin-network/tests/properties.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/headerssync.cpp",
+        "packages/bitcoin-knots/src/sync.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/node/txdownloadman_impl.cpp",
+        "packages/bitcoin-knots/src/node/txdownloadman.h",
+        "packages/bitcoin-knots/test/functional/p2p_handshake.py",
+        "packages/bitcoin-knots/test/functional/p2p_initial_headers_sync.py"
+      ]
+    },
+    {
+      "label": "network-support",
+      "files": [
+        "packages/open-bitcoin-network/src/error.rs",
+        "packages/open-bitcoin-network/src/lib.rs"
+      ],
+      "breadcrumbs": []
+    },
+    {
+      "label": "node-chainstate-adapter",
+      "files": [
+        "packages/open-bitcoin-node/src/chainstate.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/node/chainstate.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
+      "label": "node-mempool-adapter",
+      "files": [
+        "packages/open-bitcoin-node/src/mempool.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/txmempool.cpp",
+        "packages/bitcoin-knots/src/node/mempool_args.cpp",
+        "packages/bitcoin-knots/src/policy/policy.cpp"
+      ]
+    },
+    {
+      "label": "node-network-adapter",
+      "files": [
+        "packages/open-bitcoin-node/src/network.rs",
+        "packages/open-bitcoin-node/src/network/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/node/txdownloadman_impl.cpp",
+        "packages/bitcoin-knots/src/node/txdownloadman.h",
+        "packages/bitcoin-knots/src/protocol.h"
+      ]
+    },
+    {
+      "label": "node-wallet-adapter",
+      "files": [
+        "packages/open-bitcoin-node/src/wallet.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/wallet/wallet.cpp",
+        "packages/bitcoin-knots/src/wallet/spend.cpp",
+        "packages/bitcoin-knots/src/wallet/receive.cpp"
+      ]
+    },
+    {
+      "label": "node-support",
+      "files": [
+        "packages/open-bitcoin-node/src/lib.rs"
+      ],
+      "breadcrumbs": []
+    },
+    {
+      "label": "primitives-amount",
+      "files": [
+        "packages/open-bitcoin-primitives/src/amount.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/consensus/amount.h"
+      ]
+    },
+    {
+      "label": "primitives-block",
+      "files": [
+        "packages/open-bitcoin-primitives/src/block.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/primitives/block.h"
+      ]
+    },
+    {
+      "label": "primitives-hash",
+      "files": [
+        "packages/open-bitcoin-primitives/src/hash.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/uint256.h",
+        "packages/bitcoin-knots/src/hash.h"
+      ]
+    },
+    {
+      "label": "primitives-network",
+      "files": [
+        "packages/open-bitcoin-primitives/src/network.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/protocol.h"
+      ]
+    },
+    {
+      "label": "primitives-script",
+      "files": [
+        "packages/open-bitcoin-primitives/src/script.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/script/script.h"
+      ]
+    },
+    {
+      "label": "primitives-transaction",
+      "files": [
+        "packages/open-bitcoin-primitives/src/transaction.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/primitives/transaction.h"
+      ]
+    },
+    {
+      "label": "primitives-support",
+      "files": [
+        "packages/open-bitcoin-primitives/src/lib.rs"
+      ],
+      "breadcrumbs": []
+    },
+    {
+      "label": "rpc-config",
+      "files": [
+        "packages/open-bitcoin-rpc/src/config.rs",
+        "packages/open-bitcoin-rpc/src/config/loader.rs",
+        "packages/open-bitcoin-rpc/src/config/loader/rpc_address.rs",
+        "packages/open-bitcoin-rpc/src/config/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/common/args.cpp",
+        "packages/bitcoin-knots/src/common/config.cpp",
+        "packages/bitcoin-knots/src/httprpc.cpp",
+        "packages/bitcoin-knots/src/rpc/server.cpp"
+      ]
+    },
+    {
+      "label": "rpc-surface",
+      "files": [
+        "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
+        "packages/open-bitcoin-rpc/src/context.rs",
+        "packages/open-bitcoin-rpc/src/context/tests.rs",
+        "packages/open-bitcoin-rpc/src/dispatch.rs",
+        "packages/open-bitcoin-rpc/src/dispatch/tests.rs",
+        "packages/open-bitcoin-rpc/src/envelope.rs",
+        "packages/open-bitcoin-rpc/src/envelope/tests.rs",
+        "packages/open-bitcoin-rpc/src/error.rs",
+        "packages/open-bitcoin-rpc/src/http.rs",
+        "packages/open-bitcoin-rpc/src/http/tests.rs",
+        "packages/open-bitcoin-rpc/src/method.rs",
+        "packages/open-bitcoin-rpc/src/method/tests.rs",
+        "packages/open-bitcoin-rpc/tests/black_box_parity.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/bitcoind.cpp",
+        "packages/bitcoin-knots/src/rpc/protocol.h",
+        "packages/bitcoin-knots/src/rpc/request.cpp",
+        "packages/bitcoin-knots/src/rpc/server.cpp",
+        "packages/bitcoin-knots/src/rpc/blockchain.cpp",
+        "packages/bitcoin-knots/src/rpc/mempool.cpp",
+        "packages/bitcoin-knots/src/rpc/net.cpp",
+        "packages/bitcoin-knots/src/rpc/rawtransaction.cpp",
+        "packages/bitcoin-knots/test/functional/interface_rpc.py"
+      ]
+    },
+    {
+      "label": "rpc-support",
+      "files": [
+        "packages/open-bitcoin-rpc/src/lib.rs"
+      ],
+      "breadcrumbs": []
+    },
+    {
+      "label": "test-harness",
+      "files": [
+        "packages/open-bitcoin-test-harness/src/case.rs",
+        "packages/open-bitcoin-test-harness/src/isolation.rs",
+        "packages/open-bitcoin-test-harness/src/lib.rs",
+        "packages/open-bitcoin-test-harness/src/report.rs",
+        "packages/open-bitcoin-test-harness/src/target.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/test/functional/test_framework",
+        "packages/bitcoin-knots/test/functional/interface_rpc.py",
+        "packages/bitcoin-knots/test/functional/interface_bitcoin_cli.py"
+      ]
+    },
+    {
+      "label": "wallet-address",
+      "files": [
+        "packages/open-bitcoin-wallet/src/address.rs",
+        "packages/open-bitcoin-wallet/src/address/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/key_io.cpp",
+        "packages/bitcoin-knots/src/bech32.cpp",
+        "packages/bitcoin-knots/src/base58.cpp",
+        "packages/bitcoin-knots/test/functional/rpc_deriveaddresses.py"
+      ]
+    },
+    {
+      "label": "wallet-descriptor",
+      "files": [
+        "packages/open-bitcoin-wallet/src/descriptor.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/doc/descriptors.md",
+        "packages/bitcoin-knots/src/script/descriptor.cpp",
+        "packages/bitcoin-knots/test/functional/wallet_descriptor.py"
+      ]
+    },
+    {
+      "label": "wallet-core",
+      "files": [
+        "packages/open-bitcoin-wallet/src/wallet.rs"
+      ],
+      "patterns": [
+        "packages/open-bitcoin-wallet/src/wallet/*.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/wallet/wallet.cpp",
+        "packages/bitcoin-knots/src/wallet/spend.cpp",
+        "packages/bitcoin-knots/src/wallet/coinselection.cpp",
+        "packages/bitcoin-knots/src/wallet/transaction.cpp",
+        "packages/bitcoin-knots/test/functional/wallet_descriptor.py",
+        "packages/bitcoin-knots/test/functional/feature_segwit.py"
+      ]
+    },
+    {
+      "label": "wallet-support",
+      "files": [
+        "packages/open-bitcoin-wallet/src/error.rs",
+        "packages/open-bitcoin-wallet/src/lib.rs"
+      ],
+      "breadcrumbs": []
+    }
+  ]
+}

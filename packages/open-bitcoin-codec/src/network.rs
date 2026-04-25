@@ -1,3 +1,8 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/protocol.h
+// - packages/bitcoin-knots/src/serialize.h
+// - packages/bitcoin-knots/src/streams.h
+
 use open_bitcoin_primitives::{
     BLOCK_LOCATOR_DUMMY_VERSION, BlockLocator, Hash32, InventoryType, InventoryVector,
     MessageCommand, MessageHeader, NetworkAddress, NetworkMagic,

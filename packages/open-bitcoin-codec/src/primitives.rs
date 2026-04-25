@@ -1,3 +1,7 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/serialize.h
+// - packages/bitcoin-knots/src/streams.h
+
 use crate::error::CodecError;
 
 #[derive(Debug, Clone)]

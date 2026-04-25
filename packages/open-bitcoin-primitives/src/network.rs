@@ -1,3 +1,6 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/protocol.h
+
 use core::fmt;
 
 use crate::hash::Hash32;

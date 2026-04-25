@@ -1,3 +1,6 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/consensus/amount.h
+
 use core::fmt;
 
 /// The amount of satoshis in one BTC.

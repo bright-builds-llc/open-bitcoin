@@ -1,3 +1,9 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/bench/checkblock.cpp
+// - packages/bitcoin-knots/src/bench/readwriteblock.cpp
+// - packages/bitcoin-knots/src/bench/ccoins_caching.cpp
+// - packages/bitcoin-knots/src/coins.cpp
+
 use open_bitcoin_chainstate::{AnchoredBlock, Chainstate};
 
 use crate::{

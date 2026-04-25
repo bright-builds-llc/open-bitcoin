@@ -1,3 +1,9 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/key.h
+// - packages/bitcoin-knots/src/pubkey.h
+// - packages/bitcoin-knots/src/script/interpreter.cpp
+// - packages/bitcoin-knots/src/script/sign.cpp
+
 use open_bitcoin_consensus::{
     ScriptExecutionData, ScriptInputVerificationContext, ScriptVerifyFlags, SigHashType,
     SigVersion, SpentOutput, TransactionInputContext, TransactionSignatureChecker,

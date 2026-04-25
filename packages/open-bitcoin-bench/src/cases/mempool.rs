@@ -1,3 +1,9 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/bench/mempool_stress.cpp
+// - packages/bitcoin-knots/src/bench/mempool_eviction.cpp
+// - packages/bitcoin-knots/src/txmempool.cpp
+// - packages/bitcoin-knots/src/policy/policy.cpp
+
 use open_bitcoin_mempool::{
     Mempool, transaction_sigops_cost, transaction_weight_and_virtual_size,
     validate_standard_transaction,

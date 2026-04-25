@@ -1,3 +1,7 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/uint256.h
+// - packages/bitcoin-knots/src/hash.h
+
 //! Fixed-width Bitcoin hash primitives and semantic wrapper types.
 //!
 //! [`Hash32`] is the generic 32-byte storage type used by this module. The

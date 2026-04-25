@@ -1,3 +1,8 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/bench/rpc_mempool.cpp
+// - packages/bitcoin-knots/src/bitcoin-cli.cpp
+// - packages/bitcoin-knots/src/rpc/server.cpp
+
 use std::ffi::OsString;
 
 use open_bitcoin_cli::args::{CliCommand, parse_cli_args};

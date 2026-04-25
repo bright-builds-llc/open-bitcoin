@@ -1,3 +1,10 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/coins.h
+// - packages/bitcoin-knots/src/coins.cpp
+// - packages/bitcoin-knots/src/validation.cpp
+// - packages/bitcoin-knots/src/node/blockstorage.cpp
+// - packages/bitcoin-knots/src/node/chainstate.cpp
+
 use open_bitcoin_chainstate::{
     AnchoredBlock, ChainPosition, Chainstate, ChainstateError, prefer_candidate_tip,
 };

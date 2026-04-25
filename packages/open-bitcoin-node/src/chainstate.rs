@@ -1,3 +1,8 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/node/chainstate.cpp
+// - packages/bitcoin-knots/src/node/blockstorage.cpp
+// - packages/bitcoin-knots/src/validation.cpp
+
 use open_bitcoin_core::{
     chainstate::{AnchoredBlock, ChainPosition, ChainTransition, Chainstate, ChainstateSnapshot},
     consensus::{ConsensusParams, ScriptVerifyFlags},

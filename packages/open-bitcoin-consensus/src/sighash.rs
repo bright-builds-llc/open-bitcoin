@@ -1,3 +1,8 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/script/interpreter.cpp
+// - packages/bitcoin-knots/src/test/sighash_tests.cpp
+// - packages/bitcoin-knots/src/test/data/sighash.json
+
 use open_bitcoin_primitives::{Hash32, OutPoint, ScriptBuf, Transaction, TransactionOutput};
 
 use crate::context::{

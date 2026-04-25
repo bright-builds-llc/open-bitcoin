@@ -1,3 +1,6 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/script/script.h
+
 use core::fmt;
 
 /// Maximum number of bytes pushable to the stack.

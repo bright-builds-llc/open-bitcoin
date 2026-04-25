@@ -10,6 +10,16 @@
         clippy::panic_in_result_fn,
     )
 )]
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/bitcoind.cpp
+// - packages/bitcoin-knots/src/rpc/protocol.h
+// - packages/bitcoin-knots/src/rpc/request.cpp
+// - packages/bitcoin-knots/src/rpc/server.cpp
+// - packages/bitcoin-knots/src/rpc/blockchain.cpp
+// - packages/bitcoin-knots/src/rpc/mempool.cpp
+// - packages/bitcoin-knots/src/rpc/net.cpp
+// - packages/bitcoin-knots/src/rpc/rawtransaction.cpp
+// - packages/bitcoin-knots/test/functional/interface_rpc.py
 
 use open_bitcoin_rpc::{ManagedRpcContext, config::load_runtime_config, http};
 

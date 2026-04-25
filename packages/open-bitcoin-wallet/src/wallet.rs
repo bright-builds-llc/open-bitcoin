@@ -1,3 +1,11 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/wallet/wallet.cpp
+// - packages/bitcoin-knots/src/wallet/spend.cpp
+// - packages/bitcoin-knots/src/wallet/coinselection.cpp
+// - packages/bitcoin-knots/src/wallet/transaction.cpp
+// - packages/bitcoin-knots/test/functional/wallet_descriptor.py
+// - packages/bitcoin-knots/test/functional/feature_segwit.py
+
 use core::cmp::Ordering;
 
 use open_bitcoin_chainstate::ChainstateSnapshot;

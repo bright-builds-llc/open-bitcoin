@@ -1,3 +1,9 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/key.h
+// - packages/bitcoin-knots/src/pubkey.h
+// - packages/bitcoin-knots/src/script/interpreter.cpp
+// - packages/bitcoin-knots/src/script/sign.cpp
+
 use super::{
     EcdsaVerificationRequest, SignatureError, TransactionSignatureChecker,
     is_strict_public_key_encoding, normalize_hybrid_public_key, parse_ecdsa_signature,

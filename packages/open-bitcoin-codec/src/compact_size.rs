@@ -1,3 +1,7 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/serialize.h
+// - packages/bitcoin-knots/src/streams.h
+
 use crate::error::CodecError;
 use crate::primitives::{Reader, write_u16_le, write_u32_le};
 

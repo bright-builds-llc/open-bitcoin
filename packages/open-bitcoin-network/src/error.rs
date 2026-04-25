@@ -1,3 +1,6 @@
+// Parity breadcrumbs:
+// - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
+
 use core::fmt;
 
 use open_bitcoin_codec::CodecError;

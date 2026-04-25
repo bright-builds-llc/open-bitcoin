@@ -1,3 +1,9 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/bench/wallet_balance.cpp
+// - packages/bitcoin-knots/src/bench/coin_selection.cpp
+// - packages/bitcoin-knots/src/bench/wallet_create_tx.cpp
+// - packages/bitcoin-knots/src/wallet/spend.cpp
+
 use open_bitcoin_wallet::Wallet;
 
 use crate::{

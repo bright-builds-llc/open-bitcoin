@@ -1,3 +1,9 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/bench/checkblock.cpp
+// - packages/bitcoin-knots/src/bench/readwriteblock.cpp
+// - packages/bitcoin-knots/src/primitives/block.h
+// - packages/bitcoin-knots/src/primitives/transaction.h
+
 use open_bitcoin_codec::{
     TransactionEncoding, encode_block_header, encode_transaction, parse_block_header,
     parse_transaction_without_witness,

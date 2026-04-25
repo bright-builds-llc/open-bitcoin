@@ -1,3 +1,9 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/key_io.cpp
+// - packages/bitcoin-knots/src/bech32.cpp
+// - packages/bitcoin-knots/src/base58.cpp
+// - packages/bitcoin-knots/test/functional/rpc_deriveaddresses.py
+
 use secp256k1::{Keypair, PublicKey, Scalar, Secp256k1, SecretKey, XOnlyPublicKey};
 
 use open_bitcoin_consensus::{crypto::hash160, taproot_tagged_hash};

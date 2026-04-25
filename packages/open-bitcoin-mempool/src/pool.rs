@@ -1,3 +1,10 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/txmempool.h
+// - packages/bitcoin-knots/src/txmempool.cpp
+// - packages/bitcoin-knots/src/policy/policy.h
+// - packages/bitcoin-knots/src/policy/rbf.cpp
+// - packages/bitcoin-knots/src/policy/packages.cpp
+
 use std::collections::{BTreeSet, HashMap, HashSet};
 
 use open_bitcoin_chainstate::ChainstateSnapshot;

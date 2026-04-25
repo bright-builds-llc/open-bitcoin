@@ -1,3 +1,6 @@
+// Parity breadcrumbs:
+// - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
+
 use crate::{cases, error::BenchError};
 
 pub const REQUIRED_GROUP_IDS: [&str; 7] = [

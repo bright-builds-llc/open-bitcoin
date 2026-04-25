@@ -1,3 +1,9 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/net_processing.cpp
+// - packages/bitcoin-knots/src/node/txdownloadman_impl.cpp
+// - packages/bitcoin-knots/src/node/txdownloadman.h
+// - packages/bitcoin-knots/src/protocol.h
+
 use open_bitcoin_core::consensus::crypto::hash160;
 use open_bitcoin_core::{
     consensus::{

@@ -1,4 +1,8 @@
 #![forbid(unsafe_code)]
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/test/functional/test_framework
+// - packages/bitcoin-knots/test/functional/interface_rpc.py
+// - packages/bitcoin-knots/test/functional/interface_bitcoin_cli.py
 
 //! Test-only parity harness utilities for Open Bitcoin.
 

@@ -1,3 +1,9 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/primitives/block.h
+// - packages/bitcoin-knots/src/consensus/merkle.cpp
+// - packages/bitcoin-knots/src/pow.cpp
+// - packages/bitcoin-knots/src/validation.cpp
+
 use open_bitcoin_codec::parse_block_header;
 use open_bitcoin_primitives::{
     Amount, Block, BlockHash, BlockHeader, COIN, MAX_MONEY, MerkleRoot, OutPoint, ScriptBuf,

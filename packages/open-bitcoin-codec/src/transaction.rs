@@ -1,3 +1,9 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/primitives/transaction.h
+// - packages/bitcoin-knots/src/primitives/transaction.cpp
+// - packages/bitcoin-knots/src/serialize.h
+// - packages/bitcoin-knots/src/streams.h
+
 use open_bitcoin_primitives::{
     Amount, OutPoint, ScriptBuf, ScriptWitness, Transaction, TransactionInput, TransactionOutput,
     Txid,

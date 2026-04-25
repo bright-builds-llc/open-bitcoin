@@ -1,3 +1,6 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/bench/verify_script.cpp
+
 use open_bitcoin_consensus::{count_legacy_sigops, verify_script};
 
 use crate::{

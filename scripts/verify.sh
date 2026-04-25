@@ -108,6 +108,7 @@ mkdir -p "$OPEN_BITCOIN_PARITY_REPORT_DIR"
 mkdir -p "$OPEN_BITCOIN_BENCHMARK_REPORT_DIR"
 
 bun run scripts/generate-loc-report.ts --source="$OPEN_BITCOIN_LOC_REPORT_SOURCE" --output=docs/metrics/lines-of-code.md --check
+bun run scripts/check-parity-breadcrumbs.ts --check
 bash scripts/check-pure-core-deps.sh
 bash scripts/check-file-lengths.sh
 bash scripts/check-panic-sites.sh
