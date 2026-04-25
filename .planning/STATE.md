@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: complete
-stopped_at: Completed quick task 260425-csn
-last_updated: "2026-04-25T14:16:47.000Z"
+stopped_at: Completed quick task 260425-e1c
+last_updated: "2026-04-25T15:07:59.000Z"
 last_activity: 2026-04-25
 progress:
   total_phases: 21
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-04-24)
 Phase: 11
 Plan: Not started
 Status: Phase complete — verification passed
-Last activity: 2026-04-25 - Completed quick task 260425-csn: Refresh README parity status and docs freshness guidance
+Last activity: 2026-04-25 - Completed quick task 260425-e1c: Fix CI Bun provisioning
 
 Progress: ██████████ 100%
 
@@ -161,6 +161,7 @@ None yet.
 | 260425-avx | Add deterministic LOC report generator and wire it into pre-commit/verify | 2026-04-25 | 9b09df8 | [260425-avx-add-deterministic-loc-report-generator-a](./quick/260425-avx-add-deterministic-loc-report-generator-a/) |
 | 260425-c8x | Migrate LOC generator to TypeScript and Bun | 2026-04-25 | e8d1055 | [260425-c8x-migrate-loc-generator-to-typescript-and-](./quick/260425-c8x-migrate-loc-generator-to-typescript-and-/) |
 | 260425-csn | Refresh README parity status and docs freshness guidance | 2026-04-25 | 37202da | [260425-csn-refresh-readme-parity-status-and-docs-fr](./quick/260425-csn-refresh-readme-parity-status-and-docs-fr/) |
+| 260425-e1c | Fix CI Bun provisioning | 2026-04-25 | e51c539 | [260425-e1c-fix-ci-bun-provisioning](./quick/260425-e1c-fix-ci-bun-provisioning/) |
 
 ## Session Continuity
 
