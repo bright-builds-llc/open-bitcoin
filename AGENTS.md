@@ -39,6 +39,7 @@ Use this routing map when deciding what to load next:
 - Use Bun as the canonical runtime for repo-owned higher-level automation scripts; prefer TypeScript for substantial script logic, and keep Bash for thin orchestration wrappers and simple shell checks.
 - Use `bash scripts/install-git-hooks.sh` once per clone to install the repo-managed Git hooks under `.githooks`.
 - Record intentional in-scope behavior differences from Bitcoin Knots in `docs/parity/index.json` and companion docs under `docs/parity/`.
+- When adding first-party Rust source or test files under `packages/open-bitcoin-*/src` or `packages/open-bitcoin-*/tests`, add the required parity breadcrumb block through `docs/parity/source-breadcrumbs.json` and `scripts/check-parity-breadcrumbs.ts`; use the explicit `none` breadcrumb only when no defensible Bitcoin Knots source anchor exists.
 - After substantial feature, parity, operator-surface, or workflow changes, check whether the relevant README files need updates so contributor-facing status stays current.
 
 <!-- GSD:project-start source:PROJECT.md -->
