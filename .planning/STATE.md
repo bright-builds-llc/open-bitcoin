@@ -146,8 +146,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- 1 pending:
-  - Reduce nesting with early returns — see `.planning/todos/pending/2026-04-18-reduce-nesting-with-early-returns.md`
+- 0 pending.
 
 ### Blockers/Concerns
 
