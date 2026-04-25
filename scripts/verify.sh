@@ -37,8 +37,8 @@ finish_verify() {
     rm -f "$coverage_report"
   fi
 
-  if command -v node >/dev/null 2>&1; then
-    verify_end_milliseconds="$(node -e 'process.stdout.write(String(Date.now()))')"
+  if command -v bun >/dev/null 2>&1; then
+    verify_end_milliseconds="$(bun --print "Date.now()")"
   else
     verify_end_milliseconds="$(($(date +%s) * 1000))"
   fi
@@ -79,16 +79,16 @@ require_command cargo-llvm-cov "install it with: cargo install cargo-llvm-cov --
 require_command bazel "install Bazelisk or Bazel and ensure \`bazel\` is on PATH"
 require_command git
 require_command grep
-require_command node
+require_command bun
 
-verify_start_milliseconds="$(node -e 'process.stdout.write(String(Date.now()))')"
+verify_start_milliseconds="$(bun --print "Date.now()")"
 export OPEN_BITCOIN_PARITY_REPORT_DIR="${OPEN_BITCOIN_PARITY_REPORT_DIR:-$PWD/packages/target/parity-reports}"
 export OPEN_BITCOIN_BENCHMARK_REPORT_DIR="${OPEN_BITCOIN_BENCHMARK_REPORT_DIR:-$PWD/packages/target/benchmark-reports}"
 export OPEN_BITCOIN_LOC_REPORT_SOURCE="${OPEN_BITCOIN_LOC_REPORT_SOURCE:-worktree}"
 mkdir -p "$OPEN_BITCOIN_PARITY_REPORT_DIR"
 mkdir -p "$OPEN_BITCOIN_BENCHMARK_REPORT_DIR"
 
-node scripts/generate-loc-report.mjs --source="$OPEN_BITCOIN_LOC_REPORT_SOURCE" --output=docs/metrics/lines-of-code.md --check
+bun run scripts/generate-loc-report.ts --source="$OPEN_BITCOIN_LOC_REPORT_SOURCE" --output=docs/metrics/lines-of-code.md --check
 bash scripts/check-pure-core-deps.sh
 bash scripts/check-file-lengths.sh
 bash scripts/check-panic-sites.sh

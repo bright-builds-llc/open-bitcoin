@@ -9,8 +9,8 @@ if ! command -v cargo >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! command -v node >/dev/null 2>&1; then
-  echo "error: node is required" >&2
+if ! command -v bun >/dev/null 2>&1; then
+  echo "error: bun is required" >&2
   exit 1
 fi
 
@@ -62,7 +62,8 @@ while IFS= read -r crate_name; do
   [[ -z "$crate_name" ]] && continue
 
   deps="$(
-    node -e '
+    # shellcheck disable=SC2016
+    bun --eval '
 const metadata = JSON.parse(process.argv[1]);
 const crateName = process.argv[2];
 const pkg = metadata.packages.find((entry) => entry.name === crateName);

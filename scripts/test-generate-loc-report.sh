@@ -3,7 +3,7 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "${script_dir}/.." && pwd)"
-generator_script="${script_dir}/generate-loc-report.mjs"
+generator_script="${script_dir}/generate-loc-report.ts"
 report_path="docs/metrics/lines-of-code.md"
 
 tmp_root="$(mktemp -d)"
@@ -42,8 +42,8 @@ init_repo() {
   local repo_dir="$1"
 
   mkdir -p "${repo_dir}/scripts"
-  cp "$generator_script" "${repo_dir}/scripts/generate-loc-report.mjs"
-  chmod +x "${repo_dir}/scripts/generate-loc-report.mjs"
+  cp "$generator_script" "${repo_dir}/scripts/generate-loc-report.ts"
+  chmod +x "${repo_dir}/scripts/generate-loc-report.ts"
   (
     cd "$repo_dir"
     git init -q
@@ -75,7 +75,7 @@ run_scope_and_structure_case() {
   (
     cd "$repo_dir"
     git add .
-    node scripts/generate-loc-report.mjs --source=worktree --output="$report_path"
+    bun run scripts/generate-loc-report.ts --source=worktree --output="$report_path"
   )
 
   assert_contains "${repo_dir}/${report_path}" "# Lines Of Code Report"
@@ -107,15 +107,15 @@ run_index_mode_case() {
   (
     cd "$repo_dir"
     git add .
-    node scripts/generate-loc-report.mjs --source=index --output="$report_path"
+    bun run scripts/generate-loc-report.ts --source=index --output="$report_path"
     git add "$report_path"
     write_lines "packages/open-bitcoin-alpha/src/lib.rs" 25 "pub fn unstaged_alpha_"
-    node scripts/generate-loc-report.mjs --source=index --output="$report_path" --check
+    bun run scripts/generate-loc-report.ts --source=index --output="$report_path" --check
 
     write_lines "packages/open-bitcoin-beta/src/lib.rs" 4 "pub fn staged_beta_"
     git add packages/open-bitcoin-beta/src/lib.rs
     set +e
-    node scripts/generate-loc-report.mjs --source=index --output="$report_path" --check >check-output.txt 2>&1
+    bun run scripts/generate-loc-report.ts --source=index --output="$report_path" --check >check-output.txt 2>&1
     status=$?
     set -e
     if [[ "$status" -eq 0 ]]; then
@@ -123,9 +123,9 @@ run_index_mode_case() {
       exit 1
     fi
 
-    node scripts/generate-loc-report.mjs --source=index --output="$report_path"
+    bun run scripts/generate-loc-report.ts --source=index --output="$report_path"
     git add "$report_path"
-    node scripts/generate-loc-report.mjs --source=index --output="$report_path" --check
+    bun run scripts/generate-loc-report.ts --source=index --output="$report_path" --check
   )
 
   assert_contains "${repo_dir}/${report_path}" "open-bitcoin-beta"
@@ -140,12 +140,12 @@ run_worktree_check_case() {
   (
     cd "$repo_dir"
     git add .
-    node scripts/generate-loc-report.mjs --source=worktree --output="$report_path"
-    node scripts/generate-loc-report.mjs --source=worktree --output="$report_path" --check
+    bun run scripts/generate-loc-report.ts --source=worktree --output="$report_path"
+    bun run scripts/generate-loc-report.ts --source=worktree --output="$report_path" --check
     write_lines "packages/open-bitcoin-alpha/src/lib.rs" 12 "pub fn changed_alpha_"
 
     set +e
-    node scripts/generate-loc-report.mjs --source=worktree --output="$report_path" --check >check-output.txt 2>&1
+    bun run scripts/generate-loc-report.ts --source=worktree --output="$report_path" --check >check-output.txt 2>&1
     status=$?
     set -e
     if [[ "$status" -eq 0 ]]; then
@@ -153,8 +153,8 @@ run_worktree_check_case() {
       exit 1
     fi
 
-    node scripts/generate-loc-report.mjs --source=worktree --output="$report_path"
-    node scripts/generate-loc-report.mjs --source=worktree --output="$report_path" --check
+    bun run scripts/generate-loc-report.ts --source=worktree --output="$report_path"
+    bun run scripts/generate-loc-report.ts --source=worktree --output="$report_path" --check
   )
 }
 
@@ -163,7 +163,7 @@ run_real_repo_smoke_case() {
 
   (
     cd "$repo_root"
-    node scripts/generate-loc-report.mjs --source=worktree --output="$smoke_report"
+    bun run scripts/generate-loc-report.ts --source=worktree --output="$smoke_report"
   )
 
   assert_contains "${repo_root}/${smoke_report}" "open-bitcoin-consensus"

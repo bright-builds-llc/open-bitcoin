@@ -5,8 +5,10 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 helper_script="${script_dir}/check-file-lengths.sh"
 verify_script="${script_dir}/verify.sh"
 readonly pi="3.141592653589793"
-readonly tau="$(awk -v pi="$pi" 'BEGIN { printf "%.15f", 2 * pi }')"
-readonly expected_max_file_lines="$(awk -v tau="$tau" 'BEGIN { printf "%d", int(tau * 100) }')"
+tau="$(awk -v pi="$pi" 'BEGIN { printf "%.15f", 2 * pi }')"
+readonly tau
+expected_max_file_lines="$(awk -v tau="$tau" 'BEGIN { printf "%d", int(tau * 100) }')"
+readonly expected_max_file_lines
 
 tmp_root="$(mktemp -d)"
 trap 'rm -rf "$tmp_root"' EXIT
@@ -66,6 +68,22 @@ echo "Pure-core dependency and import checks passed."
 EOF
   chmod +x "${repo_dir}/scripts/check-pure-core-deps.sh"
 
+  cat >"${repo_dir}/scripts/check-panic-sites.sh" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+echo "check-panic-sites.sh: no unclassified production panic-like sites"
+EOF
+  chmod +x "${repo_dir}/scripts/check-panic-sites.sh"
+
+  cat >"${repo_dir}/scripts/run-benchmarks.sh" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+exit 0
+EOF
+  chmod +x "${repo_dir}/scripts/run-benchmarks.sh"
+
+  touch "${repo_dir}/scripts/pure-core-crates.txt"
+
   cat >"${fake_bin}/cargo" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -84,13 +102,22 @@ set -euo pipefail
 touch "${VERIFY_MARKER_DIR:?}/bazel-called"
 exit 0
 EOF
-  cat >"${fake_bin}/node" <<'EOF'
+  cat >"${fake_bin}/bun" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
-touch "${VERIFY_MARKER_DIR:?}/node-called"
-printf '%s' "0"
+touch "${VERIFY_MARKER_DIR:?}/bun-called"
+if [[ "${1:-}" == "--print" ]]; then
+  printf '%s' "0"
+  exit 0
+fi
+if [[ "${1:-}" == "run" && "${2:-}" == "scripts/generate-loc-report.ts" ]]; then
+  touch "${VERIFY_MARKER_DIR:?}/loc-report-called"
+  exit 0
+fi
+echo "unexpected bun invocation: $*" >&2
+exit 1
 EOF
-  chmod +x "${fake_bin}/cargo" "${fake_bin}/cargo-llvm-cov" "${fake_bin}/bazel" "${fake_bin}/node"
+  chmod +x "${fake_bin}/cargo" "${fake_bin}/cargo-llvm-cov" "${fake_bin}/bazel" "${fake_bin}/bun"
 }
 
 run_positive_case() {
@@ -104,7 +131,7 @@ run_positive_case() {
     cd "$repo_dir"
     git add packages/open-bitcoin-foo/src/lib.rs
     output="$("$helper_script" 2>&1)"
-    printf '%s' "$output" > positive-output.txt
+    printf '%s' "$output" >positive-output.txt
   )
 
   output="$(cat "${repo_dir}/positive-output.txt")"
@@ -125,8 +152,8 @@ run_negative_case() {
     output="$("$helper_script" 2>&1)"
     status=$?
     set -e
-    printf '%s' "$output" > negative-output.txt
-    printf '%s' "$status" > negative-status.txt
+    printf '%s' "$output" >negative-output.txt
+    printf '%s' "$status" >negative-status.txt
   )
 
   output="$(cat "${repo_dir}/negative-output.txt")"
@@ -157,7 +184,7 @@ run_scope_case() {
     cd "$repo_dir"
     git add packages
     output="$("$helper_script" 2>&1)"
-    printf '%s' "$output" > scope-output.txt
+    printf '%s' "$output" >scope-output.txt
   )
 
   output="$(cat "${repo_dir}/scope-output.txt")"
@@ -175,13 +202,13 @@ run_verify_integration_case() {
 
   (
     cd "$repo_dir"
-    git add packages scripts/check-pure-core-deps.sh
+    git add packages scripts
     set +e
     output="$(PATH="${fake_bin}:$PATH" VERIFY_MARKER_DIR="$repo_dir" bash "$verify_script" 2>&1)"
     status=$?
     set -e
-    printf '%s' "$output" > integration-output.txt
-    printf '%s' "$status" > integration-status.txt
+    printf '%s' "$output" >integration-output.txt
+    printf '%s' "$status" >integration-status.txt
   )
 
   output="$(cat "${repo_dir}/integration-output.txt")"
@@ -211,13 +238,13 @@ run_verify_success_timing_case() {
 
   (
     cd "$repo_dir"
-    git add packages scripts/check-pure-core-deps.sh scripts/check-file-lengths.sh
+    git add packages scripts
     set +e
     output="$(PATH="${fake_bin}:$PATH" VERIFY_MARKER_DIR="$repo_dir" bash "$verify_script" 2>&1)"
     status=$?
     set -e
-    printf '%s' "$output" > success-output.txt
-    printf '%s' "$status" > success-status.txt
+    printf '%s' "$output" >success-output.txt
+    printf '%s' "$status" >success-status.txt
   )
 
   output="$(cat "${repo_dir}/success-output.txt")"
