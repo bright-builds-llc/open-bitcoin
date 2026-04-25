@@ -12,38 +12,58 @@
 
 <!-- bright-builds-rules-readme-badges:end -->
 
-Open Bitcoin is a headless Bitcoin node and wallet implementation in Rust. It is being built to preserve externally observable behavior from Bitcoin Knots `29.3.knots20260210` across the in-scope consensus, validation, chainstate, mempool, networking, wallet, RPC, CLI, and configuration surfaces while keeping first-party internals more strongly typed, auditable, and modular.
+Open Bitcoin is a headless Bitcoin node and wallet implementation in Rust. Its
+external behavior targets Bitcoin Knots `29.3.knots20260210` for the in-scope
+consensus, validation, chainstate, mempool, networking, wallet, RPC, CLI, and
+configuration surfaces while keeping the first-party internals strongly typed,
+auditable, and modular.
 
-> Status: Phase 1, "Workspace, Baseline, and Guardrails," is complete. The repository is still in its scaffold and foundation stage, and there is not yet a runnable Open Bitcoin node, wallet, RPC server, or CLI implementation. The current first-party crates establish workspace, architecture, and verification boundaries for later phases.
+> Status: the in-scope headless v1 parity surfaces are implemented and ready
+> for review and operator testing. Open Bitcoin is not yet recommended for
+> production funds or unattended mainnet operation.
 
-## Why This Exists
+## Parity At A Glance
 
-- Behavioral parity matters more than source-level mimicry. The goal is to match the pinned Knots baseline on the outside, not to port its C++ code line by line.
-- The project uses functional core and imperative shell boundaries so pure domain logic stays separate from I/O, runtime side effects, and adapter code.
-- Parity claims are meant to be auditable. Intentional differences from the baseline are supposed to be explicit and documented rather than tribal knowledge.
-- The initial milestone is headless by design. GUI work is deferred until the node and wallet core are further along.
+The current status source is the parity ledger:
+[`docs/parity/index.json`](./docs/parity/index.json), the human checklist
+[`docs/parity/checklist.md`](./docs/parity/checklist.md), the release-readiness
+handoff [`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md),
+and project state [`.planning/STATE.md`](./.planning/STATE.md). Older roadmap
+or requirements rows may lag those artifacts.
 
-## What Exists Today
+| Surface | Bitcoin Knots baseline | Open Bitcoin | Evidence | Notes |
+| --- | --- | --- | --- | --- |
+| Reference baseline | `29.3.knots20260210` vendored under `packages/bitcoin-knots/` | ✓ done | [`docs/parity/index.json`](./docs/parity/index.json) | The pinned baseline is the external behavior contract. |
+| Core domain and serialization | Amounts, hashes, scripts, transactions, blocks, and wire framing | ✓ done | [`catalog/core-domain-and-serialization.md`](./docs/parity/catalog/core-domain-and-serialization.md) | Rust types preserve Bitcoin encoding and identity boundaries. |
+| Consensus and validation | Script execution, transaction checks, block checks, PoW, merkle behavior | ✓ done | [`catalog/consensus-validation.md`](./docs/parity/catalog/consensus-validation.md) | Consensus parity includes legacy, segwit-v0, taproot, and parity-closure fixes. |
+| Chainstate and UTXO engine | Connect, disconnect, reorg, UTXO, undo, and best-chain behavior | ✓ done | [`catalog/chainstate.md`](./docs/parity/catalog/chainstate.md) | Disk-backed databases and full manager behavior remain follow-up depth. |
+| Mempool policy | Admission, replacement, fee accounting, ancestor/descendant, eviction | ✓ done | [`catalog/mempool-policy.md`](./docs/parity/catalog/mempool-policy.md) | Long-lived pressure and package-relay depth remain future work. |
+| P2P networking and sync | Handshake, peer lifecycle, headers, blocks, inventory, tx relay | ✓ done | [`catalog/p2p.md`](./docs/parity/catalog/p2p.md) | Discovery, address relay, bans, and long-running socket policy are deferred. |
+| Wallet | Descriptors, addresses, balances, UTXOs, coin selection, signing | ✓ done | [`catalog/wallet.md`](./docs/parity/catalog/wallet.md) | HD, multisig, PSBT, encryption, and external signers remain follow-up surfaces. |
+| RPC, CLI, and config | Local JSON-RPC, `bitcoin-cli`-style flags, config, auth, operator flows | ✓ done | [`catalog/rpc-cli-config.md`](./docs/parity/catalog/rpc-cli-config.md) | The supported slice is single-wallet and local-operator focused. |
+| Verification harnesses and property tests | Functional-suite concepts and fuzz/property targets | ✓ done | [`catalog/verification-harnesses.md`](./docs/parity/catalog/verification-harnesses.md) | Managed Knots process spawning and full upstream Python-suite coverage are deferred. |
+| Benchmarks and audit readiness | Benchmark mappings and release-review evidence | ✓ done | [`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md) | Benchmarks are audit and trend evidence, not release timing gates. |
 
-- `packages/bitcoin-knots/` vendors the pinned Bitcoin Knots baseline used as the external behavioral reference.
-- `packages/open-bitcoin-core/` is the initial pure-core Rust crate, currently a scaffold for future domain logic.
-- `packages/open-bitcoin-node/` is the initial shell/runtime crate, currently a scaffold for future adapters and orchestration.
-- The repository has both a Rust workspace under `packages/` and top-level Bazelisk/Bazel+Bzlmod workspace scaffolding for first-party code.
-- `rust-toolchain.toml` pins Rust `1.94.1` as the shared Cargo, CI, and Bazel toolchain target.
-- `bash scripts/verify.sh` is the repo-native verification entrypoint for format, lint, build, tests, the Bazel smoke build, architecture-policy enforcement, and the current pure-core coverage gate.
-- `docs/parity/` contains the seeded parity and deviation ledger, with all in-scope surfaces currently marked as `planned`.
+## Open Bitcoin Differentiators
 
-## What Is Next
+These are Open Bitcoin design choices, not Knots parity claims:
 
-Phase 2 has not started yet. The next step is building the typed core domain and serialization foundations that later work depends on.
-
-After that, the roadmap layers in consensus validation, chainstate and UTXO behavior, mempool policy, P2P networking and sync, wallet behavior, RPC and CLI/config parity, and finally the parity harnesses, fuzzing, benchmarks, and audit artifacts needed to make parity claims defensible.
+| Capability | Where to inspect |
+| --- | --- |
+| First-party Rust Bitcoin domain types instead of production dependencies on existing Rust Bitcoin libraries | [`packages/`](./packages/) |
+| Functional-core boundaries that keep pure business logic free of direct I/O and runtime effects | [`scripts/check-pure-core-deps.sh`](./scripts/check-pure-core-deps.sh) |
+| Machine-readable parity and deviation ledger with human catalog pages | [`docs/parity/`](./docs/parity/) |
+| Deterministic parity, benchmark, and lines-of-code reports for review | [`scripts/verify.sh`](./scripts/verify.sh), [`docs/metrics/lines-of-code.md`](./docs/metrics/lines-of-code.md) |
+| Production panic-site guard for first-party Rust code | [`scripts/check-panic-sites.sh`](./scripts/check-panic-sites.sh) |
 
 ## Repository Layout
 
 - `packages/bitcoin-knots/` is the pinned upstream behavioral baseline. Treat it as the reference implementation, not the first-party production path.
-- `packages/open-bitcoin-core/` is the pure-core Rust crate that will hold domain logic and stay free of direct I/O and runtime side effects.
-- `packages/open-bitcoin-node/` is the shell/runtime Rust crate that will own adapters, orchestration, and other effectful boundaries.
+- `packages/open-bitcoin-primitives/`, `packages/open-bitcoin-codec/`, `packages/open-bitcoin-consensus/`, `packages/open-bitcoin-chainstate/`, `packages/open-bitcoin-mempool/`, `packages/open-bitcoin-network/`, and `packages/open-bitcoin-wallet/` hold the first-party pure-core libraries.
+- `packages/open-bitcoin-node/` owns adapter-facing orchestration over the pure-core crates.
+- `packages/open-bitcoin-rpc/` provides the JSON-RPC server and `open-bitcoind` binary.
+- `packages/open-bitcoin-cli/` provides the `open-bitcoin-cli` client binary.
+- `packages/open-bitcoin-test-harness/` and `packages/open-bitcoin-bench/` provide parity, property, and benchmark infrastructure.
 - `docs/parity/` tracks parity status and intentional deviations from the pinned baseline.
 - `.githooks/` contains the repo-managed Git hooks used to run the local verification contract before commit.
 - `scripts/verify.sh` is the source-of-truth local verification command for first-party code.
@@ -68,9 +88,48 @@ Run the repo-native verification flow:
 bash scripts/verify.sh
 ```
 
+## Operator Preview
+
+The current operator surface is intended for local review and testing. Create a
+scratch data directory, start the RPC server, then call it from another shell:
+
+```bash
+mkdir -p /tmp/open-bitcoin-preview
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --bin open-bitcoind -- \
+  -regtest -datadir=/tmp/open-bitcoin-preview -rpcport=18443 \
+  -rpcuser=preview -rpcpassword=preview
+```
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli -- \
+  -rpcconnect=127.0.0.1 -rpcport=18443 \
+  -rpcuser=preview -rpcpassword=preview getblockchaininfo
+```
+
+Supported baseline-backed RPC methods currently include `getblockchaininfo`,
+`getmempoolinfo`, `getnetworkinfo`, `sendrawtransaction`, `deriveaddresses`,
+`getwalletinfo`, `getbalances`, `listunspent`, `importdescriptors`, and
+`rescanblockchain`. Open Bitcoin also exposes deterministic extension methods
+`buildtransaction` and `buildandsigntransaction` for the current wallet adapter
+slice. See [`docs/parity/catalog/rpc-cli-config.md`](./docs/parity/catalog/rpc-cli-config.md)
+for supported and deferred operator behavior.
+
+## Future Work
+
+Known follow-up themes are tracked in
+[`docs/parity/deviations-and-unknowns.md`](./docs/parity/deviations-and-unknowns.md).
+High-level areas include:
+
+- richer wallet-send RPC ergonomics, peer-info and `-netinfo` views, multiwallet selection, remote-operator ACL/auth, and daemon supervision
+- managed Knots process support, fuller upstream functional-suite coverage, and a dedicated fuzzing runtime
+- deeper wallet, P2P, chainstate, and long-lived runtime policy behavior beyond the current headless v1 slice
+- future GUI and public dashboard work after the headless node and wallet surfaces mature
+
 For contributor workflow details beyond those two entrypoints, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## Parity And Deviations
 
-- [`docs/parity/README.md`](./docs/parity/README.md) explains what the parity ledger is for and how intentional deviations from Bitcoin Knots should be recorded.
-- [`docs/parity/index.json`](./docs/parity/index.json) is the machine-readable status index for the in-scope surfaces. It currently records the baseline version and marks each tracked surface as `planned`.
+- [`docs/parity/README.md`](./docs/parity/README.md) explains the parity ledger and its source-of-truth role.
+- [`docs/parity/index.json`](./docs/parity/index.json) is the machine-readable status index for in-scope surfaces, intentional deviations, catalog entries, checklist state, and audit roots.
+- [`docs/parity/checklist.md`](./docs/parity/checklist.md) is the human-readable parity checklist.
+- [`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md) is the current headless v1 review handoff.
