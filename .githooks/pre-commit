@@ -4,4 +4,7 @@ set -euo pipefail
 repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"
 
-bash scripts/verify.sh
+node scripts/generate-loc-report.mjs --source=index --output=docs/metrics/lines-of-code.md
+git add docs/metrics/lines-of-code.md
+
+OPEN_BITCOIN_LOC_REPORT_SOURCE=index bash scripts/verify.sh
