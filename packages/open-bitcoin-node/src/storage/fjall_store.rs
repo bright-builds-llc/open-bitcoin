@@ -15,6 +15,10 @@ use open_bitcoin_core::{
 };
 use open_bitcoin_network::{HeaderEntry, HeaderStore};
 
+use crate::metrics::{
+    MetricRetentionPolicy, MetricSample, MetricsStatus, append_and_prune_metric_samples,
+};
+
 use super::{
     MetricsStorageSnapshot, PersistMode, RecoveryMarker, RuntimeMetadata, SchemaVersion,
     StorageError, StorageNamespace, StorageRecoveryAction, StoredHeaderEntries,
@@ -175,7 +179,7 @@ impl FjallNodeStore {
             .transpose()
     }
 
-    /// Persist the metrics placeholder snapshot for later runtime collectors.
+    /// Persist the metrics history snapshot for runtime collectors.
     pub fn save_metrics_snapshot(
         &self,
         snapshot: &MetricsStorageSnapshot,
@@ -185,11 +189,53 @@ impl FjallNodeStore {
         self.put_bytes(StorageNamespace::Metrics, SNAPSHOT_KEY, bytes, mode)
     }
 
-    /// Load the metrics placeholder snapshot, if present.
+    /// Load the metrics history snapshot, if present.
     pub fn load_metrics_snapshot(&self) -> Result<Option<MetricsStorageSnapshot>, StorageError> {
         self.get_bytes(StorageNamespace::Metrics, SNAPSHOT_KEY)?
             .map(|bytes| decode_metrics_snapshot(&bytes))
             .transpose()
+    }
+
+    /// Append metric samples to persisted history and enforce bounded retention before saving.
+    pub fn append_metric_samples(
+        &self,
+        samples: &[MetricSample],
+        retention: MetricRetentionPolicy,
+        now_unix_seconds: u64,
+        mode: PersistMode,
+    ) -> Result<MetricsStorageSnapshot, StorageError> {
+        let maybe_existing_snapshot = self.load_metrics_snapshot()?;
+        let existing_samples = maybe_existing_snapshot
+            .map(|snapshot| snapshot.samples)
+            .unwrap_or_default();
+        let retained_samples = append_and_prune_metric_samples(
+            &existing_samples,
+            samples,
+            retention,
+            now_unix_seconds,
+        );
+        let snapshot = MetricsStorageSnapshot {
+            samples: retained_samples,
+        };
+        self.save_metrics_snapshot(&snapshot, mode)?;
+
+        Ok(snapshot)
+    }
+
+    /// Load status-facing metrics availability metadata from the stored history snapshot.
+    pub fn load_metrics_status(
+        &self,
+        retention: MetricRetentionPolicy,
+    ) -> Result<MetricsStatus, StorageError> {
+        let maybe_snapshot = self.load_metrics_snapshot()?;
+        if maybe_snapshot.is_some() {
+            return Ok(MetricsStatus::available(retention));
+        }
+
+        Ok(MetricsStatus::unavailable(
+            retention,
+            "metrics history unavailable: no metrics snapshot recorded",
+        ))
     }
 
     /// Persist runtime metadata outside pure chainstate and wallet snapshots.
