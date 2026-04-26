@@ -119,7 +119,12 @@ Plans:
 2. Structured logs rotate with documented retention and status-visible paths.
 3. Recent warnings/errors can be queried through status-facing APIs without opening raw log files manually.
 4. Sync bottlenecks and health signals are visible through metrics and logs without changing consensus or network behavior.
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 16-01-PLAN.md — Bounded Fjall-backed metrics history
+- [ ] 16-02-PLAN.md — Structured log writing, retention, and recent signal queries
+- [ ] 16-03-PLAN.md — Sync telemetry through shared metrics, logs, and status contracts
 
 ### Phase 17: CLI Status and First-Run Onboarding
 
