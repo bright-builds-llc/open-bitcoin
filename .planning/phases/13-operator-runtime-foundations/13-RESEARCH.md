@@ -357,22 +357,19 @@ Keep the `WorkerGuard` alive for process lifetime because the docs state it flus
 | A5 | Default retention should be documented as bounded by age, file count, and byte size, with concrete defaults chosen in Phase 13. | Common Pitfalls | Without user-approved defaults, later dashboard/status work may depend on unstable history windows. |
 | A6 | Build provenance should be injected through compile-time or release-time environment variables when git metadata is unavailable. | Code Examples | Missing build metadata could show `Unavailable` more often than desired. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Should Phase 13 lock `fjall` immediately or require a small DB spike first?** [ASSUMED]
-   - What we know: `fjall` is current, Rust-native, LSM-based, and has keyspaces plus persist modes. [CITED: docs.rs/fjall; VERIFIED: crates.io API]
-   - What's unclear: The repo has no Open Bitcoin-specific DB workload benchmark yet. [VERIFIED: docs/parity/benchmarks.md]
-   - Recommendation: Plan an ADR task with a tiny write/read/restart spike before adding Phase 14 production storage. [ASSUMED]
+1. **Resolved: Phase 13 accepts `fjall` as the tentative database decision target pending Phase 14 validation.** [RESOLVED]
+   - Decision: Plan 13-01 records an ADR selecting `fjall` as the default Rust-native LSM-shaped storage target, compares `redb` and `rocksdb`, and requires Phase 14 adapter validation before real sync persistence depends on it. [VERIFIED: .planning/phases/13-operator-runtime-foundations/13-01-PLAN.md]
+   - Guardrail: Phase 14 must still prove schema-version handling, corruption classification, restart persistence, interrupted-write recovery, reindex, and repair before `fjall` becomes production storage. [VERIFIED: .planning/phases/13-operator-runtime-foundations/13-01-PLAN.md]
 
-2. **Should the operator command be a new binary or a renamed/expanded current binary?** [ASSUMED]
-   - What we know: Current Cargo/Bazel surfaces expose `open-bitcoin-cli`; requirements name `open-bitcoin status`. [VERIFIED: packages/open-bitcoin-cli/Cargo.toml, packages/open-bitcoin-cli/BUILD.bazel, .planning/REQUIREMENTS.md]
-   - What's unclear: The project has not locked the binary naming contract for v1.1. [VERIFIED: .planning/ROADMAP.md]
-   - Recommendation: Add `open-bitcoin` for first-party commands and keep `open-bitcoin-cli` stable. [ASSUMED]
+2. **Resolved: Add a first-party `open-bitcoin` operator command tree beside `open-bitcoin-cli`.** [RESOLVED]
+   - Decision: Plan 13-04 defines `open-bitcoin` as the clap-owned operator path for `status`, `config`, `service`, `dashboard`, and `onboard`, while `open-bitcoin-cli` remains the baseline-compatible RPC client path. [VERIFIED: .planning/phases/13-operator-runtime-foundations/13-04-PLAN.md]
+   - Guardrail: The compatibility path continues to route raw argv through `parse_cli_args` so `-named`, `-stdin`, `-stdinrpcpass`, `-getinfo`, RPC method names, and positional JSON parameters are not reinterpreted by the operator clap tree. [VERIFIED: .planning/phases/13-operator-runtime-foundations/13-04-PLAN.md]
 
-3. **What are the exact log and metric retention defaults?** [ASSUMED]
-   - What we know: OBS-03 and OBS-04 require bounded metrics and log retention. [VERIFIED: .planning/REQUIREMENTS.md]
-   - What's unclear: The requirements do not specify days, samples, files, or byte caps. [VERIFIED: .planning/REQUIREMENTS.md]
-   - Recommendation: Phase 13 should document defaults and make them config-driven. [ASSUMED]
+3. **Resolved: Phase 13 locks exact bounded retention defaults for metrics and logs.** [RESOLVED]
+   - Decision: Default metrics retention is a 30 second sample interval, 2880 samples per series, and a 24 hour max age (`86400` seconds). [VERIFIED: .planning/phases/13-operator-runtime-foundations/13-02-PLAN.md]
+   - Decision: Default log retention is daily rotation, 14 files, 14 days, and `268435456` bytes. [VERIFIED: .planning/phases/13-operator-runtime-foundations/13-02-PLAN.md]
 
 ## Environment Availability
 
