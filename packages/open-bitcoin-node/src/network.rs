@@ -16,8 +16,8 @@ use open_bitcoin_core::{
 };
 use open_bitcoin_mempool::{AdmissionResult, MempoolError, PolicyConfig};
 use open_bitcoin_network::{
-    ConnectionRole, InventoryList, LocalPeerConfig, NetworkError, PROTOCOL_VERSION,
-    ParsedNetworkMessage, PeerAction, PeerId, PeerManager, WireNetworkMessage,
+    ConnectionRole, HeaderEntry, HeaderStore, InventoryList, LocalPeerConfig, NetworkError,
+    PROTOCOL_VERSION, ParsedNetworkMessage, PeerAction, PeerId, PeerManager, WireNetworkMessage,
 };
 
 use crate::{ChainstateStore, ManagedChainstate, ManagedMempool};
@@ -129,6 +129,18 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
 
     pub fn peer_manager(&self) -> &PeerManager {
         &self.peer_manager
+    }
+
+    pub fn seed_header_store(&mut self, header_store: HeaderStore) {
+        self.peer_manager.seed_header_store(header_store);
+    }
+
+    pub fn header_entries(&self) -> Vec<HeaderEntry> {
+        self.peer_manager
+            .header_store()
+            .entries()
+            .cloned()
+            .collect()
     }
 
     pub fn chainstate_snapshot(&self) -> ChainstateSnapshot {

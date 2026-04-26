@@ -19,6 +19,8 @@ use crate::error::{DisconnectReason, NetworkError, PeerId};
 use crate::header_store::HeaderStore;
 use crate::message::{HeadersMessage, InventoryList, LocalPeerConfig, WireNetworkMessage};
 
+pub const DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER: usize = 128;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConnectionRole {
     Inbound,
@@ -81,6 +83,7 @@ pub struct PeerManager {
     known_blocks: BTreeSet<BlockHash>,
     known_txids: BTreeSet<Txid>,
     known_wtxids: BTreeSet<Wtxid>,
+    max_blocks_in_flight_per_peer: usize,
 }
 
 impl PeerManager {
@@ -113,6 +116,13 @@ impl PeerManager {
     }
 
     pub fn new(local_config: LocalPeerConfig) -> Self {
+        Self::with_max_blocks_in_flight(local_config, DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER)
+    }
+
+    pub fn with_max_blocks_in_flight(
+        local_config: LocalPeerConfig,
+        max_blocks_in_flight_per_peer: usize,
+    ) -> Self {
         Self {
             local_config,
             headers: HeaderStore::default(),
@@ -120,6 +130,7 @@ impl PeerManager {
             known_blocks: BTreeSet::new(),
             known_txids: BTreeSet::new(),
             known_wtxids: BTreeSet::new(),
+            max_blocks_in_flight_per_peer,
         }
     }
 
@@ -129,6 +140,10 @@ impl PeerManager {
         for position in active_chain {
             self.known_blocks.insert(position.block_hash);
         }
+    }
+
+    pub fn seed_header_store(&mut self, headers: HeaderStore) {
+        self.headers = headers;
     }
 
     pub fn note_local_position(&mut self, position: &ChainPosition) {
@@ -147,6 +162,10 @@ impl PeerManager {
 
     pub fn header_store(&self) -> &HeaderStore {
         &self.headers
+    }
+
+    pub const fn max_blocks_in_flight_per_peer(&self) -> usize {
+        self.max_blocks_in_flight_per_peer
     }
 
     pub fn peer_state(&self, peer_id: PeerId) -> Option<&PeerState> {
@@ -427,8 +446,12 @@ impl PeerManager {
             }
         }
 
+        let max_blocks_in_flight_per_peer = self.max_blocks_in_flight_per_peer;
         let peer = Self::peer_mut(&mut self.peers, peer_id)?;
         peer.getheaders_in_flight = false;
+        let available_slots =
+            max_blocks_in_flight_per_peer.saturating_sub(peer.requested_blocks.len());
+        requested_inventory.truncate(available_slots);
         for item in &requested_inventory {
             peer.requested_blocks
                 .insert(BlockHash::from(item.object_hash));

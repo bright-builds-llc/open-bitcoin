@@ -41,7 +41,7 @@ This active milestone makes Open Bitcoin usable as an operator-facing, service-m
 
 - [x] **Phase 13: Operator Runtime Foundations** - Define the dependency, command, config, status, metrics, log, and storage contracts that later user-facing work consumes. (completed 2026-04-26)
 - [x] **Phase 14: Durable Storage and Recovery** - Implement the selected durable storage layer and restart/recovery behavior for node and wallet state. (completed 2026-04-26)
-- [ ] **Phase 15: Real Network Sync Loop** - Connect to real peers, drive headers/block sync, persist progress, and keep default tests deterministic.
+- [x] **Phase 15: Real Network Sync Loop** - Connect to real peers, drive headers/block sync, persist progress, and keep default tests deterministic. (completed 2026-04-26)
 - [ ] **Phase 16: Metrics, Logs, and Sync Telemetry** - Record bounded metrics history, rotate logs, and expose sync/runtime telemetry to status consumers.
 - [ ] **Phase 17: CLI Status and First-Run Onboarding** - Expand the clap command tree, implement rich status output, and add the idempotent wizard plus JSONC config layer.
 - [ ] **Phase 18: Service Lifecycle Integration** - Add macOS launchd and Linux systemd install/uninstall/enable/disable/status support with dry-run safety.
@@ -101,7 +101,13 @@ Plans:
 3. Block download, validation, persistence, and connect flow handles bounded in-flight work and observable retry behavior.
 4. Peer disconnects, invalid data, timeouts, stalls, and competing branches produce typed errors, metrics, and logs.
 5. Default verification remains hermetic; optional live-network smoke tests are explicitly opt-in.
-**Plans**: TBD
+**Plans**: 4/4 plans complete
+
+Plans:
+- [x] 15-01-PLAN.md — Bounded peer sync hooks and header-store runtime helpers
+- [x] 15-02-PLAN.md — Durable downloaded block persistence
+- [x] 15-03-PLAN.md — Real-network sync runtime with pluggable transport
+- [x] 15-04-PLAN.md — Closeout, status, and verification artifacts
 
 ### Phase 16: Metrics, Logs, and Sync Telemetry
 
@@ -198,4 +204,4 @@ Plans:
 | Milestone | Phases | Plans | Status | Shipped |
 | --- | ---: | ---: | --- | --- |
 | v1.0 Headless Parity | 22/22 | 80/80 | Archived | 2026-04-26 |
-| v1.1 Operator Runtime and Real-Network Sync | 2/10 | 9/9 | In Progress | - |
+| v1.1 Operator Runtime and Real-Network Sync | 3/10 | 13/13 | In Progress | - |

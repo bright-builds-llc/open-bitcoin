@@ -12,7 +12,8 @@ use open_bitcoin_core::{
     chainstate::{BlockUndo, ChainPosition, ChainstateSnapshot, Coin, TxUndo},
     consensus::block_hash,
     primitives::{
-        Amount, BlockHash, BlockHeader, MerkleRoot, OutPoint, ScriptBuf, TransactionOutput, Txid,
+        Amount, Block, BlockHash, BlockHeader, MerkleRoot, OutPoint, ScriptBuf, TransactionOutput,
+        Txid,
     },
     wallet::{AddressNetwork, DescriptorRole, Wallet, WalletSnapshot, WalletUtxo},
 };
@@ -74,6 +75,13 @@ fn header_entries() -> Vec<HeaderEntry> {
             chain_work: 2,
         },
     ]
+}
+
+fn block(previous_block_hash: BlockHash, nonce: u32) -> Block {
+    Block {
+        header: header(previous_block_hash, nonce),
+        transactions: Vec::new(),
+    }
 }
 
 fn script(bytes: &[u8]) -> ScriptBuf {
@@ -146,6 +154,8 @@ fn fjall_store_reopens_saved_snapshots_and_metadata() {
     let chainstate = chainstate_snapshot();
     let wallet = wallet_snapshot();
     let headers = header_entries();
+    let block = block(headers[0].block_hash, 3);
+    let block_hash = block_hash(&block.header);
     let metrics = MetricsStorageSnapshot {
         samples: vec![MetricSample::new(MetricKind::SyncHeight, 1.0, 2)],
     };
@@ -166,6 +176,9 @@ fn fjall_store_reopens_saved_snapshots_and_metadata() {
         store
             .save_header_entries(&headers, PersistMode::Sync)
             .expect("save headers");
+        store
+            .save_block(&block, PersistMode::Sync)
+            .expect("save block");
         store
             .save_metrics_snapshot(&metrics, PersistMode::Sync)
             .expect("save metrics");
@@ -209,6 +222,16 @@ fn fjall_store_reopens_saved_snapshots_and_metadata() {
             .expect("header store")
             .best_height(),
         1
+    );
+    assert_eq!(
+        reopened.load_block(block_hash).expect("load block"),
+        Some(block)
+    );
+    assert_eq!(
+        reopened
+            .load_block(BlockHash::from_byte_array([99_u8; 32]))
+            .expect("load missing block"),
+        None
     );
     assert_eq!(
         reopened.load_metrics_snapshot().expect("load metrics"),

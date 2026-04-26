@@ -6,7 +6,13 @@
 use std::{path::Path, str};
 
 use fjall::{Database, Keyspace, KeyspaceCreateOptions, PersistMode as FjallPersistMode};
-use open_bitcoin_core::{chainstate::ChainstateSnapshot, wallet::WalletSnapshot};
+use open_bitcoin_core::{
+    chainstate::ChainstateSnapshot,
+    codec::{encode_block, parse_block},
+    consensus::block_hash,
+    primitives::{Block, BlockHash},
+    wallet::WalletSnapshot,
+};
 use open_bitcoin_network::{HeaderEntry, HeaderStore};
 
 use super::{
@@ -114,6 +120,30 @@ impl FjallNodeStore {
     pub fn load_block_index_entries(&self) -> Result<Option<StoredHeaderEntries>, StorageError> {
         self.get_bytes(StorageNamespace::BlockIndex, SNAPSHOT_KEY)?
             .map(|bytes| decode_block_index_entries(&bytes))
+            .transpose()
+    }
+
+    /// Persist a downloaded block under its canonical block hash.
+    pub fn save_block(&self, block: &Block, mode: PersistMode) -> Result<BlockHash, StorageError> {
+        let block_hash = block_hash(&block.header);
+        let bytes =
+            encode_block(block).map_err(|error| corruption(StorageNamespace::BlockIndex, error))?;
+        self.put_bytes(
+            StorageNamespace::BlockIndex,
+            &block_key(block_hash),
+            bytes,
+            mode,
+        )?;
+
+        Ok(block_hash)
+    }
+
+    /// Load a downloaded block by canonical block hash, if present.
+    pub fn load_block(&self, block_hash: BlockHash) -> Result<Option<Block>, StorageError> {
+        self.get_bytes(StorageNamespace::BlockIndex, &block_key(block_hash))?
+            .map(|bytes| {
+                parse_block(&bytes).map_err(|error| corruption(StorageNamespace::BlockIndex, error))
+            })
             .transpose()
     }
 
@@ -335,6 +365,18 @@ fn validate_schema_version(bytes: &[u8]) -> Result<(), StorageError> {
     }
 
     Ok(())
+}
+
+fn block_key(block_hash: BlockHash) -> String {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+
+    let mut key = String::with_capacity("block:".len() + 64);
+    key.push_str("block:");
+    for byte in block_hash.as_bytes() {
+        key.push(HEX[(byte >> 4) as usize] as char);
+        key.push(HEX[(byte & 0x0f) as usize] as char);
+    }
+    key
 }
 
 fn backend_failure(

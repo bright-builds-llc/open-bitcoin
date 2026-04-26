@@ -47,11 +47,11 @@
 
 ### Real Network Sync
 
-- [ ] **SYNC-01**: Node can establish long-running outbound peer connections using configured peers and DNS/manual seed sources for supported networks.
-- [ ] **SYNC-02**: Node can perform initial headers sync against real peers, persist progress, and resume after restart.
-- [ ] **SYNC-03**: Node can request, download, validate, persist, and connect blocks from real peers with bounded in-flight work and observable progress.
-- [ ] **SYNC-04**: Node handles peer disconnects, invalid data, timeouts, stalls, and competing branches with typed errors, metrics, and retry behavior.
-- [ ] **SYNC-05**: Sync behavior is covered by deterministic simulated-network tests plus opt-in live-network smoke tests that do not make default verification flaky.
+- [x] **SYNC-01**: Node can establish long-running outbound peer connections using configured peers and DNS/manual seed sources for supported networks.
+- [x] **SYNC-02**: Node can perform initial headers sync against real peers, persist progress, and resume after restart.
+- [x] **SYNC-03**: Node can request, download, validate, persist, and connect blocks from real peers with bounded in-flight work and observable progress.
+- [x] **SYNC-04**: Node handles peer disconnects, invalid data, timeouts, stalls, and competing branches with typed errors, metrics, and retry behavior.
+- [x] **SYNC-05**: Sync behavior is covered by deterministic simulated-network tests plus opt-in live-network smoke tests that do not make default verification flaky.
 - [ ] **SYNC-06**: Sync progress and bottlenecks are visible through status, metrics history, logs, and dashboard panels.
 
 ### Wallet Runtime Expansion
@@ -126,11 +126,11 @@
 | DB-03 | Phase 14 | Complete |
 | DB-04 | Phase 14 | Complete |
 | DB-05 | Phase 14 | Complete |
-| SYNC-01 | Phase 15 | Pending |
-| SYNC-02 | Phase 15 | Pending |
-| SYNC-03 | Phase 15 | Pending |
-| SYNC-04 | Phase 15 | Pending |
-| SYNC-05 | Phase 15, Phase 22 | Pending |
+| SYNC-01 | Phase 15 | Complete |
+| SYNC-02 | Phase 15 | Complete |
+| SYNC-03 | Phase 15 | Complete |
+| SYNC-04 | Phase 15 | Complete |
+| SYNC-05 | Phase 15, Phase 22 | Complete |
 | SYNC-06 | Phase 16, Phase 19 | Pending |
 | WAL-04 | Phase 20 | Pending |
 | WAL-05 | Phase 20 | Pending |

@@ -12,8 +12,8 @@ use open_bitcoin_consensus::{check_block_header, transaction_txid, transaction_w
 use open_bitcoin_primitives::{Block, BlockHash, BlockHeader, Hash32, MerkleRoot, NetworkMagic};
 
 use crate::{
-    ConnectionRole, HeadersMessage, InventoryList, LocalPeerConfig, PeerAction, PeerManager,
-    ServiceFlags, WireNetworkMessage,
+    ConnectionRole, HeaderStore, HeadersMessage, InventoryList, LocalPeerConfig, PeerAction,
+    PeerManager, ServiceFlags, WireNetworkMessage,
 };
 use open_bitcoin_primitives::{InventoryType, InventoryVector};
 
@@ -160,6 +160,52 @@ fn block_inventory_triggers_getheaders_then_getdata_for_missing_blocks() {
 }
 
 #[test]
+fn headers_response_caps_block_requests_to_in_flight_limit() {
+    // Arrange
+    let mut manager = PeerManager::with_max_blocks_in_flight(local_config(), 1);
+    let genesis_header = mined_header(BlockHash::from_byte_array([0_u8; 32]), 1);
+    let genesis_hash = open_bitcoin_consensus::block_hash(&genesis_header);
+    let first_header = mined_header(genesis_hash, 2);
+    let first_hash = open_bitcoin_consensus::block_hash(&first_header);
+    let second_header = mined_header(first_hash, 3);
+    manager.seed_local_chain(&[ChainPosition::new(genesis_header, 0, 1, 0)]);
+    manager.add_outbound_peer(12, 10).expect("peer");
+
+    // Act
+    let header_actions = manager
+        .handle_message(
+            12,
+            WireNetworkMessage::Headers(crate::HeadersMessage {
+                headers: vec![first_header.clone(), second_header.clone()],
+            }),
+            14,
+        )
+        .expect("headers");
+
+    // Assert
+    let [PeerAction::Send(WireNetworkMessage::GetData(inventory))] = header_actions.as_slice()
+    else {
+        panic!("expected one getdata action");
+    };
+    assert_eq!(inventory.inventory.len(), 1);
+    assert_eq!(manager.max_blocks_in_flight_per_peer(), 1);
+    assert!(
+        manager
+            .peer_state(12)
+            .expect("peer")
+            .requested_blocks
+            .contains(&open_bitcoin_consensus::block_hash(&first_header))
+    );
+    assert!(
+        !manager
+            .peer_state(12)
+            .expect("peer")
+            .requested_blocks
+            .contains(&open_bitcoin_consensus::block_hash(&second_header))
+    );
+}
+
+#[test]
 fn announce_transaction_uses_wtxidrelay_when_peer_negotiates_it() {
     let mut manager = PeerManager::new(local_config());
     manager.add_inbound_peer(4).expect("peer");
@@ -239,6 +285,12 @@ fn helper_methods_and_unknown_peer_errors_are_covered() {
         .note_local_transaction(&open_bitcoin_primitives::Transaction::default())
         .expect("local transaction");
     assert_eq!(manager.header_store().best_height(), 0);
+
+    let mut restored_headers = HeaderStore::default();
+    restored_headers.seed_from_chain(std::slice::from_ref(&position));
+    let mut restored_manager = PeerManager::new(local_config());
+    restored_manager.seed_header_store(restored_headers);
+    assert_eq!(restored_manager.header_store().best_height(), 0);
 }
 
 #[test]

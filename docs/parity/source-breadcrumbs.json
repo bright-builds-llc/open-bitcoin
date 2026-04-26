@@ -460,6 +460,50 @@
       ]
     },
     {
+      "label": "node-sync-runtime",
+      "files": [
+        "packages/open-bitcoin-node/src/sync.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/headerssync.cpp",
+        "packages/bitcoin-knots/src/sync.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp"
+      ]
+    },
+    {
+      "label": "node-sync-types",
+      "files": [
+        "packages/open-bitcoin-node/src/sync/types.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/headerssync.cpp",
+        "packages/bitcoin-knots/src/sync.cpp"
+      ]
+    },
+    {
+      "label": "node-sync-tcp",
+      "files": [
+        "packages/open-bitcoin-node/src/sync/tcp.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net.cpp",
+        "packages/bitcoin-knots/src/protocol.h"
+      ]
+    },
+    {
+      "label": "node-sync-tests",
+      "files": [
+        "packages/open-bitcoin-node/src/sync/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/test/functional/p2p_initial_headers_sync.py"
+      ]
+    },
+    {
       "label": "node-wallet-adapter",
       "files": [
         "packages/open-bitcoin-node/src/wallet.rs"

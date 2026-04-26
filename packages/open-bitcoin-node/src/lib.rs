@@ -23,6 +23,7 @@ pub mod metrics;
 pub mod network;
 pub mod status;
 pub mod storage;
+pub mod sync;
 pub mod wallet;
 
 pub use chainstate::{ChainstateStore, ManagedChainstate, MemoryChainstateStore};
@@ -38,5 +39,10 @@ pub use status::{
 pub use storage::{
     FjallNodeStore, MetricsStorageSnapshot, PersistMode, RecoveryMarker, RuntimeMetadata,
     SchemaVersion, StorageError, StorageNamespace, StorageRecoveryAction, StoredHeaderEntries,
+};
+pub use sync::{
+    DurableSyncRuntime, PeerSyncOutcome, PeerSyncState, SyncNetwork, SyncPeerAddress,
+    SyncPeerSession, SyncPeerSource, SyncRunSummary, SyncRuntimeConfig, SyncRuntimeError,
+    SyncTransport, TcpPeerTransport,
 };
 pub use wallet::{ManagedWallet, MemoryWalletStore, WalletStore};

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Operator Runtime and Real-Network Sync
 status: executing
-stopped_at: v1.1 milestone initialized
-last_updated: "2026-04-26T20:47:29.475Z"
+stopped_at: Phase 15 real network sync loop complete
+last_updated: "2026-04-26T21:08:01.619Z"
 last_activity: 2026-04-26
 progress:
   total_phases: 10
-  completed_phases: 2
-  total_plans: 9
-  completed_plans: 9
-  percent: 20
+  completed_phases: 3
+  total_plans: 13
+  completed_plans: 13
+  percent: 30
 ---
 
 # Project State
@@ -21,22 +21,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-26)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** v1.1 Operator Runtime and Real-Network Sync - Phase 15 real network sync loop.
+**Current focus:** v1.1 Operator Runtime and Real-Network Sync - Phase 16 metrics, logs, and sync telemetry.
 
 ## Current Position
 
-Phase: 15
+Phase: 16
 Plan: Not started
 Status: Ready to plan
 Last activity: 2026-04-26
 
-Progress: 2/10 phases complete
+Progress: 3/10 phases complete
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed in v1.1: 9
+- Total plans completed in v1.1: 13
 - Average duration: not available yet
 - Total execution time: not available yet
 
@@ -46,7 +46,7 @@ Progress: 2/10 phases complete
 |-------|-------|-------|----------|
 | 13 | 5 | - | - |
 | 14 | 4 | - | - |
-| 15 | TBD | - | - |
+| 15 | 4 | - | - |
 | 16 | TBD | - | - |
 | 17 | TBD | - | - |
 | 18 | TBD | - | - |
@@ -59,6 +59,7 @@ Progress: 2/10 phases complete
 
 - Phase 13 completed 5 operator-runtime foundation plans on 2026-04-26.
 - Phase 14 completed 4 durable-storage and recovery plans on 2026-04-26.
+- Phase 15 completed 4 real-network sync loop plans on 2026-04-26.
 
 ## Accumulated Context
 
