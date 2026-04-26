@@ -122,7 +122,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 16-01-PLAN.md — Bounded Fjall-backed metrics history
+- [x] 16-01-PLAN.md — Bounded Fjall-backed metrics history
 - [ ] 16-02-PLAN.md — Structured log writing, retention, and recent signal queries
 - [ ] 16-03-PLAN.md — Sync telemetry through shared metrics, logs, and status contracts
 

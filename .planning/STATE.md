@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Operator Runtime and Real-Network Sync
 status: executing
-stopped_at: Phase 16 context gathered
-last_updated: "2026-04-26T22:22:27.861Z"
-last_activity: 2026-04-26 -- Phase 16 execution started
+stopped_at: Completed 16-01-PLAN.md
+last_updated: "2026-04-26T22:36:19.152Z"
+last_activity: 2026-04-26
 progress:
   total_phases: 10
   completed_phases: 3
   total_plans: 16
-  completed_plans: 13
-  percent: 81
+  completed_plans: 14
+  percent: 88
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-04-26)
 ## Current Position
 
 Phase: 16 (Metrics, Logs, and Sync Telemetry) — EXECUTING
-Plan: 1 of 3
-Status: Executing Phase 16
-Last activity: 2026-04-26 -- Phase 16 execution started
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-04-26
 
 Progress: 3/10 phases complete
 
@@ -61,6 +61,8 @@ Progress: 3/10 phases complete
 - Phase 14 completed 4 durable-storage and recovery plans on 2026-04-26.
 - Phase 15 completed 4 real-network sync loop plans on 2026-04-26.
 
+| Phase 16 P01 | 12 min | 2 tasks | 4 files |
+
 ## Accumulated Context
 
 ### Decisions
@@ -78,6 +80,8 @@ Recent decisions affecting current work:
 - [v1.1]: Build a terminal dashboard and rich status output before any desktop GUI work.
 - [v1.1]: Treat migration from Bitcoin Core or Bitcoin Knots as explicit, dry-run-first, and backup-aware.
 - [v1.1]: Keep macOS service lifecycle higher priority than Linux, while designing the interface so Linux systemd support fits the same command surface.
+- [Phase 16]: Metrics history remains snapshot-backed in the existing Fjall metrics namespace instead of introducing per-sample keys.
+- [Phase 16]: Unavailable metrics history is reported through MetricsStatus with MetricKind::ALL metadata, not fake numeric samples.
 
 ### Roadmap Evolution
 
@@ -109,6 +113,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-26T21:53:01.470Z
-Stopped at: Phase 16 context gathered
-Resume file: .planning/phases/16-metrics-logs-and-sync-telemetry/16-CONTEXT.md
+Last session: 2026-04-26T22:36:19.149Z
+Stopped at: Completed 16-01-PLAN.md
+Resume file: None
