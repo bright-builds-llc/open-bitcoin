@@ -4,8 +4,12 @@
 //! Serializable structured log retention and status contracts.
 
 use serde::{Deserialize, Serialize};
+use std::{error::Error, fmt, path::PathBuf};
 
 use crate::status::{HealthSignal, HealthSignalLevel};
+
+pub mod prune;
+pub mod writer;
 
 #[cfg(test)]
 mod tests;
@@ -28,6 +32,61 @@ pub struct StructuredLogRecord {
     pub source: String,
     pub message: String,
     pub timestamp_unix_seconds: u64,
+}
+
+/// Error returned by structured log filesystem adapters.
+#[derive(Debug)]
+pub enum StructuredLogError {
+    Io {
+        action: &'static str,
+        path: PathBuf,
+        source: std::io::Error,
+    },
+    Json {
+        source: serde_json::Error,
+    },
+}
+
+impl StructuredLogError {
+    pub(crate) fn io(
+        action: &'static str,
+        path: impl Into<PathBuf>,
+        source: std::io::Error,
+    ) -> Self {
+        Self::Io {
+            action,
+            path: path.into(),
+            source,
+        }
+    }
+}
+
+impl fmt::Display for StructuredLogError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Io {
+                action,
+                path,
+                source,
+            } => write!(
+                formatter,
+                "{action} failed for {}: {source}",
+                path.display()
+            ),
+            Self::Json { source } => {
+                write!(formatter, "structured log JSON encoding failed: {source}")
+            }
+        }
+    }
+}
+
+impl Error for StructuredLogError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            Self::Io { source, .. } => Some(source),
+            Self::Json { source } => Some(source),
+        }
+    }
 }
 
 impl StructuredLogRecord {
@@ -94,7 +153,7 @@ impl LogPathStatus {
     }
 }
 
-/// Recent log-derived health signal placeholder.
+/// Recent log-derived warning or error signal.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RecentLogSignal {
     pub level: StructuredLogLevel,

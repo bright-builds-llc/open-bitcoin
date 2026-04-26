@@ -12,6 +12,8 @@ No metric or log retention contract may require public network access. Default v
 
 Structured logs default to daily rotation, 14 files, 14 days, and 268435456 bytes of total retained log data. Rolling file creation is not retention pruning. Phase 16 must implement pruning separately from any rolling file writer and must test max-file, max-age, and byte-cap behavior.
 
+Managed runtime log files use the `open-bitcoin-runtime-<unix_day>.jsonl` naming scheme, with one structured JSON record per line. The Unix-day bucket provides daily rotation without adding a calendar-formatting dependency; rolling file creation and retention pruning remain separate responsibilities.
+
 Status and dashboard consumers must read these contracts instead of inventing renderer-local retention windows.
 
 ## Phase Boundaries
