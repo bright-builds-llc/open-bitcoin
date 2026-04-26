@@ -48,8 +48,8 @@ repo verification contract.
 
 | Command | Result |
 | --- | --- |
-| bash scripts/check-panic-sites.sh | pending current execution |
-| bash scripts/verify.sh | pending current execution |
+| bash scripts/check-panic-sites.sh | Passed |
+| bash scripts/verify.sh | Passed |
 
 ## Residual Risk
 
