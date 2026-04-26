@@ -19,6 +19,9 @@ When a behavior is in scope, Open Bitcoin must behave like the pinned Knots base
   (`REF-03`).
 - Phase 10 validated the benchmark and audit-readiness artifacts for critical
   node and wallet paths plus parity checklist inspection (`PAR-02`, `AUD-01`).
+- Phase 12 reconciled the Phase 9 parity harness, hermetic integration, and
+  property-style coverage evidence in the requirements ledger and milestone
+  audit (`VER-03`, `VER-04`, `PAR-01`).
 
 ### Active
 
@@ -28,8 +31,6 @@ When a behavior is in scope, Open Bitcoin must behave like the pinned Knots base
 - [ ] Vendor the reference implementation under `packages/` and track intentional deviations explicitly.
 - [ ] Export first-party Rust Bitcoin libraries from the workspace instead of depending on existing Rust Bitcoin production libraries.
 - [ ] Enforce 100% unit-test coverage for pure-core code and catch I/O leakage automatically.
-- [ ] Lock down parity with black-box tests that can run against both Knots and Open Bitcoin.
-- [ ] Add fuzz/property testing for parser, serialization, and protocol surfaces where it materially reduces risk.
 
 ### Out of Scope
 
@@ -58,6 +59,10 @@ When a behavior is in scope, Open Bitcoin must behave like the pinned Knots base
 - Phase 10 is complete: first-party benchmark smoke coverage, benchmark report
   artifacts, parity checklist data, deviations/unknowns notes, and release
   readiness documentation now support auditable parity review.
+- Phase 12 is complete: the v1.0 milestone audit artifact gaps are closed with
+  explicit Phase 11 verification, Phase 9 requirements reconciliation, roadmap
+  completion cleanup, and a preserved Phase 07.5 to Phase 07.6 superseded-gap
+  trail.
 
 ## Constraints
 
@@ -97,4 +102,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-24 after Phase 10 execution*
+*Last updated: 2026-04-26 after Phase 12 execution*

@@ -1,6 +1,11 @@
 ---
 phase: 12-milestone-audit-artifact-closure
 plan: "04"
+generated_by: gsd-execute-plan
+lifecycle_mode: interactive
+phase_lifecycle_id: 12-2026-04-26T15-06-40
+generated_at: 2026-04-26T16:03:44Z
+requirements-completed: [VER-03, VER-04, PAR-01]
 subsystem: audit
 tags: [milestone-audit, gap-closure, archive-readiness, verification]
 
@@ -36,12 +41,6 @@ key-decisions:
 
 patterns-established:
   - "Milestone audit closure evidence must cite literal grep-verifiable gap closure lines and the commands used to verify them."
-
-requirements-completed: [VER-03, VER-04, PAR-01]
-generated_by: gsd-execute-plan
-lifecycle_mode: interactive
-phase_lifecycle_id: 12-2026-04-26T15-06-40
-generated_at: 2026-04-26T16:03:44Z
 
 duration: 7 min
 completed: 2026-04-26
@@ -132,7 +131,7 @@ Phase 12 shared progress metadata remains orchestrator-owned after all plans fin
 - **Verification:** Re-ran the audit acceptance greps and final verification list; all passed.
 - **Committed in:** Task 3 summary commit
 
----
+***
 
 **Total deviations:** 1 auto-fixed (1 bug)
 **Impact on plan:** Documentation accuracy improved; no scope expansion or runtime behavior change.
