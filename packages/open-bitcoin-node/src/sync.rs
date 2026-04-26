@@ -24,9 +24,13 @@ pub use types::{
 };
 
 use crate::{
-    ChainstateStore, FjallNodeStore, ManagedPeerNetwork, MemoryChainstateStore, MetricKind,
-    MetricSample, MetricsStorageSnapshot, RuntimeMetadata, status::HealthSignal,
-    status::HealthSignalLevel,
+    ChainstateStore, FjallNodeStore, LogRetentionPolicy, ManagedPeerNetwork, MemoryChainstateStore,
+    MetricRetentionPolicy, RuntimeMetadata,
+    logging::{
+        StructuredLogError, StructuredLogLevel, StructuredLogRecord,
+        writer::append_structured_log_record,
+    },
+    status::{HealthSignal, HealthSignalLevel},
 };
 
 pub struct DurableSyncRuntime {
@@ -86,7 +90,9 @@ impl DurableSyncRuntime {
     ) -> Result<SyncRunSummary, SyncRuntimeError> {
         let peers = self.config.candidate_peers();
         if peers.is_empty() {
-            return Err(SyncRuntimeError::NoPeersConfigured);
+            let error = SyncRuntimeError::NoPeersConfigured;
+            self.write_runtime_error_log(&error, timestamp);
+            return Err(error);
         }
 
         let (best_header_height, best_block_height) = self.best_heights();
@@ -97,7 +103,11 @@ impl DurableSyncRuntime {
             let outcome = self.sync_peer_with_retries(transport, peer, peer_id, timestamp);
             self.record_outcome(&mut summary, peer, outcome);
         }
-        self.persist_metrics(&summary, timestamp)?;
+        if let Err(error) = self.persist_metrics(&summary, timestamp) {
+            self.write_runtime_error_log(&error, timestamp);
+            return Err(error);
+        }
+        self.write_summary_logs(&mut summary, timestamp);
 
         Ok(summary)
     }
@@ -125,18 +135,21 @@ impl DurableSyncRuntime {
         peer: &SyncPeerAddress,
         peer_id: PeerId,
         timestamp: i64,
-    ) -> Result<PeerProgress, SyncRuntimeError> {
+    ) -> Result<PeerProgress, PeerFailure> {
         let mut attempts = 0_u8;
+        let max_attempts = self.config.max_peer_retries.saturating_add(1);
         loop {
             attempts = attempts.saturating_add(1);
             match transport.connect(peer, &self.config) {
                 Ok(session) => {
-                    return self.sync_connected_peer(session, peer, peer_id, attempts, timestamp);
+                    return self
+                        .sync_connected_peer(session, peer, peer_id, attempts, timestamp)
+                        .map_err(|error| PeerFailure { error, attempts });
                 }
-                Err(error) if attempts <= self.config.max_peer_retries => {
+                Err(error) if attempts < max_attempts => {
                     let _ = error;
                 }
-                Err(error) => return Err(error),
+                Err(error) => return Err(PeerFailure { error, attempts }),
             }
         }
     }
@@ -175,7 +188,7 @@ impl DurableSyncRuntime {
             if let Some(block) = maybe_block {
                 self.store.save_block(&block, self.config.persist_mode)?;
             }
-            self.persist_progress(timestamp)?;
+            self.persist_progress()?;
             self.send_all(&mut session, &outbound)?;
         }
         progress.state = PeerSyncState::Connected;
@@ -187,7 +200,7 @@ impl DurableSyncRuntime {
         &self,
         summary: &mut SyncRunSummary,
         peer: &SyncPeerAddress,
-        outcome: Result<PeerProgress, SyncRuntimeError>,
+        outcome: Result<PeerProgress, PeerFailure>,
     ) {
         match outcome {
             Ok(progress) => {
@@ -198,20 +211,24 @@ impl DurableSyncRuntime {
                 let (best_header_height, best_block_height) = self.best_heights();
                 summary.best_header_height = best_header_height;
                 summary.best_block_height = best_block_height;
+                if progress.state == PeerSyncState::Stalled {
+                    summary.health_signals.push(HealthSignal {
+                        level: HealthSignalLevel::Warn,
+                        source: "sync".to_string(),
+                        message: "peer stalled before sending more sync messages".to_string(),
+                    });
+                }
                 summary.peer_outcomes.push(progress.into_outcome(None));
             }
-            Err(error) => {
+            Err(failure) => {
                 summary.failed_peers += 1;
-                let message = error.to_string();
-                summary.health_signals.push(HealthSignal {
-                    level: HealthSignalLevel::Warn,
-                    source: "sync".to_string(),
-                    message: message.clone(),
-                });
+                let signal = failure.error.health_signal();
+                let message = signal.message.clone();
+                summary.health_signals.push(signal);
                 summary.peer_outcomes.push(PeerSyncOutcome {
                     peer: peer.clone(),
                     state: PeerSyncState::Failed,
-                    attempts: 1,
+                    attempts: failure.attempts,
                     maybe_error: Some(message),
                 });
             }
@@ -229,7 +246,7 @@ impl DurableSyncRuntime {
         Ok(())
     }
 
-    fn persist_progress(&self, timestamp: i64) -> Result<(), SyncRuntimeError> {
+    fn persist_progress(&self) -> Result<(), SyncRuntimeError> {
         self.store
             .save_header_entries(&self.network.header_entries(), self.config.persist_mode)?;
         self.store.save_chainstate_snapshot(
@@ -243,8 +260,8 @@ impl DurableSyncRuntime {
             },
             self.config.persist_mode,
         )?;
-        let summary = self.snapshot_summary();
-        self.persist_metrics(&summary, timestamp)
+
+        Ok(())
     }
 
     fn persist_metrics(
@@ -253,29 +270,46 @@ impl DurableSyncRuntime {
         timestamp: i64,
     ) -> Result<(), SyncRuntimeError> {
         let timestamp = u64::try_from(timestamp).unwrap_or(0);
-        self.store.save_metrics_snapshot(
-            &MetricsStorageSnapshot {
-                samples: vec![
-                    MetricSample::new(
-                        MetricKind::HeaderHeight,
-                        summary.best_header_height as f64,
-                        timestamp,
-                    ),
-                    MetricSample::new(
-                        MetricKind::SyncHeight,
-                        summary.best_block_height as f64,
-                        timestamp,
-                    ),
-                    MetricSample::new(
-                        MetricKind::PeerCount,
-                        summary.connected_peers as f64,
-                        timestamp,
-                    ),
-                ],
-            },
+        self.store.append_metric_samples(
+            &summary.metric_samples(timestamp),
+            MetricRetentionPolicy::default(),
+            timestamp,
             self.config.persist_mode,
         )?;
 
+        Ok(())
+    }
+
+    fn write_summary_logs(&self, summary: &mut SyncRunSummary, timestamp: i64) {
+        let timestamp = u64::try_from(timestamp).unwrap_or(0);
+        for record in summary.structured_log_records(timestamp) {
+            if let Err(error) = self.append_structured_record(&record) {
+                summary.health_signals.push(log_write_failed_signal(&error));
+                break;
+            }
+        }
+    }
+
+    fn write_runtime_error_log(&self, error: &SyncRuntimeError, timestamp: i64) {
+        let signal = error.health_signal();
+        let record = StructuredLogRecord {
+            level: structured_log_level(signal.level),
+            source: signal.source,
+            message: signal.message,
+            timestamp_unix_seconds: u64::try_from(timestamp).unwrap_or(0),
+        };
+        let _ = self.append_structured_record(&record);
+    }
+
+    fn append_structured_record(
+        &self,
+        record: &StructuredLogRecord,
+    ) -> Result<(), StructuredLogError> {
+        let Some(log_dir) = &self.config.maybe_log_dir else {
+            return Ok(());
+        };
+
+        append_structured_log_record(log_dir, record, LogRetentionPolicy::default())?;
         Ok(())
     }
 
@@ -311,6 +345,12 @@ struct PeerProgress {
     blocks_received: usize,
 }
 
+#[derive(Debug)]
+struct PeerFailure {
+    error: SyncRuntimeError,
+    attempts: u8,
+}
+
 impl PeerProgress {
     fn new(peer: SyncPeerAddress, attempts: u8) -> Self {
         Self {
@@ -342,6 +382,31 @@ impl PeerProgress {
             attempts: self.attempts,
             maybe_error,
         }
+    }
+}
+
+fn structured_log_level(level: HealthSignalLevel) -> StructuredLogLevel {
+    match level {
+        HealthSignalLevel::Info => StructuredLogLevel::Info,
+        HealthSignalLevel::Warn => StructuredLogLevel::Warn,
+        HealthSignalLevel::Error => StructuredLogLevel::Error,
+    }
+}
+
+fn log_write_failed_signal(error: &StructuredLogError) -> HealthSignal {
+    let message = match error {
+        StructuredLogError::Io { action, source, .. } => {
+            format!("structured log write failed: {action}: {source}")
+        }
+        StructuredLogError::Json { source } => {
+            format!("structured log write failed: JSON encoding: {source}")
+        }
+    };
+
+    HealthSignal {
+        level: HealthSignalLevel::Warn,
+        source: "logging".to_string(),
+        message,
     }
 }
 

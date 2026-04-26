@@ -3,7 +3,7 @@
 // - packages/bitcoin-knots/src/headerssync.cpp
 // - packages/bitcoin-knots/src/sync.cpp
 
-use std::fmt;
+use std::{fmt, path::PathBuf};
 
 use open_bitcoin_core::{consensus::ConsensusParams, primitives::NetworkMagic};
 use open_bitcoin_network::{NetworkError, WireNetworkMessage};
@@ -153,6 +153,7 @@ pub struct SyncRuntimeConfig {
     pub max_rounds: usize,
     pub max_peer_retries: u8,
     pub persist_mode: PersistMode,
+    pub maybe_log_dir: Option<PathBuf>,
 }
 
 impl SyncRuntimeConfig {
@@ -184,6 +185,7 @@ impl Default for SyncRuntimeConfig {
             max_rounds: DEFAULT_MAX_SYNC_ROUNDS,
             max_peer_retries: DEFAULT_MAX_PEER_RETRIES,
             persist_mode: PersistMode::Flush,
+            maybe_log_dir: None,
         }
     }
 }

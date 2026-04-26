@@ -26,9 +26,9 @@ use super::{
     TcpPeerTransport,
 };
 use crate::{
-    FieldAvailability, FjallNodeStore, MetricKind, MetricSample, PersistMode, StorageError,
-    StorageNamespace,
-    logging::StructuredLogLevel,
+    FieldAvailability, FjallNodeStore, LogRetentionPolicy, MetricKind, MetricSample, PersistMode,
+    StorageError, StorageNamespace,
+    logging::{StructuredLogLevel, StructuredLogRecord, writer::load_log_status},
     status::{HealthSignal, HealthSignalLevel, SyncProgress},
 };
 
@@ -137,6 +137,38 @@ fn sync_config() -> SyncRuntimeConfig {
         persist_mode: PersistMode::Sync,
         ..SyncRuntimeConfig::default()
     }
+}
+
+fn sync_config_with_log_dir(log_dir: &Path) -> SyncRuntimeConfig {
+    SyncRuntimeConfig {
+        maybe_log_dir: Some(log_dir.to_path_buf()),
+        ..sync_config()
+    }
+}
+
+fn version_verack_script(start_height: i32) -> Vec<WireNetworkMessage> {
+    vec![
+        WireNetworkMessage::Version(VersionMessage {
+            start_height,
+            ..VersionMessage::default()
+        }),
+        WireNetworkMessage::Verack,
+    ]
+}
+
+fn load_structured_log_records(log_dir: &Path) -> Vec<StructuredLogRecord> {
+    let mut records = Vec::new();
+    for entry in fs::read_dir(log_dir).expect("read log directory") {
+        let path = entry.expect("read log entry").path();
+        if !path.is_file() {
+            continue;
+        }
+        let contents = fs::read_to_string(&path).expect("read structured log file");
+        for line in contents.lines().filter(|line| !line.trim().is_empty()) {
+            records.push(serde_json::from_str(line).expect("structured log record"));
+        }
+    }
+    records
 }
 
 fn script(bytes: &[u8]) -> ScriptBuf {
@@ -418,6 +450,214 @@ fn sync_runtime_errors_project_storage_and_network_health_signals() {
     );
     assert!(network_signal.message.len() <= 160);
     assert!(storage_signal.message.len() <= 160);
+}
+
+#[test]
+fn sync_metrics_history_appends_across_runs() {
+    // Arrange
+    let path = temp_store_path("metrics-history");
+    remove_dir_if_exists(&path);
+    {
+        let store = FjallNodeStore::open(&path).expect("store");
+        let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+        let mut transport =
+            ScriptedTransport::new(vec![version_verack_script(0), version_verack_script(1)]);
+
+        // Act
+        runtime
+            .sync_once(&mut transport, 1_777_225_022)
+            .expect("first sync");
+        runtime
+            .sync_once(&mut transport, 1_777_225_052)
+            .expect("second sync");
+    }
+
+    // Assert
+    let reopened = FjallNodeStore::open(&path).expect("reopen store");
+    let metrics = reopened
+        .load_metrics_snapshot()
+        .expect("load metrics")
+        .expect("metrics snapshot");
+    let mut sync_height_timestamps = metrics
+        .samples
+        .iter()
+        .filter(|sample| sample.kind == MetricKind::SyncHeight)
+        .map(|sample| sample.timestamp_unix_seconds)
+        .collect::<Vec<_>>();
+    sync_height_timestamps.sort_unstable();
+    sync_height_timestamps.dedup();
+    assert!(sync_height_timestamps.contains(&1_777_225_022));
+    assert!(sync_height_timestamps.contains(&1_777_225_052));
+    assert!(sync_height_timestamps.len() >= 2);
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn sync_status_and_log_records_include_message_header_block_counters() {
+    // Arrange
+    let path = temp_store_path("counter-logs");
+    let log_dir = path.join("logs");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+    let script = vec![
+        WireNetworkMessage::Version(VersionMessage {
+            start_height: 0,
+            ..VersionMessage::default()
+        }),
+        WireNetworkMessage::Verack,
+        WireNetworkMessage::Headers(HeadersMessage {
+            headers: vec![genesis.header.clone()],
+        }),
+        WireNetworkMessage::Block(genesis),
+    ];
+    let mut transport = ScriptedTransport::new(vec![script]);
+    let mut runtime =
+        DurableSyncRuntime::open(store, sync_config_with_log_dir(&log_dir)).expect("runtime");
+
+    // Act
+    let summary = runtime
+        .sync_once(&mut transport, 1_777_225_099)
+        .expect("sync");
+
+    // Assert
+    assert_eq!(summary.messages_processed, 4);
+    assert_eq!(summary.headers_received, 1);
+    assert_eq!(summary.blocks_received, 1);
+    assert_eq!(
+        summary.sync_status(SyncNetwork::Regtest).sync_progress,
+        FieldAvailability::available(SyncProgress {
+            header_height: 0,
+            block_height: 0,
+            progress_ratio: 1.0,
+            messages_processed: 4,
+            headers_received: 1,
+            blocks_received: 1,
+        })
+    );
+    let records = load_structured_log_records(&log_dir);
+    assert!(records.iter().any(|record| {
+        record.level == StructuredLogLevel::Info
+            && record.source == "sync"
+            && record.message.contains("messages_processed=4")
+            && record.message.contains("headers_received=1")
+            && record.message.contains("blocks_received=1")
+    }));
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn stalled_peer_emits_warning_health_signal_and_log_record() {
+    // Arrange
+    let path = temp_store_path("stalled-peer");
+    let log_dir = path.join("logs");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime =
+        DurableSyncRuntime::open(store, sync_config_with_log_dir(&log_dir)).expect("runtime");
+    let mut transport = ScriptedTransport::new(vec![version_verack_script(0)]);
+
+    // Act
+    let summary = runtime
+        .sync_once(&mut transport, 1_777_225_111)
+        .expect("sync");
+
+    // Assert
+    assert_eq!(summary.peer_outcomes[0].state, PeerSyncState::Stalled);
+    assert!(summary.health_signals.iter().any(|signal| {
+        signal.level == HealthSignalLevel::Warn
+            && signal.source == "sync"
+            && signal.message.contains("peer stalled")
+    }));
+    let log_status = load_log_status(&log_dir, LogRetentionPolicy::default(), 10);
+    assert!(log_status.recent_signals.iter().any(|signal| {
+        signal.level == StructuredLogLevel::Warn
+            && signal.source == "sync"
+            && signal.message.contains("peer stalled")
+    }));
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn connect_retries_preserve_attempt_count() {
+    // Arrange
+    let path = temp_store_path("connect-retries");
+    let log_dir = path.join("logs");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime = DurableSyncRuntime::open(
+        store,
+        SyncRuntimeConfig {
+            max_peer_retries: 2,
+            maybe_log_dir: Some(log_dir.clone()),
+            ..sync_config()
+        },
+    )
+    .expect("runtime");
+    let mut transport = ScriptedTransport::failing();
+
+    // Act
+    let summary = runtime
+        .sync_once(&mut transport, 1_777_225_122)
+        .expect("sync");
+
+    // Assert
+    assert_eq!(summary.failed_peers, 1);
+    assert_eq!(summary.peer_outcomes[0].state, PeerSyncState::Failed);
+    assert_eq!(summary.peer_outcomes[0].attempts, 3);
+    assert!(summary.health_signals.iter().any(|signal| {
+        signal.source == "network" && signal.message.contains("sync I/O failure")
+    }));
+    let log_status = load_log_status(&log_dir, LogRetentionPolicy::default(), 10);
+    assert!(log_status.recent_signals.iter().any(|signal| {
+        signal.source == "network" && signal.message.contains("sync I/O failure")
+    }));
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn storage_failure_projects_storage_health_signal() {
+    // Arrange
+    let error = SyncRuntimeError::Storage(StorageError::BackendFailure {
+        namespace: StorageNamespace::Metrics,
+        message: "/tmp/open-bitcoin/private-store".to_string(),
+        action: crate::StorageRecoveryAction::Restart,
+    });
+
+    // Act
+    let signal = error.health_signal();
+    let records = SyncRunSummary {
+        attempted_peers: 0,
+        connected_peers: 0,
+        failed_peers: 0,
+        messages_processed: 0,
+        headers_received: 0,
+        blocks_received: 0,
+        best_header_height: 0,
+        best_block_height: 0,
+        peer_outcomes: Vec::new(),
+        health_signals: vec![signal.clone()],
+    }
+    .structured_log_records(1_777_225_133);
+
+    // Assert
+    assert_eq!(signal.level, HealthSignalLevel::Error);
+    assert_eq!(signal.source, "storage");
+    assert!(
+        signal
+            .message
+            .contains("storage backend failure in metrics")
+    );
+    assert!(!signal.message.contains("/tmp/"));
+    assert!(records.iter().any(|record| {
+        record.level == StructuredLogLevel::Error
+            && record.source == "storage"
+            && record.message == signal.message
+    }));
 }
 
 #[test]
