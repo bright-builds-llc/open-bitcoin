@@ -63,7 +63,14 @@ This active milestone makes Open Bitcoin usable as an operator-facing, service-m
 3. Metrics and log retention contracts exist before dashboard and status renderers depend on them.
 4. The CLI command architecture defines how clap handles new subcommands while preserving baseline-compatible RPC invocation behavior.
 5. Open Bitcoin JSONC config ownership and `bitcoin.conf` compatibility boundaries are documented and covered by initial tests.
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 13-01-PLAN.md — Storage decision ADR and adapter-facing storage contracts
+- [ ] 13-02-PLAN.md — Metrics and structured log retention contracts
+- [ ] 13-03-PLAN.md — Shared status snapshot and build provenance model
+- [ ] 13-04-PLAN.md — Clap operator CLI routing and compatibility boundary
+- [ ] 13-05-PLAN.md — Open Bitcoin JSONC config ownership and precedence contracts
 
 ### Phase 14: Durable Storage and Recovery
 
