@@ -75,6 +75,9 @@ pub struct SyncProgress {
     pub header_height: u64,
     pub block_height: u64,
     pub progress_ratio: f64,
+    pub messages_processed: u64,
+    pub headers_received: u64,
+    pub blocks_received: u64,
 }
 
 /// Sync status fields.
@@ -253,6 +256,9 @@ mod tests {
                     header_height: 840_001,
                     block_height: 840_000,
                     progress_ratio: 0.99,
+                    messages_processed: 12,
+                    headers_received: 1,
+                    blocks_received: 1,
                 }),
             },
             peers: PeerStatus {

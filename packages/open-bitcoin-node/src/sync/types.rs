@@ -9,8 +9,10 @@ use open_bitcoin_core::{consensus::ConsensusParams, primitives::NetworkMagic};
 use open_bitcoin_network::{NetworkError, WireNetworkMessage};
 
 use crate::{
-    FieldAvailability, ManagedNetworkError, PeerStatus, PersistMode, StorageError, SyncStatus,
-    status::{HealthSignal, PeerCounts, SyncProgress},
+    FieldAvailability, ManagedNetworkError, MetricKind, MetricSample, PeerStatus, PersistMode,
+    StorageError, SyncStatus,
+    logging::{StructuredLogLevel, StructuredLogRecord},
+    status::{HealthSignal, HealthSignalLevel, PeerCounts, SyncProgress},
 };
 
 const DEFAULT_CONNECT_TIMEOUT_MS: u64 = 5_000;
@@ -241,6 +243,9 @@ impl SyncRunSummary {
                 header_height: self.best_header_height,
                 block_height: self.best_block_height,
                 progress_ratio: progress_ratio(self.best_block_height, self.best_header_height),
+                messages_processed: self.messages_processed as u64,
+                headers_received: self.headers_received as u64,
+                blocks_received: self.blocks_received as u64,
             }),
         }
     }
@@ -252,6 +257,53 @@ impl SyncRunSummary {
                 outbound: self.connected_peers as u32,
             }),
         }
+    }
+
+    pub fn metric_samples(&self, timestamp_unix_seconds: u64) -> Vec<MetricSample> {
+        vec![
+            MetricSample::new(
+                MetricKind::HeaderHeight,
+                self.best_header_height as f64,
+                timestamp_unix_seconds,
+            ),
+            MetricSample::new(
+                MetricKind::SyncHeight,
+                self.best_block_height as f64,
+                timestamp_unix_seconds,
+            ),
+            MetricSample::new(
+                MetricKind::PeerCount,
+                self.connected_peers as f64,
+                timestamp_unix_seconds,
+            ),
+        ]
+    }
+
+    pub fn structured_log_records(&self, timestamp_unix_seconds: u64) -> Vec<StructuredLogRecord> {
+        let mut records = vec![StructuredLogRecord {
+            level: StructuredLogLevel::Info,
+            source: "sync".to_string(),
+            message: format!(
+                "sync summary messages_processed={} headers_received={} blocks_received={} best_header_height={} best_block_height={}",
+                self.messages_processed,
+                self.headers_received,
+                self.blocks_received,
+                self.best_header_height,
+                self.best_block_height
+            ),
+            timestamp_unix_seconds,
+        }];
+
+        for outcome in &self.peer_outcomes {
+            records.extend(peer_outcome_log_records(outcome, timestamp_unix_seconds));
+        }
+
+        records.extend(
+            self.health_signals
+                .iter()
+                .map(|signal| health_signal_log_record(signal, timestamp_unix_seconds)),
+        );
+        records
     }
 }
 
@@ -284,6 +336,43 @@ impl fmt::Display for SyncRuntimeError {
 }
 
 impl std::error::Error for SyncRuntimeError {}
+
+impl SyncRuntimeError {
+    pub fn health_signal(&self) -> HealthSignal {
+        match self {
+            Self::AddressResolution { .. } => HealthSignal {
+                level: HealthSignalLevel::Error,
+                source: "network".to_string(),
+                message: "sync address resolution failed: inspect peer configuration".to_string(),
+            },
+            Self::Io { .. } => HealthSignal {
+                level: HealthSignalLevel::Error,
+                source: "network".to_string(),
+                message: "sync I/O failure: inspect peer connectivity".to_string(),
+            },
+            Self::InvalidMagic { .. } => HealthSignal {
+                level: HealthSignalLevel::Error,
+                source: "network".to_string(),
+                message: "sync network magic mismatch: inspect peer network".to_string(),
+            },
+            Self::Network { .. } => HealthSignal {
+                level: HealthSignalLevel::Error,
+                source: "network".to_string(),
+                message: "sync network failure: inspect peer connectivity".to_string(),
+            },
+            Self::Storage(error) => HealthSignal {
+                level: HealthSignalLevel::Error,
+                source: "storage".to_string(),
+                message: storage_health_message(error),
+            },
+            Self::NoPeersConfigured => HealthSignal {
+                level: HealthSignalLevel::Warn,
+                source: "sync".to_string(),
+                message: "sync has no configured peers".to_string(),
+            },
+        }
+    }
+}
 
 impl From<StorageError> for SyncRuntimeError {
     fn from(value: StorageError) -> Self {
@@ -336,4 +425,85 @@ fn progress_ratio(block_height: u64, header_height: u64) -> f64 {
     }
 
     (block_height as f64 / header_height as f64).min(1.0)
+}
+
+fn peer_outcome_log_records(
+    outcome: &PeerSyncOutcome,
+    timestamp_unix_seconds: u64,
+) -> Vec<StructuredLogRecord> {
+    let mut records = Vec::new();
+
+    match outcome.state {
+        PeerSyncState::Connected => {}
+        PeerSyncState::Stalled => records.push(StructuredLogRecord {
+            level: StructuredLogLevel::Warn,
+            source: "sync".to_string(),
+            message: "peer stalled before sending more sync messages".to_string(),
+            timestamp_unix_seconds,
+        }),
+        PeerSyncState::Failed => records.push(StructuredLogRecord {
+            level: StructuredLogLevel::Error,
+            source: "sync".to_string(),
+            message: "peer failed during sync; inspect network health".to_string(),
+            timestamp_unix_seconds,
+        }),
+    }
+
+    if outcome.attempts > 1 {
+        records.push(StructuredLogRecord {
+            level: StructuredLogLevel::Warn,
+            source: "sync".to_string(),
+            message: format!("peer retry attempts={} before outcome", outcome.attempts),
+            timestamp_unix_seconds,
+        });
+    }
+
+    records
+}
+
+fn health_signal_log_record(
+    signal: &HealthSignal,
+    timestamp_unix_seconds: u64,
+) -> StructuredLogRecord {
+    StructuredLogRecord {
+        level: structured_log_level(signal.level),
+        source: signal.source.clone(),
+        message: signal.message.clone(),
+        timestamp_unix_seconds,
+    }
+}
+
+fn structured_log_level(level: HealthSignalLevel) -> StructuredLogLevel {
+    match level {
+        HealthSignalLevel::Info => StructuredLogLevel::Info,
+        HealthSignalLevel::Warn => StructuredLogLevel::Warn,
+        HealthSignalLevel::Error => StructuredLogLevel::Error,
+    }
+}
+
+fn storage_health_message(error: &StorageError) -> String {
+    match error {
+        StorageError::InvalidSchemaVersion { .. } => {
+            "storage schema version invalid during sync".to_string()
+        }
+        StorageError::SchemaMismatch { .. } => "storage schema mismatch during sync".to_string(),
+        StorageError::Corruption { namespace, .. } => {
+            format!("storage corruption in {} during sync", namespace.as_str())
+        }
+        StorageError::UnavailableNamespace { namespace } => {
+            format!("storage namespace unavailable: {}", namespace.as_str())
+        }
+        StorageError::InterruptedWrite { namespace, .. } => {
+            format!(
+                "storage write interrupted in {} during sync",
+                namespace.as_str()
+            )
+        }
+        StorageError::BackendFailure { namespace, .. } => {
+            format!(
+                "storage backend failure in {} during sync",
+                namespace.as_str()
+            )
+        }
+    }
 }

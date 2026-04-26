@@ -21,10 +21,16 @@ use open_bitcoin_core::{
 use open_bitcoin_network::{HeadersMessage, InventoryList, VersionMessage, WireNetworkMessage};
 
 use super::{
-    DurableSyncRuntime, PeerSyncState, SyncNetwork, SyncPeerAddress, SyncPeerSession,
-    SyncRuntimeConfig, SyncRuntimeError, SyncTransport, TcpPeerTransport,
+    DurableSyncRuntime, PeerSyncOutcome, PeerSyncState, SyncNetwork, SyncPeerAddress,
+    SyncPeerSession, SyncRunSummary, SyncRuntimeConfig, SyncRuntimeError, SyncTransport,
+    TcpPeerTransport,
 };
-use crate::{FjallNodeStore, MetricKind, PersistMode, status::SyncProgress};
+use crate::{
+    FieldAvailability, FjallNodeStore, MetricKind, MetricSample, PersistMode, StorageError,
+    StorageNamespace,
+    logging::StructuredLogLevel,
+    status::{HealthSignal, HealthSignalLevel, SyncProgress},
+};
 
 const EASY_BITS: u32 = 0x207f_ffff;
 
@@ -224,6 +230,197 @@ fn header(previous_block_hash: BlockHash, nonce: u32) -> BlockHeader {
 }
 
 #[test]
+fn sync_summary_projects_metric_samples() {
+    // Arrange
+    let summary = SyncRunSummary {
+        attempted_peers: 2,
+        connected_peers: 1,
+        failed_peers: 1,
+        messages_processed: 7,
+        headers_received: 3,
+        blocks_received: 2,
+        best_header_height: 42,
+        best_block_height: 40,
+        peer_outcomes: Vec::new(),
+        health_signals: Vec::new(),
+    };
+
+    // Act
+    let samples = summary.metric_samples(1_777_225_022);
+
+    // Assert
+    assert_eq!(
+        samples,
+        vec![
+            MetricSample::new(MetricKind::HeaderHeight, 42.0, 1_777_225_022),
+            MetricSample::new(MetricKind::SyncHeight, 40.0, 1_777_225_022),
+            MetricSample::new(MetricKind::PeerCount, 1.0, 1_777_225_022),
+        ]
+    );
+}
+
+#[test]
+fn sync_summary_projects_structured_log_records() {
+    // Arrange
+    let summary = SyncRunSummary {
+        attempted_peers: 3,
+        connected_peers: 2,
+        failed_peers: 1,
+        messages_processed: 9,
+        headers_received: 4,
+        blocks_received: 2,
+        best_header_height: 44,
+        best_block_height: 43,
+        peer_outcomes: vec![
+            PeerSyncOutcome {
+                peer: SyncPeerAddress::manual("127.0.0.1", 18_444),
+                state: PeerSyncState::Stalled,
+                attempts: 1,
+                maybe_error: None,
+            },
+            PeerSyncOutcome {
+                peer: SyncPeerAddress::manual("203.0.113.10", 18_444),
+                state: PeerSyncState::Failed,
+                attempts: 3,
+                maybe_error: Some("scripted network failure".to_string()),
+            },
+            PeerSyncOutcome {
+                peer: SyncPeerAddress::manual("198.51.100.9", 18_444),
+                state: PeerSyncState::Connected,
+                attempts: 2,
+                maybe_error: None,
+            },
+        ],
+        health_signals: vec![
+            HealthSignal {
+                level: HealthSignalLevel::Warn,
+                source: "sync".to_string(),
+                message: "headers stalled".to_string(),
+            },
+            HealthSignal {
+                level: HealthSignalLevel::Error,
+                source: "storage".to_string(),
+                message: "metrics persistence unavailable".to_string(),
+            },
+        ],
+    };
+
+    // Act
+    let records = summary.structured_log_records(1_777_225_099);
+
+    // Assert
+    let summary_record = records
+        .iter()
+        .find(|record| {
+            record.level == StructuredLogLevel::Info
+                && record.source == "sync"
+                && record.message.contains("messages_processed=9")
+        })
+        .expect("sync summary log record");
+    assert!(summary_record.message.contains("headers_received=4"));
+    assert!(summary_record.message.contains("blocks_received=2"));
+    assert!(summary_record.message.contains("best_header_height=44"));
+    assert!(summary_record.message.contains("best_block_height=43"));
+    assert!(records.iter().any(|record| {
+        record.level == StructuredLogLevel::Warn
+            && record.source == "sync"
+            && record.message.contains("peer stalled")
+    }));
+    assert!(records.iter().any(|record| {
+        record.level == StructuredLogLevel::Error
+            && record.source == "sync"
+            && record.message.contains("peer failed")
+    }));
+    assert!(records.iter().any(|record| {
+        record.level == StructuredLogLevel::Warn
+            && record.source == "sync"
+            && record.message.contains("retry attempts=2")
+    }));
+    assert!(records.iter().any(|record| {
+        record.level == StructuredLogLevel::Error
+            && record.source == "storage"
+            && record.message == "metrics persistence unavailable"
+    }));
+    assert!(records.iter().all(|record| record.message.len() <= 160));
+    assert!(records.iter().all(|record| {
+        !record.message.contains("127.0.0.1")
+            && !record.message.contains("203.0.113")
+            && !record.message.contains("cookie")
+            && !record.message.contains("/tmp/")
+    }));
+}
+
+#[test]
+fn sync_summary_status_projections_include_counters() {
+    // Arrange
+    let summary = SyncRunSummary {
+        attempted_peers: 4,
+        connected_peers: 3,
+        failed_peers: 1,
+        messages_processed: 12,
+        headers_received: 7,
+        blocks_received: 5,
+        best_header_height: 100,
+        best_block_height: 25,
+        peer_outcomes: Vec::new(),
+        health_signals: Vec::new(),
+    };
+
+    // Act
+    let sync_status = summary.sync_status(SyncNetwork::Regtest);
+    let peer_status = summary.peer_status();
+
+    // Assert
+    assert_eq!(
+        sync_status.sync_progress,
+        FieldAvailability::available(SyncProgress {
+            header_height: 100,
+            block_height: 25,
+            progress_ratio: 0.25,
+            messages_processed: 12,
+            headers_received: 7,
+            blocks_received: 5,
+        })
+    );
+    assert_eq!(
+        peer_status.peer_counts,
+        FieldAvailability::available(crate::status::PeerCounts {
+            inbound: 0,
+            outbound: 3,
+        })
+    );
+}
+
+#[test]
+fn sync_runtime_errors_project_storage_and_network_health_signals() {
+    // Arrange
+    let network_error = SyncRuntimeError::Network {
+        message: "connection reset".to_string(),
+    };
+    let storage_error = SyncRuntimeError::Storage(StorageError::UnavailableNamespace {
+        namespace: StorageNamespace::Metrics,
+    });
+
+    // Act
+    let network_signal = network_error.health_signal();
+    let storage_signal = storage_error.health_signal();
+
+    // Assert
+    assert_eq!(network_signal.level, HealthSignalLevel::Error);
+    assert_eq!(network_signal.source, "network");
+    assert!(network_signal.message.contains("sync network failure"));
+    assert_eq!(storage_signal.level, HealthSignalLevel::Error);
+    assert_eq!(storage_signal.source, "storage");
+    assert!(
+        storage_signal
+            .message
+            .contains("storage namespace unavailable")
+    );
+    assert!(network_signal.message.len() <= 160);
+    assert!(storage_signal.message.len() <= 160);
+}
+
+#[test]
 fn scripted_headers_sync_persists_progress_and_status() {
     // Arrange
     let path = temp_store_path("headers");
@@ -263,6 +460,9 @@ fn scripted_headers_sync_persists_progress_and_status() {
             header_height: 1,
             block_height: 0,
             progress_ratio: 0.0,
+            messages_processed: 3,
+            headers_received: 2,
+            blocks_received: 0,
         })
     );
     assert_eq!(
