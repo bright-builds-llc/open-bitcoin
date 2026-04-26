@@ -1,11 +1,11 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.0
-milestone_name: milestone
-status: complete
-stopped_at: Phase 12 complete -- Milestone Audit Artifact Closure
-last_updated: "2026-04-26T16:17:21.707Z"
-last_activity: 2026-04-26 -- Phase 12 complete
+milestone_name: Headless Parity
+status: completed
+stopped_at: v1.0 Headless Parity archived
+last_updated: "2026-04-26T16:36:33Z"
+last_activity: 2026-04-26 -- v1.0 milestone archived
 progress:
   total_phases: 22
   completed_phases: 22
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-26)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 12 complete -- Milestone Audit Artifact Closure; security review pending
+**Current focus:** Between milestones -- run /gsd-new-milestone before new implementation work.
 
 ## Current Position
 
-Phase: 12 (Milestone Audit Artifact Closure) -- COMPLETE
-Plan: 4 of 4 complete
-Status: Phase 12 complete; security review pending
-Last activity: 2026-04-26 -- Phase 12 complete
+Phase: none (v1.0 archived)
+Plan: none
+Status: v1.0 Headless Parity archived; ready for next milestone planning
+Last activity: 2026-04-26 -- v1.0 milestone archived
 
 Progress: ██████████ 100%
 

@@ -8,29 +8,31 @@ Open Bitcoin is a headless Bitcoin node and wallet implementation in Rust, built
 
 When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
 
+## Current State
+
+v1.0 Headless Parity shipped on 2026-04-26. The repository now contains a headless Rust node and wallet implementation with scoped consensus, validation, chainstate, mempool, networking, wallet, RPC, CLI, config, parity-harness, benchmark, audit, and panic-guard surfaces wired and archived for the initial milestone.
+
+The v1.0 archive lives under `.planning/milestones/`, with the detailed shipped roadmap, requirements ledger, and milestone audit preserved as historical artifacts.
+
+## Next Milestone Goals
+
+- Define fresh v1.1 requirements and phase scope with `/gsd-new-milestone` before new implementation work starts.
+- Keep the v1.0 parity, verification, and panic-site guardrails active for any post-v1.0 changes.
+- Re-evaluate deferred product surfaces such as GUI, public dashboards, and richer observability only after the next milestone's correctness goals are explicit.
+
 ## Requirements
 
 ### Validated
 
-- Phase 2 validated the shared pure-core domain and codec surface for typed
-  amounts, hashes, scripts, transactions, blocks, and foundational P2P message
-  framing (`ARCH-03`, `CONS-01`).
-- Phase 2 seeded the living reference catalog under `docs/parity/catalog/`
-  (`REF-03`).
-- Phase 10 validated the benchmark and audit-readiness artifacts for critical
-  node and wallet paths plus parity checklist inspection (`PAR-02`, `AUD-01`).
-- Phase 12 reconciled the Phase 9 parity harness, hermetic integration, and
-  property-style coverage evidence in the requirements ledger and milestone
-  audit (`VER-03`, `VER-04`, `PAR-01`).
+- v1.0 validated all 28 source-of-truth requirements across reference baseline, architecture, verification, consensus, chainstate, mempool, networking, wallet, RPC, CLI, performance, and auditability surfaces.
+- The detailed v1 requirement ledger is archived at `.planning/milestones/v1.0-REQUIREMENTS.md`.
+- The v1.0 audit passed with GAP-01 through GAP-04 closed and no open blockers; the audit is archived at `.planning/milestones/v1.0-MILESTONE-AUDIT.md`.
 
 ### Active
 
-- [ ] Preserve behavioral parity with the pinned Knots baseline for all in-scope node and wallet surfaces.
-- [ ] Keep first-party Rust code modular, strongly typed, and organized around functional core / imperative shell boundaries.
-- [ ] Prevent direct filesystem, network, clock, environment, process, thread, async-runtime, and randomness dependencies inside the pure core.
-- [ ] Vendor the reference implementation under `packages/` and track intentional deviations explicitly.
-- [ ] Export first-party Rust Bitcoin libraries from the workspace instead of depending on existing Rust Bitcoin production libraries.
-- [ ] Enforce 100% unit-test coverage for pure-core code and catch I/O leakage automatically.
+- [ ] Define the next milestone's requirements, scope, and roadmap before implementation resumes.
+- [ ] Preserve v1.0 parity and architecture guardrails while evaluating post-v1.0 changes.
+- [ ] Keep deferred surfaces explicitly scoped until the next milestone chooses them.
 
 ### Out of Scope
 
@@ -63,6 +65,9 @@ When a behavior is in scope, Open Bitcoin must behave like the pinned Knots base
   explicit Phase 11 verification, Phase 9 requirements reconciliation, roadmap
   completion cleanup, and a preserved Phase 07.5 to Phase 07.6 superseded-gap
   trail.
+- v1.0 is archived: `.planning/MILESTONES.md` records the shipped milestone,
+  `.planning/ROADMAP.md` is collapsed to milestone-level planning, and fresh
+  requirements should be created through the next milestone workflow.
 
 ## Constraints
 
@@ -77,12 +82,13 @@ When a behavior is in scope, Open Bitcoin must behave like the pinned Knots base
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Use Bitcoin Knots `29.3.knots20260210` as the reference baseline | The project needs one pinned behavioral contract for parity work and regression detection | — Pending |
-| Prioritize behavioral parity over line-by-line source parity | Rust internals should be allowed to become safer and clearer without breaking external behavior | — Pending |
-| Use functional core / imperative shell boundaries throughout first-party code | Strong boundaries improve testability, make illegal states unrepresentable, and prevent I/O drift into the pure core | — Pending |
-| Use Bazelisk and Bazel/Bzlmod for first-party workspace builds | The repository is expected to become a multi-package workspace with repeatable top-level builds | — Pending |
-| Keep the initial milestone headless and defer any GUI to a future milestone | GUI parity would slow core correctness work and should be designed on its own terms later | — Pending |
-| Avoid third-party Rust Bitcoin libraries in the production path | The project wants full ownership of domain abstractions, invariants, and behavior | — Pending |
+| Use Bitcoin Knots `29.3.knots20260210` as the reference baseline | The project needs one pinned behavioral contract for parity work and regression detection | Implemented and archived in v1.0 |
+| Prioritize behavioral parity over line-by-line source parity | Rust internals should be allowed to become safer and clearer without breaking external behavior | Implemented as the v1.0 parity model |
+| Use functional core / imperative shell boundaries throughout first-party code | Strong boundaries improve testability, make illegal states unrepresentable, and prevent I/O drift into the pure core | Enforced by architecture policy and verification |
+| Use Bazelisk and Bazel/Bzlmod for first-party workspace builds | The repository is expected to become a multi-package workspace with repeatable top-level builds | Implemented for first-party packages |
+| Keep the initial milestone headless and defer any GUI to a future milestone | GUI parity would slow core correctness work and should be designed on its own terms later | Implemented; GUI remains deferred |
+| Avoid third-party Rust Bitcoin libraries in the production path | The project wants full ownership of domain abstractions, invariants, and behavior | Implemented for the production path |
+| Archive v1.0 before new milestone planning | The next milestone needs a clean requirements and roadmap surface while preserving historical evidence | v1.0 archive created under `.planning/milestones/` |
 
 ## Evolution
 
@@ -102,4 +108,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-26 after Phase 12 execution*
+*Last updated: 2026-04-26 after v1.0 milestone archive*
