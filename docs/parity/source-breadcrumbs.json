@@ -480,7 +480,12 @@
     {
       "label": "node-storage-contract",
       "files": [
-        "packages/open-bitcoin-node/src/storage.rs"
+        "packages/open-bitcoin-node/src/storage.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/tests.rs",
+        "packages/open-bitcoin-node/src/storage/snapshot_codec.rs",
+        "packages/open-bitcoin-node/src/storage/snapshot_codec/tests.rs",
+        "packages/open-bitcoin-node/src/storage/snapshot_codec/wallet.rs"
       ],
       "breadcrumbs": []
     },

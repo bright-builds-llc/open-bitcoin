@@ -5,8 +5,15 @@
 
 use core::fmt;
 
+pub mod fjall_store;
+pub mod snapshot_codec;
+
+pub use fjall_store::FjallNodeStore;
+pub use snapshot_codec::{MetricsStorageSnapshot, StoredHeaderEntries};
+
 /// Logical storage namespaces later adapters must keep distinct.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum StorageNamespace {
     Headers,
     BlockIndex,
@@ -70,7 +77,8 @@ impl PersistMode {
 }
 
 /// Operator-visible recovery action suggested by a storage failure.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum StorageRecoveryAction {
     Restart,
     Reindex,
@@ -87,6 +95,48 @@ impl StorageRecoveryAction {
             Self::RestoreFromBackup => {
                 "Restore the affected datadir or wallet state from a known-good backup."
             }
+        }
+    }
+}
+
+/// Storage runtime metadata persisted outside pure domain snapshots.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct RuntimeMetadata {
+    pub node_version: String,
+    pub storage_engine: String,
+    pub last_clean_shutdown: bool,
+    pub maybe_last_recovery_action: Option<StorageRecoveryAction>,
+}
+
+impl Default for RuntimeMetadata {
+    fn default() -> Self {
+        Self {
+            node_version: env!("CARGO_PKG_VERSION").to_string(),
+            storage_engine: "fjall".to_string(),
+            last_clean_shutdown: false,
+            maybe_last_recovery_action: None,
+        }
+    }
+}
+
+/// Durable marker left behind when storage needs operator recovery.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct RecoveryMarker {
+    pub namespace: StorageNamespace,
+    pub action: StorageRecoveryAction,
+    pub detail: String,
+}
+
+impl RecoveryMarker {
+    pub fn new(
+        namespace: StorageNamespace,
+        action: StorageRecoveryAction,
+        detail: impl Into<String>,
+    ) -> Self {
+        Self {
+            namespace,
+            action,
+            detail: detail.into(),
         }
     }
 }

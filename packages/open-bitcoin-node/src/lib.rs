@@ -28,7 +28,7 @@ pub mod wallet;
 pub use chainstate::{ChainstateStore, ManagedChainstate, MemoryChainstateStore};
 pub use logging::{LogRetentionPolicy, LogStatus};
 pub use mempool::ManagedMempool;
-pub use metrics::{MetricRetentionPolicy, MetricsStatus};
+pub use metrics::{MetricKind, MetricRetentionPolicy, MetricSample, MetricsStatus};
 pub use network::{ManagedNetworkError, ManagedPeerNetwork};
 pub use open_bitcoin_core as core;
 pub use status::{
@@ -36,6 +36,7 @@ pub use status::{
     PeerStatus, SyncStatus,
 };
 pub use storage::{
-    PersistMode, SchemaVersion, StorageError, StorageNamespace, StorageRecoveryAction,
+    FjallNodeStore, MetricsStorageSnapshot, PersistMode, RecoveryMarker, RuntimeMetadata,
+    SchemaVersion, StorageError, StorageNamespace, StorageRecoveryAction, StoredHeaderEntries,
 };
 pub use wallet::{ManagedWallet, MemoryWalletStore, WalletStore};

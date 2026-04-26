@@ -39,11 +39,11 @@
 
 ### Durable Storage and Runtime Hardening
 
-- [ ] **DB-01**: Contributors can inspect a documented database decision that compares Rust-native and RocksDB-style storage options against chainstate, header, block-index, wallet, metrics, recovery, Bazel, and dependency constraints.
-- [ ] **DB-02**: Node persists headers, block index metadata, chainstate or UTXO state, undo/reorg metadata, wallet state, runtime metadata, and schema version information across restart.
-- [ ] **DB-03**: Storage layer detects incompatible schema versions and corruption conditions and returns typed recovery errors instead of panicking.
-- [ ] **DB-04**: Node can recover from interrupted writes through tested restart, replay, reindex, or repair flows.
-- [ ] **DB-05**: Durable storage remains behind adapter traits so pure consensus, chainstate, mempool, wallet, and protocol code remain free of filesystem and database dependencies.
+- [x] **DB-01**: Contributors can inspect a documented database decision that compares Rust-native and RocksDB-style storage options against chainstate, header, block-index, wallet, metrics, recovery, Bazel, and dependency constraints.
+- [x] **DB-02**: Node persists headers, block index metadata, chainstate or UTXO state, undo/reorg metadata, wallet state, runtime metadata, and schema version information across restart.
+- [x] **DB-03**: Storage layer detects incompatible schema versions and corruption conditions and returns typed recovery errors instead of panicking.
+- [x] **DB-04**: Node can recover from interrupted writes through tested restart, replay, reindex, or repair flows.
+- [x] **DB-05**: Durable storage remains behind adapter traits so pure consensus, chainstate, mempool, wallet, and protocol code remain free of filesystem and database dependencies.
 
 ### Real Network Sync
 
@@ -121,11 +121,11 @@
 | SVC-03 | Phase 18 | Pending |
 | SVC-04 | Phase 18 | Pending |
 | SVC-05 | Phase 18 | Pending |
-| DB-01 | Phase 13 | Pending |
-| DB-02 | Phase 14 | Pending |
-| DB-03 | Phase 14 | Pending |
-| DB-04 | Phase 14 | Pending |
-| DB-05 | Phase 14 | Pending |
+| DB-01 | Phase 13 | Complete |
+| DB-02 | Phase 14 | Complete |
+| DB-03 | Phase 14 | Complete |
+| DB-04 | Phase 14 | Complete |
+| DB-05 | Phase 14 | Complete |
 | SYNC-01 | Phase 15 | Pending |
 | SYNC-02 | Phase 15 | Pending |
 | SYNC-03 | Phase 15 | Pending |

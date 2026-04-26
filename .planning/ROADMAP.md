@@ -40,7 +40,7 @@ This active milestone makes Open Bitcoin usable as an operator-facing, service-m
 </details>
 
 - [x] **Phase 13: Operator Runtime Foundations** - Define the dependency, command, config, status, metrics, log, and storage contracts that later user-facing work consumes. (completed 2026-04-26)
-- [ ] **Phase 14: Durable Storage and Recovery** - Implement the selected durable storage layer and restart/recovery behavior for node and wallet state.
+- [x] **Phase 14: Durable Storage and Recovery** - Implement the selected durable storage layer and restart/recovery behavior for node and wallet state. (completed 2026-04-26)
 - [ ] **Phase 15: Real Network Sync Loop** - Connect to real peers, drive headers/block sync, persist progress, and keep default tests deterministic.
 - [ ] **Phase 16: Metrics, Logs, and Sync Telemetry** - Record bounded metrics history, rotate logs, and expose sync/runtime telemetry to status consumers.
 - [ ] **Phase 17: CLI Status and First-Run Onboarding** - Expand the clap command tree, implement rich status output, and add the idempotent wizard plus JSONC config layer.
@@ -82,7 +82,13 @@ Plans:
 2. Storage schema mismatches and corruption conditions return typed errors and clear operator guidance instead of panics.
 3. Interrupted write, replay, reindex, and repair scenarios are covered by tests using isolated temp stores.
 4. Pure core crates remain free of filesystem and database dependencies.
-**Plans**: TBD
+**Plans**: 4/4 plans complete
+
+Plans:
+- [x] 14-01-PLAN.md — Fjall-backed durable storage adapter
+- [x] 14-02-PLAN.md — Schema-versioned snapshot DTOs
+- [x] 14-03-PLAN.md — Restart, schema, corruption, and recovery tests
+- [x] 14-04-PLAN.md — Closeout, metrics, and verification artifacts
 
 ### Phase 15: Real Network Sync Loop
 
@@ -192,4 +198,4 @@ Plans:
 | Milestone | Phases | Plans | Status | Shipped |
 | --- | ---: | ---: | --- | --- |
 | v1.0 Headless Parity | 22/22 | 80/80 | Archived | 2026-04-26 |
-| v1.1 Operator Runtime and Real-Network Sync | 0/10 | TBD | Planned | - |
+| v1.1 Operator Runtime and Real-Network Sync | 2/10 | 9/9 | In Progress | - |

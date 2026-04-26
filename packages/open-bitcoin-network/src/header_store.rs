@@ -38,6 +38,40 @@ pub struct HeaderStore {
 }
 
 impl HeaderStore {
+    pub fn from_entries(
+        entries: impl IntoIterator<Item = HeaderEntry>,
+    ) -> Result<Self, NetworkError> {
+        let mut store = Self::default();
+        for entry in entries {
+            let maybe_parent = if entry.height == 0 {
+                None
+            } else {
+                Some(entry.header.previous_block_hash)
+            };
+            store.parents.insert(entry.block_hash, maybe_parent);
+            store.entries.insert(entry.block_hash, entry);
+        }
+
+        for maybe_parent in store.parents.values() {
+            let Some(parent) = maybe_parent else {
+                continue;
+            };
+            if !store.entries.contains_key(parent) {
+                return Err(NetworkError::MissingHeaderAncestor(*parent));
+            }
+        }
+
+        for block_hash in store.entries.keys().copied().collect::<Vec<_>>() {
+            store.update_best_tip(block_hash);
+        }
+
+        Ok(store)
+    }
+
+    pub fn entries(&self) -> impl Iterator<Item = &HeaderEntry> {
+        self.entries.values()
+    }
+
     pub fn seed_from_chain(&mut self, active_chain: &[ChainPosition]) {
         self.entries.clear();
         self.parents.clear();
@@ -398,5 +432,61 @@ mod tests {
             store.best_tip().expect("best tip").block_hash,
             block_hash(&descendant_header),
         );
+    }
+
+    #[test]
+    fn header_store_rebuilds_from_persisted_entries() {
+        // Arrange
+        let genesis_header = header(BlockHash::from_byte_array([0_u8; 32]), 1);
+        let genesis = ChainPosition::new(genesis_header.clone(), 0, 1, 0);
+        let child_header = header(genesis.block_hash, 2);
+        let child = ChainPosition::new(child_header, 1, 2, 0);
+        let original_entries = [
+            crate::HeaderEntry {
+                block_hash: child.block_hash,
+                header: child.header.clone(),
+                height: child.height,
+                chain_work: child.chain_work,
+            },
+            crate::HeaderEntry {
+                block_hash: genesis.block_hash,
+                header: genesis.header.clone(),
+                height: genesis.height,
+                chain_work: genesis.chain_work,
+            },
+        ];
+
+        // Act
+        let store = HeaderStore::from_entries(original_entries).expect("rebuild header store");
+        let rebuilt_entries = store.entries().cloned().collect::<Vec<_>>();
+
+        // Assert
+        assert_eq!(store.best_height(), 1);
+        assert_eq!(
+            store.best_tip().expect("best tip").block_hash,
+            child.block_hash
+        );
+        assert_eq!(rebuilt_entries.len(), 2);
+        assert!(rebuilt_entries.iter().any(|entry| entry.height == 0));
+        assert!(rebuilt_entries.iter().any(|entry| entry.height == 1));
+    }
+
+    #[test]
+    fn header_store_rebuild_rejects_missing_parent() {
+        // Arrange
+        let missing_parent = BlockHash::from_byte_array([9_u8; 32]);
+        let orphan_header = header(missing_parent, 2);
+        let orphan_entry = crate::HeaderEntry {
+            block_hash: block_hash(&orphan_header),
+            header: orphan_header,
+            height: 1,
+            chain_work: 2,
+        };
+
+        // Act
+        let error = HeaderStore::from_entries([orphan_entry]).expect_err("missing parent");
+
+        // Assert
+        assert_eq!(error, NetworkError::MissingHeaderAncestor(missing_parent));
     }
 }

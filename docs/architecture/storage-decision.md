@@ -30,3 +30,9 @@ Before real sync or wallet runtime state depends on a durable adapter, Phase 14 
 - `repair` is exposed as an explicit recovery action.
 
 Phase 14 may add the selected storage dependency only after these obligations are represented in tests and adapter code.
+
+## Phase 14 Evidence
+
+Phase 14 implements the initial `fjall` adapter in `packages/open-bitcoin-node/src/storage/fjall_store.rs`. The adapter stores schema-versioned JSON snapshots in separate `headers`, `block_index`, `chainstate`, `wallet`, `metrics`, `runtime`, and `schema` keyspaces and keeps database effects inside `open-bitcoin-node`.
+
+The restart and recovery tests cover reopening persisted chainstate, header/block-index, wallet, metrics, and runtime records; incompatible schema versions; malformed stored records; interrupted-write recovery markers; explicit reindex guidance; and clean-shutdown marker clearing.
