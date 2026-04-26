@@ -6,11 +6,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Metric | Value |
 | --- | --- |
-| Included files | 190 |
-| Total lines | 50,626 |
-| Code/content lines | 45,043 |
-| Comment-only lines | 1,189 |
-| Blank lines | 4,394 |
+| Included files | 197 |
+| Total lines | 52,054 |
+| Code/content lines | 46,170 |
+| Comment-only lines | 1,315 |
+| Blank lines | 4,569 |
 
 ## Per-Crate Modules
 
@@ -18,15 +18,15 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- | --- |
 | open-bitcoin-bench | 17 | 2,186 | 0 | 73 | 2,259 | 0.0% |
 | open-bitcoin-chainstate | 8 | 1,023 | 1,818 | 26 | 2,867 | 177.7% |
-| open-bitcoin-cli | 14 | 1,302 | 1,642 | 53 | 2,997 | 126.1% |
+| open-bitcoin-cli | 16 | 1,427 | 1,702 | 53 | 3,182 | 119.3% |
 | open-bitcoin-codec | 13 | 1,144 | 170 | 28 | 1,345 | 14.9% |
 | open-bitcoin-consensus | 30 | 6,346 | 7,519 | 28 | 13,893 | 118.5% |
 | open-bitcoin-core | 3 | 39 | 0 | 36 | 75 | 0.0% |
 | open-bitcoin-mempool | 10 | 1,867 | 1,268 | 30 | 3,165 | 67.9% |
 | open-bitcoin-network | 11 | 1,616 | 1,364 | 30 | 3,010 | 84.4% |
-| open-bitcoin-node | 8 | 1,285 | 409 | 30 | 1,724 | 31.8% |
+| open-bitcoin-node | 12 | 2,214 | 409 | 36 | 2,659 | 18.5% |
 | open-bitcoin-primitives | 9 | 877 | 0 | 20 | 897 | 0.0% |
-| open-bitcoin-rpc | 20 | 3,004 | 1,523 | 51 | 4,578 | 50.7% |
+| open-bitcoin-rpc | 21 | 3,173 | 1,632 | 53 | 4,858 | 51.4% |
 | open-bitcoin-test-harness | 7 | 662 | 0 | 28 | 690 | 0.0% |
 | open-bitcoin-wallet | 12 | 2,245 | 1,292 | 34 | 3,571 | 57.6% |
 
@@ -34,13 +34,13 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Category | Files | Total | Code/Content | Comments | Blank |
 | --- | --- | --- | --- | --- | --- |
-| Rust production | 102 | 23,596 | 20,342 | 689 | 2,565 |
-| Rust tests | 31 | 17,005 | 15,324 | 468 | 1,213 |
-| Fixture/data | 6 | 5,545 | 5,540 | 5 | 0 |
-| TOML/config | 16 | 1,779 | 1,583 | 0 | 196 |
+| Rust production | 108 | 24,819 | 21,321 | 787 | 2,711 |
+| Rust tests | 32 | 17,174 | 15,438 | 496 | 1,240 |
+| Fixture/data | 6 | 5,561 | 5,556 | 5 | 0 |
+| TOML/config | 16 | 1,796 | 1,598 | 0 | 198 |
 | Shell scripts | 9 | 1,179 | 945 | 21 | 213 |
 | TypeScript/Bun scripts | 2 | 988 | 849 | 0 | 139 |
-| Bazel/Starlark | 18 | 367 | 333 | 0 | 34 |
+| Bazel/Starlark | 18 | 370 | 336 | 0 | 34 |
 | YAML | 2 | 104 | 83 | 4 | 17 |
 | CI/templates | 1 | 27 | 16 | 1 | 10 |
 | Other config | 2 | 26 | 22 | 0 | 4 |
@@ -50,11 +50,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Rank | File | Category | Lines |
 | --- | --- | --- | --- |
-| 1 | MODULE.bazel.lock | Fixture/data | 5,529 |
+| 1 | MODULE.bazel.lock | Fixture/data | 5,545 |
 | 2 | packages/open-bitcoin-consensus/src/script/tests.rs | Rust tests | 3,258 |
 | 3 | packages/open-bitcoin-consensus/src/block/tests.rs | Rust tests | 1,594 |
-| 4 | packages/open-bitcoin-chainstate/src/engine/tests.rs | Rust tests | 1,553 |
-| 5 | packages/Cargo.lock | TOML/config | 1,546 |
+| 4 | packages/Cargo.lock | TOML/config | 1,558 |
+| 5 | packages/open-bitcoin-chainstate/src/engine/tests.rs | Rust tests | 1,553 |
 | 6 | packages/open-bitcoin-wallet/src/wallet/tests.rs | Rust tests | 1,051 |
 | 7 | packages/open-bitcoin-mempool/src/pool/tests.rs | Rust tests | 964 |
 | 8 | packages/open-bitcoin-consensus/tests/parity_closure.rs | Rust tests | 940 |
@@ -76,7 +76,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | bfac279f315ab5c5a97f6700fbc63805d10f174e512771aec3241fc81ea283bf |
+| Input fingerprint | 164043c9edc3ae10e2c31292c81d6b32b78796723d48a569c69eef342069f3bb |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

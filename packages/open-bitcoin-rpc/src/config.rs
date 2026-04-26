@@ -14,6 +14,12 @@ use std::{
 use open_bitcoin_node::core::{consensus::ConsensusParams, wallet::AddressNetwork};
 
 mod loader;
+mod open_bitcoin;
+
+pub use open_bitcoin::{
+    ConfigPrecedence, ConfigSource, OPEN_BITCOIN_CONFIG_FILE_NAME, OpenBitcoinConfig,
+    parse_open_bitcoin_jsonc_config,
+};
 
 pub const DEFAULT_COOKIE_AUTH_USER: &str = "__cookie__";
 pub const DEFAULT_COOKIE_FILE_NAME: &str = ".cookie";

@@ -18,6 +18,7 @@
 
 pub mod args;
 pub mod getinfo;
+pub mod operator;
 pub mod startup;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

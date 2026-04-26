@@ -10,6 +10,8 @@ rust_library(
         "//packages/open-bitcoin-mempool:open_bitcoin_mempool_lib",
         "//packages/open-bitcoin-network:open_bitcoin_network_lib",
         "//packages/open-bitcoin-wallet:open_bitcoin_wallet_lib",
+        "@crate_index//:serde",
+        "@crate_index//:serde_json",
     ],
     visibility = ["//visibility:public"],
 )

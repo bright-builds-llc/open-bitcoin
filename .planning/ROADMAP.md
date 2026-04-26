@@ -39,7 +39,7 @@ This active milestone makes Open Bitcoin usable as an operator-facing, service-m
 
 </details>
 
-- [ ] **Phase 13: Operator Runtime Foundations** - Define the dependency, command, config, status, metrics, log, and storage contracts that later user-facing work consumes.
+- [x] **Phase 13: Operator Runtime Foundations** - Define the dependency, command, config, status, metrics, log, and storage contracts that later user-facing work consumes. (completed 2026-04-26)
 - [ ] **Phase 14: Durable Storage and Recovery** - Implement the selected durable storage layer and restart/recovery behavior for node and wallet state.
 - [ ] **Phase 15: Real Network Sync Loop** - Connect to real peers, drive headers/block sync, persist progress, and keep default tests deterministic.
 - [ ] **Phase 16: Metrics, Logs, and Sync Telemetry** - Record bounded metrics history, rotate logs, and expose sync/runtime telemetry to status consumers.
@@ -66,11 +66,11 @@ This active milestone makes Open Bitcoin usable as an operator-facing, service-m
 **Plans**: 5 plans
 
 Plans:
-- [ ] 13-01-PLAN.md — Storage decision ADR and adapter-facing storage contracts
-- [ ] 13-02-PLAN.md — Metrics and structured log retention contracts
-- [ ] 13-03-PLAN.md — Shared status snapshot and build provenance model
-- [ ] 13-04-PLAN.md — Clap operator CLI routing and compatibility boundary
-- [ ] 13-05-PLAN.md — Open Bitcoin JSONC config ownership and precedence contracts
+- [x] 13-01-PLAN.md — Storage decision ADR and adapter-facing storage contracts
+- [x] 13-02-PLAN.md — Metrics and structured log retention contracts
+- [x] 13-03-PLAN.md — Shared status snapshot and build provenance model
+- [x] 13-04-PLAN.md — Clap operator CLI routing and compatibility boundary
+- [x] 13-05-PLAN.md — Open Bitcoin JSONC config ownership and precedence contracts
 
 ### Phase 14: Durable Storage and Recovery
 

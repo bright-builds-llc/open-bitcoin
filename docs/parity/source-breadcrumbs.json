@@ -169,6 +169,18 @@
       "breadcrumbs": []
     },
     {
+      "label": "cli-operator-contract",
+      "files": [
+        "packages/open-bitcoin-cli/src/operator.rs",
+        "packages/open-bitcoin-cli/src/operator/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/bitcoin-cli.cpp",
+        "packages/bitcoin-knots/src/common/args.cpp",
+        "packages/bitcoin-knots/test/functional/interface_bitcoin_cli.py"
+      ]
+    },
+    {
       "label": "codec-block",
       "files": [
         "packages/open-bitcoin-codec/src/block.rs"
@@ -466,6 +478,28 @@
       "breadcrumbs": []
     },
     {
+      "label": "node-storage-contract",
+      "files": [
+        "packages/open-bitcoin-node/src/storage.rs"
+      ],
+      "breadcrumbs": []
+    },
+    {
+      "label": "node-observability-contracts",
+      "files": [
+        "packages/open-bitcoin-node/src/metrics.rs",
+        "packages/open-bitcoin-node/src/logging.rs"
+      ],
+      "breadcrumbs": []
+    },
+    {
+      "label": "node-status-contract",
+      "files": [
+        "packages/open-bitcoin-node/src/status.rs"
+      ],
+      "breadcrumbs": []
+    },
+    {
       "label": "primitives-amount",
       "files": [
         "packages/open-bitcoin-primitives/src/amount.rs"
@@ -540,6 +574,16 @@
         "packages/bitcoin-knots/src/common/config.cpp",
         "packages/bitcoin-knots/src/httprpc.cpp",
         "packages/bitcoin-knots/src/rpc/server.cpp"
+      ]
+    },
+    {
+      "label": "rpc-open-bitcoin-config",
+      "files": [
+        "packages/open-bitcoin-rpc/src/config/open_bitcoin.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/common/config.cpp",
+        "packages/bitcoin-knots/src/common/args.cpp"
       ]
     },
     {

@@ -593,6 +593,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
 
 [[package]]
+name = "jsonc-parser"
+version = "0.32.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8c2e5dea04f54739ca5694ee06e4448ffda065a55b3427d2b131bd5ea697ea2c"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "libc"
 version = "0.2.184"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -767,6 +776,8 @@ dependencies = [
  "open-bitcoin-mempool",
  "open-bitcoin-network",
  "open-bitcoin-wallet",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -780,6 +791,7 @@ dependencies = [
  "axum",
  "base64",
  "getrandom 0.3.4",
+ "jsonc-parser",
  "open-bitcoin-node",
  "open-bitcoin-test-harness",
  "serde",

@@ -52,6 +52,7 @@ These are Open Bitcoin design choices, not Knots parity claims:
 | --- | --- |
 | First-party Rust Bitcoin domain types instead of production dependencies on existing Rust Bitcoin libraries | [`packages/`](./packages/) |
 | Functional-core boundaries that keep pure business logic free of direct I/O and runtime effects | [`scripts/check-pure-core-deps.sh`](./scripts/check-pure-core-deps.sh) |
+| Operator runtime contracts for storage, observability, status, CLI routing, and config layering | [`docs/architecture/`](./docs/architecture/) |
 | Machine-readable parity and deviation ledger with human catalog pages | [`docs/parity/`](./docs/parity/) |
 | Deterministic parity, benchmark, and lines-of-code reports for review | [`scripts/verify.sh`](./scripts/verify.sh), [`docs/metrics/lines-of-code.md`](./docs/metrics/lines-of-code.md) |
 | Production panic-site guard for first-party Rust code | [`scripts/check-panic-sites.sh`](./scripts/check-panic-sites.sh) |
@@ -64,6 +65,7 @@ These are Open Bitcoin design choices, not Knots parity claims:
 - `packages/open-bitcoin-rpc/` provides the JSON-RPC server and `open-bitcoind` binary.
 - `packages/open-bitcoin-cli/` provides the `open-bitcoin-cli` client binary.
 - `packages/open-bitcoin-test-harness/` and `packages/open-bitcoin-bench/` provide parity, property, and benchmark infrastructure.
+- `docs/architecture/` records v1.1 operator runtime contracts before later storage, sync, status, service, and dashboard implementations depend on them.
 - `docs/parity/` tracks parity status and intentional deviations from the pinned baseline.
 - `.githooks/` contains the repo-managed Git hooks used to run the local verification contract before commit.
 - `scripts/verify.sh` is the source-of-truth local verification command for first-party code.

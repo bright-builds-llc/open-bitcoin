@@ -15,8 +15,9 @@ use std::{
 use open_bitcoin_node::core::wallet::AddressNetwork;
 
 use super::{
-    DEFAULT_COOKIE_FILE_NAME, RpcAuthConfig, RuntimeConfig, WalletRuntimeConfig,
-    WalletRuntimeScope, load_runtime_config_for_args,
+    ConfigPrecedence, ConfigSource, DEFAULT_COOKIE_FILE_NAME, RpcAuthConfig, RuntimeConfig,
+    WalletRuntimeConfig, WalletRuntimeScope, load_runtime_config_for_args,
+    parse_open_bitcoin_jsonc_config,
 };
 
 static NEXT_TEST_DIRECTORY_ID: AtomicU64 = AtomicU64::new(0);
@@ -299,5 +300,113 @@ fn auth_resolution_prefers_cookie_when_password_is_empty() {
             username: "alice".to_string(),
             password: "secret".to_string(),
         }
+    );
+}
+
+#[test]
+fn open_bitcoin_jsonc_accepts_comments() {
+    // Arrange
+    let text = r#"
+    {
+      // Open Bitcoin-owned runtime settings.
+      "metrics": {
+        "enabled": true,
+        "sample_interval_seconds": 30,
+      },
+      "logs": {
+        "rotation": "daily",
+        "max_files": 14,
+      },
+    }
+    "#;
+
+    // Act
+    let config = parse_open_bitcoin_jsonc_config(text).expect("jsonc config");
+
+    // Assert
+    assert!(config.metrics.enabled);
+    assert_eq!(config.metrics.sample_interval_seconds, 30);
+    assert_eq!(config.logs.rotation, "daily");
+    assert_eq!(config.logs.max_files, 14);
+}
+
+#[test]
+fn open_bitcoin_jsonc_accepts_wizard_onboarding_answers() {
+    // Arrange
+    let text = r#"
+    {
+      "onboarding": {
+        "non_interactive": true,
+        "completed_steps": ["network"],
+        "wizard_answers": {
+          "network": "signet",
+          "datadir": "/tmp/open-bitcoin"
+        }
+      }
+    }
+    "#;
+
+    // Act
+    let config = parse_open_bitcoin_jsonc_config(text).expect("jsonc config");
+
+    // Assert
+    assert!(config.onboarding.non_interactive);
+    assert_eq!(config.onboarding.completed_steps, vec!["network"]);
+    assert_eq!(
+        config.onboarding.wizard_answers.get("network"),
+        Some(&"signet".to_string())
+    );
+    assert_eq!(
+        config.onboarding.wizard_answers.get("datadir"),
+        Some(&"/tmp/open-bitcoin".to_string())
+    );
+}
+
+#[test]
+fn open_bitcoin_jsonc_rejects_unknown_top_level_fields() {
+    // Arrange
+    let text = r#"{ "unknown": true }"#;
+
+    // Act
+    let error = parse_open_bitcoin_jsonc_config(text).expect_err("unknown field should fail");
+
+    // Assert
+    assert!(error.to_string().contains("unknown field"));
+}
+
+#[test]
+fn config_precedence_orders_cli_env_jsonc_bitcoin_conf_cookie_defaults() {
+    // Arrange / Act
+    let sources = ConfigPrecedence::ordered_sources();
+
+    // Assert
+    assert_eq!(
+        sources,
+        [
+            ConfigSource::CliFlags,
+            ConfigSource::Environment,
+            ConfigSource::OpenBitcoinJsonc,
+            ConfigSource::BitcoinConf,
+            ConfigSource::Cookies,
+            ConfigSource::Defaults,
+        ]
+    );
+}
+
+#[test]
+fn bitcoin_conf_rejects_open_bitcoin_only_keys() {
+    // Arrange
+    let sandbox = TestDirectory::new("open-bitcoin-only-keys");
+    let conf_path = sandbox.child("bitcoin.conf");
+    fs::write(&conf_path, "dashboard=1\nservice=1\n").expect("config");
+
+    // Act
+    let error = load_runtime_config_for_args(&[cli_arg("conf", &conf_path)], &sandbox.path)
+        .expect_err("open bitcoin keys must fail");
+
+    // Assert
+    assert_eq!(
+        error.to_string(),
+        "Error reading configuration file: Invalid configuration value dashboard"
     );
 }
