@@ -105,17 +105,18 @@
 | RPC-01 | Phase 8 | Complete |
 | CLI-01 | Phase 8 | Complete |
 | CLI-02 | Phase 8 | Complete |
-| VER-03 | Phase 9 | Pending |
-| VER-04 | Phase 9 | Pending |
-| PAR-01 | Phase 9 | Pending |
+| VER-03 | Phases 9, 12 | Pending |
+| VER-04 | Phases 9, 12 | Pending |
+| PAR-01 | Phases 9, 12 | Pending |
 | PAR-02 | Phase 10 | Complete |
 | AUD-01 | Phase 10 | Complete |
 
 **Coverage:**
 - v1 requirements: 28 total
 - Mapped to phases: 28
+- Gap-closure traceability: Phase 12 assigned to VER-03, VER-04, and PAR-01 after the v1.0 milestone audit
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-11*
-*Last updated: 2026-04-13 after Phase 5 completion*
+*Last updated: 2026-04-26 after v1.0 milestone audit gap planning*
