@@ -27,10 +27,10 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 07.2: Protocol Constant Clarity Cleanup (INSERTED)** - Replace remaining protocol-significant magic numbers and repeated serialized-size literals with clearer named constants before Phase 8. (completed 2026-04-19)
 - [x] **Phase 07.3: Reduce nesting with early returns (INSERTED)** - Flatten the highest-value deeply nested control-flow hotspots before Phase 8 planning. (completed 2026-04-19)
 - [x] **Phase 07.4: Sweep the codebase for let-else opportunities (INSERTED)** - Replace eligible Rust control-flow scaffolding with `let ... else` where it reduces nesting and improves readability before Phase 8 planning. (completed 2026-04-20)
-- [ ] **Phase 07.5: Fix consensus parity gaps in contextual header validation and lax DER signature verification (INSERTED)** - Close the known consensus parity gaps before Phase 8 builds new operator interfaces on top of them.
+- [x] **Phase 07.5: Fix consensus parity gaps in contextual header validation and lax DER signature verification (INSERTED)** - Close the known consensus parity gaps before Phase 8 builds new operator interfaces on top of them. (completed 2026-04-22; superseded coinbase reward-limit gap closed by Phase 07.6)
 - [x] **Phase 07.6: Enforce coinbase subsidy-plus-fees limits on the consensus and active chainstate paths (INSERTED)** - Close the remaining coinbase reward-limit acceptance gap before Phase 8 builds operator interfaces on top of the current block-connect surface. (completed 2026-04-22)
 - [ ] **Phase 8: RPC, CLI, and Config Parity** - Expose node and wallet behavior through compatible operator interfaces.
-- [ ] **Phase 9: Parity Harnesses and Fuzzing** - Lock down external behavior with reusable black-box and fuzz/property suites.
+- [x] **Phase 9: Parity Harnesses and Fuzzing** - Lock down external behavior with reusable black-box and fuzz/property suites. (completed 2026-04-24)
 - [x] **Phase 10: Benchmarks and Audit Readiness** - Measure performance and complete the audit surfaces that track parity status. (completed 2026-04-24)
 - [x] **Phase 11: Panic and Illegal-State Hardening** - Replace reachable production panic paths with typed failures and guard against new unclassified panic-like sites. (completed 2026-04-24)
 - [ ] **Phase 12: Milestone Audit Artifact Closure** - Close v1.0 milestone audit evidence gaps so archive state matches completed implementation.
@@ -278,13 +278,15 @@ Plans:
 **Goal:** Close the two reviewed consensus parity gaps so the active contextual block-validation and non-strict legacy signature-verification paths match the pinned Knots baseline before Phase 8 adds operator interfaces on top.
 **Requirements**: CONS-02, CONS-03, VER-01, VER-02
 **Depends on:** Phase 07.4
-**Plans:** 4 plans
+**Plans:** 4/4 plans complete
 
 Plans:
-- [ ] 07.5-01-PLAN.md — Restore contextual header parity and thread explicit `current_time` through the active block-connect path.
-- [ ] 07.5-02-PLAN.md — Restore non-strict lax DER legacy signature parity and close the phase with repo-native verification evidence.
-- [ ] 07.5-03-PLAN.md — Close the remaining retarget-boundary CR-01 gap and correct the premature closeout evidence.
-- [ ] 07.5-04-PLAN.md — Close the remaining non-boundary min-difficulty recovery gap and refresh truthful Phase 07.5 closeout evidence.
+- [x] 07.5-01-PLAN.md — Restore contextual header parity and thread explicit `current_time` through the active block-connect path.
+- [x] 07.5-02-PLAN.md — Restore non-strict lax DER legacy signature parity and close the phase with repo-native verification evidence.
+- [x] 07.5-03-PLAN.md — Close the remaining retarget-boundary CR-01 gap and correct the premature closeout evidence.
+- [x] 07.5-04-PLAN.md — Close the remaining non-boundary min-difficulty recovery gap and refresh truthful Phase 07.5 closeout evidence.
+
+**Artifact reconciliation:** Historical 07.5 verification remains `gaps_found`; Phase 07.6 is the authoritative closure for the coinbase subsidy-plus-fees reward-limit gap.
 
 ### Phase 07.6: Enforce coinbase subsidy-plus-fees limits on the consensus and active chainstate paths (INSERTED)
 
@@ -329,13 +331,13 @@ Plans:
   2. Integration tests run in parallel without port, process, or data-directory collisions.
   3. Fuzzing or property-style tests cover parser, serialization, and protocol surfaces with meaningful risk reduction.
   4. CI reports parity and coverage outcomes clearly enough to block regressions.
-**Plans**: 4 plans
+**Plans:** 4/4 plans complete
 
 Plans:
-- [ ] 09-01: Build the cross-implementation black-box functional test harness.
-- [ ] 09-02: Implement process, port, and data-dir isolation for parallel-safe integration runs.
-- [ ] 09-03: Add fuzz and property suites for parser, serialization, and protocol boundaries.
-- [ ] 09-04: Surface parity, coverage, and harness results in CI.
+- [x] 09-01: Build the cross-implementation black-box functional test harness.
+- [x] 09-02: Implement process, port, and data-dir isolation for parallel-safe integration runs.
+- [x] 09-03: Add fuzz and property suites for parser, serialization, and protocol boundaries.
+- [x] 09-04: Surface parity, coverage, and harness results in CI.
 
 ### Phase 10: Benchmarks and Audit Readiness
 **Goal**: Add performance measurements and audit artifacts that make parity status, deviations, and readiness visible at a glance.
@@ -411,7 +413,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 3.1 -> 3.2 -> 3.3 -> 3.4 -> 4 ->
 | 7.1. Codebase Maintainability Refactor Wave | 0/3 | Not started | - |
 | 7.2. Protocol Constant Clarity Cleanup | 1/1 | Complete | 2026-04-19 |
 | 8. RPC, CLI, and Config Parity | 0/3 | Not started | - |
-| 9. Parity Harnesses and Fuzzing | 0/4 | Not started | - |
+| 9. Parity Harnesses and Fuzzing | 4/4 | Complete | 2026-04-24 |
 | 10. Benchmarks and Audit Readiness | 5/5 | Complete    | 2026-04-24 |
 | 11. Panic and Illegal-State Hardening | 3/3 | Complete | 2026-04-24 |
 | 12. Milestone Audit Artifact Closure | 0/4 | Not started | - |
