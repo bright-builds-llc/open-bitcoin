@@ -454,17 +454,15 @@ All claims in this research were verified or cited in this session; no assumed c
 |---|-------|---------|---------------|
 | - | None | - | - |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Should log filenames use calendar dates or Unix-day buckets?** [VERIFIED: .planning/phases/16-metrics-logs-and-sync-telemetry/16-CONTEXT.md; AGENTS.md]
+1. **RESOLVED: Log filenames use Unix-day buckets in Phase 16.** [VERIFIED: .planning/phases/16-metrics-logs-and-sync-telemetry/16-CONTEXT.md; AGENTS.md]
    - What we know: Phase 16 requires daily rotation but does not require human calendar filenames. [VERIFIED: docs/architecture/operator-observability.md]
-   - What's unclear: Whether Phase 17 human status output will prefer `YYYY-MM-DD` filenames. [VERIFIED: .planning/ROADMAP.md]
-   - Recommendation: Use Unix-day bucket filenames in Phase 16 and let Phase 17 render friendly dates if needed. [VERIFIED: AGENTS.md dependency policy; .planning/phases/16-metrics-logs-and-sync-telemetry/16-CONTEXT.md]
+   - Resolution: Managed log files must use the `open-bitcoin-runtime-<unix_day>.jsonl` bucket policy in Phase 16. Phase 17 may render friendly calendar dates from timestamps in status output, but Phase 16 must not add a calendar-formatting dependency or hand-roll Gregorian date formatting. [VERIFIED: AGENTS.md dependency policy; .planning/phases/16-metrics-logs-and-sync-telemetry/16-CONTEXT.md]
 
-2. **How should unavailable per-series collector evidence be represented long term?** [VERIFIED: packages/open-bitcoin-node/src/metrics.rs; packages/open-bitcoin-node/src/status.rs]
+2. **RESOLVED: Per-series availability stays metadata-plus-health evidence in Phase 16.** [VERIFIED: packages/open-bitcoin-node/src/metrics.rs; packages/open-bitcoin-node/src/status.rs]
    - What we know: `MetricsStatus` has global availability, retention, and enabled-series metadata, while `MetricSample` is numeric-only. [VERIFIED: packages/open-bitcoin-node/src/metrics.rs]
-   - What's unclear: Whether later configurable collectors need per-series availability fields in `MetricsStatus`. [VERIFIED: .planning/phases/16-metrics-logs-and-sync-telemetry/16-CONTEXT.md]
-   - Recommendation: For Phase 16, keep `MetricKind::ALL`, avoid fake numeric samples, and emit explicit `HealthSignal`/unavailable status reasons for missing collectors. [VERIFIED: packages/open-bitcoin-node/src/metrics.rs; packages/open-bitcoin-node/src/status.rs; .planning/phases/16-metrics-logs-and-sync-telemetry/16-CONTEXT.md]
+   - Resolution: For Phase 16, keep `MetricKind::ALL` in `MetricsStatus.enabled_series`, avoid fake numeric samples for unavailable collectors, and expose missing collectors through `MetricsStatus::unavailable(...)` plus concise `HealthSignal` reasons where runtime/status projections need operator-visible evidence. Later configurable collectors can add per-series availability fields only in a future phase with a separate status-contract decision. [VERIFIED: packages/open-bitcoin-node/src/metrics.rs; packages/open-bitcoin-node/src/status.rs; .planning/phases/16-metrics-logs-and-sync-telemetry/16-CONTEXT.md]
 
 ## Environment Availability
 
