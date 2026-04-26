@@ -22,8 +22,8 @@
 
 - [x] **VER-01**: Contributors can run a repo-native verification flow that enforces formatting, linting, build, tests, and architecture-policy checks for changed paths.
 - [x] **VER-02**: CI fails when pure-core packages lose 100% unit-test coverage or leak forbidden I/O/runtime dependencies.
-- [ ] **VER-03**: The same black-box functional test harness can run against both Bitcoin Knots and Open Bitcoin.
-- [ ] **VER-04**: Integration tests isolate ports, processes, data directories, and temporary state so they are parallel-safe and hermetic.
+- [x] **VER-03**: The same black-box functional test harness can run against both Bitcoin Knots and Open Bitcoin.
+- [x] **VER-04**: Integration tests isolate ports, processes, data directories, and temporary state so they are parallel-safe and hermetic.
 
 ### Consensus & Validation
 
@@ -56,7 +56,7 @@
 
 ### Performance & Auditability
 
-- [ ] **PAR-01**: Parser, serialization, and protocol surfaces are covered by fuzzing or property-style tests where they materially reduce risk.
+- [x] **PAR-01**: Parser, serialization, and protocol surfaces are covered by fuzzing or property-style tests where they materially reduce risk.
 - [x] **PAR-02**: Benchmarks measure critical node and wallet performance paths and compare against the pinned baseline where meaningful.
 - [x] **AUD-01**: Contributors can inspect a parity checklist that reports each in-scope surface as planned, in progress, done, deferred, or out of scope.
 
@@ -105,9 +105,9 @@
 | RPC-01 | Phase 8 | Complete |
 | CLI-01 | Phase 8 | Complete |
 | CLI-02 | Phase 8 | Complete |
-| VER-03 | Phases 9, 12 | Pending |
-| VER-04 | Phases 9, 12 | Pending |
-| PAR-01 | Phases 9, 12 | Pending |
+| VER-03 | Phases 9, 12 | Complete |
+| VER-04 | Phases 9, 12 | Complete |
+| PAR-01 | Phases 9, 12 | Complete |
 | PAR-02 | Phase 10 | Complete |
 | AUD-01 | Phase 10 | Complete |
 
@@ -115,8 +115,9 @@
 - v1 requirements: 28 total
 - Mapped to phases: 28
 - Gap-closure traceability: Phase 12 assigned to VER-03, VER-04, and PAR-01 after the v1.0 milestone audit
+- Phase 12 GAP-02 closure: VER-03, VER-04, and PAR-01 are marked Complete based on Phase 9 passed verification and summary requirements-completed evidence.
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-11*
-*Last updated: 2026-04-26 after v1.0 milestone audit gap planning*
+*Last updated: 2026-04-26 after Phase 12 GAP-02 requirements reconciliation*
