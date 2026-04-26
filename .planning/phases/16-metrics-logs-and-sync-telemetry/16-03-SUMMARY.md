@@ -167,6 +167,5 @@ None - no external service configuration required.
 
 Status and dashboard consumers can now read sync progress counters, bounded sync metric history, recent structured log signals, peer retry/stall evidence, and storage/network health signals through shared Phase 16 observability contracts.
 
----
 *Phase: 16-metrics-logs-and-sync-telemetry*
 *Completed: 2026-04-26*
