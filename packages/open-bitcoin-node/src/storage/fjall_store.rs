@@ -296,10 +296,10 @@ impl FjallNodeStore {
 
     /// Record a clean shutdown and clear outstanding recovery markers.
     pub fn mark_clean_shutdown(&self, mode: PersistMode) -> Result<(), StorageError> {
+        self.clear_recovery_marker(mode)?;
         let mut metadata = self.load_runtime_metadata()?.unwrap_or_default();
         metadata.last_clean_shutdown = true;
-        self.save_runtime_metadata(&metadata, mode)?;
-        self.clear_recovery_marker(mode)
+        self.save_runtime_metadata(&metadata, mode)
     }
 
     fn ensure_schema(&self) -> Result<(), StorageError> {

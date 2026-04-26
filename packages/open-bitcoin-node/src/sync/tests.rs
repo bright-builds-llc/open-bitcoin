@@ -156,6 +156,17 @@ fn version_verack_script(start_height: i32) -> Vec<WireNetworkMessage> {
     ]
 }
 
+fn headers_script(start_height: i32, headers: Vec<BlockHeader>) -> Vec<WireNetworkMessage> {
+    vec![
+        WireNetworkMessage::Version(VersionMessage {
+            start_height,
+            ..VersionMessage::default()
+        }),
+        WireNetworkMessage::Verack,
+        WireNetworkMessage::Headers(HeadersMessage { headers }),
+    ]
+}
+
 fn load_structured_log_records(log_dir: &Path) -> Vec<StructuredLogRecord> {
     let mut records = Vec::new();
     for entry in fs::read_dir(log_dir).expect("read log directory") {
@@ -724,6 +735,42 @@ fn scripted_headers_sync_persists_progress_and_status() {
     assert!(transport.sent_messages().iter().any(|message| {
         matches!(message, WireNetworkMessage::GetData(InventoryList { inventory }) if inventory.len() == 2)
     }));
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn sync_until_idle_continues_equal_message_rounds_when_heights_advance() {
+    // Arrange
+    let path = temp_store_path("until-idle-progress");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let genesis = header(BlockHash::from_byte_array([0_u8; 32]), 21);
+    let child = header(block_hash(&genesis), 22);
+    let grandchild = header(block_hash(&child), 23);
+    let mut runtime = DurableSyncRuntime::open(
+        store,
+        SyncRuntimeConfig {
+            max_rounds: 4,
+            ..sync_config()
+        },
+    )
+    .expect("runtime");
+    let mut transport = ScriptedTransport::new(vec![
+        headers_script(0, vec![genesis]),
+        headers_script(1, vec![child]),
+        headers_script(2, vec![grandchild]),
+        Vec::new(),
+    ]);
+
+    // Act
+    let summary = runtime
+        .sync_until_idle(&mut transport, 1_777_225_155)
+        .expect("sync until idle");
+
+    // Assert
+    assert_eq!(summary.best_header_height, 2);
+    assert_eq!(runtime.snapshot_summary().best_header_height, 2);
 
     remove_dir_if_exists(&path);
 }

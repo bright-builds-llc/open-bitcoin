@@ -4,6 +4,7 @@
 //! Serializable metrics retention and status contracts.
 
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 /// Metric series names exposed to status and dashboard consumers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -89,19 +90,29 @@ pub fn append_and_prune_metric_samples(
     now_unix_seconds: u64,
 ) -> Vec<MetricSample> {
     let minimum_timestamp = now_unix_seconds.saturating_sub(policy.max_age_seconds);
+    let sample_interval_seconds = policy.sample_interval_seconds.max(1);
     let mut retained = Vec::new();
 
     for kind in MetricKind::ALL {
-        let mut series = existing_samples
+        let mut samples_by_bucket: BTreeMap<u64, MetricSample> = BTreeMap::new();
+        for sample in existing_samples
             .iter()
             .chain(new_samples.iter())
             .filter(|sample| {
                 sample.kind == kind && sample.timestamp_unix_seconds >= minimum_timestamp
             })
-            .cloned()
-            .collect::<Vec<_>>();
-        series.sort_by_key(|sample| sample.timestamp_unix_seconds);
+        {
+            let bucket = sample.timestamp_unix_seconds / sample_interval_seconds;
+            match samples_by_bucket.get(&bucket) {
+                Some(retained_sample)
+                    if retained_sample.timestamp_unix_seconds > sample.timestamp_unix_seconds => {}
+                _ => {
+                    samples_by_bucket.insert(bucket, sample.clone());
+                }
+            }
+        }
 
+        let series = samples_by_bucket.into_values().collect::<Vec<_>>();
         let retained_count = series.len().min(policy.max_samples_per_series);
         let start = series.len().saturating_sub(retained_count);
         retained.extend(series.into_iter().skip(start));
@@ -177,6 +188,10 @@ mod tests {
         assert_eq!(policy.sample_interval_seconds, 30);
         assert_eq!(policy.max_samples_per_series, 2_880);
         assert_eq!(policy.max_age_seconds, 86_400);
+        assert_eq!(
+            policy.sample_interval_seconds * policy.max_samples_per_series as u64,
+            policy.max_age_seconds
+        );
     }
 
     #[test]
@@ -258,7 +273,7 @@ mod tests {
     fn append_and_prune_metric_samples_caps_each_series() {
         // Arrange
         let policy = MetricRetentionPolicy {
-            sample_interval_seconds: 30,
+            sample_interval_seconds: 1,
             max_samples_per_series: 2,
             max_age_seconds: 1_000,
         };
@@ -291,7 +306,7 @@ mod tests {
     fn append_and_prune_metric_samples_orders_by_kind_then_timestamp() {
         // Arrange
         let policy = MetricRetentionPolicy {
-            sample_interval_seconds: 30,
+            sample_interval_seconds: 1,
             max_samples_per_series: 4,
             max_age_seconds: 1_000,
         };
@@ -316,6 +331,38 @@ mod tests {
                 MetricSample::new(MetricKind::SyncHeight, 1.0, 50),
                 MetricSample::new(MetricKind::HeaderHeight, 2.0, 20),
                 MetricSample::new(MetricKind::PeerCount, 3.0, 10),
+            ]
+        );
+    }
+
+    #[test]
+    fn append_and_prune_metric_samples_enforces_sample_interval_buckets() {
+        // Arrange
+        let policy = MetricRetentionPolicy {
+            sample_interval_seconds: 30,
+            max_samples_per_series: 2,
+            max_age_seconds: 1_000,
+        };
+        let existing_samples = vec![
+            MetricSample::new(MetricKind::HeaderHeight, 100.0, 100),
+            MetricSample::new(MetricKind::HeaderHeight, 101.0, 110),
+        ];
+        let new_samples = vec![
+            MetricSample::new(MetricKind::HeaderHeight, 102.0, 119),
+            MetricSample::new(MetricKind::HeaderHeight, 103.0, 120),
+            MetricSample::new(MetricKind::HeaderHeight, 104.0, 149),
+        ];
+
+        // Act
+        let retained =
+            append_and_prune_metric_samples(&existing_samples, &new_samples, policy, 200);
+
+        // Assert
+        assert_eq!(
+            retained,
+            vec![
+                MetricSample::new(MetricKind::HeaderHeight, 102.0, 119),
+                MetricSample::new(MetricKind::HeaderHeight, 104.0, 149),
             ]
         );
     }

@@ -273,9 +273,9 @@ fn metrics_history_appends_across_reopen() {
             .expect("append first metrics");
         store
             .append_metric_samples(
-                &[MetricSample::new(MetricKind::SyncHeight, 20.0, 20)],
+                &[MetricSample::new(MetricKind::SyncHeight, 20.0, 40)],
                 retention,
-                20,
+                40,
                 PersistMode::Sync,
             )
             .expect("append second metrics");
@@ -291,7 +291,7 @@ fn metrics_history_appends_across_reopen() {
             .samples,
         vec![
             MetricSample::new(MetricKind::SyncHeight, 10.0, 10),
-            MetricSample::new(MetricKind::SyncHeight, 20.0, 20),
+            MetricSample::new(MetricKind::SyncHeight, 20.0, 40),
         ]
     );
 

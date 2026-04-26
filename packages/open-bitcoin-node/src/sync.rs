@@ -118,12 +118,16 @@ impl DurableSyncRuntime {
         timestamp: i64,
     ) -> Result<SyncRunSummary, SyncRuntimeError> {
         let mut last_summary = self.sync_once(transport, timestamp)?;
+        let mut previous_progress = sync_progress_marker(&last_summary);
         for _ in 1..self.config.max_rounds {
-            let previous_messages = last_summary.messages_processed;
-            last_summary = self.sync_once(transport, timestamp)?;
-            if last_summary.messages_processed == previous_messages {
+            let current_summary = self.sync_once(transport, timestamp)?;
+            let current_progress = sync_progress_marker(&current_summary);
+            let is_idle = current_progress == previous_progress;
+            last_summary = current_summary;
+            if is_idle {
                 break;
             }
+            previous_progress = current_progress;
         }
 
         Ok(last_summary)
@@ -391,6 +395,10 @@ fn structured_log_level(level: HealthSignalLevel) -> StructuredLogLevel {
         HealthSignalLevel::Warn => StructuredLogLevel::Warn,
         HealthSignalLevel::Error => StructuredLogLevel::Error,
     }
+}
+
+fn sync_progress_marker(summary: &SyncRunSummary) -> (u64, u64) {
+    (summary.best_header_height, summary.best_block_height)
 }
 
 fn log_write_failed_signal(error: &StructuredLogError) -> HealthSignal {
