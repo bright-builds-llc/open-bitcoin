@@ -11,8 +11,8 @@
 - [ ] **OBS-01**: Operator can run `open-bitcoin status` against a running or stopped node and see daemon state, version, commit/build provenance, datadir, config paths, network, chain tip, sync progress, peer counts, mempool summary, wallet summary, service state, log paths, and recent health signals.
 - [ ] **OBS-02**: Operator can request machine-readable status output with stable JSON fields for automation and support.
 - [x] **OBS-03**: The node records bounded historical metrics for sync height, header height, peer counts, mempool size, wallet balance summary, disk usage, RPC health, and service restarts.
-- [ ] **OBS-04**: The runtime writes structured logs with rotation, retention, and status-visible log locations.
-- [ ] **OBS-05**: Operators can inspect recent warnings or errors without opening raw log files manually.
+- [x] **OBS-04**: The runtime writes structured logs with rotation, retention, and status-visible log locations.
+- [x] **OBS-05**: Operators can inspect recent warnings or errors without opening raw log files manually.
 
 ### Terminal Dashboard
 
@@ -105,8 +105,8 @@
 | OBS-01 | Phase 13, Phase 17 | Pending |
 | OBS-02 | Phase 17 | Pending |
 | OBS-03 | Phase 13, Phase 16 | Complete |
-| OBS-04 | Phase 13, Phase 16 | Pending |
-| OBS-05 | Phase 16, Phase 17 | Pending |
+| OBS-04 | Phase 13, Phase 16 | Complete |
+| OBS-05 | Phase 16, Phase 17 | Complete |
 | DASH-01 | Phase 19 | Pending |
 | DASH-02 | Phase 19 | Pending |
 | DASH-03 | Phase 19 | Pending |

@@ -123,7 +123,7 @@ Plans:
 
 Plans:
 - [x] 16-01-PLAN.md — Bounded Fjall-backed metrics history
-- [ ] 16-02-PLAN.md — Structured log writing, retention, and recent signal queries
+- [x] 16-02-PLAN.md — Structured log writing, retention, and recent signal queries
 - [ ] 16-03-PLAN.md — Sync telemetry through shared metrics, logs, and status contracts
 
 ### Phase 17: CLI Status and First-Run Onboarding

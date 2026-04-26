@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Operator Runtime and Real-Network Sync
 status: executing
-stopped_at: Completed 16-01-PLAN.md
-last_updated: "2026-04-26T22:36:19.152Z"
+stopped_at: Completed 16-02-PLAN.md
+last_updated: "2026-04-26T22:58:08.661Z"
 last_activity: 2026-04-26
 progress:
   total_phases: 10
   completed_phases: 3
   total_plans: 16
-  completed_plans: 14
-  percent: 88
+  completed_plans: 15
+  percent: 94
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-26)
 ## Current Position
 
 Phase: 16 (Metrics, Logs, and Sync Telemetry) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-04-26
 
@@ -62,6 +62,7 @@ Progress: 3/10 phases complete
 - Phase 15 completed 4 real-network sync loop plans on 2026-04-26.
 
 | Phase 16 P01 | 12 min | 2 tasks | 4 files |
+| Phase 16 P02 | 18 min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -82,6 +83,9 @@ Recent decisions affecting current work:
 - [v1.1]: Keep macOS service lifecycle higher priority than Linux, while designing the interface so Linux systemd support fits the same command surface.
 - [Phase 16]: Metrics history remains snapshot-backed in the existing Fjall metrics namespace instead of introducing per-sample keys.
 - [Phase 16]: Unavailable metrics history is reported through MetricsStatus with MetricKind::ALL metadata, not fake numeric samples.
+- [Phase 16]: Runtime logs use repo-owned line-delimited JSON with Unix-day filenames instead of tracing/appender dependencies.
+- [Phase 16]: Log retention stays pure-planned and adapter-executed so pruning never selects unmanaged files.
+- [Phase 16]: Recent warning and error access lives in open-bitcoin-node status contracts, not CLI/dashboard raw-file parsing.
 
 ### Roadmap Evolution
 
@@ -113,6 +117,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-26T22:36:19.149Z
-Stopped at: Completed 16-01-PLAN.md
+Last session: 2026-04-26T22:58:08.658Z
+Stopped at: Completed 16-02-PLAN.md
 Resume file: None
