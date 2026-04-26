@@ -52,7 +52,7 @@
 - [x] **SYNC-03**: Node can request, download, validate, persist, and connect blocks from real peers with bounded in-flight work and observable progress.
 - [x] **SYNC-04**: Node handles peer disconnects, invalid data, timeouts, stalls, and competing branches with typed errors, metrics, and retry behavior.
 - [x] **SYNC-05**: Sync behavior is covered by deterministic simulated-network tests plus opt-in live-network smoke tests that do not make default verification flaky.
-- [ ] **SYNC-06**: Sync progress and bottlenecks are visible through status, metrics history, logs, and dashboard panels.
+- [x] **SYNC-06**: Sync progress and bottlenecks are visible through status, metrics history, logs, and dashboard panels.
 
 ### Wallet Runtime Expansion
 
@@ -131,7 +131,7 @@
 | SYNC-03 | Phase 15 | Complete |
 | SYNC-04 | Phase 15 | Complete |
 | SYNC-05 | Phase 15, Phase 22 | Complete |
-| SYNC-06 | Phase 16, Phase 19 | Pending |
+| SYNC-06 | Phase 16, Phase 19 | Complete |
 | WAL-04 | Phase 20 | Pending |
 | WAL-05 | Phase 20 | Pending |
 | WAL-06 | Phase 20 | Pending |

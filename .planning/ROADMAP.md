@@ -42,7 +42,7 @@ This active milestone makes Open Bitcoin usable as an operator-facing, service-m
 - [x] **Phase 13: Operator Runtime Foundations** - Define the dependency, command, config, status, metrics, log, and storage contracts that later user-facing work consumes. (completed 2026-04-26)
 - [x] **Phase 14: Durable Storage and Recovery** - Implement the selected durable storage layer and restart/recovery behavior for node and wallet state. (completed 2026-04-26)
 - [x] **Phase 15: Real Network Sync Loop** - Connect to real peers, drive headers/block sync, persist progress, and keep default tests deterministic. (completed 2026-04-26)
-- [ ] **Phase 16: Metrics, Logs, and Sync Telemetry** - Record bounded metrics history, rotate logs, and expose sync/runtime telemetry to status consumers.
+- [x] **Phase 16: Metrics, Logs, and Sync Telemetry** - Record bounded metrics history, rotate logs, and expose sync/runtime telemetry to status consumers. (completed 2026-04-26)
 - [ ] **Phase 17: CLI Status and First-Run Onboarding** - Expand the clap command tree, implement rich status output, and add the idempotent wizard plus JSONC config layer.
 - [ ] **Phase 18: Service Lifecycle Integration** - Add macOS launchd and Linux systemd install/uninstall/enable/disable/status support with dry-run safety.
 - [ ] **Phase 19: Ratatui Node Dashboard** - Build the terminal dashboard on top of the shared status, metrics, logs, service, and sync models.
@@ -124,7 +124,7 @@ Plans:
 Plans:
 - [x] 16-01-PLAN.md — Bounded Fjall-backed metrics history
 - [x] 16-02-PLAN.md — Structured log writing, retention, and recent signal queries
-- [ ] 16-03-PLAN.md — Sync telemetry through shared metrics, logs, and status contracts
+- [x] 16-03-PLAN.md — Sync telemetry through shared metrics, logs, and status contracts
 
 ### Phase 17: CLI Status and First-Run Onboarding
 

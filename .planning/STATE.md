@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Operator Runtime and Real-Network Sync
-status: executing
-stopped_at: Completed 16-02-PLAN.md
-last_updated: "2026-04-26T22:58:08.661Z"
+status: verifying
+stopped_at: Completed 16-metrics-logs-and-sync-telemetry-03-PLAN.md
+last_updated: "2026-04-26T23:21:54.560Z"
 last_activity: 2026-04-26
 progress:
   total_phases: 10
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 16
-  completed_plans: 15
-  percent: 94
+  completed_plans: 16
+  percent: 100
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-26)
 
 Phase: 16 (Metrics, Logs, and Sync Telemetry) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-26
 
 Progress: 3/10 phases complete
@@ -63,6 +63,7 @@ Progress: 3/10 phases complete
 
 | Phase 16 P01 | 12 min | 2 tasks | 4 files |
 | Phase 16 P02 | 18 min | 2 tasks | 7 files |
+| Phase 16-metrics-logs-and-sync-telemetry P03 | 19 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -86,6 +87,9 @@ Recent decisions affecting current work:
 - [Phase 16]: Runtime logs use repo-owned line-delimited JSON with Unix-day filenames instead of tracing/appender dependencies.
 - [Phase 16]: Log retention stays pure-planned and adapter-executed so pruning never selects unmanaged files.
 - [Phase 16]: Recent warning and error access lives in open-bitcoin-node status contracts, not CLI/dashboard raw-file parsing.
+- [Phase 16-metrics-logs-and-sync-telemetry]: Sync telemetry uses shared MetricSample, StructuredLogRecord, SyncStatus, PeerStatus, and HealthSignal contracts instead of a sync-only DTO. — Keeps status and dashboard consumers on the Phase 16 observability surface while satisfying SYNC-06.
+- [Phase 16-metrics-logs-and-sync-telemetry]: Sync runtime appends final metric samples through FjallNodeStore::append_metric_samples with default retention. — Append history preserves bounded time-series evidence and avoids overwriting snapshots after Plan 16-01.
+- [Phase 16-metrics-logs-and-sync-telemetry]: Sync structured log writing is optional via SyncRuntimeConfig::maybe_log_dir and log write failures become warning health signals. — Keeps default hermetic sync behavior unchanged while surfacing operator-visible logging failures.
 
 ### Roadmap Evolution
 
@@ -117,6 +121,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-26T22:58:08.658Z
-Stopped at: Completed 16-02-PLAN.md
+Last session: 2026-04-26T23:21:54.557Z
+Stopped at: Completed 16-metrics-logs-and-sync-telemetry-03-PLAN.md
 Resume file: None
