@@ -81,6 +81,35 @@ impl MetricSample {
     }
 }
 
+/// Combine new samples with existing history and enforce bounded per-series retention.
+pub fn append_and_prune_metric_samples(
+    existing_samples: &[MetricSample],
+    new_samples: &[MetricSample],
+    policy: MetricRetentionPolicy,
+    now_unix_seconds: u64,
+) -> Vec<MetricSample> {
+    let minimum_timestamp = now_unix_seconds.saturating_sub(policy.max_age_seconds);
+    let mut retained = Vec::new();
+
+    for kind in MetricKind::ALL {
+        let mut series = existing_samples
+            .iter()
+            .chain(new_samples.iter())
+            .filter(|sample| {
+                sample.kind == kind && sample.timestamp_unix_seconds >= minimum_timestamp
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        series.sort_by_key(|sample| sample.timestamp_unix_seconds);
+
+        let retained_count = series.len().min(policy.max_samples_per_series);
+        let start = series.len().saturating_sub(retained_count);
+        retained.extend(series.into_iter().skip(start));
+    }
+
+    retained
+}
+
 /// Availability of the metrics collector or history store.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", tag = "state")]
@@ -105,21 +134,39 @@ pub struct MetricsStatus {
     pub enabled_series: Vec<MetricKind>,
 }
 
-impl Default for MetricsStatus {
-    fn default() -> Self {
+impl MetricsStatus {
+    pub fn available(retention: MetricRetentionPolicy) -> Self {
         Self {
-            availability: MetricsAvailability::unavailable(
-                "metrics history unavailable until runtime collector starts",
-            ),
-            retention: MetricRetentionPolicy::default(),
+            availability: MetricsAvailability::Available,
+            retention,
+            enabled_series: MetricKind::ALL.to_vec(),
+        }
+    }
+
+    pub fn unavailable(retention: MetricRetentionPolicy, reason: impl Into<String>) -> Self {
+        Self {
+            availability: MetricsAvailability::unavailable(reason),
+            retention,
             enabled_series: MetricKind::ALL.to_vec(),
         }
     }
 }
 
+impl Default for MetricsStatus {
+    fn default() -> Self {
+        Self::unavailable(
+            MetricRetentionPolicy::default(),
+            "metrics history unavailable until runtime collector starts",
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{MetricKind, MetricRetentionPolicy, MetricSample, MetricsStatus};
+    use super::{
+        MetricKind, MetricRetentionPolicy, MetricSample, MetricsAvailability, MetricsStatus,
+        append_and_prune_metric_samples,
+    };
 
     #[test]
     fn default_metric_retention_matches_operator_contract() {
@@ -179,6 +226,124 @@ mod tests {
         assert_eq!(
             serde_json::to_value(&status.availability).expect("availability json")["state"],
             "unavailable"
+        );
+    }
+
+    #[test]
+    fn append_and_prune_metric_samples_drops_expired_samples() {
+        // Arrange
+        let policy = MetricRetentionPolicy {
+            sample_interval_seconds: 30,
+            max_samples_per_series: 4,
+            max_age_seconds: 50,
+        };
+        let existing_samples = MetricKind::ALL
+            .into_iter()
+            .map(|kind| MetricSample::new(kind, 1.0, 149))
+            .collect::<Vec<_>>();
+        let new_samples = MetricKind::ALL
+            .into_iter()
+            .map(|kind| MetricSample::new(kind, 2.0, 150))
+            .collect::<Vec<_>>();
+
+        // Act
+        let retained =
+            append_and_prune_metric_samples(&existing_samples, &new_samples, policy, 200);
+
+        // Assert
+        assert_eq!(retained, new_samples);
+    }
+
+    #[test]
+    fn append_and_prune_metric_samples_caps_each_series() {
+        // Arrange
+        let policy = MetricRetentionPolicy {
+            sample_interval_seconds: 30,
+            max_samples_per_series: 2,
+            max_age_seconds: 1_000,
+        };
+        let existing_samples = vec![
+            MetricSample::new(MetricKind::HeaderHeight, 10.0, 100),
+            MetricSample::new(MetricKind::SyncHeight, 1.0, 105),
+        ];
+        let new_samples = vec![
+            MetricSample::new(MetricKind::HeaderHeight, 11.0, 110),
+            MetricSample::new(MetricKind::HeaderHeight, 12.0, 120),
+            MetricSample::new(MetricKind::HeaderHeight, 13.0, 130),
+        ];
+
+        // Act
+        let retained =
+            append_and_prune_metric_samples(&existing_samples, &new_samples, policy, 200);
+
+        // Assert
+        assert_eq!(
+            retained,
+            vec![
+                MetricSample::new(MetricKind::SyncHeight, 1.0, 105),
+                MetricSample::new(MetricKind::HeaderHeight, 12.0, 120),
+                MetricSample::new(MetricKind::HeaderHeight, 13.0, 130),
+            ]
+        );
+    }
+
+    #[test]
+    fn append_and_prune_metric_samples_orders_by_kind_then_timestamp() {
+        // Arrange
+        let policy = MetricRetentionPolicy {
+            sample_interval_seconds: 30,
+            max_samples_per_series: 4,
+            max_age_seconds: 1_000,
+        };
+        let existing_samples = vec![
+            MetricSample::new(MetricKind::PeerCount, 3.0, 10),
+            MetricSample::new(MetricKind::SyncHeight, 1.0, 50),
+        ];
+        let new_samples = vec![
+            MetricSample::new(MetricKind::HeaderHeight, 2.0, 20),
+            MetricSample::new(MetricKind::SyncHeight, 1.5, 40),
+        ];
+
+        // Act
+        let retained =
+            append_and_prune_metric_samples(&existing_samples, &new_samples, policy, 200);
+
+        // Assert
+        assert_eq!(
+            retained,
+            vec![
+                MetricSample::new(MetricKind::SyncHeight, 1.5, 40),
+                MetricSample::new(MetricKind::SyncHeight, 1.0, 50),
+                MetricSample::new(MetricKind::HeaderHeight, 2.0, 20),
+                MetricSample::new(MetricKind::PeerCount, 3.0, 10),
+            ]
+        );
+    }
+
+    #[test]
+    fn available_metrics_status_preserves_retention_and_series() {
+        // Arrange
+        let policy = MetricRetentionPolicy {
+            sample_interval_seconds: 15,
+            max_samples_per_series: 3,
+            max_age_seconds: 60,
+        };
+
+        // Act
+        let available = MetricsStatus::available(policy);
+        let unavailable = MetricsStatus::unavailable(policy, "metrics collector not started");
+
+        // Assert
+        assert_eq!(available.retention, policy);
+        assert_eq!(available.enabled_series, MetricKind::ALL.to_vec());
+        assert_eq!(available.availability, MetricsAvailability::Available);
+        assert_eq!(unavailable.retention, policy);
+        assert_eq!(unavailable.enabled_series, MetricKind::ALL.to_vec());
+        assert_eq!(
+            unavailable.availability,
+            MetricsAvailability::Unavailable {
+                reason: "metrics collector not started".to_string()
+            }
         );
     }
 }

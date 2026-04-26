@@ -7,10 +7,10 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 206 |
-| Total lines | 56,102 |
-| Code/content lines | 49,712 |
-| Comment-only lines | 1,422 |
-| Blank lines | 4,968 |
+| Total lines | 56,267 |
+| Code/content lines | 49,846 |
+| Comment-only lines | 1,435 |
+| Blank lines | 4,986 |
 
 ## Per-Crate Modules
 
@@ -24,7 +24,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | open-bitcoin-core | 3 | 39 | 0 | 36 | 75 | 0.0% |
 | open-bitcoin-mempool | 10 | 1,867 | 1,268 | 30 | 3,165 | 67.9% |
 | open-bitcoin-network | 11 | 1,729 | 1,416 | 30 | 3,175 | 81.9% |
-| open-bitcoin-node | 21 | 4,268 | 1,460 | 36 | 5,764 | 34.2% |
+| open-bitcoin-node | 21 | 4,433 | 1,460 | 36 | 5,929 | 32.9% |
 | open-bitcoin-primitives | 9 | 877 | 0 | 20 | 897 | 0.0% |
 | open-bitcoin-rpc | 21 | 3,173 | 1,632 | 53 | 4,858 | 51.4% |
 | open-bitcoin-test-harness | 7 | 662 | 0 | 28 | 690 | 0.0% |
@@ -34,7 +34,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Category | Files | Total | Code/Content | Comments | Blank |
 | --- | --- | --- | --- | --- | --- |
-| Rust production | 114 | 26,986 | 23,183 | 837 | 2,966 |
+| Rust production | 114 | 27,151 | 23,317 | 850 | 2,984 |
 | Rust tests | 35 | 18,277 | 16,370 | 553 | 1,354 |
 | Fixture/data | 6 | 6,057 | 6,052 | 5 | 0 |
 | TOML/config | 16 | 2,077 | 1,849 | 0 | 228 |
@@ -76,7 +76,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | a4988cd0de48a4084f2a34935a374f4813de464376834e21a07073d9412549cb |
+| Input fingerprint | 5f51062d2d8d4c6315db73ee36f4376251e7f6cd8c836e9783cc9ad09965fcdb |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |
