@@ -5,6 +5,11 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::status::{HealthSignal, HealthSignalLevel};
+
+#[cfg(test)]
+mod tests;
+
 /// Supported structured log levels for operator-facing summaries.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -14,6 +19,31 @@ pub enum StructuredLogLevel {
     Info,
     Warn,
     Error,
+}
+
+/// Structured runtime log record written by Open Bitcoin-owned adapters.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StructuredLogRecord {
+    pub level: StructuredLogLevel,
+    pub source: String,
+    pub message: String,
+    pub timestamp_unix_seconds: u64,
+}
+
+impl StructuredLogRecord {
+    pub fn new(
+        level: StructuredLogLevel,
+        source: impl Into<String>,
+        message: impl Into<String>,
+        timestamp_unix_seconds: u64,
+    ) -> Self {
+        Self {
+            level,
+            source: source.into(),
+            message: message.into(),
+            timestamp_unix_seconds,
+        }
+    }
 }
 
 /// Log file rotation cadence.
@@ -68,6 +98,7 @@ impl LogPathStatus {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RecentLogSignal {
     pub level: StructuredLogLevel,
+    pub source: String,
     pub message: String,
     pub timestamp_unix_seconds: u64,
 }
@@ -90,65 +121,63 @@ impl Default for LogStatus {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::{LogPathStatus, LogRetentionPolicy, LogRotation, LogStatus, StructuredLogLevel};
+pub fn recent_log_signals_from_records(
+    records: &[StructuredLogRecord],
+    limit: usize,
+) -> Vec<RecentLogSignal> {
+    let mut signals: Vec<(usize, RecentLogSignal)> = records
+        .iter()
+        .enumerate()
+        .filter_map(|(index, record)| {
+            recent_log_signal_from_record(record).map(|signal| (index, signal))
+        })
+        .collect();
 
-    #[test]
-    fn default_log_retention_matches_operator_contract() {
-        // Arrange / Act
-        let policy = LogRetentionPolicy::default();
+    signals.sort_by(|(left_index, left), (right_index, right)| {
+        right
+            .timestamp_unix_seconds
+            .cmp(&left.timestamp_unix_seconds)
+            .then_with(|| left_index.cmp(right_index))
+    });
+    signals.truncate(limit);
+    signals.into_iter().map(|(_, signal)| signal).collect()
+}
 
-        // Assert
-        assert_eq!(policy.rotation, LogRotation::Daily);
-        assert_eq!(policy.max_files, 14);
-        assert_eq!(policy.max_age_days, 14);
-        assert_eq!(policy.max_total_bytes, 268_435_456);
+pub fn health_signals_from_recent_logs(signals: &[RecentLogSignal]) -> Vec<HealthSignal> {
+    signals
+        .iter()
+        .filter_map(|signal| {
+            let level = match signal.level {
+                StructuredLogLevel::Warn => HealthSignalLevel::Warn,
+                StructuredLogLevel::Error => HealthSignalLevel::Error,
+                StructuredLogLevel::Trace
+                | StructuredLogLevel::Debug
+                | StructuredLogLevel::Info => {
+                    return None;
+                }
+            };
+
+            Some(HealthSignal {
+                level,
+                source: signal.source.clone(),
+                message: signal.message.clone(),
+            })
+        })
+        .collect()
+}
+
+fn recent_log_signal_from_record(record: &StructuredLogRecord) -> Option<RecentLogSignal> {
+    if !matches!(
+        record.level,
+        StructuredLogLevel::Warn | StructuredLogLevel::Error
+    ) {
+        return None;
     }
 
-    #[test]
-    fn structured_log_levels_use_snake_case_json() {
-        // Arrange
-        let levels = [
-            (StructuredLogLevel::Trace, "\"trace\""),
-            (StructuredLogLevel::Debug, "\"debug\""),
-            (StructuredLogLevel::Info, "\"info\""),
-            (StructuredLogLevel::Warn, "\"warn\""),
-            (StructuredLogLevel::Error, "\"error\""),
-        ];
-
-        // Act / Assert
-        for (level, expected_json) in levels {
-            let encoded = serde_json::to_string(&level).expect("level json");
-            assert_eq!(encoded, expected_json);
-        }
-    }
-
-    #[test]
-    fn unavailable_log_path_round_trips_through_json() {
-        // Arrange
-        let path = LogPathStatus::unavailable("node stopped");
-
-        // Act
-        let encoded = serde_json::to_string(&path).expect("path json");
-        let decoded: LogPathStatus = serde_json::from_str(&encoded).expect("path decode");
-
-        // Assert
-        assert_eq!(decoded, path);
-        assert!(encoded.contains("node stopped"));
-    }
-
-    #[test]
-    fn default_log_status_exposes_retention_and_no_signals() {
-        // Arrange / Act
-        let status = LogStatus::default();
-
-        // Assert
-        assert_eq!(status.retention, LogRetentionPolicy::default());
-        assert!(status.recent_signals.is_empty());
-        assert_eq!(
-            serde_json::to_value(&status.path).expect("path json")["state"],
-            "unavailable"
-        );
-    }
+    Some(RecentLogSignal {
+        level: record.level,
+        source: record.source.clone(),
+        message: record.message.clone(),
+        timestamp_unix_seconds: record.timestamp_unix_seconds,
+    })
 }
