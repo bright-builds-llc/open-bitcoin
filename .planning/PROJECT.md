@@ -16,6 +16,8 @@ v1.0 Headless Parity shipped on 2026-04-26. The repository contains a headless R
 
 The v1.0 archive lives under `.planning/milestones/`, with the detailed shipped roadmap, requirements ledger, and milestone audit preserved as historical artifacts.
 
+v1.1 Phases 13 through 16 are complete. The active milestone now has shared operator-runtime contracts, durable Fjall-backed runtime storage, hermetic real-network sync foundations, and bounded metrics/log/sync telemetry ready for the CLI, service, and dashboard phases.
+
 ## Current Milestone: v1.1 Operator Runtime and Real-Network Sync
 
 **Goal:** Make Open Bitcoin usable as an operator-facing, service-managed node that can begin true network sync work with durable storage, richer CLI/TUI surfaces, migration guidance, and expanded parity coverage.
@@ -111,4 +113,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-26 after v1.1 milestone start*
+*Last updated: 2026-04-26 after Phase 16 completion*

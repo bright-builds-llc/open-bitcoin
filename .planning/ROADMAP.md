@@ -209,4 +209,4 @@ Plans:
 | Milestone | Phases | Plans | Status | Shipped |
 | --- | ---: | ---: | --- | --- |
 | v1.0 Headless Parity | 22/22 | 80/80 | Archived | 2026-04-26 |
-| v1.1 Operator Runtime and Real-Network Sync | 3/10 | 13/13 | In Progress | - |
+| v1.1 Operator Runtime and Real-Network Sync | 4/10 | 16/16 | In Progress | - |
