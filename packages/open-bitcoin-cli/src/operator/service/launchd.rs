@@ -1,7 +1,11 @@
 // Parity breadcrumbs:
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
-//! macOS launchd service adapter and plist content generator for Open Bitcoin.
+//! macOS launchd service adapter for the Open Bitcoin node.
+//!
+//! `generate_plist_content()` is a pure function exercised in tests without filesystem or
+//! subprocess access. `LaunchdAdapter` wraps effectful operations (file writes and
+//! `launchctl` invocations) behind the `ServiceManager` trait.
 
 use std::path::{Path, PathBuf};
 
@@ -11,14 +15,15 @@ use super::{
     ServiceUninstallRequest,
 };
 
-/// launchd service label for the Open Bitcoin node.
+/// launchd label for the Open Bitcoin node service.
 pub const OPEN_BITCOIN_LAUNCHD_LABEL: &str = "org.open-bitcoin.node";
-/// Plist file name for the Open Bitcoin launchd service.
+
+/// launchd plist filename for the Open Bitcoin node service.
 pub const OPEN_BITCOIN_LAUNCHD_FILE_NAME: &str = "org.open-bitcoin.node.plist";
 
-/// Generate plist XML content for the Open Bitcoin launchd service.
+/// Generate a macOS launchd plist XML string for the Open Bitcoin node.
 ///
-/// Returns a complete Apple Property List XML string. Does not perform any I/O.
+/// This is a pure function — no filesystem access or subprocess calls occur here.
 pub fn generate_plist_content(
     label: &str,
     binary_path: &Path,
@@ -26,25 +31,23 @@ pub fn generate_plist_content(
     maybe_config_path: Option<&Path>,
     maybe_log_path: Option<&Path>,
 ) -> String {
-    let mut args = format!(
-        "        <string>{binary}</string>\n        <string>--datadir</string>\n        <string>{datadir}</string>\n",
-        binary = binary_path.display(),
-        datadir = data_dir.display(),
-    );
+    let binary_str = binary_path.display();
+    let data_dir_str = data_dir.display();
 
+    let mut config_args = String::new();
     if let Some(config_path) = maybe_config_path {
-        args.push_str(&format!(
-            "        <string>--config</string>\n        <string>{config}</string>\n",
-            config = config_path.display(),
-        ));
+        config_args = format!(
+            "\n        <string>--config</string>\n        <string>{}</string>",
+            config_path.display()
+        );
     }
 
     let mut log_keys = String::new();
     if let Some(log_path) = maybe_log_path {
-        log_keys.push_str(&format!(
-            "    <key>StandardOutPath</key>\n    <string>{log}</string>\n    <key>StandardErrorPath</key>\n    <string>{log}</string>\n",
-            log = log_path.display(),
-        ));
+        let log_str = log_path.display();
+        log_keys = format!(
+            "\n    <key>StandardOutPath</key>\n    <string>{log_str}</string>\n    <key>StandardErrorPath</key>\n    <string>{log_str}</string>"
+        );
     }
 
     format!(
@@ -58,33 +61,51 @@ pub fn generate_plist_content(
     <string>{label}</string>
     <key>ProgramArguments</key>
     <array>
-{args}    </array>
+        <string>{binary_str}</string>
+        <string>--datadir</string>
+        <string>{data_dir_str}</string>{config_args}
+    </array>
     <key>KeepAlive</key>
     <true/>
     <key>RunAtLoad</key>
-    <true/>
-{log_keys}</dict>
+    <true/>{log_keys}
+</dict>
 </plist>
 "#
     )
 }
 
-/// macOS launchd adapter for Open Bitcoin service lifecycle management.
+/// macOS launchd service adapter.
+///
+/// Wraps plist file writes and `launchctl` invocations. Construct via `LaunchdAdapter::new()`;
+/// inject into CLI routes via the `ServiceManager` trait.
 pub struct LaunchdAdapter {
     home_dir: PathBuf,
 }
 
 impl LaunchdAdapter {
-    /// Create a new `LaunchdAdapter` rooted at the given home directory.
     pub fn new(home_dir: PathBuf) -> Self {
         Self { home_dir }
     }
 
-    fn plist_target_path(&self) -> PathBuf {
-        self.home_dir
-            .join("Library")
-            .join("LaunchAgents")
+    fn launch_agents_dir(&self) -> PathBuf {
+        self.home_dir.join("Library").join("LaunchAgents")
+    }
+
+    fn plist_path(&self) -> PathBuf {
+        self.launch_agents_dir()
             .join(OPEN_BITCOIN_LAUNCHD_FILE_NAME)
+    }
+
+    /// Retrieves the current user ID using the `id -u` command.
+    fn uid() -> u32 {
+        std::process::Command::new("id")
+            .arg("-u")
+            .output()
+            .ok()
+            .and_then(|out| String::from_utf8(out.stdout).ok())
+            .and_then(|s| s.trim().parse::<u32>().ok())
+            .unwrap_or(501) // fallback: typical first macOS user UID
     }
 }
 
@@ -93,7 +114,7 @@ impl ServiceManager for LaunchdAdapter {
         &self,
         request: &ServiceInstallRequest,
     ) -> Result<ServiceCommandOutcome, ServiceError> {
-        let target_path = self.plist_target_path();
+        let plist_path = self.plist_path();
         let plist_content = generate_plist_content(
             OPEN_BITCOIN_LAUNCHD_LABEL,
             &request.binary_path,
@@ -101,43 +122,45 @@ impl ServiceManager for LaunchdAdapter {
             request.maybe_config_path.as_deref(),
             request.maybe_log_path.as_deref(),
         );
-        let bootstrap_command =
-            format!("launchctl bootstrap gui/$(id -u) {}", target_path.display());
+        let uid = Self::uid();
+        let bootstrap_cmd = format!("launchctl bootstrap gui/{uid} {}", plist_path.display());
 
         if !request.apply {
             return Ok(ServiceCommandOutcome {
                 dry_run: true,
-                description: format!("Would write plist to {}", target_path.display()),
-                maybe_file_path: Some(target_path),
+                description: format!("Would write plist to {}", plist_path.display()),
+                maybe_file_path: Some(plist_path),
                 maybe_file_content: Some(plist_content),
-                commands_that_would_run: vec![bootstrap_command],
+                commands_that_would_run: vec![bootstrap_cmd],
             });
         }
 
-        if target_path.exists() {
-            return Err(ServiceError::AlreadyInstalled { path: target_path });
+        // apply=true: check for existing file before writing
+        if plist_path.exists() {
+            return Err(ServiceError::AlreadyInstalled { path: plist_path });
         }
 
-        if let Some(parent) = target_path.parent() {
-            std::fs::create_dir_all(parent).map_err(|error| ServiceError::WriteFailure {
-                path: parent.to_owned(),
-                cause: error.to_string(),
-            })?;
+        // Ensure the LaunchAgents directory exists
+        if let Err(cause) = std::fs::create_dir_all(self.launch_agents_dir()) {
+            return Err(ServiceError::WriteFailure {
+                path: self.launch_agents_dir(),
+                cause: cause.to_string(),
+            });
         }
 
-        std::fs::write(&target_path, &plist_content).map_err(|error| {
+        std::fs::write(&plist_path, &plist_content).map_err(|cause| {
             ServiceError::WriteFailure {
-                path: target_path.clone(),
-                cause: error.to_string(),
+                path: plist_path.clone(),
+                cause: cause.to_string(),
             }
         })?;
 
         Ok(ServiceCommandOutcome {
             dry_run: false,
-            description: format!("Wrote plist to {}", target_path.display()),
-            maybe_file_path: Some(target_path),
+            description: format!("Wrote plist to {}", plist_path.display()),
+            maybe_file_path: Some(plist_path),
             maybe_file_content: Some(plist_content),
-            commands_that_would_run: vec![bootstrap_command],
+            commands_that_would_run: vec![bootstrap_cmd],
         })
     }
 
@@ -145,171 +168,182 @@ impl ServiceManager for LaunchdAdapter {
         &self,
         request: &ServiceUninstallRequest,
     ) -> Result<ServiceCommandOutcome, ServiceError> {
-        let target_path = self.plist_target_path();
-        if !target_path.exists() {
+        let plist_path = self.plist_path();
+        let uid = Self::uid();
+        let bootout_cmd = format!("launchctl bootout gui/{uid}/{OPEN_BITCOIN_LAUNCHD_LABEL}");
+
+        if !plist_path.exists() {
             return Err(ServiceError::NotInstalled);
         }
-
-        let bootout_command = format!(
-            "launchctl bootout gui/$(id -u)/{}",
-            OPEN_BITCOIN_LAUNCHD_LABEL
-        );
 
         if !request.apply {
             return Ok(ServiceCommandOutcome {
                 dry_run: true,
-                description: format!("Would remove plist at {}", target_path.display()),
-                maybe_file_path: Some(target_path),
+                description: format!("Would remove plist at {}", plist_path.display()),
+                maybe_file_path: Some(plist_path),
                 maybe_file_content: None,
-                commands_that_would_run: vec![bootout_command],
+                commands_that_would_run: vec![bootout_cmd],
             });
         }
 
-        std::fs::remove_file(&target_path).map_err(|error| ServiceError::WriteFailure {
-            path: target_path.clone(),
-            cause: error.to_string(),
+        // apply=true: run bootout then remove file
+        let output = std::process::Command::new("launchctl")
+            .args([
+                "bootout",
+                &format!("gui/{uid}/{OPEN_BITCOIN_LAUNCHD_LABEL}"),
+            ])
+            .output()
+            .map_err(|cause| ServiceError::ManagerCommandFailed {
+                exit_code: -1,
+                stderr: cause.to_string(),
+            })?;
+
+        if !output.status.success() {
+            let exit_code = output.status.code().unwrap_or(-1);
+            let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+            // Exit code 36 means "operation not permitted" (service not loaded) — treat as non-fatal
+            if exit_code != 36 {
+                return Err(ServiceError::ManagerCommandFailed { exit_code, stderr });
+            }
+        }
+
+        std::fs::remove_file(&plist_path).map_err(|cause| ServiceError::WriteFailure {
+            path: plist_path.clone(),
+            cause: cause.to_string(),
         })?;
 
         Ok(ServiceCommandOutcome {
             dry_run: false,
-            description: format!("Removed plist at {}", target_path.display()),
-            maybe_file_path: Some(target_path),
+            description: format!("Removed plist at {}", plist_path.display()),
+            maybe_file_path: Some(plist_path),
             maybe_file_content: None,
-            commands_that_would_run: vec![bootout_command],
+            commands_that_would_run: vec![bootout_cmd],
         })
     }
 
     fn enable(
         &self,
-        _request: &ServiceEnableRequest,
+        request: &ServiceEnableRequest,
     ) -> Result<ServiceCommandOutcome, ServiceError> {
-        let command = format!(
-            "launchctl enable gui/$(id -u)/{}",
-            OPEN_BITCOIN_LAUNCHD_LABEL
-        );
+        let uid = Self::uid();
+        let enable_cmd = format!("launchctl enable gui/{uid}/{OPEN_BITCOIN_LAUNCHD_LABEL}");
+
+        let _ = request;
 
         let output = std::process::Command::new("launchctl")
-            .arg("enable")
-            .arg(format!("gui/$(id -u)/{}", OPEN_BITCOIN_LAUNCHD_LABEL))
-            .output();
+            .args(["enable", &format!("gui/{uid}/{OPEN_BITCOIN_LAUNCHD_LABEL}")])
+            .output()
+            .map_err(|cause| ServiceError::ManagerCommandFailed {
+                exit_code: -1,
+                stderr: cause.to_string(),
+            })?;
 
-        match output {
-            Ok(out) if out.status.success() => Ok(ServiceCommandOutcome {
-                dry_run: false,
-                description: "Enabled service".to_string(),
-                maybe_file_path: None,
-                maybe_file_content: None,
-                commands_that_would_run: vec![command],
-            }),
-            Ok(out) => {
-                let exit_code = out.status.code().unwrap_or(-1);
-                let stderr = String::from_utf8_lossy(&out.stderr).to_string();
-                Err(ServiceError::ManagerCommandFailed { exit_code, stderr })
-            }
-            Err(_) => Ok(ServiceCommandOutcome {
-                dry_run: true,
-                description: format!(
-                    "Would enable service (launchctl not available). Run: {command}"
-                ),
-                maybe_file_path: None,
-                maybe_file_content: None,
-                commands_that_would_run: vec![command],
-            }),
+        if !output.status.success() {
+            let exit_code = output.status.code().unwrap_or(-1);
+            let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+            return Err(ServiceError::ManagerCommandFailed { exit_code, stderr });
         }
+
+        Ok(ServiceCommandOutcome {
+            dry_run: false,
+            description: "Enabled service to start at login".to_string(),
+            maybe_file_path: None,
+            maybe_file_content: None,
+            commands_that_would_run: vec![enable_cmd],
+        })
     }
 
     fn disable(
         &self,
-        _request: &ServiceDisableRequest,
+        request: &ServiceDisableRequest,
     ) -> Result<ServiceCommandOutcome, ServiceError> {
-        let command = format!(
-            "launchctl disable gui/$(id -u)/{}",
-            OPEN_BITCOIN_LAUNCHD_LABEL
-        );
+        let uid = Self::uid();
+        let disable_cmd = format!("launchctl disable gui/{uid}/{OPEN_BITCOIN_LAUNCHD_LABEL}");
+
+        let _ = request;
 
         let output = std::process::Command::new("launchctl")
-            .arg("disable")
-            .arg(format!("gui/$(id -u)/{}", OPEN_BITCOIN_LAUNCHD_LABEL))
-            .output();
+            .args([
+                "disable",
+                &format!("gui/{uid}/{OPEN_BITCOIN_LAUNCHD_LABEL}"),
+            ])
+            .output()
+            .map_err(|cause| ServiceError::ManagerCommandFailed {
+                exit_code: -1,
+                stderr: cause.to_string(),
+            })?;
 
-        match output {
-            Ok(out) if out.status.success() => Ok(ServiceCommandOutcome {
-                dry_run: false,
-                description: "Disabled service".to_string(),
-                maybe_file_path: None,
-                maybe_file_content: None,
-                commands_that_would_run: vec![command],
-            }),
-            Ok(out) => {
-                let exit_code = out.status.code().unwrap_or(-1);
-                let stderr = String::from_utf8_lossy(&out.stderr).to_string();
-                Err(ServiceError::ManagerCommandFailed { exit_code, stderr })
-            }
-            Err(_) => Ok(ServiceCommandOutcome {
-                dry_run: true,
-                description: format!(
-                    "Would disable service (launchctl not available). Run: {command}"
-                ),
-                maybe_file_path: None,
-                maybe_file_content: None,
-                commands_that_would_run: vec![command],
-            }),
+        if !output.status.success() {
+            let exit_code = output.status.code().unwrap_or(-1);
+            let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+            return Err(ServiceError::ManagerCommandFailed { exit_code, stderr });
         }
+
+        Ok(ServiceCommandOutcome {
+            dry_run: false,
+            description: "Disabled service from starting at login".to_string(),
+            maybe_file_path: None,
+            maybe_file_content: None,
+            commands_that_would_run: vec![disable_cmd],
+        })
     }
 
     fn status(&self) -> Result<ServiceStateSnapshot, ServiceError> {
-        let plist_path = self.plist_target_path();
-        let installed = plist_path.exists();
+        let plist_path = self.plist_path();
 
+        // If no plist file exists, it's unmanaged
+        if !plist_path.exists() {
+            return Ok(ServiceStateSnapshot {
+                state: ServiceLifecycleState::Unmanaged,
+                maybe_service_file_path: None,
+                maybe_manager_diagnostics: Some(
+                    "unmanaged — run `open-bitcoin service install --dry-run` to see what would be created".to_string()
+                ),
+                maybe_log_path: None,
+            });
+        }
+
+        // Query launchd for the current state
         let output = std::process::Command::new("launchctl")
-            .arg("list")
-            .arg(OPEN_BITCOIN_LAUNCHD_LABEL)
+            .args(["list", OPEN_BITCOIN_LAUNCHD_LABEL])
             .output();
 
-        let Ok(out) = output else {
+        let Ok(output) = output else {
             return Ok(ServiceStateSnapshot {
-                state: if installed {
-                    ServiceLifecycleState::Installed
-                } else {
-                    ServiceLifecycleState::Unmanaged
-                },
-                maybe_service_file_path: installed.then_some(plist_path),
+                state: ServiceLifecycleState::Installed,
+                maybe_service_file_path: Some(plist_path),
                 maybe_manager_diagnostics: Some("launchctl not available".to_string()),
                 maybe_log_path: None,
             });
         };
 
-        // Exit code 113 = service not registered with launchd.
-        if out.status.code() == Some(113) {
+        // Exit code 113 = service not registered with launchd
+        if output.status.code() == Some(113) {
             return Ok(ServiceStateSnapshot {
-                state: if installed {
-                    ServiceLifecycleState::Installed
-                } else {
-                    ServiceLifecycleState::Unmanaged
-                },
-                maybe_service_file_path: installed.then_some(plist_path),
-                maybe_manager_diagnostics: None,
+                state: ServiceLifecycleState::Installed,
+                maybe_service_file_path: Some(plist_path),
+                maybe_manager_diagnostics: Some(
+                    "service not registered with launchd (not bootstrapped)".to_string(),
+                ),
                 maybe_log_path: None,
             });
         }
 
-        let stdout = String::from_utf8_lossy(&out.stdout).to_string();
-        // CF plist text: "PID" = 1234; (launchctl list <label> format)
+        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
         let state = if stdout.contains("\"PID\" = ") {
             ServiceLifecycleState::Running
         } else if stdout.contains("\"LastExitStatus\" = 0;") {
             ServiceLifecycleState::Stopped
-        } else if out.status.success() {
+        } else if output.status.success() {
+            // Loaded but last exit was non-zero
             ServiceLifecycleState::Failed
-        } else if installed {
-            ServiceLifecycleState::Installed
         } else {
-            ServiceLifecycleState::Unmanaged
+            ServiceLifecycleState::Installed
         };
 
         Ok(ServiceStateSnapshot {
             state,
-            maybe_service_file_path: installed.then_some(plist_path),
+            maybe_service_file_path: Some(plist_path),
             maybe_manager_diagnostics: if stdout.is_empty() {
                 None
             } else {

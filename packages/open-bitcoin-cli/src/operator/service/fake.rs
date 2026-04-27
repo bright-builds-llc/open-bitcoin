@@ -1,48 +1,60 @@
 // Parity breadcrumbs:
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
-//! Fake service manager for test isolation — records calls, returns deterministic outcomes.
+//! Fake service manager for use in tests.
+//!
+//! `FakeServiceManager` records all calls and returns deterministic outcomes configured at
+//! construction time. No subprocess invocations or filesystem writes occur.
 
 use std::cell::RefCell;
 
 use super::{
     ServiceCommandOutcome, ServiceDisableRequest, ServiceEnableRequest, ServiceError,
-    ServiceInstallRequest, ServiceManager, ServiceStateSnapshot, ServiceUninstallRequest,
+    ServiceInstallRequest, ServiceLifecycleState, ServiceManager, ServiceStateSnapshot,
+    ServiceUninstallRequest,
 };
 
-/// Records a single call made to `FakeServiceManager`.
+/// A recorded call to `FakeServiceManager`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FakeServiceCall {
-    /// `install` was called with the given `apply` flag.
     Install { apply: bool },
-    /// `uninstall` was called with the given `apply` flag.
     Uninstall { apply: bool },
-    /// `enable` was called.
     Enable,
-    /// `disable` was called.
     Disable,
-    /// `status` was called.
     Status,
 }
 
-/// A deterministic, in-process `ServiceManager` that records calls without performing I/O.
+/// A `ServiceManager` that records calls without performing any real I/O.
+///
+/// Configure `status_to_return` and `maybe_install_error` at construction time to drive
+/// specific test scenarios.
 pub struct FakeServiceManager {
     /// All calls made to this manager in order.
     pub recorded_calls: RefCell<Vec<FakeServiceCall>>,
-    /// State snapshot returned by `status()`.
+    /// The state snapshot returned from `status()`.
     pub status_to_return: ServiceStateSnapshot,
-    /// If `Some`, `install()` returns this error instead of success.
-    pub install_error: Option<ServiceError>,
+    /// If `Some`, `install()` returns this error instead of `Ok`.
+    pub maybe_install_error: Option<ServiceError>,
 }
 
 impl FakeServiceManager {
-    /// Create a `FakeServiceManager` that returns `status_to_return` from `status()`.
+    /// Create a new `FakeServiceManager` that returns the given status snapshot from `status()`.
     pub fn new(status_to_return: ServiceStateSnapshot) -> Self {
         Self {
             recorded_calls: RefCell::new(Vec::new()),
             status_to_return,
-            install_error: None,
+            maybe_install_error: None,
         }
+    }
+
+    /// Create an unmanaged fake manager (convenient default for tests).
+    pub fn unmanaged() -> Self {
+        Self::new(ServiceStateSnapshot {
+            state: ServiceLifecycleState::Unmanaged,
+            maybe_service_file_path: None,
+            maybe_manager_diagnostics: None,
+            maybe_log_path: None,
+        })
     }
 }
 
@@ -57,7 +69,7 @@ impl ServiceManager for FakeServiceManager {
                 apply: request.apply,
             });
 
-        if let Some(ref error) = self.install_error {
+        if let Some(ref error) = self.maybe_install_error {
             return Err(error.clone());
         }
 
@@ -128,11 +140,6 @@ impl ServiceManager for FakeServiceManager {
             .borrow_mut()
             .push(FakeServiceCall::Status);
 
-        Ok(ServiceStateSnapshot {
-            state: self.status_to_return.state,
-            maybe_service_file_path: self.status_to_return.maybe_service_file_path.clone(),
-            maybe_manager_diagnostics: self.status_to_return.maybe_manager_diagnostics.clone(),
-            maybe_log_path: self.status_to_return.maybe_log_path.clone(),
-        })
+        Ok(self.status_to_return.clone())
     }
 }

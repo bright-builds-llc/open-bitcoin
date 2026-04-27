@@ -1,153 +1,157 @@
 // Parity breadcrumbs:
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
-//! Service lifecycle trait, error types, and platform factory for Open Bitcoin.
+//! Service lifecycle management contracts for Open Bitcoin node.
+//!
+//! This module defines the `ServiceManager` trait, typed request/response structs, error
+//! variants, and a `platform_service_manager()` factory for selecting the active platform
+//! adapter at compile time.
 
 use std::path::PathBuf;
 
 pub mod fake;
 pub mod launchd;
 pub mod systemd;
+
 #[cfg(test)]
 mod tests;
 
-/// Lifecycle state of the Open Bitcoin node service.
+/// The current lifecycle state of the Open Bitcoin service.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ServiceLifecycleState {
-    /// No service definition found; not installed.
+    /// No service definition found on this machine.
     Unmanaged,
-    /// Service file is present but not yet registered with the service manager.
+    /// Service file is installed but not necessarily enabled.
     Installed,
-    /// Service is registered to start at login/boot.
+    /// Service is installed and registered to start at login/boot.
     Enabled,
     /// Service is currently running.
     Running,
-    /// Service is installed and registered but not currently running.
-    Stopped,
-    /// Service exited with a non-zero status.
+    /// Service exited with a non-zero status (failed).
     Failed,
+    /// Service is installed and enabled but not currently running.
+    Stopped,
 }
 
-/// Current state snapshot returned by `ServiceManager::status`.
-#[derive(Debug, Clone)]
+/// A snapshot of the current service state.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ServiceStateSnapshot {
-    /// Classified lifecycle state.
+    /// Current lifecycle state.
     pub state: ServiceLifecycleState,
-    /// Path to the service definition file, if present.
+    /// Path to the installed service file, if known.
     pub maybe_service_file_path: Option<PathBuf>,
-    /// Raw diagnostic output from the service manager, if available.
+    /// Diagnostic output from the service manager, if available.
     pub maybe_manager_diagnostics: Option<String>,
-    /// Log file path associated with this service, if configured.
+    /// Path to the service log file, if configured.
     pub maybe_log_path: Option<PathBuf>,
 }
 
 /// Request to install the Open Bitcoin node as a managed service.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ServiceInstallRequest {
-    /// Path to the open-bitcoin binary.
+    /// Path to the Open Bitcoin node binary.
     pub binary_path: PathBuf,
-    /// Node data directory.
+    /// Data directory for the node.
     pub data_dir: PathBuf,
-    /// Optional config file path.
+    /// Optional path to the Open Bitcoin config file.
     pub maybe_config_path: Option<PathBuf>,
-    /// Optional log file path for stdout/stderr redirection.
+    /// Optional path for service log output.
     pub maybe_log_path: Option<PathBuf>,
-    /// Whether to actually write files and run commands (false = dry-run).
+    /// If `false`, perform a dry run and return a preview without writing anything.
+    /// If `true`, write the service file and register with the platform manager.
     pub apply: bool,
 }
 
 /// Request to uninstall the Open Bitcoin node service.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ServiceUninstallRequest {
-    /// Whether to actually remove files and run commands (false = dry-run).
+    /// If `false`, perform a dry run. If `true`, remove the service file.
     pub apply: bool,
 }
 
-/// Request to enable the Open Bitcoin node service (start at login/boot).
-#[derive(Debug, Clone)]
+/// Request to enable the service to start at login/boot.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ServiceEnableRequest;
 
-/// Request to disable the Open Bitcoin node service.
-#[derive(Debug, Clone)]
+/// Request to disable automatic service startup.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ServiceDisableRequest;
 
-/// Outcome of a service lifecycle command.
-#[derive(Debug, Clone)]
+/// Outcome of a service lifecycle command (install, uninstall, enable, disable).
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ServiceCommandOutcome {
-    /// Whether this outcome reflects a dry-run (no state was mutated).
+    /// `true` if this was a dry run (no filesystem or subprocess side effects).
     pub dry_run: bool,
-    /// Human-readable description of what was or would be done.
+    /// Human-readable description of what was done or would be done.
     pub description: String,
-    /// Service definition file path involved in this command, if any.
+    /// Target service file path, if applicable.
     pub maybe_file_path: Option<PathBuf>,
-    /// Generated file content shown in dry-run output.
+    /// Generated file content shown in dry-run preview.
     pub maybe_file_content: Option<String>,
-    /// Shell commands that ran or would run on `--apply`.
+    /// Platform commands that were or would be run.
     pub commands_that_would_run: Vec<String>,
 }
 
-/// Typed error for service lifecycle operations.
+/// Typed errors for service lifecycle operations.
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum ServiceError {
-    /// Requested operation is not supported on this platform.
     #[error("unsupported platform: {reason}")]
     UnsupportedPlatform { reason: String },
-    /// Service is already installed at the given path.
+
     #[error("service already installed at {path}; use --force to reinstall")]
     AlreadyInstalled { path: PathBuf },
-    /// Service is not installed; install it first.
+
     #[error("service not installed — run `open-bitcoin service install --dry-run` to preview")]
     NotInstalled,
-    /// File write failed.
+
     #[error("write failed at {path}: {cause}")]
     WriteFailure { path: PathBuf, cause: String },
-    /// Service manager command (launchctl/systemctl) returned a non-zero exit code.
+
     #[error("service manager command failed (exit {exit_code}): {stderr}")]
     ManagerCommandFailed { exit_code: i32, stderr: String },
 }
 
-/// Platform-agnostic service lifecycle interface.
+/// Service lifecycle management: install, uninstall, enable, disable, and status.
+///
+/// Implementations handle platform-specific service manager invocations. Tests
+/// use `FakeServiceManager` to avoid real filesystem or subprocess side effects.
 pub trait ServiceManager {
-    /// Install the node as a managed service, optionally writing files and running commands.
     fn install(
         &self,
         request: &ServiceInstallRequest,
     ) -> Result<ServiceCommandOutcome, ServiceError>;
 
-    /// Uninstall the managed service, optionally removing files and running commands.
     fn uninstall(
         &self,
         request: &ServiceUninstallRequest,
     ) -> Result<ServiceCommandOutcome, ServiceError>;
 
-    /// Enable the service to start at login/boot.
     fn enable(&self, request: &ServiceEnableRequest)
     -> Result<ServiceCommandOutcome, ServiceError>;
 
-    /// Disable the service from starting at login/boot.
     fn disable(
         &self,
         request: &ServiceDisableRequest,
     ) -> Result<ServiceCommandOutcome, ServiceError>;
 
-    /// Return the current state of the managed service.
     fn status(&self) -> Result<ServiceStateSnapshot, ServiceError>;
 }
 
-/// Returns an `Err(ServiceError::UnsupportedPlatform)` for all operations.
+/// A platform adapter that always returns `ServiceError::UnsupportedPlatform`.
 ///
-/// Used as the fallback adapter when neither macOS nor Linux is the compile target.
-#[cfg(not(any(target_os = "macos", target_os = "linux")))]
+/// This type is never cfg-gated so it compiles on all platforms; the cfg gates
+/// are only on the arms of `platform_service_manager()`. The `dead_code` allow
+/// is needed because on macOS and Linux the fallback arm is never reached.
+#[allow(dead_code)]
 struct UnsupportedPlatformAdapter;
 
-#[cfg(not(any(target_os = "macos", target_os = "linux")))]
 impl ServiceManager for UnsupportedPlatformAdapter {
     fn install(
         &self,
         _request: &ServiceInstallRequest,
     ) -> Result<ServiceCommandOutcome, ServiceError> {
         Err(ServiceError::UnsupportedPlatform {
-            reason: "service management is only supported on macOS and Linux".to_string(),
+            reason: "this platform does not support automated service installation".to_string(),
         })
     }
 
@@ -156,7 +160,7 @@ impl ServiceManager for UnsupportedPlatformAdapter {
         _request: &ServiceUninstallRequest,
     ) -> Result<ServiceCommandOutcome, ServiceError> {
         Err(ServiceError::UnsupportedPlatform {
-            reason: "service management is only supported on macOS and Linux".to_string(),
+            reason: "this platform does not support automated service uninstallation".to_string(),
         })
     }
 
@@ -165,7 +169,7 @@ impl ServiceManager for UnsupportedPlatformAdapter {
         _request: &ServiceEnableRequest,
     ) -> Result<ServiceCommandOutcome, ServiceError> {
         Err(ServiceError::UnsupportedPlatform {
-            reason: "service management is only supported on macOS and Linux".to_string(),
+            reason: "this platform does not support service enable".to_string(),
         })
     }
 
@@ -174,30 +178,32 @@ impl ServiceManager for UnsupportedPlatformAdapter {
         _request: &ServiceDisableRequest,
     ) -> Result<ServiceCommandOutcome, ServiceError> {
         Err(ServiceError::UnsupportedPlatform {
-            reason: "service management is only supported on macOS and Linux".to_string(),
+            reason: "this platform does not support service disable".to_string(),
         })
     }
 
     fn status(&self) -> Result<ServiceStateSnapshot, ServiceError> {
         Err(ServiceError::UnsupportedPlatform {
-            reason: "service management is only supported on macOS and Linux".to_string(),
+            reason: "this platform does not support service status inspection".to_string(),
         })
     }
 }
 
-/// Construct the platform-appropriate `ServiceManager` for the current OS.
+/// Returns the appropriate `ServiceManager` implementation for the current platform.
 ///
 /// On macOS, returns a `LaunchdAdapter`. On Linux, returns a `SystemdAdapter`.
-/// On other platforms, returns an adapter that reports `UnsupportedPlatform` for all operations.
+/// On other platforms, returns an adapter that always returns `UnsupportedPlatform`.
 pub fn platform_service_manager(home_dir: PathBuf) -> Box<dyn ServiceManager> {
     #[cfg(target_os = "macos")]
     {
         Box::new(launchd::LaunchdAdapter::new(home_dir))
     }
+
     #[cfg(target_os = "linux")]
     {
         Box::new(systemd::SystemdAdapter::new(home_dir))
     }
+
     #[cfg(not(any(target_os = "macos", target_os = "linux")))]
     {
         let _ = home_dir;
