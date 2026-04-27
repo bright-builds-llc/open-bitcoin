@@ -6,83 +6,112 @@
 **Date:** 2026-04-27
 **Phase:** 18-service-lifecycle-integration
 **Mode:** Yolo
-**Areas discussed:** Service Manager Architecture, File Generation, Dry-Run Semantics, Service Status, Module Location
+**Areas discussed:** Service Module Structure, Plist/Unit Generation, Platform Detection, Service Scope, Dry-Run Safety, Status Snapshot Integration, Testing
 
 ---
 
-## Service Manager Architecture
+## Service Module Structure
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| First-party trait + subprocess adapters | `ServiceManager` trait with `LaunchdManager`/`SystemdManager` using `launchctl`/`systemctl` subprocess calls | ✓ |
-| Third-party service manager crate | Use a crate like `service-manager` from crates.io | |
-| Platform-specific conditional compilation without trait | `#[cfg]` blocks with no abstraction layer | |
+| Embed in runtime.rs | Inline service command handling in existing runtime module | |
+| New top-level service crate | Separate `open-bitcoin-service` crate | |
+| operator/service/ submodule with trait | `ServiceManager` trait + platform adapters in cli crate | ✓ |
 
-**User's choice:** First-party `ServiceManager` trait with `LaunchdManager` and `SystemdManager` implementations
-**Notes:** Matches project dependency policy (no third-party production dependencies not already in use). macOS higher priority than Linux, same public interface for both.
+**User's choice:** operator/service/ submodule with ServiceManager trait (auto-selected)
+**Notes:** Keeps service logic co-located with other operator modules while maintaining trait-based testability and functional-core/imperative-shell separation.
 
 ---
 
-## File Generation
+## Plist and Unit File Generation
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Pure helpers in open-bitcoin-node | No filesystem access; returns `String`; unit-testable | ✓ |
-| Inline generation in CLI adapter | Plist/unit text generated in the service executor | |
-| Template files embedded as `include_str!` | External template files baked into binary | |
+| Template engine (askama, tera) | Use a Rust template engine | |
+| Pure Rust struct serializers | Typed structs with dry_run_content() string methods | ✓ |
+| Embedded static templates | Hard-coded string templates | |
 
-**User's choice:** Pure plist/unit text generators in `open-bitcoin-node/src/service.rs`
-**Notes:** Preserves functional core / imperative shell boundaries. Unit tests can assert on generated file content without OS or filesystem involvement.
+**User's choice:** Pure Rust struct serializers (auto-selected)
+**Notes:** Avoids new template engine dependency, keeps content generation deterministic and testable as pure functions.
 
 ---
 
-## Dry-Run Semantics
+## Platform Detection
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| `--apply` flag required for writes | Default is preview; `--apply` executes real changes | ✓ |
-| `--dry-run` flag to preview | Default is execute; `--dry-run` previews | |
-| Always execute, no preview | Mutating commands act immediately | |
+| Runtime detection via uname | Detect platform at runtime | |
+| cfg(target_os) + injectable factory | Compile-time selection + test injection | ✓ |
+| Explicit --platform flag | Require operator to specify platform | |
 
-**User's choice:** `--apply` flag required for real writes; preview is the default behavior
-**Notes:** Matches Phase 17 operator-trust philosophy. Operators see exactly what will happen before any change is made.
+**User's choice:** cfg(target_os) + injectable factory (auto-selected)
+**Notes:** Compile-time selection avoids runtime branching overhead; factory injection keeps tests hermetic.
 
 ---
 
-## Service Status
+## Service Scope (User vs System)
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Subprocess query + full state mapping | Query `launchctl list`/`systemctl is-active`, map to installed/enabled/running/failed/stopped/unmanaged | ✓ |
-| Read plist/unit file only | Check file existence without querying manager subprocess | |
-| Reuse existing `ServiceStatus` as-is without enrichment | Keep only `installed`/`enabled`/`running` fields | |
+| System-level only | LaunchDaemons / system systemd, requires root | |
+| User-level default | LaunchAgents / systemd --user, no root required | ✓ |
+| Both with --system flag | Support both scopes in this phase | |
 
-**User's choice:** Subprocess query with extended state mapping including `failed` and `unmanaged`
-**Notes:** SVC-04 explicitly requires identifying failed and unmanaged states. `unmanaged` covers unsupported OS or missing manager binary gracefully.
+**User's choice:** User-level default (auto-selected)
+**Notes:** User-level avoids sudo requirements for typical operator use. System-level deferred to a future phase.
 
 ---
 
-## Module Location
+## Dry-Run Safety
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Trait in open-bitcoin-node, adapter in open-bitcoin-cli/operator/service.rs | Clean separation; pure logic in node crate, effectful shell in CLI | ✓ |
-| New open-bitcoin-service crate | Separate crate for service lifecycle | |
-| Everything in open-bitcoin-cli | No node crate involvement | |
+| Always apply, --dry-run to preview | Default applies, preview optional | |
+| Always dry-run, --apply to execute | Default preview, explicit apply required | ✓ |
+| Interactive confirm prompt | Prompt operator before each write | |
 
-**User's choice:** `open-bitcoin-node/src/service.rs` for trait + pure generators; `open-bitcoin-cli/src/operator/service.rs` for CLI adapter
-**Notes:** Consistent with how status and onboarding are organized. Avoids premature new-crate overhead for a bounded surface.
+**User's choice:** Always dry-run by default, --apply to execute (auto-selected)
+**Notes:** Consistent with project principle of "explicit before destructive." Operators can review generated content before any filesystem mutation.
+
+---
+
+## Status Snapshot Integration
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Separate service status command only | service status is standalone, not fed into status snapshot | |
+| Injected adapter in collect_status_snapshot | Optional service adapter fills ServiceStatus fields | ✓ |
+| Always attempt service inspection in status | Unconditionally inspect service in open-bitcoin status | |
+
+**User's choice:** Injected adapter in collect_status_snapshot (auto-selected)
+**Notes:** Follows established injection pattern from status.rs; keeps open-bitcoin status resilient when service manager is unavailable or uninspected.
+
+---
+
+## Testing
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Integration tests hitting real launchd/systemd | Test against actual service managers | |
+| FakeServiceManager + isolated temp dirs | Trait-object fake + temp dir injection | ✓ |
+| Unit tests only, no integration | Pure unit tests without filesystem writes | |
+
+**User's choice:** FakeServiceManager + isolated temp dirs (auto-selected)
+**Notes:** Required by SVC-05 (tests never modify real developer launchd/systemd state). Consistent with existing operator test patterns.
 
 ---
 
 ## Claude's Discretion
 
-- Exact field names, helper method signatures, and Rust module structure within the described boundaries
-- Initial macOS implementation may default to user-level install path before adding system-level
-- Linux systemd may be a stub on macOS builds that returns `unmanaged`
+- Exact adapter struct names, internal helper names, and field ordering
+- --apply vs --execute flag name
+- systemd [Install] section target
+- Double-install guard behavior (typed error vs --force flag)
 
 ## Deferred Ideas
 
-- Ratatui dashboard service status panel — Phase 19
-- System-level macOS launchd install (requiring sudo) — possible Phase 18 follow-up if user-level satisfies SVC-01
-- Windows SCM support — out of scope for v1.1
+- System-level service scope
+- Ratatui dashboard service panels (Phase 19)
+- Service restart metric wiring to dashboard (Phase 19)
+- Windows service support (out of scope v1.1)
+- Socket-activation / launch-on-demand variants
