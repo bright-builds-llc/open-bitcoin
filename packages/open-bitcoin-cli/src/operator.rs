@@ -11,6 +11,9 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 
 use crate::CliError;
 
+pub mod config;
+pub mod detect;
+
 /// First-party Open Bitcoin operator CLI contract.
 #[derive(Debug, Clone, PartialEq, Eq, Parser)]
 #[command(name = "open-bitcoin")]

@@ -181,6 +181,29 @@
       ]
     },
     {
+      "label": "cli-operator-config-contracts",
+      "files": [
+        "packages/open-bitcoin-cli/src/operator/config.rs",
+        "packages/open-bitcoin-cli/src/operator/config/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/common/config.cpp",
+        "packages/bitcoin-knots/src/common/args.cpp"
+      ]
+    },
+    {
+      "label": "cli-operator-detection-contracts",
+      "files": [
+        "packages/open-bitcoin-cli/src/operator/detect.rs",
+        "packages/open-bitcoin-cli/src/operator/detect/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/doc/files.md",
+        "packages/bitcoin-knots/doc/init.md",
+        "packages/bitcoin-knots/doc/managing-wallets.md"
+      ]
+    },
+    {
       "label": "codec-block",
       "files": [
         "packages/open-bitcoin-codec/src/block.rs"
