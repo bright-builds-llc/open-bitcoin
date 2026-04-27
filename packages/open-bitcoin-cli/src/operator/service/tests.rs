@@ -1,19 +1,25 @@
 // Parity breadcrumbs:
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
-//! Tests for service lifecycle generators, FakeServiceManager, and dry-run safety.
+//! Tests for service lifecycle generators, FakeServiceManager, dry-run safety,
+//! and execute_service_command dispatch.
 
 use std::{
     path::{Path, PathBuf},
     sync::atomic::{AtomicU64, Ordering},
 };
 
-use crate::operator::service::{
-    ServiceError, ServiceInstallRequest, ServiceLifecycleState, ServiceManager,
-    ServiceStateSnapshot,
-    fake::{FakeServiceCall, FakeServiceManager},
-    launchd::{LaunchdAdapter, generate_plist_content},
-    systemd::{SystemdAdapter, generate_unit_content},
+use clap::Parser as _;
+
+use crate::operator::{
+    OperatorCli,
+    service::{
+        ServiceError, ServiceInstallRequest, ServiceLifecycleState, ServiceManager,
+        ServiceStateSnapshot, execute_service_command,
+        fake::{FakeServiceCall, FakeServiceManager},
+        launchd::{LaunchdAdapter, generate_plist_content},
+        systemd::{SystemdAdapter, generate_unit_content},
+    },
 };
 
 static NEXT_TEST_DIRECTORY_ID: AtomicU64 = AtomicU64::new(0);
@@ -322,5 +328,189 @@ fn systemd_install_dry_run_does_not_write_file() {
     assert!(
         !unit_path.exists(),
         "unit file must NOT exist after dry-run"
+    );
+}
+
+// --- execute_service_command tests ---
+
+#[test]
+fn execute_service_command_install_dry_run_shows_dry_run_output() {
+    // Arrange
+    let manager = FakeServiceManager::unmanaged();
+    let cli = OperatorCli::try_parse_from(["open-bitcoin", "service", "install"]).unwrap();
+    let crate::operator::OperatorCommand::Service(service_args) = &cli.command else {
+        panic!("expected Service command");
+    };
+
+    // Act
+    let outcome = execute_service_command(
+        service_args,
+        PathBuf::from("/fake/bin/open-bitcoin"),
+        PathBuf::from("/fake/datadir"),
+        None,
+        None,
+        &manager,
+    );
+
+    // Assert
+    assert_eq!(
+        outcome.exit_code,
+        crate::operator::runtime::OperatorExitCode::Success,
+        "dry-run install should succeed"
+    );
+    let stdout = &outcome.stdout.text;
+    assert!(
+        stdout.contains("Dry run") || stdout.contains("dry run") || stdout.contains("dry-run"),
+        "stdout should contain dry run indicator: {stdout}"
+    );
+}
+
+#[test]
+fn execute_service_command_install_already_installed_returns_failure() {
+    // Arrange
+    let mut manager = FakeServiceManager::unmanaged();
+    manager.maybe_install_error = Some(ServiceError::AlreadyInstalled {
+        path: PathBuf::from("/fake/LaunchAgents/org.open-bitcoin.node.plist"),
+    });
+    let cli =
+        OperatorCli::try_parse_from(["open-bitcoin", "service", "install", "--apply"]).unwrap();
+    let crate::operator::OperatorCommand::Service(service_args) = &cli.command else {
+        panic!("expected Service command");
+    };
+
+    // Act
+    let outcome = execute_service_command(
+        service_args,
+        PathBuf::from("/fake/bin/open-bitcoin"),
+        PathBuf::from("/fake/datadir"),
+        None,
+        None,
+        &manager,
+    );
+
+    // Assert
+    assert_eq!(
+        outcome.exit_code,
+        crate::operator::runtime::OperatorExitCode::Failure(1),
+        "already installed should return failure"
+    );
+    assert!(
+        outcome.stderr.text.contains("already installed"),
+        "stderr should contain 'already installed': {}",
+        outcome.stderr.text
+    );
+}
+
+#[test]
+fn execute_service_command_enable_returns_success_with_output() {
+    // Arrange
+    let manager = FakeServiceManager::unmanaged();
+    let cli = OperatorCli::try_parse_from(["open-bitcoin", "service", "enable"]).unwrap();
+    let crate::operator::OperatorCommand::Service(service_args) = &cli.command else {
+        panic!("expected Service command");
+    };
+
+    // Act
+    let outcome = execute_service_command(
+        service_args,
+        PathBuf::from("/fake/bin/open-bitcoin"),
+        PathBuf::from("/fake/datadir"),
+        None,
+        None,
+        &manager,
+    );
+
+    // Assert
+    assert_eq!(
+        outcome.exit_code,
+        crate::operator::runtime::OperatorExitCode::Success,
+        "enable should succeed"
+    );
+    assert!(
+        !outcome.stdout.text.is_empty(),
+        "enable should produce output"
+    );
+}
+
+#[test]
+fn execute_service_command_uninstall_dry_run_succeeds() {
+    // Arrange
+    let manager = FakeServiceManager::unmanaged();
+    let cli = OperatorCli::try_parse_from(["open-bitcoin", "service", "uninstall"]).unwrap();
+    let crate::operator::OperatorCommand::Service(service_args) = &cli.command else {
+        panic!("expected Service command");
+    };
+
+    // Act
+    let outcome = execute_service_command(
+        service_args,
+        PathBuf::from("/fake/bin/open-bitcoin"),
+        PathBuf::from("/fake/datadir"),
+        None,
+        None,
+        &manager,
+    );
+
+    // Assert
+    assert_eq!(
+        outcome.exit_code,
+        crate::operator::runtime::OperatorExitCode::Success,
+        "dry-run uninstall with fake manager should succeed"
+    );
+}
+
+#[test]
+fn parsing_service_install_with_apply_flag_sets_apply_true() {
+    // Arrange / Act
+    let cli =
+        OperatorCli::try_parse_from(["open-bitcoin", "service", "install", "--apply"]).unwrap();
+
+    // Assert
+    let crate::operator::OperatorCommand::Service(service_args) = &cli.command else {
+        panic!("expected Service command");
+    };
+    assert!(service_args.apply, "apply flag should be true when --apply is passed");
+}
+
+#[test]
+fn parsing_service_install_without_apply_flag_sets_apply_false() {
+    // Arrange / Act
+    let cli = OperatorCli::try_parse_from(["open-bitcoin", "service", "install"]).unwrap();
+
+    // Assert
+    let crate::operator::OperatorCommand::Service(service_args) = &cli.command else {
+        panic!("expected Service command");
+    };
+    assert!(!service_args.apply, "apply flag should be false by default");
+}
+
+#[test]
+fn execute_service_command_install_dry_run_shows_scope() {
+    // Arrange
+    let manager = FakeServiceManager::unmanaged();
+    let cli = OperatorCli::try_parse_from(["open-bitcoin", "service", "install"]).unwrap();
+    let crate::operator::OperatorCommand::Service(service_args) = &cli.command else {
+        panic!("expected Service command");
+    };
+
+    // Act
+    let outcome = execute_service_command(
+        service_args,
+        PathBuf::from("/fake/bin/open-bitcoin"),
+        PathBuf::from("/fake/datadir"),
+        None,
+        None,
+        &manager,
+    );
+
+    // Assert
+    assert_eq!(
+        outcome.exit_code,
+        crate::operator::runtime::OperatorExitCode::Success
+    );
+    let stdout = &outcome.stdout.text;
+    assert!(
+        stdout.contains("user-level") || stdout.contains("Scope"),
+        "stdout should mention user-level scope: {stdout}"
     );
 }
