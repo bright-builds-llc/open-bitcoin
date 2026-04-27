@@ -11,8 +11,7 @@ use open_bitcoin_node::{
     status::{
         BuildProvenance, ChainTipStatus, ConfigStatus, FieldAvailability, HealthSignal,
         HealthSignalLevel, MempoolStatus, NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot,
-        PeerCounts, PeerStatus, ServiceStatus, SyncProgress, SyncStatus, WalletFreshness,
-        WalletScanProgress, WalletStatus,
+        PeerCounts, PeerStatus, ServiceStatus, SyncProgress, SyncStatus, WalletStatus,
     },
 };
 use open_bitcoin_rpc::method::{
@@ -23,92 +22,66 @@ use open_bitcoin_rpc::method::{
 use super::{
     NetworkSelection,
     config::{OperatorConfigPathKind, OperatorConfigResolution},
-    detect::{
-        DetectedInstallation, DetectionConfidence, DetectionSourcePathKind, DetectionUncertainty,
-        ProductFamily, ServiceManager as DetectServiceManager,
-    },
+    detect::DetectedInstallation,
     service::ServiceLifecycleState,
 };
 
+mod detection;
 mod http;
 mod render;
+#[cfg(test)]
+mod tests;
+mod wallet;
+
 pub use http::HttpStatusRpcClient;
 pub use render::render_status;
 
 /// Operator status request supplied by CLI flags and config.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StatusRequest {
-    /// Requested render mode.
     pub render_mode: StatusRenderMode,
-    /// Optional Open Bitcoin JSONC config path.
     pub maybe_config_path: Option<PathBuf>,
-    /// Optional datadir path.
     pub maybe_data_dir: Option<PathBuf>,
-    /// Optional Bitcoin network selection.
     pub maybe_network: Option<NetworkSelection>,
-    /// Whether collectors may attempt live RPC.
     pub include_live_rpc: bool,
-    /// Whether human output should disable color.
     pub no_color: bool,
 }
 
 /// Status rendering mode requested by the operator.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum StatusRenderMode {
-    /// Quiet human-readable status.
     Human,
-    /// Stable serde-backed JSON rendering.
     Json,
 }
 
 /// Inputs needed by a status collector.
-///
-/// `Clone`, `PartialEq`, and `Debug` are not derived because `maybe_service_manager` holds a
-/// `Box<dyn ServiceManager>` which cannot be automatically cloned, compared, or debugged.
 pub struct StatusCollectorInput {
-    /// Operator status request.
     pub request: StatusRequest,
-    /// Config resolution evidence.
     pub config_resolution: OperatorConfigResolution,
-    /// Read-only detection evidence.
     pub detection_evidence: StatusDetectionEvidence,
-    /// Optional live RPC adapter input.
     pub maybe_live_rpc: Option<StatusLiveRpcAdapterInput>,
-    /// Optional service manager for live service state inspection.
-    /// When `None`, service fields fall back to file-presence detection from
-    /// `detection_evidence`. When `Some`, the manager is queried for live state.
     pub maybe_service_manager: Option<Box<dyn super::service::ServiceManager>>,
 }
 
 /// Detection evidence available to status collection.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StatusDetectionEvidence {
-    /// Detected installations from the read-only detector.
     pub detected_installations: Vec<DetectedInstallation>,
 }
 
 /// Live RPC adapter input without credential values.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StatusLiveRpcAdapterInput {
-    /// RPC endpoint.
     pub endpoint: String,
-    /// Credential source only; no credential contents.
     pub auth_source: StatusRpcAuthSource,
-    /// Request timeout.
     pub timeout: Duration,
 }
 
 /// Live RPC auth source without sensitive values.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StatusRpcAuthSource {
-    /// Use a cookie file path.
-    CookieFile {
-        /// Cookie path only; never cookie contents.
-        path: PathBuf,
-    },
-    /// User credentials were configured elsewhere, but values are not carried.
+    CookieFile { path: PathBuf },
     UserCredentialsConfigured,
-    /// No auth source is configured.
     None,
 }
 
@@ -143,7 +116,6 @@ impl fmt::Display for StatusRpcError {
 
 impl std::error::Error for StatusRpcError {}
 
-/// Build a shared status snapshot from local, detection, and optional live RPC evidence.
 pub fn collect_status_snapshot(
     input: &StatusCollectorInput,
     maybe_rpc_client: Option<&dyn StatusRpcClient>,
@@ -212,7 +184,7 @@ fn collect_live_status_snapshot(
         }
     };
 
-    let mut health_signals = detection_health_signals(&input.detection_evidence);
+    let mut health_signals = detection::detection_health_signals(&input.detection_evidence);
     health_signals.extend(rpc_warning_signals(
         &network_info.warnings,
         &blockchain_info.warnings,
@@ -253,7 +225,7 @@ fn collect_live_status_snapshot(
         mempool: MempoolStatus {
             transactions: FieldAvailability::available(saturating_usize_to_u64(mempool_info.size)),
         },
-        wallet: live_wallet_status(
+        wallet: wallet::live_wallet_status(
             &wallet_info,
             &blockchain_info,
             non_negative_i64_to_u64(balances.mine.trusted_sats),
@@ -271,7 +243,7 @@ fn stopped_status_snapshot(
     reason: impl Into<String>,
 ) -> OpenBitcoinStatusSnapshot {
     let reason = reason.into();
-    let mut health_signals = detection_health_signals(&input.detection_evidence);
+    let mut health_signals = detection::detection_health_signals(&input.detection_evidence);
     health_signals.extend(log_health_signals(input));
     if state == NodeRuntimeState::Unreachable {
         health_signals.push(HealthSignal {
@@ -341,14 +313,6 @@ fn config_status(resolution: &OperatorConfigResolution) -> ConfigStatus {
     }
 }
 
-/// Collect service status from an optional live service manager or fall back to
-/// file-presence detection.
-///
-/// - When `input.maybe_service_manager` is `Some(manager)`: calls `manager.status()` and maps
-///   the `ServiceStateSnapshot` to `ServiceStatus` fields. On any error, falls back to
-///   all-unavailable fields (graceful degradation, no panic — T-18-09 mitigation).
-/// - When `input.maybe_service_manager` is `None`: uses file-presence detection from
-///   `input.detection_evidence` (existing behavior preserved).
 fn collect_service_status(input: &StatusCollectorInput) -> ServiceStatus {
     if let Some(manager) = input.maybe_service_manager.as_ref() {
         match manager.status() {
@@ -377,7 +341,6 @@ fn collect_service_status(input: &StatusCollectorInput) -> ServiceStatus {
                 };
             }
             Err(_) => {
-                // Graceful fallback: service manager query failed; all fields unavailable.
                 return ServiceStatus {
                     manager: FieldAvailability::unavailable("service manager not inspected"),
                     installed: FieldAvailability::unavailable("service manager not inspected"),
@@ -388,11 +351,9 @@ fn collect_service_status(input: &StatusCollectorInput) -> ServiceStatus {
         }
     }
 
-    // No service manager injected — fall back to file-presence detection.
     detection_service_status(&input.detection_evidence)
 }
 
-/// File-presence-based service status from detection evidence (fallback when no live manager).
 fn detection_service_status(evidence: &StatusDetectionEvidence) -> ServiceStatus {
     let maybe_candidate = evidence
         .detected_installations
@@ -402,7 +363,9 @@ fn detection_service_status(evidence: &StatusDetectionEvidence) -> ServiceStatus
 
     if let Some(candidate) = maybe_candidate {
         return ServiceStatus {
-            manager: FieldAvailability::available(service_manager_name(candidate.manager)),
+            manager: FieldAvailability::available(detection::service_manager_name(
+                candidate.manager,
+            )),
             installed: FieldAvailability::available(true),
             enabled: FieldAvailability::unavailable("service manager not inspected"),
             running: FieldAvailability::unavailable("service manager not inspected"),
@@ -448,101 +411,10 @@ fn metrics_status(resolution: &OperatorConfigResolution) -> MetricsStatus {
     }
 }
 
-fn live_wallet_status(
-    wallet_info: &GetWalletInfoResponse,
-    blockchain_info: &GetBlockchainInfoResponse,
-    trusted_balance_sats: u64,
-) -> WalletStatus {
-    let chain_tip_height = u64::from(blockchain_info.blocks);
-    let maybe_wallet_tip_height = wallet_info.maybe_tip_height.map(u64::from);
-    let freshness = wallet_freshness(maybe_wallet_tip_height, chain_tip_height);
-    let scan_progress = wallet_scan_progress(freshness, maybe_wallet_tip_height, chain_tip_height);
-
-    WalletStatus {
-        trusted_balance_sats: FieldAvailability::available(trusted_balance_sats),
-        freshness: FieldAvailability::available(freshness),
-        scan_progress,
-    }
-}
-
-fn wallet_freshness(
-    maybe_wallet_tip_height: Option<u64>,
-    chain_tip_height: u64,
-) -> WalletFreshness {
-    let Some(wallet_tip_height) = maybe_wallet_tip_height else {
-        return WalletFreshness::Partial;
-    };
-    if wallet_tip_height >= chain_tip_height {
-        return WalletFreshness::Fresh;
-    }
-    WalletFreshness::Stale
-}
-
-fn wallet_scan_progress(
-    freshness: WalletFreshness,
-    maybe_wallet_tip_height: Option<u64>,
-    chain_tip_height: u64,
-) -> FieldAvailability<WalletScanProgress> {
-    match freshness {
-        WalletFreshness::Fresh => FieldAvailability::unavailable("wallet already fresh"),
-        WalletFreshness::Stale => FieldAvailability::unavailable("wallet scan not running"),
-        WalletFreshness::Partial | WalletFreshness::Scanning => {
-            let Some(wallet_tip_height) = maybe_wallet_tip_height else {
-                return FieldAvailability::unavailable("wallet tip unavailable");
-            };
-            FieldAvailability::available(WalletScanProgress {
-                scanned_through_height: saturating_u64_to_u32(wallet_tip_height),
-                target_tip_height: saturating_u64_to_u32(chain_tip_height),
-            })
-        }
-    }
-}
-
 fn log_health_signals(input: &StatusCollectorInput) -> Vec<HealthSignal> {
     open_bitcoin_node::logging::health_signals_from_recent_logs(
         &log_status(&input.config_resolution).recent_signals,
     )
-}
-
-fn detection_health_signals(evidence: &StatusDetectionEvidence) -> Vec<HealthSignal> {
-    evidence
-        .detected_installations
-        .iter()
-        .map(detection_health_signal)
-        .collect()
-}
-
-fn detection_health_signal(installation: &DetectedInstallation) -> HealthSignal {
-    let present_paths = installation
-        .source_paths
-        .iter()
-        .filter(|source_path| source_path.present)
-        .map(|source_path| {
-            format!(
-                "{}:{}",
-                source_path_kind_name(source_path.kind),
-                source_path.path.display()
-            )
-        })
-        .collect::<Vec<_>>();
-    let uncertainty = installation
-        .uncertainty
-        .iter()
-        .map(|value| uncertainty_name(*value))
-        .collect::<Vec<_>>();
-    let confidence = confidence_name(installation.confidence);
-    let product = product_family_name(installation.product_family);
-    let message = format!(
-        "uncertain {product} candidate; confidence={confidence}; paths=[{}]; uncertainty=[{}]",
-        present_paths.join(", "),
-        uncertainty.join(", ")
-    );
-
-    HealthSignal {
-        level: HealthSignalLevel::Info,
-        source: "detection".to_string(),
-        message,
-    }
 }
 
 fn rpc_warning_signals(
@@ -567,52 +439,6 @@ fn node_version(network_info: &GetNetworkInfoResponse) -> String {
     network_info.subversion.clone()
 }
 
-fn service_manager_name(manager: DetectServiceManager) -> String {
-    match manager {
-        DetectServiceManager::Launchd => "launchd".to_string(),
-        DetectServiceManager::Systemd => "systemd".to_string(),
-        DetectServiceManager::Unknown => "unknown".to_string(),
-    }
-}
-
-fn product_family_name(product_family: ProductFamily) -> &'static str {
-    match product_family {
-        ProductFamily::BitcoinCore => "bitcoin_core",
-        ProductFamily::BitcoinKnots => "bitcoin_knots",
-        ProductFamily::OpenBitcoin => "open_bitcoin",
-        ProductFamily::Unknown => "unknown",
-    }
-}
-
-fn confidence_name(confidence: DetectionConfidence) -> &'static str {
-    match confidence {
-        DetectionConfidence::High => "high",
-        DetectionConfidence::Medium => "medium",
-        DetectionConfidence::Low => "low",
-    }
-}
-
-fn uncertainty_name(uncertainty: DetectionUncertainty) -> &'static str {
-    match uncertainty {
-        DetectionUncertainty::ProductAmbiguous => "product_ambiguous",
-        DetectionUncertainty::MissingConfig => "missing_config",
-        DetectionUncertainty::MissingCookie => "missing_cookie",
-        DetectionUncertainty::ServiceManagerUnknown => "service_manager_unknown",
-        DetectionUncertainty::WalletFormatUnknown => "wallet_format_unknown",
-    }
-}
-
-fn source_path_kind_name(kind: DetectionSourcePathKind) -> &'static str {
-    match kind {
-        DetectionSourcePathKind::DataDir => "datadir",
-        DetectionSourcePathKind::ConfigFile => "config",
-        DetectionSourcePathKind::CookieFile => "cookie",
-        DetectionSourcePathKind::ServiceDefinition => "service",
-        DetectionSourcePathKind::WalletDirectory => "wallet_dir",
-        DetectionSourcePathKind::WalletFile => "wallet_file",
-    }
-}
-
 fn saturating_usize_to_u32(value: usize) -> u32 {
     u32::try_from(value).unwrap_or(u32::MAX)
 }
@@ -621,13 +447,10 @@ fn saturating_usize_to_u64(value: usize) -> u64 {
     u64::try_from(value).unwrap_or(u64::MAX)
 }
 
-fn saturating_u64_to_u32(value: u64) -> u32 {
+pub(super) fn saturating_u64_to_u32(value: u64) -> u32 {
     u32::try_from(value).unwrap_or(u32::MAX)
 }
 
 fn non_negative_i64_to_u64(value: i64) -> u64 {
     u64::try_from(value).unwrap_or(0)
 }
-
-#[cfg(test)]
-mod tests;

@@ -125,11 +125,37 @@ cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bit
 
 Supported baseline-backed RPC methods currently include `getblockchaininfo`,
 `getmempoolinfo`, `getnetworkinfo`, `sendrawtransaction`, `deriveaddresses`,
-`getwalletinfo`, `getbalances`, `listunspent`, `importdescriptors`, and
-`rescanblockchain`. Open Bitcoin also exposes deterministic extension methods
+`getwalletinfo`, `getbalances`, `listunspent`, `importdescriptors`,
+`rescanblockchain`, `sendtoaddress`, `getnewaddress`, `getrawchangeaddress`,
+and `listdescriptors`. Open Bitcoin also exposes deterministic extension methods
 `buildtransaction` and `buildandsigntransaction` for the current wallet adapter
-slice. See [`docs/parity/catalog/rpc-cli-config.md`](./docs/parity/catalog/rpc-cli-config.md)
-for supported and deferred operator behavior.
+slice. Wallet-scoped methods honor `-rpcwallet` and `/wallet/<name>` for the
+implemented subset.
+
+The operator binary also exposes Open Bitcoin-owned wallet workflows that stay
+outside the baseline-compatible parser surface:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --network regtest --datadir=/tmp/open-bitcoin-preview \
+  wallet --wallet alpha send mipcBbFg9gMiCh81Kj8tqqdgoZub1ZJRfn 12000 \
+  --fee-rate-sat-per-kvb 2000 --replaceable
+```
+
+That command renders a deterministic preview and refuses mutation until
+`--confirm` is added. Managed-wallet backups are likewise Open Bitcoin-owned:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --network regtest --datadir=/tmp/open-bitcoin-preview \
+  wallet --wallet alpha backup /tmp/open-bitcoin-preview/backups/alpha.json
+```
+
+The backup export is one-way JSON for the managed wallet snapshot. It rejects
+destinations that overlap detected Core or Knots wallet candidates and does not
+copy, restore, or mutate external wallet formats. See
+[`docs/parity/catalog/wallet.md`](./docs/parity/catalog/wallet.md) for the
+shipped wallet slice and explicit deferrals.
 
 ## Future Work
 
@@ -137,7 +163,7 @@ Known follow-up themes are tracked in
 [`docs/parity/deviations-and-unknowns.md`](./docs/parity/deviations-and-unknowns.md).
 High-level areas include:
 
-- richer wallet-send RPC ergonomics, peer-info and `-netinfo` views, multiwallet selection, remote-operator ACL/auth, and daemon supervision
+- richer wallet-send RPC ergonomics beyond the current `sendtoaddress`-style path, peer-info and `-netinfo` views, full multiwallet lifecycle parity, remote-operator ACL/auth, and daemon supervision
 - managed Knots process support, fuller upstream functional-suite coverage, and a dedicated fuzzing runtime
 - deeper wallet, P2P, chainstate, and long-lived runtime policy behavior beyond the current headless v1 slice
 - future GUI and public dashboard work after the headless node and wallet surfaces mature

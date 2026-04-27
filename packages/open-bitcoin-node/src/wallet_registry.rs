@@ -1,5 +1,7 @@
 // Parity breadcrumbs:
 // - packages/bitcoin-knots/src/wallet/wallet.cpp
+// - packages/bitcoin-knots/src/wallet/spend.cpp
+// - packages/bitcoin-knots/src/wallet/receive.cpp
 // - packages/bitcoin-knots/src/wallet/rpc/util.cpp
 // - packages/bitcoin-knots/src/wallet/rpc/transactions.cpp
 

@@ -10,8 +10,8 @@ use open_bitcoin_chainstate::{ChainPosition, ChainstateSnapshot, Coin};
 use open_bitcoin_consensus::{TransactionValidationContext, validate_transaction_with_context};
 use open_bitcoin_mempool::validate_standard_transaction;
 use open_bitcoin_primitives::{
-    BlockHash, BlockHeader, OutPoint, ScriptBuf, ScriptWitness, Transaction, TransactionInput,
-    TransactionOutput, Txid,
+    Amount, BlockHash, BlockHeader, OutPoint, ScriptBuf, ScriptWitness, Transaction,
+    TransactionInput, TransactionOutput, Txid,
 };
 
 use super::{
@@ -726,6 +726,137 @@ fn wallet_reports_missing_roles_and_basic_build_errors() {
             )
             .expect_err("no recipients"),
         WalletError::NoRecipients
+    );
+}
+
+#[test]
+fn send_intent_reports_missing_recipients_and_invalid_ceiling_inputs() {
+    // Arrange / Act
+    let no_recipients = super::SendIntent::new(
+        Vec::new(),
+        super::FeeSelection::Explicit(open_bitcoin_mempool::FeeRate::from_sats_per_kvb(1_000)),
+        super::ChangePolicy::Automatic,
+        None,
+        false,
+        None,
+    )
+    .expect_err("at least one recipient is required");
+    let invalid_ceiling = super::SendIntent::new(
+        vec![Recipient {
+            script_pubkey: script(&[0x51]),
+            value: Amount::from_sats(1_000).expect("amount"),
+        }],
+        super::FeeSelection::Explicit(open_bitcoin_mempool::FeeRate::from_sats_per_kvb(1_000)),
+        super::ChangePolicy::Automatic,
+        None,
+        false,
+        Some(0),
+    )
+    .expect_err("non-positive fee ceilings are invalid");
+
+    // Assert
+    assert_eq!(no_recipients, WalletError::NoRecipients);
+    assert_eq!(
+        invalid_ceiling,
+        WalletError::FeeCeilingExceeded {
+            fee_sats: 0,
+            ceiling_sats: 0
+        }
+    );
+}
+
+#[test]
+fn send_intent_into_build_request_covers_estimator_and_change_policy_branches() {
+    // Arrange
+    let recipient = Recipient {
+        script_pubkey: script(&[0x51]),
+        value: Amount::from_sats(1_000).expect("amount"),
+    };
+    let estimated = super::SendIntent::new(
+        vec![recipient.clone()],
+        super::FeeSelection::Estimate(super::FeeEstimateRequest {
+            conf_target: 6,
+            mode: super::FeeEstimateMode::Economical,
+        }),
+        super::ChangePolicy::FixedDescriptor(7),
+        Some(3),
+        true,
+        None,
+    )
+    .expect("estimated intent");
+    let forbidden = super::SendIntent::new(
+        vec![recipient],
+        super::FeeSelection::Explicit(open_bitcoin_mempool::FeeRate::from_sats_per_kvb(1_500)),
+        super::ChangePolicy::ChangeForbidden,
+        None,
+        false,
+        None,
+    )
+    .expect("forbidden intent");
+    let automatic = super::SendIntent::new(
+        vec![Recipient {
+            script_pubkey: script(&[0x51]),
+            value: Amount::from_sats(2_000).expect("amount"),
+        }],
+        super::FeeSelection::Explicit(open_bitcoin_mempool::FeeRate::from_sats_per_kvb(1_750)),
+        super::ChangePolicy::Automatic,
+        None,
+        false,
+        None,
+    )
+    .expect("automatic intent");
+
+    // Act
+    let unresolved = estimated
+        .into_build_request(None)
+        .expect_err("estimate intents need a resolved fee rate");
+    let resolved = estimated
+        .into_build_request(Some(open_bitcoin_mempool::FeeRate::from_sats_per_kvb(
+            2_000,
+        )))
+        .expect("resolved build request");
+    let forbidden_request = forbidden
+        .into_build_request(None)
+        .expect("explicit fee rate does not need estimator");
+    let automatic_request = automatic
+        .into_build_request(None)
+        .expect("automatic explicit request");
+
+    // Assert
+    assert_eq!(
+        unresolved,
+        WalletError::EstimatorUnavailable("estimate_mode requires a resolved fee rate".to_string())
+    );
+    assert_eq!(resolved.maybe_change_descriptor_id, Some(7));
+    assert_eq!(
+        resolved.fee_rate,
+        open_bitcoin_mempool::FeeRate::from_sats_per_kvb(2_000)
+    );
+    assert_eq!(forbidden_request.maybe_change_descriptor_id, None);
+    assert_eq!(automatic_request.maybe_change_descriptor_id, None);
+}
+
+#[test]
+fn address_allocation_reports_missing_role_as_unsupported() {
+    // Arrange
+    let mut wallet = Wallet::new(AddressNetwork::Regtest);
+
+    // Act
+    let receive_error = wallet
+        .allocate_receive_address()
+        .expect_err("missing external role should be explicit");
+    let change_error = wallet
+        .allocate_change_address()
+        .expect_err("missing internal role should be explicit");
+
+    // Assert
+    assert_eq!(
+        receive_error,
+        WalletError::UnsupportedAddressRole("external".to_string())
+    );
+    assert_eq!(
+        change_error,
+        WalletError::UnsupportedAddressRole("internal".to_string())
     );
 }
 

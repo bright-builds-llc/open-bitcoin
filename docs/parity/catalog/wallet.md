@@ -1,7 +1,7 @@
 # Wallet Core And Adapters
 
-This entry tracks the Phase 7 wallet slice implemented in Open Bitcoin. The
-behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
+This entry tracks the shipped wallet slice through Phase 20. The behavioral
+baseline remains Bitcoin Knots `29.3.knots20260210`.
 
 ## Coverage
 
@@ -19,7 +19,19 @@ behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
 - legacy, nested segwit, native segwit, and taproot key-path signing through
   the canonical consensus sighash helpers
 - managed wallet snapshot persistence through `open-bitcoin-node`
+- durable named-wallet registry selection for the current wallet subset
+- one active external and one active internal ranged single-key descriptor per
+  wallet, including persisted `range` and `next_index` state
+- wallet-scoped RPC or CLI routing through `-rpcwallet` and `/wallet/<name>` for
+  the supported method subset
+- `sendtoaddress`-style wallet sends for the current slice, plus the
+  Open Bitcoin-owned operator preview or confirm wrapper under `open-bitcoin
+  wallet send`
 - operator-visible wallet freshness reporting through the shared status snapshot
+- resumable rescan progress and freshness metadata in `getwalletinfo` and the
+  shared status surface
+- Open Bitcoin-owned managed-wallet backup exports that stay one-way and reject
+  detected external wallet destinations
 - read-only external wallet inspection with wallet-format, chain-scope, and
   product-confidence hints for backup and migration planning
 
@@ -44,8 +56,14 @@ behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
   silently reusing receive outputs
 - persistence and recovery stay adapter-owned instead of leaking direct I/O
   into the wallet core
+- the operator send flow uses a preview and explicit confirmation wrapper, but
+  the final mutation still goes through the wallet-scoped `sendtoaddress` path
+- wallet-scoped selection follows the `/wallet/<name>` or `-rpcwallet` pattern
+  for the implemented subset without claiming full `loadwallet` parity
 - wallet operators can inspect existing Core/Knots wallet candidates without
   mutating wallet files, metadata, permissions, or timestamps
+- backup export is deliberately Open Bitcoin-owned JSON rather than a
+  Core-compatible `wallet.dat` copy
 
 ## First-party implementation
 
@@ -53,18 +71,24 @@ behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
 - [`packages/open-bitcoin-wallet/src/descriptor.rs`](../../../packages/open-bitcoin-wallet/src/descriptor.rs)
 - [`packages/open-bitcoin-wallet/src/wallet.rs`](../../../packages/open-bitcoin-wallet/src/wallet.rs)
 - [`packages/open-bitcoin-node/src/wallet.rs`](../../../packages/open-bitcoin-node/src/wallet.rs)
+- [`packages/open-bitcoin-node/src/wallet_registry.rs`](../../../packages/open-bitcoin-node/src/wallet_registry.rs)
+- [`packages/open-bitcoin-rpc/src/dispatch.rs`](../../../packages/open-bitcoin-rpc/src/dispatch.rs)
+- [`packages/open-bitcoin-cli/src/operator/wallet.rs`](../../../packages/open-bitcoin-cli/src/operator/wallet.rs)
 
 ## Known gaps
 
-- ranged descriptors and HD xpub/xprv derivation
 - miniscript, multisig, and PSBT flows
-- wallet encryption, backup file formats, and migration behavior
+- wallet encryption and restore or import compatibility with external wallet
+  formats
 - external signer integration
-- real-node functional rescans and RPC-facing wallet semantics
+- full multiwallet lifecycle parity such as `loadwallet`, `unloadwallet`, and
+  `listwallets`
+- richer `send` RPC ergonomics beyond the shipped `sendtoaddress`-style path
 - Phase 21 still owns any external-wallet mutation, backup export, restore,
   import, copy, or migration execution flow
 
 ## Follow-up triggers
 
-Update this entry when later phases add descriptor ranges, PSBT flows, wallet
-RPC or CLI commands, external signers, or broader coin-selection parity.
+Update this entry when later phases add wallet lifecycle parity, richer send
+surfaces, PSBT flows, external signers, restore or import behavior, or broader
+coin-selection parity.

@@ -398,25 +398,22 @@ Open Bitcoin should mirror this selection model for its current wallet-method su
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
 | A1 | Open Bitcoin backup export can be a repo-owned snapshot format rather than a Core-compatible `wallet.dat` copy. [ASSUMED] | Summary; Architecture Patterns; Open Questions | If wrong, Phase 20 scope expands into restore/import compatibility and external wallet-file semantics. |
-| A2 | The minimal honest `sendtoaddress` slice can require explicit `fee_rate` for commit flows and return a deterministic unsupported-error for automatic fee-estimation inputs until a real estimator exists. [ASSUMED] | Summary; Common Pitfalls; Planner Recommendation | If wrong, WAL-04 may require a fee-estimation subsystem that is not present in the current stack. |
+| A2 | Phase 20 must accept `conf_target` and `estimate_mode` inputs and resolve them through a first deterministic wallet fee-estimation contract instead of rejecting them as unsupported. [RESOLVED] | Summary; Common Pitfalls; Planner Recommendation | If the estimator contract is underspecified, WAL-04 remains incomplete and the send path silently narrows scope. |
 | A3 | “Schema-aware” external wallet inspection is satisfied by reliable format classification and metadata extraction without full SQLite/BDB record parsing. [ASSUMED] | Summary; State of the Art; Open Questions | If wrong, Phase 20 may need new database-format dependencies or far deeper parsing work. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **How much of `sendtoaddress` should be implemented beyond explicit fee-rate flows?**
-   - What we know: Knots supports `conf_target`, `estimate_mode`, `fee_rate`, `replaceable`, and `subtractfeefromamount`, but the current Open Bitcoin stack has deterministic build/sign helpers and no fee estimator. [VERIFIED: packages/bitcoin-knots/src/wallet/rpc/spend.cpp] [VERIFIED: packages/open-bitcoin-wallet/src/wallet/build.rs] [VERIFIED: packages/open-bitcoin-rpc/src/dispatch.rs]
-   - What's unclear: Whether WAL-04 is satisfied by explicit fee-rate support plus deterministic unsupported-estimate errors, or whether the planner must add a first estimator. [ASSUMED]
-   - Recommendation: Keep the initial plan centered on explicit `fee_rate` and flag estimate-mode parity as a user confirmation point unless a repo-local estimator already exists. [ASSUMED]
+   - Resolution: WAL-04 requires accepting `conf_target` and `estimate_mode` inputs in addition to explicit `fee_rate`. Phase 20 should add a first deterministic wallet fee-estimation contract in the node or RPC shell that converts supported estimate inputs into an explicit `FeeRate` before the pure wallet build/sign pipeline runs. [RESOLVED]
+   - Concrete planning rule: the estimator may be modest and policy-driven, but it cannot reduce estimate inputs to “unsupported.” If runtime evidence is insufficient to compute a supported estimate, the failure must be an estimator-unavailable/runtime-data error after accepted parsing, not a parameter-surface deferral. [RESOLVED]
 
 2. **Where should the preview/confirmation wrapper live?**
-   - What we know: The compatibility CLI path is baseline-oriented, while the operator clap path currently has `status`, `config`, `service`, `dashboard`, and `onboard`, but no wallet send subcommand. [VERIFIED: docs/architecture/cli-command-architecture.md] [VERIFIED: packages/open-bitcoin-cli/src/operator.rs]
-   - What's unclear: Whether Phase 20 should add a new operator subcommand now or keep preview/confirm inside a later dashboard or separate operator action surface. [ASSUMED]
-   - Recommendation: Keep the commit path in `open-bitcoin-cli sendtoaddress` and plan the preview/confirm wrapper as a thin operator feature only if the phase has room after the baseline RPC path is stable. [ASSUMED]
+   - Resolution: keep the mutating parity path in the wallet-scoped RPC and compatibility CLI surface, and place preview/confirmation in a dedicated operator-owned wallet workflow under `open-bitcoin`. [RESOLVED]
+   - Concrete planning rule: preview remains an Open Bitcoin operator convenience layer that delegates final mutation to the same wallet-scoped commit path instead of reimplementing funding/signing locally. [RESOLVED]
 
 3. **How deep should external wallet inspection go in Phase 20?**
-   - What we know: Current detection is path-based and read-only, and Phase 20 explicitly defers external wallet mutation. [VERIFIED: packages/open-bitcoin-cli/src/operator/detect.rs] [VERIFIED: .planning/phases/20-wallet-runtime-expansion/20-CONTEXT.md]
-   - What's unclear: Whether the planner should stop at reliable format classification or also surface descriptor counts or more detailed metadata from external stores. [ASSUMED]
-   - Recommendation: Keep Phase 20 at reliable classification plus path/backup metadata, and defer deep content parsing to Phase 21 unless a later user decision expands scope. [ASSUMED]
+   - Resolution: Phase 20 should stop at reliable format-aware classification plus backup-planning metadata, not deep mutable import or full record-level migration parsing. [RESOLVED]
+   - Concrete planning rule: the read-only inspection surface may surface wallet kind, likely name, and backup/migration cautions, but mutation and deep migration transforms remain Phase 21 work. [RESOLVED]
 
 ## Environment Availability
 

@@ -251,7 +251,8 @@
           "quirks": [
             "The first wallet slice keeps change explicit through internal descriptors instead of implicit keypool behavior.",
             "Wallet balances and UTXOs rebuild from chainstate snapshots rather than coupling the wallet core to persistence.",
-            "Legacy, segwit-v0, and taproot signing reuse the canonical consensus sighash helpers instead of a second signing engine."
+            "Legacy, segwit-v0, and taproot signing reuse the canonical consensus sighash helpers instead of a second signing engine.",
+            "Phase 20 keeps the operator preview or confirm flow Open Bitcoin-owned while the final send mutation still goes through the wallet-scoped sendtoaddress path."
           ],
           "known_bugs": [],
           "known_bugs_status": "none-confirmed",
@@ -288,7 +289,8 @@
           "quirks": [
             "The supported operator slice is intentionally single-wallet and local-auth only; deferred surfaces are listed explicitly instead of implied by omission.",
             "Open Bitcoin adds deterministic buildtransaction and buildandsigntransaction extension methods for the current wallet adapter slice.",
-            "The CLI keeps -getinfo as a four-call helper batch while normal method execution stays RPC-shaped."
+            "The CLI keeps -getinfo as a four-call helper batch while normal method execution stays RPC-shaped.",
+            "Wallet-scoped RPC routing now covers -rpcwallet or /wallet/<name> for the shipped wallet subset while open-bitcoin keeps preview or backup workflows outside the baseline-compatible parser."
           ],
           "known_bugs": [],
           "known_bugs_status": "none-confirmed",
@@ -535,9 +537,9 @@
           "docs/parity/catalog/wallet.md",
           ".planning/phases/07-wallet-core-and-adapters/07-VERIFICATION.md"
         ],
-        "rationale": "The headless wallet slice for descriptors, balances, coin selection, signing, and adapter-owned persistence is verified.",
+        "rationale": "The shipped wallet slice now includes ranged single-key descriptors, durable named-wallet selection, freshness or rescan visibility, sendtoaddress-style sends, operator preview or confirm flows, and Open Bitcoin-owned backup export.",
         "known_gaps": [
-          "Ranged descriptors, HD derivation, miniscript, multisig, PSBT, encryption, external signer, real-node rescans, and broader wallet RPC semantics remain outside the current slice."
+          "Miniscript, multisig, PSBT, encryption, external signer, restore or import compatibility with external wallet formats, and full multiwallet lifecycle parity remain outside the current slice."
         ],
         "suspected_unknowns": [
           "Which future HD, multisig, PSBT, coin-selection, and metadata behaviors should stay pure-core versus shell-owned."
@@ -556,12 +558,12 @@
           "docs/parity/catalog/rpc-cli-config.md",
           ".planning/phases/08-rpc-cli-and-config-parity/08-VERIFICATION.md"
         ],
-        "rationale": "The supported local JSON-RPC, bitcoin-cli, config, auth, and headless operator workflow slice is verified.",
+        "rationale": "The supported local JSON-RPC, bitcoin-cli, config, auth, wallet-scoped routing, and headless operator workflow slice is verified.",
         "known_gaps": [
-          "sendtoaddress, richer wallet-send ergonomics, getpeerinfo, -netinfo, rpcwallet, rpcauth, rpcwhitelist, rpcwait, daemon supervision, and broader process-control helpers remain deferred."
+          "Richer wallet-send ergonomics beyond the shipped sendtoaddress path, getpeerinfo, -netinfo, full multiwallet lifecycle parity, rpcauth, rpcwhitelist, rpcwait, daemon supervision, and broader process-control helpers remain deferred."
         ],
         "suspected_unknowns": [
-          "How closely sendtoaddress, getpeerinfo, and multiwallet semantics should mirror Knots when the adapter-owned surfaces grow."
+          "How closely richer wallet-send ergonomics, getpeerinfo, and full multiwallet semantics should mirror Knots when the adapter-owned surfaces grow."
         ]
       },
       {
