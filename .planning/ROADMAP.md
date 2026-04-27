@@ -141,8 +141,8 @@ Plans:
 
 Plans:
 - [x] 17-01-PLAN.md — Operator module contracts and breadcrumb coverage
-- [ ] 17-02-PLAN.md — Config precedence and JSONC path reporting
-- [ ] 17-03-PLAN.md — Read-only Core/Knots detection
+- [x] 17-02-PLAN.md — Config precedence and JSONC path reporting
+- [x] 17-03-PLAN.md — Read-only Core/Knots detection
 - [ ] 17-04-PLAN.md — Shared status collection and rendering
 - [ ] 17-05-PLAN.md — First-run onboarding and open-bitcoin binary wiring
 
