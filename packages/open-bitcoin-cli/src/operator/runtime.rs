@@ -16,7 +16,6 @@ use crate::{args::CliStartupArgs, startup::resolve_startup_config};
 
 use super::{
     ConfigCommand, DashboardArgs, OnboardArgs, OperatorCli, OperatorCommand, OperatorOutputFormat,
-    ServiceCommand,
     config::{
         OPEN_BITCOIN_CONFIG_ENV, OPEN_BITCOIN_DATADIR_ENV, OPEN_BITCOIN_NETWORK_ENV,
         OperatorConfigRequest, OperatorConfigResolution, OperatorConfigRoots,
@@ -28,6 +27,7 @@ use super::{
         apply_onboarding_plan, plan_onboarding, prompt_onboarding_answers,
         read_existing_open_bitcoin_config, render_onboarding_plan,
     },
+    service::{execute_service_command, platform_service_manager},
     status::{
         HttpStatusRpcClient, StatusCollectorInput, StatusDetectionEvidence,
         StatusLiveRpcAdapterInput, StatusRenderMode, StatusRequest, StatusRpcAuthSource,
@@ -186,15 +186,26 @@ fn execute_operator_cli_inner(
         OperatorCommand::Onboard(args) => {
             execute_onboarding(args, &cli, config_resolution, detections)
         }
-        OperatorCommand::Service(service) => match service.command {
-            ServiceCommand::Status
-            | ServiceCommand::Install
-            | ServiceCommand::Uninstall
-            | ServiceCommand::Enable
-            | ServiceCommand::Disable => Ok(OperatorCommandOutcome::failure(
-                "service lifecycle commands are deferred to Phase 18",
-            )),
-        },
+        OperatorCommand::Service(service) => {
+            let home_dir = env::var_os("HOME")
+                .map(PathBuf::from)
+                .unwrap_or_else(|| PathBuf::from("."));
+            let manager = platform_service_manager(home_dir);
+            let binary_path =
+                std::env::current_exe().unwrap_or_else(|_| PathBuf::from("open-bitcoin"));
+            let data_dir = config_resolution
+                .maybe_data_dir
+                .clone()
+                .unwrap_or_else(|| default_data_dir.clone());
+            Ok(execute_service_command(
+                service,
+                binary_path,
+                data_dir,
+                config_resolution.maybe_config_path.clone(),
+                config_resolution.maybe_log_dir.clone(),
+                manager.as_ref(),
+            ))
+        }
         OperatorCommand::Dashboard(DashboardArgs { .. }) => Ok(OperatorCommandOutcome::failure(
             "dashboard command is deferred to Phase 19",
         )),
@@ -357,11 +368,25 @@ fn detection_roots(resolution: &OperatorConfigResolution) -> DetectionRoots {
         .iter()
         .cloned()
         .collect::<Vec<_>>();
+    let service_dirs = {
+        #[cfg(target_os = "macos")]
+        {
+            vec![home_dir.join("Library/LaunchAgents")]
+        }
+        #[cfg(target_os = "linux")]
+        {
+            vec![home_dir.join(".config/systemd/user")]
+        }
+        #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+        {
+            Vec::new()
+        }
+    };
     DetectionRoots {
         home_dir,
         config_dirs: data_dirs.clone(),
         data_dirs,
-        service_dirs: Vec::new(),
+        service_dirs,
     }
 }
 

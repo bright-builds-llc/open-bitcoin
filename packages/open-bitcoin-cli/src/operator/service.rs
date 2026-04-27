@@ -292,36 +292,40 @@ pub fn execute_service_command(
                 apply: args.apply,
             };
             match manager.install(&request) {
-                Ok(outcome) => {
-                    OperatorCommandOutcome::success(format!("{}\n", render_service_outcome(&outcome)))
-                }
+                Ok(outcome) => OperatorCommandOutcome::success(format!(
+                    "{}\n",
+                    render_service_outcome(&outcome)
+                )),
                 Err(error) => OperatorCommandOutcome::failure(error.to_string()),
             }
         }
         ServiceCommand::Uninstall => {
             let request = ServiceUninstallRequest { apply: args.apply };
             match manager.uninstall(&request) {
-                Ok(outcome) => {
-                    OperatorCommandOutcome::success(format!("{}\n", render_service_outcome(&outcome)))
-                }
+                Ok(outcome) => OperatorCommandOutcome::success(format!(
+                    "{}\n",
+                    render_service_outcome(&outcome)
+                )),
                 Err(error) => OperatorCommandOutcome::failure(error.to_string()),
             }
         }
         ServiceCommand::Enable => {
             let request = ServiceEnableRequest;
             match manager.enable(&request) {
-                Ok(outcome) => {
-                    OperatorCommandOutcome::success(format!("{}\n", render_service_outcome(&outcome)))
-                }
+                Ok(outcome) => OperatorCommandOutcome::success(format!(
+                    "{}\n",
+                    render_service_outcome(&outcome)
+                )),
                 Err(error) => OperatorCommandOutcome::failure(error.to_string()),
             }
         }
         ServiceCommand::Disable => {
             let request = ServiceDisableRequest;
             match manager.disable(&request) {
-                Ok(outcome) => {
-                    OperatorCommandOutcome::success(format!("{}\n", render_service_outcome(&outcome)))
-                }
+                Ok(outcome) => OperatorCommandOutcome::success(format!(
+                    "{}\n",
+                    render_service_outcome(&outcome)
+                )),
                 Err(error) => OperatorCommandOutcome::failure(error.to_string()),
             }
         }
