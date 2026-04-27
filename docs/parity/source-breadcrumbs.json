@@ -219,17 +219,6 @@
       "breadcrumbs": []
     },
     {
-      "label": "operator-service-lifecycle",
-      "files": [
-        "packages/open-bitcoin-cli/src/operator/service.rs",
-        "packages/open-bitcoin-cli/src/operator/service/launchd.rs",
-        "packages/open-bitcoin-cli/src/operator/service/systemd.rs",
-        "packages/open-bitcoin-cli/src/operator/service/fake.rs",
-        "packages/open-bitcoin-cli/src/operator/service/tests.rs"
-      ],
-      "breadcrumbs": ["none"]
-    },
-    {
       "label": "codec-block",
       "files": [
         "packages/open-bitcoin-codec/src/block.rs"
@@ -796,7 +785,7 @@
         "packages/open-bitcoin-cli/src/operator/service/fake.rs",
         "packages/open-bitcoin-cli/src/operator/service/tests.rs"
       ],
-      "breadcrumbs": ["none"]
+      "breadcrumbs": []
     }
   ]
 }
