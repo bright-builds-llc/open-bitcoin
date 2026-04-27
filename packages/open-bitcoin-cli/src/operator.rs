@@ -15,6 +15,7 @@ pub mod config;
 pub mod detect;
 pub mod onboarding;
 pub mod runtime;
+pub mod service;
 pub mod status;
 
 /// First-party Open Bitcoin operator CLI contract.
@@ -67,6 +68,11 @@ pub enum ConfigCommand {
 pub struct ServiceArgs {
     #[command(subcommand)]
     pub command: ServiceCommand,
+    /// Apply changes (default: dry-run only). Pass --apply to write files or invoke
+    /// service manager commands. Without this flag, install and uninstall show a
+    /// preview of what would happen with no side effects.
+    #[arg(long = "apply", global = true)]
+    pub apply: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
