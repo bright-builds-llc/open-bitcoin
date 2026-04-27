@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Operator Runtime and Real-Network Sync
-status: in_progress
-stopped_at: Completed 20-02-PLAN.md
-last_updated: "2026-04-27T11:11:11.863Z"
-last_activity: 2026-04-27 -- Phase 20 plan 20-02 completed with durable wallet registry and restart-safe rescan recovery
+status: completed
+stopped_at: Completed 20-03-PLAN.md
+last_updated: "2026-04-27T11:49:24.761Z"
+last_activity: 2026-04-27 -- Phase 20 plan 20-03 completed with wallet-scoped RPC routing and the practical wallet RPC subset
 progress:
   total_phases: 10
   completed_phases: 7
   total_plans: 32
-  completed_plans: 29
-  percent: 91
+  completed_plans: 30
+  percent: 94
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-04-26)
 ## Current Position
 
 Phase: 20 (wallet-runtime-expansion) — IN PROGRESS
-Plan: 20-03-PLAN.md
-Status: Plan 20-02 complete; Phase 20 continuing with plan 20-03 next
-Last activity: 2026-04-27 -- Phase 20 plan 20-02 completed with durable wallet registry and restart-safe rescan recovery
+Plan: 20-04-PLAN.md
+Status: Plan 20-03 complete; Phase 20 continuing with plan 20-04 next
+Last activity: 2026-04-27 -- Phase 20 plan 20-03 completed with wallet-scoped RPC routing and the practical wallet RPC subset
 
 Progress: 7/10 phases complete
 
@@ -69,6 +69,7 @@ Progress: 7/10 phases complete
 | Phase 16-metrics-logs-and-sync-telemetry P03 | 19 min | 2 tasks | 5 files |
 | Phase 20-wallet-runtime-expansion P01 | 9 min | 2 tasks | 6 files |
 | Phase 20-wallet-runtime-expansion P02 | 17m | 2 tasks | 12 files |
+| Phase 20-wallet-runtime-expansion P03 | 24m | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -100,6 +101,9 @@ Recent decisions affecting current work:
 - [Phase 20-wallet-runtime-expansion]: Persist wallet registry membership, selected-wallet metadata, and rescan checkpoints as separate records in the existing Fjall wallet namespace.
 - [Phase 20-wallet-runtime-expansion]: Resume wallet rescans by replaying bounded height windows from durable chainstate snapshots and checkpoint after each chunk.
 - [Phase 20-wallet-runtime-expansion]: Normalize stored #ob:: ranged-descriptor metadata during node snapshot decode so Plan 20-01 snapshots remain reloadable without expanding the plan write set.
+- [Phase 20-wallet-runtime-expansion]: Keep wallet selection in transport metadata and URI routing instead of request JSON payloads.
+- [Phase 20-wallet-runtime-expansion]: Preserve the typed GetWalletInfoResponse shape for downstream callers and append Phase 20 freshness metadata at JSON serialization time.
+- [Phase 20-wallet-runtime-expansion]: Resolve conf_target and estimate_mode in the RPC shell into deterministic fee rates before reusing the shared build-and-sign spend path.
 
 ### Roadmap Evolution
 
@@ -132,6 +136,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-27T11:10:58.531Z
-Stopped at: Completed 20-02-PLAN.md
+Last session: 2026-04-27T11:49:24.757Z
+Stopped at: Completed 20-03-PLAN.md
 Resume file: None
