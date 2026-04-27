@@ -137,7 +137,14 @@ Plans:
 3. Open Bitcoin JSONC config stores wizard/dashboard/service/migration state without breaking `bitcoin.conf` compatibility.
 4. CLI startup detects existing Core/Knots datadirs and config files and reports them without mutating user data.
 5. Config precedence is documented and tested across CLI flags, environment, JSONC config, `bitcoin.conf`, cookies, and defaults.
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 17-01-PLAN.md — Operator module contracts and breadcrumb coverage
+- [ ] 17-02-PLAN.md — Config precedence and JSONC path reporting
+- [ ] 17-03-PLAN.md — Read-only Core/Knots detection
+- [ ] 17-04-PLAN.md — Shared status collection and rendering
+- [ ] 17-05-PLAN.md — First-run onboarding and open-bitcoin binary wiring
 
 ### Phase 18: Service Lifecycle Integration
 
