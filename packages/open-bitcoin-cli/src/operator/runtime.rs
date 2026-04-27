@@ -228,6 +228,12 @@ fn execute_status(
             auth_source: auth_source(&startup.rpc.auth),
             timeout: std::time::Duration::from_secs(2),
         });
+    let home_dir = env::var_os("HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("."));
+    let maybe_service_manager: Option<Box<dyn super::service::ServiceManager>> =
+        Some(super::service::platform_service_manager(home_dir));
+
     let input = StatusCollectorInput {
         request: StatusRequest {
             render_mode: status_render_mode(cli.format),
@@ -242,6 +248,7 @@ fn execute_status(
             detected_installations: detections,
         },
         maybe_live_rpc,
+        maybe_service_manager,
     };
     let snapshot = collect_status_snapshot(
         &input,
