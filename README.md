@@ -108,6 +108,21 @@ cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli -- \
   -rpcuser=preview -rpcpassword=preview getblockchaininfo
 ```
 
+The Open Bitcoin-specific operator binary exposes status, config discovery, and
+first-run onboarding flows:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --datadir=/tmp/open-bitcoin-preview --network regtest status --format human --no-color
+```
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --network regtest --datadir=/tmp/open-bitcoin-preview \
+  --config=/tmp/open-bitcoin-preview/open-bitcoin.jsonc \
+  onboard --non-interactive --approve-write --detect-existing
+```
+
 Supported baseline-backed RPC methods currently include `getblockchaininfo`,
 `getmempoolinfo`, `getnetworkinfo`, `sendrawtransaction`, `deriveaddresses`,
 `getwalletinfo`, `getbalances`, `listunspent`, `importdescriptors`, and

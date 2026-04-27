@@ -43,7 +43,7 @@ This active milestone makes Open Bitcoin usable as an operator-facing, service-m
 - [x] **Phase 14: Durable Storage and Recovery** - Implement the selected durable storage layer and restart/recovery behavior for node and wallet state. (completed 2026-04-26)
 - [x] **Phase 15: Real Network Sync Loop** - Connect to real peers, drive headers/block sync, persist progress, and keep default tests deterministic. (completed 2026-04-26)
 - [x] **Phase 16: Metrics, Logs, and Sync Telemetry** - Record bounded metrics history, rotate logs, and expose sync/runtime telemetry to status consumers. (completed 2026-04-26)
-- [ ] **Phase 17: CLI Status and First-Run Onboarding** - Expand the clap command tree, implement rich status output, and add the idempotent wizard plus JSONC config layer.
+- [x] **Phase 17: CLI Status and First-Run Onboarding** - Expand the clap command tree, implement rich status output, and add the idempotent wizard plus JSONC config layer. (completed 2026-04-27)
 - [ ] **Phase 18: Service Lifecycle Integration** - Add macOS launchd and Linux systemd install/uninstall/enable/disable/status support with dry-run safety.
 - [ ] **Phase 19: Ratatui Node Dashboard** - Build the terminal dashboard on top of the shared status, metrics, logs, service, and sync models.
 - [ ] **Phase 20: Wallet Runtime Expansion** - Expand practical wallet runtime behavior for send, wallet selection, descriptors, rescans, backups, and migration inspection.
@@ -143,8 +143,8 @@ Plans:
 - [x] 17-01-PLAN.md — Operator module contracts and breadcrumb coverage
 - [x] 17-02-PLAN.md — Config precedence and JSONC path reporting
 - [x] 17-03-PLAN.md — Read-only Core/Knots detection
-- [ ] 17-04-PLAN.md — Shared status collection and rendering
-- [ ] 17-05-PLAN.md — First-run onboarding and open-bitcoin binary wiring
+- [x] 17-04-PLAN.md — Shared status collection and rendering
+- [x] 17-05-PLAN.md — First-run onboarding and open-bitcoin binary wiring
 
 ### Phase 18: Service Lifecycle Integration
 

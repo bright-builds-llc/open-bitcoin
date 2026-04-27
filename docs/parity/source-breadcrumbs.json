@@ -206,12 +206,15 @@
     {
       "label": "cli-operator-onboarding-contracts",
       "files": [
+        "packages/open-bitcoin-cli/src/bin/open-bitcoin.rs",
         "packages/open-bitcoin-cli/src/operator/onboarding.rs",
         "packages/open-bitcoin-cli/src/operator/onboarding/tests.rs",
         "packages/open-bitcoin-cli/src/operator/runtime.rs",
         "packages/open-bitcoin-cli/src/operator/status.rs",
+        "packages/open-bitcoin-cli/src/operator/status/http.rs",
         "packages/open-bitcoin-cli/src/operator/status/render.rs",
-        "packages/open-bitcoin-cli/src/operator/status/tests.rs"
+        "packages/open-bitcoin-cli/src/operator/status/tests.rs",
+        "packages/open-bitcoin-cli/tests/operator_binary.rs"
       ],
       "breadcrumbs": []
     },

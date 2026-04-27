@@ -28,7 +28,9 @@ use super::{
     },
 };
 
+mod http;
 mod render;
+pub use http::HttpStatusRpcClient;
 pub use render::render_status;
 
 /// Operator status request supplied by CLI flags and config.

@@ -3,7 +3,37 @@
 
 //! Operator runtime contract surface.
 
-use std::fmt;
+use std::{
+    collections::BTreeMap,
+    env, fmt,
+    path::{Path, PathBuf},
+};
+
+use open_bitcoin_rpc::RpcAuthConfig;
+use serde_json::json;
+
+use crate::{args::CliStartupArgs, startup::resolve_startup_config};
+
+use super::{
+    ConfigCommand, DashboardArgs, OnboardArgs, OperatorCli, OperatorCommand, OperatorOutputFormat,
+    ServiceCommand,
+    config::{
+        OPEN_BITCOIN_CONFIG_ENV, OPEN_BITCOIN_DATADIR_ENV, OPEN_BITCOIN_NETWORK_ENV,
+        OperatorConfigRequest, OperatorConfigResolution, OperatorConfigRoots,
+        resolve_operator_config,
+    },
+    detect::{DetectionRoots, detect_existing_installations},
+    onboarding::{
+        OnboardingError, OnboardingPromptAnswers, OnboardingRequest, StdIoOnboardingPrompter,
+        apply_onboarding_plan, plan_onboarding, prompt_onboarding_answers,
+        read_existing_open_bitcoin_config, render_onboarding_plan,
+    },
+    status::{
+        HttpStatusRpcClient, StatusCollectorInput, StatusDetectionEvidence,
+        StatusLiveRpcAdapterInput, StatusRenderMode, StatusRequest, StatusRpcAuthSource,
+        StatusRpcClient, collect_status_snapshot, render_status,
+    },
+};
 
 /// Typed process-style outcome for an operator command.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -49,6 +79,28 @@ impl OperatorExitCode {
     }
 }
 
+impl OperatorCommandOutcome {
+    pub fn success(stdout: impl Into<String>) -> Self {
+        Self {
+            stdout: OperatorStdout {
+                text: stdout.into(),
+            },
+            stderr: OperatorStderr::default(),
+            exit_code: OperatorExitCode::Success,
+        }
+    }
+
+    pub fn failure(stderr: impl Into<String>) -> Self {
+        Self {
+            stdout: OperatorStdout::default(),
+            stderr: OperatorStderr {
+                text: stderr.into(),
+            },
+            exit_code: OperatorExitCode::Failure(1),
+        }
+    }
+}
+
 /// Runtime error contract for operator command execution.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OperatorRuntimeError {
@@ -88,3 +140,272 @@ impl fmt::Display for OperatorRuntimeError {
 }
 
 impl std::error::Error for OperatorRuntimeError {}
+
+/// Execute a parsed operator CLI using process environment and filesystem evidence.
+pub fn execute_operator_cli(cli: OperatorCli) -> OperatorCommandOutcome {
+    execute_operator_cli_with_default_data_dir(cli, default_operator_data_dir())
+}
+
+/// Execute a parsed operator CLI with an injected default datadir.
+pub fn execute_operator_cli_with_default_data_dir(
+    cli: OperatorCli,
+    default_data_dir: PathBuf,
+) -> OperatorCommandOutcome {
+    match execute_operator_cli_inner(cli, default_data_dir) {
+        Ok(outcome) => outcome,
+        Err(error) => OperatorCommandOutcome::failure(error.to_string()),
+    }
+}
+
+fn execute_operator_cli_inner(
+    cli: OperatorCli,
+    default_data_dir: PathBuf,
+) -> Result<OperatorCommandOutcome, OperatorRuntimeError> {
+    let environment = operator_environment();
+    let roots = OperatorConfigRoots::new(
+        cli.maybe_data_dir
+            .clone()
+            .unwrap_or_else(|| default_data_dir.clone()),
+    );
+    let config_resolution =
+        resolve_operator_config(&OperatorConfigRequest::from(&cli), &environment, &roots).map_err(
+            |error| OperatorRuntimeError::InvalidRequest {
+                message: error.to_string(),
+            },
+        )?;
+    let detections = detect_existing_installations(&detection_roots(&config_resolution));
+
+    match &cli.command {
+        OperatorCommand::Status(_) => execute_status(&cli, config_resolution, detections),
+        OperatorCommand::Config(config) => match config.command {
+            ConfigCommand::Paths => Ok(OperatorCommandOutcome::success(render_config_paths(
+                &config_resolution,
+                cli.format,
+            )?)),
+        },
+        OperatorCommand::Onboard(args) => {
+            execute_onboarding(args, &cli, config_resolution, detections)
+        }
+        OperatorCommand::Service(service) => match service.command {
+            ServiceCommand::Status
+            | ServiceCommand::Install
+            | ServiceCommand::Uninstall
+            | ServiceCommand::Enable
+            | ServiceCommand::Disable => Ok(OperatorCommandOutcome::failure(
+                "service lifecycle commands are deferred to Phase 18",
+            )),
+        },
+        OperatorCommand::Dashboard(DashboardArgs { .. }) => Ok(OperatorCommandOutcome::failure(
+            "dashboard command is deferred to Phase 19",
+        )),
+    }
+}
+
+fn execute_status(
+    cli: &OperatorCli,
+    config_resolution: OperatorConfigResolution,
+    detections: Vec<super::detect::DetectedInstallation>,
+) -> Result<OperatorCommandOutcome, OperatorRuntimeError> {
+    let maybe_startup = startup_config_for_status(&config_resolution);
+    let maybe_http_client = maybe_startup
+        .as_ref()
+        .and_then(|startup| HttpStatusRpcClient::from_rpc_config(&startup.rpc).ok());
+    let maybe_live_rpc = maybe_startup
+        .as_ref()
+        .map(|startup| StatusLiveRpcAdapterInput {
+            endpoint: format!("{}:{}", startup.rpc.host, startup.rpc.port),
+            auth_source: auth_source(&startup.rpc.auth),
+            timeout: std::time::Duration::from_secs(2),
+        });
+    let input = StatusCollectorInput {
+        request: StatusRequest {
+            render_mode: status_render_mode(cli.format),
+            maybe_config_path: config_resolution.maybe_config_path.clone(),
+            maybe_data_dir: config_resolution.maybe_data_dir.clone(),
+            maybe_network: config_resolution.maybe_network,
+            include_live_rpc: maybe_http_client.is_some(),
+            no_color: cli.no_color,
+        },
+        config_resolution,
+        detection_evidence: StatusDetectionEvidence {
+            detected_installations: detections,
+        },
+        maybe_live_rpc,
+    };
+    let snapshot = collect_status_snapshot(
+        &input,
+        maybe_http_client
+            .as_ref()
+            .map(|client| client as &dyn StatusRpcClient),
+    );
+    let rendered = render_status(&snapshot, status_render_mode(cli.format)).map_err(|error| {
+        OperatorRuntimeError::InvalidRequest {
+            message: error.to_string(),
+        }
+    })?;
+    Ok(OperatorCommandOutcome::success(format!("{rendered}\n")))
+}
+
+fn execute_onboarding(
+    args: &OnboardArgs,
+    cli: &OperatorCli,
+    config_resolution: OperatorConfigResolution,
+    detections: Vec<super::detect::DetectedInstallation>,
+) -> Result<OperatorCommandOutcome, OperatorRuntimeError> {
+    let defaults = OnboardingPromptAnswers {
+        maybe_network: cli.maybe_network,
+        maybe_data_dir: cli.maybe_data_dir.clone(),
+        maybe_config_path: cli.maybe_config_path.clone(),
+        detect_existing_installations: args.detect_existing,
+        metrics_enabled: !args.disable_metrics,
+        logs_enabled: !args.disable_logs,
+        approve_write: args.approve_write,
+    };
+    let answers = if args.non_interactive {
+        defaults
+    } else {
+        let mut prompter = StdIoOnboardingPrompter;
+        prompt_onboarding_answers(&mut prompter, &defaults).map_err(onboarding_error)?
+    };
+    let request = if args.non_interactive {
+        OnboardingRequest::NonInteractive {
+            answers,
+            force_overwrite: args.force_overwrite,
+        }
+    } else {
+        OnboardingRequest::Interactive { answers }
+    };
+    let existing = read_existing_open_bitcoin_config(config_resolution.maybe_config_path.as_ref())
+        .map_err(onboarding_error)?;
+    let plan = plan_onboarding(&config_resolution, existing, detections, request)
+        .map_err(onboarding_error)?;
+    apply_onboarding_plan(&plan).map_err(onboarding_error)?;
+    Ok(OperatorCommandOutcome::success(format!(
+        "{}\n",
+        render_onboarding_plan(&plan)
+    )))
+}
+
+fn onboarding_error(error: OnboardingError) -> OperatorRuntimeError {
+    OperatorRuntimeError::InvalidRequest {
+        message: error.to_string(),
+    }
+}
+
+fn render_config_paths(
+    resolution: &OperatorConfigResolution,
+    format: OperatorOutputFormat,
+) -> Result<String, OperatorRuntimeError> {
+    let sources = resolution
+        .source_names()
+        .into_iter()
+        .map(str::to_string)
+        .collect::<Vec<_>>();
+    if format == OperatorOutputFormat::Json {
+        return serde_json::to_string_pretty(&json!({
+            "config_path": resolution.maybe_config_path.as_ref().map(|path| path.display().to_string()),
+            "bitcoin_conf_path": resolution.maybe_bitcoin_conf_path.as_ref().map(|path| path.display().to_string()),
+            "datadir": resolution.maybe_data_dir.as_ref().map(|path| path.display().to_string()),
+            "log_dir": resolution.maybe_log_dir.as_ref().map(|path| path.display().to_string()),
+            "metrics_store_path": resolution.maybe_metrics_store_path.as_ref().map(|path| path.display().to_string()),
+            "sources_considered": sources,
+        }))
+        .map(|value| format!("{value}\n"))
+        .map_err(|error| OperatorRuntimeError::InvalidRequest {
+            message: error.to_string(),
+        });
+    }
+    Ok(format!(
+        "Config: {}\nBitcoin config: {}\nDatadir: {}\nLogs: {}\nMetrics: {}\nSources: {}\n",
+        display_path(resolution.maybe_config_path.as_deref()),
+        display_path(resolution.maybe_bitcoin_conf_path.as_deref()),
+        display_path(resolution.maybe_data_dir.as_deref()),
+        display_path(resolution.maybe_log_dir.as_deref()),
+        display_path(resolution.maybe_metrics_store_path.as_deref()),
+        sources.join(" > ")
+    ))
+}
+
+fn startup_config_for_status(
+    resolution: &OperatorConfigResolution,
+) -> Option<crate::startup::CliStartupConfig> {
+    let conf_path = resolution.maybe_bitcoin_conf_path.as_ref()?;
+    if !conf_path.exists() {
+        return None;
+    }
+    let startup = CliStartupArgs {
+        maybe_conf_path: Some(conf_path.clone()),
+        maybe_data_dir: resolution.maybe_data_dir.clone(),
+        ..CliStartupArgs::default()
+    };
+    resolve_startup_config(
+        &startup,
+        resolution
+            .maybe_data_dir
+            .as_deref()
+            .unwrap_or_else(|| Path::new(".")),
+    )
+    .ok()
+}
+
+fn detection_roots(resolution: &OperatorConfigResolution) -> DetectionRoots {
+    let home_dir = env::var_os("HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("."));
+    let data_dirs = resolution
+        .maybe_data_dir
+        .iter()
+        .cloned()
+        .collect::<Vec<_>>();
+    DetectionRoots {
+        home_dir,
+        config_dirs: data_dirs.clone(),
+        data_dirs,
+        service_dirs: Vec::new(),
+    }
+}
+
+fn operator_environment() -> BTreeMap<String, String> {
+    [
+        OPEN_BITCOIN_CONFIG_ENV,
+        OPEN_BITCOIN_DATADIR_ENV,
+        OPEN_BITCOIN_NETWORK_ENV,
+    ]
+    .into_iter()
+    .filter_map(|name| env::var(name).ok().map(|value| (name.to_string(), value)))
+    .collect()
+}
+
+fn status_render_mode(format: OperatorOutputFormat) -> StatusRenderMode {
+    match format {
+        OperatorOutputFormat::Human => StatusRenderMode::Human,
+        OperatorOutputFormat::Json => StatusRenderMode::Json,
+    }
+}
+
+fn auth_source(auth: &RpcAuthConfig) -> StatusRpcAuthSource {
+    match auth {
+        RpcAuthConfig::Cookie { maybe_cookie_file } => StatusRpcAuthSource::CookieFile {
+            path: maybe_cookie_file
+                .clone()
+                .unwrap_or_else(|| PathBuf::from(".cookie")),
+        },
+        RpcAuthConfig::UserPassword { .. } => StatusRpcAuthSource::UserCredentialsConfigured,
+    }
+}
+
+fn display_path(maybe_path: Option<&Path>) -> String {
+    maybe_path
+        .map(|path| path.display().to_string())
+        .unwrap_or_else(|| "Unavailable".to_string())
+}
+
+fn default_operator_data_dir() -> PathBuf {
+    if let Some(path) = env::var_os(OPEN_BITCOIN_DATADIR_ENV) {
+        return PathBuf::from(path);
+    }
+    if let Some(path) = env::var_os("HOME") {
+        return PathBuf::from(path).join(".open-bitcoin");
+    }
+    PathBuf::from(".open-bitcoin")
+}

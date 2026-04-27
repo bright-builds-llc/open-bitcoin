@@ -88,6 +88,16 @@ pub struct DashboardArgs {
 pub struct OnboardArgs {
     #[arg(long = "non-interactive")]
     pub non_interactive: bool,
+    #[arg(long = "approve-write")]
+    pub approve_write: bool,
+    #[arg(long = "force-overwrite")]
+    pub force_overwrite: bool,
+    #[arg(long = "disable-metrics")]
+    pub disable_metrics: bool,
+    #[arg(long = "disable-logs")]
+    pub disable_logs: bool,
+    #[arg(long = "detect-existing")]
+    pub detect_existing: bool,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, ValueEnum)]

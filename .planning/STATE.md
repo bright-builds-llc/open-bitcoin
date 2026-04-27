@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Operator Runtime and Real-Network Sync
-status: executing
-stopped_at: Completed 17-03-PLAN.md
-last_updated: "2026-04-27T01:15:46.268Z"
+status: ready
+stopped_at: Completed Phase 17 verification
+last_updated: "2026-04-27T01:47:30.000Z"
 last_activity: 2026-04-27
 progress:
   total_phases: 10
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 21
-  completed_plans: 19
-  percent: 90
+  completed_plans: 21
+  percent: 100
 ---
 
 # Project State
@@ -21,22 +21,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-26)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 17 — CLI Status and First-Run Onboarding
+**Current focus:** Phase 18 — Service Lifecycle Integration
 
 ## Current Position
 
-Phase: 17 (CLI Status and First-Run Onboarding) — EXECUTING
-Plan: 4 of 5
-Status: Ready to execute
+Phase: 18 (Service Lifecycle Integration) — READY
+Plan: Not started
+Status: Ready for planning
 Last activity: 2026-04-27
 
-Progress: 3/10 phases complete
+Progress: 5/10 phases complete
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed in v1.1: 13
+- Total plans completed in v1.1: 21
 - Average duration: not available yet
 - Total execution time: not available yet
 
@@ -48,7 +48,7 @@ Progress: 3/10 phases complete
 | 14 | 4 | - | - |
 | 15 | 4 | - | - |
 | 16 | 3 | - | - |
-| 17 | TBD | - | - |
+| 17 | 5 | - | - |
 | 18 | TBD | - | - |
 | 19 | TBD | - | - |
 | 20 | TBD | - | - |
@@ -60,6 +60,7 @@ Progress: 3/10 phases complete
 - Phase 13 completed 5 operator-runtime foundation plans on 2026-04-26.
 - Phase 14 completed 4 durable-storage and recovery plans on 2026-04-26.
 - Phase 15 completed 4 real-network sync loop plans on 2026-04-26.
+- Phase 17 completed 5 CLI status and first-run onboarding plans on 2026-04-27.
 
 | Phase 16 P01 | 12 min | 2 tasks | 4 files |
 | Phase 16 P02 | 18 min | 2 tasks | 7 files |
@@ -121,6 +122,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-27T01:15:46.264Z
-Stopped at: Completed 17-03-PLAN.md
+Last session: 2026-04-27T01:47:30.000Z
+Stopped at: Completed Phase 17 verification
 Resume file: None

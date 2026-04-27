@@ -456,7 +456,10 @@ fn load_runtime_from_evidence(
     maybe_network: Option<NetworkSelection>,
     roots: &OperatorConfigRoots,
 ) -> Result<open_bitcoin_rpc::config::RuntimeConfig, OperatorConfigError> {
-    let mut args = vec![OsString::from(format!("-datadir={}", data_dir.display()))];
+    let mut args = Vec::new();
+    if data_dir.exists() {
+        args.push(OsString::from(format!("-datadir={}", data_dir.display())));
+    }
     if bitcoin_conf_path.exists() {
         args.push(OsString::from(format!(
             "-conf={}",

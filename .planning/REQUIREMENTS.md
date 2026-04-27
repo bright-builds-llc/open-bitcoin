@@ -8,8 +8,8 @@
 
 ### Operator Status and Observability
 
-- [ ] **OBS-01**: Operator can run `open-bitcoin status` against a running or stopped node and see daemon state, version, commit/build provenance, datadir, config paths, network, chain tip, sync progress, peer counts, mempool summary, wallet summary, service state, log paths, and recent health signals.
-- [ ] **OBS-02**: Operator can request machine-readable status output with stable JSON fields for automation and support.
+- [x] **OBS-01**: Operator can run `open-bitcoin status` against a running or stopped node and see daemon state, version, commit/build provenance, datadir, config paths, network, chain tip, sync progress, peer counts, mempool summary, wallet summary, service state, log paths, and recent health signals.
+- [x] **OBS-02**: Operator can request machine-readable status output with stable JSON fields for automation and support.
 - [x] **OBS-03**: The node records bounded historical metrics for sync height, header height, peer counts, mempool size, wallet balance summary, disk usage, RPC health, and service restarts.
 - [x] **OBS-04**: The runtime writes structured logs with rotation, retention, and status-visible log locations.
 - [x] **OBS-05**: Operators can inspect recent warnings or errors without opening raw log files manually.
@@ -23,11 +23,11 @@
 
 ### CLI, Config, and Onboarding
 
-- [ ] **CLI-03**: First-party CLI commands use the existing `clap` dependency for the main command tree, help text, global flags, subcommands, and typed arguments while preserving baseline-compatible `bitcoin-cli` RPC invocation behavior where in scope.
-- [ ] **CLI-04**: First-run onboarding wizard asks a small set of practical questions, is idempotent across repeated runs, supports non-interactive mode, and never overwrites user files without explicit approval.
-- [ ] **CLI-05**: Open Bitcoin-only wizard, dashboard, service, and migration answers are stored in a user-editable JSONC config file without breaking Bitcoin Core or Bitcoin Knots `bitcoin.conf` compatibility.
-- [ ] **CLI-06**: Config precedence among CLI flags, environment, Open Bitcoin JSONC config, `bitcoin.conf`, cookies, and defaults is documented and covered by tests.
-- [ ] **CLI-07**: CLI startup detects existing Bitcoin Core and Bitcoin Knots datadirs/config files and reports them in onboarding and status without mutating them.
+- [x] **CLI-03**: First-party CLI commands use the existing `clap` dependency for the main command tree, help text, global flags, subcommands, and typed arguments while preserving baseline-compatible `bitcoin-cli` RPC invocation behavior where in scope.
+- [x] **CLI-04**: First-run onboarding wizard asks a small set of practical questions, is idempotent across repeated runs, supports non-interactive mode, and never overwrites user files without explicit approval.
+- [x] **CLI-05**: Open Bitcoin-only wizard, dashboard, service, and migration answers are stored in a user-editable JSONC config file without breaking Bitcoin Core or Bitcoin Knots `bitcoin.conf` compatibility.
+- [x] **CLI-06**: Config precedence among CLI flags, environment, Open Bitcoin JSONC config, `bitcoin.conf`, cookies, and defaults is documented and covered by tests.
+- [x] **CLI-07**: CLI startup detects existing Bitcoin Core and Bitcoin Knots datadirs/config files and reports them in onboarding and status without mutating them.
 
 ### Service Lifecycle
 
@@ -65,7 +65,7 @@
 ### Drop-In Parity and Migration
 
 - [ ] **MIG-01**: Open Bitcoin audits the Knots/Core drop-in replacement surface for CLI, RPC, config, datadir layout, service behavior, wallet behavior, network sync, logging, and operator documentation.
-- [ ] **MIG-02**: Onboarding can detect existing Bitcoin Core or Bitcoin Knots installations, datadirs, config files, cookie files, service definitions, and wallet candidates on macOS and Linux.
+- [x] **MIG-02**: Onboarding can detect existing Bitcoin Core or Bitcoin Knots installations, datadirs, config files, cookie files, service definitions, and wallet candidates on macOS and Linux.
 - [ ] **MIG-03**: Migration wizard explains tradeoffs, benefits, unsupported surfaces, rollback expectations, and backup requirements before asking the operator to proceed.
 - [ ] **MIG-04**: Migration supports dry-run plans that show every proposed file, config, service, and wallet action before any write occurs.
 - [ ] **MIG-05**: Any intentional difference from Knots/Core behavior is recorded in the parity ledger and surfaced in migration output when relevant.
@@ -102,8 +102,8 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| OBS-01 | Phase 13, Phase 17 | Pending |
-| OBS-02 | Phase 17 | Pending |
+| OBS-01 | Phase 13, Phase 17 | Complete |
+| OBS-02 | Phase 17 | Complete |
 | OBS-03 | Phase 13, Phase 16 | Complete |
 | OBS-04 | Phase 13, Phase 16 | Complete |
 | OBS-05 | Phase 16, Phase 17 | Complete |
@@ -111,11 +111,11 @@
 | DASH-02 | Phase 19 | Pending |
 | DASH-03 | Phase 19 | Pending |
 | DASH-04 | Phase 19 | Pending |
-| CLI-03 | Phase 13, Phase 17 | Pending |
-| CLI-04 | Phase 17 | Pending |
-| CLI-05 | Phase 13, Phase 17 | Pending |
-| CLI-06 | Phase 13, Phase 17 | Pending |
-| CLI-07 | Phase 17, Phase 21 | Pending |
+| CLI-03 | Phase 13, Phase 17 | Complete |
+| CLI-04 | Phase 17 | Complete |
+| CLI-05 | Phase 13, Phase 17 | Complete |
+| CLI-06 | Phase 13, Phase 17 | Complete |
+| CLI-07 | Phase 17, Phase 21 | Complete |
 | SVC-01 | Phase 18 | Pending |
 | SVC-02 | Phase 18 | Pending |
 | SVC-03 | Phase 18 | Pending |
@@ -138,7 +138,7 @@
 | WAL-07 | Phase 20 | Pending |
 | WAL-08 | Phase 20, Phase 21 | Pending |
 | MIG-01 | Phase 21 | Pending |
-| MIG-02 | Phase 17, Phase 21 | Pending |
+| MIG-02 | Phase 17, Phase 21 | Complete |
 | MIG-03 | Phase 21 | Pending |
 | MIG-04 | Phase 21 | Pending |
 | MIG-05 | Phase 21, Phase 22 | Pending |
@@ -154,4 +154,4 @@
 
 ---
 *Requirements defined: 2026-04-26*
-*Last updated: 2026-04-26 after v1.1 milestone start*
+*Last updated: 2026-04-27 after Phase 17 verification*

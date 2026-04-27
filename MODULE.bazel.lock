@@ -2834,7 +2834,7 @@
           "@@//packages/Cargo.toml": "2b18fb528f59dbec2141299545cd536e0e61a5ee8eea3b3f88c0190bfa98f14d",
           "@@//packages/open-bitcoin-bench/Cargo.toml": "c93aeb74b3f83805c1f047eedec1fbc34d12fe3dc29b6315100f816718ccd922",
           "@@//packages/open-bitcoin-chainstate/Cargo.toml": "2431ecf293f5880ac3a5fcbe49c25df364468faf890932809938d005b23d7147",
-          "@@//packages/open-bitcoin-cli/Cargo.toml": "0cd58a10dad97dccd2a1c6740df1de0f0ade92f25277a686332f8afcec325023",
+          "@@//packages/open-bitcoin-cli/Cargo.toml": "6ff56702d41c931b1ee2b02efec02ad21116d8b2ab674fb30c494226360b63de",
           "@@//packages/open-bitcoin-codec/Cargo.toml": "b376b7bba3d8eeaaff14473ed10c90fdc025520fa77801cb86e05ef73dff7170",
           "@@//packages/open-bitcoin-consensus/Cargo.toml": "a18bbbf5a3b7313558af35c7b1251e74963d19023ce3443147e85ea105527ab7",
           "@@//packages/open-bitcoin-core/Cargo.toml": "de982458207d2ada68e140d70dd5e98c410525e66f2c538ce0b8b7f4f626fe7a",
