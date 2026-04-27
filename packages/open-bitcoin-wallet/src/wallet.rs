@@ -72,6 +72,150 @@ pub struct BuildRequest {
     pub enable_rbf: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FeeEstimateMode {
+    Unset,
+    Economical,
+    Conservative,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FeeEstimateRequest {
+    pub conf_target: u16,
+    pub mode: FeeEstimateMode,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FeeSelection {
+    Explicit(FeeRate),
+    Estimate(FeeEstimateRequest),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChangePolicy {
+    Automatic,
+    ChangeForbidden,
+    FixedDescriptor(u32),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SendIntent {
+    pub recipients: Vec<Recipient>,
+    pub fee_selection: FeeSelection,
+    pub change_policy: ChangePolicy,
+    pub maybe_lock_time: Option<u32>,
+    pub enable_rbf: bool,
+    pub maybe_fee_ceiling_sats: Option<i64>,
+}
+
+impl SendIntent {
+    pub fn new(
+        recipients: Vec<Recipient>,
+        fee_selection: FeeSelection,
+        change_policy: ChangePolicy,
+        maybe_lock_time: Option<u32>,
+        enable_rbf: bool,
+        maybe_fee_ceiling_sats: Option<i64>,
+    ) -> Result<Self, WalletError> {
+        if recipients.is_empty() {
+            return Err(WalletError::NoRecipients);
+        }
+        if let FeeSelection::Estimate(request) = fee_selection {
+            if request.conf_target == 0 {
+                return Err(WalletError::InvalidEstimateRequest(
+                    "conf_target must be at least 1".to_string(),
+                ));
+            }
+        }
+        if let Some(ceiling_sats) = maybe_fee_ceiling_sats {
+            if ceiling_sats <= 0 {
+                return Err(WalletError::FeeCeilingExceeded {
+                    fee_sats: 0,
+                    ceiling_sats,
+                });
+            }
+        }
+
+        Ok(Self {
+            recipients,
+            fee_selection,
+            change_policy,
+            maybe_lock_time,
+            enable_rbf,
+            maybe_fee_ceiling_sats,
+        })
+    }
+
+    pub fn into_build_request(
+        &self,
+        maybe_resolved_estimate: Option<FeeRate>,
+    ) -> Result<BuildRequest, WalletError> {
+        let fee_rate = match self.fee_selection {
+            FeeSelection::Explicit(fee_rate) => fee_rate,
+            FeeSelection::Estimate(_) => {
+                let Some(fee_rate) = maybe_resolved_estimate else {
+                    return Err(WalletError::EstimatorUnavailable(
+                        "estimate_mode requires a resolved fee rate".to_string(),
+                    ));
+                };
+                fee_rate
+            }
+        };
+
+        let maybe_change_descriptor_id = match self.change_policy {
+            ChangePolicy::Automatic => None,
+            ChangePolicy::ChangeForbidden => None,
+            ChangePolicy::FixedDescriptor(descriptor_id) => Some(descriptor_id),
+        };
+
+        Ok(BuildRequest {
+            recipients: self.recipients.clone(),
+            fee_rate,
+            maybe_change_descriptor_id,
+            maybe_lock_time: self.maybe_lock_time,
+            enable_rbf: self.enable_rbf,
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum WalletRescanState {
+    Fresh {
+        scanned_through_height: u32,
+        target_height: u32,
+    },
+    Partial {
+        scanned_through_height: u32,
+        target_height: u32,
+    },
+    Scanning {
+        next_height: u32,
+        target_height: u32,
+    },
+}
+
+impl WalletRescanState {
+    pub fn from_progress(
+        maybe_scanned_through_height: Option<u32>,
+        maybe_target_height: Option<u32>,
+        maybe_next_height: Option<u32>,
+        is_scanning: bool,
+    ) -> Result<Self, WalletError> {
+        let target_height = maybe_target_height.unwrap_or_default();
+        if is_scanning {
+            return Ok(Self::Scanning {
+                next_height: maybe_next_height.unwrap_or_default(),
+                target_height,
+            });
+        }
+
+        Ok(Self::Fresh {
+            scanned_through_height: maybe_scanned_through_height.unwrap_or_default(),
+            target_height,
+        })
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BuiltTransaction {
     pub transaction: Transaction,
@@ -190,6 +334,14 @@ impl Wallet {
         record.descriptor.address(self.network)
     }
 
+    pub fn allocate_receive_address(&mut self) -> Result<Address, WalletError> {
+        self.allocate_address_for_role(DescriptorRole::External)
+    }
+
+    pub fn allocate_change_address(&mut self) -> Result<Address, WalletError> {
+        self.allocate_address_for_role(DescriptorRole::Internal)
+    }
+
     pub fn rescan_chainstate(&mut self, snapshot: &ChainstateSnapshot) -> Result<(), WalletError> {
         scan::rescan_chainstate(self, snapshot)
     }
@@ -261,6 +413,13 @@ impl Wallet {
 
     fn spend_height(&self) -> u32 {
         scan::spend_height(self)
+    }
+
+    fn allocate_address_for_role(&mut self, role: DescriptorRole) -> Result<Address, WalletError> {
+        let _ = role;
+        Err(WalletError::UnsupportedAddressRole(
+            "ranged descriptor allocation is not implemented yet".to_string(),
+        ))
     }
 }
 

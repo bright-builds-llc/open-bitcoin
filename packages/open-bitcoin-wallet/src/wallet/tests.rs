@@ -15,12 +15,17 @@ use open_bitcoin_primitives::{
 };
 
 use super::{
-    BuildRequest, BuiltTransaction, Recipient, Wallet, WalletSnapshot, WalletUtxo,
+    BuildRequest, BuiltTransaction, ChangePolicy, FeeEstimateMode, FeeEstimateRequest,
+    FeeSelection, Recipient, SendIntent, Wallet, WalletRescanState, WalletSnapshot, WalletUtxo,
     amount_from_sats, standard_wallet_verify_flags,
 };
 use crate::WalletError;
 use crate::address::AddressNetwork;
 use crate::descriptor::DescriptorRole;
+
+const RANGED_TPRV: &str = "tprv8ZgxMBicQKsPd7Uf69XL1XwhmjHopUGep8GuEiJDZmbQz6o58LninorQAfcKZWARbtRtfnLcJ5MQ2AtHcQJCCRUcMRvmDUjyEmNUWwx8UbK";
+const RANGED_TPUB: &str = "tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B";
+const TAPROOT_TPRV: &str = "tprv8ZgxMBicQKsPeNLUGrbv3b7qhUk1LQJZAGMuk9gVuKh9sd4BWGp1eMsehUni6qGb8bjkdwBxCbgNGdh2bYGACK5C5dRTaif9KBKGVnSezxV";
 
 fn sample_tip(height: u32) -> ChainPosition {
     ChainPosition::new(
@@ -84,6 +89,203 @@ fn funded_snapshot(wallet: &Wallet) -> ChainstateSnapshot {
     );
 
     ChainstateSnapshot::new(vec![sample_tip(10)], utxos, Default::default())
+}
+
+#[test]
+fn ranged_single_key_descriptors_normalize_into_wallet_contracts() {
+    // Arrange
+    let mut wallet = Wallet::new(AddressNetwork::Regtest);
+
+    // Act
+    wallet
+        .import_descriptor(
+            "receive-ranged",
+            DescriptorRole::External,
+            &format!("wpkh({RANGED_TPRV}/1/1/*)"),
+        )
+        .expect("ranged external descriptor");
+    wallet
+        .import_descriptor(
+            "change-ranged",
+            DescriptorRole::Internal,
+            &format!("sh(wpkh([{}/84h/1h/0h]{}/1/*))", "d34db33f", RANGED_TPUB),
+        )
+        .expect("ranged internal descriptor");
+    let taproot = crate::descriptor::SingleKeyDescriptor::parse(
+        &format!("tr({TAPROOT_TPRV}/0/*)"),
+        AddressNetwork::Regtest,
+    )
+    .expect("ranged taproot descriptor");
+    let multipath_error = crate::descriptor::SingleKeyDescriptor::parse(
+        &format!("wpkh({RANGED_TPUB}/<0;1>/*)"),
+        AddressNetwork::Regtest,
+    )
+    .expect_err("multipath should stay deferred");
+    let miniscript_error = crate::descriptor::SingleKeyDescriptor::parse(
+        &format!("wsh(multi(2,{RANGED_TPUB}/0/*,{RANGED_TPUB}/1/*))"),
+        AddressNetwork::Regtest,
+    )
+    .expect_err("multisig should stay deferred");
+
+    // Assert
+    let descriptors = wallet.descriptors();
+    assert_eq!(descriptors.len(), 2);
+    assert!(descriptors[0].descriptor.is_ranged());
+    assert_eq!(descriptors[0].descriptor.range_start(), Some(0));
+    assert_eq!(descriptors[0].descriptor.range_end(), Some(1000));
+    assert_eq!(descriptors[0].descriptor.next_index(), Some(0));
+    assert!(descriptors[1].descriptor.is_ranged());
+    assert_eq!(descriptors[1].descriptor.range_start(), Some(0));
+    assert_eq!(descriptors[1].descriptor.range_end(), Some(1000));
+    assert_eq!(descriptors[1].descriptor.next_index(), Some(0));
+    assert!(taproot.is_ranged());
+    assert_eq!(taproot.range_start(), Some(0));
+    assert_eq!(taproot.range_end(), Some(1000));
+    assert_eq!(
+        multipath_error.to_string(),
+        "unsupported descriptor: multipath descriptors remain deferred"
+    );
+    assert_eq!(
+        miniscript_error.to_string(),
+        "unsupported descriptor: miniscript and multisig descriptors remain deferred"
+    );
+}
+
+#[test]
+fn address_allocation_advances_descriptor_cursors_once_per_success() {
+    // Arrange
+    let mut wallet = Wallet::new(AddressNetwork::Regtest);
+    wallet
+        .import_descriptor(
+            "receive-ranged",
+            DescriptorRole::External,
+            &format!("wpkh({RANGED_TPRV}/1/1/*)"),
+        )
+        .expect("ranged receive descriptor");
+    wallet
+        .import_descriptor(
+            "change-ranged",
+            DescriptorRole::Internal,
+            &format!("sh(wpkh({RANGED_TPUB}/1/*))"),
+        )
+        .expect("ranged change descriptor");
+
+    // Act
+    let first_receive = wallet
+        .allocate_receive_address()
+        .expect("first receive address");
+    let second_receive = wallet
+        .allocate_receive_address()
+        .expect("second receive address");
+    let first_change = wallet
+        .allocate_change_address()
+        .expect("first change address");
+
+    // Assert
+    assert_ne!(first_receive.as_str(), second_receive.as_str());
+    assert_ne!(first_receive.as_str(), first_change.as_str());
+    assert_eq!(wallet.descriptors()[0].descriptor.next_index(), Some(2));
+    assert_eq!(wallet.descriptors()[1].descriptor.next_index(), Some(1));
+}
+
+#[test]
+fn send_intent_contract_captures_fee_selection_and_change_policy() {
+    // Arrange
+    let recipient = Recipient {
+        script_pubkey: script(&[0x51]),
+        value: amount_from_sats(12_000).expect("amount"),
+    };
+
+    // Act
+    let explicit = SendIntent::new(
+        vec![recipient.clone()],
+        FeeSelection::Explicit(open_bitcoin_mempool::FeeRate::from_sats_per_kvb(1500)),
+        ChangePolicy::FixedDescriptor(9),
+        Some(33),
+        true,
+        Some(750),
+    )
+    .expect("explicit send intent");
+    let resolved = explicit
+        .into_build_request(None)
+        .expect("explicit fee selection resolves directly");
+    let estimated = SendIntent::new(
+        vec![recipient.clone()],
+        FeeSelection::Estimate(FeeEstimateRequest {
+            conf_target: 6,
+            mode: FeeEstimateMode::Conservative,
+        }),
+        ChangePolicy::Automatic,
+        None,
+        false,
+        Some(1000),
+    )
+    .expect("estimate request");
+    let invalid_estimate = SendIntent::new(
+        vec![recipient],
+        FeeSelection::Estimate(FeeEstimateRequest {
+            conf_target: 0,
+            mode: FeeEstimateMode::Economical,
+        }),
+        ChangePolicy::Automatic,
+        None,
+        true,
+        Some(1000),
+    )
+    .expect_err("conf_target must be positive");
+    let unresolved_estimate = estimated
+        .into_build_request(None)
+        .expect_err("estimate request requires shell-side resolution");
+
+    // Assert
+    assert_eq!(resolved.maybe_change_descriptor_id, Some(9));
+    assert_eq!(resolved.maybe_lock_time, Some(33));
+    assert!(resolved.enable_rbf);
+    assert_eq!(
+        invalid_estimate,
+        WalletError::InvalidEstimateRequest("conf_target must be at least 1".to_string())
+    );
+    assert_eq!(
+        unresolved_estimate,
+        WalletError::EstimatorUnavailable("estimate_mode requires a resolved fee rate".to_string())
+    );
+}
+
+#[test]
+fn rescan_progress_contract_distinguishes_fresh_partial_and_scanning() {
+    // Arrange
+    let fresh =
+        WalletRescanState::from_progress(Some(100), Some(100), None, false).expect("fresh state");
+    let partial =
+        WalletRescanState::from_progress(Some(75), Some(100), None, false).expect("partial state");
+    let scanning = WalletRescanState::from_progress(Some(75), Some(100), Some(76), true)
+        .expect("scanning state");
+
+    // Act
+    let states = vec![fresh, partial, scanning];
+
+    // Assert
+    assert!(matches!(
+        states[0],
+        WalletRescanState::Fresh {
+            scanned_through_height: 100,
+            target_height: 100,
+        }
+    ));
+    assert!(matches!(
+        states[1],
+        WalletRescanState::Partial {
+            scanned_through_height: 75,
+            target_height: 100,
+        }
+    ));
+    assert!(matches!(
+        states[2],
+        WalletRescanState::Scanning {
+            next_height: 76,
+            target_height: 100,
+        }
+    ));
 }
 
 #[test]

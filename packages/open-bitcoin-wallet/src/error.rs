@@ -23,9 +23,26 @@ pub enum WalletError {
     UnsupportedSigningDescriptor(String),
     DuplicateLabel(String),
     UnknownDescriptor(u32),
+    InvalidDescriptorRange {
+        start: u32,
+        end: u32,
+    },
+    DescriptorCursorExhausted {
+        role: String,
+        next_index: u32,
+        range_end: u32,
+    },
     NoRecipients,
     NoSpendableCoins,
     ChangeDescriptorRequired,
+    InvalidEstimateRequest(String),
+    EstimatorUnavailable(String),
+    FeeCeilingExceeded {
+        fee_sats: i64,
+        ceiling_sats: i64,
+    },
+    UnsupportedAddressRole(String),
+    ChangePolicyMismatch(String),
     InsufficientFunds {
         needed_sats: i64,
         available_sats: i64,
@@ -61,6 +78,20 @@ impl fmt::Display for WalletError {
             }
             Self::DuplicateLabel(label) => write!(f, "duplicate wallet label: {label}"),
             Self::UnknownDescriptor(id) => write!(f, "unknown descriptor id: {id}"),
+            Self::InvalidDescriptorRange { start, end } => {
+                write!(
+                    f,
+                    "invalid descriptor range: start {start} exceeds end {end}"
+                )
+            }
+            Self::DescriptorCursorExhausted {
+                role,
+                next_index,
+                range_end,
+            } => write!(
+                f,
+                "descriptor cursor exhausted for {role}: next index {next_index} exceeds range end {range_end}"
+            ),
             Self::NoRecipients => write!(f, "transaction requires at least one recipient"),
             Self::NoSpendableCoins => write!(f, "wallet has no spendable coins"),
             Self::ChangeDescriptorRequired => {
@@ -68,6 +99,25 @@ impl fmt::Display for WalletError {
                     f,
                     "wallet requires an internal change descriptor for this spend"
                 )
+            }
+            Self::InvalidEstimateRequest(message) => {
+                write!(f, "invalid fee estimate request: {message}")
+            }
+            Self::EstimatorUnavailable(message) => {
+                write!(f, "fee estimator unavailable: {message}")
+            }
+            Self::FeeCeilingExceeded {
+                fee_sats,
+                ceiling_sats,
+            } => write!(
+                f,
+                "fee ceiling exceeded: fee {fee_sats} sats exceeds ceiling {ceiling_sats} sats"
+            ),
+            Self::UnsupportedAddressRole(role) => {
+                write!(f, "unsupported address role: {role}")
+            }
+            Self::ChangePolicyMismatch(message) => {
+                write!(f, "change policy mismatch: {message}")
             }
             Self::InsufficientFunds {
                 needed_sats,
@@ -157,9 +207,27 @@ mod tests {
             WalletError::UnsupportedSigningDescriptor("combo(...)".to_string()),
             WalletError::DuplicateLabel("receive".to_string()),
             WalletError::UnknownDescriptor(7),
+            WalletError::InvalidDescriptorRange { start: 8, end: 7 },
+            WalletError::DescriptorCursorExhausted {
+                role: "external".to_string(),
+                next_index: 11,
+                range_end: 10,
+            },
             WalletError::NoRecipients,
             WalletError::NoSpendableCoins,
             WalletError::ChangeDescriptorRequired,
+            WalletError::InvalidEstimateRequest("conf_target must be positive".to_string()),
+            WalletError::EstimatorUnavailable(
+                "estimate_mode requires a resolved fee rate".to_string(),
+            ),
+            WalletError::FeeCeilingExceeded {
+                fee_sats: 201,
+                ceiling_sats: 200,
+            },
+            WalletError::UnsupportedAddressRole("external".to_string()),
+            WalletError::ChangePolicyMismatch(
+                "no-change policy cannot target descriptor 2".to_string(),
+            ),
             WalletError::InsufficientFunds {
                 needed_sats: 10,
                 available_sats: 9,

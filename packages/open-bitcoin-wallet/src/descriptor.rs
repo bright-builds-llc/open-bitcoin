@@ -153,6 +153,26 @@ impl SingleKeyDescriptor {
         }
     }
 
+    pub fn is_ranged(&self) -> bool {
+        false
+    }
+
+    pub fn range_start(&self) -> Option<u32> {
+        None
+    }
+
+    pub fn range_end(&self) -> Option<u32> {
+        None
+    }
+
+    pub fn next_index(&self) -> Option<u32> {
+        None
+    }
+
+    pub fn storage_text(&self) -> String {
+        self.display_text()
+    }
+
     pub fn signing_public_key_bytes(&self) -> Result<Option<Vec<u8>>, WalletError> {
         match self {
             Self::Pkh(key) | Self::ShWpkh(key) | Self::Wpkh(key) => Ok(Some(public_key_bytes(
