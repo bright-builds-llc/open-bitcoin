@@ -20,8 +20,7 @@ use crate::operator::{
         WalletCandidateKind,
     },
     service::{
-        ServiceError, ServiceLifecycleState, ServiceStateSnapshot,
-        fake::FakeServiceManager,
+        ServiceError, ServiceLifecycleState, ServiceStateSnapshot, fake::FakeServiceManager,
     },
 };
 use open_bitcoin_rpc::method::{
@@ -370,25 +369,33 @@ fn collect_status_snapshot_with_error_manager_falls_back_to_unavailable() {
             &self,
             _request: &crate::operator::service::ServiceInstallRequest,
         ) -> Result<crate::operator::service::ServiceCommandOutcome, ServiceError> {
-            Err(ServiceError::UnsupportedPlatform { reason: "test".to_string() })
+            Err(ServiceError::UnsupportedPlatform {
+                reason: "test".to_string(),
+            })
         }
         fn uninstall(
             &self,
             _request: &crate::operator::service::ServiceUninstallRequest,
         ) -> Result<crate::operator::service::ServiceCommandOutcome, ServiceError> {
-            Err(ServiceError::UnsupportedPlatform { reason: "test".to_string() })
+            Err(ServiceError::UnsupportedPlatform {
+                reason: "test".to_string(),
+            })
         }
         fn enable(
             &self,
             _request: &crate::operator::service::ServiceEnableRequest,
         ) -> Result<crate::operator::service::ServiceCommandOutcome, ServiceError> {
-            Err(ServiceError::UnsupportedPlatform { reason: "test".to_string() })
+            Err(ServiceError::UnsupportedPlatform {
+                reason: "test".to_string(),
+            })
         }
         fn disable(
             &self,
             _request: &crate::operator::service::ServiceDisableRequest,
         ) -> Result<crate::operator::service::ServiceCommandOutcome, ServiceError> {
-            Err(ServiceError::UnsupportedPlatform { reason: "test".to_string() })
+            Err(ServiceError::UnsupportedPlatform {
+                reason: "test".to_string(),
+            })
         }
         fn status(&self) -> Result<ServiceStateSnapshot, ServiceError> {
             Err(ServiceError::UnsupportedPlatform {

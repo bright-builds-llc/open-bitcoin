@@ -219,7 +219,11 @@ fn render_service_outcome(outcome: &ServiceCommandOutcome) -> String {
     }
     lines.push(outcome.description.clone());
     if let Some(path) = &outcome.maybe_file_path {
-        lines.push(format!("  Would write: {}", path.display()));
+        if outcome.dry_run {
+            lines.push(format!("  Would write: {}", path.display()));
+        } else {
+            lines.push(format!("  Wrote: {}", path.display()));
+        }
     }
     if !outcome.commands_that_would_run.is_empty() {
         lines.push("  Commands:".to_string());

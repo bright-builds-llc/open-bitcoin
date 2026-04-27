@@ -21,6 +21,13 @@ pub const OPEN_BITCOIN_LAUNCHD_LABEL: &str = "org.open-bitcoin.node";
 /// launchd plist filename for the Open Bitcoin node service.
 pub const OPEN_BITCOIN_LAUNCHD_FILE_NAME: &str = "org.open-bitcoin.node.plist";
 
+/// Escape XML special characters in a string for safe embedding in plist `<string>` elements.
+fn xml_escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+}
+
 /// Generate a macOS launchd plist XML string for the Open Bitcoin node.
 ///
 /// This is a pure function — no filesystem access or subprocess calls occur here.
@@ -31,20 +38,19 @@ pub fn generate_plist_content(
     maybe_config_path: Option<&Path>,
     maybe_log_path: Option<&Path>,
 ) -> String {
-    let binary_str = binary_path.display();
-    let data_dir_str = data_dir.display();
+    let binary_str = xml_escape(&binary_path.display().to_string());
+    let data_dir_str = xml_escape(&data_dir.display().to_string());
 
     let mut config_args = String::new();
     if let Some(config_path) = maybe_config_path {
-        config_args = format!(
-            "\n        <string>--config</string>\n        <string>{}</string>",
-            config_path.display()
-        );
+        let config_str = xml_escape(&config_path.display().to_string());
+        config_args =
+            format!("\n        <string>--config</string>\n        <string>{config_str}</string>",);
     }
 
     let mut log_keys = String::new();
     if let Some(log_path) = maybe_log_path {
-        let log_str = log_path.display();
+        let log_str = xml_escape(&log_path.display().to_string());
         log_keys = format!(
             "\n    <key>StandardOutPath</key>\n    <string>{log_str}</string>\n    <key>StandardErrorPath</key>\n    <string>{log_str}</string>"
         );

@@ -24,8 +24,7 @@ use super::{
     config::{OperatorConfigPathKind, OperatorConfigResolution},
     detect::{
         DetectedInstallation, DetectionConfidence, DetectionSourcePathKind, DetectionUncertainty,
-        ProductFamily,
-        ServiceManager as DetectServiceManager,
+        ProductFamily, ServiceManager as DetectServiceManager,
     },
     service::ServiceLifecycleState,
 };
@@ -357,11 +356,12 @@ fn collect_service_status(input: &StatusCollectorInput) -> ServiceStatus {
                 #[cfg(not(any(target_os = "macos", target_os = "linux")))]
                 let manager_name = "unknown";
 
-                let installed =
-                    !matches!(snapshot.state, ServiceLifecycleState::Unmanaged);
+                let installed = !matches!(snapshot.state, ServiceLifecycleState::Unmanaged);
                 let enabled = matches!(
                     snapshot.state,
-                    ServiceLifecycleState::Enabled | ServiceLifecycleState::Running
+                    ServiceLifecycleState::Enabled
+                        | ServiceLifecycleState::Running
+                        | ServiceLifecycleState::Stopped
                 );
                 let running = matches!(snapshot.state, ServiceLifecycleState::Running);
 

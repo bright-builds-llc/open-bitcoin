@@ -30,7 +30,7 @@ pub fn generate_unit_content(
     let data_dir_str = data_dir.display();
 
     let config_arg = maybe_config_path
-        .map(|p| format!(" --config {}", p.display()))
+        .map(|p| format!(" --config \"{}\"", p.display()))
         .unwrap_or_default();
 
     format!(
@@ -40,7 +40,7 @@ pub fn generate_unit_content(
          After=network.target\n\
          \n\
          [Service]\n\
-         ExecStart={binary_str} --datadir {data_dir_str}{config_arg}\n\
+         ExecStart=\"{binary_str}\" --datadir \"{data_dir_str}\"{config_arg}\n\
          Restart=on-failure\n\
          StandardOutput=journal\n\
          StandardError=journal\n\
@@ -145,10 +145,19 @@ impl ServiceManager for SystemdAdapter {
             });
         }
 
-        // Disable before removing
-        let _ = std::process::Command::new("systemctl")
+        // Disable before removing; propagate failure so the enable symlink is not orphaned.
+        let disable_output = std::process::Command::new("systemctl")
             .args(["--user", "disable", OPEN_BITCOIN_SYSTEMD_FILE_NAME])
-            .output();
+            .output()
+            .map_err(|cause| ServiceError::ManagerCommandFailed {
+                exit_code: -1,
+                stderr: cause.to_string(),
+            })?;
+        if !disable_output.status.success() {
+            let exit_code = disable_output.status.code().unwrap_or(-1);
+            let stderr = String::from_utf8_lossy(&disable_output.stderr).to_string();
+            return Err(ServiceError::ManagerCommandFailed { exit_code, stderr });
+        }
 
         std::fs::remove_file(&unit_path).map_err(|cause| ServiceError::WriteFailure {
             path: unit_path.clone(),

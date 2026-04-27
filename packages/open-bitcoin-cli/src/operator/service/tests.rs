@@ -149,7 +149,7 @@ fn unit_content_contains_required_fields() {
         "missing [Install]: {content}"
     );
     assert!(
-        content.contains("ExecStart=/fake/bin/open-bitcoin --datadir /fake/datadir"),
+        content.contains("ExecStart=\"/fake/bin/open-bitcoin\" --datadir \"/fake/datadir\""),
         "missing ExecStart: {content}"
     );
     assert!(
@@ -178,7 +178,7 @@ fn unit_content_includes_config_path_when_provided() {
 
     // Assert
     assert!(
-        content.contains("--config /fake/config/open-bitcoin.jsonc"),
+        content.contains("--config \"/fake/config/open-bitcoin.jsonc\""),
         "missing --config arg: {content}"
     );
 }
