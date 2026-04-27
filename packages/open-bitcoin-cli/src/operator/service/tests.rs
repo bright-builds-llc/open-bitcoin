@@ -334,3 +334,184 @@ fn systemd_install_dry_run_does_not_write_file() {
 // Silence unused import warning when compiling tests — the trait import is needed for method dispatch.
 #[allow(unused_imports)]
 use crate::operator::service::ServiceManager as _;
+
+// --- execute_service_command tests ---
+
+use crate::operator::service::execute_service_command;
+use crate::operator::{ServiceArgs, ServiceCommand};
+
+fn unmanaged_snapshot() -> ServiceStateSnapshot {
+    ServiceStateSnapshot {
+        state: ServiceLifecycleState::Unmanaged,
+        maybe_service_file_path: None,
+        maybe_manager_diagnostics: None,
+        maybe_log_path: None,
+    }
+}
+
+#[test]
+fn execute_install_dry_run_returns_success_with_dry_run_indicator() {
+    // Arrange
+    let manager = FakeServiceManager::new(unmanaged_snapshot());
+    let args = ServiceArgs {
+        command: ServiceCommand::Install,
+        apply: false,
+    };
+
+    // Act
+    let outcome = execute_service_command(
+        &args,
+        PathBuf::from("/fake/bin/open-bitcoin"),
+        PathBuf::from("/fake/datadir"),
+        None,
+        None,
+        &manager,
+    );
+
+    // Assert
+    assert_eq!(
+        outcome.exit_code,
+        crate::operator::runtime::OperatorExitCode::Success
+    );
+    let stdout = &outcome.stdout.text;
+    assert!(
+        stdout.to_lowercase().contains("dry run")
+            || stdout.to_lowercase().contains("dry-run")
+            || stdout.contains("--apply"),
+        "dry-run install stdout must mention dry run or --apply: {stdout}"
+    );
+}
+
+#[test]
+fn execute_install_apply_with_already_installed_error_returns_failure() {
+    // Arrange
+    let mut manager = FakeServiceManager::new(unmanaged_snapshot());
+    manager.install_error = Some(ServiceError::AlreadyInstalled {
+        path: PathBuf::from("/fake/Library/LaunchAgents/org.open-bitcoin.node.plist"),
+    });
+    let args = ServiceArgs {
+        command: ServiceCommand::Install,
+        apply: true,
+    };
+
+    // Act
+    let outcome = execute_service_command(
+        &args,
+        PathBuf::from("/fake/bin/open-bitcoin"),
+        PathBuf::from("/fake/datadir"),
+        None,
+        None,
+        &manager,
+    );
+
+    // Assert
+    assert_eq!(
+        outcome.exit_code,
+        crate::operator::runtime::OperatorExitCode::Failure(1)
+    );
+    let stderr = &outcome.stderr.text;
+    assert!(
+        stderr.to_lowercase().contains("already installed"),
+        "apply install with AlreadyInstalled must produce 'already installed' in stderr: {stderr}"
+    );
+}
+
+#[test]
+fn execute_enable_returns_success_with_command_string() {
+    // Arrange
+    let mut manager = FakeServiceManager::new(unmanaged_snapshot());
+    manager.enable_commands =
+        vec!["launchctl enable gui/$(id -u)/org.open-bitcoin.node".to_string()];
+    let args = ServiceArgs {
+        command: ServiceCommand::Enable,
+        apply: false,
+    };
+
+    // Act
+    let outcome = execute_service_command(
+        &args,
+        PathBuf::from("/fake/bin/open-bitcoin"),
+        PathBuf::from("/fake/datadir"),
+        None,
+        None,
+        &manager,
+    );
+
+    // Assert
+    assert_eq!(
+        outcome.exit_code,
+        crate::operator::runtime::OperatorExitCode::Success
+    );
+    let stdout = &outcome.stdout.text;
+    assert!(
+        stdout.contains("launchctl") || stdout.contains("systemctl"),
+        "enable output must contain launchctl or systemctl command: {stdout}"
+    );
+}
+
+#[test]
+fn execute_uninstall_with_not_installed_returns_failure() {
+    // Arrange
+    let mut manager = FakeServiceManager::new(unmanaged_snapshot());
+    manager.uninstall_error = Some(ServiceError::NotInstalled);
+    let args = ServiceArgs {
+        command: ServiceCommand::Uninstall,
+        apply: false,
+    };
+
+    // Act
+    let outcome = execute_service_command(
+        &args,
+        PathBuf::from("/fake/bin/open-bitcoin"),
+        PathBuf::from("/fake/datadir"),
+        None,
+        None,
+        &manager,
+    );
+
+    // Assert
+    assert_eq!(
+        outcome.exit_code,
+        crate::operator::runtime::OperatorExitCode::Failure(1)
+    );
+    let stderr = &outcome.stderr.text;
+    assert!(
+        stderr.to_lowercase().contains("not installed"),
+        "uninstall with NotInstalled must produce 'not installed' in stderr: {stderr}"
+    );
+}
+
+#[test]
+fn parse_service_install_with_apply_flag() {
+    // Arrange
+    use crate::operator::OperatorCli;
+    use clap::Parser;
+
+    // Act
+    let cli = OperatorCli::try_parse_from(["open-bitcoin", "service", "install", "--apply"])
+        .expect("parse must succeed");
+
+    // Assert
+    let crate::operator::OperatorCommand::Service(service_args) = cli.command else {
+        panic!("expected Service command");
+    };
+    assert!(service_args.apply, "--apply flag must be true");
+    assert_eq!(service_args.command, ServiceCommand::Install);
+}
+
+#[test]
+fn parse_service_install_without_apply_flag_defaults_false() {
+    // Arrange
+    use crate::operator::OperatorCli;
+    use clap::Parser;
+
+    // Act
+    let cli = OperatorCli::try_parse_from(["open-bitcoin", "service", "install"])
+        .expect("parse must succeed");
+
+    // Assert
+    let crate::operator::OperatorCommand::Service(service_args) = cli.command else {
+        panic!("expected Service command");
+    };
+    assert!(!service_args.apply, "--apply flag must default to false");
+}

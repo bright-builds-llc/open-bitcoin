@@ -185,6 +185,133 @@ impl ServiceManager for UnsupportedPlatformAdapter {
     }
 }
 
+/// Render a `ServiceCommandOutcome` as human-readable text.
+fn render_service_outcome(outcome: &ServiceCommandOutcome) -> String {
+    let mut lines = Vec::new();
+    if outcome.dry_run {
+        lines.push("Dry run (pass --apply to make changes):".to_string());
+    }
+    lines.push(outcome.description.clone());
+    if let Some(path) = &outcome.maybe_file_path {
+        lines.push(format!("  File: {}", path.display()));
+    }
+    if !outcome.commands_that_would_run.is_empty() {
+        lines.push("  Commands:".to_string());
+        for cmd in &outcome.commands_that_would_run {
+            lines.push(format!("    {cmd}"));
+        }
+    }
+    if outcome.dry_run {
+        lines.push("Scope: user-level (no sudo required).".to_string());
+    }
+    if let Some(content) = &outcome.maybe_file_content {
+        lines.push("  Generated content:".to_string());
+        lines.push("  ---".to_string());
+        for line in content.lines() {
+            lines.push(format!("  {line}"));
+        }
+        lines.push("  ---".to_string());
+    }
+    lines.join("\n")
+}
+
+/// Render a `ServiceStateSnapshot` as human-readable text.
+fn render_service_state_snapshot(snapshot: &ServiceStateSnapshot) -> String {
+    let state = match snapshot.state {
+        ServiceLifecycleState::Unmanaged => {
+            "unmanaged — run `open-bitcoin service install` to see what would be created"
+        }
+        ServiceLifecycleState::Installed => "installed (not enabled)",
+        ServiceLifecycleState::Enabled => "enabled (not running)",
+        ServiceLifecycleState::Running => "running",
+        ServiceLifecycleState::Failed => "failed",
+        ServiceLifecycleState::Stopped => "stopped",
+    };
+    let mut lines = vec![format!("service: {state}")];
+    if let Some(path) = &snapshot.maybe_service_file_path {
+        lines.push(format!("  file: {}", path.display()));
+    }
+    if let Some(log_path) = &snapshot.maybe_log_path {
+        lines.push(format!("  logs: {}", log_path.display()));
+    }
+    if let Some(diag) = &snapshot.maybe_manager_diagnostics {
+        lines.push(format!("  diagnostics: {diag}"));
+    }
+    lines.join("\n")
+}
+
+/// Execute a service subcommand using the injected manager.
+///
+/// Routes each `ServiceCommand` variant to the corresponding `ServiceManager` method and
+/// renders the outcome as an `OperatorCommandOutcome`. Returns success on `Ok`, failure on `Err`.
+pub fn execute_service_command(
+    args: &super::ServiceArgs,
+    binary_path: PathBuf,
+    data_dir: PathBuf,
+    maybe_config_path: Option<PathBuf>,
+    maybe_log_path: Option<PathBuf>,
+    manager: &dyn ServiceManager,
+) -> crate::operator::runtime::OperatorCommandOutcome {
+    use super::ServiceCommand;
+    use crate::operator::runtime::OperatorCommandOutcome;
+
+    match &args.command {
+        ServiceCommand::Install => {
+            let request = ServiceInstallRequest {
+                binary_path,
+                data_dir,
+                maybe_config_path,
+                maybe_log_path,
+                apply: args.apply,
+            };
+            match manager.install(&request) {
+                Ok(outcome) => OperatorCommandOutcome::success(format!(
+                    "{}\n",
+                    render_service_outcome(&outcome)
+                )),
+                Err(error) => OperatorCommandOutcome::failure(error.to_string()),
+            }
+        }
+        ServiceCommand::Uninstall => {
+            let request = ServiceUninstallRequest { apply: args.apply };
+            match manager.uninstall(&request) {
+                Ok(outcome) => OperatorCommandOutcome::success(format!(
+                    "{}\n",
+                    render_service_outcome(&outcome)
+                )),
+                Err(error) => OperatorCommandOutcome::failure(error.to_string()),
+            }
+        }
+        ServiceCommand::Enable => {
+            let request = ServiceEnableRequest;
+            match manager.enable(&request) {
+                Ok(outcome) => OperatorCommandOutcome::success(format!(
+                    "{}\n",
+                    render_service_outcome(&outcome)
+                )),
+                Err(error) => OperatorCommandOutcome::failure(error.to_string()),
+            }
+        }
+        ServiceCommand::Disable => {
+            let request = ServiceDisableRequest;
+            match manager.disable(&request) {
+                Ok(outcome) => OperatorCommandOutcome::success(format!(
+                    "{}\n",
+                    render_service_outcome(&outcome)
+                )),
+                Err(error) => OperatorCommandOutcome::failure(error.to_string()),
+            }
+        }
+        ServiceCommand::Status => match manager.status() {
+            Ok(snapshot) => OperatorCommandOutcome::success(format!(
+                "{}\n",
+                render_service_state_snapshot(&snapshot)
+            )),
+            Err(error) => OperatorCommandOutcome::failure(error.to_string()),
+        },
+    }
+}
+
 /// Construct the platform-appropriate `ServiceManager` for the current OS.
 ///
 /// On macOS, returns a `LaunchdAdapter`. On Linux, returns a `SystemdAdapter`.
