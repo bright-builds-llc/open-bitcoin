@@ -495,22 +495,25 @@ impl Drop for TestDirectory {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **`ServiceStatus` extension strategy**
    - What we know: D-11 requires `failed` and `unmanaged` states. Existing struct uses `FieldAvailability<bool>` for `installed`/`enabled`/`running`.
    - What is unclear: Whether to add a new `lifecycle_state: FieldAvailability<ServiceLifecycleState>` field alongside existing fields (additive, no breakage) or to change the existing fields to a richer type (potentially breaking JSON schema for status consumers from Phase 17).
    - Recommendation: Add `lifecycle_state` as a new optional field with `#[serde(default)]` so existing consumers are unaffected.
+   - RESOLVED: Plan 18-03 maps `ServiceLifecycleState` variants to the existing `installed`/`enabled`/`running` `FieldAvailability<bool>` fields — additive approach preserves JSON schema compatibility with Phase 17 status consumers.
 
 2. **`--user` flag naming convention**
    - What we know: Default is user-level (no `sudo`). D-18 says `--user` flag is optional.
    - What is unclear: Whether `--user` selects user-level (redundant for default) or whether the flag should instead be `--system` to select elevated scope.
    - Recommendation: Name the flag `--system` to select system-level install. Absence = user-level (the safe default). This makes the elevated-scope selection explicit and matches the "require explicit consent for elevated operations" philosophy.
+   - RESOLVED: Plan 18-02 uses `--apply` (not `--user`/`--system`) as the only new flag. System-level scope is deferred per D-10; user-level is unconditionally the default in this phase.
 
 3. **`launchctl enable` behavior when service is not bootstrapped**
    - What we know: `launchctl enable` sets the disabled override independently of whether the service is currently bootstrapped.
    - What is unclear: Whether `enable` succeeds when the plist file exists but the service is not bootstrapped yet.
    - Recommendation: Implement `enable` as a distinct step from `install`; document in dry-run output that `enable` requires the service to be installed first. The `FakeServiceManager` can enforce this ordering in tests.
+   - RESOLVED: Plan 18-02 implements `enable`/`disable` as distinct commands that invoke `launchctl enable`/`disable` (not `bootstrap`/`bootout`). Dry-run output notes that installation is a prerequisite. `FakeServiceManager` enforces install-before-enable ordering in tests.
 
 ---
 
