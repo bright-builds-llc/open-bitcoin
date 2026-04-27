@@ -157,7 +157,12 @@ Plans:
 3. Commands surface privilege requirements, scope, generated paths, daemon command, config path, log path, and recovery behavior before applying changes.
 4. Service status identifies installed, enabled, running, failed, stopped, and unmanaged states.
 5. Tests run against isolated temp paths or fake managers and never modify real developer launchd/systemd state.
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 18-01-PLAN.md — ServiceManager trait, pure generators, FakeServiceManager, and platform factory
+- [ ] 18-02-PLAN.md — Runtime wiring: --apply flag, execute_service_command dispatch, detection_roots population
+- [ ] 18-03-PLAN.md — Status integration: service adapter injection into collect_status_snapshot and render verification
 
 ### Phase 19: Ratatui Node Dashboard
 
@@ -216,4 +221,4 @@ Plans:
 | Milestone | Phases | Plans | Status | Shipped |
 | --- | ---: | ---: | --- | --- |
 | v1.0 Headless Parity | 22/22 | 80/80 | Archived | 2026-04-26 |
-| v1.1 Operator Runtime and Real-Network Sync | 4/10 | 16/16 | In Progress | - |
+| v1.1 Operator Runtime and Real-Network Sync | 5/10 | 21/21 | In Progress | - |
