@@ -5,7 +5,7 @@
 
 use std::{
     collections::BTreeMap,
-    env, fmt,
+    env, fmt, fs,
     path::{Path, PathBuf},
 };
 
@@ -471,6 +471,69 @@ fn auth_source(auth: &RpcAuthConfig) -> StatusRpcAuthSource {
         },
         RpcAuthConfig::UserPassword { .. } => StatusRpcAuthSource::UserCredentialsConfigured,
     }
+}
+
+pub(crate) fn format_host_for_url(host: &str, port: u16) -> String {
+    if host.contains(':') && !host.starts_with('[') {
+        format!("[{host}]:{port}")
+    } else {
+        format!("{host}:{port}")
+    }
+}
+
+pub(crate) fn authorization_header(auth: &RpcAuthConfig) -> Result<String, OperatorRuntimeError> {
+    let credentials = match auth {
+        RpcAuthConfig::UserPassword { username, password } => {
+            format!("{username}:{password}")
+        }
+        RpcAuthConfig::Cookie { maybe_cookie_file } => {
+            let cookie_file = maybe_cookie_file
+                .clone()
+                .unwrap_or_else(|| PathBuf::from(".cookie"));
+            let contents = fs::read_to_string(&cookie_file).map_err(|_| {
+                OperatorRuntimeError::InvalidRequest {
+                    message: format!(
+                        "Could not locate RPC credentials. No authentication cookie was found at {}",
+                        cookie_file.display()
+                    ),
+                }
+            })?;
+            let Some((username, password)) = contents.trim().split_once(':') else {
+                return Err(OperatorRuntimeError::InvalidRequest {
+                    message: format!(
+                        "Could not parse RPC credentials from {}",
+                        cookie_file.display()
+                    ),
+                });
+            };
+            format!("{username}:{password}")
+        }
+    };
+    Ok(format!("Basic {}", base64_encode(credentials.as_bytes())))
+}
+
+fn base64_encode(bytes: &[u8]) -> String {
+    const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut output = String::with_capacity(bytes.len().div_ceil(3) * 4);
+    for chunk in bytes.chunks(3) {
+        let b0 = chunk[0];
+        let b1 = *chunk.get(1).unwrap_or(&0);
+        let b2 = *chunk.get(2).unwrap_or(&0);
+        let triple = ((b0 as u32) << 16) | ((b1 as u32) << 8) | (b2 as u32);
+        output.push(TABLE[((triple >> 18) & 0x3f) as usize] as char);
+        output.push(TABLE[((triple >> 12) & 0x3f) as usize] as char);
+        output.push(if chunk.len() > 1 {
+            TABLE[((triple >> 6) & 0x3f) as usize] as char
+        } else {
+            '='
+        });
+        output.push(if chunk.len() > 2 {
+            TABLE[(triple & 0x3f) as usize] as char
+        } else {
+            '='
+        });
+    }
+    output
 }
 
 fn display_path(maybe_path: Option<&Path>) -> String {
