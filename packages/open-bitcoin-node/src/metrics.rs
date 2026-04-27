@@ -138,19 +138,28 @@ impl MetricsAvailability {
 }
 
 /// Metrics status projection embedded in the shared node status snapshot.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MetricsStatus {
     pub availability: MetricsAvailability,
     pub retention: MetricRetentionPolicy,
     pub enabled_series: Vec<MetricKind>,
+    pub samples: Vec<MetricSample>,
 }
 
 impl MetricsStatus {
     pub fn available(retention: MetricRetentionPolicy) -> Self {
+        Self::available_with_samples(retention, Vec::new())
+    }
+
+    pub fn available_with_samples(
+        retention: MetricRetentionPolicy,
+        samples: Vec<MetricSample>,
+    ) -> Self {
         Self {
             availability: MetricsAvailability::Available,
             retention,
             enabled_series: MetricKind::ALL.to_vec(),
+            samples,
         }
     }
 
@@ -159,6 +168,7 @@ impl MetricsStatus {
             availability: MetricsAvailability::unavailable(reason),
             retention,
             enabled_series: MetricKind::ALL.to_vec(),
+            samples: Vec::new(),
         }
     }
 }
@@ -238,6 +248,7 @@ mod tests {
         // Assert
         assert_eq!(status.retention, MetricRetentionPolicy::default());
         assert_eq!(status.enabled_series, MetricKind::ALL.to_vec());
+        assert!(status.samples.is_empty());
         assert_eq!(
             serde_json::to_value(&status.availability).expect("availability json")["state"],
             "unavailable"
@@ -384,13 +395,33 @@ mod tests {
         assert_eq!(available.retention, policy);
         assert_eq!(available.enabled_series, MetricKind::ALL.to_vec());
         assert_eq!(available.availability, MetricsAvailability::Available);
+        assert!(available.samples.is_empty());
         assert_eq!(unavailable.retention, policy);
         assert_eq!(unavailable.enabled_series, MetricKind::ALL.to_vec());
+        assert!(unavailable.samples.is_empty());
         assert_eq!(
             unavailable.availability,
             MetricsAvailability::Unavailable {
                 reason: "metrics collector not started".to_string()
             }
         );
+    }
+
+    #[test]
+    fn available_metrics_status_can_carry_bounded_samples() {
+        // Arrange
+        let policy = MetricRetentionPolicy {
+            sample_interval_seconds: 15,
+            max_samples_per_series: 3,
+            max_age_seconds: 60,
+        };
+        let samples = vec![MetricSample::new(MetricKind::SyncHeight, 840_000.0, 10)];
+
+        // Act
+        let status = MetricsStatus::available_with_samples(policy, samples.clone());
+
+        // Assert
+        assert_eq!(status.retention, policy);
+        assert_eq!(status.samples, samples);
     }
 }

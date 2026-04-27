@@ -12,6 +12,7 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 use crate::CliError;
 
 pub mod config;
+pub mod dashboard;
 pub mod detect;
 pub mod onboarding;
 pub mod runtime;

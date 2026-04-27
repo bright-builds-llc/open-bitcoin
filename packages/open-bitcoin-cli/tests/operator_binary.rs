@@ -160,6 +160,74 @@ fn open_bitcoin_status_human_no_color_is_support_oriented() {
 }
 
 #[test]
+fn open_bitcoin_dashboard_json_is_snapshot_and_ansi_free() {
+    // Arrange
+    let sandbox = TestSandbox::new("dashboard-json");
+    let data_dir = sandbox.child("open-data");
+    fs::create_dir_all(&data_dir).expect("open datadir");
+
+    // Act
+    let output = run_open_bitcoin(
+        &sandbox,
+        [
+            "--datadir",
+            data_dir.to_str().expect("datadir"),
+            "--format",
+            "json",
+            "dashboard",
+        ],
+    );
+
+    // Assert
+    assert_success(&output);
+    let decoded: Value = serde_json::from_slice(&output.stdout).expect("dashboard json");
+    assert_eq!(decoded["node"]["state"], "stopped");
+    assert_eq!(decoded["metrics"]["samples"], json!([]));
+    let rendered = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert!(!rendered.contains("\u{1b}["));
+    assert!(!rendered.contains("dashboard command is deferred"));
+}
+
+#[test]
+fn open_bitcoin_dashboard_human_non_tty_uses_snapshot_sections() {
+    // Arrange
+    let sandbox = TestSandbox::new("dashboard-human");
+    let data_dir = sandbox.child("open-data");
+    fs::create_dir_all(&data_dir).expect("open datadir");
+
+    // Act
+    let output = run_open_bitcoin(
+        &sandbox,
+        [
+            "--datadir",
+            data_dir.to_str().expect("datadir"),
+            "--format",
+            "human",
+            "--no-color",
+            "dashboard",
+        ],
+    );
+
+    // Assert
+    assert_success(&output);
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    for label in [
+        "Open Bitcoin Dashboard",
+        "## Node",
+        "## Sync and Peers",
+        "## Mempool and Wallet",
+        "## Service",
+        "## Logs and Health",
+        "## Charts",
+        "## Actions",
+    ] {
+        assert!(stdout.contains(label), "missing {label}");
+    }
+    assert!(!stdout.contains("\u{1b}["));
+    assert!(!stdout.contains("dashboard command is deferred"));
+}
+
+#[test]
 fn open_bitcoin_onboard_non_interactive_is_idempotent() {
     // Arrange
     let sandbox = TestSandbox::new("onboard");

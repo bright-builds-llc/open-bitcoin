@@ -45,7 +45,7 @@ This active milestone makes Open Bitcoin usable as an operator-facing, service-m
 - [x] **Phase 16: Metrics, Logs, and Sync Telemetry** - Record bounded metrics history, rotate logs, and expose sync/runtime telemetry to status consumers. (completed 2026-04-26)
 - [x] **Phase 17: CLI Status and First-Run Onboarding** - Expand the clap command tree, implement rich status output, and add the idempotent wizard plus JSONC config layer. (completed 2026-04-27)
 - [x] **Phase 18: Service Lifecycle Integration** - Add macOS launchd and Linux systemd install/uninstall/enable/disable/status support with dry-run safety. (completed 2026-04-27)
-- [ ] **Phase 19: Ratatui Node Dashboard** - Build the terminal dashboard on top of the shared status, metrics, logs, service, and sync models.
+- [x] **Phase 19: Ratatui Node Dashboard** - Build the terminal dashboard on top of the shared status, metrics, logs, service, and sync models. (completed 2026-04-27)
 - [ ] **Phase 20: Wallet Runtime Expansion** - Expand practical wallet runtime behavior for send, wallet selection, descriptors, rescans, backups, and migration inspection.
 - [ ] **Phase 21: Drop-In Parity Audit and Migration** - Audit Core/Knots replacement expectations and implement detection, education, and dry-run migration plans.
 - [ ] **Phase 22: Real-Sync Benchmarks and Release Hardening** - Add real-sync benchmarks, docs, parity updates, and verification coverage for the v1.1 operator runtime.
@@ -119,7 +119,7 @@ Plans:
 2. Structured logs rotate with documented retention and status-visible paths.
 3. Recent warnings/errors can be queried through status-facing APIs without opening raw log files manually.
 4. Sync bottlenecks and health signals are visible through metrics and logs without changing consensus or network behavior.
-**Plans**: 3 plans
+**Plans**: 3/3 plans complete
 
 Plans:
 - [x] 16-01-PLAN.md — Bounded Fjall-backed metrics history
@@ -175,7 +175,12 @@ Plans:
 3. Keyboard menu supports safe queries and gated actions with clear confirmations for destructive or service-affecting commands.
 4. Palette remains restrained, readable, and usable on common light/dark terminals and with color disabled.
 5. Dashboard tests verify model-to-view behavior and non-interactive rendering without depending on a real terminal session.
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [x] 19-01-PLAN.md — Dashboard command dispatch and snapshot-first non-interactive fallback
+- [x] 19-02-PLAN.md — Interactive Ratatui app loop with bounded charts and action confirmation model
+- [x] 19-03-PLAN.md — Deterministic non-interactive and action-guard test coverage
 
 ### Phase 20: Wallet Runtime Expansion
 

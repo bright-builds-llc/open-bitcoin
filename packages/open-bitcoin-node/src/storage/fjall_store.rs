@@ -228,8 +228,11 @@ impl FjallNodeStore {
         retention: MetricRetentionPolicy,
     ) -> Result<MetricsStatus, StorageError> {
         let maybe_snapshot = self.load_metrics_snapshot()?;
-        if maybe_snapshot.is_some() {
-            return Ok(MetricsStatus::available(retention));
+        if let Some(snapshot) = maybe_snapshot {
+            return Ok(MetricsStatus::available_with_samples(
+                retention,
+                snapshot.samples,
+            ));
         }
 
         Ok(MetricsStatus::unavailable(

@@ -15,12 +15,13 @@ use serde_json::json;
 use crate::{args::CliStartupArgs, startup::resolve_startup_config};
 
 use super::{
-    ConfigCommand, DashboardArgs, OnboardArgs, OperatorCli, OperatorCommand, OperatorOutputFormat,
+    ConfigCommand, OnboardArgs, OperatorCli, OperatorCommand, OperatorOutputFormat,
     config::{
         OPEN_BITCOIN_CONFIG_ENV, OPEN_BITCOIN_DATADIR_ENV, OPEN_BITCOIN_NETWORK_ENV,
         OperatorConfigRequest, OperatorConfigResolution, OperatorConfigRoots,
         resolve_operator_config,
     },
+    dashboard::{DashboardRuntimeContext, platform_dashboard_service_runtime, run_dashboard},
     detect::{DetectionRoots, detect_existing_installations},
     onboarding::{
         OnboardingError, OnboardingPromptAnswers, OnboardingRequest, StdIoOnboardingPrompter,
@@ -187,10 +188,7 @@ fn execute_operator_cli_inner(
             execute_onboarding(args, &cli, config_resolution, detections)
         }
         OperatorCommand::Service(service) => {
-            let home_dir = env::var_os("HOME")
-                .map(PathBuf::from)
-                .unwrap_or_else(|| PathBuf::from("."));
-            let manager = platform_service_manager(home_dir);
+            let manager = platform_service_manager(operator_home_dir());
             let binary_path =
                 std::env::current_exe().unwrap_or_else(|_| PathBuf::from("open-bitcoin"));
             let data_dir = config_resolution
@@ -206,10 +204,37 @@ fn execute_operator_cli_inner(
                 manager.as_ref(),
             ))
         }
-        OperatorCommand::Dashboard(DashboardArgs { .. }) => Ok(OperatorCommandOutcome::failure(
-            "dashboard command is deferred to Phase 19",
-        )),
+        OperatorCommand::Dashboard(args) => {
+            let binary_path =
+                std::env::current_exe().unwrap_or_else(|_| PathBuf::from("open-bitcoin"));
+            let data_dir = config_resolution
+                .maybe_data_dir
+                .clone()
+                .unwrap_or_else(|| default_data_dir.clone());
+            let service = platform_dashboard_service_runtime(
+                binary_path,
+                data_dir,
+                config_resolution.maybe_config_path.clone(),
+                config_resolution.maybe_log_dir.clone(),
+                operator_home_dir(),
+            );
+            let status = status_runtime_parts(&cli, config_resolution, detections);
+            Ok(run_dashboard(
+                args,
+                DashboardRuntimeContext {
+                    render_mode: status_render_mode(cli.format),
+                    status_input: status.input,
+                    maybe_rpc_client: status.maybe_rpc_client,
+                    service,
+                },
+            ))
+        }
     }
+}
+
+struct StatusRuntimeParts {
+    input: StatusCollectorInput,
+    maybe_rpc_client: Option<Box<dyn StatusRpcClient>>,
 }
 
 fn execute_status(
@@ -217,10 +242,26 @@ fn execute_status(
     config_resolution: OperatorConfigResolution,
     detections: Vec<super::detect::DetectedInstallation>,
 ) -> Result<OperatorCommandOutcome, OperatorRuntimeError> {
+    let status = status_runtime_parts(cli, config_resolution, detections);
+    let snapshot = collect_status_snapshot(&status.input, status.maybe_rpc_client.as_deref());
+    let rendered = render_status(&snapshot, status_render_mode(cli.format)).map_err(|error| {
+        OperatorRuntimeError::InvalidRequest {
+            message: error.to_string(),
+        }
+    })?;
+    Ok(OperatorCommandOutcome::success(format!("{rendered}\n")))
+}
+
+fn status_runtime_parts(
+    cli: &OperatorCli,
+    config_resolution: OperatorConfigResolution,
+    detections: Vec<super::detect::DetectedInstallation>,
+) -> StatusRuntimeParts {
     let maybe_startup = startup_config_for_status(&config_resolution);
-    let maybe_http_client = maybe_startup
+    let maybe_rpc_client = maybe_startup
         .as_ref()
-        .and_then(|startup| HttpStatusRpcClient::from_rpc_config(&startup.rpc).ok());
+        .and_then(|startup| HttpStatusRpcClient::from_rpc_config(&startup.rpc).ok())
+        .map(|client| Box::new(client) as Box<dyn StatusRpcClient>);
     let maybe_live_rpc = maybe_startup
         .as_ref()
         .map(|startup| StatusLiveRpcAdapterInput {
@@ -228,40 +269,28 @@ fn execute_status(
             auth_source: auth_source(&startup.rpc.auth),
             timeout: std::time::Duration::from_secs(2),
         });
-    let home_dir = env::var_os("HOME")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("."));
     let maybe_service_manager: Option<Box<dyn super::service::ServiceManager>> =
-        Some(super::service::platform_service_manager(home_dir));
+        Some(super::service::platform_service_manager(operator_home_dir()));
 
-    let input = StatusCollectorInput {
-        request: StatusRequest {
-            render_mode: status_render_mode(cli.format),
-            maybe_config_path: config_resolution.maybe_config_path.clone(),
-            maybe_data_dir: config_resolution.maybe_data_dir.clone(),
-            maybe_network: config_resolution.maybe_network,
-            include_live_rpc: maybe_http_client.is_some(),
-            no_color: cli.no_color,
+    StatusRuntimeParts {
+        input: StatusCollectorInput {
+            request: StatusRequest {
+                render_mode: status_render_mode(cli.format),
+                maybe_config_path: config_resolution.maybe_config_path.clone(),
+                maybe_data_dir: config_resolution.maybe_data_dir.clone(),
+                maybe_network: config_resolution.maybe_network,
+                include_live_rpc: maybe_rpc_client.is_some(),
+                no_color: cli.no_color,
+            },
+            config_resolution,
+            detection_evidence: StatusDetectionEvidence {
+                detected_installations: detections,
+            },
+            maybe_live_rpc,
+            maybe_service_manager,
         },
-        config_resolution,
-        detection_evidence: StatusDetectionEvidence {
-            detected_installations: detections,
-        },
-        maybe_live_rpc,
-        maybe_service_manager,
-    };
-    let snapshot = collect_status_snapshot(
-        &input,
-        maybe_http_client
-            .as_ref()
-            .map(|client| client as &dyn StatusRpcClient),
-    );
-    let rendered = render_status(&snapshot, status_render_mode(cli.format)).map_err(|error| {
-        OperatorRuntimeError::InvalidRequest {
-            message: error.to_string(),
-        }
-    })?;
-    Ok(OperatorCommandOutcome::success(format!("{rendered}\n")))
+        maybe_rpc_client,
+    }
 }
 
 fn execute_onboarding(
@@ -406,6 +435,12 @@ fn operator_environment() -> BTreeMap<String, String> {
     .into_iter()
     .filter_map(|name| env::var(name).ok().map(|value| (name.to_string(), value)))
     .collect()
+}
+
+fn operator_home_dir() -> PathBuf {
+    env::var_os("HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("."))
 }
 
 fn status_render_mode(format: OperatorOutputFormat) -> StatusRenderMode {

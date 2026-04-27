@@ -9,6 +9,8 @@ rust_library(
         "//packages/open-bitcoin-node:open_bitcoin_node_lib",
         "//packages/open-bitcoin-rpc:open_bitcoin_rpc_lib",
         "@crate_index//:clap",
+        "@crate_index//:crossterm",
+        "@crate_index//:ratatui",
         "@crate_index//:serde",
         "@crate_index//:serde_json",
         "@crate_index//:thiserror",

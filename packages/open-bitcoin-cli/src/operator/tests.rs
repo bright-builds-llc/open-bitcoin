@@ -89,6 +89,24 @@ fn open_bitcoin_status_routes_to_operator_status() {
 }
 
 #[test]
+fn open_bitcoin_dashboard_routes_to_operator_dashboard() {
+    // Arrange
+    let args = vec![os("dashboard"), os("--tick-ms"), os("500")];
+
+    // Act
+    let route = route_cli_invocation("open-bitcoin", &args).expect("route");
+
+    // Assert
+    let CliRoute::Operator(cli) = route else {
+        panic!("expected operator route");
+    };
+    let OperatorCommand::Dashboard(dashboard) = cli.command else {
+        panic!("expected dashboard command");
+    };
+    assert_eq!(dashboard.tick_ms, 500);
+}
+
+#[test]
 fn operator_config_sources_follow_rpc_precedence_order() {
     // Arrange
     let rpc_sources = ConfigPrecedence::ordered_sources();
@@ -160,4 +178,14 @@ fn status_contract_uses_shared_status_snapshot_without_renderer_dto() {
     assert!(!source.contains("StatusDto"));
     assert!(!source.contains("CliStatusSnapshot"));
     assert!(source.contains("OpenBitcoinStatusSnapshot"));
+}
+
+#[test]
+fn dashboard_command_is_no_longer_deferred_in_runtime() {
+    // Arrange
+    let source = include_str!("runtime.rs");
+
+    // Assert
+    assert!(!source.contains("dashboard command is deferred to Phase 19"));
+    assert!(source.contains("run_dashboard"));
 }

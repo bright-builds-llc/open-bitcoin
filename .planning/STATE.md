@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Operator Runtime and Real-Network Sync
-status: planning
-stopped_at: Phase 19 context gathered
-last_updated: "2026-04-27T09:04:57.339Z"
-last_activity: 2026-04-27
+status: ready_for_next_phase
+stopped_at: Phase 19 verified complete
+last_updated: "2026-04-27T09:26:11Z"
+last_activity: 2026-04-27 -- Phase 19 completed and verified
 progress:
   total_phases: 10
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 27
-  completed_plans: 24
-  percent: 89
+  completed_plans: 27
+  percent: 100
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-26)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 18 — Service Lifecycle Integration
+**Current focus:** Phase 20 — wallet-runtime-expansion
 
 ## Current Position
 
-Phase: 19
-Plan: Not started
-Status: Ready for planning
-Last activity: 2026-04-27
+Phase: 20 (wallet-runtime-expansion) — READY
+Plan: TBD
+Status: Phase 19 complete; Phase 20 not planned yet
+Last activity: 2026-04-27 -- Phase 19 completed and verified
 
-Progress: 5/10 phases complete
+Progress: 7/10 phases complete
 
 ## Performance Metrics
 
@@ -50,7 +50,7 @@ Progress: 5/10 phases complete
 | 16 | 3 | - | - |
 | 17 | 5 | - | - |
 | 18 | 3 | - | - |
-| 19 | TBD | - | - |
+| 19 | 3 | - | - |
 | 20 | TBD | - | - |
 | 21 | TBD | - | - |
 | 22 | TBD | - | - |
@@ -61,6 +61,8 @@ Progress: 5/10 phases complete
 - Phase 14 completed 4 durable-storage and recovery plans on 2026-04-26.
 - Phase 15 completed 4 real-network sync loop plans on 2026-04-26.
 - Phase 17 completed 5 CLI status and first-run onboarding plans on 2026-04-27.
+- Phase 18 completed 3 service lifecycle integration plans on 2026-04-27.
+- Phase 19 completed 3 ratatui dashboard plans on 2026-04-27.
 
 | Phase 16 P01 | 12 min | 2 tasks | 4 files |
 | Phase 16 P02 | 18 min | 2 tasks | 7 files |
@@ -122,6 +124,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-27T09:04:57.335Z
-Stopped at: Phase 19 context gathered
-Resume file: .planning/phases/19-ratatui-node-dashboard/19-CONTEXT.md
+Last session: 2026-04-27T09:26:11Z
+Stopped at: Phase 19 verified complete
+Resume file: .planning/ROADMAP.md

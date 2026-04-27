@@ -219,6 +219,16 @@
       "breadcrumbs": []
     },
     {
+      "label": "cli-operator-dashboard-contracts",
+      "files": [
+        "packages/open-bitcoin-cli/src/operator/dashboard/mod.rs",
+        "packages/open-bitcoin-cli/src/operator/dashboard/action.rs",
+        "packages/open-bitcoin-cli/src/operator/dashboard/app.rs",
+        "packages/open-bitcoin-cli/src/operator/dashboard/model.rs"
+      ],
+      "breadcrumbs": []
+    },
+    {
       "label": "codec-block",
       "files": [
         "packages/open-bitcoin-codec/src/block.rs"

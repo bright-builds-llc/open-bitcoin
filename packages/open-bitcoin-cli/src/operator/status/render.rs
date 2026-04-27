@@ -154,10 +154,11 @@ fn metrics_text(metrics: &MetricsStatus) -> String {
         }
     };
     format!(
-        "{} retention={}s/{} samples",
+        "{} retention={}s/{} samples history={}",
         availability,
         metrics.retention.sample_interval_seconds,
-        metrics.retention.max_samples_per_series
+        metrics.retention.max_samples_per_series,
+        metrics.samples.len()
     )
 }
 

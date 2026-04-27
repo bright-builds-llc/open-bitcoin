@@ -16,7 +16,7 @@
 | `mempool` | Mempool collector | mempool summary |
 | `wallet` | Wallet collector | wallet summary |
 | `logs` | Logging collector | log paths and retention |
-| `metrics` | Metrics collector | retention and enabled series |
+| `metrics` | Metrics collector | retention, enabled series, and bounded samples when a metrics snapshot exists |
 | `health_signals` | Log/status collectors | recent `health signals` |
 | `build` | Build/release collector | version, commit, build time, target, and profile |
 
