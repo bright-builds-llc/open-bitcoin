@@ -775,6 +775,17 @@
         "packages/open-bitcoin-wallet/src/lib.rs"
       ],
       "breadcrumbs": []
+    },
+    {
+      "label": "operator-service-lifecycle",
+      "files": [
+        "packages/open-bitcoin-cli/src/operator/service.rs",
+        "packages/open-bitcoin-cli/src/operator/service/launchd.rs",
+        "packages/open-bitcoin-cli/src/operator/service/systemd.rs",
+        "packages/open-bitcoin-cli/src/operator/service/fake.rs",
+        "packages/open-bitcoin-cli/src/operator/service/tests.rs"
+      ],
+      "breadcrumbs": ["none"]
     }
   ]
 }

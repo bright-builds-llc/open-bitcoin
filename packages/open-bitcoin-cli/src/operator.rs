@@ -15,6 +15,7 @@ pub mod config;
 pub mod detect;
 pub mod onboarding;
 pub mod runtime;
+pub mod service;
 pub mod status;
 
 /// First-party Open Bitcoin operator CLI contract.
