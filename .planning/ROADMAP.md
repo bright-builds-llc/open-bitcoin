@@ -44,7 +44,7 @@ This active milestone makes Open Bitcoin usable as an operator-facing, service-m
 - [x] **Phase 15: Real Network Sync Loop** - Connect to real peers, drive headers/block sync, persist progress, and keep default tests deterministic. (completed 2026-04-26)
 - [x] **Phase 16: Metrics, Logs, and Sync Telemetry** - Record bounded metrics history, rotate logs, and expose sync/runtime telemetry to status consumers. (completed 2026-04-26)
 - [x] **Phase 17: CLI Status and First-Run Onboarding** - Expand the clap command tree, implement rich status output, and add the idempotent wizard plus JSONC config layer. (completed 2026-04-27)
-- [ ] **Phase 18: Service Lifecycle Integration** - Add macOS launchd and Linux systemd install/uninstall/enable/disable/status support with dry-run safety.
+- [x] **Phase 18: Service Lifecycle Integration** - Add macOS launchd and Linux systemd install/uninstall/enable/disable/status support with dry-run safety. (completed 2026-04-27)
 - [ ] **Phase 19: Ratatui Node Dashboard** - Build the terminal dashboard on top of the shared status, metrics, logs, service, and sync models.
 - [ ] **Phase 20: Wallet Runtime Expansion** - Expand practical wallet runtime behavior for send, wallet selection, descriptors, rescans, backups, and migration inspection.
 - [ ] **Phase 21: Drop-In Parity Audit and Migration** - Audit Core/Knots replacement expectations and implement detection, education, and dry-run migration plans.
@@ -160,9 +160,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 18-01-PLAN.md — ServiceManager trait, pure generators, FakeServiceManager, and platform factory
-- [ ] 18-02-PLAN.md — Runtime wiring: --apply flag, execute_service_command dispatch, detection_roots population
-- [ ] 18-03-PLAN.md — Status integration: service adapter injection into collect_status_snapshot and render verification
+- [x] 18-01-PLAN.md — ServiceManager trait, pure generators, FakeServiceManager, and platform factory
+- [x] 18-02-PLAN.md — Runtime wiring: --apply flag, execute_service_command dispatch, detection_roots population
+- [x] 18-03-PLAN.md — Status integration: service adapter injection into collect_status_snapshot and render verification
 
 ### Phase 19: Ratatui Node Dashboard
 

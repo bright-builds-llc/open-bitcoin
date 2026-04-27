@@ -377,7 +377,7 @@ fn execute_service_command_install_dry_run_shows_dry_run_output() {
 fn execute_service_command_install_already_installed_returns_failure() {
     // Arrange
     let mut manager = FakeServiceManager::unmanaged();
-    manager.maybe_install_error = Some(ServiceError::AlreadyInstalled {
+    manager.install_error = Some(ServiceError::AlreadyInstalled {
         path: PathBuf::from("/fake/LaunchAgents/org.open-bitcoin.node.plist"),
     });
     let cli =
