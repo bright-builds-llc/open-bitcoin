@@ -16,11 +16,12 @@ use crate::operator::{
     },
     detect::{
         DetectedInstallation, DetectionConfidence, DetectionSourcePath, DetectionSourcePathKind,
-        DetectionUncertainty, ProductFamily, ServiceCandidate,
-        ServiceManager as DetectServiceManager, WalletCandidate, WalletCandidateKind,
+        DetectionUncertainty, ProductFamily, ServiceCandidate, ServiceManager, WalletCandidate,
+        WalletCandidateKind,
     },
     service::{
-        ServiceError, ServiceLifecycleState, ServiceStateSnapshot, fake::FakeServiceManager,
+        ServiceError, ServiceLifecycleState, ServiceStateSnapshot,
+        fake::FakeServiceManager,
     },
 };
 use open_bitcoin_rpc::method::{
@@ -218,14 +219,222 @@ fn status_rendering_redacts_credentials_and_cookie_contents() {
     assert!(!combined.contains("__cookie__:fixture"));
 }
 
-fn status_input(detected_installations: Vec<DetectedInstallation>) -> StatusCollectorInput {
-    status_input_with_service_manager(detected_installations, None)
+// --- Service manager injection tests ---
+
+#[test]
+fn collect_status_snapshot_with_no_service_manager_preserves_unavailable_service_fields() {
+    // Arrange — no service manager, no detected service candidates
+    let input = status_input(Vec::new());
+
+    // Act
+    let snapshot = collect_status_snapshot(&input, None);
+
+    // Assert — all service fields remain unavailable (existing fallback preserved)
+    assert!(
+        matches!(
+            &snapshot.service.manager,
+            open_bitcoin_node::status::FieldAvailability::Unavailable { .. }
+        ),
+        "service.manager should be unavailable when no manager injected"
+    );
+    assert!(
+        matches!(
+            &snapshot.service.installed,
+            open_bitcoin_node::status::FieldAvailability::Unavailable { .. }
+        ),
+        "service.installed should be unavailable when no manager injected"
+    );
+    assert!(
+        matches!(
+            &snapshot.service.enabled,
+            open_bitcoin_node::status::FieldAvailability::Unavailable { .. }
+        ),
+        "service.enabled should be unavailable when no manager injected"
+    );
+    assert!(
+        matches!(
+            &snapshot.service.running,
+            open_bitcoin_node::status::FieldAvailability::Unavailable { .. }
+        ),
+        "service.running should be unavailable when no manager injected"
+    );
 }
 
-fn status_input_with_service_manager(
-    detected_installations: Vec<DetectedInstallation>,
-    maybe_service_manager: Option<Box<dyn crate::operator::service::ServiceManager>>,
-) -> StatusCollectorInput {
+#[test]
+fn collect_status_snapshot_with_fake_running_manager_sets_service_fields_to_available_true() {
+    // Arrange
+    let fake = FakeServiceManager::new(ServiceStateSnapshot {
+        state: ServiceLifecycleState::Running,
+        maybe_service_file_path: Some(PathBuf::from("/tmp/test.plist")),
+        maybe_manager_diagnostics: None,
+        maybe_log_path: None,
+    });
+    let input = StatusCollectorInput {
+        request: StatusRequest {
+            render_mode: StatusRenderMode::Human,
+            maybe_config_path: None,
+            maybe_data_dir: None,
+            maybe_network: None,
+            include_live_rpc: false,
+            no_color: false,
+        },
+        config_resolution: config_resolution(),
+        detection_evidence: StatusDetectionEvidence {
+            detected_installations: Vec::new(),
+        },
+        maybe_live_rpc: None,
+        maybe_service_manager: Some(Box::new(fake)),
+    };
+
+    // Act
+    let snapshot = collect_status_snapshot(&input, None);
+
+    // Assert
+    assert!(
+        matches!(
+            &snapshot.service.manager,
+            open_bitcoin_node::status::FieldAvailability::Available(_)
+        ),
+        "service.manager should be available when running manager injected"
+    );
+    assert_eq!(
+        snapshot.service.installed,
+        open_bitcoin_node::status::FieldAvailability::available(true),
+        "service.installed should be true when state is Running"
+    );
+    assert_eq!(
+        snapshot.service.enabled,
+        open_bitcoin_node::status::FieldAvailability::available(true),
+        "service.enabled should be true when state is Running"
+    );
+    assert_eq!(
+        snapshot.service.running,
+        open_bitcoin_node::status::FieldAvailability::available(true),
+        "service.running should be true when state is Running"
+    );
+}
+
+#[test]
+fn collect_status_snapshot_with_fake_installed_manager_sets_installed_true_enabled_false() {
+    // Arrange
+    let fake = FakeServiceManager::new(ServiceStateSnapshot {
+        state: ServiceLifecycleState::Installed,
+        maybe_service_file_path: Some(PathBuf::from("/tmp/test.plist")),
+        maybe_manager_diagnostics: None,
+        maybe_log_path: None,
+    });
+    let input = StatusCollectorInput {
+        request: StatusRequest {
+            render_mode: StatusRenderMode::Human,
+            maybe_config_path: None,
+            maybe_data_dir: None,
+            maybe_network: None,
+            include_live_rpc: false,
+            no_color: false,
+        },
+        config_resolution: config_resolution(),
+        detection_evidence: StatusDetectionEvidence {
+            detected_installations: Vec::new(),
+        },
+        maybe_live_rpc: None,
+        maybe_service_manager: Some(Box::new(fake)),
+    };
+
+    // Act
+    let snapshot = collect_status_snapshot(&input, None);
+
+    // Assert
+    assert_eq!(
+        snapshot.service.installed,
+        open_bitcoin_node::status::FieldAvailability::available(true),
+        "service.installed should be true when state is Installed"
+    );
+    assert_eq!(
+        snapshot.service.enabled,
+        open_bitcoin_node::status::FieldAvailability::available(false),
+        "service.enabled should be false when state is Installed (not Enabled/Running)"
+    );
+    assert_eq!(
+        snapshot.service.running,
+        open_bitcoin_node::status::FieldAvailability::available(false),
+        "service.running should be false when state is Installed"
+    );
+}
+
+#[test]
+fn collect_status_snapshot_with_error_manager_falls_back_to_unavailable() {
+    // Arrange — a manager whose status() always returns an error
+    struct ErrorServiceManager;
+    impl crate::operator::service::ServiceManager for ErrorServiceManager {
+        fn install(
+            &self,
+            _request: &crate::operator::service::ServiceInstallRequest,
+        ) -> Result<crate::operator::service::ServiceCommandOutcome, ServiceError> {
+            Err(ServiceError::UnsupportedPlatform { reason: "test".to_string() })
+        }
+        fn uninstall(
+            &self,
+            _request: &crate::operator::service::ServiceUninstallRequest,
+        ) -> Result<crate::operator::service::ServiceCommandOutcome, ServiceError> {
+            Err(ServiceError::UnsupportedPlatform { reason: "test".to_string() })
+        }
+        fn enable(
+            &self,
+            _request: &crate::operator::service::ServiceEnableRequest,
+        ) -> Result<crate::operator::service::ServiceCommandOutcome, ServiceError> {
+            Err(ServiceError::UnsupportedPlatform { reason: "test".to_string() })
+        }
+        fn disable(
+            &self,
+            _request: &crate::operator::service::ServiceDisableRequest,
+        ) -> Result<crate::operator::service::ServiceCommandOutcome, ServiceError> {
+            Err(ServiceError::UnsupportedPlatform { reason: "test".to_string() })
+        }
+        fn status(&self) -> Result<ServiceStateSnapshot, ServiceError> {
+            Err(ServiceError::UnsupportedPlatform {
+                reason: "platform not supported in test".to_string(),
+            })
+        }
+    }
+
+    let input = StatusCollectorInput {
+        request: StatusRequest {
+            render_mode: StatusRenderMode::Human,
+            maybe_config_path: None,
+            maybe_data_dir: None,
+            maybe_network: None,
+            include_live_rpc: false,
+            no_color: false,
+        },
+        config_resolution: config_resolution(),
+        detection_evidence: StatusDetectionEvidence {
+            detected_installations: Vec::new(),
+        },
+        maybe_live_rpc: None,
+        maybe_service_manager: Some(Box::new(ErrorServiceManager)),
+    };
+
+    // Act
+    let snapshot = collect_status_snapshot(&input, None);
+
+    // Assert — graceful fallback to unavailable, no panic
+    assert!(
+        matches!(
+            &snapshot.service.manager,
+            open_bitcoin_node::status::FieldAvailability::Unavailable { .. }
+        ),
+        "service.manager should be unavailable when manager.status() errors"
+    );
+    assert!(
+        matches!(
+            &snapshot.service.running,
+            open_bitcoin_node::status::FieldAvailability::Unavailable { .. }
+        ),
+        "service.running should be unavailable when manager.status() errors"
+    );
+}
+
+fn status_input(detected_installations: Vec<DetectedInstallation>) -> StatusCollectorInput {
     StatusCollectorInput {
         request: StatusRequest {
             render_mode: StatusRenderMode::Human,
@@ -246,7 +455,7 @@ fn status_input_with_service_manager(
             },
             timeout: Duration::from_secs(2),
         }),
-        maybe_service_manager,
+        maybe_service_manager: None,
     }
 }
 
@@ -303,7 +512,7 @@ fn detected_installation() -> DetectedInstallation {
         maybe_cookie_file: Some(PathBuf::from("/tmp/core/.bitcoin/.cookie")),
         service_candidates: vec![ServiceCandidate {
             product_family: ProductFamily::Unknown,
-            manager: DetectServiceManager::Systemd,
+            manager: ServiceManager::Systemd,
             service_name: "bitcoind".to_string(),
             path: PathBuf::from("/tmp/systemd/bitcoind.service"),
             present: true,
@@ -314,195 +523,6 @@ fn detected_installation() -> DetectedInstallation {
             maybe_name: None,
             present: true,
         }],
-    }
-}
-
-#[test]
-fn collect_status_with_no_service_manager_keeps_service_fields_unavailable() {
-    // Arrange
-    let input = status_input(Vec::new());
-
-    // Act
-    let snapshot = collect_status_snapshot(&input, None);
-
-    // Assert — all service fields remain unavailable when no adapter is injected
-    assert!(
-        matches!(
-            snapshot.service.manager,
-            open_bitcoin_node::status::FieldAvailability::Unavailable { .. }
-        ),
-        "service.manager should be unavailable"
-    );
-    assert!(
-        matches!(
-            snapshot.service.installed,
-            open_bitcoin_node::status::FieldAvailability::Unavailable { .. }
-        ),
-        "service.installed should be unavailable"
-    );
-    assert!(
-        matches!(
-            snapshot.service.enabled,
-            open_bitcoin_node::status::FieldAvailability::Unavailable { .. }
-        ),
-        "service.enabled should be unavailable"
-    );
-    assert!(
-        matches!(
-            snapshot.service.running,
-            open_bitcoin_node::status::FieldAvailability::Unavailable { .. }
-        ),
-        "service.running should be unavailable"
-    );
-}
-
-#[test]
-fn collect_status_with_fake_running_manager_sets_service_fields_available() {
-    // Arrange
-    let fake_manager = FakeServiceManager::new(ServiceStateSnapshot {
-        state: ServiceLifecycleState::Running,
-        maybe_service_file_path: None,
-        maybe_manager_diagnostics: None,
-        maybe_log_path: None,
-    });
-    let input = status_input_with_service_manager(Vec::new(), Some(Box::new(fake_manager)));
-
-    // Act
-    let snapshot = collect_status_snapshot(&input, None);
-
-    // Assert — Running state maps installed=true, enabled=true, running=true
-    assert!(
-        matches!(
-            snapshot.service.manager,
-            open_bitcoin_node::status::FieldAvailability::Available(_)
-        ),
-        "service.manager should be available"
-    );
-    assert_eq!(
-        snapshot.service.installed,
-        open_bitcoin_node::status::FieldAvailability::available(true),
-        "service.installed should be available(true)"
-    );
-    assert_eq!(
-        snapshot.service.enabled,
-        open_bitcoin_node::status::FieldAvailability::available(true),
-        "service.enabled should be available(true)"
-    );
-    assert_eq!(
-        snapshot.service.running,
-        open_bitcoin_node::status::FieldAvailability::available(true),
-        "service.running should be available(true)"
-    );
-}
-
-#[test]
-fn collect_status_with_fake_installed_manager_sets_installed_true_enabled_false() {
-    // Arrange
-    let fake_manager = FakeServiceManager::new(ServiceStateSnapshot {
-        state: ServiceLifecycleState::Installed,
-        maybe_service_file_path: None,
-        maybe_manager_diagnostics: None,
-        maybe_log_path: None,
-    });
-    let input = status_input_with_service_manager(Vec::new(), Some(Box::new(fake_manager)));
-
-    // Act
-    let snapshot = collect_status_snapshot(&input, None);
-
-    // Assert — Installed state maps installed=true, enabled=false, running=false
-    assert_eq!(
-        snapshot.service.installed,
-        open_bitcoin_node::status::FieldAvailability::available(true),
-        "service.installed should be available(true)"
-    );
-    assert_eq!(
-        snapshot.service.enabled,
-        open_bitcoin_node::status::FieldAvailability::available(false),
-        "service.enabled should be available(false)"
-    );
-    assert_eq!(
-        snapshot.service.running,
-        open_bitcoin_node::status::FieldAvailability::available(false),
-        "service.running should be available(false)"
-    );
-}
-
-#[test]
-fn collect_status_with_error_manager_falls_back_to_unavailable() {
-    // Arrange — a fake that errors on status() via UnsupportedPlatform
-    let fake_manager = FakeServiceManagerError::unsupported();
-    let input = status_input_with_service_manager(Vec::new(), Some(Box::new(fake_manager)));
-
-    // Act
-    let snapshot = collect_status_snapshot(&input, None);
-
-    // Assert — all service fields are unavailable on manager error
-    assert!(
-        matches!(
-            snapshot.service.manager,
-            open_bitcoin_node::status::FieldAvailability::Unavailable { .. }
-        ),
-        "service.manager should fall back to unavailable on error"
-    );
-    assert!(
-        matches!(
-            snapshot.service.installed,
-            open_bitcoin_node::status::FieldAvailability::Unavailable { .. }
-        ),
-        "service.installed should fall back to unavailable on error"
-    );
-}
-
-/// A `ServiceManager` that always returns `ServiceError::UnsupportedPlatform` from `status()`.
-struct FakeServiceManagerError;
-
-impl FakeServiceManagerError {
-    fn unsupported() -> Self {
-        Self
-    }
-}
-
-impl crate::operator::service::ServiceManager for FakeServiceManagerError {
-    fn install(
-        &self,
-        _request: &crate::operator::service::ServiceInstallRequest,
-    ) -> Result<crate::operator::service::ServiceCommandOutcome, ServiceError> {
-        Err(ServiceError::UnsupportedPlatform {
-            reason: "test".to_string(),
-        })
-    }
-
-    fn uninstall(
-        &self,
-        _request: &crate::operator::service::ServiceUninstallRequest,
-    ) -> Result<crate::operator::service::ServiceCommandOutcome, ServiceError> {
-        Err(ServiceError::UnsupportedPlatform {
-            reason: "test".to_string(),
-        })
-    }
-
-    fn enable(
-        &self,
-        _request: &crate::operator::service::ServiceEnableRequest,
-    ) -> Result<crate::operator::service::ServiceCommandOutcome, ServiceError> {
-        Err(ServiceError::UnsupportedPlatform {
-            reason: "test".to_string(),
-        })
-    }
-
-    fn disable(
-        &self,
-        _request: &crate::operator::service::ServiceDisableRequest,
-    ) -> Result<crate::operator::service::ServiceCommandOutcome, ServiceError> {
-        Err(ServiceError::UnsupportedPlatform {
-            reason: "test".to_string(),
-        })
-    }
-
-    fn status(&self) -> Result<crate::operator::service::ServiceStateSnapshot, ServiceError> {
-        Err(ServiceError::UnsupportedPlatform {
-            reason: "test unsupported platform".to_string(),
-        })
     }
 }
 
