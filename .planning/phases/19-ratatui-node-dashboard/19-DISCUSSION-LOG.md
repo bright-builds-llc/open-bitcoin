@@ -3,7 +3,7 @@
 > **Audit trail only.** Do not use as input to planning, research, or execution.
 > Decisions are captured in CONTEXT.md — this log preserves alternatives considered.
 
-**Date:** 2026-04-27T03:37:47.562Z
+**Date:** 2026-04-27T03:41:42.994Z
 **Phase:** 19-Ratatui Node Dashboard
 **Mode:** Yolo
 **Areas discussed:** Dashboard activation and runtime source, Panel architecture and data model, Graphs and refresh policy, Action menu safety model, Fallbacks, color, and testability
