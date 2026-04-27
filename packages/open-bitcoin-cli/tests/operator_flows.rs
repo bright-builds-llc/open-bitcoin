@@ -647,47 +647,18 @@ fn descriptor_rescan_balance_build_sign_and_send_roundtrip() {
 }
 
 #[test]
-fn deferred_surfaces_fail_explicitly() {
+fn remaining_deferred_surfaces_fail_explicitly() {
     // Arrange
     let sandbox = TestSandbox::new("deferred");
-    let server = RpcTestServer::start(operator_context());
 
     // Act
-    let sendtoaddress_output = run_cli_with_rpc(
-        &server,
-        &sandbox,
-        &[
-            "sendtoaddress".to_string(),
-            "bcrt1qa0qwuze2h85zw7nqpsj3ga0z9geyrgwpf2m8je".to_string(),
-            "1".to_string(),
-        ],
-    );
     let netinfo_output = run_raw_cli(&sandbox, &["-netinfo".to_string()]);
-    let rpcwallet_output = run_raw_cli(
-        &sandbox,
-        &[
-            "-rpcwallet=wallet.dat".to_string(),
-            "getwalletinfo".to_string(),
-        ],
-    );
 
     // Assert
-    assert_eq!(sendtoaddress_output.status.code(), Some(1));
-    assert_eq!(
-        stderr_text(&sendtoaddress_output).trim(),
-        "error code -32601: method sendtoaddress is not supported in Phase 8",
-    );
-
     assert_eq!(netinfo_output.status.code(), Some(1));
     assert_eq!(
         stderr_text(&netinfo_output).trim(),
         "-netinfo is deferred until the getpeerinfo-backed network dashboard lands in a later Phase 8 plan.",
-    );
-
-    assert_eq!(rpcwallet_output.status.code(), Some(1));
-    assert_eq!(
-        stderr_text(&rpcwallet_output).trim(),
-        "-rpcwallet is deferred until wallet-scoped RPC endpoints land in a later Phase 8 plan.",
     );
 }
 

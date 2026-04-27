@@ -11,13 +11,15 @@ use super::{
     OnboardingExistingState, OnboardingMessage, OnboardingMessageLevel, OnboardingPlan,
     OnboardingPromptAnswers, OnboardingPrompter, OnboardingRequest, OnboardingWriteDecision,
     ProposedConfigWrite, apply_onboarding_plan, plan_onboarding, prompt_onboarding_answers,
+    render_onboarding_plan,
 };
 use crate::operator::{
     NetworkSelection,
     config::OperatorConfigResolution,
     detect::{
         DetectedInstallation, DetectionConfidence, DetectionSourcePath, DetectionSourcePathKind,
-        DetectionUncertainty, ProductFamily,
+        DetectionUncertainty, ProductFamily, WalletCandidate, WalletCandidateKind,
+        WalletChainScope,
     },
 };
 
@@ -204,6 +206,37 @@ fn non_interactive_onboarding_writes_jsonc_and_never_bitcoin_conf() {
 }
 
 #[test]
+fn onboarding_render_surfaces_wallet_metadata_and_read_only_caution() {
+    // Arrange
+    let sandbox = TestDirectory::new("render");
+    let data_dir = sandbox.child("open-bitcoin");
+    let config_path = data_dir.join("open-bitcoin.jsonc");
+    let request = OnboardingRequest::NonInteractive {
+        answers: complete_answers(&data_dir, &config_path, false),
+        force_overwrite: false,
+    };
+
+    // Act
+    let plan = plan_onboarding(
+        &resolution(&data_dir, &config_path),
+        OnboardingExistingState::default(),
+        vec![detected_installation()],
+        request,
+    )
+    .expect("onboarding plan");
+    let rendered = render_onboarding_plan(&plan);
+
+    // Assert
+    assert!(rendered.contains("Wallet candidate:"));
+    assert!(rendered.contains("name=primary"));
+    assert!(rendered.contains("chain=mainnet"));
+    assert!(rendered.contains("format=legacy wallet.dat"));
+    assert!(rendered.contains("Read-only inspection only"));
+    assert!(!rendered.contains("__cookie__:secret"));
+    assert!(!rendered.contains("legacy wallet bytes"));
+}
+
+#[test]
 fn existing_jsonc_is_unchanged_without_force_overwrite() {
     // Arrange
     let sandbox = TestDirectory::new("existing");
@@ -314,7 +347,15 @@ fn detected_installation() -> DetectedInstallation {
         maybe_config_file: Some(PathBuf::from("/tmp/core/.bitcoin/bitcoin.conf")),
         maybe_cookie_file: None,
         service_candidates: Vec::new(),
-        wallet_candidates: Vec::new(),
+        wallet_candidates: vec![WalletCandidate {
+            kind: WalletCandidateKind::LegacyWalletFile,
+            path: PathBuf::from("/tmp/core/.bitcoin/wallets/primary/wallet.dat"),
+            maybe_name: Some("primary".to_string()),
+            present: true,
+            product_family: ProductFamily::Unknown,
+            product_confidence: DetectionConfidence::Low,
+            chain_scope: WalletChainScope::Mainnet,
+        }],
     }
 }
 

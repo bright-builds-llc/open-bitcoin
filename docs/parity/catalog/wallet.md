@@ -19,6 +19,9 @@ behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
 - legacy, nested segwit, native segwit, and taproot key-path signing through
   the canonical consensus sighash helpers
 - managed wallet snapshot persistence through `open-bitcoin-node`
+- operator-visible wallet freshness reporting through the shared status snapshot
+- read-only external wallet inspection with wallet-format, chain-scope, and
+  product-confidence hints for backup and migration planning
 
 ## Knots sources
 
@@ -41,6 +44,8 @@ behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
   silently reusing receive outputs
 - persistence and recovery stay adapter-owned instead of leaking direct I/O
   into the wallet core
+- wallet operators can inspect existing Core/Knots wallet candidates without
+  mutating wallet files, metadata, permissions, or timestamps
 
 ## First-party implementation
 
@@ -56,6 +61,8 @@ behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
 - wallet encryption, backup file formats, and migration behavior
 - external signer integration
 - real-node functional rescans and RPC-facing wallet semantics
+- Phase 21 still owns any external-wallet mutation, backup export, restore,
+  import, copy, or migration execution flow
 
 ## Follow-up triggers
 

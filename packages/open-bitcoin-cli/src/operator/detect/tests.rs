@@ -12,7 +12,7 @@ use std::{
 use super::{
     DetectedInstallation, DetectionConfidence, DetectionRoots, DetectionSourcePath,
     DetectionSourcePathKind, DetectionUncertainty, ProductFamily, ServiceCandidate, ServiceManager,
-    WalletCandidate, WalletCandidateKind, detect_existing_installations,
+    WalletCandidate, WalletCandidateKind, WalletChainScope, detect_existing_installations,
 };
 
 static NEXT_TEST_DIRECTORY_ID: AtomicU64 = AtomicU64::new(0);
@@ -73,6 +73,9 @@ fn detected_installation_records_sources_and_uncertainty() {
             path: PathBuf::from("/tmp/wallets/default"),
             maybe_name: Some("default".to_string()),
             present: true,
+            product_family: ProductFamily::BitcoinKnots,
+            product_confidence: DetectionConfidence::High,
+            chain_scope: WalletChainScope::Mainnet,
         }],
     };
 
@@ -132,6 +135,7 @@ fn detects_linux_core_knots_candidates_read_only() {
     let before_cookie = read_bytes(data_dir.join(".cookie"));
     let before_wallet = read_bytes(data_dir.join("wallets/main/wallet.dat"));
     let before_conf_modified = modified(data_dir.join("bitcoin.conf"));
+    let before_wallet_readonly = readonly(data_dir.join("wallets/main/wallet.dat"));
     let roots = DetectionRoots {
         home_dir: home.clone(),
         data_dirs: Vec::new(),
@@ -161,17 +165,22 @@ fn detects_linux_core_knots_candidates_read_only() {
             .iter()
             .any(|candidate| candidate.path.ends_with("wallet.dat"))
     );
+    assert!(installation.wallet_candidates.iter().any(|candidate| {
+        candidate.path.ends_with("wallets/main/wallet.dat")
+            && candidate.kind == WalletCandidateKind::LegacyWalletFile
+            && candidate.chain_scope == WalletChainScope::Mainnet
+            && candidate.product_confidence == DetectionConfidence::Medium
+    }));
+    assert!(installation.wallet_candidates.iter().any(|candidate| {
+        candidate.path.ends_with("regtest/wallets/regwallet")
+            && candidate.kind == WalletCandidateKind::DescriptorWalletDirectory
+            && candidate.chain_scope == WalletChainScope::Regtest
+    }));
     assert!(
         installation
             .wallet_candidates
             .iter()
-            .any(|candidate| candidate.path.ends_with("wallets/main/wallet.dat"))
-    );
-    assert!(
-        installation
-            .wallet_candidates
-            .iter()
-            .any(|candidate| candidate.path.ends_with("regtest/wallets/regwallet"))
+            .all(|candidate| !candidate.path.ends_with("/wallets"))
     );
     assert!(
         installation
@@ -194,6 +203,10 @@ fn detects_linux_core_knots_candidates_read_only() {
     assert_eq!(
         modified(data_dir.join("bitcoin.conf")),
         before_conf_modified
+    );
+    assert_eq!(
+        readonly(data_dir.join("wallets/main/wallet.dat")),
+        before_wallet_readonly
     );
 }
 
@@ -225,6 +238,7 @@ fn detects_macos_core_knots_candidates_read_only() {
     let before_conf = read_bytes(data_dir.join("bitcoin.conf"));
     let before_cookie = read_bytes(data_dir.join(".cookie"));
     let before_wallet = read_bytes(data_dir.join("wallets/main/wallet.dat"));
+    let before_wallet_readonly = readonly(data_dir.join("wallets/main/wallet.dat"));
     let roots = DetectionRoots {
         home_dir: home,
         data_dirs: Vec::new(),
@@ -252,18 +266,16 @@ fn detects_macos_core_knots_candidates_read_only() {
             .any(|path| path.ends_with("bitcoin.conf"))
     );
     assert!(source_paths.iter().any(|path| path.ends_with(".cookie")));
-    assert!(
-        installation
-            .wallet_candidates
-            .iter()
-            .any(|candidate| candidate.path.ends_with("wallets/main/wallet.dat"))
-    );
-    assert!(
-        installation
-            .wallet_candidates
-            .iter()
-            .any(|candidate| candidate.path.ends_with("signet/wallets/signet-wallet"))
-    );
+    assert!(installation.wallet_candidates.iter().any(|candidate| {
+        candidate.path.ends_with("wallets/main/wallet.dat")
+            && candidate.kind == WalletCandidateKind::LegacyWalletFile
+            && candidate.chain_scope == WalletChainScope::Mainnet
+    }));
+    assert!(installation.wallet_candidates.iter().any(|candidate| {
+        candidate.path.ends_with("signet/wallets/signet-wallet")
+            && candidate.kind == WalletCandidateKind::DescriptorWalletDirectory
+            && candidate.chain_scope == WalletChainScope::Signet
+    }));
     assert!(
         installation
             .service_candidates
@@ -280,6 +292,10 @@ fn detects_macos_core_knots_candidates_read_only() {
     assert_eq!(
         read_bytes(data_dir.join("wallets/main/wallet.dat")),
         before_wallet
+    );
+    assert_eq!(
+        readonly(data_dir.join("wallets/main/wallet.dat")),
+        before_wallet_readonly
     );
 }
 
@@ -301,4 +317,11 @@ fn modified(path: impl AsRef<Path>) -> std::time::SystemTime {
         .expect("fixture metadata")
         .modified()
         .expect("fixture modified time")
+}
+
+fn readonly(path: impl AsRef<Path>) -> bool {
+    fs::metadata(path)
+        .expect("fixture metadata")
+        .permissions()
+        .readonly()
 }

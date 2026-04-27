@@ -262,7 +262,7 @@ fn open_bitcoin_onboard_non_interactive_is_idempotent() {
     let first_stdout = String::from_utf8(first.stdout).expect("stdout utf8");
     let second_stdout = String::from_utf8(second.stdout).expect("stdout utf8");
     assert!(first_stdout.contains(core_dir.join("bitcoin.conf").to_str().expect("core path")));
-    assert!(first_stdout.contains("uncertain"));
+    assert!(first_stdout.contains("confidence="));
     assert!(second_stdout.contains("left unchanged"));
     assert!(!data_dir.join("bitcoin.conf").exists());
 }

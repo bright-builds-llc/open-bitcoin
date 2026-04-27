@@ -15,7 +15,10 @@ use open_bitcoin_rpc::config::OpenBitcoinConfig;
 use super::{
     NetworkSelection,
     config::OperatorConfigResolution,
-    detect::{DetectedInstallation, DetectionSourcePathKind},
+    detect::{
+        DetectedInstallation, DetectionConfidence, DetectionSourcePathKind, ProductFamily,
+        WalletCandidate, WalletCandidateKind, WalletChainScope,
+    },
 };
 
 /// Request shape for interactive and non-interactive onboarding.
@@ -425,30 +428,41 @@ fn proposed_open_bitcoin_config(
 }
 
 fn detection_messages(detected_installations: &[DetectedInstallation]) -> Vec<OnboardingMessage> {
-    detected_installations
-        .iter()
-        .map(|installation| {
-            let paths = installation
-                .source_paths
-                .iter()
-                .filter(|source_path| source_path.present)
-                .map(|source_path| {
-                    format!(
-                        "{}:{}",
-                        source_path_kind(source_path.kind),
-                        source_path.path.display()
-                    )
-                })
-                .collect::<Vec<_>>()
-                .join(", ");
-            OnboardingMessage {
-                level: OnboardingMessageLevel::Info,
-                text: format!(
-                    "Detected existing Bitcoin candidate with uncertain identity: {paths}"
-                ),
-            }
-        })
-        .collect()
+    let mut messages = Vec::new();
+    for installation in detected_installations {
+        let paths = installation
+            .source_paths
+            .iter()
+            .filter(|source_path| source_path.present)
+            .map(|source_path| {
+                format!(
+                    "{}:{}",
+                    source_path_kind(source_path.kind),
+                    source_path.path.display()
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        messages.push(OnboardingMessage {
+            level: OnboardingMessageLevel::Info,
+            text: format!(
+                "Detected existing Bitcoin candidate: product={} confidence={} paths=[{}]",
+                product_family_name(installation.product_family),
+                detection_confidence_name(installation.confidence),
+                paths
+            ),
+        });
+        for wallet_candidate in &installation.wallet_candidates {
+            messages.push(wallet_candidate_message(wallet_candidate));
+        }
+        if !installation.wallet_candidates.is_empty() {
+            messages.push(OnboardingMessage {
+                level: OnboardingMessageLevel::Warning,
+                text: "Read-only inspection only: Phase 20 does not back up, restore, import, or migrate external wallets. Review the detected wallet path and create verified upstream backups before any later migration step.".to_string(),
+            });
+        }
+    }
+    messages
 }
 
 fn source_path_kind(kind: DetectionSourcePathKind) -> &'static str {
@@ -459,6 +473,60 @@ fn source_path_kind(kind: DetectionSourcePathKind) -> &'static str {
         DetectionSourcePathKind::ServiceDefinition => "service",
         DetectionSourcePathKind::WalletDirectory => "wallet_dir",
         DetectionSourcePathKind::WalletFile => "wallet_file",
+    }
+}
+
+fn wallet_candidate_message(wallet_candidate: &WalletCandidate) -> OnboardingMessage {
+    let wallet_name = wallet_candidate
+        .maybe_name
+        .as_deref()
+        .unwrap_or("(unnamed)");
+    OnboardingMessage {
+        level: OnboardingMessageLevel::Info,
+        text: format!(
+            "Wallet candidate: name={} chain={} format={} product={} confidence={} path={}",
+            wallet_name,
+            wallet_chain_scope_name(wallet_candidate.chain_scope),
+            wallet_format_name(wallet_candidate.kind),
+            product_family_name(wallet_candidate.product_family),
+            detection_confidence_name(wallet_candidate.product_confidence),
+            wallet_candidate.path.display()
+        ),
+    }
+}
+
+fn product_family_name(product_family: ProductFamily) -> &'static str {
+    match product_family {
+        ProductFamily::BitcoinCore => "bitcoin-core",
+        ProductFamily::BitcoinKnots => "bitcoin-knots",
+        ProductFamily::OpenBitcoin => "open-bitcoin",
+        ProductFamily::Unknown => "unknown",
+    }
+}
+
+fn detection_confidence_name(confidence: DetectionConfidence) -> &'static str {
+    match confidence {
+        DetectionConfidence::High => "high",
+        DetectionConfidence::Medium => "medium",
+        DetectionConfidence::Low => "low",
+    }
+}
+
+fn wallet_format_name(kind: WalletCandidateKind) -> &'static str {
+    match kind {
+        WalletCandidateKind::DescriptorWalletDirectory => "descriptor directory",
+        WalletCandidateKind::LegacyWalletFile => "legacy wallet.dat",
+        WalletCandidateKind::Unknown => "unknown",
+    }
+}
+
+fn wallet_chain_scope_name(chain_scope: WalletChainScope) -> &'static str {
+    match chain_scope {
+        WalletChainScope::Mainnet => "mainnet",
+        WalletChainScope::Testnet => "testnet",
+        WalletChainScope::Signet => "signet",
+        WalletChainScope::Regtest => "regtest",
+        WalletChainScope::Unknown => "unknown",
     }
 }
 

@@ -135,6 +135,12 @@ pub struct WalletCandidate {
     pub maybe_name: Option<String>,
     /// Whether the candidate path exists.
     pub present: bool,
+    /// Product family hint inherited from the enclosing installation evidence.
+    pub product_family: ProductFamily,
+    /// Confidence in the product-family hint.
+    pub product_confidence: DetectionConfidence,
+    /// Chain scope inferred from the wallet path.
+    pub chain_scope: WalletChainScope,
 }
 
 /// Wallet storage shape inferred from read-only evidence.
@@ -145,6 +151,16 @@ pub enum WalletCandidateKind {
     /// Legacy `wallet.dat` file.
     LegacyWalletFile,
     /// Unknown wallet-shaped path.
+    Unknown,
+}
+
+/// Chain scope inferred from wallet storage location.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum WalletChainScope {
+    Mainnet,
+    Testnet,
+    Signet,
+    Regtest,
     Unknown,
 }
 
@@ -183,14 +199,20 @@ pub fn detect_existing_installations(roots: &DetectionRoots) -> Vec<DetectedInst
             .filter(|source_path| source_path.present)
             .cloned()
             .collect();
-        let wallet_candidates = collect_wallet_candidates(&data_dir);
+        let config_file = data_dir.join(BITCOIN_CONF_FILE_NAME);
+        let cookie_file = data_dir.join(COOKIE_FILE_NAME);
+        let product_family = classify_product_family(&data_dir);
+        let confidence = if config_file.exists() {
+            DetectionConfidence::Medium
+        } else {
+            DetectionConfidence::Low
+        };
+        let wallet_candidates = collect_wallet_candidates(&data_dir, product_family, confidence);
 
         if present_source_paths.is_empty() && wallet_candidates.is_empty() {
             continue;
         }
 
-        let config_file = data_dir.join(BITCOIN_CONF_FILE_NAME);
-        let cookie_file = data_dir.join(COOKIE_FILE_NAME);
         let mut uncertainty = Vec::new();
         uncertainty.push(DetectionUncertainty::ProductAmbiguous);
         if !config_file.exists() {
@@ -208,13 +230,6 @@ pub fn detect_existing_installations(roots: &DetectionRoots) -> Vec<DetectedInst
         if wallet_candidates.is_empty() {
             uncertainty.push(DetectionUncertainty::WalletFormatUnknown);
         }
-
-        let product_family = classify_product_family(&data_dir);
-        let confidence = if config_file.exists() {
-            DetectionConfidence::Medium
-        } else {
-            DetectionConfidence::Low
-        };
 
         let mut all_source_paths = source_paths;
         all_source_paths.extend(
@@ -368,7 +383,11 @@ fn service_manager_for_path(path: &Path) -> ServiceManager {
     ServiceManager::Unknown
 }
 
-fn collect_wallet_candidates(data_dir: &Path) -> Vec<WalletCandidate> {
+fn collect_wallet_candidates(
+    data_dir: &Path,
+    product_family: ProductFamily,
+    product_confidence: DetectionConfidence,
+) -> Vec<WalletCandidate> {
     let mut candidates = Vec::new();
     let legacy_wallet = data_dir.join(LEGACY_WALLET_FILE_NAME);
     if legacy_wallet.is_file() {
@@ -377,25 +396,40 @@ fn collect_wallet_candidates(data_dir: &Path) -> Vec<WalletCandidate> {
             path: legacy_wallet,
             maybe_name: None,
             present: true,
+            product_family,
+            product_confidence,
+            chain_scope: WalletChainScope::Mainnet,
         });
     }
-    collect_wallet_directory_candidates(&data_dir.join("wallets"), &mut candidates);
-    for relative in CHAIN_WALLET_DIRS {
-        collect_wallet_directory_candidates(&data_dir.join(relative), &mut candidates);
+    collect_wallet_directory_candidates(
+        &data_dir.join("wallets"),
+        WalletChainScope::Mainnet,
+        product_family,
+        product_confidence,
+        &mut candidates,
+    );
+    for (relative, chain_scope) in chain_wallet_directories() {
+        collect_wallet_directory_candidates(
+            &data_dir.join(relative),
+            chain_scope,
+            product_family,
+            product_confidence,
+            &mut candidates,
+        );
     }
     candidates
 }
 
-fn collect_wallet_directory_candidates(wallets_dir: &Path, candidates: &mut Vec<WalletCandidate>) {
+fn collect_wallet_directory_candidates(
+    wallets_dir: &Path,
+    chain_scope: WalletChainScope,
+    product_family: ProductFamily,
+    product_confidence: DetectionConfidence,
+    candidates: &mut Vec<WalletCandidate>,
+) {
     if !wallets_dir.is_dir() {
         return;
     }
-    candidates.push(WalletCandidate {
-        kind: WalletCandidateKind::DescriptorWalletDirectory,
-        path: wallets_dir.to_path_buf(),
-        maybe_name: None,
-        present: true,
-    });
 
     let Ok(entries) = fs::read_dir(wallets_dir) else {
         return;
@@ -410,21 +444,14 @@ fn collect_wallet_directory_candidates(wallets_dir: &Path, candidates: &mut Vec<
             .and_then(|name| name.to_str())
             .map(str::to_string);
         if path.is_dir() {
-            candidates.push(WalletCandidate {
-                kind: WalletCandidateKind::DescriptorWalletDirectory,
-                path: path.clone(),
-                maybe_name: maybe_name.clone(),
-                present: true,
-            });
-            let nested_legacy_wallet = path.join(LEGACY_WALLET_FILE_NAME);
-            if nested_legacy_wallet.is_file() {
-                candidates.push(WalletCandidate {
-                    kind: WalletCandidateKind::LegacyWalletFile,
-                    path: nested_legacy_wallet,
-                    maybe_name,
-                    present: true,
-                });
-            }
+            let candidate = classify_wallet_directory_candidate(
+                &path,
+                maybe_name,
+                chain_scope,
+                product_family,
+                product_confidence,
+            );
+            candidates.push(candidate);
         } else if path.is_file() {
             let kind = if path.file_name().and_then(|name| name.to_str())
                 == Some(LEGACY_WALLET_FILE_NAME)
@@ -438,9 +465,51 @@ fn collect_wallet_directory_candidates(wallets_dir: &Path, candidates: &mut Vec<
                 path,
                 maybe_name,
                 present: true,
+                product_family,
+                product_confidence,
+                chain_scope,
             });
         }
     }
+}
+
+fn classify_wallet_directory_candidate(
+    path: &Path,
+    maybe_name: Option<String>,
+    chain_scope: WalletChainScope,
+    product_family: ProductFamily,
+    product_confidence: DetectionConfidence,
+) -> WalletCandidate {
+    let nested_legacy_wallet = path.join(LEGACY_WALLET_FILE_NAME);
+    if nested_legacy_wallet.is_file() {
+        return WalletCandidate {
+            kind: WalletCandidateKind::LegacyWalletFile,
+            path: nested_legacy_wallet,
+            maybe_name,
+            present: true,
+            product_family,
+            product_confidence,
+            chain_scope,
+        };
+    }
+
+    WalletCandidate {
+        kind: WalletCandidateKind::DescriptorWalletDirectory,
+        path: path.to_path_buf(),
+        maybe_name,
+        present: true,
+        product_family,
+        product_confidence,
+        chain_scope,
+    }
+}
+
+fn chain_wallet_directories() -> [(&'static str, WalletChainScope); 3] {
+    [
+        (CHAIN_WALLET_DIRS[0], WalletChainScope::Regtest),
+        (CHAIN_WALLET_DIRS[1], WalletChainScope::Signet),
+        (CHAIN_WALLET_DIRS[2], WalletChainScope::Testnet),
+    ]
 }
 
 fn classify_product_family(path: &Path) -> ProductFamily {
