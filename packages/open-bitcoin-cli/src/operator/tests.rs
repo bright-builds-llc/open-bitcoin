@@ -151,7 +151,7 @@ fn onboarding_write_decision_contract_covers_all_write_states() {
 }
 
 #[test]
-fn status_contract_defers_final_json_dto_to_shared_status_binding_plan() {
+fn status_contract_uses_shared_status_snapshot_without_renderer_dto() {
     // Arrange
     let source = include_str!("status.rs");
 
@@ -159,5 +159,5 @@ fn status_contract_defers_final_json_dto_to_shared_status_binding_plan() {
     assert!(!source.contains("StatusJson"));
     assert!(!source.contains("StatusDto"));
     assert!(!source.contains("CliStatusSnapshot"));
-    assert!(!source.contains("OpenBitcoinStatusSnapshot"));
+    assert!(source.contains("OpenBitcoinStatusSnapshot"));
 }
