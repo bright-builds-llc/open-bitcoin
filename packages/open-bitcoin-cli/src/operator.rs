@@ -13,6 +13,9 @@ use crate::CliError;
 
 pub mod config;
 pub mod detect;
+pub mod onboarding;
+pub mod runtime;
+pub mod status;
 
 /// First-party Open Bitcoin operator CLI contract.
 #[derive(Debug, Clone, PartialEq, Eq, Parser)]
