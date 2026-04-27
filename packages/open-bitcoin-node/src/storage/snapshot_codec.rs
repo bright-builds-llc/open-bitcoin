@@ -22,7 +22,11 @@ use crate::{
 
 mod wallet;
 
-pub(crate) use wallet::{decode_wallet_snapshot, encode_wallet_snapshot};
+pub(crate) use wallet::{
+    decode_selected_wallet, decode_wallet_registry_snapshot, decode_wallet_rescan_job,
+    decode_wallet_snapshot, encode_selected_wallet, encode_wallet_registry_snapshot,
+    encode_wallet_rescan_job, encode_wallet_snapshot,
+};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 struct VersionedSnapshot<T> {

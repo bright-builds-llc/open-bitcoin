@@ -16,6 +16,7 @@ use open_bitcoin_core::{
 };
 use open_bitcoin_mempool::PolicyConfig;
 use open_bitcoin_network::{LocalPeerConfig, PeerId, ServiceFlags, WireNetworkMessage};
+use open_bitcoin_wallet::wallet::WalletRescanState;
 
 pub use tcp::{TcpPeerSession, TcpPeerTransport};
 pub use types::{
@@ -25,13 +26,19 @@ pub use types::{
 
 use crate::{
     ChainstateStore, FjallNodeStore, LogRetentionPolicy, ManagedPeerNetwork, MemoryChainstateStore,
-    MetricRetentionPolicy, RuntimeMetadata,
+    MetricRetentionPolicy, PersistMode, RuntimeMetadata, StorageError, StorageNamespace,
     logging::{
         StructuredLogError, StructuredLogLevel, StructuredLogRecord,
         writer::append_structured_log_record,
     },
     status::{HealthSignal, HealthSignalLevel},
+    wallet_registry::{
+        WalletRegistry, WalletRegistryError, WalletRescanFreshness, WalletRescanJob,
+        WalletRescanJobState,
+    },
 };
+
+const DEFAULT_WALLET_RESCAN_CHUNK_SIZE: u32 = 128;
 
 pub struct DurableSyncRuntime {
     store: FjallNodeStore,
@@ -430,6 +437,334 @@ fn local_peer_config(config: &SyncRuntimeConfig) -> LocalPeerConfig {
         nonce: 0,
         relay: true,
         user_agent: format!("/open-bitcoin:{}/", env!("CARGO_PKG_VERSION")),
+    }
+}
+
+pub struct WalletRescanRuntime {
+    store: FjallNodeStore,
+    persist_mode: PersistMode,
+    chunk_size: u32,
+}
+
+impl WalletRescanRuntime {
+    pub fn open(
+        store: FjallNodeStore,
+        persist_mode: PersistMode,
+    ) -> Result<Self, WalletRegistryError> {
+        Self::open_with_chunk_size(store, persist_mode, DEFAULT_WALLET_RESCAN_CHUNK_SIZE)
+    }
+
+    pub(crate) fn open_with_chunk_size(
+        store: FjallNodeStore,
+        persist_mode: PersistMode,
+        chunk_size: u32,
+    ) -> Result<Self, WalletRegistryError> {
+        let runtime = Self {
+            store,
+            persist_mode,
+            chunk_size: chunk_size.max(1),
+        };
+        let _ = runtime.resume_pending_jobs()?;
+        Ok(runtime)
+    }
+
+    pub fn store(&self) -> &FjallNodeStore {
+        &self.store
+    }
+
+    pub fn enqueue_rescan(
+        &self,
+        wallet_name: &str,
+    ) -> Result<WalletRescanJob, WalletRegistryError> {
+        let mut registry = WalletRegistry::load(&self.store)?;
+        let wallet_snapshot = registry.wallet_snapshot(wallet_name)?;
+        let chainstate = self.required_chainstate_snapshot()?;
+        let Some(target_tip) = chainstate.tip() else {
+            return Err(WalletRegistryError::Storage(
+                StorageError::UnavailableNamespace {
+                    namespace: StorageNamespace::Chainstate,
+                },
+            ));
+        };
+
+        let mut job = WalletRescanJob::new(
+            wallet_name,
+            target_tip.block_hash,
+            target_tip.height,
+            wallet_snapshot
+                .maybe_tip_height
+                .map_or(0, |height| height.saturating_add(1)),
+            wallet_snapshot.maybe_tip_height,
+        )?;
+        job.state = WalletRescanJobState::Pending;
+        job.freshness = WalletRescanFreshness::from_wallet_state(WalletRescanState::from_progress(
+            job.maybe_scanned_through_height,
+            Some(job.target_tip_height),
+            Some(job.next_height),
+            true,
+        )?);
+        registry.save_rescan_job(&self.store, job, self.persist_mode)?;
+
+        self.advance_wallet_rescan(wallet_name)
+    }
+
+    pub fn resume_pending_jobs(&self) -> Result<Vec<WalletRescanJob>, WalletRegistryError> {
+        let registry = WalletRegistry::load(&self.store)?;
+        let pending_wallet_names = registry
+            .rescan_jobs()
+            .filter(|job| job.requires_resume())
+            .map(|job| job.wallet_name.clone())
+            .collect::<Vec<_>>();
+
+        let mut advanced_jobs = Vec::with_capacity(pending_wallet_names.len());
+        for wallet_name in pending_wallet_names {
+            advanced_jobs.push(self.advance_wallet_rescan(wallet_name.as_str())?);
+        }
+        Ok(advanced_jobs)
+    }
+
+    pub fn advance_wallet_rescan(
+        &self,
+        wallet_name: &str,
+    ) -> Result<WalletRescanJob, WalletRegistryError> {
+        let chainstate = self.required_chainstate_snapshot()?;
+        let mut registry = WalletRegistry::load(&self.store)?;
+        let mut job = registry
+            .rescan_job(wallet_name)
+            .cloned()
+            .ok_or_else(|| WalletRegistryError::UnknownWallet(wallet_name.to_string()))?;
+        if !job.requires_resume() {
+            return Ok(job);
+        }
+
+        let chunk_end_height =
+            chunk_end_height(job.next_height, job.target_tip_height, self.chunk_size);
+        let partial_snapshot = partial_chainstate_snapshot(&chainstate, chunk_end_height);
+        let maybe_tip_median_time_past = partial_snapshot.tip().map(|tip| tip.median_time_past);
+        let mut wallet = registry.wallet(wallet_name)?;
+        if let Err(error) = wallet.rescan_chainstate(&partial_snapshot) {
+            job.mark_failed(error.to_string());
+            registry.save_rescan_job(&self.store, job.clone(), self.persist_mode)?;
+            return Err(error.into());
+        }
+
+        registry.save_wallet(&self.store, wallet_name, &wallet, self.persist_mode)?;
+        job.mark_chunk_progress(chunk_end_height, maybe_tip_median_time_past);
+        registry.save_rescan_job(&self.store, job.clone(), self.persist_mode)?;
+        Ok(job)
+    }
+
+    fn required_chainstate_snapshot(
+        &self,
+    ) -> Result<open_bitcoin_core::chainstate::ChainstateSnapshot, WalletRegistryError> {
+        self.store.load_chainstate_snapshot()?.ok_or({
+            WalletRegistryError::Storage(StorageError::UnavailableNamespace {
+                namespace: StorageNamespace::Chainstate,
+            })
+        })
+    }
+}
+
+fn chunk_end_height(next_height: u32, target_tip_height: u32, chunk_size: u32) -> u32 {
+    next_height
+        .saturating_add(chunk_size.saturating_sub(1))
+        .min(target_tip_height)
+}
+
+fn partial_chainstate_snapshot(
+    snapshot: &open_bitcoin_core::chainstate::ChainstateSnapshot,
+    through_height: u32,
+) -> open_bitcoin_core::chainstate::ChainstateSnapshot {
+    let active_chain = snapshot
+        .active_chain
+        .iter()
+        .filter(|position| position.height <= through_height)
+        .cloned()
+        .collect::<Vec<_>>();
+    let active_hashes = active_chain
+        .iter()
+        .map(|position| position.block_hash)
+        .collect::<std::collections::BTreeSet<_>>();
+    let utxos = snapshot
+        .utxos
+        .iter()
+        .filter(|(_, coin)| coin.created_height <= through_height)
+        .map(|(outpoint, coin)| (outpoint.clone(), coin.clone()))
+        .collect();
+    let undo_by_block = snapshot
+        .undo_by_block
+        .iter()
+        .filter(|(block_hash, _)| active_hashes.contains(block_hash))
+        .map(|(block_hash, undo)| (*block_hash, undo.clone()))
+        .collect();
+
+    open_bitcoin_core::chainstate::ChainstateSnapshot::new(active_chain, utxos, undo_by_block)
+}
+
+#[cfg(test)]
+mod wallet_rescan_runtime_tests {
+    use std::{
+        collections::HashMap,
+        fs, io,
+        path::{Path, PathBuf},
+        time::{SystemTime, UNIX_EPOCH},
+    };
+
+    use open_bitcoin_core::{
+        chainstate::{ChainPosition, ChainstateSnapshot, Coin},
+        primitives::{BlockHash, BlockHeader, OutPoint, TransactionOutput, Txid},
+        wallet::{AddressNetwork, DescriptorRole, Wallet},
+    };
+
+    use super::WalletRescanRuntime;
+    use crate::{
+        FjallNodeStore, PersistMode, WalletRegistry, WalletRescanFreshness, WalletRescanJobState,
+    };
+
+    fn temp_store_path(test_name: &str) -> PathBuf {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system time after unix epoch")
+            .as_nanos();
+        std::env::temp_dir().join(format!(
+            "open-bitcoin-wallet-rescan-{test_name}-{}-{timestamp}",
+            std::process::id()
+        ))
+    }
+
+    fn remove_dir_if_exists(path: &Path) {
+        match fs::remove_dir_all(path) {
+            Ok(()) => {}
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+            Err(error) => panic!("failed to remove {}: {error}", path.display()),
+        }
+    }
+
+    fn tip(height: u32) -> ChainPosition {
+        ChainPosition::new(
+            BlockHeader {
+                version: 1,
+                previous_block_hash: if height == 0 {
+                    BlockHash::from_byte_array([0_u8; 32])
+                } else {
+                    BlockHash::from_byte_array([height as u8 - 1; 32])
+                },
+                merkle_root: Default::default(),
+                time: 1_700_000_000 + height,
+                bits: 0x207f_ffff,
+                nonce: height,
+            },
+            height,
+            u128::from(height) + 1,
+            i64::from(1_700_000_000 + height),
+        )
+    }
+
+    fn wallet_with_ranged_descriptor() -> Wallet {
+        let mut wallet = Wallet::new(AddressNetwork::Regtest);
+        wallet
+            .import_descriptor(
+                "receive-ranged",
+                DescriptorRole::External,
+                "wpkh(tprv8ZgxMBicQKsPd7Uf69XL1XwhmjHopUGep8GuEiJDZmbQz6o58LninorQAfcKZWARbtRtfnLcJ5MQ2AtHcQJCCRUcMRvmDUjyEmNUWwx8UbK/1/1/*)",
+            )
+            .expect("descriptor");
+        wallet
+    }
+
+    fn funded_chainstate(wallet: &Wallet) -> ChainstateSnapshot {
+        let receive_script = wallet
+            .default_receive_address()
+            .expect("receive")
+            .script_pubkey;
+        let mut utxos = HashMap::new();
+        utxos.insert(
+            OutPoint {
+                txid: Txid::from_byte_array([1_u8; 32]),
+                vout: 0,
+            },
+            Coin {
+                output: TransactionOutput {
+                    value: open_bitcoin_core::primitives::Amount::from_sats(25_000)
+                        .expect("amount"),
+                    script_pubkey: receive_script.clone(),
+                },
+                is_coinbase: false,
+                created_height: 1,
+                created_median_time_past: 1_700_000_001,
+            },
+        );
+        utxos.insert(
+            OutPoint {
+                txid: Txid::from_byte_array([2_u8; 32]),
+                vout: 1,
+            },
+            Coin {
+                output: TransactionOutput {
+                    value: open_bitcoin_core::primitives::Amount::from_sats(35_000)
+                        .expect("amount"),
+                    script_pubkey: receive_script,
+                },
+                is_coinbase: false,
+                created_height: 3,
+                created_median_time_past: 1_700_000_003,
+            },
+        );
+
+        ChainstateSnapshot::new(
+            vec![tip(0), tip(1), tip(2), tip(3)],
+            utxos,
+            Default::default(),
+        )
+    }
+
+    #[test]
+    fn restart_resume_advances_pending_rescan_in_bounded_chunks() {
+        // Arrange
+        let path = temp_store_path("resume-chunks");
+        remove_dir_if_exists(&path);
+        let store = FjallNodeStore::open(&path).expect("open store");
+        let wallet = wallet_with_ranged_descriptor();
+        store
+            .save_chainstate_snapshot(&funded_chainstate(&wallet), PersistMode::Sync)
+            .expect("save chainstate");
+        let mut registry = WalletRegistry::default();
+        registry
+            .create_wallet(&store, "alpha", wallet, PersistMode::Sync)
+            .expect("save wallet");
+
+        {
+            let runtime = WalletRescanRuntime::open_with_chunk_size(store, PersistMode::Sync, 2)
+                .expect("runtime");
+            let first_job = runtime.enqueue_rescan("alpha").expect("enqueue");
+            assert_eq!(first_job.state, WalletRescanJobState::Scanning);
+            assert_eq!(first_job.freshness, WalletRescanFreshness::Partial);
+            assert_eq!(first_job.maybe_scanned_through_height, Some(1));
+        }
+
+        // Act
+        let reopened_store = FjallNodeStore::open(&path).expect("reopen store");
+        let reopened_runtime =
+            WalletRescanRuntime::open_with_chunk_size(reopened_store, PersistMode::Sync, 2)
+                .expect("reopened runtime");
+        let resumed_job = reopened_runtime
+            .store()
+            .load_wallet_rescan_job("alpha")
+            .expect("load job")
+            .expect("job");
+        let resumed_registry = WalletRegistry::load(reopened_runtime.store()).expect("registry");
+        let resumed_wallet = resumed_registry
+            .wallet_snapshot("alpha")
+            .expect("wallet snapshot");
+
+        // Assert
+        assert_eq!(resumed_job.state, WalletRescanJobState::Complete);
+        assert_eq!(resumed_job.freshness, WalletRescanFreshness::Fresh);
+        assert_eq!(resumed_job.maybe_scanned_through_height, Some(3));
+        assert_eq!(resumed_wallet.maybe_tip_height, Some(3));
+        assert_eq!(resumed_wallet.utxos.len(), 2);
+
+        remove_dir_if_exists(&path);
     }
 }
 

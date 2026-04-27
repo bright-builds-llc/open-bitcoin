@@ -25,15 +25,20 @@ use super::{
     snapshot_codec::{
         decode_block_index_entries, decode_chainstate_snapshot, decode_header_entries,
         decode_metrics_snapshot, decode_recovery_marker, decode_runtime_metadata,
+        decode_selected_wallet, decode_wallet_registry_snapshot, decode_wallet_rescan_job,
         decode_wallet_snapshot, encode_block_index_entries, encode_chainstate_snapshot,
         encode_header_entries, encode_metrics_snapshot, encode_recovery_marker,
-        encode_runtime_metadata, encode_wallet_snapshot,
+        encode_runtime_metadata, encode_selected_wallet, encode_wallet_registry_snapshot,
+        encode_wallet_rescan_job, encode_wallet_snapshot,
     },
 };
+use crate::{SelectedWalletRecord, WalletRegistrySnapshot, WalletRescanJob};
 
 const SNAPSHOT_KEY: &str = "snapshot";
 const SCHEMA_VERSION_KEY: &str = "schema_version";
 const RECOVERY_MARKER_KEY: &str = "recovery_marker";
+const WALLET_REGISTRY_KEY: &str = "wallet_registry";
+const SELECTED_WALLET_KEY: &str = "selected_wallet";
 
 /// Durable node storage backed by one fjall database and namespace keyspaces.
 pub struct FjallNodeStore {
@@ -177,6 +182,112 @@ impl FjallNodeStore {
         self.get_bytes(StorageNamespace::Wallet, SNAPSHOT_KEY)?
             .map(|bytes| decode_wallet_snapshot(&bytes))
             .transpose()
+    }
+
+    pub fn save_wallet_registry(
+        &self,
+        snapshot: &WalletRegistrySnapshot,
+        mode: PersistMode,
+    ) -> Result<(), StorageError> {
+        let bytes = encode_wallet_registry_snapshot(snapshot)?;
+        self.put_bytes(StorageNamespace::Wallet, WALLET_REGISTRY_KEY, bytes, mode)
+    }
+
+    pub fn load_wallet_registry(&self) -> Result<Option<WalletRegistrySnapshot>, StorageError> {
+        self.get_bytes(StorageNamespace::Wallet, WALLET_REGISTRY_KEY)?
+            .map(|bytes| decode_wallet_registry_snapshot(&bytes))
+            .transpose()
+    }
+
+    pub fn save_selected_wallet(
+        &self,
+        record: &SelectedWalletRecord,
+        mode: PersistMode,
+    ) -> Result<(), StorageError> {
+        let bytes = encode_selected_wallet(record)?;
+        self.put_bytes(StorageNamespace::Wallet, SELECTED_WALLET_KEY, bytes, mode)
+    }
+
+    pub fn load_selected_wallet(&self) -> Result<Option<SelectedWalletRecord>, StorageError> {
+        self.get_bytes(StorageNamespace::Wallet, SELECTED_WALLET_KEY)?
+            .map(|bytes| decode_selected_wallet(&bytes))
+            .transpose()
+    }
+
+    pub fn clear_selected_wallet(&self, mode: PersistMode) -> Result<(), StorageError> {
+        self.remove_bytes(StorageNamespace::Wallet, SELECTED_WALLET_KEY, mode)
+    }
+
+    pub fn save_named_wallet_snapshot(
+        &self,
+        wallet_name: &str,
+        snapshot: &WalletSnapshot,
+        mode: PersistMode,
+    ) -> Result<(), StorageError> {
+        let bytes = encode_wallet_snapshot(snapshot)?;
+        self.put_bytes(
+            StorageNamespace::Wallet,
+            &named_wallet_snapshot_key(wallet_name),
+            bytes,
+            mode,
+        )
+    }
+
+    pub fn load_named_wallet_snapshot(
+        &self,
+        wallet_name: &str,
+    ) -> Result<Option<WalletSnapshot>, StorageError> {
+        self.get_bytes(
+            StorageNamespace::Wallet,
+            &named_wallet_snapshot_key(wallet_name),
+        )?
+        .map(|bytes| decode_wallet_snapshot(&bytes))
+        .transpose()
+    }
+
+    pub fn save_wallet_rescan_job(
+        &self,
+        job: &WalletRescanJob,
+        mode: PersistMode,
+    ) -> Result<(), StorageError> {
+        let bytes = encode_wallet_rescan_job(job)?;
+        self.put_bytes(
+            StorageNamespace::Wallet,
+            &wallet_rescan_job_key(job.wallet_name.as_str()),
+            bytes,
+            mode,
+        )
+    }
+
+    pub fn load_wallet_rescan_job(
+        &self,
+        wallet_name: &str,
+    ) -> Result<Option<WalletRescanJob>, StorageError> {
+        self.get_bytes(
+            StorageNamespace::Wallet,
+            &wallet_rescan_job_key(wallet_name),
+        )?
+        .map(|bytes| decode_wallet_rescan_job(&bytes))
+        .transpose()
+    }
+
+    pub fn load_wallet_rescan_jobs(&self) -> Result<Vec<WalletRescanJob>, StorageError> {
+        self.prefixed_values(StorageNamespace::Wallet, wallet_rescan_job_prefix())?
+            .into_iter()
+            .map(|bytes| decode_wallet_rescan_job(&bytes))
+            .collect()
+    }
+
+    pub fn clear_wallet_rescan_job(
+        &self,
+        wallet_name: &str,
+        mode: PersistMode,
+    ) -> Result<(), StorageError> {
+        self.remove_bytes(
+            StorageNamespace::Wallet,
+            &wallet_rescan_job_key(wallet_name),
+            mode,
+        )
     }
 
     /// Persist the metrics history snapshot for runtime collectors.
@@ -343,6 +454,36 @@ impl FjallNodeStore {
             .map_err(|error| backend_failure(namespace, error, StorageRecoveryAction::Restart))
     }
 
+    fn prefixed_values(
+        &self,
+        namespace: StorageNamespace,
+        prefix: &str,
+    ) -> Result<Vec<Vec<u8>>, StorageError> {
+        self.keyspace(namespace)
+            .prefix(prefix)
+            .map(|guard| {
+                guard
+                    .value()
+                    .map(|value| value.as_ref().to_vec())
+                    .map_err(|error| {
+                        backend_failure(namespace, error, StorageRecoveryAction::Restart)
+                    })
+            })
+            .collect()
+    }
+
+    fn remove_bytes(
+        &self,
+        namespace: StorageNamespace,
+        key: &str,
+        mode: PersistMode,
+    ) -> Result<(), StorageError> {
+        self.keyspace(namespace)
+            .remove(key)
+            .map_err(|error| backend_failure(namespace, error, StorageRecoveryAction::Restart))?;
+        self.persist(namespace, mode)
+    }
+
     fn persist(&self, namespace: StorageNamespace, mode: PersistMode) -> Result<(), StorageError> {
         let Some(mode) = fjall_persist_mode(mode) else {
             return Ok(());
@@ -426,6 +567,18 @@ fn block_key(block_hash: BlockHash) -> String {
         key.push(HEX[(byte & 0x0f) as usize] as char);
     }
     key
+}
+
+fn named_wallet_snapshot_key(wallet_name: &str) -> String {
+    format!("wallet_snapshot:{wallet_name}")
+}
+
+fn wallet_rescan_job_prefix() -> &'static str {
+    "wallet_rescan_job:"
+}
+
+fn wallet_rescan_job_key(wallet_name: &str) -> String {
+    format!("{}{}", wallet_rescan_job_prefix(), wallet_name)
 }
 
 fn backend_failure(

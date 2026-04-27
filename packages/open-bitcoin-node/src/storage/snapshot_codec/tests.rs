@@ -14,10 +14,15 @@ use open_bitcoin_network::HeaderEntry;
 
 use super::{
     MetricsStorageSnapshot, decode_chainstate_snapshot, decode_header_entries,
-    decode_metrics_snapshot, decode_wallet_snapshot, encode_chainstate_snapshot,
-    encode_header_entries, encode_metrics_snapshot, encode_wallet_snapshot,
+    decode_metrics_snapshot, decode_selected_wallet, decode_wallet_registry_snapshot,
+    decode_wallet_rescan_job, decode_wallet_snapshot, encode_chainstate_snapshot,
+    encode_header_entries, encode_metrics_snapshot, encode_selected_wallet,
+    encode_wallet_registry_snapshot, encode_wallet_rescan_job, encode_wallet_snapshot,
 };
-use crate::{MetricKind, MetricSample, StorageError, StorageNamespace};
+use crate::{
+    MetricKind, MetricSample, SelectedWalletRecord, StorageError, StorageNamespace,
+    WalletRegistrySnapshot, WalletRescanFreshness, WalletRescanJob, WalletRescanJobState,
+};
 
 fn header(seed: u8) -> BlockHeader {
     BlockHeader {
@@ -72,11 +77,17 @@ fn wallet_snapshot() -> WalletSnapshot {
     let mut wallet = Wallet::new(AddressNetwork::Regtest);
     let descriptor_id = wallet
         .import_descriptor(
-            "receive",
+            "receive-ranged",
             DescriptorRole::External,
-            "wpkh(cMec2DGaTXkYJYfi7x3ZGjRXkeqmAvYAoWzMAcWj5fdLaqudWsNi)",
+            "wpkh(tprv8ZgxMBicQKsPd7Uf69XL1XwhmjHopUGep8GuEiJDZmbQz6o58LninorQAfcKZWARbtRtfnLcJ5MQ2AtHcQJCCRUcMRvmDUjyEmNUWwx8UbK/1/1/*)",
         )
         .expect("descriptor import");
+    let _ = wallet
+        .allocate_receive_address()
+        .expect("first ranged address");
+    let _ = wallet
+        .allocate_receive_address()
+        .expect("second ranged address");
     let mut snapshot = wallet.snapshot();
     snapshot.utxos.push(WalletUtxo {
         descriptor_id,
@@ -106,6 +117,49 @@ fn chainstate_snapshot_round_trips_through_storage_dto() {
 }
 
 #[test]
+fn wallet_registry_and_selected_wallet_round_trip() {
+    // Arrange
+    let registry = WalletRegistrySnapshot::new(["alpha".to_string(), "beta".to_string()]);
+    let selected = SelectedWalletRecord {
+        wallet_name: "beta".to_string(),
+    };
+
+    // Act
+    let encoded_registry = encode_wallet_registry_snapshot(&registry).expect("encode registry");
+    let decoded_registry =
+        decode_wallet_registry_snapshot(&encoded_registry).expect("decode registry");
+    let encoded_selected = encode_selected_wallet(&selected).expect("encode selected");
+    let decoded_selected = decode_selected_wallet(&encoded_selected).expect("decode selected");
+
+    // Assert
+    assert_eq!(decoded_registry, registry);
+    assert_eq!(decoded_selected, selected);
+}
+
+#[test]
+fn wallet_rescan_job_round_trips_full_checkpoint_state() {
+    // Arrange
+    let job = WalletRescanJob {
+        wallet_name: "alpha".to_string(),
+        target_tip_hash: BlockHash::from_byte_array([7_u8; 32]),
+        target_tip_height: 144,
+        next_height: 121,
+        maybe_scanned_through_height: Some(120),
+        maybe_tip_median_time_past: Some(1_700_000_120),
+        freshness: WalletRescanFreshness::Partial,
+        state: WalletRescanJobState::Scanning,
+        maybe_error: None,
+    };
+
+    // Act
+    let encoded = encode_wallet_rescan_job(&job).expect("encode job");
+    let decoded = decode_wallet_rescan_job(&encoded).expect("decode job");
+
+    // Assert
+    assert_eq!(decoded, job);
+}
+
+#[test]
 fn wallet_snapshot_round_trips_through_original_descriptors() {
     // Arrange
     let snapshot = wallet_snapshot();
@@ -116,6 +170,9 @@ fn wallet_snapshot_round_trips_through_original_descriptors() {
 
     // Assert
     assert_eq!(decoded, snapshot);
+    assert_eq!(decoded.descriptors[0].descriptor.range_start(), Some(0));
+    assert_eq!(decoded.descriptors[0].descriptor.range_end(), Some(1000));
+    assert_eq!(decoded.descriptors[0].descriptor.next_index(), Some(2));
 }
 
 #[test]

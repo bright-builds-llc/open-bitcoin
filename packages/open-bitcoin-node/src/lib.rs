@@ -25,6 +25,7 @@ pub mod status;
 pub mod storage;
 pub mod sync;
 pub mod wallet;
+pub mod wallet_registry;
 
 pub use chainstate::{ChainstateStore, ManagedChainstate, MemoryChainstateStore};
 pub use logging::{LogRetentionPolicy, LogStatus};
@@ -43,6 +44,10 @@ pub use storage::{
 pub use sync::{
     DurableSyncRuntime, PeerSyncOutcome, PeerSyncState, SyncNetwork, SyncPeerAddress,
     SyncPeerSession, SyncPeerSource, SyncRunSummary, SyncRuntimeConfig, SyncRuntimeError,
-    SyncTransport, TcpPeerTransport,
+    SyncTransport, TcpPeerTransport, WalletRescanRuntime,
 };
 pub use wallet::{ManagedWallet, MemoryWalletStore, WalletStore};
+pub use wallet_registry::{
+    SelectedWalletRecord, WalletRegistry, WalletRegistryError, WalletRegistrySnapshot,
+    WalletRescanFreshness, WalletRescanJob, WalletRescanJobState,
+};

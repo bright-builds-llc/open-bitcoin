@@ -554,12 +554,15 @@
     {
       "label": "node-wallet-adapter",
       "files": [
-        "packages/open-bitcoin-node/src/wallet.rs"
+        "packages/open-bitcoin-node/src/wallet.rs",
+        "packages/open-bitcoin-node/src/wallet_registry.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/wallet/wallet.cpp",
         "packages/bitcoin-knots/src/wallet/spend.cpp",
-        "packages/bitcoin-knots/src/wallet/receive.cpp"
+        "packages/bitcoin-knots/src/wallet/receive.cpp",
+        "packages/bitcoin-knots/src/wallet/rpc/util.cpp",
+        "packages/bitcoin-knots/src/wallet/rpc/transactions.cpp"
       ]
     },
     {

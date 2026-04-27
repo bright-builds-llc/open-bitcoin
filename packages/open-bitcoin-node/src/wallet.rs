@@ -2,12 +2,14 @@
 // - packages/bitcoin-knots/src/wallet/wallet.cpp
 // - packages/bitcoin-knots/src/wallet/spend.cpp
 // - packages/bitcoin-knots/src/wallet/receive.cpp
+// - packages/bitcoin-knots/src/wallet/rpc/util.cpp
+// - packages/bitcoin-knots/src/wallet/rpc/transactions.cpp
 
 use open_bitcoin_core::{
     primitives::Transaction,
     wallet::{
-        AddressNetwork, BuildRequest, BuiltTransaction, Wallet, WalletBalance, WalletSnapshot,
-        WalletUtxo,
+        Address, AddressNetwork, BuildRequest, BuiltTransaction, Wallet, WalletBalance,
+        WalletSnapshot, WalletUtxo,
     },
 };
 
@@ -104,6 +106,26 @@ impl<S: WalletStore> ManagedWallet<S> {
             .import_descriptor(label, role, descriptor_text)?;
         self.persist();
         Ok(descriptor_id)
+    }
+
+    pub fn allocate_receive_address(
+        &mut self,
+    ) -> Result<Address, open_bitcoin_core::wallet::WalletError> {
+        let address = self.wallet.allocate_receive_address()?;
+        self.persist();
+        Ok(address)
+    }
+
+    pub fn allocate_change_address(
+        &mut self,
+    ) -> Result<Address, open_bitcoin_core::wallet::WalletError> {
+        let address = self.wallet.allocate_change_address()?;
+        self.persist();
+        Ok(address)
+    }
+
+    pub fn snapshot(&self) -> WalletSnapshot {
+        self.wallet.snapshot()
     }
 
     pub fn rescan_chainstate(
@@ -315,5 +337,42 @@ mod tests {
                 .len(),
             2
         );
+    }
+
+    #[test]
+    fn managed_wallet_persists_ranged_descriptor_cursor_updates() {
+        // Arrange
+        let mut managed = ManagedWallet::from_store(
+            MemoryWalletStore::default(),
+            Wallet::new(AddressNetwork::Regtest),
+        );
+        managed
+            .import_descriptor(
+                "receive-ranged",
+                DescriptorRole::External,
+                "wpkh(tprv8ZgxMBicQKsPd7Uf69XL1XwhmjHopUGep8GuEiJDZmbQz6o58LninorQAfcKZWARbtRtfnLcJ5MQ2AtHcQJCCRUcMRvmDUjyEmNUWwx8UbK/1/1/*)",
+            )
+            .expect("receive descriptor");
+        managed
+            .import_descriptor(
+                "change-ranged",
+                DescriptorRole::Internal,
+                "sh(wpkh(tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B/1/*))",
+            )
+            .expect("change descriptor");
+
+        // Act
+        let first_receive = managed
+            .allocate_receive_address()
+            .expect("first receive address");
+        let first_change = managed
+            .allocate_change_address()
+            .expect("first change address");
+
+        // Assert
+        let snapshot = managed.store().load_snapshot().expect("snapshot");
+        assert_ne!(first_receive.as_str(), first_change.as_str());
+        assert_eq!(snapshot.descriptors[0].descriptor.next_index(), Some(1));
+        assert_eq!(snapshot.descriptors[1].descriptor.next_index(), Some(1));
     }
 }
