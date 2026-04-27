@@ -123,6 +123,21 @@ cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bit
   onboard --non-interactive --approve-write --detect-existing
 ```
 
+Operators with an existing Core or Knots install can also generate a dry-run
+migration plan before any later cutover work:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --network regtest --datadir=/tmp/open-bitcoin-preview \
+  migrate plan --source-datadir=/tmp/source/.bitcoin
+```
+
+That planner is explanation-first and dry-run only. It surfaces migration
+tradeoffs, backup requirements, and intentional differences without mutating the
+source install. See
+[`docs/parity/catalog/drop-in-audit-and-migration.md`](./docs/parity/catalog/drop-in-audit-and-migration.md)
+for the current audit matrix and explicit Phase 21 boundaries.
+
 Supported baseline-backed RPC methods currently include `getblockchaininfo`,
 `getmempoolinfo`, `getnetworkinfo`, `sendrawtransaction`, `deriveaddresses`,
 `getwalletinfo`, `getbalances`, `listunspent`, `importdescriptors`,

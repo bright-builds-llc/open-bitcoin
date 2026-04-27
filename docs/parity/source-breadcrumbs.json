@@ -216,6 +216,9 @@
         "packages/open-bitcoin-cli/src/operator/status/tests.rs",
         "packages/open-bitcoin-cli/tests/operator_binary.rs"
       ],
+      "patterns": [
+        "packages/open-bitcoin-cli/src/operator/status/*.rs"
+      ],
       "breadcrumbs": []
     },
     {
@@ -232,6 +235,7 @@
       "label": "cli-operator-wallet-contracts",
       "files": [
         "packages/open-bitcoin-cli/src/operator/wallet.rs",
+        "packages/open-bitcoin-cli/src/operator/wallet_support.rs",
         "packages/open-bitcoin-cli/src/operator/wallet/tests.rs"
       ],
       "breadcrumbs": [
@@ -239,6 +243,23 @@
         "packages/bitcoin-knots/src/wallet/rpc/backup.cpp",
         "packages/bitcoin-knots/src/wallet/rpc/util.cpp",
         "packages/bitcoin-knots/test/functional/wallet_backup.py"
+      ]
+    },
+    {
+      "label": "cli-operator-migration-contracts",
+      "files": [
+        "packages/open-bitcoin-cli/src/operator/migration.rs",
+        "packages/open-bitcoin-cli/src/operator/migration/tests.rs"
+      ],
+      "patterns": [
+        "packages/open-bitcoin-cli/src/operator/migration/*.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/doc/files.md",
+        "packages/bitcoin-knots/doc/init.md",
+        "packages/bitcoin-knots/doc/managing-wallets.md",
+        "packages/bitcoin-knots/src/common/args.cpp",
+        "packages/bitcoin-knots/src/common/config.cpp"
       ]
     },
     {
@@ -523,7 +544,9 @@
     {
       "label": "node-sync-runtime",
       "files": [
-        "packages/open-bitcoin-node/src/sync.rs"
+        "packages/open-bitcoin-node/src/sync.rs",
+        "packages/open-bitcoin-node/src/sync/progress.rs",
+        "packages/open-bitcoin-node/src/sync/wallet_rescan.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/net.cpp",
@@ -719,6 +742,11 @@
         "packages/open-bitcoin-rpc/src/method/tests.rs",
         "packages/open-bitcoin-rpc/tests/black_box_parity.rs"
       ],
+      "patterns": [
+        "packages/open-bitcoin-rpc/src/context/*.rs",
+        "packages/open-bitcoin-rpc/src/dispatch/*.rs",
+        "packages/open-bitcoin-rpc/src/method/*.rs"
+      ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/bitcoind.cpp",
         "packages/bitcoin-knots/src/rpc/protocol.h",
@@ -770,6 +798,9 @@
       "label": "wallet-descriptor",
       "files": [
         "packages/open-bitcoin-wallet/src/descriptor.rs"
+      ],
+      "patterns": [
+        "packages/open-bitcoin-wallet/src/descriptor/*.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/doc/descriptors.md",

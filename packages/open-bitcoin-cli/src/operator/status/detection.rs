@@ -1,3 +1,6 @@
+// Parity breadcrumbs:
+// - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
+
 use open_bitcoin_node::status::{HealthSignal, HealthSignalLevel};
 
 use crate::operator::detect::{

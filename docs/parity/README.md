@@ -15,8 +15,11 @@ The ledger exists so contributors and reviewers can answer three questions quick
 2. What is the current status of that surface in Open Bitcoin?
 3. Is any difference from Knots intentional, documented, and reviewable?
 
-The current headless v1 surfaces are marked `done` in
+The current shipped headless v1 surfaces remain marked `done` in
 [`index.json`](index.json) and summarized in [`checklist.md`](checklist.md).
+The v1.1 drop-in audit and migration slice is tracked through the same ledger,
+with cross-cutting evidence in
+[`catalog/drop-in-audit-and-migration.md`](catalog/drop-in-audit-and-migration.md).
 Deferred and suspected follow-up work remains visible in
 [`deviations-and-unknowns.md`](deviations-and-unknowns.md).
 
@@ -36,6 +39,7 @@ Deferred and suspected follow-up work remains visible in
 - `catalog/p2p.md` tracks peer lifecycle, wire handling, sync, and relay behavior.
 - `catalog/wallet.md` tracks descriptor wallets, balances, coin selection, signing, and adapter-owned persistence.
 - `catalog/rpc-cli-config.md` tracks the supported JSON-RPC, CLI, config, auth, and deferred operator surfaces.
+- `catalog/drop-in-audit-and-migration.md` tracks the drop-in audit matrix, migration dry-run scope, and intentional migration differences.
 - `catalog/verification-harnesses.md` tracks black-box parity, integration isolation, property tests, and CI report output.
 
 Generated timing outputs live under `packages/target/benchmark-reports` rather than being checked into git.

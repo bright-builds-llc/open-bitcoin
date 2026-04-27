@@ -1,3 +1,10 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/net.cpp
+// - packages/bitcoin-knots/src/net_processing.cpp
+// - packages/bitcoin-knots/src/headerssync.cpp
+// - packages/bitcoin-knots/src/sync.cpp
+// - packages/bitcoin-knots/src/node/blockstorage.cpp
+
 use std::collections::BTreeSet;
 
 use open_bitcoin_wallet::wallet::WalletRescanState;

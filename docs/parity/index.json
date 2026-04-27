@@ -1,6 +1,58 @@
 {
   "baseline": "29.3.knots20260210",
-  "deviations": [],
+  "deviations": [
+    {
+      "id": "mig-jsonc-open-bitcoin-settings",
+      "surfaces": [
+        "config",
+        "operator-docs"
+      ],
+      "summary": "Open Bitcoin-only onboarding, service, dashboard, migration, metrics, logging, storage, and sync settings live in open-bitcoin.jsonc instead of bitcoin.conf.",
+      "evidence": [
+        "docs/parity/catalog/drop-in-audit-and-migration.md",
+        "docs/architecture/config-precedence.md",
+        "packages/open-bitcoin-cli/src/operator/onboarding.rs"
+      ],
+      "migration_notice": {
+        "level": "info",
+        "text": "Open Bitcoin-only settings stay in open-bitcoin.jsonc; the source bitcoin.conf remains read-only review input."
+      }
+    },
+    {
+      "id": "mig-dry-run-only-switch-over",
+      "surfaces": [
+        "service",
+        "operator-docs"
+      ],
+      "summary": "Phase 21 migration is dry-run only. It does not disable source services, rewrite source datadirs, or perform automatic switch-over.",
+      "evidence": [
+        "docs/parity/catalog/drop-in-audit-and-migration.md",
+        "packages/open-bitcoin-cli/src/operator/migration.rs",
+        "packages/open-bitcoin-cli/tests/operator_binary.rs"
+      ],
+      "migration_notice": {
+        "level": "warn",
+        "text": "The current migration planner is review-only. Service cutover and source-data mutation remain manual follow-up work."
+      }
+    },
+    {
+      "id": "mig-managed-wallet-backup-format",
+      "surfaces": [
+        "wallet",
+        "operator-docs"
+      ],
+      "summary": "Open Bitcoin exports managed-wallet backups as repo-owned JSON and does not copy, restore, or rewrite Core or Knots wallet.dat files.",
+      "evidence": [
+        "docs/parity/catalog/drop-in-audit-and-migration.md",
+        "docs/parity/catalog/wallet.md",
+        "packages/open-bitcoin-cli/src/operator/wallet.rs"
+      ],
+      "migration_notice": {
+        "level": "warn",
+        "text": "Managed-wallet backup export is Open Bitcoin-owned JSON, not a Core-compatible wallet.dat copy or rewrite flow."
+      }
+    }
+  ],
   "catalog": {
     "readme": "catalog/README.md",
     "documents": [
@@ -337,6 +389,54 @@
             "Which parser or protocol surfaces deserve a dedicated fuzzing runtime beyond the deterministic generated tests."
           ]
         }
+      },
+      {
+        "id": "drop-in-audit-migration",
+        "title": "Drop-In Audit And Migration",
+        "path": "catalog/drop-in-audit-and-migration.md",
+        "phase": "21-drop-in-parity-audit-and-migration",
+        "status": "done",
+        "scope": [
+          "cli",
+          "rpc",
+          "config",
+          "datadir",
+          "service",
+          "wallet",
+          "sync-logging",
+          "operator-docs",
+          "deviations"
+        ],
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/doc/files.md",
+            "packages/bitcoin-knots/doc/init.md",
+            "packages/bitcoin-knots/doc/managing-wallets.md",
+            "packages/bitcoin-knots/src/common/args.cpp",
+            "packages/bitcoin-knots/src/common/config.cpp",
+            "packages/bitcoin-knots/src/httprpc.cpp",
+            "packages/bitcoin-knots/src/rpc/server.cpp",
+            "packages/bitcoin-knots/contrib/init/org.bitcoin.bitcoind.plist",
+            "packages/bitcoin-knots/contrib/init/bitcoind.service"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/test/functional/interface_bitcoin_cli.py",
+            "packages/bitcoin-knots/test/functional/wallet_backup.py"
+          ]
+        },
+        "highlights": {
+          "quirks": [
+            "Migration planning is an Open Bitcoin-owned operator workflow rather than a baseline-compatible bitcoin-cli parser surface.",
+            "Detected source datadirs, services, configs, cookies, and wallet candidates stay read-only throughout the Phase 21 planner.",
+            "Relevant intentional differences are surfaced alongside the plan rather than hidden in docs-only audit artifacts."
+          ],
+          "known_bugs": [],
+          "known_bugs_status": "none-confirmed",
+          "suspected_unknowns": [
+            "How closely a future apply-mode migration should mirror Knots once source-data mutation becomes in scope.",
+            "Which live-sync or runtime cutover checks should be mandatory before an operator can safely disable the source service."
+          ]
+        }
       }
     ]
   },
@@ -375,6 +475,10 @@
     },
     {
       "name": "verification-harnesses",
+      "status": "done"
+    },
+    {
+      "name": "drop-in-audit-migration",
       "status": "done"
     }
   ],
@@ -564,6 +668,34 @@
         ],
         "suspected_unknowns": [
           "How closely richer wallet-send ergonomics, getpeerinfo, and full multiwallet semantics should mirror Knots when the adapter-owned surfaces grow."
+        ]
+      },
+      {
+        "id": "drop-in-audit-migration",
+        "title": "Drop-In Audit And Migration",
+        "status": "done",
+        "requirements": [
+          "CLI-07",
+          "WAL-08",
+          "MIG-01",
+          "MIG-02",
+          "MIG-03",
+          "MIG-04",
+          "MIG-05"
+        ],
+        "evidence": [
+          "docs/parity/catalog/drop-in-audit-and-migration.md",
+          "docs/architecture/cli-command-architecture.md",
+          ".planning/phases/21-drop-in-parity-audit-and-migration/21-VERIFICATION.md",
+          "packages/open-bitcoin-cli/tests/operator_binary.rs"
+        ],
+        "rationale": "Phase 21 makes the replacement story auditable through a dry-run migration planner, an explicit drop-in audit matrix, and surfaced intentional differences.",
+        "known_gaps": [
+          "Automatic service cutover, source-datadir mutation, external-wallet import or restore, and any full drop-in replacement claim remain outside the current slice."
+        ],
+        "suspected_unknowns": [
+          "How closely a future apply-mode migration should mirror Knots once destructive paths become in scope.",
+          "Which runtime validation checks should gate a later manual or automated cutover."
         ]
       },
       {

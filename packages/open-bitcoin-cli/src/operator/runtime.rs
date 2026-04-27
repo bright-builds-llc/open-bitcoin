@@ -23,6 +23,7 @@ use super::{
     },
     dashboard::{DashboardRuntimeContext, platform_dashboard_service_runtime, run_dashboard},
     detect::{DetectionRoots, detect_existing_installations},
+    migration::execute_migration_command,
     onboarding::{
         OnboardingError, OnboardingPromptAnswers, OnboardingRequest, StdIoOnboardingPrompter,
         apply_onboarding_plan, plan_onboarding, prompt_onboarding_answers,
@@ -191,6 +192,9 @@ fn execute_operator_cli_inner(
         },
         OperatorCommand::Onboard(args) => {
             execute_onboarding(args, &cli, config_resolution, detections)
+        }
+        OperatorCommand::Migrate(args) => {
+            execute_migration_command(args, cli.format, &config_resolution, &detections)
         }
         OperatorCommand::Service(service) => {
             let manager = platform_service_manager(operator_home_dir());

@@ -9,7 +9,7 @@ use clap::Parser;
 use open_bitcoin_rpc::config::{ConfigPrecedence, ConfigSource};
 
 use super::{
-    CliRoute, ConfigCommand, OperatorCli, OperatorCommand, OperatorOutputFormat,
+    CliRoute, ConfigCommand, MigrationCommand, OperatorCli, OperatorCommand, OperatorOutputFormat,
     config::OperatorConfigSource,
     onboarding::{OnboardingWriteDecision, ProposedConfigWrite},
     route_cli_invocation,
@@ -104,6 +104,33 @@ fn open_bitcoin_dashboard_routes_to_operator_dashboard() {
         panic!("expected dashboard command");
     };
     assert_eq!(dashboard.tick_ms, 500);
+}
+
+#[test]
+fn open_bitcoin_migrate_plan_routes_to_operator_command() {
+    // Arrange
+    let args = vec![
+        os("migrate"),
+        os("plan"),
+        os("--source-datadir"),
+        os("/tmp/core"),
+    ];
+
+    // Act
+    let route = route_cli_invocation("open-bitcoin", &args).expect("route");
+
+    // Assert
+    let CliRoute::Operator(cli) = route else {
+        panic!("expected operator route");
+    };
+    let OperatorCommand::Migrate(migration) = cli.command else {
+        panic!("expected migrate command");
+    };
+    let MigrationCommand::Plan(plan) = migration.command;
+    assert_eq!(
+        plan.maybe_source_data_dir.as_deref(),
+        Some(std::path::Path::new("/tmp/core"))
+    );
 }
 
 #[test]

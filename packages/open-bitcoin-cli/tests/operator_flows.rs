@@ -18,6 +18,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use open_bitcoin_cli::operator::migration::migration_deviation_definitions;
 use open_bitcoin_node::core::{
     consensus::{
         block_hash, block_merkle_root, check_block_header, crypto::hash160, transaction_txid,
@@ -738,4 +739,29 @@ fn parity_catalog_entry_is_tracked() {
     assert!(catalog.contains("getpeerinfo"));
     assert!(catalog.contains("-netinfo"));
     assert!(index.contains("rpc-cli-config"));
+}
+
+#[test]
+fn migration_deviation_notices_match_parity_index() {
+    // Arrange
+    let repo_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("..");
+
+    // Act
+    let index = fs::read_to_string(repo_root.join("docs/parity/index.json")).expect("parity index");
+    let notices = migration_deviation_definitions();
+
+    // Assert
+    assert!(index.contains("drop-in-audit-migration"));
+    for notice in notices {
+        assert!(
+            index.contains(&format!("\"id\": \"{}\"", notice.id)),
+            "missing deviation id {} in parity index",
+            notice.id
+        );
+        assert!(
+            index.contains(&notice.summary),
+            "missing deviation summary {} in parity index",
+            notice.id
+        );
+    }
 }

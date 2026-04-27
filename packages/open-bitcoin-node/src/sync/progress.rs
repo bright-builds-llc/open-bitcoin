@@ -1,3 +1,10 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/net.cpp
+// - packages/bitcoin-knots/src/net_processing.cpp
+// - packages/bitcoin-knots/src/headerssync.cpp
+// - packages/bitcoin-knots/src/sync.cpp
+// - packages/bitcoin-knots/src/node/blockstorage.cpp
+
 use open_bitcoin_core::primitives::NetworkAddress;
 use open_bitcoin_network::{LocalPeerConfig, ServiceFlags, WireNetworkMessage};
 

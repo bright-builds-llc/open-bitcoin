@@ -1,3 +1,8 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/doc/descriptors.md
+// - packages/bitcoin-knots/src/script/descriptor.cpp
+// - packages/bitcoin-knots/test/functional/wallet_descriptor.py
+
 use crate::WalletError;
 use crate::address::AddressNetwork;
 

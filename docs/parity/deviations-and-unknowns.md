@@ -7,11 +7,21 @@ implementation scope.
 
 ## Intentional Deviations
 
-`docs/parity/index.json` currently records no intentional in-scope deviations
-from Bitcoin Knots `29.3.knots20260210`.
+`docs/parity/index.json` now records these intentional in-scope migration
+differences from Bitcoin Knots `29.3.knots20260210`:
 
-Intentional differences must still be added to `docs/parity/index.json` when an
-in-scope external behavior deliberately diverges from the pinned baseline.
+- `mig-jsonc-open-bitcoin-settings`: Open Bitcoin-only onboarding, service,
+  dashboard, migration, metrics, logging, storage, and sync settings live in
+  `open-bitcoin.jsonc` rather than being written into `bitcoin.conf`.
+- `mig-dry-run-only-switch-over`: Phase 21 migration is dry-run only and does
+  not disable source services, rewrite source datadirs, or perform automatic
+  switch-over.
+- `mig-managed-wallet-backup-format`: Open Bitcoin exports managed-wallet
+  backups as repo-owned JSON and does not copy or rewrite external
+  `wallet.dat` files.
+
+See [`catalog/drop-in-audit-and-migration.md`](catalog/drop-in-audit-and-migration.md)
+for the evidence matrix behind those differences.
 
 ## Deferred Surfaces
 
@@ -35,6 +45,13 @@ surfaces:
 
 These are deferred by scope decision, not silent omissions.
 
+The Phase 21 migration audit adds these explicit deferred migration surfaces:
+
+- automatic source-service disable, uninstall, or replacement
+- source-datadir mutation or in-place cutover
+- external-wallet import, restore, or rewrite
+- any full drop-in replacement claim beyond the current dry-run audit evidence
+
 ## Suspected Unknowns
 
 Current catalog entries preserve these review targets:
@@ -53,6 +70,9 @@ Current catalog entries preserve these review targets:
 - Future Knots-backed harness work must decide which upstream functional cases
   are translated into Rust and which are wrapped around a managed baseline
   process.
+- A future apply-mode migration phase must decide how closely service cutover,
+  datadir mutation, and wallet-import behavior should mirror Knots once those
+  destructive paths become in scope.
 
 ## Folded Todo Audit
 

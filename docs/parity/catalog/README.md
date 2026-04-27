@@ -29,6 +29,7 @@ machine-readable parity ledger.
 | [`p2p.md`](p2p.md) | `done` | Peer lifecycle, wire handling, header/block sync, and txid/wtxid-aware relay |
 | [`wallet.md`](wallet.md) | `done` | Descriptor wallets, addresses, balances, coin selection, signing, and adapter-owned persistence |
 | [`rpc-cli-config.md`](rpc-cli-config.md) | `done` | Supported JSON-RPC, `bitcoin-cli`-style behavior, config, auth, and deferred operator surfaces |
+| [`drop-in-audit-and-migration.md`](drop-in-audit-and-migration.md) | `done` | Phase 21 audit matrix for drop-in expectations, dry-run migration planning, and intentional migration differences |
 | [`verification-harnesses.md`](verification-harnesses.md) | `done` | Cross-implementation parity harnesses, parallel-safe integration isolation, property-style tests, and CI report output |
 
 ## Maintenance

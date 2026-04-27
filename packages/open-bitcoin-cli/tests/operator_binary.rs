@@ -277,6 +277,102 @@ fn open_bitcoin_onboard_non_interactive_is_idempotent() {
 }
 
 #[test]
+fn open_bitcoin_migrate_plan_is_dry_run_only_for_detected_source_install() {
+    // Arrange
+    let sandbox = TestSandbox::new("migrate-plan");
+    let target_data_dir = sandbox.child("open-data");
+    let source_data_dir = sandbox.child(".bitcoin");
+    let source_wallet_dir = source_data_dir.join("wallets/main");
+    fs::create_dir_all(&source_wallet_dir).expect("source wallet dir");
+    fs::write(source_data_dir.join("bitcoin.conf"), "regtest=1\n").expect("source config");
+    fs::write(source_data_dir.join(".cookie"), "__cookie__:secret\n").expect("source cookie");
+    fs::write(source_wallet_dir.join("wallet.dat"), "legacy wallet bytes").expect("source wallet");
+
+    #[cfg(target_os = "macos")]
+    let source_service_path = {
+        let path = sandbox.child("Library/LaunchAgents/org.bitcoin.bitcoind.plist");
+        fs::create_dir_all(path.parent().expect("launchagents parent")).expect("launchagents");
+        fs::write(&path, "<plist></plist>\n").expect("launchd service");
+        path
+    };
+
+    #[cfg(target_os = "linux")]
+    let source_service_path = {
+        let path = sandbox.child(".config/systemd/user/bitcoind.service");
+        fs::create_dir_all(path.parent().expect("systemd parent")).expect("systemd");
+        fs::write(&path, "[Service]\nExecStart=bitcoind\n").expect("systemd service");
+        path
+    };
+
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    let source_service_path = {
+        let path = sandbox.child("services/bitcoind.service");
+        fs::create_dir_all(path.parent().expect("service parent")).expect("service dir");
+        fs::write(&path, "service unsupported\n").expect("service file");
+        path
+    };
+
+    let before_config = fs::read(source_data_dir.join("bitcoin.conf")).expect("before config");
+    let before_cookie = fs::read(source_data_dir.join(".cookie")).expect("before cookie");
+    let before_wallet = fs::read(source_wallet_dir.join("wallet.dat")).expect("before wallet");
+
+    // Act
+    let output = run_open_bitcoin(
+        &sandbox,
+        [
+            "--network",
+            "regtest",
+            "--no-color",
+            "--datadir",
+            target_data_dir.to_str().expect("target datadir"),
+            "migrate",
+            "plan",
+            "--source-datadir",
+            source_data_dir.to_str().expect("source datadir"),
+        ],
+    );
+
+    // Assert
+    assert_success(&output);
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert!(stdout.contains("Migration plan (dry run only)"));
+    assert!(stdout.contains("Benefits:"));
+    assert!(stdout.contains("Backup requirements:"));
+    assert!(
+        stdout.contains(
+            source_data_dir
+                .join("bitcoin.conf")
+                .to_str()
+                .expect("config path")
+        )
+    );
+    assert!(stdout.contains(source_service_path.to_str().expect("service path")));
+    assert!(
+        stdout.contains(
+            source_wallet_dir
+                .join("wallet.dat")
+                .to_str()
+                .expect("wallet path")
+        )
+    );
+    assert!(stdout.contains("mig-dry-run-only-switch-over"));
+    assert!(!stdout.contains("__cookie__:secret"));
+    assert!(!stdout.contains("legacy wallet bytes"));
+    assert_eq!(
+        fs::read(source_data_dir.join("bitcoin.conf")).expect("after config"),
+        before_config
+    );
+    assert_eq!(
+        fs::read(source_data_dir.join(".cookie")).expect("after cookie"),
+        before_cookie
+    );
+    assert_eq!(
+        fs::read(source_wallet_dir.join("wallet.dat")).expect("after wallet"),
+        before_wallet
+    );
+}
+
+#[test]
 fn open_bitcoin_config_paths_reports_sources() {
     // Arrange
     let sandbox = TestSandbox::new("config-paths");
@@ -585,8 +681,10 @@ impl FakeRpcServer {
         let address = listener.local_addr().expect("addr");
         let requests = Arc::new(Mutex::new(Vec::new()));
         let (stop, stop_rx) = std::sync::mpsc::channel();
+        let (ready, ready_rx) = std::sync::mpsc::channel();
         let request_log = Arc::clone(&requests);
         let join_handle = thread::spawn(move || {
+            let _ = ready.send(());
             loop {
                 if stop_rx.try_recv().is_ok() {
                     break;
@@ -600,6 +698,9 @@ impl FakeRpcServer {
                 }
             }
         });
+        ready_rx
+            .recv_timeout(Duration::from_secs(1))
+            .expect("server ready");
         Self {
             address,
             requests,
