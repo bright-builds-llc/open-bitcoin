@@ -374,22 +374,22 @@ let sync = SyncStatus {
 |---|-------|---------|---------------|
 | A1 | Adding `dialoguer` or `inquire` would be unnecessary for this small wizard. [ASSUMED] | Alternatives Considered | If the wizard becomes more complex than scoped, stdio prompting may require more bespoke validation and UX code. |
 
-## Open Questions
+## Open Questions (Resolved)
+
+No unresolved Phase 17 research questions remain before execution. [VERIFIED: checker revision 2026-04-27]
 
 1. **Should existing JSONC comments be preserved on approved overwrite?** [VERIFIED: docs/architecture/config-precedence.md]
-   - What we know: JSONC is user-editable, and `jsonc-parser` can parse comments; the current dependency uses the `serde` feature, not the `cst` feature. [VERIFIED: packages/open-bitcoin-rpc/Cargo.toml; https://docs.rs/jsonc-parser/latest/jsonc_parser/]
-   - What's unclear: Whether Phase 17 requires comment-preserving in-place edits or can write a full approved replacement. [VERIFIED: .planning/phases/17-cli-status-and-first-run-onboarding/17-CONTEXT.md]
-   - Recommendation: Plan full-file replacement only after explicit approval; defer CST editing unless the user explicitly requires comment preservation. [VERIFIED: synthesis from D-06 and dependency policy]
+   - RESOLVED: Phase 17 will write a full proposed `open-bitcoin.jsonc` replacement only after explicit approval, and will not promise comment-preserving in-place edits. CST/comment-preserving editing remains out of scope unless a later phase or user decision explicitly requires it. [VERIFIED: synthesis from D-06, D-08, dependency policy, and current `jsonc-parser` features]
+   - Execution impact: Onboarding plans must show or summarize the proposed replacement and require `--approve-write` for creation plus `--force-overwrite` for replacing an existing file. [VERIFIED: .planning/phases/17-cli-status-and-first-run-onboarding/17-CONTEXT.md]
 
 2. **How much live status must be implemented in the first plan wave?** [VERIFIED: .planning/phases/17-cli-status-and-first-run-onboarding/17-CONTEXT.md]
-   - What we know: Running-node status must work, and existing RPC DTOs cover network, blockchain, mempool, wallet, and balances. [VERIFIED: .planning/ROADMAP.md; packages/open-bitcoin-rpc/src/method.rs]
-   - What's unclear: Whether service state should stay unavailable until Phase 18 or use shallow read-only service definition presence now. [VERIFIED: .planning/ROADMAP.md]
-   - Recommendation: Implement live RPC collection for chain/network/mempool/wallet, local service definition detection for "managed/unmanaged candidate", and explicit unavailable state for installed/enabled/running until Phase 18. [VERIFIED: synthesis from Phase 17/18 boundaries]
+   - RESOLVED: Phase 17 must implement running-node status collection for RPC-backed network, chain tip, sync progress, peer counts, mempool summary, wallet summary, and balances through an injected status RPC adapter wired by the `open-bitcoin` runtime. Stopped or unreachable RPC still returns a successful snapshot with explicit unavailable reasons. [VERIFIED: OBS-01; packages/open-bitcoin-rpc/src/method.rs]
+   - RESOLVED: Service installed/enabled/running state remains unavailable or unmanaged until Phase 18, but read-only service definition candidates from Core/Knots detection may appear as support evidence with source paths and uncertainty. [VERIFIED: Phase 17/18 boundary in .planning/ROADMAP.md]
+   - Execution impact: Plan 17-04 must include fake-RPC/live-style deterministic status tests, and Plan 17-05 must wire the runtime to that adapter instead of leaving live status as only a typed extension point. [VERIFIED: checker revision 2026-04-27]
 
 3. **Should `route_cli_invocation` still be used after adding a separate operator binary?** [VERIFIED: packages/open-bitcoin-cli/src/operator.rs]
-   - What we know: The routing helper exists and tests argv0 routing. [VERIFIED: packages/open-bitcoin-cli/src/operator/tests.rs]
-   - What's unclear: Whether packaging will also install symlinks that rely on argv0 dispatch. [ASSUMED]
-   - Recommendation: Keep the helper and tests, but make the new `open-bitcoin` binary call the operator path directly so success criteria do not depend on symlinks. [VERIFIED: synthesis from Cargo layout docs and CLI architecture]
+   - RESOLVED: Keep `route_cli_invocation` and its argv0 compatibility tests, but make the new `open-bitcoin` binary call the operator path directly so success criteria do not depend on symlinks. [VERIFIED: synthesis from Cargo layout docs and CLI architecture]
+   - Execution impact: `open-bitcoin-cli` remains the baseline-compatible RPC client path, while `src/bin/open-bitcoin.rs` owns the operator runtime entrypoint and requires its own parity breadcrumb registration. [VERIFIED: AGENTS.md; packages/open-bitcoin-cli/src/operator.rs]
 
 ## Environment Availability
 
