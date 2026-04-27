@@ -7,14 +7,23 @@ use std::{
     net::{SocketAddr, TcpListener, TcpStream},
     path::{Path, PathBuf},
     process::{Command, Output},
-    sync::atomic::{AtomicU64, Ordering},
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicU64, Ordering},
+    },
     thread,
     time::{Duration, Instant},
 };
 
+use open_bitcoin_node::{
+    FjallNodeStore, PersistMode, WalletRegistry,
+    core::wallet::{AddressNetwork, DescriptorRole, Wallet},
+};
 use serde_json::{Value, json};
 
 static NEXT_SANDBOX_ID: AtomicU64 = AtomicU64::new(0);
+const RECEIVE_DESCRIPTOR: &str = "wpkh(cMec2DGaTXkYJYfi7x3ZGjRXkeqmAvYAoWzMAcWj5fdLaqudWsNi)";
+const CHANGE_DESCRIPTOR: &str = "sh(wpkh(cMec2DGaTXkYJYfi7x3ZGjRXkeqmAvYAoWzMAcWj5fdLaqudWsNi))";
 
 struct TestSandbox {
     home: PathBuf,
@@ -298,6 +307,188 @@ fn open_bitcoin_config_paths_reports_sources() {
     assert!(stdout.contains("cli_flags > environment > open_bitcoin_jsonc"));
 }
 
+#[test]
+fn open_bitcoin_wallet_send_requires_confirm_and_uses_preview_path() {
+    // Arrange
+    let sandbox = TestSandbox::new("wallet-send-preview");
+    let data_dir = sandbox.child("open-data");
+    let server = FakeRpcServer::start();
+    seed_managed_wallet(&data_dir, "alpha");
+    write_rpc_conf(&data_dir, server.address.port());
+
+    // Act
+    let output = run_open_bitcoin(
+        &sandbox,
+        [
+            "--network",
+            "regtest",
+            "--datadir",
+            data_dir.to_str().expect("datadir"),
+            "wallet",
+            "--wallet",
+            "alpha",
+            "send",
+            "mipcBbFg9gMiCh81Kj8tqqdgoZub1ZJRfn",
+            "12000",
+            "--fee-rate-sat-per-kvb",
+            "2000",
+            "--change-descriptor-id",
+            "1",
+            "--replaceable",
+        ],
+    );
+
+    // Assert
+    assert_failure(&output);
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    let stderr = String::from_utf8(output.stderr).expect("stderr utf8");
+    assert!(stdout.contains("Transaction hex:"));
+    assert!(stderr.contains("confirmation required"));
+    let requests = server.requests();
+    assert!(
+        requests
+            .iter()
+            .any(|request| request.contains("POST /wallet/alpha HTTP/1.1"))
+    );
+    assert!(
+        requests
+            .iter()
+            .any(|request| request.contains("\"buildandsigntransaction\""))
+    );
+    assert!(
+        !requests
+            .iter()
+            .any(|request| request.contains("\"sendtoaddress\""))
+    );
+}
+
+#[test]
+fn open_bitcoin_wallet_send_confirm_submits_sendtoaddress() {
+    // Arrange
+    let sandbox = TestSandbox::new("wallet-send-confirm");
+    let data_dir = sandbox.child("open-data");
+    let server = FakeRpcServer::start();
+    seed_managed_wallet(&data_dir, "alpha");
+    write_rpc_conf(&data_dir, server.address.port());
+
+    // Act
+    let output = run_open_bitcoin(
+        &sandbox,
+        [
+            "--network",
+            "regtest",
+            "--format",
+            "json",
+            "--datadir",
+            data_dir.to_str().expect("datadir"),
+            "wallet",
+            "--wallet",
+            "alpha",
+            "send",
+            "mipcBbFg9gMiCh81Kj8tqqdgoZub1ZJRfn",
+            "12000",
+            "--fee-rate-sat-per-kvb",
+            "2000",
+            "--change-descriptor-id",
+            "1",
+            "--replaceable",
+            "--confirm",
+        ],
+    );
+
+    // Assert
+    assert_success(&output);
+    let decoded: Value = serde_json::from_slice(&output.stdout).expect("submit json");
+    assert_eq!(decoded["wallet"], "alpha");
+    assert_eq!(decoded["txid"], json!("bb".repeat(32)));
+    let requests = server.requests();
+    assert!(
+        requests
+            .iter()
+            .any(|request| request.contains("\"buildandsigntransaction\""))
+    );
+    assert!(
+        requests
+            .iter()
+            .any(|request| request.contains("\"sendtoaddress\""))
+    );
+    assert!(
+        requests
+            .iter()
+            .all(|request| request.contains("/wallet/alpha"))
+    );
+}
+
+#[test]
+fn open_bitcoin_wallet_backup_writes_open_bitcoin_export() {
+    // Arrange
+    let sandbox = TestSandbox::new("wallet-backup-write");
+    let data_dir = sandbox.child("open-data");
+    let backup_dir = sandbox.child("backups");
+    let backup_path = backup_dir.join("alpha-backup.json");
+    fs::create_dir_all(&backup_dir).expect("backup dir");
+    seed_managed_wallet(&data_dir, "alpha");
+
+    // Act
+    let output = run_open_bitcoin(
+        &sandbox,
+        [
+            "--network",
+            "regtest",
+            "--datadir",
+            data_dir.to_str().expect("datadir"),
+            "wallet",
+            "--wallet",
+            "alpha",
+            "backup",
+            backup_path.to_str().expect("backup path"),
+        ],
+    );
+
+    // Assert
+    assert_success(&output);
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert!(stdout.contains("Wrote Open Bitcoin wallet backup for alpha"));
+    let contents = fs::read_to_string(&backup_path).expect("backup contents");
+    let decoded: Value = serde_json::from_str(&contents).expect("backup json");
+    assert_eq!(decoded["format"], "open-bitcoin-wallet-backup");
+    assert_eq!(decoded["wallet_name"], "alpha");
+    assert_eq!(decoded["snapshot"]["network"], "regtest");
+    assert_eq!(decoded["snapshot"]["descriptor_count"], 2);
+}
+
+#[test]
+fn open_bitcoin_wallet_backup_rejects_external_wallet_candidate_paths() {
+    // Arrange
+    let sandbox = TestSandbox::new("wallet-backup-unsafe");
+    let data_dir = sandbox.child("open-data");
+    let unsafe_wallet_dir = sandbox.child(".bitcoin/wallets/external");
+    let unsafe_backup_path = unsafe_wallet_dir.join("backup.json");
+    fs::create_dir_all(&unsafe_wallet_dir).expect("unsafe wallet dir");
+    seed_managed_wallet(&data_dir, "alpha");
+
+    // Act
+    let output = run_open_bitcoin(
+        &sandbox,
+        [
+            "--network",
+            "regtest",
+            "--datadir",
+            data_dir.to_str().expect("datadir"),
+            "wallet",
+            "--wallet",
+            "alpha",
+            "backup",
+            unsafe_backup_path.to_str().expect("backup path"),
+        ],
+    );
+
+    // Assert
+    assert_failure(&output);
+    let stderr = String::from_utf8(output.stderr).expect("stderr utf8");
+    assert!(stderr.contains("backup destination overlaps detected external wallet candidate"));
+}
+
 fn onboard_args<'a>(
     data_dir: &'a Path,
     config_path: &'a Path,
@@ -341,8 +532,48 @@ fn assert_success(output: &Output) {
     );
 }
 
+fn assert_failure(output: &Output) {
+    assert!(
+        !output.status.success(),
+        "status={:?}\nstdout={}\nstderr={}",
+        output.status.code(),
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+fn seed_managed_wallet(data_dir: &Path, wallet_name: &str) {
+    fs::create_dir_all(data_dir).expect("open datadir");
+    let store = FjallNodeStore::open(data_dir).expect("store");
+    let mut registry = WalletRegistry::default();
+    let mut wallet = Wallet::new(AddressNetwork::Regtest);
+    wallet
+        .import_descriptor("receive", DescriptorRole::External, RECEIVE_DESCRIPTOR)
+        .expect("receive descriptor");
+    wallet
+        .import_descriptor("change", DescriptorRole::Internal, CHANGE_DESCRIPTOR)
+        .expect("change descriptor");
+    registry
+        .create_wallet(&store, wallet_name, wallet, PersistMode::Sync)
+        .expect("create wallet");
+    registry
+        .set_selected_wallet(&store, wallet_name, PersistMode::Sync)
+        .expect("select wallet");
+}
+
+fn write_rpc_conf(data_dir: &Path, rpc_port: u16) {
+    fs::write(
+        data_dir.join("bitcoin.conf"),
+        format!(
+            "regtest=1\nrpcconnect=127.0.0.1\nrpcport={rpc_port}\nrpcuser=alice\nrpcpassword=secret\n"
+        ),
+    )
+    .expect("bitcoin.conf");
+}
+
 struct FakeRpcServer {
     address: SocketAddr,
+    requests: Arc<Mutex<Vec<String>>>,
     stop: std::sync::mpsc::Sender<()>,
     join_handle: Option<thread::JoinHandle<()>>,
 }
@@ -352,14 +583,16 @@ impl FakeRpcServer {
         let listener = TcpListener::bind("127.0.0.1:0").expect("listener");
         listener.set_nonblocking(true).expect("nonblocking");
         let address = listener.local_addr().expect("addr");
+        let requests = Arc::new(Mutex::new(Vec::new()));
         let (stop, stop_rx) = std::sync::mpsc::channel();
+        let request_log = Arc::clone(&requests);
         let join_handle = thread::spawn(move || {
             loop {
                 if stop_rx.try_recv().is_ok() {
                     break;
                 }
                 match listener.accept() {
-                    Ok((stream, _)) => handle_rpc_connection(stream),
+                    Ok((stream, _)) => handle_rpc_connection(stream, &request_log),
                     Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
                         thread::sleep(Duration::from_millis(10));
                     }
@@ -369,9 +602,14 @@ impl FakeRpcServer {
         });
         Self {
             address,
+            requests,
             stop,
             join_handle: Some(join_handle),
         }
+    }
+
+    fn requests(&self) -> Vec<String> {
+        self.requests.lock().expect("request log").clone()
     }
 }
 
@@ -384,13 +622,17 @@ impl Drop for FakeRpcServer {
     }
 }
 
-fn handle_rpc_connection(mut stream: TcpStream) {
+fn handle_rpc_connection(mut stream: TcpStream, requests: &Arc<Mutex<Vec<String>>>) {
     stream
         .set_read_timeout(Some(Duration::from_secs(2)))
         .expect("read timeout");
     let request = read_http_request(&mut stream);
-    let body = String::from_utf8_lossy(&request);
-    let result = if body.contains("getnetworkinfo") {
+    let request_text = String::from_utf8_lossy(&request).into_owned();
+    requests
+        .lock()
+        .expect("request log")
+        .push(request_text.clone());
+    let result = if request_text.contains("getnetworkinfo") {
         json!({
             "version": 29300,
             "subversion": "/Satoshi:29.3.0/",
@@ -404,7 +646,7 @@ fn handle_rpc_connection(mut stream: TcpStream) {
             "incrementalfee": 1000,
             "warnings": []
         })
-    } else if body.contains("getblockchaininfo") {
+    } else if request_text.contains("getblockchaininfo") {
         json!({
             "chain": "regtest",
             "blocks": 144,
@@ -414,7 +656,7 @@ fn handle_rpc_connection(mut stream: TcpStream) {
             "initialblockdownload": false,
             "warnings": []
         })
-    } else if body.contains("getmempoolinfo") {
+    } else if request_text.contains("getmempoolinfo") {
         json!({
             "size": 12,
             "bytes": 2048,
@@ -425,12 +667,29 @@ fn handle_rpc_connection(mut stream: TcpStream) {
             "minrelaytxfee": 1000,
             "loaded": true
         })
-    } else if body.contains("getwalletinfo") {
+    } else if request_text.contains("buildandsigntransaction") {
+        json!({
+            "transaction_hex": "001122",
+            "fee_sats": 220,
+            "inputs": [{
+                "txid_hex": "aa".repeat(32),
+                "vout": 0,
+                "descriptor_id": 1,
+                "amount_sats": 75000
+            }],
+            "maybe_change_output_index": 1
+        })
+    } else if request_text.contains("sendtoaddress") {
+        json!("bb".repeat(32))
+    } else if request_text.contains("getwalletinfo") {
         json!({
             "network": "regtest",
             "descriptor_count": 2,
             "utxo_count": 1,
-            "maybe_tip_height": 144
+            "maybe_tip_height": 144,
+            "walletname": "alpha",
+            "freshness": "fresh",
+            "scanning": false
         })
     } else {
         json!({

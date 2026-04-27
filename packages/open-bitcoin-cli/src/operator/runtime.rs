@@ -34,6 +34,7 @@ use super::{
         StatusLiveRpcAdapterInput, StatusRenderMode, StatusRequest, StatusRpcAuthSource,
         StatusRpcClient, collect_status_snapshot, render_status,
     },
+    wallet::execute_wallet_command,
 };
 
 /// Typed process-style outcome for an operator command.
@@ -81,24 +82,28 @@ impl OperatorExitCode {
 }
 
 impl OperatorCommandOutcome {
-    pub fn success(stdout: impl Into<String>) -> Self {
+    pub fn new(
+        stdout: impl Into<String>,
+        stderr: impl Into<String>,
+        exit_code: OperatorExitCode,
+    ) -> Self {
         Self {
             stdout: OperatorStdout {
                 text: stdout.into(),
             },
-            stderr: OperatorStderr::default(),
-            exit_code: OperatorExitCode::Success,
-        }
-    }
-
-    pub fn failure(stderr: impl Into<String>) -> Self {
-        Self {
-            stdout: OperatorStdout::default(),
             stderr: OperatorStderr {
                 text: stderr.into(),
             },
-            exit_code: OperatorExitCode::Failure(1),
+            exit_code,
         }
+    }
+
+    pub fn success(stdout: impl Into<String>) -> Self {
+        Self::new(stdout, "", OperatorExitCode::Success)
+    }
+
+    pub fn failure(stderr: impl Into<String>) -> Self {
+        Self::new("", stderr, OperatorExitCode::Failure(1))
     }
 }
 
@@ -229,6 +234,13 @@ fn execute_operator_cli_inner(
                 },
             ))
         }
+        OperatorCommand::Wallet(args) => execute_wallet_command(
+            args,
+            &cli,
+            &config_resolution,
+            &detections,
+            &default_data_dir,
+        ),
     }
 }
 

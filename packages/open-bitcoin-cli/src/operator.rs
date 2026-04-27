@@ -18,6 +18,7 @@ pub mod onboarding;
 pub mod runtime;
 pub mod service;
 pub mod status;
+pub mod wallet;
 
 /// First-party Open Bitcoin operator CLI contract.
 #[derive(Debug, Clone, PartialEq, Eq, Parser)]
@@ -46,6 +47,7 @@ pub enum OperatorCommand {
     Service(ServiceArgs),
     Dashboard(DashboardArgs),
     Onboard(OnboardArgs),
+    Wallet(WalletArgs),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Args)]
@@ -105,6 +107,54 @@ pub struct OnboardArgs {
     pub disable_logs: bool,
     #[arg(long = "detect-existing")]
     pub detect_existing: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Args)]
+pub struct WalletArgs {
+    #[arg(long = "wallet")]
+    pub maybe_wallet_name: Option<String>,
+    #[command(subcommand)]
+    pub command: WalletCommand,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
+pub enum WalletCommand {
+    Send(WalletSendArgs),
+    Backup(WalletBackupArgs),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Args)]
+pub struct WalletSendArgs {
+    pub address: String,
+    pub amount_sats: i64,
+    #[arg(long = "fee-rate-sat-per-kvb")]
+    pub maybe_fee_rate_sat_per_kvb: Option<i64>,
+    #[arg(long = "conf-target")]
+    pub maybe_conf_target: Option<u16>,
+    #[arg(long = "estimate-mode", value_enum)]
+    pub maybe_estimate_mode: Option<WalletEstimateMode>,
+    #[arg(long = "change-descriptor-id")]
+    pub maybe_change_descriptor_id: Option<u32>,
+    #[arg(long = "lock-time")]
+    pub maybe_lock_time: Option<u32>,
+    #[arg(long = "replaceable")]
+    pub enable_rbf: bool,
+    #[arg(long = "max-tx-fee-sats")]
+    pub maybe_max_tx_fee_sats: Option<i64>,
+    #[arg(long = "confirm")]
+    pub confirm: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Args)]
+pub struct WalletBackupArgs {
+    pub destination: PathBuf,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum WalletEstimateMode {
+    Unset,
+    Economical,
+    Conservative,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, ValueEnum)]

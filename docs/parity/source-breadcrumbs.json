@@ -229,6 +229,19 @@
       "breadcrumbs": []
     },
     {
+      "label": "cli-operator-wallet-contracts",
+      "files": [
+        "packages/open-bitcoin-cli/src/operator/wallet.rs",
+        "packages/open-bitcoin-cli/src/operator/wallet/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/wallet/rpc/spend.cpp",
+        "packages/bitcoin-knots/src/wallet/rpc/backup.cpp",
+        "packages/bitcoin-knots/src/wallet/rpc/util.cpp",
+        "packages/bitcoin-knots/test/functional/wallet_backup.py"
+      ]
+    },
+    {
       "label": "codec-block",
       "files": [
         "packages/open-bitcoin-codec/src/block.rs"
