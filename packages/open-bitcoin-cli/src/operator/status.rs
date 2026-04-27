@@ -24,8 +24,9 @@ use super::{
     config::{OperatorConfigPathKind, OperatorConfigResolution},
     detect::{
         DetectedInstallation, DetectionConfidence, DetectionSourcePathKind, DetectionUncertainty,
-        ProductFamily, ServiceManager,
+        ProductFamily, ServiceManager as DetectServiceManager,
     },
+    service::{ServiceLifecycleState, ServiceManager as ServiceManagerTrait},
 };
 
 mod http;
@@ -60,7 +61,6 @@ pub enum StatusRenderMode {
 }
 
 /// Inputs needed by a status collector.
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StatusCollectorInput {
     /// Operator status request.
     pub request: StatusRequest,
@@ -70,6 +70,27 @@ pub struct StatusCollectorInput {
     pub detection_evidence: StatusDetectionEvidence,
     /// Optional live RPC adapter input.
     pub maybe_live_rpc: Option<StatusLiveRpcAdapterInput>,
+    /// Optional service manager for live service state inspection.
+    /// When `None`, service fields fall back to file-presence-based detection.
+    pub maybe_service_manager: Option<Box<dyn ServiceManagerTrait>>,
+}
+
+impl fmt::Debug for StatusCollectorInput {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("StatusCollectorInput")
+            .field("request", &self.request)
+            .field("config_resolution", &self.config_resolution)
+            .field("detection_evidence", &self.detection_evidence)
+            .field("maybe_live_rpc", &self.maybe_live_rpc)
+            .field(
+                "maybe_service_manager",
+                &self
+                    .maybe_service_manager
+                    .as_ref()
+                    .map(|_| "<ServiceManager>"),
+            )
+            .finish()
+    }
 }
 
 /// Detection evidence available to status collection.
@@ -217,7 +238,7 @@ fn collect_live_status_snapshot(
             version: node_version(&network_info),
         },
         config: config_status(&input.config_resolution),
-        service: service_status(&input.detection_evidence),
+        service: collect_service_status(input),
         sync: SyncStatus {
             network: FieldAvailability::available(blockchain_info.chain.clone()),
             chain_tip: FieldAvailability::available(ChainTipStatus {
@@ -278,7 +299,7 @@ fn stopped_status_snapshot(
             version: env!("CARGO_PKG_VERSION").to_string(),
         },
         config: config_status(&input.config_resolution),
-        service: service_status(&input.detection_evidence),
+        service: collect_service_status(input),
         sync: SyncStatus {
             network: FieldAvailability::unavailable(reason.clone()),
             chain_tip: FieldAvailability::unavailable(reason.clone()),
@@ -330,7 +351,42 @@ fn config_status(resolution: &OperatorConfigResolution) -> ConfigStatus {
     }
 }
 
-fn service_status(evidence: &StatusDetectionEvidence) -> ServiceStatus {
+/// Collect live service status from the injected adapter, or fall back to
+/// file-presence-based detection when no adapter is provided.
+fn collect_service_status(input: &StatusCollectorInput) -> ServiceStatus {
+    let Some(manager) = input.maybe_service_manager.as_ref() else {
+        return detection_service_status(&input.detection_evidence);
+    };
+
+    match manager.status() {
+        Ok(snapshot) => {
+            #[cfg(target_os = "macos")]
+            let manager_name = "launchd";
+            #[cfg(target_os = "linux")]
+            let manager_name = "systemd";
+            #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+            let manager_name = "unknown";
+
+            let installed = !matches!(snapshot.state, ServiceLifecycleState::Unmanaged);
+            let enabled = matches!(
+                snapshot.state,
+                ServiceLifecycleState::Enabled | ServiceLifecycleState::Running
+            );
+            let running = matches!(snapshot.state, ServiceLifecycleState::Running);
+
+            ServiceStatus {
+                manager: FieldAvailability::available(manager_name.to_string()),
+                installed: FieldAvailability::available(installed),
+                enabled: FieldAvailability::available(enabled),
+                running: FieldAvailability::available(running),
+            }
+        }
+        Err(_) => unavailable_service_status(),
+    }
+}
+
+/// Fall back to file-presence-based detection when no live service adapter is available.
+fn detection_service_status(evidence: &StatusDetectionEvidence) -> ServiceStatus {
     let maybe_candidate = evidence
         .detected_installations
         .iter()
@@ -346,6 +402,10 @@ fn service_status(evidence: &StatusDetectionEvidence) -> ServiceStatus {
         };
     }
 
+    unavailable_service_status()
+}
+
+fn unavailable_service_status() -> ServiceStatus {
     ServiceStatus {
         manager: FieldAvailability::unavailable("service manager not inspected"),
         installed: FieldAvailability::unavailable("service manager not inspected"),
@@ -454,11 +514,11 @@ fn node_version(network_info: &GetNetworkInfoResponse) -> String {
     network_info.subversion.clone()
 }
 
-fn service_manager_name(manager: ServiceManager) -> String {
+fn service_manager_name(manager: DetectServiceManager) -> String {
     match manager {
-        ServiceManager::Launchd => "launchd".to_string(),
-        ServiceManager::Systemd => "systemd".to_string(),
-        ServiceManager::Unknown => "unknown".to_string(),
+        DetectServiceManager::Launchd => "launchd".to_string(),
+        DetectServiceManager::Systemd => "systemd".to_string(),
+        DetectServiceManager::Unknown => "unknown".to_string(),
     }
 }
 
