@@ -368,12 +368,20 @@ fn detection_roots(resolution: &OperatorConfigResolution) -> DetectionRoots {
         .iter()
         .cloned()
         .collect::<Vec<_>>();
-    #[cfg(target_os = "macos")]
-    let service_dirs = vec![home_dir.join("Library/LaunchAgents")];
-    #[cfg(target_os = "linux")]
-    let service_dirs = vec![home_dir.join(".config/systemd/user")];
-    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
-    let service_dirs: Vec<PathBuf> = Vec::new();
+    let service_dirs = {
+        #[cfg(target_os = "macos")]
+        {
+            vec![home_dir.join("Library/LaunchAgents")]
+        }
+        #[cfg(target_os = "linux")]
+        {
+            vec![home_dir.join(".config/systemd/user")]
+        }
+        #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+        {
+            Vec::new()
+        }
+    };
     DetectionRoots {
         home_dir,
         config_dirs: data_dirs.clone(),

@@ -68,7 +68,9 @@ pub enum ConfigCommand {
 pub struct ServiceArgs {
     #[command(subcommand)]
     pub command: ServiceCommand,
-    /// Apply changes (default: dry-run only).
+    /// Apply changes (default: dry-run only). Pass --apply to write files or invoke
+    /// service manager commands. Without this flag, install and uninstall show a
+    /// preview of what would happen with no side effects.
     #[arg(long = "apply", global = true)]
     pub apply: bool,
 }

@@ -1,110 +1,143 @@
 ---
 phase: 18-service-lifecycle-integration
 plan: "02"
-subsystem: operator/service
+subsystem: operator-service-lifecycle
 tags:
-  - service-lifecycle
+  - service
   - dry-run
   - apply-flag
-  - dispatch
-  - runtime-wiring
+  - runtime-dispatch
+  - detection-roots
 dependency_graph:
   requires:
-    - Plan 18-01 (ServiceManager trait, ServiceCommandOutcome, FakeServiceManager, platform_service_manager)
-    - open-bitcoin-cli/src/operator.rs (ServiceArgs, ServiceCommand enum)
-    - open-bitcoin-cli/src/operator/runtime.rs (execute_operator_cli_inner, OperatorCommandOutcome)
+    - packages/open-bitcoin-cli/src/operator/service.rs (Plan 01 contracts)
+    - packages/open-bitcoin-cli/src/operator/service/fake.rs (Plan 01 FakeServiceManager)
+    - packages/open-bitcoin-cli/src/operator/runtime.rs (execute_operator_cli_inner dispatch point)
   provides:
-    - ServiceArgs.apply (--apply flag, global, default false)
-    - execute_service_command() routing all five ServiceCommand variants
-    - render_service_outcome() with dry-run indicator and user-level scope note
-    - render_service_state_snapshot() for status display
-    - FakeServiceManager.uninstall_error and enable_commands fields
-    - runtime.rs service dispatch wired to platform_service_manager()
-    - detection_roots() service_dirs populated with platform service directory
+    - ServiceArgs.apply flag (--apply CLI arg)
+    - execute_service_command() in service.rs
+    - Real service dispatch in runtime.rs (replaces Phase 18 stub)
+    - detection_roots() service_dirs populated with platform paths
   affects:
-    - Plan 18-03 (status wiring to collect_status_snapshot)
+    - packages/open-bitcoin-cli/src/operator.rs
+    - packages/open-bitcoin-cli/src/operator/service.rs
+    - packages/open-bitcoin-cli/src/operator/runtime.rs
+    - packages/open-bitcoin-cli/src/operator/service/tests.rs
 tech_stack:
   added: []
   patterns:
-    - TDD RED→GREEN: failing tests written before implementation
-    - Trait object injection: execute_service_command takes &dyn ServiceManager
-    - cfg(target_os) compile-time service_dirs selection in detection_roots()
-    - current_exe() with PathBuf fallback for resilience (T-18-08 mitigation)
+    - dry-run-by-default: apply=false is default; --apply flag unlocks mutations per D-11
+    - trait-injection: execute_service_command accepts &dyn ServiceManager for test isolation
+    - functional-core/imperative-shell: render helpers are pure; dispatch delegates to adapter
+    - compile-time platform selection: service_dirs uses #[cfg(target_os)] in detection_roots
 key_files:
   created: []
   modified:
-    - packages/open-bitcoin-cli/src/operator.rs (added apply: bool to ServiceArgs)
-    - packages/open-bitcoin-cli/src/operator/service.rs (execute_service_command, render_service_outcome, render_service_state_snapshot)
-    - packages/open-bitcoin-cli/src/operator/service/fake.rs (uninstall_error and enable_commands fields)
-    - packages/open-bitcoin-cli/src/operator/service/tests.rs (6 new tests for execute_service_command and --apply parsing)
-    - packages/open-bitcoin-cli/src/operator/runtime.rs (service dispatch wired, detection_roots populated)
+    - packages/open-bitcoin-cli/src/operator.rs
+    - packages/open-bitcoin-cli/src/operator/service.rs
+    - packages/open-bitcoin-cli/src/operator/runtime.rs
+    - packages/open-bitcoin-cli/src/operator/service/tests.rs
 decisions:
-  - "--apply flag uses global = true so it works in any position after `service` subcommand, consistent with other global flags in OperatorCli"
-  - "FakeServiceManager.enable_commands Vec<String> lets tests verify command strings surface in output without real launchctl/systemctl"
-  - "detection_roots() uses cfg-gated let bindings (not cfg on struct field) for clearer cross-platform readability"
-  - "render_service_outcome() renders dry-run scope note only when dry_run=true, keeping apply output concise"
+  - "ServiceArgs.apply uses global = true so --apply works at any position (e.g. 'service install --apply' or 'service --apply install')"
+  - "execute_service_command returns OperatorCommandOutcome directly (not Result) matching the non-error-propagating pattern of the rest of the dispatch surface"
+  - "render_service_outcome shows 'Would write: <path>' rather than just 'File:' to make the dry-run intent clear to operators"
+  - "detection_roots service_dirs uses home_dir.join() instead of PathBuf::from literal to stay consistent with the home_dir already computed in the function"
 metrics:
-  duration: ~20 minutes
-  completed: "2026-04-27"
+  duration_minutes: 20
+  completed_date: "2026-04-27"
   tasks_completed: 2
-  tasks_total: 2
   files_created: 0
-  files_modified: 5
+  files_modified: 4
 ---
 
-# Phase 18 Plan 02: Service Dispatch Wiring and --apply Flag Summary
+# Phase 18 Plan 02: Service Command Dispatch Summary
 
-**One-liner:** Wired `--apply` flag to `ServiceArgs`, implemented `execute_service_command()` routing all five service subcommands to the injected `ServiceManager`, and replaced the Phase 18 deferred stub in `runtime.rs` with live dispatch via `platform_service_manager()`.
+## One-Liner
+
+Wire --apply flag to ServiceArgs, implement execute_service_command() with dry-run rendering and scope surfacing, replace the Phase 18 stub in runtime.rs with real dispatch via platform_service_manager(), and populate detection_roots() service_dirs with LaunchAgents/systemd paths.
 
 ## What Was Built
 
-This plan connects the Plan 18-01 functional core layer to the CLI command surface:
+### --apply Flag on ServiceArgs (operator.rs)
 
-1. **`--apply` flag on `ServiceArgs`** (`operator.rs`) — `pub apply: bool` with `#[arg(long = "apply", global = true)]`. Defaults false (dry-run safe). Visible in `open-bitcoin service --help`.
+- Added `pub apply: bool` to `ServiceArgs` with `#[arg(long = "apply", global = true)]`
+- Default is `false` (dry-run safe per D-11)
+- `global = true` allows `--apply` at any subcommand position
+- Visible in `open-bitcoin service --help` output
 
-2. **`execute_service_command()`** (`service.rs`) — Public function taking `&ServiceArgs`, `binary_path`, `data_dir`, optional config/log paths, and `&dyn ServiceManager`. Routes Install/Uninstall/Enable/Disable/Status to manager methods. Returns `OperatorCommandOutcome` directly (no `Result` wrapping).
+### execute_service_command() (service.rs)
 
-3. **`render_service_outcome()`** (`service.rs`) — Private renderer producing human-readable dry-run preview with: "Dry run (pass --apply to make changes):" header, description, file path, commands, "Scope: user-level (no sudo required)." note, and generated file content block. Apply output omits the dry-run framing.
+- New `pub fn execute_service_command(args, binary_path, data_dir, maybe_config_path, maybe_log_path, manager)` function
+- Dispatches all 5 `ServiceCommand` variants: Install, Uninstall, Enable, Disable, Status
+- Returns `OperatorCommandOutcome` (not Result) directly matching surrounding dispatch patterns
+- `render_service_outcome()` helper produces human-readable output:
+  - Dry-run header: "Dry run (pass --apply to make changes):"
+  - Description from adapter
+  - "Would write: <path>" when file path provided
+  - "Commands:" section listing platform commands that would run
+  - "Scope: user-level (no sudo required)." when dry-run (per D-09, D-13)
+  - "Generated content:" with indented file body
+- `render_service_state_snapshot()` helper for status command output
 
-4. **`render_service_state_snapshot()`** (`service.rs`) — Status renderer producing service state, file path, log path, and manager diagnostics.
+### Real Dispatch in runtime.rs (replaces stub)
 
-5. **`FakeServiceManager` extensions** (`service/fake.rs`) — Added `uninstall_error: Option<ServiceError>` for not-installed error path testing, and `enable_commands: Vec<String>` for verifying command strings surface in enable output.
+- Removed the "service lifecycle commands are deferred to Phase 18" failure arm
+- `OperatorCommand::Service(service)` now:
+  1. Resolves `home_dir` from `HOME` env var with `.` fallback
+  2. Creates `platform_service_manager(home_dir)` (compile-time platform selection)
+  3. Resolves `binary_path` via `current_exe()` with `"open-bitcoin"` fallback per T-18-08
+  4. Resolves `data_dir` from `config_resolution.maybe_data_dir` or `default_data_dir`
+  5. Calls `execute_service_command()` passing config and log paths from resolution
+- Imports `execute_service_command` and `platform_service_manager` from `super::service`
+- Removed the now-unused `ServiceCommand` import from the use block
 
-6. **6 new tests** (`service/tests.rs`) — TDD RED→GREEN covering: dry-run install returns success mentioning dry run, apply install with `AlreadyInstalled` returns failure with "already installed", enable returns success with launchctl/systemctl command string, uninstall with `NotInstalled` returns failure with "not installed", `--apply` parses to `true`, default parses to `false`.
+### detection_roots() Service Dirs (runtime.rs)
 
-7. **runtime.rs service dispatch** (`operator/runtime.rs`) — Replaced the "service lifecycle commands are deferred to Phase 18" stub with: home_dir from `env::var_os("HOME")`, `platform_service_manager(home_dir)`, `current_exe()` with fallback, data_dir from config or default, `execute_service_command()` call. Removed `ServiceCommand` from the `use super::` block.
+- `service_dirs` in `DetectionRoots` now populated:
+  - macOS: `vec![home_dir.join("Library/LaunchAgents")]`
+  - Linux: `vec![home_dir.join(".config/systemd/user")]`
+  - Other: `Vec::new()`
+- Uses `#[cfg(target_os)]` compile-time gates consistent with platform adapter selection
 
-8. **`detection_roots()` service_dirs** (`operator/runtime.rs`) — Populated with `~/Library/LaunchAgents` on macOS and `~/.config/systemd/user` on Linux via `#[cfg(target_os)]` gated let bindings.
+### New Tests (service/tests.rs)
+
+6 new tests added:
+1. `execute_service_command_install_dry_run_shows_dry_run_output` — verifies dry-run indicator in stdout
+2. `execute_service_command_install_already_installed_returns_failure` — verifies `AlreadyInstalled` error surfaces as failure with "already installed" in stderr
+3. `execute_service_command_enable_returns_success_with_output` — enable returns success with non-empty stdout
+4. `execute_service_command_uninstall_dry_run_succeeds` — dry-run uninstall with FakeServiceManager succeeds
+5. `parsing_service_install_with_apply_flag_sets_apply_true` — `--apply` flag parses correctly to `true`
+6. `parsing_service_install_without_apply_flag_sets_apply_false` — default `apply` is `false`
+7. `execute_service_command_install_dry_run_shows_scope` — "user-level" or "Scope" present in dry-run output
+
+Total test count: 60 (all passing, up from 53 in Plan 01).
 
 ## Deviations from Plan
 
-### Auto-fixed Issues
-
-**1. [Rule 2 - Missing Critical Functionality] Added uninstall_error and enable_commands to FakeServiceManager**
-- **Found during:** Task 1 test writing — the plan requires testing not-installed uninstall error and enable command string surfacing, but FakeServiceManager only had `install_error`
-- **Issue:** No mechanism to inject `ServiceError::NotInstalled` from `uninstall()`, and no way to configure what commands `enable()` surfaces in its outcome
-- **Fix:** Added `uninstall_error: Option<ServiceError>` (checked in `uninstall()` before success) and `enable_commands: Vec<String>` (returned in `enable()` outcome's `commands_that_would_run`)
-- **Files modified:** `packages/open-bitcoin-cli/src/operator/service/fake.rs`
-- **Commit:** a3c7a25
+None — plan executed exactly as written. The `render_service_outcome()` helper was implemented exactly as specified in the plan's action block. The `detection_roots()` service_dirs pattern followed the plan's note about keeping `home_dir` accessible.
 
 ## Known Stubs
 
-None. All five service subcommands are now dispatched to real adapter implementations (or FakeServiceManager in tests). No placeholder text flows to UI rendering.
+None. All 5 service subcommands dispatch to real adapter methods. No placeholder text flows to output.
 
 ## Threat Flags
 
-None. The changes are entirely within the existing trust boundary:
-- `--apply` defaults to false (T-18-06 mitigation verified).
-- `current_exe()` has `unwrap_or_else` fallback (T-18-08 mitigation verified).
-- `detection_roots()` service_dirs addition is read-only detection scan (T-18-07 accepted).
+None. The only new dispatch path (current_exe fallback to "open-bitcoin" string) is a safety net, not a new trust boundary. The --apply flag default of false is correctly mitigating T-18-06. The detection_roots service_dirs addition is read-only per T-18-07 (accept disposition).
 
 ## Self-Check: PASSED
 
-- `packages/open-bitcoin-cli/src/operator/runtime.rs` does NOT contain "deferred to Phase 18"
-- `packages/open-bitcoin-cli/src/operator/runtime.rs` contains `execute_service_command` and `platform_service_manager`
-- `packages/open-bitcoin-cli/src/operator/runtime.rs` contains `LaunchAgents` and `systemd` in service_dirs (cfg-gated)
-- `packages/open-bitcoin-cli/src/operator.rs` contains `pub apply: bool` and `long = "apply"`
-- `packages/open-bitcoin-cli/src/operator/service.rs` contains `pub fn execute_service_command`, `fn render_service_outcome`, `Dry run (pass --apply`, `Scope: user-level`
-- Commits a3c7a25 and 2d67d87 verified in git log
-- `cargo test --package open-bitcoin-cli --all-features` exits 0 with 59 unit tests, 2 binary tests, 5 operator binary tests, 4 operator flow tests passing
-- `cargo clippy --package open-bitcoin-cli --all-targets --all-features -- -D warnings` exits 0
+Files exist:
+- packages/open-bitcoin-cli/src/operator.rs: FOUND (pub apply: bool added to ServiceArgs)
+- packages/open-bitcoin-cli/src/operator/service.rs: FOUND (execute_service_command present)
+- packages/open-bitcoin-cli/src/operator/runtime.rs: FOUND (deferred stub removed, execute_service_command called)
+- packages/open-bitcoin-cli/src/operator/service/tests.rs: FOUND (6 new tests added)
+
+Commits exist:
+- 12742ce: feat(18-02): add --apply flag to ServiceArgs and implement execute_service_command()
+- 6481fb2: feat(18-02): wire runtime.rs service dispatch and populate detection_roots service_dirs
+
+Verification:
+- cargo fmt --all: PASSED
+- cargo clippy --package open-bitcoin-cli --all-targets --all-features -- -D warnings: PASSED
+- cargo build --package open-bitcoin-cli --all-features: PASSED
+- cargo test --package open-bitcoin-cli --all-features: 60 tests PASSED
