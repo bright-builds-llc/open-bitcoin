@@ -9,22 +9,30 @@
 // - packages/bitcoin-knots/src/rpc/rawtransaction.cpp
 // - packages/bitcoin-knots/test/functional/interface_rpc.py
 
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    fs, io,
+    path::{Path, PathBuf},
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 use serde_json::json;
 
-use open_bitcoin_node::core::{
-    chainstate::{ChainPosition, ChainstateSnapshot, Coin},
-    codec::{TransactionEncoding, encode_transaction},
-    consensus::{
-        block_hash, block_merkle_root, check_block_header, crypto::hash160, transaction_txid,
+use open_bitcoin_node::{
+    FjallNodeStore, PersistMode, WalletRegistry,
+    core::{
+        chainstate::{ChainPosition, ChainstateSnapshot, Coin},
+        codec::{TransactionEncoding, encode_transaction, parse_transaction},
+        consensus::{
+            block_hash, block_merkle_root, check_block_header, crypto::hash160, transaction_txid,
+        },
+        network::WireNetworkMessage,
+        primitives::{
+            Amount, Block, BlockHash, BlockHeader, OutPoint, ScriptBuf, ScriptWitness, Transaction,
+            TransactionInput, TransactionOutput, Txid,
+        },
+        wallet::{AddressNetwork, DescriptorRole, SingleKeyDescriptor, Wallet},
     },
-    network::WireNetworkMessage,
-    primitives::{
-        Amount, Block, BlockHash, BlockHeader, OutPoint, ScriptBuf, ScriptWitness, Transaction,
-        TransactionInput, TransactionOutput, Txid,
-    },
-    wallet::{AddressNetwork, DescriptorRole, Wallet},
 };
 
 use crate::{
@@ -35,11 +43,14 @@ use crate::{
         BuildAndSignTransactionRequest, DeriveAddressesRequest, GetBalancesRequest,
         GetBlockchainInfoRequest, GetMempoolInfoRequest, GetNetworkInfoRequest,
         GetWalletInfoRequest, ImportDescriptorsRequest, ListUnspentRequest, MethodCall,
-        RescanBlockchainRequest, SendRawTransactionRequest, TransactionRecipient,
+        RescanBlockchainRequest, SendRawTransactionRequest, SendToAddressRequest,
+        TransactionRecipient,
     },
 };
 
 const EASY_BITS: u32 = 0x207f_ffff;
+const RANGED_TPRV: &str = "tprv8ZgxMBicQKsPd7Uf69XL1XwhmjHopUGep8GuEiJDZmbQz6o58LninorQAfcKZWARbtRtfnLcJ5MQ2AtHcQJCCRUcMRvmDUjyEmNUWwx8UbK";
+const RANGED_TPUB: &str = "tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B";
 
 fn script(bytes: &[u8]) -> ScriptBuf {
     ScriptBuf::from_bytes(bytes.to_vec()).expect("script")
@@ -219,6 +230,19 @@ fn encode_hex(bytes: &[u8]) -> String {
     output
 }
 
+fn decode_hex(text: &str) -> Vec<u8> {
+    let trimmed = text.trim();
+    trimmed
+        .as_bytes()
+        .chunks_exact(2)
+        .map(|pair| {
+            let high = char::from(pair[0]).to_digit(16).expect("hex") as u8;
+            let low = char::from(pair[1]).to_digit(16).expect("hex") as u8;
+            (high << 4) | low
+        })
+        .collect()
+}
+
 fn empty_context() -> ManagedRpcContext {
     ManagedRpcContext::from_runtime_config(&RuntimeConfig {
         chain: AddressNetwork::Regtest,
@@ -248,6 +272,97 @@ fn funded_wallet_context() -> ManagedRpcContext {
         .expect("change");
     let snapshot = funded_snapshot(&wallet_with_descriptors());
     context.rescan_wallet(&snapshot).expect("rescan");
+    context
+}
+
+fn spendable_send_context() -> ManagedRpcContext {
+    let mut context = empty_context();
+    context
+        .import_descriptor(
+            "receive",
+            DescriptorRole::External,
+            "wpkh(cMec2DGaTXkYJYfi7x3ZGjRXkeqmAvYAoWzMAcWj5fdLaqudWsNi)",
+        )
+        .expect("receive");
+    context
+        .import_descriptor(
+            "change",
+            DescriptorRole::Internal,
+            "sh(wpkh(cMec2DGaTXkYJYfi7x3ZGjRXkeqmAvYAoWzMAcWj5fdLaqudWsNi))",
+        )
+        .expect("change");
+    let receive_script = context
+        .descriptor_address(0)
+        .expect("receive address")
+        .script_pubkey;
+    let genesis = build_block(
+        BlockHash::from_byte_array([0_u8; 32]),
+        0,
+        500_000_000,
+        p2sh_script(),
+    );
+    let funding = build_block(block_hash(&genesis.header), 1, 75_000, receive_script);
+    context.connect_local_block(&genesis).expect("genesis");
+    context.connect_local_block(&funding).expect("funding");
+    let snapshot = context.blockchain_snapshot();
+    context.rescan_wallet(&snapshot).expect("rescan");
+    context
+}
+
+fn temp_store_path(test_name: &str) -> PathBuf {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system time after unix epoch")
+        .as_nanos();
+    std::env::temp_dir().join(format!(
+        "open-bitcoin-rpc-dispatch-{test_name}-{}-{timestamp}",
+        std::process::id()
+    ))
+}
+
+fn remove_dir_if_exists(path: &Path) {
+    match fs::remove_dir_all(path) {
+        Ok(()) => {}
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+        Err(error) => panic!("failed to remove {}: {error}", path.display()),
+    }
+}
+
+fn durable_wallet_context(test_name: &str, wallet_name: &str) -> ManagedRpcContext {
+    let path = temp_store_path(test_name);
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut registry = WalletRegistry::default();
+    let mut wallet = Wallet::new(AddressNetwork::Regtest);
+    wallet
+        .import_descriptor(
+            "receive-ranged",
+            DescriptorRole::External,
+            &format!("wpkh({RANGED_TPRV}/1/1/*)"),
+        )
+        .expect("receive descriptor");
+    wallet
+        .import_descriptor(
+            "change-ranged",
+            DescriptorRole::Internal,
+            &format!("sh(wpkh({RANGED_TPUB}/1/*))"),
+        )
+        .expect("change descriptor");
+    registry
+        .create_wallet(&store, wallet_name.to_string(), wallet, PersistMode::Sync)
+        .expect("create wallet");
+    drop(store);
+
+    let mut context = ManagedRpcContext::from_runtime_config(&RuntimeConfig {
+        chain: AddressNetwork::Regtest,
+        maybe_data_dir: Some(path),
+        wallet: WalletRuntimeConfig {
+            coinbase_maturity: 1,
+            ..WalletRuntimeConfig::default()
+        },
+        ..RuntimeConfig::default()
+    });
+    context.set_request_wallet_name(Some(wallet_name.to_string()));
     context
 }
 
@@ -339,7 +454,7 @@ fn deriveaddresses_returns_expected_addresses_for_supported_descriptors() {
 }
 
 #[test]
-fn getwalletinfo_returns_supported_field_subset() {
+fn getwalletinfo_reports_wallet_identity_and_freshness_fields() {
     // Arrange
     let mut context = funded_wallet_context();
 
@@ -359,6 +474,9 @@ fn getwalletinfo_returns_supported_field_subset() {
         response["maybe_tip_median_time_past"],
         json!(1700000010_i64)
     );
+    assert_eq!(response["walletname"], json!(null));
+    assert_eq!(response["scanning"], json!(false));
+    assert_eq!(response["freshness"], json!("fresh"));
 }
 
 #[test]
@@ -429,20 +547,50 @@ fn wallet_descriptor_and_rescan_methods_update_wallet_views() {
 }
 
 #[test]
-fn rescanblockchain_rejects_partial_height_ranges_without_rescanning() {
+fn durable_wallet_methods_persist_address_cursors_and_descriptor_metadata() {
     // Arrange
-    let mut context = empty_context();
-    context
-        .import_descriptor(
-            "receive",
-            DescriptorRole::External,
-            "wpkh(cMec2DGaTXkYJYfi7x3ZGjRXkeqmAvYAoWzMAcWj5fdLaqudWsNi)",
-        )
-        .expect("receive descriptor");
-    let reference_wallet = wallet_with_descriptors();
-    let receive_script = reference_wallet
-        .default_receive_address()
-        .expect("receive")
+    let mut context = durable_wallet_context("descriptor-cursors", "alpha");
+
+    // Act
+    let first_receive = dispatch(&mut context, MethodCall::GetNewAddress(Default::default()))
+        .expect("first receive");
+    let second_receive = dispatch(&mut context, MethodCall::GetNewAddress(Default::default()))
+        .expect("second receive");
+    let change = dispatch(
+        &mut context,
+        MethodCall::GetRawChangeAddress(Default::default()),
+    )
+    .expect("change");
+    let descriptors = dispatch(
+        &mut context,
+        MethodCall::ListDescriptors(Default::default()),
+    )
+    .expect("descriptors");
+    let wallet_info = dispatch(
+        &mut context,
+        MethodCall::GetWalletInfo(GetWalletInfoRequest::default()),
+    )
+    .expect("wallet info");
+
+    // Assert
+    assert_ne!(first_receive, second_receive);
+    assert_ne!(first_receive, change);
+    assert_eq!(descriptors["walletname"], json!("alpha"));
+    assert_eq!(descriptors["descriptors"][0]["internal"], json!(false));
+    assert_eq!(descriptors["descriptors"][0]["maybe_next_index"], json!(2));
+    assert_eq!(descriptors["descriptors"][1]["internal"], json!(true));
+    assert_eq!(descriptors["descriptors"][1]["maybe_next_index"], json!(1));
+    assert_eq!(wallet_info["walletname"], json!("alpha"));
+    assert_eq!(wallet_info["freshness"], json!("fresh"));
+}
+
+#[test]
+fn rescanblockchain_accepts_ranges_and_records_partial_freshness() {
+    // Arrange
+    let mut context = durable_wallet_context("range-rescan", "alpha");
+    let receive_script = context
+        .descriptor_address(0)
+        .expect("receive address")
         .script_pubkey;
     let genesis = build_block(
         BlockHash::from_byte_array([0_u8; 32]),
@@ -451,42 +599,42 @@ fn rescanblockchain_rejects_partial_height_ranges_without_rescanning() {
         receive_script.clone(),
     );
     let block_one = build_block(block_hash(&genesis.header), 1, 75_000, receive_script);
+    let block_two = build_block(block_hash(&block_one.header), 2, 75_000, p2sh_script());
     context.connect_local_block(&genesis).expect("genesis");
     context.connect_local_block(&block_one).expect("block one");
+    context.connect_local_block(&block_two).expect("block two");
 
     // Act
-    let failure = dispatch(
+    let partial_rescan = dispatch(
         &mut context,
         MethodCall::RescanBlockchain(RescanBlockchainRequest {
             maybe_start_height: Some(1),
             maybe_stop_height: Some(1),
         }),
     )
-    .expect_err("partial range");
-    let balances_after_rejection = dispatch(
+    .expect("partial range");
+    let wallet_info_after_partial = dispatch(
         &mut context,
-        MethodCall::GetBalances(GetBalancesRequest::default()),
+        MethodCall::GetWalletInfo(GetWalletInfoRequest::default()),
     )
-    .expect("balances");
+    .expect("wallet info after partial");
     let full_rescan = dispatch(
         &mut context,
         MethodCall::RescanBlockchain(RescanBlockchainRequest {
             maybe_start_height: Some(0),
-            maybe_stop_height: Some(1),
+            maybe_stop_height: Some(2),
         }),
     )
     .expect("full rescan");
 
     // Assert
-    let detail = failure.maybe_detail.expect("error detail");
-    assert_eq!(detail.code, RpcErrorCode::InvalidParams);
-    assert_eq!(
-        detail.message,
-        "rescanblockchain height ranges are not supported in Phase 8; omit start_height and stop_height to rescan the full active snapshot",
-    );
-    assert_eq!(balances_after_rejection["mine"]["trusted_sats"], json!(0),);
-    assert_eq!(full_rescan["start_height"], json!(0));
-    assert_eq!(full_rescan["stop_height"], json!(1));
+    assert_eq!(partial_rescan["start_height"], json!(1));
+    assert_eq!(partial_rescan["stop_height"], json!(1));
+    assert_eq!(partial_rescan["freshness"], json!("partial"));
+    assert_eq!(wallet_info_after_partial["freshness"], json!("partial"));
+    assert_eq!(wallet_info_after_partial["walletname"], json!("alpha"));
+    assert_eq!(full_rescan["freshness"], json!("fresh"));
+    assert_eq!(full_rescan["maybe_scanned_through_height"], json!(2));
 }
 
 #[test]
@@ -618,4 +766,64 @@ fn buildandsigntransaction_returns_deterministic_hex_and_fee() {
     assert_eq!(first["fee_sats"], json!(242));
     assert!(first["transaction_hex"].as_str().expect("hex").len() > 10);
     assert_eq!(first["inputs"][0]["amount_sats"], json!(75_000));
+}
+
+#[test]
+fn sendtoaddress_reuses_the_build_and_sign_spend_path() {
+    // Arrange
+    let mut context = spendable_send_context();
+    let destination_script = SingleKeyDescriptor::parse(
+        "wpkh(cMec2DGaTXkYJYfi7x3ZGjRXkeqmAvYAoWzMAcWj5fdLaqudWsNi)#8fhd9pwu",
+        AddressNetwork::Regtest,
+    )
+    .expect("descriptor")
+    .address(AddressNetwork::Regtest)
+    .expect("destination address")
+    .script_pubkey;
+    let build_request = BuildAndSignTransactionRequest {
+        recipients: vec![TransactionRecipient {
+            script_pubkey_hex: encode_hex(destination_script.as_bytes()),
+            amount_sats: 30_000,
+        }],
+        fee_rate_sat_per_kvb: 2_000,
+        maybe_change_descriptor_id: None,
+        maybe_lock_time: None,
+        enable_rbf: true,
+    };
+
+    // Act
+    let built = dispatch(
+        &mut context,
+        MethodCall::BuildAndSignTransaction(build_request),
+    )
+    .expect("build and sign");
+    let expected_transaction = parse_transaction(&decode_hex(
+        built["transaction_hex"].as_str().expect("transaction hex"),
+    ))
+    .expect("parse built transaction");
+    let send = dispatch(
+        &mut context,
+        MethodCall::SendToAddress(SendToAddressRequest {
+            address: "bcrt1qa0qwuze2h85zw7nqpsj3ga0z9geyrgwpf2m8je".to_string(),
+            amount_sats: 30_000,
+            maybe_fee_rate_sat_per_kvb: Some(2_000),
+            maybe_conf_target: None,
+            maybe_estimate_mode: None,
+            maybe_change_descriptor_id: None,
+            maybe_lock_time: None,
+            enable_rbf: true,
+            maybe_max_tx_fee_sats: Some(1_000),
+        }),
+    )
+    .expect("sendtoaddress");
+
+    // Assert
+    assert_eq!(
+        send,
+        json!(encode_hex(
+            transaction_txid(&expected_transaction)
+                .expect("expected txid")
+                .as_bytes()
+        )),
+    );
 }
