@@ -7,10 +7,7 @@ use super::{
     StatusCollectorInput, StatusDetectionEvidence, StatusLiveRpcAdapterInput, StatusRenderMode,
     StatusRequest, StatusRpcAuthSource,
 };
-use crate::operator::{
-    NetworkSelection,
-    config::{OperatorConfigResolution, OperatorConfigSource},
-};
+use crate::operator::{NetworkSelection, config::OperatorConfigResolution};
 
 #[test]
 fn status_request_defines_render_mode_without_snapshot_dependency() {
@@ -34,11 +31,8 @@ fn status_request_defines_render_mode_without_snapshot_dependency() {
 fn status_collector_input_keeps_rpc_config_and_detection_evidence_typed() {
     // Arrange
     let config_resolution = OperatorConfigResolution {
-        ordered_sources: OperatorConfigSource::ordered().to_vec(),
-        path_reports: Vec::new(),
-        maybe_config_path: None,
-        maybe_data_dir: None,
         maybe_network: Some(NetworkSelection::Regtest),
+        ..OperatorConfigResolution::default()
     };
     let request = StatusRequest {
         render_mode: StatusRenderMode::Human,

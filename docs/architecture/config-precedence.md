@@ -6,6 +6,8 @@
 
 Environment is the source for `OPEN_BITCOIN_CONFIG`, `OPEN_BITCOIN_DATADIR`, and `OPEN_BITCOIN_NETWORK`.
 
+The operator resolver reports the selected Open Bitcoin JSONC path, baseline-compatible `bitcoin.conf` path, datadir, structured log directory, metrics store directory, network, and credential source. Credential reporting is metadata-only: cookie files are reported by path/source and presence, never by cookie contents.
+
 ## Precedence
 
 Configuration precedence is:
