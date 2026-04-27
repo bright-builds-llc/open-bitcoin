@@ -4,8 +4,8 @@ milestone: v1.1
 milestone_name: Operator Runtime and Real-Network Sync
 status: executing
 stopped_at: Phase 17 context gathered
-last_updated: "2026-04-27T00:39:32.016Z"
-last_activity: 2026-04-27 -- Phase 17 planning complete
+last_updated: "2026-04-27T00:40:44.449Z"
+last_activity: 2026-04-27 -- Phase 17 execution started
 progress:
   total_phases: 10
   completed_phases: 4
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-26)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 16 — Metrics, Logs, and Sync Telemetry
+**Current focus:** Phase 17 — CLI Status and First-Run Onboarding
 
 ## Current Position
 
-Phase: 17
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-04-27 -- Phase 17 planning complete
+Phase: 17 (CLI Status and First-Run Onboarding) — EXECUTING
+Plan: 1 of 5
+Status: Executing Phase 17
+Last activity: 2026-04-27 -- Phase 17 execution started
 
 Progress: 3/10 phases complete
 
