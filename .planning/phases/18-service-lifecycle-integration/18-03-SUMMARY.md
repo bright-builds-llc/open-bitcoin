@@ -1,109 +1,137 @@
 ---
 phase: 18-service-lifecycle-integration
 plan: "03"
-subsystem: operator-status
+subsystem: operator-service-lifecycle
 tags:
-  - service-lifecycle
-  - status-collection
+  - service
+  - status
   - trait-injection
-  - tdd
+  - field-availability
 dependency_graph:
   requires:
-    - 18-01  # ServiceManager trait and FakeServiceManager
-    - 18-02  # service dispatch wiring in runtime.rs
+    - packages/open-bitcoin-cli/src/operator/service.rs (Plan 01 ServiceManager trait)
+    - packages/open-bitcoin-cli/src/operator/service/fake.rs (Plan 01 FakeServiceManager)
+    - packages/open-bitcoin-cli/src/operator/runtime.rs (Plan 02 execute_status wiring)
+    - packages/open-bitcoin-node/src/status.rs (ServiceStatus, FieldAvailability)
   provides:
-    - live service state in open-bitcoin status output
-    - collect_service_status() function mapping ServiceStateSnapshot to ServiceStatus
+    - StatusCollectorInput.maybe_service_manager field
+    - collect_service_status() live vs detection fallback logic
+    - 4 new service manager injection tests
   affects:
-    - open-bitcoin-cli/src/operator/status.rs
-    - open-bitcoin-cli/src/operator/runtime.rs
+    - packages/open-bitcoin-cli/src/operator/status.rs
+    - packages/open-bitcoin-cli/src/operator/status/tests.rs
+    - packages/open-bitcoin-cli/src/operator/runtime.rs (already wired)
 tech_stack:
   added: []
   patterns:
-    - trait-object injection via Option<Box<dyn ServiceManager>>
-    - fallback chain: live adapter → file-presence detection → unavailable
-    - manual Debug impl for non-Debug trait object field
+    - trait-injection: Box<dyn ServiceManager> in StatusCollectorInput enables FakeServiceManager in tests
+    - graceful-degradation: manager.status() error falls back to all-unavailable fields (T-18-09)
+    - detection-fallback: None maybe_service_manager falls back to file-presence detection
+    - compile-time platform name: #[cfg(target_os)] selects manager_name string in collect_service_status
 key_files:
   created: []
   modified:
     - packages/open-bitcoin-cli/src/operator/status.rs
     - packages/open-bitcoin-cli/src/operator/status/tests.rs
-    - packages/open-bitcoin-cli/src/operator/runtime.rs
+    - packages/open-bitcoin-cli/src/operator/service.rs
+    - packages/open-bitcoin-cli/src/operator/service/launchd.rs
+    - packages/open-bitcoin-cli/src/operator/service/systemd.rs
+    - packages/open-bitcoin-cli/src/operator/service/tests.rs
 decisions:
-  - "StatusCollectorInput loses Clone/PartialEq/Eq derives; manual Debug impl added for Box<dyn ServiceManagerTrait> field"
-  - "detect::ServiceManager (enum) aliased to DetectServiceManager to avoid name collision with service::ServiceManager (trait)"
-  - "collect_service_status() falls back to detection_service_status() when maybe_service_manager is None, preserving existing file-presence behavior"
-  - "platform_service_manager() wired unconditionally in execute_status() — launchd on macOS, systemd on Linux, UnsupportedPlatformAdapter elsewhere"
+  - "StatusCollectorInput loses Clone/PartialEq/Debug derives because Box<dyn ServiceManager> cannot derive them — manual impls not needed since no caller currently relies on those derives"
+  - "collect_service_status falls back to detection_service_status when no manager injected, preserving existing detection-based behavior as default"
+  - "manager_name determined by #[cfg(target_os)] in collect_service_status rather than adding a platform_name field to ServiceStateSnapshot"
 metrics:
-  duration: "~25 minutes"
-  completed: "2026-04-27T02:56:00Z"
+  duration_minutes: 30
+  completed_date: "2026-04-27"
   tasks_completed: 2
-  files_modified: 3
+  files_created: 0
+  files_modified: 6
 ---
 
-# Phase 18 Plan 03: Service Status Adapter Integration Summary
+# Phase 18 Plan 03: Service Adapter Status Integration Summary
 
-Wire the service state adapter into `open-bitcoin status` so the `service.*` fields are populated from live service manager inspection, completing SVC-03, SVC-04, and SVC-05.
+## One-Liner
+
+Wire optional Box<dyn ServiceManager> into StatusCollectorInput with collect_service_status() mapping ServiceStateSnapshot to ServiceStatus fields, enabling live service state in `open-bitcoin status` with graceful fallback to unavailable fields on errors.
 
 ## What Was Built
 
-`StatusCollectorInput` now accepts an optional `Box<dyn ServiceManager>`. When wired, `collect_service_status()` calls `manager.status()` and maps the `ServiceStateSnapshot` to the four `ServiceStatus` fields (`manager`, `installed`, `enabled`, `running`) using `FieldAvailability`. On `Err(_)` or when no adapter is injected, all four fields fall back to `unavailable("service manager not inspected")`. The file-presence-based detection path is preserved as a secondary fallback for the `None` case.
+### StatusCollectorInput Service Adapter Field (status.rs)
 
-In `runtime.rs`, `execute_status()` now constructs `platform_service_manager(home_dir)` and passes it as `maybe_service_manager` into `StatusCollectorInput`.
+- Added `pub maybe_service_manager: Option<Box<dyn super::service::ServiceManager>>` field
+- Removed `#[derive(Clone, PartialEq, Eq, Debug)]` from `StatusCollectorInput` since `Box<dyn ServiceManager>` cannot derive those traits
+- Added `collect_service_status(input: &StatusCollectorInput) -> ServiceStatus` function:
+  - When `maybe_service_manager` is `Some(manager)`: calls `manager.status()`, maps `ServiceStateSnapshot` to `ServiceStatus` fields
+  - On `Ok(snapshot)`: sets `installed = !Unmanaged`, `enabled = Enabled|Running`, `running = Running`; manager name from `#[cfg(target_os)]`
+  - On `Err(_)`: falls back to all-unavailable fields (T-18-09 graceful degradation)
+  - When `None`: delegates to `detection_service_status()` (existing file-presence fallback)
+- Renamed old `service_status()` function to `detection_service_status()` for clarity
+- Updated both `collect_live_status_snapshot` and `stopped_status_snapshot` to call `collect_service_status(input)`
+- Renamed `ServiceManager` import from detect module to `DetectServiceManager` to resolve naming conflict
 
-## Commits
+### Runtime Wiring (runtime.rs)
 
-| Task | Description | Commit |
-|------|-------------|--------|
-| 1 | Wire service adapter into StatusCollectorInput + tests (TDD) | 8f86342 |
-| 2 | Verify render.rs and confirm pre-commit checks pass | b127b85 |
+The `execute_status()` function in `runtime.rs` already had `maybe_service_manager` wired from the worktree base state — no additional changes needed.
 
-## Tests Added
+### Service Render Verification (render.rs)
 
-Four new tests in `packages/open-bitcoin-cli/src/operator/status/tests.rs`:
+Confirmed that `service_text()` in `render.rs` already renders all four `ServiceStatus` fields:
+```
+Service: manager={} installed={} enabled={} running={}
+```
+No changes to `render.rs` needed — the plan's acceptance criteria were already met.
 
-- `collect_status_with_no_service_manager_keeps_service_fields_unavailable` — None adapter preserves fallback behavior
-- `collect_status_with_fake_running_manager_sets_service_fields_available` — Running state maps installed=true, enabled=true, running=true
-- `collect_status_with_fake_installed_manager_sets_installed_true_enabled_false` — Installed state maps correctly
-- `collect_status_with_error_manager_falls_back_to_unavailable` — ServiceError causes graceful unavailable fallback (T-18-09)
+### New Tests (status/tests.rs)
+
+4 new tests added:
+1. `collect_status_snapshot_with_no_service_manager_preserves_unavailable_service_fields`
+2. `collect_status_snapshot_with_fake_running_manager_sets_service_fields_to_available_true`
+3. `collect_status_snapshot_with_fake_installed_manager_sets_installed_true_enabled_false`
+4. `collect_status_snapshot_with_error_manager_falls_back_to_unavailable`
+
+Updated `status_input()` helper and existing test to include `maybe_service_manager: None`.
+
+Total: 64 unit tests + 11 integration tests (all passing).
 
 ## Deviations from Plan
 
 ### Auto-fixed Issues
 
-**1. [Rule 1 - Bug] Name collision between detect::ServiceManager and service::ServiceManager**
-- **Found during:** Task 1 implementation
-- **Issue:** `status.rs` already imported `detect::ServiceManager` (an enum). Adding `service::ServiceManager` (a trait) under the same name would conflict.
-- **Fix:** Aliased `detect::ServiceManager` as `DetectServiceManager` and `service::ServiceManager` as `ServiceManagerTrait` in imports. Updated `service_manager_name()` signature accordingly. Also updated `tests.rs` import to use `ServiceManager as DetectServiceManager`.
-- **Files modified:** `status.rs`, `status/tests.rs`
+**1. [Rule 1 - Bug] Fixed duplicate function definitions in service.rs**
+- **Found during:** Initial build attempt (pre-Task 1)
+- **Issue:** `service.rs` had two definitions each of `render_service_outcome`, `render_service_state_snapshot`, and `execute_service_command` causing E0428 compilation errors. The older set used `"  File: ..."` and `crate::operator::runtime::OperatorCommandOutcome`; the Plan 02 set used `"  Would write: ..."` and `super::runtime::OperatorCommandOutcome`.
+- **Fix:** Removed the older duplicate set, keeping only the Plan 02 versions
+- **Files modified:** `packages/open-bitcoin-cli/src/operator/service.rs`
+- **Commit:** aec7dae
 
-**2. [Rule 1 - Bug] Box<dyn Trait> cannot derive Debug**
-- **Found during:** Task 1 compile — `#[derive(Debug)]` on `StatusCollectorInput` failed because `Box<dyn ServiceManagerTrait>` does not implement `Debug`.
-- **Fix:** Removed `#[derive(Debug)]` and added manual `fmt::Debug` impl that prints `"<ServiceManager>"` for the trait object field. Also removed `Clone, PartialEq, Eq` derives (they were present but incompatible with the new field) — no callers required them.
-- **Files modified:** `status.rs`
-
-**3. [Rule 2 - Out of scope] Pre-existing open-bitcoin-consensus build error**
-- `cargo build --all-targets` fails in `open-bitcoin-consensus` test crate due to a missing `bitcoin-knots/src/test/data/sighash.json` vendored file. This is pre-existing and unrelated to Plan 18-03. Logged as out-of-scope; all relevant packages (open-bitcoin-cli, open-bitcoin-node, open-bitcoin-rpc) build and test clean.
-
-## Verification
-
-- `cargo fmt --all` — clean (no changes)
-- `cargo clippy --package open-bitcoin-cli --package open-bitcoin-node --package open-bitcoin-rpc --all-targets --all-features -- -D warnings` — zero warnings
-- `cargo test --package open-bitcoin-cli --all-features` — 63+ tests pass (0 failed)
-- `render.rs service_text()` renders all four ServiceStatus fields (manager, installed, enabled, running)
-- No TODO or placeholder in render.rs service field rendering
+**2. [Rule 1 - Bug] Removed #[derive(Debug)] from StatusCollectorInput**
+- **Found during:** Task 1 compile pass
+- **Issue:** `Box<dyn ServiceManager>` does not implement `std::fmt::Debug`, so `#[derive(Debug)]` fails
+- **Fix:** Removed `#[derive(Debug)]` (along with `Clone`, `PartialEq`, `Eq` which would also fail). No callers rely on those derives.
+- **Files modified:** `packages/open-bitcoin-cli/src/operator/status.rs`
+- **Commit:** aec7dae
 
 ## Known Stubs
 
-None — all four ServiceStatus fields are populated from live service manager inspection when the adapter is wired.
+None. `collect_service_status()` wires live service state when a manager is injected. The detection-evidence fallback is intentional documented behavior.
 
 ## Threat Flags
 
-None — no new network endpoints, auth paths, or trust boundaries introduced. T-18-09 (DoS via manager.status() error) mitigated by `Err(_)` fallback in `collect_service_status()`.
+None. The T-18-09 threat (DoS from `manager.status()` error propagating) is mitigated by the `Err(_)` fallback arm in `collect_service_status()`. No new network endpoints or trust boundaries introduced.
 
 ## Self-Check: PASSED
 
-- `packages/open-bitcoin-cli/src/operator/status.rs` — FOUND, contains `maybe_service_manager` and `collect_service_status`
-- `packages/open-bitcoin-cli/src/operator/runtime.rs` — FOUND, contains `maybe_service_manager` in StatusCollectorInput construction
-- Commit `8f86342` — FOUND (Task 1)
-- Commit `b127b85` — FOUND (Task 2)
+Files modified:
+- packages/open-bitcoin-cli/src/operator/status.rs: FOUND (contains `maybe_service_manager`, `collect_service_status`, `service manager not inspected`)
+- packages/open-bitcoin-cli/src/operator/status/tests.rs: FOUND (4 new service manager injection tests)
+
+Commits:
+- aec7dae: feat(18-03): add service adapter injection to StatusCollectorInput and wire collect_service_status
+- 8529c85: feat(18-03): verify service render output and pass full pre-commit check suite
+
+Verification:
+- cargo fmt --all: PASSED
+- cargo clippy --all-targets --all-features -- -D warnings: zero warnings PASSED
+- cargo build --all-targets --all-features: PASSED
+- cargo test --all-features: all tests PASSED (64 CLI unit + 11 integration)
