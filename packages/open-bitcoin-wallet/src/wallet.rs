@@ -120,20 +120,20 @@ impl SendIntent {
         if recipients.is_empty() {
             return Err(WalletError::NoRecipients);
         }
-        if let FeeSelection::Estimate(request) = fee_selection {
-            if request.conf_target == 0 {
-                return Err(WalletError::InvalidEstimateRequest(
-                    "conf_target must be at least 1".to_string(),
-                ));
-            }
+        if let FeeSelection::Estimate(request) = fee_selection
+            && request.conf_target == 0
+        {
+            return Err(WalletError::InvalidEstimateRequest(
+                "conf_target must be at least 1".to_string(),
+            ));
         }
-        if let Some(ceiling_sats) = maybe_fee_ceiling_sats {
-            if ceiling_sats <= 0 {
-                return Err(WalletError::FeeCeilingExceeded {
-                    fee_sats: 0,
-                    ceiling_sats,
-                });
-            }
+        if let Some(ceiling_sats) = maybe_fee_ceiling_sats
+            && ceiling_sats <= 0
+        {
+            return Err(WalletError::FeeCeilingExceeded {
+                fee_sats: 0,
+                ceiling_sats,
+            });
         }
 
         Ok(Self {
@@ -201,18 +201,12 @@ impl WalletRescanState {
         maybe_next_height: Option<u32>,
         is_scanning: bool,
     ) -> Result<Self, WalletError> {
-        let target_height = maybe_target_height.unwrap_or_default();
-        if is_scanning {
-            return Ok(Self::Scanning {
-                next_height: maybe_next_height.unwrap_or_default(),
-                target_height,
-            });
-        }
-
-        Ok(Self::Fresh {
-            scanned_through_height: maybe_scanned_through_height.unwrap_or_default(),
-            target_height,
-        })
+        scan::rescan_state_from_progress(
+            maybe_scanned_through_height,
+            maybe_target_height,
+            maybe_next_height,
+            is_scanning,
+        )
     }
 }
 
@@ -298,7 +292,7 @@ impl Wallet {
             id,
             label,
             role,
-            original_text: descriptor_text.to_string(),
+            original_text: descriptor.storage_text(),
             descriptor,
         });
         self.descriptors.sort_by_key(|record| record.id);
@@ -416,10 +410,20 @@ impl Wallet {
     }
 
     fn allocate_address_for_role(&mut self, role: DescriptorRole) -> Result<Address, WalletError> {
-        let _ = role;
-        Err(WalletError::UnsupportedAddressRole(
-            "ranged descriptor allocation is not implemented yet".to_string(),
-        ))
+        let Some(record) = self
+            .descriptors
+            .iter_mut()
+            .find(|descriptor| descriptor.role == role)
+        else {
+            return Err(WalletError::UnsupportedAddressRole(match role {
+                DescriptorRole::External => "external".to_string(),
+                DescriptorRole::Internal => "internal".to_string(),
+            }));
+        };
+        let index = record.descriptor.advance_next_index(role)?;
+        let address = record.descriptor.address_at(self.network, index)?;
+        record.original_text = record.descriptor.storage_text();
+        Ok(address)
     }
 }
 

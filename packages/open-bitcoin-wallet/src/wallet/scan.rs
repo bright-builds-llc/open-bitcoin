@@ -8,7 +8,9 @@
 
 use open_bitcoin_chainstate::ChainstateSnapshot;
 
-use super::{Wallet, WalletBalance, WalletUtxo, amount_from_sats, compare_wallet_utxos};
+use super::{
+    Wallet, WalletBalance, WalletRescanState, WalletUtxo, amount_from_sats, compare_wallet_utxos,
+};
 use crate::WalletError;
 
 pub(super) fn rescan_chainstate(
@@ -23,14 +25,21 @@ pub(super) fn rescan_chainstate(
 
     let mut utxos = Vec::new();
     for (outpoint, coin) in &snapshot.utxos {
-        let Some((descriptor_id, _script_pubkey)) = descriptor_scripts
-            .iter()
-            .find(|(_, script_pubkey)| *script_pubkey == coin.output.script_pubkey)
-        else {
+        let maybe_descriptor_id = descriptor_scripts.iter().find_map(|(descriptor_id, _)| {
+            wallet.descriptor(*descriptor_id).and_then(|record| {
+                record
+                    .descriptor
+                    .matching_index(&coin.output.script_pubkey)
+                    .ok()
+                    .flatten()
+                    .map(|_| *descriptor_id)
+            })
+        });
+        let Some(descriptor_id) = maybe_descriptor_id else {
             continue;
         };
         utxos.push(WalletUtxo {
-            descriptor_id: *descriptor_id,
+            descriptor_id,
             outpoint: outpoint.clone(),
             output: coin.output.clone(),
             created_height: coin.created_height,
@@ -93,4 +102,32 @@ pub(super) fn spend_height(wallet: &Wallet) -> u32 {
     wallet
         .maybe_tip_height
         .map_or(0, |height| height.saturating_add(1))
+}
+
+pub(super) fn rescan_state_from_progress(
+    maybe_scanned_through_height: Option<u32>,
+    maybe_target_height: Option<u32>,
+    maybe_next_height: Option<u32>,
+    is_scanning: bool,
+) -> Result<WalletRescanState, WalletError> {
+    let target_height = maybe_target_height.unwrap_or_default();
+    if is_scanning {
+        return Ok(WalletRescanState::Scanning {
+            next_height: maybe_next_height.unwrap_or_default(),
+            target_height,
+        });
+    }
+
+    let scanned_through_height = maybe_scanned_through_height.unwrap_or_default();
+    if scanned_through_height < target_height {
+        return Ok(WalletRescanState::Partial {
+            scanned_through_height,
+            target_height,
+        });
+    }
+
+    Ok(WalletRescanState::Fresh {
+        scanned_through_height,
+        target_height,
+    })
 }

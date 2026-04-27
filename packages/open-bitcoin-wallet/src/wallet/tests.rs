@@ -262,7 +262,7 @@ fn rescan_progress_contract_distinguishes_fresh_partial_and_scanning() {
         .expect("scanning state");
 
     // Act
-    let states = vec![fresh, partial, scanning];
+    let states = [fresh, partial, scanning];
 
     // Assert
     assert!(matches!(

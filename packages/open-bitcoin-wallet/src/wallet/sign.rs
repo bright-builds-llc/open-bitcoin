@@ -34,25 +34,35 @@ pub(super) fn sign_transaction(
         let descriptor = wallet
             .descriptor(utxo.descriptor_id)
             .ok_or(WalletError::UnknownDescriptor(utxo.descriptor_id))?;
+        let descriptor_index = descriptor
+            .descriptor
+            .matching_index(&utxo.output.script_pubkey)?
+            .unwrap_or(0);
         match &descriptor.descriptor {
             SingleKeyDescriptor::Pkh(key) => {
-                let private_key = key.private_key().ok_or_else(|| {
-                    WalletError::MissingSigningKey(descriptor.original_text.clone())
-                })?;
-                let script_code = descriptor.descriptor.script_pubkey()?;
+                let private_key = descriptor
+                    .descriptor
+                    .private_key_at(descriptor_index)?
+                    .ok_or_else(|| {
+                        WalletError::MissingSigningKey(descriptor.original_text.clone())
+                    })?;
+                let script_code = descriptor.descriptor.script_pubkey_at(descriptor_index)?;
                 let sighash =
                     legacy_sighash(&script_code, &transaction, input_index, SigHashType::ALL);
-                let signature = sign_ecdsa_low_s(private_key, &sighash.to_byte_array())?;
-                let public_key = key.public_key();
+                let signature = sign_ecdsa_low_s(&private_key, &sighash.to_byte_array())?;
+                let public_key = key.public_key_at(descriptor_index)?;
                 let public_key_bytes = public_key_bytes(&public_key, key.is_compressed());
                 let script_sig = push_script(&[signature.as_slice(), public_key_bytes.as_slice()])?;
                 transaction.inputs[input_index].script_sig = script_sig;
             }
             SingleKeyDescriptor::ShWpkh(key) | SingleKeyDescriptor::Wpkh(key) => {
-                let private_key = key.private_key().ok_or_else(|| {
-                    WalletError::MissingSigningKey(descriptor.original_text.clone())
-                })?;
-                let public_key = key.public_key();
+                let private_key = descriptor
+                    .descriptor
+                    .private_key_at(descriptor_index)?
+                    .ok_or_else(|| {
+                        WalletError::MissingSigningKey(descriptor.original_text.clone())
+                    })?;
+                let public_key = key.public_key_at(descriptor_index)?;
                 let script_code = p2pkh_script(&public_key)?;
                 let input_context = input_contexts[input_index].clone();
                 let sighash = segwit_v0_sighash(
@@ -63,21 +73,26 @@ pub(super) fn sign_transaction(
                     SigHashType::ALL,
                     &precomputed,
                 );
-                let signature = sign_ecdsa_low_s(private_key, &sighash.to_byte_array())?;
+                let signature = sign_ecdsa_low_s(&private_key, &sighash.to_byte_array())?;
                 let public_key_bytes = public_key_bytes(&public_key, key.is_compressed());
-                if let Some(redeem_script) = descriptor.descriptor.redeem_script()? {
+                if let Some(redeem_script) =
+                    descriptor.descriptor.redeem_script_at(descriptor_index)?
+                {
                     transaction.inputs[input_index].script_sig =
                         push_script(&[redeem_script.as_bytes()])?;
                 }
                 transaction.inputs[input_index].witness =
                     ScriptWitness::new(vec![signature, public_key_bytes]);
             }
-            SingleKeyDescriptor::Tr(key) => {
-                let private_key = key.private_key().ok_or_else(|| {
-                    WalletError::MissingSigningKey(descriptor.original_text.clone())
-                })?;
+            SingleKeyDescriptor::Tr(_key) => {
+                let private_key = descriptor
+                    .descriptor
+                    .private_key_at(descriptor_index)?
+                    .ok_or_else(|| {
+                        WalletError::MissingSigningKey(descriptor.original_text.clone())
+                    })?;
                 let secp = Secp256k1::new();
-                let (keypair, _output_key) = taproot_output_key_from_private_key(private_key)?;
+                let (keypair, _output_key) = taproot_output_key_from_private_key(&private_key)?;
                 let sighash = taproot_sighash(
                     &ScriptExecutionData::default(),
                     &transaction,
