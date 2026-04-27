@@ -23,6 +23,11 @@ use crate::operator::{
         ServiceError, ServiceLifecycleState, ServiceStateSnapshot, fake::FakeServiceManager,
     },
 };
+use open_bitcoin_node::status::{
+    BuildProvenance, ConfigStatus, FieldAvailability, MempoolStatus, NodeRuntimeState, NodeStatus,
+    OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, ServiceStatus, SyncStatus, WalletFreshness,
+    WalletScanProgress, WalletStatus,
+};
 use open_bitcoin_rpc::method::{
     GetBalancesResponse, GetBlockchainInfoResponse, GetMempoolInfoResponse, GetNetworkInfoResponse,
     GetWalletInfoResponse, WalletBalanceDetails,
@@ -105,6 +110,8 @@ fn stopped_status_keeps_live_fields_unavailable() {
         decoded["wallet"]["trusted_balance_sats"]["state"],
         "unavailable"
     );
+    assert_eq!(decoded["wallet"]["freshness"]["state"], "unavailable");
+    assert_eq!(decoded["wallet"]["scan_progress"]["state"], "unavailable");
     assert_eq!(decoded["build"]["version"], env!("CARGO_PKG_VERSION"));
 }
 
@@ -137,6 +144,8 @@ fn fake_live_rpc_maps_into_shared_status_snapshot() {
     assert_eq!(decoded["peers"]["peer_counts"]["value"]["outbound"], 5);
     assert_eq!(decoded["mempool"]["transactions"]["value"], 12);
     assert_eq!(decoded["wallet"]["trusted_balance_sats"]["value"], 50_000);
+    assert_eq!(decoded["wallet"]["freshness"]["value"], "fresh");
+    assert_eq!(decoded["wallet"]["scan_progress"]["state"], "unavailable");
     assert_eq!(decoded["logs"]["path"]["state"], "unavailable");
     assert_eq!(
         decoded["metrics"]["retention"]["sample_interval_seconds"],
@@ -180,6 +189,63 @@ fn rpc_failure_produces_unreachable_snapshot_not_process_failure() {
 }
 
 #[test]
+fn human_and_json_renderers_surface_wallet_freshness_and_scan_reasons() {
+    // Arrange
+    let snapshot = OpenBitcoinStatusSnapshot {
+        node: NodeStatus {
+            state: NodeRuntimeState::Running,
+            version: "0.1.0".to_string(),
+        },
+        config: ConfigStatus {
+            datadir: FieldAvailability::available("/tmp/open-bitcoin".to_string()),
+            config_paths: vec!["/tmp/open-bitcoin/open-bitcoin.jsonc".to_string()],
+        },
+        service: ServiceStatus {
+            manager: FieldAvailability::available("launchd".to_string()),
+            installed: FieldAvailability::available(true),
+            enabled: FieldAvailability::available(true),
+            running: FieldAvailability::available(true),
+        },
+        sync: SyncStatus {
+            network: FieldAvailability::available("regtest".to_string()),
+            chain_tip: FieldAvailability::unavailable("tip unavailable"),
+            sync_progress: FieldAvailability::unavailable("sync unavailable"),
+        },
+        peers: PeerStatus {
+            peer_counts: FieldAvailability::available(PeerCounts {
+                inbound: 1,
+                outbound: 2,
+            }),
+        },
+        mempool: MempoolStatus {
+            transactions: FieldAvailability::available(3),
+        },
+        wallet: WalletStatus {
+            trusted_balance_sats: FieldAvailability::available(25_000),
+            freshness: FieldAvailability::available(WalletFreshness::Scanning),
+            scan_progress: FieldAvailability::available(WalletScanProgress {
+                scanned_through_height: 30,
+                target_tip_height: 60,
+            }),
+        },
+        logs: open_bitcoin_node::LogStatus::default(),
+        metrics: open_bitcoin_node::MetricsStatus::default(),
+        health_signals: Vec::new(),
+        build: BuildProvenance::unavailable(),
+    };
+
+    // Act
+    let human = render_status(&snapshot, StatusRenderMode::Human).expect("human status");
+    let json = render_status(&snapshot, StatusRenderMode::Json).expect("json status");
+
+    // Assert
+    assert!(human.contains("Wallet freshness: scanning"));
+    assert!(human.contains("Wallet scan: height 30/60 (50.00%)"));
+    assert!(json.contains("\"freshness\""));
+    assert!(json.contains("\"scan_progress\""));
+}
+
+#[test]
 fn human_status_contains_required_labels_and_detection_uncertainty() {
     // Arrange
     let input = status_input(vec![detected_installation()]);
@@ -190,13 +256,29 @@ fn human_status_contains_required_labels_and_detection_uncertainty() {
 
     // Assert
     for label in [
-        "Daemon:", "Version:", "Build:", "Datadir:", "Config:", "Network:", "Chain:", "Sync:",
-        "Peers:", "Mempool:", "Wallet:", "Service:", "Logs:", "Metrics:", "Health:",
+        "Daemon:",
+        "Version:",
+        "Build:",
+        "Datadir:",
+        "Config:",
+        "Network:",
+        "Chain:",
+        "Sync:",
+        "Peers:",
+        "Mempool:",
+        "Wallet:",
+        "Wallet freshness:",
+        "Wallet scan:",
+        "Service:",
+        "Logs:",
+        "Metrics:",
+        "Health:",
     ] {
         assert!(rendered.contains(label), "missing {label}");
     }
     assert!(rendered.contains("/tmp/core/.bitcoin/bitcoin.conf"));
     assert!(rendered.contains("uncertain"));
+    assert!(rendered.contains("Unavailable: node stopped"));
 }
 
 #[test]
@@ -529,6 +611,9 @@ fn detected_installation() -> DetectedInstallation {
             path: PathBuf::from("/tmp/core/.bitcoin/wallet.dat"),
             maybe_name: None,
             present: true,
+            product_family: ProductFamily::Unknown,
+            product_confidence: DetectionConfidence::Low,
+            chain_scope: crate::operator::detect::WalletChainScope::Mainnet,
         }],
     }
 }

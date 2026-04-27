@@ -11,7 +11,8 @@ use open_bitcoin_node::{
     status::{
         BuildProvenance, ChainTipStatus, ConfigStatus, FieldAvailability, HealthSignal,
         HealthSignalLevel, MempoolStatus, NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot,
-        PeerCounts, PeerStatus, ServiceStatus, SyncProgress, SyncStatus, WalletStatus,
+        PeerCounts, PeerStatus, ServiceStatus, SyncProgress, SyncStatus, WalletFreshness,
+        WalletScanProgress, WalletStatus,
     },
 };
 use open_bitcoin_rpc::method::{
@@ -190,7 +191,7 @@ fn collect_live_status_snapshot(
             );
         }
     };
-    let _wallet_info = match rpc_client.get_wallet_info() {
+    let wallet_info = match rpc_client.get_wallet_info() {
         Ok(value) => value,
         Err(error) => {
             return stopped_status_snapshot(
@@ -231,6 +232,7 @@ fn collect_live_status_snapshot(
                 height: u64::from(blockchain_info.blocks),
                 block_hash: blockchain_info
                     .maybe_best_block_hash
+                    .clone()
                     .unwrap_or_else(|| "unknown".to_string()),
             }),
             sync_progress: FieldAvailability::available(SyncProgress {
@@ -251,11 +253,11 @@ fn collect_live_status_snapshot(
         mempool: MempoolStatus {
             transactions: FieldAvailability::available(saturating_usize_to_u64(mempool_info.size)),
         },
-        wallet: WalletStatus {
-            trusted_balance_sats: FieldAvailability::available(non_negative_i64_to_u64(
-                balances.mine.trusted_sats,
-            )),
-        },
+        wallet: live_wallet_status(
+            &wallet_info,
+            &blockchain_info,
+            non_negative_i64_to_u64(balances.mine.trusted_sats),
+        ),
         logs: log_status(&input.config_resolution),
         metrics: metrics_status(&input.config_resolution),
         health_signals,
@@ -298,7 +300,9 @@ fn stopped_status_snapshot(
             transactions: FieldAvailability::unavailable(reason.clone()),
         },
         wallet: WalletStatus {
-            trusted_balance_sats: FieldAvailability::unavailable(reason),
+            trusted_balance_sats: FieldAvailability::unavailable(reason.clone()),
+            freshness: FieldAvailability::unavailable(reason.clone()),
+            scan_progress: FieldAvailability::unavailable(reason),
         },
         logs: log_status(&input.config_resolution),
         metrics: metrics_status(&input.config_resolution),
@@ -444,6 +448,56 @@ fn metrics_status(resolution: &OperatorConfigResolution) -> MetricsStatus {
     }
 }
 
+fn live_wallet_status(
+    wallet_info: &GetWalletInfoResponse,
+    blockchain_info: &GetBlockchainInfoResponse,
+    trusted_balance_sats: u64,
+) -> WalletStatus {
+    let chain_tip_height = u64::from(blockchain_info.blocks);
+    let maybe_wallet_tip_height = wallet_info.maybe_tip_height.map(u64::from);
+    let freshness = wallet_freshness(maybe_wallet_tip_height, chain_tip_height);
+    let scan_progress = wallet_scan_progress(freshness, maybe_wallet_tip_height, chain_tip_height);
+
+    WalletStatus {
+        trusted_balance_sats: FieldAvailability::available(trusted_balance_sats),
+        freshness: FieldAvailability::available(freshness),
+        scan_progress,
+    }
+}
+
+fn wallet_freshness(
+    maybe_wallet_tip_height: Option<u64>,
+    chain_tip_height: u64,
+) -> WalletFreshness {
+    let Some(wallet_tip_height) = maybe_wallet_tip_height else {
+        return WalletFreshness::Partial;
+    };
+    if wallet_tip_height >= chain_tip_height {
+        return WalletFreshness::Fresh;
+    }
+    WalletFreshness::Stale
+}
+
+fn wallet_scan_progress(
+    freshness: WalletFreshness,
+    maybe_wallet_tip_height: Option<u64>,
+    chain_tip_height: u64,
+) -> FieldAvailability<WalletScanProgress> {
+    match freshness {
+        WalletFreshness::Fresh => FieldAvailability::unavailable("wallet already fresh"),
+        WalletFreshness::Stale => FieldAvailability::unavailable("wallet scan not running"),
+        WalletFreshness::Partial | WalletFreshness::Scanning => {
+            let Some(wallet_tip_height) = maybe_wallet_tip_height else {
+                return FieldAvailability::unavailable("wallet tip unavailable");
+            };
+            FieldAvailability::available(WalletScanProgress {
+                scanned_through_height: saturating_u64_to_u32(wallet_tip_height),
+                target_tip_height: saturating_u64_to_u32(chain_tip_height),
+            })
+        }
+    }
+}
+
 fn log_health_signals(input: &StatusCollectorInput) -> Vec<HealthSignal> {
     open_bitcoin_node::logging::health_signals_from_recent_logs(
         &log_status(&input.config_resolution).recent_signals,
@@ -565,6 +619,10 @@ fn saturating_usize_to_u32(value: usize) -> u32 {
 
 fn saturating_usize_to_u64(value: usize) -> u64 {
     u64::try_from(value).unwrap_or(u64::MAX)
+}
+
+fn saturating_u64_to_u32(value: u64) -> u32 {
+    u32::try_from(value).unwrap_or(u32::MAX)
 }
 
 fn non_negative_i64_to_u64(value: i64) -> u64 {

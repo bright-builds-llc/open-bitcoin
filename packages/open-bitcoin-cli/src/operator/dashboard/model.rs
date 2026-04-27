@@ -8,7 +8,8 @@ use open_bitcoin_node::{
     metrics::MetricsAvailability,
     status::{
         ChainTipStatus, FieldAvailability, HealthSignal, HealthSignalLevel, NodeRuntimeState,
-        OpenBitcoinStatusSnapshot, PeerCounts, ServiceStatus, SyncProgress,
+        OpenBitcoinStatusSnapshot, PeerCounts, ServiceStatus, SyncProgress, WalletFreshness,
+        WalletScanProgress,
     },
 };
 
@@ -118,6 +119,8 @@ fn dashboard_sections(snapshot: &OpenBitcoinStatusSnapshot) -> Vec<DashboardSect
                     "Wallet",
                     u64_availability(&snapshot.wallet.trusted_balance_sats, "trusted sats"),
                 ),
+                row("Freshness", wallet_freshness(&snapshot.wallet.freshness)),
+                row("Scan", wallet_scan_progress(&snapshot.wallet.scan_progress)),
             ],
         },
         DashboardSection {
@@ -234,6 +237,28 @@ fn u64_availability(value: &FieldAvailability<u64>, label: &str) -> String {
 fn bool_availability(value: &FieldAvailability<bool>) -> String {
     match value {
         FieldAvailability::Available(value) => value.to_string(),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
+fn wallet_freshness(value: &FieldAvailability<WalletFreshness>) -> String {
+    match value {
+        FieldAvailability::Available(value) => wallet_freshness_name(*value).to_string(),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
+fn wallet_scan_progress(value: &FieldAvailability<WalletScanProgress>) -> String {
+    match value {
+        FieldAvailability::Available(value) => {
+            let progress_ratio = wallet_scan_progress_ratio(value);
+            format!(
+                "height {}/{} ({:.2}%)",
+                value.scanned_through_height,
+                value.target_tip_height,
+                progress_ratio * 100.0
+            )
+        }
         FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
     }
 }
@@ -357,6 +382,22 @@ fn health_level_name(level: HealthSignalLevel) -> &'static str {
     }
 }
 
+fn wallet_freshness_name(freshness: WalletFreshness) -> &'static str {
+    match freshness {
+        WalletFreshness::Fresh => "fresh",
+        WalletFreshness::Stale => "stale",
+        WalletFreshness::Partial => "partial",
+        WalletFreshness::Scanning => "scanning",
+    }
+}
+
+fn wallet_scan_progress_ratio(progress: &WalletScanProgress) -> f64 {
+    if progress.target_tip_height == 0 {
+        return 0.0;
+    }
+    f64::from(progress.scanned_through_height) / f64::from(progress.target_tip_height)
+}
+
 #[cfg(test)]
 mod tests {
     use open_bitcoin_node::{
@@ -364,7 +405,7 @@ mod tests {
         status::{
             BuildProvenance, ConfigStatus, FieldAvailability, HealthSignal, HealthSignalLevel,
             MempoolStatus, NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts,
-            PeerStatus, ServiceStatus, SyncStatus, WalletStatus,
+            PeerStatus, ServiceStatus, SyncStatus, WalletFreshness, WalletStatus,
         },
     };
 
@@ -396,6 +437,9 @@ mod tests {
         );
         assert_eq!(state.charts.len(), DASHBOARD_METRIC_KINDS.len());
         assert!(state.actions.iter().any(|action| action.destructive));
+        let wallet_rows = &state.sections[2].rows;
+        assert_eq!(wallet_rows[2].label, "Freshness");
+        assert_eq!(wallet_rows[2].value, "fresh");
     }
 
     #[test]
@@ -446,6 +490,8 @@ mod tests {
             },
             wallet: WalletStatus {
                 trusted_balance_sats: FieldAvailability::available(50_000),
+                freshness: FieldAvailability::available(WalletFreshness::Fresh),
+                scan_progress: FieldAvailability::unavailable("wallet already fresh"),
             },
             logs: open_bitcoin_node::LogStatus::default(),
             metrics: MetricsStatus::available_with_samples(

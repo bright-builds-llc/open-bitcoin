@@ -8,6 +8,7 @@ use open_bitcoin_node::{
     status::{
         BuildProvenance, ChainTipStatus, FieldAvailability, HealthSignal, HealthSignalLevel,
         NodeRuntimeState, OpenBitcoinStatusSnapshot, PeerCounts, ServiceStatus, SyncProgress,
+        WalletFreshness, WalletScanProgress,
     },
 };
 
@@ -68,6 +69,14 @@ fn render_human_status(snapshot: &OpenBitcoinStatusSnapshot) -> String {
         "Wallet: {}",
         u64_availability(&snapshot.wallet.trusted_balance_sats, "trusted sats")
     ));
+    lines.push(format!(
+        "Wallet freshness: {}",
+        wallet_freshness_availability(&snapshot.wallet.freshness)
+    ));
+    lines.push(format!(
+        "Wallet scan: {}",
+        wallet_scan_progress_availability(&snapshot.wallet.scan_progress)
+    ));
     lines.push(format!("Service: {}", service_text(&snapshot.service)));
     lines.push(format!("Logs: {}", log_text(&snapshot.logs)));
     lines.push(format!("Metrics: {}", metrics_text(&snapshot.metrics)));
@@ -115,6 +124,28 @@ fn peer_counts_availability(value: &FieldAvailability<PeerCounts>) -> String {
 fn u64_availability(value: &FieldAvailability<u64>, label: &str) -> String {
     match value {
         FieldAvailability::Available(value) => format!("{value} {label}"),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
+fn wallet_freshness_availability(value: &FieldAvailability<WalletFreshness>) -> String {
+    match value {
+        FieldAvailability::Available(value) => wallet_freshness_name(*value).to_string(),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
+fn wallet_scan_progress_availability(value: &FieldAvailability<WalletScanProgress>) -> String {
+    match value {
+        FieldAvailability::Available(value) => {
+            let progress_ratio = wallet_scan_progress_ratio(value);
+            format!(
+                "height {}/{} ({:.2}%)",
+                value.scanned_through_height,
+                value.target_tip_height,
+                progress_ratio * 100.0
+            )
+        }
         FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
     }
 }
@@ -207,4 +238,20 @@ fn health_level_name(level: HealthSignalLevel) -> &'static str {
         HealthSignalLevel::Warn => "warn",
         HealthSignalLevel::Error => "error",
     }
+}
+
+fn wallet_freshness_name(freshness: WalletFreshness) -> &'static str {
+    match freshness {
+        WalletFreshness::Fresh => "fresh",
+        WalletFreshness::Stale => "stale",
+        WalletFreshness::Partial => "partial",
+        WalletFreshness::Scanning => "scanning",
+    }
+}
+
+fn wallet_scan_progress_ratio(progress: &WalletScanProgress) -> f64 {
+    if progress.target_tip_height == 0 {
+        return 0.0;
+    }
+    f64::from(progress.scanned_through_height) / f64::from(progress.target_tip_height)
 }

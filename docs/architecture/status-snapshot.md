@@ -14,7 +14,7 @@
 | `sync` | Sync/runtime collector | `network`, `chain tip`, and `sync progress` |
 | `peers` | Network collector | `peer counts` |
 | `mempool` | Mempool collector | mempool summary |
-| `wallet` | Wallet collector | wallet summary |
+| `wallet` | Wallet collector | `trusted_balance_sats`, `freshness`, and `scan_progress` so balances never imply completeness by themselves |
 | `logs` | Logging collector | log paths and retention |
 | `metrics` | Metrics collector | retention, enabled series, and bounded samples when a metrics snapshot exists |
 | `health_signals` | Log/status collectors | recent `health signals` |
@@ -23,6 +23,17 @@
 ## Stopped-node status
 
 Stopped-node status must not omit live fields. Fields that cannot be collected because the daemon is stopped use `Unavailable` with a `reason`. For example, live `network`, `chain tip`, `sync progress`, `peer counts`, mempool, and wallet values can be unavailable while datadir, config paths, service state, logs, metrics policy, health signals, and build provenance remain visible.
+
+## Wallet freshness semantics
+
+`wallet.trusted_balance_sats` remains part of the shared snapshot, but operator-facing consumers must treat it as incomplete unless `wallet.freshness` says otherwise.
+
+- `fresh`: the wallet view has caught up to the durable node tip.
+- `stale`: the wallet tip lags the durable node tip and no active scan progress is being reported.
+- `partial`: the wallet view is incomplete and only partial scan progress is known.
+- `scanning`: an active rescan is in progress and `wallet.scan_progress` reports the current `scanned_through_height` and `target_tip_height`.
+
+When the daemon is stopped or the wallet state cannot be collected, both `wallet.freshness` and `wallet.scan_progress` stay `Unavailable` with a reason instead of silently defaulting to a balance-only summary.
 
 ## Non-Goals
 

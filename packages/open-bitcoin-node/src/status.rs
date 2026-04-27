@@ -111,6 +111,25 @@ pub struct MempoolStatus {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WalletStatus {
     pub trusted_balance_sats: FieldAvailability<u64>,
+    pub freshness: FieldAvailability<WalletFreshness>,
+    pub scan_progress: FieldAvailability<WalletScanProgress>,
+}
+
+/// Wallet completeness state relative to the durable node tip.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum WalletFreshness {
+    Fresh,
+    Stale,
+    Partial,
+    Scanning,
+}
+
+/// Wallet rescan progress surfaced to operator status consumers.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WalletScanProgress {
+    pub scanned_through_height: u32,
+    pub target_tip_height: u32,
 }
 
 /// Recent operator health signal.
@@ -173,7 +192,8 @@ mod tests {
     use super::{
         BuildProvenance, ChainTipStatus, ConfigStatus, FieldAvailability, HealthSignal,
         HealthSignalLevel, MempoolStatus, NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot,
-        PeerCounts, PeerStatus, ServiceStatus, SyncProgress, SyncStatus, WalletStatus,
+        PeerCounts, PeerStatus, ServiceStatus, SyncProgress, SyncStatus, WalletFreshness,
+        WalletScanProgress, WalletStatus,
     };
     use crate::{LogStatus, MetricsStatus};
 
@@ -219,6 +239,8 @@ mod tests {
             encoded["wallet"]["trusted_balance_sats"]["state"],
             "unavailable"
         );
+        assert_eq!(encoded["wallet"]["freshness"]["state"], "unavailable");
+        assert_eq!(encoded["wallet"]["scan_progress"]["state"], "unavailable");
         assert_eq!(encoded["config"]["datadir"]["state"], "available");
         assert_eq!(encoded["logs"]["retention"]["max_files"], 14);
         assert_eq!(
@@ -272,6 +294,8 @@ mod tests {
             },
             wallet: WalletStatus {
                 trusted_balance_sats: FieldAvailability::available(25_000),
+                freshness: FieldAvailability::available(WalletFreshness::Fresh),
+                scan_progress: FieldAvailability::unavailable("wallet already fresh"),
             },
             logs: LogStatus::default(),
             metrics: MetricsStatus::default(),
@@ -299,7 +323,71 @@ mod tests {
             840_001
         );
         assert_eq!(encoded["peers"]["peer_counts"]["value"]["outbound"], 8);
+        assert_eq!(encoded["wallet"]["freshness"]["value"], "fresh");
+        assert_eq!(encoded["wallet"]["scan_progress"]["state"], "unavailable");
         assert_eq!(encoded["health_signals"][0]["message"], "node healthy");
+    }
+
+    #[test]
+    fn wallet_freshness_states_serialize_distinctly_in_snapshot() {
+        // Arrange
+        let states = [
+            (
+                WalletFreshness::Fresh,
+                FieldAvailability::unavailable("wallet already fresh"),
+                "fresh",
+            ),
+            (
+                WalletFreshness::Stale,
+                FieldAvailability::unavailable("wallet scan not running"),
+                "stale",
+            ),
+            (
+                WalletFreshness::Partial,
+                FieldAvailability::available(WalletScanProgress {
+                    scanned_through_height: 40,
+                    target_tip_height: 100,
+                }),
+                "partial",
+            ),
+            (
+                WalletFreshness::Scanning,
+                FieldAvailability::available(WalletScanProgress {
+                    scanned_through_height: 60,
+                    target_tip_height: 100,
+                }),
+                "scanning",
+            ),
+        ];
+
+        // Act
+        let encoded = states
+            .into_iter()
+            .map(|(freshness, scan_progress, expected)| {
+                let mut snapshot = stopped_snapshot();
+                snapshot.wallet = WalletStatus {
+                    trusted_balance_sats: FieldAvailability::available(25_000),
+                    freshness: FieldAvailability::available(freshness),
+                    scan_progress,
+                };
+                let encoded = serde_json::to_value(snapshot).expect("snapshot json");
+                (encoded, expected)
+            })
+            .collect::<Vec<_>>();
+
+        // Assert
+        assert_eq!(encoded[0].0["wallet"]["freshness"]["value"], encoded[0].1);
+        assert_eq!(encoded[1].0["wallet"]["freshness"]["value"], encoded[1].1);
+        assert_eq!(encoded[2].0["wallet"]["freshness"]["value"], encoded[2].1);
+        assert_eq!(encoded[3].0["wallet"]["freshness"]["value"], encoded[3].1);
+        assert_eq!(
+            encoded[2].0["wallet"]["scan_progress"]["value"]["scanned_through_height"],
+            40
+        );
+        assert_eq!(
+            encoded[3].0["wallet"]["scan_progress"]["value"]["target_tip_height"],
+            100
+        );
     }
 
     fn stopped_snapshot() -> OpenBitcoinStatusSnapshot {
@@ -332,6 +420,8 @@ mod tests {
             },
             wallet: WalletStatus {
                 trusted_balance_sats: FieldAvailability::unavailable(unavailable),
+                freshness: FieldAvailability::unavailable(unavailable),
+                scan_progress: FieldAvailability::unavailable(unavailable),
             },
             logs: LogStatus::default(),
             metrics: MetricsStatus::default(),
