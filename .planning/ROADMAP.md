@@ -197,7 +197,7 @@ Plans:
 
 Plans:
 - [x] 20-01-PLAN.md — Pure wallet-core ranged descriptor, send-intent, and rescan-progress contracts
-- [ ] 20-02-PLAN.md — Durable named-wallet registry, Fjall snapshot upgrade, and rescan job persistence
+- [x] 20-02-PLAN.md — Durable named-wallet registry, Fjall snapshot upgrade, and rescan job persistence
 - [ ] 20-03-PLAN.md — Wallet-scoped RPC/CLI routing plus the practical Phase 20 wallet method subset
 - [ ] 20-04-PLAN.md — Shared wallet freshness status and format-aware read-only external wallet inspection
 - [ ] 20-05-PLAN.md — Operator send preview/confirm, backup export, and Phase 20 parity closeout
