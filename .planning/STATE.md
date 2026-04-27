@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Operator Runtime and Real-Network Sync
-status: completed
-stopped_at: Phase 20 context gathered
-last_updated: "2026-04-27T09:40:34.269Z"
-last_activity: 2026-04-27 -- Phase 19 completed and verified
+status: in_progress
+stopped_at: Completed 20-01-PLAN.md
+last_updated: "2026-04-27T10:52:25.135Z"
+last_activity: 2026-04-27 -- Phase 20 plan 20-01 completed with wallet-core contract verification
 progress:
   total_phases: 10
   completed_phases: 7
-  total_plans: 27
-  completed_plans: 27
-  percent: 100
+  total_plans: 32
+  completed_plans: 28
+  percent: 88
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-04-26)
 
 ## Current Position
 
-Phase: 20 (wallet-runtime-expansion) — READY
-Plan: TBD
-Status: Phase 19 complete; Phase 20 not planned yet
-Last activity: 2026-04-27 -- Phase 19 completed and verified
+Phase: 20 (wallet-runtime-expansion) — IN PROGRESS
+Plan: 20-02-PLAN.md
+Status: Plan 20-01 complete; Phase 20 continuing with plan 20-02 next
+Last activity: 2026-04-27 -- Phase 20 plan 20-01 completed with wallet-core contract verification
 
 Progress: 7/10 phases complete
 
@@ -67,6 +67,7 @@ Progress: 7/10 phases complete
 | Phase 16 P01 | 12 min | 2 tasks | 4 files |
 | Phase 16 P02 | 18 min | 2 tasks | 7 files |
 | Phase 16-metrics-logs-and-sync-telemetry P03 | 19 min | 2 tasks | 5 files |
+| Phase 20-wallet-runtime-expansion P01 | 9 min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -93,6 +94,8 @@ Recent decisions affecting current work:
 - [Phase 16-metrics-logs-and-sync-telemetry]: Sync telemetry uses shared MetricSample, StructuredLogRecord, SyncStatus, PeerStatus, and HealthSignal contracts instead of a sync-only DTO. — Keeps status and dashboard consumers on the Phase 16 observability surface while satisfying SYNC-06.
 - [Phase 16-metrics-logs-and-sync-telemetry]: Sync runtime appends final metric samples through FjallNodeStore::append_metric_samples with default retention. — Append history preserves bounded time-series evidence and avoids overwriting snapshots after Plan 16-01.
 - [Phase 16-metrics-logs-and-sync-telemetry]: Sync structured log writing is optional via SyncRuntimeConfig::maybe_log_dir and log write failures become warning health signals. — Keeps default hermetic sync behavior unchanged while surfacing operator-visible logging failures.
+- [Phase 20-wallet-runtime-expansion]: Persist ranged descriptor range/cursor state inside SingleKeyDescriptor and mirror it into DescriptorRecord.original_text to preserve node snapshot DTO compatibility.
+- [Phase 20-wallet-runtime-expansion]: Recover ranged child indexes by matching derived scripts during rescan and signing instead of widening WalletUtxo or WalletSnapshot outside the plan write set.
 
 ### Roadmap Evolution
 
@@ -108,6 +111,7 @@ Recent decisions affecting current work:
 - Durable database choice must be made deliberately before real-network sync relies on it.
 - Migration flows must not mutate existing Core/Knots data until detection, explanation, backup, and dry-run behavior are implemented.
 - The TUI dashboard depends on stable status, metrics, and sync-state projections; avoid building a decorative dashboard before those data contracts exist.
+- Repo-native `scripts/verify.sh` is currently blocked by a stale generated LOC report at `docs/metrics/lines-of-code.md`, which was left untouched because it is outside Plan 20-01's owned file set.
 
 ### Quick Tasks Completed
 
@@ -124,6 +128,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-27T09:40:34.265Z
-Stopped at: Phase 20 context gathered
-Resume file: .planning/phases/20-wallet-runtime-expansion/20-CONTEXT.md
+Last session: 2026-04-27T10:52:25.131Z
+Stopped at: Completed 20-01-PLAN.md
+Resume file: None

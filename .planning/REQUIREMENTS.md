@@ -56,10 +56,10 @@
 
 ### Wallet Runtime Expansion
 
-- [ ] **WAL-04**: Wallet supports richer send workflows equivalent to a safe `sendtoaddress`-style operator path, including fee limits, change handling, confirmation prompts, and deterministic error output.
+- [x] **WAL-04**: Wallet supports richer send workflows equivalent to a safe `sendtoaddress`-style operator path, including fee limits, change handling, confirmation prompts, and deterministic error output.
 - [ ] **WAL-05**: Wallet supports multiwallet or wallet-scoped RPC/CLI selection compatible with the expected `-rpcwallet` style operator surface.
-- [ ] **WAL-06**: Wallet supports HD or ranged descriptor behavior needed for practical receive/change address management.
-- [ ] **WAL-07**: Wallet rescan, recovery, and balance tracking integrate with durable sync state and survive node restarts.
+- [x] **WAL-06**: Wallet supports HD or ranged descriptor behavior needed for practical receive/change address management.
+- [x] **WAL-07**: Wallet rescan, recovery, and balance tracking integrate with durable sync state and survive node restarts.
 - [ ] **WAL-08**: Wallet backup and migration planning can inspect existing Core/Knots wallet candidates without mutating them.
 
 ### Drop-In Parity and Migration
@@ -132,10 +132,10 @@
 | SYNC-04 | Phase 15 | Complete |
 | SYNC-05 | Phase 15, Phase 22 | Complete |
 | SYNC-06 | Phase 16, Phase 19 | Complete |
-| WAL-04 | Phase 20 | Pending |
+| WAL-04 | Phase 20 | Complete |
 | WAL-05 | Phase 20 | Pending |
-| WAL-06 | Phase 20 | Pending |
-| WAL-07 | Phase 20 | Pending |
+| WAL-06 | Phase 20 | Complete |
+| WAL-07 | Phase 20 | Complete |
 | WAL-08 | Phase 20, Phase 21 | Pending |
 | MIG-01 | Phase 21 | Pending |
 | MIG-02 | Phase 17, Phase 21 | Complete |
