@@ -26,15 +26,19 @@ pub enum FakeServiceCall {
 
 /// A `ServiceManager` that records calls without performing any real I/O.
 ///
-/// Configure `status_to_return` and `maybe_install_error` at construction time to drive
+/// Configure `status_to_return` and error fields at construction time to drive
 /// specific test scenarios.
 pub struct FakeServiceManager {
     /// All calls made to this manager in order.
     pub recorded_calls: RefCell<Vec<FakeServiceCall>>,
     /// The state snapshot returned from `status()`.
     pub status_to_return: ServiceStateSnapshot,
-    /// If `Some`, `install()` returns this error instead of `Ok`.
-    pub maybe_install_error: Option<ServiceError>,
+    /// If `Some`, `install()` returns this error instead of success.
+    pub install_error: Option<ServiceError>,
+    /// If `Some`, `uninstall()` returns this error instead of success.
+    pub uninstall_error: Option<ServiceError>,
+    /// Commands surfaced in the outcome from `enable()`.
+    pub enable_commands: Vec<String>,
 }
 
 impl FakeServiceManager {
@@ -43,7 +47,9 @@ impl FakeServiceManager {
         Self {
             recorded_calls: RefCell::new(Vec::new()),
             status_to_return,
-            maybe_install_error: None,
+            install_error: None,
+            uninstall_error: None,
+            enable_commands: Vec::new(),
         }
     }
 
@@ -69,7 +75,7 @@ impl ServiceManager for FakeServiceManager {
                 apply: request.apply,
             });
 
-        if let Some(ref error) = self.maybe_install_error {
+        if let Some(ref error) = self.install_error {
             return Err(error.clone());
         }
 
@@ -91,6 +97,10 @@ impl ServiceManager for FakeServiceManager {
             .push(FakeServiceCall::Uninstall {
                 apply: request.apply,
             });
+
+        if let Some(ref error) = self.uninstall_error {
+            return Err(error.clone());
+        }
 
         Ok(ServiceCommandOutcome {
             dry_run: !request.apply,
@@ -114,7 +124,7 @@ impl ServiceManager for FakeServiceManager {
             description: "fake enable".to_string(),
             maybe_file_path: None,
             maybe_file_content: None,
-            commands_that_would_run: vec![],
+            commands_that_would_run: self.enable_commands.clone(),
         })
     }
 

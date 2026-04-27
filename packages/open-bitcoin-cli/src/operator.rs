@@ -68,6 +68,9 @@ pub enum ConfigCommand {
 pub struct ServiceArgs {
     #[command(subcommand)]
     pub command: ServiceCommand,
+    /// Apply changes (default: dry-run only).
+    #[arg(long = "apply", global = true)]
+    pub apply: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
