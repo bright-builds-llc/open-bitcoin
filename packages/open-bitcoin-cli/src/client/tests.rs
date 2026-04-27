@@ -28,6 +28,7 @@ fn os(value: &str) -> OsString {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct CapturedRequest {
     method: String,
+    path: String,
     authorization: Option<String>,
     body: serde_json::Value,
 }
@@ -135,11 +136,9 @@ fn read_request(stream: &mut TcpStream) -> CapturedRequest {
     let header_text = String::from_utf8(buffer[..header_end - 4].to_vec()).expect("header");
     let mut lines = header_text.lines();
     let request_line = lines.next().expect("request line");
-    let method = request_line
-        .split_whitespace()
-        .next()
-        .expect("method")
-        .to_string();
+    let mut request_parts = request_line.split_whitespace();
+    let method = request_parts.next().expect("method").to_string();
+    let path = request_parts.next().expect("path").to_string();
     let authorization = lines.find_map(|line| {
         let (name, value) = line.split_once(':')?;
         if name.eq_ignore_ascii_case("authorization") {
@@ -151,6 +150,7 @@ fn read_request(stream: &mut TcpStream) -> CapturedRequest {
 
     CapturedRequest {
         method,
+        path,
         authorization,
         body,
     }
@@ -194,6 +194,7 @@ fn rpc_errors_surface_exit_code_one_with_actionable_stderr() {
         server.requests(),
         vec![CapturedRequest {
             method: "POST".to_string(),
+            path: "/".to_string(),
             authorization: Some("Basic YWxpY2U6c2VjcmV0".to_string()),
             body: json!({
                 "jsonrpc": "2.0",
@@ -327,6 +328,7 @@ fn getinfo_json_mode_is_stable_for_automation() {
         server.requests(),
         vec![CapturedRequest {
             method: "POST".to_string(),
+            path: "/".to_string(),
             authorization: Some("Basic YWxpY2U6c2VjcmV0".to_string()),
             body: json!([
                 {
@@ -354,6 +356,116 @@ fn getinfo_json_mode_is_stable_for_automation() {
                     "id": 3,
                 }
             ]),
+        }],
+    );
+}
+
+#[test]
+fn rpcwallet_routes_wallet_methods_through_wallet_path() {
+    // Arrange
+    let server = TestServer::start(json!({
+        "jsonrpc": "2.0",
+        "result": {
+            "network": "regtest",
+            "descriptor_count": 0,
+            "utxo_count": 0,
+            "maybe_tip_height": null,
+            "maybe_tip_median_time_past": null
+        },
+        "id": 1,
+    }));
+    let parsed = parse_cli_args(&[os("-rpcwallet=alpha"), os("getwalletinfo")], "")
+        .expect("parsed cli");
+    let startup = CliStartupConfig {
+        conf_path: std::env::temp_dir().join("bitcoin.conf"),
+        maybe_data_dir: None,
+        rpc: CliRpcConfig {
+            host: "127.0.0.1".to_string(),
+            port: server.address.port(),
+            auth: RpcAuthConfig::UserPassword {
+                username: "alice".to_string(),
+                password: "secret".to_string(),
+            },
+        },
+    };
+
+    // Act
+    let output = execute_parsed_cli(&parsed, &startup).expect("wallet output");
+
+    // Assert
+    assert_eq!(
+        output,
+        r#"{
+  "network": "regtest",
+  "descriptor_count": 0,
+  "utxo_count": 0,
+  "maybe_tip_height": null,
+  "maybe_tip_median_time_past": null
+}"#
+    );
+    assert_eq!(
+        server.requests(),
+        vec![CapturedRequest {
+            method: "POST".to_string(),
+            path: "/wallet/alpha".to_string(),
+            authorization: Some("Basic YWxpY2U6c2VjcmV0".to_string()),
+            body: json!({
+                "jsonrpc": "2.0",
+                "method": "getwalletinfo",
+                "params": {},
+                "id": 1,
+            }),
+        }],
+    );
+}
+
+#[test]
+fn rpcwallet_keeps_node_methods_on_root_path() {
+    // Arrange
+    let server = TestServer::start(json!({
+        "jsonrpc": "2.0",
+        "result": {
+            "chain": "regtest",
+            "blocks": 0,
+            "headers": 0,
+            "verificationprogress": 0.0,
+            "initialblockdownload": false,
+            "warnings": [],
+        },
+        "id": 1,
+    }));
+    let parsed =
+        parse_cli_args(&[os("-rpcwallet=alpha"), os("getblockchaininfo")], "").expect("parsed cli");
+    let startup = CliStartupConfig {
+        conf_path: std::env::temp_dir().join("bitcoin.conf"),
+        maybe_data_dir: None,
+        rpc: CliRpcConfig {
+            host: "127.0.0.1".to_string(),
+            port: server.address.port(),
+            auth: RpcAuthConfig::UserPassword {
+                username: "alice".to_string(),
+                password: "secret".to_string(),
+            },
+        },
+    };
+
+    // Act
+    let output = execute_parsed_cli(&parsed, &startup).expect("blockchain output");
+
+    // Assert
+    assert!(output.contains("\"chain\": \"regtest\""));
+    assert_eq!(
+        server.requests(),
+        vec![CapturedRequest {
+            method: "POST".to_string(),
+            path: "/".to_string(),
+            authorization: Some("Basic YWxpY2U6c2VjcmV0".to_string()),
+            body: json!({
+                "jsonrpc": "2.0",
+                "method": "getblockchaininfo",
+                "params": {},
+                "id": 1,
+            }),
         }],
     );
 }

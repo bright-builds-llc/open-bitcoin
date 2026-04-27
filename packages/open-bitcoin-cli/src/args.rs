@@ -31,6 +31,7 @@ pub struct CliStartupArgs {
     pub maybe_rpc_user: Option<String>,
     pub maybe_rpc_password: Option<String>,
     pub maybe_rpc_cookie_file: Option<PathBuf>,
+    pub maybe_rpc_wallet: Option<String>,
 }
 
 impl CliStartupArgs {
@@ -478,6 +479,37 @@ fn parameter_error_message(message: &str) -> Option<String> {
         .strip_prefix("named parameter ")?
         .strip_suffix(" was provided multiple times")?;
     Some(format!("Parameter {name} specified multiple times"))
+}
+
+#[cfg(test)]
+mod transport_tests {
+    use std::ffi::OsString;
+
+    use super::{CliCommand, RequestParameters, parse_cli_args};
+
+    fn os(value: &str) -> OsString {
+        OsString::from(value)
+    }
+
+    #[test]
+    fn rpcwallet_is_preserved_as_transport_metadata() {
+        // Arrange
+        let cli_args = [os("-rpcwallet=alpha"), os("getwalletinfo")];
+
+        // Act
+        let parsed = parse_cli_args(&cli_args, "").expect("parsed cli");
+
+        // Assert
+        assert_eq!(parsed.startup.maybe_rpc_wallet.as_deref(), Some("alpha"));
+        assert_eq!(parsed.startup.to_runtime_config_args(), Vec::<OsString>::new());
+        assert_eq!(
+            parsed.command,
+            CliCommand::RpcMethod(super::RpcMethodCommand {
+                method: "getwalletinfo".to_string(),
+                params: RequestParameters::None,
+            }),
+        );
+    }
 }
 
 #[cfg(test)]

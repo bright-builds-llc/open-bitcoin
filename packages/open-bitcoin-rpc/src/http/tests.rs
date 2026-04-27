@@ -14,6 +14,10 @@ use axum::{
     http::{HeaderMap, HeaderValue, Method, StatusCode},
 };
 use base64::Engine as _;
+use open_bitcoin_node::{
+    FjallNodeStore, PersistMode, WalletRegistry,
+    core::wallet::{AddressNetwork, Wallet},
+};
 use serde_json::json;
 use std::{fs, path::PathBuf};
 
@@ -49,6 +53,35 @@ fn state() -> crate::http::RpcHttpState {
     .expect("state")
 }
 
+fn state_with_wallet_registry(wallet_names: &[&str]) -> crate::http::RpcHttpState {
+    let path = temp_store_path("wallet-registry");
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut registry = WalletRegistry::default();
+    for wallet_name in wallet_names {
+        registry
+            .create_wallet(
+                &store,
+                (*wallet_name).to_string(),
+                Wallet::new(AddressNetwork::Regtest),
+                PersistMode::Sync,
+            )
+            .expect("create wallet");
+    }
+    let context = ManagedRpcContext::from_runtime_config(&RuntimeConfig {
+        chain: AddressNetwork::Regtest,
+        maybe_data_dir: Some(path),
+        ..RuntimeConfig::default()
+    });
+    build_http_state(
+        RpcAuthConfig::UserPassword {
+            username: "alice".to_string(),
+            password: "secret".to_string(),
+        },
+        context,
+    )
+    .expect("state")
+}
+
 fn temp_cookie_path(test_name: &str) -> PathBuf {
     let unique = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -60,6 +93,17 @@ fn temp_cookie_path(test_name: &str) -> PathBuf {
             std::process::id()
         ))
         .join(".cookie")
+}
+
+fn temp_store_path(test_name: &str) -> PathBuf {
+    let unique = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("time")
+        .as_nanos();
+    std::env::temp_dir().join(format!(
+        "open-bitcoin-rpc-{test_name}-{}-{unique}",
+        std::process::id()
+    ))
 }
 
 async fn response_json(response: axum::response::Response) -> serde_json::Value {
@@ -78,6 +122,7 @@ async fn legacy_and_json_rpc_v2_status_mapping_matches_phase_8_contract() {
     // Act
     let legacy_not_found = handle_http_request(
         &state,
+        "/",
         Method::POST,
         &headers,
         br#"{"method":"invalidmethod","params":[],"id":1}"#,
@@ -85,6 +130,7 @@ async fn legacy_and_json_rpc_v2_status_mapping_matches_phase_8_contract() {
     .await;
     let legacy_invalid_params = handle_http_request(
         &state,
+        "/",
         Method::POST,
         &headers,
         br#"{"method":"deriveaddresses","params":["wpkh(cMec2DGaTXkYJYfi7x3ZGjRXkeqmAvYAoWzMAcWj5fdLaqudWsNi)"],"id":2}"#,
@@ -92,6 +138,7 @@ async fn legacy_and_json_rpc_v2_status_mapping_matches_phase_8_contract() {
     .await;
     let v2_not_found = handle_http_request(
         &state,
+        "/",
         Method::POST,
         &headers,
         br#"{"jsonrpc":"2.0","method":"invalidmethod","params":[],"id":3}"#,
@@ -124,6 +171,7 @@ async fn json_rpc_v2_notifications_return_no_content_and_execute() {
     // Act
     let notification = handle_http_request(
         &state,
+        "/",
         Method::POST,
         &headers,
         br#"{"jsonrpc":"2.0","method":"importdescriptors","params":{"requests":[{"desc":"wpkh(cMec2DGaTXkYJYfi7x3ZGjRXkeqmAvYAoWzMAcWj5fdLaqudWsNi)","label":"receive","internal":false,"timestamp":0}]}}"#,
@@ -131,6 +179,7 @@ async fn json_rpc_v2_notifications_return_no_content_and_execute() {
     .await;
     let follow_up = handle_http_request(
         &state,
+        "/",
         Method::POST,
         &headers,
         br#"{"jsonrpc":"2.0","method":"importdescriptors","params":{"requests":[{"desc":"wpkh(cMec2DGaTXkYJYfi7x3ZGjRXkeqmAvYAoWzMAcWj5fdLaqudWsNi)","label":"receive","internal":false,"timestamp":0}]},"id":1}"#,
@@ -154,6 +203,7 @@ async fn mixed_version_batches_are_accepted() {
     // Act
     let response = handle_http_request(
         &state,
+        "/",
         Method::POST,
         &headers,
         br#"[{"method":"getwalletinfo","params":[],"id":1},{"jsonrpc":"2.0","method":"invalidmethod","params":[],"id":2}]"#,
@@ -177,6 +227,7 @@ async fn post_only_transport_rejects_unauthenticated_requests() {
     // Act
     let bad_method = handle_http_request(
         &state,
+        "/",
         Method::GET,
         &headers,
         br#"{"method":"getwalletinfo","params":[],"id":1}"#,
@@ -184,6 +235,7 @@ async fn post_only_transport_rejects_unauthenticated_requests() {
     .await;
     let missing_auth = handle_http_request(
         &state,
+        "/",
         Method::POST,
         &headers,
         br#"{"method":"getwalletinfo","params":[],"id":1}"#,
@@ -191,6 +243,7 @@ async fn post_only_transport_rejects_unauthenticated_requests() {
     .await;
     let wrong_auth = handle_http_request(
         &state,
+        "/",
         Method::POST,
         &auth_headers("alice", "wrong"),
         br#"{"method":"getwalletinfo","params":[],"id":1}"#,
@@ -202,6 +255,56 @@ async fn post_only_transport_rejects_unauthenticated_requests() {
     assert_eq!(missing_auth.status(), StatusCode::UNAUTHORIZED);
     assert!(missing_auth.headers().contains_key("www-authenticate"));
     assert_eq!(wrong_auth.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn wallet_routes_select_named_wallet_and_keep_node_methods_rooted() {
+    // Arrange
+    let state = state_with_wallet_registry(&["alpha", "beta"]);
+    let headers = auth_headers("alice", "secret");
+
+    // Act
+    let node_response = handle_http_request(
+        &state,
+        "/",
+        Method::POST,
+        &headers,
+        br#"{"jsonrpc":"2.0","method":"getblockchaininfo","params":[],"id":1}"#,
+    )
+    .await;
+    let root_wallet_failure = handle_http_request(
+        &state,
+        "/",
+        Method::POST,
+        &headers,
+        br#"{"jsonrpc":"2.0","method":"getwalletinfo","params":[],"id":2}"#,
+    )
+    .await;
+    let scoped_wallet_success = handle_http_request(
+        &state,
+        "/wallet/alpha",
+        Method::POST,
+        &headers,
+        br#"{"jsonrpc":"2.0","method":"getwalletinfo","params":[],"id":3}"#,
+    )
+    .await;
+
+    // Assert
+    assert_eq!(node_response.status(), StatusCode::OK);
+    assert_eq!(
+        response_json(node_response).await["result"]["chain"],
+        json!("regtest")
+    );
+    assert_eq!(root_wallet_failure.status(), StatusCode::OK);
+    assert_eq!(
+        response_json(root_wallet_failure).await["error"]["code"],
+        json!(-19)
+    );
+    assert_eq!(scoped_wallet_success.status(), StatusCode::OK);
+    assert_eq!(
+        response_json(scoped_wallet_success).await["result"]["network"],
+        json!("regtest")
+    );
 }
 
 #[test]
