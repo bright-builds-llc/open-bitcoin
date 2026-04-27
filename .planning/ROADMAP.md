@@ -46,7 +46,7 @@ This active milestone makes Open Bitcoin usable as an operator-facing, service-m
 - [x] **Phase 17: CLI Status and First-Run Onboarding** - Expand the clap command tree, implement rich status output, and add the idempotent wizard plus JSONC config layer. (completed 2026-04-27)
 - [x] **Phase 18: Service Lifecycle Integration** - Add macOS launchd and Linux systemd install/uninstall/enable/disable/status support with dry-run safety. (completed 2026-04-27)
 - [x] **Phase 19: Ratatui Node Dashboard** - Build the terminal dashboard on top of the shared status, metrics, logs, service, and sync models. (completed 2026-04-27)
-- [ ] **Phase 20: Wallet Runtime Expansion** - Expand practical wallet runtime behavior for send, wallet selection, descriptors, rescans, backups, and migration inspection.
+- [x] **Phase 20: Wallet Runtime Expansion** - Expand practical wallet runtime behavior for send, wallet selection, descriptors, rescans, backups, and migration inspection. (completed 2026-04-27)
 - [ ] **Phase 21: Drop-In Parity Audit and Migration** - Audit Core/Knots replacement expectations and implement detection, education, and dry-run migration plans.
 - [ ] **Phase 22: Real-Sync Benchmarks and Release Hardening** - Add real-sync benchmarks, docs, parity updates, and verification coverage for the v1.1 operator runtime.
 
@@ -193,14 +193,14 @@ Plans:
 3. HD or ranged descriptor behavior supports practical receive/change address management.
 4. Wallet rescan, recovery, and balance tracking integrate with durable sync state and survive restart.
 5. Existing Core/Knots wallet candidates can be inspected for migration planning without mutation.
-**Plans**: 5 plans
+**Plans**: 5/5 plans complete
 
 Plans:
 - [x] 20-01-PLAN.md — Pure wallet-core ranged descriptor, send-intent, and rescan-progress contracts
 - [x] 20-02-PLAN.md — Durable named-wallet registry, Fjall snapshot upgrade, and rescan job persistence
 - [x] 20-03-PLAN.md — Wallet-scoped RPC/CLI routing plus the practical Phase 20 wallet method subset
-- [ ] 20-04-PLAN.md — Shared wallet freshness status and format-aware read-only external wallet inspection
-- [ ] 20-05-PLAN.md — Operator send preview/confirm, backup export, and Phase 20 parity closeout
+- [x] 20-04-PLAN.md — Shared wallet freshness status and format-aware read-only external wallet inspection
+- [x] 20-05-PLAN.md — Operator send preview/confirm, backup export, and Phase 20 parity closeout
 
 ### Phase 21: Drop-In Parity Audit and Migration
 
@@ -233,4 +233,4 @@ Plans:
 | Milestone | Phases | Plans | Status | Shipped |
 | --- | ---: | ---: | --- | --- |
 | v1.0 Headless Parity | 22/22 | 80/80 | Archived | 2026-04-26 |
-| v1.1 Operator Runtime and Real-Network Sync | 5/10 | 21/21 | In Progress | - |
+| v1.1 Operator Runtime and Real-Network Sync | 6/10 | 32/32 | In Progress | - |

@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Operator Runtime and Real-Network Sync
-status: completed
-stopped_at: Completed 20-03-PLAN.md
-last_updated: "2026-04-27T11:49:24.761Z"
-last_activity: 2026-04-27 -- Phase 20 plan 20-03 completed with wallet-scoped RPC routing and the practical wallet RPC subset
+status: ready_for_next_phase
+stopped_at: Phase 20 verified complete
+last_updated: "2026-04-27T21:27:05Z"
+last_activity: 2026-04-27 -- Phase 20 completed and verified
 progress:
   total_phases: 10
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 32
-  completed_plans: 30
-  percent: 94
+  completed_plans: 32
+  percent: 100
 ---
 
 # Project State
@@ -21,22 +21,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-26)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 20 — wallet-runtime-expansion
+**Current focus:** Phase 21 — drop-in-parity-audit-and-migration
 
 ## Current Position
 
-Phase: 20 (wallet-runtime-expansion) — IN PROGRESS
-Plan: 20-04-PLAN.md
-Status: Plan 20-03 complete; Phase 20 continuing with plan 20-04 next
-Last activity: 2026-04-27 -- Phase 20 plan 20-03 completed with wallet-scoped RPC routing and the practical wallet RPC subset
+Phase: 21 (drop-in-parity-audit-and-migration) — READY
+Plan: TBD
+Status: Phase 20 complete; Phase 21 not planned yet
+Last activity: 2026-04-27 -- Phase 20 completed and verified
 
-Progress: 7/10 phases complete
+Progress: 8/10 phases complete
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed in v1.1: 21
+- Total plans completed in v1.1: 32
 - Average duration: not available yet
 - Total execution time: not available yet
 
@@ -51,7 +51,7 @@ Progress: 7/10 phases complete
 | 17 | 5 | - | - |
 | 18 | 3 | - | - |
 | 19 | 3 | - | - |
-| 20 | TBD | - | - |
+| 20 | 5 | - | - |
 | 21 | TBD | - | - |
 | 22 | TBD | - | - |
 
@@ -63,6 +63,7 @@ Progress: 7/10 phases complete
 - Phase 17 completed 5 CLI status and first-run onboarding plans on 2026-04-27.
 - Phase 18 completed 3 service lifecycle integration plans on 2026-04-27.
 - Phase 19 completed 3 ratatui dashboard plans on 2026-04-27.
+- Phase 20 completed 5 wallet runtime expansion plans on 2026-04-27.
 
 | Phase 16 P01 | 12 min | 2 tasks | 4 files |
 | Phase 16 P02 | 18 min | 2 tasks | 7 files |
@@ -70,6 +71,8 @@ Progress: 7/10 phases complete
 | Phase 20-wallet-runtime-expansion P01 | 9 min | 2 tasks | 6 files |
 | Phase 20-wallet-runtime-expansion P02 | 17m | 2 tasks | 12 files |
 | Phase 20-wallet-runtime-expansion P03 | 24m | 2 tasks | 12 files |
+| Phase 20-wallet-runtime-expansion P04 | - | 2 tasks | 13 files |
+| Phase 20-wallet-runtime-expansion P05 | - | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -119,7 +122,7 @@ Recent decisions affecting current work:
 - Durable database choice must be made deliberately before real-network sync relies on it.
 - Migration flows must not mutate existing Core/Knots data until detection, explanation, backup, and dry-run behavior are implemented.
 - The TUI dashboard depends on stable status, metrics, and sync-state projections; avoid building a decorative dashboard before those data contracts exist.
-- Repo-native `scripts/verify.sh` is currently blocked by a stale generated LOC report at `docs/metrics/lines-of-code.md`, which remains outside Plan 20-02's owned write set.
+- `bash scripts/verify.sh` passes again after the post-Phase-20 verification cleanup refactor.
 
 ### Quick Tasks Completed
 
@@ -136,6 +139,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-27T11:49:24.757Z
-Stopped at: Completed 20-03-PLAN.md
-Resume file: None
+Last session: 2026-04-27T21:27:05Z
+Stopped at: Phase 20 verified complete
+Resume file: .planning/ROADMAP.md
