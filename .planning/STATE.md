@@ -4,7 +4,7 @@ milestone: v1.1
 milestone_name: Operator Runtime and Real-Network Sync
 status: planning
 stopped_at: Phase 19 context gathered
-last_updated: "2026-04-27T09:04:29.933Z"
+last_updated: "2026-04-27T09:04:57.339Z"
 last_activity: 2026-04-27
 progress:
   total_phases: 10
@@ -122,6 +122,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-27T09:04:29.930Z
+Last session: 2026-04-27T09:04:57.335Z
 Stopped at: Phase 19 context gathered
-Resume file: /Users/peterryszkiewicz/Repos/open-bitcoin/.planning/phases/19-ratatui-node-dashboard/19-CONTEXT.md
+Resume file: .planning/phases/19-ratatui-node-dashboard/19-CONTEXT.md
