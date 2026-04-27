@@ -50,6 +50,7 @@ impl std::error::Error for ConfigError {}
 pub enum WalletRuntimeScope {
     #[default]
     LocalOperatorSingleWallet,
+    DurableNamedRegistry,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

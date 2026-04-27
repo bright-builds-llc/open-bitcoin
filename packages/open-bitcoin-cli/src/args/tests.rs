@@ -161,14 +161,14 @@ fn named_arguments_reject_positional_collisions() {
 }
 
 #[test]
-fn deferred_cli_surfaces_fail_with_actionable_errors() {
+fn deferred_netinfo_and_supported_rpcwallet_behave_as_documented() {
     // Arrange
     let netinfo_args = vec![os("-netinfo")];
     let rpcwallet_args = vec![os("-rpcwallet=wallet.dat"), os("getwalletinfo")];
 
     // Act
     let netinfo_error = parse_cli_args(&netinfo_args, "").expect_err("netinfo is deferred");
-    let rpcwallet_error = parse_cli_args(&rpcwallet_args, "").expect_err("rpcwallet is deferred");
+    let rpcwallet = parse_cli_args(&rpcwallet_args, "").expect("rpcwallet is supported");
 
     // Assert
     assert_eq!(
@@ -176,7 +176,14 @@ fn deferred_cli_surfaces_fail_with_actionable_errors() {
         "-netinfo is deferred until the getpeerinfo-backed network dashboard lands in a later Phase 8 plan.",
     );
     assert_eq!(
-        rpcwallet_error.to_string(),
-        "-rpcwallet is deferred until wallet-scoped RPC endpoints land in a later Phase 8 plan.",
+        rpcwallet.startup.maybe_rpc_wallet.as_deref(),
+        Some("wallet.dat"),
+    );
+    assert_eq!(
+        rpcwallet.command,
+        CliCommand::RpcMethod(super::RpcMethodCommand {
+            method: "getwalletinfo".to_string(),
+            params: RequestParameters::None,
+        }),
     );
 }

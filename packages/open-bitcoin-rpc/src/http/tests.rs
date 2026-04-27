@@ -67,6 +67,7 @@ fn state_with_wallet_registry(wallet_names: &[&str]) -> crate::http::RpcHttpStat
             )
             .expect("create wallet");
     }
+    drop(store);
     let context = ManagedRpcContext::from_runtime_config(&RuntimeConfig {
         chain: AddressNetwork::Regtest,
         maybe_data_dir: Some(path),

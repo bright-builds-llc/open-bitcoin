@@ -21,6 +21,12 @@ pub enum MethodOrigin {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum MethodScope {
+    Node,
+    Wallet,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SupportedMethod {
     #[serde(rename = "getblockchaininfo")]
     GetBlockchainInfo,
@@ -32,6 +38,14 @@ pub enum SupportedMethod {
     SendRawTransaction,
     #[serde(rename = "deriveaddresses")]
     DeriveAddresses,
+    #[serde(rename = "sendtoaddress")]
+    SendToAddress,
+    #[serde(rename = "getnewaddress")]
+    GetNewAddress,
+    #[serde(rename = "getrawchangeaddress")]
+    GetRawChangeAddress,
+    #[serde(rename = "listdescriptors")]
+    ListDescriptors,
     #[serde(rename = "getwalletinfo")]
     GetWalletInfo,
     #[serde(rename = "getbalances")]
@@ -56,6 +70,10 @@ impl SupportedMethod {
             Self::GetNetworkInfo,
             Self::SendRawTransaction,
             Self::DeriveAddresses,
+            Self::SendToAddress,
+            Self::GetNewAddress,
+            Self::GetRawChangeAddress,
+            Self::ListDescriptors,
             Self::GetWalletInfo,
             Self::GetBalances,
             Self::ListUnspent,
@@ -73,6 +91,10 @@ impl SupportedMethod {
             Self::GetNetworkInfo => "getnetworkinfo",
             Self::SendRawTransaction => "sendrawtransaction",
             Self::DeriveAddresses => "deriveaddresses",
+            Self::SendToAddress => "sendtoaddress",
+            Self::GetNewAddress => "getnewaddress",
+            Self::GetRawChangeAddress => "getrawchangeaddress",
+            Self::ListDescriptors => "listdescriptors",
             Self::GetWalletInfo => "getwalletinfo",
             Self::GetBalances => "getbalances",
             Self::ListUnspent => "listunspent",
@@ -89,6 +111,27 @@ impl SupportedMethod {
                 MethodOrigin::OpenBitcoinExtension
             }
             _ => MethodOrigin::BaselineParity,
+        }
+    }
+
+    pub const fn scope(self) -> MethodScope {
+        match self {
+            Self::GetWalletInfo
+            | Self::SendToAddress
+            | Self::GetNewAddress
+            | Self::GetRawChangeAddress
+            | Self::ListDescriptors
+            | Self::GetBalances
+            | Self::ListUnspent
+            | Self::ImportDescriptors
+            | Self::RescanBlockchain
+            | Self::BuildTransaction
+            | Self::BuildAndSignTransaction => MethodScope::Wallet,
+            Self::GetBlockchainInfo
+            | Self::GetMempoolInfo
+            | Self::GetNetworkInfo
+            | Self::SendRawTransaction
+            | Self::DeriveAddresses => MethodScope::Node,
         }
     }
 
@@ -129,6 +172,10 @@ pub enum MethodCall {
     GetNetworkInfo(GetNetworkInfoRequest),
     SendRawTransaction(SendRawTransactionRequest),
     DeriveAddresses(DeriveAddressesRequest),
+    SendToAddress(SendToAddressRequest),
+    GetNewAddress(GetNewAddressRequest),
+    GetRawChangeAddress(GetRawChangeAddressRequest),
+    ListDescriptors(ListDescriptorsRequest),
     GetWalletInfo(GetWalletInfoRequest),
     GetBalances(GetBalancesRequest),
     ListUnspent(ListUnspentRequest),
@@ -136,6 +183,29 @@ pub enum MethodCall {
     RescanBlockchain(RescanBlockchainRequest),
     BuildTransaction(BuildTransactionRequest),
     BuildAndSignTransaction(BuildAndSignTransactionRequest),
+}
+
+impl MethodCall {
+    pub const fn scope(&self) -> MethodScope {
+        match self {
+            Self::GetWalletInfo(_)
+            | Self::SendToAddress(_)
+            | Self::GetNewAddress(_)
+            | Self::GetRawChangeAddress(_)
+            | Self::ListDescriptors(_)
+            | Self::GetBalances(_)
+            | Self::ListUnspent(_)
+            | Self::ImportDescriptors(_)
+            | Self::RescanBlockchain(_)
+            | Self::BuildTransaction(_)
+            | Self::BuildAndSignTransaction(_) => MethodScope::Wallet,
+            Self::GetBlockchainInfo(_)
+            | Self::GetMempoolInfo(_)
+            | Self::GetNetworkInfo(_)
+            | Self::SendRawTransaction(_)
+            | Self::DeriveAddresses(_) => MethodScope::Node,
+        }
+    }
 }
 
 pub fn normalize_method_call(
@@ -176,6 +246,32 @@ pub fn normalize_method_call(
                 ));
             }
             Ok(MethodCall::DeriveAddresses(request))
+        }
+        SupportedMethod::SendToAddress => normalize_request::<SendToAddressRequest>(
+            &[
+                "address",
+                "amount_sats",
+                "fee_rate_sat_per_kvb",
+                "conf_target",
+                "estimate_mode",
+                "change_descriptor_id",
+                "lock_time",
+                "replaceable",
+                "max_tx_fee_sats",
+            ],
+            params,
+        )
+        .map(MethodCall::SendToAddress),
+        SupportedMethod::GetNewAddress => {
+            normalize_request::<GetNewAddressRequest>(&[], params).map(MethodCall::GetNewAddress)
+        }
+        SupportedMethod::GetRawChangeAddress => {
+            normalize_request::<GetRawChangeAddressRequest>(&[], params)
+                .map(MethodCall::GetRawChangeAddress)
+        }
+        SupportedMethod::ListDescriptors => {
+            normalize_request::<ListDescriptorsRequest>(&[], params)
+                .map(MethodCall::ListDescriptors)
         }
         SupportedMethod::GetWalletInfo => {
             normalize_request::<GetWalletInfoRequest>(&[], params).map(MethodCall::GetWalletInfo)
@@ -375,6 +471,74 @@ pub struct DeriveAddressesResponse {
     pub addresses: Vec<String>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum EstimateMode {
+    Unset,
+    Economical,
+    Conservative,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SendToAddressRequest {
+    pub address: String,
+    pub amount_sats: i64,
+    #[serde(rename = "fee_rate_sat_per_kvb", default)]
+    pub maybe_fee_rate_sat_per_kvb: Option<i64>,
+    #[serde(rename = "conf_target", default)]
+    pub maybe_conf_target: Option<u16>,
+    #[serde(rename = "estimate_mode", default)]
+    pub maybe_estimate_mode: Option<EstimateMode>,
+    #[serde(rename = "change_descriptor_id", default)]
+    pub maybe_change_descriptor_id: Option<u32>,
+    #[serde(rename = "lock_time", default)]
+    pub maybe_lock_time: Option<u32>,
+    #[serde(rename = "replaceable", default)]
+    pub enable_rbf: bool,
+    #[serde(rename = "max_tx_fee_sats", default)]
+    pub maybe_max_tx_fee_sats: Option<i64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GetNewAddressRequest {}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GetRawChangeAddressRequest {}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ListDescriptorsRequest {}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ListDescriptorEntry {
+    #[serde(rename = "desc")]
+    pub descriptor: String,
+    pub active: bool,
+    pub internal: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub maybe_range: Option<DescriptorRange>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub maybe_next_index: Option<u32>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ListDescriptorsResponse {
+    #[serde(rename = "walletname", skip_serializing_if = "Option::is_none")]
+    pub maybe_wallet_name: Option<String>,
+    pub descriptors: Vec<ListDescriptorEntry>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum WalletFreshness {
+    Fresh,
+    Partial,
+    Scanning,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct GetWalletInfoRequest {}
@@ -493,6 +657,12 @@ pub struct RescanBlockchainRequest {
 pub struct RescanBlockchainResponse {
     pub start_height: u32,
     pub stop_height: u32,
+    pub scanning: bool,
+    pub freshness: WalletFreshness,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub maybe_scanned_through_height: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub maybe_rescan_next_height: Option<u32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

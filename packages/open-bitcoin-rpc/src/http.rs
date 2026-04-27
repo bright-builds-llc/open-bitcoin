@@ -22,7 +22,7 @@ use std::os::unix::fs::OpenOptionsExt;
 use axum::{
     Router,
     body::{Body, Bytes},
-    extract::State,
+    extract::{OriginalUri, State},
     http::{HeaderMap, HeaderValue, Method, StatusCode},
     response::Response,
     routing::any,
@@ -34,7 +34,7 @@ use crate::{
     JsonRpcId, ManagedRpcContext, RpcAuthConfig, RpcFailure, RpcFailureKind,
     config::DEFAULT_COOKIE_AUTH_USER,
     dispatch::dispatch,
-    method::{RequestParameters, normalize_method_call},
+    method::{MethodScope, RequestParameters, normalize_method_call},
 };
 
 const WWW_AUTH_HEADER_DATA: &str = "Basic realm=\"jsonrpc\"";
@@ -84,11 +84,15 @@ pub fn build_http_state(
 }
 
 pub fn router(state: RpcHttpState) -> Router {
-    Router::new().route("/", any(rpc_handler)).with_state(state)
+    Router::new()
+        .route("/", any(rpc_handler))
+        .route("/wallet/{*wallet_name}", any(rpc_handler))
+        .with_state(state)
 }
 
 pub async fn handle_http_request(
     state: &RpcHttpState,
+    path: &str,
     method: Method,
     headers: &HeaderMap,
     body: &[u8],
@@ -117,8 +121,8 @@ pub async fn handle_http_request(
     };
 
     match value {
-        serde_json::Value::Object(_) => handle_single_request(state, value).await,
-        serde_json::Value::Array(batch) => handle_batch_request(state, batch).await,
+        serde_json::Value::Object(_) => handle_single_request(state, path, value).await,
+        serde_json::Value::Array(batch) => handle_batch_request(state, path, batch).await,
         _ => json_response(
             StatusCode::INTERNAL_SERVER_ERROR,
             legacy_error_body(
@@ -131,14 +135,19 @@ pub async fn handle_http_request(
 
 async fn rpc_handler(
     State(state): State<RpcHttpState>,
+    OriginalUri(uri): OriginalUri,
     method: Method,
     headers: HeaderMap,
     body: Bytes,
 ) -> Response {
-    handle_http_request(&state, method, &headers, &body).await
+    handle_http_request(&state, uri.path(), method, &headers, &body).await
 }
 
-async fn handle_single_request(state: &RpcHttpState, value: serde_json::Value) -> Response {
+async fn handle_single_request(
+    state: &RpcHttpState,
+    path: &str,
+    value: serde_json::Value,
+) -> Response {
     let parsed = match parse_request(value) {
         Ok(parsed) => parsed,
         Err(error) => {
@@ -150,13 +159,17 @@ async fn handle_single_request(state: &RpcHttpState, value: serde_json::Value) -
         }
     };
 
-    match execute_request(state, parsed).await {
+    match execute_request(state, path, parsed).await {
         Some((status, body)) => json_response(status, body),
         None => empty_response(StatusCode::NO_CONTENT),
     }
 }
 
-async fn handle_batch_request(state: &RpcHttpState, batch: Vec<serde_json::Value>) -> Response {
+async fn handle_batch_request(
+    state: &RpcHttpState,
+    path: &str,
+    batch: Vec<serde_json::Value>,
+) -> Response {
     if batch.is_empty() {
         return json_response(StatusCode::OK, serde_json::Value::Array(Vec::new()));
     }
@@ -166,7 +179,7 @@ async fn handle_batch_request(state: &RpcHttpState, batch: Vec<serde_json::Value
     for value in batch {
         match parse_request(value) {
             Ok(parsed) => {
-                if let Some((_status, body)) = execute_request(state, parsed).await {
+                if let Some((_status, body)) = execute_request(state, path, parsed).await {
                     responses.push(body);
                 }
             }
@@ -183,6 +196,7 @@ async fn handle_batch_request(state: &RpcHttpState, batch: Vec<serde_json::Value
 
 async fn execute_request(
     state: &RpcHttpState,
+    path: &str,
     parsed: ParsedRequest,
 ) -> Option<(StatusCode, serde_json::Value)> {
     let call = match normalize_method_call(
@@ -201,8 +215,33 @@ async fn execute_request(
         }
     };
 
+    let maybe_wallet_name = match parse_request_wallet_name(path) {
+        Ok(maybe_wallet_name) => maybe_wallet_name,
+        Err(failure) => {
+            if parsed.is_notification {
+                return None;
+            }
+            return Some((
+                status_for_single(parsed.version, failure.kind),
+                error_body(parsed.version, parsed.maybe_id, failure),
+            ));
+        }
+    };
+
     let mut context = state.context.lock().await;
+    context.set_request_wallet_name(maybe_wallet_name.clone());
+    if let Err(failure) = validate_scope(&mut context, call.scope(), maybe_wallet_name.as_deref()) {
+        context.clear_request_wallet_name();
+        if parsed.is_notification {
+            return None;
+        }
+        return Some((
+            status_for_single(parsed.version, failure.kind),
+            error_body(parsed.version, parsed.maybe_id, failure),
+        ));
+    }
     let result = dispatch(&mut context, call);
+    context.clear_request_wallet_name();
     match result {
         Ok(result) => {
             if parsed.is_notification {
@@ -224,6 +263,81 @@ async fn execute_request(
                 ))
             }
         }
+    }
+}
+
+fn validate_scope(
+    context: &mut ManagedRpcContext,
+    scope: MethodScope,
+    maybe_wallet_name: Option<&str>,
+) -> Result<(), RpcFailure> {
+    match scope {
+        MethodScope::Node => {
+            if maybe_wallet_name.is_some() {
+                return Err(RpcFailure::invalid_request(
+                    "Node-scoped RPC methods must be requested through the root URI path.",
+                ));
+            }
+            Ok(())
+        }
+        MethodScope::Wallet => context.require_wallet_selection(),
+    }
+}
+
+fn parse_request_wallet_name(path: &str) -> Result<Option<String>, RpcFailure> {
+    if path == "/" {
+        return Ok(None);
+    }
+
+    let Some(wallet_name) = path.strip_prefix("/wallet/") else {
+        return Err(RpcFailure::invalid_request(
+            "RPC requests must target / or /wallet/<walletname>.",
+        ));
+    };
+    if wallet_name.is_empty() {
+        return Err(RpcFailure::invalid_request(
+            "Wallet RPC requests must include a wallet name in the URI path.",
+        ));
+    }
+
+    percent_decode_path_segment(wallet_name).map(Some)
+}
+
+fn percent_decode_path_segment(value: &str) -> Result<String, RpcFailure> {
+    let mut decoded = String::with_capacity(value.len());
+    let bytes = value.as_bytes();
+    let mut index = 0;
+
+    while index < bytes.len() {
+        if bytes[index] != b'%' {
+            decoded.push(char::from(bytes[index]));
+            index += 1;
+            continue;
+        }
+
+        if index + 2 >= bytes.len() {
+            return Err(RpcFailure::invalid_request(
+                "Wallet URI path contains an invalid percent-encoding sequence.",
+            ));
+        }
+
+        let high = decode_hex_nibble(bytes[index + 1])?;
+        let low = decode_hex_nibble(bytes[index + 2])?;
+        decoded.push(char::from((high << 4) | low));
+        index += 3;
+    }
+
+    Ok(decoded)
+}
+
+fn decode_hex_nibble(value: u8) -> Result<u8, RpcFailure> {
+    match value {
+        b'0'..=b'9' => Ok(value - b'0'),
+        b'a'..=b'f' => Ok(value - b'a' + 10),
+        b'A'..=b'F' => Ok(value - b'A' + 10),
+        _ => Err(RpcFailure::invalid_request(
+            "Wallet URI path contains an invalid percent-encoding sequence.",
+        )),
     }
 }
 

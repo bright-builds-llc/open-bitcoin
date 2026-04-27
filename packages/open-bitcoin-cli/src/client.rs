@@ -12,7 +12,7 @@ use open_bitcoin_cli::{
 };
 use open_bitcoin_rpc::{
     JsonRpcId, JsonRpcVersion, RpcAuthConfig, RpcErrorDetail, RpcRequestEnvelope,
-    method::{MethodCall, RequestParameters, SupportedMethod, normalize_method_call},
+    method::{MethodCall, MethodScope, RequestParameters, SupportedMethod, normalize_method_call},
 };
 use serde::Serialize;
 use serde_json::Value;
@@ -35,7 +35,8 @@ pub fn execute_parsed_cli(
     parsed: &ParsedCli,
     startup: &CliStartupConfig,
 ) -> Result<String, CliCommandFailure> {
-    let client = RpcHttpClient::from_config(&startup.rpc)?;
+    let client =
+        RpcHttpClient::from_config(&startup.rpc, parsed.startup.maybe_rpc_wallet.as_deref())?;
 
     match &parsed.command {
         CliCommand::GetInfo(command) => {
@@ -53,19 +54,28 @@ pub fn execute_parsed_cli(
 
 struct RpcHttpClient {
     agent: Agent,
-    endpoint_url: String,
-    endpoint_display: String,
+    root_endpoint_url: String,
+    root_endpoint_display: String,
+    maybe_wallet_endpoint_url: Option<String>,
+    maybe_wallet_endpoint_display: Option<String>,
     authorization_header: String,
 }
 
 impl RpcHttpClient {
-    fn from_config(config: &CliRpcConfig) -> Result<Self, CliCommandFailure> {
+    fn from_config(
+        config: &CliRpcConfig,
+        maybe_wallet_name: Option<&str>,
+    ) -> Result<Self, CliCommandFailure> {
         Ok(Self {
             agent: Agent::new_with_config(
                 Agent::config_builder().http_status_as_error(false).build(),
             ),
-            endpoint_url: rpc_endpoint_url(config),
-            endpoint_display: rpc_endpoint_display(config),
+            root_endpoint_url: rpc_root_endpoint_url(config),
+            root_endpoint_display: rpc_root_endpoint_display(config),
+            maybe_wallet_endpoint_url: maybe_wallet_name
+                .map(|wallet_name| rpc_wallet_endpoint_url(config, wallet_name)),
+            maybe_wallet_endpoint_display: maybe_wallet_name
+                .map(|wallet_name| rpc_wallet_endpoint_display(config, wallet_name)),
             authorization_header: authorization_header(&config.auth)?,
         })
     }
@@ -76,21 +86,43 @@ impl RpcHttpClient {
         params: RequestParameters,
     ) -> Result<Value, CliCommandFailure> {
         let request = build_request_envelope(method_name, params, 1)?;
-        let response = self.post_json(&request)?;
+        let scope = SupportedMethod::from_name(method_name)
+            .map(SupportedMethod::scope)
+            .unwrap_or(MethodScope::Node);
+        let response = self.post_json(scope, &request)?;
         extract_result(response)
     }
 
     fn getinfo_snapshot(&self, batch: &GetInfoBatch) -> Result<GetInfoSnapshot, CliCommandFailure> {
-        let requests = batch
-            .calls
-            .iter()
-            .enumerate()
-            .map(|(index, call)| {
-                build_request_envelope(call.method.name(), call.params.clone(), index as i64)
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-        let response = self.post_json(&requests)?;
-        let results_by_id = parse_batch_results(response)?;
+        let mut root_requests = Vec::new();
+        let mut wallet_requests = Vec::new();
+
+        for (index, call) in batch.calls.iter().enumerate() {
+            let request =
+                build_request_envelope(call.method.name(), call.params.clone(), index as i64)?;
+            match call.method.scope() {
+                MethodScope::Node => root_requests.push(request),
+                MethodScope::Wallet => {
+                    if self.maybe_wallet_endpoint_url.is_some() {
+                        wallet_requests.push(request);
+                    } else {
+                        root_requests.push(request);
+                    }
+                }
+            }
+        }
+
+        let mut results_by_id = BTreeMap::new();
+        if !root_requests.is_empty() {
+            results_by_id.extend(parse_batch_results(
+                self.post_json(MethodScope::Node, &root_requests)?,
+            )?);
+        }
+        if !wallet_requests.is_empty() {
+            results_by_id.extend(parse_batch_results(
+                self.post_json(MethodScope::Wallet, &wallet_requests)?,
+            )?);
+        }
 
         Ok(GetInfoSnapshot {
             network: decode_batch_result(&results_by_id, 0)?,
@@ -100,22 +132,25 @@ impl RpcHttpClient {
         })
     }
 
-    fn post_json<T: Serialize>(&self, body: &T) -> Result<Value, CliCommandFailure> {
+    fn post_json<T: Serialize>(
+        &self,
+        scope: MethodScope,
+        body: &T,
+    ) -> Result<Value, CliCommandFailure> {
+        let (endpoint_url, endpoint_display) = self.endpoint_for_scope(scope);
         let response = self
             .agent
-            .post(&self.endpoint_url)
+            .post(endpoint_url)
             .header("Authorization", &self.authorization_header)
             .send_json(body)
-            .map_err(|error| {
-                CliCommandFailure::connection_failure(&self.endpoint_display, &error)
-            })?;
+            .map_err(|error| CliCommandFailure::connection_failure(endpoint_display, &error))?;
         let status = response.status().as_u16();
         if status == 401 {
             return Err(CliCommandFailure::authentication_failed());
         }
         if status != 200 {
             return Err(CliCommandFailure::http_status_failure(
-                &self.endpoint_display,
+                endpoint_display,
                 status,
             ));
         }
@@ -124,6 +159,19 @@ impl RpcHttpClient {
             .into_body()
             .read_json()
             .map_err(|error| CliCommandFailure::invalid_response(error.to_string()))
+    }
+
+    fn endpoint_for_scope(&self, scope: MethodScope) -> (&str, &str) {
+        if scope == MethodScope::Wallet
+            && let (Some(endpoint_url), Some(endpoint_display)) = (
+                self.maybe_wallet_endpoint_url.as_deref(),
+                self.maybe_wallet_endpoint_display.as_deref(),
+            )
+        {
+            return (endpoint_url, endpoint_display);
+        }
+
+        (&self.root_endpoint_url, &self.root_endpoint_display)
     }
 }
 
@@ -160,6 +208,10 @@ fn method_call_to_json(call: MethodCall) -> Result<Value, CliCommandFailure> {
         MethodCall::GetNetworkInfo(request) => to_json_value(request),
         MethodCall::SendRawTransaction(request) => to_json_value(request),
         MethodCall::DeriveAddresses(request) => to_json_value(request),
+        MethodCall::SendToAddress(request) => to_json_value(request),
+        MethodCall::GetNewAddress(request) => to_json_value(request),
+        MethodCall::GetRawChangeAddress(request) => to_json_value(request),
+        MethodCall::ListDescriptors(request) => to_json_value(request),
         MethodCall::GetWalletInfo(request) => to_json_value(request),
         MethodCall::GetBalances(request) => to_json_value(request),
         MethodCall::ListUnspent(request) => to_json_value(request),
@@ -298,12 +350,28 @@ fn authorization_header(auth: &RpcAuthConfig) -> Result<String, CliCommandFailur
     Ok(format!("Basic {}", base64_encode(credentials.as_bytes())))
 }
 
-fn rpc_endpoint_url(config: &CliRpcConfig) -> String {
+fn rpc_root_endpoint_url(config: &CliRpcConfig) -> String {
     format!("http://{}/", format_host_for_url(&config.host, config.port),)
 }
 
-fn rpc_endpoint_display(config: &CliRpcConfig) -> String {
+fn rpc_root_endpoint_display(config: &CliRpcConfig) -> String {
     format_host_for_url(&config.host, config.port)
+}
+
+fn rpc_wallet_endpoint_url(config: &CliRpcConfig, wallet_name: &str) -> String {
+    format!(
+        "http://{}/wallet/{}",
+        format_host_for_url(&config.host, config.port),
+        percent_encode_path_segment(wallet_name),
+    )
+}
+
+fn rpc_wallet_endpoint_display(config: &CliRpcConfig, wallet_name: &str) -> String {
+    format!(
+        "{}/wallet/{}",
+        format_host_for_url(&config.host, config.port),
+        percent_encode_path_segment(wallet_name),
+    )
 }
 
 fn format_host_for_url(host: &str, port: u16) -> String {
@@ -339,6 +407,29 @@ fn base64_encode(bytes: &[u8]) -> String {
     }
 
     output
+}
+
+fn percent_encode_path_segment(value: &str) -> String {
+    let mut encoded = String::with_capacity(value.len());
+    for byte in value.bytes() {
+        if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b'~') {
+            encoded.push(char::from(byte));
+            continue;
+        }
+
+        encoded.push('%');
+        encoded.push(nibble_to_hex(byte >> 4));
+        encoded.push(nibble_to_hex(byte & 0x0f));
+    }
+    encoded
+}
+
+const fn nibble_to_hex(value: u8) -> char {
+    match value {
+        0..=9 => (b'0' + value) as char,
+        10..=15 => (b'A' + (value - 10)) as char,
+        _ => '?',
+    }
 }
 
 #[cfg(test)]

@@ -374,8 +374,8 @@ fn rpcwallet_routes_wallet_methods_through_wallet_path() {
         },
         "id": 1,
     }));
-    let parsed = parse_cli_args(&[os("-rpcwallet=alpha"), os("getwalletinfo")], "")
-        .expect("parsed cli");
+    let parsed =
+        parse_cli_args(&[os("-rpcwallet=alpha"), os("getwalletinfo")], "").expect("parsed cli");
     let startup = CliStartupConfig {
         conf_path: std::env::temp_dir().join("bitcoin.conf"),
         maybe_data_dir: None,
@@ -394,14 +394,14 @@ fn rpcwallet_routes_wallet_methods_through_wallet_path() {
 
     // Assert
     assert_eq!(
-        output,
-        r#"{
-  "network": "regtest",
-  "descriptor_count": 0,
-  "utxo_count": 0,
-  "maybe_tip_height": null,
-  "maybe_tip_median_time_past": null
-}"#
+        serde_json::from_str::<serde_json::Value>(&output).expect("wallet json"),
+        json!({
+            "network": "regtest",
+            "descriptor_count": 0,
+            "utxo_count": 0,
+            "maybe_tip_height": null,
+            "maybe_tip_median_time_past": null
+        }),
     );
     assert_eq!(
         server.requests(),

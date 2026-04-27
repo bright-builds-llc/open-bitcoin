@@ -206,14 +206,17 @@ pub fn parse_cli_args(cli_args: &[OsString], stdin: &str) -> Result<ParsedCli, C
                 startup.maybe_rpc_cookie_file =
                     Some(PathBuf::from(maybe_value.unwrap_or_default()));
             }
+            "rpcwallet" => {
+                let Some(value) = maybe_value else {
+                    return Err(CliError::new(
+                        "Error parsing command line arguments: Can not set -rpcwallet with no value. Please specify value with -rpcwallet=value.",
+                    ));
+                };
+                startup.maybe_rpc_wallet = Some(value.to_string());
+            }
             "netinfo" => {
                 return Err(CliError::new(
                     "-netinfo is deferred until the getpeerinfo-backed network dashboard lands in a later Phase 8 plan.",
-                ));
-            }
-            "rpcwallet" => {
-                return Err(CliError::new(
-                    "-rpcwallet is deferred until wallet-scoped RPC endpoints land in a later Phase 8 plan.",
                 ));
             }
             _ => {
@@ -501,7 +504,10 @@ mod transport_tests {
 
         // Assert
         assert_eq!(parsed.startup.maybe_rpc_wallet.as_deref(), Some("alpha"));
-        assert_eq!(parsed.startup.to_runtime_config_args(), Vec::<OsString>::new());
+        assert_eq!(
+            parsed.startup.to_runtime_config_args(),
+            Vec::<OsString>::new()
+        );
         assert_eq!(
             parsed.command,
             CliCommand::RpcMethod(super::RpcMethodCommand {
