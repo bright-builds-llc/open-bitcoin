@@ -39,18 +39,18 @@
 
 ### Durable Storage and Runtime Hardening
 
-- [x] **DB-01**: Contributors can inspect a documented database decision that compares Rust-native and RocksDB-style storage options against chainstate, header, block-index, wallet, metrics, recovery, Bazel, and dependency constraints.
-- [x] **DB-02**: Node persists headers, block index metadata, chainstate or UTXO state, undo/reorg metadata, wallet state, runtime metadata, and schema version information across restart.
-- [x] **DB-03**: Storage layer detects incompatible schema versions and corruption conditions and returns typed recovery errors instead of panicking.
-- [x] **DB-04**: Node can recover from interrupted writes through tested restart, replay, reindex, or repair flows.
-- [x] **DB-05**: Durable storage remains behind adapter traits so pure consensus, chainstate, mempool, wallet, and protocol code remain free of filesystem and database dependencies.
+- [ ] **DB-01**: Contributors can inspect a documented database decision that compares Rust-native and RocksDB-style storage options against chainstate, header, block-index, wallet, metrics, recovery, Bazel, and dependency constraints.
+- [ ] **DB-02**: Node persists headers, block index metadata, chainstate or UTXO state, undo/reorg metadata, wallet state, runtime metadata, and schema version information across restart.
+- [ ] **DB-03**: Storage layer detects incompatible schema versions and corruption conditions and returns typed recovery errors instead of panicking.
+- [ ] **DB-04**: Node can recover from interrupted writes through tested restart, replay, reindex, or repair flows.
+- [ ] **DB-05**: Durable storage remains behind adapter traits so pure consensus, chainstate, mempool, wallet, and protocol code remain free of filesystem and database dependencies.
 
 ### Real Network Sync
 
-- [x] **SYNC-01**: Node can establish long-running outbound peer connections using configured peers and DNS/manual seed sources for supported networks.
-- [x] **SYNC-02**: Node can perform initial headers sync against real peers, persist progress, and resume after restart.
-- [x] **SYNC-03**: Node can request, download, validate, persist, and connect blocks from real peers with bounded in-flight work and observable progress.
-- [x] **SYNC-04**: Node handles peer disconnects, invalid data, timeouts, stalls, and competing branches with typed errors, metrics, and retry behavior.
+- [ ] **SYNC-01**: Node can establish long-running outbound peer connections using configured peers and DNS/manual seed sources for supported networks.
+- [ ] **SYNC-02**: Node can perform initial headers sync against real peers, persist progress, and resume after restart.
+- [ ] **SYNC-03**: Node can request, download, validate, persist, and connect blocks from real peers with bounded in-flight work and observable progress.
+- [ ] **SYNC-04**: Node handles peer disconnects, invalid data, timeouts, stalls, and competing branches with typed errors, metrics, and retry behavior.
 - [x] **SYNC-05**: Sync behavior is covered by deterministic simulated-network tests plus opt-in live-network smoke tests that do not make default verification flaky.
 - [x] **SYNC-06**: Sync progress and bottlenecks are visible through status, metrics history, logs, and dashboard panels.
 
@@ -102,56 +102,57 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| OBS-01 | Phase 13, Phase 17 | Complete |
-| OBS-02 | Phase 17 | Complete |
+| OBS-01 | Phase 13, Phase 17, Phase 24 | Pending |
+| OBS-02 | Phase 17, Phase 24 | Pending |
 | OBS-03 | Phase 13, Phase 16 | Complete |
 | OBS-04 | Phase 13, Phase 16 | Complete |
 | OBS-05 | Phase 16, Phase 17 | Complete |
-| DASH-01 | Phase 19 | Pending |
-| DASH-02 | Phase 19 | Pending |
-| DASH-03 | Phase 19 | Pending |
-| DASH-04 | Phase 19 | Pending |
+| DASH-01 | Phase 19, Phase 24 | Pending |
+| DASH-02 | Phase 19, Phase 26 | Pending |
+| DASH-03 | Phase 19, Phase 23 | Pending |
+| DASH-04 | Phase 19, Phase 26 | Pending |
 | CLI-03 | Phase 13, Phase 17 | Complete |
 | CLI-04 | Phase 17 | Complete |
 | CLI-05 | Phase 13, Phase 17 | Complete |
 | CLI-06 | Phase 13, Phase 17 | Complete |
 | CLI-07 | Phase 17, Phase 21 | Complete |
-| SVC-01 | Phase 18 | Pending |
-| SVC-02 | Phase 18 | Pending |
-| SVC-03 | Phase 18 | Pending |
-| SVC-04 | Phase 18 | Pending |
-| SVC-05 | Phase 18 | Pending |
-| DB-01 | Phase 13 | Complete |
-| DB-02 | Phase 14 | Complete |
-| DB-03 | Phase 14 | Complete |
-| DB-04 | Phase 14 | Complete |
-| DB-05 | Phase 14 | Complete |
-| SYNC-01 | Phase 15 | Complete |
-| SYNC-02 | Phase 15 | Complete |
-| SYNC-03 | Phase 15 | Complete |
-| SYNC-04 | Phase 15 | Complete |
+| SVC-01 | Phase 18, Phase 23 | Pending |
+| SVC-02 | Phase 18, Phase 23 | Pending |
+| SVC-03 | Phase 18, Phase 23 | Pending |
+| SVC-04 | Phase 18, Phase 23 | Pending |
+| SVC-05 | Phase 18, Phase 23 | Pending |
+| DB-01 | Phase 13, Phase 26 | Pending |
+| DB-02 | Phase 14, Phase 26 | Pending |
+| DB-03 | Phase 14, Phase 26 | Pending |
+| DB-04 | Phase 14, Phase 26 | Pending |
+| DB-05 | Phase 14, Phase 26 | Pending |
+| SYNC-01 | Phase 15, Phase 26 | Pending |
+| SYNC-02 | Phase 15, Phase 26 | Pending |
+| SYNC-03 | Phase 15, Phase 26 | Pending |
+| SYNC-04 | Phase 15, Phase 26 | Pending |
 | SYNC-05 | Phase 15, Phase 22 | Complete |
 | SYNC-06 | Phase 16, Phase 19 | Complete |
 | WAL-04 | Phase 20 | Complete |
-| WAL-05 | Phase 20 | Complete |
+| WAL-05 | Phase 20, Phase 24 | Pending |
 | WAL-06 | Phase 20 | Complete |
 | WAL-07 | Phase 20 | Complete |
 | WAL-08 | Phase 20, Phase 21 | Complete |
-| MIG-01 | Phase 21 | Complete |
-| MIG-02 | Phase 17, Phase 21 | Complete |
-| MIG-03 | Phase 21 | Complete |
-| MIG-04 | Phase 21 | Complete |
-| MIG-05 | Phase 21, Phase 22 | Complete |
-| VER-05 | Phase 22 | Pending |
-| VER-06 | Phase 22 | Pending |
-| VER-07 | Phase 22 | Pending |
-| VER-08 | Phase 22 | Pending |
+| MIG-01 | Phase 21, Phase 26 | Pending |
+| MIG-02 | Phase 17, Phase 21, Phase 25 | Pending |
+| MIG-03 | Phase 21, Phase 26 | Pending |
+| MIG-04 | Phase 21, Phase 25 | Pending |
+| MIG-05 | Phase 21, Phase 22, Phase 26 | Pending |
+| VER-05 | Phase 22, Phase 26 | Pending |
+| VER-06 | Phase 22, Phase 27 | Pending |
+| VER-07 | Phase 22, Phase 26 | Pending |
+| VER-08 | Phase 22, Phase 26 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 44 total
+- Checked off: 22
 - Mapped to phases: 44
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-26*
-*Last updated: 2026-04-28 after Phase 21 verification*
+*Last updated: 2026-04-28 after v1.1 audit gap planning*

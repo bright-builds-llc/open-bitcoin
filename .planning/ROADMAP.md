@@ -3,11 +3,13 @@
 ## Milestones
 
 - **v1.0 Headless Parity** - Phases 1 through 12 shipped on 2026-04-26. Archive: [v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
-- **v1.1 Operator Runtime and Real-Network Sync** - Phases 13 through 22 are planned for the next milestone.
+- **v1.1 Operator Runtime and Real-Network Sync** - Phases 13 through 27 now define this milestone, including post-audit gap-closure follow-up work.
 
 ## v1.1 Operator Runtime and Real-Network Sync
 
 This active milestone makes Open Bitcoin usable as an operator-facing, service-managed node that can begin true network sync work with durable storage, richer CLI/TUI surfaces, migration guidance, and expanded parity coverage.
+
+Post-audit gap-closure phases now extend the milestone so service apply behavior, live status truthfulness, migration source selection, evidence reconciliation, and operator-runtime benchmark fidelity are resolved before archive.
 
 ## Phases
 
@@ -49,6 +51,11 @@ This active milestone makes Open Bitcoin usable as an operator-facing, service-m
 - [x] **Phase 20: Wallet Runtime Expansion** - Expand practical wallet runtime behavior for send, wallet selection, descriptors, rescans, backups, and migration inspection. (completed 2026-04-27)
 - [x] **Phase 21: Drop-In Parity Audit and Migration** - Audit Core/Knots replacement expectations and implement detection, education, and dry-run migration plans. (completed 2026-04-27)
 - [x] **Phase 22: Real-Sync Benchmarks and Release Hardening** - Add real-sync benchmarks, docs, parity updates, and verification coverage for the v1.1 operator runtime. (completed 2026-04-27)
+- [ ] **Phase 23: Service Apply Completion and Status Truthfulness** - Complete launchd/systemd apply semantics, truthful enabled-state reporting, and dashboard service action closure after the v1.1 audit. (planned)
+- [ ] **Phase 24: Wallet-Aware Live Status and Build Provenance** - Keep status and dashboard truthfully live when wallet selection is ambiguous and surface real build provenance. (planned)
+- [ ] **Phase 25: Migration Source Selection Hardening** - Let `migrate plan --source-datadir` select valid custom-location installs without degrading to manual review. (planned)
+- [ ] **Phase 26: Milestone Evidence and Audit Reconciliation** - Align verification reports, summary frontmatter, and requirements bookkeeping so the v1.1 audit can pass cleanly. (planned)
+- [ ] **Phase 27: Operator Runtime Benchmark Fidelity** - Replace fixture-only operator-runtime benchmark cases with runtime-collected status/dashboard evidence. (planned)
 
 ## Phase Details
 
@@ -238,9 +245,72 @@ Plans:
 - [x] 22-02-PLAN.md — Operator release guide and documentation refresh
 - [x] 22-03-PLAN.md — Parity ledger, benchmark verification, and release-readiness closeout
 
+### Phase 23: Service Apply Completion and Status Truthfulness
+
+**Goal**: Finish real launchd/systemd apply semantics and make service state projections truthful for status and dashboard surfaces.
+**Depends on**: Phase 22
+**Requirements**: SVC-01, SVC-02, SVC-03, SVC-04, SVC-05, DASH-03
+**Gap Closure**: Closes audit blocker `INT-01` and the service-action portion of the dashboard gap.
+**Success Criteria** (what must be TRUE):
+1. `open-bitcoin service install --apply` executes the required bootstrap/reload-enable steps on supported platforms after writing service artifacts.
+2. Service status and dashboard summaries distinguish installed, enabled, running, failed, stopped, and unmanaged states using real manager evidence instead of inference.
+3. Dashboard service actions reuse the corrected apply path and remain confirmation-gated.
+4. Service verification evidence and requirements bookkeeping are refreshed around the corrected runtime behavior.
+**Plans**: 0 plans yet
+
+### Phase 24: Wallet-Aware Live Status and Build Provenance
+
+**Goal**: Keep live status and dashboard snapshots truthful when wallet selection is missing or ambiguous, and surface real build provenance through the shared operator status model.
+**Depends on**: Phase 22
+**Requirements**: OBS-01, OBS-02, WAL-05, DASH-01
+**Gap Closure**: Closes audit blocker `INT-02` and the build-provenance follow-up from the milestone audit.
+**Success Criteria** (what must be TRUE):
+1. Live status and dashboard snapshots no longer collapse to `NodeRuntimeState::Unreachable` when wallet selection is missing or ambiguous.
+2. Wallet selection issues are surfaced as wallet-specific unavailable or diagnostic data while node reachability remains accurate.
+3. Build provenance is populated in shared status snapshots when available and rendered through operator-facing status/dashboard surfaces.
+4. Targeted verification covers zero-wallet, multiwallet, selected-wallet, and build-provenance runtime paths.
+**Plans**: 0 plans yet
+
+### Phase 25: Migration Source Selection Hardening
+
+**Goal**: Let explicit migration source paths participate directly in source selection so custom-location Core/Knots installs can produce concrete dry-run plans.
+**Depends on**: Phase 21
+**Requirements**: MIG-02, MIG-04
+**Gap Closure**: Closes warning `INT-W03` from the milestone audit.
+**Success Criteria** (what must be TRUE):
+1. `open-bitcoin migrate plan --source-datadir <custom-path>` can select a valid source install outside the default detection roots when the path is explicit and supported.
+2. Ambiguous or missing source installs still fall back to manual review with clear operator guidance.
+3. Migration verification covers explicit custom-path selection while preserving dry-run-first safety and source-data non-mutation.
+**Plans**: 0 plans yet
+
+### Phase 26: Milestone Evidence and Audit Reconciliation
+
+**Goal**: Reconcile v1.1 verification reports, summary frontmatter, and requirements bookkeeping so the milestone audit no longer reports orphaned or stale evidence gaps.
+**Depends on**: Phase 23, Phase 24, Phase 25
+**Requirements**: DB-01, DB-02, DB-03, DB-04, DB-05, SYNC-01, SYNC-02, SYNC-03, SYNC-04, DASH-02, DASH-04, MIG-01, MIG-03, MIG-05, VER-05, VER-07, VER-08
+**Gap Closure**: Closes orphaned requirement evidence and ledger/frontmatter reconciliation gaps from the v1.1 milestone audit.
+**Success Criteria** (what must be TRUE):
+1. Phase 13 through Phase 15 verification artifacts explicitly cover `DB-01` through `DB-05` and `SYNC-01` through `SYNC-04` by requirement ID.
+2. Later Phase 18, 19, 21, and 22 summaries and requirement bookkeeping reflect shipped requirement evidence consistently.
+3. `REQUIREMENTS.md` traceability rows and checkbox state align with the milestone audit verdict and re-audit expectations.
+4. A rerun milestone audit no longer reports orphaned or stale evidence-only gaps for the requirements assigned here.
+**Plans**: 0 plans yet
+
+### Phase 27: Operator Runtime Benchmark Fidelity
+
+**Goal**: Upgrade operator-runtime benchmark cases from snapshot-fixture projection checks to runtime-collected status/dashboard evidence without losing deterministic verification.
+**Depends on**: Phase 24, Phase 26
+**Requirements**: VER-06
+**Gap Closure**: Optional benchmark fidelity follow-up accepted during v1.1 gap planning.
+**Success Criteria** (what must be TRUE):
+1. Operator-runtime benchmark cases collect status/dashboard data through the real runtime collection path or an equivalent shell entrypoint instead of only `sample_status_snapshot()` fixtures.
+2. Report metadata and benchmark validation still describe the operator-runtime cases accurately after the fidelity upgrade.
+3. Repo-native verification keeps the benchmark/report path deterministic and free of public-network requirements.
+**Plans**: 0 plans yet
+
 ## Progress
 
 | Milestone | Phases | Plans | Status | Shipped |
 | --- | ---: | ---: | --- | --- |
 | v1.0 Headless Parity | 22/22 | 80/80 | Archived | 2026-04-26 |
-| v1.1 Operator Runtime and Real-Network Sync | 10/10 | 38/38 | Ready for audit | - |
+| v1.1 Operator Runtime and Real-Network Sync | 10/15 | 38/38 existing | Gap closure planned | - |
