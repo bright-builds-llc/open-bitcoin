@@ -73,7 +73,7 @@ release-hardening as first-class audit surfaces instead of Phase 10 leftovers.
 Passed:
 
 - `bash scripts/run-benchmarks.sh --smoke --output-dir packages/target/benchmark-reports`
-- `bun scripts/check-benchmark-report.ts --report-path packages/target/benchmark-reports/open-bitcoin-bench-smoke.json`
+- `bun scripts/check-benchmark-report.ts --report=packages/target/benchmark-reports/open-bitcoin-bench-smoke.json`
 - `bash scripts/verify.sh`
 
 ## Deviations from Plan

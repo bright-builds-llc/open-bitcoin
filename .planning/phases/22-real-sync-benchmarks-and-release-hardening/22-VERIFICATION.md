@@ -49,7 +49,7 @@ without overclaiming deferred work.
 
 - `cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-bench -- --nocapture` passed.
 - `bash scripts/run-benchmarks.sh --smoke --output-dir packages/target/benchmark-reports` passed.
-- `bun scripts/check-benchmark-report.ts --report-path packages/target/benchmark-reports/open-bitcoin-bench-smoke.json` passed.
+- `bun scripts/check-benchmark-report.ts --report=packages/target/benchmark-reports/open-bitcoin-bench-smoke.json` passed.
 - `bash scripts/verify.sh` passed end-to-end, including:
   - deterministic LOC freshness
   - parity breadcrumb validation

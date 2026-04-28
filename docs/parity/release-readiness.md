@@ -134,7 +134,7 @@ Use these commands and artifacts to prove the current state:
 ```bash
 bash scripts/verify.sh
 bash scripts/run-benchmarks.sh --smoke --output-dir packages/target/benchmark-reports
-bun scripts/check-benchmark-report.ts --report-path packages/target/benchmark-reports/open-bitcoin-bench-smoke.json
+bun scripts/check-benchmark-report.ts --report=packages/target/benchmark-reports/open-bitcoin-bench-smoke.json
 ```
 
 Evidence links:
