@@ -1,5 +1,8 @@
 # Config Ownership and Precedence
 
+For the practical operator workflow around these rules, see
+[`docs/operator/runtime-guide.md`](../operator/runtime-guide.md).
+
 ## Open Bitcoin JSONC
 
 `open-bitcoin.jsonc` is the Open Bitcoin-owned config file for wizard and onboarding answers plus dashboard, service, migration, metrics, logging, storage, and sync settings. It is user-editable JSONC so operators can keep comments near local operational choices.

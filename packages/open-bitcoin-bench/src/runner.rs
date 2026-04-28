@@ -9,7 +9,10 @@ use std::{
 use crate::error::BenchError;
 use crate::{
     registry::{BenchCase, BenchGroup, KnotsMapping},
-    report::{BenchCaseReport, BenchGroupReport, BenchReport, KnotsMappingReport, KnotsSource},
+    report::{
+        BenchCaseReport, BenchGroupReport, BenchMeasurementReport, BenchProfileReport, BenchReport,
+        KnotsMappingReport, KnotsSource,
+    },
 };
 
 pub const SMOKE_MIN_ITERATIONS: u64 = 1;
@@ -63,6 +66,7 @@ pub fn run_benchmarks(
     groups: &[BenchGroup],
     config: RunConfig,
     baseline: impl Into<String>,
+    binary_profile: impl Into<String>,
     generated_at_unix_seconds: u64,
     optional_knots_source: Option<KnotsSource>,
 ) -> Result<BenchReport, BenchError> {
@@ -83,9 +87,14 @@ pub fn run_benchmarks(
     }
 
     Ok(BenchReport {
-        schema_version: 1,
+        schema_version: 2,
         baseline: baseline.into(),
         mode: config.mode_label(),
+        profile: BenchProfileReport {
+            iterations_per_case: config.iterations_per_case,
+            binary_profile: binary_profile.into(),
+            threshold_free: true,
+        },
         generated_at_unix_seconds,
         groups: group_reports,
         optional_knots_source,
@@ -119,12 +128,19 @@ fn run_case(case: &BenchCase, iterations: u64) -> Result<Duration, BenchError> {
 }
 
 fn case_report(case: &BenchCase, iterations: u64, elapsed: Duration) -> BenchCaseReport {
+    let total_elapsed_nanos = duration_nanos(elapsed);
     BenchCaseReport {
         id: case.id.to_string(),
         group: case.group.as_str().to_string(),
         description: case.description.to_string(),
+        measurement: BenchMeasurementReport {
+            focus: case.measurement.focus.to_string(),
+            fixture: case.measurement.fixture.to_string(),
+            durability: case.measurement.durability.as_str().to_string(),
+        },
         iterations,
-        elapsed_nanos: duration_nanos(elapsed),
+        total_elapsed_nanos,
+        average_elapsed_nanos: average_nanos(total_elapsed_nanos, iterations),
         knots_mapping: mapping_report(case.knots_mapping),
     }
 }
@@ -151,6 +167,10 @@ fn duration_nanos(duration: Duration) -> u64 {
         return u64::MAX;
     }
     nanos as u64
+}
+
+fn average_nanos(total_elapsed_nanos: u64, iterations: u64) -> u64 {
+    total_elapsed_nanos / iterations.max(1)
 }
 
 #[cfg(test)]
@@ -201,6 +221,7 @@ mod tests {
             benchmark_groups(),
             config,
             "Bitcoin Knots 29.3.knots20260210",
+            "debug",
             1,
             None,
         );
@@ -209,7 +230,9 @@ mod tests {
         let Ok(report) = report else {
             panic!("smoke benchmark run should succeed");
         };
-        assert_eq!(report.groups.len(), 7);
+        assert_eq!(report.groups.len(), 11);
+        assert_eq!(report.profile.iterations_per_case, 1);
+        assert_eq!(report.profile.binary_profile, "debug");
         assert!(
             report
                 .groups

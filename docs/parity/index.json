@@ -437,6 +437,54 @@
             "Which live-sync or runtime cutover checks should be mandatory before an operator can safely disable the source service."
           ]
         }
+      },
+      {
+        "id": "operator-runtime-release-hardening",
+        "title": "Operator Runtime Release Hardening",
+        "path": "catalog/operator-runtime-release-hardening.md",
+        "phase": "22-real-sync-benchmarks-and-release-hardening",
+        "status": "done",
+        "scope": [
+          "verification",
+          "service",
+          "status",
+          "dashboard",
+          "operator-docs",
+          "benchmarks",
+          "release-readiness"
+        ],
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/headerssync.cpp",
+            "packages/bitcoin-knots/src/sync.cpp",
+            "packages/bitcoin-knots/src/node/blockstorage.cpp",
+            "packages/bitcoin-knots/src/bitcoin-cli.cpp",
+            "packages/bitcoin-knots/src/init.cpp",
+            "packages/bitcoin-knots/src/interfaces/node.h",
+            "packages/bitcoin-knots/contrib/init/org.bitcoin.bitcoind.plist",
+            "packages/bitcoin-knots/contrib/init/bitcoind.service",
+            "packages/bitcoin-knots/doc/init.md",
+            "packages/bitcoin-knots/doc/managing-wallets.md"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/test/functional/p2p_initial_headers_sync.py",
+            "packages/bitcoin-knots/test/functional/interface_bitcoin_cli.py",
+            "packages/bitcoin-knots/test/functional/wallet_backup.py"
+          ]
+        },
+        "highlights": {
+          "quirks": [
+            "Repo-native verification stays offline by default and validates the generated smoke benchmark report instead of trusting artifact existence alone.",
+            "Smoke benchmarks use the debug profile while full local benchmarks use a release build, and both remain threshold-free evidence rather than release gates.",
+            "The operator-facing release narrative keeps migration dry-run-only boundaries and other non-claims visible instead of implying automatic cutover parity."
+          ],
+          "known_bugs": [],
+          "known_bugs_status": "none-confirmed",
+          "suspected_unknowns": [
+            "Which packaged or signed release workflow should anchor a later install surface beyond the current source-built path.",
+            "Whether any public-network sync verification should become optional release evidence in a later milestone without expanding the default local gate."
+          ]
+        }
       }
     ]
   },
@@ -479,6 +527,14 @@
     },
     {
       "name": "drop-in-audit-migration",
+      "status": "done"
+    },
+    {
+      "name": "real-sync-benchmarks",
+      "status": "done"
+    },
+    {
+      "name": "operator-runtime-release-hardening",
       "status": "done"
     }
   ],
@@ -722,25 +778,56 @@
         ]
       },
       {
-        "id": "benchmarks-audit-readiness",
-        "title": "Benchmarks And Audit Readiness",
+        "id": "real-sync-benchmarks",
+        "title": "Real-Sync Benchmarks",
         "status": "done",
         "requirements": [
-          "PAR-02",
-          "AUD-01"
+          "SYNC-05",
+          "VER-06"
         ],
         "evidence": [
           "docs/parity/benchmarks.md",
-          "docs/parity/release-readiness.md",
           "scripts/run-benchmarks.sh",
+          "scripts/check-benchmark-report.ts",
           "scripts/verify.sh",
-          "packages/target/benchmark-reports/open-bitcoin-bench-smoke.json",
-          ".planning/phases/10-benchmarks-and-audit-readiness/10-03-SUMMARY.md",
-          ".planning/phases/10-benchmarks-and-audit-readiness/10-04-SUMMARY.md"
+          "packages/open-bitcoin-bench/src/registry.rs",
+          "packages/target/benchmark-reports/open-bitcoin-bench-smoke.json"
         ],
-        "rationale": "Benchmark evidence, checklist status, and the release-readiness handoff are in place for reviewer audit.",
-        "known_gaps": [],
-        "suspected_unknowns": []
+        "rationale": "Phase 22 extends the benchmark registry with deterministic runtime-backed sync, storage, status, dashboard, and wallet-rescan evidence while keeping the smoke path bounded and threshold-free.",
+        "known_gaps": [
+          "Benchmark reports remain audit evidence rather than release timing gates.",
+          "Public-network sync benchmarks stay outside the default local verification contract."
+        ],
+        "suspected_unknowns": [
+          "Which future runtime scenarios should become benchmark cases if packaging, install, or live-network validation expands."
+        ]
+      },
+      {
+        "id": "operator-runtime-release-hardening",
+        "title": "Operator Runtime Release Hardening",
+        "status": "done",
+        "requirements": [
+          "MIG-05",
+          "VER-05",
+          "VER-07",
+          "VER-08"
+        ],
+        "evidence": [
+          "docs/operator/runtime-guide.md",
+          "docs/parity/catalog/operator-runtime-release-hardening.md",
+          "docs/parity/release-readiness.md",
+          "docs/architecture/cli-command-architecture.md",
+          "docs/architecture/config-precedence.md",
+          "scripts/verify.sh"
+        ],
+        "rationale": "The current v1.1 operator runtime now has repo-owned documentation, verification, and parity-ledger evidence that keeps shipped behavior separate from deferred or out-of-scope work.",
+        "known_gaps": [
+          "Packaged install flows, Windows service support, migration apply mode, and hosted dashboards remain outside the current release-hardened slice."
+        ],
+        "suspected_unknowns": [
+          "Which future packaging or signed-release workflow should become the canonical install surface once source-built operation is no longer the only path.",
+          "Whether optional public-network release evidence should eventually supplement the current offline verification contract."
+        ]
       }
     ]
   },
@@ -759,8 +846,9 @@
         "docs/parity/release-readiness.md",
         "docs/parity/checklist.md",
         "docs/parity/benchmarks.md",
-        ".planning/phases/10-benchmarks-and-audit-readiness/10-03-SUMMARY.md",
-        ".planning/phases/10-benchmarks-and-audit-readiness/10-04-SUMMARY.md"
+        "docs/operator/runtime-guide.md",
+        "docs/parity/catalog/operator-runtime-release-hardening.md",
+        "scripts/check-benchmark-report.ts"
       ]
     }
   }

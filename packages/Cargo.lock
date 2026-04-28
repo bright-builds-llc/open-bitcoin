@@ -1404,6 +1404,7 @@ dependencies = [
  "open-bitcoin-consensus",
  "open-bitcoin-mempool",
  "open-bitcoin-network",
+ "open-bitcoin-node",
  "open-bitcoin-primitives",
  "open-bitcoin-rpc",
  "open-bitcoin-wallet",

@@ -65,6 +65,7 @@ fn run(args: &[String]) -> Result<String, BenchError> {
                 benchmark_groups(),
                 config,
                 BASELINE,
+                binary_profile_label(),
                 generated_at,
                 knots_source(maybe_knots_json, maybe_knots_bin, generated_at),
             )?;
@@ -243,6 +244,14 @@ fn unix_timestamp() -> Result<u64, BenchError> {
     Ok(SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs())
 }
 
+fn binary_profile_label() -> &'static str {
+    if cfg!(debug_assertions) {
+        "debug"
+    } else {
+        "release"
+    }
+}
+
 fn usage() -> String {
     "usage: open-bitcoin-bench --list | --smoke [--iterations N] [--output-dir PATH] [--knots-json PATH] [--knots-bin PATH] [--format json|markdown] | --full --iterations N [--output-dir PATH] [--knots-json PATH] [--knots-bin PATH] [--format json|markdown]".to_string()
 }
@@ -253,7 +262,7 @@ mod tests {
 
     use serde_json::Value;
 
-    use super::run;
+    use super::{binary_profile_label, run};
 
     #[test]
     fn smoke_run_writes_json_and_markdown_reports_to_output_dir() {
@@ -284,8 +293,9 @@ mod tests {
         assert!(
             value["groups"]
                 .as_array()
-                .is_some_and(|groups| groups.len() >= 7)
+                .is_some_and(|groups| groups.len() >= 11)
         );
+        assert_eq!(value["profile"]["binary_profile"], binary_profile_label());
         assert!(markdown_path.exists());
         fs::remove_dir_all(&output_dir).expect("remove benchmark report directory");
     }

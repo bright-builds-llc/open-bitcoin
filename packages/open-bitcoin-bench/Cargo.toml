@@ -15,6 +15,7 @@ open-bitcoin-consensus = { path = "../open-bitcoin-consensus" }
 open-bitcoin-cli = { path = "../open-bitcoin-cli" }
 open-bitcoin-mempool = { path = "../open-bitcoin-mempool" }
 open-bitcoin-network = { path = "../open-bitcoin-network" }
+open-bitcoin-node = { path = "../open-bitcoin-node" }
 open-bitcoin-primitives = { path = "../open-bitcoin-primitives" }
 open-bitcoin-rpc = { path = "../open-bitcoin-rpc" }
 open-bitcoin-wallet = { path = "../open-bitcoin-wallet" }

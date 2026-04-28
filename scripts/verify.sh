@@ -117,6 +117,7 @@ cargo clippy --manifest-path packages/Cargo.toml --workspace --all-targets --all
 cargo build --manifest-path packages/Cargo.toml --workspace --all-targets --all-features
 cargo test --manifest-path packages/Cargo.toml --workspace --all-features
 bash scripts/run-benchmarks.sh --smoke --output-dir "$OPEN_BITCOIN_BENCHMARK_REPORT_DIR"
+bun run scripts/check-benchmark-report.ts --report="$OPEN_BITCOIN_BENCHMARK_REPORT_DIR/open-bitcoin-bench-smoke.json"
 bazel build //:core //:node //:rpc //:cli //:test_harness //:bench
 
 pure_core_crates=()

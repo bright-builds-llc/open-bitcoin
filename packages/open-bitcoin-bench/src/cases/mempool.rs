@@ -12,7 +12,9 @@ use open_bitcoin_mempool::{
 use crate::{
     error::BenchError,
     fixtures::{BenchFixtures, consensus_params, verify_flags},
-    registry::{BenchCase, BenchGroupId, MEMPOOL_POLICY_MAPPING},
+    registry::{
+        BenchCase, BenchDurability, BenchGroupId, BenchMeasurement, MEMPOOL_POLICY_MAPPING,
+    },
 };
 
 const CASE_ID: &str = "mempool-policy.standard-admission";
@@ -21,6 +23,11 @@ pub const CASES: [BenchCase; 1] = [BenchCase {
     id: CASE_ID,
     group: BenchGroupId::MempoolPolicy,
     description: "Runs standard policy accounting and accepts a deterministic confirmed spend.",
+    measurement: BenchMeasurement {
+        focus: "mempool_policy_admission",
+        fixture: "shared_mempool_snapshots",
+        durability: BenchDurability::Pure,
+    },
     knots_mapping: &MEMPOOL_POLICY_MAPPING,
     run_once,
 }];

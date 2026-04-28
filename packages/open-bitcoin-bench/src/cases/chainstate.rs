@@ -9,7 +9,7 @@ use open_bitcoin_chainstate::{AnchoredBlock, Chainstate};
 use crate::{
     error::BenchError,
     fixtures::{BenchFixtures, consensus_params, verify_flags},
-    registry::{BenchCase, BenchGroupId, CHAINSTATE_MAPPING},
+    registry::{BenchCase, BenchDurability, BenchGroupId, BenchMeasurement, CHAINSTATE_MAPPING},
 };
 
 const CASE_ID: &str = "chainstate.connect-disconnect-reorg";
@@ -18,6 +18,11 @@ pub const CASES: [BenchCase; 1] = [BenchCase {
     id: CASE_ID,
     group: BenchGroupId::Chainstate,
     description: "Connects, disconnects, and reorgs cloned deterministic chainstate snapshots.",
+    measurement: BenchMeasurement {
+        focus: "chainstate_connect_disconnect_reorg",
+        fixture: "shared_chainstate_snapshots",
+        durability: BenchDurability::Pure,
+    },
     knots_mapping: &CHAINSTATE_MAPPING,
     run_once,
 }];

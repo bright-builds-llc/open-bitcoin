@@ -15,13 +15,18 @@ use open_bitcoin_wallet::AddressNetwork;
 
 use crate::{
     error::BenchError,
-    registry::{BenchCase, BenchGroupId, RPC_CLI_MAPPING},
+    registry::{BenchCase, BenchDurability, BenchGroupId, BenchMeasurement, RPC_CLI_MAPPING},
 };
 
 pub const CASES: [BenchCase; 1] = [BenchCase {
     id: "rpc-cli.parse-normalize-dispatch",
     group: BenchGroupId::RpcCli,
     description: "Parse a CLI RPC command, normalize it, and dispatch against the in-memory RPC context.",
+    measurement: BenchMeasurement {
+        focus: "rpc_cli_parse_normalize_dispatch",
+        fixture: "in_memory_rpc_context",
+        durability: BenchDurability::Ephemeral,
+    },
     knots_mapping: &RPC_CLI_MAPPING,
     run_once: run_rpc_cli_case,
 }];

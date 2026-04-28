@@ -14,12 +14,22 @@
 
 Shared operator options are `--config`, `--datadir`, `--network`, `--format human|json`, and `--no-color`.
 
-The Phase 21 runtime wires `status`, `config paths`, `onboard`, `migrate`, and
-the operator-owned `wallet` workflows through the actual `open-bitcoin` binary.
-Status renders stopped, unreachable, and live-RPC evidence through the shared
-`OpenBitcoinStatusSnapshot`; onboarding writes Open Bitcoin-only answers to
-`open-bitcoin.jsonc` after explicit approval and does not mutate
-`bitcoin.conf`.
+The Phase 22 runtime wires `status`, `config paths`, `service`, `dashboard`,
+`onboard`, `migrate`, and the operator-owned `wallet` workflows through the
+actual `open-bitcoin` binary. Status renders stopped, unreachable, and live-RPC
+evidence through the shared `OpenBitcoinStatusSnapshot`; onboarding writes Open
+Bitcoin-only answers to `open-bitcoin.jsonc` after explicit approval and does
+not mutate `bitcoin.conf`.
+
+`service` commands are no longer a placeholder boundary. `install` and
+`uninstall` default to dry-run previews and require `--apply` before they write
+or invoke the platform service manager. `status`, `enable`, and `disable` use
+the same service manager contract directly.
+
+`dashboard` is likewise implemented on top of the shared status snapshot. It
+opens the interactive ratatui view on a TTY, falls back to a deterministic text
+snapshot on non-TTY output, emits JSON when `--format json` is selected, and
+reuses the service runtime for install, enable, disable, and uninstall actions.
 
 `migrate plan` is an Open Bitcoin-owned dry-run planner for operators with an
 existing Core or Knots install. It reuses read-only detection evidence, explains
@@ -36,10 +46,6 @@ source datadirs, or import external wallets in Phase 21.
 - submits the final mutation through the existing wallet-scoped `sendtoaddress` RPC path
 
 `wallet backup` is likewise Open Bitcoin-owned. It writes a one-way JSON export for a managed wallet snapshot and rejects destinations that overlap detected Core or Knots wallet candidates. It does not copy, rewrite, restore, or import external wallet formats.
-
-`service` commands remain a Phase 18 boundary and `dashboard` remains a Phase 19
-boundary. Both return explicit boundary messages until those phases implement
-their effect shells.
 
 ## open-bitcoin-cli compatibility path
 

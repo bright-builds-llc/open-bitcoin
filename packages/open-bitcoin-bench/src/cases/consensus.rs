@@ -6,7 +6,9 @@ use open_bitcoin_consensus::{count_legacy_sigops, verify_script};
 use crate::{
     error::BenchError,
     fixtures::BenchFixtures,
-    registry::{BenchCase, BenchGroupId, CONSENSUS_SCRIPT_MAPPING},
+    registry::{
+        BenchCase, BenchDurability, BenchGroupId, BenchMeasurement, CONSENSUS_SCRIPT_MAPPING,
+    },
 };
 
 const CASE_ID: &str = "consensus-script.legacy-script-validation";
@@ -15,6 +17,11 @@ pub const CASES: [BenchCase; 1] = [BenchCase {
     id: CASE_ID,
     group: BenchGroupId::ConsensusScript,
     description: "Counts legacy sigops and verifies a deterministic standard script pair.",
+    measurement: BenchMeasurement {
+        focus: "script_validation",
+        fixture: "shared_static_fixtures",
+        durability: BenchDurability::Pure,
+    },
     knots_mapping: &CONSENSUS_SCRIPT_MAPPING,
     run_once,
 }];

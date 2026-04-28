@@ -11,7 +11,9 @@ use open_bitcoin_primitives::NetworkMagic;
 use crate::{
     error::BenchError,
     fixtures::BenchFixtures,
-    registry::{BenchCase, BenchGroupId, NETWORK_WIRE_SYNC_MAPPING},
+    registry::{
+        BenchCase, BenchDurability, BenchGroupId, BenchMeasurement, NETWORK_WIRE_SYNC_MAPPING,
+    },
 };
 
 const CASE_ID: &str = "network-wire-sync.encode-decode-locator";
@@ -20,6 +22,11 @@ pub const CASES: [BenchCase; 1] = [BenchCase {
     id: CASE_ID,
     group: BenchGroupId::NetworkWireSync,
     description: "Encodes and decodes a wire message and builds a header locator.",
+    measurement: BenchMeasurement {
+        focus: "wire_encode_decode_and_locator",
+        fixture: "shared_static_fixtures",
+        durability: BenchDurability::Pure,
+    },
     knots_mapping: &NETWORK_WIRE_SYNC_MAPPING,
     run_once,
 }];

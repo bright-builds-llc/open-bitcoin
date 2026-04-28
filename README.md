@@ -65,7 +65,7 @@ These are Open Bitcoin design choices, not Knots parity claims:
 - `packages/open-bitcoin-rpc/` provides the JSON-RPC server and `open-bitcoind` binary.
 - `packages/open-bitcoin-cli/` provides the `open-bitcoin-cli` client binary.
 - `packages/open-bitcoin-test-harness/` and `packages/open-bitcoin-bench/` provide parity, property, and benchmark infrastructure.
-- `docs/architecture/` records v1.1 operator runtime contracts before later storage, sync, status, service, and dashboard implementations depend on them.
+- `docs/architecture/` records the operator runtime contracts behind the current storage, sync, status, service, dashboard, and migration surfaces.
 - `docs/parity/` tracks parity status and intentional deviations from the pinned baseline.
 - `.githooks/` contains the repo-managed Git hooks used to run the local verification contract before commit.
 - `scripts/verify.sh` is the source-of-truth local verification command for first-party code.
@@ -92,8 +92,13 @@ bash scripts/verify.sh
 
 ## Operator Preview
 
-The current operator surface is intended for local review and testing. Create a
-scratch data directory, start the RPC server, then call it from another shell:
+The current v1.1 operator runtime is source-built and intended for local review,
+testing, and parity audit. For the practical install, onboarding, service,
+status, dashboard, migration, benchmark, and limitation workflow, start with
+[`docs/operator/runtime-guide.md`](./docs/operator/runtime-guide.md).
+
+The commands below are a minimal regtest preview. Create a scratch data
+directory, start the RPC server, then call it from another shell:
 
 ```bash
 mkdir -p /tmp/open-bitcoin-preview
@@ -172,6 +177,11 @@ copy, restore, or mutate external wallet formats. See
 [`docs/parity/catalog/wallet.md`](./docs/parity/catalog/wallet.md) for the
 shipped wallet slice and explicit deferrals.
 
+For the broader operator lifecycle, including source-built install steps,
+service dry-run versus apply behavior, dashboard usage, config ownership, and
+real-sync benchmark commands, see
+[`docs/operator/runtime-guide.md`](./docs/operator/runtime-guide.md).
+
 ## Future Work
 
 Known follow-up themes are tracked in
@@ -181,7 +191,7 @@ High-level areas include:
 - richer wallet-send RPC ergonomics beyond the current `sendtoaddress`-style path, peer-info and `-netinfo` views, full multiwallet lifecycle parity, remote-operator ACL/auth, and daemon supervision
 - managed Knots process support, fuller upstream functional-suite coverage, and a dedicated fuzzing runtime
 - deeper wallet, P2P, chainstate, and long-lived runtime policy behavior beyond the current headless v1 slice
-- future GUI and public dashboard work after the headless node and wallet surfaces mature
+- future GUI work and any hosted or public dashboard work after the local operator dashboard matures
 
 For contributor workflow details beyond those two entrypoints, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 

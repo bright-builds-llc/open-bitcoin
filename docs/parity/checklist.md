@@ -2,7 +2,7 @@
 
 This checklist is the human-readable view of [`index.json`](index.json). The
 machine-readable source remains `checklist.surfaces`, and this page exists to
-make the initial milestone audit surface easy to scan.
+make the current release-hardening audit surface easy to scan.
 
 ## Status Taxonomy
 
@@ -23,7 +23,8 @@ Checklist statuses are exactly `planned`, `in_progress`, `done`, `deferred`, `ou
 | `rpc-cli-config` | `done` | `RPC-01`, `CLI-01`, `CLI-02` | [Operator catalog](catalog/rpc-cli%2Dconfig.md), [Phase 08 verification](../../.planning/phases/08-rpc-cli-and-config-parity/08-VERIFICATION.md) | Richer send ergonomics, peer-info views, multi-endpoint selection, ACL features, daemon supervision, and broader process-control helpers remain deferred. | Future send, peer-info, and multi-endpoint semantics remain audit watch items. |
 | `drop-in-audit-migration` | `done` | `CLI-07`, `WAL-08`, `MIG-01`, `MIG-02`, `MIG-03`, `MIG-04`, `MIG-05` | [Drop-in audit catalog](catalog/drop-in-audit-and-migration.md), [Phase 21 verification](../../.planning/phases/21-drop-in-parity-audit-and-migration/21-VERIFICATION.md), [CLI command architecture](../architecture/cli-command-architecture.md), [operator binary coverage](../../packages/open-bitcoin-cli/tests/operator_binary.rs) | Automatic service cutover, source-datadir mutation, external-wallet import or restore, and any full drop-in replacement claim remain outside the current slice. | Future apply-mode fidelity and runtime cutover gates remain audit watch items. |
 | `verification-harnesses-fuzzing` | `done` | `VER-03`, `VER-04`, `PAR-01` | [Harness catalog](catalog/verification-harnesses.md), [Phase 09 verification](../../.planning/phases/09-parity-harnesses-and-fuzzing/09-VERIFICATION.md), [verify script](../../scripts/verify.sh) | Vendored Knots process management, full upstream Python suite translation, and a dedicated fuzz runtime remain follow-up surfaces. | Functional-suite translation versus wrapping, plus dedicated fuzz-runtime scope, remain audit watch items. |
-| `benchmarks-audit-readiness` | `done` | `PAR-02`, `AUD-01` | [Benchmark docs](benchmarks.md), [release readiness](release-readiness.md), [benchmark runner](../../scripts/run-benchmarks.sh), [verify script](../../scripts/verify.sh), [smoke JSON](../../packages/target/benchmark-reports/open-bitcoin-bench-smoke.json) | None recorded for the current Phase 10 readiness surface. | Remaining follow-up themes are tracked in [deviations and unknowns](deviations-and-unknowns.md). |
+| `real-sync-benchmarks` | `done` | `SYNC-05`, `VER-06` | [Benchmark docs](benchmarks.md), [benchmark runner](../../scripts/run-benchmarks.sh), [benchmark validator](../../scripts/check-benchmark-report.ts), [verify script](../../scripts/verify.sh), [smoke JSON](../../packages/target/benchmark-reports/open-bitcoin-bench-smoke.json) | Benchmark reports remain audit evidence rather than release timing gates. Public-network sync benchmarks stay outside the default local verification path. | Future packaging, install, or live-network validation may add more runtime-hardening benchmark scenarios later. |
+| `operator-runtime-release-hardening` | `done` | `MIG-05`, `VER-05`, `VER-07`, `VER-08` | [Operator runtime guide](../operator/runtime-guide.md), [Phase 22 catalog](catalog/operator-runtime-release-hardening.md), [release readiness](release-readiness.md), [CLI command architecture](../architecture/cli-command-architecture.md), [config precedence](../architecture/config-precedence.md), [verify script](../../scripts/verify.sh) | Packaged install flows, Windows service support, migration apply mode, and hosted dashboards remain outside the current release-hardened slice. | Future packaging and optional public-network release evidence still need explicit scope decisions before they are claimed complete. |
 
 ## Evidence Rules
 
@@ -32,4 +33,4 @@ Checklist statuses are exactly `planned`, `in_progress`, `done`, `deferred`, `ou
 - `deferred` and `out_of_scope` surfaces must carry explicit rationale in
   [`index.json`](index.json).
 - Known gaps and suspected unknowns are audit signals. They do not imply broad
-  follow-on implementation inside Phase 10 unless a later plan says so.
+  follow-on implementation unless a later plan says so.

@@ -12,7 +12,9 @@ use open_bitcoin_codec::{
 use crate::{
     error::BenchError,
     fixtures::BenchFixtures,
-    registry::{BLOCK_TRANSACTION_CODEC_MAPPING, BenchCase, BenchGroupId},
+    registry::{
+        BLOCK_TRANSACTION_CODEC_MAPPING, BenchCase, BenchDurability, BenchGroupId, BenchMeasurement,
+    },
 };
 
 const CASE_ID: &str = "block-transaction-codec.checked-in-fixtures";
@@ -21,6 +23,11 @@ pub const CASES: [BenchCase; 1] = [BenchCase {
     id: CASE_ID,
     group: BenchGroupId::BlockTransactionCodec,
     description: "Parses and re-encodes checked-in transaction and block-header fixtures.",
+    measurement: BenchMeasurement {
+        focus: "codec_round_trip",
+        fixture: "checked_in_hex_fixtures",
+        durability: BenchDurability::Pure,
+    },
     knots_mapping: &BLOCK_TRANSACTION_CODEC_MAPPING,
     run_once,
 }];

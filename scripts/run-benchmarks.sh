@@ -26,23 +26,16 @@ require_value() {
 	exit 2
 }
 
-cargo_args=(
-	cargo
-	run
-	--manifest-path
-	packages/Cargo.toml
-	-p
-	open-bitcoin-bench
-	--
-)
 benchmark_args=()
 mode_count=0
 output_dir_set=0
 list_requested=0
+maybe_mode=""
 
 while [[ "$#" -gt 0 ]]; do
 	case "$1" in
 	--smoke | --full)
+		maybe_mode="${1#--}"
 		benchmark_args+=("$1")
 		mode_count=$((mode_count + 1))
 		shift
@@ -85,6 +78,21 @@ if [[ "$mode_count" -ne 1 ]]; then
 	usage >&2
 	exit 2
 fi
+
+cargo_args=(
+	cargo
+	run
+)
+if [[ "$maybe_mode" == "full" ]]; then
+	cargo_args+=(--release)
+fi
+cargo_args+=(
+	--manifest-path
+	packages/Cargo.toml
+	-p
+	open-bitcoin-bench
+	--
+)
 
 if [[ "$output_dir_set" -eq 0 ]]; then
 	benchmark_args+=(--output-dir "$default_output_dir")

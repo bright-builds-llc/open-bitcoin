@@ -9,13 +9,18 @@ use open_bitcoin_wallet::Wallet;
 use crate::{
     error::BenchError,
     fixtures::BenchFixtures,
-    registry::{BenchCase, BenchGroupId, WALLET_MAPPING},
+    registry::{BenchCase, BenchDurability, BenchGroupId, BenchMeasurement, WALLET_MAPPING},
 };
 
 pub const CASES: [BenchCase; 1] = [BenchCase {
     id: "wallet.balance-selection-signing",
     group: BenchGroupId::Wallet,
     description: "Rescan wallet state, calculate balances, select coins, build, and sign a transaction.",
+    measurement: BenchMeasurement {
+        focus: "wallet_balance_selection_signing",
+        fixture: "shared_wallet_snapshot",
+        durability: BenchDurability::Pure,
+    },
     knots_mapping: &WALLET_MAPPING,
     run_once: run_wallet_case,
 }];

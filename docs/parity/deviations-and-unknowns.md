@@ -52,6 +52,17 @@ The Phase 21 migration audit adds these explicit deferred migration surfaces:
 - external-wallet import, restore, or rewrite
 - any full drop-in replacement claim beyond the current dry-run audit evidence
 
+The Phase 22 release-hardening slice keeps these additional surfaces out of the
+current shipped claim:
+
+- packaged or signed release installation flows beyond the current source-built
+  path
+- Windows service support
+- public-network sync as part of the default local verification contract
+- hosted or public dashboard work beyond the local terminal dashboard
+- timing-threshold benchmark gates that would fail or pass a release on elapsed
+  numbers alone
+
 ## Suspected Unknowns
 
 Current catalog entries preserve these review targets:

@@ -69,6 +69,39 @@
       ]
     },
     {
+      "label": "bench-sync-runtime",
+      "files": [
+        "packages/open-bitcoin-bench/src/cases/sync_runtime.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/headerssync.cpp",
+        "packages/bitcoin-knots/src/sync.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp"
+      ]
+    },
+    {
+      "label": "bench-storage-recovery",
+      "files": [
+        "packages/open-bitcoin-bench/src/cases/storage_recovery.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/node/blockstorage.cpp",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
+      "label": "bench-operator-runtime",
+      "files": [
+        "packages/open-bitcoin-bench/src/cases/operator_runtime.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/bitcoin-cli.cpp",
+        "packages/bitcoin-knots/src/init.cpp",
+        "packages/bitcoin-knots/src/interfaces/node.h"
+      ]
+    },
+    {
       "label": "bench-wallet",
       "files": [
         "packages/open-bitcoin-bench/src/cases/wallet.rs"
@@ -78,6 +111,17 @@
         "packages/bitcoin-knots/src/bench/coin_selection.cpp",
         "packages/bitcoin-knots/src/bench/wallet_create_tx.cpp",
         "packages/bitcoin-knots/src/wallet/spend.cpp"
+      ]
+    },
+    {
+      "label": "bench-wallet-rescan",
+      "files": [
+        "packages/open-bitcoin-bench/src/cases/wallet_rescan.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/wallet/wallet.cpp",
+        "packages/bitcoin-knots/src/wallet/spend.cpp",
+        "packages/bitcoin-knots/doc/managing-wallets.md"
       ]
     },
     {
@@ -101,6 +145,7 @@
         "packages/open-bitcoin-bench/src/main.rs",
         "packages/open-bitcoin-bench/src/registry.rs",
         "packages/open-bitcoin-bench/src/report.rs",
+        "packages/open-bitcoin-bench/src/runtime_fixtures.rs",
         "packages/open-bitcoin-bench/src/runner.rs"
       ],
       "breadcrumbs": []

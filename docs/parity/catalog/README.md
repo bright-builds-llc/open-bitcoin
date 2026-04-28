@@ -30,6 +30,7 @@ machine-readable parity ledger.
 | [`wallet.md`](wallet.md) | `done` | Descriptor wallets, addresses, balances, coin selection, signing, and adapter-owned persistence |
 | [`rpc-cli-config.md`](rpc-cli-config.md) | `done` | Supported JSON-RPC, `bitcoin-cli`-style behavior, config, auth, and deferred operator surfaces |
 | [`drop-in-audit-and-migration.md`](drop-in-audit-and-migration.md) | `done` | Phase 21 audit matrix for drop-in expectations, dry-run migration planning, and intentional migration differences |
+| [`operator-runtime-release-hardening.md`](operator-runtime-release-hardening.md) | `done` | Phase 22 verification, benchmark evidence, operator guidance, and release-readiness closeout for the v1.1 runtime |
 | [`verification-harnesses.md`](verification-harnesses.md) | `done` | Cross-implementation parity harnesses, parallel-safe integration isolation, property-style tests, and CI report output |
 
 ## Maintenance

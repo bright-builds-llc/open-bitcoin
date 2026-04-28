@@ -48,7 +48,7 @@ This active milestone makes Open Bitcoin usable as an operator-facing, service-m
 - [x] **Phase 19: Ratatui Node Dashboard** - Build the terminal dashboard on top of the shared status, metrics, logs, service, and sync models. (completed 2026-04-27)
 - [x] **Phase 20: Wallet Runtime Expansion** - Expand practical wallet runtime behavior for send, wallet selection, descriptors, rescans, backups, and migration inspection. (completed 2026-04-27)
 - [x] **Phase 21: Drop-In Parity Audit and Migration** - Audit Core/Knots replacement expectations and implement detection, education, and dry-run migration plans. (completed 2026-04-27)
-- [ ] **Phase 22: Real-Sync Benchmarks and Release Hardening** - Add real-sync benchmarks, docs, parity updates, and verification coverage for the v1.1 operator runtime.
+- [x] **Phase 22: Real-Sync Benchmarks and Release Hardening** - Add real-sync benchmarks, docs, parity updates, and verification coverage for the v1.1 operator runtime. (completed 2026-04-27)
 
 ## Phase Details
 
@@ -231,11 +231,16 @@ Plans:
 3. Documentation explains install, onboarding, service lifecycle, status, dashboard, config layering, migration, real-sync testing, and known limitations.
 4. Parity docs and machine-readable indexes distinguish v1.1 shipped claims from deferred or out-of-scope surfaces.
 5. The milestone is ready for `/gsd-verify-work`, `/gsd-secure-phase`, and `/gsd-audit-milestone`.
-**Plans**: TBD
+**Plans**: 3/3 plans complete
+
+Plans:
+- [x] 22-01-PLAN.md — Runtime-backed benchmark coverage and reproducible report metadata
+- [x] 22-02-PLAN.md — Operator release guide and documentation refresh
+- [x] 22-03-PLAN.md — Parity ledger, benchmark verification, and release-readiness closeout
 
 ## Progress
 
 | Milestone | Phases | Plans | Status | Shipped |
 | --- | ---: | ---: | --- | --- |
 | v1.0 Headless Parity | 22/22 | 80/80 | Archived | 2026-04-26 |
-| v1.1 Operator Runtime and Real-Network Sync | 9/10 | 35/35 | In Progress | - |
+| v1.1 Operator Runtime and Real-Network Sync | 10/10 | 38/38 | Ready for audit | - |
