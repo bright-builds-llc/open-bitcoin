@@ -47,7 +47,7 @@ This active milestone makes Open Bitcoin usable as an operator-facing, service-m
 - [x] **Phase 18: Service Lifecycle Integration** - Add macOS launchd and Linux systemd install/uninstall/enable/disable/status support with dry-run safety. (completed 2026-04-27)
 - [x] **Phase 19: Ratatui Node Dashboard** - Build the terminal dashboard on top of the shared status, metrics, logs, service, and sync models. (completed 2026-04-27)
 - [x] **Phase 20: Wallet Runtime Expansion** - Expand practical wallet runtime behavior for send, wallet selection, descriptors, rescans, backups, and migration inspection. (completed 2026-04-27)
-- [ ] **Phase 21: Drop-In Parity Audit and Migration** - Audit Core/Knots replacement expectations and implement detection, education, and dry-run migration plans.
+- [x] **Phase 21: Drop-In Parity Audit and Migration** - Audit Core/Knots replacement expectations and implement detection, education, and dry-run migration plans. (completed 2026-04-27)
 - [ ] **Phase 22: Real-Sync Benchmarks and Release Hardening** - Add real-sync benchmarks, docs, parity updates, and verification coverage for the v1.1 operator runtime.
 
 ## Phase Details
@@ -213,7 +213,12 @@ Plans:
 3. Migration wizard explains benefits, tradeoffs, unsupported surfaces, rollback expectations, and backup requirements before asking to proceed.
 4. Dry-run migration plans list every proposed file, config, service, and wallet action before any write occurs.
 5. Intentional behavior differences are recorded in parity docs and surfaced in migration output when relevant.
-**Plans**: TBD
+**Plans**: 3/3 plans complete
+
+Plans:
+- [x] 21-01-PLAN.md — `migrate plan` contract, dry-run planner, and focused unit coverage
+- [x] 21-02-PLAN.md — Sandboxed migration binary proof and parity-notice sync guard
+- [x] 21-03-PLAN.md — Drop-in audit matrix, parity ledger updates, and contributor docs
 
 ### Phase 22: Real-Sync Benchmarks and Release Hardening
 
@@ -233,4 +238,4 @@ Plans:
 | Milestone | Phases | Plans | Status | Shipped |
 | --- | ---: | ---: | --- | --- |
 | v1.0 Headless Parity | 22/22 | 80/80 | Archived | 2026-04-26 |
-| v1.1 Operator Runtime and Real-Network Sync | 6/10 | 32/32 | In Progress | - |
+| v1.1 Operator Runtime and Real-Network Sync | 9/10 | 35/35 | In Progress | - |

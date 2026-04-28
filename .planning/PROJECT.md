@@ -16,7 +16,7 @@ v1.0 Headless Parity shipped on 2026-04-26. The repository contains a headless R
 
 The v1.0 archive lives under `.planning/milestones/`, with the detailed shipped roadmap, requirements ledger, and milestone audit preserved as historical artifacts.
 
-v1.1 Phases 13 through 16 are complete. The active milestone now has shared operator-runtime contracts, durable Fjall-backed runtime storage, hermetic real-network sync foundations, and bounded metrics/log/sync telemetry ready for the CLI, service, and dashboard phases.
+v1.1 Phases 13 through 21 are complete. The active milestone now has shared operator-runtime contracts, durable Fjall-backed runtime storage, hermetic real-network sync foundations, bounded metrics/log/sync telemetry, rich CLI/service/dashboard operator surfaces, expanded wallet runtime behavior, and a dry-run migration planner backed by an auditable parity ledger.
 
 ## Current Milestone: v1.1 Operator Runtime and Real-Network Sync
 
@@ -92,8 +92,8 @@ v1.1 Phases 13 through 16 are complete. The active milestone now has shared oper
 | Keep v1.0 headless and defer any GUI to a future milestone | GUI parity would slow core correctness work and should be designed on its own terms later | Implemented; v1.1 adds terminal dashboard only |
 | Avoid third-party Rust Bitcoin libraries in the production path | The project wants full ownership of domain abstractions, invariants, and behavior | Implemented for the production path |
 | Archive v1.0 before new milestone planning | The next milestone needs a clean requirements and roadmap surface while preserving historical evidence | v1.0 archive created under `.planning/milestones/` |
-| Adopt a terminal-first operator surface for v1.1 | A Ratatui dashboard and rich CLI status move operator usability forward without changing the headless product boundary | Pending v1.1 execution |
-| Treat migration as explicit and reversible | Existing Core/Knots datadirs and wallets are high-value user data and must not be mutated implicitly | Pending v1.1 execution |
+| Adopt a terminal-first operator surface for v1.1 | A Ratatui dashboard and rich CLI status move operator usability forward without changing the headless product boundary | Implemented in Phases 17 through 19 via `open-bitcoin` status, service, and dashboard surfaces |
+| Treat migration as explicit and reversible | Existing Core/Knots datadirs and wallets are high-value user data and must not be mutated implicitly | Implemented in Phase 21 as a dry-run-only `migrate plan` surface plus parity-ledger-backed migration notices |
 
 ## Evolution
 
@@ -113,4 +113,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-26 after Phase 16 completion*
+*Last updated: 2026-04-28 after Phase 21 verification*

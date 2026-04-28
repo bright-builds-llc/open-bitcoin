@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Operator Runtime and Real-Network Sync
 status: ready_for_next_phase
-stopped_at: Phase 20 verified complete
-last_updated: "2026-04-27T21:27:05Z"
-last_activity: 2026-04-27 -- Phase 20 completed and verified
+stopped_at: Phase 21 verified complete
+last_updated: "2026-04-28T00:35:35Z"
+last_activity: 2026-04-27 -- Phase 21 completed and verified
 progress:
   total_phases: 10
-  completed_phases: 8
-  total_plans: 32
-  completed_plans: 32
+  completed_phases: 9
+  total_plans: 35
+  completed_plans: 35
   percent: 100
 ---
 
@@ -21,22 +21,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-26)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 21 — drop-in-parity-audit-and-migration
+**Current focus:** Phase 22 — real-sync-benchmarks-and-release-hardening
 
 ## Current Position
 
-Phase: 21 (drop-in-parity-audit-and-migration) — READY
+Phase: 22 (real-sync-benchmarks-and-release-hardening) — READY
 Plan: TBD
-Status: Phase 20 complete; Phase 21 not planned yet
-Last activity: 2026-04-27 -- Phase 20 completed and verified
+Status: Phase 21 complete; Phase 22 not planned yet
+Last activity: 2026-04-27 -- Phase 21 completed and verified
 
-Progress: 8/10 phases complete
+Progress: 9/10 phases complete
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed in v1.1: 32
+- Total plans completed in v1.1: 35
 - Average duration: not available yet
 - Total execution time: not available yet
 
@@ -52,7 +52,7 @@ Progress: 8/10 phases complete
 | 18 | 3 | - | - |
 | 19 | 3 | - | - |
 | 20 | 5 | - | - |
-| 21 | TBD | - | - |
+| 21 | 3 | - | - |
 | 22 | TBD | - | - |
 
 **Recent Trend:**
@@ -64,6 +64,7 @@ Progress: 8/10 phases complete
 - Phase 18 completed 3 service lifecycle integration plans on 2026-04-27.
 - Phase 19 completed 3 ratatui dashboard plans on 2026-04-27.
 - Phase 20 completed 5 wallet runtime expansion plans on 2026-04-27.
+- Phase 21 completed 3 drop-in parity audit and migration plans on 2026-04-27.
 
 | Phase 16 P01 | 12 min | 2 tasks | 4 files |
 | Phase 16 P02 | 18 min | 2 tasks | 7 files |
@@ -107,6 +108,9 @@ Recent decisions affecting current work:
 - [Phase 20-wallet-runtime-expansion]: Keep wallet selection in transport metadata and URI routing instead of request JSON payloads.
 - [Phase 20-wallet-runtime-expansion]: Preserve the typed GetWalletInfoResponse shape for downstream callers and append Phase 20 freshness metadata at JSON serialization time.
 - [Phase 20-wallet-runtime-expansion]: Resolve conf_target and estimate_mode in the RPC shell into deterministic fee rates before reusing the shared build-and-sign spend path.
+- [Phase 21-drop-in-parity-audit-and-migration]: Keep migration as a separate operator-owned `open-bitcoin migrate plan` surface instead of extending onboarding. — Preserves the target-setup wizard boundary while giving source-install review its own dry-run-first contract.
+- [Phase 21-drop-in-parity-audit-and-migration]: Keep migration dry-run only in Phase 21 and require explicit `--source-datadir` selection when detection is ambiguous. — Protects existing Core/Knots datadirs, services, and wallets from implicit mutation or guessed source selection.
+- [Phase 21-drop-in-parity-audit-and-migration]: Store migration-relevant deviations in `docs/parity/index.json` and surface only the relevant notices at runtime. — Keeps the CLI and parity ledger on one auditable machine-readable source of truth.
 
 ### Roadmap Evolution
 
@@ -120,9 +124,9 @@ Recent decisions affecting current work:
 ### Blockers/Concerns
 
 - Durable database choice must be made deliberately before real-network sync relies on it.
-- Migration flows must not mutate existing Core/Knots data until detection, explanation, backup, and dry-run behavior are implemented.
+- Automatic or destructive migration remains out of scope after Phase 21; later phases must preserve the current dry-run-first safety boundary until an apply-mode design is explicitly planned.
 - The TUI dashboard depends on stable status, metrics, and sync-state projections; avoid building a decorative dashboard before those data contracts exist.
-- `bash scripts/verify.sh` passes again after the post-Phase-20 verification cleanup refactor.
+- `bash scripts/verify.sh` passes after the Phase 21 migration planner, parity-ledger sync, and closeout verification run.
 
 ### Quick Tasks Completed
 
@@ -139,6 +143,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-27T21:27:05Z
-Stopped at: Phase 20 verified complete
+Last session: 2026-04-28T00:35:35Z
+Stopped at: Phase 21 verified complete
 Resume file: .planning/ROADMAP.md
