@@ -120,6 +120,44 @@ fn source_datadir_selects_matching_detection() {
 }
 
 #[test]
+fn explicit_source_datadir_without_source_evidence_stays_manual_review() {
+    // Arrange
+    let resolution = sample_resolution();
+    let detections = vec![DetectedInstallation {
+        product_family: ProductFamily::Unknown,
+        confidence: DetectionConfidence::Low,
+        uncertainty: vec![
+            DetectionUncertainty::MissingConfig,
+            DetectionUncertainty::MissingCookie,
+            DetectionUncertainty::WalletFormatUnknown,
+        ],
+        source_paths: vec![DetectionSourcePath {
+            kind: DetectionSourcePathKind::DataDir,
+            path: PathBuf::from("/tmp/custom-core"),
+            present: true,
+        }],
+        maybe_data_dir: Some(PathBuf::from("/tmp/custom-core")),
+        maybe_config_file: None,
+        maybe_cookie_file: None,
+        service_candidates: Vec::new(),
+        wallet_candidates: Vec::new(),
+    }];
+    let request = MigrationPlanArgs {
+        maybe_source_data_dir: Some(PathBuf::from("/tmp/custom-core")),
+    };
+
+    // Act
+    let plan = plan_migration(&resolution, &detections, &request);
+
+    // Assert
+    let MigrationSourceSelection::ManualReviewRequired { reason, .. } = plan.source_selection
+    else {
+        panic!("expected manual review for unsupported explicit source path");
+    };
+    assert!(reason.contains("does not yet expose source config, cookie, or wallet evidence"));
+}
+
+#[test]
 fn json_render_includes_relevant_deviations() {
     // Arrange
     let resolution = sample_resolution();

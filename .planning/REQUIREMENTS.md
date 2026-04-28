@@ -138,9 +138,9 @@
 | WAL-07 | Phase 20 | Complete |
 | WAL-08 | Phase 20, Phase 21 | Complete |
 | MIG-01 | Phase 21, Phase 26 | Pending |
-| MIG-02 | Phase 17, Phase 21, Phase 25 | Pending |
+| MIG-02 | Phase 17, Phase 21, Phase 25 | Complete |
 | MIG-03 | Phase 21, Phase 26 | Pending |
-| MIG-04 | Phase 21, Phase 25 | Pending |
+| MIG-04 | Phase 21, Phase 25 | Complete |
 | MIG-05 | Phase 21, Phase 22, Phase 26 | Pending |
 | VER-05 | Phase 22, Phase 26 | Pending |
 | VER-06 | Phase 22, Phase 27 | Pending |
@@ -155,4 +155,4 @@
 
 ---
 *Requirements defined: 2026-04-26*
-*Last updated: 2026-04-28 after Phase 24 closeout*
+*Last updated: 2026-04-28 after Phase 25 closeout*

@@ -53,7 +53,7 @@ Post-audit gap-closure phases now extend the milestone so service apply behavior
 - [x] **Phase 22: Real-Sync Benchmarks and Release Hardening** - Add real-sync benchmarks, docs, parity updates, and verification coverage for the v1.1 operator runtime. (completed 2026-04-27)
 - [x] **Phase 23: Service Apply Completion and Status Truthfulness** - Complete launchd/systemd apply semantics, truthful enabled-state reporting, and dashboard service action closure after the v1.1 audit. (completed 2026-04-28)
 - [x] **Phase 24: Wallet-Aware Live Status and Build Provenance** - Keep status and dashboard truthfully live when wallet selection is ambiguous and surface real build provenance. (completed 2026-04-28)
-- [ ] **Phase 25: Migration Source Selection Hardening** - Let `migrate plan --source-datadir` select valid custom-location installs without degrading to manual review. (planned)
+- [x] **Phase 25: Migration Source Selection Hardening** - Let `migrate plan --source-datadir` select valid custom-location installs without degrading to manual review. (completed 2026-04-28)
 - [ ] **Phase 26: Milestone Evidence and Audit Reconciliation** - Align verification reports, summary frontmatter, and requirements bookkeeping so the v1.1 audit can pass cleanly. (planned)
 - [ ] **Phase 27: Operator Runtime Benchmark Fidelity** - Replace fixture-only operator-runtime benchmark cases with runtime-collected status/dashboard evidence. (planned)
 
@@ -291,7 +291,12 @@ Plans:
 1. `open-bitcoin migrate plan --source-datadir <custom-path>` can select a valid source install outside the default detection roots when the path is explicit and supported.
 2. Ambiguous or missing source installs still fall back to manual review with clear operator guidance.
 3. Migration verification covers explicit custom-path selection while preserving dry-run-first safety and source-data non-mutation.
-**Plans**: 0 plans yet
+**Plans**: 3/3 plans complete
+
+Plans:
+- [x] 25-01-PLAN.md — migration-scoped explicit source detection for custom datadirs
+- [x] 25-02-PLAN.md — conservative explicit-path validation and migration regression coverage
+- [x] 25-03-PLAN.md — Phase 25 verification, roadmap refresh, and migration traceability closeout
 
 ### Phase 26: Milestone Evidence and Audit Reconciliation
 
@@ -323,4 +328,4 @@ Plans:
 | Milestone | Phases | Plans | Status | Shipped |
 | --- | ---: | ---: | --- | --- |
 | v1.0 Headless Parity | 22/22 | 80/80 | Archived | 2026-04-26 |
-| v1.1 Operator Runtime and Real-Network Sync | 12/15 | 44/44 current | Gap closure underway | - |
+| v1.1 Operator Runtime and Real-Network Sync | 13/15 | 47/47 current | Gap closure underway | - |

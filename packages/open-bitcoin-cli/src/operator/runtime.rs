@@ -15,7 +15,8 @@ use serde_json::json;
 use crate::{args::CliStartupArgs, startup::resolve_startup_config};
 
 use super::{
-    ConfigCommand, OnboardArgs, OperatorCli, OperatorCommand, OperatorOutputFormat,
+    ConfigCommand, MigrationArgs, MigrationCommand, OnboardArgs, OperatorCli, OperatorCommand,
+    OperatorOutputFormat,
     config::{
         OPEN_BITCOIN_CONFIG_ENV, OPEN_BITCOIN_DATADIR_ENV, OPEN_BITCOIN_NETWORK_ENV,
         OperatorConfigRequest, OperatorConfigResolution, OperatorConfigRoots,
@@ -180,7 +181,7 @@ fn execute_operator_cli_inner(
                 message: error.to_string(),
             },
         )?;
-    let detections = detect_existing_installations(&detection_roots(&config_resolution));
+    let detections = command_detections(&config_resolution, &cli.command);
 
     match &cli.command {
         OperatorCommand::Status(_) => execute_status(&cli, config_resolution, detections),
@@ -316,6 +317,41 @@ fn status_runtime_parts(
         },
         maybe_rpc_client,
     }
+}
+
+fn command_detections(
+    config_resolution: &OperatorConfigResolution,
+    command: &OperatorCommand,
+) -> Vec<super::detect::DetectedInstallation> {
+    match command {
+        OperatorCommand::Migrate(args) => detect_migration_installations(config_resolution, args),
+        OperatorCommand::Status(_)
+        | OperatorCommand::Config(_)
+        | OperatorCommand::Onboard(_)
+        | OperatorCommand::Service(_)
+        | OperatorCommand::Dashboard(_)
+        | OperatorCommand::Wallet(_) => {
+            detect_existing_installations(&detection_roots(config_resolution))
+        }
+    }
+}
+
+fn detect_migration_installations(
+    config_resolution: &OperatorConfigResolution,
+    args: &MigrationArgs,
+) -> Vec<super::detect::DetectedInstallation> {
+    let mut roots = detection_roots(config_resolution);
+    let MigrationCommand::Plan(plan) = &args.command;
+    if let Some(source_data_dir) = plan.maybe_source_data_dir.as_ref()
+        && !roots
+            .data_dirs
+            .iter()
+            .any(|candidate| candidate == source_data_dir)
+    {
+        roots.data_dirs.push(source_data_dir.clone());
+    }
+
+    detect_existing_installations(&roots)
 }
 
 fn execute_onboarding(

@@ -129,6 +129,15 @@ fn select_source_installation(
             .is_some_and(|data_dir| data_dir == source_data_dir)
     });
     if let Some(installation) = maybe_installation {
+        if !supports_explicit_source_selection(installation) {
+            return MigrationSourceSelection::ManualReviewRequired {
+                reason: format!(
+                    "The explicit source path {} exists, but it does not yet expose source config, cookie, or wallet evidence. Confirm the path points at a supported Core or Knots datadir before rerunning the planner.",
+                    source_data_dir.display()
+                ),
+                candidates,
+            };
+        }
         return MigrationSourceSelection::Selected {
             installation: summarize_installation(installation),
         };
@@ -141,6 +150,12 @@ fn select_source_installation(
         ),
         candidates,
     }
+}
+
+fn supports_explicit_source_selection(installation: &DetectedInstallation) -> bool {
+    installation.maybe_config_file.is_some()
+        || installation.maybe_cookie_file.is_some()
+        || !installation.wallet_candidates.is_empty()
 }
 
 fn summarize_target_environment(
