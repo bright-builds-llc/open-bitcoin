@@ -50,6 +50,30 @@ pub fn generate_unit_content(
     )
 }
 
+fn systemd_install_commands() -> Vec<String> {
+    vec![
+        "systemctl --user daemon-reload".to_string(),
+        format!("systemctl --user enable {OPEN_BITCOIN_SYSTEMD_FILE_NAME}"),
+    ]
+}
+
+fn systemd_uninstall_commands() -> Vec<String> {
+    vec![
+        format!("systemctl --user disable {OPEN_BITCOIN_SYSTEMD_FILE_NAME}"),
+        "systemctl --user daemon-reload".to_string(),
+    ]
+}
+
+pub(crate) fn parse_systemd_enabled_state(output: &str) -> Option<bool> {
+    let normalized = output.trim().to_ascii_lowercase();
+    match normalized.as_str() {
+        "enabled" | "enabled-runtime" => Some(true),
+        "alias" | "disabled" | "generated" | "indirect" | "linked" | "linked-runtime"
+        | "masked" | "static" | "transient" => Some(false),
+        _ => None,
+    }
+}
+
 /// Linux systemd user-scope service adapter.
 ///
 /// Wraps unit file writes and `systemctl --user` invocations. Construct via
@@ -84,10 +108,7 @@ impl ServiceManager for SystemdAdapter {
             request.maybe_config_path.as_deref(),
         );
 
-        let dry_run_commands = vec![
-            "systemctl --user daemon-reload".to_string(),
-            "systemctl --user enable open-bitcoin-node.service".to_string(),
-        ];
+        let install_commands = systemd_install_commands();
 
         if !request.apply {
             return Ok(ServiceCommandOutcome {
@@ -95,7 +116,7 @@ impl ServiceManager for SystemdAdapter {
                 description: format!("Would write unit file to {}", unit_path.display()),
                 maybe_file_path: Some(unit_path),
                 maybe_file_content: Some(unit_content),
-                commands_that_would_run: dry_run_commands,
+                commands_that_would_run: install_commands,
             });
         }
 
@@ -115,12 +136,41 @@ impl ServiceManager for SystemdAdapter {
             cause: cause.to_string(),
         })?;
 
+        let reload_output = std::process::Command::new("systemctl")
+            .args(["--user", "daemon-reload"])
+            .output()
+            .map_err(|cause| ServiceError::ManagerCommandFailed {
+                exit_code: -1,
+                stderr: cause.to_string(),
+            })?;
+        if !reload_output.status.success() {
+            let exit_code = reload_output.status.code().unwrap_or(-1);
+            let stderr = String::from_utf8_lossy(&reload_output.stderr).to_string();
+            return Err(ServiceError::ManagerCommandFailed { exit_code, stderr });
+        }
+
+        let enable_output = std::process::Command::new("systemctl")
+            .args(["--user", "enable", OPEN_BITCOIN_SYSTEMD_FILE_NAME])
+            .output()
+            .map_err(|cause| ServiceError::ManagerCommandFailed {
+                exit_code: -1,
+                stderr: cause.to_string(),
+            })?;
+        if !enable_output.status.success() {
+            let exit_code = enable_output.status.code().unwrap_or(-1);
+            let stderr = String::from_utf8_lossy(&enable_output.stderr).to_string();
+            return Err(ServiceError::ManagerCommandFailed { exit_code, stderr });
+        }
+
         Ok(ServiceCommandOutcome {
             dry_run: false,
-            description: format!("Wrote unit file to {}", unit_path.display()),
+            description: format!(
+                "Wrote unit file to {} and reloaded or enabled it in systemd",
+                unit_path.display()
+            ),
             maybe_file_path: Some(unit_path),
             maybe_file_content: Some(unit_content),
-            commands_that_would_run: dry_run_commands,
+            commands_that_would_run: install_commands,
         })
     }
 
@@ -129,7 +179,7 @@ impl ServiceManager for SystemdAdapter {
         request: &ServiceUninstallRequest,
     ) -> Result<ServiceCommandOutcome, ServiceError> {
         let unit_path = self.unit_path();
-        let disable_cmd = "systemctl --user disable open-bitcoin-node.service".to_string();
+        let uninstall_commands = systemd_uninstall_commands();
 
         if !unit_path.exists() {
             return Err(ServiceError::NotInstalled);
@@ -141,7 +191,7 @@ impl ServiceManager for SystemdAdapter {
                 description: format!("Would remove unit file at {}", unit_path.display()),
                 maybe_file_path: Some(unit_path),
                 maybe_file_content: None,
-                commands_that_would_run: vec![disable_cmd],
+                commands_that_would_run: uninstall_commands,
             });
         }
 
@@ -164,12 +214,25 @@ impl ServiceManager for SystemdAdapter {
             cause: cause.to_string(),
         })?;
 
+        let reload_output = std::process::Command::new("systemctl")
+            .args(["--user", "daemon-reload"])
+            .output()
+            .map_err(|cause| ServiceError::ManagerCommandFailed {
+                exit_code: -1,
+                stderr: cause.to_string(),
+            })?;
+        if !reload_output.status.success() {
+            let exit_code = reload_output.status.code().unwrap_or(-1);
+            let stderr = String::from_utf8_lossy(&reload_output.stderr).to_string();
+            return Err(ServiceError::ManagerCommandFailed { exit_code, stderr });
+        }
+
         Ok(ServiceCommandOutcome {
             dry_run: false,
             description: format!("Removed unit file at {}", unit_path.display()),
             maybe_file_path: Some(unit_path),
             maybe_file_content: None,
-            commands_that_would_run: vec![disable_cmd],
+            commands_that_would_run: uninstall_commands,
         })
     }
 
@@ -243,6 +306,7 @@ impl ServiceManager for SystemdAdapter {
         if !unit_path.exists() {
             return Ok(ServiceStateSnapshot {
                 state: ServiceLifecycleState::Unmanaged,
+                maybe_enabled: Some(false),
                 maybe_service_file_path: None,
                 maybe_manager_diagnostics: Some(
                     "unmanaged — run `open-bitcoin service install --dry-run` to see what would be created".to_string()
@@ -251,33 +315,87 @@ impl ServiceManager for SystemdAdapter {
             });
         }
 
+        let (maybe_enabled, maybe_enabled_diagnostics) =
+            match std::process::Command::new("systemctl")
+                .args(["--user", "is-enabled", OPEN_BITCOIN_SYSTEMD_FILE_NAME])
+                .output()
+            {
+                Ok(output) => {
+                    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+                    let maybe_enabled = parse_systemd_enabled_state(&stdout);
+                    let maybe_diagnostic = if stderr.is_empty() {
+                        None
+                    } else {
+                        Some(format!("systemctl is-enabled reported: {stderr}"))
+                    };
+                    (maybe_enabled, maybe_diagnostic)
+                }
+                Err(_) => (None, Some("systemctl is-enabled not available".to_string())),
+            };
+
         let output = std::process::Command::new("systemctl")
             .args(["--user", "is-active", OPEN_BITCOIN_SYSTEMD_FILE_NAME])
             .output();
 
         let Ok(output) = output else {
             return Ok(ServiceStateSnapshot {
-                state: ServiceLifecycleState::Installed,
+                state: maybe_enabled
+                    .map(|enabled| {
+                        if enabled {
+                            ServiceLifecycleState::Enabled
+                        } else {
+                            ServiceLifecycleState::Installed
+                        }
+                    })
+                    .unwrap_or(ServiceLifecycleState::Installed),
+                maybe_enabled,
                 maybe_service_file_path: Some(unit_path),
-                maybe_manager_diagnostics: Some("systemctl not available".to_string()),
+                maybe_manager_diagnostics: maybe_enabled_diagnostics
+                    .or_else(|| Some("systemctl not available".to_string())),
                 maybe_log_path: None,
             });
         };
 
         let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        let state = match output.status.code() {
-            Some(0) => ServiceLifecycleState::Running,
-            Some(3) => ServiceLifecycleState::Stopped,
-            _ => ServiceLifecycleState::Failed,
+        let state = match stdout.as_str() {
+            "active" => ServiceLifecycleState::Running,
+            "failed" => ServiceLifecycleState::Failed,
+            "inactive" => {
+                if maybe_enabled == Some(true) {
+                    ServiceLifecycleState::Stopped
+                } else {
+                    ServiceLifecycleState::Installed
+                }
+            }
+            _ if maybe_enabled == Some(true) => ServiceLifecycleState::Enabled,
+            _ if maybe_enabled == Some(false) => ServiceLifecycleState::Installed,
+            _ => match output.status.code() {
+                Some(0) => ServiceLifecycleState::Running,
+                Some(3) => ServiceLifecycleState::Stopped,
+                _ => ServiceLifecycleState::Failed,
+            },
         };
+
+        let mut diagnostics = Vec::new();
+        if !stdout.is_empty() {
+            diagnostics.push(format!("systemctl is-active={stdout}"));
+        }
+        if let Some(enabled) = maybe_enabled {
+            diagnostics.push(format!("systemctl is-enabled={enabled}"));
+        }
+        if let Some(diagnostic) = maybe_enabled_diagnostics {
+            diagnostics.push(diagnostic);
+        }
 
         Ok(ServiceStateSnapshot {
             state,
+            maybe_enabled,
             maybe_service_file_path: Some(unit_path),
-            maybe_manager_diagnostics: if stdout.is_empty() {
+            maybe_manager_diagnostics: if diagnostics.is_empty() {
                 None
             } else {
-                Some(stdout)
+                Some(diagnostics.join("\n"))
             },
             maybe_log_path: None,
         })

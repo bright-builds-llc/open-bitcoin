@@ -51,7 +51,7 @@ Post-audit gap-closure phases now extend the milestone so service apply behavior
 - [x] **Phase 20: Wallet Runtime Expansion** - Expand practical wallet runtime behavior for send, wallet selection, descriptors, rescans, backups, and migration inspection. (completed 2026-04-27)
 - [x] **Phase 21: Drop-In Parity Audit and Migration** - Audit Core/Knots replacement expectations and implement detection, education, and dry-run migration plans. (completed 2026-04-27)
 - [x] **Phase 22: Real-Sync Benchmarks and Release Hardening** - Add real-sync benchmarks, docs, parity updates, and verification coverage for the v1.1 operator runtime. (completed 2026-04-27)
-- [ ] **Phase 23: Service Apply Completion and Status Truthfulness** - Complete launchd/systemd apply semantics, truthful enabled-state reporting, and dashboard service action closure after the v1.1 audit. (planned)
+- [x] **Phase 23: Service Apply Completion and Status Truthfulness** - Complete launchd/systemd apply semantics, truthful enabled-state reporting, and dashboard service action closure after the v1.1 audit. (completed 2026-04-28)
 - [ ] **Phase 24: Wallet-Aware Live Status and Build Provenance** - Keep status and dashboard truthfully live when wallet selection is ambiguous and surface real build provenance. (planned)
 - [ ] **Phase 25: Migration Source Selection Hardening** - Let `migrate plan --source-datadir` select valid custom-location installs without degrading to manual review. (planned)
 - [ ] **Phase 26: Milestone Evidence and Audit Reconciliation** - Align verification reports, summary frontmatter, and requirements bookkeeping so the v1.1 audit can pass cleanly. (planned)
@@ -256,7 +256,12 @@ Plans:
 2. Service status and dashboard summaries distinguish installed, enabled, running, failed, stopped, and unmanaged states using real manager evidence instead of inference.
 3. Dashboard service actions reuse the corrected apply path and remain confirmation-gated.
 4. Service verification evidence and requirements bookkeeping are refreshed around the corrected runtime behavior.
-**Plans**: 0 plans yet
+**Plans**: 3/3 plans complete
+
+Plans:
+- [x] 23-01-PLAN.md — launchd and systemd install apply sequencing plus truthful dry-run previews
+- [x] 23-02-PLAN.md — explicit enabled-state evidence for service status and dashboard projections
+- [x] 23-03-PLAN.md — Phase 23 verification, roadmap refresh, and requirements bookkeeping closeout
 
 ### Phase 24: Wallet-Aware Live Status and Build Provenance
 
@@ -313,4 +318,4 @@ Plans:
 | Milestone | Phases | Plans | Status | Shipped |
 | --- | ---: | ---: | --- | --- |
 | v1.0 Headless Parity | 22/22 | 80/80 | Archived | 2026-04-26 |
-| v1.1 Operator Runtime and Real-Network Sync | 10/15 | 38/38 existing | Gap closure planned | - |
+| v1.1 Operator Runtime and Real-Network Sync | 11/15 | 41/41 current | Gap closure underway | - |

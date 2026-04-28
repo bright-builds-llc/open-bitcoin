@@ -38,6 +38,8 @@ pub enum ServiceLifecycleState {
 pub struct ServiceStateSnapshot {
     /// Current lifecycle state.
     pub state: ServiceLifecycleState,
+    /// Whether the manager reports startup as enabled, when that can be determined.
+    pub maybe_enabled: Option<bool>,
     /// Path to the installed service file, if known.
     pub maybe_service_file_path: Option<PathBuf>,
     /// Diagnostic output from the service manager, if available.
@@ -248,16 +250,25 @@ fn render_service_outcome(outcome: &ServiceCommandOutcome) -> String {
 /// Render a `ServiceStateSnapshot` as human-readable output.
 fn render_service_state_snapshot(snapshot: &ServiceStateSnapshot) -> String {
     let state = match snapshot.state {
-        ServiceLifecycleState::Unmanaged => {
-            "unmanaged — run `open-bitcoin service install` to see what would be created"
-        }
-        ServiceLifecycleState::Installed => "installed (not enabled)",
-        ServiceLifecycleState::Enabled => "enabled (not running)",
+        ServiceLifecycleState::Unmanaged => "unmanaged",
+        ServiceLifecycleState::Installed => "installed",
+        ServiceLifecycleState::Enabled => "enabled",
         ServiceLifecycleState::Running => "running",
         ServiceLifecycleState::Failed => "failed",
         ServiceLifecycleState::Stopped => "stopped",
     };
     let mut lines = vec![format!("service: {state}")];
+    lines.push(format!(
+        "  installed: {}",
+        !matches!(snapshot.state, ServiceLifecycleState::Unmanaged)
+    ));
+    if let Some(enabled) = snapshot.maybe_enabled {
+        lines.push(format!("  enabled: {enabled}"));
+    }
+    lines.push(format!(
+        "  running: {}",
+        matches!(snapshot.state, ServiceLifecycleState::Running)
+    ));
     if let Some(path) = &snapshot.maybe_service_file_path {
         lines.push(format!("  file: {}", path.display()));
     }
@@ -266,6 +277,11 @@ fn render_service_state_snapshot(snapshot: &ServiceStateSnapshot) -> String {
     }
     if let Some(diag) = &snapshot.maybe_manager_diagnostics {
         lines.push(format!("  diagnostics: {diag}"));
+    }
+    if matches!(snapshot.state, ServiceLifecycleState::Unmanaged) {
+        lines.push(
+            "  hint: run `open-bitcoin service install` to see what would be created".to_string(),
+        );
     }
     lines.join("\n")
 }

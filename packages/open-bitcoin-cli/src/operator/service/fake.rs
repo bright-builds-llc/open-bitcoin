@@ -57,6 +57,7 @@ impl FakeServiceManager {
     pub fn unmanaged() -> Self {
         Self::new(ServiceStateSnapshot {
             state: ServiceLifecycleState::Unmanaged,
+            maybe_enabled: Some(false),
             maybe_service_file_path: None,
             maybe_manager_diagnostics: None,
             maybe_log_path: None,

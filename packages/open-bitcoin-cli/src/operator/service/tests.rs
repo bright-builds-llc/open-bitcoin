@@ -17,8 +17,8 @@ use crate::operator::{
         ServiceError, ServiceInstallRequest, ServiceLifecycleState, ServiceManager,
         ServiceStateSnapshot, execute_service_command,
         fake::{FakeServiceCall, FakeServiceManager},
-        launchd::{LaunchdAdapter, generate_plist_content},
-        systemd::{SystemdAdapter, generate_unit_content},
+        launchd::{LaunchdAdapter, generate_plist_content, parse_launchd_disabled_services},
+        systemd::{SystemdAdapter, generate_unit_content, parse_systemd_enabled_state},
     },
 };
 
@@ -212,6 +212,7 @@ fn fake_manager_status_returns_configured_state() {
     // Arrange
     let snapshot = ServiceStateSnapshot {
         state: ServiceLifecycleState::Unmanaged,
+        maybe_enabled: Some(false),
         maybe_service_file_path: None,
         maybe_manager_diagnostics: None,
         maybe_log_path: None,
@@ -305,6 +306,36 @@ fn launchd_install_dry_run_does_not_write_file() {
     );
 }
 
+#[test]
+fn launchd_install_dry_run_lists_enable_and_bootstrap_commands() {
+    // Arrange
+    let test_dir = TestDirectory::new("launchd-dry-run-commands");
+    let adapter = LaunchdAdapter::new(test_dir.path.clone());
+    let request = ServiceInstallRequest {
+        binary_path: PathBuf::from("/fake/bin/open-bitcoin"),
+        data_dir: PathBuf::from("/fake/datadir"),
+        maybe_config_path: None,
+        maybe_log_path: None,
+        apply: false,
+    };
+
+    // Act
+    let outcome = adapter.install(&request).expect("launchd dry-run install");
+
+    // Assert
+    assert_eq!(outcome.commands_that_would_run.len(), 2);
+    assert!(
+        outcome.commands_that_would_run[0].starts_with("launchctl enable gui/"),
+        "missing launchctl enable preview: {:?}",
+        outcome.commands_that_would_run
+    );
+    assert!(
+        outcome.commands_that_would_run[1].starts_with("launchctl bootstrap gui/"),
+        "missing launchctl bootstrap preview: {:?}",
+        outcome.commands_that_would_run
+    );
+}
+
 // --- SystemdAdapter dry-run isolation tests ---
 
 #[test]
@@ -337,6 +368,65 @@ fn systemd_install_dry_run_does_not_write_file() {
         !unit_path.exists(),
         "unit file must NOT exist after dry-run"
     );
+}
+
+#[test]
+fn systemd_install_dry_run_lists_reload_and_enable_commands() {
+    // Arrange
+    let test_dir = TestDirectory::new("systemd-dry-run-commands");
+    let adapter = SystemdAdapter::new(test_dir.path.clone());
+    let request = ServiceInstallRequest {
+        binary_path: PathBuf::from("/fake/bin/open-bitcoin"),
+        data_dir: PathBuf::from("/fake/datadir"),
+        maybe_config_path: None,
+        maybe_log_path: None,
+        apply: false,
+    };
+
+    // Act
+    let outcome = adapter.install(&request).expect("systemd dry-run install");
+
+    // Assert
+    assert_eq!(
+        outcome.commands_that_would_run,
+        vec![
+            "systemctl --user daemon-reload".to_string(),
+            "systemctl --user enable open-bitcoin-node.service".to_string(),
+        ]
+    );
+}
+
+#[test]
+fn launchd_disabled_services_parser_detects_enabled_and_disabled_entries() {
+    // Arrange
+    let disabled_output = r#"
+{
+    "org.open-bitcoin.node" => true
+}
+"#;
+    let enabled_output = r#"
+{
+    "org.open-bitcoin.node" => false
+}
+"#;
+
+    // Act / Assert
+    assert_eq!(
+        parse_launchd_disabled_services(disabled_output, "org.open-bitcoin.node"),
+        Some(false)
+    );
+    assert_eq!(
+        parse_launchd_disabled_services(enabled_output, "org.open-bitcoin.node"),
+        Some(true)
+    );
+}
+
+#[test]
+fn systemd_enabled_state_parser_classifies_common_states() {
+    // Arrange / Act / Assert
+    assert_eq!(parse_systemd_enabled_state("enabled\n"), Some(true));
+    assert_eq!(parse_systemd_enabled_state("disabled\n"), Some(false));
+    assert_eq!(parse_systemd_enabled_state("masked\n"), Some(false));
 }
 
 // --- execute_service_command tests ---
@@ -524,4 +614,40 @@ fn execute_service_command_install_dry_run_shows_scope() {
         stdout.contains("user-level") || stdout.contains("Scope"),
         "stdout should mention user-level scope: {stdout}"
     );
+}
+
+#[test]
+fn execute_service_command_status_surfaces_enabled_and_running_flags() {
+    // Arrange
+    let snapshot = ServiceStateSnapshot {
+        state: ServiceLifecycleState::Failed,
+        maybe_enabled: Some(true),
+        maybe_service_file_path: Some(PathBuf::from("/tmp/open-bitcoin-node.service")),
+        maybe_manager_diagnostics: Some("systemctl is-active=failed".to_string()),
+        maybe_log_path: None,
+    };
+    let manager = FakeServiceManager::new(snapshot);
+    let cli = OperatorCli::try_parse_from(["open-bitcoin", "service", "status"]).unwrap();
+    let crate::operator::OperatorCommand::Service(service_args) = &cli.command else {
+        panic!("expected Service command");
+    };
+
+    // Act
+    let outcome = execute_service_command(
+        service_args,
+        PathBuf::from("/fake/bin/open-bitcoin"),
+        PathBuf::from("/fake/datadir"),
+        None,
+        None,
+        &manager,
+    );
+
+    // Assert
+    assert_eq!(
+        outcome.exit_code,
+        crate::operator::runtime::OperatorExitCode::Success
+    );
+    assert!(outcome.stdout.text.contains("service: failed"));
+    assert!(outcome.stdout.text.contains("enabled: true"));
+    assert!(outcome.stdout.text.contains("running: false"));
 }

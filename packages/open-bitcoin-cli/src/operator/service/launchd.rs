@@ -81,6 +81,70 @@ pub fn generate_plist_content(
     )
 }
 
+fn launchd_target(uid: u32) -> String {
+    format!("gui/{uid}/{OPEN_BITCOIN_LAUNCHD_LABEL}")
+}
+
+fn launchd_domain(uid: u32) -> String {
+    format!("gui/{uid}")
+}
+
+fn launchd_install_commands(uid: u32, plist_path: &Path) -> Vec<String> {
+    vec![
+        format!("launchctl enable {}", launchd_target(uid)),
+        format!(
+            "launchctl bootstrap {} {}",
+            launchd_domain(uid),
+            plist_path.display()
+        ),
+    ]
+}
+
+fn parse_launchd_last_exit_status(stdout: &str) -> Option<i32> {
+    for line in stdout.lines() {
+        let trimmed = line.trim();
+        let Some(value) = trimmed.strip_prefix("\"LastExitStatus\" = ") else {
+            continue;
+        };
+        if let Ok(exit_code) = value.trim_end_matches(';').trim().parse::<i32>() {
+            return Some(exit_code);
+        }
+    }
+
+    None
+}
+
+pub(crate) fn parse_launchd_disabled_services(output: &str, label: &str) -> Option<bool> {
+    for line in output.lines() {
+        let normalized = line.trim().trim_end_matches(';').trim_end_matches(',');
+        let Some((raw_key, raw_value)) = normalized
+            .split_once("=>")
+            .or_else(|| normalized.split_once('='))
+        else {
+            continue;
+        };
+
+        let key = raw_key.trim().trim_matches('"');
+        if key != label {
+            continue;
+        }
+
+        let value = raw_value
+            .trim()
+            .trim_matches('"')
+            .trim_end_matches(';')
+            .trim_end_matches(',')
+            .to_ascii_lowercase();
+        return match value.as_str() {
+            "true" | "1" => Some(false),
+            "false" | "0" => Some(true),
+            _ => None,
+        };
+    }
+
+    None
+}
+
 /// macOS launchd service adapter.
 ///
 /// Wraps plist file writes and `launchctl` invocations. Construct via `LaunchdAdapter::new()`;
@@ -113,6 +177,43 @@ impl LaunchdAdapter {
             .and_then(|s| s.trim().parse::<u32>().ok())
             .unwrap_or(501) // fallback: typical first macOS user UID
     }
+
+    fn query_enabled_state(&self, uid: u32) -> (Option<bool>, Option<String>) {
+        let domain = launchd_domain(uid);
+        let output = std::process::Command::new("launchctl")
+            .args(["print-disabled", domain.as_str()])
+            .output();
+
+        let Ok(output) = output else {
+            return (
+                None,
+                Some(format!(
+                    "launchctl print-disabled unavailable for {}",
+                    domain
+                )),
+            );
+        };
+
+        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+        if let Some(enabled) = parse_launchd_disabled_services(&stdout, OPEN_BITCOIN_LAUNCHD_LABEL)
+        {
+            return (Some(enabled), None);
+        }
+
+        if output.status.success() && !stdout.trim().is_empty() {
+            return (Some(true), None);
+        }
+
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        if stderr.is_empty() {
+            return (None, None);
+        }
+
+        (
+            None,
+            Some(format!("launchctl print-disabled reported: {stderr}")),
+        )
+    }
 }
 
 impl ServiceManager for LaunchdAdapter {
@@ -129,7 +230,7 @@ impl ServiceManager for LaunchdAdapter {
             request.maybe_log_path.as_deref(),
         );
         let uid = Self::uid();
-        let bootstrap_cmd = format!("launchctl bootstrap gui/{uid} {}", plist_path.display());
+        let install_commands = launchd_install_commands(uid, &plist_path);
 
         if !request.apply {
             return Ok(ServiceCommandOutcome {
@@ -137,7 +238,7 @@ impl ServiceManager for LaunchdAdapter {
                 description: format!("Would write plist to {}", plist_path.display()),
                 maybe_file_path: Some(plist_path),
                 maybe_file_content: Some(plist_content),
-                commands_that_would_run: vec![bootstrap_cmd],
+                commands_that_would_run: install_commands,
             });
         }
 
@@ -161,12 +262,48 @@ impl ServiceManager for LaunchdAdapter {
             }
         })?;
 
+        let enable_target = launchd_target(uid);
+        let enable_output = std::process::Command::new("launchctl")
+            .args(["enable", enable_target.as_str()])
+            .output()
+            .map_err(|cause| ServiceError::ManagerCommandFailed {
+                exit_code: -1,
+                stderr: cause.to_string(),
+            })?;
+        if !enable_output.status.success() {
+            let exit_code = enable_output.status.code().unwrap_or(-1);
+            let stderr = String::from_utf8_lossy(&enable_output.stderr).to_string();
+            return Err(ServiceError::ManagerCommandFailed { exit_code, stderr });
+        }
+
+        let bootstrap_domain = launchd_domain(uid);
+        let plist_path_string = plist_path.display().to_string();
+        let bootstrap_output = std::process::Command::new("launchctl")
+            .args([
+                "bootstrap",
+                bootstrap_domain.as_str(),
+                plist_path_string.as_str(),
+            ])
+            .output()
+            .map_err(|cause| ServiceError::ManagerCommandFailed {
+                exit_code: -1,
+                stderr: cause.to_string(),
+            })?;
+        if !bootstrap_output.status.success() {
+            let exit_code = bootstrap_output.status.code().unwrap_or(-1);
+            let stderr = String::from_utf8_lossy(&bootstrap_output.stderr).to_string();
+            return Err(ServiceError::ManagerCommandFailed { exit_code, stderr });
+        }
+
         Ok(ServiceCommandOutcome {
             dry_run: false,
-            description: format!("Wrote plist to {}", plist_path.display()),
+            description: format!(
+                "Wrote plist to {} and registered it with launchd",
+                plist_path.display()
+            ),
             maybe_file_path: Some(plist_path),
             maybe_file_content: Some(plist_content),
-            commands_that_would_run: vec![bootstrap_cmd],
+            commands_that_would_run: install_commands,
         })
     }
 
@@ -232,12 +369,12 @@ impl ServiceManager for LaunchdAdapter {
         request: &ServiceEnableRequest,
     ) -> Result<ServiceCommandOutcome, ServiceError> {
         let uid = Self::uid();
-        let enable_cmd = format!("launchctl enable gui/{uid}/{OPEN_BITCOIN_LAUNCHD_LABEL}");
+        let enable_cmd = format!("launchctl enable {}", launchd_target(uid));
 
         let _ = request;
 
         let output = std::process::Command::new("launchctl")
-            .args(["enable", &format!("gui/{uid}/{OPEN_BITCOIN_LAUNCHD_LABEL}")])
+            .args(["enable", launchd_target(uid).as_str()])
             .output()
             .map_err(|cause| ServiceError::ManagerCommandFailed {
                 exit_code: -1,
@@ -264,15 +401,12 @@ impl ServiceManager for LaunchdAdapter {
         request: &ServiceDisableRequest,
     ) -> Result<ServiceCommandOutcome, ServiceError> {
         let uid = Self::uid();
-        let disable_cmd = format!("launchctl disable gui/{uid}/{OPEN_BITCOIN_LAUNCHD_LABEL}");
+        let disable_cmd = format!("launchctl disable {}", launchd_target(uid));
 
         let _ = request;
 
         let output = std::process::Command::new("launchctl")
-            .args([
-                "disable",
-                &format!("gui/{uid}/{OPEN_BITCOIN_LAUNCHD_LABEL}"),
-            ])
+            .args(["disable", launchd_target(uid).as_str()])
             .output()
             .map_err(|cause| ServiceError::ManagerCommandFailed {
                 exit_code: -1,
@@ -296,11 +430,13 @@ impl ServiceManager for LaunchdAdapter {
 
     fn status(&self) -> Result<ServiceStateSnapshot, ServiceError> {
         let plist_path = self.plist_path();
+        let uid = Self::uid();
 
         // If no plist file exists, it's unmanaged
         if !plist_path.exists() {
             return Ok(ServiceStateSnapshot {
                 state: ServiceLifecycleState::Unmanaged,
+                maybe_enabled: Some(false),
                 maybe_service_file_path: None,
                 maybe_manager_diagnostics: Some(
                     "unmanaged — run `open-bitcoin service install --dry-run` to see what would be created".to_string()
@@ -309,6 +445,8 @@ impl ServiceManager for LaunchdAdapter {
             });
         }
 
+        let (maybe_enabled, maybe_enabled_diagnostics) = self.query_enabled_state(uid);
+
         // Query launchd for the current state
         let output = std::process::Command::new("launchctl")
             .args(["list", OPEN_BITCOIN_LAUNCHD_LABEL])
@@ -316,9 +454,19 @@ impl ServiceManager for LaunchdAdapter {
 
         let Ok(output) = output else {
             return Ok(ServiceStateSnapshot {
-                state: ServiceLifecycleState::Installed,
+                state: maybe_enabled
+                    .map(|enabled| {
+                        if enabled {
+                            ServiceLifecycleState::Enabled
+                        } else {
+                            ServiceLifecycleState::Installed
+                        }
+                    })
+                    .unwrap_or(ServiceLifecycleState::Installed),
+                maybe_enabled,
                 maybe_service_file_path: Some(plist_path),
-                maybe_manager_diagnostics: Some("launchctl not available".to_string()),
+                maybe_manager_diagnostics: maybe_enabled_diagnostics
+                    .or_else(|| Some("launchctl not available".to_string())),
                 maybe_log_path: None,
             });
         };
@@ -327,6 +475,7 @@ impl ServiceManager for LaunchdAdapter {
         if output.status.code() == Some(113) {
             return Ok(ServiceStateSnapshot {
                 state: ServiceLifecycleState::Installed,
+                maybe_enabled: Some(false),
                 maybe_service_file_path: Some(plist_path),
                 maybe_manager_diagnostics: Some(
                     "service not registered with launchd (not bootstrapped)".to_string(),
@@ -338,22 +487,34 @@ impl ServiceManager for LaunchdAdapter {
         let stdout = String::from_utf8_lossy(&output.stdout).to_string();
         let state = if stdout.contains("\"PID\" = ") {
             ServiceLifecycleState::Running
-        } else if stdout.contains("\"LastExitStatus\" = 0;") {
-            ServiceLifecycleState::Stopped
-        } else if output.status.success() {
-            // Loaded but last exit was non-zero
-            ServiceLifecycleState::Failed
+        } else if let Some(exit_code) = parse_launchd_last_exit_status(&stdout) {
+            if exit_code == 0 {
+                ServiceLifecycleState::Stopped
+            } else {
+                ServiceLifecycleState::Failed
+            }
+        } else if maybe_enabled == Some(true) {
+            ServiceLifecycleState::Enabled
         } else {
             ServiceLifecycleState::Installed
         };
 
+        let mut diagnostics = Vec::new();
+        if !stdout.trim().is_empty() {
+            diagnostics.push(stdout);
+        }
+        if let Some(diagnostic) = maybe_enabled_diagnostics {
+            diagnostics.push(diagnostic);
+        }
+
         Ok(ServiceStateSnapshot {
             state,
+            maybe_enabled,
             maybe_service_file_path: Some(plist_path),
-            maybe_manager_diagnostics: if stdout.is_empty() {
+            maybe_manager_diagnostics: if diagnostics.is_empty() {
                 None
             } else {
-                Some(stdout)
+                Some(diagnostics.join("\n"))
             },
             maybe_log_path: None,
         })

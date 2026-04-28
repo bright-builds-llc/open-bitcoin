@@ -346,6 +346,7 @@ fn collect_status_snapshot_with_fake_running_manager_sets_service_fields_to_avai
     // Arrange
     let fake = FakeServiceManager::new(ServiceStateSnapshot {
         state: ServiceLifecycleState::Running,
+        maybe_enabled: Some(true),
         maybe_service_file_path: Some(PathBuf::from("/tmp/test.plist")),
         maybe_manager_diagnostics: None,
         maybe_log_path: None,
@@ -400,6 +401,7 @@ fn collect_status_snapshot_with_fake_installed_manager_sets_installed_true_enabl
     // Arrange
     let fake = FakeServiceManager::new(ServiceStateSnapshot {
         state: ServiceLifecycleState::Installed,
+        maybe_enabled: Some(false),
         maybe_service_file_path: Some(PathBuf::from("/tmp/test.plist")),
         maybe_manager_diagnostics: None,
         maybe_log_path: None,
@@ -439,6 +441,92 @@ fn collect_status_snapshot_with_fake_installed_manager_sets_installed_true_enabl
         snapshot.service.running,
         open_bitcoin_node::status::FieldAvailability::available(false),
         "service.running should be false when state is Installed"
+    );
+}
+
+#[test]
+fn collect_status_snapshot_uses_manager_enabled_state_over_state_inference() {
+    // Arrange
+    let fake = FakeServiceManager::new(ServiceStateSnapshot {
+        state: ServiceLifecycleState::Failed,
+        maybe_enabled: Some(true),
+        maybe_service_file_path: Some(PathBuf::from("/tmp/test.plist")),
+        maybe_manager_diagnostics: Some("systemctl is-active=failed".to_string()),
+        maybe_log_path: None,
+    });
+    let input = StatusCollectorInput {
+        request: StatusRequest {
+            render_mode: StatusRenderMode::Human,
+            maybe_config_path: None,
+            maybe_data_dir: None,
+            maybe_network: None,
+            include_live_rpc: false,
+            no_color: false,
+        },
+        config_resolution: config_resolution(),
+        detection_evidence: StatusDetectionEvidence {
+            detected_installations: Vec::new(),
+        },
+        maybe_live_rpc: None,
+        maybe_service_manager: Some(Box::new(fake)),
+    };
+
+    // Act
+    let snapshot = collect_status_snapshot(&input, None);
+
+    // Assert
+    assert_eq!(
+        snapshot.service.enabled,
+        open_bitcoin_node::status::FieldAvailability::available(true),
+        "service.enabled should preserve manager evidence even when state is Failed"
+    );
+    assert_eq!(
+        snapshot.service.running,
+        open_bitcoin_node::status::FieldAvailability::available(false),
+        "service.running should remain false when state is not Running"
+    );
+}
+
+#[test]
+fn collect_status_snapshot_preserves_running_when_startup_is_not_enabled() {
+    // Arrange
+    let fake = FakeServiceManager::new(ServiceStateSnapshot {
+        state: ServiceLifecycleState::Running,
+        maybe_enabled: Some(false),
+        maybe_service_file_path: Some(PathBuf::from("/tmp/test.plist")),
+        maybe_manager_diagnostics: Some("launchctl service is running but disabled".to_string()),
+        maybe_log_path: None,
+    });
+    let input = StatusCollectorInput {
+        request: StatusRequest {
+            render_mode: StatusRenderMode::Human,
+            maybe_config_path: None,
+            maybe_data_dir: None,
+            maybe_network: None,
+            include_live_rpc: false,
+            no_color: false,
+        },
+        config_resolution: config_resolution(),
+        detection_evidence: StatusDetectionEvidence {
+            detected_installations: Vec::new(),
+        },
+        maybe_live_rpc: None,
+        maybe_service_manager: Some(Box::new(fake)),
+    };
+
+    // Act
+    let snapshot = collect_status_snapshot(&input, None);
+
+    // Assert
+    assert_eq!(
+        snapshot.service.enabled,
+        open_bitcoin_node::status::FieldAvailability::available(false),
+        "service.enabled should come from manager evidence instead of Running inference"
+    );
+    assert_eq!(
+        snapshot.service.running,
+        open_bitcoin_node::status::FieldAvailability::available(true),
+        "service.running should still be true when the manager reports Running"
     );
 }
 

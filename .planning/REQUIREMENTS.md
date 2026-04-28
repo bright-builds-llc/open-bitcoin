@@ -18,7 +18,7 @@
 
 - [ ] **DASH-01**: Operator can launch a Ratatui dashboard that displays live sync state, peer state, mempool state, wallet summary, service state, logs, and health signals from the shared status model.
 - [ ] **DASH-02**: Dashboard displays bounded historical metrics as terminal graphs for sync progress, peers, mempool size, disk usage, and RPC health.
-- [ ] **DASH-03**: Dashboard offers a keyboard menu for safe node queries and actions, with destructive or service-affecting operations gated by explicit confirmation.
+- [x] **DASH-03**: Dashboard offers a keyboard menu for safe node queries and actions, with destructive or service-affecting operations gated by explicit confirmation.
 - [ ] **DASH-04**: Dashboard uses a restrained, readable color palette that remains usable on common light and dark terminals and degrades cleanly without color.
 
 ### CLI, Config, and Onboarding
@@ -31,11 +31,11 @@
 
 ### Service Lifecycle
 
-- [ ] **SVC-01**: Operator can `install`, `uninstall`, `enable`, `disable`, and inspect the Open Bitcoin daemon as a macOS launchd service, with dry-run output for generated plist contents.
-- [ ] **SVC-02**: Operator can `install`, `uninstall`, `enable`, `disable`, and inspect the Open Bitcoin daemon as a Linux systemd service, with dry-run output for generated unit contents.
-- [ ] **SVC-03**: Service commands surface privilege requirements, target scope, generated file paths, daemon command, config path, log path, and recovery behavior before applying changes.
-- [ ] **SVC-04**: Service status reports whether the service is installed, enabled, running, failed, stopped, or unmanaged, and links to relevant logs or manager diagnostics.
-- [ ] **SVC-05**: Service lifecycle tests run against isolated temp paths or fake managers and do not modify the developer machine's real launchd/systemd state.
+- [x] **SVC-01**: Operator can `install`, `uninstall`, `enable`, `disable`, and inspect the Open Bitcoin daemon as a macOS launchd service, with dry-run output for generated plist contents.
+- [x] **SVC-02**: Operator can `install`, `uninstall`, `enable`, `disable`, and inspect the Open Bitcoin daemon as a Linux systemd service, with dry-run output for generated unit contents.
+- [x] **SVC-03**: Service commands surface privilege requirements, target scope, generated file paths, daemon command, config path, log path, and recovery behavior before applying changes.
+- [x] **SVC-04**: Service status reports whether the service is installed, enabled, running, failed, stopped, or unmanaged, and links to relevant logs or manager diagnostics.
+- [x] **SVC-05**: Service lifecycle tests run against isolated temp paths or fake managers and do not modify the developer machine's real launchd/systemd state.
 
 ### Durable Storage and Runtime Hardening
 
@@ -109,18 +109,18 @@
 | OBS-05 | Phase 16, Phase 17 | Complete |
 | DASH-01 | Phase 19, Phase 24 | Pending |
 | DASH-02 | Phase 19, Phase 26 | Pending |
-| DASH-03 | Phase 19, Phase 23 | Pending |
+| DASH-03 | Phase 19, Phase 23 | Complete |
 | DASH-04 | Phase 19, Phase 26 | Pending |
 | CLI-03 | Phase 13, Phase 17 | Complete |
 | CLI-04 | Phase 17 | Complete |
 | CLI-05 | Phase 13, Phase 17 | Complete |
 | CLI-06 | Phase 13, Phase 17 | Complete |
 | CLI-07 | Phase 17, Phase 21 | Complete |
-| SVC-01 | Phase 18, Phase 23 | Pending |
-| SVC-02 | Phase 18, Phase 23 | Pending |
-| SVC-03 | Phase 18, Phase 23 | Pending |
-| SVC-04 | Phase 18, Phase 23 | Pending |
-| SVC-05 | Phase 18, Phase 23 | Pending |
+| SVC-01 | Phase 18, Phase 23 | Complete |
+| SVC-02 | Phase 18, Phase 23 | Complete |
+| SVC-03 | Phase 18, Phase 23 | Complete |
+| SVC-04 | Phase 18, Phase 23 | Complete |
+| SVC-05 | Phase 18, Phase 23 | Complete |
 | DB-01 | Phase 13, Phase 26 | Pending |
 | DB-02 | Phase 14, Phase 26 | Pending |
 | DB-03 | Phase 14, Phase 26 | Pending |
@@ -149,10 +149,10 @@
 
 **Coverage:**
 - v1.1 requirements: 44 total
-- Checked off: 22
+- Checked off: 28
 - Mapped to phases: 44
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-26*
-*Last updated: 2026-04-28 after v1.1 audit gap planning*
+*Last updated: 2026-04-28 after Phase 23 closeout*

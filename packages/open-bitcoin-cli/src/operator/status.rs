@@ -325,12 +325,12 @@ fn collect_service_status(input: &StatusCollectorInput) -> ServiceStatus {
                 let manager_name = "unknown";
 
                 let installed = !matches!(snapshot.state, ServiceLifecycleState::Unmanaged);
-                let enabled = matches!(
+                let enabled = snapshot.maybe_enabled.unwrap_or(matches!(
                     snapshot.state,
                     ServiceLifecycleState::Enabled
                         | ServiceLifecycleState::Running
                         | ServiceLifecycleState::Stopped
-                );
+                ));
                 let running = matches!(snapshot.state, ServiceLifecycleState::Running);
 
                 return ServiceStatus {
