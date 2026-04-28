@@ -33,7 +33,7 @@ use super::{
     status::{
         HttpStatusRpcClient, StatusCollectorInput, StatusDetectionEvidence,
         StatusLiveRpcAdapterInput, StatusRenderMode, StatusRequest, StatusRpcAuthSource,
-        StatusRpcClient, collect_status_snapshot, render_status,
+        StatusRpcClient, collect_status_snapshot, render_status, resolve_status_wallet_rpc_access,
     },
     wallet::execute_wallet_command,
 };
@@ -274,9 +274,17 @@ fn status_runtime_parts(
     detections: Vec<super::detect::DetectedInstallation>,
 ) -> StatusRuntimeParts {
     let maybe_startup = startup_config_for_status(&config_resolution);
+    let wallet_rpc_access =
+        resolve_status_wallet_rpc_access(config_resolution.maybe_data_dir.as_deref());
     let maybe_rpc_client = maybe_startup
         .as_ref()
-        .and_then(|startup| HttpStatusRpcClient::from_rpc_config(&startup.rpc).ok())
+        .and_then(|startup| {
+            HttpStatusRpcClient::from_rpc_config(
+                &startup.rpc,
+                wallet_rpc_access.maybe_wallet_name(),
+            )
+            .ok()
+        })
         .map(|client| Box::new(client) as Box<dyn StatusRpcClient>);
     let maybe_live_rpc = maybe_startup
         .as_ref()
@@ -304,6 +312,7 @@ fn status_runtime_parts(
             },
             maybe_live_rpc,
             maybe_service_manager,
+            wallet_rpc_access,
         },
         maybe_rpc_client,
     }

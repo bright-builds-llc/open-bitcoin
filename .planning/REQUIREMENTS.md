@@ -16,7 +16,7 @@
 
 ### Terminal Dashboard
 
-- [ ] **DASH-01**: Operator can launch a Ratatui dashboard that displays live sync state, peer state, mempool state, wallet summary, service state, logs, and health signals from the shared status model.
+- [x] **DASH-01**: Operator can launch a Ratatui dashboard that displays live sync state, peer state, mempool state, wallet summary, service state, logs, and health signals from the shared status model.
 - [ ] **DASH-02**: Dashboard displays bounded historical metrics as terminal graphs for sync progress, peers, mempool size, disk usage, and RPC health.
 - [x] **DASH-03**: Dashboard offers a keyboard menu for safe node queries and actions, with destructive or service-affecting operations gated by explicit confirmation.
 - [ ] **DASH-04**: Dashboard uses a restrained, readable color palette that remains usable on common light and dark terminals and degrades cleanly without color.
@@ -102,12 +102,12 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| OBS-01 | Phase 13, Phase 17, Phase 24 | Pending |
-| OBS-02 | Phase 17, Phase 24 | Pending |
+| OBS-01 | Phase 13, Phase 17, Phase 24 | Complete |
+| OBS-02 | Phase 17, Phase 24 | Complete |
 | OBS-03 | Phase 13, Phase 16 | Complete |
 | OBS-04 | Phase 13, Phase 16 | Complete |
 | OBS-05 | Phase 16, Phase 17 | Complete |
-| DASH-01 | Phase 19, Phase 24 | Pending |
+| DASH-01 | Phase 19, Phase 24 | Complete |
 | DASH-02 | Phase 19, Phase 26 | Pending |
 | DASH-03 | Phase 19, Phase 23 | Complete |
 | DASH-04 | Phase 19, Phase 26 | Pending |
@@ -133,7 +133,7 @@
 | SYNC-05 | Phase 15, Phase 22 | Complete |
 | SYNC-06 | Phase 16, Phase 19 | Complete |
 | WAL-04 | Phase 20 | Complete |
-| WAL-05 | Phase 20, Phase 24 | Pending |
+| WAL-05 | Phase 20, Phase 24 | Complete |
 | WAL-06 | Phase 20 | Complete |
 | WAL-07 | Phase 20 | Complete |
 | WAL-08 | Phase 20, Phase 21 | Complete |
@@ -149,10 +149,10 @@
 
 **Coverage:**
 - v1.1 requirements: 44 total
-- Checked off: 28
+- Checked off: 29
 - Mapped to phases: 44
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-26*
-*Last updated: 2026-04-28 after Phase 23 closeout*
+*Last updated: 2026-04-28 after Phase 24 closeout*

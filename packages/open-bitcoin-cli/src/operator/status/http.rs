@@ -6,7 +6,7 @@
 use std::{fs, path::PathBuf};
 
 use open_bitcoin_rpc::{
-    RpcAuthConfig,
+    RpcAuthConfig, RpcErrorDetail,
     method::{
         GetBalancesResponse, GetBlockchainInfoResponse, GetMempoolInfoResponse,
         GetNetworkInfoResponse, GetWalletInfoResponse,
@@ -29,12 +29,15 @@ pub struct HttpStatusRpcClient {
 
 impl HttpStatusRpcClient {
     /// Build a status RPC adapter from resolved CLI RPC configuration.
-    pub fn from_rpc_config(config: &CliRpcConfig) -> Result<Self, StatusRpcError> {
+    pub fn from_rpc_config(
+        config: &CliRpcConfig,
+        maybe_wallet_name: Option<&str>,
+    ) -> Result<Self, StatusRpcError> {
         Ok(Self {
             agent: Agent::new_with_config(
                 Agent::config_builder().http_status_as_error(false).build(),
             ),
-            endpoint_url: format!("http://{}/", format_host_for_url(&config.host, config.port)),
+            endpoint_url: wallet_endpoint_url(config, maybe_wallet_name),
             authorization_header: authorization_header(&config.auth)?,
         })
     }
@@ -53,15 +56,24 @@ impl HttpStatusRpcClient {
             .map_err(|error| {
                 StatusRpcError::new(format!("Could not connect to status RPC: {error}"))
             })?;
-        if response.status().as_u16() != 200 {
-            return Err(StatusRpcError::new(format!(
-                "status RPC returned HTTP {}",
-                response.status().as_u16()
-            )));
-        }
+        let response_status = response.status().as_u16();
         let value: Value = response.into_body().read_json().map_err(|error| {
             StatusRpcError::new(format!("Invalid status RPC response: {error}"))
         })?;
+        if let Some(error) = value.get("error")
+            && !error.is_null()
+        {
+            let detail: RpcErrorDetail =
+                serde_json::from_value(error.clone()).map_err(|parse_error| {
+                    StatusRpcError::new(format!("Invalid status RPC error payload: {parse_error}"))
+                })?;
+            return Err(StatusRpcError::from_rpc_detail(detail));
+        }
+        if response_status != 200 {
+            return Err(StatusRpcError::new(format!(
+                "status RPC returned HTTP {response_status}"
+            )));
+        }
         let Some(result) = value.get("result").cloned() else {
             return Err(StatusRpcError::new("status RPC response missing result"));
         };
@@ -145,4 +157,38 @@ fn base64_encode(bytes: &[u8]) -> String {
         });
     }
     output
+}
+
+fn wallet_endpoint_url(config: &CliRpcConfig, maybe_wallet_name: Option<&str>) -> String {
+    maybe_wallet_name.map_or_else(
+        || format!("http://{}/", format_host_for_url(&config.host, config.port)),
+        |wallet_name| {
+            format!(
+                "http://{}/wallet/{}",
+                format_host_for_url(&config.host, config.port),
+                percent_encode_path_segment(wallet_name)
+            )
+        },
+    )
+}
+
+fn percent_encode_path_segment(value: &str) -> String {
+    let mut encoded = String::with_capacity(value.len());
+    for byte in value.bytes() {
+        if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b'~') {
+            encoded.push(char::from(byte));
+        } else {
+            encoded.push('%');
+            encoded.push(nibble_to_hex(byte >> 4));
+            encoded.push(nibble_to_hex(byte & 0x0f));
+        }
+    }
+    encoded
+}
+
+fn nibble_to_hex(nibble: u8) -> char {
+    match nibble & 0x0f {
+        0..=9 => char::from(b'0' + (nibble & 0x0f)),
+        value => char::from(b'A' + (value - 10)),
+    }
 }

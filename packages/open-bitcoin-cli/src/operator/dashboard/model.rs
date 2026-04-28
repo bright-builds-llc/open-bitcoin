@@ -321,13 +321,20 @@ fn health_summary(signals: &[HealthSignal]) -> String {
 
 fn build_summary(snapshot: &OpenBitcoinStatusSnapshot) -> String {
     format!(
-        "version={} commit={}",
+        "version={} commit={} build_time={} target={} profile={}",
         snapshot.build.version,
-        match &snapshot.build.commit {
-            FieldAvailability::Available(commit) => commit.clone(),
-            FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
-        }
+        availability_text(&snapshot.build.commit),
+        availability_text(&snapshot.build.build_time),
+        availability_text(&snapshot.build.target),
+        availability_text(&snapshot.build.profile),
     )
+}
+
+fn availability_text(value: &FieldAvailability<String>) -> String {
+    match value {
+        FieldAvailability::Available(value) => value.clone(),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
 }
 
 fn chart_availability(snapshot: &OpenBitcoinStatusSnapshot, points: &[u64]) -> String {

@@ -213,9 +213,10 @@ fn health_text(signals: &[HealthSignal]) -> String {
 
 fn build_text(build: &BuildProvenance) -> String {
     format!(
-        "version={} commit={} target={} profile={}",
+        "version={} commit={} build_time={} target={} profile={}",
         build.version,
         string_availability(&build.commit),
+        string_availability(&build.build_time),
         string_availability(&build.target),
         string_availability(&build.profile)
     )

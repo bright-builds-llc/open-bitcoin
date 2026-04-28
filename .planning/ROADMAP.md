@@ -52,7 +52,7 @@ Post-audit gap-closure phases now extend the milestone so service apply behavior
 - [x] **Phase 21: Drop-In Parity Audit and Migration** - Audit Core/Knots replacement expectations and implement detection, education, and dry-run migration plans. (completed 2026-04-27)
 - [x] **Phase 22: Real-Sync Benchmarks and Release Hardening** - Add real-sync benchmarks, docs, parity updates, and verification coverage for the v1.1 operator runtime. (completed 2026-04-27)
 - [x] **Phase 23: Service Apply Completion and Status Truthfulness** - Complete launchd/systemd apply semantics, truthful enabled-state reporting, and dashboard service action closure after the v1.1 audit. (completed 2026-04-28)
-- [ ] **Phase 24: Wallet-Aware Live Status and Build Provenance** - Keep status and dashboard truthfully live when wallet selection is ambiguous and surface real build provenance. (planned)
+- [x] **Phase 24: Wallet-Aware Live Status and Build Provenance** - Keep status and dashboard truthfully live when wallet selection is ambiguous and surface real build provenance. (completed 2026-04-28)
 - [ ] **Phase 25: Migration Source Selection Hardening** - Let `migrate plan --source-datadir` select valid custom-location installs without degrading to manual review. (planned)
 - [ ] **Phase 26: Milestone Evidence and Audit Reconciliation** - Align verification reports, summary frontmatter, and requirements bookkeeping so the v1.1 audit can pass cleanly. (planned)
 - [ ] **Phase 27: Operator Runtime Benchmark Fidelity** - Replace fixture-only operator-runtime benchmark cases with runtime-collected status/dashboard evidence. (planned)
@@ -274,7 +274,12 @@ Plans:
 2. Wallet selection issues are surfaced as wallet-specific unavailable or diagnostic data while node reachability remains accurate.
 3. Build provenance is populated in shared status snapshots when available and rendered through operator-facing status/dashboard surfaces.
 4. Targeted verification covers zero-wallet, multiwallet, selected-wallet, and build-provenance runtime paths.
-**Plans**: 0 plans yet
+**Plans**: 3/3 plans complete
+
+Plans:
+- [x] 24-01-PLAN.md — wallet-aware status routing and wallet-only degradation for status and dashboard
+- [x] 24-02-PLAN.md — compile-time build provenance population plus status and dashboard rendering
+- [x] 24-03-PLAN.md — Phase 24 verification, roadmap refresh, and requirements traceability closeout
 
 ### Phase 25: Migration Source Selection Hardening
 
@@ -318,4 +323,4 @@ Plans:
 | Milestone | Phases | Plans | Status | Shipped |
 | --- | ---: | ---: | --- | --- |
 | v1.0 Headless Parity | 22/22 | 80/80 | Archived | 2026-04-26 |
-| v1.1 Operator Runtime and Real-Network Sync | 11/15 | 41/41 current | Gap closure underway | - |
+| v1.1 Operator Runtime and Real-Network Sync | 12/15 | 44/44 current | Gap closure underway | - |

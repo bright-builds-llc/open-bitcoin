@@ -25,6 +25,15 @@ pub(super) fn live_wallet_status(
     }
 }
 
+pub(super) fn unavailable_wallet_status(reason: impl Into<String>) -> WalletStatus {
+    let reason = reason.into();
+    WalletStatus {
+        trusted_balance_sats: FieldAvailability::unavailable(reason.clone()),
+        freshness: FieldAvailability::unavailable(reason.clone()),
+        scan_progress: FieldAvailability::unavailable(reason),
+    }
+}
+
 fn wallet_freshness(
     maybe_wallet_tip_height: Option<u64>,
     chain_tip_height: u64,

@@ -3,10 +3,14 @@
 
 //! Operator status collection and rendering surface.
 
-use std::{fmt, path::PathBuf, time::Duration};
+use std::{
+    fmt,
+    path::{Path, PathBuf},
+    time::Duration,
+};
 
 use open_bitcoin_node::{
-    FjallNodeStore, LogRetentionPolicy, MetricRetentionPolicy, MetricsStatus,
+    FjallNodeStore, LogRetentionPolicy, MetricRetentionPolicy, MetricsStatus, WalletRegistry,
     logging::writer::load_log_status,
     status::{
         BuildProvenance, ChainTipStatus, ConfigStatus, FieldAvailability, HealthSignal,
@@ -61,6 +65,7 @@ pub struct StatusCollectorInput {
     pub detection_evidence: StatusDetectionEvidence,
     pub maybe_live_rpc: Option<StatusLiveRpcAdapterInput>,
     pub maybe_service_manager: Option<Box<dyn super::service::ServiceManager>>,
+    pub wallet_rpc_access: StatusWalletRpcAccess,
 }
 
 /// Detection evidence available to status collection.
@@ -97,14 +102,27 @@ pub trait StatusRpcClient {
 /// Error returned by an injected status RPC adapter.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StatusRpcError {
+    maybe_code: Option<open_bitcoin_rpc::RpcErrorCode>,
     message: String,
 }
 
 impl StatusRpcError {
     pub fn new(message: impl Into<String>) -> Self {
         Self {
+            maybe_code: None,
             message: message.into(),
         }
+    }
+
+    pub fn from_rpc_detail(detail: open_bitcoin_rpc::RpcErrorDetail) -> Self {
+        Self {
+            maybe_code: Some(detail.code),
+            message: detail.message,
+        }
+    }
+
+    pub fn maybe_code(&self) -> Option<open_bitcoin_rpc::RpcErrorCode> {
+        self.maybe_code
     }
 }
 
@@ -115,6 +133,29 @@ impl fmt::Display for StatusRpcError {
 }
 
 impl std::error::Error for StatusRpcError {}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StatusWalletRpcAccess {
+    Root,
+    Wallet(String),
+    Unavailable { reason: String },
+}
+
+impl StatusWalletRpcAccess {
+    pub(crate) fn maybe_wallet_name(&self) -> Option<&str> {
+        match self {
+            Self::Wallet(wallet_name) => Some(wallet_name.as_str()),
+            Self::Root | Self::Unavailable { .. } => None,
+        }
+    }
+
+    fn maybe_unavailable_reason(&self) -> Option<&str> {
+        match self {
+            Self::Unavailable { reason } => Some(reason.as_str()),
+            Self::Root | Self::Wallet(_) => None,
+        }
+    }
+}
 
 pub fn collect_status_snapshot(
     input: &StatusCollectorInput,
@@ -163,32 +204,13 @@ fn collect_live_status_snapshot(
             );
         }
     };
-    let wallet_info = match rpc_client.get_wallet_info() {
-        Ok(value) => value,
-        Err(error) => {
-            return stopped_status_snapshot(
-                input,
-                NodeRuntimeState::Unreachable,
-                error.to_string(),
-            );
-        }
-    };
-    let balances = match rpc_client.get_balances() {
-        Ok(value) => value,
-        Err(error) => {
-            return stopped_status_snapshot(
-                input,
-                NodeRuntimeState::Unreachable,
-                error.to_string(),
-            );
-        }
-    };
-
     let mut health_signals = detection::detection_health_signals(&input.detection_evidence);
     health_signals.extend(rpc_warning_signals(
         &network_info.warnings,
         &blockchain_info.warnings,
     ));
+    let wallet =
+        collect_live_wallet_status(input, rpc_client, &blockchain_info, &mut health_signals);
     health_signals.extend(log_health_signals(input));
 
     OpenBitcoinStatusSnapshot {
@@ -225,15 +247,11 @@ fn collect_live_status_snapshot(
         mempool: MempoolStatus {
             transactions: FieldAvailability::available(saturating_usize_to_u64(mempool_info.size)),
         },
-        wallet: wallet::live_wallet_status(
-            &wallet_info,
-            &blockchain_info,
-            non_negative_i64_to_u64(balances.mine.trusted_sats),
-        ),
+        wallet,
         logs: log_status(&input.config_resolution),
         metrics: metrics_status(&input.config_resolution),
         health_signals,
-        build: BuildProvenance::unavailable(),
+        build: current_build_provenance(),
     }
 }
 
@@ -279,8 +297,136 @@ fn stopped_status_snapshot(
         logs: log_status(&input.config_resolution),
         metrics: metrics_status(&input.config_resolution),
         health_signals,
-        build: BuildProvenance::unavailable(),
+        build: current_build_provenance(),
     }
+}
+
+fn collect_live_wallet_status(
+    input: &StatusCollectorInput,
+    rpc_client: &dyn StatusRpcClient,
+    blockchain_info: &GetBlockchainInfoResponse,
+    health_signals: &mut Vec<HealthSignal>,
+) -> WalletStatus {
+    if let Some(reason) = input.wallet_rpc_access.maybe_unavailable_reason() {
+        health_signals.push(wallet_health_signal(reason));
+        return wallet::unavailable_wallet_status(reason);
+    }
+
+    let wallet_info = match rpc_client.get_wallet_info() {
+        Ok(value) => value,
+        Err(error) => {
+            let reason = wallet_rpc_error_reason(&error);
+            health_signals.push(wallet_health_signal(&reason));
+            return wallet::unavailable_wallet_status(reason);
+        }
+    };
+    let balances = match rpc_client.get_balances() {
+        Ok(value) => value,
+        Err(error) => {
+            let reason = wallet_rpc_error_reason(&error);
+            health_signals.push(wallet_health_signal(&reason));
+            return wallet::unavailable_wallet_status(reason);
+        }
+    };
+
+    wallet::live_wallet_status(
+        &wallet_info,
+        blockchain_info,
+        non_negative_i64_to_u64(balances.mine.trusted_sats),
+    )
+}
+
+fn wallet_rpc_error_reason(error: &StatusRpcError) -> String {
+    match error.maybe_code() {
+        Some(open_bitcoin_rpc::RpcErrorCode::WalletNotFound) => {
+            "No wallet is loaded. Wallet fields are unavailable until a wallet is created or loaded."
+                .to_string()
+        }
+        Some(open_bitcoin_rpc::RpcErrorCode::WalletNotSpecified) => {
+            "Multiple wallets are loaded and no selected wallet metadata is available. Wallet fields are unavailable until one wallet is selected."
+                .to_string()
+        }
+        _ => error.to_string(),
+    }
+}
+
+fn wallet_health_signal(reason: impl Into<String>) -> HealthSignal {
+    HealthSignal {
+        level: HealthSignalLevel::Warn,
+        source: "wallet".to_string(),
+        message: reason.into(),
+    }
+}
+
+pub(crate) fn resolve_status_wallet_rpc_access(
+    maybe_data_dir: Option<&Path>,
+) -> StatusWalletRpcAccess {
+    let Some(data_dir) = maybe_data_dir else {
+        return StatusWalletRpcAccess::Root;
+    };
+    let Ok(store) = FjallNodeStore::open(data_dir) else {
+        return StatusWalletRpcAccess::Root;
+    };
+    let Ok(registry) = WalletRegistry::load(&store) else {
+        return StatusWalletRpcAccess::Root;
+    };
+    wallet_rpc_access_from_registry(&registry)
+}
+
+fn wallet_rpc_access_from_registry(registry: &WalletRegistry) -> StatusWalletRpcAccess {
+    if let Some(selected_wallet_name) = registry.selected_wallet_name() {
+        return StatusWalletRpcAccess::Wallet(selected_wallet_name.to_string());
+    }
+
+    match registry.wallet_names() {
+        [] => StatusWalletRpcAccess::Root,
+        [wallet_name] => StatusWalletRpcAccess::Wallet(wallet_name.clone()),
+        _ => StatusWalletRpcAccess::Unavailable {
+            reason:
+                "Multiple wallets are loaded and no selected wallet metadata is available. Wallet fields are unavailable until one wallet is selected."
+                    .to_string(),
+        },
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct BuildProvenanceInputs<'a> {
+    version: &'a str,
+    maybe_commit: Option<&'a str>,
+    maybe_build_time: Option<&'a str>,
+    maybe_target: Option<&'a str>,
+    maybe_profile: Option<&'a str>,
+}
+
+fn current_build_provenance() -> BuildProvenance {
+    build_provenance_from_inputs(BuildProvenanceInputs {
+        version: env!("CARGO_PKG_VERSION"),
+        maybe_commit: option_env!("OPEN_BITCOIN_BUILD_COMMIT"),
+        maybe_build_time: option_env!("OPEN_BITCOIN_BUILD_TIME"),
+        maybe_target: option_env!("OPEN_BITCOIN_BUILD_TARGET"),
+        maybe_profile: option_env!("OPEN_BITCOIN_BUILD_PROFILE"),
+    })
+}
+
+fn build_provenance_from_inputs(inputs: BuildProvenanceInputs<'_>) -> BuildProvenance {
+    BuildProvenance {
+        version: inputs.version.to_string(),
+        commit: build_provenance_field(inputs.maybe_commit, "commit unavailable"),
+        build_time: build_provenance_field(inputs.maybe_build_time, "build time unavailable"),
+        target: build_provenance_field(inputs.maybe_target, "target unavailable"),
+        profile: build_provenance_field(inputs.maybe_profile, "profile unavailable"),
+    }
+}
+
+fn build_provenance_field(
+    maybe_value: Option<&str>,
+    unavailable_reason: &str,
+) -> FieldAvailability<String> {
+    let Some(value) = maybe_value.map(str::trim).filter(|value| !value.is_empty()) else {
+        return FieldAvailability::unavailable(unavailable_reason);
+    };
+
+    FieldAvailability::available(value.to_string())
 }
 
 fn config_status(resolution: &OperatorConfigResolution) -> ConfigStatus {

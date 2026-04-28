@@ -1,12 +1,17 @@
 // Parity breadcrumbs:
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
-use std::{path::PathBuf, time::Duration};
+use std::{
+    fs, io,
+    path::{Path, PathBuf},
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 
 use super::{
-    StatusCollectorInput, StatusDetectionEvidence, StatusLiveRpcAdapterInput, StatusRenderMode,
-    StatusRequest, StatusRpcAuthSource, StatusRpcClient, StatusRpcError, collect_status_snapshot,
-    render_status,
+    BuildProvenanceInputs, StatusCollectorInput, StatusDetectionEvidence,
+    StatusLiveRpcAdapterInput, StatusRenderMode, StatusRequest, StatusRpcAuthSource,
+    StatusRpcClient, StatusRpcError, StatusWalletRpcAccess, build_provenance_from_inputs,
+    collect_status_snapshot, render_status, resolve_status_wallet_rpc_access,
 };
 use crate::operator::{
     NetworkSelection,
@@ -28,9 +33,16 @@ use open_bitcoin_node::status::{
     OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, ServiceStatus, SyncStatus, WalletFreshness,
     WalletScanProgress, WalletStatus,
 };
-use open_bitcoin_rpc::method::{
-    GetBalancesResponse, GetBlockchainInfoResponse, GetMempoolInfoResponse, GetNetworkInfoResponse,
-    GetWalletInfoResponse, WalletBalanceDetails,
+use open_bitcoin_node::{
+    FjallNodeStore, PersistMode, WalletRegistry,
+    core::wallet::{AddressNetwork, Wallet},
+};
+use open_bitcoin_rpc::{
+    RpcErrorCode, RpcErrorDetail,
+    method::{
+        GetBalancesResponse, GetBlockchainInfoResponse, GetMempoolInfoResponse,
+        GetNetworkInfoResponse, GetWalletInfoResponse, WalletBalanceDetails,
+    },
 };
 
 #[test]
@@ -79,6 +91,7 @@ fn status_collector_input_keeps_rpc_config_and_detection_evidence_typed() {
             timeout: Duration::from_secs(2),
         }),
         maybe_service_manager: None,
+        wallet_rpc_access: StatusWalletRpcAccess::Root,
     };
 
     // Assert
@@ -159,6 +172,9 @@ fn fake_live_rpc_maps_into_shared_status_snapshot() {
     );
     assert!(decoded["health_signals"].to_string().contains("uncertain"));
     assert_eq!(decoded["build"]["version"], env!("CARGO_PKG_VERSION"));
+    assert_eq!(decoded["build"]["build_time"]["state"], "available");
+    assert_eq!(decoded["build"]["target"]["state"], "available");
+    assert_eq!(decoded["build"]["profile"]["state"], "available");
 }
 
 #[test]
@@ -186,6 +202,117 @@ fn rpc_failure_produces_unreachable_snapshot_not_process_failure() {
             .to_string()
             .contains("auth failed")
     );
+}
+
+#[test]
+fn wallet_rpc_failure_keeps_node_running_and_marks_wallet_unavailable() {
+    // Arrange
+    let input = status_input(Vec::new());
+    let rpc = FakeStatusRpcClient::wallet_failing(StatusRpcError::from_rpc_detail(
+        RpcErrorDetail::new(
+            RpcErrorCode::WalletNotSpecified,
+            "Multiple wallets are loaded. Please select which wallet to use by requesting the RPC through the /wallet/<walletname> URI path.",
+        ),
+    ));
+
+    // Act
+    let snapshot = collect_status_snapshot(&input, Some(&rpc));
+    let rendered = render_status(&snapshot, StatusRenderMode::Json).expect("status json");
+    let decoded: serde_json::Value = serde_json::from_str(&rendered).expect("decode status json");
+
+    // Assert
+    assert_eq!(decoded["node"]["state"], "running");
+    assert_eq!(decoded["sync"]["network"]["value"], "regtest");
+    assert_eq!(
+        decoded["wallet"]["trusted_balance_sats"]["state"],
+        "unavailable"
+    );
+    assert!(
+        decoded["wallet"]["trusted_balance_sats"]["value"]["reason"]
+            .as_str()
+            .expect("wallet reason")
+            .contains("Multiple wallets are loaded")
+    );
+    assert!(
+        decoded["health_signals"]
+            .as_array()
+            .expect("health signals")
+            .iter()
+            .any(|signal| signal["source"] == "wallet")
+    );
+}
+
+#[test]
+fn build_provenance_from_inputs_marks_present_fields_available() {
+    // Arrange
+    let inputs = BuildProvenanceInputs {
+        version: "0.1.0",
+        maybe_commit: Some("abc123"),
+        maybe_build_time: Some("2026-04-28T12:43:00Z"),
+        maybe_target: Some("aarch64-apple-darwin"),
+        maybe_profile: Some("debug"),
+    };
+
+    // Act
+    let provenance = build_provenance_from_inputs(inputs);
+
+    // Assert
+    assert_eq!(provenance.version, "0.1.0");
+    assert_eq!(
+        provenance.commit,
+        FieldAvailability::available("abc123".to_string())
+    );
+    assert_eq!(
+        provenance.build_time,
+        FieldAvailability::available("2026-04-28T12:43:00Z".to_string())
+    );
+    assert_eq!(
+        provenance.target,
+        FieldAvailability::available("aarch64-apple-darwin".to_string())
+    );
+    assert_eq!(
+        provenance.profile,
+        FieldAvailability::available("debug".to_string())
+    );
+}
+
+#[test]
+fn status_wallet_rpc_access_uses_sole_loaded_wallet() {
+    // Arrange
+    let store = managed_wallet_store("sole", &["alpha"], None);
+
+    // Act
+    let access = resolve_status_wallet_rpc_access(Some(store.path()));
+
+    // Assert
+    assert_eq!(access, StatusWalletRpcAccess::Wallet("alpha".to_string()));
+}
+
+#[test]
+fn status_wallet_rpc_access_prefers_selected_wallet_when_multiple_loaded() {
+    // Arrange
+    let store = managed_wallet_store("selected", &["alpha", "beta"], Some("beta"));
+
+    // Act
+    let access = resolve_status_wallet_rpc_access(Some(store.path()));
+
+    // Assert
+    assert_eq!(access, StatusWalletRpcAccess::Wallet("beta".to_string()));
+}
+
+#[test]
+fn status_wallet_rpc_access_marks_ambiguous_wallets_unavailable() {
+    // Arrange
+    let multi_store = managed_wallet_store("multi", &["alpha", "beta"], None);
+
+    // Act
+    let multi_access = resolve_status_wallet_rpc_access(Some(multi_store.path()));
+
+    // Assert
+    assert!(matches!(
+        multi_access,
+        StatusWalletRpcAccess::Unavailable { .. }
+    ));
 }
 
 #[test]
@@ -366,6 +493,7 @@ fn collect_status_snapshot_with_fake_running_manager_sets_service_fields_to_avai
         },
         maybe_live_rpc: None,
         maybe_service_manager: Some(Box::new(fake)),
+        wallet_rpc_access: StatusWalletRpcAccess::Root,
     };
 
     // Act
@@ -421,6 +549,7 @@ fn collect_status_snapshot_with_fake_installed_manager_sets_installed_true_enabl
         },
         maybe_live_rpc: None,
         maybe_service_manager: Some(Box::new(fake)),
+        wallet_rpc_access: StatusWalletRpcAccess::Root,
     };
 
     // Act
@@ -469,6 +598,7 @@ fn collect_status_snapshot_uses_manager_enabled_state_over_state_inference() {
         },
         maybe_live_rpc: None,
         maybe_service_manager: Some(Box::new(fake)),
+        wallet_rpc_access: StatusWalletRpcAccess::Root,
     };
 
     // Act
@@ -512,6 +642,7 @@ fn collect_status_snapshot_preserves_running_when_startup_is_not_enabled() {
         },
         maybe_live_rpc: None,
         maybe_service_manager: Some(Box::new(fake)),
+        wallet_rpc_access: StatusWalletRpcAccess::Root,
     };
 
     // Act
@@ -589,6 +720,7 @@ fn collect_status_snapshot_with_error_manager_falls_back_to_unavailable() {
         },
         maybe_live_rpc: None,
         maybe_service_manager: Some(Box::new(ErrorServiceManager)),
+        wallet_rpc_access: StatusWalletRpcAccess::Root,
     };
 
     // Act
@@ -633,6 +765,7 @@ fn status_input(detected_installations: Vec<DetectedInstallation>) -> StatusColl
             timeout: Duration::from_secs(2),
         }),
         maybe_service_manager: None,
+        wallet_rpc_access: StatusWalletRpcAccess::Root,
     }
 }
 
@@ -708,22 +841,42 @@ fn detected_installation() -> DetectedInstallation {
 
 #[derive(Debug, Clone)]
 struct FakeStatusRpcClient {
-    maybe_error: Option<StatusRpcError>,
+    maybe_node_error: Option<StatusRpcError>,
+    maybe_wallet_error: Option<StatusRpcError>,
 }
 
 impl FakeStatusRpcClient {
     fn running() -> Self {
-        Self { maybe_error: None }
+        Self {
+            maybe_node_error: None,
+            maybe_wallet_error: None,
+        }
     }
 
     fn failing(message: &str) -> Self {
         Self {
-            maybe_error: Some(StatusRpcError::new(message)),
+            maybe_node_error: Some(StatusRpcError::new(message)),
+            maybe_wallet_error: None,
         }
     }
 
-    fn maybe_error(&self) -> Result<(), StatusRpcError> {
-        match &self.maybe_error {
+    fn wallet_failing(error: StatusRpcError) -> Self {
+        Self {
+            maybe_node_error: None,
+            maybe_wallet_error: Some(error),
+        }
+    }
+
+    fn maybe_node_error(&self) -> Result<(), StatusRpcError> {
+        match &self.maybe_node_error {
+            Some(error) => Err(error.clone()),
+            None => Ok(()),
+        }
+    }
+
+    fn maybe_wallet_error(&self) -> Result<(), StatusRpcError> {
+        self.maybe_node_error()?;
+        match &self.maybe_wallet_error {
             Some(error) => Err(error.clone()),
             None => Ok(()),
         }
@@ -732,7 +885,7 @@ impl FakeStatusRpcClient {
 
 impl StatusRpcClient for FakeStatusRpcClient {
     fn get_network_info(&self) -> Result<GetNetworkInfoResponse, StatusRpcError> {
-        self.maybe_error()?;
+        self.maybe_node_error()?;
         Ok(GetNetworkInfoResponse {
             version: 29_300,
             subversion: "/Satoshi:29.3.0/".to_string(),
@@ -749,7 +902,7 @@ impl StatusRpcClient for FakeStatusRpcClient {
     }
 
     fn get_blockchain_info(&self) -> Result<GetBlockchainInfoResponse, StatusRpcError> {
-        self.maybe_error()?;
+        self.maybe_node_error()?;
         Ok(GetBlockchainInfoResponse {
             chain: "regtest".to_string(),
             blocks: 144,
@@ -763,7 +916,7 @@ impl StatusRpcClient for FakeStatusRpcClient {
     }
 
     fn get_mempool_info(&self) -> Result<GetMempoolInfoResponse, StatusRpcError> {
-        self.maybe_error()?;
+        self.maybe_node_error()?;
         Ok(GetMempoolInfoResponse {
             size: 12,
             bytes: 2048,
@@ -777,7 +930,7 @@ impl StatusRpcClient for FakeStatusRpcClient {
     }
 
     fn get_wallet_info(&self) -> Result<GetWalletInfoResponse, StatusRpcError> {
-        self.maybe_error()?;
+        self.maybe_wallet_error()?;
         Ok(GetWalletInfoResponse {
             network: "regtest".to_string(),
             descriptor_count: 2,
@@ -788,7 +941,7 @@ impl StatusRpcClient for FakeStatusRpcClient {
     }
 
     fn get_balances(&self) -> Result<GetBalancesResponse, StatusRpcError> {
-        self.maybe_error()?;
+        self.maybe_wallet_error()?;
         Ok(GetBalancesResponse {
             mine: WalletBalanceDetails {
                 trusted_sats: 50_000,
@@ -796,5 +949,69 @@ impl StatusRpcClient for FakeStatusRpcClient {
                 immature_sats: 0,
             },
         })
+    }
+}
+
+fn managed_wallet_store(
+    test_name: &str,
+    wallet_names: &[&str],
+    maybe_selected_wallet_name: Option<&str>,
+) -> TempDirGuard {
+    let path = temp_path(test_name);
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("wallet store");
+    let mut registry = WalletRegistry::default();
+
+    for wallet_name in wallet_names {
+        registry
+            .create_wallet(
+                &store,
+                *wallet_name,
+                Wallet::new(AddressNetwork::Regtest),
+                PersistMode::Sync,
+            )
+            .expect("create wallet");
+    }
+    if let Some(selected_wallet_name) = maybe_selected_wallet_name {
+        registry
+            .set_selected_wallet(&store, selected_wallet_name, PersistMode::Sync)
+            .expect("select wallet");
+    }
+
+    TempDirGuard { path }
+}
+
+fn temp_path(test_name: &str) -> PathBuf {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system time after unix epoch")
+        .as_nanos();
+    std::env::temp_dir().join(format!(
+        "open-bitcoin-status-{test_name}-{}-{timestamp}",
+        std::process::id()
+    ))
+}
+
+fn remove_dir_if_exists(path: &Path) {
+    match fs::remove_dir_all(path) {
+        Ok(()) => {}
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+        Err(error) => panic!("failed to remove {}: {error}", path.display()),
+    }
+}
+
+struct TempDirGuard {
+    path: PathBuf,
+}
+
+impl TempDirGuard {
+    fn path(&self) -> &Path {
+        &self.path
+    }
+}
+
+impl Drop for TempDirGuard {
+    fn drop(&mut self) {
+        remove_dir_if_exists(&self.path);
     }
 }
