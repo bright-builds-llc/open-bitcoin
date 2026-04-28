@@ -13,9 +13,8 @@ use std::{
 
 use open_bitcoin_network::{HeaderEntry, HeadersMessage, VersionMessage, WireNetworkMessage};
 use open_bitcoin_node::{
-    LogStatus, MetricKind, MetricRetentionPolicy, MetricSample, MetricsStatus,
-    MetricsStorageSnapshot, PersistMode, RuntimeMetadata, SyncNetwork, SyncPeerAddress,
-    SyncPeerSession, SyncRuntimeConfig, SyncRuntimeError, SyncTransport,
+    MetricKind, MetricSample, MetricsStorageSnapshot, PersistMode, RuntimeMetadata, SyncNetwork,
+    SyncPeerAddress, SyncPeerSession, SyncRuntimeConfig, SyncRuntimeError, SyncTransport,
     core::{
         chainstate::{ChainPosition, ChainstateSnapshot, Coin},
         consensus::{block_hash, block_merkle_root, check_block_header},
@@ -23,12 +22,6 @@ use open_bitcoin_node::{
             Amount, Block, BlockHash, BlockHeader, MerkleRoot, OutPoint, ScriptBuf, ScriptWitness,
             Transaction, TransactionInput, TransactionOutput, Txid,
         },
-    },
-    status::{
-        BuildProvenance, ChainTipStatus, ConfigStatus, FieldAvailability, HealthSignal,
-        HealthSignalLevel, MempoolStatus, NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot,
-        PeerCounts, PeerStatus, ServiceStatus, SyncProgress, SyncStatus, WalletFreshness,
-        WalletScanProgress, WalletStatus,
     },
 };
 use open_bitcoin_wallet::{AddressNetwork, DescriptorRole, Wallet};
@@ -224,84 +217,10 @@ pub(crate) fn sample_metrics_storage_snapshot() -> MetricsStorageSnapshot {
         samples: vec![
             MetricSample::new(MetricKind::SyncHeight, 3.0, 1_700_000_003),
             MetricSample::new(MetricKind::PeerCount, 8.0, 1_700_000_004),
-            MetricSample::new(MetricKind::DiskUsageBytes, 4_096.0, 1_700_000_005),
+            MetricSample::new(MetricKind::MempoolTransactions, 12.0, 1_700_000_005),
+            MetricSample::new(MetricKind::DiskUsageBytes, 4_096.0, 1_700_000_006),
+            MetricSample::new(MetricKind::RpcHealth, 1.0, 1_700_000_007),
         ],
-    }
-}
-
-pub(crate) fn sample_status_snapshot() -> OpenBitcoinStatusSnapshot {
-    let retention = MetricRetentionPolicy {
-        sample_interval_seconds: 30,
-        max_samples_per_series: 60,
-        max_age_seconds: 1_800,
-    };
-    let samples = vec![
-        MetricSample::new(MetricKind::SyncHeight, 100.0, 1_700_000_000),
-        MetricSample::new(MetricKind::PeerCount, 8.0, 1_700_000_030),
-        MetricSample::new(MetricKind::MempoolTransactions, 12.0, 1_700_000_060),
-        MetricSample::new(MetricKind::DiskUsageBytes, 8_192.0, 1_700_000_090),
-        MetricSample::new(MetricKind::RpcHealth, 1.0, 1_700_000_120),
-    ];
-
-    OpenBitcoinStatusSnapshot {
-        node: NodeStatus {
-            state: NodeRuntimeState::Running,
-            version: "0.1.0".to_string(),
-        },
-        config: ConfigStatus {
-            datadir: FieldAvailability::available("/tmp/open-bitcoin".to_string()),
-            config_paths: vec![
-                "/tmp/open-bitcoin/bitcoin.conf".to_string(),
-                "/tmp/open-bitcoin/open-bitcoin.jsonc".to_string(),
-            ],
-        },
-        service: ServiceStatus {
-            manager: FieldAvailability::available("launchd".to_string()),
-            installed: FieldAvailability::available(true),
-            enabled: FieldAvailability::available(true),
-            running: FieldAvailability::available(true),
-        },
-        sync: SyncStatus {
-            network: FieldAvailability::available("regtest".to_string()),
-            chain_tip: FieldAvailability::available(ChainTipStatus {
-                height: 100,
-                block_hash: "0000000000000000000000000000000000000000000000000000000000000001"
-                    .to_string(),
-            }),
-            sync_progress: FieldAvailability::available(SyncProgress {
-                header_height: 100,
-                block_height: 100,
-                progress_ratio: 1.0,
-                messages_processed: 24,
-                headers_received: 4,
-                blocks_received: 4,
-            }),
-        },
-        peers: PeerStatus {
-            peer_counts: FieldAvailability::available(PeerCounts {
-                inbound: 0,
-                outbound: 8,
-            }),
-        },
-        mempool: MempoolStatus {
-            transactions: FieldAvailability::available(12),
-        },
-        wallet: WalletStatus {
-            trusted_balance_sats: FieldAvailability::available(60_000),
-            freshness: FieldAvailability::available(WalletFreshness::Scanning),
-            scan_progress: FieldAvailability::available(WalletScanProgress {
-                scanned_through_height: 80,
-                target_tip_height: 100,
-            }),
-        },
-        logs: LogStatus::default(),
-        metrics: MetricsStatus::available_with_samples(retention, samples),
-        health_signals: vec![HealthSignal {
-            level: HealthSignalLevel::Info,
-            source: "status".to_string(),
-            message: "node healthy".to_string(),
-        }],
-        build: BuildProvenance::unavailable(),
     }
 }
 

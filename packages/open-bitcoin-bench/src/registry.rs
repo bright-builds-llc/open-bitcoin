@@ -164,7 +164,7 @@ pub(crate) const OPERATOR_RUNTIME_MAPPING: KnotsMapping = KnotsMapping {
         "packages/bitcoin-knots/src/init.cpp",
         "packages/bitcoin-knots/src/interfaces/node.h",
     ],
-    notes: "No direct Knots benchmark covers operator-facing status or dashboard projection. This group tracks the shared runtime snapshot and rendering overhead that Open Bitcoin adds around the baseline-compatible surfaces.",
+    notes: "No direct Knots benchmark covers operator-facing status or dashboard collection. This group tracks the runtime-collected status and dashboard rendering overhead that Open Bitcoin adds around the baseline-compatible surfaces.",
 };
 
 pub(crate) const WALLET_MAPPING: KnotsMapping = KnotsMapping {
@@ -235,7 +235,7 @@ static BENCH_GROUPS: [BenchGroup; 11] = [
     },
     BenchGroup {
         id: BenchGroupId::OperatorRuntime,
-        description: "Status rendering and dashboard projection from the shared runtime snapshot",
+        description: "Status rendering and dashboard projection from runtime-collected operator snapshots",
         cases: &cases::operator_runtime::CASES,
     },
     BenchGroup {

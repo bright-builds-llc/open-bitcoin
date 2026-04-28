@@ -326,11 +326,16 @@ Plans:
 1. Operator-runtime benchmark cases collect status/dashboard data through the real runtime collection path or an equivalent shell entrypoint instead of only `sample_status_snapshot()` fixtures.
 2. Report metadata and benchmark validation still describe the operator-runtime cases accurately after the fidelity upgrade.
 3. Repo-native verification keeps the benchmark/report path deterministic and free of public-network requirements.
-**Plans**: 0 plans yet
+**Plans**: 3/3 plans complete
+
+Plans:
+- [x] 27-01-PLAN.md — runtime-collected status benchmark path
+- [x] 27-02-PLAN.md — runtime-collected dashboard path and benchmark metadata refresh
+- [x] 27-03-PLAN.md — verification, roadmap refresh, and final requirement closeout
 
 ## Progress
 
 | Milestone | Phases | Plans | Status | Shipped |
 | --- | ---: | ---: | --- | --- |
 | v1.0 Headless Parity | 22/22 | 80/80 | Archived | 2026-04-26 |
-| v1.1 Operator Runtime and Real-Network Sync | 14/15 | 50/50 current | Gap closure underway | - |
+| v1.1 Operator Runtime and Real-Network Sync | 15/15 | 53/53 current | Ready for milestone closeout | - |

@@ -10,8 +10,8 @@ shipped claims separate from deferred or out-of-scope work.
 - repo-native verification for the current CLI, config, service, storage, sync,
   metrics, logging, dashboard, migration, and parity-breadcrumb surfaces
 - deterministic runtime-backed benchmark evidence for headers sync, block
-  download or connect, storage write or read, restart recovery, status or
-  dashboard projection, and wallet-rescan cost
+  download or connect, storage write or read, restart recovery,
+  runtime-collected status or dashboard projection, and wallet-rescan cost
 - operator-facing documentation for source-built install, onboarding, config
   ownership, service lifecycle, status, dashboard, migration planning, benchmark
   workflow, and known limitations

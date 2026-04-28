@@ -13,7 +13,8 @@ Benchmarks now cover two layers:
 - pure or fixture-backed audit groups for consensus, codec, chainstate,
   mempool, network, wallet, and RPC or CLI behavior
 - runtime-hardening groups for headers sync, block download or connect, durable
-  storage reopen, status or dashboard rendering, and wallet-rescan cost
+  storage reopen, runtime-collected status or dashboard rendering, and
+  wallet-rescan cost
 
 The default smoke path remains threshold-free so `bash scripts/verify.sh` can
 run it without turning machine-local timing into a release criterion.
@@ -60,7 +61,7 @@ The `open-bitcoin-bench` registry emits these v1.1 groups:
 | `network-wire-sync` | Network wire encoding, address management, peer policy, and sync planning |
 | `sync-runtime` | Headers sync plus block download or connect through the durable runtime |
 | `storage-recovery` | Durable storage write or read and restart recovery |
-| `operator-runtime` | Status rendering and dashboard projection from the shared runtime snapshot |
+| `operator-runtime` | Status rendering and dashboard projection from runtime-collected operator snapshots |
 | `wallet` | Wallet balance, coin selection, signing, and transaction creation |
 | `wallet-rescan` | Durable wallet rescan runtime and managed-wallet freshness updates |
 | `rpc-cli` | RPC and CLI request dispatch |

@@ -73,7 +73,7 @@
 ### Verification, Benchmarks, and Documentation
 
 - [x] **VER-05**: Repo-native verification covers new CLI, config, service, storage, sync, metrics, logging, dashboard, migration, and parity breadcrumb rules without requiring public network access by default.
-- [ ] **VER-06**: Real-sync benchmarks measure headers sync, block download/connect, storage write/read, restart recovery, dashboard/status overhead, and wallet rescan costs with reproducible local reports.
+- [x] **VER-06**: Real-sync benchmarks measure headers sync, block download/connect, storage write/read, restart recovery, dashboard/status overhead, and wallet rescan costs with reproducible local reports.
 - [x] **VER-07**: Documentation explains v1.1 install, onboarding, service lifecycle, status, dashboard, config layering, migration, real-sync testing, and known limitations.
 - [x] **VER-08**: Parity docs and machine-readable indexes are updated so v1.1 claims are auditable and clearly separated from deferred surfaces.
 
@@ -143,16 +143,16 @@
 | MIG-04 | Phase 21, Phase 25 | Complete |
 | MIG-05 | Phase 21, Phase 22, Phase 26 | Complete |
 | VER-05 | Phase 22, Phase 26 | Complete |
-| VER-06 | Phase 22, Phase 27 | Pending |
+| VER-06 | Phase 22, Phase 27 | Complete |
 | VER-07 | Phase 22, Phase 26 | Complete |
 | VER-08 | Phase 22, Phase 26 | Complete |
 
 **Coverage:**
 - v1.1 requirements: 44 total
-- Checked off: 43
+- Checked off: 44
 - Mapped to phases: 44
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-26*
-*Last updated: 2026-04-28 after Phase 26 closeout*
+*Last updated: 2026-04-28 after Phase 27 closeout*
