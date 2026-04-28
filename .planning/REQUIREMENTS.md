@@ -17,9 +17,9 @@
 ### Terminal Dashboard
 
 - [x] **DASH-01**: Operator can launch a Ratatui dashboard that displays live sync state, peer state, mempool state, wallet summary, service state, logs, and health signals from the shared status model.
-- [ ] **DASH-02**: Dashboard displays bounded historical metrics as terminal graphs for sync progress, peers, mempool size, disk usage, and RPC health.
+- [x] **DASH-02**: Dashboard displays bounded historical metrics as terminal graphs for sync progress, peers, mempool size, disk usage, and RPC health.
 - [x] **DASH-03**: Dashboard offers a keyboard menu for safe node queries and actions, with destructive or service-affecting operations gated by explicit confirmation.
-- [ ] **DASH-04**: Dashboard uses a restrained, readable color palette that remains usable on common light and dark terminals and degrades cleanly without color.
+- [x] **DASH-04**: Dashboard uses a restrained, readable color palette that remains usable on common light and dark terminals and degrades cleanly without color.
 
 ### CLI, Config, and Onboarding
 
@@ -39,18 +39,18 @@
 
 ### Durable Storage and Runtime Hardening
 
-- [ ] **DB-01**: Contributors can inspect a documented database decision that compares Rust-native and RocksDB-style storage options against chainstate, header, block-index, wallet, metrics, recovery, Bazel, and dependency constraints.
-- [ ] **DB-02**: Node persists headers, block index metadata, chainstate or UTXO state, undo/reorg metadata, wallet state, runtime metadata, and schema version information across restart.
-- [ ] **DB-03**: Storage layer detects incompatible schema versions and corruption conditions and returns typed recovery errors instead of panicking.
-- [ ] **DB-04**: Node can recover from interrupted writes through tested restart, replay, reindex, or repair flows.
-- [ ] **DB-05**: Durable storage remains behind adapter traits so pure consensus, chainstate, mempool, wallet, and protocol code remain free of filesystem and database dependencies.
+- [x] **DB-01**: Contributors can inspect a documented database decision that compares Rust-native and RocksDB-style storage options against chainstate, header, block-index, wallet, metrics, recovery, Bazel, and dependency constraints.
+- [x] **DB-02**: Node persists headers, block index metadata, chainstate or UTXO state, undo/reorg metadata, wallet state, runtime metadata, and schema version information across restart.
+- [x] **DB-03**: Storage layer detects incompatible schema versions and corruption conditions and returns typed recovery errors instead of panicking.
+- [x] **DB-04**: Node can recover from interrupted writes through tested restart, replay, reindex, or repair flows.
+- [x] **DB-05**: Durable storage remains behind adapter traits so pure consensus, chainstate, mempool, wallet, and protocol code remain free of filesystem and database dependencies.
 
 ### Real Network Sync
 
-- [ ] **SYNC-01**: Node can establish long-running outbound peer connections using configured peers and DNS/manual seed sources for supported networks.
-- [ ] **SYNC-02**: Node can perform initial headers sync against real peers, persist progress, and resume after restart.
-- [ ] **SYNC-03**: Node can request, download, validate, persist, and connect blocks from real peers with bounded in-flight work and observable progress.
-- [ ] **SYNC-04**: Node handles peer disconnects, invalid data, timeouts, stalls, and competing branches with typed errors, metrics, and retry behavior.
+- [x] **SYNC-01**: Node can establish long-running outbound peer connections using configured peers and DNS/manual seed sources for supported networks.
+- [x] **SYNC-02**: Node can perform initial headers sync against real peers, persist progress, and resume after restart.
+- [x] **SYNC-03**: Node can request, download, validate, persist, and connect blocks from real peers with bounded in-flight work and observable progress.
+- [x] **SYNC-04**: Node handles peer disconnects, invalid data, timeouts, stalls, and competing branches with typed errors, metrics, and retry behavior.
 - [x] **SYNC-05**: Sync behavior is covered by deterministic simulated-network tests plus opt-in live-network smoke tests that do not make default verification flaky.
 - [x] **SYNC-06**: Sync progress and bottlenecks are visible through status, metrics history, logs, and dashboard panels.
 
@@ -72,10 +72,10 @@
 
 ### Verification, Benchmarks, and Documentation
 
-- [ ] **VER-05**: Repo-native verification covers new CLI, config, service, storage, sync, metrics, logging, dashboard, migration, and parity breadcrumb rules without requiring public network access by default.
+- [x] **VER-05**: Repo-native verification covers new CLI, config, service, storage, sync, metrics, logging, dashboard, migration, and parity breadcrumb rules without requiring public network access by default.
 - [ ] **VER-06**: Real-sync benchmarks measure headers sync, block download/connect, storage write/read, restart recovery, dashboard/status overhead, and wallet rescan costs with reproducible local reports.
-- [ ] **VER-07**: Documentation explains v1.1 install, onboarding, service lifecycle, status, dashboard, config layering, migration, real-sync testing, and known limitations.
-- [ ] **VER-08**: Parity docs and machine-readable indexes are updated so v1.1 claims are auditable and clearly separated from deferred surfaces.
+- [x] **VER-07**: Documentation explains v1.1 install, onboarding, service lifecycle, status, dashboard, config layering, migration, real-sync testing, and known limitations.
+- [x] **VER-08**: Parity docs and machine-readable indexes are updated so v1.1 claims are auditable and clearly separated from deferred surfaces.
 
 ## Future Requirements
 
@@ -108,9 +108,9 @@
 | OBS-04 | Phase 13, Phase 16 | Complete |
 | OBS-05 | Phase 16, Phase 17 | Complete |
 | DASH-01 | Phase 19, Phase 24 | Complete |
-| DASH-02 | Phase 19, Phase 26 | Pending |
+| DASH-02 | Phase 19, Phase 26 | Complete |
 | DASH-03 | Phase 19, Phase 23 | Complete |
-| DASH-04 | Phase 19, Phase 26 | Pending |
+| DASH-04 | Phase 19, Phase 26 | Complete |
 | CLI-03 | Phase 13, Phase 17 | Complete |
 | CLI-04 | Phase 17 | Complete |
 | CLI-05 | Phase 13, Phase 17 | Complete |
@@ -121,15 +121,15 @@
 | SVC-03 | Phase 18, Phase 23 | Complete |
 | SVC-04 | Phase 18, Phase 23 | Complete |
 | SVC-05 | Phase 18, Phase 23 | Complete |
-| DB-01 | Phase 13, Phase 26 | Pending |
-| DB-02 | Phase 14, Phase 26 | Pending |
-| DB-03 | Phase 14, Phase 26 | Pending |
-| DB-04 | Phase 14, Phase 26 | Pending |
-| DB-05 | Phase 14, Phase 26 | Pending |
-| SYNC-01 | Phase 15, Phase 26 | Pending |
-| SYNC-02 | Phase 15, Phase 26 | Pending |
-| SYNC-03 | Phase 15, Phase 26 | Pending |
-| SYNC-04 | Phase 15, Phase 26 | Pending |
+| DB-01 | Phase 13, Phase 26 | Complete |
+| DB-02 | Phase 14, Phase 26 | Complete |
+| DB-03 | Phase 14, Phase 26 | Complete |
+| DB-04 | Phase 14, Phase 26 | Complete |
+| DB-05 | Phase 14, Phase 26 | Complete |
+| SYNC-01 | Phase 15, Phase 26 | Complete |
+| SYNC-02 | Phase 15, Phase 26 | Complete |
+| SYNC-03 | Phase 15, Phase 26 | Complete |
+| SYNC-04 | Phase 15, Phase 26 | Complete |
 | SYNC-05 | Phase 15, Phase 22 | Complete |
 | SYNC-06 | Phase 16, Phase 19 | Complete |
 | WAL-04 | Phase 20 | Complete |
@@ -137,22 +137,22 @@
 | WAL-06 | Phase 20 | Complete |
 | WAL-07 | Phase 20 | Complete |
 | WAL-08 | Phase 20, Phase 21 | Complete |
-| MIG-01 | Phase 21, Phase 26 | Pending |
+| MIG-01 | Phase 21, Phase 26 | Complete |
 | MIG-02 | Phase 17, Phase 21, Phase 25 | Complete |
-| MIG-03 | Phase 21, Phase 26 | Pending |
+| MIG-03 | Phase 21, Phase 26 | Complete |
 | MIG-04 | Phase 21, Phase 25 | Complete |
-| MIG-05 | Phase 21, Phase 22, Phase 26 | Pending |
-| VER-05 | Phase 22, Phase 26 | Pending |
+| MIG-05 | Phase 21, Phase 22, Phase 26 | Complete |
+| VER-05 | Phase 22, Phase 26 | Complete |
 | VER-06 | Phase 22, Phase 27 | Pending |
-| VER-07 | Phase 22, Phase 26 | Pending |
-| VER-08 | Phase 22, Phase 26 | Pending |
+| VER-07 | Phase 22, Phase 26 | Complete |
+| VER-08 | Phase 22, Phase 26 | Complete |
 
 **Coverage:**
 - v1.1 requirements: 44 total
-- Checked off: 29
+- Checked off: 43
 - Mapped to phases: 44
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-26*
-*Last updated: 2026-04-28 after Phase 25 closeout*
+*Last updated: 2026-04-28 after Phase 26 closeout*

@@ -2,6 +2,7 @@
 phase: 19-ratatui-node-dashboard
 plan: "03"
 subsystem: dashboard-tests-and-closeout
+requirements-completed: [DASH-03, DASH-04]
 generated_by: gsd-execute-phase
 lifecycle_mode: yolo
 phase_lifecycle_id: 19-2026-04-27T09-02-20

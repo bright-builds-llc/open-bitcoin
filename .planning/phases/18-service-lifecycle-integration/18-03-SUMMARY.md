@@ -2,6 +2,7 @@
 phase: 18-service-lifecycle-integration
 plan: "03"
 subsystem: operator-service-lifecycle
+requirements-completed: [SVC-03, SVC-04, SVC-05]
 tags:
   - service
   - status

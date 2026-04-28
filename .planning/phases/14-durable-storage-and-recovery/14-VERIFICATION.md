@@ -15,6 +15,7 @@ provenance_warnings: []
 # Phase 14: Durable Storage and Recovery Verification Report
 
 **Phase Goal:** Replace in-memory runtime stores with durable adapter-backed storage that survives restart and has defined recovery behavior.
+**Requirements:** DB-02, DB-03, DB-04, DB-05
 **Verified:** 2026-04-26T20:51:15Z
 **Status:** passed
 
@@ -26,6 +27,15 @@ provenance_warnings: []
 | 2 | Schema mismatches and corruption conditions return typed storage errors and operator guidance. | VERIFIED | `incompatible_schema_version_returns_schema_mismatch`, `malformed_snapshot_maps_to_corruption`, `malformed_recovery_marker_maps_to_runtime_corruption` |
 | 3 | Interrupted write, reindex, repair, and clean-shutdown recovery flows are covered by isolated tests. | VERIFIED | `recovery_marker_round_trips_and_clean_shutdown_clears_it`, `StorageRecoveryAction` tests |
 | 4 | Pure core crates remain free of filesystem and database dependencies. | VERIFIED | `bash scripts/check-pure-core-deps.sh`, database dependency limited to `open-bitcoin-node` |
+
+## Requirements Coverage
+
+| Requirement | Status | Evidence |
+|---|---|---|
+| DB-02 | SATISFIED | `FjallNodeStore` persistence and reopen tests prove headers, block metadata, chainstate, wallet state, metrics, and schema version data survive restart. |
+| DB-03 | SATISFIED | Schema mismatch and malformed snapshot tests map storage problems into typed recovery errors instead of panicking. |
+| DB-04 | SATISFIED | Recovery marker, restart, reindex, repair, and interrupted-write flows are covered by isolated recovery tests. |
+| DB-05 | SATISFIED | The pure-core dependency guard plus adapter-limited storage implementation keep filesystem and database concerns out of pure core crates. |
 
 ## Targeted Verification
 

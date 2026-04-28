@@ -2,6 +2,7 @@
 phase: 22-real-sync-benchmarks-and-release-hardening
 plan: "01"
 subsystem: runtime-benchmark-harness
+requirements-completed: [SYNC-05, VER-05]
 generated_by: gsd-execute-phase
 lifecycle_mode: yolo
 phase_lifecycle_id: 22-2026-04-28T01-24-15

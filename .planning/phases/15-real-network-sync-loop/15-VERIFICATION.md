@@ -15,6 +15,7 @@ provenance_warnings: []
 # Phase 15: Real Network Sync Loop Verification Report
 
 **Phase Goal:** Turn the existing peer/message/header primitives into a long-running sync runtime that can talk to real network peers and resume progress.
+**Requirements:** SYNC-01, SYNC-02, SYNC-03, SYNC-04, SYNC-05
 **Verified:** 2026-04-26T21:26:58Z
 **Status:** passed
 
@@ -27,6 +28,16 @@ provenance_warnings: []
 | 3 | Block download, validation, persistence, and connect flow handles bounded in-flight work and observable retry behavior. | VERIFIED | `headers_response_caps_block_requests_to_in_flight_limit`, `scripted_block_download_connects_and_persists_block`, `FjallNodeStore::save_block`, `FjallNodeStore::load_block` |
 | 4 | Peer disconnects, invalid data, timeouts, stalls, and competing branches produce typed errors, metrics, and logs. | VERIFIED | `SyncRuntimeError`, `PeerSyncOutcome`, health signals in `SyncRunSummary`, metrics persisted by `persist_metrics`; branch/ancestor errors remain typed through `NetworkError` and `ManagedNetworkError` |
 | 5 | Default verification remains hermetic; optional live-network smoke tests are explicitly opt-in. | VERIFIED | `live_network_smoke_is_explicitly_opt_in` is ignored and additionally gated by `OPEN_BITCOIN_LIVE_SYNC_SMOKE=1` |
+
+## Requirements Coverage
+
+| Requirement | Status | Evidence |
+|---|---|---|
+| SYNC-01 | SATISFIED | The sync runtime establishes long-running outbound peers through configured peers and supported network seed sources. |
+| SYNC-02 | SATISFIED | Header-sync restart tests prove sync progress is persisted and resumed from durable storage. |
+| SYNC-03 | SATISFIED | Block download, validation, persistence, and connect flow are covered by bounded in-flight sync and durable block-storage tests. |
+| SYNC-04 | SATISFIED | Typed sync outcomes, network errors, metrics, and health-signal reporting cover disconnects, invalid data, timeouts, stalls, and competing branches. |
+| SYNC-05 | SATISFIED | Live-network smoke coverage remains opt-in while the default verification path stays deterministic and hermetic. |
 
 ## Targeted Verification
 

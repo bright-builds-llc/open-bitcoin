@@ -15,6 +15,7 @@ provenance_warnings: []
 # Phase 13: Operator Runtime Foundations Verification Report
 
 **Phase Goal:** Establish durable operator-facing runtime contracts for storage, status, observability, CLI routing, and Open Bitcoin-owned configuration before implementing the full dashboard, service manager, and real-network sync flows.
+**Requirements:** OBS-01, OBS-03, OBS-04, CLI-03, CLI-05, CLI-06, DB-01
 **Verified:** 2026-04-26T19:03:10Z
 **Status:** passed
 
@@ -27,6 +28,18 @@ provenance_warnings: []
 | 3 | Metrics and log retention contracts exist for a future TUI dashboard and daemon diagnostics. | VERIFIED | `docs/architecture/operator-observability.md`, `packages/open-bitcoin-node/src/metrics.rs`, `packages/open-bitcoin-node/src/logging.rs` |
 | 4 | Operator CLI architecture is explicit about compatibility pass-through versus Open Bitcoin-only commands. | VERIFIED | `docs/architecture/cli-command-architecture.md`, `packages/open-bitcoin-cli/src/operator.rs`, `packages/open-bitcoin-cli/src/operator/tests.rs` |
 | 5 | Open Bitcoin-owned JSONC config ownership and precedence are documented and parser-backed. | VERIFIED | `docs/architecture/config-precedence.md`, `packages/open-bitcoin-rpc/src/config/open_bitcoin.rs`, `packages/open-bitcoin-rpc/src/config/tests.rs` |
+
+## Requirements Coverage
+
+| Requirement | Status | Evidence |
+|---|---|---|
+| OBS-01 | SATISFIED | The shared status contract documents and tests the stable operator-visible snapshot surface for running and stopped nodes. |
+| OBS-03 | SATISFIED | The operator observability contract and `open-bitcoin-node` metrics module define bounded metric history for later status and dashboard consumers. |
+| OBS-04 | SATISFIED | The operator observability contract and logging module define structured log writing, retention, and visible log paths. |
+| CLI-03 | SATISFIED | The CLI command architecture and `open-bitcoin-cli` routing tests prove the first-party operator tree lives alongside the compatible command surface. |
+| CLI-05 | SATISFIED | The config precedence design and parser-backed Open Bitcoin JSONC config surface establish the user-editable Open Bitcoin-only config path. |
+| CLI-06 | SATISFIED | The config precedence contract and parser tests document and verify the intended CLI, environment, JSONC, `bitcoin.conf`, cookie, and default ordering. |
+| DB-01 | SATISFIED | `docs/architecture/storage-decision.md` records the database decision, tradeoffs, recovery constraints, and Phase 14 storage obligations by requirement ID. |
 
 ## Targeted Verification
 

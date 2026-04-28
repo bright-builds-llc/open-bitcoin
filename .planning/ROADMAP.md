@@ -309,7 +309,12 @@ Plans:
 2. Later Phase 18, 19, 21, and 22 summaries and requirement bookkeeping reflect shipped requirement evidence consistently.
 3. `REQUIREMENTS.md` traceability rows and checkbox state align with the milestone audit verdict and re-audit expectations.
 4. A rerun milestone audit no longer reports orphaned or stale evidence-only gaps for the requirements assigned here.
-**Plans**: 0 plans yet
+**Plans**: 3/3 plans complete
+
+Plans:
+- [x] 26-01-PLAN.md — explicit DB/SYNC requirement coverage in legacy verification reports
+- [x] 26-02-PLAN.md — summary frontmatter backfill and requirements ledger reconciliation
+- [x] 26-03-PLAN.md — milestone audit rerun, roadmap refresh, and Phase 26 closeout
 
 ### Phase 27: Operator Runtime Benchmark Fidelity
 
@@ -328,4 +333,4 @@ Plans:
 | Milestone | Phases | Plans | Status | Shipped |
 | --- | ---: | ---: | --- | --- |
 | v1.0 Headless Parity | 22/22 | 80/80 | Archived | 2026-04-26 |
-| v1.1 Operator Runtime and Real-Network Sync | 13/15 | 47/47 current | Gap closure underway | - |
+| v1.1 Operator Runtime and Real-Network Sync | 14/15 | 50/50 current | Gap closure underway | - |

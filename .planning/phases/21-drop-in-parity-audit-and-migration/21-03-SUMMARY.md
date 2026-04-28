@@ -2,6 +2,7 @@
 phase: 21-drop-in-parity-audit-and-migration
 plan: "03"
 subsystem: migration-parity-audit-and-docs
+requirements-completed: [MIG-01, MIG-05]
 generated_by: gsd-execute-phase
 lifecycle_mode: yolo
 phase_lifecycle_id: 21-2026-04-27T23-11-20

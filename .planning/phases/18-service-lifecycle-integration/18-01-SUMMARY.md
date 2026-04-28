@@ -2,6 +2,7 @@
 phase: 18-service-lifecycle-integration
 plan: "01"
 subsystem: operator-service-lifecycle
+requirements-completed: [SVC-01, SVC-02, SVC-05]
 tags:
   - service
   - launchd
