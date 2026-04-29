@@ -119,6 +119,7 @@ cargo test --manifest-path packages/Cargo.toml --workspace --all-features
 bash scripts/run-benchmarks.sh --smoke --output-dir "$OPEN_BITCOIN_BENCHMARK_REPORT_DIR"
 bun run scripts/check-benchmark-report.ts --report="$OPEN_BITCOIN_BENCHMARK_REPORT_DIR/open-bitcoin-bench-smoke.json"
 bazel build //:core //:node //:rpc //:cli //:test_harness //:bench
+bun run scripts/check-bazel-build-provenance.ts
 
 pure_core_crates=()
 while IFS= read -r crate_name; do

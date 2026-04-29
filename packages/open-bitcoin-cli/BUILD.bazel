@@ -5,6 +5,14 @@ rust_library(
     srcs = glob(["src/**/*.rs"]),
     crate_name = "open_bitcoin_cli",
     edition = "2024",
+    rustc_env = {
+        "OPEN_BITCOIN_BUILD_COMMIT": "{STABLE_OPEN_BITCOIN_BUILD_COMMIT}",
+        "OPEN_BITCOIN_BUILD_TIME": "{BUILD_TIMESTAMP}",
+        "OPEN_BITCOIN_BUILD_TARGET": "$(TARGET_CPU)",
+        "OPEN_BITCOIN_BUILD_PROFILE": "$(COMPILATION_MODE)",
+    },
+    stamp = 1,
+    version = "0.1.0",
     deps = [
         "//packages/open-bitcoin-node:open_bitcoin_node_lib",
         "//packages/open-bitcoin-rpc:open_bitcoin_rpc_lib",
@@ -24,6 +32,7 @@ rust_binary(
     srcs = ["src/bin/open-bitcoin.rs"],
     crate_name = "open_bitcoin",
     edition = "2024",
+    version = "0.1.0",
     deps = [
         ":open_bitcoin_cli_lib",
         "@crate_index//:clap",
@@ -40,6 +49,7 @@ rust_binary(
     ],
     crate_name = "open_bitcoin_cli",
     edition = "2024",
+    version = "0.1.0",
     deps = [
         ":open_bitcoin_cli_lib",
         "//packages/open-bitcoin-rpc:open_bitcoin_rpc_lib",

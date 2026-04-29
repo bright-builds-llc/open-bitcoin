@@ -162,6 +162,9 @@ Interpretation guidance:
 
 - `Unavailable` means the collector chose to report absence explicitly instead
   of inventing a default value.
+- The `build` section stays compile-time truthful across supported local build
+  paths: Cargo builds surface Cargo metadata, while Bazel builds surface the
+  workspace version plus Bazel target and compilation-mode identifiers.
 - `wallet.freshness` matters as much as `trusted_balance_sats`; a balance alone
   does not imply the wallet view is current.
 - `dashboard` and `status` both surface the same node, config, service, sync,

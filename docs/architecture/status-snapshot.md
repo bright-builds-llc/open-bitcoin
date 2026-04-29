@@ -24,6 +24,18 @@
 
 Stopped-node status must not omit live fields. Fields that cannot be collected because the daemon is stopped use `Unavailable` with a `reason`. For example, live `network`, `chain tip`, `sync progress`, `peer counts`, mempool, and wallet values can be unavailable while datadir, config paths, service state, logs, metrics policy, health signals, and build provenance remain visible.
 
+## Build provenance semantics
+
+`build.version` should reflect the workspace package version, and the remaining
+`build.*` fields should come from truthful compile-time metadata supplied by the
+active build system.
+
+- Cargo builds can surface Cargo `TARGET` and `PROFILE` values.
+- Bazel builds can surface Bazel `TARGET_CPU` and `COMPILATION_MODE` values.
+
+Consumers should treat those strings as build-system-specific provenance, not as
+one normalized cross-build enum.
+
 ## Wallet freshness semantics
 
 `wallet.trusted_balance_sats` remains part of the shared snapshot, but operator-facing consumers must treat it as incomplete unless `wallet.freshness` says otherwise.

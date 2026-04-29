@@ -1,4 +1,5 @@
 common --enable_bzlmod
 common --announce_rc
 build --keep_going
+build --workspace_status_command=scripts/open-bitcoin-workspace-status.sh
 test --test_output=errors
