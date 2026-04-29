@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Operator Runtime and Real-Network Sync
-status: executing
-stopped_at: Phase 31 completed and Phase 32 queued for discussion
-last_updated: "2026-04-29T18:01:04.871Z"
-last_activity: 2026-04-29 -- Phase 31 completed and Phase 32 queued for discussion
+status: milestone_complete
+stopped_at: Phase 32 completed and the milestone is ready for an audit rerun
+last_updated: "2026-04-29T22:36:39.488Z"
+last_activity: 2026-04-29 -- Phase 32 completed and the milestone is ready for an audit rerun
 progress:
   total_phases: 20
-  completed_phases: 19
-  total_plans: 61
-  completed_plans: 61
-  percent: 95
+  completed_phases: 20
+  total_plans: 63
+  completed_plans: 63
+  percent: 100
 ---
 
 # Project State
@@ -21,22 +21,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-26)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 32 — Benchmark Wrapper List-Mode Hygiene
+**Current focus:** v1.1 milestone audit rerun
 
 ## Current Position
 
-Phase: 32
-Plan: Not started
-Status: Ready to discuss
-Last activity: 2026-04-29 -- Phase 31 completed and Phase 32 queued for discussion
+Phase: Complete
+Plan: None
+Status: Ready for milestone audit
+Last activity: 2026-04-29 -- Phase 32 completed and the milestone is ready for an audit rerun
 
-Progress: 19/20 phases complete
+Progress: 20/20 phases complete
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed in v1.1: 61
+- Total plans completed in v1.1: 63
 - Average duration: not available yet
 - Total execution time: not available yet
 
@@ -58,6 +58,7 @@ Progress: 19/20 phases complete
 | 29 | 2 | - | - |
 | 30 | 2 | - | - |
 | 31 | 2 | - | - |
+| 32 | 2 | - | - |
 
 **Recent Trend:**
 
@@ -75,6 +76,7 @@ Progress: 19/20 phases complete
 - Gap-closure Phases 30 through 32 were planned on 2026-04-29 from the post-Phase-29 milestone audit.
 - Phase 30 completed 2 configless live-status and dashboard-bootstrap plans on 2026-04-29.
 - Phase 31 completed 2 migration source-specific service-review truth plans on 2026-04-29.
+- Phase 32 completed 2 benchmark-wrapper list-mode hygiene plans on 2026-04-29.
 
 | Phase 16 P01 | 12 min | 2 tasks | 4 files |
 | Phase 16 P02 | 18 min | 2 tasks | 7 files |
@@ -136,7 +138,7 @@ Recent decisions affecting current work:
 - Durable database choice must be made deliberately before real-network sync relies on it.
 - Automatic or destructive migration remains out of scope after Phase 21; later phases must preserve the current dry-run-first safety boundary until an apply-mode design is explicitly planned.
 - The TUI dashboard depends on stable status, metrics, and sync-state projections; avoid building a decorative dashboard before those data contracts exist.
-- `bash scripts/verify.sh` passes after the Phase 31 migration-service-review blocker closeout run.
+- `bash scripts/verify.sh` passes after the Phase 32 benchmark-wrapper cleanup closeout run.
 
 ### Quick Tasks Completed
 
@@ -153,6 +155,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-29T18:01:04.871Z
-Stopped at: Phase 31 completed and Phase 32 queued for discussion
+Last session: 2026-04-29T22:36:39.488Z
+Stopped at: Phase 32 completed and the milestone is ready for an audit rerun
 Resume file: .planning/ROADMAP.md

@@ -63,6 +63,23 @@ while [[ "$#" -gt 0 ]]; do
 	esac
 done
 
+# Build the shared Cargo command before the --list fast path so list mode can
+# reuse the same benchmark entrypoint without selecting a run mode.
+cargo_args=(
+	cargo
+	run
+)
+if [[ "$maybe_mode" == "full" ]]; then
+	cargo_args+=(--release)
+fi
+cargo_args+=(
+	--manifest-path
+	packages/Cargo.toml
+	-p
+	open-bitcoin-bench
+	--
+)
+
 if [[ "$list_requested" -eq 1 ]]; then
 	if [[ "${#benchmark_args[@]}" -ne 1 ]]; then
 		echo "error: --list cannot be combined with run options" >&2
@@ -78,21 +95,6 @@ if [[ "$mode_count" -ne 1 ]]; then
 	usage >&2
 	exit 2
 fi
-
-cargo_args=(
-	cargo
-	run
-)
-if [[ "$maybe_mode" == "full" ]]; then
-	cargo_args+=(--release)
-fi
-cargo_args+=(
-	--manifest-path
-	packages/Cargo.toml
-	-p
-	open-bitcoin-bench
-	--
-)
 
 if [[ "$output_dir_set" -eq 0 ]]; then
 	benchmark_args+=(--output-dir "$default_output_dir")

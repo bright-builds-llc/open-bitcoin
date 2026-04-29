@@ -60,7 +60,7 @@ Post-audit gap-closure phases now extend the milestone so service apply behavior
 - [x] **Phase 29: Closeout Hygiene and Build Provenance** - Address the remaining optional post-audit cleanup around build provenance truthfulness and milestone-closeout hygiene. (completed 2026-04-29)
 - [x] **Phase 30: Configless Live Status and Dashboard Bootstrap** - Restore truthful live status and dashboard behavior for flag-only local workflows when `bitcoin.conf` is absent. (completed 2026-04-29)
 - [x] **Phase 31: Migration Source-Specific Service Review Truth** - Scope migration service review actions to the selected source installation so custom-path plans stay truthful. (completed 2026-04-29)
-- [ ] **Phase 32: Benchmark Wrapper List-Mode Hygiene** - Fix the benchmark wrapper `--list` path without regressing the shipped smoke and report-validation flow. (planned optional cleanup)
+- [x] **Phase 32: Benchmark Wrapper List-Mode Hygiene** - Fix the benchmark wrapper `--list` path without regressing the shipped smoke and report-validation flow. (completed 2026-04-29)
 
 ## Phase Details
 
@@ -412,11 +412,15 @@ Plans:
 1. `bash scripts/run-benchmarks.sh --list` no longer aborts before cargo arguments initialize.
 2. Existing `--smoke` and `--full` execution paths keep the same report and output behavior.
 3. Focused regression coverage proves list mode without reopening benchmark fidelity work.
-**Plans**: 0 plans yet
+**Plans**: 2/2 plans complete
+
+Plans:
+- [x] 32-01-PLAN.md — repair list mode and add a durable guard
+- [x] 32-02-PLAN.md — verify and close the optional cleanup
 
 ## Progress
 
 | Milestone | Phases | Plans | Status | Shipped |
 | --- | ---: | ---: | --- | --- |
 | v1.0 Headless Parity | 22/22 | 80/80 | Archived | 2026-04-26 |
-| v1.1 Operator Runtime and Real-Network Sync | 19/20 | 61/61 current | Gap closure in progress | - |
+| v1.1 Operator Runtime and Real-Network Sync | 20/20 | 63/63 current | Ready for milestone audit | - |
