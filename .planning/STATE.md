@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Operator Runtime and Real-Network Sync
-status: milestone_complete
-stopped_at: Phase 29 completed and verified
-last_updated: "2026-04-29T14:15:31.895Z"
-last_activity: 2026-04-29 -- Phase 29 completed and verified
+status: executing
+stopped_at: Gap closure phases 30-32 planned
+last_updated: "2026-04-29T16:11:00Z"
+last_activity: 2026-04-29 -- Added gap closure phases 30-32 from post-Phase-29 audit
 progress:
-  total_phases: 17
+  total_phases: 20
   completed_phases: 17
   total_plans: 57
   completed_plans: 57
-  percent: 100
+  percent: 85
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-26)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Milestone closeout after Phase 29 verification
+**Current focus:** Phase 30 — Configless Live Status and Dashboard Bootstrap
 
 ## Current Position
 
-Phase: 29 (closeout-hygiene-and-build-provenance) — VERIFIED COMPLETE
-Plan: 29-02 complete; 2/2 plans complete
-Status: Milestone ready for `/gsd-audit-milestone`, `/gsd-verify-work`, and `/gsd-complete-milestone`
-Last activity: 2026-04-29 -- Phase 29 completed and verified
+Phase: 30
+Plan: Not started
+Status: Gap closure planned after the post-Phase-29 milestone audit
+Last activity: 2026-04-29 -- Added gap closure phases 30-32 from post-Phase-29 audit
 
-Progress: 17/17 phases complete
+Progress: 17/20 phases complete
 
 ## Performance Metrics
 
@@ -70,6 +70,7 @@ Progress: 17/17 phases complete
 - Phase 22 completed 3 real-sync benchmark and release-hardening plans on 2026-04-27.
 - Phase 28 completed 2 service log-path truth and operator-doc alignment plans on 2026-04-29.
 - Phase 29 completed 2 closeout-hygiene and build-provenance plans on 2026-04-29.
+- Gap-closure Phases 30 through 32 were planned on 2026-04-29 from the post-Phase-29 milestone audit.
 
 | Phase 16 P01 | 12 min | 2 tasks | 4 files |
 | Phase 16 P02 | 18 min | 2 tasks | 7 files |
@@ -148,6 +149,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-29T14:15:31.895Z
-Stopped at: Phase 29 completed and verified
+Last session: 2026-04-29T16:11:00Z
+Stopped at: Gap closure phases 30-32 planned
 Resume file: .planning/ROADMAP.md

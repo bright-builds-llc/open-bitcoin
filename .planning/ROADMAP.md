@@ -3,13 +3,13 @@
 ## Milestones
 
 - **v1.0 Headless Parity** - Phases 1 through 12 shipped on 2026-04-26. Archive: [v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
-- **v1.1 Operator Runtime and Real-Network Sync** - Phases 13 through 27 now define this milestone, including post-audit gap-closure follow-up work.
+- **v1.1 Operator Runtime and Real-Network Sync** - Phases 13 through 32 now define this milestone, including post-audit gap-closure follow-up work.
 
 ## v1.1 Operator Runtime and Real-Network Sync
 
 This active milestone makes Open Bitcoin usable as an operator-facing, service-managed node that can begin true network sync work with durable storage, richer CLI/TUI surfaces, migration guidance, and expanded parity coverage.
 
-Post-audit gap-closure phases now extend the milestone so service apply behavior, live status truthfulness, migration source selection, evidence reconciliation, and operator-runtime benchmark fidelity are resolved before archive.
+Post-audit gap-closure phases now extend the milestone so service apply behavior, live status truthfulness, migration source selection, evidence reconciliation, operator-runtime benchmark fidelity, and final integration follow-up work are resolved before archive.
 
 ## Phases
 
@@ -58,6 +58,9 @@ Post-audit gap-closure phases now extend the milestone so service apply behavior
 - [x] **Phase 27: Operator Runtime Benchmark Fidelity** - Replace fixture-only operator-runtime benchmark cases with runtime-collected status/dashboard evidence. (completed 2026-04-28)
 - [x] **Phase 28: Service Log-Path Truth and Operator Docs Alignment** - Preserve configured service log-path truth across launchd/systemd preview, apply, status, and operator docs. (completed 2026-04-29)
 - [x] **Phase 29: Closeout Hygiene and Build Provenance** - Address the remaining optional post-audit cleanup around build provenance truthfulness and milestone-closeout hygiene. (completed 2026-04-29)
+- [ ] **Phase 30: Configless Live Status and Dashboard Bootstrap** - Restore truthful live status and dashboard behavior for flag-only local workflows when `bitcoin.conf` is absent. (planned)
+- [ ] **Phase 31: Migration Source-Specific Service Review Truth** - Scope migration service review actions to the selected source installation so custom-path plans stay truthful. (planned)
+- [ ] **Phase 32: Benchmark Wrapper List-Mode Hygiene** - Fix the benchmark wrapper `--list` path without regressing the shipped smoke and report-validation flow. (planned optional cleanup)
 
 ## Phase Details
 
@@ -367,9 +370,45 @@ Plans:
 - [x] 29-01-PLAN.md — restore truthful Bazel build provenance
 - [x] 29-02-PLAN.md — verify closeout hygiene and finalize ledgers
 
+### Phase 30: Configless Live Status and Dashboard Bootstrap
+
+**Goal**: Restore truthful live status and dashboard behavior for the documented flag-only local operator workflow when no implicit `bitcoin.conf` file exists.
+**Depends on**: Phase 17, Phase 22, Phase 24
+**Requirements**: OBS-01, DASH-01, VER-07
+**Gap Closure**: Closes milestone audit blocker `INT-v1.1-02` and broken flow `FLOW-v1.1-02`.
+**Success Criteria** (what must be TRUE):
+1. `open-bitcoin status` and `open-bitcoin dashboard` can construct live RPC config from the selected datadir and defaults even when the implicit `bitcoin.conf` file is absent.
+2. The documented flag-only local workflow in `docs/operator/runtime-guide.md` stays truthful and covered by regression tests.
+3. The repair does not regress wallet-aware live status, build provenance, or stopped-node fallback behavior.
+**Plans**: 0 plans yet
+
+### Phase 31: Migration Source-Specific Service Review Truth
+
+**Goal**: Keep migration service review actions tied to the selected source installation so custom-path dry-run plans stay truthful in multi-install environments.
+**Depends on**: Phase 17, Phase 21, Phase 25
+**Requirements**: MIG-02, MIG-04
+**Gap Closure**: Closes milestone audit blocker `INT-v1.1-03` and broken flow `FLOW-v1.1-03`.
+**Success Criteria** (what must be TRUE):
+1. Detected installations no longer clone scan-wide service definitions into every source candidate.
+2. `open-bitcoin migrate plan --source-datadir <custom-path>` shows only the selected installation's service review actions while preserving manual-review fallbacks when source evidence is ambiguous.
+3. The repair stays dry-run only and does not regress the current explicit-source selection behavior or secret-safe migration output.
+**Plans**: 0 plans yet
+
+### Phase 32: Benchmark Wrapper List-Mode Hygiene
+
+**Goal**: Fix the benchmark wrapper `--list` path and keep the helper internally consistent with the shipped smoke and report-validation flow.
+**Depends on**: Phase 22, Phase 27
+**Requirements**: none (optional cleanup)
+**Gap Closure**: Optional cleanup for post-audit benchmark-wrapper tech debt.
+**Success Criteria** (what must be TRUE):
+1. `bash scripts/run-benchmarks.sh --list` no longer aborts before cargo arguments initialize.
+2. Existing `--smoke` and `--full` execution paths keep the same report and output behavior.
+3. Focused regression coverage proves list mode without reopening benchmark fidelity work.
+**Plans**: 0 plans yet
+
 ## Progress
 
 | Milestone | Phases | Plans | Status | Shipped |
 | --- | ---: | ---: | --- | --- |
 | v1.0 Headless Parity | 22/22 | 80/80 | Archived | 2026-04-26 |
-| v1.1 Operator Runtime and Real-Network Sync | 17/17 | 57/57 current | Ready for archive | - |
+| v1.1 Operator Runtime and Real-Network Sync | 17/20 | 57/57 current | Gap closure planned | - |
