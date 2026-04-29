@@ -5,7 +5,11 @@
 // - packages/bitcoin-knots/src/common/args.cpp
 // - packages/bitcoin-knots/src/common/config.cpp
 
-use std::path::PathBuf;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    sync::atomic::{AtomicU64, Ordering},
+};
 
 use serde_json::Value;
 
@@ -19,6 +23,34 @@ use crate::operator::{
         WalletCandidateKind, WalletChainScope,
     },
 };
+
+static NEXT_TEST_DIRECTORY_ID: AtomicU64 = AtomicU64::new(0);
+
+#[derive(Debug)]
+struct TestDirectory {
+    path: PathBuf,
+}
+
+impl TestDirectory {
+    fn new(label: &str) -> Self {
+        let directory = std::env::temp_dir().join(format!(
+            "open-bitcoin-migration-tests-{label}-{}",
+            NEXT_TEST_DIRECTORY_ID.fetch_add(1, Ordering::Relaxed)
+        ));
+        fs::create_dir_all(&directory).expect("test directory");
+        Self { path: directory }
+    }
+
+    fn child(&self, relative: &str) -> PathBuf {
+        self.path.join(relative)
+    }
+}
+
+impl Drop for TestDirectory {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.path);
+    }
+}
 
 #[test]
 fn planner_renders_explanation_and_action_groups_for_selected_installation() {
@@ -158,6 +190,160 @@ fn explicit_source_datadir_without_source_evidence_stays_manual_review() {
 }
 
 #[test]
+fn planner_limits_service_review_to_selected_source_installation() {
+    // Arrange
+    let sandbox = TestDirectory::new("selected-service-review");
+    let selected_data_dir = sandbox.child("selected/.bitcoin");
+    let other_data_dir = sandbox.child("other/.bitcoin");
+    fs::create_dir_all(&selected_data_dir).expect("selected datadir");
+    fs::create_dir_all(&other_data_dir).expect("other datadir");
+
+    let service_dir = sandbox.child("services");
+    fs::create_dir_all(&service_dir).expect("service dir");
+    let matched_service_path = service_dir.join("selected.service");
+    let other_service_path = service_dir.join("other.service");
+    fs::write(
+        &matched_service_path,
+        format!(
+            "[Service]\nExecStart=/usr/bin/bitcoind -conf={} -datadir={}\n",
+            selected_data_dir.join("bitcoin.conf").display(),
+            selected_data_dir.display()
+        ),
+    )
+    .expect("matched service");
+    fs::write(
+        &other_service_path,
+        format!(
+            "[Service]\nExecStart=/usr/bin/bitcoind -conf={} -datadir={}\n",
+            other_data_dir.join("bitcoin.conf").display(),
+            other_data_dir.display()
+        ),
+    )
+    .expect("other service");
+
+    let resolution = sample_resolution();
+    let detections = vec![
+        detected_installation_with_services(
+            &selected_data_dir,
+            vec![
+                service_candidate(&matched_service_path, ServiceManager::Systemd),
+                service_candidate(&other_service_path, ServiceManager::Systemd),
+            ],
+        ),
+        detected_installation_with_services(&other_data_dir, Vec::new()),
+    ];
+    let request = MigrationPlanArgs {
+        maybe_source_data_dir: Some(selected_data_dir.clone()),
+    };
+
+    // Act
+    let plan = plan_migration(&resolution, &detections, &request);
+
+    // Assert
+    let MigrationSourceSelection::Selected { installation } = &plan.source_selection else {
+        panic!("expected selected source installation");
+    };
+    let matched_service_path = matched_service_path.display().to_string();
+    let other_service_path = other_service_path.display().to_string();
+    assert_eq!(installation.service_candidates.len(), 1);
+    assert_eq!(
+        installation.service_candidates[0].path,
+        matched_service_path
+    );
+    assert!(
+        !installation
+            .uncertainty
+            .iter()
+            .any(|uncertainty| uncertainty == "service_review_ambiguous")
+    );
+
+    let service_group = plan
+        .action_groups
+        .iter()
+        .find(|group| group.title == "Service")
+        .expect("service action group");
+    assert!(
+        service_group
+            .actions
+            .iter()
+            .any(|action| { action.maybe_path.as_deref() == Some(matched_service_path.as_str()) })
+    );
+    assert!(
+        !service_group
+            .actions
+            .iter()
+            .any(|action| { action.maybe_path.as_deref() == Some(other_service_path.as_str()) })
+    );
+}
+
+#[test]
+fn planner_uses_manual_service_review_when_service_ownership_is_ambiguous() {
+    // Arrange
+    let sandbox = TestDirectory::new("ambiguous-service-review");
+    let selected_data_dir = sandbox.child("selected/.bitcoin");
+    fs::create_dir_all(&selected_data_dir).expect("selected datadir");
+
+    let service_dir = sandbox.child("services");
+    fs::create_dir_all(&service_dir).expect("service dir");
+    let ambiguous_service_path = service_dir.join("ambiguous.service");
+    fs::write(
+        &ambiguous_service_path,
+        "[Service]\nExecStart=/usr/bin/bitcoind\n",
+    )
+    .expect("ambiguous service");
+
+    let resolution = sample_resolution();
+    let detections = vec![detected_installation_with_services(
+        &selected_data_dir,
+        vec![service_candidate(
+            &ambiguous_service_path,
+            ServiceManager::Systemd,
+        )],
+    )];
+    let request = MigrationPlanArgs {
+        maybe_source_data_dir: Some(selected_data_dir.clone()),
+    };
+
+    // Act
+    let plan = plan_migration(&resolution, &detections, &request);
+
+    // Assert
+    let MigrationSourceSelection::Selected { installation } = &plan.source_selection else {
+        panic!("expected selected source installation");
+    };
+    assert!(installation.service_candidates.is_empty());
+    assert!(
+        installation
+            .uncertainty
+            .iter()
+            .any(|uncertainty| uncertainty == "service_review_ambiguous")
+    );
+    assert!(
+        plan.relevant_deviations
+            .iter()
+            .any(|notice| notice.id == "mig-dry-run-only-switch-over")
+    );
+
+    let service_group = plan
+        .action_groups
+        .iter()
+        .find(|group| group.title == "Service")
+        .expect("service action group");
+    let ambiguous_service_path = ambiguous_service_path.display().to_string();
+    assert!(service_group.actions.iter().any(|action| {
+        action.kind == super::MigrationActionKind::ManualStep
+            && action
+                .summary
+                .contains("could not be confidently tied to the selected source install")
+    }));
+    assert!(
+        !service_group.actions.iter().any(|action| {
+            action.maybe_path.as_deref() == Some(ambiguous_service_path.as_str())
+        })
+    );
+}
+
+#[test]
 fn json_render_includes_relevant_deviations() {
     // Arrange
     let resolution = sample_resolution();
@@ -196,6 +382,14 @@ fn sample_resolution() -> OperatorConfigResolution {
 
 fn detected_installation(data_dir: &str) -> DetectedInstallation {
     let data_dir = PathBuf::from(data_dir);
+    detected_installation_with_services(&data_dir, Vec::new())
+}
+
+fn detected_installation_with_services(
+    data_dir: &Path,
+    service_candidates: Vec<ServiceCandidate>,
+) -> DetectedInstallation {
+    let data_dir = data_dir.to_path_buf();
     let product_family = if data_dir.to_string_lossy().contains("knots") {
         ProductFamily::BitcoinKnots
     } else {
@@ -225,13 +419,7 @@ fn detected_installation(data_dir: &str) -> DetectedInstallation {
         maybe_data_dir: Some(data_dir.clone()),
         maybe_config_file: Some(data_dir.join("bitcoin.conf")),
         maybe_cookie_file: Some(data_dir.join(".cookie")),
-        service_candidates: vec![ServiceCandidate {
-            product_family,
-            manager: ServiceManager::Systemd,
-            service_name: "bitcoind".to_string(),
-            path: PathBuf::from("/etc/systemd/system/bitcoind.service"),
-            present: true,
-        }],
+        service_candidates,
         wallet_candidates: vec![WalletCandidate {
             kind: WalletCandidateKind::LegacyWalletFile,
             path: data_dir.join("wallets/main/wallet.dat"),
@@ -241,5 +429,15 @@ fn detected_installation(data_dir: &str) -> DetectedInstallation {
             product_confidence: DetectionConfidence::Medium,
             chain_scope: WalletChainScope::Mainnet,
         }],
+    }
+}
+
+fn service_candidate(path: &Path, manager: ServiceManager) -> ServiceCandidate {
+    ServiceCandidate {
+        product_family: ProductFamily::BitcoinCore,
+        manager,
+        service_name: "bitcoind".to_string(),
+        path: path.to_path_buf(),
+        present: true,
     }
 }

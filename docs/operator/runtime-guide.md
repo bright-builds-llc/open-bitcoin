@@ -192,6 +192,9 @@ The current migration contract is intentionally limited:
 - it is explanation-first and dry-run only
 - it detects existing installs, datadirs, configs, services, cookies, and wallet
   candidates
+- with `--source-datadir`, it only shows concrete service review paths when a
+  detected service definition can be tied to the selected source install;
+  otherwise service cutover review stays explicit manual follow-up
 - it explains backup requirements, rollback expectations, and intentional
   differences before any later cutover work
 - it does not disable source services, mutate source datadirs, or rewrite

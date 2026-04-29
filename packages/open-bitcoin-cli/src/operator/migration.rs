@@ -17,6 +17,7 @@ use super::{
 };
 
 mod planning;
+mod service_evidence;
 #[cfg(test)]
 mod tests;
 mod types;

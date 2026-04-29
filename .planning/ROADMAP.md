@@ -59,7 +59,7 @@ Post-audit gap-closure phases now extend the milestone so service apply behavior
 - [x] **Phase 28: Service Log-Path Truth and Operator Docs Alignment** - Preserve configured service log-path truth across launchd/systemd preview, apply, status, and operator docs. (completed 2026-04-29)
 - [x] **Phase 29: Closeout Hygiene and Build Provenance** - Address the remaining optional post-audit cleanup around build provenance truthfulness and milestone-closeout hygiene. (completed 2026-04-29)
 - [x] **Phase 30: Configless Live Status and Dashboard Bootstrap** - Restore truthful live status and dashboard behavior for flag-only local workflows when `bitcoin.conf` is absent. (completed 2026-04-29)
-- [ ] **Phase 31: Migration Source-Specific Service Review Truth** - Scope migration service review actions to the selected source installation so custom-path plans stay truthful. (planned)
+- [x] **Phase 31: Migration Source-Specific Service Review Truth** - Scope migration service review actions to the selected source installation so custom-path plans stay truthful. (completed 2026-04-29)
 - [ ] **Phase 32: Benchmark Wrapper List-Mode Hygiene** - Fix the benchmark wrapper `--list` path without regressing the shipped smoke and report-validation flow. (planned optional cleanup)
 
 ## Phase Details
@@ -393,10 +393,14 @@ Plans:
 **Requirements**: MIG-02, MIG-04
 **Gap Closure**: Closes milestone audit blocker `INT-v1.1-03` and broken flow `FLOW-v1.1-03`.
 **Success Criteria** (what must be TRUE):
-1. Detected installations no longer clone scan-wide service definitions into every source candidate.
+1. Migration planning no longer treats scan-wide service definitions as though they belong to every source candidate.
 2. `open-bitcoin migrate plan --source-datadir <custom-path>` shows only the selected installation's service review actions while preserving manual-review fallbacks when source evidence is ambiguous.
 3. The repair stays dry-run only and does not regress the current explicit-source selection behavior or secret-safe migration output.
-**Plans**: 0 plans yet
+**Plans**: 2/2 plans complete
+
+Plans:
+- [x] 31-01-PLAN.md — scope migration service review to the selected source
+- [x] 31-02-PLAN.md — verify, document, and close the blocker
 
 ### Phase 32: Benchmark Wrapper List-Mode Hygiene
 
@@ -415,4 +419,4 @@ Plans:
 | Milestone | Phases | Plans | Status | Shipped |
 | --- | ---: | ---: | --- | --- |
 | v1.0 Headless Parity | 22/22 | 80/80 | Archived | 2026-04-26 |
-| v1.1 Operator Runtime and Real-Network Sync | 18/20 | 59/59 current | Gap closure in progress | - |
+| v1.1 Operator Runtime and Real-Network Sync | 19/20 | 61/61 current | Gap closure in progress | - |

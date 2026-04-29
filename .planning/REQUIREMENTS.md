@@ -65,9 +65,9 @@
 ### Drop-In Parity and Migration
 
 - [x] **MIG-01**: Open Bitcoin audits the Knots/Core drop-in replacement surface for CLI, RPC, config, datadir layout, service behavior, wallet behavior, network sync, logging, and operator documentation.
-- [ ] **MIG-02**: Onboarding can detect existing Bitcoin Core or Bitcoin Knots installations, datadirs, config files, cookie files, service definitions, and wallet candidates on macOS and Linux.
+- [x] **MIG-02**: Onboarding can detect existing Bitcoin Core or Bitcoin Knots installations, datadirs, config files, cookie files, service definitions, and wallet candidates on macOS and Linux.
 - [x] **MIG-03**: Migration wizard explains tradeoffs, benefits, unsupported surfaces, rollback expectations, and backup requirements before asking the operator to proceed.
-- [ ] **MIG-04**: Migration supports dry-run plans that show every proposed file, config, service, and wallet action before any write occurs.
+- [x] **MIG-04**: Migration supports dry-run plans that show every proposed file, config, service, and wallet action before any write occurs.
 - [x] **MIG-05**: Any intentional difference from Knots/Core behavior is recorded in the parity ledger and surfaced in migration output when relevant.
 
 ### Verification, Benchmarks, and Documentation
@@ -138,9 +138,9 @@
 | WAL-07 | Phase 20 | Complete |
 | WAL-08 | Phase 20, Phase 21 | Complete |
 | MIG-01 | Phase 21, Phase 26 | Complete |
-| MIG-02 | Phase 17, Phase 21, Phase 25, Phase 31 | Pending |
+| MIG-02 | Phase 17, Phase 21, Phase 25, Phase 31 | Complete |
 | MIG-03 | Phase 21, Phase 26 | Complete |
-| MIG-04 | Phase 21, Phase 25, Phase 31 | Pending |
+| MIG-04 | Phase 21, Phase 25, Phase 31 | Complete |
 | MIG-05 | Phase 21, Phase 22, Phase 26 | Complete |
 | VER-05 | Phase 22, Phase 26 | Complete |
 | VER-06 | Phase 22, Phase 27 | Complete |
@@ -149,10 +149,10 @@
 
 **Coverage:**
 - v1.1 requirements: 44 total
-- Checked off: 42
+- Checked off: 44
 - Mapped to phases: 44
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-26*
-*Last updated: 2026-04-29 after Phase 30 verification*
+*Last updated: 2026-04-29 after Phase 31 verification*

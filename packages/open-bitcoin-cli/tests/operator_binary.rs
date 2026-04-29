@@ -292,7 +292,32 @@ fn open_bitcoin_migrate_plan_is_dry_run_only_for_detected_source_install() {
     let source_service_path = {
         let path = sandbox.child("Library/LaunchAgents/org.bitcoin.bitcoind.plist");
         fs::create_dir_all(path.parent().expect("launchagents parent")).expect("launchagents");
-        fs::write(&path, "<plist></plist>\n").expect("launchd service");
+        fs::write(
+            &path,
+            format!(
+                "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\
+<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n\
+<plist version=\"1.0\">\n\
+<dict>\n\
+    <key>Label</key>\n\
+    <string>org.bitcoin.bitcoind</string>\n\
+    <key>ProgramArguments</key>\n\
+    <array>\n\
+        <string>/usr/local/bin/bitcoind</string>\n\
+        <string>-conf</string>\n\
+        <string>{}</string>\n\
+        <string>-datadir</string>\n\
+        <string>{}</string>\n\
+    </array>\n\
+    <key>RunAtLoad</key>\n\
+    <true/>\n\
+</dict>\n\
+</plist>\n",
+                source_data_dir.join("bitcoin.conf").display(),
+                source_data_dir.display()
+            ),
+        )
+        .expect("launchd service");
         path
     };
 
@@ -300,7 +325,15 @@ fn open_bitcoin_migrate_plan_is_dry_run_only_for_detected_source_install() {
     let source_service_path = {
         let path = sandbox.child(".config/systemd/user/bitcoind.service");
         fs::create_dir_all(path.parent().expect("systemd parent")).expect("systemd");
-        fs::write(&path, "[Service]\nExecStart=bitcoind\n").expect("systemd service");
+        fs::write(
+            &path,
+            format!(
+                "[Service]\nExecStart=/usr/bin/bitcoind -conf={} -datadir={}\n",
+                source_data_dir.join("bitcoin.conf").display(),
+                source_data_dir.display()
+            ),
+        )
+        .expect("systemd service");
         path
     };
 
@@ -308,7 +341,15 @@ fn open_bitcoin_migrate_plan_is_dry_run_only_for_detected_source_install() {
     let source_service_path = {
         let path = sandbox.child("services/bitcoind.service");
         fs::create_dir_all(path.parent().expect("service parent")).expect("service dir");
-        fs::write(&path, "service unsupported\n").expect("service file");
+        fs::write(
+            &path,
+            format!(
+                "[Service]\nExecStart=/usr/bin/bitcoind -conf={} -datadir={}\n",
+                source_data_dir.join("bitcoin.conf").display(),
+                source_data_dir.display()
+            ),
+        )
+        .expect("service file");
         path
     };
 
@@ -441,7 +482,8 @@ fn open_bitcoin_migrate_plan_selects_explicit_custom_source_outside_default_root
                 .expect("config path")
         )
     );
-    assert!(stdout.contains(source_service_path.to_str().expect("service path")));
+    assert!(!stdout.contains(source_service_path.to_str().expect("service path")));
+    assert!(stdout.contains("could not be confidently tied to the selected source install"));
     assert!(
         stdout.contains(
             source_wallet_dir

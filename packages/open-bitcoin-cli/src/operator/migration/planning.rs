@@ -12,6 +12,10 @@ use super::{
     MigrationExplanation, MigrationInstallationSummary, MigrationNoticeLevel, MigrationPlan,
     MigrationServiceSummary, MigrationSourceSelection, MigrationTargetEnvironment,
     MigrationWalletSummary,
+    service_evidence::{
+        SERVICE_REVIEW_AMBIGUOUS, ServiceAssociation, associate_service_candidates,
+        summary_service_review_is_ambiguous,
+    },
 };
 use crate::operator::{
     MigrationPlanArgs, NetworkSelection,
@@ -314,19 +318,19 @@ fn service_action_group(source_selection: &MigrationSourceSelection) -> Migratio
 
     match source_selection {
         MigrationSourceSelection::Selected { installation } => {
-            let present_services = installation
-                .service_candidates
-                .iter()
-                .filter(|service| service.present)
-                .collect::<Vec<_>>();
-            if present_services.is_empty() {
+            if installation.service_candidates.is_empty() {
+                let summary = if summary_service_review_is_ambiguous(installation) {
+                    "Detected managed service definitions could not be confidently tied to the selected source install. Review the source supervisor manually before any future cutover."
+                } else {
+                    "No managed source service definition was detected. If the source node is supervised elsewhere, capture that startup path manually before cutover."
+                };
                 actions.push(MigrationAction {
                     kind: MigrationActionKind::ManualStep,
-                    summary: "No managed source service definition was detected. If the source node is supervised elsewhere, capture that startup path manually before cutover.".to_string(),
+                    summary: summary.to_string(),
                     maybe_path: None,
                 });
             } else {
-                for service in present_services {
+                for service in &installation.service_candidates {
                     actions.push(MigrationAction {
                         kind: MigrationActionKind::ReadOnlyCheck,
                         summary: format!(
@@ -452,10 +456,8 @@ fn relevant_surfaces(source_selection: &MigrationSourceSelection) -> BTreeSet<Mi
     let mut surfaces = BTreeSet::from([MigrationSurface::Config, MigrationSurface::OperatorDocs]);
 
     if let MigrationSourceSelection::Selected { installation } = source_selection {
-        if installation
-            .service_candidates
-            .iter()
-            .any(|service| service.present)
+        if !installation.service_candidates.is_empty()
+            || summary_service_review_is_ambiguous(installation)
         {
             surfaces.insert(MigrationSurface::Service);
         }
@@ -477,24 +479,33 @@ fn deviation_notice(definition: &MigrationDeviationDefinition) -> MigrationDevia
 }
 
 fn summarize_installation(installation: &DetectedInstallation) -> MigrationInstallationSummary {
-    MigrationInstallationSummary {
-        product_family: product_family_name(installation.product_family).to_string(),
-        confidence: detection_confidence_name(installation.confidence).to_string(),
-        uncertainty: installation
-            .uncertainty
-            .iter()
-            .copied()
-            .map(detection_uncertainty_name)
-            .map(str::to_string)
-            .collect(),
-        maybe_data_dir: installation.maybe_data_dir.as_deref().map(render_path),
-        maybe_config_file: installation.maybe_config_file.as_deref().map(render_path),
-        maybe_cookie_file: installation.maybe_cookie_file.as_deref().map(render_path),
-        service_candidates: installation
-            .service_candidates
+    let mut uncertainty = installation
+        .uncertainty
+        .iter()
+        .copied()
+        .map(detection_uncertainty_name)
+        .map(str::to_string)
+        .collect::<Vec<_>>();
+    let service_candidates = match associate_service_candidates(installation) {
+        ServiceAssociation::Matched(service_candidates) => service_candidates
             .iter()
             .map(summarize_service_candidate)
             .collect(),
+        ServiceAssociation::Ambiguous => {
+            uncertainty.push(SERVICE_REVIEW_AMBIGUOUS.to_string());
+            Vec::new()
+        }
+        ServiceAssociation::NoneDetected => Vec::new(),
+    };
+
+    MigrationInstallationSummary {
+        product_family: product_family_name(installation.product_family).to_string(),
+        confidence: detection_confidence_name(installation.confidence).to_string(),
+        uncertainty,
+        maybe_data_dir: installation.maybe_data_dir.as_deref().map(render_path),
+        maybe_config_file: installation.maybe_config_file.as_deref().map(render_path),
+        maybe_cookie_file: installation.maybe_cookie_file.as_deref().map(render_path),
+        service_candidates,
         wallet_candidates: installation
             .wallet_candidates
             .iter()
