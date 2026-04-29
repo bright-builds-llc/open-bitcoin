@@ -54,8 +54,10 @@ Post-audit gap-closure phases now extend the milestone so service apply behavior
 - [x] **Phase 23: Service Apply Completion and Status Truthfulness** - Complete launchd/systemd apply semantics, truthful enabled-state reporting, and dashboard service action closure after the v1.1 audit. (completed 2026-04-28)
 - [x] **Phase 24: Wallet-Aware Live Status and Build Provenance** - Keep status and dashboard truthfully live when wallet selection is ambiguous and surface real build provenance. (completed 2026-04-28)
 - [x] **Phase 25: Migration Source Selection Hardening** - Let `migrate plan --source-datadir` select valid custom-location installs without degrading to manual review. (completed 2026-04-28)
-- [ ] **Phase 26: Milestone Evidence and Audit Reconciliation** - Align verification reports, summary frontmatter, and requirements bookkeeping so the v1.1 audit can pass cleanly. (planned)
-- [ ] **Phase 27: Operator Runtime Benchmark Fidelity** - Replace fixture-only operator-runtime benchmark cases with runtime-collected status/dashboard evidence. (planned)
+- [x] **Phase 26: Milestone Evidence and Audit Reconciliation** - Align verification reports, summary frontmatter, and requirements bookkeeping so the v1.1 audit can pass cleanly. (completed 2026-04-28)
+- [x] **Phase 27: Operator Runtime Benchmark Fidelity** - Replace fixture-only operator-runtime benchmark cases with runtime-collected status/dashboard evidence. (completed 2026-04-28)
+- [ ] **Phase 28: Service Log-Path Truth and Operator Docs Alignment** - Preserve configured service log-path truth across launchd/systemd preview, apply, status, and operator docs. (planned)
+- [ ] **Phase 29: Closeout Hygiene and Build Provenance** - Address the remaining optional post-audit cleanup around build provenance truthfulness and milestone-closeout hygiene. (planned optional cleanup)
 
 ## Phase Details
 
@@ -333,9 +335,33 @@ Plans:
 - [x] 27-02-PLAN.md — runtime-collected dashboard path and benchmark metadata refresh
 - [x] 27-03-PLAN.md — verification, roadmap refresh, and final requirement closeout
 
+### Phase 28: Service Log-Path Truth and Operator Docs Alignment
+
+**Goal**: Preserve configured service log-path truth across launchd/systemd preview, apply, status, and operator docs.
+**Depends on**: Phase 22, Phase 23
+**Requirements**: SVC-03, SVC-04, VER-07
+**Gap Closure**: Closes milestone audit blocker `INT-v1.1-01` and broken flow `FLOW-v1.1-01`.
+**Success Criteria** (what must be TRUE):
+1. Launchd and systemd service definitions preserve or truthfully surface the operator-selected log-path behavior in generated artifacts and dry-run previews.
+2. `open-bitcoin service status` returns the effective service log path or an explicit platform-backed unavailable reason through `ServiceStateSnapshot`.
+3. Operator docs and dashboard/shared service actions stay aligned with the repaired service log-path behavior.
+**Plans**: 0 plans yet
+
+### Phase 29: Closeout Hygiene and Build Provenance
+
+**Goal**: Address the remaining optional post-audit cleanup around build provenance truthfulness and milestone-closeout hygiene before archive.
+**Depends on**: Phase 24, Phase 28
+**Requirements**: none (optional cleanup)
+**Gap Closure**: Optional cleanup for post-Phase-27 audit tech debt.
+**Success Criteria** (what must be TRUE):
+1. Build provenance claims stay truthful for non-Cargo builds through either populated metadata or explicitly documented unavailable behavior.
+2. Milestone closeout docs and roadmap surfaces remain internally consistent after the final gap-closure work.
+3. Optional cleanup added here does not reopen the passing benchmark, migration, or service-flow gates.
+**Plans**: 0 plans yet
+
 ## Progress
 
 | Milestone | Phases | Plans | Status | Shipped |
 | --- | ---: | ---: | --- | --- |
 | v1.0 Headless Parity | 22/22 | 80/80 | Archived | 2026-04-26 |
-| v1.1 Operator Runtime and Real-Network Sync | 15/15 | 53/53 current | Ready for milestone closeout | - |
+| v1.1 Operator Runtime and Real-Network Sync | 15/17 | 53/53 current | Gap closure underway | - |
