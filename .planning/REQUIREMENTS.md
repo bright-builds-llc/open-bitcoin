@@ -8,7 +8,7 @@
 
 ### Operator Status and Observability
 
-- [ ] **OBS-01**: Operator can run `open-bitcoin status` against a running or stopped node and see daemon state, version, commit/build provenance, datadir, config paths, network, chain tip, sync progress, peer counts, mempool summary, wallet summary, service state, log paths, and recent health signals.
+- [x] **OBS-01**: Operator can run `open-bitcoin status` against a running or stopped node and see daemon state, version, commit/build provenance, datadir, config paths, network, chain tip, sync progress, peer counts, mempool summary, wallet summary, service state, log paths, and recent health signals.
 - [x] **OBS-02**: Operator can request machine-readable status output with stable JSON fields for automation and support.
 - [x] **OBS-03**: The node records bounded historical metrics for sync height, header height, peer counts, mempool size, wallet balance summary, disk usage, RPC health, and service restarts.
 - [x] **OBS-04**: The runtime writes structured logs with rotation, retention, and status-visible log locations.
@@ -16,7 +16,7 @@
 
 ### Terminal Dashboard
 
-- [ ] **DASH-01**: Operator can launch a Ratatui dashboard that displays live sync state, peer state, mempool state, wallet summary, service state, logs, and health signals from the shared status model.
+- [x] **DASH-01**: Operator can launch a Ratatui dashboard that displays live sync state, peer state, mempool state, wallet summary, service state, logs, and health signals from the shared status model.
 - [x] **DASH-02**: Dashboard displays bounded historical metrics as terminal graphs for sync progress, peers, mempool size, disk usage, and RPC health.
 - [x] **DASH-03**: Dashboard offers a keyboard menu for safe node queries and actions, with destructive or service-affecting operations gated by explicit confirmation.
 - [x] **DASH-04**: Dashboard uses a restrained, readable color palette that remains usable on common light and dark terminals and degrades cleanly without color.
@@ -74,7 +74,7 @@
 
 - [x] **VER-05**: Repo-native verification covers new CLI, config, service, storage, sync, metrics, logging, dashboard, migration, and parity breadcrumb rules without requiring public network access by default.
 - [x] **VER-06**: Real-sync benchmarks measure headers sync, block download/connect, storage write/read, restart recovery, dashboard/status overhead, and wallet rescan costs with reproducible local reports.
-- [ ] **VER-07**: Documentation explains v1.1 install, onboarding, service lifecycle, status, dashboard, config layering, migration, real-sync testing, and known limitations.
+- [x] **VER-07**: Documentation explains v1.1 install, onboarding, service lifecycle, status, dashboard, config layering, migration, real-sync testing, and known limitations.
 - [x] **VER-08**: Parity docs and machine-readable indexes are updated so v1.1 claims are auditable and clearly separated from deferred surfaces.
 
 ## Future Requirements
@@ -102,12 +102,12 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| OBS-01 | Phase 13, Phase 17, Phase 24, Phase 30 | Pending |
+| OBS-01 | Phase 13, Phase 17, Phase 24, Phase 30 | Complete |
 | OBS-02 | Phase 17, Phase 24 | Complete |
 | OBS-03 | Phase 13, Phase 16 | Complete |
 | OBS-04 | Phase 13, Phase 16 | Complete |
 | OBS-05 | Phase 16, Phase 17 | Complete |
-| DASH-01 | Phase 19, Phase 24, Phase 30 | Pending |
+| DASH-01 | Phase 19, Phase 24, Phase 30 | Complete |
 | DASH-02 | Phase 19, Phase 26 | Complete |
 | DASH-03 | Phase 19, Phase 23 | Complete |
 | DASH-04 | Phase 19, Phase 26 | Complete |
@@ -144,15 +144,15 @@
 | MIG-05 | Phase 21, Phase 22, Phase 26 | Complete |
 | VER-05 | Phase 22, Phase 26 | Complete |
 | VER-06 | Phase 22, Phase 27 | Complete |
-| VER-07 | Phase 22, Phase 26, Phase 28, Phase 30 | Pending |
+| VER-07 | Phase 22, Phase 26, Phase 28, Phase 30 | Complete |
 | VER-08 | Phase 22, Phase 26 | Complete |
 
 **Coverage:**
 - v1.1 requirements: 44 total
-- Checked off: 39
+- Checked off: 42
 - Mapped to phases: 44
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-26*
-*Last updated: 2026-04-29 after post-Phase-29 gap planning*
+*Last updated: 2026-04-29 after Phase 30 verification*

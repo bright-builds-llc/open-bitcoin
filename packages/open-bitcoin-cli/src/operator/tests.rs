@@ -3,13 +3,20 @@
 // - packages/bitcoin-knots/src/common/args.cpp
 // - packages/bitcoin-knots/test/functional/interface_bitcoin_cli.py
 
-use std::ffi::OsString;
+use std::{
+    ffi::OsString,
+    fs,
+    path::PathBuf,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 use clap::Parser;
 use open_bitcoin_rpc::config::{ConfigPrecedence, ConfigSource};
+use serde_json::Value;
 
 use super::{
-    CliRoute, ConfigCommand, MigrationCommand, OperatorCli, OperatorCommand, OperatorOutputFormat,
+    CliRoute, ConfigCommand, DashboardArgs, MigrationCommand, NetworkSelection, OperatorCli,
+    OperatorCommand, OperatorOutputFormat, StatusArgs,
     config::OperatorConfigSource,
     onboarding::{OnboardingWriteDecision, ProposedConfigWrite},
     route_cli_invocation,
@@ -28,6 +35,40 @@ fn operator_source_from_rpc(source: ConfigSource) -> OperatorConfigSource {
         ConfigSource::Cookies => OperatorConfigSource::Cookies,
         ConfigSource::Defaults => OperatorConfigSource::Defaults,
     }
+}
+
+#[derive(Debug)]
+struct TestDirectory {
+    path: PathBuf,
+}
+
+impl TestDirectory {
+    fn new(label: &str) -> Self {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time after epoch")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!(
+            "open-bitcoin-operator-tests-{label}-{}-{timestamp}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&path).expect("test directory");
+        Self { path }
+    }
+
+    fn child(&self, path: &str) -> PathBuf {
+        self.path.join(path)
+    }
+}
+
+impl Drop for TestDirectory {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.path);
+    }
+}
+
+fn decode_operator_json(outcome: &super::runtime::OperatorCommandOutcome) -> Value {
+    serde_json::from_str(&outcome.stdout.text).expect("operator json")
 }
 
 #[test]
@@ -215,4 +256,78 @@ fn dashboard_command_is_no_longer_deferred_in_runtime() {
     // Assert
     assert!(!source.contains("dashboard command is deferred to Phase 19"));
     assert!(source.contains("run_dashboard"));
+}
+
+#[test]
+fn status_attempts_live_rpc_without_implicit_bitcoin_conf_when_cookie_exists() {
+    // Arrange
+    let sandbox = TestDirectory::new("status-live-no-conf");
+    let data_dir = sandbox.child("open-bitcoin");
+    fs::create_dir_all(&data_dir).expect("datadir");
+    fs::write(data_dir.join(".cookie"), "__cookie__:fixture").expect("cookie");
+    let cli = OperatorCli {
+        maybe_config_path: None,
+        maybe_data_dir: Some(data_dir.clone()),
+        maybe_network: Some(NetworkSelection::Regtest),
+        format: OperatorOutputFormat::Json,
+        no_color: true,
+        command: OperatorCommand::Status(StatusArgs { watch: false }),
+    };
+
+    // Act
+    let outcome = super::runtime::execute_operator_cli_with_default_data_dir(cli, data_dir.clone());
+    let decoded = decode_operator_json(&outcome);
+
+    // Assert
+    assert_eq!(outcome.exit_code, super::runtime::OperatorExitCode::Success);
+    assert_eq!(decoded["node"]["state"], "unreachable");
+}
+
+#[test]
+fn dashboard_reuses_live_rpc_bootstrap_without_implicit_bitcoin_conf() {
+    // Arrange
+    let sandbox = TestDirectory::new("dashboard-live-no-conf");
+    let data_dir = sandbox.child("open-bitcoin");
+    fs::create_dir_all(&data_dir).expect("datadir");
+    fs::write(data_dir.join(".cookie"), "__cookie__:fixture").expect("cookie");
+    let cli = OperatorCli {
+        maybe_config_path: None,
+        maybe_data_dir: Some(data_dir.clone()),
+        maybe_network: Some(NetworkSelection::Regtest),
+        format: OperatorOutputFormat::Json,
+        no_color: true,
+        command: OperatorCommand::Dashboard(DashboardArgs { tick_ms: 1_000 }),
+    };
+
+    // Act
+    let outcome = super::runtime::execute_operator_cli_with_default_data_dir(cli, data_dir.clone());
+    let decoded = decode_operator_json(&outcome);
+
+    // Assert
+    assert_eq!(outcome.exit_code, super::runtime::OperatorExitCode::Success);
+    assert_eq!(decoded["node"]["state"], "unreachable");
+}
+
+#[test]
+fn status_stays_stopped_when_configless_bootstrap_has_no_credentials() {
+    // Arrange
+    let sandbox = TestDirectory::new("status-stopped-no-credentials");
+    let data_dir = sandbox.child("open-bitcoin");
+    fs::create_dir_all(&data_dir).expect("datadir");
+    let cli = OperatorCli {
+        maybe_config_path: None,
+        maybe_data_dir: Some(data_dir.clone()),
+        maybe_network: Some(NetworkSelection::Regtest),
+        format: OperatorOutputFormat::Json,
+        no_color: true,
+        command: OperatorCommand::Status(StatusArgs { watch: false }),
+    };
+
+    // Act
+    let outcome = super::runtime::execute_operator_cli_with_default_data_dir(cli, data_dir.clone());
+    let decoded = decode_operator_json(&outcome);
+
+    // Assert
+    assert_eq!(outcome.exit_code, super::runtime::OperatorExitCode::Success);
+    assert_eq!(decoded["node"]["state"], "stopped");
 }

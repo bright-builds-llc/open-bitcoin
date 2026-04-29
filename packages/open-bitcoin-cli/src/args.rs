@@ -26,6 +26,7 @@ pub struct ParsedCli {
 pub struct CliStartupArgs {
     pub maybe_conf_path: Option<PathBuf>,
     pub maybe_data_dir: Option<PathBuf>,
+    pub maybe_chain_name: Option<String>,
     pub maybe_rpc_connect: Option<String>,
     pub maybe_rpc_port: Option<u16>,
     pub maybe_rpc_user: Option<String>,
@@ -43,6 +44,9 @@ impl CliStartupArgs {
         }
         if let Some(path) = self.maybe_data_dir.as_ref() {
             cli_args.push(OsString::from(format!("-datadir={}", path.display())));
+        }
+        if let Some(chain_name) = self.maybe_chain_name.as_ref() {
+            cli_args.push(OsString::from(format!("-chain={chain_name}")));
         }
         if let Some(rpc_connect) = self.maybe_rpc_connect.as_ref() {
             cli_args.push(OsString::from(format!("-rpcconnect={rpc_connect}")));

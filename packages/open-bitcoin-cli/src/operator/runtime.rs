@@ -15,8 +15,8 @@ use serde_json::json;
 use crate::{args::CliStartupArgs, startup::resolve_startup_config};
 
 use super::{
-    ConfigCommand, MigrationArgs, MigrationCommand, OnboardArgs, OperatorCli, OperatorCommand,
-    OperatorOutputFormat,
+    ConfigCommand, MigrationArgs, MigrationCommand, NetworkSelection, OnboardArgs, OperatorCli,
+    OperatorCommand, OperatorOutputFormat,
     config::{
         OPEN_BITCOIN_CONFIG_ENV, OPEN_BITCOIN_DATADIR_ENV, OPEN_BITCOIN_NETWORK_ENV,
         OperatorConfigRequest, OperatorConfigResolution, OperatorConfigRoots,
@@ -441,23 +441,37 @@ fn render_config_paths(
 fn startup_config_for_status(
     resolution: &OperatorConfigResolution,
 ) -> Option<crate::startup::CliStartupConfig> {
-    let conf_path = resolution.maybe_bitcoin_conf_path.as_ref()?;
-    if !conf_path.exists() {
-        return None;
-    }
-    let startup = CliStartupArgs {
-        maybe_conf_path: Some(conf_path.clone()),
-        maybe_data_dir: resolution.maybe_data_dir.clone(),
+    let startup = status_startup_args(resolution)?;
+    let default_data_dir = startup.maybe_data_dir.as_deref()?;
+    resolve_startup_config(&startup, default_data_dir).ok()
+}
+
+// Status/dashboard should reuse the normal startup loader without treating the
+// absent implicit `bitcoin.conf` as a hard stop.
+fn status_startup_args(resolution: &OperatorConfigResolution) -> Option<CliStartupArgs> {
+    let maybe_data_dir = resolution.maybe_data_dir.clone()?;
+    Some(CliStartupArgs {
+        maybe_conf_path: resolution
+            .maybe_bitcoin_conf_path
+            .as_ref()
+            .filter(|path| path.exists())
+            .cloned(),
+        maybe_data_dir: Some(maybe_data_dir),
+        maybe_chain_name: resolution
+            .maybe_network
+            .map(status_chain_name)
+            .map(str::to_string),
         ..CliStartupArgs::default()
-    };
-    resolve_startup_config(
-        &startup,
-        resolution
-            .maybe_data_dir
-            .as_deref()
-            .unwrap_or_else(|| Path::new(".")),
-    )
-    .ok()
+    })
+}
+
+fn status_chain_name(network: NetworkSelection) -> &'static str {
+    match network {
+        NetworkSelection::Mainnet => "main",
+        NetworkSelection::Testnet => "testnet",
+        NetworkSelection::Signet => "signet",
+        NetworkSelection::Regtest => "regtest",
+    }
 }
 
 fn detection_roots(resolution: &OperatorConfigResolution) -> DetectionRoots {

@@ -142,6 +142,10 @@ Service lifecycle notes:
 human or JSON form and keeps stopped-node fields visible with explicit
 `Unavailable` reasons where live runtime data is missing.
 
+For live RPC bootstrap, `status` and `dashboard` reuse the selected datadir,
+network, and normal RPC auth sources. A datadir-local implicit `bitcoin.conf`
+is optional for this workflow, not required.
+
 ```bash
 open-bitcoin --network regtest --datadir=/tmp/open-bitcoin-preview status --format json
 ```

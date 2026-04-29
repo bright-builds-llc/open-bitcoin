@@ -58,7 +58,7 @@ Post-audit gap-closure phases now extend the milestone so service apply behavior
 - [x] **Phase 27: Operator Runtime Benchmark Fidelity** - Replace fixture-only operator-runtime benchmark cases with runtime-collected status/dashboard evidence. (completed 2026-04-28)
 - [x] **Phase 28: Service Log-Path Truth and Operator Docs Alignment** - Preserve configured service log-path truth across launchd/systemd preview, apply, status, and operator docs. (completed 2026-04-29)
 - [x] **Phase 29: Closeout Hygiene and Build Provenance** - Address the remaining optional post-audit cleanup around build provenance truthfulness and milestone-closeout hygiene. (completed 2026-04-29)
-- [ ] **Phase 30: Configless Live Status and Dashboard Bootstrap** - Restore truthful live status and dashboard behavior for flag-only local workflows when `bitcoin.conf` is absent. (planned)
+- [x] **Phase 30: Configless Live Status and Dashboard Bootstrap** - Restore truthful live status and dashboard behavior for flag-only local workflows when `bitcoin.conf` is absent. (completed 2026-04-29)
 - [ ] **Phase 31: Migration Source-Specific Service Review Truth** - Scope migration service review actions to the selected source installation so custom-path plans stay truthful. (planned)
 - [ ] **Phase 32: Benchmark Wrapper List-Mode Hygiene** - Fix the benchmark wrapper `--list` path without regressing the shipped smoke and report-validation flow. (planned optional cleanup)
 
@@ -380,7 +380,11 @@ Plans:
 1. `open-bitcoin status` and `open-bitcoin dashboard` can construct live RPC config from the selected datadir and defaults even when the implicit `bitcoin.conf` file is absent.
 2. The documented flag-only local workflow in `docs/operator/runtime-guide.md` stays truthful and covered by regression tests.
 3. The repair does not regress wallet-aware live status, build provenance, or stopped-node fallback behavior.
-**Plans**: 0 plans yet
+**Plans**: 2/2 plans complete
+
+Plans:
+- [x] 30-01-PLAN.md — repair shared live-RPC bootstrap
+- [x] 30-02-PLAN.md — verify, document, and reclose the blocker
 
 ### Phase 31: Migration Source-Specific Service Review Truth
 
@@ -411,4 +415,4 @@ Plans:
 | Milestone | Phases | Plans | Status | Shipped |
 | --- | ---: | ---: | --- | --- |
 | v1.0 Headless Parity | 22/22 | 80/80 | Archived | 2026-04-26 |
-| v1.1 Operator Runtime and Real-Network Sync | 17/20 | 57/57 current | Gap closure planned | - |
+| v1.1 Operator Runtime and Real-Network Sync | 18/20 | 59/59 current | Gap closure in progress | - |
