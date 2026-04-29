@@ -477,6 +477,7 @@ fn collect_status_snapshot_with_fake_running_manager_sets_service_fields_to_avai
         maybe_service_file_path: Some(PathBuf::from("/tmp/test.plist")),
         maybe_manager_diagnostics: None,
         maybe_log_path: None,
+        maybe_log_path_unavailable_reason: Some("service log path unavailable".to_string()),
     });
     let input = StatusCollectorInput {
         request: StatusRequest {
@@ -533,6 +534,7 @@ fn collect_status_snapshot_with_fake_installed_manager_sets_installed_true_enabl
         maybe_service_file_path: Some(PathBuf::from("/tmp/test.plist")),
         maybe_manager_diagnostics: None,
         maybe_log_path: None,
+        maybe_log_path_unavailable_reason: Some("service log path unavailable".to_string()),
     });
     let input = StatusCollectorInput {
         request: StatusRequest {
@@ -582,6 +584,7 @@ fn collect_status_snapshot_uses_manager_enabled_state_over_state_inference() {
         maybe_service_file_path: Some(PathBuf::from("/tmp/test.plist")),
         maybe_manager_diagnostics: Some("systemctl is-active=failed".to_string()),
         maybe_log_path: None,
+        maybe_log_path_unavailable_reason: Some("service log path unavailable".to_string()),
     });
     let input = StatusCollectorInput {
         request: StatusRequest {
@@ -626,6 +629,7 @@ fn collect_status_snapshot_preserves_running_when_startup_is_not_enabled() {
         maybe_service_file_path: Some(PathBuf::from("/tmp/test.plist")),
         maybe_manager_diagnostics: Some("launchctl service is running but disabled".to_string()),
         maybe_log_path: None,
+        maybe_log_path_unavailable_reason: Some("service log path unavailable".to_string()),
     });
     let input = StatusCollectorInput {
         request: StatusRequest {

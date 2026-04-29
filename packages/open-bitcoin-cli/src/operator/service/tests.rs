@@ -17,8 +17,15 @@ use crate::operator::{
         ServiceError, ServiceInstallRequest, ServiceLifecycleState, ServiceManager,
         ServiceStateSnapshot, execute_service_command,
         fake::{FakeServiceCall, FakeServiceManager},
-        launchd::{LaunchdAdapter, generate_plist_content, parse_launchd_disabled_services},
-        systemd::{SystemdAdapter, generate_unit_content, parse_systemd_enabled_state},
+        launchd::{
+            LaunchdAdapter, generate_plist_content, parse_launchd_disabled_services,
+            parse_launchd_log_path,
+        },
+        service_log_path_from_log_dir,
+        systemd::{
+            SystemdAdapter, generate_unit_content, parse_systemd_enabled_state,
+            parse_systemd_log_path,
+        },
     },
 };
 
@@ -127,6 +134,21 @@ fn plist_content_includes_log_paths_when_provided() {
     );
 }
 
+#[test]
+fn service_log_path_from_log_dir_appends_default_file_name() {
+    // Arrange
+    let log_dir = Path::new("/fake/logs");
+
+    // Act
+    let maybe_log_path = service_log_path_from_log_dir(Some(log_dir));
+
+    // Assert
+    assert_eq!(
+        maybe_log_path,
+        Some(PathBuf::from("/fake/logs/open-bitcoin.log"))
+    );
+}
+
 // --- Unit file generator tests ---
 
 #[test]
@@ -136,7 +158,7 @@ fn unit_content_contains_required_fields() {
     let datadir = Path::new("/fake/datadir");
 
     // Act
-    let content = generate_unit_content(binary, datadir, None);
+    let content = generate_unit_content(binary, datadir, None, None);
 
     // Assert
     assert!(content.contains("[Unit]"), "missing [Unit]: {content}");
@@ -174,12 +196,33 @@ fn unit_content_includes_config_path_when_provided() {
     let config = Path::new("/fake/config/open-bitcoin.jsonc");
 
     // Act
-    let content = generate_unit_content(binary, datadir, Some(config));
+    let content = generate_unit_content(binary, datadir, Some(config), None);
 
     // Assert
     assert!(
         content.contains("--config \"/fake/config/open-bitcoin.jsonc\""),
         "missing --config arg: {content}"
+    );
+}
+
+#[test]
+fn unit_content_includes_log_path_when_provided() {
+    // Arrange
+    let binary = Path::new("/fake/bin/open-bitcoin");
+    let datadir = Path::new("/fake/datadir");
+    let log_path = Path::new("/fake/logs/open-bitcoin.log");
+
+    // Act
+    let content = generate_unit_content(binary, datadir, None, Some(log_path));
+
+    // Assert
+    assert!(
+        content.contains("StandardOutput=append:/fake/logs/open-bitcoin.log"),
+        "missing StandardOutput append path: {content}"
+    );
+    assert!(
+        content.contains("StandardError=append:/fake/logs/open-bitcoin.log"),
+        "missing StandardError append path: {content}"
     );
 }
 
@@ -216,6 +259,7 @@ fn fake_manager_status_returns_configured_state() {
         maybe_service_file_path: None,
         maybe_manager_diagnostics: None,
         maybe_log_path: None,
+        maybe_log_path_unavailable_reason: Some("service not installed".to_string()),
     };
     let manager = FakeServiceManager::new(snapshot.clone());
 
@@ -422,11 +466,51 @@ fn launchd_disabled_services_parser_detects_enabled_and_disabled_entries() {
 }
 
 #[test]
+fn launchd_log_path_parser_reads_standard_out_path() {
+    // Arrange
+    let plist = r#"
+<dict>
+    <key>StandardOutPath</key>
+    <string>/fake/logs/open-bitcoin.log</string>
+    <key>StandardErrorPath</key>
+    <string>/fake/logs/open-bitcoin.log</string>
+</dict>
+"#;
+
+    // Act
+    let maybe_log_path = parse_launchd_log_path(plist);
+
+    // Assert
+    assert_eq!(
+        maybe_log_path,
+        Some(PathBuf::from("/fake/logs/open-bitcoin.log"))
+    );
+}
+
+#[test]
 fn systemd_enabled_state_parser_classifies_common_states() {
     // Arrange / Act / Assert
     assert_eq!(parse_systemd_enabled_state("enabled\n"), Some(true));
     assert_eq!(parse_systemd_enabled_state("disabled\n"), Some(false));
     assert_eq!(parse_systemd_enabled_state("masked\n"), Some(false));
+}
+
+#[test]
+fn systemd_log_path_parser_reads_append_path() {
+    // Arrange
+    let unit = "\
+[Service]\n\
+StandardOutput=append:/fake/logs/open-bitcoin.log\n\
+StandardError=append:/fake/logs/open-bitcoin.log\n";
+
+    // Act
+    let maybe_log_path = parse_systemd_log_path(unit);
+
+    // Assert
+    assert_eq!(
+        maybe_log_path,
+        Some(PathBuf::from("/fake/logs/open-bitcoin.log"))
+    );
 }
 
 // --- execute_service_command tests ---
@@ -624,7 +708,8 @@ fn execute_service_command_status_surfaces_enabled_and_running_flags() {
         maybe_enabled: Some(true),
         maybe_service_file_path: Some(PathBuf::from("/tmp/open-bitcoin-node.service")),
         maybe_manager_diagnostics: Some("systemctl is-active=failed".to_string()),
-        maybe_log_path: None,
+        maybe_log_path: Some(PathBuf::from("/tmp/logs/open-bitcoin.log")),
+        maybe_log_path_unavailable_reason: None,
     };
     let manager = FakeServiceManager::new(snapshot);
     let cli = OperatorCli::try_parse_from(["open-bitcoin", "service", "status"]).unwrap();
@@ -650,4 +735,52 @@ fn execute_service_command_status_surfaces_enabled_and_running_flags() {
     assert!(outcome.stdout.text.contains("service: failed"));
     assert!(outcome.stdout.text.contains("enabled: true"));
     assert!(outcome.stdout.text.contains("running: false"));
+    assert!(
+        outcome
+            .stdout
+            .text
+            .contains("logs: /tmp/logs/open-bitcoin.log")
+    );
+}
+
+#[test]
+fn execute_service_command_status_surfaces_unavailable_log_path_reason() {
+    // Arrange
+    let snapshot = ServiceStateSnapshot {
+        state: ServiceLifecycleState::Installed,
+        maybe_enabled: Some(false),
+        maybe_service_file_path: Some(PathBuf::from("/tmp/open-bitcoin-node.service")),
+        maybe_manager_diagnostics: Some("systemctl is-enabled=false".to_string()),
+        maybe_log_path: None,
+        maybe_log_path_unavailable_reason: Some(
+            "installed unit routes service output to journald".to_string(),
+        ),
+    };
+    let manager = FakeServiceManager::new(snapshot);
+    let cli = OperatorCli::try_parse_from(["open-bitcoin", "service", "status"]).unwrap();
+    let crate::operator::OperatorCommand::Service(service_args) = &cli.command else {
+        panic!("expected Service command");
+    };
+
+    // Act
+    let outcome = execute_service_command(
+        service_args,
+        PathBuf::from("/fake/bin/open-bitcoin"),
+        PathBuf::from("/fake/datadir"),
+        None,
+        None,
+        &manager,
+    );
+
+    // Assert
+    assert_eq!(
+        outcome.exit_code,
+        crate::operator::runtime::OperatorExitCode::Success
+    );
+    assert!(
+        outcome
+            .stdout
+            .text
+            .contains("logs: Unavailable: installed unit routes service output to journald")
+    );
 }

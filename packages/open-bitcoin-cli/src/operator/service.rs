@@ -7,7 +7,7 @@
 //! variants, and a `platform_service_manager()` factory for selecting the active platform
 //! adapter at compile time.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub mod fake;
 pub mod launchd;
@@ -46,6 +46,16 @@ pub struct ServiceStateSnapshot {
     pub maybe_manager_diagnostics: Option<String>,
     /// Path to the service log file, if configured.
     pub maybe_log_path: Option<PathBuf>,
+    /// Explicit reason the service log path is unavailable, when known.
+    pub maybe_log_path_unavailable_reason: Option<String>,
+}
+
+/// Default service-managed stdout/stderr log file name.
+pub const OPEN_BITCOIN_SERVICE_LOG_FILE_NAME: &str = "open-bitcoin.log";
+
+/// Derive the concrete service log file path from the selected operator log directory.
+pub fn service_log_path_from_log_dir(maybe_log_dir: Option<&Path>) -> Option<PathBuf> {
+    maybe_log_dir.map(|log_dir| log_dir.join(OPEN_BITCOIN_SERVICE_LOG_FILE_NAME))
 }
 
 /// Request to install the Open Bitcoin node as a managed service.
@@ -272,9 +282,7 @@ fn render_service_state_snapshot(snapshot: &ServiceStateSnapshot) -> String {
     if let Some(path) = &snapshot.maybe_service_file_path {
         lines.push(format!("  file: {}", path.display()));
     }
-    if let Some(log_path) = &snapshot.maybe_log_path {
-        lines.push(format!("  logs: {}", log_path.display()));
-    }
+    lines.push(render_service_log_path(snapshot));
     if let Some(diag) = &snapshot.maybe_manager_diagnostics {
         lines.push(format!("  diagnostics: {diag}"));
     }
@@ -284,6 +292,17 @@ fn render_service_state_snapshot(snapshot: &ServiceStateSnapshot) -> String {
         );
     }
     lines.join("\n")
+}
+
+fn render_service_log_path(snapshot: &ServiceStateSnapshot) -> String {
+    if let Some(log_path) = &snapshot.maybe_log_path {
+        return format!("  logs: {}", log_path.display());
+    }
+    if let Some(reason) = &snapshot.maybe_log_path_unavailable_reason {
+        return format!("  logs: Unavailable: {reason}");
+    }
+
+    "  logs: Unavailable: service log path unavailable".to_string()
 }
 
 /// Execute a service subcommand using the injected manager.

@@ -28,6 +28,12 @@ fn xml_escape(s: &str) -> String {
         .replace('>', "&gt;")
 }
 
+fn xml_unescape(s: &str) -> String {
+    s.replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&amp;", "&")
+}
+
 /// Generate a macOS launchd plist XML string for the Open Bitcoin node.
 ///
 /// This is a pure function — no filesystem access or subprocess calls occur here.
@@ -145,6 +151,26 @@ pub(crate) fn parse_launchd_disabled_services(output: &str, label: &str) -> Opti
     None
 }
 
+pub(crate) fn parse_launchd_log_path(plist_content: &str) -> Option<PathBuf> {
+    let mut expect_path_value = false;
+
+    for line in plist_content.lines() {
+        let trimmed = line.trim();
+        if expect_path_value {
+            let value = trimmed
+                .strip_prefix("<string>")?
+                .strip_suffix("</string>")?;
+            return Some(PathBuf::from(xml_unescape(value)));
+        }
+
+        if trimmed == "<key>StandardOutPath</key>" || trimmed == "<key>StandardErrorPath</key>" {
+            expect_path_value = true;
+        }
+    }
+
+    None
+}
+
 /// macOS launchd service adapter.
 ///
 /// Wraps plist file writes and `launchctl` invocations. Construct via `LaunchdAdapter::new()`;
@@ -213,6 +239,28 @@ impl LaunchdAdapter {
             None,
             Some(format!("launchctl print-disabled reported: {stderr}")),
         )
+    }
+
+    fn log_path_status(&self, plist_path: &Path) -> (Option<PathBuf>, Option<String>) {
+        let plist_content = match std::fs::read_to_string(plist_path) {
+            Ok(content) => content,
+            Err(error) => {
+                return (
+                    None,
+                    Some(format!(
+                        "could not read installed plist for log path: {error}"
+                    )),
+                );
+            }
+        };
+
+        match parse_launchd_log_path(&plist_content) {
+            Some(log_path) => (Some(log_path), None),
+            None => (
+                None,
+                Some("installed plist does not declare a service log path".to_string()),
+            ),
+        }
     }
 }
 
@@ -442,10 +490,12 @@ impl ServiceManager for LaunchdAdapter {
                     "unmanaged — run `open-bitcoin service install --dry-run` to see what would be created".to_string()
                 ),
                 maybe_log_path: None,
+                maybe_log_path_unavailable_reason: Some("service not installed".to_string()),
             });
         }
 
         let (maybe_enabled, maybe_enabled_diagnostics) = self.query_enabled_state(uid);
+        let (maybe_log_path, maybe_log_path_unavailable_reason) = self.log_path_status(&plist_path);
 
         // Query launchd for the current state
         let output = std::process::Command::new("launchctl")
@@ -467,7 +517,8 @@ impl ServiceManager for LaunchdAdapter {
                 maybe_service_file_path: Some(plist_path),
                 maybe_manager_diagnostics: maybe_enabled_diagnostics
                     .or_else(|| Some("launchctl not available".to_string())),
-                maybe_log_path: None,
+                maybe_log_path,
+                maybe_log_path_unavailable_reason,
             });
         };
 
@@ -480,7 +531,8 @@ impl ServiceManager for LaunchdAdapter {
                 maybe_manager_diagnostics: Some(
                     "service not registered with launchd (not bootstrapped)".to_string(),
                 ),
-                maybe_log_path: None,
+                maybe_log_path,
+                maybe_log_path_unavailable_reason,
             });
         }
 
@@ -516,7 +568,8 @@ impl ServiceManager for LaunchdAdapter {
             } else {
                 Some(diagnostics.join("\n"))
             },
-            maybe_log_path: None,
+            maybe_log_path,
+            maybe_log_path_unavailable_reason,
         })
     }
 }

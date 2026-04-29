@@ -56,7 +56,7 @@ Post-audit gap-closure phases now extend the milestone so service apply behavior
 - [x] **Phase 25: Migration Source Selection Hardening** - Let `migrate plan --source-datadir` select valid custom-location installs without degrading to manual review. (completed 2026-04-28)
 - [x] **Phase 26: Milestone Evidence and Audit Reconciliation** - Align verification reports, summary frontmatter, and requirements bookkeeping so the v1.1 audit can pass cleanly. (completed 2026-04-28)
 - [x] **Phase 27: Operator Runtime Benchmark Fidelity** - Replace fixture-only operator-runtime benchmark cases with runtime-collected status/dashboard evidence. (completed 2026-04-28)
-- [ ] **Phase 28: Service Log-Path Truth and Operator Docs Alignment** - Preserve configured service log-path truth across launchd/systemd preview, apply, status, and operator docs. (planned)
+- [x] **Phase 28: Service Log-Path Truth and Operator Docs Alignment** - Preserve configured service log-path truth across launchd/systemd preview, apply, status, and operator docs. (completed 2026-04-29)
 - [ ] **Phase 29: Closeout Hygiene and Build Provenance** - Address the remaining optional post-audit cleanup around build provenance truthfulness and milestone-closeout hygiene. (planned optional cleanup)
 
 ## Phase Details
@@ -345,7 +345,11 @@ Plans:
 1. Launchd and systemd service definitions preserve or truthfully surface the operator-selected log-path behavior in generated artifacts and dry-run previews.
 2. `open-bitcoin service status` returns the effective service log path or an explicit platform-backed unavailable reason through `ServiceStateSnapshot`.
 3. Operator docs and dashboard/shared service actions stay aligned with the repaired service log-path behavior.
-**Plans**: 0 plans yet
+**Plans**: 2/2 plans complete
+
+Plans:
+- [x] 28-01-PLAN.md — restore service log-path truth
+- [x] 28-02-PLAN.md — verify, document, and reclose the blocker
 
 ### Phase 29: Closeout Hygiene and Build Provenance
 
@@ -364,4 +368,4 @@ Plans:
 | Milestone | Phases | Plans | Status | Shipped |
 | --- | ---: | ---: | --- | --- |
 | v1.0 Headless Parity | 22/22 | 80/80 | Archived | 2026-04-26 |
-| v1.1 Operator Runtime and Real-Network Sync | 15/17 | 53/53 current | Gap closure underway | - |
+| v1.1 Operator Runtime and Real-Network Sync | 16/17 | 55/55 current | Optional cleanup pending | - |

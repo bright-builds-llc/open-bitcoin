@@ -129,7 +129,11 @@ Service lifecycle notes:
 - `status`, `enable`, and `disable` operate against the platform service manager
   directly.
 - Service configuration is derived from the selected datadir, config path, and
-  log path rather than from a separate service-only config file.
+  operator log directory rather than from a separate service-only config file.
+- When that managed log directory is available, the generated plist or unit
+  derives a concrete service-managed log file at
+  `<log_dir>/open-bitcoin.log`, and `open-bitcoin service status` surfaces the
+  effective path from the installed service definition.
 - The dashboard action bar reuses the same service lifecycle operations.
 
 ## Status And Dashboard

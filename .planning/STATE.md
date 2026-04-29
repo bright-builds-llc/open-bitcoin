@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Operator Runtime and Real-Network Sync
-status: milestone_complete
-stopped_at: Phase 22 verified complete
-last_updated: "2026-04-28T01:57:12Z"
-last_activity: 2026-04-27 -- Phase 22 completed and verified
+status: executing
+stopped_at: Phase 28 completed and verified
+last_updated: "2026-04-29T13:51:39.215Z"
+last_activity: 2026-04-29 -- Phase 28 completed and verified
 progress:
-  total_phases: 10
-  completed_phases: 10
-  total_plans: 38
-  completed_plans: 38
-  percent: 100
+  total_phases: 17
+  completed_phases: 16
+  total_plans: 55
+  completed_plans: 55
+  percent: 94
 ---
 
 # Project State
@@ -21,22 +21,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-26)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Milestone closeout after Phase 22 verification
+**Current focus:** Phase 29 — Closeout Hygiene and Build Provenance (optional cleanup)
 
 ## Current Position
 
-Phase: 22 (real-sync-benchmarks-and-release-hardening) — VERIFIED COMPLETE
-Plan: 22-03 complete; 3/3 plans complete
-Status: Milestone ready for `/gsd-verify-work`, `/gsd-secure-phase`, and `/gsd-audit-milestone`
-Last activity: 2026-04-27 -- Phase 22 completed and verified
+Phase: 29
+Plan: Not started
+Status: Phase 28 complete; Phase 29 optional cleanup ready
+Last activity: 2026-04-29 -- Phase 28 completed and verified
 
-Progress: 10/10 phases complete
+Progress: 16/17 phases complete
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed in v1.1: 38
+- Total plans completed in v1.1: 55
 - Average duration: not available yet
 - Total execution time: not available yet
 
@@ -54,6 +54,7 @@ Progress: 10/10 phases complete
 | 20 | 5 | - | - |
 | 21 | 3 | - | - |
 | 22 | 3 | - | - |
+| 28 | 2 | - | - |
 
 **Recent Trend:**
 
@@ -66,6 +67,7 @@ Progress: 10/10 phases complete
 - Phase 20 completed 5 wallet runtime expansion plans on 2026-04-27.
 - Phase 21 completed 3 drop-in parity audit and migration plans on 2026-04-27.
 - Phase 22 completed 3 real-sync benchmark and release-hardening plans on 2026-04-27.
+- Phase 28 completed 2 service log-path truth and operator-doc alignment plans on 2026-04-29.
 
 | Phase 16 P01 | 12 min | 2 tasks | 4 files |
 | Phase 16 P02 | 18 min | 2 tasks | 7 files |
@@ -127,7 +129,7 @@ Recent decisions affecting current work:
 - Durable database choice must be made deliberately before real-network sync relies on it.
 - Automatic or destructive migration remains out of scope after Phase 21; later phases must preserve the current dry-run-first safety boundary until an apply-mode design is explicitly planned.
 - The TUI dashboard depends on stable status, metrics, and sync-state projections; avoid building a decorative dashboard before those data contracts exist.
-- `bash scripts/verify.sh` passes after the Phase 22 benchmark, parity-ledger, and release-hardening closeout run.
+- `bash scripts/verify.sh` passes after the Phase 28 service log-path closeout run.
 
 ### Quick Tasks Completed
 
@@ -144,6 +146,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-28T01:57:12Z
-Stopped at: Phase 22 verified complete
+Last session: 2026-04-29T13:51:39.215Z
+Stopped at: Phase 28 completed and verified
 Resume file: .planning/ROADMAP.md

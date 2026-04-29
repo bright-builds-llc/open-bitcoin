@@ -33,8 +33,8 @@
 
 - [x] **SVC-01**: Operator can `install`, `uninstall`, `enable`, `disable`, and inspect the Open Bitcoin daemon as a macOS launchd service, with dry-run output for generated plist contents.
 - [x] **SVC-02**: Operator can `install`, `uninstall`, `enable`, `disable`, and inspect the Open Bitcoin daemon as a Linux systemd service, with dry-run output for generated unit contents.
-- [ ] **SVC-03**: Service commands surface privilege requirements, target scope, generated file paths, daemon command, config path, log path, and recovery behavior before applying changes.
-- [ ] **SVC-04**: Service status reports whether the service is installed, enabled, running, failed, stopped, or unmanaged, and links to relevant logs or manager diagnostics.
+- [x] **SVC-03**: Service commands surface privilege requirements, target scope, generated file paths, daemon command, config path, log path, and recovery behavior before applying changes.
+- [x] **SVC-04**: Service status reports whether the service is installed, enabled, running, failed, stopped, or unmanaged, and links to relevant logs or manager diagnostics.
 - [x] **SVC-05**: Service lifecycle tests run against isolated temp paths or fake managers and do not modify the developer machine's real launchd/systemd state.
 
 ### Durable Storage and Runtime Hardening
@@ -74,7 +74,7 @@
 
 - [x] **VER-05**: Repo-native verification covers new CLI, config, service, storage, sync, metrics, logging, dashboard, migration, and parity breadcrumb rules without requiring public network access by default.
 - [x] **VER-06**: Real-sync benchmarks measure headers sync, block download/connect, storage write/read, restart recovery, dashboard/status overhead, and wallet rescan costs with reproducible local reports.
-- [ ] **VER-07**: Documentation explains v1.1 install, onboarding, service lifecycle, status, dashboard, config layering, migration, real-sync testing, and known limitations.
+- [x] **VER-07**: Documentation explains v1.1 install, onboarding, service lifecycle, status, dashboard, config layering, migration, real-sync testing, and known limitations.
 - [x] **VER-08**: Parity docs and machine-readable indexes are updated so v1.1 claims are auditable and clearly separated from deferred surfaces.
 
 ## Future Requirements
@@ -118,8 +118,8 @@
 | CLI-07 | Phase 17, Phase 21 | Complete |
 | SVC-01 | Phase 18, Phase 23 | Complete |
 | SVC-02 | Phase 18, Phase 23 | Complete |
-| SVC-03 | Phase 18, Phase 23, Phase 28 | Pending |
-| SVC-04 | Phase 18, Phase 23, Phase 28 | Pending |
+| SVC-03 | Phase 18, Phase 23, Phase 28 | Complete |
+| SVC-04 | Phase 18, Phase 23, Phase 28 | Complete |
 | SVC-05 | Phase 18, Phase 23 | Complete |
 | DB-01 | Phase 13, Phase 26 | Complete |
 | DB-02 | Phase 14, Phase 26 | Complete |
@@ -144,15 +144,15 @@
 | MIG-05 | Phase 21, Phase 22, Phase 26 | Complete |
 | VER-05 | Phase 22, Phase 26 | Complete |
 | VER-06 | Phase 22, Phase 27 | Complete |
-| VER-07 | Phase 22, Phase 26, Phase 28 | Pending |
+| VER-07 | Phase 22, Phase 26, Phase 28 | Complete |
 | VER-08 | Phase 22, Phase 26 | Complete |
 
 **Coverage:**
 - v1.1 requirements: 44 total
-- Checked off: 41
+- Checked off: 44
 - Mapped to phases: 44
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-26*
-*Last updated: 2026-04-29 after post-Phase-27 gap planning*
+*Last updated: 2026-04-29 after Phase 28 closeout*

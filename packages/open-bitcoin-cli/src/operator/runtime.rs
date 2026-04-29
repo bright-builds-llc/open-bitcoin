@@ -30,7 +30,7 @@ use super::{
         apply_onboarding_plan, plan_onboarding, prompt_onboarding_answers,
         read_existing_open_bitcoin_config, render_onboarding_plan,
     },
-    service::{execute_service_command, platform_service_manager},
+    service::{execute_service_command, platform_service_manager, service_log_path_from_log_dir},
     status::{
         HttpStatusRpcClient, StatusCollectorInput, StatusDetectionEvidence,
         StatusLiveRpcAdapterInput, StatusRenderMode, StatusRequest, StatusRpcAuthSource,
@@ -205,12 +205,14 @@ fn execute_operator_cli_inner(
                 .maybe_data_dir
                 .clone()
                 .unwrap_or_else(|| default_data_dir.clone());
+            let maybe_service_log_path =
+                service_log_path_from_log_dir(config_resolution.maybe_log_dir.as_deref());
             Ok(execute_service_command(
                 service,
                 binary_path,
                 data_dir,
                 config_resolution.maybe_config_path.clone(),
-                config_resolution.maybe_log_dir.clone(),
+                maybe_service_log_path,
                 manager.as_ref(),
             ))
         }
@@ -221,11 +223,13 @@ fn execute_operator_cli_inner(
                 .maybe_data_dir
                 .clone()
                 .unwrap_or_else(|| default_data_dir.clone());
+            let maybe_service_log_path =
+                service_log_path_from_log_dir(config_resolution.maybe_log_dir.as_deref());
             let service = platform_dashboard_service_runtime(
                 binary_path,
                 data_dir,
                 config_resolution.maybe_config_path.clone(),
-                config_resolution.maybe_log_dir.clone(),
+                maybe_service_log_path,
                 operator_home_dir(),
             );
             let status = status_runtime_parts(&cli, config_resolution, detections);
