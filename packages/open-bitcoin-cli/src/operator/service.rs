@@ -113,7 +113,9 @@ pub enum ServiceError {
     #[error("service already installed at {path}; use --force to reinstall")]
     AlreadyInstalled { path: PathBuf },
 
-    #[error("service not installed — run `open-bitcoin service install --dry-run` to preview")]
+    #[error(
+        "service not installed — run `open-bitcoin service install` to preview or add `--apply` to install"
+    )]
     NotInstalled,
 
     #[error("write failed at {path}: {cause}")]
@@ -288,7 +290,8 @@ fn render_service_state_snapshot(snapshot: &ServiceStateSnapshot) -> String {
     }
     if matches!(snapshot.state, ServiceLifecycleState::Unmanaged) {
         lines.push(
-            "  hint: run `open-bitcoin service install` to see what would be created".to_string(),
+            "  hint: run `open-bitcoin service install` to preview what would be created"
+                .to_string(),
         );
     }
     lines.join("\n")

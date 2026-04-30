@@ -967,14 +967,14 @@ fn read_http_request(stream: &mut TcpStream) -> Vec<u8> {
                     std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
                 ) =>
             {
-                if !buffer.is_empty() || Instant::now() > deadline {
+                if http_request_complete(&buffer) || Instant::now() > deadline {
                     break;
                 }
                 thread::sleep(Duration::from_millis(10));
             }
             Err(error) => panic!("read request: {error}"),
         }
-        if buffer.windows(4).any(|window| window == b"\r\n\r\n") && buffer.ends_with(b"}") {
+        if http_request_complete(&buffer) {
             break;
         }
         if Instant::now() > deadline {
@@ -982,4 +982,31 @@ fn read_http_request(stream: &mut TcpStream) -> Vec<u8> {
         }
     }
     buffer
+}
+
+fn http_request_complete(buffer: &[u8]) -> bool {
+    let Some(header_end) = buffer
+        .windows(4)
+        .position(|window| window == b"\r\n\r\n")
+        .map(|index| index + 4)
+    else {
+        return false;
+    };
+
+    let headers = &buffer[..header_end];
+    let Some(content_length) = parse_content_length(headers) else {
+        return buffer.len() >= header_end;
+    };
+
+    buffer.len() >= header_end + content_length
+}
+
+fn parse_content_length(headers: &[u8]) -> Option<usize> {
+    std::str::from_utf8(headers).ok().and_then(|text| {
+        text.lines().find_map(|line| {
+            line.strip_prefix("Content-Length:")
+                .map(str::trim)
+                .and_then(|value| value.parse::<usize>().ok())
+        })
+    })
 }

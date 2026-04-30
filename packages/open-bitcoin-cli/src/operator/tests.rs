@@ -259,6 +259,16 @@ fn dashboard_command_is_no_longer_deferred_in_runtime() {
 }
 
 #[test]
+fn status_rejects_removed_watch_flag() {
+    // Arrange / Act
+    let error = route_cli_invocation("open-bitcoin", &[os("status"), os("--watch")])
+        .expect_err("status --watch should be rejected");
+
+    // Assert
+    assert!(error.to_string().contains("unexpected argument '--watch'"));
+}
+
+#[test]
 fn status_attempts_live_rpc_without_implicit_bitcoin_conf_when_cookie_exists() {
     // Arrange
     let sandbox = TestDirectory::new("status-live-no-conf");
@@ -271,7 +281,7 @@ fn status_attempts_live_rpc_without_implicit_bitcoin_conf_when_cookie_exists() {
         maybe_network: Some(NetworkSelection::Regtest),
         format: OperatorOutputFormat::Json,
         no_color: true,
-        command: OperatorCommand::Status(StatusArgs { watch: false }),
+        command: OperatorCommand::Status(StatusArgs {}),
     };
 
     // Act
@@ -320,7 +330,7 @@ fn status_stays_stopped_when_configless_bootstrap_has_no_credentials() {
         maybe_network: Some(NetworkSelection::Regtest),
         format: OperatorOutputFormat::Json,
         no_color: true,
-        command: OperatorCommand::Status(StatusArgs { watch: false }),
+        command: OperatorCommand::Status(StatusArgs {}),
     };
 
     // Act

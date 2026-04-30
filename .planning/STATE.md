@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Operator Runtime and Real-Network Sync
 status: executing
-stopped_at: Cleanup Phases 33 and 34 planned from the post-Phase-32 milestone audit
-last_updated: "2026-04-30T04:11:44.531Z"
-last_activity: 2026-04-30 -- Cleanup Phases 33 and 34 planned from the post-Phase-32 milestone audit
+stopped_at: Phase 33 completed; Phase 34 is ready to discuss
+last_updated: "2026-04-30T05:12:28.878Z"
+last_activity: 2026-04-30 -- Phase 33 completed; Phase 34 is ready to discuss
 progress:
   total_phases: 22
-  completed_phases: 20
-  total_plans: 63
-  completed_plans: 63
-  percent: 91
+  completed_phases: 21
+  total_plans: 66
+  completed_plans: 66
+  percent: 95
 ---
 
 # Project State
@@ -21,22 +21,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-26)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 33 — Operator Surface Truth and Coverage Cleanup
+**Current focus:** Phase 34 — Migration Detection Ownership Model Cleanup
 
 ## Current Position
 
-Phase: 33
+Phase: 34
 Plan: None
 Status: Ready to discuss
-Last activity: 2026-04-30 -- Cleanup Phases 33 and 34 planned from the post-Phase-32 milestone audit
+Last activity: 2026-04-30 -- Phase 33 completed; Phase 34 is ready to discuss
 
-Progress: 20/22 phases complete
+Progress: 21/22 phases complete
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed in v1.1: 63
+- Total plans completed in v1.1: 66
 - Average duration: not available yet
 - Total execution time: not available yet
 
@@ -59,6 +59,7 @@ Progress: 20/22 phases complete
 | 30 | 2 | - | - |
 | 31 | 2 | - | - |
 | 32 | 2 | - | - |
+| 33 | 3 | - | - |
 
 **Recent Trend:**
 
@@ -78,6 +79,7 @@ Progress: 20/22 phases complete
 - Phase 31 completed 2 migration source-specific service-review truth plans on 2026-04-29.
 - Phase 32 completed 2 benchmark-wrapper list-mode hygiene plans on 2026-04-29.
 - Cleanup Phases 33 and 34 were planned on 2026-04-30 from the post-Phase-32 milestone audit.
+- Phase 33 completed 3 operator-surface truth and coverage cleanup plans on 2026-04-30.
 
 | Phase 16 P01 | 12 min | 2 tasks | 4 files |
 | Phase 16 P02 | 18 min | 2 tasks | 7 files |
@@ -129,7 +131,7 @@ Recent decisions affecting current work:
 
 - v1.0 Headless Parity archived on 2026-04-26.
 - v1.1 Operator Runtime and Real-Network Sync starts at Phase 13, continuing phase numbering after the archived v1.0 milestone.
-- Optional cleanup Phases 33 and 34 keep v1.1 active after the post-Phase-32 audit until the debt is either fixed or explicitly accepted at archive time.
+- Phase 33 is complete, and optional cleanup Phase 34 keeps v1.1 active until the final migration-model debt is either fixed or explicitly accepted at archive time.
 
 ### Pending Todos
 
@@ -140,8 +142,8 @@ Recent decisions affecting current work:
 - Durable database choice must be made deliberately before real-network sync relies on it.
 - Automatic or destructive migration remains out of scope after Phase 21; later phases must preserve the current dry-run-first safety boundary until an apply-mode design is explicitly planned.
 - The TUI dashboard depends on stable status, metrics, and sync-state projections; avoid building a decorative dashboard before those data contracts exist.
-- `bash scripts/verify.sh` passes after the Phase 32 benchmark-wrapper cleanup closeout run.
-- The remaining post-Phase-32 work is optional cleanup, not a blocker: either ship Phases 33 and 34 or explicitly accept the debt when archiving v1.1.
+- `bash scripts/verify.sh` passes after the Phase 33 operator-surface cleanup closeout run.
+- One optional cleanup phase remains from the post-Phase-32 audit: either ship Phase 34 or explicitly accept the remaining migration-model debt when archiving v1.1.
 
 ### Quick Tasks Completed
 
@@ -158,6 +160,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-30T04:11:44.531Z
-Stopped at: Cleanup Phases 33 and 34 planned from the post-Phase-32 milestone audit
+Last session: 2026-04-30T05:12:28.878Z
+Stopped at: Phase 33 completed; Phase 34 is ready to discuss
 Resume file: .planning/ROADMAP.md

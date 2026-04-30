@@ -61,7 +61,7 @@ Post-audit gap-closure and cleanup phases now extend the milestone so service ap
 - [x] **Phase 30: Configless Live Status and Dashboard Bootstrap** - Restore truthful live status and dashboard behavior for flag-only local workflows when `bitcoin.conf` is absent. (completed 2026-04-29)
 - [x] **Phase 31: Migration Source-Specific Service Review Truth** - Scope migration service review actions to the selected source installation so custom-path plans stay truthful. (completed 2026-04-29)
 - [x] **Phase 32: Benchmark Wrapper List-Mode Hygiene** - Fix the benchmark wrapper `--list` path without regressing the shipped smoke and report-validation flow. (completed 2026-04-29)
-- [ ] **Phase 33: Operator Surface Truth and Coverage Cleanup** - Resolve the remaining operator-surface truthfulness and verification follow-up work before milestone archive. (planned)
+- [x] **Phase 33: Operator Surface Truth and Coverage Cleanup** - Resolve the remaining operator-surface truthfulness and verification follow-up work before milestone archive. (completed 2026-04-30)
 - [ ] **Phase 34: Migration Detection Ownership Model Cleanup** - Tighten the shared detection model so future consumers do not inherit misleading service ownership evidence. (planned)
 
 ## Phase Details
@@ -431,7 +431,12 @@ Plans:
 2. Unmanaged service/install preview guidance points operators at the real preview flow across CLI errors, manager-backed status output, dashboard reuse, and operator docs.
 3. Higher-level verification covers the relevant interactive dashboard action paths so service-action behavior is not protected only by unit tests and non-TTY snapshots.
 4. Nearby operator-binary status coverage remains deterministic enough that the normal repo-native verification contract no longer depends on flaky reruns.
-**Plans**: 0 plans yet
+**Plans**: 3/3 plans complete
+
+Plans:
+- [x] 33-01-PLAN.md — remove the dead status watch surface and normalize service preview hints
+- [x] 33-02-PLAN.md — add dashboard interaction coverage and harden fake RPC status tests
+- [x] 33-03-PLAN.md — verify, refresh ledgers, and advance to the final cleanup
 
 ### Phase 34: Migration Detection Ownership Model Cleanup
 
@@ -450,4 +455,4 @@ Plans:
 | Milestone | Phases | Plans | Status | Shipped |
 | --- | ---: | ---: | --- | --- |
 | v1.0 Headless Parity | 22/22 | 80/80 | Archived | 2026-04-26 |
-| v1.1 Operator Runtime and Real-Network Sync | 20/22 | 63/63 current | Cleanup phases planned | - |
+| v1.1 Operator Runtime and Real-Network Sync | 21/22 | 66/66 current | Final cleanup pending | - |

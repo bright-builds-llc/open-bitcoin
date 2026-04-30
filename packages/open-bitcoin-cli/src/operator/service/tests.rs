@@ -317,6 +317,29 @@ fn service_error_already_installed_displays_path() {
     );
 }
 
+#[test]
+fn service_error_not_installed_points_to_preview_and_apply() {
+    // Arrange
+    let error = ServiceError::NotInstalled;
+
+    // Act
+    let display = error.to_string();
+
+    // Assert
+    assert!(
+        display.contains("open-bitcoin service install"),
+        "missing preview command: {display}"
+    );
+    assert!(
+        display.contains("--apply"),
+        "missing apply guidance: {display}"
+    );
+    assert!(
+        !display.contains("--dry-run"),
+        "stale dry-run hint: {display}"
+    );
+}
+
 // --- LaunchdAdapter dry-run isolation tests ---
 
 #[test]
@@ -783,4 +806,86 @@ fn execute_service_command_status_surfaces_unavailable_log_path_reason() {
             .text
             .contains("logs: Unavailable: installed unit routes service output to journald")
     );
+}
+
+#[test]
+fn execute_service_command_status_unmanaged_surfaces_preview_hint() {
+    // Arrange
+    let snapshot = ServiceStateSnapshot {
+        state: ServiceLifecycleState::Unmanaged,
+        maybe_enabled: Some(false),
+        maybe_service_file_path: None,
+        maybe_manager_diagnostics: Some(
+            "unmanaged — run `open-bitcoin service install` to preview what would be created"
+                .to_string(),
+        ),
+        maybe_log_path: None,
+        maybe_log_path_unavailable_reason: Some("service not installed".to_string()),
+    };
+    let manager = FakeServiceManager::new(snapshot);
+    let cli = OperatorCli::try_parse_from(["open-bitcoin", "service", "status"]).unwrap();
+    let crate::operator::OperatorCommand::Service(service_args) = &cli.command else {
+        panic!("expected Service command");
+    };
+
+    // Act
+    let outcome = execute_service_command(
+        service_args,
+        PathBuf::from("/fake/bin/open-bitcoin"),
+        PathBuf::from("/fake/datadir"),
+        None,
+        None,
+        &manager,
+    );
+
+    // Assert
+    assert_eq!(
+        outcome.exit_code,
+        crate::operator::runtime::OperatorExitCode::Success
+    );
+    assert!(
+        outcome
+            .stdout
+            .text
+            .contains("hint: run `open-bitcoin service install` to preview what would be created")
+    );
+    assert!(!outcome.stdout.text.contains("--dry-run"));
+}
+
+#[test]
+fn launchd_status_unmanaged_diagnostics_use_preview_contract() {
+    // Arrange
+    let test_dir = TestDirectory::new("launchd-unmanaged-preview-hint");
+    let adapter = LaunchdAdapter::new(test_dir.path.clone());
+
+    // Act
+    let snapshot = adapter.status().expect("launchd unmanaged status");
+
+    // Assert
+    assert_eq!(snapshot.state, ServiceLifecycleState::Unmanaged);
+    let diagnostics = snapshot
+        .maybe_manager_diagnostics
+        .expect("launchd unmanaged diagnostics");
+    assert!(diagnostics.contains("open-bitcoin service install"));
+    assert!(diagnostics.contains("preview"));
+    assert!(!diagnostics.contains("--dry-run"));
+}
+
+#[test]
+fn systemd_status_unmanaged_diagnostics_use_preview_contract() {
+    // Arrange
+    let test_dir = TestDirectory::new("systemd-unmanaged-preview-hint");
+    let adapter = SystemdAdapter::new(test_dir.path.clone());
+
+    // Act
+    let snapshot = adapter.status().expect("systemd unmanaged status");
+
+    // Assert
+    assert_eq!(snapshot.state, ServiceLifecycleState::Unmanaged);
+    let diagnostics = snapshot
+        .maybe_manager_diagnostics
+        .expect("systemd unmanaged diagnostics");
+    assert!(diagnostics.contains("open-bitcoin service install"));
+    assert!(diagnostics.contains("preview"));
+    assert!(!diagnostics.contains("--dry-run"));
 }

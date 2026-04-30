@@ -379,7 +379,7 @@ impl ServiceManager for SystemdAdapter {
                 maybe_enabled: Some(false),
                 maybe_service_file_path: None,
                 maybe_manager_diagnostics: Some(
-                    "unmanaged — run `open-bitcoin service install --dry-run` to see what would be created".to_string()
+                    "unmanaged — run `open-bitcoin service install` to preview what would be created".to_string()
                 ),
                 maybe_log_path: None,
                 maybe_log_path_unavailable_reason: Some("service not installed".to_string()),

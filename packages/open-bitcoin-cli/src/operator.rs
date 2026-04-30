@@ -54,10 +54,7 @@ pub enum OperatorCommand {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Args)]
-pub struct StatusArgs {
-    #[arg(long = "watch")]
-    pub watch: bool,
-}
+pub struct StatusArgs {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Args)]
 pub struct ConfigArgs {
