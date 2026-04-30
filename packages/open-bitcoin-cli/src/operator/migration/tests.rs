@@ -18,9 +18,9 @@ use crate::operator::{
     MigrationPlanArgs, NetworkSelection, OperatorOutputFormat,
     config::OperatorConfigResolution,
     detect::{
-        DetectedInstallation, DetectionConfidence, DetectionSourcePath, DetectionSourcePathKind,
-        DetectionUncertainty, ProductFamily, ServiceCandidate, ServiceManager, WalletCandidate,
-        WalletCandidateKind, WalletChainScope,
+        DetectedInstallation, DetectionConfidence, DetectionScan, DetectionSourcePath,
+        DetectionSourcePathKind, DetectionUncertainty, ProductFamily, ServiceCandidate,
+        ServiceManager, WalletCandidate, WalletCandidateKind, WalletChainScope,
     },
 };
 
@@ -56,7 +56,7 @@ impl Drop for TestDirectory {
 fn planner_renders_explanation_and_action_groups_for_selected_installation() {
     // Arrange
     let resolution = sample_resolution();
-    let detections = vec![detected_installation("/tmp/core")];
+    let detections = detection_scan(vec![detected_installation("/tmp/core")], Vec::new());
     let request = MigrationPlanArgs {
         maybe_source_data_dir: None,
     };
@@ -86,7 +86,7 @@ fn planner_renders_explanation_and_action_groups_for_selected_installation() {
 fn planner_rendering_redacts_cookie_contents_and_raw_wallet_data() {
     // Arrange
     let resolution = sample_resolution();
-    let detections = vec![detected_installation("/tmp/core")];
+    let detections = detection_scan(vec![detected_installation("/tmp/core")], Vec::new());
     let request = MigrationPlanArgs {
         maybe_source_data_dir: None,
     };
@@ -106,10 +106,13 @@ fn planner_rendering_redacts_cookie_contents_and_raw_wallet_data() {
 fn planner_requires_manual_review_for_ambiguous_detections() {
     // Arrange
     let resolution = sample_resolution();
-    let detections = vec![
-        detected_installation("/tmp/core"),
-        detected_installation("/tmp/knots"),
-    ];
+    let detections = detection_scan(
+        vec![
+            detected_installation("/tmp/core"),
+            detected_installation("/tmp/knots"),
+        ],
+        Vec::new(),
+    );
     let request = MigrationPlanArgs {
         maybe_source_data_dir: None,
     };
@@ -132,10 +135,13 @@ fn planner_requires_manual_review_for_ambiguous_detections() {
 fn source_datadir_selects_matching_detection() {
     // Arrange
     let resolution = sample_resolution();
-    let detections = vec![
-        detected_installation("/tmp/core"),
-        detected_installation("/tmp/knots"),
-    ];
+    let detections = detection_scan(
+        vec![
+            detected_installation("/tmp/core"),
+            detected_installation("/tmp/knots"),
+        ],
+        Vec::new(),
+    );
     let request = MigrationPlanArgs {
         maybe_source_data_dir: Some(PathBuf::from("/tmp/knots")),
     };
@@ -155,25 +161,27 @@ fn source_datadir_selects_matching_detection() {
 fn explicit_source_datadir_without_source_evidence_stays_manual_review() {
     // Arrange
     let resolution = sample_resolution();
-    let detections = vec![DetectedInstallation {
-        product_family: ProductFamily::Unknown,
-        confidence: DetectionConfidence::Low,
-        uncertainty: vec![
-            DetectionUncertainty::MissingConfig,
-            DetectionUncertainty::MissingCookie,
-            DetectionUncertainty::WalletFormatUnknown,
-        ],
-        source_paths: vec![DetectionSourcePath {
-            kind: DetectionSourcePathKind::DataDir,
-            path: PathBuf::from("/tmp/custom-core"),
-            present: true,
+    let detections = detection_scan(
+        vec![DetectedInstallation {
+            product_family: ProductFamily::Unknown,
+            confidence: DetectionConfidence::Low,
+            uncertainty: vec![
+                DetectionUncertainty::MissingConfig,
+                DetectionUncertainty::MissingCookie,
+                DetectionUncertainty::WalletFormatUnknown,
+            ],
+            source_paths: vec![DetectionSourcePath {
+                kind: DetectionSourcePathKind::DataDir,
+                path: PathBuf::from("/tmp/custom-core"),
+                present: true,
+            }],
+            maybe_data_dir: Some(PathBuf::from("/tmp/custom-core")),
+            maybe_config_file: None,
+            maybe_cookie_file: None,
+            wallet_candidates: Vec::new(),
         }],
-        maybe_data_dir: Some(PathBuf::from("/tmp/custom-core")),
-        maybe_config_file: None,
-        maybe_cookie_file: None,
-        service_candidates: Vec::new(),
-        wallet_candidates: Vec::new(),
-    }];
+        Vec::new(),
+    );
     let request = MigrationPlanArgs {
         maybe_source_data_dir: Some(PathBuf::from("/tmp/custom-core")),
     };
@@ -222,16 +230,16 @@ fn planner_limits_service_review_to_selected_source_installation() {
     .expect("other service");
 
     let resolution = sample_resolution();
-    let detections = vec![
-        detected_installation_with_services(
-            &selected_data_dir,
-            vec![
-                service_candidate(&matched_service_path, ServiceManager::Systemd),
-                service_candidate(&other_service_path, ServiceManager::Systemd),
-            ],
-        ),
-        detected_installation_with_services(&other_data_dir, Vec::new()),
-    ];
+    let detections = detection_scan(
+        vec![
+            detected_installation(&selected_data_dir),
+            detected_installation(&other_data_dir),
+        ],
+        vec![
+            service_candidate(&matched_service_path, ServiceManager::Systemd),
+            service_candidate(&other_service_path, ServiceManager::Systemd),
+        ],
+    );
     let request = MigrationPlanArgs {
         maybe_source_data_dir: Some(selected_data_dir.clone()),
     };
@@ -293,13 +301,13 @@ fn planner_uses_manual_service_review_when_service_ownership_is_ambiguous() {
     .expect("ambiguous service");
 
     let resolution = sample_resolution();
-    let detections = vec![detected_installation_with_services(
-        &selected_data_dir,
+    let detections = detection_scan(
+        vec![detected_installation(&selected_data_dir)],
         vec![service_candidate(
             &ambiguous_service_path,
             ServiceManager::Systemd,
         )],
-    )];
+    );
     let request = MigrationPlanArgs {
         maybe_source_data_dir: Some(selected_data_dir.clone()),
     };
@@ -347,7 +355,7 @@ fn planner_uses_manual_service_review_when_service_ownership_is_ambiguous() {
 fn json_render_includes_relevant_deviations() {
     // Arrange
     let resolution = sample_resolution();
-    let detections = vec![detected_installation("/tmp/core")];
+    let detections = detection_scan(vec![detected_installation("/tmp/core")], Vec::new());
     let request = MigrationPlanArgs {
         maybe_source_data_dir: None,
     };
@@ -380,16 +388,8 @@ fn sample_resolution() -> OperatorConfigResolution {
     }
 }
 
-fn detected_installation(data_dir: &str) -> DetectedInstallation {
-    let data_dir = PathBuf::from(data_dir);
-    detected_installation_with_services(&data_dir, Vec::new())
-}
-
-fn detected_installation_with_services(
-    data_dir: &Path,
-    service_candidates: Vec<ServiceCandidate>,
-) -> DetectedInstallation {
-    let data_dir = data_dir.to_path_buf();
+fn detected_installation(data_dir: impl AsRef<Path>) -> DetectedInstallation {
+    let data_dir = data_dir.as_ref().to_path_buf();
     let product_family = if data_dir.to_string_lossy().contains("knots") {
         ProductFamily::BitcoinKnots
     } else {
@@ -419,7 +419,6 @@ fn detected_installation_with_services(
         maybe_data_dir: Some(data_dir.clone()),
         maybe_config_file: Some(data_dir.join("bitcoin.conf")),
         maybe_cookie_file: Some(data_dir.join(".cookie")),
-        service_candidates,
         wallet_candidates: vec![WalletCandidate {
             kind: WalletCandidateKind::LegacyWalletFile,
             path: data_dir.join("wallets/main/wallet.dat"),
@@ -429,6 +428,16 @@ fn detected_installation_with_services(
             product_confidence: DetectionConfidence::Medium,
             chain_scope: WalletChainScope::Mainnet,
         }],
+    }
+}
+
+fn detection_scan(
+    installations: Vec<DetectedInstallation>,
+    service_candidates: Vec<ServiceCandidate>,
+) -> DetectionScan {
+    DetectionScan {
+        installations,
+        service_candidates,
     }
 }
 

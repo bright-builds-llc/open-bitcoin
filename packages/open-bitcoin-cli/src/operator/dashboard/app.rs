@@ -555,6 +555,7 @@ mod tests {
                 },
                 detection_evidence: StatusDetectionEvidence {
                     detected_installations: Vec::new(),
+                    service_candidates: Vec::new(),
                 },
                 maybe_live_rpc: None,
                 maybe_service_manager: None,

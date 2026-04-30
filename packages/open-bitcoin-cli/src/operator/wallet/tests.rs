@@ -232,7 +232,6 @@ fn backup_rejects_unsafe_external_wallet_destinations() {
         maybe_data_dir: Some(root.join(".bitcoin")),
         maybe_config_file: None,
         maybe_cookie_file: None,
-        service_candidates: Vec::new(),
         wallet_candidates: vec![super::super::detect::WalletCandidate {
             kind: super::super::detect::WalletCandidateKind::DescriptorWalletDirectory,
             path: root.join(".bitcoin/wallets/external"),

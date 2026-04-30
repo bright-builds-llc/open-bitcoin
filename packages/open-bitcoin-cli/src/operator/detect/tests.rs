@@ -11,8 +11,8 @@ use std::{
 
 use super::{
     DetectedInstallation, DetectionConfidence, DetectionRoots, DetectionSourcePath,
-    DetectionSourcePathKind, DetectionUncertainty, ProductFamily, ServiceCandidate, ServiceManager,
-    WalletCandidate, WalletCandidateKind, WalletChainScope, detect_existing_installations,
+    DetectionSourcePathKind, DetectionUncertainty, ProductFamily, ServiceManager, WalletCandidate,
+    WalletCandidateKind, WalletChainScope, detect_existing_installations,
 };
 
 static NEXT_TEST_DIRECTORY_ID: AtomicU64 = AtomicU64::new(0);
@@ -61,13 +61,6 @@ fn detected_installation_records_sources_and_uncertainty() {
         maybe_data_dir: Some(data_dir),
         maybe_config_file: Some(PathBuf::from("/tmp/bitcoin.conf")),
         maybe_cookie_file: Some(PathBuf::from("/tmp/.cookie")),
-        service_candidates: vec![ServiceCandidate {
-            product_family: ProductFamily::BitcoinKnots,
-            manager: ServiceManager::Launchd,
-            service_name: "org.bitcoin.bitcoind".to_string(),
-            path: PathBuf::from("/Library/LaunchDaemons/org.bitcoin.bitcoind.plist"),
-            present: true,
-        }],
         wallet_candidates: vec![WalletCandidate {
             kind: WalletCandidateKind::DescriptorWalletDirectory,
             path: PathBuf::from("/tmp/wallets/default"),
@@ -144,10 +137,11 @@ fn detects_linux_core_knots_candidates_read_only() {
     };
 
     // Act
-    let installations = detect_existing_installations(&roots);
+    let detections = detect_existing_installations(&roots);
 
     // Assert
-    let installation = installations
+    let installation = detections
+        .installations
         .iter()
         .find(|candidate| candidate.maybe_data_dir.as_ref() == Some(&data_dir))
         .expect("linux bitcoin datadir");
@@ -183,10 +177,15 @@ fn detects_linux_core_knots_candidates_read_only() {
             .all(|candidate| !candidate.path.ends_with("/wallets"))
     );
     assert!(
-        installation
+        detections
             .service_candidates
             .iter()
             .any(|candidate| candidate.manager == ServiceManager::Systemd && candidate.present)
+    );
+    assert!(
+        !source_paths
+            .iter()
+            .any(|path| path.ends_with("bitcoind.service"))
     );
     assert_eq!(installation.product_family, ProductFamily::Unknown);
     assert!(
@@ -247,10 +246,11 @@ fn detects_macos_core_knots_candidates_read_only() {
     };
 
     // Act
-    let installations = detect_existing_installations(&roots);
+    let detections = detect_existing_installations(&roots);
 
     // Assert
-    let installation = installations
+    let installation = detections
+        .installations
         .iter()
         .find(|candidate| candidate.maybe_data_dir.as_ref() == Some(&data_dir))
         .expect("macOS bitcoin datadir");
@@ -277,10 +277,15 @@ fn detects_macos_core_knots_candidates_read_only() {
             && candidate.chain_scope == WalletChainScope::Signet
     }));
     assert!(
-        installation
+        detections
             .service_candidates
             .iter()
             .any(|candidate| candidate.manager == ServiceManager::Launchd && candidate.present)
+    );
+    assert!(
+        !source_paths
+            .iter()
+            .any(|path| path.ends_with("org.bitcoin.bitcoind.plist"))
     );
     assert!(
         installation

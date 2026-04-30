@@ -23,7 +23,7 @@ use super::{
         resolve_operator_config,
     },
     dashboard::{DashboardRuntimeContext, platform_dashboard_service_runtime, run_dashboard},
-    detect::{DetectionRoots, detect_existing_installations},
+    detect::{DetectionRoots, DetectionScan, detect_existing_installations},
     migration::execute_migration_command,
     onboarding::{
         OnboardingError, OnboardingPromptAnswers, OnboardingRequest, StdIoOnboardingPrompter,
@@ -247,7 +247,7 @@ fn execute_operator_cli_inner(
             args,
             &cli,
             &config_resolution,
-            &detections,
+            &detections.installations,
             &default_data_dir,
         ),
     }
@@ -261,7 +261,7 @@ struct StatusRuntimeParts {
 fn execute_status(
     cli: &OperatorCli,
     config_resolution: OperatorConfigResolution,
-    detections: Vec<super::detect::DetectedInstallation>,
+    detections: DetectionScan,
 ) -> Result<OperatorCommandOutcome, OperatorRuntimeError> {
     let status = status_runtime_parts(cli, config_resolution, detections);
     let snapshot = collect_status_snapshot(&status.input, status.maybe_rpc_client.as_deref());
@@ -276,7 +276,7 @@ fn execute_status(
 fn status_runtime_parts(
     cli: &OperatorCli,
     config_resolution: OperatorConfigResolution,
-    detections: Vec<super::detect::DetectedInstallation>,
+    detections: DetectionScan,
 ) -> StatusRuntimeParts {
     let maybe_startup = startup_config_for_status(&config_resolution);
     let wallet_rpc_access =
@@ -313,7 +313,8 @@ fn status_runtime_parts(
             },
             config_resolution,
             detection_evidence: StatusDetectionEvidence {
-                detected_installations: detections,
+                detected_installations: detections.installations,
+                service_candidates: detections.service_candidates,
             },
             maybe_live_rpc,
             maybe_service_manager,
@@ -326,7 +327,7 @@ fn status_runtime_parts(
 fn command_detections(
     config_resolution: &OperatorConfigResolution,
     command: &OperatorCommand,
-) -> Vec<super::detect::DetectedInstallation> {
+) -> DetectionScan {
     match command {
         OperatorCommand::Migrate(args) => detect_migration_installations(config_resolution, args),
         OperatorCommand::Status(_)
@@ -343,7 +344,7 @@ fn command_detections(
 fn detect_migration_installations(
     config_resolution: &OperatorConfigResolution,
     args: &MigrationArgs,
-) -> Vec<super::detect::DetectedInstallation> {
+) -> DetectionScan {
     let mut roots = detection_roots(config_resolution);
     let MigrationCommand::Plan(plan) = &args.command;
     if let Some(source_data_dir) = plan.maybe_source_data_dir.as_ref()
@@ -362,7 +363,7 @@ fn execute_onboarding(
     args: &OnboardArgs,
     cli: &OperatorCli,
     config_resolution: OperatorConfigResolution,
-    detections: Vec<super::detect::DetectedInstallation>,
+    detections: DetectionScan,
 ) -> Result<OperatorCommandOutcome, OperatorRuntimeError> {
     let defaults = OnboardingPromptAnswers {
         maybe_network: cli.maybe_network,
@@ -389,8 +390,13 @@ fn execute_onboarding(
     };
     let existing = read_existing_open_bitcoin_config(config_resolution.maybe_config_path.as_ref())
         .map_err(onboarding_error)?;
-    let plan = plan_onboarding(&config_resolution, existing, detections, request)
-        .map_err(onboarding_error)?;
+    let plan = plan_onboarding(
+        &config_resolution,
+        existing,
+        detections.installations,
+        request,
+    )
+    .map_err(onboarding_error)?;
     apply_onboarding_plan(&plan).map_err(onboarding_error)?;
     Ok(OperatorCommandOutcome::success(format!(
         "{}\n",

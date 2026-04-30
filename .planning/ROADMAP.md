@@ -62,7 +62,7 @@ Post-audit gap-closure and cleanup phases now extend the milestone so service ap
 - [x] **Phase 31: Migration Source-Specific Service Review Truth** - Scope migration service review actions to the selected source installation so custom-path plans stay truthful. (completed 2026-04-29)
 - [x] **Phase 32: Benchmark Wrapper List-Mode Hygiene** - Fix the benchmark wrapper `--list` path without regressing the shipped smoke and report-validation flow. (completed 2026-04-29)
 - [x] **Phase 33: Operator Surface Truth and Coverage Cleanup** - Resolve the remaining operator-surface truthfulness and verification follow-up work before milestone archive. (completed 2026-04-30)
-- [ ] **Phase 34: Migration Detection Ownership Model Cleanup** - Tighten the shared detection model so future consumers do not inherit misleading service ownership evidence. (planned)
+- [x] **Phase 34: Migration Detection Ownership Model Cleanup** - Tighten the shared detection model so future consumers do not inherit misleading service ownership evidence. (completed 2026-04-30)
 
 ## Phase Details
 
@@ -448,11 +448,16 @@ Plans:
 1. Shared detection types no longer attach scan-wide service definitions to every `DetectedInstallation` as though they belonged to each installation.
 2. `open-bitcoin migrate plan --source-datadir <custom-path>` keeps the current truthful selected-source behavior and manual-review fallback after the ownership-model cleanup.
 3. Status, onboarding, wallet, migration, and related verification remain truthful after consumers adopt the tightened ownership model.
-**Plans**: 0 plans yet
+**Plans**: 3/3 plans complete
+
+Plans:
+- [x] 34-01-PLAN.md — introduce the scan-level detection ownership model
+- [x] 34-02-PLAN.md — adopt the tightened ownership model in migration
+- [x] 34-03-PLAN.md — verify, record, and close the final cleanup
 
 ## Progress
 
 | Milestone | Phases | Plans | Status | Shipped |
 | --- | ---: | ---: | --- | --- |
 | v1.0 Headless Parity | 22/22 | 80/80 | Archived | 2026-04-26 |
-| v1.1 Operator Runtime and Real-Network Sync | 21/22 | 66/66 current | Final cleanup pending | - |
+| v1.1 Operator Runtime and Real-Network Sync | 22/22 | 69/69 current | Ready to archive | - |

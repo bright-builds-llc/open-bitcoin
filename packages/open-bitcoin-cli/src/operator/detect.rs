@@ -164,6 +164,15 @@ pub enum WalletChainScope {
     Unknown,
 }
 
+/// Shared read-only detection evidence gathered from a single scan.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DetectionScan {
+    /// Installations detected from datadir, config, cookie, and wallet evidence.
+    pub installations: Vec<DetectedInstallation>,
+    /// Managed service definitions discovered across the detection roots.
+    pub service_candidates: Vec<ServiceCandidate>,
+}
+
 /// Read-only detection result for a Core, Knots, or Open Bitcoin install.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DetectedInstallation {
@@ -181,14 +190,12 @@ pub struct DetectedInstallation {
     pub maybe_config_file: Option<PathBuf>,
     /// Candidate cookie path, when known.
     pub maybe_cookie_file: Option<PathBuf>,
-    /// Read-only service definition candidates.
-    pub service_candidates: Vec<ServiceCandidate>,
     /// Read-only wallet candidates.
     pub wallet_candidates: Vec<WalletCandidate>,
 }
 
 /// Detect existing Core/Knots-style installations from injected roots only.
-pub fn detect_existing_installations(roots: &DetectionRoots) -> Vec<DetectedInstallation> {
+pub fn detect_existing_installations(roots: &DetectionRoots) -> DetectionScan {
     let service_candidates = collect_service_candidates(roots);
     let mut installations = Vec::new();
 
@@ -231,34 +238,23 @@ pub fn detect_existing_installations(roots: &DetectionRoots) -> Vec<DetectedInst
             uncertainty.push(DetectionUncertainty::WalletFormatUnknown);
         }
 
-        let mut all_source_paths = source_paths;
-        all_source_paths.extend(
-            service_candidates
-                .iter()
-                .map(|candidate| DetectionSourcePath {
-                    kind: DetectionSourcePathKind::ServiceDefinition,
-                    path: candidate.path.clone(),
-                    present: candidate.present,
-                }),
-        );
-
         installations.push(DetectedInstallation {
             product_family,
             confidence,
             uncertainty,
-            source_paths: all_source_paths,
+            source_paths,
             maybe_data_dir: Some(data_dir),
             maybe_config_file: config_file.exists().then_some(config_file),
             maybe_cookie_file: cookie_file.exists().then_some(cookie_file),
-            service_candidates: service_candidates.clone(),
             wallet_candidates,
         });
     }
 
     if installations.is_empty() {
         let present_services: Vec<_> = service_candidates
-            .into_iter()
+            .iter()
             .filter(|candidate| candidate.present)
+            .cloned()
             .collect();
         if !present_services.is_empty() {
             let source_paths = present_services
@@ -282,13 +278,15 @@ pub fn detect_existing_installations(roots: &DetectionRoots) -> Vec<DetectedInst
                 maybe_data_dir: None,
                 maybe_config_file: None,
                 maybe_cookie_file: None,
-                service_candidates: present_services,
                 wallet_candidates: Vec::new(),
             });
         }
     }
 
-    installations
+    DetectionScan {
+        installations,
+        service_candidates,
+    }
 }
 
 fn candidate_data_dirs(roots: &DetectionRoots) -> Vec<PathBuf> {

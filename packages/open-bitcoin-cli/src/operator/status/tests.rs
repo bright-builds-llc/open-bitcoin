@@ -82,6 +82,7 @@ fn status_collector_input_keeps_rpc_config_and_detection_evidence_typed() {
         config_resolution,
         detection_evidence: StatusDetectionEvidence {
             detected_installations: Vec::new(),
+            service_candidates: Vec::new(),
         },
         maybe_live_rpc: Some(StatusLiveRpcAdapterInput {
             endpoint: "http://127.0.0.1:8332".to_string(),
@@ -469,6 +470,40 @@ fn collect_status_snapshot_with_no_service_manager_preserves_unavailable_service
 }
 
 #[test]
+fn collect_status_snapshot_without_manager_uses_detected_service_candidates() {
+    // Arrange
+    let input =
+        status_input_with_service_candidates(Vec::new(), vec![detected_service_candidate()]);
+
+    // Act
+    let snapshot = collect_status_snapshot(&input, None);
+
+    // Assert
+    assert_eq!(
+        snapshot.service.manager,
+        open_bitcoin_node::status::FieldAvailability::available("systemd".to_string())
+    );
+    assert_eq!(
+        snapshot.service.installed,
+        open_bitcoin_node::status::FieldAvailability::available(true)
+    );
+    assert!(
+        matches!(
+            &snapshot.service.enabled,
+            open_bitcoin_node::status::FieldAvailability::Unavailable { .. }
+        ),
+        "service.enabled should stay unavailable when only detection evidence exists"
+    );
+    assert!(
+        matches!(
+            &snapshot.service.running,
+            open_bitcoin_node::status::FieldAvailability::Unavailable { .. }
+        ),
+        "service.running should stay unavailable when only detection evidence exists"
+    );
+}
+
+#[test]
 fn collect_status_snapshot_with_fake_running_manager_sets_service_fields_to_available_true() {
     // Arrange
     let fake = FakeServiceManager::new(ServiceStateSnapshot {
@@ -491,6 +526,7 @@ fn collect_status_snapshot_with_fake_running_manager_sets_service_fields_to_avai
         config_resolution: config_resolution(),
         detection_evidence: StatusDetectionEvidence {
             detected_installations: Vec::new(),
+            service_candidates: Vec::new(),
         },
         maybe_live_rpc: None,
         maybe_service_manager: Some(Box::new(fake)),
@@ -548,6 +584,7 @@ fn collect_status_snapshot_with_fake_installed_manager_sets_installed_true_enabl
         config_resolution: config_resolution(),
         detection_evidence: StatusDetectionEvidence {
             detected_installations: Vec::new(),
+            service_candidates: Vec::new(),
         },
         maybe_live_rpc: None,
         maybe_service_manager: Some(Box::new(fake)),
@@ -598,6 +635,7 @@ fn collect_status_snapshot_uses_manager_enabled_state_over_state_inference() {
         config_resolution: config_resolution(),
         detection_evidence: StatusDetectionEvidence {
             detected_installations: Vec::new(),
+            service_candidates: Vec::new(),
         },
         maybe_live_rpc: None,
         maybe_service_manager: Some(Box::new(fake)),
@@ -643,6 +681,7 @@ fn collect_status_snapshot_preserves_running_when_startup_is_not_enabled() {
         config_resolution: config_resolution(),
         detection_evidence: StatusDetectionEvidence {
             detected_installations: Vec::new(),
+            service_candidates: Vec::new(),
         },
         maybe_live_rpc: None,
         maybe_service_manager: Some(Box::new(fake)),
@@ -721,6 +760,7 @@ fn collect_status_snapshot_with_error_manager_falls_back_to_unavailable() {
         config_resolution: config_resolution(),
         detection_evidence: StatusDetectionEvidence {
             detected_installations: Vec::new(),
+            service_candidates: Vec::new(),
         },
         maybe_live_rpc: None,
         maybe_service_manager: Some(Box::new(ErrorServiceManager)),
@@ -748,6 +788,13 @@ fn collect_status_snapshot_with_error_manager_falls_back_to_unavailable() {
 }
 
 fn status_input(detected_installations: Vec<DetectedInstallation>) -> StatusCollectorInput {
+    status_input_with_service_candidates(detected_installations, Vec::new())
+}
+
+fn status_input_with_service_candidates(
+    detected_installations: Vec<DetectedInstallation>,
+    service_candidates: Vec<ServiceCandidate>,
+) -> StatusCollectorInput {
     StatusCollectorInput {
         request: StatusRequest {
             render_mode: StatusRenderMode::Human,
@@ -760,6 +807,7 @@ fn status_input(detected_installations: Vec<DetectedInstallation>) -> StatusColl
         config_resolution: config_resolution(),
         detection_evidence: StatusDetectionEvidence {
             detected_installations,
+            service_candidates,
         },
         maybe_live_rpc: Some(StatusLiveRpcAdapterInput {
             endpoint: "http://127.0.0.1:18443".to_string(),
@@ -824,13 +872,6 @@ fn detected_installation() -> DetectedInstallation {
         maybe_data_dir: Some(PathBuf::from("/tmp/core/.bitcoin")),
         maybe_config_file: Some(PathBuf::from("/tmp/core/.bitcoin/bitcoin.conf")),
         maybe_cookie_file: Some(PathBuf::from("/tmp/core/.bitcoin/.cookie")),
-        service_candidates: vec![ServiceCandidate {
-            product_family: ProductFamily::Unknown,
-            manager: ServiceManager::Systemd,
-            service_name: "bitcoind".to_string(),
-            path: PathBuf::from("/tmp/systemd/bitcoind.service"),
-            present: true,
-        }],
         wallet_candidates: vec![WalletCandidate {
             kind: WalletCandidateKind::LegacyWalletFile,
             path: PathBuf::from("/tmp/core/.bitcoin/wallet.dat"),
@@ -840,6 +881,16 @@ fn detected_installation() -> DetectedInstallation {
             product_confidence: DetectionConfidence::Low,
             chain_scope: crate::operator::detect::WalletChainScope::Mainnet,
         }],
+    }
+}
+
+fn detected_service_candidate() -> ServiceCandidate {
+    ServiceCandidate {
+        product_family: ProductFamily::Unknown,
+        manager: ServiceManager::Systemd,
+        service_name: "bitcoind".to_string(),
+        path: PathBuf::from("/tmp/systemd/bitcoind.service"),
+        present: true,
     }
 }
 

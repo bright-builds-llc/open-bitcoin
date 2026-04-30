@@ -26,7 +26,7 @@ use open_bitcoin_rpc::method::{
 use super::{
     NetworkSelection,
     config::{OperatorConfigPathKind, OperatorConfigResolution},
-    detect::DetectedInstallation,
+    detect::{DetectedInstallation, ServiceCandidate},
     service::ServiceLifecycleState,
 };
 
@@ -72,6 +72,7 @@ pub struct StatusCollectorInput {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StatusDetectionEvidence {
     pub detected_installations: Vec<DetectedInstallation>,
+    pub service_candidates: Vec<ServiceCandidate>,
 }
 
 /// Live RPC adapter input without credential values.
@@ -502,9 +503,8 @@ fn collect_service_status(input: &StatusCollectorInput) -> ServiceStatus {
 
 fn detection_service_status(evidence: &StatusDetectionEvidence) -> ServiceStatus {
     let maybe_candidate = evidence
-        .detected_installations
+        .service_candidates
         .iter()
-        .flat_map(|installation| installation.service_candidates.iter())
         .find(|candidate| candidate.present);
 
     if let Some(candidate) = maybe_candidate {

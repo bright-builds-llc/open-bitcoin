@@ -7,6 +7,12 @@
 
 use std::{collections::BTreeSet, path::Path};
 
+mod labels;
+
+use self::labels::{
+    detection_confidence_name, detection_uncertainty_name, network_name, product_family_name,
+    render_path, service_manager_name, wallet_chain_scope_name, wallet_kind_name,
+};
 use super::{
     MigrationAction, MigrationActionGroup, MigrationActionKind, MigrationDeviationNotice,
     MigrationExplanation, MigrationInstallationSummary, MigrationNoticeLevel, MigrationPlan,
@@ -18,12 +24,9 @@ use super::{
     },
 };
 use crate::operator::{
-    MigrationPlanArgs, NetworkSelection,
+    MigrationPlanArgs,
     config::OperatorConfigResolution,
-    detect::{
-        DetectedInstallation, DetectionConfidence, DetectionUncertainty, ProductFamily,
-        ServiceCandidate, ServiceManager, WalletCandidate, WalletCandidateKind, WalletChainScope,
-    },
+    detect::{DetectedInstallation, DetectionScan, ServiceCandidate, WalletCandidate},
 };
 
 const MIGRATION_AUDIT_DOCS_PATH: &str = "docs/parity/catalog/drop-in-audit-and-migration.md";
@@ -71,7 +74,7 @@ const MIGRATION_DEVIATION_DEFINITIONS: [MigrationDeviationDefinition; 3] = [
 
 pub(super) fn plan_migration(
     config_resolution: &OperatorConfigResolution,
-    detections: &[DetectedInstallation],
+    detections: &DetectionScan,
     request: &MigrationPlanArgs,
 ) -> MigrationPlan {
     let source_selection =
@@ -98,27 +101,32 @@ pub(super) fn migration_deviation_definitions() -> Vec<MigrationDeviationNotice>
 }
 
 fn select_source_installation(
-    detections: &[DetectedInstallation],
+    detections: &DetectionScan,
     maybe_source_data_dir: Option<&Path>,
 ) -> MigrationSourceSelection {
     let candidates = detections
+        .installations
         .iter()
-        .map(summarize_installation)
+        .map(|installation| summarize_installation(installation, &detections.service_candidates))
         .collect::<Vec<_>>();
 
     let Some(source_data_dir) = maybe_source_data_dir else {
-        if detections.len() == 1 {
+        if detections.installations.len() == 1 {
             let maybe_installation = detections
+                .installations
                 .first()
                 .filter(|installation| installation.maybe_data_dir.is_some());
             if let Some(installation) = maybe_installation {
                 return MigrationSourceSelection::Selected {
-                    installation: summarize_installation(installation),
+                    installation: summarize_installation(
+                        installation,
+                        &detections.service_candidates,
+                    ),
                 };
             }
         }
 
-        let reason = if detections.is_empty() {
+        let reason = if detections.installations.is_empty() {
             "No existing Core or Knots installation was detected. Pass --source-datadir <path> if your source install lives in a custom location.".to_string()
         } else {
             "Multiple or partial install candidates were detected. Pass --source-datadir <path> to choose the source install explicitly.".to_string()
@@ -126,7 +134,7 @@ fn select_source_installation(
         return MigrationSourceSelection::ManualReviewRequired { reason, candidates };
     };
 
-    let maybe_installation = detections.iter().find(|installation| {
+    let maybe_installation = detections.installations.iter().find(|installation| {
         installation
             .maybe_data_dir
             .as_deref()
@@ -143,7 +151,7 @@ fn select_source_installation(
             };
         }
         return MigrationSourceSelection::Selected {
-            installation: summarize_installation(installation),
+            installation: summarize_installation(installation, &detections.service_candidates),
         };
     }
 
@@ -478,7 +486,10 @@ fn deviation_notice(definition: &MigrationDeviationDefinition) -> MigrationDevia
     }
 }
 
-fn summarize_installation(installation: &DetectedInstallation) -> MigrationInstallationSummary {
+fn summarize_installation(
+    installation: &DetectedInstallation,
+    service_candidates: &[ServiceCandidate],
+) -> MigrationInstallationSummary {
     let mut uncertainty = installation
         .uncertainty
         .iter()
@@ -486,7 +497,7 @@ fn summarize_installation(installation: &DetectedInstallation) -> MigrationInsta
         .map(detection_uncertainty_name)
         .map(str::to_string)
         .collect::<Vec<_>>();
-    let service_candidates = match associate_service_candidates(installation) {
+    let service_candidates = match associate_service_candidates(installation, service_candidates) {
         ServiceAssociation::Matched(service_candidates) => service_candidates
             .iter()
             .map(summarize_service_candidate)
@@ -535,59 +546,6 @@ fn summarize_wallet_candidate(candidate: &WalletCandidate) -> MigrationWalletSum
     }
 }
 
-fn product_family_name(product_family: ProductFamily) -> &'static str {
-    match product_family {
-        ProductFamily::BitcoinCore => "bitcoin_core",
-        ProductFamily::BitcoinKnots => "bitcoin_knots",
-        ProductFamily::OpenBitcoin => "open_bitcoin",
-        ProductFamily::Unknown => "unknown",
-    }
-}
-
-fn detection_confidence_name(confidence: DetectionConfidence) -> &'static str {
-    match confidence {
-        DetectionConfidence::High => "high",
-        DetectionConfidence::Medium => "medium",
-        DetectionConfidence::Low => "low",
-    }
-}
-
-fn detection_uncertainty_name(uncertainty: DetectionUncertainty) -> &'static str {
-    match uncertainty {
-        DetectionUncertainty::ProductAmbiguous => "product_ambiguous",
-        DetectionUncertainty::MissingConfig => "missing_config",
-        DetectionUncertainty::MissingCookie => "missing_cookie",
-        DetectionUncertainty::ServiceManagerUnknown => "service_manager_unknown",
-        DetectionUncertainty::WalletFormatUnknown => "wallet_format_unknown",
-    }
-}
-
-fn service_manager_name(manager: ServiceManager) -> &'static str {
-    match manager {
-        ServiceManager::Launchd => "launchd",
-        ServiceManager::Systemd => "systemd",
-        ServiceManager::Unknown => "unknown",
-    }
-}
-
-fn wallet_kind_name(kind: WalletCandidateKind) -> &'static str {
-    match kind {
-        WalletCandidateKind::DescriptorWalletDirectory => "descriptor_wallet_directory",
-        WalletCandidateKind::LegacyWalletFile => "legacy_wallet_dat",
-        WalletCandidateKind::Unknown => "unknown",
-    }
-}
-
-fn wallet_chain_scope_name(chain_scope: WalletChainScope) -> &'static str {
-    match chain_scope {
-        WalletChainScope::Mainnet => "mainnet",
-        WalletChainScope::Testnet => "testnet",
-        WalletChainScope::Signet => "signet",
-        WalletChainScope::Regtest => "regtest",
-        WalletChainScope::Unknown => "unknown",
-    }
-}
-
 pub(super) fn action_kind_name(kind: MigrationActionKind) -> &'static str {
     match kind {
         MigrationActionKind::ReadOnlyCheck => "read_only_check",
@@ -602,20 +560,6 @@ pub(super) fn notice_level_name(level: MigrationNoticeLevel) -> &'static str {
         MigrationNoticeLevel::Info => "info",
         MigrationNoticeLevel::Warn => "warn",
     }
-}
-
-fn network_name(network: NetworkSelection) -> String {
-    match network {
-        NetworkSelection::Mainnet => "mainnet",
-        NetworkSelection::Testnet => "testnet",
-        NetworkSelection::Signet => "signet",
-        NetworkSelection::Regtest => "regtest",
-    }
-    .to_string()
-}
-
-fn render_path(path: &Path) -> String {
-    path.display().to_string()
 }
 
 pub(super) fn display_optional_string(maybe_value: Option<&str>) -> &str {

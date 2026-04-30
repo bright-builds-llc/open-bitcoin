@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Operator Runtime and Real-Network Sync
-status: executing
-stopped_at: Phase 33 completed; Phase 34 is ready to discuss
-last_updated: "2026-04-30T05:12:28.878Z"
-last_activity: 2026-04-30 -- Phase 33 completed; Phase 34 is ready to discuss
+status: milestone_complete
+stopped_at: Phase 34 completed; v1.1 is ready for archive
+last_updated: "2026-04-30T07:55:55Z"
+last_activity: 2026-04-30 -- Phase 34 completed; v1.1 is ready for archive
 progress:
   total_phases: 22
-  completed_phases: 21
-  total_plans: 66
-  completed_plans: 66
-  percent: 95
+  completed_phases: 22
+  total_plans: 69
+  completed_plans: 69
+  percent: 100
 ---
 
 # Project State
@@ -21,22 +21,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-26)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 34 — Migration Detection Ownership Model Cleanup
+**Current focus:** v1.1 archive readiness after Phase 34 completion
 
 ## Current Position
 
 Phase: 34
 Plan: None
-Status: Ready to discuss
-Last activity: 2026-04-30 -- Phase 33 completed; Phase 34 is ready to discuss
+Status: Milestone complete
+Last activity: 2026-04-30 -- Phase 34 completed; v1.1 is ready for archive
 
-Progress: 21/22 phases complete
+Progress: 22/22 phases complete
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed in v1.1: 66
+- Total plans completed in v1.1: 69
 - Average duration: not available yet
 - Total execution time: not available yet
 
@@ -60,6 +60,7 @@ Progress: 21/22 phases complete
 | 31 | 2 | - | - |
 | 32 | 2 | - | - |
 | 33 | 3 | - | - |
+| 34 | 3 | - | - |
 
 **Recent Trend:**
 
@@ -80,6 +81,7 @@ Progress: 21/22 phases complete
 - Phase 32 completed 2 benchmark-wrapper list-mode hygiene plans on 2026-04-29.
 - Cleanup Phases 33 and 34 were planned on 2026-04-30 from the post-Phase-32 milestone audit.
 - Phase 33 completed 3 operator-surface truth and coverage cleanup plans on 2026-04-30.
+- Phase 34 completed 3 migration detection ownership cleanup plans on 2026-04-30.
 
 | Phase 16 P01 | 12 min | 2 tasks | 4 files |
 | Phase 16 P02 | 18 min | 2 tasks | 7 files |
@@ -126,12 +128,13 @@ Recent decisions affecting current work:
 - [Phase 21-drop-in-parity-audit-and-migration]: Keep migration as a separate operator-owned `open-bitcoin migrate plan` surface instead of extending onboarding. — Preserves the target-setup wizard boundary while giving source-install review its own dry-run-first contract.
 - [Phase 21-drop-in-parity-audit-and-migration]: Keep migration dry-run only in Phase 21 and require explicit `--source-datadir` selection when detection is ambiguous. — Protects existing Core/Knots datadirs, services, and wallets from implicit mutation or guessed source selection.
 - [Phase 21-drop-in-parity-audit-and-migration]: Store migration-relevant deviations in `docs/parity/index.json` and surface only the relevant notices at runtime. — Keeps the CLI and parity ledger on one auditable machine-readable source of truth.
+- [Phase 34-migration-detection-ownership-model-cleanup]: Treat service definitions as scan-level read-only evidence via `DetectionScan` and require consumers to opt into ownership association explicitly. — Removes the misleading cloned service field while preserving truthful migration and status behavior.
 
 ### Roadmap Evolution
 
 - v1.0 Headless Parity archived on 2026-04-26.
 - v1.1 Operator Runtime and Real-Network Sync starts at Phase 13, continuing phase numbering after the archived v1.0 milestone.
-- Phase 33 is complete, and optional cleanup Phase 34 keeps v1.1 active until the final migration-model debt is either fixed or explicitly accepted at archive time.
+- Phase 34 completed as the final optional v1.1 cleanup on 2026-04-30, and the milestone is now ready for archive-level closeout.
 
 ### Pending Todos
 
@@ -142,8 +145,8 @@ Recent decisions affecting current work:
 - Durable database choice must be made deliberately before real-network sync relies on it.
 - Automatic or destructive migration remains out of scope after Phase 21; later phases must preserve the current dry-run-first safety boundary until an apply-mode design is explicitly planned.
 - The TUI dashboard depends on stable status, metrics, and sync-state projections; avoid building a decorative dashboard before those data contracts exist.
-- `bash scripts/verify.sh` passes after the Phase 33 operator-surface cleanup closeout run.
-- One optional cleanup phase remains from the post-Phase-32 audit: either ship Phase 34 or explicitly accept the remaining migration-model debt when archiving v1.1.
+- `bash scripts/verify.sh` passes after the Phase 34 migration detection ownership cleanup closeout run.
+- No planned v1.1 delivery phases remain; the next step is milestone archive or explicit final acceptance.
 
 ### Quick Tasks Completed
 
@@ -160,6 +163,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-30T05:12:28.878Z
-Stopped at: Phase 33 completed; Phase 34 is ready to discuss
+Last session: 2026-04-30T07:55:55Z
+Stopped at: Phase 34 completed; v1.1 is ready for archive
 Resume file: .planning/ROADMAP.md

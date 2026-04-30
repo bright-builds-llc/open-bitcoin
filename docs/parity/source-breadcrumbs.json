@@ -297,7 +297,8 @@
         "packages/open-bitcoin-cli/src/operator/migration/tests.rs"
       ],
       "patterns": [
-        "packages/open-bitcoin-cli/src/operator/migration/*.rs"
+        "packages/open-bitcoin-cli/src/operator/migration/*.rs",
+        "packages/open-bitcoin-cli/src/operator/migration/**/*.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/doc/files.md",

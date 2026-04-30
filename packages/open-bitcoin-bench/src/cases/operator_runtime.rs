@@ -159,6 +159,7 @@ impl OperatorRuntimeFixture {
             },
             detection_evidence: StatusDetectionEvidence {
                 detected_installations: vec![],
+                service_candidates: vec![],
             },
             maybe_live_rpc: None,
             maybe_service_manager: Some(Box::new(FakeServiceManager::new(running_service_state(

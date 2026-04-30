@@ -346,7 +346,6 @@ fn detected_installation() -> DetectedInstallation {
         maybe_data_dir: Some(PathBuf::from("/tmp/core/.bitcoin")),
         maybe_config_file: Some(PathBuf::from("/tmp/core/.bitcoin/bitcoin.conf")),
         maybe_cookie_file: None,
-        service_candidates: Vec::new(),
         wallet_candidates: vec![WalletCandidate {
             kind: WalletCandidateKind::LegacyWalletFile,
             path: PathBuf::from("/tmp/core/.bitcoin/wallets/primary/wallet.dat"),

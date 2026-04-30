@@ -37,12 +37,12 @@ struct ServiceOwnershipEvidence {
 
 pub(super) fn associate_service_candidates(
     installation: &DetectedInstallation,
+    service_candidates: &[ServiceCandidate],
 ) -> ServiceAssociation {
     let mut matched = Vec::new();
     let mut saw_ambiguous = false;
 
-    for candidate in installation
-        .service_candidates
+    for candidate in service_candidates
         .iter()
         .filter(|candidate| candidate.present)
     {
