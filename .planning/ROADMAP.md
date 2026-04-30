@@ -3,13 +3,13 @@
 ## Milestones
 
 - **v1.0 Headless Parity** - Phases 1 through 12 shipped on 2026-04-26. Archive: [v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
-- **v1.1 Operator Runtime and Real-Network Sync** - Phases 13 through 32 now define this milestone, including post-audit gap-closure follow-up work.
+- **v1.1 Operator Runtime and Real-Network Sync** - Phases 13 through 34 now define this milestone, including post-audit gap-closure and cleanup follow-up work.
 
 ## v1.1 Operator Runtime and Real-Network Sync
 
 This active milestone makes Open Bitcoin usable as an operator-facing, service-managed node that can begin true network sync work with durable storage, richer CLI/TUI surfaces, migration guidance, and expanded parity coverage.
 
-Post-audit gap-closure phases now extend the milestone so service apply behavior, live status truthfulness, migration source selection, evidence reconciliation, operator-runtime benchmark fidelity, and final integration follow-up work are resolved before archive.
+Post-audit gap-closure and cleanup phases now extend the milestone so service apply behavior, live status truthfulness, migration source selection, evidence reconciliation, operator-runtime benchmark fidelity, and the remaining operator-surface and migration-model follow-up work are resolved or explicitly accepted before archive.
 
 ## Phases
 
@@ -61,6 +61,8 @@ Post-audit gap-closure phases now extend the milestone so service apply behavior
 - [x] **Phase 30: Configless Live Status and Dashboard Bootstrap** - Restore truthful live status and dashboard behavior for flag-only local workflows when `bitcoin.conf` is absent. (completed 2026-04-29)
 - [x] **Phase 31: Migration Source-Specific Service Review Truth** - Scope migration service review actions to the selected source installation so custom-path plans stay truthful. (completed 2026-04-29)
 - [x] **Phase 32: Benchmark Wrapper List-Mode Hygiene** - Fix the benchmark wrapper `--list` path without regressing the shipped smoke and report-validation flow. (completed 2026-04-29)
+- [ ] **Phase 33: Operator Surface Truth and Coverage Cleanup** - Resolve the remaining operator-surface truthfulness and verification follow-up work before milestone archive. (planned)
+- [ ] **Phase 34: Migration Detection Ownership Model Cleanup** - Tighten the shared detection model so future consumers do not inherit misleading service ownership evidence. (planned)
 
 ## Phase Details
 
@@ -418,9 +420,34 @@ Plans:
 - [x] 32-01-PLAN.md — repair list mode and add a durable guard
 - [x] 32-02-PLAN.md — verify and close the optional cleanup
 
+### Phase 33: Operator Surface Truth and Coverage Cleanup
+
+**Goal**: Resolve the remaining operator-surface truthfulness and verification debt around `status --watch`, unmanaged service preview hints, interactive dashboard coverage, and nearby flaky operator-binary status checks before v1.1 archive.
+**Depends on**: Phase 17, Phase 19, Phase 23, Phase 28
+**Requirements**: none (optional cleanup)
+**Gap Closure**: Optional cleanup for post-Phase-32 operator-surface truth and coverage tech debt.
+**Success Criteria** (what must be TRUE):
+1. `open-bitcoin status --watch` is either implemented truthfully or removed so the public CLI surface matches the runtime behavior.
+2. Unmanaged service/install preview guidance points operators at the real preview flow across CLI errors, manager-backed status output, dashboard reuse, and operator docs.
+3. Higher-level verification covers the relevant interactive dashboard action paths so service-action behavior is not protected only by unit tests and non-TTY snapshots.
+4. Nearby operator-binary status coverage remains deterministic enough that the normal repo-native verification contract no longer depends on flaky reruns.
+**Plans**: 0 plans yet
+
+### Phase 34: Migration Detection Ownership Model Cleanup
+
+**Goal**: Tighten the shared migration detection ownership model so detected installations stop carrying scan-wide service candidates that future consumers could misread as source-specific evidence.
+**Depends on**: Phase 21, Phase 25, Phase 31
+**Requirements**: none (optional cleanup)
+**Gap Closure**: Optional cleanup for post-Phase-32 migration detection-model tech debt.
+**Success Criteria** (what must be TRUE):
+1. Shared detection types no longer attach scan-wide service definitions to every `DetectedInstallation` as though they belonged to each installation.
+2. `open-bitcoin migrate plan --source-datadir <custom-path>` keeps the current truthful selected-source behavior and manual-review fallback after the ownership-model cleanup.
+3. Status, onboarding, wallet, migration, and related verification remain truthful after consumers adopt the tightened ownership model.
+**Plans**: 0 plans yet
+
 ## Progress
 
 | Milestone | Phases | Plans | Status | Shipped |
 | --- | ---: | ---: | --- | --- |
 | v1.0 Headless Parity | 22/22 | 80/80 | Archived | 2026-04-26 |
-| v1.1 Operator Runtime and Real-Network Sync | 20/20 | 63/63 current | Ready for milestone audit | - |
+| v1.1 Operator Runtime and Real-Network Sync | 20/22 | 63/63 current | Cleanup phases planned | - |
