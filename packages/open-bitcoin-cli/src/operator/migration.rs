@@ -12,7 +12,7 @@ use std::fmt;
 use super::{
     MigrationArgs, MigrationCommand, MigrationPlanArgs, OperatorOutputFormat,
     config::OperatorConfigResolution,
-    detect::DetectedInstallation,
+    detect::DetectionScan,
     runtime::{OperatorCommandOutcome, OperatorRuntimeError},
 };
 
@@ -56,7 +56,7 @@ pub fn execute_migration_command(
     args: &MigrationArgs,
     format: OperatorOutputFormat,
     config_resolution: &OperatorConfigResolution,
-    detections: &[DetectedInstallation],
+    detections: &DetectionScan,
 ) -> Result<OperatorCommandOutcome, OperatorRuntimeError> {
     let rendered = match &args.command {
         MigrationCommand::Plan(request) => {
@@ -74,7 +74,7 @@ pub fn execute_migration_command(
 
 pub fn plan_migration(
     config_resolution: &OperatorConfigResolution,
-    detections: &[DetectedInstallation],
+    detections: &DetectionScan,
     request: &MigrationPlanArgs,
 ) -> MigrationPlan {
     planning::plan_migration(config_resolution, detections, request)
