@@ -46,6 +46,51 @@
 
 ---
 
+## Milestone: v1.1 - Operator Runtime and Real-Network Sync
+
+**Shipped:** 2026-04-30
+**Phases:** 22 | **Plans:** 69 | **Counted summary tasks:** 60
+
+### What Was Built
+
+- Durable Fjall-backed runtime storage, restart recovery, real-network sync foundations, and bounded metrics and structured logs for operator-facing node runtime work.
+- The `open-bitcoin` operator binary with rich status output, config-path discovery, idempotent onboarding, service lifecycle commands, and a Ratatui dashboard.
+- Practical wallet-runtime workflows for preview and confirm send, managed-wallet backup export, wallet freshness reporting, and scoped RPC wallet selection.
+- An evidence-scoped migration and parity surface with read-only Core or Knots detection, dry-run planning, parity-ledger-backed notices, and selected-source service review truth.
+- Post-audit cleanup phases that closed operator-surface truth, benchmark fidelity, configless bootstrap, and migration detection ownership debt before archive.
+
+### What Worked
+
+- The shared status, service, metrics, and migration contracts let later phases and cleanup work repair truthfulness without reopening the whole runtime architecture.
+- Repo-native verification plus focused operator-binary tests caught regressions early enough that cleanup phases could stay narrow and auditable.
+- Preserving each audit rerun as its own artifact made late closeout decisions easy to justify instead of relying on memory or informal notes.
+
+### What Was Inefficient
+
+- Archive tooling still preferred the older baseline audit and live roadmap shape, so milestone closeout required manual curation instead of a clean one-shot archive.
+- Generated LOC bookkeeping resurfaced repeatedly whenever closeout or formatting changed the worktree after a prior refresh.
+- Several optional cleanup phases were needed because operator-surface truth and evidence bookkeeping drift were discovered only after broader milestone audit passes.
+
+### Patterns Established
+
+- Keep gap-closure work as explicit cleanup phases with their own verification and audit trail rather than burying archive-readiness fixes inside unrelated commits.
+- Treat status, dashboard, service, benchmark, and migration flows as one shared operator surface, with truthfulness checked end to end instead of per-command only.
+- Use the parity ledger, requirements ledger, and milestone audits together as a control plane for operator-facing claims.
+
+### Key Lessons
+
+1. Archive tooling should prefer the latest passed audit artifact, not just the oldest canonical filename.
+2. Generated reports that participate in verification should be refreshed as the last closeout step after formatting and archive edits settle.
+3. Operator-surface milestones benefit from explicit post-audit cleanup phases because truthfulness gaps are usually cross-cutting rather than isolated to one feature.
+
+### Cost Observations
+
+- Model mix: not measured in repo artifacts.
+- Sessions: multiple GSD execution, audit, cleanup, and archive turns across the v1.1 milestone.
+- Notable: cleanup phases were cheaper than reopening the main milestone scope, but earlier end-to-end operator-flow checks would likely have avoided some late archive work.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -53,14 +98,17 @@
 | Milestone | Phases | Key Change |
 | --- | ---: | --- |
 | v1.0 | 22 | Established parity-first implementation, verification, audit, and archive workflow. |
+| v1.1 | 22 | Extended the workflow to terminal-first operator surfaces, milestone rerun audits, and explicit post-audit cleanup phases before archive. |
 
 ### Cumulative Quality
 
 | Milestone | Requirements | Audit Status | Verification Posture |
 | --- | ---: | --- | --- |
 | v1.0 | 28/28 complete | Passed with GAP-01 through GAP-04 closed | Repo-native `scripts/verify.sh`, Rust checks, coverage, architecture policy, breadcrumb guard, and panic-site guard. |
+| v1.1 | 44/44 complete | Passed after Phase 33 and Phase 34 cleanup rerun | Repo-native `scripts/verify.sh`, operator-binary coverage, benchmark smoke and report validation, and Bazel smoke builds. |
 
 ### Top Lessons
 
 1. Keep milestone control artifacts as actively verified surfaces, not passive notes.
 2. Prefer narrow, auditable parity claims over broad unsupported equivalence statements.
+3. Close audit debt through explicit cleanup phases when the evidence trail matters as much as the fix itself.
