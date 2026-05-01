@@ -1,5 +1,11 @@
 # Project Research Summary
 
+> Historical note: this is pre-v1.1 roadmap research from 2026-04-26. It
+> informed the shipped v1.1 milestone, but current project truth now lives in
+> `.planning/PROJECT.md`, `.planning/STACK.md`, `.planning/ARCHITECTURE.md`,
+> `.planning/CONVENTIONS.md`, `.planning/MILESTONES.md`, and current docs under
+> `docs/`.
+
 **Project:** Open Bitcoin
 **Domain:** Bitcoin node operator runtime, service lifecycle, durable sync, and terminal dashboard
 **Researched:** 2026-04-26

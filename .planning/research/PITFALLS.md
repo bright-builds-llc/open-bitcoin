@@ -1,5 +1,9 @@
 # Pitfalls Research
 
+> Historical note: this is pre-v1.1 pitfalls research from 2026-04-26. Keep it
+> as planning history; use current parity, architecture, and operator docs for
+> shipped behavior.
+
 **Domain:** Bitcoin node operator runtime and migration
 **Researched:** 2026-04-26
 **Confidence:** HIGH

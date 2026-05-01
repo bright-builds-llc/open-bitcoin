@@ -58,16 +58,18 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
 
 ## Known gaps
 
-- address relay, `addrv2`, peer discovery, and DNS seeds
+- address relay, `addrv2`, peer discovery policy, and DNS-seed governance
 - encrypted transport and other non-v1 wire transports
 - compact blocks, blocktxn, filtered blocks, bloom filters, and compact filters
 - peer eviction, bans, resource-governance scoring, and timeout parity beyond
   the basic lifecycle surface
-- long-running socket orchestration and transport persistence outside the
-  hermetic in-memory adapter
+- daemon-integrated, unattended public-network full sync through `open-bitcoind`
+- long-running socket orchestration and transport persistence beyond the current
+  sync-runtime foundation
 
 ## Follow-up triggers
 
 Update this entry when later phases add discovery, compact-block relay,
-transport encryption, or connection-governance behavior that materially changes
-the externally visible networking surface.
+transport encryption, daemon-integrated sync orchestration, or
+connection-governance behavior that materially changes the externally visible
+networking surface.

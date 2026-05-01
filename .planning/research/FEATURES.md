@@ -1,5 +1,9 @@
 # Feature Research
 
+> Historical note: this is pre-v1.1 feature research from 2026-04-26. The
+> shipped v1.1 state and remaining boundaries are now tracked in
+> `.planning/MILESTONES.md`, `.planning/PROJECT.md`, and `docs/parity/`.
+
 **Domain:** Bitcoin node operator runtime and real-network sync
 **Researched:** 2026-04-26
 **Confidence:** HIGH

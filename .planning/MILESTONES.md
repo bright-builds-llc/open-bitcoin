@@ -2,7 +2,7 @@
 
 ## v1.1 Operator Runtime and Real-Network Sync (Shipped: 2026-04-30)
 
-**Delivered:** A shipped terminal-first operator runtime milestone with durable storage, real-network sync foundations, truthful status and service surfaces, practical wallet workflows, and audited dry-run migration guidance.
+**Delivered:** A shipped terminal-first operator runtime milestone with durable storage, real-network sync foundations, truthful status and service surfaces, practical wallet workflows, and audited dry-run migration guidance. The shipped scope does not include unattended public-mainnet full sync through `open-bitcoind`.
 
 **Phases completed:** 22 phases, 69 plans, 60 recorded summary tasks
 

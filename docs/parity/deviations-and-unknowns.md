@@ -58,6 +58,7 @@ current shipped claim:
 - packaged or signed release installation flows beyond the current source-built
   path
 - Windows service support
+- unattended public-mainnet full sync through `open-bitcoind`
 - public-network sync as part of the default local verification contract
 - hosted or public dashboard work beyond the local terminal dashboard
 - timing-threshold benchmark gates that would fail or pass a release on elapsed
@@ -98,7 +99,7 @@ Evidence to inspect:
 
 - [Phase 8 verification](../../.planning/phases/08-rpc-cli-and-config-parity/08-VERIFICATION.md)
 - [RPC, CLI, and config catalog](catalog/rpc-cli-config.md)
-- [Original pending todo](../../.planning/todos/pending/2026-04-18-ai-agent-friendly-cli-surface.md)
+- [Original completed todo](../../.planning/todos/completed/2026-04-18-ai-agent-friendly-cli-surface.md)
 
 Residual risk: broader command discovery, schema introspection, and dedicated
 agent affordances remain future design work, not Phase 10 implementation scope.

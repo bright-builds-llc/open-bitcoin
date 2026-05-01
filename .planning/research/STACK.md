@@ -1,5 +1,10 @@
 # Stack Research
 
+> Historical note: this is pre-v1.1 stack research from 2026-04-26. It contains
+> candidate dependencies and recommendations that may differ from what shipped.
+> Current stack truth lives in `.planning/STACK.md`, `packages/Cargo.toml`,
+> `MODULE.bazel`, and `scripts/verify.sh`.
+
 **Domain:** Bitcoin node operator runtime, terminal dashboard, service lifecycle, persistence, and real-network sync
 **Researched:** 2026-04-26
 **Confidence:** MEDIUM

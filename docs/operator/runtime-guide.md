@@ -4,6 +4,7 @@ This guide describes the current v1.1 operator workflow for Open Bitcoin on
 macOS and Linux. It is intentionally conservative: the runtime is source-built,
 service integration is local-machine only, migration remains dry-run only, and
 release readiness stays evidence-based rather than timing-threshold based.
+It does not describe an unattended public-mainnet full-sync daemon workflow yet.
 
 Use this guide for the practical workflow. Use
 [`docs/architecture/config-precedence.md`](../architecture/config-precedence.md),
@@ -17,10 +18,14 @@ The current install path is source-built. From the repo root:
 
 ```bash
 git submodule update --init --recursive
-bun install
+bun --version  # should match .bun-version
 bash scripts/install-git-hooks.sh
 cargo build --manifest-path packages/Cargo.toml --workspace --all-targets --all-features
 ```
+
+Bun is required as the pinned runtime for repo-owned TypeScript automation used
+by `bash scripts/verify.sh`. This repository does not have a `package.json`, so
+there is no `bun install` step.
 
 Before making release or operator claims on a checkout, run the repo-native
 verification contract:
@@ -37,11 +42,16 @@ smoke targets without requiring public-network sync.
 
 The current source build exposes three relevant binaries:
 
-- `open-bitcoind` for the node or RPC server runtime
+- `open-bitcoind` for the current local JSON-RPC server runtime
 - `open-bitcoin-cli` for the baseline-compatible RPC client path
 - `open-bitcoin` for Open Bitcoin-owned operator workflows such as onboarding,
   status, service management, dashboard, migration planning, and managed-wallet
   helpers
+
+`open-bitcoind` does not yet wire `DurableSyncRuntime` into an unattended
+daemon loop or initiate full public-network sync by itself. Treat real-network
+sync as an implemented foundation and benchmarked runtime surface, not as a
+supported mainnet full-sync operating recipe.
 
 You can run them directly from `packages/target/{debug,release}/` after
 building or through `cargo run`.
@@ -208,6 +218,11 @@ for the current audit matrix and explicit non-claims.
 Open Bitcoin keeps benchmark evidence as reproducible local reports, not release
 timing gates.
 
+The sync runtime has durable peer/sync foundations and TCP transport coverage,
+but public-network operation is still an explicit opt-in review surface. It is
+not part of the default local verification contract and is not yet exposed as an
+operator-ready `open-bitcoind` full-sync mode.
+
 Use the repo-owned wrapper:
 
 ```bash
@@ -237,6 +252,7 @@ Open Bitcoin does not currently claim all of the following:
 
 - packaged or signed release installation flows
 - Windows service support
+- unattended public-mainnet full sync through `open-bitcoind`
 - automatic migration apply, source-service cutover, or source-datadir mutation
 - external-wallet import, restore, or rewrite
 - public-network sync as part of the default local verification contract

@@ -742,7 +742,7 @@
         "evidence": [
           "docs/parity/catalog/drop-in-audit-and-migration.md",
           "docs/architecture/cli-command-architecture.md",
-          ".planning/phases/21-drop-in-parity-audit-and-migration/21-VERIFICATION.md",
+          ".planning/milestones/v1.1-phases/21-drop-in-parity-audit-and-migration/21-VERIFICATION.md",
           "packages/open-bitcoin-cli/tests/operator_binary.rs"
         ],
         "rationale": "Phase 21 makes the replacement story auditable through a dry-run migration planner, an explicit drop-in audit matrix, and surfaced intentional differences.",
@@ -822,11 +822,12 @@
         ],
         "rationale": "The current v1.1 operator runtime now has repo-owned documentation, verification, and parity-ledger evidence that keeps shipped behavior separate from deferred or out-of-scope work.",
         "known_gaps": [
-          "Packaged install flows, Windows service support, migration apply mode, and hosted dashboards remain outside the current release-hardened slice."
+          "Packaged install flows, Windows service support, unattended public-mainnet full sync through open-bitcoind, migration apply mode, and hosted dashboards remain outside the current release-hardened slice."
         ],
         "suspected_unknowns": [
           "Which future packaging or signed-release workflow should become the canonical install surface once source-built operation is no longer the only path.",
-          "Whether optional public-network release evidence should eventually supplement the current offline verification contract."
+          "Whether optional public-network release evidence should eventually supplement the current offline verification contract.",
+          "Which future milestone should wire DurableSyncRuntime into open-bitcoind as an operator-ready public-network full-sync flow."
         ]
       }
     ]

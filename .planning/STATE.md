@@ -4,8 +4,8 @@ milestone: v1.1
 milestone_name: Operator Runtime and Real-Network Sync
 status: completed
 stopped_at: v1.1 archived; ready for next milestone definition
-last_updated: "2026-04-30T14:16:54.980Z"
-last_activity: 2026-04-30 -- v1.1 archived; next milestone not yet defined
+last_updated: "2026-05-01T18:47:47Z"
+last_activity: 2026-05-01 -- docs freshness and planning-artifact audit refreshed current state
 progress:
   total_phases: 22
   completed_phases: 22
@@ -28,9 +28,16 @@ See: .planning/PROJECT.md (updated 2026-04-30)
 Phase: None
 Plan: None
 Status: Milestone archived
-Last activity: 2026-04-30 -- v1.1 archived; next milestone not yet defined
+Last activity: 2026-05-01 -- docs freshness and planning-artifact audit refreshed current state
 
 Progress: 22/22 phases complete
+
+## Archive Layout
+
+- v1.0 raw phase execution history remains in `.planning/phases/`.
+- v1.1 raw phase execution history is archived under `.planning/milestones/v1.1-phases/`.
+- Current-facing docs should link to the archived v1.1 phase paths, not old root post-v1.0 phase paths.
+- Some GSD health tooling versions still inspect only the root `.planning/phases/` directory and may warn about archived v1.1 phases even when the milestone archive is coherent.
 
 ## Performance Metrics
 
@@ -149,6 +156,7 @@ Recent decisions affecting current work:
 - The TUI dashboard depends on stable status, metrics, and sync-state projections; avoid building a decorative dashboard before those data contracts exist.
 - `bash scripts/verify.sh` passed again on the v1.1 archive closeout path after refreshing the tracked LOC report.
 - No new milestone has been defined yet; future planning should start from the archived v1.1 state rather than reusing its requirements ledger.
+- `open-bitcoind` is not yet an unattended public-mainnet full-sync daemon; real-network sync foundations remain separate until a future milestone wires and verifies that operator flow.
 
 ### Quick Tasks Completed
 

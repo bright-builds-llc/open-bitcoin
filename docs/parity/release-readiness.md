@@ -10,6 +10,8 @@ The current repository is ready for a release-readiness review of the in-scope
 v1.1 node, wallet, RPC, CLI, service, dashboard, migration-planning, and
 runtime-verification surfaces. Known follow-up work remains explicit in
 [`docs/parity/deviations-and-unknowns.md`](deviations-and-unknowns.md).
+This readiness claim does not include unattended public-mainnet full sync
+through `open-bitcoind`.
 
 Treat [`docs/parity/index.json`](index.json) as the machine-readable root and
 [`docs/parity/checklist.md`](checklist.md) as the human checklist view.
@@ -76,6 +78,7 @@ Current release-hardening deferrals include:
 - packaged or signed release installation flows beyond the source-built path
 - Windows service support
 - migration apply mode, source-datadir mutation, or automatic cutover
+- unattended public-mainnet full sync through `open-bitcoind`
 - public-network sync as part of the default local verification gate
 - timing-threshold benchmark gates that would pass or fail a release on elapsed
   numbers alone
@@ -106,6 +109,8 @@ Current suspected unknown themes from
 
 - Which packaging or signed-release workflow should become the canonical
   install surface once source-built operation is no longer the only path.
+- Which future milestone should wire `DurableSyncRuntime` into `open-bitcoind`
+  as an operator-ready public-network full-sync flow.
 - Whether any public-network sync verification should become optional release
   evidence in a later milestone without expanding the default local gate.
 - Deprecated or ambiguous hex acceptance at future user-facing boundaries.

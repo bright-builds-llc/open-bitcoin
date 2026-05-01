@@ -14,7 +14,7 @@ When a behavior is in scope, Open Bitcoin must behave like the pinned Knots base
 
 v1.0 Headless Parity shipped on 2026-04-26, and v1.1 Operator Runtime and Real-Network Sync shipped on 2026-04-30.
 
-The repository now includes durable Fjall-backed runtime storage, real-network sync foundations, bounded metrics and structured logs, the `open-bitcoin` operator binary, launchd/systemd service flows, a Ratatui dashboard, practical wallet runtime workflows, and an auditable dry-run migration surface for existing Core or Knots installs.
+The repository now includes durable Fjall-backed runtime storage, real-network sync foundations, bounded metrics and structured logs, the `open-bitcoin` operator binary, launchd/systemd service flows, a Ratatui dashboard, practical wallet runtime workflows, and an auditable dry-run migration surface for existing Core or Knots installs. Those sync foundations are not yet an operator-ready `open-bitcoind` public-mainnet full-sync mode.
 
 Milestone archives live under `.planning/milestones/`, including the shipped roadmap, requirements, and final passed audit for each completed milestone. One residual risk remains from the v1.1 audit: dashboard pseudoterminal repaint and raw-input behavior is still a manual validation surface rather than an end-to-end automated regression.
 
@@ -55,6 +55,7 @@ Define the next milestone through `/gsd-new-milestone` so new requirements, road
 - Bitcoin Knots `29.3.knots20260210` is the pinned behavioral reference baseline.
 - The current codebase totals 83,494 first-party lines, including 42,363 production Rust lines at the v1.1 archive point.
 - Repo-native verification remains centered on `bash scripts/verify.sh`, including Rust checks, parity breadcrumbs, benchmark smoke and report validation, and Bazel smoke builds.
+- Bun is a pinned runtime for repo-owned TypeScript automation, not a package-install surface; there is no `package.json` or `bun install` bootstrap step.
 - Operator-facing surfaces should stay quiet, information-dense, and work-focused: terminal dashboard controls, status output, onboarding copy, service actions, and migration guidance should help operators make decisions without marketing language.
 - Any migration from Bitcoin Core or Bitcoin Knots must treat the existing datadir and wallet data as high-value user data. Detection and explanation are in scope before automated mutation, while destructive apply-mode work remains deferred.
 - First-party code should continue to live in well-bounded packages, with Bazelisk and Bazel/Bzlmod as the top-level build entrypoint unless a later decision replaces that choice.
@@ -96,4 +97,4 @@ Define the next milestone through `/gsd-new-milestone` so new requirements, road
 </details>
 
 ---
-*Last updated: 2026-04-30 after v1.1 milestone archive*
+*Last updated: 2026-05-01 after docs freshness and planning-artifact audit*

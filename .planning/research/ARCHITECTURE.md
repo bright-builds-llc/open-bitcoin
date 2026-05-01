@@ -1,5 +1,10 @@
 # Architecture Research
 
+> Historical note: this is pre-v1.1 architecture research from 2026-04-26. It
+> describes the intended milestone shape before implementation. Current
+> architecture truth lives in `.planning/ARCHITECTURE.md` and
+> `docs/architecture/`.
+
 **Domain:** Service-managed Bitcoin node runtime with terminal operator UX
 **Researched:** 2026-04-26
 **Confidence:** MEDIUM

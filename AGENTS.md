@@ -67,7 +67,11 @@ Open Bitcoin is a headless Bitcoin node and wallet implementation in Rust, built
 
 ## Technology Stack
 
-Technology stack not yet documented. Will populate after codebase mapping or first phase.
+- Rust `1.94.1` and Rust 2024 edition are pinned by `rust-toolchain.toml` and `packages/Cargo.toml`.
+- Cargo workspace crates live under `packages/open-bitcoin-*`; Bazel/Bzlmod with `rules_rust` provides the top-level smoke build.
+- Bun is pinned by `.bun-version` and is used as a runtime for repo-owned TypeScript automation in `scripts/`; this repo has no `package.json`, so there is no `bun install` bootstrap step.
+- Current runtime dependencies include Fjall for durable storage, Tokio/Axum for the JSON-RPC server, clap for the operator CLI, Ratatui/Crossterm for the terminal dashboard, jsonc-parser for Open Bitcoin JSONC config, and serde/serde_json for stable data shapes.
+- Full stack notes live in `.planning/STACK.md`.
 
 <!-- GSD:stack-end -->
 
@@ -75,7 +79,11 @@ Technology stack not yet documented. Will populate after codebase mapping or fir
 
 ## Conventions
 
-Conventions not yet established. Will populate as patterns emerge during development.
+- Preserve externally observable Bitcoin Knots `29.3.knots20260210` behavior for in-scope surfaces and keep parity evidence auditable through `docs/parity/`.
+- Keep pure Bitcoin domain behavior in functional-core crates and isolate filesystem, process, network, terminal, RPC, service-manager, and durable-storage effects in shell adapters.
+- Use `bash scripts/verify.sh` as the repo-native verification contract before marking work complete.
+- Treat migration as dry-run-first and backup-aware; do not imply source datadir, service, config, or wallet mutation without an explicit future plan.
+- Full conventions live in `.planning/CONVENTIONS.md`.
 
 <!-- GSD:conventions-end -->
 
@@ -83,7 +91,12 @@ Conventions not yet established. Will populate as patterns emerge during develop
 
 ## Architecture
 
-Architecture not yet mapped. Follow existing patterns found in the codebase.
+- Pure-core crates cover primitives, codec, consensus, chainstate, mempool, networking, and wallet behavior.
+- `open-bitcoin-node` owns adapter-facing runtime orchestration, durable storage, status, metrics, logs, sync foundations, and wallet rescans.
+- `open-bitcoin-rpc` owns JSON-RPC dispatch and the current `open-bitcoind` local RPC server binary.
+- `open-bitcoin-cli` owns `open-bitcoin-cli` for baseline-compatible RPC calls and `open-bitcoin` for Open Bitcoin-specific operator workflows.
+- `DurableSyncRuntime` is implemented as a sync foundation but is not yet wired into `open-bitcoind` as an unattended public-mainnet full-sync daemon loop.
+- Full architecture notes live in `.planning/ARCHITECTURE.md`.
 
 <!-- GSD:architecture-end -->
 
