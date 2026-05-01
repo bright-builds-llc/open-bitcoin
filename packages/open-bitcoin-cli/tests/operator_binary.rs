@@ -137,6 +137,22 @@ fn open_bitcoin_status_json_uses_fake_running_rpc() {
 }
 
 #[test]
+fn http_request_complete_waits_for_lowercase_content_length_body() {
+    // Arrange
+    let headers = b"POST / HTTP/1.1\r\ncontent-length: 5\r\n\r\n";
+    let incomplete_request = [headers.as_slice(), b"abc"].concat();
+    let complete_request = [headers.as_slice(), b"abcde"].concat();
+
+    // Act
+    let incomplete_is_complete = http_request_complete(&incomplete_request);
+    let complete_is_complete = http_request_complete(&complete_request);
+
+    // Assert
+    assert!(!incomplete_is_complete);
+    assert!(complete_is_complete);
+}
+
+#[test]
 fn open_bitcoin_status_human_no_color_is_support_oriented() {
     // Arrange
     let sandbox = TestSandbox::new("human");
@@ -1004,9 +1020,11 @@ fn http_request_complete(buffer: &[u8]) -> bool {
 fn parse_content_length(headers: &[u8]) -> Option<usize> {
     std::str::from_utf8(headers).ok().and_then(|text| {
         text.lines().find_map(|line| {
-            line.strip_prefix("Content-Length:")
-                .map(str::trim)
-                .and_then(|value| value.parse::<usize>().ok())
+            let (name, value) = line.split_once(':')?;
+            if name.eq_ignore_ascii_case("content-length") {
+                return value.trim().parse::<usize>().ok();
+            }
+            None
         })
     })
 }
