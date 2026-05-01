@@ -109,10 +109,11 @@ Current suspected unknown themes from
 
 - Which packaging or signed-release workflow should become the canonical
   install surface once source-built operation is no longer the only path.
-- Which future milestone should wire `DurableSyncRuntime` into `open-bitcoind`
-  as an operator-ready public-network full-sync flow.
+- v1.2 Full Mainnet Network Syncing is now the planned milestone for wiring
+  `DurableSyncRuntime` into `open-bitcoind` as an operator-ready
+  public-network full-sync flow.
 - Whether any public-network sync verification should become optional release
-  evidence in a later milestone without expanding the default local gate.
+  evidence without expanding the default local gate.
 - Deprecated or ambiguous hex acceptance at future user-facing boundaries.
 - Serializer parameter contexts that may need explicit typed Rust boundaries as
   disk and networking adapters grow.

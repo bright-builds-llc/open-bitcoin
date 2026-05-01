@@ -2,7 +2,7 @@
 
 ## What This Is
 
-Open Bitcoin is a Bitcoin node and wallet implementation in Rust, built to preserve externally observable behavior from Bitcoin Knots `29.3.knots20260210` where a behavior is in scope. After shipping v1.1, the project now includes a headless parity baseline plus a terminal-first operator surface for status, service management, dashboard workflows, wallet operations, and dry-run migration planning.
+Open Bitcoin is a Bitcoin node and wallet implementation in Rust, built to preserve externally observable behavior from Bitcoin Knots `29.3.knots20260210` where a behavior is in scope. After shipping v1.1, the project includes a headless parity baseline plus a terminal-first operator surface for status, service management, dashboard workflows, wallet operations, and dry-run migration planning. The active v1.2 milestone is focused on making full public-mainnet initial block download an explicit, operator-ready `open-bitcoind` workflow.
 
 It is for contributors and operators who want a reference-grade node with a cleaner, more type-safe internal architecture, auditable parity, and a strict separation between pure domain logic and effectful adapters.
 
@@ -14,20 +14,20 @@ When a behavior is in scope, Open Bitcoin must behave like the pinned Knots base
 
 v1.0 Headless Parity shipped on 2026-04-26, and v1.1 Operator Runtime and Real-Network Sync shipped on 2026-04-30.
 
-The repository now includes durable Fjall-backed runtime storage, real-network sync foundations, bounded metrics and structured logs, the `open-bitcoin` operator binary, launchd/systemd service flows, a Ratatui dashboard, practical wallet runtime workflows, and an auditable dry-run migration surface for existing Core or Knots installs. Those sync foundations are not yet an operator-ready `open-bitcoind` public-mainnet full-sync mode.
+The repository now includes durable Fjall-backed runtime storage, real-network sync foundations, bounded metrics and structured logs, the `open-bitcoin` operator binary, launchd/systemd service flows, a Ratatui dashboard, practical wallet runtime workflows, and an auditable dry-run migration surface for existing Core or Knots installs. v1.2 exists to wire those sync foundations into `open-bitcoind` as an opt-in public-mainnet sync workflow with validated headers, blocks, durable restart/resume, and operator observability.
 
 Milestone archives live under `.planning/milestones/`, including the shipped roadmap, requirements, and final passed audit for each completed milestone. One residual risk remains from the v1.1 audit: dashboard pseudoterminal repaint and raw-input behavior is still a manual validation surface rather than an end-to-end automated regression.
 
-## Next Milestone Goals
+## Current Milestone Goals
 
-No post-v1.1 milestone is defined yet. Candidate directions already captured in the archived future-requirement set include:
+v1.2 Full Mainnet Network Syncing is the active milestone. Its goal is to make public-mainnet initial block download an explicit, operator-ready `open-bitcoind` workflow without overclaiming full production-node or production-wallet readiness.
 
-- external metrics export and broader observability integrations
-- signed or packaged installation flows
-- Windows service support
-- a future Open Bitcoin-designed GUI rather than Qt parity
-
-Define the next milestone through `/gsd-new-milestone` so new requirements, roadmap scope, and archive boundaries stay aligned.
+- Wire daemon startup, config, and shutdown around an explicit mainnet sync mode.
+- Resolve and maintain bounded outbound mainnet peer connections.
+- Perform validated header-first sync, block download, block connection, durable restart/resume, and reorg-aware recovery.
+- Surface truthful progress, health, resource pressure, and stop/resume state through status, dashboard, metrics, logs, and RPC-facing output.
+- Keep default verification hermetic while adding opt-in live mainnet smoke and benchmark evidence.
+- Update operator and parity docs so shipped claims match the new daemon sync behavior.
 
 ## Requirements
 
@@ -38,7 +38,14 @@ Define the next milestone through `/gsd-new-milestone` so new requirements, road
 
 ### Active
 
-(None yet — define with `/gsd-new-milestone`.)
+See `.planning/REQUIREMENTS.md` for the active v1.2 requirements. The active requirement groups are:
+
+- Daemon Sync Activation and Safety
+- Peer Discovery and Connectivity
+- Headers, Blocks, and Chain Progress
+- Runtime Resilience
+- Operator Observability
+- Verification, Parity Evidence, and Docs
 
 ### Out of Scope
 
@@ -48,6 +55,7 @@ Define the next milestone through `/gsd-new-milestone` so new requirements, road
 - Broad unsupported drop-in replacement claims beyond the audited evidence surface - parity claims remain scoped to shipped artifacts and documented deviations.
 - Public marketing sites or hosted dashboards - completed milestones prioritize local operator surfaces and node correctness.
 - Replacing `bitcoin.conf` compatibility with an Open Bitcoin-only config format - JSONC layers on top of, not instead of, baseline config behavior.
+- Full production-node, production-funds wallet, inbound peer serving, address relay, compact block relay, and mempool transaction relay claims - these are deferred beyond v1.2.
 
 ## Context
 
@@ -61,6 +69,7 @@ Define the next milestone through `/gsd-new-milestone` so new requirements, road
 - First-party code should continue to live in well-bounded packages, with Bazelisk and Bazel/Bzlmod as the top-level build entrypoint unless a later decision replaces that choice.
 - The project explicitly avoids existing Rust Bitcoin libraries in the production path and instead exports first-party Rust Bitcoin libraries from this repository.
 - Verification must emphasize externally observable parity, pure-core correctness, hermetic integration testing, and contributor guardrails against accidental architectural drift.
+- v1.2 public-network checks must remain opt-in so `bash scripts/verify.sh` stays deterministic by default.
 
 ## Constraints
 
@@ -84,6 +93,7 @@ Define the next milestone through `/gsd-new-milestone` so new requirements, road
 | Adopt a terminal-first operator surface for v1.1 | A Ratatui dashboard and rich CLI status move operator usability forward without changing the headless product boundary | Shipped in v1.1 |
 | Treat migration as explicit, dry-run-first, and reversible | Existing Core or Knots datadirs and wallets are high-value user data and must not be mutated implicitly | Shipped and audited in v1.1 |
 | Keep shared service definitions at scan scope through `DetectionScan` | Future consumers should opt into service ownership association explicitly instead of inheriting misleading per-installation copies | Implemented in Phase 34 and archived with v1.1 |
+| Scope v1.2 to opt-in daemon initial block download | Full mainnet sync should first be proven through `open-bitcoind` headers, blocks, restart/resume, and observability before broader P2P, wallet, or production service claims | Active v1.2 planning decision |
 
 ## Historical Context
 
@@ -97,4 +107,4 @@ Define the next milestone through `/gsd-new-milestone` so new requirements, road
 </details>
 
 ---
-*Last updated: 2026-05-01 after docs freshness and planning-artifact audit*
+*Last updated: 2026-05-01 after defining the v1.2 full mainnet network syncing milestone*

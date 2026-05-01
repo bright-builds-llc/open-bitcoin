@@ -1,45 +1,49 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: Operator Runtime and Real-Network Sync
-status: completed
-stopped_at: v1.1 archived; ready for next milestone definition
-last_updated: "2026-05-01T18:47:47Z"
-last_activity: 2026-05-01 -- docs freshness and planning-artifact audit refreshed current state
+milestone: v1.2
+milestone_name: Full Mainnet Network Syncing
+status: planned
+stopped_at: Phase 35 ready for /gsd-plan-phase
+last_updated: "2026-05-01T21:02:43Z"
+last_activity: 2026-05-01 -- v1.2 full mainnet network syncing milestone defined
 progress:
-  total_phases: 22
-  completed_phases: 22
-  total_plans: 69
-  completed_plans: 69
-  percent: 100
+  total_phases: 6
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-30)
+See: .planning/PROJECT.md (updated 2026-05-01)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Planning the next milestone after the v1.1 archive
+**Current focus:** v1.2 Full Mainnet Network Syncing
 
 ## Current Position
 
-Phase: None
+Phase: Phase 35: Daemon Mainnet Sync Activation
 Plan: None
-Status: Milestone archived
-Last activity: 2026-05-01 -- docs freshness and planning-artifact audit refreshed current state
+Status: Milestone planned; next action is `/gsd-plan-phase 35`
+Last activity: 2026-05-01 -- v1.2 full mainnet network syncing milestone defined
 
-Progress: 22/22 phases complete
+Progress: 0/6 phases complete
 
 ## Archive Layout
 
 - v1.0 raw phase execution history remains in `.planning/phases/`.
 - v1.1 raw phase execution history is archived under `.planning/milestones/v1.1-phases/`.
+- v1.2 active requirements and roadmap live in `.planning/REQUIREMENTS.md` and `.planning/ROADMAP.md`.
 - Current-facing docs should link to the archived v1.1 phase paths, not old root post-v1.0 phase paths.
 - Some GSD health tooling versions still inspect only the root `.planning/phases/` directory and may warn about archived v1.1 phases even when the milestone archive is coherent.
+- The same health check may warn about planned v1.2 Phases 35 through 40 until `/gsd-plan-phase` creates each phase directory.
 
 ## Performance Metrics
+
+Active v1.2 execution metrics have not started yet. Historical v1.1 metrics are preserved below for continuity.
 
 **Velocity:**
 
@@ -117,6 +121,7 @@ Recent decisions affecting current work:
 - [v1.1]: Build a terminal dashboard and rich status output before any desktop GUI work.
 - [v1.1]: Treat migration from Bitcoin Core or Bitcoin Knots as explicit, dry-run-first, and backup-aware.
 - [v1.1]: Keep macOS service lifecycle higher priority than Linux, while designing the interface so Linux systemd support fits the same command surface.
+- [v1.2]: Scope full mainnet network syncing to opt-in `open-bitcoind` initial block download with validated headers/blocks, durable restart/resume, and operator observability before broader P2P, wallet, or production-node claims.
 - [Phase 16]: Metrics history remains snapshot-backed in the existing Fjall metrics namespace instead of introducing per-sample keys.
 - [Phase 16]: Unavailable metrics history is reported through MetricsStatus with MetricKind::ALL metadata, not fake numeric samples.
 - [Phase 16]: Runtime logs use repo-owned line-delimited JSON with Unix-day filenames instead of tracing/appender dependencies.
@@ -143,7 +148,9 @@ Recent decisions affecting current work:
 - v1.0 Headless Parity archived on 2026-04-26.
 - v1.1 Operator Runtime and Real-Network Sync starts at Phase 13, continuing phase numbering after the archived v1.0 milestone.
 - Phase 34 completed as the final optional v1.1 cleanup on 2026-04-30.
-- v1.1 Operator Runtime and Real-Network Sync archived on 2026-04-30; the next step is defining a fresh milestone with `/gsd-new-milestone`.
+- v1.1 Operator Runtime and Real-Network Sync archived on 2026-04-30.
+- v1.2 Full Mainnet Network Syncing starts at Phase 35 and runs through Phase 40.
+- The next step is `/gsd-plan-phase 35`.
 
 ### Pending Todos
 
@@ -151,12 +158,10 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
-- Durable database choice must be made deliberately before real-network sync relies on it.
 - Automatic or destructive migration remains out of scope after Phase 21; later phases must preserve the current dry-run-first safety boundary until an apply-mode design is explicitly planned.
-- The TUI dashboard depends on stable status, metrics, and sync-state projections; avoid building a decorative dashboard before those data contracts exist.
 - `bash scripts/verify.sh` passed again on the v1.1 archive closeout path after refreshing the tracked LOC report.
-- No new milestone has been defined yet; future planning should start from the archived v1.1 state rather than reusing its requirements ledger.
-- `open-bitcoind` is not yet an unattended public-mainnet full-sync daemon; real-network sync foundations remain separate until a future milestone wires and verifies that operator flow.
+- v1.2 public-network testing must stay opt-in; default verification should remain hermetic and deterministic.
+- v1.2 must preserve the distinction between operator-ready mainnet IBD testing and deferred production-node, production-wallet, inbound-serving, address-relay, compact-block, and mempool-relay claims.
 
 ### Quick Tasks Completed
 
@@ -174,5 +179,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-04-30T07:55:55Z
-Stopped at: v1.1 archived; ready for next milestone definition
+Stopped at: Phase 35 ready for /gsd-plan-phase
 Resume file: .planning/ROADMAP.md

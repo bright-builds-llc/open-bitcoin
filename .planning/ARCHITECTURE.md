@@ -58,7 +58,7 @@ auditable.
 integration, TCP peer transport, telemetry, and benchmarkable runtime behavior.
 It is not yet wired into `open-bitcoind` as an unattended public-mainnet
 full-sync daemon loop. Docs and parity claims must preserve that boundary until
-a later milestone plans and verifies daemon-integrated sync operation.
+v1.2 implements and verifies daemon-integrated sync operation.
 
 ## Migration Boundary
 

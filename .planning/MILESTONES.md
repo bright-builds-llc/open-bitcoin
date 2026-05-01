@@ -29,7 +29,7 @@
 - `.planning/milestones/v1.1-MILESTONE-AUDIT.md`
 - `.planning/milestones/v1.1-phases/`
 
-**What's next:** Define the next milestone with `/gsd-new-milestone`.
+**What's next:** v1.2 Full Mainnet Network Syncing is active; see `.planning/ROADMAP.md` and `.planning/REQUIREMENTS.md`.
 
 ---
 
@@ -61,6 +61,6 @@
 - `.planning/milestones/v1.0-REQUIREMENTS.md`
 - `.planning/milestones/v1.0-MILESTONE-AUDIT.md`
 
-**What's next:** Define the next milestone with `/gsd-new-milestone`.
+**What's next:** v1.1 shipped and v1.2 Full Mainnet Network Syncing is active; see `.planning/ROADMAP.md`.
 
 ---
