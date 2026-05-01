@@ -12,7 +12,7 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 
-use open_bitcoin_node::{SyncNetwork, core::wallet::AddressNetwork};
+use open_bitcoin_node::{SyncNetwork, SyncPeerAddress, core::wallet::AddressNetwork};
 
 use super::{
     ConfigPrecedence, ConfigSource, DEFAULT_COOKIE_FILE_NAME, DaemonSyncMode, RpcAuthConfig,
@@ -382,6 +382,45 @@ fn open_bitcoin_jsonc_accepts_mainnet_sync_activation_contract() {
     // Assert
     assert!(config.sync.network_enabled);
     assert_eq!(config.sync.mode, "mainnet-ibd");
+    assert_eq!(config.sync.maybe_manual_peers, None);
+    assert_eq!(config.sync.maybe_dns_seeds, None);
+    assert_eq!(config.sync.maybe_target_outbound_peers, None);
+}
+
+#[test]
+fn open_bitcoin_jsonc_accepts_manual_peers_seed_overrides_and_target_count() {
+    // Arrange
+    let text = r#"
+    {
+      "sync": {
+        "network_enabled": true,
+        "mode": "mainnet-ibd",
+        "manual_peers": ["198.51.100.10:8333", "[2001:db8::7]:8334"],
+        "dns_seeds": ["seed-one.example:8335", "seed-two.example"],
+        "target_outbound_peers": 2
+      }
+    }
+    "#;
+
+    // Act
+    let config = parse_open_bitcoin_jsonc_config(text).expect("jsonc config");
+
+    // Assert
+    assert_eq!(
+        config.sync.maybe_manual_peers,
+        Some(vec![
+            "198.51.100.10:8333".to_string(),
+            "[2001:db8::7]:8334".to_string(),
+        ])
+    );
+    assert_eq!(
+        config.sync.maybe_dns_seeds,
+        Some(vec![
+            "seed-one.example:8335".to_string(),
+            "seed-two.example".to_string(),
+        ])
+    );
+    assert_eq!(config.sync.maybe_target_outbound_peers, Some(2));
 }
 
 #[test]
@@ -410,6 +449,45 @@ fn daemon_sync_loads_from_open_bitcoin_jsonc_when_explicitly_enabled() {
     assert_eq!(runtime.sync.mode, DaemonSyncMode::MainnetIbd);
     assert_eq!(runtime.sync.runtime.network, SyncNetwork::Mainnet);
     assert!(runtime.sync.is_enabled());
+}
+
+#[test]
+fn daemon_sync_jsonc_applies_manual_peers_seed_overrides_and_target_count() {
+    // Arrange
+    let sandbox = TestDirectory::new("daemon-sync-peer-config");
+    fs::write(
+        sandbox.child("open-bitcoin.jsonc"),
+        r#"
+        {
+          "sync": {
+            "network_enabled": true,
+            "mode": "mainnet-ibd",
+            "manual_peers": ["198.51.100.10", "203.0.113.2:8334"],
+            "dns_seeds": ["seed-one.example:8335"],
+            "target_outbound_peers": 2
+          }
+        }
+        "#,
+    )
+    .expect("open bitcoin config");
+
+    // Act
+    let runtime = load_runtime_config_for_args(&[cli_arg("datadir", &sandbox.path)], &sandbox.path)
+        .expect("mainnet sync config should load");
+
+    // Assert
+    assert_eq!(runtime.sync.runtime.target_outbound_peers, 2);
+    assert_eq!(
+        runtime.sync.runtime.manual_peers,
+        vec![
+            SyncPeerAddress::manual("198.51.100.10", 8333),
+            SyncPeerAddress::manual("203.0.113.2", 8334),
+        ]
+    );
+    assert_eq!(
+        runtime.sync.runtime.dns_seeds,
+        vec!["seed-one.example:8335".to_string()]
+    );
 }
 
 #[test]
@@ -484,6 +562,32 @@ fn daemon_sync_rejects_partial_or_non_mainnet_activation() {
         non_mainnet_error.to_string(),
         "open-bitcoind mainnet sync activation requires -chain=main or -main; current chain is regtest."
     );
+}
+
+#[test]
+fn daemon_sync_rejects_invalid_peer_config() {
+    // Arrange
+    let sandbox = TestDirectory::new("daemon-sync-invalid-peer-config");
+    fs::write(
+        sandbox.child("open-bitcoin.jsonc"),
+        r#"
+        {
+          "sync": {
+            "network_enabled": true,
+            "mode": "mainnet-ibd",
+            "manual_peers": ["localhost:not-a-port"]
+          }
+        }
+        "#,
+    )
+    .expect("open bitcoin config");
+
+    // Act
+    let error = load_runtime_config_for_args(&[cli_arg("datadir", &sandbox.path)], &sandbox.path)
+        .expect_err("invalid sync peer should fail");
+
+    // Assert
+    assert_eq!(error.to_string(), "invalid rpc port: not-a-port");
 }
 
 #[test]

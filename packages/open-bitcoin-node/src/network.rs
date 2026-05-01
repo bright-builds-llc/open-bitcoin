@@ -131,6 +131,12 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         &self.peer_manager
     }
 
+    pub fn disconnect_peer(&mut self, peer_id: PeerId) -> Result<(), ManagedNetworkError> {
+        self.peer_manager.remove_peer(peer_id)?;
+        self.peer_ids.remove(&peer_id);
+        Ok(())
+    }
+
     pub fn seed_header_store(&mut self, header_store: HeaderStore) {
         self.peer_manager.seed_header_store(header_store);
     }
@@ -377,7 +383,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                     }
                 }
                 PeerAction::Disconnect(_) => {
-                    self.peer_ids.remove(&peer_id);
+                    self.disconnect_peer(peer_id)?;
                 }
             }
         }

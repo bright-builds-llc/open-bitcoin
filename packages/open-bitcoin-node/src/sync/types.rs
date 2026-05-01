@@ -3,7 +3,7 @@
 // - packages/bitcoin-knots/src/headerssync.cpp
 // - packages/bitcoin-knots/src/sync.cpp
 
-use std::{fmt, path::PathBuf};
+use std::{fmt, net::SocketAddr, path::PathBuf};
 
 use open_bitcoin_core::{consensus::ConsensusParams, primitives::NetworkMagic};
 use open_bitcoin_network::{NetworkError, WireNetworkMessage};
@@ -20,6 +20,8 @@ const DEFAULT_READ_TIMEOUT_MS: u64 = 5_000;
 const DEFAULT_MAX_MESSAGES_PER_PEER: usize = 64;
 const DEFAULT_MAX_SYNC_ROUNDS: usize = 8;
 const DEFAULT_MAX_PEER_RETRIES: u8 = 1;
+const DEFAULT_TARGET_OUTBOUND_PEERS: usize = 4;
+const DEFAULT_RETRY_BACKOFF_MS: u64 = 1_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SyncNetwork {
@@ -143,12 +145,30 @@ impl SyncPeerAddress {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResolvedSyncPeerAddress {
+    pub peer: SyncPeerAddress,
+    pub endpoint: SocketAddr,
+}
+
+impl ResolvedSyncPeerAddress {
+    pub fn new(peer: SyncPeerAddress, endpoint: SocketAddr) -> Self {
+        Self { peer, endpoint }
+    }
+
+    pub fn label(&self) -> String {
+        format!("{} -> {}", self.peer.label(), self.endpoint)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SyncRuntimeConfig {
     pub network: SyncNetwork,
     pub manual_peers: Vec<SyncPeerAddress>,
     pub dns_seeds: Vec<String>,
+    pub target_outbound_peers: usize,
     pub connect_timeout_ms: u64,
     pub read_timeout_ms: u64,
+    pub retry_backoff_ms: u64,
     pub max_messages_per_peer: usize,
     pub max_rounds: usize,
     pub max_peer_retries: u8,
@@ -179,8 +199,10 @@ impl Default for SyncRuntimeConfig {
                 .iter()
                 .map(|seed| (*seed).to_string())
                 .collect(),
+            target_outbound_peers: DEFAULT_TARGET_OUTBOUND_PEERS,
             connect_timeout_ms: DEFAULT_CONNECT_TIMEOUT_MS,
             read_timeout_ms: DEFAULT_READ_TIMEOUT_MS,
+            retry_backoff_ms: DEFAULT_RETRY_BACKOFF_MS,
             max_messages_per_peer: DEFAULT_MAX_MESSAGES_PER_PEER,
             max_rounds: DEFAULT_MAX_SYNC_ROUNDS,
             max_peer_retries: DEFAULT_MAX_PEER_RETRIES,
@@ -198,10 +220,55 @@ pub enum PeerSyncState {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PeerFailureReason {
+    AddressResolution,
+    Connect,
+    Stall,
+    InvalidMagic,
+    Network,
+    Storage,
+}
+
+impl fmt::Display for PeerFailureReason {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::AddressResolution => write!(f, "address_resolution"),
+            Self::Connect => write!(f, "connect"),
+            Self::Stall => write!(f, "stall"),
+            Self::InvalidMagic => write!(f, "invalid_magic"),
+            Self::Network => write!(f, "network"),
+            Self::Storage => write!(f, "storage"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PeerCapabilitySummary {
+    pub services_bits: u64,
+    pub user_agent: String,
+    pub start_height: i32,
+    pub wtxidrelay: bool,
+    pub prefers_headers: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PeerContribution {
+    pub messages_processed: usize,
+    pub headers_received: usize,
+    pub blocks_received: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PeerSyncOutcome {
     pub peer: SyncPeerAddress,
+    pub maybe_resolved_endpoint: Option<String>,
+    pub network: SyncNetwork,
     pub state: PeerSyncState,
     pub attempts: u8,
+    pub contribution: PeerContribution,
+    pub maybe_last_activity_unix_seconds: Option<u64>,
+    pub maybe_capabilities: Option<PeerCapabilitySummary>,
+    pub maybe_failure_reason: Option<PeerFailureReason>,
     pub maybe_error: Option<String>,
 }
 
@@ -416,7 +483,7 @@ pub trait SyncTransport {
 
     fn connect(
         &mut self,
-        peer: &SyncPeerAddress,
+        peer: &ResolvedSyncPeerAddress,
         config: &SyncRuntimeConfig,
     ) -> Result<Self::Session, SyncRuntimeError>;
 }
@@ -434,7 +501,6 @@ fn peer_outcome_log_records(
     timestamp_unix_seconds: u64,
 ) -> Vec<StructuredLogRecord> {
     let mut records = Vec::new();
-
     match outcome.state {
         PeerSyncState::Connected => {}
         PeerSyncState::Stalled => records.push(StructuredLogRecord {
@@ -446,7 +512,13 @@ fn peer_outcome_log_records(
         PeerSyncState::Failed => records.push(StructuredLogRecord {
             level: StructuredLogLevel::Error,
             source: "sync".to_string(),
-            message: "peer failed during sync; inspect network health".to_string(),
+            message: format!(
+                "peer failed during sync reason={}",
+                outcome
+                    .maybe_failure_reason
+                    .as_ref()
+                    .map_or("unknown".to_string(), ToString::to_string)
+            ),
             timestamp_unix_seconds,
         }),
     }

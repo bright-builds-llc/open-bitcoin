@@ -6,6 +6,7 @@ use std::{
     cell::RefCell,
     collections::VecDeque,
     fs, io,
+    net::{IpAddr, Ipv4Addr, SocketAddr},
     path::{Path, PathBuf},
     rc::Rc,
     time::{SystemTime, UNIX_EPOCH},
@@ -21,9 +22,9 @@ use open_bitcoin_core::{
 use open_bitcoin_network::{HeadersMessage, InventoryList, VersionMessage, WireNetworkMessage};
 
 use super::{
-    DurableSyncRuntime, PeerSyncOutcome, PeerSyncState, SyncNetwork, SyncPeerAddress,
-    SyncPeerSession, SyncRunSummary, SyncRuntimeConfig, SyncRuntimeError, SyncTransport,
-    TcpPeerTransport,
+    DurableSyncRuntime, PeerContribution, PeerFailureReason, PeerSyncOutcome, PeerSyncState,
+    ResolvedSyncPeerAddress, SyncNetwork, SyncPeerAddress, SyncPeerResolver, SyncPeerSession,
+    SyncRunSummary, SyncRuntimeConfig, SyncRuntimeError, SyncTransport, TcpPeerTransport,
 };
 use crate::{
     FieldAvailability, FjallNodeStore, LogRetentionPolicy, MetricKind, MetricSample, PersistMode,
@@ -69,17 +70,45 @@ struct ScriptedSession {
     sent: Rc<RefCell<Vec<WireNetworkMessage>>>,
 }
 
+#[derive(Debug, Clone)]
+struct ScriptedResolver {
+    results: VecDeque<Result<Vec<ResolvedSyncPeerAddress>, SyncRuntimeError>>,
+}
+
+impl ScriptedResolver {
+    fn new(results: Vec<Result<Vec<ResolvedSyncPeerAddress>, SyncRuntimeError>>) -> Self {
+        Self {
+            results: results.into(),
+        }
+    }
+}
+
+impl SyncPeerResolver for ScriptedResolver {
+    fn resolve(
+        &mut self,
+        peer: &SyncPeerAddress,
+        _config: &SyncRuntimeConfig,
+    ) -> Result<Vec<ResolvedSyncPeerAddress>, SyncRuntimeError> {
+        self.results.pop_front().unwrap_or_else(|| {
+            Ok(vec![ResolvedSyncPeerAddress::new(
+                peer.clone(),
+                SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), peer.port),
+            )])
+        })
+    }
+}
+
 impl SyncTransport for ScriptedTransport {
     type Session = ScriptedSession;
 
     fn connect(
         &mut self,
-        peer: &SyncPeerAddress,
+        peer: &ResolvedSyncPeerAddress,
         _config: &SyncRuntimeConfig,
     ) -> Result<Self::Session, SyncRuntimeError> {
         if self.fail_connect {
             return Err(SyncRuntimeError::Io {
-                peer: format!("{}:{}", peer.host, peer.port),
+                peer: peer.label(),
                 message: "scripted connect failure".to_string(),
             });
         }
@@ -88,6 +117,38 @@ impl SyncTransport for ScriptedTransport {
             inbound: self.scripts.pop_front().unwrap_or_default().into(),
             sent: Rc::clone(&self.sent),
         })
+    }
+}
+
+fn resolved_manual_peer(host: &str, port: u16) -> ResolvedSyncPeerAddress {
+    ResolvedSyncPeerAddress::new(
+        SyncPeerAddress::manual(host, port),
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), port),
+    )
+}
+
+fn peer_outcome(
+    peer: SyncPeerAddress,
+    state: PeerSyncState,
+    attempts: u8,
+    maybe_failure_reason: Option<PeerFailureReason>,
+    maybe_error: Option<String>,
+) -> PeerSyncOutcome {
+    PeerSyncOutcome {
+        maybe_resolved_endpoint: Some(format!("127.0.0.1:{}", peer.port)),
+        network: SyncNetwork::Regtest,
+        contribution: PeerContribution {
+            messages_processed: 0,
+            headers_received: 0,
+            blocks_received: 0,
+        },
+        maybe_last_activity_unix_seconds: None,
+        maybe_capabilities: None,
+        peer,
+        state,
+        attempts,
+        maybe_failure_reason,
+        maybe_error,
     }
 }
 
@@ -315,24 +376,27 @@ fn sync_summary_projects_structured_log_records() {
         best_header_height: 44,
         best_block_height: 43,
         peer_outcomes: vec![
-            PeerSyncOutcome {
-                peer: SyncPeerAddress::manual("127.0.0.1", 18_444),
-                state: PeerSyncState::Stalled,
-                attempts: 1,
-                maybe_error: None,
-            },
-            PeerSyncOutcome {
-                peer: SyncPeerAddress::manual("203.0.113.10", 18_444),
-                state: PeerSyncState::Failed,
-                attempts: 3,
-                maybe_error: Some("scripted network failure".to_string()),
-            },
-            PeerSyncOutcome {
-                peer: SyncPeerAddress::manual("198.51.100.9", 18_444),
-                state: PeerSyncState::Connected,
-                attempts: 2,
-                maybe_error: None,
-            },
+            peer_outcome(
+                SyncPeerAddress::manual("127.0.0.1", 18_444),
+                PeerSyncState::Stalled,
+                1,
+                Some(PeerFailureReason::Stall),
+                None,
+            ),
+            peer_outcome(
+                SyncPeerAddress::manual("203.0.113.10", 18_444),
+                PeerSyncState::Failed,
+                3,
+                Some(PeerFailureReason::Network),
+                Some("scripted network failure".to_string()),
+            ),
+            peer_outcome(
+                SyncPeerAddress::manual("198.51.100.9", 18_444),
+                PeerSyncState::Connected,
+                2,
+                None,
+                None,
+            ),
         ],
         health_signals: vec![
             HealthSignal {
@@ -461,6 +525,187 @@ fn sync_runtime_errors_project_storage_and_network_health_signals() {
     );
     assert!(network_signal.message.len() <= 160);
     assert!(storage_signal.message.len() <= 160);
+}
+
+#[test]
+fn sync_once_with_resolver_records_resolution_failures() {
+    // Arrange
+    let path = temp_store_path("resolver-failure");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime = DurableSyncRuntime::open(
+        store,
+        SyncRuntimeConfig {
+            manual_peers: vec![SyncPeerAddress::manual("seed.invalid", 18_444)],
+            dns_seeds: Vec::new(),
+            ..sync_config()
+        },
+    )
+    .expect("runtime");
+    let mut transport = ScriptedTransport::new(Vec::new());
+    let mut resolver = ScriptedResolver::new(vec![Err(SyncRuntimeError::AddressResolution {
+        peer: "seed.invalid:18444".to_string(),
+        message: "scripted lookup failure".to_string(),
+    })]);
+
+    // Act
+    let summary = runtime
+        .sync_once_with_resolver(&mut transport, &mut resolver, 1_777_225_166)
+        .expect("summary");
+
+    // Assert
+    assert_eq!(summary.attempted_peers, 1);
+    assert_eq!(summary.failed_peers, 1);
+    assert_eq!(
+        summary.peer_outcomes[0].maybe_failure_reason,
+        Some(PeerFailureReason::AddressResolution)
+    );
+    assert!(
+        summary.peer_outcomes[0]
+            .maybe_error
+            .as_ref()
+            .is_some_and(|message| message.contains("address resolution failed"))
+    );
+}
+
+#[test]
+fn sync_once_rotates_to_alternative_peer_after_stall() {
+    // Arrange
+    let path = temp_store_path("peer-rotation");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime = DurableSyncRuntime::open(
+        store,
+        SyncRuntimeConfig {
+            manual_peers: vec![
+                SyncPeerAddress::manual("198.51.100.10", 18_444),
+                SyncPeerAddress::manual("198.51.100.11", 18_444),
+            ],
+            dns_seeds: Vec::new(),
+            target_outbound_peers: 1,
+            max_messages_per_peer: 3,
+            ..sync_config()
+        },
+    )
+    .expect("runtime");
+    let mut transport = ScriptedTransport::new(vec![
+        Vec::new(),
+        headers_script(1, vec![header(BlockHash::from_byte_array([0_u8; 32]), 2)]),
+    ]);
+    let mut resolver = ScriptedResolver::new(vec![
+        Ok(vec![ResolvedSyncPeerAddress::new(
+            SyncPeerAddress::manual("198.51.100.10", 18_444),
+            SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 18_444),
+        )]),
+        Ok(vec![ResolvedSyncPeerAddress::new(
+            SyncPeerAddress::manual("198.51.100.11", 18_444),
+            SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 2)), 18_444),
+        )]),
+    ]);
+
+    // Act
+    let summary = runtime
+        .sync_once_with_resolver(&mut transport, &mut resolver, 1_777_225_177)
+        .expect("summary");
+
+    // Assert
+    assert_eq!(summary.attempted_peers, 2);
+    assert_eq!(summary.peer_outcomes.len(), 2);
+    assert_eq!(summary.peer_outcomes[0].state, PeerSyncState::Stalled);
+    assert_eq!(
+        summary.peer_outcomes[0].maybe_failure_reason,
+        Some(PeerFailureReason::Stall)
+    );
+    assert_eq!(summary.peer_outcomes[1].state, PeerSyncState::Connected);
+    assert_eq!(summary.peer_outcomes[1].contribution.headers_received, 1);
+}
+
+#[test]
+fn sync_once_stops_after_target_outbound_peer_budget_is_met() {
+    // Arrange
+    let path = temp_store_path("target-outbound-budget");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime = DurableSyncRuntime::open(
+        store,
+        SyncRuntimeConfig {
+            manual_peers: vec![
+                SyncPeerAddress::manual("198.51.100.20", 18_444),
+                SyncPeerAddress::manual("198.51.100.21", 18_444),
+            ],
+            dns_seeds: Vec::new(),
+            target_outbound_peers: 1,
+            ..sync_config()
+        },
+    )
+    .expect("runtime");
+    let mut transport =
+        ScriptedTransport::new(vec![version_verack_script(0), version_verack_script(0)]);
+    let mut resolver = ScriptedResolver::new(vec![
+        Ok(vec![resolved_manual_peer("198.51.100.20", 18_444)]),
+        Ok(vec![resolved_manual_peer("198.51.100.21", 18_444)]),
+    ]);
+
+    // Act
+    let summary = runtime
+        .sync_once_with_resolver(&mut transport, &mut resolver, 1_777_225_188)
+        .expect("summary");
+
+    // Assert
+    assert_eq!(summary.attempted_peers, 1);
+    assert_eq!(summary.peer_outcomes.len(), 1);
+}
+
+#[test]
+fn sync_outcome_captures_peer_capabilities_and_endpoint() {
+    // Arrange
+    let path = temp_store_path("peer-capabilities");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime = DurableSyncRuntime::open(
+        store,
+        SyncRuntimeConfig {
+            manual_peers: vec![SyncPeerAddress::manual("198.51.100.30", 18_444)],
+            dns_seeds: Vec::new(),
+            max_messages_per_peer: 4,
+            ..sync_config()
+        },
+    )
+    .expect("runtime");
+    let mut transport = ScriptedTransport::new(vec![vec![
+        WireNetworkMessage::Version(VersionMessage {
+            start_height: 3,
+            ..VersionMessage::default()
+        }),
+        WireNetworkMessage::WtxidRelay,
+        WireNetworkMessage::SendHeaders,
+        WireNetworkMessage::Verack,
+    ]]);
+    let mut resolver = ScriptedResolver::new(vec![Ok(vec![resolved_manual_peer(
+        "198.51.100.30",
+        18_444,
+    )])]);
+
+    // Act
+    let summary = runtime
+        .sync_once_with_resolver(&mut transport, &mut resolver, 1_777_225_199)
+        .expect("summary");
+
+    // Assert
+    let outcome = &summary.peer_outcomes[0];
+    assert_eq!(outcome.state, PeerSyncState::Connected);
+    assert_eq!(
+        outcome.maybe_resolved_endpoint.as_deref(),
+        Some("127.0.0.1:18444")
+    );
+    let capabilities = outcome
+        .maybe_capabilities
+        .as_ref()
+        .expect("peer capabilities");
+    assert!(capabilities.services_bits > 0);
+    assert_eq!(capabilities.start_height, 3);
+    assert!(capabilities.wtxidrelay);
+    assert!(capabilities.prefers_headers);
 }
 
 #[test]

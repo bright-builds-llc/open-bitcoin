@@ -40,6 +40,8 @@ pub enum PeerAction {
 pub struct PeerState {
     pub role: ConnectionRole,
     pub remote_start_height: i32,
+    pub remote_services_bits: u64,
+    pub remote_user_agent: String,
     pub remote_wtxidrelay: bool,
     pub remote_prefers_headers: bool,
     pub remote_version_received: bool,
@@ -59,6 +61,8 @@ impl PeerState {
         Self {
             role,
             remote_start_height: -1,
+            remote_services_bits: 0,
+            remote_user_agent: String::new(),
             remote_wtxidrelay: false,
             remote_prefers_headers: false,
             remote_version_received: false,
@@ -170,6 +174,13 @@ impl PeerManager {
 
     pub fn peer_state(&self, peer_id: PeerId) -> Option<&PeerState> {
         self.peers.get(&peer_id)
+    }
+
+    pub fn remove_peer(&mut self, peer_id: PeerId) -> Result<(), NetworkError> {
+        let Some(_) = self.peers.remove(&peer_id) else {
+            return Err(NetworkError::UnknownPeer(peer_id));
+        };
+        Ok(())
     }
 
     pub fn add_inbound_peer(&mut self, peer_id: PeerId) -> Result<(), NetworkError> {
@@ -330,6 +341,8 @@ impl PeerManager {
 
         peer.remote_version_received = true;
         peer.remote_start_height = version.start_height;
+        peer.remote_services_bits = version.services.bits();
+        peer.remote_user_agent = version.user_agent.clone();
 
         let mut actions = Vec::new();
         if !peer.local_version_sent {

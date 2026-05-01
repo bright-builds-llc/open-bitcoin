@@ -13,8 +13,9 @@ use std::{
 
 use open_bitcoin_network::{HeaderEntry, HeadersMessage, VersionMessage, WireNetworkMessage};
 use open_bitcoin_node::{
-    MetricKind, MetricSample, MetricsStorageSnapshot, PersistMode, RuntimeMetadata, SyncNetwork,
-    SyncPeerAddress, SyncPeerSession, SyncRuntimeConfig, SyncRuntimeError, SyncTransport,
+    MetricKind, MetricSample, MetricsStorageSnapshot, PersistMode, ResolvedSyncPeerAddress,
+    RuntimeMetadata, SyncNetwork, SyncPeerAddress, SyncPeerSession, SyncRuntimeConfig,
+    SyncRuntimeError, SyncTransport,
     core::{
         chainstate::{ChainPosition, ChainstateSnapshot, Coin},
         consensus::{block_hash, block_merkle_root, check_block_header},
@@ -90,7 +91,7 @@ impl SyncTransport for ScriptedTransport {
 
     fn connect(
         &mut self,
-        _peer: &SyncPeerAddress,
+        _peer: &ResolvedSyncPeerAddress,
         _config: &SyncRuntimeConfig,
     ) -> Result<Self::Session, SyncRuntimeError> {
         Ok(ScriptedSession {

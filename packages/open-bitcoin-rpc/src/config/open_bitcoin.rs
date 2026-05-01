@@ -125,6 +125,12 @@ pub struct StorageConfig {
 pub struct SyncConfig {
     pub network_enabled: bool,
     pub mode: String,
+    #[serde(rename = "manual_peers")]
+    pub maybe_manual_peers: Option<Vec<String>>,
+    #[serde(rename = "dns_seeds")]
+    pub maybe_dns_seeds: Option<Vec<String>>,
+    #[serde(rename = "target_outbound_peers")]
+    pub maybe_target_outbound_peers: Option<usize>,
 }
 
 impl SyncConfig {
@@ -132,6 +138,9 @@ impl SyncConfig {
         Self {
             network_enabled: false,
             mode: "disabled".to_string(),
+            maybe_manual_peers: None,
+            maybe_dns_seeds: None,
+            maybe_target_outbound_peers: None,
         }
     }
 }

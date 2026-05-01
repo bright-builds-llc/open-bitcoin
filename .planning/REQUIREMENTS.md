@@ -28,10 +28,10 @@ or unattended packaged-service hardening.
 
 ### Peer Discovery and Connectivity
 
-- [ ] **PEERMAIN-01**: Daemon sync can resolve configured mainnet DNS seeds and manual peers, with deterministic tests using injected resolvers instead of public DNS.
-- [ ] **PEERMAIN-02**: The runtime maintains a bounded outbound peer set with per-peer lifecycle state, connection timeout, retry backoff, stall detection, and clean disconnect handling.
-- [ ] **PEERMAIN-03**: Peer selection and rotation prefer healthy peers without letting flaky, stalled, or invalid-data peers block initial block download indefinitely.
-- [ ] **PEERMAIN-04**: Peer telemetry records address source, negotiated network, service capability summary, sync contribution, failure reason, and last activity without leaking low-level socket details into pure-core crates.
+- [x] **PEERMAIN-01**: Daemon sync can resolve configured mainnet DNS seeds and manual peers, with deterministic tests using injected resolvers instead of public DNS.
+- [x] **PEERMAIN-02**: The runtime maintains a bounded outbound peer set with per-peer lifecycle state, connection timeout, retry backoff, stall detection, and clean disconnect handling.
+- [x] **PEERMAIN-03**: Peer selection and rotation prefer healthy peers without letting flaky, stalled, or invalid-data peers block initial block download indefinitely.
+- [x] **PEERMAIN-04**: Peer telemetry records address source, negotiated network, service capability summary, sync contribution, failure reason, and last activity without leaking low-level socket details into pure-core crates.
 
 ### Headers, Blocks, and Chain Progress
 
@@ -44,7 +44,7 @@ or unattended packaged-service hardening.
 ### Runtime Resilience
 
 - [ ] **RESUME-01**: Restart recovery reconstructs the daemon sync plan from durable headers, block index metadata, chainstate, runtime metadata, and any incomplete download state.
-- [ ] **RESUME-02**: Invalid blocks, invalid headers, malformed messages, timeouts, stalls, resolver failures, and storage errors produce typed runtime failures and operator-visible health signals instead of panics.
+- [x] **RESUME-02**: Invalid blocks, invalid headers, malformed messages, timeouts, stalls, resolver failures, and storage errors produce typed runtime failures and operator-visible health signals instead of panics.
 - [ ] **RESUME-03**: The sync runtime includes reindex, repair, or resync guidance for corrupted or incompatible stores without mutating user data implicitly.
 - [ ] **RESUME-04**: Shutdown, restart, and service-manager stop flows leave a coherent status snapshot that explains whether sync is active, paused, stopped, recovering, or failed.
 
@@ -57,8 +57,8 @@ or unattended packaged-service hardening.
 
 ### Verification, Parity Evidence, and Docs
 
-- [ ] **VERMAIN-01**: Each v1.2 phase keeps `bash scripts/verify.sh` hermetic and passing by default; public-network tests remain explicitly opt-in.
-- [ ] **VERMAIN-02**: Deterministic integration tests cover peer failures, resolver failures, invalid data, restarts, partial stores, reorg-like competing branches, bounded resources, and status truthfulness without depending on public mainnet.
+- [x] **VERMAIN-01**: Each v1.2 phase keeps `bash scripts/verify.sh` hermetic and passing by default; public-network tests remain explicitly opt-in.
+- [x] **VERMAIN-02**: Deterministic integration tests cover peer failures, resolver failures, invalid data, restarts, partial stores, reorg-like competing branches, bounded resources, and status truthfulness without depending on public mainnet.
 - [ ] **VERMAIN-03**: Optional live mainnet smoke and benchmark commands verify that `open-bitcoind` can make real mainnet progress, emit reproducible reports, and fail clearly when network or resource prerequisites are missing.
 - [ ] **VERMAIN-04**: Operator docs explain prerequisites, disk/network expectations, config, startup commands, status interpretation, stop/resume behavior, troubleshooting, and known limitations for v1.2 mainnet sync.
 - [ ] **VERMAIN-05**: Parity docs, checklists, and machine-readable indexes distinguish v1.2 shipped mainnet-sync claims from deferred Knots/Core behaviors.

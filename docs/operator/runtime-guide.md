@@ -91,7 +91,10 @@ JSONC form:
 {
   "sync": {
     "network_enabled": true,
-    "mode": "mainnet-ibd"
+    "mode": "mainnet-ibd",
+    "manual_peers": ["198.51.100.10:8333"],
+    "dns_seeds": ["seed.bitcoin.sipa.be", "dnsseed.bluematt.me"],
+    "target_outbound_peers": 2
   }
 }
 ```
@@ -113,6 +116,13 @@ Important boundaries:
   it in `bitcoin.conf`.
 - If the JSONC file is not at `<datadir>/open-bitcoin.jsonc`, pass the explicit
   Open Bitcoin config path with `-openbitcoinconf=<path>`.
+- `sync.manual_peers` configures explicit outbound peers as `host` or
+  `host:port`; IPv6 literals should use bracket form such as
+  `[2001:db8::7]:8333`.
+- `sync.dns_seeds` overrides the default mainnet seed list. Set it to an empty
+  array if you want manual peers only for deterministic or controlled testing.
+- `sync.target_outbound_peers` caps how many successful outbound peer slots a
+  sync round tries to satisfy before moving on.
 - `sync.network_enabled = true` without `sync.mode = "mainnet-ibd"` is rejected
   so partial config does not accidentally activate public-network behavior.
 - Activation is rejected on `-regtest`, `-signet`, or `-testnet`; this Phase 35
@@ -120,7 +130,9 @@ Important boundaries:
 - The daemon preflight reports the durable best header and block heights, then
   continues with the normal local RPC server. Peer discovery, outbound peer
   lifecycle, header-first IBD, block download/connect, and live mainnet smoke
-  evidence remain later v1.2 phases.
+  evidence remain later v1.2 phases. Phase 36 adds deterministic resolver and
+  peer-lifecycle plumbing, but it still does not claim completed header or
+  block sync.
 
 ## First Run And Onboarding
 

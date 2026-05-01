@@ -13,33 +13,46 @@ use crate::{
     status::{HealthSignal, HealthSignalLevel},
 };
 
-use super::{PeerSyncOutcome, PeerSyncState, SyncPeerAddress, SyncRunSummary, SyncRuntimeConfig};
+use super::{
+    PeerCapabilitySummary, PeerContribution, PeerFailureReason, PeerSyncOutcome, PeerSyncState,
+    ResolvedSyncPeerAddress, SyncNetwork, SyncRunSummary, SyncRuntimeConfig,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct PeerProgress {
-    pub(super) peer: SyncPeerAddress,
+    pub(super) peer: ResolvedSyncPeerAddress,
+    pub(super) network: SyncNetwork,
     pub(super) state: PeerSyncState,
     pub(super) attempts: u8,
     pub(super) messages_processed: usize,
     pub(super) headers_received: usize,
     pub(super) blocks_received: usize,
+    pub(super) maybe_last_activity_unix_seconds: Option<u64>,
+    pub(super) maybe_capabilities: Option<PeerCapabilitySummary>,
+    pub(super) maybe_failure_reason: Option<PeerFailureReason>,
 }
 
 #[derive(Debug)]
 pub(super) struct PeerFailure {
+    pub(super) peer: ResolvedSyncPeerAddress,
     pub(super) error: super::SyncRuntimeError,
     pub(super) attempts: u8,
+    pub(super) reason: PeerFailureReason,
 }
 
 impl PeerProgress {
-    pub(super) fn new(peer: SyncPeerAddress, attempts: u8) -> Self {
+    pub(super) fn new(peer: ResolvedSyncPeerAddress, network: SyncNetwork, attempts: u8) -> Self {
         Self {
             peer,
+            network,
             state: PeerSyncState::Connected,
             attempts,
             messages_processed: 0,
             headers_received: 0,
             blocks_received: 0,
+            maybe_last_activity_unix_seconds: None,
+            maybe_capabilities: None,
+            maybe_failure_reason: None,
         }
     }
 
@@ -57,9 +70,19 @@ impl PeerProgress {
 
     pub(super) fn into_outcome(self, maybe_error: Option<String>) -> PeerSyncOutcome {
         PeerSyncOutcome {
-            peer: self.peer,
+            peer: self.peer.peer,
+            maybe_resolved_endpoint: Some(self.peer.endpoint.to_string()),
+            network: self.network,
             state: self.state,
             attempts: self.attempts,
+            contribution: PeerContribution {
+                messages_processed: self.messages_processed,
+                headers_received: self.headers_received,
+                blocks_received: self.blocks_received,
+            },
+            maybe_last_activity_unix_seconds: self.maybe_last_activity_unix_seconds,
+            maybe_capabilities: self.maybe_capabilities,
+            maybe_failure_reason: self.maybe_failure_reason,
             maybe_error,
         }
     }

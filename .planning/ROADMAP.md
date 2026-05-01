@@ -22,7 +22,7 @@ transaction relay, or unattended packaged-service hardening.
 ## Phases
 
 - [x] **Phase 35: Daemon Mainnet Sync Activation** — Add the explicit daemon runtime boundary, config, flags, startup/shutdown semantics, and safety copy for opt-in public-mainnet sync.
-- [ ] **Phase 36: Mainnet Peer Discovery and Outbound Lifecycle** — Resolve DNS/manual peers, maintain bounded outbound peer state, rotate unhealthy peers, and expose peer lifecycle telemetry.
+- [x] **Phase 36: Mainnet Peer Discovery and Outbound Lifecycle** — Resolve DNS/manual peers, maintain bounded outbound peer state, rotate unhealthy peers, and expose peer lifecycle telemetry. (completed 2026-05-01)
 - [ ] **Phase 37: Header-First Mainnet Sync Integration** — Drive validated header synchronization from durable state to the best known mainnet header chain through the daemon sync task.
 - [ ] **Phase 38: Block Download, Connect, and Restart Recovery** — Download, validate, persist, and connect blocks with bounded in-flight work, reorg-aware state transitions, and restart recovery.
 - [ ] **Phase 39: Operator Sync Observability and Control** — Make mainnet sync progress, health, stop/resume state, resource pressure, and support evidence truthful across status, dashboard, metrics, logs, and RPC surfaces.
@@ -60,7 +60,7 @@ transaction relay, or unattended packaged-service hardening.
 4. Peer telemetry records address source, negotiated network, capabilities, contribution, failure reason, and last activity.
 5. Pure-core crates remain free of direct socket, DNS, clock, and filesystem effects.
 
-**Plans:** TBD by `/gsd-plan-phase 36`
+**Plans:** 4/4 plans complete
 
 ### Phase 37: Header-First Mainnet Sync Integration
 

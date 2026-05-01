@@ -1,10 +1,12 @@
 // Parity breadcrumbs:
 // - packages/bitcoin-knots/src/net.cpp
+// - packages/bitcoin-knots/src/netbase.cpp
+// - packages/bitcoin-knots/src/netbase.h
 // - packages/bitcoin-knots/src/protocol.h
 
 use std::{
     io::{self, Read, Write},
-    net::{SocketAddr, TcpStream, ToSocketAddrs},
+    net::TcpStream,
     time::Duration,
 };
 
@@ -14,7 +16,9 @@ use open_bitcoin_core::{
 };
 use open_bitcoin_network::{ParsedNetworkMessage, WireNetworkMessage};
 
-use super::{SyncPeerAddress, SyncPeerSession, SyncRuntimeConfig, SyncRuntimeError, SyncTransport};
+use super::{
+    ResolvedSyncPeerAddress, SyncPeerSession, SyncRuntimeConfig, SyncRuntimeError, SyncTransport,
+};
 
 const WIRE_HEADER_LEN: usize = 24;
 
@@ -31,13 +35,14 @@ impl SyncTransport for TcpPeerTransport {
 
     fn connect(
         &mut self,
-        peer: &SyncPeerAddress,
+        peer: &ResolvedSyncPeerAddress,
         config: &SyncRuntimeConfig,
     ) -> Result<Self::Session, SyncRuntimeError> {
-        let socket = resolve_first_socket(peer)?;
-        let stream =
-            TcpStream::connect_timeout(&socket, Duration::from_millis(config.connect_timeout_ms))
-                .map_err(|error| io_error(peer.label(), error))?;
+        let stream = TcpStream::connect_timeout(
+            &peer.endpoint,
+            Duration::from_millis(config.connect_timeout_ms),
+        )
+        .map_err(|error| io_error(peer.label(), error))?;
         stream
             .set_read_timeout(Some(Duration::from_millis(config.read_timeout_ms)))
             .map_err(|error| io_error(peer.label(), error))?;
@@ -95,23 +100,6 @@ impl SyncPeerSession for TcpPeerSession {
         wire.extend_from_slice(&payload);
         Ok(Some(ParsedNetworkMessage::decode_wire(&wire)?.message))
     }
-}
-
-fn resolve_first_socket(peer: &SyncPeerAddress) -> Result<SocketAddr, SyncRuntimeError> {
-    let mut addresses = (peer.host.as_str(), peer.port)
-        .to_socket_addrs()
-        .map_err(|error| SyncRuntimeError::AddressResolution {
-            peer: peer.label(),
-            message: error.to_string(),
-        })?;
-    let Some(address) = addresses.next() else {
-        return Err(SyncRuntimeError::AddressResolution {
-            peer: peer.label(),
-            message: "no socket addresses returned".to_string(),
-        });
-    };
-
-    Ok(address)
 }
 
 fn read_message_header(

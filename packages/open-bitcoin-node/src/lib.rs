@@ -42,9 +42,10 @@ pub use storage::{
     SchemaVersion, StorageError, StorageNamespace, StorageRecoveryAction, StoredHeaderEntries,
 };
 pub use sync::{
-    DurableSyncRuntime, PeerSyncOutcome, PeerSyncState, SyncNetwork, SyncPeerAddress,
-    SyncPeerSession, SyncPeerSource, SyncRunSummary, SyncRuntimeConfig, SyncRuntimeError,
-    SyncTransport, TcpPeerTransport, WalletRescanRuntime,
+    DurableSyncRuntime, PeerCapabilitySummary, PeerContribution, PeerFailureReason,
+    PeerSyncOutcome, PeerSyncState, ResolvedSyncPeerAddress, SyncNetwork, SyncPeerAddress,
+    SyncPeerResolver, SyncPeerSession, SyncPeerSource, SyncRunSummary, SyncRuntimeConfig,
+    SyncRuntimeError, SyncTransport, SystemSyncPeerResolver, TcpPeerTransport, WalletRescanRuntime,
 };
 pub use wallet::{ManagedWallet, MemoryWalletStore, WalletStore};
 pub use wallet_registry::{

@@ -1,6 +1,8 @@
 // Parity breadcrumbs:
 // - packages/bitcoin-knots/src/common/args.cpp
 // - packages/bitcoin-knots/src/common/config.cpp
+// - packages/bitcoin-knots/src/httprpc.cpp
+// - packages/bitcoin-knots/src/rpc/server.cpp
 
 //! Chain-selection helpers for baseline-compatible daemon config loading.
 

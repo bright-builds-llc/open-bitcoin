@@ -15,6 +15,15 @@ file. The daemon also accepts Open Bitcoin-only CLI overrides such as
 `-openbitcoinconf=<path>` and `-openbitcoinsync=mainnet-ibd`; these keys are not
 valid `bitcoin.conf` settings.
 
+Phase 36 extends that JSONC-owned sync surface with peer-lifecycle config:
+
+- `sync.manual_peers` for explicit outbound peers (`host` or `host:port`)
+- `sync.dns_seeds` for overriding the default mainnet DNS seed list
+- `sync.target_outbound_peers` for the bounded outbound target per sync round
+
+Those settings remain Open Bitcoin-only knobs owned by `open-bitcoin.jsonc`, not
+baseline `bitcoin.conf`.
+
 The operator resolver reports the selected Open Bitcoin JSONC path, baseline-compatible `bitcoin.conf` path, datadir, structured log directory, metrics store directory, network, and credential source. Credential reporting is metadata-only: cookie files are reported by path/source and presence, never by cookie contents.
 
 ## Precedence

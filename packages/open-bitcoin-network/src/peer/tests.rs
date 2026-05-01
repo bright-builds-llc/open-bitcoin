@@ -239,6 +239,13 @@ fn helper_methods_and_unknown_peer_errors_are_covered() {
     assert!(manager.peer_state(99).is_none());
     assert_eq!(
         manager
+            .remove_peer(99)
+            .expect_err("unknown peer")
+            .to_string(),
+        "unknown peer: 99",
+    );
+    assert_eq!(
+        manager
             .handle_message(99, WireNetworkMessage::Version(Default::default()), 1)
             .expect_err("unknown peer")
             .to_string(),
@@ -361,6 +368,9 @@ fn ping_block_announcement_and_duplicate_add_paths_are_exercised() {
         WireNetworkMessage::Inv(InventoryList { inventory })
         if inventory[0].inventory_type == InventoryType::Transaction
     ));
+
+    manager.remove_peer(5).expect("remove peer");
+    assert!(manager.peer_state(5).is_none());
 }
 
 #[test]

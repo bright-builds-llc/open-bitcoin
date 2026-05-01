@@ -616,10 +616,13 @@
     {
       "label": "node-sync-tcp",
       "files": [
+        "packages/open-bitcoin-node/src/sync/resolver.rs",
         "packages/open-bitcoin-node/src/sync/tcp.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/net.cpp",
+        "packages/bitcoin-knots/src/netbase.cpp",
+        "packages/bitcoin-knots/src/netbase.h",
         "packages/bitcoin-knots/src/protocol.h"
       ]
     },
