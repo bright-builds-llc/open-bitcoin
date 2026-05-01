@@ -58,7 +58,8 @@ current shipped claim:
 - packaged or signed release installation flows beyond the current source-built
   path
 - Windows service support
-- unattended public-mainnet full sync through `open-bitcoind`
+- unattended public-mainnet full sync through `open-bitcoind`; Phase 35 adds
+  opt-in mainnet activation and durable preflight only
 - public-network sync as part of the default local verification contract
 - hosted or public dashboard work beyond the local terminal dashboard
 - timing-threshold benchmark gates that would fail or pass a release on elapsed

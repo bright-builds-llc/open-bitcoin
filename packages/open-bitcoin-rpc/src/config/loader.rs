@@ -17,12 +17,18 @@ use std::{
 use open_bitcoin_node::core::wallet::AddressNetwork;
 
 use super::{
-    ConfigError, DEFAULT_COOKIE_FILE_NAME, DEFAULT_RPC_HOST, RpcAuthConfig, RpcClientConfig,
-    RpcServerConfig, RuntimeConfig, WalletRuntimeConfig, default_rpc_port,
+    ConfigError, DEFAULT_COOKIE_FILE_NAME, DEFAULT_RPC_HOST, DaemonSyncMode, RpcAuthConfig,
+    RpcClientConfig, RpcServerConfig, RuntimeConfig, WalletRuntimeConfig, default_rpc_port,
 };
 
+mod chain;
+mod open_bitcoin_runtime;
 mod rpc_address;
 
+use chain::{
+    config_section_name, determine_chain, parse_chain_key, parse_chain_name, supported_chain_key,
+};
+use open_bitcoin_runtime::{load_open_bitcoin_config, resolve_daemon_sync_config};
 use rpc_address::parse_rpc_client_address;
 
 const BITCOIN_CONF_FILE_NAME: &str = "bitcoin.conf";
@@ -38,6 +44,8 @@ struct CliSettings {
     maybe_rpc_user: Option<String>,
     maybe_rpc_password: Option<String>,
     maybe_cookie_file: Option<PathBuf>,
+    maybe_open_bitcoin_config_path: Option<PathBuf>,
+    maybe_daemon_sync_mode: Option<DaemonSyncMode>,
 }
 
 #[derive(Debug, Clone)]
@@ -108,6 +116,13 @@ pub(super) fn load_runtime_config_for_args(
             data_dir.display()
         )));
     }
+    let open_bitcoin_base_dir = maybe_data_dir.as_deref().unwrap_or(&initial_data_dir);
+    let maybe_open_bitcoin_config = load_open_bitcoin_config(&cli, open_bitcoin_base_dir)?;
+    let sync = resolve_daemon_sync_config(
+        chain,
+        cli.maybe_daemon_sync_mode,
+        maybe_open_bitcoin_config.as_ref(),
+    )?;
 
     let rpc_bind = cli
         .maybe_rpc_bind
@@ -153,6 +168,7 @@ pub(super) fn load_runtime_config_for_args(
             auth,
         },
         wallet: WalletRuntimeConfig::default(),
+        sync,
     })
 }
 
@@ -242,6 +258,22 @@ fn parse_cli_args(cli_args: &[OsString]) -> Result<CliSettings, ConfigError> {
             "rpccookiefile" => {
                 settings.maybe_cookie_file = Some(PathBuf::from(maybe_value.unwrap_or_default()));
             }
+            "openbitcoinconf" | "openbitcoinconfig" => {
+                let Some(value) = maybe_value else {
+                    return Err(ConfigError::new(
+                        "Error parsing command line arguments: Can not set -openbitcoinconf with no value. Please specify value with -openbitcoinconf=value.",
+                    ));
+                };
+                settings.maybe_open_bitcoin_config_path = Some(PathBuf::from(value));
+            }
+            "openbitcoinsync" => {
+                let Some(value) = maybe_value else {
+                    return Err(ConfigError::new(
+                        "Error parsing command line arguments: Can not set -openbitcoinsync with no value. Please specify value with -openbitcoinsync=value.",
+                    ));
+                };
+                settings.maybe_daemon_sync_mode = Some(DaemonSyncMode::parse(value)?);
+            }
             "includeconf" | "rpcauth" | "rpcwhitelist" => {
                 return Err(ConfigError::new(format!(
                     "Error parsing command line arguments: Invalid parameter {arg}"
@@ -276,26 +308,6 @@ fn parse_port(value: &str) -> Result<u16, ConfigError> {
     value
         .parse::<u16>()
         .map_err(|_| ConfigError::new(format!("invalid rpc port: {value}")))
-}
-
-fn parse_chain_key(key: &str) -> Result<AddressNetwork, ConfigError> {
-    match key {
-        "main" => Ok(AddressNetwork::Mainnet),
-        "test" | "testnet" => Ok(AddressNetwork::Testnet),
-        "signet" => Ok(AddressNetwork::Signet),
-        "regtest" => Ok(AddressNetwork::Regtest),
-        _ => Err(ConfigError::new(format!("invalid chain key: {key}"))),
-    }
-}
-
-fn parse_chain_name(value: &str) -> Result<AddressNetwork, ConfigError> {
-    match value {
-        "main" | "mainnet" => Ok(AddressNetwork::Mainnet),
-        "test" | "testnet" | "testnet3" => Ok(AddressNetwork::Testnet),
-        "signet" => Ok(AddressNetwork::Signet),
-        "regtest" => Ok(AddressNetwork::Regtest),
-        _ => Err(ConfigError::new(format!("invalid chain value: {value}"))),
-    }
 }
 
 fn parse_config_entries(
@@ -460,30 +472,6 @@ fn supported_config_key(key: &str) -> bool {
     )
 }
 
-fn supported_chain_key(key: &str) -> bool {
-    matches!(key, "main" | "test" | "testnet" | "signet" | "regtest")
-}
-
-fn determine_chain(
-    maybe_cli_chain: Option<AddressNetwork>,
-    entries: &[ConfigEntry],
-) -> Result<AddressNetwork, ConfigError> {
-    if let Some(chain) = maybe_cli_chain {
-        return Ok(chain);
-    }
-
-    let mut maybe_chain = None;
-    for entry in entries {
-        if entry.maybe_section.is_some() || !supported_chain_key(&entry.key) {
-            continue;
-        }
-        if parse_bool(Some(&entry.value), false)? {
-            maybe_chain = Some(parse_chain_key(&entry.key)?);
-        }
-    }
-    Ok(maybe_chain.unwrap_or(AddressNetwork::Mainnet))
-}
-
 fn collect_file_settings(
     entries: &[ConfigEntry],
     chain: AddressNetwork,
@@ -568,15 +556,6 @@ fn parse_socket_address(host: &str, port: u16) -> Result<SocketAddr, ConfigError
         .parse::<IpAddr>()
         .map_err(|_| ConfigError::new(format!("invalid rpc address: {host}")))?;
     Ok(SocketAddr::new(ip, port))
-}
-
-fn config_section_name(chain: AddressNetwork) -> &'static str {
-    match chain {
-        AddressNetwork::Mainnet => "main",
-        AddressNetwork::Testnet => "test",
-        AddressNetwork::Signet => "signet",
-        AddressNetwork::Regtest => "regtest",
-    }
 }
 
 fn default_data_dir() -> PathBuf {

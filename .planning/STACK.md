@@ -49,7 +49,10 @@ Last updated: 2026-05-01
 ## Current Product Boundary
 
 - The shipped milestones are headless and terminal-first.
-- `open-bitcoind` currently exposes the local JSON-RPC server runtime; it does
-  not yet drive unattended public-mainnet full sync through `DurableSyncRuntime`.
+- `open-bitcoind` exposes the local JSON-RPC server runtime and an opt-in
+  mainnet sync activation preflight that opens the durable store and constructs
+  `DurableSyncRuntime`.
+- `open-bitcoind` does not yet drive unattended public-mainnet full sync through
+  peer transport, headers-first IBD, and block connect loops.
 - Public-network sync remains an opt-in review/runtime foundation and benchmark
   evidence surface, not part of the default local verification gate.

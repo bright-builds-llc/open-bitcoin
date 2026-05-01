@@ -62,7 +62,8 @@ shipped claims separate from deferred or out-of-scope work.
 
 - packaged or signed release installation flows
 - Windows service support
-- unattended public-mainnet full sync through `open-bitcoind`
+- unattended public-mainnet full sync through `open-bitcoind`; Phase 35 adds
+  opt-in activation and durable preflight only
 - public-network sync as part of the default local verification contract
 - hosted or public dashboard work beyond the local terminal dashboard
 - migration apply mode, source-service cutover, source-datadir mutation, and

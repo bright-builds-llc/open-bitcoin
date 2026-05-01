@@ -1,6 +1,6 @@
 # Operator Runtime Guide
 
-This guide describes the current v1.1 operator workflow for Open Bitcoin on
+This guide describes the current v1.2 operator workflow for Open Bitcoin on
 macOS and Linux. It is intentionally conservative: the runtime is source-built,
 service integration is local-machine only, migration remains dry-run only, and
 release readiness stays evidence-based rather than timing-threshold based.
@@ -48,10 +48,11 @@ The current source build exposes three relevant binaries:
   status, service management, dashboard, migration planning, and managed-wallet
   helpers
 
-`open-bitcoind` does not yet wire `DurableSyncRuntime` into an unattended
-daemon loop or initiate full public-network sync by itself. Treat real-network
-sync as an implemented foundation and benchmarked runtime surface, not as a
-supported mainnet full-sync operating recipe.
+`open-bitcoind` now has an explicit mainnet sync activation and durable
+preflight path. When enabled, daemon startup opens the selected durable store
+and constructs `DurableSyncRuntime` before binding RPC. It still does not start
+peer transport or run unattended public-mainnet IBD by itself; treat this as a
+sync bootstrap foundation, not a supported full-sync operating recipe.
 
 You can run them directly from `packages/target/{debug,release}/` after
 building or through `cargo run`.
@@ -77,6 +78,49 @@ The onboarding and migration flows should not write Open Bitcoin-only keys into
 `bitcoin.conf`. See
 [`docs/architecture/config-precedence.md`](../architecture/config-precedence.md)
 for the stricter contract language.
+
+## Mainnet Sync Activation Preflight
+
+Mainnet sync activation is disabled by default. It can be enabled only for the
+mainnet chain through Open Bitcoin-owned config or an `open-bitcoind` CLI
+override.
+
+JSONC form:
+
+```jsonc
+{
+  "sync": {
+    "network_enabled": true,
+    "mode": "mainnet-ibd"
+  }
+}
+```
+
+Daemon CLI form:
+
+```bash
+mkdir -p /tmp/open-bitcoin-mainnet
+
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --bin open-bitcoind -- \
+  -datadir=/tmp/open-bitcoin-mainnet \
+  -openbitcoinsync=mainnet-ibd \
+  -server=1
+```
+
+Important boundaries:
+
+- `-openbitcoinsync=mainnet-ibd` is an Open Bitcoin-only daemon flag; do not put
+  it in `bitcoin.conf`.
+- If the JSONC file is not at `<datadir>/open-bitcoin.jsonc`, pass the explicit
+  Open Bitcoin config path with `-openbitcoinconf=<path>`.
+- `sync.network_enabled = true` without `sync.mode = "mainnet-ibd"` is rejected
+  so partial config does not accidentally activate public-network behavior.
+- Activation is rejected on `-regtest`, `-signet`, or `-testnet`; this Phase 35
+  path is only for mainnet IBD bootstrap.
+- The daemon preflight reports the durable best header and block heights, then
+  continues with the normal local RPC server. Peer discovery, outbound peer
+  lifecycle, header-first IBD, block download/connect, and live mainnet smoke
+  evidence remain later v1.2 phases.
 
 ## First Run And Onboarding
 
@@ -219,9 +263,10 @@ Open Bitcoin keeps benchmark evidence as reproducible local reports, not release
 timing gates.
 
 The sync runtime has durable peer/sync foundations and TCP transport coverage,
-but public-network operation is still an explicit opt-in review surface. It is
-not part of the default local verification contract and is not yet exposed as an
-operator-ready `open-bitcoind` full-sync mode.
+and `open-bitcoind` has an opt-in mainnet activation preflight. Public-network
+operation is still an explicit opt-in review surface, is not part of the
+default local verification contract, and is not yet exposed as an operator-ready
+full-sync mode.
 
 Use the repo-owned wrapper:
 
@@ -252,7 +297,8 @@ Open Bitcoin does not currently claim all of the following:
 
 - packaged or signed release installation flows
 - Windows service support
-- unattended public-mainnet full sync through `open-bitcoind`
+- unattended public-mainnet full sync through `open-bitcoind`; Phase 35 only
+  adds opt-in activation and durable preflight
 - automatic migration apply, source-service cutover, or source-datadir mutation
 - external-wallet import, restore, or rewrite
 - public-network sync as part of the default local verification contract

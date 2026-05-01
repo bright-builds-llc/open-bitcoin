@@ -11,7 +11,10 @@ use std::{
     path::PathBuf,
 };
 
-use open_bitcoin_node::core::{consensus::ConsensusParams, wallet::AddressNetwork};
+use open_bitcoin_node::{
+    SyncNetwork, SyncRuntimeConfig,
+    core::{consensus::ConsensusParams, wallet::AddressNetwork},
+};
 
 mod loader;
 mod open_bitcoin;
@@ -131,6 +134,77 @@ impl Default for WalletRuntimeConfig {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum DaemonSyncMode {
+    #[default]
+    Disabled,
+    MainnetIbd,
+}
+
+impl DaemonSyncMode {
+    pub fn parse(value: &str) -> Result<Self, ConfigError> {
+        match value {
+            "disabled" | "off" => Ok(Self::Disabled),
+            "mainnet-ibd" => Ok(Self::MainnetIbd),
+            _ => Err(ConfigError::new(format!(
+                "invalid openbitcoinsync mode: {value}; expected disabled or mainnet-ibd"
+            ))),
+        }
+    }
+
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Disabled => "disabled",
+            Self::MainnetIbd => "mainnet-ibd",
+        }
+    }
+
+    pub const fn is_enabled(self) -> bool {
+        matches!(self, Self::MainnetIbd)
+    }
+}
+
+impl core::fmt::Display for DaemonSyncMode {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DaemonSyncConfig {
+    pub mode: DaemonSyncMode,
+    pub runtime: SyncRuntimeConfig,
+}
+
+impl DaemonSyncConfig {
+    pub fn disabled() -> Self {
+        Self {
+            mode: DaemonSyncMode::Disabled,
+            runtime: SyncRuntimeConfig::default(),
+        }
+    }
+
+    pub fn mainnet_ibd() -> Self {
+        Self {
+            mode: DaemonSyncMode::MainnetIbd,
+            runtime: SyncRuntimeConfig {
+                network: SyncNetwork::Mainnet,
+                ..SyncRuntimeConfig::default()
+            },
+        }
+    }
+
+    pub const fn is_enabled(&self) -> bool {
+        self.mode.is_enabled()
+    }
+}
+
+impl Default for DaemonSyncConfig {
+    fn default() -> Self {
+        Self::disabled()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuntimeConfig {
     pub chain: AddressNetwork,
@@ -138,6 +212,7 @@ pub struct RuntimeConfig {
     pub rpc_server: RpcServerConfig,
     pub rpc_client: RpcClientConfig,
     pub wallet: WalletRuntimeConfig,
+    pub sync: DaemonSyncConfig,
 }
 
 impl Default for RuntimeConfig {
@@ -148,6 +223,7 @@ impl Default for RuntimeConfig {
             rpc_server: RpcServerConfig::default(),
             rpc_client: RpcClientConfig::default(),
             wallet: WalletRuntimeConfig::default(),
+            sync: DaemonSyncConfig::default(),
         }
     }
 }

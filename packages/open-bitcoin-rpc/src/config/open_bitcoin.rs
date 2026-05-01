@@ -120,10 +120,26 @@ pub struct StorageConfig {
     pub engine: Option<String>,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct SyncConfig {
     pub network_enabled: bool,
+    pub mode: String,
+}
+
+impl SyncConfig {
+    pub fn disabled() -> Self {
+        Self {
+            network_enabled: false,
+            mode: "disabled".to_string(),
+        }
+    }
+}
+
+impl Default for SyncConfig {
+    fn default() -> Self {
+        Self::disabled()
+    }
 }
 
 /// Config source precedence identifiers.

@@ -78,7 +78,8 @@ Current release-hardening deferrals include:
 - packaged or signed release installation flows beyond the source-built path
 - Windows service support
 - migration apply mode, source-datadir mutation, or automatic cutover
-- unattended public-mainnet full sync through `open-bitcoind`
+- unattended public-mainnet full sync through `open-bitcoind`; Phase 35 adds
+  opt-in activation and durable preflight only
 - public-network sync as part of the default local verification gate
 - timing-threshold benchmark gates that would pass or fail a release on elapsed
   numbers alone
@@ -109,8 +110,8 @@ Current suspected unknown themes from
 
 - Which packaging or signed-release workflow should become the canonical
   install surface once source-built operation is no longer the only path.
-- v1.2 Full Mainnet Network Syncing is now the planned milestone for wiring
-  `DurableSyncRuntime` into `open-bitcoind` as an operator-ready
+- v1.2 Full Mainnet Network Syncing is now the active milestone for turning the
+  Phase 35 `open-bitcoind` sync activation/preflight into an operator-ready
   public-network full-sync flow.
 - Whether any public-network sync verification should become optional release
   evidence without expanding the default local gate.

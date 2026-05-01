@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Full Mainnet Network Syncing
-status: planned
-stopped_at: Phase 35 ready for /gsd-plan-phase
-last_updated: "2026-05-01T21:02:43Z"
-last_activity: 2026-05-01 -- v1.2 full mainnet network syncing milestone defined
+status: in_progress
+stopped_at: Phase 36 ready for /gsd-plan-phase
+last_updated: "2026-05-01T22:18:29Z"
+last_activity: 2026-05-01 -- Phase 35 daemon mainnet sync activation completed
 progress:
   total_phases: 6
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  completed_phases: 1
+  total_plans: 3
+  completed_plans: 3
+  percent: 16
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-05-01)
 
 ## Current Position
 
-Phase: Phase 35: Daemon Mainnet Sync Activation
+Phase: Phase 36: Mainnet Peer Discovery and Outbound Lifecycle
 Plan: None
-Status: Milestone planned; next action is `/gsd-plan-phase 35`
-Last activity: 2026-05-01 -- v1.2 full mainnet network syncing milestone defined
+Status: Phase 35 completed; next action is `/gsd-plan-phase 36`
+Last activity: 2026-05-01 -- Phase 35 daemon mainnet sync activation completed
 
-Progress: 0/6 phases complete
+Progress: 1/6 phases complete
 
 ## Archive Layout
 
@@ -43,7 +43,7 @@ Progress: 0/6 phases complete
 
 ## Performance Metrics
 
-Active v1.2 execution metrics have not started yet. Historical v1.1 metrics are preserved below for continuity.
+Active v1.2 execution metrics started with Phase 35. Historical v1.1 metrics are preserved below for continuity.
 
 **Velocity:**
 
@@ -94,6 +94,7 @@ Active v1.2 execution metrics have not started yet. Historical v1.1 metrics are 
 - Phase 33 completed 3 operator-surface truth and coverage cleanup plans on 2026-04-30.
 - Phase 34 completed 3 migration detection ownership cleanup plans on 2026-04-30.
 - v1.1 Operator Runtime and Real-Network Sync was archived on 2026-04-30 after the final passed milestone audit and repo-native verification rerun.
+- Phase 35 completed 3 daemon mainnet sync activation/preflight plans on 2026-05-01.
 
 | Phase 16 P01 | 12 min | 2 tasks | 4 files |
 | Phase 16 P02 | 18 min | 2 tasks | 7 files |

@@ -21,7 +21,7 @@ transaction relay, or unattended packaged-service hardening.
 
 ## Phases
 
-- [ ] **Phase 35: Daemon Mainnet Sync Activation** — Add the explicit daemon runtime boundary, config, flags, startup/shutdown semantics, and safety copy for opt-in public-mainnet sync.
+- [x] **Phase 35: Daemon Mainnet Sync Activation** — Add the explicit daemon runtime boundary, config, flags, startup/shutdown semantics, and safety copy for opt-in public-mainnet sync.
 - [ ] **Phase 36: Mainnet Peer Discovery and Outbound Lifecycle** — Resolve DNS/manual peers, maintain bounded outbound peer state, rotate unhealthy peers, and expose peer lifecycle telemetry.
 - [ ] **Phase 37: Header-First Mainnet Sync Integration** — Drive validated header synchronization from durable state to the best known mainnet header chain through the daemon sync task.
 - [ ] **Phase 38: Block Download, Connect, and Restart Recovery** — Download, validate, persist, and connect blocks with bounded in-flight work, reorg-aware state transitions, and restart recovery.
@@ -40,11 +40,11 @@ transaction relay, or unattended packaged-service hardening.
 
 1. `open-bitcoind` has documented config and CLI flags that enable mainnet sync only when explicitly requested.
 2. Daemon startup opens the durable store, constructs the sync runtime, and reports a coherent pre-sync status snapshot.
-3. Startup, cancellation, graceful shutdown, and restart paths do not corrupt durable chainstate or leave misleading status.
+3. Startup and restart preflight paths do not corrupt durable chainstate or leave misleading status; cancellation and graceful shutdown of a long-lived sync task remain later-phase concerns once live peer sync exists.
 4. Default tests and docs examples do not join public mainnet accidentally.
 5. Operator-facing copy states the v1.2 support boundary and deferred production claims.
 
-**Plans:** TBD by `/gsd-plan-phase 35`
+**Plans:** [35-01](phases/35-daemon-mainnet-sync-activation/35-01-PLAN.md), [35-02](phases/35-daemon-mainnet-sync-activation/35-02-PLAN.md), [35-03](phases/35-daemon-mainnet-sync-activation/35-03-PLAN.md)
 
 ### Phase 36: Mainnet Peer Discovery and Outbound Lifecycle
 
@@ -132,4 +132,4 @@ transaction relay, or unattended packaged-service hardening.
 | --- | ---: | ---: | --- | --- |
 | v1.0 Headless Parity | 22/22 | 80/80 | Archived | 2026-04-26 |
 | v1.1 Operator Runtime and Real-Network Sync | 22/22 | 69/69 | Archived | 2026-04-30 |
-| v1.2 Full Mainnet Network Syncing | 0/6 | TBD | Active | - |
+| v1.2 Full Mainnet Network Syncing | 1/6 | 3/3 | Active | - |

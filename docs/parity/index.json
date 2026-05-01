@@ -822,7 +822,7 @@
         ],
         "rationale": "The current v1.1 operator runtime now has repo-owned documentation, verification, and parity-ledger evidence that keeps shipped behavior separate from deferred or out-of-scope work.",
         "known_gaps": [
-          "Packaged install flows, Windows service support, unattended public-mainnet full sync through open-bitcoind, migration apply mode, and hosted dashboards remain outside the v1.1 release-hardened slice."
+          "Packaged install flows, Windows service support, unattended public-mainnet full sync through open-bitcoind, migration apply mode, and hosted dashboards remain outside the v1.1 release-hardened slice; Phase 35 adds opt-in daemon sync activation and durable preflight only."
         ],
         "suspected_unknowns": [
           "Which future packaging or signed-release workflow should become the canonical install surface once source-built operation is no longer the only path.",

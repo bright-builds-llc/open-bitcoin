@@ -30,6 +30,9 @@ Last updated: 2026-05-01
   of inventing defaults.
 - Preview or dry-run behavior must be explicit for migration and service
   actions that could affect local machine state.
+- Public-network mainnet sync behavior must stay explicitly opt-in. Current
+  `open-bitcoind` activation/preflight copy must not imply unattended full-sync
+  support until the later v1.2 daemon-sync phases land.
 
 ## Tooling
 

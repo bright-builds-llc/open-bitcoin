@@ -12,11 +12,11 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 
-use open_bitcoin_node::core::wallet::AddressNetwork;
+use open_bitcoin_node::{SyncNetwork, core::wallet::AddressNetwork};
 
 use super::{
-    ConfigPrecedence, ConfigSource, DEFAULT_COOKIE_FILE_NAME, RpcAuthConfig, RuntimeConfig,
-    WalletRuntimeConfig, WalletRuntimeScope, load_runtime_config_for_args,
+    ConfigPrecedence, ConfigSource, DEFAULT_COOKIE_FILE_NAME, DaemonSyncMode, RpcAuthConfig,
+    RuntimeConfig, WalletRuntimeConfig, WalletRuntimeScope, load_runtime_config_for_args,
     parse_open_bitcoin_jsonc_config,
 };
 
@@ -81,6 +81,8 @@ fn runtime_config_defaults_to_local_single_wallet_auth() {
             coinbase_maturity: 100,
         }
     );
+    assert_eq!(runtime.sync.mode, DaemonSyncMode::Disabled);
+    assert!(!runtime.sync.is_enabled());
     assert!(matches!(
         runtime.rpc_server.auth,
         RpcAuthConfig::Cookie {
@@ -359,6 +361,151 @@ fn open_bitcoin_jsonc_accepts_wizard_onboarding_answers() {
     assert_eq!(
         config.onboarding.wizard_answers.get("datadir"),
         Some(&"/tmp/open-bitcoin".to_string())
+    );
+}
+
+#[test]
+fn open_bitcoin_jsonc_accepts_mainnet_sync_activation_contract() {
+    // Arrange
+    let text = r#"
+    {
+      "sync": {
+        "network_enabled": true,
+        "mode": "mainnet-ibd"
+      }
+    }
+    "#;
+
+    // Act
+    let config = parse_open_bitcoin_jsonc_config(text).expect("jsonc config");
+
+    // Assert
+    assert!(config.sync.network_enabled);
+    assert_eq!(config.sync.mode, "mainnet-ibd");
+}
+
+#[test]
+fn daemon_sync_loads_from_open_bitcoin_jsonc_when_explicitly_enabled() {
+    // Arrange
+    let sandbox = TestDirectory::new("daemon-sync-jsonc");
+    fs::write(
+        sandbox.child("open-bitcoin.jsonc"),
+        r#"
+        {
+          "sync": {
+            "network_enabled": true,
+            "mode": "mainnet-ibd"
+          }
+        }
+        "#,
+    )
+    .expect("open bitcoin config");
+
+    // Act
+    let runtime = load_runtime_config_for_args(&[cli_arg("datadir", &sandbox.path)], &sandbox.path)
+        .expect("mainnet sync config should load");
+
+    // Assert
+    assert_eq!(runtime.chain, AddressNetwork::Mainnet);
+    assert_eq!(runtime.sync.mode, DaemonSyncMode::MainnetIbd);
+    assert_eq!(runtime.sync.runtime.network, SyncNetwork::Mainnet);
+    assert!(runtime.sync.is_enabled());
+}
+
+#[test]
+fn daemon_sync_cli_override_can_enable_or_disable_open_bitcoin_jsonc() {
+    // Arrange
+    let sandbox = TestDirectory::new("daemon-sync-cli");
+    fs::write(
+        sandbox.child("open-bitcoin.jsonc"),
+        r#"
+        {
+          "sync": {
+            "network_enabled": true,
+            "mode": "mainnet-ibd"
+          }
+        }
+        "#,
+    )
+    .expect("open bitcoin config");
+
+    // Act
+    let cli_enabled =
+        load_runtime_config_for_args(&[os("-openbitcoinsync=mainnet-ibd")], &sandbox.path)
+            .expect("cli sync enable");
+    let cli_disabled = load_runtime_config_for_args(
+        &[
+            cli_arg("datadir", &sandbox.path),
+            os("-openbitcoinsync=disabled"),
+        ],
+        &sandbox.path,
+    )
+    .expect("cli sync disable");
+
+    // Assert
+    assert_eq!(cli_enabled.sync.mode, DaemonSyncMode::MainnetIbd);
+    assert!(cli_enabled.sync.is_enabled());
+    assert_eq!(cli_disabled.sync.mode, DaemonSyncMode::Disabled);
+    assert!(!cli_disabled.sync.is_enabled());
+}
+
+#[test]
+fn daemon_sync_rejects_partial_or_non_mainnet_activation() {
+    // Arrange
+    let sandbox = TestDirectory::new("daemon-sync-rejections");
+    fs::write(
+        sandbox.child("open-bitcoin.jsonc"),
+        r#"
+        {
+          "sync": {
+            "network_enabled": true
+          }
+        }
+        "#,
+    )
+    .expect("open bitcoin config");
+
+    // Act
+    let partial_error =
+        load_runtime_config_for_args(&[cli_arg("datadir", &sandbox.path)], &sandbox.path)
+            .expect_err("partial JSONC activation should fail");
+    let non_mainnet_error = load_runtime_config_for_args(
+        &[os("-regtest"), os("-openbitcoinsync=mainnet-ibd")],
+        &sandbox.path,
+    )
+    .expect_err("non-mainnet activation should fail");
+
+    // Assert
+    assert_eq!(
+        partial_error.to_string(),
+        "Error reading open-bitcoin.jsonc: sync.network_enabled requires sync.mode = \"mainnet-ibd\" for daemon mainnet sync activation."
+    );
+    assert_eq!(
+        non_mainnet_error.to_string(),
+        "open-bitcoind mainnet sync activation requires -chain=main or -main; current chain is regtest."
+    );
+}
+
+#[test]
+fn daemon_sync_rejects_unreadable_explicit_open_bitcoin_jsonc_path() {
+    // Arrange
+    let sandbox = TestDirectory::new("daemon-sync-missing-jsonc");
+    let missing_config = sandbox.child("missing-open-bitcoin.jsonc");
+
+    // Act
+    let error = load_runtime_config_for_args(
+        &[cli_arg("openbitcoinconf", &missing_config)],
+        &sandbox.path,
+    )
+    .expect_err("explicit config path should fail");
+
+    // Assert
+    assert_eq!(
+        error.to_string(),
+        format!(
+            "Error reading open-bitcoin.jsonc: specified Open Bitcoin config file \"{}\" could not be opened.",
+            missing_config.display()
+        )
     );
 }
 

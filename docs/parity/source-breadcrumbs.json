@@ -751,6 +751,7 @@
       "files": [
         "packages/open-bitcoin-rpc/src/config.rs",
         "packages/open-bitcoin-rpc/src/config/loader.rs",
+        "packages/open-bitcoin-rpc/src/config/loader/chain.rs",
         "packages/open-bitcoin-rpc/src/config/loader/rpc_address.rs",
         "packages/open-bitcoin-rpc/src/config/tests.rs"
       ],
@@ -764,7 +765,8 @@
     {
       "label": "rpc-open-bitcoin-config",
       "files": [
-        "packages/open-bitcoin-rpc/src/config/open_bitcoin.rs"
+        "packages/open-bitcoin-rpc/src/config/open_bitcoin.rs",
+        "packages/open-bitcoin-rpc/src/config/loader/open_bitcoin_runtime.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/common/config.cpp",

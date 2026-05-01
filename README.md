@@ -92,12 +92,13 @@ bash scripts/verify.sh
 
 ## Operator Preview
 
-The current v1.1 operator runtime is source-built and intended for local review,
+The current v1.2 operator runtime is source-built and intended for local review,
 testing, and parity audit. For the practical install, onboarding, service,
 status, dashboard, migration, benchmark, and limitation workflow, start with
 [`docs/operator/runtime-guide.md`](./docs/operator/runtime-guide.md).
 The preview commands below start the current local RPC/operator surfaces; they
-are not an unattended public-mainnet full-sync recipe.
+are not an unattended public-mainnet full-sync recipe. `open-bitcoind` has an
+opt-in mainnet sync preflight, but live peer IBD remains later v1.2 work.
 
 The commands below are a minimal regtest preview. Create a scratch data
 directory, start the RPC server, then call it from another shell:

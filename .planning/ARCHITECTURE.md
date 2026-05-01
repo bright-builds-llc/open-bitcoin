@@ -56,9 +56,14 @@ auditable.
 
 `DurableSyncRuntime` provides real-network sync foundations, durable state
 integration, TCP peer transport, telemetry, and benchmarkable runtime behavior.
-It is not yet wired into `open-bitcoind` as an unattended public-mainnet
-full-sync daemon loop. Docs and parity claims must preserve that boundary until
-v1.2 implements and verifies daemon-integrated sync operation.
+Phase 35 wires it into `open-bitcoind` as an explicit mainnet sync activation
+and durable preflight path: the daemon can validate opt-in config, open
+`FjallNodeStore`, construct `DurableSyncRuntime`, and report durable best
+header/block heights before RPC bind. It is not yet an unattended
+public-mainnet full-sync daemon loop because peer discovery, outbound lifecycle,
+header-first IBD, block download/connect, and live mainnet smoke validation
+remain later v1.2 phases. Docs and parity claims must preserve that boundary
+until those phases are implemented and verified.
 
 ## Migration Boundary
 
