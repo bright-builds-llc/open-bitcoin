@@ -4,7 +4,8 @@ set -euo pipefail
 repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"
 
-git config core.hooksPath .githooks
+bash scripts/ensure-git-hooks.sh >/dev/null
 
-echo "Configured core.hooksPath to .githooks"
-echo "Git will now run .githooks/pre-commit before each commit."
+echo "Git hooks are configured from .githooks"
+echo "Re-running this installer is safe and idempotent."
+echo "Git will now run the repo-managed hooks before commit."

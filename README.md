@@ -78,17 +78,25 @@ Materialize the pinned reference baseline:
 git submodule update --init --recursive
 ```
 
-Install the repo-managed Git hooks once per clone:
+Install the repo-managed Git hooks:
 
 ```bash
 bash scripts/install-git-hooks.sh
 ```
+
+That installer is safe to rerun. `bash scripts/verify.sh` also self-heals the
+local `core.hooksPath` setting when it is missing or wrong, so the repo-managed
+hooks stay active for normal local work.
 
 Run the repo-native verification flow:
 
 ```bash
 bash scripts/verify.sh
 ```
+
+`docs/metrics/lines-of-code.md` is an intentionally tracked generated artifact.
+Hook and verification flows may refresh it when first-party code, scripts, or
+tracked hook content changes.
 
 ## Operator Preview
 

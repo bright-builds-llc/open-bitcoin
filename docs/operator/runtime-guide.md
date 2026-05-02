@@ -25,7 +25,9 @@ cargo build --manifest-path packages/Cargo.toml --workspace --all-targets --all-
 
 Bun is required as the pinned runtime for repo-owned TypeScript automation used
 by `bash scripts/verify.sh`. This repository does not have a `package.json`, so
-there is no `bun install` step.
+there is no `bun install` step. The hook installer is safe to rerun, and
+`bash scripts/verify.sh` will self-heal the local repo hook configuration
+outside CI when `core.hooksPath` is missing or wrong.
 
 Before making release or operator claims on a checkout, run the repo-native
 verification contract:

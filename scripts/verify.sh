@@ -107,6 +107,10 @@ export OPEN_BITCOIN_LOC_REPORT_SOURCE="${OPEN_BITCOIN_LOC_REPORT_SOURCE:-worktre
 mkdir -p "$OPEN_BITCOIN_PARITY_REPORT_DIR"
 mkdir -p "$OPEN_BITCOIN_BENCHMARK_REPORT_DIR"
 
+if [[ -z "${CI:-}" ]]; then
+  bash scripts/ensure-git-hooks.sh
+fi
+
 bun run scripts/generate-loc-report.ts --source="$OPEN_BITCOIN_LOC_REPORT_SOURCE" --output=docs/metrics/lines-of-code.md --check
 bun run scripts/check-parity-breadcrumbs.ts --check
 bash scripts/check-pure-core-deps.sh

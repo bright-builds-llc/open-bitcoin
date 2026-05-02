@@ -603,6 +603,7 @@
       "label": "node-sync-runtime",
       "files": [
         "packages/open-bitcoin-node/src/sync.rs",
+        "packages/open-bitcoin-node/src/sync/block_reconcile.rs",
         "packages/open-bitcoin-node/src/sync/progress.rs",
         "packages/open-bitcoin-node/src/sync/wallet_rescan.rs"
       ],

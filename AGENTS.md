@@ -37,7 +37,8 @@ Use this routing map when deciding what to load next:
 - Use `rust-toolchain.toml` as the Rust source of truth for local Cargo, CI, and Bazel. The current pinned version is `1.94.1`.
 - Use `bash scripts/verify.sh` as the repo-native verification contract for first-party code, including the Bazel smoke build.
 - Use Bun as the canonical runtime for repo-owned higher-level automation scripts; prefer TypeScript for substantial script logic, and keep Bash for thin orchestration wrappers and simple shell checks.
-- Use `bash scripts/install-git-hooks.sh` once per clone to install the repo-managed Git hooks under `.githooks`.
+- Use `bash scripts/install-git-hooks.sh` to install the repo-managed Git hooks under `.githooks`; rerunning it is safe and idempotent, and `bash scripts/verify.sh` will self-heal missing local hook installation outside CI.
+- Treat `docs/metrics/lines-of-code.md` as an intentionally tracked generated artifact. Expect it to change when hooks or verification regenerate it, and treat stale LOC updates as required freshness changes rather than incidental noise.
 - Record intentional in-scope behavior differences from Bitcoin Knots in `docs/parity/index.json` and companion docs under `docs/parity/`.
 - When adding first-party Rust source or test files under `packages/open-bitcoin-*/src` or `packages/open-bitcoin-*/tests`, add the required parity breadcrumb block through `docs/parity/source-breadcrumbs.json` and `scripts/check-parity-breadcrumbs.ts`; use the explicit `none` breadcrumb only when no defensible Bitcoin Knots source anchor exists.
 - After substantial feature, parity, operator-surface, or workflow changes, check whether the relevant README files need updates so contributor-facing status stays current.

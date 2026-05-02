@@ -1,4 +1,5 @@
 // Parity breadcrumbs:
+// - packages/bitcoin-knots/src/net.cpp
 // - packages/bitcoin-knots/src/net_processing.cpp
 // - packages/bitcoin-knots/src/headerssync.cpp
 // - packages/bitcoin-knots/src/sync.cpp

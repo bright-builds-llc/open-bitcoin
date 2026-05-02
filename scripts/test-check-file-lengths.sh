@@ -4,6 +4,7 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 helper_script="${script_dir}/check-file-lengths.sh"
 verify_script="${script_dir}/verify.sh"
+ensure_hooks_script="${script_dir}/ensure-git-hooks.sh"
 readonly pi="3.141592653589793"
 tau="$(awk -v pi="$pi" 'BEGIN { printf "%.15f", 2 * pi }')"
 readonly tau
@@ -29,6 +30,16 @@ assert_not_contains() {
 
   if [[ "$haystack" == *"$needle"* ]]; then
     echo "expected output not to contain: $needle" >&2
+    exit 1
+  fi
+}
+
+assert_eq() {
+  local actual="$1"
+  local expected="$2"
+
+  if [[ "$actual" != "$expected" ]]; then
+    echo "expected '$expected' but got '$actual'" >&2
     exit 1
   fi
 }
@@ -59,7 +70,17 @@ write_verify_test_fixture() {
 
   mkdir -p "${repo_dir}/scripts" "$fake_bin"
   cp "$helper_script" "${repo_dir}/scripts/check-file-lengths.sh"
+  cp "$ensure_hooks_script" "${repo_dir}/scripts/ensure-git-hooks.sh"
   chmod +x "${repo_dir}/scripts/check-file-lengths.sh"
+  chmod +x "${repo_dir}/scripts/ensure-git-hooks.sh"
+
+  mkdir -p "${repo_dir}/.githooks"
+  cat >"${repo_dir}/.githooks/pre-commit" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+exit 0
+EOF
+  chmod +x "${repo_dir}/.githooks/pre-commit"
 
   cat >"${repo_dir}/scripts/check-pure-core-deps.sh" <<'EOF'
 #!/usr/bin/env bash
@@ -112,6 +133,10 @@ if [[ "${1:-}" == "--print" ]]; then
 fi
 if [[ "${1:-}" == "run" && "${2:-}" == "scripts/generate-loc-report.ts" ]]; then
   touch "${VERIFY_MARKER_DIR:?}/loc-report-called"
+  exit 0
+fi
+if [[ "${1:-}" == "run" && ( "${2:-}" == "scripts/check-parity-breadcrumbs.ts" || "${2:-}" == "scripts/check-benchmark-report.ts" || "${2:-}" == "scripts/check-bazel-build-provenance.ts" ) ]]; then
+  touch "${VERIFY_MARKER_DIR:?}/bun-called"
   exit 0
 fi
 echo "unexpected bun invocation: $*" >&2
@@ -260,10 +285,56 @@ run_verify_success_timing_case() {
   assert_not_contains "$output" "verify.sh failed after "
 }
 
+run_verify_auto_installs_hooks_case() {
+  local repo_dir="${tmp_root}/verify-hooks-install"
+  local fake_bin="${repo_dir}/fake-bin"
+  local output=""
+
+  init_repo "$repo_dir"
+  write_verify_test_fixture "$repo_dir" "$fake_bin"
+  write_rust_file "${repo_dir}/packages/open-bitcoin-foo/src/lib.rs" 40
+
+  (
+    cd "$repo_dir"
+    git add packages scripts .githooks
+    output="$(PATH="${fake_bin}:$PATH" VERIFY_MARKER_DIR="$repo_dir" bash "$verify_script" 2>&1)"
+    printf '%s' "$output" >hooks-output.txt
+    git config --local --get core.hooksPath >hooks-path.txt
+  )
+
+  output="$(cat "${repo_dir}/hooks-output.txt")"
+  assert_contains "$output" "Configured git hooks: core.hooksPath=.githooks"
+  assert_eq "$(cat "${repo_dir}/hooks-path.txt")" ".githooks"
+}
+
+run_verify_skips_hook_install_in_ci_case() {
+  local repo_dir="${tmp_root}/verify-hooks-ci"
+  local fake_bin="${repo_dir}/fake-bin"
+  local output=""
+
+  init_repo "$repo_dir"
+  write_verify_test_fixture "$repo_dir" "$fake_bin"
+  write_rust_file "${repo_dir}/packages/open-bitcoin-foo/src/lib.rs" 40
+
+  (
+    cd "$repo_dir"
+    git add packages scripts .githooks
+    output="$(PATH="${fake_bin}:$PATH" VERIFY_MARKER_DIR="$repo_dir" CI=true bash "$verify_script" 2>&1)"
+    printf '%s' "$output" >ci-output.txt
+    (git config --local --get core.hooksPath || true) >hooks-path.txt
+  )
+
+  output="$(cat "${repo_dir}/ci-output.txt")"
+  assert_not_contains "$output" "Configured git hooks: core.hooksPath=.githooks"
+  assert_eq "$(cat "${repo_dir}/hooks-path.txt")" ""
+}
+
 run_positive_case
 run_negative_case
 run_scope_case
 run_verify_integration_case
 run_verify_success_timing_case
+run_verify_auto_installs_hooks_case
+run_verify_skips_hook_install_in_ci_case
 
 echo "check-file-lengths tests passed."
