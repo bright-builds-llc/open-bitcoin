@@ -12,8 +12,8 @@ use open_bitcoin_consensus::{check_block_header, transaction_txid, transaction_w
 use open_bitcoin_primitives::{Block, BlockHash, BlockHeader, Hash32, MerkleRoot, NetworkMagic};
 
 use crate::{
-    ConnectionRole, HeaderStore, HeadersMessage, InventoryList, LocalPeerConfig, PeerAction,
-    PeerManager, ServiceFlags, WireNetworkMessage,
+    ConnectionRole, HeaderStore, HeaderSyncPolicy, HeadersMessage, InventoryList, LocalPeerConfig,
+    PeerAction, PeerManager, ServiceFlags, WireNetworkMessage,
 };
 use open_bitcoin_primitives::{InventoryType, InventoryVector};
 
@@ -202,6 +202,55 @@ fn headers_response_caps_block_requests_to_in_flight_limit() {
             .expect("peer")
             .requested_blocks
             .contains(&open_bitcoin_consensus::block_hash(&second_header))
+    );
+}
+
+#[test]
+fn headers_only_policy_continues_headers_without_requesting_blocks() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    let genesis_header = mined_header(BlockHash::from_byte_array([0_u8; 32]), 1);
+    let next_header = mined_header(open_bitcoin_consensus::block_hash(&genesis_header), 2);
+    manager.add_outbound_peer(13, 10).expect("peer");
+    manager
+        .handle_message(
+            13,
+            WireNetworkMessage::Version(crate::VersionMessage {
+                start_height: 2,
+                ..crate::VersionMessage::default()
+            }),
+            11,
+        )
+        .expect("version");
+
+    // Act
+    let actions = manager
+        .handle_headers_with_policy(
+            13,
+            HeadersMessage {
+                headers: vec![genesis_header, next_header],
+            },
+            HeaderSyncPolicy::HeadersOnly,
+            |headers: &mut HeaderStore, header: &BlockHeader| headers.insert_header(header.clone()),
+        )
+        .expect("headers");
+
+    // Assert
+    assert!(actions.iter().any(|action| matches!(
+        action,
+        PeerAction::Send(WireNetworkMessage::GetHeaders { .. })
+    )));
+    assert!(
+        !actions
+            .iter()
+            .any(|action| matches!(action, PeerAction::Send(WireNetworkMessage::GetData(_))))
+    );
+    assert!(
+        manager
+            .peer_state(13)
+            .expect("peer")
+            .requested_blocks
+            .is_empty()
     );
 }
 
@@ -620,7 +669,7 @@ fn getheaders_headers_tx_and_block_paths_are_explicit() {
             )
             .expect_err("invalid pow")
             .to_string(),
-        "high-hash length out of range: 0",
+        "invalid header: high-hash (proof of work failed)",
     );
     let empty_headers = manager
         .handle_message(

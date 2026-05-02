@@ -63,6 +63,7 @@ impl TestServer {
                     Err(error) => panic!("request failed: {error}"),
                 }
             };
+            stream.set_nonblocking(false).expect("blocking stream");
             let request = read_request(&mut stream);
             captured_requests.lock().expect("requests").push(request);
 

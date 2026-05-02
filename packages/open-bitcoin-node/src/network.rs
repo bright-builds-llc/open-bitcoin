@@ -6,6 +6,8 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+mod header_sync;
+
 use open_bitcoin_core::{
     chainstate::{ChainPosition, ChainstateError, ChainstateSnapshot},
     codec::CodecError,
@@ -16,11 +18,13 @@ use open_bitcoin_core::{
 };
 use open_bitcoin_mempool::{AdmissionResult, MempoolError, PolicyConfig};
 use open_bitcoin_network::{
-    ConnectionRole, HeaderEntry, HeaderStore, InventoryList, LocalPeerConfig, NetworkError,
-    PROTOCOL_VERSION, ParsedNetworkMessage, PeerAction, PeerId, PeerManager, WireNetworkMessage,
+    ConnectionRole, HeaderEntry, HeaderStore, HeaderSyncPolicy, HeadersMessage, InventoryList,
+    LocalPeerConfig, NetworkError, PROTOCOL_VERSION, ParsedNetworkMessage, PeerAction, PeerId,
+    PeerManager, WireNetworkMessage,
 };
 
 use crate::{ChainstateStore, ManagedChainstate, ManagedMempool};
+use header_sync::validate_header_for_sync;
 
 #[derive(Debug)]
 pub enum ManagedNetworkError {
@@ -239,6 +243,25 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         self.process_actions(peer_id, actions, timestamp, verify_flags, consensus_params)
     }
 
+    pub fn receive_sync_message(
+        &mut self,
+        peer_id: PeerId,
+        message: WireNetworkMessage,
+        timestamp: i64,
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+    ) -> Result<Vec<WireNetworkMessage>, ManagedNetworkError> {
+        let actions = match message {
+            WireNetworkMessage::Headers(headers_message) => {
+                self.handle_headers_message(peer_id, headers_message, timestamp, consensus_params)?
+            }
+            other => self
+                .peer_manager
+                .handle_message(peer_id, other, timestamp)?,
+        };
+        self.process_actions(peer_id, actions, timestamp, verify_flags, consensus_params)
+    }
+
     pub fn receive_wire_message(
         &mut self,
         peer_id: PeerId,
@@ -334,6 +357,26 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             outbound.push(message);
         }
         Ok(outbound)
+    }
+
+    fn handle_headers_message(
+        &mut self,
+        peer_id: PeerId,
+        headers_message: HeadersMessage,
+        timestamp: i64,
+        consensus_params: ConsensusParams,
+    ) -> Result<Vec<PeerAction>, ManagedNetworkError> {
+        self.peer_manager
+            .handle_headers_with_policy(
+                peer_id,
+                headers_message,
+                HeaderSyncPolicy::HeadersOnly,
+                |header_store, header| {
+                    validate_header_for_sync(header_store, header, timestamp, consensus_params)?;
+                    header_store.insert_header(header.clone())
+                },
+            )
+            .map_err(ManagedNetworkError::from)
     }
 
     fn process_actions(

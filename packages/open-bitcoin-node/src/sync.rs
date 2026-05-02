@@ -255,7 +255,7 @@ impl DurableSyncRuntime {
                     WireNetworkMessage::Block(block) => Some(block.clone()),
                     _ => None,
                 };
-                let outbound = self.network.receive_message(
+                let outbound = self.network.receive_sync_message(
                     peer_id,
                     message,
                     timestamp,
@@ -519,6 +519,7 @@ impl DurableSyncRuntime {
 fn peer_failure_reason_for_error(error: &SyncRuntimeError) -> PeerFailureReason {
     match error {
         SyncRuntimeError::AddressResolution { .. } => PeerFailureReason::AddressResolution,
+        SyncRuntimeError::InvalidData { .. } => PeerFailureReason::InvalidData,
         SyncRuntimeError::InvalidMagic { .. } => PeerFailureReason::InvalidMagic,
         SyncRuntimeError::Storage(_) => PeerFailureReason::Storage,
         SyncRuntimeError::Io { .. } => PeerFailureReason::Connect,

@@ -34,6 +34,10 @@ pub enum NetworkError {
     UnknownCommand(String),
     InvalidChecksum,
     InvalidUserAgentEncoding,
+    InvalidHeader {
+        reject_reason: String,
+        maybe_debug_message: Option<String>,
+    },
     HeadersIncludeTransactions(u64),
     MissingHeaderAncestor(BlockHash),
     PeerAlreadyExists(PeerId),
@@ -50,6 +54,16 @@ impl fmt::Display for NetworkError {
             Self::InvalidChecksum => write!(f, "invalid network payload checksum"),
             Self::InvalidUserAgentEncoding => {
                 write!(f, "version message user agent is not valid UTF-8")
+            }
+            Self::InvalidHeader {
+                reject_reason,
+                maybe_debug_message,
+            } => {
+                if let Some(debug_message) = maybe_debug_message {
+                    write!(f, "invalid header: {reject_reason} ({debug_message})")
+                } else {
+                    write!(f, "invalid header: {reject_reason}")
+                }
             }
             Self::HeadersIncludeTransactions(count) => {
                 write!(
@@ -124,6 +138,22 @@ mod tests {
         assert_eq!(
             NetworkError::InvalidUserAgentEncoding.to_string(),
             "version message user agent is not valid UTF-8",
+        );
+        assert_eq!(
+            NetworkError::InvalidHeader {
+                reject_reason: "bad-diffbits".to_string(),
+                maybe_debug_message: Some("incorrect proof of work".to_string()),
+            }
+            .to_string(),
+            "invalid header: bad-diffbits (incorrect proof of work)",
+        );
+        assert_eq!(
+            NetworkError::InvalidHeader {
+                reject_reason: "bad-prevblk".to_string(),
+                maybe_debug_message: None,
+            }
+            .to_string(),
+            "invalid header: bad-prevblk",
         );
         assert_eq!(
             NetworkError::MissingHeaderAncestor(BlockHash::from_byte_array([3_u8; 32])).to_string(),

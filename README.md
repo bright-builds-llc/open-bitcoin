@@ -98,7 +98,8 @@ status, dashboard, migration, benchmark, and limitation workflow, start with
 [`docs/operator/runtime-guide.md`](./docs/operator/runtime-guide.md).
 The preview commands below start the current local RPC/operator surfaces; they
 are not an unattended public-mainnet full-sync recipe. `open-bitcoind` has an
-opt-in mainnet sync preflight, but live peer IBD remains later v1.2 work.
+opt-in mainnet sync preflight plus durable header-first peer sync, but block
+download/connect and full live peer IBD remain later v1.2 work.
 
 The commands below are a minimal regtest preview. Create a scratch data
 directory, start the RPC server, then call it from another shell:

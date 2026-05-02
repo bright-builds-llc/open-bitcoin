@@ -588,6 +588,18 @@
       ]
     },
     {
+      "label": "node-network-header-sync",
+      "files": [
+        "packages/open-bitcoin-node/src/network/header_sync.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/headerssync.cpp",
+        "packages/bitcoin-knots/src/sync.cpp",
+        "packages/bitcoin-knots/src/protocol.h"
+      ]
+    },
+    {
       "label": "node-sync-runtime",
       "files": [
         "packages/open-bitcoin-node/src/sync.rs",

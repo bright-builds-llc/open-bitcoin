@@ -2,6 +2,7 @@
 // - packages/bitcoin-knots/src/net.cpp
 // - packages/bitcoin-knots/src/netbase.cpp
 // - packages/bitcoin-knots/src/netbase.h
+// - packages/bitcoin-knots/src/protocol.h
 
 use std::net::ToSocketAddrs;
 

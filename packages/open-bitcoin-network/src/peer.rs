@@ -12,11 +12,11 @@ use std::collections::{BTreeMap, BTreeSet};
 use open_bitcoin_chainstate::ChainPosition;
 use open_bitcoin_consensus::{block_hash, check_block_header, transaction_txid, transaction_wtxid};
 use open_bitcoin_primitives::{
-    Block, BlockHash, Hash32, InventoryType, InventoryVector, Transaction, Txid, Wtxid,
+    Block, BlockHash, BlockHeader, Hash32, InventoryType, InventoryVector, Transaction, Txid, Wtxid,
 };
 
 use crate::error::{DisconnectReason, NetworkError, PeerId};
-use crate::header_store::HeaderStore;
+use crate::header_store::{HeaderStore, InsertedHeader};
 use crate::message::{HeadersMessage, InventoryList, LocalPeerConfig, WireNetworkMessage};
 
 pub const DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER: usize = 128;
@@ -25,6 +25,12 @@ pub const DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER: usize = 128;
 pub enum ConnectionRole {
     Inbound,
     Outbound,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HeaderSyncPolicy {
+    HeadersOnly,
+    HeadersAndBlocks,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -442,15 +448,35 @@ impl PeerManager {
         peer_id: PeerId,
         headers_message: HeadersMessage,
     ) -> Result<Vec<PeerAction>, NetworkError> {
+        self.handle_headers_with_policy(
+            peer_id,
+            headers_message,
+            HeaderSyncPolicy::HeadersAndBlocks,
+            |headers: &mut HeaderStore, header: &BlockHeader| {
+                check_block_header(header).map_err(|error| NetworkError::InvalidHeader {
+                    reject_reason: error.reject_reason.to_string(),
+                    maybe_debug_message: error.debug_message.clone(),
+                })?;
+                headers.insert_header(header.clone())
+            },
+        )
+    }
+
+    pub fn handle_headers_with_policy<F>(
+        &mut self,
+        peer_id: PeerId,
+        headers_message: HeadersMessage,
+        policy: HeaderSyncPolicy,
+        mut validate_and_insert: F,
+    ) -> Result<Vec<PeerAction>, NetworkError>
+    where
+        F: FnMut(&mut HeaderStore, &BlockHeader) -> Result<InsertedHeader, NetworkError>,
+    {
+        let previous_best_height = self.headers.best_height();
+        let header_count = headers_message.headers.len();
         let mut requested_inventory = Vec::new();
         for header in headers_message.headers {
-            check_block_header(&header).map_err(|error| {
-                NetworkError::Codec(open_bitcoin_codec::CodecError::LengthOutOfRange {
-                    field: error.reject_reason,
-                    value: 0,
-                })
-            })?;
-            let inserted = self.headers.insert_header(header)?;
+            let inserted = validate_and_insert(&mut self.headers, &header)?;
             if !self.known_blocks.contains(&inserted.block_hash) {
                 requested_inventory.push(InventoryVector {
                     inventory_type: InventoryType::Block,
@@ -459,22 +485,44 @@ impl PeerManager {
             }
         }
 
+        let best_height = self.headers.best_height();
+        let locator = self.headers.locator();
         let max_blocks_in_flight_per_peer = self.max_blocks_in_flight_per_peer;
         let peer = Self::peer_mut(&mut self.peers, peer_id)?;
         peer.getheaders_in_flight = false;
-        let available_slots =
-            max_blocks_in_flight_per_peer.saturating_sub(peer.requested_blocks.len());
-        requested_inventory.truncate(available_slots);
-        for item in &requested_inventory {
-            peer.requested_blocks
-                .insert(BlockHash::from(item.object_hash));
+
+        let header_progressed = best_height > previous_best_height;
+        let should_request_more_headers = header_count > 0
+            && header_progressed
+            && (header_count == crate::MAX_HEADERS_RESULTS
+                || peer.remote_start_height > best_height);
+
+        let mut actions = Vec::new();
+        if should_request_more_headers {
+            peer.getheaders_in_flight = true;
+            peer.sync_started = true;
+            actions.push(PeerAction::Send(WireNetworkMessage::GetHeaders {
+                locator,
+                stop_hash: BlockHash::from_byte_array([0_u8; 32]),
+            }));
         }
-        if requested_inventory.is_empty() {
-            return Ok(Vec::new());
+
+        if policy == HeaderSyncPolicy::HeadersAndBlocks {
+            let available_slots =
+                max_blocks_in_flight_per_peer.saturating_sub(peer.requested_blocks.len());
+            requested_inventory.truncate(available_slots);
+            for item in &requested_inventory {
+                peer.requested_blocks
+                    .insert(BlockHash::from(item.object_hash));
+            }
+            if !requested_inventory.is_empty() {
+                actions.push(PeerAction::Send(WireNetworkMessage::GetData(
+                    InventoryList::new(requested_inventory),
+                )));
+            }
         }
-        Ok(vec![PeerAction::Send(WireNetworkMessage::GetData(
-            InventoryList::new(requested_inventory),
-        ))])
+
+        Ok(actions)
     }
 
     fn handle_transaction(

@@ -155,6 +155,10 @@ impl HeaderStore {
         self.entries.contains_key(hash)
     }
 
+    pub fn entry(&self, hash: &BlockHash) -> Option<&HeaderEntry> {
+        self.entries.get(hash)
+    }
+
     pub fn best_height(&self) -> i32 {
         self.best_tip
             .and_then(|hash| self.entries.get(&hash))
@@ -163,6 +167,40 @@ impl HeaderStore {
 
     pub fn best_tip(&self) -> Option<&HeaderEntry> {
         self.best_tip.and_then(|hash| self.entries.get(&hash))
+    }
+
+    pub fn ancestor_at_height(
+        &self,
+        start_hash: BlockHash,
+        target_height: u32,
+    ) -> Option<&HeaderEntry> {
+        let mut current = self.entries.get(&start_hash)?;
+        if target_height > current.height {
+            return None;
+        }
+
+        loop {
+            if current.height == target_height {
+                return Some(current);
+            }
+            let parent_hash = self.parents.get(&current.block_hash).copied().flatten()?;
+            current = self.entries.get(&parent_hash)?;
+        }
+    }
+
+    pub fn median_time_past(&self, tip_hash: BlockHash) -> Option<i64> {
+        let mut times = Vec::new();
+        let mut maybe_current = Some(tip_hash);
+        while let Some(current_hash) = maybe_current {
+            let entry = self.entries.get(&current_hash)?;
+            times.push(i64::from(entry.header.time));
+            if times.len() == 11 {
+                break;
+            }
+            maybe_current = self.parents.get(&current_hash).copied().flatten();
+        }
+        times.sort_unstable();
+        Some(times[times.len() / 2])
     }
 
     pub fn locator(&self) -> BlockLocator {
@@ -488,5 +526,49 @@ mod tests {
 
         // Assert
         assert_eq!(error, NetworkError::MissingHeaderAncestor(missing_parent));
+    }
+
+    #[test]
+    fn entry_ancestor_and_median_time_helpers_cover_present_and_missing_paths() {
+        // Arrange
+        let mut store = HeaderStore::default();
+        let mut previous = BlockHash::from_byte_array([0_u8; 32]);
+        let mut hashes = Vec::new();
+        for height in 0..12_u32 {
+            let current_header = header(previous, height + 1);
+            previous = block_hash(&current_header);
+            hashes.push(previous);
+            store
+                .insert_header(current_header)
+                .expect("header inserts into store");
+        }
+
+        // Act / Assert
+        let tip_hash = *hashes.last().expect("tip hash");
+        assert_eq!(store.entry(&tip_hash).expect("tip entry").height, 11);
+        assert!(
+            store
+                .entry(&BlockHash::from_byte_array([99_u8; 32]))
+                .is_none()
+        );
+        assert_eq!(
+            store
+                .ancestor_at_height(tip_hash, 5)
+                .expect("ancestor")
+                .height,
+            5,
+        );
+        assert!(store.ancestor_at_height(tip_hash, 20).is_none());
+        assert_eq!(store.median_time_past(tip_hash), Some(7));
+        assert!(
+            store
+                .median_time_past(BlockHash::from_byte_array([100_u8; 32]))
+                .is_none()
+        );
+
+        // Corrupt one parent edge to cover the helper's missing-parent fallback.
+        let child_hash = hashes[2];
+        store.parents.insert(child_hash, None);
+        assert!(store.ancestor_at_height(tip_hash, 1).is_none());
     }
 }

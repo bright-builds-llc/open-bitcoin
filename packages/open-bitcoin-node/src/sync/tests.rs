@@ -19,7 +19,7 @@ use open_bitcoin_core::{
         Transaction, TransactionInput, TransactionOutput,
     },
 };
-use open_bitcoin_network::{HeadersMessage, InventoryList, VersionMessage, WireNetworkMessage};
+use open_bitcoin_network::{HeadersMessage, VersionMessage, WireNetworkMessage};
 
 use super::{
     DurableSyncRuntime, PeerContribution, PeerFailureReason, PeerSyncOutcome, PeerSyncState,
@@ -977,9 +977,12 @@ fn scripted_headers_sync_persists_progress_and_status() {
             .iter()
             .any(|message| { matches!(message, WireNetworkMessage::GetHeaders { .. }) })
     );
-    assert!(transport.sent_messages().iter().any(|message| {
-        matches!(message, WireNetworkMessage::GetData(InventoryList { inventory }) if inventory.len() == 2)
-    }));
+    assert!(
+        !transport
+            .sent_messages()
+            .iter()
+            .any(|message| matches!(message, WireNetworkMessage::GetData(_)))
+    );
 
     remove_dir_if_exists(&path);
 }
@@ -1021,64 +1024,44 @@ fn sync_until_idle_continues_equal_message_rounds_when_heights_advance() {
 }
 
 #[test]
-fn scripted_block_download_connects_and_persists_block() {
+fn sync_once_continues_header_batches_when_peer_advertises_more_work() {
     // Arrange
-    let path = temp_store_path("block");
+    let path = temp_store_path("header-batches");
     remove_dir_if_exists(&path);
     let store = FjallNodeStore::open(&path).expect("store");
-    let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
-    let genesis_hash = block_hash(&genesis.header);
+    let genesis = header(BlockHash::from_byte_array([0_u8; 32]), 1);
+    let child = header(block_hash(&genesis), 2);
+    let grandchild = header(block_hash(&child), 3);
     let script = vec![
         WireNetworkMessage::Version(VersionMessage {
-            start_height: 0,
+            start_height: 2,
             ..VersionMessage::default()
         }),
         WireNetworkMessage::Verack,
         WireNetworkMessage::Headers(HeadersMessage {
-            headers: vec![genesis.header.clone()],
+            headers: vec![genesis],
         }),
-        WireNetworkMessage::Block(genesis.clone()),
+        WireNetworkMessage::Headers(HeadersMessage {
+            headers: vec![child, grandchild],
+        }),
     ];
     let mut transport = ScriptedTransport::new(vec![script]);
     let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
 
     // Act
     let summary = runtime
-        .sync_once(&mut transport, i64::from(genesis.header.time))
+        .sync_once(&mut transport, 1_777_225_166)
         .expect("sync");
 
     // Assert
-    assert_eq!(summary.blocks_received, 1);
+    assert_eq!(summary.best_header_height, 2);
     assert_eq!(summary.best_block_height, 0);
-    assert_eq!(
-        runtime
-            .store()
-            .load_block(genesis_hash)
-            .expect("load block"),
-        Some(genesis)
-    );
-    assert_eq!(
-        runtime
-            .store()
-            .load_chainstate_snapshot()
-            .expect("load chainstate")
-            .expect("chainstate")
-            .tip()
-            .expect("tip")
-            .height,
-        0
-    );
-    let metrics = runtime
-        .store()
-        .load_metrics_snapshot()
-        .expect("metrics")
-        .expect("metrics");
-    assert!(
-        metrics
-            .samples
-            .iter()
-            .any(|sample| sample.kind == MetricKind::SyncHeight)
-    );
+    let getheaders_requests = transport
+        .sent_messages()
+        .into_iter()
+        .filter(|message| matches!(message, WireNetworkMessage::GetHeaders { .. }))
+        .count();
+    assert!(getheaders_requests >= 2);
 
     remove_dir_if_exists(&path);
 }
@@ -1119,6 +1102,112 @@ fn runtime_seeds_headers_from_durable_store_on_restart() {
 
     // Assert
     assert_eq!(runtime.snapshot_summary().best_header_height, 1);
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn contextual_invalid_headers_fail_with_typed_invalid_data() {
+    // Arrange
+    let path = temp_store_path("invalid-header");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let genesis = header(BlockHash::from_byte_array([0_u8; 32]), 1);
+    let mut stale_child = header(block_hash(&genesis), 2);
+    stale_child.time = genesis.time;
+    let script = vec![
+        WireNetworkMessage::Version(VersionMessage {
+            start_height: 1,
+            ..VersionMessage::default()
+        }),
+        WireNetworkMessage::Verack,
+        WireNetworkMessage::Headers(HeadersMessage {
+            headers: vec![genesis, stale_child],
+        }),
+    ];
+    let mut transport = ScriptedTransport::new(vec![script]);
+    let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+
+    // Act
+    let summary = runtime
+        .sync_once(&mut transport, 1_777_225_177)
+        .expect("sync summary");
+
+    // Assert
+    assert_eq!(summary.failed_peers, 1);
+    assert!(matches!(
+        summary.peer_outcomes.as_slice(),
+        [PeerSyncOutcome {
+            maybe_failure_reason: Some(PeerFailureReason::InvalidData),
+            ..
+        }]
+    ));
+    assert!(summary.health_signals.iter().any(|signal| {
+        signal.message == "sync peer sent invalid data: inspect peer compatibility"
+    }));
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn competing_header_branch_wins_after_restart_when_it_extends_farther() {
+    // Arrange
+    let path = temp_store_path("header-fork");
+    remove_dir_if_exists(&path);
+    let genesis = header(BlockHash::from_byte_array([0_u8; 32]), 1);
+    let branch_a_one = header(block_hash(&genesis), 2);
+    let branch_a_two = header(block_hash(&branch_a_one), 3);
+    {
+        let store = FjallNodeStore::open(&path).expect("store");
+        let mut transport = ScriptedTransport::new(vec![vec![
+            WireNetworkMessage::Version(VersionMessage {
+                start_height: 2,
+                ..VersionMessage::default()
+            }),
+            WireNetworkMessage::Verack,
+            WireNetworkMessage::Headers(HeadersMessage {
+                headers: vec![genesis.clone(), branch_a_one, branch_a_two],
+            }),
+        ]]);
+        let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+        runtime
+            .sync_once(&mut transport, 1_777_225_188)
+            .expect("initial branch imports");
+    }
+
+    // Act
+    let store = FjallNodeStore::open(&path).expect("reopen store");
+    let branch_b_one = header(block_hash(&genesis), 4);
+    let branch_b_two = header(block_hash(&branch_b_one), 5);
+    let branch_b_three = header(block_hash(&branch_b_two), 6);
+    let mut transport = ScriptedTransport::new(vec![vec![
+        WireNetworkMessage::Version(VersionMessage {
+            start_height: 3,
+            ..VersionMessage::default()
+        }),
+        WireNetworkMessage::Verack,
+        WireNetworkMessage::Headers(HeadersMessage {
+            headers: vec![branch_b_one, branch_b_two, branch_b_three],
+        }),
+    ]]);
+    let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    let summary = runtime
+        .sync_once(&mut transport, 1_777_225_199)
+        .expect("fork extends");
+
+    // Assert
+    assert_eq!(summary.best_header_height, 3);
+    assert_eq!(runtime.snapshot_summary().best_header_height, 3);
+    assert_eq!(
+        runtime
+            .store()
+            .load_header_entries()
+            .expect("load headers")
+            .expect("headers")
+            .entries
+            .len(),
+        6
+    );
 
     remove_dir_if_exists(&path);
 }

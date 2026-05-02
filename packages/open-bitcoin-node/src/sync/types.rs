@@ -224,6 +224,7 @@ pub enum PeerFailureReason {
     AddressResolution,
     Connect,
     Stall,
+    InvalidData,
     InvalidMagic,
     Network,
     Storage,
@@ -235,6 +236,7 @@ impl fmt::Display for PeerFailureReason {
             Self::AddressResolution => write!(f, "address_resolution"),
             Self::Connect => write!(f, "connect"),
             Self::Stall => write!(f, "stall"),
+            Self::InvalidData => write!(f, "invalid_data"),
             Self::InvalidMagic => write!(f, "invalid_magic"),
             Self::Network => write!(f, "network"),
             Self::Storage => write!(f, "storage"),
@@ -381,6 +383,7 @@ pub enum SyncRuntimeError {
     NoPeersConfigured,
     AddressResolution { peer: String, message: String },
     Io { peer: String, message: String },
+    InvalidData { message: String },
     InvalidMagic { expected: [u8; 4], actual: [u8; 4] },
     Network { message: String },
     Storage(StorageError),
@@ -394,6 +397,7 @@ impl fmt::Display for SyncRuntimeError {
                 write!(f, "failed to resolve sync peer {peer}: {message}")
             }
             Self::Io { peer, message } => write!(f, "sync I/O failure for {peer}: {message}"),
+            Self::InvalidData { message } => write!(f, "sync invalid data: {message}"),
             Self::InvalidMagic { expected, actual } => write!(
                 f,
                 "network magic mismatch: expected {expected:?}, got {actual:?}"
@@ -418,6 +422,11 @@ impl SyncRuntimeError {
                 level: HealthSignalLevel::Error,
                 source: "network".to_string(),
                 message: "sync I/O failure: inspect peer connectivity".to_string(),
+            },
+            Self::InvalidData { .. } => HealthSignal {
+                level: HealthSignalLevel::Error,
+                source: "network".to_string(),
+                message: "sync peer sent invalid data: inspect peer compatibility".to_string(),
             },
             Self::InvalidMagic { .. } => HealthSignal {
                 level: HealthSignalLevel::Error,
@@ -451,16 +460,26 @@ impl From<StorageError> for SyncRuntimeError {
 
 impl From<ManagedNetworkError> for SyncRuntimeError {
     fn from(value: ManagedNetworkError) -> Self {
-        Self::Network {
-            message: value.to_string(),
+        match value {
+            ManagedNetworkError::Network(error) => Self::from(error),
+            other => Self::Network {
+                message: other.to_string(),
+            },
         }
     }
 }
 
 impl From<NetworkError> for SyncRuntimeError {
     fn from(value: NetworkError) -> Self {
-        Self::Network {
-            message: value.to_string(),
+        match value {
+            NetworkError::InvalidHeader { .. }
+            | NetworkError::HeadersIncludeTransactions(_)
+            | NetworkError::MissingHeaderAncestor(_) => Self::InvalidData {
+                message: value.to_string(),
+            },
+            _ => Self::Network {
+                message: value.to_string(),
+            },
         }
     }
 }
