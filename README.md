@@ -108,7 +108,11 @@ The preview commands below start the current local RPC/operator surfaces; they
 are not a production-node claim. `open-bitcoind` now has an opt-in mainnet sync
 loop plus durable header-and-block sync foundations, truthful operator-facing
 sync status, and explicit `open-bitcoin sync pause|resume|status` controls.
-Live-mainnet smoke evidence and milestone closeout remain later v1.2 work.
+Explicit live-mainnet smoke evidence now lives in
+[`scripts/run-live-mainnet-smoke.ts`](./scripts/run-live-mainnet-smoke.ts),
+which writes local JSON and Markdown reports under
+`packages/target/live-mainnet-smoke-reports` without changing the default
+hermetic verification contract.
 
 The commands below are a minimal regtest preview. Create a scratch data
 directory, start the RPC server, then call it from another shell:

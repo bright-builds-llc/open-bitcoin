@@ -536,6 +536,10 @@
     {
       "name": "operator-runtime-release-hardening",
       "status": "done"
+    },
+    {
+      "name": "live-mainnet-smoke-closeout",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -829,6 +833,38 @@
           "Whether optional public-network release evidence should eventually supplement the current offline verification contract.",
           "Which post-v1.2 milestones should extend daemon sync into broader P2P policy, wallet, production-service, or package-install claims."
         ]
+      },
+      {
+        "id": "live-mainnet-smoke-closeout",
+        "title": "Live Mainnet Smoke Closeout",
+        "status": "done",
+        "requirements": [
+          "SYNCMAIN-04",
+          "CHAINMAIN-05",
+          "RESUME-03",
+          "OBSMAIN-04",
+          "VERMAIN-01",
+          "VERMAIN-03",
+          "VERMAIN-04",
+          "VERMAIN-05"
+        ],
+        "evidence": [
+          "scripts/run-live-mainnet-smoke.ts",
+          "scripts/test-run-live-mainnet-smoke.sh",
+          "docs/operator/runtime-guide.md",
+          "docs/parity/release-readiness.md",
+          ".planning/phases/40-live-mainnet-smoke-docs-and-parity-closeout/40-VERIFICATION.md",
+          "packages/target/live-mainnet-smoke-reports/open-bitcoin-live-mainnet-smoke.json"
+        ],
+        "rationale": "Phase 40 adds an explicit opt-in live-mainnet smoke flow that launches the shipped daemon path, polls durable sync status, writes local evidence reports, and refreshes README plus parity docs so the shipped v1.2 claim stays bounded and auditable.",
+        "known_gaps": [
+          "Live-mainnet evidence remains explicitly opt-in and outside the default hermetic verification contract.",
+          "The closeout surface does not widen Open Bitcoin into a production-node, production-funds, or packaged-service claim."
+        ],
+        "suspected_unknowns": [
+          "Which future packaging or daemon-supervision surfaces should become part of a stronger release story once source-built local review is no longer the only supported path.",
+          "Whether any later milestone should promote live-mainnet evidence from optional local review into a stronger pre-release gate."
+        ]
       }
     ]
   },
@@ -840,6 +876,10 @@
       "path": "benchmarks.md",
       "report_dir": "packages/target/benchmark-reports"
     },
+    "live_mainnet_smoke": {
+      "path": "release-readiness.md",
+      "report_dir": "packages/target/live-mainnet-smoke-reports"
+    },
     "release_readiness": {
       "path": "release-readiness.md",
       "status": "done",
@@ -849,7 +889,8 @@
         "docs/parity/benchmarks.md",
         "docs/operator/runtime-guide.md",
         "docs/parity/catalog/operator-runtime-release-hardening.md",
-        "scripts/check-benchmark-report.ts"
+        "scripts/check-benchmark-report.ts",
+        "scripts/run-live-mainnet-smoke.ts"
       ]
     }
   }

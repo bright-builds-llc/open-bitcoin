@@ -119,6 +119,7 @@ Important boundaries:
 - `-openbitcoinsync=mainnet-ibd` is an Open Bitcoin-only daemon flag; do not put
   it in `bitcoin.conf`.
 - If the JSONC file is not at `<datadir>/open-bitcoin.jsonc`, pass the explicit
+  `-openbitcoinconf=/path/to/open-bitcoin.jsonc` flag.
 - `sync.manual_peers` configures explicit outbound peers as `host` or
   `host:port`; IPv6 literals should use bracket form such as
   `[2001:db8::7]:8333`.
@@ -139,8 +140,9 @@ Important boundaries:
 - `open-bitcoin sync pause` and `open-bitcoin sync resume` toggle the durable
   pause flag without requiring operators to inspect or edit internal store
   files directly.
-- Live mainnet smoke evidence, packaged-service hardening, and milestone
-  closeout remain Phase 40 work.
+- Use `bun run scripts/run-live-mainnet-smoke.ts --datadir=PATH` for explicit
+  live-mainnet review evidence. It is opt-in, writes local reports, and stays
+  outside the default `bash scripts/verify.sh` gate.
 
 ## First Run And Onboarding
 
@@ -301,9 +303,27 @@ contract, and is not yet a production-node claim.
 Use the repo-owned wrapper:
 
 ```bash
+bun run scripts/run-live-mainnet-smoke.ts --datadir=/tmp/open-bitcoin-mainnet
 bash scripts/run-benchmarks.sh --smoke
 bash scripts/run-benchmarks.sh --full --iterations 5
 ```
+
+Live smoke behavior:
+
+- `run-live-mainnet-smoke.ts` builds the current daemon and operator binaries,
+  starts `open-bitcoind` with explicit `mainnet-ibd` activation, polls
+  `open-bitcoin-cli getblockchaininfo`, and writes
+  `open-bitcoin-live-mainnet-smoke.json` plus
+  `open-bitcoin-live-mainnet-smoke.md` under
+  `packages/target/live-mainnet-smoke-reports`.
+- It fails early when the selected datadir does not exist, the optional config
+  path is missing, the local clock is obviously wrong, or the selected disk
+  path does not meet the configurable free-space floor.
+- It times out cleanly with actionable guidance when outbound DNS or TCP
+  access, disk headroom, or runtime progress are insufficient.
+- It terminates its own daemon process after collecting evidence; for longer
+  manual review, launch `open-bitcoind` directly and use
+  `open-bitcoin sync status|pause|resume`.
 
 Benchmark modes:
 
@@ -316,6 +336,9 @@ Benchmark modes:
 
 The generated reports now record:
 
+- the live-smoke command path, poll interval, timeout, and preflight outcome
+- the live-smoke status snapshots and daemon stderr/stdout tail for support
+  review
 - the benchmark mode and iteration count
 - the binary profile (`debug` or `release`)
 - the measurement focus, fixture type, and durability level for each case
@@ -332,6 +355,7 @@ Open Bitcoin does not currently claim all of the following:
 - automatic migration apply, source-service cutover, or source-datadir mutation
 - external-wallet import, restore, or rewrite
 - public-network sync as part of the default local verification contract
+- checked-in live-mainnet report fixtures or timing-threshold release gates
 - a hosted public dashboard or GUI parity with the reference Qt app
 
 The parity ledger and deferred-surface record live under

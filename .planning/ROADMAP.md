@@ -26,7 +26,7 @@ transaction relay, or unattended packaged-service hardening.
 - [x] **Phase 37: Header-First Mainnet Sync Integration** — Drive validated header synchronization from durable state to the best known mainnet header chain through the daemon sync task. (completed 2026-05-02)
 - [x] **Phase 38: Block Download, Connect, and Restart Recovery** — Download, validate, persist, and connect blocks with bounded in-flight work, reorg-aware state transitions, and restart recovery. (completed 2026-05-02)
 - [x] **Phase 39: Operator Sync Observability and Control** — Make mainnet sync progress, health, stop/resume state, resource pressure, and support evidence truthful across status, dashboard, metrics, logs, and RPC surfaces. (completed 2026-05-02)
-- [ ] **Phase 40: Live Mainnet Smoke, Docs, and Parity Closeout** — Add opt-in live mainnet smoke/benchmark commands, refresh operator and parity docs, and close the milestone with auditable evidence.
+- [x] **Phase 40: Live Mainnet Smoke, Docs, and Parity Closeout** — Add opt-in live mainnet smoke/benchmark commands, refresh operator and parity docs, and close the milestone with auditable evidence. (completed 2026-05-02)
 
 ## Phase Details
 
@@ -124,7 +124,7 @@ transaction relay, or unattended packaged-service hardening.
 4. Parity docs and machine-readable indexes distinguish v1.2 shipped claims from deferred Knots/Core behavior.
 5. `bash scripts/verify.sh`, GSD health, diff checks, and milestone evidence are clean enough for archive/audit handoff.
 
-**Plans:** TBD by `/gsd-plan-phase 40`
+**Plans:** [40-01](phases/40-live-mainnet-smoke-docs-and-parity-closeout/40-01-PLAN.md)
 
 ## Progress
 

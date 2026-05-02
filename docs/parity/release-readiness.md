@@ -1,14 +1,15 @@
 # Release Readiness
 
-This is the current release-hardening handoff surface for the headless v1.1
+This is the current release-hardening handoff surface for the headless v1.2
 operator runtime. It points reviewers at repo-owned evidence instead of
 reproducing full phase logs or checking generated benchmark artifacts into git.
 
 ## Readiness Verdict
 
 The current repository is ready for a release-readiness review of the in-scope
-v1.1 node, wallet, RPC, CLI, service, dashboard, migration-planning, and
-runtime-verification surfaces. Known follow-up work remains explicit in
+v1.2 node, wallet, RPC, CLI, service, dashboard, migration-planning,
+runtime-verification, and opt-in live-mainnet-smoke surfaces. Known follow-up
+work remains explicit in
 [`docs/parity/deviations-and-unknowns.md`](deviations-and-unknowns.md).
 This readiness claim does not include unattended public-mainnet full sync
 through `open-bitcoind`.
@@ -44,11 +45,13 @@ That command now includes smoke benchmark generation and report validation via
 - `drop-in-audit-migration`
 - `real-sync-benchmarks`
 - `operator-runtime-release-hardening`
+- `live-mainnet-smoke-closeout`
 
 The newest completion surfaces are `real-sync-benchmarks` and
-`operator-runtime-release-hardening`. Generated benchmark reports remain local
-inspection artifacts under `packages/target` rather than checked-in release
-gates.
+`operator-runtime-release-hardening`, now joined by
+`live-mainnet-smoke-closeout`. Generated benchmark and live-smoke reports
+remain local inspection artifacts under `packages/target` rather than checked-in
+release gates.
 
 Primary current-cycle evidence:
 
@@ -60,6 +63,8 @@ Primary current-cycle evidence:
 - [`docs/operator/runtime-guide.md`](../operator/runtime-guide.md) provides the
   operator-facing installation, onboarding, service, status, dashboard,
   migration, and real-sync verification guidance.
+- [`scripts/run-live-mainnet-smoke.ts`](../../scripts/run-live-mainnet-smoke.ts)
+  provides the explicit opt-in live-mainnet evidence flow and report writer.
 - [`docs/parity/catalog/drop-in-audit-and-migration.md`](catalog/drop-in-audit-and-migration.md)
   preserves the explicit dry-run migration boundaries that still apply.
 - [`scripts/verify.sh`](../../scripts/verify.sh) and
@@ -78,8 +83,9 @@ Current release-hardening deferrals include:
 - packaged or signed release installation flows beyond the source-built path
 - Windows service support
 - migration apply mode, source-datadir mutation, or automatic cutover
-- unattended public-mainnet full sync through `open-bitcoind`; Phase 35 adds
-  opt-in activation and durable preflight only
+- unattended public-mainnet full-sync production claims through `open-bitcoind`;
+  Phase 40 adds opt-in live smoke evidence and local reports, not a broader
+  production-readiness guarantee
 - public-network sync as part of the default local verification gate
 - timing-threshold benchmark gates that would pass or fail a release on elapsed
   numbers alone
@@ -111,8 +117,8 @@ Current suspected unknown themes from
 - Which packaging or signed-release workflow should become the canonical
   install surface once source-built operation is no longer the only path.
 - v1.2 Full Mainnet Network Syncing is now the active milestone for turning the
-  Phase 35 `open-bitcoind` sync activation/preflight into an operator-ready
-  public-network full-sync flow.
+  earlier `open-bitcoind` sync activation and preflight into an operator-ready
+  public-network review flow with explicit live evidence.
 - Whether any public-network sync verification should become optional release
   evidence without expanding the default local gate.
 - Deprecated or ambiguous hex acceptance at future user-facing boundaries.
@@ -140,6 +146,7 @@ Use these commands and artifacts to prove the current state:
 
 ```bash
 bash scripts/verify.sh
+bun run scripts/run-live-mainnet-smoke.ts --datadir=/tmp/open-bitcoin-mainnet
 bash scripts/run-benchmarks.sh --smoke --output-dir packages/target/benchmark-reports
 bun scripts/check-benchmark-report.ts --report=packages/target/benchmark-reports/open-bitcoin-bench-smoke.json
 ```
@@ -155,6 +162,9 @@ Evidence links:
   case ids, and durability metadata.
 - [`scripts/check-panic-sites.sh`](../../scripts/check-panic-sites.sh) scans
   first-party production Rust code for unclassified panic-like sites.
+- [`scripts/run-live-mainnet-smoke.ts`](../../scripts/run-live-mainnet-smoke.ts)
+  launches the explicit live-mainnet review flow, polls durable sync status,
+  and writes local JSON plus Markdown evidence reports.
 - [`scripts/run-benchmarks.sh`](../../scripts/run-benchmarks.sh) is the
   contributor-facing benchmark wrapper and distinguishes smoke `debug` reports
   from full `release` reports.
@@ -178,6 +188,17 @@ Reviewer paths:
 groups, the expanded runtime-hardening cases, the profile-aware report schema,
 and the Knots mapping policy. The default comparison remains mapping-only;
 optional Knots JSON or binary paths are report metadata only.
+
+## Live Mainnet Smoke Evidence
+
+Live mainnet smoke evidence is generated under
+`packages/target/live-mainnet-smoke-reports` and is intentionally not checked
+into git.
+
+Reviewer paths:
+
+- `packages/target/live-mainnet-smoke-reports/open-bitcoin-live-mainnet-smoke.json`
+- `packages/target/live-mainnet-smoke-reports/open-bitcoin-live-mainnet-smoke.md`
 
 ## Reviewer Inspection Checklist
 
