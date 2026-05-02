@@ -92,7 +92,7 @@ transaction relay, or unattended packaged-service hardening.
 4. Reorg-like competing branches use durable undo or replay-safe state transitions.
 5. Resource limits and insufficient-resource conditions produce actionable operator guidance.
 
-**Plans:** TBD by `/gsd-plan-phase 38`
+**Plans:** [38-01](phases/38-block-download-connect-and-restart-recovery/38-01-PLAN.md)
 
 ### Phase 39: Operator Sync Observability and Control
 

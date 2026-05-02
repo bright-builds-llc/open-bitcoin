@@ -9,6 +9,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+mod block_reconcile;
 mod progress;
 mod resolver;
 mod tcp;
@@ -17,7 +18,10 @@ mod tests;
 mod types;
 mod wallet_rescan;
 
-use open_bitcoin_core::consensus::{ConsensusParams, ScriptVerifyFlags};
+use open_bitcoin_core::{
+    consensus::{ConsensusParams, ScriptVerifyFlags, block_hash},
+    primitives::BlockHash,
+};
 use open_bitcoin_mempool::PolicyConfig;
 use open_bitcoin_network::{PeerId, WireNetworkMessage};
 
@@ -51,6 +55,7 @@ pub struct DurableSyncRuntime {
     consensus_params: ConsensusParams,
     next_peer_id: PeerId,
     peer_backoff: BTreeMap<String, PeerRetryState>,
+    inflight_blocks: BTreeSet<BlockHash>,
 }
 
 impl DurableSyncRuntime {
@@ -64,8 +69,12 @@ impl DurableSyncRuntime {
         }
 
         let local_config = progress::local_peer_config(&config);
-        let mut network =
-            ManagedPeerNetwork::new(memory_store, local_config, PolicyConfig::default());
+        let mut network = ManagedPeerNetwork::with_sync_limits(
+            memory_store,
+            local_config,
+            PolicyConfig::default(),
+            config.max_blocks_in_flight_per_peer,
+        );
         if let Some(header_store) = store.load_header_store()? {
             network.seed_header_store(header_store);
         }
@@ -79,6 +88,7 @@ impl DurableSyncRuntime {
             consensus_params,
             next_peer_id: 1,
             peer_backoff: BTreeMap::new(),
+            inflight_blocks: BTreeSet::new(),
         })
     }
 
@@ -110,6 +120,11 @@ impl DurableSyncRuntime {
         resolver: &mut R,
         timestamp: i64,
     ) -> Result<SyncRunSummary, SyncRuntimeError> {
+        block_reconcile::validate_block_limits(self)?;
+        if block_reconcile::reconcile_best_chain(self, timestamp)? {
+            self.persist_progress()?;
+        }
+
         let peers = self.config.candidate_peers();
         if peers.is_empty() {
             let error = SyncRuntimeError::NoPeersConfigured;
@@ -235,7 +250,8 @@ impl DurableSyncRuntime {
         timestamp: i64,
     ) -> Result<PeerProgress, SyncRuntimeError> {
         let result = (|| -> Result<PeerProgress, SyncRuntimeError> {
-            let outbound = self.network.connect_outbound_peer(peer_id, timestamp)?;
+            let mut outbound = self.network.connect_outbound_peer(peer_id, timestamp)?;
+            outbound.extend(block_reconcile::request_missing_blocks(self, peer_id)?);
             self.send_all(&mut session, &outbound)?;
 
             let mut progress = PeerProgress::new(peer.clone(), self.config.network, attempts);
@@ -250,12 +266,13 @@ impl DurableSyncRuntime {
                 progress.maybe_last_activity_unix_seconds =
                     Some(u64::try_from(timestamp).unwrap_or(0));
                 progress.record_message(&message);
+                block_reconcile::release_inflight_for_message(self, &message);
 
                 let maybe_block = match &message {
                     WireNetworkMessage::Block(block) => Some(block.clone()),
                     _ => None,
                 };
-                let outbound = self.network.receive_sync_message(
+                let mut outbound = self.network.receive_sync_message(
                     peer_id,
                     message,
                     timestamp,
@@ -264,8 +281,12 @@ impl DurableSyncRuntime {
                 )?;
                 if let Some(block) = maybe_block {
                     self.store.save_block(&block, self.config.persist_mode)?;
+                    self.network
+                        .note_local_block_hash(block_hash(&block.header));
                 }
+                let _ = block_reconcile::reconcile_best_chain(self, timestamp)?;
                 self.persist_progress()?;
+                outbound.extend(block_reconcile::request_missing_blocks(self, peer_id)?);
                 self.send_all(&mut session, &outbound)?;
             }
             progress.state = PeerSyncState::Connected;
@@ -273,6 +294,13 @@ impl DurableSyncRuntime {
 
             Ok(progress)
         })();
+        let outstanding_blocks = self
+            .network
+            .peer_requested_blocks(peer_id)
+            .unwrap_or_default();
+        for block_hash in outstanding_blocks {
+            self.inflight_blocks.remove(&block_hash);
+        }
         let disconnect_result = self.network.disconnect_peer(peer_id);
         match (result, disconnect_result) {
             (Ok(progress), Ok(())) => Ok(progress),
@@ -523,8 +551,8 @@ fn peer_failure_reason_for_error(error: &SyncRuntimeError) -> PeerFailureReason 
         SyncRuntimeError::InvalidMagic { .. } => PeerFailureReason::InvalidMagic,
         SyncRuntimeError::Storage(_) => PeerFailureReason::Storage,
         SyncRuntimeError::Io { .. } => PeerFailureReason::Connect,
-        SyncRuntimeError::Network { .. } | SyncRuntimeError::NoPeersConfigured => {
-            PeerFailureReason::Network
-        }
+        SyncRuntimeError::Network { .. }
+        | SyncRuntimeError::NoPeersConfigured
+        | SyncRuntimeError::ResourceLimit { .. } => PeerFailureReason::Network,
     }
 }

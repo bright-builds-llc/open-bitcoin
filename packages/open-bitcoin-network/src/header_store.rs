@@ -169,6 +169,13 @@ impl HeaderStore {
         self.best_tip.and_then(|hash| self.entries.get(&hash))
     }
 
+    pub fn best_chain_entries(&self) -> Vec<HeaderEntry> {
+        self.best_chain_hashes()
+            .into_iter()
+            .filter_map(|hash| self.entries.get(&hash).cloned())
+            .collect()
+    }
+
     pub fn ancestor_at_height(
         &self,
         start_hash: BlockHash,
@@ -469,6 +476,46 @@ mod tests {
         assert_eq!(
             store.best_tip().expect("best tip").block_hash,
             block_hash(&descendant_header),
+        );
+    }
+
+    #[test]
+    fn best_chain_entries_follow_the_selected_tip_order() {
+        let mut store = HeaderStore::default();
+        let genesis_header = header(BlockHash::from_byte_array([0_u8; 32]), 1);
+        let genesis = store
+            .insert_header(genesis_header.clone())
+            .expect("genesis");
+        let branch_a_header = header(genesis.block_hash, 2);
+        let branch_a = store.insert_header(branch_a_header).expect("branch a");
+        let branch_b_header = header(genesis.block_hash, 3);
+        let branch_b = store
+            .insert_header(branch_b_header.clone())
+            .expect("branch b");
+        let branch_b_child = store
+            .insert_header(header(branch_b.block_hash, 4))
+            .expect("branch b child");
+
+        let entries = store.best_chain_entries();
+
+        assert_eq!(
+            entries
+                .iter()
+                .map(|entry| entry.block_hash)
+                .collect::<Vec<_>>(),
+            vec![
+                genesis.block_hash,
+                branch_b.block_hash,
+                branch_b_child.block_hash
+            ]
+        );
+        assert_eq!(entries[0].height, 0);
+        assert_eq!(entries[1].height, 1);
+        assert_eq!(entries[2].height, 2);
+        assert!(
+            entries
+                .iter()
+                .all(|entry| entry.block_hash != branch_a.block_hash)
         );
     }
 

@@ -22,6 +22,8 @@ const DEFAULT_MAX_SYNC_ROUNDS: usize = 8;
 const DEFAULT_MAX_PEER_RETRIES: u8 = 1;
 const DEFAULT_TARGET_OUTBOUND_PEERS: usize = 4;
 const DEFAULT_RETRY_BACKOFF_MS: u64 = 1_000;
+const DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER: usize = 16;
+const DEFAULT_MAX_BLOCKS_IN_FLIGHT_TOTAL: usize = 64;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SyncNetwork {
@@ -172,6 +174,8 @@ pub struct SyncRuntimeConfig {
     pub max_messages_per_peer: usize,
     pub max_rounds: usize,
     pub max_peer_retries: u8,
+    pub max_blocks_in_flight_per_peer: usize,
+    pub max_blocks_in_flight_total: usize,
     pub persist_mode: PersistMode,
     pub maybe_log_dir: Option<PathBuf>,
 }
@@ -206,6 +210,8 @@ impl Default for SyncRuntimeConfig {
             max_messages_per_peer: DEFAULT_MAX_MESSAGES_PER_PEER,
             max_rounds: DEFAULT_MAX_SYNC_ROUNDS,
             max_peer_retries: DEFAULT_MAX_PEER_RETRIES,
+            max_blocks_in_flight_per_peer: DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER,
+            max_blocks_in_flight_total: DEFAULT_MAX_BLOCKS_IN_FLIGHT_TOTAL,
             persist_mode: PersistMode::Flush,
             maybe_log_dir: None,
         }
@@ -386,6 +392,7 @@ pub enum SyncRuntimeError {
     InvalidData { message: String },
     InvalidMagic { expected: [u8; 4], actual: [u8; 4] },
     Network { message: String },
+    ResourceLimit { message: String },
     Storage(StorageError),
 }
 
@@ -403,6 +410,7 @@ impl fmt::Display for SyncRuntimeError {
                 "network magic mismatch: expected {expected:?}, got {actual:?}"
             ),
             Self::Network { message } => write!(f, "sync network failure: {message}"),
+            Self::ResourceLimit { message } => write!(f, "sync resource limit: {message}"),
             Self::Storage(error) => error.fmt(f),
         }
     }
@@ -437,6 +445,11 @@ impl SyncRuntimeError {
                 level: HealthSignalLevel::Error,
                 source: "network".to_string(),
                 message: "sync network failure: inspect peer connectivity".to_string(),
+            },
+            Self::ResourceLimit { message } => HealthSignal {
+                level: HealthSignalLevel::Warn,
+                source: "sync".to_string(),
+                message: format!("sync resource limit reached: {message}"),
             },
             Self::Storage(error) => HealthSignal {
                 level: HealthSignalLevel::Error,

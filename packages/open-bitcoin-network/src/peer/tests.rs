@@ -288,6 +288,13 @@ fn helper_methods_and_unknown_peer_errors_are_covered() {
     assert!(manager.peer_state(99).is_none());
     assert_eq!(
         manager
+            .peer_requested_blocks(99)
+            .expect_err("unknown peer")
+            .to_string(),
+        "unknown peer: 99",
+    );
+    assert_eq!(
+        manager
             .remove_peer(99)
             .expect_err("unknown peer")
             .to_string(),
@@ -347,6 +354,178 @@ fn helper_methods_and_unknown_peer_errors_are_covered() {
     let mut restored_manager = PeerManager::new(local_config());
     restored_manager.seed_header_store(restored_headers);
     assert_eq!(restored_manager.header_store().best_height(), 0);
+}
+
+#[test]
+fn request_missing_blocks_skips_known_hashes_and_tracks_requested_inventory() {
+    let mut manager = PeerManager::with_max_blocks_in_flight(local_config(), 1);
+    let genesis_header = mined_header(BlockHash::from_byte_array([0_u8; 32]), 1);
+    let known_hash = open_bitcoin_consensus::block_hash(&genesis_header);
+    let missing_header = mined_header(known_hash, 2);
+    let missing_hash = open_bitcoin_consensus::block_hash(&missing_header);
+
+    manager.seed_local_chain(&[ChainPosition::new(genesis_header, 0, 1, 0)]);
+    manager.add_outbound_peer(21, 10).expect("peer");
+    assert_eq!(
+        manager
+            .request_missing_blocks(21, &[known_hash, missing_hash])
+            .expect("pre-handshake"),
+        None
+    );
+
+    manager
+        .handle_message(
+            21,
+            WireNetworkMessage::Version(crate::VersionMessage {
+                start_height: 1,
+                ..crate::VersionMessage::default()
+            }),
+            11,
+        )
+        .expect("version");
+    manager
+        .handle_message(21, WireNetworkMessage::Verack, 12)
+        .expect("verack");
+    manager.note_local_block_hash(known_hash);
+
+    let Some(WireNetworkMessage::GetData(inventory)) = manager
+        .request_missing_blocks(21, &[known_hash, missing_hash])
+        .expect("request")
+    else {
+        panic!("expected getdata");
+    };
+    assert_eq!(inventory.inventory.len(), 1);
+    assert_eq!(
+        BlockHash::from(inventory.inventory[0].object_hash),
+        missing_hash
+    );
+    assert_eq!(
+        manager.peer_requested_blocks(21).expect("requested blocks"),
+        vec![missing_hash]
+    );
+    assert_eq!(
+        manager
+            .request_missing_blocks(21, &[missing_hash])
+            .expect("duplicate request"),
+        None
+    );
+}
+
+#[test]
+fn request_missing_blocks_respects_capacity_and_returns_none_when_only_skips_remain() {
+    let mut manager = PeerManager::with_max_blocks_in_flight(local_config(), 2);
+    let genesis_header = mined_header(BlockHash::from_byte_array([0_u8; 32]), 1);
+    let known_hash = open_bitcoin_consensus::block_hash(&genesis_header);
+    let first_missing = mined_header(known_hash, 2);
+    let first_missing_hash = open_bitcoin_consensus::block_hash(&first_missing);
+    let second_missing = mined_header(first_missing_hash, 3);
+    let second_missing_hash = open_bitcoin_consensus::block_hash(&second_missing);
+
+    manager.seed_local_chain(&[ChainPosition::new(genesis_header, 0, 1, 0)]);
+    manager.add_outbound_peer(22, 10).expect("peer");
+    manager
+        .handle_message(
+            22,
+            WireNetworkMessage::Version(crate::VersionMessage {
+                start_height: 2,
+                ..crate::VersionMessage::default()
+            }),
+            11,
+        )
+        .expect("version");
+    manager
+        .handle_message(22, WireNetworkMessage::Verack, 12)
+        .expect("verack");
+
+    let Some(WireNetworkMessage::GetData(first_inventory)) = manager
+        .request_missing_blocks(22, &[first_missing_hash, second_missing_hash])
+        .expect("first request")
+    else {
+        panic!("expected getdata");
+    };
+    assert_eq!(first_inventory.inventory.len(), 2);
+
+    let third_missing = mined_header(second_missing_hash, 4);
+    let third_missing_hash = open_bitcoin_consensus::block_hash(&third_missing);
+    let mut manager = PeerManager::with_max_blocks_in_flight(local_config(), 2);
+    let genesis_header = mined_header(BlockHash::from_byte_array([0_u8; 32]), 11);
+    let known_hash = open_bitcoin_consensus::block_hash(&genesis_header);
+    manager.seed_local_chain(&[ChainPosition::new(genesis_header, 0, 1, 0)]);
+    manager.add_outbound_peer(23, 10).expect("peer");
+    manager
+        .handle_message(
+            23,
+            WireNetworkMessage::Version(crate::VersionMessage {
+                start_height: 4,
+                ..crate::VersionMessage::default()
+            }),
+            11,
+        )
+        .expect("version");
+    manager
+        .handle_message(23, WireNetworkMessage::Verack, 12)
+        .expect("verack");
+
+    let Some(WireNetworkMessage::GetData(capped_inventory)) = manager
+        .request_missing_blocks(23, &[third_missing_hash])
+        .expect("seed request")
+    else {
+        panic!("expected capped getdata");
+    };
+    assert_eq!(capped_inventory.inventory.len(), 1);
+    assert_eq!(
+        BlockHash::from(capped_inventory.inventory[0].object_hash),
+        third_missing_hash
+    );
+    manager.note_local_block_hash(known_hash);
+    assert_eq!(
+        manager
+            .request_missing_blocks(23, &[known_hash, third_missing_hash])
+            .expect("skip-only request"),
+        None
+    );
+}
+
+#[test]
+fn request_missing_blocks_stops_once_capacity_is_filled() {
+    let mut manager = PeerManager::with_max_blocks_in_flight(local_config(), 1);
+    let genesis_header = mined_header(BlockHash::from_byte_array([0_u8; 32]), 21);
+    let first_missing = mined_header(open_bitcoin_consensus::block_hash(&genesis_header), 22);
+    let first_missing_hash = open_bitcoin_consensus::block_hash(&first_missing);
+    let second_missing = mined_header(first_missing_hash, 23);
+    let second_missing_hash = open_bitcoin_consensus::block_hash(&second_missing);
+
+    manager.seed_local_chain(&[ChainPosition::new(genesis_header, 0, 1, 0)]);
+    manager.add_outbound_peer(24, 10).expect("peer");
+    manager
+        .handle_message(
+            24,
+            WireNetworkMessage::Version(crate::VersionMessage {
+                start_height: 2,
+                ..crate::VersionMessage::default()
+            }),
+            11,
+        )
+        .expect("version");
+    manager
+        .handle_message(24, WireNetworkMessage::Verack, 12)
+        .expect("verack");
+
+    let Some(WireNetworkMessage::GetData(inventory)) = manager
+        .request_missing_blocks(24, &[first_missing_hash, second_missing_hash])
+        .expect("request")
+    else {
+        panic!("expected getdata");
+    };
+    assert_eq!(inventory.inventory.len(), 1);
+    assert_eq!(
+        BlockHash::from(inventory.inventory[0].object_hash),
+        first_missing_hash
+    );
+    assert_eq!(
+        manager.peer_requested_blocks(24).expect("requested"),
+        vec![first_missing_hash]
+    );
 }
 
 #[test]

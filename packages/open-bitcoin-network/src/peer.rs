@@ -161,6 +161,10 @@ impl PeerManager {
         self.known_blocks.insert(position.block_hash);
     }
 
+    pub fn note_local_block_hash(&mut self, block_hash: BlockHash) {
+        self.known_blocks.insert(block_hash);
+    }
+
     pub fn note_local_transaction(
         &mut self,
         transaction: &Transaction,
@@ -180,6 +184,14 @@ impl PeerManager {
 
     pub fn peer_state(&self, peer_id: PeerId) -> Option<&PeerState> {
         self.peers.get(&peer_id)
+    }
+
+    pub fn peer_requested_blocks(&self, peer_id: PeerId) -> Result<Vec<BlockHash>, NetworkError> {
+        let peer = self
+            .peers
+            .get(&peer_id)
+            .ok_or(NetworkError::UnknownPeer(peer_id))?;
+        Ok(peer.requested_blocks.iter().copied().collect())
     }
 
     pub fn remove_peer(&mut self, peer_id: PeerId) -> Result<(), NetworkError> {
@@ -523,6 +535,48 @@ impl PeerManager {
         }
 
         Ok(actions)
+    }
+
+    pub fn request_missing_blocks(
+        &mut self,
+        peer_id: PeerId,
+        block_hashes: &[BlockHash],
+    ) -> Result<Option<WireNetworkMessage>, NetworkError> {
+        let known_blocks = self.known_blocks.clone();
+        let peer = Self::peer_mut(&mut self.peers, peer_id)?;
+        if !peer.remote_verack_received || !peer.local_verack_sent {
+            return Ok(None);
+        }
+
+        let available_slots = self
+            .max_blocks_in_flight_per_peer
+            .saturating_sub(peer.requested_blocks.len());
+        if available_slots == 0 {
+            return Ok(None);
+        }
+
+        let mut inventory = Vec::new();
+        for block_hash in block_hashes.iter().copied() {
+            if inventory.len() >= available_slots {
+                break;
+            }
+            if known_blocks.contains(&block_hash) || peer.requested_blocks.contains(&block_hash) {
+                continue;
+            }
+            peer.requested_blocks.insert(block_hash);
+            inventory.push(InventoryVector {
+                inventory_type: InventoryType::Block,
+                object_hash: block_hash.into(),
+            });
+        }
+
+        if inventory.is_empty() {
+            return Ok(None);
+        }
+
+        Ok(Some(WireNetworkMessage::GetData(InventoryList::new(
+            inventory,
+        ))))
     }
 
     fn handle_transaction(

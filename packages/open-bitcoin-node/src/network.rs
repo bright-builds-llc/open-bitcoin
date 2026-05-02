@@ -9,7 +9,9 @@ use std::collections::{BTreeMap, BTreeSet};
 mod header_sync;
 
 use open_bitcoin_core::{
-    chainstate::{ChainPosition, ChainstateError, ChainstateSnapshot},
+    chainstate::{
+        AnchoredBlock, ChainPosition, ChainTransition, ChainstateError, ChainstateSnapshot,
+    },
     codec::CodecError,
     consensus::{
         ConsensusParams, ScriptVerifyFlags, block_hash, transaction_txid, transaction_wtxid,
@@ -69,6 +71,8 @@ impl From<CodecError> for ManagedNetworkError {
     }
 }
 
+type ManagedResult<T> = Result<T, ManagedNetworkError>;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ManagedMempoolInfo {
     pub transaction_count: usize,
@@ -123,17 +127,39 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         }
     }
 
-    pub fn chainstate(&self) -> &ManagedChainstate<S> {
-        &self.chainstate
+    pub fn with_sync_limits(
+        store: S,
+        local_config: LocalPeerConfig,
+        mempool_config: PolicyConfig,
+        max_blocks_in_flight_per_peer: usize,
+    ) -> Self {
+        let chainstate = ManagedChainstate::from_store(store);
+        let mut peer_manager = PeerManager::with_max_blocks_in_flight(
+            local_config.clone(),
+            max_blocks_in_flight_per_peer,
+        );
+        peer_manager.seed_local_chain(&chainstate.chainstate().snapshot().active_chain);
+
+        Self {
+            chainstate,
+            mempool: ManagedMempool::new(mempool_config),
+            peer_manager,
+            peer_ids: BTreeSet::new(),
+            local_config,
+            blocks_by_hash: BTreeMap::new(),
+            transactions_by_txid: BTreeMap::new(),
+            transactions_by_wtxid: BTreeMap::new(),
+        }
     }
 
-    pub fn mempool(&self) -> &ManagedMempool {
-        &self.mempool
-    }
+    #[rustfmt::skip]
+    pub fn chainstate(&self) -> &ManagedChainstate<S> { &self.chainstate }
 
-    pub fn peer_manager(&self) -> &PeerManager {
-        &self.peer_manager
-    }
+    #[rustfmt::skip]
+    pub fn mempool(&self) -> &ManagedMempool { &self.mempool }
+
+    #[rustfmt::skip]
+    pub fn peer_manager(&self) -> &PeerManager { &self.peer_manager }
 
     pub fn disconnect_peer(&mut self, peer_id: PeerId) -> Result<(), ManagedNetworkError> {
         self.peer_manager.remove_peer(peer_id)?;
@@ -141,9 +167,8 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         Ok(())
     }
 
-    pub fn seed_header_store(&mut self, header_store: HeaderStore) {
-        self.peer_manager.seed_header_store(header_store);
-    }
+    #[rustfmt::skip]
+    pub fn seed_header_store(&mut self, header_store: HeaderStore) { self.peer_manager.seed_header_store(header_store); }
 
     pub fn header_entries(&self) -> Vec<HeaderEntry> {
         self.peer_manager
@@ -153,12 +178,26 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             .collect()
     }
 
+    #[rustfmt::skip]
+    pub fn best_chain_entries(&self) -> Vec<HeaderEntry> { self.peer_manager.header_store().best_chain_entries() }
+
     pub fn chainstate_snapshot(&self) -> ChainstateSnapshot {
         self.chainstate.chainstate().snapshot()
     }
 
-    pub fn maybe_chain_tip(&self) -> Option<ChainPosition> {
-        self.chainstate.chainstate().tip().cloned()
+    #[rustfmt::skip]
+    pub fn maybe_chain_tip(&self) -> Option<ChainPosition> { self.chainstate.chainstate().tip().cloned() }
+
+    #[rustfmt::skip]
+    pub fn note_local_block_hash(&mut self, block_hash: BlockHash) { self.peer_manager.note_local_block_hash(block_hash); }
+
+    #[rustfmt::skip]
+    pub fn peer_requested_blocks(&self, peer_id: PeerId) -> ManagedResult<Vec<BlockHash>> { self.peer_manager.peer_requested_blocks(peer_id).map_err(ManagedNetworkError::from) }
+
+    #[rustfmt::skip]
+    pub fn request_missing_blocks(&mut self, peer_id: PeerId, block_hashes: &[BlockHash]) -> ManagedResult<Vec<WireNetworkMessage>> {
+        let maybe_message = self.peer_manager.request_missing_blocks(peer_id, block_hashes)?;
+        Ok(maybe_message.into_iter().collect())
     }
 
     pub fn mempool_info(&self) -> ManagedMempoolInfo {
@@ -345,18 +384,92 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             .map_err(ManagedNetworkError::from)
     }
 
+    pub fn connect_stored_block(
+        &mut self,
+        block: &Block,
+        chain_work: u128,
+        timestamp: i64,
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+    ) -> ManagedResult<Option<ChainPosition>> {
+        let block_hash = block_hash(&block.header);
+        if self
+            .chainstate
+            .chainstate()
+            .snapshot()
+            .active_chain
+            .iter()
+            .any(|position| position.block_hash == block_hash)
+        {
+            self.blocks_by_hash.insert(block_hash, block.clone());
+            self.peer_manager.note_local_block_hash(block_hash);
+            return Ok(None);
+        }
+
+        let maybe_tip = self.chainstate.chainstate().tip().cloned();
+        let extends_tip = maybe_tip
+            .as_ref()
+            .is_none_or(|tip| tip.block_hash == block.header.previous_block_hash);
+        let is_genesis = block.header.previous_block_hash.to_byte_array() == [0_u8; 32];
+        if maybe_tip.is_some() && !extends_tip {
+            self.blocks_by_hash.insert(block_hash, block.clone());
+            self.peer_manager.note_local_block_hash(block_hash);
+            return Ok(None);
+        }
+        if maybe_tip.is_none() && !is_genesis {
+            self.blocks_by_hash.insert(block_hash, block.clone());
+            self.peer_manager.note_local_block_hash(block_hash);
+            return Ok(None);
+        }
+
+        let position = self.chainstate.connect_block_with_current_time(
+            block,
+            chain_work,
+            timestamp,
+            verify_flags,
+            consensus_params,
+        )?;
+        self.blocks_by_hash.insert(block_hash, block.clone());
+        self.peer_manager.note_local_position(&position);
+        Ok(Some(position))
+    }
+
+    pub fn reorg_to_branch(
+        &mut self,
+        disconnect_blocks: &[Block],
+        replacement_branch: &[AnchoredBlock],
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+    ) -> ManagedResult<ChainTransition> {
+        let transition = self.chainstate.reorg(
+            disconnect_blocks,
+            replacement_branch,
+            verify_flags,
+            consensus_params,
+        )?;
+        for anchored_block in replacement_branch {
+            let block_hash = block_hash(&anchored_block.block.header);
+            self.blocks_by_hash
+                .insert(block_hash, anchored_block.block.clone());
+            self.peer_manager.note_local_block_hash(block_hash);
+        }
+        for position in &transition.connected {
+            self.peer_manager.note_local_position(position);
+        }
+        Ok(transition)
+    }
+
     fn collect_outbound(
         &mut self,
         actions: Vec<PeerAction>,
     ) -> Result<Vec<WireNetworkMessage>, ManagedNetworkError> {
-        let mut outbound = Vec::new();
-        for action in actions {
-            let PeerAction::Send(message) = action else {
-                continue;
-            };
-            outbound.push(message);
-        }
-        Ok(outbound)
+        Ok(actions
+            .into_iter()
+            .filter_map(|action| match action {
+                PeerAction::Send(message) => Some(message),
+                _ => None,
+            })
+            .collect())
     }
 
     fn handle_headers_message(
@@ -414,15 +527,13 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                 PeerAction::ReceivedBlock(block) => {
                     let block_hash = block_hash(&block.header);
                     if !self.blocks_by_hash.contains_key(&block_hash) {
-                        let position = self.chainstate.connect_block_with_current_time(
+                        let _ = self.connect_stored_block(
                             &block,
                             self.next_chain_work(),
                             timestamp,
                             verify_flags,
                             consensus_params,
                         )?;
-                        self.blocks_by_hash.insert(block_hash, block);
-                        self.peer_manager.note_local_position(&position);
                     }
                 }
                 PeerAction::Disconnect(_) => {
