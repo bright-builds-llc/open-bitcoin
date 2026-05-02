@@ -12,6 +12,7 @@ use std::collections::{BTreeMap, BTreeSet};
 mod block_reconcile;
 mod progress;
 mod resolver;
+mod runtime_state;
 mod tcp;
 #[cfg(test)]
 mod tests;
@@ -35,9 +36,7 @@ pub use types::{
 pub use wallet_rescan::WalletRescanRuntime;
 
 use crate::{
-    ChainstateStore, FjallNodeStore, LogRetentionPolicy, ManagedPeerNetwork, MemoryChainstateStore,
-    MetricRetentionPolicy, RuntimeMetadata,
-    logging::{StructuredLogError, StructuredLogRecord, writer::append_structured_log_record},
+    ChainstateStore, FjallNodeStore, ManagedPeerNetwork, MemoryChainstateStore, SyncLifecycleState,
 };
 use progress::{PeerFailure, PeerProgress};
 
@@ -129,6 +128,12 @@ impl DurableSyncRuntime {
         if peers.is_empty() {
             let error = SyncRuntimeError::NoPeersConfigured;
             self.write_runtime_error_log(&error, timestamp);
+            let state = self.durable_sync_state(
+                SyncLifecycleState::Failed,
+                Some(error.to_string()),
+                timestamp,
+            )?;
+            self.persist_durable_sync_state(state)?;
             return Err(error);
         }
 
@@ -159,9 +164,23 @@ impl DurableSyncRuntime {
         }
         if let Err(error) = self.persist_metrics(&summary, timestamp) {
             self.write_runtime_error_log(&error, timestamp);
+            let state = self.durable_sync_state_from_summary(
+                &summary,
+                SyncLifecycleState::Failed,
+                Some(error.to_string()),
+                timestamp,
+            )?;
+            self.persist_durable_sync_state(state)?;
             return Err(error);
         }
         self.write_summary_logs(&mut summary, timestamp);
+        let state = self.durable_sync_state_from_summary(
+            &summary,
+            SyncLifecycleState::Active,
+            None,
+            timestamp,
+        )?;
+        self.persist_durable_sync_state(state)?;
 
         Ok(summary)
     }
@@ -366,181 +385,6 @@ impl DurableSyncRuntime {
             session.send(message, self.config.network.magic())?;
         }
         Ok(())
-    }
-
-    fn persist_progress(&self) -> Result<(), SyncRuntimeError> {
-        self.store
-            .save_header_entries(&self.network.header_entries(), self.config.persist_mode)?;
-        self.store.save_chainstate_snapshot(
-            &self.network.chainstate_snapshot(),
-            self.config.persist_mode,
-        )?;
-        self.store.save_runtime_metadata(
-            &RuntimeMetadata {
-                last_clean_shutdown: false,
-                ..RuntimeMetadata::default()
-            },
-            self.config.persist_mode,
-        )?;
-
-        Ok(())
-    }
-
-    fn persist_metrics(
-        &self,
-        summary: &SyncRunSummary,
-        timestamp: i64,
-    ) -> Result<(), SyncRuntimeError> {
-        let timestamp = u64::try_from(timestamp).unwrap_or(0);
-        self.store.append_metric_samples(
-            &summary.metric_samples(timestamp),
-            MetricRetentionPolicy::default(),
-            timestamp,
-            self.config.persist_mode,
-        )?;
-
-        Ok(())
-    }
-
-    fn write_summary_logs(&self, summary: &mut SyncRunSummary, timestamp: i64) {
-        let timestamp = u64::try_from(timestamp).unwrap_or(0);
-        for record in summary.structured_log_records(timestamp) {
-            if let Err(error) = self.append_structured_record(&record) {
-                summary
-                    .health_signals
-                    .push(progress::log_write_failed_signal(&error));
-                break;
-            }
-        }
-    }
-
-    fn write_runtime_error_log(&self, error: &SyncRuntimeError, timestamp: i64) {
-        let signal = error.health_signal();
-        let record = StructuredLogRecord {
-            level: progress::structured_log_level(signal.level),
-            source: signal.source,
-            message: signal.message,
-            timestamp_unix_seconds: u64::try_from(timestamp).unwrap_or(0),
-        };
-        let _ = self.append_structured_record(&record);
-    }
-
-    fn append_structured_record(
-        &self,
-        record: &StructuredLogRecord,
-    ) -> Result<(), StructuredLogError> {
-        let Some(log_dir) = &self.config.maybe_log_dir else {
-            return Ok(());
-        };
-
-        append_structured_log_record(log_dir, record, LogRetentionPolicy::default())?;
-        Ok(())
-    }
-
-    fn best_heights(&self) -> (u64, u64) {
-        let best_header_height = self
-            .network
-            .peer_manager()
-            .header_store()
-            .best_tip()
-            .map_or(0, |entry| u64::from(entry.height));
-        let best_block_height = self
-            .network
-            .maybe_chain_tip()
-            .map_or(0, |tip| u64::from(tip.height));
-
-        (best_header_height, best_block_height)
-    }
-
-    fn allocate_peer_id(&mut self) -> PeerId {
-        let peer_id = self.next_peer_id;
-        self.next_peer_id = self.next_peer_id.saturating_add(1);
-        peer_id
-    }
-
-    fn resolve_candidates<R: SyncPeerResolver>(
-        &self,
-        peers: Vec<SyncPeerAddress>,
-        resolver: &mut R,
-        summary: &mut SyncRunSummary,
-    ) -> Vec<ResolvedSyncPeerAddress> {
-        let mut resolved = Vec::new();
-        let mut seen = BTreeSet::new();
-        for peer in peers {
-            match resolver.resolve(&peer, &self.config) {
-                Ok(endpoints) => {
-                    for endpoint in endpoints {
-                        if seen.insert(endpoint.endpoint) {
-                            resolved.push(endpoint);
-                        }
-                    }
-                }
-                Err(error) => {
-                    summary.attempted_peers += 1;
-                    summary.failed_peers += 1;
-                    let signal = error.health_signal();
-                    let message = signal.message.clone();
-                    summary.health_signals.push(signal);
-                    summary.peer_outcomes.push(PeerSyncOutcome {
-                        peer,
-                        maybe_resolved_endpoint: None,
-                        network: self.config.network,
-                        state: PeerSyncState::Failed,
-                        attempts: 1,
-                        contribution: PeerContribution {
-                            messages_processed: 0,
-                            headers_received: 0,
-                            blocks_received: 0,
-                        },
-                        maybe_last_activity_unix_seconds: None,
-                        maybe_capabilities: None,
-                        maybe_failure_reason: Some(PeerFailureReason::AddressResolution),
-                        maybe_error: Some(message),
-                    });
-                }
-            }
-        }
-        resolved
-    }
-
-    fn peer_capabilities(&self, peer_id: PeerId) -> Option<PeerCapabilitySummary> {
-        let peer = self.network.peer_manager().peer_state(peer_id)?;
-        Some(PeerCapabilitySummary {
-            services_bits: peer.remote_services_bits,
-            user_agent: peer.remote_user_agent.clone(),
-            start_height: peer.remote_start_height,
-            wtxidrelay: peer.remote_wtxidrelay,
-            prefers_headers: peer.remote_prefers_headers,
-        })
-    }
-
-    fn peer_ready(&self, peer: &ResolvedSyncPeerAddress, timestamp: i64) -> bool {
-        let key = peer.endpoint.to_string();
-        self.peer_backoff
-            .get(&key)
-            .is_none_or(|state| state.next_attempt_unix_seconds <= timestamp)
-    }
-
-    fn mark_backoff(&mut self, peer: &ResolvedSyncPeerAddress, timestamp: i64) {
-        let key = peer.endpoint.to_string();
-        let mut state = self
-            .peer_backoff
-            .get(&key)
-            .copied()
-            .unwrap_or(PeerRetryState {
-                consecutive_failures: 0,
-                next_attempt_unix_seconds: timestamp,
-            });
-        state.consecutive_failures = state.consecutive_failures.saturating_add(1);
-        let multiplier = i64::from(state.consecutive_failures);
-        let backoff = i64::try_from(self.config.retry_backoff_ms).unwrap_or(i64::MAX);
-        state.next_attempt_unix_seconds =
-            timestamp.saturating_add(backoff.saturating_mul(multiplier));
-        self.peer_backoff.insert(key, state);
-    }
-
-    fn clear_backoff(&mut self, peer: &ResolvedSyncPeerAddress) {
-        self.peer_backoff.remove(&peer.endpoint.to_string());
     }
 }
 

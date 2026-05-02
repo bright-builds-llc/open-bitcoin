@@ -3,20 +3,17 @@
 
 //! Operator runtime contract surface.
 
-use std::{
-    collections::BTreeMap,
-    env, fmt, fs,
-    path::{Path, PathBuf},
-};
+mod support;
+
+use std::{collections::BTreeMap, env, fmt, fs, path::PathBuf};
 
 use open_bitcoin_rpc::RpcAuthConfig;
-use serde_json::json;
 
 use crate::{args::CliStartupArgs, startup::resolve_startup_config};
 
 use super::{
     ConfigCommand, MigrationArgs, MigrationCommand, NetworkSelection, OnboardArgs, OperatorCli,
-    OperatorCommand, OperatorOutputFormat,
+    OperatorCommand, OperatorOutputFormat, SyncArgs, SyncCommand,
     config::{
         OPEN_BITCOIN_CONFIG_ENV, OPEN_BITCOIN_DATADIR_ENV, OPEN_BITCOIN_NETWORK_ENV,
         OperatorConfigRequest, OperatorConfigResolution, OperatorConfigRoots,
@@ -38,6 +35,7 @@ use super::{
     },
     wallet::execute_wallet_command,
 };
+use support::{execute_sync_command, render_config_paths};
 
 /// Typed process-style outcome for an operator command.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -185,6 +183,7 @@ fn execute_operator_cli_inner(
 
     match &cli.command {
         OperatorCommand::Status(_) => execute_status(&cli, config_resolution, detections),
+        OperatorCommand::Sync(args) => execute_sync_command(args, cli.format, &config_resolution),
         OperatorCommand::Config(config) => match config.command {
             ConfigCommand::Paths => Ok(OperatorCommandOutcome::success(render_config_paths(
                 &config_resolution,
@@ -331,6 +330,7 @@ fn command_detections(
     match command {
         OperatorCommand::Migrate(args) => detect_migration_installations(config_resolution, args),
         OperatorCommand::Status(_)
+        | OperatorCommand::Sync(_)
         | OperatorCommand::Config(_)
         | OperatorCommand::Onboard(_)
         | OperatorCommand::Service(_)
@@ -408,40 +408,6 @@ fn onboarding_error(error: OnboardingError) -> OperatorRuntimeError {
     OperatorRuntimeError::InvalidRequest {
         message: error.to_string(),
     }
-}
-
-fn render_config_paths(
-    resolution: &OperatorConfigResolution,
-    format: OperatorOutputFormat,
-) -> Result<String, OperatorRuntimeError> {
-    let sources = resolution
-        .source_names()
-        .into_iter()
-        .map(str::to_string)
-        .collect::<Vec<_>>();
-    if format == OperatorOutputFormat::Json {
-        return serde_json::to_string_pretty(&json!({
-            "config_path": resolution.maybe_config_path.as_ref().map(|path| path.display().to_string()),
-            "bitcoin_conf_path": resolution.maybe_bitcoin_conf_path.as_ref().map(|path| path.display().to_string()),
-            "datadir": resolution.maybe_data_dir.as_ref().map(|path| path.display().to_string()),
-            "log_dir": resolution.maybe_log_dir.as_ref().map(|path| path.display().to_string()),
-            "metrics_store_path": resolution.maybe_metrics_store_path.as_ref().map(|path| path.display().to_string()),
-            "sources_considered": sources,
-        }))
-        .map(|value| format!("{value}\n"))
-        .map_err(|error| OperatorRuntimeError::InvalidRequest {
-            message: error.to_string(),
-        });
-    }
-    Ok(format!(
-        "Config: {}\nBitcoin config: {}\nDatadir: {}\nLogs: {}\nMetrics: {}\nSources: {}\n",
-        display_path(resolution.maybe_config_path.as_deref()),
-        display_path(resolution.maybe_bitcoin_conf_path.as_deref()),
-        display_path(resolution.maybe_data_dir.as_deref()),
-        display_path(resolution.maybe_log_dir.as_deref()),
-        display_path(resolution.maybe_metrics_store_path.as_deref()),
-        sources.join(" > ")
-    ))
 }
 
 fn startup_config_for_status(
@@ -607,12 +573,6 @@ fn base64_encode(bytes: &[u8]) -> String {
         });
     }
     output
-}
-
-fn display_path(maybe_path: Option<&Path>) -> String {
-    maybe_path
-        .map(|path| path.display().to_string())
-        .unwrap_or_else(|| "Unavailable".to_string())
 }
 
 fn default_operator_data_dir() -> PathBuf {

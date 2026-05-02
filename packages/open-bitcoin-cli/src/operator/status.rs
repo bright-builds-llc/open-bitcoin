@@ -13,9 +13,9 @@ use open_bitcoin_node::{
     FjallNodeStore, LogRetentionPolicy, MetricRetentionPolicy, MetricsStatus, WalletRegistry,
     logging::writer::load_log_status,
     status::{
-        BuildProvenance, ChainTipStatus, ConfigStatus, FieldAvailability, HealthSignal,
-        HealthSignalLevel, MempoolStatus, NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot,
-        PeerCounts, PeerStatus, ServiceStatus, SyncProgress, SyncStatus, WalletStatus,
+        BuildProvenance, ConfigStatus, FieldAvailability, HealthSignal, HealthSignalLevel,
+        MempoolStatus, NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts,
+        PeerStatus, ServiceStatus, WalletStatus,
     },
 };
 use open_bitcoin_rpc::method::{
@@ -33,12 +33,14 @@ use super::{
 mod detection;
 mod http;
 mod render;
+mod sync_state;
 #[cfg(test)]
 mod tests;
 mod wallet;
 
 pub use http::HttpStatusRpcClient;
 pub use render::render_status;
+use sync_state::{durable_sync_state, rpc_sync_status, unavailable_sync_status};
 
 /// Operator status request supplied by CLI flags and config.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -210,8 +212,12 @@ fn collect_live_status_snapshot(
         &network_info.warnings,
         &blockchain_info.warnings,
     ));
+    let maybe_durable_sync_state = durable_sync_state(&input.config_resolution);
     let wallet =
         collect_live_wallet_status(input, rpc_client, &blockchain_info, &mut health_signals);
+    if let Some(durable_sync_state) = maybe_durable_sync_state.as_ref() {
+        health_signals.extend(durable_sync_state.health_signals.clone());
+    }
     health_signals.extend(log_health_signals(input));
 
     OpenBitcoinStatusSnapshot {
@@ -221,30 +227,20 @@ fn collect_live_status_snapshot(
         },
         config: config_status(&input.config_resolution),
         service: collect_service_status(input),
-        sync: SyncStatus {
-            network: FieldAvailability::available(blockchain_info.chain.clone()),
-            chain_tip: FieldAvailability::available(ChainTipStatus {
-                height: u64::from(blockchain_info.blocks),
-                block_hash: blockchain_info
-                    .maybe_best_block_hash
-                    .clone()
-                    .unwrap_or_else(|| "unknown".to_string()),
+        sync: maybe_durable_sync_state
+            .as_ref()
+            .map(|state| state.sync.clone())
+            .unwrap_or_else(|| rpc_sync_status(&blockchain_info)),
+        peers: maybe_durable_sync_state
+            .as_ref()
+            .map(|state| state.peers.clone())
+            .unwrap_or_else(|| PeerStatus {
+                peer_counts: FieldAvailability::available(PeerCounts {
+                    inbound: saturating_usize_to_u32(network_info.connections_in),
+                    outbound: saturating_usize_to_u32(network_info.connections_out),
+                }),
+                recent_peers: FieldAvailability::unavailable("peer telemetry unavailable"),
             }),
-            sync_progress: FieldAvailability::available(SyncProgress {
-                header_height: u64::from(blockchain_info.headers),
-                block_height: u64::from(blockchain_info.blocks),
-                progress_ratio: blockchain_info.verificationprogress,
-                messages_processed: 0,
-                headers_received: u64::from(blockchain_info.headers),
-                blocks_received: u64::from(blockchain_info.blocks),
-            }),
-        },
-        peers: PeerStatus {
-            peer_counts: FieldAvailability::available(PeerCounts {
-                inbound: saturating_usize_to_u32(network_info.connections_in),
-                outbound: saturating_usize_to_u32(network_info.connections_out),
-            }),
-        },
         mempool: MempoolStatus {
             transactions: FieldAvailability::available(saturating_usize_to_u64(mempool_info.size)),
         },
@@ -262,8 +258,12 @@ fn stopped_status_snapshot(
     reason: impl Into<String>,
 ) -> OpenBitcoinStatusSnapshot {
     let reason = reason.into();
+    let maybe_durable_sync_state = durable_sync_state(&input.config_resolution);
     let mut health_signals = detection::detection_health_signals(&input.detection_evidence);
     health_signals.extend(log_health_signals(input));
+    if let Some(durable_sync_state) = maybe_durable_sync_state.as_ref() {
+        health_signals.extend(durable_sync_state.health_signals.clone());
+    }
     if state == NodeRuntimeState::Unreachable {
         health_signals.push(HealthSignal {
             level: HealthSignalLevel::Warn,
@@ -279,14 +279,17 @@ fn stopped_status_snapshot(
         },
         config: config_status(&input.config_resolution),
         service: collect_service_status(input),
-        sync: SyncStatus {
-            network: FieldAvailability::unavailable(reason.clone()),
-            chain_tip: FieldAvailability::unavailable(reason.clone()),
-            sync_progress: FieldAvailability::unavailable(reason.clone()),
-        },
-        peers: PeerStatus {
-            peer_counts: FieldAvailability::unavailable(reason.clone()),
-        },
+        sync: maybe_durable_sync_state
+            .as_ref()
+            .map(|state| state.sync.clone())
+            .unwrap_or_else(|| unavailable_sync_status(&reason)),
+        peers: maybe_durable_sync_state
+            .as_ref()
+            .map(|state| state.peers.clone())
+            .unwrap_or_else(|| PeerStatus {
+                peer_counts: FieldAvailability::unavailable(reason.clone()),
+                recent_peers: FieldAvailability::unavailable(reason.clone()),
+            }),
         mempool: MempoolStatus {
             transactions: FieldAvailability::unavailable(reason.clone()),
         },

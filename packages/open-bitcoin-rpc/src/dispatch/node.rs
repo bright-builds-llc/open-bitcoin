@@ -10,6 +10,7 @@
 // - packages/bitcoin-knots/test/functional/interface_rpc.py
 
 use open_bitcoin_node::core::{codec::parse_transaction, wallet::SingleKeyDescriptor};
+use open_bitcoin_node::status::{FieldAvailability, SyncLifecycleState, SyncProgress};
 
 use crate::{
     ManagedRpcContext,
@@ -29,6 +30,10 @@ const UNSUPPORTED_MAX_BURN_AMOUNT_MESSAGE: &str =
     "sendrawtransaction maxburnamount enforcement is not supported in Phase 8; omit maxburnamount";
 
 pub(super) fn get_blockchain_info(context: &ManagedRpcContext) -> GetBlockchainInfoResponse {
+    if let Some(durable_sync_state) = context.maybe_durable_sync_state() {
+        return durable_blockchain_info(context, durable_sync_state);
+    }
+
     let maybe_tip = context.maybe_chain_tip();
     GetBlockchainInfoResponse {
         chain: context.chain_name().to_string(),
@@ -44,6 +49,36 @@ pub(super) fn get_blockchain_info(context: &ManagedRpcContext) -> GetBlockchainI
     }
 }
 
+fn durable_blockchain_info(
+    context: &ManagedRpcContext,
+    durable_sync_state: &open_bitcoin_node::DurableSyncState,
+) -> GetBlockchainInfoResponse {
+    let maybe_tip = context.maybe_chain_tip();
+    let maybe_sync_progress = match &durable_sync_state.sync.sync_progress {
+        FieldAvailability::Available(value) => Some(value),
+        FieldAvailability::Unavailable { .. } => None,
+    };
+    let headers = maybe_sync_progress.map_or(0, |value| u64_to_u32(value.header_height));
+    let blocks = maybe_sync_progress.map_or(0, |value| u64_to_u32(value.block_height));
+    let lifecycle = match durable_sync_state.sync.lifecycle {
+        FieldAvailability::Available(value) => Some(value),
+        FieldAvailability::Unavailable { .. } => None,
+    };
+
+    GetBlockchainInfoResponse {
+        chain: context.chain_name().to_string(),
+        blocks,
+        headers,
+        maybe_best_block_hash: maybe_tip
+            .as_ref()
+            .map(|tip| decode::encode_hex(tip.block_hash.as_bytes())),
+        maybe_median_time_past: maybe_tip.as_ref().map(|tip| tip.median_time_past),
+        verificationprogress: durable_verification_progress(maybe_sync_progress),
+        initialblockdownload: durable_initial_block_download(headers, blocks, lifecycle),
+        warnings: durable_warnings(durable_sync_state),
+    }
+}
+
 pub(super) fn get_mempool_info(context: &ManagedRpcContext) -> GetMempoolInfoResponse {
     let info = context.mempool_info();
     GetMempoolInfoResponse {
@@ -56,6 +91,47 @@ pub(super) fn get_mempool_info(context: &ManagedRpcContext) -> GetMempoolInfoRes
         minrelaytxfee: info.min_relay_feerate_sats_per_kvb,
         loaded: true,
     }
+}
+
+fn durable_verification_progress(maybe_sync_progress: Option<&SyncProgress>) -> f64 {
+    let Some(sync_progress) = maybe_sync_progress else {
+        return 0.0;
+    };
+    if sync_progress.header_height == 0 {
+        return 0.0;
+    }
+
+    sync_progress.block_height as f64 / sync_progress.header_height as f64
+}
+
+fn durable_initial_block_download(
+    headers: u32,
+    blocks: u32,
+    lifecycle: Option<SyncLifecycleState>,
+) -> bool {
+    if headers > blocks {
+        return true;
+    }
+
+    matches!(
+        lifecycle,
+        Some(SyncLifecycleState::Recovering | SyncLifecycleState::Failed)
+    )
+}
+
+fn durable_warnings(durable_sync_state: &open_bitcoin_node::DurableSyncState) -> Vec<String> {
+    let mut warnings = Vec::new();
+    if let FieldAvailability::Available(value) = &durable_sync_state.sync.last_error {
+        warnings.push(value.clone());
+    }
+    if let FieldAvailability::Available(value) = &durable_sync_state.sync.recovery_action {
+        warnings.push(value.clone());
+    }
+    warnings
+}
+
+fn u64_to_u32(value: u64) -> u32 {
+    u32::try_from(value).unwrap_or(u32::MAX)
 }
 
 pub(super) fn get_network_info(context: &ManagedRpcContext) -> GetNetworkInfoResponse {

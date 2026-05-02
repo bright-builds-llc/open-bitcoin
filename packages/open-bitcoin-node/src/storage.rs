@@ -5,6 +5,8 @@
 
 use core::fmt;
 
+use crate::status::{DurableSyncState, SyncControlState};
+
 pub mod fjall_store;
 pub mod snapshot_codec;
 
@@ -100,12 +102,14 @@ impl StorageRecoveryAction {
 }
 
 /// Storage runtime metadata persisted outside pure domain snapshots.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct RuntimeMetadata {
     pub node_version: String,
     pub storage_engine: String,
     pub last_clean_shutdown: bool,
     pub maybe_last_recovery_action: Option<StorageRecoveryAction>,
+    pub maybe_sync_state: Option<DurableSyncState>,
+    pub sync_control: SyncControlState,
 }
 
 impl Default for RuntimeMetadata {
@@ -115,6 +119,8 @@ impl Default for RuntimeMetadata {
             storage_engine: "fjall".to_string(),
             last_clean_shutdown: false,
             maybe_last_recovery_action: None,
+            maybe_sync_state: None,
+            sync_control: SyncControlState::default(),
         }
     }
 }

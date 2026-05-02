@@ -4,7 +4,8 @@ This guide describes the current v1.2 operator workflow for Open Bitcoin on
 macOS and Linux. It is intentionally conservative: the runtime is source-built,
 service integration is local-machine only, migration remains dry-run only, and
 release readiness stays evidence-based rather than timing-threshold based.
-It does not describe an unattended public-mainnet full-sync daemon workflow yet.
+It does not make a production-node or production-funds claim for unattended
+public-mainnet operation yet.
 
 Use this guide for the practical workflow. Use
 [`docs/architecture/config-precedence.md`](../architecture/config-precedence.md),
@@ -50,11 +51,12 @@ The current source build exposes three relevant binaries:
   status, service management, dashboard, migration planning, and managed-wallet
   helpers
 
-`open-bitcoind` now has an explicit mainnet sync activation and durable
-preflight path. When enabled, daemon startup opens the selected durable store
-and constructs `DurableSyncRuntime` before binding RPC. It still does not start
-peer transport or run unattended public-mainnet IBD by itself; treat this as a
-sync bootstrap foundation, not a supported full-sync operating recipe.
+`open-bitcoind` now has an explicit mainnet sync activation path with a
+daemon-owned bounded sync loop. When enabled, daemon startup opens the selected
+durable store, constructs `DurableSyncRuntime`, starts the sync worker, and
+keeps truthful durable sync state available to status, dashboard, RPC, and
+operator CLI control surfaces. This is still an operator-ready review workflow,
+not a production-node claim.
 
 You can run them directly from `packages/target/{debug,release}/` after
 building or through `cargo run`.
@@ -81,7 +83,7 @@ The onboarding and migration flows should not write Open Bitcoin-only keys into
 [`docs/architecture/config-precedence.md`](../architecture/config-precedence.md)
 for the stricter contract language.
 
-## Mainnet Sync Activation Preflight
+## Mainnet Sync Activation
 
 Mainnet sync activation is disabled by default. It can be enabled only for the
 mainnet chain through Open Bitcoin-owned config or an `open-bitcoind` CLI
@@ -117,7 +119,6 @@ Important boundaries:
 - `-openbitcoinsync=mainnet-ibd` is an Open Bitcoin-only daemon flag; do not put
   it in `bitcoin.conf`.
 - If the JSONC file is not at `<datadir>/open-bitcoin.jsonc`, pass the explicit
-  Open Bitcoin config path with `-openbitcoinconf=<path>`.
 - `sync.manual_peers` configures explicit outbound peers as `host` or
   `host:port`; IPv6 literals should use bracket form such as
   `[2001:db8::7]:8333`.
@@ -129,12 +130,17 @@ Important boundaries:
   so partial config does not accidentally activate public-network behavior.
 - Activation is rejected on `-regtest`, `-signet`, or `-testnet`; this Phase 35
   path is only for mainnet IBD bootstrap.
-- The daemon preflight reports the durable best header and block heights, then
-  continues with the normal local RPC server. Peer discovery, outbound peer
-  lifecycle, header-first IBD, block download/connect, and live mainnet smoke
-  evidence remain later v1.2 phases. Phase 36 adds deterministic resolver and
-  peer-lifecycle plumbing, but it still does not claim completed header or
-  block sync.
+- The daemon now keeps a bounded background sync loop active when mainnet sync
+  is enabled, while the normal local RPC server continues to serve operator and
+  wallet requests.
+- `open-bitcoin status`, `open-bitcoin dashboard`, `open-bitcoin sync status`,
+  and RPC `getblockchaininfo` read the same durable sync truth for header
+  height, block height, lag, lifecycle, recovery guidance, and last error.
+- `open-bitcoin sync pause` and `open-bitcoin sync resume` toggle the durable
+  pause flag without requiring operators to inspect or edit internal store
+  files directly.
+- Live mainnet smoke evidence, packaged-service hardening, and milestone
+  closeout remain Phase 40 work.
 
 ## First Run And Onboarding
 
@@ -210,6 +216,14 @@ Service lifecycle notes:
 human or JSON form and keeps stopped-node fields visible with explicit
 `Unavailable` reasons where live runtime data is missing.
 
+`open-bitcoin sync` is the focused control surface for daemon mainnet sync:
+
+```bash
+open-bitcoin --datadir=/tmp/open-bitcoin-preview sync status --format json
+open-bitcoin --datadir=/tmp/open-bitcoin-preview sync pause
+open-bitcoin --datadir=/tmp/open-bitcoin-preview sync resume
+```
+
 For live RPC bootstrap, `status` and `dashboard` reuse the selected datadir,
 network, and normal RPC auth sources. A datadir-local implicit `bitcoin.conf`
 is optional for this workflow, not required.
@@ -234,6 +248,9 @@ Interpretation guidance:
 
 - `Unavailable` means the collector chose to report absence explicitly instead
   of inventing a default value.
+- Sync-focused status now includes lifecycle (`active`, `paused`,
+  `recovering`, `failed`, or `stopped`), current phase, lag, resource pressure,
+  recovery guidance, and the last sync error when durable state is available.
 - The `build` section stays compile-time truthful across supported local build
   paths: Cargo builds surface Cargo metadata, while Bazel builds surface the
   workspace version plus Bazel target and compilation-mode identifiers.
@@ -276,11 +293,10 @@ for the current audit matrix and explicit non-claims.
 Open Bitcoin keeps benchmark evidence as reproducible local reports, not release
 timing gates.
 
-The sync runtime has durable peer/sync foundations and TCP transport coverage,
-and `open-bitcoind` has an opt-in mainnet activation preflight. Public-network
-operation is still an explicit opt-in review surface, is not part of the
-default local verification contract, and is not yet exposed as an operator-ready
-full-sync mode.
+The sync runtime has durable peer/sync foundations, TCP transport coverage, and
+an opt-in daemon-owned mainnet sync loop. Public-network operation is still an
+explicit opt-in review surface, is not part of the default local verification
+contract, and is not yet a production-node claim.
 
 Use the repo-owned wrapper:
 
@@ -311,8 +327,8 @@ Open Bitcoin does not currently claim all of the following:
 
 - packaged or signed release installation flows
 - Windows service support
-- unattended public-mainnet full sync through `open-bitcoind`; Phase 35 only
-  adds opt-in activation and durable preflight
+- production-node or production-funds readiness for unattended public-mainnet
+  operation through `open-bitcoind`
 - automatic migration apply, source-service cutover, or source-datadir mutation
 - external-wallet import, restore, or rewrite
 - public-network sync as part of the default local verification contract

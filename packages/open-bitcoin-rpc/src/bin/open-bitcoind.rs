@@ -21,9 +21,14 @@
 // - packages/bitcoin-knots/src/rpc/rawtransaction.cpp
 // - packages/bitcoin-knots/test/functional/interface_rpc.py
 
-use std::{error::Error, path::PathBuf};
+use std::{
+    error::Error,
+    path::PathBuf,
+    thread,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 
-use open_bitcoin_node::{DurableSyncRuntime, FjallNodeStore};
+use open_bitcoin_node::{DurableSyncRuntime, FjallNodeStore, SyncLifecycleState, TcpPeerTransport};
 use open_bitcoin_rpc::{
     ManagedRpcContext,
     config::{DaemonSyncMode, RuntimeConfig, load_runtime_config},
@@ -39,6 +44,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(preflight) = preflight_daemon_sync(&runtime)? {
         report_daemon_sync_preflight(&preflight);
     }
+    let _maybe_sync_worker = start_daemon_sync_worker(&runtime)?;
 
     let bind_address = runtime.rpc_server.bind_address;
     let auth = runtime.rpc_server.auth.clone();
@@ -121,6 +127,143 @@ fn report_daemon_sync_preflight(preflight: &DaemonSyncPreflight) {
         preflight.best_header_height,
         preflight.best_block_height
     );
+}
+
+fn start_daemon_sync_worker(
+    runtime: &RuntimeConfig,
+) -> Result<Option<thread::JoinHandle<()>>, DaemonSyncPreflightError> {
+    if !runtime.sync.is_enabled() {
+        return Ok(None);
+    }
+
+    let Some(data_dir) = runtime.maybe_data_dir.as_ref() else {
+        return Err(DaemonSyncPreflightError::new(
+            "open-bitcoind mainnet sync activation requires an existing datadir; set -datadir=<path> or create the default Bitcoin datadir before enabling -openbitcoinsync=mainnet-ibd.",
+        ));
+    };
+    let store = FjallNodeStore::open(data_dir).map_err(|error| {
+        DaemonSyncPreflightError::new(format!(
+            "open-bitcoind daemon sync failed to open durable store at \"{}\": {error}",
+            data_dir.display()
+        ))
+    })?;
+    let sync_runtime =
+        DurableSyncRuntime::open(store, runtime.sync.runtime.clone()).map_err(|error| {
+            DaemonSyncPreflightError::new(format!(
+                "open-bitcoind daemon sync failed to construct durable sync runtime: {error}"
+            ))
+        })?;
+    seed_initial_sync_state(&sync_runtime)?;
+
+    Ok(Some(thread::spawn(move || {
+        daemon_sync_worker(sync_runtime)
+    })))
+}
+
+fn seed_initial_sync_state(
+    sync_runtime: &DurableSyncRuntime,
+) -> Result<(), DaemonSyncPreflightError> {
+    let timestamp = current_timestamp_unix_seconds();
+    let lifecycle = if sync_runtime
+        .load_sync_control()
+        .map_err(|error| DaemonSyncPreflightError::new(error.to_string()))?
+        .paused
+    {
+        SyncLifecycleState::Paused
+    } else if sync_runtime
+        .store()
+        .load_recovery_marker()
+        .map_err(|error| DaemonSyncPreflightError::new(error.to_string()))?
+        .is_some()
+    {
+        SyncLifecycleState::Recovering
+    } else {
+        SyncLifecycleState::Active
+    };
+    let state = sync_runtime
+        .durable_sync_state(lifecycle, None, timestamp)
+        .map_err(|error| DaemonSyncPreflightError::new(error.to_string()))?;
+    sync_runtime
+        .persist_durable_sync_state(state)
+        .map_err(|error| DaemonSyncPreflightError::new(error.to_string()))
+}
+
+fn daemon_sync_worker(mut sync_runtime: DurableSyncRuntime) {
+    let mut transport = TcpPeerTransport;
+    let sleep_duration = Duration::from_millis(sync_runtime.config().retry_backoff_ms.max(1_000));
+
+    loop {
+        let paused = match sync_runtime.load_sync_control() {
+            Ok(value) => value.paused,
+            Err(error) => {
+                eprintln!("open-bitcoind daemon sync control read failed: {error}");
+                thread::sleep(sleep_duration);
+                continue;
+            }
+        };
+        if paused {
+            if let Ok(state) = sync_runtime.durable_sync_state(
+                SyncLifecycleState::Paused,
+                None,
+                current_timestamp_unix_seconds(),
+            ) {
+                let _ = sync_runtime.persist_durable_sync_state(state);
+            }
+            thread::sleep(sleep_duration);
+            continue;
+        }
+
+        let lifecycle = match sync_runtime.store().load_recovery_marker() {
+            Ok(Some(_)) => SyncLifecycleState::Recovering,
+            Ok(None) => SyncLifecycleState::Active,
+            Err(error) => {
+                eprintln!("open-bitcoind daemon sync recovery-marker read failed: {error}");
+                thread::sleep(sleep_duration);
+                continue;
+            }
+        };
+        if let Ok(state) =
+            sync_runtime.durable_sync_state(lifecycle, None, current_timestamp_unix_seconds())
+        {
+            let _ = sync_runtime.persist_durable_sync_state(state);
+        }
+
+        let round_result = {
+            let timestamp = current_timestamp_unix_seconds();
+            sync_runtime
+                .sync_until_idle(&mut transport, timestamp)
+                .and_then(|summary| {
+                    let state = sync_runtime.durable_sync_state_for_summary(
+                        &summary,
+                        SyncLifecycleState::Active,
+                        None,
+                        timestamp,
+                    )?;
+                    sync_runtime.persist_durable_sync_state(state)
+                })
+        };
+        match round_result {
+            Ok(()) => thread::sleep(sleep_duration),
+            Err(error) => {
+                eprintln!("open-bitcoind daemon sync round failed: {error}");
+                if let Ok(state) = sync_runtime.durable_sync_state(
+                    SyncLifecycleState::Failed,
+                    Some(error.to_string()),
+                    current_timestamp_unix_seconds(),
+                ) {
+                    let _ = sync_runtime.persist_durable_sync_state(state);
+                }
+                thread::sleep(sleep_duration);
+            }
+        }
+    }
+}
+
+fn current_timestamp_unix_seconds() -> i64 {
+    let Ok(duration) = SystemTime::now().duration_since(UNIX_EPOCH) else {
+        return 0;
+    };
+    i64::try_from(duration.as_secs()).unwrap_or(i64::MAX)
 }
 
 #[cfg(test)]

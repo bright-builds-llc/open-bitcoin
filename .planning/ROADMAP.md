@@ -23,9 +23,9 @@ transaction relay, or unattended packaged-service hardening.
 
 - [x] **Phase 35: Daemon Mainnet Sync Activation** — Add the explicit daemon runtime boundary, config, flags, startup/shutdown semantics, and safety copy for opt-in public-mainnet sync.
 - [x] **Phase 36: Mainnet Peer Discovery and Outbound Lifecycle** — Resolve DNS/manual peers, maintain bounded outbound peer state, rotate unhealthy peers, and expose peer lifecycle telemetry. (completed 2026-05-01)
-- [ ] **Phase 37: Header-First Mainnet Sync Integration** — Drive validated header synchronization from durable state to the best known mainnet header chain through the daemon sync task.
-- [ ] **Phase 38: Block Download, Connect, and Restart Recovery** — Download, validate, persist, and connect blocks with bounded in-flight work, reorg-aware state transitions, and restart recovery.
-- [ ] **Phase 39: Operator Sync Observability and Control** — Make mainnet sync progress, health, stop/resume state, resource pressure, and support evidence truthful across status, dashboard, metrics, logs, and RPC surfaces.
+- [x] **Phase 37: Header-First Mainnet Sync Integration** — Drive validated header synchronization from durable state to the best known mainnet header chain through the daemon sync task. (completed 2026-05-02)
+- [x] **Phase 38: Block Download, Connect, and Restart Recovery** — Download, validate, persist, and connect blocks with bounded in-flight work, reorg-aware state transitions, and restart recovery. (completed 2026-05-02)
+- [x] **Phase 39: Operator Sync Observability and Control** — Make mainnet sync progress, health, stop/resume state, resource pressure, and support evidence truthful across status, dashboard, metrics, logs, and RPC surfaces. (completed 2026-05-02)
 - [ ] **Phase 40: Live Mainnet Smoke, Docs, and Parity Closeout** — Add opt-in live mainnet smoke/benchmark commands, refresh operator and parity docs, and close the milestone with auditable evidence.
 
 ## Phase Details
@@ -76,7 +76,7 @@ transaction relay, or unattended packaged-service hardening.
 4. Status snapshots distinguish header progress from block and chainstate progress.
 5. Hermetic tests cover happy path, restart, invalid headers, peer disconnects, and competing branches.
 
-**Plans:** TBD by `/gsd-plan-phase 37`
+**Plans:** [37-01](phases/37-header-first-mainnet-sync-integration/37-01-PLAN.md)
 
 ### Phase 38: Block Download, Connect, and Restart Recovery
 
@@ -108,7 +108,7 @@ transaction relay, or unattended packaged-service hardening.
 4. Operators can stop, resume, inspect recovery guidance, and collect support evidence without reading internal store files.
 5. Non-interactive tests verify status truthfulness for active, paused, stopped, recovering, and failed sync states.
 
-**Plans:** TBD by `/gsd-plan-phase 39`
+**Plans:** [39-01](phases/39-operator-sync-observability-and-control/39-01-PLAN.md)
 
 ### Phase 40: Live Mainnet Smoke, Docs, and Parity Closeout
 
@@ -132,4 +132,4 @@ transaction relay, or unattended packaged-service hardening.
 | --- | ---: | ---: | --- | --- |
 | v1.0 Headless Parity | 22/22 | 80/80 | Archived | 2026-04-26 |
 | v1.1 Operator Runtime and Real-Network Sync | 22/22 | 69/69 | Archived | 2026-04-30 |
-| v1.2 Full Mainnet Network Syncing | 1/6 | 3/3 | Active | - |
+| v1.2 Full Mainnet Network Syncing | 5/6 | 10/10 | Active | - |

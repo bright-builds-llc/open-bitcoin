@@ -3,6 +3,8 @@
 // - packages/bitcoin-knots/src/headerssync.cpp
 // - packages/bitcoin-knots/src/sync.cpp
 
+mod projection;
+
 use std::{fmt, net::SocketAddr, path::PathBuf};
 
 use open_bitcoin_core::{consensus::ConsensusParams, primitives::NetworkMagic};
@@ -12,7 +14,14 @@ use crate::{
     FieldAvailability, ManagedNetworkError, MetricKind, MetricSample, PeerStatus, PersistMode,
     StorageError, SyncStatus,
     logging::{StructuredLogLevel, StructuredLogRecord},
-    status::{HealthSignal, HealthSignalLevel, PeerCounts, SyncProgress},
+    status::{
+        HealthSignal, HealthSignalLevel, PeerCounts, SyncLagStatus, SyncLifecycleState,
+        SyncProgress, SyncResourcePressure,
+    },
+};
+use projection::{
+    health_signal_log_record, peer_outcome_log_records, peer_telemetry, progress_ratio,
+    storage_health_message, sync_phase_name,
 };
 
 const DEFAULT_CONNECT_TIMEOUT_MS: u64 = 5_000;
@@ -324,6 +333,22 @@ impl SyncRunSummary {
                 headers_received: self.headers_received as u64,
                 blocks_received: self.blocks_received as u64,
             }),
+            lifecycle: FieldAvailability::available(SyncLifecycleState::Active),
+            phase: FieldAvailability::available(sync_phase_name(self).to_string()),
+            lag: FieldAvailability::available(SyncLagStatus {
+                headers_remaining: 0,
+                blocks_remaining: self
+                    .best_header_height
+                    .saturating_sub(self.best_block_height),
+            }),
+            last_error: FieldAvailability::unavailable("no sync error recorded"),
+            recovery_action: FieldAvailability::unavailable("no recovery action required"),
+            resource_pressure: FieldAvailability::available(SyncResourcePressure {
+                blocks_in_flight: 0,
+                max_blocks_in_flight_total: 0,
+                outbound_peers: self.connected_peers as u32,
+                target_outbound_peers: self.connected_peers as u32,
+            }),
         }
     }
 
@@ -333,6 +358,12 @@ impl SyncRunSummary {
                 inbound: 0,
                 outbound: self.connected_peers as u32,
             }),
+            recent_peers: FieldAvailability::available(
+                self.peer_outcomes
+                    .iter()
+                    .map(peer_telemetry)
+                    .collect::<Vec<_>>(),
+            ),
         }
     }
 
@@ -518,98 +549,4 @@ pub trait SyncTransport {
         peer: &ResolvedSyncPeerAddress,
         config: &SyncRuntimeConfig,
     ) -> Result<Self::Session, SyncRuntimeError>;
-}
-
-fn progress_ratio(block_height: u64, header_height: u64) -> f64 {
-    if header_height == 0 {
-        return 1.0;
-    }
-
-    (block_height as f64 / header_height as f64).min(1.0)
-}
-
-fn peer_outcome_log_records(
-    outcome: &PeerSyncOutcome,
-    timestamp_unix_seconds: u64,
-) -> Vec<StructuredLogRecord> {
-    let mut records = Vec::new();
-    match outcome.state {
-        PeerSyncState::Connected => {}
-        PeerSyncState::Stalled => records.push(StructuredLogRecord {
-            level: StructuredLogLevel::Warn,
-            source: "sync".to_string(),
-            message: "peer stalled before sending more sync messages".to_string(),
-            timestamp_unix_seconds,
-        }),
-        PeerSyncState::Failed => records.push(StructuredLogRecord {
-            level: StructuredLogLevel::Error,
-            source: "sync".to_string(),
-            message: format!(
-                "peer failed during sync reason={}",
-                outcome
-                    .maybe_failure_reason
-                    .as_ref()
-                    .map_or("unknown".to_string(), ToString::to_string)
-            ),
-            timestamp_unix_seconds,
-        }),
-    }
-
-    if outcome.attempts > 1 {
-        records.push(StructuredLogRecord {
-            level: StructuredLogLevel::Warn,
-            source: "sync".to_string(),
-            message: format!("peer retry attempts={} before outcome", outcome.attempts),
-            timestamp_unix_seconds,
-        });
-    }
-
-    records
-}
-
-fn health_signal_log_record(
-    signal: &HealthSignal,
-    timestamp_unix_seconds: u64,
-) -> StructuredLogRecord {
-    StructuredLogRecord {
-        level: structured_log_level(signal.level),
-        source: signal.source.clone(),
-        message: signal.message.clone(),
-        timestamp_unix_seconds,
-    }
-}
-
-fn structured_log_level(level: HealthSignalLevel) -> StructuredLogLevel {
-    match level {
-        HealthSignalLevel::Info => StructuredLogLevel::Info,
-        HealthSignalLevel::Warn => StructuredLogLevel::Warn,
-        HealthSignalLevel::Error => StructuredLogLevel::Error,
-    }
-}
-
-fn storage_health_message(error: &StorageError) -> String {
-    match error {
-        StorageError::InvalidSchemaVersion { .. } => {
-            "storage schema version invalid during sync".to_string()
-        }
-        StorageError::SchemaMismatch { .. } => "storage schema mismatch during sync".to_string(),
-        StorageError::Corruption { namespace, .. } => {
-            format!("storage corruption in {} during sync", namespace.as_str())
-        }
-        StorageError::UnavailableNamespace { namespace } => {
-            format!("storage namespace unavailable: {}", namespace.as_str())
-        }
-        StorageError::InterruptedWrite { namespace, .. } => {
-            format!(
-                "storage write interrupted in {} during sync",
-                namespace.as_str()
-            )
-        }
-        StorageError::BackendFailure { namespace, .. } => {
-            format!(
-                "storage backend failure in {} during sync",
-                namespace.as_str()
-            )
-        }
-    }
 }

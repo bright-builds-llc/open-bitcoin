@@ -80,12 +80,45 @@ pub struct SyncProgress {
     pub blocks_received: u64,
 }
 
+/// Coarse durable sync lifecycle surfaced to operator consumers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SyncLifecycleState {
+    Active,
+    Paused,
+    Recovering,
+    Failed,
+    Stopped,
+}
+
+/// Remaining sync lag relative to the best known validated work.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SyncLagStatus {
+    pub headers_remaining: u64,
+    pub blocks_remaining: u64,
+}
+
+/// Current bounded sync resource usage.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SyncResourcePressure {
+    pub blocks_in_flight: u64,
+    pub max_blocks_in_flight_total: u64,
+    pub outbound_peers: u32,
+    pub target_outbound_peers: u32,
+}
+
 /// Sync status fields.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SyncStatus {
     pub network: FieldAvailability<String>,
     pub chain_tip: FieldAvailability<ChainTipStatus>,
     pub sync_progress: FieldAvailability<SyncProgress>,
+    pub lifecycle: FieldAvailability<SyncLifecycleState>,
+    pub phase: FieldAvailability<String>,
+    pub lag: FieldAvailability<SyncLagStatus>,
+    pub last_error: FieldAvailability<String>,
+    pub recovery_action: FieldAvailability<String>,
+    pub resource_pressure: FieldAvailability<SyncResourcePressure>,
 }
 
 /// Peer count status details.
@@ -97,8 +130,26 @@ pub struct PeerCounts {
 
 /// Peer status fields.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PeerTelemetry {
+    pub peer: String,
+    pub source: String,
+    pub state: String,
+    pub network: String,
+    pub attempts: u8,
+    pub maybe_resolved_endpoint: FieldAvailability<String>,
+    pub capabilities: FieldAvailability<String>,
+    pub headers_received: u64,
+    pub blocks_received: u64,
+    pub maybe_last_activity_unix_seconds: FieldAvailability<u64>,
+    pub failure_reason: FieldAvailability<String>,
+    pub error: FieldAvailability<String>,
+}
+
+/// Peer status fields.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PeerStatus {
     pub peer_counts: FieldAvailability<PeerCounts>,
+    pub recent_peers: FieldAvailability<Vec<PeerTelemetry>>,
 }
 
 /// Mempool status fields.
@@ -171,6 +222,21 @@ impl BuildProvenance {
     }
 }
 
+/// Durable daemon-sync truth shared between status, dashboard, CLI controls, and RPC.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DurableSyncState {
+    pub sync: SyncStatus,
+    pub peers: PeerStatus,
+    pub health_signals: Vec<HealthSignal>,
+    pub updated_at_unix_seconds: u64,
+}
+
+/// Durable operator control for the daemon sync loop.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct SyncControlState {
+    pub paused: bool,
+}
+
 /// Shared status snapshot consumed by CLI, service, dashboard, and support paths.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct OpenBitcoinStatusSnapshot {
@@ -192,8 +258,9 @@ mod tests {
     use super::{
         BuildProvenance, ChainTipStatus, ConfigStatus, FieldAvailability, HealthSignal,
         HealthSignalLevel, MempoolStatus, NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot,
-        PeerCounts, PeerStatus, ServiceStatus, SyncProgress, SyncStatus, WalletFreshness,
-        WalletScanProgress, WalletStatus,
+        PeerCounts, PeerStatus, PeerTelemetry, ServiceStatus, SyncLagStatus, SyncLifecycleState,
+        SyncProgress, SyncResourcePressure, SyncStatus, WalletFreshness, WalletScanProgress,
+        WalletStatus,
     };
     use crate::{LogStatus, MetricsStatus};
 
@@ -233,7 +300,14 @@ mod tests {
         assert_eq!(encoded["sync"]["network"]["state"], "unavailable");
         assert_eq!(encoded["sync"]["chain_tip"]["state"], "unavailable");
         assert_eq!(encoded["sync"]["sync_progress"]["state"], "unavailable");
+        assert_eq!(encoded["sync"]["lifecycle"]["state"], "unavailable");
+        assert_eq!(encoded["sync"]["phase"]["state"], "unavailable");
+        assert_eq!(encoded["sync"]["lag"]["state"], "unavailable");
+        assert_eq!(encoded["sync"]["last_error"]["state"], "unavailable");
+        assert_eq!(encoded["sync"]["recovery_action"]["state"], "unavailable");
+        assert_eq!(encoded["sync"]["resource_pressure"]["state"], "unavailable");
         assert_eq!(encoded["peers"]["peer_counts"]["state"], "unavailable");
+        assert_eq!(encoded["peers"]["recent_peers"]["state"], "unavailable");
         assert_eq!(encoded["mempool"]["transactions"]["state"], "unavailable");
         assert_eq!(
             encoded["wallet"]["trusted_balance_sats"]["state"],
@@ -282,12 +356,44 @@ mod tests {
                     headers_received: 1,
                     blocks_received: 1,
                 }),
+                lifecycle: FieldAvailability::available(SyncLifecycleState::Active),
+                phase: FieldAvailability::available("block_download".to_string()),
+                lag: FieldAvailability::available(SyncLagStatus {
+                    headers_remaining: 0,
+                    blocks_remaining: 1,
+                }),
+                last_error: FieldAvailability::unavailable("no sync error recorded"),
+                recovery_action: FieldAvailability::unavailable("no recovery action required"),
+                resource_pressure: FieldAvailability::available(SyncResourcePressure {
+                    blocks_in_flight: 1,
+                    max_blocks_in_flight_total: 64,
+                    outbound_peers: 2,
+                    target_outbound_peers: 4,
+                }),
             },
             peers: PeerStatus {
                 peer_counts: FieldAvailability::available(PeerCounts {
                     inbound: 0,
                     outbound: 8,
                 }),
+                recent_peers: FieldAvailability::available(vec![PeerTelemetry {
+                    peer: "seed.bitcoin.sipa.be:8333".to_string(),
+                    source: "dns_seed".to_string(),
+                    state: "connected".to_string(),
+                    network: "mainnet".to_string(),
+                    attempts: 1,
+                    maybe_resolved_endpoint: FieldAvailability::available(
+                        "203.0.113.10:8333".to_string(),
+                    ),
+                    capabilities: FieldAvailability::available(
+                        "services=9 prefs=headers".to_string(),
+                    ),
+                    headers_received: 1,
+                    blocks_received: 1,
+                    maybe_last_activity_unix_seconds: FieldAvailability::available(1_715_000_000),
+                    failure_reason: FieldAvailability::unavailable("peer healthy"),
+                    error: FieldAvailability::unavailable("peer healthy"),
+                }]),
             },
             mempool: MempoolStatus {
                 transactions: FieldAvailability::available(12),
@@ -322,7 +428,14 @@ mod tests {
             encoded["sync"]["sync_progress"]["value"]["header_height"],
             840_001
         );
+        assert_eq!(encoded["sync"]["lifecycle"]["value"], "active");
+        assert_eq!(encoded["sync"]["phase"]["value"], "block_download");
+        assert_eq!(encoded["sync"]["lag"]["value"]["blocks_remaining"], 1);
         assert_eq!(encoded["peers"]["peer_counts"]["value"]["outbound"], 8);
+        assert_eq!(
+            encoded["peers"]["recent_peers"]["value"][0]["source"],
+            "dns_seed"
+        );
         assert_eq!(encoded["wallet"]["freshness"]["value"], "fresh");
         assert_eq!(encoded["wallet"]["scan_progress"]["state"], "unavailable");
         assert_eq!(encoded["health_signals"][0]["message"], "node healthy");
@@ -411,9 +524,16 @@ mod tests {
                 network: FieldAvailability::unavailable(unavailable),
                 chain_tip: FieldAvailability::unavailable(unavailable),
                 sync_progress: FieldAvailability::unavailable(unavailable),
+                lifecycle: FieldAvailability::unavailable(unavailable),
+                phase: FieldAvailability::unavailable(unavailable),
+                lag: FieldAvailability::unavailable(unavailable),
+                last_error: FieldAvailability::unavailable(unavailable),
+                recovery_action: FieldAvailability::unavailable(unavailable),
+                resource_pressure: FieldAvailability::unavailable(unavailable),
             },
             peers: PeerStatus {
                 peer_counts: FieldAvailability::unavailable(unavailable),
+                recent_peers: FieldAvailability::unavailable(unavailable),
             },
             mempool: MempoolStatus {
                 transactions: FieldAvailability::unavailable(unavailable),

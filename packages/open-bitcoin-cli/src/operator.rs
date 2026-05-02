@@ -45,6 +45,7 @@ pub struct OperatorCli {
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum OperatorCommand {
     Status(StatusArgs),
+    Sync(SyncArgs),
     Config(ConfigArgs),
     Service(ServiceArgs),
     Dashboard(DashboardArgs),
@@ -55,6 +56,19 @@ pub enum OperatorCommand {
 
 #[derive(Debug, Clone, PartialEq, Eq, Args)]
 pub struct StatusArgs {}
+
+#[derive(Debug, Clone, PartialEq, Eq, Args)]
+pub struct SyncArgs {
+    #[command(subcommand)]
+    pub command: SyncCommand,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
+pub enum SyncCommand {
+    Status,
+    Pause,
+    Resume,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Args)]
 pub struct ConfigArgs {

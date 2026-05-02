@@ -16,7 +16,7 @@ use serde_json::Value;
 
 use super::{
     CliRoute, ConfigCommand, DashboardArgs, MigrationCommand, NetworkSelection, OperatorCli,
-    OperatorCommand, OperatorOutputFormat, StatusArgs,
+    OperatorCommand, OperatorOutputFormat, StatusArgs, SyncCommand,
     config::OperatorConfigSource,
     onboarding::{OnboardingWriteDecision, ProposedConfigWrite},
     route_cli_invocation,
@@ -127,6 +127,24 @@ fn open_bitcoin_status_routes_to_operator_status() {
         panic!("expected operator route");
     };
     assert!(matches!(cli.command, OperatorCommand::Status(_)));
+}
+
+#[test]
+fn open_bitcoin_sync_pause_routes_to_operator_sync() {
+    // Arrange
+    let args = vec![os("sync"), os("pause")];
+
+    // Act
+    let route = route_cli_invocation("open-bitcoin", &args).expect("route");
+
+    // Assert
+    let CliRoute::Operator(cli) = route else {
+        panic!("expected operator route");
+    };
+    let OperatorCommand::Sync(sync) = cli.command else {
+        panic!("expected sync command");
+    };
+    assert_eq!(sync.command, SyncCommand::Pause);
 }
 
 #[test]

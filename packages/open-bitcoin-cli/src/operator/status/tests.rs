@@ -338,12 +338,19 @@ fn human_and_json_renderers_surface_wallet_freshness_and_scan_reasons() {
             network: FieldAvailability::available("regtest".to_string()),
             chain_tip: FieldAvailability::unavailable("tip unavailable"),
             sync_progress: FieldAvailability::unavailable("sync unavailable"),
+            lifecycle: FieldAvailability::unavailable("sync lifecycle unavailable"),
+            phase: FieldAvailability::unavailable("sync phase unavailable"),
+            lag: FieldAvailability::unavailable("sync lag unavailable"),
+            last_error: FieldAvailability::unavailable("sync error unavailable"),
+            recovery_action: FieldAvailability::unavailable("sync recovery unavailable"),
+            resource_pressure: FieldAvailability::unavailable("sync pressure unavailable"),
         },
         peers: PeerStatus {
             peer_counts: FieldAvailability::available(PeerCounts {
                 inbound: 1,
                 outbound: 2,
             }),
+            recent_peers: FieldAvailability::unavailable("peer telemetry unavailable"),
         },
         mempool: MempoolStatus {
             transactions: FieldAvailability::available(3),

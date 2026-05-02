@@ -34,8 +34,9 @@ pub use metrics::{MetricKind, MetricRetentionPolicy, MetricSample, MetricsStatus
 pub use network::{ManagedNetworkError, ManagedPeerNetwork};
 pub use open_bitcoin_core as core;
 pub use status::{
-    BuildProvenance, ConfigStatus, FieldAvailability, NodeRuntimeState, OpenBitcoinStatusSnapshot,
-    PeerStatus, SyncStatus,
+    BuildProvenance, ConfigStatus, DurableSyncState, FieldAvailability, NodeRuntimeState,
+    OpenBitcoinStatusSnapshot, PeerStatus, PeerTelemetry, SyncControlState, SyncLagStatus,
+    SyncLifecycleState, SyncResourcePressure, SyncStatus,
 };
 pub use storage::{
     FjallNodeStore, MetricsStorageSnapshot, PersistMode, RecoveryMarker, RuntimeMetadata,

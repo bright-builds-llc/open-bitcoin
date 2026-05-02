@@ -8,8 +8,8 @@ use open_bitcoin_node::{
     metrics::MetricsAvailability,
     status::{
         ChainTipStatus, FieldAvailability, HealthSignal, HealthSignalLevel, NodeRuntimeState,
-        OpenBitcoinStatusSnapshot, PeerCounts, ServiceStatus, SyncProgress, WalletFreshness,
-        WalletScanProgress,
+        OpenBitcoinStatusSnapshot, PeerCounts, ServiceStatus, SyncLagStatus, SyncLifecycleState,
+        SyncProgress, SyncResourcePressure, WalletFreshness, WalletScanProgress,
     },
 };
 
@@ -102,6 +102,10 @@ fn dashboard_sections(snapshot: &OpenBitcoinStatusSnapshot) -> Vec<DashboardSect
                     "Progress",
                     sync_progress_availability(&snapshot.sync.sync_progress),
                 ),
+                row("State", sync_lifecycle(&snapshot.sync.lifecycle)),
+                row("Phase", string_availability(&snapshot.sync.phase)),
+                row("Lag", sync_lag(&snapshot.sync.lag)),
+                row("Pressure", sync_pressure(&snapshot.sync.resource_pressure)),
                 row(
                     "Peers",
                     peer_counts_availability(&snapshot.peers.peer_counts),
@@ -213,6 +217,36 @@ fn sync_progress_availability(value: &FieldAvailability<SyncProgress>) -> String
             value.progress_ratio * 100.0,
             value.block_height,
             value.header_height
+        ),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
+fn sync_lifecycle(value: &FieldAvailability<SyncLifecycleState>) -> String {
+    match value {
+        FieldAvailability::Available(value) => sync_lifecycle_name(*value).to_string(),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
+fn sync_lag(value: &FieldAvailability<SyncLagStatus>) -> String {
+    match value {
+        FieldAvailability::Available(value) => format!(
+            "headers={} blocks={}",
+            value.headers_remaining, value.blocks_remaining
+        ),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
+fn sync_pressure(value: &FieldAvailability<SyncResourcePressure>) -> String {
+    match value {
+        FieldAvailability::Available(value) => format!(
+            "blocks {}/{} peers {}/{}",
+            value.blocks_in_flight,
+            value.max_blocks_in_flight_total,
+            value.outbound_peers,
+            value.target_outbound_peers
         ),
         FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
     }
@@ -405,6 +439,16 @@ fn wallet_scan_progress_ratio(progress: &WalletScanProgress) -> f64 {
     f64::from(progress.scanned_through_height) / f64::from(progress.target_tip_height)
 }
 
+fn sync_lifecycle_name(state: SyncLifecycleState) -> &'static str {
+    match state {
+        SyncLifecycleState::Active => "active",
+        SyncLifecycleState::Paused => "paused",
+        SyncLifecycleState::Recovering => "recovering",
+        SyncLifecycleState::Failed => "failed",
+        SyncLifecycleState::Stopped => "stopped",
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use open_bitcoin_node::{
@@ -485,12 +529,19 @@ mod tests {
                 network: FieldAvailability::available("regtest".to_string()),
                 chain_tip: FieldAvailability::unavailable("no tip"),
                 sync_progress: FieldAvailability::unavailable("no sync"),
+                lifecycle: FieldAvailability::unavailable("no sync lifecycle"),
+                phase: FieldAvailability::unavailable("no sync phase"),
+                lag: FieldAvailability::unavailable("no sync lag"),
+                last_error: FieldAvailability::unavailable("no sync error"),
+                recovery_action: FieldAvailability::unavailable("no recovery action"),
+                resource_pressure: FieldAvailability::unavailable("no sync pressure"),
             },
             peers: PeerStatus {
                 peer_counts: FieldAvailability::available(PeerCounts {
                     inbound: 1,
                     outbound: 2,
                 }),
+                recent_peers: FieldAvailability::unavailable("no peer telemetry"),
             },
             mempool: MempoolStatus {
                 transactions: FieldAvailability::available(4),

@@ -9,10 +9,10 @@
 // - packages/bitcoin-knots/src/rpc/rawtransaction.cpp
 // - packages/bitcoin-knots/test/functional/interface_rpc.py
 
-use open_bitcoin_node::ManagedPeerNetwork;
 use open_bitcoin_node::MemoryChainstateStore;
 use open_bitcoin_node::core::consensus::{ConsensusParams, ScriptVerifyFlags};
 use open_bitcoin_node::core::wallet::AddressNetwork;
+use open_bitcoin_node::{DurableSyncState, ManagedPeerNetwork};
 
 mod network;
 mod rescan;
@@ -28,6 +28,7 @@ pub struct ManagedRpcContext {
     consensus_params: ConsensusParams,
     verify_flags: ScriptVerifyFlags,
     network: ManagedPeerNetwork<MemoryChainstateStore>,
+    maybe_durable_sync_state: Option<DurableSyncState>,
     wallet_state: WalletState,
 }
 
@@ -41,6 +42,10 @@ impl core::fmt::Debug for ManagedRpcContext {
             .field("chain", &self.chain)
             .field("consensus_params", &self.consensus_params)
             .field("verify_flags", &self.verify_flags)
+            .field(
+                "has_durable_sync_state",
+                &self.maybe_durable_sync_state.is_some(),
+            )
             .field("wallet_mode", &wallet_mode)
             .finish()
     }

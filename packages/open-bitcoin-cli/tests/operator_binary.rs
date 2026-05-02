@@ -16,7 +16,7 @@ use std::{
 };
 
 use open_bitcoin_node::{
-    FjallNodeStore, PersistMode, WalletRegistry,
+    FjallNodeStore, PersistMode, RuntimeMetadata, WalletRegistry,
     core::wallet::{AddressNetwork, DescriptorRole, Wallet},
 };
 use serde_json::{Value, json};
@@ -134,6 +134,69 @@ fn open_bitcoin_status_json_uses_fake_running_rpc() {
     assert_eq!(decoded["peers"]["peer_counts"]["value"]["outbound"], 5);
     assert_eq!(decoded["mempool"]["transactions"]["value"], 12);
     assert_eq!(decoded["wallet"]["trusted_balance_sats"]["value"], 50_000);
+}
+
+#[test]
+fn open_bitcoin_sync_pause_and_resume_update_durable_control_state() {
+    // Arrange
+    let sandbox = TestSandbox::new("sync-control");
+    let data_dir = sandbox.child("open-data");
+    fs::create_dir_all(&data_dir).expect("open datadir");
+    let store = FjallNodeStore::open(&data_dir).expect("store");
+    store
+        .save_runtime_metadata(&RuntimeMetadata::default(), PersistMode::Sync)
+        .expect("save runtime metadata");
+    drop(store);
+
+    // Act
+    let pause_output = run_open_bitcoin(
+        &sandbox,
+        [
+            "--datadir",
+            data_dir.to_str().expect("datadir"),
+            "sync",
+            "pause",
+        ],
+    );
+    let paused_status = run_open_bitcoin(
+        &sandbox,
+        [
+            "--datadir",
+            data_dir.to_str().expect("datadir"),
+            "--format",
+            "json",
+            "sync",
+            "status",
+        ],
+    );
+    let resume_output = run_open_bitcoin(
+        &sandbox,
+        [
+            "--datadir",
+            data_dir.to_str().expect("datadir"),
+            "sync",
+            "resume",
+        ],
+    );
+    let resumed_status = run_open_bitcoin(
+        &sandbox,
+        [
+            "--datadir",
+            data_dir.to_str().expect("datadir"),
+            "--format",
+            "json",
+            "sync",
+            "status",
+        ],
+    );
+
+    // Assert
+    assert_success(&pause_output);
+    assert_success(&resume_output);
+    let paused: Value = serde_json::from_slice(&paused_status.stdout).expect("paused status");
+    let resumed: Value = serde_json::from_slice(&resumed_status.stdout).expect("resumed status");
+    assert_eq!(paused["sync_control"]["paused"], json!(true));
+    assert_eq!(resumed["sync_control"]["paused"], json!(false));
 }
 
 #[test]

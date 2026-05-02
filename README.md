@@ -105,11 +105,10 @@ testing, and parity audit. For the practical install, onboarding, service,
 status, dashboard, migration, benchmark, and limitation workflow, start with
 [`docs/operator/runtime-guide.md`](./docs/operator/runtime-guide.md).
 The preview commands below start the current local RPC/operator surfaces; they
-are not an unattended public-mainnet full-sync recipe. `open-bitcoind` has an
-opt-in mainnet sync preflight plus durable header-and-block sync foundations,
-including bounded block download/connect and restart recovery. Full operator
-controls, richer observability, and live-mainnet closeout remain later v1.2
-work.
+are not a production-node claim. `open-bitcoind` now has an opt-in mainnet sync
+loop plus durable header-and-block sync foundations, truthful operator-facing
+sync status, and explicit `open-bitcoin sync pause|resume|status` controls.
+Live-mainnet smoke evidence and milestone closeout remain later v1.2 work.
 
 The commands below are a minimal regtest preview. Create a scratch data
 directory, start the RPC server, then call it from another shell:
@@ -133,6 +132,11 @@ first-run onboarding flows:
 ```bash
 cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
   --datadir=/tmp/open-bitcoin-preview --network regtest status --format human --no-color
+```
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --datadir=/tmp/open-bitcoin-preview sync status --format json
 ```
 
 ```bash

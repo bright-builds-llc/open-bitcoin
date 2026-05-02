@@ -16,6 +16,7 @@ use open_bitcoin_node::core::network::{LocalPeerConfig, ServiceFlags, WireNetwor
 use open_bitcoin_node::core::primitives::{Block, NetworkAddress, NetworkMagic, Transaction};
 use open_bitcoin_node::core::wallet::AddressNetwork;
 use open_bitcoin_node::network::{ManagedMempoolInfo, ManagedNetworkInfo};
+use open_bitcoin_node::{DurableSyncState, FjallNodeStore};
 use open_bitcoin_node::{
     ManagedNetworkError, ManagedPeerNetwork, ManagedWallet, MemoryChainstateStore,
     MemoryWalletStore,
@@ -39,6 +40,7 @@ impl ManagedRpcContext {
             consensus_params,
             verify_flags,
             network,
+            maybe_durable_sync_state: None,
             wallet_state: super::wallet_state::WalletState::Local(wallet),
         }
     }
@@ -66,13 +68,14 @@ impl ManagedRpcContext {
             PolicyConfig::default(),
         );
         match build_wallet_state(config) {
-            super::wallet_state::WalletState::Local(wallet) => Self::new(
-                config.chain,
+            super::wallet_state::WalletState::Local(wallet) => Self {
+                chain: config.chain,
                 consensus_params,
-                default_verify_flags(),
-                managed_network,
-                wallet,
-            ),
+                verify_flags: default_verify_flags(),
+                network: managed_network,
+                maybe_durable_sync_state: load_durable_sync_state(config),
+                wallet_state: super::wallet_state::WalletState::Local(wallet),
+            },
             super::wallet_state::WalletState::DurableNamedRegistry {
                 store,
                 maybe_request_wallet_name,
@@ -81,6 +84,11 @@ impl ManagedRpcContext {
                 consensus_params,
                 verify_flags: default_verify_flags(),
                 network: managed_network,
+                maybe_durable_sync_state: store
+                    .load_runtime_metadata()
+                    .ok()
+                    .flatten()
+                    .and_then(|metadata| metadata.maybe_sync_state),
                 wallet_state: super::wallet_state::WalletState::DurableNamedRegistry {
                     store,
                     maybe_request_wallet_name,
@@ -127,6 +135,10 @@ impl ManagedRpcContext {
 
     pub fn maybe_chain_tip(&self) -> Option<open_bitcoin_node::core::chainstate::ChainPosition> {
         self.network.maybe_chain_tip()
+    }
+
+    pub fn maybe_durable_sync_state(&self) -> Option<&DurableSyncState> {
+        self.maybe_durable_sync_state.as_ref()
     }
 
     pub fn mempool_info(&self) -> ManagedMempoolInfo {
@@ -179,6 +191,13 @@ impl ManagedRpcContext {
         self.network
             .submit_local_transaction(transaction, self.verify_flags, self.consensus_params)
     }
+}
+
+fn load_durable_sync_state(config: &RuntimeConfig) -> Option<DurableSyncState> {
+    let data_dir = config.maybe_data_dir.as_ref()?;
+    let store = FjallNodeStore::open(data_dir).ok()?;
+    let metadata = store.load_runtime_metadata().ok()??;
+    metadata.maybe_sync_state
 }
 
 pub(super) fn default_verify_flags() -> ScriptVerifyFlags {

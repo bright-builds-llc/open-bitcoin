@@ -19,7 +19,7 @@ use std::{
 use serde_json::json;
 
 use open_bitcoin_node::{
-    FjallNodeStore, PersistMode, WalletRegistry,
+    DurableSyncState, FjallNodeStore, PersistMode, RuntimeMetadata, WalletRegistry,
     core::{
         chainstate::{ChainPosition, ChainstateSnapshot, Coin},
         codec::{TransactionEncoding, encode_transaction, parse_transaction},
@@ -32,6 +32,10 @@ use open_bitcoin_node::{
             TransactionInput, TransactionOutput, Txid,
         },
         wallet::{AddressNetwork, DescriptorRole, SingleKeyDescriptor, Wallet},
+    },
+    status::{
+        ChainTipStatus, FieldAvailability, PeerCounts, PeerStatus, SyncLagStatus,
+        SyncLifecycleState, SyncProgress, SyncResourcePressure, SyncStatus,
     },
 };
 
@@ -429,6 +433,90 @@ fn node_info_methods_return_documented_phase_8_fields() {
     assert_eq!(mempool["size"], json!(1));
     assert_eq!(mempool["total_fee_sats"], json!(1000));
     assert_eq!(mempool["loaded"], json!(true));
+}
+
+#[test]
+fn blockchain_info_uses_durable_sync_truth_when_available() {
+    // Arrange
+    let path = temp_store_path("durable-sync-truth");
+    let store = FjallNodeStore::open(&path).expect("store");
+    store
+        .save_runtime_metadata(
+            &RuntimeMetadata {
+                maybe_sync_state: Some(DurableSyncState {
+                    sync: SyncStatus {
+                        network: FieldAvailability::available("main".to_string()),
+                        chain_tip: FieldAvailability::available(ChainTipStatus {
+                            height: 840_000,
+                            block_hash: "00".repeat(32),
+                        }),
+                        sync_progress: FieldAvailability::available(SyncProgress {
+                            header_height: 840_100,
+                            block_height: 840_000,
+                            progress_ratio: 0.998,
+                            messages_processed: 42,
+                            headers_received: 100,
+                            blocks_received: 3,
+                        }),
+                        lifecycle: FieldAvailability::available(SyncLifecycleState::Active),
+                        phase: FieldAvailability::available("block_download".to_string()),
+                        lag: FieldAvailability::available(SyncLagStatus {
+                            headers_remaining: 0,
+                            blocks_remaining: 100,
+                        }),
+                        last_error: FieldAvailability::available("peer stalled".to_string()),
+                        recovery_action: FieldAvailability::available(
+                            "Restart the node and retry the storage operation.".to_string(),
+                        ),
+                        resource_pressure: FieldAvailability::available(SyncResourcePressure {
+                            blocks_in_flight: 8,
+                            max_blocks_in_flight_total: 64,
+                            outbound_peers: 2,
+                            target_outbound_peers: 4,
+                        }),
+                    },
+                    peers: PeerStatus {
+                        peer_counts: FieldAvailability::available(PeerCounts {
+                            inbound: 0,
+                            outbound: 2,
+                        }),
+                        recent_peers: FieldAvailability::available(Vec::new()),
+                    },
+                    health_signals: Vec::new(),
+                    updated_at_unix_seconds: 1_715_000_000,
+                }),
+                ..RuntimeMetadata::default()
+            },
+            PersistMode::Sync,
+        )
+        .expect("save runtime metadata");
+    drop(store);
+    let reopened = FjallNodeStore::open(&path).expect("reopen store");
+    let reopened_metadata = reopened
+        .load_runtime_metadata()
+        .expect("load runtime metadata")
+        .expect("runtime metadata");
+    assert!(reopened_metadata.maybe_sync_state.is_some());
+    drop(reopened);
+    let mut context = ManagedRpcContext::from_runtime_config(&RuntimeConfig {
+        chain: AddressNetwork::Mainnet,
+        maybe_data_dir: Some(path),
+        ..RuntimeConfig::default()
+    });
+    assert!(context.maybe_durable_sync_state().is_some());
+
+    // Act
+    let blockchain = dispatch(
+        &mut context,
+        MethodCall::GetBlockchainInfo(GetBlockchainInfoRequest::default()),
+    )
+    .expect("blockchain");
+
+    // Assert
+    assert_eq!(blockchain["headers"], json!(840100));
+    assert_eq!(blockchain["blocks"], json!(840000));
+    assert_eq!(blockchain["initialblockdownload"], json!(true));
+    assert_eq!(blockchain["warnings"][0], json!("peer stalled"));
 }
 
 #[test]

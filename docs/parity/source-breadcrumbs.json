@@ -255,6 +255,7 @@
         "packages/open-bitcoin-cli/src/operator/onboarding.rs",
         "packages/open-bitcoin-cli/src/operator/onboarding/tests.rs",
         "packages/open-bitcoin-cli/src/operator/runtime.rs",
+        "packages/open-bitcoin-cli/src/operator/runtime/support.rs",
         "packages/open-bitcoin-cli/src/operator/status.rs",
         "packages/open-bitcoin-cli/src/operator/status/http.rs",
         "packages/open-bitcoin-cli/src/operator/status/render.rs",
@@ -605,6 +606,7 @@
         "packages/open-bitcoin-node/src/sync.rs",
         "packages/open-bitcoin-node/src/sync/block_reconcile.rs",
         "packages/open-bitcoin-node/src/sync/progress.rs",
+        "packages/open-bitcoin-node/src/sync/runtime_state.rs",
         "packages/open-bitcoin-node/src/sync/wallet_rescan.rs"
       ],
       "breadcrumbs": [
@@ -618,7 +620,8 @@
     {
       "label": "node-sync-types",
       "files": [
-        "packages/open-bitcoin-node/src/sync/types.rs"
+        "packages/open-bitcoin-node/src/sync/types.rs",
+        "packages/open-bitcoin-node/src/sync/types/projection.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/net_processing.cpp",

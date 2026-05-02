@@ -7,8 +7,9 @@ use open_bitcoin_node::{
     MetricsStatus,
     status::{
         BuildProvenance, ChainTipStatus, FieldAvailability, HealthSignal, HealthSignalLevel,
-        NodeRuntimeState, OpenBitcoinStatusSnapshot, PeerCounts, ServiceStatus, SyncProgress,
-        WalletFreshness, WalletScanProgress,
+        NodeRuntimeState, OpenBitcoinStatusSnapshot, PeerCounts, PeerTelemetry, ServiceStatus,
+        SyncLagStatus, SyncLifecycleState, SyncProgress, SyncResourcePressure, WalletFreshness,
+        WalletScanProgress,
     },
 };
 
@@ -58,8 +59,36 @@ fn render_human_status(snapshot: &OpenBitcoinStatusSnapshot) -> String {
         sync_progress_availability(&snapshot.sync.sync_progress)
     ));
     lines.push(format!(
+        "Sync state: {}",
+        sync_lifecycle_availability(&snapshot.sync.lifecycle)
+    ));
+    lines.push(format!(
+        "Sync phase: {}",
+        string_availability(&snapshot.sync.phase)
+    ));
+    lines.push(format!(
+        "Sync lag: {}",
+        sync_lag_availability(&snapshot.sync.lag)
+    ));
+    lines.push(format!(
+        "Sync pressure: {}",
+        sync_pressure_availability(&snapshot.sync.resource_pressure)
+    ));
+    lines.push(format!(
+        "Sync recovery: {}",
+        string_availability(&snapshot.sync.recovery_action)
+    ));
+    lines.push(format!(
+        "Sync error: {}",
+        string_availability(&snapshot.sync.last_error)
+    ));
+    lines.push(format!(
         "Peers: {}",
         peer_counts_availability(&snapshot.peers.peer_counts)
+    ));
+    lines.push(format!(
+        "Peer detail: {}",
+        peer_telemetry_availability(&snapshot.peers.recent_peers)
     ));
     lines.push(format!(
         "Mempool: {}",
@@ -112,11 +141,55 @@ fn sync_progress_availability(value: &FieldAvailability<SyncProgress>) -> String
     }
 }
 
+fn sync_lifecycle_availability(value: &FieldAvailability<SyncLifecycleState>) -> String {
+    match value {
+        FieldAvailability::Available(value) => sync_lifecycle_name(*value).to_string(),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
+fn sync_lag_availability(value: &FieldAvailability<SyncLagStatus>) -> String {
+    match value {
+        FieldAvailability::Available(value) => format!(
+            "headers_remaining={} blocks_remaining={}",
+            value.headers_remaining, value.blocks_remaining
+        ),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
+fn sync_pressure_availability(value: &FieldAvailability<SyncResourcePressure>) -> String {
+    match value {
+        FieldAvailability::Available(value) => format!(
+            "blocks_in_flight={}/{} outbound_peers={}/{}",
+            value.blocks_in_flight,
+            value.max_blocks_in_flight_total,
+            value.outbound_peers,
+            value.target_outbound_peers
+        ),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
 fn peer_counts_availability(value: &FieldAvailability<PeerCounts>) -> String {
     match value {
         FieldAvailability::Available(value) => {
             format!("in={} out={}", value.inbound, value.outbound)
         }
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
+fn peer_telemetry_availability(value: &FieldAvailability<Vec<PeerTelemetry>>) -> String {
+    match value {
+        FieldAvailability::Available(value) if value.is_empty() => {
+            "no recent peer telemetry".into()
+        }
+        FieldAvailability::Available(value) => value
+            .iter()
+            .map(|peer| format!("{}:{} via {}", peer.state, peer.peer, peer.source))
+            .collect::<Vec<_>>()
+            .join(" | "),
         FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
     }
 }
@@ -255,4 +328,14 @@ fn wallet_scan_progress_ratio(progress: &WalletScanProgress) -> f64 {
         return 0.0;
     }
     f64::from(progress.scanned_through_height) / f64::from(progress.target_tip_height)
+}
+
+fn sync_lifecycle_name(state: SyncLifecycleState) -> &'static str {
+    match state {
+        SyncLifecycleState::Active => "active",
+        SyncLifecycleState::Paused => "paused",
+        SyncLifecycleState::Recovering => "recovering",
+        SyncLifecycleState::Failed => "failed",
+        SyncLifecycleState::Stopped => "stopped",
+    }
 }

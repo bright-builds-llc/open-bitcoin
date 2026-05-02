@@ -11,8 +11,8 @@
 | `node` | Runtime/process collector | daemon state and version |
 | `config` | Config/datadir collector | `datadir` and `config paths` |
 | `service` | Service lifecycle collector | service manager and installed/enabled/running state |
-| `sync` | Sync/runtime collector | `network`, `chain tip`, and `sync progress` |
-| `peers` | Network collector | `peer counts` |
+| `sync` | Sync/runtime collector | `network`, `chain tip`, `sync progress`, lifecycle, phase, lag, resource pressure, recovery guidance, and last error |
+| `peers` | Network collector | `peer counts` plus recent peer telemetry when durable sync state is available |
 | `mempool` | Mempool collector | mempool summary |
 | `wallet` | Wallet collector | `trusted_balance_sats`, `freshness`, and `scan_progress` so balances never imply completeness by themselves |
 | `logs` | Logging collector | log paths and retention |
@@ -23,6 +23,11 @@
 ## Stopped-node status
 
 Stopped-node status must not omit live fields. Fields that cannot be collected because the daemon is stopped use `Unavailable` with a `reason`. For example, live `network`, `chain tip`, `sync progress`, `peer counts`, mempool, and wallet values can be unavailable while datadir, config paths, service state, logs, metrics policy, health signals, and build provenance remain visible.
+
+When durable sync metadata exists, stopped or unreachable-node status may still
+surface the last known sync lifecycle, phase, lag, peer telemetry, recovery
+guidance, and last sync error from the durable store rather than collapsing
+those fields back to renderer-local guesses.
 
 ## Build provenance semantics
 
