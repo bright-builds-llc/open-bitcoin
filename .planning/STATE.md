@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Full Mainnet Network Syncing
 status: active
-stopped_at: Phase 40 completed; ready for milestone audit
-last_updated: "2026-05-02T13:48:15.604Z"
-last_activity: 2026-05-02
+stopped_at: Phase 41 added; ready for planning
+last_updated: "2026-05-03T17:20:00Z"
+last_activity: 2026-05-03
 progress:
-  total_phases: 6
+  total_phases: 7
   completed_phases: 6
   total_plans: 11
   completed_plans: 11
-  percent: 100
+  percent: 86
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-05-01)
 
 ## Current Position
 
-Phase: 40
-Plan: 40-01 completed
-Status: Phase 40 completed; next action is milestone audit/complete
-Last activity: 2026-05-02
+Phase: 41
+Plan: Not planned yet
+Status: Phase 41 added; next action is planning
+Last activity: 2026-05-03
 
-Progress: 6/6 phases complete
+Progress: 6/7 phases complete
 
 ## Archive Layout
 
@@ -39,7 +39,7 @@ Progress: 6/6 phases complete
 - v1.2 active requirements and roadmap live in `.planning/REQUIREMENTS.md` and `.planning/ROADMAP.md`.
 - Current-facing docs should link to the archived v1.1 phase paths, not old root post-v1.0 phase paths.
 - Some GSD health tooling versions still inspect only the root `.planning/phases/` directory and may warn about archived v1.1 phases even when the milestone archive is coherent.
-- The same health check may warn about planned v1.2 Phases 35 through 40 until `/gsd-plan-phase` creates each phase directory.
+- The same health check may warn about planned v1.2 Phases 35 through 41 until `/gsd-plan-phase` creates each phase directory.
 
 ## Performance Metrics
 
@@ -152,12 +152,13 @@ Recent decisions affecting current work:
 - v1.1 Operator Runtime and Real-Network Sync starts at Phase 13, continuing phase numbering after the archived v1.0 milestone.
 - Phase 34 completed as the final optional v1.1 cleanup on 2026-04-30.
 - v1.1 Operator Runtime and Real-Network Sync archived on 2026-04-30.
-- v1.2 Full Mainnet Network Syncing starts at Phase 35 and runs through Phase 40.
+- v1.2 Full Mainnet Network Syncing starts at Phase 35 and currently runs through Phase 41.
 - Phase 37 completed on 2026-05-02.
 - Phase 38 completed on 2026-05-02.
 - Phase 39 completed on 2026-05-02.
 - Phase 40 completed on 2026-05-02.
-- The next step is milestone audit and archive closeout.
+- Phase 41 added on 2026-05-03: audit and revisit all the security analyses throughout the planning docs and determine which if any we need to address.
+- The next step is `/gsd-plan-phase 41`.
 
 ### Pending Todos
 
