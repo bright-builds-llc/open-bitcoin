@@ -8,7 +8,7 @@ use crate::operator::detect::{
     ProductFamily, ServiceManager as DetectServiceManager,
 };
 
-use super::StatusDetectionEvidence;
+use super::{StatusDetectionEvidence, StatusRpcAuthSource};
 
 pub(super) fn detection_health_signals(evidence: &StatusDetectionEvidence) -> Vec<HealthSignal> {
     evidence
@@ -16,6 +16,14 @@ pub(super) fn detection_health_signals(evidence: &StatusDetectionEvidence) -> Ve
         .iter()
         .map(detection_health_signal)
         .collect()
+}
+
+pub(super) fn live_rpc_bootstrap_health_signal(auth_source: &StatusRpcAuthSource) -> HealthSignal {
+    HealthSignal {
+        level: HealthSignalLevel::Warn,
+        source: "live_rpc_bootstrap".to_string(),
+        message: live_rpc_bootstrap_message(auth_source),
+    }
 }
 
 fn detection_health_signal(installation: &DetectedInstallation) -> HealthSignal {
@@ -94,5 +102,17 @@ fn source_path_kind_name(kind: DetectionSourcePathKind) -> &'static str {
         DetectionSourcePathKind::ServiceDefinition => "service",
         DetectionSourcePathKind::WalletDirectory => "wallet_dir",
         DetectionSourcePathKind::WalletFile => "wallet_file",
+    }
+}
+
+fn live_rpc_bootstrap_message(auth_source: &StatusRpcAuthSource) -> String {
+    match auth_source {
+        StatusRpcAuthSource::CookieFile { path } => format!(
+            "live RPC was not attempted because no rediscoverable RPC credentials were found for the selected datadir; add RPC auth to the datadir-local bitcoin.conf or provide a discoverable cookie at {}.",
+            path.display()
+        ),
+        StatusRpcAuthSource::UserCredentialsConfigured | StatusRpcAuthSource::None => {
+            "live RPC was not attempted because no rediscoverable RPC credentials were found for the selected datadir; add RPC auth to the datadir-local bitcoin.conf or provide a discoverable .cookie.".to_string()
+        }
     }
 }

@@ -150,10 +150,16 @@ A common local workflow is:
 
 ```bash
 mkdir -p /tmp/open-bitcoin-preview
+cat > /tmp/open-bitcoin-preview/bitcoin.conf <<'EOF'
+regtest=1
+rpcconnect=127.0.0.1
+rpcport=18443
+rpcuser=preview
+rpcpassword=preview
+EOF
 
 cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --bin open-bitcoind -- \
-  -regtest -datadir=/tmp/open-bitcoin-preview -rpcport=18443 \
-  -rpcuser=preview -rpcpassword=preview
+  -datadir=/tmp/open-bitcoin-preview
 ```
 
 Then, from another shell:
@@ -162,6 +168,11 @@ Then, from another shell:
 cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
   --network regtest --datadir=/tmp/open-bitcoin-preview status --format human --no-color
 ```
+
+Daemon-only CLI flags passed to `open-bitcoind` are not automatically
+rediscoverable by later operator commands. `status` and `dashboard` need a
+normal RPC auth source they can resolve from the selected datadir, such as the
+datadir-local `bitcoin.conf` above or a discoverable `.cookie`.
 
 To write the Open Bitcoin-owned JSONC config non-interactively:
 
@@ -181,6 +192,9 @@ Important onboarding behaviors:
   `open-bitcoin.jsonc` must be replaced deliberately.
 - `--disable-metrics` and `--disable-logs` let operators opt out of those local
   runtime surfaces.
+- `onboard` writes only `open-bitcoin.jsonc`; it intentionally does not create
+  or update `bitcoin.conf`, so live status against a separately started daemon
+  still needs baseline-compatible RPC auth outside onboarding.
 
 ## Service Lifecycle
 
@@ -227,8 +241,11 @@ open-bitcoin --datadir=/tmp/open-bitcoin-preview sync resume
 ```
 
 For live RPC bootstrap, `status` and `dashboard` reuse the selected datadir,
-network, and normal RPC auth sources. A datadir-local implicit `bitcoin.conf`
-is optional for this workflow, not required.
+network, and normal RPC auth sources. A datadir-local `bitcoin.conf` is the
+canonical way to make user/password auth rediscoverable for this workflow, and
+a discoverable datadir-local `.cookie` works as well. If neither is available,
+the command falls back to a stopped snapshot and emits a live-RPC bootstrap
+warning.
 
 ```bash
 open-bitcoin --network regtest --datadir=/tmp/open-bitcoin-preview status --format json

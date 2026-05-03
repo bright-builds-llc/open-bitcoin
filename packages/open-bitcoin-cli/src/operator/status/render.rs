@@ -28,6 +28,10 @@ pub fn render_status(
 
 fn render_human_status(snapshot: &OpenBitcoinStatusSnapshot) -> String {
     let mut lines = Vec::new();
+    let prominent_warnings = prominent_health_text(&snapshot.health_signals);
+    if !prominent_warnings.is_empty() {
+        lines.push(format!("Warnings: {prominent_warnings}"));
+    }
     lines.push(format!(
         "Daemon: {}",
         runtime_state_name(snapshot.node.state)
@@ -272,6 +276,27 @@ fn health_text(signals: &[HealthSignal]) -> String {
     }
     signals
         .iter()
+        .map(|signal| {
+            format!(
+                "{}:{}:{}",
+                health_level_name(signal.level),
+                signal.source,
+                signal.message
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(" | ")
+}
+
+fn prominent_health_text(signals: &[HealthSignal]) -> String {
+    signals
+        .iter()
+        .filter(|signal| {
+            matches!(
+                signal.level,
+                HealthSignalLevel::Warn | HealthSignalLevel::Error
+            )
+        })
         .map(|signal| {
             format!(
                 "{}:{}:{}",

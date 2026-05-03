@@ -260,6 +260,9 @@ fn stopped_status_snapshot(
     let reason = reason.into();
     let maybe_durable_sync_state = durable_sync_state(&input.config_resolution);
     let mut health_signals = detection::detection_health_signals(&input.detection_evidence);
+    if let Some(signal) = maybe_live_rpc_bootstrap_health_signal(input) {
+        health_signals.push(signal);
+    }
     health_signals.extend(log_health_signals(input));
     if let Some(durable_sync_state) = maybe_durable_sync_state.as_ref() {
         health_signals.extend(durable_sync_state.health_signals.clone());
@@ -360,6 +363,16 @@ fn wallet_health_signal(reason: impl Into<String>) -> HealthSignal {
         source: "wallet".to_string(),
         message: reason.into(),
     }
+}
+
+fn maybe_live_rpc_bootstrap_health_signal(input: &StatusCollectorInput) -> Option<HealthSignal> {
+    let live_rpc = input
+        .maybe_live_rpc
+        .as_ref()
+        .filter(|_| !input.request.include_live_rpc)?;
+    Some(detection::live_rpc_bootstrap_health_signal(
+        &live_rpc.auth_source,
+    ))
 }
 
 pub(crate) fn resolve_status_wallet_rpc_access(

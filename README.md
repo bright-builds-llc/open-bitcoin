@@ -119,9 +119,16 @@ directory, start the RPC server, then call it from another shell:
 
 ```bash
 mkdir -p /tmp/open-bitcoin-preview
+cat > /tmp/open-bitcoin-preview/bitcoin.conf <<'EOF'
+regtest=1
+rpcconnect=127.0.0.1
+rpcport=18443
+rpcuser=preview
+rpcpassword=preview
+EOF
+
 cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --bin open-bitcoind -- \
-  -regtest -datadir=/tmp/open-bitcoin-preview -rpcport=18443 \
-  -rpcuser=preview -rpcpassword=preview
+  -datadir=/tmp/open-bitcoin-preview
 ```
 
 ```bash
@@ -129,6 +136,11 @@ cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli -- \
   -rpcconnect=127.0.0.1 -rpcport=18443 \
   -rpcuser=preview -rpcpassword=preview getblockchaininfo
 ```
+
+`open-bitcoind` CLI flags are not automatically rediscoverable by later
+operator commands. `open-bitcoin status` and `open-bitcoin dashboard` need a
+normal RPC auth source they can resolve themselves from the selected datadir,
+such as `bitcoin.conf` or a discoverable `.cookie`.
 
 The Open Bitcoin-specific operator binary exposes status, config discovery, and
 first-run onboarding flows:
@@ -149,6 +161,11 @@ cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bit
   --config=/tmp/open-bitcoin-preview/open-bitcoin.jsonc \
   onboard --non-interactive --approve-write --detect-existing
 ```
+
+`onboard` writes only `open-bitcoin.jsonc`; it intentionally does not create or
+modify `bitcoin.conf`. If you start `open-bitcoind` separately and want later
+`open-bitcoin status` calls to reach live RPC, keep the baseline-compatible RPC
+auth in `bitcoin.conf` or an equivalent discoverable `.cookie`.
 
 Operators with an existing Core or Knots install can also generate a dry-run
 migration plan before any later cutover work:

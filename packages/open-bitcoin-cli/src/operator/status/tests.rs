@@ -126,6 +126,12 @@ fn stopped_status_keeps_live_fields_unavailable() {
     );
     assert_eq!(decoded["wallet"]["freshness"]["state"], "unavailable");
     assert_eq!(decoded["wallet"]["scan_progress"]["state"], "unavailable");
+    assert!(
+        decoded["health_signals"]
+            .as_array()
+            .expect("health signals")
+            .is_empty()
+    );
     assert_eq!(decoded["build"]["version"], env!("CARGO_PKG_VERSION"));
 }
 
@@ -414,6 +420,48 @@ fn human_status_contains_required_labels_and_detection_uncertainty() {
     assert!(rendered.contains("/tmp/core/.bitcoin/bitcoin.conf"));
     assert!(rendered.contains("uncertain"));
     assert!(rendered.contains("Unavailable: node stopped"));
+}
+
+#[test]
+fn human_status_surfaces_warning_health_signals_before_daemon_line() {
+    // Arrange
+    let input = status_input(Vec::new());
+    let mut snapshot = collect_status_snapshot(&input, None);
+    snapshot.health_signals.insert(
+        0,
+        open_bitcoin_node::status::HealthSignal {
+            level: open_bitcoin_node::status::HealthSignalLevel::Warn,
+            source: "live_rpc_bootstrap".to_string(),
+            message:
+                "live RPC was not attempted because no rediscoverable RPC credentials were found."
+                    .to_string(),
+        },
+    );
+
+    // Act
+    let rendered = render_status(&snapshot, StatusRenderMode::Human).expect("human status");
+    let lines = rendered.lines().collect::<Vec<_>>();
+
+    // Assert
+    assert!(
+        lines
+            .first()
+            .expect("warning line")
+            .starts_with("Warnings: ")
+    );
+    assert!(lines[0].contains("live_rpc_bootstrap"));
+    assert!(lines[0].contains("live RPC was not attempted"));
+    assert!(
+        lines
+            .iter()
+            .position(|line| line.starts_with("Warnings: "))
+            .expect("warning line")
+            < lines
+                .iter()
+                .position(|line| line.starts_with("Daemon: "))
+                .expect("daemon line")
+    );
+    assert!(rendered.contains("Health: warn:live_rpc_bootstrap:"));
 }
 
 #[test]

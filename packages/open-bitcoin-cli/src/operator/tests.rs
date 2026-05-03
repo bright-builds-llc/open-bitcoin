@@ -358,4 +358,65 @@ fn status_stays_stopped_when_configless_bootstrap_has_no_credentials() {
     // Assert
     assert_eq!(outcome.exit_code, super::runtime::OperatorExitCode::Success);
     assert_eq!(decoded["node"]["state"], "stopped");
+    let bootstrap_warning = decoded["health_signals"]
+        .as_array()
+        .expect("health signals")
+        .iter()
+        .find(|signal| signal["source"] == "live_rpc_bootstrap")
+        .expect("bootstrap warning");
+    assert!(
+        bootstrap_warning["message"]
+            .as_str()
+            .expect("bootstrap warning")
+            .contains("live RPC was not attempted")
+    );
+    assert!(
+        bootstrap_warning["message"]
+            .as_str()
+            .expect("bootstrap warning")
+            .contains("bitcoin.conf")
+    );
+}
+
+#[test]
+fn status_human_output_surfaces_bootstrap_warning_before_status_fields() {
+    // Arrange
+    let sandbox = TestDirectory::new("status-human-bootstrap-warning");
+    let data_dir = sandbox.child("open-bitcoin");
+    fs::create_dir_all(&data_dir).expect("datadir");
+    let cli = OperatorCli {
+        maybe_config_path: None,
+        maybe_data_dir: Some(data_dir.clone()),
+        maybe_network: Some(NetworkSelection::Regtest),
+        format: OperatorOutputFormat::Human,
+        no_color: true,
+        command: OperatorCommand::Status(StatusArgs {}),
+    };
+
+    // Act
+    let outcome = super::runtime::execute_operator_cli_with_default_data_dir(cli, data_dir);
+    let lines = outcome.stdout.text.lines().collect::<Vec<_>>();
+
+    // Assert
+    assert_eq!(outcome.exit_code, super::runtime::OperatorExitCode::Success);
+    assert!(
+        lines
+            .first()
+            .expect("warning line")
+            .starts_with("Warnings: "),
+        "expected warning line first, got {:?}",
+        lines.first()
+    );
+    assert!(lines[0].contains("live_rpc_bootstrap"));
+    assert!(lines[0].contains("live RPC was not attempted"));
+    assert!(
+        lines
+            .iter()
+            .position(|line| line.starts_with("Warnings: "))
+            .expect("warning line")
+            < lines
+                .iter()
+                .position(|line| line.starts_with("Daemon: "))
+                .expect("daemon line")
+    );
 }

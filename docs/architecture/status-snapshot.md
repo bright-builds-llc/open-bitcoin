@@ -24,6 +24,11 @@
 
 Stopped-node status must not omit live fields. Fields that cannot be collected because the daemon is stopped use `Unavailable` with a `reason`. For example, live `network`, `chain tip`, `sync progress`, `peer counts`, mempool, and wallet values can be unavailable while datadir, config paths, service state, logs, metrics policy, health signals, and build provenance remain visible.
 
+`node.state = stopped` can also mean live RPC was not attempted because the
+operator side could not rediscover credentials for the selected datadir. That
+bootstrap distinction should surface through warning health signals, not a
+separate top-level status field.
+
 When durable sync metadata exists, stopped or unreachable-node status may still
 surface the last known sync lifecycle, phase, lag, peer telemetry, recovery
 guidance, and last sync error from the durable store rather than collapsing
