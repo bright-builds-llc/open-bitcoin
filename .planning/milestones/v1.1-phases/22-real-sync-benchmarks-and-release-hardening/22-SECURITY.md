@@ -52,6 +52,7 @@ No accepted risks.
 | Audit Date | Threats Total | Closed | Open | Run By |
 |------------|---------------|--------|------|--------|
 | 2026-04-27 | 4 | 4 | 0 | GPT-5.4 + read-only security auditor |
+| 2026-05-04 | 4 | 4 | 0 | Codex GPT-5 |
 
 ---
 
@@ -62,4 +63,4 @@ No accepted risks.
 - [x] `threats_open: 0` confirmed
 - [x] `status: verified` set in frontmatter
 
-**Approval:** verified 2026-04-27
+**Approval:** verified 2026-05-04
