@@ -31,6 +31,8 @@ type StatusSnapshot = {
   };
 };
 
+const ISO_UTC_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
+
 function repoRoot(): string {
   return execFileSync("git", ["rev-parse", "--show-toplevel"], {
     cwd: process.cwd(),
@@ -172,6 +174,11 @@ function main(): void {
   }
   if (actualBuildTime.trim() === "") {
     throw new Error("build.build_time must be a non-empty string");
+  }
+  if (!ISO_UTC_TIMESTAMP_PATTERN.test(actualBuildTime)) {
+    throw new Error(
+      `build.build_time must be ISO-8601 UTC YYYY-MM-DDTHH:MM:SSZ, got ${actualBuildTime}`,
+    );
   }
 
   console.log("Bazel build provenance check passed.");

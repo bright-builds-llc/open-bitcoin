@@ -75,14 +75,43 @@ fn build_time() -> Option<String> {
     if let Ok(source_date_epoch) = env::var("SOURCE_DATE_EPOCH") {
         let trimmed = source_date_epoch.trim();
         if !trimmed.is_empty() {
-            return Some(trimmed.to_string());
+            return format_epoch_seconds(trimmed);
         }
     }
 
+    current_utc_timestamp()
+}
+
+fn current_utc_timestamp() -> Option<String> {
     let output = Command::new("date")
         .args(["-u", "+%Y-%m-%dT%H:%M:%SZ"])
         .output()
         .ok()?;
+    command_output(output)
+}
+
+fn format_epoch_seconds(epoch_seconds: &str) -> Option<String> {
+    let bsd_output = Command::new("date")
+        .args(["-u", "-r", epoch_seconds, "+%Y-%m-%dT%H:%M:%SZ"])
+        .output()
+        .ok();
+    if let Some(timestamp) = bsd_output.and_then(command_output) {
+        return Some(timestamp);
+    }
+
+    let gnu_output = Command::new("date")
+        .args([
+            "-u",
+            "-d",
+            &format!("@{epoch_seconds}"),
+            "+%Y-%m-%dT%H:%M:%SZ",
+        ])
+        .output()
+        .ok()?;
+    command_output(gnu_output)
+}
+
+fn command_output(output: std::process::Output) -> Option<String> {
     if !output.status.success() {
         return None;
     }

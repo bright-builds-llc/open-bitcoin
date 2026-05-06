@@ -36,6 +36,7 @@ Use this routing map when deciding what to load next:
 - Use `git submodule update --init --recursive` to materialize the pinned Knots baseline under `packages/bitcoin-knots`.
 - Use `rust-toolchain.toml` as the Rust source of truth for local Cargo, CI, and Bazel. The current pinned version is `1.94.1`.
 - Use `bash scripts/verify.sh` as the repo-native verification contract for first-party code, including the Bazel smoke build.
+- During UAT, provide copy-pasteable repo-local Cargo and Bazel commands for operator workflows instead of only naming the installed `open-bitcoin` alias. Prefer `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- ...` and `bazel run //packages/open-bitcoin-cli:open_bitcoin -- ...`.
 - Use Bun as the canonical runtime for repo-owned higher-level automation scripts; prefer TypeScript for substantial script logic, and keep Bash for thin orchestration wrappers and simple shell checks.
 - Use `bash scripts/install-git-hooks.sh` to install the repo-managed Git hooks under `.githooks`; rerunning it is safe and idempotent, and `bash scripts/verify.sh` will self-heal missing local hook installation outside CI.
 - Treat `docs/metrics/lines-of-code.md` as an intentionally tracked generated artifact. Expect it to change when hooks or verification regenerate it, and treat stale LOC updates as required freshness changes rather than incidental noise.
