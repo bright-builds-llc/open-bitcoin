@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "sync": {
+    "network_enabled": true,
+    "mode": "mainnet-ibd",
+    "manual_peers": [
+      "198.51.100.10:8333",
+      "[2001:db8::7]:8333"
+    ],
+    "dns_seeds": [
+      "seed.bitcoin.sipa.be",
+      "dnsseed.bluematt.me"
+    ],
+    "target_outbound_peers": 2
+  }
+}
