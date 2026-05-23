@@ -1,10 +1,10 @@
 ---
-status: gap_closed_pending_live_retest
+status: complete
 phase: 39-operator-sync-observability-and-control
 source:
   - .planning/phases/39-operator-sync-observability-and-control/39-01-SUMMARY.md
 started: 2026-05-15T10:20:15.113Z
-updated: 2026-05-23T01:59:36Z
+updated: 2026-05-23T02:22:20Z
 ---
 
 ## Current Test
@@ -35,15 +35,14 @@ evidence: "`cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-rpc b
 
 ### 5. Daemon Sync Activation Honors Durable Control
 expected: Start `open-bitcoind` with the documented opt-in mainnet sync review path and an existing datadir, then use `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=<DATADIR> sync pause` and `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=<DATADIR> sync resume` while the daemon is running. The daemon-owned sync worker keeps durable sync state current, observes the durable pause flag without editing internal files, and remains explicitly scoped as an operator review workflow rather than an unattended production-node claim.
-result: issue
-reported: "`open-bitcoind` started with `-datadir=/tmp/open-bitcoin-mainnet-uat -main -server=1 -rpcbind=127.0.0.1 -rpcport=18445 -rpcuser=uat -rpcpassword=uat -openbitcoinsync=mainnet-ibd`, but while it was running, `open-bitcoin --datadir=/tmp/open-bitcoin-mainnet-uat --format json sync status`, `open-bitcoin --datadir=/tmp/open-bitcoin-mainnet-uat sync pause`, and `open-bitcoin --datadir=/tmp/open-bitcoin-mainnet-uat sync resume` all failed with `storage backend failure in runtime: FjallError: Locked; Restart the node and retry the storage operation.`"
-severity: blocker
+result: pass
+evidence: "User reran the live `open-bitcoind` mainnet UAT after the gap-closure fix and reported that the documented `sync status`, `sync pause`, and `sync resume` steps passed against the running daemon without the prior `FjallError: Locked` or timeout failure."
 
 ## Summary
 
 total: 5
-passed: 4
-issues: 1
+passed: 5
+issues: 0
 pending: 0
 skipped: 0
 blocked: 0
@@ -51,7 +50,7 @@ blocked: 0
 ## Gaps
 
 - truth: "Start `open-bitcoind` with the documented opt-in mainnet sync review path and an existing datadir, then use `open-bitcoin sync pause` and `open-bitcoin sync resume` while the daemon is running. The daemon-owned sync worker keeps durable sync state current and observes the durable pause flag without editing internal files."
-  status: failed
+  status: resolved
   reason: "User reported: while `open-bitcoind` was running, `open-bitcoin sync status`, `open-bitcoin sync pause`, and `open-bitcoin sync resume` all failed with `storage backend failure in runtime: FjallError: Locked; Restart the node and retry the storage operation.`"
   severity: blocker
   test: 5
@@ -67,14 +66,16 @@ blocked: 0
     - "Move live sync status/pause/resume control to a daemon-accessible surface, such as local RPC methods handled by the running `open-bitcoind`, or split the control flag/status summary into a concurrency-safe sidecar store that the daemon and CLI can both access."
     - "Add a regression that starts a daemon-owned store holder and proves operator sync status/pause/resume do not fail with Fjall `Locked` while the daemon is active."
   debug_session: ""
+  resolved_by: "Phase 39 Plan 02 added authenticated daemon RPC sync-control methods and a store-backed daemon control handle that avoids both second-process Fjall opens and sync-worker channel timeout."
+  verified: "User reran the original live mainnet `open-bitcoind` UAT on 2026-05-23 and reported that it passed."
 
 ## Gap Closure Update
 
 - date: 2026-05-23
-- status: fixed deterministically; live mainnet retest pending
+- status: fixed deterministically; live mainnet retest passed
 - fix: "`open-bitcoin sync status|pause|resume` now attempts authenticated local RPC first when daemon RPC is configured, using `openbitcoinsyncstatus`, `openbitcoinsyncpause`, and `openbitcoinsyncresume` served by the running `open-bitcoind` process. Offline direct-store access remains the fallback only when no local RPC is reachable or configured."
 - evidence: "Regression tests cover a held Fjall store lock with live RPC and prove the CLI no longer reports `FjallError: Locked`; auth failures from a reachable daemon are terminal and do not fall back to direct-store mutation. Full repo verification passed after refreshing `docs/metrics/lines-of-code.md`."
-- retest: "Rerun the original public-mainnet `open-bitcoind` UAT against a fresh daemon process to confirm the fix through the real server path."
+- retest: "User reran the original public-mainnet `open-bitcoind` UAT against a fresh daemon process on 2026-05-23 and reported that it passed."
 
 ## Timeout Follow-Up
 
@@ -83,4 +84,11 @@ blocked: 0
 - root_cause: "The RPC handler used a control channel serviced by the daemon sync worker, but the worker can spend longer than the control timeout inside a live `sync_until_idle` network round."
 - fix: "`open-bitcoind` now installs a store-backed `DaemonSyncControl` handle using a clone of the daemon process's already-open Fjall database handle. RPC status, pause, and resume no longer wait for the sync worker to receive a channel message."
 - evidence: "The store-backed RPC regression passed, and a local live-shape daemon check against `/tmp/open-bitcoin-mainnet-uat-codex-timeout` returned from `sync status`, `sync pause`, JSON status with `sync_control.paused: true`, and `sync resume` without timeout or `FjallError: Locked`."
-- retest: "Rerun the same commands against the user's `/tmp/open-bitcoin-mainnet-uat` daemon after rebuilding from this working tree."
+- retest: "User reran the same commands against the live `/tmp/open-bitcoin-mainnet-uat` daemon after rebuilding from this working tree and reported that they passed."
+
+## Live UAT Acceptance
+
+- date: 2026-05-23
+- result: passed
+- source: "User-reported live UAT result after rerunning the documented open-bitcoind mainnet sync-control steps."
+- accepted_scope: "Confirms the Phase 39 operator sync-control path through a real running daemon. It does not expand the phase's explicit scope into an unattended production-node claim."

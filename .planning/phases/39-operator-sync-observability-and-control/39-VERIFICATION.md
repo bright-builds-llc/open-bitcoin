@@ -13,7 +13,7 @@ lifecycle_validated: true
 
 ## Result
 
-Passed. The Phase 39 gap is closed at the deterministic regression level and through a local live-shape daemon check: live operator sync control now goes through authenticated daemon RPC, the daemon remains the single process owner of the Fjall store, status/pause/resume do not wait on the busy sync worker thread, offline direct-store control still works when no daemon is reachable, and auth failures cannot be bypassed by falling back to store mutation.
+Passed. The Phase 39 gap is closed at the deterministic regression level, through a local live-shape daemon check, and through the user-rerun live mainnet UAT: live operator sync control now goes through authenticated daemon RPC, the daemon remains the single process owner of the Fjall store, status/pause/resume do not wait on the busy sync worker thread, offline direct-store control still works when no daemon is reachable, and auth failures cannot be bypassed by falling back to store mutation.
 
 ## Commands
 
@@ -33,6 +33,7 @@ Passed. The Phase 39 gap is closed at the deterministic regression level and thr
 | `bash scripts/verify.sh` | Passed | Repo-native verification passed after LOC refresh, including Bazel smoke and coverage checks. |
 | `git diff --check` | Passed | No whitespace or conflict-marker issues. |
 | Local live-shape daemon check against `/tmp/open-bitcoin-mainnet-uat-codex-timeout` | Passed | Started `open-bitcoind`, then `sync status`, `sync pause`, JSON `sync status`, and `sync resume` all returned without timeout or `FjallError: Locked`; paused status showed `sync_control.paused: true`. |
+| User-rerun live mainnet UAT against `/tmp/open-bitcoin-mainnet-uat` | Passed | User reported that the documented live `open-bitcoind` mainnet sync-control steps passed after rebuilding from this working tree. |
 
 ## Evidence
 
@@ -45,5 +46,4 @@ Passed. The Phase 39 gap is closed at the deterministic regression level and thr
 
 ## Residual Risks
 
-- The original public-mainnet UAT should still be rerun against the user's real `open-bitcoind` process. This verification proves the lock and timeout failures locally without depending on public network progress.
 - The daemon sync worker remains an opt-in operator review path, not a production-node claim.
