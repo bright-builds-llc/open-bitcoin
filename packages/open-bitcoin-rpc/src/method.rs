@@ -43,6 +43,12 @@ pub enum SupportedMethod {
     GetMempoolInfo,
     #[serde(rename = "getnetworkinfo")]
     GetNetworkInfo,
+    #[serde(rename = "openbitcoinsyncstatus")]
+    OpenBitcoinSyncStatus,
+    #[serde(rename = "openbitcoinsyncpause")]
+    OpenBitcoinSyncPause,
+    #[serde(rename = "openbitcoinsyncresume")]
+    OpenBitcoinSyncResume,
     #[serde(rename = "sendrawtransaction")]
     SendRawTransaction,
     #[serde(rename = "deriveaddresses")]
@@ -77,6 +83,9 @@ impl SupportedMethod {
             Self::GetBlockchainInfo,
             Self::GetMempoolInfo,
             Self::GetNetworkInfo,
+            Self::OpenBitcoinSyncStatus,
+            Self::OpenBitcoinSyncPause,
+            Self::OpenBitcoinSyncResume,
             Self::SendRawTransaction,
             Self::DeriveAddresses,
             Self::SendToAddress,
@@ -98,6 +107,9 @@ impl SupportedMethod {
             Self::GetBlockchainInfo => "getblockchaininfo",
             Self::GetMempoolInfo => "getmempoolinfo",
             Self::GetNetworkInfo => "getnetworkinfo",
+            Self::OpenBitcoinSyncStatus => "openbitcoinsyncstatus",
+            Self::OpenBitcoinSyncPause => "openbitcoinsyncpause",
+            Self::OpenBitcoinSyncResume => "openbitcoinsyncresume",
             Self::SendRawTransaction => "sendrawtransaction",
             Self::DeriveAddresses => "deriveaddresses",
             Self::SendToAddress => "sendtoaddress",
@@ -116,9 +128,11 @@ impl SupportedMethod {
 
     pub const fn origin(self) -> MethodOrigin {
         match self {
-            Self::BuildTransaction | Self::BuildAndSignTransaction => {
-                MethodOrigin::OpenBitcoinExtension
-            }
+            Self::OpenBitcoinSyncStatus
+            | Self::OpenBitcoinSyncPause
+            | Self::OpenBitcoinSyncResume
+            | Self::BuildTransaction
+            | Self::BuildAndSignTransaction => MethodOrigin::OpenBitcoinExtension,
             _ => MethodOrigin::BaselineParity,
         }
     }
@@ -139,6 +153,9 @@ impl SupportedMethod {
             Self::GetBlockchainInfo
             | Self::GetMempoolInfo
             | Self::GetNetworkInfo
+            | Self::OpenBitcoinSyncStatus
+            | Self::OpenBitcoinSyncPause
+            | Self::OpenBitcoinSyncResume
             | Self::SendRawTransaction
             | Self::DeriveAddresses => MethodScope::Node,
         }
@@ -179,6 +196,9 @@ pub enum MethodCall {
     GetBlockchainInfo(GetBlockchainInfoRequest),
     GetMempoolInfo(GetMempoolInfoRequest),
     GetNetworkInfo(GetNetworkInfoRequest),
+    OpenBitcoinSyncStatus(OpenBitcoinSyncStatusRequest),
+    OpenBitcoinSyncPause(OpenBitcoinSyncPauseRequest),
+    OpenBitcoinSyncResume(OpenBitcoinSyncResumeRequest),
     SendRawTransaction(SendRawTransactionRequest),
     DeriveAddresses(DeriveAddressesRequest),
     SendToAddress(SendToAddressRequest),
@@ -211,6 +231,9 @@ impl MethodCall {
             Self::GetBlockchainInfo(_)
             | Self::GetMempoolInfo(_)
             | Self::GetNetworkInfo(_)
+            | Self::OpenBitcoinSyncStatus(_)
+            | Self::OpenBitcoinSyncPause(_)
+            | Self::OpenBitcoinSyncResume(_)
             | Self::SendRawTransaction(_)
             | Self::DeriveAddresses(_) => MethodScope::Node,
         }
@@ -237,6 +260,18 @@ pub fn normalize_method_call(
         SupportedMethod::GetNetworkInfo => {
             normalize::normalize_request::<GetNetworkInfoRequest>(&[], params)
                 .map(MethodCall::GetNetworkInfo)
+        }
+        SupportedMethod::OpenBitcoinSyncStatus => {
+            normalize::normalize_request::<OpenBitcoinSyncStatusRequest>(&[], params)
+                .map(MethodCall::OpenBitcoinSyncStatus)
+        }
+        SupportedMethod::OpenBitcoinSyncPause => {
+            normalize::normalize_request::<OpenBitcoinSyncPauseRequest>(&[], params)
+                .map(MethodCall::OpenBitcoinSyncPause)
+        }
+        SupportedMethod::OpenBitcoinSyncResume => {
+            normalize::normalize_request::<OpenBitcoinSyncResumeRequest>(&[], params)
+                .map(MethodCall::OpenBitcoinSyncResume)
         }
         SupportedMethod::SendRawTransaction => {
             normalize::normalize_request::<SendRawTransactionRequest>(

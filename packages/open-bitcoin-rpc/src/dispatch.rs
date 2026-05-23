@@ -43,6 +43,18 @@ pub fn dispatch(context: &mut ManagedRpcContext, call: MethodCall) -> Result<Val
             serde_json::to_value(node::get_network_info(context))
                 .map_err(|error| RpcFailure::internal_error(error.to_string()))
         }
+        MethodCall::OpenBitcoinSyncStatus(_request) => {
+            serde_json::to_value(node::open_bitcoin_sync_status(context)?)
+                .map_err(|error| RpcFailure::internal_error(error.to_string()))
+        }
+        MethodCall::OpenBitcoinSyncPause(_request) => {
+            serde_json::to_value(node::open_bitcoin_sync_pause(context)?)
+                .map_err(|error| RpcFailure::internal_error(error.to_string()))
+        }
+        MethodCall::OpenBitcoinSyncResume(_request) => {
+            serde_json::to_value(node::open_bitcoin_sync_resume(context)?)
+                .map_err(|error| RpcFailure::internal_error(error.to_string()))
+        }
         MethodCall::SendRawTransaction(request) => {
             serde_json::to_value(node::send_raw_transaction(context, request)?)
                 .map_err(|error| RpcFailure::internal_error(error.to_string()))

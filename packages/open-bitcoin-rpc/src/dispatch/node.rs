@@ -17,8 +17,8 @@ use crate::{
     error::RpcFailure,
     method::{
         DeriveAddressesRequest, DeriveAddressesResponse, GetBlockchainInfoResponse,
-        GetMempoolInfoResponse, GetNetworkInfoResponse, SendRawTransactionRequest,
-        SendRawTransactionResponse,
+        GetMempoolInfoResponse, GetNetworkInfoResponse, OpenBitcoinSyncControlResponse,
+        SendRawTransactionRequest, SendRawTransactionResponse,
     },
 };
 
@@ -150,6 +150,30 @@ pub(super) fn get_network_info(context: &ManagedRpcContext) -> GetNetworkInfoRes
         incrementalfee: mempool_info.incremental_relay_feerate_sats_per_kvb,
         warnings: Vec::new(),
     }
+}
+
+pub(super) fn open_bitcoin_sync_status(
+    context: &ManagedRpcContext,
+) -> Result<OpenBitcoinSyncControlResponse, RpcFailure> {
+    open_bitcoin_sync_response(context.daemon_sync_status()?)
+}
+
+pub(super) fn open_bitcoin_sync_pause(
+    context: &ManagedRpcContext,
+) -> Result<OpenBitcoinSyncControlResponse, RpcFailure> {
+    open_bitcoin_sync_response(context.daemon_sync_pause()?)
+}
+
+pub(super) fn open_bitcoin_sync_resume(
+    context: &ManagedRpcContext,
+) -> Result<OpenBitcoinSyncControlResponse, RpcFailure> {
+    open_bitcoin_sync_response(context.daemon_sync_resume()?)
+}
+
+fn open_bitcoin_sync_response(
+    metadata: open_bitcoin_node::RuntimeMetadata,
+) -> Result<OpenBitcoinSyncControlResponse, RpcFailure> {
+    Ok(OpenBitcoinSyncControlResponse { metadata })
 }
 
 pub(super) fn derive_addresses(

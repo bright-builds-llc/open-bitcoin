@@ -1,15 +1,21 @@
 // Parity breadcrumbs:
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
-use std::path::Path;
+use std::{fmt, path::Path};
 
 use open_bitcoin_node::FjallNodeStore;
-use serde_json::json;
+use open_bitcoin_rpc::{
+    JsonRpcId, JsonRpcVersion, RpcErrorDetail, RpcRequestEnvelope,
+    method::OpenBitcoinSyncControlResponse,
+};
+use serde_json::{Value, json};
+use ureq::Agent;
 
 use super::{
     OperatorCommandOutcome, OperatorOutputFormat, OperatorRuntimeError, SyncArgs, SyncCommand,
 };
 use crate::operator::config::OperatorConfigResolution;
+use crate::startup::CliRpcConfig;
 
 pub(super) fn execute_sync_command(
     args: &SyncArgs,
@@ -21,6 +27,39 @@ pub(super) fn execute_sync_command(
             message: "sync commands require a datadir".to_string(),
         });
     };
+
+    if let Some(outcome) = maybe_execute_live_sync_command(args, format, config_resolution)? {
+        return Ok(outcome);
+    }
+
+    execute_offline_sync_command(data_dir, args, format)
+}
+
+fn maybe_execute_live_sync_command(
+    args: &SyncArgs,
+    format: OperatorOutputFormat,
+    config_resolution: &OperatorConfigResolution,
+) -> Result<Option<OperatorCommandOutcome>, OperatorRuntimeError> {
+    let Some(startup) = super::startup_config_for_status(config_resolution) else {
+        return Ok(None);
+    };
+    let Ok(client) = HttpSyncControlRpcClient::from_config(&startup.rpc) else {
+        return Ok(None);
+    };
+    match client.call(&args.command) {
+        Ok(metadata) => render_sync_outcome(&args.command, format, &metadata).map(Some),
+        Err(SyncControlRpcError::Unavailable(_message)) => Ok(None),
+        Err(SyncControlRpcError::Failed(message)) => {
+            Err(OperatorRuntimeError::InvalidRequest { message })
+        }
+    }
+}
+
+fn execute_offline_sync_command(
+    data_dir: &Path,
+    args: &SyncArgs,
+    format: OperatorOutputFormat,
+) -> Result<OperatorCommandOutcome, OperatorRuntimeError> {
     let store =
         FjallNodeStore::open(data_dir).map_err(|error| OperatorRuntimeError::InvalidRequest {
             message: error.to_string(),
@@ -32,20 +71,8 @@ pub(super) fn execute_sync_command(
         })?
         .unwrap_or_default();
 
-    match args.command {
-        SyncCommand::Status => {
-            let output = match format {
-                OperatorOutputFormat::Json => {
-                    serde_json::to_string_pretty(&metadata).map_err(|error| {
-                        OperatorRuntimeError::InvalidRequest {
-                            message: error.to_string(),
-                        }
-                    })?
-                }
-                OperatorOutputFormat::Human => render_sync_status(&metadata),
-            };
-            Ok(OperatorCommandOutcome::success(format!("{output}\n")))
-        }
+    match &args.command {
+        SyncCommand::Status => render_sync_outcome(&args.command, format, &metadata),
         SyncCommand::Pause => {
             metadata.sync_control.paused = true;
             store
@@ -53,9 +80,7 @@ pub(super) fn execute_sync_command(
                 .map_err(|error| OperatorRuntimeError::InvalidRequest {
                     message: error.to_string(),
                 })?;
-            Ok(OperatorCommandOutcome::success(
-                "Daemon sync paused. Use `open-bitcoin sync resume` to continue.\n",
-            ))
+            render_sync_outcome(&args.command, format, &metadata)
         }
         SyncCommand::Resume => {
             metadata.sync_control.paused = false;
@@ -64,9 +89,138 @@ pub(super) fn execute_sync_command(
                 .map_err(|error| OperatorRuntimeError::InvalidRequest {
                     message: error.to_string(),
                 })?;
-            Ok(OperatorCommandOutcome::success(
-                "Daemon sync resumed. Use `open-bitcoin sync status` to inspect current state.\n",
-            ))
+            render_sync_outcome(&args.command, format, &metadata)
+        }
+    }
+}
+
+fn render_sync_outcome(
+    command: &SyncCommand,
+    format: OperatorOutputFormat,
+    metadata: &open_bitcoin_node::RuntimeMetadata,
+) -> Result<OperatorCommandOutcome, OperatorRuntimeError> {
+    match command {
+        SyncCommand::Status => {
+            let output = match format {
+                OperatorOutputFormat::Json => {
+                    serde_json::to_string_pretty(metadata).map_err(|error| {
+                        OperatorRuntimeError::InvalidRequest {
+                            message: error.to_string(),
+                        }
+                    })?
+                }
+                OperatorOutputFormat::Human => render_sync_status(metadata),
+            };
+            Ok(OperatorCommandOutcome::success(format!("{output}\n")))
+        }
+        SyncCommand::Pause => Ok(OperatorCommandOutcome::success(
+            "Daemon sync paused. Use `open-bitcoin sync resume` to continue.\n",
+        )),
+        SyncCommand::Resume => Ok(OperatorCommandOutcome::success(
+            "Daemon sync resumed. Use `open-bitcoin sync status` to inspect current state.\n",
+        )),
+    }
+}
+
+struct HttpSyncControlRpcClient {
+    agent: Agent,
+    endpoint_url: String,
+    authorization_header: String,
+}
+
+impl HttpSyncControlRpcClient {
+    fn from_config(config: &CliRpcConfig) -> Result<Self, OperatorRuntimeError> {
+        Ok(Self {
+            agent: Agent::new_with_config(
+                Agent::config_builder().http_status_as_error(false).build(),
+            ),
+            endpoint_url: format!(
+                "http://{}/",
+                super::format_host_for_url(&config.host, config.port)
+            ),
+            authorization_header: super::authorization_header(&config.auth)?,
+        })
+    }
+
+    fn call(
+        &self,
+        command: &SyncCommand,
+    ) -> Result<open_bitcoin_node::RuntimeMetadata, SyncControlRpcError> {
+        let method = sync_control_method_name(command);
+        let response = self
+            .agent
+            .post(&self.endpoint_url)
+            .header("Authorization", &self.authorization_header)
+            .send_json(RpcRequestEnvelope {
+                jsonrpc: Some(JsonRpcVersion::V2),
+                method: method.to_string(),
+                params: json!([]),
+                id: Some(JsonRpcId::Number(1)),
+            })
+            .map_err(|error| SyncControlRpcError::Unavailable(error.to_string()))?;
+        let status = response.status().as_u16();
+        if status == 401 || status == 403 {
+            return Err(SyncControlRpcError::Failed(
+                "RPC authentication failed for operator sync command".to_string(),
+            ));
+        }
+        if status != 200 {
+            return Err(SyncControlRpcError::Failed(format!(
+                "sync control RPC endpoint returned HTTP status {status}"
+            )));
+        }
+        let value: Value = response
+            .into_body()
+            .read_json()
+            .map_err(|error| SyncControlRpcError::Failed(error.to_string()))?;
+        let result = extract_sync_control_result(value)?;
+        serde_json::from_value::<OpenBitcoinSyncControlResponse>(result)
+            .map(|response| response.metadata)
+            .map_err(|error| SyncControlRpcError::Failed(error.to_string()))
+    }
+}
+
+fn sync_control_method_name(command: &SyncCommand) -> &'static str {
+    match command {
+        SyncCommand::Status => "openbitcoinsyncstatus",
+        SyncCommand::Pause => "openbitcoinsyncpause",
+        SyncCommand::Resume => "openbitcoinsyncresume",
+    }
+}
+
+fn extract_sync_control_result(response: Value) -> Result<Value, SyncControlRpcError> {
+    let Value::Object(object) = response else {
+        return Err(SyncControlRpcError::Failed(
+            "sync control RPC response must be an object".to_string(),
+        ));
+    };
+    if let Some(error) = object.get("error") {
+        if error.is_null() {
+            return object.get("result").cloned().ok_or_else(|| {
+                SyncControlRpcError::Failed(
+                    "sync control RPC response is missing result".to_string(),
+                )
+            });
+        }
+        let detail: RpcErrorDetail = serde_json::from_value(error.clone())
+            .map_err(|error| SyncControlRpcError::Failed(error.to_string()))?;
+        return Err(SyncControlRpcError::Failed(detail.message));
+    }
+    object.get("result").cloned().ok_or_else(|| {
+        SyncControlRpcError::Failed("sync control RPC response is missing result".to_string())
+    })
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum SyncControlRpcError {
+    Unavailable(String),
+    Failed(String),
+}
+
+impl fmt::Display for SyncControlRpcError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Unavailable(message) | Self::Failed(message) => f.write_str(message),
         }
     }
 }

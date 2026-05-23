@@ -13,7 +13,10 @@ use serde_json::json;
 
 use crate::RpcFailure;
 
-use super::{MethodOrigin, RequestParameters, SupportedMethod, normalize_method_call};
+use super::{
+    MethodCall, MethodOrigin, MethodScope, RequestParameters, SupportedMethod,
+    normalize_method_call,
+};
 
 #[test]
 fn supported_http_methods_match_phase_20_wallet_surface() {
@@ -22,6 +25,9 @@ fn supported_http_methods_match_phase_20_wallet_surface() {
         "getblockchaininfo",
         "getmempoolinfo",
         "getnetworkinfo",
+        "openbitcoinsyncstatus",
+        "openbitcoinsyncpause",
+        "openbitcoinsyncresume",
         "sendrawtransaction",
         "deriveaddresses",
         "sendtoaddress",
@@ -50,7 +56,13 @@ fn supported_http_methods_match_phase_20_wallet_surface() {
 #[test]
 fn build_transaction_methods_are_marked_as_open_bitcoin_extensions() {
     // Arrange
-    let expected = ["buildtransaction", "buildandsigntransaction"];
+    let expected = [
+        "openbitcoinsyncstatus",
+        "openbitcoinsyncpause",
+        "openbitcoinsyncresume",
+        "buildtransaction",
+        "buildandsigntransaction",
+    ];
 
     // Act
     let names: Vec<_> = SupportedMethod::all()
@@ -61,6 +73,54 @@ fn build_transaction_methods_are_marked_as_open_bitcoin_extensions() {
 
     // Assert
     assert_eq!(names, expected);
+}
+
+#[test]
+fn sync_control_methods_are_open_bitcoin_node_extensions() {
+    // Arrange
+    let methods = [
+        (
+            "openbitcoinsyncstatus",
+            SupportedMethod::OpenBitcoinSyncStatus,
+        ),
+        (
+            "openbitcoinsyncpause",
+            SupportedMethod::OpenBitcoinSyncPause,
+        ),
+        (
+            "openbitcoinsyncresume",
+            SupportedMethod::OpenBitcoinSyncResume,
+        ),
+    ];
+
+    // Act / Assert
+    for (name, supported_method) in methods {
+        assert_eq!(
+            supported_method.origin(),
+            MethodOrigin::OpenBitcoinExtension
+        );
+        assert_eq!(supported_method.scope(), MethodScope::Node);
+        let call = normalize_method_call(name, RequestParameters::None).expect("sync method");
+        assert_eq!(call.scope(), MethodScope::Node);
+        match (name, call) {
+            ("openbitcoinsyncstatus", MethodCall::OpenBitcoinSyncStatus(_))
+            | ("openbitcoinsyncpause", MethodCall::OpenBitcoinSyncPause(_))
+            | ("openbitcoinsyncresume", MethodCall::OpenBitcoinSyncResume(_)) => {}
+            (other_name, other_call) => {
+                panic!("unexpected normalized call for {other_name}: {other_call:?}")
+            }
+        }
+
+        let error = normalize_method_call(
+            name,
+            RequestParameters::Positional(vec![json!("unexpected")]),
+        )
+        .expect_err("extra sync parameters should fail");
+        assert_eq!(
+            error,
+            RpcFailure::invalid_params("too many positional parameters: expected at most 0, got 1"),
+        );
+    }
 }
 
 #[test]

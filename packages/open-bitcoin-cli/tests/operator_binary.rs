@@ -200,6 +200,100 @@ fn open_bitcoin_sync_pause_and_resume_update_durable_control_state() {
 }
 
 #[test]
+fn sync_control_uses_live_rpc_when_datadir_store_is_locked() {
+    // Arrange
+    let sandbox = TestSandbox::new("sync-control-live-rpc");
+    let data_dir = sandbox.child("open-data");
+    fs::create_dir_all(&data_dir).expect("open datadir");
+    let server = FakeRpcServer::start();
+    write_rpc_conf(&data_dir, server.address.port());
+    let store = FjallNodeStore::open(&data_dir).expect("store");
+    store
+        .save_runtime_metadata(&RuntimeMetadata::default(), PersistMode::Sync)
+        .expect("save runtime metadata");
+    let _store_guard = store;
+
+    // Act
+    let status_output = run_open_bitcoin(
+        &sandbox,
+        [
+            "--datadir",
+            data_dir.to_str().expect("datadir"),
+            "--format",
+            "json",
+            "sync",
+            "status",
+        ],
+    );
+    let pause_output = run_open_bitcoin(
+        &sandbox,
+        [
+            "--datadir",
+            data_dir.to_str().expect("datadir"),
+            "sync",
+            "pause",
+        ],
+    );
+    let resume_output = run_open_bitcoin(
+        &sandbox,
+        [
+            "--datadir",
+            data_dir.to_str().expect("datadir"),
+            "sync",
+            "resume",
+        ],
+    );
+
+    // Assert
+    assert_success(&status_output);
+    assert_success(&pause_output);
+    assert_success(&resume_output);
+    let status: Value = serde_json::from_slice(&status_output.stdout).expect("status json");
+    assert_eq!(status["sync_control"]["paused"], json!(false));
+    assert_no_store_lock_error(&status_output);
+    assert_no_store_lock_error(&pause_output);
+    assert_no_store_lock_error(&resume_output);
+    let requests = server.requests().join("\n");
+    assert!(requests.contains("openbitcoinsyncstatus"));
+    assert!(requests.contains("openbitcoinsyncpause"));
+    assert!(requests.contains("openbitcoinsyncresume"));
+}
+
+#[test]
+fn sync_control_auth_failure_does_not_fallback_to_store() {
+    // Arrange
+    let sandbox = TestSandbox::new("sync-control-auth");
+    let data_dir = sandbox.child("open-data");
+    fs::create_dir_all(&data_dir).expect("open datadir");
+    let server = FakeRpcServer::start_unauthorized();
+    write_rpc_conf(&data_dir, server.address.port());
+    let store = FjallNodeStore::open(&data_dir).expect("store");
+    store
+        .save_runtime_metadata(&RuntimeMetadata::default(), PersistMode::Sync)
+        .expect("save runtime metadata");
+    let _store_guard = store;
+
+    // Act
+    let output = run_open_bitcoin(
+        &sandbox,
+        [
+            "--datadir",
+            data_dir.to_str().expect("datadir"),
+            "sync",
+            "pause",
+        ],
+    );
+
+    // Assert
+    assert_failure(&output);
+    assert_no_store_lock_error(&output);
+    let stderr = String::from_utf8(output.stderr).expect("stderr utf8");
+    assert!(stderr.contains("RPC authentication failed for operator sync command"));
+    let requests = server.requests().join("\n");
+    assert!(requests.contains("openbitcoinsyncpause"));
+}
+
+#[test]
 fn http_request_complete_waits_for_lowercase_content_length_body() {
     // Arrange
     let headers = b"POST / HTTP/1.1\r\ncontent-length: 5\r\n\r\n";
@@ -853,6 +947,15 @@ fn assert_failure(output: &Output) {
     );
 }
 
+fn assert_no_store_lock_error(output: &Output) {
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(!stdout.contains("FjallError"), "stdout={stdout}");
+    assert!(!stdout.contains("Locked"), "stdout={stdout}");
+    assert!(!stderr.contains("FjallError"), "stderr={stderr}");
+    assert!(!stderr.contains("Locked"), "stderr={stderr}");
+}
+
 fn seed_managed_wallet(data_dir: &Path, wallet_name: &str) {
     fs::create_dir_all(data_dir).expect("open datadir");
     let store = FjallNodeStore::open(data_dir).expect("store");
@@ -891,6 +994,14 @@ struct FakeRpcServer {
 
 impl FakeRpcServer {
     fn start() -> Self {
+        Self::start_with_behavior(FakeRpcBehavior::Normal)
+    }
+
+    fn start_unauthorized() -> Self {
+        Self::start_with_behavior(FakeRpcBehavior::Unauthorized)
+    }
+
+    fn start_with_behavior(behavior: FakeRpcBehavior) -> Self {
         let listener = TcpListener::bind("127.0.0.1:0").expect("listener");
         listener.set_nonblocking(true).expect("nonblocking");
         let address = listener.local_addr().expect("addr");
@@ -905,7 +1016,7 @@ impl FakeRpcServer {
                     break;
                 }
                 match listener.accept() {
-                    Ok((stream, _)) => handle_rpc_connection(stream, &request_log),
+                    Ok((stream, _)) => handle_rpc_connection(stream, &request_log, behavior),
                     Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
                         thread::sleep(Duration::from_millis(10));
                     }
@@ -929,6 +1040,12 @@ impl FakeRpcServer {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FakeRpcBehavior {
+    Normal,
+    Unauthorized,
+}
+
 impl Drop for FakeRpcServer {
     fn drop(&mut self) {
         let _ = self.stop.send(());
@@ -938,7 +1055,11 @@ impl Drop for FakeRpcServer {
     }
 }
 
-fn handle_rpc_connection(mut stream: TcpStream, requests: &Arc<Mutex<Vec<String>>>) {
+fn handle_rpc_connection(
+    mut stream: TcpStream,
+    requests: &Arc<Mutex<Vec<String>>>,
+    behavior: FakeRpcBehavior,
+) {
     stream
         .set_read_timeout(Some(Duration::from_secs(2)))
         .expect("read timeout");
@@ -948,7 +1069,27 @@ fn handle_rpc_connection(mut stream: TcpStream, requests: &Arc<Mutex<Vec<String>
         .lock()
         .expect("request log")
         .push(request_text.clone());
-    let result = if request_text.contains("getnetworkinfo") {
+    if behavior == FakeRpcBehavior::Unauthorized {
+        let response =
+            "HTTP/1.1 401 Unauthorized\r\nContent-Length: 0\r\nWWW-Authenticate: Basic\r\n\r\n";
+        stream
+            .write_all(response.as_bytes())
+            .expect("write unauthorized response");
+        return;
+    }
+    let result = if request_text.contains("openbitcoinsyncstatus") {
+        json!({
+            "metadata": fake_runtime_metadata(false)
+        })
+    } else if request_text.contains("openbitcoinsyncpause") {
+        json!({
+            "metadata": fake_runtime_metadata(true)
+        })
+    } else if request_text.contains("openbitcoinsyncresume") {
+        json!({
+            "metadata": fake_runtime_metadata(false)
+        })
+    } else if request_text.contains("getnetworkinfo") {
         json!({
             "version": 29300,
             "subversion": "/Satoshi:29.3.0/",
@@ -1030,6 +1171,19 @@ fn handle_rpc_connection(mut stream: TcpStream, requests: &Arc<Mutex<Vec<String>
     stream
         .write_all(response.as_bytes())
         .expect("write response");
+}
+
+fn fake_runtime_metadata(paused: bool) -> Value {
+    json!({
+        "node_version": "0.1.0",
+        "storage_engine": "fjall",
+        "last_clean_shutdown": false,
+        "maybe_last_recovery_action": null,
+        "maybe_sync_state": null,
+        "sync_control": {
+            "paused": paused
+        }
+    })
 }
 
 fn read_http_request(stream: &mut TcpStream) -> Vec<u8> {

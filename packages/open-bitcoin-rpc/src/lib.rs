@@ -28,7 +28,10 @@ pub use config::{
     RpcAuthConfig, RpcClientConfig, RpcClientEndpoint, RpcServerConfig, RuntimeConfig,
     WalletRuntimeScope,
 };
-pub use context::ManagedRpcContext;
+pub use context::{
+    DaemonSyncControl, DaemonSyncControlAction, DaemonSyncControlReceiver,
+    DaemonSyncControlRequest, ManagedRpcContext,
+};
 pub use envelope::{
     JsonRpcId, JsonRpcVersion, RpcErrorEnvelope, RpcRequestEnvelope, RpcSuccessEnvelope,
 };

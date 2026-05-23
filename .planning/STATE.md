@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Full Mainnet Network Syncing
 status: active
-stopped_at: Phase 41 added; ready for planning
-last_updated: "2026-05-03T17:20:00Z"
-last_activity: 2026-05-03
+stopped_at: Phase 39 live sync-control timeout follow-up fixed; Phase 41 ready for planning
+last_updated: "2026-05-23T01:59:36Z"
+last_activity: 2026-05-23 -- Phase 39 live sync-control timeout follow-up fixed and verified locally
 progress:
   total_phases: 7
   completed_phases: 6
-  total_plans: 11
-  completed_plans: 11
+  total_plans: 12
+  completed_plans: 12
   percent: 86
 ---
 
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-05-01)
 
 Phase: 41
 Plan: Not planned yet
-Status: Phase 41 added; next action is planning
-Last activity: 2026-05-03
+Status: Phase 39 gap closure and timeout follow-up complete; Phase 41 remains the next planned step
+Last activity: 2026-05-23 -- Phase 39 live sync-control timeout follow-up fixed and verified locally
 
 Progress: 6/7 phases complete
 
@@ -156,6 +156,8 @@ Recent decisions affecting current work:
 - Phase 37 completed on 2026-05-02.
 - Phase 38 completed on 2026-05-02.
 - Phase 39 completed on 2026-05-02.
+- Phase 39 gap closure completed on 2026-05-23 after the live-daemon sync-control lock issue was fixed deterministically.
+- Phase 39 live sync-control timeout follow-up completed on 2026-05-23 after daemon RPC control was moved off the busy sync-worker channel.
 - Phase 40 completed on 2026-05-02.
 - Phase 41 added on 2026-05-03: audit and revisit all the security analyses throughout the planning docs and determine which if any we need to address.
 - The next step is `/gsd-plan-phase 41`.
@@ -169,6 +171,7 @@ Recent decisions affecting current work:
 - Automatic or destructive migration remains out of scope after Phase 21; later phases must preserve the current dry-run-first safety boundary until an apply-mode design is explicitly planned.
 - `bash scripts/verify.sh` passed again on the v1.1 archive closeout path after refreshing the tracked LOC report.
 - v1.2 public-network testing must stay opt-in; default verification should remain hermetic and deterministic.
+- The original Phase 39 public-mainnet live UAT should be rerun to confirm the deterministic sync-control lock fix through a real `open-bitcoind` process.
 - v1.2 must preserve the distinction between operator-ready mainnet IBD testing and deferred production-node, production-wallet, inbound-serving, address-relay, compact-block, and mempool-relay claims.
 
 ### Quick Tasks Completed

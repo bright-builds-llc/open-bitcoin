@@ -41,6 +41,7 @@ const WALLET_REGISTRY_KEY: &str = "wallet_registry";
 const SELECTED_WALLET_KEY: &str = "selected_wallet";
 
 /// Durable node storage backed by one fjall database and namespace keyspaces.
+#[derive(Clone)]
 pub struct FjallNodeStore {
     db: Database,
     headers: Keyspace,

@@ -41,6 +41,7 @@ impl ManagedRpcContext {
             verify_flags,
             network,
             maybe_durable_sync_state: None,
+            maybe_daemon_sync_control: None,
             wallet_state: super::wallet_state::WalletState::Local(wallet),
         }
     }
@@ -74,6 +75,7 @@ impl ManagedRpcContext {
                 verify_flags: default_verify_flags(),
                 network: managed_network,
                 maybe_durable_sync_state: load_durable_sync_state(config),
+                maybe_daemon_sync_control: None,
                 wallet_state: super::wallet_state::WalletState::Local(wallet),
             },
             super::wallet_state::WalletState::DurableNamedRegistry {
@@ -89,6 +91,7 @@ impl ManagedRpcContext {
                     .ok()
                     .flatten()
                     .and_then(|metadata| metadata.maybe_sync_state),
+                maybe_daemon_sync_control: None,
                 wallet_state: super::wallet_state::WalletState::DurableNamedRegistry {
                     store,
                     maybe_request_wallet_name,

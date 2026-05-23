@@ -11,6 +11,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use open_bitcoin_node::RuntimeMetadata;
+
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct GetBlockchainInfoRequest {}
@@ -64,6 +66,23 @@ pub struct GetNetworkInfoResponse {
     pub relayfee: i64,
     pub incrementalfee: i64,
     pub warnings: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct OpenBitcoinSyncStatusRequest {}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct OpenBitcoinSyncPauseRequest {}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct OpenBitcoinSyncResumeRequest {}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OpenBitcoinSyncControlResponse {
+    pub metadata: RuntimeMetadata,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

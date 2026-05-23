@@ -18,7 +18,8 @@ adapters can back honestly.
   `deriveaddresses`, `getwalletinfo`, `getbalances`, `listunspent`,
   `importdescriptors`, and `rescanblockchain`
 - supported Open Bitcoin extension RPC methods:
-  `buildtransaction` and `buildandsigntransaction`
+  `buildtransaction`, `buildandsigntransaction`, `openbitcoinsyncstatus`,
+  `openbitcoinsyncpause`, and `openbitcoinsyncresume`
 - deterministic machine-readable CLI output for `-getinfo --json` and JSON
   result rendering for object or array RPC responses
 - hermetic single-wallet operator workflow:
@@ -52,6 +53,10 @@ adapters can back honestly.
 - `buildtransaction` and `buildandsigntransaction` are repo-owned extension
   methods that provide deterministic build or sign flows over the managed
   wallet slice.
+- `openbitcoinsyncstatus`, `openbitcoinsyncpause`, and
+  `openbitcoinsyncresume` are repo-owned extension methods that let the
+  operator CLI inspect or update daemon-owned durable sync control without
+  opening the Fjall store from a second process.
 - `rescanblockchain` supports full active-snapshot rescans and rejects partial height ranges with invalid params because bounded wallet rescans are outside the Phase 8 adapter surface.
 - `sendrawtransaction` explicit `maxfeerate` and `maxburnamount` values are rejected because those safety limits are not enforced by the supported dispatcher surface.
 - `-rpcconnect=localhost` and other client-path hostname endpoints are supported, with explicit `-rpcport` taking precedence over embedded `-rpcconnect` ports and embedded ports taking precedence over the chain-default RPC port.

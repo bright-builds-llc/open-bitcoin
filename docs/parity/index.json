@@ -340,7 +340,7 @@
         "highlights": {
           "quirks": [
             "The supported operator slice is intentionally single-wallet and local-auth only; deferred surfaces are listed explicitly instead of implied by omission.",
-            "Open Bitcoin adds deterministic buildtransaction and buildandsigntransaction extension methods for the current wallet adapter slice.",
+            "Open Bitcoin adds deterministic buildtransaction and buildandsigntransaction extension methods for the current wallet adapter slice, plus openbitcoinsyncstatus/openbitcoinsyncpause/openbitcoinsyncresume extension methods for daemon-owned sync control.",
             "The CLI keeps -getinfo as a four-call helper batch while normal method execution stays RPC-shaped.",
             "Wallet-scoped RPC routing now covers -rpcwallet or /wallet/<name> for the shipped wallet subset while open-bitcoin keeps preview or backup workflows outside the baseline-compatible parser."
           ],

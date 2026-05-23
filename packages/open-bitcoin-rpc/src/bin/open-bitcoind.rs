@@ -30,7 +30,7 @@ use std::{
 
 use open_bitcoin_node::{DurableSyncRuntime, FjallNodeStore, SyncLifecycleState, TcpPeerTransport};
 use open_bitcoin_rpc::{
-    ManagedRpcContext,
+    DaemonSyncControl, ManagedRpcContext,
     config::{DaemonSyncMode, RuntimeConfig, load_runtime_config},
     http,
 };
@@ -44,11 +44,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(preflight) = preflight_daemon_sync(&runtime)? {
         report_daemon_sync_preflight(&preflight);
     }
-    let _maybe_sync_worker = start_daemon_sync_worker(&runtime)?;
+    let maybe_sync_worker = start_daemon_sync_worker(&runtime)?;
 
     let bind_address = runtime.rpc_server.bind_address;
     let auth = runtime.rpc_server.auth.clone();
-    let context = ManagedRpcContext::from_runtime_config(&runtime);
+    let mut context = ManagedRpcContext::from_runtime_config(&runtime);
+    if let Some(worker) = maybe_sync_worker.as_ref() {
+        context.set_daemon_sync_control(worker.control.clone());
+    }
     let state = http::build_http_state(auth, context)?;
     let listener = tokio::net::TcpListener::bind(bind_address).await?;
 
@@ -67,6 +70,11 @@ struct DaemonSyncPreflight {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct DaemonSyncPreflightError {
     message: String,
+}
+
+struct DaemonSyncWorker {
+    _join_handle: thread::JoinHandle<()>,
+    control: DaemonSyncControl,
 }
 
 impl DaemonSyncPreflightError {
@@ -131,7 +139,7 @@ fn report_daemon_sync_preflight(preflight: &DaemonSyncPreflight) {
 
 fn start_daemon_sync_worker(
     runtime: &RuntimeConfig,
-) -> Result<Option<thread::JoinHandle<()>>, DaemonSyncPreflightError> {
+) -> Result<Option<DaemonSyncWorker>, DaemonSyncPreflightError> {
     if !runtime.sync.is_enabled() {
         return Ok(None);
     }
@@ -147,17 +155,19 @@ fn start_daemon_sync_worker(
             data_dir.display()
         ))
     })?;
-    let sync_runtime =
-        DurableSyncRuntime::open(store, runtime.sync.runtime.clone()).map_err(|error| {
-            DaemonSyncPreflightError::new(format!(
-                "open-bitcoind daemon sync failed to construct durable sync runtime: {error}"
-            ))
-        })?;
+    let sync_config = runtime.sync.runtime.clone();
+    let control = DaemonSyncControl::store_backed(store.clone(), sync_config.persist_mode);
+    let sync_runtime = DurableSyncRuntime::open(store, sync_config).map_err(|error| {
+        DaemonSyncPreflightError::new(format!(
+            "open-bitcoind daemon sync failed to construct durable sync runtime: {error}"
+        ))
+    })?;
     seed_initial_sync_state(&sync_runtime)?;
 
-    Ok(Some(thread::spawn(move || {
-        daemon_sync_worker(sync_runtime)
-    })))
+    Ok(Some(DaemonSyncWorker {
+        _join_handle: thread::spawn(move || daemon_sync_worker(sync_runtime)),
+        control,
+    }))
 }
 
 fn seed_initial_sync_state(
