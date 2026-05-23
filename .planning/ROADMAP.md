@@ -4,7 +4,7 @@
 
 - ✅ **v1.0 Headless Parity** — Phases 1 through 12 (shipped 2026-04-26). Archive: [v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 - ✅ **v1.1 Operator Runtime and Real-Network Sync** — Phases 13 through 34 (shipped 2026-04-30). Archive: [v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
-- 🚧 **v1.2 Full Mainnet Network Syncing** — Phases 35 through 41 (active). Requirements: [REQUIREMENTS.md](REQUIREMENTS.md)
+- ✅ **v1.2 Full Mainnet Network Syncing** — Phases 35 through 41 (phase complete 2026-05-23; ready for archive). Requirements: [REQUIREMENTS.md](REQUIREMENTS.md)
 
 ## Current Focus
 
@@ -27,7 +27,7 @@ transaction relay, or unattended packaged-service hardening.
 - [x] **Phase 38: Block Download, Connect, and Restart Recovery** — Download, validate, persist, and connect blocks with bounded in-flight work, reorg-aware state transitions, and restart recovery. (completed 2026-05-02)
 - [x] **Phase 39: Operator Sync Observability and Control** — Make mainnet sync progress, health, stop/resume state, resource pressure, and support evidence truthful across status, dashboard, metrics, logs, and RPC surfaces. (completed 2026-05-02)
 - [x] **Phase 40: Live Mainnet Smoke, Docs, and Parity Closeout** — Add opt-in live mainnet smoke/benchmark commands, refresh operator and parity docs, and close the milestone with auditable evidence. (completed 2026-05-02)
-- [ ] **Phase 41: Security Analysis Audit and Follow-Up** — Audit and revisit all security analyses throughout the planning docs, then identify and scope any security work that still needs to be addressed.
+- [x] **Phase 41: Security Analysis Audit and Follow-Up** — Audit and revisit all security analyses throughout the planning docs, then identify and scope any security work that still needs to be addressed. (completed 2026-05-23)
 
 ## Phase Details
 
@@ -133,14 +133,22 @@ transaction relay, or unattended packaged-service hardening.
 | --- | ---: | ---: | --- | --- |
 | v1.0 Headless Parity | 22/22 | 80/80 | Archived | 2026-04-26 |
 | v1.1 Operator Runtime and Real-Network Sync | 22/22 | 69/69 | Archived | 2026-04-30 |
-| v1.2 Full Mainnet Network Syncing | 6/7 | 11/11 | Active | - |
+| v1.2 Full Mainnet Network Syncing | 7/7 | 13/13 | Phase complete | 2026-05-23 |
 
 ### Phase 41: audit and revisit all the security analyses throughout the planning docs and determine which if any we need to address
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Revisit the tracked planning security corpus, verify that v1.2 has no open security-analysis follow-up before archive, and record any future security work as explicit deferred scope instead of an ambiguous closeout note.
+**Requirements:** SYNCMAIN-04, VERMAIN-01, VERMAIN-05
 **Depends on:** Phase 40
-**Plans:** 0 plans
+**Plans:** [41-01](phases/41-audit-and-revisit-all-the-security-analyses-throughout-the-p/41-01-PLAN.md)
+
+**Success Criteria:**
+
+1. All tracked `*-SECURITY.md` files from active and archived planning directories are inventoried, and any nonzero `threats_open` value is surfaced.
+2. Active v1.2 plan threat models, summary threat flags, and residual risks are revisited with explicit closed, accepted, deferred, or needs-phase dispositions.
+3. The Phase 39 sync-control STRIDE register is rechecked against the final verification and UAT evidence.
+4. Current parity/release-readiness docs reference the security-analysis audit without expanding v1.2 into production-node, production-funds, inbound-serving, transaction-relay, or packaged-service claims.
+5. Repo-native verification and lifecycle validation pass before final push.
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 41 to break down)
+- [x] [41-01 Security Analysis Audit And Follow-Up Closeout](phases/41-audit-and-revisit-all-the-security-analyses-throughout-the-p/41-01-PLAN.md)

@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Full Mainnet Network Syncing
-status: active
-stopped_at: Phase 39 live sync-control UAT accepted; Phase 41 ready for planning
-last_updated: "2026-05-23T02:22:20Z"
-last_activity: 2026-05-23 -- Phase 39 live sync-control UAT accepted after user-rerun public-mainnet check
+status: phase-complete
+stopped_at: Phase 41 security analysis audit complete; v1.2 ready for archive handoff
+last_updated: "2026-05-23T02:55:06.305Z"
+last_activity: 2026-05-23 -- Phase 41 security analysis audit found no new security implementation phase required
 progress:
   total_phases: 7
-  completed_phases: 6
-  total_plans: 12
-  completed_plans: 12
-  percent: 86
+  completed_phases: 7
+  total_plans: 13
+  completed_plans: 13
+  percent: 100
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-01)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** v1.2 Full Mainnet Network Syncing
+**Current focus:** v1.2 Full Mainnet Network Syncing closeout
 
 ## Current Position
 
-Phase: 41
-Plan: Not planned yet
-Status: Phase 39 gap closure, timeout follow-up, and user-rerun live UAT complete; Phase 41 remains the next planned step
-Last activity: 2026-05-23 -- Phase 39 live sync-control UAT accepted after user-rerun public-mainnet check
+Phase: 41 (Security Analysis Audit and Follow-Up) — COMPLETE
+Plan: 1 of 1
+Status: Phase 41 complete; v1.2 ready for archive handoff
+Last activity: 2026-05-23 -- Phase 41 security analysis audit found no new security implementation phase required
 
-Progress: 6/7 phases complete
+Progress: 7/7 phases complete
 
 ## Archive Layout
 
@@ -161,7 +161,8 @@ Recent decisions affecting current work:
 - Phase 39 public-mainnet live UAT was rerun by the user on 2026-05-23 and accepted after `sync status`, `sync pause`, and `sync resume` passed against the real daemon path.
 - Phase 40 completed on 2026-05-02.
 - Phase 41 added on 2026-05-03: audit and revisit all the security analyses throughout the planning docs and determine which if any we need to address.
-- The next step is `/gsd-plan-phase 41`.
+- Phase 41 completed on 2026-05-23: security analysis audit found `threats_open: 0`, `needs_phase_count: 0`, and no new security implementation phase required before v1.2 archive.
+- The next step is milestone archive or handoff review.
 
 ### Pending Todos
 
@@ -174,6 +175,7 @@ Recent decisions affecting current work:
 - v1.2 public-network testing must stay opt-in; default verification should remain hermetic and deterministic.
 - Phase 39 public-mainnet live UAT passed through the real `open-bitcoind` process after the deterministic sync-control lock and timeout fixes.
 - v1.2 must preserve the distinction between operator-ready mainnet IBD testing and deferred production-node, production-wallet, inbound-serving, address-relay, compact-block, and mempool-relay claims.
+- Phase 41 security analysis audit did not find any `needs-phase` security follow-up before v1.2 archive; future production surfaces still need fresh threat models when scoped.
 
 ### Quick Tasks Completed
 

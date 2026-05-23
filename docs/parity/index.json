@@ -865,6 +865,30 @@
           "Which future packaging or daemon-supervision surfaces should become part of a stronger release story once source-built local review is no longer the only supported path.",
           "Whether any later milestone should promote live-mainnet evidence from optional local review into a stronger pre-release gate."
         ]
+      },
+      {
+        "id": "security-analysis-audit",
+        "title": "Security Analysis Audit",
+        "status": "done",
+        "requirements": [
+          "SYNCMAIN-04",
+          "VERMAIN-01",
+          "VERMAIN-05"
+        ],
+        "evidence": [
+          ".planning/phases/41-audit-and-revisit-all-the-security-analyses-throughout-the-p/41-SECURITY-AUDIT.md",
+          ".planning/phases/41-audit-and-revisit-all-the-security-analyses-throughout-the-p/41-VERIFICATION.md",
+          ".planning/phases/39-operator-sync-observability-and-control/39-VERIFICATION.md",
+          ".planning/phases/40-live-mainnet-smoke-docs-and-parity-closeout/40-SECURITY.md"
+        ],
+        "rationale": "Phase 41 revisits the tracked planning security corpus, confirms all reviewed SECURITY.md files report threats_open: 0, closes the Phase 39 sync-control STRIDE revisit, and records that no new security implementation phase is required before v1.2 archive.",
+        "known_gaps": [
+          "No new security implementation phase is required before v1.2 archive.",
+          "Deferred production-node, production-funds, inbound-serving, transaction-relay, and packaged-service surfaces remain outside the shipped claim."
+        ],
+        "suspected_unknowns": [
+          "Future milestones that expand any deferred production surface need fresh threat models for that broader claim."
+        ]
       }
     ]
   },
@@ -880,6 +904,12 @@
       "path": "release-readiness.md",
       "report_dir": "packages/target/live-mainnet-smoke-reports"
     },
+    "security_analysis_audit": {
+      "path": "../../.planning/phases/41-audit-and-revisit-all-the-security-analyses-throughout-the-p/41-SECURITY-AUDIT.md",
+      "status": "done",
+      "threats_open": 0,
+      "needs_phase_count": 0
+    },
     "release_readiness": {
       "path": "release-readiness.md",
       "status": "done",
@@ -889,6 +919,7 @@
         "docs/parity/benchmarks.md",
         "docs/operator/runtime-guide.md",
         "docs/parity/catalog/operator-runtime-release-hardening.md",
+        ".planning/phases/41-audit-and-revisit-all-the-security-analyses-throughout-the-p/41-SECURITY-AUDIT.md",
         "scripts/check-benchmark-report.ts",
         "scripts/run-live-mainnet-smoke.ts"
       ]

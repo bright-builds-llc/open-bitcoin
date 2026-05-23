@@ -165,6 +165,10 @@ Evidence links:
 - [`scripts/run-live-mainnet-smoke.ts`](../../scripts/run-live-mainnet-smoke.ts)
   launches the explicit live-mainnet review flow, polls durable sync status,
   and writes local JSON plus Markdown evidence reports.
+- [Phase 41 security analysis audit](../../.planning/phases/41-audit-and-revisit-all-the-security-analyses-throughout-the-p/41-SECURITY-AUDIT.md)
+  revisits the tracked planning security corpus, confirms `threats_open: 0`
+  across reviewed security artifacts, and records that no new security
+  implementation phase is required before v1.2 archive.
 - [`scripts/run-benchmarks.sh`](../../scripts/run-benchmarks.sh) is the
   contributor-facing benchmark wrapper and distinguishes smoke `debug` reports
   from full `release` reports.
@@ -173,6 +177,19 @@ Evidence links:
   `benchmark-reports`.
 - [`docs/parity/checklist.md`](checklist.md) mirrors the checklist root from
   [`docs/parity/index.json`](index.json).
+
+## Security Analysis Audit
+
+Phase 41 is the v1.2 planning-security closeout gate. It reviewed tracked
+`*-SECURITY.md` files from active and archived planning directories, active
+v1.2 plan threat models, summary threat flags, and residual-risk sections.
+
+Result: the reviewed corpus has `threats_open: 0` and `needs_phase_count: 0`.
+The Phase 39 sync-control STRIDE register was revisited against the final
+deterministic regressions, local live-shape daemon evidence, and user-rerun
+live UAT. The only remaining security-relevant items are deferred product-scope
+claims: production-node operation, production-funds wallet use, inbound peer
+serving, transaction relay, and packaged-service hardening.
 
 ## Benchmark Evidence
 
