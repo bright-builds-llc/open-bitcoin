@@ -1,5 +1,41 @@
 # Milestones: Open Bitcoin
 
+## v1.2 Full Mainnet Network Syncing (Shipped: 2026-05-23)
+
+**Delivered:** An opt-in `open-bitcoind` public-mainnet initial block download workflow with daemon-owned sync activation, outbound peer lifecycle, validated header and block progress, durable restart/recovery, operator observability and control, live-smoke evidence, and security closeout. The shipped scope does not include production-node operation, production-funds wallet use, inbound serving, transaction relay, or packaged-service hardening.
+
+**Phases completed:** 7 phases, 13 plans
+
+**Key accomplishments:**
+
+- Added explicit daemon mainnet sync activation and preflight while keeping public-network behavior opt-in and outside default hermetic verification.
+- Built bounded mainnet peer discovery and outbound lifecycle behavior with resolver injection, retry/backoff, stall handling, and peer telemetry.
+- Integrated header-first sync, block download/connect, restart recovery, and reorg-aware durable state transitions for the v1.2 IBD claim.
+- Made sync progress and health visible through status, dashboard, metrics, logs, RPC-facing output, and operator pause/resume controls.
+- Added opt-in live-mainnet smoke reporting and refreshed operator/parity docs so shipped claims stay bounded and auditable.
+- Completed the Phase 41 security-analysis audit with `threats_open: 0`, `needs_phase_count: 0`, and no new security implementation phase required before archive.
+
+**Stats:**
+
+- 26/26 v1.2 requirements complete.
+- 7 phase directories archived under `.planning/milestones/v1.2-phases/`.
+- 89,674 tracked first-party lines in the final LOC report at archive time.
+- Full repo-native verification passed during Phase 41 closeout and again through the Phase 41 UAT commit hook.
+
+**Archived artifacts:**
+
+- `.planning/milestones/v1.2-ROADMAP.md`
+- `.planning/milestones/v1.2-REQUIREMENTS.md`
+- `.planning/milestones/v1.2-phases/`
+
+**Known gaps:**
+
+- No dedicated `.planning/v1.2-MILESTONE-AUDIT.md` was created before archive. The archive uses Phase 40 live-smoke closeout plus Phase 41 security audit, verification, and UAT as the milestone-closeout evidence trail.
+
+**What's next:** Start the next milestone with `/gsd-new-milestone`.
+
+---
+
 ## v1.1 Operator Runtime and Real-Network Sync (Shipped: 2026-04-30)
 
 **Delivered:** A shipped terminal-first operator runtime milestone with durable storage, real-network sync foundations, truthful status and service surfaces, practical wallet workflows, and audited dry-run migration guidance. The shipped scope does not include unattended public-mainnet full sync through `open-bitcoind`.
@@ -29,7 +65,7 @@
 - `.planning/milestones/v1.1-MILESTONE-AUDIT.md`
 - `.planning/milestones/v1.1-phases/`
 
-**What's next:** v1.2 Full Mainnet Network Syncing is active; see `.planning/ROADMAP.md` and `.planning/REQUIREMENTS.md`.
+**What's next:** v1.2 Full Mainnet Network Syncing shipped on 2026-05-23; see the entry above.
 
 ---
 
@@ -61,6 +97,6 @@
 - `.planning/milestones/v1.0-REQUIREMENTS.md`
 - `.planning/milestones/v1.0-MILESTONE-AUDIT.md`
 
-**What's next:** v1.1 shipped and v1.2 Full Mainnet Network Syncing is active; see `.planning/ROADMAP.md`.
+**What's next:** v1.1 and v1.2 have shipped; see the newer entries above.
 
 ---

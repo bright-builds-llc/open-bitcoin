@@ -91,6 +91,51 @@
 
 ---
 
+## Milestone: v1.2 - Full Mainnet Network Syncing
+
+**Shipped:** 2026-05-23
+**Phases:** 7 | **Plans:** 13
+
+### What Was Built
+
+- Explicit opt-in `open-bitcoind` mainnet sync activation with daemon-owned durable store preflight and bounded public-network behavior.
+- Mainnet peer discovery and outbound lifecycle support with injected resolvers, manual peers, retries, stall handling, and peer telemetry.
+- Header-first sync plus block download, validation, connection, durable restart/resume, and reorg-aware recovery for the scoped IBD review claim.
+- Operator sync observability and control through status, dashboard, metrics, logs, RPC-facing output, and authenticated daemon RPC pause/resume paths.
+- Opt-in live-mainnet smoke reporting, refreshed parity and operator docs, and Phase 41 security-analysis closeout with no new security implementation phase required.
+
+### What Worked
+
+- Keeping live-mainnet evidence opt-in preserved the deterministic `bash scripts/verify.sh` contract while still giving reviewers a real public-network smoke path.
+- The Phase 39 UAT rerun surfaced a real daemon-store locking issue, and the fix stayed narrow because the operator control boundary was already explicit.
+- Phase 41’s consolidated security audit was a useful closeout gate for checking old STRIDE notes and deferred production-scope claims before archive.
+
+### What Was Inefficient
+
+- The active v1.2 requirements file was not updated continuously as phases shipped, so milestone completion had to reconcile stale checkboxes and `Planned` traceability rows against verification evidence.
+- Several phase summaries lacked one-line frontmatter, which made the archive helper produce a sparse milestone accomplishment list that needed manual curation.
+- No dedicated `v1.2-MILESTONE-AUDIT.md` was created before archive, so the archive depends on Phase 40 and Phase 41 closeout artifacts instead of a single milestone-audit file.
+
+### Patterns Established
+
+- Treat public-mainnet checks as review evidence, not default release gates, unless a future milestone deliberately expands the verification contract.
+- Keep daemon-owned runtime control behind authenticated RPC instead of letting operator commands open a live daemon-owned store from a second process.
+- Explicitly list deferred production-node, production-funds, inbound-serving, transaction-relay, and packaged-service claims in parity and security closeout docs.
+
+### Key Lessons
+
+1. Requirements checkboxes and traceability should be updated as each phase completes, not repaired at archive time.
+2. Milestone summaries need curated one-liners before archive so automated milestone entries are useful without manual rewriting.
+3. If a milestone skips a dedicated audit artifact, the substitute evidence trail should be named explicitly in MILESTONES.md.
+
+### Cost Observations
+
+- Model mix: not measured in repo artifacts.
+- Sessions: multiple GSD execution, UAT, security, closeout, and archive turns across the v1.2 milestone.
+- Notable: late closeout was mostly documentation and evidence reconciliation, but stale requirement bookkeeping added avoidable archive work.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -99,6 +144,7 @@
 | --- | ---: | --- |
 | v1.0 | 22 | Established parity-first implementation, verification, audit, and archive workflow. |
 | v1.1 | 22 | Extended the workflow to terminal-first operator surfaces, milestone rerun audits, and explicit post-audit cleanup phases before archive. |
+| v1.2 | 7 | Added opt-in public-mainnet IBD review, live-smoke evidence, and security closeout while preserving hermetic default verification. |
 
 ### Cumulative Quality
 
@@ -106,9 +152,11 @@
 | --- | ---: | --- | --- |
 | v1.0 | 28/28 complete | Passed with GAP-01 through GAP-04 closed | Repo-native `scripts/verify.sh`, Rust checks, coverage, architecture policy, breadcrumb guard, and panic-site guard. |
 | v1.1 | 44/44 complete | Passed after Phase 33 and Phase 34 cleanup rerun | Repo-native `scripts/verify.sh`, operator-binary coverage, benchmark smoke and report validation, and Bazel smoke builds. |
+| v1.2 | 26/26 complete | Closed through Phase 40 live-smoke closeout and Phase 41 security audit/UAT; no dedicated milestone audit artifact | Repo-native `scripts/verify.sh`, deterministic sync regressions, opt-in live-mainnet smoke reporting, security audit, and UAT. |
 
 ### Top Lessons
 
 1. Keep milestone control artifacts as actively verified surfaces, not passive notes.
 2. Prefer narrow, auditable parity claims over broad unsupported equivalence statements.
 3. Close audit debt through explicit cleanup phases when the evidence trail matters as much as the fix itself.
+4. Keep requirements traceability current during execution so archive work is historical packaging, not late evidence reconstruction.

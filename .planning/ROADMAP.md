@@ -4,128 +4,31 @@
 
 - ✅ **v1.0 Headless Parity** — Phases 1 through 12 (shipped 2026-04-26). Archive: [v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 - ✅ **v1.1 Operator Runtime and Real-Network Sync** — Phases 13 through 34 (shipped 2026-04-30). Archive: [v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
-- ✅ **v1.2 Full Mainnet Network Syncing** — Phases 35 through 41 (phase complete 2026-05-23; ready for archive). Requirements: [REQUIREMENTS.md](REQUIREMENTS.md)
+- ✅ **v1.2 Full Mainnet Network Syncing** — Phases 35 through 41 (shipped 2026-05-23). Archive: [v1.2-ROADMAP.md](milestones/v1.2-ROADMAP.md)
 
 ## Current Focus
 
-v1.2 makes public-mainnet initial block download an explicit,
-operator-ready `open-bitcoind` workflow. The milestone wires the existing
-durable sync foundations into the daemon runtime so operators can opt in to
-mainnet sync, connect to public outbound peers, validate and persist headers
-and blocks, resume after restart, and inspect progress through current status,
-dashboard, metrics, logs, and RPC-facing surfaces.
+No active milestone is currently planned. The next milestone should start with
+`/gsd-new-milestone` so requirements, roadmap phases, and scope boundaries are
+defined from a fresh discussion.
 
-The current milestone does not claim broad production-node readiness,
-production-funds wallet safety, full P2P policy parity, inbound peer serving,
-transaction relay, or unattended packaged-service hardening.
+## Completed Milestones
 
-## Phases
+<details>
+<summary>✅ v1.2 Full Mainnet Network Syncing (Phases 35-41) — SHIPPED 2026-05-23</summary>
 
-- [x] **Phase 35: Daemon Mainnet Sync Activation** — Add the explicit daemon runtime boundary, config, flags, startup/shutdown semantics, and safety copy for opt-in public-mainnet sync.
-- [x] **Phase 36: Mainnet Peer Discovery and Outbound Lifecycle** — Resolve DNS/manual peers, maintain bounded outbound peer state, rotate unhealthy peers, and expose peer lifecycle telemetry. (completed 2026-05-01)
-- [x] **Phase 37: Header-First Mainnet Sync Integration** — Drive validated header synchronization from durable state to the best known mainnet header chain through the daemon sync task. (completed 2026-05-02)
-- [x] **Phase 38: Block Download, Connect, and Restart Recovery** — Download, validate, persist, and connect blocks with bounded in-flight work, reorg-aware state transitions, and restart recovery. (completed 2026-05-02)
-- [x] **Phase 39: Operator Sync Observability and Control** — Make mainnet sync progress, health, stop/resume state, resource pressure, and support evidence truthful across status, dashboard, metrics, logs, and RPC surfaces. (completed 2026-05-02)
-- [x] **Phase 40: Live Mainnet Smoke, Docs, and Parity Closeout** — Add opt-in live mainnet smoke/benchmark commands, refresh operator and parity docs, and close the milestone with auditable evidence. (completed 2026-05-02)
-- [x] **Phase 41: Security Analysis Audit and Follow-Up** — Audit and revisit all security analyses throughout the planning docs, then identify and scope any security work that still needs to be addressed. (completed 2026-05-23)
+- [x] **Phase 35: Daemon Mainnet Sync Activation** — Explicit opt-in daemon mainnet sync activation and preflight.
+- [x] **Phase 36: Mainnet Peer Discovery and Outbound Lifecycle** — DNS/manual peer resolution, bounded outbound peer lifecycle, rotation, and telemetry.
+- [x] **Phase 37: Header-First Mainnet Sync Integration** — Durable validated header synchronization and restart recovery.
+- [x] **Phase 38: Block Download, Connect, and Restart Recovery** — Bounded block download, validation, connection, reorg-aware state, and restart recovery.
+- [x] **Phase 39: Operator Sync Observability and Control** — Truthful sync status, dashboard, metrics, logs, RPC surfaces, and pause/resume control.
+- [x] **Phase 40: Live Mainnet Smoke, Docs, and Parity Closeout** — Opt-in live-mainnet smoke reporting and shipped-claim documentation.
+- [x] **Phase 41: Security Analysis Audit and Follow-Up** — Security-analysis closeout with `threats_open: 0` and no new security phase required.
 
-## Phase Details
+Detailed phase execution history is archived under
+[milestones/v1.2-phases/](milestones/v1.2-phases/).
 
-### Phase 35: Daemon Mainnet Sync Activation
-
-**Goal:** Make `open-bitcoind` own an explicit, opt-in public-mainnet sync mode without changing default hermetic local workflows.
-**Depends on:** v1.1 archive and current durable sync foundations
-**Requirements:** SYNCMAIN-01, SYNCMAIN-02, SYNCMAIN-03, SYNCMAIN-04, RESUME-01, RESUME-04, VERMAIN-01
-
-**Success Criteria:**
-
-1. `open-bitcoind` has documented config and CLI flags that enable mainnet sync only when explicitly requested.
-2. Daemon startup opens the durable store, constructs the sync runtime, and reports a coherent pre-sync status snapshot.
-3. Startup and restart preflight paths do not corrupt durable chainstate or leave misleading status; cancellation and graceful shutdown of a long-lived sync task remain later-phase concerns once live peer sync exists.
-4. Default tests and docs examples do not join public mainnet accidentally.
-5. Operator-facing copy states the v1.2 support boundary and deferred production claims.
-
-**Plans:** [35-01](phases/35-daemon-mainnet-sync-activation/35-01-PLAN.md), [35-02](phases/35-daemon-mainnet-sync-activation/35-02-PLAN.md), [35-03](phases/35-daemon-mainnet-sync-activation/35-03-PLAN.md)
-
-### Phase 36: Mainnet Peer Discovery and Outbound Lifecycle
-
-**Goal:** Give daemon sync a bounded, observable, and testable public-peer connection layer for initial block download.
-**Depends on:** Phase 35
-**Requirements:** PEERMAIN-01, PEERMAIN-02, PEERMAIN-03, PEERMAIN-04, RESUME-02, VERMAIN-01, VERMAIN-02
-
-**Success Criteria:**
-
-1. Mainnet DNS seed and manual-peer resolution use injectable resolvers for deterministic tests.
-2. The runtime maintains bounded outbound peer state with timeout, retry, backoff, stall detection, and clean disconnect handling.
-3. Flaky, stalled, or invalid-data peers cannot block IBD indefinitely when alternatives are available.
-4. Peer telemetry records address source, negotiated network, capabilities, contribution, failure reason, and last activity.
-5. Pure-core crates remain free of direct socket, DNS, clock, and filesystem effects.
-
-**Plans:** 4/4 plans complete
-
-### Phase 37: Header-First Mainnet Sync Integration
-
-**Goal:** Advance daemon-owned mainnet header synchronization from durable state to the best known validated header chain.
-**Depends on:** Phase 36
-**Requirements:** SYNCMAIN-03, CHAINMAIN-01, CHAINMAIN-03, RESUME-01, RESUME-02, VERMAIN-01, VERMAIN-02
-
-**Success Criteria:**
-
-1. Header sync starts from genesis, checkpoint, or durable store tip and persists validated progress.
-2. Restart recovery avoids replaying verified header work unnecessarily.
-3. Competing header branches produce deterministic active-header-chain selection and typed invalid-data errors.
-4. Status snapshots distinguish header progress from block and chainstate progress.
-5. Hermetic tests cover happy path, restart, invalid headers, peer disconnects, and competing branches.
-
-**Plans:** [37-01](phases/37-header-first-mainnet-sync-integration/37-01-PLAN.md)
-
-### Phase 38: Block Download, Connect, and Restart Recovery
-
-**Goal:** Turn validated headers into durable active-chain progress by downloading, validating, persisting, and connecting mainnet blocks.
-**Depends on:** Phase 37
-**Requirements:** SYNCMAIN-03, CHAINMAIN-02, CHAINMAIN-03, CHAINMAIN-04, CHAINMAIN-05, RESUME-01, RESUME-02, RESUME-03, VERMAIN-01, VERMAIN-02
-
-**Success Criteria:**
-
-1. The daemon requests blocks needed to advance the active chain with bounded in-flight work per peer and globally.
-2. Downloaded blocks are validated, persisted, and connected using existing consensus and chainstate rules.
-3. Restart recovery handles partial downloads, interrupted writes, and already-connected blocks without corrupting state.
-4. Reorg-like competing branches use durable undo or replay-safe state transitions.
-5. Resource limits and insufficient-resource conditions produce actionable operator guidance.
-
-**Plans:** [38-01](phases/38-block-download-connect-and-restart-recovery/38-01-PLAN.md)
-
-### Phase 39: Operator Sync Observability and Control
-
-**Goal:** Make daemon mainnet sync understandable and controllable through existing operator surfaces.
-**Depends on:** Phase 38
-**Requirements:** PEERMAIN-04, CHAINMAIN-05, RESUME-04, OBSMAIN-01, OBSMAIN-02, OBSMAIN-03, OBSMAIN-04, VERMAIN-01, VERMAIN-02
-
-**Success Criteria:**
-
-1. `open-bitcoin status`, JSON status, and dashboard views show live sync state, peer count, best header height, best block height, progress, lag, current phase, resource pressure, and last error.
-2. Metrics and logs capture sync milestones, peer rotation, throughput, validation/connect rates, recovery, and failure causes with bounded retention.
-3. RPC and CLI blockchain-info surfaces stay truthful during IBD and never imply full sync before validated chainstate reaches the selected tip.
-4. Operators can stop, resume, inspect recovery guidance, and collect support evidence without reading internal store files.
-5. Non-interactive tests verify status truthfulness for active, paused, stopped, recovering, and failed sync states.
-
-**Plans:** [39-01](phases/39-operator-sync-observability-and-control/39-01-PLAN.md)
-
-### Phase 40: Live Mainnet Smoke, Docs, and Parity Closeout
-
-**Goal:** Prove the v1.2 daemon sync workflow with opt-in live evidence and update docs so claims match shipped behavior.
-**Depends on:** Phase 39
-**Requirements:** SYNCMAIN-04, CHAINMAIN-05, RESUME-03, OBSMAIN-04, VERMAIN-01, VERMAIN-03, VERMAIN-04, VERMAIN-05
-
-**Success Criteria:**
-
-1. Optional live mainnet smoke and benchmark commands can verify real `open-bitcoind` progress and emit reproducible reports.
-2. Public-network checks fail clearly when network, disk, time, or configuration prerequisites are missing, and they stay out of default verification.
-3. Operator docs cover prerequisites, disk/network expectations, config, startup commands, status interpretation, stop/resume, troubleshooting, and known limitations.
-4. Parity docs and machine-readable indexes distinguish v1.2 shipped claims from deferred Knots/Core behavior.
-5. `bash scripts/verify.sh`, GSD health, diff checks, and milestone evidence are clean enough for archive/audit handoff.
-
-**Plans:** [40-01](phases/40-live-mainnet-smoke-docs-and-parity-closeout/40-01-PLAN.md)
+</details>
 
 ## Progress
 
@@ -133,22 +36,12 @@ transaction relay, or unattended packaged-service hardening.
 | --- | ---: | ---: | --- | --- |
 | v1.0 Headless Parity | 22/22 | 80/80 | Archived | 2026-04-26 |
 | v1.1 Operator Runtime and Real-Network Sync | 22/22 | 69/69 | Archived | 2026-04-30 |
-| v1.2 Full Mainnet Network Syncing | 7/7 | 13/13 | Phase complete | 2026-05-23 |
+| v1.2 Full Mainnet Network Syncing | 7/7 | 13/13 | Archived | 2026-05-23 |
 
-### Phase 41: audit and revisit all the security analyses throughout the planning docs and determine which if any we need to address
+## Next Step
 
-**Goal:** Revisit the tracked planning security corpus, verify that v1.2 has no open security-analysis follow-up before archive, and record any future security work as explicit deferred scope instead of an ambiguous closeout note.
-**Requirements:** SYNCMAIN-04, VERMAIN-01, VERMAIN-05
-**Depends on:** Phase 40
-**Plans:** [41-01](phases/41-audit-and-revisit-all-the-security-analyses-throughout-the-p/41-01-PLAN.md)
+Start the next milestone:
 
-**Success Criteria:**
-
-1. All tracked `*-SECURITY.md` files from active and archived planning directories are inventoried, and any nonzero `threats_open` value is surfaced.
-2. Active v1.2 plan threat models, summary threat flags, and residual risks are revisited with explicit closed, accepted, deferred, or needs-phase dispositions.
-3. The Phase 39 sync-control STRIDE register is rechecked against the final verification and UAT evidence.
-4. Current parity/release-readiness docs reference the security-analysis audit without expanding v1.2 into production-node, production-funds, inbound-serving, transaction-relay, or packaged-service claims.
-5. Repo-native verification and lifecycle validation pass before final push.
-
-Plans:
-- [x] [41-01 Security Analysis Audit And Follow-Up Closeout](phases/41-audit-and-revisit-all-the-security-analyses-throughout-the-p/41-01-PLAN.md)
+```bash
+/gsd-new-milestone
+```

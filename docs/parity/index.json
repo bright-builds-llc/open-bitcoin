@@ -853,7 +853,7 @@
           "scripts/test-run-live-mainnet-smoke.sh",
           "docs/operator/runtime-guide.md",
           "docs/parity/release-readiness.md",
-          ".planning/phases/40-live-mainnet-smoke-docs-and-parity-closeout/40-VERIFICATION.md",
+          ".planning/milestones/v1.2-phases/40-live-mainnet-smoke-docs-and-parity-closeout/40-VERIFICATION.md",
           "packages/target/live-mainnet-smoke-reports/open-bitcoin-live-mainnet-smoke.json"
         ],
         "rationale": "Phase 40 adds an explicit opt-in live-mainnet smoke flow that launches the shipped daemon path, polls durable sync status, writes local evidence reports, and refreshes README plus parity docs so the shipped v1.2 claim stays bounded and auditable.",
@@ -876,10 +876,10 @@
           "VERMAIN-05"
         ],
         "evidence": [
-          ".planning/phases/41-audit-and-revisit-all-the-security-analyses-throughout-the-p/41-SECURITY-AUDIT.md",
-          ".planning/phases/41-audit-and-revisit-all-the-security-analyses-throughout-the-p/41-VERIFICATION.md",
-          ".planning/phases/39-operator-sync-observability-and-control/39-VERIFICATION.md",
-          ".planning/phases/40-live-mainnet-smoke-docs-and-parity-closeout/40-SECURITY.md"
+          ".planning/milestones/v1.2-phases/41-audit-and-revisit-all-the-security-analyses-throughout-the-p/41-SECURITY-AUDIT.md",
+          ".planning/milestones/v1.2-phases/41-audit-and-revisit-all-the-security-analyses-throughout-the-p/41-VERIFICATION.md",
+          ".planning/milestones/v1.2-phases/39-operator-sync-observability-and-control/39-VERIFICATION.md",
+          ".planning/milestones/v1.2-phases/40-live-mainnet-smoke-docs-and-parity-closeout/40-SECURITY.md"
         ],
         "rationale": "Phase 41 revisits the tracked planning security corpus, confirms all reviewed SECURITY.md files report threats_open: 0, closes the Phase 39 sync-control STRIDE revisit, and records that no new security implementation phase is required before v1.2 archive.",
         "known_gaps": [
@@ -905,7 +905,7 @@
       "report_dir": "packages/target/live-mainnet-smoke-reports"
     },
     "security_analysis_audit": {
-      "path": "../../.planning/phases/41-audit-and-revisit-all-the-security-analyses-throughout-the-p/41-SECURITY-AUDIT.md",
+      "path": "../../.planning/milestones/v1.2-phases/41-audit-and-revisit-all-the-security-analyses-throughout-the-p/41-SECURITY-AUDIT.md",
       "status": "done",
       "threats_open": 0,
       "needs_phase_count": 0
@@ -919,7 +919,7 @@
         "docs/parity/benchmarks.md",
         "docs/operator/runtime-guide.md",
         "docs/parity/catalog/operator-runtime-release-hardening.md",
-        ".planning/phases/41-audit-and-revisit-all-the-security-analyses-throughout-the-p/41-SECURITY-AUDIT.md",
+        ".planning/milestones/v1.2-phases/41-audit-and-revisit-all-the-security-analyses-throughout-the-p/41-SECURITY-AUDIT.md",
         "scripts/check-benchmark-report.ts",
         "scripts/run-live-mainnet-smoke.ts"
       ]

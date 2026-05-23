@@ -116,9 +116,9 @@ Current suspected unknown themes from
 
 - Which packaging or signed-release workflow should become the canonical
   install surface once source-built operation is no longer the only path.
-- v1.2 Full Mainnet Network Syncing is now the active milestone for turning the
-  earlier `open-bitcoind` sync activation and preflight into an operator-ready
-  public-network review flow with explicit live evidence.
+- v1.2 Full Mainnet Network Syncing shipped the earlier `open-bitcoind` sync
+  activation and preflight as an operator-ready public-network review flow with
+  explicit opt-in live evidence.
 - Whether any public-network sync verification should become optional release
   evidence without expanding the default local gate.
 - Deprecated or ambiguous hex acceptance at future user-facing boundaries.
@@ -165,7 +165,7 @@ Evidence links:
 - [`scripts/run-live-mainnet-smoke.ts`](../../scripts/run-live-mainnet-smoke.ts)
   launches the explicit live-mainnet review flow, polls durable sync status,
   and writes local JSON plus Markdown evidence reports.
-- [Phase 41 security analysis audit](../../.planning/phases/41-audit-and-revisit-all-the-security-analyses-throughout-the-p/41-SECURITY-AUDIT.md)
+- [Phase 41 security analysis audit](../../.planning/milestones/v1.2-phases/41-audit-and-revisit-all-the-security-analyses-throughout-the-p/41-SECURITY-AUDIT.md)
   revisits the tracked planning security corpus, confirms `threats_open: 0`
   across reviewed security artifacts, and records that no new security
   implementation phase is required before v1.2 archive.
