@@ -321,6 +321,8 @@ Use the repo-owned wrapper:
 
 ```bash
 bun run scripts/run-live-mainnet-smoke.ts --datadir=/tmp/open-bitcoin-mainnet
+bun run scripts/run-live-mainnet-smoke.ts --datadir=/tmp/open-bitcoin-mainnet \
+  --timeout-seconds=60 --poll-seconds=5 --manual-peer=HOST[:PORT]
 bash scripts/run-benchmarks.sh --smoke
 bash scripts/run-benchmarks.sh --full --iterations 5
 ```
@@ -333,11 +335,27 @@ Live smoke behavior:
   `open-bitcoin-live-mainnet-smoke.json` plus
   `open-bitcoin-live-mainnet-smoke.md` under
   `packages/target/live-mainnet-smoke-reports`.
+- `--manual-peer=HOST[:PORT]` may be repeated. When manual peers are supplied
+  without `--config`, the runner writes
+  `open-bitcoin-live-mainnet-smoke.jsonc` in the selected output directory,
+  sets `sync.manual_peers` to those exact values, disables DNS seeds for that
+  deterministic run, sets `sync.target_outbound_peers = 1`, and passes the
+  generated file to the daemon and final sync-status command. If you pass
+  `--config`, put manual peers in that JSONC file instead of also passing
+  `--manual-peer`.
 - It fails early when the selected datadir does not exist, the optional config
   path is missing, the local clock is obviously wrong, or the selected disk
   path does not meet the configurable free-space floor.
-- It times out cleanly with actionable guidance when outbound DNS or TCP
-  access, disk headroom, or runtime progress are insufficient.
+- It records DNS seed and manual-peer endpoint outcomes in JSON and Markdown,
+  including whether each preflight/runtime endpoint was resolved, connected,
+  handshook, failed, or skipped. Preflight TCP checks are diagnostic and remain
+  separate from daemon runtime peer telemetry.
+- It times out cleanly with typed no-progress guidance when outbound DNS or TCP
+  access, handshake/capability checks, validation, storage, or runtime progress
+  are insufficient.
+- Operator cancellation is preserved as `status: cancelled` with
+  `maybeNoProgressCause: operator_cancellation`, and the runner still writes
+  partial evidence before exiting nonzero.
 - It terminates its own daemon process after collecting evidence; for longer
   manual review, launch `open-bitcoind` directly and use
   `open-bitcoin sync status|pause|resume`.
@@ -354,6 +372,8 @@ Benchmark modes:
 The generated reports now record:
 
 - the live-smoke command path, poll interval, timeout, and preflight outcome
+- the live-smoke manual peers, generated config path when used, endpoint
+  outcome table, typed no-progress cause, and suggested next action
 - the live-smoke status snapshots and daemon stderr/stdout tail for support
   review
 - the benchmark mode and iteration count

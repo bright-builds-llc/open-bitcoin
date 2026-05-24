@@ -22,7 +22,7 @@ gate.
 
 ## Phases
 
-- [ ] **Phase 42: Live Smoke Entry and Network Preflight** - Make opt-in live smoke prerequisites and endpoint outcomes explicit before sync.
+- [x] **Phase 42: Live Smoke Entry and Network Preflight** - Make opt-in live smoke prerequisites and endpoint outcomes explicit before sync.
 - [ ] **Phase 43: Outbound Peer Resilience** - Keep daemon sync alive and truthful while public peers fail, stall, disconnect, or provide bad data.
 - [ ] **Phase 44: Peer Contribution Attribution** - Attribute header and block progress to useful peers instead of idle or failing peers.
 - [ ] **Phase 45: Runtime Resource Bounds and Store Coordination** - Keep long public-network runs bounded and single-writer safe.
@@ -43,7 +43,7 @@ gate.
   2. Operator can preview DNS seed and manual-peer outcomes showing resolved, connected, handshook, failed, or skipped endpoints.
   3. Live smoke reports identify no-progress causes such as DNS resolution, TCP connection, handshake, unsupported capability, validation, storage, timeout, and operator cancellation.
   4. Operator cancellation is reported as a distinct outcome rather than a crash or generic timeout.
-**Plans**: TBD
+**Plans**: 42-01 completed - Live smoke network preflight and typed no-progress evidence.
 
 ### Phase 43: Outbound Peer Resilience
 **Goal**: Daemon sync stays alive and truthful while public peers fail, stall, disconnect, or provide bad data.

@@ -10,8 +10,8 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Public Mainnet Proof
 
-- [ ] **PROOF-01**: Operator can run an opt-in live-mainnet smoke command with explicit datadir, timeout, polling interval, and optional manual peers, and the command fails fast when local prerequisites are missing.
-- [ ] **PROOF-02**: Operator can distinguish no-progress causes in the live smoke report, including DNS resolution failure, TCP connection failure, handshake failure, unsupported peer capability, validation failure, storage failure, timeout, and operator cancellation.
+- [x] **PROOF-01**: Operator can run an opt-in live-mainnet smoke command with explicit datadir, timeout, polling interval, and optional manual peers, and the command fails fast when local prerequisites are missing.
+- [x] **PROOF-02**: Operator can distinguish no-progress causes in the live smoke report, including DNS resolution failure, TCP connection failure, handshake failure, unsupported peer capability, validation failure, storage failure, timeout, and operator cancellation.
 - [ ] **PROOF-03**: Reviewer can inspect a live smoke report that records the first observed validated header-height increase with peer endpoint, source, timestamp, and before/after durable status.
 - [ ] **PROOF-04**: Reviewer can inspect a live smoke report that records the first validated block connection beyond genesis or a configured checkpoint, or an explicit diagnosis when block progress was not reached.
 - [ ] **PROOF-05**: Operator can interrupt and restart the same public-mainnet sync datadir and see durable before/after evidence that header, block, and runtime metadata progress resume coherently.
@@ -19,7 +19,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Peer Connectivity and Lifecycle Hardening
 
-- [ ] **PEER-01**: Operator can preflight DNS seeds and manual peers and see which endpoints resolved, connected, handshook, failed, or were skipped before or during opt-in mainnet sync.
+- [x] **PEER-01**: Operator can preflight DNS seeds and manual peers and see which endpoints resolved, connected, handshook, failed, or were skipped before or during opt-in mainnet sync.
 - [ ] **PEER-02**: Daemon sync enforces bounded outbound peer counts and rotates unhealthy peers with stable backoff, stall, and retry reasons.
 - [ ] **PEER-03**: Daemon sync records per-peer header and block contribution so idle or failing peers are not reported as useful sync progress.
 - [ ] **PEER-04**: Daemon sync handles mixed peer failures, disconnects, timeouts, invalid data, and peer replacement without corrupting durable state or exiting unexpectedly.
@@ -85,13 +85,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PROOF-01 | Phase 42 | Pending |
-| PROOF-02 | Phase 42 | Pending |
+| PROOF-01 | Phase 42 | Complete |
+| PROOF-02 | Phase 42 | Complete |
 | PROOF-03 | Phase 50 | Pending |
 | PROOF-04 | Phase 50 | Pending |
 | PROOF-05 | Phase 50 | Pending |
 | PROOF-06 | Phase 49 | Pending |
-| PEER-01 | Phase 42 | Pending |
+| PEER-01 | Phase 42 | Complete |
 | PEER-02 | Phase 43 | Pending |
 | PEER-03 | Phase 44 | Pending |
 | PEER-04 | Phase 43 | Pending |
