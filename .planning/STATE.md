@@ -1,11 +1,11 @@
 ---
 gsd_state_version: 1.0
-milestone: none
-milestone_name: Planning next milestone
-status: milestone-complete
-stopped_at: v1.2 Full Mainnet Network Syncing archived; ready for /gsd-new-milestone
-last_updated: "2026-05-23T17:23:57.288Z"
-last_activity: 2026-05-23 -- v1.2 archived and ready for next milestone planning
+milestone: v1.3
+milestone_name: Public Mainnet Sync Proof and Node Hardening
+status: defining-requirements
+stopped_at: v1.3 Public Mainnet Sync Proof and Node Hardening started; defining requirements
+last_updated: "2026-05-24T00:51:00-05:00"
+last_activity: 2026-05-24 -- Milestone v1.3 started
 progress:
   total_phases: 0
   completed_phases: 0
@@ -18,19 +18,19 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-23)
+See: .planning/PROJECT.md (updated 2026-05-24)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Planning the next milestone
+**Current focus:** v1.3 Public Mainnet Sync Proof and Node Hardening
 
 ## Current Position
 
-Phase: none
-Plan: none
-Status: v1.2 Full Mainnet Network Syncing is archived.
-Last activity: 2026-05-23 -- v1.2 archived and ready for next milestone planning
+Phase: Not started (defining requirements)
+Plan: -
+Status: Defining requirements
+Last activity: 2026-05-24 -- Milestone v1.3 started
 
-Progress: no active milestone
+Progress: requirements definition in progress
 
 ## Archive Layout
 
@@ -38,7 +38,7 @@ Progress: no active milestone
 - v1.1 raw phase execution history is archived under `.planning/milestones/v1.1-phases/`.
 - v1.2 raw phase execution history is archived under `.planning/milestones/v1.2-phases/`.
 - Completed milestone roadmap and requirements archives live under `.planning/milestones/`.
-- The next `/gsd-new-milestone` run should create fresh active requirements and roadmap scope.
+- The v1.3 `/gsd-new-milestone` run should create fresh active requirements and roadmap scope.
 
 ## Accumulated Context
 
@@ -60,7 +60,7 @@ Recent decisions affecting next work:
 - v1.0 Headless Parity archived on 2026-04-26.
 - v1.1 Operator Runtime and Real-Network Sync archived on 2026-04-30.
 - v1.2 Full Mainnet Network Syncing archived on 2026-05-23.
-- The next step is `/gsd-new-milestone`.
+- v1.3 Public Mainnet Sync Proof and Node Hardening started on 2026-05-24.
 
 ### Pending Todos
 
@@ -74,6 +74,6 @@ Recent decisions affecting next work:
 
 ## Session Continuity
 
-Last session: 2026-05-23
-Stopped at: v1.2 archived; ready for `/gsd-new-milestone`
-Resume file: .planning/MILESTONES.md
+Last session: 2026-05-24
+Stopped at: defining v1.3 requirements
+Resume file: .planning/REQUIREMENTS.md

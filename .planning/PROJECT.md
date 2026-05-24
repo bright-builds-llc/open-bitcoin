@@ -18,9 +18,15 @@ The repository now includes durable Fjall-backed runtime storage, real-network s
 
 Milestone archives live under `.planning/milestones/`, including shipped roadmap and requirements archives, final audit artifacts where they exist, and raw phase histories for v1.1 and v1.2. One residual risk remains from the v1.1 audit: dashboard pseudoterminal repaint and raw-input behavior is still a manual validation surface rather than an end-to-end automated regression. v1.2 did not create a dedicated milestone audit artifact; Phase 40 closeout and Phase 41 security audit, verification, and UAT are the closeout evidence trail.
 
-## Next Milestone Goals
+## Current Milestone: v1.3 Public Mainnet Sync Proof and Node Hardening
 
-No active next milestone is defined yet. Start the next cycle with `/gsd-new-milestone` so the scope, requirements, and roadmap are gathered from current project priorities instead of carrying v1.2 assumptions forward automatically.
+**Goal:** Prove real public-mainnet sync progress through the opt-in daemon workflow and harden the node/runtime surfaces needed before any broader production-node claim.
+
+**Target features:**
+
+- Reliable live-mainnet progress evidence for DNS/TCP/manual-peer scenarios, header progress, block progress, restart/resume behavior, and reproducible local smoke reports.
+- Public-network node hardening for outbound peer lifecycle resilience, stall/backoff behavior, resource bounds, durable state recovery, and truthful failure states.
+- Operator release evidence through clearer runbooks, support bundles, status/metrics/log review, explicit production-claim boundaries, and fresh security review for the expanded runtime claim.
 
 ## Requirements
 
@@ -32,7 +38,7 @@ No active next milestone is defined yet. Start the next cycle with `/gsd-new-mil
 
 ### Active
 
-No active requirements file is currently present. The next `/gsd-new-milestone` run should create fresh requirements for the next milestone.
+v1.3 Public Mainnet Sync Proof and Node Hardening is active. Detailed active requirements live in `.planning/REQUIREMENTS.md`.
 
 ### Out of Scope
 
@@ -81,6 +87,24 @@ No active requirements file is currently present. The next `/gsd-new-milestone` 
 | Treat migration as explicit, dry-run-first, and reversible | Existing Core or Knots datadirs and wallets are high-value user data and must not be mutated implicitly | Shipped and audited in v1.1 |
 | Keep shared service definitions at scan scope through `DetectionScan` | Future consumers should opt into service ownership association explicitly instead of inheriting misleading per-installation copies | Implemented in Phase 34 and archived with v1.1 |
 | Scope v1.2 to opt-in daemon initial block download | Full mainnet sync should first be proven through `open-bitcoind` headers, blocks, restart/resume, and observability before broader P2P, wallet, or production service claims | Shipped in v1.2 |
+| Scope v1.3 to public-mainnet proof and node hardening | The v1.2 live UAT did not observe header or block progress, so the next milestone should close that evidence gap before expanding wallet, inbound-serving, relay, packaging, or migration claims | Active |
+
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd-transition`):
+1. Requirements invalidated? -> Move to Out of Scope with reason
+2. Requirements validated? -> Move to Validated with phase reference
+3. New requirements emerged? -> Add to Active
+4. Decisions to log? -> Add to Key Decisions
+5. "What This Is" still accurate? -> Update if drifted
+
+**After each milestone** (via `/gsd-complete-milestone`):
+1. Full review of all sections
+2. Core Value check - still the right priority?
+3. Audit Out of Scope - reasons still valid?
+4. Update Context with current state
 
 ## Historical Context
 
@@ -95,4 +119,4 @@ No active requirements file is currently present. The next `/gsd-new-milestone` 
 </details>
 
 ---
-*Last updated: 2026-05-23 after archiving the v1.2 full mainnet network syncing milestone*
+*Last updated: 2026-05-24 after starting the v1.3 public mainnet sync proof and node hardening milestone*
