@@ -101,7 +101,11 @@ impl DurableSyncRuntime {
 
     pub fn snapshot_summary(&self) -> SyncRunSummary {
         let (best_header_height, best_block_height) = self.best_heights();
-        SyncRunSummary::empty(best_header_height, best_block_height)
+        SyncRunSummary::empty(
+            best_header_height,
+            best_block_height,
+            self.config.target_outbound_peers,
+        )
     }
 
     pub fn sync_once<T: SyncTransport>(
@@ -138,14 +142,19 @@ impl DurableSyncRuntime {
         }
 
         let (best_header_height, best_block_height) = self.best_heights();
-        let mut summary = SyncRunSummary::empty(best_header_height, best_block_height);
+        let mut summary = SyncRunSummary::empty(
+            best_header_height,
+            best_block_height,
+            self.config.target_outbound_peers,
+        );
         let resolved_peers = self.resolve_candidates(peers, resolver, &mut summary);
         let mut completed_outbound_slots = 0_usize;
         for peer in resolved_peers {
             if completed_outbound_slots >= self.config.target_outbound_peers {
                 break;
             }
-            if !self.peer_ready(&peer, timestamp) {
+            if let Some(backoff) = self.maybe_peer_backoff(&peer, timestamp) {
+                self.record_waiting_outcome(&mut summary, &peer, backoff, timestamp);
                 continue;
             }
             summary.attempted_peers += 1;
@@ -374,6 +383,39 @@ impl DurableSyncRuntime {
                 });
             }
         }
+    }
+
+    fn record_waiting_outcome(
+        &self,
+        summary: &mut SyncRunSummary,
+        peer: &ResolvedSyncPeerAddress,
+        backoff: PeerRetryState,
+        timestamp: i64,
+    ) {
+        let wait_seconds = backoff
+            .next_attempt_unix_seconds
+            .saturating_sub(timestamp)
+            .max(0);
+        summary.health_signals.push(progress::waiting_peer_signal());
+        summary.peer_outcomes.push(PeerSyncOutcome {
+            peer: peer.peer.clone(),
+            maybe_resolved_endpoint: Some(peer.endpoint.to_string()),
+            network: self.config.network,
+            state: PeerSyncState::Waiting,
+            attempts: 0,
+            contribution: PeerContribution {
+                messages_processed: 0,
+                headers_received: 0,
+                blocks_received: 0,
+            },
+            maybe_last_activity_unix_seconds: None,
+            maybe_capabilities: None,
+            maybe_failure_reason: Some(PeerFailureReason::RetryBackoff),
+            maybe_error: Some(format!(
+                "retry backoff wait_seconds={wait_seconds} consecutive_failures={} next_attempt_unix_seconds={}",
+                backoff.consecutive_failures, backoff.next_attempt_unix_seconds
+            )),
+        });
     }
 
     fn send_all<S: SyncPeerSession>(

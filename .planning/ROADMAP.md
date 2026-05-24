@@ -23,7 +23,7 @@ gate.
 ## Phases
 
 - [x] **Phase 42: Live Smoke Entry and Network Preflight** - Make opt-in live smoke prerequisites and endpoint outcomes explicit before sync.
-- [ ] **Phase 43: Outbound Peer Resilience** - Keep daemon sync alive and truthful while public peers fail, stall, disconnect, or provide bad data.
+- [x] **Phase 43: Outbound Peer Resilience** - Keep daemon sync alive and truthful while public peers fail, stall, disconnect, or provide bad data.
 - [ ] **Phase 44: Peer Contribution Attribution** - Attribute header and block progress to useful peers instead of idle or failing peers.
 - [ ] **Phase 45: Runtime Resource Bounds and Store Coordination** - Keep long public-network runs bounded and single-writer safe.
 - [ ] **Phase 46: Durable Recovery and Invalid Data Handling** - Resume after partial work and reject invalid peer data without advancing chainstate.
@@ -54,7 +54,7 @@ gate.
   2. Daemon sync rotates unhealthy peers and replaces failed connections without exceeding configured peer limits.
   3. Mixed peer failures, disconnects, timeouts, and invalid data do not corrupt durable state or exit the sync runtime unexpectedly.
   4. Failure states show whether sync is still retrying, waiting for peers, or stopped.
-**Plans**: TBD
+**Plans**: 43-01 completed - Backoff visibility and mixed peer failure resilience.
 
 ### Phase 44: Peer Contribution Attribution
 **Goal**: Sync progress reports identify which peers contributed validated headers or blocks and avoid crediting idle peers.
@@ -158,8 +158,8 @@ Detailed phase execution history is archived under
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 42. Live Smoke Entry and Network Preflight | 0/TBD | Not started | - |
-| 43. Outbound Peer Resilience | 0/TBD | Not started | - |
+| 42. Live Smoke Entry and Network Preflight | 1/1 | Complete | 2026-05-24 |
+| 43. Outbound Peer Resilience | 1/1 | Complete | 2026-05-24 |
 | 44. Peer Contribution Attribution | 0/TBD | Not started | - |
 | 45. Runtime Resource Bounds and Store Coordination | 0/TBD | Not started | - |
 | 46. Durable Recovery and Invalid Data Handling | 0/TBD | Not started | - |
@@ -170,14 +170,14 @@ Detailed phase execution history is archived under
 
 ## Next Step
 
-Gather context for the first v1.3 phase:
+Gather context for the next v1.3 phase:
 
 ```bash
-/gsd-discuss-phase 42
+/gsd-discuss-phase 44
 ```
 
 To skip discussion and plan directly:
 
 ```bash
-/gsd-plan-phase 42
+/gsd-plan-phase 44
 ```

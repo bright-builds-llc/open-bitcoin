@@ -32,6 +32,12 @@ pub(super) fn peer_outcome_log_records(
             message: "peer stalled before sending more sync messages".to_string(),
             timestamp_unix_seconds,
         }),
+        PeerSyncState::Waiting => records.push(StructuredLogRecord {
+            level: StructuredLogLevel::Warn,
+            source: "sync".to_string(),
+            message: "peer waiting for retry backoff before next attempt".to_string(),
+            timestamp_unix_seconds,
+        }),
         PeerSyncState::Failed => records.push(StructuredLogRecord {
             level: StructuredLogLevel::Error,
             source: "sync".to_string(),
@@ -80,6 +86,7 @@ pub(super) fn peer_telemetry(outcome: &PeerSyncOutcome) -> PeerTelemetry {
         state: match outcome.state {
             PeerSyncState::Connected => "connected".to_string(),
             PeerSyncState::Stalled => "stalled".to_string(),
+            PeerSyncState::Waiting => "waiting".to_string(),
             PeerSyncState::Failed => "failed".to_string(),
         },
         network: outcome.network.as_str().to_string(),
@@ -117,6 +124,14 @@ pub(super) fn peer_telemetry(outcome: &PeerSyncOutcome) -> PeerTelemetry {
 }
 
 pub(super) fn sync_phase_name(summary: &SyncRunSummary) -> &'static str {
+    if summary.attempted_peers == 0
+        && summary
+            .peer_outcomes
+            .iter()
+            .any(|outcome| outcome.state == PeerSyncState::Waiting)
+    {
+        return "waiting_for_peers";
+    }
     if summary.best_block_height < summary.best_header_height {
         return "block_download";
     }

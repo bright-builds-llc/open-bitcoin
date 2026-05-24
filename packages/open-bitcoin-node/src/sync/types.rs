@@ -231,6 +231,7 @@ impl Default for SyncRuntimeConfig {
 pub enum PeerSyncState {
     Connected,
     Stalled,
+    Waiting,
     Failed,
 }
 
@@ -239,6 +240,7 @@ pub enum PeerFailureReason {
     AddressResolution,
     Connect,
     Stall,
+    RetryBackoff,
     InvalidData,
     InvalidMagic,
     Network,
@@ -251,6 +253,7 @@ impl fmt::Display for PeerFailureReason {
             Self::AddressResolution => write!(f, "address_resolution"),
             Self::Connect => write!(f, "connect"),
             Self::Stall => write!(f, "stall"),
+            Self::RetryBackoff => write!(f, "retry_backoff"),
             Self::InvalidData => write!(f, "invalid_data"),
             Self::InvalidMagic => write!(f, "invalid_magic"),
             Self::Network => write!(f, "network"),
@@ -291,6 +294,7 @@ pub struct PeerSyncOutcome {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SyncRunSummary {
+    pub target_outbound_peers: usize,
     pub attempted_peers: usize,
     pub connected_peers: usize,
     pub failed_peers: usize,
@@ -304,8 +308,13 @@ pub struct SyncRunSummary {
 }
 
 impl SyncRunSummary {
-    pub(crate) fn empty(best_header_height: u64, best_block_height: u64) -> Self {
+    pub(crate) fn empty(
+        best_header_height: u64,
+        best_block_height: u64,
+        target_outbound_peers: usize,
+    ) -> Self {
         Self {
+            target_outbound_peers,
             attempted_peers: 0,
             connected_peers: 0,
             failed_peers: 0,
@@ -347,7 +356,7 @@ impl SyncRunSummary {
                 blocks_in_flight: 0,
                 max_blocks_in_flight_total: 0,
                 outbound_peers: self.connected_peers as u32,
-                target_outbound_peers: self.connected_peers as u32,
+                target_outbound_peers: self.target_outbound_peers as u32,
             }),
         }
     }

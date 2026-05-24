@@ -30,20 +30,32 @@ use crate::{
     FieldAvailability, FjallNodeStore, LogRetentionPolicy, MetricKind, MetricSample, PersistMode,
     StorageError, StorageNamespace,
     logging::{StructuredLogLevel, StructuredLogRecord, writer::load_log_status},
-    status::{HealthSignal, HealthSignalLevel, SyncProgress},
+    status::{
+        HealthSignal, HealthSignalLevel, SyncLifecycleState, SyncProgress, SyncResourcePressure,
+    },
 };
 
 const EASY_BITS: u32 = 0x207f_ffff;
 
 #[derive(Debug, Clone)]
 struct ScriptedTransport {
-    scripts: VecDeque<Vec<WireNetworkMessage>>,
+    scripts: VecDeque<Result<Vec<WireNetworkMessage>, SyncRuntimeError>>,
     sent: Rc<RefCell<Vec<WireNetworkMessage>>>,
     fail_connect: bool,
 }
 
 impl ScriptedTransport {
     fn new(scripts: Vec<Vec<WireNetworkMessage>>) -> Self {
+        Self {
+            scripts: scripts.into_iter().map(Ok).collect(),
+            sent: Rc::new(RefCell::new(Vec::new())),
+            fail_connect: false,
+        }
+    }
+
+    fn with_connect_results(
+        scripts: Vec<Result<Vec<WireNetworkMessage>, SyncRuntimeError>>,
+    ) -> Self {
         Self {
             scripts: scripts.into(),
             sent: Rc::new(RefCell::new(Vec::new())),
@@ -113,8 +125,9 @@ impl SyncTransport for ScriptedTransport {
             });
         }
 
+        let inbound = self.scripts.pop_front().unwrap_or_else(|| Ok(Vec::new()))?;
         Ok(ScriptedSession {
-            inbound: self.scripts.pop_front().unwrap_or_default().into(),
+            inbound: inbound.into(),
             sent: Rc::clone(&self.sent),
         })
     }
@@ -344,6 +357,7 @@ fn header(previous_block_hash: BlockHash, nonce: u32) -> BlockHeader {
 fn sync_summary_projects_metric_samples() {
     // Arrange
     let summary = SyncRunSummary {
+        target_outbound_peers: 1,
         attempted_peers: 2,
         connected_peers: 1,
         failed_peers: 1,
@@ -374,6 +388,7 @@ fn sync_summary_projects_metric_samples() {
 fn sync_summary_projects_structured_log_records() {
     // Arrange
     let summary = SyncRunSummary {
+        target_outbound_peers: 2,
         attempted_peers: 3,
         connected_peers: 2,
         failed_peers: 1,
@@ -468,6 +483,7 @@ fn sync_summary_projects_structured_log_records() {
 fn sync_summary_status_projections_include_counters() {
     // Arrange
     let summary = SyncRunSummary {
+        target_outbound_peers: 4,
         attempted_peers: 4,
         connected_peers: 3,
         failed_peers: 1,
@@ -501,6 +517,15 @@ fn sync_summary_status_projections_include_counters() {
         FieldAvailability::available(crate::status::PeerCounts {
             inbound: 0,
             outbound: 3,
+        })
+    );
+    assert_eq!(
+        sync_status.resource_pressure,
+        FieldAvailability::available(SyncResourcePressure {
+            blocks_in_flight: 0,
+            max_blocks_in_flight_total: 0,
+            outbound_peers: 3,
+            target_outbound_peers: 4,
         })
     );
 }
@@ -625,6 +650,161 @@ fn sync_once_rotates_to_alternative_peer_after_stall() {
     );
     assert_eq!(summary.peer_outcomes[1].state, PeerSyncState::Connected);
     assert_eq!(summary.peer_outcomes[1].contribution.headers_received, 1);
+}
+
+#[test]
+fn sync_once_reports_backoff_wait_and_replaces_peer() {
+    // Arrange
+    let path = temp_store_path("backoff-replacement");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime = DurableSyncRuntime::open(
+        store,
+        SyncRuntimeConfig {
+            manual_peers: vec![
+                SyncPeerAddress::manual("198.51.100.12", 18_444),
+                SyncPeerAddress::manual("198.51.100.13", 18_445),
+            ],
+            dns_seeds: Vec::new(),
+            target_outbound_peers: 1,
+            max_messages_per_peer: 2,
+            retry_backoff_ms: 10_000,
+            ..sync_config()
+        },
+    )
+    .expect("runtime");
+    let mut transport = ScriptedTransport::new(vec![
+        Vec::new(),
+        version_verack_script(0),
+        version_verack_script(0),
+    ]);
+    let mut resolver = ScriptedResolver::new(vec![
+        Ok(vec![resolved_manual_peer("198.51.100.12", 18_444)]),
+        Ok(vec![resolved_manual_peer("198.51.100.13", 18_445)]),
+        Ok(vec![resolved_manual_peer("198.51.100.12", 18_444)]),
+        Ok(vec![resolved_manual_peer("198.51.100.13", 18_445)]),
+    ]);
+    runtime
+        .sync_once_with_resolver(&mut transport, &mut resolver, 1_777_225_177)
+        .expect("first sync");
+
+    // Act
+    let summary = runtime
+        .sync_once_with_resolver(&mut transport, &mut resolver, 1_777_225_178)
+        .expect("second sync");
+
+    // Assert
+    assert_eq!(summary.attempted_peers, 1);
+    assert_eq!(summary.connected_peers, 1);
+    assert_eq!(summary.failed_peers, 0);
+    assert_eq!(summary.peer_outcomes.len(), 2);
+    assert_eq!(summary.peer_outcomes[0].state, PeerSyncState::Waiting);
+    assert_eq!(
+        summary.peer_outcomes[0].maybe_failure_reason,
+        Some(PeerFailureReason::RetryBackoff)
+    );
+    assert!(
+        summary.peer_outcomes[0]
+            .maybe_error
+            .as_ref()
+            .is_some_and(|message| message.contains("consecutive_failures=1"))
+    );
+    assert_eq!(summary.peer_outcomes[1].state, PeerSyncState::Connected);
+}
+
+#[test]
+fn sync_once_waiting_backoff_projects_waiting_for_peers_phase() {
+    // Arrange
+    let path = temp_store_path("backoff-waiting-phase");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime = DurableSyncRuntime::open(
+        store,
+        SyncRuntimeConfig {
+            manual_peers: vec![SyncPeerAddress::manual("198.51.100.14", 18_444)],
+            dns_seeds: Vec::new(),
+            retry_backoff_ms: 10_000,
+            ..sync_config()
+        },
+    )
+    .expect("runtime");
+    let mut transport = ScriptedTransport::new(vec![Vec::new()]);
+    let mut resolver = ScriptedResolver::new(vec![
+        Ok(vec![resolved_manual_peer("198.51.100.14", 18_444)]),
+        Ok(vec![resolved_manual_peer("198.51.100.14", 18_444)]),
+    ]);
+    runtime
+        .sync_once_with_resolver(&mut transport, &mut resolver, 1_777_225_180)
+        .expect("first sync");
+
+    // Act
+    let summary = runtime
+        .sync_once_with_resolver(&mut transport, &mut resolver, 1_777_225_181)
+        .expect("second sync");
+    let sync_status = summary.sync_status(SyncNetwork::Regtest);
+    let peer_status = summary.peer_status();
+    let log_records = summary.structured_log_records(1_777_225_181);
+
+    // Assert
+    assert_eq!(summary.attempted_peers, 0);
+    assert_eq!(summary.connected_peers, 0);
+    assert_eq!(summary.failed_peers, 0);
+    assert_eq!(
+        sync_status.phase,
+        FieldAvailability::available("waiting_for_peers".to_string())
+    );
+    assert!(matches!(
+        peer_status.recent_peers,
+        FieldAvailability::Available(ref peers)
+            if peers.first().is_some_and(|peer| peer.state == "waiting")
+    ));
+    assert!(log_records.iter().any(|record| {
+        record.level == StructuredLogLevel::Warn
+            && record.source == "sync"
+            && record.message.contains("retry backoff")
+    }));
+}
+
+#[test]
+fn sync_status_preserves_configured_target_outbound_peer_count() {
+    // Arrange
+    let path = temp_store_path("configured-target-outbound");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime = DurableSyncRuntime::open(
+        store,
+        SyncRuntimeConfig {
+            manual_peers: vec![SyncPeerAddress::manual("198.51.100.15", 18_444)],
+            dns_seeds: Vec::new(),
+            target_outbound_peers: 3,
+            max_messages_per_peer: 2,
+            ..sync_config()
+        },
+    )
+    .expect("runtime");
+    let mut transport = ScriptedTransport::new(vec![version_verack_script(0)]);
+    let mut resolver = ScriptedResolver::new(vec![Ok(vec![resolved_manual_peer(
+        "198.51.100.15",
+        18_444,
+    )])]);
+
+    // Act
+    let summary = runtime
+        .sync_once_with_resolver(&mut transport, &mut resolver, 1_777_225_182)
+        .expect("sync");
+    let sync_status = summary.sync_status(SyncNetwork::Regtest);
+
+    // Assert
+    assert_eq!(summary.target_outbound_peers, 3);
+    assert_eq!(
+        sync_status.resource_pressure,
+        FieldAvailability::available(SyncResourcePressure {
+            blocks_in_flight: 0,
+            max_blocks_in_flight_total: 0,
+            outbound_peers: 1,
+            target_outbound_peers: 3,
+        })
+    );
 }
 
 #[test]
@@ -894,6 +1074,7 @@ fn storage_failure_projects_storage_health_signal() {
     // Act
     let signal = error.health_signal();
     let records = SyncRunSummary {
+        target_outbound_peers: 0,
         attempted_peers: 0,
         connected_peers: 0,
         failed_peers: 0,
@@ -1154,6 +1335,95 @@ fn contextual_invalid_headers_fail_with_typed_invalid_data() {
     }));
 
     remove_dir_if_exists(&path);
+}
+
+#[test]
+fn mixed_peer_failures_rotate_to_replacement_without_corrupting_state() {
+    // Arrange
+    let path = temp_store_path("mixed-peer-failures");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let genesis = header(BlockHash::from_byte_array([0_u8; 32]), 1);
+    let mut stale_child = header(block_hash(&genesis), 2);
+    stale_child.time = genesis.time;
+    let invalid_script = vec![
+        WireNetworkMessage::Version(VersionMessage {
+            start_height: 1,
+            ..VersionMessage::default()
+        }),
+        WireNetworkMessage::Verack,
+        WireNetworkMessage::Headers(HeadersMessage {
+            headers: vec![genesis, stale_child],
+        }),
+    ];
+    let mut runtime = DurableSyncRuntime::open(
+        store,
+        SyncRuntimeConfig {
+            manual_peers: vec![
+                SyncPeerAddress::manual("198.51.100.40", 18_444),
+                SyncPeerAddress::manual("198.51.100.41", 18_445),
+                SyncPeerAddress::manual("198.51.100.42", 18_446),
+            ],
+            dns_seeds: Vec::new(),
+            max_peer_retries: 0,
+            max_messages_per_peer: 3,
+            target_outbound_peers: 1,
+            ..sync_config()
+        },
+    )
+    .expect("runtime");
+    let mut transport = ScriptedTransport::with_connect_results(vec![
+        Err(SyncRuntimeError::Io {
+            peer: "198.51.100.40:18444".to_string(),
+            message: "scripted disconnect".to_string(),
+        }),
+        Ok(invalid_script),
+        Ok(vec![
+            WireNetworkMessage::Version(VersionMessage {
+                start_height: 0,
+                ..VersionMessage::default()
+            }),
+            WireNetworkMessage::Verack,
+            WireNetworkMessage::SendHeaders,
+        ]),
+    ]);
+    let mut resolver = ScriptedResolver::new(vec![
+        Ok(vec![resolved_manual_peer("198.51.100.40", 18_444)]),
+        Ok(vec![resolved_manual_peer("198.51.100.41", 18_445)]),
+        Ok(vec![resolved_manual_peer("198.51.100.42", 18_446)]),
+    ]);
+
+    // Act
+    let summary = runtime
+        .sync_once_with_resolver(&mut transport, &mut resolver, 1_777_225_183)
+        .expect("sync");
+    let metadata = runtime
+        .store()
+        .load_runtime_metadata()
+        .expect("load runtime metadata")
+        .expect("runtime metadata");
+    let durable_sync_state = metadata.maybe_sync_state.expect("durable sync state");
+
+    // Assert
+    assert_eq!(summary.attempted_peers, 3);
+    assert_eq!(summary.failed_peers, 2);
+    assert_eq!(summary.connected_peers, 1);
+    assert_eq!(summary.peer_outcomes[0].state, PeerSyncState::Failed);
+    assert_eq!(
+        summary.peer_outcomes[0].maybe_failure_reason,
+        Some(PeerFailureReason::Connect)
+    );
+    assert_eq!(summary.peer_outcomes[1].state, PeerSyncState::Failed);
+    assert_eq!(
+        summary.peer_outcomes[1].maybe_failure_reason,
+        Some(PeerFailureReason::InvalidData)
+    );
+    assert_eq!(summary.peer_outcomes[2].state, PeerSyncState::Connected);
+    assert_eq!(runtime.snapshot_summary().best_block_height, 0);
+    assert_eq!(
+        durable_sync_state.sync.lifecycle,
+        FieldAvailability::available(SyncLifecycleState::Active)
+    );
 }
 
 #[test]

@@ -125,6 +125,14 @@ pub(super) fn stalled_peer_signal() -> HealthSignal {
     }
 }
 
+pub(super) fn waiting_peer_signal() -> HealthSignal {
+    HealthSignal {
+        level: HealthSignalLevel::Warn,
+        source: "sync".to_string(),
+        message: "peer waiting for retry backoff before next attempt".to_string(),
+    }
+}
+
 pub(super) fn local_peer_config(config: &SyncRuntimeConfig) -> LocalPeerConfig {
     LocalPeerConfig {
         magic: config.network.magic(),

@@ -17,8 +17,8 @@ use crate::{
 };
 
 use super::{
-    DurableSyncRuntime, PeerCapabilitySummary, ResolvedSyncPeerAddress, SyncPeerAddress,
-    SyncPeerResolver, SyncRunSummary, SyncRuntimeError,
+    DurableSyncRuntime, PeerCapabilitySummary, PeerRetryState, ResolvedSyncPeerAddress,
+    SyncPeerAddress, SyncPeerResolver, SyncRunSummary, SyncRuntimeError,
 };
 
 impl DurableSyncRuntime {
@@ -197,11 +197,16 @@ impl DurableSyncRuntime {
         })
     }
 
-    pub(super) fn peer_ready(&self, peer: &ResolvedSyncPeerAddress, timestamp: i64) -> bool {
+    pub(super) fn maybe_peer_backoff(
+        &self,
+        peer: &ResolvedSyncPeerAddress,
+        timestamp: i64,
+    ) -> Option<PeerRetryState> {
         let key = peer.endpoint.to_string();
         self.peer_backoff
             .get(&key)
-            .is_none_or(|state| state.next_attempt_unix_seconds <= timestamp)
+            .copied()
+            .filter(|state| state.next_attempt_unix_seconds > timestamp)
     }
 
     pub(super) fn mark_backoff(&mut self, peer: &ResolvedSyncPeerAddress, timestamp: i64) {

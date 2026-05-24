@@ -1,6 +1,6 @@
 # Operator Runtime Guide
 
-This guide describes the current v1.2 operator workflow for Open Bitcoin on
+This guide describes the current v1.3 operator workflow for Open Bitcoin on
 macOS and Linux. It is intentionally conservative: the runtime is source-built,
 service integration is local-machine only, migration remains dry-run only, and
 release readiness stays evidence-based rather than timing-threshold based.
@@ -126,7 +126,8 @@ Important boundaries:
 - `sync.dns_seeds` overrides the default mainnet seed list. Set it to an empty
   array if you want manual peers only for deterministic or controlled testing.
 - `sync.target_outbound_peers` caps how many successful outbound peer slots a
-  sync round tries to satisfy before moving on.
+  sync round tries to satisfy before moving on. Sync status reports this target
+  separately from the observed outbound peer count.
 - `sync.network_enabled = true` without `sync.mode = "mainnet-ibd"` is rejected
   so partial config does not accidentally activate public-network behavior.
 - Activation is rejected on `-regtest`, `-signet`, or `-testnet`; this Phase 35
@@ -270,6 +271,10 @@ Interpretation guidance:
 - Sync-focused status now includes lifecycle (`active`, `paused`,
   `recovering`, `failed`, or `stopped`), current phase, lag, resource pressure,
   recovery guidance, and the last sync error when durable state is available.
+- Recent peer telemetry can show peers as `connected`, `stalled`, `waiting`, or
+  `failed`. A `waiting` peer with failure reason `retry_backoff` means the
+  runtime is preserving the backoff window and trying other eligible peers when
+  they are available.
 - The `build` section stays compile-time truthful across supported local build
   paths: Cargo builds surface Cargo metadata, while Bazel builds surface the
   workspace version plus Bazel target and compilation-mode identifiers.
