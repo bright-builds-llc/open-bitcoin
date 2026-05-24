@@ -85,34 +85,34 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PROOF-01 | TBD | Pending |
-| PROOF-02 | TBD | Pending |
-| PROOF-03 | TBD | Pending |
-| PROOF-04 | TBD | Pending |
-| PROOF-05 | TBD | Pending |
-| PROOF-06 | TBD | Pending |
-| PEER-01 | TBD | Pending |
-| PEER-02 | TBD | Pending |
-| PEER-03 | TBD | Pending |
-| PEER-04 | TBD | Pending |
-| NODE-01 | TBD | Pending |
-| NODE-02 | TBD | Pending |
-| NODE-03 | TBD | Pending |
-| NODE-04 | TBD | Pending |
-| NODE-05 | TBD | Pending |
-| OBS-01 | TBD | Pending |
-| OBS-02 | TBD | Pending |
-| OBS-03 | TBD | Pending |
-| OBS-04 | TBD | Pending |
-| SEC-01 | TBD | Pending |
-| SEC-02 | TBD | Pending |
-| SEC-03 | TBD | Pending |
+| PROOF-01 | Phase 42 | Pending |
+| PROOF-02 | Phase 42 | Pending |
+| PROOF-03 | Phase 50 | Pending |
+| PROOF-04 | Phase 50 | Pending |
+| PROOF-05 | Phase 50 | Pending |
+| PROOF-06 | Phase 49 | Pending |
+| PEER-01 | Phase 42 | Pending |
+| PEER-02 | Phase 43 | Pending |
+| PEER-03 | Phase 44 | Pending |
+| PEER-04 | Phase 43 | Pending |
+| NODE-01 | Phase 45 | Pending |
+| NODE-02 | Phase 46 | Pending |
+| NODE-03 | Phase 46 | Pending |
+| NODE-04 | Phase 45 | Pending |
+| NODE-05 | Phase 46 | Pending |
+| OBS-01 | Phase 47 | Pending |
+| OBS-02 | Phase 47 | Pending |
+| OBS-03 | Phase 48 | Pending |
+| OBS-04 | Phase 48 | Pending |
+| SEC-01 | Phase 49 | Pending |
+| SEC-02 | Phase 49 | Pending |
+| SEC-03 | Phase 50 | Pending |
 
 **Coverage:**
 - v1.3 requirements: 22 total
-- Mapped to phases: 0
-- Unmapped: 22
+- Mapped to phases: 22
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-05-24*
-*Last updated: 2026-05-24 after initial definition*
+*Last updated: 2026-05-24 after roadmap creation*
