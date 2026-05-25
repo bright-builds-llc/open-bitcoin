@@ -24,7 +24,7 @@ gate.
 
 - [x] **Phase 42: Live Smoke Entry and Network Preflight** - Make opt-in live smoke prerequisites and endpoint outcomes explicit before sync.
 - [x] **Phase 43: Outbound Peer Resilience** - Keep daemon sync alive and truthful while public peers fail, stall, disconnect, or provide bad data.
-- [ ] **Phase 44: Peer Contribution Attribution** - Attribute header and block progress to useful peers instead of idle or failing peers.
+- [x] **Phase 44: Peer Contribution Attribution** - Attribute header and block progress to useful peers instead of idle or failing peers. (completed 2026-05-25)
 - [ ] **Phase 45: Runtime Resource Bounds and Store Coordination** - Keep long public-network runs bounded and single-writer safe.
 - [ ] **Phase 46: Durable Recovery and Invalid Data Handling** - Resume after partial work and reject invalid peer data without advancing chainstate.
 - [ ] **Phase 47: Operator Sync Truth Surfaces** - Keep status, dashboard, metrics, logs, and RPC surfaces consistent during sync.
@@ -65,7 +65,9 @@ gate.
   2. Idle peers are visible as idle rather than counted as useful sync progress.
   3. Failing peers retain last activity and failure reason separate from contributed progress.
   4. Peer contribution data remains available to live smoke and support evidence flows.
-**Plans**: TBD
+**Plans**: 1/1 plans complete
+Plans:
+- [x] 44-01-PLAN.md — Validation-gated peer contribution telemetry and live-smoke evidence.
 
 ### Phase 45: Runtime Resource Bounds and Store Coordination
 **Goal**: Public-network sync stays within documented resource limits and preserves single-writer durable-store coordination during operator controls.
@@ -160,7 +162,7 @@ Detailed phase execution history is archived under
 |-------|----------------|--------|-----------|
 | 42. Live Smoke Entry and Network Preflight | 1/1 | Complete | 2026-05-24 |
 | 43. Outbound Peer Resilience | 1/1 | Complete | 2026-05-24 |
-| 44. Peer Contribution Attribution | 0/TBD | Not started | - |
+| 44. Peer Contribution Attribution | 1/1 | Complete    | 2026-05-25 |
 | 45. Runtime Resource Bounds and Store Coordination | 0/TBD | Not started | - |
 | 46. Durable Recovery and Invalid Data Handling | 0/TBD | Not started | - |
 | 47. Operator Sync Truth Surfaces | 0/TBD | Not started | - |

@@ -6,7 +6,7 @@
 // - packages/bitcoin-knots/src/node/blockstorage.cpp
 
 use open_bitcoin_core::primitives::NetworkAddress;
-use open_bitcoin_network::{LocalPeerConfig, ServiceFlags, WireNetworkMessage};
+use open_bitcoin_network::{LocalPeerConfig, ServiceFlags};
 
 use crate::{
     logging::{StructuredLogError, StructuredLogLevel},
@@ -38,6 +38,7 @@ pub(super) struct PeerFailure {
     pub(super) error: super::SyncRuntimeError,
     pub(super) attempts: u8,
     pub(super) reason: PeerFailureReason,
+    pub(super) maybe_progress: Option<PeerProgress>,
 }
 
 impl PeerProgress {
@@ -56,16 +57,17 @@ impl PeerProgress {
         }
     }
 
-    pub(super) fn record_message(&mut self, message: &WireNetworkMessage) {
-        match message {
-            WireNetworkMessage::Headers(headers) => {
-                self.headers_received += headers.headers.len();
-            }
-            WireNetworkMessage::Block(_) => {
-                self.blocks_received += 1;
-            }
-            _ => {}
-        }
+    pub(super) fn record_activity(&mut self, timestamp: i64) {
+        self.messages_processed += 1;
+        self.maybe_last_activity_unix_seconds = Some(u64::try_from(timestamp).unwrap_or(0));
+    }
+
+    pub(super) fn record_validated_headers(&mut self, count: usize) {
+        self.headers_received += count;
+    }
+
+    pub(super) fn record_accepted_block(&mut self) {
+        self.blocks_received += 1;
     }
 
     pub(super) fn into_outcome(self, maybe_error: Option<String>) -> PeerSyncOutcome {
@@ -85,6 +87,16 @@ impl PeerProgress {
             maybe_failure_reason: self.maybe_failure_reason,
             maybe_error,
         }
+    }
+
+    pub(super) fn into_failed_outcome(
+        mut self,
+        reason: PeerFailureReason,
+        maybe_error: Option<String>,
+    ) -> PeerSyncOutcome {
+        self.state = PeerSyncState::Failed;
+        self.maybe_failure_reason = Some(reason);
+        self.into_outcome(maybe_error)
     }
 }
 

@@ -145,6 +145,39 @@ cat <<'JSON'
         "state": "available",
         "value": [
           {
+            "peer": "198.51.100.10:8333",
+            "source": "manual",
+            "state": "connected",
+            "network": "mainnet",
+            "attempts": 1,
+            "maybe_resolved_endpoint": {
+              "state": "available",
+              "value": "198.51.100.10:8333"
+            },
+            "capabilities": {
+              "state": "available",
+              "value": "services=9 start_height=1 wtxidrelay=true prefers_headers=true user_agent=/open-bitcoin-test/"
+            },
+            "headers_received": 2,
+            "blocks_received": 1,
+            "maybe_last_activity_unix_seconds": {
+              "state": "available",
+              "value": 1777225100
+            },
+            "failure_reason": {
+              "state": "unavailable",
+              "value": {
+                "reason": "peer healthy"
+              }
+            },
+            "error": {
+              "state": "unavailable",
+              "value": {
+                "reason": "peer healthy"
+              }
+            }
+          },
+          {
             "peer": "127.0.0.1:8333",
             "source": "manual",
             "state": "failed",
@@ -214,6 +247,57 @@ grep -q "manual_peer" "$report_markdown"
 grep -q "Header delta: 1" "$report_markdown"
 
 set +e
+bun run scripts/run-live-mainnet-smoke.ts \
+	--datadir="$existing_datadir" \
+	--output-dir="$output_dir" \
+	--timeout-seconds=2junk >/dev/null 2>"$tmp_dir/invalid-timeout.stderr"
+status=$?
+set -e
+
+if [[ "$status" -eq 0 ]]; then
+	echo "expected invalid timeout smoke run to fail" >&2
+	exit 1
+fi
+
+grep -q -- "--timeout-seconds must be a positive integer" "$tmp_dir/invalid-timeout.stderr"
+
+set +e
+bun run scripts/run-live-mainnet-smoke.ts \
+	--datadir="$existing_datadir" \
+	--manual-peer=127.0.0.1:8333junk \
+	--output-dir="$output_dir" >/dev/null 2>"$tmp_dir/invalid-peer.stderr"
+status=$?
+set -e
+
+if [[ "$status" -eq 0 ]]; then
+	echo "expected invalid peer port smoke run to fail" >&2
+	exit 1
+fi
+
+grep -q "invalid peer port" "$tmp_dir/invalid-peer.stderr"
+
+injection_marker="$tmp_dir/command-injection-marker"
+malicious_daemon="missing-daemon\"; touch \"$injection_marker\"; #"
+set +e
+OPEN_BITCOIN_LIVE_SMOKE_DAEMON_BIN="$malicious_daemon" \
+OPEN_BITCOIN_LIVE_SMOKE_STATUS_BIN="$tmp_dir/mock-status.sh" \
+OPEN_BITCOIN_LIVE_SMOKE_SKIP_DISK_CHECK=1 \
+bun run scripts/run-live-mainnet-smoke.ts \
+	--datadir="$existing_datadir" \
+	--output-dir="$output_dir" >/dev/null 2>"$tmp_dir/command-injection.stderr"
+status=$?
+set -e
+
+if [[ "$status" -eq 0 ]]; then
+	echo "expected injected command smoke run to fail" >&2
+	exit 1
+fi
+if [[ -e "$injection_marker" ]]; then
+	echo "command existence preflight executed shell metacharacters" >&2
+	exit 1
+fi
+
+set +e
 OPEN_BITCOIN_LIVE_SMOKE_DAEMON_BIN="$tmp_dir/mock-daemon.sh" \
 OPEN_BITCOIN_LIVE_SMOKE_STATUS_BIN="$tmp_dir/mock-status.sh" \
 OPEN_BITCOIN_LIVE_SMOKE_SKIP_DISK_CHECK=1 \
@@ -253,6 +337,9 @@ fi
 
 grep -q '"status": "no_progress"' "$report_json"
 grep -q '"maybeNoProgressCause": "tcp_connection_failure"' "$report_json"
+grep -q '"headersReceived": 2' "$report_json"
+grep -q '"blocksReceived": 1' "$report_json"
+grep -q "Runtime Peer Contributions" "$report_markdown"
 grep -q "typed no-progress cause: tcp_connection_failure" "$tmp_dir/no-progress.stderr"
 
 set +e

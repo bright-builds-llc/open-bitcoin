@@ -275,6 +275,12 @@ Interpretation guidance:
   `failed`. A `waiting` peer with failure reason `retry_backoff` means the
   runtime is preserving the backoff window and trying other eligible peers when
   they are available.
+- Per-peer `headers_received` and `blocks_received` are validation-gated
+  contribution counters. `messages_processed` and last-activity timestamps show
+  peer activity, but they do not by themselves mean the peer advanced useful
+  sync progress. Idle, stalled, waiting, or failed peers with zero contribution
+  are still useful diagnosis rows because they preserve state, attempts, last
+  activity when available, and failure reason separately from useful progress.
 - The `build` section stays compile-time truthful across supported local build
   paths: Cargo builds surface Cargo metadata, while Bazel builds surface the
   workspace version plus Bazel target and compilation-mode identifiers.
@@ -355,6 +361,9 @@ Live smoke behavior:
   including whether each preflight/runtime endpoint was resolved, connected,
   handshook, failed, or skipped. Preflight TCP checks are diagnostic and remain
   separate from daemon runtime peer telemetry.
+- Its final report also includes runtime peer contribution rows from durable
+  peer telemetry so support review can distinguish reachable or active peers
+  from peers that actually supplied accepted headers or preserved blocks.
 - It times out cleanly with typed no-progress guidance when outbound DNS or TCP
   access, handshake/capability checks, validation, storage, or runtime progress
   are insufficient.
@@ -379,6 +388,8 @@ The generated reports now record:
 - the live-smoke command path, poll interval, timeout, and preflight outcome
 - the live-smoke manual peers, generated config path when used, endpoint
   outcome table, typed no-progress cause, and suggested next action
+- the final runtime peer contribution table, including peer state, accepted
+  header/block counters, last activity, failure reason, and error fields
 - the live-smoke status snapshots and daemon stderr/stdout tail for support
   review
 - the benchmark mode and iteration count

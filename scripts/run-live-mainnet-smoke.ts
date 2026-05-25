@@ -212,6 +212,8 @@ type RuntimePeerTelemetryJson = {
 
 type RuntimePeerTelemetry = {
   attempts: number;
+  blocksReceived: number;
+  headersReceived: number;
   maybeCapabilities: string | null;
   maybeError: string | null;
   maybeFailureReason: string | null;
@@ -339,7 +341,10 @@ function parsePeerAddress(value: string): PeerAddress {
 }
 
 function parsePort(value: string, address: string): number {
-  const parsed = Number.parseInt(value, 10);
+  if (!/^[0-9]+$/.test(value)) {
+    throw new Error(`invalid peer port in ${address}`);
+  }
+  const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed <= 0 || parsed > 65_535) {
     throw new Error(`invalid peer port in ${address}`);
   }
@@ -347,7 +352,10 @@ function parsePort(value: string, address: string): number {
 }
 
 function parsePositiveInteger(value: string, label: string): number {
-  const parsed = Number.parseInt(value, 10);
+  if (!/^[0-9]+$/.test(value)) {
+    throw new Error(`${label} must be a positive integer`);
+  }
+  const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed <= 0) {
     throw new Error(`${label} must be a positive integer`);
   }
@@ -407,9 +415,13 @@ function repoRoot(): string {
 
 function commandExists(command: string): boolean {
   try {
-    execFileSync("sh", ["-c", `command -v "${command}" >/dev/null 2>&1`], {
-      stdio: "ignore",
-    });
+    execFileSync(
+      "sh",
+      ["-c", 'command -v "$1" >/dev/null 2>&1', "sh", command],
+      {
+        stdio: "ignore",
+      },
+    );
     return true;
   } catch {
     return false;
@@ -818,7 +830,7 @@ function tcpConnect(
 
 function ensureBuiltBinaries(repoRootPath: string): void {
   if (
-    process.env.OPEN_BITCOIN_LIVE_SMOKE_DAEMON_BIN !== undefined ||
+    process.env.OPEN_BITCOIN_LIVE_SMOKE_DAEMON_BIN !== undefined &&
     process.env.OPEN_BITCOIN_LIVE_SMOKE_STATUS_BIN !== undefined
   ) {
     return;
@@ -1015,6 +1027,8 @@ function readFinalStatus(
 function runtimePeerTelemetry(value: RuntimePeerTelemetryJson): RuntimePeerTelemetry {
   return {
     attempts: Number(value.attempts ?? 0),
+    blocksReceived: Number(value.blocks_received ?? 0),
+    headersReceived: Number(value.headers_received ?? 0),
     maybeCapabilities: valueAsNullableString(availableValue(value.capabilities)),
     maybeError: valueAsNullableString(availableValue(value.error)),
     maybeFailureReason: valueAsNullableString(availableValue(value.failure_reason)),
@@ -1277,6 +1291,15 @@ function markdownReport(report: SmokeReport): string {
               `| ${outcome.stage} | ${outcome.source} | ${escapeTableCell(outcome.address)} | ${outcome.state} | ${escapeTableCell(outcome.maybeResolvedEndpoint ?? "-")} | ${outcome.maybeFailureCause ?? "-"} | ${escapeTableCell(outcome.maybeError ?? "-")} | ${outcome.attemptedAtUnixSeconds} |`,
           )
           .join("\n");
+  const runtimePeerRows =
+    report.final_status?.recentPeers.length === 0 || report.final_status === null
+      ? "| - | - | - | - | - | - | - | - |\n"
+      : report.final_status.recentPeers
+          .map(
+            (peer) =>
+              `| ${escapeTableCell(peer.peer)} | ${peer.source} | ${peer.state} | ${peer.headersReceived} | ${peer.blocksReceived} | ${peer.maybeLastActivityUnixSeconds ?? "-"} | ${escapeTableCell(peer.maybeFailureReason ?? "-")} | ${escapeTableCell(peer.maybeError ?? "-")} |`,
+          )
+          .join("\n");
 
   return `# Open Bitcoin Live Mainnet Smoke Report
 
@@ -1334,6 +1357,12 @@ ${snapshotRows}
 - Messages processed: ${report.final_status?.messagesProcessed ?? 0}
 - Outbound peers: ${report.final_status?.outboundPeers ?? 0}
 - Last error: ${report.final_status?.maybeLastError ?? "Unavailable"}
+
+## Runtime Peer Contributions
+
+| Peer | Source | State | Headers Accepted | Blocks Accepted | Last Activity | Failure Reason | Error |
+| --- | --- | --- | ---: | ---: | ---: | --- | --- |
+${runtimePeerRows}
 
 ## Daemon Output Tail
 

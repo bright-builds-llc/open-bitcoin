@@ -221,7 +221,7 @@ impl DurableSyncRuntime {
             });
         state.consecutive_failures = state.consecutive_failures.saturating_add(1);
         let multiplier = i64::from(state.consecutive_failures);
-        let backoff = i64::try_from(self.config.retry_backoff_ms).unwrap_or(i64::MAX);
+        let backoff = super::retry_backoff_seconds(self.config.retry_backoff_ms);
         state.next_attempt_unix_seconds =
             timestamp.saturating_add(backoff.saturating_mul(multiplier));
         self.peer_backoff.insert(key, state);

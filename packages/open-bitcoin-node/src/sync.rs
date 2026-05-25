@@ -213,9 +213,9 @@ impl DurableSyncRuntime {
         let mut last_summary =
             self.sync_once_with_resolver(transport, resolver, current_timestamp)?;
         let mut previous_progress = progress::sync_progress_marker(&last_summary);
+        let retry_backoff_seconds = retry_backoff_seconds(self.config.retry_backoff_ms);
         for _ in 1..self.config.max_rounds {
-            current_timestamp = current_timestamp
-                .saturating_add(i64::try_from(self.config.retry_backoff_ms).unwrap_or(i64::MAX));
+            current_timestamp = current_timestamp.saturating_add(retry_backoff_seconds);
             let current_summary =
                 self.sync_once_with_resolver(transport, resolver, current_timestamp)?;
             let current_progress = progress::sync_progress_marker(&current_summary);
@@ -243,16 +243,7 @@ impl DurableSyncRuntime {
             attempts = attempts.saturating_add(1);
             match transport.connect(peer, &self.config) {
                 Ok(session) => {
-                    return self
-                        .sync_connected_peer(session, peer, peer_id, attempts, timestamp)
-                        .map_err(|error| {
-                            Box::new(PeerFailure {
-                                peer: peer.clone(),
-                                reason: peer_failure_reason_for_error(&error),
-                                error,
-                                attempts,
-                            })
-                        });
+                    return self.sync_connected_peer(session, peer, peer_id, attempts, timestamp);
                 }
                 Err(error) if attempts < max_attempts => {
                     let _ = error;
@@ -263,6 +254,7 @@ impl DurableSyncRuntime {
                         reason: peer_failure_reason_for_error(&error),
                         error,
                         attempts,
+                        maybe_progress: None,
                     }));
                 }
             }
@@ -276,26 +268,27 @@ impl DurableSyncRuntime {
         peer_id: PeerId,
         attempts: u8,
         timestamp: i64,
-    ) -> Result<PeerProgress, SyncRuntimeError> {
-        let result = (|| -> Result<PeerProgress, SyncRuntimeError> {
+    ) -> Result<PeerProgress, Box<PeerFailure>> {
+        let mut progress = PeerProgress::new(peer.clone(), self.config.network, attempts);
+        let result = (|| -> Result<(), SyncRuntimeError> {
             let mut outbound = self.network.connect_outbound_peer(peer_id, timestamp)?;
             outbound.extend(block_reconcile::request_missing_blocks(self, peer_id)?);
             self.send_all(&mut session, &outbound)?;
 
-            let mut progress = PeerProgress::new(peer.clone(), self.config.network, attempts);
             for _ in 0..self.config.max_messages_per_peer {
                 let Some(message) = session.receive(self.config.network.magic())? else {
                     progress.state = PeerSyncState::Stalled;
                     progress.maybe_failure_reason = Some(PeerFailureReason::Stall);
                     progress.maybe_capabilities = self.peer_capabilities(peer_id);
-                    return Ok(progress);
+                    return Ok(());
                 };
-                progress.messages_processed += 1;
-                progress.maybe_last_activity_unix_seconds =
-                    Some(u64::try_from(timestamp).unwrap_or(0));
-                progress.record_message(&message);
+                progress.record_activity(timestamp);
                 block_reconcile::release_inflight_for_message(self, &message);
 
+                let maybe_header_count = match &message {
+                    WireNetworkMessage::Headers(headers) => Some(headers.headers.len()),
+                    _ => None,
+                };
                 let maybe_block = match &message {
                     WireNetworkMessage::Block(block) => Some(block.clone()),
                     _ => None,
@@ -307,10 +300,14 @@ impl DurableSyncRuntime {
                     self.verify_flags,
                     self.consensus_params,
                 )?;
+                if let Some(header_count) = maybe_header_count {
+                    progress.record_validated_headers(header_count);
+                }
                 if let Some(block) = maybe_block {
                     self.store.save_block(&block, self.config.persist_mode)?;
                     self.network
                         .note_local_block_hash(block_hash(&block.header));
+                    progress.record_accepted_block();
                 }
                 let _ = block_reconcile::reconcile_best_chain(self, timestamp)?;
                 self.persist_progress()?;
@@ -320,7 +317,7 @@ impl DurableSyncRuntime {
             progress.state = PeerSyncState::Connected;
             progress.maybe_capabilities = self.peer_capabilities(peer_id);
 
-            Ok(progress)
+            Ok(())
         })();
         let outstanding_blocks = self
             .network
@@ -331,9 +328,32 @@ impl DurableSyncRuntime {
         }
         let disconnect_result = self.network.disconnect_peer(peer_id);
         match (result, disconnect_result) {
-            (Ok(progress), Ok(())) => Ok(progress),
-            (Ok(_), Err(error)) => Err(SyncRuntimeError::from(error)),
-            (Err(error), _) => Err(error),
+            (Ok(()), Ok(())) => Ok(progress),
+            (Ok(()), Err(error)) => {
+                let error = SyncRuntimeError::from(error);
+                if progress.maybe_capabilities.is_none() {
+                    progress.maybe_capabilities = self.peer_capabilities(peer_id);
+                }
+                Err(Box::new(PeerFailure {
+                    peer: peer.clone(),
+                    reason: peer_failure_reason_for_error(&error),
+                    error,
+                    attempts,
+                    maybe_progress: Some(progress),
+                }))
+            }
+            (Err(error), _) => {
+                if progress.maybe_capabilities.is_none() {
+                    progress.maybe_capabilities = self.peer_capabilities(peer_id);
+                }
+                Err(Box::new(PeerFailure {
+                    peer: peer.clone(),
+                    reason: peer_failure_reason_for_error(&error),
+                    error,
+                    attempts,
+                    maybe_progress: Some(progress),
+                }))
+            }
         }
     }
 
@@ -346,7 +366,7 @@ impl DurableSyncRuntime {
         match outcome {
             Ok(progress) => {
                 self.clear_backoff(&progress.peer);
-                summary.connected_peers += usize::from(progress.state != PeerSyncState::Failed);
+                summary.connected_peers += usize::from(progress.state == PeerSyncState::Connected);
                 summary.messages_processed += progress.messages_processed;
                 summary.headers_received += progress.headers_received;
                 summary.blocks_received += progress.blocks_received;
@@ -365,22 +385,34 @@ impl DurableSyncRuntime {
                 let signal = failure.error.health_signal();
                 let message = signal.message.clone();
                 summary.health_signals.push(signal);
-                summary.peer_outcomes.push(PeerSyncOutcome {
-                    peer: failure.peer.peer,
-                    maybe_resolved_endpoint: Some(failure.peer.endpoint.to_string()),
-                    network: self.config.network,
-                    state: PeerSyncState::Failed,
-                    attempts: failure.attempts,
-                    contribution: PeerContribution {
-                        messages_processed: 0,
-                        headers_received: 0,
-                        blocks_received: 0,
-                    },
-                    maybe_last_activity_unix_seconds: None,
-                    maybe_capabilities: None,
-                    maybe_failure_reason: Some(failure.reason),
-                    maybe_error: Some(message),
-                });
+                if let Some(progress) = failure.maybe_progress {
+                    summary.messages_processed += progress.messages_processed;
+                    summary.headers_received += progress.headers_received;
+                    summary.blocks_received += progress.blocks_received;
+                    let (best_header_height, best_block_height) = self.best_heights();
+                    summary.best_header_height = best_header_height;
+                    summary.best_block_height = best_block_height;
+                    summary
+                        .peer_outcomes
+                        .push(progress.into_failed_outcome(failure.reason, Some(message)));
+                } else {
+                    summary.peer_outcomes.push(PeerSyncOutcome {
+                        peer: failure.peer.peer,
+                        maybe_resolved_endpoint: Some(failure.peer.endpoint.to_string()),
+                        network: self.config.network,
+                        state: PeerSyncState::Failed,
+                        attempts: failure.attempts,
+                        contribution: PeerContribution {
+                            messages_processed: 0,
+                            headers_received: 0,
+                            blocks_received: 0,
+                        },
+                        maybe_last_activity_unix_seconds: None,
+                        maybe_capabilities: None,
+                        maybe_failure_reason: Some(failure.reason),
+                        maybe_error: Some(message),
+                    });
+                }
             }
         }
     }
@@ -441,4 +473,9 @@ fn peer_failure_reason_for_error(error: &SyncRuntimeError) -> PeerFailureReason 
         | SyncRuntimeError::NoPeersConfigured
         | SyncRuntimeError::ResourceLimit { .. } => PeerFailureReason::Network,
     }
+}
+
+fn retry_backoff_seconds(retry_backoff_ms: u64) -> i64 {
+    let seconds = retry_backoff_ms.div_ceil(1_000).max(1);
+    i64::try_from(seconds).unwrap_or(i64::MAX)
 }
