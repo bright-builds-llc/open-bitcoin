@@ -93,6 +93,18 @@ pub enum SyncLifecycleState {
     Stopped,
 }
 
+/// Progress signal derived from the latest durable sync run.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SyncProgressSignal {
+    HeaderProgress,
+    BlockProgress,
+    WaitingForPeers,
+    PeerFailures,
+    AwaitingBlocks,
+    Steady,
+}
+
 /// Remaining sync lag relative to the best known validated work.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SyncLagStatus {
@@ -122,7 +134,9 @@ pub struct SyncStatus {
     pub sync_progress: FieldAvailability<SyncProgress>,
     pub lifecycle: FieldAvailability<SyncLifecycleState>,
     pub phase: FieldAvailability<String>,
+    pub progress_signal: FieldAvailability<SyncProgressSignal>,
     pub lag: FieldAvailability<SyncLagStatus>,
+    pub last_successful_progress_unix_seconds: FieldAvailability<u64>,
     pub last_error: FieldAvailability<String>,
     pub recovery_action: FieldAvailability<String>,
     pub resource_pressure: FieldAvailability<SyncResourcePressure>,
@@ -266,8 +280,8 @@ mod tests {
         BuildProvenance, ChainTipStatus, ConfigStatus, FieldAvailability, HealthSignal,
         HealthSignalLevel, MempoolStatus, NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot,
         PeerCounts, PeerStatus, PeerTelemetry, ServiceStatus, SyncLagStatus, SyncLifecycleState,
-        SyncProgress, SyncResourcePressure, SyncStatus, WalletFreshness, WalletScanProgress,
-        WalletStatus,
+        SyncProgress, SyncProgressSignal, SyncResourcePressure, SyncStatus, WalletFreshness,
+        WalletScanProgress, WalletStatus,
     };
     use crate::{LogStatus, MetricsStatus};
 
@@ -309,7 +323,12 @@ mod tests {
         assert_eq!(encoded["sync"]["sync_progress"]["state"], "unavailable");
         assert_eq!(encoded["sync"]["lifecycle"]["state"], "unavailable");
         assert_eq!(encoded["sync"]["phase"]["state"], "unavailable");
+        assert_eq!(encoded["sync"]["progress_signal"]["state"], "unavailable");
         assert_eq!(encoded["sync"]["lag"]["state"], "unavailable");
+        assert_eq!(
+            encoded["sync"]["last_successful_progress_unix_seconds"]["state"],
+            "unavailable"
+        );
         assert_eq!(encoded["sync"]["last_error"]["state"], "unavailable");
         assert_eq!(encoded["sync"]["recovery_action"]["state"], "unavailable");
         assert_eq!(encoded["sync"]["resource_pressure"]["state"], "unavailable");
@@ -367,10 +386,12 @@ mod tests {
                 }),
                 lifecycle: FieldAvailability::available(SyncLifecycleState::Active),
                 phase: FieldAvailability::available("block_download".to_string()),
+                progress_signal: FieldAvailability::available(SyncProgressSignal::BlockProgress),
                 lag: FieldAvailability::available(SyncLagStatus {
                     headers_remaining: 0,
                     blocks_remaining: 1,
                 }),
+                last_successful_progress_unix_seconds: FieldAvailability::available(1_715_000_000),
                 last_error: FieldAvailability::unavailable("no sync error recorded"),
                 recovery_action: FieldAvailability::unavailable("no recovery action required"),
                 resource_pressure: FieldAvailability::available(SyncResourcePressure {
@@ -444,7 +465,15 @@ mod tests {
         );
         assert_eq!(encoded["sync"]["lifecycle"]["value"], "active");
         assert_eq!(encoded["sync"]["phase"]["value"], "block_download");
+        assert_eq!(
+            encoded["sync"]["progress_signal"]["value"],
+            "block_progress"
+        );
         assert_eq!(encoded["sync"]["lag"]["value"]["blocks_remaining"], 1);
+        assert_eq!(
+            encoded["sync"]["last_successful_progress_unix_seconds"]["value"],
+            1_715_000_000
+        );
         assert_eq!(encoded["peers"]["peer_counts"]["value"]["outbound"], 8);
         assert_eq!(
             encoded["peers"]["recent_peers"]["value"][0]["source"],
@@ -540,7 +569,9 @@ mod tests {
                 sync_progress: FieldAvailability::unavailable(unavailable),
                 lifecycle: FieldAvailability::unavailable(unavailable),
                 phase: FieldAvailability::unavailable(unavailable),
+                progress_signal: FieldAvailability::unavailable(unavailable),
                 lag: FieldAvailability::unavailable(unavailable),
+                last_successful_progress_unix_seconds: FieldAvailability::unavailable(unavailable),
                 last_error: FieldAvailability::unavailable(unavailable),
                 recovery_action: FieldAvailability::unavailable(unavailable),
                 resource_pressure: FieldAvailability::unavailable(unavailable),

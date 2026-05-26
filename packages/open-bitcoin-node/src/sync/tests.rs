@@ -31,7 +31,8 @@ use crate::{
     StorageError, StorageNamespace,
     logging::{StructuredLogLevel, StructuredLogRecord, writer::load_log_status},
     status::{
-        HealthSignal, HealthSignalLevel, SyncLifecycleState, SyncProgress, SyncResourcePressure,
+        HealthSignal, HealthSignalLevel, SyncLifecycleState, SyncProgress, SyncProgressSignal,
+        SyncResourcePressure,
     },
 };
 
@@ -379,10 +380,58 @@ fn sync_summary_projects_metric_samples() {
         samples,
         vec![
             MetricSample::new(MetricKind::HeaderHeight, 42.0, 1_777_225_022),
+            MetricSample::new(MetricKind::DownloadedBlockHeight, 41.0, 1_777_225_022),
+            MetricSample::new(MetricKind::ConnectedBlockHeight, 40.0, 1_777_225_022),
             MetricSample::new(MetricKind::SyncHeight, 40.0, 1_777_225_022),
             MetricSample::new(MetricKind::PeerCount, 1.0, 1_777_225_022),
         ]
     );
+}
+
+#[test]
+fn sync_summary_projects_progress_signal_and_last_successful_timestamp() {
+    // Arrange
+    let mut outcome = peer_outcome(
+        SyncPeerAddress::manual("127.0.0.1", 18_444),
+        PeerSyncState::Connected,
+        1,
+        None,
+        None,
+    );
+    outcome.contribution.headers_received = 2;
+    outcome.maybe_last_activity_unix_seconds = Some(1_777_225_099);
+    let summary = SyncRunSummary {
+        target_outbound_peers: 1,
+        attempted_peers: 1,
+        connected_peers: 1,
+        failed_peers: 0,
+        messages_processed: 3,
+        headers_received: 2,
+        blocks_received: 0,
+        best_header_height: 42,
+        downloaded_block_height: 0,
+        best_block_height: 0,
+        peer_outcomes: vec![outcome],
+        health_signals: Vec::new(),
+    };
+
+    // Act
+    let sync_status = summary.sync_status(SyncNetwork::Regtest);
+    let records = summary.structured_log_records(1_777_225_100);
+
+    // Assert
+    assert_eq!(
+        sync_status.progress_signal,
+        FieldAvailability::available(SyncProgressSignal::HeaderProgress)
+    );
+    assert_eq!(
+        sync_status.last_successful_progress_unix_seconds,
+        FieldAvailability::available(1_777_225_099)
+    );
+    assert!(records.iter().any(|record| {
+        record.message.contains("signal=header_progress")
+            && record.message.contains("last_progress=1777225099")
+    }));
 }
 
 #[test]
@@ -450,8 +499,11 @@ fn sync_summary_projects_structured_log_records() {
         .expect("sync summary log record");
     assert!(summary_record.message.contains("headers_received=4"));
     assert!(summary_record.message.contains("blocks_received=2"));
-    assert!(summary_record.message.contains("best_header_height=44"));
-    assert!(summary_record.message.contains("best_block_height=43"));
+    assert!(summary_record.message.contains("header=44"));
+    assert!(summary_record.message.contains("downloaded=44"));
+    assert!(summary_record.message.contains("connected=43"));
+    assert!(summary_record.message.contains("signal=block_progress"));
+    assert!(summary_record.message.contains("last_progress=unavailable"));
     assert!(records.iter().any(|record| {
         record.level == StructuredLogLevel::Warn
             && record.source == "sync"
@@ -517,6 +569,14 @@ fn sync_summary_status_projections_include_counters() {
             blocks_received: 5,
         })
     );
+    assert_eq!(
+        sync_status.progress_signal,
+        FieldAvailability::available(SyncProgressSignal::BlockProgress)
+    );
+    assert!(matches!(
+        sync_status.last_successful_progress_unix_seconds,
+        FieldAvailability::Unavailable { .. }
+    ));
     assert_eq!(
         peer_status.peer_counts,
         FieldAvailability::available(crate::status::PeerCounts {
@@ -1003,6 +1063,10 @@ fn sync_status_and_log_records_include_message_header_block_counters() {
             && record.message.contains("messages_processed=4")
             && record.message.contains("headers_received=1")
             && record.message.contains("blocks_received=1")
+            && record.message.contains("header=0")
+            && record.message.contains("downloaded=0")
+            && record.message.contains("connected=0")
+            && record.message.contains("signal=block_progress")
     }));
 
     remove_dir_if_exists(&path);

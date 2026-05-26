@@ -317,6 +317,21 @@ impl DurableSyncRuntime {
                 FieldAvailability::Unavailable { .. } => "steady_state".to_string(),
             },
         });
+        if let FieldAvailability::Unavailable { .. } = sync.last_successful_progress_unix_seconds
+            && let Some(previous_timestamp) =
+                metadata
+                    .maybe_sync_state
+                    .as_ref()
+                    .and_then(|previous_state| {
+                        match &previous_state.sync.last_successful_progress_unix_seconds {
+                            FieldAvailability::Available(value) => Some(*value),
+                            FieldAvailability::Unavailable { .. } => None,
+                        }
+                    })
+        {
+            sync.last_successful_progress_unix_seconds =
+                FieldAvailability::available(previous_timestamp);
+        }
         sync.last_error = match maybe_last_error {
             Some(value) => FieldAvailability::available(value),
             None => FieldAvailability::unavailable("no sync error recorded"),

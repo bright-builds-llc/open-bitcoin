@@ -27,7 +27,7 @@ gate.
 - [x] **Phase 44: Peer Contribution Attribution** - Attribute header and block progress to useful peers instead of idle or failing peers. (completed 2026-05-25)
 - [x] **Phase 45: Runtime Resource Bounds and Store Coordination** - Keep long public-network runs bounded and single-writer safe. (completed 2026-05-26)
 - [x] **Phase 46: Durable Recovery and Invalid Data Handling** - Resume after partial work and reject invalid peer data without advancing chainstate. (completed 2026-05-26)
-- [ ] **Phase 47: Operator Sync Truth Surfaces** - Keep status, dashboard, metrics, logs, and RPC surfaces consistent during sync.
+- [x] **Phase 47: Operator Sync Truth Surfaces** - Keep status, dashboard, metrics, logs, and RPC surfaces consistent during sync. (completed 2026-05-26)
 - [ ] **Phase 48: Support Evidence and Operator Runbooks** - Produce redacted support evidence and repo-local operator instructions.
 - [ ] **Phase 49: Threat Model and Release Boundaries** - Refresh v1.3 security analysis and scoped parity/release claims.
 - [ ] **Phase 50: Public Mainnet Progress Evidence Closeout** - Capture header, block, and restart/resume proof or diagnose the blocker.
@@ -102,7 +102,8 @@ Plans:
   2. Status, dashboard, metrics, structured logs, and RPC blockchain info agree on current progress and failure state.
   3. No operator surface implies full sync until validated chainstate reaches the selected tip.
   4. Status remains useful during active, paused, resumed, stopped, failed, and recovering sync states.
-**Plans**: TBD
+**Plans**:
+  - [x] 47-01-PLAN.md — Operator sync truth surfaces.
 **UI hint**: yes
 
 ### Phase 48: Support Evidence and Operator Runbooks
@@ -167,7 +168,7 @@ Detailed phase execution history is archived under
 | 44. Peer Contribution Attribution | 1/1 | Complete    | 2026-05-25 |
 | 45. Runtime Resource Bounds and Store Coordination | 1/1 | Complete | 2026-05-26 |
 | 46. Durable Recovery and Invalid Data Handling | 1/1 | Complete | 2026-05-26 |
-| 47. Operator Sync Truth Surfaces | 0/TBD | Not started | - |
+| 47. Operator Sync Truth Surfaces | 1/1 | Complete    | 2026-05-26 |
 | 48. Support Evidence and Operator Runbooks | 0/TBD | Not started | - |
 | 49. Threat Model and Release Boundaries | 0/TBD | Not started | - |
 | 50. Public Mainnet Progress Evidence Closeout | 0/TBD | Not started | - |
@@ -177,11 +178,11 @@ Detailed phase execution history is archived under
 Gather context for the next v1.3 phase:
 
 ```bash
-/gsd-discuss-phase 44
+/gsd-discuss-phase 48
 ```
 
 To skip discussion and plan directly:
 
 ```bash
-/gsd-plan-phase 44
+/gsd-plan-phase 48
 ```

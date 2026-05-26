@@ -30,8 +30,8 @@ use crate::operator::{
 };
 use open_bitcoin_node::status::{
     BuildProvenance, ConfigStatus, FieldAvailability, MempoolStatus, NodeRuntimeState, NodeStatus,
-    OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, ServiceStatus, SyncStatus, WalletFreshness,
-    WalletScanProgress, WalletStatus,
+    OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, ServiceStatus, SyncProgressSignal,
+    SyncStatus, WalletFreshness, WalletScanProgress, WalletStatus,
 };
 use open_bitcoin_node::{
     FjallNodeStore, PersistMode, WalletRegistry,
@@ -346,7 +346,11 @@ fn human_and_json_renderers_surface_wallet_freshness_and_scan_reasons() {
             sync_progress: FieldAvailability::unavailable("sync unavailable"),
             lifecycle: FieldAvailability::unavailable("sync lifecycle unavailable"),
             phase: FieldAvailability::unavailable("sync phase unavailable"),
+            progress_signal: FieldAvailability::available(SyncProgressSignal::Steady),
             lag: FieldAvailability::unavailable("sync lag unavailable"),
+            last_successful_progress_unix_seconds: FieldAvailability::unavailable(
+                "sync last progress unavailable",
+            ),
             last_error: FieldAvailability::unavailable("sync error unavailable"),
             recovery_action: FieldAvailability::unavailable("sync recovery unavailable"),
             resource_pressure: FieldAvailability::unavailable("sync pressure unavailable"),
@@ -405,6 +409,8 @@ fn human_status_contains_required_labels_and_detection_uncertainty() {
         "Network:",
         "Chain:",
         "Sync:",
+        "Sync signal:",
+        "Sync last progress:",
         "Peers:",
         "Mempool:",
         "Wallet:",

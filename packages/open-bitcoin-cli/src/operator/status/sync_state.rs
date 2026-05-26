@@ -3,7 +3,7 @@
 
 use open_bitcoin_node::{
     DurableSyncState, FjallNodeStore,
-    status::{ChainTipStatus, FieldAvailability, SyncProgress, SyncStatus},
+    status::{ChainTipStatus, FieldAvailability, SyncProgress, SyncProgressSignal, SyncStatus},
 };
 use open_bitcoin_rpc::method::GetBlockchainInfoResponse;
 
@@ -31,7 +31,11 @@ pub(super) fn rpc_sync_status(blockchain_info: &GetBlockchainInfoResponse) -> Sy
         }),
         lifecycle: FieldAvailability::unavailable("daemon sync lifecycle unavailable"),
         phase: FieldAvailability::unavailable("daemon sync phase unavailable"),
+        progress_signal: FieldAvailability::available(rpc_progress_signal(blockchain_info)),
         lag: FieldAvailability::unavailable("daemon sync lag unavailable"),
+        last_successful_progress_unix_seconds: FieldAvailability::unavailable(
+            "daemon sync last successful progress unavailable",
+        ),
         last_error: FieldAvailability::unavailable("daemon sync error unavailable"),
         recovery_action: FieldAvailability::unavailable(
             "daemon sync recovery guidance unavailable",
@@ -49,11 +53,20 @@ pub(super) fn unavailable_sync_status(reason: &str) -> SyncStatus {
         sync_progress: FieldAvailability::unavailable(reason),
         lifecycle: FieldAvailability::unavailable(reason),
         phase: FieldAvailability::unavailable(reason),
+        progress_signal: FieldAvailability::unavailable(reason),
         lag: FieldAvailability::unavailable(reason),
+        last_successful_progress_unix_seconds: FieldAvailability::unavailable(reason),
         last_error: FieldAvailability::unavailable(reason),
         recovery_action: FieldAvailability::unavailable(reason),
         resource_pressure: FieldAvailability::unavailable(reason),
     }
+}
+
+fn rpc_progress_signal(blockchain_info: &GetBlockchainInfoResponse) -> SyncProgressSignal {
+    if blockchain_info.headers > blockchain_info.blocks {
+        return SyncProgressSignal::AwaitingBlocks;
+    }
+    SyncProgressSignal::Steady
 }
 
 pub(super) fn durable_sync_state(

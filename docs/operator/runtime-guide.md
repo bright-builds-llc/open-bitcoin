@@ -145,8 +145,9 @@ Important boundaries:
   wallet requests.
 - `open-bitcoin status`, `open-bitcoin dashboard`, `open-bitcoin sync status`,
   and RPC `getblockchaininfo` read the same durable sync truth for header
-  height, downloaded block height, connected block height, lag, lifecycle,
-  recovery guidance, and last error.
+  height, downloaded block height, connected block height, progress signal,
+  estimated lag, last successful progress, lifecycle, recovery guidance, and
+  last error.
 - `open-bitcoin sync pause` and `open-bitcoin sync resume` toggle the durable
   pause flag without requiring operators to inspect or edit internal store
   files directly.
@@ -195,11 +196,24 @@ or recovery:
 - `sync_progress.connected_block_height` is the active chainstate height.
 - `sync_progress.block_height` remains a compatibility alias for connected
   height.
+- `sync.progress_signal` summarizes the latest useful sync signal:
+  `header_progress`, `block_progress`, `waiting_for_peers`, `peer_failures`,
+  `awaiting_blocks`, or `steady`.
+- `sync.last_successful_progress_unix_seconds` records the most recent accepted
+  header or block contribution time when known.
+- `sync.lag` is the estimated count-based lag between known validated headers
+  and connected chainstate, not a wall-clock ETA.
 - `sync.last_error` records the latest durable runtime or peer failure when one
   was observed.
 - `sync.recovery_action` reports the highest-priority operator action. Storage
   recovery metadata wins over peer guidance because incompatible or corrupt
   stores must be handled before retrying sync.
+
+Metrics and structured logs use the same progress vocabulary. The bounded
+metrics history records `header_height`, `downloaded_block_height`,
+`connected_block_height`, and the compatibility `sync_height`; structured sync
+summary log records include the same heights, progress signal, and last
+successful progress timestamp.
 
 After a partial download or partial connect, restart the daemon or run a bounded
 sync status check against the same datadir:
@@ -361,7 +375,8 @@ Interpretation guidance:
 - `Unavailable` means the collector chose to report absence explicitly instead
   of inventing a default value.
 - Sync-focused status now includes lifecycle (`active`, `paused`,
-  `recovering`, `failed`, or `stopped`), current phase, lag, resource pressure,
+  `recovering`, `failed`, or `stopped`), current phase, progress signal,
+  estimated lag, last successful progress timestamp, resource pressure,
   recovery guidance, and the last sync error when durable state is available.
 - Recent peer telemetry can show peers as `connected`, `stalled`, `waiting`, or
   `failed`. A `waiting` peer with failure reason `retry_backoff` means the

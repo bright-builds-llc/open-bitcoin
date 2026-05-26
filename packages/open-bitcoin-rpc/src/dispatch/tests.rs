@@ -36,7 +36,7 @@ use open_bitcoin_node::{
     },
     status::{
         ChainTipStatus, FieldAvailability, PeerCounts, PeerStatus, SyncLagStatus,
-        SyncLifecycleState, SyncProgress, SyncResourcePressure, SyncStatus,
+        SyncLifecycleState, SyncProgress, SyncProgressSignal, SyncResourcePressure, SyncStatus,
     },
 };
 
@@ -578,10 +578,16 @@ fn blockchain_info_uses_durable_sync_truth_when_available() {
                         }),
                         lifecycle: FieldAvailability::available(SyncLifecycleState::Active),
                         phase: FieldAvailability::available("block_download".to_string()),
+                        progress_signal: FieldAvailability::available(
+                            SyncProgressSignal::AwaitingBlocks,
+                        ),
                         lag: FieldAvailability::available(SyncLagStatus {
                             headers_remaining: 0,
                             blocks_remaining: 100,
                         }),
+                        last_successful_progress_unix_seconds: FieldAvailability::available(
+                            1_715_000_000,
+                        ),
                         last_error: FieldAvailability::available("peer stalled".to_string()),
                         recovery_action: FieldAvailability::available(
                             "Restart the node and retry the storage operation.".to_string(),

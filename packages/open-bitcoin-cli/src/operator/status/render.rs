@@ -8,8 +8,8 @@ use open_bitcoin_node::{
     status::{
         BuildProvenance, ChainTipStatus, FieldAvailability, HealthSignal, HealthSignalLevel,
         NodeRuntimeState, OpenBitcoinStatusSnapshot, PeerCounts, PeerTelemetry, ServiceStatus,
-        SyncLagStatus, SyncLifecycleState, SyncProgress, SyncResourcePressure, WalletFreshness,
-        WalletScanProgress,
+        SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal, SyncResourcePressure,
+        WalletFreshness, WalletScanProgress,
     },
 };
 
@@ -71,8 +71,19 @@ fn render_human_status(snapshot: &OpenBitcoinStatusSnapshot) -> String {
         string_availability(&snapshot.sync.phase)
     ));
     lines.push(format!(
+        "Sync signal: {}",
+        sync_progress_signal_availability(&snapshot.sync.progress_signal)
+    ));
+    lines.push(format!(
         "Sync lag: {}",
         sync_lag_availability(&snapshot.sync.lag)
+    ));
+    lines.push(format!(
+        "Sync last progress: {}",
+        u64_availability(
+            &snapshot.sync.last_successful_progress_unix_seconds,
+            "unix seconds"
+        )
     ));
     lines.push(format!(
         "Sync pressure: {}",
@@ -149,6 +160,13 @@ fn sync_progress_availability(value: &FieldAvailability<SyncProgress>) -> String
 fn sync_lifecycle_availability(value: &FieldAvailability<SyncLifecycleState>) -> String {
     match value {
         FieldAvailability::Available(value) => sync_lifecycle_name(*value).to_string(),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
+fn sync_progress_signal_availability(value: &FieldAvailability<SyncProgressSignal>) -> String {
+    match value {
+        FieldAvailability::Available(value) => sync_progress_signal_name(*value).to_string(),
         FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
     }
 }
@@ -368,5 +386,16 @@ fn sync_lifecycle_name(state: SyncLifecycleState) -> &'static str {
         SyncLifecycleState::Recovering => "recovering",
         SyncLifecycleState::Failed => "failed",
         SyncLifecycleState::Stopped => "stopped",
+    }
+}
+
+fn sync_progress_signal_name(signal: SyncProgressSignal) -> &'static str {
+    match signal {
+        SyncProgressSignal::HeaderProgress => "header_progress",
+        SyncProgressSignal::BlockProgress => "block_progress",
+        SyncProgressSignal::WaitingForPeers => "waiting_for_peers",
+        SyncProgressSignal::PeerFailures => "peer_failures",
+        SyncProgressSignal::AwaitingBlocks => "awaiting_blocks",
+        SyncProgressSignal::Steady => "steady",
     }
 }

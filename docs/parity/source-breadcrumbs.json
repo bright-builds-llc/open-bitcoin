@@ -622,7 +622,8 @@
       "label": "node-sync-types",
       "files": [
         "packages/open-bitcoin-node/src/sync/types.rs",
-        "packages/open-bitcoin-node/src/sync/types/projection.rs"
+        "packages/open-bitcoin-node/src/sync/types/projection.rs",
+        "packages/open-bitcoin-node/src/sync/types/summary.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/net_processing.cpp",

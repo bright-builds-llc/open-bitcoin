@@ -34,8 +34,8 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Operator Evidence and Observability
 
-- [ ] **OBS-01**: Operator can inspect JSON sync status that reports current phase, outbound peer count, peer outcomes, best header height, best block height, progress signal, estimated lag, last successful progress, and last error.
-- [ ] **OBS-02**: Operator-facing status, dashboard, metrics, structured logs, and RPC-facing blockchain info stay consistent and never imply full sync before validated chainstate reaches the selected tip.
+- [x] **OBS-01**: Operator can inspect JSON sync status that reports current phase, outbound peer count, peer outcomes, best header height, best block height, progress signal, estimated lag, last successful progress, and last error.
+- [x] **OBS-02**: Operator-facing status, dashboard, metrics, structured logs, and RPC-facing blockchain info stay consistent and never imply full sync before validated chainstate reaches the selected tip.
 - [ ] **OBS-03**: Operator can generate a redacted support evidence bundle or equivalent report containing relevant config sources, command versions, sync status, peer outcomes, recent logs, metrics, store health, and live smoke artifacts.
 - [ ] **OBS-04**: Operator docs provide copy-pasteable repo-local Cargo and Bazel commands, manual-peer examples, disk/network expectations, troubleshooting steps, and pass/fail interpretation for v1.3 evidence.
 
@@ -100,8 +100,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | NODE-03 | Phase 46 | Complete |
 | NODE-04 | Phase 45 | Complete |
 | NODE-05 | Phase 46 | Complete |
-| OBS-01 | Phase 47 | Pending |
-| OBS-02 | Phase 47 | Pending |
+| OBS-01 | Phase 47 | Complete |
+| OBS-02 | Phase 47 | Complete |
 | OBS-03 | Phase 48 | Pending |
 | OBS-04 | Phase 48 | Pending |
 | SEC-01 | Phase 49 | Pending |
@@ -115,4 +115,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-05-24*
-*Last updated: 2026-05-25 after Phase 44 completion*
+*Last updated: 2026-05-26 after Phase 47 completion*

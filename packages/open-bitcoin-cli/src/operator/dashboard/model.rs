@@ -9,12 +9,16 @@ use open_bitcoin_node::{
     status::{
         ChainTipStatus, FieldAvailability, HealthSignal, HealthSignalLevel, NodeRuntimeState,
         OpenBitcoinStatusSnapshot, PeerCounts, ServiceStatus, SyncLagStatus, SyncLifecycleState,
-        SyncProgress, SyncResourcePressure, WalletFreshness, WalletScanProgress,
+        SyncProgress, SyncProgressSignal, SyncResourcePressure, WalletFreshness,
+        WalletScanProgress,
     },
 };
 
 /// Metric series rendered as dashboard charts.
-pub const DASHBOARD_METRIC_KINDS: [MetricKind; 5] = [
+pub const DASHBOARD_METRIC_KINDS: [MetricKind; 8] = [
+    MetricKind::HeaderHeight,
+    MetricKind::DownloadedBlockHeight,
+    MetricKind::ConnectedBlockHeight,
     MetricKind::SyncHeight,
     MetricKind::PeerCount,
     MetricKind::MempoolTransactions,
@@ -104,12 +108,28 @@ fn dashboard_sections(snapshot: &OpenBitcoinStatusSnapshot) -> Vec<DashboardSect
                 ),
                 row("State", sync_lifecycle(&snapshot.sync.lifecycle)),
                 row("Phase", string_availability(&snapshot.sync.phase)),
+                row(
+                    "Signal",
+                    sync_progress_signal(&snapshot.sync.progress_signal),
+                ),
                 row("Lag", sync_lag(&snapshot.sync.lag)),
+                row(
+                    "Last progress",
+                    u64_availability(
+                        &snapshot.sync.last_successful_progress_unix_seconds,
+                        "unix seconds",
+                    ),
+                ),
                 row("Pressure", sync_pressure(&snapshot.sync.resource_pressure)),
                 row(
                     "Peers",
                     peer_counts_availability(&snapshot.peers.peer_counts),
                 ),
+                row(
+                    "Recovery",
+                    string_availability(&snapshot.sync.recovery_action),
+                ),
+                row("Last error", string_availability(&snapshot.sync.last_error)),
             ],
         },
         DashboardSection {
@@ -213,10 +233,11 @@ fn chain_tip_availability(value: &FieldAvailability<ChainTipStatus>) -> String {
 fn sync_progress_availability(value: &FieldAvailability<SyncProgress>) -> String {
     match value {
         FieldAvailability::Available(value) => format!(
-            "{:.2}% blocks={}/{}",
+            "{:.2}% headers={} downloaded_blocks={} connected_blocks={}",
             value.progress_ratio * 100.0,
-            value.block_height,
-            value.header_height
+            value.header_height,
+            value.downloaded_block_height,
+            value.connected_block_height
         ),
         FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
     }
@@ -225,6 +246,13 @@ fn sync_progress_availability(value: &FieldAvailability<SyncProgress>) -> String
 fn sync_lifecycle(value: &FieldAvailability<SyncLifecycleState>) -> String {
     match value {
         FieldAvailability::Available(value) => sync_lifecycle_name(*value).to_string(),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
+fn sync_progress_signal(value: &FieldAvailability<SyncProgressSignal>) -> String {
+    match value {
+        FieldAvailability::Available(value) => sync_progress_signal_name(*value).to_string(),
         FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
     }
 }
@@ -400,6 +428,8 @@ fn metric_label(kind: MetricKind) -> &'static str {
     match kind {
         MetricKind::SyncHeight => "Sync height",
         MetricKind::HeaderHeight => "Header height",
+        MetricKind::DownloadedBlockHeight => "Downloaded block height",
+        MetricKind::ConnectedBlockHeight => "Connected block height",
         MetricKind::PeerCount => "Peers",
         MetricKind::MempoolTransactions => "Mempool tx",
         MetricKind::WalletTrustedBalanceSats => "Wallet sats",
@@ -454,6 +484,17 @@ fn sync_lifecycle_name(state: SyncLifecycleState) -> &'static str {
     }
 }
 
+fn sync_progress_signal_name(signal: SyncProgressSignal) -> &'static str {
+    match signal {
+        SyncProgressSignal::HeaderProgress => "header_progress",
+        SyncProgressSignal::BlockProgress => "block_progress",
+        SyncProgressSignal::WaitingForPeers => "waiting_for_peers",
+        SyncProgressSignal::PeerFailures => "peer_failures",
+        SyncProgressSignal::AwaitingBlocks => "awaiting_blocks",
+        SyncProgressSignal::Steady => "steady",
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use open_bitcoin_node::{
@@ -461,7 +502,8 @@ mod tests {
         status::{
             BuildProvenance, ConfigStatus, FieldAvailability, HealthSignal, HealthSignalLevel,
             MempoolStatus, NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts,
-            PeerStatus, ServiceStatus, SyncStatus, WalletFreshness, WalletStatus,
+            PeerStatus, ServiceStatus, SyncProgressSignal, SyncStatus, WalletFreshness,
+            WalletStatus,
         },
     };
 
@@ -536,7 +578,11 @@ mod tests {
                 sync_progress: FieldAvailability::unavailable("no sync"),
                 lifecycle: FieldAvailability::unavailable("no sync lifecycle"),
                 phase: FieldAvailability::unavailable("no sync phase"),
+                progress_signal: FieldAvailability::available(SyncProgressSignal::Steady),
                 lag: FieldAvailability::unavailable("no sync lag"),
+                last_successful_progress_unix_seconds: FieldAvailability::unavailable(
+                    "no successful sync progress",
+                ),
                 last_error: FieldAvailability::unavailable("no sync error"),
                 recovery_action: FieldAvailability::unavailable("no recovery action"),
                 resource_pressure: FieldAvailability::unavailable("no sync pressure"),

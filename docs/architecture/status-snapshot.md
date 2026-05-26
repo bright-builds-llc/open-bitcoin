@@ -11,7 +11,7 @@
 | `node` | Runtime/process collector | daemon state and version |
 | `config` | Config/datadir collector | `datadir` and `config paths` |
 | `service` | Service lifecycle collector | service manager and installed/enabled/running state |
-| `sync` | Sync/runtime collector | `network`, `chain tip`, `sync progress`, lifecycle, phase, lag, resource pressure, recovery guidance, and last error |
+| `sync` | Sync/runtime collector | `network`, `chain tip`, `sync progress`, lifecycle, phase, progress signal, estimated lag, last successful progress, resource pressure, recovery guidance, and last error |
 | `peers` | Network collector | `peer counts` plus recent peer telemetry when durable sync state is available |
 | `mempool` | Mempool collector | mempool summary |
 | `wallet` | Wallet collector | `trusted_balance_sats`, `freshness`, and `scan_progress` so balances never imply completeness by themselves |
@@ -30,9 +30,10 @@ bootstrap distinction should surface through warning health signals, not a
 separate top-level status field.
 
 When durable sync metadata exists, stopped or unreachable-node status may still
-surface the last known sync lifecycle, phase, lag, peer telemetry, recovery
-guidance, and last sync error from the durable store rather than collapsing
-those fields back to renderer-local guesses.
+surface the last known sync lifecycle, phase, progress signal, estimated lag,
+last successful progress, peer telemetry, recovery guidance, and last sync
+error from the durable store rather than collapsing those fields back to
+renderer-local guesses.
 
 ## Sync progress semantics
 
@@ -49,6 +50,24 @@ Consumers should use the explicit downloaded and connected fields for recovery
 diagnostics. `last_error` and `recovery_action` are separate fields so a status
 snapshot can report active progress and the latest recoverable error at the
 same time.
+
+`sync.progress_signal` is a coarse machine-readable summary of the latest sync
+run. Current values are:
+
+- `header_progress`: at least one peer contributed accepted headers.
+- `block_progress`: at least one peer contributed accepted blocks.
+- `waiting_for_peers`: sync is waiting for retry backoff or peer availability.
+- `peer_failures`: the latest run saw peer failures without useful progress.
+- `awaiting_blocks`: validated headers are ahead of connected chainstate.
+- `steady`: no immediate sync work or failure signal was observed.
+
+`sync.last_successful_progress_unix_seconds` records the most recent accepted
+header or block contribution time when known. Durable status preserves the prior
+timestamp across later runs that only wait, fail, or report no new progress.
+
+`sync.lag` is the estimated lag from best known validated work. It reports
+header and block counts rather than a wall-clock ETA so deterministic local
+status remains truthful even when the public network is unavailable.
 
 ## Sync resource pressure
 
@@ -67,6 +86,21 @@ currently configured runtime envelope:
 
 This keeps status, dashboard, RPC JSON, and support reports aligned on one
 source of truth for public-network runtime bounds.
+
+## Metrics and Logs
+
+Sync metrics expose the same progress dimensions as status:
+
+- `header_height`: best validated header height.
+- `downloaded_block_height`: highest contiguous best-chain block body available
+  in the durable store.
+- `connected_block_height`: active chainstate height.
+- `sync_height`: compatibility series for connected chainstate height.
+
+Structured sync summary logs use the same header, downloaded, connected,
+progress-signal, and last-progress values. Consumers should prefer the status
+snapshot for machine state and use logs as an audit trail of how the state was
+observed.
 
 ## Build provenance semantics
 

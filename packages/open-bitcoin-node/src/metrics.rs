@@ -12,6 +12,8 @@ use std::collections::BTreeMap;
 pub enum MetricKind {
     SyncHeight,
     HeaderHeight,
+    DownloadedBlockHeight,
+    ConnectedBlockHeight,
     PeerCount,
     MempoolTransactions,
     WalletTrustedBalanceSats,
@@ -21,9 +23,11 @@ pub enum MetricKind {
 }
 
 impl MetricKind {
-    pub const ALL: [Self; 8] = [
+    pub const ALL: [Self; 10] = [
         Self::SyncHeight,
         Self::HeaderHeight,
+        Self::DownloadedBlockHeight,
+        Self::ConnectedBlockHeight,
         Self::PeerCount,
         Self::MempoolTransactions,
         Self::WalletTrustedBalanceSats,
@@ -36,6 +40,8 @@ impl MetricKind {
         match self {
             Self::SyncHeight => "sync_height",
             Self::HeaderHeight => "header_height",
+            Self::DownloadedBlockHeight => "downloaded_block_height",
+            Self::ConnectedBlockHeight => "connected_block_height",
             Self::PeerCount => "peer_count",
             Self::MempoolTransactions => "mempool_transactions",
             Self::WalletTrustedBalanceSats => "wallet_trusted_balance_sats",
@@ -210,6 +216,8 @@ mod tests {
         let kinds = [
             (MetricKind::SyncHeight, "sync_height"),
             (MetricKind::HeaderHeight, "header_height"),
+            (MetricKind::DownloadedBlockHeight, "downloaded_block_height"),
+            (MetricKind::ConnectedBlockHeight, "connected_block_height"),
             (MetricKind::PeerCount, "peer_count"),
             (MetricKind::MempoolTransactions, "mempool_transactions"),
             (
