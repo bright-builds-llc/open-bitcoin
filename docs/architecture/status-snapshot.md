@@ -34,6 +34,22 @@ surface the last known sync lifecycle, phase, lag, peer telemetry, recovery
 guidance, and last sync error from the durable store rather than collapsing
 those fields back to renderer-local guesses.
 
+## Sync progress semantics
+
+`sync.sync_progress` separates validated header, durable download, and connected
+chainstate progress:
+
+- `header_height`: best validated header height.
+- `downloaded_block_height`: highest contiguous best-chain block body available
+  in the durable store.
+- `connected_block_height`: active chainstate height.
+- `block_height`: compatibility alias for `connected_block_height`.
+
+Consumers should use the explicit downloaded and connected fields for recovery
+diagnostics. `last_error` and `recovery_action` are separate fields so a status
+snapshot can report active progress and the latest recoverable error at the
+same time.
+
 ## Sync resource pressure
 
 `sync.resource_pressure` reports observed pressure and configured bounds

@@ -145,7 +145,8 @@ Important boundaries:
   wallet requests.
 - `open-bitcoin status`, `open-bitcoin dashboard`, `open-bitcoin sync status`,
   and RPC `getblockchaininfo` read the same durable sync truth for header
-  height, block height, lag, lifecycle, recovery guidance, and last error.
+  height, downloaded block height, connected block height, lag, lifecycle,
+  recovery guidance, and last error.
 - `open-bitcoin sync pause` and `open-bitcoin sync resume` toggle the durable
   pause flag without requiring operators to inspect or edit internal store
   files directly.
@@ -182,6 +183,49 @@ bazel run //packages/open-bitcoin-cli:open_bitcoin -- \
   --datadir=/tmp/open-bitcoin-mainnet \
   sync status --format json
 ```
+
+### Durable recovery status
+
+Durable sync status separates progress states that can diverge during restart
+or recovery:
+
+- `sync_progress.header_height` is the best validated header height.
+- `sync_progress.downloaded_block_height` is the highest contiguous best-chain
+  block body currently available in the durable store.
+- `sync_progress.connected_block_height` is the active chainstate height.
+- `sync_progress.block_height` remains a compatibility alias for connected
+  height.
+- `sync.last_error` records the latest durable runtime or peer failure when one
+  was observed.
+- `sync.recovery_action` reports the highest-priority operator action. Storage
+  recovery metadata wins over peer guidance because incompatible or corrupt
+  stores must be handled before retrying sync.
+
+After a partial download or partial connect, restart the daemon or run a bounded
+sync status check against the same datadir:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --datadir=/tmp/open-bitcoin-mainnet \
+  sync status --format json
+
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- \
+  --datadir=/tmp/open-bitcoin-mainnet \
+  sync status --format json
+```
+
+Recovery guidance intentionally distinguishes common cases:
+
+- transient network or DNS failures: inspect peer connectivity or peer
+  configuration, then retry after backoff;
+- invalid data or network-magic mismatches: use a different peer or verify the
+  configured Bitcoin network;
+- incompatible or corrupt stores: follow the storage recovery action before
+  retrying;
+- resource exhaustion: raise the configured sync bounds or reduce competing
+  load;
+- intentional live-smoke cancellation: treat the generated report as cancelled
+  evidence and run a new explicit smoke when needed.
 
 ## First Run And Onboarding
 

@@ -74,6 +74,8 @@ pub struct ChainTipStatus {
 pub struct SyncProgress {
     pub header_height: u64,
     pub block_height: u64,
+    pub downloaded_block_height: u64,
+    pub connected_block_height: u64,
     pub progress_ratio: f64,
     pub messages_processed: u64,
     pub headers_received: u64,
@@ -356,6 +358,8 @@ mod tests {
                 sync_progress: FieldAvailability::available(SyncProgress {
                     header_height: 840_001,
                     block_height: 840_000,
+                    downloaded_block_height: 840_000,
+                    connected_block_height: 840_000,
                     progress_ratio: 0.99,
                     messages_processed: 12,
                     headers_received: 1,

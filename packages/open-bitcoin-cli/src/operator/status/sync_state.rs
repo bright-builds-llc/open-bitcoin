@@ -22,6 +22,8 @@ pub(super) fn rpc_sync_status(blockchain_info: &GetBlockchainInfoResponse) -> Sy
         sync_progress: FieldAvailability::available(SyncProgress {
             header_height: u64::from(blockchain_info.headers),
             block_height: u64::from(blockchain_info.blocks),
+            downloaded_block_height: u64::from(blockchain_info.blocks),
+            connected_block_height: u64::from(blockchain_info.blocks),
             progress_ratio: blockchain_info.verificationprogress,
             messages_processed: 0,
             headers_received: u64::from(blockchain_info.headers),

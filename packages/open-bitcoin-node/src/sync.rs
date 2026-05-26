@@ -101,11 +101,13 @@ impl DurableSyncRuntime {
 
     pub fn snapshot_summary(&self) -> SyncRunSummary {
         let (best_header_height, best_block_height) = self.best_heights();
-        SyncRunSummary::empty(
+        let mut summary = SyncRunSummary::empty(
             best_header_height,
             best_block_height,
             self.config.target_outbound_peers,
-        )
+        );
+        summary.downloaded_block_height = best_block_height;
+        summary
     }
 
     pub fn sync_once<T: SyncTransport>(
@@ -147,6 +149,7 @@ impl DurableSyncRuntime {
             best_block_height,
             self.config.target_outbound_peers,
         );
+        self.refresh_summary_progress(&mut summary)?;
         let resolved_peers = self.resolve_candidates(peers, resolver, &mut summary);
         let mut completed_outbound_slots = 0_usize;
         for peer in resolved_peers {
@@ -171,6 +174,7 @@ impl DurableSyncRuntime {
             }
             self.record_outcome(&mut summary, outcome, timestamp);
         }
+        self.refresh_summary_progress(&mut summary)?;
         if let Err(error) = self.persist_metrics(&summary, timestamp) {
             self.write_runtime_error_log(&error, timestamp);
             let state = self.durable_sync_state_from_summary(
@@ -186,7 +190,7 @@ impl DurableSyncRuntime {
         let state = self.durable_sync_state_from_summary(
             &summary,
             SyncLifecycleState::Active,
-            None,
+            summary.latest_error_message(),
             timestamp,
         )?;
         self.persist_durable_sync_state(state)?;

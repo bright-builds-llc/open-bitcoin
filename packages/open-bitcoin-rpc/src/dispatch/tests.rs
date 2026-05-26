@@ -569,6 +569,8 @@ fn blockchain_info_uses_durable_sync_truth_when_available() {
                         sync_progress: FieldAvailability::available(SyncProgress {
                             header_height: 840_100,
                             block_height: 840_000,
+                            downloaded_block_height: 840_050,
+                            connected_block_height: 840_000,
                             progress_ratio: 0.998,
                             messages_processed: 42,
                             headers_received: 100,

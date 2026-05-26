@@ -136,10 +136,11 @@ fn chain_tip_availability(value: &FieldAvailability<ChainTipStatus>) -> String {
 fn sync_progress_availability(value: &FieldAvailability<SyncProgress>) -> String {
     match value {
         FieldAvailability::Available(value) => format!(
-            "{:.2}% blocks={}/{}",
+            "{:.2}% headers={} downloaded_blocks={} connected_blocks={}",
             value.progress_ratio * 100.0,
-            value.block_height,
-            value.header_height
+            value.header_height,
+            value.downloaded_block_height,
+            value.connected_block_height
         ),
         FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
     }

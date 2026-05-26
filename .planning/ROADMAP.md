@@ -25,8 +25,8 @@ gate.
 - [x] **Phase 42: Live Smoke Entry and Network Preflight** - Make opt-in live smoke prerequisites and endpoint outcomes explicit before sync.
 - [x] **Phase 43: Outbound Peer Resilience** - Keep daemon sync alive and truthful while public peers fail, stall, disconnect, or provide bad data.
 - [x] **Phase 44: Peer Contribution Attribution** - Attribute header and block progress to useful peers instead of idle or failing peers. (completed 2026-05-25)
-- [ ] **Phase 45: Runtime Resource Bounds and Store Coordination** - Keep long public-network runs bounded and single-writer safe.
-- [ ] **Phase 46: Durable Recovery and Invalid Data Handling** - Resume after partial work and reject invalid peer data without advancing chainstate.
+- [x] **Phase 45: Runtime Resource Bounds and Store Coordination** - Keep long public-network runs bounded and single-writer safe. (completed 2026-05-26)
+- [x] **Phase 46: Durable Recovery and Invalid Data Handling** - Resume after partial work and reject invalid peer data without advancing chainstate. (completed 2026-05-26)
 - [ ] **Phase 47: Operator Sync Truth Surfaces** - Keep status, dashboard, metrics, logs, and RPC surfaces consistent during sync.
 - [ ] **Phase 48: Support Evidence and Operator Runbooks** - Produce redacted support evidence and repo-local operator instructions.
 - [ ] **Phase 49: Threat Model and Release Boundaries** - Refresh v1.3 security analysis and scoped parity/release claims.
@@ -78,7 +78,8 @@ Plans:
   2. Long-running sync uses those bounds without unbounded queue, log, metrics, or write growth.
   3. Pause, resume, stop, and status flows leave coherent durable status.
   4. A second runtime or control action cannot create an undiagnosed second-writer store conflict.
-**Plans**: TBD
+**Plans**:
+  - [x] 45-01-PLAN.md — Runtime resource bounds and store coordination.
 
 ### Phase 46: Durable Recovery and Invalid Data Handling
 **Goal**: Durable sync recovers from partial work and invalid peer data without losing validated progress or advancing a bad chain.
@@ -89,7 +90,8 @@ Plans:
   2. Invalid headers or blocks are rejected with peer attribution and do not advance active chainstate.
   3. Recovery guidance distinguishes transient network failures, incompatible stores, corrupt stores, resource exhaustion, and intentional cancellation.
   4. Durable status after recovery separates validated header, downloaded block, connected block, and error state.
-**Plans**: TBD
+**Plans**:
+  - [x] 46-01-PLAN.md — Durable recovery and invalid data handling.
 
 ### Phase 47: Operator Sync Truth Surfaces
 **Goal**: Operator-facing status surfaces tell the same truth about sync phase, peer health, progress, lag, and errors.
@@ -163,8 +165,8 @@ Detailed phase execution history is archived under
 | 42. Live Smoke Entry and Network Preflight | 1/1 | Complete | 2026-05-24 |
 | 43. Outbound Peer Resilience | 1/1 | Complete | 2026-05-24 |
 | 44. Peer Contribution Attribution | 1/1 | Complete    | 2026-05-25 |
-| 45. Runtime Resource Bounds and Store Coordination | 0/TBD | Not started | - |
-| 46. Durable Recovery and Invalid Data Handling | 0/TBD | Not started | - |
+| 45. Runtime Resource Bounds and Store Coordination | 1/1 | Complete | 2026-05-26 |
+| 46. Durable Recovery and Invalid Data Handling | 1/1 | Complete | 2026-05-26 |
 | 47. Operator Sync Truth Surfaces | 0/TBD | Not started | - |
 | 48. Support Evidence and Operator Runbooks | 0/TBD | Not started | - |
 | 49. Threat Model and Release Boundaries | 0/TBD | Not started | - |

@@ -26,11 +26,11 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Node Runtime and Data Integrity Hardening
 
-- [ ] **NODE-01**: Daemon sync maintains documented resource bounds for in-flight headers, in-flight blocks, durable writes, metrics retention, and log retention during long public-network runs.
-- [ ] **NODE-02**: Daemon sync survives restart after partial downloads, partial validation, or partial connect work without duplicating block connects or losing validated progress.
-- [ ] **NODE-03**: Daemon sync rejects invalid headers and blocks with peer attribution and recovery guidance without advancing the active chain.
-- [ ] **NODE-04**: Operator pause, resume, stop, and status flows leave coherent durable status and do not create second-writer store conflicts.
-- [ ] **NODE-05**: Operator recovery guidance distinguishes transient network failures, incompatible stores, corrupt stores, resource exhaustion, and intentional cancellation.
+- [x] **NODE-01**: Daemon sync maintains documented resource bounds for in-flight headers, in-flight blocks, durable writes, metrics retention, and log retention during long public-network runs.
+- [x] **NODE-02**: Daemon sync survives restart after partial downloads, partial validation, or partial connect work without duplicating block connects or losing validated progress.
+- [x] **NODE-03**: Daemon sync rejects invalid headers and blocks with peer attribution and recovery guidance without advancing the active chain.
+- [x] **NODE-04**: Operator pause, resume, stop, and status flows leave coherent durable status and do not create second-writer store conflicts.
+- [x] **NODE-05**: Operator recovery guidance distinguishes transient network failures, incompatible stores, corrupt stores, resource exhaustion, and intentional cancellation.
 
 ### Operator Evidence and Observability
 
@@ -95,11 +95,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PEER-02 | Phase 43 | Complete |
 | PEER-03 | Phase 44 | Complete |
 | PEER-04 | Phase 43 | Complete |
-| NODE-01 | Phase 45 | Pending |
-| NODE-02 | Phase 46 | Pending |
-| NODE-03 | Phase 46 | Pending |
-| NODE-04 | Phase 45 | Pending |
-| NODE-05 | Phase 46 | Pending |
+| NODE-01 | Phase 45 | Complete |
+| NODE-02 | Phase 46 | Complete |
+| NODE-03 | Phase 46 | Complete |
+| NODE-04 | Phase 45 | Complete |
+| NODE-05 | Phase 46 | Complete |
 | OBS-01 | Phase 47 | Pending |
 | OBS-02 | Phase 47 | Pending |
 | OBS-03 | Phase 48 | Pending |

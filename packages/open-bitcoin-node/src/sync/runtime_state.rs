@@ -137,6 +137,54 @@ impl DurableSyncRuntime {
         (best_header_height, best_block_height)
     }
 
+    pub(super) fn refresh_summary_progress(
+        &self,
+        summary: &mut SyncRunSummary,
+    ) -> Result<(), SyncRuntimeError> {
+        let (best_header_height, best_block_height) = self.best_heights();
+        summary.best_header_height = best_header_height;
+        summary.best_block_height = best_block_height;
+        summary.downloaded_block_height = self.downloaded_block_height()?;
+        Ok(())
+    }
+
+    fn downloaded_block_height(&self) -> Result<u64, SyncRuntimeError> {
+        let active_chain = self.network.chainstate_snapshot().active_chain;
+        let best_chain = self.network.best_chain_entries();
+        if best_chain.is_empty() {
+            return Ok(active_chain
+                .last()
+                .map_or(0, |position| u64::from(position.height)));
+        }
+
+        let mut common_prefix_len = 0_usize;
+        while common_prefix_len < active_chain.len()
+            && common_prefix_len < best_chain.len()
+            && active_chain[common_prefix_len].block_hash
+                == best_chain[common_prefix_len].block_hash
+        {
+            common_prefix_len += 1;
+        }
+
+        let mut downloaded_height = if common_prefix_len == 0 {
+            0
+        } else {
+            u64::from(best_chain[common_prefix_len - 1].height)
+        };
+        for entry in best_chain.iter().skip(common_prefix_len) {
+            if self.store.load_block(entry.block_hash)?.is_none() {
+                break;
+            }
+            downloaded_height = u64::from(entry.height);
+        }
+
+        Ok(downloaded_height.max(
+            active_chain
+                .last()
+                .map_or(0, |position| u64::from(position.height)),
+        ))
+    }
+
     pub(super) fn allocate_peer_id(&mut self) -> PeerId {
         let peer_id = self.next_peer_id;
         self.next_peer_id = self.next_peer_id.saturating_add(1);
@@ -254,6 +302,10 @@ impl DurableSyncRuntime {
     ) -> Result<DurableSyncState, SyncRuntimeError> {
         let metadata = self.load_runtime_metadata()?;
         let mut sync = summary.sync_status(self.config.network);
+        if let FieldAvailability::Available(progress) = &mut sync.sync_progress {
+            progress.downloaded_block_height = self.downloaded_block_height()?;
+            progress.connected_block_height = progress.block_height;
+        }
         sync.lifecycle = FieldAvailability::available(lifecycle);
         sync.phase = FieldAvailability::available(match lifecycle {
             SyncLifecycleState::Paused => "paused".to_string(),
@@ -271,7 +323,10 @@ impl DurableSyncRuntime {
         };
         sync.recovery_action = match metadata.maybe_last_recovery_action {
             Some(value) => FieldAvailability::available(value.operator_message().to_string()),
-            None => FieldAvailability::unavailable("no recovery action required"),
+            None => match summary.latest_recovery_action() {
+                Some(value) => FieldAvailability::available(value.to_string()),
+                None => FieldAvailability::unavailable("no recovery action required"),
+            },
         };
         sync.resource_pressure = FieldAvailability::available(SyncResourcePressure {
             blocks_in_flight: self.inflight_blocks.len() as u64,

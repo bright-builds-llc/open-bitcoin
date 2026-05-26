@@ -19,7 +19,7 @@ use open_bitcoin_core::{
         Transaction, TransactionInput, TransactionOutput,
     },
 };
-use open_bitcoin_network::{HeadersMessage, VersionMessage, WireNetworkMessage};
+use open_bitcoin_network::{HeaderEntry, HeadersMessage, VersionMessage, WireNetworkMessage};
 
 use super::{
     DurableSyncRuntime, PeerContribution, PeerFailureReason, PeerSyncOutcome, PeerSyncState,
@@ -365,6 +365,7 @@ fn sync_summary_projects_metric_samples() {
         headers_received: 3,
         blocks_received: 2,
         best_header_height: 42,
+        downloaded_block_height: 41,
         best_block_height: 40,
         peer_outcomes: Vec::new(),
         health_signals: Vec::new(),
@@ -396,6 +397,7 @@ fn sync_summary_projects_structured_log_records() {
         headers_received: 4,
         blocks_received: 2,
         best_header_height: 44,
+        downloaded_block_height: 44,
         best_block_height: 43,
         peer_outcomes: vec![
             peer_outcome(
@@ -491,6 +493,7 @@ fn sync_summary_status_projections_include_counters() {
         headers_received: 7,
         blocks_received: 5,
         best_header_height: 100,
+        downloaded_block_height: 75,
         best_block_height: 25,
         peer_outcomes: Vec::new(),
         health_signals: Vec::new(),
@@ -506,6 +509,8 @@ fn sync_summary_status_projections_include_counters() {
         FieldAvailability::available(SyncProgress {
             header_height: 100,
             block_height: 25,
+            downloaded_block_height: 75,
+            connected_block_height: 25,
             progress_ratio: 0.25,
             messages_processed: 12,
             headers_received: 7,
@@ -983,6 +988,8 @@ fn sync_status_and_log_records_include_message_header_block_counters() {
         FieldAvailability::available(SyncProgress {
             header_height: 0,
             block_height: 0,
+            downloaded_block_height: 0,
+            connected_block_height: 0,
             progress_ratio: 1.0,
             messages_processed: 4,
             headers_received: 1,
@@ -1133,6 +1140,7 @@ fn storage_failure_projects_storage_health_signal() {
         headers_received: 0,
         blocks_received: 0,
         best_header_height: 0,
+        downloaded_block_height: 0,
         best_block_height: 0,
         peer_outcomes: Vec::new(),
         health_signals: vec![signal.clone()],
@@ -1195,6 +1203,8 @@ fn scripted_headers_sync_persists_progress_and_status() {
         crate::FieldAvailability::available(SyncProgress {
             header_height: 1,
             block_height: 0,
+            downloaded_block_height: 0,
+            connected_block_height: 0,
             progress_ratio: 0.0,
             messages_processed: 3,
             headers_received: 2,
@@ -1721,6 +1731,193 @@ fn restart_reconnects_persisted_blocks_before_re_requesting_them() {
             .iter()
             .any(|message| matches!(message, WireNetworkMessage::GetData(_)))
     );
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn restart_reports_downloaded_and_connected_heights_after_partial_download() {
+    // Arrange
+    let path = temp_store_path("restart-partial-download-status");
+    remove_dir_if_exists(&path);
+    let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+    let child_one = build_block(block_hash(&genesis.header), 1);
+    let child_two = build_block(block_hash(&child_one.header), 2);
+    {
+        let store = FjallNodeStore::open(&path).expect("store");
+        store
+            .save_header_entries(
+                &[
+                    HeaderEntry {
+                        block_hash: block_hash(&genesis.header),
+                        header: genesis.header.clone(),
+                        height: 0,
+                        chain_work: 1,
+                    },
+                    HeaderEntry {
+                        block_hash: block_hash(&child_one.header),
+                        header: child_one.header.clone(),
+                        height: 1,
+                        chain_work: 2,
+                    },
+                    HeaderEntry {
+                        block_hash: block_hash(&child_two.header),
+                        header: child_two.header.clone(),
+                        height: 2,
+                        chain_work: 3,
+                    },
+                ],
+                PersistMode::Sync,
+            )
+            .expect("save headers");
+        store
+            .save_block(&genesis, PersistMode::Sync)
+            .expect("save genesis");
+        store
+            .save_block(&child_one, PersistMode::Sync)
+            .expect("save child one");
+    }
+
+    let store = FjallNodeStore::open(&path).expect("reopen store");
+    let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    let mut transport = ScriptedTransport::new(vec![version_verack_script(2)]);
+
+    // Act
+    let summary = runtime
+        .sync_once(&mut transport, i64::from(child_two.header.time))
+        .expect("sync after restart");
+
+    // Assert
+    assert_eq!(summary.best_header_height, 2);
+    assert_eq!(summary.downloaded_block_height, 1);
+    assert_eq!(summary.best_block_height, 1);
+    assert_eq!(
+        summary.sync_status(SyncNetwork::Regtest).sync_progress,
+        FieldAvailability::available(SyncProgress {
+            header_height: 2,
+            block_height: 1,
+            downloaded_block_height: 1,
+            connected_block_height: 1,
+            progress_ratio: 0.5,
+            messages_processed: 2,
+            headers_received: 0,
+            blocks_received: 0,
+        })
+    );
+    assert!(
+        transport
+            .sent_messages()
+            .iter()
+            .any(|message| matches!(message, WireNetworkMessage::GetData(_)))
+    );
+    let metadata = runtime
+        .store()
+        .load_runtime_metadata()
+        .expect("load runtime metadata")
+        .expect("runtime metadata");
+    let durable_progress = metadata
+        .maybe_sync_state
+        .expect("durable sync state")
+        .sync
+        .sync_progress;
+    assert_eq!(
+        durable_progress,
+        FieldAvailability::available(SyncProgress {
+            header_height: 2,
+            block_height: 1,
+            downloaded_block_height: 1,
+            connected_block_height: 1,
+            progress_ratio: 0.5,
+            messages_processed: 2,
+            headers_received: 0,
+            blocks_received: 0,
+        })
+    );
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn invalid_block_body_is_peer_attributed_and_not_persisted() {
+    // Arrange
+    let path = temp_store_path("invalid-block-body");
+    remove_dir_if_exists(&path);
+    let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+    let genesis_hash = block_hash(&genesis.header);
+    let mut invalid_genesis = genesis.clone();
+    invalid_genesis.transactions[0].outputs[0].value = Amount::from_sats(51).expect("valid amount");
+    let script = vec![
+        WireNetworkMessage::Version(VersionMessage {
+            start_height: 0,
+            ..VersionMessage::default()
+        }),
+        WireNetworkMessage::Verack,
+        WireNetworkMessage::Headers(HeadersMessage {
+            headers: vec![genesis.header.clone()],
+        }),
+        WireNetworkMessage::Block(invalid_genesis),
+    ];
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    let mut transport = ScriptedTransport::new(vec![script]);
+
+    // Act
+    let summary = runtime
+        .sync_once(&mut transport, i64::from(genesis.header.time))
+        .expect("sync records peer failure");
+
+    // Assert
+    assert_eq!(summary.failed_peers, 1);
+    assert_eq!(summary.connected_peers, 0);
+    assert_eq!(summary.headers_received, 1);
+    assert_eq!(summary.blocks_received, 0);
+    assert_eq!(summary.downloaded_block_height, 0);
+    assert_eq!(summary.best_block_height, 0);
+    let outcome = &summary.peer_outcomes[0];
+    assert_eq!(outcome.state, PeerSyncState::Failed);
+    assert_eq!(
+        outcome.maybe_failure_reason,
+        Some(PeerFailureReason::InvalidData)
+    );
+    assert_eq!(outcome.contribution.headers_received, 1);
+    assert_eq!(outcome.contribution.blocks_received, 0);
+    assert!(
+        outcome
+            .maybe_error
+            .as_ref()
+            .is_some_and(|message| message.contains("invalid data"))
+    );
+    assert!(
+        runtime
+            .store()
+            .load_block(genesis_hash)
+            .expect("load rejected block")
+            .is_none()
+    );
+    let snapshot = runtime
+        .store()
+        .load_chainstate_snapshot()
+        .expect("load chainstate snapshot")
+        .expect("chainstate snapshot");
+    assert!(snapshot.active_chain.is_empty());
+    let metadata = runtime
+        .store()
+        .load_runtime_metadata()
+        .expect("load runtime metadata")
+        .expect("runtime metadata");
+    let durable_state = metadata.maybe_sync_state.expect("durable sync state");
+    assert_eq!(
+        durable_state.sync.lifecycle,
+        FieldAvailability::available(SyncLifecycleState::Active)
+    );
+    assert!(matches!(
+        durable_state.sync.last_error,
+        FieldAvailability::Available(ref value) if value.contains("invalid data")
+    ));
+    assert!(matches!(
+        durable_state.sync.recovery_action,
+        FieldAvailability::Available(ref value) if value.contains("different peer")
+    ));
 
     remove_dir_if_exists(&path);
 }
