@@ -102,7 +102,12 @@ pub struct SyncLagStatus {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SyncResourcePressure {
     pub blocks_in_flight: u64,
+    pub max_header_requests_in_flight_per_peer: u64,
+    pub max_headers_per_message: u64,
+    pub max_blocks_in_flight_per_peer: u64,
     pub max_blocks_in_flight_total: u64,
+    pub max_messages_per_peer: u64,
+    pub max_sync_rounds: u64,
     pub outbound_peers: u32,
     pub target_outbound_peers: u32,
 }
@@ -366,7 +371,12 @@ mod tests {
                 recovery_action: FieldAvailability::unavailable("no recovery action required"),
                 resource_pressure: FieldAvailability::available(SyncResourcePressure {
                     blocks_in_flight: 1,
+                    max_header_requests_in_flight_per_peer: 1,
+                    max_headers_per_message: 2_000,
+                    max_blocks_in_flight_per_peer: 16,
                     max_blocks_in_flight_total: 64,
+                    max_messages_per_peer: 64,
+                    max_sync_rounds: 8,
                     outbound_peers: 2,
                     target_outbound_peers: 4,
                 }),

@@ -131,6 +131,14 @@ pub struct SyncConfig {
     pub maybe_dns_seeds: Option<Vec<String>>,
     #[serde(rename = "target_outbound_peers")]
     pub maybe_target_outbound_peers: Option<usize>,
+    #[serde(rename = "max_messages_per_peer")]
+    pub maybe_max_messages_per_peer: Option<usize>,
+    #[serde(rename = "max_rounds")]
+    pub maybe_max_rounds: Option<usize>,
+    #[serde(rename = "max_blocks_in_flight_per_peer")]
+    pub maybe_max_blocks_in_flight_per_peer: Option<usize>,
+    #[serde(rename = "max_blocks_in_flight_total")]
+    pub maybe_max_blocks_in_flight_total: Option<usize>,
 }
 
 impl SyncConfig {
@@ -141,6 +149,10 @@ impl SyncConfig {
             maybe_manual_peers: None,
             maybe_dns_seeds: None,
             maybe_target_outbound_peers: None,
+            maybe_max_messages_per_peer: None,
+            maybe_max_rounds: None,
+            maybe_max_blocks_in_flight_per_peer: None,
+            maybe_max_blocks_in_flight_total: None,
         }
     }
 }

@@ -34,6 +34,24 @@ surface the last known sync lifecycle, phase, lag, peer telemetry, recovery
 guidance, and last sync error from the durable store rather than collapsing
 those fields back to renderer-local guesses.
 
+## Sync resource pressure
+
+`sync.resource_pressure` reports observed pressure and configured bounds
+together. Consumers should treat `blocks_in_flight`, `outbound_peers`, and
+durable progress counters as observations, while the `max_*` fields are the
+currently configured runtime envelope:
+
+- `max_header_requests_in_flight_per_peer`
+- `max_headers_per_message`
+- `max_blocks_in_flight_per_peer`
+- `max_blocks_in_flight_total`
+- `max_messages_per_peer`
+- `max_sync_rounds`
+- `target_outbound_peers`
+
+This keeps status, dashboard, RPC JSON, and support reports aligned on one
+source of truth for public-network runtime bounds.
+
 ## Build provenance semantics
 
 `build.version` should reflect the workspace package version, and the remaining

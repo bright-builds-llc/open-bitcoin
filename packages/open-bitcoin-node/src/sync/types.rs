@@ -8,7 +8,7 @@ mod projection;
 use std::{fmt, net::SocketAddr, path::PathBuf};
 
 use open_bitcoin_core::{consensus::ConsensusParams, primitives::NetworkMagic};
-use open_bitcoin_network::{NetworkError, WireNetworkMessage};
+use open_bitcoin_network::{MAX_HEADERS_RESULTS, NetworkError, WireNetworkMessage};
 
 use crate::{
     FieldAvailability, ManagedNetworkError, MetricKind, MetricSample, PeerStatus, PersistMode,
@@ -33,6 +33,7 @@ const DEFAULT_TARGET_OUTBOUND_PEERS: usize = 4;
 const DEFAULT_RETRY_BACKOFF_MS: u64 = 1_000;
 const DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER: usize = 16;
 const DEFAULT_MAX_BLOCKS_IN_FLIGHT_TOTAL: usize = 64;
+const MAX_HEADER_REQUESTS_IN_FLIGHT_PER_PEER: u64 = 1;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SyncNetwork {
@@ -354,7 +355,12 @@ impl SyncRunSummary {
             recovery_action: FieldAvailability::unavailable("no recovery action required"),
             resource_pressure: FieldAvailability::available(SyncResourcePressure {
                 blocks_in_flight: 0,
+                max_header_requests_in_flight_per_peer: MAX_HEADER_REQUESTS_IN_FLIGHT_PER_PEER,
+                max_headers_per_message: MAX_HEADERS_RESULTS as u64,
+                max_blocks_in_flight_per_peer: 0,
                 max_blocks_in_flight_total: 0,
+                max_messages_per_peer: 0,
+                max_sync_rounds: 0,
                 outbound_peers: self.connected_peers as u32,
                 target_outbound_peers: self.target_outbound_peers as u32,
             }),

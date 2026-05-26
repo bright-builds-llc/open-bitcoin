@@ -140,7 +140,35 @@ fn apply_sync_overrides(
         }
         runtime.target_outbound_peers = target_outbound_peers;
     }
+    if let Some(max_messages_per_peer) = config.sync.maybe_max_messages_per_peer {
+        validate_nonzero_sync_bound("max_messages_per_peer", max_messages_per_peer)?;
+        runtime.max_messages_per_peer = max_messages_per_peer;
+    }
+    if let Some(max_rounds) = config.sync.maybe_max_rounds {
+        validate_nonzero_sync_bound("max_rounds", max_rounds)?;
+        runtime.max_rounds = max_rounds;
+    }
+    if let Some(max_blocks_in_flight_per_peer) = config.sync.maybe_max_blocks_in_flight_per_peer {
+        validate_nonzero_sync_bound(
+            "max_blocks_in_flight_per_peer",
+            max_blocks_in_flight_per_peer,
+        )?;
+        runtime.max_blocks_in_flight_per_peer = max_blocks_in_flight_per_peer;
+    }
+    if let Some(max_blocks_in_flight_total) = config.sync.maybe_max_blocks_in_flight_total {
+        validate_nonzero_sync_bound("max_blocks_in_flight_total", max_blocks_in_flight_total)?;
+        runtime.max_blocks_in_flight_total = max_blocks_in_flight_total;
+    }
     Ok(())
+}
+
+fn validate_nonzero_sync_bound(field: &str, value: usize) -> Result<(), ConfigError> {
+    if value > 0 {
+        return Ok(());
+    }
+    Err(ConfigError::new(format!(
+        "Error reading {OPEN_BITCOIN_CONFIG_FILE_NAME}: sync.{field} must be greater than zero."
+    )))
 }
 
 fn parse_sync_peer_address(

@@ -385,10 +385,14 @@ fn open_bitcoin_jsonc_accepts_mainnet_sync_activation_contract() {
     assert_eq!(config.sync.maybe_manual_peers, None);
     assert_eq!(config.sync.maybe_dns_seeds, None);
     assert_eq!(config.sync.maybe_target_outbound_peers, None);
+    assert_eq!(config.sync.maybe_max_messages_per_peer, None);
+    assert_eq!(config.sync.maybe_max_rounds, None);
+    assert_eq!(config.sync.maybe_max_blocks_in_flight_per_peer, None);
+    assert_eq!(config.sync.maybe_max_blocks_in_flight_total, None);
 }
 
 #[test]
-fn open_bitcoin_jsonc_accepts_manual_peers_seed_overrides_and_target_count() {
+fn open_bitcoin_jsonc_accepts_manual_peers_seed_overrides_and_resource_bounds() {
     // Arrange
     let text = r#"
     {
@@ -397,7 +401,11 @@ fn open_bitcoin_jsonc_accepts_manual_peers_seed_overrides_and_target_count() {
         "mode": "mainnet-ibd",
         "manual_peers": ["198.51.100.10:8333", "[2001:db8::7]:8334"],
         "dns_seeds": ["seed-one.example:8335", "seed-two.example"],
-        "target_outbound_peers": 2
+        "target_outbound_peers": 2,
+        "max_messages_per_peer": 12,
+        "max_rounds": 3,
+        "max_blocks_in_flight_per_peer": 4,
+        "max_blocks_in_flight_total": 10
       }
     }
     "#;
@@ -421,6 +429,10 @@ fn open_bitcoin_jsonc_accepts_manual_peers_seed_overrides_and_target_count() {
         ])
     );
     assert_eq!(config.sync.maybe_target_outbound_peers, Some(2));
+    assert_eq!(config.sync.maybe_max_messages_per_peer, Some(12));
+    assert_eq!(config.sync.maybe_max_rounds, Some(3));
+    assert_eq!(config.sync.maybe_max_blocks_in_flight_per_peer, Some(4));
+    assert_eq!(config.sync.maybe_max_blocks_in_flight_total, Some(10));
 }
 
 #[test]
@@ -452,7 +464,7 @@ fn daemon_sync_loads_from_open_bitcoin_jsonc_when_explicitly_enabled() {
 }
 
 #[test]
-fn daemon_sync_jsonc_applies_manual_peers_seed_overrides_and_target_count() {
+fn daemon_sync_jsonc_applies_manual_peers_seed_overrides_and_resource_bounds() {
     // Arrange
     let sandbox = TestDirectory::new("daemon-sync-peer-config");
     fs::write(
@@ -464,7 +476,11 @@ fn daemon_sync_jsonc_applies_manual_peers_seed_overrides_and_target_count() {
             "mode": "mainnet-ibd",
             "manual_peers": ["198.51.100.10", "203.0.113.2:8334"],
             "dns_seeds": ["seed-one.example:8335"],
-            "target_outbound_peers": 2
+            "target_outbound_peers": 2,
+            "max_messages_per_peer": 12,
+            "max_rounds": 3,
+            "max_blocks_in_flight_per_peer": 4,
+            "max_blocks_in_flight_total": 10
           }
         }
         "#,
@@ -477,6 +493,10 @@ fn daemon_sync_jsonc_applies_manual_peers_seed_overrides_and_target_count() {
 
     // Assert
     assert_eq!(runtime.sync.runtime.target_outbound_peers, 2);
+    assert_eq!(runtime.sync.runtime.max_messages_per_peer, 12);
+    assert_eq!(runtime.sync.runtime.max_rounds, 3);
+    assert_eq!(runtime.sync.runtime.max_blocks_in_flight_per_peer, 4);
+    assert_eq!(runtime.sync.runtime.max_blocks_in_flight_total, 10);
     assert_eq!(
         runtime.sync.runtime.manual_peers,
         vec![
@@ -487,6 +507,35 @@ fn daemon_sync_jsonc_applies_manual_peers_seed_overrides_and_target_count() {
     assert_eq!(
         runtime.sync.runtime.dns_seeds,
         vec!["seed-one.example:8335".to_string()]
+    );
+}
+
+#[test]
+fn daemon_sync_rejects_zero_resource_bounds() {
+    // Arrange
+    let sandbox = TestDirectory::new("daemon-sync-zero-bound");
+    fs::write(
+        sandbox.child("open-bitcoin.jsonc"),
+        r#"
+        {
+          "sync": {
+            "network_enabled": true,
+            "mode": "mainnet-ibd",
+            "max_blocks_in_flight_total": 0
+          }
+        }
+        "#,
+    )
+    .expect("open bitcoin config");
+
+    // Act
+    let error = load_runtime_config_for_args(&[cli_arg("datadir", &sandbox.path)], &sandbox.path)
+        .expect_err("zero resource bound should fail");
+
+    // Assert
+    assert_eq!(
+        error.to_string(),
+        "Error reading open-bitcoin.jsonc: sync.max_blocks_in_flight_total must be greater than zero."
     );
 }
 

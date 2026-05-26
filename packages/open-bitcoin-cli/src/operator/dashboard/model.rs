@@ -242,9 +242,14 @@ fn sync_lag(value: &FieldAvailability<SyncLagStatus>) -> String {
 fn sync_pressure(value: &FieldAvailability<SyncResourcePressure>) -> String {
     match value {
         FieldAvailability::Available(value) => format!(
-            "blocks {}/{} peers {}/{}",
+            "headers {}/peer:{} blocks {}/{}/{} messages {} rounds {} peers {}/{}",
+            value.max_header_requests_in_flight_per_peer,
+            value.max_headers_per_message,
             value.blocks_in_flight,
+            value.max_blocks_in_flight_per_peer,
             value.max_blocks_in_flight_total,
+            value.max_messages_per_peer,
+            value.max_sync_rounds,
             value.outbound_peers,
             value.target_outbound_peers
         ),

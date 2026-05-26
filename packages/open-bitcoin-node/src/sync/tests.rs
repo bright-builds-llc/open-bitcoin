@@ -523,7 +523,12 @@ fn sync_summary_status_projections_include_counters() {
         sync_status.resource_pressure,
         FieldAvailability::available(SyncResourcePressure {
             blocks_in_flight: 0,
+            max_header_requests_in_flight_per_peer: 1,
+            max_headers_per_message: 2_000,
+            max_blocks_in_flight_per_peer: 0,
             max_blocks_in_flight_total: 0,
+            max_messages_per_peer: 0,
+            max_sync_rounds: 0,
             outbound_peers: 3,
             target_outbound_peers: 4,
         })
@@ -800,7 +805,12 @@ fn sync_status_preserves_configured_target_outbound_peer_count() {
         sync_status.resource_pressure,
         FieldAvailability::available(SyncResourcePressure {
             blocks_in_flight: 0,
+            max_header_requests_in_flight_per_peer: 1,
+            max_headers_per_message: 2_000,
+            max_blocks_in_flight_per_peer: 0,
             max_blocks_in_flight_total: 0,
+            max_messages_per_peer: 0,
+            max_sync_rounds: 0,
             outbound_peers: 1,
             target_outbound_peers: 3,
         })
@@ -1587,6 +1597,20 @@ fn mixed_peer_failures_rotate_to_replacement_without_corrupting_state() {
     assert_eq!(
         durable_sync_state.sync.lifecycle,
         FieldAvailability::available(SyncLifecycleState::Active)
+    );
+    assert_eq!(
+        durable_sync_state.sync.resource_pressure,
+        FieldAvailability::available(SyncResourcePressure {
+            blocks_in_flight: 0,
+            max_header_requests_in_flight_per_peer: 1,
+            max_headers_per_message: 2_000,
+            max_blocks_in_flight_per_peer: 16,
+            max_blocks_in_flight_total: 64,
+            max_messages_per_peer: 3,
+            max_sync_rounds: 8,
+            outbound_peers: 1,
+            target_outbound_peers: 1,
+        })
     );
 }
 

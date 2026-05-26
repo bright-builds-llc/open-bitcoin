@@ -5,7 +5,7 @@
 // - packages/bitcoin-knots/src/sync.cpp
 // - packages/bitcoin-knots/src/node/blockstorage.cpp
 
-use open_bitcoin_network::PeerId;
+use open_bitcoin_network::{MAX_HEADERS_RESULTS, PeerId};
 
 use crate::{
     LogRetentionPolicy, MetricRetentionPolicy, RuntimeMetadata,
@@ -20,6 +20,8 @@ use super::{
     DurableSyncRuntime, PeerCapabilitySummary, PeerRetryState, ResolvedSyncPeerAddress,
     SyncPeerAddress, SyncPeerResolver, SyncRunSummary, SyncRuntimeError,
 };
+
+const MAX_HEADER_REQUESTS_IN_FLIGHT_PER_PEER: u64 = 1;
 
 impl DurableSyncRuntime {
     pub fn load_sync_control(&self) -> Result<SyncControlState, SyncRuntimeError> {
@@ -273,7 +275,12 @@ impl DurableSyncRuntime {
         };
         sync.resource_pressure = FieldAvailability::available(SyncResourcePressure {
             blocks_in_flight: self.inflight_blocks.len() as u64,
+            max_header_requests_in_flight_per_peer: MAX_HEADER_REQUESTS_IN_FLIGHT_PER_PEER,
+            max_headers_per_message: MAX_HEADERS_RESULTS as u64,
+            max_blocks_in_flight_per_peer: self.config.max_blocks_in_flight_per_peer as u64,
             max_blocks_in_flight_total: self.config.max_blocks_in_flight_total as u64,
+            max_messages_per_peer: self.config.max_messages_per_peer as u64,
+            max_sync_rounds: self.config.max_rounds as u64,
             outbound_peers: summary.connected_peers as u32,
             target_outbound_peers: self.config.target_outbound_peers as u32,
         });

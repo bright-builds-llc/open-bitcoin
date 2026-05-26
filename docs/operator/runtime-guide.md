@@ -98,7 +98,11 @@ JSONC form:
     "mode": "mainnet-ibd",
     "manual_peers": ["198.51.100.10:8333"],
     "dns_seeds": ["seed.bitcoin.sipa.be", "dnsseed.bluematt.me"],
-    "target_outbound_peers": 2
+    "target_outbound_peers": 2,
+    "max_messages_per_peer": 64,
+    "max_rounds": 8,
+    "max_blocks_in_flight_per_peer": 16,
+    "max_blocks_in_flight_total": 64
   }
 }
 ```
@@ -128,6 +132,10 @@ Important boundaries:
 - `sync.target_outbound_peers` caps how many successful outbound peer slots a
   sync round tries to satisfy before moving on. Sync status reports this target
   separately from the observed outbound peer count.
+- `sync.max_messages_per_peer`, `sync.max_rounds`,
+  `sync.max_blocks_in_flight_per_peer`, and
+  `sync.max_blocks_in_flight_total` override the bounded runtime defaults. Each
+  value must be greater than zero.
 - `sync.network_enabled = true` without `sync.mode = "mainnet-ibd"` is rejected
   so partial config does not accidentally activate public-network behavior.
 - Activation is rejected on `-regtest`, `-signet`, or `-testnet`; this Phase 35
@@ -144,6 +152,36 @@ Important boundaries:
 - Use `bun run scripts/run-live-mainnet-smoke.ts --datadir=PATH` for explicit
   live-mainnet review evidence. It is opt-in, writes local reports, and stays
   outside the default `bash scripts/verify.sh` gate.
+
+### Runtime resource bounds
+
+The sync loop has a bounded public-network resource envelope:
+
+- Header sync keeps at most one `getheaders` request in flight per peer, and
+  each decoded `headers` message is capped at the Bitcoin protocol maximum of
+  2000 headers.
+- Block download is capped by `sync.max_blocks_in_flight_per_peer` per peer and
+  `sync.max_blocks_in_flight_total` across the runtime.
+- Peer reads are capped by `sync.max_messages_per_peer` per peer per sync
+  attempt, and daemon work is capped by `sync.max_rounds` per background wake.
+- Durable sync progress, metrics, and status writes happen synchronously through
+  the store adapter. There is no unbounded durable-write queue.
+- Metrics keep a bounded day-scale window by default: 30 second interval, 2880
+  samples per series, and 24 hours maximum age.
+- Structured logs keep bounded files by default: daily rotation, 14 files, 14
+  days, and 268435456 bytes total.
+
+Inspect the active bounds through the shared status surface:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --datadir=/tmp/open-bitcoin-mainnet \
+  sync status --format json
+
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- \
+  --datadir=/tmp/open-bitcoin-mainnet \
+  sync status --format json
+```
 
 ## First Run And Onboarding
 
@@ -236,9 +274,12 @@ human or JSON form and keeps stopped-node fields visible with explicit
 `open-bitcoin sync` is the focused control surface for daemon mainnet sync:
 
 ```bash
-open-bitcoin --datadir=/tmp/open-bitcoin-preview sync status --format json
-open-bitcoin --datadir=/tmp/open-bitcoin-preview sync pause
-open-bitcoin --datadir=/tmp/open-bitcoin-preview sync resume
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --datadir=/tmp/open-bitcoin-preview sync status --format json
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --datadir=/tmp/open-bitcoin-preview sync pause
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --datadir=/tmp/open-bitcoin-preview sync resume
 ```
 
 For live RPC bootstrap, `status` and `dashboard` reuse the selected datadir,
@@ -248,8 +289,15 @@ a discoverable datadir-local `.cookie` works as well. If neither is available,
 the command falls back to a stopped snapshot and emits a live-RPC bootstrap
 warning.
 
+If live RPC is unavailable, offline `sync status` may still read durable
+metadata. Offline `sync pause` and `sync resume` refuse to write when durable
+metadata indicates an unclean active, paused, recovering, or failed daemon sync
+state; the refusal is an explicit second-writer conflict diagnostic. Use live
+RPC or stop `open-bitcoind` cleanly before mutating sync control offline.
+
 ```bash
-open-bitcoin --network regtest --datadir=/tmp/open-bitcoin-preview status --format json
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --network regtest --datadir=/tmp/open-bitcoin-preview status --format json
 ```
 
 `open-bitcoin dashboard` reuses the same shared status snapshot:

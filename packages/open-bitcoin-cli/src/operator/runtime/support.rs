@@ -3,7 +3,7 @@
 
 use std::{fmt, path::Path};
 
-use open_bitcoin_node::FjallNodeStore;
+use open_bitcoin_node::{FieldAvailability, FjallNodeStore, RuntimeMetadata, SyncLifecycleState};
 use open_bitcoin_rpc::{
     JsonRpcId, JsonRpcVersion, RpcErrorDetail, RpcRequestEnvelope,
     method::OpenBitcoinSyncControlResponse,
@@ -74,6 +74,7 @@ fn execute_offline_sync_command(
     match &args.command {
         SyncCommand::Status => render_sync_outcome(&args.command, format, &metadata),
         SyncCommand::Pause => {
+            reject_offline_mutating_sync_conflict(&args.command, &metadata)?;
             metadata.sync_control.paused = true;
             store
                 .save_runtime_metadata(&metadata, open_bitcoin_node::PersistMode::Sync)
@@ -83,6 +84,7 @@ fn execute_offline_sync_command(
             render_sync_outcome(&args.command, format, &metadata)
         }
         SyncCommand::Resume => {
+            reject_offline_mutating_sync_conflict(&args.command, &metadata)?;
             metadata.sync_control.paused = false;
             store
                 .save_runtime_metadata(&metadata, open_bitcoin_node::PersistMode::Sync)
@@ -91,6 +93,51 @@ fn execute_offline_sync_command(
                 })?;
             render_sync_outcome(&args.command, format, &metadata)
         }
+    }
+}
+
+fn reject_offline_mutating_sync_conflict(
+    command: &SyncCommand,
+    metadata: &RuntimeMetadata,
+) -> Result<(), OperatorRuntimeError> {
+    if metadata.last_clean_shutdown {
+        return Ok(());
+    }
+    let Some(lifecycle) = durable_sync_lifecycle(metadata) else {
+        return Ok(());
+    };
+    if !matches!(
+        lifecycle,
+        SyncLifecycleState::Active
+            | SyncLifecycleState::Paused
+            | SyncLifecycleState::Recovering
+            | SyncLifecycleState::Failed
+    ) {
+        return Ok(());
+    }
+    Err(OperatorRuntimeError::InvalidRequest {
+        message: format!(
+            "live daemon sync appears to own the durable store; live RPC was unavailable, so refusing offline sync {} to avoid a second-writer store conflict. Use live RPC, stop open-bitcoind cleanly, or inspect offline status before mutating durable sync control.",
+            sync_command_display_name(command)
+        ),
+    })
+}
+
+fn durable_sync_lifecycle(metadata: &RuntimeMetadata) -> Option<SyncLifecycleState> {
+    metadata
+        .maybe_sync_state
+        .as_ref()
+        .and_then(|state| match state.sync.lifecycle {
+            FieldAvailability::Available(value) => Some(value),
+            FieldAvailability::Unavailable { .. } => None,
+        })
+}
+
+fn sync_command_display_name(command: &SyncCommand) -> &'static str {
+    match command {
+        SyncCommand::Status => "status",
+        SyncCommand::Pause => "pause",
+        SyncCommand::Resume => "resume",
     }
 }
 
@@ -296,4 +343,114 @@ fn display_path(maybe_path: Option<&Path>) -> String {
 
 fn path_to_string(path: &Path) -> String {
     path.display().to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        fs,
+        path::PathBuf,
+        sync::atomic::{AtomicU64, Ordering},
+    };
+
+    use open_bitcoin_node::{
+        DurableSyncState, FieldAvailability, FjallNodeStore, PeerStatus, RuntimeMetadata,
+        SyncLifecycleState, SyncStatus,
+    };
+
+    use super::{OperatorOutputFormat, SyncArgs, SyncCommand, execute_offline_sync_command};
+
+    static NEXT_TEST_DIRECTORY_ID: AtomicU64 = AtomicU64::new(0);
+
+    fn temp_store_path(label: &str) -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "open-bitcoin-cli-sync-control-{label}-{}",
+            NEXT_TEST_DIRECTORY_ID.fetch_add(1, Ordering::Relaxed)
+        ))
+    }
+
+    fn runtime_metadata_with_lifecycle(
+        lifecycle: SyncLifecycleState,
+        last_clean_shutdown: bool,
+    ) -> RuntimeMetadata {
+        RuntimeMetadata {
+            last_clean_shutdown,
+            maybe_sync_state: Some(DurableSyncState {
+                sync: SyncStatus {
+                    network: FieldAvailability::available("mainnet".to_string()),
+                    chain_tip: FieldAvailability::unavailable("not needed for sync-control test"),
+                    sync_progress: FieldAvailability::unavailable(
+                        "not needed for sync-control test",
+                    ),
+                    lifecycle: FieldAvailability::available(lifecycle),
+                    phase: FieldAvailability::available("block_download".to_string()),
+                    lag: FieldAvailability::unavailable("not needed for sync-control test"),
+                    last_error: FieldAvailability::unavailable("no sync error recorded"),
+                    recovery_action: FieldAvailability::unavailable("no recovery action required"),
+                    resource_pressure: FieldAvailability::unavailable(
+                        "not needed for sync-control test",
+                    ),
+                },
+                peers: PeerStatus {
+                    peer_counts: FieldAvailability::unavailable("not needed for sync-control test"),
+                    recent_peers: FieldAvailability::unavailable(
+                        "not needed for sync-control test",
+                    ),
+                },
+                health_signals: Vec::new(),
+                updated_at_unix_seconds: 1,
+            }),
+            ..RuntimeMetadata::default()
+        }
+    }
+
+    #[test]
+    fn offline_pause_refuses_unclean_active_daemon_sync_state() {
+        // Arrange
+        let path = temp_store_path("active-conflict");
+        let _ = fs::remove_dir_all(&path);
+        let store = FjallNodeStore::open(&path).expect("store");
+        store
+            .save_runtime_metadata(
+                &runtime_metadata_with_lifecycle(SyncLifecycleState::Active, false),
+                open_bitcoin_node::PersistMode::Sync,
+            )
+            .expect("save metadata");
+        drop(store);
+        let args = SyncArgs {
+            command: SyncCommand::Pause,
+        };
+
+        // Act
+        let error = execute_offline_sync_command(&path, &args, OperatorOutputFormat::Human)
+            .expect_err("offline pause should fail");
+
+        // Assert
+        assert!(error.to_string().contains("second-writer store conflict"));
+        let _ = fs::remove_dir_all(&path);
+    }
+
+    #[test]
+    fn offline_pause_allows_missing_sync_state() {
+        // Arrange
+        let path = temp_store_path("missing-state");
+        let _ = fs::remove_dir_all(&path);
+        let args = SyncArgs {
+            command: SyncCommand::Pause,
+        };
+
+        // Act
+        let outcome = execute_offline_sync_command(&path, &args, OperatorOutputFormat::Human)
+            .expect("offline pause");
+        let store = FjallNodeStore::open(&path).expect("store");
+        let metadata = store
+            .load_runtime_metadata()
+            .expect("load metadata")
+            .expect("metadata");
+
+        // Assert
+        assert!(outcome.stdout.text.contains("Daemon sync paused"));
+        assert!(metadata.sync_control.paused);
+        let _ = fs::remove_dir_all(&path);
+    }
 }

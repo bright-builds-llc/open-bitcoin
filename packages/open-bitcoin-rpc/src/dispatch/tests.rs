@@ -586,7 +586,12 @@ fn blockchain_info_uses_durable_sync_truth_when_available() {
                         ),
                         resource_pressure: FieldAvailability::available(SyncResourcePressure {
                             blocks_in_flight: 8,
+                            max_header_requests_in_flight_per_peer: 1,
+                            max_headers_per_message: 2_000,
+                            max_blocks_in_flight_per_peer: 16,
                             max_blocks_in_flight_total: 64,
+                            max_messages_per_peer: 64,
+                            max_sync_rounds: 8,
                             outbound_peers: 2,
                             target_outbound_peers: 4,
                         }),

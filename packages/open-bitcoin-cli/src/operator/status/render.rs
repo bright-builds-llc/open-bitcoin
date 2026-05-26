@@ -165,9 +165,14 @@ fn sync_lag_availability(value: &FieldAvailability<SyncLagStatus>) -> String {
 fn sync_pressure_availability(value: &FieldAvailability<SyncResourcePressure>) -> String {
     match value {
         FieldAvailability::Available(value) => format!(
-            "blocks_in_flight={}/{} outbound_peers={}/{}",
+            "header_requests_in_flight_per_peer={} headers_per_message={} blocks_in_flight={}/{}/{} messages_per_peer={} sync_rounds={} outbound_peers={}/{}",
+            value.max_header_requests_in_flight_per_peer,
+            value.max_headers_per_message,
             value.blocks_in_flight,
+            value.max_blocks_in_flight_per_peer,
             value.max_blocks_in_flight_total,
+            value.max_messages_per_peer,
+            value.max_sync_rounds,
             value.outbound_peers,
             value.target_outbound_peers
         ),
