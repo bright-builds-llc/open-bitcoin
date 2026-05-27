@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Public Mainnet Sync Proof and Node Hardening
 status: planning
-stopped_at: Phase 48 context gathered
-last_updated: "2026-05-27T14:00:37.846Z"
+stopped_at: Phase 49 context gathered
+last_updated: "2026-05-27T21:33:39.744Z"
 last_activity: 2026-05-27
 progress:
   total_phases: 9
@@ -86,6 +86,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-05-27T13:30:05.995Z
-Stopped at: Phase 48 context gathered
-Resume file: .planning/phases/48-support-evidence-and-operator-runbooks/48-CONTEXT.md
+Last session: 2026-05-27T21:33:39.739Z
+Stopped at: Phase 49 context gathered
+Resume file: .planning/phases/49-threat-model-and-release-boundaries/49-CONTEXT.md
