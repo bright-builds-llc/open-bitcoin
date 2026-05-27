@@ -13,7 +13,7 @@ use crate::{args::CliStartupArgs, startup::resolve_startup_config};
 
 use super::{
     ConfigCommand, MigrationArgs, MigrationCommand, NetworkSelection, OnboardArgs, OperatorCli,
-    OperatorCommand, OperatorOutputFormat, SyncArgs, SyncCommand,
+    OperatorCommand, OperatorOutputFormat, SupportArgs, SyncArgs, SyncCommand,
     config::{
         OPEN_BITCOIN_CONFIG_ENV, OPEN_BITCOIN_DATADIR_ENV, OPEN_BITCOIN_NETWORK_ENV,
         OperatorConfigRequest, OperatorConfigResolution, OperatorConfigRoots,
@@ -249,6 +249,9 @@ fn execute_operator_cli_inner(
             &detections.installations,
             &default_data_dir,
         ),
+        OperatorCommand::Support(args) => {
+            execute_support(&cli, config_resolution, detections, args)
+        }
     }
 }
 
@@ -270,6 +273,22 @@ fn execute_status(
         }
     })?;
     Ok(OperatorCommandOutcome::success(format!("{rendered}\n")))
+}
+
+fn execute_support(
+    cli: &OperatorCli,
+    config_resolution: OperatorConfigResolution,
+    detections: DetectionScan,
+    args: &SupportArgs,
+) -> Result<OperatorCommandOutcome, OperatorRuntimeError> {
+    let status = status_runtime_parts(cli, config_resolution, detections);
+    let snapshot = collect_status_snapshot(&status.input, status.maybe_rpc_client.as_deref());
+    super::support::execute_support_command(
+        args,
+        cli.format,
+        &status.input.config_resolution,
+        snapshot,
+    )
 }
 
 fn status_runtime_parts(
@@ -335,7 +354,8 @@ fn command_detections(
         | OperatorCommand::Onboard(_)
         | OperatorCommand::Service(_)
         | OperatorCommand::Dashboard(_)
-        | OperatorCommand::Wallet(_) => {
+        | OperatorCommand::Wallet(_)
+        | OperatorCommand::Support(_) => {
             detect_existing_installations(&detection_roots(config_resolution))
         }
     }

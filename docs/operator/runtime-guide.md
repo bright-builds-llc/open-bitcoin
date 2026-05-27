@@ -481,6 +481,53 @@ Live smoke behavior:
   manual review, launch `open-bitcoind` directly and use
   `open-bitcoin sync status|pause|resume`.
 
+### Support Evidence Bundles
+
+For a local support handoff, generate a redacted evidence bundle from the
+operator CLI. Prefer an explicit output directory so the artifact is easy to
+share or delete after review:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --datadir=/tmp/open-bitcoin-mainnet \
+  support bundle --output-dir=/tmp/open-bitcoin-support
+
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- \
+  --datadir=/tmp/open-bitcoin-mainnet \
+  support bundle --output-dir=/tmp/open-bitcoin-support
+```
+
+If you already ran the live-mainnet smoke wrapper, attach its JSON report as a
+summary-only input:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --datadir=/tmp/open-bitcoin-mainnet \
+  support bundle \
+  --output-dir=/tmp/open-bitcoin-support \
+  --include-live-smoke-report=packages/target/live-mainnet-smoke-reports/open-bitcoin-live-mainnet-smoke.json
+```
+
+The command writes exactly these local files under the selected output
+directory:
+
+- `support-evidence.json`: machine-readable config-path evidence, the shared
+  `OpenBitcoinStatusSnapshot`, store-health availability, redaction metadata,
+  and an allowlisted live-smoke summary when supplied
+- `support-evidence.md`: a compact human-readable index for the same evidence
+
+Redaction boundaries:
+
+- RPC cookie contents, `rpcpassword`, `rpcauth`, wallet private material, raw
+  wallet files, and raw unbounded logs are not copied into the bundle.
+- Credential evidence is metadata-only. Cookie paths and whether a cookie file
+  was present may be reported, but cookie values are not read into the bundle.
+- Live-smoke input is not embedded as a raw report. The support bundle copies
+  only allowlisted summary fields such as status, typed no-progress cause, next
+  action, manual peers, timing, and report paths.
+- The support bundle is local evidence; it is not a production-node claim and
+  does not make public-network sync part of `bash scripts/verify.sh`.
+
 Benchmark modes:
 
 - `--smoke` is the bounded local path used by `bash scripts/verify.sh`; it runs

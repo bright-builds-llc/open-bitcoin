@@ -19,6 +19,7 @@ pub mod onboarding;
 pub mod runtime;
 pub mod service;
 pub mod status;
+pub mod support;
 pub mod wallet;
 pub(crate) mod wallet_support;
 
@@ -52,6 +53,7 @@ pub enum OperatorCommand {
     Migrate(MigrationArgs),
     Onboard(OnboardArgs),
     Wallet(WalletArgs),
+    Support(SupportArgs),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Args)]
@@ -179,6 +181,25 @@ pub struct WalletSendArgs {
 #[derive(Debug, Clone, PartialEq, Eq, Args)]
 pub struct WalletBackupArgs {
     pub destination: PathBuf,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Args)]
+pub struct SupportArgs {
+    #[command(subcommand)]
+    pub command: SupportCommand,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
+pub enum SupportCommand {
+    Bundle(SupportBundleArgs),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Args)]
+pub struct SupportBundleArgs {
+    #[arg(long = "output-dir")]
+    pub maybe_output_dir: Option<PathBuf>,
+    #[arg(long = "include-live-smoke-report")]
+    pub maybe_live_smoke_report: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]

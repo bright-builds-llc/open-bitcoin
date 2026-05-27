@@ -713,6 +713,117 @@ fn open_bitcoin_config_paths_reports_sources() {
 }
 
 #[test]
+fn open_bitcoin_support_bundle_writes_redacted_json_and_markdown() {
+    // Arrange
+    let sandbox = TestSandbox::new("support-bundle");
+    let data_dir = sandbox.child("open-data");
+    let output_dir = sandbox.child("support");
+    fs::create_dir_all(&data_dir).expect("open datadir");
+    let server = FakeRpcServer::start();
+    fs::write(
+        data_dir.join("bitcoin.conf"),
+        format!(
+            "regtest=1\nrpcconnect=127.0.0.1\nrpcport={}\nrpcuser=alice\nrpcpassword=super-secret-password\n",
+            server.address.port()
+        ),
+    )
+    .expect("bitcoin.conf");
+    fs::write(data_dir.join(".cookie"), "__cookie__:super-secret-cookie\n").expect("cookie");
+
+    // Act
+    let output = run_open_bitcoin(
+        &sandbox,
+        [
+            "--network",
+            "regtest",
+            "--datadir",
+            data_dir.to_str().expect("datadir"),
+            "support",
+            "bundle",
+            "--output-dir",
+            output_dir.to_str().expect("output dir"),
+        ],
+    );
+
+    // Assert
+    assert_success(&output);
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert!(stdout.contains("Support evidence written"));
+    assert!(stdout.contains("support-evidence.json"));
+    assert!(stdout.contains("support-evidence.md"));
+    let json_path = output_dir.join("support-evidence.json");
+    let markdown_path = output_dir.join("support-evidence.md");
+    let json_text = fs::read_to_string(&json_path).expect("support json");
+    let markdown = fs::read_to_string(&markdown_path).expect("support markdown");
+    let decoded: Value = serde_json::from_str(&json_text).expect("support json");
+    assert_eq!(decoded["status"]["node"]["state"], "running");
+    assert!(decoded.get("config").is_some());
+    assert!(decoded.get("store_health").is_some());
+    assert!(decoded.get("redaction").is_some());
+    assert_eq!(decoded["live_smoke"]["state"], "unavailable");
+    assert!(markdown.contains("# Open Bitcoin Support Evidence"));
+    for rendered in [&stdout, &json_text, &markdown] {
+        assert_absent(rendered, "super-secret-password");
+        assert_absent(rendered, "super-secret-cookie");
+    }
+}
+
+#[test]
+fn open_bitcoin_support_bundle_records_live_smoke_summary_without_raw_report() {
+    // Arrange
+    let sandbox = TestSandbox::new("support-live-smoke");
+    let data_dir = sandbox.child("open-data");
+    let output_dir = sandbox.child("support");
+    let report_path = sandbox.child("live-smoke.json");
+    fs::create_dir_all(&data_dir).expect("open datadir");
+    fs::write(
+        &report_path,
+        json!({
+            "status": "timeout",
+            "maybeNoProgressCause": "handshake_failure",
+            "nextAction": "Retry with --manual-peer=HOST[:PORT]",
+            "daemonStderrTail": "live-smoke-secret"
+        })
+        .to_string(),
+    )
+    .expect("live smoke report");
+
+    // Act
+    let output = run_open_bitcoin(
+        &sandbox,
+        [
+            "--network",
+            "regtest",
+            "--datadir",
+            data_dir.to_str().expect("datadir"),
+            "support",
+            "bundle",
+            "--output-dir",
+            output_dir.to_str().expect("output dir"),
+            "--include-live-smoke-report",
+            report_path.to_str().expect("report path"),
+        ],
+    );
+
+    // Assert
+    assert_success(&output);
+    let json_text =
+        fs::read_to_string(output_dir.join("support-evidence.json")).expect("support json");
+    let markdown =
+        fs::read_to_string(output_dir.join("support-evidence.md")).expect("support markdown");
+    let decoded: Value = serde_json::from_str(&json_text).expect("support json");
+    assert_eq!(decoded["live_smoke"]["state"], "available");
+    assert_eq!(decoded["live_smoke"]["summary"]["status"], "timeout");
+    assert_eq!(
+        decoded["live_smoke"]["summary"]["maybeNoProgressCause"],
+        "handshake_failure"
+    );
+    assert!(markdown.contains("handshake_failure"));
+    assert_absent(&json_text, "live-smoke-secret");
+    assert_absent(&markdown, "live-smoke-secret");
+}
+
+#[test]
 fn open_bitcoin_wallet_send_requires_confirm_and_uses_preview_path() {
     // Arrange
     let sandbox = TestSandbox::new("wallet-send-preview");
@@ -954,6 +1065,13 @@ fn assert_no_store_lock_error(output: &Output) {
     assert!(!stdout.contains("Locked"), "stdout={stdout}");
     assert!(!stderr.contains("FjallError"), "stderr={stderr}");
     assert!(!stderr.contains("Locked"), "stderr={stderr}");
+}
+
+fn assert_absent(text: &str, value: &str) {
+    assert!(
+        !text.contains(value),
+        "unexpected sensitive value in {text}"
+    );
 }
 
 fn seed_managed_wallet(data_dir: &Path, wallet_name: &str) {

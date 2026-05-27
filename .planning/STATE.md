@@ -4,13 +4,13 @@ milestone: v1.3
 milestone_name: Public Mainnet Sync Proof and Node Hardening
 status: planning
 stopped_at: Phase 48 context gathered
-last_updated: "2026-05-27T13:30:05.999Z"
-last_activity: 2026-05-26 -- Phase 47 completed operator sync truth surfaces
+last_updated: "2026-05-27T14:00:37.846Z"
+last_activity: 2026-05-27
 progress:
   total_phases: 9
-  completed_phases: 6
-  total_plans: 6
-  completed_plans: 6
+  completed_phases: 7
+  total_plans: 7
+  completed_plans: 7
   percent: 100
 ---
 
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 
 ## Current Position
 
-Phase: 48 of 50 (7 of 9 in v1.3) - Support Evidence and Operator Runbooks
+Phase: 49 of 50 (threat model and release boundaries)
 Plan: Not started
 Status: Ready to plan Phase 48
-Last activity: 2026-05-26 -- Phase 47 completed operator sync truth surfaces
+Last activity: 2026-05-27
 
 Progress: [#######---] 67%
 
@@ -36,7 +36,7 @@ Progress: [#######---] 67%
 
 **Velocity:**
 
-- Total plans completed: 6
+- Total plans completed: 7
 - Average duration: -
 - Total execution time: -
 
@@ -51,6 +51,7 @@ Progress: [#######---] 67%
 | 46 | 1 | complete | - |
 | 47 | 1 | complete | - |
 | 48-50 | TBD | - | - |
+| 48 | 1 | - | - |
 
 **Recent Trend:**
 

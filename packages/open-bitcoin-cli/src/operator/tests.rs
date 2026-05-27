@@ -16,7 +16,7 @@ use serde_json::Value;
 
 use super::{
     CliRoute, ConfigCommand, DashboardArgs, MigrationCommand, NetworkSelection, OperatorCli,
-    OperatorCommand, OperatorOutputFormat, StatusArgs, SyncCommand,
+    OperatorCommand, OperatorOutputFormat, StatusArgs, SupportCommand, SyncCommand,
     config::OperatorConfigSource,
     onboarding::{OnboardingWriteDecision, ProposedConfigWrite},
     route_cli_invocation,
@@ -189,6 +189,39 @@ fn open_bitcoin_migrate_plan_routes_to_operator_command() {
     assert_eq!(
         plan.maybe_source_data_dir.as_deref(),
         Some(std::path::Path::new("/tmp/core"))
+    );
+}
+
+#[test]
+fn open_bitcoin_support_bundle_routes_to_operator_command() {
+    // Arrange
+    let args = vec![
+        os("support"),
+        os("bundle"),
+        os("--output-dir"),
+        os("/tmp/open-bitcoin-support"),
+        os("--include-live-smoke-report"),
+        os("/tmp/live-smoke.json"),
+    ];
+
+    // Act
+    let route = route_cli_invocation("open-bitcoin", &args).expect("route");
+
+    // Assert
+    let CliRoute::Operator(cli) = route else {
+        panic!("expected operator route");
+    };
+    let OperatorCommand::Support(support) = cli.command else {
+        panic!("expected support command");
+    };
+    let SupportCommand::Bundle(bundle) = support.command;
+    assert_eq!(
+        bundle.maybe_output_dir.as_deref(),
+        Some(std::path::Path::new("/tmp/open-bitcoin-support"))
+    );
+    assert_eq!(
+        bundle.maybe_live_smoke_report.as_deref(),
+        Some(std::path::Path::new("/tmp/live-smoke.json"))
     );
 }
 

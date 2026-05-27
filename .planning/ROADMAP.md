@@ -169,7 +169,7 @@ Detailed phase execution history is archived under
 | 45. Runtime Resource Bounds and Store Coordination | 1/1 | Complete | 2026-05-26 |
 | 46. Durable Recovery and Invalid Data Handling | 1/1 | Complete | 2026-05-26 |
 | 47. Operator Sync Truth Surfaces | 1/1 | Complete    | 2026-05-26 |
-| 48. Support Evidence and Operator Runbooks | 0/TBD | Not started | - |
+| 48. Support Evidence and Operator Runbooks | 1/1 | Complete    | 2026-05-27 |
 | 49. Threat Model and Release Boundaries | 0/TBD | Not started | - |
 | 50. Public Mainnet Progress Evidence Closeout | 0/TBD | Not started | - |
 

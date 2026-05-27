@@ -2,7 +2,7 @@
 
 ## OpenBitcoinStatusSnapshot
 
-`OpenBitcoinStatusSnapshot` is the sole shared status model for later CLI status output, JSON automation, service diagnostics, dashboard panels, and support reports. Live RPC is not the only status source; stopped-node inspection can still report local datadir, config paths, service state, log paths, locally collected health signals, metrics policy, and build provenance when those collectors are available.
+`OpenBitcoinStatusSnapshot` is the sole shared status model for later CLI status output, JSON automation, service diagnostics, dashboard panels, and support bundles. Live RPC is not the only status source; stopped-node inspection can still report local datadir, config paths, service state, log paths, locally collected health signals, metrics policy, and build provenance when those collectors are available.
 
 ## Field Ownership
 
@@ -34,6 +34,11 @@ surface the last known sync lifecycle, phase, progress signal, estimated lag,
 last successful progress, peer telemetry, recovery guidance, and last sync
 error from the durable store rather than collapsing those fields back to
 renderer-local guesses.
+
+Support bundles embed this same snapshot instead of defining a separate support
+DTO. Bundle consumers should therefore preserve `Unavailable` fields and their
+reasons verbatim; missing live data is useful diagnostic evidence, not a
+serialization error.
 
 ## Sync progress semantics
 

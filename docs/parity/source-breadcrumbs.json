@@ -268,6 +268,14 @@
       "breadcrumbs": []
     },
     {
+      "label": "cli-operator-support-bundles",
+      "files": [
+        "packages/open-bitcoin-cli/src/operator/support.rs",
+        "packages/open-bitcoin-cli/src/operator/support/render.rs"
+      ],
+      "breadcrumbs": []
+    },
+    {
       "label": "cli-operator-dashboard-contracts",
       "files": [
         "packages/open-bitcoin-cli/src/operator/dashboard/mod.rs",
