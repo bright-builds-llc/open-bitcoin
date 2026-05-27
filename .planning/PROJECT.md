@@ -14,7 +14,7 @@ When a behavior is in scope, Open Bitcoin must behave like the pinned Knots base
 
 v1.0 Headless Parity shipped on 2026-04-26, v1.1 Operator Runtime and Real-Network Sync shipped on 2026-04-30, and v1.2 Full Mainnet Network Syncing shipped on 2026-05-23.
 
-The repository now includes durable Fjall-backed runtime storage, real-network sync foundations, bounded metrics and structured logs, the `open-bitcoin` operator binary, launchd/systemd service flows, a Ratatui dashboard, practical wallet runtime workflows, an auditable dry-run migration surface for existing Core or Knots installs, and daemon-owned opt-in mainnet IBD review with validated headers, blocks, durable restart/resume, operator control, live-smoke reporting, and parity closeout evidence.
+The repository now includes durable Fjall-backed runtime storage, real-network sync foundations, bounded metrics and structured logs, the `open-bitcoin` operator binary, launchd/systemd service flows, a Ratatui dashboard, practical wallet runtime workflows, an auditable dry-run migration surface for existing Core or Knots installs, daemon-owned opt-in mainnet IBD review with validated headers, blocks, durable restart/resume, operator control, live-smoke reporting, redacted support evidence, and explicit v1.3 threat-model and release-boundary evidence.
 
 Milestone archives live under `.planning/milestones/`, including shipped roadmap and requirements archives, final audit artifacts where they exist, and raw phase histories for v1.1 and v1.2. One residual risk remains from the v1.1 audit: dashboard pseudoterminal repaint and raw-input behavior is still a manual validation surface rather than an end-to-end automated regression. v1.2 did not create a dedicated milestone audit artifact; Phase 40 closeout and Phase 41 security audit, verification, and UAT are the closeout evidence trail.
 
@@ -119,4 +119,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ---
-*Last updated: 2026-05-24 after starting the v1.3 public mainnet sync proof and node hardening milestone*
+*Last updated: 2026-05-27 after Phase 49 threat model and release-boundary completion*

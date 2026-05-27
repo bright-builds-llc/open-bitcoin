@@ -113,6 +113,7 @@ fi
 
 bun run scripts/generate-loc-report.ts --source="$OPEN_BITCOIN_LOC_REPORT_SOURCE" --output=docs/metrics/lines-of-code.md --check
 bun run scripts/check-parity-breadcrumbs.ts --check
+bun run scripts/check-v1.3-release-boundaries.ts
 bash scripts/check-pure-core-deps.sh
 bash scripts/check-file-lengths.sh
 bash scripts/check-panic-sites.sh

@@ -66,6 +66,28 @@ current shipped claim:
 - timing-threshold benchmark gates that would fail or pass a release on elapsed
   numbers alone
 
+### v1.3 Threat Model And Release Boundaries
+
+The v1.3 threat model and release-boundary surface supports `PROOF-06`,
+`SEC-01`, and `SEC-02` without expanding the shipped claim. v1.3 proves only a
+source-built, opt-in, local-evidence public-mainnet sync review path or a
+diagnosed environment/network blocker path.
+
+The following remain explicit non-claims until separate future gates exist:
+
+- inbound serving and address advertisement
+- transaction relay and mempool propagation
+- production-funds wallet use
+- migration apply mode, source-service cutover, or source-datadir mutation
+- packaging or signed release installation flows
+- hosted/public dashboard work
+- GUI parity
+- unattended production-node readiness
+
+The Phase 48 support bundle remains local redacted evidence only. It does not
+make support tooling a release validator and does not add public-network checks
+to `bash scripts/verify.sh`.
+
 ## Suspected Unknowns
 
 Current catalog entries preserve these review targets:

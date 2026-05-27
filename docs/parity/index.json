@@ -540,6 +540,10 @@
     {
       "name": "live-mainnet-smoke-closeout",
       "status": "done"
+    },
+    {
+      "name": "v1-3-threat-model-release-boundaries",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -889,6 +893,29 @@
         "suspected_unknowns": [
           "Future milestones that expand any deferred production surface need fresh threat models for that broader claim."
         ]
+      },
+      {
+        "id": "v1-3-threat-model-release-boundaries",
+        "title": "v1.3 Threat Model And Release Boundaries",
+        "status": "done",
+        "requirements": [
+          "PROOF-06",
+          "SEC-01",
+          "SEC-02"
+        ],
+        "evidence": [
+          "docs/parity/threat-model-v1.3.md",
+          "docs/parity/release-readiness.md",
+          "docs/operator/runtime-guide.md",
+          ".planning/phases/48-support-evidence-and-operator-runbooks/48-SUMMARY.md"
+        ],
+        "rationale": "Phase 49 makes the v1.3 threat model, acceptance criteria, and shipped claim boundary auditable from parity roots.",
+        "known_gaps": [
+          "Phase 50 still owns live public-mainnet progress or diagnosed-blocker closeout."
+        ],
+        "suspected_unknowns": [
+          "Future production-node, inbound-serving, relay, production-funds wallet, migration apply, packaging, hosted/public dashboard, and GUI claims need separate gates."
+        ]
       }
     ]
   },
@@ -904,6 +931,36 @@
       "path": "release-readiness.md",
       "report_dir": "packages/target/live-mainnet-smoke-reports"
     },
+    "v1_3_threat_model": {
+      "path": "threat-model-v1.3.md",
+      "status": "done",
+      "requirements": [
+        "PROOF-06",
+        "SEC-01",
+        "SEC-02"
+      ],
+      "evidence": [
+        "docs/parity/threat-model-v1.3.md",
+        "docs/parity/release-readiness.md",
+        "docs/operator/runtime-guide.md"
+      ]
+    },
+    "v1_3_release_boundaries": {
+      "path": "release-readiness.md",
+      "status": "done",
+      "requirements": [
+        "PROOF-06",
+        "SEC-01",
+        "SEC-02"
+      ],
+      "evidence": [
+        "docs/parity/threat-model-v1.3.md",
+        "docs/parity/release-readiness.md",
+        "docs/parity/checklist.md",
+        "docs/parity/deviations-and-unknowns.md",
+        ".planning/phases/48-support-evidence-and-operator-runbooks/48-SUMMARY.md"
+      ]
+    },
     "security_analysis_audit": {
       "path": "../../.planning/milestones/v1.2-phases/41-audit-and-revisit-all-the-security-analyses-throughout-the-p/41-SECURITY-AUDIT.md",
       "status": "done",
@@ -914,12 +971,14 @@
       "path": "release-readiness.md",
       "status": "done",
       "evidence": [
+        "docs/parity/threat-model-v1.3.md",
         "docs/parity/release-readiness.md",
         "docs/parity/checklist.md",
         "docs/parity/benchmarks.md",
         "docs/operator/runtime-guide.md",
         "docs/parity/catalog/operator-runtime-release-hardening.md",
         ".planning/milestones/v1.2-phases/41-audit-and-revisit-all-the-security-analyses-throughout-the-p/41-SECURITY-AUDIT.md",
+        "scripts/check-v1.3-release-boundaries.ts",
         "scripts/check-benchmark-report.ts",
         "scripts/run-live-mainnet-smoke.ts"
       ]

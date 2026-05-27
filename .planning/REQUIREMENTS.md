@@ -15,7 +15,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 - [ ] **PROOF-03**: Reviewer can inspect a live smoke report that records the first observed validated header-height increase with peer endpoint, source, timestamp, and before/after durable status.
 - [ ] **PROOF-04**: Reviewer can inspect a live smoke report that records the first validated block connection beyond genesis or a configured checkpoint, or an explicit diagnosis when block progress was not reached.
 - [ ] **PROOF-05**: Operator can interrupt and restart the same public-mainnet sync datadir and see durable before/after evidence that header, block, and runtime metadata progress resume coherently.
-- [ ] **PROOF-06**: Reviewer can validate v1.3 live-mainnet evidence with documented acceptance criteria and repo-local commands without adding public-network checks to the default `bash scripts/verify.sh` gate.
+- [x] **PROOF-06**: Reviewer can validate v1.3 live-mainnet evidence with documented acceptance criteria and repo-local commands without adding public-network checks to the default `bash scripts/verify.sh` gate.
 
 ### Peer Connectivity and Lifecycle Hardening
 
@@ -36,13 +36,13 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 - [x] **OBS-01**: Operator can inspect JSON sync status that reports current phase, outbound peer count, peer outcomes, best header height, best block height, progress signal, estimated lag, last successful progress, and last error.
 - [x] **OBS-02**: Operator-facing status, dashboard, metrics, structured logs, and RPC-facing blockchain info stay consistent and never imply full sync before validated chainstate reaches the selected tip.
-- [ ] **OBS-03**: Operator can generate a redacted support evidence bundle or equivalent report containing relevant config sources, command versions, sync status, peer outcomes, recent logs, metrics, store health, and live smoke artifacts.
-- [ ] **OBS-04**: Operator docs provide copy-pasteable repo-local Cargo and Bazel commands, manual-peer examples, disk/network expectations, troubleshooting steps, and pass/fail interpretation for v1.3 evidence.
+- [x] **OBS-03**: Operator can generate a redacted support evidence bundle or equivalent report containing relevant config sources, command versions, sync status, peer outcomes, recent logs, metrics, store health, and live smoke artifacts.
+- [x] **OBS-04**: Operator docs provide copy-pasteable repo-local Cargo and Bazel commands, manual-peer examples, disk/network expectations, troubleshooting steps, and pass/fail interpretation for v1.3 evidence.
 
 ### Security and Release Claim Boundaries
 
-- [ ] **SEC-01**: Reviewer can inspect a v1.3 threat model covering public peer input, resource exhaustion, storage corruption, operator RPC controls, log/report redaction, and live evidence handling.
-- [ ] **SEC-02**: Reviewer can inspect refreshed parity and release-readiness docs that distinguish v1.3 proven public-mainnet sync evidence from deferred inbound serving, transaction relay, production-funds wallet, migration apply mode, packaging, and unattended production-node claims.
+- [x] **SEC-01**: Reviewer can inspect a v1.3 threat model covering public peer input, resource exhaustion, storage corruption, operator RPC controls, log/report redaction, and live evidence handling.
+- [x] **SEC-02**: Reviewer can inspect refreshed parity and release-readiness docs that distinguish v1.3 proven public-mainnet sync evidence from deferred inbound serving, transaction relay, production-funds wallet, migration apply mode, packaging, and unattended production-node claims.
 - [ ] **SEC-03**: UAT records either successful public-mainnet header and block progress evidence or a diagnosed environment/network blocker with enough detail for the next operator action.
 
 ## Future Requirements
@@ -90,7 +90,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PROOF-03 | Phase 50 | Pending |
 | PROOF-04 | Phase 50 | Pending |
 | PROOF-05 | Phase 50 | Pending |
-| PROOF-06 | Phase 49 | Pending |
+| PROOF-06 | Phase 49 | Complete |
 | PEER-01 | Phase 42 | Complete |
 | PEER-02 | Phase 43 | Complete |
 | PEER-03 | Phase 44 | Complete |
@@ -102,10 +102,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | NODE-05 | Phase 46 | Complete |
 | OBS-01 | Phase 47 | Complete |
 | OBS-02 | Phase 47 | Complete |
-| OBS-03 | Phase 48 | Pending |
-| OBS-04 | Phase 48 | Pending |
-| SEC-01 | Phase 49 | Pending |
-| SEC-02 | Phase 49 | Pending |
+| OBS-03 | Phase 48 | Complete |
+| OBS-04 | Phase 48 | Complete |
+| SEC-01 | Phase 49 | Complete |
+| SEC-02 | Phase 49 | Complete |
 | SEC-03 | Phase 50 | Pending |
 
 **Coverage:**
@@ -115,4 +115,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-05-24*
-*Last updated: 2026-05-26 after Phase 47 completion*
+*Last updated: 2026-05-27 after Phase 49 completion*

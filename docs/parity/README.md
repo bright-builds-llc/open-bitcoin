@@ -31,6 +31,7 @@ Deferred and suspected follow-up work remains visible in
 - `deviations-and-unknowns.md` summarizes current deviations, deferred surfaces, suspected unknowns, and folded todo risks.
 - `benchmarks.md` documents the benchmark groups, Knots mappings, local commands, reports, and non-goals.
 - `release-readiness.md` is the milestone handoff and reviewer inspection checklist.
+- `threat-model-v1.3.md` is the v1.3 scoped threat model and release-boundary companion for PROOF-06, SEC-01, and SEC-02.
 - `catalog/README.md` explains the subsystem-level catalog structure used to satisfy `REF-03`.
 - `catalog/core-domain-and-serialization.md` tracks domain primitives, serialization, scripts, transactions, blocks, and protocol framing.
 - `catalog/consensus-validation.md` tracks consensus validation, script execution, PoW, merkle behavior, and typed validation outcomes.
