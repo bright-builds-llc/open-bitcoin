@@ -911,10 +911,36 @@
         ],
         "rationale": "Phase 49 makes the v1.3 threat model, acceptance criteria, and shipped claim boundary auditable from parity roots.",
         "known_gaps": [
-          "Phase 50 still owns live public-mainnet progress or diagnosed-blocker closeout."
+          "Phase 50 closed with diagnosed public-mainnet blocker evidence."
         ],
         "suspected_unknowns": [
           "Future production-node, inbound-serving, relay, production-funds wallet, migration apply, packaging, hosted/public dashboard, and GUI claims need separate gates."
+        ]
+      },
+      {
+        "id": "v1-3-public-mainnet-progress-evidence-closeout",
+        "title": "v1.3 Public Mainnet Progress Evidence Closeout",
+        "status": "done",
+        "requirements": [
+          "PROOF-03",
+          "PROOF-04",
+          "PROOF-05",
+          "SEC-03"
+        ],
+        "evidence": [
+          ".planning/phases/50-public-mainnet-progress-evidence-closeout/50-UAT.md",
+          "docs/parity/release-readiness.md",
+          "scripts/run-live-mainnet-smoke.ts",
+          "docs/operator/runtime-guide.md"
+        ],
+        "rationale": "Phase 50 closed through diagnosed blocker evidence: the selected manual-peer live-smoke report recorded handshake_failure, endpoint outcomes, durable snapshots, support evidence, and a next operator action.",
+        "known_gaps": [
+          "Selected Phase 50 evidence did not observe validated header or block progress.",
+          "Selected Phase 50 evidence did not claim restart/resume success; it records same-datadir diagnosed-blocker evidence."
+        ],
+        "suspected_unknowns": [
+          "A later operator can retry Phase 50 commands with a different reachable manual peer.",
+          "Future production-node, inbound-serving, relay, packaging, hosted/public dashboard, and GUI claims need separate gates."
         ]
       }
     ]

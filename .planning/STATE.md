@@ -2,41 +2,41 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Public Mainnet Sync Proof and Node Hardening
-status: executing
-stopped_at: Phase 50 planned; ready to execute
-last_updated: "2026-05-28T03:24:42.162Z"
-last_activity: 2026-05-28 -- Phase 50 planning complete
+status: milestone-ready
+stopped_at: Phase 50 complete; v1.3 ready for milestone audit/archive
+last_updated: "2026-05-28T03:47:03.107Z"
+last_activity: 2026-05-28 -- Phase 50 verified and complete
 progress:
   total_phases: 9
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 10
-  completed_plans: 9
-  percent: 90
+  completed_plans: 10
+  percent: 100
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-24)
+See: .planning/PROJECT.md (updated 2026-05-28)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 50 — Public Mainnet Progress Evidence Closeout
+**Current focus:** v1.3 milestone audit and archive
 
 ## Current Position
 
-Phase: 50
-Plan: 50-01
-Status: Ready to execute
-Last activity: 2026-05-28 -- Phase 50 planning complete
+Phase: 50 (Public Mainnet Progress Evidence Closeout) — COMPLETE
+Plan: 1 of 1
+Status: v1.3 phase work complete; ready for milestone audit/archive
+Last activity: 2026-05-28 -- Phase 50 verified and complete
 
-Progress: [#########-] 90%
+Progress: [##########] 100%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 9
+- Total plans completed: 10
 - Average duration: -
 - Total execution time: -
 
@@ -50,14 +50,15 @@ Progress: [#########-] 90%
 | 45 | 1 | complete | - |
 | 46 | 1 | complete | - |
 | 47 | 1 | complete | - |
-| 48-50 | TBD | - | - |
-| 48 | 1 | - | - |
-| 49 | 2 | - | - |
+| 48-50 | 4 | complete | - |
+| 48 | 1 | complete | - |
+| 49 | 2 | complete | - |
+| 50 | 1 | complete | - |
 
 **Recent Trend:**
 
-- Last 5 plans: 46-01, 47-01, 48-01, 49-01, 49-02
-- Trend: Phase 49 complete; Phase 50 remains.
+- Last 5 plans: 47-01, 48-01, 49-01, 49-02, 50-01
+- Trend: v1.3 phase work complete; milestone audit/archive remains.
 
 ## Accumulated Context
 
@@ -82,12 +83,12 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
-- Public-network proof depends on operator environment and may close with diagnosed network/environment blockers if live progress cannot be observed.
+- Phase 50 closed public-mainnet proof through diagnosed blocker evidence (`handshake_failure`) without claiming live header/block progress.
 - Default local verification must remain deterministic; public-network checks stay opt-in.
 - `.planning/phases/` remains retained for v1.0 evidence referenced by parity docs.
 
 ## Session Continuity
 
 Last session: 2026-05-28T03:16:08.621Z
-Stopped at: Phase 50 planned; ready to execute
-Resume file: .planning/phases/50-public-mainnet-progress-evidence-closeout/50-01-PLAN.md
+Stopped at: Phase 50 complete; v1.3 ready for milestone audit/archive
+Resume file: .planning/phases/50-public-mainnet-progress-evidence-closeout/50-VERIFICATION.md

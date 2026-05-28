@@ -14,7 +14,7 @@ When a behavior is in scope, Open Bitcoin must behave like the pinned Knots base
 
 v1.0 Headless Parity shipped on 2026-04-26, v1.1 Operator Runtime and Real-Network Sync shipped on 2026-04-30, and v1.2 Full Mainnet Network Syncing shipped on 2026-05-23.
 
-The repository now includes durable Fjall-backed runtime storage, real-network sync foundations, bounded metrics and structured logs, the `open-bitcoin` operator binary, launchd/systemd service flows, a Ratatui dashboard, practical wallet runtime workflows, an auditable dry-run migration surface for existing Core or Knots installs, daemon-owned opt-in mainnet IBD review with validated headers, blocks, durable restart/resume, operator control, live-smoke reporting, redacted support evidence, and explicit v1.3 threat-model and release-boundary evidence.
+The repository now includes durable Fjall-backed runtime storage, real-network sync foundations, bounded metrics and structured logs, the `open-bitcoin` operator binary, launchd/systemd service flows, a Ratatui dashboard, practical wallet runtime workflows, an auditable dry-run migration surface for existing Core or Knots installs, daemon-owned opt-in mainnet IBD review with validated headers, blocks, durable restart/resume, operator control, live-smoke reporting, redacted support evidence, explicit v1.3 threat-model and release-boundary evidence, and a Phase 50 diagnosed-blocker public-mainnet evidence closeout.
 
 Milestone archives live under `.planning/milestones/`, including shipped roadmap and requirements archives, final audit artifacts where they exist, and raw phase histories for v1.1 and v1.2. One residual risk remains from the v1.1 audit: dashboard pseudoterminal repaint and raw-input behavior is still a manual validation surface rather than an end-to-end automated regression. v1.2 did not create a dedicated milestone audit artifact; Phase 40 closeout and Phase 41 security audit, verification, and UAT are the closeout evidence trail.
 
@@ -38,7 +38,7 @@ Milestone archives live under `.planning/milestones/`, including shipped roadmap
 
 ### Active
 
-v1.3 Public Mainnet Sync Proof and Node Hardening is active. Detailed active requirements live in `.planning/REQUIREMENTS.md`.
+v1.3 Public Mainnet Sync Proof and Node Hardening phase work is complete and ready for milestone audit/archive. Detailed requirements live in `.planning/REQUIREMENTS.md`.
 
 ### Out of Scope
 
@@ -87,7 +87,7 @@ v1.3 Public Mainnet Sync Proof and Node Hardening is active. Detailed active req
 | Treat migration as explicit, dry-run-first, and reversible | Existing Core or Knots datadirs and wallets are high-value user data and must not be mutated implicitly | Shipped and audited in v1.1 |
 | Keep shared service definitions at scan scope through `DetectionScan` | Future consumers should opt into service ownership association explicitly instead of inheriting misleading per-installation copies | Implemented in Phase 34 and archived with v1.1 |
 | Scope v1.2 to opt-in daemon initial block download | Full mainnet sync should first be proven through `open-bitcoind` headers, blocks, restart/resume, and observability before broader P2P, wallet, or production service claims | Shipped in v1.2 |
-| Scope v1.3 to public-mainnet proof and node hardening | The v1.2 live UAT did not observe header or block progress, so the next milestone should close that evidence gap before expanding wallet, inbound-serving, relay, packaging, or migration claims | Active |
+| Scope v1.3 to public-mainnet proof and node hardening | The v1.2 live UAT did not observe header or block progress, so the next milestone should close that evidence gap before expanding wallet, inbound-serving, relay, packaging, or migration claims | Phase work complete; Phase 50 closed through diagnosed blocker evidence |
 
 ## Evolution
 
@@ -119,4 +119,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ---
-*Last updated: 2026-05-27 after Phase 49 threat model and release-boundary completion*
+*Last updated: 2026-05-28 after Phase 50 public-mainnet evidence closeout*

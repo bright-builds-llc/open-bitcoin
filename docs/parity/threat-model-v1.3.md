@@ -47,7 +47,7 @@ hosted/public dashboard, GUI, or unattended production-node claim.
 | V13-TM-03 | Tampering, Denial of Service | Durable sync and store state | Sync runtime -> durable store | Partial downloads, invalid data, incompatible stores, corrupt stores, or second writers make evidence misleading. | Phase 45 offline mutating controls refuse unclean active owners. Phase 46 separates validated header height, downloaded block height, and connected chainstate height, and records recovery guidance for storage and peer failures. | Future destructive migration apply mode and production service cutover need a backup-aware design and separate safety review. |
 | V13-TM-04 | Spoofing, Elevation of Privilege, Tampering | Operator RPC controls | Operator CLI/RPC -> sync controls | An operator command appears to control sync when credentials are missing, stale, or routed to the wrong state source. | Runtime guide documents normal RPC auth sources. Status and dashboard preserve `Unavailable` reasons. Offline pause/resume refuse second-writer mutation when live RPC is unavailable and durable state is unclean. | Public remote administration, ACL policy, and unattended daemon supervision are deferred beyond v1.3. |
 | V13-TM-05 | Information Disclosure | Log/report redaction and local support evidence | Local machine -> reviewer artifact | A shared support bundle or live-smoke example leaks RPC credentials, cookie values, private wallet material, seed phrases, raw logs, or raw live-smoke input. | Phase 48 support bundles write `support-evidence.json` and `support-evidence.md` with credential metadata only, omitted secret categories, allowlisted live-smoke summary fields, and redacted sensitive text. | Hosted support upload, raw log sharing, or production-funds wallet evidence would need a new data-protection design. |
-| V13-TM-06 | Repudiation, Spoofing | Live evidence handling and release claims | Roadmap requirements -> release claims | Reviewers mistake DNS/TCP reachability, support-bundle existence, or a no-progress report for completed header/block/restart proof. | This document and `release-readiness.md` require Phase 50 evidence to show observed header/block/restart-resume progress or a diagnosed environment/network blocker with typed no-progress cause, endpoint outcomes, status snapshots, and next operator action. Support bundles are local redacted evidence only. | Phase 50 still owns the final live public-mainnet progress or diagnosed-blocker closeout. |
+| V13-TM-06 | Repudiation, Spoofing | Live evidence handling and release claims | Roadmap requirements -> release claims | Reviewers mistake DNS/TCP reachability, support-bundle existence, or a no-progress report for completed header/block/restart proof. | This document and `release-readiness.md` require Phase 50 evidence to show observed header/block/restart-resume progress or a diagnosed environment/network blocker with typed no-progress cause, endpoint outcomes, status snapshots, and next operator action. Support bundles are local redacted evidence only. | Phase 50 closed through diagnosed blocker evidence in `50-UAT.md`; future successful progress evidence still requires a new operator run with a reachable peer. |
 
 ## Evidence Acceptance Criteria
 
@@ -121,8 +121,9 @@ fields. It does not by itself prove public-mainnet readiness.
 
 ## Residual Risks And Future Gates
 
-- Phase 50 still owns live public-mainnet progress or diagnosed-blocker
-  closeout. Phase 49 only defines the acceptance path.
+- Phase 50 closed live public-mainnet evidence through the diagnosed-blocker
+  path in `50-UAT.md`; future successful progress evidence still needs a new
+  operator run with a reachable peer.
 - Public-network conditions are operator-environment dependent, so a valid
   blocker must preserve typed no-progress cause, endpoint outcomes, status
   snapshots, and next operator action.

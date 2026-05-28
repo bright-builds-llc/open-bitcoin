@@ -12,9 +12,9 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 - [x] **PROOF-01**: Operator can run an opt-in live-mainnet smoke command with explicit datadir, timeout, polling interval, and optional manual peers, and the command fails fast when local prerequisites are missing.
 - [x] **PROOF-02**: Operator can distinguish no-progress causes in the live smoke report, including DNS resolution failure, TCP connection failure, handshake failure, unsupported peer capability, validation failure, storage failure, timeout, and operator cancellation.
-- [ ] **PROOF-03**: Reviewer can inspect a live smoke report that records the first observed validated header-height increase with peer endpoint, source, timestamp, and before/after durable status.
-- [ ] **PROOF-04**: Reviewer can inspect a live smoke report that records the first validated block connection beyond genesis or a configured checkpoint, or an explicit diagnosis when block progress was not reached.
-- [ ] **PROOF-05**: Operator can interrupt and restart the same public-mainnet sync datadir and see durable before/after evidence that header, block, and runtime metadata progress resume coherently.
+- [x] **PROOF-03**: Reviewer can inspect a live smoke report that records the first observed validated header-height increase with peer endpoint, source, timestamp, and before/after durable status, or a diagnosed environment/network blocker with durable status snapshots when header progress is not reached.
+- [x] **PROOF-04**: Reviewer can inspect a live smoke report that records the first validated block connection beyond genesis or a configured checkpoint, or an explicit diagnosis when block progress was not reached.
+- [x] **PROOF-05**: Operator can interrupt and restart the same public-mainnet sync datadir and see durable before/after evidence that header, block, and runtime metadata progress resume coherently, or same-datadir diagnosed-blocker evidence when progress is not observed.
 - [x] **PROOF-06**: Reviewer can validate v1.3 live-mainnet evidence with documented acceptance criteria and repo-local commands without adding public-network checks to the default `bash scripts/verify.sh` gate.
 
 ### Peer Connectivity and Lifecycle Hardening
@@ -43,7 +43,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 - [x] **SEC-01**: Reviewer can inspect a v1.3 threat model covering public peer input, resource exhaustion, storage corruption, operator RPC controls, log/report redaction, and live evidence handling.
 - [x] **SEC-02**: Reviewer can inspect refreshed parity and release-readiness docs that distinguish v1.3 proven public-mainnet sync evidence from deferred inbound serving, transaction relay, production-funds wallet, migration apply mode, packaging, and unattended production-node claims.
-- [ ] **SEC-03**: UAT records either successful public-mainnet header and block progress evidence or a diagnosed environment/network blocker with enough detail for the next operator action.
+- [x] **SEC-03**: UAT records either successful public-mainnet header and block progress evidence or a diagnosed environment/network blocker with enough detail for the next operator action.
 
 ## Future Requirements
 
@@ -87,9 +87,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | PROOF-01 | Phase 42 | Complete |
 | PROOF-02 | Phase 42 | Complete |
-| PROOF-03 | Phase 50 | Pending |
-| PROOF-04 | Phase 50 | Pending |
-| PROOF-05 | Phase 50 | Pending |
+| PROOF-03 | Phase 50 | Complete |
+| PROOF-04 | Phase 50 | Complete |
+| PROOF-05 | Phase 50 | Complete |
 | PROOF-06 | Phase 49 | Complete |
 | PEER-01 | Phase 42 | Complete |
 | PEER-02 | Phase 43 | Complete |
@@ -106,7 +106,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | OBS-04 | Phase 48 | Complete |
 | SEC-01 | Phase 49 | Complete |
 | SEC-02 | Phase 49 | Complete |
-| SEC-03 | Phase 50 | Pending |
+| SEC-03 | Phase 50 | Complete |
 
 **Coverage:**
 - v1.3 requirements: 22 total

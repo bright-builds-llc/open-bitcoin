@@ -30,7 +30,7 @@ gate.
 - [x] **Phase 47: Operator Sync Truth Surfaces** - Keep status, dashboard, metrics, logs, and RPC surfaces consistent during sync. (completed 2026-05-26)
 - [x] **Phase 48: Support Evidence and Operator Runbooks** - Produce redacted support evidence and repo-local operator instructions. (completed 2026-05-27)
 - [x] **Phase 49: Threat Model and Release Boundaries** - Refresh v1.3 security analysis and scoped parity/release claims. (completed 2026-05-27)
-- [ ] **Phase 50: Public Mainnet Progress Evidence Closeout** - Capture header, block, and restart/resume proof or diagnose the blocker.
+- [x] **Phase 50: Public Mainnet Progress Evidence Closeout** - Capture header, block, and restart/resume proof or diagnose the blocker. (completed 2026-05-28)
 
 ## Phase Details
 
@@ -115,7 +115,8 @@ Plans:
   2. Sensitive data in support evidence is redacted or omitted while preserving enough context for review.
   3. Operator docs include repo-local Cargo and Bazel commands, manual-peer examples, disk and network expectations, troubleshooting, and pass/fail interpretation.
   4. Docs explain how to use local artifacts without requiring hosted services, packaged installs, or destructive migration.
-**Plans**: TBD
+**Plans**:
+- [x] 50-01-PLAN.md — Public-mainnet evidence capture, UAT summary, and parity closeout.
 
 ### Phase 49: Threat Model and Release Boundaries
 **Goal**: Reviewers can audit v1.3 security posture and release claims before live evidence closeout.
@@ -174,18 +175,9 @@ Detailed phase execution history is archived under
 | 47. Operator Sync Truth Surfaces | 1/1 | Complete    | 2026-05-26 |
 | 48. Support Evidence and Operator Runbooks | 1/1 | Complete    | 2026-05-27 |
 | 49. Threat Model and Release Boundaries | 2/2 | Complete    | 2026-05-27 |
-| 50. Public Mainnet Progress Evidence Closeout | 0/TBD | Not started | - |
+| 50. Public Mainnet Progress Evidence Closeout | 1/1 | Complete    | 2026-05-28 |
 
 ## Next Step
 
-Gather context for the next v1.3 phase:
-
-```bash
-/gsd-discuss-phase 50
-```
-
-To skip discussion and plan directly:
-
-```bash
-/gsd-plan-phase 50
-```
+v1.3 phase work is complete. Run a milestone audit or milestone completion
+workflow before archiving the milestone.

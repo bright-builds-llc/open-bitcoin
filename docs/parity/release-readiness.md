@@ -144,6 +144,24 @@ support bundles are local redacted evidence, not release validators, and they
 must be reviewed with the live-smoke report, status snapshots, or
 diagnosed-blocker evidence.
 
+## Phase 50 Evidence Closeout
+
+Phase 50 closed through diagnosed blocker evidence recorded in
+[`50-UAT.md`](../../.planning/phases/50-public-mainnet-progress-evidence-closeout/50-UAT.md).
+The selected closeout report is
+`packages/target/live-mainnet-smoke-reports/phase50-manual-peer-absolute/open-bitcoin-live-mainnet-smoke.json`.
+
+The selected report recorded `result.status=no_progress`,
+`result.maybeNoProgressCause=handshake_failure`, 79 manual-peer endpoint
+outcomes, 24 durable status snapshots, and a next operator action to inspect
+daemon stderr/endpoint outcomes or retry with a different reachable manual
+peer. It did not record validated header or block progress, so Phase 50 does
+not claim restart/resume success.
+
+Generated live-smoke and support-bundle reports remain local artifacts outside
+git. The committed UAT summarizes the artifact paths, selected report fields,
+support-bundle status snapshot, requirement verdicts, and next operator action.
+
 ## Intentional Deferrals
 
 [`docs/parity/deviations-and-unknowns.md`](deviations-and-unknowns.md) is the
