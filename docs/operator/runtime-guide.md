@@ -449,7 +449,8 @@ Live smoke behavior:
 
 - `run-live-mainnet-smoke.ts` builds the current daemon and operator binaries,
   starts `open-bitcoind` with explicit `mainnet-ibd` activation, polls
-  `open-bitcoin-cli getblockchaininfo`, and writes
+  `open-bitcoin-cli openbitcoinsyncstatus` for fresh daemon sync-control
+  status, and writes
   `open-bitcoin-live-mainnet-smoke.json` plus
   `open-bitcoin-live-mainnet-smoke.md` under
   `packages/target/live-mainnet-smoke-reports`.

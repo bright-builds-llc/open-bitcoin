@@ -168,6 +168,28 @@ Selected report final durable status:
 | `phase` | `steady_state` |
 | `maybeLastError` | `null` |
 
+## Phase 51 Fresh Status Amendment
+
+Phase 51 closes the milestone audit gap discovered after this UAT was first
+written. The selected Phase 50 report remains the historical public-mainnet
+diagnosed-blocker evidence, but its per-poll snapshots came from
+`open-bitcoin-cli getblockchaininfo` and therefore recorded
+`phase=rpc_getblockchaininfo` and `lifecycle=synced` while the final durable
+status recorded `phase=steady_state` and `lifecycle=active`.
+
+After Phase 51, future `bun run scripts/run-live-mainnet-smoke.ts` executions
+poll `open-bitcoin-cli openbitcoinsyncstatus` during the daemon run. Report
+snapshots now derive lifecycle, phase, outbound peer count, last error, paused
+state, updated timestamp, and progress heights from fresh daemon sync-control
+metadata. The deterministic proof is `bash scripts/test-run-live-mainnet-smoke.sh`,
+which exercises both progress and no-progress report paths with mocked fresh
+status metadata.
+
+This amendment does not change the Phase 50 selected outcome: the historical
+report is still `satisfied-by-diagnosed-blocker`, not progress evidence. It
+closes the stale snapshot integration gap so a later operator retry can be
+audited through fresh-status progress or diagnosed-blocker snapshots.
+
 ## Restart Resume Evidence
 
 The same datadir, `packages/target/phase50-mainnet-datadir`, was reused across

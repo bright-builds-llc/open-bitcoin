@@ -162,6 +162,13 @@ Generated live-smoke and support-bundle reports remain local artifacts outside
 git. The committed UAT summarizes the artifact paths, selected report fields,
 support-bundle status snapshot, requirement verdicts, and next operator action.
 
+Phase 51 closes the fresh-status integration gap found during milestone audit:
+the live-smoke runner now polls `openbitcoinsyncstatus` during the daemon run,
+and the offline smoke regression proves progress and diagnosed-blocker snapshots
+come from fresh daemon sync-control metadata. See
+[`51-01-SUMMARY.md`](../../.planning/phases/51-live-smoke-fresh-status-integration/51-01-SUMMARY.md)
+for the implementation closeout.
+
 ## Intentional Deferrals
 
 [`docs/parity/deviations-and-unknowns.md`](deviations-and-unknowns.md) is the

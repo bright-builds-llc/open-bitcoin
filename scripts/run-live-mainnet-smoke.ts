@@ -156,11 +156,15 @@ type SmokeReport = {
   snapshots: SyncStatusSnapshot[];
 };
 
+type SyncControlStatusJson = {
+  metadata?: RuntimeMetadataJson;
+};
+
 type RuntimeMetadataJson = {
-  blocks?: number;
-  headers?: number;
-  initialblockdownload?: boolean;
-  warnings?: string;
+  maybe_sync_state?: DurableSyncStateJson;
+  sync_control?: {
+    paused?: boolean;
+  };
 };
 
 type FieldAvailability<T> =
@@ -174,25 +178,24 @@ type FieldAvailability<T> =
       value?: unknown;
     };
 
-type DurableStatusJson = {
-  maybe_sync_state?: {
-    peers?: {
-      peer_counts?: FieldAvailability<{
-        outbound?: number;
-      }>;
-      recent_peers?: FieldAvailability<RuntimePeerTelemetryJson[]>;
-    };
-    sync?: {
-      last_error?: FieldAvailability<string>;
-      lifecycle?: FieldAvailability<string>;
-      phase?: FieldAvailability<string>;
-      sync_progress?: FieldAvailability<{
-        block_height?: number;
-        header_height?: number;
-        messages_processed?: number;
-      }>;
-    };
+type DurableSyncStateJson = {
+  peers?: {
+    peer_counts?: FieldAvailability<{
+      outbound?: number;
+    }>;
+    recent_peers?: FieldAvailability<RuntimePeerTelemetryJson[]>;
   };
+  sync?: {
+    last_error?: FieldAvailability<string>;
+    lifecycle?: FieldAvailability<string>;
+    phase?: FieldAvailability<string>;
+    sync_progress?: FieldAvailability<{
+      block_height?: number;
+      header_height?: number;
+      messages_processed?: number;
+    }>;
+  };
+  updated_at_unix_seconds?: number;
 };
 
 type RuntimePeerTelemetryJson = {
@@ -937,18 +940,37 @@ function readSyncStatus(
     maxBuffer: 128 * 1024 * 1024,
     stdio: ["ignore", "pipe", "pipe"],
   });
-  const decoded = JSON.parse(stdout) as RuntimeMetadataJson;
+  const decoded = JSON.parse(stdout) as SyncControlStatusJson | RuntimeMetadataJson;
+  return syncStatusSnapshotFromMetadata(runtimeMetadataFromStatusResponse(decoded));
+}
+
+function runtimeMetadataFromStatusResponse(
+  decoded: SyncControlStatusJson | RuntimeMetadataJson,
+): RuntimeMetadataJson {
+  const maybeMetadata = (decoded as SyncControlStatusJson).metadata;
+  if (maybeMetadata !== undefined) {
+    return maybeMetadata;
+  }
+
+  return decoded as RuntimeMetadataJson;
+}
+
+function syncStatusSnapshotFromMetadata(metadata: RuntimeMetadataJson): SyncStatusSnapshot {
+  const capturedAtUnixSeconds = Math.floor(Date.now() / 1000);
+  const maybeSyncState = metadata.maybe_sync_state;
+  const maybeProgress = availableValue(maybeSyncState?.sync?.sync_progress);
+  const maybePeerCounts = availableValue(maybeSyncState?.peers?.peer_counts);
 
   return {
-    blockHeight: Number(decoded.blocks ?? 0),
-    capturedAtUnixSeconds: Math.floor(Date.now() / 1000),
-    headerHeight: Number(decoded.headers ?? 0),
-    lifecycle: decoded.initialblockdownload === false ? "synced" : "initial_block_download",
-    maybeLastError: valueAsNullableString(decoded.warnings),
-    outboundPeers: 0,
-    paused: false,
-    phase: "rpc_getblockchaininfo",
-    updatedAtUnixSeconds: Math.floor(Date.now() / 1000),
+    blockHeight: Number(maybeProgress?.block_height ?? 0),
+    capturedAtUnixSeconds,
+    headerHeight: Number(maybeProgress?.header_height ?? 0),
+    lifecycle: String(availableValue(maybeSyncState?.sync?.lifecycle) ?? "unavailable"),
+    maybeLastError: valueAsNullableString(availableValue(maybeSyncState?.sync?.last_error)),
+    outboundPeers: Number(maybePeerCounts?.outbound ?? 0),
+    paused: metadata.sync_control?.paused === true,
+    phase: String(availableValue(maybeSyncState?.sync?.phase) ?? "unavailable"),
+    updatedAtUnixSeconds: Number(maybeSyncState?.updated_at_unix_seconds ?? capturedAtUnixSeconds),
   };
 }
 
@@ -1001,8 +1023,12 @@ function readFinalStatus(
     maxBuffer: 128 * 1024 * 1024,
     stdio: ["ignore", "pipe", "pipe"],
   });
-  const decoded = JSON.parse(stdout) as DurableStatusJson;
-  const maybeSyncState = decoded.maybe_sync_state;
+  const decoded = JSON.parse(stdout) as RuntimeMetadataJson;
+  return finalStatusSummaryFromMetadata(decoded);
+}
+
+function finalStatusSummaryFromMetadata(metadata: RuntimeMetadataJson): FinalStatusSummary | null {
+  const maybeSyncState = metadata.maybe_sync_state;
   if (maybeSyncState === undefined) {
     return null;
   }
@@ -1470,7 +1496,7 @@ async function main(): Promise<void> {
     `-rpcport=${rpcPort}`,
     "-rpcuser=smoke",
     "-rpcpassword=smoke",
-    "getblockchaininfo",
+    "openbitcoinsyncstatus",
   ];
   const preflightChecks = buildPreflightChecks(
     repoRootPath,

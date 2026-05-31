@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Public Mainnet Sync Proof and Node Hardening
 status: milestone-ready
-stopped_at: Phase 51 added for v1.3 audit gap closure
-last_updated: "2026-05-31T13:50:00Z"
-last_activity: 2026-05-31 -- Phase 51 gap closure phase added from milestone audit
+stopped_at: Phase 51 complete; rerun v1.3 milestone audit before archive
+last_updated: "2026-05-31T21:55:49.394Z"
+last_activity: 2026-05-31 -- Phase 51 complete; v1.3 ready for re-audit
 progress:
   total_phases: 10
-  completed_phases: 9
-  total_plans: 10
-  completed_plans: 10
-  percent: 90
+  completed_phases: 10
+  total_plans: 11
+  completed_plans: 11
+  percent: 100
 ---
 
 # Project State
@@ -21,22 +21,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-28)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** v1.3 Phase 51 audit gap closure
+**Current focus:** v1.3 milestone re-audit
 
 ## Current Position
 
-Phase: 51 (Live Smoke Fresh Status Integration) — PENDING
-Plan: 0 of 0
-Status: gap closure phase created from v1.3 milestone audit; plan Phase 51 next
-Last activity: 2026-05-31 -- Phase 51 gap closure phase added from milestone audit
+Phase: 51 (Live Smoke Fresh Status Integration) — COMPLETE
+Plan: 1 of 1
+Status: Phase 51 complete; rerun the v1.3 milestone audit before archive.
+Last activity: 2026-05-31 -- Phase 51 complete; v1.3 ready for re-audit
 
-Progress: [#########-] 90%
+Progress: [##########] 100%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 10
+- Total plans completed: 11
 - Average duration: -
 - Total execution time: -
 
@@ -54,12 +54,12 @@ Progress: [#########-] 90%
 | 48 | 1 | complete | - |
 | 49 | 2 | complete | - |
 | 50 | 1 | complete | - |
-| 51 | 0 | pending | - |
+| 51 | 1 | complete | - |
 
 **Recent Trend:**
 
-- Last 5 plans: 47-01, 48-01, 49-01, 49-02, 50-01
-- Trend: v1.3 audit found one blocking integration gap; Phase 51 is pending.
+- Last 5 plans: 48-01, 49-01, 49-02, 50-01, 51-01
+- Trend: v1.3 audit gap G-01 is closed; milestone is ready for re-audit.
 
 ## Accumulated Context
 
@@ -77,20 +77,21 @@ Recent decisions affecting current work:
 - [phase 44]: Sync peer outcomes now distinguish activity from useful contribution; headers and blocks count only after accepted sync handling, while idle, stalled, waiting, and failed peers remain visible without useful-progress credit.
 - [phase 47]: Operator sync status now exposes progress signal and last successful progress; status, dashboard, metrics, logs, and RPC-facing blockchain info keep header, downloaded, and connected progress distinct.
 - [phase 49]: v1.3 release claims are bounded by an explicit threat model, parity catalog surface, and deterministic release-boundary guard; public-network checks remain opt-in and outside default verification.
-- [phase 51]: Milestone audit gap G-01 requires live-smoke progress snapshots to use fresh daemon sync status before v1.3 can archive.
+- [phase 51]: Live-smoke progress and diagnosed-blocker snapshots now use fresh daemon sync-control status via `openbitcoinsyncstatus`.
 
 ### Pending Todos
 
-- Plan Phase 51: Live Smoke Fresh Status Integration.
+- Rerun the v1.3 milestone audit and archive v1.3 if no gaps remain.
 
 ### Blockers/Concerns
 
-- Phase 50 closed public-mainnet proof through diagnosed blocker evidence (`handshake_failure`) without claiming live header/block progress, but the v1.3 audit found the live-smoke snapshot loop is not yet wired to fresh daemon sync status.
+- No active milestone blockers are recorded after Phase 51.
+- Phase 50 closed public-mainnet proof through diagnosed blocker evidence (`handshake_failure`) without claiming live header/block progress; Phase 51 corrected the smoke runner status source for future reruns.
 - Default local verification must remain deterministic; public-network checks stay opt-in.
 - `.planning/phases/` remains retained for v1.0 evidence referenced by parity docs.
 
 ## Session Continuity
 
-Last session: 2026-05-28T03:16:08.621Z
-Stopped at: Phase 51 added for v1.3 audit gap closure
+Last session: 2026-05-31T21:55:49.394Z
+Stopped at: Phase 51 complete; rerun v1.3 milestone audit before archive
 Resume file: .planning/v1.3-MILESTONE-AUDIT.md

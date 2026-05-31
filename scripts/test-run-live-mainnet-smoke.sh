@@ -69,10 +69,50 @@ fi
 if [[ "$count" -eq 0 ]]; then
 	cat <<'JSON'
 {
-  "headers": 0,
-  "blocks": 0,
-  "initialblockdownload": true,
-  "warnings": ""
+  "metadata": {
+    "maybe_sync_state": {
+      "sync": {
+        "sync_progress": {
+          "state": "available",
+          "value": {
+            "header_height": 0,
+            "block_height": 0,
+            "messages_processed": 1
+          }
+        },
+        "lifecycle": {
+          "state": "available",
+          "value": "active"
+        },
+        "phase": {
+          "state": "available",
+          "value": "waiting_for_headers"
+        },
+        "last_error": {
+          "state": "unavailable",
+          "value": {
+            "reason": "no sync error recorded"
+          }
+        }
+      },
+      "peers": {
+        "peer_counts": {
+          "state": "available",
+          "value": {
+            "outbound": 1
+          }
+        },
+        "recent_peers": {
+          "state": "available",
+          "value": []
+        }
+      },
+      "updated_at_unix_seconds": 1777225000
+    },
+    "sync_control": {
+      "paused": false
+    }
+  }
 }
 JSON
 	echo 1 >"$counter_file"
@@ -81,10 +121,50 @@ fi
 
 cat <<'JSON'
 {
-  "headers": 1,
-  "blocks": 0,
-  "initialblockdownload": true,
-  "warnings": ""
+  "metadata": {
+    "maybe_sync_state": {
+      "sync": {
+        "sync_progress": {
+          "state": "available",
+          "value": {
+            "header_height": 1,
+            "block_height": 0,
+            "messages_processed": 4
+          }
+        },
+        "lifecycle": {
+          "state": "available",
+          "value": "active"
+        },
+        "phase": {
+          "state": "available",
+          "value": "header_sync"
+        },
+        "last_error": {
+          "state": "unavailable",
+          "value": {
+            "reason": "no sync error recorded"
+          }
+        }
+      },
+      "peers": {
+        "peer_counts": {
+          "state": "available",
+          "value": {
+            "outbound": 1
+          }
+        },
+        "recent_peers": {
+          "state": "available",
+          "value": []
+        }
+      },
+      "updated_at_unix_seconds": 1777225005
+    },
+    "sync_control": {
+      "paused": false
+    }
+  }
 }
 JSON
 EOF
@@ -95,10 +175,50 @@ cat >"$tmp_dir/mock-stalled-status.sh" <<'EOF'
 set -euo pipefail
 cat <<'JSON'
 {
-  "headers": 0,
-  "blocks": 0,
-  "initialblockdownload": true,
-  "warnings": ""
+  "metadata": {
+    "maybe_sync_state": {
+      "sync": {
+        "sync_progress": {
+          "state": "available",
+          "value": {
+            "header_height": 0,
+            "block_height": 0,
+            "messages_processed": 0
+          }
+        },
+        "lifecycle": {
+          "state": "available",
+          "value": "active"
+        },
+        "phase": {
+          "state": "available",
+          "value": "steady_state"
+        },
+        "last_error": {
+          "state": "unavailable",
+          "value": {
+            "reason": "no sync error recorded"
+          }
+        }
+      },
+      "peers": {
+        "peer_counts": {
+          "state": "available",
+          "value": {
+            "outbound": 0
+          }
+        },
+        "recent_peers": {
+          "state": "available",
+          "value": []
+        }
+      },
+      "updated_at_unix_seconds": 1777225100
+    },
+    "sync_control": {
+      "paused": false
+    }
+  }
 }
 JSON
 EOF
@@ -238,6 +358,12 @@ report_markdown="$output_dir/open-bitcoin-live-mainnet-smoke.md"
 generated_config="$output_dir/open-bitcoin-live-mainnet-smoke.jsonc"
 grep -q '"status": "passed"' "$report_json"
 grep -q '"progressDetected": true' "$report_json"
+grep -q '"openbitcoinsyncstatus"' "$report_json"
+grep -q '"lifecycle": "active"' "$report_json"
+grep -q '"phase": "header_sync"' "$report_json"
+grep -q '"outboundPeers": 1' "$report_json"
+grep -q '"paused": false' "$report_json"
+grep -q '"updatedAtUnixSeconds": 1777225005' "$report_json"
 grep -q '"manualPeers": \[' "$report_json"
 grep -q '"network_preflight"' "$report_json"
 grep -q '"state": "connected"' "$report_json"
@@ -337,6 +463,8 @@ fi
 
 grep -q '"status": "no_progress"' "$report_json"
 grep -q '"maybeNoProgressCause": "tcp_connection_failure"' "$report_json"
+grep -q '"phase": "steady_state"' "$report_json"
+grep -q '"outboundPeers": 0' "$report_json"
 grep -q '"headersReceived": 2' "$report_json"
 grep -q '"blocksReceived": 1' "$report_json"
 grep -q "Runtime Peer Contributions" "$report_markdown"

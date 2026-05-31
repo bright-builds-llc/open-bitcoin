@@ -925,18 +925,21 @@
           "PROOF-03",
           "PROOF-04",
           "PROOF-05",
+          "OBS-02",
           "SEC-03"
         ],
         "evidence": [
           ".planning/phases/50-public-mainnet-progress-evidence-closeout/50-UAT.md",
+          ".planning/phases/51-live-smoke-fresh-status-integration/51-01-SUMMARY.md",
           "docs/parity/release-readiness.md",
           "scripts/run-live-mainnet-smoke.ts",
           "docs/operator/runtime-guide.md"
         ],
-        "rationale": "Phase 50 closed through diagnosed blocker evidence: the selected manual-peer live-smoke report recorded handshake_failure, endpoint outcomes, durable snapshots, support evidence, and a next operator action.",
+        "rationale": "Phase 50 closed through diagnosed blocker evidence, and Phase 51 closed the audited fresh-status integration gap by making live-smoke snapshots poll openbitcoinsyncstatus during daemon execution.",
         "known_gaps": [
           "Selected Phase 50 evidence did not observe validated header or block progress.",
-          "Selected Phase 50 evidence did not claim restart/resume success; it records same-datadir diagnosed-blocker evidence."
+          "Selected Phase 50 evidence did not claim restart/resume success; it records same-datadir diagnosed-blocker evidence.",
+          "Historical selected Phase 50 snapshots used getblockchaininfo, but Phase 51 amended the evidence trail and changed future live-smoke polling to openbitcoinsyncstatus."
         ],
         "suspected_unknowns": [
           "A later operator can retry Phase 50 commands with a different reachable manual peer.",
