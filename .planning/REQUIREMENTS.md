@@ -111,9 +111,23 @@ Which phases cover which requirements. Updated during roadmap creation.
 **Coverage:**
 - v1.3 requirements: 22 total
 - Mapped to phases: 22
-- Pending gap closure: 5
+- Pending gap closure: 0
 - Unmapped: 0
+- Pending tech-debt cleanup: 4
+
+## v1.3 Tech Debt Follow-up Traceability
+
+The milestone re-audit found no unsatisfied requirements, so the requirement
+checkboxes and primary traceability table remain complete. These follow-up
+phases own non-blocking audit debt before archive.
+
+| Debt | Requirements touched | Follow-up phase | Status |
+|------|----------------------|-----------------|--------|
+| D-01 Phase 44 optional public-network UAT skipped | PEER-03 | Phase 53 | Pending |
+| D-02 Support bundle live-smoke schema v2 summary shallow | OBS-03 | Phase 52 | Pending |
+| D-03 Historical Phase 50 selected report caveat | PROOF-03, PROOF-04, PROOF-05, OBS-02, SEC-03 | Phase 53 | Pending |
+| D-04 `open-bitcoind` preflight message stale | OBS-02 | Phase 52 | Pending |
 
 ---
 *Requirements defined: 2026-05-24*
-*Last updated: 2026-05-31 after v1.3 milestone audit gap planning*
+*Last updated: 2026-05-31 after v1.3 tech-debt follow-up planning*
