@@ -7,6 +7,10 @@ phase_lifecycle_id: "42-2026-05-24T13-40-48"
 generated_at: "2026-05-24T14:18:50.544Z"
 status: passed
 lifecycle_validated: true
+requirements:
+  - PROOF-01
+  - PROOF-02
+  - PEER-01
 ---
 
 # Phase 42 Verification
@@ -14,6 +18,14 @@ lifecycle_validated: true
 ## Result
 
 Passed. Phase 42 extends the opt-in live-mainnet smoke runner with explicit manual-peer input, generated manual-peer config, endpoint outcome evidence, typed no-progress causes, and cancellation reporting while keeping default verification deterministic and public-network-free.
+
+## Requirements Coverage
+
+| Requirement | Status | Evidence |
+| --- | --- | --- |
+| PROOF-01 | SATISFIED | The live smoke command accepts explicit datadir, timeout, polling interval, and optional manual peers, and deterministic preflight tests cover missing local prerequisites. |
+| PROOF-02 | SATISFIED | Live smoke reports classify typed no-progress causes including DNS/TCP/handshake and operator cancellation outcomes. |
+| PEER-01 | SATISFIED | Endpoint outcome evidence records resolved, connected, handshook, failed, or skipped DNS seed and manual-peer paths before or during opt-in sync. |
 
 ## Commands
 

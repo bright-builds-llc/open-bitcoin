@@ -6,6 +6,12 @@ generated_at: 2026-05-27T13:59:27.099Z
 phase: 48
 plan: 01
 status: complete
+requirements:
+  - OBS-03
+  - OBS-04
+requirements-completed:
+  - OBS-03
+  - OBS-04
 ---
 
 # Phase 48 Summary: Support Evidence and Operator Runbooks

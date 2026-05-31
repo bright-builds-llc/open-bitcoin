@@ -6,6 +6,9 @@ generated_at: 2026-05-27T13:59:27.099Z
 phase: 48
 status: passed
 lifecycle_validated: true
+requirements:
+  - OBS-03
+  - OBS-04
 ---
 
 # Phase 48 Verification
@@ -17,6 +20,13 @@ status: passed
 Phase 48 passed the repo-native verification contract after regenerating the
 tracked LOC report and splitting the support renderer out of the command module
 to satisfy the production Rust file-length gate.
+
+## Requirements Coverage
+
+| Requirement | Status | Evidence |
+| --- | --- | --- |
+| OBS-03 | SATISFIED | `open-bitcoin support bundle` writes redacted `support-evidence.json` and `support-evidence.md` with config evidence, status snapshots, store health, logs/metrics context, and optional live-smoke artifact summaries. |
+| OBS-04 | SATISFIED | Operator docs include repo-local Cargo and Bazel commands, manual-peer examples, expectations, troubleshooting, and pass/fail interpretation for v1.3 evidence. |
 
 ## Evidence
 

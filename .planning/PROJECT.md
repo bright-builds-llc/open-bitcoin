@@ -38,7 +38,7 @@ Milestone archives live under `.planning/milestones/`, including shipped roadmap
 
 ### Active
 
-v1.3 Public Mainnet Sync Proof and Node Hardening phase work is complete and ready for milestone audit/archive. Detailed requirements live in `.planning/REQUIREMENTS.md`.
+v1.3 Public Mainnet Sync Proof and Node Hardening is in audit gap closure after Phase 50. Detailed requirements live in `.planning/REQUIREMENTS.md`.
 
 ### Out of Scope
 
@@ -87,7 +87,7 @@ v1.3 Public Mainnet Sync Proof and Node Hardening phase work is complete and rea
 | Treat migration as explicit, dry-run-first, and reversible | Existing Core or Knots datadirs and wallets are high-value user data and must not be mutated implicitly | Shipped and audited in v1.1 |
 | Keep shared service definitions at scan scope through `DetectionScan` | Future consumers should opt into service ownership association explicitly instead of inheriting misleading per-installation copies | Implemented in Phase 34 and archived with v1.1 |
 | Scope v1.2 to opt-in daemon initial block download | Full mainnet sync should first be proven through `open-bitcoind` headers, blocks, restart/resume, and observability before broader P2P, wallet, or production service claims | Shipped in v1.2 |
-| Scope v1.3 to public-mainnet proof and node hardening | The v1.2 live UAT did not observe header or block progress, so the next milestone should close that evidence gap before expanding wallet, inbound-serving, relay, packaging, or migration claims | Phase work complete; Phase 50 closed through diagnosed blocker evidence |
+| Scope v1.3 to public-mainnet proof and node hardening | The v1.2 live UAT did not observe header or block progress, so the next milestone should close that evidence gap before expanding wallet, inbound-serving, relay, packaging, or migration claims | Phase 51 gap closure is pending after audit found live-smoke snapshots were not wired to fresh daemon sync status |
 
 ## Evolution
 

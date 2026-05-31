@@ -9,6 +9,9 @@ status: complete
 requirements:
   - OBS-01
   - OBS-02
+requirements-completed:
+  - OBS-01
+  - OBS-02
 ---
 
 # Phase 47 Summary

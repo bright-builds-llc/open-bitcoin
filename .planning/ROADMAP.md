@@ -5,15 +5,15 @@
 - ✅ **v1.0 Headless Parity** - Phases 1 through 12 (shipped 2026-04-26). Archive: [v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 - ✅ **v1.1 Operator Runtime and Real-Network Sync** - Phases 13 through 34 (shipped 2026-04-30). Archive: [v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
 - ✅ **v1.2 Full Mainnet Network Syncing** - Phases 35 through 41 (shipped 2026-05-23). Archive: [v1.2-ROADMAP.md](milestones/v1.2-ROADMAP.md)
-- 🚧 **v1.3 Public Mainnet Sync Proof and Node Hardening** - Phases 42 through 50 (active).
+- 🚧 **v1.3 Public Mainnet Sync Proof and Node Hardening** - Phases 42 through 51 (active).
 
 ## Current Focus
 
 v1.3 proves real public-mainnet sync progress through the explicit opt-in
 daemon workflow and hardens the node/runtime surfaces needed before any broader
-production-node claim. The milestone focuses on durable sync proof, peer
-resilience, data integrity, operator observability, and auditable release
-boundaries.
+production-node claim. The milestone is in gap-closure after audit found that
+live-smoke progress snapshots must be wired to fresh daemon sync status before
+archive.
 
 The milestone does not include inbound serving, transaction relay,
 production-funds wallet use, migration apply mode, packaging, hosted dashboard,
@@ -31,6 +31,7 @@ gate.
 - [x] **Phase 48: Support Evidence and Operator Runbooks** - Produce redacted support evidence and repo-local operator instructions. (completed 2026-05-27)
 - [x] **Phase 49: Threat Model and Release Boundaries** - Refresh v1.3 security analysis and scoped parity/release claims. (completed 2026-05-27)
 - [x] **Phase 50: Public Mainnet Progress Evidence Closeout** - Capture header, block, and restart/resume proof or diagnose the blocker. (completed 2026-05-28)
+- [ ] **Phase 51: Live Smoke Fresh Status Integration** - Wire live-smoke closeout evidence to fresh daemon sync status before re-audit.
 
 ## Phase Details
 
@@ -116,7 +117,7 @@ Plans:
   3. Operator docs include repo-local Cargo and Bazel commands, manual-peer examples, disk and network expectations, troubleshooting, and pass/fail interpretation.
   4. Docs explain how to use local artifacts without requiring hosted services, packaged installs, or destructive migration.
 **Plans**:
-- [x] 50-01-PLAN.md — Public-mainnet evidence capture, UAT summary, and parity closeout.
+  - [x] 48-01-PLAN.md — Support evidence bundle and operator runbooks.
 
 ### Phase 49: Threat Model and Release Boundaries
 **Goal**: Reviewers can audit v1.3 security posture and release claims before live evidence closeout.
@@ -141,6 +142,19 @@ Plans:
   2. Reviewer can inspect a live smoke report with the first validated block connection beyond genesis or configured checkpoint, or an explicit diagnosis when block progress was not reached.
   3. Operator can interrupt and restart the same public-mainnet datadir and see durable before/after evidence that header, block, and runtime metadata progress resume coherently.
   4. UAT records successful public-mainnet header and block progress evidence or a diagnosed environment/network blocker with enough detail for the next operator action.
+**Plans**:
+  - [x] 50-01-PLAN.md — Public-mainnet evidence capture, UAT summary, and parity closeout.
+
+### Phase 51: Live Smoke Fresh Status Integration
+**Goal**: Close v1.3 milestone audit gap G-01 by making live-smoke progress and diagnosed-blocker snapshots come from fresh daemon sync status.
+**Depends on**: Phase 50
+**Requirements**: PROOF-03, PROOF-04, PROOF-05, OBS-02, SEC-03
+**Gap Closure**: Closes `.planning/v1.3-MILESTONE-AUDIT.md` gap G-01.
+**Success Criteria** (what must be TRUE):
+  1. Live-smoke polling reads fresh Open Bitcoin daemon sync-control status, or `getblockchaininfo` refreshes durable sync state per request before reporting.
+  2. Live-smoke snapshots report lifecycle, phase, outbound peer count, latest error, and progress heights consistently with final durable daemon status.
+  3. Deterministic tests prove progress and no-progress detection use the fresh status source.
+  4. Phase 50 evidence or UAT is regenerated or amended so milestone auditors can inspect fresh-status progress or diagnosed-blocker evidence.
 **Plans**: TBD
 
 ## Completed Milestones
@@ -163,7 +177,7 @@ Detailed phase execution history is archived under
 
 ## Progress
 
-**Execution Order:** Phase 42 -> 43 -> 44 -> 45 -> 46 -> 47 -> 48 -> 49 -> 50
+**Execution Order:** Phase 42 -> 43 -> 44 -> 45 -> 46 -> 47 -> 48 -> 49 -> 50 -> 51
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -176,8 +190,9 @@ Detailed phase execution history is archived under
 | 48. Support Evidence and Operator Runbooks | 1/1 | Complete    | 2026-05-27 |
 | 49. Threat Model and Release Boundaries | 2/2 | Complete    | 2026-05-27 |
 | 50. Public Mainnet Progress Evidence Closeout | 1/1 | Complete    | 2026-05-28 |
+| 51. Live Smoke Fresh Status Integration | 0/0 | Pending | - |
 
 ## Next Step
 
-v1.3 phase work is complete. Run a milestone audit or milestone completion
-workflow before archiving the milestone.
+Plan Phase 51 to close the v1.3 milestone audit blocker, then rerun the
+milestone audit before archiving.

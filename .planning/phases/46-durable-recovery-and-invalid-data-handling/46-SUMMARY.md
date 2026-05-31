@@ -10,6 +10,10 @@ requirements:
   - NODE-02
   - NODE-03
   - NODE-05
+requirements-completed:
+  - NODE-02
+  - NODE-03
+  - NODE-05
 ---
 
 # Phase 46 Summary

@@ -9,6 +9,9 @@ status: complete
 requirements:
   - NODE-01
   - NODE-04
+requirements-completed:
+  - NODE-01
+  - NODE-04
 ---
 
 # Phase 45 Summary
