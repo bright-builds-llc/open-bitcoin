@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Public Mainnet Sync Proof and Node Hardening
-status: milestone-ready
-stopped_at: Phase 51 complete; rerun v1.3 milestone audit before archive
-last_updated: "2026-05-31T21:55:49.394Z"
+status: completed
+stopped_at: Phase 52 context gathered
+last_updated: "2026-06-01T00:08:58.817Z"
 last_activity: 2026-05-31 -- Phase 51 complete; v1.3 ready for re-audit
 progress:
-  total_phases: 10
+  total_phases: 12
   completed_phases: 10
   total_plans: 11
   completed_plans: 11
@@ -92,6 +92,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-05-31T21:55:49.394Z
-Stopped at: Phase 51 complete; rerun v1.3 milestone audit before archive
-Resume file: .planning/v1.3-MILESTONE-AUDIT.md
+Last session: 2026-06-01T00:08:58.809Z
+Stopped at: Phase 52 context gathered
+Resume file: .planning/phases/52-operator-evidence-cleanup/52-CONTEXT.md
