@@ -53,10 +53,11 @@ The current source build exposes three relevant binaries:
 
 `open-bitcoind` now has an explicit mainnet sync activation path with a
 daemon-owned bounded sync loop. When enabled, daemon startup opens the selected
-durable store, constructs `DurableSyncRuntime`, starts the sync worker, and
-keeps truthful durable sync state available to status, dashboard, RPC, and
-operator CLI control surfaces. This is still an operator-ready review workflow,
-not a production-node claim.
+durable store, constructs `DurableSyncRuntime`, and runs the explicit opt-in
+bounded mainnet sync worker while keeping truthful durable sync state available
+to status, dashboard, RPC, and operator CLI control surfaces. This is still an
+operator-ready review workflow, not unattended production-node operation and not
+a packaged-service guarantee.
 
 You can run them directly from `packages/target/{debug,release}/` after
 building or through `cargo run`.
@@ -140,9 +141,10 @@ Important boundaries:
   so partial config does not accidentally activate public-network behavior.
 - Activation is rejected on `-regtest`, `-signet`, or `-testnet`; this Phase 35
   path is only for mainnet IBD bootstrap.
-- The daemon now keeps a bounded background sync loop active when mainnet sync
-  is enabled, while the normal local RPC server continues to serve operator and
-  wallet requests.
+- The daemon now keeps the explicit opt-in bounded mainnet sync worker active
+  when mainnet sync is enabled, while the normal local RPC server continues to
+  serve operator and wallet requests. This is not unattended production-node
+  operation.
 - `open-bitcoin status`, `open-bitcoin dashboard`, `open-bitcoin sync status`,
   and RPC `getblockchaininfo` read the same durable sync truth for header
   height, downloaded block height, connected block height, progress signal,
@@ -523,9 +525,13 @@ Redaction boundaries:
   wallet files, and raw unbounded logs are not copied into the bundle.
 - Credential evidence is metadata-only. Cookie paths and whether a cookie file
   was present may be reported, but cookie values are not read into the bundle.
-- Live-smoke input is not embedded as a raw report. The support bundle copies
-  only allowlisted summary fields such as status, typed no-progress cause, next
-  action, manual peers, timing, and report paths.
+- Live-smoke input is not embedded as a raw report. For schema v2 live-smoke
+  reports, the support bundle copies only `result.status`,
+  `result.progressDetected`, `result.maybeNoProgressCause`,
+  `result.nextAction`, `result.headerDelta`, and `result.blockDelta`; older or
+  hand-authored top-level report fields remain a compatibility fallback.
+- Raw live-smoke input, daemon stdout/stderr tails, raw status snapshots, raw
+  options, and endpoint tables are not embedded in the support bundle.
 - The support bundle is local evidence; it is not a production-node claim and
   does not make public-network sync part of `bash scripts/verify.sh`.
 

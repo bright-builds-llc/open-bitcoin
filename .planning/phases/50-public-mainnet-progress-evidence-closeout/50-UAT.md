@@ -106,6 +106,15 @@ Daemon stderr ended with:
 open-bitcoind mainnet sync preflight enabled: mode=mainnet-ibd, datadir="/Users/peterryszkiewicz/Repos/open-bitcoin/packages/target/phase50-mainnet-datadir", best_header_height=0, best_block_height=0; peer transport and unattended full IBD are not started by this phase.
 ```
 
+## Phase 52 Preflight Wording Amendment
+
+The stderr line above is preserved as historical Phase 50 generated output.
+Phase 52 refreshes future `open-bitcoind` preflight output so it says the
+mainnet sync preflight opened the durable store and that enabled startup runs
+the explicit opt-in bounded mainnet sync worker. The refreshed wording keeps the
+non-claims that this is not unattended production-node operation and is not a
+packaged-service guarantee.
+
 ## Endpoint Outcomes
 
 The selected report recorded 79 manual-peer endpoint outcomes:
@@ -233,6 +242,17 @@ allowlisted live-smoke summary field reported `summary_fields_unavailable`, so
 the selected live-smoke JSON remains the authoritative closeout evidence for
 `result.status`, deltas, typed cause, endpoint outcomes, snapshots, and next
 action.
+
+## Phase 52 Support Summary Amendment
+
+The `summary_fields_unavailable` support-bundle note above is preserved as
+historical Phase 50 generated output. Phase 52 updates future support bundles so
+schema v2 live-smoke reports summarize `result.status`,
+`result.progressDetected`, `result.maybeNoProgressCause`, `result.nextAction`,
+`result.headerDelta`, and `result.blockDelta` while keeping raw live-smoke
+input, daemon output tails, raw status snapshots, options, and endpoint tables
+out of support JSON and Markdown. Phase 52 does not replace the selected Phase
+50 live-smoke artifact or claim new public-mainnet progress.
 
 ## Requirement Verdicts
 

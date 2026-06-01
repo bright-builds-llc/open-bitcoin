@@ -124,9 +124,9 @@ phases own non-blocking audit debt before archive.
 | Debt | Requirements touched | Follow-up phase | Status |
 |------|----------------------|-----------------|--------|
 | D-01 Phase 44 optional public-network UAT skipped | PEER-03 | Phase 53 | Pending |
-| D-02 Support bundle live-smoke schema v2 summary shallow | OBS-03 | Phase 52 | Pending |
+| D-02 Support bundle live-smoke schema v2 summary shallow | OBS-03 | Phase 52 | Complete |
 | D-03 Historical Phase 50 selected report caveat | PROOF-03, PROOF-04, PROOF-05, OBS-02, SEC-03 | Phase 53 | Pending |
-| D-04 `open-bitcoind` preflight message stale | OBS-02 | Phase 52 | Pending |
+| D-04 `open-bitcoind` preflight message stale | OBS-02 | Phase 52 | Complete |
 
 ---
 *Requirements defined: 2026-05-24*

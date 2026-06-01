@@ -86,7 +86,7 @@ Primary current-cycle evidence:
 | Outbound public peer resilience | Existing daemon sync evidence distinguishes failed, waiting, stalled, connected, and useful-contribution peer states. | Phase 42, Phase 43, and Phase 44 summaries; live-smoke endpoint outcomes and peer contribution rows. | v1.3 does not claim inbound serving and address advertisement. | Future PRODNODE-02 phase. | PEER-01 through PEER-04, SEC-01 |
 | Runtime resource bounds and durable recovery | Existing status and docs expose bounded runtime caps, separated durable progress, restart recovery, invalid-data rejection, and recovery guidance. | Phase 45 and Phase 46 summaries, runtime guide, status snapshot contract, support evidence. | v1.3 does not claim unattended production-node operation. | Future PRODNODE-01 phase with long-run evidence. | NODE-01 through NODE-05, SEC-01 |
 | Operator RPC controls | Local status, sync pause/resume, dashboard, and support commands use the shared status truth surface and documented credential sources. | Runtime guide, `OpenBitcoinStatusSnapshot`, support evidence, Phase 47 summary. | v1.3 does not claim remote hosted administration, public RPC control, or broad ACL management. | Future remote-operator/auth scope. | OBS-01, OBS-02, SEC-01 |
-| Redacted support evidence | Operators can generate local redacted support evidence with config paths, status snapshot, store health, redaction metadata, and allowlisted live-smoke summary fields. | `support-evidence.json`, `support-evidence.md`, Phase 48 support summary. | support bundles are local redacted evidence, not release validators or public-mainnet proof by themselves. | Future artifact validator or hosted support design. | OBS-03, OBS-04, SEC-01 |
+| Redacted support evidence | Operators can generate local redacted support evidence with config paths, status snapshot, store health, redaction metadata, and schema v2 `result.*` live-smoke summary fields. | `support-evidence.json`, `support-evidence.md`, Phase 48 support summary, Phase 52 deterministic support-summary cleanup. | support bundles are local redacted evidence, not release validators or public-mainnet proof by themselves. | Future artifact validator or hosted support design. | OBS-03, OBS-04, SEC-01 |
 | Inbound serving and address advertisement | No shipped v1.3 claim. | Deferred-surface docs, parity checklist, threat model boundary matrix. | v1.3 does not claim inbound serving and address advertisement. | Future PRODNODE-02 phase. | SEC-02 |
 | Transaction relay and mempool propagation | No shipped v1.3 claim. | Deferred-surface docs, parity checklist, threat model boundary matrix. | v1.3 does not claim transaction relay or mempool propagation behavior. | Future PRODNODE-03 phase. | SEC-02 |
 | Production-funds wallet use | No shipped v1.3 claim. | Deferred-surface docs, parity checklist, threat model boundary matrix. | v1.3 does not claim production-funds wallet use. | Future WALPROD-01 threat model and parity evidence. | SEC-02 |
@@ -168,6 +168,18 @@ and the offline smoke regression proves progress and diagnosed-blocker snapshots
 come from fresh daemon sync-control metadata. See
 [`51-01-SUMMARY.md`](../../.planning/phases/51-live-smoke-fresh-status-integration/51-01-SUMMARY.md)
 for the implementation closeout.
+
+Phase 52 closes the deterministic support-summary and daemon preflight wording
+debt found during milestone audit. Future support bundles summarize schema v2
+`result.status`, `result.progressDetected`, `result.maybeNoProgressCause`,
+`result.nextAction`, `result.headerDelta`, and `result.blockDelta` without
+embedding raw live-smoke input, daemon stdout/stderr tails, raw options, raw
+status snapshots, or endpoint tables. Future `open-bitcoind` preflight output
+states that durable-store preflight opened and that enabled startup runs the
+explicit opt-in bounded mainnet sync worker while preserving the non-claims for
+unattended production-node operation and packaged-service readiness. This
+deterministic cleanup does not add a new successful live-mainnet progress claim;
+Phase 53 remains responsible for any opt-in live evidence refresh.
 
 ## Intentional Deferrals
 
