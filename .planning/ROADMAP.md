@@ -172,7 +172,7 @@ Plans:
   4. Operator docs and audit references no longer require readers to reconcile stale support-summary or preflight wording debt.
 **Plans**: 1 plan
 Plans:
-- [ ] 52-01-PLAN.md — Schema v2 support evidence summaries and preflight truth cleanup.
+- [x] 52-01-PLAN.md — Schema v2 support evidence summaries and preflight truth cleanup.
 
 ### Phase 53: Live Evidence Refresh
 **Goal**: Refresh opt-in live evidence so v1.3 can archive without unresolved live-network contribution or historical Phase 50 artifact caveats.
@@ -220,7 +220,7 @@ Detailed phase execution history is archived under
 | 49. Threat Model and Release Boundaries | 2/2 | Complete    | 2026-05-27 |
 | 50. Public Mainnet Progress Evidence Closeout | 1/1 | Complete    | 2026-05-28 |
 | 51. Live Smoke Fresh Status Integration | 1/1 | Complete    | 2026-05-31 |
-| 52. Operator Evidence Cleanup | 0/1 | Pending | |
+| 52. Operator Evidence Cleanup | 1/1 | Complete   | 2026-06-01 |
 | 53. Live Evidence Refresh | 0/0 | Pending | |
 
 ## Next Step
