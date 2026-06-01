@@ -31,7 +31,15 @@ use super::{
 
 const SUPPORT_EVIDENCE_JSON: &str = "support-evidence.json";
 const SUPPORT_EVIDENCE_MARKDOWN: &str = "support-evidence.md";
-const LIVE_SMOKE_SUMMARY_KEYS: &[&str] = &[
+const LIVE_SMOKE_RESULT_SUMMARY_KEYS: &[&str] = &[
+    "status",
+    "progressDetected",
+    "maybeNoProgressCause",
+    "nextAction",
+    "headerDelta",
+    "blockDelta",
+];
+const LIVE_SMOKE_TOP_LEVEL_SUMMARY_KEYS: &[&str] = &[
     "status",
     "maybeNoProgressCause",
     "maybe_no_progress_cause",
@@ -492,16 +500,42 @@ fn collect_live_smoke_evidence(maybe_report_path: Option<&Path>) -> LiveSmokeEvi
 
 fn live_smoke_summary(value: &Value) -> Option<Value> {
     let object = value.as_object()?;
+    if let Some(summary) = live_smoke_summary_from_result(object.get("result")) {
+        return Some(summary);
+    }
+    if let Some(summary) = live_smoke_summary_from_top_level(object) {
+        return Some(summary);
+    }
+
+    Some(json!({
+        "status": "summary_fields_unavailable"
+    }))
+}
+
+fn live_smoke_summary_from_result(maybe_result: Option<&Value>) -> Option<Value> {
+    let result = maybe_result?.as_object()?;
     let mut summary = Map::new();
-    for key in LIVE_SMOKE_SUMMARY_KEYS {
+    for key in LIVE_SMOKE_RESULT_SUMMARY_KEYS {
+        if let Some(item) = result.get(*key) {
+            summary.insert((*key).to_string(), sanitize_json_value(item));
+        }
+    }
+    if summary.is_empty() {
+        return None;
+    }
+
+    Some(Value::Object(summary))
+}
+
+fn live_smoke_summary_from_top_level(object: &Map<String, Value>) -> Option<Value> {
+    let mut summary = Map::new();
+    for key in LIVE_SMOKE_TOP_LEVEL_SUMMARY_KEYS {
         if let Some(item) = object.get(*key) {
             summary.insert((*key).to_string(), sanitize_json_value(item));
         }
     }
     if summary.is_empty() {
-        return Some(json!({
-            "status": "summary_fields_unavailable"
-        }));
+        return None;
     }
 
     Some(Value::Object(summary))

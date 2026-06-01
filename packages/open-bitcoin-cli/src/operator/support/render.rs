@@ -4,7 +4,7 @@
 //! Rendering helpers for support bundle command output.
 
 use serde::Serialize;
-use serde_json::json;
+use serde_json::{Value, json};
 
 use crate::operator::{OperatorOutputFormat, runtime::OperatorRuntimeError};
 
@@ -121,10 +121,53 @@ pub(super) fn render_support_markdown(bundle: &SupportEvidenceBundle) -> String 
         output.push_str(&format!("- Reason: {reason}\n"));
     }
     if let Some(summary) = bundle.live_smoke.summary.as_ref() {
-        output.push_str(&format!("- Summary: {}\n", summary));
+        push_live_smoke_summary(&mut output, summary);
     }
 
     output
+}
+
+fn push_live_smoke_summary(output: &mut String, summary: &Value) {
+    let Some(object) = summary.as_object() else {
+        output.push_str(&format!("- Summary: {summary}\n"));
+        return;
+    };
+
+    push_summary_field(output, "Status", object.get("status"));
+    push_summary_field(output, "Progress detected", object.get("progressDetected"));
+    push_summary_field(
+        output,
+        "No-progress cause",
+        object
+            .get("maybeNoProgressCause")
+            .or_else(|| object.get("maybe_no_progress_cause")),
+    );
+    push_summary_field(
+        output,
+        "Next action",
+        object
+            .get("nextAction")
+            .or_else(|| object.get("next_action")),
+    );
+    push_summary_field(output, "Header delta", object.get("headerDelta"));
+    push_summary_field(output, "Block delta", object.get("blockDelta"));
+}
+
+fn push_summary_field(output: &mut String, label: &str, maybe_value: Option<&Value>) {
+    let Some(value) = maybe_value else {
+        return;
+    };
+
+    output.push_str(&format!("- {label}: {}\n", summary_value(value)));
+}
+
+fn summary_value(value: &Value) -> String {
+    match value {
+        Value::String(text) => text.clone(),
+        Value::Null | Value::Bool(_) | Value::Number(_) | Value::Array(_) | Value::Object(_) => {
+            value.to_string()
+        }
+    }
 }
 
 fn push_optional_path(output: &mut String, label: &str, maybe_path: Option<&str>) {
