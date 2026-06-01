@@ -286,7 +286,7 @@ mod tests {
 
     use open_bitcoin_rpc::config::{DaemonSyncConfig, RuntimeConfig};
 
-    use super::preflight_daemon_sync;
+    use super::{DaemonSyncPreflight, daemon_sync_preflight_message, preflight_daemon_sync};
 
     static NEXT_TEST_DIRECTORY_ID: AtomicU64 = AtomicU64::new(0);
 
@@ -312,7 +312,7 @@ mod tests {
     }
 
     #[test]
-    fn enabled_sync_opens_durable_runtime_without_starting_transport() {
+    fn enabled_sync_preflight_opens_durable_runtime_before_worker_startup() {
         // Arrange
         let data_dir = temp_store_path("enabled");
         let runtime = RuntimeConfig {
@@ -331,6 +331,34 @@ mod tests {
         assert_eq!(preflight.mode, runtime.sync.mode);
         assert_eq!(preflight.best_header_height, 0);
         assert_eq!(preflight.best_block_height, 0);
+    }
+
+    #[test]
+    fn enabled_sync_preflight_message_describes_opt_in_worker_without_production_claim() {
+        // Arrange
+        let preflight = DaemonSyncPreflight {
+            mode: DaemonSyncConfig::mainnet_ibd().mode,
+            data_dir: PathBuf::from("/tmp/open-bitcoin-mainnet"),
+            best_header_height: 12,
+            best_block_height: 3,
+        };
+
+        // Act
+        let message = daemon_sync_preflight_message(&preflight);
+
+        // Assert
+        assert!(message.contains("opened durable store"));
+        assert!(message.contains("explicit opt-in bounded mainnet sync worker"));
+        assert!(message.contains("not unattended production-node operation"));
+        assert!(message.contains("not a packaged-service guarantee"));
+        assert!(message.contains("mode=mainnet-ibd"));
+        assert!(message.contains("datadir=\"/tmp/open-bitcoin-mainnet\""));
+        assert!(message.contains("best_header_height=12"));
+        assert!(message.contains("best_block_height=3"));
+        assert!(
+            !message
+                .contains("peer transport and unattended full IBD are not started by this phase")
+        );
     }
 
     #[test]
