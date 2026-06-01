@@ -113,7 +113,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 - Mapped to phases: 22
 - Pending gap closure: 0
 - Unmapped: 0
-- Pending tech-debt cleanup: 4
+- Pending tech-debt cleanup: 0
 
 ## v1.3 Tech Debt Follow-up Traceability
 
@@ -123,9 +123,9 @@ phases own non-blocking audit debt before archive.
 
 | Debt | Requirements touched | Follow-up phase | Status |
 |------|----------------------|-----------------|--------|
-| D-01 Phase 44 optional public-network UAT skipped | PEER-03 | Phase 53 | Pending |
+| D-01 Phase 44 optional public-network UAT skipped | PEER-03 | Phase 53 | Complete |
 | D-02 Support bundle live-smoke schema v2 summary shallow | OBS-03 | Phase 52 | Complete |
-| D-03 Historical Phase 50 selected report caveat | PROOF-03, PROOF-04, PROOF-05, OBS-02, SEC-03 | Phase 53 | Pending |
+| D-03 Historical Phase 50 selected report caveat | PROOF-03, PROOF-04, PROOF-05, OBS-02, SEC-03 | Phase 53 | Complete |
 | D-04 `open-bitcoind` preflight message stale | OBS-02 | Phase 52 | Complete |
 
 ---

@@ -931,18 +931,19 @@
         "evidence": [
           ".planning/phases/50-public-mainnet-progress-evidence-closeout/50-UAT.md",
           ".planning/phases/51-live-smoke-fresh-status-integration/51-01-SUMMARY.md",
+          ".planning/phases/53-live-evidence-refresh/53-UAT.md",
           "docs/parity/release-readiness.md",
           "scripts/run-live-mainnet-smoke.ts",
           "docs/operator/runtime-guide.md"
         ],
-        "rationale": "Phase 50 closed through diagnosed blocker evidence, and Phase 51 closed the audited fresh-status integration gap by making live-smoke snapshots poll openbitcoinsyncstatus during daemon execution.",
+        "rationale": "Phase 50 closed through diagnosed blocker evidence, Phase 51 made live-smoke snapshots poll openbitcoinsyncstatus during daemon execution, and Phase 53 superseded the remaining historical caveats with fresh diagnosed-blocker evidence.",
         "known_gaps": [
-          "Selected Phase 50 evidence did not observe validated header or block progress.",
-          "Selected Phase 50 evidence did not claim restart/resume success; it records same-datadir diagnosed-blocker evidence.",
-          "Historical selected Phase 50 snapshots used getblockchaininfo, but Phase 51 amended the evidence trail and changed future live-smoke polling to openbitcoinsyncstatus."
+          "Selected Phase 53 evidence did not observe validated header or block progress.",
+          "Selected Phase 53 evidence did not claim restart/resume success; it records same-datadir fresh diagnosed-blocker evidence.",
+          "Selected Phase 53 evidence did not observe accepted peer contribution, but it records runtime peer rows and a typed environmental blocker."
         ],
         "suspected_unknowns": [
-          "A later operator can retry Phase 50 commands with a different reachable manual peer.",
+          "A later operator can retry Phase 53 commands with a different reachable manual peer.",
           "Future production-node, inbound-serving, relay, packaging, hosted/public dashboard, and GUI claims need separate gates."
         ]
       }

@@ -27,8 +27,8 @@ result: pass
 
 ### 4. Live Smoke Report Shows Contribution Evidence
 expected: The live-smoke support report includes a Runtime Peer Contributions table and JSON `headersReceived` / `blocksReceived` fields sourced from durable runtime peer telemetry.
-result: skipped
-reason: Optional live-mainnet smoke was skipped after a real-network run timed out with typed no-progress cause `handshake_failure`; deterministic report fixture passed locally.
+result: pass
+reason: Phase 53 supersession: `.planning/phases/53-live-evidence-refresh/53-UAT.md` selects `packages/target/live-mainnet-smoke-reports/phase53-manual-peer/open-bitcoin-live-mainnet-smoke.json`, a fresh schema v2 `openbitcoinsyncstatus` report. The live network did not allow useful contribution observation in this environment: `result.maybeNoProgressCause=handshake_failure`, 68 runtime peer rows ended as failed or stalled, accepted header/block counters stayed at zero, and the report records the next operator action. The earlier real-network `handshake_failure` skip is superseded by fresh-status diagnosed-blocker evidence, not erased.
 
 ### 5. Operator Docs Explain Activity Versus Contribution
 expected: The runtime guide explains that `headers_received` and `blocks_received` are validation-gated contribution counters, while messages processed and last activity are diagnostic activity signals.
@@ -37,10 +37,10 @@ result: pass
 ## Summary
 
 total: 5
-passed: 4
+passed: 5
 issues: 0
 pending: 0
-skipped: 1
+skipped: 0
 blocked: 0
 
 ## Gaps

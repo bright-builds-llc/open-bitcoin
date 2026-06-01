@@ -12,8 +12,8 @@
 v1.3 proves real public-mainnet sync progress through the explicit opt-in
 daemon workflow and hardens the node/runtime surfaces needed before any broader
 production-node claim. Phase 51 closed the live-smoke fresh-status gap found
-during milestone audit; Phases 52 and 53 close the remaining non-blocking
-tech-debt items before archive.
+during milestone audit; Phases 52 and 53 closed the remaining non-blocking
+tech-debt items. v1.3 is ready for final archive flow.
 
 The milestone does not include inbound serving, transaction relay,
 production-funds wallet use, migration apply mode, packaging, hosted dashboard,
@@ -32,8 +32,8 @@ gate.
 - [x] **Phase 49: Threat Model and Release Boundaries** - Refresh v1.3 security analysis and scoped parity/release claims. (completed 2026-05-27)
 - [x] **Phase 50: Public Mainnet Progress Evidence Closeout** - Capture header, block, and restart/resume proof or diagnose the blocker. (completed 2026-05-28)
 - [x] **Phase 51: Live Smoke Fresh Status Integration** - Wire live-smoke closeout evidence to fresh daemon sync status before re-audit. (completed 2026-05-31)
-- [ ] **Phase 52: Operator Evidence Cleanup** - Close deterministic support-bundle summary and daemon preflight truth debt.
-- [ ] **Phase 53: Live Evidence Refresh** - Refresh opt-in live evidence and retire historical audit caveats where the public network allows it.
+- [x] **Phase 52: Operator Evidence Cleanup** - Close deterministic support-bundle summary and daemon preflight truth debt. (completed 2026-06-01)
+- [x] **Phase 53: Live Evidence Refresh** - Refresh opt-in live evidence and retire historical audit caveats where the public network allows it. (completed 2026-06-01)
 
 ## Phase Details
 
@@ -184,7 +184,9 @@ Plans:
   2. Phase 50 evidence is refreshed or superseded so reviewers can inspect fresh-status live-smoke snapshots instead of treating the historical `getblockchaininfo` artifact as the selected closeout source.
   3. New live-smoke evidence keeps generated public-network reports local and records either progress or a diagnosed blocker with concrete next operator action.
   4. The milestone audit can distinguish accepted environmental no-progress outcomes from unresolved stale-artifact caveats.
-**Plans**: Pending.
+**Plans**: 1 plan
+Plans:
+- [x] 53-01-PLAN.md — Live evidence refresh, D-01/D-03 supersession, and deterministic closeout.
 
 ## Completed Milestones
 
@@ -221,9 +223,8 @@ Detailed phase execution history is archived under
 | 50. Public Mainnet Progress Evidence Closeout | 1/1 | Complete    | 2026-05-28 |
 | 51. Live Smoke Fresh Status Integration | 1/1 | Complete    | 2026-05-31 |
 | 52. Operator Evidence Cleanup | 1/1 | Complete   | 2026-06-01 |
-| 53. Live Evidence Refresh | 0/0 | Pending | |
+| 53. Live Evidence Refresh | 1/1 | Complete | 2026-06-01 |
 
 ## Next Step
 
-Plan Phase 52, then execute the deterministic cleanup before deciding whether
-to run the opt-in live evidence refresh in Phase 53.
+Run the v1.3 archive flow after final milestone review.

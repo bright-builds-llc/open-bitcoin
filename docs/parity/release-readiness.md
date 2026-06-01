@@ -178,8 +178,31 @@ status snapshots, or endpoint tables. Future `open-bitcoind` preflight output
 states that durable-store preflight opened and that enabled startup runs the
 explicit opt-in bounded mainnet sync worker while preserving the non-claims for
 unattended production-node operation and packaged-service readiness. This
-deterministic cleanup does not add a new successful live-mainnet progress claim;
-Phase 53 remains responsible for any opt-in live evidence refresh.
+deterministic cleanup does not add a new successful live-mainnet progress claim.
+
+## Phase 53 Evidence Refresh
+
+Phase 53 refreshes the opt-in live evidence after the Phase 51 fresh-status fix
+and Phase 52 support-summary cleanup. The selected Phase 53 report is
+`packages/target/live-mainnet-smoke-reports/phase53-manual-peer/open-bitcoin-live-mainnet-smoke.json`,
+summarized in
+[`53-UAT.md`](../../.planning/phases/53-live-evidence-refresh/53-UAT.md).
+
+Phase 53 closed through fresh diagnosed blocker evidence, not successful
+header, block, restart/resume, or contribution progress. The selected report is
+schema v2, records `commands.status` with `openbitcoinsyncstatus`, and contains
+36 fresh daemon sync-control snapshots. It recorded
+`result.status=no_progress`, `result.progressDetected=false`,
+`result.headerDelta=0`, `result.blockDelta=0`,
+`result.maybeNoProgressCause=handshake_failure`, 205 endpoint outcomes, and 68
+runtime peer rows with zero accepted header/block contribution. The next
+operator action is to inspect daemon stderr and endpoint outcomes or retry with
+a different reachable manual peer.
+
+This closes the remaining D-01 and D-03 audit debt as accepted environmental
+no-progress evidence: the old Phase 44 skipped live contribution UAT and the
+historical Phase 50 `getblockchaininfo` snapshot caveat are superseded by a new
+fresh-status report. It does not add a successful live-mainnet progress claim.
 
 ## Intentional Deferrals
 

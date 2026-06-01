@@ -254,6 +254,27 @@ input, daemon output tails, raw status snapshots, options, and endpoint tables
 out of support JSON and Markdown. Phase 52 does not replace the selected Phase
 50 live-smoke artifact or claim new public-mainnet progress.
 
+## Phase 53 Fresh Evidence Supersession
+
+Phase 53 supersedes the historical Phase 50 stale snapshot caveat without
+rewriting the Phase 50 generated report paths, timestamps, or selected report
+tables above. The Phase 53 selected report is
+`packages/target/live-mainnet-smoke-reports/phase53-manual-peer/open-bitcoin-live-mainnet-smoke.json`,
+summarized in
+`.planning/phases/53-live-evidence-refresh/53-UAT.md`.
+
+The selected Phase 53 report was generated after the Phase 51 fresh-status fix:
+its per-poll status command contains `openbitcoinsyncstatus`, and its snapshots
+record `lifecycle=active` and `phase=steady_state` from daemon sync-control
+metadata. Phase 53 closed through fresh diagnosed blocker evidence, not progress
+evidence: `result.status=no_progress`,
+`result.maybeNoProgressCause=handshake_failure`, `result.headerDelta=0`, and
+`result.blockDelta=0`.
+
+Reviewers should keep the Phase 50 selected report as historical evidence and
+use Phase 53 UAT as the fresh-status supersession for the remaining D-03
+artifact caveat.
+
 ## Requirement Verdicts
 
 | Requirement | Verdict | Evidence |
