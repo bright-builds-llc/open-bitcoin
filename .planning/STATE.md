@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Public Mainnet Sync Proof and Node Hardening
-status: completed
+status: executing
 stopped_at: Phase 52 context gathered
-last_updated: "2026-06-01T00:08:58.817Z"
-last_activity: 2026-05-31 -- Phase 51 complete; v1.3 ready for re-audit
+last_updated: "2026-06-01T00:44:27.515Z"
+last_activity: 2026-06-01 -- Phase 52 planning complete
 progress:
   total_phases: 12
   completed_phases: 10
-  total_plans: 11
+  total_plans: 12
   completed_plans: 11
-  percent: 100
+  percent: 92
 ---
 
 # Project State
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-05-28)
 
 Phase: 51 (Live Smoke Fresh Status Integration) — COMPLETE
 Plan: 1 of 1
-Status: Phase 51 complete; rerun the v1.3 milestone audit before archive.
-Last activity: 2026-05-31 -- Phase 51 complete; v1.3 ready for re-audit
+Status: Ready to execute
+Last activity: 2026-06-01 -- Phase 52 planning complete
 
 Progress: [##########] 100%
 
