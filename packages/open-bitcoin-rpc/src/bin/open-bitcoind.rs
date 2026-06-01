@@ -128,13 +128,17 @@ fn preflight_daemon_sync(
 }
 
 fn report_daemon_sync_preflight(preflight: &DaemonSyncPreflight) {
-    eprintln!(
-        "open-bitcoind mainnet sync preflight enabled: mode={}, datadir=\"{}\", best_header_height={}, best_block_height={}; peer transport and unattended full IBD are not started by this phase.",
+    eprintln!("{}", daemon_sync_preflight_message(preflight));
+}
+
+fn daemon_sync_preflight_message(preflight: &DaemonSyncPreflight) -> String {
+    format!(
+        "open-bitcoind mainnet sync preflight opened durable store: mode={}, datadir=\"{}\", best_header_height={}, best_block_height={}; enabled startup will run the explicit opt-in bounded mainnet sync worker. This is not unattended production-node operation and is not a packaged-service guarantee.",
         preflight.mode,
         preflight.data_dir.display(),
         preflight.best_header_height,
         preflight.best_block_height
-    );
+    )
 }
 
 fn start_daemon_sync_worker(
@@ -355,10 +359,8 @@ mod tests {
         assert!(message.contains("datadir=\"/tmp/open-bitcoin-mainnet\""));
         assert!(message.contains("best_header_height=12"));
         assert!(message.contains("best_block_height=3"));
-        assert!(
-            !message
-                .contains("peer transport and unattended full IBD are not started by this phase")
-        );
+        assert!(!message.contains("peer transport and unattended full IBD"));
+        assert!(!message.contains("not started by this phase"));
     }
 
     #[test]
