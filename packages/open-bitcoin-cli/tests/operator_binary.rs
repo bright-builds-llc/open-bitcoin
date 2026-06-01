@@ -769,9 +769,118 @@ fn open_bitcoin_support_bundle_writes_redacted_json_and_markdown() {
 }
 
 #[test]
-fn open_bitcoin_support_bundle_records_live_smoke_summary_without_raw_report() {
+fn open_bitcoin_support_bundle_summarizes_schema_v2_live_smoke_result() {
     // Arrange
-    let sandbox = TestSandbox::new("support-live-smoke");
+    let sandbox = TestSandbox::new("support-live-smoke-v2");
+    let data_dir = sandbox.child("open-data");
+    let output_dir = sandbox.child("support");
+    let report_path = sandbox.child("live-smoke.json");
+    fs::create_dir_all(&data_dir).expect("open datadir");
+    fs::write(
+        &report_path,
+        json!({
+            "schema_version": 2,
+            "result": {
+                "status": "no_progress",
+                "progressDetected": false,
+                "maybeNoProgressCause": "handshake_failure",
+                "nextAction": "Retry after rotating manual peers; rpcpassword=fixture-secret",
+                "headerDelta": 0,
+                "blockDelta": 0,
+                "message": "raw result message should not be copied"
+            },
+            "daemon": {
+                "stderrTail": "raw daemon stderr tail live-smoke-secret",
+                "stdoutTail": "raw daemon stdout tail live-smoke-secret"
+            },
+            "options": {
+                "manualPeers": ["192.0.2.10:8333"],
+                "rpcpassword": "live-smoke-secret"
+            },
+            "snapshots": [
+                {
+                    "phase": "header_sync",
+                    "secret": "raw snapshot live-smoke-secret"
+                }
+            ],
+            "preflight": {
+                "checks": [
+                    {
+                        "name": "fixture",
+                        "ok": false,
+                        "message": "raw preflight check live-smoke-secret"
+                    }
+                ]
+            },
+            "network_preflight": {
+                "endpoint_outcomes": [
+                    {
+                        "address": "192.0.2.10:8333",
+                        "maybeError": "endpoint-table-detail live-smoke-secret",
+                        "state": "failed"
+                    }
+                ]
+            }
+        })
+        .to_string(),
+    )
+    .expect("live smoke report");
+
+    // Act
+    let output = run_open_bitcoin(
+        &sandbox,
+        [
+            "--network",
+            "regtest",
+            "--datadir",
+            data_dir.to_str().expect("datadir"),
+            "support",
+            "bundle",
+            "--output-dir",
+            output_dir.to_str().expect("output dir"),
+            "--include-live-smoke-report",
+            report_path.to_str().expect("report path"),
+        ],
+    );
+
+    // Assert
+    assert_success(&output);
+    let json_text =
+        fs::read_to_string(output_dir.join("support-evidence.json")).expect("support json");
+    let markdown =
+        fs::read_to_string(output_dir.join("support-evidence.md")).expect("support markdown");
+    let decoded: Value = serde_json::from_str(&json_text).expect("support json");
+    assert_eq!(decoded["live_smoke"]["state"], "available");
+    assert_eq!(decoded["live_smoke"]["summary"]["status"], "no_progress");
+    assert_eq!(decoded["live_smoke"]["summary"]["progressDetected"], false);
+    assert_eq!(
+        decoded["live_smoke"]["summary"]["maybeNoProgressCause"],
+        "handshake_failure"
+    );
+    assert_eq!(decoded["live_smoke"]["summary"]["nextAction"], "[redacted]");
+    assert_eq!(decoded["live_smoke"]["summary"]["headerDelta"], 0);
+    assert_eq!(decoded["live_smoke"]["summary"]["blockDelta"], 0);
+    assert!(markdown.contains("Progress detected"));
+    assert!(markdown.contains("No-progress cause"));
+    assert!(markdown.contains("Header delta"));
+    assert!(markdown.contains("Block delta"));
+    assert!(markdown.contains("handshake_failure"));
+    for rendered in [&json_text, &markdown] {
+        assert_absent(rendered, "live-smoke-secret");
+        assert_absent(rendered, "fixture-secret");
+        assert_absent(rendered, "raw daemon stderr tail");
+        assert_absent(rendered, "raw daemon stdout tail");
+        assert_absent(rendered, "raw snapshot");
+        assert_absent(rendered, "raw preflight check");
+        assert_absent(rendered, "endpoint-table-detail");
+        assert_absent(rendered, "192.0.2.10:8333");
+    }
+}
+
+#[test]
+fn open_bitcoin_support_bundle_preserves_top_level_live_smoke_fallback() {
+    // Arrange
+    let sandbox = TestSandbox::new("support-live-smoke-fallback");
     let data_dir = sandbox.child("open-data");
     let output_dir = sandbox.child("support");
     let report_path = sandbox.child("live-smoke.json");
@@ -818,9 +927,53 @@ fn open_bitcoin_support_bundle_records_live_smoke_summary_without_raw_report() {
         decoded["live_smoke"]["summary"]["maybeNoProgressCause"],
         "handshake_failure"
     );
+    assert_eq!(
+        decoded["live_smoke"]["summary"]["nextAction"],
+        "Retry with --manual-peer=HOST[:PORT]"
+    );
     assert!(markdown.contains("handshake_failure"));
     assert_absent(&json_text, "live-smoke-secret");
     assert_absent(&markdown, "live-smoke-secret");
+}
+
+#[test]
+fn open_bitcoin_support_bundle_keeps_missing_live_smoke_report_unavailable() {
+    // Arrange
+    let sandbox = TestSandbox::new("support-live-smoke-missing");
+    let data_dir = sandbox.child("open-data");
+    let output_dir = sandbox.child("support");
+    let report_path = sandbox.child("missing-live-smoke.json");
+    fs::create_dir_all(&data_dir).expect("open datadir");
+
+    // Act
+    let output = run_open_bitcoin(
+        &sandbox,
+        [
+            "--network",
+            "regtest",
+            "--datadir",
+            data_dir.to_str().expect("datadir"),
+            "support",
+            "bundle",
+            "--output-dir",
+            output_dir.to_str().expect("output dir"),
+            "--include-live-smoke-report",
+            report_path.to_str().expect("report path"),
+        ],
+    );
+
+    // Assert
+    assert_success(&output);
+    let json_text =
+        fs::read_to_string(output_dir.join("support-evidence.json")).expect("support json");
+    let decoded: Value = serde_json::from_str(&json_text).expect("support json");
+    assert_eq!(decoded["live_smoke"]["state"], "unavailable");
+    assert!(
+        decoded["live_smoke"]["reason"]
+            .as_str()
+            .expect("live smoke reason")
+            .contains("does not exist")
+    );
 }
 
 #[test]
