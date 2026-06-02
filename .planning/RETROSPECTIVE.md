@@ -136,6 +136,51 @@
 
 ---
 
+## Milestone: v1.3 - Public Mainnet Sync Proof and Node Hardening
+
+**Shipped:** 2026-06-02
+**Phases:** 12 | **Plans:** 13 | **Counted summary tasks:** 6
+
+### What Was Built
+
+- Opt-in public-mainnet smoke evidence with explicit local prerequisites, DNS and manual-peer endpoint outcomes, typed no-progress causes, and local report artifacts.
+- Peer lifecycle hardening for bounded outbound peers, retry/backoff, stall handling, replacement behavior, and validation-gated peer contribution attribution.
+- Runtime hardening for resource bounds, single-writer durable-store coordination, recovery after partial work, invalid peer data handling, and coherent pause/resume/stop/status flows.
+- Operator truth surfaces across JSON status, dashboard, metrics, structured logs, RPC-facing blockchain info, support bundles, and runbooks.
+- Reviewer-facing threat model, release-readiness docs, parity roots, milestone audit closeout, and Phase 53 fresh diagnosed-blocker evidence using `openbitcoinsyncstatus` snapshots.
+
+### What Worked
+
+- Treating public-network evidence as opt-in UAT kept `bash scripts/verify.sh` deterministic while still preserving real network diagnostics.
+- Phase 51 and Phase 53 made stale evidence debt auditable: historical artifacts stayed intact, and fresh-status supersession was recorded explicitly.
+- The support-bundle cleanup in Phase 52 paid off immediately because Phase 53 could summarize schema v2 live-smoke fields without exposing raw report internals.
+
+### What Was Inefficient
+
+- Milestone archive tooling extracted a few noisy accomplishment lines from code-review artifacts, so the v1.3 MILESTONES entry still needed manual curation.
+- The complete-milestone helper archived roadmap, requirements, and audit files but left ROADMAP and PROJECT evolution to manual edits.
+- Public-network UAT consumed time without producing successful progress, which is acceptable evidence but still slower to reason about than deterministic tests.
+
+### Patterns Established
+
+- Close live-network failures as fresh diagnosed-blocker evidence only when the report is typed, actionable, and tied to fresh daemon sync-control status.
+- Keep generated public-network reports under `packages/target` and commit only parsed UAT summaries and traceability paths.
+- Preserve non-goal language for production-node, inbound-serving, relay, production-funds wallet, migration apply, packaging, hosted dashboard, and GUI claims.
+
+### Key Lessons
+
+1. Fresh-status evidence should be wired before public-network reruns, otherwise live reports can preserve stale truth even when the daemon is behaving correctly.
+2. Support-bundle summaries need schema-aware extraction so reviewer packets stay compact without losing the fields that determine closeout mode.
+3. Archive accomplishment extraction needs human review when phase summaries include review findings or bug titles that are not milestone-level achievements.
+
+### Cost Observations
+
+- Model mix: not measured in repo artifacts.
+- Sessions: multiple GSD execution, audit, cleanup, live UAT, and archive turns across the v1.3 milestone.
+- Notable: explicit diagnosed-blocker acceptance avoided broadening the claim boundary just to make the archive look more successful.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -145,6 +190,7 @@
 | v1.0 | 22 | Established parity-first implementation, verification, audit, and archive workflow. |
 | v1.1 | 22 | Extended the workflow to terminal-first operator surfaces, milestone rerun audits, and explicit post-audit cleanup phases before archive. |
 | v1.2 | 7 | Added opt-in public-mainnet IBD review, live-smoke evidence, and security closeout while preserving hermetic default verification. |
+| v1.3 | 12 | Added public-mainnet proof hardening, fresh-status live-smoke closeout, support evidence cleanup, and explicit release-boundary audit closure. |
 
 ### Cumulative Quality
 
@@ -153,6 +199,7 @@
 | v1.0 | 28/28 complete | Passed with GAP-01 through GAP-04 closed | Repo-native `scripts/verify.sh`, Rust checks, coverage, architecture policy, breadcrumb guard, and panic-site guard. |
 | v1.1 | 44/44 complete | Passed after Phase 33 and Phase 34 cleanup rerun | Repo-native `scripts/verify.sh`, operator-binary coverage, benchmark smoke and report validation, and Bazel smoke builds. |
 | v1.2 | 26/26 complete | Closed through Phase 40 live-smoke closeout and Phase 41 security audit/UAT; no dedicated milestone audit artifact | Repo-native `scripts/verify.sh`, deterministic sync regressions, opt-in live-mainnet smoke reporting, security audit, and UAT. |
+| v1.3 | 22/22 complete | Ready for archive with zero tracked tech-debt items after Phase 53 | Repo-native `scripts/verify.sh`, release-boundary guard, schema v2 support-bundle tests, live-smoke regression, opt-in public-network UAT, and lifecycle validation. |
 
 ### Top Lessons
 
@@ -160,3 +207,4 @@
 2. Prefer narrow, auditable parity claims over broad unsupported equivalence statements.
 3. Close audit debt through explicit cleanup phases when the evidence trail matters as much as the fix itself.
 4. Keep requirements traceability current during execution so archive work is historical packaging, not late evidence reconstruction.
+5. Treat successful public-network progress and fresh diagnosed blockers as different outcomes; both can be valid, but the archive must say which one shipped.

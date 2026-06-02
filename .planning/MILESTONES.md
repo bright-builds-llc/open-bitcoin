@@ -1,5 +1,41 @@
 # Milestones: Open Bitcoin
 
+## v1.3 Public Mainnet Sync Proof and Node Hardening (Shipped: 2026-06-02)
+
+**Delivered:** Public-mainnet proof and node-hardening evidence for the explicit opt-in daemon sync workflow, with fresh diagnosed-blocker closeout and no broadened production-node claim.
+
+**Phases completed:** 12 phases, 13 plans, 6 recorded summary tasks
+
+**Key accomplishments:**
+
+- Added opt-in live-mainnet smoke preflight, endpoint outcomes, manual-peer retry evidence, typed no-progress causes, and actionable report output.
+- Hardened outbound peer lifecycle behavior with bounded peer counts, retry/backoff, stall handling, peer replacement, and contribution attribution.
+- Added resource bounds, durable recovery, invalid-data handling, and truth-aligned status, dashboard, metrics, logs, and RPC-facing sync surfaces.
+- Produced redacted support evidence, repo-local operator runbooks, a v1.3 threat model, and explicit release-boundary documentation.
+- Closed the fresh-status audit gap and remaining live-evidence debt with Phase 53 schema v2 `openbitcoinsyncstatus` diagnosed-blocker evidence.
+
+**Stats:**
+
+- 22/22 v1.3 requirements complete.
+- 12 phases and 13 plans complete.
+- 93,773 tracked first-party lines in the final LOC report at archive time.
+- Milestone audit status: `ready_for_archive` with zero tracked tech-debt items.
+- Full repo-native verification passed during Phase 53 closeout and commit hooks.
+
+**Archived artifacts:**
+
+- `.planning/milestones/v1.3-ROADMAP.md`
+- `.planning/milestones/v1.3-REQUIREMENTS.md`
+- `.planning/milestones/v1.3-MILESTONE-AUDIT.md`
+
+**Residual risk:**
+
+- Phase 53 did not observe successful public-mainnet header, block, restart/resume, or contribution progress in this environment. The milestone closes through fresh typed diagnosed-blocker evidence (`handshake_failure`) and preserves the next operator action for retrying with a different reachable manual peer.
+
+**What's next:** Start the next milestone with `/gsd-new-milestone`.
+
+---
+
 ## v1.2 Full Mainnet Network Syncing (Shipped: 2026-05-23)
 
 **Delivered:** An opt-in `open-bitcoind` public-mainnet initial block download workflow with daemon-owned sync activation, outbound peer lifecycle, validated header and block progress, durable restart/recovery, operator observability and control, live-smoke evidence, and security closeout. The shipped scope does not include production-node operation, production-funds wallet use, inbound serving, transaction relay, or packaged-service hardening.

@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Public Mainnet Sync Proof and Node Hardening
-status: ready_for_archive
-stopped_at: Phase 53 complete; v1.3 ready for archive
-last_updated: "2026-06-01T04:07:00Z"
-last_activity: 2026-06-01 -- Phase 53 completed with fresh diagnosed-blocker evidence
+status: completed
+stopped_at: v1.3 archived; ready for next milestone
+last_updated: "2026-06-02T12:09:10.294Z"
+last_activity: 2026-06-02
 progress:
   total_phases: 12
   completed_phases: 12
@@ -18,17 +18,17 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-28)
+See: .planning/PROJECT.md (updated 2026-06-02)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** v1.3 archive readiness after Phase 53
+**Current focus:** Planning the next milestone
 
 ## Current Position
 
-Phase: 53 (Live Evidence Refresh) — COMPLETE
-Plan: 1 of 1
-Status: Phase 53 complete; v1.3 ready for archive
-Last activity: 2026-06-01 -- Phase 53 completed with fresh diagnosed-blocker evidence
+Phase: none — all v1.3 phases complete
+Plan: none
+Status: v1.3 archived; ready for next milestone
+Last activity: 2026-06-02
 
 Progress: [##########] 100%
 
@@ -61,7 +61,7 @@ Progress: [##########] 100%
 **Recent Trend:**
 
 - Last 5 plans: 49-02, 50-01, 51-01, 52-01, 53-01
-- Trend: v1.3 public-mainnet evidence debt is closed through fresh diagnosed-blocker evidence; milestone is ready for archive.
+- Trend: v1.3 public-mainnet evidence debt is closed through fresh diagnosed-blocker evidence; milestone archive is complete.
 
 | Phase 52 P01 | 45m | 3 tasks | 12 files |
 | Phase 53 P01 | live UAT | 3 tasks | 12 files |
@@ -90,17 +90,17 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Run the v1.3 milestone archive flow after final review.
+- Start the next milestone with `/gsd-new-milestone`.
 
 ### Blockers/Concerns
 
-- No active milestone blockers are recorded after Phase 53.
+- No active milestone blockers are recorded after v1.3 archive.
 - Phase 53 refreshed public-mainnet proof through diagnosed blocker evidence (`handshake_failure`) without claiming live header/block progress; the selected report uses fresh `openbitcoinsyncstatus` snapshots.
 - Default local verification must remain deterministic; public-network checks stay opt-in.
 - `.planning/phases/` remains retained for v1.0 evidence referenced by parity docs.
 
 ## Session Continuity
 
-Last session: 2026-06-01T04:07:00Z
-Stopped at: Phase 53 complete; v1.3 ready for archive
-Resume file: .planning/phases/53-live-evidence-refresh/53-01-SUMMARY.md
+Last session: 2026-06-02T12:09:10Z
+Stopped at: v1.3 archived; ready for next milestone
+Resume file: .planning/MILESTONES.md
