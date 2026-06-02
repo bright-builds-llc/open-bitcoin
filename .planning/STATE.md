@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.3
-milestone_name: Public Mainnet Sync Proof and Node Hardening
-status: completed
-stopped_at: v1.3 archived; ready for next milestone
-last_updated: "2026-06-02T12:09:10.294Z"
+milestone: v1.4
+milestone_name: Mainnet IBD Convergence and Peer Compatibility
+status: defining_requirements
+stopped_at: v1.4 started; defining requirements
+last_updated: "2026-06-02T16:01:58Z"
 last_activity: 2026-06-02
 progress:
-  total_phases: 12
-  completed_phases: 12
-  total_plans: 13
-  completed_plans: 13
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,50 +21,33 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-02)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Planning the next milestone
+**Current focus:** v1.4 Mainnet IBD Convergence and Peer Compatibility
 
 ## Current Position
 
-Phase: none — all v1.3 phases complete
-Plan: none
-Status: v1.3 archived; ready for next milestone
+Phase: Not started (defining requirements)
+Plan: -
+Status: Defining v1.4 requirements
 Last activity: 2026-06-02
 
-Progress: [##########] 100%
+Progress: [----------] 0%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 13
+- Total plans completed: 0
 - Average duration: -
 - Total execution time: -
 
 **By Phase:**
 
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 42 | 1 | complete | - |
-| 43 | 1 | complete | - |
-| 44 | 1 | complete | - |
-| 45 | 1 | complete | - |
-| 46 | 1 | complete | - |
-| 47 | 1 | complete | - |
-| 48-50 | 4 | complete | - |
-| 48 | 1 | complete | - |
-| 49 | 2 | complete | - |
-| 50 | 1 | complete | - |
-| 51 | 1 | complete | - |
-| 52 | 1 | complete | - |
-| 53 | 1 | complete | - |
+No v1.4 phases are planned yet.
 
 **Recent Trend:**
 
 - Last 5 plans: 49-02, 50-01, 51-01, 52-01, 53-01
-- Trend: v1.3 public-mainnet evidence debt is closed through fresh diagnosed-blocker evidence; milestone archive is complete.
-
-| Phase 52 P01 | 45m | 3 tasks | 12 files |
-| Phase 53 P01 | live UAT | 3 tasks | 12 files |
+- Trend: v1.4 is starting from v1.3's fresh diagnosed-blocker closeout and will define requirements before execution.
 
 ## Accumulated Context
 
@@ -77,6 +60,7 @@ Recent decisions affecting current work:
 - [v1.3]: Continue phase numbering from v1.2; active milestone starts at Phase 42.
 - [v1.3]: Keep public-mainnet evidence opt-in and outside the default `bash scripts/verify.sh` gate.
 - [v1.3]: Preserve scope boundaries: no inbound serving, transaction relay, production-funds wallet, migration apply mode, packaging, hosted dashboard, GUI, or unattended production-node claim.
+- [v1.4]: Scope the next milestone to mainnet IBD convergence and public peer compatibility, while continuing to defer inbound serving, transaction relay, production-funds wallet, migration apply mode, packaging, hosted dashboard, GUI, and unattended production-node claims.
 - [phase 42]: The live-mainnet smoke runner is still opt-in, but now accepts repeatable `--manual-peer=HOST[:PORT]`, generates a review-local JSONC config for manual-peer runs, records endpoint outcomes, and preserves operator cancellation as a distinct report status.
 - [phase 43]: Sync summaries now preserve configured outbound peer targets separately from observed peer counts, report retry-backoff skips as `waiting` with `retry_backoff`, and rotate mixed failures to replacement peers without advancing bad durable progress.
 - [phase 44]: Sync peer outcomes now distinguish activity from useful contribution; headers and blocks count only after accepted sync handling, while idle, stalled, waiting, and failed peers remain visible without useful-progress credit.
@@ -90,11 +74,11 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Start the next milestone with `/gsd-new-milestone`.
+- Define v1.4 requirements and roadmap phases for mainnet IBD convergence.
 
 ### Blockers/Concerns
 
-- No active milestone blockers are recorded after v1.3 archive.
+- No active milestone blockers are recorded at v1.4 start.
 - Phase 53 refreshed public-mainnet proof through diagnosed blocker evidence (`handshake_failure`) without claiming live header/block progress; the selected report uses fresh `openbitcoinsyncstatus` snapshots.
 - Default local verification must remain deterministic; public-network checks stay opt-in.
 - `.planning/phases/` remains retained for v1.0 evidence referenced by parity docs.
@@ -102,5 +86,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-06-02T12:09:10Z
-Stopped at: v1.3 archived; ready for next milestone
-Resume file: .planning/MILESTONES.md
+Stopped at: v1.4 started; defining requirements
+Resume file: .planning/PROJECT.md
