@@ -20,6 +20,12 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
 - node-side managed wrapper that feeds received blocks into managed chainstate
   and received transactions into the managed mempool
 - hermetic encoded-message fixtures covering handshake, initial sync, and relay
+- hermetic compatibility transcript harness for outbound `version`, `verack`,
+  `sendheaders`, `wtxidrelay`, `getheaders`, and `getdata` comparison against
+  the pinned Knots baseline
+- typed compatibility diagnoses including `VersionRejected`, `NetworkMismatch`,
+  `ServiceBitMismatch`, `UnsupportedMessageOrder`, `Timeout`, `PeerDisconnect`,
+  `MalformedPayload`, and `LocalConfigurationFailure`
 
 ## Knots sources
 
@@ -47,10 +53,14 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
   announcement type when `wtxidrelay` is negotiated
 - ping or pong preserves the nonce across the round-trip so peer liveness stays
   inspectable
+- the compatibility transcript harness remains deterministic by default and
+  reports failed peer transcripts without useful-progress credit; public-network
+  checks remain opt-in operator evidence outside `bash scripts/verify.sh`
 
 ## First-party implementation
 
 - [`packages/open-bitcoin-network/src/message.rs`](../../../packages/open-bitcoin-network/src/message.rs)
+- [`packages/open-bitcoin-network/src/compatibility.rs`](../../../packages/open-bitcoin-network/src/compatibility.rs)
 - [`packages/open-bitcoin-network/src/header_store.rs`](../../../packages/open-bitcoin-network/src/header_store.rs)
 - [`packages/open-bitcoin-network/src/peer.rs`](../../../packages/open-bitcoin-network/src/peer.rs)
 - [`packages/open-bitcoin-network/tests/parity.rs`](../../../packages/open-bitcoin-network/tests/parity.rs)
@@ -66,6 +76,9 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
 - daemon-integrated, unattended public-network full sync through `open-bitcoind`
 - long-running socket orchestration and transport persistence beyond the current
   sync-runtime foundation
+- Phase 54 compatibility evidence does not claim the Phase 55 live-peer
+  handshake fixes; it only makes the baseline comparison and failure diagnosis
+  reproducible.
 
 ## Follow-up triggers
 

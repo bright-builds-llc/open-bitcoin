@@ -16,11 +16,16 @@
 
 //! Pure-core peer lifecycle, wire-message, and sync state for Open Bitcoin.
 
+mod compatibility;
 mod error;
 mod header_store;
 mod message;
 mod peer;
 
+pub use compatibility::{
+    CompatibilityDiagnosis, CompatibilityReport, TranscriptEvent, TranscriptStep,
+    evaluate_transcript,
+};
 pub use error::PeerId;
 pub use error::{DisconnectReason, NetworkError};
 pub use header_store::{HeaderEntry, HeaderStore, InsertedHeader};

@@ -26,7 +26,7 @@ to the default `bash scripts/verify.sh` gate.
 
 ## Phases
 
-- [ ] **Phase 54: Peer Compatibility Baseline and Diagnostic Harness** - Make handshake and early-protocol failures reproducible and comparable to the Knots baseline.
+- [x] **Phase 54: Peer Compatibility Baseline and Diagnostic Harness** - Make handshake and early-protocol failures reproducible and comparable to the Knots baseline. (completed 2026-06-02)
 - [ ] **Phase 55: Outbound Handshake Compatibility Fixes** - Complete baseline-compatible handshakes with reachable peers and keep incompatible peers diagnosable.
 - [ ] **Phase 56: Header IBD Convergence** - Prove validated multi-batch header progress with fresh durable daemon status.
 - [ ] **Phase 57: Block Download and Connect Progress** - Prove bounded block download and first validated block connection beyond the v1.4 target boundary.
@@ -45,7 +45,7 @@ to the default `bash scripts/verify.sh` gate.
   2. Operator can run a deterministic compatibility harness or scripted peer check that reproduces the failing step for handshake or early-protocol failures.
   3. Compatibility diagnostics distinguish version rejection, network mismatch, service-bit mismatch, message-order failure, timeout, peer disconnect, malformed payload, and local configuration failure.
   4. The diagnostic harness is hermetic by default and does not require public-network access in `bash scripts/verify.sh`.
-**Plans**: none yet.
+**Plans**: 1/1 plans complete
 
 ### Phase 55: Outbound Handshake Compatibility Fixes
 
@@ -138,7 +138,7 @@ traceability.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 54. Peer Compatibility Baseline and Diagnostic Harness | 0/0 | Not started | - |
+| 54. Peer Compatibility Baseline and Diagnostic Harness | 1/1 | Complete    | 2026-06-02 |
 | 55. Outbound Handshake Compatibility Fixes | 0/0 | Not started | - |
 | 56. Header IBD Convergence | 0/0 | Not started | - |
 | 57. Block Download and Connect Progress | 0/0 | Not started | - |
@@ -151,12 +151,12 @@ traceability.
 | v1.1 Operator Runtime and Real-Network Sync | 22 | 69 | Shipped | 2026-04-30 |
 | v1.2 Full Mainnet Network Syncing | 7 | 13 | Shipped | 2026-05-23 |
 | v1.3 Public Mainnet Sync Proof and Node Hardening | 12 | 13 | Shipped | 2026-06-02 |
-| v1.4 Mainnet IBD Convergence and Peer Compatibility | 6 | 0 | Active | - |
+| v1.4 Mainnet IBD Convergence and Peer Compatibility | 6 | 1 | Active | - |
 
 ## Next Step
 
-Start Phase 54:
+Start Phase 55:
 
 ```bash
-/gsd-discuss-phase 54
+/gsd-discuss-phase 55
 ```

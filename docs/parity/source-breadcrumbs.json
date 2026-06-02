@@ -538,6 +538,7 @@
     {
       "label": "network-peer-sync",
       "files": [
+        "packages/open-bitcoin-network/src/compatibility.rs",
         "packages/open-bitcoin-network/src/header_store.rs",
         "packages/open-bitcoin-network/src/peer.rs",
         "packages/open-bitcoin-network/src/peer/tests.rs",
