@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Mainnet IBD Convergence and Peer Compatibility
-status: defining_requirements
-stopped_at: v1.4 started; defining requirements
-last_updated: "2026-06-02T16:01:58Z"
+status: roadmap_ready
+stopped_at: v1.4 roadmap created; ready for Phase 54 discussion
+last_updated: "2026-06-02T17:23:33Z"
 last_activity: 2026-06-02
 progress:
-  total_phases: 0
+  total_phases: 6
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-06-02)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 54 - Peer Compatibility Baseline and Diagnostic Harness
 Plan: -
-Status: Defining v1.4 requirements
+Status: Ready for phase discussion
 Last activity: 2026-06-02
 
 Progress: [----------] 0%
@@ -42,12 +42,19 @@ Progress: [----------] 0%
 
 **By Phase:**
 
-No v1.4 phases are planned yet.
+| Phase | Plans | Total | Avg/Plan |
+|-------|-------|-------|----------|
+| 54 | 0 | not started | - |
+| 55 | 0 | not started | - |
+| 56 | 0 | not started | - |
+| 57 | 0 | not started | - |
+| 58 | 0 | not started | - |
+| 59 | 0 | not started | - |
 
 **Recent Trend:**
 
 - Last 5 plans: 49-02, 50-01, 51-01, 52-01, 53-01
-- Trend: v1.4 is starting from v1.3's fresh diagnosed-blocker closeout and will define requirements before execution.
+- Trend: v1.4 roadmap is ready and starts with compatibility diagnostics before changing sync behavior.
 
 ## Accumulated Context
 
@@ -61,6 +68,8 @@ Recent decisions affecting current work:
 - [v1.3]: Keep public-mainnet evidence opt-in and outside the default `bash scripts/verify.sh` gate.
 - [v1.3]: Preserve scope boundaries: no inbound serving, transaction relay, production-funds wallet, migration apply mode, packaging, hosted dashboard, GUI, or unattended production-node claim.
 - [v1.4]: Scope the next milestone to mainnet IBD convergence and public peer compatibility, while continuing to defer inbound serving, transaction relay, production-funds wallet, migration apply mode, packaging, hosted dashboard, GUI, and unattended production-node claims.
+- [v1.4]: Continue phase numbering from v1.3; active milestone starts at Phase 54.
+- [v1.4]: Skip broad ecosystem research for this milestone and use targeted Knots/protocol comparison during phase planning.
 - [phase 42]: The live-mainnet smoke runner is still opt-in, but now accepts repeatable `--manual-peer=HOST[:PORT]`, generates a review-local JSONC config for manual-peer runs, records endpoint outcomes, and preserves operator cancellation as a distinct report status.
 - [phase 43]: Sync summaries now preserve configured outbound peer targets separately from observed peer counts, report retry-backoff skips as `waiting` with `retry_backoff`, and rotate mixed failures to replacement peers without advancing bad durable progress.
 - [phase 44]: Sync peer outcomes now distinguish activity from useful contribution; headers and blocks count only after accepted sync handling, while idle, stalled, waiting, and failed peers remain visible without useful-progress credit.
@@ -74,7 +83,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Define v1.4 requirements and roadmap phases for mainnet IBD convergence.
+- Start Phase 54 with `/gsd-discuss-phase 54`.
 
 ### Blockers/Concerns
 
@@ -86,5 +95,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-06-02T12:09:10Z
-Stopped at: v1.4 started; defining requirements
-Resume file: .planning/PROJECT.md
+Stopped at: v1.4 roadmap created; ready for Phase 54 discussion
+Resume file: .planning/ROADMAP.md

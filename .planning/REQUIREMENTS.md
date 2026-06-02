@@ -89,34 +89,34 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| COMPAT-01 | TBD | Pending |
-| COMPAT-02 | TBD | Pending |
-| COMPAT-03 | TBD | Pending |
-| COMPAT-04 | TBD | Pending |
-| COMPAT-05 | TBD | Pending |
-| HDR-01 | TBD | Pending |
-| HDR-02 | TBD | Pending |
-| HDR-03 | TBD | Pending |
-| HDR-04 | TBD | Pending |
-| BLK-01 | TBD | Pending |
-| BLK-02 | TBD | Pending |
-| BLK-03 | TBD | Pending |
-| BLK-04 | TBD | Pending |
-| RESUME-01 | TBD | Pending |
-| RESUME-02 | TBD | Pending |
-| RESUME-03 | TBD | Pending |
-| OBS-01 | TBD | Pending |
-| OBS-02 | TBD | Pending |
-| OBS-03 | TBD | Pending |
-| SEC-01 | TBD | Pending |
-| SEC-02 | TBD | Pending |
-| SEC-03 | TBD | Pending |
+| COMPAT-01 | Phase 54 | Pending |
+| COMPAT-02 | Phase 54 | Pending |
+| COMPAT-03 | Phase 55 | Pending |
+| COMPAT-04 | Phase 54 | Pending |
+| COMPAT-05 | Phase 55 | Pending |
+| HDR-01 | Phase 56 | Pending |
+| HDR-02 | Phase 56 | Pending |
+| HDR-03 | Phase 56 | Pending |
+| HDR-04 | Phase 56 | Pending |
+| BLK-01 | Phase 57 | Pending |
+| BLK-02 | Phase 57 | Pending |
+| BLK-03 | Phase 57 | Pending |
+| BLK-04 | Phase 57 | Pending |
+| RESUME-01 | Phase 58 | Pending |
+| RESUME-02 | Phase 58 | Pending |
+| RESUME-03 | Phase 58 | Pending |
+| OBS-01 | Phase 59 | Pending |
+| OBS-02 | Phase 59 | Pending |
+| OBS-03 | Phase 59 | Pending |
+| SEC-01 | Phase 59 | Pending |
+| SEC-02 | Phase 59 | Pending |
+| SEC-03 | Phase 59 | Pending |
 
 **Coverage:**
 - v1.4 requirements: 22 total
-- Mapped to phases: 0
-- Unmapped: 22
+- Mapped to phases: 22
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-06-02*
-*Last updated: 2026-06-02 after v1.4 requirements definition*
+*Last updated: 2026-06-02 after v1.4 roadmap creation*
