@@ -88,6 +88,21 @@ struct ScriptedSession {
 }
 
 #[derive(Debug, Clone)]
+struct ErrorAfterMessagesTransport {
+    scripts: VecDeque<Vec<WireNetworkMessage>>,
+    sent: Rc<RefCell<Vec<WireNetworkMessage>>>,
+    error: SyncRuntimeError,
+    errors_remaining: Rc<RefCell<usize>>,
+}
+
+#[derive(Debug, Clone)]
+struct ErrorAfterMessagesSession {
+    inbound: VecDeque<WireNetworkMessage>,
+    sent: Rc<RefCell<Vec<WireNetworkMessage>>>,
+    maybe_error: Option<SyncRuntimeError>,
+}
+
+#[derive(Debug, Clone)]
 struct ScriptedResolver {
     results: VecDeque<Result<Vec<ResolvedSyncPeerAddress>, SyncRuntimeError>>,
 }
@@ -134,6 +149,49 @@ impl SyncTransport for ScriptedTransport {
         Ok(ScriptedSession {
             inbound: inbound.into(),
             sent: Rc::clone(&self.sent),
+        })
+    }
+}
+
+impl ErrorAfterMessagesTransport {
+    fn new(
+        scripts: Vec<Vec<WireNetworkMessage>>,
+        error: SyncRuntimeError,
+        errors_remaining: usize,
+    ) -> Self {
+        Self {
+            scripts: scripts.into(),
+            sent: Rc::new(RefCell::new(Vec::new())),
+            error,
+            errors_remaining: Rc::new(RefCell::new(errors_remaining)),
+        }
+    }
+
+    fn sent_messages(&self) -> Vec<WireNetworkMessage> {
+        self.sent.borrow().clone()
+    }
+}
+
+impl SyncTransport for ErrorAfterMessagesTransport {
+    type Session = ErrorAfterMessagesSession;
+
+    fn connect(
+        &mut self,
+        _peer: &ResolvedSyncPeerAddress,
+        _config: &SyncRuntimeConfig,
+    ) -> Result<Self::Session, SyncRuntimeError> {
+        let inbound = self.scripts.pop_front().unwrap_or_default();
+        let mut errors_remaining = self.errors_remaining.borrow_mut();
+        let maybe_error = if *errors_remaining == 0 {
+            None
+        } else {
+            *errors_remaining -= 1;
+            Some(self.error.clone())
+        };
+        Ok(ErrorAfterMessagesSession {
+            inbound: inbound.into(),
+            sent: Rc::clone(&self.sent),
+            maybe_error,
         })
     }
 }
@@ -188,6 +246,31 @@ impl SyncPeerSession for ScriptedSession {
     }
 }
 
+impl SyncPeerSession for ErrorAfterMessagesSession {
+    fn send(
+        &mut self,
+        message: &WireNetworkMessage,
+        _magic: open_bitcoin_core::primitives::NetworkMagic,
+    ) -> Result<(), SyncRuntimeError> {
+        self.sent.borrow_mut().push(message.clone());
+        Ok(())
+    }
+
+    fn receive(
+        &mut self,
+        _magic: open_bitcoin_core::primitives::NetworkMagic,
+    ) -> Result<Option<WireNetworkMessage>, SyncRuntimeError> {
+        let maybe_message = self.inbound.pop_front();
+        if maybe_message.is_some() {
+            return Ok(maybe_message);
+        }
+        if let Some(error) = self.maybe_error.take() {
+            return Err(error);
+        }
+        Ok(None)
+    }
+}
+
 fn temp_store_path(test_name: &str) -> PathBuf {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -221,6 +304,18 @@ fn sync_config() -> SyncRuntimeConfig {
 fn sync_config_with_log_dir(log_dir: &Path) -> SyncRuntimeConfig {
     SyncRuntimeConfig {
         maybe_log_dir: Some(log_dir.to_path_buf()),
+        ..sync_config()
+    }
+}
+
+fn two_peer_sync_config() -> SyncRuntimeConfig {
+    SyncRuntimeConfig {
+        manual_peers: vec![
+            SyncPeerAddress::manual("127.0.0.1", 18_444),
+            SyncPeerAddress::manual("127.0.0.1", 18_445),
+        ],
+        target_outbound_peers: 2,
+        max_peer_retries: 0,
         ..sync_config()
     }
 }
@@ -355,6 +450,13 @@ fn getdata_block_hashes(messages: &[WireNetworkMessage]) -> Vec<BlockHash> {
         }
     }
     hashes
+}
+
+fn notfound_for_block(block_hash: BlockHash) -> WireNetworkMessage {
+    WireNetworkMessage::NotFound(InventoryList::new(vec![InventoryVector {
+        inventory_type: InventoryType::Block,
+        object_hash: block_hash.into(),
+    }]))
 }
 
 fn header(previous_block_hash: BlockHash, nonce: u32) -> BlockHeader {
@@ -585,6 +687,188 @@ fn bounded_block_requests_respect_per_peer_and_total_caps() {
         1
     );
     assert!(runtime.inflight_blocks.len() <= runtime.config.max_blocks_in_flight_total);
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn notfound_releases_block_inflight_for_retry() {
+    // Arrange
+    let path = temp_store_path("block-inflight-notfound");
+    remove_dir_if_exists(&path);
+    let block = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+    let block_hash = block_hash(&block.header);
+    let first_peer_script = vec![
+        WireNetworkMessage::Version(VersionMessage {
+            start_height: 0,
+            ..VersionMessage::default()
+        }),
+        WireNetworkMessage::Verack,
+        WireNetworkMessage::Headers(HeadersMessage {
+            headers: vec![block.header.clone()],
+        }),
+        notfound_for_block(block_hash),
+    ];
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime = DurableSyncRuntime::open(store, two_peer_sync_config()).expect("runtime");
+    let mut transport = ScriptedTransport::new(vec![first_peer_script, version_verack_script(0)]);
+
+    // Act
+    let summary = runtime
+        .sync_once(&mut transport, i64::from(block.header.time))
+        .expect("sync");
+    let requested_hashes = getdata_block_hashes(&transport.sent_messages());
+
+    // Assert
+    assert!(
+        requested_hashes
+            .iter()
+            .filter(|hash| **hash == block_hash)
+            .count()
+            >= 2
+    );
+    assert!(runtime.inflight_blocks.is_empty());
+    assert_eq!(summary.downloaded_block_height, 0);
+    assert_eq!(summary.best_block_height, 0);
+    assert!(
+        runtime
+            .store()
+            .load_block(block_hash)
+            .expect("load notfound block")
+            .is_none()
+    );
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn disconnect_clears_runtime_and_peer_block_inflight() {
+    // Arrange
+    let path = temp_store_path("block-inflight-disconnect");
+    remove_dir_if_exists(&path);
+    let block = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+    let block_hash = block_hash(&block.header);
+    let first_peer_script = headers_script(0, vec![block.header.clone()]);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime = DurableSyncRuntime::open(store, two_peer_sync_config()).expect("runtime");
+    let mut transport = ScriptedTransport::new(vec![first_peer_script, version_verack_script(0)]);
+
+    // Act
+    let summary = runtime
+        .sync_once(&mut transport, i64::from(block.header.time))
+        .expect("sync");
+    let requested_hashes = getdata_block_hashes(&transport.sent_messages());
+
+    // Assert
+    assert!(
+        requested_hashes
+            .iter()
+            .filter(|hash| **hash == block_hash)
+            .count()
+            >= 2
+    );
+    assert!(runtime.inflight_blocks.is_empty());
+    assert!(runtime.network.peer_requested_blocks(1).is_err());
+    assert_eq!(summary.downloaded_block_height, 0);
+    assert_eq!(summary.best_block_height, 0);
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn block_inflight_invalid_block_releases_runtime_and_peer_inflight_for_retry() {
+    // Arrange
+    let path = temp_store_path("block-inflight-invalid");
+    remove_dir_if_exists(&path);
+    let valid_block = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+    let block_hash = block_hash(&valid_block.header);
+    let mut invalid_block = valid_block.clone();
+    invalid_block.transactions[0].outputs[0].value = Amount::from_sats(51).expect("valid amount");
+    let first_peer_script = vec![
+        WireNetworkMessage::Version(VersionMessage {
+            start_height: 0,
+            ..VersionMessage::default()
+        }),
+        WireNetworkMessage::Verack,
+        WireNetworkMessage::Headers(HeadersMessage {
+            headers: vec![valid_block.header.clone()],
+        }),
+        WireNetworkMessage::Block(invalid_block),
+    ];
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime = DurableSyncRuntime::open(store, two_peer_sync_config()).expect("runtime");
+    let mut transport = ScriptedTransport::new(vec![first_peer_script, version_verack_script(0)]);
+
+    // Act
+    let summary = runtime
+        .sync_once(&mut transport, i64::from(valid_block.header.time))
+        .expect("sync");
+    let requested_hashes = getdata_block_hashes(&transport.sent_messages());
+
+    // Assert
+    assert_eq!(summary.failed_peers, 1);
+    assert!(summary.peer_outcomes.iter().any(|outcome| {
+        outcome.maybe_failure_reason == Some(PeerFailureReason::InvalidData)
+            && outcome.contribution.blocks_received == 0
+    }));
+    assert!(
+        requested_hashes
+            .iter()
+            .filter(|hash| **hash == block_hash)
+            .count()
+            >= 2
+    );
+    assert!(runtime.inflight_blocks.is_empty());
+    assert!(
+        runtime
+            .store()
+            .load_block(block_hash)
+            .expect("load invalid block")
+            .is_none()
+    );
+    assert_eq!(summary.downloaded_block_height, 0);
+    assert_eq!(summary.best_block_height, 0);
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn block_inflight_malformed_block_releases_runtime_and_peer_inflight_for_retry() {
+    // Arrange
+    let path = temp_store_path("block-inflight-malformed");
+    remove_dir_if_exists(&path);
+    let block = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+    let block_hash = block_hash(&block.header);
+    let first_peer_script = headers_script(0, vec![block.header.clone()]);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime = DurableSyncRuntime::open(store, two_peer_sync_config()).expect("runtime");
+    let mut transport = ErrorAfterMessagesTransport::new(
+        vec![first_peer_script, version_verack_script(0)],
+        SyncRuntimeError::Network {
+            message: "malformed block payload".to_string(),
+        },
+        1,
+    );
+
+    // Act
+    let summary = runtime
+        .sync_once(&mut transport, i64::from(block.header.time))
+        .expect("sync");
+    let requested_hashes = getdata_block_hashes(&transport.sent_messages());
+
+    // Assert
+    assert_eq!(summary.failed_peers, 1);
+    assert!(
+        requested_hashes
+            .iter()
+            .filter(|hash| **hash == block_hash)
+            .count()
+            >= 2
+    );
+    assert!(runtime.inflight_blocks.is_empty());
+    assert!(runtime.network.peer_requested_blocks(1).is_err());
+    assert_eq!(summary.downloaded_block_height, 0);
+    assert_eq!(summary.best_block_height, 0);
 
     remove_dir_if_exists(&path);
 }

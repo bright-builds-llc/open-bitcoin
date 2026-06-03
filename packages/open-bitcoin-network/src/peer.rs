@@ -602,7 +602,6 @@ impl PeerManager {
         block: Block,
     ) -> Result<Vec<PeerAction>, NetworkError> {
         let hash = block_hash(&block.header);
-        self.known_blocks.insert(hash);
 
         let peer = Self::peer_mut(&mut self.peers, peer_id)?;
         Self::forget_requested_inventory(peer, InventoryType::Block, hash.into());
