@@ -10,6 +10,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 mod block_reconcile;
+mod block_response;
 mod progress;
 mod resolver;
 mod runtime_state;
@@ -327,13 +328,25 @@ impl DurableSyncRuntime {
         timestamp: i64,
     ) -> Result<PeerProgress, Box<PeerFailure>> {
         let mut progress = PeerProgress::new(peer.clone(), self.config.network, attempts);
+        let mut maybe_failure_reason_override = None;
         let result = (|| -> Result<(), SyncRuntimeError> {
             let mut outbound = self.network.connect_outbound_peer(peer_id, timestamp)?;
             outbound.extend(block_reconcile::request_missing_blocks(self, peer_id)?);
             self.send_all(&mut session, &outbound)?;
 
             for _ in 0..self.config.max_messages_per_peer {
-                let Some(message) = session.receive(self.config.network.magic())? else {
+                let maybe_message = match session.receive(self.config.network.magic()) {
+                    Ok(maybe_message) => maybe_message,
+                    Err(error) => {
+                        let reason = peer_failure_reason_for_error(&error);
+                        if reason == PeerFailureReason::MalformedBlock {
+                            progress.record_malformed_block();
+                            maybe_failure_reason_override = Some(reason);
+                        }
+                        return Err(error);
+                    }
+                };
+                let Some(message) = maybe_message else {
                     progress.maybe_capabilities = self.peer_capabilities(peer_id);
                     if !self.peer_handshake_complete(peer_id) {
                         progress.state = PeerSyncState::Stalled;
@@ -342,8 +355,6 @@ impl DurableSyncRuntime {
                     return Ok(());
                 };
                 progress.record_activity(timestamp);
-                block_reconcile::release_inflight_for_message(self, &message);
-
                 let maybe_header_count = match &message {
                     WireNetworkMessage::Headers(headers) => Some(headers.headers.len()),
                     _ => None,
@@ -352,22 +363,48 @@ impl DurableSyncRuntime {
                     WireNetworkMessage::Block(block) => Some(block.clone()),
                     _ => None,
                 };
-                let sync_result = self.network.receive_sync_message(
+                let maybe_block_hash = maybe_block.as_ref().map(|block| block_hash(&block.header));
+                let block_response_was_requested = maybe_block_hash
+                    .as_ref()
+                    .is_some_and(|hash| self.peer_requested_block(peer_id, *hash));
+                let block_response_is_best_chain = maybe_block_hash
+                    .as_ref()
+                    .is_some_and(|hash| self.block_has_best_chain_header(*hash));
+                let notfound_was_requested =
+                    self.message_reports_requested_block_notfound(peer_id, &message);
+                block_reconcile::release_inflight_for_message(self, &message);
+
+                let sync_result = match self.network.receive_sync_message(
                     peer_id,
                     message,
                     timestamp,
                     self.verify_flags,
                     self.consensus_params,
-                )?;
+                ) {
+                    Ok(result) => result,
+                    Err(error) => {
+                        if maybe_block_hash.is_some() {
+                            progress.record_invalid_block();
+                            maybe_failure_reason_override = Some(PeerFailureReason::InvalidBlock);
+                        }
+                        return Err(error.into());
+                    }
+                };
                 let mut outbound = sync_result.outbound;
                 if let Some(header_count) = maybe_header_count {
                     progress.record_validated_headers(header_count);
                 }
-                if let Some(block) = maybe_block {
-                    self.store.save_block(&block, self.config.persist_mode)?;
-                    self.network
-                        .note_local_block_hash(block_hash(&block.header));
-                    progress.record_accepted_block();
+                if notfound_was_requested {
+                    progress.record_block_notfound();
+                }
+                if let Some(disposition) = sync_result.maybe_block_disposition {
+                    self.record_block_disposition(
+                        &mut progress,
+                        maybe_block.as_ref(),
+                        disposition,
+                        block_response_was_requested,
+                        block_response_is_best_chain,
+                    )?;
                 }
                 let _ = block_reconcile::reconcile_best_chain(self, timestamp)?;
                 self.persist_progress()?;
@@ -408,7 +445,9 @@ impl DurableSyncRuntime {
                 }
                 Err(Box::new(PeerFailure {
                     peer: peer.clone(),
-                    reason: peer_failure_reason_for_error(&error),
+                    reason: maybe_failure_reason_override
+                        .clone()
+                        .unwrap_or_else(|| peer_failure_reason_for_error(&error)),
                     error,
                     attempts,
                     maybe_progress: Some(progress),
@@ -537,15 +576,26 @@ impl DurableSyncRuntime {
 fn peer_failure_reason_for_error(error: &SyncRuntimeError) -> PeerFailureReason {
     match error {
         SyncRuntimeError::AddressResolution { .. } => PeerFailureReason::AddressResolution,
+        SyncRuntimeError::InvalidData { message } if describes_malformed_block(message) => {
+            PeerFailureReason::MalformedBlock
+        }
         SyncRuntimeError::InvalidData { .. } => PeerFailureReason::InvalidData,
         SyncRuntimeError::InvalidMagic { .. } => PeerFailureReason::InvalidMagic,
         SyncRuntimeError::PeerCompatibility { .. } => PeerFailureReason::Compatibility,
         SyncRuntimeError::Storage(_) => PeerFailureReason::Storage,
         SyncRuntimeError::Io { .. } => PeerFailureReason::Connect,
-        SyncRuntimeError::Network { .. }
-        | SyncRuntimeError::NoPeersConfigured
-        | SyncRuntimeError::ResourceLimit { .. } => PeerFailureReason::Network,
+        SyncRuntimeError::Network { message } if describes_malformed_block(message) => {
+            PeerFailureReason::MalformedBlock
+        }
+        SyncRuntimeError::ResourceLimit { .. } => PeerFailureReason::ResourceLimit,
+        SyncRuntimeError::Network { .. } | SyncRuntimeError::NoPeersConfigured => {
+            PeerFailureReason::Network
+        }
     }
+}
+
+fn describes_malformed_block(message: &str) -> bool {
+    message.contains("malformed block")
 }
 
 fn retry_backoff_seconds(retry_backoff_ms: u64) -> i64 {

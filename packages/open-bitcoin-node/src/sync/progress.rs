@@ -70,6 +70,34 @@ impl PeerProgress {
         self.blocks_received += 1;
     }
 
+    pub(super) fn record_block_notfound(&mut self) {
+        self.record_no_credit_block_response(PeerFailureReason::BlockNotFound);
+    }
+
+    pub(super) fn record_malformed_block(&mut self) {
+        self.record_no_credit_block_response(PeerFailureReason::MalformedBlock);
+    }
+
+    pub(super) fn record_invalid_block(&mut self) {
+        self.record_no_credit_block_response(PeerFailureReason::InvalidBlock);
+    }
+
+    pub(super) fn record_duplicate_block(&mut self) {
+        self.record_no_credit_block_response(PeerFailureReason::DuplicateBlock);
+    }
+
+    pub(super) fn record_disconnected_block(&mut self) {
+        self.record_no_credit_block_response(PeerFailureReason::DisconnectedBlock);
+    }
+
+    pub(super) fn record_non_extending_block(&mut self) {
+        self.record_no_credit_block_response(PeerFailureReason::NonExtendingBlock);
+    }
+
+    fn record_no_credit_block_response(&mut self, reason: PeerFailureReason) {
+        self.maybe_failure_reason = Some(reason);
+    }
+
     pub(super) fn into_outcome(self, maybe_error: Option<String>) -> PeerSyncOutcome {
         PeerSyncOutcome {
             peer: self.peer.peer,

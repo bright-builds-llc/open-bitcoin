@@ -459,6 +459,48 @@ fn notfound_for_block(block_hash: BlockHash) -> WireNetworkMessage {
     }]))
 }
 
+fn save_best_chain_with_active_blocks(
+    path: &Path,
+    best_chain: &[(&Block, u32)],
+    active_chain: &[(&Block, u32)],
+) {
+    let store = FjallNodeStore::open(path).expect("store");
+    let header_entries = best_chain
+        .iter()
+        .map(|(block, height)| HeaderEntry {
+            block_hash: block_hash(&block.header),
+            header: block.header.clone(),
+            height: *height,
+            chain_work: u128::from(*height).saturating_add(1),
+        })
+        .collect::<Vec<_>>();
+    store
+        .save_header_entries(&header_entries, PersistMode::Sync)
+        .expect("save best-chain headers");
+    let active_positions = active_chain
+        .iter()
+        .map(|(block, height)| {
+            ChainPosition::new(
+                block.header.clone(),
+                *height,
+                u128::from(*height).saturating_add(1),
+                i64::from(block.header.time),
+            )
+        })
+        .collect::<Vec<_>>();
+    store
+        .save_chainstate_snapshot(
+            &ChainstateSnapshot::new(active_positions, Default::default(), Default::default()),
+            PersistMode::Sync,
+        )
+        .expect("save active chain snapshot");
+    for (block, _) in active_chain {
+        store
+            .save_block(block, PersistMode::Sync)
+            .expect("save active block");
+    }
+}
+
 fn header(previous_block_hash: BlockHash, nonce: u32) -> BlockHeader {
     let mut header = BlockHeader {
         version: 1,
@@ -775,6 +817,251 @@ fn disconnect_clears_runtime_and_peer_block_inflight() {
     remove_dir_if_exists(&path);
 }
 
+mod block_response {
+    use super::*;
+
+    fn assert_peer_reason_without_block_credit(
+        summary: &SyncRunSummary,
+        reason: PeerFailureReason,
+    ) {
+        let outcome = summary
+            .peer_outcomes
+            .iter()
+            .find(|outcome| outcome.maybe_failure_reason.as_ref() == Some(&reason))
+            .expect("peer outcome with block response failure reason");
+        assert_eq!(outcome.contribution.blocks_received, 0);
+    }
+
+    #[test]
+    fn first_non_genesis_block_connect_advances_downloaded_and_connected_height() {
+        // Arrange
+        let path = temp_store_path("block-response-first-connect");
+        remove_dir_if_exists(&path);
+        let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+        let child = build_block(block_hash(&genesis.header), 1);
+        let child_hash = block_hash(&child.header);
+        save_best_chain_with_active_blocks(&path, &[(&genesis, 0), (&child, 1)], &[(&genesis, 0)]);
+        let store = FjallNodeStore::open(&path).expect("reopen store");
+        let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+        let mut transport = ScriptedTransport::new(vec![vec![
+            WireNetworkMessage::Version(VersionMessage {
+                start_height: 1,
+                ..VersionMessage::default()
+            }),
+            WireNetworkMessage::Verack,
+            WireNetworkMessage::Block(child.clone()),
+        ]]);
+
+        // Act
+        let summary = runtime
+            .sync_once(&mut transport, i64::from(child.header.time))
+            .expect("sync");
+
+        // Assert
+        assert_eq!(summary.downloaded_block_height, 1);
+        assert_eq!(summary.best_block_height, 1);
+        assert_eq!(summary.blocks_received, 1);
+        assert_eq!(summary.peer_outcomes.len(), 1);
+        assert_eq!(summary.peer_outcomes[0].contribution.blocks_received, 1);
+        assert!(
+            runtime
+                .store()
+                .load_block(child_hash)
+                .expect("load connected child")
+                .is_some()
+        );
+
+        remove_dir_if_exists(&path);
+    }
+
+    #[test]
+    fn block_notfound_is_peer_attributed_no_credit() {
+        // Arrange
+        let path = temp_store_path("block-response-notfound");
+        remove_dir_if_exists(&path);
+        let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+        let child = build_block(block_hash(&genesis.header), 1);
+        let child_hash = block_hash(&child.header);
+        save_best_chain_with_active_blocks(&path, &[(&genesis, 0), (&child, 1)], &[(&genesis, 0)]);
+        let store = FjallNodeStore::open(&path).expect("reopen store");
+        let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+        let mut transport = ScriptedTransport::new(vec![vec![
+            WireNetworkMessage::Version(VersionMessage {
+                start_height: 1,
+                ..VersionMessage::default()
+            }),
+            WireNetworkMessage::Verack,
+            notfound_for_block(child_hash),
+        ]]);
+
+        // Act
+        let summary = runtime
+            .sync_once(&mut transport, i64::from(child.header.time))
+            .expect("sync");
+        let requested_hashes = getdata_block_hashes(&transport.sent_messages());
+
+        // Assert
+        assert!(
+            requested_hashes
+                .iter()
+                .filter(|hash| **hash == child_hash)
+                .count()
+                >= 2
+        );
+        assert!(runtime.inflight_blocks.is_empty());
+        assert_eq!(summary.blocks_received, 0);
+        assert_eq!(summary.downloaded_block_height, 0);
+        assert_eq!(summary.best_block_height, 0);
+        assert_peer_reason_without_block_credit(&summary, PeerFailureReason::BlockNotFound);
+        assert!(
+            runtime
+                .store()
+                .load_block(child_hash)
+                .expect("load missing child")
+                .is_none()
+        );
+
+        remove_dir_if_exists(&path);
+    }
+
+    #[test]
+    fn duplicate_block_response_is_peer_attributed_no_credit() {
+        // Arrange
+        let path = temp_store_path("block-response-duplicate");
+        remove_dir_if_exists(&path);
+        let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+        let child = build_block(block_hash(&genesis.header), 1);
+        let child_hash = block_hash(&child.header);
+        save_best_chain_with_active_blocks(
+            &path,
+            &[(&genesis, 0), (&child, 1)],
+            &[(&genesis, 0), (&child, 1)],
+        );
+        let store = FjallNodeStore::open(&path).expect("reopen store");
+        let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+        let mut transport = ScriptedTransport::new(vec![vec![
+            WireNetworkMessage::Version(VersionMessage {
+                start_height: 1,
+                ..VersionMessage::default()
+            }),
+            WireNetworkMessage::Verack,
+            WireNetworkMessage::Block(child.clone()),
+        ]]);
+
+        // Act
+        let summary = runtime
+            .sync_once(&mut transport, i64::from(child.header.time))
+            .expect("sync");
+        let active_chain = runtime.network.chainstate_snapshot().active_chain;
+
+        // Assert
+        assert_eq!(summary.blocks_received, 0);
+        assert_eq!(summary.downloaded_block_height, 1);
+        assert_eq!(summary.best_block_height, 1);
+        assert_eq!(active_chain.len(), 2);
+        assert_eq!(
+            active_chain.last().map(|position| position.block_hash),
+            Some(child_hash)
+        );
+        assert_peer_reason_without_block_credit(&summary, PeerFailureReason::DuplicateBlock);
+
+        remove_dir_if_exists(&path);
+    }
+
+    #[test]
+    fn disconnected_block_response_is_peer_attributed_no_credit() {
+        // Arrange
+        let path = temp_store_path("block-response-disconnected");
+        remove_dir_if_exists(&path);
+        let block = build_block(BlockHash::from_byte_array([7_u8; 32]), 1);
+        let block_hash = block_hash(&block.header);
+        let store = FjallNodeStore::open(&path).expect("store");
+        let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+        let mut transport = ScriptedTransport::new(vec![vec![
+            WireNetworkMessage::Version(VersionMessage {
+                start_height: 1,
+                ..VersionMessage::default()
+            }),
+            WireNetworkMessage::Verack,
+            WireNetworkMessage::Block(block.clone()),
+        ]]);
+
+        // Act
+        let summary = runtime
+            .sync_once(&mut transport, i64::from(block.header.time))
+            .expect("sync");
+
+        // Assert
+        assert_eq!(summary.blocks_received, 0);
+        assert_eq!(summary.downloaded_block_height, 0);
+        assert_eq!(summary.best_block_height, 0);
+        assert!(
+            runtime
+                .network
+                .chainstate_snapshot()
+                .active_chain
+                .is_empty()
+        );
+        assert_peer_reason_without_block_credit(&summary, PeerFailureReason::DisconnectedBlock);
+        assert!(
+            runtime
+                .store()
+                .load_block(block_hash)
+                .expect("load disconnected block")
+                .is_none()
+        );
+
+        remove_dir_if_exists(&path);
+    }
+
+    #[test]
+    fn non_extending_block_response_is_peer_attributed_no_credit() {
+        // Arrange
+        let path = temp_store_path("block-response-non-extending");
+        remove_dir_if_exists(&path);
+        let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+        let side_block = build_block(BlockHash::from_byte_array([42_u8; 32]), 1);
+        let side_hash = block_hash(&side_block.header);
+        save_best_chain_with_active_blocks(&path, &[(&genesis, 0)], &[(&genesis, 0)]);
+        let store = FjallNodeStore::open(&path).expect("reopen store");
+        let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+        let mut transport = ScriptedTransport::new(vec![vec![
+            WireNetworkMessage::Version(VersionMessage {
+                start_height: 1,
+                ..VersionMessage::default()
+            }),
+            WireNetworkMessage::Verack,
+            WireNetworkMessage::Block(side_block.clone()),
+        ]]);
+
+        // Act
+        let summary = runtime
+            .sync_once(&mut transport, i64::from(side_block.header.time))
+            .expect("sync");
+        let active_chain = runtime.network.chainstate_snapshot().active_chain;
+
+        // Assert
+        assert_eq!(summary.blocks_received, 0);
+        assert_eq!(summary.downloaded_block_height, 0);
+        assert_eq!(summary.best_block_height, 0);
+        assert_eq!(active_chain.len(), 1);
+        assert_eq!(
+            active_chain.last().map(|position| position.block_hash),
+            Some(block_hash(&genesis.header))
+        );
+        assert_peer_reason_without_block_credit(&summary, PeerFailureReason::NonExtendingBlock);
+        assert!(
+            runtime
+                .store()
+                .load_block(side_hash)
+                .expect("load non-extending block")
+                .is_none()
+        );
+
+        remove_dir_if_exists(&path);
+    }
+}
+
 #[test]
 fn block_inflight_invalid_block_releases_runtime_and_peer_inflight_for_retry() {
     // Arrange
@@ -808,7 +1095,7 @@ fn block_inflight_invalid_block_releases_runtime_and_peer_inflight_for_retry() {
     // Assert
     assert_eq!(summary.failed_peers, 1);
     assert!(summary.peer_outcomes.iter().any(|outcome| {
-        outcome.maybe_failure_reason == Some(PeerFailureReason::InvalidData)
+        outcome.maybe_failure_reason == Some(PeerFailureReason::InvalidBlock)
             && outcome.contribution.blocks_received == 0
     }));
     assert!(
@@ -858,6 +1145,10 @@ fn block_inflight_malformed_block_releases_runtime_and_peer_inflight_for_retry()
 
     // Assert
     assert_eq!(summary.failed_peers, 1);
+    assert!(summary.peer_outcomes.iter().any(|outcome| {
+        outcome.maybe_failure_reason == Some(PeerFailureReason::MalformedBlock)
+            && outcome.contribution.blocks_received == 0
+    }));
     assert!(
         requested_hashes
             .iter()
@@ -2827,7 +3118,7 @@ fn invalid_block_body_is_peer_attributed_and_not_persisted() {
     assert_eq!(outcome.state, PeerSyncState::Failed);
     assert_eq!(
         outcome.maybe_failure_reason,
-        Some(PeerFailureReason::InvalidData)
+        Some(PeerFailureReason::InvalidBlock)
     );
     assert_eq!(outcome.contribution.headers_received, 1);
     assert_eq!(outcome.contribution.blocks_received, 0);

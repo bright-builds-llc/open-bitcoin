@@ -240,7 +240,14 @@ pub enum PeerFailureReason {
     RetryBackoff,
     InvalidData,
     InvalidMagic,
+    BlockNotFound,
+    MalformedBlock,
+    InvalidBlock,
+    DuplicateBlock,
+    DisconnectedBlock,
+    NonExtendingBlock,
     Network,
+    ResourceLimit,
     Storage,
 }
 
@@ -254,7 +261,14 @@ impl fmt::Display for PeerFailureReason {
             Self::RetryBackoff => write!(f, "retry_backoff"),
             Self::InvalidData => write!(f, "invalid_data"),
             Self::InvalidMagic => write!(f, "invalid_magic"),
+            Self::BlockNotFound => write!(f, "block_notfound"),
+            Self::MalformedBlock => write!(f, "malformed_block"),
+            Self::InvalidBlock => write!(f, "invalid_block"),
+            Self::DuplicateBlock => write!(f, "duplicate_block"),
+            Self::DisconnectedBlock => write!(f, "disconnected_block"),
+            Self::NonExtendingBlock => write!(f, "non_extending_block"),
             Self::Network => write!(f, "network"),
+            Self::ResourceLimit => write!(f, "resource_limit"),
             Self::Storage => write!(f, "storage"),
         }
     }
@@ -276,7 +290,26 @@ impl PeerFailureReason {
             Self::InvalidMagic => {
                 "Check the configured Bitcoin network and peer list before retrying."
             }
+            Self::BlockNotFound => {
+                "Retry the missing block from another peer or wait for peer backoff."
+            }
+            Self::MalformedBlock => {
+                "Use another peer and inspect transport framing if malformed block payloads repeat."
+            }
+            Self::InvalidBlock => {
+                "Use a different peer and verify the peer is serving the configured chain."
+            }
+            Self::DuplicateBlock => {
+                "No operator action is required unless the same peer repeatedly sends duplicate blocks."
+            }
+            Self::DisconnectedBlock => {
+                "Request headers and ancestor blocks before retrying this block response."
+            }
+            Self::NonExtendingBlock => {
+                "Continue sync with peers advertising the validated best chain."
+            }
             Self::Network => "Inspect network connectivity and retry sync.",
+            Self::ResourceLimit => "Increase block in-flight limits or reduce sync pressure.",
             Self::Storage => "Inspect durable store health before retrying sync.",
         }
     }

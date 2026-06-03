@@ -615,6 +615,7 @@
       "label": "node-sync-runtime",
       "files": [
         "packages/open-bitcoin-node/src/sync.rs",
+        "packages/open-bitcoin-node/src/sync/block_response.rs",
         "packages/open-bitcoin-node/src/sync/block_reconcile.rs",
         "packages/open-bitcoin-node/src/sync/progress.rs",
         "packages/open-bitcoin-node/src/sync/runtime_state.rs",
