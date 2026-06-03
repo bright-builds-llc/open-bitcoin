@@ -459,6 +459,20 @@ fn notfound_for_block(block_hash: BlockHash) -> WireNetworkMessage {
     }]))
 }
 
+fn block_hash_hex(block_hash: BlockHash) -> String {
+    encode_hex(block_hash.as_bytes())
+}
+
+fn encode_hex(bytes: &[u8]) -> String {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let mut encoded = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
+        encoded.push(HEX[(byte >> 4) as usize] as char);
+        encoded.push(HEX[(byte & 0x0f) as usize] as char);
+    }
+    encoded
+}
+
 fn save_best_chain_with_active_blocks(
     path: &Path,
     best_chain: &[(&Block, u32)],
@@ -875,6 +889,160 @@ mod block_response {
     }
 
     #[test]
+    fn sync_progress_reports_downloaded_and_connected_block_hashes() {
+        // Arrange
+        let path = temp_store_path("sync-progress-connected-hashes");
+        remove_dir_if_exists(&path);
+        let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+        let child = build_block(block_hash(&genesis.header), 1);
+        let child_hash = block_hash(&child.header);
+        save_best_chain_with_active_blocks(&path, &[(&genesis, 0), (&child, 1)], &[(&genesis, 0)]);
+        let store = FjallNodeStore::open(&path).expect("reopen store");
+        let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+        let mut transport = ScriptedTransport::new(vec![vec![
+            WireNetworkMessage::Version(VersionMessage {
+                start_height: 1,
+                ..VersionMessage::default()
+            }),
+            WireNetworkMessage::Verack,
+            WireNetworkMessage::Block(child.clone()),
+        ]]);
+
+        // Act
+        let summary = runtime
+            .sync_once(&mut transport, i64::from(child.header.time))
+            .expect("sync");
+        let sync_progress = summary.sync_status(SyncNetwork::Regtest).sync_progress;
+
+        // Assert
+        assert_eq!(
+            sync_progress,
+            FieldAvailability::available(SyncProgress {
+                header_height: 1,
+                block_height: 1,
+                downloaded_block_height: 1,
+                connected_block_height: 1,
+                maybe_downloaded_block_hash: Some(block_hash_hex(child_hash)),
+                maybe_connected_block_hash: Some(block_hash_hex(child_hash)),
+                progress_ratio: 1.0,
+                messages_processed: 3,
+                headers_received: 0,
+                blocks_received: 1,
+            })
+        );
+
+        remove_dir_if_exists(&path);
+    }
+
+    #[test]
+    fn sync_progress_reports_downloaded_only_block_hash() {
+        // Arrange
+        let path = temp_store_path("sync-progress-downloaded-only-hash");
+        remove_dir_if_exists(&path);
+        let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+        let child = build_block(block_hash(&genesis.header), 1);
+        let genesis_hash = block_hash(&genesis.header);
+        let child_hash = block_hash(&child.header);
+        save_best_chain_with_active_blocks(&path, &[(&genesis, 0), (&child, 1)], &[(&genesis, 0)]);
+        {
+            let store = FjallNodeStore::open(&path).expect("store");
+            store
+                .save_block(&child, PersistMode::Sync)
+                .expect("save downloaded child");
+        }
+
+        let store = FjallNodeStore::open(&path).expect("reopen store");
+        let runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+
+        // Act
+        let summary = runtime.snapshot_summary();
+        let status = runtime
+            .durable_sync_state_for_summary(
+                &summary,
+                SyncLifecycleState::Active,
+                None,
+                1_777_225_180,
+            )
+            .expect("durable status");
+
+        // Assert
+        assert_eq!(
+            status.sync.sync_progress,
+            FieldAvailability::available(SyncProgress {
+                header_height: 1,
+                block_height: 0,
+                downloaded_block_height: 1,
+                connected_block_height: 0,
+                maybe_downloaded_block_hash: Some(block_hash_hex(child_hash)),
+                maybe_connected_block_hash: Some(block_hash_hex(genesis_hash)),
+                progress_ratio: 0.0,
+                messages_processed: 0,
+                headers_received: 0,
+                blocks_received: 0,
+            })
+        );
+
+        remove_dir_if_exists(&path);
+    }
+
+    #[test]
+    fn sync_progress_omits_block_hashes_when_unavailable() {
+        // Arrange
+        let path = temp_store_path("sync-progress-no-hashes");
+        remove_dir_if_exists(&path);
+        let header_only_block = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+        {
+            let store = FjallNodeStore::open(&path).expect("store");
+            store
+                .save_header_entries(
+                    &[HeaderEntry {
+                        block_hash: block_hash(&header_only_block.header),
+                        header: header_only_block.header.clone(),
+                        height: 0,
+                        chain_work: 1,
+                    }],
+                    PersistMode::Sync,
+                )
+                .expect("save header");
+        }
+        let store = FjallNodeStore::open(&path).expect("reopen store");
+        let runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+
+        // Act
+        let summary = runtime.snapshot_summary();
+        let status = runtime
+            .durable_sync_state_for_summary(
+                &summary,
+                SyncLifecycleState::Active,
+                None,
+                1_777_225_181,
+            )
+            .expect("durable status");
+        let encoded = serde_json::to_value(&status.sync.sync_progress).expect("sync progress json");
+
+        // Assert
+        assert_eq!(
+            status.sync.sync_progress,
+            FieldAvailability::available(SyncProgress {
+                header_height: 0,
+                block_height: 0,
+                downloaded_block_height: 0,
+                connected_block_height: 0,
+                maybe_downloaded_block_hash: None,
+                maybe_connected_block_hash: None,
+                progress_ratio: 1.0,
+                messages_processed: 0,
+                headers_received: 0,
+                blocks_received: 0,
+            })
+        );
+        assert!(encoded["value"]["maybe_downloaded_block_hash"].is_null());
+        assert!(encoded["value"]["maybe_connected_block_hash"].is_null());
+
+        remove_dir_if_exists(&path);
+    }
+
+    #[test]
     fn block_notfound_is_peer_attributed_no_credit() {
         // Arrange
         let path = temp_store_path("block-response-notfound");
@@ -1178,6 +1346,8 @@ fn sync_summary_projects_metric_samples() {
         best_header_height: 42,
         downloaded_block_height: 41,
         best_block_height: 40,
+        maybe_downloaded_block_hash: None,
+        maybe_connected_block_hash: None,
         peer_outcomes: Vec::new(),
         health_signals: Vec::new(),
         maybe_stop_reason: None,
@@ -1222,6 +1392,8 @@ fn sync_summary_projects_progress_signal_and_last_successful_timestamp() {
         best_header_height: 42,
         downloaded_block_height: 0,
         best_block_height: 0,
+        maybe_downloaded_block_hash: None,
+        maybe_connected_block_hash: None,
         peer_outcomes: vec![outcome],
         health_signals: Vec::new(),
         maybe_stop_reason: None,
@@ -1260,6 +1432,8 @@ fn sync_summary_projects_structured_log_records() {
         best_header_height: 44,
         downloaded_block_height: 44,
         best_block_height: 43,
+        maybe_downloaded_block_hash: None,
+        maybe_connected_block_hash: None,
         peer_outcomes: vec![
             peer_outcome(
                 SyncPeerAddress::manual("127.0.0.1", 18_444),
@@ -1380,6 +1554,8 @@ fn sync_summary_status_projections_include_counters() {
         best_header_height: 100,
         downloaded_block_height: 75,
         best_block_height: 25,
+        maybe_downloaded_block_hash: None,
+        maybe_connected_block_hash: None,
         peer_outcomes: Vec::new(),
         health_signals: Vec::new(),
         maybe_stop_reason: None,
@@ -1397,6 +1573,8 @@ fn sync_summary_status_projections_include_counters() {
             block_height: 25,
             downloaded_block_height: 75,
             connected_block_height: 25,
+            maybe_downloaded_block_hash: None,
+            maybe_connected_block_hash: None,
             progress_ratio: 0.25,
             messages_processed: 12,
             headers_received: 7,
@@ -2081,6 +2259,7 @@ fn sync_status_and_log_records_include_message_header_block_counters() {
     remove_dir_if_exists(&path);
     let store = FjallNodeStore::open(&path).expect("store");
     let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+    let genesis_hash = block_hash(&genesis.header);
     let script = vec![
         WireNetworkMessage::Version(VersionMessage {
             start_height: 0,
@@ -2112,6 +2291,8 @@ fn sync_status_and_log_records_include_message_header_block_counters() {
             block_height: 0,
             downloaded_block_height: 0,
             connected_block_height: 0,
+            maybe_downloaded_block_hash: Some(block_hash_hex(genesis_hash)),
+            maybe_connected_block_hash: Some(block_hash_hex(genesis_hash)),
             progress_ratio: 1.0,
             messages_processed: 4,
             headers_received: 1,
@@ -2268,6 +2449,8 @@ fn storage_failure_projects_storage_health_signal() {
         best_header_height: 0,
         downloaded_block_height: 0,
         best_block_height: 0,
+        maybe_downloaded_block_hash: None,
+        maybe_connected_block_hash: None,
         peer_outcomes: Vec::new(),
         health_signals: vec![signal.clone()],
         maybe_stop_reason: None,
@@ -2332,6 +2515,8 @@ fn scripted_headers_sync_persists_progress_and_status() {
             block_height: 0,
             downloaded_block_height: 0,
             connected_block_height: 0,
+            maybe_downloaded_block_hash: None,
+            maybe_connected_block_hash: None,
             progress_ratio: 0.0,
             messages_processed: 3,
             headers_received: 2,
@@ -3039,6 +3224,8 @@ fn restart_reports_downloaded_and_connected_heights_after_partial_download() {
             block_height: 1,
             downloaded_block_height: 1,
             connected_block_height: 1,
+            maybe_downloaded_block_hash: Some(block_hash_hex(block_hash(&child_one.header))),
+            maybe_connected_block_hash: Some(block_hash_hex(block_hash(&child_one.header))),
             progress_ratio: 0.5,
             messages_processed: 2,
             headers_received: 0,
@@ -3068,6 +3255,8 @@ fn restart_reports_downloaded_and_connected_heights_after_partial_download() {
             block_height: 1,
             downloaded_block_height: 1,
             connected_block_height: 1,
+            maybe_downloaded_block_hash: Some(block_hash_hex(block_hash(&child_one.header))),
+            maybe_connected_block_hash: Some(block_hash_hex(block_hash(&child_one.header))),
             progress_ratio: 0.5,
             messages_processed: 2,
             headers_received: 0,

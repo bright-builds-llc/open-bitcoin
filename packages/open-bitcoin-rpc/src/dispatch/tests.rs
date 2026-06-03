@@ -571,6 +571,8 @@ fn blockchain_info_uses_durable_sync_truth_when_available() {
                             block_height: 840_000,
                             downloaded_block_height: 840_050,
                             connected_block_height: 840_000,
+                            maybe_downloaded_block_hash: Some("11".repeat(32)),
+                            maybe_connected_block_hash: Some("00".repeat(32)),
                             progress_ratio: 0.998,
                             messages_processed: 42,
                             headers_received: 100,

@@ -24,6 +24,8 @@ pub(super) fn rpc_sync_status(blockchain_info: &GetBlockchainInfoResponse) -> Sy
             block_height: u64::from(blockchain_info.blocks),
             downloaded_block_height: u64::from(blockchain_info.blocks),
             connected_block_height: u64::from(blockchain_info.blocks),
+            maybe_downloaded_block_hash: blockchain_info.maybe_best_block_hash.clone(),
+            maybe_connected_block_hash: blockchain_info.maybe_best_block_hash.clone(),
             progress_ratio: blockchain_info.verificationprogress,
             messages_processed: 0,
             headers_received: u64::from(blockchain_info.headers),

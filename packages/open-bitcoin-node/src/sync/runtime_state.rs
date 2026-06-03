@@ -5,6 +5,7 @@
 // - packages/bitcoin-knots/src/sync.cpp
 // - packages/bitcoin-knots/src/node/blockstorage.cpp
 
+use open_bitcoin_core::primitives::BlockHash;
 use open_bitcoin_network::{MAX_HEADERS_RESULTS, PeerId};
 
 use crate::{
@@ -22,6 +23,12 @@ use super::{
 };
 
 const MAX_HEADER_REQUESTS_IN_FLIGHT_PER_PEER: u64 = 1;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct BlockProgressPoint {
+    pub(super) height: u64,
+    pub(super) block_hash: BlockHash,
+}
 
 impl DurableSyncRuntime {
     pub fn load_sync_control(&self) -> Result<SyncControlState, SyncRuntimeError> {
@@ -142,19 +149,35 @@ impl DurableSyncRuntime {
         summary: &mut SyncRunSummary,
     ) -> Result<(), SyncRuntimeError> {
         let (best_header_height, best_block_height) = self.best_heights();
+        let maybe_downloaded_block = self.downloaded_block()?;
+        let maybe_connected_block = self.connected_block();
         summary.best_header_height = best_header_height;
         summary.best_block_height = best_block_height;
-        summary.downloaded_block_height = self.downloaded_block_height()?;
+        summary.downloaded_block_height = maybe_downloaded_block.map_or(0, |block| block.height);
+        summary.maybe_downloaded_block_hash =
+            maybe_downloaded_block.map(|block| super::block_hash_hex(block.block_hash));
+        summary.maybe_connected_block_hash =
+            maybe_connected_block.map(|block| super::block_hash_hex(block.block_hash));
         Ok(())
     }
 
-    fn downloaded_block_height(&self) -> Result<u64, SyncRuntimeError> {
+    pub(super) fn connected_block(&self) -> Option<BlockProgressPoint> {
+        self.network
+            .maybe_chain_tip()
+            .map(|tip| BlockProgressPoint {
+                height: u64::from(tip.height),
+                block_hash: tip.block_hash,
+            })
+    }
+
+    pub(super) fn downloaded_block(&self) -> Result<Option<BlockProgressPoint>, SyncRuntimeError> {
         let active_chain = self.network.chainstate_snapshot().active_chain;
         let best_chain = self.network.best_chain_entries();
         if best_chain.is_empty() {
-            return Ok(active_chain
-                .last()
-                .map_or(0, |position| u64::from(position.height)));
+            return Ok(active_chain.last().map(|position| BlockProgressPoint {
+                height: u64::from(position.height),
+                block_hash: position.block_hash,
+            }));
         }
 
         let mut common_prefix_len = 0_usize;
@@ -166,23 +189,36 @@ impl DurableSyncRuntime {
             common_prefix_len += 1;
         }
 
-        let mut downloaded_height = if common_prefix_len == 0 {
-            0
+        let mut maybe_downloaded_block = if common_prefix_len == 0 {
+            None
         } else {
-            u64::from(best_chain[common_prefix_len - 1].height)
+            let entry = &best_chain[common_prefix_len - 1];
+            Some(BlockProgressPoint {
+                height: u64::from(entry.height),
+                block_hash: entry.block_hash,
+            })
         };
         for entry in best_chain.iter().skip(common_prefix_len) {
             if self.store.load_block(entry.block_hash)?.is_none() {
                 break;
             }
-            downloaded_height = u64::from(entry.height);
+            maybe_downloaded_block = Some(BlockProgressPoint {
+                height: u64::from(entry.height),
+                block_hash: entry.block_hash,
+            });
         }
 
-        Ok(downloaded_height.max(
-            active_chain
-                .last()
-                .map_or(0, |position| u64::from(position.height)),
-        ))
+        if let Some(active_tip) = active_chain.last()
+            && maybe_downloaded_block
+                .is_none_or(|block| block.height < u64::from(active_tip.height))
+        {
+            maybe_downloaded_block = Some(BlockProgressPoint {
+                height: u64::from(active_tip.height),
+                block_hash: active_tip.block_hash,
+            });
+        }
+
+        Ok(maybe_downloaded_block)
     }
 
     pub(super) fn allocate_peer_id(&mut self) -> PeerId {
@@ -303,8 +339,18 @@ impl DurableSyncRuntime {
         let metadata = self.load_runtime_metadata()?;
         let mut sync = summary.sync_status(self.config.network);
         if let FieldAvailability::Available(progress) = &mut sync.sync_progress {
-            progress.downloaded_block_height = self.downloaded_block_height()?;
-            progress.connected_block_height = progress.block_height;
+            let maybe_downloaded_block = self.downloaded_block()?;
+            let maybe_connected_block = self.connected_block();
+            progress.downloaded_block_height =
+                maybe_downloaded_block.map_or(0, |block| block.height);
+            progress.connected_block_height = maybe_connected_block.map_or(0, |block| block.height);
+            progress.block_height = progress.connected_block_height;
+            progress.maybe_downloaded_block_hash =
+                maybe_downloaded_block.map(|block| super::block_hash_hex(block.block_hash));
+            progress.maybe_connected_block_hash =
+                maybe_connected_block.map(|block| super::block_hash_hex(block.block_hash));
+            progress.progress_ratio =
+                progress_ratio(progress.connected_block_height, progress.header_height);
         }
         sync.lifecycle = FieldAvailability::available(lifecycle);
         sync.phase = FieldAvailability::available(match lifecycle {
@@ -366,4 +412,12 @@ impl DurableSyncRuntime {
     fn load_runtime_metadata(&self) -> Result<RuntimeMetadata, SyncRuntimeError> {
         Ok(self.store.load_runtime_metadata()?.unwrap_or_default())
     }
+}
+
+fn progress_ratio(block_height: u64, header_height: u64) -> f64 {
+    if header_height == 0 {
+        return 1.0;
+    }
+
+    (block_height as f64 / header_height as f64).min(1.0)
 }

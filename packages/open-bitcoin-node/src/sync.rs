@@ -107,7 +107,13 @@ impl DurableSyncRuntime {
             best_block_height,
             self.config.target_outbound_peers,
         );
-        summary.downloaded_block_height = best_block_height;
+        if let Some(downloaded_block) = self.downloaded_block().ok().flatten() {
+            summary.downloaded_block_height = downloaded_block.height;
+            summary.maybe_downloaded_block_hash = Some(block_hash_hex(downloaded_block.block_hash));
+        }
+        if let Some(connected_block) = self.connected_block() {
+            summary.maybe_connected_block_hash = Some(block_hash_hex(connected_block.block_hash));
+        }
         summary
     }
 
@@ -571,6 +577,17 @@ impl DurableSyncRuntime {
                     && peer.remote_verack_received
             })
     }
+}
+
+fn block_hash_hex(block_hash: BlockHash) -> String {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let bytes = block_hash.as_bytes();
+    let mut encoded = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
+        encoded.push(HEX[(byte >> 4) as usize] as char);
+        encoded.push(HEX[(byte & 0x0f) as usize] as char);
+    }
+    encoded
 }
 
 fn peer_failure_reason_for_error(error: &SyncRuntimeError) -> PeerFailureReason {

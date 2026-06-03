@@ -76,6 +76,8 @@ pub struct SyncProgress {
     pub block_height: u64,
     pub downloaded_block_height: u64,
     pub connected_block_height: u64,
+    pub maybe_downloaded_block_hash: Option<String>,
+    pub maybe_connected_block_hash: Option<String>,
     pub progress_ratio: f64,
     pub messages_processed: u64,
     pub headers_received: u64,
@@ -379,6 +381,14 @@ mod tests {
                     block_height: 840_000,
                     downloaded_block_height: 840_000,
                     connected_block_height: 840_000,
+                    maybe_downloaded_block_hash: Some(
+                        "0000000000000000000000000000000000000000000000000000000000000000"
+                            .to_string(),
+                    ),
+                    maybe_connected_block_hash: Some(
+                        "0000000000000000000000000000000000000000000000000000000000000000"
+                            .to_string(),
+                    ),
                     progress_ratio: 0.99,
                     messages_processed: 12,
                     headers_received: 1,
