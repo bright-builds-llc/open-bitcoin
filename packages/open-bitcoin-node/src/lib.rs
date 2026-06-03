@@ -46,7 +46,8 @@ pub use sync::{
     DurableSyncRuntime, PeerCapabilitySummary, PeerContribution, PeerFailureReason,
     PeerSyncOutcome, PeerSyncState, ResolvedSyncPeerAddress, SyncNetwork, SyncPeerAddress,
     SyncPeerResolver, SyncPeerSession, SyncPeerSource, SyncRunSummary, SyncRuntimeConfig,
-    SyncRuntimeError, SyncTransport, SystemSyncPeerResolver, TcpPeerTransport, WalletRescanRuntime,
+    SyncRuntimeError, SyncStopReason, SyncTransport, SystemSyncPeerResolver, TcpPeerTransport,
+    WalletRescanRuntime,
 };
 pub use wallet::{ManagedWallet, MemoryWalletStore, WalletStore};
 pub use wallet_registry::{

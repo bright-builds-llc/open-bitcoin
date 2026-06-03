@@ -24,8 +24,8 @@ use open_bitcoin_network::{HeaderEntry, HeadersMessage, VersionMessage, WireNetw
 use super::{
     DurableSyncRuntime, PeerContribution, PeerFailureReason, PeerSyncOutcome, PeerSyncState,
     ResolvedSyncPeerAddress, SyncNetwork, SyncPeerAddress, SyncPeerResolver, SyncPeerSession,
-    SyncPeerSource, SyncRunSummary, SyncRuntimeConfig, SyncRuntimeError, SyncTransport,
-    TcpPeerTransport,
+    SyncPeerSource, SyncRunSummary, SyncRuntimeConfig, SyncRuntimeError, SyncStopReason,
+    SyncTransport, TcpPeerTransport,
 };
 use crate::{
     FieldAvailability, FjallNodeStore, LogRetentionPolicy, MetricKind, MetricSample, PersistMode,
@@ -371,6 +371,7 @@ fn sync_summary_projects_metric_samples() {
         best_block_height: 40,
         peer_outcomes: Vec::new(),
         health_signals: Vec::new(),
+        maybe_stop_reason: None,
     };
 
     // Act
@@ -414,6 +415,7 @@ fn sync_summary_projects_progress_signal_and_last_successful_timestamp() {
         best_block_height: 0,
         peer_outcomes: vec![outcome],
         health_signals: Vec::new(),
+        maybe_stop_reason: None,
     };
 
     // Act
@@ -484,6 +486,7 @@ fn sync_summary_projects_structured_log_records() {
                 message: "metrics persistence unavailable".to_string(),
             },
         ],
+        maybe_stop_reason: None,
     };
 
     // Act
@@ -535,6 +538,26 @@ fn sync_summary_projects_structured_log_records() {
 }
 
 #[test]
+fn sync_summary_logs_stop_reason_when_available() {
+    // Arrange
+    let mut summary = SyncRunSummary::empty(0, 0, 1);
+    summary.maybe_stop_reason = Some(SyncStopReason::NoProgress {
+        rounds_completed: 2,
+    });
+
+    // Act
+    let records = summary.structured_log_records(1_777_225_101);
+
+    // Assert
+    assert!(
+        records
+            .iter()
+            .any(|record| record.message == "sync stop reason=no_progress")
+    );
+    assert!(records.iter().all(|record| record.message.len() <= 160));
+}
+
+#[test]
 fn sync_summary_status_projections_include_counters() {
     // Arrange
     let summary = SyncRunSummary {
@@ -550,6 +573,7 @@ fn sync_summary_status_projections_include_counters() {
         best_block_height: 25,
         peer_outcomes: Vec::new(),
         health_signals: Vec::new(),
+        maybe_stop_reason: None,
     };
 
     // Act
@@ -1437,6 +1461,7 @@ fn storage_failure_projects_storage_health_signal() {
         best_block_height: 0,
         peer_outcomes: Vec::new(),
         health_signals: vec![signal.clone()],
+        maybe_stop_reason: None,
     }
     .structured_log_records(1_777_225_133);
 
@@ -1567,6 +1592,108 @@ fn sync_until_idle_continues_equal_message_rounds_when_heights_advance() {
 }
 
 #[test]
+fn sync_until_idle_stops_at_configured_header_target_after_multiple_batches() {
+    // Arrange
+    let path = temp_store_path("until-idle-header-target");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let genesis = header(BlockHash::from_byte_array([0_u8; 32]), 31);
+    let child = header(block_hash(&genesis), 32);
+    let grandchild = header(block_hash(&child), 33);
+    let mut runtime = DurableSyncRuntime::open(
+        store,
+        SyncRuntimeConfig {
+            maybe_target_header_height: Some(2),
+            max_rounds: 5,
+            ..sync_config()
+        },
+    )
+    .expect("runtime");
+    let mut transport = ScriptedTransport::new(vec![
+        headers_script(0, vec![genesis]),
+        headers_script(1, vec![child]),
+        headers_script(2, vec![grandchild]),
+        headers_script(3, Vec::new()),
+    ]);
+
+    // Act
+    let summary = runtime
+        .sync_until_idle(&mut transport, 1_777_225_156)
+        .expect("sync until target");
+    let state = runtime
+        .durable_sync_state_for_summary(&summary, SyncLifecycleState::Active, None, 1_777_225_156)
+        .expect("durable status");
+
+    // Assert
+    assert_eq!(summary.best_header_height, 2);
+    assert_eq!(
+        summary.maybe_stop_reason,
+        Some(SyncStopReason::TargetHeaderReached {
+            target_header_height: 2,
+            best_header_height: 2,
+        })
+    );
+    assert!(summary.health_signals.iter().any(|signal| {
+        signal.level == HealthSignalLevel::Info
+            && signal.message.contains("sync header target reached")
+    }));
+    assert_eq!(
+        state.sync.phase,
+        FieldAvailability::available("header_target_reached".to_string())
+    );
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn sync_until_idle_records_no_progress_diagnosis_without_public_network() {
+    // Arrange
+    let path = temp_store_path("until-idle-no-progress");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime = DurableSyncRuntime::open(
+        store,
+        SyncRuntimeConfig {
+            max_rounds: 4,
+            ..sync_config()
+        },
+    )
+    .expect("runtime");
+    let mut transport = ScriptedTransport::new(vec![
+        version_verack_script(0),
+        version_verack_script(0),
+        version_verack_script(0),
+    ]);
+
+    // Act
+    let summary = runtime
+        .sync_until_idle(&mut transport, 1_777_225_157)
+        .expect("sync until no progress");
+    let state = runtime
+        .durable_sync_state_for_summary(&summary, SyncLifecycleState::Active, None, 1_777_225_157)
+        .expect("durable status");
+
+    // Assert
+    assert_eq!(summary.best_header_height, 0);
+    assert_eq!(
+        summary.maybe_stop_reason,
+        Some(SyncStopReason::NoProgress {
+            rounds_completed: 2,
+        })
+    );
+    assert!(summary.health_signals.iter().any(|signal| {
+        signal.level == HealthSignalLevel::Warn
+            && signal.message.contains("no new header or block progress")
+    }));
+    assert_eq!(
+        state.sync.phase,
+        FieldAvailability::available("no_progress".to_string())
+    );
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
 fn sync_once_continues_header_batches_when_peer_advertises_more_work() {
     // Arrange
     let path = temp_store_path("header-batches");
@@ -1642,9 +1769,20 @@ fn runtime_seeds_headers_from_durable_store_on_restart() {
     // Act
     let store = FjallNodeStore::open(&path).expect("reopen store");
     let runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    let summary = runtime.snapshot_summary();
+    let status = runtime
+        .durable_sync_state_for_summary(&summary, SyncLifecycleState::Active, None, 1_777_225_176)
+        .expect("durable status after restart");
 
     // Assert
-    assert_eq!(runtime.snapshot_summary().best_header_height, 1);
+    assert_eq!(summary.best_header_height, 1);
+    assert!(matches!(
+        status.sync.sync_progress,
+        FieldAvailability::Available(SyncProgress {
+            header_height: 1,
+            ..
+        })
+    ));
 
     remove_dir_if_exists(&path);
 }
@@ -1721,6 +1859,7 @@ fn peer_contribution_rejects_invalid_headers_without_credit() {
 
     // Assert
     assert_eq!(summary.failed_peers, 1);
+    assert_eq!(summary.best_header_height, 0);
     assert_eq!(summary.headers_received, 0);
     assert_eq!(summary.blocks_received, 0);
     assert!(matches!(

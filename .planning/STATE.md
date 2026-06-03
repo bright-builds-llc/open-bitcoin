@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Mainnet IBD Convergence and Peer Compatibility
 status: ready_to_plan
-stopped_at: Phase 55 complete; ready for Phase 56 discussion
-last_updated: "2026-06-03T01:45:14.874Z"
+stopped_at: Phase 56 complete; ready for Phase 57 discussion
+last_updated: "2026-06-03T13:05:17.692Z"
 last_activity: 2026-06-03
 progress:
   total_phases: 6
-  completed_phases: 2
-  total_plans: 2
-  completed_plans: 2
-  percent: 33
+  completed_phases: 3
+  total_plans: 3
+  completed_plans: 3
+  percent: 50
 ---
 
 # Project State
@@ -25,18 +25,18 @@ See: .planning/PROJECT.md (updated 2026-06-02)
 
 ## Current Position
 
-Phase: 56 - Header IBD Convergence
+Phase: 57 - Block Download and Connect Progress
 Plan: Not started
 Status: Ready to plan
 Last activity: 2026-06-03
 
-Progress: [###-------] 33%
+Progress: [#####-----] 50%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 2
+- Total plans completed: 3
 - Average duration: -
 - Total execution time: -
 
@@ -46,7 +46,7 @@ Progress: [###-------] 33%
 |-------|-------|-------|----------|
 | 54 | 1 | - | - |
 | 55 | 1 | - | - |
-| 56 | 0 | not started | - |
+| 56 | 1 | - | - |
 | 57 | 0 | not started | - |
 | 58 | 0 | not started | - |
 | 59 | 0 | not started | - |
@@ -54,7 +54,7 @@ Progress: [###-------] 33%
 **Recent Trend:**
 
 - Last 5 plans: 51-01, 52-01, 53-01, 54-01, 55-01
-- Trend: Phase 55 completed deterministic outbound handshake compatibility fixes before Phase 56 header convergence.
+- Trend: Phase 56 completed deterministic header convergence before Phase 57 block progress evidence.
 
 ## Accumulated Context
 
@@ -81,20 +81,21 @@ Recent decisions affecting current work:
 - [Phase 52]: Phase 52 closed stale support-summary and daemon-preflight evidence debt deterministically.
 - [Phase 53]: Phase 53 closes D-01 and D-03 with fresh schema v2 `openbitcoinsyncstatus` diagnosed-blocker evidence, without claiming live progress.
 - [Phase 55]: Daemon sync now records completed outbound handshakes as connected peers and surfaces duplicate-version peers as typed, uncredited compatibility failures.
+- [Phase 56]: Header sync now records bounded convergence stop reasons, supports optional target header height, and reports first-header-progress evidence in opt-in live smoke output.
 
 ### Pending Todos
 
-- Start Phase 56 with `/gsd-discuss-phase 56`.
+- Start Phase 57 with `/gsd-discuss-phase 57`.
 
 ### Blockers/Concerns
 
-- No active milestone blockers are recorded after Phase 55.
-- Phase 55 closed deterministic outbound handshake compatibility debt without claiming live header/block progress.
+- No active milestone blockers are recorded after Phase 56.
+- Phase 56 closed deterministic header convergence debt without claiming live block connection progress.
 - Default local verification must remain deterministic; public-network checks stay opt-in.
 - `.planning/phases/` remains retained for v1.0 evidence referenced by parity docs.
 
 ## Session Continuity
 
-Last session: 2026-06-03T01:45:14.874Z
-Stopped at: Phase 55 complete; ready for Phase 56 discussion
+Last session: 2026-06-03T13:05:17.692Z
+Stopped at: Phase 56 complete; ready for Phase 57 discussion
 Resume file: .planning/ROADMAP.md

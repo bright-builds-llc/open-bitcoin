@@ -31,7 +31,7 @@ pub use tcp::{TcpPeerSession, TcpPeerTransport};
 pub use types::{
     PeerCapabilitySummary, PeerContribution, PeerFailureReason, PeerSyncOutcome, PeerSyncState,
     ResolvedSyncPeerAddress, SyncNetwork, SyncPeerAddress, SyncPeerSession, SyncPeerSource,
-    SyncRunSummary, SyncRuntimeConfig, SyncRuntimeError, SyncTransport,
+    SyncRunSummary, SyncRuntimeConfig, SyncRuntimeError, SyncStopReason, SyncTransport,
 };
 pub use wallet_rescan::WalletRescanRuntime;
 
@@ -216,22 +216,75 @@ impl DurableSyncRuntime {
         let mut current_timestamp = timestamp;
         let mut last_summary =
             self.sync_once_with_resolver(transport, resolver, current_timestamp)?;
+        if let Some(stop_reason) = self.maybe_target_header_stop_reason(&last_summary) {
+            self.record_until_idle_stop(&mut last_summary, stop_reason, current_timestamp)?;
+            return Ok(last_summary);
+        }
         let mut previous_progress = progress::sync_progress_marker(&last_summary);
         let retry_backoff_seconds = retry_backoff_seconds(self.config.retry_backoff_ms);
+        let mut rounds_completed = 1_usize;
         for _ in 1..self.config.max_rounds {
             current_timestamp = current_timestamp.saturating_add(retry_backoff_seconds);
             let current_summary =
                 self.sync_once_with_resolver(transport, resolver, current_timestamp)?;
+            rounds_completed = rounds_completed.saturating_add(1);
             let current_progress = progress::sync_progress_marker(&current_summary);
             let is_idle = current_progress == previous_progress;
             last_summary = current_summary;
+            if let Some(stop_reason) = self.maybe_target_header_stop_reason(&last_summary) {
+                self.record_until_idle_stop(&mut last_summary, stop_reason, current_timestamp)?;
+                return Ok(last_summary);
+            }
             if is_idle {
+                self.record_until_idle_stop(
+                    &mut last_summary,
+                    SyncStopReason::NoProgress { rounds_completed },
+                    current_timestamp,
+                )?;
                 break;
             }
             previous_progress = current_progress;
         }
+        if last_summary.maybe_stop_reason.is_none() {
+            self.record_until_idle_stop(
+                &mut last_summary,
+                SyncStopReason::MaxRoundsReached {
+                    max_rounds: self.config.max_rounds,
+                },
+                current_timestamp,
+            )?;
+        }
 
         Ok(last_summary)
+    }
+
+    fn maybe_target_header_stop_reason(&self, summary: &SyncRunSummary) -> Option<SyncStopReason> {
+        let target_header_height = self.config.maybe_target_header_height?;
+        if summary.best_header_height < target_header_height {
+            return None;
+        }
+        Some(SyncStopReason::TargetHeaderReached {
+            target_header_height,
+            best_header_height: summary.best_header_height,
+        })
+    }
+
+    fn record_until_idle_stop(
+        &self,
+        summary: &mut SyncRunSummary,
+        stop_reason: SyncStopReason,
+        timestamp: i64,
+    ) -> Result<(), SyncRuntimeError> {
+        summary.maybe_stop_reason = Some(stop_reason);
+        summary.health_signals.push(stop_reason.health_signal());
+        let state = self.durable_sync_state_from_summary(
+            summary,
+            SyncLifecycleState::Active,
+            summary.latest_error_message(),
+            timestamp,
+        )?;
+        self.persist_durable_sync_state(state)?;
+        Ok(())
     }
 
     fn sync_peer_with_retries<T: SyncTransport>(

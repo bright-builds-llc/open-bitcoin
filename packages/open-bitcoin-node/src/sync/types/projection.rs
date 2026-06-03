@@ -9,7 +9,7 @@ use crate::{
     status::{HealthSignal, HealthSignalLevel, PeerTelemetry},
 };
 
-use super::{PeerSyncOutcome, PeerSyncState, SyncPeerSource, SyncRunSummary};
+use super::{PeerSyncOutcome, PeerSyncState, SyncPeerSource, SyncRunSummary, SyncStopReason};
 
 pub(super) fn progress_ratio(block_height: u64, header_height: u64) -> f64 {
     if header_height == 0 {
@@ -124,6 +124,13 @@ pub(super) fn peer_telemetry(outcome: &PeerSyncOutcome) -> PeerTelemetry {
 }
 
 pub(super) fn sync_phase_name(summary: &SyncRunSummary) -> &'static str {
+    if let Some(stop_reason) = summary.maybe_stop_reason {
+        return match stop_reason {
+            SyncStopReason::TargetHeaderReached { .. } => "header_target_reached",
+            SyncStopReason::NoProgress { .. } => "no_progress",
+            SyncStopReason::MaxRoundsReached { .. } => "max_rounds_reached",
+        };
+    }
     if summary.attempted_peers == 0
         && summary
             .peer_outcomes

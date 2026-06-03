@@ -43,6 +43,7 @@ impl SyncRunSummary {
             best_block_height,
             peer_outcomes: Vec::new(),
             health_signals: Vec::new(),
+            maybe_stop_reason: None,
         }
     }
 
@@ -208,6 +209,15 @@ impl SyncRunSummary {
             ),
             timestamp_unix_seconds,
         }];
+
+        if let Some(stop_reason) = self.maybe_stop_reason {
+            records.push(StructuredLogRecord {
+                level: StructuredLogLevel::Info,
+                source: "sync".to_string(),
+                message: format!("sync stop reason={}", stop_reason.label()),
+                timestamp_unix_seconds,
+            });
+        }
 
         for outcome in &self.peer_outcomes {
             records.extend(peer_outcome_log_records(outcome, timestamp_unix_seconds));

@@ -140,6 +140,14 @@ fn apply_sync_overrides(
         }
         runtime.target_outbound_peers = target_outbound_peers;
     }
+    if let Some(target_header_height) = config.sync.maybe_target_header_height {
+        if target_header_height == 0 {
+            return Err(ConfigError::new(format!(
+                "Error reading {OPEN_BITCOIN_CONFIG_FILE_NAME}: sync.target_header_height must be greater than zero."
+            )));
+        }
+        runtime.maybe_target_header_height = Some(target_header_height);
+    }
     if let Some(max_messages_per_peer) = config.sync.maybe_max_messages_per_peer {
         validate_nonzero_sync_bound("max_messages_per_peer", max_messages_per_peer)?;
         runtime.max_messages_per_peer = max_messages_per_peer;

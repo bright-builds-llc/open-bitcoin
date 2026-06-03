@@ -18,10 +18,10 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Header IBD Progress
 
-- [ ] **HDR-01**: Operator can run an opt-in live-mainnet smoke command that records the first observed validated header-height increase with peer endpoint, source, timestamp, and before/after fresh daemon sync status.
-- [ ] **HDR-02**: Daemon sync continues header locator and `getheaders` rounds across multiple batches until it reaches the configured smoke target, current tip estimate, timeout, or a typed diagnosed blocker.
-- [ ] **HDR-03**: Header progress is durably persisted and visible through `openbitcoinsyncstatus` after daemon restart or status polling.
-- [ ] **HDR-04**: Deterministic tests cover multi-batch public-mainnet-like header sync, including accepted headers, rejected headers, and no-progress diagnosis.
+- [x] **HDR-01**: Operator can run an opt-in live-mainnet smoke command that records the first observed validated header-height increase with peer endpoint, source, timestamp, and before/after fresh daemon sync status.
+- [x] **HDR-02**: Daemon sync continues header locator and `getheaders` rounds across multiple batches until it reaches the configured smoke target, current tip estimate, timeout, or a typed diagnosed blocker.
+- [x] **HDR-03**: Header progress is durably persisted and visible through `openbitcoinsyncstatus` after daemon restart or status polling.
+- [x] **HDR-04**: Deterministic tests cover multi-batch public-mainnet-like header sync, including accepted headers, rejected headers, and no-progress diagnosis.
 
 ### Block Download and Connect Progress
 
@@ -94,10 +94,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | COMPAT-03 | Phase 55 | Complete |
 | COMPAT-04 | Phase 54 | Complete |
 | COMPAT-05 | Phase 55 | Complete |
-| HDR-01 | Phase 56 | Pending |
-| HDR-02 | Phase 56 | Pending |
-| HDR-03 | Phase 56 | Pending |
-| HDR-04 | Phase 56 | Pending |
+| HDR-01 | Phase 56 | Complete |
+| HDR-02 | Phase 56 | Complete |
+| HDR-03 | Phase 56 | Complete |
+| HDR-04 | Phase 56 | Complete |
 | BLK-01 | Phase 57 | Pending |
 | BLK-02 | Phase 57 | Pending |
 | BLK-03 | Phase 57 | Pending |

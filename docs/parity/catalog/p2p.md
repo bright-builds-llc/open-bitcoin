@@ -32,6 +32,9 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
 - daemon sync records incompatible peer outcomes as typed failures without
   crediting accepted header or block progress, then continues to replacement
   peers when configured
+- daemon sync advances validated headers through bounded multi-batch rounds,
+  stops on target header height, no progress, or max-round diagnosis, and keeps
+  durable header progress visible through sync status after restart
 
 ## Knots sources
 
@@ -65,6 +68,9 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
 - completed outbound daemon handshakes now fill compatible peer slots while
   duplicate-version, malformed-data, and wrong-network peers remain rejected and
   uncredited
+- bounded daemon header sync now records first-header-progress evidence in
+  opt-in live-smoke reports while deterministic tests cover accepted batches,
+  rejected headers, no-progress diagnosis, and restart-visible status
 
 ## First-party implementation
 
@@ -74,6 +80,8 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
 - [`packages/open-bitcoin-network/src/peer.rs`](../../../packages/open-bitcoin-network/src/peer.rs)
 - [`packages/open-bitcoin-network/tests/parity.rs`](../../../packages/open-bitcoin-network/tests/parity.rs)
 - [`packages/open-bitcoin-node/src/network.rs`](../../../packages/open-bitcoin-node/src/network.rs)
+- [`packages/open-bitcoin-node/src/sync.rs`](../../../packages/open-bitcoin-node/src/sync.rs)
+- [`scripts/run-live-mainnet-smoke.ts`](../../../scripts/run-live-mainnet-smoke.ts)
 
 ## Known gaps
 

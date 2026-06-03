@@ -28,7 +28,7 @@ to the default `bash scripts/verify.sh` gate.
 
 - [x] **Phase 54: Peer Compatibility Baseline and Diagnostic Harness** - Make handshake and early-protocol failures reproducible and comparable to the Knots baseline. (completed 2026-06-02)
 - [x] **Phase 55: Outbound Handshake Compatibility Fixes** - Complete baseline-compatible handshakes with reachable peers and keep incompatible peers diagnosable. (completed 2026-06-03)
-- [ ] **Phase 56: Header IBD Convergence** - Prove validated multi-batch header progress with fresh durable daemon status.
+- [x] **Phase 56: Header IBD Convergence** - Prove validated multi-batch header progress with fresh durable daemon status. (completed 2026-06-03)
 - [ ] **Phase 57: Block Download and Connect Progress** - Prove bounded block download and first validated block connection beyond the v1.4 target boundary.
 - [ ] **Phase 58: Same-Datadir Restart and Resume Evidence** - Prove durable resume after observed live progress without duplicate connects.
 - [ ] **Phase 59: Operator Evidence, Threat Model, and Release Boundaries** - Close v1.4 with coherent support evidence, docs, security analysis, and claim boundaries.
@@ -69,7 +69,7 @@ to the default `bash scripts/verify.sh` gate.
   2. Daemon sync continues locator and `getheaders` rounds across multiple batches until a smoke target, tip estimate, timeout, or typed diagnosed blocker is reached.
   3. Header progress persists durably and remains visible through `openbitcoinsyncstatus` after daemon restart or status polling.
   4. Deterministic tests cover accepted multi-batch headers, rejected headers, and no-progress diagnosis without public-network access.
-**Plans**: none yet.
+**Plans**: 1/1 plans complete
 
 ### Phase 57: Block Download and Connect Progress
 
@@ -140,7 +140,7 @@ traceability.
 |-------|----------------|--------|-----------|
 | 54. Peer Compatibility Baseline and Diagnostic Harness | 1/1 | Complete    | 2026-06-02 |
 | 55. Outbound Handshake Compatibility Fixes | 1/1 | Complete    | 2026-06-03 |
-| 56. Header IBD Convergence | 0/0 | Not started | - |
+| 56. Header IBD Convergence | 1/1 | Complete    | 2026-06-03 |
 | 57. Block Download and Connect Progress | 0/0 | Not started | - |
 | 58. Same-Datadir Restart and Resume Evidence | 0/0 | Not started | - |
 | 59. Operator Evidence, Threat Model, and Release Boundaries | 0/0 | Not started | - |
@@ -151,12 +151,12 @@ traceability.
 | v1.1 Operator Runtime and Real-Network Sync | 22 | 69 | Shipped | 2026-04-30 |
 | v1.2 Full Mainnet Network Syncing | 7 | 13 | Shipped | 2026-05-23 |
 | v1.3 Public Mainnet Sync Proof and Node Hardening | 12 | 13 | Shipped | 2026-06-02 |
-| v1.4 Mainnet IBD Convergence and Peer Compatibility | 6 | 2 | Active | - |
+| v1.4 Mainnet IBD Convergence and Peer Compatibility | 6 | 3 | Active | - |
 
 ## Next Step
 
-Start Phase 56:
+Start Phase 57:
 
 ```bash
-/gsd-discuss-phase 56
+/gsd-discuss-phase 57
 ```

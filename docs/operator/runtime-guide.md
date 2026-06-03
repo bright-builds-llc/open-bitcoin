@@ -100,6 +100,7 @@ JSONC form:
     "manual_peers": ["198.51.100.10:8333"],
     "dns_seeds": ["seed.bitcoin.sipa.be", "dnsseed.bluematt.me"],
     "target_outbound_peers": 2,
+    "target_header_height": 144,
     "max_messages_per_peer": 64,
     "max_rounds": 8,
     "max_blocks_in_flight_per_peer": 16,
@@ -133,6 +134,9 @@ Important boundaries:
 - `sync.target_outbound_peers` caps how many successful outbound peer slots a
   sync round tries to satisfy before moving on. Sync status reports this target
   separately from the observed outbound peer count.
+- `sync.target_header_height` optionally stops bounded daemon sync once the
+  best validated header height reaches that target. Use it for smoke-sized
+  header convergence runs; omit it for normal opt-in bounded mainnet review.
 - `sync.max_messages_per_peer`, `sync.max_rounds`,
   `sync.max_blocks_in_flight_per_peer`, and
   `sync.max_blocks_in_flight_total` override the bounded runtime defaults. Each
@@ -474,6 +478,10 @@ Live smoke behavior:
 - Its final report also includes runtime peer contribution rows from durable
   peer telemetry so support review can distinguish reachable or active peers
   from peers that actually supplied accepted headers or preserved blocks.
+- When fresh daemon snapshots show validated header progress, the report records
+  `result.firstHeaderProgress` with the before/after `openbitcoinsyncstatus`
+  snapshots, observed timestamp, header delta, and the final peer
+  endpoint/source that contributed accepted headers when available.
 - It times out cleanly with typed no-progress guidance when outbound DNS or TCP
   access, handshake/capability checks, validation, storage, or runtime progress
   are insufficient.

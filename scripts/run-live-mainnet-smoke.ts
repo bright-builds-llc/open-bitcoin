@@ -65,6 +65,17 @@ type SyncStatusSnapshot = {
   updatedAtUnixSeconds: number;
 };
 
+type FirstHeaderProgressEvidence = {
+  after: SyncStatusSnapshot;
+  before: SyncStatusSnapshot;
+  headerDelta: number;
+  maybeLastActivityUnixSeconds: number | null;
+  maybePeer: string | null;
+  maybeResolvedEndpoint: string | null;
+  maybeSource: string | null;
+  observedAtUnixSeconds: number;
+};
+
 type EndpointOutcomeState = "resolved" | "connected" | "handshook" | "failed" | "skipped";
 type EndpointOutcomeStage = "preflight" | "runtime";
 type EndpointOutcomeSource = "manual_peer" | "dns_seed" | "configured_peer" | "unknown";
@@ -145,6 +156,7 @@ type SmokeReport = {
   };
   result: {
     blockDelta: number;
+    firstHeaderProgress: FirstHeaderProgressEvidence | null;
     headerDelta: number;
     maybeNoProgressCause: NoProgressCause | null;
     message: string;
@@ -1213,6 +1225,28 @@ function noProgressCauseFromFinalStatus(
   return null;
 }
 
+function firstHeaderProgressEvidence(
+  maybeSnapshots: { before: SyncStatusSnapshot; after: SyncStatusSnapshot } | null,
+  maybeFinalStatus: FinalStatusSummary | null,
+): FirstHeaderProgressEvidence | null {
+  if (maybeSnapshots === null) {
+    return null;
+  }
+  const maybePeer = maybeFinalStatus?.recentPeers.find(
+    (peer) => peer.headersReceived > 0,
+  ) ?? null;
+  return {
+    after: maybeSnapshots.after,
+    before: maybeSnapshots.before,
+    headerDelta: maybeSnapshots.after.headerHeight - maybeSnapshots.before.headerHeight,
+    maybeLastActivityUnixSeconds: maybePeer?.maybeLastActivityUnixSeconds ?? null,
+    maybePeer: maybePeer?.peer ?? null,
+    maybeResolvedEndpoint: maybePeer?.maybeResolvedEndpoint ?? null,
+    maybeSource: maybePeer?.source ?? null,
+    observedAtUnixSeconds: maybeSnapshots.after.capturedAtUnixSeconds,
+  };
+}
+
 function nextActionForCause(cause: NoProgressCause | null): string {
   switch (cause) {
     case "dns_resolution_failure":
@@ -1326,6 +1360,11 @@ function markdownReport(report: SmokeReport): string {
               `| ${escapeTableCell(peer.peer)} | ${peer.source} | ${peer.state} | ${peer.headersReceived} | ${peer.blocksReceived} | ${peer.maybeLastActivityUnixSeconds ?? "-"} | ${escapeTableCell(peer.maybeFailureReason ?? "-")} | ${escapeTableCell(peer.maybeError ?? "-")} |`,
           )
           .join("\n");
+  const firstHeaderProgress = report.result.firstHeaderProgress;
+  const firstHeaderProgressDetail =
+    firstHeaderProgress === null
+      ? "Unavailable"
+      : `observed at ${firstHeaderProgress.observedAtUnixSeconds}: ${firstHeaderProgress.before.headerHeight} -> ${firstHeaderProgress.after.headerHeight} via ${escapeInline(firstHeaderProgress.maybePeer ?? "unknown peer")} (${firstHeaderProgress.maybeSource ?? "unknown source"}, endpoint ${escapeInline(firstHeaderProgress.maybeResolvedEndpoint ?? "unavailable")})`;
 
   return `# Open Bitcoin Live Mainnet Smoke Report
 
@@ -1338,6 +1377,7 @@ function markdownReport(report: SmokeReport): string {
 - Next action: ${report.result.nextAction}
 - Header delta: ${report.result.headerDelta}
 - Block delta: ${report.result.blockDelta}
+- First header progress: ${firstHeaderProgressDetail}
 
 ## Options
 
@@ -1410,6 +1450,10 @@ function escapeTableCell(value: string): string {
   return value.replaceAll("|", "\\|").replaceAll("\n", "<br>");
 }
 
+function escapeInline(value: string): string {
+  return value.replaceAll("`", "\\`").replaceAll("\n", " ");
+}
+
 function writeReportFiles(repoRootPath: string, report: SmokeReport): { jsonPath: string; markdownPath: string } {
   const absoluteOutputDir = path.resolve(repoRootPath, report.options.outputDir);
   mkdirSync(absoluteOutputDir, { recursive: true });
@@ -1469,6 +1513,7 @@ function preflightFailureReport(
     },
     result: {
       blockDelta: 0,
+      firstHeaderProgress: null,
       headerDelta: 0,
       maybeNoProgressCause: null,
       message,
@@ -1548,6 +1593,10 @@ async function main(): Promise<void> {
     "No header or block progress was observed before timeout. Check outbound network access, DNS reachability, local disk headroom, and system time.";
   let headerDelta = 0;
   let blockDelta = 0;
+  let maybeFirstHeaderProgressSnapshots: {
+    before: SyncStatusSnapshot;
+    after: SyncStatusSnapshot;
+  } | null = null;
   let maybeLastProbeError: string | null = null;
   let maybeCancellationSignal: NodeJS.Signals | null = null;
   const cancellationHandler = (signal: NodeJS.Signals) => {
@@ -1599,6 +1648,12 @@ async function main(): Promise<void> {
 
       headerDelta = snapshot.headerHeight - initialSnapshot.headerHeight;
       blockDelta = snapshot.blockHeight - initialSnapshot.blockHeight;
+      if (headerDelta > 0 && maybeFirstHeaderProgressSnapshots === null) {
+        maybeFirstHeaderProgressSnapshots = {
+          after: snapshot,
+          before: initialSnapshot,
+        };
+      }
       if (headerDelta > 0 || blockDelta > 0) {
         resultStatus = "passed";
         resultMessage = `Observed mainnet progress through the daemon status surface (header delta ${headerDelta}, block delta ${blockDelta}).`;
@@ -1632,6 +1687,10 @@ async function main(): Promise<void> {
     ...preflightEndpointOutcomes,
     ...endpointOutcomesFromFinalStatus(maybeFinalStatus),
   ];
+  const maybeFirstHeaderProgress = firstHeaderProgressEvidence(
+    maybeFirstHeaderProgressSnapshots,
+    maybeFinalStatus,
+  );
 
   if (resultStatus === "no_progress") {
     const noProgressCause = classifyNoProgressCause(
@@ -1692,6 +1751,7 @@ async function main(): Promise<void> {
     },
     result: {
       blockDelta,
+      firstHeaderProgress: maybeFirstHeaderProgress,
       headerDelta,
       maybeNoProgressCause,
       message: resultMessage,

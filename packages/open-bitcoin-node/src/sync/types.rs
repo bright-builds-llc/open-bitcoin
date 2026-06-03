@@ -171,6 +171,7 @@ pub struct SyncRuntimeConfig {
     pub manual_peers: Vec<SyncPeerAddress>,
     pub dns_seeds: Vec<String>,
     pub target_outbound_peers: usize,
+    pub maybe_target_header_height: Option<u64>,
     pub connect_timeout_ms: u64,
     pub read_timeout_ms: u64,
     pub retry_backoff_ms: u64,
@@ -207,6 +208,7 @@ impl Default for SyncRuntimeConfig {
                 .map(|seed| (*seed).to_string())
                 .collect(),
             target_outbound_peers: DEFAULT_TARGET_OUTBOUND_PEERS,
+            maybe_target_header_height: None,
             connect_timeout_ms: DEFAULT_CONNECT_TIMEOUT_MS,
             read_timeout_ms: DEFAULT_READ_TIMEOUT_MS,
             retry_backoff_ms: DEFAULT_RETRY_BACKOFF_MS,
@@ -324,6 +326,61 @@ pub struct SyncRunSummary {
     pub best_block_height: u64,
     pub peer_outcomes: Vec<PeerSyncOutcome>,
     pub health_signals: Vec<HealthSignal>,
+    pub maybe_stop_reason: Option<SyncStopReason>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SyncStopReason {
+    TargetHeaderReached {
+        target_header_height: u64,
+        best_header_height: u64,
+    },
+    NoProgress {
+        rounds_completed: usize,
+    },
+    MaxRoundsReached {
+        max_rounds: usize,
+    },
+}
+
+impl SyncStopReason {
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::TargetHeaderReached { .. } => "target_header_reached",
+            Self::NoProgress { .. } => "no_progress",
+            Self::MaxRoundsReached { .. } => "max_rounds_reached",
+        }
+    }
+
+    pub fn message(self) -> String {
+        match self {
+            Self::TargetHeaderReached {
+                target_header_height,
+                best_header_height,
+            } => format!(
+                "sync header target reached: target_header_height={target_header_height} best_header_height={best_header_height}"
+            ),
+            Self::NoProgress { rounds_completed } => {
+                format!(
+                    "sync stopped with no new header or block progress after {rounds_completed} rounds"
+                )
+            }
+            Self::MaxRoundsReached { max_rounds } => {
+                format!("sync stopped after reaching max_rounds={max_rounds}")
+            }
+        }
+    }
+
+    pub(crate) fn health_signal(self) -> HealthSignal {
+        HealthSignal {
+            level: match self {
+                Self::TargetHeaderReached { .. } => HealthSignalLevel::Info,
+                Self::NoProgress { .. } | Self::MaxRoundsReached { .. } => HealthSignalLevel::Warn,
+            },
+            source: "sync".to_string(),
+            message: self.message(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

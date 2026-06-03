@@ -7,10 +7,10 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 286 |
-| Total lines | 94,625 |
-| Code/content lines | 83,572 |
-| Comment-only lines | 2,853 |
-| Blank lines | 8,200 |
+| Total lines | 94,997 |
+| Code/content lines | 83,908 |
+| Comment-only lines | 2,865 |
+| Blank lines | 8,224 |
 
 ## Per-Crate Modules
 
@@ -24,9 +24,9 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | open-bitcoin-core | 3 | 39 | 0 | 36 | 75 | 0.0% |
 | open-bitcoin-mempool | 10 | 1,867 | 1,268 | 30 | 3,165 | 67.9% |
 | open-bitcoin-network | 12 | 2,582 | 1,654 | 30 | 4,266 | 64.1% |
-| open-bitcoin-node | 33 | 8,129 | 4,179 | 36 | 12,344 | 51.4% |
+| open-bitcoin-node | 33 | 8,257 | 4,318 | 36 | 12,611 | 52.3% |
 | open-bitcoin-primitives | 9 | 877 | 0 | 20 | 897 | 0.0% |
-| open-bitcoin-rpc | 32 | 5,706 | 2,572 | 53 | 8,331 | 45.1% |
+| open-bitcoin-rpc | 32 | 5,717 | 2,606 | 53 | 8,376 | 45.6% |
 | open-bitcoin-test-harness | 7 | 662 | 0 | 28 | 690 | 0.0% |
 | open-bitcoin-wallet | 16 | 3,523 | 2,467 | 34 | 6,024 | 70.0% |
 
@@ -34,11 +34,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Category | Files | Total | Code/Content | Comments | Blank |
 | --- | --- | --- | --- | --- | --- |
-| Rust production | 175 | 47,638 | 41,199 | 1,599 | 4,840 |
-| Rust tests | 46 | 29,523 | 26,060 | 1,210 | 2,253 |
+| Rust production | 175 | 47,777 | 41,331 | 1,599 | 4,847 |
+| Rust tests | 46 | 29,696 | 26,207 | 1,222 | 2,267 |
 | Fixture/data | 6 | 8,217 | 8,212 | 5 | 0 |
 | TOML/config | 16 | 3,429 | 3,066 | 0 | 363 |
-| TypeScript/Bun scripts | 6 | 3,288 | 2,901 | 0 | 387 |
+| TypeScript/Bun scripts | 6 | 3,348 | 2,958 | 0 | 390 |
 | Shell scripts | 13 | 1,957 | 1,636 | 33 | 288 |
 | Bazel/Starlark | 18 | 406 | 371 | 0 | 35 |
 | YAML | 2 | 104 | 83 | 4 | 17 |
@@ -53,8 +53,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | 1 | MODULE.bazel.lock | Fixture/data | 8,201 |
 | 2 | packages/open-bitcoin-consensus/src/script/tests.rs | Rust tests | 3,258 |
 | 3 | packages/Cargo.lock | TOML/config | 3,186 |
-| 4 | packages/open-bitcoin-node/src/sync/tests.rs | Rust tests | 2,557 |
-| 5 | scripts/run-live-mainnet-smoke.ts | TypeScript/Bun scripts | 1,719 |
+| 4 | packages/open-bitcoin-node/src/sync/tests.rs | Rust tests | 2,696 |
+| 5 | scripts/run-live-mainnet-smoke.ts | TypeScript/Bun scripts | 1,779 |
 | 6 | packages/open-bitcoin-consensus/src/block/tests.rs | Rust tests | 1,594 |
 | 7 | packages/open-bitcoin-chainstate/src/engine/tests.rs | Rust tests | 1,553 |
 | 8 | packages/open-bitcoin-cli/tests/operator_binary.rs | Rust tests | 1,518 |
@@ -67,7 +67,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | 15 | packages/open-bitcoin-cli/src/operator/service/tests.rs | Rust tests | 891 |
 | 16 | packages/open-bitcoin-wallet/src/descriptor/tests.rs | Rust tests | 842 |
 | 17 | packages/open-bitcoin-cli/tests/operator_flows.rs | Rust tests | 767 |
-| 18 | packages/open-bitcoin-rpc/src/config/tests.rs | Rust tests | 712 |
+| 18 | packages/open-bitcoin-rpc/src/config/tests.rs | Rust tests | 746 |
 | 19 | packages/open-bitcoin-node/src/storage/fjall_store/tests.rs | Rust tests | 668 |
 | 20 | packages/open-bitcoin-wallet/src/address.rs | Rust production | 626 |
 
@@ -76,7 +76,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | d48ea1ae365f406c1b9efd9c1ca577e54326e44f7f36d64bd4973b49d6726ecf |
+| Input fingerprint | fd0e99476af482d9fbcc7a91ab31a6c07c27219e8d843de51aaff116075a1806 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |
