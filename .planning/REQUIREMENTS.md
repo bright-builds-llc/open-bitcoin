@@ -12,9 +12,9 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 - [x] **COMPAT-01**: Reviewer can compare Open Bitcoin outbound handshake and early sync message behavior against the pinned Knots baseline for `version`, `verack`, `sendheaders`, `wtxidrelay`, `getheaders`, and `getdata` flows.
 - [x] **COMPAT-02**: Operator can run a deterministic compatibility harness or equivalent scripted peer check that reproduces handshake or early-protocol failures with a precise failing step.
-- [ ] **COMPAT-03**: Daemon sync can complete the outbound handshake with a reachable manual or DNS peer that accepts a baseline-compatible Knots outbound connection, without weakening existing duplicate-version, malformed-message, or wrong-network rejections.
+- [x] **COMPAT-03**: Daemon sync can complete the outbound handshake with a reachable manual or DNS peer that accepts a baseline-compatible Knots outbound connection, without weakening existing duplicate-version, malformed-message, or wrong-network rejections.
 - [x] **COMPAT-04**: Operator-facing peer diagnostics distinguish version rejection, network magic mismatch, service-bit mismatch, unsupported message order, timeout, peer disconnect, malformed payload, and local configuration failure.
-- [ ] **COMPAT-05**: Daemon sync uses compatibility diagnosis to skip or replace incompatible peers without crediting useful progress or corrupting durable state.
+- [x] **COMPAT-05**: Daemon sync uses compatibility diagnosis to skip or replace incompatible peers without crediting useful progress or corrupting durable state.
 
 ### Header IBD Progress
 
@@ -91,9 +91,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | COMPAT-01 | Phase 54 | Complete |
 | COMPAT-02 | Phase 54 | Complete |
-| COMPAT-03 | Phase 55 | Pending |
+| COMPAT-03 | Phase 55 | Complete |
 | COMPAT-04 | Phase 54 | Complete |
-| COMPAT-05 | Phase 55 | Pending |
+| COMPAT-05 | Phase 55 | Complete |
 | HDR-01 | Phase 56 | Pending |
 | HDR-02 | Phase 56 | Pending |
 | HDR-03 | Phase 56 | Pending |

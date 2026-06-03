@@ -6,7 +6,7 @@
 - ✅ **v1.1 Operator Runtime and Real-Network Sync** - Phases 13 through 34 (shipped 2026-04-30). Archive: [v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
 - ✅ **v1.2 Full Mainnet Network Syncing** - Phases 35 through 41 (shipped 2026-05-23). Archive: [v1.2-ROADMAP.md](milestones/v1.2-ROADMAP.md)
 - ✅ **v1.3 Public Mainnet Sync Proof and Node Hardening** - Phases 42 through 53 (shipped 2026-06-02). Archive: [v1.3-ROADMAP.md](milestones/v1.3-ROADMAP.md)
-- ◆ **v1.4 Mainnet IBD Convergence and Peer Compatibility** - Phases 54 through 59 (active).
+- 🚧 **v1.4 Mainnet IBD Convergence and Peer Compatibility** - Phases 54 through 59 (active).
 
 ## Current Focus
 
@@ -27,7 +27,7 @@ to the default `bash scripts/verify.sh` gate.
 ## Phases
 
 - [x] **Phase 54: Peer Compatibility Baseline and Diagnostic Harness** - Make handshake and early-protocol failures reproducible and comparable to the Knots baseline. (completed 2026-06-02)
-- [ ] **Phase 55: Outbound Handshake Compatibility Fixes** - Complete baseline-compatible handshakes with reachable peers and keep incompatible peers diagnosable.
+- [x] **Phase 55: Outbound Handshake Compatibility Fixes** - Complete baseline-compatible handshakes with reachable peers and keep incompatible peers diagnosable. (completed 2026-06-03)
 - [ ] **Phase 56: Header IBD Convergence** - Prove validated multi-batch header progress with fresh durable daemon status.
 - [ ] **Phase 57: Block Download and Connect Progress** - Prove bounded block download and first validated block connection beyond the v1.4 target boundary.
 - [ ] **Phase 58: Same-Datadir Restart and Resume Evidence** - Prove durable resume after observed live progress without duplicate connects.
@@ -57,7 +57,7 @@ to the default `bash scripts/verify.sh` gate.
   2. Existing duplicate-version, malformed-message, and wrong-network rejections remain covered by deterministic tests.
   3. Incompatible peers are skipped or replaced with typed compatibility outcomes and no useful-progress credit.
   4. Durable state remains coherent when mixed compatible and incompatible peers are observed.
-**Plans**: none yet.
+**Plans**: 1/1 plans complete
 
 ### Phase 56: Header IBD Convergence
 
@@ -139,7 +139,7 @@ traceability.
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 54. Peer Compatibility Baseline and Diagnostic Harness | 1/1 | Complete    | 2026-06-02 |
-| 55. Outbound Handshake Compatibility Fixes | 0/0 | Not started | - |
+| 55. Outbound Handshake Compatibility Fixes | 1/1 | Complete    | 2026-06-03 |
 | 56. Header IBD Convergence | 0/0 | Not started | - |
 | 57. Block Download and Connect Progress | 0/0 | Not started | - |
 | 58. Same-Datadir Restart and Resume Evidence | 0/0 | Not started | - |
@@ -151,12 +151,12 @@ traceability.
 | v1.1 Operator Runtime and Real-Network Sync | 22 | 69 | Shipped | 2026-04-30 |
 | v1.2 Full Mainnet Network Syncing | 7 | 13 | Shipped | 2026-05-23 |
 | v1.3 Public Mainnet Sync Proof and Node Hardening | 12 | 13 | Shipped | 2026-06-02 |
-| v1.4 Mainnet IBD Convergence and Peer Compatibility | 6 | 1 | Active | - |
+| v1.4 Mainnet IBD Convergence and Peer Compatibility | 6 | 2 | Active | - |
 
 ## Next Step
 
-Start Phase 55:
+Start Phase 56:
 
 ```bash
-/gsd-discuss-phase 55
+/gsd-discuss-phase 56
 ```

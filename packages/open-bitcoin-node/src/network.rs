@@ -20,9 +20,9 @@ use open_bitcoin_core::{
 };
 use open_bitcoin_mempool::{AdmissionResult, MempoolError, PolicyConfig};
 use open_bitcoin_network::{
-    ConnectionRole, HeaderEntry, HeaderStore, HeaderSyncPolicy, HeadersMessage, InventoryList,
-    LocalPeerConfig, NetworkError, PROTOCOL_VERSION, ParsedNetworkMessage, PeerAction, PeerId,
-    PeerManager, WireNetworkMessage,
+    ConnectionRole, DisconnectReason, HeaderEntry, HeaderStore, HeaderSyncPolicy, HeadersMessage,
+    InventoryList, LocalPeerConfig, NetworkError, PROTOCOL_VERSION, ParsedNetworkMessage,
+    PeerAction, PeerId, PeerManager, WireNetworkMessage,
 };
 
 use crate::{ChainstateStore, ManagedChainstate, ManagedMempool};
@@ -536,8 +536,11 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                         )?;
                     }
                 }
-                PeerAction::Disconnect(_) => {
+                PeerAction::Disconnect(reason) => {
                     self.disconnect_peer(peer_id)?;
+                    return Err(ManagedNetworkError::Network(disconnect_network_error(
+                        peer_id, reason,
+                    )));
                 }
             }
         }
@@ -606,6 +609,13 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             .chainstate()
             .tip()
             .map_or(1, |tip| tip.chain_work.saturating_add(1))
+    }
+}
+
+fn disconnect_network_error(peer_id: PeerId, reason: DisconnectReason) -> NetworkError {
+    match reason {
+        DisconnectReason::DuplicateVersion => NetworkError::DuplicateVersion(peer_id),
+        DisconnectReason::MissingHeaderAncestor(hash) => NetworkError::MissingHeaderAncestor(hash),
     }
 }
 

@@ -24,7 +24,8 @@ use open_bitcoin_network::{HeaderEntry, HeadersMessage, VersionMessage, WireNetw
 use super::{
     DurableSyncRuntime, PeerContribution, PeerFailureReason, PeerSyncOutcome, PeerSyncState,
     ResolvedSyncPeerAddress, SyncNetwork, SyncPeerAddress, SyncPeerResolver, SyncPeerSession,
-    SyncRunSummary, SyncRuntimeConfig, SyncRuntimeError, SyncTransport, TcpPeerTransport,
+    SyncPeerSource, SyncRunSummary, SyncRuntimeConfig, SyncRuntimeError, SyncTransport,
+    TcpPeerTransport,
 };
 use crate::{
     FieldAvailability, FjallNodeStore, LogRetentionPolicy, MetricKind, MetricSample, PersistMode,
@@ -919,6 +920,234 @@ fn sync_once_stops_after_target_outbound_peer_budget_is_met() {
 }
 
 #[test]
+fn manual_peer_completes_handshake_before_idle() {
+    // Arrange
+    let path = temp_store_path("manual-handshake-idle");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime = DurableSyncRuntime::open(
+        store,
+        SyncRuntimeConfig {
+            manual_peers: vec![SyncPeerAddress::manual("198.51.100.22", 18_444)],
+            dns_seeds: Vec::new(),
+            target_outbound_peers: 1,
+            max_messages_per_peer: 8,
+            ..sync_config()
+        },
+    )
+    .expect("runtime");
+    let mut transport = ScriptedTransport::new(vec![version_verack_script(0)]);
+    let mut resolver = ScriptedResolver::new(vec![Ok(vec![resolved_manual_peer(
+        "198.51.100.22",
+        18_444,
+    )])]);
+
+    // Act
+    let summary = runtime
+        .sync_once_with_resolver(&mut transport, &mut resolver, 1_777_225_189)
+        .expect("summary");
+
+    // Assert
+    assert_eq!(summary.attempted_peers, 1);
+    assert_eq!(summary.connected_peers, 1);
+    assert_eq!(summary.failed_peers, 0);
+    assert!(summary.health_signals.is_empty());
+    let outcome = &summary.peer_outcomes[0];
+    assert_eq!(outcome.state, PeerSyncState::Connected);
+    assert_eq!(outcome.contribution.messages_processed, 2);
+    assert_eq!(outcome.contribution.headers_received, 0);
+    assert_eq!(outcome.contribution.blocks_received, 0);
+    assert_eq!(outcome.maybe_failure_reason, None);
+    assert!(outcome.maybe_capabilities.is_some());
+    assert_eq!(summary.best_header_height, 0);
+    assert_eq!(summary.best_block_height, 0);
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn dns_seed_peer_completes_handshake_before_idle() {
+    // Arrange
+    let path = temp_store_path("dns-handshake-idle");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime = DurableSyncRuntime::open(
+        store,
+        SyncRuntimeConfig {
+            manual_peers: Vec::new(),
+            dns_seeds: vec!["seed.example.invalid".to_string()],
+            target_outbound_peers: 1,
+            max_messages_per_peer: 8,
+            ..sync_config()
+        },
+    )
+    .expect("runtime");
+    let mut transport = ScriptedTransport::new(vec![version_verack_script(0)]);
+    let mut resolver = ScriptedResolver::new(vec![Ok(vec![ResolvedSyncPeerAddress::new(
+        SyncPeerAddress::dns_seed("seed.example.invalid", 18_444),
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 18_444),
+    )])]);
+
+    // Act
+    let summary = runtime
+        .sync_once_with_resolver(&mut transport, &mut resolver, 1_777_225_190)
+        .expect("summary");
+
+    // Assert
+    assert_eq!(summary.attempted_peers, 1);
+    assert_eq!(summary.connected_peers, 1);
+    let outcome = &summary.peer_outcomes[0];
+    assert_eq!(outcome.state, PeerSyncState::Connected);
+    assert_eq!(outcome.peer.source, SyncPeerSource::DnsSeed);
+    assert_eq!(outcome.contribution.headers_received, 0);
+    assert_eq!(outcome.contribution.blocks_received, 0);
+    assert_eq!(outcome.maybe_failure_reason, None);
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn duplicate_version_peer_is_failed_and_replaced_without_progress_credit() {
+    // Arrange
+    let path = temp_store_path("duplicate-version-replacement");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let duplicate_version_script = vec![
+        WireNetworkMessage::Version(VersionMessage {
+            start_height: 0,
+            ..VersionMessage::default()
+        }),
+        WireNetworkMessage::Version(VersionMessage {
+            start_height: 0,
+            ..VersionMessage::default()
+        }),
+    ];
+    let mut runtime = DurableSyncRuntime::open(
+        store,
+        SyncRuntimeConfig {
+            manual_peers: vec![
+                SyncPeerAddress::manual("198.51.100.23", 18_444),
+                SyncPeerAddress::manual("198.51.100.24", 18_445),
+            ],
+            dns_seeds: Vec::new(),
+            max_peer_retries: 0,
+            target_outbound_peers: 1,
+            max_messages_per_peer: 8,
+            ..sync_config()
+        },
+    )
+    .expect("runtime");
+    let mut transport =
+        ScriptedTransport::new(vec![duplicate_version_script, version_verack_script(0)]);
+    let mut resolver = ScriptedResolver::new(vec![
+        Ok(vec![resolved_manual_peer("198.51.100.23", 18_444)]),
+        Ok(vec![resolved_manual_peer("198.51.100.24", 18_445)]),
+    ]);
+
+    // Act
+    let summary = runtime
+        .sync_once_with_resolver(&mut transport, &mut resolver, 1_777_225_191)
+        .expect("summary");
+    let metadata = runtime
+        .store()
+        .load_runtime_metadata()
+        .expect("load runtime metadata")
+        .expect("runtime metadata");
+    let durable_sync_state = metadata.maybe_sync_state.expect("durable sync state");
+
+    // Assert
+    assert_eq!(summary.attempted_peers, 2);
+    assert_eq!(summary.failed_peers, 1);
+    assert_eq!(summary.connected_peers, 1);
+    assert_eq!(summary.headers_received, 0);
+    assert_eq!(summary.blocks_received, 0);
+    let rejected = &summary.peer_outcomes[0];
+    assert_eq!(rejected.state, PeerSyncState::Failed);
+    assert_eq!(
+        rejected.maybe_failure_reason,
+        Some(PeerFailureReason::Compatibility)
+    );
+    assert_eq!(rejected.contribution.headers_received, 0);
+    assert_eq!(rejected.contribution.blocks_received, 0);
+    assert!(
+        rejected
+            .maybe_error
+            .as_ref()
+            .is_some_and(|message| { message.contains("duplicate version") })
+    );
+    assert_eq!(summary.peer_outcomes[1].state, PeerSyncState::Connected);
+    assert_eq!(
+        durable_sync_state.sync.lifecycle,
+        FieldAvailability::available(SyncLifecycleState::Active)
+    );
+    assert_eq!(
+        durable_sync_state.sync.resource_pressure,
+        FieldAvailability::available(SyncResourcePressure {
+            blocks_in_flight: 0,
+            max_header_requests_in_flight_per_peer: 1,
+            max_headers_per_message: 2_000,
+            max_blocks_in_flight_per_peer: 16,
+            max_blocks_in_flight_total: 64,
+            max_messages_per_peer: 8,
+            max_sync_rounds: 8,
+            outbound_peers: 1,
+            target_outbound_peers: 1,
+        })
+    );
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn wrong_network_peer_is_failed_without_progress_credit() {
+    // Arrange
+    let path = temp_store_path("wrong-network-peer");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime = DurableSyncRuntime::open(
+        store,
+        SyncRuntimeConfig {
+            manual_peers: vec![SyncPeerAddress::manual("198.51.100.25", 18_444)],
+            dns_seeds: Vec::new(),
+            max_peer_retries: 0,
+            ..sync_config()
+        },
+    )
+    .expect("runtime");
+    let mut transport =
+        ScriptedTransport::with_connect_results(vec![Err(SyncRuntimeError::InvalidMagic {
+            expected: SyncNetwork::Regtest.magic().to_bytes(),
+            actual: SyncNetwork::Mainnet.magic().to_bytes(),
+        })]);
+    let mut resolver = ScriptedResolver::new(vec![Ok(vec![resolved_manual_peer(
+        "198.51.100.25",
+        18_444,
+    )])]);
+
+    // Act
+    let summary = runtime
+        .sync_once_with_resolver(&mut transport, &mut resolver, 1_777_225_192)
+        .expect("summary");
+
+    // Assert
+    assert_eq!(summary.connected_peers, 0);
+    assert_eq!(summary.failed_peers, 1);
+    assert_eq!(summary.headers_received, 0);
+    assert_eq!(summary.blocks_received, 0);
+    let outcome = &summary.peer_outcomes[0];
+    assert_eq!(outcome.state, PeerSyncState::Failed);
+    assert_eq!(
+        outcome.maybe_failure_reason,
+        Some(PeerFailureReason::InvalidMagic)
+    );
+    assert_eq!(outcome.contribution.messages_processed, 0);
+    assert_eq!(outcome.contribution.headers_received, 0);
+    assert_eq!(outcome.contribution.blocks_received, 0);
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
 fn sync_outcome_captures_peer_capabilities_and_endpoint() {
     // Arrange
     let path = temp_store_path("peer-capabilities");
@@ -1122,7 +1351,7 @@ fn stalled_peer_emits_warning_health_signal_and_log_record() {
     let store = FjallNodeStore::open(&path).expect("store");
     let mut runtime =
         DurableSyncRuntime::open(store, sync_config_with_log_dir(&log_dir)).expect("runtime");
-    let mut transport = ScriptedTransport::new(vec![version_verack_script(0)]);
+    let mut transport = ScriptedTransport::new(vec![Vec::new()]);
 
     // Act
     let summary = runtime
@@ -1254,8 +1483,8 @@ fn scripted_headers_sync_persists_progress_and_status() {
         .expect("sync");
 
     // Assert
-    assert_eq!(summary.connected_peers, 0);
-    assert_eq!(summary.peer_outcomes[0].state, PeerSyncState::Stalled);
+    assert_eq!(summary.connected_peers, 1);
+    assert_eq!(summary.peer_outcomes[0].state, PeerSyncState::Connected);
     assert_eq!(summary.headers_received, 2);
     assert_eq!(summary.best_header_height, 1);
     assert_eq!(summary.best_block_height, 0);

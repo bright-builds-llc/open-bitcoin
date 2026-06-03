@@ -26,6 +26,12 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
 - typed compatibility diagnoses including `VersionRejected`, `NetworkMismatch`,
   `ServiceBitMismatch`, `UnsupportedMessageOrder`, `Timeout`, `PeerDisconnect`,
   `MalformedPayload`, and `LocalConfigurationFailure`
+- daemon sync treats completed outbound `version`/`verack` handshakes from
+  manual or DNS peers as connected even when the peer idles before sending
+  headers or blocks
+- daemon sync records incompatible peer outcomes as typed failures without
+  crediting accepted header or block progress, then continues to replacement
+  peers when configured
 
 ## Knots sources
 
@@ -56,6 +62,9 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
 - the compatibility transcript harness remains deterministic by default and
   reports failed peer transcripts without useful-progress credit; public-network
   checks remain opt-in operator evidence outside `bash scripts/verify.sh`
+- completed outbound daemon handshakes now fill compatible peer slots while
+  duplicate-version, malformed-data, and wrong-network peers remain rejected and
+  uncredited
 
 ## First-party implementation
 
@@ -76,9 +85,6 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
 - daemon-integrated, unattended public-network full sync through `open-bitcoind`
 - long-running socket orchestration and transport persistence beyond the current
   sync-runtime foundation
-- Phase 54 compatibility evidence does not claim the Phase 55 live-peer
-  handshake fixes; it only makes the baseline comparison and failure diagnosis
-  reproducible.
 
 ## Follow-up triggers
 

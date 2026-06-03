@@ -232,6 +232,7 @@ pub enum PeerSyncState {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PeerFailureReason {
     AddressResolution,
+    Compatibility,
     Connect,
     Stall,
     RetryBackoff,
@@ -245,6 +246,7 @@ impl fmt::Display for PeerFailureReason {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::AddressResolution => write!(f, "address_resolution"),
+            Self::Compatibility => write!(f, "compatibility"),
             Self::Connect => write!(f, "connect"),
             Self::Stall => write!(f, "stall"),
             Self::RetryBackoff => write!(f, "retry_backoff"),
@@ -260,6 +262,9 @@ impl PeerFailureReason {
     pub(crate) const fn operator_recovery_action(&self) -> &'static str {
         match self {
             Self::AddressResolution => "Check configured sync peers or DNS seeds, then retry sync.",
+            Self::Compatibility => {
+                "Use a different peer or inspect peer protocol compatibility before retrying."
+            }
             Self::Connect => "Check peer connectivity and retry sync after backoff.",
             Self::Stall => "Retry sync after peer backoff or choose a different peer.",
             Self::RetryBackoff => "Wait for retry backoff to elapse or choose a different peer.",
@@ -325,6 +330,7 @@ pub struct SyncRunSummary {
 pub enum SyncRuntimeError {
     NoPeersConfigured,
     AddressResolution { peer: String, message: String },
+    PeerCompatibility { message: String },
     Io { peer: String, message: String },
     InvalidData { message: String },
     InvalidMagic { expected: [u8; 4], actual: [u8; 4] },
@@ -339,6 +345,9 @@ impl fmt::Display for SyncRuntimeError {
             Self::NoPeersConfigured => write!(f, "no sync peers configured"),
             Self::AddressResolution { peer, message } => {
                 write!(f, "failed to resolve sync peer {peer}: {message}")
+            }
+            Self::PeerCompatibility { message } => {
+                write!(f, "sync peer compatibility failure: {message}")
             }
             Self::Io { peer, message } => write!(f, "sync I/O failure for {peer}: {message}"),
             Self::InvalidData { message } => write!(f, "sync invalid data: {message}"),
@@ -362,6 +371,13 @@ impl SyncRuntimeError {
                 level: HealthSignalLevel::Error,
                 source: "network".to_string(),
                 message: "sync address resolution failed: inspect peer configuration".to_string(),
+            },
+            Self::PeerCompatibility { message } => HealthSignal {
+                level: HealthSignalLevel::Error,
+                source: "network".to_string(),
+                message: format!(
+                    "sync peer compatibility failure: {message}; inspect peer protocol behavior"
+                ),
             },
             Self::Io { .. } => HealthSignal {
                 level: HealthSignalLevel::Error,
@@ -439,6 +455,9 @@ fn chainstate_error_is_peer_data(error: &ChainstateError) -> bool {
 impl From<NetworkError> for SyncRuntimeError {
     fn from(value: NetworkError) -> Self {
         match value {
+            NetworkError::DuplicateVersion(_) => Self::PeerCompatibility {
+                message: value.to_string(),
+            },
             NetworkError::InvalidHeader { .. }
             | NetworkError::HeadersIncludeTransactions(_)
             | NetworkError::MissingHeaderAncestor(_) => Self::InvalidData {

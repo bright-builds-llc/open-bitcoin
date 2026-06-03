@@ -281,9 +281,11 @@ impl DurableSyncRuntime {
 
             for _ in 0..self.config.max_messages_per_peer {
                 let Some(message) = session.receive(self.config.network.magic())? else {
-                    progress.state = PeerSyncState::Stalled;
-                    progress.maybe_failure_reason = Some(PeerFailureReason::Stall);
                     progress.maybe_capabilities = self.peer_capabilities(peer_id);
+                    if !self.peer_handshake_complete(peer_id) {
+                        progress.state = PeerSyncState::Stalled;
+                        progress.maybe_failure_reason = Some(PeerFailureReason::Stall);
+                    }
                     return Ok(());
                 };
                 progress.record_activity(timestamp);
@@ -464,6 +466,18 @@ impl DurableSyncRuntime {
         }
         Ok(())
     }
+
+    fn peer_handshake_complete(&self, peer_id: PeerId) -> bool {
+        self.network
+            .peer_manager()
+            .peer_state(peer_id)
+            .is_some_and(|peer| {
+                peer.local_version_sent
+                    && peer.remote_version_received
+                    && peer.local_verack_sent
+                    && peer.remote_verack_received
+            })
+    }
 }
 
 fn peer_failure_reason_for_error(error: &SyncRuntimeError) -> PeerFailureReason {
@@ -471,6 +485,7 @@ fn peer_failure_reason_for_error(error: &SyncRuntimeError) -> PeerFailureReason 
         SyncRuntimeError::AddressResolution { .. } => PeerFailureReason::AddressResolution,
         SyncRuntimeError::InvalidData { .. } => PeerFailureReason::InvalidData,
         SyncRuntimeError::InvalidMagic { .. } => PeerFailureReason::InvalidMagic,
+        SyncRuntimeError::PeerCompatibility { .. } => PeerFailureReason::Compatibility,
         SyncRuntimeError::Storage(_) => PeerFailureReason::Storage,
         SyncRuntimeError::Io { .. } => PeerFailureReason::Connect,
         SyncRuntimeError::Network { .. }
