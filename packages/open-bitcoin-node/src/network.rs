@@ -7,22 +7,21 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 mod header_sync;
+mod inventory;
 
 use open_bitcoin_core::{
     chainstate::{
         AnchoredBlock, ChainPosition, ChainTransition, ChainstateError, ChainstateSnapshot,
     },
     codec::CodecError,
-    consensus::{
-        ConsensusParams, ScriptVerifyFlags, block_hash, transaction_txid, transaction_wtxid,
-    },
-    primitives::{Block, BlockHash, InventoryType, NetworkMagic, Transaction, Txid, Wtxid},
+    consensus::{ConsensusParams, ScriptVerifyFlags, block_hash, transaction_txid},
+    primitives::{Block, BlockHash, NetworkMagic, Transaction, Txid, Wtxid},
 };
 use open_bitcoin_mempool::{AdmissionResult, MempoolError, PolicyConfig};
 use open_bitcoin_network::{
-    ConnectionRole, DisconnectReason, HeaderEntry, HeaderStore, HeaderSyncPolicy, HeadersMessage,
-    InventoryList, LocalPeerConfig, NetworkError, PROTOCOL_VERSION, ParsedNetworkMessage,
-    PeerAction, PeerId, PeerManager, WireNetworkMessage,
+    ConnectionRole, HeaderEntry, HeaderStore, HeaderSyncPolicy, HeadersMessage, InventoryList,
+    LocalPeerConfig, NetworkError, PROTOCOL_VERSION, ParsedNetworkMessage, PeerAction, PeerId,
+    PeerManager, WireNetworkMessage,
 };
 
 use crate::{ChainstateStore, ManagedChainstate, ManagedMempool};
@@ -95,6 +94,25 @@ pub struct ManagedNetworkInfo {
     pub outbound_peers: usize,
     pub wtxidrelay_peers: usize,
     pub header_preferring_peers: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BlockConnectDisposition {
+    Connected(ChainPosition),
+    Duplicate(BlockHash),
+    NonExtending {
+        block_hash: BlockHash,
+        previous_block_hash: BlockHash,
+    },
+    Disconnected {
+        block_hash: BlockHash,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ManagedSyncMessageResult {
+    pub outbound: Vec<WireNetworkMessage>,
+    pub maybe_block_disposition: Option<BlockConnectDisposition>,
 }
 
 #[derive(Debug, Clone)]
@@ -279,7 +297,9 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         let actions = self
             .peer_manager
             .handle_message(peer_id, message, timestamp)?;
-        self.process_actions(peer_id, actions, timestamp, verify_flags, consensus_params)
+        Ok(self
+            .process_actions(peer_id, actions, timestamp, verify_flags, consensus_params)?
+            .outbound)
     }
 
     pub fn receive_sync_message(
@@ -289,7 +309,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         timestamp: i64,
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
-    ) -> Result<Vec<WireNetworkMessage>, ManagedNetworkError> {
+    ) -> Result<ManagedSyncMessageResult, ManagedNetworkError> {
         let actions = match message {
             WireNetworkMessage::Headers(headers_message) => {
                 self.handle_headers_message(peer_id, headers_message, timestamp, consensus_params)?
@@ -391,7 +411,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         timestamp: i64,
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
-    ) -> ManagedResult<Option<ChainPosition>> {
+    ) -> ManagedResult<BlockConnectDisposition> {
         let block_hash = block_hash(&block.header);
         if self
             .chainstate
@@ -403,7 +423,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         {
             self.blocks_by_hash.insert(block_hash, block.clone());
             self.peer_manager.note_local_block_hash(block_hash);
-            return Ok(None);
+            return Ok(BlockConnectDisposition::Duplicate(block_hash));
         }
 
         let maybe_tip = self.chainstate.chainstate().tip().cloned();
@@ -414,12 +434,15 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         if maybe_tip.is_some() && !extends_tip {
             self.blocks_by_hash.insert(block_hash, block.clone());
             self.peer_manager.note_local_block_hash(block_hash);
-            return Ok(None);
+            return Ok(BlockConnectDisposition::NonExtending {
+                block_hash,
+                previous_block_hash: block.header.previous_block_hash,
+            });
         }
         if maybe_tip.is_none() && !is_genesis {
             self.blocks_by_hash.insert(block_hash, block.clone());
             self.peer_manager.note_local_block_hash(block_hash);
-            return Ok(None);
+            return Ok(BlockConnectDisposition::Disconnected { block_hash });
         }
 
         let position = self.chainstate.connect_block_with_current_time(
@@ -431,7 +454,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         )?;
         self.blocks_by_hash.insert(block_hash, block.clone());
         self.peer_manager.note_local_position(&position);
-        Ok(Some(position))
+        Ok(BlockConnectDisposition::Connected(position))
     }
 
     pub fn reorg_to_branch(
@@ -499,8 +522,9 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         timestamp: i64,
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
-    ) -> Result<Vec<WireNetworkMessage>, ManagedNetworkError> {
+    ) -> Result<ManagedSyncMessageResult, ManagedNetworkError> {
         let mut outbound = Vec::new();
+        let mut maybe_block_disposition = None;
 
         for action in actions {
             match action {
@@ -525,97 +549,27 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                     }
                 }
                 PeerAction::ReceivedBlock(block) => {
-                    let block_hash = block_hash(&block.header);
-                    if !self.blocks_by_hash.contains_key(&block_hash) {
-                        let _ = self.connect_stored_block(
-                            &block,
-                            self.next_chain_work(),
-                            timestamp,
-                            verify_flags,
-                            consensus_params,
-                        )?;
-                    }
+                    maybe_block_disposition = Some(self.connect_stored_block(
+                        &block,
+                        self.next_chain_work(),
+                        timestamp,
+                        verify_flags,
+                        consensus_params,
+                    )?);
                 }
                 PeerAction::Disconnect(reason) => {
                     self.disconnect_peer(peer_id)?;
-                    return Err(ManagedNetworkError::Network(disconnect_network_error(
-                        peer_id, reason,
-                    )));
+                    return Err(ManagedNetworkError::Network(
+                        inventory::disconnect_network_error(peer_id, reason),
+                    ));
                 }
             }
         }
 
-        Ok(outbound)
-    }
-
-    fn serve_inventory(
-        &self,
-        requests: Vec<open_bitcoin_core::primitives::InventoryVector>,
-    ) -> (
-        Vec<WireNetworkMessage>,
-        Vec<open_bitcoin_core::primitives::InventoryVector>,
-    ) {
-        let mut messages = Vec::new();
-        let mut missing = Vec::new();
-
-        for request in requests {
-            match request.inventory_type {
-                InventoryType::Block | InventoryType::WitnessBlock => {
-                    let block_hash = BlockHash::from(request.object_hash);
-                    let Some(block) = self.blocks_by_hash.get(&block_hash) else {
-                        missing.push(request);
-                        continue;
-                    };
-                    messages.push(WireNetworkMessage::Block(block.clone()));
-                }
-                InventoryType::Transaction => {
-                    let txid = Txid::from(request.object_hash);
-                    let Some(transaction) = self.transactions_by_txid.get(&txid) else {
-                        missing.push(request);
-                        continue;
-                    };
-                    messages.push(WireNetworkMessage::Tx(transaction.clone()));
-                }
-                InventoryType::WitnessTransaction => {
-                    let wtxid = Wtxid::from(request.object_hash);
-                    let Some(transaction) = self.transactions_by_wtxid.get(&wtxid) else {
-                        missing.push(request);
-                        continue;
-                    };
-                    messages.push(WireNetworkMessage::Tx(transaction.clone()));
-                }
-                _ => missing.push(request),
-            }
-        }
-
-        (messages, missing)
-    }
-
-    fn store_transaction(
-        &mut self,
-        transaction: Transaction,
-    ) -> Result<(Txid, Wtxid), ManagedNetworkError> {
-        let txid = transaction_txid(&transaction)?;
-        let wtxid = transaction_wtxid(&transaction)?;
-        self.transactions_by_txid.insert(txid, transaction.clone());
-        self.transactions_by_wtxid
-            .insert(wtxid, transaction.clone());
-        self.peer_manager.note_local_transaction(&transaction)?;
-        Ok((txid, wtxid))
-    }
-
-    fn next_chain_work(&self) -> u128 {
-        self.chainstate
-            .chainstate()
-            .tip()
-            .map_or(1, |tip| tip.chain_work.saturating_add(1))
-    }
-}
-
-fn disconnect_network_error(peer_id: PeerId, reason: DisconnectReason) -> NetworkError {
-    match reason {
-        DisconnectReason::DuplicateVersion => NetworkError::DuplicateVersion(peer_id),
-        DisconnectReason::MissingHeaderAncestor(hash) => NetworkError::MissingHeaderAncestor(hash),
+        Ok(ManagedSyncMessageResult {
+            outbound,
+            maybe_block_disposition,
+        })
     }
 }
 

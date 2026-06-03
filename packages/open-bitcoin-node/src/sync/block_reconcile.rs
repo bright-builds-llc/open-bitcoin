@@ -15,7 +15,7 @@ use open_bitcoin_core::{
 use open_bitcoin_network::{PeerId, WireNetworkMessage};
 
 use super::{DurableSyncRuntime, SyncRuntimeError};
-use crate::{StorageNamespace, StorageRecoveryAction};
+use crate::{StorageNamespace, StorageRecoveryAction, network::BlockConnectDisposition};
 
 pub(super) fn validate_block_limits(runtime: &DurableSyncRuntime) -> Result<(), SyncRuntimeError> {
     if runtime.config.max_blocks_in_flight_per_peer == 0 {
@@ -136,14 +136,14 @@ pub(super) fn reconcile_best_chain(
                 break;
             };
             runtime.network.note_local_block_hash(entry.block_hash);
-            let connected = runtime.network.connect_stored_block(
+            let disposition = runtime.network.connect_stored_block(
                 &block,
                 entry.chain_work,
                 timestamp,
                 runtime.verify_flags,
                 runtime.consensus_params,
             )?;
-            if connected.is_some() {
+            if matches!(disposition, BlockConnectDisposition::Connected(_)) {
                 progressed = true;
                 continue;
             }

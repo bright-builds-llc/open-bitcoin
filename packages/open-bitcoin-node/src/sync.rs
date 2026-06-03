@@ -352,13 +352,14 @@ impl DurableSyncRuntime {
                     WireNetworkMessage::Block(block) => Some(block.clone()),
                     _ => None,
                 };
-                let mut outbound = self.network.receive_sync_message(
+                let sync_result = self.network.receive_sync_message(
                     peer_id,
                     message,
                     timestamp,
                     self.verify_flags,
                     self.consensus_params,
                 )?;
+                let mut outbound = sync_result.outbound;
                 if let Some(header_count) = maybe_header_count {
                     progress.record_validated_headers(header_count);
                 }
