@@ -228,7 +228,7 @@ impl DurableSyncRuntime {
             return Ok(last_summary);
         }
         let mut previous_progress = progress::sync_progress_marker(&last_summary);
-        let retry_backoff_seconds = retry_backoff_seconds(self.config.retry_backoff_ms);
+        let retry_backoff_seconds = progress::retry_backoff_seconds(self.config.retry_backoff_ms);
         let mut rounds_completed = 1_usize;
         for _ in 1..self.config.max_rounds {
             current_timestamp = current_timestamp.saturating_add(retry_backoff_seconds);
@@ -379,6 +379,19 @@ impl DurableSyncRuntime {
                 let notfound_was_requested =
                     self.message_reports_requested_block_notfound(peer_id, &message);
                 block_reconcile::release_inflight_for_message(self, &message);
+
+                if let Some(block) = maybe_block.as_ref()
+                    && !block_response_was_requested
+                {
+                    self.record_unrequested_block_response(
+                        &mut progress,
+                        block,
+                        block_response_is_best_chain,
+                    )?;
+                    let outbound = block_reconcile::request_missing_blocks(self, peer_id)?;
+                    self.send_all(&mut session, &outbound)?;
+                    continue;
+                }
 
                 let sync_result = match self.network.receive_sync_message(
                     peer_id,
@@ -593,7 +606,7 @@ fn block_hash_hex(block_hash: BlockHash) -> String {
 fn peer_failure_reason_for_error(error: &SyncRuntimeError) -> PeerFailureReason {
     match error {
         SyncRuntimeError::AddressResolution { .. } => PeerFailureReason::AddressResolution,
-        SyncRuntimeError::InvalidData { message } if describes_malformed_block(message) => {
+        SyncRuntimeError::InvalidData { message } if message.contains("malformed block") => {
             PeerFailureReason::MalformedBlock
         }
         SyncRuntimeError::InvalidData { .. } => PeerFailureReason::InvalidData,
@@ -601,7 +614,7 @@ fn peer_failure_reason_for_error(error: &SyncRuntimeError) -> PeerFailureReason 
         SyncRuntimeError::PeerCompatibility { .. } => PeerFailureReason::Compatibility,
         SyncRuntimeError::Storage(_) => PeerFailureReason::Storage,
         SyncRuntimeError::Io { .. } => PeerFailureReason::Connect,
-        SyncRuntimeError::Network { message } if describes_malformed_block(message) => {
+        SyncRuntimeError::Network { message } if message.contains("malformed block") => {
             PeerFailureReason::MalformedBlock
         }
         SyncRuntimeError::ResourceLimit { .. } => PeerFailureReason::ResourceLimit,
@@ -609,13 +622,4 @@ fn peer_failure_reason_for_error(error: &SyncRuntimeError) -> PeerFailureReason 
             PeerFailureReason::Network
         }
     }
-}
-
-fn describes_malformed_block(message: &str) -> bool {
-    message.contains("malformed block")
-}
-
-fn retry_backoff_seconds(retry_backoff_ms: u64) -> i64 {
-    let seconds = retry_backoff_ms.div_ceil(1_000).max(1);
-    i64::try_from(seconds).unwrap_or(i64::MAX)
 }

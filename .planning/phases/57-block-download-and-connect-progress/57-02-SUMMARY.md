@@ -13,6 +13,7 @@ provides:
   - peer-attributed no-credit block response outcomes
   - first non-genesis block connection regression coverage
   - disconnected, duplicate, non-extending, notfound, invalid, and malformed block response coverage
+  - unrequested block bodies are classified before connect mutation
 affects: [sync, managed-network, block-download-progress, BLK-02, BLK-04]
 
 tech-stack:
@@ -34,6 +35,7 @@ key-files:
     - packages/open-bitcoin-node/src/sync.rs
     - packages/open-bitcoin-node/src/sync/block_reconcile.rs
     - packages/open-bitcoin-node/src/sync/progress.rs
+    - packages/open-bitcoin-node/src/sync/runtime_state.rs
     - packages/open-bitcoin-node/src/sync/tests.rs
     - packages/open-bitcoin-node/src/sync/types.rs
 
@@ -41,6 +43,7 @@ key-decisions:
   - "Return typed block connect dispositions from managed network instead of collapsing connected, duplicate, disconnected, and non-extending blocks into Option<ChainPosition>."
   - "Count `blocks_received` as useful accepted block contribution only."
   - "Attribute no-credit block responses with typed peer failure reasons without advancing active chainstate."
+  - "Guard unrequested block bodies before `receive_sync_message` so they cannot connect active chainstate or create durable chainstate/block-body skew."
 
 patterns-established:
   - "The sync shell records block response outcomes through a focused `sync/block_response.rs` helper."
@@ -72,6 +75,7 @@ completed: 2026-06-03
 - Added deterministic managed-network tests for connected, duplicate, non-extending, disconnected, and sync-message block disposition behavior.
 - Added peer failure reasons for `block_notfound`, `malformed_block`, `invalid_block`, `duplicate_block`, `disconnected_block`, `non_extending_block`, and `resource_limit`.
 - Added sync tests proving first non-genesis block connection advances downloaded and connected height, while no-credit block response classes remain peer-attributed without useful block contribution.
+- Added a review follow-up regression proving an unrequested extending block body is no-credit, does not mutate active chainstate, and is not persisted as a durable block body.
 - Preserved Plan 01 cleanup semantics for invalid and malformed in-flight release paths.
 
 ## Task Commits
@@ -97,7 +101,7 @@ The task commits also ran normal repo hooks successfully.
 
 ## Issues Encountered
 
-- No functional blockers remain for Plan 02.
+- Local review found that unsolicited block bodies could reach the connect mutator before the runtime made the requested-best-chain credit decision. The follow-up guard now classifies unrequested block bodies as no-credit before connect handling.
 
 ## Next Phase Readiness
 
@@ -111,6 +115,7 @@ Plan 03 can now project durable downloaded and connected block identity from typ
 - `PASS:cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node block_connect_disposition --all-features`
 - `PASS:cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node block_response --all-features`
 - `PASS:cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node block_inflight --all-features`
+- `PASS:cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node block_response --all-features` including `unrequested_extending_block_response_is_no_credit_and_does_not_mutate_chainstate`
 
 ---
 *Phase: 57-block-download-and-connect-progress*

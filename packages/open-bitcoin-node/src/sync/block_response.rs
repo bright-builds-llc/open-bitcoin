@@ -47,6 +47,45 @@ impl DurableSyncRuntime {
             .any(|entry| entry.block_hash == block_hash)
     }
 
+    pub(super) fn classify_unrequested_block(
+        &self,
+        block_hash: BlockHash,
+        previous_block_hash: BlockHash,
+    ) -> BlockConnectDisposition {
+        let active_chain = self.network.chainstate_snapshot().active_chain;
+        if active_chain
+            .iter()
+            .any(|position| position.block_hash == block_hash)
+        {
+            return BlockConnectDisposition::Duplicate(block_hash);
+        }
+
+        let Some(tip) = active_chain.last() else {
+            return BlockConnectDisposition::Disconnected { block_hash };
+        };
+        if tip.block_hash == previous_block_hash {
+            return BlockConnectDisposition::Disconnected { block_hash };
+        }
+
+        BlockConnectDisposition::NonExtending {
+            block_hash,
+            previous_block_hash,
+        }
+    }
+
+    pub(super) fn record_unrequested_block_response(
+        &mut self,
+        progress: &mut PeerProgress,
+        block: &Block,
+        is_best_chain: bool,
+    ) -> Result<(), SyncRuntimeError> {
+        let disposition = self.classify_unrequested_block(
+            block_hash(&block.header),
+            block.header.previous_block_hash,
+        );
+        self.record_block_disposition(progress, Some(block), disposition, false, is_best_chain)
+    }
+
     pub(super) fn record_block_disposition(
         &mut self,
         progress: &mut PeerProgress,

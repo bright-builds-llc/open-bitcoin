@@ -187,3 +187,8 @@ pub(super) fn local_peer_config(config: &SyncRuntimeConfig) -> LocalPeerConfig {
         user_agent: format!("/open-bitcoin:{}/", env!("CARGO_PKG_VERSION")),
     }
 }
+
+pub(super) fn retry_backoff_seconds(retry_backoff_ms: u64) -> i64 {
+    let seconds = retry_backoff_ms.div_ceil(1_000).max(1);
+    i64::try_from(seconds).unwrap_or(i64::MAX)
+}

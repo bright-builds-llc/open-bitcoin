@@ -889,6 +889,53 @@ mod block_response {
     }
 
     #[test]
+    fn unrequested_extending_block_response_is_no_credit_and_does_not_mutate_chainstate() {
+        // Arrange
+        let path = temp_store_path("block-response-unrequested-extending");
+        remove_dir_if_exists(&path);
+        let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+        let child = build_block(block_hash(&genesis.header), 1);
+        let child_hash = block_hash(&child.header);
+        save_best_chain_with_active_blocks(&path, &[(&genesis, 0)], &[(&genesis, 0)]);
+        let store = FjallNodeStore::open(&path).expect("reopen store");
+        let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+        let mut transport = ScriptedTransport::new(vec![vec![
+            WireNetworkMessage::Version(VersionMessage {
+                start_height: 1,
+                ..VersionMessage::default()
+            }),
+            WireNetworkMessage::Verack,
+            WireNetworkMessage::Block(child),
+        ]]);
+
+        // Act
+        let summary = runtime
+            .sync_once(&mut transport, i64::from(genesis.header.time))
+            .expect("sync");
+        let active_chain = runtime.network.chainstate_snapshot().active_chain;
+
+        // Assert
+        assert_eq!(summary.blocks_received, 0);
+        assert_eq!(summary.downloaded_block_height, 0);
+        assert_eq!(summary.best_block_height, 0);
+        assert_eq!(active_chain.len(), 1);
+        assert_eq!(
+            active_chain.last().map(|position| position.block_hash),
+            Some(block_hash(&genesis.header))
+        );
+        assert_peer_reason_without_block_credit(&summary, PeerFailureReason::DisconnectedBlock);
+        assert!(
+            runtime
+                .store()
+                .load_block(child_hash)
+                .expect("load unrequested child")
+                .is_none()
+        );
+
+        remove_dir_if_exists(&path);
+    }
+
+    #[test]
     fn sync_progress_reports_downloaded_and_connected_block_hashes() {
         // Arrange
         let path = temp_store_path("sync-progress-connected-hashes");
