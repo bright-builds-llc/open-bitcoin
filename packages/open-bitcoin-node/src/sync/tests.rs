@@ -1541,6 +1541,52 @@ fn sync_summary_logs_stop_reason_when_available() {
 }
 
 #[test]
+fn sync_summary_status_keeps_connected_height_alias_with_hashes() {
+    // Arrange
+    let downloaded_hash =
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string();
+    let connected_hash =
+        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".to_string();
+    let summary = SyncRunSummary {
+        target_outbound_peers: 4,
+        attempted_peers: 2,
+        connected_peers: 1,
+        failed_peers: 0,
+        messages_processed: 9,
+        headers_received: 7,
+        blocks_received: 3,
+        best_header_height: 30,
+        downloaded_block_height: 27,
+        best_block_height: 25,
+        maybe_downloaded_block_hash: Some(downloaded_hash.clone()),
+        maybe_connected_block_hash: Some(connected_hash.clone()),
+        peer_outcomes: Vec::new(),
+        health_signals: Vec::new(),
+        maybe_stop_reason: None,
+    };
+
+    // Act
+    let status = summary.sync_status(SyncNetwork::Regtest);
+
+    // Assert
+    assert_eq!(
+        status.sync_progress,
+        crate::FieldAvailability::available(crate::status::SyncProgress {
+            header_height: 30,
+            block_height: 25,
+            downloaded_block_height: 27,
+            connected_block_height: 25,
+            maybe_downloaded_block_hash: Some(downloaded_hash),
+            maybe_connected_block_hash: Some(connected_hash),
+            progress_ratio: 25.0 / 30.0,
+            messages_processed: 9,
+            headers_received: 7,
+            blocks_received: 3,
+        })
+    );
+}
+
+#[test]
 fn sync_summary_status_projections_include_counters() {
     // Arrange
     let summary = SyncRunSummary {
