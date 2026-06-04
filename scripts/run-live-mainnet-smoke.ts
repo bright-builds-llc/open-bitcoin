@@ -56,8 +56,12 @@ type CommandSpec = {
 type SyncStatusSnapshot = {
   blockHeight: number;
   capturedAtUnixSeconds: number;
+  connectedBlockHeight: number;
+  downloadedBlockHeight: number;
   headerHeight: number;
   lifecycle: string;
+  maybeConnectedBlockHash: string | null;
+  maybeDownloadedBlockHash: string | null;
   maybeLastError: string | null;
   outboundPeers: number;
   paused: boolean;
@@ -76,16 +80,37 @@ type FirstHeaderProgressEvidence = {
   observedAtUnixSeconds: number;
 };
 
+type FirstBlockProgressKind = "downloaded" | "connected";
+
+type FirstBlockProgressEvidence = {
+  after: SyncStatusSnapshot;
+  before: SyncStatusSnapshot;
+  blockHash: string | null;
+  height: number;
+  kind: FirstBlockProgressKind;
+  maybeLastActivityUnixSeconds: number | null;
+  maybePeer: string | null;
+  maybeResolvedEndpoint: string | null;
+  maybeSource: string | null;
+  observedAtUnixSeconds: number;
+};
+
 type EndpointOutcomeState = "resolved" | "connected" | "handshook" | "failed" | "skipped";
 type EndpointOutcomeStage = "preflight" | "runtime";
 type EndpointOutcomeSource = "manual_peer" | "dns_seed" | "configured_peer" | "unknown";
 type NoProgressCause =
+  | "awaiting_blocks"
   | "dns_resolution_failure"
   | "tcp_connection_failure"
   | "handshake_failure"
   | "unsupported_peer_capability"
   | "validation_failure"
   | "storage_failure"
+  | "peer_notfound"
+  | "malformed_block"
+  | "invalid_block"
+  | "duplicate_or_disconnected_block"
+  | "resource_limit"
   | "timeout"
   | "operator_cancellation";
 
@@ -111,8 +136,12 @@ type ReportStatus =
 
 type FinalStatusSummary = {
   blockHeight: number;
+  connectedBlockHeight: number;
+  downloadedBlockHeight: number;
   headerHeight: number;
   lifecycle: string;
+  maybeConnectedBlockHash: string | null;
+  maybeDownloadedBlockHash: string | null;
   maybeLastError: string | null;
   messagesProcessed: number;
   outboundPeers: number;
@@ -156,6 +185,7 @@ type SmokeReport = {
   };
   result: {
     blockDelta: number;
+    firstBlockProgress: FirstBlockProgressEvidence | null;
     firstHeaderProgress: FirstHeaderProgressEvidence | null;
     headerDelta: number;
     maybeNoProgressCause: NoProgressCause | null;
@@ -203,7 +233,11 @@ type DurableSyncStateJson = {
     phase?: FieldAvailability<string>;
     sync_progress?: FieldAvailability<{
       block_height?: number;
+      connected_block_height?: number;
+      downloaded_block_height?: number;
       header_height?: number;
+      maybe_connected_block_hash?: string | null;
+      maybe_downloaded_block_hash?: string | null;
       messages_processed?: number;
     }>;
   };
@@ -972,12 +1006,27 @@ function syncStatusSnapshotFromMetadata(metadata: RuntimeMetadataJson): SyncStat
   const maybeSyncState = metadata.maybe_sync_state;
   const maybeProgress = availableValue(maybeSyncState?.sync?.sync_progress);
   const maybePeerCounts = availableValue(maybeSyncState?.peers?.peer_counts);
+  const blockHeight = Number(maybeProgress?.block_height ?? 0);
+  const connectedBlockHeight = Number(
+    maybeProgress?.connected_block_height ?? blockHeight,
+  );
+  const downloadedBlockHeight = Number(
+    maybeProgress?.downloaded_block_height ?? connectedBlockHeight,
+  );
 
   return {
-    blockHeight: Number(maybeProgress?.block_height ?? 0),
+    blockHeight,
     capturedAtUnixSeconds,
+    connectedBlockHeight,
+    downloadedBlockHeight,
     headerHeight: Number(maybeProgress?.header_height ?? 0),
     lifecycle: String(availableValue(maybeSyncState?.sync?.lifecycle) ?? "unavailable"),
+    maybeConnectedBlockHash: valueAsNullableString(
+      maybeProgress?.maybe_connected_block_hash,
+    ),
+    maybeDownloadedBlockHash: valueAsNullableString(
+      maybeProgress?.maybe_downloaded_block_hash,
+    ),
     maybeLastError: valueAsNullableString(availableValue(maybeSyncState?.sync?.last_error)),
     outboundPeers: Number(maybePeerCounts?.outbound ?? 0),
     paused: metadata.sync_control?.paused === true,
@@ -1047,13 +1096,28 @@ function finalStatusSummaryFromMetadata(metadata: RuntimeMetadataJson): FinalSta
 
   const maybeProgress = availableValue(maybeSyncState.sync?.sync_progress);
   const maybePeerCounts = availableValue(maybeSyncState.peers?.peer_counts);
+  const blockHeight = Number(maybeProgress?.block_height ?? 0);
+  const connectedBlockHeight = Number(
+    maybeProgress?.connected_block_height ?? blockHeight,
+  );
+  const downloadedBlockHeight = Number(
+    maybeProgress?.downloaded_block_height ?? connectedBlockHeight,
+  );
   const recentPeers = availableValue(maybeSyncState.peers?.recent_peers)?.map(
     runtimePeerTelemetry,
   ) ?? [];
   return {
-    blockHeight: Number(maybeProgress?.block_height ?? 0),
+    blockHeight,
+    connectedBlockHeight,
+    downloadedBlockHeight,
     headerHeight: Number(maybeProgress?.header_height ?? 0),
     lifecycle: String(availableValue(maybeSyncState.sync?.lifecycle) ?? "unavailable"),
+    maybeConnectedBlockHash: valueAsNullableString(
+      maybeProgress?.maybe_connected_block_hash,
+    ),
+    maybeDownloadedBlockHash: valueAsNullableString(
+      maybeProgress?.maybe_downloaded_block_hash,
+    ),
     maybeLastError: valueAsNullableString(availableValue(maybeSyncState.sync?.last_error)),
     messagesProcessed: Number(maybeProgress?.messages_processed ?? 0),
     outboundPeers: Number(maybePeerCounts?.outbound ?? 0),
@@ -1132,6 +1196,25 @@ function noProgressCauseFromPeer(peer: RuntimePeerTelemetry): NoProgressCause | 
   }
   if (reason === "connect") {
     return "tcp_connection_failure";
+  }
+  if (reason === "block_notfound") {
+    return "peer_notfound";
+  }
+  if (reason === "malformed_block") {
+    return "malformed_block";
+  }
+  if (reason === "invalid_block") {
+    return "invalid_block";
+  }
+  if (
+    reason === "duplicate_block" ||
+    reason === "disconnected_block" ||
+    reason === "non_extending_block"
+  ) {
+    return "duplicate_or_disconnected_block";
+  }
+  if (reason === "resource_limit") {
+    return "resource_limit";
   }
   if (reason === "invalid_data") {
     return "validation_failure";
@@ -1215,10 +1298,18 @@ function noProgressCauseFromFinalStatus(
   if (maybeLastError.includes("storage") || maybeLastError.includes("fjall")) {
     return "storage_failure";
   }
+  if (maybeLastError.includes("resource")) {
+    return "resource_limit";
+  }
+  if (maybeLastError.includes("malformed block")) {
+    return "malformed_block";
+  }
+  if (maybeLastError.includes("invalid block") || maybeLastError.includes("bad block")) {
+    return "invalid_block";
+  }
   if (
     maybeLastError.includes("invalid") ||
-    maybeLastError.includes("validation") ||
-    maybeLastError.includes("bad block")
+    maybeLastError.includes("validation")
   ) {
     return "validation_failure";
   }
@@ -1247,8 +1338,41 @@ function firstHeaderProgressEvidence(
   };
 }
 
+function firstBlockProgressEvidence(
+  maybeSnapshots: { before: SyncStatusSnapshot; after: SyncStatusSnapshot } | null,
+  maybeFinalStatus: FinalStatusSummary | null,
+  kind: FirstBlockProgressKind,
+): FirstBlockProgressEvidence | null {
+  if (maybeSnapshots === null) {
+    return null;
+  }
+  const maybePeer = maybeFinalStatus?.recentPeers.find(
+    (peer) => peer.blocksReceived > 0,
+  ) ?? null;
+  return {
+    after: maybeSnapshots.after,
+    before: maybeSnapshots.before,
+    blockHash:
+      kind === "connected"
+        ? maybeSnapshots.after.maybeConnectedBlockHash
+        : maybeSnapshots.after.maybeDownloadedBlockHash,
+    height:
+      kind === "connected"
+        ? maybeSnapshots.after.connectedBlockHeight
+        : maybeSnapshots.after.downloadedBlockHeight,
+    kind,
+    maybeLastActivityUnixSeconds: maybePeer?.maybeLastActivityUnixSeconds ?? null,
+    maybePeer: maybePeer?.peer ?? null,
+    maybeResolvedEndpoint: maybePeer?.maybeResolvedEndpoint ?? null,
+    maybeSource: maybePeer?.source ?? null,
+    observedAtUnixSeconds: maybeSnapshots.after.capturedAtUnixSeconds,
+  };
+}
+
 function nextActionForCause(cause: NoProgressCause | null): string {
   switch (cause) {
+    case "awaiting_blocks":
+      return "Keep the daemon running or retry with peers that can deliver and validate block bodies; Phase 57 passes only after connected block height increases.";
     case "dns_resolution_failure":
       return "Fix DNS resolution or retry with --manual-peer=HOST[:PORT] to bypass DNS seeds.";
     case "tcp_connection_failure":
@@ -1261,6 +1385,16 @@ function nextActionForCause(cause: NoProgressCause | null): string {
       return "Inspect the daemon last error and durable sync status before retrying; invalid peer data may require a different peer or a later validation fix.";
     case "storage_failure":
       return "Inspect the datadir storage error, free space, and recovery marker before retrying.";
+    case "peer_notfound":
+      return "Retry with a different peer or more peers; the selected peer reported the requested block as unavailable.";
+    case "malformed_block":
+      return "Inspect peer diagnostics and retry with a different peer; malformed block payloads are rejected and uncredited.";
+    case "invalid_block":
+      return "Inspect validation diagnostics and retry with another peer before trusting the block response.";
+    case "duplicate_or_disconnected_block":
+      return "Review peer outcomes for duplicate, disconnected, or non-extending block responses, then retry with peers advertising the best-chain data.";
+    case "resource_limit":
+      return "Raise the configured block in-flight or sync loop bounds for this explicit review run, or reduce competing load.";
     case "operator_cancellation":
       return "Review the partial report, then rerun the same command when ready.";
     case "timeout":
@@ -1335,11 +1469,11 @@ function markdownReport(report: SmokeReport): string {
     .join("\n");
   const snapshotRows =
     report.snapshots.length === 0
-      ? "| - | - | - | - | - | - | - |\n"
+      ? "| - | - | - | - | - | - | - | - | - | - |\n"
       : report.snapshots
           .map(
             (snapshot) =>
-              `| ${snapshot.capturedAtUnixSeconds} | ${snapshot.lifecycle} | ${snapshot.phase} | ${snapshot.headerHeight} | ${snapshot.blockHeight} | ${snapshot.outboundPeers} | ${escapeTableCell(snapshot.maybeLastError ?? "-")} |`,
+              `| ${snapshot.capturedAtUnixSeconds} | ${snapshot.lifecycle} | ${snapshot.phase} | ${snapshot.headerHeight} | ${snapshot.downloadedBlockHeight} | ${snapshot.connectedBlockHeight} | ${escapeTableCell(snapshot.maybeDownloadedBlockHash ?? "-")} | ${escapeTableCell(snapshot.maybeConnectedBlockHash ?? "-")} | ${snapshot.outboundPeers} | ${escapeTableCell(snapshot.maybeLastError ?? "-")} |`,
           )
           .join("\n");
   const endpointRows =
@@ -1365,6 +1499,11 @@ function markdownReport(report: SmokeReport): string {
     firstHeaderProgress === null
       ? "Unavailable"
       : `observed at ${firstHeaderProgress.observedAtUnixSeconds}: ${firstHeaderProgress.before.headerHeight} -> ${firstHeaderProgress.after.headerHeight} via ${escapeInline(firstHeaderProgress.maybePeer ?? "unknown peer")} (${firstHeaderProgress.maybeSource ?? "unknown source"}, endpoint ${escapeInline(firstHeaderProgress.maybeResolvedEndpoint ?? "unavailable")})`;
+  const firstBlockProgress = report.result.firstBlockProgress;
+  const firstBlockProgressDetail =
+    firstBlockProgress === null
+      ? "Unavailable"
+      : `${firstBlockProgress.kind} observed at ${firstBlockProgress.observedAtUnixSeconds}: height ${firstBlockProgress.height}, block hash ${escapeInline(firstBlockProgress.blockHash ?? "unavailable")}, downloaded ${firstBlockProgress.before.downloadedBlockHeight} -> ${firstBlockProgress.after.downloadedBlockHeight}, connected ${firstBlockProgress.before.connectedBlockHeight} -> ${firstBlockProgress.after.connectedBlockHeight}, peer ${escapeInline(firstBlockProgress.maybePeer ?? "unknown peer")} (${firstBlockProgress.maybeSource ?? "unknown source"}, endpoint ${escapeInline(firstBlockProgress.maybeResolvedEndpoint ?? "unavailable")})`;
 
   return `# Open Bitcoin Live Mainnet Smoke Report
 
@@ -1378,6 +1517,7 @@ function markdownReport(report: SmokeReport): string {
 - Header delta: ${report.result.headerDelta}
 - Block delta: ${report.result.blockDelta}
 - First header progress: ${firstHeaderProgressDetail}
+- First block progress: ${firstBlockProgressDetail}
 
 ## Options
 
@@ -1404,8 +1544,8 @@ ${endpointRows}
 
 ## Snapshots
 
-| Captured At | Lifecycle | Phase | Header Height | Block Height | Outbound Peers | Last Error |
-| --- | --- | --- | ---: | ---: | ---: | --- |
+| Captured At | Lifecycle | Phase | Header Height | Downloaded Block Height | Connected Block Height | Downloaded Block Hash | Connected Block Hash | Outbound Peers | Last Error |
+| --- | --- | --- | ---: | ---: | ---: | --- | --- | ---: | --- |
 ${snapshotRows}
 
 ## Commands
@@ -1420,6 +1560,10 @@ ${snapshotRows}
 - Phase: ${report.final_status?.phase ?? "Unavailable"}
 - Header height: ${report.final_status?.headerHeight ?? 0}
 - Block height: ${report.final_status?.blockHeight ?? 0}
+- Downloaded block height: ${report.final_status?.downloadedBlockHeight ?? 0}
+- Connected block height: ${report.final_status?.connectedBlockHeight ?? 0}
+- Downloaded block hash: ${report.final_status?.maybeDownloadedBlockHash ?? "Unavailable"}
+- Connected block hash: ${report.final_status?.maybeConnectedBlockHash ?? "Unavailable"}
 - Messages processed: ${report.final_status?.messagesProcessed ?? 0}
 - Outbound peers: ${report.final_status?.outboundPeers ?? 0}
 - Last error: ${report.final_status?.maybeLastError ?? "Unavailable"}
@@ -1513,6 +1657,7 @@ function preflightFailureReport(
     },
     result: {
       blockDelta: 0,
+      firstBlockProgress: null,
       firstHeaderProgress: null,
       headerDelta: 0,
       maybeNoProgressCause: null,
@@ -1593,7 +1738,16 @@ async function main(): Promise<void> {
     "No header or block progress was observed before timeout. Check outbound network access, DNS reachability, local disk headroom, and system time.";
   let headerDelta = 0;
   let blockDelta = 0;
+  let downloadedBlockDelta = 0;
   let maybeFirstHeaderProgressSnapshots: {
+    before: SyncStatusSnapshot;
+    after: SyncStatusSnapshot;
+  } | null = null;
+  let maybeFirstDownloadedBlockProgressSnapshots: {
+    before: SyncStatusSnapshot;
+    after: SyncStatusSnapshot;
+  } | null = null;
+  let maybeFirstConnectedBlockProgressSnapshots: {
     before: SyncStatusSnapshot;
     after: SyncStatusSnapshot;
   } | null = null;
@@ -1647,16 +1801,34 @@ async function main(): Promise<void> {
       }
 
       headerDelta = snapshot.headerHeight - initialSnapshot.headerHeight;
-      blockDelta = snapshot.blockHeight - initialSnapshot.blockHeight;
+      downloadedBlockDelta =
+        snapshot.downloadedBlockHeight - initialSnapshot.downloadedBlockHeight;
+      blockDelta =
+        snapshot.connectedBlockHeight - initialSnapshot.connectedBlockHeight;
       if (headerDelta > 0 && maybeFirstHeaderProgressSnapshots === null) {
         maybeFirstHeaderProgressSnapshots = {
           after: snapshot,
           before: initialSnapshot,
         };
       }
-      if (headerDelta > 0 || blockDelta > 0) {
+      if (
+        downloadedBlockDelta > 0 &&
+        maybeFirstDownloadedBlockProgressSnapshots === null
+      ) {
+        maybeFirstDownloadedBlockProgressSnapshots = {
+          after: snapshot,
+          before: initialSnapshot,
+        };
+      }
+      if (blockDelta > 0 && maybeFirstConnectedBlockProgressSnapshots === null) {
+        maybeFirstConnectedBlockProgressSnapshots = {
+          after: snapshot,
+          before: initialSnapshot,
+        };
+      }
+      if (blockDelta > 0) {
         resultStatus = "passed";
-        resultMessage = `Observed mainnet progress through the daemon status surface (header delta ${headerDelta}, block delta ${blockDelta}).`;
+        resultMessage = `Observed first connected mainnet block progress through the daemon status surface (header delta ${headerDelta}, connected block delta ${blockDelta}).`;
         break;
       }
 
@@ -1691,14 +1863,36 @@ async function main(): Promise<void> {
     maybeFirstHeaderProgressSnapshots,
     maybeFinalStatus,
   );
+  const maybeFirstConnectedBlockProgress = firstBlockProgressEvidence(
+    maybeFirstConnectedBlockProgressSnapshots,
+    maybeFinalStatus,
+    "connected",
+  );
+  const maybeFirstDownloadedBlockProgress = firstBlockProgressEvidence(
+    maybeFirstDownloadedBlockProgressSnapshots,
+    maybeFinalStatus,
+    "downloaded",
+  );
+  const maybeFirstBlockProgress =
+    maybeFirstConnectedBlockProgress ?? maybeFirstDownloadedBlockProgress;
+
+  const noProgressCauseFromEvidence =
+    resultStatus === "no_progress" &&
+    (maybeFirstBlockProgress !== null || maybeFirstHeaderProgress !== null)
+      ? "awaiting_blocks"
+      : null;
 
   if (resultStatus === "no_progress") {
-    const noProgressCause = classifyNoProgressCause(
-      endpointOutcomes,
-      maybeFinalStatus,
-      maybeLastProbeError,
-    );
-    if (maybeFinalStatus?.outboundPeers === 0) {
+    const noProgressCause =
+      noProgressCauseFromEvidence ??
+      classifyNoProgressCause(endpointOutcomes, maybeFinalStatus, maybeLastProbeError);
+    if (maybeFirstDownloadedBlockProgress !== null) {
+      resultMessage =
+        `Downloaded block progress was observed, but connected block height did not advance before timeout; typed no-progress cause: ${noProgressCause}.`;
+    } else if (maybeFirstHeaderProgress !== null) {
+      resultMessage =
+        `Header progress was observed, but no connected block progress was reached before timeout; typed no-progress cause: ${noProgressCause}.`;
+    } else if (maybeFinalStatus?.outboundPeers === 0) {
       resultMessage =
         `No header or block progress was observed before timeout. Final durable sync status still showed 0 outbound peers; typed no-progress cause: ${noProgressCause}.`;
     } else if (maybeLastProbeError !== null) {
@@ -1710,7 +1904,8 @@ async function main(): Promise<void> {
     resultStatus === "cancelled"
       ? "operator_cancellation"
       : resultStatus === "no_progress"
-        ? classifyNoProgressCause(endpointOutcomes, maybeFinalStatus, maybeLastProbeError)
+        ? noProgressCauseFromEvidence ??
+          classifyNoProgressCause(endpointOutcomes, maybeFinalStatus, maybeLastProbeError)
         : resultStatus === "runtime_failed"
           ? noProgressCauseFromFinalStatus(maybeFinalStatus)
           : null;
@@ -1751,6 +1946,7 @@ async function main(): Promise<void> {
     },
     result: {
       blockDelta,
+      firstBlockProgress: maybeFirstBlockProgress,
       firstHeaderProgress: maybeFirstHeaderProgress,
       headerDelta,
       maybeNoProgressCause,
