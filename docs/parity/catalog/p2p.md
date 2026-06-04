@@ -35,6 +35,9 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
 - daemon sync advances validated headers through bounded multi-batch rounds,
   stops on target header height, no progress, or max-round diagnosis, and keeps
   durable header progress visible through sync status after restart
+- bounded daemon block download requests, tracks, and caps in-flight best-chain
+  block bodies, then records first validated block connect evidence through
+  opt-in live-smoke status snapshots
 
 ## Knots sources
 
@@ -71,6 +74,11 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
 - bounded daemon header sync now records first-header-progress evidence in
   opt-in live-smoke reports while deterministic tests cover accepted batches,
   rejected headers, no-progress diagnosis, and restart-visible status
+- bounded daemon block download mirrors Knots-style `getdata`/`notfound`
+  attribution while duplicate, invalid, malformed, non-extending,
+  and disconnected no-credit block responses stay peer-attributed without
+  advancing active chainstate; public-network checks remain opt-in operator
+  evidence outside `bash scripts/verify.sh`
 
 ## First-party implementation
 

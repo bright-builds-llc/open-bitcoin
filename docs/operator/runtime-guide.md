@@ -161,6 +161,38 @@ Important boundaries:
   live-mainnet review evidence. It is opt-in, writes local reports, and stays
   outside the default `bash scripts/verify.sh` gate.
 
+### Live-smoke block-progress evidence
+
+The live-mainnet smoke report now writes `result.firstBlockProgress` when the
+fresh status snapshots observe downloaded or connected block progress. The
+object includes `kind: "downloaded" | "connected"`, `height`, `blockHash`,
+`observedAtUnixSeconds`, `before`, `after`, `maybePeer`, `maybeSource`, and
+`maybeResolvedEndpoint`.
+
+Phase 57 pass evidence requires `kind: "connected"` and a connected block
+height increase in the before/after durable status snapshots. downloaded-only evidence
+is still useful because it proves the daemon received a best-chain block body,
+but it is diagnosed as `awaiting_blocks` until active chainstate advances.
+Header-only progress is also retained in `result.firstHeaderProgress` while
+remaining a Phase 57 `awaiting_blocks` no-progress result.
+
+Block-specific no-progress causes use these operator actions:
+
+- `awaiting_blocks`: keep the daemon running or retry with peers that can
+  deliver and validate block bodies.
+- `peer_notfound`: retry with a different peer or more peers when the selected
+  peer reports the requested block as unavailable.
+- `malformed_block`: inspect peer diagnostics and retry with a different peer;
+  malformed block payloads are rejected and uncredited.
+- `invalid_block`: inspect validation diagnostics and retry with another peer
+  before trusting the block response.
+- `duplicate_or_disconnected_block`: review peer outcomes for duplicate,
+  disconnected, or non-extending block responses, then retry with peers
+  advertising best-chain data. Durable peer reason `disconnected_block` maps to
+  this no-credit diagnosis.
+- `resource_limit`: raise the configured block in-flight or sync-loop bounds
+  for the explicit review run, or reduce competing load.
+
 ### Runtime resource bounds
 
 The sync loop has a bounded public-network resource envelope:
