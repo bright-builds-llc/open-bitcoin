@@ -94,7 +94,7 @@ completed: 2026-06-03
 - **Verification:** `cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node block_inflight --all-features`
 - **Committed in:** `9d8c0aa`
 
----
+***
 
 **Total deviations:** 1 auto-fixed (Rule 1)
 **Impact on plan:** The fix was required for BLK-04 correctness and stayed within the block request cleanup surface.
@@ -131,6 +131,6 @@ Phase 57 can continue with progress projection and operator-surface work knowing
 - `FOUND:9d8c0aa`
 - Worktree scope confirmed: only this summary plus pre-existing orchestrator-owned `.planning/STATE.md` and `.planning/ROADMAP.md` remain uncommitted.
 
----
+***
 *Phase: 57-block-download-and-connect-progress*
 *Completed: 2026-06-03*

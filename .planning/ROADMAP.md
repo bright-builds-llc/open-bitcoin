@@ -81,7 +81,12 @@ to the default `bash scripts/verify.sh` gate.
   2. Opt-in live-smoke evidence records the first validated block connection beyond genesis or a configured checkpoint-adjacent target when reachable peers provide the data.
   3. If block progress is not reached, the live-smoke report records a typed diagnosis with peer endpoint, reason, and next operator action.
   4. Missing, `notfound`, malformed, invalid, duplicate, or disconnected block responses remain peer-attributed and do not advance active chainstate.
-**Plans**: none yet.
+**Plans**: 4 plans
+Plans:
+- [x] 57-01-PLAN.md - Bound best-chain block requests and in-flight cleanup.
+- [x] 57-02-PLAN.md - Connect the first valid block and type no-credit block responses.
+- [x] 57-03-PLAN.md - Surface durable downloaded and connected block hash evidence.
+- [x] 57-04-PLAN.md - Add first-block live-smoke evidence, diagnoses, and docs.
 
 ### Phase 58: Same-Datadir Restart and Resume Evidence
 
@@ -141,7 +146,7 @@ traceability.
 | 54. Peer Compatibility Baseline and Diagnostic Harness | 1/1 | Complete    | 2026-06-02 |
 | 55. Outbound Handshake Compatibility Fixes | 1/1 | Complete    | 2026-06-03 |
 | 56. Header IBD Convergence | 1/1 | Complete    | 2026-06-03 |
-| 57. Block Download and Connect Progress | 0/0 | Not started | - |
+| 57. Block Download and Connect Progress | 4/4 | Complete    | 2026-06-04 |
 | 58. Same-Datadir Restart and Resume Evidence | 0/0 | Not started | - |
 | 59. Operator Evidence, Threat Model, and Release Boundaries | 0/0 | Not started | - |
 

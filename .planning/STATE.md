@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Mainnet IBD Convergence and Peer Compatibility
 status: ready_to_plan
-stopped_at: Phase 56 complete; ready for Phase 57 discussion
-last_updated: "2026-06-03T13:05:17.692Z"
-last_activity: 2026-06-03
+stopped_at: Phase 57 complete; ready for Phase 58 discussion
+last_updated: "2026-06-04T10:28:39.933Z"
+last_activity: 2026-06-04
 progress:
   total_phases: 6
-  completed_phases: 3
-  total_plans: 3
-  completed_plans: 3
-  percent: 50
+  completed_phases: 4
+  total_plans: 7
+  completed_plans: 7
+  percent: 67
 ---
 
 # Project State
@@ -25,18 +25,18 @@ See: .planning/PROJECT.md (updated 2026-06-02)
 
 ## Current Position
 
-Phase: 57 - Block Download and Connect Progress
+Phase: 58 - Same-Datadir Restart and Resume Evidence
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-06-03
+Last activity: 2026-06-04
 
-Progress: [#####-----] 50%
+Progress: [#######---] 67%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 3
+- Total plans completed: 7
 - Average duration: -
 - Total execution time: -
 
@@ -47,7 +47,7 @@ Progress: [#####-----] 50%
 | 54 | 1 | - | - |
 | 55 | 1 | - | - |
 | 56 | 1 | - | - |
-| 57 | 0 | not started | - |
+| 57 | 4 | - | - |
 | 58 | 0 | not started | - |
 | 59 | 0 | not started | - |
 
@@ -85,7 +85,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Start Phase 57 with `/gsd-discuss-phase 57`.
+- Start Phase 58 with `/gsd-discuss-phase 58`.
 
 ### Blockers/Concerns
 
