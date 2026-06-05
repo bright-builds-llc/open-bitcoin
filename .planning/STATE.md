@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Unattended Mainnet Node Operation Readiness
-status: defining_requirements
-stopped_at: v1.5 milestone started
-last_updated: "2026-06-05T23:06:00Z"
+status: ready_to_plan
+stopped_at: v1.5 roadmap created
+last_updated: "2026-06-05T23:19:04Z"
 last_activity: 2026-06-05
 progress:
-  total_phases: 0
+  total_phases: 8
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-05)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Defining requirements for v1.5 Unattended Mainnet Node Operation Readiness
+**Current focus:** Phase 60 - Unattended Sync Loop Control
 
 ## Current Position
 
 Milestone: v1.5 Unattended Mainnet Node Operation Readiness
-Phase: Not started (defining requirements)
-Plan: -
-Status: Defining requirements
-Last activity: 2026-06-05 - Milestone v1.5 started
+Phase: 60 of 67 (Unattended Sync Loop Control)
+Plan: Not planned yet
+Status: Ready to plan
+Last activity: 2026-06-05 - v1.5 roadmap created with 8 phases and 23/23 requirements mapped
 
 Progress: [----------] 0%
 
@@ -37,25 +37,27 @@ Progress: [----------] 0%
 
 **Velocity:**
 
-- Total plans completed: 15
-- Average duration: -
-- Total execution time: -
+- Current milestone plans completed: 0
+- Current milestone plan count: TBD during phase planning
+- Prior milestone plans completed: 15 in v1.4
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 54 | 1 | - | - |
-| 55 | 1 | - | - |
-| 56 | 1 | - | - |
-| 57 | 4 | - | - |
-| 58 | 3 | - | - |
-| 59 | 5 | - | - |
+| 60 | TBD | - | - |
+| 61 | TBD | - | - |
+| 62 | TBD | - | - |
+| 63 | TBD | - | - |
+| 64 | TBD | - | - |
+| 65 | TBD | - | - |
+| 66 | TBD | - | - |
+| 67 | TBD | - | - |
 
 **Recent Trend:**
 
-- Last 5 plans: 59-01, 59-02, 59-03, 59-04, 59-05
-- Trend: v1.4 closed with operator truth-surface consistency, redacted support evidence, repo-local docs, threat/release boundaries, and deterministic release-boundary checks.
+- Last 5 completed plans: 59-01, 59-02, 59-03, 59-04, 59-05
+- Trend: v1.5 is ready to plan from Phase 60.
 
 ## Accumulated Context
 
@@ -67,19 +69,21 @@ Recent decisions affecting current work:
 - [v1.3]: Keep public-mainnet evidence opt-in and outside the default `bash scripts/verify.sh` gate.
 - [v1.3]: Preserve scope boundaries: no inbound serving, transaction relay, production-funds wallet, migration apply mode, packaging, hosted dashboard, GUI, or unattended production-node claim.
 - [v1.4]: Scope the milestone to mainnet IBD convergence and public peer compatibility, while continuing to defer inbound serving, transaction relay, production-funds wallet, migration apply mode, packaging, hosted dashboard, GUI, and unattended production-node claims.
-- [v1.4]: Continue phase numbering from v1.3; active milestone starts at Phase 54.
 - [v1.4]: Skip broad ecosystem research for this milestone and use targeted Knots/protocol comparison during phase planning.
 - [v1.5]: Scope the milestone to bounded unattended mainnet node operation readiness, while continuing to defer inbound serving, transaction relay, production-funds wallet, migration apply mode, packaging polish, hosted dashboard, GUI, and broad production-node claims.
+- [v1.5]: Continue phase numbering from v1.4; active milestone starts at Phase 60 and runs through Phase 67.
+- [v1.5]: Keep public-network long-run and service checks opt-in UAT evidence, not default `bash scripts/verify.sh` checks.
+- [v1.5]: Preserve `.planning/phases/` raw histories for v1.0, v1.3, and v1.4 parity and UAT traceability.
 - [Phase 55]: Daemon sync records completed outbound handshakes as connected peers and surfaces duplicate-version peers as typed, uncredited compatibility failures.
 - [Phase 56]: Header sync records bounded convergence stop reasons, supports optional target header height, and reports first-header-progress evidence in opt-in live smoke output.
 - [Phase 57]: Block download/connect progress is bounded, peer-attributed, and visible through durable downloaded/connected height and hash evidence.
 - [Phase 58]: Same-datadir restart/resume evidence is captured through deterministic durable-store tests and opt-in two-session live-smoke reporting.
-- [Phase 59]: v1.4 release claims are bounded by operator evidence, support bundle redaction, threat-model roots, parity docs, and deterministic release-boundary checks.
+- [Phase 59]: v1.4 release claims remain bounded by operator evidence, support bundle redaction, threat-model roots, parity docs, and deterministic release-boundary checks.
 
 ### Pending Todos
 
-- Define v1.5 requirements and roadmap from the supplied unattended node-operation scope.
-- Include an operator-facing CLI or script wrapper around the Phase 54 compatibility harness so contributors do not have to invoke the Rust harness path directly.
+- Plan Phase 60 with `/gsd-plan-phase 60`.
+- Carry the compatibility harness wrapper through Phase 66.
 
 ### Blockers/Concerns
 
@@ -89,6 +93,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-05T23:06:00Z
-Stopped at: v1.5 milestone started
-Resume file: .planning/PROJECT.md
+Last session: 2026-06-05T23:19:04Z
+Stopped at: v1.5 roadmap created
+Resume file: .planning/ROADMAP.md

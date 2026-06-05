@@ -90,12 +90,35 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
+| LOOP-01 | Phase 60 | Pending |
+| LOOP-02 | Phase 60 | Pending |
+| LOOP-03 | Phase 60 | Pending |
+| LOOP-04 | Phase 60 | Pending |
+| OBS-01 | Phase 62 | Pending |
+| OBS-02 | Phase 62 | Pending |
+| OBS-03 | Phase 65 | Pending |
+| OBS-04 | Phase 65 | Pending |
+| SVC-01 | Phase 63 | Pending |
+| SVC-02 | Phase 63 | Pending |
+| SVC-03 | Phase 64 | Pending |
+| SVC-04 | Phase 63 | Pending |
+| RR-01 | Phase 61 | Pending |
+| RR-02 | Phase 61 | Pending |
+| RR-03 | Phase 64 | Pending |
+| RR-04 | Phase 61 | Pending |
+| COMPAT-01 | Phase 66 | Pending |
+| COMPAT-02 | Phase 66 | Pending |
+| COMPAT-03 | Phase 66 | Pending |
+| REL-01 | Phase 67 | Pending |
+| REL-02 | Phase 67 | Pending |
+| REL-03 | Phase 67 | Pending |
+| REL-04 | Phase 67 | Pending |
 
 **Coverage:**
 - v1.5 requirements: 23 total
-- Mapped to phases: 0
-- Unmapped: 23
+- Mapped to phases: 23
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-06-05*
-*Last updated: 2026-06-05 after v1.5 requirements definition*
+*Last updated: 2026-06-05 after v1.5 roadmap creation*
