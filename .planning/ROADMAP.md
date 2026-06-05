@@ -110,7 +110,12 @@ Plans:
   2. Support evidence summarizes compatibility diagnostics, selected live-smoke reports, peer outcomes, status snapshots, metrics, logs, config sources, and store health without raw sensitive data.
   3. Operator docs include repo-local Cargo and Bazel commands for deterministic checks, manual-peer live smoke, restart/resume review, support evidence, and pass/fail interpretation.
   4. Reviewer-facing threat model, parity docs, and release-readiness docs preserve the v1.4 opt-in outbound IBD claim boundary and keep public-network checks outside `bash scripts/verify.sh`.
-**Plans**: none yet.
+**Plans**: 4 plans
+Plans:
+- [ ] 59-01-PLAN.md — Assert operator truth consistency across status, dashboard, metrics/logs, RPC, and live-smoke fixtures.
+- [ ] 59-02-PLAN.md — Extend redacted support evidence summaries for v1.4 live-smoke fields.
+- [ ] 59-03-PLAN.md — Publish v1.4 operator docs, threat model, parity roots, and claim boundaries.
+- [ ] 59-04-PLAN.md — Add deterministic v1.4 release-boundary checker and verification wiring.
 
 ## Completed Milestones
 
