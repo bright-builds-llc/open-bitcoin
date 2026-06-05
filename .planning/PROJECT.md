@@ -18,11 +18,18 @@ The repository now includes durable Fjall-backed runtime storage, real-network s
 
 Milestone archives live under `.planning/milestones/`, including shipped roadmap and requirements archives, final audit artifacts where they exist, and raw phase histories for v1.1 and v1.2. Raw v1.0, v1.3, and v1.4 phase histories remain in `.planning/phases/` for parity and UAT traceability. One residual risk remains from the v1.1 audit: dashboard pseudoterminal repaint and raw-input behavior is still a manual validation surface rather than an end-to-end automated regression. v1.2 did not create a dedicated milestone audit artifact; Phase 40 closeout and Phase 41 security audit, verification, and UAT are the closeout evidence trail. v1.3 archived with a `ready_for_archive` milestone audit and closes public-network evidence through fresh diagnosed-blocker evidence rather than a successful live-progress claim. v1.4 archived with a `tech_debt` milestone audit: implementation and integration coverage passed, while planning traceability was corrected during archive prep and a future operator wrapper around the compatibility harness remains optional cleanup.
 
-## Next Milestone Goals
+## Current Milestone: v1.5 Unattended Mainnet Node Operation Readiness
 
-No active milestone is defined. Start the next milestone with `/gsd-new-milestone` so requirements, roadmap phases, and planning context are created together.
+**Goal:** Make the opt-in `open-bitcoind` mainnet sync workflow bounded, restart-safe, and observable enough for extended unattended operator review without broadening the production-node claim.
 
-Likely future scope should be chosen deliberately from the remaining deferred areas: unattended production-node operation, inbound serving and address advertisement, transaction relay and mempool propagation, packaging and platform service support, production-funds wallet flows, or backup-aware migration apply mode.
+**Target features:**
+
+- Unattended daemon sync loop with explicit stop, retry, and backoff policy.
+- Long-run status, metrics, logs, and redacted support evidence for extended operator review.
+- launchd/systemd service lifecycle hardening for the opt-in daemon workflow.
+- Resource-bound and recovery behavior under extended sync runs.
+- Operator-facing CLI or script wrapper around the Phase 54 compatibility harness.
+- v1.5 release boundaries that avoid unsupported production-node, inbound-serving, relay, production-funds wallet, migration-apply, or packaging claims.
 
 ## Requirements
 
@@ -36,7 +43,9 @@ Likely future scope should be chosen deliberately from the remaining deferred ar
 
 ### Active
 
-- [ ] Define the next milestone requirements with `/gsd-new-milestone`.
+- [ ] v1.5 makes `open-bitcoind` capable of a bounded unattended mainnet sync loop for extended operator review.
+- [ ] v1.5 keeps public-network checks opt-in and outside default deterministic verification.
+- [ ] v1.5 preserves existing v1.4 release boundaries unless a requirement explicitly narrows or extends them.
 
 ### Out of Scope
 
@@ -87,6 +96,7 @@ Likely future scope should be chosen deliberately from the remaining deferred ar
 | Scope v1.2 to opt-in daemon initial block download | Full mainnet sync should first be proven through `open-bitcoind` headers, blocks, restart/resume, and observability before broader P2P, wallet, or production service claims | Shipped in v1.2 |
 | Scope v1.3 to public-mainnet proof and node hardening | The v1.2 live UAT did not observe header or block progress, so v1.3 needed to close that evidence gap before expanding wallet, inbound-serving, relay, packaging, or migration claims | Shipped in v1.3 with Phase 53 fresh diagnosed-blocker evidence; no successful live-progress claim was added |
 | Scope v1.4 to mainnet IBD convergence and peer compatibility | v1.3 closed cleanly through typed diagnosed-blocker evidence, so the next highest-leverage claim was successful opt-in live header, block, and restart/resume progress rather than inbound serving, relay, packaging, wallet, or migration apply mode | Shipped in v1.4 with compatibility, header, block, restart/resume, operator evidence, support redaction, threat-model, and release-boundary evidence |
+| Scope v1.5 to unattended mainnet node operation readiness | v1.4 proved bounded IBD progress and restart/resume evidence, so the next step is making the opt-in daemon workflow safe and observable for extended unattended operator review before expanding inbound serving, relay, wallet, migration apply, or packaging claims | Pending |
 
 ## Evolution
 
@@ -120,4 +130,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ---
-*Last updated: 2026-06-05 after v1.4 milestone completion*
+*Last updated: 2026-06-05 after v1.5 milestone start*
