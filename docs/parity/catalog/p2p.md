@@ -38,6 +38,9 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
 - bounded daemon block download requests, tracks, and caps in-flight best-chain
   block bodies, then records first validated block connect evidence through
   opt-in live-smoke status snapshots
+- opt-in same-datadir restart/resume evidence records
+  `result.restartResumeEvidence` with before/after durable header, downloaded
+  block, and connected block status after a fresh daemon launch
 
 ## Knots sources
 
@@ -79,6 +82,11 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
   and disconnected no-credit block responses stay peer-attributed without
   advancing active chainstate; public-network checks remain opt-in operator
   evidence outside `bash scripts/verify.sh`
+- same-datadir restart/resume review remains explicit operator evidence:
+  `--restart-after-progress` stops the first daemon after observed progress,
+  relaunches with the same selected datadir, and records
+  `restartResumeEvidence` without turning the daemon into an unattended
+  production full-sync service
 
 ## First-party implementation
 
@@ -99,6 +107,8 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
 - peer eviction, bans, resource-governance scoring, and timeout parity beyond
   the basic lifecycle surface
 - daemon-integrated, unattended public-network full sync through `open-bitcoind`
+- service-manager restart policy, unattended daemon supervision, and automatic
+  public-mainnet recovery loops
 - long-running socket orchestration and transport persistence beyond the current
   sync-runtime foundation
 

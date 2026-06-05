@@ -33,6 +33,7 @@ type Options = {
   minFreeGib: number;
   outputDir: string;
   pollSeconds: number;
+  restartAfterProgress: boolean;
   timeoutSeconds: number;
 };
 
@@ -62,6 +63,7 @@ type SyncStatusSnapshot = {
   lifecycle: string;
   maybeConnectedBlockHash: string | null;
   maybeDownloadedBlockHash: string | null;
+  maybeLastSuccessfulProgressUnixSeconds: number | null;
   maybeLastError: string | null;
   outboundPeers: number;
   paused: boolean;
@@ -134,6 +136,74 @@ type ReportStatus =
   | "no_progress"
   | "cancelled";
 
+type RestartStatus =
+  | "not_requested"
+  | "completed"
+  | "blocked_before_restart"
+  | "cancelled";
+
+type DuplicateConnectVerdict =
+  | "no_duplicate_connect_observed"
+  | "duplicate_connect_suspected"
+  | "unavailable";
+
+type RestartProgressSummary = {
+  connectedBlockHeight: number;
+  downloadedBlockHeight: number;
+  headerHeight: number;
+  lifecycle: string;
+  maybeConnectedBlockHash: string | null;
+  maybeDownloadedBlockHash: string | null;
+  maybeLastError: string | null;
+  maybeLastSuccessfulProgressUnixSeconds: number | null;
+  phase: string;
+};
+
+type RestartProgressDelta = {
+  connectedBlockDelta: number;
+  downloadedBlockDelta: number;
+  headerDelta: number;
+};
+
+type RestartPeerOutcomeSummary = {
+  connected: number;
+  failed: number;
+  failureCauses: NoProgressCause[];
+  handshook: number;
+  skipped: number;
+};
+
+type RecoveryDiagnosisCategory =
+  | "peer_incompatibility"
+  | "public_network_unreachable"
+  | "invalid_peer_data"
+  | "store_corruption"
+  | "store_incompatibility"
+  | "resource_exhaustion"
+  | "intentional_cancellation";
+
+type RecoveryDiagnosis = {
+  category: RecoveryDiagnosisCategory;
+  maybeLastError: string | null;
+  maybeNoProgressCause: NoProgressCause | null;
+  maybePeerFailureReason: string | null;
+  maybeStorageRecoveryAction: string | null;
+};
+
+type RestartResumeEvidence = {
+  afterRestart: RestartProgressSummary | null;
+  beforeRestart: RestartProgressSummary | null;
+  duplicateConnectVerdict: DuplicateConnectVerdict;
+  maybePostRestartProgressDelta: RestartProgressDelta | null;
+  peerOutcomeSummary: RestartPeerOutcomeSummary;
+  recoveryDiagnosis: RecoveryDiagnosis;
+  restartStatus: RestartStatus;
+  sameDatadir: {
+    requestedPathMatched: boolean;
+    resolvedPathMatched: boolean;
+  };
+};
+
 type FinalStatusSummary = {
   blockHeight: number;
   connectedBlockHeight: number;
@@ -142,6 +212,7 @@ type FinalStatusSummary = {
   lifecycle: string;
   maybeConnectedBlockHash: string | null;
   maybeDownloadedBlockHash: string | null;
+  maybeLastSuccessfulProgressUnixSeconds: number | null;
   maybeLastError: string | null;
   messagesProcessed: number;
   outboundPeers: number;
@@ -156,6 +227,10 @@ type SmokeReport = {
     finalStatus: string[];
     status: string[];
   };
+  daemon_sessions: {
+    daemon: string[];
+    status: string[];
+  }[];
   daemon: {
     maybeExitCode: number | null;
     maybeSignal: NodeJS.Signals | null;
@@ -173,6 +248,7 @@ type SmokeReport = {
     minFreeGib: number;
     outputDir: string;
     pollSeconds: number;
+    restartAfterProgress: boolean;
     timeoutSeconds: number;
   };
   network_preflight: {
@@ -192,6 +268,7 @@ type SmokeReport = {
     message: string;
     nextAction: string;
     progressDetected: boolean;
+    restartResumeEvidence: RestartResumeEvidence | null;
     status: ReportStatus;
   };
   schema_version: 2;
@@ -240,6 +317,7 @@ type DurableSyncStateJson = {
       maybe_downloaded_block_hash?: string | null;
       messages_processed?: number;
     }>;
+    last_successful_progress_unix_seconds?: FieldAvailability<number>;
   };
   updated_at_unix_seconds?: number;
 };
@@ -273,8 +351,39 @@ type RuntimePeerTelemetry = {
   state: string;
 };
 
+type SmokeSessionMode = "normal" | "until_progress" | "first_snapshot";
+
+type SmokeSessionResult = {
+  blockDelta: number;
+  daemonSpec: CommandSpec;
+  downloadedBlockDelta: number;
+  headerDelta: number;
+  maybeCancellationSignal: NodeJS.Signals | null;
+  maybeExitCode: number | null;
+  maybeFirstConnectedBlockProgressSnapshots: {
+    before: SyncStatusSnapshot;
+    after: SyncStatusSnapshot;
+  } | null;
+  maybeFirstDownloadedBlockProgressSnapshots: {
+    before: SyncStatusSnapshot;
+    after: SyncStatusSnapshot;
+  } | null;
+  maybeFirstHeaderProgressSnapshots: {
+    before: SyncStatusSnapshot;
+    after: SyncStatusSnapshot;
+  } | null;
+  maybeLastProbeError: string | null;
+  maybeSignal: NodeJS.Signals | null;
+  resultMessage: string;
+  resultStatus: ReportStatus;
+  snapshots: SyncStatusSnapshot[];
+  statusSpec: CommandSpec;
+  stderrTail: string;
+  stdoutTail: string;
+};
+
 function usage(): string {
-  return `Usage: bun run scripts/run-live-mainnet-smoke.ts --datadir=PATH [--config=PATH] [--manual-peer=HOST[:PORT]]... [--output-dir=PATH] [--timeout-seconds=N] [--poll-seconds=N] [--min-free-gib=N]
+  return `Usage: bun run scripts/run-live-mainnet-smoke.ts --datadir=PATH [--config=PATH] [--manual-peer=HOST[:PORT]]... [--output-dir=PATH] [--timeout-seconds=N] [--poll-seconds=N] [--min-free-gib=N] [--restart-after-progress]
 
 Launches an explicit opt-in live mainnet smoke flow, polls durable sync status, and writes local JSON/Markdown evidence reports.`;
 }
@@ -288,6 +397,7 @@ function parseArgs(argv: string[]): Options {
     minFreeGib: DEFAULT_MIN_FREE_GIB,
     outputDir: DEFAULT_OUTPUT_DIR,
     pollSeconds: DEFAULT_POLL_SECONDS,
+    restartAfterProgress: false,
     timeoutSeconds: DEFAULT_TIMEOUT_SECONDS,
   };
 
@@ -336,6 +446,10 @@ function parseArgs(argv: string[]): Options {
         arg.slice("--min-free-gib=".length),
         "--min-free-gib",
       );
+      continue;
+    }
+    if (arg === "--restart-after-progress") {
+      options.restartAfterProgress = true;
       continue;
     }
 
@@ -976,6 +1090,22 @@ function statusArgs(options: Options): string[] {
   return [];
 }
 
+function statusCommandForRpcPort(
+  repoRootPath: string,
+  options: Options,
+  rpcPort: number,
+): CommandSpec {
+  const statusSpec = statusCommand(repoRootPath, options);
+  statusSpec.args = [
+    "-rpcconnect=127.0.0.1",
+    `-rpcport=${rpcPort}`,
+    "-rpcuser=smoke",
+    "-rpcpassword=smoke",
+    "openbitcoinsyncstatus",
+  ];
+  return statusSpec;
+}
+
 function readSyncStatus(
   repoRootPath: string,
   commandSpec: CommandSpec,
@@ -1026,6 +1156,9 @@ function syncStatusSnapshotFromMetadata(metadata: RuntimeMetadataJson): SyncStat
     ),
     maybeDownloadedBlockHash: valueAsNullableString(
       maybeProgress?.maybe_downloaded_block_hash,
+    ),
+    maybeLastSuccessfulProgressUnixSeconds: availableValue(
+      maybeSyncState?.sync?.last_successful_progress_unix_seconds,
     ),
     maybeLastError: valueAsNullableString(availableValue(maybeSyncState?.sync?.last_error)),
     outboundPeers: Number(maybePeerCounts?.outbound ?? 0),
@@ -1117,6 +1250,9 @@ function finalStatusSummaryFromMetadata(metadata: RuntimeMetadataJson): FinalSta
     ),
     maybeDownloadedBlockHash: valueAsNullableString(
       maybeProgress?.maybe_downloaded_block_hash,
+    ),
+    maybeLastSuccessfulProgressUnixSeconds: availableValue(
+      maybeSyncState.sync?.last_successful_progress_unix_seconds,
     ),
     maybeLastError: valueAsNullableString(availableValue(maybeSyncState.sync?.last_error)),
     messagesProcessed: Number(maybeProgress?.messages_processed ?? 0),
@@ -1460,266 +1596,14 @@ function sleep(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-function markdownReport(report: SmokeReport): string {
-  const preflightRows = report.preflight.checks
-    .map(
-      (check) =>
-        `| ${check.name} | ${check.ok ? "passed" : "failed"} | ${escapeTableCell(check.detail)} |`,
-    )
-    .join("\n");
-  const snapshotRows =
-    report.snapshots.length === 0
-      ? "| - | - | - | - | - | - | - | - | - | - |\n"
-      : report.snapshots
-          .map(
-            (snapshot) =>
-              `| ${snapshot.capturedAtUnixSeconds} | ${snapshot.lifecycle} | ${snapshot.phase} | ${snapshot.headerHeight} | ${snapshot.downloadedBlockHeight} | ${snapshot.connectedBlockHeight} | ${escapeTableCell(snapshot.maybeDownloadedBlockHash ?? "-")} | ${escapeTableCell(snapshot.maybeConnectedBlockHash ?? "-")} | ${snapshot.outboundPeers} | ${escapeTableCell(snapshot.maybeLastError ?? "-")} |`,
-          )
-          .join("\n");
-  const endpointRows =
-    report.network_preflight.endpoint_outcomes.length === 0
-      ? "| - | - | - | - | - | - | - | - |\n"
-      : report.network_preflight.endpoint_outcomes
-          .map(
-            (outcome) =>
-              `| ${outcome.stage} | ${outcome.source} | ${escapeTableCell(outcome.address)} | ${outcome.state} | ${escapeTableCell(outcome.maybeResolvedEndpoint ?? "-")} | ${outcome.maybeFailureCause ?? "-"} | ${escapeTableCell(outcome.maybeError ?? "-")} | ${outcome.attemptedAtUnixSeconds} |`,
-          )
-          .join("\n");
-  const runtimePeerRows =
-    report.final_status?.recentPeers.length === 0 || report.final_status === null
-      ? "| - | - | - | - | - | - | - | - |\n"
-      : report.final_status.recentPeers
-          .map(
-            (peer) =>
-              `| ${escapeTableCell(peer.peer)} | ${peer.source} | ${peer.state} | ${peer.headersReceived} | ${peer.blocksReceived} | ${peer.maybeLastActivityUnixSeconds ?? "-"} | ${escapeTableCell(peer.maybeFailureReason ?? "-")} | ${escapeTableCell(peer.maybeError ?? "-")} |`,
-          )
-          .join("\n");
-  const firstHeaderProgress = report.result.firstHeaderProgress;
-  const firstHeaderProgressDetail =
-    firstHeaderProgress === null
-      ? "Unavailable"
-      : `observed at ${firstHeaderProgress.observedAtUnixSeconds}: ${firstHeaderProgress.before.headerHeight} -> ${firstHeaderProgress.after.headerHeight} via ${escapeInline(firstHeaderProgress.maybePeer ?? "unknown peer")} (${firstHeaderProgress.maybeSource ?? "unknown source"}, endpoint ${escapeInline(firstHeaderProgress.maybeResolvedEndpoint ?? "unavailable")})`;
-  const firstBlockProgress = report.result.firstBlockProgress;
-  const firstBlockProgressDetail =
-    firstBlockProgress === null
-      ? "Unavailable"
-      : `${firstBlockProgress.kind} observed at ${firstBlockProgress.observedAtUnixSeconds}: height ${firstBlockProgress.height}, block hash ${escapeInline(firstBlockProgress.blockHash ?? "unavailable")}, downloaded ${firstBlockProgress.before.downloadedBlockHeight} -> ${firstBlockProgress.after.downloadedBlockHeight}, connected ${firstBlockProgress.before.connectedBlockHeight} -> ${firstBlockProgress.after.connectedBlockHeight}, peer ${escapeInline(firstBlockProgress.maybePeer ?? "unknown peer")} (${firstBlockProgress.maybeSource ?? "unknown source"}, endpoint ${escapeInline(firstBlockProgress.maybeResolvedEndpoint ?? "unavailable")})`;
-
-  return `# Open Bitcoin Live Mainnet Smoke Report
-
-## Result
-
-- Status: \`${report.result.status}\`
-- Message: ${report.result.message}
-- Progress detected: ${report.result.progressDetected ? "yes" : "no"}
-- No-progress cause: ${report.result.maybeNoProgressCause ?? "Unavailable"}
-- Next action: ${report.result.nextAction}
-- Header delta: ${report.result.headerDelta}
-- Block delta: ${report.result.blockDelta}
-- First header progress: ${firstHeaderProgressDetail}
-- First block progress: ${firstBlockProgressDetail}
-
-## Options
-
-- Datadir: \`${report.options.datadir}\`
-- Config: ${report.options.maybeConfigPath === null ? "Unavailable" : `\`${report.options.maybeConfigPath}\``}
-- Generated config: ${report.options.maybeGeneratedConfigPath === null ? "Unavailable" : `\`${report.options.maybeGeneratedConfigPath}\``}
-- Manual peers: ${report.options.manualPeers.length === 0 ? "Unavailable" : report.options.manualPeers.map((peer) => `\`${peer}\``).join(", ")}
-- Output directory: \`${report.options.outputDir}\`
-- Timeout: ${report.options.timeoutSeconds}s
-- Poll interval: ${report.options.pollSeconds}s
-- Minimum free disk floor: ${report.options.minFreeGib} GiB
-
-## Preflight
-
-| Check | Result | Detail |
-| --- | --- | --- |
-${preflightRows}
-
-## Network Endpoint Outcomes
-
-| Stage | Source | Address | State | Resolved Endpoint | Cause | Error | Attempted At |
-| --- | --- | --- | --- | --- | --- | --- | ---: |
-${endpointRows}
-
-## Snapshots
-
-| Captured At | Lifecycle | Phase | Header Height | Downloaded Block Height | Connected Block Height | Downloaded Block Hash | Connected Block Hash | Outbound Peers | Last Error |
-| --- | --- | --- | ---: | ---: | ---: | --- | --- | ---: | --- |
-${snapshotRows}
-
-## Commands
-
-- Daemon: \`${[...report.commands.daemon].join(" ")}\`
-- Status: \`${[...report.commands.status].join(" ")}\`
-- Final status: \`${[...report.commands.finalStatus].join(" ")}\`
-
-## Final Durable Status
-
-- Lifecycle: ${report.final_status?.lifecycle ?? "Unavailable"}
-- Phase: ${report.final_status?.phase ?? "Unavailable"}
-- Header height: ${report.final_status?.headerHeight ?? 0}
-- Block height: ${report.final_status?.blockHeight ?? 0}
-- Downloaded block height: ${report.final_status?.downloadedBlockHeight ?? 0}
-- Connected block height: ${report.final_status?.connectedBlockHeight ?? 0}
-- Downloaded block hash: ${report.final_status?.maybeDownloadedBlockHash ?? "Unavailable"}
-- Connected block hash: ${report.final_status?.maybeConnectedBlockHash ?? "Unavailable"}
-- Messages processed: ${report.final_status?.messagesProcessed ?? 0}
-- Outbound peers: ${report.final_status?.outboundPeers ?? 0}
-- Last error: ${report.final_status?.maybeLastError ?? "Unavailable"}
-
-## Runtime Peer Contributions
-
-| Peer | Source | State | Headers Accepted | Blocks Accepted | Last Activity | Failure Reason | Error |
-| --- | --- | --- | ---: | ---: | ---: | --- | --- |
-${runtimePeerRows}
-
-## Daemon Output Tail
-
-### stdout
-
-\`\`\`
-${report.daemon.stdoutTail.trim()}
-\`\`\`
-
-### stderr
-
-\`\`\`
-${report.daemon.stderrTail.trim()}
-\`\`\`
-`;
-}
-
-function escapeTableCell(value: string): string {
-  return value.replaceAll("|", "\\|").replaceAll("\n", "<br>");
-}
-
-function escapeInline(value: string): string {
-  return value.replaceAll("`", "\\`").replaceAll("\n", " ");
-}
-
-function writeReportFiles(repoRootPath: string, report: SmokeReport): { jsonPath: string; markdownPath: string } {
-  const absoluteOutputDir = path.resolve(repoRootPath, report.options.outputDir);
-  mkdirSync(absoluteOutputDir, { recursive: true });
-  const jsonPath = path.join(absoluteOutputDir, `${REPORT_STEM}.json`);
-  const markdownPath = path.join(absoluteOutputDir, `${REPORT_STEM}.md`);
-
-  writeFileSync(jsonPath, `${JSON.stringify(report, null, 2)}\n`);
-  writeFileSync(markdownPath, `${markdownReport(report)}\n`);
-
-  return { jsonPath, markdownPath };
-}
-
-function preflightFailureReport(
+async function runSmokeSession(
+  repoRootPath: string,
   options: Options,
-  checks: PreflightCheck[],
-  daemonSpec: CommandSpec,
-  statusSpec: CommandSpec,
-  endpointOutcomes: EndpointOutcome[],
-): SmokeReport {
-  const message = checks
-    .filter((check) => !check.ok)
-    .map((check) => check.detail)
-    .join(" ");
-  return {
-    baseline: BASELINE,
-    commands: {
-      daemon: [daemonSpec.command, ...daemonSpec.args],
-      finalStatus: [],
-      status: [statusSpec.command, ...statusSpec.args],
-    },
-    daemon: {
-      maybeExitCode: null,
-      maybeSignal: null,
-      stderrTail: "",
-      stdoutTail: "",
-    },
-    final_status: null,
-    generated_at_unix_seconds: Math.floor(Date.now() / 1000),
-    kind: "live_mainnet_smoke",
-    options: {
-      datadir: options.datadir,
-      manualPeers: options.manualPeers,
-      maybeConfigPath: options.maybeConfigPath,
-      maybeGeneratedConfigPath: options.maybeGeneratedConfigPath,
-      minFreeGib: options.minFreeGib,
-      outputDir: options.outputDir,
-      pollSeconds: options.pollSeconds,
-      timeoutSeconds: options.timeoutSeconds,
-    },
-    network_preflight: {
-      completed: false,
-      endpoint_outcomes: endpointOutcomes,
-    },
-    preflight: {
-      checks,
-      passed: false,
-    },
-    result: {
-      blockDelta: 0,
-      firstBlockProgress: null,
-      firstHeaderProgress: null,
-      headerDelta: 0,
-      maybeNoProgressCause: null,
-      message,
-      nextAction: "Fix the failed local preflight checks, then rerun the live smoke command.",
-      progressDetected: false,
-      status: "preflight_failed",
-    },
-    schema_version: 2,
-    snapshots: [],
-  };
-}
-
-async function main(): Promise<void> {
-  const repoRootPath = repoRoot();
-  const options = optionsWithGeneratedManualPeerConfig(
-    repoRootPath,
-    parseArgs(process.argv.slice(2)),
-  );
-
+  mode: SmokeSessionMode,
+): Promise<SmokeSessionResult> {
   const rpcPort = await findFreePort();
   const daemonSpec = daemonCommand(repoRootPath, options, rpcPort);
-  const statusSpec = statusCommand(repoRootPath, options);
-  statusSpec.args = [
-    "-rpcconnect=127.0.0.1",
-    `-rpcport=${rpcPort}`,
-    "-rpcuser=smoke",
-    "-rpcpassword=smoke",
-    "openbitcoinsyncstatus",
-  ];
-  const preflightChecks = buildPreflightChecks(
-    repoRootPath,
-    options,
-    process.env.OPEN_BITCOIN_LIVE_SMOKE_DAEMON_BIN ?? null,
-    process.env.OPEN_BITCOIN_LIVE_SMOKE_STATUS_BIN ?? null,
-  );
-  if (preflightChecks.some((check) => !check.ok)) {
-    const endpointOutcomes = skippedEndpointOutcomes(
-      peerSourcesFromOptions(repoRootPath, options),
-      "local preflight failed before network endpoint checks",
-    );
-    const report = preflightFailureReport(
-      options,
-      preflightChecks,
-      daemonSpec,
-      statusSpec,
-      endpointOutcomes,
-    );
-    const { jsonPath, markdownPath } = writeReportFiles(repoRootPath, report);
-    console.log(`wrote ${path.relative(repoRootPath, jsonPath)}`);
-    console.log(`wrote ${path.relative(repoRootPath, markdownPath)}`);
-    throw new Error(report.result.message);
-  }
-
-  const preflightEndpointOutcomes = await networkPreflightEndpointOutcomes(
-    repoRootPath,
-    options,
-  );
-
-  ensureBuiltBinaries(repoRootPath);
-
-  const postRunStatusSpec = finalStatusCommand(repoRootPath, options);
+  const statusSpec = statusCommandForRpcPort(repoRootPath, options, rpcPort);
   const child = spawn(daemonSpec.command, daemonSpec.args, {
     cwd: repoRootPath,
     env: process.env,
@@ -1826,7 +1710,17 @@ async function main(): Promise<void> {
           before: initialSnapshot,
         };
       }
-      if (blockDelta > 0) {
+      if (mode === "first_snapshot") {
+        resultStatus = "passed";
+        resultMessage = "Collected a fresh post-restart sync status snapshot.";
+        break;
+      }
+      if (mode === "until_progress" && (headerDelta > 0 || downloadedBlockDelta > 0 || blockDelta > 0)) {
+        resultStatus = "passed";
+        resultMessage = `Observed progress before requested restart (header delta ${headerDelta}, downloaded block delta ${downloadedBlockDelta}, connected block delta ${blockDelta}).`;
+        break;
+      }
+      if (mode === "normal" && blockDelta > 0) {
         resultStatus = "passed";
         resultMessage = `Observed first connected mainnet block progress through the daemon status surface (header delta ${headerDelta}, connected block delta ${blockDelta}).`;
         break;
@@ -1849,6 +1743,653 @@ async function main(): Promise<void> {
     process.removeListener("SIGTERM", cancellationHandler);
   }
 
+  return {
+    blockDelta,
+    daemonSpec,
+    downloadedBlockDelta,
+    headerDelta,
+    maybeCancellationSignal,
+    maybeExitCode: child.exitCode,
+    maybeFirstConnectedBlockProgressSnapshots,
+    maybeFirstDownloadedBlockProgressSnapshots,
+    maybeFirstHeaderProgressSnapshots,
+    maybeLastProbeError,
+    maybeSignal: child.signalCode,
+    resultMessage,
+    resultStatus,
+    snapshots,
+    statusSpec,
+    stderrTail: stderrTail.read(),
+    stdoutTail: stdoutTail.read(),
+  };
+}
+
+function firstNonNullProgressSnapshots(
+  sessions: SmokeSessionResult[],
+  selector: (session: SmokeSessionResult) => {
+    before: SyncStatusSnapshot;
+    after: SyncStatusSnapshot;
+  } | null,
+): { before: SyncStatusSnapshot; after: SyncStatusSnapshot } | null {
+  for (const session of sessions) {
+    const maybeSnapshots = selector(session);
+    if (maybeSnapshots !== null) {
+      return maybeSnapshots;
+    }
+  }
+  return null;
+}
+
+function lastSnapshot(snapshots: SyncStatusSnapshot[]): SyncStatusSnapshot | null {
+  return snapshots.at(-1) ?? null;
+}
+
+function restartProgressSummary(
+  maybeSnapshot: SyncStatusSnapshot | null,
+): RestartProgressSummary | null {
+  if (maybeSnapshot === null) {
+    return null;
+  }
+  return {
+    connectedBlockHeight: maybeSnapshot.connectedBlockHeight,
+    downloadedBlockHeight: maybeSnapshot.downloadedBlockHeight,
+    headerHeight: maybeSnapshot.headerHeight,
+    lifecycle: maybeSnapshot.lifecycle,
+    maybeConnectedBlockHash: maybeSnapshot.maybeConnectedBlockHash,
+    maybeDownloadedBlockHash: maybeSnapshot.maybeDownloadedBlockHash,
+    maybeLastError: maybeSnapshot.maybeLastError,
+    maybeLastSuccessfulProgressUnixSeconds:
+      maybeSnapshot.maybeLastSuccessfulProgressUnixSeconds,
+    phase: maybeSnapshot.phase,
+  };
+}
+
+function restartProgressDelta(
+  before: SyncStatusSnapshot,
+  after: SyncStatusSnapshot,
+): RestartProgressDelta {
+  return {
+    connectedBlockDelta: after.connectedBlockHeight - before.connectedBlockHeight,
+    downloadedBlockDelta: after.downloadedBlockHeight - before.downloadedBlockHeight,
+    headerDelta: after.headerHeight - before.headerHeight,
+  };
+}
+
+function peerOutcomeSummary(endpointOutcomes: EndpointOutcome[]): RestartPeerOutcomeSummary {
+  const failureCauses = Array.from(
+    new Set(
+      endpointOutcomes
+        .map((outcome) => outcome.maybeFailureCause)
+        .filter((cause): cause is NoProgressCause => cause !== null),
+    ),
+  );
+  return {
+    connected: endpointOutcomes.filter((outcome) => outcome.state === "connected").length,
+    failed: endpointOutcomes.filter((outcome) => outcome.state === "failed").length,
+    failureCauses,
+    handshook: endpointOutcomes.filter((outcome) => outcome.state === "handshook").length,
+    skipped: endpointOutcomes.filter((outcome) => outcome.state === "skipped").length,
+  };
+}
+
+function duplicateConnectVerdict(
+  beforeRestart: SyncStatusSnapshot | null,
+  afterRestart: SyncStatusSnapshot | null,
+): DuplicateConnectVerdict {
+  if (beforeRestart === null || afterRestart === null) {
+    return "unavailable";
+  }
+  if (
+    (afterRestart.downloadedBlockHeight === beforeRestart.downloadedBlockHeight &&
+      afterRestart.maybeDownloadedBlockHash !== beforeRestart.maybeDownloadedBlockHash) ||
+    (afterRestart.connectedBlockHeight === beforeRestart.connectedBlockHeight &&
+      afterRestart.maybeConnectedBlockHash !== beforeRestart.maybeConnectedBlockHash)
+  ) {
+    return "duplicate_connect_suspected";
+  }
+  if (
+    beforeRestart.connectedBlockHeight > 0 &&
+    afterRestart.connectedBlockHeight >= beforeRestart.connectedBlockHeight &&
+    afterRestart.maybeConnectedBlockHash === beforeRestart.maybeConnectedBlockHash
+  ) {
+    return "no_duplicate_connect_observed";
+  }
+  if (afterRestart.connectedBlockHeight < beforeRestart.connectedBlockHeight) {
+    return "duplicate_connect_suspected";
+  }
+  return "unavailable";
+}
+
+function restartStatus(
+  beforeRestart: SyncStatusSnapshot | null,
+  afterRestart: SyncStatusSnapshot | null,
+  maybeCancellationSignal: NodeJS.Signals | null,
+): RestartStatus {
+  if (maybeCancellationSignal !== null) {
+    return "cancelled";
+  }
+  if (beforeRestart === null || afterRestart === null) {
+    return "blocked_before_restart";
+  }
+  if (
+    afterRestart.headerHeight >= beforeRestart.headerHeight &&
+    afterRestart.downloadedBlockHeight >= beforeRestart.downloadedBlockHeight &&
+    afterRestart.connectedBlockHeight >= beforeRestart.connectedBlockHeight &&
+    unchangedHeightHashStable(
+      beforeRestart.downloadedBlockHeight,
+      beforeRestart.maybeDownloadedBlockHash,
+      afterRestart.downloadedBlockHeight,
+      afterRestart.maybeDownloadedBlockHash,
+    ) &&
+    unchangedHeightHashStable(
+      beforeRestart.connectedBlockHeight,
+      beforeRestart.maybeConnectedBlockHash,
+      afterRestart.connectedBlockHeight,
+      afterRestart.maybeConnectedBlockHash,
+    )
+  ) {
+    return "completed";
+  }
+  return "blocked_before_restart";
+}
+
+function unchangedHeightHashStable(
+  beforeHeight: number,
+  beforeHash: string | null,
+  afterHeight: number,
+  afterHash: string | null,
+): boolean {
+  if (afterHeight !== beforeHeight) {
+    return true;
+  }
+  return beforeHash === afterHash;
+}
+
+function recoveryDiagnosis(
+  endpointOutcomes: EndpointOutcome[],
+  maybeFinalStatus: FinalStatusSummary | null,
+  maybeLastProbeError: string | null,
+  status: RestartStatus,
+): RecoveryDiagnosis {
+  const maybePeer = maybeFinalStatus?.recentPeers.find(
+    (peer) => peer.maybeFailureReason !== null || peer.maybeError !== null,
+  ) ?? null;
+  const maybePeerFailureReason = maybePeer?.maybeFailureReason ?? null;
+  const maybeLastError =
+    maybeFinalStatus?.maybeLastError ?? maybeLastProbeError ?? maybePeer?.maybeError ?? null;
+  const maybeNoProgressCause =
+    status === "completed"
+      ? null
+      : classifyNoProgressCause(endpointOutcomes, maybeFinalStatus, maybeLastProbeError);
+  const details = [
+    maybeLastError,
+    maybePeerFailureReason,
+    maybePeer?.maybeError ?? null,
+    maybeNoProgressCause,
+  ]
+    .filter((value): value is string => value !== null)
+    .join(" ")
+    .toLowerCase();
+
+  if (
+    details.includes("schema invalid") ||
+    details.includes("invalid schema") ||
+    details.includes("schema mismatch") ||
+    details.includes("invalid schema version")
+  ) {
+    return recoveryDiagnosisResult(
+      "store_incompatibility",
+      maybeNoProgressCause,
+      maybePeerFailureReason,
+      maybeLastError,
+    );
+  }
+  if (
+    details.includes("storage corruption") ||
+    details.includes("corrupt namespace") ||
+    details.includes("corruption in")
+  ) {
+    return recoveryDiagnosisResult(
+      "store_corruption",
+      maybeNoProgressCause,
+      maybePeerFailureReason,
+      maybeLastError,
+    );
+  }
+  if (details.includes("resource") || maybeNoProgressCause === "resource_limit") {
+    return recoveryDiagnosisResult(
+      "resource_exhaustion",
+      maybeNoProgressCause,
+      maybePeerFailureReason,
+      maybeLastError,
+    );
+  }
+  if (status === "cancelled" || maybeNoProgressCause === "operator_cancellation") {
+    return recoveryDiagnosisResult(
+      "intentional_cancellation",
+      maybeNoProgressCause,
+      maybePeerFailureReason,
+      maybeLastError,
+    );
+  }
+  if (
+    maybeNoProgressCause === "malformed_block" ||
+    maybeNoProgressCause === "invalid_block" ||
+    maybeNoProgressCause === "duplicate_or_disconnected_block" ||
+    maybeNoProgressCause === "validation_failure" ||
+    details.includes("invalid data") ||
+    details.includes("malformed block") ||
+    details.includes("malformed_block") ||
+    details.includes("invalid block") ||
+    details.includes("invalid_block") ||
+    details.includes("duplicate_block") ||
+    details.includes("disconnected_block") ||
+    details.includes("non_extending_block")
+  ) {
+    return recoveryDiagnosisResult(
+      "invalid_peer_data",
+      maybeNoProgressCause,
+      maybePeerFailureReason,
+      maybeLastError,
+    );
+  }
+  if (
+    maybeNoProgressCause === "handshake_failure" ||
+    maybeNoProgressCause === "unsupported_peer_capability" ||
+    details.includes("capabil") ||
+    details.includes("service") ||
+    details.includes("version") ||
+    details.includes("invalid_magic") ||
+    details.includes("invalid magic")
+  ) {
+    return recoveryDiagnosisResult(
+      "peer_incompatibility",
+      maybeNoProgressCause,
+      maybePeerFailureReason,
+      maybeLastError,
+    );
+  }
+  return recoveryDiagnosisResult(
+    "public_network_unreachable",
+    maybeNoProgressCause,
+    maybePeerFailureReason,
+    maybeLastError,
+  );
+}
+
+function recoveryDiagnosisResult(
+  category: RecoveryDiagnosisCategory,
+  maybeNoProgressCause: NoProgressCause | null,
+  maybePeerFailureReason: string | null,
+  maybeLastError: string | null,
+): RecoveryDiagnosis {
+  const maybeStorageRecoveryAction =
+    category === "store_corruption" || category === "store_incompatibility"
+      ? nextActionForCause("storage_failure")
+      : null;
+  return {
+    category,
+    maybeLastError,
+    maybeNoProgressCause,
+    maybePeerFailureReason,
+    maybeStorageRecoveryAction,
+  };
+}
+
+function datadirArg(commandSpec: CommandSpec): string | null {
+  return commandSpec.args.find((arg) => arg.startsWith("-datadir=")) ?? null;
+}
+
+function restartResumeEvidence(
+  repoRootPath: string,
+  options: Options,
+  beforeSession: SmokeSessionResult,
+  afterSession: SmokeSessionResult | null,
+  endpointOutcomes: EndpointOutcome[],
+  maybeFinalStatus: FinalStatusSummary | null,
+  maybeLastProbeError: string | null,
+): RestartResumeEvidence {
+  const beforeRestart = lastSnapshot(beforeSession.snapshots);
+  const afterRestart = afterSession?.snapshots[0] ?? null;
+  const afterLatest = lastSnapshot(afterSession?.snapshots ?? []);
+  const requestedBefore = datadirArg(beforeSession.daemonSpec);
+  const requestedAfter = afterSession === null ? null : datadirArg(afterSession.daemonSpec);
+  const requestedBeforePath = requestedBefore?.slice("-datadir=".length) ?? null;
+  const requestedAfterPath = requestedAfter?.slice("-datadir=".length) ?? null;
+  const status = restartStatus(
+    beforeRestart,
+    afterRestart,
+    beforeSession.maybeCancellationSignal ?? afterSession?.maybeCancellationSignal ?? null,
+  );
+  return {
+    afterRestart: restartProgressSummary(afterRestart),
+    beforeRestart: restartProgressSummary(beforeRestart),
+    duplicateConnectVerdict: duplicateConnectVerdict(beforeRestart, afterRestart),
+    maybePostRestartProgressDelta:
+      afterRestart === null || afterLatest === null
+        ? null
+        : restartProgressDelta(afterRestart, afterLatest),
+    peerOutcomeSummary: peerOutcomeSummary(endpointOutcomes),
+    recoveryDiagnosis: recoveryDiagnosis(
+      endpointOutcomes,
+      maybeFinalStatus,
+      maybeLastProbeError,
+      status,
+    ),
+    restartStatus: status,
+    sameDatadir: {
+      requestedPathMatched:
+        requestedBefore !== null && requestedAfter !== null && requestedBefore === requestedAfter,
+      resolvedPathMatched:
+        requestedBeforePath !== null &&
+        requestedAfterPath !== null &&
+        path.resolve(repoRootPath, requestedBeforePath) ===
+          path.resolve(repoRootPath, requestedAfterPath),
+    },
+  };
+}
+
+function markdownReport(report: SmokeReport): string {
+  const preflightRows = report.preflight.checks
+    .map(
+      (check) =>
+        `| ${check.name} | ${check.ok ? "passed" : "failed"} | ${escapeTableCell(check.detail)} |`,
+    )
+    .join("\n");
+  const snapshotRows =
+    report.snapshots.length === 0
+      ? "| - | - | - | - | - | - | - | - | - | - |\n"
+      : report.snapshots
+          .map(
+            (snapshot) =>
+              `| ${snapshot.capturedAtUnixSeconds} | ${snapshot.lifecycle} | ${snapshot.phase} | ${snapshot.headerHeight} | ${snapshot.downloadedBlockHeight} | ${snapshot.connectedBlockHeight} | ${escapeTableCell(snapshot.maybeDownloadedBlockHash ?? "-")} | ${escapeTableCell(snapshot.maybeConnectedBlockHash ?? "-")} | ${snapshot.outboundPeers} | ${escapeTableCell(snapshot.maybeLastError ?? "-")} |`,
+          )
+          .join("\n");
+  const endpointRows =
+    report.network_preflight.endpoint_outcomes.length === 0
+      ? "| - | - | - | - | - | - | - | - |\n"
+      : report.network_preflight.endpoint_outcomes
+          .map(
+            (outcome) =>
+              `| ${outcome.stage} | ${outcome.source} | ${escapeTableCell(outcome.address)} | ${outcome.state} | ${escapeTableCell(outcome.maybeResolvedEndpoint ?? "-")} | ${outcome.maybeFailureCause ?? "-"} | ${escapeTableCell(outcome.maybeError ?? "-")} | ${outcome.attemptedAtUnixSeconds} |`,
+          )
+          .join("\n");
+  const runtimePeerRows =
+    report.final_status?.recentPeers.length === 0 || report.final_status === null
+      ? "| - | - | - | - | - | - | - | - |\n"
+      : report.final_status.recentPeers
+          .map(
+            (peer) =>
+              `| ${escapeTableCell(peer.peer)} | ${peer.source} | ${peer.state} | ${peer.headersReceived} | ${peer.blocksReceived} | ${peer.maybeLastActivityUnixSeconds ?? "-"} | ${escapeTableCell(peer.maybeFailureReason ?? "-")} | ${escapeTableCell(peer.maybeError ?? "-")} |`,
+          )
+          .join("\n");
+  const daemonSessionRows =
+    report.daemon_sessions.length === 0
+      ? "| - | - | - |\n"
+      : report.daemon_sessions
+          .map(
+            (session, index) =>
+              `| ${index + 1} | ${escapeTableCell(session.daemon.join(" "))} | ${escapeTableCell(session.status.join(" "))} |`,
+          )
+          .join("\n");
+  const firstHeaderProgress = report.result.firstHeaderProgress;
+  const firstHeaderProgressDetail =
+    firstHeaderProgress === null
+      ? "Unavailable"
+      : `observed at ${firstHeaderProgress.observedAtUnixSeconds}: ${firstHeaderProgress.before.headerHeight} -> ${firstHeaderProgress.after.headerHeight} via ${escapeInline(firstHeaderProgress.maybePeer ?? "unknown peer")} (${firstHeaderProgress.maybeSource ?? "unknown source"}, endpoint ${escapeInline(firstHeaderProgress.maybeResolvedEndpoint ?? "unavailable")})`;
+  const firstBlockProgress = report.result.firstBlockProgress;
+  const firstBlockProgressDetail =
+    firstBlockProgress === null
+      ? "Unavailable"
+      : `${firstBlockProgress.kind} observed at ${firstBlockProgress.observedAtUnixSeconds}: height ${firstBlockProgress.height}, block hash ${escapeInline(firstBlockProgress.blockHash ?? "unavailable")}, downloaded ${firstBlockProgress.before.downloadedBlockHeight} -> ${firstBlockProgress.after.downloadedBlockHeight}, connected ${firstBlockProgress.before.connectedBlockHeight} -> ${firstBlockProgress.after.connectedBlockHeight}, peer ${escapeInline(firstBlockProgress.maybePeer ?? "unknown peer")} (${firstBlockProgress.maybeSource ?? "unknown source"}, endpoint ${escapeInline(firstBlockProgress.maybeResolvedEndpoint ?? "unavailable")})`;
+  const restartEvidence = report.result.restartResumeEvidence;
+  const restartEvidenceDetail =
+    restartEvidence === null
+      ? "Unavailable"
+      : `status ${restartEvidence.restartStatus}, same datadir requested=${restartEvidence.sameDatadir.requestedPathMatched ? "yes" : "no"} resolved=${restartEvidence.sameDatadir.resolvedPathMatched ? "yes" : "no"}, before header/downloaded/connected ${restartEvidence.beforeRestart?.headerHeight ?? 0}/${restartEvidence.beforeRestart?.downloadedBlockHeight ?? 0}/${restartEvidence.beforeRestart?.connectedBlockHeight ?? 0}, after header/downloaded/connected ${restartEvidence.afterRestart?.headerHeight ?? 0}/${restartEvidence.afterRestart?.downloadedBlockHeight ?? 0}/${restartEvidence.afterRestart?.connectedBlockHeight ?? 0}, duplicate verdict ${restartEvidence.duplicateConnectVerdict}`;
+
+  return `# Open Bitcoin Live Mainnet Smoke Report
+
+## Result
+
+- Status: \`${report.result.status}\`
+- Message: ${report.result.message}
+- Progress detected: ${report.result.progressDetected ? "yes" : "no"}
+- No-progress cause: ${report.result.maybeNoProgressCause ?? "Unavailable"}
+- Next action: ${report.result.nextAction}
+- Header delta: ${report.result.headerDelta}
+- Block delta: ${report.result.blockDelta}
+- First header progress: ${firstHeaderProgressDetail}
+- First block progress: ${firstBlockProgressDetail}
+- Restart/resume evidence: ${restartEvidenceDetail}
+
+## Restart/resume evidence
+
+- Restart status: ${restartEvidence?.restartStatus ?? "Unavailable"}
+- Same datadir requested path matched: ${restartEvidence?.sameDatadir.requestedPathMatched ?? false}
+- Same datadir resolved path matched: ${restartEvidence?.sameDatadir.resolvedPathMatched ?? false}
+- Before restart header/downloaded/connected: ${restartEvidence?.beforeRestart?.headerHeight ?? 0}/${restartEvidence?.beforeRestart?.downloadedBlockHeight ?? 0}/${restartEvidence?.beforeRestart?.connectedBlockHeight ?? 0}
+- After restart header/downloaded/connected: ${restartEvidence?.afterRestart?.headerHeight ?? 0}/${restartEvidence?.afterRestart?.downloadedBlockHeight ?? 0}/${restartEvidence?.afterRestart?.connectedBlockHeight ?? 0}
+- Duplicate connect verdict: ${restartEvidence?.duplicateConnectVerdict ?? "Unavailable"}
+- Post-restart progress delta: ${restartEvidence?.maybePostRestartProgressDelta === null || restartEvidence?.maybePostRestartProgressDelta === undefined ? "Unavailable" : `${restartEvidence.maybePostRestartProgressDelta.headerDelta}/${restartEvidence.maybePostRestartProgressDelta.downloadedBlockDelta}/${restartEvidence.maybePostRestartProgressDelta.connectedBlockDelta}`}
+
+## Options
+
+- Datadir: \`${report.options.datadir}\`
+- Config: ${report.options.maybeConfigPath === null ? "Unavailable" : `\`${report.options.maybeConfigPath}\``}
+- Generated config: ${report.options.maybeGeneratedConfigPath === null ? "Unavailable" : `\`${report.options.maybeGeneratedConfigPath}\``}
+- Manual peers: ${report.options.manualPeers.length === 0 ? "Unavailable" : report.options.manualPeers.map((peer) => `\`${peer}\``).join(", ")}
+- Output directory: \`${report.options.outputDir}\`
+- Timeout: ${report.options.timeoutSeconds}s
+- Poll interval: ${report.options.pollSeconds}s
+- Minimum free disk floor: ${report.options.minFreeGib} GiB
+
+## Preflight
+
+| Check | Result | Detail |
+| --- | --- | --- |
+${preflightRows}
+
+## Network Endpoint Outcomes
+
+| Stage | Source | Address | State | Resolved Endpoint | Cause | Error | Attempted At |
+| --- | --- | --- | --- | --- | --- | --- | ---: |
+${endpointRows}
+
+## Snapshots
+
+| Captured At | Lifecycle | Phase | Header Height | Downloaded Block Height | Connected Block Height | Downloaded Block Hash | Connected Block Hash | Outbound Peers | Last Error |
+| --- | --- | --- | ---: | ---: | ---: | --- | --- | ---: | --- |
+${snapshotRows}
+
+## Commands
+
+- Daemon: \`${[...report.commands.daemon].join(" ")}\`
+- Status: \`${[...report.commands.status].join(" ")}\`
+- Final status: \`${[...report.commands.finalStatus].join(" ")}\`
+
+## Daemon Sessions
+
+| Session | Daemon | Status |
+| ---: | --- | --- |
+${daemonSessionRows}
+
+## Final Durable Status
+
+- Lifecycle: ${report.final_status?.lifecycle ?? "Unavailable"}
+- Phase: ${report.final_status?.phase ?? "Unavailable"}
+- Header height: ${report.final_status?.headerHeight ?? 0}
+- Block height: ${report.final_status?.blockHeight ?? 0}
+- Downloaded block height: ${report.final_status?.downloadedBlockHeight ?? 0}
+- Connected block height: ${report.final_status?.connectedBlockHeight ?? 0}
+- Downloaded block hash: ${report.final_status?.maybeDownloadedBlockHash ?? "Unavailable"}
+- Connected block hash: ${report.final_status?.maybeConnectedBlockHash ?? "Unavailable"}
+- Messages processed: ${report.final_status?.messagesProcessed ?? 0}
+- Outbound peers: ${report.final_status?.outboundPeers ?? 0}
+- Last error: ${report.final_status?.maybeLastError ?? "Unavailable"}
+
+## Runtime Peer Contributions
+
+| Peer | Source | State | Headers Accepted | Blocks Accepted | Last Activity | Failure Reason | Error |
+| --- | --- | --- | ---: | ---: | ---: | --- | --- |
+${runtimePeerRows}
+
+## Daemon Output Tail
+
+### stdout
+
+\`\`\`
+${report.daemon.stdoutTail.trim()}
+\`\`\`
+
+### stderr
+
+\`\`\`
+${report.daemon.stderrTail.trim()}
+\`\`\`
+`;
+}
+
+function escapeTableCell(value: string): string {
+  return value.replaceAll("|", "\\|").replaceAll("\n", "<br>");
+}
+
+function escapeInline(value: string): string {
+  return value.replaceAll("`", "\\`").replaceAll("\n", " ");
+}
+
+function writeReportFiles(repoRootPath: string, report: SmokeReport): { jsonPath: string; markdownPath: string } {
+  const absoluteOutputDir = path.resolve(repoRootPath, report.options.outputDir);
+  mkdirSync(absoluteOutputDir, { recursive: true });
+  const jsonPath = path.join(absoluteOutputDir, `${REPORT_STEM}.json`);
+  const markdownPath = path.join(absoluteOutputDir, `${REPORT_STEM}.md`);
+
+  writeFileSync(jsonPath, `${JSON.stringify(report, null, 2)}\n`);
+  writeFileSync(markdownPath, `${markdownReport(report)}\n`);
+
+  return { jsonPath, markdownPath };
+}
+
+function preflightFailureReport(
+  options: Options,
+  checks: PreflightCheck[],
+  daemonSpec: CommandSpec,
+  statusSpec: CommandSpec,
+  endpointOutcomes: EndpointOutcome[],
+): SmokeReport {
+  const message = checks
+    .filter((check) => !check.ok)
+    .map((check) => check.detail)
+    .join(" ");
+  return {
+    baseline: BASELINE,
+    commands: {
+      daemon: [daemonSpec.command, ...daemonSpec.args],
+      finalStatus: [],
+      status: [statusSpec.command, ...statusSpec.args],
+    },
+    daemon_sessions: [],
+    daemon: {
+      maybeExitCode: null,
+      maybeSignal: null,
+      stderrTail: "",
+      stdoutTail: "",
+    },
+    final_status: null,
+    generated_at_unix_seconds: Math.floor(Date.now() / 1000),
+    kind: "live_mainnet_smoke",
+    options: {
+      datadir: options.datadir,
+      manualPeers: options.manualPeers,
+      maybeConfigPath: options.maybeConfigPath,
+      maybeGeneratedConfigPath: options.maybeGeneratedConfigPath,
+      minFreeGib: options.minFreeGib,
+      outputDir: options.outputDir,
+      pollSeconds: options.pollSeconds,
+      restartAfterProgress: options.restartAfterProgress,
+      timeoutSeconds: options.timeoutSeconds,
+    },
+    network_preflight: {
+      completed: false,
+      endpoint_outcomes: endpointOutcomes,
+    },
+    preflight: {
+      checks,
+      passed: false,
+    },
+    result: {
+      blockDelta: 0,
+      firstBlockProgress: null,
+      firstHeaderProgress: null,
+      headerDelta: 0,
+      maybeNoProgressCause: null,
+      message,
+      nextAction: "Fix the failed local preflight checks, then rerun the live smoke command.",
+      progressDetected: false,
+      restartResumeEvidence: null,
+      status: "preflight_failed",
+    },
+    schema_version: 2,
+    snapshots: [],
+  };
+}
+
+async function main(): Promise<void> {
+  const repoRootPath = repoRoot();
+  const options = optionsWithGeneratedManualPeerConfig(
+    repoRootPath,
+    parseArgs(process.argv.slice(2)),
+  );
+
+  const previewRpcPort = await findFreePort();
+  const daemonSpec = daemonCommand(repoRootPath, options, previewRpcPort);
+  const statusSpec = statusCommandForRpcPort(repoRootPath, options, previewRpcPort);
+  const preflightChecks = buildPreflightChecks(
+    repoRootPath,
+    options,
+    process.env.OPEN_BITCOIN_LIVE_SMOKE_DAEMON_BIN ?? null,
+    process.env.OPEN_BITCOIN_LIVE_SMOKE_STATUS_BIN ?? null,
+  );
+  if (preflightChecks.some((check) => !check.ok)) {
+    const endpointOutcomes = skippedEndpointOutcomes(
+      peerSourcesFromOptions(repoRootPath, options),
+      "local preflight failed before network endpoint checks",
+    );
+    const report = preflightFailureReport(
+      options,
+      preflightChecks,
+      daemonSpec,
+      statusSpec,
+      endpointOutcomes,
+    );
+    const { jsonPath, markdownPath } = writeReportFiles(repoRootPath, report);
+    console.log(`wrote ${path.relative(repoRootPath, jsonPath)}`);
+    console.log(`wrote ${path.relative(repoRootPath, markdownPath)}`);
+    throw new Error(report.result.message);
+  }
+
+  const preflightEndpointOutcomes = await networkPreflightEndpointOutcomes(
+    repoRootPath,
+    options,
+  );
+
+  ensureBuiltBinaries(repoRootPath);
+
+  const postRunStatusSpec = finalStatusCommand(repoRootPath, options);
+  const firstSession = await runSmokeSession(
+    repoRootPath,
+    options,
+    options.restartAfterProgress ? "until_progress" : "normal",
+  );
+  let maybeRestartSession: SmokeSessionResult | null = null;
+  if (
+    options.restartAfterProgress &&
+    firstSession.resultStatus === "passed" &&
+    firstSession.maybeCancellationSignal === null
+  ) {
+    maybeRestartSession = await runSmokeSession(repoRootPath, options, "first_snapshot");
+  }
+
   let maybeFinalStatus: FinalStatusSummary | null = null;
   try {
     maybeFinalStatus = readFinalStatus(repoRootPath, postRunStatusSpec);
@@ -1859,17 +2400,78 @@ async function main(): Promise<void> {
     ...preflightEndpointOutcomes,
     ...endpointOutcomesFromFinalStatus(maybeFinalStatus),
   ];
+  const sessions = maybeRestartSession === null
+    ? [firstSession]
+    : [firstSession, maybeRestartSession];
+  const daemonSessions = sessions.map((session) => ({
+    daemon: [session.daemonSpec.command, ...session.daemonSpec.args],
+    status: [session.statusSpec.command, ...session.statusSpec.args],
+  }));
+  const snapshots = sessions.flatMap((session) => session.snapshots);
+  let resultStatus = firstSession.resultStatus;
+  let resultMessage = firstSession.resultMessage;
+  let headerDelta = sessions.reduce((sum, session) => sum + session.headerDelta, 0);
+  let blockDelta = sessions.reduce((sum, session) => sum + session.blockDelta, 0);
+  const maybeLastProbeError =
+    maybeRestartSession?.maybeLastProbeError ?? firstSession.maybeLastProbeError;
+  let maybeRestartResumeEvidence: RestartResumeEvidence | null = null;
+  if (options.restartAfterProgress) {
+    maybeRestartResumeEvidence = restartResumeEvidence(
+      repoRootPath,
+      options,
+      firstSession,
+      maybeRestartSession,
+      endpointOutcomes,
+      maybeFinalStatus,
+      maybeLastProbeError,
+    );
+    if (maybeRestartResumeEvidence.restartStatus === "completed") {
+      resultStatus = "passed";
+      resultMessage =
+        "Observed same-datadir restart/resume evidence: a fresh post-restart status snapshot preserved durable header, downloaded block, and connected block progress.";
+    } else if (maybeRestartResumeEvidence.restartStatus === "cancelled") {
+      resultStatus = "cancelled";
+      resultMessage = "live mainnet smoke cancelled before restart evidence was captured.";
+    } else if (firstSession.resultStatus === "runtime_failed") {
+      resultStatus = "runtime_failed";
+      resultMessage = firstSession.resultMessage;
+    } else if (maybeRestartSession?.resultStatus === "runtime_failed") {
+      resultStatus = "runtime_failed";
+      resultMessage = `Post-restart daemon session failed before durable resume evidence was captured: ${maybeRestartSession.resultMessage}`;
+    } else if (maybeRestartSession === null) {
+      resultStatus = "no_progress";
+      resultMessage =
+        "No pre-restart progress was observed, so the requested same-datadir restart was blocked before evidence could be captured.";
+    } else if (lastSnapshot(maybeRestartSession.snapshots) === null) {
+      resultStatus = "runtime_failed";
+      resultMessage =
+        "Post-restart daemon session did not produce a fresh status snapshot.";
+    } else {
+      resultStatus = "no_progress";
+      resultMessage =
+        "Post-restart durable resume evidence did not preserve the expected same-datadir heights and hashes.";
+    }
+  }
   const maybeFirstHeaderProgress = firstHeaderProgressEvidence(
-    maybeFirstHeaderProgressSnapshots,
+    firstNonNullProgressSnapshots(
+      sessions,
+      (session) => session.maybeFirstHeaderProgressSnapshots,
+    ),
     maybeFinalStatus,
   );
   const maybeFirstConnectedBlockProgress = firstBlockProgressEvidence(
-    maybeFirstConnectedBlockProgressSnapshots,
+    firstNonNullProgressSnapshots(
+      sessions,
+      (session) => session.maybeFirstConnectedBlockProgressSnapshots,
+    ),
     maybeFinalStatus,
     "connected",
   );
   const maybeFirstDownloadedBlockProgress = firstBlockProgressEvidence(
-    maybeFirstDownloadedBlockProgressSnapshots,
+    firstNonNullProgressSnapshots(
+      sessions,
+      (session) => session.maybeFirstDownloadedBlockProgressSnapshots,
+    ),
     maybeFinalStatus,
     "downloaded",
   );
@@ -1882,7 +2484,7 @@ async function main(): Promise<void> {
       ? "awaiting_blocks"
       : null;
 
-  if (resultStatus === "no_progress") {
+  if (resultStatus === "no_progress" && maybeRestartResumeEvidence === null) {
     const noProgressCause =
       noProgressCauseFromEvidence ??
       classifyNoProgressCause(endpointOutcomes, maybeFinalStatus, maybeLastProbeError);
@@ -1913,15 +2515,20 @@ async function main(): Promise<void> {
   const report: SmokeReport = {
     baseline: BASELINE,
     commands: {
-      daemon: [daemonSpec.command, ...daemonSpec.args],
+      daemon: daemonSessions[0]?.daemon ?? [daemonSpec.command, ...daemonSpec.args],
       finalStatus: [postRunStatusSpec.command, ...postRunStatusSpec.args],
-      status: [statusSpec.command, ...statusSpec.args],
+      status: daemonSessions[0]?.status ?? [statusSpec.command, ...statusSpec.args],
     },
+    daemon_sessions: daemonSessions,
     daemon: {
-      maybeExitCode: child.exitCode,
-      maybeSignal: child.signalCode,
-      stderrTail: stderrTail.read(),
-      stdoutTail: stdoutTail.read(),
+      maybeExitCode: (maybeRestartSession ?? firstSession).maybeExitCode,
+      maybeSignal: (maybeRestartSession ?? firstSession).maybeSignal,
+      stderrTail: sessions
+        .map((session, index) => `session ${index + 1}\n${session.stderrTail}`)
+        .join("\n"),
+      stdoutTail: sessions
+        .map((session, index) => `session ${index + 1}\n${session.stdoutTail}`)
+        .join("\n"),
     },
     final_status: maybeFinalStatus,
     generated_at_unix_seconds: Math.floor(Date.now() / 1000),
@@ -1934,6 +2541,7 @@ async function main(): Promise<void> {
       minFreeGib: options.minFreeGib,
       outputDir: options.outputDir,
       pollSeconds: options.pollSeconds,
+      restartAfterProgress: options.restartAfterProgress,
       timeoutSeconds: options.timeoutSeconds,
     },
     network_preflight: {
@@ -1953,6 +2561,7 @@ async function main(): Promise<void> {
       message: resultMessage,
       nextAction: nextActionForCause(maybeNoProgressCause),
       progressDetected: resultStatus === "passed",
+      restartResumeEvidence: maybeRestartResumeEvidence,
       status: resultStatus,
     },
     schema_version: 2,

@@ -51,6 +51,14 @@ JSON
 cat >"$tmp_dir/mock-daemon.sh" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
+daemon_counter_file="${OPEN_BITCOIN_LIVE_SMOKE_DAEMON_COUNTER_FILE:-}"
+if [[ "$daemon_counter_file" != "" ]]; then
+	count=0
+	if [[ -f "$daemon_counter_file" ]]; then
+		count="$(cat "$daemon_counter_file")"
+	fi
+	echo $((count + 1)) >"$daemon_counter_file"
+fi
 trap 'exit 0' TERM INT
 while true; do
 	sleep 1
@@ -93,6 +101,12 @@ if [[ "$count" -eq 0 ]]; then
         "phase": {
           "state": "available",
           "value": "waiting_for_headers"
+        },
+        "last_successful_progress_unix_seconds": {
+          "state": "unavailable",
+          "value": {
+            "reason": "no successful progress recorded"
+          }
         },
         "last_error": {
           "state": "unavailable",
@@ -149,6 +163,10 @@ cat <<'JSON'
         "phase": {
           "state": "available",
           "value": "header_sync"
+        },
+        "last_successful_progress_unix_seconds": {
+          "state": "available",
+          "value": 1777225005
         },
         "last_error": {
           "state": "unavailable",
@@ -424,6 +442,181 @@ JSON
 EOF
 chmod +x "$tmp_dir/mock-header-only-status.sh"
 
+cat >"$tmp_dir/mock-restart-hash-mismatch-status.sh" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+counter_file="${OPEN_BITCOIN_LIVE_SMOKE_COUNTER_FILE:?}"
+count=0
+if [[ -f "$counter_file" ]]; then
+	count="$(cat "$counter_file")"
+fi
+
+if [[ "$count" -eq 0 ]]; then
+	echo 1 >"$counter_file"
+	header_height=0
+	block_height=0
+	downloaded_block_height=0
+	connected_block_height=0
+	hash="null"
+elif [[ "$count" -eq 1 ]]; then
+	echo 2 >"$counter_file"
+	header_height=1
+	block_height=1
+	downloaded_block_height=1
+	connected_block_height=1
+	hash="4444444444444444444444444444444444444444444444444444444444444444"
+else
+	header_height=1
+	block_height=1
+	downloaded_block_height=1
+	connected_block_height=1
+	hash="5555555555555555555555555555555555555555555555555555555555555555"
+fi
+
+cat <<JSON
+{
+  "metadata": {
+    "maybe_sync_state": {
+      "sync": {
+        "sync_progress": {
+          "state": "available",
+          "value": {
+            "header_height": $header_height,
+            "block_height": $block_height,
+            "downloaded_block_height": $downloaded_block_height,
+            "connected_block_height": $connected_block_height,
+            "maybe_downloaded_block_hash": $([[ "$hash" == "null" ]] && echo null || echo "\"$hash\""),
+            "maybe_connected_block_hash": $([[ "$hash" == "null" ]] && echo null || echo "\"$hash\""),
+            "messages_processed": 4
+          }
+        },
+        "lifecycle": {
+          "state": "available",
+          "value": "active"
+        },
+        "phase": {
+          "state": "available",
+          "value": "header_sync"
+        },
+        "last_successful_progress_unix_seconds": {
+          "state": "available",
+          "value": 1777225600
+        },
+        "last_error": {
+          "state": "unavailable",
+          "value": {
+            "reason": "no sync error recorded"
+          }
+        }
+      },
+      "peers": {
+        "peer_counts": {
+          "state": "available",
+          "value": {
+            "outbound": 1
+          }
+        },
+        "recent_peers": {
+          "state": "available",
+          "value": []
+        }
+      },
+      "updated_at_unix_seconds": 1777225600
+    },
+    "sync_control": {
+      "paused": false
+    }
+  }
+}
+JSON
+EOF
+chmod +x "$tmp_dir/mock-restart-hash-mismatch-status.sh"
+
+cat >"$tmp_dir/mock-restart-second-status-fails.sh" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+counter_file="${OPEN_BITCOIN_LIVE_SMOKE_COUNTER_FILE:?}"
+count=0
+if [[ -f "$counter_file" ]]; then
+	count="$(cat "$counter_file")"
+fi
+
+if [[ "$count" -eq 0 ]]; then
+	echo 1 >"$counter_file"
+	header_height=0
+	block_height=0
+	downloaded_block_height=0
+	connected_block_height=0
+	hash=null
+elif [[ "$count" -eq 1 ]]; then
+	echo 2 >"$counter_file"
+	header_height=1
+	block_height=1
+	downloaded_block_height=1
+	connected_block_height=1
+	hash="6666666666666666666666666666666666666666666666666666666666666666"
+else
+	echo "post-restart status unavailable" >&2
+	exit 1
+fi
+
+cat <<JSON
+{
+  "metadata": {
+    "maybe_sync_state": {
+      "sync": {
+        "sync_progress": {
+          "state": "available",
+          "value": {
+            "header_height": $header_height,
+            "block_height": $block_height,
+            "downloaded_block_height": $downloaded_block_height,
+            "connected_block_height": $connected_block_height,
+            "maybe_downloaded_block_hash": $([[ "$hash" == "null" ]] && echo null || echo "\"$hash\""),
+            "maybe_connected_block_hash": $([[ "$hash" == "null" ]] && echo null || echo "\"$hash\""),
+            "messages_processed": 4
+          }
+        },
+        "lifecycle": {
+          "state": "available",
+          "value": "active"
+        },
+        "phase": {
+          "state": "available",
+          "value": "header_sync"
+        },
+        "last_error": {
+          "state": "unavailable",
+          "value": {
+            "reason": "no sync error recorded"
+          }
+        }
+      },
+      "peers": {
+        "peer_counts": {
+          "state": "available",
+          "value": {
+            "outbound": 1
+          }
+        },
+        "recent_peers": {
+          "state": "available",
+          "value": []
+        }
+      },
+      "updated_at_unix_seconds": 1777225700
+    },
+    "sync_control": {
+      "paused": false
+    }
+  }
+}
+JSON
+EOF
+chmod +x "$tmp_dir/mock-restart-second-status-fails.sh"
+
 cat >"$tmp_dir/mock-stalled-status.sh" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -606,6 +799,21 @@ cat >"$tmp_dir/mock-peer-failure-final-status.sh" <<'EOF'
 set -euo pipefail
 
 failure_reason="${OPEN_BITCOIN_LIVE_SMOKE_FAILURE_REASON:?}"
+last_error="${OPEN_BITCOIN_LIVE_SMOKE_LAST_ERROR:-}"
+outbound_peers="${OPEN_BITCOIN_LIVE_SMOKE_OUTBOUND_PEERS:-0}"
+if [[ "$last_error" == "" ]]; then
+	last_error_json='"last_error": {
+        "state": "unavailable",
+        "value": {
+          "reason": "no sync error recorded"
+        }
+      }'
+else
+	last_error_json='"last_error": {
+        "state": "available",
+        "value": "'"$last_error"'"
+      }'
+fi
 cat <<JSON
 {
   "maybe_sync_state": {
@@ -630,18 +838,13 @@ cat <<JSON
         "state": "available",
         "value": "steady_state"
       },
-      "last_error": {
-        "state": "unavailable",
-        "value": {
-          "reason": "no sync error recorded"
-        }
-      }
+      $last_error_json
     },
     "peers": {
       "peer_counts": {
         "state": "available",
         "value": {
-          "outbound": 0
+          "outbound": $outbound_peers
         }
       },
       "recent_peers": {
@@ -706,12 +909,14 @@ report_markdown="$output_dir/open-bitcoin-live-mainnet-smoke.md"
 generated_config="$output_dir/open-bitcoin-live-mainnet-smoke.jsonc"
 grep -q '"status": "passed"' "$report_json"
 grep -q '"progressDetected": true' "$report_json"
+grep -q '"restartResumeEvidence": null' "$report_json"
 grep -q '"firstBlockProgress": {' "$report_json"
 grep -q '"kind": "connected"' "$report_json"
 grep -q '"height": 1' "$report_json"
 grep -q '"blockHash": "1111111111111111111111111111111111111111111111111111111111111111"' "$report_json"
 grep -q '"downloadedBlockHeight": 1' "$report_json"
 grep -q '"connectedBlockHeight": 1' "$report_json"
+grep -q '"maybeLastSuccessfulProgressUnixSeconds": 1777225005' "$report_json"
 grep -q '"openbitcoinsyncstatus"' "$report_json"
 grep -q '"lifecycle": "active"' "$report_json"
 grep -q '"phase": "header_sync"' "$report_json"
@@ -726,6 +931,136 @@ grep -q "Network Endpoint Outcomes" "$report_markdown"
 grep -q "manual_peer" "$report_markdown"
 grep -q "Header delta: 1" "$report_markdown"
 grep -q "First block progress" "$report_markdown"
+
+rm -f "$counter_file"
+daemon_counter_file="$tmp_dir/daemon-counter"
+rm -f "$daemon_counter_file"
+OPEN_BITCOIN_LIVE_SMOKE_DAEMON_BIN="$tmp_dir/mock-daemon.sh" \
+OPEN_BITCOIN_LIVE_SMOKE_STATUS_BIN="$tmp_dir/mock-status.sh" \
+OPEN_BITCOIN_LIVE_SMOKE_NETWORK_PREFLIGHT_FIXTURE="$network_fixture" \
+OPEN_BITCOIN_LIVE_SMOKE_SKIP_DISK_CHECK=1 \
+OPEN_BITCOIN_LIVE_SMOKE_COUNTER_FILE="$counter_file" \
+OPEN_BITCOIN_LIVE_SMOKE_DAEMON_COUNTER_FILE="$daemon_counter_file" \
+bun run scripts/run-live-mainnet-smoke.ts \
+	--datadir="$existing_datadir" \
+	--manual-peer=127.0.0.1:8333 \
+	--output-dir="$output_dir" \
+	--timeout-seconds=4 \
+	--poll-seconds=1 \
+	--restart-after-progress >/dev/null
+
+if [[ "$(cat "$daemon_counter_file")" -ne 2 ]]; then
+	echo "expected restart smoke run to start the mock daemon twice" >&2
+	exit 1
+fi
+
+grep -q '"status": "passed"' "$report_json"
+grep -q '"restartResumeEvidence": {' "$report_json"
+grep -q '"restartStatus": "completed"' "$report_json"
+grep -q '"requestedPathMatched": true' "$report_json"
+grep -q '"resolvedPathMatched": true' "$report_json"
+grep -q '"duplicateConnectVerdict": "no_duplicate_connect_observed"' "$report_json"
+grep -q '"beforeRestart": {' "$report_json"
+grep -q '"afterRestart": {' "$report_json"
+grep -q '"maybePostRestartProgressDelta": {' "$report_json"
+grep -q '"firstBlockProgress": {' "$report_json"
+grep -q '"maybeLastSuccessfulProgressUnixSeconds": 1777225005' "$report_json"
+grep -q '"daemon_sessions": \[' "$report_json"
+grep -q "Restart/resume evidence" "$report_markdown"
+grep -q "Daemon Sessions" "$report_markdown"
+restart_evidence_json="$(bun --eval 'const report = await Bun.file(process.argv[1]).json(); console.log(JSON.stringify(report.result.restartResumeEvidence));' "$report_json")"
+for forbidden_restart_field in stdoutTail stderrTail endpoint_outcomes snapshots manualPeers; do
+	if [[ "$restart_evidence_json" == *"$forbidden_restart_field"* ]]; then
+		echo "restart evidence leaked forbidden field $forbidden_restart_field" >&2
+		exit 1
+	fi
+done
+
+rm -f "$counter_file"
+set +e
+OPEN_BITCOIN_LIVE_SMOKE_DAEMON_BIN="$tmp_dir/mock-daemon.sh" \
+OPEN_BITCOIN_LIVE_SMOKE_STATUS_BIN="$tmp_dir/mock-restart-hash-mismatch-status.sh" \
+OPEN_BITCOIN_LIVE_SMOKE_NETWORK_PREFLIGHT_FIXTURE="$network_fixture" \
+OPEN_BITCOIN_LIVE_SMOKE_SKIP_DISK_CHECK=1 \
+OPEN_BITCOIN_LIVE_SMOKE_COUNTER_FILE="$counter_file" \
+bun run scripts/run-live-mainnet-smoke.ts \
+	--datadir="$existing_datadir" \
+	--manual-peer=127.0.0.1:8333 \
+	--output-dir="$output_dir" \
+	--timeout-seconds=4 \
+	--poll-seconds=1 \
+	--restart-after-progress >/dev/null 2>"$tmp_dir/restart-hash-mismatch.stderr"
+status=$?
+set -e
+
+if [[ "$status" -eq 0 ]]; then
+	echo "expected restart hash mismatch smoke run to fail" >&2
+	exit 1
+fi
+grep -q '"restartStatus": "blocked_before_restart"' "$report_json"
+grep -q '"duplicateConnectVerdict": "duplicate_connect_suspected"' "$report_json"
+grep -q "Post-restart durable resume evidence did not preserve" "$tmp_dir/restart-hash-mismatch.stderr"
+
+rm -f "$counter_file"
+set +e
+OPEN_BITCOIN_LIVE_SMOKE_DAEMON_BIN="$tmp_dir/mock-daemon.sh" \
+OPEN_BITCOIN_LIVE_SMOKE_STATUS_BIN="$tmp_dir/mock-restart-second-status-fails.sh" \
+OPEN_BITCOIN_LIVE_SMOKE_NETWORK_PREFLIGHT_FIXTURE="$network_fixture" \
+OPEN_BITCOIN_LIVE_SMOKE_SKIP_DISK_CHECK=1 \
+OPEN_BITCOIN_LIVE_SMOKE_COUNTER_FILE="$counter_file" \
+bun run scripts/run-live-mainnet-smoke.ts \
+	--datadir="$existing_datadir" \
+	--manual-peer=127.0.0.1:8333 \
+	--output-dir="$output_dir" \
+	--timeout-seconds=4 \
+	--poll-seconds=1 \
+	--restart-after-progress >/dev/null 2>"$tmp_dir/restart-second-status-fails.stderr"
+status=$?
+set -e
+
+if [[ "$status" -eq 0 ]]; then
+	echo "expected second-session status failure smoke run to fail" >&2
+	exit 1
+fi
+grep -q '"status": "runtime_failed"' "$report_json"
+grep -q '"restartStatus": "blocked_before_restart"' "$report_json"
+grep -q "Post-restart daemon session did not produce" "$tmp_dir/restart-second-status-fails.stderr"
+
+recovery_cases=(
+	"store_incompatibility|connect|storage schema mismatch during sync"
+	"store_corruption|connect|storage corruption in headers during sync"
+	"resource_exhaustion|resource_limit|"
+	"invalid_peer_data|invalid_block|"
+	"peer_incompatibility|invalid_magic|"
+	"public_network_unreachable|connect|"
+)
+
+for recovery_case in "${recovery_cases[@]}"; do
+	IFS='|' read -r expected_category failure_reason last_error <<<"$recovery_case"
+	rm -f "$counter_file"
+	OPEN_BITCOIN_LIVE_SMOKE_DAEMON_BIN="$tmp_dir/mock-daemon.sh" \
+	OPEN_BITCOIN_LIVE_SMOKE_STATUS_BIN="$tmp_dir/mock-status.sh" \
+	OPEN_BITCOIN_LIVE_SMOKE_FINAL_STATUS_BIN="$tmp_dir/mock-peer-failure-final-status.sh" \
+	OPEN_BITCOIN_LIVE_SMOKE_FAILURE_REASON="$failure_reason" \
+	OPEN_BITCOIN_LIVE_SMOKE_LAST_ERROR="$last_error" \
+	OPEN_BITCOIN_LIVE_SMOKE_NETWORK_PREFLIGHT_FIXTURE="$network_fixture" \
+	OPEN_BITCOIN_LIVE_SMOKE_SKIP_DISK_CHECK=1 \
+	OPEN_BITCOIN_LIVE_SMOKE_COUNTER_FILE="$counter_file" \
+	bun run scripts/run-live-mainnet-smoke.ts \
+		--datadir="$existing_datadir" \
+		--manual-peer=127.0.0.1:8333 \
+		--output-dir="$output_dir" \
+		--timeout-seconds=4 \
+		--poll-seconds=1 \
+		--restart-after-progress >/dev/null
+
+	grep -q "\"category\": \"$expected_category\"" "$report_json"
+	grep -q "\"maybePeerFailureReason\": \"$failure_reason\"" "$report_json"
+	if [[ "$expected_category" == "store_incompatibility" || "$expected_category" == "store_corruption" ]]; then
+		grep -q "\"category\": \"$expected_category\"" "$report_json"
+		grep -q "Inspect the datadir storage error" "$report_json"
+	fi
+done
 
 rm -f "$counter_file"
 set +e
@@ -935,7 +1270,8 @@ bun run scripts/run-live-mainnet-smoke.ts \
 	--manual-peer=127.0.0.1:8333 \
 	--output-dir="$output_dir" \
 	--timeout-seconds=30 \
-	--poll-seconds=1 >/dev/null 2>"$tmp_dir/cancel.stderr" &
+	--poll-seconds=1 \
+	--restart-after-progress >/dev/null 2>"$tmp_dir/cancel.stderr" &
 cancel_pid=$!
 sleep 3
 kill -TERM "$cancel_pid"
@@ -950,3 +1286,4 @@ fi
 
 grep -q '"status": "cancelled"' "$report_json"
 grep -q '"maybeNoProgressCause": "operator_cancellation"' "$report_json"
+grep -q '"category": "intentional_cancellation"' "$report_json"

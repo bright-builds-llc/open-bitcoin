@@ -2824,7 +2824,7 @@ fn sync_once_continues_header_batches_when_peer_advertises_more_work() {
 }
 
 #[test]
-fn runtime_seeds_headers_from_durable_store_on_restart() {
+fn same_datadir_reopen_seeds_headers_from_durable_store() {
     // Arrange
     let path = temp_store_path("resume");
     remove_dir_if_exists(&path);
@@ -3207,7 +3207,7 @@ fn competing_header_branch_wins_after_restart_when_it_extends_farther() {
 }
 
 #[test]
-fn restart_reconnects_persisted_blocks_before_re_requesting_them() {
+fn same_datadir_reopen_does_not_duplicate_connected_block_getdata() {
     // Arrange
     let path = temp_store_path("restart-block-reconnect");
     remove_dir_if_exists(&path);
@@ -3243,19 +3243,23 @@ fn restart_reconnects_persisted_blocks_before_re_requesting_them() {
     // Assert
     assert_eq!(summary.best_header_height, 0);
     assert_eq!(summary.best_block_height, 0);
+    assert_eq!(summary.blocks_received, 0);
     assert_eq!(runtime.snapshot_summary().best_block_height, 0);
-    assert!(
-        !transport
-            .sent_messages()
-            .iter()
-            .any(|message| matches!(message, WireNetworkMessage::GetData(_)))
+    let requested_hashes = getdata_block_hashes(&transport.sent_messages());
+    assert!(!requested_hashes.contains(&genesis_hash));
+    assert!(requested_hashes.is_empty());
+    let durable_summary = runtime.snapshot_summary();
+    assert_eq!(durable_summary.best_block_height, 0);
+    assert_eq!(
+        durable_summary.maybe_connected_block_hash,
+        Some(block_hash_hex(genesis_hash))
     );
 
     remove_dir_if_exists(&path);
 }
 
 #[test]
-fn restart_reports_downloaded_and_connected_heights_after_partial_download() {
+fn same_datadir_reopen_reports_downloaded_and_connected_block_hashes_after_partial_download() {
     // Arrange
     let path = temp_store_path("restart-partial-download-status");
     remove_dir_if_exists(&path);
@@ -3310,6 +3314,14 @@ fn restart_reports_downloaded_and_connected_heights_after_partial_download() {
     assert_eq!(summary.best_header_height, 2);
     assert_eq!(summary.downloaded_block_height, 1);
     assert_eq!(summary.best_block_height, 1);
+    assert_eq!(
+        summary.maybe_downloaded_block_hash,
+        Some(block_hash_hex(block_hash(&child_one.header)))
+    );
+    assert_eq!(
+        summary.maybe_connected_block_hash,
+        Some(block_hash_hex(block_hash(&child_one.header)))
+    );
     assert_eq!(
         summary.sync_status(SyncNetwork::Regtest).sync_progress,
         FieldAvailability::available(SyncProgress {
@@ -3446,7 +3458,7 @@ fn invalid_block_body_is_peer_attributed_and_not_persisted() {
 }
 
 #[test]
-fn restart_reorgs_to_best_available_branch_when_blocks_are_already_local() {
+fn same_datadir_reopen_connects_best_available_branch_when_blocks_are_already_local() {
     // Arrange
     let path = temp_store_path("restart-branch-reorg");
     remove_dir_if_exists(&path);
@@ -3527,7 +3539,10 @@ fn restart_reorgs_to_best_available_branch_when_blocks_are_already_local() {
     // Assert
     assert_eq!(summary.best_header_height, 3);
     assert_eq!(summary.best_block_height, 3);
+    assert_eq!(summary.blocks_received, 0);
     assert_eq!(runtime.snapshot_summary().best_block_height, 3);
+    let requested_hashes = getdata_block_hashes(&transport.sent_messages());
+    assert!(requested_hashes.is_empty());
 
     remove_dir_if_exists(&path);
 }

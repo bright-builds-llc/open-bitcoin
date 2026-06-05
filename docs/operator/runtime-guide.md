@@ -193,6 +193,57 @@ Block-specific no-progress causes use these operator actions:
 - `resource_limit`: raise the configured block in-flight or sync-loop bounds
   for the explicit review run, or reduce competing load.
 
+### Same-datadir restart/resume evidence
+
+Use `--restart-after-progress` when you want the live-smoke runner to prove a
+same-datadir restart boundary instead of only proving progress inside one daemon
+process:
+
+```bash
+bun run scripts/run-live-mainnet-smoke.ts \
+  --datadir=/tmp/open-bitcoin-mainnet \
+  --manual-peer=HOST:8333 \
+  --restart-after-progress \
+  --timeout-seconds=180 \
+  --poll-seconds=10
+```
+
+After the report is written, inspect the same datadir directly through the
+repo-local Cargo and Bazel operator commands:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --datadir=/tmp/open-bitcoin-mainnet \
+  sync status --format json
+
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- \
+  --datadir=/tmp/open-bitcoin-mainnet \
+  sync status --format json
+```
+
+Pass evidence for the restart run is:
+
+- `result.status` is `passed`
+- `result.restartResumeEvidence.restartStatus` is `completed`
+- `result.restartResumeEvidence.sameDatadir.requestedPathMatched` is `true`
+- `result.restartResumeEvidence.sameDatadir.resolvedPathMatched` is `true`
+- `beforeRestart` and `afterRestart` preserve or increase header, downloaded
+  block, and connected block heights
+- downloaded and connected block hashes remain stable when heights do not move
+  after restart
+- `duplicateConnectVerdict` is `no_duplicate_connect_observed` or has a clear
+  reason for `unavailable`
+- `maybePostRestartProgressDelta` may be zero; fresh post-restart progress is
+  stronger evidence but is not required when durable same-datadir resume is
+  confirmed and the report includes a typed post-restart blocker
+
+Recovery diagnosis categories are intentionally coarse and operator-facing:
+`peer_incompatibility`, `public_network_unreachable`, `invalid_peer_data`,
+`store_corruption`, `store_incompatibility`, `resource_exhaustion`, and
+`intentional_cancellation`. Storage incompatibility or corruption wins over peer
+guidance so operators repair or preserve the datadir before retrying network
+experiments.
+
 ### Runtime resource bounds
 
 The sync loop has a bounded public-network resource envelope:
@@ -479,6 +530,9 @@ Use the repo-owned wrapper:
 bun run scripts/run-live-mainnet-smoke.ts --datadir=/tmp/open-bitcoin-mainnet
 bun run scripts/run-live-mainnet-smoke.ts --datadir=/tmp/open-bitcoin-mainnet \
   --timeout-seconds=60 --poll-seconds=5 --manual-peer=HOST[:PORT]
+bun run scripts/run-live-mainnet-smoke.ts --datadir=/tmp/open-bitcoin-mainnet \
+  --manual-peer=HOST:8333 --restart-after-progress \
+  --timeout-seconds=180 --poll-seconds=10
 bash scripts/run-benchmarks.sh --smoke
 bash scripts/run-benchmarks.sh --full --iterations 5
 ```
@@ -520,6 +574,10 @@ Live smoke behavior:
 - Operator cancellation is preserved as `status: cancelled` with
   `maybeNoProgressCause: operator_cancellation`, and the runner still writes
   partial evidence before exiting nonzero.
+- With `--restart-after-progress`, the runner intentionally terminates the
+  first daemon after observed header, downloaded-block, or connected-block
+  progress, starts a second daemon with the same selected datadir, and writes
+  compact restart proof under `result.restartResumeEvidence`.
 - It terminates its own daemon process after collecting evidence; for longer
   manual review, launch `open-bitcoind` directly and use
   `open-bitcoin sync status|pause|resume`.
