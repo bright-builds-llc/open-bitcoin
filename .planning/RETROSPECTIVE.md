@@ -181,6 +181,51 @@
 
 ---
 
+## Milestone: v1.4 - Mainnet IBD Convergence and Peer Compatibility
+
+**Shipped:** 2026-06-05
+**Phases:** 6 | **Plans:** 15 | **Counted summary tasks:** 25
+
+### What Was Built
+
+- Public peer compatibility diagnosis and daemon sync behavior that records completed outbound handshakes and typed, uncredited peer failures.
+- Deterministic bounded header convergence with opt-in live-smoke first-header-progress evidence.
+- Bounded block download/connect progress with durable downloaded and connected block height/hash evidence and typed no-credit block response handling.
+- Same-datadir restart/resume evidence across deterministic durable-store tests and opt-in two-session live-smoke reporting.
+- Operator truth surfaces, redacted support evidence, repo-local UAT/docs, v1.4 threat modeling, parity roots, and deterministic release-boundary checks.
+
+### What Worked
+
+- The phase chain kept public-network behavior opt-in while building deterministic fixtures for the same evidence schema.
+- Cross-phase evidence stayed coherent because later operator surfaces reused shared status snapshots and release-boundary checks.
+- The milestone audit caught stale planning traceability before archival, so archived requirements and roadmap files now match verified implementation evidence.
+
+### What Was Inefficient
+
+- Requirements and roadmap status drifted during phases 57 through 59 and had to be reconciled at archive time.
+- The complete-milestone helper copied active planning files before doing semantic PROJECT and ROADMAP evolution, so manual cleanup was still required.
+- The Phase 54 compatibility harness is useful and tested, but not yet exposed through a direct operator CLI or script wrapper.
+
+### Patterns Established
+
+- Treat first-header, first-block, restart/resume, and support-bundle evidence as one schema-backed operator evidence chain.
+- Keep public-network live-smoke commands opt-in and prove default verification excludes them through deterministic release-boundary checks.
+- Archive planning traceability only after requirements, phase summaries, and verification reports agree.
+
+### Key Lessons
+
+1. Requirements traceability should be marked complete as soon as a phase verification passes.
+2. Milestone archive helpers need a post-helper sanity pass for state frontmatter, roadmap collapse, and generated accomplishment formatting.
+3. Compatibility diagnostics are more useful when they are both testable as pure harnesses and easy to invoke from operator-facing tools.
+
+### Cost Observations
+
+- Model mix: not measured in repo artifacts.
+- Sessions: multiple GSD yolo execution, verification, audit, and archive turns across the v1.4 milestone.
+- Notable: the final archive mostly required planning-control cleanup, not runtime code changes, because phase verification had already closed implementation risk.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -191,6 +236,7 @@
 | v1.1 | 22 | Extended the workflow to terminal-first operator surfaces, milestone rerun audits, and explicit post-audit cleanup phases before archive. |
 | v1.2 | 7 | Added opt-in public-mainnet IBD review, live-smoke evidence, and security closeout while preserving hermetic default verification. |
 | v1.3 | 12 | Added public-mainnet proof hardening, fresh-status live-smoke closeout, support evidence cleanup, and explicit release-boundary audit closure. |
+| v1.4 | 6 | Converted diagnosed-blocker evidence into scoped outbound IBD convergence evidence with peer compatibility, header/block progress, restart/resume, support evidence, and release-boundary checks. |
 
 ### Cumulative Quality
 
@@ -200,6 +246,7 @@
 | v1.1 | 44/44 complete | Passed after Phase 33 and Phase 34 cleanup rerun | Repo-native `scripts/verify.sh`, operator-binary coverage, benchmark smoke and report validation, and Bazel smoke builds. |
 | v1.2 | 26/26 complete | Closed through Phase 40 live-smoke closeout and Phase 41 security audit/UAT; no dedicated milestone audit artifact | Repo-native `scripts/verify.sh`, deterministic sync regressions, opt-in live-mainnet smoke reporting, security audit, and UAT. |
 | v1.3 | 22/22 complete | Ready for archive with zero tracked tech-debt items after Phase 53 | Repo-native `scripts/verify.sh`, release-boundary guard, schema v2 support-bundle tests, live-smoke regression, opt-in public-network UAT, and lifecycle validation. |
+| v1.4 | 22/22 complete | Tech-debt audit with zero blockers; planning traceability corrected during archive prep | Repo-native `scripts/verify.sh`, compatibility/header/block/restart deterministic tests, schema v2 live-smoke fixtures, support redaction tests, release-boundary guard, and lifecycle validation. |
 
 ### Top Lessons
 
@@ -208,3 +255,4 @@
 3. Close audit debt through explicit cleanup phases when the evidence trail matters as much as the fix itself.
 4. Keep requirements traceability current during execution so archive work is historical packaging, not late evidence reconstruction.
 5. Treat successful public-network progress and fresh diagnosed blockers as different outcomes; both can be valid, but the archive must say which one shipped.
+6. Archive helpers need a final human sanity pass until they can safely evolve state, roadmap, project, milestones, and retrospective artifacts together.

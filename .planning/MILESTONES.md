@@ -1,5 +1,50 @@
 # Milestones: Open Bitcoin
 
+## v1.4 Mainnet IBD Convergence and Peer Compatibility (Shipped: 2026-06-05)
+
+**Delivered:** Opt-in outbound IBD convergence evidence through public peer compatibility, validated header progress, bounded block download/connect progress, same-datadir restart/resume evidence, redacted operator support evidence, and explicit v1.4 threat/release boundaries.
+
+**Phases completed:** 6 phases, 15 plans, 25 tasks
+
+**Key accomplishments:**
+
+- Daemon sync now accepts completed outbound handshakes while rejecting incompatible peers as typed, uncredited outcomes.
+- Header sync now has deterministic bounded convergence evidence and opt-in live-smoke first-header-progress reporting.
+- Best-chain-only block request tests provide retry-safe in-flight cleanup for `notfound`, disconnect, invalid, and malformed peer paths.
+- Peer block responses now produce typed connect/no-credit outcomes before live evidence consumes them.
+- Durable sync status now reports downloaded and connected block height/hash evidence while preserving the legacy connected-height alias.
+- Live-smoke reports now prove first connected block progress or return a typed block-progress diagnosis.
+- Deterministic same-datadir reopen coverage for durable headers, downloaded/connected block hashes, and no duplicate block requests.
+- Opt-in two-session same-datadir restart smoke evidence with compact JSON and Markdown report fields.
+- Storage-first restart recovery diagnosis plus operator and parity docs for same-datadir resume evidence.
+- Deterministic OBS-01 fixture coverage now keeps header, downloaded block, connected block, peer, signal, and latest-error evidence aligned across operator surfaces.
+- Redacted support bundles now expose compact v1.4 live-smoke progress, restart, recovery, peer-outcome, and final-status evidence without embedding raw local report artifacts.
+- v1.4 operator docs now give repo-local evidence commands, exact report-field pass/fail rules, shared status-truth wording, and credential redaction boundaries.
+- v1.4 threat, parity, and release-readiness roots now bound the opt-in outbound IBD evidence claim while preserving v1.3 as historical evidence.
+- Default repo verification now enforces the v1.4 release-boundary parity roots while keeping public-network live smoke opt-in only.
+
+**Stats:**
+
+- 22/22 v1.4 requirements complete.
+- 6 phases and 15 plans complete.
+- 99,241 tracked first-party lines in the final LOC report at archive time.
+- Milestone audit status: `tech_debt` with zero blockers; planning traceability was corrected during archive preparation.
+- Full repo-native verification passed during Phase 59 closeout and commit hooks.
+
+**Archived artifacts:**
+
+- `.planning/milestones/v1.4-ROADMAP.md`
+- `.planning/milestones/v1.4-REQUIREMENTS.md`
+- `.planning/milestones/v1.4-MILESTONE-AUDIT.md`
+
+**Residual risk:**
+
+- A future operator workflow could expose the Phase 54 compatibility harness directly through CLI or script glue, rather than requiring contributors to invoke the Rust harness path.
+
+**What's next:** Start the next milestone with `/gsd-new-milestone`.
+
+---
+
 ## v1.3 Public Mainnet Sync Proof and Node Hardening (Shipped: 2026-06-02)
 
 **Delivered:** Public-mainnet proof and node-hardening evidence for the explicit opt-in daemon sync workflow, with fresh diagnosed-blocker closeout and no broadened production-node claim.
