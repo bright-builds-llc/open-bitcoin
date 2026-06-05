@@ -4,6 +4,8 @@
 
 `OpenBitcoinStatusSnapshot` is the sole shared status model for later CLI status output, JSON automation, service diagnostics, dashboard panels, and support bundles. Live RPC is not the only status source; stopped-node inspection can still report local datadir, config paths, service state, log paths, locally collected health signals, metrics policy, and build provenance when those collectors are available.
 
+For v1.4, `OpenBitcoinStatusSnapshot` is the shared source of truth for status, dashboard, support evidence, RPC-facing blockchain info, metrics projections, structured logs, and live-smoke snapshots. Each consumer may render a different view, but it must preserve the same header height, downloaded block height, connected block height, peer compatibility state, progress signal, latest error, and unavailable-field reasons instead of inventing renderer-local summaries.
+
 ## Field Ownership
 
 | Field | Owner | OBS-01 details |
@@ -89,7 +91,8 @@ currently configured runtime envelope:
 - `max_sync_rounds`
 - `target_outbound_peers`
 
-This keeps status, dashboard, RPC JSON, and support reports aligned on one
+This keeps status, dashboard, RPC-facing blockchain info, support evidence,
+metrics projections, structured logs, and live-smoke snapshots aligned on one
 source of truth for public-network runtime bounds.
 
 ## Metrics and Logs

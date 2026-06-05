@@ -399,3 +399,131 @@ fn sync_progress_signal_name(signal: SyncProgressSignal) -> &'static str {
         SyncProgressSignal::Steady => "steady",
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use open_bitcoin_node::{
+        BuildProvenance, LogStatus, MetricsStatus,
+        status::{
+            ConfigStatus, FieldAvailability, MempoolStatus, NodeRuntimeState, NodeStatus,
+            OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, PeerTelemetry, ServiceStatus,
+            SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal,
+            SyncResourcePressure, SyncStatus, WalletStatus,
+        },
+    };
+
+    use super::{StatusRenderMode, render_status};
+
+    #[test]
+    fn status_human_render_preserves_shared_sync_truth_fields() {
+        // Arrange
+        let snapshot = shared_sync_truth_snapshot();
+
+        // Act
+        let rendered = render_status(&snapshot, StatusRenderMode::Human).expect("human status");
+
+        // Assert
+        assert!(
+            rendered.contains("headers=840100 downloaded_blocks=840006 connected_blocks=840004")
+        );
+        assert!(rendered.contains("awaiting_blocks"));
+        assert!(rendered.contains("peer stalled before block connect"));
+        assert!(rendered.contains("failed:seed.bitcoin.sipa.be:8333 via dns_seed"));
+    }
+
+    fn shared_sync_truth_snapshot() -> OpenBitcoinStatusSnapshot {
+        OpenBitcoinStatusSnapshot {
+            node: NodeStatus {
+                state: NodeRuntimeState::Running,
+                version: "0.1.0".to_string(),
+            },
+            config: ConfigStatus {
+                datadir: FieldAvailability::available("/tmp/open-bitcoin".to_string()),
+                config_paths: vec!["/tmp/open-bitcoin/open-bitcoin.jsonc".to_string()],
+            },
+            service: ServiceStatus {
+                manager: FieldAvailability::available("launchd".to_string()),
+                installed: FieldAvailability::available(true),
+                enabled: FieldAvailability::available(true),
+                running: FieldAvailability::available(true),
+            },
+            sync: SyncStatus {
+                network: FieldAvailability::available("mainnet".to_string()),
+                chain_tip: FieldAvailability::unavailable("chain tip unavailable"),
+                sync_progress: FieldAvailability::available(SyncProgress {
+                    header_height: 840_100,
+                    block_height: 840_004,
+                    downloaded_block_height: 840_006,
+                    connected_block_height: 840_004,
+                    maybe_downloaded_block_hash: Some("22".repeat(32)),
+                    maybe_connected_block_hash: Some("11".repeat(32)),
+                    progress_ratio: 840_004.0 / 840_100.0,
+                    messages_processed: 7,
+                    headers_received: 3,
+                    blocks_received: 1,
+                }),
+                lifecycle: FieldAvailability::available(SyncLifecycleState::Active),
+                phase: FieldAvailability::available("block_download".to_string()),
+                progress_signal: FieldAvailability::available(SyncProgressSignal::AwaitingBlocks),
+                lag: FieldAvailability::available(SyncLagStatus {
+                    headers_remaining: 0,
+                    blocks_remaining: 96,
+                }),
+                last_successful_progress_unix_seconds: FieldAvailability::available(1_717_000_000),
+                last_error: FieldAvailability::available(
+                    "peer stalled before block connect".to_string(),
+                ),
+                recovery_action: FieldAvailability::available(
+                    "Retry sync after peer backoff or choose a different peer.".to_string(),
+                ),
+                resource_pressure: FieldAvailability::available(SyncResourcePressure {
+                    blocks_in_flight: 0,
+                    max_header_requests_in_flight_per_peer: 1,
+                    max_headers_per_message: 2_000,
+                    max_blocks_in_flight_per_peer: 16,
+                    max_blocks_in_flight_total: 64,
+                    max_messages_per_peer: 64,
+                    max_sync_rounds: 8,
+                    outbound_peers: 2,
+                    target_outbound_peers: 4,
+                }),
+            },
+            peers: PeerStatus {
+                peer_counts: FieldAvailability::available(PeerCounts {
+                    inbound: 0,
+                    outbound: 2,
+                }),
+                recent_peers: FieldAvailability::available(vec![PeerTelemetry {
+                    peer: "seed.bitcoin.sipa.be:8333".to_string(),
+                    source: "dns_seed".to_string(),
+                    state: "failed".to_string(),
+                    network: "mainnet".to_string(),
+                    attempts: 1,
+                    maybe_resolved_endpoint: FieldAvailability::available(
+                        "203.0.113.10:8333".to_string(),
+                    ),
+                    capabilities: FieldAvailability::unavailable("peer capabilities unavailable"),
+                    headers_received: 3,
+                    blocks_received: 0,
+                    maybe_last_activity_unix_seconds: FieldAvailability::available(1_717_000_000),
+                    failure_reason: FieldAvailability::available("compatibility".to_string()),
+                    error: FieldAvailability::available(
+                        "failed:seed.bitcoin.sipa.be:8333 via dns_seed".to_string(),
+                    ),
+                }]),
+            },
+            mempool: MempoolStatus {
+                transactions: FieldAvailability::unavailable("mempool unavailable"),
+            },
+            wallet: WalletStatus {
+                trusted_balance_sats: FieldAvailability::unavailable("wallet unavailable"),
+                freshness: FieldAvailability::unavailable("wallet unavailable"),
+                scan_progress: FieldAvailability::unavailable("wallet unavailable"),
+            },
+            logs: LogStatus::default(),
+            metrics: MetricsStatus::default(),
+            health_signals: Vec::new(),
+            build: BuildProvenance::unavailable(),
+        }
+    }
+}

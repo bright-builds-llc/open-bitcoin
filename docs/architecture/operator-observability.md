@@ -1,5 +1,12 @@
 # Operator Observability Contracts
 
+`OpenBitcoinStatusSnapshot` is the shared source of truth for status, dashboard,
+support evidence, RPC-facing blockchain info, metrics projections, structured
+logs, and live-smoke snapshots. Observability writers and readers may keep their
+own retention policies, but they must not reinterpret header height, downloaded
+block height, connected block height, peer compatibility state, progress signal,
+or latest error independently from the shared snapshot.
+
 ## Default metrics retention
 
 Metrics history defaults to a 30 seconds sampling interval, 2880 samples per series, and a 24 hours maximum age. The intent is to give status and dashboard consumers a bounded day-scale window without creating unbounded runtime storage.
@@ -16,8 +23,9 @@ Structured logs default to daily rotation, 14 files, 14 days, and 268435456 byte
 
 Managed runtime log files use the `open-bitcoin-runtime-<unix_day>.jsonl` naming scheme, with one structured JSON record per line. The Unix-day bucket provides daily rotation without adding a calendar-formatting dependency; rolling file creation and retention pruning remain separate responsibilities.
 
-Sync summary log records must report the same progress dimensions that status
-and dashboard surfaces use: header height, downloaded block height, connected
+Sync summary log records must report the same progress dimensions that status,
+dashboard, support evidence, RPC-facing blockchain info, metrics projections,
+and live-smoke snapshots use: header height, downloaded block height, connected
 block height, progress signal, and last successful progress timestamp when one
 is known.
 

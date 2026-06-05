@@ -544,6 +544,10 @@
     {
       "name": "v1-3-threat-model-release-boundaries",
       "status": "done"
+    },
+    {
+      "name": "v1-4-operator-evidence-release-boundaries",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -946,6 +950,34 @@
           "A later operator can retry Phase 53 commands with a different reachable manual peer.",
           "Future production-node, inbound-serving, relay, packaging, hosted/public dashboard, and GUI claims need separate gates."
         ]
+      },
+      {
+        "id": "v1-4-operator-evidence-release-boundaries",
+        "title": "v1.4 Operator Evidence And Release Boundaries",
+        "status": "done",
+        "requirements": [
+          "OBS-01",
+          "OBS-02",
+          "OBS-03",
+          "SEC-01",
+          "SEC-02",
+          "SEC-03"
+        ],
+        "evidence": [
+          "docs/parity/threat-model-v1.4.md",
+          "docs/parity/release-readiness.md",
+          "docs/operator/runtime-guide.md",
+          "scripts/run-live-mainnet-smoke.ts",
+          "scripts/test-run-live-mainnet-smoke.sh",
+          "scripts/verify.sh"
+        ],
+        "rationale": "Phase 59 makes the v1.4 opt-in outbound IBD evidence claim auditable through current threat-model, release-readiness, checklist, operator-doc, live-smoke, and deterministic verification roots while preserving v1.3 evidence as historical.",
+        "known_gaps": [
+          "v1.4 proves opt-in outbound IBD evidence boundaries only; public-network checks remain outside default verification."
+        ],
+        "suspected_unknowns": [
+          "Future inbound serving, transaction relay, production-funds wallet use, migration apply mode, packaging, hosted dashboard, GUI, Windows service support, and unattended production-node operation need separate gates."
+        ]
       }
     ]
   },
@@ -991,6 +1023,49 @@
         ".planning/phases/48-support-evidence-and-operator-runbooks/48-SUMMARY.md"
       ]
     },
+    "v1_4_threat_model": {
+      "path": "threat-model-v1.4.md",
+      "status": "done",
+      "requirements": [
+        "OBS-01",
+        "OBS-02",
+        "OBS-03",
+        "SEC-01",
+        "SEC-02",
+        "SEC-03"
+      ],
+      "evidence": [
+        "docs/parity/threat-model-v1.4.md",
+        "docs/parity/release-readiness.md",
+        "docs/operator/runtime-guide.md",
+        "scripts/run-live-mainnet-smoke.ts",
+        "scripts/test-run-live-mainnet-smoke.sh",
+        "scripts/verify.sh"
+      ]
+    },
+    "v1_4_release_boundaries": {
+      "path": "release-readiness.md",
+      "status": "done",
+      "requirements": [
+        "OBS-01",
+        "OBS-02",
+        "OBS-03",
+        "SEC-01",
+        "SEC-02",
+        "SEC-03"
+      ],
+      "evidence": [
+        "docs/parity/threat-model-v1.4.md",
+        "docs/parity/release-readiness.md",
+        "docs/parity/checklist.md",
+        "docs/parity/deviations-and-unknowns.md",
+        "docs/parity/catalog/p2p.md",
+        "docs/operator/runtime-guide.md",
+        "scripts/run-live-mainnet-smoke.ts",
+        "scripts/test-run-live-mainnet-smoke.sh",
+        "scripts/verify.sh"
+      ]
+    },
     "security_analysis_audit": {
       "path": "../../.planning/milestones/v1.2-phases/41-audit-and-revisit-all-the-security-analyses-throughout-the-p/41-SECURITY-AUDIT.md",
       "status": "done",
@@ -1001,6 +1076,7 @@
       "path": "release-readiness.md",
       "status": "done",
       "evidence": [
+        "docs/parity/threat-model-v1.4.md",
         "docs/parity/threat-model-v1.3.md",
         "docs/parity/release-readiness.md",
         "docs/parity/checklist.md",

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Mainnet IBD Convergence and Peer Compatibility
 status: executing
-stopped_at: Phase 58 context gathered
-last_updated: "2026-06-05T13:26:37.308Z"
-last_activity: 2026-06-05 -- Phase 58 planning complete
+stopped_at: Phase 59 context gathered
+last_updated: "2026-06-05T19:58:30.507Z"
+last_activity: 2026-06-05
 progress:
   total_phases: 6
-  completed_phases: 4
-  total_plans: 10
-  completed_plans: 7
-  percent: 70
+  completed_phases: 6
+  total_plans: 15
+  completed_plans: 15
+  percent: 100
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-02)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** v1.4 Mainnet IBD Convergence and Peer Compatibility
+**Current focus:** Phase 59 — Operator Evidence, Threat Model, and Release Boundaries
 
 ## Current Position
 
-Phase: 58 - Same-Datadir Restart and Resume Evidence
+Phase: 59
 Plan: Not started
-Status: Ready to execute
-Last activity: 2026-06-05 -- Phase 58 planning complete
+Status: Executing Phase 59
+Last activity: 2026-06-05
 
 Progress: [#######---] 67%
 
@@ -36,7 +36,7 @@ Progress: [#######---] 67%
 
 **Velocity:**
 
-- Total plans completed: 7
+- Total plans completed: 12
 - Average duration: -
 - Total execution time: -
 
@@ -49,7 +49,7 @@ Progress: [#######---] 67%
 | 56 | 1 | - | - |
 | 57 | 4 | - | - |
 | 58 | 0 | not started | - |
-| 59 | 0 | not started | - |
+| 59 | 5 | - | - |
 
 **Recent Trend:**
 
@@ -96,6 +96,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-05T13:03:53.905Z
-Stopped at: Phase 58 context gathered
-Resume file: .planning/phases/58-same-datadir-restart-and-resume-evidence/58-CONTEXT.md
+Last session: 2026-06-05T15:12:34.967Z
+Stopped at: Phase 59 context gathered
+Resume file: .planning/phases/59-operator-evidence-threat-model-and-release-boundaries/59-CONTEXT.md

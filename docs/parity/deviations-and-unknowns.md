@@ -88,6 +88,32 @@ The Phase 48 support bundle remains local redacted evidence only. It does not
 make support tooling a release validator and does not add public-network checks
 to `bash scripts/verify.sh`.
 
+### v1.4 Operator Evidence And Release Boundaries
+
+The v1.4 threat model and release-readiness roots support `OBS-01`, `OBS-02`,
+`OBS-03`, `SEC-01`, `SEC-02`, and `SEC-03` without expanding the shipped claim.
+v1.4 proves opt-in outbound IBD evidence only: outbound peer compatibility,
+header progress, downloaded block progress, connected block progress,
+same-datadir restart/resume evidence, redacted support evidence, or a typed
+diagnosed blocker with next operator action.
+
+The following remain explicit non-claims until separate future gates exist:
+
+- inbound serving and address advertisement
+- transaction relay and mempool propagation
+- production-funds wallet use
+- migration apply mode, source-service cutover, or source-datadir mutation
+- packaging or signed release installation flows
+- hosted dashboard or public dashboard operation
+- GUI parity
+- Windows service support
+- unattended production-node operation
+
+Generated live-smoke reports, support bundles, daemon logs, metrics stores, and
+local datadirs stay local. Support evidence remains redacted review context; it
+does not make support tooling a release validator, hosted upload path, or
+default public-network verification gate.
+
 ## Suspected Unknowns
 
 Current catalog entries preserve these review targets:

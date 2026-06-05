@@ -1,28 +1,36 @@
 # Release Readiness
 
-This is the current release-hardening handoff surface for the headless v1.3
-Public Mainnet Sync Proof and Node Hardening milestone. It points reviewers at
-repo-owned evidence instead of reproducing full phase logs, checking generated
-benchmark artifacts into git, or making public-network checks part of default
-verification.
+This release-hardening handoff preserves the headless v1.3 Public Mainnet Sync
+Proof and Node Hardening evidence as historical context and adds the current
+v1.4 Operator Evidence, Threat Model, and Release Boundaries closeout. It
+points reviewers at repo-owned evidence instead of reproducing full phase logs,
+checking generated benchmark or live-smoke artifacts into git, or making
+public-network checks part of default verification.
 
 ## Readiness Verdict
 
-The current v1.3 readiness claim is a source-built, opt-in, local-evidence
-public-mainnet sync proof and node-hardening review surface. It covers the
-documented live-smoke workflow, durable sync status truth, peer resilience,
-resource bounds, durable recovery, redacted support evidence, and reviewer
-traceability needed before Phase 50 evidence closeout.
+The v1.3 readiness claim remains historical: a source-built, opt-in,
+local-evidence public-mainnet sync proof and node-hardening review surface. It
+covers the documented live-smoke workflow, durable sync status truth, peer
+resilience, resource bounds, durable recovery, redacted support evidence, and
+reviewer traceability needed for the Phase 50 evidence closeout.
+
+The current v1.4 readiness claim is a source-built, opt-in outbound IBD
+evidence surface. It covers outbound peer compatibility, validated header
+progress, downloaded block progress, connected block progress,
+same-datadir restart/resume evidence, redacted support evidence, field-level
+operator interpretation, and explicit release boundaries for reviewer closeout.
 
 This is not a production-node or production-funds claim. It does not claim
 inbound serving, transaction relay, migration apply mode, packaging or signed
-installers, hosted/public dashboard operation, GUI parity, or unattended
-production-node readiness.
+installers, hosted/public dashboard operation, GUI parity, Windows service
+support, or unattended production-node readiness.
 
 Treat [`docs/parity/index.json`](index.json) as the machine-readable root,
 [`docs/parity/checklist.md`](checklist.md) as the human checklist view, and
-[`docs/parity/threat-model-v1.3.md`](threat-model-v1.3.md) as the v1.3 scoped
-threat model.
+[`docs/parity/threat-model-v1.4.md`](threat-model-v1.4.md) as the current v1.4
+scoped threat model. [`docs/parity/threat-model-v1.3.md`](threat-model-v1.3.md)
+remains the historical v1.3 scoped threat model.
 
 Readiness is evidence-based, not timing-threshold based. The blocking local
 verification command is:
@@ -57,12 +65,17 @@ surfaces as `done`:
 - `live-mainnet-smoke-closeout`
 - `security-analysis-audit`
 - `v1-3-threat-model-release-boundaries`
+- `v1-4-operator-evidence-release-boundaries`
 
 Primary current-cycle evidence:
 
+- [`docs/parity/threat-model-v1.4.md`](threat-model-v1.4.md) records the
+  current v1.4 STRIDE register, ASVS L1 mapping, evidence acceptance, release
+  boundary matrix, and requirement traceability for OBS-01, OBS-02, OBS-03,
+  SEC-01, SEC-02, and SEC-03.
 - [`docs/parity/threat-model-v1.3.md`](threat-model-v1.3.md) records the
-  scoped STRIDE register, evidence acceptance criteria, boundary matrix, and
-  requirement traceability for PROOF-06, SEC-01, and SEC-02.
+  historical scoped STRIDE register, evidence acceptance criteria, boundary
+  matrix, and requirement traceability for PROOF-06, SEC-01, and SEC-02.
 - [`docs/operator/runtime-guide.md`](../operator/runtime-guide.md) provides the
   source-built operator workflow, opt-in live-mainnet smoke commands, support
   bundle commands, redaction boundaries, and known limitations.
@@ -76,6 +89,28 @@ Primary current-cycle evidence:
   preserves deferred production-adjacent surfaces for review.
 - [`scripts/verify.sh`](../../scripts/verify.sh) provides the repo-owned local
   verification contract for the release surface.
+
+## v1.4 Operator Evidence Claim Boundary Matrix
+
+| Surface | v1.4 Proven Claim | Accepted Evidence | Explicit Non-Claim | Required Next Milestone Or Deferred Gate | Requirement IDs |
+| --- | --- | --- | --- | --- | --- |
+| Outbound peer compatibility | Open Bitcoin can distinguish compatible outbound peers, incompatible peers, idle peers, failed peers, and useful-contribution peers in deterministic and opt-in live evidence. | Compatibility harness evidence, durable peer telemetry, live-smoke peer outcomes, support evidence, `scripts/run-live-mainnet-smoke.ts`. | No inbound serving, address advertisement, peer eviction, or ban-policy production claim. | Future PRODNODE-02 inbound-serving and peer-governance milestone. | OBS-01, SEC-01, SEC-02 |
+| Header progress | Opt-in live smoke can record the first validated header-height increase with before/after fresh status. | `result.firstHeaderProgress`, live-smoke JSON/Markdown, `OpenBitcoinStatusSnapshot`, runtime guide commands. | Header progress is not connected block progress, full IBD completion, or production readiness. | Future full-IBD completion milestone if the release claim expands. | OBS-01, OBS-03, SEC-01 |
+| Downloaded block progress | Opt-in live smoke can record downloaded best-chain block-body progress separately from connected chainstate. | `result.firstBlockProgress`, `final_status.downloadedBlockHeight`, durable status snapshots. | Downloaded-only progress is not connected chainstate progress and remains diagnosable as awaiting connection when applicable. | Future block-connect and full-IBD evidence gate. | OBS-01, OBS-03, SEC-01 |
+| Connected block progress | Opt-in live smoke can record connected block progress when a validated block reaches active chainstate. | `result.firstBlockProgress`, `final_status.connectedBlockHeight`, RPC-facing blockchain info, status/dashboard/support evidence. | Connected first-block progress is not full chain sync or unattended long-run convergence. | Future full-IBD and production-node evidence gates. | OBS-01, OBS-03, SEC-01 |
+| Same-datadir restart/resume evidence | Operators can request a same-datadir restart review and inspect durable before/after progress continuity. | `result.restartResumeEvidence`, `result.restartResumeEvidence.recoveryDiagnosis.category`, Cargo and Bazel `sync status --format json` commands. | No service-manager restart policy, automatic recovery loop, or unattended production-node operation claim. | Future PRODNODE-01 service-supervision and long-run recovery milestone. | OBS-01, OBS-03, SEC-01 |
+| Support evidence | Operators can generate a redacted local v1.4 support bundle summarizing live-smoke, peer, status, metrics/log, config, and store-health evidence. | `support-evidence.json`, `support-evidence.md`, support-bundle Cargo/Bazel commands, Phase 59 support projection summary. | Support bundles are not release validators, public-mainnet proof by themselves, hosted uploads, or raw report archives. | Future artifact validator or hosted support design. | OBS-02, OBS-03, SEC-01 |
+| Threat model and release boundary docs | Reviewers can inspect current v1.4 STRIDE/ASVS coverage, human checklist roots, and machine-readable parity roots without rewriting v1.3 history. | `docs/parity/threat-model-v1.4.md`, `docs/parity/release-readiness.md`, `docs/parity/checklist.md`, `docs/parity/index.json`, `docs/parity/README.md`. | v1.3 docs remain historical evidence and are not promoted into current v1.4 claims. | Future milestone threat model and parity roots when scope expands. | SEC-01, SEC-02 |
+| Deterministic verification | Default verification remains deterministic and public-network-free. | `bash scripts/verify.sh`, `bash scripts/test-run-live-mainnet-smoke.sh`, `scripts/verify.sh` review, parity docs. | No public-network CI gate, default live-smoke run, or `--restart-after-progress` default verification claim. | Future release-policy decision if live evidence becomes a stronger gate. | SEC-03 |
+| Inbound serving | No shipped v1.4 claim. | Deferred-surface rows in this matrix, `deviations-and-unknowns.md`, `catalog/p2p.md`. | v1.4 does not claim inbound serving or address advertisement. | Future PRODNODE-02. | SEC-02 |
+| Transaction relay | No shipped v1.4 claim. | Deferred-surface rows in this matrix, `deviations-and-unknowns.md`, `catalog/p2p.md`. | v1.4 does not claim transaction relay or mempool propagation behavior. | Future PRODNODE-03. | SEC-02 |
+| Production-funds wallet use | No shipped v1.4 claim. | Deferred-surface rows in this matrix and runtime-guide known limitations. | v1.4 does not claim production-funds wallet use. | Future WALPROD-01 threat model and parity evidence. | SEC-02 |
+| Migration apply mode | No shipped v1.4 claim. | Dry-run migration docs, deferred-surface rows, parity deviations. | v1.4 does not claim migration apply mode, source-service cutover, or source-datadir mutation. | Future MIGAPPLY-01 safety design. | SEC-02 |
+| Packaging | No shipped v1.4 claim. | Source-built install docs, deferred-surface rows. | v1.4 does not claim packaging, signed installers, or canonical OS distribution. | Future PKG-01. | SEC-02 |
+| Hosted dashboard | No shipped v1.4 claim. | Local dashboard docs, deferred-surface rows. | v1.4 does not claim hosted dashboard or public dashboard operation. | Future hosted operations design. | SEC-02 |
+| GUI | No shipped v1.4 claim. | Headless and terminal-first docs. | v1.4 does not claim GUI parity with the reference Qt app. | Future GUI milestone. | SEC-02 |
+| Windows service support | No shipped v1.4 claim. | Source-built local service docs, deferred-surface rows. | v1.4 does not claim Windows service support or certification. | Future PKG-02. | SEC-02 |
+| Unattended production-node operation | No shipped v1.4 claim. | Runtime-guide limitations, threat model, deferred-surface rows. | v1.4 does not claim unattended production-node operation. | Future PRODNODE-01 long-run service milestone. | SEC-02 |
 
 ## v1.3 Release Claim Boundary Matrix
 
@@ -212,7 +247,7 @@ records no intentional in-scope external behavior deviations beyond the already
 documented migration differences, but it preserves deferred surfaces for
 review.
 
-Current v1.3 deferrals include:
+Current v1.4 deferrals include:
 
 - inbound serving and address advertisement
 - transaction relay and mempool propagation
@@ -259,6 +294,9 @@ Evidence links:
 - [`scripts/check-v1.3-release-boundaries.ts`](../../scripts/check-v1.3-release-boundaries.ts)
   checks that Phase 49 docs and parity roots keep PROOF-06, SEC-01, and SEC-02
   linked without public-network access.
+- [`scripts/check-v1.4-release-boundaries.ts`](../../scripts/check-v1.4-release-boundaries.ts)
+  checks that Phase 59 docs and parity roots keep OBS-01, OBS-02, OBS-03,
+  SEC-01, SEC-02, and SEC-03 linked without public-network access.
 - [`scripts/run-live-mainnet-smoke.ts`](../../scripts/run-live-mainnet-smoke.ts)
   launches the explicit live-mainnet review flow, polls durable sync status,
   and writes local JSON plus Markdown evidence reports.
@@ -319,8 +357,12 @@ gate.
 
 Before a release decision, inspect:
 
+- [`docs/parity/threat-model-v1.4.md`](threat-model-v1.4.md) for the current
+  v1.4 threat model, ASVS L1 mapping, release boundary matrix, and requirement
+  traceability.
 - [`docs/parity/threat-model-v1.3.md`](threat-model-v1.3.md) for the v1.3
-  threat model, release boundary matrix, and requirement traceability.
+  historical threat model, release boundary matrix, and requirement
+  traceability.
 - [`docs/parity/index.json`](index.json) for machine-readable checklist and
   audit roots.
 - [`docs/parity/checklist.md`](checklist.md) for current status, evidence,

@@ -3,6 +3,7 @@
 
 //! Local support evidence bundle generation.
 
+mod live_smoke;
 mod render;
 
 use std::{
@@ -16,7 +17,7 @@ use open_bitcoin_node::{
     RuntimeMetadata, metrics::MetricsAvailability,
 };
 use serde::Serialize;
-use serde_json::{Map, Value, json};
+use serde_json::Value;
 
 use render::{render_support_markdown, render_support_outcome};
 
@@ -31,37 +32,6 @@ use super::{
 
 const SUPPORT_EVIDENCE_JSON: &str = "support-evidence.json";
 const SUPPORT_EVIDENCE_MARKDOWN: &str = "support-evidence.md";
-const LIVE_SMOKE_RESULT_SUMMARY_KEYS: &[&str] = &[
-    "status",
-    "progressDetected",
-    "maybeNoProgressCause",
-    "nextAction",
-    "headerDelta",
-    "blockDelta",
-];
-const LIVE_SMOKE_TOP_LEVEL_SUMMARY_KEYS: &[&str] = &[
-    "status",
-    "maybeNoProgressCause",
-    "maybe_no_progress_cause",
-    "nextAction",
-    "next_action",
-    "reportPath",
-    "report_path",
-    "markdownPath",
-    "markdown_path",
-    "startedAtUnixSeconds",
-    "started_at_unix_seconds",
-    "finishedAtUnixSeconds",
-    "finished_at_unix_seconds",
-    "timeoutSeconds",
-    "timeout_seconds",
-    "pollSeconds",
-    "poll_seconds",
-    "manualPeers",
-    "manual_peers",
-    "generatedConfigPath",
-    "generated_config_path",
-];
 
 pub(crate) fn execute_support_command(
     args: &SupportArgs,
@@ -493,88 +463,16 @@ fn collect_live_smoke_evidence(maybe_report_path: Option<&Path>) -> LiveSmokeEvi
     LiveSmokeEvidence {
         state: EvidenceState::Available,
         report_path: Some(path_to_string(report_path)),
-        summary: live_smoke_summary(&value),
+        summary: live_smoke::summary(&value),
         reason: None,
     }
-}
-
-fn live_smoke_summary(value: &Value) -> Option<Value> {
-    let object = value.as_object()?;
-    if let Some(summary) = live_smoke_summary_from_result(object.get("result")) {
-        return Some(summary);
-    }
-    if let Some(summary) = live_smoke_summary_from_top_level(object) {
-        return Some(summary);
-    }
-
-    Some(json!({
-        "status": "summary_fields_unavailable"
-    }))
-}
-
-fn live_smoke_summary_from_result(maybe_result: Option<&Value>) -> Option<Value> {
-    let result = maybe_result?.as_object()?;
-    let mut summary = Map::new();
-    for key in LIVE_SMOKE_RESULT_SUMMARY_KEYS {
-        if let Some(item) = result.get(*key) {
-            summary.insert((*key).to_string(), sanitize_json_value(item));
-        }
-    }
-    if summary.is_empty() {
-        return None;
-    }
-
-    Some(Value::Object(summary))
-}
-
-fn live_smoke_summary_from_top_level(object: &Map<String, Value>) -> Option<Value> {
-    let mut summary = Map::new();
-    for key in LIVE_SMOKE_TOP_LEVEL_SUMMARY_KEYS {
-        if let Some(item) = object.get(*key) {
-            summary.insert((*key).to_string(), sanitize_json_value(item));
-        }
-    }
-    if summary.is_empty() {
-        return None;
-    }
-
-    Some(Value::Object(summary))
-}
-
-fn sanitize_json_value(value: &Value) -> Value {
-    match value {
-        Value::String(text) => Value::String(redact_sensitive_text(text)),
-        Value::Array(items) => Value::Array(items.iter().map(sanitize_json_value).collect()),
-        Value::Object(object) => Value::Object(
-            object
-                .iter()
-                .map(|(key, value)| (key.clone(), sanitize_json_value(value)))
-                .collect(),
-        ),
-        Value::Null | Value::Bool(_) | Value::Number(_) => value.clone(),
-    }
-}
-
-fn redact_sensitive_text(text: &str) -> String {
-    let lowercase = text.to_ascii_lowercase();
-    if lowercase.contains("rpcpassword")
-        || lowercase.contains("rpcauth")
-        || lowercase.contains("__cookie__")
-        || lowercase.contains("private_key")
-        || lowercase.contains("xprv")
-        || lowercase.contains("seed phrase")
-    {
-        return "[redacted]".to_string();
-    }
-
-    text.to_string()
 }
 
 fn redaction_summary() -> RedactionSummary {
     RedactionSummary {
         omitted: vec![
             "RPC cookie contents".to_string(),
-            "rpcpassword and rpcauth values".to_string(),
+            "RPC password and RPC auth values".to_string(),
             "wallet private material and raw wallet files".to_string(),
             "raw unbounded log contents".to_string(),
         ],

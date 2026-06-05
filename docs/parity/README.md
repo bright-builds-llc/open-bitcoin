@@ -20,6 +20,13 @@ The current shipped headless v1 surfaces remain marked `done` in
 The v1.1 drop-in audit and migration slice is tracked through the same ledger,
 with cross-cutting evidence in
 [`catalog/drop-in-audit-and-migration.md`](catalog/drop-in-audit-and-migration.md).
+The current v1.4 closeout evidence is rooted in
+[`threat-model-v1.4.md`](threat-model-v1.4.md),
+[`release-readiness.md`](release-readiness.md), and the
+`v1-4-operator-evidence-release-boundaries` checklist surface. The v1.3 threat
+model remains historical evidence and should not be read as the current
+milestone claim.
+
 Deferred and suspected follow-up work remains visible in
 [`deviations-and-unknowns.md`](deviations-and-unknowns.md).
 
@@ -31,7 +38,8 @@ Deferred and suspected follow-up work remains visible in
 - `deviations-and-unknowns.md` summarizes current deviations, deferred surfaces, suspected unknowns, and folded todo risks.
 - `benchmarks.md` documents the benchmark groups, Knots mappings, local commands, reports, and non-goals.
 - `release-readiness.md` is the milestone handoff and reviewer inspection checklist.
-- `threat-model-v1.3.md` is the v1.3 scoped threat model and release-boundary companion for PROOF-06, SEC-01, and SEC-02.
+- `threat-model-v1.4.md` is the current v1.4 scoped threat model and release-boundary companion for OBS-01, OBS-02, OBS-03, SEC-01, SEC-02, and SEC-03.
+- `threat-model-v1.3.md` is the historical v1.3 scoped threat model and release-boundary companion for PROOF-06, SEC-01, and SEC-02.
 - `catalog/README.md` explains the subsystem-level catalog structure used to satisfy `REF-03`.
 - `catalog/core-domain-and-serialization.md` tracks domain primitives, serialization, scripts, transactions, blocks, and protocol framing.
 - `catalog/consensus-validation.md` tracks consensus validation, script execution, PoW, merkle behavior, and typed validation outcomes.

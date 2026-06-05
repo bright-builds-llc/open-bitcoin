@@ -84,7 +84,10 @@ impl SyncRunSummary {
                     "no successful sync progress recorded in this run",
                 ),
             },
-            last_error: FieldAvailability::unavailable("no sync error recorded"),
+            last_error: match self.latest_error_message() {
+                Some(value) => FieldAvailability::available(value),
+                None => FieldAvailability::unavailable("no sync error recorded"),
+            },
             recovery_action: FieldAvailability::unavailable("no recovery action required"),
             resource_pressure: FieldAvailability::available(SyncResourcePressure {
                 blocks_in_flight: 0,
@@ -244,5 +247,107 @@ fn progress_signal_name(signal: SyncProgressSignal) -> &'static str {
         SyncProgressSignal::PeerFailures => "peer_failures",
         SyncProgressSignal::AwaitingBlocks => "awaiting_blocks",
         SyncProgressSignal::Steady => "steady",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        FieldAvailability, MetricKind, MetricSample,
+        status::{PeerCounts, SyncProgressSignal},
+        sync::{
+            PeerContribution, PeerFailureReason, PeerSyncOutcome, PeerSyncState, SyncNetwork,
+            SyncPeerAddress, SyncRunSummary,
+        },
+    };
+
+    #[test]
+    fn sync_summary_projects_consistent_operator_evidence_fields() {
+        // Arrange
+        let latest_error = "peer stalled before block connect";
+        let summary = SyncRunSummary {
+            target_outbound_peers: 4,
+            attempted_peers: 2,
+            connected_peers: 2,
+            failed_peers: 0,
+            messages_processed: 7,
+            headers_received: 3,
+            blocks_received: 1,
+            best_header_height: 840_100,
+            downloaded_block_height: 840_006,
+            best_block_height: 840_004,
+            maybe_downloaded_block_hash: Some("22".repeat(32)),
+            maybe_connected_block_hash: Some("11".repeat(32)),
+            peer_outcomes: vec![PeerSyncOutcome {
+                peer: SyncPeerAddress::manual("seed.bitcoin.sipa.be", 8_333),
+                maybe_resolved_endpoint: Some("203.0.113.10:8333".to_string()),
+                network: SyncNetwork::Mainnet,
+                state: PeerSyncState::Stalled,
+                attempts: 1,
+                contribution: PeerContribution {
+                    messages_processed: 7,
+                    headers_received: 3,
+                    blocks_received: 1,
+                },
+                maybe_last_activity_unix_seconds: Some(1_717_000_000),
+                maybe_capabilities: None,
+                maybe_failure_reason: Some(PeerFailureReason::Stall),
+                maybe_error: Some(latest_error.to_string()),
+            }],
+            health_signals: Vec::new(),
+            maybe_stop_reason: None,
+        };
+
+        // Act
+        let status = summary.sync_status(SyncNetwork::Mainnet);
+        let peer_status = summary.peer_status();
+        let samples = summary.metric_samples(1_717_000_000);
+        let records = summary.structured_log_records(1_717_000_000);
+
+        // Assert
+        let FieldAvailability::Available(progress) = status.sync_progress else {
+            panic!("sync progress should be available");
+        };
+        assert_eq!(progress.header_height, 840_100);
+        assert_eq!(progress.downloaded_block_height, 840_006);
+        assert_eq!(progress.connected_block_height, 840_004);
+        assert_eq!(progress.block_height, 840_004);
+        assert_eq!(progress.maybe_downloaded_block_hash, Some("22".repeat(32)));
+        assert_eq!(progress.maybe_connected_block_hash, Some("11".repeat(32)));
+        assert_eq!(
+            status.progress_signal,
+            FieldAvailability::available(SyncProgressSignal::BlockProgress)
+        );
+        assert_eq!(
+            status.last_error,
+            FieldAvailability::available(latest_error.to_string())
+        );
+        assert_eq!(
+            peer_status.peer_counts,
+            FieldAvailability::available(PeerCounts {
+                inbound: 0,
+                outbound: 2,
+            })
+        );
+        assert_eq!(
+            samples,
+            vec![
+                MetricSample::new(MetricKind::HeaderHeight, 840_100.0, 1_717_000_000),
+                MetricSample::new(MetricKind::DownloadedBlockHeight, 840_006.0, 1_717_000_000,),
+                MetricSample::new(MetricKind::ConnectedBlockHeight, 840_004.0, 1_717_000_000,),
+                MetricSample::new(MetricKind::SyncHeight, 840_004.0, 1_717_000_000),
+                MetricSample::new(MetricKind::PeerCount, 2.0, 1_717_000_000),
+            ]
+        );
+        assert!(records.iter().any(|record| {
+            record
+                .message
+                .contains("header=840100 downloaded=840006 connected=840004 signal=block_progress")
+        }));
+        assert!(
+            records
+                .iter()
+                .any(|record| record.message.contains("peer stalled"))
+        );
     }
 }

@@ -110,12 +110,13 @@ Plans:
   2. Support evidence summarizes compatibility diagnostics, selected live-smoke reports, peer outcomes, status snapshots, metrics, logs, config sources, and store health without raw sensitive data.
   3. Operator docs include repo-local Cargo and Bazel commands for deterministic checks, manual-peer live smoke, restart/resume review, support evidence, and pass/fail interpretation.
   4. Reviewer-facing threat model, parity docs, and release-readiness docs preserve the v1.4 opt-in outbound IBD claim boundary and keep public-network checks outside `bash scripts/verify.sh`.
-**Plans**: 4 plans
+**Plans**: 5 plans
 Plans:
-- [ ] 59-01-PLAN.md — Assert operator truth consistency across status, dashboard, metrics/logs, RPC, and live-smoke fixtures.
-- [ ] 59-02-PLAN.md — Extend redacted support evidence summaries for v1.4 live-smoke fields.
-- [ ] 59-03-PLAN.md — Publish v1.4 operator docs, threat model, parity roots, and claim boundaries.
-- [ ] 59-04-PLAN.md — Add deterministic v1.4 release-boundary checker and verification wiring.
+- [x] 59-01-PLAN.md — Assert operator truth consistency across status, dashboard, metrics/logs, RPC, and live-smoke fixtures.
+- [x] 59-02-PLAN.md — Extend redacted support evidence summaries for v1.4 live-smoke fields.
+- [x] 59-03-PLAN.md — Publish repo-local v1.4 operator and architecture evidence docs.
+- [x] 59-04-PLAN.md — Publish v1.4 threat model, parity roots, and release claim boundaries.
+- [x] 59-05-PLAN.md — Add deterministic v1.4 release-boundary checker and verification wiring.
 
 ## Completed Milestones
 
@@ -153,7 +154,7 @@ traceability.
 | 56. Header IBD Convergence | 1/1 | Complete    | 2026-06-03 |
 | 57. Block Download and Connect Progress | 4/4 | Complete    | 2026-06-04 |
 | 58. Same-Datadir Restart and Resume Evidence | 0/0 | Not started | - |
-| 59. Operator Evidence, Threat Model, and Release Boundaries | 0/0 | Not started | - |
+| 59. Operator Evidence, Threat Model, and Release Boundaries | 5/5 | Complete    | 2026-06-05 |
 
 | Milestone | Phases | Plans | Status | Shipped |
 | --- | ---: | ---: | --- | --- |

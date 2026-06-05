@@ -24,7 +24,7 @@ Phase 36 extends that JSONC-owned sync surface with peer-lifecycle config:
 Those settings remain Open Bitcoin-only knobs owned by `open-bitcoin.jsonc`, not
 baseline `bitcoin.conf`.
 
-The operator resolver reports the selected Open Bitcoin JSONC path, baseline-compatible `bitcoin.conf` path, datadir, structured log directory, metrics store directory, network, and credential source. Credential reporting is metadata-only: cookie files are reported by path/source and presence, never by cookie contents.
+The operator resolver reports the selected Open Bitcoin JSONC path, baseline-compatible `bitcoin.conf` path, datadir, structured log directory, metrics store directory, network, and credential source. Credential reporting is metadata-only: cookie files are reported by path/source and presence, never by cookie contents. Cookie contents, `rpcpassword`, and `rpcauth` values are not support evidence; support bundles may record which credential source was selected, but they must not copy credential values.
 
 ## Precedence
 

@@ -14,6 +14,9 @@ use open_bitcoin_node::{
     },
 };
 
+#[cfg(test)]
+mod tests;
+
 /// Metric series rendered as dashboard charts.
 pub const DASHBOARD_METRIC_KINDS: [MetricKind; 8] = [
     MetricKind::HeaderHeight,
@@ -288,7 +291,7 @@ fn sync_pressure(value: &FieldAvailability<SyncResourcePressure>) -> String {
 fn peer_counts_availability(value: &FieldAvailability<PeerCounts>) -> String {
     match value {
         FieldAvailability::Available(value) => {
-            format!("in={} out={}", value.inbound, value.outbound)
+            format!("inbound={} outbound={}", value.inbound, value.outbound)
         }
         FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
     }
@@ -492,127 +495,5 @@ fn sync_progress_signal_name(signal: SyncProgressSignal) -> &'static str {
         SyncProgressSignal::PeerFailures => "peer_failures",
         SyncProgressSignal::AwaitingBlocks => "awaiting_blocks",
         SyncProgressSignal::Steady => "steady",
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use open_bitcoin_node::{
-        MetricKind, MetricRetentionPolicy, MetricSample, MetricsStatus,
-        status::{
-            BuildProvenance, ConfigStatus, FieldAvailability, HealthSignal, HealthSignalLevel,
-            MempoolStatus, NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts,
-            PeerStatus, ServiceStatus, SyncProgressSignal, SyncStatus, WalletFreshness,
-            WalletStatus,
-        },
-    };
-
-    use super::{DASHBOARD_METRIC_KINDS, DashboardState, derive_metric_points};
-
-    #[test]
-    fn dashboard_projection_includes_required_sections_and_charts() {
-        // Arrange
-        let snapshot = test_snapshot();
-
-        // Act
-        let state = DashboardState::from_snapshot(&snapshot);
-
-        // Assert
-        let titles = state
-            .sections
-            .iter()
-            .map(|section| section.title.as_str())
-            .collect::<Vec<_>>();
-        assert_eq!(
-            titles,
-            vec![
-                "Node",
-                "Sync and Peers",
-                "Mempool and Wallet",
-                "Service",
-                "Logs and Health"
-            ]
-        );
-        assert_eq!(state.charts.len(), DASHBOARD_METRIC_KINDS.len());
-        assert!(state.actions.iter().any(|action| action.destructive));
-        let wallet_rows = &state.sections[2].rows;
-        assert_eq!(wallet_rows[2].label, "Freshness");
-        assert_eq!(wallet_rows[2].value, "fresh");
-    }
-
-    #[test]
-    fn derive_metric_points_is_width_bounded() {
-        // Arrange
-        let samples = vec![
-            MetricSample::new(MetricKind::SyncHeight, 1.0, 1),
-            MetricSample::new(MetricKind::SyncHeight, 2.0, 2),
-            MetricSample::new(MetricKind::SyncHeight, 3.0, 3),
-        ];
-
-        // Act
-        let points = derive_metric_points(&samples, 2);
-
-        // Assert
-        assert_eq!(points, vec![2, 3]);
-    }
-
-    fn test_snapshot() -> OpenBitcoinStatusSnapshot {
-        OpenBitcoinStatusSnapshot {
-            node: NodeStatus {
-                state: NodeRuntimeState::Running,
-                version: "0.1.0".to_string(),
-            },
-            config: ConfigStatus {
-                datadir: FieldAvailability::available("/tmp/open-bitcoin".to_string()),
-                config_paths: vec!["/tmp/open-bitcoin/bitcoin.conf".to_string()],
-            },
-            service: ServiceStatus {
-                manager: FieldAvailability::available("launchd".to_string()),
-                installed: FieldAvailability::available(true),
-                enabled: FieldAvailability::available(true),
-                running: FieldAvailability::available(true),
-            },
-            sync: SyncStatus {
-                network: FieldAvailability::available("regtest".to_string()),
-                chain_tip: FieldAvailability::unavailable("no tip"),
-                sync_progress: FieldAvailability::unavailable("no sync"),
-                lifecycle: FieldAvailability::unavailable("no sync lifecycle"),
-                phase: FieldAvailability::unavailable("no sync phase"),
-                progress_signal: FieldAvailability::available(SyncProgressSignal::Steady),
-                lag: FieldAvailability::unavailable("no sync lag"),
-                last_successful_progress_unix_seconds: FieldAvailability::unavailable(
-                    "no successful sync progress",
-                ),
-                last_error: FieldAvailability::unavailable("no sync error"),
-                recovery_action: FieldAvailability::unavailable("no recovery action"),
-                resource_pressure: FieldAvailability::unavailable("no sync pressure"),
-            },
-            peers: PeerStatus {
-                peer_counts: FieldAvailability::available(PeerCounts {
-                    inbound: 1,
-                    outbound: 2,
-                }),
-                recent_peers: FieldAvailability::unavailable("no peer telemetry"),
-            },
-            mempool: MempoolStatus {
-                transactions: FieldAvailability::available(4),
-            },
-            wallet: WalletStatus {
-                trusted_balance_sats: FieldAvailability::available(50_000),
-                freshness: FieldAvailability::available(WalletFreshness::Fresh),
-                scan_progress: FieldAvailability::unavailable("wallet already fresh"),
-            },
-            logs: open_bitcoin_node::LogStatus::default(),
-            metrics: MetricsStatus::available_with_samples(
-                MetricRetentionPolicy::default(),
-                vec![MetricSample::new(MetricKind::SyncHeight, 100.0, 10)],
-            ),
-            health_signals: vec![HealthSignal {
-                level: HealthSignalLevel::Info,
-                source: "test".to_string(),
-                message: "ok".to_string(),
-            }],
-            build: BuildProvenance::unavailable(),
-        }
     }
 }

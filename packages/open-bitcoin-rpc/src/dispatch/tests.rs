@@ -552,7 +552,7 @@ fn spawn_test_sync_control_worker(receiver: DaemonSyncControlReceiver) -> thread
 }
 
 #[test]
-fn blockchain_info_uses_durable_sync_truth_when_available() {
+fn getblockchaininfo_uses_durable_connected_block_height_not_downloaded_height() {
     // Arrange
     let path = temp_store_path("durable-sync-truth");
     let store = FjallNodeStore::open(&path).expect("store");
@@ -563,14 +563,14 @@ fn blockchain_info_uses_durable_sync_truth_when_available() {
                     sync: SyncStatus {
                         network: FieldAvailability::available("main".to_string()),
                         chain_tip: FieldAvailability::available(ChainTipStatus {
-                            height: 840_000,
+                            height: 840_004,
                             block_hash: "00".repeat(32),
                         }),
                         sync_progress: FieldAvailability::available(SyncProgress {
                             header_height: 840_100,
-                            block_height: 840_000,
-                            downloaded_block_height: 840_050,
-                            connected_block_height: 840_000,
+                            block_height: 840_004,
+                            downloaded_block_height: 840_006,
+                            connected_block_height: 840_004,
                             maybe_downloaded_block_hash: Some("11".repeat(32)),
                             maybe_connected_block_hash: Some("00".repeat(32)),
                             progress_ratio: 0.998,
@@ -590,7 +590,9 @@ fn blockchain_info_uses_durable_sync_truth_when_available() {
                         last_successful_progress_unix_seconds: FieldAvailability::available(
                             1_715_000_000,
                         ),
-                        last_error: FieldAvailability::available("peer stalled".to_string()),
+                        last_error: FieldAvailability::available(
+                            "peer stalled before block connect".to_string(),
+                        ),
                         recovery_action: FieldAvailability::available(
                             "Restart the node and retry the storage operation.".to_string(),
                         ),
@@ -645,9 +647,12 @@ fn blockchain_info_uses_durable_sync_truth_when_available() {
 
     // Assert
     assert_eq!(blockchain["headers"], json!(840100));
-    assert_eq!(blockchain["blocks"], json!(840000));
+    assert_eq!(blockchain["blocks"], json!(840004));
     assert_eq!(blockchain["initialblockdownload"], json!(true));
-    assert_eq!(blockchain["warnings"][0], json!("peer stalled"));
+    assert_eq!(
+        blockchain["warnings"][0],
+        json!("peer stalled before block connect")
+    );
 }
 
 #[test]

@@ -271,6 +271,7 @@
       "label": "cli-operator-support-bundles",
       "files": [
         "packages/open-bitcoin-cli/src/operator/support.rs",
+        "packages/open-bitcoin-cli/src/operator/support/live_smoke.rs",
         "packages/open-bitcoin-cli/src/operator/support/render.rs"
       ],
       "breadcrumbs": []
@@ -282,7 +283,8 @@
         "packages/open-bitcoin-cli/src/operator/dashboard/action.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/app.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/app/tests.rs",
-        "packages/open-bitcoin-cli/src/operator/dashboard/model.rs"
+        "packages/open-bitcoin-cli/src/operator/dashboard/model.rs",
+        "packages/open-bitcoin-cli/src/operator/dashboard/model/tests.rs"
       ],
       "breadcrumbs": []
     },

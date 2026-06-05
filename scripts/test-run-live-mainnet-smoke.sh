@@ -931,6 +931,7 @@ grep -q "Network Endpoint Outcomes" "$report_markdown"
 grep -q "manual_peer" "$report_markdown"
 grep -q "Header delta: 1" "$report_markdown"
 grep -q "First block progress" "$report_markdown"
+bun --eval 'const report = await Bun.file(process.argv[1]).json(); if (report.result.firstHeaderProgress.before.headerHeight !== 0 || report.result.firstHeaderProgress.after.headerHeight !== 1) throw new Error("firstHeaderProgress headerHeight evidence missing"); if (report.result.firstBlockProgress.before.downloadedBlockHeight !== 0 || report.result.firstBlockProgress.after.connectedBlockHeight !== 1) throw new Error("firstBlockProgress downloadedBlockHeight/connectedBlockHeight evidence missing");' "$report_json"
 
 rm -f "$counter_file"
 daemon_counter_file="$tmp_dir/daemon-counter"
@@ -968,6 +969,7 @@ grep -q '"maybeLastSuccessfulProgressUnixSeconds": 1777225005' "$report_json"
 grep -q '"daemon_sessions": \[' "$report_json"
 grep -q "Restart/resume evidence" "$report_markdown"
 grep -q "Daemon Sessions" "$report_markdown"
+bun --eval 'const report = await Bun.file(process.argv[1]).json(); if (typeof report.result.restartResumeEvidence.recoveryDiagnosis.category !== "string") throw new Error("restartResumeEvidence recoveryDiagnosis category missing");' "$report_json"
 restart_evidence_json="$(bun --eval 'const report = await Bun.file(process.argv[1]).json(); console.log(JSON.stringify(report.result.restartResumeEvidence));' "$report_json")"
 for forbidden_restart_field in stdoutTail stderrTail endpoint_outcomes snapshots manualPeers; do
 	if [[ "$restart_evidence_json" == *"$forbidden_restart_field"* ]]; then

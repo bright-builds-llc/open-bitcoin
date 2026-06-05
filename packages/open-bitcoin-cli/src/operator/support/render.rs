@@ -151,6 +151,29 @@ fn push_live_smoke_summary(output: &mut String, summary: &Value) {
     );
     push_summary_field(output, "Header delta", object.get("headerDelta"));
     push_summary_field(output, "Block delta", object.get("blockDelta"));
+    push_summary_field(
+        output,
+        "First header progress",
+        object.get("firstHeaderProgress"),
+    );
+    push_summary_field(
+        output,
+        "First block progress",
+        object.get("firstBlockProgress"),
+    );
+    if let Some(restart_resume_evidence) = object.get("restartResumeEvidence") {
+        push_summary_field(
+            output,
+            "Restart/resume evidence",
+            Some(restart_resume_evidence),
+        );
+        push_summary_field(
+            output,
+            "Recovery diagnosis",
+            restart_resume_evidence.get("recoveryDiagnosis"),
+        );
+    }
+    push_summary_field(output, "Final status", object.get("finalStatus"));
 }
 
 fn push_summary_field(output: &mut String, label: &str, maybe_value: Option<&Value>) {

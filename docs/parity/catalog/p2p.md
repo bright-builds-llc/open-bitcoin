@@ -41,6 +41,10 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
 - opt-in same-datadir restart/resume evidence records
   `result.restartResumeEvidence` with before/after durable header, downloaded
   block, and connected block status after a fresh daemon launch
+- v1.4 opt-in outbound IBD evidence keeps outbound peer compatibility, header
+  progress, downloaded block progress, connected block progress, and
+  restart/resume evidence reviewable without claiming broader P2P service
+  readiness
 
 ## Knots sources
 
@@ -87,6 +91,20 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
   relaunches with the same selected datadir, and records
   `restartResumeEvidence` without turning the daemon into an unattended
   production full-sync service
+
+## v1.4 release boundary
+
+The shipped v1.4 P2P claim is opt-in outbound IBD evidence only. It is evidence
+that a source-built operator can review outbound peer compatibility, validated
+header progress, downloaded block progress, connected block progress,
+same-datadir restart/resume evidence, or a typed diagnosed blocker through
+local reports and support evidence.
+
+The v1.4 P2P catalog does not claim inbound serving, transaction relay,
+production-funds wallet use, migration apply mode, packaging, hosted dashboard,
+GUI, Windows service support, or unattended production-node operation. Those
+surfaces require future scoped phases and fresh parity/threat-model roots before
+they can become shipped claims.
 
 ## First-party implementation
 

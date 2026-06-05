@@ -582,6 +582,83 @@ Live smoke behavior:
   manual review, launch `open-bitcoind` directly and use
   `open-bitcoin sync status|pause|resume`.
 
+## v1.4 operator evidence closeout
+
+Run the deterministic repo checks from the repo root before interpreting any
+public-network evidence:
+
+```bash
+bash scripts/verify.sh
+bash scripts/test-run-live-mainnet-smoke.sh
+```
+
+Use the opt-in live smoke commands only for local operator review. The manual
+peer command checks fresh public-network progress:
+
+```bash
+bun run scripts/run-live-mainnet-smoke.ts --datadir=/tmp/open-bitcoin-mainnet --manual-peer=HOST:8333 --timeout-seconds=180 --poll-seconds=10
+```
+
+The same-datadir restart/resume review uses the same local datadir and adds the
+restart boundary:
+
+```bash
+bun run scripts/run-live-mainnet-smoke.ts --datadir=/tmp/open-bitcoin-mainnet --manual-peer=HOST:8333 --restart-after-progress --timeout-seconds=180 --poll-seconds=10
+```
+
+Inspect the selected datadir through both repo-local operator command forms:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet sync status --format json
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet sync status --format json
+```
+
+Collect redacted local support evidence with either Cargo or Bazel. When a
+live-smoke report exists, pass it as a summary-only input:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet support bundle --output-dir=/tmp/open-bitcoin-support --include-live-smoke-report=packages/target/live-mainnet-smoke-reports/open-bitcoin-live-mainnet-smoke.json
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet support bundle --output-dir=/tmp/open-bitcoin-support
+```
+
+Interpret v1.4 evidence from fields, not elapsed time or startup behavior:
+
+- `result.status` must be read with `result.progressDetected`; a `passed`
+  status is useful only when the relevant progress evidence is present.
+- `result.firstHeaderProgress` proves the first validated header-height
+  increase observed by the live-smoke runner.
+- `result.firstBlockProgress` proves downloaded or connected block progress;
+  Phase 57 pass evidence requires connected progress, while downloaded-only
+  evidence remains `awaiting_blocks` until chainstate advances.
+- `result.restartResumeEvidence` is required for same-datadir restart review.
+  Its `result.restartResumeEvidence.recoveryDiagnosis.category` explains
+  whether a failed or blocked run points to peer incompatibility, public-network
+  reachability, invalid peer data, store corruption, store incompatibility,
+  resource exhaustion, or intentional cancellation.
+- `result.maybeNoProgressCause` and `result.nextAction` are the operator-facing
+  diagnosis and follow-up path for non-passing reports.
+- `final_status.headerHeight`, `final_status.downloadedBlockHeight`, and
+  `final_status.connectedBlockHeight` are the final durable status counters to
+  compare with the before/after evidence.
+- `support-evidence.json` and `support-evidence.md` are redacted local support
+  artifacts. Their existence confirms collection only; it does not prove sync
+  success.
+
+Peer reachability, elapsed time, support-bundle existence, and daemon startup
+alone are not success criteria. A review should quote the specific fields above
+and preserve the distinction between header progress, downloaded block
+progress, connected block progress, restart/resume evidence, diagnosed blockers,
+and the next operator action.
+
+Generated live-smoke reports, support bundles, daemon logs, metrics stores, and
+local datadirs remain local artifacts and are not checked into git. The docs may
+name local paths such as `packages/target/live-mainnet-smoke-reports`,
+`/tmp/open-bitcoin-support`, and `/tmp/open-bitcoin-mainnet`, but reviewers
+should not commit environment-specific reports, bundles, logs, metrics stores,
+or datadir contents. Credential evidence is metadata-only: the selected
+credential source and cookie path/presence may be reported, but cookie contents,
+`rpcpassword`, and `rpcauth` values are not support evidence.
+
 ### Support Evidence Bundles
 
 For a local support handoff, generate a redacted evidence bundle from the
@@ -626,7 +703,11 @@ Redaction boundaries:
 - Live-smoke input is not embedded as a raw report. For schema v2 live-smoke
   reports, the support bundle copies only `result.status`,
   `result.progressDetected`, `result.maybeNoProgressCause`,
-  `result.nextAction`, `result.headerDelta`, and `result.blockDelta`; older or
+  `result.nextAction`, `result.firstHeaderProgress`,
+  `result.firstBlockProgress`, `result.restartResumeEvidence`,
+  `result.restartResumeEvidence.recoveryDiagnosis.category`,
+  `final_status.headerHeight`, `final_status.downloadedBlockHeight`, and
+  `final_status.connectedBlockHeight` as compact summaries; older or
   hand-authored top-level report fields remain a compatibility fallback.
 - Raw live-smoke input, daemon stdout/stderr tails, raw status snapshots, raw
   options, and endpoint tables are not embedded in the support bundle.
