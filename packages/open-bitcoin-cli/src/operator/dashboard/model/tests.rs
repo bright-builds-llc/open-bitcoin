@@ -62,7 +62,7 @@ fn derive_metric_points_is_width_bounded() {
 }
 
 #[test]
-fn dashboard_projection_preserves_shared_sync_truth_fields() {
+fn dashboard_sections_surface_sync_progress_and_peer_counts() {
     // Arrange
     let snapshot = shared_sync_truth_snapshot();
 
@@ -94,6 +94,14 @@ fn dashboard_projection_preserves_shared_sync_truth_fields() {
             .expect("peers row")
             .value,
         "inbound=0 outbound=2"
+    );
+    assert_eq!(
+        sync_rows
+            .iter()
+            .find(|row| row.label == "Recovery category")
+            .expect("recovery category row")
+            .value,
+        "invalid_peer_data"
     );
     assert!(
         sync_rows
@@ -192,9 +200,7 @@ fn shared_sync_truth_snapshot() -> OpenBitcoinStatusSnapshot {
         }),
         last_successful_progress_unix_seconds: FieldAvailability::available(1_717_000_000),
         last_error: FieldAvailability::available("peer stalled before block connect".to_string()),
-        recovery_category: FieldAvailability::available(
-            SyncRecoveryCategory::PublicNetworkUnreachable,
-        ),
+        recovery_category: FieldAvailability::available(SyncRecoveryCategory::InvalidPeerData),
         recovery_action: FieldAvailability::available(
             "Retry sync after peer backoff or choose a different peer.".to_string(),
         ),

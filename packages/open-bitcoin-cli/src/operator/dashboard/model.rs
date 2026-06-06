@@ -9,8 +9,8 @@ use open_bitcoin_node::{
     status::{
         ChainTipStatus, FieldAvailability, HealthSignal, HealthSignalLevel, NodeRuntimeState,
         OpenBitcoinStatusSnapshot, PeerCounts, ServiceStatus, SyncLagStatus, SyncLifecycleState,
-        SyncProgress, SyncProgressSignal, SyncResourcePressure, WalletFreshness,
-        WalletScanProgress,
+        SyncProgress, SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure,
+        WalletFreshness, WalletScanProgress,
     },
 };
 
@@ -127,6 +127,10 @@ fn dashboard_sections(snapshot: &OpenBitcoinStatusSnapshot) -> Vec<DashboardSect
                 row(
                     "Peers",
                     peer_counts_availability(&snapshot.peers.peer_counts),
+                ),
+                row(
+                    "Recovery category",
+                    sync_recovery_category(&snapshot.sync.recovery_category),
                 ),
                 row(
                     "Recovery",
@@ -284,6 +288,13 @@ fn sync_pressure(value: &FieldAvailability<SyncResourcePressure>) -> String {
             value.outbound_peers,
             value.target_outbound_peers
         ),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
+fn sync_recovery_category(value: &FieldAvailability<SyncRecoveryCategory>) -> String {
+    match value {
+        FieldAvailability::Available(value) => value.as_str().to_string(),
         FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
     }
 }

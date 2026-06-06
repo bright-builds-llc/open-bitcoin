@@ -8,8 +8,8 @@ use open_bitcoin_node::{
     status::{
         BuildProvenance, ChainTipStatus, FieldAvailability, HealthSignal, HealthSignalLevel,
         NodeRuntimeState, OpenBitcoinStatusSnapshot, PeerCounts, PeerTelemetry, ServiceStatus,
-        SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal, SyncResourcePressure,
-        WalletFreshness, WalletScanProgress,
+        SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal, SyncRecoveryCategory,
+        SyncResourcePressure, WalletFreshness, WalletScanProgress,
     },
 };
 
@@ -88,6 +88,10 @@ fn render_human_status(snapshot: &OpenBitcoinStatusSnapshot) -> String {
     lines.push(format!(
         "Sync pressure: {}",
         sync_pressure_availability(&snapshot.sync.resource_pressure)
+    ));
+    lines.push(format!(
+        "Sync recovery category: {}",
+        sync_recovery_category_availability(&snapshot.sync.recovery_category)
     ));
     lines.push(format!(
         "Sync recovery: {}",
@@ -195,6 +199,13 @@ fn sync_pressure_availability(value: &FieldAvailability<SyncResourcePressure>) -
             value.outbound_peers,
             value.target_outbound_peers
         ),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
+fn sync_recovery_category_availability(value: &FieldAvailability<SyncRecoveryCategory>) -> String {
+    match value {
+        FieldAvailability::Available(value) => value.as_str().to_string(),
         FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
     }
 }
@@ -415,7 +426,7 @@ mod tests {
     use super::{StatusRenderMode, render_status};
 
     #[test]
-    fn status_human_render_preserves_shared_sync_truth_fields() {
+    fn status_render_includes_sync_progress_and_peer_evidence() {
         // Arrange
         let snapshot = shared_sync_truth_snapshot();
 
@@ -427,6 +438,8 @@ mod tests {
             rendered.contains("headers=840100 downloaded_blocks=840006 connected_blocks=840004")
         );
         assert!(rendered.contains("awaiting_blocks"));
+        assert!(rendered.contains("Sync recovery category: invalid_peer_data"));
+        assert!(rendered.contains("Sync recovery: Retry sync after peer backoff"));
         assert!(rendered.contains("peer stalled before block connect"));
         assert!(rendered.contains("failed:seed.bitcoin.sipa.be:8333 via dns_seed"));
     }
@@ -474,7 +487,7 @@ mod tests {
                     "peer stalled before block connect".to_string(),
                 ),
                 recovery_category: FieldAvailability::available(
-                    SyncRecoveryCategory::PublicNetworkUnreachable,
+                    SyncRecoveryCategory::InvalidPeerData,
                 ),
                 recovery_action: FieldAvailability::available(
                     "Retry sync after peer backoff or choose a different peer.".to_string(),
