@@ -117,7 +117,7 @@ TDD RED failure evidence was captured before implementation, but failing RED com
 - **Verification:** Normal commit hooks ran `bash scripts/verify.sh` and passed.
 - **Committed in:** `e842802`
 
----
+***
 
 **Total deviations:** 2 auto-fixed blocking adjustments
 **Impact on plan:** No product scope expansion; both adjustments were required for non-vacuous acceptance checks and repository verification freshness.
@@ -169,6 +169,6 @@ Phase 62 truth-surface work can rely on documented recovery category labels, res
 - Found the summary file and the new Phase 61 boundary checker.
 - Found task commits `b3e2a6a` and `e842802` in git history.
 
----
+***
 *Phase: 61-resource-bounds-and-recovery-taxonomy*
 *Completed: 2026-06-06*

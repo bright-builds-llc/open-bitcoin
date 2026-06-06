@@ -134,7 +134,7 @@ Task 1 and Task 2 followed TDD RED/GREEN locally. The failing RED states were no
 - **Verification:** Normal commit hooks completed `bash scripts/verify.sh` successfully.
 - **Committed in:** `a9c8678`
 
----
+***
 
 **Total deviations:** 4 auto-fixed (1 Rule 1, 1 Rule 2, 2 Rule 3)
 **Impact on plan:** All deviations were required for correctness or repo policy compliance. No scope beyond the recovery taxonomy mapping was added.
@@ -172,7 +172,7 @@ None - no external service configuration required.
 
 The shared recovery taxonomy now has typed input mappings and durable/runtime projection points ready for follow-up operator guidance and recovery-surface work. Remaining plans can consume `SyncRecoveryCategory` instead of deriving recovery labels from renderer-local strings.
 
----
+***
 *Phase: 61-resource-bounds-and-recovery-taxonomy*
 *Completed: 2026-06-06*
 

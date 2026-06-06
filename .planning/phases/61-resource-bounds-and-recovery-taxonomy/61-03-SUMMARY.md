@@ -139,7 +139,7 @@ TDD RED failure evidence was captured before GREEN changes, but failing RED comm
 - **Verification:** Normal commit hooks ran `bash scripts/verify.sh` and passed for all task commits.
 - **Committed in:** `e3c0483`, `a330ebb`, `bb1ba81`
 
----
+***
 
 **Total deviations:** 4 auto-fixed (1 Rule 1, 3 Rule 3)
 **Impact on plan:** All deviations were required for correctness or repo verification. No scope beyond runtime recovery projection, structured log evidence, and deterministic resource-bound tests was added.
@@ -185,7 +185,7 @@ None - no external service configuration required.
 
 Phase 61 now has runtime-level recovery category projection plus deterministic RR-01 evidence for resource bounds and retention. Plan 61-06 can document the taxonomy and validation matrix with status/log/durable-state behavior already backed by focused tests.
 
----
+***
 *Phase: 61-resource-bounds-and-recovery-taxonomy*
 *Completed: 2026-06-06*
 

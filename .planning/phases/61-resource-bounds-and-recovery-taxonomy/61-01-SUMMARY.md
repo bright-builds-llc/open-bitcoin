@@ -156,7 +156,7 @@ None - no external service configuration required.
 
 The shared typed recovery category contract is available for later Phase 61 plans to project storage, resource, peer-data, network, and operator-cancellation recovery outcomes into status JSON without inventing renderer-local category strings.
 
----
+***
 *Phase: 61-resource-bounds-and-recovery-taxonomy*
 *Completed: 2026-06-06*
 

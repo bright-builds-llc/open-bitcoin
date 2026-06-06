@@ -118,7 +118,7 @@ TDD RED failure evidence was captured before implementation, but failing RED com
 - **Verification:** `bash scripts/verify.sh` passed after regeneration and in normal commit hooks.
 - **Committed in:** `cafd96c`, `f3cb3e4`
 
----
+***
 
 **Total deviations:** 2 auto-fixed (1 bug, 1 blocking verification freshness issue)
 **Impact on plan:** No scope expansion; both fixes were required for deterministic verification and tracked-generated-file freshness.
@@ -174,6 +174,6 @@ Phase 65 support bundle work can consume the compact `recoveryCategory` and `res
 - Found summary and all six modified implementation/generated files.
 - Found task commits `cafd96c` and `f3cb3e4` in git history.
 
----
+***
 *Phase: 61-resource-bounds-and-recovery-taxonomy*
 *Completed: 2026-06-06*

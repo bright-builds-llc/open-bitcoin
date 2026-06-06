@@ -116,7 +116,7 @@ TDD RED failure evidence was captured before implementation, but failing RED com
 - **Verification:** Normal commit hooks ran `bash scripts/verify.sh` and passed for both task commits.
 - **Committed in:** `3663abc`, `f20cd30`
 
----
+***
 
 **Total deviations:** 2 auto-fixed blocking adjustments
 **Impact on plan:** No product scope expansion; both adjustments were required for non-vacuous acceptance checks and repository verification freshness.
@@ -177,6 +177,6 @@ Phase 62 truth-surface work can consume stable recovery category labels from sta
 - Found the summary file and all six modified implementation/generated files.
 - Found task commits `3663abc` and `f20cd30` in git history.
 
----
+***
 *Phase: 61-resource-bounds-and-recovery-taxonomy*
 *Completed: 2026-06-06*
