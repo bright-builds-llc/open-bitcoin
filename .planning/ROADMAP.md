@@ -68,7 +68,14 @@ traceability.
   2. Recovery handling distinguishes clean shutdown, unclean shutdown, incompatible schema, store corruption, storage lock contention, resource exhaustion, invalid peer data, public-network unreachability, and operator cancellation.
   3. Operator-visible errors and recovery guidance use consistent typed states across status, logs, support bundles, and docs.
   4. Extended unattended runs preserve the documented bounds without unbounded growth or silent loss of recovery evidence.
-**Plans**: TBD
+**Plans**: 6 plans
+Plans:
+- [ ] [61-01](phases/61-resource-bounds-and-recovery-taxonomy/61-01-PLAN.md) - Shared recovery category status contract
+- [ ] [61-02](phases/61-resource-bounds-and-recovery-taxonomy/61-02-PLAN.md) - Storage and sync recovery category mappings
+- [ ] [61-03](phases/61-resource-bounds-and-recovery-taxonomy/61-03-PLAN.md) - Runtime projection and deterministic resource-bound tests
+- [ ] [61-04](phases/61-resource-bounds-and-recovery-taxonomy/61-04-PLAN.md) - Live-smoke and support evidence recovery/resource summaries
+- [ ] [61-05](phases/61-resource-bounds-and-recovery-taxonomy/61-05-PLAN.md) - Status, dashboard, and RPC recovery category rendering
+- [ ] [61-06](phases/61-resource-bounds-and-recovery-taxonomy/61-06-PLAN.md) - Operator docs and deterministic boundary checker
 
 ### Phase 62: Long-Run Sync Truth Surfaces
 **Goal**: Operators see consistent bounded sync truth across status, dashboard, RPC, metrics, logs, and live-smoke snapshots.
