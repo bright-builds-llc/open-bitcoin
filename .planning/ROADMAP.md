@@ -148,7 +148,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 60. Unattended Sync Loop Control | 1/1 | Complete    | 2026-06-06 |
-| 61. Resource Bounds and Recovery Taxonomy | 2/6 | In Progress|  |
+| 61. Resource Bounds and Recovery Taxonomy | 3/6 | In Progress|  |
 | 62. Long-Run Sync Truth Surfaces | 0/TBD | Not started | - |
 | 63. Service Supervision Lifecycle | 0/TBD | Not started | - |
 | 64. Service Restart and Same-Datadir Resume Evidence | 0/TBD | Not started | - |
