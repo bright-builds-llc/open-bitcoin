@@ -1,0 +1,167 @@
+---
+phase: 61-resource-bounds-and-recovery-taxonomy
+plan: 01
+subsystem: node-status
+tags: [rust, serde, status, recovery-taxonomy, parity-breadcrumbs]
+
+requires: []
+provides:
+  - Shared SyncRecoveryCategory enum with stable snake_case serde labels.
+  - Additive SyncStatus.recovery_category field beside recovery_action.
+  - Constructor coverage across node, CLI, RPC fixtures, dashboard projections, runtime support, and sync summaries.
+  - Parity breadcrumb coverage for the new status recovery module.
+affects: [phase-61, operator-status, dashboard, rpc, sync-summary, parity]
+
+tech-stack:
+  added: []
+  patterns:
+    - Additive persisted status fields use serde defaults when RuntimeMetadata may contain older snapshots.
+    - Recovery categories stay typed and separate from human recovery actions.
+
+key-files:
+  created:
+    - packages/open-bitcoin-node/src/status/recovery.rs
+  modified:
+    - packages/open-bitcoin-node/src/status.rs
+    - packages/open-bitcoin-node/src/lib.rs
+    - packages/open-bitcoin-node/src/sync/types/summary.rs
+    - packages/open-bitcoin-cli/src/operator/status/sync_state.rs
+    - packages/open-bitcoin-cli/src/operator/status/render.rs
+    - packages/open-bitcoin-cli/src/operator/status/tests.rs
+    - packages/open-bitcoin-cli/src/operator/dashboard/model/tests.rs
+    - packages/open-bitcoin-cli/src/operator/runtime/support.rs
+    - packages/open-bitcoin-rpc/src/dispatch/tests.rs
+    - docs/parity/source-breadcrumbs.json
+    - docs/metrics/lines-of-code.md
+
+key-decisions:
+  - "Expose recovery categories as a typed serde enum while keeping recovery_action as separate human guidance."
+  - "Default missing persisted recovery_category values to unavailable so older RuntimeMetadata remains readable."
+  - "Register the new Rust status child module in parity breadcrumbs before committing to satisfy repo rules."
+
+patterns-established:
+  - "Additive persisted status fields get serde defaults."
+  - "Status child modules own focused contract tests when the root status file approaches the file-size cap."
+
+requirements-completed: [RR-02, RR-04]
+generated_by: gsd-execute-plan
+lifecycle_mode: yolo
+phase_lifecycle_id: 61-2026-06-06T03-43-41
+generated_at: 2026-06-06T05:00:19Z
+
+duration: 20m 23s
+completed: 2026-06-06
+---
+
+# Phase 61 Plan 01: Recovery Category Status Contract Summary
+
+**Typed recovery-category status contract with stable serde labels, constructor coverage, and parity breadcrumb registration**
+
+## Performance
+
+- **Duration:** 20m 23s
+- **Started:** 2026-06-06T04:39:56Z
+- **Completed:** 2026-06-06T05:00:19Z
+- **Tasks:** 2
+- **Files modified:** 12
+
+## Accomplishments
+
+- Added `SyncRecoveryCategory` with exact stable snake_case labels and a matching `as_str()` helper.
+- Added `SyncStatus.recovery_category` beside `recovery_action` and updated every current `SyncStatus` constructor.
+- Preserved older persisted runtime metadata by defaulting missing recovery categories to an unavailable field.
+- Registered `packages/open-bitcoin-node/src/status/recovery.rs` in the parity breadcrumb manifest.
+
+## Task Commits
+
+Each task was committed with normal hooks. Task 2 was included in the Task 1 commit because repo-local rules require the parity breadcrumb manifest before a new Rust source file can be committed.
+
+1. **Task 1: Add the shared recovery category status contract** - `7c47635` (feat)
+2. **Task 2: Register parity breadcrumbs for the new status module** - `7c47635` (feat, AGENTS-driven combined commit)
+
+## Files Created/Modified
+
+- `packages/open-bitcoin-node/src/status/recovery.rs` - New typed recovery category enum, parity breadcrumb, stable label helper, and serde label test.
+- `packages/open-bitcoin-node/src/status.rs` - Adds `recovery_category`, exports the enum, preserves missing-field compatibility, and updates status snapshot tests.
+- `packages/open-bitcoin-node/src/lib.rs` - Re-exports `SyncRecoveryCategory` from the node crate.
+- `packages/open-bitcoin-node/src/sync/types/summary.rs` - Carries the new field through sync summary status projection.
+- `packages/open-bitcoin-cli/src/operator/status/sync_state.rs` - Initializes the new field for operator RPC-derived sync state.
+- `packages/open-bitcoin-cli/src/operator/status/render.rs` - Updates render fixtures, including the peer-stall category case.
+- `packages/open-bitcoin-cli/src/operator/status/tests.rs` - Updates status fixture constructors.
+- `packages/open-bitcoin-cli/src/operator/dashboard/model/tests.rs` - Updates dashboard status projections and peer-stall fixture coverage.
+- `packages/open-bitcoin-cli/src/operator/runtime/support.rs` - Updates runtime support status constructor coverage.
+- `packages/open-bitcoin-rpc/src/dispatch/tests.rs` - Updates RPC durable status fixtures.
+- `docs/parity/source-breadcrumbs.json` - Registers the new Rust status module under `node-status-contract`.
+- `docs/metrics/lines-of-code.md` - Regenerated by the repo hook and verification contract.
+
+## Decisions Made
+
+- Recovery categories are a typed serde enum instead of renderer-local strings.
+- `recovery_category` is additive and defaults to unavailable on deserialization when older runtime metadata lacks the field.
+- The enum label test lives in `status/recovery.rs` so `status.rs` stays under the Bright Builds file-size cap.
+
+## Deviations from Plan
+
+### Auto-fixed Issues
+
+**1. [Rule 2 - Missing Critical Functionality] Registered parity breadcrumb before the first task commit**
+- **Found during:** Task 1 commit preparation
+- **Issue:** The plan listed parity registration as Task 2, but `AGENTS.md` requires new first-party Rust source files to be represented in `docs/parity/source-breadcrumbs.json` before committing.
+- **Fix:** Added `packages/open-bitcoin-node/src/status/recovery.rs` to the `node-status-contract` parity group before the first task commit.
+- **Files modified:** `docs/parity/source-breadcrumbs.json`
+- **Verification:** `bun run scripts/check-parity-breadcrumbs.ts --check` and `bash scripts/verify.sh` passed.
+- **Committed in:** `7c47635`
+
+**2. [Rule 1 - Bug] Preserved older RuntimeMetadata deserialization**
+- **Found during:** Task 1 all-feature test run
+- **Issue:** Adding a required `recovery_category` field caused old serialized runtime metadata without the field to deserialize as corrupted metadata.
+- **Fix:** Added a serde default that maps missing recovery categories to `FieldAvailability::unavailable("no recovery category recorded")`.
+- **Files modified:** `packages/open-bitcoin-node/src/status.rs`
+- **Verification:** `cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --bin open-bitcoind --all-features` and `bash scripts/verify.sh` passed.
+- **Committed in:** `7c47635`
+
+**3. [Rule 3 - Blocking Issue] Kept status.rs under the repo file-size hook limit**
+- **Found during:** Task 1 commit hook
+- **Issue:** The initial in-file test placement pushed `packages/open-bitcoin-node/src/status.rs` over the Bright Builds production Rust line cap.
+- **Fix:** Moved the enum label test into `packages/open-bitcoin-node/src/status/recovery.rs`.
+- **Files modified:** `packages/open-bitcoin-node/src/status.rs`, `packages/open-bitcoin-node/src/status/recovery.rs`
+- **Verification:** `bash scripts/verify.sh` file-length check passed with 179 production Rust files checked against the 628-line limit.
+- **Committed in:** `7c47635`
+
+**Total deviations:** 3 auto-fixed (Rule 1: 1, Rule 2: 1, Rule 3: 1)
+**Impact on plan:** All deviations were required for repo correctness, compatibility, or commit-hook compliance. No extra product scope was added.
+
+## Issues Encountered
+
+- TDD RED was executed before implementation with `cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node sync_recovery_category --all-features`; it failed as expected because `SyncRecoveryCategory` and `recovery_category` did not exist yet. The failing RED state was not committed because normal hooks cannot commit failing code.
+- The commit hook regenerated `docs/metrics/lines-of-code.md`; the regenerated tracked artifact was included in the task commit.
+- Stub scan across modified files found no known stubs.
+
+## Verification
+
+- `cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node sync_recovery_category --all-features`
+- `cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --bin open-bitcoind --all-features`
+- `cargo clippy --manifest-path packages/Cargo.toml --all-targets --all-features -- -D warnings`
+- `cargo build --manifest-path packages/Cargo.toml --all-targets --all-features`
+- `cargo test --manifest-path packages/Cargo.toml --all-features`
+- `bun run scripts/check-parity-breadcrumbs.ts --check`
+- `git diff --check`
+- `bash scripts/verify.sh`
+
+## User Setup Required
+
+None - no external service configuration required.
+
+## Next Phase Readiness
+
+The shared typed recovery category contract is available for later Phase 61 plans to project storage, resource, peer-data, network, and operator-cancellation recovery outcomes into status JSON without inventing renderer-local category strings.
+
+---
+*Phase: 61-resource-bounds-and-recovery-taxonomy*
+*Completed: 2026-06-06*
+
+## Self-Check: PASSED
+
+- `packages/open-bitcoin-node/src/status/recovery.rs` exists.
+- `.planning/phases/61-resource-bounds-and-recovery-taxonomy/61-01-SUMMARY.md` exists.
+- Task commit `7c47635` exists in git history.

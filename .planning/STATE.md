@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Unattended Mainnet Node Operation Readiness
 status: executing
-stopped_at: Phase 61 context gathered
-last_updated: "2026-06-06T04:36:00.034Z"
-last_activity: 2026-06-06 -- Phase 61 execution started
+stopped_at: Completed 61-01-PLAN.md
+last_updated: "2026-06-06T05:01:43.798Z"
+last_activity: 2026-06-06
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 7
-  completed_plans: 1
-  percent: 14
+  completed_plans: 2
+  percent: 29
 ---
 
 # Project State
@@ -27,18 +27,18 @@ See: .planning/PROJECT.md (updated 2026-06-05)
 
 Milestone: v1.5 Unattended Mainnet Node Operation Readiness
 Phase: 61 (Resource Bounds and Recovery Taxonomy) — EXECUTING
-Plan: 1 of 6
-Status: Executing Phase 61
-Last activity: 2026-06-06 -- Phase 61 execution started
+Plan: 2 of 6
+Status: Ready to execute
+Last activity: 2026-06-06
 
-Progress: [#---------] 13%
+Progress: [###-------] 29%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Current milestone plans completed: 1
-- Current milestone plan count: TBD during phase planning
+- Current milestone plans completed: 2
+- Current milestone plan count: 7
 - Prior milestone plans completed: 15 in v1.4
 
 **By Phase:**
@@ -57,7 +57,9 @@ Progress: [#---------] 13%
 **Recent Trend:**
 
 - Last 5 completed plans: 59-02, 59-03, 59-04, 59-05, 60-01
-- Trend: v1.5 completed Phase 60 and is ready to plan Phase 61.
+- Trend: v1.5 completed Phase 60 and Phase 61 plan 1; ready for Phase 61 plan 2.
+
+| Phase 61 P01 | 20m 23s | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -79,6 +81,9 @@ Recent decisions affecting current work:
 - [Phase 57]: Block download/connect progress is bounded, peer-attributed, and visible through durable downloaded/connected height and hash evidence.
 - [Phase 58]: Same-datadir restart/resume evidence is captured through deterministic durable-store tests and opt-in two-session live-smoke reporting.
 - [Phase 59]: v1.4 release claims remain bounded by operator evidence, support bundle redaction, threat-model roots, parity docs, and deterministic release-boundary checks.
+- [Phase 61]: Expose recovery categories as a typed serde enum while keeping recovery_action as separate human guidance.
+- [Phase 61]: Default missing persisted recovery_category values to unavailable so older RuntimeMetadata remains readable.
+- [Phase 61]: Register the new Rust status child module in parity breadcrumbs before committing to satisfy repo rules.
 
 ### Pending Todos
 
@@ -93,6 +98,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-06T03:46:02.239Z
-Stopped at: Phase 61 context gathered
-Resume file: .planning/phases/61-resource-bounds-and-recovery-taxonomy/61-CONTEXT.md
+Last session: 2026-06-06T05:01:43.795Z
+Stopped at: Completed 61-01-PLAN.md
+Resume file: None

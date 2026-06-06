@@ -32,9 +32,9 @@ Requirements for this milestone. Each maps to roadmap phases.
 ### Resource Bounds and Recovery Behavior
 
 - [ ] **RR-01**: Unattended sync enforces documented bounds for outbound peers, in-flight headers or blocks, retry queues, storage writes, metrics samples, structured logs, and support evidence size.
-- [ ] **RR-02**: Recovery handling distinguishes clean shutdown, unclean shutdown, incompatible schema, store corruption, storage lock contention, resource exhaustion, invalid peer data, public-network unreachability, and operator cancellation.
+- [x] **RR-02**: Recovery handling distinguishes clean shutdown, unclean shutdown, incompatible schema, store corruption, storage lock contention, resource exhaustion, invalid peer data, public-network unreachability, and operator cancellation.
 - [ ] **RR-03**: Same-datadir restart tests cover extended loop recovery without duplicate block requests, duplicate block connects, corrupted active chainstate, or lost progress counters.
-- [ ] **RR-04**: Operator-visible errors and recovery guidance stay typed, actionable, and consistent across status, logs, support bundles, and docs.
+- [x] **RR-04**: Operator-visible errors and recovery guidance stay typed, actionable, and consistent across status, logs, support bundles, and docs.
 
 ### Compatibility Harness Operator Wrapper
 
@@ -103,9 +103,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SVC-03 | Phase 64 | Pending |
 | SVC-04 | Phase 63 | Pending |
 | RR-01 | Phase 61 | Pending |
-| RR-02 | Phase 61 | Pending |
+| RR-02 | Phase 61 | Complete |
 | RR-03 | Phase 64 | Pending |
-| RR-04 | Phase 61 | Pending |
+| RR-04 | Phase 61 | Complete |
 | COMPAT-01 | Phase 66 | Pending |
 | COMPAT-02 | Phase 66 | Pending |
 | COMPAT-03 | Phase 66 | Pending |
