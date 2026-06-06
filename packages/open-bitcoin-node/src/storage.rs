@@ -5,7 +5,7 @@
 
 use core::fmt;
 
-use crate::status::{DurableSyncState, SyncControlState};
+use crate::status::{DurableSyncState, SyncControlState, SyncRecoveryCategory};
 
 pub mod fjall_store;
 pub mod snapshot_codec;
@@ -89,6 +89,14 @@ pub enum StorageRecoveryAction {
 }
 
 impl StorageRecoveryAction {
+    pub const fn recovery_category(self) -> SyncRecoveryCategory {
+        match self {
+            Self::Restart => SyncRecoveryCategory::StorageBackendFailure,
+            Self::Reindex => SyncRecoveryCategory::IncompatibleSchema,
+            Self::Repair | Self::RestoreFromBackup => SyncRecoveryCategory::StoreCorruption,
+        }
+    }
+
     pub const fn operator_message(self) -> &'static str {
         match self {
             Self::Restart => "Restart the node and retry the storage operation.",
@@ -181,6 +189,29 @@ impl StorageError {
         Self::SchemaMismatch { expected, actual }
     }
 
+    pub fn recovery_category(&self) -> SyncRecoveryCategory {
+        match self {
+            Self::InvalidSchemaVersion { .. } | Self::SchemaMismatch { .. } => {
+                SyncRecoveryCategory::IncompatibleSchema
+            }
+            Self::Corruption { .. } => SyncRecoveryCategory::StoreCorruption,
+            Self::UnavailableNamespace { .. } | Self::InterruptedWrite { .. } => {
+                SyncRecoveryCategory::StorageBackendFailure
+            }
+            Self::BackendFailure { message, .. } => {
+                let lower_message = message.to_ascii_lowercase();
+                if lower_message.contains("lock")
+                    || lower_message.contains("locked")
+                    || lower_message.contains("contention")
+                {
+                    return SyncRecoveryCategory::StorageLockContention;
+                }
+
+                SyncRecoveryCategory::StorageBackendFailure
+            }
+        }
+    }
+
     pub const fn recovery_action(&self) -> Option<StorageRecoveryAction> {
         match self {
             Self::InvalidSchemaVersion { .. }
@@ -243,6 +274,7 @@ impl std::error::Error for StorageError {}
 #[cfg(test)]
 mod tests {
     use super::{SchemaVersion, StorageError, StorageNamespace, StorageRecoveryAction};
+    use crate::status::SyncRecoveryCategory;
 
     #[test]
     fn storage_namespace_names_are_stable() {
@@ -294,5 +326,83 @@ mod tests {
             "storage schema mismatch: expected 2, found 1"
         );
         assert_eq!(error.recovery_action(), None);
+    }
+
+    #[test]
+    fn storage_recovery_category_maps_schema_corruption_lock_and_backend_states() {
+        // Arrange
+        let schema_error = StorageError::schema_mismatch(
+            SchemaVersion::new(2).expect("nonzero schema version"),
+            SchemaVersion::new(1).expect("nonzero schema version"),
+        );
+        let corruption_error = StorageError::Corruption {
+            namespace: StorageNamespace::BlockIndex,
+            detail: "checksum mismatch".to_string(),
+            action: StorageRecoveryAction::Repair,
+        };
+        let lock_error = StorageError::BackendFailure {
+            namespace: StorageNamespace::Runtime,
+            message: "database lock held by another process".to_string(),
+            action: StorageRecoveryAction::Restart,
+        };
+        let locked_error = StorageError::BackendFailure {
+            namespace: StorageNamespace::Runtime,
+            message: "store locked by another process".to_string(),
+            action: StorageRecoveryAction::Restart,
+        };
+        let contention_error = StorageError::BackendFailure {
+            namespace: StorageNamespace::Runtime,
+            message: "contention while opening the runtime store".to_string(),
+            action: StorageRecoveryAction::Restart,
+        };
+        let backend_error = StorageError::BackendFailure {
+            namespace: StorageNamespace::Headers,
+            message: "flush failed".to_string(),
+            action: StorageRecoveryAction::Restart,
+        };
+        let interrupted_write = StorageError::InterruptedWrite {
+            namespace: StorageNamespace::Headers,
+            action: StorageRecoveryAction::Restart,
+        };
+
+        // Act
+        let mapped_categories = [
+            schema_error.recovery_category(),
+            corruption_error.recovery_category(),
+            lock_error.recovery_category(),
+            locked_error.recovery_category(),
+            contention_error.recovery_category(),
+            backend_error.recovery_category(),
+            interrupted_write.recovery_category(),
+        ];
+        let action_categories = [
+            StorageRecoveryAction::Restart.recovery_category(),
+            StorageRecoveryAction::Reindex.recovery_category(),
+            StorageRecoveryAction::Repair.recovery_category(),
+            StorageRecoveryAction::RestoreFromBackup.recovery_category(),
+        ];
+
+        // Assert
+        assert_eq!(
+            mapped_categories,
+            [
+                SyncRecoveryCategory::IncompatibleSchema,
+                SyncRecoveryCategory::StoreCorruption,
+                SyncRecoveryCategory::StorageLockContention,
+                SyncRecoveryCategory::StorageLockContention,
+                SyncRecoveryCategory::StorageLockContention,
+                SyncRecoveryCategory::StorageBackendFailure,
+                SyncRecoveryCategory::StorageBackendFailure,
+            ]
+        );
+        assert_eq!(
+            action_categories,
+            [
+                SyncRecoveryCategory::StorageBackendFailure,
+                SyncRecoveryCategory::IncompatibleSchema,
+                SyncRecoveryCategory::StoreCorruption,
+                SyncRecoveryCategory::StoreCorruption,
+            ]
+        );
     }
 }
