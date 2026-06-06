@@ -13,13 +13,14 @@ use crate::{
     logging::{StructuredLogError, StructuredLogRecord, writer::append_structured_log_record},
     status::{
         DurableSyncState, FieldAvailability, SyncControlState, SyncLifecycleState,
-        SyncResourcePressure,
+        SyncRecoveryCategory, SyncResourcePressure,
     },
 };
 
 use super::{
     DurableSyncRuntime, PeerCapabilitySummary, PeerRetryState, ResolvedSyncPeerAddress,
     SyncPeerAddress, SyncPeerResolver, SyncRunSummary, SyncRuntimeError,
+    types::recovery::recovery_category_from_error_detail,
 };
 
 const MAX_HEADER_REQUESTS_IN_FLIGHT_PER_PEER: u64 = 1;
@@ -383,16 +384,19 @@ impl DurableSyncRuntime {
             sync.last_successful_progress_unix_seconds =
                 FieldAvailability::available(previous_timestamp);
         }
+        let maybe_recovery_category = recovery_category_for_durable_state(
+            &metadata,
+            summary,
+            lifecycle,
+            maybe_last_error.as_deref(),
+        );
         sync.last_error = match maybe_last_error {
             Some(value) => FieldAvailability::available(value),
             None => FieldAvailability::unavailable("no sync error recorded"),
         };
-        sync.recovery_category = match metadata.maybe_last_recovery_action {
-            Some(value) => FieldAvailability::available(value.recovery_category()),
-            None => match summary.recovery_category() {
-                Some(value) => FieldAvailability::available(value),
-                None => FieldAvailability::unavailable("no recovery category recorded"),
-            },
+        sync.recovery_category = match maybe_recovery_category {
+            Some(value) => FieldAvailability::available(value),
+            None => FieldAvailability::unavailable("no recovery category recorded"),
         };
         sync.recovery_action = match metadata.maybe_last_recovery_action {
             Some(value) => FieldAvailability::available(value.operator_message().to_string()),
@@ -424,6 +428,45 @@ impl DurableSyncRuntime {
     fn load_runtime_metadata(&self) -> Result<RuntimeMetadata, SyncRuntimeError> {
         Ok(self.store.load_runtime_metadata()?.unwrap_or_default())
     }
+}
+
+fn recovery_category_for_durable_state(
+    metadata: &RuntimeMetadata,
+    summary: &SyncRunSummary,
+    lifecycle: SyncLifecycleState,
+    maybe_last_error: Option<&str>,
+) -> Option<SyncRecoveryCategory> {
+    if let Some(category) = metadata
+        .maybe_last_recovery_action
+        .map(|action| action.recovery_category())
+    {
+        return Some(category);
+    }
+
+    if let Some(category) = maybe_last_error.and_then(recovery_category_from_error_detail) {
+        return Some(category);
+    }
+
+    if let Some(category) = summary
+        .maybe_stop_reason
+        .and_then(|reason| reason.recovery_category())
+    {
+        return Some(category);
+    }
+
+    if let Some(category) = summary.latest_recovery_category() {
+        return Some(category);
+    }
+
+    if lifecycle == SyncLifecycleState::Stopped && metadata.last_clean_shutdown {
+        return Some(SyncRecoveryCategory::CleanShutdown);
+    }
+
+    if lifecycle == SyncLifecycleState::Recovering && !metadata.last_clean_shutdown {
+        return Some(SyncRecoveryCategory::UncleanShutdown);
+    }
+
+    None
 }
 
 fn progress_ratio(block_height: u64, header_height: u64) -> f64 {

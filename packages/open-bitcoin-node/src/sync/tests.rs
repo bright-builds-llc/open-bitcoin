@@ -32,11 +32,11 @@ use super::{
 };
 use crate::{
     FieldAvailability, FjallNodeStore, LogRetentionPolicy, MetricKind, MetricSample, PersistMode,
-    StorageError, StorageNamespace,
+    RuntimeMetadata, StorageError, StorageNamespace, StorageRecoveryAction,
     logging::{StructuredLogLevel, StructuredLogRecord, writer::load_log_status},
     status::{
         HealthSignal, HealthSignalLevel, SyncLifecycleState, SyncProgress, SyncProgressSignal,
-        SyncResourcePressure,
+        SyncRecoveryCategory, SyncResourcePressure,
     },
 };
 
@@ -226,6 +226,19 @@ fn peer_outcome(
         maybe_failure_reason,
         maybe_error,
     }
+}
+
+fn summary_with_peer_failure(reason: PeerFailureReason, error: &str) -> SyncRunSummary {
+    let mut summary = SyncRunSummary::empty(0, 0, 1);
+    summary.failed_peers = 1;
+    summary.peer_outcomes.push(peer_outcome(
+        SyncPeerAddress::manual("127.0.0.1", 18_444),
+        PeerSyncState::Failed,
+        1,
+        Some(reason),
+        Some(error.to_string()),
+    ));
+    summary
 }
 
 impl SyncPeerSession for ScriptedSession {
@@ -2870,6 +2883,154 @@ fn same_datadir_reopen_seeds_headers_from_durable_store() {
             ..
         })
     ));
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn durable_sync_state_projects_storage_first_recovery_category() {
+    // Arrange
+    let path = temp_store_path("storage-first-recovery-category");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let metadata = RuntimeMetadata {
+        maybe_last_recovery_action: Some(StorageRecoveryAction::Repair),
+        ..RuntimeMetadata::default()
+    };
+    store
+        .save_runtime_metadata(&metadata, PersistMode::Sync)
+        .expect("save runtime metadata");
+    let runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    let summary =
+        summary_with_peer_failure(PeerFailureReason::Stall, "peer stalled waiting for headers");
+
+    // Act
+    let state = runtime
+        .durable_sync_state_for_summary(&summary, SyncLifecycleState::Active, None, 1_777_225_182)
+        .expect("durable status");
+
+    // Assert
+    assert_eq!(
+        state.sync.recovery_category,
+        FieldAvailability::available(SyncRecoveryCategory::StoreCorruption)
+    );
+    assert_eq!(
+        state.sync.recovery_action,
+        FieldAvailability::available(StorageRecoveryAction::Repair.operator_message().to_string())
+    );
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn durable_sync_state_storage_metadata_beats_peer_network_last_error_detail() {
+    // Arrange
+    let path = temp_store_path("storage-metadata-beats-peer-error");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let metadata = RuntimeMetadata {
+        maybe_last_recovery_action: Some(StorageRecoveryAction::Repair),
+        ..RuntimeMetadata::default()
+    };
+    store
+        .save_runtime_metadata(&metadata, PersistMode::Sync)
+        .expect("save runtime metadata");
+    let runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    let summary = SyncRunSummary::empty(0, 0, 1);
+
+    // Act
+    let state = runtime
+        .durable_sync_state_for_summary(
+            &summary,
+            SyncLifecycleState::Active,
+            Some("peer stalled waiting for headers".to_string()),
+            1_777_225_183,
+        )
+        .expect("durable status");
+
+    // Assert
+    assert_eq!(
+        state.sync.recovery_category,
+        FieldAvailability::available(SyncRecoveryCategory::StoreCorruption)
+    );
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn durable_sync_state_projects_storage_lock_category_from_last_error() {
+    // Arrange
+    let path = temp_store_path("storage-lock-last-error");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    let summary = SyncRunSummary::empty(0, 0, 1);
+
+    // Act
+    let state = runtime
+        .durable_sync_state_for_summary(
+            &summary,
+            SyncLifecycleState::Active,
+            Some("database lock contention".to_string()),
+            1_777_225_184,
+        )
+        .expect("durable status");
+
+    // Assert
+    assert_eq!(
+        state.sync.recovery_category,
+        FieldAvailability::available(SyncRecoveryCategory::StorageLockContention)
+    );
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn durable_sync_state_distinguishes_clean_and_unclean_shutdown_category() {
+    // Arrange
+    let path = temp_store_path("shutdown-recovery-category");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let clean_metadata = RuntimeMetadata {
+        last_clean_shutdown: true,
+        ..RuntimeMetadata::default()
+    };
+    store
+        .save_runtime_metadata(&clean_metadata, PersistMode::Sync)
+        .expect("save clean runtime metadata");
+    let runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    let summary = SyncRunSummary::empty(0, 0, 1);
+
+    // Act
+    let clean_state = runtime
+        .durable_sync_state_for_summary(&summary, SyncLifecycleState::Stopped, None, 1_777_225_185)
+        .expect("clean durable status");
+    let unclean_metadata = RuntimeMetadata {
+        last_clean_shutdown: false,
+        ..RuntimeMetadata::default()
+    };
+    runtime
+        .store()
+        .save_runtime_metadata(&unclean_metadata, PersistMode::Sync)
+        .expect("save unclean runtime metadata");
+    let unclean_state = runtime
+        .durable_sync_state_for_summary(
+            &summary,
+            SyncLifecycleState::Recovering,
+            None,
+            1_777_225_186,
+        )
+        .expect("unclean durable status");
+
+    // Assert
+    assert_eq!(
+        clean_state.sync.recovery_category,
+        FieldAvailability::available(SyncRecoveryCategory::CleanShutdown)
+    );
+    assert_eq!(
+        unclean_state.sync.recovery_category,
+        FieldAvailability::available(SyncRecoveryCategory::UncleanShutdown)
+    );
 
     remove_dir_if_exists(&path);
 }

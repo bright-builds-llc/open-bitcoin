@@ -60,7 +60,6 @@ impl SyncRuntimeError {
     }
 }
 
-#[cfg(test)]
 pub(crate) fn recovery_category_from_error_detail(detail: &str) -> Option<SyncRecoveryCategory> {
     let lower_detail = detail.to_ascii_lowercase();
 
@@ -103,14 +102,12 @@ pub(crate) fn recovery_category_from_error_detail(detail: &str) -> Option<SyncRe
     None
 }
 
-#[cfg(test)]
 fn contains_lock_signal(lower_detail: &str) -> bool {
     contains_ascii_word(lower_detail, "lock")
         || contains_ascii_word(lower_detail, "locked")
         || lower_detail.contains("contention")
 }
 
-#[cfg(test)]
 fn contains_ascii_word(haystack: &str, needle: &str) -> bool {
     haystack.match_indices(needle).any(|(start, _)| {
         let end = start + needle.len();
@@ -122,7 +119,6 @@ fn contains_ascii_word(haystack: &str, needle: &str) -> bool {
     })
 }
 
-#[cfg(test)]
 const fn is_ascii_word_boundary(byte: u8) -> bool {
     !byte.is_ascii_alphanumeric()
 }
