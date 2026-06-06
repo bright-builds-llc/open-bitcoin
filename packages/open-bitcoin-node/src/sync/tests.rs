@@ -1558,7 +1558,7 @@ fn sync_summary_projects_structured_log_records() {
             && record.source == "storage"
             && record.message == "metrics persistence unavailable"
     }));
-    assert!(records.iter().all(|record| record.message.len() <= 160));
+    assert!(records.iter().all(|record| record.message.len() <= 192));
     assert!(records.iter().all(|record| {
         !record.message.contains("127.0.0.1")
             && !record.message.contains("203.0.113")
@@ -1584,7 +1584,7 @@ fn sync_summary_logs_stop_reason_when_available() {
             .iter()
             .any(|record| record.message == "sync stop reason=no_progress")
     );
-    assert!(records.iter().all(|record| record.message.len() <= 160));
+    assert!(records.iter().all(|record| record.message.len() <= 192));
 }
 
 #[test]

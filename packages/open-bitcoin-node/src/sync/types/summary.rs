@@ -20,7 +20,6 @@ use super::{
         health_signal_log_record, peer_outcome_log_records, peer_telemetry, progress_ratio,
         sync_phase_name,
     },
-    recovery::recovery_category_from_error_detail,
 };
 
 const MAX_HEADER_REQUESTS_IN_FLIGHT_PER_PEER: u64 = 1;
@@ -124,6 +123,15 @@ impl SyncRunSummary {
             .map(PeerFailureReason::operator_recovery_action)
     }
 
+    pub(crate) fn latest_recovery_category(&self) -> Option<SyncRecoveryCategory> {
+        self.peer_outcomes
+            .iter()
+            .rev()
+            .filter_map(|outcome| outcome.maybe_failure_reason.as_ref())
+            .next()
+            .map(PeerFailureReason::recovery_category)
+    }
+
     pub(crate) fn recovery_category(&self) -> Option<SyncRecoveryCategory> {
         if let Some(category) = self
             .maybe_stop_reason
@@ -132,27 +140,7 @@ impl SyncRunSummary {
             return Some(category);
         }
 
-        let maybe_detail_category = self
-            .latest_error_message()
-            .and_then(|detail| recovery_category_from_error_detail(&detail));
-        if let Some(category) = maybe_detail_category
-            && storage_recovery_category(category)
-        {
-            return Some(category);
-        }
-
-        if let Some(category) = self
-            .peer_outcomes
-            .iter()
-            .rev()
-            .filter_map(|outcome| outcome.maybe_failure_reason.as_ref())
-            .next()
-            .map(PeerFailureReason::recovery_category)
-        {
-            return Some(category);
-        }
-
-        maybe_detail_category
+        self.latest_recovery_category()
     }
 
     pub(crate) fn progress_signal(&self) -> SyncProgressSignal {
@@ -235,11 +223,14 @@ impl SyncRunSummary {
     }
 
     pub fn structured_log_records(&self, timestamp_unix_seconds: u64) -> Vec<StructuredLogRecord> {
+        let recovery_category = self
+            .recovery_category()
+            .map_or("unavailable", SyncRecoveryCategory::as_str);
         let mut records = vec![StructuredLogRecord {
             level: StructuredLogLevel::Info,
             source: "sync".to_string(),
             message: format!(
-                "sync progress messages_processed={} headers_received={} blocks_received={} header={} downloaded={} connected={} signal={} last_progress={}",
+                "messages_processed={} headers_received={} blocks_received={} header={} downloaded={} connected={} signal={} last_progress={} recovery_category={}",
                 self.messages_processed,
                 self.headers_received,
                 self.blocks_received,
@@ -248,7 +239,8 @@ impl SyncRunSummary {
                 self.best_block_height,
                 progress_signal_name(self.progress_signal()),
                 self.last_successful_progress_unix_seconds()
-                    .map_or("unavailable".to_string(), |value| value.to_string())
+                    .map_or("unavailable".to_string(), |value| value.to_string()),
+                recovery_category,
             ),
             timestamp_unix_seconds,
         }];
@@ -273,16 +265,6 @@ impl SyncRunSummary {
         );
         records
     }
-}
-
-const fn storage_recovery_category(category: SyncRecoveryCategory) -> bool {
-    matches!(
-        category,
-        SyncRecoveryCategory::IncompatibleSchema
-            | SyncRecoveryCategory::StoreCorruption
-            | SyncRecoveryCategory::StorageLockContention
-            | SyncRecoveryCategory::StorageBackendFailure
-    )
 }
 
 fn progress_signal_name(signal: SyncProgressSignal) -> &'static str {
@@ -369,6 +351,10 @@ mod tests {
             FieldAvailability::available(latest_error.to_string())
         );
         assert_eq!(
+            summary.latest_recovery_category(),
+            Some(SyncRecoveryCategory::PublicNetworkUnreachable)
+        );
+        assert_eq!(
             status.recovery_category,
             FieldAvailability::available(SyncRecoveryCategory::PublicNetworkUnreachable)
         );
@@ -393,6 +379,11 @@ mod tests {
             record
                 .message
                 .contains("header=840100 downloaded=840006 connected=840004 signal=block_progress")
+        }));
+        assert!(records.iter().any(|record| {
+            record
+                .message
+                .contains("recovery_category=public_network_unreachable")
         }));
         assert!(
             records
@@ -438,6 +429,11 @@ mod tests {
             stopped_status.recovery_category,
             FieldAvailability::available(SyncRecoveryCategory::OperatorCancellation)
         );
+        assert!(paused_records.iter().any(|record| {
+            record
+                .message
+                .contains("recovery_category=operator_cancellation")
+        }));
         assert!(
             paused_records
                 .iter()
@@ -446,7 +442,33 @@ mod tests {
         assert!(stopped_records.iter().any(|record| {
             record
                 .message
+                .contains("recovery_category=operator_cancellation")
+        }));
+        assert!(stopped_records.iter().any(|record| {
+            record
+                .message
                 .contains("sync stop reason=shutdown_requested")
         }));
+    }
+
+    #[test]
+    fn sync_summary_structured_logs_mark_recovery_category_unavailable() {
+        // Arrange
+        let summary = SyncRunSummary::empty(840_000, 839_999, 2);
+
+        // Act
+        let status = summary.sync_status(SyncNetwork::Mainnet);
+        let records = summary.structured_log_records(1_717_000_003);
+
+        // Assert
+        assert_eq!(
+            status.recovery_category,
+            FieldAvailability::unavailable("no recovery category recorded")
+        );
+        assert!(
+            records
+                .iter()
+                .any(|record| { record.message.contains("recovery_category=unavailable") })
+        );
     }
 }
