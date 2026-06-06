@@ -161,6 +161,29 @@ Important boundaries:
   live-mainnet review evidence. It is opt-in, writes local reports, and stays
   outside the default `bash scripts/verify.sh` gate.
 
+### Unattended review loop policy
+
+`open-bitcoind` now runs an unattended review loop only after explicit mainnet
+sync activation through `sync.network_enabled = true` and
+`sync.mode = "mainnet-ibd"` or the daemon-only
+`-openbitcoinsync=mainnet-ibd` override. After RPC binds, each daemon wake runs
+one bounded `sync_until_idle` cycle, persists durable status, and then waits
+before the next cycle.
+
+The loop preserves explicit stop reasons in durable status and structured sync
+evidence. Operator-visible reasons include `target_header_reached`,
+`no_progress`, `max_rounds_reached`, `operator_paused`,
+`shutdown_requested`, storage failure, resource limit, peer failure, and
+`retry_backoff` waiting peers. Retry sleeps use at least
+`max(sync.retry_backoff_ms, 1000ms)` between cycles, so failing peers, waiting
+peers, and repeated no-progress cycles do not hot-loop.
+
+`open-bitcoin sync pause`, `open-bitcoin sync resume`, and clean daemon
+shutdown preserve durable state and next-action guidance for later review.
+This remains extended operator review readiness, not a production-node,
+inbound-serving, relay, production-funds wallet, migration-apply, or packaging
+claim.
+
 ### Live-smoke block-progress evidence
 
 The live-mainnet smoke report now writes `result.firstBlockProgress` when the

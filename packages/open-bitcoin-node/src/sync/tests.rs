@@ -1828,7 +1828,7 @@ fn sync_once_rotates_to_alternative_peer_after_stall() {
 }
 
 #[test]
-fn sync_once_reports_backoff_wait_and_replaces_peer() {
+fn sync_once_retry_backoff_wait_replaces_peer() {
     // Arrange
     let path = temp_store_path("backoff-replacement");
     remove_dir_if_exists(&path);
@@ -2967,7 +2967,7 @@ fn peer_contribution_rejects_invalid_headers_without_credit() {
 }
 
 #[test]
-fn peer_contribution_leaves_waiting_and_stalled_peers_uncredited() {
+fn retry_backoff_waiting_and_stalled_peers_remain_uncredited() {
     // Arrange
     let path = temp_store_path("peer-contribution-waiting-stalled");
     remove_dir_if_exists(&path);
@@ -3026,7 +3026,7 @@ fn peer_contribution_leaves_waiting_and_stalled_peers_uncredited() {
         waiting_summary.peer_outcomes[0]
             .maybe_error
             .as_ref()
-            .is_some_and(|message| message.contains("wait_seconds=9"))
+            .is_some_and(|message| message.contains("retry backoff wait_seconds=9"))
     );
     assert_eq!(
         waiting_summary.peer_outcomes[0].contribution,

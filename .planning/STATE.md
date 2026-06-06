@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Unattended Mainnet Node Operation Readiness
 status: ready_to_plan
-stopped_at: v1.5 roadmap created
-last_updated: "2026-06-05T23:19:04Z"
-last_activity: 2026-06-05
+stopped_at: Phase 60 complete; ready to plan Phase 61
+last_updated: "2026-06-06T03:25:04.386Z"
+last_activity: "2026-06-06 -- Phase 60 complete; ready to plan Phase 61"
 progress:
   total_phases: 8
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  completed_phases: 1
+  total_plans: 1
+  completed_plans: 1
+  percent: 13
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-05)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 60 - Unattended Sync Loop Control
+**Current focus:** Phase 61 - Resource Bounds and Recovery Taxonomy
 
 ## Current Position
 
 Milestone: v1.5 Unattended Mainnet Node Operation Readiness
-Phase: 60 of 67 (Unattended Sync Loop Control)
-Plan: Not planned yet
+Phase: 61 of 67 (Resource Bounds and Recovery Taxonomy)
+Plan: Not started
 Status: Ready to plan
-Last activity: 2026-06-05 - v1.5 roadmap created with 8 phases and 23/23 requirements mapped
+Last activity: 2026-06-06 - Phase 60 complete; ready to plan Phase 61
 
-Progress: [----------] 0%
+Progress: [#---------] 13%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Current milestone plans completed: 0
+- Current milestone plans completed: 1
 - Current milestone plan count: TBD during phase planning
 - Prior milestone plans completed: 15 in v1.4
 
@@ -45,7 +45,7 @@ Progress: [----------] 0%
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 60 | TBD | - | - |
+| 60 | 1 | - | - |
 | 61 | TBD | - | - |
 | 62 | TBD | - | - |
 | 63 | TBD | - | - |
@@ -56,8 +56,8 @@ Progress: [----------] 0%
 
 **Recent Trend:**
 
-- Last 5 completed plans: 59-01, 59-02, 59-03, 59-04, 59-05
-- Trend: v1.5 is ready to plan from Phase 60.
+- Last 5 completed plans: 59-02, 59-03, 59-04, 59-05, 60-01
+- Trend: v1.5 completed Phase 60 and is ready to plan Phase 61.
 
 ## Accumulated Context
 
@@ -82,7 +82,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Plan Phase 60 with `/gsd-plan-phase 60`.
+- Plan Phase 61 with `/gsd-plan-phase 61`.
 - Carry the compatibility harness wrapper through Phase 66.
 
 ### Blockers/Concerns
@@ -93,6 +93,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-05T23:19:04Z
-Stopped at: v1.5 roadmap created
+Last session: 2026-06-06T03:25:04Z
+Stopped at: Phase 60 complete; ready to plan Phase 61
 Resume file: .planning/ROADMAP.md

@@ -103,7 +103,7 @@ impl SyncRunSummary {
         }
     }
 
-    pub(crate) fn latest_error_message(&self) -> Option<String> {
+    pub fn latest_error_message(&self) -> Option<String> {
         self.peer_outcomes
             .iter()
             .rev()
@@ -253,7 +253,7 @@ fn progress_signal_name(signal: SyncProgressSignal) -> &'static str {
 #[cfg(test)]
 mod tests {
     use crate::{
-        FieldAvailability, MetricKind, MetricSample,
+        FieldAvailability, MetricKind, MetricSample, SyncStopReason,
         status::{PeerCounts, SyncProgressSignal},
         sync::{
             PeerContribution, PeerFailureReason, PeerSyncOutcome, PeerSyncState, SyncNetwork,
@@ -349,5 +349,46 @@ mod tests {
                 .iter()
                 .any(|record| record.message.contains("peer stalled"))
         );
+    }
+
+    #[test]
+    fn stop_reason_projection_includes_operator_pause_and_shutdown_labels() {
+        // Arrange
+        let mut paused_summary = SyncRunSummary::empty(0, 0, 1);
+        paused_summary.maybe_stop_reason = Some(SyncStopReason::OperatorPaused);
+        paused_summary
+            .health_signals
+            .push(SyncStopReason::OperatorPaused.health_signal());
+        let mut stopped_summary = SyncRunSummary::empty(0, 0, 1);
+        stopped_summary.maybe_stop_reason = Some(SyncStopReason::ShutdownRequested);
+        stopped_summary
+            .health_signals
+            .push(SyncStopReason::ShutdownRequested.health_signal());
+
+        // Act
+        let paused_status = paused_summary.sync_status(SyncNetwork::Mainnet);
+        let stopped_status = stopped_summary.sync_status(SyncNetwork::Mainnet);
+        let paused_records = paused_summary.structured_log_records(1_717_000_001);
+        let stopped_records = stopped_summary.structured_log_records(1_717_000_002);
+
+        // Assert
+        assert_eq!(
+            paused_status.phase,
+            FieldAvailability::available("operator_paused".to_string())
+        );
+        assert_eq!(
+            stopped_status.phase,
+            FieldAvailability::available("shutdown_requested".to_string())
+        );
+        assert!(
+            paused_records
+                .iter()
+                .any(|record| { record.message.contains("sync stop reason=operator_paused") })
+        );
+        assert!(stopped_records.iter().any(|record| {
+            record
+                .message
+                .contains("sync stop reason=shutdown_requested")
+        }));
     }
 }

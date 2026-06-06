@@ -129,6 +129,8 @@ pub(super) fn sync_phase_name(summary: &SyncRunSummary) -> &'static str {
             SyncStopReason::TargetHeaderReached { .. } => "header_target_reached",
             SyncStopReason::NoProgress { .. } => "no_progress",
             SyncStopReason::MaxRoundsReached { .. } => "max_rounds_reached",
+            SyncStopReason::OperatorPaused => "operator_paused",
+            SyncStopReason::ShutdownRequested => "shutdown_requested",
         };
     }
     if summary.attempted_peers == 0

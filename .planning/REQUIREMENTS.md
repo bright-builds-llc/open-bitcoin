@@ -10,10 +10,10 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Unattended Daemon Sync Loop
 
-- [ ] **LOOP-01**: Operator can start `open-bitcoind` with an explicit opt-in mainnet sync setting that runs repeated sync cycles without requiring an interactive command after the daemon binds RPC.
-- [ ] **LOOP-02**: Daemon sync enforces documented stop conditions for configured header or block targets, operator pause or shutdown, sustained no-progress diagnosis, resource exhaustion, storage failure, and incompatible peer exhaustion.
-- [ ] **LOOP-03**: Daemon sync applies bounded retry and backoff policy across peer, network, and protocol failures without hot-looping, unbounded peer creation, or crediting failed peers with useful progress.
-- [ ] **LOOP-04**: Operator can pause, resume, and cleanly shut down the unattended sync loop while preserving durable state and explicit next-action guidance.
+- [x] **LOOP-01**: Operator can start `open-bitcoind` with an explicit opt-in mainnet sync setting that runs repeated sync cycles without requiring an interactive command after the daemon binds RPC.
+- [x] **LOOP-02**: Daemon sync enforces documented stop conditions for configured header or block targets, operator pause or shutdown, sustained no-progress diagnosis, resource exhaustion, storage failure, and incompatible peer exhaustion.
+- [x] **LOOP-03**: Daemon sync applies bounded retry and backoff policy across peer, network, and protocol failures without hot-looping, unbounded peer creation, or crediting failed peers with useful progress.
+- [x] **LOOP-04**: Operator can pause, resume, and cleanly shut down the unattended sync loop while preserving durable state and explicit next-action guidance.
 
 ### Long-Run Observability and Support Evidence
 
@@ -90,10 +90,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LOOP-01 | Phase 60 | Pending |
-| LOOP-02 | Phase 60 | Pending |
-| LOOP-03 | Phase 60 | Pending |
-| LOOP-04 | Phase 60 | Pending |
+| LOOP-01 | Phase 60 | Complete |
+| LOOP-02 | Phase 60 | Complete |
+| LOOP-03 | Phase 60 | Complete |
+| LOOP-04 | Phase 60 | Complete |
 | OBS-01 | Phase 62 | Pending |
 | OBS-02 | Phase 62 | Pending |
 | OBS-03 | Phase 65 | Pending |

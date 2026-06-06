@@ -24,11 +24,15 @@
 use std::{
     error::Error,
     path::PathBuf,
+    sync::mpsc,
     thread,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-use open_bitcoin_node::{DurableSyncRuntime, FjallNodeStore, SyncLifecycleState, TcpPeerTransport};
+use open_bitcoin_node::{
+    DurableSyncRuntime, FjallNodeStore, SyncLifecycleState, SyncRunSummary, SyncRuntimeError,
+    SyncStopReason, TcpPeerTransport,
+};
 use open_bitcoin_rpc::{
     DaemonSyncControl, ManagedRpcContext,
     config::{DaemonSyncMode, RuntimeConfig, load_runtime_config},
@@ -55,7 +59,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let state = http::build_http_state(auth, context)?;
     let listener = tokio::net::TcpListener::bind(bind_address).await?;
 
-    axum::serve(listener, http::router(state)).await?;
+    let serve_result = axum::serve(listener, http::router(state))
+        .with_graceful_shutdown(shutdown_signal())
+        .await;
+    if let Some(worker) = maybe_sync_worker {
+        worker.shutdown();
+    }
+    serve_result?;
     Ok(())
 }
 
@@ -73,8 +83,52 @@ struct DaemonSyncPreflightError {
 }
 
 struct DaemonSyncWorker {
-    _join_handle: thread::JoinHandle<()>,
+    join_handle: thread::JoinHandle<()>,
+    shutdown_sender: mpsc::Sender<()>,
     control: DaemonSyncControl,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct DaemonSyncLoopPolicy {
+    sleep_duration: Duration,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DaemonSyncLoopDecision {
+    RetryAfter(Duration),
+    Paused(Duration),
+    Stopped,
+    Failed(Duration),
+}
+
+impl DaemonSyncLoopPolicy {
+    fn from_runtime(sync_runtime: &DurableSyncRuntime) -> Self {
+        Self {
+            sleep_duration: Duration::from_millis(
+                sync_runtime.config().retry_backoff_ms.max(1_000),
+            ),
+        }
+    }
+}
+
+impl DaemonSyncLoopDecision {
+    fn sleep_duration(self) -> Duration {
+        match self {
+            Self::RetryAfter(duration) | Self::Paused(duration) | Self::Failed(duration) => {
+                duration
+            }
+            Self::Stopped => Duration::from_millis(0),
+        }
+    }
+}
+
+impl DaemonSyncWorker {
+    fn shutdown(self) {
+        let _ = self.shutdown_sender.send(());
+        if let Err(error) = self.join_handle.join() {
+            eprintln!("open-bitcoind daemon sync worker shutdown join failed: {error:?}");
+        }
+    }
 }
 
 impl DaemonSyncPreflightError {
@@ -133,7 +187,7 @@ fn report_daemon_sync_preflight(preflight: &DaemonSyncPreflight) {
 
 fn daemon_sync_preflight_message(preflight: &DaemonSyncPreflight) -> String {
     format!(
-        "open-bitcoind mainnet sync preflight opened durable store: mode={}, datadir=\"{}\", best_header_height={}, best_block_height={}; enabled startup will run the explicit opt-in bounded mainnet sync worker. This is not unattended production-node operation and is not a packaged-service guarantee.",
+        "open-bitcoind mainnet sync preflight opened durable store: mode={}, datadir=\"{}\", best_header_height={}, best_block_height={}; enabled startup will run the explicit opt-in bounded unattended review loop with stop, retry, and backoff policy. This is not unattended production-node operation and is not a packaged-service guarantee.",
         preflight.mode,
         preflight.data_dir.display(),
         preflight.best_header_height,
@@ -167,9 +221,11 @@ fn start_daemon_sync_worker(
         ))
     })?;
     seed_initial_sync_state(&sync_runtime)?;
+    let (shutdown_sender, shutdown_receiver) = mpsc::channel();
 
     Ok(Some(DaemonSyncWorker {
-        _join_handle: thread::spawn(move || daemon_sync_worker(sync_runtime)),
+        join_handle: thread::spawn(move || daemon_sync_worker(sync_runtime, shutdown_receiver)),
+        shutdown_sender,
         control,
     }))
 }
@@ -202,74 +258,190 @@ fn seed_initial_sync_state(
         .map_err(|error| DaemonSyncPreflightError::new(error.to_string()))
 }
 
-fn daemon_sync_worker(mut sync_runtime: DurableSyncRuntime) {
+fn daemon_sync_worker(mut sync_runtime: DurableSyncRuntime, shutdown_receiver: mpsc::Receiver<()>) {
     let mut transport = TcpPeerTransport;
-    let sleep_duration = Duration::from_millis(sync_runtime.config().retry_backoff_ms.max(1_000));
+    let policy = DaemonSyncLoopPolicy::from_runtime(&sync_runtime);
 
     loop {
-        let paused = match sync_runtime.load_sync_control() {
-            Ok(value) => value.paused,
-            Err(error) => {
-                eprintln!("open-bitcoind daemon sync control read failed: {error}");
-                thread::sleep(sleep_duration);
-                continue;
-            }
-        };
-        if paused {
-            if let Ok(state) = sync_runtime.durable_sync_state(
-                SyncLifecycleState::Paused,
-                None,
+        if daemon_sync_shutdown_requested(&shutdown_receiver) {
+            let _ = run_daemon_sync_loop_cycle(
+                &mut sync_runtime,
+                policy,
                 current_timestamp_unix_seconds(),
+                true,
+                |runtime, _timestamp| Ok(runtime.snapshot_summary()),
+            );
+            break;
+        }
+
+        let decision = run_daemon_sync_loop_cycle(
+            &mut sync_runtime,
+            policy,
+            current_timestamp_unix_seconds(),
+            false,
+            |runtime, timestamp| runtime.sync_until_idle(&mut transport, timestamp),
+        );
+        if matches!(decision, DaemonSyncLoopDecision::Stopped) {
+            break;
+        }
+        if daemon_sync_wait_or_shutdown(&shutdown_receiver, decision.sleep_duration()) {
+            let _ = run_daemon_sync_loop_cycle(
+                &mut sync_runtime,
+                policy,
+                current_timestamp_unix_seconds(),
+                true,
+                |runtime, _timestamp| Ok(runtime.snapshot_summary()),
+            );
+            break;
+        }
+    }
+}
+
+fn run_daemon_sync_loop_cycle<F>(
+    sync_runtime: &mut DurableSyncRuntime,
+    policy: DaemonSyncLoopPolicy,
+    timestamp: i64,
+    shutdown_requested: bool,
+    run_sync_cycle: F,
+) -> DaemonSyncLoopDecision
+where
+    F: FnOnce(&mut DurableSyncRuntime, i64) -> Result<SyncRunSummary, SyncRuntimeError>,
+{
+    if shutdown_requested {
+        persist_daemon_loop_stop(
+            sync_runtime,
+            SyncLifecycleState::Stopped,
+            SyncStopReason::ShutdownRequested,
+            timestamp,
+        );
+        return DaemonSyncLoopDecision::Stopped;
+    }
+
+    match sync_runtime.load_sync_control() {
+        Ok(control) if control.paused => {
+            persist_daemon_loop_stop(
+                sync_runtime,
+                SyncLifecycleState::Paused,
+                SyncStopReason::OperatorPaused,
+                timestamp,
+            );
+            return DaemonSyncLoopDecision::Paused(policy.sleep_duration);
+        }
+        Ok(_) => {}
+        Err(error) => {
+            persist_daemon_loop_failure(sync_runtime, &error, timestamp);
+            return DaemonSyncLoopDecision::Failed(policy.sleep_duration);
+        }
+    }
+
+    let lifecycle = match sync_runtime.store().load_recovery_marker() {
+        Ok(Some(_)) => SyncLifecycleState::Recovering,
+        Ok(None) => SyncLifecycleState::Active,
+        Err(error) => {
+            let error = SyncRuntimeError::from(error);
+            persist_daemon_loop_failure(sync_runtime, &error, timestamp);
+            return DaemonSyncLoopDecision::Failed(policy.sleep_duration);
+        }
+    };
+    match sync_runtime.durable_sync_state(lifecycle, None, timestamp) {
+        Ok(state) => {
+            if let Err(error) = sync_runtime.persist_durable_sync_state(state) {
+                persist_daemon_loop_failure(sync_runtime, &error, timestamp);
+                return DaemonSyncLoopDecision::Failed(policy.sleep_duration);
+            }
+        }
+        Err(error) => {
+            persist_daemon_loop_failure(sync_runtime, &error, timestamp);
+            return DaemonSyncLoopDecision::Failed(policy.sleep_duration);
+        }
+    }
+
+    match run_sync_cycle(sync_runtime, timestamp) {
+        Ok(summary) => {
+            let maybe_last_error = summary.latest_error_message();
+            match sync_runtime.durable_sync_state_for_summary(
+                &summary,
+                SyncLifecycleState::Active,
+                maybe_last_error,
+                timestamp,
             ) {
-                let _ = sync_runtime.persist_durable_sync_state(state);
-            }
-            thread::sleep(sleep_duration);
-            continue;
-        }
-
-        let lifecycle = match sync_runtime.store().load_recovery_marker() {
-            Ok(Some(_)) => SyncLifecycleState::Recovering,
-            Ok(None) => SyncLifecycleState::Active,
-            Err(error) => {
-                eprintln!("open-bitcoind daemon sync recovery-marker read failed: {error}");
-                thread::sleep(sleep_duration);
-                continue;
-            }
-        };
-        if let Ok(state) =
-            sync_runtime.durable_sync_state(lifecycle, None, current_timestamp_unix_seconds())
-        {
-            let _ = sync_runtime.persist_durable_sync_state(state);
-        }
-
-        let round_result = {
-            let timestamp = current_timestamp_unix_seconds();
-            sync_runtime
-                .sync_until_idle(&mut transport, timestamp)
-                .and_then(|summary| {
-                    let state = sync_runtime.durable_sync_state_for_summary(
-                        &summary,
-                        SyncLifecycleState::Active,
-                        None,
-                        timestamp,
-                    )?;
-                    sync_runtime.persist_durable_sync_state(state)
-                })
-        };
-        match round_result {
-            Ok(()) => thread::sleep(sleep_duration),
-            Err(error) => {
-                eprintln!("open-bitcoind daemon sync round failed: {error}");
-                if let Ok(state) = sync_runtime.durable_sync_state(
-                    SyncLifecycleState::Failed,
-                    Some(error.to_string()),
-                    current_timestamp_unix_seconds(),
-                ) {
-                    let _ = sync_runtime.persist_durable_sync_state(state);
+                Ok(state) => {
+                    if let Err(error) = sync_runtime.persist_durable_sync_state(state) {
+                        persist_daemon_loop_failure(sync_runtime, &error, timestamp);
+                        return DaemonSyncLoopDecision::Failed(policy.sleep_duration);
+                    }
                 }
-                thread::sleep(sleep_duration);
+                Err(error) => {
+                    persist_daemon_loop_failure(sync_runtime, &error, timestamp);
+                    return DaemonSyncLoopDecision::Failed(policy.sleep_duration);
+                }
+            }
+            DaemonSyncLoopDecision::RetryAfter(policy.sleep_duration)
+        }
+        Err(error) => {
+            eprintln!("open-bitcoind daemon sync cycle failed: {error}");
+            persist_daemon_loop_failure(sync_runtime, &error, timestamp);
+            DaemonSyncLoopDecision::Failed(policy.sleep_duration)
+        }
+    }
+}
+
+fn persist_daemon_loop_stop(
+    sync_runtime: &DurableSyncRuntime,
+    lifecycle: SyncLifecycleState,
+    stop_reason: SyncStopReason,
+    timestamp: i64,
+) {
+    let mut summary = sync_runtime.snapshot_summary();
+    summary.maybe_stop_reason = Some(stop_reason);
+    summary.health_signals.push(stop_reason.health_signal());
+    let maybe_last_error = Some(stop_reason.message());
+    match sync_runtime.durable_sync_state_for_summary(
+        &summary,
+        lifecycle,
+        maybe_last_error,
+        timestamp,
+    ) {
+        Ok(state) => {
+            if let Err(error) = sync_runtime.persist_durable_sync_state(state) {
+                eprintln!("open-bitcoind daemon sync stop persistence failed: {error}");
             }
         }
+        Err(error) => eprintln!("open-bitcoind daemon sync stop state failed: {error}"),
+    }
+}
+
+fn persist_daemon_loop_failure(
+    sync_runtime: &DurableSyncRuntime,
+    error: &SyncRuntimeError,
+    timestamp: i64,
+) {
+    if let Ok(state) = sync_runtime.durable_sync_state(
+        SyncLifecycleState::Failed,
+        Some(error.to_string()),
+        timestamp,
+    ) {
+        let _ = sync_runtime.persist_durable_sync_state(state);
+    }
+}
+
+fn daemon_sync_shutdown_requested(receiver: &mpsc::Receiver<()>) -> bool {
+    match receiver.try_recv() {
+        Ok(()) | Err(mpsc::TryRecvError::Disconnected) => true,
+        Err(mpsc::TryRecvError::Empty) => false,
+    }
+}
+
+fn daemon_sync_wait_or_shutdown(receiver: &mpsc::Receiver<()>, duration: Duration) -> bool {
+    match receiver.recv_timeout(duration) {
+        Ok(()) | Err(mpsc::RecvTimeoutError::Disconnected) => true,
+        Err(mpsc::RecvTimeoutError::Timeout) => false,
+    }
+}
+
+async fn shutdown_signal() {
+    if let Err(error) = tokio::signal::ctrl_c().await {
+        eprintln!("open-bitcoind shutdown signal listener failed: {error}");
     }
 }
 
@@ -281,103 +453,5 @@ fn current_timestamp_unix_seconds() -> i64 {
 }
 
 #[cfg(test)]
-mod tests {
-    use std::{
-        fs,
-        path::PathBuf,
-        sync::atomic::{AtomicU64, Ordering},
-    };
-
-    use open_bitcoin_rpc::config::{DaemonSyncConfig, RuntimeConfig};
-
-    use super::{DaemonSyncPreflight, daemon_sync_preflight_message, preflight_daemon_sync};
-
-    static NEXT_TEST_DIRECTORY_ID: AtomicU64 = AtomicU64::new(0);
-
-    fn temp_store_path(label: &str) -> PathBuf {
-        let path = std::env::temp_dir().join(format!(
-            "open-bitcoind-sync-preflight-{label}-{}",
-            NEXT_TEST_DIRECTORY_ID.fetch_add(1, Ordering::Relaxed)
-        ));
-        fs::create_dir_all(&path).expect("test store directory");
-        path
-    }
-
-    #[test]
-    fn disabled_sync_skips_daemon_preflight() {
-        // Arrange
-        let runtime = RuntimeConfig::default();
-
-        // Act
-        let preflight = preflight_daemon_sync(&runtime).expect("disabled preflight");
-
-        // Assert
-        assert_eq!(preflight, None);
-    }
-
-    #[test]
-    fn enabled_sync_preflight_opens_durable_runtime_before_worker_startup() {
-        // Arrange
-        let data_dir = temp_store_path("enabled");
-        let runtime = RuntimeConfig {
-            maybe_data_dir: Some(data_dir.clone()),
-            sync: DaemonSyncConfig::mainnet_ibd(),
-            ..RuntimeConfig::default()
-        };
-
-        // Act
-        let preflight = preflight_daemon_sync(&runtime)
-            .expect("enabled preflight")
-            .expect("preflight summary");
-
-        // Assert
-        assert_eq!(preflight.data_dir, data_dir);
-        assert_eq!(preflight.mode, runtime.sync.mode);
-        assert_eq!(preflight.best_header_height, 0);
-        assert_eq!(preflight.best_block_height, 0);
-    }
-
-    #[test]
-    fn enabled_sync_preflight_message_describes_opt_in_worker_without_production_claim() {
-        // Arrange
-        let preflight = DaemonSyncPreflight {
-            mode: DaemonSyncConfig::mainnet_ibd().mode,
-            data_dir: PathBuf::from("/tmp/open-bitcoin-mainnet"),
-            best_header_height: 12,
-            best_block_height: 3,
-        };
-
-        // Act
-        let message = daemon_sync_preflight_message(&preflight);
-
-        // Assert
-        assert!(message.contains("opened durable store"));
-        assert!(message.contains("explicit opt-in bounded mainnet sync worker"));
-        assert!(message.contains("not unattended production-node operation"));
-        assert!(message.contains("not a packaged-service guarantee"));
-        assert!(message.contains("mode=mainnet-ibd"));
-        assert!(message.contains("datadir=\"/tmp/open-bitcoin-mainnet\""));
-        assert!(message.contains("best_header_height=12"));
-        assert!(message.contains("best_block_height=3"));
-        assert!(!message.contains("peer transport and unattended full IBD"));
-        assert!(!message.contains("not started by this phase"));
-    }
-
-    #[test]
-    fn enabled_sync_requires_datadir_before_daemon_binds_rpc() {
-        // Arrange
-        let runtime = RuntimeConfig {
-            sync: DaemonSyncConfig::mainnet_ibd(),
-            ..RuntimeConfig::default()
-        };
-
-        // Act
-        let error = preflight_daemon_sync(&runtime).expect_err("missing datadir should fail");
-
-        // Assert
-        assert_eq!(
-            error.to_string(),
-            "open-bitcoind mainnet sync activation requires an existing datadir; set -datadir=<path> or create the default Bitcoin datadir before enabling -openbitcoinsync=mainnet-ibd."
-        );
-    }
-}
+#[path = "open_bitcoind/tests.rs"]
+mod tests;

@@ -376,6 +376,8 @@ pub enum SyncStopReason {
     MaxRoundsReached {
         max_rounds: usize,
     },
+    OperatorPaused,
+    ShutdownRequested,
 }
 
 impl SyncStopReason {
@@ -384,6 +386,8 @@ impl SyncStopReason {
             Self::TargetHeaderReached { .. } => "target_header_reached",
             Self::NoProgress { .. } => "no_progress",
             Self::MaxRoundsReached { .. } => "max_rounds_reached",
+            Self::OperatorPaused => "operator_paused",
+            Self::ShutdownRequested => "shutdown_requested",
         }
     }
 
@@ -403,14 +407,21 @@ impl SyncStopReason {
             Self::MaxRoundsReached { max_rounds } => {
                 format!("sync stopped after reaching max_rounds={max_rounds}")
             }
+            Self::OperatorPaused => "operator paused unattended sync loop".to_string(),
+            Self::ShutdownRequested => {
+                "daemon shutdown requested for unattended sync loop".to_string()
+            }
         }
     }
 
-    pub(crate) fn health_signal(self) -> HealthSignal {
+    pub fn health_signal(self) -> HealthSignal {
         HealthSignal {
             level: match self {
                 Self::TargetHeaderReached { .. } => HealthSignalLevel::Info,
-                Self::NoProgress { .. } | Self::MaxRoundsReached { .. } => HealthSignalLevel::Warn,
+                Self::NoProgress { .. }
+                | Self::MaxRoundsReached { .. }
+                | Self::OperatorPaused
+                | Self::ShutdownRequested => HealthSignalLevel::Warn,
             },
             source: "sync".to_string(),
             message: self.message(),

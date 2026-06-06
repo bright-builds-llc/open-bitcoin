@@ -11,8 +11,8 @@
 
 ## Current Focus
 
-v1.5 Unattended Mainnet Node Operation Readiness is ready for phase planning.
-Next action: `/gsd-plan-phase 60`
+v1.5 Unattended Mainnet Node Operation Readiness is ready for Phase 61 planning.
+Next action: `/gsd-plan-phase 61`
 
 ## Phases
 
@@ -37,7 +37,7 @@ traceability.
 
 **Milestone Goal:** Make the opt-in `open-bitcoind` mainnet sync workflow bounded, restart-safe, and observable enough for extended unattended operator review without broadening the production-node claim.
 
-- [ ] **Phase 60: Unattended Sync Loop Control** - Operators can opt into repeated daemon sync cycles with bounded stop, retry, pause, resume, and shutdown behavior.
+- [x] **Phase 60: Unattended Sync Loop Control** - Operators can opt into repeated daemon sync cycles with bounded stop, retry, pause, resume, and shutdown behavior. (completed 2026-06-06)
 - [ ] **Phase 61: Resource Bounds and Recovery Taxonomy** - Operators can trust unattended sync bounds, recovery states, and next-action guidance across long runs.
 - [ ] **Phase 62: Long-Run Sync Truth Surfaces** - Operators see consistent bounded sync truth across status, dashboard, RPC, metrics, logs, and live-smoke snapshots.
 - [ ] **Phase 63: Service Supervision Lifecycle** - Operators can manage launchd or systemd supervision for the opt-in unattended workflow with truthful lifecycle state.
@@ -57,7 +57,7 @@ traceability.
   2. Operator can see the documented stop reason when the loop stops for configured targets, pause or shutdown, sustained no progress, resource exhaustion, storage failure, or incompatible peer exhaustion.
   3. Peer, network, and protocol failures use bounded retry and backoff without hot-looping, unbounded peer creation, or crediting failed peers with useful progress.
   4. Operator can pause, resume, and cleanly shut down the loop while durable state and next-action guidance are preserved.
-**Plans**: TBD
+**Plans**: 1/1 complete ([60-01](phases/60-unattended-sync-loop-control/60-01-PLAN.md))
 
 ### Phase 61: Resource Bounds and Recovery Taxonomy
 **Goal**: Operators can trust unattended sync bounds, recovery states, and next-action guidance across long runs.
@@ -140,7 +140,7 @@ traceability.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 60. Unattended Sync Loop Control | 0/TBD | Not started | - |
+| 60. Unattended Sync Loop Control | 1/1 | Complete    | 2026-06-06 |
 | 61. Resource Bounds and Recovery Taxonomy | 0/TBD | Not started | - |
 | 62. Long-Run Sync Truth Surfaces | 0/TBD | Not started | - |
 | 63. Service Supervision Lifecycle | 0/TBD | Not started | - |
@@ -162,8 +162,8 @@ traceability.
 
 ## Next Step
 
-Plan the first v1.5 phase:
+Plan the next v1.5 phase:
 
 ```bash
-/gsd-plan-phase 60
+/gsd-plan-phase 61
 ```
