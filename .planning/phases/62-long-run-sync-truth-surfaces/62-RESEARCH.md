@@ -453,17 +453,15 @@ All claims in this research were verified or cited; no user confirmation is need
 |---|-------|---------|---------------|
 | - | None | - | - |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Exact Rust module placement for the Phase 62 helper**
    - What we know: existing status/sync files already own the relevant domain types and projections. [VERIFIED: packages/open-bitcoin-node/src/status.rs; packages/open-bitcoin-node/src/sync/types/summary.rs; packages/open-bitcoin-node/src/sync/runtime_state.rs]
-   - What's unclear: the smallest final patch may fit existing files, while file length/cohesion may justify a new child module that needs parity breadcrumbs. [VERIFIED: AGENTS.md; Bright Builds code-shape standard]
-   - Recommendation: keep the helper in existing modules unless the implementation becomes large; if a new Rust file is added, update parity breadcrumbs in the same plan. [VERIFIED: .planning/phases/62-long-run-sync-truth-surfaces/62-CONTEXT.md discretion; AGENTS.md]
+   - RESOLVED: Plan 62-01 keeps the Phase 62 status helper types in `packages/open-bitcoin-node/src/status.rs` and projection wiring in existing sync summary/runtime modules. Do not create a new Rust module for the initial implementation; if execution proves the helper too large, the executor may split it only with a same-plan `docs/parity/source-breadcrumbs.json` update and `scripts/check-parity-breadcrumbs.ts` verification. [VERIFIED: .planning/phases/62-long-run-sync-truth-surfaces/62-01-PLAN.md; AGENTS.md]
 
 2. **Whether configured targets should be one struct or separate fields**
    - What we know: current config has `target_outbound_peers` and optional `target_header_height`, while status exposes outbound target through `SyncResourcePressure` and does not expose target header as a status field. [VERIFIED: packages/open-bitcoin-node/src/sync/types.rs:170; packages/open-bitcoin-node/src/status.rs:123; packages/open-bitcoin-node/src/status.rs:137]
-   - What's unclear: the final implementation may choose `sync.configured_targets` or additive scalar fields. [VERIFIED: .planning/phases/62-long-run-sync-truth-surfaces/62-CONTEXT.md D-02]
-   - Recommendation: use a small `SyncConfiguredTargets` struct if it reduces repeated renderer code; otherwise add scalar `FieldAvailability` fields with deterministic field-contract tests. [VERIFIED: .planning/phases/62-long-run-sync-truth-surfaces/62-CONTEXT.md discretion; Bright Builds architecture standard]
+   - RESOLVED: Use one additive `SyncConfiguredTargets` struct on `SyncStatus` with `target_outbound_peers` and `maybe_target_header_height`, surfaced as `FieldAvailability<SyncConfiguredTargets>`. Plan 62-01 also requires the same `maybe_target_header_height` value to reach structured-log projection so logs and durable status cannot diverge. [VERIFIED: .planning/phases/62-long-run-sync-truth-surfaces/62-01-PLAN.md]
 
 ## Environment Availability
 
