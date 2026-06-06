@@ -1585,6 +1585,72 @@ fn sync_summary_projects_structured_log_records() {
 }
 
 #[test]
+fn phase62_structured_logs_keep_bounded_cycle_facts() {
+    // Arrange
+    let mut summary = SyncRunSummary {
+        target_outbound_peers: 4,
+        maybe_target_header_height: Some(840_123),
+        attempted_peers: 3,
+        connected_peers: 2,
+        failed_peers: 1,
+        messages_processed: 9,
+        headers_received: 4,
+        blocks_received: 2,
+        best_header_height: 840_123,
+        downloaded_block_height: 840_120,
+        best_block_height: 840_119,
+        maybe_downloaded_block_hash: None,
+        maybe_connected_block_hash: None,
+        peer_outcomes: Vec::new(),
+        health_signals: Vec::new(),
+        maybe_stop_reason: Some(SyncStopReason::NoProgress {
+            rounds_completed: 2,
+        }),
+    };
+    summary.peer_outcomes.push(peer_outcome(
+        SyncPeerAddress::manual("198.51.100.44", 18_444),
+        PeerSyncState::Connected,
+        1,
+        None,
+        None,
+    ));
+
+    // Act
+    let records = summary.structured_log_records(1_777_225_100);
+    let summary_text = records
+        .iter()
+        .filter(|record| record.source == "sync" && record.level == StructuredLogLevel::Info)
+        .map(|record| record.message.as_str())
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    // Assert
+    for expected in [
+        "target_outbound_peers=4",
+        "target_header_height=840123",
+        "attempted_peers=3",
+        "connected_peers=2",
+        "failed_peers=1",
+        "messages_processed=9",
+        "headers_received=4",
+        "blocks_received=2",
+        "header=840123",
+        "downloaded=840120",
+        "connected=840119",
+        "signal=block_progress",
+        "last_progress=unavailable",
+        "stop_reason=no_progress",
+        "recovery_category=unavailable",
+    ] {
+        assert!(
+            summary_text.contains(expected),
+            "missing structured log fact: {expected}"
+        );
+    }
+    assert!(records.iter().all(|record| record.message.len() <= 192));
+}
+
+#[test]
 fn sync_summary_logs_stop_reason_when_available() {
     // Arrange
     let mut summary = SyncRunSummary::empty(0, 0, 1);
@@ -1602,6 +1668,58 @@ fn sync_summary_logs_stop_reason_when_available() {
             .any(|record| record.message == "sync stop reason=no_progress")
     );
     assert!(records.iter().all(|record| record.message.len() <= 192));
+}
+
+#[test]
+fn phase62_status_and_structured_logs_agree_on_configured_targets() {
+    // Arrange
+    let path = temp_store_path("phase62-target-agreement");
+    let log_dir = path.join("logs");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let runtime = DurableSyncRuntime::open(
+        store,
+        SyncRuntimeConfig {
+            maybe_target_header_height: Some(840_123),
+            maybe_log_dir: Some(log_dir.clone()),
+            max_rounds: 5,
+            ..sync_config()
+        },
+    )
+    .expect("runtime");
+    let mut summary = SyncRunSummary::empty(840_123, 840_120, 4);
+    summary.maybe_stop_reason = Some(SyncStopReason::TargetHeaderReached {
+        target_header_height: 840_123,
+        best_header_height: 840_123,
+    });
+
+    // Act
+    runtime.write_summary_logs(&mut summary, 1_777_225_102);
+    let state = runtime
+        .durable_sync_state_for_summary(&summary, SyncLifecycleState::Active, None, 1_777_225_102)
+        .expect("durable status");
+    let records = load_structured_log_records(&log_dir);
+    let summary_text = records
+        .iter()
+        .filter(|record| record.source == "sync")
+        .map(|record| record.message.as_str())
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    // Assert
+    let FieldAvailability::Available(configured_targets) = state.sync.configured_targets else {
+        panic!("configured targets should be available");
+    };
+    assert_eq!(configured_targets.maybe_target_header_height, Some(840_123));
+    assert_eq!(configured_targets.target_outbound_peers, 4);
+    let FieldAvailability::Available(stop_reason) = state.sync.latest_stop_reason else {
+        panic!("latest stop reason should be available");
+    };
+    assert_eq!(stop_reason.label, "target_header_reached");
+    assert!(summary_text.contains("target_header_height=840123"));
+    assert!(summary_text.contains("stop_reason=target_header_reached"));
+
+    remove_dir_if_exists(&path);
 }
 
 #[test]

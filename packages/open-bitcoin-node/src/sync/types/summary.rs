@@ -245,24 +245,46 @@ impl SyncRunSummary {
         let recovery_category = self
             .recovery_category()
             .map_or("unavailable", SyncRecoveryCategory::as_str);
-        let mut records = vec![StructuredLogRecord {
-            level: StructuredLogLevel::Info,
-            source: "sync".to_string(),
-            message: format!(
-                "messages_processed={} headers_received={} blocks_received={} header={} downloaded={} connected={} signal={} last_progress={} recovery_category={}",
-                self.messages_processed,
-                self.headers_received,
-                self.blocks_received,
-                self.best_header_height,
-                self.downloaded_block_height,
-                self.best_block_height,
-                progress_signal_name(self.progress_signal()),
-                self.last_successful_progress_unix_seconds()
-                    .map_or("unavailable".to_string(), |value| value.to_string()),
-                recovery_category,
-            ),
-            timestamp_unix_seconds,
-        }];
+        let target_header_height = self
+            .maybe_target_header_height
+            .map_or("unavailable".to_string(), |height| height.to_string());
+        let stop_reason = self
+            .maybe_stop_reason
+            .map_or("unavailable", SyncStopReason::label);
+        let mut records = vec![
+            StructuredLogRecord {
+                level: StructuredLogLevel::Info,
+                source: "sync".to_string(),
+                message: format!(
+                    "target_outbound_peers={} target_header_height={} attempted_peers={} connected_peers={} failed_peers={} stop_reason={} recovery_category={}",
+                    self.target_outbound_peers,
+                    target_header_height,
+                    self.attempted_peers,
+                    self.connected_peers,
+                    self.failed_peers,
+                    stop_reason,
+                    recovery_category,
+                ),
+                timestamp_unix_seconds,
+            },
+            StructuredLogRecord {
+                level: StructuredLogLevel::Info,
+                source: "sync".to_string(),
+                message: format!(
+                    "messages_processed={} headers_received={} blocks_received={} header={} downloaded={} connected={} signal={} last_progress={}",
+                    self.messages_processed,
+                    self.headers_received,
+                    self.blocks_received,
+                    self.best_header_height,
+                    self.downloaded_block_height,
+                    self.best_block_height,
+                    progress_signal_name(self.progress_signal()),
+                    self.last_successful_progress_unix_seconds()
+                        .map_or("unavailable".to_string(), |value| value.to_string()),
+                ),
+                timestamp_unix_seconds,
+            },
+        ];
 
         if let Some(stop_reason) = self.maybe_stop_reason {
             records.push(StructuredLogRecord {
