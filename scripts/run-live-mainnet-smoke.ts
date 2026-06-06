@@ -56,18 +56,33 @@ type CommandSpec = {
 
 type SyncStatusSnapshot = {
   blockHeight: number;
+  attemptCounters: AttemptCountersSummary | null;
   capturedAtUnixSeconds: number;
+  configuredTargets: ConfiguredTargetsSummary | null;
   connectedBlockHeight: number;
   downloadedBlockHeight: number;
   headerHeight: number;
   lifecycle: string;
   maybeConnectedBlockHash: string | null;
   maybeDownloadedBlockHash: string | null;
+  maybeAttemptCountersUnavailableReason: string | null;
+  maybeConfiguredTargetsUnavailableReason: string | null;
   maybeLastSuccessfulProgressUnixSeconds: number | null;
   maybeLastError: string | null;
+  maybeLastErrorUnavailableReason: string | null;
+  maybeLatestStopReasonUnavailableReason: string | null;
+  maybeProgressSignalUnavailableReason: string | null;
+  maybeRecoveryActionUnavailableReason: string | null;
+  maybeRecoveryCategoryUnavailableReason: string | null;
+  maybeResourcePressureUnavailableReason: string | null;
   outboundPeers: number;
   paused: boolean;
   phase: string;
+  progressSignal: string | null;
+  latestStopReason: StopReasonSummary | null;
+  recoveryAction: string | null;
+  recoveryCategory: RecoveryDiagnosisCategory | null;
+  resourcePressure: ResourcePressureSummary | null;
   updatedAtUnixSeconds: number;
 };
 
@@ -148,15 +163,30 @@ type DuplicateConnectVerdict =
   | "unavailable";
 
 type RestartProgressSummary = {
+  attemptCounters: AttemptCountersSummary | null;
+  configuredTargets: ConfiguredTargetsSummary | null;
   connectedBlockHeight: number;
   downloadedBlockHeight: number;
   headerHeight: number;
   lifecycle: string;
+  latestStopReason: StopReasonSummary | null;
+  maybeAttemptCountersUnavailableReason: string | null;
   maybeConnectedBlockHash: string | null;
+  maybeConfiguredTargetsUnavailableReason: string | null;
   maybeDownloadedBlockHash: string | null;
   maybeLastError: string | null;
+  maybeLastErrorUnavailableReason: string | null;
   maybeLastSuccessfulProgressUnixSeconds: number | null;
+  maybeLatestStopReasonUnavailableReason: string | null;
+  maybeProgressSignalUnavailableReason: string | null;
+  maybeRecoveryActionUnavailableReason: string | null;
+  maybeRecoveryCategoryUnavailableReason: string | null;
+  maybeResourcePressureUnavailableReason: string | null;
   phase: string;
+  progressSignal: string | null;
+  recoveryAction: string | null;
+  recoveryCategory: RecoveryDiagnosisCategory | null;
+  resourcePressure: ResourcePressureSummary | null;
 };
 
 type RestartProgressDelta = {
@@ -205,6 +235,23 @@ type ResourcePressureSummary = {
   targetOutboundPeers: number;
 };
 
+type ConfiguredTargetsSummary = {
+  maybeTargetHeaderHeight: number | null;
+  targetOutboundPeers: number;
+};
+
+type AttemptCountersSummary = {
+  attemptedPeers: number;
+  connectedPeers: number;
+  failedPeers: number;
+  maxSyncRounds: number;
+};
+
+type StopReasonSummary = {
+  label: string;
+  message: string;
+};
+
 type RestartResumeEvidence = {
   afterRestart: RestartProgressSummary | null;
   beforeRestart: RestartProgressSummary | null;
@@ -220,19 +267,34 @@ type RestartResumeEvidence = {
 };
 
 type FinalStatusSummary = {
+  attemptCounters: AttemptCountersSummary | null;
   blockHeight: number;
+  configuredTargets: ConfiguredTargetsSummary | null;
   connectedBlockHeight: number;
   downloadedBlockHeight: number;
   headerHeight: number;
+  latestStopReason: StopReasonSummary | null;
+  maybeAttemptCountersUnavailableReason: string | null;
+  maybeConfiguredTargetsUnavailableReason: string | null;
   lifecycle: string;
   maybeConnectedBlockHash: string | null;
   maybeDownloadedBlockHash: string | null;
   maybeLastSuccessfulProgressUnixSeconds: number | null;
   maybeLastError: string | null;
+  maybeLastErrorUnavailableReason: string | null;
+  maybeLatestStopReasonUnavailableReason: string | null;
+  maybeProgressSignalUnavailableReason: string | null;
+  maybeRecoveryActionUnavailableReason: string | null;
+  maybeRecoveryCategoryUnavailableReason: string | null;
+  maybeResourcePressureUnavailableReason: string | null;
+  headersReceived: number;
+  blocksReceived: number;
   messagesProcessed: number;
   outboundPeers: number;
   phase: string;
+  progressSignal: string | null;
   recentPeers: RuntimePeerTelemetry[];
+  recoveryAction: string | null;
   recoveryCategory: RecoveryDiagnosisCategory | null;
   resourcePressure: ResourcePressureSummary | null;
 };
@@ -251,8 +313,10 @@ type SmokeReport = {
   daemon: {
     maybeExitCode: number | null;
     maybeSignal: NodeJS.Signals | null;
-    stderrTail: string;
-    stdoutTail: string;
+    stderrLineCount: number;
+    stderrObserved: boolean;
+    stdoutLineCount: number;
+    stdoutObserved: boolean;
   };
   final_status: FinalStatusSummary | null;
   generated_at_unix_seconds: number;
@@ -326,6 +390,23 @@ type ResourcePressureStatusJson = {
   target_outbound_peers?: number;
 };
 
+type ConfiguredTargetsStatusJson = {
+  maybe_target_header_height?: number | null;
+  target_outbound_peers?: number;
+};
+
+type AttemptCountersStatusJson = {
+  attempted_peers?: number;
+  connected_peers?: number;
+  failed_peers?: number;
+  max_sync_rounds?: number;
+};
+
+type StopReasonStatusJson = {
+  label?: string;
+  message?: string;
+};
+
 type DurableSyncStateJson = {
   peers?: {
     peer_counts?: FieldAvailability<{
@@ -334,16 +415,23 @@ type DurableSyncStateJson = {
     recent_peers?: FieldAvailability<RuntimePeerTelemetryJson[]>;
   };
   sync?: {
+    attempt_counters?: FieldAvailability<AttemptCountersStatusJson>;
+    configured_targets?: FieldAvailability<ConfiguredTargetsStatusJson>;
     last_error?: FieldAvailability<string>;
     lifecycle?: FieldAvailability<string>;
+    latest_stop_reason?: FieldAvailability<StopReasonStatusJson>;
     phase?: FieldAvailability<string>;
-    recovery_category?: FieldAvailability<RecoveryDiagnosisCategory>;
+    progress_signal?: FieldAvailability<string>;
+    recovery_action?: FieldAvailability<string>;
+    recovery_category?: FieldAvailability<string>;
     resource_pressure?: FieldAvailability<ResourcePressureStatusJson>;
     sync_progress?: FieldAvailability<{
       block_height?: number;
+      blocks_received?: number;
       connected_block_height?: number;
       downloaded_block_height?: number;
       header_height?: number;
+      headers_received?: number;
       maybe_connected_block_hash?: string | null;
       maybe_downloaded_block_hash?: string | null;
       messages_processed?: number;
@@ -409,7 +497,11 @@ type SmokeSessionResult = {
   resultStatus: ReportStatus;
   snapshots: SyncStatusSnapshot[];
   statusSpec: CommandSpec;
+  stderrLineCount: number;
+  stderrObserved: boolean;
   stderrTail: string;
+  stdoutLineCount: number;
+  stdoutObserved: boolean;
   stdoutTail: string;
 };
 
@@ -1165,6 +1257,7 @@ function runtimeMetadataFromStatusResponse(
 function syncStatusSnapshotFromMetadata(metadata: RuntimeMetadataJson): SyncStatusSnapshot {
   const capturedAtUnixSeconds = Math.floor(Date.now() / 1000);
   const maybeSyncState = metadata.maybe_sync_state;
+  const maybeSync = maybeSyncState?.sync;
   const maybeProgress = availableValue(maybeSyncState?.sync?.sync_progress);
   const maybePeerCounts = availableValue(maybeSyncState?.peers?.peer_counts);
   const blockHeight = Number(maybeProgress?.block_height ?? 0);
@@ -1176,25 +1269,66 @@ function syncStatusSnapshotFromMetadata(metadata: RuntimeMetadataJson): SyncStat
   );
 
   return {
+    attemptCounters: attemptCountersFromValue(
+      availableValue(maybeSync?.attempt_counters),
+    ),
     blockHeight,
     capturedAtUnixSeconds,
+    configuredTargets: configuredTargetsFromValue(
+      availableValue(maybeSync?.configured_targets),
+    ),
     connectedBlockHeight,
     downloadedBlockHeight,
     headerHeight: Number(maybeProgress?.header_height ?? 0),
-    lifecycle: String(availableValue(maybeSyncState?.sync?.lifecycle) ?? "unavailable"),
+    lifecycle: String(availableValue(maybeSync?.lifecycle) ?? "unavailable"),
+    latestStopReason: stopReasonFromValue(
+      availableValue(maybeSync?.latest_stop_reason),
+    ),
     maybeConnectedBlockHash: valueAsNullableString(
       maybeProgress?.maybe_connected_block_hash,
     ),
     maybeDownloadedBlockHash: valueAsNullableString(
       maybeProgress?.maybe_downloaded_block_hash,
     ),
-    maybeLastSuccessfulProgressUnixSeconds: availableValue(
-      maybeSyncState?.sync?.last_successful_progress_unix_seconds,
+    maybeAttemptCountersUnavailableReason: unavailableReasonFromFieldAvailability(
+      maybeSync?.attempt_counters,
     ),
-    maybeLastError: valueAsNullableString(availableValue(maybeSyncState?.sync?.last_error)),
+    maybeConfiguredTargetsUnavailableReason: unavailableReasonFromFieldAvailability(
+      maybeSync?.configured_targets,
+    ),
+    maybeLastSuccessfulProgressUnixSeconds: availableValue(
+      maybeSync?.last_successful_progress_unix_seconds,
+    ),
+    maybeLastError: valueAsNullableString(availableValue(maybeSync?.last_error)),
+    maybeLastErrorUnavailableReason: unavailableReasonFromFieldAvailability(
+      maybeSync?.last_error,
+    ),
+    maybeLatestStopReasonUnavailableReason: unavailableReasonFromFieldAvailability(
+      maybeSync?.latest_stop_reason,
+    ),
+    maybeProgressSignalUnavailableReason: unavailableReasonFromFieldAvailability(
+      maybeSync?.progress_signal,
+    ),
+    maybeRecoveryActionUnavailableReason: unavailableReasonFromFieldAvailability(
+      maybeSync?.recovery_action,
+    ),
+    maybeRecoveryCategoryUnavailableReason: recoveryCategoryUnavailableReason(
+      maybeSync?.recovery_category,
+    ),
+    maybeResourcePressureUnavailableReason: unavailableReasonFromFieldAvailability(
+      maybeSync?.resource_pressure,
+    ),
     outboundPeers: Number(maybePeerCounts?.outbound ?? 0),
     paused: metadata.sync_control?.paused === true,
-    phase: String(availableValue(maybeSyncState?.sync?.phase) ?? "unavailable"),
+    phase: String(availableValue(maybeSync?.phase) ?? "unavailable"),
+    progressSignal: valueAsNullableString(availableValue(maybeSync?.progress_signal)),
+    recoveryAction: valueAsNullableString(availableValue(maybeSync?.recovery_action)),
+    recoveryCategory: recoveryCategoryFromValue(
+      availableValue(maybeSync?.recovery_category),
+    ),
+    resourcePressure: resourcePressureSummaryFromValue(
+      availableValue(maybeSync?.resource_pressure),
+    ),
     updatedAtUnixSeconds: Number(maybeSyncState?.updated_at_unix_seconds ?? capturedAtUnixSeconds),
   };
 }
@@ -1206,8 +1340,82 @@ function availableValue<T>(value: FieldAvailability<T> | undefined): T | null {
   return null;
 }
 
+function unavailableReasonFromFieldAvailability<T>(
+  value: FieldAvailability<T> | undefined,
+): string | null {
+  if (value === undefined) {
+    return "status field absent";
+  }
+  if (value.state === "available") {
+    return null;
+  }
+
+  if (
+    typeof value.value === "object" &&
+    value.value !== null &&
+    "reason" in value.value &&
+    typeof value.value.reason === "string" &&
+    value.value.reason.trim() !== ""
+  ) {
+    return value.value.reason;
+  }
+
+  if (
+    "reason" in value &&
+    typeof value.reason === "string" &&
+    value.reason.trim() !== ""
+  ) {
+    return value.reason;
+  }
+
+  return "status field unavailable";
+}
+
 function valueAsNullableString(value: unknown): string | null {
   return typeof value === "string" && value.trim() !== "" ? value : null;
+}
+
+function configuredTargetsFromValue(
+  value: ConfiguredTargetsStatusJson | null,
+): ConfiguredTargetsSummary | null {
+  if (value === null) {
+    return null;
+  }
+  return {
+    maybeTargetHeaderHeight:
+      typeof value.maybe_target_header_height === "number"
+        ? value.maybe_target_header_height
+        : null,
+    targetOutboundPeers: Number(value.target_outbound_peers ?? 0),
+  };
+}
+
+function attemptCountersFromValue(
+  value: AttemptCountersStatusJson | null,
+): AttemptCountersSummary | null {
+  if (value === null) {
+    return null;
+  }
+  return {
+    attemptedPeers: Number(value.attempted_peers ?? 0),
+    connectedPeers: Number(value.connected_peers ?? 0),
+    failedPeers: Number(value.failed_peers ?? 0),
+    maxSyncRounds: Number(value.max_sync_rounds ?? 0),
+  };
+}
+
+function stopReasonFromValue(value: StopReasonStatusJson | null): StopReasonSummary | null {
+  if (value === null) {
+    return null;
+  }
+  const maybeLabel = valueAsNullableString(value.label);
+  if (maybeLabel === null) {
+    return null;
+  }
+  return {
+    label: maybeLabel,
+    message: valueAsNullableString(value.message) ?? maybeLabel,
+  };
 }
 
 function finalStatusCommand(repoRootPath: string, options: Options): CommandSpec {
@@ -1258,7 +1466,8 @@ function finalStatusSummaryFromMetadata(metadata: RuntimeMetadataJson): FinalSta
     return null;
   }
 
-  const maybeProgress = availableValue(maybeSyncState.sync?.sync_progress);
+  const maybeSync = maybeSyncState.sync;
+  const maybeProgress = availableValue(maybeSync?.sync_progress);
   const maybePeerCounts = availableValue(maybeSyncState.peers?.peer_counts);
   const blockHeight = Number(maybeProgress?.block_height ?? 0);
   const connectedBlockHeight = Number(
@@ -1271,11 +1480,26 @@ function finalStatusSummaryFromMetadata(metadata: RuntimeMetadataJson): FinalSta
     runtimePeerTelemetry,
   ) ?? [];
   return {
+    attemptCounters: attemptCountersFromValue(
+      availableValue(maybeSync?.attempt_counters),
+    ),
     blockHeight,
+    configuredTargets: configuredTargetsFromValue(
+      availableValue(maybeSync?.configured_targets),
+    ),
     connectedBlockHeight,
     downloadedBlockHeight,
     headerHeight: Number(maybeProgress?.header_height ?? 0),
-    lifecycle: String(availableValue(maybeSyncState.sync?.lifecycle) ?? "unavailable"),
+    latestStopReason: stopReasonFromValue(
+      availableValue(maybeSync?.latest_stop_reason),
+    ),
+    maybeAttemptCountersUnavailableReason: unavailableReasonFromFieldAvailability(
+      maybeSync?.attempt_counters,
+    ),
+    maybeConfiguredTargetsUnavailableReason: unavailableReasonFromFieldAvailability(
+      maybeSync?.configured_targets,
+    ),
+    lifecycle: String(availableValue(maybeSync?.lifecycle) ?? "unavailable"),
     maybeConnectedBlockHash: valueAsNullableString(
       maybeProgress?.maybe_connected_block_hash,
     ),
@@ -1283,18 +1507,40 @@ function finalStatusSummaryFromMetadata(metadata: RuntimeMetadataJson): FinalSta
       maybeProgress?.maybe_downloaded_block_hash,
     ),
     maybeLastSuccessfulProgressUnixSeconds: availableValue(
-      maybeSyncState.sync?.last_successful_progress_unix_seconds,
+      maybeSync?.last_successful_progress_unix_seconds,
     ),
-    maybeLastError: valueAsNullableString(availableValue(maybeSyncState.sync?.last_error)),
+    maybeLastError: valueAsNullableString(availableValue(maybeSync?.last_error)),
+    maybeLastErrorUnavailableReason: unavailableReasonFromFieldAvailability(
+      maybeSync?.last_error,
+    ),
+    maybeLatestStopReasonUnavailableReason: unavailableReasonFromFieldAvailability(
+      maybeSync?.latest_stop_reason,
+    ),
+    maybeProgressSignalUnavailableReason: unavailableReasonFromFieldAvailability(
+      maybeSync?.progress_signal,
+    ),
+    maybeRecoveryActionUnavailableReason: unavailableReasonFromFieldAvailability(
+      maybeSync?.recovery_action,
+    ),
+    maybeRecoveryCategoryUnavailableReason: recoveryCategoryUnavailableReason(
+      maybeSync?.recovery_category,
+    ),
+    maybeResourcePressureUnavailableReason: unavailableReasonFromFieldAvailability(
+      maybeSync?.resource_pressure,
+    ),
+    headersReceived: Number(maybeProgress?.headers_received ?? 0),
+    blocksReceived: Number(maybeProgress?.blocks_received ?? 0),
     messagesProcessed: Number(maybeProgress?.messages_processed ?? 0),
     outboundPeers: Number(maybePeerCounts?.outbound ?? 0),
-    phase: String(availableValue(maybeSyncState.sync?.phase) ?? "unavailable"),
+    phase: String(availableValue(maybeSync?.phase) ?? "unavailable"),
+    progressSignal: valueAsNullableString(availableValue(maybeSync?.progress_signal)),
     recentPeers,
+    recoveryAction: valueAsNullableString(availableValue(maybeSync?.recovery_action)),
     recoveryCategory: recoveryCategoryFromValue(
-      availableValue(maybeSyncState.sync?.recovery_category),
+      availableValue(maybeSync?.recovery_category),
     ),
     resourcePressure: resourcePressureSummaryFromValue(
-      availableValue(maybeSyncState.sync?.resource_pressure),
+      availableValue(maybeSync?.resource_pressure),
     ),
   };
 }
@@ -1315,6 +1561,22 @@ function recoveryCategoryFromValue(value: unknown): RecoveryDiagnosisCategory | 
     default:
       return null;
   }
+}
+
+function recoveryCategoryUnavailableReason(
+  value: FieldAvailability<string> | undefined,
+): string | null {
+  const maybeUnavailableReason = unavailableReasonFromFieldAvailability(value);
+  if (maybeUnavailableReason !== null) {
+    return maybeUnavailableReason;
+  }
+
+  const maybeCategory = availableValue(value);
+  if (maybeCategory === null || recoveryCategoryFromValue(maybeCategory) !== null) {
+    return null;
+  }
+
+  return `unknown recovery category: ${String(maybeCategory)}`;
 }
 
 function resourcePressureSummaryFromValue(
@@ -1616,11 +1878,32 @@ function nextActionForCause(cause: NoProgressCause | null): string {
   }
 }
 
-function attachTailBuffer(child: ChildProcess, streamName: "stdout" | "stderr"): { read: () => string } {
+function attachTailBuffer(
+  child: ChildProcess,
+  streamName: "stdout" | "stderr",
+): {
+  lineCount: () => number;
+  observed: () => boolean;
+  read: () => string;
+} {
   let buffer = Buffer.alloc(0);
+  let lineCount = 0;
+  let currentLineHasBytes = false;
+  let observed = false;
   const stream = child[streamName];
   stream?.on("data", (chunk: Buffer | string) => {
     const nextChunk = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    observed = observed || nextChunk.byteLength > 0;
+    for (const byte of nextChunk) {
+      if (byte === 10) {
+        lineCount += 1;
+        currentLineHasBytes = false;
+        continue;
+      }
+      if (byte !== 13) {
+        currentLineHasBytes = true;
+      }
+    }
     buffer = Buffer.concat([buffer, nextChunk]);
     if (buffer.byteLength > MAX_TAIL_BYTES) {
       buffer = buffer.subarray(buffer.byteLength - MAX_TAIL_BYTES);
@@ -1628,6 +1911,8 @@ function attachTailBuffer(child: ChildProcess, streamName: "stdout" | "stderr"):
   });
 
   return {
+    lineCount: () => lineCount + (currentLineHasBytes ? 1 : 0),
+    observed: () => observed,
     read: () => buffer.toString("utf8"),
   };
 }
@@ -1835,7 +2120,11 @@ async function runSmokeSession(
     resultStatus,
     snapshots,
     statusSpec,
+    stderrLineCount: stderrTail.lineCount(),
+    stderrObserved: stderrTail.observed(),
     stderrTail: stderrTail.read(),
+    stdoutLineCount: stdoutTail.lineCount(),
+    stdoutObserved: stdoutTail.observed(),
     stdoutTail: stdoutTail.read(),
   };
 }
@@ -1867,16 +2156,38 @@ function restartProgressSummary(
     return null;
   }
   return {
+    attemptCounters: maybeSnapshot.attemptCounters,
+    configuredTargets: maybeSnapshot.configuredTargets,
     connectedBlockHeight: maybeSnapshot.connectedBlockHeight,
     downloadedBlockHeight: maybeSnapshot.downloadedBlockHeight,
     headerHeight: maybeSnapshot.headerHeight,
+    latestStopReason: maybeSnapshot.latestStopReason,
     lifecycle: maybeSnapshot.lifecycle,
+    maybeAttemptCountersUnavailableReason:
+      maybeSnapshot.maybeAttemptCountersUnavailableReason,
     maybeConnectedBlockHash: maybeSnapshot.maybeConnectedBlockHash,
+    maybeConfiguredTargetsUnavailableReason:
+      maybeSnapshot.maybeConfiguredTargetsUnavailableReason,
     maybeDownloadedBlockHash: maybeSnapshot.maybeDownloadedBlockHash,
     maybeLastError: maybeSnapshot.maybeLastError,
+    maybeLastErrorUnavailableReason: maybeSnapshot.maybeLastErrorUnavailableReason,
     maybeLastSuccessfulProgressUnixSeconds:
       maybeSnapshot.maybeLastSuccessfulProgressUnixSeconds,
+    maybeLatestStopReasonUnavailableReason:
+      maybeSnapshot.maybeLatestStopReasonUnavailableReason,
+    maybeProgressSignalUnavailableReason:
+      maybeSnapshot.maybeProgressSignalUnavailableReason,
+    maybeRecoveryActionUnavailableReason:
+      maybeSnapshot.maybeRecoveryActionUnavailableReason,
+    maybeRecoveryCategoryUnavailableReason:
+      maybeSnapshot.maybeRecoveryCategoryUnavailableReason,
+    maybeResourcePressureUnavailableReason:
+      maybeSnapshot.maybeResourcePressureUnavailableReason,
     phase: maybeSnapshot.phase,
+    progressSignal: maybeSnapshot.progressSignal,
+    recoveryAction: maybeSnapshot.recoveryAction,
+    recoveryCategory: maybeSnapshot.recoveryCategory,
+    resourcePressure: maybeSnapshot.resourcePressure,
   };
 }
 
@@ -2231,11 +2542,11 @@ function markdownReport(report: SmokeReport): string {
     .join("\n");
   const snapshotRows =
     report.snapshots.length === 0
-      ? "| - | - | - | - | - | - | - | - | - | - |\n"
+      ? "| Unavailable: no sync status snapshots captured | - | - | - | - | - | - | - | - | - | - | - | - |\n"
       : report.snapshots
           .map(
             (snapshot) =>
-              `| ${snapshot.capturedAtUnixSeconds} | ${snapshot.lifecycle} | ${snapshot.phase} | ${snapshot.headerHeight} | ${snapshot.downloadedBlockHeight} | ${snapshot.connectedBlockHeight} | ${escapeTableCell(snapshot.maybeDownloadedBlockHash ?? "-")} | ${escapeTableCell(snapshot.maybeConnectedBlockHash ?? "-")} | ${snapshot.outboundPeers} | ${escapeTableCell(snapshot.maybeLastError ?? "-")} |`,
+              `| ${snapshot.capturedAtUnixSeconds} | ${snapshot.lifecycle} | ${snapshot.phase} | ${fieldText(snapshot.progressSignal, snapshot.maybeProgressSignalUnavailableReason)} | ${configuredTargetsText(snapshot.configuredTargets, snapshot.maybeConfiguredTargetsUnavailableReason, snapshot.outboundPeers)} | ${attemptCountersText(snapshot.attemptCounters, snapshot.maybeAttemptCountersUnavailableReason)} | ${snapshot.headerHeight} | ${blockEvidenceText(snapshot.downloadedBlockHeight, snapshot.maybeDownloadedBlockHash, "downloaded")} | ${blockEvidenceText(snapshot.connectedBlockHeight, snapshot.maybeConnectedBlockHash, "connected")} | ${fieldText(snapshot.recoveryCategory, snapshot.maybeRecoveryCategoryUnavailableReason)} | ${resourcePressureText(snapshot.resourcePressure, snapshot.maybeResourcePressureUnavailableReason)} | ${stopReasonText(snapshot.latestStopReason, snapshot.maybeLatestStopReasonUnavailableReason)} | ${fieldText(snapshot.maybeLastError, snapshot.maybeLastErrorUnavailableReason)} |`,
           )
           .join("\n");
   const endpointRows =
@@ -2331,8 +2642,8 @@ ${endpointRows}
 
 ## Snapshots
 
-| Captured At | Lifecycle | Phase | Header Height | Downloaded Block Height | Connected Block Height | Downloaded Block Hash | Connected Block Hash | Outbound Peers | Last Error |
-| --- | --- | --- | ---: | ---: | ---: | --- | --- | ---: | --- |
+| Captured At | Lifecycle | Phase | Signal | Configured Targets | Attempts | Header Height | Downloaded Block | Connected Block | Recovery Category | Resource Pressure | Latest Stop Reason | Latest Error |
+| --- | --- | --- | --- | --- | --- | ---: | --- | --- | --- | --- | --- | --- |
 ${snapshotRows}
 
 ## Commands
@@ -2351,15 +2662,23 @@ ${daemonSessionRows}
 
 - Lifecycle: ${report.final_status?.lifecycle ?? "Unavailable"}
 - Phase: ${report.final_status?.phase ?? "Unavailable"}
+- Configured targets: ${configuredTargetsText(report.final_status?.configuredTargets ?? null, report.final_status?.maybeConfiguredTargetsUnavailableReason ?? null, report.final_status?.outboundPeers ?? null)}
+- Attempt counters: ${attemptCountersText(report.final_status?.attemptCounters ?? null, report.final_status?.maybeAttemptCountersUnavailableReason ?? null)}
+- Progress signal: ${fieldText(report.final_status?.progressSignal ?? null, report.final_status?.maybeProgressSignalUnavailableReason ?? null)}
+- Last progress: ${fieldText(report.final_status?.maybeLastSuccessfulProgressUnixSeconds ?? null, "no successful progress recorded")}
+- Latest stop reason: ${stopReasonText(report.final_status?.latestStopReason ?? null, report.final_status?.maybeLatestStopReasonUnavailableReason ?? null)}
+- Latest error: ${fieldText(report.final_status?.maybeLastError ?? null, report.final_status?.maybeLastErrorUnavailableReason ?? null)}
+- Recovery category: ${fieldText(report.final_status?.recoveryCategory ?? null, report.final_status?.maybeRecoveryCategoryUnavailableReason ?? null)}
+- Recovery action: ${fieldText(report.final_status?.recoveryAction ?? null, report.final_status?.maybeRecoveryActionUnavailableReason ?? null)}
+- Resource pressure: ${resourcePressureText(report.final_status?.resourcePressure ?? null, report.final_status?.maybeResourcePressureUnavailableReason ?? null)}
+- Peer health: outbound_peers=${report.final_status?.outboundPeers ?? 0}
 - Header height: ${report.final_status?.headerHeight ?? 0}
 - Block height: ${report.final_status?.blockHeight ?? 0}
 - Downloaded block height: ${report.final_status?.downloadedBlockHeight ?? 0}
 - Connected block height: ${report.final_status?.connectedBlockHeight ?? 0}
 - Downloaded block hash: ${report.final_status?.maybeDownloadedBlockHash ?? "Unavailable"}
 - Connected block hash: ${report.final_status?.maybeConnectedBlockHash ?? "Unavailable"}
-- Messages processed: ${report.final_status?.messagesProcessed ?? 0}
-- Outbound peers: ${report.final_status?.outboundPeers ?? 0}
-- Last error: ${report.final_status?.maybeLastError ?? "Unavailable"}
+- Bounded counters: messages_processed=${report.final_status?.messagesProcessed ?? 0} headers_received=${report.final_status?.headersReceived ?? 0} blocks_received=${report.final_status?.blocksReceived ?? 0}
 
 ## Runtime Peer Contributions
 
@@ -2367,20 +2686,86 @@ ${daemonSessionRows}
 | --- | --- | --- | ---: | ---: | ---: | --- | --- |
 ${runtimePeerRows}
 
-## Daemon Output Tail
+## Daemon Output Summary
 
-### stdout
-
-\`\`\`
-${report.daemon.stdoutTail.trim()}
-\`\`\`
-
-### stderr
-
-\`\`\`
-${report.daemon.stderrTail.trim()}
-\`\`\`
+- Exit code: ${report.daemon.maybeExitCode ?? "Unavailable"}
+- Signal: ${report.daemon.maybeSignal ?? "Unavailable"}
+- stdout observed: ${report.daemon.stdoutObserved ? "yes" : "no"}
+- stdout line count: ${report.daemon.stdoutLineCount}
+- stderr observed: ${report.daemon.stderrObserved ? "yes" : "no"}
+- stderr line count: ${report.daemon.stderrLineCount}
 `;
+}
+
+function fieldText(value: string | number | null, maybeUnavailableReason: string | null): string {
+  if (value !== null) {
+    return escapeTableCell(String(value));
+  }
+  return unavailableText(maybeUnavailableReason);
+}
+
+function unavailableText(maybeReason: string | null): string {
+  return maybeReason === null || maybeReason.trim() === ""
+    ? "Unavailable"
+    : `Unavailable: ${escapeTableCell(maybeReason)}`;
+}
+
+function configuredTargetsText(
+  configuredTargets: ConfiguredTargetsSummary | null,
+  maybeUnavailableReason: string | null,
+  maybeOutboundPeers: number | null,
+): string {
+  if (configuredTargets === null) {
+    return unavailableText(maybeUnavailableReason);
+  }
+  const targetHeader =
+    configuredTargets.maybeTargetHeaderHeight === null
+      ? "Unavailable: no target header configured"
+      : String(configuredTargets.maybeTargetHeaderHeight);
+  const outboundPeers =
+    maybeOutboundPeers === null
+      ? String(configuredTargets.targetOutboundPeers)
+      : `${maybeOutboundPeers}/${configuredTargets.targetOutboundPeers}`;
+  return `outbound_peers=${outboundPeers} target_header_height=${targetHeader}`;
+}
+
+function attemptCountersText(
+  attemptCounters: AttemptCountersSummary | null,
+  maybeUnavailableReason: string | null,
+): string {
+  if (attemptCounters === null) {
+    return unavailableText(maybeUnavailableReason);
+  }
+  return `attempted=${attemptCounters.attemptedPeers} connected=${attemptCounters.connectedPeers} failed=${attemptCounters.failedPeers} max_rounds=${attemptCounters.maxSyncRounds}`;
+}
+
+function stopReasonText(
+  latestStopReason: StopReasonSummary | null,
+  maybeUnavailableReason: string | null,
+): string {
+  if (latestStopReason === null) {
+    return unavailableText(maybeUnavailableReason);
+  }
+  return escapeTableCell(`${latestStopReason.label}: ${latestStopReason.message}`);
+}
+
+function resourcePressureText(
+  resourcePressure: ResourcePressureSummary | null,
+  maybeUnavailableReason: string | null,
+): string {
+  if (resourcePressure === null) {
+    return unavailableText(maybeUnavailableReason);
+  }
+  return `headers_per_peer=${resourcePressure.maxHeaderRequestsInFlightPerPeer} headers_per_message=${resourcePressure.maxHeadersPerMessage} blocks=${resourcePressure.blocksInFlight}/${resourcePressure.maxBlocksInFlightPerPeer}/${resourcePressure.maxBlocksInFlightTotal} messages_per_peer=${resourcePressure.maxMessagesPerPeer} sync_rounds=${resourcePressure.maxSyncRounds} outbound_peers=${resourcePressure.outboundPeers}/${resourcePressure.targetOutboundPeers}`;
+}
+
+function blockEvidenceText(
+  height: number,
+  maybeHash: string | null,
+  kind: "connected" | "downloaded",
+): string {
+  const hash = maybeHash ?? `Unavailable: no ${kind} block hash recorded`;
+  return `height=${height} hash=${escapeTableCell(hash)}`;
 }
 
 function escapeTableCell(value: string): string {
@@ -2425,8 +2810,10 @@ function preflightFailureReport(
     daemon: {
       maybeExitCode: null,
       maybeSignal: null,
-      stderrTail: "",
-      stdoutTail: "",
+      stderrLineCount: 0,
+      stderrObserved: false,
+      stdoutLineCount: 0,
+      stdoutObserved: false,
     },
     final_status: null,
     generated_at_unix_seconds: Math.floor(Date.now() / 1000),
@@ -2656,12 +3043,16 @@ async function main(): Promise<void> {
     daemon: {
       maybeExitCode: (maybeRestartSession ?? firstSession).maybeExitCode,
       maybeSignal: (maybeRestartSession ?? firstSession).maybeSignal,
-      stderrTail: sessions
-        .map((session, index) => `session ${index + 1}\n${session.stderrTail}`)
-        .join("\n"),
-      stdoutTail: sessions
-        .map((session, index) => `session ${index + 1}\n${session.stdoutTail}`)
-        .join("\n"),
+      stderrLineCount: sessions.reduce(
+        (sum, session) => sum + session.stderrLineCount,
+        0,
+      ),
+      stderrObserved: sessions.some((session) => session.stderrObserved),
+      stdoutLineCount: sessions.reduce(
+        (sum, session) => sum + session.stdoutLineCount,
+        0,
+      ),
+      stdoutObserved: sessions.some((session) => session.stdoutObserved),
     },
     final_status: maybeFinalStatus,
     generated_at_unix_seconds: Math.floor(Date.now() / 1000),

@@ -13,8 +13,11 @@ trap cleanup EXIT
 
 existing_datadir="$tmp_dir/existing-datadir"
 missing_datadir="$tmp_dir/missing-datadir"
-output_dir="$tmp_dir/output"
+output_dir="packages/target/live-mainnet-smoke-reports"
 mkdir -p "$existing_datadir" "$output_dir"
+rm -f "$output_dir/open-bitcoin-live-mainnet-smoke.json" \
+	"$output_dir/open-bitcoin-live-mainnet-smoke.md" \
+	"$output_dir/open-bitcoin-live-mainnet-smoke.jsonc"
 
 bun run scripts/run-live-mainnet-smoke.ts --help | grep -q "Usage:"
 if rg -n "run-live-mainnet-smoke|--manual-peer|--restart-after-progress" scripts/verify.sh >/dev/null; then
@@ -106,6 +109,32 @@ if [[ "$count" -eq 0 ]]; then
           "state": "available",
           "value": "waiting_for_headers"
         },
+        "configured_targets": {
+          "state": "available",
+          "value": {
+            "target_outbound_peers": 4,
+            "maybe_target_header_height": 840200
+          }
+        },
+        "attempt_counters": {
+          "state": "available",
+          "value": {
+            "attempted_peers": 1,
+            "connected_peers": 1,
+            "failed_peers": 0,
+            "max_sync_rounds": 8
+          }
+        },
+        "progress_signal": {
+          "state": "available",
+          "value": "waiting_for_peers"
+        },
+        "latest_stop_reason": {
+          "state": "unavailable",
+          "value": {
+            "reason": "no stop reason recorded"
+          }
+        },
         "last_successful_progress_unix_seconds": {
           "state": "unavailable",
           "value": {
@@ -116,6 +145,32 @@ if [[ "$count" -eq 0 ]]; then
           "state": "unavailable",
           "value": {
             "reason": "no sync error recorded"
+          }
+        },
+        "recovery_category": {
+          "state": "unavailable",
+          "value": {
+            "reason": "no recovery category recorded"
+          }
+        },
+        "recovery_action": {
+          "state": "unavailable",
+          "value": {
+            "reason": "no recovery action required"
+          }
+        },
+        "resource_pressure": {
+          "state": "available",
+          "value": {
+            "blocks_in_flight": 0,
+            "max_header_requests_in_flight_per_peer": 1,
+            "max_headers_per_message": 2000,
+            "max_blocks_in_flight_per_peer": 16,
+            "max_blocks_in_flight_total": 64,
+            "max_messages_per_peer": 64,
+            "max_sync_rounds": 8,
+            "outbound_peers": 1,
+            "target_outbound_peers": 4
           }
         }
       },
@@ -168,6 +223,33 @@ cat <<'JSON'
           "state": "available",
           "value": "header_sync"
         },
+        "configured_targets": {
+          "state": "available",
+          "value": {
+            "target_outbound_peers": 4,
+            "maybe_target_header_height": 840200
+          }
+        },
+        "attempt_counters": {
+          "state": "available",
+          "value": {
+            "attempted_peers": 3,
+            "connected_peers": 2,
+            "failed_peers": 1,
+            "max_sync_rounds": 8
+          }
+        },
+        "progress_signal": {
+          "state": "available",
+          "value": "header_progress"
+        },
+        "latest_stop_reason": {
+          "state": "available",
+          "value": {
+            "label": "target_header_reached",
+            "message": "sync header target reached"
+          }
+        },
         "last_successful_progress_unix_seconds": {
           "state": "available",
           "value": 1777225005
@@ -176,6 +258,28 @@ cat <<'JSON'
           "state": "unavailable",
           "value": {
             "reason": "no sync error recorded"
+          }
+        },
+        "recovery_category": {
+          "state": "available",
+          "value": "invalid_peer_data"
+        },
+        "recovery_action": {
+          "state": "available",
+          "value": "Retry sync after peer backoff."
+        },
+        "resource_pressure": {
+          "state": "available",
+          "value": {
+            "blocks_in_flight": 2,
+            "max_header_requests_in_flight_per_peer": 1,
+            "max_headers_per_message": 2000,
+            "max_blocks_in_flight_per_peer": 16,
+            "max_blocks_in_flight_total": 64,
+            "max_messages_per_peer": 64,
+            "max_sync_rounds": 8,
+            "outbound_peers": 1,
+            "target_outbound_peers": 4
           }
         }
       },
@@ -649,10 +753,58 @@ cat <<'JSON'
           "state": "available",
           "value": "steady_state"
         },
+        "configured_targets": {
+          "state": "available",
+          "value": {
+            "target_outbound_peers": 4,
+            "maybe_target_header_height": 840200
+          }
+        },
+        "attempt_counters": {
+          "state": "available",
+          "value": {
+            "attempted_peers": 3,
+            "connected_peers": 1,
+            "failed_peers": 2,
+            "max_sync_rounds": 8
+          }
+        },
+        "progress_signal": {
+          "state": "available",
+          "value": "waiting_for_peers"
+        },
+        "latest_stop_reason": {
+          "state": "unavailable",
+          "value": {
+            "reason": "no stop reason recorded"
+          }
+        },
         "last_error": {
           "state": "unavailable",
           "value": {
             "reason": "no sync error recorded"
+          }
+        },
+        "recovery_category": {
+          "state": "available",
+          "value": "public_network_unreachable"
+        },
+        "recovery_action": {
+          "state": "available",
+          "value": "Retry with a reachable manual peer."
+        },
+        "resource_pressure": {
+          "state": "available",
+          "value": {
+            "blocks_in_flight": 0,
+            "max_header_requests_in_flight_per_peer": 1,
+            "max_headers_per_message": 2000,
+            "max_blocks_in_flight_per_peer": 16,
+            "max_blocks_in_flight_total": 64,
+            "max_messages_per_peer": 64,
+            "max_sync_rounds": 8,
+            "outbound_peers": 0,
+            "target_outbound_peers": 4
           }
         }
       },
@@ -695,6 +847,8 @@ cat <<'JSON'
           "connected_block_height": 0,
           "maybe_downloaded_block_hash": null,
           "maybe_connected_block_hash": null,
+          "headers_received": 2,
+          "blocks_received": 1,
           "messages_processed": 0
         }
       },
@@ -706,10 +860,59 @@ cat <<'JSON'
         "state": "available",
         "value": "steady_state"
       },
+      "configured_targets": {
+        "state": "available",
+        "value": {
+          "target_outbound_peers": 4,
+          "maybe_target_header_height": 840200
+        }
+      },
+      "attempt_counters": {
+        "state": "available",
+        "value": {
+          "attempted_peers": 3,
+          "connected_peers": 2,
+          "failed_peers": 1,
+          "max_sync_rounds": 8
+        }
+      },
+      "progress_signal": {
+        "state": "available",
+        "value": "waiting_for_peers"
+      },
+      "latest_stop_reason": {
+        "state": "available",
+        "value": {
+          "label": "target_header_reached",
+          "message": "sync header target reached"
+        }
+      },
       "last_error": {
         "state": "unavailable",
         "value": {
           "reason": "no sync error recorded"
+        }
+      },
+      "recovery_category": {
+        "state": "available",
+        "value": "public_network_unreachable"
+      },
+      "recovery_action": {
+        "state": "available",
+        "value": "Retry with a reachable manual peer."
+      },
+      "resource_pressure": {
+        "state": "available",
+        "value": {
+          "blocks_in_flight": 0,
+          "max_header_requests_in_flight_per_peer": 1,
+          "max_headers_per_message": 2000,
+          "max_blocks_in_flight_per_peer": 16,
+          "max_blocks_in_flight_total": 64,
+          "max_messages_per_peer": 64,
+          "max_sync_rounds": 8,
+          "outbound_peers": 0,
+          "target_outbound_peers": 4
         }
       }
     },
@@ -832,6 +1035,8 @@ cat <<JSON
           "connected_block_height": 0,
           "maybe_downloaded_block_hash": null,
           "maybe_connected_block_hash": null,
+          "headers_received": 0,
+          "blocks_received": 0,
           "messages_processed": 1
         }
       },
@@ -843,9 +1048,40 @@ cat <<JSON
         "state": "available",
         "value": "steady_state"
       },
+      "configured_targets": {
+        "state": "available",
+        "value": {
+          "target_outbound_peers": 8,
+          "maybe_target_header_height": null
+        }
+      },
+      "attempt_counters": {
+        "state": "available",
+        "value": {
+          "attempted_peers": 3,
+          "connected_peers": 1,
+          "failed_peers": 2,
+          "max_sync_rounds": 25
+        }
+      },
+      "progress_signal": {
+        "state": "available",
+        "value": "peer_failures"
+      },
+      "latest_stop_reason": {
+        "state": "available",
+        "value": {
+          "label": "no_progress",
+          "message": "sync made no progress before timeout"
+        }
+      },
       "recovery_category": {
         "state": "available",
         "value": "$recovery_category"
+      },
+      "recovery_action": {
+        "state": "available",
+        "value": "Retry sync after peer backoff."
       },
       "resource_pressure": {
         "state": "available",
@@ -917,6 +1153,7 @@ counter_file="$tmp_dir/status-counter"
 
 OPEN_BITCOIN_LIVE_SMOKE_DAEMON_BIN="$tmp_dir/mock-daemon.sh" \
 OPEN_BITCOIN_LIVE_SMOKE_STATUS_BIN="$tmp_dir/mock-status.sh" \
+OPEN_BITCOIN_LIVE_SMOKE_FINAL_STATUS_BIN="$tmp_dir/mock-final-status.sh" \
 OPEN_BITCOIN_LIVE_SMOKE_NETWORK_PREFLIGHT_FIXTURE="$network_fixture" \
 OPEN_BITCOIN_LIVE_SMOKE_SKIP_DISK_CHECK=1 \
 OPEN_BITCOIN_LIVE_SMOKE_COUNTER_FILE="$counter_file" \
@@ -944,6 +1181,22 @@ grep -q '"openbitcoinsyncstatus"' "$report_json"
 grep -q '"lifecycle": "active"' "$report_json"
 grep -q '"phase": "header_sync"' "$report_json"
 grep -q '"outboundPeers": 1' "$report_json"
+grep -q '"configuredTargets": {' "$report_json"
+grep -q '"targetOutboundPeers": 4' "$report_json"
+grep -q '"maybeTargetHeaderHeight": 840200' "$report_json"
+grep -q '"attemptCounters": {' "$report_json"
+grep -q '"attemptedPeers": 3' "$report_json"
+grep -q '"connectedPeers": 2' "$report_json"
+grep -q '"failedPeers": 1' "$report_json"
+grep -q '"maxSyncRounds": 8' "$report_json"
+grep -q '"progressSignal": "header_progress"' "$report_json"
+grep -q '"latestStopReason": {' "$report_json"
+grep -q '"label": "target_header_reached"' "$report_json"
+grep -q '"maybeLatestStopReasonUnavailableReason": "no stop reason recorded"' "$report_json"
+grep -q '"recoveryCategory": "invalid_peer_data"' "$report_json"
+grep -q '"recoveryAction": "Retry sync after peer backoff."' "$report_json"
+grep -q '"resourcePressure": {' "$report_json"
+grep -q '"targetOutboundPeers": 4' "$report_json"
 grep -q '"paused": false' "$report_json"
 grep -q '"updatedAtUnixSeconds": 1777225005' "$report_json"
 grep -q '"manualPeers": \[' "$report_json"
@@ -954,7 +1207,10 @@ grep -q "Network Endpoint Outcomes" "$report_markdown"
 grep -q "manual_peer" "$report_markdown"
 grep -q "Header delta: 1" "$report_markdown"
 grep -q "First block progress" "$report_markdown"
-bun --eval 'const report = await Bun.file(process.argv[1]).json(); if (report.result.firstHeaderProgress.before.headerHeight !== 0 || report.result.firstHeaderProgress.after.headerHeight !== 1) throw new Error("firstHeaderProgress headerHeight evidence missing"); if (report.result.firstBlockProgress.before.downloadedBlockHeight !== 0 || report.result.firstBlockProgress.after.connectedBlockHeight !== 1) throw new Error("firstBlockProgress downloadedBlockHeight/connectedBlockHeight evidence missing");' "$report_json"
+grep -q "Signal | Configured Targets | Attempts" "$report_markdown"
+grep -q "Latest Stop Reason" "$report_markdown"
+grep -q "Daemon Output Summary" "$report_markdown"
+bun --eval 'const report = await Bun.file(process.argv[1]).json(); if (report.result.firstHeaderProgress.before.headerHeight !== 0 || report.result.firstHeaderProgress.after.headerHeight !== 1) throw new Error("firstHeaderProgress headerHeight evidence missing"); if (report.result.firstHeaderProgress.before.progressSignal !== "waiting_for_peers" || report.result.firstHeaderProgress.after.progressSignal !== "header_progress") throw new Error("firstHeaderProgress progressSignal evidence missing"); if (report.snapshots[0].progressSignal !== "waiting_for_peers") throw new Error("snapshot progressSignal evidence missing"); if (report.final_status.configuredTargets.targetOutboundPeers !== 4 || report.final_status.configuredTargets.maybeTargetHeaderHeight !== 840200) throw new Error("final configuredTargets evidence missing"); if (report.final_status.attemptCounters.attemptedPeers !== 3 || report.final_status.attemptCounters.connectedPeers !== 2 || report.final_status.attemptCounters.failedPeers !== 1 || report.final_status.attemptCounters.maxSyncRounds !== 8) throw new Error("final attemptCounters evidence missing"); if (report.final_status.latestStopReason.label !== "target_header_reached") throw new Error("latestStopReason evidence missing"); if (report.final_status.recoveryAction !== "Retry with a reachable manual peer.") throw new Error("recoveryAction evidence missing"); if (report.final_status.resourcePressure.targetOutboundPeers !== 4) throw new Error("resourcePressure evidence missing"); if (report.result.firstBlockProgress.before.downloadedBlockHeight !== 0 || report.result.firstBlockProgress.after.connectedBlockHeight !== 1) throw new Error("firstBlockProgress downloadedBlockHeight/connectedBlockHeight evidence missing"); if ("stdoutTail" in report.daemon || "stderrTail" in report.daemon) throw new Error("daemon tails persisted in JSON");' "$report_json"
 
 rm -f "$counter_file"
 daemon_counter_file="$tmp_dir/daemon-counter"
@@ -1218,6 +1474,7 @@ fi
 
 grep -q "requires an existing datadir" "$tmp_dir/preflight.stderr"
 grep -q '"status": "preflight_failed"' "$report_json"
+grep -q "Unavailable: no sync status snapshots captured" "$report_markdown"
 
 set +e
 OPEN_BITCOIN_LIVE_SMOKE_DAEMON_BIN="$tmp_dir/mock-daemon.sh" \
