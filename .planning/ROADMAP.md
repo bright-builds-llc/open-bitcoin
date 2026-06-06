@@ -11,8 +11,8 @@
 
 ## Current Focus
 
-v1.5 Unattended Mainnet Node Operation Readiness is ready for Phase 61 planning.
-Next action: `/gsd-plan-phase 61`
+v1.5 Unattended Mainnet Node Operation Readiness is ready for Phase 62 execution.
+Next action: `/gsd-execute-phase 62`
 
 ## Phases
 
@@ -86,7 +86,12 @@ Plans:
   2. Metrics and structured logs retain bounded long-run samples and cycle summaries without unbounded growth.
   3. Operator can distinguish progress, waiting, retry, stop, and recovery states the same way across every truth surface.
   4. Repeated long-run snapshot output stays compact enough for operator review while preserving diagnosis evidence.
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] [62-01](phases/62-long-run-sync-truth-surfaces/62-01-PLAN.md) - Canonical Rust sync truth contract and durable projection
+- [ ] [62-02](phases/62-long-run-sync-truth-surfaces/62-02-PLAN.md) - Rust status, dashboard, sync-status, and RPC truth rendering
+- [ ] [62-03](phases/62-long-run-sync-truth-surfaces/62-03-PLAN.md) - Compact live-smoke JSON and Markdown truth snapshots
+- [ ] [62-04](phases/62-long-run-sync-truth-surfaces/62-04-PLAN.md) - Operator docs and deterministic cross-surface contract checker
 
 ### Phase 63: Service Supervision Lifecycle
 **Goal**: Operators can manage launchd or systemd supervision for the opt-in unattended workflow with truthful lifecycle state.
@@ -149,7 +154,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 60. Unattended Sync Loop Control | 1/1 | Complete    | 2026-06-06 |
 | 61. Resource Bounds and Recovery Taxonomy | 6/6 | Complete   | 2026-06-06 |
-| 62. Long-Run Sync Truth Surfaces | 0/TBD | Not started | - |
+| 62. Long-Run Sync Truth Surfaces | 0/4 | Not started | - |
 | 63. Service Supervision Lifecycle | 0/TBD | Not started | - |
 | 64. Service Restart and Same-Datadir Resume Evidence | 0/TBD | Not started | - |
 | 65. Support Bundle and Operator Review Docs | 0/TBD | Not started | - |
@@ -169,8 +174,8 @@ Plans:
 
 ## Next Step
 
-Plan the next v1.5 phase:
+Execute the planned Phase 62 work:
 
 ```bash
-/gsd-plan-phase 61
+/gsd-execute-phase 62
 ```
