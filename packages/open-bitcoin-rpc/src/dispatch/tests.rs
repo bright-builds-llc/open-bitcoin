@@ -36,7 +36,8 @@ use open_bitcoin_node::{
     },
     status::{
         ChainTipStatus, FieldAvailability, PeerCounts, PeerStatus, SyncLagStatus,
-        SyncLifecycleState, SyncProgress, SyncProgressSignal, SyncResourcePressure, SyncStatus,
+        SyncLifecycleState, SyncProgress, SyncProgressSignal, SyncRecoveryCategory,
+        SyncResourcePressure, SyncStatus,
     },
 };
 
@@ -592,6 +593,9 @@ fn getblockchaininfo_uses_durable_connected_block_height_not_downloaded_height()
                         ),
                         last_error: FieldAvailability::available(
                             "peer stalled before block connect".to_string(),
+                        ),
+                        recovery_category: FieldAvailability::available(
+                            SyncRecoveryCategory::PublicNetworkUnreachable,
                         ),
                         recovery_action: FieldAvailability::available(
                             "Restart the node and retry the storage operation.".to_string(),

@@ -3,9 +3,13 @@
 
 //! Shared operator status snapshot contracts.
 
+mod recovery;
+
 use serde::{Deserialize, Serialize};
 
 use crate::{LogStatus, MetricsStatus};
+
+pub use recovery::SyncRecoveryCategory;
 
 /// Explicit availability wrapper for status fields that may not be collectible.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -140,8 +144,14 @@ pub struct SyncStatus {
     pub lag: FieldAvailability<SyncLagStatus>,
     pub last_successful_progress_unix_seconds: FieldAvailability<u64>,
     pub last_error: FieldAvailability<String>,
+    #[serde(default = "no_recovery_category_recorded")]
+    pub recovery_category: FieldAvailability<SyncRecoveryCategory>,
     pub recovery_action: FieldAvailability<String>,
     pub resource_pressure: FieldAvailability<SyncResourcePressure>,
+}
+
+fn no_recovery_category_recorded() -> FieldAvailability<SyncRecoveryCategory> {
+    FieldAvailability::unavailable("no recovery category recorded")
 }
 
 /// Peer count status details.
@@ -332,6 +342,7 @@ mod tests {
             "unavailable"
         );
         assert_eq!(encoded["sync"]["last_error"]["state"], "unavailable");
+        assert_eq!(encoded["sync"]["recovery_category"]["state"], "unavailable");
         assert_eq!(encoded["sync"]["recovery_action"]["state"], "unavailable");
         assert_eq!(encoded["sync"]["resource_pressure"]["state"], "unavailable");
         assert_eq!(encoded["peers"]["peer_counts"]["state"], "unavailable");
@@ -403,6 +414,7 @@ mod tests {
                 }),
                 last_successful_progress_unix_seconds: FieldAvailability::available(1_715_000_000),
                 last_error: FieldAvailability::unavailable("no sync error recorded"),
+                recovery_category: FieldAvailability::unavailable("no recovery category recorded"),
                 recovery_action: FieldAvailability::unavailable("no recovery action required"),
                 resource_pressure: FieldAvailability::available(SyncResourcePressure {
                     blocks_in_flight: 1,
@@ -484,6 +496,8 @@ mod tests {
             encoded["sync"]["last_successful_progress_unix_seconds"]["value"],
             1_715_000_000
         );
+        assert_eq!(encoded["sync"]["recovery_category"]["state"], "unavailable");
+        assert_eq!(encoded["sync"]["recovery_action"]["state"], "unavailable");
         assert_eq!(encoded["peers"]["peer_counts"]["value"]["outbound"], 8);
         assert_eq!(
             encoded["peers"]["recent_peers"]["value"][0]["source"],
@@ -583,6 +597,7 @@ mod tests {
                 lag: FieldAvailability::unavailable(unavailable),
                 last_successful_progress_unix_seconds: FieldAvailability::unavailable(unavailable),
                 last_error: FieldAvailability::unavailable(unavailable),
+                recovery_category: FieldAvailability::unavailable("no recovery category recorded"),
                 recovery_action: FieldAvailability::unavailable(unavailable),
                 resource_pressure: FieldAvailability::unavailable(unavailable),
             },

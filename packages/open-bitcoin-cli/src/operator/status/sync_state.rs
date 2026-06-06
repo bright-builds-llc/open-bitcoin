@@ -39,6 +39,7 @@ pub(super) fn rpc_sync_status(blockchain_info: &GetBlockchainInfoResponse) -> Sy
             "daemon sync last successful progress unavailable",
         ),
         last_error: FieldAvailability::unavailable("daemon sync error unavailable"),
+        recovery_category: FieldAvailability::unavailable("no recovery category recorded"),
         recovery_action: FieldAvailability::unavailable(
             "daemon sync recovery guidance unavailable",
         ),
@@ -59,6 +60,7 @@ pub(super) fn unavailable_sync_status(reason: &str) -> SyncStatus {
         lag: FieldAvailability::unavailable(reason),
         last_successful_progress_unix_seconds: FieldAvailability::unavailable(reason),
         last_error: FieldAvailability::unavailable(reason),
+        recovery_category: FieldAvailability::unavailable("no recovery category recorded"),
         recovery_action: FieldAvailability::unavailable(reason),
         resource_pressure: FieldAvailability::unavailable(reason),
     }

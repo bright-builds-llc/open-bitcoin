@@ -36,7 +36,7 @@ pub use open_bitcoin_core as core;
 pub use status::{
     BuildProvenance, ConfigStatus, DurableSyncState, FieldAvailability, NodeRuntimeState,
     OpenBitcoinStatusSnapshot, PeerStatus, PeerTelemetry, SyncControlState, SyncLagStatus,
-    SyncLifecycleState, SyncProgressSignal, SyncResourcePressure, SyncStatus,
+    SyncLifecycleState, SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure, SyncStatus,
 };
 pub use storage::{
     FjallNodeStore, MetricsStorageSnapshot, PersistMode, RecoveryMarker, RuntimeMetadata,

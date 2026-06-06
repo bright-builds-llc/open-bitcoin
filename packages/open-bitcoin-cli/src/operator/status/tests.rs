@@ -352,6 +352,7 @@ fn human_and_json_renderers_surface_wallet_freshness_and_scan_reasons() {
                 "sync last progress unavailable",
             ),
             last_error: FieldAvailability::unavailable("sync error unavailable"),
+            recovery_category: FieldAvailability::unavailable("no recovery category recorded"),
             recovery_action: FieldAvailability::unavailable("sync recovery unavailable"),
             resource_pressure: FieldAvailability::unavailable("sync pressure unavailable"),
         },

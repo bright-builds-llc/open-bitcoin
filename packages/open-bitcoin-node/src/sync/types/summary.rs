@@ -88,6 +88,7 @@ impl SyncRunSummary {
                 Some(value) => FieldAvailability::available(value),
                 None => FieldAvailability::unavailable("no sync error recorded"),
             },
+            recovery_category: FieldAvailability::unavailable("no recovery category recorded"),
             recovery_action: FieldAvailability::unavailable("no recovery action required"),
             resource_pressure: FieldAvailability::available(SyncResourcePressure {
                 blocks_in_flight: 0,
@@ -321,6 +322,10 @@ mod tests {
         assert_eq!(
             status.last_error,
             FieldAvailability::available(latest_error.to_string())
+        );
+        assert_eq!(
+            status.recovery_category,
+            FieldAvailability::unavailable("no recovery category recorded")
         );
         assert_eq!(
             peer_status.peer_counts,

@@ -392,6 +392,9 @@ mod tests {
                         "not needed for sync-control test",
                     ),
                     last_error: FieldAvailability::unavailable("no sync error recorded"),
+                    recovery_category: FieldAvailability::unavailable(
+                        "no recovery category recorded",
+                    ),
                     recovery_action: FieldAvailability::unavailable("no recovery action required"),
                     resource_pressure: FieldAvailability::unavailable(
                         "not needed for sync-control test",

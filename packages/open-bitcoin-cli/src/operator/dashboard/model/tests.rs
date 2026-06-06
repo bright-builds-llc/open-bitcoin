@@ -7,7 +7,8 @@ use open_bitcoin_node::{
         BuildProvenance, ConfigStatus, FieldAvailability, HealthSignal, HealthSignalLevel,
         MempoolStatus, NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts,
         PeerStatus, ServiceStatus, SyncLagStatus, SyncLifecycleState, SyncProgress,
-        SyncProgressSignal, SyncResourcePressure, SyncStatus, WalletFreshness, WalletStatus,
+        SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure, SyncStatus,
+        WalletFreshness, WalletStatus,
     },
 };
 
@@ -132,6 +133,7 @@ fn test_snapshot() -> OpenBitcoinStatusSnapshot {
                 "no successful sync progress",
             ),
             last_error: FieldAvailability::unavailable("no sync error"),
+            recovery_category: FieldAvailability::unavailable("no recovery category recorded"),
             recovery_action: FieldAvailability::unavailable("no recovery action"),
             resource_pressure: FieldAvailability::unavailable("no sync pressure"),
         },
@@ -190,6 +192,9 @@ fn shared_sync_truth_snapshot() -> OpenBitcoinStatusSnapshot {
         }),
         last_successful_progress_unix_seconds: FieldAvailability::available(1_717_000_000),
         last_error: FieldAvailability::available("peer stalled before block connect".to_string()),
+        recovery_category: FieldAvailability::available(
+            SyncRecoveryCategory::PublicNetworkUnreachable,
+        ),
         recovery_action: FieldAvailability::available(
             "Retry sync after peer backoff or choose a different peer.".to_string(),
         ),

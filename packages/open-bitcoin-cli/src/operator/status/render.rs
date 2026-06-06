@@ -408,7 +408,7 @@ mod tests {
             ConfigStatus, FieldAvailability, MempoolStatus, NodeRuntimeState, NodeStatus,
             OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, PeerTelemetry, ServiceStatus,
             SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal,
-            SyncResourcePressure, SyncStatus, WalletStatus,
+            SyncRecoveryCategory, SyncResourcePressure, SyncStatus, WalletStatus,
         },
     };
 
@@ -472,6 +472,9 @@ mod tests {
                 last_successful_progress_unix_seconds: FieldAvailability::available(1_717_000_000),
                 last_error: FieldAvailability::available(
                     "peer stalled before block connect".to_string(),
+                ),
+                recovery_category: FieldAvailability::available(
+                    SyncRecoveryCategory::PublicNetworkUnreachable,
                 ),
                 recovery_action: FieldAvailability::available(
                     "Retry sync after peer backoff or choose a different peer.".to_string(),
