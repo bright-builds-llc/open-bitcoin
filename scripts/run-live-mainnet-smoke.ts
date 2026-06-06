@@ -55,13 +55,13 @@ type CommandSpec = {
 };
 
 type SyncStatusSnapshot = {
-  blockHeight: number;
+  blockHeight: number | null;
   attemptCounters: AttemptCountersSummary | null;
   capturedAtUnixSeconds: number;
   configuredTargets: ConfiguredTargetsSummary | null;
-  connectedBlockHeight: number;
-  downloadedBlockHeight: number;
-  headerHeight: number;
+  connectedBlockHeight: number | null;
+  downloadedBlockHeight: number | null;
+  headerHeight: number | null;
   lifecycle: string;
   maybeConnectedBlockHash: string | null;
   maybeDownloadedBlockHash: string | null;
@@ -71,11 +71,13 @@ type SyncStatusSnapshot = {
   maybeLastError: string | null;
   maybeLastErrorUnavailableReason: string | null;
   maybeLatestStopReasonUnavailableReason: string | null;
+  maybePeerCountsUnavailableReason: string | null;
   maybeProgressSignalUnavailableReason: string | null;
   maybeRecoveryActionUnavailableReason: string | null;
   maybeRecoveryCategoryUnavailableReason: string | null;
   maybeResourcePressureUnavailableReason: string | null;
-  outboundPeers: number;
+  maybeSyncProgressUnavailableReason: string | null;
+  outboundPeers: number | null;
   paused: boolean;
   phase: string;
   progressSignal: string | null;
@@ -103,7 +105,7 @@ type FirstBlockProgressEvidence = {
   after: SyncStatusSnapshot;
   before: SyncStatusSnapshot;
   blockHash: string | null;
-  height: number;
+  height: number | null;
   kind: FirstBlockProgressKind;
   maybeLastActivityUnixSeconds: number | null;
   maybePeer: string | null;
@@ -165,9 +167,9 @@ type DuplicateConnectVerdict =
 type RestartProgressSummary = {
   attemptCounters: AttemptCountersSummary | null;
   configuredTargets: ConfiguredTargetsSummary | null;
-  connectedBlockHeight: number;
-  downloadedBlockHeight: number;
-  headerHeight: number;
+  connectedBlockHeight: number | null;
+  downloadedBlockHeight: number | null;
+  headerHeight: number | null;
   lifecycle: string;
   latestStopReason: StopReasonSummary | null;
   maybeAttemptCountersUnavailableReason: string | null;
@@ -178,10 +180,12 @@ type RestartProgressSummary = {
   maybeLastErrorUnavailableReason: string | null;
   maybeLastSuccessfulProgressUnixSeconds: number | null;
   maybeLatestStopReasonUnavailableReason: string | null;
+  maybePeerCountsUnavailableReason: string | null;
   maybeProgressSignalUnavailableReason: string | null;
   maybeRecoveryActionUnavailableReason: string | null;
   maybeRecoveryCategoryUnavailableReason: string | null;
   maybeResourcePressureUnavailableReason: string | null;
+  maybeSyncProgressUnavailableReason: string | null;
   phase: string;
   progressSignal: string | null;
   recoveryAction: string | null;
@@ -268,11 +272,11 @@ type RestartResumeEvidence = {
 
 type FinalStatusSummary = {
   attemptCounters: AttemptCountersSummary | null;
-  blockHeight: number;
+  blockHeight: number | null;
   configuredTargets: ConfiguredTargetsSummary | null;
-  connectedBlockHeight: number;
-  downloadedBlockHeight: number;
-  headerHeight: number;
+  connectedBlockHeight: number | null;
+  downloadedBlockHeight: number | null;
+  headerHeight: number | null;
   latestStopReason: StopReasonSummary | null;
   maybeAttemptCountersUnavailableReason: string | null;
   maybeConfiguredTargetsUnavailableReason: string | null;
@@ -283,14 +287,16 @@ type FinalStatusSummary = {
   maybeLastError: string | null;
   maybeLastErrorUnavailableReason: string | null;
   maybeLatestStopReasonUnavailableReason: string | null;
+  maybePeerCountsUnavailableReason: string | null;
   maybeProgressSignalUnavailableReason: string | null;
   maybeRecoveryActionUnavailableReason: string | null;
   maybeRecoveryCategoryUnavailableReason: string | null;
   maybeResourcePressureUnavailableReason: string | null;
-  headersReceived: number;
-  blocksReceived: number;
-  messagesProcessed: number;
-  outboundPeers: number;
+  maybeSyncProgressUnavailableReason: string | null;
+  headersReceived: number | null;
+  blocksReceived: number | null;
+  messagesProcessed: number | null;
+  outboundPeers: number | null;
   phase: string;
   progressSignal: string | null;
   recentPeers: RuntimePeerTelemetry[];
@@ -1258,15 +1264,24 @@ function syncStatusSnapshotFromMetadata(metadata: RuntimeMetadataJson): SyncStat
   const capturedAtUnixSeconds = Math.floor(Date.now() / 1000);
   const maybeSyncState = metadata.maybe_sync_state;
   const maybeSync = maybeSyncState?.sync;
-  const maybeProgress = availableValue(maybeSyncState?.sync?.sync_progress);
+  const maybeProgress = availableValue(maybeSync?.sync_progress);
   const maybePeerCounts = availableValue(maybeSyncState?.peers?.peer_counts);
-  const blockHeight = Number(maybeProgress?.block_height ?? 0);
-  const connectedBlockHeight = Number(
-    maybeProgress?.connected_block_height ?? blockHeight,
+  const maybeSyncProgressUnavailableReason = unavailableReasonFromFieldAvailability(
+    maybeSync?.sync_progress,
   );
-  const downloadedBlockHeight = Number(
-    maybeProgress?.downloaded_block_height ?? connectedBlockHeight,
+  const maybePeerCountsUnavailableReason = unavailableReasonFromFieldAvailability(
+    maybeSyncState?.peers?.peer_counts,
   );
+  const blockHeight =
+    maybeProgress === null ? null : Number(maybeProgress.block_height ?? 0);
+  const connectedBlockHeight =
+    maybeProgress === null
+      ? null
+      : Number(maybeProgress.connected_block_height ?? blockHeight ?? 0);
+  const downloadedBlockHeight =
+    maybeProgress === null
+      ? null
+      : Number(maybeProgress.downloaded_block_height ?? connectedBlockHeight);
 
   return {
     attemptCounters: attemptCountersFromValue(
@@ -1279,7 +1294,8 @@ function syncStatusSnapshotFromMetadata(metadata: RuntimeMetadataJson): SyncStat
     ),
     connectedBlockHeight,
     downloadedBlockHeight,
-    headerHeight: Number(maybeProgress?.header_height ?? 0),
+    headerHeight:
+      maybeProgress === null ? null : Number(maybeProgress.header_height ?? 0),
     lifecycle: String(availableValue(maybeSync?.lifecycle) ?? "unavailable"),
     latestStopReason: stopReasonFromValue(
       availableValue(maybeSync?.latest_stop_reason),
@@ -1306,6 +1322,7 @@ function syncStatusSnapshotFromMetadata(metadata: RuntimeMetadataJson): SyncStat
     maybeLatestStopReasonUnavailableReason: unavailableReasonFromFieldAvailability(
       maybeSync?.latest_stop_reason,
     ),
+    maybePeerCountsUnavailableReason,
     maybeProgressSignalUnavailableReason: unavailableReasonFromFieldAvailability(
       maybeSync?.progress_signal,
     ),
@@ -1318,7 +1335,9 @@ function syncStatusSnapshotFromMetadata(metadata: RuntimeMetadataJson): SyncStat
     maybeResourcePressureUnavailableReason: unavailableReasonFromFieldAvailability(
       maybeSync?.resource_pressure,
     ),
-    outboundPeers: Number(maybePeerCounts?.outbound ?? 0),
+    maybeSyncProgressUnavailableReason,
+    outboundPeers:
+      maybePeerCounts === null ? null : Number(maybePeerCounts.outbound ?? 0),
     paused: metadata.sync_control?.paused === true,
     phase: String(availableValue(maybeSync?.phase) ?? "unavailable"),
     progressSignal: valueAsNullableString(availableValue(maybeSync?.progress_signal)),
@@ -1469,13 +1488,22 @@ function finalStatusSummaryFromMetadata(metadata: RuntimeMetadataJson): FinalSta
   const maybeSync = maybeSyncState.sync;
   const maybeProgress = availableValue(maybeSync?.sync_progress);
   const maybePeerCounts = availableValue(maybeSyncState.peers?.peer_counts);
-  const blockHeight = Number(maybeProgress?.block_height ?? 0);
-  const connectedBlockHeight = Number(
-    maybeProgress?.connected_block_height ?? blockHeight,
+  const maybeSyncProgressUnavailableReason = unavailableReasonFromFieldAvailability(
+    maybeSync?.sync_progress,
   );
-  const downloadedBlockHeight = Number(
-    maybeProgress?.downloaded_block_height ?? connectedBlockHeight,
+  const maybePeerCountsUnavailableReason = unavailableReasonFromFieldAvailability(
+    maybeSyncState.peers?.peer_counts,
   );
+  const blockHeight =
+    maybeProgress === null ? null : Number(maybeProgress.block_height ?? 0);
+  const connectedBlockHeight =
+    maybeProgress === null
+      ? null
+      : Number(maybeProgress.connected_block_height ?? blockHeight ?? 0);
+  const downloadedBlockHeight =
+    maybeProgress === null
+      ? null
+      : Number(maybeProgress.downloaded_block_height ?? connectedBlockHeight);
   const recentPeers = availableValue(maybeSyncState.peers?.recent_peers)?.map(
     runtimePeerTelemetry,
   ) ?? [];
@@ -1489,7 +1517,8 @@ function finalStatusSummaryFromMetadata(metadata: RuntimeMetadataJson): FinalSta
     ),
     connectedBlockHeight,
     downloadedBlockHeight,
-    headerHeight: Number(maybeProgress?.header_height ?? 0),
+    headerHeight:
+      maybeProgress === null ? null : Number(maybeProgress.header_height ?? 0),
     latestStopReason: stopReasonFromValue(
       availableValue(maybeSync?.latest_stop_reason),
     ),
@@ -1516,6 +1545,7 @@ function finalStatusSummaryFromMetadata(metadata: RuntimeMetadataJson): FinalSta
     maybeLatestStopReasonUnavailableReason: unavailableReasonFromFieldAvailability(
       maybeSync?.latest_stop_reason,
     ),
+    maybePeerCountsUnavailableReason,
     maybeProgressSignalUnavailableReason: unavailableReasonFromFieldAvailability(
       maybeSync?.progress_signal,
     ),
@@ -1528,10 +1558,17 @@ function finalStatusSummaryFromMetadata(metadata: RuntimeMetadataJson): FinalSta
     maybeResourcePressureUnavailableReason: unavailableReasonFromFieldAvailability(
       maybeSync?.resource_pressure,
     ),
-    headersReceived: Number(maybeProgress?.headers_received ?? 0),
-    blocksReceived: Number(maybeProgress?.blocks_received ?? 0),
-    messagesProcessed: Number(maybeProgress?.messages_processed ?? 0),
-    outboundPeers: Number(maybePeerCounts?.outbound ?? 0),
+    maybeSyncProgressUnavailableReason,
+    headersReceived:
+      maybeProgress === null ? null : Number(maybeProgress.headers_received ?? 0),
+    blocksReceived:
+      maybeProgress === null ? null : Number(maybeProgress.blocks_received ?? 0),
+    messagesProcessed:
+      maybeProgress === null
+        ? null
+        : Number(maybeProgress.messages_processed ?? 0),
+    outboundPeers:
+      maybePeerCounts === null ? null : Number(maybePeerCounts.outbound ?? 0),
     phase: String(availableValue(maybeSync?.phase) ?? "unavailable"),
     progressSignal: valueAsNullableString(availableValue(maybeSync?.progress_signal)),
     recentPeers,
@@ -1803,7 +1840,8 @@ function firstHeaderProgressEvidence(
   return {
     after: maybeSnapshots.after,
     before: maybeSnapshots.before,
-    headerDelta: maybeSnapshots.after.headerHeight - maybeSnapshots.before.headerHeight,
+    headerDelta:
+      heightDelta(maybeSnapshots.after.headerHeight, maybeSnapshots.before.headerHeight) ?? 0,
     maybeLastActivityUnixSeconds: maybePeer?.maybeLastActivityUnixSeconds ?? null,
     maybePeer: maybePeer?.peer ?? null,
     maybeResolvedEndpoint: maybePeer?.maybeResolvedEndpoint ?? null,
@@ -2045,19 +2083,31 @@ async function runSmokeSession(
         initialSnapshot = snapshot;
       }
 
-      headerDelta = snapshot.headerHeight - initialSnapshot.headerHeight;
-      downloadedBlockDelta =
-        snapshot.downloadedBlockHeight - initialSnapshot.downloadedBlockHeight;
-      blockDelta =
-        snapshot.connectedBlockHeight - initialSnapshot.connectedBlockHeight;
-      if (headerDelta > 0 && maybeFirstHeaderProgressSnapshots === null) {
+      const maybeHeaderDelta = heightDelta(snapshot.headerHeight, initialSnapshot.headerHeight);
+      const maybeDownloadedBlockDelta = heightDelta(
+        snapshot.downloadedBlockHeight,
+        initialSnapshot.downloadedBlockHeight,
+      );
+      const maybeConnectedBlockDelta = heightDelta(
+        snapshot.connectedBlockHeight,
+        initialSnapshot.connectedBlockHeight,
+      );
+      headerDelta = maybeHeaderDelta ?? 0;
+      downloadedBlockDelta = maybeDownloadedBlockDelta ?? 0;
+      blockDelta = maybeConnectedBlockDelta ?? 0;
+      if (
+        maybeHeaderDelta !== null &&
+        maybeHeaderDelta > 0 &&
+        maybeFirstHeaderProgressSnapshots === null
+      ) {
         maybeFirstHeaderProgressSnapshots = {
           after: snapshot,
           before: initialSnapshot,
         };
       }
       if (
-        downloadedBlockDelta > 0 &&
+        maybeDownloadedBlockDelta !== null &&
+        maybeDownloadedBlockDelta > 0 &&
         maybeFirstDownloadedBlockProgressSnapshots === null
       ) {
         maybeFirstDownloadedBlockProgressSnapshots = {
@@ -2065,7 +2115,11 @@ async function runSmokeSession(
           before: initialSnapshot,
         };
       }
-      if (blockDelta > 0 && maybeFirstConnectedBlockProgressSnapshots === null) {
+      if (
+        maybeConnectedBlockDelta !== null &&
+        maybeConnectedBlockDelta > 0 &&
+        maybeFirstConnectedBlockProgressSnapshots === null
+      ) {
         maybeFirstConnectedBlockProgressSnapshots = {
           after: snapshot,
           before: initialSnapshot,
@@ -2076,7 +2130,12 @@ async function runSmokeSession(
         resultMessage = "Collected a fresh post-restart sync status snapshot.";
         break;
       }
-      if (mode === "until_progress" && (headerDelta > 0 || downloadedBlockDelta > 0 || blockDelta > 0)) {
+      if (
+        mode === "until_progress" &&
+        ((maybeHeaderDelta !== null && maybeHeaderDelta > 0) ||
+          (maybeDownloadedBlockDelta !== null && maybeDownloadedBlockDelta > 0) ||
+          (maybeConnectedBlockDelta !== null && maybeConnectedBlockDelta > 0))
+      ) {
         resultStatus = "passed";
         resultMessage = `Observed progress before requested restart (header delta ${headerDelta}, downloaded block delta ${downloadedBlockDelta}, connected block delta ${blockDelta}).`;
         break;
@@ -2175,6 +2234,8 @@ function restartProgressSummary(
       maybeSnapshot.maybeLastSuccessfulProgressUnixSeconds,
     maybeLatestStopReasonUnavailableReason:
       maybeSnapshot.maybeLatestStopReasonUnavailableReason,
+    maybePeerCountsUnavailableReason:
+      maybeSnapshot.maybePeerCountsUnavailableReason,
     maybeProgressSignalUnavailableReason:
       maybeSnapshot.maybeProgressSignalUnavailableReason,
     maybeRecoveryActionUnavailableReason:
@@ -2183,6 +2244,8 @@ function restartProgressSummary(
       maybeSnapshot.maybeRecoveryCategoryUnavailableReason,
     maybeResourcePressureUnavailableReason:
       maybeSnapshot.maybeResourcePressureUnavailableReason,
+    maybeSyncProgressUnavailableReason:
+      maybeSnapshot.maybeSyncProgressUnavailableReason,
     phase: maybeSnapshot.phase,
     progressSignal: maybeSnapshot.progressSignal,
     recoveryAction: maybeSnapshot.recoveryAction,
@@ -2191,14 +2254,45 @@ function restartProgressSummary(
   };
 }
 
+function heightDelta(after: number | null, before: number | null): number | null {
+  if (after === null || before === null) {
+    return null;
+  }
+  return after - before;
+}
+
+function hasProgressHeights(snapshot: SyncStatusSnapshot): boolean {
+  return (
+    snapshot.headerHeight !== null &&
+    snapshot.downloadedBlockHeight !== null &&
+    snapshot.connectedBlockHeight !== null
+  );
+}
+
 function restartProgressDelta(
   before: SyncStatusSnapshot,
   after: SyncStatusSnapshot,
-): RestartProgressDelta {
+): RestartProgressDelta | null {
+  const maybeConnectedBlockDelta = heightDelta(
+    after.connectedBlockHeight,
+    before.connectedBlockHeight,
+  );
+  const maybeDownloadedBlockDelta = heightDelta(
+    after.downloadedBlockHeight,
+    before.downloadedBlockHeight,
+  );
+  const maybeHeaderDelta = heightDelta(after.headerHeight, before.headerHeight);
+  if (
+    maybeConnectedBlockDelta === null ||
+    maybeDownloadedBlockDelta === null ||
+    maybeHeaderDelta === null
+  ) {
+    return null;
+  }
   return {
-    connectedBlockDelta: after.connectedBlockHeight - before.connectedBlockHeight,
-    downloadedBlockDelta: after.downloadedBlockHeight - before.downloadedBlockHeight,
-    headerDelta: after.headerHeight - before.headerHeight,
+    connectedBlockDelta: maybeConnectedBlockDelta,
+    downloadedBlockDelta: maybeDownloadedBlockDelta,
+    headerDelta: maybeHeaderDelta,
   };
 }
 
@@ -2226,22 +2320,35 @@ function duplicateConnectVerdict(
   if (beforeRestart === null || afterRestart === null) {
     return "unavailable";
   }
+  if (!hasProgressHeights(beforeRestart) || !hasProgressHeights(afterRestart)) {
+    return "unavailable";
+  }
+  const beforeDownloadedBlockHeight = beforeRestart.downloadedBlockHeight;
+  const afterDownloadedBlockHeight = afterRestart.downloadedBlockHeight;
+  const beforeConnectedBlockHeight = beforeRestart.connectedBlockHeight;
+  const afterConnectedBlockHeight = afterRestart.connectedBlockHeight;
   if (
-    (afterRestart.downloadedBlockHeight === beforeRestart.downloadedBlockHeight &&
+    (afterDownloadedBlockHeight === beforeDownloadedBlockHeight &&
       afterRestart.maybeDownloadedBlockHash !== beforeRestart.maybeDownloadedBlockHash) ||
-    (afterRestart.connectedBlockHeight === beforeRestart.connectedBlockHeight &&
+    (afterConnectedBlockHeight === beforeConnectedBlockHeight &&
       afterRestart.maybeConnectedBlockHash !== beforeRestart.maybeConnectedBlockHash)
   ) {
     return "duplicate_connect_suspected";
   }
   if (
-    beforeRestart.connectedBlockHeight > 0 &&
-    afterRestart.connectedBlockHeight >= beforeRestart.connectedBlockHeight &&
+    beforeConnectedBlockHeight !== null &&
+    afterConnectedBlockHeight !== null &&
+    beforeConnectedBlockHeight > 0 &&
+    afterConnectedBlockHeight >= beforeConnectedBlockHeight &&
     afterRestart.maybeConnectedBlockHash === beforeRestart.maybeConnectedBlockHash
   ) {
     return "no_duplicate_connect_observed";
   }
-  if (afterRestart.connectedBlockHeight < beforeRestart.connectedBlockHeight) {
+  if (
+    beforeConnectedBlockHeight !== null &&
+    afterConnectedBlockHeight !== null &&
+    afterConnectedBlockHeight < beforeConnectedBlockHeight
+  ) {
     return "duplicate_connect_suspected";
   }
   return "unavailable";
@@ -2258,20 +2365,39 @@ function restartStatus(
   if (beforeRestart === null || afterRestart === null) {
     return "blocked_before_restart";
   }
+  if (!hasProgressHeights(beforeRestart) || !hasProgressHeights(afterRestart)) {
+    return "blocked_before_restart";
+  }
+  const beforeHeaderHeight = beforeRestart.headerHeight;
+  const afterHeaderHeight = afterRestart.headerHeight;
+  const beforeDownloadedBlockHeight = beforeRestart.downloadedBlockHeight;
+  const afterDownloadedBlockHeight = afterRestart.downloadedBlockHeight;
+  const beforeConnectedBlockHeight = beforeRestart.connectedBlockHeight;
+  const afterConnectedBlockHeight = afterRestart.connectedBlockHeight;
   if (
-    afterRestart.headerHeight >= beforeRestart.headerHeight &&
-    afterRestart.downloadedBlockHeight >= beforeRestart.downloadedBlockHeight &&
-    afterRestart.connectedBlockHeight >= beforeRestart.connectedBlockHeight &&
+    beforeHeaderHeight === null ||
+    afterHeaderHeight === null ||
+    beforeDownloadedBlockHeight === null ||
+    afterDownloadedBlockHeight === null ||
+    beforeConnectedBlockHeight === null ||
+    afterConnectedBlockHeight === null
+  ) {
+    return "blocked_before_restart";
+  }
+  if (
+    afterHeaderHeight >= beforeHeaderHeight &&
+    afterDownloadedBlockHeight >= beforeDownloadedBlockHeight &&
+    afterConnectedBlockHeight >= beforeConnectedBlockHeight &&
     unchangedHeightHashStable(
-      beforeRestart.downloadedBlockHeight,
+      beforeDownloadedBlockHeight,
       beforeRestart.maybeDownloadedBlockHash,
-      afterRestart.downloadedBlockHeight,
+      afterDownloadedBlockHeight,
       afterRestart.maybeDownloadedBlockHash,
     ) &&
     unchangedHeightHashStable(
-      beforeRestart.connectedBlockHeight,
+      beforeConnectedBlockHeight,
       beforeRestart.maybeConnectedBlockHash,
-      afterRestart.connectedBlockHeight,
+      afterConnectedBlockHeight,
       afterRestart.maybeConnectedBlockHash,
     )
   ) {
@@ -2281,11 +2407,14 @@ function restartStatus(
 }
 
 function unchangedHeightHashStable(
-  beforeHeight: number,
+  beforeHeight: number | null,
   beforeHash: string | null,
-  afterHeight: number,
+  afterHeight: number | null,
   afterHash: string | null,
 ): boolean {
+  if (beforeHeight === null || afterHeight === null) {
+    return false;
+  }
   if (afterHeight !== beforeHeight) {
     return true;
   }
@@ -2546,7 +2675,7 @@ function markdownReport(report: SmokeReport): string {
       : report.snapshots
           .map(
             (snapshot) =>
-              `| ${snapshot.capturedAtUnixSeconds} | ${snapshot.lifecycle} | ${snapshot.phase} | ${fieldText(snapshot.progressSignal, snapshot.maybeProgressSignalUnavailableReason)} | ${configuredTargetsText(snapshot.configuredTargets, snapshot.maybeConfiguredTargetsUnavailableReason, snapshot.outboundPeers)} | ${attemptCountersText(snapshot.attemptCounters, snapshot.maybeAttemptCountersUnavailableReason)} | ${snapshot.headerHeight} | ${blockEvidenceText(snapshot.downloadedBlockHeight, snapshot.maybeDownloadedBlockHash, "downloaded")} | ${blockEvidenceText(snapshot.connectedBlockHeight, snapshot.maybeConnectedBlockHash, "connected")} | ${fieldText(snapshot.recoveryCategory, snapshot.maybeRecoveryCategoryUnavailableReason)} | ${resourcePressureText(snapshot.resourcePressure, snapshot.maybeResourcePressureUnavailableReason)} | ${stopReasonText(snapshot.latestStopReason, snapshot.maybeLatestStopReasonUnavailableReason)} | ${fieldText(snapshot.maybeLastError, snapshot.maybeLastErrorUnavailableReason)} |`,
+              `| ${snapshot.capturedAtUnixSeconds} | ${snapshot.lifecycle} | ${snapshot.phase} | ${fieldText(snapshot.progressSignal, snapshot.maybeProgressSignalUnavailableReason)} | ${configuredTargetsText(snapshot.configuredTargets, snapshot.maybeConfiguredTargetsUnavailableReason, snapshot.outboundPeers, snapshot.maybePeerCountsUnavailableReason)} | ${attemptCountersText(snapshot.attemptCounters, snapshot.maybeAttemptCountersUnavailableReason)} | ${fieldText(snapshot.headerHeight, snapshot.maybeSyncProgressUnavailableReason)} | ${blockEvidenceText(snapshot.downloadedBlockHeight, snapshot.maybeDownloadedBlockHash, "downloaded", snapshot.maybeSyncProgressUnavailableReason)} | ${blockEvidenceText(snapshot.connectedBlockHeight, snapshot.maybeConnectedBlockHash, "connected", snapshot.maybeSyncProgressUnavailableReason)} | ${fieldText(snapshot.recoveryCategory, snapshot.maybeRecoveryCategoryUnavailableReason)} | ${resourcePressureText(snapshot.resourcePressure, snapshot.maybeResourcePressureUnavailableReason)} | ${stopReasonText(snapshot.latestStopReason, snapshot.maybeLatestStopReasonUnavailableReason)} | ${fieldText(snapshot.maybeLastError, snapshot.maybeLastErrorUnavailableReason)} |`,
           )
           .join("\n");
   const endpointRows =
@@ -2580,17 +2709,17 @@ function markdownReport(report: SmokeReport): string {
   const firstHeaderProgressDetail =
     firstHeaderProgress === null
       ? "Unavailable"
-      : `observed at ${firstHeaderProgress.observedAtUnixSeconds}: ${firstHeaderProgress.before.headerHeight} -> ${firstHeaderProgress.after.headerHeight} via ${escapeInline(firstHeaderProgress.maybePeer ?? "unknown peer")} (${firstHeaderProgress.maybeSource ?? "unknown source"}, endpoint ${escapeInline(firstHeaderProgress.maybeResolvedEndpoint ?? "unavailable")})`;
+      : `observed at ${firstHeaderProgress.observedAtUnixSeconds}: ${fieldText(firstHeaderProgress.before.headerHeight, firstHeaderProgress.before.maybeSyncProgressUnavailableReason)} -> ${fieldText(firstHeaderProgress.after.headerHeight, firstHeaderProgress.after.maybeSyncProgressUnavailableReason)} via ${escapeInline(firstHeaderProgress.maybePeer ?? "unknown peer")} (${firstHeaderProgress.maybeSource ?? "unknown source"}, endpoint ${escapeInline(firstHeaderProgress.maybeResolvedEndpoint ?? "unavailable")})`;
   const firstBlockProgress = report.result.firstBlockProgress;
   const firstBlockProgressDetail =
     firstBlockProgress === null
       ? "Unavailable"
-      : `${firstBlockProgress.kind} observed at ${firstBlockProgress.observedAtUnixSeconds}: height ${firstBlockProgress.height}, block hash ${escapeInline(firstBlockProgress.blockHash ?? "unavailable")}, downloaded ${firstBlockProgress.before.downloadedBlockHeight} -> ${firstBlockProgress.after.downloadedBlockHeight}, connected ${firstBlockProgress.before.connectedBlockHeight} -> ${firstBlockProgress.after.connectedBlockHeight}, peer ${escapeInline(firstBlockProgress.maybePeer ?? "unknown peer")} (${firstBlockProgress.maybeSource ?? "unknown source"}, endpoint ${escapeInline(firstBlockProgress.maybeResolvedEndpoint ?? "unavailable")})`;
+      : `${firstBlockProgress.kind} observed at ${firstBlockProgress.observedAtUnixSeconds}: height ${fieldText(firstBlockProgress.height, firstBlockProgress.after.maybeSyncProgressUnavailableReason)}, block hash ${escapeInline(firstBlockProgress.blockHash ?? "unavailable")}, downloaded ${fieldText(firstBlockProgress.before.downloadedBlockHeight, firstBlockProgress.before.maybeSyncProgressUnavailableReason)} -> ${fieldText(firstBlockProgress.after.downloadedBlockHeight, firstBlockProgress.after.maybeSyncProgressUnavailableReason)}, connected ${fieldText(firstBlockProgress.before.connectedBlockHeight, firstBlockProgress.before.maybeSyncProgressUnavailableReason)} -> ${fieldText(firstBlockProgress.after.connectedBlockHeight, firstBlockProgress.after.maybeSyncProgressUnavailableReason)}, peer ${escapeInline(firstBlockProgress.maybePeer ?? "unknown peer")} (${firstBlockProgress.maybeSource ?? "unknown source"}, endpoint ${escapeInline(firstBlockProgress.maybeResolvedEndpoint ?? "unavailable")})`;
   const restartEvidence = report.result.restartResumeEvidence;
   const restartEvidenceDetail =
     restartEvidence === null
       ? "Unavailable"
-      : `status ${restartEvidence.restartStatus}, same datadir requested=${restartEvidence.sameDatadir.requestedPathMatched ? "yes" : "no"} resolved=${restartEvidence.sameDatadir.resolvedPathMatched ? "yes" : "no"}, before header/downloaded/connected ${restartEvidence.beforeRestart?.headerHeight ?? 0}/${restartEvidence.beforeRestart?.downloadedBlockHeight ?? 0}/${restartEvidence.beforeRestart?.connectedBlockHeight ?? 0}, after header/downloaded/connected ${restartEvidence.afterRestart?.headerHeight ?? 0}/${restartEvidence.afterRestart?.downloadedBlockHeight ?? 0}/${restartEvidence.afterRestart?.connectedBlockHeight ?? 0}, duplicate verdict ${restartEvidence.duplicateConnectVerdict}`;
+      : `status ${restartEvidence.restartStatus}, same datadir requested=${restartEvidence.sameDatadir.requestedPathMatched ? "yes" : "no"} resolved=${restartEvidence.sameDatadir.resolvedPathMatched ? "yes" : "no"}, before header/downloaded/connected ${progressTripletText(restartEvidence.beforeRestart)}, after header/downloaded/connected ${progressTripletText(restartEvidence.afterRestart)}, duplicate verdict ${restartEvidence.duplicateConnectVerdict}`;
 
   return `# Open Bitcoin Live Mainnet Smoke Report
 
@@ -2612,8 +2741,8 @@ function markdownReport(report: SmokeReport): string {
 - Restart status: ${restartEvidence?.restartStatus ?? "Unavailable"}
 - Same datadir requested path matched: ${restartEvidence?.sameDatadir.requestedPathMatched ?? false}
 - Same datadir resolved path matched: ${restartEvidence?.sameDatadir.resolvedPathMatched ?? false}
-- Before restart header/downloaded/connected: ${restartEvidence?.beforeRestart?.headerHeight ?? 0}/${restartEvidence?.beforeRestart?.downloadedBlockHeight ?? 0}/${restartEvidence?.beforeRestart?.connectedBlockHeight ?? 0}
-- After restart header/downloaded/connected: ${restartEvidence?.afterRestart?.headerHeight ?? 0}/${restartEvidence?.afterRestart?.downloadedBlockHeight ?? 0}/${restartEvidence?.afterRestart?.connectedBlockHeight ?? 0}
+- Before restart header/downloaded/connected: ${progressTripletText(restartEvidence?.beforeRestart ?? null)}
+- After restart header/downloaded/connected: ${progressTripletText(restartEvidence?.afterRestart ?? null)}
 - Duplicate connect verdict: ${restartEvidence?.duplicateConnectVerdict ?? "Unavailable"}
 - Post-restart progress delta: ${restartEvidence?.maybePostRestartProgressDelta === null || restartEvidence?.maybePostRestartProgressDelta === undefined ? "Unavailable" : `${restartEvidence.maybePostRestartProgressDelta.headerDelta}/${restartEvidence.maybePostRestartProgressDelta.downloadedBlockDelta}/${restartEvidence.maybePostRestartProgressDelta.connectedBlockDelta}`}
 
@@ -2662,7 +2791,7 @@ ${daemonSessionRows}
 
 - Lifecycle: ${report.final_status?.lifecycle ?? "Unavailable"}
 - Phase: ${report.final_status?.phase ?? "Unavailable"}
-- Configured targets: ${configuredTargetsText(report.final_status?.configuredTargets ?? null, report.final_status?.maybeConfiguredTargetsUnavailableReason ?? null, report.final_status?.outboundPeers ?? null)}
+- Configured targets: ${configuredTargetsText(report.final_status?.configuredTargets ?? null, report.final_status?.maybeConfiguredTargetsUnavailableReason ?? null, report.final_status?.outboundPeers ?? null, report.final_status?.maybePeerCountsUnavailableReason ?? null)}
 - Attempt counters: ${attemptCountersText(report.final_status?.attemptCounters ?? null, report.final_status?.maybeAttemptCountersUnavailableReason ?? null)}
 - Progress signal: ${fieldText(report.final_status?.progressSignal ?? null, report.final_status?.maybeProgressSignalUnavailableReason ?? null)}
 - Last progress: ${fieldText(report.final_status?.maybeLastSuccessfulProgressUnixSeconds ?? null, "no successful progress recorded")}
@@ -2671,14 +2800,14 @@ ${daemonSessionRows}
 - Recovery category: ${fieldText(report.final_status?.recoveryCategory ?? null, report.final_status?.maybeRecoveryCategoryUnavailableReason ?? null)}
 - Recovery action: ${fieldText(report.final_status?.recoveryAction ?? null, report.final_status?.maybeRecoveryActionUnavailableReason ?? null)}
 - Resource pressure: ${resourcePressureText(report.final_status?.resourcePressure ?? null, report.final_status?.maybeResourcePressureUnavailableReason ?? null)}
-- Peer health: outbound_peers=${report.final_status?.outboundPeers ?? 0}
-- Header height: ${report.final_status?.headerHeight ?? 0}
-- Block height: ${report.final_status?.blockHeight ?? 0}
-- Downloaded block height: ${report.final_status?.downloadedBlockHeight ?? 0}
-- Connected block height: ${report.final_status?.connectedBlockHeight ?? 0}
+- Peer health: ${peerHealthText(report.final_status?.outboundPeers ?? null, report.final_status?.maybePeerCountsUnavailableReason ?? null)}
+- Header height: ${fieldText(report.final_status?.headerHeight ?? null, report.final_status?.maybeSyncProgressUnavailableReason ?? null)}
+- Block height: ${fieldText(report.final_status?.blockHeight ?? null, report.final_status?.maybeSyncProgressUnavailableReason ?? null)}
+- Downloaded block height: ${fieldText(report.final_status?.downloadedBlockHeight ?? null, report.final_status?.maybeSyncProgressUnavailableReason ?? null)}
+- Connected block height: ${fieldText(report.final_status?.connectedBlockHeight ?? null, report.final_status?.maybeSyncProgressUnavailableReason ?? null)}
 - Downloaded block hash: ${report.final_status?.maybeDownloadedBlockHash ?? "Unavailable"}
 - Connected block hash: ${report.final_status?.maybeConnectedBlockHash ?? "Unavailable"}
-- Bounded counters: messages_processed=${report.final_status?.messagesProcessed ?? 0} headers_received=${report.final_status?.headersReceived ?? 0} blocks_received=${report.final_status?.blocksReceived ?? 0}
+- Bounded counters: ${boundedCountersText(report.final_status)}
 
 ## Runtime Peer Contributions
 
@@ -2714,6 +2843,7 @@ function configuredTargetsText(
   configuredTargets: ConfiguredTargetsSummary | null,
   maybeUnavailableReason: string | null,
   maybeOutboundPeers: number | null,
+  maybeOutboundPeersUnavailableReason: string | null,
 ): string {
   if (configuredTargets === null) {
     return unavailableText(maybeUnavailableReason);
@@ -2724,7 +2854,7 @@ function configuredTargetsText(
       : String(configuredTargets.maybeTargetHeaderHeight);
   const outboundPeers =
     maybeOutboundPeers === null
-      ? String(configuredTargets.targetOutboundPeers)
+      ? `${unavailableText(maybeOutboundPeersUnavailableReason)}/${configuredTargets.targetOutboundPeers}`
       : `${maybeOutboundPeers}/${configuredTargets.targetOutboundPeers}`;
   return `outbound_peers=${outboundPeers} target_header_height=${targetHeader}`;
 }
@@ -2760,12 +2890,57 @@ function resourcePressureText(
 }
 
 function blockEvidenceText(
-  height: number,
+  height: number | null,
   maybeHash: string | null,
   kind: "connected" | "downloaded",
+  maybeUnavailableReason: string | null,
 ): string {
+  if (height === null) {
+    return unavailableText(maybeUnavailableReason);
+  }
   const hash = maybeHash ?? `Unavailable: no ${kind} block hash recorded`;
   return `height=${height} hash=${escapeTableCell(hash)}`;
+}
+
+function peerHealthText(
+  maybeOutboundPeers: number | null,
+  maybeUnavailableReason: string | null,
+): string {
+  return `outbound_peers=${fieldText(maybeOutboundPeers, maybeUnavailableReason)}`;
+}
+
+function boundedCountersText(finalStatus: FinalStatusSummary | null): string {
+  const maybeUnavailableReason = finalStatus?.maybeSyncProgressUnavailableReason ?? null;
+  return [
+    `messages_processed=${fieldText(finalStatus?.messagesProcessed ?? null, maybeUnavailableReason)}`,
+    `headers_received=${fieldText(finalStatus?.headersReceived ?? null, maybeUnavailableReason)}`,
+    `blocks_received=${fieldText(finalStatus?.blocksReceived ?? null, maybeUnavailableReason)}`,
+  ].join(" ");
+}
+
+function progressTripletText(
+  maybeProgress: {
+    connectedBlockHeight: number | null;
+    downloadedBlockHeight: number | null;
+    headerHeight: number | null;
+    maybeSyncProgressUnavailableReason: string | null;
+  } | null,
+): string {
+  if (maybeProgress === null) {
+    return "Unavailable";
+  }
+
+  return [
+    fieldText(maybeProgress.headerHeight, maybeProgress.maybeSyncProgressUnavailableReason),
+    fieldText(
+      maybeProgress.downloadedBlockHeight,
+      maybeProgress.maybeSyncProgressUnavailableReason,
+    ),
+    fieldText(
+      maybeProgress.connectedBlockHeight,
+      maybeProgress.maybeSyncProgressUnavailableReason,
+    ),
+  ].join("/");
 }
 
 function escapeTableCell(value: string): string {

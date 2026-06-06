@@ -831,6 +831,197 @@ JSON
 EOF
 chmod +x "$tmp_dir/mock-stalled-status.sh"
 
+cat >"$tmp_dir/mock-unavailable-status.sh" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+cat <<'JSON'
+{
+  "metadata": {
+    "maybe_sync_state": {
+      "sync": {
+        "sync_progress": {
+          "state": "unavailable",
+          "value": {
+            "reason": "fixture sync progress unavailable"
+          }
+        },
+        "lifecycle": {
+          "state": "available",
+          "value": "active"
+        },
+        "phase": {
+          "state": "available",
+          "value": "status_unavailable_fixture"
+        },
+        "configured_targets": {
+          "state": "available",
+          "value": {
+            "target_outbound_peers": 4,
+            "maybe_target_header_height": 840200
+          }
+        },
+        "attempt_counters": {
+          "state": "available",
+          "value": {
+            "attempted_peers": 1,
+            "connected_peers": 0,
+            "failed_peers": 0,
+            "max_sync_rounds": 8
+          }
+        },
+        "progress_signal": {
+          "state": "unavailable",
+          "value": {
+            "reason": "fixture progress signal unavailable"
+          }
+        },
+        "latest_stop_reason": {
+          "state": "unavailable",
+          "value": {
+            "reason": "fixture stop reason unavailable"
+          }
+        },
+        "last_error": {
+          "state": "unavailable",
+          "value": {
+            "reason": "fixture sync error unavailable"
+          }
+        },
+        "recovery_category": {
+          "state": "unavailable",
+          "value": {
+            "reason": "fixture recovery category unavailable"
+          }
+        },
+        "recovery_action": {
+          "state": "unavailable",
+          "value": {
+            "reason": "fixture recovery action unavailable"
+          }
+        },
+        "resource_pressure": {
+          "state": "unavailable",
+          "value": {
+            "reason": "fixture resource pressure unavailable"
+          }
+        }
+      },
+      "peers": {
+        "peer_counts": {
+          "state": "unavailable",
+          "value": {
+            "reason": "fixture peer counts unavailable"
+          }
+        },
+        "recent_peers": {
+          "state": "available",
+          "value": []
+        }
+      },
+      "updated_at_unix_seconds": 1777225150
+    },
+    "sync_control": {
+      "paused": false
+    }
+  }
+}
+JSON
+EOF
+chmod +x "$tmp_dir/mock-unavailable-status.sh"
+
+cat >"$tmp_dir/mock-unavailable-final-status.sh" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+cat <<'JSON'
+{
+  "maybe_sync_state": {
+    "sync": {
+      "sync_progress": {
+        "state": "unavailable",
+        "value": {
+          "reason": "fixture sync progress unavailable"
+        }
+      },
+      "lifecycle": {
+        "state": "available",
+        "value": "active"
+      },
+      "phase": {
+        "state": "available",
+        "value": "status_unavailable_fixture"
+      },
+      "configured_targets": {
+        "state": "available",
+        "value": {
+          "target_outbound_peers": 4,
+          "maybe_target_header_height": 840200
+        }
+      },
+      "attempt_counters": {
+        "state": "available",
+        "value": {
+          "attempted_peers": 1,
+          "connected_peers": 0,
+          "failed_peers": 0,
+          "max_sync_rounds": 8
+        }
+      },
+      "progress_signal": {
+        "state": "unavailable",
+        "value": {
+          "reason": "fixture progress signal unavailable"
+        }
+      },
+      "latest_stop_reason": {
+        "state": "unavailable",
+        "value": {
+          "reason": "fixture stop reason unavailable"
+        }
+      },
+      "last_error": {
+        "state": "unavailable",
+        "value": {
+          "reason": "fixture sync error unavailable"
+        }
+      },
+      "recovery_category": {
+        "state": "unavailable",
+        "value": {
+          "reason": "fixture recovery category unavailable"
+        }
+      },
+      "recovery_action": {
+        "state": "unavailable",
+        "value": {
+          "reason": "fixture recovery action unavailable"
+        }
+      },
+      "resource_pressure": {
+        "state": "unavailable",
+        "value": {
+          "reason": "fixture resource pressure unavailable"
+        }
+      }
+    },
+    "peers": {
+      "peer_counts": {
+        "state": "unavailable",
+        "value": {
+          "reason": "fixture peer counts unavailable"
+        }
+      },
+      "recent_peers": {
+        "state": "available",
+        "value": []
+      }
+    },
+    "updated_at_unix_seconds": 1777225150
+  }
+}
+JSON
+EOF
+chmod +x "$tmp_dir/mock-unavailable-final-status.sh"
+
 cat >"$tmp_dir/mock-final-status.sh" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -1504,6 +1695,45 @@ grep -q '"headersReceived": 2' "$report_json"
 grep -q '"blocksReceived": 1' "$report_json"
 grep -q "Runtime Peer Contributions" "$report_markdown"
 grep -q "typed no-progress cause: tcp_connection_failure" "$tmp_dir/no-progress.stderr"
+
+set +e
+OPEN_BITCOIN_LIVE_SMOKE_DAEMON_BIN="$tmp_dir/mock-daemon.sh" \
+OPEN_BITCOIN_LIVE_SMOKE_STATUS_BIN="$tmp_dir/mock-unavailable-status.sh" \
+OPEN_BITCOIN_LIVE_SMOKE_FINAL_STATUS_BIN="$tmp_dir/mock-unavailable-final-status.sh" \
+OPEN_BITCOIN_LIVE_SMOKE_NETWORK_PREFLIGHT_FIXTURE="$network_fixture" \
+OPEN_BITCOIN_LIVE_SMOKE_SKIP_DISK_CHECK=1 \
+bun run scripts/run-live-mainnet-smoke.ts \
+	--datadir="$existing_datadir" \
+	--manual-peer=127.0.0.1:8333 \
+	--output-dir="$output_dir" \
+	--timeout-seconds=2 \
+	--poll-seconds=1 >/dev/null 2>"$tmp_dir/unavailable-status.stderr"
+status=$?
+set -e
+
+if [[ "$status" -eq 0 ]]; then
+	echo "expected unavailable-status smoke run to report no_progress" >&2
+	exit 1
+fi
+
+grep -q '"status": "no_progress"' "$report_json"
+grep -q '"maybeSyncProgressUnavailableReason": "fixture sync progress unavailable"' "$report_json"
+grep -q '"maybePeerCountsUnavailableReason": "fixture peer counts unavailable"' "$report_json"
+grep -q '"headerHeight": null' "$report_json"
+grep -q '"blockHeight": null' "$report_json"
+grep -q '"downloadedBlockHeight": null' "$report_json"
+grep -q '"connectedBlockHeight": null' "$report_json"
+grep -q '"headersReceived": null' "$report_json"
+grep -q '"blocksReceived": null' "$report_json"
+grep -q '"messagesProcessed": null' "$report_json"
+grep -q '"outboundPeers": null' "$report_json"
+if rg -n '"(headerHeight|blockHeight|downloadedBlockHeight|connectedBlockHeight|headersReceived|blocksReceived|messagesProcessed|outboundPeers)": 0' "$report_json" >/dev/null; then
+	echo "unavailable sync progress or peer fields must remain null instead of zero" >&2
+	exit 1
+fi
+grep -q "Header height: Unavailable: fixture sync progress unavailable" "$report_markdown"
+grep -q "Peer health: outbound_peers=Unavailable: fixture peer counts unavailable" "$report_markdown"
+grep -q "Bounded counters: messages_processed=Unavailable: fixture sync progress unavailable" "$report_markdown"
 
 peer_failure_cases=(
 	"block_notfound peer_notfound"
