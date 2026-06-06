@@ -4,7 +4,7 @@
 
 `OpenBitcoinStatusSnapshot` is the sole shared status model for later CLI status output, JSON automation, service diagnostics, dashboard panels, and support bundles. Live RPC is not the only status source; stopped-node inspection can still report local datadir, config paths, service state, log paths, locally collected health signals, metrics policy, and build provenance when those collectors are available.
 
-For v1.4, `OpenBitcoinStatusSnapshot` is the shared source of truth for status, dashboard, support evidence, RPC-facing blockchain info, metrics projections, structured logs, and live-smoke snapshots. Each consumer may render a different view, but it must preserve the same header height, downloaded block height, connected block height, peer compatibility state, progress signal, latest error, and unavailable-field reasons instead of inventing renderer-local summaries.
+For v1.5, `OpenBitcoinStatusSnapshot` is the shared source of truth for status, dashboard, support evidence, RPC-facing blockchain info, metrics projections, structured logs, and live-smoke snapshots. Each consumer may render a different view, but it must preserve the same lifecycle, phase, configured targets, attempt counters, header height, downloaded block height, connected block height, peer compatibility state, progress signal, latest stop reason, latest error, recovery state, resource pressure, and unavailable-field reasons instead of inventing renderer-local summaries.
 
 ## Field Ownership
 
@@ -21,6 +21,38 @@ For v1.4, `OpenBitcoinStatusSnapshot` is the shared source of truth for status, 
 | `metrics` | Metrics collector | retention, enabled series, and bounded samples when a metrics snapshot exists |
 | `health_signals` | Log/status collectors | recent `health signals` |
 | `build` | Build/release collector | version, commit, build time, target, and profile |
+
+## Phase 62 sync truth contract
+
+The canonical Phase 62 sync truth projection is the `sync` status object plus
+its peer, metric, and structured-log projections. Human renderers may use title
+case labels, TypeScript reports may use a single camelCase mapping layer, and
+RPC/JSON/log/metric surfaces keep stable snake_case machine labels. Missing
+typed fields must render exactly as `Unavailable: {reason}` in human-facing
+output or preserve the equivalent unavailable/null reason in machine output.
+
+The shared order is:
+
+1. `lifecycle`
+2. `phase`
+3. `configured_targets`
+4. `attempt_counters`
+5. `progress_signal`
+6. `last_successful_progress_unix_seconds`
+7. `latest_stop_reason`
+8. `last_error`
+9. `recovery_category`
+10. `recovery_action`
+11. `resource_pressure`
+12. `peer health`
+13. `header_height`
+14. `downloaded_block_height`
+15. `maybe_downloaded_block_hash`
+16. `connected_block_height`
+17. `maybe_connected_block_hash`
+18. `messages_processed`
+19. `headers_received`
+20. `blocks_received`
 
 ## Stopped-node status
 
@@ -90,6 +122,12 @@ run. Current values are:
 `sync.last_successful_progress_unix_seconds` records the most recent accepted
 header or block contribution time when known. Durable status preserves the prior
 timestamp across later runs that only wait, fail, or report no new progress.
+
+`sync.configured_targets` reports the configured outbound peer target and the
+optional target header height. `sync.attempt_counters` reports bounded peer
+attempts, connected peers, failed peers, and configured max sync rounds for the
+latest durable cycle. `sync.latest_stop_reason` reports the typed durable stop
+reason label and message when a cycle stopped for a known reason.
 
 `sync.lag` is the estimated lag from best known validated work. It reports
 header and block counts rather than a wall-clock ETA so deterministic local

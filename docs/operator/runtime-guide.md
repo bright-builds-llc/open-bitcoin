@@ -1,6 +1,6 @@
 # Operator Runtime Guide
 
-This guide describes the current v1.3 operator workflow for Open Bitcoin on
+This guide describes the current v1.5 operator workflow for Open Bitcoin on
 macOS and Linux. It is intentionally conservative: the runtime is source-built,
 service integration is local-machine only, migration remains dry-run only, and
 release readiness stays evidence-based rather than timing-threshold based.
@@ -343,6 +343,52 @@ metrics history records `header_height`, `downloaded_block_height`,
 `connected_block_height`, and the compatibility `sync_height`; structured sync
 summary log records include the same heights, progress signal, and last
 successful progress timestamp.
+
+### Phase 62 sync truth fields
+
+`open-bitcoin status`, `open-bitcoin dashboard`, `open-bitcoin sync status`,
+RPC sync status and warnings, bounded metrics, structured logs, and explicit
+opt-in live-smoke snapshots read the same shared status and durable sync truth
+projection. A reviewer should treat differences between those surfaces as drift
+unless the field is intentionally unavailable and rendered as
+`Unavailable: {reason}`.
+
+Operator truth surfaces keep this field order when they show the Phase 62 sync
+contract:
+
+1. `lifecycle`
+2. `phase`
+3. `configured_targets`
+4. `attempt_counters`
+5. `progress_signal`
+6. `last_successful_progress_unix_seconds`
+7. `latest_stop_reason`
+8. `last_error`
+9. `recovery_category`
+10. `recovery_action`
+11. `resource_pressure`
+12. `peer health`
+13. `header_height`
+14. `downloaded_block_height`
+15. `maybe_downloaded_block_hash`
+16. `connected_block_height`
+17. `maybe_connected_block_hash`
+18. `messages_processed`
+19. `headers_received`
+20. `blocks_received`
+
+Use these repo-local commands to inspect the selected datadir through the
+focused sync status surface:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet sync status --format json
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet sync status --format json
+```
+
+public-network live-smoke evidence remains opt-in UAT. Use
+`bun run scripts/run-live-mainnet-smoke.ts --datadir=/tmp/open-bitcoin-mainnet`
+only when you are intentionally collecting live-mainnet review evidence; it is
+not part of `bash scripts/verify.sh`.
 
 After a partial download or partial connect, restart the daemon or run a bounded
 sync status check against the same datadir:
