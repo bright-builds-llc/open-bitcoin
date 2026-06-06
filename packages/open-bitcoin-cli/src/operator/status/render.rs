@@ -8,8 +8,9 @@ use open_bitcoin_node::{
     status::{
         BuildProvenance, ChainTipStatus, FieldAvailability, HealthSignal, HealthSignalLevel,
         NodeRuntimeState, OpenBitcoinStatusSnapshot, PeerCounts, PeerTelemetry, ServiceStatus,
-        SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal, SyncRecoveryCategory,
-        SyncResourcePressure, WalletFreshness, WalletScanProgress,
+        SyncAttemptCounters, SyncConfiguredTargets, SyncLifecycleState, SyncProgress,
+        SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure, SyncStopReasonStatus,
+        WalletFreshness, WalletScanProgress,
     },
 };
 
@@ -59,10 +60,6 @@ fn render_human_status(snapshot: &OpenBitcoinStatusSnapshot) -> String {
         chain_tip_availability(&snapshot.sync.chain_tip)
     ));
     lines.push(format!(
-        "Sync: {}",
-        sync_progress_availability(&snapshot.sync.sync_progress)
-    ));
-    lines.push(format!(
         "Sync state: {}",
         sync_lifecycle_availability(&snapshot.sync.lifecycle)
     ));
@@ -71,12 +68,16 @@ fn render_human_status(snapshot: &OpenBitcoinStatusSnapshot) -> String {
         string_availability(&snapshot.sync.phase)
     ));
     lines.push(format!(
-        "Sync signal: {}",
-        sync_progress_signal_availability(&snapshot.sync.progress_signal)
+        "Sync configured targets: {}",
+        sync_configured_targets_availability(&snapshot.sync.configured_targets)
     ));
     lines.push(format!(
-        "Sync lag: {}",
-        sync_lag_availability(&snapshot.sync.lag)
+        "Sync attempts: {}",
+        sync_attempt_counters_availability(&snapshot.sync.attempt_counters)
+    ));
+    lines.push(format!(
+        "Sync signal: {}",
+        sync_progress_signal_availability(&snapshot.sync.progress_signal)
     ));
     lines.push(format!(
         "Sync last progress: {}",
@@ -86,8 +87,12 @@ fn render_human_status(snapshot: &OpenBitcoinStatusSnapshot) -> String {
         )
     ));
     lines.push(format!(
-        "Sync pressure: {}",
-        sync_pressure_availability(&snapshot.sync.resource_pressure)
+        "Sync latest stop reason: {}",
+        sync_stop_reason_availability(&snapshot.sync.latest_stop_reason)
+    ));
+    lines.push(format!(
+        "Sync error: {}",
+        string_availability(&snapshot.sync.last_error)
     ));
     lines.push(format!(
         "Sync recovery category: {}",
@@ -98,8 +103,8 @@ fn render_human_status(snapshot: &OpenBitcoinStatusSnapshot) -> String {
         string_availability(&snapshot.sync.recovery_action)
     ));
     lines.push(format!(
-        "Sync error: {}",
-        string_availability(&snapshot.sync.last_error)
+        "Sync pressure: {}",
+        sync_pressure_availability(&snapshot.sync.resource_pressure)
     ));
     lines.push(format!(
         "Peers: {}",
@@ -108,6 +113,10 @@ fn render_human_status(snapshot: &OpenBitcoinStatusSnapshot) -> String {
     lines.push(format!(
         "Peer detail: {}",
         peer_telemetry_availability(&snapshot.peers.recent_peers)
+    ));
+    lines.push(format!(
+        "Sync: {}",
+        sync_progress_availability(&snapshot.sync.sync_progress)
     ));
     lines.push(format!(
         "Mempool: {}",
@@ -168,6 +177,34 @@ fn sync_lifecycle_availability(value: &FieldAvailability<SyncLifecycleState>) ->
     }
 }
 
+fn sync_configured_targets_availability(
+    value: &FieldAvailability<SyncConfiguredTargets>,
+) -> String {
+    match value {
+        FieldAvailability::Available(value) => {
+            let target_header_height = value.maybe_target_header_height.map_or_else(
+                || "Unavailable: no target header configured".to_string(),
+                |height| height.to_string(),
+            );
+            format!(
+                "outbound_peers={} target_header_height={target_header_height}",
+                value.target_outbound_peers
+            )
+        }
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
+fn sync_attempt_counters_availability(value: &FieldAvailability<SyncAttemptCounters>) -> String {
+    match value {
+        FieldAvailability::Available(value) => format!(
+            "attempted_peers={} connected_peers={} failed_peers={} max_sync_rounds={}",
+            value.attempted_peers, value.connected_peers, value.failed_peers, value.max_sync_rounds
+        ),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
 fn sync_progress_signal_availability(value: &FieldAvailability<SyncProgressSignal>) -> String {
     match value {
         FieldAvailability::Available(value) => sync_progress_signal_name(*value).to_string(),
@@ -175,12 +212,9 @@ fn sync_progress_signal_availability(value: &FieldAvailability<SyncProgressSigna
     }
 }
 
-fn sync_lag_availability(value: &FieldAvailability<SyncLagStatus>) -> String {
+fn sync_stop_reason_availability(value: &FieldAvailability<SyncStopReasonStatus>) -> String {
     match value {
-        FieldAvailability::Available(value) => format!(
-            "headers_remaining={} blocks_remaining={}",
-            value.headers_remaining, value.blocks_remaining
-        ),
+        FieldAvailability::Available(value) => value.label.clone(),
         FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
     }
 }
@@ -438,11 +472,43 @@ mod tests {
         assert!(
             rendered.contains("headers=840100 downloaded_blocks=840006 connected_blocks=840004")
         );
-        assert!(rendered.contains("awaiting_blocks"));
-        assert!(rendered.contains("Sync recovery category: invalid_peer_data"));
-        assert!(rendered.contains("Sync recovery: Retry sync after peer backoff"));
-        assert!(rendered.contains("peer stalled before block connect"));
-        assert!(rendered.contains("failed:seed.bitcoin.sipa.be:8333 via dns_seed"));
+        for expected in [
+            "Sync configured targets: outbound_peers=4 target_header_height=840200",
+            "Sync attempts: attempted_peers=3 connected_peers=2 failed_peers=1 max_sync_rounds=8",
+            "Sync latest stop reason: target_header_reached",
+            "awaiting_blocks",
+            "Sync recovery category: invalid_peer_data",
+            "Sync recovery: Retry sync after peer backoff",
+            "peer stalled before block connect",
+            "failed:seed.bitcoin.sipa.be:8333 via dns_seed",
+        ] {
+            assert!(rendered.contains(expected));
+        }
+
+        let mut snapshot = shared_sync_truth_snapshot();
+        snapshot.sync.configured_targets =
+            FieldAvailability::unavailable("operator target unavailable");
+        snapshot.sync.attempt_counters =
+            FieldAvailability::unavailable("attempt counters unavailable");
+        snapshot.sync.latest_stop_reason =
+            FieldAvailability::unavailable("stop reason unavailable");
+
+        let rendered = render_status(&snapshot, StatusRenderMode::Human).expect("human status");
+
+        for expected in [
+            "Sync configured targets: Unavailable: operator target unavailable",
+            "Sync attempts: Unavailable: attempt counters unavailable",
+            "Sync latest stop reason: Unavailable: stop reason unavailable",
+        ] {
+            assert!(rendered.contains(expected));
+        }
+        for unexpected in [
+            "Sync configured targets: outbound_peers=0",
+            "Sync attempts: attempted_peers=0",
+            "Sync latest stop reason: ok",
+        ] {
+            assert!(!rendered.contains(unexpected));
+        }
     }
 
     fn shared_sync_truth_snapshot() -> OpenBitcoinStatusSnapshot {
@@ -480,7 +546,7 @@ mod tests {
                 phase: FieldAvailability::available("block_download".to_string()),
                 configured_targets: FieldAvailability::available(SyncConfiguredTargets {
                     target_outbound_peers: 4,
-                    maybe_target_header_height: Some(840_100),
+                    maybe_target_header_height: Some(840_200),
                 }),
                 attempt_counters: FieldAvailability::available(SyncAttemptCounters {
                     attempted_peers: 3,
@@ -495,8 +561,8 @@ mod tests {
                 }),
                 last_successful_progress_unix_seconds: FieldAvailability::available(1_717_000_000),
                 latest_stop_reason: FieldAvailability::available(SyncStopReasonStatus {
-                    label: "no_progress".to_string(),
-                    message: "sync stopped with no new header or block progress after 8 rounds"
+                    label: "target_header_reached".to_string(),
+                    message: "sync header target reached: target_header_height=840200 best_header_height=840200"
                         .to_string(),
                 }),
                 last_error: FieldAvailability::available(

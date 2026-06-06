@@ -71,6 +71,52 @@ fn dashboard_sections_surface_sync_progress_and_peer_counts() {
 
     // Assert
     let sync_rows = &state.sections[1].rows;
+    let sync_labels = sync_rows
+        .iter()
+        .map(|row| row.label.as_str())
+        .collect::<Vec<_>>();
+    assert_eq!(
+        sync_labels,
+        vec![
+            "State",
+            "Phase",
+            "Configured targets",
+            "Attempt counters",
+            "Signal",
+            "Last progress",
+            "Latest stop reason",
+            "Last error",
+            "Recovery category",
+            "Recovery",
+            "Pressure",
+            "Peers",
+            "Progress",
+        ]
+    );
+    assert_eq!(
+        sync_rows
+            .iter()
+            .find(|row| row.label == "Configured targets")
+            .expect("configured targets row")
+            .value,
+        "outbound_peers=4 target_header_height=840200"
+    );
+    assert_eq!(
+        sync_rows
+            .iter()
+            .find(|row| row.label == "Attempt counters")
+            .expect("attempt counters row")
+            .value,
+        "attempted_peers=3 connected_peers=2 failed_peers=1 max_sync_rounds=8"
+    );
+    assert_eq!(
+        sync_rows
+            .iter()
+            .find(|row| row.label == "Latest stop reason")
+            .expect("latest stop reason row")
+            .value,
+        "target_header_reached"
+    );
     assert_eq!(
         sync_rows
             .iter()
@@ -110,6 +156,46 @@ fn dashboard_sections_surface_sync_progress_and_peer_counts() {
             .expect("pressure row")
             .value
             .contains("peers 2/4")
+    );
+}
+
+#[test]
+fn dashboard_sections_surface_sync_progress_and_peer_counts_unavailable_fields() {
+    // Arrange
+    let mut snapshot = shared_sync_truth_snapshot();
+    snapshot.sync.configured_targets =
+        FieldAvailability::unavailable("operator target unavailable");
+    snapshot.sync.attempt_counters = FieldAvailability::unavailable("attempt counters unavailable");
+    snapshot.sync.latest_stop_reason = FieldAvailability::unavailable("stop reason unavailable");
+
+    // Act
+    let state = DashboardState::from_snapshot(&snapshot);
+
+    // Assert
+    let sync_rows = &state.sections[1].rows;
+    assert_eq!(
+        sync_rows
+            .iter()
+            .find(|row| row.label == "Configured targets")
+            .expect("configured targets row")
+            .value,
+        "Unavailable: operator target unavailable"
+    );
+    assert_eq!(
+        sync_rows
+            .iter()
+            .find(|row| row.label == "Attempt counters")
+            .expect("attempt counters row")
+            .value,
+        "Unavailable: attempt counters unavailable"
+    );
+    assert_eq!(
+        sync_rows
+            .iter()
+            .find(|row| row.label == "Latest stop reason")
+            .expect("latest stop reason row")
+            .value,
+        "Unavailable: stop reason unavailable"
     );
 }
 
@@ -204,7 +290,7 @@ fn shared_sync_truth_snapshot() -> OpenBitcoinStatusSnapshot {
         phase: FieldAvailability::available("block_download".to_string()),
         configured_targets: FieldAvailability::available(SyncConfiguredTargets {
             target_outbound_peers: 4,
-            maybe_target_header_height: Some(840_100),
+            maybe_target_header_height: Some(840_200),
         }),
         attempt_counters: FieldAvailability::available(SyncAttemptCounters {
             attempted_peers: 3,
@@ -219,8 +305,10 @@ fn shared_sync_truth_snapshot() -> OpenBitcoinStatusSnapshot {
         }),
         last_successful_progress_unix_seconds: FieldAvailability::available(1_717_000_000),
         latest_stop_reason: FieldAvailability::available(SyncStopReasonStatus {
-            label: "no_progress".to_string(),
-            message: "sync stopped with no new header or block progress after 8 rounds".to_string(),
+            label: "target_header_reached".to_string(),
+            message:
+                "sync header target reached: target_header_height=840200 best_header_height=840200"
+                    .to_string(),
         }),
         last_error: FieldAvailability::available("peer stalled before block connect".to_string()),
         recovery_category: FieldAvailability::available(SyncRecoveryCategory::InvalidPeerData),

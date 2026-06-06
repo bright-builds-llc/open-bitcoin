@@ -7,10 +7,11 @@ use open_bitcoin_node::{
     MetricKind, MetricSample,
     metrics::MetricsAvailability,
     status::{
-        ChainTipStatus, FieldAvailability, HealthSignal, HealthSignalLevel, NodeRuntimeState,
-        OpenBitcoinStatusSnapshot, PeerCounts, ServiceStatus, SyncLagStatus, SyncLifecycleState,
-        SyncProgress, SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure,
-        WalletFreshness, WalletScanProgress,
+        FieldAvailability, HealthSignal, HealthSignalLevel, NodeRuntimeState,
+        OpenBitcoinStatusSnapshot, PeerCounts, ServiceStatus, SyncAttemptCounters,
+        SyncConfiguredTargets, SyncLifecycleState, SyncProgress, SyncProgressSignal,
+        SyncRecoveryCategory, SyncResourcePressure, SyncStopReasonStatus, WalletFreshness,
+        WalletScanProgress,
     },
 };
 
@@ -103,19 +104,20 @@ fn dashboard_sections(snapshot: &OpenBitcoinStatusSnapshot) -> Vec<DashboardSect
         DashboardSection {
             title: "Sync and Peers".to_string(),
             rows: vec![
-                row("Network", string_availability(&snapshot.sync.network)),
-                row("Chain", chain_tip_availability(&snapshot.sync.chain_tip)),
-                row(
-                    "Progress",
-                    sync_progress_availability(&snapshot.sync.sync_progress),
-                ),
                 row("State", sync_lifecycle(&snapshot.sync.lifecycle)),
                 row("Phase", string_availability(&snapshot.sync.phase)),
+                row(
+                    "Configured targets",
+                    sync_configured_targets(&snapshot.sync.configured_targets),
+                ),
+                row(
+                    "Attempt counters",
+                    sync_attempt_counters(&snapshot.sync.attempt_counters),
+                ),
                 row(
                     "Signal",
                     sync_progress_signal(&snapshot.sync.progress_signal),
                 ),
-                row("Lag", sync_lag(&snapshot.sync.lag)),
                 row(
                     "Last progress",
                     u64_availability(
@@ -123,11 +125,11 @@ fn dashboard_sections(snapshot: &OpenBitcoinStatusSnapshot) -> Vec<DashboardSect
                         "unix seconds",
                     ),
                 ),
-                row("Pressure", sync_pressure(&snapshot.sync.resource_pressure)),
                 row(
-                    "Peers",
-                    peer_counts_availability(&snapshot.peers.peer_counts),
+                    "Latest stop reason",
+                    sync_stop_reason(&snapshot.sync.latest_stop_reason),
                 ),
+                row("Last error", string_availability(&snapshot.sync.last_error)),
                 row(
                     "Recovery category",
                     sync_recovery_category(&snapshot.sync.recovery_category),
@@ -136,7 +138,15 @@ fn dashboard_sections(snapshot: &OpenBitcoinStatusSnapshot) -> Vec<DashboardSect
                     "Recovery",
                     string_availability(&snapshot.sync.recovery_action),
                 ),
-                row("Last error", string_availability(&snapshot.sync.last_error)),
+                row("Pressure", sync_pressure(&snapshot.sync.resource_pressure)),
+                row(
+                    "Peers",
+                    peer_counts_availability(&snapshot.peers.peer_counts),
+                ),
+                row(
+                    "Progress",
+                    sync_progress_availability(&snapshot.sync.sync_progress),
+                ),
             ],
         },
         DashboardSection {
@@ -228,15 +238,6 @@ fn string_availability(value: &FieldAvailability<String>) -> String {
     }
 }
 
-fn chain_tip_availability(value: &FieldAvailability<ChainTipStatus>) -> String {
-    match value {
-        FieldAvailability::Available(value) => {
-            format!("height {} {}", value.height, value.block_hash)
-        }
-        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
-    }
-}
-
 fn sync_progress_availability(value: &FieldAvailability<SyncProgress>) -> String {
     match value {
         FieldAvailability::Available(value) => format!(
@@ -257,6 +258,32 @@ fn sync_lifecycle(value: &FieldAvailability<SyncLifecycleState>) -> String {
     }
 }
 
+fn sync_configured_targets(value: &FieldAvailability<SyncConfiguredTargets>) -> String {
+    match value {
+        FieldAvailability::Available(value) => {
+            let target_header_height = value.maybe_target_header_height.map_or_else(
+                || "Unavailable: no target header configured".to_string(),
+                |height| height.to_string(),
+            );
+            format!(
+                "outbound_peers={} target_header_height={target_header_height}",
+                value.target_outbound_peers
+            )
+        }
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
+fn sync_attempt_counters(value: &FieldAvailability<SyncAttemptCounters>) -> String {
+    match value {
+        FieldAvailability::Available(value) => format!(
+            "attempted_peers={} connected_peers={} failed_peers={} max_sync_rounds={}",
+            value.attempted_peers, value.connected_peers, value.failed_peers, value.max_sync_rounds
+        ),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
 fn sync_progress_signal(value: &FieldAvailability<SyncProgressSignal>) -> String {
     match value {
         FieldAvailability::Available(value) => sync_progress_signal_name(*value).to_string(),
@@ -264,12 +291,9 @@ fn sync_progress_signal(value: &FieldAvailability<SyncProgressSignal>) -> String
     }
 }
 
-fn sync_lag(value: &FieldAvailability<SyncLagStatus>) -> String {
+fn sync_stop_reason(value: &FieldAvailability<SyncStopReasonStatus>) -> String {
     match value {
-        FieldAvailability::Available(value) => format!(
-            "headers={} blocks={}",
-            value.headers_remaining, value.blocks_remaining
-        ),
+        FieldAvailability::Available(value) => value.label.clone(),
         FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
     }
 }
