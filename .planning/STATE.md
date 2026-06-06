@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Unattended Mainnet Node Operation Readiness
 status: executing
-stopped_at: Completed 61-01-PLAN.md
-last_updated: "2026-06-06T05:01:43.798Z"
+stopped_at: Completed 61-02-PLAN.md
+last_updated: "2026-06-06T05:33:26.816Z"
 last_activity: 2026-06-06
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 7
-  completed_plans: 2
-  percent: 29
+  completed_plans: 3
+  percent: 43
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-05)
 
 Milestone: v1.5 Unattended Mainnet Node Operation Readiness
 Phase: 61 (Resource Bounds and Recovery Taxonomy) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-06-06
 
@@ -60,6 +60,7 @@ Progress: [###-------] 29%
 - Trend: v1.5 completed Phase 60 and Phase 61 plan 1; ready for Phase 61 plan 2.
 
 | Phase 61 P01 | 20m 23s | 2 tasks | 12 files |
+| Phase 61-resource-bounds-and-recovery-taxonomy P02 | 23min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -84,6 +85,9 @@ Recent decisions affecting current work:
 - [Phase 61]: Expose recovery categories as a typed serde enum while keeping recovery_action as separate human guidance.
 - [Phase 61]: Default missing persisted recovery_category values to unavailable so older RuntimeMetadata remains readable.
 - [Phase 61]: Register the new Rust status child module in parity breadcrumbs before committing to satisfy repo rules.
+- [Phase 61-resource-bounds-and-recovery-taxonomy]: Storage action and StorageError categories take precedence over peer and network retry guidance.
+- [Phase 61-resource-bounds-and-recovery-taxonomy]: Lock-contention classification uses word-boundary matching so unrelated words such as block do not match lock.
+- [Phase 61-resource-bounds-and-recovery-taxonomy]: The sync recovery Rust module is committed with its parity breadcrumb because AGENTS.md requires breadcrumbs for first-party Rust source files.
 
 ### Pending Todos
 
@@ -98,6 +102,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-06T05:01:43.795Z
-Stopped at: Completed 61-01-PLAN.md
+Last session: 2026-06-06T05:33:26.814Z
+Stopped at: Completed 61-02-PLAN.md
 Resume file: None
