@@ -4,6 +4,7 @@
 // - packages/bitcoin-knots/src/sync.cpp
 
 mod projection;
+mod recovery;
 mod summary;
 
 use std::{fmt, net::SocketAddr, path::PathBuf};

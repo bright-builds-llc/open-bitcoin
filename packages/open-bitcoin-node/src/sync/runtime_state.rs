@@ -120,10 +120,15 @@ impl DurableSyncRuntime {
 
     pub(super) fn write_runtime_error_log(&self, error: &SyncRuntimeError, timestamp: i64) {
         let signal = error.health_signal();
+        let recovery_category = error.recovery_category();
         let record = StructuredLogRecord {
             level: super::progress::structured_log_level(signal.level),
             source: signal.source,
-            message: signal.message,
+            message: format!(
+                "{}; recovery_category={}",
+                signal.message,
+                recovery_category.as_str()
+            ),
             timestamp_unix_seconds: u64::try_from(timestamp).unwrap_or(0),
         };
         let _ = self.append_structured_record(&record);
@@ -381,6 +386,13 @@ impl DurableSyncRuntime {
         sync.last_error = match maybe_last_error {
             Some(value) => FieldAvailability::available(value),
             None => FieldAvailability::unavailable("no sync error recorded"),
+        };
+        sync.recovery_category = match metadata.maybe_last_recovery_action {
+            Some(value) => FieldAvailability::available(value.recovery_category()),
+            None => match summary.recovery_category() {
+                Some(value) => FieldAvailability::available(value),
+                None => FieldAvailability::unavailable("no recovery category recorded"),
+            },
         };
         sync.recovery_action = match metadata.maybe_last_recovery_action {
             Some(value) => FieldAvailability::available(value.operator_message().to_string()),

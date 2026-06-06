@@ -636,6 +636,7 @@
       "files": [
         "packages/open-bitcoin-node/src/sync/types.rs",
         "packages/open-bitcoin-node/src/sync/types/projection.rs",
+        "packages/open-bitcoin-node/src/sync/types/recovery.rs",
         "packages/open-bitcoin-node/src/sync/types/summary.rs"
       ],
       "breadcrumbs": [

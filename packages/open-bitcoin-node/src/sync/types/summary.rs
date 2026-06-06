@@ -10,16 +10,17 @@ use crate::{
     logging::{StructuredLogLevel, StructuredLogRecord},
     status::{
         PeerCounts, SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal,
-        SyncResourcePressure,
+        SyncRecoveryCategory, SyncResourcePressure,
     },
 };
 
 use super::{
-    PeerFailureReason, PeerSyncState, SyncNetwork, SyncRunSummary,
+    PeerFailureReason, PeerSyncState, SyncNetwork, SyncRunSummary, SyncStopReason,
     projection::{
         health_signal_log_record, peer_outcome_log_records, peer_telemetry, progress_ratio,
         sync_phase_name,
     },
+    recovery::recovery_category_from_error_detail,
 };
 
 const MAX_HEADER_REQUESTS_IN_FLIGHT_PER_PEER: u64 = 1;
@@ -88,7 +89,10 @@ impl SyncRunSummary {
                 Some(value) => FieldAvailability::available(value),
                 None => FieldAvailability::unavailable("no sync error recorded"),
             },
-            recovery_category: FieldAvailability::unavailable("no recovery category recorded"),
+            recovery_category: match self.recovery_category() {
+                Some(value) => FieldAvailability::available(value),
+                None => FieldAvailability::unavailable("no recovery category recorded"),
+            },
             recovery_action: FieldAvailability::unavailable("no recovery action required"),
             resource_pressure: FieldAvailability::available(SyncResourcePressure {
                 blocks_in_flight: 0,
@@ -118,6 +122,37 @@ impl SyncRunSummary {
             .filter_map(|outcome| outcome.maybe_failure_reason.as_ref())
             .next()
             .map(PeerFailureReason::operator_recovery_action)
+    }
+
+    pub(crate) fn recovery_category(&self) -> Option<SyncRecoveryCategory> {
+        if let Some(category) = self
+            .maybe_stop_reason
+            .and_then(SyncStopReason::recovery_category)
+        {
+            return Some(category);
+        }
+
+        let maybe_detail_category = self
+            .latest_error_message()
+            .and_then(|detail| recovery_category_from_error_detail(&detail));
+        if let Some(category) = maybe_detail_category
+            && storage_recovery_category(category)
+        {
+            return Some(category);
+        }
+
+        if let Some(category) = self
+            .peer_outcomes
+            .iter()
+            .rev()
+            .filter_map(|outcome| outcome.maybe_failure_reason.as_ref())
+            .next()
+            .map(PeerFailureReason::recovery_category)
+        {
+            return Some(category);
+        }
+
+        maybe_detail_category
     }
 
     pub(crate) fn progress_signal(&self) -> SyncProgressSignal {
@@ -240,6 +275,16 @@ impl SyncRunSummary {
     }
 }
 
+const fn storage_recovery_category(category: SyncRecoveryCategory) -> bool {
+    matches!(
+        category,
+        SyncRecoveryCategory::IncompatibleSchema
+            | SyncRecoveryCategory::StoreCorruption
+            | SyncRecoveryCategory::StorageLockContention
+            | SyncRecoveryCategory::StorageBackendFailure
+    )
+}
+
 fn progress_signal_name(signal: SyncProgressSignal) -> &'static str {
     match signal {
         SyncProgressSignal::HeaderProgress => "header_progress",
@@ -255,7 +300,7 @@ fn progress_signal_name(signal: SyncProgressSignal) -> &'static str {
 mod tests {
     use crate::{
         FieldAvailability, MetricKind, MetricSample, SyncStopReason,
-        status::{PeerCounts, SyncProgressSignal},
+        status::{PeerCounts, SyncProgressSignal, SyncRecoveryCategory},
         sync::{
             PeerContribution, PeerFailureReason, PeerSyncOutcome, PeerSyncState, SyncNetwork,
             SyncPeerAddress, SyncRunSummary,
@@ -325,7 +370,7 @@ mod tests {
         );
         assert_eq!(
             status.recovery_category,
-            FieldAvailability::unavailable("no recovery category recorded")
+            FieldAvailability::available(SyncRecoveryCategory::PublicNetworkUnreachable)
         );
         assert_eq!(
             peer_status.peer_counts,
@@ -384,6 +429,14 @@ mod tests {
         assert_eq!(
             stopped_status.phase,
             FieldAvailability::available("shutdown_requested".to_string())
+        );
+        assert_eq!(
+            paused_status.recovery_category,
+            FieldAvailability::available(SyncRecoveryCategory::OperatorCancellation)
+        );
+        assert_eq!(
+            stopped_status.recovery_category,
+            FieldAvailability::available(SyncRecoveryCategory::OperatorCancellation)
         );
         assert!(
             paused_records

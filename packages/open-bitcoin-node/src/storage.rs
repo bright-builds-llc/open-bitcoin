@@ -199,11 +199,7 @@ impl StorageError {
                 SyncRecoveryCategory::StorageBackendFailure
             }
             Self::BackendFailure { message, .. } => {
-                let lower_message = message.to_ascii_lowercase();
-                if lower_message.contains("lock")
-                    || lower_message.contains("locked")
-                    || lower_message.contains("contention")
-                {
+                if contains_storage_lock_signal(message) {
                     return SyncRecoveryCategory::StorageLockContention;
                 }
 
@@ -222,6 +218,28 @@ impl StorageError {
             | Self::BackendFailure { action, .. } => Some(*action),
         }
     }
+}
+
+fn contains_storage_lock_signal(message: &str) -> bool {
+    let lower_message = message.to_ascii_lowercase();
+    contains_ascii_word(&lower_message, "lock")
+        || contains_ascii_word(&lower_message, "locked")
+        || lower_message.contains("contention")
+}
+
+fn contains_ascii_word(haystack: &str, needle: &str) -> bool {
+    haystack.match_indices(needle).any(|(start, _)| {
+        let end = start + needle.len();
+        let before_is_boundary =
+            start == 0 || is_ascii_word_boundary(haystack.as_bytes()[start - 1]);
+        let after_is_boundary =
+            end == haystack.len() || is_ascii_word_boundary(haystack.as_bytes()[end]);
+        before_is_boundary && after_is_boundary
+    })
+}
+
+const fn is_ascii_word_boundary(byte: u8) -> bool {
+    !byte.is_ascii_alphanumeric()
 }
 
 impl fmt::Display for StorageError {
@@ -360,6 +378,11 @@ mod tests {
             message: "flush failed".to_string(),
             action: StorageRecoveryAction::Restart,
         };
+        let block_backend_error = StorageError::BackendFailure {
+            namespace: StorageNamespace::Headers,
+            message: "block flush failed".to_string(),
+            action: StorageRecoveryAction::Restart,
+        };
         let interrupted_write = StorageError::InterruptedWrite {
             namespace: StorageNamespace::Headers,
             action: StorageRecoveryAction::Restart,
@@ -373,6 +396,7 @@ mod tests {
             locked_error.recovery_category(),
             contention_error.recovery_category(),
             backend_error.recovery_category(),
+            block_backend_error.recovery_category(),
             interrupted_write.recovery_category(),
         ];
         let action_categories = [
@@ -391,6 +415,7 @@ mod tests {
                 SyncRecoveryCategory::StorageLockContention,
                 SyncRecoveryCategory::StorageLockContention,
                 SyncRecoveryCategory::StorageLockContention,
+                SyncRecoveryCategory::StorageBackendFailure,
                 SyncRecoveryCategory::StorageBackendFailure,
                 SyncRecoveryCategory::StorageBackendFailure,
             ]
