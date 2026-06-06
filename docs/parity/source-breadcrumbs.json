@@ -716,7 +716,8 @@
       "label": "node-status-contract",
       "files": [
         "packages/open-bitcoin-node/src/status.rs",
-        "packages/open-bitcoin-node/src/status/recovery.rs"
+        "packages/open-bitcoin-node/src/status/recovery.rs",
+        "packages/open-bitcoin-node/src/status/tests.rs"
       ],
       "breadcrumbs": []
     },
