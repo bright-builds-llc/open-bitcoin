@@ -5,11 +5,11 @@ support evidence, RPC-facing blockchain info, metrics projections, structured
 logs, and live-smoke snapshots. Observability writers and readers may keep their
 own retention policies, but they must not reinterpret header height, downloaded
 block height, connected block height, peer compatibility state, progress signal,
-or latest error independently from the shared snapshot.
+recovery_category, or latest error independently from the shared snapshot.
 
 ## Default metrics retention
 
-Metrics history defaults to a 30 seconds sampling interval, 2880 samples per series, and a 24 hours maximum age. The intent is to give status and dashboard consumers a bounded day-scale window without creating unbounded runtime storage.
+Metrics history defaults to a 30 seconds sampling interval, 2880 samples per series, and a 24 hours maximum age. The intent is to give status and dashboard consumers bounded numeric samples for a day-scale window without creating unbounded runtime storage.
 
 Required metric kinds are sync height, header height, downloaded block height,
 connected block height, peer count, mempool transactions, wallet trusted balance
@@ -26,10 +26,20 @@ Managed runtime log files use the `open-bitcoin-runtime-<unix_day>.jsonl` naming
 Sync summary log records must report the same progress dimensions that status,
 dashboard, support evidence, RPC-facing blockchain info, metrics projections,
 and live-smoke snapshots use: header height, downloaded block height, connected
-block height, progress signal, and last successful progress timestamp when one
-is known.
+block height, progress signal, recovery_category, and last successful progress
+timestamp when one is known.
 
 Status and dashboard consumers must read these contracts instead of inventing renderer-local retention windows.
+
+## Resource and recovery vocabulary
+
+Status, structured logs, metrics projections, live-smoke summaries, and support
+evidence use the shared sync vocabulary for `progress_signal`,
+`recovery_category`, `resource_pressure`, and recovery guidance. Metrics remain
+bounded numeric samples; support evidence remains an allowlisted compact summary
+rather than a raw daemon log, raw peer table, or retained report array.
+
+The retry-state bound is: peer retry state is keyed by resolved endpoint and bounded by candidate peers/outbound target per cycle. The storage-write bound is: durable storage writes are synchronous adapter calls with no queued write backlog.
 
 ## Phase Boundaries
 

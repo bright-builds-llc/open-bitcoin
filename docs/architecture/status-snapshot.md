@@ -54,9 +54,28 @@ chainstate progress:
 - `block_height`: compatibility alias for `connected_block_height`.
 
 Consumers should use the explicit downloaded and connected fields for recovery
-diagnostics. `last_error` and `recovery_action` are separate fields so a status
-snapshot can report active progress and the latest recoverable error at the
-same time.
+diagnostics. `last_error`, `recovery_category`, and `recovery_action` are
+separate fields so a status snapshot can report active progress, the stable
+machine recovery label, the latest recoverable error, and the human next-action
+text at the same time.
+
+`sync.recovery_category` is the stable machine label for unattended sync
+recovery. Current values are:
+
+- `clean_shutdown`
+- `unclean_shutdown`
+- `incompatible_schema`
+- `store_corruption`
+- `storage_lock_contention`
+- `storage_backend_failure`
+- `resource_exhaustion`
+- `invalid_peer_data`
+- `public_network_unreachable`
+- `operator_cancellation`
+
+`sync.recovery_action` remains human guidance and may change wording without
+changing the category label. Storage recovery categories take precedence over
+peer or public-network categories when both are available.
 
 `sync.progress_signal` is a coarse machine-readable summary of the latest sync
 run. Current values are:
@@ -79,9 +98,14 @@ status remains truthful even when the public network is unavailable.
 ## Sync resource pressure
 
 `sync.resource_pressure` reports observed pressure and configured bounds
-together. Consumers should treat `blocks_in_flight`, `outbound_peers`, and
-durable progress counters as observations, while the `max_*` fields are the
-currently configured runtime envelope:
+together. Consumers should treat observed fields and durable progress counters
+as observations:
+
+- `blocks_in_flight`
+- `outbound_peers`
+
+The remaining resource-pressure fields are the currently configured runtime
+envelope:
 
 - `max_header_requests_in_flight_per_peer`
 - `max_headers_per_message`

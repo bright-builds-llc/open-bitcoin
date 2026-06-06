@@ -260,12 +260,13 @@ Pass evidence for the restart run is:
   stronger evidence but is not required when durable same-datadir resume is
   confirmed and the report includes a typed post-restart blocker
 
-Recovery diagnosis categories are intentionally coarse and operator-facing:
-`peer_incompatibility`, `public_network_unreachable`, `invalid_peer_data`,
-`store_corruption`, `store_incompatibility`, `resource_exhaustion`, and
-`intentional_cancellation`. Storage incompatibility or corruption wins over peer
-guidance so operators repair or preserve the datadir before retrying network
-experiments.
+Recovery diagnosis categories use the same Phase 61 labels as
+`sync.recovery_category`: `clean_shutdown`, `unclean_shutdown`,
+`incompatible_schema`, `store_corruption`, `storage_lock_contention`,
+`storage_backend_failure`, `resource_exhaustion`, `invalid_peer_data`,
+`public_network_unreachable`, and `operator_cancellation`. Storage categories
+outrank peer/network guidance so operators repair or preserve the datadir before
+retrying network experiments.
 
 ### Runtime resource bounds
 
@@ -284,6 +285,16 @@ The sync loop has a bounded public-network resource envelope:
   samples per series, and 24 hours maximum age.
 - Structured logs keep bounded files by default: daily rotation, 14 files, 14
   days, and 268435456 bytes total.
+
+Active resource bounds are reported through `sync.resource_pressure` using
+these `SyncResourcePressure` fields: `blocks_in_flight`,
+`max_header_requests_in_flight_per_peer`, `max_headers_per_message`,
+`max_blocks_in_flight_per_peer`, `max_blocks_in_flight_total`,
+`max_messages_per_peer`, `max_sync_rounds`, `outbound_peers`, and
+`target_outbound_peers`. Retry state, peer outcomes, metrics samples,
+structured logs, and support evidence remain bounded by config or retention
+policies or by compact summaries, and Phase 61 adds no unbounded retained
+arrays. There is no retry queue: peer retry state is keyed by resolved endpoint and bounded by candidate peers/outbound target per cycle. The storage-write bound is: durable storage writes are synchronous adapter calls with no queued write backlog.
 
 Inspect the active bounds through the shared status surface:
 
@@ -317,9 +328,15 @@ or recovery:
   and connected chainstate, not a wall-clock ETA.
 - `sync.last_error` records the latest durable runtime or peer failure when one
   was observed.
-- `sync.recovery_action` reports the highest-priority operator action. Storage
-  recovery metadata wins over peer guidance because incompatible or corrupt
-  stores must be handled before retrying sync.
+- `sync.recovery_category` reports the stable machine label for the current
+  recovery state: `clean_shutdown`, `unclean_shutdown`, `incompatible_schema`,
+  `store_corruption`, `storage_lock_contention`, `storage_backend_failure`,
+  `resource_exhaustion`, `invalid_peer_data`,
+  `public_network_unreachable`, or `operator_cancellation`.
+- `sync.recovery_action` reports the highest-priority human next-action text.
+  Storage recovery metadata wins over peer guidance because incompatible,
+  corrupt, locked, or backend-failed stores must be handled before retrying
+  sync.
 
 Metrics and structured logs use the same progress vocabulary. The bounded
 metrics history records `header_height`, `downloaded_block_height`,
