@@ -552,6 +552,84 @@ fn spawn_test_sync_control_worker(receiver: DaemonSyncControlReceiver) -> thread
     })
 }
 
+fn phase62_runtime_metadata() -> RuntimeMetadata {
+    RuntimeMetadata {
+        maybe_sync_state: Some(DurableSyncState {
+            sync: SyncStatus {
+                network: FieldAvailability::available("main".to_string()),
+                chain_tip: FieldAvailability::available(ChainTipStatus {
+                    height: 840_004,
+                    block_hash: "00".repeat(32),
+                }),
+                sync_progress: FieldAvailability::available(SyncProgress {
+                    header_height: 840_200,
+                    block_height: 840_004,
+                    downloaded_block_height: 840_006,
+                    connected_block_height: 840_004,
+                    maybe_downloaded_block_hash: Some("11".repeat(32)),
+                    maybe_connected_block_hash: Some("00".repeat(32)),
+                    progress_ratio: 840_004.0 / 840_200.0,
+                    messages_processed: 42,
+                    headers_received: 100,
+                    blocks_received: 3,
+                }),
+                lifecycle: FieldAvailability::available(SyncLifecycleState::Active),
+                phase: FieldAvailability::available("block_download".to_string()),
+                configured_targets: FieldAvailability::available(SyncConfiguredTargets {
+                    target_outbound_peers: 4,
+                    maybe_target_header_height: Some(840_200),
+                }),
+                attempt_counters: FieldAvailability::available(SyncAttemptCounters {
+                    attempted_peers: 3,
+                    connected_peers: 2,
+                    failed_peers: 1,
+                    max_sync_rounds: 8,
+                }),
+                progress_signal: FieldAvailability::available(SyncProgressSignal::HeaderProgress),
+                lag: FieldAvailability::available(SyncLagStatus {
+                    headers_remaining: 0,
+                    blocks_remaining: 100,
+                }),
+                last_successful_progress_unix_seconds: FieldAvailability::available(1_715_000_000),
+                latest_stop_reason: FieldAvailability::available(SyncStopReasonStatus {
+                    label: "target_header_reached".to_string(),
+                    message: "sync header target reached".to_string(),
+                }),
+                last_error: FieldAvailability::available(
+                    "peer stalled before block connect".to_string(),
+                ),
+                recovery_category: FieldAvailability::available(
+                    SyncRecoveryCategory::InvalidPeerData,
+                ),
+                recovery_action: FieldAvailability::available(
+                    "Restart the node and retry the storage operation.".to_string(),
+                ),
+                resource_pressure: FieldAvailability::available(SyncResourcePressure {
+                    blocks_in_flight: 8,
+                    max_header_requests_in_flight_per_peer: 1,
+                    max_headers_per_message: 2_000,
+                    max_blocks_in_flight_per_peer: 16,
+                    max_blocks_in_flight_total: 64,
+                    max_messages_per_peer: 64,
+                    max_sync_rounds: 8,
+                    outbound_peers: 2,
+                    target_outbound_peers: 4,
+                }),
+            },
+            peers: PeerStatus {
+                peer_counts: FieldAvailability::available(PeerCounts {
+                    inbound: 0,
+                    outbound: 2,
+                }),
+                recent_peers: FieldAvailability::available(Vec::new()),
+            },
+            health_signals: Vec::new(),
+            updated_at_unix_seconds: 1_715_000_000,
+        }),
+        ..RuntimeMetadata::default()
+    }
+}
+
 #[test]
 fn get_blockchain_info_uses_durable_connected_block_height_not_downloaded_height() {
     // Arrange
@@ -568,13 +646,13 @@ fn get_blockchain_info_uses_durable_connected_block_height_not_downloaded_height
                             block_hash: "00".repeat(32),
                         }),
                         sync_progress: FieldAvailability::available(SyncProgress {
-                            header_height: 840_100,
+                            header_height: 840_200,
                             block_height: 840_004,
                             downloaded_block_height: 840_006,
                             connected_block_height: 840_004,
                             maybe_downloaded_block_hash: Some("11".repeat(32)),
                             maybe_connected_block_hash: Some("00".repeat(32)),
-                            progress_ratio: 0.998,
+                            progress_ratio: 840_004.0 / 840_200.0,
                             messages_processed: 42,
                             headers_received: 100,
                             blocks_received: 3,
@@ -583,7 +661,7 @@ fn get_blockchain_info_uses_durable_connected_block_height_not_downloaded_height
                         phase: FieldAvailability::available("block_download".to_string()),
                         configured_targets: FieldAvailability::available(SyncConfiguredTargets {
                             target_outbound_peers: 4,
-                            maybe_target_header_height: Some(840_100),
+                            maybe_target_header_height: Some(840_200),
                         }),
                         attempt_counters: FieldAvailability::available(SyncAttemptCounters {
                             attempted_peers: 3,
@@ -592,7 +670,7 @@ fn get_blockchain_info_uses_durable_connected_block_height_not_downloaded_height
                             max_sync_rounds: 8,
                         }),
                         progress_signal: FieldAvailability::available(
-                            SyncProgressSignal::AwaitingBlocks,
+                            SyncProgressSignal::HeaderProgress,
                         ),
                         lag: FieldAvailability::available(SyncLagStatus {
                             headers_remaining: 0,
@@ -602,10 +680,8 @@ fn get_blockchain_info_uses_durable_connected_block_height_not_downloaded_height
                             1_715_000_000,
                         ),
                         latest_stop_reason: FieldAvailability::available(SyncStopReasonStatus {
-                            label: "no_progress".to_string(),
-                            message:
-                                "sync stopped with no new header or block progress after 8 rounds"
-                                    .to_string(),
+                            label: "target_header_reached".to_string(),
+                            message: "sync header target reached".to_string(),
                         }),
                         last_error: FieldAvailability::available(
                             "peer stalled before block connect".to_string(),
@@ -666,7 +742,7 @@ fn get_blockchain_info_uses_durable_connected_block_height_not_downloaded_height
     .expect("blockchain");
 
     // Assert
-    assert_eq!(blockchain["headers"], json!(840100));
+    assert_eq!(blockchain["headers"], json!(840200));
     assert_eq!(blockchain["blocks"], json!(840004));
     assert_eq!(blockchain["initialblockdownload"], json!(true));
     assert_eq!(
@@ -675,11 +751,53 @@ fn get_blockchain_info_uses_durable_connected_block_height_not_downloaded_height
     );
     assert_eq!(
         blockchain["warnings"][1],
-        json!("recovery_category=invalid_peer_data")
+        json!("progress_signal=header_progress")
     );
     assert_eq!(
         blockchain["warnings"][2],
+        json!("latest_stop_reason=target_header_reached")
+    );
+    assert_eq!(
+        blockchain["warnings"][3],
+        json!("recovery_category=invalid_peer_data")
+    );
+    assert_eq!(
+        blockchain["warnings"][4],
         json!("Restart the node and retry the storage operation.")
+    );
+}
+
+#[test]
+fn open_bitcoin_sync_status_returns_phase62_metadata_fields() {
+    // Arrange
+    let path = temp_store_path("sync-status-phase62");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    store
+        .save_runtime_metadata(&phase62_runtime_metadata(), PersistMode::Sync)
+        .expect("save metadata");
+    let mut context = empty_context();
+    context.set_daemon_sync_control(DaemonSyncControl::store_backed(store, PersistMode::Sync));
+
+    // Act
+    let status = dispatch(
+        &mut context,
+        MethodCall::OpenBitcoinSyncStatus(OpenBitcoinSyncStatusRequest::default()),
+    )
+    .expect("sync status");
+
+    // Assert
+    assert_eq!(
+        status["metadata"]["maybe_sync_state"]["sync"]["configured_targets"]["value"]["target_outbound_peers"],
+        json!(4)
+    );
+    assert_eq!(
+        status["metadata"]["maybe_sync_state"]["sync"]["attempt_counters"]["value"]["attempted_peers"],
+        json!(3)
+    );
+    assert_eq!(
+        status["metadata"]["maybe_sync_state"]["sync"]["latest_stop_reason"]["value"]["label"],
+        json!("target_header_reached")
     );
 }
 

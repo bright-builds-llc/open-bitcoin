@@ -3,7 +3,13 @@
 
 use std::{fmt, path::Path};
 
-use open_bitcoin_node::{FieldAvailability, FjallNodeStore, RuntimeMetadata, SyncLifecycleState};
+use open_bitcoin_node::{
+    DurableSyncState, FieldAvailability, FjallNodeStore, RuntimeMetadata, SyncLifecycleState,
+    status::{
+        PeerCounts, SyncAttemptCounters, SyncConfiguredTargets, SyncProgress, SyncProgressSignal,
+        SyncResourcePressure,
+    },
+};
 use open_bitcoin_rpc::{
     JsonRpcId, JsonRpcVersion, RpcErrorDetail, RpcRequestEnvelope,
     method::OpenBitcoinSyncControlResponse,
@@ -306,33 +312,120 @@ pub(super) fn render_config_paths(
     ))
 }
 
+#[rustfmt::skip]
 fn render_sync_status(metadata: &open_bitcoin_node::RuntimeMetadata) -> String {
-    let lifecycle = metadata
-        .maybe_sync_state
-        .as_ref()
-        .and_then(|state| match state.sync.lifecycle {
-            open_bitcoin_node::FieldAvailability::Available(value) => {
-                Some(format!("{value:?}").to_lowercase())
-            }
-            open_bitcoin_node::FieldAvailability::Unavailable { .. } => None,
-        })
-        .unwrap_or_else(|| "unavailable".to_string());
-    let phase = metadata
-        .maybe_sync_state
-        .as_ref()
-        .and_then(|state| match &state.sync.phase {
-            open_bitcoin_node::FieldAvailability::Available(value) => Some(value.clone()),
-            open_bitcoin_node::FieldAvailability::Unavailable { .. } => None,
-        })
-        .unwrap_or_else(|| "unavailable".to_string());
-    let updated_at = metadata
-        .maybe_sync_state
-        .as_ref()
-        .map_or(0, |state| state.updated_at_unix_seconds);
+    let maybe_sync_state = metadata.maybe_sync_state.as_ref();
     format!(
-        "Sync paused: {}\nSync lifecycle: {}\nSync phase: {}\nLast clean shutdown: {}\nLast update: {}",
-        metadata.sync_control.paused, lifecycle, phase, metadata.last_clean_shutdown, updated_at
+        "Sync paused: {}\nSync lifecycle: {}\nSync phase: {}\nConfigured targets: {}\nAttempt counters: {}\nProgress signal: {}\nLast progress: {}\nLatest stop reason: {}\nLatest error: {}\nRecovery category: {}\nRecovery action: {}\nResource pressure: {}\nPeer health: {}\nHeader height: {}\nDownloaded block: {}\nConnected block: {}\nBounded counters: {}\nLast clean shutdown: {}\nLast update: {}",
+        metadata.sync_control.paused,
+        sync_field(maybe_sync_state, |state| &state.sync.lifecycle, |value| format!("{value:?}").to_lowercase()),
+        sync_field(maybe_sync_state, |state| &state.sync.phase, Clone::clone),
+        sync_field(maybe_sync_state, |state| &state.sync.configured_targets, sync_targets_text),
+        sync_field(maybe_sync_state, |state| &state.sync.attempt_counters, sync_attempts_text),
+        sync_field(maybe_sync_state, |state| &state.sync.progress_signal, |value| sync_progress_signal_name(*value).to_string()),
+        sync_field(maybe_sync_state, |state| &state.sync.last_successful_progress_unix_seconds, |value| format!("{value} unix seconds")),
+        sync_field(maybe_sync_state, |state| &state.sync.latest_stop_reason, |value| value.label.clone()),
+        sync_field(maybe_sync_state, |state| &state.sync.last_error, Clone::clone),
+        sync_field(maybe_sync_state, |state| &state.sync.recovery_category, |value| value.as_str().to_string()),
+        sync_field(maybe_sync_state, |state| &state.sync.recovery_action, Clone::clone),
+        sync_field(maybe_sync_state, |state| &state.sync.resource_pressure, sync_pressure_text),
+        sync_field(maybe_sync_state, |state| &state.peers.peer_counts, peer_counts_text),
+        sync_field(maybe_sync_state, |state| &state.sync.sync_progress, |value| value.header_height.to_string()),
+        sync_field(maybe_sync_state, |state| &state.sync.sync_progress, downloaded_block_text),
+        sync_field(maybe_sync_state, |state| &state.sync.sync_progress, connected_block_text),
+        sync_field(maybe_sync_state, |state| &state.sync.sync_progress, bounded_counters_text),
+        metadata.last_clean_shutdown,
+        maybe_sync_state.map_or_else(|| "Unavailable: sync state unavailable".to_string(), |state| state.updated_at_unix_seconds.to_string()),
     )
+}
+
+fn sync_field<T>(
+    maybe_sync_state: Option<&DurableSyncState>,
+    field: impl FnOnce(&DurableSyncState) -> &FieldAvailability<T>,
+    render: impl FnOnce(&T) -> String,
+) -> String {
+    maybe_sync_state.map_or_else(
+        || "Unavailable: sync state unavailable".to_string(),
+        |state| field_text(field(state), render),
+    )
+}
+
+fn field_text<T>(value: &FieldAvailability<T>, render: impl FnOnce(&T) -> String) -> String {
+    match value {
+        FieldAvailability::Available(value) => render(value),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
+fn sync_targets_text(value: &SyncConfiguredTargets) -> String {
+    let target_header_height = value.maybe_target_header_height.map_or_else(
+        || "Unavailable: no target header configured".to_string(),
+        |height| height.to_string(),
+    );
+    format!(
+        "outbound_peers={} target_header_height={target_header_height}",
+        value.target_outbound_peers
+    )
+}
+
+fn sync_attempts_text(value: &SyncAttemptCounters) -> String {
+    format!(
+        "attempted_peers={} connected_peers={} failed_peers={} max_sync_rounds={}",
+        value.attempted_peers, value.connected_peers, value.failed_peers, value.max_sync_rounds
+    )
+}
+
+fn sync_pressure_text(value: &SyncResourcePressure) -> String {
+    format!(
+        "header_requests_in_flight_per_peer={} headers_per_message={} blocks_in_flight={}/{}/{} messages_per_peer={} sync_rounds={} outbound_peers={}/{}",
+        value.max_header_requests_in_flight_per_peer,
+        value.max_headers_per_message,
+        value.blocks_in_flight,
+        value.max_blocks_in_flight_per_peer,
+        value.max_blocks_in_flight_total,
+        value.max_messages_per_peer,
+        value.max_sync_rounds,
+        value.outbound_peers,
+        value.target_outbound_peers
+    )
+}
+
+fn peer_counts_text(value: &PeerCounts) -> String {
+    format!("inbound={} outbound={}", value.inbound, value.outbound)
+}
+
+fn downloaded_block_text(value: &SyncProgress) -> String {
+    let hash = value
+        .maybe_downloaded_block_hash
+        .as_deref()
+        .unwrap_or("Unavailable: no downloaded block hash recorded");
+    format!("height={} hash={hash}", value.downloaded_block_height)
+}
+
+fn connected_block_text(value: &SyncProgress) -> String {
+    let hash = value
+        .maybe_connected_block_hash
+        .as_deref()
+        .unwrap_or("Unavailable: no connected block hash recorded");
+    format!("height={} hash={hash}", value.connected_block_height)
+}
+
+fn bounded_counters_text(value: &SyncProgress) -> String {
+    format!(
+        "messages_processed={} headers_received={} blocks_received={}",
+        value.messages_processed, value.headers_received, value.blocks_received
+    )
+}
+
+fn sync_progress_signal_name(signal: SyncProgressSignal) -> &'static str {
+    match signal {
+        SyncProgressSignal::HeaderProgress => "header_progress",
+        SyncProgressSignal::BlockProgress => "block_progress",
+        SyncProgressSignal::WaitingForPeers => "waiting_for_peers",
+        SyncProgressSignal::PeerFailures => "peer_failures",
+        SyncProgressSignal::AwaitingBlocks => "awaiting_blocks",
+        SyncProgressSignal::Steady => "steady",
+    }
 }
 
 fn display_path(maybe_path: Option<&Path>) -> String {
@@ -357,11 +450,15 @@ mod tests {
         DurableSyncState, FieldAvailability, FjallNodeStore, PeerStatus, RuntimeMetadata,
         SyncLifecycleState, SyncStatus,
         status::{
-            SyncAttemptCounters, SyncConfiguredTargets, SyncProgressSignal, SyncStopReasonStatus,
+            PeerCounts, SyncAttemptCounters, SyncConfiguredTargets, SyncProgress,
+            SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure, SyncStopReasonStatus,
         },
     };
 
-    use super::{OperatorOutputFormat, SyncArgs, SyncCommand, execute_offline_sync_command};
+    use super::{
+        OperatorOutputFormat, SyncArgs, SyncCommand, execute_offline_sync_command,
+        render_sync_status,
+    };
 
     static NEXT_TEST_DIRECTORY_ID: AtomicU64 = AtomicU64::new(0);
 
@@ -376,47 +473,36 @@ mod tests {
         lifecycle: SyncLifecycleState,
         last_clean_shutdown: bool,
     ) -> RuntimeMetadata {
+        let unavailable = "not needed for sync-control test";
         RuntimeMetadata {
             last_clean_shutdown,
             maybe_sync_state: Some(DurableSyncState {
                 sync: SyncStatus {
                     network: FieldAvailability::available("mainnet".to_string()),
-                    chain_tip: FieldAvailability::unavailable("not needed for sync-control test"),
-                    sync_progress: FieldAvailability::unavailable(
-                        "not needed for sync-control test",
-                    ),
+                    chain_tip: FieldAvailability::unavailable(unavailable),
+                    sync_progress: FieldAvailability::unavailable(unavailable),
                     lifecycle: FieldAvailability::available(lifecycle),
                     phase: FieldAvailability::available("block_download".to_string()),
-                    configured_targets: FieldAvailability::<SyncConfiguredTargets>::unavailable(
-                        "not needed for sync-control test",
-                    ),
-                    attempt_counters: FieldAvailability::<SyncAttemptCounters>::unavailable(
-                        "not needed for sync-control test",
-                    ),
+                    configured_targets: FieldAvailability::unavailable(unavailable),
+                    attempt_counters: FieldAvailability::unavailable(unavailable),
                     progress_signal: FieldAvailability::available(
                         SyncProgressSignal::AwaitingBlocks,
                     ),
-                    lag: FieldAvailability::unavailable("not needed for sync-control test"),
+                    lag: FieldAvailability::unavailable(unavailable),
                     last_successful_progress_unix_seconds: FieldAvailability::unavailable(
-                        "not needed for sync-control test",
+                        unavailable,
                     ),
-                    latest_stop_reason: FieldAvailability::<SyncStopReasonStatus>::unavailable(
-                        "not needed for sync-control test",
-                    ),
+                    latest_stop_reason: FieldAvailability::unavailable(unavailable),
                     last_error: FieldAvailability::unavailable("no sync error recorded"),
                     recovery_category: FieldAvailability::unavailable(
                         "no recovery category recorded",
                     ),
                     recovery_action: FieldAvailability::unavailable("no recovery action required"),
-                    resource_pressure: FieldAvailability::unavailable(
-                        "not needed for sync-control test",
-                    ),
+                    resource_pressure: FieldAvailability::unavailable(unavailable),
                 },
                 peers: PeerStatus {
-                    peer_counts: FieldAvailability::unavailable("not needed for sync-control test"),
-                    recent_peers: FieldAvailability::unavailable(
-                        "not needed for sync-control test",
-                    ),
+                    peer_counts: FieldAvailability::unavailable(unavailable),
+                    recent_peers: FieldAvailability::unavailable(unavailable),
                 },
                 health_signals: Vec::new(),
                 updated_at_unix_seconds: 1,
@@ -473,5 +559,46 @@ mod tests {
         assert!(outcome.stdout.text.contains("Daemon sync paused"));
         assert!(metadata.sync_control.paused);
         let _ = fs::remove_dir_all(&path);
+    }
+
+    #[test]
+    #[rustfmt::skip]
+    fn render_sync_status_surfaces_phase62_truth_fields() {
+        // Arrange
+        let mut metadata = runtime_metadata_with_lifecycle(SyncLifecycleState::Active, true);
+        let state = metadata.maybe_sync_state.as_mut().expect("sync state");
+        state.updated_at_unix_seconds = 1_717_000_001;
+        state.sync.configured_targets = FieldAvailability::available(SyncConfiguredTargets { target_outbound_peers: 4, maybe_target_header_height: Some(840_200) });
+        state.sync.attempt_counters = FieldAvailability::available(SyncAttemptCounters { attempted_peers: 3, connected_peers: 2, failed_peers: 1, max_sync_rounds: 8 });
+        state.sync.progress_signal = FieldAvailability::available(SyncProgressSignal::HeaderProgress);
+        state.sync.sync_progress = FieldAvailability::available(SyncProgress { header_height: 840_200, block_height: 840_004, downloaded_block_height: 840_006, connected_block_height: 840_004, maybe_downloaded_block_hash: Some("22".repeat(32)), maybe_connected_block_hash: Some("11".repeat(32)), progress_ratio: 840_004.0 / 840_200.0, messages_processed: 7, headers_received: 3, blocks_received: 1 });
+        state.sync.last_successful_progress_unix_seconds = FieldAvailability::available(1_717_000_000);
+        state.sync.latest_stop_reason = FieldAvailability::available(SyncStopReasonStatus { label: "target_header_reached".to_string(), message: "sync header target reached".to_string() });
+        state.sync.last_error = FieldAvailability::available("peer stalled before block connect".to_string());
+        state.sync.recovery_category = FieldAvailability::available(SyncRecoveryCategory::InvalidPeerData);
+        state.sync.recovery_action = FieldAvailability::available("Retry sync after peer backoff.".to_string());
+        state.sync.resource_pressure = FieldAvailability::available(SyncResourcePressure { blocks_in_flight: 8, max_header_requests_in_flight_per_peer: 1, max_headers_per_message: 2_000, max_blocks_in_flight_per_peer: 16, max_blocks_in_flight_total: 64, max_messages_per_peer: 64, max_sync_rounds: 8, outbound_peers: 2, target_outbound_peers: 4 });
+        state.peers.peer_counts = FieldAvailability::available(PeerCounts { inbound: 0, outbound: 2 });
+
+        // Act
+        let rendered = render_sync_status(&metadata);
+
+        // Assert
+        for expected in ["Sync paused: false", "Sync lifecycle: active", "Sync phase: block_download", "Configured targets: outbound_peers=4 target_header_height=840200", "Attempt counters: attempted_peers=3 connected_peers=2 failed_peers=1 max_sync_rounds=8", "Progress signal: header_progress", "Last progress: 1717000000 unix seconds", "Latest stop reason: target_header_reached", "Latest error: peer stalled before block connect", "Recovery category: invalid_peer_data", "Recovery action: Retry sync after peer backoff.", "Resource pressure: header_requests_in_flight_per_peer=1 headers_per_message=2000 blocks_in_flight=8/16/64 messages_per_peer=64 sync_rounds=8 outbound_peers=2/4", "Peer health: inbound=0 outbound=2", "Header height: 840200", &format!("Downloaded block: height=840006 hash={}", "22".repeat(32)), &format!("Connected block: height=840004 hash={}", "11".repeat(32)), "Bounded counters: messages_processed=7 headers_received=3 blocks_received=1", "Last clean shutdown: true", "Last update: 1717000001"] {
+            assert!(rendered.contains(expected), "missing {expected}");
+        }
+
+        let state = metadata.maybe_sync_state.as_mut().expect("sync state");
+        state.sync.configured_targets = FieldAvailability::unavailable("targets unavailable");
+        state.sync.latest_stop_reason = FieldAvailability::unavailable("stop reason unavailable");
+        if let FieldAvailability::Available(progress) = &mut state.sync.sync_progress {
+            progress.maybe_downloaded_block_hash = None;
+            progress.maybe_connected_block_hash = None;
+        }
+        let unavailable = render_sync_status(&metadata);
+        assert!(unavailable.contains("Configured targets: Unavailable: targets unavailable"));
+        assert!(unavailable.contains("Latest stop reason: Unavailable: stop reason unavailable"));
+        assert!(unavailable.contains("Downloaded block: height=840006 hash=Unavailable: no downloaded block hash recorded"));
+        assert!(unavailable.contains("Connected block: height=840004 hash=Unavailable: no connected block hash recorded"));
     }
 }

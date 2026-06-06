@@ -10,7 +10,9 @@
 // - packages/bitcoin-knots/test/functional/interface_rpc.py
 
 use open_bitcoin_node::core::{codec::parse_transaction, wallet::SingleKeyDescriptor};
-use open_bitcoin_node::status::{FieldAvailability, SyncLifecycleState, SyncProgress};
+use open_bitcoin_node::status::{
+    FieldAvailability, SyncLifecycleState, SyncProgress, SyncProgressSignal,
+};
 
 use crate::{
     ManagedRpcContext,
@@ -124,6 +126,15 @@ fn durable_warnings(durable_sync_state: &open_bitcoin_node::DurableSyncState) ->
     if let FieldAvailability::Available(value) = &durable_sync_state.sync.last_error {
         warnings.push(value.clone());
     }
+    if let FieldAvailability::Available(value) = &durable_sync_state.sync.progress_signal {
+        warnings.push(format!(
+            "progress_signal={}",
+            sync_progress_signal_name(*value)
+        ));
+    }
+    if let FieldAvailability::Available(value) = &durable_sync_state.sync.latest_stop_reason {
+        warnings.push(format!("latest_stop_reason={}", value.label.as_str()));
+    }
     if let FieldAvailability::Available(value) = &durable_sync_state.sync.recovery_category {
         warnings.push(format!("recovery_category={}", value.as_str()));
     }
@@ -131,6 +142,17 @@ fn durable_warnings(durable_sync_state: &open_bitcoin_node::DurableSyncState) ->
         warnings.push(value.clone());
     }
     warnings
+}
+
+fn sync_progress_signal_name(signal: SyncProgressSignal) -> &'static str {
+    match signal {
+        SyncProgressSignal::HeaderProgress => "header_progress",
+        SyncProgressSignal::BlockProgress => "block_progress",
+        SyncProgressSignal::WaitingForPeers => "waiting_for_peers",
+        SyncProgressSignal::PeerFailures => "peer_failures",
+        SyncProgressSignal::AwaitingBlocks => "awaiting_blocks",
+        SyncProgressSignal::Steady => "steady",
+    }
 }
 
 fn u64_to_u32(value: u64) -> u32 {
