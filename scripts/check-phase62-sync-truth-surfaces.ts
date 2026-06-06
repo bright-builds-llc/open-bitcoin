@@ -148,9 +148,7 @@ function verifyRustAndCliSurfaces(
 function verifyStructuredEvidence(summaryRs: string, liveSmoke: string): void {
   requireAllContains(
     summaryRs,
-    STRUCTURED_LOG_LABELS.filter(
-      (label) => label !== "progress_signal=" && label !== "latest_stop_reason=",
-    ),
+    STRUCTURED_LOG_LABELS,
     "packages/open-bitcoin-node/src/sync/types/summary.rs",
   );
   requireAllContains(

@@ -1476,7 +1476,7 @@ fn sync_summary_projects_progress_signal_and_last_successful_timestamp() {
         FieldAvailability::available(1_777_225_099)
     );
     assert!(records.iter().any(|record| {
-        record.message.contains("signal=header_progress")
+        record.message.contains("progress_signal=header_progress")
             && record.message.contains("last_progress=1777225099")
     }));
 }
@@ -1553,7 +1553,11 @@ fn sync_summary_projects_structured_log_records() {
     assert!(summary_record.message.contains("header=44"));
     assert!(summary_record.message.contains("downloaded=44"));
     assert!(summary_record.message.contains("connected=43"));
-    assert!(summary_record.message.contains("signal=block_progress"));
+    assert!(
+        summary_record
+            .message
+            .contains("progress_signal=block_progress")
+    );
     assert!(summary_record.message.contains("last_progress=unavailable"));
     assert!(records.iter().any(|record| {
         record.level == StructuredLogLevel::Warn
@@ -1637,9 +1641,9 @@ fn phase62_structured_logs_keep_bounded_cycle_facts() {
         "header=840123",
         "downloaded=840120",
         "connected=840119",
-        "signal=block_progress",
+        "progress_signal=block_progress",
         "last_progress=unavailable",
-        "stop_reason=no_progress",
+        "latest_stop_reason=no_progress",
         "recovery_category=unavailable",
     ] {
         assert!(
@@ -1717,7 +1721,7 @@ fn phase62_status_and_structured_logs_agree_on_configured_targets() {
     };
     assert_eq!(stop_reason.label, "target_header_reached");
     assert!(summary_text.contains("target_header_height=840123"));
-    assert!(summary_text.contains("stop_reason=target_header_reached"));
+    assert!(summary_text.contains("latest_stop_reason=target_header_reached"));
 
     remove_dir_if_exists(&path);
 }
@@ -2539,7 +2543,7 @@ fn sync_status_and_log_records_include_message_header_block_counters() {
             && record.message.contains("header=0")
             && record.message.contains("downloaded=0")
             && record.message.contains("connected=0")
-            && record.message.contains("signal=block_progress")
+            && record.message.contains("progress_signal=block_progress")
     }));
 
     remove_dir_if_exists(&path);

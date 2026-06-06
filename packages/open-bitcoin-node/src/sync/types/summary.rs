@@ -248,7 +248,7 @@ impl SyncRunSummary {
         let target_header_height = self
             .maybe_target_header_height
             .map_or("unavailable".to_string(), |height| height.to_string());
-        let stop_reason = self
+        let latest_stop_reason = self
             .maybe_stop_reason
             .map_or("unavailable", SyncStopReason::label);
         let mut records = vec![
@@ -256,13 +256,13 @@ impl SyncRunSummary {
                 level: StructuredLogLevel::Info,
                 source: "sync".to_string(),
                 message: format!(
-                    "target_outbound_peers={} target_header_height={} attempted_peers={} connected_peers={} failed_peers={} stop_reason={} recovery_category={}",
+                    "target_outbound_peers={} target_header_height={} attempted_peers={} connected_peers={} failed_peers={} latest_stop_reason={} recovery_category={}",
                     self.target_outbound_peers,
                     target_header_height,
                     self.attempted_peers,
                     self.connected_peers,
                     self.failed_peers,
-                    stop_reason,
+                    latest_stop_reason,
                     recovery_category,
                 ),
                 timestamp_unix_seconds,
@@ -271,7 +271,7 @@ impl SyncRunSummary {
                 level: StructuredLogLevel::Info,
                 source: "sync".to_string(),
                 message: format!(
-                    "messages_processed={} headers_received={} blocks_received={} header={} downloaded={} connected={} signal={} last_progress={}",
+                    "messages_processed={} headers_received={} blocks_received={} header={} downloaded={} connected={} progress_signal={} last_progress={}",
                     self.messages_processed,
                     self.headers_received,
                     self.blocks_received,
@@ -454,9 +454,9 @@ mod tests {
             ]
         );
         assert!(records.iter().any(|record| {
-            record
-                .message
-                .contains("header=840100 downloaded=840006 connected=840004 signal=block_progress")
+            record.message.contains(
+                "header=840100 downloaded=840006 connected=840004 progress_signal=block_progress",
+            )
         }));
         assert!(records.iter().any(|record| {
             record
