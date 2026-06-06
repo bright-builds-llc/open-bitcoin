@@ -455,17 +455,17 @@ All claims in this research were verified or cited; no user-confirmation assumpt
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Exact Rust file placement for the new enum**
-   - What we know: `status.rs` owns shared serializable sync status fields and already defines serde snake_case enums. [VERIFIED: packages/open-bitcoin-node/src/status.rs:87]
-   - What's unclear: File-length and cohesion may make `status.rs` or `sync/types.rs` the better final location after implementation. [VERIFIED: Bright Builds code-shape standard]
-   - Recommendation: Start in `status.rs` for the shared wire/status contract; split only if file-length or ownership pressure justifies it, and update parity breadcrumbs if a new first-party Rust file is added. [VERIFIED: AGENTS.md; .planning/phases/61-resource-bounds-and-recovery-taxonomy/61-CONTEXT.md]
+   - Decision: `SyncRecoveryCategory` starts in `packages/open-bitcoin-node/src/status/recovery.rs` as the shared status/wire contract; split further only if implementation pressure justifies it.
+   - Rationale: `status.rs` owns shared serializable sync status fields, and a child module keeps the wire contract discoverable while avoiding additional renderer-local taxonomy definitions. [VERIFIED: packages/open-bitcoin-node/src/status.rs:87; .planning/phases/61-resource-bounds-and-recovery-taxonomy/61-CONTEXT.md D-04,D-06,D-07]
+   - Follow-through: Because this creates a first-party Rust source file, update `docs/parity/source-breadcrumbs.json` per repo-local parity breadcrumb rules. [VERIFIED: AGENTS.md]
 
 2. **Whether RPC gets a dedicated category field in Phase 61**
-   - What we know: RPC `getblockchaininfo` warnings currently include durable `last_error` and `recovery_action`. [VERIFIED: packages/open-bitcoin-rpc/src/dispatch/node.rs:122]
-   - What's unclear: Phase 62 owns broader long-run truth-surface expansion, so Phase 61 should avoid broad RPC schema rewrites unless RR-04 cannot be satisfied without a narrow additive field. [VERIFIED: .planning/ROADMAP.md Phase 62; .planning/phases/61-resource-bounds-and-recovery-taxonomy/61-CONTEXT.md]
-   - Recommendation: Prefer shared status/RPC sync-status category exposure first; only add `getblockchaininfo` warning wording if existing tests already cover it. [VERIFIED: .planning/phases/61-resource-bounds-and-recovery-taxonomy/61-CONTEXT.md D-07]
+   - Decision: Phase 61 exposes recovery category through shared status and narrow `getblockchaininfo` warnings; broader RPC truth-surface expansion remains Phase 62.
+   - Rationale: RR-04 and D-07 require the existing operator-visible RPC warning path to use the shared category label, but Phase 62 owns broader long-run truth-surface expansion and should not be pulled into Phase 61. [VERIFIED: .planning/ROADMAP.md Phase 62; .planning/phases/61-resource-bounds-and-recovery-taxonomy/61-CONTEXT.md D-07]
+   - Follow-through: Keep the Phase 61 RPC change additive and warning-scoped, preserving existing `last_error` and `recovery_action` warnings. [VERIFIED: packages/open-bitcoin-rpc/src/dispatch/node.rs:122]
 
 ## Environment Availability
 
