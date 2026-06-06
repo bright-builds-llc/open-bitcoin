@@ -769,7 +769,7 @@ fn open_bitcoin_support_bundle_writes_redacted_json_and_markdown() {
 }
 
 #[test]
-fn open_bitcoin_support_bundle_summarizes_v1_4_live_smoke_evidence() {
+fn open_bitcoin_support_bundle_summarizes_phase61_resource_recovery_evidence() {
     // Arrange
     let sandbox = TestSandbox::new("support-live-smoke-v2");
     let data_dir = sandbox.child("open-data");
@@ -849,7 +849,7 @@ fn open_bitcoin_support_bundle_summarizes_v1_4_live_smoke_evidence() {
                         "rawEndpoint": "192.0.2.10:8333"
                     },
                     "recoveryDiagnosis": {
-                        "category": "peer_incompatibility",
+                        "category": "storage_lock_contention",
                         "maybeLastError": null,
                         "maybeNoProgressCause": "handshake_failure",
                         "maybePeerFailureReason": "peer did not provide useful blocks",
@@ -892,6 +892,20 @@ fn open_bitcoin_support_bundle_summarizes_v1_4_live_smoke_evidence() {
                 "lifecycle": "active",
                 "outboundPeers": 2,
                 "messagesProcessed": 128,
+                "recoveryCategory": "invalid_peer_data",
+                "resourcePressure": {
+                    "blocksInFlight": 4,
+                    "maxHeaderRequestsInFlightPerPeer": 2,
+                    "maxHeadersPerMessage": 2_000,
+                    "maxBlocksInFlightPerPeer": 16,
+                    "maxBlocksInFlightTotal": 64,
+                    "maxMessagesPerPeer": 4_096,
+                    "maxSyncRounds": 16,
+                    "outboundPeers": 2,
+                    "targetOutboundPeers": 3,
+                    "rawEndpoint": "192.0.2.10:8333",
+                    "rawCookie": cookie_like_text
+                },
                 "maybeLastError": null,
                 "maybeLastSuccessfulProgressUnixSeconds": 1_780_600_120,
                 "recentPeers": [
@@ -1016,7 +1030,7 @@ fn open_bitcoin_support_bundle_summarizes_v1_4_live_smoke_evidence() {
     );
     assert_eq!(
         decoded["live_smoke"]["summary"]["restartResumeEvidence"]["recoveryDiagnosis"]["category"],
-        "peer_incompatibility"
+        "storage_lock_contention"
     );
     assert_eq!(
         decoded["live_smoke"]["summary"]["restartResumeEvidence"]["afterRestart"]["connectedBlockHeight"],
@@ -1034,6 +1048,18 @@ fn open_bitcoin_support_bundle_summarizes_v1_4_live_smoke_evidence() {
         decoded["live_smoke"]["summary"]["finalStatus"]["connectedBlockHeight"],
         840_004
     );
+    assert_eq!(
+        decoded["live_smoke"]["summary"]["finalStatus"]["recoveryCategory"],
+        "invalid_peer_data"
+    );
+    assert_eq!(
+        decoded["live_smoke"]["summary"]["finalStatus"]["resourcePressure"]["maxBlocksInFlightTotal"],
+        64
+    );
+    assert_eq!(
+        decoded["live_smoke"]["summary"]["finalStatus"]["resourcePressure"]["targetOutboundPeers"],
+        3
+    );
     assert_eq!(decoded["store_health"]["state"], "unavailable");
     assert_eq!(decoded["status"]["logs"]["path"]["state"], "unavailable");
     assert_eq!(
@@ -1048,6 +1074,8 @@ fn open_bitcoin_support_bundle_summarizes_v1_4_live_smoke_evidence() {
     assert!(markdown.contains("First block progress"));
     assert!(markdown.contains("Restart/resume evidence"));
     assert!(markdown.contains("Recovery diagnosis"));
+    assert!(markdown.contains("Recovery category"));
+    assert!(markdown.contains("Resource pressure"));
     assert!(markdown.contains("Final status"));
     assert!(markdown.contains("handshake_failure"));
     for rendered in [&json_text, &markdown] {

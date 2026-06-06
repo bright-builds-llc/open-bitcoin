@@ -173,7 +173,19 @@ fn push_live_smoke_summary(output: &mut String, summary: &Value) {
             restart_resume_evidence.get("recoveryDiagnosis"),
         );
     }
-    push_summary_field(output, "Final status", object.get("finalStatus"));
+    if let Some(final_status) = object.get("finalStatus") {
+        push_summary_field(output, "Final status", Some(final_status));
+        push_summary_field(
+            output,
+            "Recovery category",
+            final_status.get("recoveryCategory"),
+        );
+        push_summary_field(
+            output,
+            "Resource pressure",
+            final_status.get("resourcePressure"),
+        );
+    }
 }
 
 fn push_summary_field(output: &mut String, label: &str, maybe_value: Option<&Value>) {

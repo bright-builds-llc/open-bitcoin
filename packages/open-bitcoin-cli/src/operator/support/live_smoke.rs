@@ -88,8 +88,20 @@ const FINAL_STATUS_KEYS: &[&str] = &[
     "lifecycle",
     "outboundPeers",
     "messagesProcessed",
+    "recoveryCategory",
     "maybeLastError",
     "maybeLastSuccessfulProgressUnixSeconds",
+];
+const RESOURCE_PRESSURE_KEYS: &[&str] = &[
+    "blocksInFlight",
+    "maxHeaderRequestsInFlightPerPeer",
+    "maxHeadersPerMessage",
+    "maxBlocksInFlightPerPeer",
+    "maxBlocksInFlightTotal",
+    "maxMessagesPerPeer",
+    "maxSyncRounds",
+    "outboundPeers",
+    "targetOutboundPeers",
 ];
 
 pub(super) fn summary(value: &Value) -> Option<Value> {
@@ -131,7 +143,7 @@ fn summary_from_schema_v2(object: &Map<String, Value>) -> Option<Value> {
         &mut summary,
         "finalStatus",
         object.get("final_status"),
-        |value| summarize_object_fields(value, FINAL_STATUS_KEYS),
+        summarize_final_status,
     );
 
     value_from_map(summary)
@@ -223,6 +235,23 @@ fn summarize_restart_resume_evidence(value: &Value) -> Option<Value> {
         "afterRestart",
         object.get("afterRestart"),
         |value| summarize_object_fields(value, RESTART_PROGRESS_SUMMARY_KEYS),
+    );
+
+    value_from_map(summary)
+}
+
+fn summarize_final_status(value: &Value) -> Option<Value> {
+    if value.is_null() {
+        return Some(Value::Null);
+    }
+    let object = value.as_object()?;
+    let mut summary = Map::new();
+    copy_fields(&mut summary, object, FINAL_STATUS_KEYS);
+    insert_summarized_field(
+        &mut summary,
+        "resourcePressure",
+        object.get("resourcePressure"),
+        |value| summarize_object_fields(value, RESOURCE_PRESSURE_KEYS),
     );
 
     value_from_map(summary)
