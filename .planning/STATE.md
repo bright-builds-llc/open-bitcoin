@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Unattended Mainnet Node Operation Readiness
 status: executing
-stopped_at: Completed 61-04-PLAN.md
-last_updated: "2026-06-06T14:27:59.656Z"
+stopped_at: Completed 61-resource-bounds-and-recovery-taxonomy-05-PLAN.md
+last_updated: "2026-06-06T14:54:02.976Z"
 last_activity: 2026-06-06
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 7
-  completed_plans: 4
-  percent: 57
+  completed_plans: 5
+  percent: 71
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-05)
 
 Milestone: v1.5 Unattended Mainnet Node Operation Readiness
 Phase: 61 (Resource Bounds and Recovery Taxonomy) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-06-06
 
@@ -62,6 +62,7 @@ Progress: [###-------] 29%
 | Phase 61 P01 | 20m 23s | 2 tasks | 12 files |
 | Phase 61-resource-bounds-and-recovery-taxonomy P02 | 23min | 3 tasks | 7 files |
 | Phase 61-resource-bounds-and-recovery-taxonomy P04 | 31m 15s | 2 tasks | 7 files |
+| Phase 61-resource-bounds-and-recovery-taxonomy P05 | 17m 54s | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -92,6 +93,9 @@ Recent decisions affecting current work:
 - [Phase 61-resource-bounds-and-recovery-taxonomy]: Use the ten Phase 61 recovery labels in live-smoke diagnosis output instead of the older v1.4 category set.
 - [Phase 61-resource-bounds-and-recovery-taxonomy]: Expose support bundle resource pressure through explicit allowlisted keys only, leaving raw peer/report material omitted.
 - [Phase 61-resource-bounds-and-recovery-taxonomy]: Keep public-network live smoke opt-in and absent from scripts/verify.sh.
+- [Phase 61-resource-bounds-and-recovery-taxonomy]: Render SyncRecoveryCategory::as_str() directly in status, dashboard, and RPC warning surfaces.
+- [Phase 61-resource-bounds-and-recovery-taxonomy]: Keep machine recovery category output separate from human recovery_action guidance.
+- [Phase 61-resource-bounds-and-recovery-taxonomy]: Rename targeted renderer and RPC tests so plan acceptance filters execute real assertions.
 
 ### Pending Todos
 
@@ -106,6 +110,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-06T14:27:59.654Z
-Stopped at: Completed 61-04-PLAN.md
+Last session: 2026-06-06T14:54:02.973Z
+Stopped at: Completed 61-resource-bounds-and-recovery-taxonomy-05-PLAN.md
 Resume file: None
