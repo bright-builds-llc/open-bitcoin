@@ -4,8 +4,8 @@ milestone: v1.5
 milestone_name: Unattended Mainnet Node Operation Readiness
 status: executing
 stopped_at: Phase 61 context gathered
-last_updated: "2026-06-06T04:32:35.184Z"
-last_activity: 2026-06-06 -- Phase 61 planning complete
+last_updated: "2026-06-06T04:36:00.034Z"
+last_activity: 2026-06-06 -- Phase 61 execution started
 progress:
   total_phases: 8
   completed_phases: 1
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-05)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 61 - Resource Bounds and Recovery Taxonomy
+**Current focus:** Phase 61 — Resource Bounds and Recovery Taxonomy
 
 ## Current Position
 
 Milestone: v1.5 Unattended Mainnet Node Operation Readiness
-Phase: 61 of 67 (Resource Bounds and Recovery Taxonomy)
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-06-06 -- Phase 61 planning complete
+Phase: 61 (Resource Bounds and Recovery Taxonomy) — EXECUTING
+Plan: 1 of 6
+Status: Executing Phase 61
+Last activity: 2026-06-06 -- Phase 61 execution started
 
 Progress: [#---------] 13%
 
