@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Unattended Mainnet Node Operation Readiness
-status: executing
-stopped_at: Completed 61-resource-bounds-and-recovery-taxonomy-03-PLAN.md
-last_updated: "2026-06-06T15:35:01.477Z"
+status: verifying
+stopped_at: Completed 61-resource-bounds-and-recovery-taxonomy-06-PLAN.md
+last_updated: "2026-06-06T15:52:58.537Z"
 last_activity: 2026-06-06
 progress:
   total_phases: 8
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 7
-  completed_plans: 6
-  percent: 86
+  completed_plans: 7
+  percent: 100
 ---
 
 # Project State
@@ -26,18 +26,18 @@ See: .planning/PROJECT.md (updated 2026-06-05)
 ## Current Position
 
 Milestone: v1.5 Unattended Mainnet Node Operation Readiness
-Phase: 61 (Resource Bounds and Recovery Taxonomy) — EXECUTING
+Phase: 61 (Resource Bounds and Recovery Taxonomy) — VERIFYING
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-06
 
-Progress: [###-------] 29%
+Progress: [##########] 100%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Current milestone plans completed: 2
+- Current milestone plans completed: 7
 - Current milestone plan count: 7
 - Prior milestone plans completed: 15 in v1.4
 
@@ -64,6 +64,7 @@ Progress: [###-------] 29%
 | Phase 61-resource-bounds-and-recovery-taxonomy P04 | 31m 15s | 2 tasks | 7 files |
 | Phase 61-resource-bounds-and-recovery-taxonomy P05 | 17m 54s | 2 tasks | 6 files |
 | Phase 61-resource-bounds-and-recovery-taxonomy P03 | 33m 34s | 3 tasks | 7 files |
+| Phase 61-resource-bounds-and-recovery-taxonomy P06 | 13m 4s | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -101,6 +102,9 @@ Recent decisions affecting current work:
 - [Phase 61-resource-bounds-and-recovery-taxonomy]: Durable runtime recovery category precedence is storage metadata, last-error detail, stop reason, latest peer category, then clean or unclean shutdown metadata.
 - [Phase 61-resource-bounds-and-recovery-taxonomy]: Structured sync progress logs carry recovery_category while preserving bounded message length through a 192-character summary-record cap.
 - [Phase 61-resource-bounds-and-recovery-taxonomy]: The sync recovery helper module is visible to the parent sync runtime so durable status uses the shared classifier instead of duplicating string logic.
+- [Phase 61-resource-bounds-and-recovery-taxonomy]: Document sync.recovery_category as the stable machine label and keep sync.recovery_action as human next-action guidance.
+- [Phase 61-resource-bounds-and-recovery-taxonomy]: Use a Bun deterministic checker to guard Phase 61 recovery labels, resource-pressure fields, RR-01 bound statements, repo-local commands, and public-network exclusion from default verification.
+- [Phase 61-resource-bounds-and-recovery-taxonomy]: Keep public-network live-smoke, manual-peer, and restart-after-progress commands documented only as opt-in UAT, not default verification.
 
 ### Pending Todos
 
@@ -115,6 +119,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-06T15:35:01.474Z
-Stopped at: Completed 61-resource-bounds-and-recovery-taxonomy-03-PLAN.md
+Last session: 2026-06-06T15:52:58.534Z
+Stopped at: Completed 61-resource-bounds-and-recovery-taxonomy-06-PLAN.md
 Resume file: None

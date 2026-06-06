@@ -38,7 +38,7 @@ traceability.
 **Milestone Goal:** Make the opt-in `open-bitcoind` mainnet sync workflow bounded, restart-safe, and observable enough for extended unattended operator review without broadening the production-node claim.
 
 - [x] **Phase 60: Unattended Sync Loop Control** - Operators can opt into repeated daemon sync cycles with bounded stop, retry, pause, resume, and shutdown behavior. (completed 2026-06-06)
-- [ ] **Phase 61: Resource Bounds and Recovery Taxonomy** - Operators can trust unattended sync bounds, recovery states, and next-action guidance across long runs.
+- [x] **Phase 61: Resource Bounds and Recovery Taxonomy** - Operators can trust unattended sync bounds, recovery states, and next-action guidance across long runs. (completed 2026-06-06)
 - [ ] **Phase 62: Long-Run Sync Truth Surfaces** - Operators see consistent bounded sync truth across status, dashboard, RPC, metrics, logs, and live-smoke snapshots.
 - [ ] **Phase 63: Service Supervision Lifecycle** - Operators can manage launchd or systemd supervision for the opt-in unattended workflow with truthful lifecycle state.
 - [ ] **Phase 64: Service Restart and Same-Datadir Resume Evidence** - Operators can prove service-supervised restarts reopen durable state and resume sync safely.
@@ -148,7 +148,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 60. Unattended Sync Loop Control | 1/1 | Complete    | 2026-06-06 |
-| 61. Resource Bounds and Recovery Taxonomy | 5/6 | In Progress|  |
+| 61. Resource Bounds and Recovery Taxonomy | 6/6 | Complete   | 2026-06-06 |
 | 62. Long-Run Sync Truth Surfaces | 0/TBD | Not started | - |
 | 63. Service Supervision Lifecycle | 0/TBD | Not started | - |
 | 64. Service Restart and Same-Datadir Resume Evidence | 0/TBD | Not started | - |
