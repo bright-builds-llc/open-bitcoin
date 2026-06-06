@@ -553,7 +553,7 @@ fn spawn_test_sync_control_worker(receiver: DaemonSyncControlReceiver) -> thread
 }
 
 #[test]
-fn getblockchaininfo_uses_durable_connected_block_height_not_downloaded_height() {
+fn get_blockchain_info_uses_durable_connected_block_height_not_downloaded_height() {
     // Arrange
     let path = temp_store_path("durable-sync-truth");
     let store = FjallNodeStore::open(&path).expect("store");
@@ -595,7 +595,7 @@ fn getblockchaininfo_uses_durable_connected_block_height_not_downloaded_height()
                             "peer stalled before block connect".to_string(),
                         ),
                         recovery_category: FieldAvailability::available(
-                            SyncRecoveryCategory::PublicNetworkUnreachable,
+                            SyncRecoveryCategory::InvalidPeerData,
                         ),
                         recovery_action: FieldAvailability::available(
                             "Restart the node and retry the storage operation.".to_string(),
@@ -656,6 +656,14 @@ fn getblockchaininfo_uses_durable_connected_block_height_not_downloaded_height()
     assert_eq!(
         blockchain["warnings"][0],
         json!("peer stalled before block connect")
+    );
+    assert_eq!(
+        blockchain["warnings"][1],
+        json!("recovery_category=invalid_peer_data")
+    );
+    assert_eq!(
+        blockchain["warnings"][2],
+        json!("Restart the node and retry the storage operation.")
     );
 }
 

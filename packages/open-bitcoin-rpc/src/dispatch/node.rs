@@ -124,6 +124,9 @@ fn durable_warnings(durable_sync_state: &open_bitcoin_node::DurableSyncState) ->
     if let FieldAvailability::Available(value) = &durable_sync_state.sync.last_error {
         warnings.push(value.clone());
     }
+    if let FieldAvailability::Available(value) = &durable_sync_state.sync.recovery_category {
+        warnings.push(format!("recovery_category={}", value.as_str()));
+    }
     if let FieldAvailability::Available(value) = &durable_sync_state.sync.recovery_action {
         warnings.push(value.clone());
     }
