@@ -174,13 +174,16 @@ type RestartPeerOutcomeSummary = {
 };
 
 type RecoveryDiagnosisCategory =
-  | "peer_incompatibility"
+  | "clean_shutdown"
+  | "unclean_shutdown"
+  | "incompatible_schema"
   | "public_network_unreachable"
   | "invalid_peer_data"
   | "store_corruption"
-  | "store_incompatibility"
+  | "storage_lock_contention"
+  | "storage_backend_failure"
   | "resource_exhaustion"
-  | "intentional_cancellation";
+  | "operator_cancellation";
 
 type RecoveryDiagnosis = {
   category: RecoveryDiagnosisCategory;
@@ -188,6 +191,18 @@ type RecoveryDiagnosis = {
   maybeNoProgressCause: NoProgressCause | null;
   maybePeerFailureReason: string | null;
   maybeStorageRecoveryAction: string | null;
+};
+
+type ResourcePressureSummary = {
+  blocksInFlight: number;
+  maxHeaderRequestsInFlightPerPeer: number;
+  maxHeadersPerMessage: number;
+  maxBlocksInFlightPerPeer: number;
+  maxBlocksInFlightTotal: number;
+  maxMessagesPerPeer: number;
+  maxSyncRounds: number;
+  outboundPeers: number;
+  targetOutboundPeers: number;
 };
 
 type RestartResumeEvidence = {
@@ -218,6 +233,8 @@ type FinalStatusSummary = {
   outboundPeers: number;
   phase: string;
   recentPeers: RuntimePeerTelemetry[];
+  recoveryCategory: RecoveryDiagnosisCategory | null;
+  resourcePressure: ResourcePressureSummary | null;
 };
 
 type SmokeReport = {
@@ -297,6 +314,18 @@ type FieldAvailability<T> =
       value?: unknown;
     };
 
+type ResourcePressureStatusJson = {
+  blocks_in_flight?: number;
+  max_header_requests_in_flight_per_peer?: number;
+  max_headers_per_message?: number;
+  max_blocks_in_flight_per_peer?: number;
+  max_blocks_in_flight_total?: number;
+  max_messages_per_peer?: number;
+  max_sync_rounds?: number;
+  outbound_peers?: number;
+  target_outbound_peers?: number;
+};
+
 type DurableSyncStateJson = {
   peers?: {
     peer_counts?: FieldAvailability<{
@@ -308,6 +337,8 @@ type DurableSyncStateJson = {
     last_error?: FieldAvailability<string>;
     lifecycle?: FieldAvailability<string>;
     phase?: FieldAvailability<string>;
+    recovery_category?: FieldAvailability<RecoveryDiagnosisCategory>;
+    resource_pressure?: FieldAvailability<ResourcePressureStatusJson>;
     sync_progress?: FieldAvailability<{
       block_height?: number;
       connected_block_height?: number;
@@ -1259,6 +1290,51 @@ function finalStatusSummaryFromMetadata(metadata: RuntimeMetadataJson): FinalSta
     outboundPeers: Number(maybePeerCounts?.outbound ?? 0),
     phase: String(availableValue(maybeSyncState.sync?.phase) ?? "unavailable"),
     recentPeers,
+    recoveryCategory: recoveryCategoryFromValue(
+      availableValue(maybeSyncState.sync?.recovery_category),
+    ),
+    resourcePressure: resourcePressureSummaryFromValue(
+      availableValue(maybeSyncState.sync?.resource_pressure),
+    ),
+  };
+}
+
+function recoveryCategoryFromValue(value: unknown): RecoveryDiagnosisCategory | null {
+  switch (value) {
+    case "clean_shutdown":
+    case "unclean_shutdown":
+    case "incompatible_schema":
+    case "store_corruption":
+    case "storage_lock_contention":
+    case "storage_backend_failure":
+    case "resource_exhaustion":
+    case "invalid_peer_data":
+    case "public_network_unreachable":
+    case "operator_cancellation":
+      return value;
+    default:
+      return null;
+  }
+}
+
+function resourcePressureSummaryFromValue(
+  value: ResourcePressureStatusJson | null,
+): ResourcePressureSummary | null {
+  if (value === null) {
+    return null;
+  }
+  return {
+    blocksInFlight: Number(value.blocks_in_flight ?? 0),
+    maxHeaderRequestsInFlightPerPeer: Number(
+      value.max_header_requests_in_flight_per_peer ?? 0,
+    ),
+    maxHeadersPerMessage: Number(value.max_headers_per_message ?? 0),
+    maxBlocksInFlightPerPeer: Number(value.max_blocks_in_flight_per_peer ?? 0),
+    maxBlocksInFlightTotal: Number(value.max_blocks_in_flight_total ?? 0),
+    maxMessagesPerPeer: Number(value.max_messages_per_peer ?? 0),
+    maxSyncRounds: Number(value.max_sync_rounds ?? 0),
+    outboundPeers: Number(value.outbound_peers ?? 0),
+    targetOutboundPeers: Number(value.target_outbound_peers ?? 0),
   };
 }
 
@@ -1938,7 +2014,7 @@ function recoveryDiagnosis(
     details.includes("invalid schema version")
   ) {
     return recoveryDiagnosisResult(
-      "store_incompatibility",
+      "incompatible_schema",
       maybeNoProgressCause,
       maybePeerFailureReason,
       maybeLastError,
@@ -1956,6 +2032,28 @@ function recoveryDiagnosis(
       maybeLastError,
     );
   }
+  if (containsLockSignal(details)) {
+    return recoveryDiagnosisResult(
+      "storage_lock_contention",
+      maybeNoProgressCause,
+      maybePeerFailureReason,
+      maybeLastError,
+    );
+  }
+  if (
+    maybeNoProgressCause === "storage_failure" ||
+    details.includes("backend") ||
+    details.includes("unavailable namespace") ||
+    details.includes("storage failure") ||
+    details.includes("interrupted write")
+  ) {
+    return recoveryDiagnosisResult(
+      "storage_backend_failure",
+      maybeNoProgressCause,
+      maybePeerFailureReason,
+      maybeLastError,
+    );
+  }
   if (details.includes("resource") || maybeNoProgressCause === "resource_limit") {
     return recoveryDiagnosisResult(
       "resource_exhaustion",
@@ -1966,7 +2064,7 @@ function recoveryDiagnosis(
   }
   if (status === "cancelled" || maybeNoProgressCause === "operator_cancellation") {
     return recoveryDiagnosisResult(
-      "intentional_cancellation",
+      "operator_cancellation",
       maybeNoProgressCause,
       maybePeerFailureReason,
       maybeLastError,
@@ -1984,7 +2082,9 @@ function recoveryDiagnosis(
     details.includes("invalid_block") ||
     details.includes("duplicate_block") ||
     details.includes("disconnected_block") ||
-    details.includes("non_extending_block")
+    details.includes("non_extending_block") ||
+    details.includes("invalid_magic") ||
+    details.includes("invalid magic")
   ) {
     return recoveryDiagnosisResult(
       "invalid_peer_data",
@@ -1998,12 +2098,10 @@ function recoveryDiagnosis(
     maybeNoProgressCause === "unsupported_peer_capability" ||
     details.includes("capabil") ||
     details.includes("service") ||
-    details.includes("version") ||
-    details.includes("invalid_magic") ||
-    details.includes("invalid magic")
+    details.includes("version")
   ) {
     return recoveryDiagnosisResult(
-      "peer_incompatibility",
+      "public_network_unreachable",
       maybeNoProgressCause,
       maybePeerFailureReason,
       maybeLastError,
@@ -2024,7 +2122,10 @@ function recoveryDiagnosisResult(
   maybeLastError: string | null,
 ): RecoveryDiagnosis {
   const maybeStorageRecoveryAction =
-    category === "store_corruption" || category === "store_incompatibility"
+    category === "incompatible_schema" ||
+    category === "store_corruption" ||
+    category === "storage_lock_contention" ||
+    category === "storage_backend_failure"
       ? nextActionForCause("storage_failure")
       : null;
   return {
@@ -2034,6 +2135,38 @@ function recoveryDiagnosisResult(
     maybePeerFailureReason,
     maybeStorageRecoveryAction,
   };
+}
+
+function containsLockSignal(details: string): boolean {
+  return (
+    containsAsciiWord(details, "lock") ||
+    containsAsciiWord(details, "locked") ||
+    details.includes("contention")
+  );
+}
+
+function containsAsciiWord(haystack: string, needle: string): boolean {
+  let start = haystack.indexOf(needle);
+  while (start !== -1) {
+    const end = start + needle.length;
+    const beforeIsBoundary =
+      start === 0 || isAsciiWordBoundary(haystack.charCodeAt(start - 1));
+    const afterIsBoundary =
+      end === haystack.length || isAsciiWordBoundary(haystack.charCodeAt(end));
+    if (beforeIsBoundary && afterIsBoundary) {
+      return true;
+    }
+    start = haystack.indexOf(needle, start + 1);
+  }
+  return false;
+}
+
+function isAsciiWordBoundary(charCode: number): boolean {
+  return !(
+    (charCode >= 48 && charCode <= 57) ||
+    (charCode >= 65 && charCode <= 90) ||
+    (charCode >= 97 && charCode <= 122)
+  );
 }
 
 function datadirArg(commandSpec: CommandSpec): string | null {

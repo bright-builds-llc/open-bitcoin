@@ -17,6 +17,10 @@ output_dir="$tmp_dir/output"
 mkdir -p "$existing_datadir" "$output_dir"
 
 bun run scripts/run-live-mainnet-smoke.ts --help | grep -q "Usage:"
+if rg -n "run-live-mainnet-smoke|--manual-peer|--restart-after-progress" scripts/verify.sh >/dev/null; then
+	echo "scripts/verify.sh must not invoke opt-in public-network live-smoke commands" >&2
+	exit 1
+fi
 
 network_fixture="$tmp_dir/network-preflight.json"
 cat >"$network_fixture" <<'JSON'
@@ -801,6 +805,7 @@ set -euo pipefail
 failure_reason="${OPEN_BITCOIN_LIVE_SMOKE_FAILURE_REASON:?}"
 last_error="${OPEN_BITCOIN_LIVE_SMOKE_LAST_ERROR:-}"
 outbound_peers="${OPEN_BITCOIN_LIVE_SMOKE_OUTBOUND_PEERS:-0}"
+recovery_category="${OPEN_BITCOIN_LIVE_SMOKE_RECOVERY_CATEGORY:-invalid_peer_data}"
 if [[ "$last_error" == "" ]]; then
 	last_error_json='"last_error": {
         "state": "unavailable",
@@ -837,6 +842,24 @@ cat <<JSON
       "phase": {
         "state": "available",
         "value": "steady_state"
+      },
+      "recovery_category": {
+        "state": "available",
+        "value": "$recovery_category"
+      },
+      "resource_pressure": {
+        "state": "available",
+        "value": {
+          "blocks_in_flight": 3,
+          "max_header_requests_in_flight_per_peer": 2,
+          "max_headers_per_message": 2000,
+          "max_blocks_in_flight_per_peer": 16,
+          "max_blocks_in_flight_total": 64,
+          "max_messages_per_peer": 128,
+          "max_sync_rounds": 25,
+          "outbound_peers": 1,
+          "target_outbound_peers": 8
+        }
       },
       $last_error_json
     },
@@ -1029,11 +1052,13 @@ grep -q '"restartStatus": "blocked_before_restart"' "$report_json"
 grep -q "Post-restart daemon session did not produce" "$tmp_dir/restart-second-status-fails.stderr"
 
 recovery_cases=(
-	"store_incompatibility|connect|storage schema mismatch during sync"
+	"incompatible_schema|connect|storage schema mismatch during sync"
 	"store_corruption|connect|storage corruption in headers during sync"
+	"storage_lock_contention|connect|storage lock contention during sync"
+	"storage_backend_failure|connect|storage backend unavailable during sync"
 	"resource_exhaustion|resource_limit|"
 	"invalid_peer_data|invalid_block|"
-	"peer_incompatibility|invalid_magic|"
+	"invalid_peer_data|invalid_magic|"
 	"public_network_unreachable|connect|"
 )
 
@@ -1058,7 +1083,12 @@ for recovery_case in "${recovery_cases[@]}"; do
 
 	grep -q "\"category\": \"$expected_category\"" "$report_json"
 	grep -q "\"maybePeerFailureReason\": \"$failure_reason\"" "$report_json"
-	if [[ "$expected_category" == "store_incompatibility" || "$expected_category" == "store_corruption" ]]; then
+	if [[ "$expected_category" == "invalid_peer_data" ]]; then
+		grep -q '"recoveryCategory": "invalid_peer_data"' "$report_json"
+		grep -q '"resourcePressure": {' "$report_json"
+		grep -q '"maxBlocksInFlightTotal": 64' "$report_json"
+	fi
+	if [[ "$expected_category" == "incompatible_schema" || "$expected_category" == "store_corruption" || "$expected_category" == "storage_lock_contention" || "$expected_category" == "storage_backend_failure" ]]; then
 		grep -q "\"category\": \"$expected_category\"" "$report_json"
 		grep -q "Inspect the datadir storage error" "$report_json"
 	fi
@@ -1288,4 +1318,4 @@ fi
 
 grep -q '"status": "cancelled"' "$report_json"
 grep -q '"maybeNoProgressCause": "operator_cancellation"' "$report_json"
-grep -q '"category": "intentional_cancellation"' "$report_json"
+grep -q '"category": "operator_cancellation"' "$report_json"
