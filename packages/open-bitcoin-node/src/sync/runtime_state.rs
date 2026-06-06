@@ -12,8 +12,8 @@ use crate::{
     LogRetentionPolicy, MetricRetentionPolicy, RuntimeMetadata,
     logging::{StructuredLogError, StructuredLogRecord, writer::append_structured_log_record},
     status::{
-        DurableSyncState, FieldAvailability, SyncControlState, SyncLifecycleState,
-        SyncRecoveryCategory, SyncResourcePressure,
+        DurableSyncState, FieldAvailability, SyncAttemptCounters, SyncConfiguredTargets,
+        SyncControlState, SyncLifecycleState, SyncRecoveryCategory, SyncResourcePressure,
     },
 };
 
@@ -97,6 +97,7 @@ impl DurableSyncRuntime {
         timestamp: i64,
     ) -> Result<(), SyncRuntimeError> {
         let timestamp = u64::try_from(timestamp).unwrap_or(0);
+        let summary = self.summary_with_configured_targets(summary);
         self.store.append_metric_samples(
             &summary.metric_samples(timestamp),
             MetricRetentionPolicy::default(),
@@ -108,6 +109,7 @@ impl DurableSyncRuntime {
     }
 
     pub(super) fn write_summary_logs(&self, summary: &mut SyncRunSummary, timestamp: i64) {
+        self.set_summary_configured_targets(summary);
         let timestamp = u64::try_from(timestamp).unwrap_or(0);
         for record in summary.structured_log_records(timestamp) {
             if let Err(error) = self.append_structured_record(&record) {
@@ -343,7 +345,25 @@ impl DurableSyncRuntime {
         timestamp: i64,
     ) -> Result<DurableSyncState, SyncRuntimeError> {
         let metadata = self.load_runtime_metadata()?;
+        let summary = self.summary_with_configured_targets(summary);
         let mut sync = summary.sync_status(self.config.network);
+        sync.configured_targets = FieldAvailability::available(SyncConfiguredTargets {
+            target_outbound_peers: self.config.target_outbound_peers as u32,
+            maybe_target_header_height: self.config.maybe_target_header_height,
+        });
+        match &mut sync.attempt_counters {
+            FieldAvailability::Available(counters) => {
+                counters.max_sync_rounds = self.config.max_rounds as u64;
+            }
+            FieldAvailability::Unavailable { .. } => {
+                sync.attempt_counters = FieldAvailability::available(SyncAttemptCounters {
+                    attempted_peers: summary.attempted_peers as u64,
+                    connected_peers: summary.connected_peers as u64,
+                    failed_peers: summary.failed_peers as u64,
+                    max_sync_rounds: self.config.max_rounds as u64,
+                });
+            }
+        }
         if let FieldAvailability::Available(progress) = &mut sync.sync_progress {
             let maybe_downloaded_block = self.downloaded_block()?;
             let maybe_connected_block = self.connected_block();
@@ -386,7 +406,7 @@ impl DurableSyncRuntime {
         }
         let maybe_recovery_category = recovery_category_for_durable_state(
             &metadata,
-            summary,
+            &summary,
             lifecycle,
             maybe_last_error.as_deref(),
         );
@@ -423,6 +443,16 @@ impl DurableSyncRuntime {
             health_signals: summary.health_signals.clone(),
             updated_at_unix_seconds: u64::try_from(timestamp).unwrap_or(0),
         })
+    }
+
+    fn set_summary_configured_targets(&self, summary: &mut SyncRunSummary) {
+        summary.maybe_target_header_height = self.config.maybe_target_header_height;
+    }
+
+    fn summary_with_configured_targets(&self, summary: &SyncRunSummary) -> SyncRunSummary {
+        let mut summary = summary.clone();
+        self.set_summary_configured_targets(&mut summary);
+        summary
     }
 
     fn load_runtime_metadata(&self) -> Result<RuntimeMetadata, SyncRuntimeError> {

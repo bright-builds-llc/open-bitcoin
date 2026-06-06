@@ -3,7 +3,10 @@
 
 use open_bitcoin_node::{
     DurableSyncState, FjallNodeStore,
-    status::{ChainTipStatus, FieldAvailability, SyncProgress, SyncProgressSignal, SyncStatus},
+    status::{
+        ChainTipStatus, FieldAvailability, SyncAttemptCounters, SyncConfiguredTargets,
+        SyncProgress, SyncProgressSignal, SyncStatus, SyncStopReasonStatus,
+    },
 };
 use open_bitcoin_rpc::method::GetBlockchainInfoResponse;
 
@@ -33,10 +36,19 @@ pub(super) fn rpc_sync_status(blockchain_info: &GetBlockchainInfoResponse) -> Sy
         }),
         lifecycle: FieldAvailability::unavailable("daemon sync lifecycle unavailable"),
         phase: FieldAvailability::unavailable("daemon sync phase unavailable"),
+        configured_targets: FieldAvailability::<SyncConfiguredTargets>::unavailable(
+            "daemon sync configured targets unavailable",
+        ),
+        attempt_counters: FieldAvailability::<SyncAttemptCounters>::unavailable(
+            "daemon sync attempt counters unavailable",
+        ),
         progress_signal: FieldAvailability::available(rpc_progress_signal(blockchain_info)),
         lag: FieldAvailability::unavailable("daemon sync lag unavailable"),
         last_successful_progress_unix_seconds: FieldAvailability::unavailable(
             "daemon sync last successful progress unavailable",
+        ),
+        latest_stop_reason: FieldAvailability::<SyncStopReasonStatus>::unavailable(
+            "daemon sync latest stop reason unavailable",
         ),
         last_error: FieldAvailability::unavailable("daemon sync error unavailable"),
         recovery_category: FieldAvailability::unavailable("no recovery category recorded"),
@@ -56,9 +68,12 @@ pub(super) fn unavailable_sync_status(reason: &str) -> SyncStatus {
         sync_progress: FieldAvailability::unavailable(reason),
         lifecycle: FieldAvailability::unavailable(reason),
         phase: FieldAvailability::unavailable(reason),
+        configured_targets: FieldAvailability::unavailable(reason),
+        attempt_counters: FieldAvailability::unavailable(reason),
         progress_signal: FieldAvailability::unavailable(reason),
         lag: FieldAvailability::unavailable(reason),
         last_successful_progress_unix_seconds: FieldAvailability::unavailable(reason),
+        latest_stop_reason: FieldAvailability::unavailable(reason),
         last_error: FieldAvailability::unavailable(reason),
         recovery_category: FieldAvailability::unavailable("no recovery category recorded"),
         recovery_action: FieldAvailability::unavailable(reason),

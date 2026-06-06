@@ -349,6 +349,7 @@ pub struct PeerSyncOutcome {
 #[derive(Debug, Clone, PartialEq)]
 pub struct SyncRunSummary {
     pub target_outbound_peers: usize,
+    pub maybe_target_header_height: Option<u64>,
     pub attempted_peers: usize,
     pub connected_peers: usize,
     pub failed_peers: usize,

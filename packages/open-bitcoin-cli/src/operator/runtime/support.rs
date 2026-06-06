@@ -355,7 +355,10 @@ mod tests {
 
     use open_bitcoin_node::{
         DurableSyncState, FieldAvailability, FjallNodeStore, PeerStatus, RuntimeMetadata,
-        SyncLifecycleState, SyncStatus, status::SyncProgressSignal,
+        SyncLifecycleState, SyncStatus,
+        status::{
+            SyncAttemptCounters, SyncConfiguredTargets, SyncProgressSignal, SyncStopReasonStatus,
+        },
     };
 
     use super::{OperatorOutputFormat, SyncArgs, SyncCommand, execute_offline_sync_command};
@@ -384,11 +387,20 @@ mod tests {
                     ),
                     lifecycle: FieldAvailability::available(lifecycle),
                     phase: FieldAvailability::available("block_download".to_string()),
+                    configured_targets: FieldAvailability::<SyncConfiguredTargets>::unavailable(
+                        "not needed for sync-control test",
+                    ),
+                    attempt_counters: FieldAvailability::<SyncAttemptCounters>::unavailable(
+                        "not needed for sync-control test",
+                    ),
                     progress_signal: FieldAvailability::available(
                         SyncProgressSignal::AwaitingBlocks,
                     ),
                     lag: FieldAvailability::unavailable("not needed for sync-control test"),
                     last_successful_progress_unix_seconds: FieldAvailability::unavailable(
+                        "not needed for sync-control test",
+                    ),
+                    latest_stop_reason: FieldAvailability::<SyncStopReasonStatus>::unavailable(
                         "not needed for sync-control test",
                     ),
                     last_error: FieldAvailability::unavailable("no sync error recorded"),

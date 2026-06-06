@@ -30,8 +30,9 @@ use crate::operator::{
 };
 use open_bitcoin_node::status::{
     BuildProvenance, ConfigStatus, FieldAvailability, MempoolStatus, NodeRuntimeState, NodeStatus,
-    OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, ServiceStatus, SyncProgressSignal,
-    SyncStatus, WalletFreshness, WalletScanProgress, WalletStatus,
+    OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, ServiceStatus, SyncAttemptCounters,
+    SyncConfiguredTargets, SyncProgressSignal, SyncStatus, SyncStopReasonStatus, WalletFreshness,
+    WalletScanProgress, WalletStatus,
 };
 use open_bitcoin_node::{
     FjallNodeStore, PersistMode, WalletRegistry,
@@ -346,10 +347,19 @@ fn human_and_json_renderers_surface_wallet_freshness_and_scan_reasons() {
             sync_progress: FieldAvailability::unavailable("sync unavailable"),
             lifecycle: FieldAvailability::unavailable("sync lifecycle unavailable"),
             phase: FieldAvailability::unavailable("sync phase unavailable"),
+            configured_targets: FieldAvailability::<SyncConfiguredTargets>::unavailable(
+                "sync configured targets unavailable",
+            ),
+            attempt_counters: FieldAvailability::<SyncAttemptCounters>::unavailable(
+                "sync attempt counters unavailable",
+            ),
             progress_signal: FieldAvailability::available(SyncProgressSignal::Steady),
             lag: FieldAvailability::unavailable("sync lag unavailable"),
             last_successful_progress_unix_seconds: FieldAvailability::unavailable(
                 "sync last progress unavailable",
+            ),
+            latest_stop_reason: FieldAvailability::<SyncStopReasonStatus>::unavailable(
+                "sync latest stop reason unavailable",
             ),
             last_error: FieldAvailability::unavailable("sync error unavailable"),
             recovery_category: FieldAvailability::unavailable("no recovery category recorded"),

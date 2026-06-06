@@ -9,8 +9,9 @@ use crate::{
     FieldAvailability, MetricKind, MetricSample, PeerStatus, SyncStatus,
     logging::{StructuredLogLevel, StructuredLogRecord},
     status::{
-        PeerCounts, SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal,
-        SyncRecoveryCategory, SyncResourcePressure,
+        PeerCounts, SyncAttemptCounters, SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState,
+        SyncProgress, SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure,
+        SyncStopReasonStatus,
     },
 };
 
@@ -32,6 +33,7 @@ impl SyncRunSummary {
     ) -> Self {
         Self {
             target_outbound_peers,
+            maybe_target_header_height: None,
             attempted_peers: 0,
             connected_peers: 0,
             failed_peers: 0,
@@ -69,6 +71,16 @@ impl SyncRunSummary {
             }),
             lifecycle: FieldAvailability::available(SyncLifecycleState::Active),
             phase: FieldAvailability::available(sync_phase_name(self).to_string()),
+            configured_targets: FieldAvailability::available(SyncConfiguredTargets {
+                target_outbound_peers: self.target_outbound_peers as u32,
+                maybe_target_header_height: self.maybe_target_header_height,
+            }),
+            attempt_counters: FieldAvailability::available(SyncAttemptCounters {
+                attempted_peers: self.attempted_peers as u64,
+                connected_peers: self.connected_peers as u64,
+                failed_peers: self.failed_peers as u64,
+                max_sync_rounds: 0,
+            }),
             progress_signal: FieldAvailability::available(self.progress_signal()),
             lag: FieldAvailability::available(SyncLagStatus {
                 headers_remaining: 0,
@@ -83,6 +95,13 @@ impl SyncRunSummary {
                 None => FieldAvailability::unavailable(
                     "no successful sync progress recorded in this run",
                 ),
+            },
+            latest_stop_reason: match self.maybe_stop_reason {
+                Some(stop_reason) => FieldAvailability::available(SyncStopReasonStatus {
+                    label: stop_reason.label().to_string(),
+                    message: stop_reason.message(),
+                }),
+                None => FieldAvailability::unavailable("no stop reason recorded"),
             },
             last_error: match self.latest_error_message() {
                 Some(value) => FieldAvailability::available(value),
@@ -290,11 +309,48 @@ mod tests {
     };
 
     #[test]
+    fn phase62_sync_truth_contract_projects_summary_fields() {
+        // Arrange
+        let mut summary = SyncRunSummary::empty(840_123, 840_120, 4);
+        summary.maybe_target_header_height = Some(840_123);
+        summary.attempted_peers = 3;
+        summary.connected_peers = 2;
+        summary.failed_peers = 1;
+        summary.maybe_stop_reason = Some(SyncStopReason::TargetHeaderReached {
+            target_header_height: 840_123,
+            best_header_height: 840_123,
+        });
+
+        // Act
+        let status = summary.sync_status(SyncNetwork::Mainnet);
+
+        // Assert
+        let FieldAvailability::Available(configured_targets) = status.configured_targets else {
+            panic!("configured targets should be available");
+        };
+        assert_eq!(configured_targets.target_outbound_peers, 4);
+        assert_eq!(configured_targets.maybe_target_header_height, Some(840_123));
+        let FieldAvailability::Available(attempt_counters) = status.attempt_counters else {
+            panic!("attempt counters should be available");
+        };
+        assert_eq!(attempt_counters.attempted_peers, 3);
+        assert_eq!(attempt_counters.connected_peers, 2);
+        assert_eq!(attempt_counters.failed_peers, 1);
+        assert_eq!(attempt_counters.max_sync_rounds, 0);
+        let FieldAvailability::Available(stop_reason) = status.latest_stop_reason else {
+            panic!("latest stop reason should be available");
+        };
+        assert_eq!(stop_reason.label, "target_header_reached");
+        assert!(stop_reason.message.contains("target_header_height=840123"));
+    }
+
+    #[test]
     fn sync_summary_projects_consistent_operator_evidence_fields() {
         // Arrange
         let latest_error = "peer stalled before block connect";
         let summary = SyncRunSummary {
             target_outbound_peers: 4,
+            maybe_target_header_height: None,
             attempted_peers: 2,
             connected_peers: 2,
             failed_peers: 0,

@@ -1398,6 +1398,7 @@ fn sync_summary_projects_metric_samples() {
     // Arrange
     let summary = SyncRunSummary {
         target_outbound_peers: 1,
+        maybe_target_header_height: None,
         attempted_peers: 2,
         connected_peers: 1,
         failed_peers: 1,
@@ -1444,6 +1445,7 @@ fn sync_summary_projects_progress_signal_and_last_successful_timestamp() {
     outcome.maybe_last_activity_unix_seconds = Some(1_777_225_099);
     let summary = SyncRunSummary {
         target_outbound_peers: 1,
+        maybe_target_header_height: None,
         attempted_peers: 1,
         connected_peers: 1,
         failed_peers: 0,
@@ -1484,6 +1486,7 @@ fn sync_summary_projects_structured_log_records() {
     // Arrange
     let summary = SyncRunSummary {
         target_outbound_peers: 2,
+        maybe_target_header_height: None,
         attempted_peers: 3,
         connected_peers: 2,
         failed_peers: 1,
@@ -1610,6 +1613,7 @@ fn sync_summary_status_keeps_connected_height_alias_with_hashes() {
         "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".to_string();
     let summary = SyncRunSummary {
         target_outbound_peers: 4,
+        maybe_target_header_height: None,
         attempted_peers: 2,
         connected_peers: 1,
         failed_peers: 0,
@@ -1652,6 +1656,7 @@ fn sync_summary_status_projections_include_counters() {
     // Arrange
     let summary = SyncRunSummary {
         target_outbound_peers: 4,
+        maybe_target_header_height: None,
         attempted_peers: 4,
         connected_peers: 3,
         failed_peers: 1,
@@ -2547,6 +2552,7 @@ fn storage_failure_projects_storage_health_signal() {
     let signal = error.health_signal();
     let records = SyncRunSummary {
         target_outbound_peers: 0,
+        maybe_target_header_height: None,
         attempted_peers: 0,
         connected_peers: 0,
         failed_peers: 0,

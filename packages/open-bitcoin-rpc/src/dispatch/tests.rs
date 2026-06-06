@@ -35,9 +35,9 @@ use open_bitcoin_node::{
         wallet::{AddressNetwork, DescriptorRole, SingleKeyDescriptor, Wallet},
     },
     status::{
-        ChainTipStatus, FieldAvailability, PeerCounts, PeerStatus, SyncLagStatus,
-        SyncLifecycleState, SyncProgress, SyncProgressSignal, SyncRecoveryCategory,
-        SyncResourcePressure, SyncStatus,
+        ChainTipStatus, FieldAvailability, PeerCounts, PeerStatus, SyncAttemptCounters,
+        SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal,
+        SyncRecoveryCategory, SyncResourcePressure, SyncStatus, SyncStopReasonStatus,
     },
 };
 
@@ -581,6 +581,16 @@ fn get_blockchain_info_uses_durable_connected_block_height_not_downloaded_height
                         }),
                         lifecycle: FieldAvailability::available(SyncLifecycleState::Active),
                         phase: FieldAvailability::available("block_download".to_string()),
+                        configured_targets: FieldAvailability::available(SyncConfiguredTargets {
+                            target_outbound_peers: 4,
+                            maybe_target_header_height: Some(840_100),
+                        }),
+                        attempt_counters: FieldAvailability::available(SyncAttemptCounters {
+                            attempted_peers: 3,
+                            connected_peers: 2,
+                            failed_peers: 1,
+                            max_sync_rounds: 8,
+                        }),
                         progress_signal: FieldAvailability::available(
                             SyncProgressSignal::AwaitingBlocks,
                         ),
@@ -591,6 +601,12 @@ fn get_blockchain_info_uses_durable_connected_block_height_not_downloaded_height
                         last_successful_progress_unix_seconds: FieldAvailability::available(
                             1_715_000_000,
                         ),
+                        latest_stop_reason: FieldAvailability::available(SyncStopReasonStatus {
+                            label: "no_progress".to_string(),
+                            message:
+                                "sync stopped with no new header or block progress after 8 rounds"
+                                    .to_string(),
+                        }),
                         last_error: FieldAvailability::available(
                             "peer stalled before block connect".to_string(),
                         ),

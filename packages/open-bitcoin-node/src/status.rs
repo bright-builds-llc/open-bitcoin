@@ -88,6 +88,29 @@ pub struct SyncProgress {
     pub blocks_received: u64,
 }
 
+/// Configured sync targets projected into shared operator status.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SyncConfiguredTargets {
+    pub target_outbound_peers: u32,
+    pub maybe_target_header_height: Option<u64>,
+}
+
+/// Bounded sync attempt counters projected into shared operator status.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SyncAttemptCounters {
+    pub attempted_peers: u64,
+    pub connected_peers: u64,
+    pub failed_peers: u64,
+    pub max_sync_rounds: u64,
+}
+
+/// Latest durable sync stop reason projected into shared operator status.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SyncStopReasonStatus {
+    pub label: String,
+    pub message: String,
+}
+
 /// Coarse durable sync lifecycle surfaced to operator consumers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -140,14 +163,32 @@ pub struct SyncStatus {
     pub sync_progress: FieldAvailability<SyncProgress>,
     pub lifecycle: FieldAvailability<SyncLifecycleState>,
     pub phase: FieldAvailability<String>,
+    #[serde(default = "configured_targets_unavailable")]
+    pub configured_targets: FieldAvailability<SyncConfiguredTargets>,
+    #[serde(default = "attempt_counters_unavailable")]
+    pub attempt_counters: FieldAvailability<SyncAttemptCounters>,
     pub progress_signal: FieldAvailability<SyncProgressSignal>,
     pub lag: FieldAvailability<SyncLagStatus>,
     pub last_successful_progress_unix_seconds: FieldAvailability<u64>,
+    #[serde(default = "latest_stop_reason_unavailable")]
+    pub latest_stop_reason: FieldAvailability<SyncStopReasonStatus>,
     pub last_error: FieldAvailability<String>,
     #[serde(default = "no_recovery_category_recorded")]
     pub recovery_category: FieldAvailability<SyncRecoveryCategory>,
     pub recovery_action: FieldAvailability<String>,
     pub resource_pressure: FieldAvailability<SyncResourcePressure>,
+}
+
+fn configured_targets_unavailable() -> FieldAvailability<SyncConfiguredTargets> {
+    FieldAvailability::unavailable("configured targets unavailable")
+}
+
+fn attempt_counters_unavailable() -> FieldAvailability<SyncAttemptCounters> {
+    FieldAvailability::unavailable("attempt counters unavailable")
+}
+
+fn latest_stop_reason_unavailable() -> FieldAvailability<SyncStopReasonStatus> {
+    FieldAvailability::unavailable("latest stop reason unavailable")
 }
 
 fn no_recovery_category_recorded() -> FieldAvailability<SyncRecoveryCategory> {
@@ -291,8 +332,9 @@ mod tests {
     use super::{
         BuildProvenance, ChainTipStatus, ConfigStatus, FieldAvailability, HealthSignal,
         HealthSignalLevel, MempoolStatus, NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot,
-        PeerCounts, PeerStatus, PeerTelemetry, ServiceStatus, SyncLagStatus, SyncLifecycleState,
-        SyncProgress, SyncProgressSignal, SyncResourcePressure, SyncStatus, WalletFreshness,
+        PeerCounts, PeerStatus, PeerTelemetry, ServiceStatus, SyncAttemptCounters,
+        SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal,
+        SyncResourcePressure, SyncStatus, SyncStopReasonStatus, WalletFreshness,
         WalletScanProgress, WalletStatus,
     };
     use crate::{LogStatus, MetricsStatus};
@@ -323,6 +365,92 @@ mod tests {
     }
 
     #[test]
+    fn phase62_sync_truth_contract() {
+        // Arrange
+        let sync = SyncStatus {
+            network: FieldAvailability::available("mainnet".to_string()),
+            chain_tip: FieldAvailability::unavailable("chain tip unavailable"),
+            sync_progress: FieldAvailability::unavailable("sync progress unavailable"),
+            lifecycle: FieldAvailability::available(SyncLifecycleState::Active),
+            phase: FieldAvailability::available("headers".to_string()),
+            configured_targets: FieldAvailability::available(SyncConfiguredTargets {
+                target_outbound_peers: 4,
+                maybe_target_header_height: Some(840_123),
+            }),
+            attempt_counters: FieldAvailability::available(SyncAttemptCounters {
+                attempted_peers: 3,
+                connected_peers: 2,
+                failed_peers: 1,
+                max_sync_rounds: 8,
+            }),
+            progress_signal: FieldAvailability::available(SyncProgressSignal::HeaderProgress),
+            lag: FieldAvailability::available(SyncLagStatus {
+                headers_remaining: 0,
+                blocks_remaining: 12,
+            }),
+            last_successful_progress_unix_seconds: FieldAvailability::available(1_717_000_000),
+            latest_stop_reason: FieldAvailability::available(SyncStopReasonStatus {
+                label: "target_header_reached".to_string(),
+                message: "sync header target reached".to_string(),
+            }),
+            last_error: FieldAvailability::unavailable("no sync error recorded"),
+            recovery_category: FieldAvailability::unavailable("no recovery category recorded"),
+            recovery_action: FieldAvailability::unavailable("no recovery action required"),
+            resource_pressure: FieldAvailability::unavailable("resource pressure unavailable"),
+        };
+
+        // Act
+        let encoded = serde_json::to_value(&sync).expect("sync status json");
+        let legacy_sync: SyncStatus = serde_json::from_value(serde_json::json!({
+            "network": { "state": "available", "value": "mainnet" },
+            "chain_tip": { "state": "unavailable", "value": { "reason": "chain tip unavailable" } },
+            "sync_progress": { "state": "unavailable", "value": { "reason": "sync progress unavailable" } },
+            "lifecycle": { "state": "available", "value": "active" },
+            "phase": { "state": "available", "value": "headers" },
+            "progress_signal": { "state": "available", "value": "header_progress" },
+            "lag": {
+                "state": "available",
+                "value": { "headers_remaining": 0, "blocks_remaining": 12 }
+            },
+            "last_successful_progress_unix_seconds": { "state": "available", "value": 1717000000 },
+            "last_error": { "state": "unavailable", "value": { "reason": "no sync error recorded" } },
+            "recovery_category": { "state": "unavailable", "value": { "reason": "no recovery category recorded" } },
+            "recovery_action": { "state": "unavailable", "value": { "reason": "no recovery action required" } },
+            "resource_pressure": { "state": "unavailable", "value": { "reason": "resource pressure unavailable" } }
+        }))
+        .expect("legacy sync status json");
+
+        // Assert
+        assert_eq!(encoded["configured_targets"]["state"], "available");
+        assert_eq!(
+            encoded["configured_targets"]["value"]["target_outbound_peers"],
+            4
+        );
+        assert_eq!(
+            encoded["configured_targets"]["value"]["maybe_target_header_height"],
+            840_123
+        );
+        assert_eq!(encoded["attempt_counters"]["value"]["attempted_peers"], 3);
+        assert_eq!(encoded["attempt_counters"]["value"]["max_sync_rounds"], 8);
+        assert_eq!(
+            encoded["latest_stop_reason"]["value"]["label"],
+            "target_header_reached"
+        );
+        assert_eq!(
+            legacy_sync.configured_targets,
+            FieldAvailability::unavailable("configured targets unavailable")
+        );
+        assert_eq!(
+            legacy_sync.attempt_counters,
+            FieldAvailability::unavailable("attempt counters unavailable")
+        );
+        assert_eq!(
+            legacy_sync.latest_stop_reason,
+            FieldAvailability::unavailable("latest stop reason unavailable")
+        );
+    }
+
+    #[test]
     fn stopped_node_snapshot_keeps_unavailable_live_fields_explicit() {
         // Arrange / Act
         let snapshot = stopped_snapshot();
@@ -335,10 +463,19 @@ mod tests {
         assert_eq!(encoded["sync"]["sync_progress"]["state"], "unavailable");
         assert_eq!(encoded["sync"]["lifecycle"]["state"], "unavailable");
         assert_eq!(encoded["sync"]["phase"]["state"], "unavailable");
+        assert_eq!(
+            encoded["sync"]["configured_targets"]["state"],
+            "unavailable"
+        );
+        assert_eq!(encoded["sync"]["attempt_counters"]["state"], "unavailable");
         assert_eq!(encoded["sync"]["progress_signal"]["state"], "unavailable");
         assert_eq!(encoded["sync"]["lag"]["state"], "unavailable");
         assert_eq!(
             encoded["sync"]["last_successful_progress_unix_seconds"]["state"],
+            "unavailable"
+        );
+        assert_eq!(
+            encoded["sync"]["latest_stop_reason"]["state"],
             "unavailable"
         );
         assert_eq!(encoded["sync"]["last_error"]["state"], "unavailable");
@@ -407,12 +544,23 @@ mod tests {
                 }),
                 lifecycle: FieldAvailability::available(SyncLifecycleState::Active),
                 phase: FieldAvailability::available("block_download".to_string()),
+                configured_targets: FieldAvailability::available(SyncConfiguredTargets {
+                    target_outbound_peers: 4,
+                    maybe_target_header_height: Some(840_001),
+                }),
+                attempt_counters: FieldAvailability::available(SyncAttemptCounters {
+                    attempted_peers: 2,
+                    connected_peers: 2,
+                    failed_peers: 0,
+                    max_sync_rounds: 8,
+                }),
                 progress_signal: FieldAvailability::available(SyncProgressSignal::BlockProgress),
                 lag: FieldAvailability::available(SyncLagStatus {
                     headers_remaining: 0,
                     blocks_remaining: 1,
                 }),
                 last_successful_progress_unix_seconds: FieldAvailability::available(1_715_000_000),
+                latest_stop_reason: FieldAvailability::unavailable("no stop reason recorded"),
                 last_error: FieldAvailability::unavailable("no sync error recorded"),
                 recovery_category: FieldAvailability::unavailable("no recovery category recorded"),
                 recovery_action: FieldAvailability::unavailable("no recovery action required"),
@@ -488,6 +636,14 @@ mod tests {
         assert_eq!(encoded["sync"]["lifecycle"]["value"], "active");
         assert_eq!(encoded["sync"]["phase"]["value"], "block_download");
         assert_eq!(
+            encoded["sync"]["configured_targets"]["value"]["target_outbound_peers"],
+            4
+        );
+        assert_eq!(
+            encoded["sync"]["attempt_counters"]["value"]["attempted_peers"],
+            2
+        );
+        assert_eq!(
             encoded["sync"]["progress_signal"]["value"],
             "block_progress"
         );
@@ -495,6 +651,10 @@ mod tests {
         assert_eq!(
             encoded["sync"]["last_successful_progress_unix_seconds"]["value"],
             1_715_000_000
+        );
+        assert_eq!(
+            encoded["sync"]["latest_stop_reason"]["state"],
+            "unavailable"
         );
         assert_eq!(encoded["sync"]["recovery_category"]["state"], "unavailable");
         assert_eq!(encoded["sync"]["recovery_action"]["state"], "unavailable");
@@ -593,9 +753,12 @@ mod tests {
                 sync_progress: FieldAvailability::unavailable(unavailable),
                 lifecycle: FieldAvailability::unavailable(unavailable),
                 phase: FieldAvailability::unavailable(unavailable),
+                configured_targets: FieldAvailability::unavailable(unavailable),
+                attempt_counters: FieldAvailability::unavailable(unavailable),
                 progress_signal: FieldAvailability::unavailable(unavailable),
                 lag: FieldAvailability::unavailable(unavailable),
                 last_successful_progress_unix_seconds: FieldAvailability::unavailable(unavailable),
+                latest_stop_reason: FieldAvailability::unavailable(unavailable),
                 last_error: FieldAvailability::unavailable(unavailable),
                 recovery_category: FieldAvailability::unavailable("no recovery category recorded"),
                 recovery_action: FieldAvailability::unavailable(unavailable),
