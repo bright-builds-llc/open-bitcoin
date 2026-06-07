@@ -117,6 +117,7 @@ bun run scripts/check-v1.3-release-boundaries.ts
 bun run scripts/check-v1.4-release-boundaries.ts
 bun run scripts/check-phase61-resource-recovery-boundaries.ts
 bun run scripts/check-phase62-sync-truth-surfaces.ts
+bun run scripts/check-phase63-service-lifecycle.ts
 bash scripts/check-pure-core-deps.sh
 bash scripts/check-file-lengths.sh
 bash scripts/check-panic-sites.sh
