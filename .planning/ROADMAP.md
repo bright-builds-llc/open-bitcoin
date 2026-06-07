@@ -11,8 +11,8 @@
 
 ## Current Focus
 
-v1.5 Unattended Mainnet Node Operation Readiness is ready for Phase 62 execution.
-Next action: `/gsd-execute-phase 62`
+v1.5 Unattended Mainnet Node Operation Readiness is ready for Phase 63 planning.
+Next action: `/gsd-plan-phase 63`
 
 ## Phases
 
@@ -39,7 +39,7 @@ traceability.
 
 - [x] **Phase 60: Unattended Sync Loop Control** - Operators can opt into repeated daemon sync cycles with bounded stop, retry, pause, resume, and shutdown behavior. (completed 2026-06-06)
 - [x] **Phase 61: Resource Bounds and Recovery Taxonomy** - Operators can trust unattended sync bounds, recovery states, and next-action guidance across long runs. (completed 2026-06-06)
-- [ ] **Phase 62: Long-Run Sync Truth Surfaces** - Operators see consistent bounded sync truth across status, dashboard, RPC, metrics, logs, and live-smoke snapshots.
+- [x] **Phase 62: Long-Run Sync Truth Surfaces** - Operators see consistent bounded sync truth across status, dashboard, RPC, metrics, logs, and live-smoke snapshots. (completed 2026-06-07)
 - [ ] **Phase 63: Service Supervision Lifecycle** - Operators can manage launchd or systemd supervision for the opt-in unattended workflow with truthful lifecycle state.
 - [ ] **Phase 64: Service Restart and Same-Datadir Resume Evidence** - Operators can prove service-supervised restarts reopen durable state and resume sync safely.
 - [ ] **Phase 65: Support Bundle and Operator Review Docs** - Operators can collect redacted v1.5 evidence and follow repo-local deterministic and opt-in review commands.
@@ -86,12 +86,12 @@ Plans:
   2. Metrics and structured logs retain bounded long-run samples and cycle summaries without unbounded growth.
   3. Operator can distinguish progress, waiting, retry, stop, and recovery states the same way across every truth surface.
   4. Repeated long-run snapshot output stays compact enough for operator review while preserving diagnosis evidence.
-**Plans**: 4 plans
+**Plans**: 4/4 complete
 Plans:
-- [ ] [62-01](phases/62-long-run-sync-truth-surfaces/62-01-PLAN.md) - Canonical Rust sync truth contract and durable projection
-- [ ] [62-02](phases/62-long-run-sync-truth-surfaces/62-02-PLAN.md) - Rust status, dashboard, sync-status, and RPC truth rendering
-- [ ] [62-03](phases/62-long-run-sync-truth-surfaces/62-03-PLAN.md) - Compact live-smoke JSON and Markdown truth snapshots
-- [ ] [62-04](phases/62-long-run-sync-truth-surfaces/62-04-PLAN.md) - Operator docs and deterministic cross-surface contract checker
+- [x] [62-01](phases/62-long-run-sync-truth-surfaces/62-01-PLAN.md) - Canonical Rust sync truth contract and durable projection
+- [x] [62-02](phases/62-long-run-sync-truth-surfaces/62-02-PLAN.md) - Rust status, dashboard, sync-status, and RPC truth rendering
+- [x] [62-03](phases/62-long-run-sync-truth-surfaces/62-03-PLAN.md) - Compact live-smoke JSON and Markdown truth snapshots
+- [x] [62-04](phases/62-long-run-sync-truth-surfaces/62-04-PLAN.md) - Operator docs and deterministic cross-surface contract checker
 
 ### Phase 63: Service Supervision Lifecycle
 **Goal**: Operators can manage launchd or systemd supervision for the opt-in unattended workflow with truthful lifecycle state.
@@ -154,7 +154,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 60. Unattended Sync Loop Control | 1/1 | Complete    | 2026-06-06 |
 | 61. Resource Bounds and Recovery Taxonomy | 6/6 | Complete   | 2026-06-06 |
-| 62. Long-Run Sync Truth Surfaces | 0/4 | Not started | - |
+| 62. Long-Run Sync Truth Surfaces | 4/4 | Complete    | 2026-06-07 |
 | 63. Service Supervision Lifecycle | 0/TBD | Not started | - |
 | 64. Service Restart and Same-Datadir Resume Evidence | 0/TBD | Not started | - |
 | 65. Support Bundle and Operator Review Docs | 0/TBD | Not started | - |
@@ -174,8 +174,8 @@ Plans:
 
 ## Next Step
 
-Execute the planned Phase 62 work:
+Plan Phase 63 service supervision lifecycle work:
 
 ```bash
-/gsd-execute-phase 62
+/gsd-plan-phase 63
 ```
