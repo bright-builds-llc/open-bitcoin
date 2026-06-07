@@ -5,7 +5,11 @@
 
 mod support;
 
-use std::{collections::BTreeMap, env, fmt, fs, path::PathBuf};
+use std::{
+    collections::BTreeMap,
+    env, fmt, fs,
+    path::{Path, PathBuf},
+};
 
 use open_bitcoin_rpc::RpcAuthConfig;
 
@@ -198,8 +202,9 @@ fn execute_operator_cli_inner(
         }
         OperatorCommand::Service(service) => {
             let manager = platform_service_manager(operator_home_dir());
-            let binary_path =
+            let operator_binary_path =
                 std::env::current_exe().unwrap_or_else(|_| PathBuf::from("open-bitcoin"));
+            let binary_path = resolve_service_daemon_binary(&operator_binary_path);
             let data_dir = config_resolution
                 .maybe_data_dir
                 .clone()
@@ -216,8 +221,9 @@ fn execute_operator_cli_inner(
             ))
         }
         OperatorCommand::Dashboard(args) => {
-            let binary_path =
+            let operator_binary_path =
                 std::env::current_exe().unwrap_or_else(|_| PathBuf::from("open-bitcoin"));
+            let binary_path = resolve_service_daemon_binary(&operator_binary_path);
             let data_dir = config_resolution
                 .maybe_data_dir
                 .clone()
@@ -569,6 +575,17 @@ pub(crate) fn authorization_header(auth: &RpcAuthConfig) -> Result<String, Opera
         }
     };
     Ok(format!("Basic {}", base64_encode(credentials.as_bytes())))
+}
+
+pub(crate) fn resolve_service_daemon_binary(operator_binary_path: &Path) -> PathBuf {
+    if let Some(parent) = operator_binary_path.parent() {
+        let sibling = parent.join("open-bitcoind");
+        if sibling.is_file() {
+            return sibling;
+        }
+    }
+
+    PathBuf::from("open-bitcoind")
 }
 
 fn base64_encode(bytes: &[u8]) -> String {

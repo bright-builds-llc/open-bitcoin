@@ -58,7 +58,7 @@ impl Drop for TestDirectory {
 #[test]
 fn plist_content_contains_required_fields() {
     // Arrange
-    let binary = Path::new("/fake/bin/open-bitcoin");
+    let binary = Path::new("/fake/bin/open-bitcoind");
     let datadir = Path::new("/fake/datadir");
 
     // Act
@@ -70,8 +70,12 @@ fn plist_content_contains_required_fields() {
         "missing label: {content}"
     );
     assert!(
-        content.contains("<string>/fake/bin/open-bitcoin</string>"),
+        content.contains("<string>/fake/bin/open-bitcoind</string>"),
         "missing binary path: {content}"
+    );
+    assert!(
+        !content.contains("<string>/fake/bin/open-bitcoin</string>"),
+        "plist should not supervise operator binary: {content}"
     );
     assert!(
         content.contains("<string>/fake/datadir</string>"),
@@ -90,7 +94,7 @@ fn plist_content_contains_required_fields() {
 #[test]
 fn plist_content_includes_config_path_when_provided() {
     // Arrange
-    let binary = Path::new("/fake/bin/open-bitcoin");
+    let binary = Path::new("/fake/bin/open-bitcoind");
     let datadir = Path::new("/fake/datadir");
     let config = Path::new("/fake/config/open-bitcoin.jsonc");
 
@@ -112,7 +116,7 @@ fn plist_content_includes_config_path_when_provided() {
 #[test]
 fn plist_content_includes_log_paths_when_provided() {
     // Arrange
-    let binary = Path::new("/fake/bin/open-bitcoin");
+    let binary = Path::new("/fake/bin/open-bitcoind");
     let datadir = Path::new("/fake/datadir");
     let log = Path::new("/fake/logs/open-bitcoin.log");
 
@@ -154,7 +158,7 @@ fn service_log_path_from_log_dir_appends_default_file_name() {
 #[test]
 fn unit_content_contains_required_fields() {
     // Arrange
-    let binary = Path::new("/fake/bin/open-bitcoin");
+    let binary = Path::new("/fake/bin/open-bitcoind");
     let datadir = Path::new("/fake/datadir");
 
     // Act
@@ -171,8 +175,12 @@ fn unit_content_contains_required_fields() {
         "missing [Install]: {content}"
     );
     assert!(
-        content.contains("ExecStart=\"/fake/bin/open-bitcoin\" --datadir \"/fake/datadir\""),
+        content.contains("ExecStart=\"/fake/bin/open-bitcoind\" --datadir \"/fake/datadir\""),
         "missing ExecStart: {content}"
+    );
+    assert!(
+        !content.contains("ExecStart=\"/fake/bin/open-bitcoin\""),
+        "unit should not supervise operator binary: {content}"
     );
     assert!(
         content.contains("Restart=on-failure"),
@@ -191,7 +199,7 @@ fn unit_content_contains_required_fields() {
 #[test]
 fn unit_content_includes_config_path_when_provided() {
     // Arrange
-    let binary = Path::new("/fake/bin/open-bitcoin");
+    let binary = Path::new("/fake/bin/open-bitcoind");
     let datadir = Path::new("/fake/datadir");
     let config = Path::new("/fake/config/open-bitcoin.jsonc");
 
@@ -208,7 +216,7 @@ fn unit_content_includes_config_path_when_provided() {
 #[test]
 fn unit_content_includes_log_path_when_provided() {
     // Arrange
-    let binary = Path::new("/fake/bin/open-bitcoin");
+    let binary = Path::new("/fake/bin/open-bitcoind");
     let datadir = Path::new("/fake/datadir");
     let log_path = Path::new("/fake/logs/open-bitcoin.log");
 
@@ -233,7 +241,7 @@ fn fake_manager_install_records_call() {
     // Arrange
     let manager = FakeServiceManager::unmanaged();
     let request = ServiceInstallRequest {
-        binary_path: PathBuf::from("/fake/bin/open-bitcoin"),
+        binary_path: PathBuf::from("/fake/bin/open-bitcoind"),
         data_dir: PathBuf::from("/fake/datadir"),
         maybe_config_path: None,
         maybe_log_path: None,
@@ -349,7 +357,7 @@ fn launchd_install_dry_run_does_not_write_file() {
     let home_dir = test_dir.path.clone();
     let adapter = LaunchdAdapter::new(home_dir.clone());
     let request = ServiceInstallRequest {
-        binary_path: PathBuf::from("/fake/bin/open-bitcoin"),
+        binary_path: PathBuf::from("/fake/bin/open-bitcoind"),
         data_dir: PathBuf::from("/fake/datadir"),
         maybe_config_path: None,
         maybe_log_path: None,
@@ -379,7 +387,7 @@ fn launchd_install_dry_run_lists_enable_and_bootstrap_commands() {
     let test_dir = TestDirectory::new("launchd-dry-run-commands");
     let adapter = LaunchdAdapter::new(test_dir.path.clone());
     let request = ServiceInstallRequest {
-        binary_path: PathBuf::from("/fake/bin/open-bitcoin"),
+        binary_path: PathBuf::from("/fake/bin/open-bitcoind"),
         data_dir: PathBuf::from("/fake/datadir"),
         maybe_config_path: None,
         maybe_log_path: None,
@@ -412,7 +420,7 @@ fn systemd_install_dry_run_does_not_write_file() {
     let home_dir = test_dir.path.clone();
     let adapter = SystemdAdapter::new(home_dir.clone());
     let request = ServiceInstallRequest {
-        binary_path: PathBuf::from("/fake/bin/open-bitcoin"),
+        binary_path: PathBuf::from("/fake/bin/open-bitcoind"),
         data_dir: PathBuf::from("/fake/datadir"),
         maybe_config_path: None,
         maybe_log_path: None,
@@ -443,7 +451,7 @@ fn systemd_install_dry_run_lists_reload_and_enable_commands() {
     let test_dir = TestDirectory::new("systemd-dry-run-commands");
     let adapter = SystemdAdapter::new(test_dir.path.clone());
     let request = ServiceInstallRequest {
-        binary_path: PathBuf::from("/fake/bin/open-bitcoin"),
+        binary_path: PathBuf::from("/fake/bin/open-bitcoind"),
         data_dir: PathBuf::from("/fake/datadir"),
         maybe_config_path: None,
         maybe_log_path: None,
@@ -568,7 +576,7 @@ fn execute_service_command_service_preview_calls_install_dry_run() {
     // Act
     let outcome = execute_service_command(
         service_args,
-        PathBuf::from("/fake/bin/open-bitcoin"),
+        PathBuf::from("/fake/bin/open-bitcoind"),
         PathBuf::from("/fake/datadir"),
         None,
         None,
@@ -600,7 +608,7 @@ fn execute_service_command_service_preview_renders_install_preview_output() {
     // Act
     let outcome = execute_service_command(
         service_args,
-        PathBuf::from("/fake/bin/open-bitcoin"),
+        PathBuf::from("/fake/bin/open-bitcoind"),
         PathBuf::from("/fake/datadir"),
         None,
         None,
@@ -641,7 +649,7 @@ fn execute_service_command_service_preview_apply_rejects_without_manager_call() 
     // Act
     let outcome = execute_service_command(
         service_args,
-        PathBuf::from("/fake/bin/open-bitcoin"),
+        PathBuf::from("/fake/bin/open-bitcoind"),
         PathBuf::from("/fake/datadir"),
         None,
         None,
@@ -676,7 +684,7 @@ fn execute_service_command_service_install_without_apply_still_records_dry_run()
     // Act
     let outcome = execute_service_command(
         service_args,
-        PathBuf::from("/fake/bin/open-bitcoin"),
+        PathBuf::from("/fake/bin/open-bitcoind"),
         PathBuf::from("/fake/datadir"),
         None,
         None,
@@ -706,7 +714,7 @@ fn execute_service_command_install_dry_run_shows_dry_run_output() {
     // Act
     let outcome = execute_service_command(
         service_args,
-        PathBuf::from("/fake/bin/open-bitcoin"),
+        PathBuf::from("/fake/bin/open-bitcoind"),
         PathBuf::from("/fake/datadir"),
         None,
         None,
@@ -742,7 +750,7 @@ fn execute_service_command_install_already_installed_returns_failure() {
     // Act
     let outcome = execute_service_command(
         service_args,
-        PathBuf::from("/fake/bin/open-bitcoin"),
+        PathBuf::from("/fake/bin/open-bitcoind"),
         PathBuf::from("/fake/datadir"),
         None,
         None,
@@ -774,7 +782,7 @@ fn execute_service_command_enable_returns_success_with_output() {
     // Act
     let outcome = execute_service_command(
         service_args,
-        PathBuf::from("/fake/bin/open-bitcoin"),
+        PathBuf::from("/fake/bin/open-bitcoind"),
         PathBuf::from("/fake/datadir"),
         None,
         None,
@@ -805,7 +813,7 @@ fn execute_service_command_uninstall_dry_run_succeeds() {
     // Act
     let outcome = execute_service_command(
         service_args,
-        PathBuf::from("/fake/bin/open-bitcoin"),
+        PathBuf::from("/fake/bin/open-bitcoind"),
         PathBuf::from("/fake/datadir"),
         None,
         None,
@@ -860,7 +868,7 @@ fn execute_service_command_install_dry_run_shows_scope() {
     // Act
     let outcome = execute_service_command(
         service_args,
-        PathBuf::from("/fake/bin/open-bitcoin"),
+        PathBuf::from("/fake/bin/open-bitcoind"),
         PathBuf::from("/fake/datadir"),
         None,
         None,
@@ -899,7 +907,7 @@ fn execute_service_command_status_surfaces_enabled_and_running_flags() {
     // Act
     let outcome = execute_service_command(
         service_args,
-        PathBuf::from("/fake/bin/open-bitcoin"),
+        PathBuf::from("/fake/bin/open-bitcoind"),
         PathBuf::from("/fake/datadir"),
         None,
         None,
@@ -944,7 +952,7 @@ fn execute_service_command_status_surfaces_unavailable_log_path_reason() {
     // Act
     let outcome = execute_service_command(
         service_args,
-        PathBuf::from("/fake/bin/open-bitcoin"),
+        PathBuf::from("/fake/bin/open-bitcoind"),
         PathBuf::from("/fake/datadir"),
         None,
         None,
@@ -987,7 +995,7 @@ fn execute_service_command_status_unmanaged_surfaces_preview_hint() {
     // Act
     let outcome = execute_service_command(
         service_args,
-        PathBuf::from("/fake/bin/open-bitcoin"),
+        PathBuf::from("/fake/bin/open-bitcoind"),
         PathBuf::from("/fake/datadir"),
         None,
         None,

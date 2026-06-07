@@ -332,6 +332,54 @@ fn dashboard_command_is_no_longer_deferred_in_runtime() {
 }
 
 #[test]
+fn resolve_service_daemon_binary_uses_materialized_sibling() {
+    // Arrange
+    let sandbox = TestDirectory::new("service-daemon-sibling");
+    let bin_dir = sandbox.child("bin");
+    fs::create_dir_all(&bin_dir).expect("bin directory");
+    let operator_binary_path = bin_dir.join("open-bitcoin");
+    let daemon_binary_path = bin_dir.join("open-bitcoind");
+    fs::write(&daemon_binary_path, "").expect("daemon sibling");
+
+    // Act
+    let resolved = super::runtime::resolve_service_daemon_binary(&operator_binary_path);
+
+    // Assert
+    assert_eq!(resolved, daemon_binary_path);
+}
+
+#[test]
+fn resolve_service_daemon_binary_falls_back_to_literal_command_without_sibling() {
+    // Arrange
+    let sandbox = TestDirectory::new("service-daemon-fallback");
+    let operator_binary_path = sandbox.child("bin/open-bitcoin");
+
+    // Act
+    let resolved = super::runtime::resolve_service_daemon_binary(&operator_binary_path);
+
+    // Assert
+    assert_eq!(resolved, PathBuf::from("open-bitcoind"));
+}
+
+#[test]
+fn resolve_service_daemon_binary_feeds_service_and_dashboard_runtimes() {
+    // Arrange
+    let source = include_str!("runtime.rs");
+
+    // Act
+    let resolver_call_count = source
+        .matches("resolve_service_daemon_binary(&operator_binary_path)")
+        .count();
+
+    // Assert
+    assert_eq!(
+        resolver_call_count, 2,
+        "service and dashboard runtimes must both resolve open-bitcoind"
+    );
+    assert!(source.contains("platform_dashboard_service_runtime(\n                binary_path,"));
+}
+
+#[test]
 fn status_rejects_removed_watch_flag() {
     // Arrange / Act
     let error = route_cli_invocation("open-bitcoin", &[os("status"), os("--watch")])
