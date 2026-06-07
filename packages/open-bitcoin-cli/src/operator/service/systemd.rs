@@ -11,8 +11,8 @@ use std::path::{Path, PathBuf};
 
 use super::{
     ServiceCommandOutcome, ServiceDisableRequest, ServiceEnableRequest, ServiceError,
-    ServiceInstallRequest, ServiceLifecycleState, ServiceManager, ServiceStateSnapshot,
-    ServiceUninstallRequest,
+    ServiceInstallRequest, ServiceLifecycleState, ServiceManager, ServiceRestartRequest,
+    ServiceStartRequest, ServiceStateSnapshot, ServiceStopRequest, ServiceUninstallRequest,
 };
 
 /// Systemd unit filename for the Open Bitcoin node service.
@@ -76,6 +76,36 @@ fn systemd_uninstall_commands() -> Vec<String> {
         format!("systemctl --user disable {OPEN_BITCOIN_SYSTEMD_FILE_NAME}"),
         "systemctl --user daemon-reload".to_string(),
     ]
+}
+
+pub(crate) fn systemd_start_command() -> String {
+    "systemctl --user start open-bitcoin-node.service".to_string()
+}
+
+pub(crate) fn systemd_stop_command() -> String {
+    "systemctl --user stop open-bitcoin-node.service".to_string()
+}
+
+pub(crate) fn systemd_restart_command() -> String {
+    "systemctl --user restart open-bitcoin-node.service".to_string()
+}
+
+fn run_systemctl(args: &[&str]) -> Result<(), ServiceError> {
+    let output = std::process::Command::new("systemctl")
+        .args(args)
+        .output()
+        .map_err(|cause| ServiceError::ManagerCommandFailed {
+            exit_code: -1,
+            stderr: cause.to_string(),
+        })?;
+    if output.status.success() {
+        return Ok(());
+    }
+
+    Err(ServiceError::ManagerCommandFailed {
+        exit_code: output.status.code().unwrap_or(-1),
+        stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+    })
 }
 
 pub(crate) fn parse_systemd_enabled_state(output: &str) -> Option<bool> {
@@ -206,31 +236,8 @@ impl ServiceManager for SystemdAdapter {
             cause: cause.to_string(),
         })?;
 
-        let reload_output = std::process::Command::new("systemctl")
-            .args(["--user", "daemon-reload"])
-            .output()
-            .map_err(|cause| ServiceError::ManagerCommandFailed {
-                exit_code: -1,
-                stderr: cause.to_string(),
-            })?;
-        if !reload_output.status.success() {
-            let exit_code = reload_output.status.code().unwrap_or(-1);
-            let stderr = String::from_utf8_lossy(&reload_output.stderr).to_string();
-            return Err(ServiceError::ManagerCommandFailed { exit_code, stderr });
-        }
-
-        let enable_output = std::process::Command::new("systemctl")
-            .args(["--user", "enable", OPEN_BITCOIN_SYSTEMD_FILE_NAME])
-            .output()
-            .map_err(|cause| ServiceError::ManagerCommandFailed {
-                exit_code: -1,
-                stderr: cause.to_string(),
-            })?;
-        if !enable_output.status.success() {
-            let exit_code = enable_output.status.code().unwrap_or(-1);
-            let stderr = String::from_utf8_lossy(&enable_output.stderr).to_string();
-            return Err(ServiceError::ManagerCommandFailed { exit_code, stderr });
-        }
+        run_systemctl(&["--user", "daemon-reload"])?;
+        run_systemctl(&["--user", "enable", OPEN_BITCOIN_SYSTEMD_FILE_NAME])?;
 
         Ok(ServiceCommandOutcome {
             dry_run: false,
@@ -266,36 +273,14 @@ impl ServiceManager for SystemdAdapter {
         }
 
         // Disable before removing; propagate failure so the enable symlink is not orphaned.
-        let disable_output = std::process::Command::new("systemctl")
-            .args(["--user", "disable", OPEN_BITCOIN_SYSTEMD_FILE_NAME])
-            .output()
-            .map_err(|cause| ServiceError::ManagerCommandFailed {
-                exit_code: -1,
-                stderr: cause.to_string(),
-            })?;
-        if !disable_output.status.success() {
-            let exit_code = disable_output.status.code().unwrap_or(-1);
-            let stderr = String::from_utf8_lossy(&disable_output.stderr).to_string();
-            return Err(ServiceError::ManagerCommandFailed { exit_code, stderr });
-        }
+        run_systemctl(&["--user", "disable", OPEN_BITCOIN_SYSTEMD_FILE_NAME])?;
 
         std::fs::remove_file(&unit_path).map_err(|cause| ServiceError::WriteFailure {
             path: unit_path.clone(),
             cause: cause.to_string(),
         })?;
 
-        let reload_output = std::process::Command::new("systemctl")
-            .args(["--user", "daemon-reload"])
-            .output()
-            .map_err(|cause| ServiceError::ManagerCommandFailed {
-                exit_code: -1,
-                stderr: cause.to_string(),
-            })?;
-        if !reload_output.status.success() {
-            let exit_code = reload_output.status.code().unwrap_or(-1);
-            let stderr = String::from_utf8_lossy(&reload_output.stderr).to_string();
-            return Err(ServiceError::ManagerCommandFailed { exit_code, stderr });
-        }
+        run_systemctl(&["--user", "daemon-reload"])?;
 
         Ok(ServiceCommandOutcome {
             dry_run: false,
@@ -303,6 +288,60 @@ impl ServiceManager for SystemdAdapter {
             maybe_file_path: Some(unit_path),
             maybe_file_content: None,
             commands_that_would_run: uninstall_commands,
+        })
+    }
+
+    fn start(&self, _request: &ServiceStartRequest) -> Result<ServiceCommandOutcome, ServiceError> {
+        let unit_path = self.unit_path();
+        if !unit_path.exists() {
+            return Err(ServiceError::NotInstalled);
+        }
+
+        run_systemctl(&["--user", "start", OPEN_BITCOIN_SYSTEMD_FILE_NAME])?;
+
+        Ok(ServiceCommandOutcome {
+            dry_run: false,
+            description: "Started service with systemd".to_string(),
+            maybe_file_path: Some(unit_path),
+            maybe_file_content: None,
+            commands_that_would_run: vec![systemd_start_command()],
+        })
+    }
+
+    fn stop(&self, _request: &ServiceStopRequest) -> Result<ServiceCommandOutcome, ServiceError> {
+        let unit_path = self.unit_path();
+        if !unit_path.exists() {
+            return Err(ServiceError::NotInstalled);
+        }
+
+        run_systemctl(&["--user", "stop", OPEN_BITCOIN_SYSTEMD_FILE_NAME])?;
+
+        Ok(ServiceCommandOutcome {
+            dry_run: false,
+            description: "Stopped service with systemd".to_string(),
+            maybe_file_path: Some(unit_path),
+            maybe_file_content: None,
+            commands_that_would_run: vec![systemd_stop_command()],
+        })
+    }
+
+    fn restart(
+        &self,
+        _request: &ServiceRestartRequest,
+    ) -> Result<ServiceCommandOutcome, ServiceError> {
+        let unit_path = self.unit_path();
+        if !unit_path.exists() {
+            return Err(ServiceError::NotInstalled);
+        }
+
+        run_systemctl(&["--user", "restart", OPEN_BITCOIN_SYSTEMD_FILE_NAME])?;
+
+        Ok(ServiceCommandOutcome {
+            dry_run: false,
+            description: "Restarted service with systemd".to_string(),
+            maybe_file_path: Some(unit_path),
+            maybe_file_content: None,
+            commands_that_would_run: vec![systemd_restart_command()],
         })
     }
 
@@ -321,19 +360,7 @@ impl ServiceManager for SystemdAdapter {
             commands_that_would_run: vec![enable_cmd],
         };
 
-        let output = std::process::Command::new("systemctl")
-            .args(["--user", "enable", OPEN_BITCOIN_SYSTEMD_FILE_NAME])
-            .output()
-            .map_err(|cause| ServiceError::ManagerCommandFailed {
-                exit_code: -1,
-                stderr: cause.to_string(),
-            })?;
-
-        if !output.status.success() {
-            let exit_code = output.status.code().unwrap_or(-1);
-            let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-            return Err(ServiceError::ManagerCommandFailed { exit_code, stderr });
-        }
+        run_systemctl(&["--user", "enable", OPEN_BITCOIN_SYSTEMD_FILE_NAME])?;
 
         Ok(outcome)
     }
@@ -353,19 +380,7 @@ impl ServiceManager for SystemdAdapter {
             commands_that_would_run: vec![disable_cmd],
         };
 
-        let output = std::process::Command::new("systemctl")
-            .args(["--user", "disable", OPEN_BITCOIN_SYSTEMD_FILE_NAME])
-            .output()
-            .map_err(|cause| ServiceError::ManagerCommandFailed {
-                exit_code: -1,
-                stderr: cause.to_string(),
-            })?;
-
-        if !output.status.success() {
-            let exit_code = output.status.code().unwrap_or(-1);
-            let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-            return Err(ServiceError::ManagerCommandFailed { exit_code, stderr });
-        }
+        run_systemctl(&["--user", "disable", OPEN_BITCOIN_SYSTEMD_FILE_NAME])?;
 
         Ok(outcome)
     }

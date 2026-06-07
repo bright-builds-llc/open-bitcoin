@@ -11,8 +11,8 @@ use std::path::{Path, PathBuf};
 
 use super::{
     ServiceCommandOutcome, ServiceDisableRequest, ServiceEnableRequest, ServiceError,
-    ServiceInstallRequest, ServiceLifecycleState, ServiceManager, ServiceStateSnapshot,
-    ServiceUninstallRequest,
+    ServiceInstallRequest, ServiceLifecycleState, ServiceManager, ServiceRestartRequest,
+    ServiceStartRequest, ServiceStateSnapshot, ServiceStopRequest, ServiceUninstallRequest,
 };
 
 /// launchd label for the Open Bitcoin node service.
@@ -98,12 +98,47 @@ fn launchd_domain(uid: u32) -> String {
 fn launchd_install_commands(uid: u32, plist_path: &Path) -> Vec<String> {
     vec![
         format!("launchctl enable {}", launchd_target(uid)),
-        format!(
-            "launchctl bootstrap {} {}",
-            launchd_domain(uid),
-            plist_path.display()
-        ),
+        launchd_start_command(uid, plist_path),
     ]
+}
+
+pub(crate) fn launchd_start_command(uid: u32, plist_path: &Path) -> String {
+    format!(
+        "launchctl bootstrap {} {}",
+        launchd_domain(uid),
+        plist_path.display()
+    )
+}
+
+pub(crate) fn launchd_stop_command(uid: u32) -> String {
+    format!("launchctl bootout {}", launchd_target(uid))
+}
+
+pub(crate) fn launchd_restart_command(uid: u32) -> String {
+    format!("launchctl kickstart -k {}", launchd_target(uid))
+}
+
+fn run_launchctl(args: &[&str], maybe_allowed_exit_code: Option<i32>) -> Result<(), ServiceError> {
+    let output = std::process::Command::new("launchctl")
+        .args(args)
+        .output()
+        .map_err(|cause| ServiceError::ManagerCommandFailed {
+            exit_code: -1,
+            stderr: cause.to_string(),
+        })?;
+    if output.status.success() {
+        return Ok(());
+    }
+
+    let exit_code = output.status.code().unwrap_or(-1);
+    if maybe_allowed_exit_code == Some(exit_code) {
+        return Ok(());
+    }
+
+    Err(ServiceError::ManagerCommandFailed {
+        exit_code,
+        stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+    })
 }
 
 fn parse_launchd_last_exit_status(stdout: &str) -> Option<i32> {
@@ -311,37 +346,19 @@ impl ServiceManager for LaunchdAdapter {
         })?;
 
         let enable_target = launchd_target(uid);
-        let enable_output = std::process::Command::new("launchctl")
-            .args(["enable", enable_target.as_str()])
-            .output()
-            .map_err(|cause| ServiceError::ManagerCommandFailed {
-                exit_code: -1,
-                stderr: cause.to_string(),
-            })?;
-        if !enable_output.status.success() {
-            let exit_code = enable_output.status.code().unwrap_or(-1);
-            let stderr = String::from_utf8_lossy(&enable_output.stderr).to_string();
-            return Err(ServiceError::ManagerCommandFailed { exit_code, stderr });
-        }
+        run_launchctl(&["enable", enable_target.as_str()], None)?;
 
         let bootstrap_domain = launchd_domain(uid);
         let plist_path_string = plist_path.display().to_string();
-        let bootstrap_output = std::process::Command::new("launchctl")
-            .args([
+        run_launchctl(
+            [
                 "bootstrap",
                 bootstrap_domain.as_str(),
                 plist_path_string.as_str(),
-            ])
-            .output()
-            .map_err(|cause| ServiceError::ManagerCommandFailed {
-                exit_code: -1,
-                stderr: cause.to_string(),
-            })?;
-        if !bootstrap_output.status.success() {
-            let exit_code = bootstrap_output.status.code().unwrap_or(-1);
-            let stderr = String::from_utf8_lossy(&bootstrap_output.stderr).to_string();
-            return Err(ServiceError::ManagerCommandFailed { exit_code, stderr });
-        }
+            ]
+            .as_slice(),
+            None,
+        )?;
 
         Ok(ServiceCommandOutcome {
             dry_run: false,
@@ -361,7 +378,7 @@ impl ServiceManager for LaunchdAdapter {
     ) -> Result<ServiceCommandOutcome, ServiceError> {
         let plist_path = self.plist_path();
         let uid = Self::uid();
-        let bootout_cmd = format!("launchctl bootout gui/{uid}/{OPEN_BITCOIN_LAUNCHD_LABEL}");
+        let bootout_cmd = launchd_stop_command(uid);
 
         if !plist_path.exists() {
             return Err(ServiceError::NotInstalled);
@@ -377,26 +394,10 @@ impl ServiceManager for LaunchdAdapter {
             });
         }
 
-        // apply=true: run bootout then remove file
-        let output = std::process::Command::new("launchctl")
-            .args([
-                "bootout",
-                &format!("gui/{uid}/{OPEN_BITCOIN_LAUNCHD_LABEL}"),
-            ])
-            .output()
-            .map_err(|cause| ServiceError::ManagerCommandFailed {
-                exit_code: -1,
-                stderr: cause.to_string(),
-            })?;
-
-        if !output.status.success() {
-            let exit_code = output.status.code().unwrap_or(-1);
-            let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-            // Exit code 36 means "operation not permitted" (service not loaded) — treat as non-fatal
-            if exit_code != 36 {
-                return Err(ServiceError::ManagerCommandFailed { exit_code, stderr });
-            }
-        }
+        // apply=true: run bootout then remove file. Exit code 36 means
+        // "operation not permitted" (service not loaded), so treat it as non-fatal.
+        let bootout_target = launchd_target(uid);
+        run_launchctl(&["bootout", bootout_target.as_str()], Some(36))?;
 
         std::fs::remove_file(&plist_path).map_err(|cause| ServiceError::WriteFailure {
             path: plist_path.clone(),
@@ -412,6 +413,70 @@ impl ServiceManager for LaunchdAdapter {
         })
     }
 
+    fn start(&self, _request: &ServiceStartRequest) -> Result<ServiceCommandOutcome, ServiceError> {
+        let plist_path = self.plist_path();
+        if !plist_path.exists() {
+            return Err(ServiceError::NotInstalled);
+        }
+
+        let uid = Self::uid();
+        let domain = launchd_domain(uid);
+        let plist_path_string = plist_path.display().to_string();
+        run_launchctl(
+            ["bootstrap", domain.as_str(), plist_path_string.as_str()].as_slice(),
+            None,
+        )?;
+
+        Ok(ServiceCommandOutcome {
+            dry_run: false,
+            description: "Started service with launchd".to_string(),
+            maybe_file_path: Some(plist_path.clone()),
+            maybe_file_content: None,
+            commands_that_would_run: vec![launchd_start_command(uid, &plist_path)],
+        })
+    }
+
+    fn stop(&self, _request: &ServiceStopRequest) -> Result<ServiceCommandOutcome, ServiceError> {
+        let plist_path = self.plist_path();
+        if !plist_path.exists() {
+            return Err(ServiceError::NotInstalled);
+        }
+
+        let uid = Self::uid();
+        let target = launchd_target(uid);
+        run_launchctl(&["bootout", target.as_str()], None)?;
+
+        Ok(ServiceCommandOutcome {
+            dry_run: false,
+            description: "Stopped service with launchd".to_string(),
+            maybe_file_path: Some(plist_path),
+            maybe_file_content: None,
+            commands_that_would_run: vec![launchd_stop_command(uid)],
+        })
+    }
+
+    fn restart(
+        &self,
+        _request: &ServiceRestartRequest,
+    ) -> Result<ServiceCommandOutcome, ServiceError> {
+        let plist_path = self.plist_path();
+        if !plist_path.exists() {
+            return Err(ServiceError::NotInstalled);
+        }
+
+        let uid = Self::uid();
+        let target = launchd_target(uid);
+        run_launchctl(&["kickstart", "-k", target.as_str()], None)?;
+
+        Ok(ServiceCommandOutcome {
+            dry_run: false,
+            description: "Restarted service with launchd".to_string(),
+            maybe_file_path: Some(plist_path),
+            maybe_file_content: None,
+            commands_that_would_run: vec![launchd_restart_command(uid)],
+        })
+    }
+
     fn enable(
         &self,
         request: &ServiceEnableRequest,
@@ -421,19 +486,7 @@ impl ServiceManager for LaunchdAdapter {
 
         let _ = request;
 
-        let output = std::process::Command::new("launchctl")
-            .args(["enable", launchd_target(uid).as_str()])
-            .output()
-            .map_err(|cause| ServiceError::ManagerCommandFailed {
-                exit_code: -1,
-                stderr: cause.to_string(),
-            })?;
-
-        if !output.status.success() {
-            let exit_code = output.status.code().unwrap_or(-1);
-            let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-            return Err(ServiceError::ManagerCommandFailed { exit_code, stderr });
-        }
+        run_launchctl(&["enable", launchd_target(uid).as_str()], None)?;
 
         Ok(ServiceCommandOutcome {
             dry_run: false,
@@ -453,19 +506,7 @@ impl ServiceManager for LaunchdAdapter {
 
         let _ = request;
 
-        let output = std::process::Command::new("launchctl")
-            .args(["disable", launchd_target(uid).as_str()])
-            .output()
-            .map_err(|cause| ServiceError::ManagerCommandFailed {
-                exit_code: -1,
-                stderr: cause.to_string(),
-            })?;
-
-        if !output.status.success() {
-            let exit_code = output.status.code().unwrap_or(-1);
-            let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-            return Err(ServiceError::ManagerCommandFailed { exit_code, stderr });
-        }
+        run_launchctl(&["disable", launchd_target(uid).as_str()], None)?;
 
         Ok(ServiceCommandOutcome {
             dry_run: false,

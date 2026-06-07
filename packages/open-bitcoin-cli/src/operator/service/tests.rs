@@ -19,13 +19,14 @@ use crate::operator::{
         ServiceStopRequest, execute_service_command,
         fake::{FakeServiceCall, FakeServiceManager},
         launchd::{
-            LaunchdAdapter, generate_plist_content, parse_launchd_disabled_services,
-            parse_launchd_log_path,
+            LaunchdAdapter, generate_plist_content, launchd_restart_command, launchd_start_command,
+            launchd_stop_command, parse_launchd_disabled_services, parse_launchd_log_path,
         },
         service_log_path_from_log_dir,
         systemd::{
             SystemdAdapter, generate_unit_content, parse_systemd_enabled_state,
-            parse_systemd_log_path,
+            parse_systemd_log_path, systemd_restart_command, systemd_start_command,
+            systemd_stop_command,
         },
     },
 };
@@ -542,6 +543,128 @@ StandardError=append:/fake/logs/open-bitcoin.log\n";
     assert_eq!(
         maybe_log_path,
         Some(PathBuf::from("/fake/logs/open-bitcoin.log"))
+    );
+}
+
+#[test]
+fn launchd_start_stop_restart_commands_are_user_scope() {
+    // Arrange
+    let plist_path = Path::new("/fake/home/Library/LaunchAgents/org.open-bitcoin.node.plist");
+    let uid = 501;
+
+    // Act
+    let commands = [
+        launchd_start_command(uid, plist_path),
+        launchd_stop_command(uid),
+        launchd_restart_command(uid),
+    ];
+
+    // Assert
+    assert_eq!(
+        commands[0],
+        "launchctl bootstrap gui/501 /fake/home/Library/LaunchAgents/org.open-bitcoin.node.plist"
+    );
+    assert_eq!(
+        commands[1],
+        "launchctl bootout gui/501/org.open-bitcoin.node"
+    );
+    assert_eq!(
+        commands[2],
+        "launchctl kickstart -k gui/501/org.open-bitcoin.node"
+    );
+    for command in commands {
+        assert!(
+            !command.contains("sudo")
+                && !command.contains("/Library/LaunchDaemons")
+                && !command.contains("bitcoind.service")
+                && !command.contains("bitcoin-knots"),
+            "launchd lifecycle command must stay user-scope: {command}"
+        );
+    }
+}
+
+#[test]
+fn launchd_start_stop_restart_missing_plist_returns_not_installed() {
+    // Arrange
+    let test_dir = TestDirectory::new("launchd-missing-lifecycle");
+    let adapter = LaunchdAdapter::new(test_dir.path.clone());
+
+    // Act
+    let start_result = adapter.start(&ServiceStartRequest);
+    let stop_result = adapter.stop(&ServiceStopRequest);
+    let restart_result = adapter.restart(&ServiceRestartRequest);
+
+    // Assert
+    assert!(
+        matches!(start_result, Err(ServiceError::NotInstalled)),
+        "missing launchd plist should block start: {start_result:?}"
+    );
+    assert!(
+        matches!(stop_result, Err(ServiceError::NotInstalled)),
+        "missing launchd plist should block stop: {stop_result:?}"
+    );
+    assert!(
+        matches!(restart_result, Err(ServiceError::NotInstalled)),
+        "missing launchd plist should block restart: {restart_result:?}"
+    );
+}
+
+#[test]
+fn systemd_start_stop_restart_commands_are_user_scope() {
+    // Arrange / Act
+    let commands = [
+        systemd_start_command(),
+        systemd_stop_command(),
+        systemd_restart_command(),
+    ];
+
+    // Assert
+    assert_eq!(
+        commands[0],
+        "systemctl --user start open-bitcoin-node.service"
+    );
+    assert_eq!(
+        commands[1],
+        "systemctl --user stop open-bitcoin-node.service"
+    );
+    assert_eq!(
+        commands[2],
+        "systemctl --user restart open-bitcoin-node.service"
+    );
+    for command in commands {
+        assert!(
+            !command.contains("sudo")
+                && !command.contains("/etc/systemd/system")
+                && !command.contains("bitcoind.service")
+                && !command.contains("bitcoin-knots"),
+            "systemd lifecycle command must stay user-scope: {command}"
+        );
+    }
+}
+
+#[test]
+fn systemd_start_stop_restart_missing_unit_returns_not_installed() {
+    // Arrange
+    let test_dir = TestDirectory::new("systemd-missing-lifecycle");
+    let adapter = SystemdAdapter::new(test_dir.path.clone());
+
+    // Act
+    let start_result = adapter.start(&ServiceStartRequest);
+    let stop_result = adapter.stop(&ServiceStopRequest);
+    let restart_result = adapter.restart(&ServiceRestartRequest);
+
+    // Assert
+    assert!(
+        matches!(start_result, Err(ServiceError::NotInstalled)),
+        "missing systemd unit should block start: {start_result:?}"
+    );
+    assert!(
+        matches!(stop_result, Err(ServiceError::NotInstalled)),
+        "missing systemd unit should block stop: {stop_result:?}"
+    );
+    assert!(
+        matches!(restart_result, Err(ServiceError::NotInstalled)),
+        "missing systemd unit should block restart: {restart_result:?}"
     );
 }
 
