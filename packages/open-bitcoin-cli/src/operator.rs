@@ -97,6 +97,7 @@ pub struct ServiceArgs {
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum ServiceCommand {
     Status,
+    Preview,
     Install,
     Uninstall,
     Enable,

@@ -325,6 +325,27 @@ pub fn execute_service_command(
     use super::runtime::OperatorCommandOutcome;
 
     match &args.command {
+        ServiceCommand::Preview => {
+            if args.apply {
+                return OperatorCommandOutcome::failure(
+                    "service preview is always side-effect-free; remove --apply",
+                );
+            }
+            let request = ServiceInstallRequest {
+                binary_path,
+                data_dir,
+                maybe_config_path,
+                maybe_log_path,
+                apply: false,
+            };
+            match manager.install(&request) {
+                Ok(outcome) => OperatorCommandOutcome::success(format!(
+                    "{}\n",
+                    render_service_outcome(&outcome)
+                )),
+                Err(error) => OperatorCommandOutcome::failure(error.to_string()),
+            }
+        }
         ServiceCommand::Install => {
             let request = ServiceInstallRequest {
                 binary_path,

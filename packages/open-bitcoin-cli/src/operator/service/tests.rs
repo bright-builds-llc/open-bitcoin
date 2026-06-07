@@ -14,8 +14,8 @@ use clap::Parser as _;
 use crate::operator::{
     OperatorCli,
     service::{
-        ServiceError, ServiceInstallRequest, ServiceLifecycleState, ServiceManager,
-        ServiceStateSnapshot, execute_service_command,
+        ServiceCommandOutcome, ServiceError, ServiceInstallRequest, ServiceLifecycleState,
+        ServiceManager, ServiceStateSnapshot, execute_service_command,
         fake::{FakeServiceCall, FakeServiceManager},
         launchd::{
             LaunchdAdapter, generate_plist_content, parse_launchd_disabled_services,
@@ -537,6 +537,162 @@ StandardError=append:/fake/logs/open-bitcoin.log\n";
 }
 
 // --- execute_service_command tests ---
+
+fn preview_install_outcome() -> ServiceCommandOutcome {
+    ServiceCommandOutcome {
+        dry_run: true,
+        description: "fake preview".to_string(),
+        maybe_file_path: Some(PathBuf::from(
+            "/fake/home/Library/LaunchAgents/org.open-bitcoin.node.plist",
+        )),
+        maybe_file_content: Some("fake generated content".to_string()),
+        commands_that_would_run: vec![
+            "launchctl enable gui/501/org.open-bitcoin.node".to_string(),
+            "launchctl bootstrap gui/501 /fake/home/Library/LaunchAgents/org.open-bitcoin.node.plist"
+                .to_string(),
+        ],
+    }
+}
+
+#[test]
+fn execute_service_command_service_preview_calls_install_dry_run() {
+    // Arrange
+    let mut manager = FakeServiceManager::unmanaged();
+    manager.install_outcome = Some(preview_install_outcome());
+    let cli = OperatorCli::try_parse_from(["open-bitcoin", "service", "preview"])
+        .expect("service preview should parse");
+    let crate::operator::OperatorCommand::Service(service_args) = &cli.command else {
+        panic!("expected Service command");
+    };
+
+    // Act
+    let outcome = execute_service_command(
+        service_args,
+        PathBuf::from("/fake/bin/open-bitcoin"),
+        PathBuf::from("/fake/datadir"),
+        None,
+        None,
+        &manager,
+    );
+
+    // Assert
+    assert_eq!(
+        outcome.exit_code,
+        crate::operator::runtime::OperatorExitCode::Success
+    );
+    assert_eq!(
+        manager.recorded_calls.borrow().as_slice(),
+        &[FakeServiceCall::Install { apply: false }]
+    );
+}
+
+#[test]
+fn execute_service_command_service_preview_renders_install_preview_output() {
+    // Arrange
+    let mut manager = FakeServiceManager::unmanaged();
+    manager.install_outcome = Some(preview_install_outcome());
+    let cli = OperatorCli::try_parse_from(["open-bitcoin", "service", "preview"])
+        .expect("service preview should parse");
+    let crate::operator::OperatorCommand::Service(service_args) = &cli.command else {
+        panic!("expected Service command");
+    };
+
+    // Act
+    let outcome = execute_service_command(
+        service_args,
+        PathBuf::from("/fake/bin/open-bitcoin"),
+        PathBuf::from("/fake/datadir"),
+        None,
+        None,
+        &manager,
+    );
+
+    // Assert
+    let stdout = &outcome.stdout.text;
+    assert!(stdout.contains("Dry run"), "missing dry-run text: {stdout}");
+    assert!(
+        stdout.contains("Would write"),
+        "missing file path preview: {stdout}"
+    );
+    assert!(
+        stdout.contains("Generated content"),
+        "missing generated content: {stdout}"
+    );
+    assert!(
+        stdout.contains("Commands"),
+        "missing manager commands: {stdout}"
+    );
+    assert!(
+        stdout.contains("Scope: user-level"),
+        "missing user-level scope: {stdout}"
+    );
+}
+
+#[test]
+fn execute_service_command_service_preview_apply_rejects_without_manager_call() {
+    // Arrange
+    let manager = FakeServiceManager::unmanaged();
+    let cli = OperatorCli::try_parse_from(["open-bitcoin", "service", "preview", "--apply"])
+        .expect("service preview --apply should parse before dispatcher rejection");
+    let crate::operator::OperatorCommand::Service(service_args) = &cli.command else {
+        panic!("expected Service command");
+    };
+
+    // Act
+    let outcome = execute_service_command(
+        service_args,
+        PathBuf::from("/fake/bin/open-bitcoin"),
+        PathBuf::from("/fake/datadir"),
+        None,
+        None,
+        &manager,
+    );
+
+    // Assert
+    assert_eq!(
+        outcome.exit_code,
+        crate::operator::runtime::OperatorExitCode::Failure(1)
+    );
+    assert_eq!(
+        outcome.stderr.text,
+        "service preview is always side-effect-free; remove --apply"
+    );
+    assert!(
+        manager.recorded_calls.borrow().is_empty(),
+        "preview --apply must not call the manager"
+    );
+}
+
+#[test]
+fn execute_service_command_service_install_without_apply_still_records_dry_run() {
+    // Arrange
+    let manager = FakeServiceManager::unmanaged();
+    let cli = OperatorCli::try_parse_from(["open-bitcoin", "service", "install"])
+        .expect("service install should parse");
+    let crate::operator::OperatorCommand::Service(service_args) = &cli.command else {
+        panic!("expected Service command");
+    };
+
+    // Act
+    let outcome = execute_service_command(
+        service_args,
+        PathBuf::from("/fake/bin/open-bitcoin"),
+        PathBuf::from("/fake/datadir"),
+        None,
+        None,
+        &manager,
+    );
+
+    // Assert
+    assert_eq!(
+        outcome.exit_code,
+        crate::operator::runtime::OperatorExitCode::Success
+    );
+    assert_eq!(
+        manager.recorded_calls.borrow().as_slice(),
+        &[FakeServiceCall::Install { apply: false }]
+    );
+}
 
 #[test]
 fn execute_service_command_install_dry_run_shows_dry_run_output() {

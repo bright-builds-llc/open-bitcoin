@@ -16,7 +16,7 @@ use serde_json::Value;
 
 use super::{
     CliRoute, ConfigCommand, DashboardArgs, MigrationCommand, NetworkSelection, OperatorCli,
-    OperatorCommand, OperatorOutputFormat, StatusArgs, SupportCommand, SyncCommand,
+    OperatorCommand, OperatorOutputFormat, ServiceCommand, StatusArgs, SupportCommand, SyncCommand,
     config::OperatorConfigSource,
     onboarding::{OnboardingWriteDecision, ProposedConfigWrite},
     route_cli_invocation,
@@ -163,6 +163,28 @@ fn open_bitcoin_dashboard_routes_to_operator_dashboard() {
         panic!("expected dashboard command");
     };
     assert_eq!(dashboard.tick_ms, 500);
+}
+
+#[test]
+fn service_preview_routes_to_operator_service_preview() {
+    // Arrange
+    let args = vec![os("service"), os("preview")];
+
+    // Act
+    let route = route_cli_invocation("open-bitcoin", &args).expect("route");
+
+    // Assert
+    let CliRoute::Operator(cli) = route else {
+        panic!("expected operator route");
+    };
+    let OperatorCommand::Service(service) = cli.command else {
+        panic!("expected service command");
+    };
+    assert_eq!(service.command, ServiceCommand::Preview);
+    assert!(
+        !service.apply,
+        "preview should be side-effect-free by default"
+    );
 }
 
 #[test]

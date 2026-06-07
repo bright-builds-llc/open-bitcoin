@@ -35,6 +35,8 @@ pub struct FakeServiceManager {
     pub status_to_return: ServiceStateSnapshot,
     /// If `Some`, `install()` returns this error instead of success.
     pub install_error: Option<ServiceError>,
+    /// If `Some`, `install()` returns this success outcome instead of the default fake outcome.
+    pub install_outcome: Option<ServiceCommandOutcome>,
     /// If `Some`, `uninstall()` returns this error instead of success.
     pub uninstall_error: Option<ServiceError>,
     /// Commands surfaced in the outcome from `enable()`.
@@ -48,6 +50,7 @@ impl FakeServiceManager {
             recorded_calls: RefCell::new(Vec::new()),
             status_to_return,
             install_error: None,
+            install_outcome: None,
             uninstall_error: None,
             enable_commands: Vec::new(),
         }
@@ -79,6 +82,9 @@ impl ServiceManager for FakeServiceManager {
 
         if let Some(ref error) = self.install_error {
             return Err(error.clone());
+        }
+        if let Some(ref outcome) = self.install_outcome {
+            return Ok(outcome.clone());
         }
 
         Ok(ServiceCommandOutcome {
