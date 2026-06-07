@@ -102,7 +102,12 @@ Plans:
   2. Service status distinguishes unmanaged, installed-stopped, running, failed, disabled, and unavailable-manager states while preserving shared sync truth fields.
   3. Service runbooks explain log locations, config paths, safe shutdown, restart review, and recovery actions for launchd and systemd operators.
   4. Service commands and docs keep the workflow framed as opt-in extended operator review, not a broad production-node claim.
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] [63-01](phases/63-service-supervision-lifecycle/63-01-PLAN.md) - Service preview command and open-bitcoind service target
+- [ ] [63-02](phases/63-service-supervision-lifecycle/63-02-PLAN.md) - Start, stop, and restart service actions
+- [ ] [63-03](phases/63-service-supervision-lifecycle/63-03-PLAN.md) - Shared lifecycle status and rendering
+- [ ] [63-04](phases/63-service-supervision-lifecycle/63-04-PLAN.md) - Operator runbook and deterministic lifecycle checker
 
 ### Phase 64: Service Restart and Same-Datadir Resume Evidence
 **Goal**: Operators can prove service-supervised restarts reopen durable state and resume sync safely.
@@ -155,7 +160,7 @@ Plans:
 | 60. Unattended Sync Loop Control | 1/1 | Complete    | 2026-06-06 |
 | 61. Resource Bounds and Recovery Taxonomy | 6/6 | Complete   | 2026-06-06 |
 | 62. Long-Run Sync Truth Surfaces | 4/4 | Complete    | 2026-06-07 |
-| 63. Service Supervision Lifecycle | 0/TBD | Not started | - |
+| 63. Service Supervision Lifecycle | 0/4 | Not started | - |
 | 64. Service Restart and Same-Datadir Resume Evidence | 0/TBD | Not started | - |
 | 65. Support Bundle and Operator Review Docs | 0/TBD | Not started | - |
 | 66. Compatibility Harness Operator Wrapper | 0/TBD | Not started | - |
