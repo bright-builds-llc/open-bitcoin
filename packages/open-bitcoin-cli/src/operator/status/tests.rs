@@ -30,9 +30,9 @@ use crate::operator::{
 };
 use open_bitcoin_node::status::{
     BuildProvenance, ConfigStatus, FieldAvailability, MempoolStatus, NodeRuntimeState, NodeStatus,
-    OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, ServiceStatus, SyncAttemptCounters,
-    SyncConfiguredTargets, SyncProgressSignal, SyncStatus, SyncStopReasonStatus, WalletFreshness,
-    WalletScanProgress, WalletStatus,
+    OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, ServiceLifecycleStatus, ServiceStatus,
+    SyncAttemptCounters, SyncConfiguredTargets, SyncProgressSignal, SyncStatus,
+    SyncStopReasonStatus, WalletFreshness, WalletScanProgress, WalletStatus,
 };
 use open_bitcoin_node::{
     FjallNodeStore, PersistMode, WalletRegistry,
@@ -337,9 +337,15 @@ fn human_and_json_renderers_surface_wallet_freshness_and_scan_reasons() {
         },
         service: ServiceStatus {
             manager: FieldAvailability::available("launchd".to_string()),
+            lifecycle: FieldAvailability::available(ServiceLifecycleStatus::Running),
             installed: FieldAvailability::available(true),
             enabled: FieldAvailability::available(true),
             running: FieldAvailability::available(true),
+            service_file_path: FieldAvailability::available(
+                "/tmp/open-bitcoin-node.service".to_string(),
+            ),
+            log_path: FieldAvailability::available("/tmp/logs/open-bitcoin.log".to_string()),
+            diagnostics: FieldAvailability::unavailable("service diagnostics unavailable"),
         },
         sync: SyncStatus {
             network: FieldAvailability::available("regtest".to_string()),

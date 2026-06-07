@@ -4,10 +4,10 @@
 use super::{
     BuildProvenance, ChainTipStatus, ConfigStatus, FieldAvailability, HealthSignal,
     HealthSignalLevel, MempoolStatus, NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot,
-    PeerCounts, PeerStatus, PeerTelemetry, ServiceStatus, SyncAttemptCounters,
-    SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal,
-    SyncResourcePressure, SyncStatus, SyncStopReasonStatus, WalletFreshness, WalletScanProgress,
-    WalletStatus,
+    PeerCounts, PeerStatus, PeerTelemetry, ServiceLifecycleStatus, ServiceStatus,
+    SyncAttemptCounters, SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState, SyncProgress,
+    SyncProgressSignal, SyncResourcePressure, SyncStatus, SyncStopReasonStatus, WalletFreshness,
+    WalletScanProgress, WalletStatus,
 };
 use crate::{LogStatus, MetricsStatus};
 
@@ -123,6 +123,58 @@ fn phase62_sync_truth_contract() {
 }
 
 #[test]
+fn phase63_service_lifecycle_status_contract_serializes_labels() {
+    // Arrange
+    let installed_stopped = ServiceLifecycleStatus::InstalledStopped;
+    let unavailable_manager = ServiceLifecycleStatus::UnavailableManager;
+
+    // Act
+    let installed_stopped_json =
+        serde_json::to_value(installed_stopped).expect("installed-stopped status json");
+    let unavailable_manager_json =
+        serde_json::to_value(unavailable_manager).expect("unavailable-manager status json");
+
+    // Assert
+    assert_eq!(installed_stopped.as_str(), "installed-stopped");
+    assert_eq!(unavailable_manager.as_str(), "unavailable-manager");
+    assert_eq!(installed_stopped_json, "installed-stopped");
+    assert_eq!(unavailable_manager_json, "unavailable-manager");
+}
+
+#[test]
+fn phase63_service_lifecycle_status_contract_defaults_legacy_json() {
+    // Arrange
+    let legacy_json = serde_json::json!({
+        "manager": { "state": "available", "value": "launchd" },
+        "installed": { "state": "available", "value": true },
+        "enabled": { "state": "available", "value": true },
+        "running": { "state": "available", "value": false }
+    });
+
+    // Act
+    let service: ServiceStatus =
+        serde_json::from_value(legacy_json).expect("legacy service status json");
+
+    // Assert
+    assert_eq!(
+        service.lifecycle,
+        FieldAvailability::unavailable("service lifecycle unavailable")
+    );
+    assert_eq!(
+        service.service_file_path,
+        FieldAvailability::unavailable("service file path unavailable")
+    );
+    assert_eq!(
+        service.log_path,
+        FieldAvailability::unavailable("service log path unavailable")
+    );
+    assert_eq!(
+        service.diagnostics,
+        FieldAvailability::unavailable("service diagnostics unavailable")
+    );
+}
+
+#[test]
 fn stopped_node_snapshot_keeps_unavailable_live_fields_explicit() {
     // Arrange / Act
     let snapshot = stopped_snapshot();
@@ -185,9 +237,15 @@ fn populated_snapshot_serializes_obs_01_fields() {
         },
         service: ServiceStatus {
             manager: FieldAvailability::available("launchd".to_string()),
+            lifecycle: FieldAvailability::available(ServiceLifecycleStatus::Running),
             installed: FieldAvailability::available(true),
             enabled: FieldAvailability::available(true),
             running: FieldAvailability::available(true),
+            service_file_path: FieldAvailability::available(
+                "/tmp/open-bitcoin-node.service".to_string(),
+            ),
+            log_path: FieldAvailability::available("/tmp/logs/open-bitcoin.log".to_string()),
+            diagnostics: FieldAvailability::unavailable("service diagnostics unavailable"),
         },
         sync: SyncStatus {
             network: FieldAvailability::available("mainnet".to_string()),
@@ -411,9 +469,13 @@ fn stopped_snapshot() -> OpenBitcoinStatusSnapshot {
         },
         service: ServiceStatus {
             manager: FieldAvailability::unavailable("service manager not inspected"),
+            lifecycle: FieldAvailability::unavailable("service manager not inspected"),
             installed: FieldAvailability::unavailable("service manager not inspected"),
             enabled: FieldAvailability::unavailable("service manager not inspected"),
             running: FieldAvailability::unavailable("service manager not inspected"),
+            service_file_path: FieldAvailability::unavailable("service file path unavailable"),
+            log_path: FieldAvailability::unavailable("service log path unavailable"),
+            diagnostics: FieldAvailability::unavailable("service diagnostics unavailable"),
         },
         sync: SyncStatus {
             network: FieldAvailability::unavailable(unavailable),

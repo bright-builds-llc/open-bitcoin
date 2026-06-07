@@ -259,6 +259,8 @@
         "packages/open-bitcoin-cli/src/operator/status.rs",
         "packages/open-bitcoin-cli/src/operator/status/http.rs",
         "packages/open-bitcoin-cli/src/operator/status/render.rs",
+        "packages/open-bitcoin-cli/src/operator/status/render/tests.rs",
+        "packages/open-bitcoin-cli/src/operator/status/service_status.rs",
         "packages/open-bitcoin-cli/src/operator/status/tests.rs",
         "packages/open-bitcoin-cli/tests/operator_binary.rs"
       ],

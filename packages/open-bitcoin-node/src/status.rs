@@ -58,12 +58,61 @@ pub struct ConfigStatus {
 }
 
 /// Service manager status.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ServiceLifecycleStatus {
+    Unmanaged,
+    InstalledStopped,
+    Running,
+    Failed,
+    Disabled,
+    UnavailableManager,
+}
+
+impl ServiceLifecycleStatus {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Unmanaged => "unmanaged",
+            Self::InstalledStopped => "installed-stopped",
+            Self::Running => "running",
+            Self::Failed => "failed",
+            Self::Disabled => "disabled",
+            Self::UnavailableManager => "unavailable-manager",
+        }
+    }
+}
+
+/// Service manager status.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ServiceStatus {
     pub manager: FieldAvailability<String>,
+    #[serde(default = "service_lifecycle_unavailable")]
+    pub lifecycle: FieldAvailability<ServiceLifecycleStatus>,
     pub installed: FieldAvailability<bool>,
     pub enabled: FieldAvailability<bool>,
     pub running: FieldAvailability<bool>,
+    #[serde(default = "service_file_path_unavailable")]
+    pub service_file_path: FieldAvailability<String>,
+    #[serde(default = "service_log_path_unavailable")]
+    pub log_path: FieldAvailability<String>,
+    #[serde(default = "service_diagnostics_unavailable")]
+    pub diagnostics: FieldAvailability<String>,
+}
+
+fn service_lifecycle_unavailable() -> FieldAvailability<ServiceLifecycleStatus> {
+    FieldAvailability::unavailable("service lifecycle unavailable")
+}
+
+fn service_file_path_unavailable() -> FieldAvailability<String> {
+    FieldAvailability::unavailable("service file path unavailable")
+}
+
+fn service_log_path_unavailable() -> FieldAvailability<String> {
+    FieldAvailability::unavailable("service log path unavailable")
+}
+
+fn service_diagnostics_unavailable() -> FieldAvailability<String> {
+    FieldAvailability::unavailable("service diagnostics unavailable")
 }
 
 /// Chain tip projection for status output.

@@ -15,7 +15,7 @@ use open_bitcoin_node::{
     status::{
         BuildProvenance, ConfigStatus, FieldAvailability, HealthSignal, HealthSignalLevel,
         MempoolStatus, NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts,
-        PeerStatus, ServiceStatus, WalletStatus,
+        PeerStatus, WalletStatus,
     },
 };
 use open_bitcoin_rpc::method::{
@@ -27,12 +27,12 @@ use super::{
     NetworkSelection,
     config::{OperatorConfigPathKind, OperatorConfigResolution},
     detect::{DetectedInstallation, ServiceCandidate},
-    service::ServiceLifecycleState,
 };
 
 mod detection;
 mod http;
 mod render;
+mod service_status;
 mod sync_state;
 #[cfg(test)]
 mod tests;
@@ -40,6 +40,7 @@ mod wallet;
 
 pub use http::HttpStatusRpcClient;
 pub use render::render_status;
+use service_status::collect_service_status;
 use sync_state::{durable_sync_state, rpc_sync_status, unavailable_sync_status};
 
 /// Operator status request supplied by CLI flags and config.
@@ -473,72 +474,6 @@ fn config_status(resolution: &OperatorConfigResolution) -> ConfigStatus {
     ConfigStatus {
         datadir,
         config_paths,
-    }
-}
-
-fn collect_service_status(input: &StatusCollectorInput) -> ServiceStatus {
-    if let Some(manager) = input.maybe_service_manager.as_ref() {
-        match manager.status() {
-            Ok(snapshot) => {
-                #[cfg(target_os = "macos")]
-                let manager_name = "launchd";
-                #[cfg(target_os = "linux")]
-                let manager_name = "systemd";
-                #[cfg(not(any(target_os = "macos", target_os = "linux")))]
-                let manager_name = "unknown";
-
-                let installed = !matches!(snapshot.state, ServiceLifecycleState::Unmanaged);
-                let enabled = snapshot.maybe_enabled.unwrap_or(matches!(
-                    snapshot.state,
-                    ServiceLifecycleState::Enabled
-                        | ServiceLifecycleState::Running
-                        | ServiceLifecycleState::Stopped
-                ));
-                let running = matches!(snapshot.state, ServiceLifecycleState::Running);
-
-                return ServiceStatus {
-                    manager: FieldAvailability::available(manager_name.to_string()),
-                    installed: FieldAvailability::available(installed),
-                    enabled: FieldAvailability::available(enabled),
-                    running: FieldAvailability::available(running),
-                };
-            }
-            Err(_) => {
-                return ServiceStatus {
-                    manager: FieldAvailability::unavailable("service manager not inspected"),
-                    installed: FieldAvailability::unavailable("service manager not inspected"),
-                    enabled: FieldAvailability::unavailable("service manager not inspected"),
-                    running: FieldAvailability::unavailable("service manager not inspected"),
-                };
-            }
-        }
-    }
-
-    detection_service_status(&input.detection_evidence)
-}
-
-fn detection_service_status(evidence: &StatusDetectionEvidence) -> ServiceStatus {
-    let maybe_candidate = evidence
-        .service_candidates
-        .iter()
-        .find(|candidate| candidate.present);
-
-    if let Some(candidate) = maybe_candidate {
-        return ServiceStatus {
-            manager: FieldAvailability::available(detection::service_manager_name(
-                candidate.manager,
-            )),
-            installed: FieldAvailability::available(true),
-            enabled: FieldAvailability::unavailable("service manager not inspected"),
-            running: FieldAvailability::unavailable("service manager not inspected"),
-        };
-    }
-
-    ServiceStatus {
-        manager: FieldAvailability::unavailable("service manager not inspected"),
-        installed: FieldAvailability::unavailable("service manager not inspected"),
-        enabled: FieldAvailability::unavailable("service manager not inspected"),
-        running: FieldAvailability::unavailable("service manager not inspected"),
     }
 }
 

@@ -6,9 +6,10 @@ use open_bitcoin_node::{
     status::{
         BuildProvenance, ConfigStatus, FieldAvailability, HealthSignal, HealthSignalLevel,
         MempoolStatus, NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts,
-        PeerStatus, ServiceStatus, SyncAttemptCounters, SyncConfiguredTargets, SyncLagStatus,
-        SyncLifecycleState, SyncProgress, SyncProgressSignal, SyncRecoveryCategory,
-        SyncResourcePressure, SyncStatus, SyncStopReasonStatus, WalletFreshness, WalletStatus,
+        PeerStatus, ServiceLifecycleStatus, ServiceStatus, SyncAttemptCounters,
+        SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal,
+        SyncRecoveryCategory, SyncResourcePressure, SyncStatus, SyncStopReasonStatus,
+        WalletFreshness, WalletStatus,
     },
 };
 
@@ -248,9 +249,15 @@ fn test_snapshot() -> OpenBitcoinStatusSnapshot {
         },
         service: ServiceStatus {
             manager: FieldAvailability::available("launchd".to_string()),
+            lifecycle: FieldAvailability::available(ServiceLifecycleStatus::Running),
             installed: FieldAvailability::available(true),
             enabled: FieldAvailability::available(true),
             running: FieldAvailability::available(true),
+            service_file_path: FieldAvailability::available(
+                "/tmp/open-bitcoin-node.service".to_string(),
+            ),
+            log_path: FieldAvailability::available("/tmp/logs/open-bitcoin.log".to_string()),
+            diagnostics: FieldAvailability::unavailable("service diagnostics unavailable"),
         },
         sync: SyncStatus {
             network: FieldAvailability::available("regtest".to_string()),

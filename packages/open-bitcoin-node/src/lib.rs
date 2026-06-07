@@ -35,8 +35,9 @@ pub use network::{ManagedNetworkError, ManagedPeerNetwork};
 pub use open_bitcoin_core as core;
 pub use status::{
     BuildProvenance, ConfigStatus, DurableSyncState, FieldAvailability, NodeRuntimeState,
-    OpenBitcoinStatusSnapshot, PeerStatus, PeerTelemetry, SyncControlState, SyncLagStatus,
-    SyncLifecycleState, SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure, SyncStatus,
+    OpenBitcoinStatusSnapshot, PeerStatus, PeerTelemetry, ServiceLifecycleStatus, SyncControlState,
+    SyncLagStatus, SyncLifecycleState, SyncProgressSignal, SyncRecoveryCategory,
+    SyncResourcePressure, SyncStatus,
 };
 pub use storage::{
     FjallNodeStore, MetricsStorageSnapshot, PersistMode, RecoveryMarker, RuntimeMetadata,
