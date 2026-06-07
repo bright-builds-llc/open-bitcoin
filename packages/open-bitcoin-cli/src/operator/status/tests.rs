@@ -12,6 +12,7 @@ use super::{
     StatusLiveRpcAdapterInput, StatusRenderMode, StatusRequest, StatusRpcAuthSource,
     StatusRpcClient, StatusRpcError, StatusWalletRpcAccess, build_provenance_from_inputs,
     collect_status_snapshot, render_status, resolve_status_wallet_rpc_access,
+    service_status::service_lifecycle_from_snapshot,
 };
 use crate::operator::{
     NetworkSelection,
@@ -31,11 +32,12 @@ use crate::operator::{
 use open_bitcoin_node::status::{
     BuildProvenance, ConfigStatus, FieldAvailability, MempoolStatus, NodeRuntimeState, NodeStatus,
     OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, ServiceLifecycleStatus, ServiceStatus,
-    SyncAttemptCounters, SyncConfiguredTargets, SyncProgressSignal, SyncStatus,
+    SyncAttemptCounters, SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState, SyncProgress,
+    SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure, SyncStatus,
     SyncStopReasonStatus, WalletFreshness, WalletScanProgress, WalletStatus,
 };
 use open_bitcoin_node::{
-    FjallNodeStore, PersistMode, WalletRegistry,
+    DurableSyncState, FjallNodeStore, PersistMode, RuntimeMetadata, WalletRegistry,
     core::wallet::{AddressNetwork, Wallet},
 };
 use open_bitcoin_rpc::{
@@ -509,6 +511,120 @@ fn status_rendering_redacts_credentials_and_cookie_contents() {
 // --- Service manager injection tests ---
 
 #[test]
+fn phase63_service_lifecycle_projection_maps_snapshot_states() {
+    // Arrange
+    let cases = [
+        (
+            service_snapshot(ServiceLifecycleState::Unmanaged, None),
+            ServiceLifecycleStatus::Unmanaged,
+        ),
+        (
+            service_snapshot(ServiceLifecycleState::Running, Some(false)),
+            ServiceLifecycleStatus::Running,
+        ),
+        (
+            service_snapshot(ServiceLifecycleState::Failed, Some(true)),
+            ServiceLifecycleStatus::Failed,
+        ),
+        (
+            service_snapshot(ServiceLifecycleState::Installed, Some(false)),
+            ServiceLifecycleStatus::Disabled,
+        ),
+        (
+            service_snapshot(ServiceLifecycleState::Stopped, Some(true)),
+            ServiceLifecycleStatus::InstalledStopped,
+        ),
+        (
+            service_snapshot(ServiceLifecycleState::Enabled, Some(true)),
+            ServiceLifecycleStatus::InstalledStopped,
+        ),
+    ];
+
+    // Act
+    let actual = cases
+        .iter()
+        .map(|(snapshot, _)| service_lifecycle_from_snapshot(snapshot))
+        .collect::<Vec<_>>();
+
+    // Assert
+    assert_eq!(
+        actual,
+        cases
+            .iter()
+            .map(|(_, expected)| *expected)
+            .collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn phase63_service_lifecycle_projection_collects_manager_evidence() {
+    // Arrange
+    let fake = FakeServiceManager::new(ServiceStateSnapshot {
+        state: ServiceLifecycleState::Running,
+        maybe_enabled: Some(false),
+        maybe_service_file_path: Some(PathBuf::from("/tmp/open-bitcoin-node.service")),
+        maybe_manager_diagnostics: Some("launchctl reports running".to_string()),
+        maybe_log_path: Some(PathBuf::from("/tmp/logs/open-bitcoin.log")),
+        maybe_log_path_unavailable_reason: None,
+    });
+    let input = status_input_with_manager(Box::new(fake), config_resolution());
+
+    // Act
+    let snapshot = collect_status_snapshot(&input, None);
+
+    // Assert
+    assert_eq!(
+        snapshot.service.lifecycle,
+        FieldAvailability::available(ServiceLifecycleStatus::Running)
+    );
+    assert_eq!(
+        snapshot.service.enabled,
+        FieldAvailability::available(false),
+        "manager enablement evidence should not be inferred away"
+    );
+    assert_eq!(
+        snapshot.service.service_file_path,
+        FieldAvailability::available("/tmp/open-bitcoin-node.service".to_string())
+    );
+    assert_eq!(
+        snapshot.service.log_path,
+        FieldAvailability::available("/tmp/logs/open-bitcoin.log".to_string())
+    );
+    assert_eq!(
+        snapshot.service.diagnostics,
+        FieldAvailability::available("launchctl reports running".to_string())
+    );
+
+    let missing_enablement_fake = FakeServiceManager::new(ServiceStateSnapshot {
+        state: ServiceLifecycleState::Stopped,
+        maybe_enabled: None,
+        maybe_service_file_path: Some(PathBuf::from("/tmp/open-bitcoin-node.service")),
+        maybe_manager_diagnostics: Some("   ".to_string()),
+        maybe_log_path: None,
+        maybe_log_path_unavailable_reason: Some("manager did not report log path".to_string()),
+    });
+    let missing_enablement_input =
+        status_input_with_manager(Box::new(missing_enablement_fake), config_resolution());
+    let missing_enablement = collect_status_snapshot(&missing_enablement_input, None);
+    assert_eq!(
+        missing_enablement.service.lifecycle,
+        FieldAvailability::available(ServiceLifecycleStatus::InstalledStopped)
+    );
+    assert_eq!(
+        missing_enablement.service.enabled,
+        FieldAvailability::unavailable("service manager did not report enablement")
+    );
+    assert_eq!(
+        missing_enablement.service.log_path,
+        FieldAvailability::unavailable("manager did not report log path")
+    );
+    assert_eq!(
+        missing_enablement.service.diagnostics,
+        FieldAvailability::unavailable("service diagnostics unavailable")
+    );
+}
+
+#[test]
 fn collect_status_snapshot_with_no_service_manager_preserves_unavailable_service_fields() {
     // Arrange — no service manager, no detected service candidates
     let input = status_input(Vec::new());
@@ -784,7 +900,7 @@ fn collect_status_snapshot_preserves_running_when_startup_is_not_enabled() {
 
 #[test]
 fn collect_status_snapshot_with_error_manager_falls_back_to_unavailable() {
-    // Arrange — a manager whose status() always returns an error
+    // Arrange
     struct ErrorServiceManager;
     impl crate::operator::service::ServiceManager for ErrorServiceManager {
         fn install(
@@ -826,7 +942,119 @@ fn collect_status_snapshot_with_error_manager_falls_back_to_unavailable() {
         }
     }
 
-    let input = StatusCollectorInput {
+    let path = temp_path("phase63-manager-error-sync-preservation");
+    remove_dir_if_exists(&path);
+    let _guard = TempDirGuard { path: path.clone() };
+    let store = FjallNodeStore::open(&path).expect("open sync state store");
+    store
+        .save_runtime_metadata(
+            &RuntimeMetadata {
+                maybe_sync_state: Some(phase62_durable_sync_state()),
+                ..RuntimeMetadata::default()
+            },
+            PersistMode::Sync,
+        )
+        .expect("save sync state metadata");
+    drop(store);
+
+    let mut resolution = config_resolution();
+    resolution.maybe_data_dir = Some(path);
+    let input = status_input_with_manager(Box::new(ErrorServiceManager), resolution);
+
+    // Act
+    let snapshot = collect_status_snapshot(&input, None);
+
+    // Assert
+    assert_eq!(
+        snapshot.service.lifecycle,
+        FieldAvailability::available(ServiceLifecycleStatus::UnavailableManager)
+    );
+    assert_eq!(
+        snapshot.service.manager,
+        FieldAvailability::unavailable(
+            "service manager unavailable: unsupported platform: platform not supported in test"
+        )
+    );
+    assert_eq!(
+        snapshot.service.installed,
+        FieldAvailability::unavailable(
+            "service manager unavailable: unsupported platform: platform not supported in test"
+        )
+    );
+    assert_eq!(
+        snapshot.service.enabled,
+        FieldAvailability::unavailable(
+            "service manager unavailable: unsupported platform: platform not supported in test"
+        )
+    );
+    assert_eq!(
+        snapshot.service.running,
+        FieldAvailability::unavailable(
+            "service manager unavailable: unsupported platform: platform not supported in test"
+        )
+    );
+    assert_eq!(
+        snapshot.service.service_file_path,
+        FieldAvailability::unavailable(
+            "service manager unavailable: unsupported platform: platform not supported in test"
+        )
+    );
+    assert_eq!(
+        snapshot.service.log_path,
+        FieldAvailability::unavailable(
+            "service manager unavailable: unsupported platform: platform not supported in test"
+        )
+    );
+    assert_eq!(
+        snapshot.service.diagnostics,
+        FieldAvailability::available(
+            "unsupported platform: platform not supported in test".to_string()
+        )
+    );
+
+    let FieldAvailability::Available(configured_targets) = snapshot.sync.configured_targets else {
+        panic!("configured targets should survive service manager failure");
+    };
+    assert_eq!(configured_targets.target_outbound_peers, 4);
+    assert_eq!(configured_targets.maybe_target_header_height, Some(840_200));
+
+    let FieldAvailability::Available(attempt_counters) = snapshot.sync.attempt_counters else {
+        panic!("attempt counters should survive service manager failure");
+    };
+    assert_eq!(attempt_counters.attempted_peers, 3);
+    assert_eq!(attempt_counters.connected_peers, 2);
+    assert_eq!(attempt_counters.failed_peers, 1);
+    assert_eq!(attempt_counters.max_sync_rounds, 8);
+
+    let FieldAvailability::Available(stop_reason) = snapshot.sync.latest_stop_reason else {
+        panic!("latest stop reason should survive service manager failure");
+    };
+    assert_eq!(stop_reason.label, "target_header_reached");
+    assert_eq!(
+        snapshot.sync.recovery_category,
+        FieldAvailability::available(SyncRecoveryCategory::InvalidPeerData)
+    );
+}
+
+fn service_snapshot(
+    state: ServiceLifecycleState,
+    maybe_enabled: Option<bool>,
+) -> ServiceStateSnapshot {
+    ServiceStateSnapshot {
+        state,
+        maybe_enabled,
+        maybe_service_file_path: Some(PathBuf::from("/tmp/open-bitcoin-node.service")),
+        maybe_manager_diagnostics: None,
+        maybe_log_path: Some(PathBuf::from("/tmp/logs/open-bitcoin.log")),
+        maybe_log_path_unavailable_reason: None,
+    }
+}
+
+fn status_input_with_manager(
+    manager: Box<dyn crate::operator::service::ServiceManager>,
+    config_resolution: OperatorConfigResolution,
+) -> StatusCollectorInput {
+    StatusCollectorInput {
         request: StatusRequest {
             render_mode: StatusRenderMode::Human,
             maybe_config_path: None,
@@ -835,34 +1063,85 @@ fn collect_status_snapshot_with_error_manager_falls_back_to_unavailable() {
             include_live_rpc: false,
             no_color: false,
         },
-        config_resolution: config_resolution(),
+        config_resolution,
         detection_evidence: StatusDetectionEvidence {
             detected_installations: Vec::new(),
             service_candidates: Vec::new(),
         },
         maybe_live_rpc: None,
-        maybe_service_manager: Some(Box::new(ErrorServiceManager)),
+        maybe_service_manager: Some(manager),
         wallet_rpc_access: StatusWalletRpcAccess::Root,
-    };
+    }
+}
 
-    // Act
-    let snapshot = collect_status_snapshot(&input, None);
-
-    // Assert — graceful fallback to unavailable, no panic
-    assert!(
-        matches!(
-            &snapshot.service.manager,
-            open_bitcoin_node::status::FieldAvailability::Unavailable { .. }
-        ),
-        "service.manager should be unavailable when manager.status() errors"
-    );
-    assert!(
-        matches!(
-            &snapshot.service.running,
-            open_bitcoin_node::status::FieldAvailability::Unavailable { .. }
-        ),
-        "service.running should be unavailable when manager.status() errors"
-    );
+fn phase62_durable_sync_state() -> DurableSyncState {
+    DurableSyncState {
+        sync: SyncStatus {
+            network: FieldAvailability::available("mainnet".to_string()),
+            chain_tip: FieldAvailability::unavailable("chain tip unavailable"),
+            sync_progress: FieldAvailability::available(SyncProgress {
+                header_height: 840_100,
+                block_height: 840_004,
+                downloaded_block_height: 840_006,
+                connected_block_height: 840_004,
+                maybe_downloaded_block_hash: Some("22".repeat(32)),
+                maybe_connected_block_hash: Some("11".repeat(32)),
+                progress_ratio: 840_004.0 / 840_100.0,
+                messages_processed: 7,
+                headers_received: 3,
+                blocks_received: 1,
+            }),
+            lifecycle: FieldAvailability::available(SyncLifecycleState::Active),
+            phase: FieldAvailability::available("block_download".to_string()),
+            configured_targets: FieldAvailability::available(SyncConfiguredTargets {
+                target_outbound_peers: 4,
+                maybe_target_header_height: Some(840_200),
+            }),
+            attempt_counters: FieldAvailability::available(SyncAttemptCounters {
+                attempted_peers: 3,
+                connected_peers: 2,
+                failed_peers: 1,
+                max_sync_rounds: 8,
+            }),
+            progress_signal: FieldAvailability::available(SyncProgressSignal::AwaitingBlocks),
+            lag: FieldAvailability::available(SyncLagStatus {
+                headers_remaining: 0,
+                blocks_remaining: 96,
+            }),
+            last_successful_progress_unix_seconds: FieldAvailability::available(1_717_000_000),
+            latest_stop_reason: FieldAvailability::available(SyncStopReasonStatus {
+                label: "target_header_reached".to_string(),
+                message:
+                    "sync header target reached: target_header_height=840200 best_header_height=840200"
+                        .to_string(),
+            }),
+            last_error: FieldAvailability::available("peer stalled before block connect".to_string()),
+            recovery_category: FieldAvailability::available(SyncRecoveryCategory::InvalidPeerData),
+            recovery_action: FieldAvailability::available(
+                "Retry sync after peer backoff or choose a different peer.".to_string(),
+            ),
+            resource_pressure: FieldAvailability::available(SyncResourcePressure {
+                blocks_in_flight: 0,
+                max_header_requests_in_flight_per_peer: 1,
+                max_headers_per_message: 2_000,
+                max_blocks_in_flight_per_peer: 16,
+                max_blocks_in_flight_total: 64,
+                max_messages_per_peer: 64,
+                max_sync_rounds: 8,
+                outbound_peers: 2,
+                target_outbound_peers: 4,
+            }),
+        },
+        peers: PeerStatus {
+            peer_counts: FieldAvailability::available(PeerCounts {
+                inbound: 0,
+                outbound: 2,
+            }),
+            recent_peers: FieldAvailability::unavailable("peer telemetry unavailable"),
+        },
+        health_signals: Vec::new(),
+        updated_at_unix_seconds: 1_717_000_010,
+    }
 }
 
 fn status_input(detected_installations: Vec<DetectedInstallation>) -> StatusCollectorInput {
