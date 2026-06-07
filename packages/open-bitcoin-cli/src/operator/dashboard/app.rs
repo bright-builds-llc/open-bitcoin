@@ -86,8 +86,9 @@ fn run_loop(
     let mut last_tick = Instant::now();
     let mut state = DashboardState::from_snapshot(&collect_dashboard_snapshot(context));
     let mut maybe_pending_action: Option<DashboardAction> = None;
-    let mut message =
-        String::from("r refresh | s service status | i/u/e/d service action | q quit");
+    let mut message = String::from(
+        "r refresh | s status | t start service | o stop service | x restart service | i/u/e/d service action | q quit",
+    );
 
     loop {
         let mut dashboard_blocked = false;
@@ -290,6 +291,9 @@ fn action_for_key(key: KeyEvent) -> DashboardAction {
         KeyCode::Esc | KeyCode::Char('q') => DashboardAction::Exit,
         KeyCode::Char('r') => DashboardAction::Refresh,
         KeyCode::Char('s') => DashboardAction::ShowStatus,
+        KeyCode::Char('t') => DashboardAction::StartService,
+        KeyCode::Char('o') => DashboardAction::StopService,
+        KeyCode::Char('x') => DashboardAction::RestartService,
         KeyCode::Char('i') => DashboardAction::InstallService,
         KeyCode::Char('u') => DashboardAction::UninstallService,
         KeyCode::Char('e') => DashboardAction::EnableService,
@@ -369,7 +373,10 @@ fn handle_action(
             };
             Ok(false)
         }
-        DashboardAction::InstallService
+        DashboardAction::StartService
+        | DashboardAction::StopService
+        | DashboardAction::RestartService
+        | DashboardAction::InstallService
         | DashboardAction::UninstallService
         | DashboardAction::EnableService
         | DashboardAction::DisableService => {
@@ -378,8 +385,9 @@ fn handle_action(
             Ok(false)
         }
         DashboardAction::Help => {
-            *message = "r refresh, s status, i install, u uninstall, e enable, d disable, q quit"
-                .to_string();
+            *message =
+                "r refresh, s status, t start service, o stop service, x restart service, i install, u uninstall, e enable, d disable, q quit"
+                    .to_string();
             Ok(false)
         }
         DashboardAction::Confirm | DashboardAction::Cancel => Ok(false),

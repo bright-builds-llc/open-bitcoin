@@ -17,6 +17,9 @@ pub enum DashboardAction {
     Refresh,
     Exit,
     ShowStatus,
+    StartService,
+    StopService,
+    RestartService,
     InstallService,
     UninstallService,
     EnableService,
@@ -31,7 +34,10 @@ impl DashboardAction {
     pub const fn requires_confirmation(self) -> bool {
         matches!(
             self,
-            Self::InstallService
+            Self::StartService
+                | Self::StopService
+                | Self::RestartService
+                | Self::InstallService
                 | Self::UninstallService
                 | Self::EnableService
                 | Self::DisableService
@@ -118,6 +124,9 @@ pub fn confirm_and_execute(
 /// Human-readable confirmation text shown before service-affecting actions.
 pub fn action_confirm_text(action: DashboardAction, apply_mode: bool) -> String {
     let effect = match action {
+        DashboardAction::StartService => "start the user-level Open Bitcoin service",
+        DashboardAction::StopService => "stop the user-level Open Bitcoin service",
+        DashboardAction::RestartService => "restart the user-level Open Bitcoin service",
         DashboardAction::InstallService => "install the user-level Open Bitcoin service",
         DashboardAction::UninstallService => "remove the user-level Open Bitcoin service",
         DashboardAction::EnableService => "enable automatic service startup",
@@ -137,6 +146,9 @@ pub fn action_confirm_text(action: DashboardAction, apply_mode: bool) -> String 
 fn service_args_for_action(action: DashboardAction) -> Option<ServiceArgs> {
     let command = match action {
         DashboardAction::ShowStatus => ServiceCommand::Status,
+        DashboardAction::StartService => ServiceCommand::Start,
+        DashboardAction::StopService => ServiceCommand::Stop,
+        DashboardAction::RestartService => ServiceCommand::Restart,
         DashboardAction::InstallService => ServiceCommand::Install,
         DashboardAction::UninstallService => ServiceCommand::Uninstall,
         DashboardAction::EnableService => ServiceCommand::Enable,
@@ -196,6 +208,87 @@ mod tests {
             manager.recorded_calls.borrow().as_slice(),
             &[FakeServiceCall::Install { apply: true }]
         );
+    }
+
+    #[test]
+    fn dashboard_service_start_action_uses_shared_service_command_path() {
+        // Arrange
+        let manager = FakeServiceManager::unmanaged();
+        let context = context(&manager);
+        let state = DashboardActionState::confirmed(DashboardAction::StartService);
+
+        // Act
+        let outcome = confirm_and_execute(&state, &context);
+
+        // Assert
+        assert_eq!(outcome.exit_code.code(), 0);
+        assert_eq!(
+            manager.recorded_calls.borrow().as_slice(),
+            &[FakeServiceCall::Start]
+        );
+    }
+
+    #[test]
+    fn dashboard_service_stop_action_uses_shared_service_command_path() {
+        // Arrange
+        let manager = FakeServiceManager::unmanaged();
+        let context = context(&manager);
+        let state = DashboardActionState::confirmed(DashboardAction::StopService);
+
+        // Act
+        let outcome = confirm_and_execute(&state, &context);
+
+        // Assert
+        assert_eq!(outcome.exit_code.code(), 0);
+        assert_eq!(
+            manager.recorded_calls.borrow().as_slice(),
+            &[FakeServiceCall::Stop]
+        );
+    }
+
+    #[test]
+    fn dashboard_service_restart_action_uses_shared_service_command_path() {
+        // Arrange
+        let manager = FakeServiceManager::unmanaged();
+        let context = context(&manager);
+        let state = DashboardActionState::confirmed(DashboardAction::RestartService);
+
+        // Act
+        let outcome = confirm_and_execute(&state, &context);
+
+        // Assert
+        assert_eq!(outcome.exit_code.code(), 0);
+        assert_eq!(
+            manager.recorded_calls.borrow().as_slice(),
+            &[FakeServiceCall::Restart]
+        );
+    }
+
+    #[test]
+    fn cancelled_dashboard_service_start_stop_restart_actions_do_not_call_manager() {
+        // Arrange
+        let manager = FakeServiceManager::unmanaged();
+        let context = context(&manager);
+
+        // Act
+        let start = confirm_and_execute(
+            &DashboardActionState::cancelled(DashboardAction::StartService),
+            &context,
+        );
+        let stop = confirm_and_execute(
+            &DashboardActionState::cancelled(DashboardAction::StopService),
+            &context,
+        );
+        let restart = confirm_and_execute(
+            &DashboardActionState::cancelled(DashboardAction::RestartService),
+            &context,
+        );
+
+        // Assert
+        assert_eq!(start.exit_code.code(), 0);
+        assert_eq!(stop.exit_code.code(), 0);
+        assert_eq!(restart.exit_code.code(), 0);
+        assert!(manager.recorded_calls.borrow().is_empty());
     }
 
     #[test]

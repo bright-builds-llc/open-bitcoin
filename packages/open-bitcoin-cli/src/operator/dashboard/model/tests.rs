@@ -46,6 +46,43 @@ fn dashboard_projection_includes_required_sections_and_charts() {
 }
 
 #[test]
+fn dashboard_action_bar_includes_start_stop_restart_service_actions() {
+    // Arrange
+    let snapshot = test_snapshot();
+
+    // Act
+    let state = DashboardState::from_snapshot(&snapshot);
+
+    // Assert
+    let actions = state
+        .actions
+        .iter()
+        .map(|action| {
+            (
+                action.key.as_str(),
+                action.label.as_str(),
+                action.destructive,
+            )
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        actions,
+        vec![
+            ("r", "refresh", false),
+            ("s", "service status", false),
+            ("t", "start service", true),
+            ("o", "stop service", true),
+            ("x", "restart service", true),
+            ("i", "install service", true),
+            ("u", "uninstall service", true),
+            ("e", "enable service", true),
+            ("d", "disable service", true),
+            ("q", "quit", false),
+        ]
+    );
+}
+
+#[test]
 fn derive_metric_points_is_width_bounded() {
     // Arrange
     let samples = vec![

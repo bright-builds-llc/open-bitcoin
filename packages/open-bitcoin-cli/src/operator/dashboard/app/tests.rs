@@ -3,9 +3,11 @@
 
 use std::{cell::RefCell, path::PathBuf, rc::Rc};
 
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
 use super::{
-    DashboardAction, DashboardAppError, DashboardState, handle_action, handle_dashboard_action,
-    is_interactive_dashboard_height_sufficient, render_action_line,
+    DashboardAction, DashboardAppError, DashboardState, action_for_key, handle_action,
+    handle_dashboard_action, is_interactive_dashboard_height_sufficient, render_action_line,
 };
 use crate::operator::{
     config::OperatorConfigResolution,
@@ -13,8 +15,9 @@ use crate::operator::{
     dashboard::{DashboardRuntimeContext, DashboardServiceRuntime, collect_dashboard_snapshot},
     service::{
         ServiceCommandOutcome, ServiceDisableRequest, ServiceEnableRequest, ServiceError,
-        ServiceInstallRequest, ServiceLifecycleState, ServiceManager, ServiceStateSnapshot,
-        ServiceUninstallRequest, fake::FakeServiceCall,
+        ServiceInstallRequest, ServiceLifecycleState, ServiceManager, ServiceRestartRequest,
+        ServiceStartRequest, ServiceStateSnapshot, ServiceStopRequest, ServiceUninstallRequest,
+        fake::FakeServiceCall,
     },
     status::{
         StatusCollectorInput, StatusDetectionEvidence, StatusRenderMode, StatusRequest,
@@ -98,6 +101,42 @@ impl ServiceManager for TestServiceManager {
         self.calls.borrow_mut().push(FakeServiceCall::Status);
         Ok(self.snapshot.clone())
     }
+
+    fn start(&self, _request: &ServiceStartRequest) -> Result<ServiceCommandOutcome, ServiceError> {
+        self.calls.borrow_mut().push(FakeServiceCall::Start);
+        Ok(ServiceCommandOutcome {
+            dry_run: false,
+            description: "fake start".to_string(),
+            maybe_file_path: None,
+            maybe_file_content: None,
+            commands_that_would_run: vec![],
+        })
+    }
+
+    fn stop(&self, _request: &ServiceStopRequest) -> Result<ServiceCommandOutcome, ServiceError> {
+        self.calls.borrow_mut().push(FakeServiceCall::Stop);
+        Ok(ServiceCommandOutcome {
+            dry_run: false,
+            description: "fake stop".to_string(),
+            maybe_file_path: None,
+            maybe_file_content: None,
+            commands_that_would_run: vec![],
+        })
+    }
+
+    fn restart(
+        &self,
+        _request: &ServiceRestartRequest,
+    ) -> Result<ServiceCommandOutcome, ServiceError> {
+        self.calls.borrow_mut().push(FakeServiceCall::Restart);
+        Ok(ServiceCommandOutcome {
+            dry_run: false,
+            description: "fake restart".to_string(),
+            maybe_file_path: None,
+            maybe_file_content: None,
+            commands_that_would_run: vec![],
+        })
+    }
 }
 
 #[test]
@@ -147,6 +186,105 @@ fn service_install_action_requires_confirmation_then_executes() -> Result<(), Da
 }
 
 #[test]
+fn dashboard_service_start_action_executes_after_confirm() -> Result<(), DashboardAppError> {
+    // Arrange
+    let calls = Rc::new(RefCell::new(Vec::new()));
+    let context = test_context(Rc::clone(&calls), running_snapshot());
+    let mut state = test_state(&context);
+    let mut maybe_pending_action = None;
+    let mut message = String::new();
+
+    // Act
+    let should_exit = handle_action(
+        DashboardAction::StartService,
+        &context,
+        &mut state,
+        &mut maybe_pending_action,
+        &mut message,
+    )?;
+    let should_exit_after_confirm = handle_action(
+        DashboardAction::Confirm,
+        &context,
+        &mut state,
+        &mut maybe_pending_action,
+        &mut message,
+    )?;
+
+    // Assert
+    assert!(!should_exit);
+    assert!(!should_exit_after_confirm);
+    assert_eq!(calls.borrow().as_slice(), &[FakeServiceCall::Start]);
+    assert!(message.contains("fake start"));
+    Ok(())
+}
+
+#[test]
+fn dashboard_service_stop_action_executes_after_confirm() -> Result<(), DashboardAppError> {
+    // Arrange
+    let calls = Rc::new(RefCell::new(Vec::new()));
+    let context = test_context(Rc::clone(&calls), running_snapshot());
+    let mut state = test_state(&context);
+    let mut maybe_pending_action = None;
+    let mut message = String::new();
+
+    // Act
+    let should_exit = handle_action(
+        DashboardAction::StopService,
+        &context,
+        &mut state,
+        &mut maybe_pending_action,
+        &mut message,
+    )?;
+    let should_exit_after_confirm = handle_action(
+        DashboardAction::Confirm,
+        &context,
+        &mut state,
+        &mut maybe_pending_action,
+        &mut message,
+    )?;
+
+    // Assert
+    assert!(!should_exit);
+    assert!(!should_exit_after_confirm);
+    assert_eq!(calls.borrow().as_slice(), &[FakeServiceCall::Stop]);
+    assert!(message.contains("fake stop"));
+    Ok(())
+}
+
+#[test]
+fn dashboard_service_restart_action_executes_after_confirm() -> Result<(), DashboardAppError> {
+    // Arrange
+    let calls = Rc::new(RefCell::new(Vec::new()));
+    let context = test_context(Rc::clone(&calls), running_snapshot());
+    let mut state = test_state(&context);
+    let mut maybe_pending_action = None;
+    let mut message = String::new();
+
+    // Act
+    let should_exit = handle_action(
+        DashboardAction::RestartService,
+        &context,
+        &mut state,
+        &mut maybe_pending_action,
+        &mut message,
+    )?;
+    let should_exit_after_confirm = handle_action(
+        DashboardAction::Confirm,
+        &context,
+        &mut state,
+        &mut maybe_pending_action,
+        &mut message,
+    )?;
+
+    // Assert
+    assert!(!should_exit);
+    assert!(!should_exit_after_confirm);
+    assert_eq!(calls.borrow().as_slice(), &[FakeServiceCall::Restart]);
+    assert!(message.contains("fake restart"));
+    Ok(())
+}
+
+#[test]
 fn render_action_line_inserts_visual_separators_between_actions() {
     // Arrange
     let actions = vec![
@@ -176,6 +314,19 @@ fn render_action_line_inserts_visual_separators_between_actions() {
         .map(|span| span.content.as_ref())
         .collect::<String>();
     assert_eq!(text, "r refresh | i install service | q quit");
+}
+
+#[test]
+fn dashboard_service_start_stop_restart_keys_map_to_actions() {
+    // Arrange
+    let key = |character| KeyEvent::new(KeyCode::Char(character), KeyModifiers::NONE);
+
+    // Act / Assert
+    assert_eq!(action_for_key(key('t')), DashboardAction::StartService);
+    assert_eq!(action_for_key(key('o')), DashboardAction::StopService);
+    assert_eq!(action_for_key(key('x')), DashboardAction::RestartService);
+    assert_eq!(action_for_key(key('s')), DashboardAction::ShowStatus);
+    assert_eq!(action_for_key(key('r')), DashboardAction::Refresh);
 }
 
 #[test]
@@ -354,4 +505,15 @@ fn test_context(
 
 fn test_state(context: &DashboardRuntimeContext) -> DashboardState {
     DashboardState::from_snapshot(&collect_dashboard_snapshot(context))
+}
+
+fn running_snapshot() -> ServiceStateSnapshot {
+    ServiceStateSnapshot {
+        state: ServiceLifecycleState::Running,
+        maybe_enabled: Some(true),
+        maybe_service_file_path: Some(PathBuf::from("/tmp/open-bitcoin.service")),
+        maybe_manager_diagnostics: Some("manager healthy".to_string()),
+        maybe_log_path: Some(PathBuf::from("/tmp/open-bitcoin.log")),
+        maybe_log_path_unavailable_reason: None,
+    }
 }

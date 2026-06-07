@@ -208,6 +208,9 @@ fn dashboard_actions() -> Vec<ActionEntry> {
     vec![
         action("r", "refresh", false),
         action("s", "service status", false),
+        action("t", "start service", true),
+        action("o", "stop service", true),
+        action("x", "restart service", true),
         action("i", "install service", true),
         action("u", "uninstall service", true),
         action("e", "enable service", true),
