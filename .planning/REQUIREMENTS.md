@@ -24,10 +24,10 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Service Lifecycle Hardening
 
-- [ ] **SVC-01**: Operator can preview, install, start, stop, restart, and inspect launchd or systemd supervision for the opt-in unattended daemon workflow without implying a broad production-node claim.
-- [ ] **SVC-02**: Service status distinguishes unmanaged, installed-stopped, running, failed, disabled, and unavailable-manager states while preserving shared sync truth fields.
+- [x] **SVC-01**: Operator can preview, install, start, stop, restart, and inspect launchd or systemd supervision for the opt-in unattended daemon workflow without implying a broad production-node claim.
+- [x] **SVC-02**: Service status distinguishes unmanaged, installed-stopped, running, failed, disabled, and unavailable-manager states while preserving shared sync truth fields.
 - [ ] **SVC-03**: Daemon restart under service supervision reopens durable sync state, reports clean versus unclean prior shutdown, and resumes bounded sync work without duplicating block connection or in-flight requests.
-- [ ] **SVC-04**: Service runbooks explain log locations, config paths, safe shutdown, restart review, and recovery actions for launchd and systemd operators.
+- [x] **SVC-04**: Service runbooks explain log locations, config paths, safe shutdown, restart review, and recovery actions for launchd and systemd operators.
 
 ### Resource Bounds and Recovery Behavior
 
@@ -98,10 +98,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | OBS-02 | Phase 62 | Pending |
 | OBS-03 | Phase 65 | Pending |
 | OBS-04 | Phase 65 | Pending |
-| SVC-01 | Phase 63 | Pending |
-| SVC-02 | Phase 63 | Pending |
+| SVC-01 | Phase 63 | Complete |
+| SVC-02 | Phase 63 | Complete |
 | SVC-03 | Phase 64 | Pending |
-| SVC-04 | Phase 63 | Pending |
+| SVC-04 | Phase 63 | Complete |
 | RR-01 | Phase 61 | Complete |
 | RR-02 | Phase 61 | Complete |
 | RR-03 | Phase 64 | Pending |

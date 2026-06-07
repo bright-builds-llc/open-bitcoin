@@ -80,8 +80,12 @@ fn plist_content_contains_required_fields() {
         "plist should not supervise operator binary: {content}"
     );
     assert!(
-        content.contains("<string>/fake/datadir</string>"),
-        "missing datadir: {content}"
+        content.contains("<string>-datadir=/fake/datadir</string>"),
+        "missing daemon datadir arg: {content}"
+    );
+    assert!(
+        !content.contains("<string>--datadir</string>"),
+        "plist should not use operator CLI datadir flag: {content}"
     );
     assert!(
         content.contains("<true/>"),
@@ -106,12 +110,12 @@ fn plist_content_includes_config_path_when_provided() {
 
     // Assert
     assert!(
-        content.contains("<string>--config</string>"),
-        "missing --config arg: {content}"
+        content.contains("<string>-openbitcoinconf=/fake/config/open-bitcoin.jsonc</string>"),
+        "missing daemon config arg: {content}"
     );
     assert!(
-        content.contains("<string>/fake/config/open-bitcoin.jsonc</string>"),
-        "missing config path: {content}"
+        !content.contains("<string>--config</string>"),
+        "plist should not use operator CLI config flag: {content}"
     );
 }
 
@@ -177,8 +181,12 @@ fn unit_content_contains_required_fields() {
         "missing [Install]: {content}"
     );
     assert!(
-        content.contains("ExecStart=\"/fake/bin/open-bitcoind\" --datadir \"/fake/datadir\""),
+        content.contains("ExecStart=\"/fake/bin/open-bitcoind\" \"-datadir=/fake/datadir\""),
         "missing ExecStart: {content}"
+    );
+    assert!(
+        !content.contains("--datadir"),
+        "unit should not use operator CLI datadir flag: {content}"
     );
     assert!(
         !content.contains("ExecStart=\"/fake/bin/open-bitcoin\""),
@@ -210,8 +218,12 @@ fn unit_content_includes_config_path_when_provided() {
 
     // Assert
     assert!(
-        content.contains("--config \"/fake/config/open-bitcoin.jsonc\""),
-        "missing --config arg: {content}"
+        content.contains("\"-openbitcoinconf=/fake/config/open-bitcoin.jsonc\""),
+        "missing daemon config arg: {content}"
+    );
+    assert!(
+        !content.contains("--config"),
+        "unit should not use operator CLI config flag: {content}"
     );
 }
 

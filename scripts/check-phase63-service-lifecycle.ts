@@ -154,6 +154,39 @@ function verifyPlatformCommands(launchdRs: string, systemdRs: string): void {
   );
 }
 
+function verifyDaemonServiceArguments(launchdRs: string, systemdRs: string): void {
+  requireAllContains(
+    launchdRs,
+    ["-datadir=", "-openbitcoinconf="],
+    "packages/open-bitcoin-cli/src/operator/service/launchd.rs",
+  );
+  requireAllContains(
+    systemdRs,
+    ["-datadir=", "-openbitcoinconf="],
+    "packages/open-bitcoin-cli/src/operator/service/systemd.rs",
+  );
+  requireNotContains(
+    launchdRs,
+    "<string>--datadir</string>",
+    "packages/open-bitcoin-cli/src/operator/service/launchd.rs",
+  );
+  requireNotContains(
+    launchdRs,
+    "<string>--config</string>",
+    "packages/open-bitcoin-cli/src/operator/service/launchd.rs",
+  );
+  requireNotContains(
+    systemdRs,
+    "--datadir",
+    "packages/open-bitcoin-cli/src/operator/service/systemd.rs",
+  );
+  requireNotContains(
+    systemdRs,
+    "--config",
+    "packages/open-bitcoin-cli/src/operator/service/systemd.rs",
+  );
+}
+
 function verifyDashboardActions(actionRs: string, modelRs: string, runtimeGuide: string): void {
   requireAllContains(
     actionRs,
@@ -263,6 +296,7 @@ function main(): void {
   verifyServiceCommands(operatorRs, serviceRs);
   verifyDaemonTargeting(runtimeRs, runtimeGuide);
   verifyPlatformCommands(launchdRs, systemdRs);
+  verifyDaemonServiceArguments(launchdRs, systemdRs);
   verifyDashboardActions(actionRs, dashboardModelRs, runtimeGuide);
   verifyStatusSurfaces(statusRenderRs, dashboardModelRs, runtimeGuide);
   verifyDocs(runtimeGuide);

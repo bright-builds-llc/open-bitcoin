@@ -31,7 +31,7 @@ pub fn generate_unit_content(
     let data_dir_str = data_dir.display();
 
     let config_arg = maybe_config_path
-        .map(|p| format!(" --config \"{}\"", p.display()))
+        .map(|p| format!(" \"-openbitcoinconf={}\"", p.display()))
         .unwrap_or_default();
     let log_directives = maybe_log_path
         .map(|log_path| {
@@ -55,7 +55,7 @@ pub fn generate_unit_content(
          After=network.target\n\
          \n\
          [Service]\n\
-         ExecStart=\"{binary_str}\" --datadir \"{data_dir_str}\"{config_arg}\n\
+         ExecStart=\"{binary_str}\" \"-datadir={data_dir_str}\"{config_arg}\n\
          Restart=on-failure\n\
          {log_directives}\n\
          \n\

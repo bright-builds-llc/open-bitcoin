@@ -40,7 +40,7 @@ traceability.
 - [x] **Phase 60: Unattended Sync Loop Control** - Operators can opt into repeated daemon sync cycles with bounded stop, retry, pause, resume, and shutdown behavior. (completed 2026-06-06)
 - [x] **Phase 61: Resource Bounds and Recovery Taxonomy** - Operators can trust unattended sync bounds, recovery states, and next-action guidance across long runs. (completed 2026-06-06)
 - [x] **Phase 62: Long-Run Sync Truth Surfaces** - Operators see consistent bounded sync truth across status, dashboard, RPC, metrics, logs, and live-smoke snapshots. (completed 2026-06-07)
-- [ ] **Phase 63: Service Supervision Lifecycle** - Operators can manage launchd or systemd supervision for the opt-in unattended workflow with truthful lifecycle state.
+- [x] **Phase 63: Service Supervision Lifecycle** - Operators can manage launchd or systemd supervision for the opt-in unattended workflow with truthful lifecycle state. (completed 2026-06-07)
 - [ ] **Phase 64: Service Restart and Same-Datadir Resume Evidence** - Operators can prove service-supervised restarts reopen durable state and resume sync safely.
 - [ ] **Phase 65: Support Bundle and Operator Review Docs** - Operators can collect redacted v1.5 evidence and follow repo-local deterministic and opt-in review commands.
 - [ ] **Phase 66: Compatibility Harness Operator Wrapper** - Operators can run the Phase 54 public-peer compatibility harness through a documented CLI or repo script wrapper.
@@ -104,10 +104,10 @@ Plans:
   4. Service commands and docs keep the workflow framed as opt-in extended operator review, not a broad production-node claim.
 **Plans**: 4 plans
 Plans:
-- [ ] [63-01](phases/63-service-supervision-lifecycle/63-01-PLAN.md) - Service preview command and open-bitcoind service target
-- [ ] [63-02](phases/63-service-supervision-lifecycle/63-02-PLAN.md) - Start, stop, and restart service actions
-- [ ] [63-03](phases/63-service-supervision-lifecycle/63-03-PLAN.md) - Shared lifecycle status and rendering
-- [ ] [63-04](phases/63-service-supervision-lifecycle/63-04-PLAN.md) - Operator runbook and deterministic lifecycle checker
+- [x] [63-01](phases/63-service-supervision-lifecycle/63-01-PLAN.md) - Service preview command and open-bitcoind service target
+- [x] [63-02](phases/63-service-supervision-lifecycle/63-02-PLAN.md) - Start, stop, and restart service actions
+- [x] [63-03](phases/63-service-supervision-lifecycle/63-03-PLAN.md) - Shared lifecycle status and rendering
+- [x] [63-04](phases/63-service-supervision-lifecycle/63-04-PLAN.md) - Operator runbook and deterministic lifecycle checker
 
 ### Phase 64: Service Restart and Same-Datadir Resume Evidence
 **Goal**: Operators can prove service-supervised restarts reopen durable state and resume sync safely.
@@ -160,7 +160,7 @@ Plans:
 | 60. Unattended Sync Loop Control | 1/1 | Complete    | 2026-06-06 |
 | 61. Resource Bounds and Recovery Taxonomy | 6/6 | Complete   | 2026-06-06 |
 | 62. Long-Run Sync Truth Surfaces | 4/4 | Complete    | 2026-06-07 |
-| 63. Service Supervision Lifecycle | 0/4 | Not started | - |
+| 63. Service Supervision Lifecycle | 4/4 | Complete    | 2026-06-07 |
 | 64. Service Restart and Same-Datadir Resume Evidence | 0/TBD | Not started | - |
 | 65. Support Bundle and Operator Review Docs | 0/TBD | Not started | - |
 | 66. Compatibility Harness Operator Wrapper | 0/TBD | Not started | - |

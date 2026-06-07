@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Unattended Mainnet Node Operation Readiness
-status: planning
-stopped_at: Phase 62 complete; ready for Phase 63 planning
-last_updated: "2026-06-07T00:34:07.004Z"
+status: executing
+stopped_at: Phase 63 context gathered
+last_updated: "2026-06-07T19:30:37.387Z"
 last_activity: 2026-06-07
 progress:
   total_phases: 8
-  completed_phases: 3
-  total_plans: 11
-  completed_plans: 11
+  completed_phases: 4
+  total_plans: 15
+  completed_plans: 15
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-05)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 63 — Service Supervision Lifecycle
+**Current focus:** Phase 64 — Service Restart and Same-Datadir Resume Evidence
 
 ## Current Position
 
 Milestone: v1.5 Unattended Mainnet Node Operation Readiness
-Phase: 63 (Service Supervision Lifecycle) — NOT STARTED
+Phase: 64
 Plan: Not started
-Status: Phase 62 complete — ready to plan Phase 63
+Status: Ready to plan Phase 64
 Last activity: 2026-06-07
 
 Progress: [##########] 100%
@@ -48,7 +48,7 @@ Progress: [##########] 100%
 | 60 | 1 | - | - |
 | 61 | 6 | - | - |
 | 62 | 4 | - | - |
-| 63 | TBD | - | - |
+| 63 | 4 | - | - |
 | 64 | TBD | - | - |
 | 65 | TBD | - | - |
 | 66 | TBD | - | - |
@@ -57,7 +57,7 @@ Progress: [##########] 100%
 **Recent Trend:**
 
 - Last 5 completed plans: 59-02, 59-03, 59-04, 59-05, 60-01
-- Trend: v1.5 completed Phases 60, 61, and 62; ready to plan Phase 63.
+- Trend: v1.5 completed Phases 60, 61, 62, and 63; ready to plan Phase 64.
 
 | Phase 61 P01 | 20m 23s | 2 tasks | 12 files |
 | Phase 61-resource-bounds-and-recovery-taxonomy P02 | 23min | 3 tasks | 7 files |
@@ -119,6 +119,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-07T00:34:07.004Z
-Stopped at: Phase 62 complete; ready for Phase 63 planning
-Resume file: .planning/phases/62-long-run-sync-truth-surfaces/62-VERIFICATION.md
+Last session: 2026-06-07T14:22:05.218Z
+Stopped at: Phase 63 context gathered
+Resume file: .planning/phases/63-service-supervision-lifecycle/63-CONTEXT.md

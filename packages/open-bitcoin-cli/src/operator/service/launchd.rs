@@ -50,8 +50,7 @@ pub fn generate_plist_content(
     let mut config_args = String::new();
     if let Some(config_path) = maybe_config_path {
         let config_str = xml_escape(&config_path.display().to_string());
-        config_args =
-            format!("\n        <string>--config</string>\n        <string>{config_str}</string>",);
+        config_args = format!("\n        <string>-openbitcoinconf={config_str}</string>",);
     }
 
     let mut log_keys = String::new();
@@ -74,8 +73,7 @@ pub fn generate_plist_content(
     <key>ProgramArguments</key>
     <array>
         <string>{binary_str}</string>
-        <string>--datadir</string>
-        <string>{data_dir_str}</string>{config_args}
+        <string>-datadir={data_dir_str}</string>{config_args}
     </array>
     <key>KeepAlive</key>
     <true/>
