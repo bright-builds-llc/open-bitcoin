@@ -10,8 +10,8 @@ use std::cell::RefCell;
 
 use super::{
     ServiceCommandOutcome, ServiceDisableRequest, ServiceEnableRequest, ServiceError,
-    ServiceInstallRequest, ServiceLifecycleState, ServiceManager, ServiceStateSnapshot,
-    ServiceUninstallRequest,
+    ServiceInstallRequest, ServiceLifecycleState, ServiceManager, ServiceRestartRequest,
+    ServiceStartRequest, ServiceStateSnapshot, ServiceStopRequest, ServiceUninstallRequest,
 };
 
 /// A recorded call to `FakeServiceManager`.
@@ -19,6 +19,9 @@ use super::{
 pub enum FakeServiceCall {
     Install { apply: bool },
     Uninstall { apply: bool },
+    Start,
+    Stop,
+    Restart,
     Enable,
     Disable,
     Status,
@@ -39,6 +42,12 @@ pub struct FakeServiceManager {
     pub install_outcome: Option<ServiceCommandOutcome>,
     /// If `Some`, `uninstall()` returns this error instead of success.
     pub uninstall_error: Option<ServiceError>,
+    /// Commands surfaced in the outcome from `start()`.
+    pub start_commands: Vec<String>,
+    /// Commands surfaced in the outcome from `stop()`.
+    pub stop_commands: Vec<String>,
+    /// Commands surfaced in the outcome from `restart()`.
+    pub restart_commands: Vec<String>,
     /// Commands surfaced in the outcome from `enable()`.
     pub enable_commands: Vec<String>,
 }
@@ -52,6 +61,9 @@ impl FakeServiceManager {
             install_error: None,
             install_outcome: None,
             uninstall_error: None,
+            start_commands: Vec::new(),
+            stop_commands: Vec::new(),
+            restart_commands: Vec::new(),
             enable_commands: Vec::new(),
         }
     }
@@ -116,6 +128,49 @@ impl ServiceManager for FakeServiceManager {
             maybe_file_path: None,
             maybe_file_content: None,
             commands_that_would_run: vec![],
+        })
+    }
+
+    fn start(&self, _request: &ServiceStartRequest) -> Result<ServiceCommandOutcome, ServiceError> {
+        self.recorded_calls
+            .borrow_mut()
+            .push(FakeServiceCall::Start);
+
+        Ok(ServiceCommandOutcome {
+            dry_run: false,
+            description: "fake start".to_string(),
+            maybe_file_path: None,
+            maybe_file_content: None,
+            commands_that_would_run: self.start_commands.clone(),
+        })
+    }
+
+    fn stop(&self, _request: &ServiceStopRequest) -> Result<ServiceCommandOutcome, ServiceError> {
+        self.recorded_calls.borrow_mut().push(FakeServiceCall::Stop);
+
+        Ok(ServiceCommandOutcome {
+            dry_run: false,
+            description: "fake stop".to_string(),
+            maybe_file_path: None,
+            maybe_file_content: None,
+            commands_that_would_run: self.stop_commands.clone(),
+        })
+    }
+
+    fn restart(
+        &self,
+        _request: &ServiceRestartRequest,
+    ) -> Result<ServiceCommandOutcome, ServiceError> {
+        self.recorded_calls
+            .borrow_mut()
+            .push(FakeServiceCall::Restart);
+
+        Ok(ServiceCommandOutcome {
+            dry_run: false,
+            description: "fake restart".to_string(),
+            maybe_file_path: None,
+            maybe_file_content: None,
+            commands_that_would_run: self.restart_commands.clone(),
         })
     }
 

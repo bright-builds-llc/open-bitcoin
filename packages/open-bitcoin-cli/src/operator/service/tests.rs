@@ -12,10 +12,11 @@ use std::{
 use clap::Parser as _;
 
 use crate::operator::{
-    OperatorCli,
+    OperatorCli, ServiceCommand,
     service::{
         ServiceCommandOutcome, ServiceError, ServiceInstallRequest, ServiceLifecycleState,
-        ServiceManager, ServiceStateSnapshot, execute_service_command,
+        ServiceManager, ServiceRestartRequest, ServiceStartRequest, ServiceStateSnapshot,
+        ServiceStopRequest, execute_service_command,
         fake::{FakeServiceCall, FakeServiceManager},
         launchd::{
             LaunchdAdapter, generate_plist_content, parse_launchd_disabled_services,
@@ -560,6 +561,223 @@ fn preview_install_outcome() -> ServiceCommandOutcome {
                 .to_string(),
         ],
     }
+}
+
+#[test]
+fn parsing_service_start_selects_service_start_command() {
+    // Arrange / Act
+    let cli = OperatorCli::try_parse_from(["open-bitcoin", "service", "start"])
+        .expect("service start should parse");
+
+    // Assert
+    let crate::operator::OperatorCommand::Service(service_args) = &cli.command else {
+        panic!("expected Service command");
+    };
+    assert_eq!(service_args.command, ServiceCommand::Start);
+    assert!(
+        !service_args.apply,
+        "service start must not require --apply to parse"
+    );
+}
+
+#[test]
+fn parsing_service_stop_selects_service_stop_command() {
+    // Arrange / Act
+    let cli = OperatorCli::try_parse_from(["open-bitcoin", "service", "stop"])
+        .expect("service stop should parse");
+
+    // Assert
+    let crate::operator::OperatorCommand::Service(service_args) = &cli.command else {
+        panic!("expected Service command");
+    };
+    assert_eq!(service_args.command, ServiceCommand::Stop);
+    assert!(
+        !service_args.apply,
+        "service stop must not require --apply to parse"
+    );
+}
+
+#[test]
+fn parsing_service_restart_selects_service_restart_command() {
+    // Arrange / Act
+    let cli = OperatorCli::try_parse_from(["open-bitcoin", "service", "restart"])
+        .expect("service restart should parse");
+
+    // Assert
+    let crate::operator::OperatorCommand::Service(service_args) = &cli.command else {
+        panic!("expected Service command");
+    };
+    assert_eq!(service_args.command, ServiceCommand::Restart);
+    assert!(
+        !service_args.apply,
+        "service restart must not require --apply to parse"
+    );
+}
+
+#[test]
+fn fake_manager_service_start_stop_restart_records_call_order() {
+    // Arrange
+    let manager = FakeServiceManager::unmanaged();
+
+    // Act
+    let start_result = manager.start(&ServiceStartRequest);
+    let stop_result = manager.stop(&ServiceStopRequest);
+    let restart_result = manager.restart(&ServiceRestartRequest);
+
+    // Assert
+    assert!(
+        start_result.is_ok(),
+        "start should succeed: {start_result:?}"
+    );
+    assert!(stop_result.is_ok(), "stop should succeed: {stop_result:?}");
+    assert!(
+        restart_result.is_ok(),
+        "restart should succeed: {restart_result:?}"
+    );
+    assert_eq!(
+        manager.recorded_calls.borrow().as_slice(),
+        &[
+            FakeServiceCall::Start,
+            FakeServiceCall::Stop,
+            FakeServiceCall::Restart
+        ]
+    );
+}
+
+#[test]
+fn execute_service_command_service_start_calls_manager_and_renders_commands() {
+    // Arrange
+    let mut manager = FakeServiceManager::unmanaged();
+    manager.start_commands = vec!["systemctl --user start open-bitcoin-node.service".to_string()];
+    let cli = OperatorCli::try_parse_from(["open-bitcoin", "service", "start"])
+        .expect("service start should parse");
+    let crate::operator::OperatorCommand::Service(service_args) = &cli.command else {
+        panic!("expected Service command");
+    };
+
+    // Act
+    let outcome = execute_service_command(
+        service_args,
+        PathBuf::from("/fake/bin/open-bitcoind"),
+        PathBuf::from("/fake/datadir"),
+        None,
+        None,
+        &manager,
+    );
+
+    // Assert
+    assert_eq!(
+        outcome.exit_code,
+        crate::operator::runtime::OperatorExitCode::Success
+    );
+    assert_eq!(
+        manager.recorded_calls.borrow().as_slice(),
+        &[FakeServiceCall::Start]
+    );
+    assert!(
+        outcome
+            .stdout
+            .text
+            .contains("systemctl --user start open-bitcoin-node.service"),
+        "stdout should contain start command: {}",
+        outcome.stdout.text
+    );
+    assert!(
+        !outcome.stdout.text.contains("Dry run"),
+        "start should be effectful rather than a dry run: {}",
+        outcome.stdout.text
+    );
+}
+
+#[test]
+fn execute_service_command_service_stop_calls_manager_and_renders_commands() {
+    // Arrange
+    let mut manager = FakeServiceManager::unmanaged();
+    manager.stop_commands = vec!["systemctl --user stop open-bitcoin-node.service".to_string()];
+    let cli = OperatorCli::try_parse_from(["open-bitcoin", "service", "stop"])
+        .expect("service stop should parse");
+    let crate::operator::OperatorCommand::Service(service_args) = &cli.command else {
+        panic!("expected Service command");
+    };
+
+    // Act
+    let outcome = execute_service_command(
+        service_args,
+        PathBuf::from("/fake/bin/open-bitcoind"),
+        PathBuf::from("/fake/datadir"),
+        None,
+        None,
+        &manager,
+    );
+
+    // Assert
+    assert_eq!(
+        outcome.exit_code,
+        crate::operator::runtime::OperatorExitCode::Success
+    );
+    assert_eq!(
+        manager.recorded_calls.borrow().as_slice(),
+        &[FakeServiceCall::Stop]
+    );
+    assert!(
+        outcome
+            .stdout
+            .text
+            .contains("systemctl --user stop open-bitcoin-node.service"),
+        "stdout should contain stop command: {}",
+        outcome.stdout.text
+    );
+    assert!(
+        !outcome.stdout.text.contains("Dry run"),
+        "stop should be effectful rather than a dry run: {}",
+        outcome.stdout.text
+    );
+}
+
+#[test]
+fn execute_service_command_service_restart_calls_manager_and_renders_commands() {
+    // Arrange
+    let mut manager = FakeServiceManager::unmanaged();
+    manager.restart_commands =
+        vec!["systemctl --user restart open-bitcoin-node.service".to_string()];
+    let cli = OperatorCli::try_parse_from(["open-bitcoin", "service", "restart"])
+        .expect("service restart should parse");
+    let crate::operator::OperatorCommand::Service(service_args) = &cli.command else {
+        panic!("expected Service command");
+    };
+
+    // Act
+    let outcome = execute_service_command(
+        service_args,
+        PathBuf::from("/fake/bin/open-bitcoind"),
+        PathBuf::from("/fake/datadir"),
+        None,
+        None,
+        &manager,
+    );
+
+    // Assert
+    assert_eq!(
+        outcome.exit_code,
+        crate::operator::runtime::OperatorExitCode::Success
+    );
+    assert_eq!(
+        manager.recorded_calls.borrow().as_slice(),
+        &[FakeServiceCall::Restart]
+    );
+    assert!(
+        outcome
+            .stdout
+            .text
+            .contains("systemctl --user restart open-bitcoin-node.service"),
+        "stdout should contain restart command: {}",
+        outcome.stdout.text
+    );
+    assert!(
+        !outcome.stdout.text.contains("Dry run"),
+        "restart should be effectful rather than a dry run: {}",
+        outcome.stdout.text
+    );
 }
 
 #[test]

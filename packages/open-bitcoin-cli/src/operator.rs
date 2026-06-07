@@ -100,6 +100,9 @@ pub enum ServiceCommand {
     Preview,
     Install,
     Uninstall,
+    Start,
+    Stop,
+    Restart,
     Enable,
     Disable,
 }

@@ -81,6 +81,18 @@ pub struct ServiceUninstallRequest {
     pub apply: bool,
 }
 
+/// Request to start the service with the active user-level service manager.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ServiceStartRequest;
+
+/// Request to stop the service with the active user-level service manager.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ServiceStopRequest;
+
+/// Request to restart the service with the active user-level service manager.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ServiceRestartRequest;
+
 /// Request to enable the service to start at login/boot.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ServiceEnableRequest;
@@ -89,7 +101,7 @@ pub struct ServiceEnableRequest;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ServiceDisableRequest;
 
-/// Outcome of a service lifecycle command (install, uninstall, enable, disable).
+/// Outcome of a service lifecycle command.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ServiceCommandOutcome {
     /// `true` if this was a dry run (no filesystem or subprocess side effects).
@@ -125,7 +137,8 @@ pub enum ServiceError {
     ManagerCommandFailed { exit_code: i32, stderr: String },
 }
 
-/// Service lifecycle management: install, uninstall, enable, disable, and status.
+/// Service lifecycle management: install, uninstall, start, stop, restart, enable,
+/// disable, and status.
 ///
 /// Implementations handle platform-specific service manager invocations. Tests
 /// use `FakeServiceManager` to avoid real filesystem or subprocess side effects.
@@ -139,6 +152,27 @@ pub trait ServiceManager {
         &self,
         request: &ServiceUninstallRequest,
     ) -> Result<ServiceCommandOutcome, ServiceError>;
+
+    fn start(&self, _request: &ServiceStartRequest) -> Result<ServiceCommandOutcome, ServiceError> {
+        Err(ServiceError::UnsupportedPlatform {
+            reason: "this platform does not support service start".to_string(),
+        })
+    }
+
+    fn stop(&self, _request: &ServiceStopRequest) -> Result<ServiceCommandOutcome, ServiceError> {
+        Err(ServiceError::UnsupportedPlatform {
+            reason: "this platform does not support service stop".to_string(),
+        })
+    }
+
+    fn restart(
+        &self,
+        _request: &ServiceRestartRequest,
+    ) -> Result<ServiceCommandOutcome, ServiceError> {
+        Err(ServiceError::UnsupportedPlatform {
+            reason: "this platform does not support service restart".to_string(),
+        })
+    }
 
     fn enable(&self, request: &ServiceEnableRequest)
     -> Result<ServiceCommandOutcome, ServiceError>;
@@ -175,6 +209,27 @@ impl ServiceManager for UnsupportedPlatformAdapter {
     ) -> Result<ServiceCommandOutcome, ServiceError> {
         Err(ServiceError::UnsupportedPlatform {
             reason: "this platform does not support automated service uninstallation".to_string(),
+        })
+    }
+
+    fn start(&self, _request: &ServiceStartRequest) -> Result<ServiceCommandOutcome, ServiceError> {
+        Err(ServiceError::UnsupportedPlatform {
+            reason: "this platform does not support service start".to_string(),
+        })
+    }
+
+    fn stop(&self, _request: &ServiceStopRequest) -> Result<ServiceCommandOutcome, ServiceError> {
+        Err(ServiceError::UnsupportedPlatform {
+            reason: "this platform does not support service stop".to_string(),
+        })
+    }
+
+    fn restart(
+        &self,
+        _request: &ServiceRestartRequest,
+    ) -> Result<ServiceCommandOutcome, ServiceError> {
+        Err(ServiceError::UnsupportedPlatform {
+            reason: "this platform does not support service restart".to_string(),
         })
     }
 
@@ -311,8 +366,8 @@ fn render_service_log_path(snapshot: &ServiceStateSnapshot) -> String {
 /// Execute a service subcommand using the injected manager.
 ///
 /// Returns an `OperatorCommandOutcome` with dry-run preview output (when `args.apply` is
-/// false) or the result of the applied action. Enable and disable always execute without
-/// requiring `--apply` per D-12.
+/// false) or the result of the applied action. Start, stop, restart, enable, and
+/// disable always execute without requiring `--apply`.
 pub fn execute_service_command(
     args: &super::ServiceArgs,
     binary_path: PathBuf,
@@ -365,6 +420,36 @@ pub fn execute_service_command(
         ServiceCommand::Uninstall => {
             let request = ServiceUninstallRequest { apply: args.apply };
             match manager.uninstall(&request) {
+                Ok(outcome) => OperatorCommandOutcome::success(format!(
+                    "{}\n",
+                    render_service_outcome(&outcome)
+                )),
+                Err(error) => OperatorCommandOutcome::failure(error.to_string()),
+            }
+        }
+        ServiceCommand::Start => {
+            let request = ServiceStartRequest;
+            match manager.start(&request) {
+                Ok(outcome) => OperatorCommandOutcome::success(format!(
+                    "{}\n",
+                    render_service_outcome(&outcome)
+                )),
+                Err(error) => OperatorCommandOutcome::failure(error.to_string()),
+            }
+        }
+        ServiceCommand::Stop => {
+            let request = ServiceStopRequest;
+            match manager.stop(&request) {
+                Ok(outcome) => OperatorCommandOutcome::success(format!(
+                    "{}\n",
+                    render_service_outcome(&outcome)
+                )),
+                Err(error) => OperatorCommandOutcome::failure(error.to_string()),
+            }
+        }
+        ServiceCommand::Restart => {
+            let request = ServiceRestartRequest;
+            match manager.restart(&request) {
                 Ok(outcome) => OperatorCommandOutcome::success(format!(
                     "{}\n",
                     render_service_outcome(&outcome)
