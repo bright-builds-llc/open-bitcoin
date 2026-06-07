@@ -470,33 +470,164 @@ Important onboarding behaviors:
 
 ## Service Lifecycle
 
-Open Bitcoin has repo-owned service integration for macOS `launchd` and Linux
-`systemd`.
+Open Bitcoin has repo-owned user service integration for macOS `launchd` and
+Linux `systemd`. These workflows are for explicit opt-in extended operator
+review of the `open-bitcoind` daemon path. They are not part of
+`bash scripts/verify.sh`, and default verification must not start, stop, or
+restart a service or call public peers.
 
-The current commands are:
+Generated launchd plist and systemd unit definitions supervise
+`open-bitcoind`, not the `open-bitcoin` operator wrapper. launchd remains
+user-level under `~/Library/LaunchAgents/org.open-bitcoin.node.plist`. systemd
+remains user-level under
+`~/.config/systemd/user/open-bitcoin-node.service`.
+
+`service preview` is always side-effect-free. `service install` and
+`service uninstall` are previews unless `--apply` is supplied. The selected
+datadir and optional Open Bitcoin JSONC config path are rendered into the
+generated service definition so operators can review exactly what would be
+supervised before applying any change.
+
+### Service command flow
+
+Use the commands in this order when reviewing a service-managed daemon on a
+local machine. Each command is shown with repo-local Cargo and Bazel forms.
+
+1. Preview the generated service definition without side effects:
 
 ```bash
-open-bitcoin service status
-open-bitcoin service install
-open-bitcoin service install --apply
-open-bitcoin service enable
-open-bitcoin service disable
-open-bitcoin service uninstall
-open-bitcoin service uninstall --apply
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet service preview
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet service preview
 ```
 
-Service lifecycle notes:
+Review explicit config path handling during preview:
 
-- `install` and `uninstall` are dry-run previews unless `--apply` is supplied.
-- `status`, `enable`, and `disable` operate against the platform service manager
-  directly.
-- Service configuration is derived from the selected datadir, config path, and
-  operator log directory rather than from a separate service-only config file.
-- When that managed log directory is available, the generated plist or unit
-  derives a concrete service-managed log file at
-  `<log_dir>/open-bitcoin.log`, and `open-bitcoin service status` surfaces the
-  effective path from the installed service definition.
-- The dashboard action bar reuses the same service lifecycle operations.
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet --config=/tmp/open-bitcoin-mainnet/open-bitcoin.jsonc service preview
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet --config=/tmp/open-bitcoin-mainnet/open-bitcoin.jsonc service preview
+```
+
+2. Preview install output without writing service files:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet service install
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet service install
+```
+
+Review explicit config path handling during install preview:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet --config=/tmp/open-bitcoin-mainnet/open-bitcoin.jsonc service install
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet --config=/tmp/open-bitcoin-mainnet/open-bitcoin.jsonc service install
+```
+
+3. Apply the service file install after reviewing the preview:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet service install --apply
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet service install --apply
+```
+
+4. Start the user service:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet service start
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet service start
+```
+
+5. Inspect service state:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet service status
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet service status
+```
+
+6. Restart the user service after reviewing current status:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet service restart
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet service restart
+```
+
+7. Stop the user service for safe shutdown:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet service stop
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet service stop
+```
+
+8. Disable automatic user-service activation while keeping the service file:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet service disable
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet service disable
+```
+
+9. Preview service file removal without side effects:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet service uninstall
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet service uninstall
+```
+
+10. Apply service file removal after reviewing the preview:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet service uninstall --apply
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet service uninstall --apply
+```
+
+### Manager commands and labels
+
+The generated preview and action output surfaces the user-scope manager command
+strings it would use, including:
+
+- `systemctl --user start open-bitcoin-node.service`
+- `systemctl --user stop open-bitcoin-node.service`
+- `systemctl --user restart open-bitcoin-node.service`
+- `launchctl bootstrap`
+- `launchctl bootout`
+- `launchctl kickstart -k`
+
+The dashboard service action keys route through the same service command path:
+`t start service`, `o stop service`, and `x restart service`.
+
+Service lifecycle labels are exactly `unmanaged`, `installed-stopped`,
+`running`, `failed`, `disabled`, and `unavailable-manager`. The service log path
+is `<log_dir>/open-bitcoin.log` when the operator log directory is configured;
+otherwise status reports an explicit unavailable reason.
+
+`open-bitcoin service status`, `open-bitcoin status --format human`,
+`open-bitcoin status --format json`, and dashboard output should agree on the
+service manager, lifecycle label, installed/enabled/running evidence, service
+file path, log path, diagnostics, and unavailable reasons. status/dashboard JSON
+and human output preserve Phase 62 sync lifecycle, phase, configured targets,
+attempt counters, latest stop reason, recovery category/action, resource
+pressure, peer health, and downloaded/connected block evidence beside service
+state.
+
+### Safe operation notes
+
+- Log inspection: read the service log path reported by `service status`.
+  Do not copy RPC cookie contents, `rpcpassword`, or `rpcauth` values into
+  support notes.
+- Config path review: run `service preview` or `service install` with the
+  explicit `--config=/tmp/open-bitcoin-mainnet/open-bitcoin.jsonc` form when the
+  JSONC file is not at the datadir default path.
+- Safe shutdown: run `service stop`, then run `service status` and
+  `sync status --format json` against the same datadir before moving or
+  archiving local evidence.
+- Restart review: inspect `service status` before and after `service restart`.
+  Treat restart evidence as a review of service lifecycle state only; Phase 64
+  owns service-supervised same-datadir resume proof.
+- Recovery next actions: use `sync.recovery_category`,
+  `sync.recovery_action`, resource pressure, peer health, and block evidence to
+  choose the next bounded retry, storage repair, peer change, or operator stop
+  action.
+
+Live service lifecycle checks and public-network mainnet checks are optional
+UAT only. Keep them separate from deterministic default verification, and run
+them only when intentionally reviewing a local service-managed daemon.
 
 ## Status And Dashboard
 
