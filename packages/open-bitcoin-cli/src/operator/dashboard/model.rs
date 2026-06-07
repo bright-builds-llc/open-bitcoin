@@ -8,10 +8,10 @@ use open_bitcoin_node::{
     metrics::MetricsAvailability,
     status::{
         FieldAvailability, HealthSignal, HealthSignalLevel, NodeRuntimeState,
-        OpenBitcoinStatusSnapshot, PeerCounts, ServiceStatus, SyncAttemptCounters,
-        SyncConfiguredTargets, SyncLifecycleState, SyncProgress, SyncProgressSignal,
-        SyncRecoveryCategory, SyncResourcePressure, SyncStopReasonStatus, WalletFreshness,
-        WalletScanProgress,
+        OpenBitcoinStatusSnapshot, PeerCounts, ServiceLifecycleStatus, ServiceStatus,
+        SyncAttemptCounters, SyncConfiguredTargets, SyncLifecycleState, SyncProgress,
+        SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure, SyncStopReasonStatus,
+        WalletFreshness, WalletScanProgress,
     },
 };
 
@@ -373,11 +373,25 @@ fn wallet_scan_progress(value: &FieldAvailability<WalletScanProgress>) -> String
 
 fn service_rows(service: &ServiceStatus) -> Vec<DashboardRow> {
     vec![
+        row("Lifecycle", service_lifecycle(&service.lifecycle)),
         row("Manager", string_availability(&service.manager)),
         row("Installed", bool_availability(&service.installed)),
         row("Enabled", bool_availability(&service.enabled)),
         row("Running", bool_availability(&service.running)),
+        row(
+            "Service file",
+            string_availability(&service.service_file_path),
+        ),
+        row("Logs", string_availability(&service.log_path)),
+        row("Diagnostics", string_availability(&service.diagnostics)),
     ]
+}
+
+fn service_lifecycle(value: &FieldAvailability<ServiceLifecycleStatus>) -> String {
+    match value {
+        FieldAvailability::Available(value) => value.as_str().to_string(),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
 }
 
 fn log_summary(logs: &open_bitcoin_node::LogStatus) -> String {

@@ -61,6 +61,53 @@ fn status_render_includes_sync_progress_and_peer_evidence() {
     }
 }
 
+#[test]
+fn phase63_service_lifecycle_rendering_human_status_contract() {
+    // Arrange
+    let snapshot = shared_sync_truth_snapshot();
+
+    // Act
+    let rendered = render_status(&snapshot, StatusRenderMode::Human).expect("human status");
+
+    // Assert
+    assert!(rendered.contains(
+        "Service: lifecycle=running manager=launchd installed=true enabled=true running=true file=/tmp/open-bitcoin-node.service logs=/tmp/logs/open-bitcoin.log diagnostics=Unavailable: service diagnostics unavailable"
+    ));
+
+    let mut unavailable = shared_sync_truth_snapshot();
+    unavailable.service = ServiceStatus {
+        manager: FieldAvailability::unavailable(
+            "service manager unavailable: unsupported platform: launchd unavailable",
+        ),
+        lifecycle: FieldAvailability::available(ServiceLifecycleStatus::UnavailableManager),
+        installed: FieldAvailability::unavailable(
+            "service manager unavailable: unsupported platform: launchd unavailable",
+        ),
+        enabled: FieldAvailability::unavailable(
+            "service manager unavailable: unsupported platform: launchd unavailable",
+        ),
+        running: FieldAvailability::unavailable(
+            "service manager unavailable: unsupported platform: launchd unavailable",
+        ),
+        service_file_path: FieldAvailability::unavailable(
+            "service manager unavailable: unsupported platform: launchd unavailable",
+        ),
+        log_path: FieldAvailability::unavailable(
+            "service manager unavailable: unsupported platform: launchd unavailable",
+        ),
+        diagnostics: FieldAvailability::available(
+            "unsupported platform: launchd unavailable".to_string(),
+        ),
+    };
+
+    let rendered = render_status(&unavailable, StatusRenderMode::Human).expect("human status");
+
+    assert!(rendered.contains("Service: lifecycle=unavailable-manager manager=Unavailable: service manager unavailable: unsupported platform: launchd unavailable"));
+    assert!(rendered.contains("file=Unavailable: service manager unavailable"));
+    assert!(rendered.contains("logs=Unavailable: service manager unavailable"));
+    assert!(rendered.contains("diagnostics=unsupported platform: launchd unavailable"));
+}
+
 fn shared_sync_truth_snapshot() -> OpenBitcoinStatusSnapshot {
     OpenBitcoinStatusSnapshot {
         node: NodeStatus {

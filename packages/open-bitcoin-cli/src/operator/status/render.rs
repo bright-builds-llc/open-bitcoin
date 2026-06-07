@@ -7,10 +7,10 @@ use open_bitcoin_node::{
     MetricsStatus,
     status::{
         BuildProvenance, ChainTipStatus, FieldAvailability, HealthSignal, HealthSignalLevel,
-        NodeRuntimeState, OpenBitcoinStatusSnapshot, PeerCounts, PeerTelemetry, ServiceStatus,
-        SyncAttemptCounters, SyncConfiguredTargets, SyncLifecycleState, SyncProgress,
-        SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure, SyncStopReasonStatus,
-        WalletFreshness, WalletScanProgress,
+        NodeRuntimeState, OpenBitcoinStatusSnapshot, PeerCounts, PeerTelemetry,
+        ServiceLifecycleStatus, ServiceStatus, SyncAttemptCounters, SyncConfiguredTargets,
+        SyncLifecycleState, SyncProgress, SyncProgressSignal, SyncRecoveryCategory,
+        SyncResourcePressure, SyncStopReasonStatus, WalletFreshness, WalletScanProgress,
     },
 };
 
@@ -298,12 +298,23 @@ fn wallet_scan_progress_availability(value: &FieldAvailability<WalletScanProgres
 
 fn service_text(service: &ServiceStatus) -> String {
     format!(
-        "manager={} installed={} enabled={} running={}",
+        "lifecycle={} manager={} installed={} enabled={} running={} file={} logs={} diagnostics={}",
+        service_lifecycle_availability(&service.lifecycle),
         string_availability(&service.manager),
         bool_availability(&service.installed),
         bool_availability(&service.enabled),
-        bool_availability(&service.running)
+        bool_availability(&service.running),
+        string_availability(&service.service_file_path),
+        string_availability(&service.log_path),
+        string_availability(&service.diagnostics)
     )
+}
+
+fn service_lifecycle_availability(value: &FieldAvailability<ServiceLifecycleStatus>) -> String {
+    match value {
+        FieldAvailability::Available(value) => value.as_str().to_string(),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
 }
 
 fn bool_availability(value: &FieldAvailability<bool>) -> String {

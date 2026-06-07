@@ -237,6 +237,81 @@ fn dashboard_sections_surface_sync_progress_and_peer_counts_unavailable_fields()
     );
 }
 
+#[test]
+fn dashboard_sections_surface_service_lifecycle() {
+    // Arrange
+    let snapshot = test_snapshot();
+
+    // Act
+    let state = DashboardState::from_snapshot(&snapshot);
+
+    // Assert
+    let service_rows = &state.sections[3].rows;
+    let labels = service_rows
+        .iter()
+        .map(|row| row.label.as_str())
+        .collect::<Vec<_>>();
+    assert_eq!(
+        labels,
+        vec![
+            "Lifecycle",
+            "Manager",
+            "Installed",
+            "Enabled",
+            "Running",
+            "Service file",
+            "Logs",
+            "Diagnostics",
+        ]
+    );
+    assert_eq!(service_rows[0].value, "running");
+    assert_eq!(service_rows[1].value, "launchd");
+    assert_eq!(service_rows[5].value, "/tmp/open-bitcoin-node.service");
+    assert_eq!(service_rows[6].value, "/tmp/logs/open-bitcoin.log");
+    assert_eq!(
+        service_rows[7].value,
+        "Unavailable: service diagnostics unavailable"
+    );
+
+    let mut unavailable = test_snapshot();
+    unavailable.service = ServiceStatus {
+        manager: FieldAvailability::unavailable(
+            "service manager unavailable: unsupported platform: manager unavailable",
+        ),
+        lifecycle: FieldAvailability::available(ServiceLifecycleStatus::UnavailableManager),
+        installed: FieldAvailability::unavailable(
+            "service manager unavailable: unsupported platform: manager unavailable",
+        ),
+        enabled: FieldAvailability::unavailable(
+            "service manager unavailable: unsupported platform: manager unavailable",
+        ),
+        running: FieldAvailability::unavailable(
+            "service manager unavailable: unsupported platform: manager unavailable",
+        ),
+        service_file_path: FieldAvailability::unavailable(
+            "service manager unavailable: unsupported platform: manager unavailable",
+        ),
+        log_path: FieldAvailability::unavailable(
+            "service manager unavailable: unsupported platform: manager unavailable",
+        ),
+        diagnostics: FieldAvailability::available(
+            "unsupported platform: manager unavailable".to_string(),
+        ),
+    };
+
+    let unavailable_state = DashboardState::from_snapshot(&unavailable);
+    let unavailable_rows = &unavailable_state.sections[3].rows;
+    assert_eq!(unavailable_rows[0].value, "unavailable-manager");
+    assert_eq!(
+        unavailable_rows[1].value,
+        "Unavailable: service manager unavailable: unsupported platform: manager unavailable"
+    );
+    assert_eq!(
+        unavailable_rows[7].value,
+        "unsupported platform: manager unavailable"
+    );
+}
+
 fn test_snapshot() -> OpenBitcoinStatusSnapshot {
     OpenBitcoinStatusSnapshot {
         node: NodeStatus {

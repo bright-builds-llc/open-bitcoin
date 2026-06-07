@@ -316,33 +316,22 @@ fn render_service_outcome(outcome: &ServiceCommandOutcome) -> String {
 
 /// Render a `ServiceStateSnapshot` as human-readable output.
 fn render_service_state_snapshot(snapshot: &ServiceStateSnapshot) -> String {
-    let state = match snapshot.state {
-        ServiceLifecycleState::Unmanaged => "unmanaged",
-        ServiceLifecycleState::Installed => "installed",
-        ServiceLifecycleState::Enabled => "enabled",
-        ServiceLifecycleState::Running => "running",
-        ServiceLifecycleState::Failed => "failed",
-        ServiceLifecycleState::Stopped => "stopped",
-    };
-    let mut lines = vec![format!("service: {state}")];
+    let mut lines = vec![format!("service: {}", service_lifecycle_label(snapshot))];
     lines.push(format!(
         "  installed: {}",
         !matches!(snapshot.state, ServiceLifecycleState::Unmanaged)
     ));
-    if let Some(enabled) = snapshot.maybe_enabled {
-        lines.push(format!("  enabled: {enabled}"));
-    }
+    lines.push(format!("  enabled: {}", service_enabled_text(snapshot)));
     lines.push(format!(
         "  running: {}",
         matches!(snapshot.state, ServiceLifecycleState::Running)
     ));
-    if let Some(path) = &snapshot.maybe_service_file_path {
-        lines.push(format!("  file: {}", path.display()));
-    }
+    lines.push(format!("  file: {}", service_file_text(snapshot)));
     lines.push(render_service_log_path(snapshot));
-    if let Some(diag) = &snapshot.maybe_manager_diagnostics {
-        lines.push(format!("  diagnostics: {diag}"));
-    }
+    lines.push(format!(
+        "  diagnostics: {}",
+        service_diagnostics_text(snapshot)
+    ));
     if matches!(snapshot.state, ServiceLifecycleState::Unmanaged) {
         lines.push(
             "  hint: run `open-bitcoin service install` to preview what would be created"
@@ -350,6 +339,30 @@ fn render_service_state_snapshot(snapshot: &ServiceStateSnapshot) -> String {
         );
     }
     lines.join("\n")
+}
+
+fn service_lifecycle_label(snapshot: &ServiceStateSnapshot) -> &'static str {
+    match (snapshot.state, snapshot.maybe_enabled) {
+        (ServiceLifecycleState::Unmanaged, _) => "unmanaged",
+        (ServiceLifecycleState::Running, _) => "running",
+        (ServiceLifecycleState::Failed, _) => "failed",
+        (_, Some(false)) => "disabled",
+        _ => "installed-stopped",
+    }
+}
+
+fn service_enabled_text(snapshot: &ServiceStateSnapshot) -> String {
+    match snapshot.maybe_enabled {
+        Some(enabled) => enabled.to_string(),
+        None => "Unavailable: service manager did not report enablement".to_string(),
+    }
+}
+
+fn service_file_text(snapshot: &ServiceStateSnapshot) -> String {
+    match &snapshot.maybe_service_file_path {
+        Some(path) => path.display().to_string(),
+        None => "Unavailable: service file path unavailable".to_string(),
+    }
 }
 
 fn render_service_log_path(snapshot: &ServiceStateSnapshot) -> String {
@@ -361,6 +374,33 @@ fn render_service_log_path(snapshot: &ServiceStateSnapshot) -> String {
     }
 
     "  logs: Unavailable: service log path unavailable".to_string()
+}
+
+fn service_diagnostics_text(snapshot: &ServiceStateSnapshot) -> String {
+    let Some(diagnostics) = snapshot
+        .maybe_manager_diagnostics
+        .as_deref()
+        .map(str::trim)
+        .filter(|diagnostics| !diagnostics.is_empty())
+    else {
+        return "Unavailable: service diagnostics unavailable".to_string();
+    };
+    diagnostics.to_string()
+}
+
+fn render_unavailable_service_manager(error: &ServiceError) -> String {
+    let unavailable_reason = format!("service manager unavailable: {error}");
+    [
+        "service: unavailable-manager".to_string(),
+        format!("  manager: Unavailable: {unavailable_reason}"),
+        format!("  installed: Unavailable: {unavailable_reason}"),
+        format!("  enabled: Unavailable: {unavailable_reason}"),
+        format!("  running: Unavailable: {unavailable_reason}"),
+        format!("  file: Unavailable: {unavailable_reason}"),
+        format!("  logs: Unavailable: {unavailable_reason}"),
+        format!("  diagnostics: {error}"),
+    ]
+    .join("\n")
 }
 
 /// Execute a service subcommand using the injected manager.
@@ -482,7 +522,10 @@ pub fn execute_service_command(
                 "{}\n",
                 render_service_state_snapshot(&snapshot)
             )),
-            Err(error) => OperatorCommandOutcome::failure(error.to_string()),
+            Err(error) => OperatorCommandOutcome::success(format!(
+                "{}\n",
+                render_unavailable_service_manager(&error)
+            )),
         },
     }
 }
