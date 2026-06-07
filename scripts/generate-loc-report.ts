@@ -393,6 +393,9 @@ function renderReport(metrics: Metrics, options: Options): string {
   const largestFiles = [...metrics.files]
     .sort((left, right) => right.counts.total - left.counts.total || left.path.localeCompare(right.path))
     .slice(0, 20);
+  const includedTypeScriptScripts = [...metrics.files]
+    .filter((file) => file.category === "TypeScript/Bun scripts")
+    .sort((left, right) => left.path.localeCompare(right.path));
 
   return [
     "# Lines Of Code Report",
@@ -439,6 +442,13 @@ function renderReport(metrics: Metrics, options: Options): string {
         formatNumber(category.comments),
         formatNumber(category.blank),
       ]),
+    ),
+    "",
+    "## Included TypeScript/Bun Scripts",
+    "",
+    table(
+      ["File", "Lines"],
+      includedTypeScriptScripts.map((file) => [file.path, formatNumber(file.counts.total)]),
     ),
     "",
     "## Largest Included Files",
