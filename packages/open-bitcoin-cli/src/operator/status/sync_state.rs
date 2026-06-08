@@ -2,7 +2,7 @@
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
 use open_bitcoin_node::{
-    DurableSyncState, FjallNodeStore,
+    DurableSyncState, FjallNodeStore, RuntimeMetadata,
     status::{
         ChainTipStatus, FieldAvailability, SyncAttemptCounters, SyncConfiguredTargets,
         SyncProgress, SyncProgressSignal, SyncStatus, SyncStopReasonStatus,
@@ -91,8 +91,13 @@ fn rpc_progress_signal(blockchain_info: &GetBlockchainInfoResponse) -> SyncProgr
 pub(super) fn durable_sync_state(
     resolution: &OperatorConfigResolution,
 ) -> Option<DurableSyncState> {
+    durable_runtime_metadata(resolution)?.maybe_sync_state
+}
+
+pub(super) fn durable_runtime_metadata(
+    resolution: &OperatorConfigResolution,
+) -> Option<RuntimeMetadata> {
     let data_dir = resolution.maybe_data_dir.as_ref()?;
     let store = FjallNodeStore::open(data_dir).ok()?;
-    let metadata = store.load_runtime_metadata().ok()??;
-    metadata.maybe_sync_state
+    store.load_runtime_metadata().ok()?
 }

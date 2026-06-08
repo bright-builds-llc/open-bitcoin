@@ -8,10 +8,11 @@ use open_bitcoin_node::{
     metrics::MetricsAvailability,
     status::{
         FieldAvailability, HealthSignal, HealthSignalLevel, NodeRuntimeState,
-        OpenBitcoinStatusSnapshot, PeerCounts, ServiceLifecycleStatus, ServiceStatus,
-        SyncAttemptCounters, SyncConfiguredTargets, SyncLifecycleState, SyncProgress,
-        SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure, SyncStopReasonStatus,
-        WalletFreshness, WalletScanProgress,
+        OpenBitcoinStatusSnapshot, PeerCounts, ServiceLifecycleStatus, ServicePriorShutdownStatus,
+        ServiceRestartResumeStatus, ServiceResumeProgressStatus, ServiceStaleInflightStatus,
+        ServiceStatus, SyncAttemptCounters, SyncConfiguredTargets, SyncLifecycleState,
+        SyncProgress, SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure,
+        SyncStopReasonStatus, WalletFreshness, WalletScanProgress,
     },
 };
 
@@ -372,7 +373,7 @@ fn wallet_scan_progress(value: &FieldAvailability<WalletScanProgress>) -> String
 }
 
 fn service_rows(service: &ServiceStatus) -> Vec<DashboardRow> {
-    vec![
+    let mut rows = vec![
         row("Lifecycle", service_lifecycle(&service.lifecycle)),
         row("Manager", string_availability(&service.manager)),
         row("Installed", bool_availability(&service.installed)),
@@ -384,12 +385,65 @@ fn service_rows(service: &ServiceStatus) -> Vec<DashboardRow> {
         ),
         row("Logs", string_availability(&service.log_path)),
         row("Diagnostics", string_availability(&service.diagnostics)),
-    ]
+    ];
+    rows.extend(service_restart_resume_rows(&service.restart_resume));
+    rows
 }
 
 fn service_lifecycle(value: &FieldAvailability<ServiceLifecycleStatus>) -> String {
     match value {
         FieldAvailability::Available(value) => value.as_str().to_string(),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
+fn service_restart_resume_rows(
+    value: &FieldAvailability<ServiceRestartResumeStatus>,
+) -> Vec<DashboardRow> {
+    match value {
+        FieldAvailability::Available(value) => vec![
+            row(
+                "Restart/resume",
+                format!(
+                    "datadir={} same_datadir={} recovery_category={}",
+                    string_availability(&value.datadir),
+                    bool_availability(&value.same_datadir),
+                    sync_recovery_category(&value.recovery_category)
+                ),
+            ),
+            row("Prior shutdown", prior_shutdown(&value.prior_shutdown)),
+            row("Resume progress", resume_progress(&value.durable_progress)),
+            row("Stale in-flight", stale_inflight(&value.stale_inflight)),
+            row("Resume action", string_availability(&value.next_action)),
+        ],
+        FieldAvailability::Unavailable { reason } => {
+            vec![row("Restart/resume", format!("Unavailable: {reason}"))]
+        }
+    }
+}
+
+fn prior_shutdown(value: &FieldAvailability<ServicePriorShutdownStatus>) -> String {
+    match value {
+        FieldAvailability::Available(value) => value.as_str().to_string(),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
+fn stale_inflight(value: &FieldAvailability<ServiceStaleInflightStatus>) -> String {
+    match value {
+        FieldAvailability::Available(value) => value.as_str().to_string(),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
+fn resume_progress(value: &FieldAvailability<ServiceResumeProgressStatus>) -> String {
+    match value {
+        FieldAvailability::Available(value) => {
+            format!(
+                "downloaded={} connected={}",
+                value.downloaded_block_height, value.connected_block_height
+            )
+        }
         FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
     }
 }

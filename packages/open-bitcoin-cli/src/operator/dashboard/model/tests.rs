@@ -6,10 +6,11 @@ use open_bitcoin_node::{
     status::{
         BuildProvenance, ConfigStatus, FieldAvailability, HealthSignal, HealthSignalLevel,
         MempoolStatus, NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts,
-        PeerStatus, ServiceLifecycleStatus, ServiceStatus, SyncAttemptCounters,
-        SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal,
-        SyncRecoveryCategory, SyncResourcePressure, SyncStatus, SyncStopReasonStatus,
-        WalletFreshness, WalletStatus,
+        PeerStatus, ServiceLifecycleStatus, ServicePriorShutdownStatus, ServiceRestartResumeStatus,
+        ServiceResumeProgressStatus, ServiceStaleInflightStatus, ServiceStatus,
+        SyncAttemptCounters, SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState,
+        SyncProgress, SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure, SyncStatus,
+        SyncStopReasonStatus, WalletFreshness, WalletStatus,
     },
 };
 
@@ -238,7 +239,7 @@ fn dashboard_sections_surface_sync_progress_and_peer_counts_unavailable_fields()
 }
 
 #[test]
-fn dashboard_sections_surface_service_lifecycle() {
+fn dashboard_service_restart_resume_rows_surface_phase64_evidence() {
     // Arrange
     let snapshot = test_snapshot();
 
@@ -262,6 +263,11 @@ fn dashboard_sections_surface_service_lifecycle() {
             "Service file",
             "Logs",
             "Diagnostics",
+            "Restart/resume",
+            "Prior shutdown",
+            "Resume progress",
+            "Stale in-flight",
+            "Resume action",
         ]
     );
     assert_eq!(service_rows[0].value, "running");
@@ -271,6 +277,17 @@ fn dashboard_sections_surface_service_lifecycle() {
     assert_eq!(
         service_rows[7].value,
         "Unavailable: service diagnostics unavailable"
+    );
+    assert_eq!(
+        service_rows[8].value,
+        "datadir=/tmp/open-bitcoin same_datadir=true recovery_category=clean_shutdown"
+    );
+    assert_eq!(service_rows[9].value, "clean");
+    assert_eq!(service_rows[10].value, "downloaded=840006 connected=840004");
+    assert_eq!(service_rows[11].value, "cleared");
+    assert_eq!(
+        service_rows[12].value,
+        "Resume service sync review from preserved durable progress."
     );
 
     let mut unavailable = test_snapshot();
@@ -297,6 +314,9 @@ fn dashboard_sections_surface_service_lifecycle() {
         diagnostics: FieldAvailability::available(
             "unsupported platform: manager unavailable".to_string(),
         ),
+        restart_resume: FieldAvailability::unavailable(
+            "service restart/resume evidence unavailable",
+        ),
     };
 
     let unavailable_state = DashboardState::from_snapshot(&unavailable);
@@ -309,6 +329,10 @@ fn dashboard_sections_surface_service_lifecycle() {
     assert_eq!(
         unavailable_rows[7].value,
         "unsupported platform: manager unavailable"
+    );
+    assert_eq!(
+        unavailable_rows[8].value,
+        "Unavailable: service restart/resume evidence unavailable"
     );
 }
 
@@ -333,6 +357,24 @@ fn test_snapshot() -> OpenBitcoinStatusSnapshot {
             ),
             log_path: FieldAvailability::available("/tmp/logs/open-bitcoin.log".to_string()),
             diagnostics: FieldAvailability::unavailable("service diagnostics unavailable"),
+            restart_resume: FieldAvailability::available(ServiceRestartResumeStatus {
+                datadir: FieldAvailability::available("/tmp/open-bitcoin".to_string()),
+                same_datadir: FieldAvailability::available(true),
+                prior_shutdown: FieldAvailability::available(ServicePriorShutdownStatus::Clean),
+                durable_progress: FieldAvailability::available(ServiceResumeProgressStatus {
+                    downloaded_block_height: 840_006,
+                    connected_block_height: 840_004,
+                    maybe_downloaded_block_hash: Some("22".repeat(32)),
+                    maybe_connected_block_hash: Some("11".repeat(32)),
+                }),
+                stale_inflight: FieldAvailability::available(ServiceStaleInflightStatus::Cleared),
+                recovery_category: FieldAvailability::available(
+                    SyncRecoveryCategory::CleanShutdown,
+                ),
+                next_action: FieldAvailability::available(
+                    "Resume service sync review from preserved durable progress.".to_string(),
+                ),
+            }),
         },
         sync: SyncStatus {
             network: FieldAvailability::available("regtest".to_string()),

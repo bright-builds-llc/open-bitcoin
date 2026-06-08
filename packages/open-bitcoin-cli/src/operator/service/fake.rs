@@ -77,6 +77,8 @@ impl FakeServiceManager {
             maybe_manager_diagnostics: None,
             maybe_log_path: None,
             maybe_log_path_unavailable_reason: Some("service not installed".to_string()),
+            maybe_data_dir: None,
+            maybe_data_dir_unavailable_reason: Some("service not installed".to_string()),
         })
     }
 }

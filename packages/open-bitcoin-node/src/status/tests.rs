@@ -4,10 +4,11 @@
 use super::{
     BuildProvenance, ChainTipStatus, ConfigStatus, FieldAvailability, HealthSignal,
     HealthSignalLevel, MempoolStatus, NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot,
-    PeerCounts, PeerStatus, PeerTelemetry, ServiceLifecycleStatus, ServiceStatus,
-    SyncAttemptCounters, SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState, SyncProgress,
-    SyncProgressSignal, SyncResourcePressure, SyncStatus, SyncStopReasonStatus, WalletFreshness,
-    WalletScanProgress, WalletStatus,
+    PeerCounts, PeerStatus, PeerTelemetry, ServiceLifecycleStatus, ServicePriorShutdownStatus,
+    ServiceRestartResumeStatus, ServiceStaleInflightStatus, ServiceStatus, SyncAttemptCounters,
+    SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal,
+    SyncResourcePressure, SyncStatus, SyncStopReasonStatus, WalletFreshness, WalletScanProgress,
+    WalletStatus,
 };
 use crate::{LogStatus, MetricsStatus};
 
@@ -175,6 +176,54 @@ fn phase63_service_lifecycle_status_contract_defaults_legacy_json() {
 }
 
 #[test]
+fn service_restart_resume_status_contract_serializes_labels() {
+    // Arrange
+    let clean_shutdown = ServicePriorShutdownStatus::Clean;
+    let unclean_shutdown = ServicePriorShutdownStatus::Unclean;
+    let stale_inflight = ServiceStaleInflightStatus::StaleRequestsRecorded;
+
+    // Act
+    let clean_json = serde_json::to_value(clean_shutdown).expect("clean shutdown json");
+    let unclean_json = serde_json::to_value(unclean_shutdown).expect("unclean shutdown json");
+    let stale_json = serde_json::to_value(stale_inflight).expect("stale in-flight json");
+
+    // Assert
+    assert_eq!(clean_shutdown.as_str(), "clean");
+    assert_eq!(unclean_shutdown.as_str(), "unclean");
+    assert_eq!(stale_inflight.as_str(), "stale_requests_recorded");
+    assert_eq!(clean_json, "clean");
+    assert_eq!(unclean_json, "unclean");
+    assert_eq!(stale_json, "stale_requests_recorded");
+}
+
+#[test]
+fn service_restart_resume_status_contract_defaults_legacy_json() {
+    // Arrange
+    let legacy_json = serde_json::json!({
+        "manager": { "state": "available", "value": "launchd" },
+        "lifecycle": { "state": "available", "value": "running" },
+        "installed": { "state": "available", "value": true },
+        "enabled": { "state": "available", "value": true },
+        "running": { "state": "available", "value": true },
+        "service_file_path": { "state": "available", "value": "/tmp/open-bitcoin-node.service" },
+        "log_path": { "state": "available", "value": "/tmp/logs/open-bitcoin.log" },
+        "diagnostics": { "state": "unavailable", "value": { "reason": "service diagnostics unavailable" } }
+    });
+
+    // Act
+    let service: ServiceStatus =
+        serde_json::from_value(legacy_json).expect("legacy service status json");
+
+    // Assert
+    assert_eq!(
+        service.restart_resume,
+        FieldAvailability::<ServiceRestartResumeStatus>::unavailable(
+            "service restart/resume evidence unavailable"
+        )
+    );
+}
+
+#[test]
 fn stopped_node_snapshot_keeps_unavailable_live_fields_explicit() {
     // Arrange / Act
     let snapshot = stopped_snapshot();
@@ -246,6 +295,9 @@ fn populated_snapshot_serializes_obs_01_fields() {
             ),
             log_path: FieldAvailability::available("/tmp/logs/open-bitcoin.log".to_string()),
             diagnostics: FieldAvailability::unavailable("service diagnostics unavailable"),
+            restart_resume: FieldAvailability::unavailable(
+                "service restart/resume evidence unavailable",
+            ),
         },
         sync: SyncStatus {
             network: FieldAvailability::available("mainnet".to_string()),
@@ -476,6 +528,9 @@ fn stopped_snapshot() -> OpenBitcoinStatusSnapshot {
             service_file_path: FieldAvailability::unavailable("service file path unavailable"),
             log_path: FieldAvailability::unavailable("service log path unavailable"),
             diagnostics: FieldAvailability::unavailable("service diagnostics unavailable"),
+            restart_resume: FieldAvailability::unavailable(
+                "service restart/resume evidence unavailable",
+            ),
         },
         sync: SyncStatus {
             network: FieldAvailability::unavailable(unavailable),

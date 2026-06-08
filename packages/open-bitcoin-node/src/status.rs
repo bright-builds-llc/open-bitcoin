@@ -82,6 +82,61 @@ impl ServiceLifecycleStatus {
     }
 }
 
+/// Service restart prior-shutdown evidence.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ServicePriorShutdownStatus {
+    Clean,
+    Unclean,
+}
+
+impl ServicePriorShutdownStatus {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Clean => "clean",
+            Self::Unclean => "unclean",
+        }
+    }
+}
+
+/// Stale in-flight work verdict after service restart.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ServiceStaleInflightStatus {
+    Cleared,
+    StaleRequestsRecorded,
+}
+
+impl ServiceStaleInflightStatus {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Cleared => "cleared",
+            Self::StaleRequestsRecorded => "stale_requests_recorded",
+        }
+    }
+}
+
+/// Durable sync progress used as service restart/resume evidence.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ServiceResumeProgressStatus {
+    pub downloaded_block_height: u64,
+    pub connected_block_height: u64,
+    pub maybe_downloaded_block_hash: Option<String>,
+    pub maybe_connected_block_hash: Option<String>,
+}
+
+/// Service-supervised same-datadir restart/resume evidence.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ServiceRestartResumeStatus {
+    pub datadir: FieldAvailability<String>,
+    pub same_datadir: FieldAvailability<bool>,
+    pub prior_shutdown: FieldAvailability<ServicePriorShutdownStatus>,
+    pub durable_progress: FieldAvailability<ServiceResumeProgressStatus>,
+    pub stale_inflight: FieldAvailability<ServiceStaleInflightStatus>,
+    pub recovery_category: FieldAvailability<SyncRecoveryCategory>,
+    pub next_action: FieldAvailability<String>,
+}
+
 /// Service manager status.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ServiceStatus {
@@ -97,6 +152,8 @@ pub struct ServiceStatus {
     pub log_path: FieldAvailability<String>,
     #[serde(default = "service_diagnostics_unavailable")]
     pub diagnostics: FieldAvailability<String>,
+    #[serde(default = "service_restart_resume_unavailable")]
+    pub restart_resume: FieldAvailability<ServiceRestartResumeStatus>,
 }
 
 fn service_lifecycle_unavailable() -> FieldAvailability<ServiceLifecycleStatus> {
@@ -113,6 +170,10 @@ fn service_log_path_unavailable() -> FieldAvailability<String> {
 
 fn service_diagnostics_unavailable() -> FieldAvailability<String> {
     FieldAvailability::unavailable("service diagnostics unavailable")
+}
+
+fn service_restart_resume_unavailable() -> FieldAvailability<ServiceRestartResumeStatus> {
+    FieldAvailability::unavailable("service restart/resume evidence unavailable")
 }
 
 /// Chain tip projection for status output.

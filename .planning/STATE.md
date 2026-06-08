@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Unattended Mainnet Node Operation Readiness
 status: executing
-stopped_at: Phase 63 context gathered
-last_updated: "2026-06-07T19:30:37.387Z"
+stopped_at: Phase 64 verified
+last_updated: "2026-06-08T03:43:38.403Z"
 last_activity: 2026-06-07
 progress:
   total_phases: 8
-  completed_phases: 4
-  total_plans: 15
-  completed_plans: 15
+  completed_phases: 5
+  total_plans: 18
+  completed_plans: 18
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-05)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 64 — Service Restart and Same-Datadir Resume Evidence
+**Current focus:** Phase 65 — Support Bundle and Operator Review Docs
 
 ## Current Position
 
 Milestone: v1.5 Unattended Mainnet Node Operation Readiness
-Phase: 64
+Phase: 65
 Plan: Not started
-Status: Ready to plan Phase 64
+Status: Ready to plan Phase 65
 Last activity: 2026-06-07
 
 Progress: [##########] 100%
@@ -37,8 +37,8 @@ Progress: [##########] 100%
 
 **Velocity:**
 
-- Current milestone plans completed: 11
-- Current milestone plan count: 11
+- Current milestone plans completed: 18
+- Current milestone plan count: 18
 - Prior milestone plans completed: 15 in v1.4
 
 **By Phase:**
@@ -49,7 +49,7 @@ Progress: [##########] 100%
 | 61 | 6 | - | - |
 | 62 | 4 | - | - |
 | 63 | 4 | - | - |
-| 64 | TBD | - | - |
+| 64 | 3 | - | - |
 | 65 | TBD | - | - |
 | 66 | TBD | - | - |
 | 67 | TBD | - | - |
@@ -57,7 +57,7 @@ Progress: [##########] 100%
 **Recent Trend:**
 
 - Last 5 completed plans: 59-02, 59-03, 59-04, 59-05, 60-01
-- Trend: v1.5 completed Phases 60, 61, 62, and 63; ready to plan Phase 64.
+- Trend: v1.5 completed Phases 60, 61, 62, 63, and 64; ready to plan Phase 65.
 
 | Phase 61 P01 | 20m 23s | 2 tasks | 12 files |
 | Phase 61-resource-bounds-and-recovery-taxonomy P02 | 23min | 3 tasks | 7 files |
@@ -85,6 +85,8 @@ Recent decisions affecting current work:
 - [Phase 56]: Header sync records bounded convergence stop reasons, supports optional target header height, and reports first-header-progress evidence in opt-in live smoke output.
 - [Phase 57]: Block download/connect progress is bounded, peer-attributed, and visible through durable downloaded/connected height and hash evidence.
 - [Phase 58]: Same-datadir restart/resume evidence is captured through deterministic durable-store tests and opt-in two-session live-smoke reporting.
+- [Phase 64]: Service restart/resume status exposes selected datadir, clean versus unclean prior shutdown, durable progress, stale in-flight verdict, recovery category, and next-action guidance.
+- [Phase 64]: Keep real service-manager restarts and public-network restart smoke as opt-in UAT evidence outside `bash scripts/verify.sh`.
 - [Phase 59]: v1.4 release claims remain bounded by operator evidence, support bundle redaction, threat-model roots, parity docs, and deterministic release-boundary checks.
 - [Phase 61]: Expose recovery categories as a typed serde enum while keeping recovery_action as separate human guidance.
 - [Phase 61]: Default missing persisted recovery_category values to unavailable so older RuntimeMetadata remains readable.
@@ -108,7 +110,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Plan Phase 63 with `/gsd-plan-phase 63`.
+- Plan Phase 65 with `/gsd-plan-phase 65`.
 - Carry the compatibility harness wrapper through Phase 66.
 
 ### Blockers/Concerns
@@ -119,6 +121,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-07T14:22:05.218Z
-Stopped at: Phase 63 context gathered
-Resume file: .planning/phases/63-service-supervision-lifecycle/63-CONTEXT.md
+Last session: 2026-06-08T03:43:38.403Z
+Stopped at: Phase 64 verified
+Resume file: .planning/phases/64-service-restart-and-same-datadir-resume-evidence/64-VERIFICATION.md

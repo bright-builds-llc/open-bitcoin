@@ -41,6 +41,10 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
 - opt-in same-datadir restart/resume evidence records
   `result.restartResumeEvidence` with before/after durable header, downloaded
   block, and connected block status after a fresh daemon launch
+- service-supervised restart/resume evidence exposes `service.restart_resume`
+  with same-datadir durable progress, clean or unclean prior shutdown,
+  stale in-flight verdict, recovery category, and next action for opt-in
+  launchd/systemd operator review
 - v1.4 opt-in outbound IBD evidence keeps outbound peer compatibility, header
   progress, downloaded block progress, connected block progress, and
   restart/resume evidence reviewable without claiming broader P2P service
@@ -91,6 +95,10 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
   relaunches with the same selected datadir, and records
   `restartResumeEvidence` without turning the daemon into an unattended
   production full-sync service
+- service-supervised restart review keeps the same boundary: launchd/systemd
+  operators can inspect `service.restart_resume` after an explicit service
+  restart, while real service-manager and public-network checks remain opt-in
+  UAT outside default verification
 
 ## v1.4 release boundary
 
@@ -105,6 +113,22 @@ production-funds wallet use, migration apply mode, packaging, hosted dashboard,
 GUI, Windows service support, or unattended production-node operation. Those
 surfaces require future scoped phases and fresh parity/threat-model roots before
 they can become shipped claims.
+
+## v1.5 service restart boundary
+
+Phase 64 adds service-supervised restart/resume evidence for the opt-in
+unattended mainnet review workflow. The evidence is limited to a source-built
+operator intentionally installing or running the user-level service, restarting
+it, and then reviewing `service.restart_resume`, `sync.recovery_category`, and
+downloaded or connected block progress from the same selected Open Bitcoin
+datadir.
+
+This service-supervised restart evidence does not make public-network checks,
+`systemctl --user restart`, `launchctl kickstart`, or
+`--restart-after-progress` part of default verification. It also does not claim
+inbound serving, transaction relay, production-funds wallet use, migration apply
+mode, packaging, Windows service support, hosted dashboard, GUI, or a broad
+production-node service guarantee.
 
 ## First-party implementation
 
@@ -125,8 +149,8 @@ they can become shipped claims.
 - peer eviction, bans, resource-governance scoring, and timeout parity beyond
   the basic lifecycle surface
 - daemon-integrated, unattended public-network full sync through `open-bitcoind`
-- service-manager restart policy, unattended daemon supervision, and automatic
-  public-mainnet recovery loops
+- automatic public-mainnet recovery loops and broad production-node service
+  guarantees
 - long-running socket orchestration and transport persistence beyond the current
   sync-runtime foundation
 

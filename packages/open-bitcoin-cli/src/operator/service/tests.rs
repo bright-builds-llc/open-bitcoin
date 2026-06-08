@@ -20,13 +20,14 @@ use crate::operator::{
         fake::{FakeServiceCall, FakeServiceManager},
         launchd::{
             LaunchdAdapter, generate_plist_content, launchd_restart_command, launchd_start_command,
-            launchd_stop_command, parse_launchd_disabled_services, parse_launchd_log_path,
+            launchd_stop_command, parse_launchd_data_dir, parse_launchd_disabled_services,
+            parse_launchd_log_path,
         },
         service_log_path_from_log_dir,
         systemd::{
-            SystemdAdapter, generate_unit_content, parse_systemd_enabled_state,
-            parse_systemd_log_path, systemd_restart_command, systemd_start_command,
-            systemd_stop_command,
+            SystemdAdapter, generate_unit_content, parse_systemd_data_dir,
+            parse_systemd_enabled_state, parse_systemd_log_path, systemd_restart_command,
+            systemd_start_command, systemd_stop_command,
         },
     },
 };
@@ -282,6 +283,8 @@ fn fake_manager_status_returns_configured_state() {
         maybe_manager_diagnostics: None,
         maybe_log_path: None,
         maybe_log_path_unavailable_reason: Some("service not installed".to_string()),
+        maybe_data_dir: None,
+        maybe_data_dir_unavailable_reason: Some("service not installed".to_string()),
     };
     let manager = FakeServiceManager::new(snapshot.clone());
 
@@ -533,6 +536,24 @@ fn launchd_log_path_parser_reads_standard_out_path() {
 }
 
 #[test]
+fn launchd_data_dir_parser_reads_service_datadir_argument() {
+    // Arrange
+    let plist = generate_plist_content(
+        "org.open-bitcoin.node",
+        Path::new("/fake/bin/open-bitcoind"),
+        Path::new("/fake/datadir"),
+        None,
+        None,
+    );
+
+    // Act
+    let maybe_data_dir = parse_launchd_data_dir(&plist);
+
+    // Assert
+    assert_eq!(maybe_data_dir, Some(PathBuf::from("/fake/datadir")));
+}
+
+#[test]
 fn systemd_enabled_state_parser_classifies_common_states() {
     // Arrange / Act / Assert
     assert_eq!(parse_systemd_enabled_state("enabled\n"), Some(true));
@@ -556,6 +577,23 @@ StandardError=append:/fake/logs/open-bitcoin.log\n";
         maybe_log_path,
         Some(PathBuf::from("/fake/logs/open-bitcoin.log"))
     );
+}
+
+#[test]
+fn systemd_data_dir_parser_reads_service_datadir_argument() {
+    // Arrange
+    let unit = generate_unit_content(
+        Path::new("/fake/bin/open-bitcoind"),
+        Path::new("/fake/datadir"),
+        None,
+        None,
+    );
+
+    // Act
+    let maybe_data_dir = parse_systemd_data_dir(&unit);
+
+    // Assert
+    assert_eq!(maybe_data_dir, Some(PathBuf::from("/fake/datadir")));
 }
 
 #[test]
@@ -913,6 +951,13 @@ fn execute_service_command_service_restart_calls_manager_and_renders_commands() 
         "restart should be effectful rather than a dry run: {}",
         outcome.stdout.text
     );
+    assert!(
+        outcome.stdout.text.contains(
+            "Review restart/resume evidence with open-bitcoin status --format json using the same --datadir"
+        ),
+        "restart output should point to status evidence: {}",
+        outcome.stdout.text
+    );
 }
 
 #[test]
@@ -1250,6 +1295,8 @@ fn execute_service_command_status_surfaces_enabled_and_running_flags() {
         maybe_manager_diagnostics: Some("systemctl is-active=failed".to_string()),
         maybe_log_path: Some(PathBuf::from("/tmp/logs/open-bitcoin.log")),
         maybe_log_path_unavailable_reason: None,
+        maybe_data_dir: Some(PathBuf::from("/tmp/open-bitcoin")),
+        maybe_data_dir_unavailable_reason: None,
     };
     let manager = FakeServiceManager::new(snapshot);
     let cli = OperatorCli::try_parse_from(["open-bitcoin", "service", "status"]).unwrap();
@@ -1295,6 +1342,8 @@ fn phase63_service_lifecycle_rendering_direct_status_labels() {
                 maybe_manager_diagnostics: None,
                 maybe_log_path: None,
                 maybe_log_path_unavailable_reason: Some("service not installed".to_string()),
+                maybe_data_dir: None,
+                maybe_data_dir_unavailable_reason: Some("service not installed".to_string()),
             },
             "service: unmanaged",
         ),
@@ -1306,6 +1355,8 @@ fn phase63_service_lifecycle_rendering_direct_status_labels() {
                 maybe_manager_diagnostics: None,
                 maybe_log_path: Some(PathBuf::from("/tmp/logs/open-bitcoin.log")),
                 maybe_log_path_unavailable_reason: None,
+                maybe_data_dir: Some(PathBuf::from("/tmp/open-bitcoin")),
+                maybe_data_dir_unavailable_reason: None,
             },
             "service: installed-stopped",
         ),
@@ -1317,6 +1368,8 @@ fn phase63_service_lifecycle_rendering_direct_status_labels() {
                 maybe_manager_diagnostics: Some("running while startup is disabled".to_string()),
                 maybe_log_path: Some(PathBuf::from("/tmp/logs/open-bitcoin.log")),
                 maybe_log_path_unavailable_reason: None,
+                maybe_data_dir: Some(PathBuf::from("/tmp/open-bitcoin")),
+                maybe_data_dir_unavailable_reason: None,
             },
             "service: running",
         ),
@@ -1328,6 +1381,8 @@ fn phase63_service_lifecycle_rendering_direct_status_labels() {
                 maybe_manager_diagnostics: Some("systemctl is-active=failed".to_string()),
                 maybe_log_path: Some(PathBuf::from("/tmp/logs/open-bitcoin.log")),
                 maybe_log_path_unavailable_reason: None,
+                maybe_data_dir: Some(PathBuf::from("/tmp/open-bitcoin")),
+                maybe_data_dir_unavailable_reason: None,
             },
             "service: failed",
         ),
@@ -1339,6 +1394,8 @@ fn phase63_service_lifecycle_rendering_direct_status_labels() {
                 maybe_manager_diagnostics: None,
                 maybe_log_path: Some(PathBuf::from("/tmp/logs/open-bitcoin.log")),
                 maybe_log_path_unavailable_reason: None,
+                maybe_data_dir: Some(PathBuf::from("/tmp/open-bitcoin")),
+                maybe_data_dir_unavailable_reason: None,
             },
             "service: disabled",
         ),
@@ -1478,6 +1535,8 @@ fn execute_service_command_status_surfaces_unavailable_log_path_reason() {
         maybe_log_path_unavailable_reason: Some(
             "installed unit routes service output to journald".to_string(),
         ),
+        maybe_data_dir: Some(PathBuf::from("/tmp/open-bitcoin")),
+        maybe_data_dir_unavailable_reason: None,
     };
     let manager = FakeServiceManager::new(snapshot);
     let cli = OperatorCli::try_parse_from(["open-bitcoin", "service", "status"]).unwrap();
@@ -1521,6 +1580,8 @@ fn execute_service_command_status_unmanaged_surfaces_preview_hint() {
         ),
         maybe_log_path: None,
         maybe_log_path_unavailable_reason: Some("service not installed".to_string()),
+        maybe_data_dir: None,
+        maybe_data_dir_unavailable_reason: Some("service not installed".to_string()),
     };
     let manager = FakeServiceManager::new(snapshot);
     let cli = OperatorCli::try_parse_from(["open-bitcoin", "service", "status"]).unwrap();

@@ -152,6 +152,8 @@ fn service_install_action_requires_confirmation_then_executes() -> Result<(), Da
             maybe_manager_diagnostics: None,
             maybe_log_path: None,
             maybe_log_path_unavailable_reason: Some("service not installed".to_string()),
+            maybe_data_dir: None,
+            maybe_data_dir_unavailable_reason: Some("service not installed".to_string()),
         },
     );
     let mut state = test_state(&context);
@@ -354,6 +356,8 @@ fn blocked_dashboard_ignores_destructive_actions_but_allows_exit() -> Result<(),
             maybe_manager_diagnostics: None,
             maybe_log_path: None,
             maybe_log_path_unavailable_reason: Some("service not installed".to_string()),
+            maybe_data_dir: None,
+            maybe_data_dir_unavailable_reason: Some("service not installed".to_string()),
         },
     );
     let mut state = test_state(&context);
@@ -400,6 +404,8 @@ fn service_install_action_can_be_cancelled_without_side_effects() -> Result<(), 
             maybe_manager_diagnostics: None,
             maybe_log_path: None,
             maybe_log_path_unavailable_reason: Some("service not installed".to_string()),
+            maybe_data_dir: None,
+            maybe_data_dir_unavailable_reason: Some("service not installed".to_string()),
         },
     );
     let mut state = test_state(&context);
@@ -442,6 +448,8 @@ fn show_status_action_reuses_shared_service_command_path() -> Result<(), Dashboa
             maybe_manager_diagnostics: Some("manager healthy".to_string()),
             maybe_log_path: Some(PathBuf::from("/tmp/open-bitcoin.log")),
             maybe_log_path_unavailable_reason: None,
+            maybe_data_dir: Some(PathBuf::from("/tmp/open-bitcoin")),
+            maybe_data_dir_unavailable_reason: None,
         },
     );
     let mut state = test_state(&context);
@@ -515,5 +523,7 @@ fn running_snapshot() -> ServiceStateSnapshot {
         maybe_manager_diagnostics: Some("manager healthy".to_string()),
         maybe_log_path: Some(PathBuf::from("/tmp/open-bitcoin.log")),
         maybe_log_path_unavailable_reason: None,
+        maybe_data_dir: Some(PathBuf::from("/tmp/open-bitcoin")),
+        maybe_data_dir_unavailable_reason: None,
     }
 }

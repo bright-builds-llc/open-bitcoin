@@ -15,6 +15,13 @@ use super::{
     ServiceStartRequest, ServiceStateSnapshot, ServiceStopRequest, ServiceUninstallRequest,
 };
 
+mod parser;
+
+use parser::parse_launchd_last_exit_status;
+pub(crate) use parser::{
+    parse_launchd_data_dir, parse_launchd_disabled_services, parse_launchd_log_path,
+};
+
 /// launchd label for the Open Bitcoin node service.
 pub const OPEN_BITCOIN_LAUNCHD_LABEL: &str = "org.open-bitcoin.node";
 
@@ -26,12 +33,6 @@ fn xml_escape(s: &str) -> String {
     s.replace('&', "&amp;")
         .replace('<', "&lt;")
         .replace('>', "&gt;")
-}
-
-fn xml_unescape(s: &str) -> String {
-    s.replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&amp;", "&")
 }
 
 /// Generate a macOS launchd plist XML string for the Open Bitcoin node.
@@ -139,71 +140,6 @@ fn run_launchctl(args: &[&str], maybe_allowed_exit_code: Option<i32>) -> Result<
     })
 }
 
-fn parse_launchd_last_exit_status(stdout: &str) -> Option<i32> {
-    for line in stdout.lines() {
-        let trimmed = line.trim();
-        let Some(value) = trimmed.strip_prefix("\"LastExitStatus\" = ") else {
-            continue;
-        };
-        if let Ok(exit_code) = value.trim_end_matches(';').trim().parse::<i32>() {
-            return Some(exit_code);
-        }
-    }
-
-    None
-}
-
-pub(crate) fn parse_launchd_disabled_services(output: &str, label: &str) -> Option<bool> {
-    for line in output.lines() {
-        let normalized = line.trim().trim_end_matches(';').trim_end_matches(',');
-        let Some((raw_key, raw_value)) = normalized
-            .split_once("=>")
-            .or_else(|| normalized.split_once('='))
-        else {
-            continue;
-        };
-
-        let key = raw_key.trim().trim_matches('"');
-        if key != label {
-            continue;
-        }
-
-        let value = raw_value
-            .trim()
-            .trim_matches('"')
-            .trim_end_matches(';')
-            .trim_end_matches(',')
-            .to_ascii_lowercase();
-        return match value.as_str() {
-            "true" | "1" => Some(false),
-            "false" | "0" => Some(true),
-            _ => None,
-        };
-    }
-
-    None
-}
-
-pub(crate) fn parse_launchd_log_path(plist_content: &str) -> Option<PathBuf> {
-    let mut expect_path_value = false;
-
-    for line in plist_content.lines() {
-        let trimmed = line.trim();
-        if expect_path_value {
-            let value = trimmed
-                .strip_prefix("<string>")?
-                .strip_suffix("</string>")?;
-            return Some(PathBuf::from(xml_unescape(value)));
-        }
-
-        if trimmed == "<key>StandardOutPath</key>" || trimmed == "<key>StandardErrorPath</key>" {
-            expect_path_value = true;
-        }
-    }
-
-    None
-}
-
 /// macOS launchd service adapter.
 ///
 /// Wraps plist file writes and `launchctl` invocations. Construct via `LaunchdAdapter::new()`;
@@ -292,6 +228,28 @@ impl LaunchdAdapter {
             None => (
                 None,
                 Some("installed plist does not declare a service log path".to_string()),
+            ),
+        }
+    }
+
+    fn data_dir_status(&self, plist_path: &Path) -> (Option<PathBuf>, Option<String>) {
+        let plist_content = match std::fs::read_to_string(plist_path) {
+            Ok(content) => content,
+            Err(error) => {
+                return (
+                    None,
+                    Some(format!(
+                        "could not read installed plist for service datadir: {error}"
+                    )),
+                );
+            }
+        };
+
+        match parse_launchd_data_dir(&plist_content) {
+            Some(data_dir) => (Some(data_dir), None),
+            None => (
+                None,
+                Some("installed plist does not declare a service datadir".to_string()),
             ),
         }
     }
@@ -530,11 +488,14 @@ impl ServiceManager for LaunchdAdapter {
                 ),
                 maybe_log_path: None,
                 maybe_log_path_unavailable_reason: Some("service not installed".to_string()),
+                maybe_data_dir: None,
+                maybe_data_dir_unavailable_reason: Some("service not installed".to_string()),
             });
         }
 
         let (maybe_enabled, maybe_enabled_diagnostics) = self.query_enabled_state(uid);
         let (maybe_log_path, maybe_log_path_unavailable_reason) = self.log_path_status(&plist_path);
+        let (maybe_data_dir, maybe_data_dir_unavailable_reason) = self.data_dir_status(&plist_path);
 
         // Query launchd for the current state
         let output = std::process::Command::new("launchctl")
@@ -558,6 +519,8 @@ impl ServiceManager for LaunchdAdapter {
                     .or_else(|| Some("launchctl not available".to_string())),
                 maybe_log_path,
                 maybe_log_path_unavailable_reason,
+                maybe_data_dir,
+                maybe_data_dir_unavailable_reason,
             });
         };
 
@@ -572,6 +535,8 @@ impl ServiceManager for LaunchdAdapter {
                 ),
                 maybe_log_path,
                 maybe_log_path_unavailable_reason,
+                maybe_data_dir,
+                maybe_data_dir_unavailable_reason,
             });
         }
 
@@ -609,6 +574,8 @@ impl ServiceManager for LaunchdAdapter {
             },
             maybe_log_path,
             maybe_log_path_unavailable_reason,
+            maybe_data_dir,
+            maybe_data_dir_unavailable_reason,
         })
     }
 }

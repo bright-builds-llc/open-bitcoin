@@ -31,9 +31,10 @@ use crate::operator::{
 };
 use open_bitcoin_node::status::{
     BuildProvenance, ConfigStatus, FieldAvailability, MempoolStatus, NodeRuntimeState, NodeStatus,
-    OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, ServiceLifecycleStatus, ServiceStatus,
-    SyncAttemptCounters, SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState, SyncProgress,
-    SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure, SyncStatus,
+    OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, ServiceLifecycleStatus,
+    ServicePriorShutdownStatus, ServiceResumeProgressStatus, ServiceStaleInflightStatus,
+    ServiceStatus, SyncAttemptCounters, SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState,
+    SyncProgress, SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure, SyncStatus,
     SyncStopReasonStatus, WalletFreshness, WalletScanProgress, WalletStatus,
 };
 use open_bitcoin_node::{
@@ -348,6 +349,9 @@ fn human_and_json_renderers_surface_wallet_freshness_and_scan_reasons() {
             ),
             log_path: FieldAvailability::available("/tmp/logs/open-bitcoin.log".to_string()),
             diagnostics: FieldAvailability::unavailable("service diagnostics unavailable"),
+            restart_resume: FieldAvailability::unavailable(
+                "service restart/resume evidence unavailable",
+            ),
         },
         sync: SyncStatus {
             network: FieldAvailability::available("regtest".to_string()),
@@ -515,27 +519,51 @@ fn phase63_service_lifecycle_projection_maps_snapshot_states() {
     // Arrange
     let cases = [
         (
-            service_snapshot(ServiceLifecycleState::Unmanaged, None),
+            service_snapshot(
+                ServiceLifecycleState::Unmanaged,
+                None,
+                Path::new("/tmp/open-bitcoin"),
+            ),
             ServiceLifecycleStatus::Unmanaged,
         ),
         (
-            service_snapshot(ServiceLifecycleState::Running, Some(false)),
+            service_snapshot(
+                ServiceLifecycleState::Running,
+                Some(false),
+                Path::new("/tmp/open-bitcoin"),
+            ),
             ServiceLifecycleStatus::Running,
         ),
         (
-            service_snapshot(ServiceLifecycleState::Failed, Some(true)),
+            service_snapshot(
+                ServiceLifecycleState::Failed,
+                Some(true),
+                Path::new("/tmp/open-bitcoin"),
+            ),
             ServiceLifecycleStatus::Failed,
         ),
         (
-            service_snapshot(ServiceLifecycleState::Installed, Some(false)),
+            service_snapshot(
+                ServiceLifecycleState::Installed,
+                Some(false),
+                Path::new("/tmp/open-bitcoin"),
+            ),
             ServiceLifecycleStatus::Disabled,
         ),
         (
-            service_snapshot(ServiceLifecycleState::Stopped, Some(true)),
+            service_snapshot(
+                ServiceLifecycleState::Stopped,
+                Some(true),
+                Path::new("/tmp/open-bitcoin"),
+            ),
             ServiceLifecycleStatus::InstalledStopped,
         ),
         (
-            service_snapshot(ServiceLifecycleState::Enabled, Some(true)),
+            service_snapshot(
+                ServiceLifecycleState::Enabled,
+                Some(true),
+                Path::new("/tmp/open-bitcoin"),
+            ),
             ServiceLifecycleStatus::InstalledStopped,
         ),
     ];
@@ -566,6 +594,8 @@ fn phase63_service_lifecycle_projection_collects_manager_evidence() {
         maybe_manager_diagnostics: Some("launchctl reports running".to_string()),
         maybe_log_path: Some(PathBuf::from("/tmp/logs/open-bitcoin.log")),
         maybe_log_path_unavailable_reason: None,
+        maybe_data_dir: Some(PathBuf::from("/tmp/open-bitcoin")),
+        maybe_data_dir_unavailable_reason: None,
     });
     let input = status_input_with_manager(Box::new(fake), config_resolution());
 
@@ -602,6 +632,8 @@ fn phase63_service_lifecycle_projection_collects_manager_evidence() {
         maybe_manager_diagnostics: Some("   ".to_string()),
         maybe_log_path: None,
         maybe_log_path_unavailable_reason: Some("manager did not report log path".to_string()),
+        maybe_data_dir: Some(PathBuf::from("/tmp/open-bitcoin")),
+        maybe_data_dir_unavailable_reason: None,
     });
     let missing_enablement_input =
         status_input_with_manager(Box::new(missing_enablement_fake), config_resolution());
@@ -707,6 +739,8 @@ fn collect_status_snapshot_with_fake_running_manager_sets_service_fields_to_avai
         maybe_manager_diagnostics: None,
         maybe_log_path: None,
         maybe_log_path_unavailable_reason: Some("service log path unavailable".to_string()),
+        maybe_data_dir: Some(PathBuf::from("/tmp/open-bitcoin")),
+        maybe_data_dir_unavailable_reason: None,
     });
     let input = StatusCollectorInput {
         request: StatusRequest {
@@ -765,6 +799,8 @@ fn collect_status_snapshot_with_fake_installed_manager_sets_installed_true_enabl
         maybe_manager_diagnostics: None,
         maybe_log_path: None,
         maybe_log_path_unavailable_reason: Some("service log path unavailable".to_string()),
+        maybe_data_dir: Some(PathBuf::from("/tmp/open-bitcoin")),
+        maybe_data_dir_unavailable_reason: None,
     });
     let input = StatusCollectorInput {
         request: StatusRequest {
@@ -816,6 +852,8 @@ fn collect_status_snapshot_uses_manager_enabled_state_over_state_inference() {
         maybe_manager_diagnostics: Some("systemctl is-active=failed".to_string()),
         maybe_log_path: None,
         maybe_log_path_unavailable_reason: Some("service log path unavailable".to_string()),
+        maybe_data_dir: Some(PathBuf::from("/tmp/open-bitcoin")),
+        maybe_data_dir_unavailable_reason: None,
     });
     let input = StatusCollectorInput {
         request: StatusRequest {
@@ -862,6 +900,8 @@ fn collect_status_snapshot_preserves_running_when_startup_is_not_enabled() {
         maybe_manager_diagnostics: Some("launchctl service is running but disabled".to_string()),
         maybe_log_path: None,
         maybe_log_path_unavailable_reason: Some("service log path unavailable".to_string()),
+        maybe_data_dir: Some(PathBuf::from("/tmp/open-bitcoin")),
+        maybe_data_dir_unavailable_reason: None,
     });
     let input = StatusCollectorInput {
         request: StatusRequest {
@@ -958,7 +998,7 @@ fn collect_status_snapshot_with_error_manager_falls_back_to_unavailable() {
     drop(store);
 
     let mut resolution = config_resolution();
-    resolution.maybe_data_dir = Some(path);
+    resolution.maybe_data_dir = Some(path.clone());
     let input = status_input_with_manager(Box::new(ErrorServiceManager), resolution);
 
     // Act
@@ -1036,9 +1076,291 @@ fn collect_status_snapshot_with_error_manager_falls_back_to_unavailable() {
     );
 }
 
+#[test]
+fn service_restart_resume_status_surfaces_clean_same_datadir_metadata() {
+    // Arrange
+    let path = temp_path("service-restart-resume-clean");
+    remove_dir_if_exists(&path);
+    let _guard = TempDirGuard { path: path.clone() };
+    let store = FjallNodeStore::open(&path).expect("open sync state store");
+    store
+        .save_runtime_metadata(
+            &RuntimeMetadata {
+                last_clean_shutdown: true,
+                maybe_sync_state: Some(phase62_durable_sync_state()),
+                ..RuntimeMetadata::default()
+            },
+            PersistMode::Sync,
+        )
+        .expect("save clean runtime metadata");
+    drop(store);
+
+    let mut resolution = config_resolution();
+    resolution.maybe_data_dir = Some(path.clone());
+    let input = status_input_with_manager(
+        Box::new(FakeServiceManager::new(service_snapshot(
+            ServiceLifecycleState::Running,
+            Some(true),
+            &path,
+        ))),
+        resolution,
+    );
+
+    // Act
+    let snapshot = collect_status_snapshot(&input, None);
+
+    // Assert
+    let FieldAvailability::Available(restart_resume) = snapshot.service.restart_resume else {
+        panic!("restart/resume evidence should be available");
+    };
+    assert_eq!(
+        restart_resume.datadir,
+        FieldAvailability::available(path.display().to_string())
+    );
+    assert_eq!(
+        restart_resume.same_datadir,
+        FieldAvailability::available(true)
+    );
+    assert_eq!(
+        restart_resume.prior_shutdown,
+        FieldAvailability::available(ServicePriorShutdownStatus::Clean)
+    );
+    assert_eq!(
+        restart_resume.durable_progress,
+        FieldAvailability::available(ServiceResumeProgressStatus {
+            downloaded_block_height: 840_006,
+            connected_block_height: 840_004,
+            maybe_downloaded_block_hash: Some("22".repeat(32)),
+            maybe_connected_block_hash: Some("11".repeat(32)),
+        })
+    );
+    assert_eq!(
+        restart_resume.stale_inflight,
+        FieldAvailability::available(ServiceStaleInflightStatus::Cleared)
+    );
+    assert_eq!(
+        restart_resume.recovery_category,
+        FieldAvailability::available(SyncRecoveryCategory::InvalidPeerData)
+    );
+    assert_eq!(
+        restart_resume.next_action,
+        FieldAvailability::available(
+            "Retry sync after peer backoff or choose a different peer.".to_string()
+        )
+    );
+}
+
+#[test]
+fn service_restart_resume_status_surfaces_unclean_stale_inflight_metadata() {
+    // Arrange
+    let path = temp_path("service-restart-resume-unclean");
+    remove_dir_if_exists(&path);
+    let _guard = TempDirGuard { path: path.clone() };
+    let mut durable_sync_state = phase62_durable_sync_state();
+    durable_sync_state.sync.resource_pressure =
+        FieldAvailability::available(SyncResourcePressure {
+            blocks_in_flight: 2,
+            max_header_requests_in_flight_per_peer: 1,
+            max_headers_per_message: 2_000,
+            max_blocks_in_flight_per_peer: 16,
+            max_blocks_in_flight_total: 64,
+            max_messages_per_peer: 64,
+            max_sync_rounds: 8,
+            outbound_peers: 2,
+            target_outbound_peers: 4,
+        });
+    let store = FjallNodeStore::open(&path).expect("open sync state store");
+    store
+        .save_runtime_metadata(
+            &RuntimeMetadata {
+                last_clean_shutdown: false,
+                maybe_sync_state: Some(durable_sync_state),
+                ..RuntimeMetadata::default()
+            },
+            PersistMode::Sync,
+        )
+        .expect("save unclean runtime metadata");
+    drop(store);
+
+    let mut resolution = config_resolution();
+    resolution.maybe_data_dir = Some(path.clone());
+    let input = status_input_with_manager(
+        Box::new(FakeServiceManager::new(service_snapshot(
+            ServiceLifecycleState::Running,
+            Some(true),
+            &path,
+        ))),
+        resolution,
+    );
+
+    // Act
+    let snapshot = collect_status_snapshot(&input, None);
+
+    // Assert
+    let FieldAvailability::Available(restart_resume) = snapshot.service.restart_resume else {
+        panic!("restart/resume evidence should be available");
+    };
+    assert_eq!(
+        restart_resume.prior_shutdown,
+        FieldAvailability::available(ServicePriorShutdownStatus::Unclean)
+    );
+    assert_eq!(
+        restart_resume.stale_inflight,
+        FieldAvailability::available(ServiceStaleInflightStatus::StaleRequestsRecorded)
+    );
+}
+
+#[test]
+fn service_restart_resume_status_reports_datadir_mismatch() {
+    // Arrange
+    let path = temp_path("service-restart-resume-datadir-mismatch");
+    remove_dir_if_exists(&path);
+    let _guard = TempDirGuard { path: path.clone() };
+    let store = FjallNodeStore::open(&path).expect("open sync state store");
+    store
+        .save_runtime_metadata(
+            &RuntimeMetadata {
+                last_clean_shutdown: true,
+                maybe_sync_state: Some(phase62_durable_sync_state()),
+                ..RuntimeMetadata::default()
+            },
+            PersistMode::Sync,
+        )
+        .expect("save runtime metadata");
+    drop(store);
+
+    let mut resolution = config_resolution();
+    resolution.maybe_data_dir = Some(path);
+    let input = status_input_with_manager(
+        Box::new(FakeServiceManager::new(service_snapshot(
+            ServiceLifecycleState::Running,
+            Some(true),
+            Path::new("/tmp/different-open-bitcoin"),
+        ))),
+        resolution,
+    );
+
+    // Act
+    let snapshot = collect_status_snapshot(&input, None);
+
+    // Assert
+    let FieldAvailability::Available(restart_resume) = snapshot.service.restart_resume else {
+        panic!("restart/resume evidence should be available");
+    };
+    assert_eq!(
+        restart_resume.same_datadir,
+        FieldAvailability::available(false)
+    );
+}
+
+#[test]
+fn service_restart_resume_status_reports_unavailable_selected_datadir() {
+    // Arrange
+    let input = status_input_with_manager(
+        Box::new(FakeServiceManager::new(service_snapshot(
+            ServiceLifecycleState::Running,
+            Some(true),
+            Path::new("/tmp/open-bitcoin"),
+        ))),
+        OperatorConfigResolution {
+            maybe_data_dir: None,
+            ..config_resolution()
+        },
+    );
+
+    // Act
+    let snapshot = collect_status_snapshot(&input, None);
+
+    // Assert
+    assert_eq!(
+        snapshot.service.restart_resume,
+        FieldAvailability::unavailable(
+            "service restart/resume evidence unavailable: datadir unavailable"
+        )
+    );
+}
+
+#[test]
+fn service_restart_resume_status_prefers_storage_recovery_action() {
+    // Arrange
+    let path = temp_path("service-restart-resume-storage-action");
+    remove_dir_if_exists(&path);
+    let _guard = TempDirGuard { path: path.clone() };
+    let store = FjallNodeStore::open(&path).expect("open sync state store");
+    store
+        .save_runtime_metadata(
+            &RuntimeMetadata {
+                last_clean_shutdown: false,
+                maybe_last_recovery_action: Some(open_bitcoin_node::StorageRecoveryAction::Repair),
+                maybe_sync_state: Some(phase62_durable_sync_state()),
+                ..RuntimeMetadata::default()
+            },
+            PersistMode::Sync,
+        )
+        .expect("save runtime metadata");
+    drop(store);
+
+    let mut resolution = config_resolution();
+    resolution.maybe_data_dir = Some(path.clone());
+    let input = status_input_with_manager(
+        Box::new(FakeServiceManager::new(service_snapshot(
+            ServiceLifecycleState::Running,
+            Some(true),
+            &path,
+        ))),
+        resolution,
+    );
+
+    // Act
+    let snapshot = collect_status_snapshot(&input, None);
+
+    // Assert
+    let FieldAvailability::Available(restart_resume) = snapshot.service.restart_resume else {
+        panic!("restart/resume evidence should be available");
+    };
+    assert_eq!(
+        restart_resume.next_action,
+        FieldAvailability::available(
+            "Run the storage repair flow before restarting normal operation.".to_string()
+        )
+    );
+    assert_eq!(
+        restart_resume.recovery_category,
+        FieldAvailability::available(SyncRecoveryCategory::StoreCorruption)
+    );
+}
+
+#[test]
+fn service_restart_resume_status_reports_unavailable_runtime_metadata() {
+    // Arrange
+    let input = status_input_with_manager(
+        Box::new(FakeServiceManager::new(service_snapshot(
+            ServiceLifecycleState::Running,
+            Some(true),
+            Path::new("/tmp/nonexistent-open-bitcoin-status"),
+        ))),
+        OperatorConfigResolution {
+            maybe_data_dir: Some(PathBuf::from("/tmp/nonexistent-open-bitcoin-status")),
+            ..config_resolution()
+        },
+    );
+
+    // Act
+    let snapshot = collect_status_snapshot(&input, None);
+
+    // Assert
+    assert_eq!(
+        snapshot.service.restart_resume,
+        FieldAvailability::unavailable(
+            "service restart/resume evidence unavailable: runtime metadata unavailable"
+        )
+    );
+}
+
 fn service_snapshot(
     state: ServiceLifecycleState,
     maybe_enabled: Option<bool>,
+    data_dir: &Path,
 ) -> ServiceStateSnapshot {
     ServiceStateSnapshot {
         state,
@@ -1047,6 +1369,8 @@ fn service_snapshot(
         maybe_manager_diagnostics: None,
         maybe_log_path: Some(PathBuf::from("/tmp/logs/open-bitcoin.log")),
         maybe_log_path_unavailable_reason: None,
+        maybe_data_dir: Some(data_dir.to_path_buf()),
+        maybe_data_dir_unavailable_reason: None,
     }
 }
 

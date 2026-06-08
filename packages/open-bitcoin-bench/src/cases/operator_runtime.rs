@@ -368,5 +368,9 @@ fn running_service_state(maybe_log_path: Option<PathBuf>) -> ServiceStateSnapsho
         maybe_manager_diagnostics: None,
         maybe_log_path,
         maybe_log_path_unavailable_reason: None,
+        maybe_data_dir: None,
+        maybe_data_dir_unavailable_reason: Some(
+            "benchmark service datadir unavailable".to_string(),
+        ),
     }
 }

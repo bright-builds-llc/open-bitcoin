@@ -618,8 +618,8 @@ state.
   `sync status --format json` against the same datadir before moving or
   archiving local evidence.
 - Restart review: inspect `service status` before and after `service restart`.
-  Treat restart evidence as a review of service lifecycle state only; Phase 64
-  owns service-supervised same-datadir resume proof.
+  Treat the restart command output as lifecycle evidence, then inspect
+  `service.restart_resume` through status JSON for the same selected datadir.
 - Recovery next actions: use `sync.recovery_category`,
   `sync.recovery_action`, resource pressure, peer health, and block evidence to
   choose the next bounded retry, storage repair, peer change, or operator stop
@@ -628,6 +628,52 @@ state.
 Live service lifecycle checks and public-network mainnet checks are optional
 UAT only. Keep them separate from deterministic default verification, and run
 them only when intentionally reviewing a local service-managed daemon.
+
+### Service-supervised restart/resume evidence
+
+Phase 64 service restart review uses the same selected Open Bitcoin datadir for
+the service definition, the restart action, and the status evidence. The restart
+command remains an operator-initiated launchd/systemd action; durable resume
+truth comes from `open-bitcoin status --format json` and
+`open-bitcoin sync status --format json` after the restart.
+
+Use matching repo-local Cargo and Bazel command forms for the same datadir:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet service status
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet service status
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet service restart
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet service restart
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet status --format json
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet status --format json
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet sync status --format json
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet sync status --format json
+```
+
+Interpret `service.restart_resume` from fields, not from elapsed time:
+
+- `same_datadir` must be `true` to treat the evidence as same-datadir resume
+  review.
+- `prior_shutdown` reports `clean` when the prior daemon marked a clean
+  shutdown and `unclean` when durable metadata shows interruption or recovery.
+- `durable_progress` carries downloaded and connected block heights and hashes
+  preserved from the selected datadir.
+- `stale_inflight` is `cleared` when no stale block requests are present in the
+  durable status evidence; `stale_requests_recorded` means review recovery
+  guidance before continuing unattended review.
+- `recovery_category` and `next_action` reuse the Phase 61 typed recovery
+  vocabulary and storage-first recovery precedence.
+
+The optional public-network restart smoke remains separate from default
+verification:
+
+```bash
+bun run scripts/run-live-mainnet-smoke.ts --datadir=/tmp/open-bitcoin-mainnet --manual-peer=HOST:8333 --restart-after-progress --timeout-seconds=180 --poll-seconds=10
+```
+
+Do not add real `systemctl --user restart`, `launchctl kickstart`, or
+`--restart-after-progress` public-network commands to `bash scripts/verify.sh`;
+default verification stays deterministic and local.
 
 ## Status And Dashboard
 

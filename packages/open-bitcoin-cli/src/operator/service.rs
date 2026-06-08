@@ -48,6 +48,10 @@ pub struct ServiceStateSnapshot {
     pub maybe_log_path: Option<PathBuf>,
     /// Explicit reason the service log path is unavailable, when known.
     pub maybe_log_path_unavailable_reason: Option<String>,
+    /// Datadir encoded in the installed service definition, if known.
+    pub maybe_data_dir: Option<PathBuf>,
+    /// Explicit reason the service datadir is unavailable, when known.
+    pub maybe_data_dir_unavailable_reason: Option<String>,
 }
 
 /// Default service-managed stdout/stderr log file name.
@@ -491,7 +495,7 @@ pub fn execute_service_command(
             let request = ServiceRestartRequest;
             match manager.restart(&request) {
                 Ok(outcome) => OperatorCommandOutcome::success(format!(
-                    "{}\n",
+                    "{}\nReview restart/resume evidence with open-bitcoin status --format json using the same --datadir\n",
                     render_service_outcome(&outcome)
                 )),
                 Err(error) => OperatorCommandOutcome::failure(error.to_string()),

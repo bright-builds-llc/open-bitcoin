@@ -8,9 +8,11 @@ use open_bitcoin_node::{
     status::{
         BuildProvenance, ChainTipStatus, FieldAvailability, HealthSignal, HealthSignalLevel,
         NodeRuntimeState, OpenBitcoinStatusSnapshot, PeerCounts, PeerTelemetry,
-        ServiceLifecycleStatus, ServiceStatus, SyncAttemptCounters, SyncConfiguredTargets,
-        SyncLifecycleState, SyncProgress, SyncProgressSignal, SyncRecoveryCategory,
-        SyncResourcePressure, SyncStopReasonStatus, WalletFreshness, WalletScanProgress,
+        ServiceLifecycleStatus, ServicePriorShutdownStatus, ServiceRestartResumeStatus,
+        ServiceResumeProgressStatus, ServiceStaleInflightStatus, ServiceStatus,
+        SyncAttemptCounters, SyncConfiguredTargets, SyncLifecycleState, SyncProgress,
+        SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure, SyncStopReasonStatus,
+        WalletFreshness, WalletScanProgress,
     },
 };
 
@@ -298,7 +300,7 @@ fn wallet_scan_progress_availability(value: &FieldAvailability<WalletScanProgres
 
 fn service_text(service: &ServiceStatus) -> String {
     format!(
-        "lifecycle={} manager={} installed={} enabled={} running={} file={} logs={} diagnostics={}",
+        "lifecycle={} manager={} installed={} enabled={} running={} file={} logs={} diagnostics={} restart_resume={}",
         service_lifecycle_availability(&service.lifecycle),
         string_availability(&service.manager),
         bool_availability(&service.installed),
@@ -306,7 +308,8 @@ fn service_text(service: &ServiceStatus) -> String {
         bool_availability(&service.running),
         string_availability(&service.service_file_path),
         string_availability(&service.log_path),
-        string_availability(&service.diagnostics)
+        string_availability(&service.diagnostics),
+        service_restart_resume_availability(&service.restart_resume)
     )
 }
 
@@ -320,6 +323,54 @@ fn service_lifecycle_availability(value: &FieldAvailability<ServiceLifecycleStat
 fn bool_availability(value: &FieldAvailability<bool>) -> String {
     match value {
         FieldAvailability::Available(value) => value.to_string(),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
+fn service_restart_resume_availability(
+    value: &FieldAvailability<ServiceRestartResumeStatus>,
+) -> String {
+    match value {
+        FieldAvailability::Available(value) => service_restart_resume_text(value),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
+fn service_restart_resume_text(value: &ServiceRestartResumeStatus) -> String {
+    format!(
+        "datadir={} same_datadir={} prior_shutdown={} {} stale_inflight={} recovery_category={} next_action={}",
+        string_availability(&value.datadir),
+        bool_availability(&value.same_datadir),
+        prior_shutdown_availability(&value.prior_shutdown),
+        resume_progress_availability(&value.durable_progress),
+        stale_inflight_availability(&value.stale_inflight),
+        sync_recovery_category_availability(&value.recovery_category),
+        string_availability(&value.next_action)
+    )
+}
+
+fn prior_shutdown_availability(value: &FieldAvailability<ServicePriorShutdownStatus>) -> String {
+    match value {
+        FieldAvailability::Available(value) => value.as_str().to_string(),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
+fn stale_inflight_availability(value: &FieldAvailability<ServiceStaleInflightStatus>) -> String {
+    match value {
+        FieldAvailability::Available(value) => value.as_str().to_string(),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
+fn resume_progress_availability(value: &FieldAvailability<ServiceResumeProgressStatus>) -> String {
+    match value {
+        FieldAvailability::Available(value) => {
+            format!(
+                "downloaded={} connected={}",
+                value.downloaded_block_height, value.connected_block_height
+            )
+        }
         FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
     }
 }

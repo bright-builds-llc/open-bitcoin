@@ -139,6 +139,29 @@ pub(crate) fn parse_systemd_log_path(unit_content: &str) -> Option<PathBuf> {
     None
 }
 
+pub(crate) fn parse_systemd_data_dir(unit_content: &str) -> Option<PathBuf> {
+    for line in unit_content.lines() {
+        let trimmed = line.trim();
+        let Some((_, exec_start)) = trimmed.split_once("ExecStart=") else {
+            continue;
+        };
+        let Some((_, after_datadir)) = exec_start.split_once("-datadir=") else {
+            continue;
+        };
+        let value = after_datadir
+            .trim_start_matches('"')
+            .split('"')
+            .next()
+            .unwrap_or_default()
+            .trim();
+        if !value.is_empty() {
+            return Some(PathBuf::from(value));
+        }
+    }
+
+    None
+}
+
 /// Linux systemd user-scope service adapter.
 ///
 /// Wraps unit file writes and `systemctl --user` invocations. Construct via
@@ -192,6 +215,28 @@ impl SystemdAdapter {
             None,
             Some("installed unit does not declare a file-backed service log path".to_string()),
         )
+    }
+
+    fn data_dir_status(&self, unit_path: &Path) -> (Option<PathBuf>, Option<String>) {
+        let unit_content = match std::fs::read_to_string(unit_path) {
+            Ok(content) => content,
+            Err(error) => {
+                return (
+                    None,
+                    Some(format!(
+                        "could not read installed unit for service datadir: {error}"
+                    )),
+                );
+            }
+        };
+
+        match parse_systemd_data_dir(&unit_content) {
+            Some(data_dir) => (Some(data_dir), None),
+            None => (
+                None,
+                Some("installed unit does not declare a service datadir".to_string()),
+            ),
+        }
     }
 }
 
@@ -398,10 +443,13 @@ impl ServiceManager for SystemdAdapter {
                 ),
                 maybe_log_path: None,
                 maybe_log_path_unavailable_reason: Some("service not installed".to_string()),
+                maybe_data_dir: None,
+                maybe_data_dir_unavailable_reason: Some("service not installed".to_string()),
             });
         }
 
         let (maybe_log_path, maybe_log_path_unavailable_reason) = self.log_path_status(&unit_path);
+        let (maybe_data_dir, maybe_data_dir_unavailable_reason) = self.data_dir_status(&unit_path);
         let (maybe_enabled, maybe_enabled_diagnostics) =
             match std::process::Command::new("systemctl")
                 .args(["--user", "is-enabled", OPEN_BITCOIN_SYSTEMD_FILE_NAME])
@@ -442,6 +490,8 @@ impl ServiceManager for SystemdAdapter {
                     .or_else(|| Some("systemctl not available".to_string())),
                 maybe_log_path,
                 maybe_log_path_unavailable_reason,
+                maybe_data_dir,
+                maybe_data_dir_unavailable_reason,
             });
         };
 
@@ -487,6 +537,8 @@ impl ServiceManager for SystemdAdapter {
             },
             maybe_log_path,
             maybe_log_path_unavailable_reason,
+            maybe_data_dir,
+            maybe_data_dir_unavailable_reason,
         })
     }
 }
