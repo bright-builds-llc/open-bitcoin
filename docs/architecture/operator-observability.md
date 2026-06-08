@@ -51,8 +51,8 @@ Status and dashboard consumers must read these contracts instead of inventing re
 Status, structured logs, metrics projections, live-smoke summaries, and support
 evidence use the shared sync vocabulary for `progress_signal`,
 `recovery_category`, `resource_pressure`, and recovery guidance. Metrics remain
-bounded numeric samples; support evidence remains an allowlisted compact summary
-rather than a raw daemon log, raw peer table, or retained report array.
+bounded numeric samples; bounded support evidence remains an allowlisted compact
+summary rather than a raw daemon log, raw peer table, or retained report array.
 
 Live-smoke Markdown and JSON use compact snapshots. The live-smoke compact
 snapshot contract does not persist raw daemon tails. Reports may include exit

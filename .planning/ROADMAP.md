@@ -11,8 +11,8 @@
 
 ## Current Focus
 
-v1.5 Unattended Mainnet Node Operation Readiness is ready for Phase 65 planning.
-Next action: `/gsd-plan-phase 65`
+v1.5 Unattended Mainnet Node Operation Readiness is ready for Phase 66 planning.
+Next action: `/gsd-plan-phase 66`
 
 ## Phases
 
@@ -42,7 +42,7 @@ traceability.
 - [x] **Phase 62: Long-Run Sync Truth Surfaces** - Operators see consistent bounded sync truth across status, dashboard, RPC, metrics, logs, and live-smoke snapshots. (completed 2026-06-07)
 - [x] **Phase 63: Service Supervision Lifecycle** - Operators can manage launchd or systemd supervision for the opt-in unattended workflow with truthful lifecycle state. (completed 2026-06-07)
 - [x] **Phase 64: Service Restart and Same-Datadir Resume Evidence** - Operators can prove service-supervised restarts reopen durable state and resume sync safely. (completed 2026-06-07)
-- [ ] **Phase 65: Support Bundle and Operator Review Docs** - Operators can collect redacted v1.5 evidence and follow repo-local deterministic and opt-in review commands.
+- [x] **Phase 65: Support Bundle and Operator Review Docs** - Operators can collect redacted v1.5 evidence and follow repo-local deterministic and opt-in review commands. (completed 2026-06-08)
 - [ ] **Phase 66: Compatibility Harness Operator Wrapper** - Operators can run the Phase 54 public-peer compatibility harness through a documented CLI or repo script wrapper.
 - [ ] **Phase 67: Release Boundaries and Deterministic Verification** - Reviewers can audit v1.5 claims, deferred scopes, and default verification boundaries.
 
@@ -133,7 +133,10 @@ Plans:
   2. Support bundles exclude credentials and raw local report artifacts while preserving fields needed to diagnose unattended operation.
   3. Operator docs provide copy-pasteable repo-local Cargo and Bazel commands for deterministic checks, opt-in long-run review, service-based review, support bundle collection, and pass/fail interpretation.
   4. Docs make public-network long-run and service checks explicit opt-in UAT evidence rather than default `bash scripts/verify.sh` checks.
-**Plans**: TBD
+**Plans**: 2/2 complete
+Plans:
+- [x] [65-01](phases/65-support-bundle-and-operator-review-docs/65-01-PLAN.md) - Support bundle evidence and rendering
+- [x] [65-02](phases/65-support-bundle-and-operator-review-docs/65-02-PLAN.md) - Operator review docs and deterministic verification
 
 ### Phase 66: Compatibility Harness Operator Wrapper
 **Goal**: Operators can run the Phase 54 public-peer compatibility harness through a documented CLI or repo script wrapper with reports that align with daemon behavior.
@@ -166,7 +169,7 @@ Plans:
 | 62. Long-Run Sync Truth Surfaces | 4/4 | Complete    | 2026-06-07 |
 | 63. Service Supervision Lifecycle | 4/4 | Complete    | 2026-06-07 |
 | 64. Service Restart and Same-Datadir Resume Evidence | 3/3 | Complete | 2026-06-07 |
-| 65. Support Bundle and Operator Review Docs | 0/TBD | Not started | - |
+| 65. Support Bundle and Operator Review Docs | 2/2 | Complete   | 2026-06-08 |
 | 66. Compatibility Harness Operator Wrapper | 0/TBD | Not started | - |
 | 67. Release Boundaries and Deterministic Verification | 0/TBD | Not started | - |
 
@@ -183,8 +186,8 @@ Plans:
 
 ## Next Step
 
-Plan Phase 65 support bundle and operator review docs:
+Plan Phase 66 compatibility harness operator wrapper:
 
 ```bash
-/gsd-plan-phase 65
+/gsd-plan-phase 66
 ```

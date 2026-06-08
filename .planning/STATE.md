@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Unattended Mainnet Node Operation Readiness
-status: planning
-stopped_at: Phase 65 context gathered
-last_updated: "2026-06-08T14:53:05.160Z"
-last_activity: 2026-06-07
+status: executing
+stopped_at: Phase 65 complete; ready for Phase 66 planning
+last_updated: "2026-06-08T15:36:00.000Z"
+last_activity: 2026-06-08 -- Phase 65 completed with verification passing
 progress:
   total_phases: 8
-  completed_phases: 5
-  total_plans: 18
-  completed_plans: 18
+  completed_phases: 6
+  total_plans: 20
+  completed_plans: 20
   percent: 100
 ---
 
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-05)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 65 — Support Bundle and Operator Review Docs
+**Current focus:** Phase 66 — Compatibility Harness Operator Wrapper
 
 ## Current Position
 
 Milestone: v1.5 Unattended Mainnet Node Operation Readiness
-Phase: 65
-Plan: Not started
-Status: Ready to plan Phase 65
-Last activity: 2026-06-07
+Phase: 66 (Compatibility Harness Operator Wrapper) — READY FOR PLANNING
+Plan: pending
+Status: Phase 65 complete; ready to plan Phase 66
+Last activity: 2026-06-08 -- Phase 65 completed with verification passing
 
 Progress: [##########] 100%
 
@@ -37,8 +37,8 @@ Progress: [##########] 100%
 
 **Velocity:**
 
-- Current milestone plans completed: 18
-- Current milestone plan count: 18
+- Current milestone plans completed: 20
+- Current milestone plan count: 20
 - Prior milestone plans completed: 15 in v1.4
 
 **By Phase:**
@@ -50,14 +50,14 @@ Progress: [##########] 100%
 | 62 | 4 | - | - |
 | 63 | 4 | - | - |
 | 64 | 3 | - | - |
-| 65 | TBD | - | - |
+| 65 | 2 | - | - |
 | 66 | TBD | - | - |
 | 67 | TBD | - | - |
 
 **Recent Trend:**
 
-- Last 5 completed plans: 59-02, 59-03, 59-04, 59-05, 60-01
-- Trend: v1.5 completed Phases 60, 61, 62, 63, and 64; ready to plan Phase 65.
+- Last 5 completed plans: 64-01, 64-02, 64-03, 65-01, 65-02
+- Trend: v1.5 completed Phases 60, 61, 62, 63, 64, and 65; ready to plan Phase 66.
 
 | Phase 61 P01 | 20m 23s | 2 tasks | 12 files |
 | Phase 61-resource-bounds-and-recovery-taxonomy P02 | 23min | 3 tasks | 7 files |
@@ -87,6 +87,8 @@ Recent decisions affecting current work:
 - [Phase 58]: Same-datadir restart/resume evidence is captured through deterministic durable-store tests and opt-in two-session live-smoke reporting.
 - [Phase 64]: Service restart/resume status exposes selected datadir, clean versus unclean prior shutdown, durable progress, stale in-flight verdict, recovery category, and next-action guidance.
 - [Phase 64]: Keep real service-manager restarts and public-network restart smoke as opt-in UAT evidence outside `bash scripts/verify.sh`.
+- [Phase 65]: Redacted support bundles include bounded service lifecycle, restart/resume, log path, metrics availability, and live-smoke summary interpretation evidence.
+- [Phase 65]: Default verification now includes a deterministic support review checker and continues to exclude public-network and real service-manager commands.
 - [Phase 59]: v1.4 release claims remain bounded by operator evidence, support bundle redaction, threat-model roots, parity docs, and deterministic release-boundary checks.
 - [Phase 61]: Expose recovery categories as a typed serde enum while keeping recovery_action as separate human guidance.
 - [Phase 61]: Default missing persisted recovery_category values to unavailable so older RuntimeMetadata remains readable.
@@ -110,7 +112,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Plan Phase 65 with `/gsd-plan-phase 65`.
+- Plan Phase 66 with `/gsd-plan-phase 66`.
 - Carry the compatibility harness wrapper through Phase 66.
 
 ### Blockers/Concerns
@@ -121,6 +123,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-08T14:53:05.157Z
-Stopped at: Phase 65 context gathered
-Resume file: .planning/phases/65-support-bundle-and-operator-review-docs/65-CONTEXT.md
+Last session: 2026-06-08T15:36:00.000Z
+Stopped at: Phase 65 complete; ready for Phase 66 planning
+Resume file: .planning/phases/65-support-bundle-and-operator-review-docs/65-VERIFICATION.md

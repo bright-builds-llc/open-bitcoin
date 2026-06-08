@@ -130,6 +130,22 @@ inbound serving, transaction relay, production-funds wallet use, migration apply
 mode, packaging, Windows service support, hosted dashboard, GUI, or a broad
 production-node service guarantee.
 
+## v1.5 support bundle/operator review evidence
+
+Phase 65 adds redacted local support evidence and operator review docs for the
+opt-in unattended mainnet review workflow. The accepted local artifacts are
+`support-evidence.json` and `support-evidence.md`, which summarize shared status,
+service restart/resume evidence, metrics/log availability, recovery categories,
+resource pressure, config sources, and compact live-smoke facts without copying
+raw daemon logs, raw peer tables, endpoint tables, credential contents, wallet
+material, or raw local report artifacts.
+
+This support bundle/operator review evidence stays opt-in UAT outside default
+verification. Bundle existence is not proof of sync success, service readiness,
+or a production-node service guarantee; reviewers must inspect the specific
+fields and keep public-network and real service-manager checks outside
+`bash scripts/verify.sh`.
+
 ## First-party implementation
 
 - [`packages/open-bitcoin-network/src/message.rs`](../../../packages/open-bitcoin-network/src/message.rs)

@@ -922,6 +922,66 @@ or datadir contents. Credential evidence is metadata-only: the selected
 credential source and cookie path/presence may be reported, but cookie contents,
 `rpcpassword`, and `rpcauth` values are not support evidence.
 
+### v1.5 operator review
+
+Use this sequence for v1.5 unattended-operation review. Start with deterministic
+repo checks, then treat public-network and real service-manager commands as
+opt-in UAT outside default verification:
+
+```bash
+bash scripts/verify.sh
+bash scripts/test-run-live-mainnet-smoke.sh
+```
+
+Inspect the selected datadir through both repo-local sync status command forms:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet sync status --format json
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet sync status --format json
+```
+
+Inspect the full operator status snapshot through both repo-local command forms:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet status --format json
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet status --format json
+```
+
+For service-managed review, inspect and restart only when the operator has
+explicitly installed the user service for local review:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet service status
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet service status
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet service restart
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet service restart
+```
+
+Collect support evidence after deterministic checks and any optional local UAT:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet support bundle --output-dir=/tmp/open-bitcoin-support
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet support bundle --output-dir=/tmp/open-bitcoin-support
+```
+
+Interpret the bundle from fields, not from elapsed time or bundle existence:
+
+- `support-evidence.json` and `support-evidence.md` are local redacted evidence.
+- `live_smoke.summary.finalStatus` carries compact header, downloaded block,
+  connected block, `recoveryCategory`, and `resourcePressure` facts when a
+  live-smoke report was attached.
+- `restartResumeEvidence` summarizes same-datadir restart/recovery review from
+  the attached live-smoke report when available.
+- `status.service.restart_resume` carries service-scoped same-datadir,
+  prior-shutdown, durable-progress, stale in-flight, recovery category, and
+  next-action evidence when durable metadata exists.
+- `status.metrics` and `status.logs` report bounded local evidence and explicit
+  unavailable reasons; missing local evidence is diagnostic, not a serialization
+  failure.
+- Public-network long-run review, manual peers, `--restart-after-progress`, and
+  real launchd/systemd actions remain opt-in UAT and are not part of
+  `bash scripts/verify.sh`.
+
 ### Support Evidence Bundles
 
 For a local support handoff, generate a redacted evidence bundle from the
