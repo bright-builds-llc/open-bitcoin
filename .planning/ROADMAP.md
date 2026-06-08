@@ -11,8 +11,8 @@
 
 ## Current Focus
 
-v1.5 Unattended Mainnet Node Operation Readiness is ready for Phase 66 planning.
-Next action: `/gsd-plan-phase 66`
+v1.5 Unattended Mainnet Node Operation Readiness is ready for Phase 67 planning.
+Next action: `/gsd-plan-phase 67`
 
 ## Phases
 
@@ -43,7 +43,7 @@ traceability.
 - [x] **Phase 63: Service Supervision Lifecycle** - Operators can manage launchd or systemd supervision for the opt-in unattended workflow with truthful lifecycle state. (completed 2026-06-07)
 - [x] **Phase 64: Service Restart and Same-Datadir Resume Evidence** - Operators can prove service-supervised restarts reopen durable state and resume sync safely. (completed 2026-06-07)
 - [x] **Phase 65: Support Bundle and Operator Review Docs** - Operators can collect redacted v1.5 evidence and follow repo-local deterministic and opt-in review commands. (completed 2026-06-08)
-- [ ] **Phase 66: Compatibility Harness Operator Wrapper** - Operators can run the Phase 54 public-peer compatibility harness through a documented CLI or repo script wrapper.
+- [x] **Phase 66: Compatibility Harness Operator Wrapper** - Operators can run the Phase 54 public-peer compatibility harness through a documented CLI or repo script wrapper. (completed 2026-06-08)
 - [ ] **Phase 67: Release Boundaries and Deterministic Verification** - Reviewers can audit v1.5 claims, deferred scopes, and default verification boundaries.
 
 ## Phase Details
@@ -147,7 +147,9 @@ Plans:
   2. Compatibility wrapper output includes stable JSON and Markdown reports with peer endpoint, network, negotiated capabilities, failing step, diagnosis, transcript summary, and redaction boundaries.
   3. Wrapper diagnostics cover version rejection, network mismatch, service-bit mismatch, unsupported message order, timeout, peer disconnect, malformed payload, and local configuration failure.
   4. Wrapper diagnoses align with daemon peer-replacement behavior and release-boundary docs.
-**Plans**: TBD
+**Plans**: 1/1 complete
+Plans:
+- [x] [66-01](phases/66-compatibility-harness-operator-wrapper/66-01-PLAN.md) - Compatibility harness operator wrapper and reports
 
 ### Phase 67: Release Boundaries and Deterministic Verification
 **Goal**: Reviewers can audit v1.5 claims, deferred scopes, and default verification boundaries.
@@ -170,7 +172,7 @@ Plans:
 | 63. Service Supervision Lifecycle | 4/4 | Complete    | 2026-06-07 |
 | 64. Service Restart and Same-Datadir Resume Evidence | 3/3 | Complete | 2026-06-07 |
 | 65. Support Bundle and Operator Review Docs | 2/2 | Complete   | 2026-06-08 |
-| 66. Compatibility Harness Operator Wrapper | 0/TBD | Not started | - |
+| 66. Compatibility Harness Operator Wrapper | 1/1 | Complete | 2026-06-08 |
 | 67. Release Boundaries and Deterministic Verification | 0/TBD | Not started | - |
 
 ## Milestone History
@@ -186,8 +188,8 @@ Plans:
 
 ## Next Step
 
-Plan Phase 66 compatibility harness operator wrapper:
+Plan Phase 67 release boundaries and deterministic verification:
 
 ```bash
-/gsd-plan-phase 66
+/gsd-plan-phase 67
 ```

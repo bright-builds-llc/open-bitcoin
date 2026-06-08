@@ -1426,7 +1426,9 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "crossterm",
+ "open-bitcoin-network",
  "open-bitcoin-node",
+ "open-bitcoin-primitives",
  "open-bitcoin-rpc",
  "ratatui",
  "serde",

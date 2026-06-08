@@ -1216,6 +1216,140 @@ fn open_bitcoin_support_bundle_keeps_missing_live_smoke_report_unavailable() {
 }
 
 #[test]
+fn open_bitcoin_compatibility_harness_writes_json_and_markdown_reports() {
+    // Arrange
+    let sandbox = TestSandbox::new("compatibility-report");
+    let data_dir = sandbox.child("open-data");
+    let output_dir = sandbox.child("compatibility");
+    fs::create_dir_all(&data_dir).expect("open datadir");
+
+    // Act
+    let output = run_open_bitcoin(
+        &sandbox,
+        [
+            "--network",
+            "regtest",
+            "--format",
+            "json",
+            "--datadir",
+            data_dir.to_str().expect("datadir"),
+            "compatibility",
+            "harness",
+            "--peer-endpoint",
+            "203.0.113.10:8333",
+            "--scenario",
+            "service-bit-mismatch",
+            "--output-dir",
+            output_dir.to_str().expect("output dir"),
+        ],
+    );
+
+    // Assert
+    assert_success(&output);
+    let stdout: Value = serde_json::from_slice(&output.stdout).expect("compatibility stdout json");
+    assert_eq!(
+        stdout["json_path"],
+        json!(
+            output_dir
+                .join("compatibility-harness-report.json")
+                .display()
+                .to_string()
+        )
+    );
+    assert_eq!(
+        stdout["markdown_path"],
+        json!(
+            output_dir
+                .join("compatibility-harness-report.md")
+                .display()
+                .to_string()
+        )
+    );
+    let json_text = fs::read_to_string(output_dir.join("compatibility-harness-report.json"))
+        .expect("compatibility json");
+    let markdown = fs::read_to_string(output_dir.join("compatibility-harness-report.md"))
+        .expect("compatibility markdown");
+    let decoded: Value = serde_json::from_str(&json_text).expect("compatibility report json");
+    assert_eq!(decoded["peer_endpoint"], "203.0.113.10:8333");
+    assert_eq!(decoded["network"], "regtest");
+    assert_eq!(decoded["scenario"], "service_bit_mismatch");
+    assert_eq!(decoded["diagnosis"], "service_bit_mismatch");
+    assert_eq!(decoded["failing_step"]["diagnosis"], "service_bit_mismatch");
+    assert_eq!(decoded["transcript_summary"]["useful_progress"], false);
+    assert_eq!(
+        decoded["negotiated_capabilities"]["required_services"],
+        json!(["NODE_NETWORK", "NODE_WITNESS"])
+    );
+    assert!(decoded["redaction_boundaries"]["omitted"].is_array());
+    assert!(markdown.contains("# Open Bitcoin Compatibility Harness Report"));
+    assert!(markdown.contains("Peer endpoint: 203.0.113.10:8333"));
+    assert!(markdown.contains("Network: regtest"));
+    assert!(markdown.contains("Diagnosis: service_bit_mismatch"));
+    assert!(markdown.contains("Failing step"));
+    assert!(markdown.contains("Negotiated capabilities"));
+    assert!(markdown.contains("Redaction boundaries"));
+    assert!(markdown.contains("raw wire payloads"));
+    for rendered in [&json_text, &markdown] {
+        assert_absent(rendered, "super-secret-password");
+        assert_absent(rendered, "__cookie__:compat-secret");
+        assert_absent(rendered, "seed phrase compat-secret");
+        assert_absent(rendered, "raw-payload-hex-secret");
+        assert_absent(rendered, "daemon stdout tail secret");
+        assert_absent(rendered, "daemon stderr tail secret");
+    }
+}
+
+#[test]
+fn open_bitcoin_compatibility_harness_covers_required_diagnosis_scenarios() {
+    // Arrange
+    let sandbox = TestSandbox::new("compatibility-scenarios");
+    let data_dir = sandbox.child("open-data");
+    fs::create_dir_all(&data_dir).expect("open datadir");
+    let cases = [
+        ("compatible", "compatible"),
+        ("version-rejected", "version_rejected"),
+        ("network-mismatch", "network_mismatch"),
+        ("service-bit-mismatch", "service_bit_mismatch"),
+        ("unsupported-message-order", "unsupported_message_order"),
+        ("timeout", "timeout"),
+        ("peer-disconnect", "peer_disconnect"),
+        ("malformed-payload", "malformed_payload"),
+        ("local-configuration-failure", "local_configuration_failure"),
+    ];
+
+    for (scenario, expected_diagnosis) in cases {
+        let output_dir = sandbox.child(&format!("compatibility-{scenario}"));
+
+        // Act
+        let output = run_open_bitcoin(
+            &sandbox,
+            [
+                "--network",
+                "regtest",
+                "--datadir",
+                data_dir.to_str().expect("datadir"),
+                "compatibility",
+                "harness",
+                "--peer-endpoint",
+                "198.51.100.20:8333",
+                "--scenario",
+                scenario,
+                "--output-dir",
+                output_dir.to_str().expect("output dir"),
+            ],
+        );
+
+        // Assert
+        assert_success(&output);
+        let report_path = output_dir.join("compatibility-harness-report.json");
+        let json_text = fs::read_to_string(report_path).expect("compatibility report");
+        let decoded: Value = serde_json::from_str(&json_text).expect("compatibility json");
+        assert_eq!(decoded["scenario"], expected_diagnosis);
+        assert_eq!(decoded["diagnosis"], expected_diagnosis);
+    }
+}
+
+#[test]
 fn open_bitcoin_wallet_send_requires_confirm_and_uses_preview_path() {
     // Arrange
     let sandbox = TestSandbox::new("wallet-send-preview");

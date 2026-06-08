@@ -922,6 +922,53 @@ or datadir contents. Credential evidence is metadata-only: the selected
 credential source and cookie path/presence may be reported, but cookie contents,
 `rpcpassword`, and `rpcauth` values are not support evidence.
 
+### Compatibility harness operator wrapper
+
+Use `open-bitcoin compatibility harness` when an operator needs stable local
+compatibility evidence without calling Rust harness internals. The command runs
+deterministic built-in transcript scenarios through the Phase 54
+`open-bitcoin-network::evaluate_transcript` harness and labels the report with
+the supplied peer endpoint. The endpoint is report context, not proof that a
+public socket was contacted.
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --network=mainnet \
+  compatibility harness \
+  --peer-endpoint=203.0.113.10:8333 \
+  --scenario=service-bit-mismatch \
+  --output-dir=/tmp/open-bitcoin-compatibility
+
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- \
+  --network=mainnet \
+  compatibility harness \
+  --peer-endpoint=203.0.113.10:8333 \
+  --scenario=service-bit-mismatch \
+  --output-dir=/tmp/open-bitcoin-compatibility
+```
+
+The wrapper writes exactly these local files under the selected output
+directory:
+
+- `compatibility-harness-report.json`: machine-readable peer endpoint, network,
+  scenario, negotiated capabilities, failing step, diagnosis, transcript
+  summary, redaction boundaries, and next action
+- `compatibility-harness-report.md`: human-readable review notes for the same
+  facts
+
+Supported deterministic scenarios and stable diagnosis values are `compatible`,
+`version_rejected`, `network_mismatch`, `service_bit_mismatch`,
+`unsupported_message_order`, `timeout`, `peer_disconnect`,
+`malformed_payload`, and `local_configuration_failure`. Scenario flags use
+kebab-case, for example `--scenario=network-mismatch`; report fields use
+snake_case for stable JSON.
+
+Compatibility harness reports omit raw wire payloads, daemon stdout/stderr
+tails, RPC credentials, cookie contents, wallet private material, and unbounded
+peer logs. They are opt-in local compatibility evidence outside default
+verification; `bash scripts/verify.sh` checks the wrapper contract and docs but
+does not contact public peers.
+
 ### v1.5 operator review
 
 Use this sequence for v1.5 unattended-operation review. Start with deterministic

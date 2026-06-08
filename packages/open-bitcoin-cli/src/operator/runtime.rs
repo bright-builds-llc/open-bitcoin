@@ -4,7 +4,6 @@
 //! Operator runtime contract surface.
 
 mod support;
-
 use std::{
     collections::BTreeMap,
     env, fmt, fs,
@@ -18,6 +17,7 @@ use crate::{args::CliStartupArgs, startup::resolve_startup_config};
 use super::{
     ConfigCommand, MigrationArgs, MigrationCommand, NetworkSelection, OnboardArgs, OperatorCli,
     OperatorCommand, OperatorOutputFormat, SupportArgs, SyncArgs, SyncCommand,
+    compatibility::execute_compatibility_command,
     config::{
         OPEN_BITCOIN_CONFIG_ENV, OPEN_BITCOIN_DATADIR_ENV, OPEN_BITCOIN_NETWORK_ENV,
         OperatorConfigRequest, OperatorConfigResolution, OperatorConfigRoots,
@@ -194,6 +194,9 @@ fn execute_operator_cli_inner(
                 cli.format,
             )?)),
         },
+        OperatorCommand::Compatibility(args) => {
+            execute_compatibility_command(args, cli.format, &config_resolution)
+        }
         OperatorCommand::Onboard(args) => {
             execute_onboarding(args, &cli, config_resolution, detections)
         }
@@ -357,6 +360,7 @@ fn command_detections(
         OperatorCommand::Status(_)
         | OperatorCommand::Sync(_)
         | OperatorCommand::Config(_)
+        | OperatorCommand::Compatibility(_)
         | OperatorCommand::Onboard(_)
         | OperatorCommand::Service(_)
         | OperatorCommand::Dashboard(_)

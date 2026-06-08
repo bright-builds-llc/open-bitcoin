@@ -146,6 +146,22 @@ or a production-node service guarantee; reviewers must inspect the specific
 fields and keep public-network and real service-manager checks outside
 `bash scripts/verify.sh`.
 
+## v1.5 compatibility harness operator wrapper
+
+Phase 66 adds `open-bitcoin compatibility harness` as an operator-facing wrapper
+around the deterministic Phase 54 compatibility transcript harness. The accepted
+local artifacts are `compatibility-harness-report.json` and
+`compatibility-harness-report.md`, which record the supplied peer endpoint
+label, selected network, scenario, negotiated capabilities, failing step,
+diagnosis, transcript summary, redaction boundaries, and next action while
+delegating diagnosis to `open-bitcoin-network::evaluate_transcript`.
+
+This wrapper evidence stays opt-in local compatibility evidence outside default
+verification. Report existence is not proof that a public peer was contacted,
+that inbound serving works, that relay behavior is complete, or that Open
+Bitcoin is a production-node service guarantee; public-network probing remains
+explicit UAT outside `bash scripts/verify.sh`.
+
 ## First-party implementation
 
 - [`packages/open-bitcoin-network/src/message.rs`](../../../packages/open-bitcoin-network/src/message.rs)

@@ -11,6 +11,7 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 
 use crate::CliError;
 
+pub mod compatibility;
 pub mod config;
 pub mod dashboard;
 pub mod detect;
@@ -48,6 +49,7 @@ pub enum OperatorCommand {
     Status(StatusArgs),
     Sync(SyncArgs),
     Config(ConfigArgs),
+    Compatibility(CompatibilityArgs),
     Service(ServiceArgs),
     Dashboard(DashboardArgs),
     Migrate(MigrationArgs),
@@ -81,6 +83,40 @@ pub struct ConfigArgs {
 #[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
 pub enum ConfigCommand {
     Paths,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Args)]
+pub struct CompatibilityArgs {
+    #[command(subcommand)]
+    pub command: CompatibilityCommand,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
+pub enum CompatibilityCommand {
+    Harness(CompatibilityHarnessArgs),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Args)]
+pub struct CompatibilityHarnessArgs {
+    #[arg(long = "peer-endpoint")]
+    pub peer_endpoint: String,
+    #[arg(long = "output-dir")]
+    pub maybe_output_dir: Option<PathBuf>,
+    #[arg(long = "scenario", value_enum, default_value = "compatible")]
+    pub scenario: CompatibilityScenario,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum CompatibilityScenario {
+    Compatible,
+    VersionRejected,
+    NetworkMismatch,
+    ServiceBitMismatch,
+    UnsupportedMessageOrder,
+    Timeout,
+    PeerDisconnect,
+    MalformedPayload,
+    LocalConfigurationFailure,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Args)]

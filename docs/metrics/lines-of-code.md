@@ -6,11 +6,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Metric | Value |
 | --- | --- |
-| Included files | 303 |
-| Total lines | 107,044 |
-| Code/content lines | 94,780 |
-| Comment-only lines | 3,218 |
-| Blank lines | 9,046 |
+| Included files | 305 |
+| Total lines | 107,867 |
+| Code/content lines | 95,524 |
+| Comment-only lines | 3,229 |
+| Blank lines | 9,114 |
 
 ## Per-Crate Modules
 
@@ -18,7 +18,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- | --- |
 | open-bitcoin-bench | 22 | 3,600 | 0 | 80 | 3,680 | 0.0% |
 | open-bitcoin-chainstate | 8 | 1,023 | 1,818 | 26 | 2,867 | 177.7% |
-| open-bitcoin-cli | 60 | 13,427 | 10,509 | 86 | 24,022 | 78.3% |
+| open-bitcoin-cli | 61 | 13,971 | 10,643 | 90 | 24,704 | 76.2% |
 | open-bitcoin-codec | 13 | 1,144 | 170 | 28 | 1,345 | 14.9% |
 | open-bitcoin-consensus | 30 | 6,346 | 7,519 | 28 | 13,893 | 118.5% |
 | open-bitcoin-core | 3 | 39 | 0 | 36 | 75 | 0.0% |
@@ -34,13 +34,13 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Category | Files | Total | Code/Content | Comments | Blank |
 | --- | --- | --- | --- | --- | --- |
-| Rust production | 182 | 50,305 | 43,571 | 1,659 | 5,075 |
-| Rust tests | 50 | 35,103 | 30,967 | 1,508 | 2,628 |
+| Rust production | 183 | 50,849 | 44,071 | 1,664 | 5,114 |
+| Rust tests | 50 | 35,237 | 31,088 | 1,514 | 2,635 |
 | Fixture/data | 6 | 8,217 | 8,212 | 5 | 0 |
-| TypeScript/Bun scripts | 12 | 6,140 | 5,561 | 0 | 579 |
-| TOML/config | 16 | 3,430 | 3,067 | 0 | 363 |
-| Shell scripts | 13 | 3,276 | 2,904 | 40 | 332 |
-| Bazel/Starlark | 18 | 406 | 371 | 0 | 35 |
+| TypeScript/Bun scripts | 13 | 6,278 | 5,677 | 0 | 601 |
+| TOML/config | 16 | 3,434 | 3,071 | 0 | 363 |
+| Shell scripts | 13 | 3,277 | 2,905 | 40 | 332 |
+| Bazel/Starlark | 18 | 408 | 373 | 0 | 35 |
 | YAML | 2 | 104 | 83 | 4 | 17 |
 | CI/templates | 1 | 27 | 16 | 1 | 10 |
 | Other config | 2 | 26 | 22 | 0 | 4 |
@@ -58,6 +58,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase63-service-lifecycle.ts | 308 |
 | scripts/check-phase64-service-restart-resume.ts | 172 |
 | scripts/check-phase65-support-review.ts | 140 |
+| scripts/check-phase66-compatibility-wrapper.ts | 138 |
 | scripts/check-v1.3-release-boundaries.ts | 184 |
 | scripts/check-v1.4-release-boundaries.ts | 241 |
 | scripts/generate-loc-report.ts | 571 |
@@ -71,9 +72,9 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | 2 | packages/open-bitcoin-node/src/sync/tests.rs | Rust tests | 4,267 |
 | 3 | scripts/run-live-mainnet-smoke.ts | TypeScript/Bun scripts | 3,283 |
 | 4 | packages/open-bitcoin-consensus/src/script/tests.rs | Rust tests | 3,258 |
-| 5 | packages/Cargo.lock | TOML/config | 3,187 |
-| 6 | scripts/test-run-live-mainnet-smoke.sh | Shell scripts | 1,808 |
-| 7 | packages/open-bitcoin-cli/tests/operator_binary.rs | Rust tests | 1,757 |
+| 5 | packages/Cargo.lock | TOML/config | 3,189 |
+| 6 | packages/open-bitcoin-cli/tests/operator_binary.rs | Rust tests | 1,891 |
+| 7 | scripts/test-run-live-mainnet-smoke.sh | Shell scripts | 1,808 |
 | 8 | packages/open-bitcoin-cli/src/operator/status/tests.rs | Rust tests | 1,753 |
 | 9 | packages/open-bitcoin-cli/src/operator/service/tests.rs | Rust tests | 1,652 |
 | 10 | packages/open-bitcoin-consensus/src/block/tests.rs | Rust tests | 1,594 |
@@ -93,7 +94,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 6cc3ebad845c432c58d7a12937e62705b6f97535573ad93da6343dfa67b5c4d6 |
+| Input fingerprint | 97ca2e690610905f167ecf4feb8b7606643a49e79a86bd29bca8a2a1466ff50a |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

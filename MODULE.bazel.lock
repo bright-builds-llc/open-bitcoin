@@ -2830,11 +2830,11 @@
         "bzlTransitiveDigest": "gm+SvWld0Cf7ztJ0+X+9ve2JTbleA/ysT+P70mdos2A=",
         "usagesDigest": "/nVJkqYyyp5wSwKXu/ghcrQcGZQfkhEnUsoCPkltNSg=",
         "recordedFileInputs": {
-          "@@//packages/Cargo.lock": "e737ce29914b79ecdf141790de72366bc19da92a0a0dd2bbddf25bc277d672f5",
+          "@@//packages/Cargo.lock": "9fee4d3f4bac2ecdcc1b9a9a9fcd113fd0011a8fced6262655610519a3ca0603",
           "@@//packages/Cargo.toml": "2b18fb528f59dbec2141299545cd536e0e61a5ee8eea3b3f88c0190bfa98f14d",
           "@@//packages/open-bitcoin-bench/Cargo.toml": "146082e0b8e4551650b54f96e66a81115b7a59fe1895df34443832cbb3ed67c5",
           "@@//packages/open-bitcoin-chainstate/Cargo.toml": "2431ecf293f5880ac3a5fcbe49c25df364468faf890932809938d005b23d7147",
-          "@@//packages/open-bitcoin-cli/Cargo.toml": "85c5fef0314d64356c47161a90842ad7c8f9c13bf65433e79febf815c563c5be",
+          "@@//packages/open-bitcoin-cli/Cargo.toml": "dde5d25e27b91b842c07f62c9479aadd45f87c7ae6e35c74fb9b24fd3cee8c03",
           "@@//packages/open-bitcoin-codec/Cargo.toml": "b376b7bba3d8eeaaff14473ed10c90fdc025520fa77801cb86e05ef73dff7170",
           "@@//packages/open-bitcoin-consensus/Cargo.toml": "a18bbbf5a3b7313558af35c7b1251e74963d19023ce3443147e85ea105527ab7",
           "@@//packages/open-bitcoin-core/Cargo.toml": "de982458207d2ada68e140d70dd5e98c410525e66f2c538ce0b8b7f4f626fe7a",

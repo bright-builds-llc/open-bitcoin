@@ -16,6 +16,8 @@ path = "src/bin/open-bitcoin.rs"
 clap = { version = "4.6.1", features = ["derive"] }
 crossterm = "0.29"
 open-bitcoin-node = { path = "../open-bitcoin-node" }
+open-bitcoin-network = { path = "../open-bitcoin-network" }
+open-bitcoin-primitives = { path = "../open-bitcoin-primitives" }
 open-bitcoin-rpc = { path = "../open-bitcoin-rpc" }
 ratatui = "0.30"
 serde = { version = "1.0.228", features = ["derive"] }

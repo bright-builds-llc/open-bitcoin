@@ -120,6 +120,7 @@ bun run scripts/check-phase62-sync-truth-surfaces.ts
 bun run scripts/check-phase63-service-lifecycle.ts
 bun run scripts/check-phase64-service-restart-resume.ts
 bun run scripts/check-phase65-support-review.ts
+bun run scripts/check-phase66-compatibility-wrapper.ts
 bash scripts/check-pure-core-deps.sh
 bash scripts/check-file-lengths.sh
 bash scripts/check-panic-sites.sh
