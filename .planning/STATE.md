@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Unattended Mainnet Node Operation Readiness
-status: executing
-stopped_at: Phase 64 verified
-last_updated: "2026-06-08T03:43:38.403Z"
+status: planning
+stopped_at: Phase 65 context gathered
+last_updated: "2026-06-08T14:53:05.160Z"
 last_activity: 2026-06-07
 progress:
   total_phases: 8
@@ -121,6 +121,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-08T03:43:38.403Z
-Stopped at: Phase 64 verified
-Resume file: .planning/phases/64-service-restart-and-same-datadir-resume-evidence/64-VERIFICATION.md
+Last session: 2026-06-08T14:53:05.157Z
+Stopped at: Phase 65 context gathered
+Resume file: .planning/phases/65-support-bundle-and-operator-review-docs/65-CONTEXT.md
