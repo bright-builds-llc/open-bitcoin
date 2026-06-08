@@ -1061,6 +1061,11 @@ fn open_bitcoin_support_bundle_summarizes_phase61_resource_recovery_evidence() {
         3
     );
     assert_eq!(decoded["store_health"]["state"], "unavailable");
+    assert!(decoded["status"]["service"].is_object());
+    assert_eq!(
+        decoded["status"]["service"]["restart_resume"]["state"],
+        "unavailable"
+    );
     assert_eq!(decoded["status"]["logs"]["path"]["state"], "unavailable");
     assert_eq!(
         decoded["status"]["metrics"]["availability"]["state"],
@@ -1077,6 +1082,11 @@ fn open_bitcoin_support_bundle_summarizes_phase61_resource_recovery_evidence() {
     assert!(markdown.contains("Recovery category"));
     assert!(markdown.contains("Resource pressure"));
     assert!(markdown.contains("Final status"));
+    assert!(markdown.contains("Service lifecycle"));
+    assert!(markdown.contains("Service restart/resume"));
+    assert!(markdown.contains("Logs path"));
+    assert!(markdown.contains("Metrics availability"));
+    assert!(markdown.contains("Metrics samples"));
     assert!(markdown.contains("handshake_failure"));
     for rendered in [&json_text, &markdown] {
         assert_absent(rendered, "live-smoke-secret");

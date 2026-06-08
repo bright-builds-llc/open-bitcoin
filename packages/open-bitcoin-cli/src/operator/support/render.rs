@@ -94,6 +94,22 @@ pub(super) fn render_support_markdown(bundle: &SupportEvidenceBundle) -> String 
         "- Metrics samples: {}\n",
         bundle.status.metrics.samples.len()
     ));
+    output.push_str(&format!(
+        "- Service lifecycle: {}\n",
+        json_compact(&bundle.status.service.lifecycle)
+    ));
+    output.push_str(&format!(
+        "- Service restart/resume: {}\n",
+        json_compact(&bundle.status.service.restart_resume)
+    ));
+    output.push_str(&format!(
+        "- Logs path: {}\n",
+        json_compact(&bundle.status.logs.path)
+    ));
+    output.push_str(&format!(
+        "- Metrics availability: {}\n",
+        json_compact(&bundle.status.metrics.availability)
+    ));
 
     output.push_str("\n## Store Health\n\n");
     output.push_str(&format!(
@@ -215,6 +231,12 @@ fn json_string<T: Serialize>(value: &T) -> String {
         .ok()
         .and_then(|value| value.as_str().map(str::to_string))
         .unwrap_or_else(|| "unknown".to_string())
+}
+
+fn json_compact<T: Serialize>(value: &T) -> String {
+    serde_json::to_value(value)
+        .map(|value| value.to_string())
+        .unwrap_or_else(|_| "unknown".to_string())
 }
 
 fn availability_name(availability: &EvidenceAvailability) -> &'static str {
