@@ -17,30 +17,30 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Long-Run Observability and Support Evidence
 
-- [ ] **OBS-01**: Operator-facing status, dashboard, RPC sync status, metrics, structured logs, and live-smoke snapshots agree on unattended loop phase, configured targets, attempt counters, latest progress, latest stop reason, peer health, and downloaded or connected block evidence.
-- [ ] **OBS-02**: Metrics and structured logs retain bounded long-run samples and cycle summaries without unbounded growth, while preserving enough evidence to diagnose progress, waiting, retry, stop, and recovery states.
-- [ ] **OBS-03**: Operator can generate a redacted v1.5 support bundle that summarizes long-run sync cycles, service state, restart/recovery evidence, peer outcomes, progress counters, stop reasons, metrics, logs, and config sources without embedding credentials or raw local report artifacts.
-- [ ] **OBS-04**: Operator docs provide copy-pasteable repo-local Cargo and Bazel commands for deterministic checks, opt-in long-run review, service-based review, support bundle collection, and pass/fail interpretation.
+- [x] **OBS-01**: Operator-facing status, dashboard, RPC sync status, metrics, structured logs, and live-smoke snapshots agree on unattended loop phase, configured targets, attempt counters, latest progress, latest stop reason, peer health, and downloaded or connected block evidence.
+- [x] **OBS-02**: Metrics and structured logs retain bounded long-run samples and cycle summaries without unbounded growth, while preserving enough evidence to diagnose progress, waiting, retry, stop, and recovery states.
+- [x] **OBS-03**: Operator can generate a redacted v1.5 support bundle that summarizes long-run sync cycles, service state, restart/recovery evidence, peer outcomes, progress counters, stop reasons, metrics, logs, and config sources without embedding credentials or raw local report artifacts.
+- [x] **OBS-04**: Operator docs provide copy-pasteable repo-local Cargo and Bazel commands for deterministic checks, opt-in long-run review, service-based review, support bundle collection, and pass/fail interpretation.
 
 ### Service Lifecycle Hardening
 
 - [x] **SVC-01**: Operator can preview, install, start, stop, restart, and inspect launchd or systemd supervision for the opt-in unattended daemon workflow without implying a broad production-node claim.
 - [x] **SVC-02**: Service status distinguishes unmanaged, installed-stopped, running, failed, disabled, and unavailable-manager states while preserving shared sync truth fields.
-- [ ] **SVC-03**: Daemon restart under service supervision reopens durable sync state, reports clean versus unclean prior shutdown, and resumes bounded sync work without duplicating block connection or in-flight requests.
+- [x] **SVC-03**: Daemon restart under service supervision reopens durable sync state, reports clean versus unclean prior shutdown, and resumes bounded sync work without duplicating block connection or in-flight requests.
 - [x] **SVC-04**: Service runbooks explain log locations, config paths, safe shutdown, restart review, and recovery actions for launchd and systemd operators.
 
 ### Resource Bounds and Recovery Behavior
 
 - [x] **RR-01**: Unattended sync enforces documented bounds for outbound peers, in-flight headers or blocks, retry queues, storage writes, metrics samples, structured logs, and support evidence size.
 - [x] **RR-02**: Recovery handling distinguishes clean shutdown, unclean shutdown, incompatible schema, store corruption, storage lock contention, resource exhaustion, invalid peer data, public-network unreachability, and operator cancellation.
-- [ ] **RR-03**: Same-datadir restart tests cover extended loop recovery without duplicate block requests, duplicate block connects, corrupted active chainstate, or lost progress counters.
+- [x] **RR-03**: Same-datadir restart tests cover extended loop recovery without duplicate block requests, duplicate block connects, corrupted active chainstate, or lost progress counters.
 - [x] **RR-04**: Operator-visible errors and recovery guidance stay typed, actionable, and consistent across status, logs, support bundles, and docs.
 
 ### Compatibility Harness Operator Wrapper
 
-- [ ] **COMPAT-01**: Operator can run the Phase 54 public-peer compatibility harness through a documented CLI or repo script wrapper instead of invoking the Rust harness path directly.
-- [ ] **COMPAT-02**: Compatibility wrapper output includes a stable JSON and Markdown report with peer endpoint, network, negotiated capabilities, failing step, diagnosis, transcript summary, and redaction boundaries.
-- [ ] **COMPAT-03**: Compatibility wrapper diagnostics align with daemon peer-replacement behavior and release-boundary docs for version rejection, network mismatch, service-bit mismatch, unsupported message order, timeout, peer disconnect, malformed payload, and local configuration failure.
+- [x] **COMPAT-01**: Operator can run the Phase 54 public-peer compatibility harness through a documented CLI or repo script wrapper instead of invoking the Rust harness path directly.
+- [x] **COMPAT-02**: Compatibility wrapper output includes a stable JSON and Markdown report with peer endpoint, network, negotiated capabilities, failing step, diagnosis, transcript summary, and redaction boundaries.
+- [x] **COMPAT-03**: Compatibility wrapper diagnostics align with daemon peer-replacement behavior and release-boundary docs for version rejection, network mismatch, service-bit mismatch, unsupported message order, timeout, peer disconnect, malformed payload, and local configuration failure.
 
 ### Release Boundaries and Verification
 
@@ -94,21 +94,21 @@ Which phases cover which requirements. Updated during roadmap creation.
 | LOOP-02 | Phase 60 | Complete |
 | LOOP-03 | Phase 60 | Complete |
 | LOOP-04 | Phase 60 | Complete |
-| OBS-01 | Phase 62 | Pending |
-| OBS-02 | Phase 62 | Pending |
-| OBS-03 | Phase 65 | Pending |
-| OBS-04 | Phase 65 | Pending |
+| OBS-01 | Phase 62 | Complete |
+| OBS-02 | Phase 62 | Complete |
+| OBS-03 | Phase 65 | Complete |
+| OBS-04 | Phase 65 | Complete |
 | SVC-01 | Phase 63 | Complete |
 | SVC-02 | Phase 63 | Complete |
-| SVC-03 | Phase 64 | Pending |
+| SVC-03 | Phase 64 | Complete |
 | SVC-04 | Phase 63 | Complete |
 | RR-01 | Phase 61 | Complete |
 | RR-02 | Phase 61 | Complete |
-| RR-03 | Phase 64 | Pending |
+| RR-03 | Phase 64 | Complete |
 | RR-04 | Phase 61 | Complete |
-| COMPAT-01 | Phase 66 | Pending |
-| COMPAT-02 | Phase 66 | Pending |
-| COMPAT-03 | Phase 66 | Pending |
+| COMPAT-01 | Phase 66 | Complete |
+| COMPAT-02 | Phase 66 | Complete |
+| COMPAT-03 | Phase 66 | Complete |
 | REL-01 | Phase 67 | Complete |
 | REL-02 | Phase 67 | Complete |
 | REL-03 | Phase 67 | Complete |
@@ -121,4 +121,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-06-05*
-*Last updated: 2026-06-05 after v1.5 roadmap creation*
+*Last updated: 2026-06-09 after v1.5 milestone audit traceability cleanup*
