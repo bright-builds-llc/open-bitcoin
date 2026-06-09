@@ -1,11 +1,12 @@
 # Release Readiness
 
 This release-hardening handoff preserves the headless v1.3 Public Mainnet Sync
-Proof and Node Hardening evidence as historical context and adds the current
-v1.4 Operator Evidence, Threat Model, and Release Boundaries closeout. It
-points reviewers at repo-owned evidence instead of reproducing full phase logs,
-checking generated benchmark or live-smoke artifacts into git, or making
-public-network checks part of default verification.
+Proof and Node Hardening evidence and the v1.4 Operator Evidence, Threat Model,
+and Release Boundaries closeout as historical context. It adds the current v1.5
+Unattended Mainnet Node Operation Readiness closeout and points reviewers at
+repo-owned evidence instead of reproducing full phase logs, checking generated
+benchmark or live-smoke artifacts into git, or making public-network checks part
+of default verification.
 
 ## Readiness Verdict
 
@@ -15,22 +16,32 @@ covers the documented live-smoke workflow, durable sync status truth, peer
 resilience, resource bounds, durable recovery, redacted support evidence, and
 reviewer traceability needed for the Phase 50 evidence closeout.
 
-The current v1.4 readiness claim is a source-built, opt-in outbound IBD
-evidence surface. It covers outbound peer compatibility, validated header
-progress, downloaded block progress, connected block progress,
-same-datadir restart/resume evidence, redacted support evidence, field-level
-operator interpretation, and explicit release boundaries for reviewer closeout.
+The v1.4 readiness claim remains historical: a source-built, opt-in outbound
+IBD evidence surface. It covers outbound peer compatibility, validated header
+progress, downloaded block progress, connected block progress, same-datadir
+restart/resume evidence, redacted support evidence, field-level operator
+interpretation, and explicit release boundaries for reviewer closeout.
+
+The current v1.5 readiness claim is source-built, explicit opt-in extended
+unattended mainnet operator review readiness. It covers the bounded unattended
+daemon sync loop, resource bounds, recovery states, long-run truth surfaces,
+user-level launchd/systemd service supervision, same-datadir service
+restart/resume evidence, redacted support evidence, compatibility wrapper
+reports, deterministic local verification, and parity roots that make those
+claims auditable.
 
 This is not a production-node or production-funds claim. It does not claim
-inbound serving, transaction relay, migration apply mode, packaging or signed
-installers, hosted/public dashboard operation, GUI parity, Windows service
-support, or unattended production-node readiness.
+inbound serving, address advertisement, transaction relay, compact block relay,
+migration apply mode, packaging or signed installers, hosted/public dashboard
+operation, GUI parity, Windows service support, public-network CI, or broad
+production-node readiness.
 
 Treat [`docs/parity/index.json`](index.json) as the machine-readable root,
 [`docs/parity/checklist.md`](checklist.md) as the human checklist view, and
-[`docs/parity/threat-model-v1.4.md`](threat-model-v1.4.md) as the current v1.4
-scoped threat model. [`docs/parity/threat-model-v1.3.md`](threat-model-v1.3.md)
-remains the historical v1.3 scoped threat model.
+[`docs/parity/threat-model-v1.5.md`](threat-model-v1.5.md) as the current v1.5
+scoped threat model. [`docs/parity/threat-model-v1.4.md`](threat-model-v1.4.md)
+and [`docs/parity/threat-model-v1.3.md`](threat-model-v1.3.md) remain historical
+scoped threat models.
 
 Readiness is evidence-based, not timing-threshold based. The blocking local
 verification command is:
@@ -41,8 +52,8 @@ bash scripts/verify.sh
 
 That command remains deterministic and public-network-free. It includes local
 formatting, linting, builds, tests, benchmark smoke evidence, parity breadcrumb
-checks, Bazel smoke builds, coverage, panic-site checks, and the deterministic
-v1.3 release-boundary assertion.
+checks, Bazel smoke builds, coverage, panic-site checks, and deterministic
+release-boundary assertions through v1.5.
 
 ## Complete Surfaces
 
@@ -66,11 +77,16 @@ surfaces as `done`:
 - `security-analysis-audit`
 - `v1-3-threat-model-release-boundaries`
 - `v1-4-operator-evidence-release-boundaries`
+- `v1-5-unattended-operation-release-boundaries`
 
 Primary current-cycle evidence:
 
+- [`docs/parity/threat-model-v1.5.md`](threat-model-v1.5.md) records the
+  current v1.5 STRIDE register, ASVS L1 mapping, evidence acceptance, release
+  boundary matrix, and requirement traceability for REL-01, REL-02, REL-03, and
+  REL-04.
 - [`docs/parity/threat-model-v1.4.md`](threat-model-v1.4.md) records the
-  current v1.4 STRIDE register, ASVS L1 mapping, evidence acceptance, release
+  historical v1.4 STRIDE register, ASVS L1 mapping, evidence acceptance, release
   boundary matrix, and requirement traceability for OBS-01, OBS-02, OBS-03,
   SEC-01, SEC-02, and SEC-03.
 - [`docs/parity/threat-model-v1.3.md`](threat-model-v1.3.md) records the
@@ -89,6 +105,49 @@ Primary current-cycle evidence:
   preserves deferred production-adjacent surfaces for review.
 - [`scripts/verify.sh`](../../scripts/verify.sh) provides the repo-owned local
   verification contract for the release surface.
+
+## v1.5 Unattended Operation Claim Boundary Matrix
+
+| Surface | v1.5 Proven Claim | Accepted Evidence | Explicit Non-Claim | Required Next Milestone Or Deferred Gate | Requirement IDs |
+| --- | --- | --- | --- | --- | --- |
+| Unattended mainnet sync loop | `open-bitcoind` can be explicitly opted into bounded mainnet IBD review with durable pause/resume/shutdown and stop-reason evidence. | Phase 60 verification, durable sync status, runtime guide commands. | No default-on public-network operation or broad production full-node support. | Future PRODNODE-01 production-node milestone. | REL-01, REL-02 |
+| Resource bounds and recovery states | Operators can inspect sync resource pressure, retry/backoff state, recovery category, recovery action, and next steps. | Phase 61 verification, `sync.resource_pressure`, `sync.recovery_category`, support evidence. | No guarantee of unlimited unattended operation or production resource policy. | Future resource-governance policy. | REL-01 |
+| Long-run truth surfaces | Status, dashboard, RPC, metrics, logs, live smoke, and support evidence share lifecycle, phase, target, progress, recovery, pressure, peer, and block evidence fields. | Phase 62 verification, `OpenBitcoinStatusSnapshot`, metrics/log docs. | No hosted dashboard, remote administration, or external monitoring product claim. | Future hosted operations design. | REL-01 |
+| User-level service supervision | Operators can preview and manage launchd/systemd user services for `open-bitcoind` with selected datadir/config paths. | Phase 63 verification, service preview/install/status docs. | No signed packaging, machine-wide service support, Windows service support, or uptime SLA. | PKG-01 and PKG-02. | REL-01, REL-02 |
+| Same-datadir service restart/resume | Operators can review same-datadir restart/resume evidence through `service.restart_resume`. | Phase 64 verification, status JSON, runtime guide UAT. | No automatic recovery-loop policy or mandatory fresh post-restart network progress in default verification. | Future PRODNODE-01 recovery gate. | REL-01 |
+| Redacted support evidence | Operators can generate local support bundles with compact redacted status, metrics, log, service, restart/resume, and compatibility summaries. | Phase 65 verification, `support-evidence.json`, `support-evidence.md`. | No hosted support upload, raw log bundle, public release validator, or wallet-secret export. | Future artifact validator or hosted support design. | REL-01, REL-02 |
+| Compatibility wrapper reports | Operators can generate local compatibility transcript reports through `open-bitcoin compatibility harness`. | Phase 66 verification, `compatibility-harness-report.json`, `compatibility-harness-report.md`. | No live public-peer proof, inbound serving, transaction relay, or compact block relay. | Future public-peer probing and relay milestones. | REL-01, REL-02 |
+| Threat model and release boundary docs | Reviewers can inspect current v1.5 STRIDE/ASVS coverage, checklist roots, and machine-readable parity roots without promoting historical v1.3/v1.4 claims. | `docs/parity/threat-model-v1.5.md`, `docs/parity/release-readiness.md`, `docs/parity/checklist.md`, `docs/parity/index.json`, `docs/parity/README.md`. | v1.3/v1.4 docs remain historical evidence and are not promoted into current v1.5 claims. | Future milestone threat model and parity roots when scope expands. | REL-01, REL-02, REL-04 |
+| Deterministic verification | Default verification remains deterministic, public-network-free, and real-service-manager-free while checking v1.5 boundaries. | `bash scripts/verify.sh`, `scripts/check-v1.5-release-boundaries.ts`, parity docs. | No public-network CI gate, default live-smoke run, manual peer probing, `--restart-after-progress`, real `systemctl --user`, or real `launchctl`. | Future release-policy decision if live evidence becomes a stronger gate. | REL-03, REL-04 |
+| Inbound serving | No shipped v1.5 claim. | Deferred-surface rows in this matrix, `deviations-and-unknowns.md`, `catalog/p2p.md`. | v1.5 does not claim inbound serving or address advertisement. | Future PRODNODE-02. | REL-02 |
+| Transaction relay | No shipped v1.5 claim. | Deferred-surface rows in this matrix, `deviations-and-unknowns.md`, `catalog/p2p.md`. | v1.5 does not claim transaction relay or mempool propagation behavior. | Future PRODNODE-03. | REL-02 |
+| Compact block relay | No shipped v1.5 claim. | Deferred-surface rows in this matrix, `deviations-and-unknowns.md`, `catalog/p2p.md`. | v1.5 does not claim compact block relay. | Future relay parity milestone. | REL-02 |
+| Production-funds wallet use | No shipped v1.5 claim. | Deferred-surface rows in this matrix and runtime-guide known limitations. | v1.5 does not claim production-funds wallet use. | Future WALPROD-01 threat model and parity evidence. | REL-02 |
+| Migration apply mode | No shipped v1.5 claim. | Dry-run migration docs, deferred-surface rows, parity deviations. | v1.5 does not claim migration apply mode, source-service cutover, or source-datadir mutation. | Future MIGAPPLY-01 safety design. | REL-02 |
+| Packaging distribution | No shipped v1.5 claim. | Source-built install docs, deferred-surface rows. | v1.5 does not claim packaging, signed installers, or canonical OS distribution. | Future PKG-01. | REL-02 |
+| Hosted dashboard | No shipped v1.5 claim. | Local dashboard docs, deferred-surface rows. | v1.5 does not claim hosted dashboard or public dashboard operation. | Future hosted operations design. | REL-02 |
+| GUI | No shipped v1.5 claim. | Headless and terminal-first docs. | v1.5 does not claim GUI parity with the reference Qt app. | Future GUI milestone. | REL-02 |
+| Windows service support | No shipped v1.5 claim. | Source-built local service docs, deferred-surface rows. | v1.5 does not claim Windows service support or certification. | Future PKG-02. | REL-02 |
+
+Required deterministic reviewer commands:
+
+```bash
+bun run scripts/check-v1.5-release-boundaries.ts
+bash scripts/verify.sh
+```
+
+Operator UAT commands that intentionally remain outside deterministic default
+verification:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- status live-smoke --network mainnet --extended --manual-peer 127.0.0.1:8333 --output /tmp/open-bitcoin-live-smoke
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- service restart --restart-after-progress --evidence-dir /tmp/open-bitcoin-service-uat
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- status live-smoke -- --network mainnet --extended --manual-peer 127.0.0.1:8333 --output /tmp/open-bitcoin-live-smoke
+```
+
+These UAT commands require an operator-controlled environment. They are
+evidence-gathering commands, not release preconditions for deterministic
+verification.
 
 ## v1.4 Operator Evidence Claim Boundary Matrix
 

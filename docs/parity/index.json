@@ -548,6 +548,10 @@
     {
       "name": "v1-4-operator-evidence-release-boundaries",
       "status": "done"
+    },
+    {
+      "name": "v1-5-unattended-operation-release-boundaries",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -978,6 +982,38 @@
         "suspected_unknowns": [
           "Future inbound serving, transaction relay, production-funds wallet use, migration apply mode, packaging, hosted dashboard, GUI, Windows service support, and unattended production-node operation need separate gates."
         ]
+      },
+      {
+        "id": "v1-5-unattended-operation-release-boundaries",
+        "title": "v1.5 Unattended Operation And Release Boundaries",
+        "status": "done",
+        "requirements": [
+          "REL-01",
+          "REL-02",
+          "REL-03",
+          "REL-04"
+        ],
+        "evidence": [
+          "docs/parity/threat-model-v1.5.md",
+          "docs/parity/release-readiness.md",
+          "docs/parity/checklist.md",
+          "docs/parity/index.json",
+          "docs/parity/README.md",
+          "docs/parity/deviations-and-unknowns.md",
+          "docs/parity/catalog/p2p.md",
+          "docs/operator/runtime-guide.md",
+          "scripts/check-v1.5-release-boundaries.ts",
+          "scripts/verify.sh",
+          ".planning/phases/67-release-boundaries-and-deterministic-verification/67-CONTEXT.md",
+          ".planning/phases/67-release-boundaries-and-deterministic-verification/67-01-PLAN.md"
+        ],
+        "rationale": "Phase 67 makes the v1.5 source-built, explicit opt-in unattended mainnet operator-review claim auditable through current threat-model, release-readiness, checklist, parity roots, deferred-scope docs, runtime docs, and deterministic verification roots while preserving v1.3 and v1.4 evidence as historical.",
+        "known_gaps": [
+          "v1.5 proves extended unattended operator-review boundaries only; public-network live-smoke, manual-peer probing, restart-after-progress, and real service-manager UAT remain outside default verification."
+        ],
+        "suspected_unknowns": [
+          "Future production-node operation, inbound serving, transaction relay, compact block relay, production-funds wallet use, migration apply mode, packaging distribution, hosted dashboard, GUI, and Windows service support need separate gates."
+        ]
       }
     ]
   },
@@ -1066,6 +1102,43 @@
         "scripts/verify.sh"
       ]
     },
+    "v1_5_threat_model": {
+      "path": "threat-model-v1.5.md",
+      "status": "done",
+      "requirements": [
+        "REL-01",
+        "REL-02",
+        "REL-03",
+        "REL-04"
+      ],
+      "evidence": [
+        "docs/parity/threat-model-v1.5.md",
+        "docs/parity/release-readiness.md",
+        "docs/operator/runtime-guide.md",
+        "scripts/check-v1.5-release-boundaries.ts",
+        "scripts/verify.sh"
+      ]
+    },
+    "v1_5_release_boundaries": {
+      "path": "release-readiness.md",
+      "status": "done",
+      "requirements": [
+        "REL-01",
+        "REL-02",
+        "REL-03",
+        "REL-04"
+      ],
+      "evidence": [
+        "docs/parity/threat-model-v1.5.md",
+        "docs/parity/release-readiness.md",
+        "docs/parity/checklist.md",
+        "docs/parity/deviations-and-unknowns.md",
+        "docs/parity/catalog/p2p.md",
+        "docs/operator/runtime-guide.md",
+        "scripts/check-v1.5-release-boundaries.ts",
+        "scripts/verify.sh"
+      ]
+    },
     "security_analysis_audit": {
       "path": "../../.planning/milestones/v1.2-phases/41-audit-and-revisit-all-the-security-analyses-throughout-the-p/41-SECURITY-AUDIT.md",
       "status": "done",
@@ -1076,6 +1149,7 @@
       "path": "release-readiness.md",
       "status": "done",
       "evidence": [
+        "docs/parity/threat-model-v1.5.md",
         "docs/parity/threat-model-v1.4.md",
         "docs/parity/threat-model-v1.3.md",
         "docs/parity/release-readiness.md",
@@ -1084,6 +1158,7 @@
         "docs/operator/runtime-guide.md",
         "docs/parity/catalog/operator-runtime-release-hardening.md",
         ".planning/milestones/v1.2-phases/41-audit-and-revisit-all-the-security-analyses-throughout-the-p/41-SECURITY-AUDIT.md",
+        "scripts/check-v1.5-release-boundaries.ts",
         "scripts/check-v1.3-release-boundaries.ts",
         "scripts/check-benchmark-report.ts",
         "scripts/run-live-mainnet-smoke.ts"

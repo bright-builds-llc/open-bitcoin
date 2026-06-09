@@ -44,10 +44,10 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Release Boundaries and Verification
 
-- [ ] **REL-01**: Reviewer can inspect refreshed v1.5 threat-model and release-readiness docs covering unattended sync loop behavior, service supervision, long-run evidence, resource bounds, recovery states, support redaction, and compatibility wrapper output.
-- [ ] **REL-02**: Parity docs distinguish v1.5 extended operator-review readiness from deferred inbound serving, transaction relay, compact block relay, production-funds wallet use, migration apply mode, packaging distribution, hosted dashboard, GUI work, and broad production-node claims.
-- [ ] **REL-03**: Default repo verification remains deterministic; public-network long-run and service checks stay opt-in UAT evidence rather than part of `bash scripts/verify.sh`.
-- [ ] **REL-04**: Release-boundary checks fail deterministically when v1.5 docs or parity roots omit the unattended-operation claim boundaries.
+- [x] **REL-01**: Reviewer can inspect refreshed v1.5 threat-model and release-readiness docs covering unattended sync loop behavior, service supervision, long-run evidence, resource bounds, recovery states, support redaction, and compatibility wrapper output.
+- [x] **REL-02**: Parity docs distinguish v1.5 extended operator-review readiness from deferred inbound serving, transaction relay, compact block relay, production-funds wallet use, migration apply mode, packaging distribution, hosted dashboard, GUI work, and broad production-node claims.
+- [x] **REL-03**: Default repo verification remains deterministic; public-network long-run and service checks stay opt-in UAT evidence rather than part of `bash scripts/verify.sh`.
+- [x] **REL-04**: Release-boundary checks fail deterministically when v1.5 docs or parity roots omit the unattended-operation claim boundaries.
 
 ## Future Requirements
 
@@ -109,10 +109,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | COMPAT-01 | Phase 66 | Pending |
 | COMPAT-02 | Phase 66 | Pending |
 | COMPAT-03 | Phase 66 | Pending |
-| REL-01 | Phase 67 | Pending |
-| REL-02 | Phase 67 | Pending |
-| REL-03 | Phase 67 | Pending |
-| REL-04 | Phase 67 | Pending |
+| REL-01 | Phase 67 | Complete |
+| REL-02 | Phase 67 | Complete |
+| REL-03 | Phase 67 | Complete |
+| REL-04 | Phase 67 | Complete |
 
 **Coverage:**
 - v1.5 requirements: 23 total

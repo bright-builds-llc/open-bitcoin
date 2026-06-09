@@ -115,6 +115,7 @@ bun run scripts/generate-loc-report.ts --source="$OPEN_BITCOIN_LOC_REPORT_SOURCE
 bun run scripts/check-parity-breadcrumbs.ts --check
 bun run scripts/check-v1.3-release-boundaries.ts
 bun run scripts/check-v1.4-release-boundaries.ts
+bun run scripts/check-v1.5-release-boundaries.ts
 bun run scripts/check-phase61-resource-recovery-boundaries.ts
 bun run scripts/check-phase62-sync-truth-surfaces.ts
 bun run scripts/check-phase63-service-lifecycle.ts

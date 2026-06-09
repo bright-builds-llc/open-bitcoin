@@ -49,6 +49,10 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
   progress, downloaded block progress, connected block progress, and
   restart/resume evidence reviewable without claiming broader P2P service
   readiness
+- v1.5 release-boundary evidence keeps unattended mainnet operator review,
+  service restart/resume, support evidence, compatibility reports, and recovery
+  states auditable without claiming inbound serving, transaction relay, compact
+  block relay, or production-node operation
 
 ## Knots sources
 
@@ -162,6 +166,20 @@ that inbound serving works, that relay behavior is complete, or that Open
 Bitcoin is a production-node service guarantee; public-network probing remains
 explicit UAT outside `bash scripts/verify.sh`.
 
+## v1.5 unattended operation release boundary
+
+Phase 67 closes the v1.5 P2P release boundary as source-built, explicit opt-in
+extended unattended mainnet operator review readiness. P2P evidence may include
+bounded daemon loop status, typed resource pressure, recovery category/action,
+same-datadir service restart/resume, redacted support summaries, and local
+compatibility wrapper reports.
+
+This is not an inbound serving, address advertisement, transaction relay,
+compact block relay, public-peer probing, or production-node support claim.
+Public-network live-smoke, manual-peer probing, restart-after-progress, and real
+launchd/systemd manager calls remain explicit operator UAT outside
+`bash scripts/verify.sh`.
+
 ## First-party implementation
 
 - [`packages/open-bitcoin-network/src/message.rs`](../../../packages/open-bitcoin-network/src/message.rs)
@@ -180,7 +198,7 @@ explicit UAT outside `bash scripts/verify.sh`.
 - compact blocks, blocktxn, filtered blocks, bloom filters, and compact filters
 - peer eviction, bans, resource-governance scoring, and timeout parity beyond
   the basic lifecycle surface
-- daemon-integrated, unattended public-network full sync through `open-bitcoind`
+- production-grade daemon-integrated full sync guarantees
 - automatic public-mainnet recovery loops and broad production-node service
   guarantees
 - long-running socket orchestration and transport persistence beyond the current

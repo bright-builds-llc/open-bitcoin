@@ -44,7 +44,7 @@ traceability.
 - [x] **Phase 64: Service Restart and Same-Datadir Resume Evidence** - Operators can prove service-supervised restarts reopen durable state and resume sync safely. (completed 2026-06-07)
 - [x] **Phase 65: Support Bundle and Operator Review Docs** - Operators can collect redacted v1.5 evidence and follow repo-local deterministic and opt-in review commands. (completed 2026-06-08)
 - [x] **Phase 66: Compatibility Harness Operator Wrapper** - Operators can run the Phase 54 public-peer compatibility harness through a documented CLI or repo script wrapper. (completed 2026-06-08)
-- [ ] **Phase 67: Release Boundaries and Deterministic Verification** - Reviewers can audit v1.5 claims, deferred scopes, and default verification boundaries.
+- [x] **Phase 67: Release Boundaries and Deterministic Verification** - Reviewers can audit v1.5 claims, deferred scopes, and default verification boundaries. (completed 2026-06-09)
 
 ## Phase Details
 
@@ -173,7 +173,7 @@ Plans:
 | 64. Service Restart and Same-Datadir Resume Evidence | 3/3 | Complete | 2026-06-07 |
 | 65. Support Bundle and Operator Review Docs | 2/2 | Complete   | 2026-06-08 |
 | 66. Compatibility Harness Operator Wrapper | 1/1 | Complete | 2026-06-08 |
-| 67. Release Boundaries and Deterministic Verification | 0/TBD | Not started | - |
+| 67. Release Boundaries and Deterministic Verification | 1/1 | Complete   | 2026-06-09 |
 
 ## Milestone History
 

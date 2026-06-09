@@ -4,8 +4,8 @@ This guide describes the current v1.5 operator workflow for Open Bitcoin on
 macOS and Linux. It is intentionally conservative: the runtime is source-built,
 service integration is local-machine only, migration remains dry-run only, and
 release readiness stays evidence-based rather than timing-threshold based.
-It does not make a production-node or production-funds claim for unattended
-public-mainnet operation yet.
+v1.5 is explicit opt-in unattended mainnet operator review readiness; it does
+not make a production-node or production-funds claim.
 
 Use this guide for the practical workflow. Use
 [`docs/architecture/config-precedence.md`](../architecture/config-precedence.md),
@@ -34,6 +34,7 @@ Before making release or operator claims on a checkout, run the repo-native
 verification contract:
 
 ```bash
+bun run scripts/check-v1.5-release-boundaries.ts
 bash scripts/verify.sh
 ```
 
@@ -851,6 +852,7 @@ Run the deterministic repo checks from the repo root before interpreting any
 public-network evidence:
 
 ```bash
+bun run scripts/check-v1.5-release-boundaries.ts
 bash scripts/verify.sh
 bash scripts/test-run-live-mainnet-smoke.sh
 ```

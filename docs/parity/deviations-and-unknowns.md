@@ -58,9 +58,10 @@ current shipped claim:
 - packaged or signed release installation flows beyond the current source-built
   path
 - Windows service support
-- production-node or unattended public-mainnet operation through
-  `open-bitcoind`; Phase 40 adds explicit opt-in live smoke reports, but not a
-  broader production-readiness claim
+- production-node operation through `open-bitcoind`; Phase 40 adds explicit
+  opt-in live smoke reports, and v1.5 later adds explicit opt-in unattended
+  operator review, but neither milestone makes a broader production-readiness
+  claim
 - public-network sync as part of the default local verification contract
 - hosted or public dashboard work beyond the local terminal dashboard
 - timing-threshold benchmark gates that would fail or pass a release on elapsed
@@ -113,6 +114,35 @@ Generated live-smoke reports, support bundles, daemon logs, metrics stores, and
 local datadirs stay local. Support evidence remains redacted review context; it
 does not make support tooling a release validator, hosted upload path, or
 default public-network verification gate.
+
+### v1.5 Unattended Operation And Release Boundaries
+
+The v1.5 threat model and release-readiness roots support `REL-01`, `REL-02`,
+`REL-03`, and `REL-04` without expanding the shipped claim beyond source-built,
+explicit opt-in extended unattended mainnet operator review readiness. v1.5
+proves bounded daemon loop behavior, resource bounds, recovery states, long-run
+truth surfaces, user-level service supervision, same-datadir service
+restart/resume evidence, redacted support evidence, compatibility wrapper
+reports, deterministic local verification, and auditable parity roots.
+
+The following remain explicit non-claims until separate future gates exist:
+
+- broad production-node operation or uptime guarantees
+- inbound serving and address advertisement
+- transaction relay and mempool propagation
+- compact block relay
+- production-funds wallet use
+- migration apply mode, source-service cutover, or source-datadir mutation
+- packaging or signed release installation flows
+- hosted dashboard or public dashboard operation
+- GUI parity
+- Windows service support
+- public-network CI or default live-smoke verification
+
+Public-network live-smoke, manual-peer probing, `--restart-after-progress`,
+`systemctl --user`, and `launchctl` remain explicit operator UAT outside
+`bash scripts/verify.sh`. Generated live-smoke reports, compatibility reports,
+support bundles, daemon logs, metrics stores, and local datadirs stay local.
 
 ## Suspected Unknowns
 
