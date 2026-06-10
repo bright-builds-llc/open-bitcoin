@@ -1,5 +1,47 @@
 # Milestones: Open Bitcoin
 
+## v1.5 Unattended Mainnet Node Operation Readiness (Shipped: 2026-06-10)
+
+**Delivered:** Source-built, explicit opt-in unattended mainnet operator-review readiness through bounded daemon sync looping, typed recovery and resource evidence, truthful long-run observability, service lifecycle and restart/resume review, redacted support bundles, an operator compatibility wrapper, and deterministic v1.5 release-boundary checks.
+
+**Phases completed:** 8 phases, 22 plans, 23 requirements
+
+**Key accomplishments:**
+
+- Added an explicit bounded unattended review loop for `open-bitcoind` with durable stop reasons, retry/backoff behavior, pause/resume, and clean shutdown preservation.
+- Added typed recovery categories, storage-first recovery precedence, bounded metrics/log/support evidence, and deterministic resource-recovery guardrails.
+- Aligned status, dashboard, RPC warnings, metrics, structured logs, and live-smoke snapshots around shared long-run sync truth.
+- Added user-scope launchd/systemd lifecycle actions plus same-datadir restart/resume evidence for clean versus unclean shutdown, durable progress, stale in-flight work, and next-action guidance.
+- Added redacted v1.5 support evidence and operator review docs with repo-local Cargo and Bazel commands for deterministic and opt-in review workflows.
+- Exposed the compatibility transcript harness through `open-bitcoin compatibility harness` with stable JSON and Markdown reports.
+- Added a v1.5 threat model, release-readiness matrix, parity roots, and deterministic checker that keeps public-network and real service-manager checks outside default verification.
+- Completed UAT for all v1.5 phases and closed the milestone audit with no requirement, integration, flow, or current tech-debt gaps.
+
+**Stats:**
+
+- 23/23 v1.5 requirements complete.
+- 8 phases and 22 plans complete.
+- 108,164 tracked first-party lines in the final LOC report at archive time.
+- 165 files changed across the v1.5 delivery range.
+- Git range after v1.4: `e69978d` -> `5e7c413`.
+- Milestone audit status: `passed` with zero blockers and `tech_debt: []`.
+- Full repo-native verification passed during Phase 67 closeout and the traceability cleanup commit hook.
+
+**Archived artifacts:**
+
+- `.planning/milestones/v1.5-ROADMAP.md`
+- `.planning/milestones/v1.5-REQUIREMENTS.md`
+- `.planning/milestones/v1.5-MILESTONE-AUDIT.md`
+
+**Residual risk:**
+
+- Public-network long-run checks and real service-manager review remain explicit opt-in UAT evidence, not default deterministic verification.
+- Production full-node support, inbound serving, transaction relay, compact block relay, production-funds wallet use, migration apply mode, signed packaging, hosted dashboard, and GUI work remain future milestone scope.
+
+**What's next:** Start the next milestone with `/gsd-new-milestone`.
+
+---
+
 ## v1.4 Mainnet IBD Convergence and Peer Compatibility (Shipped: 2026-06-05)
 
 **Delivered:** Opt-in outbound IBD convergence evidence through public peer compatibility, validated header progress, bounded block download/connect progress, same-datadir restart/resume evidence, redacted operator support evidence, and explicit v1.4 threat/release boundaries.
