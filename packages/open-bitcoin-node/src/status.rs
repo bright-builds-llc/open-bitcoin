@@ -271,6 +271,69 @@ pub struct SyncResourcePressure {
     pub target_outbound_peers: u32,
 }
 
+/// Source for the best-known validated tip evidence.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BestKnownTipSource {
+    HeaderStore,
+    PeerObservation,
+}
+
+/// Freshness classification for the best-known tip evidence.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TipFreshnessStatus {
+    Fresh,
+    Stale,
+    Unknown,
+}
+
+/// Per-peer agreement classification relative to the best-known tip.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PeerTipAgreementStatus {
+    Agrees,
+    Behind,
+    Disagrees,
+    NoEvidence,
+}
+
+/// Bounded per-peer tip evidence used for agreement reporting.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PeerTipAgreement {
+    pub peer: String,
+    pub maybe_resolved_endpoint: Option<String>,
+    pub status: PeerTipAgreementStatus,
+    pub maybe_height: Option<u64>,
+    pub maybe_hash: Option<String>,
+    pub maybe_work: Option<String>,
+    pub maybe_last_activity_unix_seconds: Option<u64>,
+}
+
+/// Best-known validated tip evidence surfaced to operator consumers.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BestKnownTipStatus {
+    pub source: BestKnownTipSource,
+    pub height: u64,
+    pub block_hash: String,
+    pub work: String,
+    pub block_time_unix_seconds: u64,
+    pub observed_at_unix_seconds: u64,
+    pub freshness: TipFreshnessStatus,
+    pub peer_agreement: Vec<PeerTipAgreement>,
+}
+
+/// Shared stay-current state derived from typed sync evidence.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StayCurrentStatus {
+    InitialCatchUp,
+    CurrentAtBestKnownTip,
+    StaleTip,
+    Recovering,
+    NoProgress,
+}
+
 /// Sync status fields.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SyncStatus {
@@ -293,6 +356,10 @@ pub struct SyncStatus {
     pub recovery_category: FieldAvailability<SyncRecoveryCategory>,
     pub recovery_action: FieldAvailability<String>,
     pub resource_pressure: FieldAvailability<SyncResourcePressure>,
+    #[serde(default = "best_known_tip_unavailable")]
+    pub best_known_tip: FieldAvailability<BestKnownTipStatus>,
+    #[serde(default = "stay_current_unavailable")]
+    pub stay_current: FieldAvailability<StayCurrentStatus>,
 }
 
 fn configured_targets_unavailable() -> FieldAvailability<SyncConfiguredTargets> {
@@ -309,6 +376,14 @@ fn latest_stop_reason_unavailable() -> FieldAvailability<SyncStopReasonStatus> {
 
 fn no_recovery_category_recorded() -> FieldAvailability<SyncRecoveryCategory> {
     FieldAvailability::unavailable("no recovery category recorded")
+}
+
+fn best_known_tip_unavailable() -> FieldAvailability<BestKnownTipStatus> {
+    FieldAvailability::unavailable("best-known tip evidence unavailable")
+}
+
+fn stay_current_unavailable() -> FieldAvailability<StayCurrentStatus> {
+    FieldAvailability::unavailable("stay-current state unavailable")
 }
 
 /// Peer count status details.

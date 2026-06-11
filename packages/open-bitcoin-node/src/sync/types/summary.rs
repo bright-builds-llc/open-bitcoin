@@ -127,6 +127,8 @@ impl SyncRunSummary {
                 outbound_peers: self.connected_peers as u32,
                 target_outbound_peers: self.target_outbound_peers as u32,
             }),
+            best_known_tip: FieldAvailability::unavailable("best-known tip evidence unavailable"),
+            stay_current: FieldAvailability::unavailable("stay-current state unavailable"),
         }
     }
 

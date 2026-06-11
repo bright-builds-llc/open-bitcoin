@@ -4,12 +4,13 @@
 use open_bitcoin_node::{
     BuildProvenance, LogStatus, MetricsStatus,
     status::{
-        ConfigStatus, FieldAvailability, MempoolStatus, NodeRuntimeState, NodeStatus,
-        OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, PeerTelemetry, ServiceLifecycleStatus,
-        ServicePriorShutdownStatus, ServiceRestartResumeStatus, ServiceResumeProgressStatus,
-        ServiceStaleInflightStatus, ServiceStatus, SyncAttemptCounters, SyncConfiguredTargets,
-        SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal, SyncRecoveryCategory,
-        SyncResourcePressure, SyncStatus, SyncStopReasonStatus, WalletStatus,
+        BestKnownTipStatus, ConfigStatus, FieldAvailability, MempoolStatus, NodeRuntimeState,
+        NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, PeerTelemetry,
+        ServiceLifecycleStatus, ServicePriorShutdownStatus, ServiceRestartResumeStatus,
+        ServiceResumeProgressStatus, ServiceStaleInflightStatus, ServiceStatus, StayCurrentStatus,
+        SyncAttemptCounters, SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState,
+        SyncProgress, SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure, SyncStatus,
+        SyncStopReasonStatus, WalletStatus,
     },
 };
 
@@ -237,6 +238,12 @@ fn shared_sync_truth_snapshot() -> OpenBitcoinStatusSnapshot {
                 outbound_peers: 2,
                 target_outbound_peers: 4,
             }),
+            best_known_tip: FieldAvailability::<BestKnownTipStatus>::unavailable(
+                "best-known tip evidence unavailable",
+            ),
+            stay_current: FieldAvailability::<StayCurrentStatus>::unavailable(
+                "stay-current state unavailable",
+            ),
         },
         peers: PeerStatus {
             peer_counts: FieldAvailability::available(PeerCounts {

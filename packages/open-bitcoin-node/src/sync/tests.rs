@@ -36,8 +36,10 @@ use crate::{
     StorageRecoveryAction,
     logging::{StructuredLogLevel, StructuredLogRecord, writer::load_log_status},
     status::{
-        HealthSignal, HealthSignalLevel, SyncLifecycleState, SyncProgress, SyncProgressSignal,
-        SyncRecoveryCategory, SyncResourcePressure,
+        BestKnownTipSource, BestKnownTipStatus, HealthSignal, HealthSignalLevel, PeerTipAgreement,
+        PeerTipAgreementStatus, StayCurrentStatus, SyncLifecycleState, SyncProgress,
+        SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure, SyncStatus,
+        TipFreshnessStatus,
     },
 };
 
@@ -1977,6 +1979,118 @@ fn sync_summary_status_projections_include_counters() {
             target_outbound_peers: 4,
         })
     );
+}
+
+#[test]
+fn phase69_sync_status_defaults_tip_and_stay_current_fields() {
+    // Arrange
+    let payload = serde_json::json!({
+        "network": { "state": "available", "value": "regtest" },
+        "chain_tip": {
+            "state": "unavailable",
+            "value": { "reason": "chain tip unavailable" }
+        },
+        "sync_progress": {
+            "state": "unavailable",
+            "value": { "reason": "sync progress unavailable" }
+        },
+        "lifecycle": { "state": "available", "value": "active" },
+        "phase": { "state": "available", "value": "headers" },
+        "configured_targets": {
+            "state": "available",
+            "value": {
+                "target_outbound_peers": 1,
+                "maybe_target_header_height": null
+            }
+        },
+        "attempt_counters": {
+            "state": "available",
+            "value": {
+                "attempted_peers": 1,
+                "connected_peers": 1,
+                "failed_peers": 0,
+                "max_sync_rounds": 8
+            }
+        },
+        "progress_signal": { "state": "available", "value": "steady" },
+        "lag": {
+            "state": "available",
+            "value": { "headers_remaining": 0, "blocks_remaining": 0 }
+        },
+        "last_successful_progress_unix_seconds": {
+            "state": "unavailable",
+            "value": { "reason": "no successful sync progress recorded in this run" }
+        },
+        "latest_stop_reason": {
+            "state": "unavailable",
+            "value": { "reason": "no stop reason recorded" }
+        },
+        "last_error": {
+            "state": "unavailable",
+            "value": { "reason": "no sync error recorded" }
+        },
+        "recovery_category": {
+            "state": "unavailable",
+            "value": { "reason": "no recovery category recorded" }
+        },
+        "recovery_action": {
+            "state": "unavailable",
+            "value": { "reason": "no recovery action required" }
+        },
+        "resource_pressure": {
+            "state": "unavailable",
+            "value": { "reason": "resource pressure unavailable" }
+        }
+    });
+
+    // Act
+    let sync_status: SyncStatus = serde_json::from_value(payload).expect("sync status decode");
+
+    // Assert
+    assert_eq!(
+        sync_status.best_known_tip,
+        FieldAvailability::unavailable("best-known tip evidence unavailable")
+    );
+    assert_eq!(
+        sync_status.stay_current,
+        FieldAvailability::<StayCurrentStatus>::unavailable("stay-current state unavailable")
+    );
+}
+
+#[test]
+fn phase69_sync_status_serializes_tip_and_stay_current_fields() {
+    // Arrange
+    let mut sync_status = SyncRunSummary::empty(2, 2, 1).sync_status(SyncNetwork::Regtest);
+    sync_status.best_known_tip = FieldAvailability::available(BestKnownTipStatus {
+        source: BestKnownTipSource::HeaderStore,
+        height: 2,
+        block_hash: "aa".to_string(),
+        work: "3".to_string(),
+        block_time_unix_seconds: 1_777_225_000,
+        observed_at_unix_seconds: 1_777_225_010,
+        freshness: TipFreshnessStatus::Fresh,
+        peer_agreement: vec![PeerTipAgreement {
+            peer: "127.0.0.1:18444".to_string(),
+            maybe_resolved_endpoint: Some("127.0.0.1:18444".to_string()),
+            status: PeerTipAgreementStatus::Agrees,
+            maybe_height: Some(2),
+            maybe_hash: Some("aa".to_string()),
+            maybe_work: Some("3".to_string()),
+            maybe_last_activity_unix_seconds: Some(1_777_225_010),
+        }],
+    });
+    sync_status.stay_current =
+        FieldAvailability::available(StayCurrentStatus::CurrentAtBestKnownTip);
+
+    // Act
+    let encoded = serde_json::to_string(&sync_status).expect("sync status encode");
+
+    // Assert
+    assert!(encoded.contains("best_known_tip"));
+    assert!(encoded.contains("header_store"));
+    assert!(encoded.contains("fresh"));
+    assert!(encoded.contains("agrees"));
+    assert!(encoded.contains("current_at_best_known_tip"));
 }
 
 #[test]

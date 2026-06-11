@@ -35,9 +35,10 @@ use open_bitcoin_node::{
         wallet::{AddressNetwork, DescriptorRole, SingleKeyDescriptor, Wallet},
     },
     status::{
-        ChainTipStatus, FieldAvailability, PeerCounts, PeerStatus, SyncAttemptCounters,
-        SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal,
-        SyncRecoveryCategory, SyncResourcePressure, SyncStatus, SyncStopReasonStatus,
+        BestKnownTipStatus, ChainTipStatus, FieldAvailability, PeerCounts, PeerStatus,
+        StayCurrentStatus, SyncAttemptCounters, SyncConfiguredTargets, SyncLagStatus,
+        SyncLifecycleState, SyncProgress, SyncProgressSignal, SyncRecoveryCategory,
+        SyncResourcePressure, SyncStatus, SyncStopReasonStatus,
     },
 };
 
@@ -618,6 +619,12 @@ fn phase62_runtime_metadata() -> RuntimeMetadata {
                     outbound_peers: 2,
                     target_outbound_peers: 4,
                 }),
+                best_known_tip: FieldAvailability::<BestKnownTipStatus>::unavailable(
+                    "best-known tip evidence unavailable",
+                ),
+                stay_current: FieldAvailability::<StayCurrentStatus>::unavailable(
+                    "stay-current state unavailable",
+                ),
             },
             peers: PeerStatus {
                 peer_counts: FieldAvailability::available(PeerCounts {
@@ -709,6 +716,12 @@ fn get_blockchain_info_uses_durable_connected_block_height_not_downloaded_height
                             outbound_peers: 2,
                             target_outbound_peers: 4,
                         }),
+                        best_known_tip: FieldAvailability::<BestKnownTipStatus>::unavailable(
+                            "best-known tip evidence unavailable",
+                        ),
+                        stay_current: FieldAvailability::<StayCurrentStatus>::unavailable(
+                            "stay-current state unavailable",
+                        ),
                     },
                     peers: PeerStatus {
                         peer_counts: FieldAvailability::available(PeerCounts {

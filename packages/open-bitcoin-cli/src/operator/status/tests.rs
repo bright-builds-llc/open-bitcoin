@@ -30,12 +30,13 @@ use crate::operator::{
     },
 };
 use open_bitcoin_node::status::{
-    BuildProvenance, ConfigStatus, FieldAvailability, MempoolStatus, NodeRuntimeState, NodeStatus,
-    OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, ServiceLifecycleStatus,
-    ServicePriorShutdownStatus, ServiceResumeProgressStatus, ServiceStaleInflightStatus,
-    ServiceStatus, SyncAttemptCounters, SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState,
-    SyncProgress, SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure, SyncStatus,
-    SyncStopReasonStatus, WalletFreshness, WalletScanProgress, WalletStatus,
+    BestKnownTipStatus, BuildProvenance, ConfigStatus, FieldAvailability, MempoolStatus,
+    NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus,
+    ServiceLifecycleStatus, ServicePriorShutdownStatus, ServiceResumeProgressStatus,
+    ServiceStaleInflightStatus, ServiceStatus, StayCurrentStatus, SyncAttemptCounters,
+    SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal,
+    SyncRecoveryCategory, SyncResourcePressure, SyncStatus, SyncStopReasonStatus, WalletFreshness,
+    WalletScanProgress, WalletStatus,
 };
 use open_bitcoin_node::{
     DurableSyncState, FjallNodeStore, PersistMode, RuntimeMetadata, WalletRegistry,
@@ -377,6 +378,12 @@ fn human_and_json_renderers_surface_wallet_freshness_and_scan_reasons() {
             recovery_category: FieldAvailability::unavailable("no recovery category recorded"),
             recovery_action: FieldAvailability::unavailable("sync recovery unavailable"),
             resource_pressure: FieldAvailability::unavailable("sync pressure unavailable"),
+            best_known_tip: FieldAvailability::<BestKnownTipStatus>::unavailable(
+                "best-known tip evidence unavailable",
+            ),
+            stay_current: FieldAvailability::<StayCurrentStatus>::unavailable(
+                "stay-current state unavailable",
+            ),
         },
         peers: PeerStatus {
             peer_counts: FieldAvailability::available(PeerCounts {
@@ -1458,6 +1465,12 @@ fn phase62_durable_sync_state() -> DurableSyncState {
                 outbound_peers: 2,
                 target_outbound_peers: 4,
             }),
+            best_known_tip: FieldAvailability::<BestKnownTipStatus>::unavailable(
+                "best-known tip evidence unavailable",
+            ),
+            stay_current: FieldAvailability::<StayCurrentStatus>::unavailable(
+                "stay-current state unavailable",
+            ),
         },
         peers: PeerStatus {
             peer_counts: FieldAvailability::available(PeerCounts {

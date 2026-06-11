@@ -450,8 +450,9 @@ mod tests {
         DurableSyncState, FieldAvailability, FjallNodeStore, PeerStatus, RuntimeMetadata,
         SyncLifecycleState, SyncStatus,
         status::{
-            PeerCounts, SyncAttemptCounters, SyncConfiguredTargets, SyncProgress,
-            SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure, SyncStopReasonStatus,
+            BestKnownTipStatus, PeerCounts, StayCurrentStatus, SyncAttemptCounters,
+            SyncConfiguredTargets, SyncProgress, SyncProgressSignal, SyncRecoveryCategory,
+            SyncResourcePressure, SyncStopReasonStatus,
         },
     };
 
@@ -499,6 +500,10 @@ mod tests {
                     ),
                     recovery_action: FieldAvailability::unavailable("no recovery action required"),
                     resource_pressure: FieldAvailability::unavailable(unavailable),
+                    best_known_tip: FieldAvailability::<BestKnownTipStatus>::unavailable(
+                        unavailable,
+                    ),
+                    stay_current: FieldAvailability::<StayCurrentStatus>::unavailable(unavailable),
                 },
                 peers: PeerStatus {
                     peer_counts: FieldAvailability::unavailable(unavailable),

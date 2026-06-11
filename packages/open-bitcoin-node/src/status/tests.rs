@@ -2,13 +2,13 @@
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
 use super::{
-    BuildProvenance, ChainTipStatus, ConfigStatus, FieldAvailability, HealthSignal,
-    HealthSignalLevel, MempoolStatus, NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot,
-    PeerCounts, PeerStatus, PeerTelemetry, ServiceLifecycleStatus, ServicePriorShutdownStatus,
-    ServiceRestartResumeStatus, ServiceStaleInflightStatus, ServiceStatus, SyncAttemptCounters,
-    SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal,
-    SyncResourcePressure, SyncStatus, SyncStopReasonStatus, WalletFreshness, WalletScanProgress,
-    WalletStatus,
+    BestKnownTipStatus, BuildProvenance, ChainTipStatus, ConfigStatus, FieldAvailability,
+    HealthSignal, HealthSignalLevel, MempoolStatus, NodeRuntimeState, NodeStatus,
+    OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, PeerTelemetry, ServiceLifecycleStatus,
+    ServicePriorShutdownStatus, ServiceRestartResumeStatus, ServiceStaleInflightStatus,
+    ServiceStatus, StayCurrentStatus, SyncAttemptCounters, SyncConfiguredTargets, SyncLagStatus,
+    SyncLifecycleState, SyncProgress, SyncProgressSignal, SyncResourcePressure, SyncStatus,
+    SyncStopReasonStatus, WalletFreshness, WalletScanProgress, WalletStatus,
 };
 use crate::{LogStatus, MetricsStatus};
 
@@ -70,6 +70,10 @@ fn phase62_sync_truth_contract() {
         recovery_category: FieldAvailability::unavailable("no recovery category recorded"),
         recovery_action: FieldAvailability::unavailable("no recovery action required"),
         resource_pressure: FieldAvailability::unavailable("resource pressure unavailable"),
+        best_known_tip: FieldAvailability::<BestKnownTipStatus>::unavailable(
+            "best-known tip evidence unavailable",
+        ),
+        stay_current: FieldAvailability::unavailable("stay-current state unavailable"),
     };
 
     // Act
@@ -109,6 +113,8 @@ fn phase62_sync_truth_contract() {
         encoded["latest_stop_reason"]["value"]["label"],
         "target_header_reached"
     );
+    assert_eq!(encoded["best_known_tip"]["state"], "unavailable");
+    assert_eq!(encoded["stay_current"]["state"], "unavailable");
     assert_eq!(
         legacy_sync.configured_targets,
         FieldAvailability::unavailable("configured targets unavailable")
@@ -120,6 +126,14 @@ fn phase62_sync_truth_contract() {
     assert_eq!(
         legacy_sync.latest_stop_reason,
         FieldAvailability::unavailable("latest stop reason unavailable")
+    );
+    assert_eq!(
+        legacy_sync.best_known_tip,
+        FieldAvailability::unavailable("best-known tip evidence unavailable")
+    );
+    assert_eq!(
+        legacy_sync.stay_current,
+        FieldAvailability::<StayCurrentStatus>::unavailable("stay-current state unavailable")
     );
 }
 
@@ -360,6 +374,10 @@ fn populated_snapshot_serializes_obs_01_fields() {
                 outbound_peers: 2,
                 target_outbound_peers: 4,
             }),
+            best_known_tip: FieldAvailability::<BestKnownTipStatus>::unavailable(
+                "best-known tip evidence unavailable",
+            ),
+            stay_current: FieldAvailability::unavailable("stay-current state unavailable"),
         },
         peers: PeerStatus {
             peer_counts: FieldAvailability::available(PeerCounts {
@@ -553,6 +571,8 @@ fn stopped_snapshot() -> OpenBitcoinStatusSnapshot {
             recovery_category: FieldAvailability::unavailable("no recovery category recorded"),
             recovery_action: FieldAvailability::unavailable(unavailable),
             resource_pressure: FieldAvailability::unavailable(unavailable),
+            best_known_tip: FieldAvailability::<BestKnownTipStatus>::unavailable(unavailable),
+            stay_current: FieldAvailability::unavailable(unavailable),
         },
         peers: PeerStatus {
             peer_counts: FieldAvailability::unavailable(unavailable),

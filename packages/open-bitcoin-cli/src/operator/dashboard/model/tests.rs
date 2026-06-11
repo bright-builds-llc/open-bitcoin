@@ -4,13 +4,13 @@
 use open_bitcoin_node::{
     MetricKind, MetricRetentionPolicy, MetricSample, MetricsStatus,
     status::{
-        BuildProvenance, ConfigStatus, FieldAvailability, HealthSignal, HealthSignalLevel,
-        MempoolStatus, NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts,
-        PeerStatus, ServiceLifecycleStatus, ServicePriorShutdownStatus, ServiceRestartResumeStatus,
-        ServiceResumeProgressStatus, ServiceStaleInflightStatus, ServiceStatus,
-        SyncAttemptCounters, SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState,
-        SyncProgress, SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure, SyncStatus,
-        SyncStopReasonStatus, WalletFreshness, WalletStatus,
+        BestKnownTipStatus, BuildProvenance, ConfigStatus, FieldAvailability, HealthSignal,
+        HealthSignalLevel, MempoolStatus, NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot,
+        PeerCounts, PeerStatus, ServiceLifecycleStatus, ServicePriorShutdownStatus,
+        ServiceRestartResumeStatus, ServiceResumeProgressStatus, ServiceStaleInflightStatus,
+        ServiceStatus, StayCurrentStatus, SyncAttemptCounters, SyncConfiguredTargets,
+        SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal, SyncRecoveryCategory,
+        SyncResourcePressure, SyncStatus, SyncStopReasonStatus, WalletFreshness, WalletStatus,
     },
 };
 
@@ -400,6 +400,12 @@ fn test_snapshot() -> OpenBitcoinStatusSnapshot {
             recovery_category: FieldAvailability::unavailable("no recovery category recorded"),
             recovery_action: FieldAvailability::unavailable("no recovery action"),
             resource_pressure: FieldAvailability::unavailable("no sync pressure"),
+            best_known_tip: FieldAvailability::<BestKnownTipStatus>::unavailable(
+                "best-known tip evidence unavailable",
+            ),
+            stay_current: FieldAvailability::<StayCurrentStatus>::unavailable(
+                "stay-current state unavailable",
+            ),
         },
         peers: PeerStatus {
             peer_counts: FieldAvailability::available(PeerCounts {
@@ -490,6 +496,12 @@ fn shared_sync_truth_snapshot() -> OpenBitcoinStatusSnapshot {
             outbound_peers: 2,
             target_outbound_peers: 4,
         }),
+        best_known_tip: FieldAvailability::<BestKnownTipStatus>::unavailable(
+            "best-known tip evidence unavailable",
+        ),
+        stay_current: FieldAvailability::<StayCurrentStatus>::unavailable(
+            "stay-current state unavailable",
+        ),
     };
     snapshot.peers.peer_counts = FieldAvailability::available(PeerCounts {
         inbound: 0,
