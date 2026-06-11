@@ -3439,6 +3439,332 @@ fn phase69_fresh_idle_cycle_reports_current_at_best_known_tip() {
 }
 
 #[test]
+fn phase69_post_catch_up_new_headers_connect_and_report_stay_current_progress() {
+    // Arrange
+    let path = temp_store_path("phase69-post-catch-up-new-work");
+    remove_dir_if_exists(&path);
+    let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+    let child = build_block(block_hash(&genesis.header), 1);
+    let grandchild = build_block(block_hash(&child.header), 2);
+    let grandchild_hash = block_hash(&grandchild.header);
+    let expected_grandchild_hash = block_hash_hex(grandchild_hash);
+    save_best_chain_with_active_blocks(
+        &path,
+        &[(&genesis, 0), (&child, 1)],
+        &[(&genesis, 0), (&child, 1)],
+    );
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime = DurableSyncRuntime::open(
+        store,
+        SyncRuntimeConfig {
+            max_rounds: 1,
+            ..sync_config()
+        },
+    )
+    .expect("runtime");
+    let mut transport = ScriptedTransport::new(vec![vec![
+        WireNetworkMessage::Version(VersionMessage {
+            start_height: 2,
+            ..VersionMessage::default()
+        }),
+        WireNetworkMessage::Verack,
+        WireNetworkMessage::Headers(HeadersMessage {
+            headers: vec![grandchild.header.clone()],
+        }),
+        WireNetworkMessage::Block(grandchild.clone()),
+    ]]);
+
+    // Act
+    let summary = runtime
+        .sync_until_idle(&mut transport, i64::from(grandchild.header.time))
+        .expect("sync post-catch-up work");
+    let metadata = runtime
+        .store()
+        .load_runtime_metadata()
+        .expect("load runtime metadata")
+        .expect("runtime metadata");
+    let state = metadata.maybe_sync_state.expect("persisted sync state");
+    let snapshot = runtime
+        .store()
+        .load_chainstate_snapshot()
+        .expect("load chainstate snapshot")
+        .expect("chainstate snapshot");
+    let active_tip = snapshot.active_chain.last().expect("active tip");
+
+    // Assert
+    assert_eq!(summary.headers_received, 1);
+    assert_eq!(summary.blocks_received, 1);
+    assert_eq!(summary.best_header_height, 2);
+    assert_eq!(summary.best_block_height, 2);
+    assert_eq!(summary.downloaded_block_height, 2);
+    assert_eq!(
+        getdata_block_hashes(&transport.sent_messages()),
+        vec![grandchild_hash]
+    );
+    assert_eq!(
+        state.sync.stay_current,
+        FieldAvailability::available(StayCurrentStatus::CurrentAtBestKnownTip)
+    );
+    let FieldAvailability::Available(progress) = state.sync.sync_progress else {
+        panic!("sync progress should be available");
+    };
+    assert_eq!(progress.header_height, 2);
+    assert_eq!(progress.validated_active_chain_height, 2);
+    assert_eq!(
+        progress.maybe_validated_active_chain_hash,
+        Some(expected_grandchild_hash.clone())
+    );
+    let FieldAvailability::Available(best_known_tip) = state.sync.best_known_tip else {
+        panic!("best-known tip should be available");
+    };
+    assert_eq!(best_known_tip.height, 2);
+    assert_eq!(best_known_tip.block_hash, expected_grandchild_hash.clone());
+    assert_eq!(best_known_tip.work, "3");
+    assert_eq!(best_known_tip.freshness, TipFreshnessStatus::Fresh);
+    assert_eq!(
+        best_known_tip.peer_agreement.first().map(|row| row.status),
+        Some(PeerTipAgreementStatus::Agrees)
+    );
+    assert_eq!(active_tip.height, 2);
+    assert_eq!(active_tip.block_hash, grandchild_hash);
+    assert_eq!(active_tip.chain_work, 3);
+    assert!(
+        runtime
+            .store()
+            .load_block(grandchild_hash)
+            .expect("load grandchild block")
+            .is_some()
+    );
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn phase69_headers_only_tip_does_not_report_current() {
+    // Arrange
+    let path = temp_store_path("phase69-headers-only-not-current");
+    remove_dir_if_exists(&path);
+    let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+    let child = build_block(block_hash(&genesis.header), 1);
+    let grandchild = build_block(block_hash(&child.header), 2);
+    let child_hash = block_hash(&child.header);
+    let grandchild_hash = block_hash(&grandchild.header);
+    save_best_chain_with_active_blocks(
+        &path,
+        &[(&genesis, 0), (&child, 1)],
+        &[(&genesis, 0), (&child, 1)],
+    );
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime = DurableSyncRuntime::open(
+        store,
+        SyncRuntimeConfig {
+            max_rounds: 1,
+            ..sync_config()
+        },
+    )
+    .expect("runtime");
+    let mut transport =
+        ScriptedTransport::new(vec![headers_script(2, vec![grandchild.header.clone()])]);
+
+    // Act
+    let summary = runtime
+        .sync_until_idle(&mut transport, i64::from(grandchild.header.time))
+        .expect("sync headers-only tip");
+    let metadata = runtime
+        .store()
+        .load_runtime_metadata()
+        .expect("load runtime metadata")
+        .expect("runtime metadata");
+    let state = metadata.maybe_sync_state.expect("persisted sync state");
+
+    // Assert
+    assert_eq!(summary.headers_received, 1);
+    assert_eq!(summary.blocks_received, 0);
+    assert_eq!(summary.best_header_height, 2);
+    assert_eq!(summary.best_block_height, 1);
+    assert!(!matches!(
+        summary.maybe_stop_reason,
+        Some(SyncStopReason::CurrentAtBestKnownTip { .. })
+    ));
+    assert_eq!(
+        state.sync.stay_current,
+        FieldAvailability::available(StayCurrentStatus::InitialCatchUp)
+    );
+    assert_eq!(
+        state.sync.stay_current_next_action,
+        FieldAvailability::available(
+            "Continue sync until connected active-chain progress reaches the best-known validated tip."
+                .to_string(),
+        )
+    );
+    let FieldAvailability::Available(progress) = state.sync.sync_progress else {
+        panic!("sync progress should be available");
+    };
+    assert_eq!(progress.header_height, 2);
+    assert_eq!(progress.validated_active_chain_height, 1);
+    assert_eq!(
+        progress.maybe_validated_active_chain_hash,
+        Some(block_hash_hex(child_hash))
+    );
+    let FieldAvailability::Available(best_known_tip) = state.sync.best_known_tip else {
+        panic!("best-known tip should be available");
+    };
+    assert_eq!(best_known_tip.height, 2);
+    assert_eq!(best_known_tip.block_hash, block_hash_hex(grandchild_hash));
+    assert_eq!(best_known_tip.freshness, TipFreshnessStatus::Fresh);
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn phase69_stale_tip_is_distinct_from_no_progress() {
+    // Arrange
+    let path = temp_store_path("phase69-stale-tip");
+    remove_dir_if_exists(&path);
+    let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+    let child = build_block(block_hash(&genesis.header), 1);
+    let child_hash = block_hash(&child.header);
+    save_best_chain_with_active_blocks(
+        &path,
+        &[(&genesis, 0), (&child, 1)],
+        &[(&genesis, 0), (&child, 1)],
+    );
+    let store = FjallNodeStore::open(&path).expect("store");
+    let runtime = DurableSyncRuntime::open(
+        store,
+        SyncRuntimeConfig {
+            tip_freshness_threshold_seconds: 1_200,
+            ..sync_config()
+        },
+    )
+    .expect("runtime");
+    let summary = runtime.snapshot_summary();
+
+    // Act
+    let state = runtime
+        .durable_sync_state_for_summary(
+            &summary,
+            SyncLifecycleState::Active,
+            None,
+            i64::from(child.header.time) + 1_201,
+        )
+        .expect("durable stale-tip status");
+
+    // Assert
+    assert_ne!(
+        state.sync.stay_current,
+        FieldAvailability::available(StayCurrentStatus::NoProgress)
+    );
+    assert_eq!(
+        state.sync.stay_current,
+        FieldAvailability::available(StayCurrentStatus::StaleTip)
+    );
+    assert_eq!(
+        state.sync.stay_current_next_action,
+        FieldAvailability::available(
+            "Refresh peers or wait for fresh peer tip evidence before treating the node as current."
+                .to_string(),
+        )
+    );
+    let FieldAvailability::Available(best_known_tip) = state.sync.best_known_tip else {
+        panic!("best-known tip should be available");
+    };
+    assert_eq!(best_known_tip.height, 1);
+    assert_eq!(best_known_tip.block_hash, block_hash_hex(child_hash));
+    assert_eq!(best_known_tip.freshness, TipFreshnessStatus::Stale);
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn phase69_tip_evidence_survives_runtime_reopen() {
+    // Arrange
+    let path = temp_store_path("phase69-tip-evidence-reopen");
+    remove_dir_if_exists(&path);
+    let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+    let child = build_block(block_hash(&genesis.header), 1);
+    let child_hash = block_hash(&child.header);
+    let expected_child_hash = block_hash_hex(child_hash);
+    save_best_chain_with_active_blocks(
+        &path,
+        &[(&genesis, 0), (&child, 1)],
+        &[(&genesis, 0), (&child, 1)],
+    );
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime = DurableSyncRuntime::open(
+        store,
+        SyncRuntimeConfig {
+            max_rounds: 1,
+            ..sync_config()
+        },
+    )
+    .expect("runtime");
+    let mut transport = ScriptedTransport::new(vec![version_verack_script(1)]);
+
+    // Act
+    runtime
+        .sync_until_idle(&mut transport, i64::from(child.header.time) + 30)
+        .expect("persist tip evidence");
+    let persisted_before = runtime
+        .store()
+        .load_runtime_metadata()
+        .expect("load runtime metadata")
+        .expect("runtime metadata")
+        .maybe_sync_state
+        .expect("persisted sync state");
+    drop(runtime);
+    let reopened_store = FjallNodeStore::open(&path).expect("reopen store");
+    let reopened_runtime =
+        DurableSyncRuntime::open(reopened_store, sync_config()).expect("reopen runtime");
+    let persisted_after = reopened_runtime
+        .store()
+        .load_runtime_metadata()
+        .expect("load reopened runtime metadata")
+        .expect("reopened runtime metadata")
+        .maybe_sync_state
+        .expect("reopened persisted sync state");
+    let reopened_summary = reopened_runtime.snapshot_summary();
+    let reopened_state = reopened_runtime
+        .durable_sync_state_for_summary(
+            &reopened_summary,
+            SyncLifecycleState::Active,
+            None,
+            i64::from(child.header.time) + 30,
+        )
+        .expect("reopened durable status");
+
+    // Assert
+    assert_eq!(
+        persisted_before.sync.stay_current,
+        FieldAvailability::available(StayCurrentStatus::CurrentAtBestKnownTip)
+    );
+    assert_eq!(
+        persisted_after.sync.stay_current,
+        persisted_before.sync.stay_current
+    );
+    let FieldAvailability::Available(persisted_tip) = persisted_after.sync.best_known_tip else {
+        panic!("persisted best-known tip should be available after reopen");
+    };
+    assert_eq!(persisted_tip.height, 1);
+    assert_eq!(persisted_tip.block_hash, expected_child_hash.clone());
+    assert_eq!(persisted_tip.freshness, TipFreshnessStatus::Fresh);
+    assert_eq!(reopened_summary.best_header_height, 1);
+    assert_eq!(reopened_summary.best_block_height, 1);
+    assert_eq!(
+        reopened_state.sync.stay_current,
+        FieldAvailability::available(StayCurrentStatus::CurrentAtBestKnownTip)
+    );
+    let FieldAvailability::Available(reopened_tip) = reopened_state.sync.best_known_tip else {
+        panic!("reopened best-known tip should be available");
+    };
+    assert_eq!(reopened_tip.height, 1);
+    assert_eq!(reopened_tip.block_hash, expected_child_hash);
+    assert_eq!(reopened_tip.freshness, TipFreshnessStatus::Fresh);
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
 fn sync_once_continues_header_batches_when_peer_advertises_more_work() {
     // Arrange
     let path = temp_store_path("header-batches");
