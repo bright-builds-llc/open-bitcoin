@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Mainnet Full-Sync Completion
 status: executing
-stopped_at: v1.6 roadmap created; ready for Phase 68 planning
-last_updated: "2026-06-11T13:49:16.640Z"
+stopped_at: Phase 69 context gathered
+last_updated: "2026-06-11T15:29:04.174Z"
 last_activity: 2026-06-11
 progress:
   total_phases: 7
@@ -97,6 +97,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent v1.5 decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-11T06:43:00-05:00
-Stopped at: v1.6 roadmap created; ready for Phase 68 planning
-Resume file: `.planning/ROADMAP.md`
+Last session: 2026-06-11T15:29:04.172Z
+Stopped at: Phase 69 context gathered
+Resume file: .planning/phases/69-tip-tracking-and-stay-current-operation/69-CONTEXT.md
