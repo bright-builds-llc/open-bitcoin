@@ -18,12 +18,16 @@ The repository now includes durable Fjall-backed runtime storage, real-network s
 
 Milestone archives live under `.planning/milestones/`, including shipped roadmap and requirements archives, final audit artifacts where they exist, and raw phase histories for v1.1 and v1.2. Raw v1.0, v1.3, v1.4, and v1.5 phase histories remain in `.planning/phases/` for parity and UAT traceability. One residual risk remains from the v1.1 audit: dashboard pseudoterminal repaint and raw-input behavior is still a manual validation surface rather than an end-to-end automated regression. v1.2 did not create a dedicated milestone audit artifact; Phase 40 closeout and Phase 41 security audit, verification, and UAT are the closeout evidence trail. v1.3 archived with a `ready_for_archive` milestone audit and closes public-network evidence through fresh diagnosed-blocker evidence rather than a successful live-progress claim. v1.4 archived with a `tech_debt` milestone audit: implementation and integration coverage passed, while planning traceability was corrected during archive prep and a future operator wrapper around the compatibility harness remained optional cleanup. v1.5 archived with a `passed` milestone audit and no open requirement, integration, flow, or current tech-debt gaps.
 
-## Next Milestone
+## Current Milestone: v1.6 Mainnet Full-Sync Completion
 
-The next milestone has not been defined yet. Start it with `/gsd-new-milestone`.
+**Goal:** Make the explicit opt-in `open-bitcoind` mainnet workflow capable of syncing to the current mainnet tip and staying caught up through deterministic, auditable, restart-safe behavior.
 
-Until then, v1.5 remains the latest shipped state: source-built, explicit opt-in
-unattended mainnet operator-review readiness without a production-node claim.
+**Target features:**
+- Sustained outbound headers and block sync through the full active chain, not only bounded evidence targets.
+- Complete validation/connect behavior at mainnet scale, including durable chainstate and UTXO persistence where needed for a truthful sync-to-tip claim.
+- Reorg, peer rotation, no-progress, resource-bound, and recovery handling strong enough for long-running sync-to-tip attempts.
+- Operator-facing progress, diagnostics, support evidence, and opt-in UAT commands that prove full-sync behavior without putting public-network checks into default `bash scripts/verify.sh`.
+- Release and readiness boundaries that still avoid inbound serving, relay, production-wallet, migration-apply, packaging, and broad production-node claims.
 
 ## Requirements
 
@@ -38,7 +42,7 @@ unattended mainnet operator-review readiness without a production-node claim.
 
 ### Active
 
-- Define the next milestone with `/gsd-new-milestone`.
+- v1.6 Mainnet Full-Sync Completion requirements are being defined from the active milestone goal above.
 
 ### Out of Scope
 
@@ -54,7 +58,7 @@ unattended mainnet operator-review readiness without a production-node claim.
 
 - The repository has first-party pure-core domain and codec crates under `packages/`, plus parity catalog artifacts under `docs/parity/`.
 - Bitcoin Knots `29.3.knots20260210` is the pinned behavioral reference baseline.
-- The current codebase totals 108,164 first-party lines, including 50,849 production Rust lines at the v1.5 archive point.
+- The current codebase totals 108,228 first-party lines, including 50,849 production Rust lines after the post-v1.5 CI stability fix.
 - Repo-native verification remains centered on `bash scripts/verify.sh`, including Rust checks, parity breadcrumbs, benchmark smoke and report validation, and Bazel smoke builds.
 - Bun is a pinned runtime for repo-owned TypeScript automation, not a package-install surface; there is no `package.json` or `bun install` bootstrap step.
 - Operator-facing surfaces should stay quiet, information-dense, and work-focused: terminal dashboard controls, status output, onboarding copy, service actions, and migration guidance should help operators make decisions without marketing language.
@@ -90,6 +94,7 @@ unattended mainnet operator-review readiness without a production-node claim.
 | Scope v1.3 to public-mainnet proof and node hardening | The v1.2 live UAT did not observe header or block progress, so v1.3 needed to close that evidence gap before expanding wallet, inbound-serving, relay, packaging, or migration claims | Shipped in v1.3 with Phase 53 fresh diagnosed-blocker evidence; no successful live-progress claim was added |
 | Scope v1.4 to mainnet IBD convergence and peer compatibility | v1.3 closed cleanly through typed diagnosed-blocker evidence, so the next highest-leverage claim was successful opt-in live header, block, and restart/resume progress rather than inbound serving, relay, packaging, wallet, or migration apply mode | Shipped in v1.4 with compatibility, header, block, restart/resume, operator evidence, support redaction, threat-model, and release-boundary evidence |
 | Scope v1.5 to unattended mainnet node operation readiness | v1.4 proved bounded IBD progress and restart/resume evidence, so the next step is making the opt-in daemon workflow safe and observable for extended unattended operator review before expanding inbound serving, relay, wallet, migration apply, or packaging claims | Shipped in v1.5 with bounded loop control, resource/recovery taxonomy, service evidence, support bundles, compatibility wrapper reports, and deterministic release-boundary checks |
+| Scope v1.6 to mainnet full-sync completion | v1.5 made long-running operator review bounded and observable, so the highest-leverage next claim is syncing the active mainnet chain to tip and staying current before inbound serving, relay, packaging, migration apply, or production-wallet scope | Active milestone |
 
 ## Evolution
 
@@ -124,4 +129,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ---
-*Last updated: 2026-06-10 after v1.5 milestone completion*
+*Last updated: 2026-06-11 after starting v1.6 milestone planning*
