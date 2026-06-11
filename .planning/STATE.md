@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Mainnet Full-Sync Completion
-status: defining_requirements
-stopped_at: v1.6 milestone started; defining requirements
-last_updated: "2026-06-11T05:49:00-05:00"
-last_activity: 2026-06-11 -- v1.6 milestone started
+status: roadmapped
+stopped_at: v1.6 roadmap created; ready for Phase 68 planning
+last_updated: "2026-06-11T06:43:00-05:00"
+last_activity: 2026-06-11 -- v1.6 roadmap created
 progress:
-  total_phases: 0
+  total_phases: 7
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,15 +21,15 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-11)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** v1.6 Mainnet Full-Sync Completion requirements.
+**Current focus:** v1.6 Mainnet Full-Sync Completion roadmap; next phase is Phase 68.
 
 ## Current Position
 
 Milestone: v1.6 Mainnet Full-Sync Completion
-Phase: Not started (defining requirements)
+Phase: 68 - Full Active-Chain Validation and Durable Persistence
 Plan: —
-Status: Defining requirements
-Last activity: 2026-06-11 -- v1.6 milestone started
+Status: Roadmapped; ready for Phase 68 planning
+Last activity: 2026-06-11 -- v1.6 roadmap created
 
 Progress: [----------] 0%
 
@@ -45,13 +45,20 @@ Progress: [----------] 0%
 
 | Phase | Plans | Status |
 |-------|------:|--------|
-| — | 0/0 | Defining requirements |
+| 68. Full Active-Chain Validation and Durable Persistence | 0/0 | Next |
+| 69. Tip Tracking and Stay-Current Operation | 0/0 | Pending |
+| 70. Reorg, Peer Rotation, and No-Progress Recovery | 0/0 | Pending |
+| 71. Resource Bounds and Durable Restart/Resume | 0/0 | Pending |
+| 72. Operator Observability and Support Evidence | 0/0 | Pending |
+| 73. Opt-In UAT and Deterministic Verification | 0/0 | Pending |
+| 74. Release Boundaries, Parity, and Documentation | 0/0 | Pending |
 
 **Recent Trend:**
 
 - v1.5 completed Phases 60 through 67 and archived with a passed milestone audit.
 - v1.6 started with a focus on full mainnet sync-to-tip completion.
-- Next workflow: define requirements, then create roadmap.
+- v1.6 roadmap covers 26 requirements across Phases 68 through 74.
+- Next workflow: begin Phase 68 planning.
 
 ## Accumulated Context
 
@@ -61,6 +68,8 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent v1.5 decisions:
 
 - [v1.6]: Scope the milestone to explicit opt-in `open-bitcoind` mainnet full-sync completion before inbound serving, relay, production-funds wallet, migration apply mode, packaging polish, hosted dashboard, GUI, or broad production-node claims.
 - [v1.6]: Continue keeping public-network full-sync and service checks opt-in UAT evidence unless a future phase deliberately changes the deterministic verification contract.
+- [v1.6]: Continue phase numbering from v1.5; active milestone starts at Phase 68 and runs through Phase 74.
+- [v1.6]: Map every active v1.6 requirement to exactly one roadmap phase with Pending traceability before execution starts.
 - [v1.5]: Scope the milestone to bounded unattended mainnet node operation readiness, while continuing to defer inbound serving, transaction relay, production-funds wallet, migration apply mode, packaging polish, hosted dashboard, GUI, and broad production-node claims.
 - [v1.5]: Continue phase numbering from v1.4; active milestone starts at Phase 60 and runs through Phase 67.
 - [v1.5]: Keep public-network long-run and service checks opt-in UAT evidence, not default `bash scripts/verify.sh` checks.
@@ -77,8 +86,8 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent v1.5 decisions:
 
 ### Pending Todos
 
-- Define and approve v1.6 requirements.
-- Create the v1.6 roadmap with continued phase numbering.
+- Begin Phase 68 planning for full active-chain validation and durable persistence.
+- Keep public-network full-sync UAT opt-in and outside default deterministic verification.
 
 ### Blockers/Concerns
 
@@ -88,6 +97,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent v1.5 decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-11T05:49:00-05:00
-Stopped at: v1.6 milestone started; defining requirements
-Resume file: `.planning/PROJECT.md`
+Last session: 2026-06-11T06:43:00-05:00
+Stopped at: v1.6 roadmap created; ready for Phase 68 planning
+Resume file: `.planning/ROADMAP.md`

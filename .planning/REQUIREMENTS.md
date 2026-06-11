@@ -96,12 +96,38 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
+| SYNC-01 | Phase 68 | Pending |
+| SYNC-02 | Phase 68 | Pending |
+| SYNC-03 | Phase 68 | Pending |
+| SYNC-04 | Phase 68 | Pending |
+| TIP-01 | Phase 69 | Pending |
+| TIP-02 | Phase 69 | Pending |
+| TIP-03 | Phase 69 | Pending |
+| REC-01 | Phase 70 | Pending |
+| REC-02 | Phase 70 | Pending |
+| REC-03 | Phase 70 | Pending |
+| REC-04 | Phase 70 | Pending |
+| RES-01 | Phase 71 | Pending |
+| RES-02 | Phase 71 | Pending |
+| RES-03 | Phase 71 | Pending |
+| RES-04 | Phase 71 | Pending |
+| OBS-01 | Phase 72 | Pending |
+| OBS-02 | Phase 72 | Pending |
+| OBS-03 | Phase 72 | Pending |
+| OBS-04 | Phase 72 | Pending |
+| VER-01 | Phase 73 | Pending |
+| VER-02 | Phase 73 | Pending |
+| VER-03 | Phase 73 | Pending |
+| VER-04 | Phase 73 | Pending |
+| REL-01 | Phase 74 | Pending |
+| REL-02 | Phase 74 | Pending |
+| REL-03 | Phase 74 | Pending |
 
 **Coverage:**
 - v1.6 requirements: 26 total
-- Mapped to phases: 0
-- Unmapped: 26
+- Mapped to phases: 26
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-06-11*
-*Last updated: 2026-06-11 after initial v1.6 definition*
+*Last updated: 2026-06-11 after v1.6 roadmap creation*
