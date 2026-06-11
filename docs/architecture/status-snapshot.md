@@ -102,6 +102,42 @@ active-chain progress. `last_error`, `recovery_category`, and
 progress, the stable machine recovery label, the latest recoverable error, and
 the human next-action text at the same time.
 
+## Tip and stay-current semantics
+
+`sync.best_known_tip` is the `BestKnownTipStatus` contract. When available, it
+contains:
+
+- `source`: currently `header_store`, meaning the durable validated header
+  store supplied the best-known tip evidence.
+- `height`: best-known validated header height.
+- `block_hash`: best-known validated header hash.
+- `work`: cumulative work for the best-known validated header tip, encoded as a
+  decimal string.
+- `block_time_unix_seconds`: timestamp carried by the best-known tip header.
+- `observed_at_unix_seconds`: local observation timestamp used for freshness.
+- `freshness`: `fresh` or `stale`.
+- `peer_agreement`: bounded per-peer agreement evidence with each peer marked
+  `agrees`, `behind`, `disagrees`, or `no_evidence`.
+
+`sync.stay_current` is the `StayCurrentStatus` contract. Current values are:
+
+- `initial_catch_up`
+- `current_at_best_known_tip`
+- `stale_tip`
+- `recovering`
+- `no_progress`
+
+`sync.stay_current_next_action` is bounded human guidance derived from
+`StayCurrentStatus`. It is available for `initial_catch_up`,
+`current_at_best_known_tip`, `stale_tip`, and `no_progress`. It stays
+unavailable for `recovering` so existing recovery-category and recovery-action
+fields remain the source of recovery guidance.
+
+Current-at-tip requires fresh best-known tip evidence and connected
+active-chain height/hash/work matching that best-known validated tip. Headers
+without corresponding connected blocks, or downloaded-only block bodies, must
+not satisfy `current_at_best_known_tip`.
+
 `sync.recovery_category` is the stable machine label for unattended sync
 recovery. Current values are:
 

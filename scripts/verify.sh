@@ -123,6 +123,7 @@ bun run scripts/check-phase64-service-restart-resume.ts
 bun run scripts/check-phase65-support-review.ts
 bun run scripts/check-phase66-compatibility-wrapper.ts
 bun run scripts/check-phase68-active-chain-persistence.ts
+bun run scripts/check-phase69-tip-stay-current.ts
 bash scripts/check-pure-core-deps.sh
 bash scripts/check-file-lengths.sh
 bash scripts/check-panic-sites.sh

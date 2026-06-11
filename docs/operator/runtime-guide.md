@@ -346,6 +346,53 @@ or recovery:
   corrupt, locked, or backend-failed stores must be handled before retrying
   sync.
 
+### Phase 69 tip and stay-current fields
+
+Phase 69 adds typed tip evidence and stay-current state to the same durable sync
+status object. These fields explain whether the node is still catching up, is
+current at the best-known validated tip, has stale tip evidence, is recovering,
+or made no useful progress. They do not replace the Phase 68 progress counters:
+operators should still inspect `sync_progress.header_height`,
+`sync_progress.downloaded_block_height`, `sync_progress.connected_block_height`,
+`sync_progress.validated_active_chain_height`,
+`sync_progress.maybe_validated_active_chain_hash`, and
+`sync_progress.maybe_validated_active_chain_work` when diagnosing partial
+downloads or partial active-chain connection.
+
+- `sync.best_known_tip.source` identifies the evidence source. The current
+  runtime projection uses the durable validated header store.
+- `sync.best_known_tip.height` is the best-known validated header height.
+- `sync.best_known_tip.block_hash` is the best-known validated header hash.
+- `sync.best_known_tip.work` is cumulative work for that validated header tip,
+  encoded as a decimal string.
+- `sync.best_known_tip.block_time_unix_seconds` is the header timestamp for the
+  best-known tip.
+- `sync.best_known_tip.observed_at_unix_seconds` is the local observation time
+  used to classify freshness.
+- `sync.best_known_tip.freshness` is `fresh` or `stale` under the configured
+  deterministic freshness threshold.
+- `sync.best_known_tip.peer_agreement` is a bounded per-peer evidence list that
+  classifies peers as agreeing with the best-known tip, behind it, disagreeing
+  with it, or providing no usable tip evidence.
+- `sync.stay_current` is the shared machine label for the current stay-current
+  state.
+- `sync.stay_current_next_action` is bounded operator guidance for the
+  non-recovery stay-current states.
+
+`sync.stay_current` uses these exact labels:
+
+- `initial_catch_up`: the runtime has useful header or block progress, but
+  connected active-chain progress has not yet reached the best-known validated
+  tip.
+- `current_at_best_known_tip`: the connected active-chain height, hash, and work
+  match the fresh best-known validated tip.
+- `stale_tip`: best-known tip evidence or peer evidence is older than the
+  configured freshness threshold.
+- `recovering`: existing recovery context, such as storage or restart recovery,
+  owns the operator guidance.
+- `no_progress`: the runtime did not observe useful stay-current progress and
+  does not have enough fresh current-at-tip evidence.
+
 Metrics and structured logs use the same progress vocabulary. The bounded
 metrics history records `header_height`, `downloaded_block_height`,
 `connected_block_height`, and the compatibility `sync_height`; structured sync

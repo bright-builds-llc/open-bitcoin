@@ -327,10 +327,15 @@ pub struct BestKnownTipStatus {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StayCurrentStatus {
+    /// Serialized as `initial_catch_up`.
     InitialCatchUp,
+    /// Serialized as `current_at_best_known_tip`.
     CurrentAtBestKnownTip,
+    /// Serialized as `stale_tip`.
     StaleTip,
+    /// Serialized as `recovering`.
     Recovering,
+    /// Serialized as `no_progress`.
     NoProgress,
 }
 
