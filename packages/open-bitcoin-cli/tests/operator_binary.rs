@@ -310,6 +310,35 @@ fn http_request_complete_waits_for_lowercase_content_length_body() {
 }
 
 #[test]
+fn fake_rpc_server_responses_declare_connection_close() {
+    // Arrange
+    let server = FakeRpcServer::start();
+    let request_body = r#"{"jsonrpc":"2.0","method":"getblockchaininfo","params":[],"id":1}"#;
+    let request = format!(
+        "POST / HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: {}\r\n\r\n{}",
+        request_body.len(),
+        request_body
+    );
+    let mut stream = TcpStream::connect(server.address).expect("connect fake rpc");
+    stream
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .expect("read timeout");
+
+    // Act
+    stream.write_all(request.as_bytes()).expect("write request");
+    let mut response = String::new();
+    stream
+        .read_to_string(&mut response)
+        .expect("read fake rpc response");
+
+    // Assert
+    assert!(
+        response.contains("\r\nConnection: close\r\n"),
+        "response did not declare connection close: {response}"
+    );
+}
+
+#[test]
 fn open_bitcoin_status_human_no_color_is_support_oriented() {
     // Arrange
     let sandbox = TestSandbox::new("human");
@@ -1704,36 +1733,35 @@ fn handle_rpc_connection(
     requests: &Arc<Mutex<Vec<String>>>,
     behavior: FakeRpcBehavior,
 ) {
+    stream.set_nonblocking(false).expect("blocking stream");
     stream
         .set_read_timeout(Some(Duration::from_secs(2)))
         .expect("read timeout");
     let request = read_http_request(&mut stream);
     let request_text = String::from_utf8_lossy(&request).into_owned();
+    let request_methods = json_rpc_methods_from_request(&request);
     requests
         .lock()
         .expect("request log")
         .push(request_text.clone());
     if behavior == FakeRpcBehavior::Unauthorized {
-        let response =
-            "HTTP/1.1 401 Unauthorized\r\nContent-Length: 0\r\nWWW-Authenticate: Basic\r\n\r\n";
-        stream
-            .write_all(response.as_bytes())
-            .expect("write unauthorized response");
+        let response = "HTTP/1.1 401 Unauthorized\r\nContent-Length: 0\r\nWWW-Authenticate: Basic\r\nConnection: close\r\n\r\n";
+        write_http_response(&mut stream, response);
         return;
     }
-    let result = if request_text.contains("openbitcoinsyncstatus") {
+    let result = if has_rpc_method(&request_methods, "openbitcoinsyncstatus") {
         json!({
             "metadata": fake_runtime_metadata(false)
         })
-    } else if request_text.contains("openbitcoinsyncpause") {
+    } else if has_rpc_method(&request_methods, "openbitcoinsyncpause") {
         json!({
             "metadata": fake_runtime_metadata(true)
         })
-    } else if request_text.contains("openbitcoinsyncresume") {
+    } else if has_rpc_method(&request_methods, "openbitcoinsyncresume") {
         json!({
             "metadata": fake_runtime_metadata(false)
         })
-    } else if request_text.contains("getnetworkinfo") {
+    } else if has_rpc_method(&request_methods, "getnetworkinfo") {
         json!({
             "version": 29300,
             "subversion": "/Satoshi:29.3.0/",
@@ -1747,7 +1775,7 @@ fn handle_rpc_connection(
             "incrementalfee": 1000,
             "warnings": []
         })
-    } else if request_text.contains("getblockchaininfo") {
+    } else if has_rpc_method(&request_methods, "getblockchaininfo") {
         json!({
             "chain": "regtest",
             "blocks": 144,
@@ -1757,7 +1785,7 @@ fn handle_rpc_connection(
             "initialblockdownload": false,
             "warnings": []
         })
-    } else if request_text.contains("getmempoolinfo") {
+    } else if has_rpc_method(&request_methods, "getmempoolinfo") {
         json!({
             "size": 12,
             "bytes": 2048,
@@ -1768,7 +1796,7 @@ fn handle_rpc_connection(
             "minrelaytxfee": 1000,
             "loaded": true
         })
-    } else if request_text.contains("buildandsigntransaction") {
+    } else if has_rpc_method(&request_methods, "buildandsigntransaction") {
         json!({
             "transaction_hex": "001122",
             "fee_sats": 220,
@@ -1780,9 +1808,9 @@ fn handle_rpc_connection(
             }],
             "maybe_change_output_index": 1
         })
-    } else if request_text.contains("sendtoaddress") {
+    } else if has_rpc_method(&request_methods, "sendtoaddress") {
         json!("bb".repeat(32))
-    } else if request_text.contains("getwalletinfo") {
+    } else if has_rpc_method(&request_methods, "getwalletinfo") {
         json!({
             "network": "regtest",
             "descriptor_count": 2,
@@ -1808,13 +1836,49 @@ fn handle_rpc_connection(
     })
     .to_string();
     let response = format!(
-        "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}",
+        "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
         response_body.len(),
         response_body
     );
+    write_http_response(&mut stream, &response);
+}
+
+fn write_http_response(stream: &mut TcpStream, response: &str) {
     stream
         .write_all(response.as_bytes())
         .expect("write response");
+    stream.flush().expect("flush response");
+}
+
+fn json_rpc_methods_from_request(request: &[u8]) -> Vec<String> {
+    let Some(header_end) = request
+        .windows(4)
+        .position(|window| window == b"\r\n\r\n")
+        .map(|index| index + 4)
+    else {
+        return Vec::new();
+    };
+    let Ok(value) = serde_json::from_slice::<Value>(&request[header_end..]) else {
+        return Vec::new();
+    };
+
+    match value {
+        Value::Object(object) => object
+            .get("method")
+            .and_then(Value::as_str)
+            .map(|method| vec![method.to_owned()])
+            .unwrap_or_default(),
+        Value::Array(items) => items
+            .iter()
+            .filter_map(|item| item.get("method").and_then(Value::as_str))
+            .map(str::to_owned)
+            .collect(),
+        _ => Vec::new(),
+    }
+}
+
+fn has_rpc_method(methods: &[String], expected: &str) -> bool {
+    methods.iter().any(|method| method == expected)
 }
 
 fn fake_runtime_metadata(paused: bool) -> Value {
