@@ -311,12 +311,17 @@ fn populated_snapshot_serializes_obs_01_fields() {
                 block_height: 840_000,
                 downloaded_block_height: 840_000,
                 connected_block_height: 840_000,
+                validated_active_chain_height: 840_000,
                 maybe_downloaded_block_hash: Some(
                     "0000000000000000000000000000000000000000000000000000000000000000".to_string(),
                 ),
                 maybe_connected_block_hash: Some(
                     "0000000000000000000000000000000000000000000000000000000000000000".to_string(),
                 ),
+                maybe_validated_active_chain_hash: Some(
+                    "0000000000000000000000000000000000000000000000000000000000000000".to_string(),
+                ),
+                maybe_validated_active_chain_work: Some("840001".to_string()),
                 progress_ratio: 0.99,
                 messages_processed: 12,
                 headers_received: 1,

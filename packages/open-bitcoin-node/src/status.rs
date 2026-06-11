@@ -190,8 +190,14 @@ pub struct SyncProgress {
     pub block_height: u64,
     pub downloaded_block_height: u64,
     pub connected_block_height: u64,
+    #[serde(default)]
+    pub validated_active_chain_height: u64,
     pub maybe_downloaded_block_hash: Option<String>,
     pub maybe_connected_block_hash: Option<String>,
+    #[serde(default)]
+    pub maybe_validated_active_chain_hash: Option<String>,
+    #[serde(default)]
+    pub maybe_validated_active_chain_work: Option<String>,
     pub progress_ratio: f64,
     pub messages_processed: u64,
     pub headers_received: u64,

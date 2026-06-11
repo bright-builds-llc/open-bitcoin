@@ -318,6 +318,13 @@ or recovery:
 - `sync_progress.downloaded_block_height` is the highest contiguous best-chain
   block body currently available in the durable store.
 - `sync_progress.connected_block_height` is the active chainstate height.
+- `sync_progress.validated_active_chain_height` is explicit progress credit for
+  blocks that passed consensus validation, connected to active chainstate, and
+  were durably persisted. It matches connected chainstate height.
+- `sync_progress.maybe_validated_active_chain_hash` is the connected
+  active-chain tip hash when available.
+- `sync_progress.maybe_validated_active_chain_work` is the connected
+  active-chain tip cumulative work as a decimal string when available.
 - `sync_progress.block_height` remains a compatibility alias for connected
   height.
 - `sync.progress_signal` summarizes the latest useful sync signal:
@@ -343,7 +350,9 @@ Metrics and structured logs use the same progress vocabulary. The bounded
 metrics history records `header_height`, `downloaded_block_height`,
 `connected_block_height`, and the compatibility `sync_height`; structured sync
 summary log records include the same heights, progress signal, and last
-successful progress timestamp.
+successful progress timestamp. Treat downloaded-only block bodies as recovery
+diagnostics; only validated active-chain fields are progress credit for durable
+connection.
 
 ### Phase 62 sync truth fields
 
@@ -374,9 +383,12 @@ contract:
 15. `maybe_downloaded_block_hash`
 16. `connected_block_height`
 17. `maybe_connected_block_hash`
-18. `messages_processed`
-19. `headers_received`
-20. `blocks_received`
+18. `validated_active_chain_height`
+19. `maybe_validated_active_chain_hash`
+20. `maybe_validated_active_chain_work`
+21. `messages_processed`
+22. `headers_received`
+23. `blocks_received`
 
 Use these repo-local commands to inspect the selected datadir through the
 focused sync status surface:

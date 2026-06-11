@@ -113,6 +113,8 @@ impl DurableSyncRuntime {
         }
         if let Some(connected_block) = self.connected_block() {
             summary.maybe_connected_block_hash = Some(block_hash_hex(connected_block.block_hash));
+            summary.maybe_validated_active_chain_work =
+                Some(connected_block.chain_work.to_string());
         }
         summary
     }

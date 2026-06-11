@@ -29,6 +29,7 @@ const MAX_HEADER_REQUESTS_IN_FLIGHT_PER_PEER: u64 = 1;
 pub(super) struct BlockProgressPoint {
     pub(super) height: u64,
     pub(super) block_hash: BlockHash,
+    pub(super) chain_work: u128,
 }
 
 impl DurableSyncRuntime {
@@ -166,6 +167,8 @@ impl DurableSyncRuntime {
             maybe_downloaded_block.map(|block| super::block_hash_hex(block.block_hash));
         summary.maybe_connected_block_hash =
             maybe_connected_block.map(|block| super::block_hash_hex(block.block_hash));
+        summary.maybe_validated_active_chain_work =
+            maybe_connected_block.map(|block| block.chain_work.to_string());
         Ok(())
     }
 
@@ -175,6 +178,7 @@ impl DurableSyncRuntime {
             .map(|tip| BlockProgressPoint {
                 height: u64::from(tip.height),
                 block_hash: tip.block_hash,
+                chain_work: tip.chain_work,
             })
     }
 
@@ -185,6 +189,7 @@ impl DurableSyncRuntime {
             return Ok(active_chain.last().map(|position| BlockProgressPoint {
                 height: u64::from(position.height),
                 block_hash: position.block_hash,
+                chain_work: position.chain_work,
             }));
         }
 
@@ -204,6 +209,7 @@ impl DurableSyncRuntime {
             Some(BlockProgressPoint {
                 height: u64::from(entry.height),
                 block_hash: entry.block_hash,
+                chain_work: entry.chain_work,
             })
         };
         for entry in best_chain.iter().skip(common_prefix_len) {
@@ -213,6 +219,7 @@ impl DurableSyncRuntime {
             maybe_downloaded_block = Some(BlockProgressPoint {
                 height: u64::from(entry.height),
                 block_hash: entry.block_hash,
+                chain_work: entry.chain_work,
             });
         }
 
@@ -223,6 +230,7 @@ impl DurableSyncRuntime {
             maybe_downloaded_block = Some(BlockProgressPoint {
                 height: u64::from(active_tip.height),
                 block_hash: active_tip.block_hash,
+                chain_work: active_tip.chain_work,
             });
         }
 
@@ -371,10 +379,15 @@ impl DurableSyncRuntime {
                 maybe_downloaded_block.map_or(0, |block| block.height);
             progress.connected_block_height = maybe_connected_block.map_or(0, |block| block.height);
             progress.block_height = progress.connected_block_height;
+            progress.validated_active_chain_height = progress.connected_block_height;
             progress.maybe_downloaded_block_hash =
                 maybe_downloaded_block.map(|block| super::block_hash_hex(block.block_hash));
             progress.maybe_connected_block_hash =
                 maybe_connected_block.map(|block| super::block_hash_hex(block.block_hash));
+            progress.maybe_validated_active_chain_hash =
+                progress.maybe_connected_block_hash.clone();
+            progress.maybe_validated_active_chain_work =
+                maybe_connected_block.map(|block| block.chain_work.to_string());
             progress.progress_ratio =
                 progress_ratio(progress.connected_block_height, progress.header_height);
         }

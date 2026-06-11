@@ -45,6 +45,7 @@ impl SyncRunSummary {
             best_block_height,
             maybe_downloaded_block_hash: None,
             maybe_connected_block_hash: None,
+            maybe_validated_active_chain_work: None,
             peer_outcomes: Vec::new(),
             health_signals: Vec::new(),
             maybe_stop_reason: None,
@@ -62,8 +63,11 @@ impl SyncRunSummary {
                 block_height: self.best_block_height,
                 downloaded_block_height: self.downloaded_block_height,
                 connected_block_height: self.best_block_height,
+                validated_active_chain_height: self.best_block_height,
                 maybe_downloaded_block_hash: self.maybe_downloaded_block_hash.clone(),
                 maybe_connected_block_hash: self.maybe_connected_block_hash.clone(),
+                maybe_validated_active_chain_hash: self.maybe_connected_block_hash.clone(),
+                maybe_validated_active_chain_work: self.maybe_validated_active_chain_work.clone(),
                 progress_ratio: progress_ratio(self.best_block_height, self.best_header_height),
                 messages_processed: self.messages_processed as u64,
                 headers_received: self.headers_received as u64,
@@ -384,6 +388,7 @@ mod tests {
             best_block_height: 840_004,
             maybe_downloaded_block_hash: Some("22".repeat(32)),
             maybe_connected_block_hash: Some("11".repeat(32)),
+            maybe_validated_active_chain_work: Some("840005".to_string()),
             peer_outcomes: vec![PeerSyncOutcome {
                 peer: SyncPeerAddress::manual("seed.bitcoin.sipa.be", 8_333),
                 maybe_resolved_endpoint: Some("203.0.113.10:8333".to_string()),
@@ -418,8 +423,17 @@ mod tests {
         assert_eq!(progress.downloaded_block_height, 840_006);
         assert_eq!(progress.connected_block_height, 840_004);
         assert_eq!(progress.block_height, 840_004);
+        assert_eq!(progress.validated_active_chain_height, 840_004);
         assert_eq!(progress.maybe_downloaded_block_hash, Some("22".repeat(32)));
         assert_eq!(progress.maybe_connected_block_hash, Some("11".repeat(32)));
+        assert_eq!(
+            progress.maybe_validated_active_chain_hash,
+            Some("11".repeat(32))
+        );
+        assert_eq!(
+            progress.maybe_validated_active_chain_work,
+            Some("840005".to_string())
+        );
         assert_eq!(
             status.progress_signal,
             FieldAvailability::available(SyncProgressSignal::BlockProgress)

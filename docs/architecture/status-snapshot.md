@@ -4,7 +4,7 @@
 
 `OpenBitcoinStatusSnapshot` is the sole shared status model for later CLI status output, JSON automation, service diagnostics, dashboard panels, and support bundles. Live RPC is not the only status source; stopped-node inspection can still report local datadir, config paths, service state, log paths, locally collected health signals, metrics policy, and build provenance when those collectors are available.
 
-For v1.5, `OpenBitcoinStatusSnapshot` is the shared source of truth for status, dashboard, support evidence, RPC-facing blockchain info, metrics projections, structured logs, and live-smoke snapshots. Each consumer may render a different view, but it must preserve the same lifecycle, phase, configured targets, attempt counters, header height, downloaded block height, connected block height, peer compatibility state, progress signal, latest stop reason, latest error, recovery state, resource pressure, and unavailable-field reasons instead of inventing renderer-local summaries.
+For v1.6, `OpenBitcoinStatusSnapshot` is the shared source of truth for status, dashboard, support evidence, RPC-facing blockchain info, metrics projections, structured logs, and live-smoke snapshots. Each consumer may render a different view, but it must preserve the same lifecycle, phase, configured targets, attempt counters, header height, downloaded block height, connected block height, validated active-chain height/hash/work, peer compatibility state, progress signal, latest stop reason, latest error, recovery state, resource pressure, and unavailable-field reasons instead of inventing renderer-local summaries.
 
 ## Field Ownership
 
@@ -50,9 +50,12 @@ The shared order is:
 15. `maybe_downloaded_block_hash`
 16. `connected_block_height`
 17. `maybe_connected_block_hash`
-18. `messages_processed`
-19. `headers_received`
-20. `blocks_received`
+18. `validated_active_chain_height`
+19. `maybe_validated_active_chain_hash`
+20. `maybe_validated_active_chain_work`
+21. `messages_processed`
+22. `headers_received`
+23. `blocks_received`
 
 ## Stopped-node status
 
@@ -83,13 +86,21 @@ chainstate progress:
 - `downloaded_block_height`: highest contiguous best-chain block body available
   in the durable store.
 - `connected_block_height`: active chainstate height.
+- `validated_active_chain_height`: explicit active-chain progress credit. It
+  matches connected chainstate height and advances only after consensus validation,
+  active-chain connection, and durable persistence.
 - `block_height`: compatibility alias for `connected_block_height`.
+- `maybe_validated_active_chain_hash`: active chainstate tip hash when a
+  connected tip is available.
+- `maybe_validated_active_chain_work`: active chainstate tip cumulative work as
+  a decimal string when connected chainstate evidence is available.
 
 Consumers should use the explicit downloaded and connected fields for recovery
-diagnostics. `last_error`, `recovery_category`, and `recovery_action` are
-separate fields so a status snapshot can report active progress, the stable
-machine recovery label, the latest recoverable error, and the human next-action
-text at the same time.
+diagnostics. Downloaded-only block bodies must not be treated as validated
+active-chain progress. `last_error`, `recovery_category`, and
+`recovery_action` are separate fields so a status snapshot can report active
+progress, the stable machine recovery label, the latest recoverable error, and
+the human next-action text at the same time.
 
 `sync.recovery_category` is the stable machine label for unattended sync
 recovery. Current values are:
@@ -168,9 +179,12 @@ Sync metrics expose the same progress dimensions as status:
 - `sync_height`: compatibility series for connected chainstate height.
 
 Structured sync summary logs use the same header, downloaded, connected,
-progress-signal, and last-progress values. Consumers should prefer the status
-snapshot for machine state and use logs as an audit trail of how the state was
-observed.
+progress-signal, and last-progress values. Status carries the
+`validated_active_chain_height`, `maybe_validated_active_chain_hash`, and
+`maybe_validated_active_chain_work` evidence needed to distinguish connected
+active-chain progress from downloaded-only bodies. Consumers should prefer the
+status snapshot for machine state and use logs as an audit trail of how the
+state was observed.
 
 ## Build provenance semantics
 

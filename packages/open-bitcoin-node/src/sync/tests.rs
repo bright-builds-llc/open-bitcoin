@@ -903,6 +903,116 @@ mod block_response {
     }
 
     #[test]
+    fn connected_active_chain_progress_survives_runtime_reopen() {
+        // Arrange
+        let path = temp_store_path("block-response-connected-reopen");
+        remove_dir_if_exists(&path);
+        let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+        let child = build_block(block_hash(&genesis.header), 1);
+        let child_hash = block_hash(&child.header);
+        let expected_child_hash = block_hash_hex(child_hash);
+        save_best_chain_with_active_blocks(&path, &[(&genesis, 0), (&child, 1)], &[(&genesis, 0)]);
+        let store = FjallNodeStore::open(&path).expect("store");
+        let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+        let mut transport = ScriptedTransport::new(vec![vec![
+            WireNetworkMessage::Version(VersionMessage {
+                start_height: 1,
+                ..VersionMessage::default()
+            }),
+            WireNetworkMessage::Verack,
+            WireNetworkMessage::Block(child.clone()),
+        ]]);
+
+        // Act
+        let summary = runtime
+            .sync_once(&mut transport, i64::from(child.header.time))
+            .expect("sync");
+        let connected_progress = summary.sync_status(SyncNetwork::Regtest).sync_progress;
+        drop(runtime);
+
+        let reopened_store = FjallNodeStore::open(&path).expect("reopen store");
+        let reopened_runtime =
+            DurableSyncRuntime::open(reopened_store, sync_config()).expect("reopen runtime");
+        let reopened_summary = reopened_runtime.snapshot_summary();
+        let reopened_state = reopened_runtime
+            .durable_sync_state_for_summary(
+                &reopened_summary,
+                SyncLifecycleState::Active,
+                None,
+                1_777_225_182,
+            )
+            .expect("reopened durable status");
+
+        // Assert
+        assert_eq!(summary.downloaded_block_height, 1);
+        assert_eq!(summary.best_block_height, 1);
+        assert_eq!(
+            connected_progress,
+            FieldAvailability::available(SyncProgress {
+                header_height: 1,
+                block_height: 1,
+                downloaded_block_height: 1,
+                connected_block_height: 1,
+                validated_active_chain_height: 1,
+                maybe_downloaded_block_hash: Some(expected_child_hash.clone()),
+                maybe_connected_block_hash: Some(expected_child_hash.clone()),
+                maybe_validated_active_chain_hash: Some(expected_child_hash.clone()),
+                maybe_validated_active_chain_work: Some("2".to_string()),
+                progress_ratio: 1.0,
+                messages_processed: 3,
+                headers_received: 0,
+                blocks_received: 1,
+            })
+        );
+        assert_eq!(reopened_summary.best_block_height, 1);
+        assert_eq!(reopened_summary.downloaded_block_height, 1);
+        assert_eq!(
+            reopened_summary.maybe_connected_block_hash,
+            Some(expected_child_hash.clone())
+        );
+        assert_eq!(
+            reopened_summary.maybe_validated_active_chain_work,
+            Some("2".to_string())
+        );
+        assert_eq!(
+            reopened_state.sync.sync_progress,
+            FieldAvailability::available(SyncProgress {
+                header_height: 1,
+                block_height: 1,
+                downloaded_block_height: 1,
+                connected_block_height: 1,
+                validated_active_chain_height: 1,
+                maybe_downloaded_block_hash: Some(expected_child_hash.clone()),
+                maybe_connected_block_hash: Some(expected_child_hash.clone()),
+                maybe_validated_active_chain_hash: Some(expected_child_hash),
+                maybe_validated_active_chain_work: Some("2".to_string()),
+                progress_ratio: 1.0,
+                messages_processed: 0,
+                headers_received: 0,
+                blocks_received: 0,
+            })
+        );
+        assert!(
+            reopened_runtime
+                .store()
+                .load_block(child_hash)
+                .expect("load reopened child")
+                .is_some()
+        );
+        let snapshot = reopened_runtime
+            .store()
+            .load_chainstate_snapshot()
+            .expect("load chainstate snapshot")
+            .expect("chainstate snapshot");
+        let active_tip = snapshot.active_chain.last().expect("active tip");
+        assert_eq!(active_tip.height, 1);
+        assert_eq!(active_tip.block_hash, child_hash);
+        assert_eq!(active_tip.chain_work, 2);
+
+        remove_dir_if_exists(&path);
+    }
+
+    #[test]
     fn unrequested_extending_block_response_is_no_credit_and_does_not_mutate_chainstate() {
         // Arrange
         let path = temp_store_path("block-response-unrequested-extending");
@@ -983,8 +1093,11 @@ mod block_response {
                 block_height: 1,
                 downloaded_block_height: 1,
                 connected_block_height: 1,
+                validated_active_chain_height: 1,
                 maybe_downloaded_block_hash: Some(block_hash_hex(child_hash)),
                 maybe_connected_block_hash: Some(block_hash_hex(child_hash)),
+                maybe_validated_active_chain_hash: Some(block_hash_hex(child_hash)),
+                maybe_validated_active_chain_work: Some("2".to_string()),
                 progress_ratio: 1.0,
                 messages_processed: 3,
                 headers_received: 0,
@@ -1034,8 +1147,11 @@ mod block_response {
                 block_height: 0,
                 downloaded_block_height: 1,
                 connected_block_height: 0,
+                validated_active_chain_height: 0,
                 maybe_downloaded_block_hash: Some(block_hash_hex(child_hash)),
                 maybe_connected_block_hash: Some(block_hash_hex(genesis_hash)),
+                maybe_validated_active_chain_hash: Some(block_hash_hex(genesis_hash)),
+                maybe_validated_active_chain_work: Some("1".to_string()),
                 progress_ratio: 0.0,
                 messages_processed: 0,
                 headers_received: 0,
@@ -1089,8 +1205,11 @@ mod block_response {
                 block_height: 0,
                 downloaded_block_height: 0,
                 connected_block_height: 0,
+                validated_active_chain_height: 0,
                 maybe_downloaded_block_hash: None,
                 maybe_connected_block_hash: None,
+                maybe_validated_active_chain_hash: None,
+                maybe_validated_active_chain_work: None,
                 progress_ratio: 1.0,
                 messages_processed: 0,
                 headers_received: 0,
@@ -1099,6 +1218,8 @@ mod block_response {
         );
         assert!(encoded["value"]["maybe_downloaded_block_hash"].is_null());
         assert!(encoded["value"]["maybe_connected_block_hash"].is_null());
+        assert!(encoded["value"]["maybe_validated_active_chain_hash"].is_null());
+        assert!(encoded["value"]["maybe_validated_active_chain_work"].is_null());
 
         remove_dir_if_exists(&path);
     }
@@ -1410,6 +1531,7 @@ fn sync_summary_projects_metric_samples() {
         best_block_height: 40,
         maybe_downloaded_block_hash: None,
         maybe_connected_block_hash: None,
+        maybe_validated_active_chain_work: None,
         peer_outcomes: Vec::new(),
         health_signals: Vec::new(),
         maybe_stop_reason: None,
@@ -1457,6 +1579,7 @@ fn sync_summary_projects_progress_signal_and_last_successful_timestamp() {
         best_block_height: 0,
         maybe_downloaded_block_hash: None,
         maybe_connected_block_hash: None,
+        maybe_validated_active_chain_work: None,
         peer_outcomes: vec![outcome],
         health_signals: Vec::new(),
         maybe_stop_reason: None,
@@ -1498,6 +1621,7 @@ fn sync_summary_projects_structured_log_records() {
         best_block_height: 43,
         maybe_downloaded_block_hash: None,
         maybe_connected_block_hash: None,
+        maybe_validated_active_chain_work: None,
         peer_outcomes: vec![
             peer_outcome(
                 SyncPeerAddress::manual("127.0.0.1", 18_444),
@@ -1605,6 +1729,7 @@ fn phase62_structured_logs_keep_bounded_cycle_facts() {
         best_block_height: 840_119,
         maybe_downloaded_block_hash: None,
         maybe_connected_block_hash: None,
+        maybe_validated_active_chain_work: None,
         peer_outcomes: Vec::new(),
         health_signals: Vec::new(),
         maybe_stop_reason: Some(SyncStopReason::NoProgress {
@@ -1747,6 +1872,7 @@ fn sync_summary_status_keeps_connected_height_alias_with_hashes() {
         best_block_height: 25,
         maybe_downloaded_block_hash: Some(downloaded_hash.clone()),
         maybe_connected_block_hash: Some(connected_hash.clone()),
+        maybe_validated_active_chain_work: Some("26".to_string()),
         peer_outcomes: Vec::new(),
         health_signals: Vec::new(),
         maybe_stop_reason: None,
@@ -1763,8 +1889,11 @@ fn sync_summary_status_keeps_connected_height_alias_with_hashes() {
             block_height: 25,
             downloaded_block_height: 27,
             connected_block_height: 25,
+            validated_active_chain_height: 25,
             maybe_downloaded_block_hash: Some(downloaded_hash),
-            maybe_connected_block_hash: Some(connected_hash),
+            maybe_connected_block_hash: Some(connected_hash.clone()),
+            maybe_validated_active_chain_hash: Some(connected_hash),
+            maybe_validated_active_chain_work: Some("26".to_string()),
             progress_ratio: 25.0 / 30.0,
             messages_processed: 9,
             headers_received: 7,
@@ -1790,6 +1919,7 @@ fn sync_summary_status_projections_include_counters() {
         best_block_height: 25,
         maybe_downloaded_block_hash: None,
         maybe_connected_block_hash: None,
+        maybe_validated_active_chain_work: None,
         peer_outcomes: Vec::new(),
         health_signals: Vec::new(),
         maybe_stop_reason: None,
@@ -1807,8 +1937,11 @@ fn sync_summary_status_projections_include_counters() {
             block_height: 25,
             downloaded_block_height: 75,
             connected_block_height: 25,
+            validated_active_chain_height: 25,
             maybe_downloaded_block_hash: None,
             maybe_connected_block_hash: None,
+            maybe_validated_active_chain_hash: None,
+            maybe_validated_active_chain_work: None,
             progress_ratio: 0.25,
             messages_processed: 12,
             headers_received: 7,
@@ -2525,8 +2658,11 @@ fn sync_status_and_log_records_include_message_header_block_counters() {
             block_height: 0,
             downloaded_block_height: 0,
             connected_block_height: 0,
+            validated_active_chain_height: 0,
             maybe_downloaded_block_hash: Some(block_hash_hex(genesis_hash)),
             maybe_connected_block_hash: Some(block_hash_hex(genesis_hash)),
+            maybe_validated_active_chain_hash: Some(block_hash_hex(genesis_hash)),
+            maybe_validated_active_chain_work: Some("1".to_string()),
             progress_ratio: 1.0,
             messages_processed: 4,
             headers_received: 1,
@@ -2686,6 +2822,7 @@ fn storage_failure_projects_storage_health_signal() {
         best_block_height: 0,
         maybe_downloaded_block_hash: None,
         maybe_connected_block_hash: None,
+        maybe_validated_active_chain_work: None,
         peer_outcomes: Vec::new(),
         health_signals: vec![signal.clone()],
         maybe_stop_reason: None,
@@ -2750,8 +2887,11 @@ fn scripted_headers_sync_persists_progress_and_status() {
             block_height: 0,
             downloaded_block_height: 0,
             connected_block_height: 0,
+            validated_active_chain_height: 0,
             maybe_downloaded_block_hash: None,
             maybe_connected_block_hash: None,
+            maybe_validated_active_chain_hash: None,
+            maybe_validated_active_chain_work: None,
             progress_ratio: 0.0,
             messages_processed: 3,
             headers_received: 2,
@@ -3794,8 +3934,11 @@ fn same_datadir_reopen_reports_downloaded_and_connected_block_hashes_after_parti
             block_height: 1,
             downloaded_block_height: 1,
             connected_block_height: 1,
+            validated_active_chain_height: 1,
             maybe_downloaded_block_hash: Some(block_hash_hex(block_hash(&child_one.header))),
             maybe_connected_block_hash: Some(block_hash_hex(block_hash(&child_one.header))),
+            maybe_validated_active_chain_hash: Some(block_hash_hex(block_hash(&child_one.header))),
+            maybe_validated_active_chain_work: Some("2".to_string()),
             progress_ratio: 0.5,
             messages_processed: 2,
             headers_received: 0,
@@ -3825,8 +3968,11 @@ fn same_datadir_reopen_reports_downloaded_and_connected_block_hashes_after_parti
             block_height: 1,
             downloaded_block_height: 1,
             connected_block_height: 1,
+            validated_active_chain_height: 1,
             maybe_downloaded_block_hash: Some(block_hash_hex(block_hash(&child_one.header))),
             maybe_connected_block_hash: Some(block_hash_hex(block_hash(&child_one.header))),
+            maybe_validated_active_chain_hash: Some(block_hash_hex(block_hash(&child_one.header))),
+            maybe_validated_active_chain_work: Some("2".to_string()),
             progress_ratio: 0.5,
             messages_processed: 2,
             headers_received: 0,

@@ -138,7 +138,7 @@ delete those phase directories.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 68. Full Active-Chain Validation and Durable Persistence | 0/0 | Pending | — |
+| 68. Full Active-Chain Validation and Durable Persistence | 3/3 | Complete    | 2026-06-11 |
 | 69. Tip Tracking and Stay-Current Operation | 0/0 | Pending | — |
 | 70. Reorg, Peer Rotation, and No-Progress Recovery | 0/0 | Pending | — |
 | 71. Resource Bounds and Durable Restart/Resume | 0/0 | Pending | — |

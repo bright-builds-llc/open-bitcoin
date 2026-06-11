@@ -361,6 +361,7 @@ pub struct SyncRunSummary {
     pub best_block_height: u64,
     pub maybe_downloaded_block_hash: Option<String>,
     pub maybe_connected_block_hash: Option<String>,
+    pub maybe_validated_active_chain_work: Option<String>,
     pub peer_outcomes: Vec<PeerSyncOutcome>,
     pub health_signals: Vec<HealthSignal>,
     pub maybe_stop_reason: Option<SyncStopReason>,
