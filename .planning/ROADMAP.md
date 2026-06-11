@@ -31,8 +31,8 @@ delete those phase directories.
 
 ## Phases
 
-- [ ] **Phase 68: Full Active-Chain Validation and Durable Persistence** - Sync to the best-known validated peer tip only through consensus-validated, durably connected active-chain progress.
-- [ ] **Phase 69: Tip Tracking and Stay-Current Operation** - Define best-known tip evidence and keep the daemon current after initial catch-up.
+- [x] **Phase 68: Full Active-Chain Validation and Durable Persistence** - Sync to the best-known validated peer tip only through consensus-validated, durably connected active-chain progress.
+- [x] **Phase 69: Tip Tracking and Stay-Current Operation** - Define best-known tip evidence and keep the daemon current after initial catch-up.
 - [ ] **Phase 70: Reorg, Peer Rotation, and No-Progress Recovery** - Make branch competition, reorgs, peer failures, and no-progress causes deterministic and operator-visible.
 - [ ] **Phase 71: Resource Bounds and Durable Restart/Resume** - Prove long-sync resource bounds and safe recovery across shutdown, interruption, and storage-pressure cases.
 - [ ] **Phase 72: Operator Observability and Support Evidence** - Align every operator surface around one full-sync truth contract and redacted support evidence.
@@ -46,7 +46,7 @@ delete those phase directories.
 **Goal**: Operators can run explicit opt-in `open-bitcoind` mainnet sync until the active chain reaches the best-known validated peer tip, with progress credited only after consensus validation and durable connection.
 **Depends on**: Phase 67
 **Requirements**: SYNC-01, SYNC-02, SYNC-03, SYNC-04
-**Plans**: Pending
+**Plans**: 3/3 complete
 
 **Success Criteria**:
 1. Operator can run explicit opt-in mainnet sync until the active chain reaches the best-known validated peer tip or returns a typed blocker.
@@ -59,7 +59,7 @@ delete those phase directories.
 **Goal**: Operators can understand best-known tip evidence and keep `open-bitcoind` caught up after initial sync.
 **Depends on**: Phase 68
 **Requirements**: TIP-01, TIP-02, TIP-03
-**Plans**: Pending
+**Plans**: 5/5 complete
 
 **Success Criteria**:
 1. Operator can inspect best-known mainnet tip source, height, hash, work, timestamp, freshness, and peer agreement evidence.
@@ -139,8 +139,8 @@ delete those phase directories.
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 68. Full Active-Chain Validation and Durable Persistence | 3/3 | Complete    | 2026-06-11 |
-| 69. Tip Tracking and Stay-Current Operation | 0/0 | Pending | — |
-| 70. Reorg, Peer Rotation, and No-Progress Recovery | 0/0 | Pending | — |
+| 69. Tip Tracking and Stay-Current Operation | 5/5 | Complete | 2026-06-11 |
+| 70. Reorg, Peer Rotation, and No-Progress Recovery | 0/0 | Next | — |
 | 71. Resource Bounds and Durable Restart/Resume | 0/0 | Pending | — |
 | 72. Operator Observability and Support Evidence | 0/0 | Pending | — |
 | 73. Opt-In UAT and Deterministic Verification | 0/0 | Pending | — |
@@ -194,12 +194,12 @@ traceability.
 | v1.3 Public Mainnet Sync Proof and Node Hardening | 12 | 13 | Shipped | 2026-06-02 |
 | v1.4 Mainnet IBD Convergence and Peer Compatibility | 6 | 15 | Shipped | 2026-06-05 |
 | v1.5 Unattended Mainnet Node Operation Readiness | 8 | 22 | Shipped | 2026-06-10 |
-| v1.6 Mainnet Full-Sync Completion | 7 | 0 | Active | — |
+| v1.6 Mainnet Full-Sync Completion | 7 | 8 | Active | — |
 
 ## Next Step
 
-Begin Phase 68 planning:
+Begin Phase 70 planning:
 
 ```bash
-/gsd-discuss-phase 68
+/gsd-discuss-phase 70
 ```

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Mainnet Full-Sync Completion
 status: executing
-stopped_at: Phase 69 context gathered
-last_updated: "2026-06-11T16:24:14.029Z"
-last_activity: 2026-06-11 -- Phase 69 planning complete
+stopped_at: Phase 69 complete
+last_updated: "2026-06-11T19:27:50Z"
+last_activity: 2026-06-11 -- Phase 69 complete
 progress:
   total_phases: 7
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 8
-  completed_plans: 3
-  percent: 38
+  completed_plans: 8
+  percent: 29
 ---
 
 # Project State
@@ -21,33 +21,33 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-11)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** v1.6 Mainnet Full-Sync Completion roadmap; next phase is Phase 68.
+**Current focus:** v1.6 Mainnet Full-Sync Completion roadmap; next phase is Phase 70.
 
 ## Current Position
 
 Milestone: v1.6 Mainnet Full-Sync Completion
-Phase: 69
+Phase: 70
 Plan: Not started
-Status: Ready to execute
-Last activity: 2026-06-11 -- Phase 69 planning complete
+Status: Ready to discuss
+Last activity: 2026-06-11 -- Phase 69 complete
 
-Progress: [----------] 0%
+Progress: [###-------] 29%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Current milestone plans completed: 0
-- Current milestone plan count: 0
+- Current milestone plans completed: 8
+- Current milestone plan count: 8
 - Prior milestone plans completed: 22 in v1.5
 
 **By Phase:**
 
 | Phase | Plans | Status |
 |-------|------:|--------|
-| 68. Full Active-Chain Validation and Durable Persistence | 0/0 | Next |
-| 69. Tip Tracking and Stay-Current Operation | 0/0 | Pending |
-| 70. Reorg, Peer Rotation, and No-Progress Recovery | 0/0 | Pending |
+| 68. Full Active-Chain Validation and Durable Persistence | 3/3 | Complete |
+| 69. Tip Tracking and Stay-Current Operation | 5/5 | Complete |
+| 70. Reorg, Peer Rotation, and No-Progress Recovery | 0/0 | Next |
 | 71. Resource Bounds and Durable Restart/Resume | 0/0 | Pending |
 | 72. Operator Observability and Support Evidence | 0/0 | Pending |
 | 73. Opt-In UAT and Deterministic Verification | 0/0 | Pending |
@@ -58,7 +58,9 @@ Progress: [----------] 0%
 - v1.5 completed Phases 60 through 67 and archived with a passed milestone audit.
 - v1.6 started with a focus on full mainnet sync-to-tip completion.
 - v1.6 roadmap covers 26 requirements across Phases 68 through 74.
-- Next workflow: begin Phase 68 planning.
+- Phase 68 completed full active-chain validation and durable persistence.
+- Phase 69 completed tip tracking, stay-current status, post-catch-up coverage, and documentation/checker closeout.
+- Next workflow: begin Phase 70 planning.
 
 ## Accumulated Context
 
@@ -86,7 +88,7 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent v1.5 decisions:
 
 ### Pending Todos
 
-- Begin Phase 68 planning for full active-chain validation and durable persistence.
+- Begin Phase 70 planning for reorg, peer rotation, and no-progress recovery.
 - Keep public-network full-sync UAT opt-in and outside default deterministic verification.
 
 ### Blockers/Concerns
@@ -97,6 +99,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent v1.5 decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-11T15:29:04.172Z
-Stopped at: Phase 69 context gathered
-Resume file: .planning/phases/69-tip-tracking-and-stay-current-operation/69-CONTEXT.md
+Last session: 2026-06-11T19:27:50Z
+Stopped at: Phase 69 complete
+Resume file: .planning/phases/69-tip-tracking-and-stay-current-operation/69-05-SUMMARY.md
