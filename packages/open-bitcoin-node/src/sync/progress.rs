@@ -15,7 +15,7 @@ use crate::{
 
 use super::{
     PeerCapabilitySummary, PeerContribution, PeerFailureReason, PeerSyncOutcome, PeerSyncState,
-    ResolvedSyncPeerAddress, SyncNetwork, SyncRunSummary, SyncRuntimeConfig,
+    ResolvedSyncPeerAddress, SyncNetwork, SyncRunSummary, SyncRuntimeConfig, SyncRuntimeError,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -27,6 +27,9 @@ pub(super) struct PeerProgress {
     pub(super) messages_processed: usize,
     pub(super) headers_received: usize,
     pub(super) blocks_received: usize,
+    pub(super) maybe_tip_height: Option<u64>,
+    pub(super) maybe_tip_hash: Option<String>,
+    pub(super) maybe_tip_work: Option<String>,
     pub(super) maybe_last_activity_unix_seconds: Option<u64>,
     pub(super) maybe_capabilities: Option<PeerCapabilitySummary>,
     pub(super) maybe_failure_reason: Option<PeerFailureReason>,
@@ -51,6 +54,9 @@ impl PeerProgress {
             messages_processed: 0,
             headers_received: 0,
             blocks_received: 0,
+            maybe_tip_height: None,
+            maybe_tip_hash: None,
+            maybe_tip_work: None,
             maybe_last_activity_unix_seconds: None,
             maybe_capabilities: None,
             maybe_failure_reason: None,
@@ -64,6 +70,17 @@ impl PeerProgress {
 
     pub(super) fn record_validated_headers(&mut self, count: usize) {
         self.headers_received += count;
+    }
+
+    pub(super) fn record_tip_observation(
+        &mut self,
+        height: u64,
+        block_hash: String,
+        chain_work: String,
+    ) {
+        self.maybe_tip_height = Some(height);
+        self.maybe_tip_hash = Some(block_hash);
+        self.maybe_tip_work = Some(chain_work);
     }
 
     pub(super) fn record_accepted_block(&mut self) {
@@ -110,6 +127,9 @@ impl PeerProgress {
                 headers_received: self.headers_received,
                 blocks_received: self.blocks_received,
             },
+            maybe_tip_height: self.maybe_tip_height,
+            maybe_tip_hash: self.maybe_tip_hash,
+            maybe_tip_work: self.maybe_tip_work,
             maybe_last_activity_unix_seconds: self.maybe_last_activity_unix_seconds,
             maybe_capabilities: self.maybe_capabilities,
             maybe_failure_reason: self.maybe_failure_reason,
@@ -191,4 +211,25 @@ pub(super) fn local_peer_config(config: &SyncRuntimeConfig) -> LocalPeerConfig {
 pub(super) fn retry_backoff_seconds(retry_backoff_ms: u64) -> i64 {
     let seconds = retry_backoff_ms.div_ceil(1_000).max(1);
     i64::try_from(seconds).unwrap_or(i64::MAX)
+}
+
+pub(super) fn peer_failure_reason_for_error(error: &SyncRuntimeError) -> PeerFailureReason {
+    match error {
+        SyncRuntimeError::AddressResolution { .. } => PeerFailureReason::AddressResolution,
+        SyncRuntimeError::InvalidData { message } if message.contains("malformed block") => {
+            PeerFailureReason::MalformedBlock
+        }
+        SyncRuntimeError::InvalidData { .. } => PeerFailureReason::InvalidData,
+        SyncRuntimeError::InvalidMagic { .. } => PeerFailureReason::InvalidMagic,
+        SyncRuntimeError::PeerCompatibility { .. } => PeerFailureReason::Compatibility,
+        SyncRuntimeError::Storage(_) => PeerFailureReason::Storage,
+        SyncRuntimeError::Io { .. } => PeerFailureReason::Connect,
+        SyncRuntimeError::Network { message } if message.contains("malformed block") => {
+            PeerFailureReason::MalformedBlock
+        }
+        SyncRuntimeError::ResourceLimit { .. } => PeerFailureReason::ResourceLimit,
+        SyncRuntimeError::Network { .. } | SyncRuntimeError::NoPeersConfigured => {
+            PeerFailureReason::Network
+        }
+    }
 }

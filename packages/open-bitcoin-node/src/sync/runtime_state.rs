@@ -19,7 +19,7 @@ use crate::{
 
 use super::{
     DurableSyncRuntime, PeerCapabilitySummary, PeerRetryState, ResolvedSyncPeerAddress,
-    SyncPeerAddress, SyncPeerResolver, SyncRunSummary, SyncRuntimeError,
+    SyncPeerAddress, SyncPeerResolver, SyncRunSummary, SyncRuntimeError, tip,
     types::recovery::recovery_category_from_error_detail,
 };
 
@@ -164,9 +164,9 @@ impl DurableSyncRuntime {
         summary.best_block_height = best_block_height;
         summary.downloaded_block_height = maybe_downloaded_block.map_or(0, |block| block.height);
         summary.maybe_downloaded_block_hash =
-            maybe_downloaded_block.map(|block| super::block_hash_hex(block.block_hash));
+            maybe_downloaded_block.map(|block| super::tip::block_hash_hex(block.block_hash));
         summary.maybe_connected_block_hash =
-            maybe_connected_block.map(|block| super::block_hash_hex(block.block_hash));
+            maybe_connected_block.map(|block| super::tip::block_hash_hex(block.block_hash));
         summary.maybe_validated_active_chain_work =
             maybe_connected_block.map(|block| block.chain_work.to_string());
         Ok(())
@@ -277,6 +277,9 @@ impl DurableSyncRuntime {
                             headers_received: 0,
                             blocks_received: 0,
                         },
+                        maybe_tip_height: None,
+                        maybe_tip_hash: None,
+                        maybe_tip_work: None,
                         maybe_last_activity_unix_seconds: None,
                         maybe_capabilities: None,
                         maybe_failure_reason: Some(super::PeerFailureReason::AddressResolution),
@@ -381,9 +384,9 @@ impl DurableSyncRuntime {
             progress.block_height = progress.connected_block_height;
             progress.validated_active_chain_height = progress.connected_block_height;
             progress.maybe_downloaded_block_hash =
-                maybe_downloaded_block.map(|block| super::block_hash_hex(block.block_hash));
+                maybe_downloaded_block.map(|block| super::tip::block_hash_hex(block.block_hash));
             progress.maybe_connected_block_hash =
-                maybe_connected_block.map(|block| super::block_hash_hex(block.block_hash));
+                maybe_connected_block.map(|block| super::tip::block_hash_hex(block.block_hash));
             progress.maybe_validated_active_chain_hash =
                 progress.maybe_connected_block_hash.clone();
             progress.maybe_validated_active_chain_work =
@@ -449,12 +452,35 @@ impl DurableSyncRuntime {
             outbound_peers: summary.connected_peers as u32,
             target_outbound_peers: self.config.target_outbound_peers as u32,
         });
+        let observed_at_unix_seconds = u64::try_from(timestamp).unwrap_or(0);
+        let maybe_best_tip = self
+            .network
+            .peer_manager()
+            .header_store()
+            .best_tip()
+            .map(tip::best_tip_from_header_entry);
+        let peer_agreement = summary
+            .peer_outcomes
+            .iter()
+            .map(|outcome| tip::peer_tip_agreement_for_outcome(outcome, maybe_best_tip.as_ref()))
+            .collect::<Vec<_>>();
+        let tip_input = tip::TipEvidenceInput {
+            maybe_best_tip,
+            maybe_connected_tip: self.connected_block().map(tip::connected_tip_from_progress),
+            observed_at_unix_seconds,
+            tip_freshness_threshold_seconds: self.config.tip_freshness_threshold_seconds,
+            lifecycle,
+            made_useful_progress: summary.headers_received > 0 || summary.blocks_received > 0,
+            peer_agreement,
+        };
+        sync.best_known_tip = tip::build_best_known_tip_status(&tip_input);
+        sync.stay_current = FieldAvailability::available(tip::classify_stay_current(&tip_input));
 
         Ok(DurableSyncState {
             sync,
             peers: summary.peer_status(),
             health_signals: summary.health_signals.clone(),
-            updated_at_unix_seconds: u64::try_from(timestamp).unwrap_or(0),
+            updated_at_unix_seconds: observed_at_unix_seconds,
         })
     }
 

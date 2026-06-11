@@ -29,6 +29,7 @@ const DEFAULT_TARGET_OUTBOUND_PEERS: usize = 4;
 const DEFAULT_RETRY_BACKOFF_MS: u64 = 1_000;
 const DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER: usize = 16;
 const DEFAULT_MAX_BLOCKS_IN_FLIGHT_TOTAL: usize = 64;
+const DEFAULT_TIP_FRESHNESS_THRESHOLD_SECONDS: u64 = 1_200;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SyncNetwork {
     Mainnet,
@@ -181,6 +182,7 @@ pub struct SyncRuntimeConfig {
     pub max_peer_retries: u8,
     pub max_blocks_in_flight_per_peer: usize,
     pub max_blocks_in_flight_total: usize,
+    pub tip_freshness_threshold_seconds: u64,
     pub persist_mode: PersistMode,
     pub maybe_log_dir: Option<PathBuf>,
 }
@@ -218,6 +220,7 @@ impl Default for SyncRuntimeConfig {
             max_peer_retries: DEFAULT_MAX_PEER_RETRIES,
             max_blocks_in_flight_per_peer: DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER,
             max_blocks_in_flight_total: DEFAULT_MAX_BLOCKS_IN_FLIGHT_TOTAL,
+            tip_freshness_threshold_seconds: DEFAULT_TIP_FRESHNESS_THRESHOLD_SECONDS,
             persist_mode: PersistMode::Flush,
             maybe_log_dir: None,
         }
@@ -340,6 +343,9 @@ pub struct PeerSyncOutcome {
     pub state: PeerSyncState,
     pub attempts: u8,
     pub contribution: PeerContribution,
+    pub maybe_tip_height: Option<u64>,
+    pub maybe_tip_hash: Option<String>,
+    pub maybe_tip_work: Option<String>,
     pub maybe_last_activity_unix_seconds: Option<u64>,
     pub maybe_capabilities: Option<PeerCapabilitySummary>,
     pub maybe_failure_reason: Option<PeerFailureReason>,

@@ -17,6 +17,7 @@ mod runtime_state;
 mod tcp;
 #[cfg(test)]
 mod tests;
+mod tip;
 mod types;
 mod wallet_rescan;
 
@@ -109,10 +110,12 @@ impl DurableSyncRuntime {
         );
         if let Some(downloaded_block) = self.downloaded_block().ok().flatten() {
             summary.downloaded_block_height = downloaded_block.height;
-            summary.maybe_downloaded_block_hash = Some(block_hash_hex(downloaded_block.block_hash));
+            summary.maybe_downloaded_block_hash =
+                Some(tip::block_hash_hex(downloaded_block.block_hash));
         }
         if let Some(connected_block) = self.connected_block() {
-            summary.maybe_connected_block_hash = Some(block_hash_hex(connected_block.block_hash));
+            summary.maybe_connected_block_hash =
+                Some(tip::block_hash_hex(connected_block.block_hash));
             summary.maybe_validated_active_chain_work =
                 Some(connected_block.chain_work.to_string());
         }
@@ -317,7 +320,7 @@ impl DurableSyncRuntime {
                 Err(error) => {
                     return Err(Box::new(PeerFailure {
                         peer: peer.clone(),
-                        reason: peer_failure_reason_for_error(&error),
+                        reason: progress::peer_failure_reason_for_error(&error),
                         error,
                         attempts,
                         maybe_progress: None,
@@ -346,7 +349,7 @@ impl DurableSyncRuntime {
                 let maybe_message = match session.receive(self.config.network.magic()) {
                     Ok(maybe_message) => maybe_message,
                     Err(error) => {
-                        let reason = peer_failure_reason_for_error(&error);
+                        let reason = progress::peer_failure_reason_for_error(&error);
                         if reason == PeerFailureReason::MalformedBlock {
                             progress.record_malformed_block();
                             maybe_failure_reason_override = Some(reason);
@@ -365,6 +368,10 @@ impl DurableSyncRuntime {
                 progress.record_activity(timestamp);
                 let maybe_header_count = match &message {
                     WireNetworkMessage::Headers(headers) => Some(headers.headers.len()),
+                    _ => None,
+                };
+                let maybe_terminal_header_hash = match &message {
+                    WireNetworkMessage::Headers(headers) => headers.headers.last().map(block_hash),
                     _ => None,
                 };
                 let maybe_block = match &message {
@@ -414,6 +421,11 @@ impl DurableSyncRuntime {
                 let mut outbound = sync_result.outbound;
                 if let Some(header_count) = maybe_header_count {
                     progress.record_validated_headers(header_count);
+                    tip::record_peer_terminal_tip(
+                        &mut progress,
+                        self.network.peer_manager().header_store(),
+                        maybe_terminal_header_hash,
+                    );
                 }
                 if notfound_was_requested {
                     progress.record_block_notfound();
@@ -454,7 +466,7 @@ impl DurableSyncRuntime {
                 }
                 Err(Box::new(PeerFailure {
                     peer: peer.clone(),
-                    reason: peer_failure_reason_for_error(&error),
+                    reason: progress::peer_failure_reason_for_error(&error),
                     error,
                     attempts,
                     maybe_progress: Some(progress),
@@ -468,7 +480,7 @@ impl DurableSyncRuntime {
                     peer: peer.clone(),
                     reason: maybe_failure_reason_override
                         .clone()
-                        .unwrap_or_else(|| peer_failure_reason_for_error(&error)),
+                        .unwrap_or_else(|| progress::peer_failure_reason_for_error(&error)),
                     error,
                     attempts,
                     maybe_progress: Some(progress),
@@ -527,6 +539,9 @@ impl DurableSyncRuntime {
                             headers_received: 0,
                             blocks_received: 0,
                         },
+                        maybe_tip_height: None,
+                        maybe_tip_hash: None,
+                        maybe_tip_work: None,
                         maybe_last_activity_unix_seconds: None,
                         maybe_capabilities: None,
                         maybe_failure_reason: Some(failure.reason),
@@ -560,6 +575,9 @@ impl DurableSyncRuntime {
                 headers_received: 0,
                 blocks_received: 0,
             },
+            maybe_tip_height: None,
+            maybe_tip_hash: None,
+            maybe_tip_work: None,
             maybe_last_activity_unix_seconds: None,
             maybe_capabilities: None,
             maybe_failure_reason: Some(PeerFailureReason::RetryBackoff),
@@ -591,37 +609,5 @@ impl DurableSyncRuntime {
                     && peer.local_verack_sent
                     && peer.remote_verack_received
             })
-    }
-}
-
-fn block_hash_hex(block_hash: BlockHash) -> String {
-    const HEX: &[u8; 16] = b"0123456789abcdef";
-    let bytes = block_hash.as_bytes();
-    let mut encoded = String::with_capacity(bytes.len() * 2);
-    for byte in bytes {
-        encoded.push(HEX[(byte >> 4) as usize] as char);
-        encoded.push(HEX[(byte & 0x0f) as usize] as char);
-    }
-    encoded
-}
-
-fn peer_failure_reason_for_error(error: &SyncRuntimeError) -> PeerFailureReason {
-    match error {
-        SyncRuntimeError::AddressResolution { .. } => PeerFailureReason::AddressResolution,
-        SyncRuntimeError::InvalidData { message } if message.contains("malformed block") => {
-            PeerFailureReason::MalformedBlock
-        }
-        SyncRuntimeError::InvalidData { .. } => PeerFailureReason::InvalidData,
-        SyncRuntimeError::InvalidMagic { .. } => PeerFailureReason::InvalidMagic,
-        SyncRuntimeError::PeerCompatibility { .. } => PeerFailureReason::Compatibility,
-        SyncRuntimeError::Storage(_) => PeerFailureReason::Storage,
-        SyncRuntimeError::Io { .. } => PeerFailureReason::Connect,
-        SyncRuntimeError::Network { message } if message.contains("malformed block") => {
-            PeerFailureReason::MalformedBlock
-        }
-        SyncRuntimeError::ResourceLimit { .. } => PeerFailureReason::ResourceLimit,
-        SyncRuntimeError::Network { .. } | SyncRuntimeError::NoPeersConfigured => {
-            PeerFailureReason::Network
-        }
     }
 }

@@ -645,6 +645,18 @@
       ]
     },
     {
+      "label": "node-sync-tip-tracking",
+      "files": [
+        "packages/open-bitcoin-node/src/sync/tip.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/headerssync.cpp",
+        "packages/bitcoin-knots/src/sync.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp"
+      ]
+    },
+    {
       "label": "node-sync-types",
       "files": [
         "packages/open-bitcoin-node/src/sync/types.rs",
