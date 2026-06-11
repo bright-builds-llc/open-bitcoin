@@ -68,6 +68,9 @@ pub(super) fn rpc_sync_status(blockchain_info: &GetBlockchainInfoResponse) -> Sy
         stay_current: FieldAvailability::<StayCurrentStatus>::unavailable(
             "daemon sync stay-current state unavailable",
         ),
+        stay_current_next_action: FieldAvailability::unavailable(
+            "daemon sync stay-current next action unavailable",
+        ),
     }
 }
 
@@ -90,6 +93,7 @@ pub(super) fn unavailable_sync_status(reason: &str) -> SyncStatus {
         resource_pressure: FieldAvailability::unavailable(reason),
         best_known_tip: FieldAvailability::<BestKnownTipStatus>::unavailable(reason),
         stay_current: FieldAvailability::<StayCurrentStatus>::unavailable(reason),
+        stay_current_next_action: FieldAvailability::unavailable(reason),
     }
 }
 

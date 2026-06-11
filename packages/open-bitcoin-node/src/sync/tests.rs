@@ -2230,6 +2230,10 @@ fn phase69_sync_status_defaults_tip_and_stay_current_fields() {
         sync_status.stay_current,
         FieldAvailability::<StayCurrentStatus>::unavailable("stay-current state unavailable")
     );
+    assert_eq!(
+        sync_status.stay_current_next_action,
+        FieldAvailability::<String>::unavailable("stay-current next action unavailable")
+    );
 }
 
 #[test]
@@ -2256,6 +2260,9 @@ fn phase69_sync_status_serializes_tip_and_stay_current_fields() {
     });
     sync_status.stay_current =
         FieldAvailability::available(StayCurrentStatus::CurrentAtBestKnownTip);
+    sync_status.stay_current_next_action = FieldAvailability::available(
+        "No action required; node is current at the best-known validated tip.".to_string(),
+    );
 
     // Act
     let encoded = serde_json::to_string(&sync_status).expect("sync status encode");
@@ -2266,6 +2273,9 @@ fn phase69_sync_status_serializes_tip_and_stay_current_fields() {
     assert!(encoded.contains("fresh"));
     assert!(encoded.contains("agrees"));
     assert!(encoded.contains("current_at_best_known_tip"));
+    assert!(
+        encoded.contains("No action required; node is current at the best-known validated tip.")
+    );
 }
 
 #[test]
@@ -3347,6 +3357,83 @@ fn sync_until_idle_records_no_progress_diagnosis_without_public_network() {
         state.sync.phase,
         FieldAvailability::available("no_progress".to_string())
     );
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn phase69_fresh_idle_cycle_reports_current_at_best_known_tip() {
+    // Arrange
+    let path = temp_store_path("phase69-fresh-idle-at-tip");
+    remove_dir_if_exists(&path);
+    let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+    let child = build_block(block_hash(&genesis.header), 1);
+    let child_hash = block_hash(&child.header);
+    save_best_chain_with_active_blocks(
+        &path,
+        &[(&genesis, 0), (&child, 1)],
+        &[(&genesis, 0), (&child, 1)],
+    );
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime = DurableSyncRuntime::open(
+        store,
+        SyncRuntimeConfig {
+            max_rounds: 4,
+            retry_backoff_ms: 1_000,
+            ..sync_config()
+        },
+    )
+    .expect("runtime");
+    let mut transport =
+        ScriptedTransport::new(vec![version_verack_script(1), version_verack_script(1)]);
+
+    // Act
+    let summary = runtime
+        .sync_until_idle(&mut transport, 1_231_006_531)
+        .expect("sync until idle at tip");
+    let metadata = runtime
+        .store()
+        .load_runtime_metadata()
+        .expect("load runtime metadata")
+        .expect("runtime metadata");
+    let state = metadata.maybe_sync_state.expect("persisted sync state");
+
+    // Assert
+    assert_eq!(summary.best_header_height, 1);
+    assert_eq!(summary.best_block_height, 1);
+    assert_eq!(
+        summary.maybe_stop_reason,
+        Some(SyncStopReason::CurrentAtBestKnownTip {
+            best_header_height: 1,
+            best_block_height: 1,
+        })
+    );
+    assert!(summary.health_signals.iter().any(|signal| {
+        signal.level == HealthSignalLevel::Info
+            && signal
+                .message
+                .contains("current at best-known validated tip")
+    }));
+    assert_eq!(
+        state.sync.stay_current,
+        FieldAvailability::available(StayCurrentStatus::CurrentAtBestKnownTip)
+    );
+    assert_eq!(
+        state.sync.stay_current_next_action,
+        FieldAvailability::available(
+            "No action required; node is current at the best-known validated tip.".to_string(),
+        )
+    );
+    let FieldAvailability::Available(best_known_tip) = state.sync.best_known_tip else {
+        panic!("best-known tip should be available");
+    };
+    assert_eq!(best_known_tip.height, 1);
+    assert_eq!(best_known_tip.block_hash, block_hash_hex(child_hash));
+    assert_eq!(best_known_tip.freshness, TipFreshnessStatus::Fresh);
+    let FieldAvailability::Available(stop_reason) = state.sync.latest_stop_reason else {
+        panic!("latest stop reason should be available");
+    };
+    assert_eq!(stop_reason.label, "current_at_best_known_tip");
 
     remove_dir_if_exists(&path);
 }

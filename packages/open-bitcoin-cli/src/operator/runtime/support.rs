@@ -504,6 +504,7 @@ mod tests {
                         unavailable,
                     ),
                     stay_current: FieldAvailability::<StayCurrentStatus>::unavailable(unavailable),
+                    stay_current_next_action: FieldAvailability::unavailable(unavailable),
                 },
                 peers: PeerStatus {
                     peer_counts: FieldAvailability::unavailable(unavailable),

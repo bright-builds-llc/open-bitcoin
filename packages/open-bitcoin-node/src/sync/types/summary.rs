@@ -129,6 +129,9 @@ impl SyncRunSummary {
             }),
             best_known_tip: FieldAvailability::unavailable("best-known tip evidence unavailable"),
             stay_current: FieldAvailability::unavailable("stay-current state unavailable"),
+            stay_current_next_action: FieldAvailability::unavailable(
+                "stay-current next action unavailable",
+            ),
         }
     }
 

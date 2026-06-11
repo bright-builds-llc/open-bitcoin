@@ -379,6 +379,10 @@ pub enum SyncStopReason {
         target_header_height: u64,
         best_header_height: u64,
     },
+    CurrentAtBestKnownTip {
+        best_header_height: u64,
+        best_block_height: u64,
+    },
     NoProgress {
         rounds_completed: usize,
     },
@@ -393,6 +397,7 @@ impl SyncStopReason {
     pub const fn label(self) -> &'static str {
         match self {
             Self::TargetHeaderReached { .. } => "target_header_reached",
+            Self::CurrentAtBestKnownTip { .. } => "current_at_best_known_tip",
             Self::NoProgress { .. } => "no_progress",
             Self::MaxRoundsReached { .. } => "max_rounds_reached",
             Self::OperatorPaused => "operator_paused",
@@ -407,6 +412,12 @@ impl SyncStopReason {
                 best_header_height,
             } => format!(
                 "sync header target reached: target_header_height={target_header_height} best_header_height={best_header_height}"
+            ),
+            Self::CurrentAtBestKnownTip {
+                best_header_height,
+                best_block_height,
+            } => format!(
+                "sync current at best-known validated tip: best_header_height={best_header_height} best_block_height={best_block_height}"
             ),
             Self::NoProgress { rounds_completed } => {
                 format!(
@@ -426,7 +437,9 @@ impl SyncStopReason {
     pub fn health_signal(self) -> HealthSignal {
         HealthSignal {
             level: match self {
-                Self::TargetHeaderReached { .. } => HealthSignalLevel::Info,
+                Self::TargetHeaderReached { .. } | Self::CurrentAtBestKnownTip { .. } => {
+                    HealthSignalLevel::Info
+                }
                 Self::NoProgress { .. }
                 | Self::MaxRoundsReached { .. }
                 | Self::OperatorPaused

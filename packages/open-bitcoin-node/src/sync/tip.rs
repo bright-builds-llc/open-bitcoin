@@ -15,7 +15,9 @@ use crate::{
     },
 };
 
-use super::{PeerSyncOutcome, progress::PeerProgress, runtime_state::BlockProgressPoint};
+use super::{
+    PeerSyncOutcome, SyncStopReason, progress::PeerProgress, runtime_state::BlockProgressPoint,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct BestTipEvidence {
@@ -141,6 +143,55 @@ pub(super) fn classify_stay_current(input: &TipEvidenceInput) -> StayCurrentStat
     StayCurrentStatus::NoProgress
 }
 
+pub(super) const fn stay_current_next_action(status: StayCurrentStatus) -> Option<&'static str> {
+    match status {
+        StayCurrentStatus::CurrentAtBestKnownTip => {
+            Some("No action required; node is current at the best-known validated tip.")
+        }
+        StayCurrentStatus::InitialCatchUp => Some(
+            "Continue sync until connected active-chain progress reaches the best-known validated tip.",
+        ),
+        StayCurrentStatus::StaleTip => Some(
+            "Refresh peers or wait for fresh peer tip evidence before treating the node as current.",
+        ),
+        StayCurrentStatus::NoProgress => Some(
+            "Retry sync or inspect peer outcomes; no useful stay-current progress was observed.",
+        ),
+        StayCurrentStatus::Recovering => None,
+    }
+}
+
+pub(super) fn current_at_best_known_tip_stop_reason(
+    input: &TipEvidenceInput,
+) -> Option<SyncStopReason> {
+    if classify_stay_current(input) != StayCurrentStatus::CurrentAtBestKnownTip {
+        return None;
+    }
+
+    Some(SyncStopReason::CurrentAtBestKnownTip {
+        best_header_height: input.maybe_best_tip.as_ref()?.height,
+        best_block_height: input.maybe_connected_tip.as_ref()?.height,
+    })
+}
+
+pub(super) fn current_at_best_known_tip_stop_reason_from_evidence(
+    maybe_best_tip: Option<&HeaderEntry>,
+    maybe_connected_tip: Option<BlockProgressPoint>,
+    observed_at_unix_seconds: u64,
+    tip_freshness_threshold_seconds: u64,
+) -> Option<SyncStopReason> {
+    let input = TipEvidenceInput {
+        maybe_best_tip: maybe_best_tip.map(best_tip_from_header_entry),
+        maybe_connected_tip: maybe_connected_tip.map(connected_tip_from_progress),
+        observed_at_unix_seconds,
+        tip_freshness_threshold_seconds,
+        lifecycle: SyncLifecycleState::Active,
+        made_useful_progress: false,
+        peer_agreement: Vec::new(),
+    };
+    current_at_best_known_tip_stop_reason(&input)
+}
+
 pub(super) fn peer_tip_agreement_for_outcome(
     outcome: &PeerSyncOutcome,
     maybe_best_tip: Option<&BestTipEvidence>,
@@ -238,6 +289,37 @@ mod tests {
             made_useful_progress: false,
             peer_agreement: Vec::new(),
         }
+    }
+
+    #[test]
+    fn phase69_stay_current_next_action_is_bounded_and_skips_recovering() {
+        // Arrange / Act / Assert
+        assert_eq!(
+            stay_current_next_action(StayCurrentStatus::CurrentAtBestKnownTip),
+            Some("No action required; node is current at the best-known validated tip.")
+        );
+        assert_eq!(
+            stay_current_next_action(StayCurrentStatus::InitialCatchUp),
+            Some(
+                "Continue sync until connected active-chain progress reaches the best-known validated tip."
+            )
+        );
+        assert_eq!(
+            stay_current_next_action(StayCurrentStatus::StaleTip),
+            Some(
+                "Refresh peers or wait for fresh peer tip evidence before treating the node as current."
+            )
+        );
+        assert_eq!(
+            stay_current_next_action(StayCurrentStatus::NoProgress),
+            Some(
+                "Retry sync or inspect peer outcomes; no useful stay-current progress was observed."
+            )
+        );
+        assert_eq!(
+            stay_current_next_action(StayCurrentStatus::Recovering),
+            None
+        );
     }
 
     #[test]

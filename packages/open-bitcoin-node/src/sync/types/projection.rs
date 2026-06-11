@@ -127,6 +127,7 @@ pub(super) fn sync_phase_name(summary: &SyncRunSummary) -> &'static str {
     if let Some(stop_reason) = summary.maybe_stop_reason {
         return match stop_reason {
             SyncStopReason::TargetHeaderReached { .. } => "header_target_reached",
+            SyncStopReason::CurrentAtBestKnownTip { .. } => "current_at_best_known_tip",
             SyncStopReason::NoProgress { .. } => "no_progress",
             SyncStopReason::MaxRoundsReached { .. } => "max_rounds_reached",
             SyncStopReason::OperatorPaused => "operator_paused",

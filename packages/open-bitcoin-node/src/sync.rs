@@ -248,11 +248,10 @@ impl DurableSyncRuntime {
                 return Ok(last_summary);
             }
             if is_idle {
-                self.record_until_idle_stop(
-                    &mut last_summary,
-                    SyncStopReason::NoProgress { rounds_completed },
-                    current_timestamp,
-                )?;
+                let stop_reason = self
+                    .maybe_current_at_best_known_tip_stop_reason(current_timestamp)
+                    .unwrap_or(SyncStopReason::NoProgress { rounds_completed });
+                self.record_until_idle_stop(&mut last_summary, stop_reason, current_timestamp)?;
                 break;
             }
             previous_progress = current_progress;
@@ -279,6 +278,18 @@ impl DurableSyncRuntime {
             target_header_height,
             best_header_height: summary.best_header_height,
         })
+    }
+
+    fn maybe_current_at_best_known_tip_stop_reason(
+        &self,
+        timestamp: i64,
+    ) -> Option<SyncStopReason> {
+        tip::current_at_best_known_tip_stop_reason_from_evidence(
+            self.network.peer_manager().header_store().best_tip(),
+            self.connected_block(),
+            u64::try_from(timestamp).unwrap_or(0),
+            self.config.tip_freshness_threshold_seconds,
+        )
     }
 
     fn record_until_idle_stop(

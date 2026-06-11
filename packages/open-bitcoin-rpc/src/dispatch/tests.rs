@@ -625,6 +625,9 @@ fn phase62_runtime_metadata() -> RuntimeMetadata {
                 stay_current: FieldAvailability::<StayCurrentStatus>::unavailable(
                     "stay-current state unavailable",
                 ),
+                stay_current_next_action: FieldAvailability::unavailable(
+                    "stay-current next action unavailable",
+                ),
             },
             peers: PeerStatus {
                 peer_counts: FieldAvailability::available(PeerCounts {
@@ -721,6 +724,9 @@ fn get_blockchain_info_uses_durable_connected_block_height_not_downloaded_height
                         ),
                         stay_current: FieldAvailability::<StayCurrentStatus>::unavailable(
                             "stay-current state unavailable",
+                        ),
+                        stay_current_next_action: FieldAvailability::unavailable(
+                            "stay-current next action unavailable",
                         ),
                     },
                     peers: PeerStatus {

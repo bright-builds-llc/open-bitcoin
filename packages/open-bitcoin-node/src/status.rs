@@ -360,6 +360,8 @@ pub struct SyncStatus {
     pub best_known_tip: FieldAvailability<BestKnownTipStatus>,
     #[serde(default = "stay_current_unavailable")]
     pub stay_current: FieldAvailability<StayCurrentStatus>,
+    #[serde(default = "stay_current_next_action_unavailable")]
+    pub stay_current_next_action: FieldAvailability<String>,
 }
 
 fn configured_targets_unavailable() -> FieldAvailability<SyncConfiguredTargets> {
@@ -384,6 +386,10 @@ fn best_known_tip_unavailable() -> FieldAvailability<BestKnownTipStatus> {
 
 fn stay_current_unavailable() -> FieldAvailability<StayCurrentStatus> {
     FieldAvailability::unavailable("stay-current state unavailable")
+}
+
+fn stay_current_next_action_unavailable() -> FieldAvailability<String> {
+    FieldAvailability::unavailable("stay-current next action unavailable")
 }
 
 /// Peer count status details.

@@ -37,6 +37,7 @@ impl SyncStopReason {
                 Some(SyncRecoveryCategory::OperatorCancellation)
             }
             Self::TargetHeaderReached { .. }
+            | Self::CurrentAtBestKnownTip { .. }
             | Self::NoProgress { .. }
             | Self::MaxRoundsReached { .. } => None,
         }

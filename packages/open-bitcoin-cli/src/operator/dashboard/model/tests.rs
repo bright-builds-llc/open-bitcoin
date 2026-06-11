@@ -406,6 +406,9 @@ fn test_snapshot() -> OpenBitcoinStatusSnapshot {
             stay_current: FieldAvailability::<StayCurrentStatus>::unavailable(
                 "stay-current state unavailable",
             ),
+            stay_current_next_action: FieldAvailability::unavailable(
+                "stay-current next action unavailable",
+            ),
         },
         peers: PeerStatus {
             peer_counts: FieldAvailability::available(PeerCounts {
@@ -501,6 +504,9 @@ fn shared_sync_truth_snapshot() -> OpenBitcoinStatusSnapshot {
         ),
         stay_current: FieldAvailability::<StayCurrentStatus>::unavailable(
             "stay-current state unavailable",
+        ),
+        stay_current_next_action: FieldAvailability::unavailable(
+            "stay-current next action unavailable",
         ),
     };
     snapshot.peers.peer_counts = FieldAvailability::available(PeerCounts {

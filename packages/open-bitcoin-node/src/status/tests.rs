@@ -74,6 +74,9 @@ fn phase62_sync_truth_contract() {
             "best-known tip evidence unavailable",
         ),
         stay_current: FieldAvailability::unavailable("stay-current state unavailable"),
+        stay_current_next_action: FieldAvailability::unavailable(
+            "stay-current next action unavailable",
+        ),
     };
 
     // Act
@@ -115,6 +118,7 @@ fn phase62_sync_truth_contract() {
     );
     assert_eq!(encoded["best_known_tip"]["state"], "unavailable");
     assert_eq!(encoded["stay_current"]["state"], "unavailable");
+    assert_eq!(encoded["stay_current_next_action"]["state"], "unavailable");
     assert_eq!(
         legacy_sync.configured_targets,
         FieldAvailability::unavailable("configured targets unavailable")
@@ -134,6 +138,10 @@ fn phase62_sync_truth_contract() {
     assert_eq!(
         legacy_sync.stay_current,
         FieldAvailability::<StayCurrentStatus>::unavailable("stay-current state unavailable")
+    );
+    assert_eq!(
+        legacy_sync.stay_current_next_action,
+        FieldAvailability::unavailable("stay-current next action unavailable")
     );
 }
 
@@ -378,6 +386,9 @@ fn populated_snapshot_serializes_obs_01_fields() {
                 "best-known tip evidence unavailable",
             ),
             stay_current: FieldAvailability::unavailable("stay-current state unavailable"),
+            stay_current_next_action: FieldAvailability::unavailable(
+                "stay-current next action unavailable",
+            ),
         },
         peers: PeerStatus {
             peer_counts: FieldAvailability::available(PeerCounts {
@@ -573,6 +584,7 @@ fn stopped_snapshot() -> OpenBitcoinStatusSnapshot {
             resource_pressure: FieldAvailability::unavailable(unavailable),
             best_known_tip: FieldAvailability::<BestKnownTipStatus>::unavailable(unavailable),
             stay_current: FieldAvailability::unavailable(unavailable),
+            stay_current_next_action: FieldAvailability::unavailable(unavailable),
         },
         peers: PeerStatus {
             peer_counts: FieldAvailability::unavailable(unavailable),

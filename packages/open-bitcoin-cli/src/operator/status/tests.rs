@@ -384,6 +384,9 @@ fn human_and_json_renderers_surface_wallet_freshness_and_scan_reasons() {
             stay_current: FieldAvailability::<StayCurrentStatus>::unavailable(
                 "stay-current state unavailable",
             ),
+            stay_current_next_action: FieldAvailability::unavailable(
+                "stay-current next action unavailable",
+            ),
         },
         peers: PeerStatus {
             peer_counts: FieldAvailability::available(PeerCounts {
@@ -1470,6 +1473,9 @@ fn phase62_durable_sync_state() -> DurableSyncState {
             ),
             stay_current: FieldAvailability::<StayCurrentStatus>::unavailable(
                 "stay-current state unavailable",
+            ),
+            stay_current_next_action: FieldAvailability::unavailable(
+                "stay-current next action unavailable",
             ),
         },
         peers: PeerStatus {

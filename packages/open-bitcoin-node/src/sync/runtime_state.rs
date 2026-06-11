@@ -474,7 +474,11 @@ impl DurableSyncRuntime {
             peer_agreement,
         };
         sync.best_known_tip = tip::build_best_known_tip_status(&tip_input);
-        sync.stay_current = FieldAvailability::available(tip::classify_stay_current(&tip_input));
+        let stay_current = tip::classify_stay_current(&tip_input);
+        sync.stay_current = FieldAvailability::available(stay_current);
+        if let Some(next_action) = tip::stay_current_next_action(stay_current) {
+            sync.stay_current_next_action = FieldAvailability::available(next_action.to_string());
+        }
 
         Ok(DurableSyncState {
             sync,
