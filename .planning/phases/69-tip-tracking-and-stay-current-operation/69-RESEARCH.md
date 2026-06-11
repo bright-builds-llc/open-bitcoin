@@ -368,17 +368,17 @@ Current peer outcomes already carry activity time, header/block contribution, ca
 
 **Deprecated/outdated:** Do not plan Phase 69 around `packages/open-bitcoin-cli/src/operator/sync.rs`; that file does not exist and current sync status code lives under `packages/open-bitcoin-cli/src/operator/status/`. [VERIFIED: rg --files packages/open-bitcoin-cli/src; packages/open-bitcoin-cli/src/operator/status/sync_state.rs]
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **What exact freshness threshold should be the default?** [VERIFIED: .planning/phases/69-tip-tracking-and-stay-current-operation/69-CONTEXT.md]
+1. **RESOLVED: What exact freshness threshold should be the default?** [VERIFIED: .planning/phases/69-tip-tracking-and-stay-current-operation/69-CONTEXT.md]
    - What we know: The context allows conservative explicit config defaults and requires deterministic tests that avoid wall-clock flakiness. [VERIFIED: .planning/phases/69-tip-tracking-and-stay-current-operation/69-CONTEXT.md]
-   - What's unclear: No numeric freshness threshold is locked by user decision. [VERIFIED: .planning/phases/69-tip-tracking-and-stay-current-operation/69-CONTEXT.md]
-   - Recommendation: Plan an additive `tip_freshness_threshold_seconds` or equivalent runtime config default and use fixed timestamps in tests. [VERIFIED: packages/open-bitcoin-node/src/sync/types.rs; packages/open-bitcoin-node/src/sync/tests.rs]
+   - Resolution: Use an additive `tip_freshness_threshold_seconds` runtime config field with a default of `1_200` seconds, equal to two target-spacing windows. This is conservative enough for deterministic local status semantics without implying public-mainnet timing guarantees. [VERIFIED: packages/open-bitcoin-node/src/sync/types.rs; packages/open-bitcoin-node/src/sync/tests.rs]
+   - Planning requirement: Tests must use fixed timestamps and must not sleep, query public peers, or depend on today's public tip. [VERIFIED: .planning/REQUIREMENTS.md; scripts/verify.sh]
 
-2. **How broad should Phase 69 cross-surface rollout be?** [VERIFIED: .planning/ROADMAP.md]
+2. **RESOLVED: How broad should Phase 69 cross-surface rollout be?** [VERIFIED: .planning/ROADMAP.md]
    - What we know: The shared status field should be reusable by CLI, RPC, dashboard/status JSON, logs, and later support evidence. [VERIFIED: .planning/phases/69-tip-tracking-and-stay-current-operation/69-CONTEXT.md]
-   - What's unclear: Phase 72 owns broad cross-surface observability closeout and support evidence alignment. [VERIFIED: .planning/ROADMAP.md]
-   - Recommendation: Plan Phase 69 to update shared status, minimal CLI/RPC rendering, structured logs where needed, docs, and a focused checker; leave support bundle breadth and cross-surface comparison to Phase 72. [VERIFIED: .planning/ROADMAP.md; .planning/phases/69-tip-tracking-and-stay-current-operation/69-CONTEXT.md]
+   - Resolution: Phase 69 updates the shared `SyncStatus` contract, durable runtime projection, minimal existing status consumers that deserialize/render the shared contract, structured logs only where needed to preserve the current status truth, docs, and a focused checker. Broad support-bundle breadth, cross-surface comparison, and operator-evidence unification remain Phase 72. [VERIFIED: .planning/ROADMAP.md; .planning/phases/69-tip-tracking-and-stay-current-operation/69-CONTEXT.md]
+   - Planning requirement: Docs and checker coverage must explain Phase 69 fields without claiming production-node, inbound-serving, relay, production-wallet, migration-apply, hosted-dashboard, GUI, or public-network default-verification scope. [VERIFIED: .planning/REQUIREMENTS.md; .planning/phases/69-tip-tracking-and-stay-current-operation/69-CONTEXT.md]
 
 ## Environment Availability
 
