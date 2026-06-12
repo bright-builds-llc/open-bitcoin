@@ -72,7 +72,15 @@ delete those phase directories.
 **Goal**: Operators can survive branch competition, reorgs, stale in-flight work, and peer failures with deterministic outcomes and actionable diagnosis.
 **Depends on**: Phase 69
 **Requirements**: REC-01, REC-02, REC-03, REC-04
-**Plans**: Pending
+**Plans**: 6 plans
+
+Plans:
+- [ ] 70-01-PLAN.md - Reorg and reconcile status contract
+- [ ] 70-02-PLAN.md - Branch/reorg runtime and storage blockers
+- [ ] 70-03-PLAN.md - Peer attribution, stale in-flight release, and rotation
+- [ ] 70-04-PLAN.md - No-progress status contract
+- [ ] 70-05-PLAN.md - Shared no-progress diagnosis and rendering
+- [ ] 70-06-PLAN.md - Operator docs, README relevance, and deterministic verification closeout
 
 **Success Criteria**:
 1. Competing header branches resolve through cumulative-work selection with deterministic active-chain outcomes.
@@ -140,7 +148,7 @@ delete those phase directories.
 |-------|----------------|--------|-----------|
 | 68. Full Active-Chain Validation and Durable Persistence | 3/3 | Complete    | 2026-06-11 |
 | 69. Tip Tracking and Stay-Current Operation | 5/5 | Complete    | 2026-06-12 |
-| 70. Reorg, Peer Rotation, and No-Progress Recovery | 0/0 | Next | — |
+| 70. Reorg, Peer Rotation, and No-Progress Recovery | 0/6 | Next | — |
 | 71. Resource Bounds and Durable Restart/Resume | 0/0 | Pending | — |
 | 72. Operator Observability and Support Evidence | 0/0 | Pending | — |
 | 73. Opt-In UAT and Deterministic Verification | 0/0 | Pending | — |
@@ -194,7 +202,7 @@ traceability.
 | v1.3 Public Mainnet Sync Proof and Node Hardening | 12 | 13 | Shipped | 2026-06-02 |
 | v1.4 Mainnet IBD Convergence and Peer Compatibility | 6 | 15 | Shipped | 2026-06-05 |
 | v1.5 Unattended Mainnet Node Operation Readiness | 8 | 22 | Shipped | 2026-06-10 |
-| v1.6 Mainnet Full-Sync Completion | 7 | 8 | Active | — |
+| v1.6 Mainnet Full-Sync Completion | 7 | 14 | Active | — |
 
 ## Next Step
 
