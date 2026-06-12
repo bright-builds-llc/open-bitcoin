@@ -2031,6 +2031,440 @@ mod block_response {
     }
 }
 
+mod phase70_peer {
+    use super::*;
+
+    fn rotation_config() -> SyncRuntimeConfig {
+        SyncRuntimeConfig {
+            manual_peers: vec![
+                SyncPeerAddress::manual("127.0.0.1", 18_444),
+                SyncPeerAddress::manual("127.0.0.1", 18_445),
+            ],
+            dns_seeds: Vec::new(),
+            target_outbound_peers: 1,
+            max_peer_retries: 0,
+            retry_backoff_ms: 10_000,
+            max_messages_per_peer: 8,
+            ..sync_config()
+        }
+    }
+
+    fn outcome_with_reason(
+        summary: &SyncRunSummary,
+        reason: PeerFailureReason,
+    ) -> &PeerSyncOutcome {
+        summary
+            .peer_outcomes
+            .iter()
+            .find(|outcome| outcome.maybe_failure_reason.as_ref() == Some(&reason))
+            .expect("peer outcome with expected failure reason")
+    }
+
+    fn assert_reason_without_block_credit(summary: &SyncRunSummary, reason: PeerFailureReason) {
+        let outcome = outcome_with_reason(summary, reason);
+        assert_eq!(outcome.contribution.blocks_received, 0);
+    }
+
+    fn assert_first_peer_backoff(runtime: &DurableSyncRuntime) {
+        assert!(runtime.peer_backoff.contains_key("127.0.0.1:18444"));
+    }
+
+    #[test]
+    fn phase70_notfound_releases_inflight_and_rotates_to_second_peer() {
+        // Arrange
+        let path = temp_store_path("phase70-peer-notfound-rotation");
+        remove_dir_if_exists(&path);
+        let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+        let child = build_block(block_hash(&genesis.header), 1);
+        let child_hash = block_hash(&child.header);
+        save_best_chain_with_active_blocks(&path, &[(&genesis, 0), (&child, 1)], &[(&genesis, 0)]);
+        let store = FjallNodeStore::open(&path).expect("reopen store");
+        let mut runtime = DurableSyncRuntime::open(store, rotation_config()).expect("runtime");
+        let mut transport = ScriptedTransport::new(vec![
+            vec![
+                WireNetworkMessage::Version(VersionMessage {
+                    start_height: 1,
+                    ..VersionMessage::default()
+                }),
+                WireNetworkMessage::Verack,
+                notfound_for_block(child_hash),
+            ],
+            version_verack_script(1),
+        ]);
+
+        // Act
+        let summary = runtime
+            .sync_once(&mut transport, i64::from(child.header.time))
+            .expect("sync");
+        let requested_hashes = getdata_block_hashes(&transport.sent_messages());
+
+        // Assert
+        assert_eq!(summary.attempted_peers, 2);
+        assert_eq!(summary.connected_peers, 1);
+        assert_eq!(summary.peer_outcomes.len(), 2);
+        assert_reason_without_block_credit(&summary, PeerFailureReason::BlockNotFound);
+        assert_eq!(summary.peer_outcomes[1].state, PeerSyncState::Connected);
+        assert!(
+            requested_hashes
+                .iter()
+                .filter(|hash| **hash == child_hash)
+                .count()
+                >= 2
+        );
+        assert!(runtime.inflight_blocks.is_empty());
+        assert!(runtime.network.peer_requested_blocks(1).is_err());
+        assert_first_peer_backoff(&runtime);
+
+        remove_dir_if_exists(&path);
+    }
+
+    #[test]
+    fn phase70_malformed_block_releases_inflight_and_rotates() {
+        // Arrange
+        let path = temp_store_path("phase70-peer-malformed-rotation");
+        remove_dir_if_exists(&path);
+        let block = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+        let block_hash = block_hash(&block.header);
+        let first_peer_script = headers_script(0, vec![block.header.clone()]);
+        let store = FjallNodeStore::open(&path).expect("store");
+        let mut runtime = DurableSyncRuntime::open(store, rotation_config()).expect("runtime");
+        let mut transport = ErrorAfterMessagesTransport::new(
+            vec![first_peer_script, version_verack_script(0)],
+            SyncRuntimeError::Network {
+                message: "malformed block payload".to_string(),
+            },
+            1,
+        );
+
+        // Act
+        let summary = runtime
+            .sync_once(&mut transport, i64::from(block.header.time))
+            .expect("sync");
+        let requested_hashes = getdata_block_hashes(&transport.sent_messages());
+
+        // Assert
+        assert_eq!(summary.attempted_peers, 2);
+        assert_eq!(summary.failed_peers, 1);
+        assert_eq!(summary.connected_peers, 1);
+        assert_reason_without_block_credit(&summary, PeerFailureReason::MalformedBlock);
+        assert_eq!(summary.peer_outcomes[1].state, PeerSyncState::Connected);
+        assert!(
+            requested_hashes
+                .iter()
+                .filter(|hash| **hash == block_hash)
+                .count()
+                >= 2
+        );
+        assert!(runtime.inflight_blocks.is_empty());
+        assert!(runtime.network.peer_requested_blocks(1).is_err());
+        assert_first_peer_backoff(&runtime);
+
+        remove_dir_if_exists(&path);
+    }
+
+    #[test]
+    fn phase70_invalid_block_releases_inflight_and_rotates() {
+        // Arrange
+        let path = temp_store_path("phase70-peer-invalid-rotation");
+        remove_dir_if_exists(&path);
+        let valid_block = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+        let block_hash = block_hash(&valid_block.header);
+        let mut invalid_block = valid_block.clone();
+        invalid_block.transactions[0].outputs[0].value =
+            Amount::from_sats(51).expect("valid amount");
+        let first_peer_script = vec![
+            WireNetworkMessage::Version(VersionMessage {
+                start_height: 0,
+                ..VersionMessage::default()
+            }),
+            WireNetworkMessage::Verack,
+            WireNetworkMessage::Headers(HeadersMessage {
+                headers: vec![valid_block.header.clone()],
+            }),
+            WireNetworkMessage::Block(invalid_block),
+        ];
+        let store = FjallNodeStore::open(&path).expect("store");
+        let mut runtime = DurableSyncRuntime::open(store, rotation_config()).expect("runtime");
+        let mut transport =
+            ScriptedTransport::new(vec![first_peer_script, version_verack_script(0)]);
+
+        // Act
+        let summary = runtime
+            .sync_once(&mut transport, i64::from(valid_block.header.time))
+            .expect("sync");
+        let requested_hashes = getdata_block_hashes(&transport.sent_messages());
+
+        // Assert
+        assert_eq!(summary.attempted_peers, 2);
+        assert_eq!(summary.failed_peers, 1);
+        assert_eq!(summary.connected_peers, 1);
+        assert_reason_without_block_credit(&summary, PeerFailureReason::InvalidBlock);
+        assert_eq!(summary.peer_outcomes[1].state, PeerSyncState::Connected);
+        assert!(
+            requested_hashes
+                .iter()
+                .filter(|hash| **hash == block_hash)
+                .count()
+                >= 2
+        );
+        assert!(runtime.inflight_blocks.is_empty());
+        assert!(runtime.network.peer_requested_blocks(1).is_err());
+        assert_first_peer_backoff(&runtime);
+
+        remove_dir_if_exists(&path);
+    }
+
+    #[test]
+    fn phase70_duplicate_block_releases_inflight_without_credit() {
+        // Arrange
+        let path = temp_store_path("phase70-peer-duplicate-no-credit");
+        remove_dir_if_exists(&path);
+        let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+        let child = build_block(block_hash(&genesis.header), 1);
+        let child_hash = block_hash(&child.header);
+        save_best_chain_with_active_blocks(
+            &path,
+            &[(&genesis, 0), (&child, 1)],
+            &[(&genesis, 0), (&child, 1)],
+        );
+        let store = FjallNodeStore::open(&path).expect("reopen store");
+        let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+        runtime.inflight_blocks.insert(child_hash);
+        let mut transport = ScriptedTransport::new(vec![vec![
+            WireNetworkMessage::Version(VersionMessage {
+                start_height: 1,
+                ..VersionMessage::default()
+            }),
+            WireNetworkMessage::Verack,
+            WireNetworkMessage::Block(child.clone()),
+        ]]);
+
+        // Act
+        let summary = runtime
+            .sync_once(&mut transport, i64::from(child.header.time))
+            .expect("sync");
+
+        // Assert
+        assert_reason_without_block_credit(&summary, PeerFailureReason::DuplicateBlock);
+        assert!(runtime.inflight_blocks.is_empty());
+        assert_first_peer_backoff(&runtime);
+
+        remove_dir_if_exists(&path);
+    }
+
+    #[test]
+    fn phase70_disconnected_block_releases_inflight_without_credit() {
+        // Arrange
+        let path = temp_store_path("phase70-peer-disconnected-no-credit");
+        remove_dir_if_exists(&path);
+        let block = build_block(BlockHash::from_byte_array([7_u8; 32]), 1);
+        let block_hash = block_hash(&block.header);
+        let store = FjallNodeStore::open(&path).expect("store");
+        let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+        runtime.inflight_blocks.insert(block_hash);
+        let mut transport = ScriptedTransport::new(vec![vec![
+            WireNetworkMessage::Version(VersionMessage {
+                start_height: 1,
+                ..VersionMessage::default()
+            }),
+            WireNetworkMessage::Verack,
+            WireNetworkMessage::Block(block.clone()),
+        ]]);
+
+        // Act
+        let summary = runtime
+            .sync_once(&mut transport, i64::from(block.header.time))
+            .expect("sync");
+
+        // Assert
+        assert_reason_without_block_credit(&summary, PeerFailureReason::DisconnectedBlock);
+        assert!(runtime.inflight_blocks.is_empty());
+        assert_first_peer_backoff(&runtime);
+
+        remove_dir_if_exists(&path);
+    }
+
+    #[test]
+    fn phase70_non_extending_block_releases_inflight_without_credit() {
+        // Arrange
+        let path = temp_store_path("phase70-peer-non-extending-no-credit");
+        remove_dir_if_exists(&path);
+        let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+        let side_block = build_block(BlockHash::from_byte_array([42_u8; 32]), 1);
+        let side_hash = block_hash(&side_block.header);
+        save_best_chain_with_active_blocks(&path, &[(&genesis, 0)], &[(&genesis, 0)]);
+        let store = FjallNodeStore::open(&path).expect("reopen store");
+        let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+        runtime.inflight_blocks.insert(side_hash);
+        let mut transport = ScriptedTransport::new(vec![vec![
+            WireNetworkMessage::Version(VersionMessage {
+                start_height: 1,
+                ..VersionMessage::default()
+            }),
+            WireNetworkMessage::Verack,
+            WireNetworkMessage::Block(side_block.clone()),
+        ]]);
+
+        // Act
+        let summary = runtime
+            .sync_once(&mut transport, i64::from(side_block.header.time))
+            .expect("sync");
+
+        // Assert
+        assert_reason_without_block_credit(&summary, PeerFailureReason::NonExtendingBlock);
+        assert!(runtime.inflight_blocks.is_empty());
+        assert_first_peer_backoff(&runtime);
+
+        remove_dir_if_exists(&path);
+    }
+
+    #[test]
+    fn phase70_stalled_peer_backoff_does_not_consume_rotation_slot() {
+        // Arrange
+        let path = temp_store_path("phase70-peer-stall-rotation");
+        remove_dir_if_exists(&path);
+        let store = FjallNodeStore::open(&path).expect("store");
+        let mut runtime = DurableSyncRuntime::open(store, rotation_config()).expect("runtime");
+        let mut transport = ScriptedTransport::new(vec![
+            Vec::new(),
+            version_verack_script(0),
+            version_verack_script(0),
+        ]);
+
+        // Act
+        let stalled_summary = runtime
+            .sync_once(&mut transport, 1_777_225_300)
+            .expect("first sync");
+        let waiting_summary = runtime
+            .sync_once(&mut transport, 1_777_225_301)
+            .expect("second sync");
+
+        // Assert
+        assert_eq!(stalled_summary.attempted_peers, 2);
+        assert_eq!(stalled_summary.connected_peers, 1);
+        assert_eq!(
+            stalled_summary.peer_outcomes[0].state,
+            PeerSyncState::Stalled
+        );
+        assert_eq!(
+            stalled_summary.peer_outcomes[0].maybe_failure_reason,
+            Some(PeerFailureReason::Stall)
+        );
+        assert_eq!(
+            stalled_summary.peer_outcomes[1].state,
+            PeerSyncState::Connected
+        );
+        assert!(
+            stalled_summary.health_signals.iter().any(|signal| {
+                signal.message == "peer stalled before sending more sync messages"
+            })
+        );
+        assert_eq!(
+            waiting_summary.peer_outcomes[0].state,
+            PeerSyncState::Waiting
+        );
+        assert_eq!(
+            waiting_summary.peer_outcomes[0].maybe_failure_reason,
+            Some(PeerFailureReason::RetryBackoff)
+        );
+        assert!(waiting_summary.health_signals.iter().any(|signal| {
+            signal.message == "peer waiting for retry backoff before next attempt"
+        }));
+
+        remove_dir_if_exists(&path);
+    }
+
+    #[test]
+    fn phase70_incompatible_peer_rotates_with_typed_backoff() {
+        // Arrange
+        let path = temp_store_path("phase70-peer-incompatible-rotation");
+        remove_dir_if_exists(&path);
+        let duplicate_version_script = vec![
+            WireNetworkMessage::Version(VersionMessage {
+                start_height: 0,
+                ..VersionMessage::default()
+            }),
+            WireNetworkMessage::Version(VersionMessage {
+                start_height: 0,
+                ..VersionMessage::default()
+            }),
+        ];
+        let store = FjallNodeStore::open(&path).expect("store");
+        let mut runtime = DurableSyncRuntime::open(store, rotation_config()).expect("runtime");
+        let mut transport =
+            ScriptedTransport::new(vec![duplicate_version_script, version_verack_script(0)]);
+
+        // Act
+        let summary = runtime
+            .sync_once(&mut transport, 1_777_225_302)
+            .expect("sync");
+
+        // Assert
+        assert_eq!(summary.attempted_peers, 2);
+        assert_eq!(summary.failed_peers, 1);
+        assert_eq!(summary.connected_peers, 1);
+        assert_eq!(
+            summary.peer_outcomes[0].maybe_failure_reason,
+            Some(PeerFailureReason::Compatibility)
+        );
+        assert_eq!(summary.peer_outcomes[1].state, PeerSyncState::Connected);
+        assert_first_peer_backoff(&runtime);
+
+        remove_dir_if_exists(&path);
+    }
+
+    #[test]
+    fn phase70_disconnect_backoff_reports_waiting_and_tries_other_peer() {
+        // Arrange
+        let path = temp_store_path("phase70-peer-disconnect-backoff");
+        remove_dir_if_exists(&path);
+        let store = FjallNodeStore::open(&path).expect("store");
+        let mut runtime = DurableSyncRuntime::open(store, rotation_config()).expect("runtime");
+        let mut transport = ScriptedTransport::with_connect_results(vec![
+            Err(SyncRuntimeError::Network {
+                message: "scripted disconnect".to_string(),
+            }),
+            Ok(version_verack_script(0)),
+            Ok(version_verack_script(0)),
+        ]);
+
+        // Act
+        let failed_summary = runtime
+            .sync_once(&mut transport, 1_777_225_303)
+            .expect("first sync");
+        let waiting_summary = runtime
+            .sync_once(&mut transport, 1_777_225_304)
+            .expect("second sync");
+
+        // Assert
+        assert_eq!(failed_summary.attempted_peers, 2);
+        assert_eq!(failed_summary.failed_peers, 1);
+        assert_eq!(
+            failed_summary.peer_outcomes[0].maybe_failure_reason,
+            Some(PeerFailureReason::Network)
+        );
+        assert_eq!(
+            failed_summary.peer_outcomes[1].state,
+            PeerSyncState::Connected
+        );
+        assert_eq!(waiting_summary.attempted_peers, 1);
+        assert_eq!(
+            waiting_summary.peer_outcomes[0].state,
+            PeerSyncState::Waiting
+        );
+        assert_eq!(
+            waiting_summary.peer_outcomes[0].maybe_failure_reason,
+            Some(PeerFailureReason::RetryBackoff)
+        );
+        assert_eq!(
+            waiting_summary.peer_outcomes[1].state,
+            PeerSyncState::Connected
+        );
+
+        remove_dir_if_exists(&path);
+    }
+}
+
 #[test]
 fn block_inflight_invalid_block_releases_runtime_and_peer_inflight_for_retry() {
     // Arrange

@@ -115,6 +115,18 @@ impl PeerProgress {
         self.maybe_failure_reason = Some(reason);
     }
 
+    pub(super) fn is_successful_outbound_slot(&self) -> bool {
+        self.state == PeerSyncState::Connected && self.maybe_failure_reason.is_none()
+    }
+
+    pub(super) fn should_retry_with_backoff(&self) -> bool {
+        self.state == PeerSyncState::Stalled
+            || self
+                .maybe_failure_reason
+                .as_ref()
+                .is_some_and(PeerFailureReason::is_no_credit_block_response)
+    }
+
     pub(super) fn into_outcome(self, maybe_error: Option<String>) -> PeerSyncOutcome {
         PeerSyncOutcome {
             peer: self.peer.peer,

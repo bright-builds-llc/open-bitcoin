@@ -278,6 +278,18 @@ impl fmt::Display for PeerFailureReason {
 }
 
 impl PeerFailureReason {
+    pub(crate) const fn is_no_credit_block_response(&self) -> bool {
+        matches!(
+            self,
+            Self::BlockNotFound
+                | Self::MalformedBlock
+                | Self::InvalidBlock
+                | Self::DuplicateBlock
+                | Self::DisconnectedBlock
+                | Self::NonExtendingBlock
+        )
+    }
+
     pub(crate) const fn operator_recovery_action(&self) -> &'static str {
         match self {
             Self::AddressResolution => "Check configured sync peers or DNS seeds, then retry sync.",

@@ -182,13 +182,10 @@ impl DurableSyncRuntime {
             summary.attempted_peers += 1;
             let peer_id = self.allocate_peer_id();
             let outcome = self.sync_peer_with_retries(transport, &peer, peer_id, timestamp);
-            if matches!(
-                outcome,
-                Ok(PeerProgress {
-                    state: PeerSyncState::Connected,
-                    ..
-                })
-            ) {
+            if let Ok(progress) = &outcome
+                && progress.state == PeerSyncState::Connected
+                && progress.is_successful_outbound_slot()
+            {
                 completed_outbound_slots += 1;
             }
             self.record_outcome(&mut summary, outcome, timestamp);
@@ -523,8 +520,14 @@ impl DurableSyncRuntime {
     ) {
         match outcome {
             Ok(progress) => {
-                self.clear_backoff(&progress.peer);
-                summary.connected_peers += usize::from(progress.state == PeerSyncState::Connected);
+                let is_successful_outbound_slot = progress.is_successful_outbound_slot();
+                let should_retry_with_backoff = progress.should_retry_with_backoff();
+                if is_successful_outbound_slot {
+                    self.clear_backoff(&progress.peer);
+                } else if should_retry_with_backoff {
+                    self.mark_backoff(&progress.peer, timestamp);
+                }
+                summary.connected_peers += usize::from(is_successful_outbound_slot);
                 summary.messages_processed += progress.messages_processed;
                 summary.headers_received += progress.headers_received;
                 summary.blocks_received += progress.blocks_received;
@@ -533,7 +536,6 @@ impl DurableSyncRuntime {
                 summary.best_block_height = best_block_height;
                 if progress.state == PeerSyncState::Stalled {
                     summary.health_signals.push(progress::stalled_peer_signal());
-                    self.mark_backoff(&progress.peer, timestamp);
                 }
                 summary.peer_outcomes.push(progress.into_outcome(None));
             }
