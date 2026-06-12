@@ -16,9 +16,9 @@ Requirements for v1.6 Mainnet Full-Sync Completion. Each requirement maps to exa
 
 ### Tip Tracking And Stay-Current Operation
 
-- [ ] **TIP-01**: Operator can see the best-known mainnet tip source, height, hash, work, timestamp, freshness, and peer agreement evidence.
-- [ ] **TIP-02**: Operator can distinguish initial catch-up, current-at-best-known-tip, stale-tip, recovering, and no-progress states without renderer-specific interpretation.
-- [ ] **TIP-03**: Operator can keep `open-bitcoind` running after catch-up so new headers and blocks are detected, validated, connected, and reported as stay-current progress.
+- [x] **TIP-01**: Operator can see the best-known mainnet tip source, height, hash, work, timestamp, freshness, and peer agreement evidence.
+- [x] **TIP-02**: Operator can distinguish initial catch-up, current-at-best-known-tip, stale-tip, recovering, and no-progress states without renderer-specific interpretation.
+- [x] **TIP-03**: Operator can keep `open-bitcoind` running after catch-up so new headers and blocks are detected, validated, connected, and reported as stay-current progress.
 
 ### Reorg, Peer Rotation, And No-Progress Recovery
 
@@ -100,9 +100,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SYNC-02 | Phase 68 | Pending |
 | SYNC-03 | Phase 68 | Pending |
 | SYNC-04 | Phase 68 | Pending |
-| TIP-01 | Phase 69 | Pending |
-| TIP-02 | Phase 69 | Pending |
-| TIP-03 | Phase 69 | Pending |
+| TIP-01 | Phase 69 | Complete |
+| TIP-02 | Phase 69 | Complete |
+| TIP-03 | Phase 69 | Complete |
 | REC-01 | Phase 70 | Pending |
 | REC-02 | Phase 70 | Pending |
 | REC-03 | Phase 70 | Pending |

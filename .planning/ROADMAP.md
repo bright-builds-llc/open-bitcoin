@@ -139,7 +139,7 @@ delete those phase directories.
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 68. Full Active-Chain Validation and Durable Persistence | 3/3 | Complete    | 2026-06-11 |
-| 69. Tip Tracking and Stay-Current Operation | 5/5 | Complete | 2026-06-11 |
+| 69. Tip Tracking and Stay-Current Operation | 5/5 | Complete    | 2026-06-12 |
 | 70. Reorg, Peer Rotation, and No-Progress Recovery | 0/0 | Next | — |
 | 71. Resource Bounds and Durable Restart/Resume | 0/0 | Pending | — |
 | 72. Operator Observability and Support Evidence | 0/0 | Pending | — |
