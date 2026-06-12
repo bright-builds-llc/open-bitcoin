@@ -4,14 +4,14 @@ milestone: v1.6
 milestone_name: Mainnet Full-Sync Completion
 status: executing
 stopped_at: Phase 70 context gathered
-last_updated: "2026-06-12T17:10:11.857Z"
-last_activity: 2026-06-12 -- Phase 70 execution started
+last_updated: "2026-06-12T18:35:12.924Z"
+last_activity: 2026-06-12
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 14
-  completed_plans: 8
-  percent: 57
+  completed_plans: 9
+  percent: 64
 ---
 
 # Project State
@@ -27,9 +27,9 @@ See: `.planning/PROJECT.md` (updated 2026-06-11)
 
 Milestone: v1.6 Mainnet Full-Sync Completion
 Phase: 70 (Reorg, Peer Rotation, and No-Progress Recovery) — EXECUTING
-Plan: 1 of 6
-Status: Executing Phase 70
-Last activity: 2026-06-12 -- Phase 70 execution started
+Plan: 2 of 6
+Status: Ready to execute
+Last activity: 2026-06-12
 
 Progress: [###-------] 29%
 
