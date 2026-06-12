@@ -4,8 +4,8 @@ milestone: v1.6
 milestone_name: Mainnet Full-Sync Completion
 status: executing
 stopped_at: Phase 70 context gathered
-last_updated: "2026-06-12T17:01:15.662Z"
-last_activity: 2026-06-12 -- Phase 70 planning complete
+last_updated: "2026-06-12T17:10:11.857Z"
+last_activity: 2026-06-12 -- Phase 70 execution started
 progress:
   total_phases: 7
   completed_phases: 2
@@ -21,15 +21,15 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-11)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** v1.6 Mainnet Full-Sync Completion roadmap; next phase is Phase 70.
+**Current focus:** Phase 70 — Reorg, Peer Rotation, and No-Progress Recovery
 
 ## Current Position
 
 Milestone: v1.6 Mainnet Full-Sync Completion
-Phase: 70
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-06-12 -- Phase 70 planning complete
+Phase: 70 (Reorg, Peer Rotation, and No-Progress Recovery) — EXECUTING
+Plan: 1 of 6
+Status: Executing Phase 70
+Last activity: 2026-06-12 -- Phase 70 execution started
 
 Progress: [###-------] 29%
 
