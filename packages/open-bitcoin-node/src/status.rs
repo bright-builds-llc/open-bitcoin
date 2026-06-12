@@ -339,6 +339,52 @@ pub enum StayCurrentStatus {
     NoProgress,
 }
 
+/// Bounded evidence for the latest active-chain reorg transition.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SyncReorgEvidence {
+    pub common_ancestor_height: u64,
+    pub common_ancestor_hash: String,
+    pub disconnected_count: u64,
+    pub connected_count: u64,
+    pub final_active_height: u64,
+    pub final_active_hash: String,
+    pub fully_persisted: bool,
+}
+
+/// Bounded branch/reorg reconcile progress surfaced to status consumers.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", tag = "state", content = "details")]
+pub enum SyncReconcileProgressStatus {
+    NoChange,
+    ExtendedActiveChain {
+        connected_count: u64,
+        final_active_height: u64,
+        final_active_hash: String,
+    },
+    BranchCompetitionAwaitingBodies {
+        common_ancestor_height: u64,
+        common_ancestor_hash: String,
+        branch_tip_height: u64,
+        branch_tip_hash: String,
+        missing_block_count: u64,
+    },
+    SideBranchPreserved {
+        branch_tip_height: u64,
+        branch_tip_hash: String,
+        active_tip_height: u64,
+        active_tip_hash: String,
+    },
+    ReorgPersisted {
+        evidence: SyncReorgEvidence,
+    },
+}
+
+/// Default unavailable reason for reorg status when no bounded evidence has been recorded.
+pub const NO_REORG_EVIDENCE_RECORDED_REASON: &str = "no reorg evidence recorded";
+
+/// Default unavailable reason for branch/reorg reconcile status before runtime projection.
+pub const RECONCILE_PROGRESS_UNAVAILABLE_REASON: &str = "reconcile progress unavailable";
+
 /// Sync status fields.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SyncStatus {
@@ -367,6 +413,10 @@ pub struct SyncStatus {
     pub stay_current: FieldAvailability<StayCurrentStatus>,
     #[serde(default = "stay_current_next_action_unavailable")]
     pub stay_current_next_action: FieldAvailability<String>,
+    #[serde(default = "latest_reorg_unavailable")]
+    pub latest_reorg: FieldAvailability<SyncReorgEvidence>,
+    #[serde(default = "reconcile_progress_unavailable")]
+    pub reconcile_progress: FieldAvailability<SyncReconcileProgressStatus>,
 }
 
 fn configured_targets_unavailable() -> FieldAvailability<SyncConfiguredTargets> {
@@ -395,6 +445,14 @@ fn stay_current_unavailable() -> FieldAvailability<StayCurrentStatus> {
 
 fn stay_current_next_action_unavailable() -> FieldAvailability<String> {
     FieldAvailability::unavailable("stay-current next action unavailable")
+}
+
+fn latest_reorg_unavailable() -> FieldAvailability<SyncReorgEvidence> {
+    FieldAvailability::unavailable(NO_REORG_EVIDENCE_RECORDED_REASON)
+}
+
+fn reconcile_progress_unavailable() -> FieldAvailability<SyncReconcileProgressStatus> {
+    FieldAvailability::unavailable(RECONCILE_PROGRESS_UNAVAILABLE_REASON)
 }
 
 /// Peer count status details.

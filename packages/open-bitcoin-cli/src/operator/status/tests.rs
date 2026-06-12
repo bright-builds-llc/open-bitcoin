@@ -387,6 +387,8 @@ fn human_and_json_renderers_surface_wallet_freshness_and_scan_reasons() {
             stay_current_next_action: FieldAvailability::unavailable(
                 "stay-current next action unavailable",
             ),
+            latest_reorg: FieldAvailability::unavailable("no reorg evidence recorded"),
+            reconcile_progress: FieldAvailability::unavailable("reconcile progress unavailable"),
         },
         peers: PeerStatus {
             peer_counts: FieldAvailability::available(PeerCounts {
@@ -1477,6 +1479,8 @@ fn phase62_durable_sync_state() -> DurableSyncState {
             stay_current_next_action: FieldAvailability::unavailable(
                 "stay-current next action unavailable",
             ),
+            latest_reorg: FieldAvailability::unavailable("no reorg evidence recorded"),
+            reconcile_progress: FieldAvailability::unavailable("reconcile progress unavailable"),
         },
         peers: PeerStatus {
             peer_counts: FieldAvailability::available(PeerCounts {

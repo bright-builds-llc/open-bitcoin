@@ -7,8 +7,9 @@ use super::{
     OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, PeerTelemetry, ServiceLifecycleStatus,
     ServicePriorShutdownStatus, ServiceRestartResumeStatus, ServiceStaleInflightStatus,
     ServiceStatus, StayCurrentStatus, SyncAttemptCounters, SyncConfiguredTargets, SyncLagStatus,
-    SyncLifecycleState, SyncProgress, SyncProgressSignal, SyncResourcePressure, SyncStatus,
-    SyncStopReasonStatus, WalletFreshness, WalletScanProgress, WalletStatus,
+    SyncLifecycleState, SyncProgress, SyncProgressSignal, SyncReconcileProgressStatus,
+    SyncReorgEvidence, SyncResourcePressure, SyncStatus, SyncStopReasonStatus, WalletFreshness,
+    WalletScanProgress, WalletStatus,
 };
 use crate::{LogStatus, MetricsStatus};
 
@@ -77,6 +78,8 @@ fn phase62_sync_truth_contract() {
         stay_current_next_action: FieldAvailability::unavailable(
             "stay-current next action unavailable",
         ),
+        latest_reorg: FieldAvailability::unavailable("no reorg evidence recorded"),
+        reconcile_progress: FieldAvailability::unavailable("reconcile progress unavailable"),
     };
 
     // Act
@@ -143,6 +146,96 @@ fn phase62_sync_truth_contract() {
         legacy_sync.stay_current_next_action,
         FieldAvailability::unavailable("stay-current next action unavailable")
     );
+}
+
+#[test]
+fn phase70_sync_reorg_evidence_defaults_legacy_sync_status_json() {
+    // Arrange
+    let legacy_json = serde_json::json!({
+        "network": { "state": "available", "value": "mainnet" },
+        "chain_tip": { "state": "unavailable", "value": { "reason": "chain tip unavailable" } },
+        "sync_progress": { "state": "unavailable", "value": { "reason": "sync progress unavailable" } },
+        "lifecycle": { "state": "available", "value": "active" },
+        "phase": { "state": "available", "value": "headers" },
+        "progress_signal": { "state": "available", "value": "header_progress" },
+        "lag": {
+            "state": "available",
+            "value": { "headers_remaining": 0, "blocks_remaining": 12 }
+        },
+        "last_successful_progress_unix_seconds": { "state": "available", "value": 1717000000 },
+        "last_error": { "state": "unavailable", "value": { "reason": "no sync error recorded" } },
+        "recovery_category": { "state": "unavailable", "value": { "reason": "no recovery category recorded" } },
+        "recovery_action": { "state": "unavailable", "value": { "reason": "no recovery action required" } },
+        "resource_pressure": { "state": "unavailable", "value": { "reason": "resource pressure unavailable" } }
+    });
+
+    // Act
+    let sync: SyncStatus = serde_json::from_value(legacy_json).expect("legacy sync status json");
+
+    // Assert
+    assert_eq!(
+        sync.latest_reorg,
+        FieldAvailability::<SyncReorgEvidence>::unavailable("no reorg evidence recorded")
+    );
+    assert_eq!(
+        sync.reconcile_progress,
+        FieldAvailability::<SyncReconcileProgressStatus>::unavailable(
+            "reconcile progress unavailable"
+        )
+    );
+}
+
+#[test]
+fn phase70_sync_reorg_evidence_serializes_bounded_field_names() {
+    // Arrange
+    let evidence = SyncReorgEvidence {
+        common_ancestor_height: 840_000,
+        common_ancestor_hash: "ancestor".to_string(),
+        disconnected_count: 2,
+        connected_count: 3,
+        final_active_height: 840_003,
+        final_active_hash: "final-active".to_string(),
+        fully_persisted: true,
+    };
+
+    // Act
+    let encoded = serde_json::to_value(evidence).expect("reorg evidence json");
+
+    // Assert
+    assert_eq!(encoded["common_ancestor_height"], 840_000);
+    assert_eq!(encoded["common_ancestor_hash"], "ancestor");
+    assert_eq!(encoded["disconnected_count"], 2);
+    assert_eq!(encoded["connected_count"], 3);
+    assert_eq!(encoded["final_active_height"], 840_003);
+    assert_eq!(encoded["final_active_hash"], "final-active");
+    assert_eq!(encoded["fully_persisted"], true);
+}
+
+#[test]
+fn phase70_sync_reorg_evidence_reconcile_progress_omits_raw_payloads() {
+    // Arrange
+    let progress = SyncReconcileProgressStatus::BranchCompetitionAwaitingBodies {
+        common_ancestor_height: 840_000,
+        common_ancestor_hash: "ancestor".to_string(),
+        branch_tip_height: 840_004,
+        branch_tip_hash: "branch-tip".to_string(),
+        missing_block_count: 4,
+    };
+
+    // Act
+    let encoded = serde_json::to_value(progress).expect("reconcile progress json");
+    let encoded_text = encoded.to_string();
+
+    // Assert
+    assert_eq!(encoded["state"], "branch_competition_awaiting_bodies");
+    assert_eq!(encoded["details"]["common_ancestor_height"], 840_000);
+    assert_eq!(encoded["details"]["common_ancestor_hash"], "ancestor");
+    assert_eq!(encoded["details"]["branch_tip_height"], 840_004);
+    assert_eq!(encoded["details"]["branch_tip_hash"], "branch-tip");
+    assert_eq!(encoded["details"]["missing_block_count"], 4);
+    assert!(!encoded_text.contains("undo"));
+    assert!(!encoded_text.contains("block_body"));
+    assert!(!encoded_text.contains("raw"));
 }
 
 #[test]
@@ -389,6 +482,8 @@ fn populated_snapshot_serializes_obs_01_fields() {
             stay_current_next_action: FieldAvailability::unavailable(
                 "stay-current next action unavailable",
             ),
+            latest_reorg: FieldAvailability::unavailable("no reorg evidence recorded"),
+            reconcile_progress: FieldAvailability::unavailable("reconcile progress unavailable"),
         },
         peers: PeerStatus {
             peer_counts: FieldAvailability::available(PeerCounts {
@@ -585,6 +680,8 @@ fn stopped_snapshot() -> OpenBitcoinStatusSnapshot {
             best_known_tip: FieldAvailability::<BestKnownTipStatus>::unavailable(unavailable),
             stay_current: FieldAvailability::unavailable(unavailable),
             stay_current_next_action: FieldAvailability::unavailable(unavailable),
+            latest_reorg: FieldAvailability::unavailable("no reorg evidence recorded"),
+            reconcile_progress: FieldAvailability::unavailable("reconcile progress unavailable"),
         },
         peers: PeerStatus {
             peer_counts: FieldAvailability::unavailable(unavailable),

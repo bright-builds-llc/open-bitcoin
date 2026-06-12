@@ -628,6 +628,10 @@ fn phase62_runtime_metadata() -> RuntimeMetadata {
                 stay_current_next_action: FieldAvailability::unavailable(
                     "stay-current next action unavailable",
                 ),
+                latest_reorg: FieldAvailability::unavailable("no reorg evidence recorded"),
+                reconcile_progress: FieldAvailability::unavailable(
+                    "reconcile progress unavailable",
+                ),
             },
             peers: PeerStatus {
                 peer_counts: FieldAvailability::available(PeerCounts {
@@ -727,6 +731,10 @@ fn get_blockchain_info_uses_durable_connected_block_height_not_downloaded_height
                         ),
                         stay_current_next_action: FieldAvailability::unavailable(
                             "stay-current next action unavailable",
+                        ),
+                        latest_reorg: FieldAvailability::unavailable("no reorg evidence recorded"),
+                        reconcile_progress: FieldAvailability::unavailable(
+                            "reconcile progress unavailable",
                         ),
                     },
                     peers: PeerStatus {

@@ -132,6 +132,8 @@ impl SyncRunSummary {
             stay_current_next_action: FieldAvailability::unavailable(
                 "stay-current next action unavailable",
             ),
+            latest_reorg: FieldAvailability::unavailable("no reorg evidence recorded"),
+            reconcile_progress: FieldAvailability::unavailable("reconcile progress unavailable"),
         }
     }
 

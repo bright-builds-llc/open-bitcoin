@@ -450,9 +450,9 @@ mod tests {
         DurableSyncState, FieldAvailability, FjallNodeStore, PeerStatus, RuntimeMetadata,
         SyncLifecycleState, SyncStatus,
         status::{
-            BestKnownTipStatus, PeerCounts, StayCurrentStatus, SyncAttemptCounters,
-            SyncConfiguredTargets, SyncProgress, SyncProgressSignal, SyncRecoveryCategory,
-            SyncResourcePressure, SyncStopReasonStatus,
+            BestKnownTipStatus, PeerCounts, RECONCILE_PROGRESS_UNAVAILABLE_REASON,
+            StayCurrentStatus, SyncAttemptCounters, SyncConfiguredTargets, SyncProgress,
+            SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure, SyncStopReasonStatus,
         },
     };
 
@@ -505,6 +505,10 @@ mod tests {
                     ),
                     stay_current: FieldAvailability::<StayCurrentStatus>::unavailable(unavailable),
                     stay_current_next_action: FieldAvailability::unavailable(unavailable),
+                    latest_reorg: FieldAvailability::unavailable("no reorg evidence recorded"),
+                    reconcile_progress: FieldAvailability::unavailable(
+                        RECONCILE_PROGRESS_UNAVAILABLE_REASON,
+                    ),
                 },
                 peers: PeerStatus {
                     peer_counts: FieldAvailability::unavailable(unavailable),
