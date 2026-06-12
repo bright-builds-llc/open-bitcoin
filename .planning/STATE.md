@@ -4,14 +4,14 @@ milestone: v1.6
 milestone_name: Mainnet Full-Sync Completion
 status: executing
 stopped_at: Phase 70 context gathered
-last_updated: "2026-06-12T18:35:12.924Z"
+last_updated: "2026-06-12T20:17:45.000Z"
 last_activity: 2026-06-12
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 14
-  completed_plans: 9
-  percent: 64
+  completed_plans: 10
+  percent: 71
 ---
 
 # Project State
@@ -27,18 +27,18 @@ See: `.planning/PROJECT.md` (updated 2026-06-11)
 
 Milestone: v1.6 Mainnet Full-Sync Completion
 Phase: 70 (Reorg, Peer Rotation, and No-Progress Recovery) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-06-12
 
-Progress: [###-------] 29%
+Progress: [###-------] 33%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Current milestone plans completed: 8
-- Current milestone plan count: 8
+- Current milestone plans completed: 10
+- Current milestone plan count: 14
 - Prior milestone plans completed: 22 in v1.5
 
 **By Phase:**
@@ -47,7 +47,7 @@ Progress: [###-------] 29%
 |-------|------:|--------|
 | 68. Full Active-Chain Validation and Durable Persistence | 3/3 | Complete |
 | 69. Tip Tracking and Stay-Current Operation | 5/5 | Complete |
-| 70. Reorg, Peer Rotation, and No-Progress Recovery | 0/0 | Next |
+| 70. Reorg, Peer Rotation, and No-Progress Recovery | 2/6 | In Progress |
 | 71. Resource Bounds and Durable Restart/Resume | 0/0 | Pending |
 | 72. Operator Observability and Support Evidence | 0/0 | Pending |
 | 73. Opt-In UAT and Deterministic Verification | 0/0 | Pending |
@@ -60,7 +60,8 @@ Progress: [###-------] 29%
 - v1.6 roadmap covers 26 requirements across Phases 68 through 74.
 - Phase 68 completed full active-chain validation and durable persistence.
 - Phase 69 completed tip tracking, stay-current status, post-catch-up coverage, and documentation/checker closeout.
-- Next workflow: begin Phase 70 planning.
+- Phase 70 plans 01 and 02 completed reorg status contracts, typed branch/reorg runtime outcomes, durable latest reorg projection, and deterministic storage-blocker coverage.
+- Next workflow: execute Phase 70 plan 03.
 
 ## Accumulated Context
 
@@ -88,7 +89,7 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent v1.5 decisions:
 
 ### Pending Todos
 
-- Begin Phase 70 planning for reorg, peer rotation, and no-progress recovery.
+- Execute Phase 70 plan 03 for peer attribution, stale in-flight release, and rotation.
 - Keep public-network full-sync UAT opt-in and outside default deterministic verification.
 
 ### Blockers/Concerns
@@ -99,6 +100,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent v1.5 decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-12T15:16:56.380Z
-Stopped at: Phase 70 context gathered
-Resume file: .planning/phases/70-reorg-peer-rotation-and-no-progress-recovery/70-CONTEXT.md
+Last session: 2026-06-12T20:17:45.000Z
+Stopped at: Phase 70 plan 02 complete
+Resume file: .planning/phases/70-reorg-peer-rotation-and-no-progress-recovery/70-03-PLAN.md

@@ -508,7 +508,7 @@ impl FjallNodeStore {
     }
 
     #[cfg(test)]
-    fn write_raw_for_test(
+    pub(crate) fn write_raw_for_test(
         &self,
         namespace: StorageNamespace,
         key: &str,

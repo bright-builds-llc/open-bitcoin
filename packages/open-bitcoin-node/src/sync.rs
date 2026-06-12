@@ -12,8 +12,10 @@ use std::collections::{BTreeMap, BTreeSet};
 mod block_reconcile;
 mod block_response;
 mod progress;
+mod reconcile_status;
 mod resolver;
 mod runtime_state;
+mod session;
 mod tcp;
 #[cfg(test)]
 mod tests;
@@ -39,8 +41,10 @@ pub use wallet_rescan::WalletRescanRuntime;
 
 use crate::{
     ChainstateStore, FjallNodeStore, ManagedPeerNetwork, MemoryChainstateStore, SyncLifecycleState,
+    network::BlockConnectDisposition,
 };
 use progress::{PeerFailure, PeerProgress};
+use types::SyncReconcileProgress;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct PeerRetryState {
@@ -57,6 +61,7 @@ pub struct DurableSyncRuntime {
     next_peer_id: PeerId,
     peer_backoff: BTreeMap<String, PeerRetryState>,
     inflight_blocks: BTreeSet<BlockHash>,
+    maybe_reconcile_progress: Option<SyncReconcileProgress>,
 }
 
 impl DurableSyncRuntime {
@@ -90,6 +95,7 @@ impl DurableSyncRuntime {
             next_peer_id: 1,
             peer_backoff: BTreeMap::new(),
             inflight_blocks: BTreeSet::new(),
+            maybe_reconcile_progress: None,
         })
     }
 
@@ -119,6 +125,7 @@ impl DurableSyncRuntime {
             summary.maybe_validated_active_chain_work =
                 Some(connected_block.chain_work.to_string());
         }
+        summary.maybe_reconcile_progress = self.maybe_reconcile_progress.clone();
         summary
     }
 
@@ -137,10 +144,9 @@ impl DurableSyncRuntime {
         resolver: &mut R,
         timestamp: i64,
     ) -> Result<SyncRunSummary, SyncRuntimeError> {
+        self.maybe_reconcile_progress = None;
         block_reconcile::validate_block_limits(self)?;
-        if block_reconcile::reconcile_best_chain(self, timestamp)? {
-            self.persist_progress()?;
-        }
+        block_reconcile::reconcile_and_persist_best_chain(self, timestamp)?;
 
         let peers = self.config.candidate_peers();
         if peers.is_empty() {
@@ -161,6 +167,7 @@ impl DurableSyncRuntime {
             best_block_height,
             self.config.target_outbound_peers,
         );
+        summary.maybe_reconcile_progress = self.maybe_reconcile_progress.clone();
         self.refresh_summary_progress(&mut summary)?;
         let resolved_peers = self.resolve_candidates(peers, resolver, &mut summary);
         let mut completed_outbound_slots = 0_usize;
@@ -187,6 +194,7 @@ impl DurableSyncRuntime {
             self.record_outcome(&mut summary, outcome, timestamp);
         }
         self.refresh_summary_progress(&mut summary)?;
+        summary.maybe_reconcile_progress = self.maybe_reconcile_progress.clone();
         if let Err(error) = self.persist_metrics(&summary, timestamp) {
             self.write_runtime_error_log(&error, timestamp);
             let state = self.durable_sync_state_from_summary(
@@ -441,7 +449,10 @@ impl DurableSyncRuntime {
                 if notfound_was_requested {
                     progress.record_block_notfound();
                 }
+                let mut should_persist_progress = maybe_header_count.is_some_and(|count| count > 0);
                 if let Some(disposition) = sync_result.maybe_block_disposition {
+                    should_persist_progress =
+                        matches!(disposition, BlockConnectDisposition::Connected(_));
                     self.record_block_disposition(
                         &mut progress,
                         maybe_block.as_ref(),
@@ -450,8 +461,12 @@ impl DurableSyncRuntime {
                         block_response_is_best_chain,
                     )?;
                 }
-                let _ = block_reconcile::reconcile_best_chain(self, timestamp)?;
-                self.persist_progress()?;
+                let reconcile_progress = block_reconcile::reconcile_best_chain(self, timestamp)?;
+                should_persist_progress |= reconcile_progress.should_persist_progress();
+                self.record_reconcile_progress(reconcile_progress);
+                if should_persist_progress {
+                    self.persist_progress()?;
+                }
                 outbound.extend(block_reconcile::request_missing_blocks(self, peer_id)?);
                 self.send_all(&mut session, &outbound)?;
             }
@@ -597,28 +612,5 @@ impl DurableSyncRuntime {
                 backoff.consecutive_failures, backoff.next_attempt_unix_seconds
             )),
         });
-    }
-
-    fn send_all<S: SyncPeerSession>(
-        &self,
-        session: &mut S,
-        messages: &[WireNetworkMessage],
-    ) -> Result<(), SyncRuntimeError> {
-        for message in messages {
-            session.send(message, self.config.network.magic())?;
-        }
-        Ok(())
-    }
-
-    fn peer_handshake_complete(&self, peer_id: PeerId) -> bool {
-        self.network
-            .peer_manager()
-            .peer_state(peer_id)
-            .is_some_and(|peer| {
-                peer.local_version_sent
-                    && peer.remote_version_received
-                    && peer.local_verack_sent
-                    && peer.remote_verack_received
-            })
     }
 }

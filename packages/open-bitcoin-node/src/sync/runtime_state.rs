@@ -420,6 +420,7 @@ impl DurableSyncRuntime {
             sync.last_successful_progress_unix_seconds =
                 FieldAvailability::available(previous_timestamp);
         }
+        self.project_reconcile_status(&mut sync, &summary, &metadata);
         let maybe_recovery_category = recovery_category_for_durable_state(
             &metadata,
             &summary,

@@ -633,7 +633,9 @@
         "packages/open-bitcoin-node/src/sync/block_response.rs",
         "packages/open-bitcoin-node/src/sync/block_reconcile.rs",
         "packages/open-bitcoin-node/src/sync/progress.rs",
+        "packages/open-bitcoin-node/src/sync/reconcile_status.rs",
         "packages/open-bitcoin-node/src/sync/runtime_state.rs",
+        "packages/open-bitcoin-node/src/sync/session.rs",
         "packages/open-bitcoin-node/src/sync/wallet_rescan.rs"
       ],
       "breadcrumbs": [
@@ -660,6 +662,7 @@
       "label": "node-sync-types",
       "files": [
         "packages/open-bitcoin-node/src/sync/types.rs",
+        "packages/open-bitcoin-node/src/sync/types/error.rs",
         "packages/open-bitcoin-node/src/sync/types/projection.rs",
         "packages/open-bitcoin-node/src/sync/types/recovery.rs",
         "packages/open-bitcoin-node/src/sync/types/summary.rs"

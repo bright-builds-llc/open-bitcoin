@@ -76,7 +76,7 @@ delete those phase directories.
 
 Plans:
 - [x] 70-01-PLAN.md - Reorg and reconcile status contract
-- [ ] 70-02-PLAN.md - Branch/reorg runtime and storage blockers
+- [x] 70-02-PLAN.md - Branch/reorg runtime and storage blockers
 - [ ] 70-03-PLAN.md - Peer attribution, stale in-flight release, and rotation
 - [ ] 70-04-PLAN.md - No-progress status contract
 - [ ] 70-05-PLAN.md - Shared no-progress diagnosis and rendering
@@ -148,7 +148,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 68. Full Active-Chain Validation and Durable Persistence | 3/3 | Complete    | 2026-06-11 |
 | 69. Tip Tracking and Stay-Current Operation | 5/5 | Complete    | 2026-06-12 |
-| 70. Reorg, Peer Rotation, and No-Progress Recovery | 1/6 | In Progress | — |
+| 70. Reorg, Peer Rotation, and No-Progress Recovery | 2/6 | In Progress | — |
 | 71. Resource Bounds and Durable Restart/Resume | 0/0 | Pending | — |
 | 72. Operator Observability and Support Evidence | 0/0 | Pending | — |
 | 73. Opt-In UAT and Deterministic Verification | 0/0 | Pending | — |

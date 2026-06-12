@@ -49,6 +49,7 @@ impl SyncRunSummary {
             peer_outcomes: Vec::new(),
             health_signals: Vec::new(),
             maybe_stop_reason: None,
+            maybe_reconcile_progress: None,
         }
     }
 
@@ -417,6 +418,7 @@ mod tests {
             }],
             health_signals: Vec::new(),
             maybe_stop_reason: None,
+            maybe_reconcile_progress: None,
         };
 
         // Act
