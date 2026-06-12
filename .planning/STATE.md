@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Mainnet Full-Sync Completion
 status: Ready to discuss
-stopped_at: Phase 69 complete
-last_updated: "2026-06-12T12:12:21.721Z"
+stopped_at: Phase 70 context gathered
+last_updated: "2026-06-12T15:16:56.383Z"
 last_activity: 2026-06-12
 progress:
   total_phases: 7
@@ -99,6 +99,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent v1.5 decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-11T19:27:50Z
-Stopped at: Phase 69 complete
-Resume file: .planning/phases/69-tip-tracking-and-stay-current-operation/69-05-SUMMARY.md
+Last session: 2026-06-12T15:16:56.380Z
+Stopped at: Phase 70 context gathered
+Resume file: .planning/phases/70-reorg-peer-rotation-and-no-progress-recovery/70-CONTEXT.md
