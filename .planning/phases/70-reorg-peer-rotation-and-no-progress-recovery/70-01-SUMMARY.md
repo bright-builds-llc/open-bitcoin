@@ -120,8 +120,6 @@ Each planned task was implemented in the plan commit after executor handoff:
 - **Verification:** `rg` acceptance checks and focused Cargo tests passed.
 - **Committed in:** `58aed15`
 
----
-
 **Total deviations:** 2 auto-fixed (1 blocking, 1 missing critical)
 **Impact on plan:** No scope expansion; both fixes preserved the planned public status contract and kept runtime behavior unchanged.
 
@@ -152,6 +150,5 @@ Phase 70-02 can project real branch/reorg reconciliation evidence into the addit
 - Key modified files are present on disk.
 - Acceptance criteria and focused verification passed.
 
----
 *Phase: 70-reorg-peer-rotation-and-no-progress-recovery*
 *Completed: 2026-06-12*
