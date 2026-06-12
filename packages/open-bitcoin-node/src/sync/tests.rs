@@ -37,10 +37,11 @@ use crate::{
     StorageRecoveryAction,
     logging::{StructuredLogLevel, StructuredLogRecord, writer::load_log_status},
     status::{
-        BestKnownTipSource, BestKnownTipStatus, HealthSignal, HealthSignalLevel, PeerTipAgreement,
-        PeerTipAgreementStatus, StayCurrentStatus, SyncLifecycleState, SyncProgress,
-        SyncProgressSignal, SyncReconcileProgressStatus, SyncRecoveryCategory, SyncReorgEvidence,
-        SyncResourcePressure, SyncStatus, TipFreshnessStatus,
+        BestKnownTipSource, BestKnownTipStatus, DurableSyncState, HealthSignal, HealthSignalLevel,
+        NoProgressDiagnosis, PeerTipAgreement, PeerTipAgreementStatus, StayCurrentStatus,
+        SyncLifecycleState, SyncProgress, SyncProgressSignal, SyncReconcileProgressStatus,
+        SyncRecoveryCategory, SyncReorgEvidence, SyncResourcePressure, SyncStatus,
+        TipFreshnessStatus,
     },
 };
 
@@ -246,6 +247,21 @@ fn summary_with_peer_failure(reason: PeerFailureReason, error: &str) -> SyncRunS
         Some(error.to_string()),
     ));
     summary
+}
+
+fn assert_no_progress_status(
+    state: &DurableSyncState,
+    diagnosis: NoProgressDiagnosis,
+    next_action: &str,
+) {
+    assert_eq!(
+        state.sync.no_progress_diagnosis,
+        FieldAvailability::available(diagnosis)
+    );
+    assert_eq!(
+        state.sync.no_progress_next_action,
+        FieldAvailability::available(next_action.to_string())
+    );
 }
 
 impl SyncPeerSession for ScriptedSession {
@@ -4239,6 +4255,159 @@ fn sync_until_idle_records_no_progress_diagnosis_without_public_network() {
     assert_eq!(
         state.sync.phase,
         FieldAvailability::available("no_progress".to_string())
+    );
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn phase70_no_progress_status_projects_at_tip() {
+    // Arrange
+    let path = temp_store_path("phase70-no-progress-at-tip");
+    remove_dir_if_exists(&path);
+    let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+    let child = build_block(block_hash(&genesis.header), 1);
+    save_best_chain_with_active_blocks(
+        &path,
+        &[(&genesis, 0), (&child, 1)],
+        &[(&genesis, 0), (&child, 1)],
+    );
+    let store = FjallNodeStore::open(&path).expect("store");
+    let runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    let summary = runtime.snapshot_summary();
+
+    // Act
+    let state = runtime
+        .durable_sync_state_for_summary(
+            &summary,
+            SyncLifecycleState::Active,
+            None,
+            i64::from(child.header.time),
+        )
+        .expect("durable at-tip status");
+
+    // Assert
+    assert_no_progress_status(
+        &state,
+        NoProgressDiagnosis::CurrentAtBestKnownTip,
+        "Confirm current-at-tip evidence; no sync action is required.",
+    );
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn phase70_no_progress_status_projects_branch_competition_awaiting_bodies() {
+    // Arrange
+    let path = temp_store_path("phase70-no-progress-branch-competition");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    let mut summary = SyncRunSummary::empty(3, 2, 1);
+    summary.maybe_reconcile_progress =
+        Some(SyncReconcileProgress::BranchCompetitionAwaitingBodies {
+            missing_count: 2,
+            first_missing_height: 2,
+            first_missing_hash: "11".repeat(32),
+        });
+
+    // Act
+    let state = runtime
+        .durable_sync_state_for_summary(&summary, SyncLifecycleState::Active, None, 1_777_225_158)
+        .expect("durable branch competition status");
+
+    // Assert
+    assert_no_progress_status(
+        &state,
+        NoProgressDiagnosis::BranchCompetitionAwaitingBodies,
+        "Wait for replacement branch block bodies before reorg.",
+    );
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn phase70_no_progress_status_projects_peer_backoff() {
+    // Arrange
+    let path = temp_store_path("phase70-no-progress-peer-backoff");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    let mut summary = SyncRunSummary::empty(0, 0, 1);
+    summary.peer_outcomes.push(peer_outcome(
+        SyncPeerAddress::manual("127.0.0.1", 18_444),
+        PeerSyncState::Waiting,
+        2,
+        Some(PeerFailureReason::RetryBackoff),
+        Some("peer waiting for retry backoff".to_string()),
+    ));
+
+    // Act
+    let state = runtime
+        .durable_sync_state_for_summary(&summary, SyncLifecycleState::Active, None, 1_777_225_159)
+        .expect("durable peer backoff status");
+
+    // Assert
+    assert_no_progress_status(
+        &state,
+        NoProgressDiagnosis::PeerBackoff,
+        "Wait for retry backoff or try another configured peer.",
+    );
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn phase70_no_progress_status_projects_stale_inflight_cleanup() {
+    // Arrange
+    let path = temp_store_path("phase70-no-progress-stale-inflight");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    runtime
+        .inflight_blocks
+        .insert(BlockHash::from_byte_array([17_u8; 32]));
+    let summary = SyncRunSummary::empty(1, 1, 1);
+
+    // Act
+    let state = runtime
+        .durable_sync_state_for_summary(&summary, SyncLifecycleState::Active, None, 1_777_225_160)
+        .expect("durable stale in-flight status");
+
+    // Assert
+    assert_no_progress_status(
+        &state,
+        NoProgressDiagnosis::StaleInflightCleanup,
+        "Wait for stale in-flight block cleanup and reassignment.",
+    );
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn phase70_no_progress_status_projects_storage_or_resource_blocker() {
+    // Arrange
+    let path = temp_store_path("phase70-no-progress-storage-blocker");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    let summary = SyncRunSummary::empty(0, 0, 1);
+
+    // Act
+    let state = runtime
+        .durable_sync_state_for_summary(
+            &summary,
+            SyncLifecycleState::Active,
+            Some("database lock contention".to_string()),
+            1_777_225_161,
+        )
+        .expect("durable storage blocker status");
+
+    // Assert
+    assert_no_progress_status(
+        &state,
+        NoProgressDiagnosis::StorageOrResourceBlocked,
+        "Inspect storage health or increase bounded resource limits.",
     );
 
     remove_dir_if_exists(&path);

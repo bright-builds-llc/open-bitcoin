@@ -7,12 +7,12 @@ use open_bitcoin_node::{
     MetricsStatus,
     status::{
         BuildProvenance, ChainTipStatus, FieldAvailability, HealthSignal, HealthSignalLevel,
-        NodeRuntimeState, OpenBitcoinStatusSnapshot, PeerCounts, PeerTelemetry,
-        ServiceLifecycleStatus, ServicePriorShutdownStatus, ServiceRestartResumeStatus,
-        ServiceResumeProgressStatus, ServiceStaleInflightStatus, ServiceStatus,
-        SyncAttemptCounters, SyncConfiguredTargets, SyncLifecycleState, SyncProgress,
-        SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure, SyncStopReasonStatus,
-        WalletFreshness, WalletScanProgress,
+        NoProgressDiagnosis, NodeRuntimeState, OpenBitcoinStatusSnapshot, PeerCounts,
+        PeerTelemetry, ServiceLifecycleStatus, ServicePriorShutdownStatus,
+        ServiceRestartResumeStatus, ServiceResumeProgressStatus, ServiceStaleInflightStatus,
+        ServiceStatus, SyncAttemptCounters, SyncConfiguredTargets, SyncLifecycleState,
+        SyncProgress, SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure,
+        SyncStopReasonStatus, WalletFreshness, WalletScanProgress,
     },
 };
 
@@ -80,6 +80,14 @@ fn render_human_status(snapshot: &OpenBitcoinStatusSnapshot) -> String {
     lines.push(format!(
         "Sync signal: {}",
         sync_progress_signal_availability(&snapshot.sync.progress_signal)
+    ));
+    lines.push(format!(
+        "Sync no-progress diagnosis: {}",
+        no_progress_diagnosis_availability(&snapshot.sync.no_progress_diagnosis)
+    ));
+    lines.push(format!(
+        "Sync no-progress action: {}",
+        string_availability(&snapshot.sync.no_progress_next_action)
     ));
     lines.push(format!(
         "Sync last progress: {}",
@@ -242,6 +250,16 @@ fn sync_pressure_availability(value: &FieldAvailability<SyncResourcePressure>) -
 fn sync_recovery_category_availability(value: &FieldAvailability<SyncRecoveryCategory>) -> String {
     match value {
         FieldAvailability::Available(value) => value.as_str().to_string(),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
+fn no_progress_diagnosis_availability(value: &FieldAvailability<NoProgressDiagnosis>) -> String {
+    match value {
+        FieldAvailability::Available(value) => serde_json::to_value(value)
+            .ok()
+            .and_then(|value| value.as_str().map(str::to_string))
+            .unwrap_or_else(|| "unknown".to_string()),
         FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
     }
 }

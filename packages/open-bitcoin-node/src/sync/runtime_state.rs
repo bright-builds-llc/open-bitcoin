@@ -480,6 +480,23 @@ impl DurableSyncRuntime {
         if let Some(next_action) = tip::stay_current_next_action(stay_current) {
             sync.stay_current_next_action = FieldAvailability::available(next_action.to_string());
         }
+        let maybe_progress_signal = match &sync.progress_signal {
+            FieldAvailability::Available(value) => Some(*value),
+            FieldAvailability::Unavailable { .. } => None,
+        };
+        let no_progress_input = super::progress::NoProgressInput {
+            stay_current: Some(stay_current),
+            progress_signal: maybe_progress_signal,
+            recovery_category: maybe_recovery_category,
+            blocks_in_flight: self.inflight_blocks.len() as u64,
+            maybe_reconcile_progress: summary.maybe_reconcile_progress.as_ref(),
+            peer_outcomes: &summary.peer_outcomes,
+        };
+        let diagnosis = super::progress::classify_no_progress(&no_progress_input);
+        sync.no_progress_diagnosis = FieldAvailability::available(diagnosis);
+        sync.no_progress_next_action = FieldAvailability::available(
+            super::progress::no_progress_next_action(diagnosis).to_string(),
+        );
 
         Ok(DurableSyncState {
             sync,

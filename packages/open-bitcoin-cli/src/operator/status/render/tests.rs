@@ -4,13 +4,13 @@
 use open_bitcoin_node::{
     BuildProvenance, LogStatus, MetricsStatus,
     status::{
-        BestKnownTipStatus, ConfigStatus, FieldAvailability, MempoolStatus, NodeRuntimeState,
-        NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, PeerTelemetry,
-        ServiceLifecycleStatus, ServicePriorShutdownStatus, ServiceRestartResumeStatus,
-        ServiceResumeProgressStatus, ServiceStaleInflightStatus, ServiceStatus, StayCurrentStatus,
-        SyncAttemptCounters, SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState,
-        SyncProgress, SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure, SyncStatus,
-        SyncStopReasonStatus, WalletStatus,
+        BestKnownTipStatus, ConfigStatus, FieldAvailability, MempoolStatus, NoProgressDiagnosis,
+        NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus,
+        PeerTelemetry, ServiceLifecycleStatus, ServicePriorShutdownStatus,
+        ServiceRestartResumeStatus, ServiceResumeProgressStatus, ServiceStaleInflightStatus,
+        ServiceStatus, StayCurrentStatus, SyncAttemptCounters, SyncConfiguredTargets,
+        SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal, SyncRecoveryCategory,
+        SyncResourcePressure, SyncStatus, SyncStopReasonStatus, WalletStatus,
     },
 };
 
@@ -61,6 +61,37 @@ fn status_render_includes_sync_progress_and_peer_evidence() {
     ] {
         assert!(!rendered.contains(unexpected));
     }
+}
+
+#[test]
+fn status_render_uses_shared_no_progress_fields() {
+    // Arrange
+    let mut snapshot = shared_sync_truth_snapshot();
+    snapshot.sync.no_progress_diagnosis =
+        FieldAvailability::available(NoProgressDiagnosis::PeerBackoff);
+    snapshot.sync.no_progress_next_action = FieldAvailability::available(
+        "Wait for retry backoff or try another configured peer.".to_string(),
+    );
+
+    // Act
+    let rendered = render_status(&snapshot, StatusRenderMode::Human).expect("human status");
+
+    // Assert
+    assert!(rendered.contains("Sync no-progress diagnosis: peer_backoff"));
+    assert!(rendered.contains(
+        "Sync no-progress action: Wait for retry backoff or try another configured peer."
+    ));
+
+    // Arrange
+    snapshot.sync.no_progress_diagnosis = FieldAvailability::unavailable("diagnosis withheld");
+    snapshot.sync.no_progress_next_action = FieldAvailability::unavailable("guidance withheld");
+
+    // Act
+    let unavailable = render_status(&snapshot, StatusRenderMode::Human).expect("human status");
+
+    // Assert
+    assert!(unavailable.contains("Sync no-progress diagnosis: Unavailable: diagnosis withheld"));
+    assert!(unavailable.contains("Sync no-progress action: Unavailable: guidance withheld"));
 }
 
 #[test]

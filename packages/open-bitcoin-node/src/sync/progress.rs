@@ -10,12 +10,16 @@ use open_bitcoin_network::{LocalPeerConfig, ServiceFlags};
 
 use crate::{
     logging::{StructuredLogError, StructuredLogLevel},
-    status::{HealthSignal, HealthSignalLevel},
+    status::{
+        HealthSignal, HealthSignalLevel, NoProgressDiagnosis, StayCurrentStatus,
+        SyncProgressSignal, SyncRecoveryCategory,
+    },
 };
 
 use super::{
     PeerCapabilitySummary, PeerContribution, PeerFailureReason, PeerSyncOutcome, PeerSyncState,
     ResolvedSyncPeerAddress, SyncNetwork, SyncRunSummary, SyncRuntimeConfig, SyncRuntimeError,
+    types::SyncReconcileProgress,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -42,6 +46,15 @@ pub(super) struct PeerFailure {
     pub(super) attempts: u8,
     pub(super) reason: PeerFailureReason,
     pub(super) maybe_progress: Option<PeerProgress>,
+}
+
+pub(super) struct NoProgressInput<'a> {
+    pub(super) stay_current: Option<StayCurrentStatus>,
+    pub(super) progress_signal: Option<SyncProgressSignal>,
+    pub(super) recovery_category: Option<SyncRecoveryCategory>,
+    pub(super) blocks_in_flight: u64,
+    pub(super) maybe_reconcile_progress: Option<&'a SyncReconcileProgress>,
+    pub(super) peer_outcomes: &'a [PeerSyncOutcome],
 }
 
 impl PeerProgress {
@@ -160,6 +173,106 @@ impl PeerProgress {
     }
 }
 
+pub(super) fn classify_no_progress(input: &NoProgressInput<'_>) -> NoProgressDiagnosis {
+    if input
+        .recovery_category
+        .is_some_and(is_storage_or_resource_blocker)
+    {
+        return NoProgressDiagnosis::StorageOrResourceBlocked;
+    }
+
+    if input.stay_current == Some(StayCurrentStatus::Recovering)
+        && !matches!(
+            input.maybe_reconcile_progress,
+            Some(SyncReconcileProgress::ReorgPersisted(_))
+        )
+    {
+        return NoProgressDiagnosis::RecoveringFromReorgOrStorage;
+    }
+
+    if matches!(
+        input.maybe_reconcile_progress,
+        Some(SyncReconcileProgress::BranchCompetitionAwaitingBodies { .. })
+    ) {
+        return NoProgressDiagnosis::BranchCompetitionAwaitingBodies;
+    }
+
+    if input.stay_current == Some(StayCurrentStatus::CurrentAtBestKnownTip) {
+        return NoProgressDiagnosis::CurrentAtBestKnownTip;
+    }
+
+    if input.progress_signal == Some(SyncProgressSignal::AwaitingBlocks) {
+        return NoProgressDiagnosis::AwaitingBlockBodies;
+    }
+
+    if input.blocks_in_flight > 0 && input.progress_signal == Some(SyncProgressSignal::Steady) {
+        return NoProgressDiagnosis::StaleInflightCleanup;
+    }
+
+    if input
+        .peer_outcomes
+        .iter()
+        .any(|outcome| outcome.maybe_failure_reason == Some(PeerFailureReason::RetryBackoff))
+    {
+        return NoProgressDiagnosis::PeerBackoff;
+    }
+
+    if input.peer_outcomes.iter().any(|outcome| {
+        outcome.state == PeerSyncState::Stalled
+            || outcome.maybe_failure_reason == Some(PeerFailureReason::Stall)
+    }) {
+        return NoProgressDiagnosis::PeerStalled;
+    }
+
+    if input.progress_signal == Some(SyncProgressSignal::PeerFailures) {
+        return NoProgressDiagnosis::PeerFailuresExhausted;
+    }
+
+    NoProgressDiagnosis::BehindAwaitingHeaders
+}
+
+pub(super) const fn no_progress_next_action(diagnosis: NoProgressDiagnosis) -> &'static str {
+    match diagnosis {
+        NoProgressDiagnosis::CurrentAtBestKnownTip => {
+            "Confirm current-at-tip evidence; no sync action is required."
+        }
+        NoProgressDiagnosis::BehindAwaitingHeaders => {
+            "Wait for peer headers or try another configured peer."
+        }
+        NoProgressDiagnosis::AwaitingBlockBodies => "Wait for block bodies from eligible peers.",
+        NoProgressDiagnosis::StaleInflightCleanup => {
+            "Wait for stale in-flight block cleanup and reassignment."
+        }
+        NoProgressDiagnosis::PeerBackoff => {
+            "Wait for retry backoff or try another configured peer."
+        }
+        NoProgressDiagnosis::PeerStalled => "Try another peer if stalls repeat after backoff.",
+        NoProgressDiagnosis::PeerFailuresExhausted => {
+            "Try another configured peer and inspect latest peer failures."
+        }
+        NoProgressDiagnosis::BranchCompetitionAwaitingBodies => {
+            "Wait for replacement branch block bodies before reorg."
+        }
+        NoProgressDiagnosis::RecoveringFromReorgOrStorage => {
+            "Inspect storage health before retrying sync."
+        }
+        NoProgressDiagnosis::StorageOrResourceBlocked => {
+            "Inspect storage health or increase bounded resource limits."
+        }
+    }
+}
+
+const fn is_storage_or_resource_blocker(category: SyncRecoveryCategory) -> bool {
+    matches!(
+        category,
+        SyncRecoveryCategory::IncompatibleSchema
+            | SyncRecoveryCategory::StoreCorruption
+            | SyncRecoveryCategory::StorageLockContention
+            | SyncRecoveryCategory::StorageBackendFailure
+            | SyncRecoveryCategory::ResourceExhaustion
+    )
+}
+
 pub(super) fn structured_log_level(level: HealthSignalLevel) -> StructuredLogLevel {
     match level {
         HealthSignalLevel::Info => StructuredLogLevel::Info,
@@ -242,6 +355,132 @@ pub(super) fn peer_failure_reason_for_error(error: &SyncRuntimeError) -> PeerFai
         SyncRuntimeError::ResourceLimit { .. } => PeerFailureReason::ResourceLimit,
         SyncRuntimeError::Network { .. } | SyncRuntimeError::NoPeersConfigured => {
             PeerFailureReason::Network
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::status::{
+        NoProgressDiagnosis, StayCurrentStatus, SyncProgressSignal, SyncRecoveryCategory,
+    };
+
+    use super::super::{
+        PeerContribution, PeerFailureReason, PeerSyncOutcome, PeerSyncState, SyncNetwork,
+        SyncPeerAddress, types::SyncReconcileProgress,
+    };
+    use super::{NoProgressInput, classify_no_progress, no_progress_next_action};
+
+    #[test]
+    fn phase70_no_progress_classifier_distinguishes_remaining_causes() {
+        // Arrange
+        let branch_progress = SyncReconcileProgress::BranchCompetitionAwaitingBodies {
+            missing_count: 1,
+            first_missing_height: 2,
+            first_missing_hash: "11".repeat(32),
+        };
+        let stalled_peer = [peer_outcome(
+            PeerSyncState::Stalled,
+            Some(PeerFailureReason::Stall),
+        )];
+        let cases = [
+            (
+                NoProgressInput {
+                    stay_current: None,
+                    progress_signal: Some(SyncProgressSignal::AwaitingBlocks),
+                    recovery_category: None,
+                    blocks_in_flight: 0,
+                    maybe_reconcile_progress: None,
+                    peer_outcomes: &[],
+                },
+                NoProgressDiagnosis::AwaitingBlockBodies,
+            ),
+            (
+                NoProgressInput {
+                    stay_current: None,
+                    progress_signal: Some(SyncProgressSignal::Steady),
+                    recovery_category: None,
+                    blocks_in_flight: 0,
+                    maybe_reconcile_progress: Some(&branch_progress),
+                    peer_outcomes: &[],
+                },
+                NoProgressDiagnosis::BranchCompetitionAwaitingBodies,
+            ),
+            (
+                NoProgressInput {
+                    stay_current: None,
+                    progress_signal: Some(SyncProgressSignal::Steady),
+                    recovery_category: None,
+                    blocks_in_flight: 0,
+                    maybe_reconcile_progress: None,
+                    peer_outcomes: &stalled_peer,
+                },
+                NoProgressDiagnosis::PeerStalled,
+            ),
+            (
+                NoProgressInput {
+                    stay_current: None,
+                    progress_signal: Some(SyncProgressSignal::PeerFailures),
+                    recovery_category: None,
+                    blocks_in_flight: 0,
+                    maybe_reconcile_progress: None,
+                    peer_outcomes: &[],
+                },
+                NoProgressDiagnosis::PeerFailuresExhausted,
+            ),
+            (
+                NoProgressInput {
+                    stay_current: Some(StayCurrentStatus::Recovering),
+                    progress_signal: Some(SyncProgressSignal::Steady),
+                    recovery_category: None,
+                    blocks_in_flight: 0,
+                    maybe_reconcile_progress: None,
+                    peer_outcomes: &[],
+                },
+                NoProgressDiagnosis::RecoveringFromReorgOrStorage,
+            ),
+            (
+                NoProgressInput {
+                    stay_current: None,
+                    progress_signal: Some(SyncProgressSignal::Steady),
+                    recovery_category: Some(SyncRecoveryCategory::ResourceExhaustion),
+                    blocks_in_flight: 0,
+                    maybe_reconcile_progress: None,
+                    peer_outcomes: &stalled_peer,
+                },
+                NoProgressDiagnosis::StorageOrResourceBlocked,
+            ),
+        ];
+
+        // Act / Assert
+        for (input, expected) in cases {
+            assert_eq!(classify_no_progress(&input), expected);
+            assert!(!no_progress_next_action(expected).is_empty());
+        }
+    }
+
+    fn peer_outcome(
+        state: PeerSyncState,
+        maybe_failure_reason: Option<PeerFailureReason>,
+    ) -> PeerSyncOutcome {
+        PeerSyncOutcome {
+            peer: SyncPeerAddress::manual("127.0.0.1", 18_444),
+            maybe_resolved_endpoint: Some("127.0.0.1:18444".to_string()),
+            network: SyncNetwork::Regtest,
+            state,
+            attempts: 1,
+            contribution: PeerContribution {
+                messages_processed: 0,
+                headers_received: 0,
+                blocks_received: 0,
+            },
+            maybe_tip_height: None,
+            maybe_tip_hash: None,
+            maybe_tip_work: None,
+            maybe_last_activity_unix_seconds: None,
+            maybe_capabilities: None,
+            maybe_failure_reason,
+            maybe_error: None,
         }
     }
 }
