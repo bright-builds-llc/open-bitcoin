@@ -100,14 +100,18 @@ tracked hook content changes.
 
 ## Operator Preview
 
-The current v1.2 operator runtime is source-built and intended for local review,
-testing, and parity audit. For the practical install, onboarding, service,
-status, dashboard, migration, benchmark, and limitation workflow, start with
+The current v1.6 operator runtime is source-built and intended for local review,
+testing, parity audit, and explicit opt-in mainnet sync evidence. For the
+practical install, onboarding, service, status, dashboard, migration, benchmark,
+and limitation workflow, start with
 [`docs/operator/runtime-guide.md`](./docs/operator/runtime-guide.md).
 The preview commands below start the current local RPC/operator surfaces; they
 are not a production-node claim. `open-bitcoind` now has an opt-in mainnet sync
 loop plus durable header-and-block sync foundations, truthful operator-facing
 sync status, and explicit `open-bitcoin sync pause|resume|status` controls.
+Status evidence also includes bounded branch/reorg details through
+`sync.latest_reorg` and typed no-progress guidance through
+`sync.no_progress_diagnosis` plus `sync.no_progress_next_action`.
 Explicit live-mainnet smoke evidence now lives in
 [`scripts/run-live-mainnet-smoke.ts`](./scripts/run-live-mainnet-smoke.ts),
 which writes local JSON and Markdown reports under

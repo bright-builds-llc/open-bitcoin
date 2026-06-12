@@ -33,7 +33,7 @@ delete those phase directories.
 
 - [x] **Phase 68: Full Active-Chain Validation and Durable Persistence** - Sync to the best-known validated peer tip only through consensus-validated, durably connected active-chain progress.
 - [x] **Phase 69: Tip Tracking and Stay-Current Operation** - Define best-known tip evidence and keep the daemon current after initial catch-up.
-- [ ] **Phase 70: Reorg, Peer Rotation, and No-Progress Recovery** - Make branch competition, reorgs, peer failures, and no-progress causes deterministic and operator-visible.
+- [x] **Phase 70: Reorg, Peer Rotation, and No-Progress Recovery** - Make branch competition, reorgs, peer failures, and no-progress causes deterministic and operator-visible.
 - [ ] **Phase 71: Resource Bounds and Durable Restart/Resume** - Prove long-sync resource bounds and safe recovery across shutdown, interruption, and storage-pressure cases.
 - [ ] **Phase 72: Operator Observability and Support Evidence** - Align every operator surface around one full-sync truth contract and redacted support evidence.
 - [ ] **Phase 73: Opt-In UAT and Deterministic Verification** - Keep default verification hermetic while adding deterministic coverage and repo-local public-mainnet UAT commands.
@@ -72,7 +72,7 @@ delete those phase directories.
 **Goal**: Operators can survive branch competition, reorgs, stale in-flight work, and peer failures with deterministic outcomes and actionable diagnosis.
 **Depends on**: Phase 69
 **Requirements**: REC-01, REC-02, REC-03, REC-04
-**Plans**: 6 plans
+**Plans**: 6/6 complete
 
 Plans:
 - [x] 70-01-PLAN.md - Reorg and reconcile status contract
@@ -80,7 +80,7 @@ Plans:
 - [x] 70-03-PLAN.md - Peer attribution, stale in-flight release, and rotation
 - [x] 70-04-PLAN.md - No-progress status contract
 - [x] 70-05-PLAN.md - Shared no-progress diagnosis and rendering
-- [ ] 70-06-PLAN.md - Operator docs, README relevance, and deterministic verification closeout
+- [x] 70-06-PLAN.md - Operator docs, README relevance, and deterministic verification closeout
 
 **Success Criteria**:
 1. Competing header branches resolve through cumulative-work selection with deterministic active-chain outcomes.
@@ -148,7 +148,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 68. Full Active-Chain Validation and Durable Persistence | 3/3 | Complete    | 2026-06-11 |
 | 69. Tip Tracking and Stay-Current Operation | 5/5 | Complete    | 2026-06-12 |
-| 70. Reorg, Peer Rotation, and No-Progress Recovery | 5/6 | In Progress | — |
+| 70. Reorg, Peer Rotation, and No-Progress Recovery | 6/6 | Complete | 2026-06-12 |
 | 71. Resource Bounds and Durable Restart/Resume | 0/0 | Pending | — |
 | 72. Operator Observability and Support Evidence | 0/0 | Pending | — |
 | 73. Opt-In UAT and Deterministic Verification | 0/0 | Pending | — |
@@ -206,8 +206,8 @@ traceability.
 
 ## Next Step
 
-Begin Phase 70 planning:
+Begin Phase 71 planning:
 
 ```bash
-/gsd-discuss-phase 70
+/gsd-discuss-phase 71
 ```

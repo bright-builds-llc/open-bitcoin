@@ -13,7 +13,7 @@ For v1.6, `OpenBitcoinStatusSnapshot` is the shared source of truth for status, 
 | `node` | Runtime/process collector | daemon state and version |
 | `config` | Config/datadir collector | `datadir` and `config paths` |
 | `service` | Service lifecycle collector | service manager and installed/enabled/running state |
-| `sync` | Sync/runtime collector | `network`, `chain tip`, `sync progress`, lifecycle, phase, progress signal, estimated lag, last successful progress, resource pressure, recovery guidance, and last error |
+| `sync` | Sync/runtime collector | `network`, `chain tip`, `sync progress`, lifecycle, phase, progress signal, estimated lag, last successful progress, bounded reorg/reconcile evidence, no-progress diagnosis, resource pressure, recovery guidance, and last error |
 | `peers` | Network collector | `peer counts` plus recent peer telemetry when durable sync state is available |
 | `mempool` | Mempool collector | mempool summary |
 | `wallet` | Wallet collector | `trusted_balance_sats`, `freshness`, and `scan_progress` so balances never imply completeness by themselves |
@@ -179,6 +179,53 @@ reason label and message when a cycle stopped for a known reason.
 `sync.lag` is the estimated lag from best known validated work. It reports
 header and block counts rather than a wall-clock ETA so deterministic local
 status remains truthful even when the public network is unavailable.
+
+## Reorg and no-progress semantics
+
+Phase 70 keeps branch competition, reorg recovery, peer recovery, and
+no-progress diagnosis in the shared `sync` status object. Consumers must render
+these fields from `OpenBitcoinStatusSnapshot` rather than reclassifying them in
+CLI, dashboard, RPC, log, metric, or support-bundle layers.
+
+`sync.latest_reorg` is a `FieldAvailability<SyncReorgEvidence>`. When
+available, it carries bounded evidence only:
+
+- `sync.latest_reorg.common_ancestor_height`
+- `sync.latest_reorg.common_ancestor_hash`
+- `sync.latest_reorg.disconnected_count`
+- `sync.latest_reorg.connected_count`
+- `sync.latest_reorg.final_active_height`
+- `sync.latest_reorg.final_active_hash`
+- `sync.latest_reorg.fully_persisted`
+
+`sync.reconcile_progress` is a `FieldAvailability<SyncReconcileProgress>`.
+Current labels include `branch_competition_awaiting_bodies` when a better
+branch has been selected by cumulative work but required replacement block
+bodies are not yet durable, and `reorg_persisted` when a reorg completed and
+bounded latest evidence is available. A missing active-chain block body, missing
+undo record, malformed stored chainstate, or storage write failure remains a
+storage/recovery blocker rather than peer retry advice.
+
+`sync.no_progress_diagnosis` is a `FieldAvailability<NoProgressDiagnosis>`.
+Current labels are:
+
+- `current_at_best_known_tip`
+- `behind_awaiting_headers`
+- `awaiting_block_bodies`
+- `stale_inflight_cleanup`
+- `peer_backoff`
+- `peer_stalled`
+- `peer_failures_exhausted`
+- `branch_competition_awaiting_bodies`
+- `recovering_from_reorg_or_storage`
+- `storage_or_resource_blocked`
+
+`sync.no_progress_next_action` is the bounded human guidance paired with the
+diagnosis. Storage and resource blockers take precedence over peer guidance;
+branch competition waiting for replacement bodies stays distinct from current
+at-tip evidence; and stale in-flight work remains visible until cleanup or
+reassignment occurs. These fields are deterministic status evidence, not a
+public-network or production-node readiness claim.
 
 ## Sync resource pressure
 

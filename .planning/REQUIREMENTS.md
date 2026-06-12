@@ -22,10 +22,10 @@ Requirements for v1.6 Mainnet Full-Sync Completion. Each requirement maps to exa
 
 ### Reorg, Peer Rotation, And No-Progress Recovery
 
-- [ ] **REC-01**: Operator can survive competing header branches through cumulative-work selection with deterministic active-chain outcomes.
-- [ ] **REC-02**: Operator can survive reorgs through durable disconnect and reconnect behavior with bounded undo evidence.
-- [ ] **REC-03**: Operator can recover from stale, slow, incompatible, malformed, invalid, disconnecting, or `notfound` peers through typed attribution, retry/backoff, and peer rotation.
-- [ ] **REC-04**: Operator can see typed no-progress causes and next actions when sync is behind, stalled, at tip, or recovering from stale in-flight work.
+- [x] **REC-01**: Operator can survive competing header branches through cumulative-work selection with deterministic active-chain outcomes.
+- [x] **REC-02**: Operator can survive reorgs through durable disconnect and reconnect behavior with bounded undo evidence.
+- [x] **REC-03**: Operator can recover from stale, slow, incompatible, malformed, invalid, disconnecting, or `notfound` peers through typed attribution, retry/backoff, and peer rotation.
+- [x] **REC-04**: Operator can see typed no-progress causes and next actions when sync is behind, stalled, at tip, or recovering from stale in-flight work.
 
 ### Resource Bounds And Durable Restart/Resume
 
@@ -103,10 +103,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TIP-01 | Phase 69 | Complete |
 | TIP-02 | Phase 69 | Complete |
 | TIP-03 | Phase 69 | Complete |
-| REC-01 | Phase 70 | Pending |
-| REC-02 | Phase 70 | Pending |
-| REC-03 | Phase 70 | Pending |
-| REC-04 | Phase 70 | Pending |
+| REC-01 | Phase 70 | Complete |
+| REC-02 | Phase 70 | Complete |
+| REC-03 | Phase 70 | Complete |
+| REC-04 | Phase 70 | Complete |
 | RES-01 | Phase 71 | Pending |
 | RES-02 | Phase 71 | Pending |
 | RES-03 | Phase 71 | Pending |

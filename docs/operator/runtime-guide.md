@@ -401,6 +401,64 @@ successful progress timestamp. Treat downloaded-only block bodies as recovery
 diagnostics; only validated active-chain fields are progress credit for durable
 connection.
 
+### Phase 70 reorg, peer, and no-progress fields
+
+Phase 70 adds bounded branch/reorg evidence and shared no-progress diagnosis to
+the durable sync status object. These fields explain whether a better branch is
+waiting on block bodies, whether a reorg was durably persisted, which peer
+state is blocking useful progress, and which bounded operator action applies.
+They do not add public-network checks to default verification, and they do not
+claim inbound serving, transaction relay, compact block relay, production-funds
+wallet use, migration apply mode, packaging, GUI, hosted dashboard, or broad
+production-node readiness.
+
+Branch competition and reorg status use these exact fields:
+
+- `sync.latest_reorg`: bounded evidence for the latest active-chain reorg when
+  one has been recorded.
+- `sync.latest_reorg.common_ancestor_height`: active-chain height shared by the
+  old and replacement branches.
+- `sync.latest_reorg.common_ancestor_hash`: block hash at that common ancestor.
+- `sync.latest_reorg.disconnected_count`: number of active-chain blocks
+  disconnected during the transition.
+- `sync.latest_reorg.connected_count`: number of replacement branch blocks
+  connected during the transition.
+- `sync.latest_reorg.final_active_height`: connected active-chain height after
+  the transition.
+- `sync.latest_reorg.final_active_hash`: connected active-chain hash after the
+  transition.
+- `sync.latest_reorg.fully_persisted`: whether the reorg transition and final
+  active-chain snapshot were persisted.
+- `sync.reconcile_progress`: current branch/reorg reconciliation evidence, such
+  as waiting for replacement branch bodies or a persisted reorg.
+
+No-progress status uses `sync.no_progress_diagnosis` and
+`sync.no_progress_next_action`. The diagnosis is derived from shared sync
+evidence, not renderer-specific strings. Current labels are:
+
+- `current_at_best_known_tip`: connected active-chain evidence matches the fresh
+  best-known validated tip.
+- `behind_awaiting_headers`: the runtime needs peer header evidence or another
+  configured peer.
+- `awaiting_block_bodies`: validated headers are ahead of durable block bodies
+  or active-chain connection.
+- `stale_inflight_cleanup`: in-flight block work is being cleared or reassigned
+  after no useful progress.
+- `peer_backoff`: a peer is waiting under endpoint-keyed retry backoff.
+- `peer_stalled`: a peer stalled without useful progress.
+- `peer_failures_exhausted`: the current bounded cycle exhausted peer attempts
+  without useful progress.
+- `branch_competition_awaiting_bodies`: a better branch is known, but required
+  replacement block bodies are still missing.
+- `recovering_from_reorg_or_storage`: recovery context owns guidance before a
+  new progress claim is made.
+- `storage_or_resource_blocked`: storage health or configured resource limits
+  must be addressed before retrying sync.
+
+When `sync.no_progress_diagnosis` is unavailable, consumers should render the
+unavailable reason instead of inventing a local fallback. When it is available,
+`sync.no_progress_next_action` is the bounded human guidance for that diagnosis.
+
 ### Phase 62 sync truth fields
 
 `open-bitcoin status`, `open-bitcoin dashboard`, `open-bitcoin sync status`,
@@ -789,7 +847,8 @@ Interpretation guidance:
 - Sync-focused status now includes lifecycle (`active`, `paused`,
   `recovering`, `failed`, or `stopped`), current phase, progress signal,
   estimated lag, last successful progress timestamp, resource pressure,
-  recovery guidance, and the last sync error when durable state is available.
+  recovery guidance, latest bounded reorg evidence, no-progress diagnosis and
+  next action, and the last sync error when durable state is available.
 - Recent peer telemetry can show peers as `connected`, `stalled`, `waiting`, or
   `failed`. A `waiting` peer with failure reason `retry_backoff` means the
   runtime is preserving the backoff window and trying other eligible peers when

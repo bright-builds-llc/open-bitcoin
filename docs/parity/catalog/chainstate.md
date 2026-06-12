@@ -36,6 +36,21 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
   hash tie-break for deterministic fixtures instead of Knots' pointer-identity
   fallback
 
+## Phase 70 branch and reorg recovery claim
+
+Phase 70 keeps branch replacement deterministic by selecting candidate branches
+by cumulative work, then height, then hash for the stable final tie-breaker.
+The sync runtime waits for replacement branch block bodies before changing the
+active chain, reuses `Chainstate::reorg` through the managed chainstate adapter,
+persists the resulting active-chain snapshot, and exposes bounded latest
+evidence through `sync.latest_reorg`.
+
+That bounded latest evidence includes common ancestor height/hash, disconnected
+count, connected count, final active height/hash, and whether the transition was
+fully persisted. Missing active-chain block bodies, missing undo data, malformed
+stored chainstate, or storage persistence failures remain storage recovery
+blockers rather than peer retry claims.
+
 ## First-party implementation
 
 - [`packages/open-bitcoin-chainstate/src/engine.rs`](../../../packages/open-bitcoin-chainstate/src/engine.rs)

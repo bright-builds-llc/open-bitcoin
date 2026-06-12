@@ -53,6 +53,10 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
   service restart/resume, support evidence, compatibility reports, and recovery
   states auditable without claiming inbound serving, transaction relay, compact
   block relay, or production-node operation
+- Phase 70 no-credit peer responses retain typed attribution, release stale
+  in-flight block work, and rotate through endpoint-keyed backoff without
+  claiming peer banning, inbound reputation, address-manager governance, or
+  relay readiness
 
 ## Knots sources
 
@@ -103,6 +107,11 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
   operators can inspect `service.restart_resume` after an explicit service
   restart, while real service-manager and public-network checks remain opt-in
   UAT outside default verification
+- Phase 70 peer recovery keeps `notfound`, malformed, invalid, duplicate,
+  disconnected, and non-extending block responses peer-attributed without
+  useful-progress credit. Those responses release stale in-flight work for the
+  affected block, preserve typed attribution in peer outcomes, and allow the
+  runtime to try another eligible endpoint through endpoint-keyed backoff.
 
 ## v1.4 release boundary
 

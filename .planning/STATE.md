@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Mainnet Full-Sync Completion
 status: executing
-stopped_at: Phase 70 plan 05 complete
-last_updated: "2026-06-12T22:52:10.000Z"
+stopped_at: Phase 70 complete
+last_updated: "2026-06-12T23:45:07.000Z"
 last_activity: 2026-06-12
 progress:
   total_phases: 7
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 14
-  completed_plans: 13
-  percent: 92
+  completed_plans: 14
+  percent: 100
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-11)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 70 — Reorg, Peer Rotation, and No-Progress Recovery
+**Current focus:** Phase 71 — Resource Bounds and Durable Restart/Resume
 
 ## Current Position
 
 Milestone: v1.6 Mainnet Full-Sync Completion
-Phase: 70 (Reorg, Peer Rotation, and No-Progress Recovery) — EXECUTING
-Plan: 6 of 6
-Status: Ready to execute
+Phase: 71 (Resource Bounds and Durable Restart/Resume) — PENDING
+Plan: planning not started
+Status: Ready to discuss
 Last activity: 2026-06-12
 
-Progress: [########--] 83%
+Progress: [##########] 100%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Current milestone plans completed: 13
+- Current milestone plans completed: 14
 - Current milestone plan count: 14
 - Prior milestone plans completed: 22 in v1.5
 
@@ -47,7 +47,7 @@ Progress: [########--] 83%
 |-------|------:|--------|
 | 68. Full Active-Chain Validation and Durable Persistence | 3/3 | Complete |
 | 69. Tip Tracking and Stay-Current Operation | 5/5 | Complete |
-| 70. Reorg, Peer Rotation, and No-Progress Recovery | 5/6 | In Progress |
+| 70. Reorg, Peer Rotation, and No-Progress Recovery | 6/6 | Complete |
 | 71. Resource Bounds and Durable Restart/Resume | 0/0 | Pending |
 | 72. Operator Observability and Support Evidence | 0/0 | Pending |
 | 73. Opt-In UAT and Deterministic Verification | 0/0 | Pending |
@@ -60,8 +60,8 @@ Progress: [########--] 83%
 - v1.6 roadmap covers 26 requirements across Phases 68 through 74.
 - Phase 68 completed full active-chain validation and durable persistence.
 - Phase 69 completed tip tracking, stay-current status, post-catch-up coverage, and documentation/checker closeout.
-- Phase 70 plans 01 through 05 completed reorg status contracts, typed branch/reorg runtime outcomes, durable latest reorg projection, deterministic storage-blocker coverage, peer attribution/backoff/rotation coverage, the additive no-progress status contract, and shared no-progress diagnosis/rendering.
-- Next workflow: execute Phase 70 plan 06.
+- Phase 70 completed reorg status contracts, typed branch/reorg runtime outcomes, durable latest reorg projection, deterministic storage-blocker coverage, peer attribution/backoff/rotation coverage, the additive no-progress status contract, shared no-progress diagnosis/rendering, operator docs, parity wording, README relevance, and deterministic checker closeout.
+- Next workflow: discuss and plan Phase 71.
 
 ## Accumulated Context
 
@@ -89,7 +89,7 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent v1.5 decisions:
 
 ### Pending Todos
 
-- Execute Phase 70 plan 06 for operator docs, README relevance, and deterministic verification closeout.
+- Discuss and plan Phase 71 for resource bounds and durable restart/resume.
 - Keep public-network full-sync UAT opt-in and outside default deterministic verification.
 
 ### Blockers/Concerns
@@ -100,6 +100,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent v1.5 decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-12T22:52:10.000Z
-Stopped at: Phase 70 plan 05 complete
-Resume file: .planning/phases/70-reorg-peer-rotation-and-no-progress-recovery/70-06-PLAN.md
+Last session: 2026-06-12T23:45:07.000Z
+Stopped at: Phase 70 complete
+Resume file: .planning/ROADMAP.md
