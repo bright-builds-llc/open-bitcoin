@@ -505,6 +505,12 @@ mod tests {
                     ),
                     stay_current: FieldAvailability::<StayCurrentStatus>::unavailable(unavailable),
                     stay_current_next_action: FieldAvailability::unavailable(unavailable),
+                    no_progress_diagnosis: FieldAvailability::unavailable(
+                        "no-progress diagnosis unavailable",
+                    ),
+                    no_progress_next_action: FieldAvailability::unavailable(
+                        "no-progress next action unavailable",
+                    ),
                     latest_reorg: FieldAvailability::unavailable("no reorg evidence recorded"),
                     reconcile_progress: FieldAvailability::unavailable(
                         RECONCILE_PROGRESS_UNAVAILABLE_REASON,

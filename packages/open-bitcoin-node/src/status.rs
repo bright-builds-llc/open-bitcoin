@@ -339,6 +339,22 @@ pub enum StayCurrentStatus {
     NoProgress,
 }
 
+/// Typed cause for why a sync run made no forward progress.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum NoProgressDiagnosis {
+    CurrentAtBestKnownTip,
+    BehindAwaitingHeaders,
+    AwaitingBlockBodies,
+    StaleInflightCleanup,
+    PeerBackoff,
+    PeerStalled,
+    PeerFailuresExhausted,
+    BranchCompetitionAwaitingBodies,
+    RecoveringFromReorgOrStorage,
+    StorageOrResourceBlocked,
+}
+
 /// Bounded evidence for the latest active-chain reorg transition.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SyncReorgEvidence {
@@ -385,6 +401,12 @@ pub const NO_REORG_EVIDENCE_RECORDED_REASON: &str = "no reorg evidence recorded"
 /// Default unavailable reason for branch/reorg reconcile status before runtime projection.
 pub const RECONCILE_PROGRESS_UNAVAILABLE_REASON: &str = "reconcile progress unavailable";
 
+/// Default unavailable reason for no-progress diagnosis before runtime projection.
+pub const NO_PROGRESS_DIAGNOSIS_UNAVAILABLE_REASON: &str = "no-progress diagnosis unavailable";
+
+/// Default unavailable reason for no-progress next action before runtime projection.
+pub const NO_PROGRESS_NEXT_ACTION_UNAVAILABLE_REASON: &str = "no-progress next action unavailable";
+
 /// Sync status fields.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SyncStatus {
@@ -413,6 +435,10 @@ pub struct SyncStatus {
     pub stay_current: FieldAvailability<StayCurrentStatus>,
     #[serde(default = "stay_current_next_action_unavailable")]
     pub stay_current_next_action: FieldAvailability<String>,
+    #[serde(default = "no_progress_diagnosis_unavailable")]
+    pub no_progress_diagnosis: FieldAvailability<NoProgressDiagnosis>,
+    #[serde(default = "no_progress_next_action_unavailable")]
+    pub no_progress_next_action: FieldAvailability<String>,
     #[serde(default = "latest_reorg_unavailable")]
     pub latest_reorg: FieldAvailability<SyncReorgEvidence>,
     #[serde(default = "reconcile_progress_unavailable")]
@@ -445,6 +471,14 @@ fn stay_current_unavailable() -> FieldAvailability<StayCurrentStatus> {
 
 fn stay_current_next_action_unavailable() -> FieldAvailability<String> {
     FieldAvailability::unavailable("stay-current next action unavailable")
+}
+
+fn no_progress_diagnosis_unavailable() -> FieldAvailability<NoProgressDiagnosis> {
+    FieldAvailability::unavailable(NO_PROGRESS_DIAGNOSIS_UNAVAILABLE_REASON)
+}
+
+fn no_progress_next_action_unavailable() -> FieldAvailability<String> {
+    FieldAvailability::unavailable(NO_PROGRESS_NEXT_ACTION_UNAVAILABLE_REASON)
 }
 
 fn latest_reorg_unavailable() -> FieldAvailability<SyncReorgEvidence> {

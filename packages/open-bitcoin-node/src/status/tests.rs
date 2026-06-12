@@ -3,7 +3,8 @@
 
 use super::{
     BestKnownTipStatus, BuildProvenance, ChainTipStatus, ConfigStatus, FieldAvailability,
-    HealthSignal, HealthSignalLevel, MempoolStatus, NodeRuntimeState, NodeStatus,
+    HealthSignal, HealthSignalLevel, MempoolStatus, NO_PROGRESS_DIAGNOSIS_UNAVAILABLE_REASON,
+    NO_PROGRESS_NEXT_ACTION_UNAVAILABLE_REASON, NoProgressDiagnosis, NodeRuntimeState, NodeStatus,
     OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, PeerTelemetry, ServiceLifecycleStatus,
     ServicePriorShutdownStatus, ServiceRestartResumeStatus, ServiceStaleInflightStatus,
     ServiceStatus, StayCurrentStatus, SyncAttemptCounters, SyncConfiguredTargets, SyncLagStatus,
@@ -78,6 +79,12 @@ fn phase62_sync_truth_contract() {
         stay_current_next_action: FieldAvailability::unavailable(
             "stay-current next action unavailable",
         ),
+        no_progress_diagnosis: FieldAvailability::unavailable(
+            NO_PROGRESS_DIAGNOSIS_UNAVAILABLE_REASON,
+        ),
+        no_progress_next_action: FieldAvailability::unavailable(
+            NO_PROGRESS_NEXT_ACTION_UNAVAILABLE_REASON,
+        ),
         latest_reorg: FieldAvailability::unavailable("no reorg evidence recorded"),
         reconcile_progress: FieldAvailability::unavailable("reconcile progress unavailable"),
     };
@@ -122,6 +129,8 @@ fn phase62_sync_truth_contract() {
     assert_eq!(encoded["best_known_tip"]["state"], "unavailable");
     assert_eq!(encoded["stay_current"]["state"], "unavailable");
     assert_eq!(encoded["stay_current_next_action"]["state"], "unavailable");
+    assert_eq!(encoded["no_progress_diagnosis"]["state"], "unavailable");
+    assert_eq!(encoded["no_progress_next_action"]["state"], "unavailable");
     assert_eq!(
         legacy_sync.configured_targets,
         FieldAvailability::unavailable("configured targets unavailable")
@@ -145,6 +154,100 @@ fn phase62_sync_truth_contract() {
     assert_eq!(
         legacy_sync.stay_current_next_action,
         FieldAvailability::unavailable("stay-current next action unavailable")
+    );
+    assert_eq!(
+        legacy_sync.no_progress_diagnosis,
+        FieldAvailability::<NoProgressDiagnosis>::unavailable(
+            NO_PROGRESS_DIAGNOSIS_UNAVAILABLE_REASON
+        )
+    );
+    assert_eq!(
+        legacy_sync.no_progress_next_action,
+        FieldAvailability::unavailable(NO_PROGRESS_NEXT_ACTION_UNAVAILABLE_REASON)
+    );
+}
+
+#[test]
+fn phase70_no_progress_status_contract_serializes_exact_labels() {
+    // Arrange
+    let cases = [
+        (
+            NoProgressDiagnosis::CurrentAtBestKnownTip,
+            "current_at_best_known_tip",
+        ),
+        (
+            NoProgressDiagnosis::BehindAwaitingHeaders,
+            "behind_awaiting_headers",
+        ),
+        (
+            NoProgressDiagnosis::AwaitingBlockBodies,
+            "awaiting_block_bodies",
+        ),
+        (
+            NoProgressDiagnosis::StaleInflightCleanup,
+            "stale_inflight_cleanup",
+        ),
+        (NoProgressDiagnosis::PeerBackoff, "peer_backoff"),
+        (NoProgressDiagnosis::PeerStalled, "peer_stalled"),
+        (
+            NoProgressDiagnosis::PeerFailuresExhausted,
+            "peer_failures_exhausted",
+        ),
+        (
+            NoProgressDiagnosis::BranchCompetitionAwaitingBodies,
+            "branch_competition_awaiting_bodies",
+        ),
+        (
+            NoProgressDiagnosis::RecoveringFromReorgOrStorage,
+            "recovering_from_reorg_or_storage",
+        ),
+        (
+            NoProgressDiagnosis::StorageOrResourceBlocked,
+            "storage_or_resource_blocked",
+        ),
+    ];
+
+    // Act / Assert
+    for (diagnosis, expected_label) in cases {
+        let encoded = serde_json::to_value(diagnosis).expect("diagnosis json");
+        assert_eq!(encoded, expected_label);
+    }
+}
+
+#[test]
+fn phase70_no_progress_status_contract_defaults_legacy_json() {
+    // Arrange
+    let legacy_json = serde_json::json!({
+        "network": { "state": "available", "value": "mainnet" },
+        "chain_tip": { "state": "unavailable", "value": { "reason": "chain tip unavailable" } },
+        "sync_progress": { "state": "unavailable", "value": { "reason": "sync progress unavailable" } },
+        "lifecycle": { "state": "available", "value": "active" },
+        "phase": { "state": "available", "value": "headers" },
+        "progress_signal": { "state": "available", "value": "header_progress" },
+        "lag": {
+            "state": "available",
+            "value": { "headers_remaining": 0, "blocks_remaining": 12 }
+        },
+        "last_successful_progress_unix_seconds": { "state": "available", "value": 1717000000 },
+        "last_error": { "state": "unavailable", "value": { "reason": "no sync error recorded" } },
+        "recovery_category": { "state": "unavailable", "value": { "reason": "no recovery category recorded" } },
+        "recovery_action": { "state": "unavailable", "value": { "reason": "no recovery action required" } },
+        "resource_pressure": { "state": "unavailable", "value": { "reason": "resource pressure unavailable" } }
+    });
+
+    // Act
+    let sync: SyncStatus = serde_json::from_value(legacy_json).expect("legacy sync status json");
+
+    // Assert
+    assert_eq!(
+        sync.no_progress_diagnosis,
+        FieldAvailability::<NoProgressDiagnosis>::unavailable(
+            NO_PROGRESS_DIAGNOSIS_UNAVAILABLE_REASON
+        )
+    );
+    assert_eq!(
+        sync.no_progress_next_action,
+        FieldAvailability::unavailable(NO_PROGRESS_NEXT_ACTION_UNAVAILABLE_REASON)
     );
 }
 
@@ -482,6 +585,12 @@ fn populated_snapshot_serializes_obs_01_fields() {
             stay_current_next_action: FieldAvailability::unavailable(
                 "stay-current next action unavailable",
             ),
+            no_progress_diagnosis: FieldAvailability::unavailable(
+                NO_PROGRESS_DIAGNOSIS_UNAVAILABLE_REASON,
+            ),
+            no_progress_next_action: FieldAvailability::unavailable(
+                NO_PROGRESS_NEXT_ACTION_UNAVAILABLE_REASON,
+            ),
             latest_reorg: FieldAvailability::unavailable("no reorg evidence recorded"),
             reconcile_progress: FieldAvailability::unavailable("reconcile progress unavailable"),
         },
@@ -680,6 +789,12 @@ fn stopped_snapshot() -> OpenBitcoinStatusSnapshot {
             best_known_tip: FieldAvailability::<BestKnownTipStatus>::unavailable(unavailable),
             stay_current: FieldAvailability::unavailable(unavailable),
             stay_current_next_action: FieldAvailability::unavailable(unavailable),
+            no_progress_diagnosis: FieldAvailability::unavailable(
+                NO_PROGRESS_DIAGNOSIS_UNAVAILABLE_REASON,
+            ),
+            no_progress_next_action: FieldAvailability::unavailable(
+                NO_PROGRESS_NEXT_ACTION_UNAVAILABLE_REASON,
+            ),
             latest_reorg: FieldAvailability::unavailable("no reorg evidence recorded"),
             reconcile_progress: FieldAvailability::unavailable("reconcile progress unavailable"),
         },

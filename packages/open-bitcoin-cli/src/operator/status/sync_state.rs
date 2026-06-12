@@ -71,6 +71,10 @@ pub(super) fn rpc_sync_status(blockchain_info: &GetBlockchainInfoResponse) -> Sy
         stay_current_next_action: FieldAvailability::unavailable(
             "daemon sync stay-current next action unavailable",
         ),
+        no_progress_diagnosis: FieldAvailability::unavailable("no-progress diagnosis unavailable"),
+        no_progress_next_action: FieldAvailability::unavailable(
+            "no-progress next action unavailable",
+        ),
         latest_reorg: FieldAvailability::unavailable("no reorg evidence recorded"),
         reconcile_progress: FieldAvailability::unavailable("reconcile progress unavailable"),
     }
@@ -96,6 +100,10 @@ pub(super) fn unavailable_sync_status(reason: &str) -> SyncStatus {
         best_known_tip: FieldAvailability::<BestKnownTipStatus>::unavailable(reason),
         stay_current: FieldAvailability::<StayCurrentStatus>::unavailable(reason),
         stay_current_next_action: FieldAvailability::unavailable(reason),
+        no_progress_diagnosis: FieldAvailability::unavailable("no-progress diagnosis unavailable"),
+        no_progress_next_action: FieldAvailability::unavailable(
+            "no-progress next action unavailable",
+        ),
         latest_reorg: FieldAvailability::unavailable("no reorg evidence recorded"),
         reconcile_progress: FieldAvailability::unavailable("reconcile progress unavailable"),
     }

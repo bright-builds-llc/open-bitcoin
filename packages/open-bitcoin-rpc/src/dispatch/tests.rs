@@ -628,6 +628,12 @@ fn phase62_runtime_metadata() -> RuntimeMetadata {
                 stay_current_next_action: FieldAvailability::unavailable(
                     "stay-current next action unavailable",
                 ),
+                no_progress_diagnosis: FieldAvailability::unavailable(
+                    "no-progress diagnosis unavailable",
+                ),
+                no_progress_next_action: FieldAvailability::unavailable(
+                    "no-progress next action unavailable",
+                ),
                 latest_reorg: FieldAvailability::unavailable("no reorg evidence recorded"),
                 reconcile_progress: FieldAvailability::unavailable(
                     "reconcile progress unavailable",
@@ -731,6 +737,12 @@ fn get_blockchain_info_uses_durable_connected_block_height_not_downloaded_height
                         ),
                         stay_current_next_action: FieldAvailability::unavailable(
                             "stay-current next action unavailable",
+                        ),
+                        no_progress_diagnosis: FieldAvailability::unavailable(
+                            "no-progress diagnosis unavailable",
+                        ),
+                        no_progress_next_action: FieldAvailability::unavailable(
+                            "no-progress next action unavailable",
                         ),
                         latest_reorg: FieldAvailability::unavailable("no reorg evidence recorded"),
                         reconcile_progress: FieldAvailability::unavailable(
