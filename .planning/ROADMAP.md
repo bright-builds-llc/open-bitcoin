@@ -125,7 +125,13 @@ Plans:
 **Goal**: Contributors keep default verification deterministic while operators get repo-local opt-in commands for public-mainnet full-sync review.
 **Depends on**: Phase 72
 **Requirements**: VER-01, VER-02, VER-03, VER-04
-**Plans**: Pending
+**Plans**: 4 plans
+
+Plans:
+- [ ] 73-01-PLAN.md - Map VER-02 deterministic coverage to existing hermetic anchors
+- [ ] 73-02-PLAN.md - Add the central Phase 73 opt-in public-mainnet UAT matrix
+- [ ] 73-03-PLAN.md - Wire the Phase 73 deterministic checker into default verification
+- [ ] 73-04-PLAN.md - Close parity, breadcrumb, and evidence auditability
 
 **Success Criteria**:
 1. `bash scripts/verify.sh` runs without internet access, public peers, real service managers, long-running sync, or current-tip timing.
