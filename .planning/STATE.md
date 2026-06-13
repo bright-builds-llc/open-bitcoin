@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Mainnet Full-Sync Completion
 status: verifying
-stopped_at: Phase 71 complete
-last_updated: "2026-06-13T21:04:14.286Z"
+stopped_at: Phase 73 context gathered
+last_updated: "2026-06-13T22:30:36.999Z"
 last_activity: 2026-06-13
 progress:
   total_phases: 7
@@ -101,6 +101,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent v1.5 decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-13T13:50:22.810Z
-Stopped at: Phase 71 complete
-Resume file: .planning/ROADMAP.md
+Last session: 2026-06-13T22:30:36.996Z
+Stopped at: Phase 73 context gathered
+Resume file: .planning/phases/73-opt-in-uat-and-deterministic-verification/73-CONTEXT.md
