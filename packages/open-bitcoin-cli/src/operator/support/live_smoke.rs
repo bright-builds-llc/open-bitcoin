@@ -333,3 +333,85 @@ fn redact_sensitive_text(text: &str) -> String {
 
     text.to_string()
 }
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::summary;
+
+    #[test]
+    fn phase71_live_smoke_summary_is_allowlisted_and_bounded() {
+        // Arrange
+        let report = json!({
+            "result": {
+                "status": "progress",
+                "rawPeerTable": "raw peer table must not be copied",
+                "daemonStdout": "daemon stdout must not be copied",
+                "daemonStderr": "daemon stderr must not be copied",
+                "rawLogTail": "raw log tail must not be copied",
+                "rpcpassword": "rpcpassword=super-secret",
+                "cookie": "__cookie__:super-secret",
+            },
+            "final_status": {
+                "headerHeight": 840_200,
+                "rawPeerTable": "final raw peer table must not be copied",
+                "daemonStdout": "final daemon stdout must not be copied",
+                "daemonStderr": "final daemon stderr must not be copied",
+                "rawLogTail": "final raw log tail must not be copied",
+                "rpcpassword": "final rpcpassword=super-secret",
+                "cookie": "final __cookie__:super-secret",
+                "resourcePressure": {
+                    "blocksInFlight": 8,
+                    "maxHeaderRequestsInFlightPerPeer": 1,
+                    "maxHeadersPerMessage": 2000,
+                    "maxBlocksInFlightPerPeer": 16,
+                    "maxBlocksInFlightTotal": 64,
+                    "maxMessagesPerPeer": 64,
+                    "maxSyncRounds": 8,
+                    "outboundPeers": 2,
+                    "targetOutboundPeers": 4,
+                    "rawPeerTable": "nested raw peer table must not be copied",
+                    "daemonStdout": "nested daemon stdout must not be copied",
+                    "daemonStderr": "nested daemon stderr must not be copied",
+                    "rawLogTail": "nested raw log tail must not be copied",
+                    "rpcpassword": "nested rpcpassword=super-secret",
+                    "cookie": "nested __cookie__:super-secret",
+                }
+            },
+            "rawPeerTable": "top raw peer table must not be copied",
+            "daemonStdout": "top daemon stdout must not be copied",
+            "daemonStderr": "top daemon stderr must not be copied",
+            "rawLogTail": "top raw log tail must not be copied",
+            "rpcpassword": "top rpcpassword=super-secret",
+            "cookie": "top __cookie__:super-secret",
+        });
+
+        // Act
+        let summarized = summary(&report).expect("summary");
+        let text = summarized.to_string();
+
+        // Assert
+        assert!(text.contains("resourcePressure"));
+        assert!(text.contains("blocksInFlight"));
+        assert!(text.contains("maxBlocksInFlightTotal"));
+        for forbidden in [
+            "rawPeerTable",
+            "daemonStdout",
+            "daemonStderr",
+            "rawLogTail",
+            "rpcpassword",
+            "cookie",
+            "raw peer table must not be copied",
+            "daemon stdout must not be copied",
+            "daemon stderr must not be copied",
+            "raw log tail must not be copied",
+            "super-secret",
+        ] {
+            assert!(
+                !text.contains(forbidden),
+                "summary copied forbidden live-smoke material: {forbidden}"
+            );
+        }
+    }
+}

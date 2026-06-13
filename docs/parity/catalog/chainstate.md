@@ -51,6 +51,18 @@ fully persisted. Missing active-chain block bodies, missing undo data, malformed
 stored chainstate, or storage persistence failures remain storage recovery
 blockers rather than peer retry claims.
 
+## Phase 71 resource and storage-pressure claim
+
+Phase 71 extends the local restart/resume evidence with storage-pressure
+classification. Low-disk backend failures surface through
+`StorageRecoveryAction::FreeDisk`, map to
+`SyncRecoveryCategory::ResourceExhaustion`, and tell the operator:
+`Free disk space for the selected datadir, then retry sync.` The claim remains
+diagnostic and bounded; it does not add automatic chainstate repair,
+block serving, production-funds wallet claims, migration apply mode, signed
+packaging, Windows service support, GUI, hosted dashboards, or broad
+production-node readiness.
+
 ## First-party implementation
 
 - [`packages/open-bitcoin-chainstate/src/engine.rs`](../../../packages/open-bitcoin-chainstate/src/engine.rs)

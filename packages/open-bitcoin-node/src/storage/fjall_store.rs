@@ -56,13 +56,9 @@ pub struct FjallNodeStore {
 impl FjallNodeStore {
     /// Open or create the store rooted at `path` and verify schema metadata.
     pub fn open(path: impl AsRef<Path>) -> Result<Self, StorageError> {
-        let db = Database::builder(path.as_ref()).open().map_err(|error| {
-            backend_failure(
-                StorageNamespace::Runtime,
-                error,
-                StorageRecoveryAction::Restart,
-            )
-        })?;
+        let db = Database::builder(path.as_ref())
+            .open()
+            .map_err(|error| backend_failure(StorageNamespace::Runtime, error))?;
 
         let store = Self {
             headers: open_keyspace(&db, StorageNamespace::Headers)?,
@@ -110,13 +106,9 @@ impl FjallNodeStore {
         }
         batch.insert(&self.headers, SNAPSHOT_KEY, header_bytes);
         batch.insert(&self.block_index, SNAPSHOT_KEY, block_index_bytes);
-        batch.commit().map_err(|error| {
-            backend_failure(
-                StorageNamespace::Headers,
-                error,
-                StorageRecoveryAction::Restart,
-            )
-        })
+        batch
+            .commit()
+            .map_err(|error| backend_failure(StorageNamespace::Headers, error))
     }
 
     /// Load persisted header entries.
@@ -399,13 +391,9 @@ impl FjallNodeStore {
 
     /// Remove any recovery marker after a successful repair or clean shutdown.
     pub fn clear_recovery_marker(&self, mode: PersistMode) -> Result<(), StorageError> {
-        self.runtime.remove(RECOVERY_MARKER_KEY).map_err(|error| {
-            backend_failure(
-                StorageNamespace::Runtime,
-                error,
-                StorageRecoveryAction::Restart,
-            )
-        })?;
+        self.runtime
+            .remove(RECOVERY_MARKER_KEY)
+            .map_err(|error| backend_failure(StorageNamespace::Runtime, error))?;
         self.persist(StorageNamespace::Runtime, mode)
     }
 
@@ -440,7 +428,7 @@ impl FjallNodeStore {
     ) -> Result<(), StorageError> {
         self.keyspace(namespace)
             .insert(key, bytes)
-            .map_err(|error| backend_failure(namespace, error, StorageRecoveryAction::Restart))?;
+            .map_err(|error| backend_failure(namespace, error))?;
         self.persist(namespace, mode)
     }
 
@@ -452,7 +440,7 @@ impl FjallNodeStore {
         self.keyspace(namespace)
             .get(key)
             .map(|maybe_bytes| maybe_bytes.map(|bytes| bytes.as_ref().to_vec()))
-            .map_err(|error| backend_failure(namespace, error, StorageRecoveryAction::Restart))
+            .map_err(|error| backend_failure(namespace, error))
     }
 
     fn prefixed_values(
@@ -466,9 +454,7 @@ impl FjallNodeStore {
                 guard
                     .value()
                     .map(|value| value.as_ref().to_vec())
-                    .map_err(|error| {
-                        backend_failure(namespace, error, StorageRecoveryAction::Restart)
-                    })
+                    .map_err(|error| backend_failure(namespace, error))
             })
             .collect()
     }
@@ -481,7 +467,7 @@ impl FjallNodeStore {
     ) -> Result<(), StorageError> {
         self.keyspace(namespace)
             .remove(key)
-            .map_err(|error| backend_failure(namespace, error, StorageRecoveryAction::Restart))?;
+            .map_err(|error| backend_failure(namespace, error))?;
         self.persist(namespace, mode)
     }
 
@@ -492,7 +478,7 @@ impl FjallNodeStore {
 
         self.db
             .persist(mode)
-            .map_err(|error| backend_failure(namespace, error, StorageRecoveryAction::Restart))
+            .map_err(|error| backend_failure(namespace, error))
     }
 
     fn keyspace(&self, namespace: StorageNamespace) -> &Keyspace {
@@ -530,7 +516,7 @@ impl FjallNodeStore {
 
 fn open_keyspace(db: &Database, namespace: StorageNamespace) -> Result<Keyspace, StorageError> {
     db.keyspace(namespace.as_str(), KeyspaceCreateOptions::default)
-        .map_err(|error| backend_failure(namespace, error, StorageRecoveryAction::Restart))
+        .map_err(|error| backend_failure(namespace, error))
 }
 
 fn fjall_persist_mode(mode: PersistMode) -> Option<FjallPersistMode> {
@@ -582,14 +568,12 @@ fn wallet_rescan_job_key(wallet_name: &str) -> String {
     format!("{}{}", wallet_rescan_job_prefix(), wallet_name)
 }
 
-fn backend_failure(
-    namespace: StorageNamespace,
-    error: fjall::Error,
-    action: StorageRecoveryAction,
-) -> StorageError {
+fn backend_failure(namespace: StorageNamespace, error: fjall::Error) -> StorageError {
+    let message = error.to_string();
+    let action = StorageRecoveryAction::for_backend_message(&message);
     StorageError::BackendFailure {
         namespace,
-        message: error.to_string(),
+        message,
         action,
     }
 }

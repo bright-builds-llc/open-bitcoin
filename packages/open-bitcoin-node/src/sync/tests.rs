@@ -4407,7 +4407,7 @@ fn phase70_no_progress_status_projects_storage_or_resource_blocker() {
     assert_no_progress_status(
         &state,
         NoProgressDiagnosis::StorageOrResourceBlocked,
-        "Inspect storage health or increase bounded resource limits.",
+        "Inspect storage health, free disk space for the selected datadir, or increase bounded resource limits.",
     );
 
     remove_dir_if_exists(&path);
@@ -5499,6 +5499,377 @@ fn bounded_unattended_cycles_preserve_resource_pressure_and_retention() {
     assert!(!records.is_empty());
     assert!(records.len() <= 32);
 
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn phase71_same_datadir_resume_matrix_covers_clean_unclean_mid_download_mid_connect_and_stale_inflight()
+ {
+    // Arrange
+    let clean_shutdown = "clean_shutdown";
+    let clean_path = temp_store_path(clean_shutdown);
+    remove_dir_if_exists(&clean_path);
+    let clean_store = FjallNodeStore::open(&clean_path).expect("clean store");
+    clean_store
+        .save_runtime_metadata(
+            &RuntimeMetadata {
+                last_clean_shutdown: true,
+                ..RuntimeMetadata::default()
+            },
+            PersistMode::Sync,
+        )
+        .expect("save clean shutdown metadata");
+    let clean_runtime =
+        DurableSyncRuntime::open(clean_store, sync_config()).expect("clean runtime");
+
+    let unclean_shutdown = "unclean_shutdown";
+    let unclean_path = temp_store_path(unclean_shutdown);
+    remove_dir_if_exists(&unclean_path);
+    let unclean_store = FjallNodeStore::open(&unclean_path).expect("unclean store");
+    unclean_store
+        .save_runtime_metadata(
+            &RuntimeMetadata {
+                last_clean_shutdown: false,
+                ..RuntimeMetadata::default()
+            },
+            PersistMode::Sync,
+        )
+        .expect("save unclean shutdown metadata");
+    let unclean_runtime =
+        DurableSyncRuntime::open(unclean_store, sync_config()).expect("unclean runtime");
+
+    let mid_download_interruption = "mid_download_interruption";
+    let mid_download_path = temp_store_path(mid_download_interruption);
+    remove_dir_if_exists(&mid_download_path);
+    let mid_download_genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+    let mid_download_child_one = build_block(block_hash(&mid_download_genesis.header), 1);
+    let mid_download_child_two = build_block(block_hash(&mid_download_child_one.header), 2);
+    save_chain_headers_snapshot_and_blocks(
+        &mid_download_path,
+        &[
+            (&mid_download_genesis, 0),
+            (&mid_download_child_one, 1),
+            (&mid_download_child_two, 2),
+        ],
+        &[(&mid_download_genesis, 0)],
+        &[(&mid_download_genesis, 0), (&mid_download_child_one, 1)],
+    );
+
+    let mid_connect_interruption = "mid_connect_interruption";
+    let mid_connect_path = temp_store_path(mid_connect_interruption);
+    remove_dir_if_exists(&mid_connect_path);
+    let mid_connect_genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+    let mid_connect_child = build_block(block_hash(&mid_connect_genesis.header), 1);
+    let mid_connect_missing = build_block(block_hash(&mid_connect_child.header), 2);
+    let mid_connect_child_hash = block_hash(&mid_connect_child.header);
+    let mid_connect_missing_hash = block_hash(&mid_connect_missing.header);
+    save_chain_headers_snapshot_and_blocks(
+        &mid_connect_path,
+        &[
+            (&mid_connect_genesis, 0),
+            (&mid_connect_child, 1),
+            (&mid_connect_missing, 2),
+        ],
+        &[(&mid_connect_genesis, 0), (&mid_connect_child, 1)],
+        &[(&mid_connect_genesis, 0), (&mid_connect_child, 1)],
+    );
+
+    let stale_inflight_after_reopen = "stale_inflight_after_reopen";
+    let stale_inflight_path = temp_store_path(stale_inflight_after_reopen);
+    remove_dir_if_exists(&stale_inflight_path);
+    let stale_genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+    let stale_child = build_block(block_hash(&stale_genesis.header), 1);
+    let stale_missing = build_block(block_hash(&stale_child.header), 2);
+    let stale_missing_hash = block_hash(&stale_missing.header);
+    save_chain_headers_snapshot_and_blocks(
+        &stale_inflight_path,
+        &[(&stale_genesis, 0), (&stale_child, 1), (&stale_missing, 2)],
+        &[(&stale_genesis, 0), (&stale_child, 1)],
+        &[(&stale_genesis, 0), (&stale_child, 1)],
+    );
+
+    // Act
+    let clean_state = clean_runtime
+        .durable_sync_state_for_summary(
+            &SyncRunSummary::empty(0, 0, 1),
+            SyncLifecycleState::Stopped,
+            None,
+            1_777_225_220,
+        )
+        .expect("clean shutdown state");
+    let unclean_state = unclean_runtime
+        .durable_sync_state_for_summary(
+            &SyncRunSummary::empty(0, 0, 1),
+            SyncLifecycleState::Recovering,
+            None,
+            1_777_225_221,
+        )
+        .expect("unclean shutdown state");
+
+    let mid_download_store = FjallNodeStore::open(&mid_download_path).expect("mid-download store");
+    let mid_download_runtime =
+        DurableSyncRuntime::open(mid_download_store, sync_config()).expect("mid-download runtime");
+    let mid_download_summary = mid_download_runtime.snapshot_summary();
+    let mid_download_state = mid_download_runtime
+        .durable_sync_state_for_summary(
+            &mid_download_summary,
+            SyncLifecycleState::Active,
+            None,
+            i64::from(mid_download_child_two.header.time),
+        )
+        .expect("mid-download state");
+
+    let mid_connect_store = FjallNodeStore::open(&mid_connect_path).expect("mid-connect store");
+    let mut mid_connect_runtime =
+        DurableSyncRuntime::open(mid_connect_store, sync_config()).expect("mid-connect runtime");
+    let mid_connect_summary_before = mid_connect_runtime.snapshot_summary();
+    let mut mid_connect_transport = ScriptedTransport::new(vec![version_verack_script(2)]);
+    let mid_connect_summary_after = mid_connect_runtime
+        .sync_once(
+            &mut mid_connect_transport,
+            i64::from(mid_connect_missing.header.time),
+        )
+        .expect("mid-connect resume sync");
+    let mid_connect_requested = getdata_block_hashes(&mid_connect_transport.sent_messages());
+
+    let stale_store = FjallNodeStore::open(&stale_inflight_path).expect("stale in-flight store");
+    let mut stale_runtime =
+        DurableSyncRuntime::open(stale_store, sync_config()).expect("stale in-flight runtime");
+    stale_runtime.inflight_blocks.insert(stale_missing_hash);
+    let stale_summary = SyncRunSummary::empty(1, 1, 1);
+    let stale_state = stale_runtime
+        .durable_sync_state_for_summary(
+            &stale_summary,
+            SyncLifecycleState::Active,
+            None,
+            i64::from(stale_missing.header.time),
+        )
+        .expect("stale in-flight state");
+    drop(stale_runtime);
+    let reopened_stale_store =
+        FjallNodeStore::open(&stale_inflight_path).expect("reopened stale store");
+    let reopened_stale_runtime = DurableSyncRuntime::open(reopened_stale_store, sync_config())
+        .expect("reopened stale runtime");
+    let reopened_stale_summary = reopened_stale_runtime.snapshot_summary();
+
+    // Assert
+    assert_eq!(
+        clean_state.sync.recovery_category,
+        FieldAvailability::available(SyncRecoveryCategory::CleanShutdown),
+        "{clean_shutdown}"
+    );
+    assert_eq!(
+        unclean_state.sync.recovery_category,
+        FieldAvailability::available(SyncRecoveryCategory::UncleanShutdown),
+        "{unclean_shutdown}"
+    );
+
+    assert_eq!(mid_download_summary.best_header_height, 2);
+    assert_eq!(mid_download_summary.downloaded_block_height, 1);
+    assert_eq!(mid_download_summary.best_block_height, 0);
+    assert_eq!(
+        mid_download_summary.maybe_downloaded_block_hash,
+        Some(block_hash_hex(block_hash(&mid_download_child_one.header)))
+    );
+    let FieldAvailability::Available(mid_download_pressure) =
+        mid_download_state.sync.resource_pressure
+    else {
+        panic!("missing {mid_download_interruption} resource pressure");
+    };
+    assert_eq!(mid_download_pressure.blocks_in_flight, 0);
+
+    assert_eq!(mid_connect_summary_before.best_header_height, 2);
+    assert_eq!(mid_connect_summary_before.best_block_height, 1);
+    assert_eq!(
+        mid_connect_summary_before.maybe_connected_block_hash,
+        Some(block_hash_hex(mid_connect_child_hash))
+    );
+    assert_eq!(
+        mid_connect_summary_before.maybe_validated_active_chain_work,
+        Some("2".to_string())
+    );
+    assert_eq!(mid_connect_summary_after.best_block_height, 1);
+    assert!(!mid_connect_requested.contains(&mid_connect_child_hash));
+    assert!(mid_connect_requested.contains(&mid_connect_missing_hash));
+
+    assert_no_progress_status(
+        &stale_state,
+        NoProgressDiagnosis::StaleInflightCleanup,
+        "Wait for stale in-flight block cleanup and reassignment.",
+    );
+    let FieldAvailability::Available(stale_pressure) = stale_state.sync.resource_pressure else {
+        panic!("missing {stale_inflight_after_reopen} resource pressure");
+    };
+    assert_eq!(stale_pressure.blocks_in_flight, 1);
+    assert!(reopened_stale_runtime.inflight_blocks.is_empty());
+    assert_eq!(reopened_stale_summary.downloaded_block_height, 1);
+    assert_eq!(reopened_stale_summary.best_block_height, 1);
+    assert_eq!(
+        reopened_stale_summary.maybe_connected_block_hash,
+        Some(block_hash_hex(block_hash(&stale_child.header)))
+    );
+
+    drop(clean_runtime);
+    drop(unclean_runtime);
+    drop(mid_download_runtime);
+    drop(mid_connect_runtime);
+    drop(reopened_stale_runtime);
+    remove_dir_if_exists(&clean_path);
+    remove_dir_if_exists(&unclean_path);
+    remove_dir_if_exists(&mid_download_path);
+    remove_dir_if_exists(&mid_connect_path);
+    remove_dir_if_exists(&stale_inflight_path);
+}
+
+#[test]
+fn phase71_synthetic_long_chain_exercises_resource_bounds_without_public_network() {
+    // Arrange
+    const SYNTHETIC_BLOCKS: usize = 48;
+
+    let path = temp_store_path("phase71-synthetic-long-chain");
+    let log_dir = path.join("logs");
+    remove_dir_if_exists(&path);
+    let blocks = {
+        let mut blocks = Vec::with_capacity(SYNTHETIC_BLOCKS);
+        let mut previous_hash = BlockHash::from_byte_array([0_u8; 32]);
+        for height in 0..SYNTHETIC_BLOCKS {
+            let block = build_block(previous_hash, height as u32);
+            previous_hash = block_hash(&block.header);
+            blocks.push(block);
+        }
+        blocks
+    };
+    let all_headers = blocks
+        .iter()
+        .map(|block| block.header.clone())
+        .collect::<Vec<_>>();
+    let first_peer_blocks = blocks
+        .iter()
+        .take(9)
+        .cloned()
+        .map(WireNetworkMessage::Block);
+    let second_peer_blocks = blocks
+        .iter()
+        .skip(9)
+        .take(10)
+        .cloned()
+        .map(WireNetworkMessage::Block);
+    let mut first_peer_script = headers_script(47, all_headers);
+    first_peer_script.extend(first_peer_blocks);
+    let mut second_peer_script = version_verack_script(47);
+    second_peer_script.extend(second_peer_blocks);
+    let config = SyncRuntimeConfig {
+        manual_peers: vec![
+            SyncPeerAddress::manual("127.0.0.1", 18_444),
+            SyncPeerAddress::manual("127.0.0.1", 18_445),
+        ],
+        dns_seeds: Vec::new(),
+        target_outbound_peers: 2,
+        max_blocks_in_flight_per_peer: 2,
+        max_blocks_in_flight_total: 4,
+        max_messages_per_peer: 12,
+        max_rounds: 32,
+        max_peer_retries: 0,
+        maybe_log_dir: Some(log_dir.clone()),
+        ..sync_config()
+    };
+    assert!(config.dns_seeds.is_empty());
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime = DurableSyncRuntime::open(store, config.clone()).expect("runtime");
+    let mut transport = ScriptedTransport::new(vec![first_peer_script, second_peer_script]);
+    let load_pressure = |runtime: &DurableSyncRuntime| {
+        let metadata = runtime
+            .store()
+            .load_runtime_metadata()
+            .expect("load runtime metadata")
+            .expect("runtime metadata");
+        let durable_sync_state = metadata.maybe_sync_state.expect("durable sync state");
+        match durable_sync_state.sync.resource_pressure {
+            FieldAvailability::Available(pressure) => pressure,
+            FieldAvailability::Unavailable { reason } => {
+                panic!("missing synthetic long-chain resource pressure: {reason}")
+            }
+        }
+    };
+
+    // Act
+    let partial_summary = runtime
+        .sync_once(&mut transport, i64::from(blocks[18].header.time))
+        .expect("partial synthetic sync");
+    let partial_pressure = load_pressure(&runtime);
+    let metrics_status = runtime
+        .store()
+        .load_metrics_status(MetricRetentionPolicy::default())
+        .expect("metrics status");
+    let metrics_retention = MetricRetentionPolicy::default();
+    let log_retention = LogRetentionPolicy::default();
+    let log_status = load_log_status(&log_dir, LogRetentionPolicy::default(), 10);
+    drop(runtime);
+
+    let reopened_store = FjallNodeStore::open(&path).expect("reopen store");
+    let mut reopened_runtime =
+        DurableSyncRuntime::open(reopened_store, config).expect("reopened runtime");
+    let reopened_summary = reopened_runtime.snapshot_summary();
+    let connected_index =
+        usize::try_from(reopened_summary.best_block_height).expect("connected height fits usize");
+    let connected_hash = block_hash(&blocks[connected_index].header);
+    let next_missing_hash = block_hash(&blocks[connected_index + 1].header);
+    let mut resume_transport =
+        ScriptedTransport::new(vec![version_verack_script(47), version_verack_script(47)]);
+    let resume_summary = reopened_runtime
+        .sync_once(
+            &mut resume_transport,
+            i64::from(blocks[connected_index + 1].header.time),
+        )
+        .expect("resume sync");
+    let resume_pressure = load_pressure(&reopened_runtime);
+    let resume_requested_hashes = getdata_block_hashes(&resume_transport.sent_messages());
+
+    // Assert
+    assert_eq!(blocks.len(), 48);
+    assert_eq!(partial_summary.best_header_height, 47);
+    assert!(partial_summary.blocks_received > 0);
+    assert!(partial_summary.best_block_height < partial_summary.best_header_height);
+    assert!(partial_pressure.blocks_in_flight <= 4);
+    assert!(partial_pressure.outbound_peers <= 2);
+    assert_eq!(partial_pressure.target_outbound_peers, 2);
+    assert_eq!(partial_pressure.max_blocks_in_flight_per_peer, 2);
+    assert_eq!(partial_pressure.max_blocks_in_flight_total, 4);
+    assert_eq!(partial_pressure.max_messages_per_peer, 12);
+    assert_eq!(partial_pressure.max_sync_rounds, 32);
+
+    assert_eq!(metrics_status.retention, MetricRetentionPolicy::default());
+    assert_eq!(metrics_retention.sample_interval_seconds, 30);
+    assert_eq!(metrics_retention.max_samples_per_series, 2_880);
+    assert_eq!(metrics_retention.max_age_seconds, 86_400);
+    assert_eq!(log_status.retention, LogRetentionPolicy::default());
+    assert_eq!(log_retention.max_files, 14);
+    assert_eq!(log_retention.max_age_days, 14);
+    assert_eq!(log_retention.max_total_bytes, 268_435_456);
+
+    assert!(reopened_runtime.inflight_blocks.is_empty());
+    assert_eq!(reopened_summary.best_header_height, 47);
+    assert_eq!(
+        reopened_summary.downloaded_block_height,
+        partial_summary.downloaded_block_height
+    );
+    assert_eq!(
+        reopened_summary.best_block_height,
+        partial_summary.best_block_height
+    );
+    assert_eq!(
+        reopened_summary.maybe_connected_block_hash,
+        partial_summary.maybe_connected_block_hash
+    );
+    assert!(!resume_requested_hashes.contains(&connected_hash));
+    assert!(resume_requested_hashes.contains(&next_missing_hash));
+    assert_eq!(resume_summary.best_header_height, 47);
+    assert!(resume_pressure.blocks_in_flight <= 4);
+    assert!(resume_pressure.outbound_peers <= 2);
+    assert_eq!(resume_pressure.max_messages_per_peer, 12);
+    assert_eq!(resume_pressure.max_sync_rounds, 32);
+
+    drop(reopened_runtime);
     remove_dir_if_exists(&path);
 }
 

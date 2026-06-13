@@ -34,7 +34,7 @@ delete those phase directories.
 - [x] **Phase 68: Full Active-Chain Validation and Durable Persistence** - Sync to the best-known validated peer tip only through consensus-validated, durably connected active-chain progress.
 - [x] **Phase 69: Tip Tracking and Stay-Current Operation** - Define best-known tip evidence and keep the daemon current after initial catch-up.
 - [x] **Phase 70: Reorg, Peer Rotation, and No-Progress Recovery** - Make branch competition, reorgs, peer failures, and no-progress causes deterministic and operator-visible.
-- [ ] **Phase 71: Resource Bounds and Durable Restart/Resume** - Prove long-sync resource bounds and safe recovery across shutdown, interruption, and storage-pressure cases.
+- [x] **Phase 71: Resource Bounds and Durable Restart/Resume** - Prove long-sync resource bounds and safe recovery across shutdown, interruption, and storage-pressure cases.
 - [ ] **Phase 72: Operator Observability and Support Evidence** - Align every operator surface around one full-sync truth contract and redacted support evidence.
 - [ ] **Phase 73: Opt-In UAT and Deterministic Verification** - Keep default verification hermetic while adding deterministic coverage and repo-local public-mainnet UAT commands.
 - [ ] **Phase 74: Release Boundaries, Parity, and Documentation** - Close v1.6 with scoped parity roots, release-readiness docs, operator guidance, and claim-boundary checks.
@@ -149,7 +149,7 @@ Plans:
 | 68. Full Active-Chain Validation and Durable Persistence | 3/3 | Complete    | 2026-06-11 |
 | 69. Tip Tracking and Stay-Current Operation | 5/5 | Complete    | 2026-06-12 |
 | 70. Reorg, Peer Rotation, and No-Progress Recovery | 6/6 | Complete | 2026-06-12 |
-| 71. Resource Bounds and Durable Restart/Resume | 0/0 | Pending | — |
+| 71. Resource Bounds and Durable Restart/Resume | 4/4 | Complete    | 2026-06-13 |
 | 72. Operator Observability and Support Evidence | 0/0 | Pending | — |
 | 73. Opt-In UAT and Deterministic Verification | 0/0 | Pending | — |
 | 74. Release Boundaries, Parity, and Documentation | 0/0 | Pending | — |
@@ -206,8 +206,8 @@ traceability.
 
 ## Next Step
 
-Begin Phase 71 planning:
+Begin Phase 72 planning:
 
 ```bash
-/gsd-discuss-phase 71
+/gsd-discuss-phase 72
 ```

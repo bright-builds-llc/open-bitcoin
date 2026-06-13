@@ -80,6 +80,9 @@ pub(crate) fn recovery_category_from_error_detail(detail: &str) -> Option<SyncRe
     if contains_lock_signal(&lower_detail) {
         return Some(SyncRecoveryCategory::StorageLockContention);
     }
+    if contains_storage_pressure_signal(&lower_detail) {
+        return Some(SyncRecoveryCategory::ResourceExhaustion);
+    }
     if lower_detail.contains("backend")
         || lower_detail.contains("unavailable namespace")
         || lower_detail.contains("storage failure")
@@ -107,6 +110,14 @@ fn contains_lock_signal(lower_detail: &str) -> bool {
     contains_ascii_word(lower_detail, "lock")
         || contains_ascii_word(lower_detail, "locked")
         || lower_detail.contains("contention")
+}
+
+fn contains_storage_pressure_signal(lower_detail: &str) -> bool {
+    lower_detail.contains("no space left on device")
+        || lower_detail.contains("enospc")
+        || lower_detail.contains("disk full")
+        || lower_detail.contains("low disk")
+        || lower_detail.contains("storage pressure")
 }
 
 fn contains_ascii_word(haystack: &str, needle: &str) -> bool {
@@ -285,6 +296,26 @@ mod tests {
             (
                 "interrupted write in headers namespace",
                 SyncRecoveryCategory::StorageBackendFailure,
+            ),
+            (
+                "no space left on device while writing block body",
+                SyncRecoveryCategory::ResourceExhaustion,
+            ),
+            (
+                "ENOSPC while saving chainstate",
+                SyncRecoveryCategory::ResourceExhaustion,
+            ),
+            (
+                "disk full during runtime metadata write",
+                SyncRecoveryCategory::ResourceExhaustion,
+            ),
+            (
+                "low disk warning from store",
+                SyncRecoveryCategory::ResourceExhaustion,
+            ),
+            (
+                "storage pressure reported by adapter",
+                SyncRecoveryCategory::ResourceExhaustion,
             ),
             (
                 "peer hit resource limit",

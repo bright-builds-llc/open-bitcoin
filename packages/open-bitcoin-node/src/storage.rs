@@ -86,6 +86,7 @@ pub enum StorageRecoveryAction {
     Reindex,
     Repair,
     RestoreFromBackup,
+    FreeDisk,
 }
 
 impl StorageRecoveryAction {
@@ -94,6 +95,7 @@ impl StorageRecoveryAction {
             Self::Restart => SyncRecoveryCategory::StorageBackendFailure,
             Self::Reindex => SyncRecoveryCategory::IncompatibleSchema,
             Self::Repair | Self::RestoreFromBackup => SyncRecoveryCategory::StoreCorruption,
+            Self::FreeDisk => SyncRecoveryCategory::ResourceExhaustion,
         }
     }
 
@@ -105,7 +107,17 @@ impl StorageRecoveryAction {
             Self::RestoreFromBackup => {
                 "Restore the affected datadir or wallet state from a known-good backup."
             }
+            Self::FreeDisk => "Free disk space for the selected datadir, then retry sync.",
         }
+    }
+
+    pub fn for_backend_message(message: &str) -> Self {
+        let lower_message = message.to_ascii_lowercase();
+        if contains_storage_pressure_signal(&lower_message) {
+            return Self::FreeDisk;
+        }
+
+        Self::Restart
     }
 }
 
@@ -198,12 +210,14 @@ impl StorageError {
             Self::UnavailableNamespace { .. } | Self::InterruptedWrite { .. } => {
                 SyncRecoveryCategory::StorageBackendFailure
             }
-            Self::BackendFailure { message, .. } => {
+            Self::BackendFailure {
+                message, action, ..
+            } => {
                 if contains_storage_lock_signal(message) {
                     return SyncRecoveryCategory::StorageLockContention;
                 }
 
-                SyncRecoveryCategory::StorageBackendFailure
+                action.recovery_category()
             }
         }
     }
@@ -225,6 +239,14 @@ fn contains_storage_lock_signal(message: &str) -> bool {
     contains_ascii_word(&lower_message, "lock")
         || contains_ascii_word(&lower_message, "locked")
         || lower_message.contains("contention")
+}
+
+fn contains_storage_pressure_signal(lower_message: &str) -> bool {
+    lower_message.contains("no space left on device")
+        || lower_message.contains("enospc")
+        || lower_message.contains("disk full")
+        || lower_message.contains("low disk")
+        || lower_message.contains("storage pressure")
 }
 
 fn contains_ascii_word(haystack: &str, needle: &str) -> bool {
@@ -321,6 +343,7 @@ mod tests {
             StorageRecoveryAction::Reindex,
             StorageRecoveryAction::Repair,
             StorageRecoveryAction::RestoreFromBackup,
+            StorageRecoveryAction::FreeDisk,
         ];
 
         // Act / Assert
@@ -428,6 +451,50 @@ mod tests {
                 SyncRecoveryCategory::StoreCorruption,
                 SyncRecoveryCategory::StoreCorruption,
             ]
+        );
+    }
+
+    #[test]
+    fn storage_recovery_category_maps_low_disk_and_storage_pressure() {
+        // Arrange
+        let pressure_messages = [
+            "no space left on device while flushing block index",
+            "ENOSPC while writing chainstate",
+            "disk full during runtime metadata write",
+            "low disk warning from backend",
+            "storage pressure reported by adapter",
+        ];
+        let free_disk_error = StorageError::BackendFailure {
+            namespace: StorageNamespace::Runtime,
+            message: "storage pressure reported by adapter".to_string(),
+            action: StorageRecoveryAction::FreeDisk,
+        };
+
+        // Act
+        let pressure_actions = pressure_messages.map(StorageRecoveryAction::for_backend_message);
+        let block_flush_action = StorageRecoveryAction::for_backend_message("block flush failed");
+        let serialized_action =
+            serde_json::to_value(StorageRecoveryAction::FreeDisk).expect("recovery action json");
+        let category = free_disk_error.recovery_category();
+        let action_category = StorageRecoveryAction::FreeDisk.recovery_category();
+        let operator_message = StorageRecoveryAction::FreeDisk.operator_message();
+
+        // Assert
+        assert!(
+            pressure_actions
+                .iter()
+                .all(|action| *action == StorageRecoveryAction::FreeDisk)
+        );
+        assert_eq!(block_flush_action, StorageRecoveryAction::Restart);
+        assert_eq!(
+            serialized_action,
+            serde_json::Value::String("free_disk".to_string())
+        );
+        assert_eq!(category, SyncRecoveryCategory::ResourceExhaustion);
+        assert_eq!(action_category, SyncRecoveryCategory::ResourceExhaustion);
+        assert_eq!(
+            operator_message,
+            "Free disk space for the selected datadir, then retry sync."
         );
     }
 }

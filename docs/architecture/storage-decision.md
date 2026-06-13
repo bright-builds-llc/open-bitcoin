@@ -36,3 +36,13 @@ Phase 14 may add the selected storage dependency only after these obligations ar
 Phase 14 implements the initial `fjall` adapter in `packages/open-bitcoin-node/src/storage/fjall_store.rs`. The adapter stores schema-versioned JSON snapshots in separate `headers`, `block_index`, `chainstate`, `wallet`, `metrics`, `runtime`, and `schema` keyspaces and keeps database effects inside `open-bitcoin-node`.
 
 The restart and recovery tests cover reopening persisted chainstate, header/block-index, wallet, metrics, and runtime records; incompatible schema versions; malformed stored records; interrupted-write recovery markers; explicit reindex guidance; and clean-shutdown marker clearing.
+
+## Phase 71 Storage Pressure Evidence
+
+Phase 71 keeps storage pressure in the typed recovery contract rather than
+burying it in backend error text. `StorageRecoveryAction::FreeDisk` is selected
+from low-disk backend messages, maps to
+`SyncRecoveryCategory::ResourceExhaustion`, and renders the operator guidance
+`Free disk space for the selected datadir, then retry sync.` This is diagnosis
+only: the adapter does not automatically delete files, compact storage, repair
+chainstate, or change the selected datadir.

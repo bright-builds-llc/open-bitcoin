@@ -505,3 +505,37 @@ fn current_unix_seconds() -> u64 {
 fn path_to_string(path: &Path) -> String {
     path.display().to_string()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::redaction_summary;
+
+    #[test]
+    fn phase71_support_redaction_names_compact_evidence_bounds() {
+        // Arrange
+        let summary = redaction_summary();
+
+        // Act
+        let omitted = summary.omitted;
+        let safeguards = summary.safeguards;
+
+        // Assert
+        assert_eq!(
+            omitted,
+            [
+                "RPC cookie contents",
+                "RPC password and RPC auth values",
+                "wallet private material and raw wallet files",
+                "raw unbounded log contents",
+            ]
+        );
+        assert_eq!(
+            safeguards,
+            [
+                "credential sources are represented as metadata only",
+                "live smoke reports are summarized from allowlisted fields only",
+                "logs are limited to existing structured status signals",
+            ]
+        );
+    }
+}

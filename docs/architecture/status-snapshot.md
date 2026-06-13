@@ -229,7 +229,8 @@ public-network or production-node readiness claim.
 
 ## Sync resource pressure
 
-`sync.resource_pressure` reports observed pressure and configured bounds
+`sync.resource_pressure` is the rendered `SyncResourcePressure` contract. It
+reports observed pressure and configured bounds
 together. Consumers should treat observed fields and durable progress counters
 as observations:
 
@@ -250,6 +251,18 @@ envelope:
 This keeps status, dashboard, RPC-facing blockchain info, support evidence,
 metrics projections, structured logs, and live-smoke snapshots aligned on one
 source of truth for public-network runtime bounds.
+
+Phase 71 binds this status contract to deterministic restart/resume evidence:
+`phase71_same_datadir_resume_matrix_covers_clean_unclean_mid_download_mid_connect_and_stale_inflight`
+covers clean shutdown, unclean shutdown, mid-download interruption,
+mid-connect interruption, and stale in-flight cleanup for one selected datadir,
+while
+`phase71_synthetic_long_chain_exercises_resource_bounds_without_public_network`
+exercises bounded long-chain progress without public-network peers. Low-disk
+and storage-pressure backend failures surface as
+`SyncRecoveryCategory::ResourceExhaustion` with
+`StorageRecoveryAction::FreeDisk`; consumers must keep that storage/resource
+blocker distinct from peer retry guidance.
 
 ## Metrics and Logs
 

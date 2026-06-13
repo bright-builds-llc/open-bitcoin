@@ -782,6 +782,19 @@ Interpret `service.restart_resume` from fields, not from elapsed time:
 - `recovery_category` and `next_action` reuse the Phase 61 typed recovery
   vocabulary and storage-first recovery precedence.
 
+### Phase 71 resource bounds and restart/resume proof
+
+Phase 71 keeps bounded long-sync review deterministic by checking peers, in-flight blocks, request queues, retry maps, cache retention, synchronous storage writes, metrics retention, structured log retention, and support evidence compactness through source and hermetic tests. The same-datadir resume matrix: clean shutdown, unclean shutdown, mid-download interruption, mid-connect interruption, stale in-flight cleanup is covered without contacting public peers or restarting a real service manager.
+
+Storage or resource blockers stay explicit operator evidence. `StorageRecoveryAction::FreeDisk` maps low-disk backend failures to `SyncRecoveryCategory::ResourceExhaustion` and the operator action is `Free disk space for the selected datadir, then retry sync.` Open Bitcoin does not automatically repair, prune, move, or mutate the selected datadir for that condition.
+
+The deterministic proof points are
+`phase71_synthetic_long_chain_exercises_resource_bounds_without_public_network`
+and
+`phase71_same_datadir_resume_matrix_covers_clean_unclean_mid_download_mid_connect_and_stale_inflight`.
+Treat those as local verification evidence for bounded restart/resume behavior,
+not as public-mainnet completion evidence.
+
 The optional public-network restart smoke remains separate from default
 verification:
 

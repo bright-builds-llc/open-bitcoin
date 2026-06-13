@@ -257,7 +257,7 @@ pub(super) const fn no_progress_next_action(diagnosis: NoProgressDiagnosis) -> &
             "Inspect storage health before retrying sync."
         }
         NoProgressDiagnosis::StorageOrResourceBlocked => {
-            "Inspect storage health or increase bounded resource limits."
+            "Inspect storage health, free disk space for the selected datadir, or increase bounded resource limits."
         }
     }
 }

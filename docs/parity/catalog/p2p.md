@@ -112,6 +112,10 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
   useful-progress credit. Those responses release stale in-flight work for the
   affected block, preserve typed attribution in peer outcomes, and allow the
   runtime to try another eligible endpoint through endpoint-keyed backoff.
+- Phase 71 bounded-resource restart/resume evidence keeps outbound daemon
+  review explicit and deterministic: local tests cover resource envelopes,
+  same-datadir resume, stale in-flight cleanup, and storage-pressure recovery
+  without making public-network checks part of default verification.
 
 ## v1.4 release boundary
 
@@ -188,6 +192,20 @@ compact block relay, public-peer probing, or production-node support claim.
 Public-network live-smoke, manual-peer probing, restart-after-progress, and real
 launchd/systemd manager calls remain explicit operator UAT outside
 `bash scripts/verify.sh`.
+
+## Phase 71 resource and restart boundary
+
+Phase 71 remains outbound explicit opt-in full-sync review. It documents and
+checks local evidence for bounded peers, in-flight blocks, request queues, retry
+maps, cache retention, synchronous storage writes, metrics/log retention,
+support evidence compactness, and same-datadir restart/resume behavior.
+
+Phase 71 does not add inbound serving, address relay, block serving,
+transaction relay, compact block relay, production-funds wallet claims,
+migration apply mode, signed packaging, Windows service support, GUI, hosted
+dashboards, or broad production-node readiness. Public-network long-run review,
+manual peers, service-manager restarts, and restart-after-progress evidence
+remain explicit operator UAT outside `bash scripts/verify.sh`.
 
 ## First-party implementation
 

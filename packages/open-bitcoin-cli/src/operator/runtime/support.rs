@@ -458,7 +458,7 @@ mod tests {
 
     use super::{
         OperatorOutputFormat, SyncArgs, SyncCommand, execute_offline_sync_command,
-        render_sync_status,
+        render_sync_status, sync_pressure_text,
     };
 
     static NEXT_TEST_DIRECTORY_ID: AtomicU64 = AtomicU64::new(0);
@@ -616,5 +616,12 @@ mod tests {
         assert!(unavailable.contains("Latest stop reason: Unavailable: stop reason unavailable"));
         assert!(unavailable.contains("Downloaded block: height=840006 hash=Unavailable: no downloaded block hash recorded"));
         assert!(unavailable.contains("Connected block: height=840004 hash=Unavailable: no connected block hash recorded"));
+    }
+
+    #[test]
+    #[rustfmt::skip]
+    fn phase71_runtime_support_resource_pressure_lists_all_configured_bounds() {
+        let pressure = SyncResourcePressure { blocks_in_flight: 8, max_header_requests_in_flight_per_peer: 1, max_headers_per_message: 2_000, max_blocks_in_flight_per_peer: 16, max_blocks_in_flight_total: 64, max_messages_per_peer: 64, max_sync_rounds: 8, outbound_peers: 2, target_outbound_peers: 4 };
+        assert_eq!(sync_pressure_text(&pressure), "header_requests_in_flight_per_peer=1 headers_per_message=2000 blocks_in_flight=8/16/64 messages_per_peer=64 sync_rounds=8 outbound_peers=2/4");
     }
 }

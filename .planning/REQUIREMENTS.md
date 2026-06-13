@@ -29,10 +29,10 @@ Requirements for v1.6 Mainnet Full-Sync Completion. Each requirement maps to exa
 
 ### Resource Bounds And Durable Restart/Resume
 
-- [ ] **RES-01**: Operator can run long mainnet sync attempts with documented and tested bounds for peers, in-flight blocks, queues, caches, storage writes, logs, metrics, and support evidence.
-- [ ] **RES-02**: Operator can resume safely after clean shutdown, unclean shutdown, mid-download interruption, mid-connect interruption, and stale in-flight work.
-- [ ] **RES-03**: Operator can receive typed recovery guidance for schema mismatch, corruption markers, lock contention, low disk, and storage pressure without hidden data mutation.
-- [ ] **RES-04**: Operator can run deterministic synthetic long-chain tests that exercise resource bounds without requiring public-network access.
+- [x] **RES-01**: Operator can run long mainnet sync attempts with documented and tested bounds for peers, in-flight blocks, queues, caches, storage writes, logs, metrics, and support evidence.
+- [x] **RES-02**: Operator can resume safely after clean shutdown, unclean shutdown, mid-download interruption, mid-connect interruption, and stale in-flight work.
+- [x] **RES-03**: Operator can receive typed recovery guidance for schema mismatch, corruption markers, lock contention, low disk, and storage pressure without hidden data mutation.
+- [x] **RES-04**: Operator can run deterministic synthetic long-chain tests that exercise resource bounds without requiring public-network access.
 
 ### Operator Observability And Support Evidence
 
@@ -107,10 +107,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | REC-02 | Phase 70 | Complete |
 | REC-03 | Phase 70 | Complete |
 | REC-04 | Phase 70 | Complete |
-| RES-01 | Phase 71 | Pending |
-| RES-02 | Phase 71 | Pending |
-| RES-03 | Phase 71 | Pending |
-| RES-04 | Phase 71 | Pending |
+| RES-01 | Phase 71 | Complete |
+| RES-02 | Phase 71 | Complete |
+| RES-03 | Phase 71 | Complete |
+| RES-04 | Phase 71 | Complete |
 | OBS-01 | Phase 72 | Pending |
 | OBS-02 | Phase 72 | Pending |
 | OBS-03 | Phase 72 | Pending |
