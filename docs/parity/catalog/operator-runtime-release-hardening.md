@@ -57,6 +57,7 @@ shipped claims separate from deferred or out-of-scope work.
 | Service, status, and dashboard docs | Service lifecycle and runtime inspection surfaces should be documented as shipped behavior, not as placeholders. | README and architecture docs now describe the actual `service`, `status`, and `dashboard` flows, including dry-run install or uninstall semantics and non-TTY dashboard snapshots. | `docs/operator/runtime-guide.md`, `docs/architecture/cli-command-architecture.md`, `packages/open-bitcoin-cli/tests/operator_binary.rs` | Windows service support and hosted dashboards remain out of scope. |
 | Migration limits in release narrative | Release docs must keep migration non-claims visible instead of implying automatic cutover. | The operator guide and parity ledger continue to frame migration as dry-run only, with manual cutover and external-wallet mutation left out of scope. | `docs/operator/runtime-guide.md`, `docs/parity/catalog/drop-in-audit-and-migration.md`, `docs/parity/index.json` | Migration apply mode is future work. |
 | Release-readiness ledger | The machine-readable root should separate shipped v1.1 claims from deferred or out-of-scope surfaces. | `docs/parity/index.json`, `docs/parity/checklist.md`, and `docs/parity/release-readiness.md` now treat the Phase 22 operator-runtime closeout as explicit audit evidence. | `docs/parity/index.json`, `docs/parity/checklist.md`, `docs/parity/release-readiness.md` | Future packaging, public dashboards, and broader runtime parity claims remain deferred. |
+| Phase 72 observability/support evidence | Operator evidence should prove what it claims without expanding the production scope. | CLI status, dashboard, RPC durable sync status, metrics, structured logs, live-smoke reports, and support bundles now share compact full-sync truth fields and typed verdicts. | `docs/operator/runtime-guide.md`, `scripts/check-phase72-observability-evidence.ts`, `packages/open-bitcoin-cli/tests/operator_binary.rs` | This adds observability/support evidence only, not inbound serving, address relay, block serving, transaction relay, compact block relay, production-funds wallet claims, migration apply mode, signed packaging, Windows service support, GUI, hosted dashboards, or broad production-node readiness. |
 
 ## Known Gaps
 
@@ -68,6 +69,10 @@ shipped claims separate from deferred or out-of-scope work.
 - hosted or public dashboard work beyond the local terminal dashboard
 - migration apply mode, source-service cutover, source-datadir mutation, and
   external-wallet rewrite or import
+- inbound serving, address relay, block serving, transaction relay, compact
+  block relay, production-funds wallet claims, GUI, hosted dashboards, and
+  broad production-node readiness remain outside the Phase 72 evidence-only
+  scope
 
 ## Follow-Up Triggers
 

@@ -252,6 +252,32 @@ This keeps status, dashboard, RPC-facing blockchain info, support evidence,
 metrics projections, structured logs, and live-smoke snapshots aligned on one
 source of truth for public-network runtime bounds.
 
+## Phase 72 evidence comparison fields
+
+Phase 72 keeps operator observability and support evidence as projections of the
+shared status snapshot. Cross-surface comparison uses these exact machine field
+names when a surface exposes the corresponding fact:
+
+- `validated_active_chain_height`
+- `maybe_validated_active_chain_hash`
+- `maybe_validated_active_chain_work`
+- `best_known_tip`
+- `stay_current`
+- `no_progress_diagnosis`
+- `no_progress_next_action`
+- `latest_reorg`
+- `reconcile_progress`
+- `resource_pressure`
+- `peer_contribution`
+- `latest_stop_reason`
+- `evidence_verdict`
+
+Unavailable fields remain evidence. Human renderers should preserve
+`Unavailable: {reason}`, while JSON/report surfaces should preserve the
+equivalent unavailable-reason path instead of silently dropping unsupported
+facts. Support verdicts and live-smoke summaries must compare exposed values to
+the same snapshot values rather than treating field-name presence as proof.
+
 Phase 71 binds this status contract to deterministic restart/resume evidence:
 `phase71_same_datadir_resume_matrix_covers_clean_unclean_mid_download_mid_connect_and_stale_inflight`
 covers clean shutdown, unclean shutdown, mid-download interruption,

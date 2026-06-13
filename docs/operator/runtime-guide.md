@@ -459,6 +459,57 @@ When `sync.no_progress_diagnosis` is unavailable, consumers should render the
 unavailable reason instead of inventing a local fallback. When it is available,
 `sync.no_progress_next_action` is the bounded human guidance for that diagnosis.
 
+### Phase 72 full-sync evidence and support verdicts
+
+Phase 72 full-sync evidence and support verdicts align `open-bitcoin status`,
+`open-bitcoin dashboard`, RPC durable sync status, bounded metrics, structured
+logs, live-smoke reports, and support bundles around the same shared sync truth
+contract. A support bundle is evidence only when its typed fields prove the
+claim being made. Bundle existence, elapsed time, peer reachability, and daemon
+startup are not sufficient proof without connected and validated active-chain
+progress, best-known tip evidence, stay-current state, blocker diagnosis, reorg
+or reconcile evidence, restart/resume checkpoints, or resource-pressure and
+recovery evidence.
+
+Support bundle verdict labels are:
+
+- `sync_to_tip_proven`: connected and validated active-chain height, hash, and
+  work match the best-known validated tip evidence.
+- `stay_current_proven`: the same full-sync evidence is present and
+  `stay_current` proves `current_at_best_known_tip`.
+- `diagnosed_blocker`: progress is not proven, but the shared status evidence
+  contains a typed blocker such as storage/resource pressure, no-progress
+  diagnosis, recovery category, or reorg/reconcile blocker. For example,
+  `resource_exhaustion` can pair with the next action
+  `free storage and retry validation`.
+- `inconclusive`: the bundle does not contain enough matching evidence to prove
+  sync-to-tip, stay-current behavior, or a diagnosed blocker.
+
+Use the repo-local support bundle command when you need shareable local
+evidence for one selected datadir:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet support bundle --output-dir=/tmp/open-bitcoin-support
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet support bundle --output-dir=/tmp/open-bitcoin-support
+```
+
+The support output is intentionally compact. It may include
+`validated_active_chain_height`, `maybe_validated_active_chain_hash`,
+`maybe_validated_active_chain_work`, `best_known_tip`, `stay_current`,
+`no_progress_diagnosis`, `no_progress_next_action`, `latest_reorg`,
+`reconcile_progress`, `resource_pressure`, `peer_contribution`,
+`latest_stop_reason`, and `evidence_verdict`. It must not copy raw daemon logs,
+raw peer tables, endpoint tables, credential contents, wallet material, or raw
+live-smoke reports into support artifacts.
+
+Phase 72 adds observability and support evidence only. It does not add inbound
+serving, address relay, block serving, transaction relay, compact block relay,
+production-funds wallet claims, migration apply mode, signed packaging,
+Windows service support, GUI, hosted dashboards, or broad production-node
+readiness.
+
+<!-- README impact reviewed: README.md already points operator preview readers to this runtime guide and describes explicit live-smoke evidence without making new production claims; packages/README.md is crate inventory only; docs/parity/README.md describes ledger structure rather than operator workflow. No README changes required for Phase 72. -->
+
 ### Phase 62 sync truth fields
 
 `open-bitcoin status`, `open-bitcoin dashboard`, `open-bitcoin sync status`,

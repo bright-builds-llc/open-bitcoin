@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Mainnet Full-Sync Completion
-status: ready
+status: verifying
 stopped_at: Phase 71 complete
-last_updated: "2026-06-13T13:50:22.810Z"
+last_updated: "2026-06-13T21:04:14.286Z"
 last_activity: 2026-06-13
 progress:
   total_phases: 7
-  completed_phases: 4
-  total_plans: 18
-  completed_plans: 18
+  completed_phases: 5
+  total_plans: 22
+  completed_plans: 22
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-11)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 72 — Operator Observability and Support Evidence
+**Current focus:** Phase 72 — operator-observability-and-support-evidence
 
 ## Current Position
 
 Milestone: v1.6 Mainnet Full-Sync Completion
-Phase: 72 (Operator Observability and Support Evidence) — PENDING
-Plan: planning not started
-Status: Ready to discuss
+Phase: 73
+Plan: Not started
+Status: Phase complete — ready for verification
 Last activity: 2026-06-13
 
 Progress: [##########] 100%

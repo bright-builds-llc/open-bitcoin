@@ -14,6 +14,7 @@ pub enum MetricKind {
     HeaderHeight,
     DownloadedBlockHeight,
     ConnectedBlockHeight,
+    ValidatedActiveChainHeight,
     PeerCount,
     MempoolTransactions,
     WalletTrustedBalanceSats,
@@ -23,11 +24,12 @@ pub enum MetricKind {
 }
 
 impl MetricKind {
-    pub const ALL: [Self; 10] = [
+    pub const ALL: [Self; 11] = [
         Self::SyncHeight,
         Self::HeaderHeight,
         Self::DownloadedBlockHeight,
         Self::ConnectedBlockHeight,
+        Self::ValidatedActiveChainHeight,
         Self::PeerCount,
         Self::MempoolTransactions,
         Self::WalletTrustedBalanceSats,
@@ -42,6 +44,7 @@ impl MetricKind {
             Self::HeaderHeight => "header_height",
             Self::DownloadedBlockHeight => "downloaded_block_height",
             Self::ConnectedBlockHeight => "connected_block_height",
+            Self::ValidatedActiveChainHeight => "validated_active_chain_height",
             Self::PeerCount => "peer_count",
             Self::MempoolTransactions => "mempool_transactions",
             Self::WalletTrustedBalanceSats => "wallet_trusted_balance_sats",
@@ -218,6 +221,10 @@ mod tests {
             (MetricKind::HeaderHeight, "header_height"),
             (MetricKind::DownloadedBlockHeight, "downloaded_block_height"),
             (MetricKind::ConnectedBlockHeight, "connected_block_height"),
+            (
+                MetricKind::ValidatedActiveChainHeight,
+                "validated_active_chain_height",
+            ),
             (MetricKind::PeerCount, "peer_count"),
             (MetricKind::MempoolTransactions, "mempool_transactions"),
             (

@@ -2617,6 +2617,7 @@ fn sync_summary_projects_metric_samples() {
             MetricSample::new(MetricKind::HeaderHeight, 42.0, 1_777_225_022),
             MetricSample::new(MetricKind::DownloadedBlockHeight, 41.0, 1_777_225_022),
             MetricSample::new(MetricKind::ConnectedBlockHeight, 40.0, 1_777_225_022),
+            MetricSample::new(MetricKind::ValidatedActiveChainHeight, 40.0, 1_777_225_022,),
             MetricSample::new(MetricKind::SyncHeight, 40.0, 1_777_225_022),
             MetricSample::new(MetricKind::PeerCount, 1.0, 1_777_225_022),
         ]

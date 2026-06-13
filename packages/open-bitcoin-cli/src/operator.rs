@@ -21,6 +21,7 @@ pub mod runtime;
 pub mod service;
 pub mod status;
 pub mod support;
+pub(crate) mod sync_truth_render;
 pub mod wallet;
 pub(crate) mod wallet_support;
 

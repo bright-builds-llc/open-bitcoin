@@ -256,6 +256,15 @@ type StopReasonSummary = {
   message: string;
 };
 
+type ObjectSummary = Record<string, string | number | boolean | null>;
+
+type PeerContributionSummary = {
+  attempted: number | null;
+  connected: number | null;
+  failed: number | null;
+  outbound: number | null;
+};
+
 type RestartResumeEvidence = {
   afterRestart: RestartProgressSummary | null;
   beforeRestart: RestartProgressSummary | null;
@@ -272,13 +281,16 @@ type RestartResumeEvidence = {
 
 type FinalStatusSummary = {
   attemptCounters: AttemptCountersSummary | null;
+  bestKnownTip: ObjectSummary | null;
   blockHeight: number | null;
   configuredTargets: ConfiguredTargetsSummary | null;
   connectedBlockHeight: number | null;
   downloadedBlockHeight: number | null;
   headerHeight: number | null;
   latestStopReason: StopReasonSummary | null;
+  latestReorg: ObjectSummary | null;
   maybeAttemptCountersUnavailableReason: string | null;
+  maybeBestKnownTipUnavailableReason: string | null;
   maybeConfiguredTargetsUnavailableReason: string | null;
   lifecycle: string;
   maybeConnectedBlockHash: string | null;
@@ -287,22 +299,38 @@ type FinalStatusSummary = {
   maybeLastError: string | null;
   maybeLastErrorUnavailableReason: string | null;
   maybeLatestStopReasonUnavailableReason: string | null;
+  maybeLatestReorgUnavailableReason: string | null;
+  maybeNoProgressDiagnosisUnavailableReason: string | null;
+  maybeNoProgressNextActionUnavailableReason: string | null;
   maybePeerCountsUnavailableReason: string | null;
   maybeProgressSignalUnavailableReason: string | null;
+  maybeReconcileProgressUnavailableReason: string | null;
   maybeRecoveryActionUnavailableReason: string | null;
   maybeRecoveryCategoryUnavailableReason: string | null;
   maybeResourcePressureUnavailableReason: string | null;
+  maybeStayCurrentNextActionUnavailableReason: string | null;
+  maybeStayCurrentUnavailableReason: string | null;
   maybeSyncProgressUnavailableReason: string | null;
+  maybeValidatedActiveChainHeightUnavailableReason: string | null;
+  maybeValidatedActiveChainHash: string | null;
+  maybeValidatedActiveChainWork: string | null;
   headersReceived: number | null;
   blocksReceived: number | null;
   messagesProcessed: number | null;
+  noProgressDiagnosis: string | null;
+  noProgressNextAction: string | null;
   outboundPeers: number | null;
+  peerContribution: PeerContributionSummary | null;
   phase: string;
   progressSignal: string | null;
   recentPeers: RuntimePeerTelemetry[];
+  reconcileProgress: ObjectSummary | null;
   recoveryAction: string | null;
   recoveryCategory: RecoveryDiagnosisCategory | null;
   resourcePressure: ResourcePressureSummary | null;
+  stayCurrent: string | null;
+  stayCurrentNextAction: string | null;
+  validatedActiveChainHeight: number | null;
 };
 
 type SmokeReport = {
@@ -431,6 +459,13 @@ type DurableSyncStateJson = {
     recovery_action?: FieldAvailability<string>;
     recovery_category?: FieldAvailability<string>;
     resource_pressure?: FieldAvailability<ResourcePressureStatusJson>;
+    best_known_tip?: FieldAvailability<Record<string, unknown>>;
+    stay_current?: FieldAvailability<string>;
+    stay_current_next_action?: FieldAvailability<string>;
+    no_progress_diagnosis?: FieldAvailability<string>;
+    no_progress_next_action?: FieldAvailability<string>;
+    latest_reorg?: FieldAvailability<Record<string, unknown>>;
+    reconcile_progress?: FieldAvailability<Record<string, unknown>>;
     sync_progress?: FieldAvailability<{
       block_height?: number;
       blocks_received?: number;
@@ -440,7 +475,10 @@ type DurableSyncStateJson = {
       headers_received?: number;
       maybe_connected_block_hash?: string | null;
       maybe_downloaded_block_hash?: string | null;
+      maybe_validated_active_chain_hash?: string | null;
+      maybe_validated_active_chain_work?: string | null;
       messages_processed?: number;
+      validated_active_chain_height?: number;
     }>;
     last_successful_progress_unix_seconds?: FieldAvailability<number>;
   };
@@ -1437,6 +1475,81 @@ function stopReasonFromValue(value: StopReasonStatusJson | null): StopReasonSumm
   };
 }
 
+function bestKnownTipSummaryFromValue(value: unknown): ObjectSummary | null {
+  const object = recordFromValue(value);
+  if (object === null) {
+    return null;
+  }
+  return {
+    source: valueAsNullableString(object.source),
+    height: numberOrNull(object.height),
+    blockHash: valueAsNullableString(object.block_hash),
+    work: valueAsNullableString(object.work),
+    blockTimeUnixSeconds: numberOrNull(object.block_time_unix_seconds),
+    observedAtUnixSeconds: numberOrNull(object.observed_at_unix_seconds),
+    freshness: valueAsNullableString(object.freshness),
+  };
+}
+
+function latestReorgSummaryFromValue(value: unknown): ObjectSummary | null {
+  const object = recordFromValue(value);
+  if (object === null) {
+    return null;
+  }
+  return {
+    commonAncestorHeight: numberOrNull(object.common_ancestor_height),
+    commonAncestorHash: valueAsNullableString(object.common_ancestor_hash),
+    disconnectedCount: numberOrNull(object.disconnected_count),
+    connectedCount: numberOrNull(object.connected_count),
+    finalActiveHeight: numberOrNull(object.final_active_height),
+    finalActiveHash: valueAsNullableString(object.final_active_hash),
+    fullyPersisted:
+      typeof object.fully_persisted === "boolean" ? object.fully_persisted : null,
+  };
+}
+
+function reconcileProgressSummaryFromValue(value: unknown): ObjectSummary | null {
+  const object = recordFromValue(value);
+  if (object === null) {
+    return null;
+  }
+  const details = recordFromValue(object.details);
+  return {
+    state: valueAsNullableString(object.state),
+    connectedCount: numberOrNull(details?.connected_count),
+    finalActiveHeight: numberOrNull(details?.final_active_height),
+    finalActiveHash: valueAsNullableString(details?.final_active_hash),
+    missingBlockCount: numberOrNull(details?.missing_block_count),
+  };
+}
+
+function peerContributionFromValues(
+  attemptCounters: AttemptCountersSummary | null,
+  maybePeerCounts: { outbound?: number } | null,
+): PeerContributionSummary | null {
+  if (attemptCounters === null && maybePeerCounts === null) {
+    return null;
+  }
+  return {
+    attempted: attemptCounters?.attemptedPeers ?? null,
+    connected: attemptCounters?.connectedPeers ?? null,
+    failed: attemptCounters?.failedPeers ?? null,
+    outbound:
+      maybePeerCounts === null ? null : Number(maybePeerCounts.outbound ?? 0),
+  };
+}
+
+function recordFromValue(value: unknown): Record<string, unknown> | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return null;
+  }
+  return value as Record<string, unknown>;
+}
+
+function numberOrNull(value: unknown): number | null {
+  return typeof value === "number" ? value : null;
+}
+
 function finalStatusCommand(repoRootPath: string, options: Options): CommandSpec {
   const maybeOverride = process.env.OPEN_BITCOIN_LIVE_SMOKE_FINAL_STATUS_BIN;
   if (maybeOverride !== undefined) {
@@ -1504,12 +1617,26 @@ function finalStatusSummaryFromMetadata(metadata: RuntimeMetadataJson): FinalSta
     maybeProgress === null
       ? null
       : Number(maybeProgress.downloaded_block_height ?? connectedBlockHeight);
+  const maybeValidatedActiveChainHeight =
+    maybeProgress === null || typeof maybeProgress.validated_active_chain_height !== "number"
+      ? null
+      : Number(maybeProgress.validated_active_chain_height);
+  const maybeValidatedActiveChainHeightUnavailableReason =
+    maybeProgress === null
+      ? maybeSyncProgressUnavailableReason
+      : typeof maybeProgress.validated_active_chain_height === "number"
+        ? null
+        : "validated active-chain height unavailable";
   const recentPeers = availableValue(maybeSyncState.peers?.recent_peers)?.map(
     runtimePeerTelemetry,
   ) ?? [];
+  const attemptCounters = attemptCountersFromValue(
+    availableValue(maybeSync?.attempt_counters),
+  );
   return {
-    attemptCounters: attemptCountersFromValue(
-      availableValue(maybeSync?.attempt_counters),
+    attemptCounters,
+    bestKnownTip: bestKnownTipSummaryFromValue(
+      availableValue(maybeSync?.best_known_tip),
     ),
     blockHeight,
     configuredTargets: configuredTargetsFromValue(
@@ -1522,8 +1649,12 @@ function finalStatusSummaryFromMetadata(metadata: RuntimeMetadataJson): FinalSta
     latestStopReason: stopReasonFromValue(
       availableValue(maybeSync?.latest_stop_reason),
     ),
+    latestReorg: latestReorgSummaryFromValue(availableValue(maybeSync?.latest_reorg)),
     maybeAttemptCountersUnavailableReason: unavailableReasonFromFieldAvailability(
       maybeSync?.attempt_counters,
+    ),
+    maybeBestKnownTipUnavailableReason: unavailableReasonFromFieldAvailability(
+      maybeSync?.best_known_tip,
     ),
     maybeConfiguredTargetsUnavailableReason: unavailableReasonFromFieldAvailability(
       maybeSync?.configured_targets,
@@ -1545,9 +1676,21 @@ function finalStatusSummaryFromMetadata(metadata: RuntimeMetadataJson): FinalSta
     maybeLatestStopReasonUnavailableReason: unavailableReasonFromFieldAvailability(
       maybeSync?.latest_stop_reason,
     ),
+    maybeLatestReorgUnavailableReason: unavailableReasonFromFieldAvailability(
+      maybeSync?.latest_reorg,
+    ),
+    maybeNoProgressDiagnosisUnavailableReason: unavailableReasonFromFieldAvailability(
+      maybeSync?.no_progress_diagnosis,
+    ),
+    maybeNoProgressNextActionUnavailableReason: unavailableReasonFromFieldAvailability(
+      maybeSync?.no_progress_next_action,
+    ),
     maybePeerCountsUnavailableReason,
     maybeProgressSignalUnavailableReason: unavailableReasonFromFieldAvailability(
       maybeSync?.progress_signal,
+    ),
+    maybeReconcileProgressUnavailableReason: unavailableReasonFromFieldAvailability(
+      maybeSync?.reconcile_progress,
     ),
     maybeRecoveryActionUnavailableReason: unavailableReasonFromFieldAvailability(
       maybeSync?.recovery_action,
@@ -1558,7 +1701,20 @@ function finalStatusSummaryFromMetadata(metadata: RuntimeMetadataJson): FinalSta
     maybeResourcePressureUnavailableReason: unavailableReasonFromFieldAvailability(
       maybeSync?.resource_pressure,
     ),
+    maybeStayCurrentNextActionUnavailableReason: unavailableReasonFromFieldAvailability(
+      maybeSync?.stay_current_next_action,
+    ),
+    maybeStayCurrentUnavailableReason: unavailableReasonFromFieldAvailability(
+      maybeSync?.stay_current,
+    ),
     maybeSyncProgressUnavailableReason,
+    maybeValidatedActiveChainHeightUnavailableReason,
+    maybeValidatedActiveChainHash: valueAsNullableString(
+      maybeProgress?.maybe_validated_active_chain_hash,
+    ),
+    maybeValidatedActiveChainWork: valueAsNullableString(
+      maybeProgress?.maybe_validated_active_chain_work,
+    ),
     headersReceived:
       maybeProgress === null ? null : Number(maybeProgress.headers_received ?? 0),
     blocksReceived:
@@ -1567,11 +1723,21 @@ function finalStatusSummaryFromMetadata(metadata: RuntimeMetadataJson): FinalSta
       maybeProgress === null
         ? null
         : Number(maybeProgress.messages_processed ?? 0),
+    noProgressDiagnosis: valueAsNullableString(
+      availableValue(maybeSync?.no_progress_diagnosis),
+    ),
+    noProgressNextAction: valueAsNullableString(
+      availableValue(maybeSync?.no_progress_next_action),
+    ),
     outboundPeers:
       maybePeerCounts === null ? null : Number(maybePeerCounts.outbound ?? 0),
+    peerContribution: peerContributionFromValues(attemptCounters, maybePeerCounts),
     phase: String(availableValue(maybeSync?.phase) ?? "unavailable"),
     progressSignal: valueAsNullableString(availableValue(maybeSync?.progress_signal)),
     recentPeers,
+    reconcileProgress: reconcileProgressSummaryFromValue(
+      availableValue(maybeSync?.reconcile_progress),
+    ),
     recoveryAction: valueAsNullableString(availableValue(maybeSync?.recovery_action)),
     recoveryCategory: recoveryCategoryFromValue(
       availableValue(maybeSync?.recovery_category),
@@ -1579,6 +1745,11 @@ function finalStatusSummaryFromMetadata(metadata: RuntimeMetadataJson): FinalSta
     resourcePressure: resourcePressureSummaryFromValue(
       availableValue(maybeSync?.resource_pressure),
     ),
+    stayCurrent: valueAsNullableString(availableValue(maybeSync?.stay_current)),
+    stayCurrentNextAction: valueAsNullableString(
+      availableValue(maybeSync?.stay_current_next_action),
+    ),
+    validatedActiveChainHeight: maybeValidatedActiveChainHeight,
   };
 }
 
@@ -2807,6 +2978,17 @@ ${daemonSessionRows}
 - Connected block height: ${fieldText(report.final_status?.connectedBlockHeight ?? null, report.final_status?.maybeSyncProgressUnavailableReason ?? null)}
 - Downloaded block hash: ${report.final_status?.maybeDownloadedBlockHash ?? "Unavailable"}
 - Connected block hash: ${report.final_status?.maybeConnectedBlockHash ?? "Unavailable"}
+- Validated active-chain height: ${fieldText(report.final_status?.validatedActiveChainHeight ?? null, report.final_status?.maybeValidatedActiveChainHeightUnavailableReason ?? report.final_status?.maybeSyncProgressUnavailableReason ?? null)}
+- Validated active-chain hash: ${report.final_status?.maybeValidatedActiveChainHash ?? "Unavailable: validated active-chain hash unavailable"}
+- Validated active-chain work: ${report.final_status?.maybeValidatedActiveChainWork ?? "Unavailable: validated active-chain work unavailable"}
+- Best-known tip: ${objectSummaryText(report.final_status?.bestKnownTip ?? null, report.final_status?.maybeBestKnownTipUnavailableReason ?? null)}
+- Stay-current: ${fieldText(report.final_status?.stayCurrent ?? null, report.final_status?.maybeStayCurrentUnavailableReason ?? null)}
+- Stay-current action: ${fieldText(report.final_status?.stayCurrentNextAction ?? null, report.final_status?.maybeStayCurrentNextActionUnavailableReason ?? null)}
+- No-progress diagnosis: ${fieldText(report.final_status?.noProgressDiagnosis ?? null, report.final_status?.maybeNoProgressDiagnosisUnavailableReason ?? null)}
+- No-progress action: ${fieldText(report.final_status?.noProgressNextAction ?? null, report.final_status?.maybeNoProgressNextActionUnavailableReason ?? null)}
+- Latest reorg: ${objectSummaryText(report.final_status?.latestReorg ?? null, report.final_status?.maybeLatestReorgUnavailableReason ?? null)}
+- Reconcile progress: ${objectSummaryText(report.final_status?.reconcileProgress ?? null, report.final_status?.maybeReconcileProgressUnavailableReason ?? null)}
+- Peer contribution: ${peerContributionText(report.final_status?.peerContribution ?? null, report.final_status?.maybeAttemptCountersUnavailableReason ?? report.final_status?.maybePeerCountsUnavailableReason ?? null)}
 - Bounded counters: ${boundedCountersText(report.final_status)}
 
 ## Runtime Peer Contributions
@@ -2887,6 +3069,28 @@ function resourcePressureText(
     return unavailableText(maybeUnavailableReason);
   }
   return `headers_per_peer=${resourcePressure.maxHeaderRequestsInFlightPerPeer} headers_per_message=${resourcePressure.maxHeadersPerMessage} blocks=${resourcePressure.blocksInFlight}/${resourcePressure.maxBlocksInFlightPerPeer}/${resourcePressure.maxBlocksInFlightTotal} messages_per_peer=${resourcePressure.maxMessagesPerPeer} sync_rounds=${resourcePressure.maxSyncRounds} outbound_peers=${resourcePressure.outboundPeers}/${resourcePressure.targetOutboundPeers}`;
+}
+
+function objectSummaryText(
+  summary: ObjectSummary | null,
+  maybeUnavailableReason: string | null,
+): string {
+  if (summary === null) {
+    return unavailableText(maybeUnavailableReason);
+  }
+  return Object.entries(summary)
+    .map(([key, value]) => `${key}=${value === null ? "unavailable" : escapeTableCell(String(value))}`)
+    .join(" ");
+}
+
+function peerContributionText(
+  peerContribution: PeerContributionSummary | null,
+  maybeUnavailableReason: string | null,
+): string {
+  if (peerContribution === null) {
+    return unavailableText(maybeUnavailableReason);
+  }
+  return `attempted=${fieldText(peerContribution.attempted, maybeUnavailableReason)} connected=${fieldText(peerContribution.connected, maybeUnavailableReason)} failed=${fieldText(peerContribution.failed, maybeUnavailableReason)} outbound=${fieldText(peerContribution.outbound, maybeUnavailableReason)}`;
 }
 
 function blockEvidenceText(

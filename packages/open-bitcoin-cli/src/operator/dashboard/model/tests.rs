@@ -4,13 +4,15 @@
 use open_bitcoin_node::{
     MetricKind, MetricRetentionPolicy, MetricSample, MetricsStatus,
     status::{
-        BestKnownTipStatus, BuildProvenance, ConfigStatus, FieldAvailability, HealthSignal,
-        HealthSignalLevel, MempoolStatus, NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot,
-        PeerCounts, PeerStatus, ServiceLifecycleStatus, ServicePriorShutdownStatus,
+        BestKnownTipSource, BestKnownTipStatus, BuildProvenance, ConfigStatus, FieldAvailability,
+        HealthSignal, HealthSignalLevel, MempoolStatus, NoProgressDiagnosis, NodeRuntimeState,
+        NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, PeerTipAgreement,
+        PeerTipAgreementStatus, ServiceLifecycleStatus, ServicePriorShutdownStatus,
         ServiceRestartResumeStatus, ServiceResumeProgressStatus, ServiceStaleInflightStatus,
         ServiceStatus, StayCurrentStatus, SyncAttemptCounters, SyncConfiguredTargets,
-        SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal, SyncRecoveryCategory,
-        SyncResourcePressure, SyncStatus, SyncStopReasonStatus, WalletFreshness, WalletStatus,
+        SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal,
+        SyncReconcileProgressStatus, SyncRecoveryCategory, SyncReorgEvidence, SyncResourcePressure,
+        SyncStatus, SyncStopReasonStatus, TipFreshnessStatus, WalletFreshness, WalletStatus,
     },
 };
 
@@ -122,12 +124,19 @@ fn dashboard_sections_surface_sync_progress_and_peer_counts() {
             "Configured targets",
             "Attempt counters",
             "Signal",
+            "Best-known tip",
+            "Stay-current",
+            "Stay-current action",
+            "No-progress diagnosis",
+            "No-progress action",
             "Last progress",
             "Latest stop reason",
             "Last error",
             "Recovery category",
             "Recovery",
             "Pressure",
+            "Latest reorg",
+            "Reconcile",
             "Peers",
             "Progress",
         ]
@@ -162,7 +171,7 @@ fn dashboard_sections_surface_sync_progress_and_peer_counts() {
             .find(|row| row.label == "Progress")
             .expect("progress row")
             .value,
-        "99.99% headers=840100 downloaded_blocks=840006 connected_blocks=840004"
+        "99.99% headers=840100 downloaded_blocks=840006 connected_blocks=840004 validated_active_chain_height=840004 validated_active_chain_hash=1111111111111111111111111111111111111111111111111111111111111111 validated_active_chain_work=840005"
     );
     assert_eq!(
         sync_rows
@@ -236,6 +245,122 @@ fn dashboard_sections_surface_sync_progress_and_peer_counts_unavailable_fields()
             .value,
         "Unavailable: stop reason unavailable"
     );
+}
+
+#[test]
+fn phase72_dashboard_projects_full_sync_truth_contract() {
+    // Arrange
+    let mut snapshot = shared_sync_truth_snapshot();
+    snapshot.sync.best_known_tip = FieldAvailability::available(BestKnownTipStatus {
+        source: BestKnownTipSource::HeaderStore,
+        height: 840_004,
+        block_hash: "11".repeat(32),
+        work: "840005".to_string(),
+        block_time_unix_seconds: 1_717_000_010,
+        observed_at_unix_seconds: 1_717_000_020,
+        freshness: TipFreshnessStatus::Fresh,
+        peer_agreement: vec![PeerTipAgreement {
+            peer: "peer-1".to_string(),
+            maybe_resolved_endpoint: Some("203.0.113.10:8333".to_string()),
+            status: PeerTipAgreementStatus::Agrees,
+            maybe_height: Some(840_004),
+            maybe_hash: Some("11".repeat(32)),
+            maybe_work: Some("840005".to_string()),
+            maybe_last_activity_unix_seconds: Some(1_717_000_020),
+        }],
+    });
+    snapshot.sync.stay_current =
+        FieldAvailability::available(StayCurrentStatus::CurrentAtBestKnownTip);
+    snapshot.sync.stay_current_next_action =
+        FieldAvailability::available("Continue monitoring best-known tip freshness.".to_string());
+    snapshot.sync.no_progress_diagnosis =
+        FieldAvailability::available(NoProgressDiagnosis::CurrentAtBestKnownTip);
+    snapshot.sync.no_progress_next_action =
+        FieldAvailability::available("No operator action required.".to_string());
+    snapshot.sync.latest_reorg = FieldAvailability::available(SyncReorgEvidence {
+        common_ancestor_height: 840_000,
+        common_ancestor_hash: "00".repeat(32),
+        disconnected_count: 2,
+        connected_count: 4,
+        final_active_height: 840_004,
+        final_active_hash: "11".repeat(32),
+        fully_persisted: true,
+    });
+    snapshot.sync.reconcile_progress =
+        FieldAvailability::available(SyncReconcileProgressStatus::ExtendedActiveChain {
+            connected_count: 4,
+            final_active_height: 840_004,
+            final_active_hash: "11".repeat(32),
+        });
+
+    // Act
+    let state = DashboardState::from_snapshot(&snapshot);
+
+    // Assert
+    let sync_rows = &state.sections[1].rows;
+    let labels = sync_rows
+        .iter()
+        .map(|row| row.label.as_str())
+        .collect::<Vec<_>>();
+    for label in [
+        "Best-known tip",
+        "Stay-current",
+        "Stay-current action",
+        "No-progress diagnosis",
+        "No-progress action",
+        "Latest reorg",
+        "Reconcile",
+        "Pressure",
+        "Progress",
+    ] {
+        assert!(labels.contains(&label), "missing row {label}");
+    }
+    let progress = sync_rows
+        .iter()
+        .find(|row| row.label == "Progress")
+        .expect("progress row");
+    for expected in [
+        "validated_active_chain_height=840004",
+        "validated_active_chain_hash=1111111111111111111111111111111111111111111111111111111111111111",
+        "validated_active_chain_work=840005",
+    ] {
+        assert!(progress.value.contains(expected), "missing {expected}");
+    }
+
+    // Arrange
+    snapshot.sync.best_known_tip =
+        FieldAvailability::unavailable("best-known tip evidence unavailable");
+    snapshot.sync.stay_current = FieldAvailability::unavailable("stay-current state unavailable");
+    snapshot.sync.latest_reorg = FieldAvailability::unavailable("no reorg evidence recorded");
+    snapshot.sync.reconcile_progress =
+        FieldAvailability::unavailable("reconcile progress unavailable");
+
+    // Act
+    let unavailable_state = DashboardState::from_snapshot(&snapshot);
+
+    // Assert
+    let unavailable_rows = &unavailable_state.sections[1].rows;
+    for (label, expected) in [
+        (
+            "Best-known tip",
+            "Unavailable: best-known tip evidence unavailable",
+        ),
+        (
+            "Stay-current",
+            "Unavailable: stay-current state unavailable",
+        ),
+        ("Latest reorg", "Unavailable: no reorg evidence recorded"),
+        ("Reconcile", "Unavailable: reconcile progress unavailable"),
+    ] {
+        assert_eq!(
+            unavailable_rows
+                .iter()
+                .find(|row| row.label == label)
+                .expect("phase72 row")
+                .value,
+            expected
+        );
+    }
 }
 
 #[test]

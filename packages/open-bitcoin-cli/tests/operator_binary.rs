@@ -16,8 +16,15 @@ use std::{
 };
 
 use open_bitcoin_node::{
-    FjallNodeStore, PersistMode, RuntimeMetadata, WalletRegistry,
+    DurableSyncState, FjallNodeStore, PersistMode, RuntimeMetadata, WalletRegistry,
     core::wallet::{AddressNetwork, DescriptorRole, Wallet},
+    status::{
+        BestKnownTipSource, BestKnownTipStatus, FieldAvailability, NoProgressDiagnosis, PeerCounts,
+        PeerStatus, PeerTipAgreement, PeerTipAgreementStatus, StayCurrentStatus,
+        SyncAttemptCounters, SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState,
+        SyncProgress, SyncProgressSignal, SyncResourcePressure, SyncStatus, SyncStopReasonStatus,
+        TipFreshnessStatus,
+    },
 };
 use serde_json::{Value, json};
 
@@ -795,6 +802,200 @@ fn open_bitcoin_support_bundle_writes_redacted_json_and_markdown() {
         assert_absent(rendered, "super-secret-password");
         assert_absent(rendered, "super-secret-cookie");
     }
+}
+
+#[test]
+fn open_bitcoin_support_bundle_includes_phase72_full_sync_evidence_and_typed_verdict() {
+    // Arrange
+    let sandbox = TestSandbox::new("support-phase72-evidence");
+    let data_dir = sandbox.child("open-data");
+    let unavailable_data_dir = sandbox.child("open-data-unavailable");
+    let output_dir = sandbox.child("support");
+    let unavailable_output_dir = sandbox.child("support-unavailable");
+    let report_path = sandbox.child("phase72-live-smoke.json");
+    let server = FakeRpcServer::start();
+    seed_phase72_runtime_metadata(&data_dir, false);
+    seed_phase72_runtime_metadata(&unavailable_data_dir, true);
+    write_rpc_conf(&data_dir, server.address.port());
+    write_rpc_conf(&unavailable_data_dir, server.address.port());
+    fs::write(
+        &report_path,
+        json!({
+            "schema_version": 2,
+            "result": {
+                "status": "progress",
+                "rawPeerTable": "rawPeerTable phase72-live-smoke-secret",
+                "walletMaterial": "seed phrase phase72-live-smoke-secret"
+            },
+            "final_status": {
+                "validatedActiveChainHeight": 840_004,
+                "maybeValidatedActiveChainHash": "1111111111111111111111111111111111111111111111111111111111111111",
+                "maybeValidatedActiveChainWork": "840005",
+                "bestKnownTip": {
+                    "height": 840_004,
+                    "blockHash": "1111111111111111111111111111111111111111111111111111111111111111",
+                    "work": "840005",
+                    "freshness": "fresh",
+                    "rawPeerTable": "raw phase72-live-smoke-secret"
+                },
+                "stayCurrent": "current_at_best_known_tip",
+                "stayCurrentNextAction": "Continue monitoring best-known tip freshness.",
+                "noProgressDiagnosis": "current_at_best_known_tip",
+                "noProgressNextAction": "No operator action required.",
+                "latestReorg": {
+                    "finalActiveHeight": 840_004,
+                    "finalActiveHash": "1111111111111111111111111111111111111111111111111111111111111111",
+                    "fullyPersisted": true,
+                    "rawLogTail": "raw phase72-live-smoke-secret"
+                },
+                "reconcileProgress": {
+                    "state": "extended_active_chain",
+                    "connectedCount": 4,
+                    "finalActiveHeight": 840_004,
+                    "finalActiveHash": "1111111111111111111111111111111111111111111111111111111111111111"
+                },
+                "resourcePressure": {
+                    "blocksInFlight": 1,
+                    "targetOutboundPeers": 4
+                },
+                "peerContribution": {
+                    "connected": 3,
+                    "failed": 1,
+                    "rawPeerTable": "peer phase72-live-smoke-secret"
+                },
+                "rpcpassword": "super-secret-password",
+                "__cookie__": "super-secret-cookie"
+            },
+            "daemon": {
+                "stdoutTail": "stdoutTail phase72-live-smoke-secret",
+                "stderrTail": "stderrTail phase72-live-smoke-secret"
+            }
+        })
+        .to_string(),
+    )
+    .expect("live smoke report");
+
+    // Act
+    let output = run_open_bitcoin(
+        &sandbox,
+        [
+            "--network",
+            "regtest",
+            "--datadir",
+            data_dir.to_str().expect("datadir"),
+            "support",
+            "bundle",
+            "--output-dir",
+            output_dir.to_str().expect("output dir"),
+            "--include-live-smoke-report",
+            report_path.to_str().expect("report path"),
+        ],
+    );
+
+    // Assert
+    assert_success(&output);
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    let json_text =
+        fs::read_to_string(output_dir.join("support-evidence.json")).expect("support json");
+    let markdown =
+        fs::read_to_string(output_dir.join("support-evidence.md")).expect("support markdown");
+    let decoded: Value = serde_json::from_str(&json_text).expect("support json");
+    assert_eq!(
+        decoded["full_sync_evidence"]["verdict"]["label"],
+        json!("sync_to_tip_proven")
+    );
+    assert_eq!(
+        decoded["full_sync_evidence"]["connected_active_chain"]["height"],
+        json!(840_004)
+    );
+    assert_eq!(
+        decoded["full_sync_evidence"]["connected_active_chain"]["hash"],
+        json!("1111111111111111111111111111111111111111111111111111111111111111")
+    );
+    assert_eq!(
+        decoded["full_sync_evidence"]["connected_active_chain"]["work"],
+        json!("840005")
+    );
+    assert_eq!(
+        decoded["full_sync_evidence"]["validated_active_chain"]["height"],
+        json!(840_004)
+    );
+    assert_eq!(
+        decoded["full_sync_evidence"]["validated_active_chain"]["hash"],
+        json!("1111111111111111111111111111111111111111111111111111111111111111")
+    );
+    assert_eq!(
+        decoded["full_sync_evidence"]["validated_active_chain"]["work"],
+        json!("840005")
+    );
+    for expected in [
+        "## Full Sync Evidence",
+        "Evidence verdict: sync_to_tip_proven",
+        "validated_active_chain_matches_best_known_tip",
+        "Connected active chain: height=840004 hash=1111111111111111111111111111111111111111111111111111111111111111 work=840005",
+        "Validated active chain: height=840004 hash=1111111111111111111111111111111111111111111111111111111111111111 work=840005",
+        "Stay-current window:",
+        "Peer contribution:",
+        "No-progress or reorg events:",
+        "Resource pressure:",
+        "Recovery:",
+    ] {
+        assert!(markdown.contains(expected), "missing {expected}");
+    }
+    for rendered in [&stdout, &json_text, &markdown] {
+        for forbidden in [
+            "super-secret-password",
+            "super-secret-cookie",
+            "stdoutTail",
+            "stderrTail",
+            "rawPeerTable",
+            "rawLogTail",
+            "seed phrase",
+            "walletMaterial",
+            "phase72-live-smoke-secret",
+        ] {
+            assert_absent(rendered, forbidden);
+        }
+    }
+
+    // Act
+    let unavailable_output = run_open_bitcoin(
+        &sandbox,
+        [
+            "--network",
+            "regtest",
+            "--datadir",
+            unavailable_data_dir.to_str().expect("datadir"),
+            "support",
+            "bundle",
+            "--output-dir",
+            unavailable_output_dir.to_str().expect("output dir"),
+        ],
+    );
+
+    // Assert
+    assert_success(&unavailable_output);
+    let unavailable_json_text =
+        fs::read_to_string(unavailable_output_dir.join("support-evidence.json"))
+            .expect("support json");
+    let unavailable_markdown =
+        fs::read_to_string(unavailable_output_dir.join("support-evidence.md"))
+            .expect("support markdown");
+    let unavailable: Value = serde_json::from_str(&unavailable_json_text).expect("support json");
+    assert_eq!(
+        unavailable["full_sync_evidence"]["connected_active_chain"]["maybe_unavailable_reason"],
+        json!("connected active-chain hash unavailable")
+    );
+    assert_eq!(
+        unavailable["full_sync_evidence"]["validated_active_chain"]["maybe_unavailable_reason"],
+        json!("validated active-chain hash unavailable")
+    );
+    assert!(unavailable_markdown.contains(
+        "Connected active chain: height=840004 hash=Unavailable work=Unavailable; Unavailable: connected active-chain hash unavailable"
+    ));
+    assert!(unavailable_markdown.contains(
+        "Validated active chain: height=840004 hash=Unavailable work=Unavailable; Unavailable: validated active-chain hash unavailable"
+    ));
 }
 
 #[test]
@@ -1656,6 +1857,127 @@ fn write_rpc_conf(data_dir: &Path, rpc_port: u16) {
         ),
     )
     .expect("bitcoin.conf");
+}
+
+fn seed_phase72_runtime_metadata(data_dir: &Path, missing_active_chain: bool) {
+    fs::create_dir_all(data_dir).expect("open datadir");
+    let store = FjallNodeStore::open(data_dir).expect("store");
+    store
+        .save_runtime_metadata(
+            &RuntimeMetadata {
+                maybe_sync_state: Some(phase72_durable_sync_state(missing_active_chain)),
+                ..RuntimeMetadata::default()
+            },
+            PersistMode::Sync,
+        )
+        .expect("save runtime metadata");
+}
+
+fn phase72_durable_sync_state(missing_active_chain: bool) -> DurableSyncState {
+    DurableSyncState {
+        sync: phase72_sync_status(missing_active_chain),
+        peers: PeerStatus {
+            peer_counts: FieldAvailability::available(PeerCounts {
+                inbound: 0,
+                outbound: 3,
+            }),
+            recent_peers: FieldAvailability::unavailable("peer telemetry unavailable"),
+        },
+        health_signals: Vec::new(),
+        updated_at_unix_seconds: 1_717_000_020,
+    }
+}
+
+fn phase72_sync_status(missing_active_chain: bool) -> SyncStatus {
+    let maybe_hash = (!missing_active_chain).then(|| "11".repeat(32));
+    let maybe_work = (!missing_active_chain).then(|| "840005".to_string());
+    SyncStatus {
+        network: FieldAvailability::available("mainnet".to_string()),
+        chain_tip: FieldAvailability::unavailable("chain tip unavailable"),
+        sync_progress: FieldAvailability::available(SyncProgress {
+            header_height: 840_004,
+            block_height: 840_004,
+            downloaded_block_height: 840_004,
+            connected_block_height: 840_004,
+            validated_active_chain_height: 840_004,
+            maybe_downloaded_block_hash: maybe_hash.clone(),
+            maybe_connected_block_hash: maybe_hash.clone(),
+            maybe_validated_active_chain_hash: maybe_hash,
+            maybe_validated_active_chain_work: maybe_work,
+            progress_ratio: 1.0,
+            messages_processed: 128,
+            headers_received: 4,
+            blocks_received: 4,
+        }),
+        lifecycle: FieldAvailability::available(SyncLifecycleState::Active),
+        phase: FieldAvailability::available("blocks".to_string()),
+        configured_targets: FieldAvailability::available(SyncConfiguredTargets {
+            target_outbound_peers: 4,
+            maybe_target_header_height: Some(840_004),
+        }),
+        attempt_counters: FieldAvailability::available(SyncAttemptCounters {
+            attempted_peers: 4,
+            connected_peers: 3,
+            failed_peers: 1,
+            max_sync_rounds: 8,
+        }),
+        progress_signal: FieldAvailability::available(SyncProgressSignal::Steady),
+        lag: FieldAvailability::available(SyncLagStatus {
+            headers_remaining: 0,
+            blocks_remaining: 0,
+        }),
+        last_successful_progress_unix_seconds: FieldAvailability::available(1_717_000_020),
+        latest_stop_reason: FieldAvailability::available(SyncStopReasonStatus {
+            label: "best_known_tip_reached".to_string(),
+            message: "best known tip reached".to_string(),
+        }),
+        last_error: FieldAvailability::unavailable("sync error unavailable"),
+        recovery_category: FieldAvailability::unavailable("no recovery category recorded"),
+        recovery_action: FieldAvailability::unavailable(
+            "daemon sync recovery guidance unavailable",
+        ),
+        resource_pressure: FieldAvailability::available(SyncResourcePressure {
+            blocks_in_flight: 1,
+            max_header_requests_in_flight_per_peer: 1,
+            max_headers_per_message: 2_000,
+            max_blocks_in_flight_per_peer: 16,
+            max_blocks_in_flight_total: 64,
+            max_messages_per_peer: 64,
+            max_sync_rounds: 8,
+            outbound_peers: 4,
+            target_outbound_peers: 4,
+        }),
+        best_known_tip: FieldAvailability::available(BestKnownTipStatus {
+            source: BestKnownTipSource::HeaderStore,
+            height: 840_004,
+            block_hash: "11".repeat(32),
+            work: "840005".to_string(),
+            block_time_unix_seconds: 1_717_000_010,
+            observed_at_unix_seconds: 1_717_000_020,
+            freshness: TipFreshnessStatus::Fresh,
+            peer_agreement: vec![PeerTipAgreement {
+                peer: "peer-1".to_string(),
+                maybe_resolved_endpoint: None,
+                status: PeerTipAgreementStatus::Agrees,
+                maybe_height: Some(840_004),
+                maybe_hash: Some("11".repeat(32)),
+                maybe_work: Some("840005".to_string()),
+                maybe_last_activity_unix_seconds: Some(1_717_000_020),
+            }],
+        }),
+        stay_current: FieldAvailability::available(StayCurrentStatus::InitialCatchUp),
+        stay_current_next_action: FieldAvailability::available(
+            "Wait for best-known tip catch-up evidence.".to_string(),
+        ),
+        no_progress_diagnosis: FieldAvailability::available(
+            NoProgressDiagnosis::CurrentAtBestKnownTip,
+        ),
+        no_progress_next_action: FieldAvailability::available(
+            "No operator action required.".to_string(),
+        ),
+        latest_reorg: FieldAvailability::unavailable("no reorg evidence recorded"),
+        reconcile_progress: FieldAvailability::unavailable("reconcile progress unavailable"),
+    }
 }
 
 struct FakeRpcServer {

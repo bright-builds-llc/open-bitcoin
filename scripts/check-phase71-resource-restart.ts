@@ -13,6 +13,7 @@ const PLAN_FILES = [
 const REQUIREMENT_IDS = ["RES-01", "RES-02", "RES-03", "RES-04"] as const;
 const SOURCE_FILES = [
   "packages/open-bitcoin-cli/src/operator/support.rs",
+  "packages/open-bitcoin-cli/src/operator/support/tests.rs",
   "packages/open-bitcoin-cli/src/operator/support/live_smoke.rs",
   "packages/open-bitcoin-cli/src/operator/runtime/support.rs",
   "packages/open-bitcoin-node/src/storage.rs",

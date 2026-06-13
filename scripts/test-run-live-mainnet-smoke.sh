@@ -1032,12 +1032,15 @@ cat <<'JSON'
       "sync_progress": {
         "state": "available",
         "value": {
-          "header_height": 0,
-          "block_height": 0,
-          "downloaded_block_height": 0,
-          "connected_block_height": 0,
+          "header_height": 840004,
+          "block_height": 840004,
+          "downloaded_block_height": 840004,
+          "connected_block_height": 840004,
+          "validated_active_chain_height": 840004,
           "maybe_downloaded_block_hash": null,
           "maybe_connected_block_hash": null,
+          "maybe_validated_active_chain_hash": "1111111111111111111111111111111111111111111111111111111111111111",
+          "maybe_validated_active_chain_work": "840005",
           "headers_received": 2,
           "blocks_received": 1,
           "messages_processed": 0
@@ -1062,7 +1065,7 @@ cat <<'JSON'
         "state": "available",
         "value": {
           "attempted_peers": 3,
-          "connected_peers": 2,
+          "connected_peers": 3,
           "failed_peers": 1,
           "max_sync_rounds": 8
         }
@@ -1104,6 +1107,58 @@ cat <<'JSON'
           "max_sync_rounds": 8,
           "outbound_peers": 0,
           "target_outbound_peers": 4
+        }
+      },
+      "best_known_tip": {
+        "state": "available",
+        "value": {
+          "source": "header_store",
+          "height": 840004,
+          "block_hash": "1111111111111111111111111111111111111111111111111111111111111111",
+          "work": "840005",
+          "block_time_unix_seconds": 1777224990,
+          "observed_at_unix_seconds": 1777225005,
+          "freshness": "fresh",
+          "peer_agreement": []
+        }
+      },
+      "stay_current": {
+        "state": "available",
+        "value": "current_at_best_known_tip"
+      },
+      "stay_current_next_action": {
+        "state": "available",
+        "value": "Continue monitoring best-known tip freshness."
+      },
+      "no_progress_diagnosis": {
+        "state": "available",
+        "value": "current_at_best_known_tip"
+      },
+      "no_progress_next_action": {
+        "state": "available",
+        "value": "No operator action required."
+      },
+      "latest_reorg": {
+        "state": "available",
+        "value": {
+          "common_ancestor_height": 840000,
+          "common_ancestor_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "disconnected_count": 0,
+          "connected_count": 4,
+          "final_active_height": 840004,
+          "final_active_hash": "1111111111111111111111111111111111111111111111111111111111111111",
+          "fully_persisted": true
+        }
+      },
+      "reconcile_progress": {
+        "state": "available",
+        "value": {
+          "state": "extended_active_chain",
+          "details": {
+            "connected_count": 4,
+            "final_active_height": 840004,
+            "final_active_hash": "1111111111111111111111111111111111111111111111111111111111111111"
+          }
         }
       }
     },
@@ -1191,6 +1246,8 @@ cat <<'JSON'
 JSON
 EOF
 chmod +x "$tmp_dir/mock-final-status.sh"
+sed '/"validated_active_chain_height":/d' "$tmp_dir/mock-final-status.sh" >"$tmp_dir/mock-final-status-missing-validated-height.sh"
+chmod +x "$tmp_dir/mock-final-status-missing-validated-height.sh"
 
 cat >"$tmp_dir/mock-peer-failure-final-status.sh" <<'EOF'
 #!/usr/bin/env bash
@@ -1400,8 +1457,36 @@ grep -q "Header delta: 1" "$report_markdown"
 grep -q "First block progress" "$report_markdown"
 grep -q "Signal | Configured Targets | Attempts" "$report_markdown"
 grep -q "Latest Stop Reason" "$report_markdown"
+grep -q "Validated active-chain height:" "$report_markdown"
+grep -q "Validated active-chain hash:" "$report_markdown"
+grep -q "Validated active-chain work:" "$report_markdown"
+grep -q "Best-known tip:" "$report_markdown"
+grep -q "Stay-current:" "$report_markdown"
+grep -q "No-progress diagnosis:" "$report_markdown"
+grep -q "Latest reorg:" "$report_markdown"
+grep -q "Reconcile progress:" "$report_markdown"
 grep -q "Daemon Output Summary" "$report_markdown"
-bun --eval 'const report = await Bun.file(process.argv[1]).json(); if (report.result.firstHeaderProgress.before.headerHeight !== 0 || report.result.firstHeaderProgress.after.headerHeight !== 1) throw new Error("firstHeaderProgress headerHeight evidence missing"); if (report.result.firstHeaderProgress.before.progressSignal !== "waiting_for_peers" || report.result.firstHeaderProgress.after.progressSignal !== "header_progress") throw new Error("firstHeaderProgress progressSignal evidence missing"); if (report.snapshots[0].progressSignal !== "waiting_for_peers") throw new Error("snapshot progressSignal evidence missing"); if (report.final_status.configuredTargets.targetOutboundPeers !== 4 || report.final_status.configuredTargets.maybeTargetHeaderHeight !== 840200) throw new Error("final configuredTargets evidence missing"); if (report.final_status.attemptCounters.attemptedPeers !== 3 || report.final_status.attemptCounters.connectedPeers !== 2 || report.final_status.attemptCounters.failedPeers !== 1 || report.final_status.attemptCounters.maxSyncRounds !== 8) throw new Error("final attemptCounters evidence missing"); if (report.final_status.latestStopReason.label !== "target_header_reached") throw new Error("latestStopReason evidence missing"); if (report.final_status.recoveryAction !== "Retry with a reachable manual peer.") throw new Error("recoveryAction evidence missing"); if (report.final_status.resourcePressure.targetOutboundPeers !== 4) throw new Error("resourcePressure evidence missing"); if (report.result.firstBlockProgress.before.downloadedBlockHeight !== 0 || report.result.firstBlockProgress.after.connectedBlockHeight !== 1) throw new Error("firstBlockProgress downloadedBlockHeight/connectedBlockHeight evidence missing"); if ("stdoutTail" in report.daemon || "stderrTail" in report.daemon) throw new Error("daemon tails persisted in JSON");' "$report_json"
+bun --eval 'const report = await Bun.file(process.argv[1]).json(); if (report.result.firstHeaderProgress.before.headerHeight !== 0 || report.result.firstHeaderProgress.after.headerHeight !== 1) throw new Error("firstHeaderProgress headerHeight evidence missing"); if (report.result.firstHeaderProgress.before.progressSignal !== "waiting_for_peers" || report.result.firstHeaderProgress.after.progressSignal !== "header_progress") throw new Error("firstHeaderProgress progressSignal evidence missing"); if (report.snapshots[0].progressSignal !== "waiting_for_peers") throw new Error("snapshot progressSignal evidence missing"); if (report.final_status.configuredTargets.targetOutboundPeers !== 4 || report.final_status.configuredTargets.maybeTargetHeaderHeight !== 840200) throw new Error("final configuredTargets evidence missing"); if (report.final_status.attemptCounters.attemptedPeers !== 3 || report.final_status.attemptCounters.connectedPeers !== 3 || report.final_status.attemptCounters.failedPeers !== 1 || report.final_status.attemptCounters.maxSyncRounds !== 8) throw new Error("final attemptCounters evidence missing"); if (report.final_status.latestStopReason.label !== "target_header_reached") throw new Error("latestStopReason evidence missing"); if (report.final_status.recoveryAction !== "Retry with a reachable manual peer.") throw new Error("recoveryAction evidence missing"); if (report.final_status.resourcePressure.targetOutboundPeers !== 4) throw new Error("resourcePressure evidence missing"); if (report.final_status.validatedActiveChainHeight !== 840004 || report.final_status.maybeValidatedActiveChainHash !== "1111111111111111111111111111111111111111111111111111111111111111" || report.final_status.maybeValidatedActiveChainWork !== "840005" || report.final_status.bestKnownTip?.freshness !== "fresh" || report.final_status.stayCurrent !== "current_at_best_known_tip" || report.final_status.stayCurrentNextAction !== "Continue monitoring best-known tip freshness." || report.final_status.noProgressDiagnosis !== "current_at_best_known_tip" || report.final_status.noProgressNextAction !== "No operator action required." || report.final_status.latestReorg?.fullyPersisted !== true || report.final_status.reconcileProgress?.state !== "extended_active_chain" || report.final_status.peerContribution?.connected !== 3 || report.final_status.peerContribution?.failed !== 1) throw new Error("phase72 live-smoke final status evidence missing"); if (report.result.firstBlockProgress.before.downloadedBlockHeight !== 0 || report.result.firstBlockProgress.after.connectedBlockHeight !== 1) throw new Error("firstBlockProgress downloadedBlockHeight/connectedBlockHeight evidence missing"); if ("stdoutTail" in report.daemon || "stderrTail" in report.daemon) throw new Error("daemon tails persisted in JSON");' "$report_json"
+
+rm -f "$counter_file"
+missing_validated_height_output_dir="$tmp_dir/missing-validated-height-output"
+OPEN_BITCOIN_LIVE_SMOKE_DAEMON_BIN="$tmp_dir/mock-daemon.sh" \
+OPEN_BITCOIN_LIVE_SMOKE_STATUS_BIN="$tmp_dir/mock-status.sh" \
+OPEN_BITCOIN_LIVE_SMOKE_FINAL_STATUS_BIN="$tmp_dir/mock-final-status-missing-validated-height.sh" \
+OPEN_BITCOIN_LIVE_SMOKE_NETWORK_PREFLIGHT_FIXTURE="$network_fixture" \
+OPEN_BITCOIN_LIVE_SMOKE_SKIP_DISK_CHECK=1 \
+OPEN_BITCOIN_LIVE_SMOKE_COUNTER_FILE="$counter_file" \
+bun run scripts/run-live-mainnet-smoke.ts \
+	--datadir="$existing_datadir" \
+	--manual-peer=127.0.0.1:8333 \
+	--output-dir="$missing_validated_height_output_dir" \
+	--timeout-seconds=3 \
+	--poll-seconds=1 >/dev/null
+
+missing_validated_height_json="$missing_validated_height_output_dir/open-bitcoin-live-mainnet-smoke.json"
+missing_validated_height_markdown="$missing_validated_height_output_dir/open-bitcoin-live-mainnet-smoke.md"
+bun --eval 'const report = await Bun.file(process.argv[1]).json(); if (report.final_status.validatedActiveChainHeight !== null) throw new Error("missing validated active-chain height was synthesized"); if (report.final_status.maybeValidatedActiveChainHeightUnavailableReason !== "validated active-chain height unavailable") throw new Error("missing validated active-chain height reason missing"); if (report.final_status.connectedBlockHeight !== 840004) throw new Error("connected block height evidence was lost");' "$missing_validated_height_json"
+grep -q "Validated active-chain height: Unavailable: validated active-chain height unavailable" "$missing_validated_height_markdown"
 
 rm -f "$counter_file"
 daemon_counter_file="$tmp_dir/daemon-counter"

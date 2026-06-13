@@ -35,10 +35,11 @@ use open_bitcoin_node::{
         wallet::{AddressNetwork, DescriptorRole, SingleKeyDescriptor, Wallet},
     },
     status::{
-        BestKnownTipStatus, ChainTipStatus, FieldAvailability, PeerCounts, PeerStatus,
-        StayCurrentStatus, SyncAttemptCounters, SyncConfiguredTargets, SyncLagStatus,
-        SyncLifecycleState, SyncProgress, SyncProgressSignal, SyncRecoveryCategory,
-        SyncResourcePressure, SyncStatus, SyncStopReasonStatus,
+        BestKnownTipSource, BestKnownTipStatus, ChainTipStatus, FieldAvailability,
+        NoProgressDiagnosis, PeerCounts, PeerStatus, StayCurrentStatus, SyncAttemptCounters,
+        SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal,
+        SyncReconcileProgressStatus, SyncRecoveryCategory, SyncReorgEvidence, SyncResourcePressure,
+        SyncStatus, SyncStopReasonStatus, TipFreshnessStatus,
     },
 };
 
@@ -653,6 +654,65 @@ fn phase62_runtime_metadata() -> RuntimeMetadata {
     }
 }
 
+fn phase72_runtime_metadata() -> RuntimeMetadata {
+    let mut metadata = phase62_runtime_metadata();
+    let sync_state = metadata
+        .maybe_sync_state
+        .as_mut()
+        .expect("phase62 metadata includes sync state");
+    let FieldAvailability::Available(sync_progress) = &mut sync_state.sync.sync_progress else {
+        panic!("phase62 metadata includes sync progress");
+    };
+    sync_progress.maybe_connected_block_hash = Some("11".repeat(32));
+    sync_progress.maybe_validated_active_chain_hash = Some("11".repeat(32));
+    sync_state.sync.best_known_tip = FieldAvailability::available(BestKnownTipStatus {
+        source: BestKnownTipSource::HeaderStore,
+        height: 840_004,
+        block_hash: "11".repeat(32),
+        work: "840005".to_string(),
+        block_time_unix_seconds: 1_717_000_010,
+        observed_at_unix_seconds: 1_717_000_020,
+        freshness: TipFreshnessStatus::Fresh,
+        peer_agreement: Vec::new(),
+    });
+    sync_state.sync.stay_current =
+        FieldAvailability::available(StayCurrentStatus::CurrentAtBestKnownTip);
+    sync_state.sync.no_progress_diagnosis =
+        FieldAvailability::available(NoProgressDiagnosis::PeerBackoff);
+    sync_state.sync.latest_reorg = FieldAvailability::available(SyncReorgEvidence {
+        common_ancestor_height: 840_000,
+        common_ancestor_hash: "11".repeat(32),
+        disconnected_count: 2,
+        connected_count: 4,
+        final_active_height: 840_004,
+        final_active_hash: "11".repeat(32),
+        fully_persisted: true,
+    });
+    sync_state.sync.reconcile_progress =
+        FieldAvailability::available(SyncReconcileProgressStatus::ExtendedActiveChain {
+            connected_count: 4,
+            final_active_height: 840_004,
+            final_active_hash: "11".repeat(32),
+        });
+    metadata
+}
+
+fn context_with_runtime_metadata(test_name: &str, metadata: RuntimeMetadata) -> ManagedRpcContext {
+    let path = temp_store_path(test_name);
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    store
+        .save_runtime_metadata(&metadata, PersistMode::Sync)
+        .expect("save runtime metadata");
+    let mut context = ManagedRpcContext::from_runtime_config(&RuntimeConfig {
+        chain: AddressNetwork::Mainnet,
+        maybe_data_dir: Some(path),
+        ..RuntimeConfig::default()
+    });
+    context.set_daemon_sync_control(DaemonSyncControl::store_backed(store, PersistMode::Sync));
+    context
+}
+
 #[test]
 fn get_blockchain_info_uses_durable_connected_block_height_not_downloaded_height() {
     // Arrange
@@ -810,6 +870,86 @@ fn get_blockchain_info_uses_durable_connected_block_height_not_downloaded_height
         blockchain["warnings"][4],
         json!("Restart the node and retry the storage operation.")
     );
+}
+
+#[test]
+fn open_bitcoin_sync_status_returns_phase72_durable_truth_contract() {
+    // Arrange
+    let mut context =
+        context_with_runtime_metadata("sync-status-phase72", phase72_runtime_metadata());
+
+    // Act
+    let status = dispatch(
+        &mut context,
+        MethodCall::OpenBitcoinSyncStatus(OpenBitcoinSyncStatusRequest::default()),
+    )
+    .expect("sync status");
+
+    // Assert
+    let sync = &status["metadata"]["maybe_sync_state"]["sync"];
+    assert_eq!(
+        sync["sync_progress"]["value"]["validated_active_chain_height"],
+        json!(840_004)
+    );
+    assert_eq!(
+        sync["sync_progress"]["value"]["maybe_validated_active_chain_hash"],
+        json!("11".repeat(32))
+    );
+    assert_eq!(
+        sync["sync_progress"]["value"]["maybe_validated_active_chain_work"],
+        json!("840005")
+    );
+    assert_eq!(sync["best_known_tip"]["state"], json!("available"));
+    assert_eq!(sync["best_known_tip"]["value"]["freshness"], json!("fresh"));
+    assert_eq!(
+        sync["stay_current"]["value"],
+        json!("current_at_best_known_tip")
+    );
+    assert_eq!(
+        sync["no_progress_diagnosis"]["value"],
+        json!("peer_backoff")
+    );
+    assert_eq!(
+        sync["latest_reorg"]["value"]["final_active_height"],
+        json!(840_004)
+    );
+    assert_eq!(
+        sync["reconcile_progress"]["value"]["state"],
+        json!("extended_active_chain")
+    );
+    assert_eq!(sync["resource_pressure"]["state"], json!("available"));
+}
+
+#[test]
+fn get_blockchain_info_does_not_expose_phase72_support_fields() {
+    // Arrange
+    let mut context =
+        context_with_runtime_metadata("blockchain-info-phase72", phase72_runtime_metadata());
+
+    // Act
+    let blockchain = dispatch(
+        &mut context,
+        MethodCall::GetBlockchainInfo(GetBlockchainInfoRequest::default()),
+    )
+    .expect("blockchain");
+    let serialized = serde_json::to_string(&blockchain).expect("serialize blockchain info");
+
+    // Assert
+    for forbidden in [
+        "best_known_tip",
+        "stay_current",
+        "latest_reorg",
+        "reconcile_progress",
+        "resource_pressure",
+        "support_evidence",
+        "evidence_verdict",
+        "validated_active_chain_work",
+    ] {
+        assert!(
+            !serialized.contains(forbidden),
+            "baseline getblockchaininfo exposed {forbidden}"
+        );
+    }
 }
 
 #[test]

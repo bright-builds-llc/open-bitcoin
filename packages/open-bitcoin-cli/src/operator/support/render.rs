@@ -125,6 +125,9 @@ pub(super) fn render_support_markdown(bundle: &SupportEvidenceBundle) -> String 
         availability_name(&bundle.store_health.metrics_history.availability)
     ));
 
+    output.push_str("\n## Full Sync Evidence\n\n");
+    push_full_sync_evidence(&mut output, &bundle.full_sync_evidence);
+
     output.push_str("\n## Live Smoke\n\n");
     output.push_str(&format!(
         "- State: {}\n",
@@ -141,6 +144,76 @@ pub(super) fn render_support_markdown(bundle: &SupportEvidenceBundle) -> String 
     }
 
     output
+}
+
+fn push_full_sync_evidence(output: &mut String, evidence: &super::FullSyncEvidence) {
+    output.push_str(&format!(
+        "- Evidence verdict: {}\n",
+        json_string(&evidence.verdict.label)
+    ));
+    output.push_str(&format!(
+        "- Connected active chain: {}\n",
+        active_chain_summary(&evidence.connected_active_chain)
+    ));
+    output.push_str(&format!(
+        "- Validated active chain: {}\n",
+        active_chain_summary(&evidence.validated_active_chain)
+    ));
+    output.push_str(&format!(
+        "- Restart/resume checkpoints: {}\n",
+        summary_evidence_text(&evidence.restart_resume_checkpoints)
+    ));
+    output.push_str(&format!(
+        "- Stay-current window: {}\n",
+        summary_evidence_text(&evidence.stay_current_window)
+    ));
+    output.push_str(&format!(
+        "- Peer contribution: {}\n",
+        summary_evidence_text(&evidence.peer_contribution)
+    ));
+    output.push_str(&format!(
+        "- No-progress or reorg events: {}\n",
+        summary_evidence_text(&evidence.no_progress_or_reorg_events)
+    ));
+    output.push_str(&format!(
+        "- Resource pressure: {}\n",
+        summary_evidence_text(&evidence.resource_pressure)
+    ));
+    output.push_str(&format!(
+        "- Recovery: {}\n",
+        summary_evidence_text(&evidence.recovery)
+    ));
+    output.push_str(&format!(
+        "- Verdict justifications: {}\n",
+        evidence.verdict.justifications.join(", ")
+    ));
+}
+
+fn active_chain_summary(evidence: &super::ActiveChainEvidence) -> String {
+    let base = format!(
+        "height={} hash={} work={}",
+        evidence
+            .height
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| "Unavailable".to_string()),
+        evidence.hash.as_deref().unwrap_or("Unavailable"),
+        evidence.work.as_deref().unwrap_or("Unavailable")
+    );
+    match evidence.maybe_unavailable_reason.as_ref() {
+        Some(reason) => format!("{base}; Unavailable: {reason}"),
+        None => base,
+    }
+}
+
+fn summary_evidence_text(evidence: &super::SummaryEvidence) -> String {
+    if let Some(reason) = evidence.maybe_unavailable_reason.as_ref() {
+        return format!("Unavailable: {reason}");
+    }
+
+    evidence
+        .summary
+        .clone()
+        .unwrap_or_else(|| "unavailable".to_string())
 }
 
 fn push_live_smoke_summary(output: &mut String, summary: &Value) {

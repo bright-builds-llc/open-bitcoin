@@ -3,6 +3,7 @@
 
 //! Local support evidence bundle generation.
 
+mod evidence;
 mod live_smoke;
 mod render;
 
@@ -19,6 +20,10 @@ use open_bitcoin_node::{
 use serde::Serialize;
 use serde_json::Value;
 
+pub(crate) use evidence::{
+    ActiveChainEvidence, EvidenceAvailability, EvidenceState, FullSyncEvidence, LiveSmokeEvidence,
+    SummaryEvidence, derive_full_sync_evidence,
+};
 use render::{render_support_markdown, render_support_outcome};
 
 use super::{
@@ -63,6 +68,8 @@ fn execute_support_bundle(
     let json_path = output_dir.join(SUPPORT_EVIDENCE_JSON);
     let markdown_path = output_dir.join(SUPPORT_EVIDENCE_MARKDOWN);
     let generated_at_unix_seconds = current_unix_seconds();
+    let live_smoke = collect_live_smoke_evidence(args.maybe_live_smoke_report.as_deref());
+    let full_sync_evidence = derive_full_sync_evidence(&status, &live_smoke);
     let bundle = SupportEvidenceBundle {
         generated_at_unix_seconds,
         generated_by: "open-bitcoin support bundle".to_string(),
@@ -75,7 +82,8 @@ fn execute_support_bundle(
         config: ConfigEvidence::from_resolution(config_resolution),
         status,
         store_health: collect_store_health(config_resolution),
-        live_smoke: collect_live_smoke_evidence(args.maybe_live_smoke_report.as_deref()),
+        live_smoke,
+        full_sync_evidence,
     };
 
     let json_text = serde_json::to_string_pretty(&bundle).map_err(|error| {
@@ -133,6 +141,7 @@ struct SupportEvidenceBundle {
     status: OpenBitcoinStatusSnapshot,
     store_health: StoreHealthEvidence,
     live_smoke: LiveSmokeEvidence,
+    full_sync_evidence: FullSyncEvidence,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -248,47 +257,6 @@ struct MetricsHistoryEvidence {
     availability: EvidenceAvailability,
     samples: usize,
     status: Option<MetricsStatus>,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize)]
-struct LiveSmokeEvidence {
-    state: EvidenceState,
-    report_path: Option<String>,
-    summary: Option<Value>,
-    reason: Option<String>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "snake_case")]
-enum EvidenceState {
-    Available,
-    Unavailable,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-struct EvidenceAvailability {
-    state: EvidenceState,
-    reason: Option<String>,
-}
-
-impl EvidenceAvailability {
-    const fn available() -> Self {
-        Self {
-            state: EvidenceState::Available,
-            reason: None,
-        }
-    }
-
-    fn unavailable(reason: impl Into<String>) -> Self {
-        Self {
-            state: EvidenceState::Unavailable,
-            reason: Some(reason.into()),
-        }
-    }
-
-    const fn is_available(&self) -> bool {
-        matches!(self.state, EvidenceState::Available)
-    }
 }
 
 fn collect_store_health(resolution: &OperatorConfigResolution) -> StoreHealthEvidence {
@@ -507,35 +475,4 @@ fn path_to_string(path: &Path) -> String {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::redaction_summary;
-
-    #[test]
-    fn phase71_support_redaction_names_compact_evidence_bounds() {
-        // Arrange
-        let summary = redaction_summary();
-
-        // Act
-        let omitted = summary.omitted;
-        let safeguards = summary.safeguards;
-
-        // Assert
-        assert_eq!(
-            omitted,
-            [
-                "RPC cookie contents",
-                "RPC password and RPC auth values",
-                "wallet private material and raw wallet files",
-                "raw unbounded log contents",
-            ]
-        );
-        assert_eq!(
-            safeguards,
-            [
-                "credential sources are represented as metadata only",
-                "live smoke reports are summarized from allowlisted fields only",
-                "logs are limited to existing structured status signals",
-            ]
-        );
-    }
-}
+mod tests;

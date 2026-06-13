@@ -262,6 +262,7 @@
         "packages/open-bitcoin-cli/src/operator/status/render/tests.rs",
         "packages/open-bitcoin-cli/src/operator/status/service_status.rs",
         "packages/open-bitcoin-cli/src/operator/status/tests.rs",
+        "packages/open-bitcoin-cli/src/operator/sync_truth_render.rs",
         "packages/open-bitcoin-cli/tests/operator_binary.rs"
       ],
       "patterns": [
@@ -273,8 +274,10 @@
       "label": "cli-operator-support-bundles",
       "files": [
         "packages/open-bitcoin-cli/src/operator/support.rs",
+        "packages/open-bitcoin-cli/src/operator/support/evidence.rs",
         "packages/open-bitcoin-cli/src/operator/support/live_smoke.rs",
-        "packages/open-bitcoin-cli/src/operator/support/render.rs"
+        "packages/open-bitcoin-cli/src/operator/support/render.rs",
+        "packages/open-bitcoin-cli/src/operator/support/tests.rs"
       ],
       "breadcrumbs": []
     },
@@ -665,7 +668,8 @@
         "packages/open-bitcoin-node/src/sync/types/error.rs",
         "packages/open-bitcoin-node/src/sync/types/projection.rs",
         "packages/open-bitcoin-node/src/sync/types/recovery.rs",
-        "packages/open-bitcoin-node/src/sync/types/summary.rs"
+        "packages/open-bitcoin-node/src/sync/types/summary.rs",
+        "packages/open-bitcoin-node/src/sync/types/summary/tests.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/net_processing.cpp",

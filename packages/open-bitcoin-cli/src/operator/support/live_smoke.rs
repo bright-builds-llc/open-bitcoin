@@ -83,15 +83,50 @@ const FINAL_STATUS_KEYS: &[&str] = &[
     "headerHeight",
     "downloadedBlockHeight",
     "connectedBlockHeight",
+    "validatedActiveChainHeight",
+    "maybeValidatedActiveChainHeightUnavailableReason",
+    "maybeValidatedActiveChainHash",
+    "maybeValidatedActiveChainWork",
     "blockHeight",
     "phase",
     "lifecycle",
     "outboundPeers",
     "messagesProcessed",
+    "stayCurrent",
+    "stayCurrentNextAction",
+    "noProgressDiagnosis",
+    "noProgressNextAction",
     "recoveryCategory",
     "maybeLastError",
     "maybeLastSuccessfulProgressUnixSeconds",
 ];
+const BEST_KNOWN_TIP_KEYS: &[&str] = &[
+    "source",
+    "height",
+    "blockHash",
+    "work",
+    "blockTimeUnixSeconds",
+    "observedAtUnixSeconds",
+    "freshness",
+];
+const LATEST_REORG_KEYS: &[&str] = &[
+    "commonAncestorHeight",
+    "commonAncestorHash",
+    "disconnectedCount",
+    "connectedCount",
+    "finalActiveHeight",
+    "finalActiveHash",
+    "fullyPersisted",
+];
+const RECONCILE_PROGRESS_KEYS: &[&str] = &[
+    "state",
+    "connectedCount",
+    "finalActiveHeight",
+    "finalActiveHash",
+    "missingBlockCount",
+];
+const PEER_CONTRIBUTION_KEYS: &[&str] =
+    &["connected", "failed", "attempted", "handshook", "skipped"];
 const RESOURCE_PRESSURE_KEYS: &[&str] = &[
     "blocksInFlight",
     "maxHeaderRequestsInFlightPerPeer",
@@ -249,9 +284,33 @@ fn summarize_final_status(value: &Value) -> Option<Value> {
     copy_fields(&mut summary, object, FINAL_STATUS_KEYS);
     insert_summarized_field(
         &mut summary,
+        "bestKnownTip",
+        object.get("bestKnownTip"),
+        |value| summarize_object_fields(value, BEST_KNOWN_TIP_KEYS),
+    );
+    insert_summarized_field(
+        &mut summary,
+        "latestReorg",
+        object.get("latestReorg"),
+        |value| summarize_object_fields(value, LATEST_REORG_KEYS),
+    );
+    insert_summarized_field(
+        &mut summary,
+        "reconcileProgress",
+        object.get("reconcileProgress"),
+        |value| summarize_object_fields(value, RECONCILE_PROGRESS_KEYS),
+    );
+    insert_summarized_field(
+        &mut summary,
         "resourcePressure",
         object.get("resourcePressure"),
         |value| summarize_object_fields(value, RESOURCE_PRESSURE_KEYS),
+    );
+    insert_summarized_field(
+        &mut summary,
+        "peerContribution",
+        object.get("peerContribution"),
+        |value| summarize_object_fields(value, PEER_CONTRIBUTION_KEYS),
     );
 
     value_from_map(summary)
@@ -407,6 +466,126 @@ mod tests {
             "daemon stderr must not be copied",
             "raw log tail must not be copied",
             "super-secret",
+        ] {
+            assert!(
+                !text.contains(forbidden),
+                "summary copied forbidden live-smoke material: {forbidden}"
+            );
+        }
+    }
+
+    #[test]
+    fn phase72_live_smoke_summary_preserves_full_sync_evidence_without_raw_report() {
+        // Arrange
+        let report = json!({
+            "schema_version": 2,
+            "result": {
+                "status": "progress",
+                "rawPeerTable": "raw peer table phase72-live-smoke-secret",
+                "daemonStdout": "daemon stdout phase72-live-smoke-secret",
+                "daemonStderr": "daemon stderr phase72-live-smoke-secret",
+                "rawLogTail": "raw log phase72-live-smoke-secret",
+                "walletMaterial": "seed phrase phase72-live-smoke-secret",
+            },
+            "final_status": {
+                "headerHeight": 840_004,
+                "downloadedBlockHeight": 840_004,
+                "connectedBlockHeight": 840_004,
+                "validatedActiveChainHeight": 840_004,
+                "maybeValidatedActiveChainHeightUnavailableReason": null,
+                "maybeValidatedActiveChainHash": "1111111111111111111111111111111111111111111111111111111111111111",
+                "maybeValidatedActiveChainWork": "840005",
+                "bestKnownTip": {
+                    "source": "header_store",
+                    "height": 840_004,
+                    "blockHash": "1111111111111111111111111111111111111111111111111111111111111111",
+                    "work": "840005",
+                    "blockTimeUnixSeconds": 1_717_000_010,
+                    "observedAtUnixSeconds": 1_717_000_020,
+                    "freshness": "fresh",
+                    "rawPeerTable": "best tip raw phase72-live-smoke-secret"
+                },
+                "stayCurrent": "current_at_best_known_tip",
+                "stayCurrentNextAction": "Continue monitoring best-known tip freshness.",
+                "noProgressDiagnosis": "current_at_best_known_tip",
+                "noProgressNextAction": "No operator action required.",
+                "latestReorg": {
+                    "commonAncestorHeight": 840_000,
+                    "commonAncestorHash": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "disconnectedCount": 0,
+                    "connectedCount": 4,
+                    "finalActiveHeight": 840_004,
+                    "finalActiveHash": "1111111111111111111111111111111111111111111111111111111111111111",
+                    "fullyPersisted": true,
+                    "rawLogTail": "reorg raw phase72-live-smoke-secret"
+                },
+                "reconcileProgress": {
+                    "state": "extended_active_chain",
+                    "connectedCount": 4,
+                    "finalActiveHeight": 840_004,
+                    "finalActiveHash": "1111111111111111111111111111111111111111111111111111111111111111",
+                    "rawPeerTable": "reconcile raw phase72-live-smoke-secret"
+                },
+                "resourcePressure": {
+                    "blocksInFlight": 1,
+                    "targetOutboundPeers": 4,
+                    "rpcpassword": "rpcpassword=phase72-live-smoke-secret"
+                },
+                "peerContribution": {
+                    "connected": 3,
+                    "failed": 1,
+                    "attempted": 4,
+                    "rawPeerTable": "peer raw phase72-live-smoke-secret"
+                },
+                "rpcpassword": "rpcpassword=phase72-live-smoke-secret",
+                "rpcauth": "rpcauth=phase72-live-smoke-secret",
+                "__cookie__": "__cookie__:phase72-live-smoke-secret"
+            },
+            "daemon": {
+                "daemonStdout": "raw stdout phase72-live-smoke-secret",
+                "daemonStderr": "raw stderr phase72-live-smoke-secret"
+            },
+            "wallet": {
+                "walletMaterial": "seed phrase phase72-live-smoke-secret"
+            }
+        });
+
+        // Act
+        let summarized = summary(&report).expect("summary");
+        let final_status = summarized.get("finalStatus").expect("final status summary");
+        let text = summarized.to_string();
+
+        // Assert
+        for key in [
+            "validatedActiveChainHeight",
+            "maybeValidatedActiveChainHeightUnavailableReason",
+            "maybeValidatedActiveChainHash",
+            "maybeValidatedActiveChainWork",
+            "bestKnownTip",
+            "stayCurrent",
+            "stayCurrentNextAction",
+            "noProgressDiagnosis",
+            "noProgressNextAction",
+            "latestReorg",
+            "reconcileProgress",
+            "resourcePressure",
+            "peerContribution",
+        ] {
+            assert!(
+                final_status.get(key).is_some(),
+                "summary missing Phase 72 key {key}"
+            );
+        }
+        for forbidden in [
+            "rawPeerTable",
+            "daemonStdout",
+            "daemonStderr",
+            "rawLogTail",
+            "rpcpassword",
+            "rpcauth",
+            "__cookie__",
+            "walletMaterial",
+            "phase72-live-smoke-secret",
         ] {
             assert!(
                 !text.contains(forbidden),

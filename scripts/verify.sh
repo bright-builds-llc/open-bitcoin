@@ -126,6 +126,7 @@ bun run scripts/check-phase68-active-chain-persistence.ts
 bun run scripts/check-phase69-tip-stay-current.ts
 bun run scripts/check-phase70-reorg-recovery.ts
 bun run scripts/check-phase71-resource-restart.ts
+bun run scripts/check-phase72-observability-evidence.ts
 bash scripts/check-pure-core-deps.sh
 bash scripts/check-file-lengths.sh
 bash scripts/check-panic-sites.sh

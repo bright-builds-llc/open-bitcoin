@@ -4,9 +4,13 @@
 support evidence, RPC-facing blockchain info, metrics projections, structured
 logs, and live-smoke snapshots. Observability writers and readers may keep their
 own retention policies, but they must not reinterpret header height, downloaded
-block height, connected block height, peer compatibility state, progress signal,
-latest_stop_reason, recovery_category, configured_targets, attempt_counters, or
-latest error independently from the shared snapshot.
+block height, connected block height, validated_active_chain_height,
+maybe_validated_active_chain_hash, maybe_validated_active_chain_work,
+best_known_tip, stay_current, no_progress_diagnosis,
+no_progress_next_action, latest_reorg, reconcile_progress, resource_pressure,
+peer_contribution, latest_stop_reason, evidence_verdict, recovery_category,
+configured_targets, attempt_counters, or latest error independently from the
+shared snapshot.
 
 ## Default metrics retention
 
@@ -21,9 +25,11 @@ in sats, disk usage bytes, RPC health, and service restarts.
 
 Phase 62 metrics remain bounded numeric samples for `header_height`,
 `downloaded_block_height`, `connected_block_height`, `sync_height`, and
-`peer_count`. Stop reasons, recovery labels, configured targets, and attempt
-counters belong in status or compact structured logs, not as unbounded metric
-objects.
+`peer_count`. Phase 72 adds `validated_active_chain_height` as a bounded numeric
+metric so operators can correlate validated active-chain progress with status
+and support evidence. Stop reasons, recovery labels, configured targets,
+resource_pressure, peer_contribution, latest_stop_reason, and attempt counters
+belong in status or compact structured logs, not as unbounded metric objects.
 
 No metric or log retention contract may require public network access. Default verification must remain hermetic; live-network telemetry belongs behind explicit opt-in tests or operator runtime paths.
 
@@ -43,12 +49,14 @@ block height, progress signal, recovery_category, and last successful progress
 timestamp when one is known.
 
 Structured logs carry compact labels for `progress_signal`,
-`latest_stop_reason`, `recovery_category`, configured targets, and attempt
-counters. Summary messages use stable labels such as `progress_signal=`,
-`latest_stop_reason=`, `recovery_category=`, `target_outbound_peers=`,
-`target_header_height=`, `messages_processed`, `headers_received`, and
-`blocks_received` so operators can compare logs with status and live-smoke
-snapshots without parsing prose.
+`latest_stop_reason`, `recovery_category`, configured targets, attempt
+counters, `resource_pressure`, and `peer_contribution`. Summary messages use
+stable labels such as `progress_signal=`, `latest_stop_reason=`,
+`recovery_category=`, `target_outbound_peers=`, `target_header_height=`,
+`messages_processed`, `headers_received`, `blocks_received`,
+`validated_active_chain_height=`, and `maybe_validated_active_chain_work` so
+operators can compare logs with status and live-smoke snapshots without parsing
+prose.
 
 Status and dashboard consumers must read these contracts instead of inventing renderer-local retention windows.
 

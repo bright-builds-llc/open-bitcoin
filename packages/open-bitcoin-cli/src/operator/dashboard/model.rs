@@ -11,9 +11,14 @@ use open_bitcoin_node::{
         OpenBitcoinStatusSnapshot, PeerCounts, ServiceLifecycleStatus, ServicePriorShutdownStatus,
         ServiceRestartResumeStatus, ServiceResumeProgressStatus, ServiceStaleInflightStatus,
         ServiceStatus, SyncAttemptCounters, SyncConfiguredTargets, SyncLifecycleState,
-        SyncProgress, SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure,
-        SyncStopReasonStatus, WalletFreshness, WalletScanProgress,
+        SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure, SyncStopReasonStatus,
+        WalletFreshness, WalletScanProgress,
     },
+};
+
+use crate::operator::sync_truth_render::{
+    best_known_tip_text, no_progress_diagnosis_text, stay_current_text, sync_progress_text,
+    sync_reconcile_text, sync_reorg_text,
 };
 
 #[cfg(test)]
@@ -120,6 +125,26 @@ fn dashboard_sections(snapshot: &OpenBitcoinStatusSnapshot) -> Vec<DashboardSect
                     sync_progress_signal(&snapshot.sync.progress_signal),
                 ),
                 row(
+                    "Best-known tip",
+                    best_known_tip_text(&snapshot.sync.best_known_tip),
+                ),
+                row(
+                    "Stay-current",
+                    stay_current_text(&snapshot.sync.stay_current),
+                ),
+                row(
+                    "Stay-current action",
+                    string_availability(&snapshot.sync.stay_current_next_action),
+                ),
+                row(
+                    "No-progress diagnosis",
+                    no_progress_diagnosis_text(&snapshot.sync.no_progress_diagnosis),
+                ),
+                row(
+                    "No-progress action",
+                    string_availability(&snapshot.sync.no_progress_next_action),
+                ),
+                row(
                     "Last progress",
                     u64_availability(
                         &snapshot.sync.last_successful_progress_unix_seconds,
@@ -140,14 +165,16 @@ fn dashboard_sections(snapshot: &OpenBitcoinStatusSnapshot) -> Vec<DashboardSect
                     string_availability(&snapshot.sync.recovery_action),
                 ),
                 row("Pressure", sync_pressure(&snapshot.sync.resource_pressure)),
+                row("Latest reorg", sync_reorg_text(&snapshot.sync.latest_reorg)),
+                row(
+                    "Reconcile",
+                    sync_reconcile_text(&snapshot.sync.reconcile_progress),
+                ),
                 row(
                     "Peers",
                     peer_counts_availability(&snapshot.peers.peer_counts),
                 ),
-                row(
-                    "Progress",
-                    sync_progress_availability(&snapshot.sync.sync_progress),
-                ),
+                row("Progress", sync_progress_text(&snapshot.sync.sync_progress)),
             ],
         },
         DashboardSection {
@@ -238,19 +265,6 @@ fn action(key: impl Into<String>, label: impl Into<String>, destructive: bool) -
 fn string_availability(value: &FieldAvailability<String>) -> String {
     match value {
         FieldAvailability::Available(value) => value.clone(),
-        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
-    }
-}
-
-fn sync_progress_availability(value: &FieldAvailability<SyncProgress>) -> String {
-    match value {
-        FieldAvailability::Available(value) => format!(
-            "{:.2}% headers={} downloaded_blocks={} connected_blocks={}",
-            value.progress_ratio * 100.0,
-            value.header_height,
-            value.downloaded_block_height,
-            value.connected_block_height
-        ),
         FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
     }
 }
@@ -539,6 +553,7 @@ fn metric_label(kind: MetricKind) -> &'static str {
         MetricKind::HeaderHeight => "Header height",
         MetricKind::DownloadedBlockHeight => "Downloaded block height",
         MetricKind::ConnectedBlockHeight => "Connected block height",
+        MetricKind::ValidatedActiveChainHeight => "Validated active-chain height",
         MetricKind::PeerCount => "Peers",
         MetricKind::MempoolTransactions => "Mempool tx",
         MetricKind::WalletTrustedBalanceSats => "Wallet sats",

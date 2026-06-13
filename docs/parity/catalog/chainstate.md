@@ -63,6 +63,19 @@ block serving, production-funds wallet claims, migration apply mode, signed
 packaging, Windows service support, GUI, hosted dashboards, or broad
 production-node readiness.
 
+## Phase 72 active-chain evidence claim
+
+Phase 72 adds observability/support evidence only. Connected and validated
+active-chain height, hash, and work now flow into operator status, support
+evidence, live-smoke summaries, metrics, and structured logs so reviewers can
+distinguish downloaded block bodies from durably persisted active-chain
+progress.
+
+This evidence does not add inbound serving, address relay, block serving,
+transaction relay, compact block relay, production-funds wallet claims,
+migration apply mode, signed packaging, Windows service support, GUI, hosted
+dashboards, or broad production-node readiness.
+
 ## First-party implementation
 
 - [`packages/open-bitcoin-chainstate/src/engine.rs`](../../../packages/open-bitcoin-chainstate/src/engine.rs)

@@ -106,7 +106,13 @@ Plans:
 **Goal**: Operators can inspect and share one coherent full-sync truth contract across CLI, dashboard, RPC, metrics, logs, live-smoke reports, and support bundles.
 **Depends on**: Phase 71
 **Requirements**: OBS-01, OBS-02, OBS-03, OBS-04
-**Plans**: Pending
+**Plans**: 4 plans
+
+Plans:
+- [x] 72-01-PLAN.md - Align CLI, dashboard, and RPC status surfaces
+- [x] 72-02-PLAN.md - Add support evidence and typed verdicts
+- [x] 72-03-PLAN.md - Extend metrics, logs, and live-smoke projections
+- [x] 72-04-PLAN.md - Document guidance and wire deterministic verification
 
 **Success Criteria**:
 1. CLI status, dashboard, RPC, metrics, structured logs, live-smoke reports, and support bundles share one full-sync truth contract.
@@ -150,7 +156,7 @@ Plans:
 | 69. Tip Tracking and Stay-Current Operation | 5/5 | Complete    | 2026-06-12 |
 | 70. Reorg, Peer Rotation, and No-Progress Recovery | 6/6 | Complete | 2026-06-12 |
 | 71. Resource Bounds and Durable Restart/Resume | 4/4 | Complete    | 2026-06-13 |
-| 72. Operator Observability and Support Evidence | 0/0 | Pending | — |
+| 72. Operator Observability and Support Evidence | 4/4 | Complete   | 2026-06-13 |
 | 73. Opt-In UAT and Deterministic Verification | 0/0 | Pending | — |
 | 74. Release Boundaries, Parity, and Documentation | 0/0 | Pending | — |
 

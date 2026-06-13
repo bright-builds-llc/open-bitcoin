@@ -207,6 +207,22 @@ dashboards, or broad production-node readiness. Public-network long-run review,
 manual peers, service-manager restarts, and restart-after-progress evidence
 remain explicit operator UAT outside `bash scripts/verify.sh`.
 
+## Phase 72 observability and support evidence boundary
+
+Phase 72 adds observability/support evidence only. It aligns CLI status,
+dashboard, RPC durable sync status, metrics, structured logs, live-smoke
+reports, and support bundles around shared full-sync truth fields such as
+validated active-chain progress, best-known tip, stay-current state,
+no-progress guidance, reorg/reconcile evidence, resource pressure, peer
+contribution, latest stop reason, and typed evidence verdicts.
+
+Phase 72 does not add inbound serving, address relay, block serving,
+transaction relay, compact block relay, production-funds wallet claims,
+migration apply mode, signed packaging, Windows service support, GUI, hosted
+dashboards, or broad production-node readiness. Public-network long-run review,
+manual peers, service-manager restarts, and restart-after-progress evidence
+remain explicit operator UAT outside `bash scripts/verify.sh`.
+
 ## First-party implementation
 
 - [`packages/open-bitcoin-network/src/message.rs`](../../../packages/open-bitcoin-network/src/message.rs)

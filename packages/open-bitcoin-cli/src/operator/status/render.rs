@@ -7,13 +7,18 @@ use open_bitcoin_node::{
     MetricsStatus,
     status::{
         BuildProvenance, ChainTipStatus, FieldAvailability, HealthSignal, HealthSignalLevel,
-        NoProgressDiagnosis, NodeRuntimeState, OpenBitcoinStatusSnapshot, PeerCounts,
-        PeerTelemetry, ServiceLifecycleStatus, ServicePriorShutdownStatus,
-        ServiceRestartResumeStatus, ServiceResumeProgressStatus, ServiceStaleInflightStatus,
-        ServiceStatus, SyncAttemptCounters, SyncConfiguredTargets, SyncLifecycleState,
-        SyncProgress, SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure,
-        SyncStopReasonStatus, WalletFreshness, WalletScanProgress,
+        NodeRuntimeState, OpenBitcoinStatusSnapshot, PeerCounts, PeerTelemetry,
+        ServiceLifecycleStatus, ServicePriorShutdownStatus, ServiceRestartResumeStatus,
+        ServiceResumeProgressStatus, ServiceStaleInflightStatus, ServiceStatus,
+        SyncAttemptCounters, SyncConfiguredTargets, SyncLifecycleState, SyncProgressSignal,
+        SyncRecoveryCategory, SyncResourcePressure, SyncStopReasonStatus, WalletFreshness,
+        WalletScanProgress,
     },
+};
+
+use crate::operator::sync_truth_render::{
+    best_known_tip_text, no_progress_diagnosis_text, stay_current_text, sync_progress_text,
+    sync_reconcile_text, sync_reorg_text,
 };
 
 use super::StatusRenderMode;
@@ -82,8 +87,20 @@ fn render_human_status(snapshot: &OpenBitcoinStatusSnapshot) -> String {
         sync_progress_signal_availability(&snapshot.sync.progress_signal)
     ));
     lines.push(format!(
+        "Sync best-known tip: {}",
+        best_known_tip_text(&snapshot.sync.best_known_tip)
+    ));
+    lines.push(format!(
+        "Sync stay-current: {}",
+        stay_current_text(&snapshot.sync.stay_current)
+    ));
+    lines.push(format!(
+        "Sync stay-current action: {}",
+        string_availability(&snapshot.sync.stay_current_next_action)
+    ));
+    lines.push(format!(
         "Sync no-progress diagnosis: {}",
-        no_progress_diagnosis_availability(&snapshot.sync.no_progress_diagnosis)
+        no_progress_diagnosis_text(&snapshot.sync.no_progress_diagnosis)
     ));
     lines.push(format!(
         "Sync no-progress action: {}",
@@ -117,6 +134,14 @@ fn render_human_status(snapshot: &OpenBitcoinStatusSnapshot) -> String {
         sync_pressure_availability(&snapshot.sync.resource_pressure)
     ));
     lines.push(format!(
+        "Sync latest reorg: {}",
+        sync_reorg_text(&snapshot.sync.latest_reorg)
+    ));
+    lines.push(format!(
+        "Sync reconcile: {}",
+        sync_reconcile_text(&snapshot.sync.reconcile_progress)
+    ));
+    lines.push(format!(
         "Peers: {}",
         peer_counts_availability(&snapshot.peers.peer_counts)
     ));
@@ -126,7 +151,7 @@ fn render_human_status(snapshot: &OpenBitcoinStatusSnapshot) -> String {
     ));
     lines.push(format!(
         "Sync: {}",
-        sync_progress_availability(&snapshot.sync.sync_progress)
+        sync_progress_text(&snapshot.sync.sync_progress)
     ));
     lines.push(format!(
         "Mempool: {}",
@@ -163,19 +188,6 @@ fn chain_tip_availability(value: &FieldAvailability<ChainTipStatus>) -> String {
         FieldAvailability::Available(value) => {
             format!("height {} {}", value.height, value.block_hash)
         }
-        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
-    }
-}
-
-fn sync_progress_availability(value: &FieldAvailability<SyncProgress>) -> String {
-    match value {
-        FieldAvailability::Available(value) => format!(
-            "{:.2}% headers={} downloaded_blocks={} connected_blocks={}",
-            value.progress_ratio * 100.0,
-            value.header_height,
-            value.downloaded_block_height,
-            value.connected_block_height
-        ),
         FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
     }
 }
@@ -250,16 +262,6 @@ fn sync_pressure_availability(value: &FieldAvailability<SyncResourcePressure>) -
 fn sync_recovery_category_availability(value: &FieldAvailability<SyncRecoveryCategory>) -> String {
     match value {
         FieldAvailability::Available(value) => value.as_str().to_string(),
-        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
-    }
-}
-
-fn no_progress_diagnosis_availability(value: &FieldAvailability<NoProgressDiagnosis>) -> String {
-    match value {
-        FieldAvailability::Available(value) => serde_json::to_value(value)
-            .ok()
-            .and_then(|value| value.as_str().map(str::to_string))
-            .unwrap_or_else(|| "unknown".to_string()),
         FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
     }
 }
