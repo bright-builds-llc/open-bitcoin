@@ -69,6 +69,7 @@ const REQUIRED_PARITY_ROOT_STRINGS: Record<string, readonly string[]> = {
     "open-bitcoin compatibility harness",
     "public-network CI",
     "release-blocking live sync",
+    "Phase 73 does not add inbound serving, address relay, block serving, transaction relay, compact block relay, production-funds wallet claims, migration apply mode, signed packaging, Windows service support, GUI, hosted dashboards, broad production-node readiness, public-network CI, or release-blocking live sync.",
   ],
   "docs/parity/catalog/chainstate.md": [
     "## VER-02 deterministic coverage map",
@@ -321,6 +322,8 @@ function buildFixtureFiles(options: {
   files["docs/parity/source-breadcrumbs.json"] =
     options.maybeSourceBreadcrumbs ?? DEFAULT_SOURCE_BREADCRUMBS;
   files["scripts/check-parity-breadcrumbs.ts"] = "fixture breadcrumb checker\n";
+  files["scripts/run-live-mainnet-smoke.ts"] = "fixture live smoke runner\n";
+  files["scripts/test-run-live-mainnet-smoke.sh"] = "fixture live smoke regression\n";
 
   return files;
 }

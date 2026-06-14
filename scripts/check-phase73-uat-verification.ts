@@ -27,6 +27,14 @@ const HERMETIC_COVERAGE_FILES = [
   "packages/open-bitcoin-node/src/storage/snapshot_codec/tests.rs",
   "packages/open-bitcoin-node/src/sync/tests.rs",
 ] as const;
+const PARITY_CLOSEOUT_FILES = [
+  "docs/parity/catalog/p2p.md",
+  "docs/parity/catalog/chainstate.md",
+  "docs/parity/catalog/operator-runtime-release-hardening.md",
+  "docs/parity/index.json",
+  "docs/parity/checklist.md",
+  "docs/parity/README.md",
+] as const;
 const REQUIRED_UAT_MATRIX_DOC_STRINGS = [
   "### Phase 73 opt-in public-mainnet UAT matrix",
   "Full-sync activation and review",
@@ -41,6 +49,75 @@ const REQUIRED_UAT_MATRIX_DOC_STRINGS = [
   "bazel run //packages/open-bitcoin-cli:open_bitcoin --",
   "bun run scripts/run-live-mainnet-smoke.ts",
   "deterministic fixture validation, not public-network UAT",
+] as const;
+const REQUIRED_PARITY_ROOT_STRINGS = {
+  "docs/parity/catalog/p2p.md": [
+    "## Phase 73 opt-in public-mainnet UAT and deterministic verification",
+    "public-mainnet full-sync, manual-peer, and",
+    "restart-after-progress commands as explicit opt-in UAT only",
+    "outside `bash scripts/verify.sh`",
+    "scripts/run-live-mainnet-smoke.ts",
+    "scripts/test-run-live-mainnet-smoke.sh",
+    "open-bitcoin compatibility harness",
+    "public-network CI",
+    "release-blocking live sync",
+  ],
+  "docs/parity/catalog/chainstate.md": [
+    "## VER-02 deterministic coverage map",
+    "UTXO/undo persistence",
+    "block connect/disconnect/reorg across restart",
+    "best-chain header selection",
+    "peer response failures",
+    "crash recovery as durable reopen",
+    "duplicate connect prevention",
+    "resource bounds",
+  ],
+  "docs/parity/catalog/operator-runtime-release-hardening.md": [
+    "docs/operator/runtime-guide.md",
+    "scripts/check-phase73-uat-verification.ts",
+    "scripts/verify.sh",
+    "support bundle --output-dir=/tmp/open-bitcoin-support",
+  ],
+  "docs/parity/index.json": ["phase73-opt-in-uat-deterministic-verification"],
+  "docs/parity/checklist.md": ["phase73-opt-in-uat-deterministic-verification"],
+  "docs/parity/README.md": [
+    "Phase 73 opt-in public-mainnet UAT and deterministic verification evidence",
+    "scripts/check-phase73-uat-verification.ts",
+  ],
+} as const satisfies Record<(typeof PARITY_CLOSEOUT_FILES)[number], readonly string[]>;
+const REQUIRED_CLOSEOUT_FILES = [
+  "docs/parity/source-breadcrumbs.json",
+  "scripts/check-parity-breadcrumbs.ts",
+  "packages/open-bitcoin-node/src/sync/tests.rs",
+  "packages/open-bitcoin-chainstate/tests/parity.rs",
+  "packages/open-bitcoin-cli/src/operator/support/evidence.rs",
+  "scripts/run-live-mainnet-smoke.ts",
+  "scripts/test-run-live-mainnet-smoke.sh",
+] as const;
+const REQUIRED_BREADCRUMB_FILES = [
+  "packages/open-bitcoin-node/src/sync/tests.rs",
+  "packages/open-bitcoin-chainstate/tests/parity.rs",
+  "packages/open-bitcoin-cli/src/operator/support/evidence.rs",
+] as const;
+const REQUIRED_DEFERRED_SCOPE_STRINGS = [
+  "inbound serving",
+  "address relay",
+  "block serving",
+  "transaction relay",
+  "compact block relay",
+  "production-funds wallet",
+  "migration apply mode",
+  "signed packaging",
+  "Windows service support",
+  "GUI",
+  "hosted dashboards",
+  "broad production-node readiness",
+  "public-network CI",
+  "release-blocking live sync",
+] as const;
+const FORBIDDEN_PHASE73_CLAIM_STRINGS = [
+  "Phase 73 public-network UAT is default verification.",
+  "Phase 73 proves broad production-node readiness.",
 ] as const;
 const FORBIDDEN_VERIFY_STRINGS = [
   "run-live-mainnet-smoke",
@@ -64,6 +141,14 @@ type CoverageAnchor = {
 type CoverageEntry = {
   behavior: Ver02Behavior;
   anchors: readonly CoverageAnchor[];
+};
+
+type SourceBreadcrumbFileGroup = {
+  files?: unknown;
+};
+
+type SourceBreadcrumbs = {
+  groups?: unknown;
 };
 
 const VER02_COVERAGE = [
@@ -204,6 +289,26 @@ function requireNotContains(
   }
 }
 
+async function requireFileExists(relativePath: string, failures: string[]): Promise<void> {
+  const file = Bun.file(repoPath(relativePath));
+  if (!(await file.exists())) {
+    failures.push(`missing required file: ${relativePath}`);
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function truncateProcessOutput(text: string): string {
+  const maxLength = 1_200;
+  if (text.length <= maxLength) {
+    return text;
+  }
+
+  return `${text.slice(0, maxLength)}...`;
+}
+
 function verifyCoverageBehaviors(failures: string[]): void {
   const observed = new Set(VER02_COVERAGE.map((entry) => entry.behavior));
   if (observed.size !== VER02_COVERAGE.length) {
@@ -287,12 +392,115 @@ async function verifyVerifyScript(failures: string[]): Promise<void> {
   }
 }
 
+async function verifyParityRootText(failures: string[]): Promise<void> {
+  for (const file of PARITY_CLOSEOUT_FILES) {
+    const text = await readText(file, failures);
+    for (const needle of REQUIRED_PARITY_ROOT_STRINGS[file]) {
+      requireContains(text, needle, file, failures);
+    }
+  }
+}
+
+async function verifyDeferredScopeNonClaims(failures: string[]): Promise<void> {
+  const closeoutText = await readJoined(PARITY_CLOSEOUT_FILES, failures);
+  for (const needle of REQUIRED_DEFERRED_SCOPE_STRINGS) {
+    requireContains(closeoutText, needle, "Phase 73 parity closeout roots", failures);
+  }
+
+  for (const forbidden of FORBIDDEN_PHASE73_CLAIM_STRINGS) {
+    if (closeoutText.includes(forbidden)) {
+      failures.push(`Phase 73 parity closeout roots must not claim: ${forbidden}`);
+    }
+  }
+}
+
+async function verifyCloseoutFilesExist(failures: string[]): Promise<void> {
+  for (const file of REQUIRED_CLOSEOUT_FILES) {
+    await requireFileExists(file, failures);
+  }
+}
+
+async function verifySourceBreadcrumbRegistry(failures: string[]): Promise<void> {
+  const breadcrumbText = await readText("docs/parity/source-breadcrumbs.json", failures);
+  if (breadcrumbText.length === 0) {
+    return;
+  }
+
+  let parsed: SourceBreadcrumbs;
+  try {
+    parsed = JSON.parse(breadcrumbText) as SourceBreadcrumbs;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    failures.push(`docs/parity/source-breadcrumbs.json is invalid JSON: ${message}`);
+    return;
+  }
+
+  if (!isRecord(parsed) || !Array.isArray(parsed.groups)) {
+    failures.push("docs/parity/source-breadcrumbs.json must contain a groups array");
+    return;
+  }
+
+  const registeredFiles = new Set<string>();
+  for (const [index, group] of parsed.groups.entries()) {
+    const typedGroup = group as SourceBreadcrumbFileGroup;
+    if (!isRecord(typedGroup) || !Array.isArray(typedGroup.files)) {
+      failures.push(`docs/parity/source-breadcrumbs.json group ${index} must contain a files array`);
+      continue;
+    }
+
+    for (const file of typedGroup.files) {
+      if (typeof file !== "string") {
+        failures.push(`docs/parity/source-breadcrumbs.json group ${index} contains a non-string file`);
+        continue;
+      }
+      registeredFiles.add(file);
+    }
+  }
+
+  for (const requiredFile of REQUIRED_BREADCRUMB_FILES) {
+    if (!registeredFiles.has(requiredFile)) {
+      failures.push(`docs/parity/source-breadcrumbs.json missing referenced Rust file: ${requiredFile}`);
+    }
+  }
+}
+
+function verifyParityBreadcrumbChecker(failures: string[]): void {
+  if (maybeRepoRoot !== undefined) {
+    return;
+  }
+
+  const child = Bun.spawnSync(["bun", "run", "scripts/check-parity-breadcrumbs.ts", "--check"], {
+    cwd: REPO_ROOT,
+    stderr: "pipe",
+    stdout: "pipe",
+  });
+  if (child.exitCode === 0) {
+    return;
+  }
+
+  const decoder = new TextDecoder();
+  const output = [decoder.decode(child.stdout), decoder.decode(child.stderr)]
+    .filter((part) => part.trim().length > 0)
+    .join("\n");
+  const details = output.length > 0 ? `:\n${truncateProcessOutput(output)}` : "";
+  failures.push(`scripts/check-parity-breadcrumbs.ts --check failed with exit code ${child.exitCode}${details}`);
+}
+
+async function verifyParityAndEvidenceCloseout(failures: string[]): Promise<void> {
+  await verifyParityRootText(failures);
+  await verifyDeferredScopeNonClaims(failures);
+  await verifyCloseoutFilesExist(failures);
+  await verifySourceBreadcrumbRegistry(failures);
+  verifyParityBreadcrumbChecker(failures);
+}
+
 async function main(): Promise<void> {
   const failures: string[] = [];
   await verifyRequirements(failures);
   await verifyCoverageMap(failures);
   await verifyUatMatrixDocs(failures);
   await verifyVerifyScript(failures);
+  await verifyParityAndEvidenceCloseout(failures);
 
   if (failures.length > 0) {
     for (const failure of failures) {
