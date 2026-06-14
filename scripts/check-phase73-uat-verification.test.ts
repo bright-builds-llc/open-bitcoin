@@ -99,6 +99,7 @@ const REQUIRED_BREADCRUMB_FILES = [
   "packages/open-bitcoin-chainstate/tests/parity.rs",
   "packages/open-bitcoin-cli/src/operator/support/evidence.rs",
 ] as const;
+const REQUIRED_REQUIREMENT_IDS = ["VER-01", "VER-02", "VER-03", "VER-04"] as const;
 const DEFAULT_SOURCE_BREADCRUMBS = JSON.stringify(
   {
     groups: [
@@ -128,6 +129,8 @@ const DEFAULT_SOURCE_BREADCRUMBS = JSON.stringify(
   null,
   2,
 );
+const DEFAULT_PARITY_INDEX = buildParityIndex(REQUIRED_REQUIREMENT_IDS);
+const DEFAULT_CHECKLIST = buildChecklist(REQUIRED_REQUIREMENT_IDS);
 const SOURCE_BREADCRUMBS_WITHOUT_SYNC_TESTS = JSON.stringify(
   {
     groups: [
@@ -216,6 +219,36 @@ test("fails when the Phase 73 plan set omits a required VER id", async () => {
   // Arrange
   const root = await createFixture({
     maybePlanTexts: ["requirements: [VER-02]\n", "requirements: [VER-03]\n", "requirements: [VER-01]\n", "\n"],
+  });
+
+  // Act
+  const result = await runChecker(root);
+
+  // Assert
+  expect(result.exitCode).not.toBe(0);
+});
+
+test("fails when the parity index omits a Phase 73 VER id", async () => {
+  // Arrange
+  const root = await createFixture({
+    maybeParityRootOverrides: {
+      "docs/parity/index.json": buildParityIndex(["VER-01", "VER-04"]),
+    },
+  });
+
+  // Act
+  const result = await runChecker(root);
+
+  // Assert
+  expect(result.exitCode).not.toBe(0);
+});
+
+test("fails when the parity checklist omits a Phase 73 VER id", async () => {
+  // Arrange
+  const root = await createFixture({
+    maybeParityRootOverrides: {
+      "docs/parity/checklist.md": buildChecklist(["VER-01", "VER-04"]),
+    },
   });
 
   // Act
@@ -336,6 +369,10 @@ function buildFixtureFiles(options: {
   for (const [file, needles] of Object.entries(REQUIRED_PARITY_ROOT_STRINGS)) {
     files[file] = options.maybeParityRootOverrides?.[file] ?? needles.join("\n");
   }
+  files["docs/parity/index.json"] =
+    options.maybeParityRootOverrides?.["docs/parity/index.json"] ?? DEFAULT_PARITY_INDEX;
+  files["docs/parity/checklist.md"] =
+    options.maybeParityRootOverrides?.["docs/parity/checklist.md"] ?? DEFAULT_CHECKLIST;
   for (const file of REQUIRED_BREADCRUMB_FILES) {
     files[file] = files[file] ?? "fixture rust source\n";
   }
@@ -367,4 +404,26 @@ async function runChecker(root: string): Promise<CheckerRun> {
   });
 
   return { exitCode: child.exitCode };
+}
+
+function buildParityIndex(requirements: readonly string[]): string {
+  return JSON.stringify(
+    {
+      checklist: {
+        surfaces: [
+          {
+            id: "phase73-opt-in-uat-deterministic-verification",
+            requirements,
+          },
+        ],
+      },
+    },
+    null,
+    2,
+  );
+}
+
+function buildChecklist(requirements: readonly string[]): string {
+  const requirementText = requirements.map((requirement) => `\`${requirement}\``).join(", ");
+  return `| \`phase73-opt-in-uat-deterministic-verification\` | \`done\` | ${requirementText} | fixture evidence |\n`;
 }

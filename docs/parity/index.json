@@ -1025,6 +1025,8 @@
         "status": "done",
         "requirements": [
           "VER-01",
+          "VER-02",
+          "VER-03",
           "VER-04"
         ],
         "evidence": [

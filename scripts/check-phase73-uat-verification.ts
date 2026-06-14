@@ -7,6 +7,7 @@ const maybeRepoRoot = process.env[REPO_ROOT_OVERRIDE_ENV];
 const REPO_ROOT =
   maybeRepoRoot === undefined ? path.resolve(import.meta.dir, "..") : path.resolve(maybeRepoRoot);
 const PHASE_DIR = ".planning/phases/73-opt-in-uat-and-deterministic-verification";
+const PHASE73_SURFACE_ID = "phase73-opt-in-uat-deterministic-verification";
 const PHASE73_CHECKER_COMMAND = `env -u ${REPO_ROOT_OVERRIDE_ENV} bun run scripts/check-phase73-uat-verification.ts`;
 const PLAN_FILES = [
   `${PHASE_DIR}/73-01-PLAN.md`,
@@ -151,6 +152,14 @@ type SourceBreadcrumbFileGroup = {
 
 type SourceBreadcrumbs = {
   groups?: unknown;
+};
+
+type ParityIndex = {
+  checklist?: unknown;
+};
+
+type ParityChecklist = {
+  surfaces?: unknown;
 };
 
 const VER02_COVERAGE = [
@@ -369,6 +378,101 @@ function verifyHermeticCoverageFiles(failures: string[]): void {
   }
 }
 
+function verifyRequirementIds(
+  maybeRequirements: unknown,
+  label: string,
+  failures: string[],
+): void {
+  if (!Array.isArray(maybeRequirements)) {
+    failures.push(`${label} must contain a requirements array`);
+    return;
+  }
+
+  const requirements = maybeRequirements.filter((requirement) => typeof requirement === "string");
+  if (requirements.length !== maybeRequirements.length) {
+    failures.push(`${label} requirements must contain only strings`);
+    return;
+  }
+
+  for (const requirementId of REQUIREMENT_IDS) {
+    if (!requirements.includes(requirementId)) {
+      failures.push(`${label} missing required Phase 73 requirement: ${requirementId}`);
+    }
+  }
+
+  if (requirements.length !== REQUIREMENT_IDS.length) {
+    failures.push(`${label} must list exactly the Phase 73 requirement IDs`);
+  }
+}
+
+async function verifyParityIndexRequirements(failures: string[]): Promise<void> {
+  const indexText = await readText("docs/parity/index.json", failures);
+  if (indexText.length === 0) {
+    return;
+  }
+
+  let parsed: ParityIndex;
+  try {
+    parsed = JSON.parse(indexText) as ParityIndex;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    failures.push(`docs/parity/index.json is invalid JSON: ${message}`);
+    return;
+  }
+
+  if (!isRecord(parsed) || !isRecord(parsed.checklist)) {
+    failures.push("docs/parity/index.json must contain a checklist object");
+    return;
+  }
+
+  const checklist = parsed.checklist as ParityChecklist;
+  if (!Array.isArray(checklist.surfaces)) {
+    failures.push("docs/parity/index.json checklist must contain a surfaces array");
+    return;
+  }
+
+  const maybeSurface = checklist.surfaces.find(
+    (surface) => isRecord(surface) && surface.id === PHASE73_SURFACE_ID,
+  );
+  if (!isRecord(maybeSurface)) {
+    failures.push(`docs/parity/index.json missing checklist surface: ${PHASE73_SURFACE_ID}`);
+    return;
+  }
+
+  verifyRequirementIds(
+    maybeSurface.requirements,
+    `docs/parity/index.json ${PHASE73_SURFACE_ID}`,
+    failures,
+  );
+}
+
+async function verifyChecklistRequirements(failures: string[]): Promise<void> {
+  const checklistText = await readText("docs/parity/checklist.md", failures);
+  const maybeSurfaceLine = checklistText
+    .split("\n")
+    .find((line) => line.includes(`| \`${PHASE73_SURFACE_ID}\` |`));
+
+  if (maybeSurfaceLine === undefined) {
+    failures.push(`docs/parity/checklist.md missing surface row: ${PHASE73_SURFACE_ID}`);
+    return;
+  }
+
+  const expectedRequirements = REQUIREMENT_IDS.map((requirementId) => `\`${requirementId}\``).join(
+    ", ",
+  );
+  requireContains(
+    maybeSurfaceLine,
+    expectedRequirements,
+    "docs/parity/checklist.md Phase 73 row",
+    failures,
+  );
+}
+
+async function verifyParityLedgerRequirements(failures: string[]): Promise<void> {
+  await verifyParityIndexRequirements(failures);
+  await verifyChecklistRequirements(failures);
+}
+
 async function verifyUatMatrixDocs(failures: string[]): Promise<void> {
   const runtimeGuide = await readText("docs/operator/runtime-guide.md", failures);
   for (const needle of REQUIRED_UAT_MATRIX_DOC_STRINGS) {
@@ -490,6 +594,7 @@ function verifyParityBreadcrumbChecker(failures: string[]): void {
 }
 
 async function verifyParityAndEvidenceCloseout(failures: string[]): Promise<void> {
+  await verifyParityLedgerRequirements(failures);
   await verifyParityRootText(failures);
   await verifyDeferredScopeNonClaims(failures);
   await verifyCloseoutFilesExist(failures);
