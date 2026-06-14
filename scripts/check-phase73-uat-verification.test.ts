@@ -58,6 +58,99 @@ const COVERAGE_ANCHORS: Record<string, readonly string[]> = {
     "bounded_unattended_cycles_preserve_resource_pressure_and_retention",
   ],
 };
+const REQUIRED_PARITY_ROOT_STRINGS: Record<string, readonly string[]> = {
+  "docs/parity/catalog/p2p.md": [
+    "## Phase 73 opt-in public-mainnet UAT and deterministic verification",
+    "public-mainnet full-sync, manual-peer, and",
+    "restart-after-progress commands as explicit opt-in UAT only",
+    "outside `bash scripts/verify.sh`",
+    "scripts/run-live-mainnet-smoke.ts",
+    "scripts/test-run-live-mainnet-smoke.sh",
+    "open-bitcoin compatibility harness",
+    "public-network CI",
+    "release-blocking live sync",
+  ],
+  "docs/parity/catalog/chainstate.md": [
+    "## VER-02 deterministic coverage map",
+    "UTXO/undo persistence",
+    "block connect/disconnect/reorg across restart",
+    "best-chain header selection",
+    "peer response failures",
+    "crash recovery as durable reopen",
+    "duplicate connect prevention",
+    "resource bounds",
+  ],
+  "docs/parity/catalog/operator-runtime-release-hardening.md": [
+    "docs/operator/runtime-guide.md",
+    "scripts/check-phase73-uat-verification.ts",
+    "scripts/verify.sh",
+    "support bundle --output-dir=/tmp/open-bitcoin-support",
+  ],
+  "docs/parity/index.json": ["phase73-opt-in-uat-deterministic-verification"],
+  "docs/parity/checklist.md": ["phase73-opt-in-uat-deterministic-verification"],
+  "docs/parity/README.md": [
+    "Phase 73 opt-in public-mainnet UAT and deterministic verification evidence",
+    "scripts/check-phase73-uat-verification.ts",
+  ],
+};
+const REQUIRED_BREADCRUMB_FILES = [
+  "packages/open-bitcoin-node/src/sync/tests.rs",
+  "packages/open-bitcoin-chainstate/tests/parity.rs",
+  "packages/open-bitcoin-cli/src/operator/support/evidence.rs",
+] as const;
+const DEFAULT_SOURCE_BREADCRUMBS = JSON.stringify(
+  {
+    groups: [
+      {
+        breadcrumbs: ["packages/bitcoin-knots/src/net_processing.cpp"],
+        files: ["packages/open-bitcoin-node/src/sync/tests.rs"],
+        label: "node-sync-tests",
+      },
+      {
+        breadcrumbs: ["packages/bitcoin-knots/src/validation.cpp"],
+        files: ["packages/open-bitcoin-chainstate/tests/parity.rs"],
+        label: "chainstate-engine",
+      },
+      {
+        breadcrumbs: [],
+        files: ["packages/open-bitcoin-cli/src/operator/support/evidence.rs"],
+        label: "cli-operator-support-bundles",
+      },
+    ],
+    noneReason: "Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.",
+    scope: {
+      exclude: ["packages/bitcoin-knots/**"],
+      include: ["packages/open-bitcoin-*/src/**/*.rs", "packages/open-bitcoin-*/tests/**/*.rs"],
+    },
+    version: 1,
+  },
+  null,
+  2,
+);
+const SOURCE_BREADCRUMBS_WITHOUT_SYNC_TESTS = JSON.stringify(
+  {
+    groups: [
+      {
+        breadcrumbs: ["packages/bitcoin-knots/src/validation.cpp"],
+        files: ["packages/open-bitcoin-chainstate/tests/parity.rs"],
+        label: "chainstate-engine",
+      },
+      {
+        breadcrumbs: [],
+        files: ["packages/open-bitcoin-cli/src/operator/support/evidence.rs"],
+        label: "cli-operator-support-bundles",
+      },
+    ],
+    noneReason: "Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.",
+    scope: {
+      exclude: ["packages/bitcoin-knots/**"],
+      include: ["packages/open-bitcoin-*/src/**/*.rs", "packages/open-bitcoin-*/tests/**/*.rs"],
+    },
+    version: 1,
+  },
+  null,
+  2,
+);
 
 type CheckerRun = {
   exitCode: number;
@@ -128,10 +221,62 @@ test("fails when a VER-02 coverage anchor loses a required test needle", async (
   expect(result.exitCode).not.toBe(0);
 });
 
+test("fails when a Phase 73 parity root text is missing", async () => {
+  // Arrange
+  const root = await createFixture({
+    maybeParityRootOverrides: {
+      "docs/parity/catalog/p2p.md": REQUIRED_PARITY_ROOT_STRINGS["docs/parity/catalog/p2p.md"]
+        .filter((needle) => needle !== "## Phase 73 opt-in public-mainnet UAT and deterministic verification")
+        .join("\n"),
+    },
+  });
+
+  // Act
+  const result = await runChecker(root);
+
+  // Assert
+  expect(result.exitCode).not.toBe(0);
+});
+
+test("fails when breadcrumb infrastructure omits referenced Rust files", async () => {
+  // Arrange
+  const root = await createFixture({
+    maybeSourceBreadcrumbs: SOURCE_BREADCRUMBS_WITHOUT_SYNC_TESTS,
+  });
+
+  // Act
+  const result = await runChecker(root);
+
+  // Assert
+  expect(result.exitCode).not.toBe(0);
+});
+
+test("fails when Phase 73 roots claim default public-network UAT or production readiness", async () => {
+  // Arrange
+  const defaultP2pDoc = REQUIRED_PARITY_ROOT_STRINGS["docs/parity/catalog/p2p.md"].join("\n");
+  const root = await createFixture({
+    maybeParityRootOverrides: {
+      "docs/parity/catalog/p2p.md": [
+        defaultP2pDoc,
+        "Phase 73 public-network UAT is default verification.",
+        "Phase 73 proves broad production-node readiness.",
+      ].join("\n"),
+    },
+  });
+
+  // Act
+  const result = await runChecker(root);
+
+  // Assert
+  expect(result.exitCode).not.toBe(0);
+});
+
 async function createFixture(options: {
   maybeRuntimeGuide?: string;
   maybePlanTexts?: readonly string[];
   maybeOmittedCoverageNeedle?: string;
+  maybeParityRootOverrides?: Record<string, string>;
+  maybeSourceBreadcrumbs?: string;
 }): Promise<string> {
   const root = await mkdtemp(path.join(os.tmpdir(), "open-bitcoin-phase73-"));
   tempRoots.push(root);
@@ -145,6 +290,8 @@ function buildFixtureFiles(options: {
   maybeRuntimeGuide?: string;
   maybePlanTexts?: readonly string[];
   maybeOmittedCoverageNeedle?: string;
+  maybeParityRootOverrides?: Record<string, string>;
+  maybeSourceBreadcrumbs?: string;
 }): Record<string, string> {
   const files: Record<string, string> = {};
   const planTexts = options.maybePlanTexts ?? DEFAULT_PLAN_TEXTS;
@@ -165,6 +312,15 @@ function buildFixtureFiles(options: {
       .filter((needle) => needle !== options.maybeOmittedCoverageNeedle)
       .join("\n");
   }
+  for (const [file, needles] of Object.entries(REQUIRED_PARITY_ROOT_STRINGS)) {
+    files[file] = options.maybeParityRootOverrides?.[file] ?? needles.join("\n");
+  }
+  for (const file of REQUIRED_BREADCRUMB_FILES) {
+    files[file] = files[file] ?? "fixture rust source\n";
+  }
+  files["docs/parity/source-breadcrumbs.json"] =
+    options.maybeSourceBreadcrumbs ?? DEFAULT_SOURCE_BREADCRUMBS;
+  files["scripts/check-parity-breadcrumbs.ts"] = "fixture breadcrumb checker\n";
 
   return files;
 }
