@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Mainnet Full-Sync Completion
 status: executing
-stopped_at: Phase 73 context gathered
-last_updated: "2026-06-14T00:31:21.447Z"
-last_activity: 2026-06-14 -- Phase 73 execution started
+stopped_at: Completed 73-01-PLAN.md
+last_updated: "2026-06-14T01:32:21.883Z"
+last_activity: 2026-06-14
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 26
-  completed_plans: 22
-  percent: 85
+  completed_plans: 23
+  percent: 88
 ---
 
 # Project State
@@ -27,9 +27,9 @@ See: `.planning/PROJECT.md` (updated 2026-06-11)
 
 Milestone: v1.6 Mainnet Full-Sync Completion
 Phase: 73 (Opt-In UAT and Deterministic Verification) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 73
-Last activity: 2026-06-14 -- Phase 73 execution started
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-06-14
 
 Progress: [##########] 100%
 
@@ -87,6 +87,8 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent v1.5 decisions:
 - [Phase 66]: Default verification includes a deterministic compatibility wrapper checker and continues to exclude public-network peer probing.
 - [Phase 67]: v1.5 is documented as source-built, explicit opt-in unattended mainnet operator-review readiness, not production-node readiness.
 - [Phase 67]: The deterministic checker guards v1.5 parity roots and default-verification exclusions.
+- [Phase 73]: VER-02 coverage remains checker-only because existing deterministic Rust anchors cover every required behavior.
+- [Phase 73]: Crash recovery is represented by durable reopen/recovery tests, not by a process-level crash harness.
 
 ### Pending Todos
 
@@ -101,6 +103,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent v1.5 decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-13T22:30:36.996Z
-Stopped at: Phase 73 context gathered
-Resume file: .planning/phases/73-opt-in-uat-and-deterministic-verification/73-CONTEXT.md
+Last session: 2026-06-14T01:32:21.881Z
+Stopped at: Completed 73-01-PLAN.md
+Resume file: None

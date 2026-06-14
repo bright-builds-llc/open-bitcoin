@@ -128,7 +128,7 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 73-01-PLAN.md - Map VER-02 deterministic coverage to existing hermetic anchors
+- [x] 73-01-PLAN.md - Map VER-02 deterministic coverage to existing hermetic anchors
 - [ ] 73-02-PLAN.md - Add the central Phase 73 opt-in public-mainnet UAT matrix
 - [ ] 73-03-PLAN.md - Wire the Phase 73 deterministic checker into default verification
 - [ ] 73-04-PLAN.md - Close parity, breadcrumb, and evidence auditability
@@ -163,7 +163,7 @@ Plans:
 | 70. Reorg, Peer Rotation, and No-Progress Recovery | 6/6 | Complete | 2026-06-12 |
 | 71. Resource Bounds and Durable Restart/Resume | 4/4 | Complete    | 2026-06-13 |
 | 72. Operator Observability and Support Evidence | 4/4 | Complete   | 2026-06-13 |
-| 73. Opt-In UAT and Deterministic Verification | 0/0 | Pending | — |
+| 73. Opt-In UAT and Deterministic Verification | 1/4 | In Progress|  |
 | 74. Release Boundaries, Parity, and Documentation | 0/0 | Pending | — |
 
 ## Completed Milestone Summaries

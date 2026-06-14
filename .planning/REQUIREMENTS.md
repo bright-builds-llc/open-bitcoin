@@ -44,7 +44,7 @@ Requirements for v1.6 Mainnet Full-Sync Completion. Each requirement maps to exa
 ### Opt-In UAT And Deterministic Verification
 
 - [ ] **VER-01**: Contributor can run `bash scripts/verify.sh` without internet access, public peers, real service managers, long-running sync, or current-tip timing.
-- [ ] **VER-02**: Contributor can run deterministic tests for durable UTXO/undo writes, block connect/disconnect/reorg across restart, best-chain header selection, peer response failures, crash recovery, duplicate connect prevention, and resource bounds.
+- [x] **VER-02**: Contributor can run deterministic tests for durable UTXO/undo writes, block connect/disconnect/reorg across restart, best-chain header selection, peer response failures, crash recovery, duplicate connect prevention, and resource bounds.
 - [ ] **VER-03**: Operator can run copy-pasteable repo-local Cargo and Bazel commands for opt-in public-mainnet full-sync, stay-current, restart/resume, and support-bundle UAT.
 - [ ] **VER-04**: Contributor can audit parity breadcrumbs, fixtures, compatibility harness reports, and deterministic checkers for every new v1.6 source, test, and operator-evidence surface.
 
@@ -116,7 +116,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | OBS-03 | Phase 72 | Pending |
 | OBS-04 | Phase 72 | Pending |
 | VER-01 | Phase 73 | Pending |
-| VER-02 | Phase 73 | Pending |
+| VER-02 | Phase 73 | Complete |
 | VER-03 | Phase 73 | Pending |
 | VER-04 | Phase 73 | Pending |
 | REL-01 | Phase 74 | Pending |
