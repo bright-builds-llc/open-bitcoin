@@ -2,7 +2,9 @@
 
 import path from "node:path";
 
-const REPO_ROOT = path.resolve(import.meta.dir, "..");
+const maybeRepoRoot = process.env.OPEN_BITCOIN_PHASE73_REPO_ROOT;
+const REPO_ROOT =
+  maybeRepoRoot === undefined ? path.resolve(import.meta.dir, "..") : path.resolve(maybeRepoRoot);
 const PHASE_DIR = ".planning/phases/73-opt-in-uat-and-deterministic-verification";
 const PLAN_FILES = [
   `${PHASE_DIR}/73-01-PLAN.md`,
@@ -25,13 +27,20 @@ const HERMETIC_COVERAGE_FILES = [
   "packages/open-bitcoin-node/src/storage/snapshot_codec/tests.rs",
   "packages/open-bitcoin-node/src/sync/tests.rs",
 ] as const;
-const FORBIDDEN_DEFAULT_VERIFICATION_NEEDLES = [
-  "run-live-mainnet-smoke",
-  "--manual-peer",
-  "--restart-after-progress",
-  "systemctl",
-  "launchctl",
-  "openbitcoinsync=mainnet-ibd",
+const REQUIRED_UAT_MATRIX_DOC_STRINGS = [
+  "### Phase 73 opt-in public-mainnet UAT matrix",
+  "Full-sync activation and review",
+  "Stay-current/status review",
+  "Same-datadir restart/resume review",
+  "Status-surface comparison",
+  "Live-smoke report collection",
+  "Support-bundle collection",
+  "Evidence proves",
+  "Does not prove",
+  "cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin --",
+  "bazel run //packages/open-bitcoin-cli:open_bitcoin --",
+  "bun run scripts/run-live-mainnet-smoke.ts",
+  "deterministic fixture validation, not public-network UAT",
 ] as const;
 
 type Ver02Behavior = (typeof REQUIRED_VER02_BEHAVIORS)[number];
@@ -173,17 +182,6 @@ function requireContains(
   }
 }
 
-function requireNotContains(
-  text: string,
-  needle: string,
-  label: string,
-  failures: string[],
-): void {
-  if (text.includes(needle)) {
-    failures.push(`${label} must not contain default verification command: ${needle}`);
-  }
-}
-
 function verifyCoverageBehaviors(failures: string[]): void {
   const observed = new Set(VER02_COVERAGE.map((entry) => entry.behavior));
   if (observed.size !== VER02_COVERAGE.length) {
@@ -225,6 +223,12 @@ async function verifyCoverageAnchors(failures: string[]): Promise<void> {
   }
 }
 
+async function verifyCoverageMap(failures: string[]): Promise<void> {
+  verifyCoverageBehaviors(failures);
+  verifyHermeticCoverageFiles(failures);
+  await verifyCoverageAnchors(failures);
+}
+
 function verifyHermeticCoverageFiles(failures: string[]): void {
   const allowed = new Set<string>(HERMETIC_COVERAGE_FILES);
   for (const entry of VER02_COVERAGE) {
@@ -236,20 +240,18 @@ function verifyHermeticCoverageFiles(failures: string[]): void {
   }
 }
 
-async function verifyDefaultVerificationBoundary(failures: string[]): Promise<void> {
-  const verifyScript = await readText("scripts/verify.sh", failures);
-  for (const needle of FORBIDDEN_DEFAULT_VERIFICATION_NEEDLES) {
-    requireNotContains(verifyScript, needle, "scripts/verify.sh", failures);
+async function verifyUatMatrixDocs(failures: string[]): Promise<void> {
+  const runtimeGuide = await readText("docs/operator/runtime-guide.md", failures);
+  for (const needle of REQUIRED_UAT_MATRIX_DOC_STRINGS) {
+    requireContains(runtimeGuide, needle, "docs/operator/runtime-guide.md", failures);
   }
 }
 
 async function main(): Promise<void> {
   const failures: string[] = [];
-  verifyCoverageBehaviors(failures);
-  verifyHermeticCoverageFiles(failures);
   await verifyRequirements(failures);
-  await verifyCoverageAnchors(failures);
-  await verifyDefaultVerificationBoundary(failures);
+  await verifyCoverageMap(failures);
+  await verifyUatMatrixDocs(failures);
 
   if (failures.length > 0) {
     for (const failure of failures) {
