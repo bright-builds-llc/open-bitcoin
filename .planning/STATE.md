@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Mainnet Full-Sync Completion
 status: executing
-stopped_at: Completed 73-01-PLAN.md
-last_updated: "2026-06-14T01:32:21.883Z"
+stopped_at: Completed 73-02-PLAN.md
+last_updated: "2026-06-14T02:40:00.912Z"
 last_activity: 2026-06-14
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 26
-  completed_plans: 23
-  percent: 88
+  completed_plans: 24
+  percent: 92
 ---
 
 # Project State
@@ -27,18 +27,18 @@ See: `.planning/PROJECT.md` (updated 2026-06-11)
 
 Milestone: v1.6 Mainnet Full-Sync Completion
 Phase: 73 (Opt-In UAT and Deterministic Verification) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-06-14
 
-Progress: [##########] 100%
+Progress: [#########-] 92%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Current milestone plans completed: 18
-- Current milestone plan count: 18
+- Current milestone plans completed: 24
+- Current milestone plan count: 26
 - Prior milestone plans completed: 22 in v1.5
 
 **By Phase:**
@@ -49,8 +49,8 @@ Progress: [##########] 100%
 | 69. Tip Tracking and Stay-Current Operation | 5/5 | Complete |
 | 70. Reorg, Peer Rotation, and No-Progress Recovery | 6/6 | Complete |
 | 71. Resource Bounds and Durable Restart/Resume | 4/4 | Complete |
-| 72. Operator Observability and Support Evidence | 0/0 | Pending |
-| 73. Opt-In UAT and Deterministic Verification | 0/0 | Pending |
+| 72. Operator Observability and Support Evidence | 4/4 | Complete |
+| 73. Opt-In UAT and Deterministic Verification | 2/4 | In Progress |
 | 74. Release Boundaries, Parity, and Documentation | 0/0 | Pending |
 
 **Recent Trend:**
@@ -62,7 +62,8 @@ Progress: [##########] 100%
 - Phase 69 completed tip tracking, stay-current status, post-catch-up coverage, and documentation/checker closeout.
 - Phase 70 completed reorg status contracts, typed branch/reorg runtime outcomes, durable latest reorg projection, deterministic storage-blocker coverage, peer attribution/backoff/rotation coverage, the additive no-progress status contract, shared no-progress diagnosis/rendering, operator docs, parity wording, README relevance, and deterministic checker closeout.
 - Phase 71 completed resource-bound documentation and tests, same-datadir restart/resume matrix coverage, storage-pressure recovery guidance, deterministic synthetic long-chain coverage, parity/operator docs, and default checker closeout.
-- Next workflow: discuss and plan Phase 72.
+- Phase 73 Plan 02 completed the opt-in public-mainnet UAT matrix in 43min across 2 tasks and 1 plan artifact file.
+- Next workflow: execute Phase 73 Plan 03.
 
 ## Accumulated Context
 
@@ -89,10 +90,12 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent v1.5 decisions:
 - [Phase 67]: The deterministic checker guards v1.5 parity roots and default-verification exclusions.
 - [Phase 73]: VER-02 coverage remains checker-only because existing deterministic Rust anchors cover every required behavior.
 - [Phase 73]: Crash recovery is represented by durable reopen/recovery tests, not by a process-level crash harness.
+- [Phase 73]: Phase 73 public-mainnet UAT commands remain opt-in documentation outside bash scripts/verify.sh.
+- [Phase 73]: Phase 73 UAT evidence must come from explicit status and report fields, not daemon startup, elapsed time, peer reachability, or bundle existence alone.
 
 ### Pending Todos
 
-- Discuss and plan Phase 72 for operator observability and support evidence.
+- Execute Phase 73 Plan 03 for the deterministic checker integration.
 - Keep public-network full-sync UAT opt-in and outside default deterministic verification.
 
 ### Blockers/Concerns
@@ -103,6 +106,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent v1.5 decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-14T01:32:21.881Z
-Stopped at: Completed 73-01-PLAN.md
+Last session: 2026-06-14T02:40:00.910Z
+Stopped at: Completed 73-02-PLAN.md
 Resume file: None
