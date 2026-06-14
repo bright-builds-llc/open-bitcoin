@@ -10,10 +10,9 @@
 // - packages/bitcoin-knots/test/functional/interface_rpc.py
 
 use std::{
-    fs,
-    path::PathBuf,
-    sync::atomic::{AtomicU64, Ordering},
-    time::Duration,
+    fs, io,
+    path::{Path, PathBuf},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use open_bitcoin_node::{
@@ -27,19 +26,29 @@ use super::{
     daemon_sync_preflight_message, preflight_daemon_sync, run_daemon_sync_loop_cycle,
 };
 
-static NEXT_TEST_DIRECTORY_ID: AtomicU64 = AtomicU64::new(0);
-
 fn temp_store_path(label: &str) -> PathBuf {
-    let path = std::env::temp_dir().join(format!(
-        "open-bitcoind-sync-preflight-{label}-{}",
-        NEXT_TEST_DIRECTORY_ID.fetch_add(1, Ordering::Relaxed)
-    ));
-    fs::create_dir_all(&path).expect("test store directory");
-    path
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system time after unix epoch")
+        .as_nanos();
+
+    std::env::temp_dir().join(format!(
+        "open-bitcoind-sync-preflight-{label}-{}-{timestamp}",
+        std::process::id()
+    ))
+}
+
+fn remove_dir_if_exists(path: &Path) {
+    match fs::remove_dir_all(path) {
+        Ok(()) => {}
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+        Err(error) => panic!("failed to remove {}: {error}", path.display()),
+    }
 }
 
 fn test_sync_runtime(label: &str) -> DurableSyncRuntime {
     let data_dir = temp_store_path(label);
+    remove_dir_if_exists(&data_dir);
     let store = FjallNodeStore::open(&data_dir).expect("test store");
     DurableSyncRuntime::open(
         store,
@@ -69,6 +78,7 @@ fn disabled_sync_skips_daemon_preflight() {
 fn enabled_sync_preflight_opens_durable_runtime_before_worker_startup() {
     // Arrange
     let data_dir = temp_store_path("enabled");
+    remove_dir_if_exists(&data_dir);
     let runtime = RuntimeConfig {
         maybe_data_dir: Some(data_dir.clone()),
         sync: DaemonSyncConfig::mainnet_ibd(),
