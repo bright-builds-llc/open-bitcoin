@@ -2,10 +2,12 @@
 
 import path from "node:path";
 
-const maybeRepoRoot = process.env.OPEN_BITCOIN_PHASE73_REPO_ROOT;
+const REPO_ROOT_OVERRIDE_ENV = "OPEN_BITCOIN_PHASE73_REPO_ROOT";
+const maybeRepoRoot = process.env[REPO_ROOT_OVERRIDE_ENV];
 const REPO_ROOT =
   maybeRepoRoot === undefined ? path.resolve(import.meta.dir, "..") : path.resolve(maybeRepoRoot);
 const PHASE_DIR = ".planning/phases/73-opt-in-uat-and-deterministic-verification";
+const PHASE73_CHECKER_COMMAND = `env -u ${REPO_ROOT_OVERRIDE_ENV} bun run scripts/check-phase73-uat-verification.ts`;
 const PLAN_FILES = [
   `${PHASE_DIR}/73-01-PLAN.md`,
   `${PHASE_DIR}/73-02-PLAN.md`,
@@ -377,14 +379,15 @@ async function verifyUatMatrixDocs(failures: string[]): Promise<void> {
 async function verifyVerifyScript(failures: string[]): Promise<void> {
   const verifyScript = await readText("scripts/verify.sh", failures);
   const phase72 = "bun run scripts/check-phase72-observability-evidence.ts";
-  const phase73 = "bun run scripts/check-phase73-uat-verification.ts";
   requireContains(verifyScript, phase72, "scripts/verify.sh", failures);
-  requireContains(verifyScript, phase73, "scripts/verify.sh", failures);
+  requireContains(verifyScript, PHASE73_CHECKER_COMMAND, "scripts/verify.sh", failures);
 
   const phase72Index = verifyScript.indexOf(phase72);
-  const phase73Index = verifyScript.indexOf(phase73);
+  const phase73Index = verifyScript.indexOf(PHASE73_CHECKER_COMMAND);
   if (phase72Index === -1 || phase73Index === -1 || phase73Index < phase72Index) {
-    failures.push("scripts/verify.sh must run the Phase 73 checker after the Phase 72 checker");
+    failures.push(
+      "scripts/verify.sh must run the hardened Phase 73 checker after the Phase 72 checker",
+    );
   }
 
   for (const forbidden of FORBIDDEN_VERIFY_STRINGS) {

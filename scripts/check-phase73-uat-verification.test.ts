@@ -181,6 +181,22 @@ test("passes when the Phase 73 fixture includes every required evidence anchor",
   expect(result.exitCode).toBe(0);
 });
 
+test("fails when verify.sh does not clear the Phase 73 repo-root override", async () => {
+  // Arrange
+  const root = await createFixture({
+    maybeVerifyScript: [
+      "bun run scripts/check-phase72-observability-evidence.ts",
+      "bun run scripts/check-phase73-uat-verification.ts",
+    ].join("\n"),
+  });
+
+  // Act
+  const result = await runChecker(root);
+
+  // Assert
+  expect(result.exitCode).not.toBe(0);
+});
+
 test("fails when the Phase 73 UAT matrix title is missing", async () => {
   // Arrange
   const root = await createFixture({
@@ -278,6 +294,7 @@ async function createFixture(options: {
   maybeOmittedCoverageNeedle?: string;
   maybeParityRootOverrides?: Record<string, string>;
   maybeSourceBreadcrumbs?: string;
+  maybeVerifyScript?: string;
 }): Promise<string> {
   const root = await mkdtemp(path.join(os.tmpdir(), "open-bitcoin-phase73-"));
   tempRoots.push(root);
@@ -293,6 +310,7 @@ function buildFixtureFiles(options: {
   maybeOmittedCoverageNeedle?: string;
   maybeParityRootOverrides?: Record<string, string>;
   maybeSourceBreadcrumbs?: string;
+  maybeVerifyScript?: string;
 }): Record<string, string> {
   const files: Record<string, string> = {};
   const planTexts = options.maybePlanTexts ?? DEFAULT_PLAN_TEXTS;
@@ -303,10 +321,12 @@ function buildFixtureFiles(options: {
 
   files["docs/operator/runtime-guide.md"] =
     options.maybeRuntimeGuide ?? REQUIRED_UAT_MATRIX_DOC_STRINGS.join("\n");
-  files["scripts/verify.sh"] = [
-    "bun run scripts/check-phase72-observability-evidence.ts",
-    "bun run scripts/check-phase73-uat-verification.ts",
-  ].join("\n");
+  files["scripts/verify.sh"] =
+    options.maybeVerifyScript ??
+    [
+      "bun run scripts/check-phase72-observability-evidence.ts",
+      "env -u OPEN_BITCOIN_PHASE73_REPO_ROOT bun run scripts/check-phase73-uat-verification.ts",
+    ].join("\n");
 
   for (const [file, needles] of Object.entries(COVERAGE_ANCHORS)) {
     files[file] = needles
