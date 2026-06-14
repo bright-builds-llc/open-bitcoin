@@ -1,11 +1,13 @@
 # Operator Runtime Guide
 
-This guide describes the current v1.5 operator workflow for Open Bitcoin on
+This guide describes the current v1.6 operator workflow for Open Bitcoin on
 macOS and Linux. It is intentionally conservative: the runtime is source-built,
 service integration is local-machine only, migration remains dry-run only, and
 release readiness stays evidence-based rather than timing-threshold based.
-v1.5 is explicit opt-in unattended mainnet operator review readiness; it does
-not make a production-node or production-funds claim.
+v1.6 is explicit opt-in full-sync completion evidence; it does not make a
+production-node, production-funds, inbound-serving, relay, migration-apply,
+packaging, GUI, hosted-dashboard, public-network CI, or release-blocking live
+sync claim.
 
 Use this guide for the practical workflow. Use
 [`docs/architecture/config-precedence.md`](../architecture/config-precedence.md),
@@ -34,13 +36,22 @@ Before making release or operator claims on a checkout, run the repo-native
 verification contract:
 
 ```bash
-bun run scripts/check-v1.5-release-boundaries.ts
+bun run scripts/check-v1.6-release-boundaries.ts
 bash scripts/verify.sh
 ```
 
 That verification path stays offline by default. It runs formatting, linting,
 builds, tests, parity-breadcrumb checks, bounded smoke benchmarks, and Bazel
 smoke targets without requiring public-network sync.
+
+For release-boundary review, use
+[`docs/parity/threat-model-v1.6.md`](../parity/threat-model-v1.6.md) and
+[`docs/parity/release-readiness.md`](../parity/release-readiness.md). The v1.6
+release boundary is source-built, explicit opt-in full-sync completion only:
+reviewers should inspect validated active-chain progress, best-known-tip
+freshness, stay-current state, restart/resume continuity, no-progress guidance,
+support evidence, and the Phase 73 UAT matrix below before accepting a
+sync-to-tip claim.
 
 ## Binaries
 
@@ -1045,6 +1056,38 @@ release gates. Bundle existence, daemon startup, elapsed time, or peer reachabil
 | Status-surface comparison | `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet sync status --format json`<br>`bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet sync status --format json`<br>`cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet status --format json`<br>`bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet status --format json`<br>`cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet dashboard --tick-ms 1000`<br>`bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet dashboard --tick-ms 1000`<br>`cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet service status`<br>`bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet service status` | CLI status, sync status, dashboard, and service views can be reviewed for agreement on connected progress, best-known-tip freshness, recovery category, peer health, resource pressure, and next action. | Renderer agreement does not prove public-network progress unless validated active-chain fields and reviewed live evidence support the same claim. |
 | Live-smoke report collection | `bun run scripts/run-live-mainnet-smoke.ts --datadir=/tmp/open-bitcoin-mainnet`<br>`bun run scripts/run-live-mainnet-smoke.ts --datadir=/tmp/open-bitcoin-mainnet --manual-peer=HOST:8333`<br>`bun run scripts/run-live-mainnet-smoke.ts --datadir=/tmp/open-bitcoin-mainnet --manual-peer=HOST:8333 --restart-after-progress --timeout-seconds=180 --poll-seconds=10`<br>`bash scripts/test-run-live-mainnet-smoke.sh` is deterministic fixture validation, not public-network UAT. | The wrapper can capture opt-in public-network progress, typed no-progress blockers, peer contribution, endpoint outcomes, and optional same-datadir restart evidence in local reports. | A report file, elapsed timeout, preflight success, or endpoint reachability does not prove sync-to-tip unless the report fields show validated active-chain progress to the reviewed target. |
 | Support-bundle collection | `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet support bundle --output-dir=/tmp/open-bitcoin-support`<br>`bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet support bundle --output-dir=/tmp/open-bitcoin-support`<br>`cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet support bundle --output-dir=/tmp/open-bitcoin-support --include-live-smoke-report=packages/target/live-mainnet-smoke-reports/open-bitcoin-live-mainnet-smoke.json` | The bundle can collect redacted status, metrics/log availability, service evidence, support metadata, and summary-only live-smoke evidence for local review. | Bundle existence, copied files, or attached summaries do not prove sync-to-tip, production-node readiness, wallet safety, relay behavior, or safe migration apply behavior. |
+
+### v1.6 release boundary
+
+The v1.6 release boundary is a closeout around the Phase 73 matrix, not a
+second authoritative command list. The accepted evidence is field-based:
+connected and validated active-chain height/hash/work, best-known-tip
+freshness, stay-current or stale/recovering state, same-datadir restart/resume
+continuity, no-progress/reorg recovery guidance, resource pressure, peer
+contribution, and redacted support evidence.
+
+Use these deterministic checks before interpreting opt-in public-network
+evidence:
+
+```bash
+bun run scripts/check-v1.6-release-boundaries.ts
+bun run scripts/check-phase73-uat-verification.ts
+bash scripts/verify.sh
+```
+
+The reviewer roots are
+[`docs/parity/threat-model-v1.6.md`](../parity/threat-model-v1.6.md),
+[`docs/parity/release-readiness.md`](../parity/release-readiness.md),
+[`docs/parity/index.json`](../parity/index.json), and
+[`docs/parity/checklist.md`](../parity/checklist.md). Generated live-mainnet
+reports, support bundles, daemon logs, metrics stores, compatibility reports,
+and local datadirs remain local artifacts outside git.
+
+v1.6 does not claim inbound serving, address relay, block serving, transaction
+relay, compact block relay, production-funds wallet safety, migration apply
+mode, signed packaging, Windows service support, GUI parity, hosted dashboards,
+public-network CI, release-blocking live sync, or broad production-node
+readiness.
 
 ## v1.4 operator evidence closeout
 

@@ -94,6 +94,22 @@ serving, transaction relay, compact block relay, production-funds wallet
 claims, migration apply mode, signed packaging, Windows service support, GUI,
 hosted dashboards, or broad production-node readiness.
 
+## v1.6 full-sync completion release boundary
+
+Phase 74 uses the Phase 68 through Phase 73 chainstate evidence as part of the
+source-built, explicit opt-in full-sync completion claim. The accepted
+chainstate evidence is validated active-chain progress, durable UTXO/undo and
+block-index state, same-datadir restart/resume continuity, reorg persistence,
+duplicate-connect prevention, and deterministic coverage for resource-bounded
+long-chain behavior.
+
+This release boundary does not add block serving, transaction relay, compact
+block relay, production-funds wallet safety, migration apply mode, signed
+packaging, Windows service support, GUI parity, hosted dashboards,
+public-network CI, release-blocking live sync, or broad production-node
+readiness. Public-network evidence remains opt-in UAT outside
+`bash scripts/verify.sh`.
+
 ## First-party implementation
 
 - [`packages/open-bitcoin-chainstate/src/engine.rs`](../../../packages/open-bitcoin-chainstate/src/engine.rs)

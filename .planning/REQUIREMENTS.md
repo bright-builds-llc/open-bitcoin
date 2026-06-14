@@ -9,10 +9,10 @@ Requirements for v1.6 Mainnet Full-Sync Completion. Each requirement maps to exa
 
 ### Full Active-Chain Validation And Persistence
 
-- [ ] **SYNC-01**: Operator can run explicit opt-in `open-bitcoind` mainnet sync until the active chain reaches the best-known validated peer tip.
-- [ ] **SYNC-02**: Operator can distinguish header height, downloaded block height, connected block height, validated active-chain height, cumulative work, and tip freshness in status evidence.
-- [ ] **SYNC-03**: Operator can restart with the same datadir and recover durable active-chain, UTXO, undo, block-index, and runtime metadata needed to continue validation without replaying unsafe in-memory assumptions.
-- [ ] **SYNC-04**: Operator can trust that a block only counts as sync progress after consensus validation and durable connection to the active chain.
+- [x] **SYNC-01**: Operator can run explicit opt-in `open-bitcoind` mainnet sync until the active chain reaches the best-known validated peer tip.
+- [x] **SYNC-02**: Operator can distinguish header height, downloaded block height, connected block height, validated active-chain height, cumulative work, and tip freshness in status evidence.
+- [x] **SYNC-03**: Operator can restart with the same datadir and recover durable active-chain, UTXO, undo, block-index, and runtime metadata needed to continue validation without replaying unsafe in-memory assumptions.
+- [x] **SYNC-04**: Operator can trust that a block only counts as sync progress after consensus validation and durable connection to the active chain.
 
 ### Tip Tracking And Stay-Current Operation
 
@@ -36,10 +36,10 @@ Requirements for v1.6 Mainnet Full-Sync Completion. Each requirement maps to exa
 
 ### Operator Observability And Support Evidence
 
-- [ ] **OBS-01**: Operator can inspect one shared full-sync truth contract through CLI status, dashboard, RPC, metrics, structured logs, live-smoke reports, and support bundles.
-- [ ] **OBS-02**: Operator can generate redacted support evidence that includes initial and final tip, connected height/hash/work, restart/resume checkpoints, stay-current window, peer contribution, no-progress or reorg events, resource pressure, and final verdict.
-- [ ] **OBS-03**: Operator can compare status surfaces and confirm they agree on connected chain progress, tip freshness, recovery category, peer health, and next action.
-- [ ] **OBS-04**: Operator can read concise guidance that explains whether evidence proves sync-to-tip, stay-current behavior, diagnosed blocker, or deferred production-node scope.
+- [x] **OBS-01**: Operator can inspect one shared full-sync truth contract through CLI status, dashboard, RPC, metrics, structured logs, live-smoke reports, and support bundles.
+- [x] **OBS-02**: Operator can generate redacted support evidence that includes initial and final tip, connected height/hash/work, restart/resume checkpoints, stay-current window, peer contribution, no-progress or reorg events, resource pressure, and final verdict.
+- [x] **OBS-03**: Operator can compare status surfaces and confirm they agree on connected chain progress, tip freshness, recovery category, peer health, and next action.
+- [x] **OBS-04**: Operator can read concise guidance that explains whether evidence proves sync-to-tip, stay-current behavior, diagnosed blocker, or deferred production-node scope.
 
 ### Opt-In UAT And Deterministic Verification
 
@@ -50,9 +50,9 @@ Requirements for v1.6 Mainnet Full-Sync Completion. Each requirement maps to exa
 
 ### Release Boundaries, Parity, And Documentation
 
-- [ ] **REL-01**: Contributor can verify v1.6 parity roots, threat model, release-readiness matrix, README, and operator docs describe only the explicit opt-in full-sync completion claim.
-- [ ] **REL-02**: Contributor can run deterministic release-boundary checks that prevent docs and status surfaces from implying inbound serving, relay, production-wallet, migration-apply, packaging, GUI, hosted-dashboard, or broad production-node claims.
-- [ ] **REL-03**: Operator can review v1.6 docs that explain shipped sync-to-tip evidence, opt-in UAT commands, support evidence locations, failure interpretation, and deferred scope.
+- [x] **REL-01**: Contributor can verify v1.6 parity roots, threat model, release-readiness matrix, README, and operator docs describe only the explicit opt-in full-sync completion claim.
+- [x] **REL-02**: Contributor can run deterministic release-boundary checks that prevent docs and status surfaces from implying inbound serving, relay, production-wallet, migration-apply, packaging, GUI, hosted-dashboard, or broad production-node claims.
+- [x] **REL-03**: Operator can review v1.6 docs that explain shipped sync-to-tip evidence, opt-in UAT commands, support evidence locations, failure interpretation, and deferred scope.
 
 ## Future Requirements
 
@@ -96,10 +96,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SYNC-01 | Phase 68 | Pending |
-| SYNC-02 | Phase 68 | Pending |
-| SYNC-03 | Phase 68 | Pending |
-| SYNC-04 | Phase 68 | Pending |
+| SYNC-01 | Phase 68 | Complete |
+| SYNC-02 | Phase 68 | Complete |
+| SYNC-03 | Phase 68 | Complete |
+| SYNC-04 | Phase 68 | Complete |
 | TIP-01 | Phase 69 | Complete |
 | TIP-02 | Phase 69 | Complete |
 | TIP-03 | Phase 69 | Complete |
@@ -111,17 +111,17 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RES-02 | Phase 71 | Complete |
 | RES-03 | Phase 71 | Complete |
 | RES-04 | Phase 71 | Complete |
-| OBS-01 | Phase 72 | Pending |
-| OBS-02 | Phase 72 | Pending |
-| OBS-03 | Phase 72 | Pending |
-| OBS-04 | Phase 72 | Pending |
+| OBS-01 | Phase 72 | Complete |
+| OBS-02 | Phase 72 | Complete |
+| OBS-03 | Phase 72 | Complete |
+| OBS-04 | Phase 72 | Complete |
 | VER-01 | Phase 73 | Complete |
 | VER-02 | Phase 73 | Complete |
 | VER-03 | Phase 73 | Complete |
 | VER-04 | Phase 73 | Complete |
-| REL-01 | Phase 74 | Pending |
-| REL-02 | Phase 74 | Pending |
-| REL-03 | Phase 74 | Pending |
+| REL-01 | Phase 74 | Complete |
+| REL-02 | Phase 74 | Complete |
+| REL-03 | Phase 74 | Complete |
 
 **Coverage:**
 - v1.6 requirements: 26 total
@@ -130,4 +130,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-06-11*
-*Last updated: 2026-06-11 after v1.6 roadmap creation*
+*Last updated: 2026-06-14 after Phase 74 release-boundary verification*

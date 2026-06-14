@@ -8,7 +8,7 @@
 - ✅ **v1.3 Public Mainnet Sync Proof and Node Hardening** - Phases 42 through 53 (shipped 2026-06-02). Archive: [v1.3-ROADMAP.md](milestones/v1.3-ROADMAP.md)
 - ✅ **v1.4 Mainnet IBD Convergence and Peer Compatibility** - Phases 54 through 59 (shipped 2026-06-05). Archive: [v1.4-ROADMAP.md](milestones/v1.4-ROADMAP.md)
 - ✅ **v1.5 Unattended Mainnet Node Operation Readiness** - Phases 60 through 67 (shipped 2026-06-10). Archive: [v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
-- 🚧 **v1.6 Mainnet Full-Sync Completion** - Phases 68 through 74 (active). Requirements: 26
+- ✅ **v1.6 Mainnet Full-Sync Completion** - Phases 68 through 74 (shipped 2026-06-14). Requirements: 26
 
 ## Current Focus
 
@@ -144,7 +144,10 @@ Plans:
 **Goal**: Reviewers can audit that v1.6 claims only explicit opt-in full-sync completion and preserves all deferred scope boundaries.
 **Depends on**: Phase 73
 **Requirements**: REL-01, REL-02, REL-03
-**Plans**: Pending
+**Plans**: 1 plan
+
+Plans:
+- [x] 74-01-PLAN.md - Close v1.6 release boundaries, parity roots, docs, checker, and traceability
 
 **Success Criteria**:
 1. v1.6 parity roots, threat model, release-readiness matrix, README, and operator docs describe only the explicit opt-in full-sync completion claim.
@@ -164,7 +167,7 @@ Plans:
 | 71. Resource Bounds and Durable Restart/Resume | 4/4 | Complete    | 2026-06-13 |
 | 72. Operator Observability and Support Evidence | 4/4 | Complete   | 2026-06-13 |
 | 73. Opt-In UAT and Deterministic Verification | 4/4 | Complete    | 2026-06-14 |
-| 74. Release Boundaries, Parity, and Documentation | 0/0 | Pending | — |
+| 74. Release Boundaries, Parity, and Documentation | 1/1 | Complete | 2026-06-14 |
 
 ## Completed Milestone Summaries
 
@@ -214,12 +217,12 @@ traceability.
 | v1.3 Public Mainnet Sync Proof and Node Hardening | 12 | 13 | Shipped | 2026-06-02 |
 | v1.4 Mainnet IBD Convergence and Peer Compatibility | 6 | 15 | Shipped | 2026-06-05 |
 | v1.5 Unattended Mainnet Node Operation Readiness | 8 | 22 | Shipped | 2026-06-10 |
-| v1.6 Mainnet Full-Sync Completion | 7 | 14 | Active | — |
+| v1.6 Mainnet Full-Sync Completion | 7 | 27 | Shipped | 2026-06-14 |
 
 ## Next Step
 
-Begin Phase 72 planning:
+Archive the v1.6 milestone:
 
 ```bash
-/gsd-discuss-phase 72
+/gsd-complete-milestone
 ```

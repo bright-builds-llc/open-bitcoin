@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Mainnet Full-Sync Completion
-status: planning
-stopped_at: Phase 73 verified; Phase 74 ready to plan
-last_updated: "2026-06-14T08:08:46Z"
+status: complete
+stopped_at: Phase 74 verified; v1.6 ready for archive review
+last_updated: "2026-06-14T17:09:22Z"
 last_activity: 2026-06-14
 progress:
   total_phases: 7
-  completed_phases: 6
-  total_plans: 26
-  completed_plans: 26
+  completed_phases: 7
+  total_plans: 27
+  completed_plans: 27
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-11)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 74 — Release Boundaries, Parity, and Documentation
+**Current focus:** v1.6 archive review
 
 ## Current Position
 
 Milestone: v1.6 Mainnet Full-Sync Completion
 Phase: 74
-Plan: Not started
-Status: Phase 73 verified — ready to plan Phase 74
+Plan: 74-01 complete
+Status: Phase 74 verified — v1.6 ready for archive review
 Last activity: 2026-06-14
 
 Progress: [##########] 100%
@@ -37,8 +37,8 @@ Progress: [##########] 100%
 
 **Velocity:**
 
-- Current milestone plans completed: 26
-- Current milestone plan count: 26
+- Current milestone plans completed: 27
+- Current milestone plan count: 27
 - Prior milestone plans completed: 22 in v1.5
 
 **By Phase:**
@@ -51,7 +51,7 @@ Progress: [##########] 100%
 | 71. Resource Bounds and Durable Restart/Resume | 4/4 | Complete |
 | 72. Operator Observability and Support Evidence | 4/4 | Complete |
 | 73. Opt-In UAT and Deterministic Verification | 4/4 | Complete |
-| 74. Release Boundaries, Parity, and Documentation | 0/0 | Pending |
+| 74. Release Boundaries, Parity, and Documentation | 1/1 | Complete |
 
 **Recent Trend:**
 
@@ -63,7 +63,8 @@ Progress: [##########] 100%
 - Phase 70 completed reorg status contracts, typed branch/reorg runtime outcomes, durable latest reorg projection, deterministic storage-blocker coverage, peer attribution/backoff/rotation coverage, the additive no-progress status contract, shared no-progress diagnosis/rendering, operator docs, parity wording, README relevance, and deterministic checker closeout.
 - Phase 71 completed resource-bound documentation and tests, same-datadir restart/resume matrix coverage, storage-pressure recovery guidance, deterministic synthetic long-chain coverage, parity/operator docs, and default checker closeout.
 - Phase 73 completed and verified opt-in UAT documentation, deterministic verifier wiring, parity/breadcrumb/evidence closeout, code-review fixes, and phase verification.
-- Next workflow: start Phase 74 release-boundary planning.
+- Phase 74 completed v1.6 release-boundary docs, parity roots, README/runtime-guide closeout, deterministic checker wiring, final requirement traceability, and phase verification.
+- Next workflow: archive the v1.6 milestone.
 
 ## Accumulated Context
 
@@ -97,10 +98,12 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent v1.5 decisions:
 - [Phase 73-opt-in-uat-and-deterministic-verification]: Phase 73 parity closeout is enforced locally by the deterministic checker, not by public-network UAT or release-blocking live sync.
 - [Phase 73-opt-in-uat-and-deterministic-verification]: Referenced Rust evidence files are asserted through docs/parity/source-breadcrumbs.json and the existing breadcrumb checker instead of adding new breadcrumbs.
 - [Phase 73-opt-in-uat-and-deterministic-verification]: Deferred-scope terms are required as non-claims so evidence roots remain auditable without implying production-node readiness.
+- [Phase 74-release-boundaries-parity-and-documentation]: v1.6 is documented as source-built, explicit opt-in full-sync completion evidence, not broad production-node readiness.
+- [Phase 74-release-boundaries-parity-and-documentation]: The deterministic v1.6 checker guards parity roots, all 26 requirement ids, README/runtime-guide wording, deferred-scope docs, and default-verification exclusions.
 
 ### Pending Todos
 
-- Start Phase 74 release-boundary planning.
+- Archive the v1.6 milestone.
 - Keep public-network full-sync UAT opt-in and outside default deterministic verification unless a future phase deliberately changes that contract.
 
 ### Blockers/Concerns
@@ -111,6 +114,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent v1.5 decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-14T08:08:46Z
-Stopped at: Phase 73 verified; Phase 74 ready to plan
-Resume file: None
+Last session: 2026-06-14T17:09:22Z
+Stopped at: Phase 74 verified; v1.6 ready for archive review
+Resume file: .planning/phases/74-release-boundaries-parity-and-documentation/74-VERIFICATION.md

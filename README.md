@@ -101,9 +101,9 @@ tracked hook content changes.
 ## Operator Preview
 
 The current v1.6 operator runtime is source-built and intended for local review,
-testing, parity audit, and explicit opt-in mainnet sync evidence. For the
-practical install, onboarding, service, status, dashboard, migration, benchmark,
-and limitation workflow, start with
+testing, parity audit, and explicit opt-in full-sync completion evidence. For
+the practical install, onboarding, service, status, dashboard, migration,
+benchmark, and limitation workflow, start with
 [`docs/operator/runtime-guide.md`](./docs/operator/runtime-guide.md).
 The preview commands below start the current local RPC/operator surfaces; they
 are not a production-node claim. `open-bitcoind` now has an opt-in mainnet sync
@@ -117,6 +117,17 @@ Explicit live-mainnet smoke evidence now lives in
 which writes local JSON and Markdown reports under
 `packages/target/live-mainnet-smoke-reports` without changing the default
 hermetic verification contract.
+
+The current release boundary is rooted in
+[`docs/parity/threat-model-v1.6.md`](./docs/parity/threat-model-v1.6.md),
+[`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md), and
+[`scripts/check-v1.6-release-boundaries.ts`](./scripts/check-v1.6-release-boundaries.ts).
+It describes source-built, explicit opt-in full-sync completion only; inbound
+serving, address relay, block serving, transaction relay, compact block relay,
+production-funds wallet safety, migration apply mode, signed packaging,
+Windows service support, GUI parity, hosted dashboards, public-network CI,
+release-blocking live sync, and broad production-node readiness remain future
+scope.
 
 The commands below are a minimal regtest preview. Create a scratch data
 directory, start the RPC server, then call it from another shell:

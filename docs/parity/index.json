@@ -556,6 +556,10 @@
     {
       "name": "phase73-opt-in-uat-deterministic-verification",
       "status": "done"
+    },
+    {
+      "name": "v1-6-full-sync-completion-release-boundaries",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -1050,6 +1054,41 @@
         "suspected_unknowns": [
           "Future production-node, inbound-serving, relay, production-wallet, migration-apply, packaging, GUI, hosted-dashboard, public-network CI, or release-blocking live-sync claims need separate scoped phases and fresh evidence roots."
         ]
+      },
+      {
+        "id": "v1-6-full-sync-completion-release-boundaries",
+        "title": "v1.6 Full-Sync Completion Release Boundaries",
+        "status": "done",
+        "requirements": [
+          "REL-01",
+          "REL-02",
+          "REL-03"
+        ],
+        "evidence": [
+          "docs/parity/threat-model-v1.6.md",
+          "docs/parity/release-readiness.md",
+          "docs/parity/checklist.md",
+          "docs/parity/index.json",
+          "docs/parity/README.md",
+          "docs/parity/deviations-and-unknowns.md",
+          "docs/parity/catalog/p2p.md",
+          "docs/parity/catalog/chainstate.md",
+          "docs/parity/catalog/operator-runtime-release-hardening.md",
+          "README.md",
+          "docs/operator/runtime-guide.md",
+          "scripts/check-v1.6-release-boundaries.ts",
+          "scripts/verify.sh",
+          ".planning/phases/73-opt-in-uat-and-deterministic-verification/73-VERIFICATION.md",
+          ".planning/phases/74-release-boundaries-parity-and-documentation/74-CONTEXT.md",
+          ".planning/phases/74-release-boundaries-parity-and-documentation/74-01-PLAN.md"
+        ],
+        "rationale": "Phase 74 makes the v1.6 source-built, explicit opt-in full-sync completion claim auditable through current threat-model, release-readiness, checklist, parity roots, deferred-scope docs, README, runtime docs, and deterministic verification roots while preserving v1.3 through v1.5 evidence as historical.",
+        "known_gaps": [
+          "v1.6 proves explicit opt-in full-sync completion evidence only; public-network full-sync, manual-peer, restart-after-progress, support-bundle collection, and real service-manager UAT remain outside default verification."
+        ],
+        "suspected_unknowns": [
+          "Future production-node readiness, inbound serving, address relay, block serving, transaction relay, compact block relay, production-funds wallet safety, migration apply mode, signed packaging, Windows service support, GUI parity, hosted dashboards, public-network CI, or release-blocking live sync need separate scoped phases and fresh evidence roots."
+        ]
       }
     ]
   },
@@ -1173,6 +1212,46 @@
         "docs/operator/runtime-guide.md",
         "scripts/check-v1.5-release-boundaries.ts",
         "scripts/verify.sh"
+      ]
+    },
+    "v1_6_threat_model": {
+      "path": "threat-model-v1.6.md",
+      "status": "done",
+      "requirements": [
+        "REL-01",
+        "REL-02",
+        "REL-03"
+      ],
+      "evidence": [
+        "docs/parity/threat-model-v1.6.md",
+        "docs/parity/release-readiness.md",
+        "README.md",
+        "docs/operator/runtime-guide.md",
+        "scripts/check-v1.6-release-boundaries.ts",
+        "scripts/verify.sh"
+      ]
+    },
+    "v1_6_release_boundaries": {
+      "path": "release-readiness.md",
+      "status": "done",
+      "requirements": [
+        "REL-01",
+        "REL-02",
+        "REL-03"
+      ],
+      "evidence": [
+        "docs/parity/threat-model-v1.6.md",
+        "docs/parity/release-readiness.md",
+        "docs/parity/checklist.md",
+        "docs/parity/deviations-and-unknowns.md",
+        "docs/parity/catalog/p2p.md",
+        "docs/parity/catalog/chainstate.md",
+        "docs/parity/catalog/operator-runtime-release-hardening.md",
+        "README.md",
+        "docs/operator/runtime-guide.md",
+        "scripts/check-v1.6-release-boundaries.ts",
+        "scripts/verify.sh",
+        ".planning/phases/73-opt-in-uat-and-deterministic-verification/73-VERIFICATION.md"
       ]
     },
     "security_analysis_audit": {

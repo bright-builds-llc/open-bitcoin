@@ -53,6 +53,11 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
   service restart/resume, support evidence, compatibility reports, and recovery
   states auditable without claiming inbound serving, transaction relay, compact
   block relay, or production-node operation
+- v1.6 release-boundary evidence keeps explicit opt-in full-sync completion,
+  best-known-tip review, stay-current state, and public-mainnet UAT auditable
+  without claiming inbound serving, address relay, block serving, transaction
+  relay, compact block relay, public-network CI, release-blocking live sync, or
+  broad production-node readiness
 - Phase 70 no-credit peer responses retain typed attribution, release stale
   in-flight block work, and rotate through endpoint-keyed backoff without
   claiming peer banning, inbound reputation, address-manager governance, or
@@ -242,6 +247,21 @@ migration apply mode, signed packaging, Windows service support, GUI, hosted
 dashboards, broad production-node readiness, public-network CI, or
 release-blocking live sync. Those remain deferred or outside-scope claims for
 future phases.
+
+## v1.6 full-sync completion release boundary
+
+Phase 74 closes the v1.6 P2P release boundary as source-built, explicit opt-in
+full-sync completion evidence. The accepted P2P-facing evidence is outbound
+sync review only: validated active-chain progress to the best-known peer tip,
+best-known tip freshness, stay-current state, peer-attributed no-progress
+diagnosis, reorg evidence, bounded resource behavior, redacted support evidence,
+and opt-in UAT commands rooted in the Phase 73 matrix.
+
+This is not an inbound serving, address relay, block serving, transaction
+relay, compact block relay, public-network CI, release-blocking live sync, or
+broad production-node readiness claim. Public-network full-sync, manual-peer,
+restart-after-progress, and real service-manager checks remain explicit
+operator UAT outside `bash scripts/verify.sh`.
 
 ## First-party implementation
 

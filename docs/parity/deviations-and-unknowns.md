@@ -144,6 +144,37 @@ Public-network live-smoke, manual-peer probing, `--restart-after-progress`,
 `bash scripts/verify.sh`. Generated live-smoke reports, compatibility reports,
 support bundles, daemon logs, metrics stores, and local datadirs stay local.
 
+### v1.6 Mainnet Full-Sync Completion And Release Boundaries
+
+The v1.6 threat model and release-readiness roots support `REL-01`, `REL-02`,
+and `REL-03` without expanding the shipped claim beyond source-built, explicit
+opt-in full-sync completion evidence. v1.6 proves validated active-chain
+progress to the best-known peer tip, durable restart/resume state,
+stay-current review, reorg/no-progress/recovery handling, resource bounds,
+shared status evidence, redacted support bundles, opt-in UAT commands,
+deterministic local verification, and auditable parity roots.
+
+The following remain explicit non-claims until separate future gates exist:
+
+- broad production-node readiness or uptime guarantees
+- inbound serving and address relay
+- block serving
+- transaction relay and mempool propagation
+- compact block relay
+- production-funds wallet safety
+- migration apply mode, source-service cutover, or source-datadir mutation
+- signed packaging or release installation flows
+- Windows service support
+- GUI parity
+- hosted dashboards or public dashboard operation
+- public-network CI or release-blocking live sync
+
+Public-network full-sync, manual-peer probing, `--restart-after-progress`,
+support-bundle collection, `systemctl --user`, and `launchctl` remain explicit
+operator UAT outside `bash scripts/verify.sh`. Generated live-mainnet reports,
+support bundles, daemon logs, metrics stores, compatibility reports, and local
+datadirs stay local.
+
 ## Suspected Unknowns
 
 Current catalog entries preserve these review targets:
