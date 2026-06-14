@@ -1028,6 +1028,24 @@ Live smoke behavior:
   manual review, launch `open-bitcoind` directly and use
   `open-bitcoin sync status|pause|resume`.
 
+### Phase 73 opt-in public-mainnet UAT matrix
+
+This matrix is the authoritative Phase 73 opt-in public-mainnet UAT command
+matrix. Live public-mainnet work remains opt-in UAT outside
+`bash scripts/verify.sh`, and repo-local Cargo and Bazel command forms are the
+expected operator command forms for CLI-backed workflows. Each workflow below
+separates evidence from non-proof so UAT artifacts are not misread as broader
+release gates. Bundle existence, daemon startup, elapsed time, or peer reachability alone are not sync-to-tip proof.
+
+| Workflow | Copy-paste commands | Evidence proves | Does not prove |
+| --- | --- | --- | --- |
+| Full-sync activation and review | Start explicit `open-bitcoind` mainnet IBD against `/tmp/open-bitcoin-mainnet`, then inspect `sync status --format json` from the same datadir. | The selected daemon path can opt into public-mainnet IBD, and durable status can report header, downloaded block, connected block, validated active-chain, best-known-tip, recovery, and resource-pressure evidence for the same datadir. | Daemon startup, peer reachability, or a running process does not prove sync-to-tip, stay-current operation, inbound serving, relay, production-wallet safety, packaging readiness, or broad production-node readiness. |
+| Stay-current/status review | Inspect `sync status --format json` and `status --format json` repeatedly while the opt-in daemon remains running. | The shared operator status surfaces expose current-at-best-known-tip, stale-tip, recovering, no-progress, progress counters, peer agreement, and next-action evidence. | A single status snapshot, elapsed runtime, or reachable peer does not prove the node stayed current across a review window. |
+| Same-datadir restart/resume review | Restart or relaunch the opt-in daemon against the same datadir, then compare pre-restart and post-restart `sync status --format json` and service status evidence. | Restart evidence can show same-datadir matching, preserved or advanced header/downloaded/connected heights, stable hashes when heights do not move, recovery category, and duplicate-connect verdicts. | A restart command completing does not prove durable resume, absence of stale in-flight work, sync-to-tip, or service-manager readiness. |
+| Status-surface comparison | Compare `sync status --format json`, `status --format json`, `dashboard --tick-ms 1000`, and service status for the same datadir. | CLI status, sync status, dashboard, and service views can be reviewed for agreement on connected progress, best-known-tip freshness, recovery category, peer health, resource pressure, and next action. | Renderer agreement does not prove public-network progress unless validated active-chain fields and reviewed live evidence support the same claim. |
+| Live-smoke report collection | Run the repo-owned live-mainnet smoke wrapper and keep generated JSON/Markdown reports local and redacted before sharing summaries. | The wrapper can capture opt-in public-network progress, typed no-progress blockers, peer contribution, endpoint outcomes, and optional same-datadir restart evidence in local reports. | A report file, elapsed timeout, preflight success, or endpoint reachability does not prove sync-to-tip unless the report fields show validated active-chain progress to the reviewed target. |
+| Support-bundle collection | Generate a local support bundle after deterministic checks and any optional public-mainnet UAT you intentionally ran. | The bundle can collect redacted status, metrics/log availability, service evidence, support metadata, and summary-only live-smoke evidence for local review. | Bundle existence, copied files, or attached summaries do not prove sync-to-tip, production-node readiness, wallet safety, relay behavior, or safe migration apply behavior. |
+
 ## v1.4 operator evidence closeout
 
 Run the deterministic repo checks from the repo root before interpreting any
