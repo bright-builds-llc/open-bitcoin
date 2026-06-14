@@ -163,7 +163,7 @@ Plans:
 | 70. Reorg, Peer Rotation, and No-Progress Recovery | 6/6 | Complete | 2026-06-12 |
 | 71. Resource Bounds and Durable Restart/Resume | 4/4 | Complete    | 2026-06-13 |
 | 72. Operator Observability and Support Evidence | 4/4 | Complete   | 2026-06-13 |
-| 73. Opt-In UAT and Deterministic Verification | 4/4 | Complete   | 2026-06-14 |
+| 73. Opt-In UAT and Deterministic Verification | 4/4 | Complete    | 2026-06-14 |
 | 74. Release Boundaries, Parity, and Documentation | 0/0 | Pending | — |
 
 ## Completed Milestone Summaries

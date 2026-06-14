@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Mainnet Full-Sync Completion
-status: verifying
-stopped_at: Completed 73-04-PLAN.md
-last_updated: "2026-06-14T05:47:36.556Z"
+status: planning
+stopped_at: Phase 73 verified; Phase 74 ready to plan
+last_updated: "2026-06-14T08:08:46Z"
 last_activity: 2026-06-14
 progress:
   total_phases: 7
@@ -21,14 +21,14 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-11)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 73 — Opt-In UAT and Deterministic Verification
+**Current focus:** Phase 74 — Release Boundaries, Parity, and Documentation
 
 ## Current Position
 
 Milestone: v1.6 Mainnet Full-Sync Completion
-Phase: 73 (Opt-In UAT and Deterministic Verification) — COMPLETE
-Plan: 4 of 4
-Status: Phase complete — ready for verification
+Phase: 74
+Plan: Not started
+Status: Phase 73 verified — ready to plan Phase 74
 Last activity: 2026-06-14
 
 Progress: [##########] 100%
@@ -62,8 +62,8 @@ Progress: [##########] 100%
 - Phase 69 completed tip tracking, stay-current status, post-catch-up coverage, and documentation/checker closeout.
 - Phase 70 completed reorg status contracts, typed branch/reorg runtime outcomes, durable latest reorg projection, deterministic storage-blocker coverage, peer attribution/backoff/rotation coverage, the additive no-progress status contract, shared no-progress diagnosis/rendering, operator docs, parity wording, README relevance, and deterministic checker closeout.
 - Phase 71 completed resource-bound documentation and tests, same-datadir restart/resume matrix coverage, storage-pressure recovery guidance, deterministic synthetic long-chain coverage, parity/operator docs, and default checker closeout.
-- Phase 73 completed opt-in UAT documentation, deterministic verifier wiring, and parity/breadcrumb/evidence closeout.
-- Next workflow: verify Phase 73 or start Phase 74 release-boundary planning.
+- Phase 73 completed and verified opt-in UAT documentation, deterministic verifier wiring, parity/breadcrumb/evidence closeout, code-review fixes, and phase verification.
+- Next workflow: start Phase 74 release-boundary planning.
 
 ## Accumulated Context
 
@@ -100,8 +100,8 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent v1.5 decisions:
 
 ### Pending Todos
 
-- Execute Phase 73 Plan 03 for the deterministic checker integration.
-- Keep public-network full-sync UAT opt-in and outside default deterministic verification.
+- Start Phase 74 release-boundary planning.
+- Keep public-network full-sync UAT opt-in and outside default deterministic verification unless a future phase deliberately changes that contract.
 
 ### Blockers/Concerns
 
@@ -111,6 +111,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent v1.5 decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-14T05:47:36.554Z
-Stopped at: Completed 73-04-PLAN.md
+Last session: 2026-06-14T08:08:46Z
+Stopped at: Phase 73 verified; Phase 74 ready to plan
 Resume file: None
