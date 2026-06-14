@@ -127,7 +127,7 @@ _Note: Task 2 used the required TDD split, so it has separate RED and GREEN comm
 - **Verification:** `bash scripts/verify.sh` passed, and commit hooks passed.
 - **Committed in:** `1fa5ac5`, `43b03ca`
 
----
+***
 
 **Total deviations:** 2 auto-fixed (1 bug, 1 blocking)
 **Impact on plan:** Both fixes were required for the planned checker and repo-native verification contract. No production-scope or public-network behavior was added.
@@ -179,6 +179,6 @@ None - no new network endpoint, auth path, schema boundary, file trust boundary,
 - Found Task 2 GREEN commit: `43b03ca`
 - Stub-pattern scan found no goal-blocking stubs introduced by this plan.
 
----
+***
 *Phase: 73-opt-in-uat-and-deterministic-verification*
 *Completed: 2026-06-14*
