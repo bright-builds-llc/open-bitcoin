@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Mainnet Full-Sync Completion
 status: executing
-stopped_at: Completed 73-02-PLAN.md
-last_updated: "2026-06-14T02:40:00.912Z"
+stopped_at: Completed 73-03-PLAN.md
+last_updated: "2026-06-14T04:08:39.937Z"
 last_activity: 2026-06-14
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 26
-  completed_plans: 24
-  percent: 92
+  completed_plans: 25
+  percent: 96
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-06-11)
 
 Milestone: v1.6 Mainnet Full-Sync Completion
 Phase: 73 (Opt-In UAT and Deterministic Verification) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-06-14
 
@@ -92,6 +92,8 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent v1.5 decisions:
 - [Phase 73]: Crash recovery is represented by durable reopen/recovery tests, not by a process-level crash harness.
 - [Phase 73]: Phase 73 public-mainnet UAT commands remain opt-in documentation outside bash scripts/verify.sh.
 - [Phase 73]: Phase 73 UAT evidence must come from explicit status and report fields, not daemon startup, elapsed time, peer reachability, or bundle existence alone.
+- [Phase 73-opt-in-uat-and-deterministic-verification]: Phase 73 deterministic verification now runs after Phase 72 in bash scripts/verify.sh.
+- [Phase 73-opt-in-uat-and-deterministic-verification]: Default verification rejects public-network UAT, service-manager operations, mainnet IBD activation, restart-after-progress flows, and timing gates.
 
 ### Pending Todos
 
@@ -106,6 +108,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent v1.5 decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-14T02:40:00.910Z
-Stopped at: Completed 73-02-PLAN.md
+Last session: 2026-06-14T04:08:39.934Z
+Stopped at: Completed 73-03-PLAN.md
 Resume file: None
