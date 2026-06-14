@@ -403,17 +403,19 @@ These forms match repo guidance and existing operator docs; the Bun command must
 
 All claims in this research were verified or cited in this session; no `[ASSUMED]` claims are present. [VERIFIED: source audit and cited docs]
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should Phase 73 use an external evidence manifest or embedded checker constants?**
    - What we know: Context allows either embedded checker constants or a small manifest such as `docs/parity/v1.6-evidence.json`. [VERIFIED: 73-CONTEXT.md]
    - What's unclear: The exact amount of Phase 73 non-Rust evidence surface is unknown until the planner chooses task granularity. [VERIFIED: 73-CONTEXT.md]
    - Recommendation: Start with embedded constants; add a manifest only if the checker becomes hard to scan. [VERIFIED: scripts/check-phase72-observability-evidence.ts; 73-CONTEXT.md]
+   - RESOLVED: Use embedded checker constants for the VER-02 coverage map and Phase 73 evidence map unless execution proves a manifest is needed for auditability. [VERIFIED: 73-01-PLAN.md; 73-03-PLAN.md; 73-04-PLAN.md]
 
 2. **Are additional Rust gap tests needed?**
    - What we know: The audit found named existing anchors for every VER-02 behavior. [VERIFIED: packages/open-bitcoin-node/src/sync/tests.rs; packages/open-bitcoin-chainstate/tests/parity.rs]
    - What's unclear: The planner may require an even more explicit assertion for durable UTXO/undo persistence across a node restart rather than chainstate parity plus snapshot codec coverage. [VERIFIED: 73-CONTEXT.md]
    - Recommendation: Plan a first task that writes the coverage map and runs the Phase 73 checker; only add a narrow test if the map exposes an unambiguous missing assertion. [VERIFIED: 73-CONTEXT.md]
+   - RESOLVED: Add no new Rust gap tests unless execution proves an existing deterministic anchor is missing. The planned default is checker-only coverage mapping against existing anchors. [VERIFIED: 73-01-PLAN.md; 73-CONTEXT.md]
 
 ## Environment Availability
 
