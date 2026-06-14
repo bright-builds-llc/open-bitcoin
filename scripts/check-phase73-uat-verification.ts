@@ -42,6 +42,17 @@ const REQUIRED_UAT_MATRIX_DOC_STRINGS = [
   "bun run scripts/run-live-mainnet-smoke.ts",
   "deterministic fixture validation, not public-network UAT",
 ] as const;
+const FORBIDDEN_VERIFY_STRINGS = [
+  "run-live-mainnet-smoke",
+  "--manual-peer",
+  "--restart-after-progress",
+  "systemctl",
+  "launchctl",
+  "-openbitcoinsync=mainnet-ibd",
+  "openbitcoinsync=mainnet-ibd",
+  "current-tip timing",
+  "wall-clock release gate",
+] as const;
 
 type Ver02Behavior = (typeof REQUIRED_VER02_BEHAVIORS)[number];
 
@@ -182,6 +193,17 @@ function requireContains(
   }
 }
 
+function requireNotContains(
+  text: string,
+  needle: string,
+  label: string,
+  failures: string[],
+): void {
+  if (text.includes(needle)) {
+    failures.push(`${label} must not contain default verification command or timing gate: ${needle}`);
+  }
+}
+
 function verifyCoverageBehaviors(failures: string[]): void {
   const observed = new Set(VER02_COVERAGE.map((entry) => entry.behavior));
   if (observed.size !== VER02_COVERAGE.length) {
@@ -247,11 +269,30 @@ async function verifyUatMatrixDocs(failures: string[]): Promise<void> {
   }
 }
 
+async function verifyVerifyScript(failures: string[]): Promise<void> {
+  const verifyScript = await readText("scripts/verify.sh", failures);
+  const phase72 = "bun run scripts/check-phase72-observability-evidence.ts";
+  const phase73 = "bun run scripts/check-phase73-uat-verification.ts";
+  requireContains(verifyScript, phase72, "scripts/verify.sh", failures);
+  requireContains(verifyScript, phase73, "scripts/verify.sh", failures);
+
+  const phase72Index = verifyScript.indexOf(phase72);
+  const phase73Index = verifyScript.indexOf(phase73);
+  if (phase72Index === -1 || phase73Index === -1 || phase73Index < phase72Index) {
+    failures.push("scripts/verify.sh must run the Phase 73 checker after the Phase 72 checker");
+  }
+
+  for (const forbidden of FORBIDDEN_VERIFY_STRINGS) {
+    requireNotContains(verifyScript, forbidden, "scripts/verify.sh", failures);
+  }
+}
+
 async function main(): Promise<void> {
   const failures: string[] = [];
   await verifyRequirements(failures);
   await verifyCoverageMap(failures);
   await verifyUatMatrixDocs(failures);
+  await verifyVerifyScript(failures);
 
   if (failures.length > 0) {
     for (const failure of failures) {

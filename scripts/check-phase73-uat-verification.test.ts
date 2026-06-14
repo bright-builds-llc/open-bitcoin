@@ -155,6 +155,10 @@ function buildFixtureFiles(options: {
 
   files["docs/operator/runtime-guide.md"] =
     options.maybeRuntimeGuide ?? REQUIRED_UAT_MATRIX_DOC_STRINGS.join("\n");
+  files["scripts/verify.sh"] = [
+    "bun run scripts/check-phase72-observability-evidence.ts",
+    "bun run scripts/check-phase73-uat-verification.ts",
+  ].join("\n");
 
   for (const [file, needles] of Object.entries(COVERAGE_ANCHORS)) {
     files[file] = needles
