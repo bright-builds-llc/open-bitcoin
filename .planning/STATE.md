@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Mainnet Full-Sync Completion
-status: executing
-stopped_at: Completed 73-03-PLAN.md
-last_updated: "2026-06-14T04:08:39.937Z"
+status: verifying
+stopped_at: Completed 73-04-PLAN.md
+last_updated: "2026-06-14T05:47:36.556Z"
 last_activity: 2026-06-14
 progress:
   total_phases: 7
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 26
-  completed_plans: 25
-  percent: 96
+  completed_plans: 26
+  percent: 100
 ---
 
 # Project State
@@ -26,18 +26,18 @@ See: `.planning/PROJECT.md` (updated 2026-06-11)
 ## Current Position
 
 Milestone: v1.6 Mainnet Full-Sync Completion
-Phase: 73 (Opt-In UAT and Deterministic Verification) — EXECUTING
+Phase: 73 (Opt-In UAT and Deterministic Verification) — COMPLETE
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-14
 
-Progress: [#########-] 92%
+Progress: [##########] 100%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Current milestone plans completed: 24
+- Current milestone plans completed: 26
 - Current milestone plan count: 26
 - Prior milestone plans completed: 22 in v1.5
 
@@ -50,7 +50,7 @@ Progress: [#########-] 92%
 | 70. Reorg, Peer Rotation, and No-Progress Recovery | 6/6 | Complete |
 | 71. Resource Bounds and Durable Restart/Resume | 4/4 | Complete |
 | 72. Operator Observability and Support Evidence | 4/4 | Complete |
-| 73. Opt-In UAT and Deterministic Verification | 2/4 | In Progress |
+| 73. Opt-In UAT and Deterministic Verification | 4/4 | Complete |
 | 74. Release Boundaries, Parity, and Documentation | 0/0 | Pending |
 
 **Recent Trend:**
@@ -62,8 +62,8 @@ Progress: [#########-] 92%
 - Phase 69 completed tip tracking, stay-current status, post-catch-up coverage, and documentation/checker closeout.
 - Phase 70 completed reorg status contracts, typed branch/reorg runtime outcomes, durable latest reorg projection, deterministic storage-blocker coverage, peer attribution/backoff/rotation coverage, the additive no-progress status contract, shared no-progress diagnosis/rendering, operator docs, parity wording, README relevance, and deterministic checker closeout.
 - Phase 71 completed resource-bound documentation and tests, same-datadir restart/resume matrix coverage, storage-pressure recovery guidance, deterministic synthetic long-chain coverage, parity/operator docs, and default checker closeout.
-- Phase 73 Plan 02 completed the opt-in public-mainnet UAT matrix in 43min across 2 tasks and 1 plan artifact file.
-- Next workflow: execute Phase 73 Plan 03.
+- Phase 73 completed opt-in UAT documentation, deterministic verifier wiring, and parity/breadcrumb/evidence closeout.
+- Next workflow: verify Phase 73 or start Phase 74 release-boundary planning.
 
 ## Accumulated Context
 
@@ -94,6 +94,9 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent v1.5 decisions:
 - [Phase 73]: Phase 73 UAT evidence must come from explicit status and report fields, not daemon startup, elapsed time, peer reachability, or bundle existence alone.
 - [Phase 73-opt-in-uat-and-deterministic-verification]: Phase 73 deterministic verification now runs after Phase 72 in bash scripts/verify.sh.
 - [Phase 73-opt-in-uat-and-deterministic-verification]: Default verification rejects public-network UAT, service-manager operations, mainnet IBD activation, restart-after-progress flows, and timing gates.
+- [Phase 73-opt-in-uat-and-deterministic-verification]: Phase 73 parity closeout is enforced locally by the deterministic checker, not by public-network UAT or release-blocking live sync.
+- [Phase 73-opt-in-uat-and-deterministic-verification]: Referenced Rust evidence files are asserted through docs/parity/source-breadcrumbs.json and the existing breadcrumb checker instead of adding new breadcrumbs.
+- [Phase 73-opt-in-uat-and-deterministic-verification]: Deferred-scope terms are required as non-claims so evidence roots remain auditable without implying production-node readiness.
 
 ### Pending Todos
 
@@ -108,6 +111,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent v1.5 decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-14T04:08:39.934Z
-Stopped at: Completed 73-03-PLAN.md
+Last session: 2026-06-14T05:47:36.554Z
+Stopped at: Completed 73-04-PLAN.md
 Resume file: None

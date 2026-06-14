@@ -46,7 +46,7 @@ Requirements for v1.6 Mainnet Full-Sync Completion. Each requirement maps to exa
 - [x] **VER-01**: Contributor can run `bash scripts/verify.sh` without internet access, public peers, real service managers, long-running sync, or current-tip timing.
 - [x] **VER-02**: Contributor can run deterministic tests for durable UTXO/undo writes, block connect/disconnect/reorg across restart, best-chain header selection, peer response failures, crash recovery, duplicate connect prevention, and resource bounds.
 - [x] **VER-03**: Operator can run copy-pasteable repo-local Cargo and Bazel commands for opt-in public-mainnet full-sync, stay-current, restart/resume, and support-bundle UAT.
-- [ ] **VER-04**: Contributor can audit parity breadcrumbs, fixtures, compatibility harness reports, and deterministic checkers for every new v1.6 source, test, and operator-evidence surface.
+- [x] **VER-04**: Contributor can audit parity breadcrumbs, fixtures, compatibility harness reports, and deterministic checkers for every new v1.6 source, test, and operator-evidence surface.
 
 ### Release Boundaries, Parity, And Documentation
 
@@ -118,7 +118,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VER-01 | Phase 73 | Complete |
 | VER-02 | Phase 73 | Complete |
 | VER-03 | Phase 73 | Complete |
-| VER-04 | Phase 73 | Pending |
+| VER-04 | Phase 73 | Complete |
 | REL-01 | Phase 74 | Pending |
 | REL-02 | Phase 74 | Pending |
 | REL-03 | Phase 74 | Pending |
