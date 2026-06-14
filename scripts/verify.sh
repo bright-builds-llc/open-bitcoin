@@ -127,6 +127,7 @@ bun run scripts/check-phase69-tip-stay-current.ts
 bun run scripts/check-phase70-reorg-recovery.ts
 bun run scripts/check-phase71-resource-restart.ts
 bun run scripts/check-phase72-observability-evidence.ts
+bun test scripts/check-phase73-uat-verification.test.ts
 env -u OPEN_BITCOIN_PHASE73_REPO_ROOT bun run scripts/check-phase73-uat-verification.ts
 bash scripts/check-pure-core-deps.sh
 bash scripts/check-file-lengths.sh

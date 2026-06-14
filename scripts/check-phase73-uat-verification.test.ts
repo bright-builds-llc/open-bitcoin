@@ -189,7 +189,24 @@ test("fails when verify.sh does not clear the Phase 73 repo-root override", asyn
   const root = await createFixture({
     maybeVerifyScript: [
       "bun run scripts/check-phase72-observability-evidence.ts",
+      "bun test scripts/check-phase73-uat-verification.test.ts",
       "bun run scripts/check-phase73-uat-verification.ts",
+    ].join("\n"),
+  });
+
+  // Act
+  const result = await runChecker(root);
+
+  // Assert
+  expect(result.exitCode).not.toBe(0);
+});
+
+test("fails when verify.sh omits the Phase 73 regression test", async () => {
+  // Arrange
+  const root = await createFixture({
+    maybeVerifyScript: [
+      "bun run scripts/check-phase72-observability-evidence.ts",
+      "env -u OPEN_BITCOIN_PHASE73_REPO_ROOT bun run scripts/check-phase73-uat-verification.ts",
     ].join("\n"),
   });
 
@@ -358,6 +375,7 @@ function buildFixtureFiles(options: {
     options.maybeVerifyScript ??
     [
       "bun run scripts/check-phase72-observability-evidence.ts",
+      "bun test scripts/check-phase73-uat-verification.test.ts",
       "env -u OPEN_BITCOIN_PHASE73_REPO_ROOT bun run scripts/check-phase73-uat-verification.ts",
     ].join("\n");
 

@@ -8,6 +8,7 @@ const REPO_ROOT =
   maybeRepoRoot === undefined ? path.resolve(import.meta.dir, "..") : path.resolve(maybeRepoRoot);
 const PHASE_DIR = ".planning/phases/73-opt-in-uat-and-deterministic-verification";
 const PHASE73_SURFACE_ID = "phase73-opt-in-uat-deterministic-verification";
+const PHASE73_REGRESSION_TEST_COMMAND = "bun test scripts/check-phase73-uat-verification.test.ts";
 const PHASE73_CHECKER_COMMAND = `env -u ${REPO_ROOT_OVERRIDE_ENV} bun run scripts/check-phase73-uat-verification.ts`;
 const PLAN_FILES = [
   `${PHASE_DIR}/73-01-PLAN.md`,
@@ -484,13 +485,21 @@ async function verifyVerifyScript(failures: string[]): Promise<void> {
   const verifyScript = await readText("scripts/verify.sh", failures);
   const phase72 = "bun run scripts/check-phase72-observability-evidence.ts";
   requireContains(verifyScript, phase72, "scripts/verify.sh", failures);
+  requireContains(verifyScript, PHASE73_REGRESSION_TEST_COMMAND, "scripts/verify.sh", failures);
   requireContains(verifyScript, PHASE73_CHECKER_COMMAND, "scripts/verify.sh", failures);
 
   const phase72Index = verifyScript.indexOf(phase72);
+  const phase73TestIndex = verifyScript.indexOf(PHASE73_REGRESSION_TEST_COMMAND);
   const phase73Index = verifyScript.indexOf(PHASE73_CHECKER_COMMAND);
-  if (phase72Index === -1 || phase73Index === -1 || phase73Index < phase72Index) {
+  if (
+    phase72Index === -1 ||
+    phase73TestIndex === -1 ||
+    phase73Index === -1 ||
+    phase73TestIndex < phase72Index ||
+    phase73Index < phase73TestIndex
+  ) {
     failures.push(
-      "scripts/verify.sh must run the hardened Phase 73 checker after the Phase 72 checker",
+      "scripts/verify.sh must run the Phase 73 regression test and hardened checker after the Phase 72 checker",
     );
   }
 
