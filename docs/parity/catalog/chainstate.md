@@ -76,6 +76,19 @@ transaction relay, compact block relay, production-funds wallet claims,
 migration apply mode, signed packaging, Windows service support, GUI, hosted
 dashboards, or broad production-node readiness.
 
+## VER-02 deterministic coverage map
+
+Phase 73 makes the deterministic chainstate coverage boundary auditable through
+existing local tests and checker anchors. The VER-02 map covers UTXO/undo
+persistence, block connect/disconnect/reorg across restart, best-chain header
+selection, peer response failures, crash recovery as durable reopen, duplicate
+connect prevention, and resource bounds.
+
+This coverage map is local verification evidence only. It does not add block
+serving, transaction relay, compact block relay, production-funds wallet
+claims, migration apply mode, signed packaging, Windows service support, GUI,
+hosted dashboards, or broad production-node readiness.
+
 ## First-party implementation
 
 - [`packages/open-bitcoin-chainstate/src/engine.rs`](../../../packages/open-bitcoin-chainstate/src/engine.rs)

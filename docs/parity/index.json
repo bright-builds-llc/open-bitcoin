@@ -552,6 +552,10 @@
     {
       "name": "v1-5-unattended-operation-release-boundaries",
       "status": "done"
+    },
+    {
+      "name": "phase73-opt-in-uat-deterministic-verification",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -1013,6 +1017,36 @@
         ],
         "suspected_unknowns": [
           "Future production-node operation, inbound serving, transaction relay, compact block relay, production-funds wallet use, migration apply mode, packaging distribution, hosted dashboard, GUI, and Windows service support need separate gates."
+        ]
+      },
+      {
+        "id": "phase73-opt-in-uat-deterministic-verification",
+        "title": "Phase 73 Opt-In UAT And Deterministic Verification",
+        "status": "done",
+        "requirements": [
+          "VER-01",
+          "VER-04"
+        ],
+        "evidence": [
+          "docs/parity/catalog/p2p.md",
+          "docs/parity/catalog/chainstate.md",
+          "docs/parity/catalog/operator-runtime-release-hardening.md",
+          "docs/parity/checklist.md",
+          "docs/parity/README.md",
+          "docs/parity/source-breadcrumbs.json",
+          "scripts/check-parity-breadcrumbs.ts",
+          "scripts/check-phase73-uat-verification.ts",
+          "scripts/run-live-mainnet-smoke.ts",
+          "scripts/test-run-live-mainnet-smoke.sh",
+          "open-bitcoin compatibility harness"
+        ],
+        "rationale": "Phase 73 makes opt-in public-mainnet UAT, deterministic checker coverage, parity breadcrumbs, fixture evidence, compatibility harness reports, live-smoke reports, and local support evidence auditable without expanding the default verifier or production claim.",
+        "known_gaps": [
+          "Public-mainnet full-sync, manual-peer, and restart-after-progress commands remain opt-in UAT outside bash scripts/verify.sh.",
+          "Phase 73 evidence does not claim production-node readiness, inbound serving, address relay, block serving, transaction relay, compact block relay, production-funds wallet use, migration apply mode, signed packaging, Windows service support, GUI, hosted dashboards, public-network CI, or release-blocking live sync."
+        ],
+        "suspected_unknowns": [
+          "Future production-node, inbound-serving, relay, production-wallet, migration-apply, packaging, GUI, hosted-dashboard, public-network CI, or release-blocking live-sync claims need separate scoped phases and fresh evidence roots."
         ]
       }
     ]

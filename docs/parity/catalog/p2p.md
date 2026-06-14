@@ -223,6 +223,26 @@ dashboards, or broad production-node readiness. Public-network long-run review,
 manual peers, service-manager restarts, and restart-after-progress evidence
 remain explicit operator UAT outside `bash scripts/verify.sh`.
 
+## Phase 73 opt-in public-mainnet UAT and deterministic verification
+
+Phase 73 documents public-mainnet full-sync, manual-peer, and
+restart-after-progress commands as explicit opt-in UAT only. These commands are
+outside `bash scripts/verify.sh`; default verification stays deterministic,
+local, and public-network-free.
+
+The accepted local evidence surfaces are `scripts/run-live-mainnet-smoke.ts`,
+`scripts/test-run-live-mainnet-smoke.sh`, and the
+`open-bitcoin compatibility harness`. They provide auditable live-smoke,
+fixture, and compatibility-harness evidence without turning public-network
+review into public-network CI or release-blocking live sync.
+
+Phase 73 does not add inbound serving, address relay, block serving,
+transaction relay, compact block relay, production-funds wallet claims,
+migration apply mode, signed packaging, Windows service support, GUI, hosted
+dashboards, broad production-node readiness, public-network CI, or
+release-blocking live sync. Those remain deferred or outside-scope claims for
+future phases.
+
 ## First-party implementation
 
 - [`packages/open-bitcoin-network/src/message.rs`](../../../packages/open-bitcoin-network/src/message.rs)

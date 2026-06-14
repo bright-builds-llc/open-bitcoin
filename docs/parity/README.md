@@ -27,6 +27,16 @@ The current v1.5 closeout evidence is rooted in
 v1.3 threat models remain historical evidence and should not be read as the
 current milestone claim.
 
+Phase 73 opt-in public-mainnet UAT and deterministic verification evidence is
+rooted in [`catalog/p2p.md`](catalog/p2p.md),
+[`catalog/chainstate.md`](catalog/chainstate.md),
+[`catalog/operator-runtime-release-hardening.md`](catalog/operator-runtime-release-hardening.md),
+[`checklist.md`](checklist.md), and `scripts/check-phase73-uat-verification.ts`.
+These roots keep UAT, fixtures, compatibility harness reports, support bundles,
+live-smoke reports, deterministic checkers, and source breadcrumbs local and
+auditable without claiming public-network CI, release-blocking live sync, or
+production-node readiness.
+
 Deferred and suspected follow-up work remains visible in
 [`deviations-and-unknowns.md`](deviations-and-unknowns.md).
 
