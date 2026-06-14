@@ -1,119 +1,93 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.6
-milestone_name: Mainnet Full-Sync Completion
-status: complete
-stopped_at: Phase 74 verified; v1.6 ready for archive review
-last_updated: "2026-06-14T17:09:22Z"
+milestone: v1.7
+milestone_name: Full-Sync Soak and Recovery Hardening
+status: ready
+stopped_at: Milestone v1.7 initialized; Phase 75 ready for discussion
+last_updated: "2026-06-14T18:50:44Z"
 last_activity: 2026-06-14
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 27
-  completed_plans: 27
-  percent: 100
+  total_phases: 6
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-06-11)
+See: `.planning/PROJECT.md` (updated 2026-06-14)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** v1.6 archive review
+**Current focus:** v1.7 Full-Sync Soak and Recovery Hardening
 
 ## Current Position
 
-Milestone: v1.6 Mainnet Full-Sync Completion
-Phase: 74
-Plan: 74-01 complete
-Status: Phase 74 verified — v1.6 ready for archive review
+Milestone: v1.7 Full-Sync Soak and Recovery Hardening
+Phase: 75
+Plan: -
+Status: Ready to discuss Phase 75
 Last activity: 2026-06-14
 
-Progress: [##########] 100%
+Progress: [----------] 0%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Current milestone plans completed: 27
-- Current milestone plan count: 27
-- Prior milestone plans completed: 22 in v1.5
+- Current milestone plans completed: 0
+- Current milestone plan count: 0
+- Prior milestone plans completed: 27 in v1.6
 
 **By Phase:**
 
 | Phase | Plans | Status |
 |-------|------:|--------|
-| 68. Full Active-Chain Validation and Durable Persistence | 3/3 | Complete |
-| 69. Tip Tracking and Stay-Current Operation | 5/5 | Complete |
-| 70. Reorg, Peer Rotation, and No-Progress Recovery | 6/6 | Complete |
-| 71. Resource Bounds and Durable Restart/Resume | 4/4 | Complete |
-| 72. Operator Observability and Support Evidence | 4/4 | Complete |
-| 73. Opt-In UAT and Deterministic Verification | 4/4 | Complete |
-| 74. Release Boundaries, Parity, and Documentation | 1/1 | Complete |
+| 75. Multi-Day Soak Runner and Evidence Ledger | 0/0 | Pending |
+| 76. Disk and Resource Bound Enforcement | 0/0 | Pending |
+| 77. Corruption and Lock Recovery Hardening | 0/0 | Pending |
+| 78. Progress Guarantees and Stall Diagnosis | 0/0 | Pending |
+| 79. Diagnostics and Support Bundle Forensics | 0/0 | Pending |
+| 80. Opt-In Soak UAT and Release Boundaries | 0/0 | Pending |
 
 **Recent Trend:**
 
 - v1.5 completed Phases 60 through 67 and archived with a passed milestone audit.
-- v1.6 started with a focus on full mainnet sync-to-tip completion.
-- v1.6 roadmap covers 26 requirements across Phases 68 through 74.
-- Phase 68 completed full active-chain validation and durable persistence.
-- Phase 69 completed tip tracking, stay-current status, post-catch-up coverage, and documentation/checker closeout.
-- Phase 70 completed reorg status contracts, typed branch/reorg runtime outcomes, durable latest reorg projection, deterministic storage-blocker coverage, peer attribution/backoff/rotation coverage, the additive no-progress status contract, shared no-progress diagnosis/rendering, operator docs, parity wording, README relevance, and deterministic checker closeout.
-- Phase 71 completed resource-bound documentation and tests, same-datadir restart/resume matrix coverage, storage-pressure recovery guidance, deterministic synthetic long-chain coverage, parity/operator docs, and default checker closeout.
-- Phase 73 completed and verified opt-in UAT documentation, deterministic verifier wiring, parity/breadcrumb/evidence closeout, code-review fixes, and phase verification.
-- Phase 74 completed v1.6 release-boundary docs, parity roots, README/runtime-guide closeout, deterministic checker wiring, final requirement traceability, and phase verification.
-- Next workflow: archive the v1.6 milestone.
+- v1.6 completed Phases 68 through 74 and shipped explicit opt-in mainnet full-sync completion evidence.
+- v1.7 starts with a focus on multi-day soak stability, resource and disk bounds, corruption and lock recovery, progress guarantees, diagnostics, and support bundles.
+- Public-network soak and real service-manager evidence remain opt-in UAT outside default deterministic verification.
 
 ## Accumulated Context
 
 ### Decisions
 
-Decisions are logged in `PROJECT.md` Key Decisions table. Recent v1.5 decisions:
+Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
+- [v1.7]: Scope the milestone to explicit opt-in full-sync soak and recovery hardening, while continuing to defer inbound serving, relay, production-funds wallet, migration apply mode, packaging polish, hosted dashboard, GUI, and broad production-node claims.
+- [v1.7]: Keep multi-day public-network soak runs opt-in UAT evidence; default `bash scripts/verify.sh` must remain deterministic, public-network-free, service-manager-free, and free of wall-clock multi-day gates.
+- [v1.7]: Continue phase numbering from v1.6; active milestone starts at Phase 75 and runs through Phase 80.
+- [v1.7]: Map every active v1.7 requirement to exactly one roadmap phase with Pending traceability before execution starts.
 - [v1.6]: Scope the milestone to explicit opt-in `open-bitcoind` mainnet full-sync completion before inbound serving, relay, production-funds wallet, migration apply mode, packaging polish, hosted dashboard, GUI, or broad production-node claims.
 - [v1.6]: Continue keeping public-network full-sync and service checks opt-in UAT evidence unless a future phase deliberately changes the deterministic verification contract.
-- [v1.6]: Continue phase numbering from v1.5; active milestone starts at Phase 68 and runs through Phase 74.
-- [v1.6]: Map every active v1.6 requirement to exactly one roadmap phase with Pending traceability before execution starts.
-- [v1.5]: Scope the milestone to bounded unattended mainnet node operation readiness, while continuing to defer inbound serving, transaction relay, production-funds wallet, migration apply mode, packaging polish, hosted dashboard, GUI, and broad production-node claims.
-- [v1.5]: Continue phase numbering from v1.4; active milestone starts at Phase 60 and runs through Phase 67.
-- [v1.5]: Keep public-network long-run and service checks opt-in UAT evidence, not default `bash scripts/verify.sh` checks.
-- [v1.5]: Preserve `.planning/phases/` raw histories for v1.0, v1.3, v1.4, and v1.5 parity and UAT traceability.
-- [Phase 64]: Service restart/resume status exposes selected datadir, clean versus unclean prior shutdown, durable progress, stale in-flight verdict, recovery category, and next-action guidance.
-- [Phase 64]: Keep real service-manager restarts and public-network restart smoke as opt-in UAT evidence outside `bash scripts/verify.sh`.
-- [Phase 65]: Redacted support bundles include bounded service lifecycle, restart/resume, log path, metrics availability, and live-smoke summary interpretation evidence.
-- [Phase 65]: Default verification includes a deterministic support review checker and continues to exclude public-network and real service-manager commands.
-- [Phase 66]: The operator CLI exposes deterministic compatibility harness reports through `open-bitcoin compatibility harness`.
-- [Phase 66]: Compatibility wrapper diagnosis delegates to `open-bitcoin-network::evaluate_transcript`; CLI code only constructs scenarios and renders local reports.
-- [Phase 66]: Default verification includes a deterministic compatibility wrapper checker and continues to exclude public-network peer probing.
-- [Phase 67]: v1.5 is documented as source-built, explicit opt-in unattended mainnet operator-review readiness, not production-node readiness.
-- [Phase 67]: The deterministic checker guards v1.5 parity roots and default-verification exclusions.
-- [Phase 73]: VER-02 coverage remains checker-only because existing deterministic Rust anchors cover every required behavior.
-- [Phase 73]: Crash recovery is represented by durable reopen/recovery tests, not by a process-level crash harness.
-- [Phase 73]: Phase 73 public-mainnet UAT commands remain opt-in documentation outside bash scripts/verify.sh.
-- [Phase 73]: Phase 73 UAT evidence must come from explicit status and report fields, not daemon startup, elapsed time, peer reachability, or bundle existence alone.
-- [Phase 73-opt-in-uat-and-deterministic-verification]: Phase 73 deterministic verification now runs after Phase 72 in bash scripts/verify.sh.
-- [Phase 73-opt-in-uat-and-deterministic-verification]: Default verification rejects public-network UAT, service-manager operations, mainnet IBD activation, restart-after-progress flows, and timing gates.
-- [Phase 73-opt-in-uat-and-deterministic-verification]: Phase 73 parity closeout is enforced locally by the deterministic checker, not by public-network UAT or release-blocking live sync.
-- [Phase 73-opt-in-uat-and-deterministic-verification]: Referenced Rust evidence files are asserted through docs/parity/source-breadcrumbs.json and the existing breadcrumb checker instead of adding new breadcrumbs.
-- [Phase 73-opt-in-uat-and-deterministic-verification]: Deferred-scope terms are required as non-claims so evidence roots remain auditable without implying production-node readiness.
 - [Phase 74-release-boundaries-parity-and-documentation]: v1.6 is documented as source-built, explicit opt-in full-sync completion evidence, not broad production-node readiness.
 - [Phase 74-release-boundaries-parity-and-documentation]: The deterministic v1.6 checker guards parity roots, all 26 requirement ids, README/runtime-guide wording, deferred-scope docs, and default-verification exclusions.
 
 ### Pending Todos
 
-- Archive the v1.6 milestone.
-- Keep public-network full-sync UAT opt-in and outside default deterministic verification unless a future phase deliberately changes that contract.
+- Discuss Phase 75 and decide the exact soak-runner and evidence-ledger shape.
+- Keep raw phase histories in `.planning/phases/` for parity and UAT traceability.
+- Keep public-network full-sync and multi-day soak UAT opt-in and outside default deterministic verification unless a future phase deliberately changes that contract.
 
 ### Blockers/Concerns
 
 - No active milestone blockers are recorded.
-- Default local verification must remain deterministic; public-network full-sync checks stay opt-in UAT evidence unless a future milestone or phase explicitly changes that contract.
-- `.planning/phases/` retains raw v1.0, v1.3, v1.4, and v1.5 evidence referenced by parity docs and milestone archives.
+- Default local verification must remain deterministic; public-network full-sync and multi-day soak checks stay opt-in UAT evidence unless a future milestone or phase explicitly changes that contract.
+- `.planning/phases/` retains raw v1.0, v1.3, v1.4, v1.5, and v1.6 evidence referenced by parity docs and milestone archives.
 
 ## Session Continuity
 
-Last session: 2026-06-14T17:09:22Z
-Stopped at: Phase 74 verified; v1.6 ready for archive review
-Resume file: .planning/phases/74-release-boundaries-parity-and-documentation/74-VERIFICATION.md
+Last session: 2026-06-14T18:50:44Z
+Stopped at: Milestone v1.7 initialized; Phase 75 ready for discussion
+Resume file: .planning/ROADMAP.md

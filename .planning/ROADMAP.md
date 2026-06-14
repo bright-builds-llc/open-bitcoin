@@ -8,200 +8,156 @@
 - ✅ **v1.3 Public Mainnet Sync Proof and Node Hardening** - Phases 42 through 53 (shipped 2026-06-02). Archive: [v1.3-ROADMAP.md](milestones/v1.3-ROADMAP.md)
 - ✅ **v1.4 Mainnet IBD Convergence and Peer Compatibility** - Phases 54 through 59 (shipped 2026-06-05). Archive: [v1.4-ROADMAP.md](milestones/v1.4-ROADMAP.md)
 - ✅ **v1.5 Unattended Mainnet Node Operation Readiness** - Phases 60 through 67 (shipped 2026-06-10). Archive: [v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
-- ✅ **v1.6 Mainnet Full-Sync Completion** - Phases 68 through 74 (shipped 2026-06-14). Requirements: 26
+- ✅ **v1.6 Mainnet Full-Sync Completion** - Phases 68 through 74 (shipped 2026-06-14). Archive: [v1.6-ROADMAP.md](milestones/v1.6-ROADMAP.md)
+- **v1.7 Full-Sync Soak and Recovery Hardening** - Phases 75 through 80 (active). Requirements: 24
 
-## Current Focus
+## Current Milestone: v1.7 Full-Sync Soak and Recovery Hardening
 
-v1.6 Mainnet Full-Sync Completion turns the shipped v1.5 unattended
-operator-review loop into a truthful explicit opt-in `open-bitcoind`
-sync-to-tip claim. The milestone focuses on full active-chain validation,
-durable chainstate and UTXO/undo persistence, tip tracking, stay-current
-operation, reorg and peer recovery, bounded resources, coherent operator
-evidence, opt-in UAT, and deterministic release-boundary checks.
+v1.7 Full-Sync Soak and Recovery Hardening turns the v1.6 explicit opt-in
+sync-to-tip claim into a more durable long-run operator-review workflow. The
+milestone focuses on multi-day soak stability, disk and resource bounds,
+corruption and lock recovery, progress guarantees, stall diagnosis, richer
+diagnostics, and redacted "what happened" support bundles for failed or
+degraded long runs.
 
 The milestone does not include inbound serving, address relay, block serving,
 transaction relay, compact block relay, production-funds wallet claims,
-migration apply mode, signed packaging, Windows service support, GUI work,
-hosted dashboards, public-network checks in `bash scripts/verify.sh`, or broad
-production-node claims.
+migration apply mode, destructive repair, automatic support-bundle upload,
+signed packaging, Windows service support, GUI work, hosted dashboards,
+public-network checks in `bash scripts/verify.sh`, multi-day wall-clock tests
+as default gates, or broad production-node claims.
 
-Raw v1.0, v1.3, v1.4, and v1.5 phase histories remain in
+Raw v1.0, v1.3, v1.4, v1.5, and v1.6 phase histories remain in
 [.planning/phases/](phases/) for parity and UAT traceability; do not move or
 delete those phase directories.
 
 ## Phases
 
-- [x] **Phase 68: Full Active-Chain Validation and Durable Persistence** - Sync to the best-known validated peer tip only through consensus-validated, durably connected active-chain progress.
-- [x] **Phase 69: Tip Tracking and Stay-Current Operation** - Define best-known tip evidence and keep the daemon current after initial catch-up.
-- [x] **Phase 70: Reorg, Peer Rotation, and No-Progress Recovery** - Make branch competition, reorgs, peer failures, and no-progress causes deterministic and operator-visible.
-- [x] **Phase 71: Resource Bounds and Durable Restart/Resume** - Prove long-sync resource bounds and safe recovery across shutdown, interruption, and storage-pressure cases.
-- [ ] **Phase 72: Operator Observability and Support Evidence** - Align every operator surface around one full-sync truth contract and redacted support evidence.
-- [ ] **Phase 73: Opt-In UAT and Deterministic Verification** - Keep default verification hermetic while adding deterministic coverage and repo-local public-mainnet UAT commands.
-- [ ] **Phase 74: Release Boundaries, Parity, and Documentation** - Close v1.6 with scoped parity roots, release-readiness docs, operator guidance, and claim-boundary checks.
+- [ ] **Phase 75: Multi-Day Soak Runner and Evidence Ledger** - Give operators a bounded, resumable, explicit opt-in soak workflow with durable run identity and deterministic synthetic coverage.
+- [ ] **Phase 76: Disk and Resource Bound Enforcement** - Make long-run disk, cache, queue, log, metric, and support-evidence bounds visible, enforceable, and testable.
+- [ ] **Phase 77: Corruption and Lock Recovery Hardening** - Diagnose lock contention, stale locks, corruption markers, schema mismatches, partial writes, and storage-open failures without hidden mutation.
+- [ ] **Phase 78: Progress Guarantees and Stall Diagnosis** - Ensure long-run progress is credited only for validated durable work and stalled paths produce actionable typed diagnosis.
+- [ ] **Phase 79: Diagnostics and Support Bundle Forensics** - Produce redacted "what happened" support evidence that reconstructs timeline, resource pressure, peer outcomes, recovery events, and final verdict.
+- [ ] **Phase 80: Opt-In Soak UAT and Release Boundaries** - Keep default verification deterministic while documenting opt-in multi-day soak commands and guarding the scoped v1.7 claim.
 
 ## Phase Details
 
-### Phase 68: Full Active-Chain Validation and Durable Persistence
+### Phase 75: Multi-Day Soak Runner and Evidence Ledger
 
-**Goal**: Operators can run explicit opt-in `open-bitcoind` mainnet sync until the active chain reaches the best-known validated peer tip, with progress credited only after consensus validation and durable connection.
-**Depends on**: Phase 67
-**Requirements**: SYNC-01, SYNC-02, SYNC-03, SYNC-04
-**Plans**: 3/3 complete
-
-**Success Criteria**:
-1. Operator can run explicit opt-in mainnet sync until the active chain reaches the best-known validated peer tip or returns a typed blocker.
-2. Status evidence distinguishes header height, downloaded block height, connected block height, validated active-chain height, cumulative work, and tip freshness.
-3. Same-datadir restart recovers durable active-chain, UTXO, undo, block-index, and runtime metadata needed to continue validation safely.
-4. Block progress is credited only after consensus validation and durable active-chain connection, never after headers-only or downloaded-only progress.
-
-### Phase 69: Tip Tracking and Stay-Current Operation
-
-**Goal**: Operators can understand best-known tip evidence and keep `open-bitcoind` caught up after initial sync.
-**Depends on**: Phase 68
-**Requirements**: TIP-01, TIP-02, TIP-03
-**Plans**: 5/5 complete
-
-**Success Criteria**:
-1. Operator can inspect best-known mainnet tip source, height, hash, work, timestamp, freshness, and peer agreement evidence.
-2. Status surfaces distinguish initial catch-up, current-at-best-known-tip, stale-tip, recovering, and no-progress states without renderer-specific interpretation.
-3. After catch-up, the daemon detects, validates, connects, and reports new headers and blocks as stay-current progress.
-4. Tip freshness and peer agreement evidence remain coherent across restart and peer rotation.
-
-### Phase 70: Reorg, Peer Rotation, and No-Progress Recovery
-
-**Goal**: Operators can survive branch competition, reorgs, stale in-flight work, and peer failures with deterministic outcomes and actionable diagnosis.
-**Depends on**: Phase 69
-**Requirements**: REC-01, REC-02, REC-03, REC-04
-**Plans**: 6/6 complete
-
-Plans:
-- [x] 70-01-PLAN.md - Reorg and reconcile status contract
-- [x] 70-02-PLAN.md - Branch/reorg runtime and storage blockers
-- [x] 70-03-PLAN.md - Peer attribution, stale in-flight release, and rotation
-- [x] 70-04-PLAN.md - No-progress status contract
-- [x] 70-05-PLAN.md - Shared no-progress diagnosis and rendering
-- [x] 70-06-PLAN.md - Operator docs, README relevance, and deterministic verification closeout
-
-**Success Criteria**:
-1. Competing header branches resolve through cumulative-work selection with deterministic active-chain outcomes.
-2. Reorg handling durably disconnects and reconnects blocks with bounded undo evidence.
-3. Stale, slow, incompatible, malformed, invalid, disconnecting, and `notfound` peers receive typed attribution, retry/backoff, and rotation behavior.
-4. Operator-facing status explains whether no progress means behind, stalled, at tip, recovering, or clearing stale in-flight work, with next actions.
-
-### Phase 71: Resource Bounds and Durable Restart/Resume
-
-**Goal**: Operators can run long full-sync attempts within documented resource bounds and recover safely after interruptions or storage pressure.
-**Depends on**: Phase 70
-**Requirements**: RES-01, RES-02, RES-03, RES-04
+**Goal**: Operators can run bounded multi-day full-sync soaks with durable run identity, resumable reports, typed stop reasons, and deterministic synthetic soak coverage.
+**Depends on**: Phase 74
+**Requirements**: SOAK-01, SOAK-02, SOAK-03, SOAK-04
 **Plans**: Pending
 
 **Success Criteria**:
-1. Bounds are documented and tested for peers, in-flight blocks, queues, caches, storage writes, logs, metrics, and support evidence.
-2. Same-datadir resume is safe after clean shutdown, unclean shutdown, mid-download interruption, mid-connect interruption, and stale in-flight work.
-3. Recovery guidance distinguishes schema mismatch, corruption markers, lock contention, low disk, and storage pressure without hidden data mutation.
-4. Deterministic synthetic long-chain tests exercise resource bounds without public-network access.
+1. Operator can start an explicit opt-in soak with bounded elapsed time, target height, datadir, network, peer policy, disk budget, and stop conditions.
+2. Soak evidence persists durable run identity, start and end checkpoints, resume metadata, and final verdict across clean or interrupted runs.
+3. Stop reasons distinguish clean completion, diagnosed blocker, operator stop, resource stop, recovery stop, and unexpected termination.
+4. Deterministic synthetic soak tests exercise long-run control flow without public-network access or wall-clock multi-day waits.
 
-### Phase 72: Operator Observability and Support Evidence
+### Phase 76: Disk and Resource Bound Enforcement
 
-**Goal**: Operators can inspect and share one coherent full-sync truth contract across CLI, dashboard, RPC, metrics, logs, live-smoke reports, and support bundles.
-**Depends on**: Phase 71
-**Requirements**: OBS-01, OBS-02, OBS-03, OBS-04
-**Plans**: 4 plans
-
-Plans:
-- [x] 72-01-PLAN.md - Align CLI, dashboard, and RPC status surfaces
-- [x] 72-02-PLAN.md - Add support evidence and typed verdicts
-- [x] 72-03-PLAN.md - Extend metrics, logs, and live-smoke projections
-- [x] 72-04-PLAN.md - Document guidance and wire deterministic verification
+**Goal**: Operators can understand and enforce long-run resource limits before storage pressure turns a soak into an unsafe or opaque failure.
+**Depends on**: Phase 75
+**Requirements**: RES-05, RES-06, RES-07, RES-08
+**Plans**: Pending
 
 **Success Criteria**:
-1. CLI status, dashboard, RPC, metrics, structured logs, live-smoke reports, and support bundles share one full-sync truth contract.
-2. Redacted support evidence includes initial and final tip, connected height/hash/work, restart/resume checkpoints, stay-current window, peer contribution, no-progress or reorg events, resource pressure, and final verdict.
-3. Cross-surface comparison confirms agreement on connected chain progress, tip freshness, recovery category, peer health, and next action.
-4. Operator guidance explains whether evidence proves sync-to-tip, stay-current behavior, diagnosed blocker, or deferred production-node scope.
+1. Preflight and status surfaces expose disk, file, cache, queue, peer, in-flight, log, metric, and support-bundle bounds for long soaks.
+2. Runtime guidance classifies low disk, disk growth, compaction, log retention, metrics retention, and support-bundle size pressure.
+3. Operators can pause or stop before unsafe storage pressure while preserving durable progress and a clear next action.
+4. Deterministic fixtures verify resource-bound behavior without public peers, real service managers, or large local disk allocations.
 
-### Phase 73: Opt-In UAT and Deterministic Verification
+### Phase 77: Corruption and Lock Recovery Hardening
 
-**Goal**: Contributors keep default verification deterministic while operators get repo-local opt-in commands for public-mainnet full-sync review.
-**Depends on**: Phase 72
-**Requirements**: VER-01, VER-02, VER-03, VER-04
-**Plans**: 4 plans
-
-Plans:
-- [x] 73-01-PLAN.md - Map VER-02 deterministic coverage to existing hermetic anchors
-- [x] 73-02-PLAN.md - Add the central Phase 73 opt-in public-mainnet UAT matrix
-- [x] 73-03-PLAN.md - Wire the Phase 73 deterministic checker into default verification
-- [x] 73-04-PLAN.md - Close parity, breadcrumb, and evidence auditability
+**Goal**: Operators can diagnose store locks and corruption-style failures safely, with guidance that separates retryable, inspectable, rebuild-required, and escalation cases.
+**Depends on**: Phase 76
+**Requirements**: REC-05, REC-06, REC-07, REC-08
+**Plans**: Pending
 
 **Success Criteria**:
-1. `bash scripts/verify.sh` runs without internet access, public peers, real service managers, long-running sync, or current-tip timing.
-2. Deterministic tests cover durable UTXO/undo writes, block connect/disconnect/reorg across restart, best-chain header selection, peer response failures, crash recovery, duplicate connect prevention, and resource bounds.
-3. Operator docs provide copy-pasteable repo-local Cargo and Bazel commands for opt-in public-mainnet full-sync, stay-current, restart/resume, and support-bundle UAT.
-4. Parity breadcrumbs, fixtures, compatibility harness reports, and deterministic checkers cover every new v1.6 source, test, and operator-evidence surface.
+1. Lock contention, stale lock evidence, and concurrent datadir use are detected without hidden mutation.
+2. Corruption markers, schema mismatches, partial writes, and unreadable runtime stores map to typed recovery categories.
+3. Recovery evidence separates safe retry, read-only inspection, backup-then-rebuild, and stop-and-escalate guidance.
+4. Deterministic tests cover lock contention, stale locks, corruption markers, schema mismatch, partial writes, and storage-open failures.
 
-### Phase 74: Release Boundaries, Parity, and Documentation
+### Phase 78: Progress Guarantees and Stall Diagnosis
 
-**Goal**: Reviewers can audit that v1.6 claims only explicit opt-in full-sync completion and preserves all deferred scope boundaries.
-**Depends on**: Phase 73
-**Requirements**: REL-01, REL-02, REL-03
-**Plans**: 1 plan
-
-Plans:
-- [x] 74-01-PLAN.md - Close v1.6 release boundaries, parity roots, docs, checker, and traceability
+**Goal**: Operators can trust reported long-run progress and understand exactly which subsystem or external condition prevented useful work.
+**Depends on**: Phase 77
+**Requirements**: PROG-01, PROG-02, PROG-03, PROG-04
+**Plans**: Pending
 
 **Success Criteria**:
-1. v1.6 parity roots, threat model, release-readiness matrix, README, and operator docs describe only the explicit opt-in full-sync completion claim.
-2. Deterministic release-boundary checks fail if docs or status surfaces imply inbound serving, relay, production-wallet, migration-apply, packaging, GUI, hosted-dashboard, or broad production-node claims.
-3. Operator docs explain shipped sync-to-tip evidence, opt-in UAT commands, support evidence locations, failure interpretation, and deferred scope.
-4. Final milestone traceability shows all 26 v1.6 requirements mapped, verified, and ready for archive.
+1. Soak progress is credited only after validated, durably connected active-chain progress or explicit stay-current evidence.
+2. Status evidence includes expected progress windows, last useful work, last peer contribution, stalled subsystem, and no-progress threshold state.
+3. Diagnosis distinguishes public-network reachability, incompatible peers, slow peers, stalled validation, storage pressure, at-tip waiting, and local shutdown.
+4. Deterministic tests prove false-progress prevention, stale in-flight cleanup, peer rotation, at-tip waiting, and validation-stall classification.
+
+### Phase 79: Diagnostics and Support Bundle Forensics
+
+**Goal**: Operators can generate redacted support evidence that answers what happened during a failed or degraded long run.
+**Depends on**: Phase 78
+**Requirements**: DIAG-01, DIAG-02, DIAG-03, DIAG-04
+**Plans**: Pending
+
+**Success Criteria**:
+1. Support bundles include a redacted soak timeline, checkpoint chain, resource pressure, recovery events, peer outcomes, and final verdict.
+2. CLI status, dashboard status, RPC status, metrics, structured logs, live-smoke reports, and support bundles share one diagnostic contract.
+3. Failure narratives identify likely cause, evidence basis, next action, and whether the run proved soak stability, diagnosed a blocker, or stopped inconclusively.
+4. Deterministic checks verify support-bundle redaction, size bounds, timeline ordering, and cross-surface consistency.
+
+### Phase 80: Opt-In Soak UAT and Release Boundaries
+
+**Goal**: Contributors keep default verification deterministic while operators get copy-pasteable long-run UAT commands and reviewers can audit the scoped v1.7 claim.
+**Depends on**: Phase 79
+**Requirements**: VER-05, VER-06, VER-07, REL-04
+**Plans**: Pending
+
+**Success Criteria**:
+1. `bash scripts/verify.sh` runs without internet access, public peers, real service managers, multi-day sleeps, current-tip timing, or large disk consumption.
+2. Operator docs provide repo-local Cargo and Bazel commands for opt-in multi-day soak, bounded recovery drills, support-bundle generation, and post-failure diagnosis.
+3. Parity breadcrumbs, fixtures, support-bundle schemas, deterministic checkers, and operator docs cover every new v1.7 source, test, and evidence surface.
+4. v1.7 docs and status surfaces describe only explicit opt-in soak and recovery hardening, not broad production-node readiness.
 
 ## Progress
 
-**Execution Order:** Phase 68 -> 69 -> 70 -> 71 -> 72 -> 73 -> 74
+**Execution Order:** Phase 75 -> 76 -> 77 -> 78 -> 79 -> 80
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 68. Full Active-Chain Validation and Durable Persistence | 3/3 | Complete    | 2026-06-11 |
-| 69. Tip Tracking and Stay-Current Operation | 5/5 | Complete    | 2026-06-12 |
-| 70. Reorg, Peer Rotation, and No-Progress Recovery | 6/6 | Complete | 2026-06-12 |
-| 71. Resource Bounds and Durable Restart/Resume | 4/4 | Complete    | 2026-06-13 |
-| 72. Operator Observability and Support Evidence | 4/4 | Complete   | 2026-06-13 |
-| 73. Opt-In UAT and Deterministic Verification | 4/4 | Complete    | 2026-06-14 |
-| 74. Release Boundaries, Parity, and Documentation | 1/1 | Complete | 2026-06-14 |
+| 75. Multi-Day Soak Runner and Evidence Ledger | 0/0 | Pending | - |
+| 76. Disk and Resource Bound Enforcement | 0/0 | Pending | - |
+| 77. Corruption and Lock Recovery Hardening | 0/0 | Pending | - |
+| 78. Progress Guarantees and Stall Diagnosis | 0/0 | Pending | - |
+| 79. Diagnostics and Support Bundle Forensics | 0/0 | Pending | - |
+| 80. Opt-In Soak UAT and Release Boundaries | 0/0 | Pending | - |
 
 ## Completed Milestone Summaries
 
 <details>
-<summary>✅ v1.5 Unattended Mainnet Node Operation Readiness (Phases 60-67) - SHIPPED 2026-06-10</summary>
+<summary>✅ v1.6 Mainnet Full-Sync Completion (Phases 68-74) - SHIPPED 2026-06-14</summary>
 
-- [x] Phase 60: Unattended Sync Loop Control (1/1 plans) - completed 2026-06-06
-- [x] Phase 61: Resource Bounds and Recovery Taxonomy (6/6 plans) - completed 2026-06-06
-- [x] Phase 62: Long-Run Sync Truth Surfaces (4/4 plans) - completed 2026-06-07
-- [x] Phase 63: Service Supervision Lifecycle (4/4 plans) - completed 2026-06-07
-- [x] Phase 64: Service Restart and Same-Datadir Resume Evidence (3/3 plans) - completed 2026-06-07
-- [x] Phase 65: Support Bundle and Operator Review Docs (2/2 plans) - completed 2026-06-08
-- [x] Phase 66: Compatibility Harness Operator Wrapper (1/1 plans) - completed 2026-06-08
-- [x] Phase 67: Release Boundaries and Deterministic Verification (1/1 plans) - completed 2026-06-09
+- [x] Phase 68: Full Active-Chain Validation and Durable Persistence (3/3 plans) - completed 2026-06-11
+- [x] Phase 69: Tip Tracking and Stay-Current Operation (5/5 plans) - completed 2026-06-12
+- [x] Phase 70: Reorg, Peer Rotation, and No-Progress Recovery (6/6 plans) - completed 2026-06-12
+- [x] Phase 71: Resource Bounds and Durable Restart/Resume (4/4 plans) - completed 2026-06-13
+- [x] Phase 72: Operator Observability and Support Evidence (4/4 plans) - completed 2026-06-13
+- [x] Phase 73: Opt-In UAT and Deterministic Verification (4/4 plans) - completed 2026-06-14
+- [x] Phase 74: Release Boundaries, Parity, and Documentation (1/1 plans) - completed 2026-06-14
 
 Detailed phase requirements, success criteria, and plan links are archived in
-[milestones/v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md). Raw v1.5 phase
+[milestones/v1.6-ROADMAP.md](milestones/v1.6-ROADMAP.md). Raw v1.6 phase
 execution artifacts remain in [.planning/phases/](phases/) for parity and UAT
 traceability.
 
 </details>
 
 <details>
-<summary>✅ v1.4 Mainnet IBD Convergence and Peer Compatibility (Phases 54-59) - SHIPPED 2026-06-05</summary>
-
-- [x] Phase 54: Peer Compatibility Baseline and Diagnostic Harness (1/1 plans) - completed 2026-06-02
-- [x] Phase 55: Outbound Handshake Compatibility Fixes (1/1 plans) - completed 2026-06-03
-- [x] Phase 56: Header IBD Convergence (1/1 plans) - completed 2026-06-03
-- [x] Phase 57: Block Download and Connect Progress (4/4 plans) - completed 2026-06-04
-- [x] Phase 58: Same-Datadir Restart and Resume Evidence (3/3 plans) - completed 2026-06-05
-- [x] Phase 59: Operator Evidence, Threat Model, and Release Boundaries (5/5 plans) - completed 2026-06-05
+<summary>✅ v1.5 Unattended Mainnet Node Operation Readiness (Phases 60-67) - SHIPPED 2026-06-10</summary>
 
 Detailed phase requirements, success criteria, and plan links are archived in
-[milestones/v1.4-ROADMAP.md](milestones/v1.4-ROADMAP.md). Raw v1.4 phase
+[milestones/v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md). Raw v1.5 phase
 execution artifacts remain in [.planning/phases/](phases/) for parity and UAT
 traceability.
 
@@ -218,11 +174,12 @@ traceability.
 | v1.4 Mainnet IBD Convergence and Peer Compatibility | 6 | 15 | Shipped | 2026-06-05 |
 | v1.5 Unattended Mainnet Node Operation Readiness | 8 | 22 | Shipped | 2026-06-10 |
 | v1.6 Mainnet Full-Sync Completion | 7 | 27 | Shipped | 2026-06-14 |
+| v1.7 Full-Sync Soak and Recovery Hardening | 6 | 0 | Active | - |
 
 ## Next Step
 
-Archive the v1.6 milestone:
+Start Phase 75:
 
 ```bash
-/gsd-complete-milestone
+/gsd-discuss-phase 75
 ```

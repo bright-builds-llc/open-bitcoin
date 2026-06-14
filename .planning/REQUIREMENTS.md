@@ -1,62 +1,57 @@
-# Requirements: Open Bitcoin v1.6 Mainnet Full-Sync Completion
+# Requirements: Open Bitcoin v1.7 Full-Sync Soak and Recovery Hardening
 
-**Defined:** 2026-06-11
+**Defined:** 2026-06-14
 **Core Value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
 
-## v1.6 Requirements
+## v1.7 Requirements
 
-Requirements for v1.6 Mainnet Full-Sync Completion. Each requirement maps to exactly one roadmap phase.
+Requirements for v1.7 Full-Sync Soak and Recovery Hardening. Each requirement maps to exactly one roadmap phase.
 
-### Full Active-Chain Validation And Persistence
+### Multi-Day Soak Stability
 
-- [x] **SYNC-01**: Operator can run explicit opt-in `open-bitcoind` mainnet sync until the active chain reaches the best-known validated peer tip.
-- [x] **SYNC-02**: Operator can distinguish header height, downloaded block height, connected block height, validated active-chain height, cumulative work, and tip freshness in status evidence.
-- [x] **SYNC-03**: Operator can restart with the same datadir and recover durable active-chain, UTXO, undo, block-index, and runtime metadata needed to continue validation without replaying unsafe in-memory assumptions.
-- [x] **SYNC-04**: Operator can trust that a block only counts as sync progress after consensus validation and durable connection to the active chain.
+- [ ] **SOAK-01**: Operator can run an explicit opt-in full-sync soak for multiple days with durable run identity, start and end checkpoints, and resumable report state.
+- [ ] **SOAK-02**: Operator can bound a soak by elapsed time, target height, datadir, network, peer policy, disk budget, and stop condition without changing default verification.
+- [ ] **SOAK-03**: Operator can distinguish clean completion, diagnosed blocker, operator stop, resource stop, recovery stop, and unexpected termination in soak evidence.
+- [ ] **SOAK-04**: Contributor can replay deterministic synthetic soak scenarios that exercise long-run control flow without public-network access or wall-clock multi-day tests.
 
-### Tip Tracking And Stay-Current Operation
+### Disk And Resource Bounds
 
-- [x] **TIP-01**: Operator can see the best-known mainnet tip source, height, hash, work, timestamp, freshness, and peer agreement evidence.
-- [x] **TIP-02**: Operator can distinguish initial catch-up, current-at-best-known-tip, stale-tip, recovering, and no-progress states without renderer-specific interpretation.
-- [x] **TIP-03**: Operator can keep `open-bitcoind` running after catch-up so new headers and blocks are detected, validated, connected, and reported as stay-current progress.
+- [ ] **RES-05**: Operator can see disk, file, cache, queue, peer, in-flight, log, metric, and support-bundle bounds before starting a long soak.
+- [ ] **RES-06**: Operator can receive typed low-disk, disk-growth, compaction, log-retention, metrics-retention, and support-bundle size guidance during and after a soak.
+- [ ] **RES-07**: Operator can stop or pause a soak before unsafe storage pressure while preserving durable progress and an actionable next step.
+- [ ] **RES-08**: Contributor can verify resource-bound behavior with deterministic fixtures that do not require a public peer, real service manager, or large local disk allocation.
 
-### Reorg, Peer Rotation, And No-Progress Recovery
+### Corruption And Lock Recovery
 
-- [x] **REC-01**: Operator can survive competing header branches through cumulative-work selection with deterministic active-chain outcomes.
-- [x] **REC-02**: Operator can survive reorgs through durable disconnect and reconnect behavior with bounded undo evidence.
-- [x] **REC-03**: Operator can recover from stale, slow, incompatible, malformed, invalid, disconnecting, or `notfound` peers through typed attribution, retry/backoff, and peer rotation.
-- [x] **REC-04**: Operator can see typed no-progress causes and next actions when sync is behind, stalled, at tip, or recovering from stale in-flight work.
+- [ ] **REC-05**: Operator can detect lock contention, stale lock evidence, and concurrent datadir use with no hidden mutation of the source datadir.
+- [ ] **REC-06**: Operator can detect corruption markers, schema mismatches, partial writes, and unreadable runtime stores with typed recovery categories.
+- [ ] **REC-07**: Operator can generate recovery evidence that separates safe retry, read-only inspection, backup-then-rebuild, and stop-and-escalate guidance.
+- [ ] **REC-08**: Contributor can run deterministic recovery tests for lock contention, stale lock, corruption marker, schema mismatch, partial write, and storage-open failure paths.
 
-### Resource Bounds And Durable Restart/Resume
+### Progress Guarantees And Stall Diagnosis
 
-- [x] **RES-01**: Operator can run long mainnet sync attempts with documented and tested bounds for peers, in-flight blocks, queues, caches, storage writes, logs, metrics, and support evidence.
-- [x] **RES-02**: Operator can resume safely after clean shutdown, unclean shutdown, mid-download interruption, mid-connect interruption, and stale in-flight work.
-- [x] **RES-03**: Operator can receive typed recovery guidance for schema mismatch, corruption markers, lock contention, low disk, and storage pressure without hidden data mutation.
-- [x] **RES-04**: Operator can run deterministic synthetic long-chain tests that exercise resource bounds without requiring public-network access.
+- [ ] **PROG-01**: Operator can trust that reported soak progress is credited only after validated, durably connected active-chain progress or explicit stay-current evidence.
+- [ ] **PROG-02**: Operator can see expected progress windows, last useful work, last peer contribution, stalled subsystem, and no-progress threshold evidence.
+- [ ] **PROG-03**: Operator can distinguish public-network reachability issues, incompatible peers, slow peers, stalled validation, storage pressure, at-tip waiting, and local shutdown.
+- [ ] **PROG-04**: Contributor can verify progress-guarantee logic with deterministic tests for false progress, stale in-flight work, peer rotation, at-tip waiting, and validation stalls.
 
-### Operator Observability And Support Evidence
+### Diagnostics And Support Bundles
 
-- [x] **OBS-01**: Operator can inspect one shared full-sync truth contract through CLI status, dashboard, RPC, metrics, structured logs, live-smoke reports, and support bundles.
-- [x] **OBS-02**: Operator can generate redacted support evidence that includes initial and final tip, connected height/hash/work, restart/resume checkpoints, stay-current window, peer contribution, no-progress or reorg events, resource pressure, and final verdict.
-- [x] **OBS-03**: Operator can compare status surfaces and confirm they agree on connected chain progress, tip freshness, recovery category, peer health, and next action.
-- [x] **OBS-04**: Operator can read concise guidance that explains whether evidence proves sync-to-tip, stay-current behavior, diagnosed blocker, or deferred production-node scope.
+- [ ] **DIAG-01**: Operator can generate a redacted "what happened" support bundle that includes the soak timeline, checkpoint chain, resource pressure, recovery events, peer outcomes, and final verdict.
+- [ ] **DIAG-02**: Operator can compare CLI status, dashboard status, RPC status, metrics, structured logs, live-smoke reports, and support bundles against one shared diagnostic contract.
+- [ ] **DIAG-03**: Operator can read concise failure narratives that identify the likely cause, evidence basis, next action, and whether the run proved soak stability, diagnosed a blocker, or stopped inconclusively.
+- [ ] **DIAG-04**: Contributor can verify support-bundle redaction, size bounds, timeline ordering, and cross-surface consistency through deterministic checks.
 
-### Opt-In UAT And Deterministic Verification
+### Opt-In UAT, Verification, And Release Boundaries
 
-- [x] **VER-01**: Contributor can run `bash scripts/verify.sh` without internet access, public peers, real service managers, long-running sync, or current-tip timing.
-- [x] **VER-02**: Contributor can run deterministic tests for durable UTXO/undo writes, block connect/disconnect/reorg across restart, best-chain header selection, peer response failures, crash recovery, duplicate connect prevention, and resource bounds.
-- [x] **VER-03**: Operator can run copy-pasteable repo-local Cargo and Bazel commands for opt-in public-mainnet full-sync, stay-current, restart/resume, and support-bundle UAT.
-- [x] **VER-04**: Contributor can audit parity breadcrumbs, fixtures, compatibility harness reports, and deterministic checkers for every new v1.6 source, test, and operator-evidence surface.
-
-### Release Boundaries, Parity, And Documentation
-
-- [x] **REL-01**: Contributor can verify v1.6 parity roots, threat model, release-readiness matrix, README, and operator docs describe only the explicit opt-in full-sync completion claim.
-- [x] **REL-02**: Contributor can run deterministic release-boundary checks that prevent docs and status surfaces from implying inbound serving, relay, production-wallet, migration-apply, packaging, GUI, hosted-dashboard, or broad production-node claims.
-- [x] **REL-03**: Operator can review v1.6 docs that explain shipped sync-to-tip evidence, opt-in UAT commands, support evidence locations, failure interpretation, and deferred scope.
+- [ ] **VER-05**: Contributor can run `bash scripts/verify.sh` without internet access, public peers, real service managers, multi-day sleeps, current-tip timing, or large disk consumption.
+- [ ] **VER-06**: Operator can run copy-pasteable repo-local Cargo and Bazel commands for opt-in multi-day soak, bounded recovery drills, support-bundle generation, and post-failure diagnosis.
+- [ ] **VER-07**: Contributor can audit parity breadcrumbs, fixtures, support bundle schemas, deterministic checkers, and operator docs for every new v1.7 source, test, and evidence surface.
+- [ ] **REL-04**: Contributor can verify v1.7 docs and status surfaces describe only explicit opt-in soak and recovery hardening, not broad production-node readiness.
 
 ## Future Requirements
 
-Deferred to a future milestone, not part of v1.6.
+Deferred to a future milestone, not part of v1.7.
 
 ### Production Node Expansion
 
@@ -75,20 +70,26 @@ Deferred to a future milestone, not part of v1.6.
 - **GUI-01**: Operator can use a desktop GUI or hosted dashboard.
 - **WIN-01**: Operator can install and manage a Windows service.
 
+### Long-Run Automation Expansion
+
+- **SOAK-05**: Maintainer can run scheduled public-network soak monitors outside local development machines.
+- **SOAK-06**: Maintainer can publish signed, externally comparable soak result artifacts for release candidates.
+
 ## Out of Scope
 
-Explicitly excluded from v1.6 to prevent scope creep.
+Explicitly excluded from v1.7 to prevent scope creep.
 
 | Feature | Reason |
 |---------|--------|
-| Inbound serving, address advertisement, block serving, mempool relay, transaction relay, and compact block relay | v1.6 is focused on outbound explicit opt-in full sync-to-tip completion. |
-| Broad production full-node readiness claims | v1.6 proves sync-to-tip and stay-current behavior, not every production-node surface. |
+| Inbound serving, address advertisement, block serving, mempool relay, transaction relay, and compact block relay | v1.7 hardens explicit opt-in outbound full-sync soak behavior before expanding node-serving scope. |
+| Broad production full-node readiness claims | v1.7 proves soak stability and recovery evidence for the scoped workflow, not every production-node surface. |
 | Production-funds wallet safety claims | Wallet production safety requires a separate audit and threat model. |
 | Migration apply mode or source datadir mutation | Existing Core or Knots datadirs and wallets remain high-value data; mutation remains deferred. |
-| Signed packaging, Windows service support, GUI, and hosted dashboard work | These are distribution and product-surface expansions beyond full-sync completion. |
+| Automatic destructive repair of corrupted stores | v1.7 may diagnose and guide recovery, but hidden destructive mutation remains out of scope. |
+| Automatic upload of support bundles or operator telemetry | Support evidence must remain local and redacted unless an operator explicitly shares it. |
 | Public-network checks inside `bash scripts/verify.sh` | Default verification must remain deterministic and public-network-free. |
-| Checked-in live-mainnet reports or timing-threshold release gates | Live evidence should be generated locally as opt-in UAT and redacted before sharing. |
-| Centralized trusted peers, hidden tip oracles, pruning, assumeutxo, assumevalid, or snapshot bootstrap | v1.6 should prove first-party full active-chain behavior without shortcutting the audited validation claim. |
+| Multi-day wall-clock tests as default commit or CI gates | Long-run soak remains opt-in UAT; deterministic synthetic coverage guards default verification. |
+| Centralized trusted peers, hidden tip oracles, pruning, assumeutxo, assumevalid, or snapshot bootstrap | v1.7 should harden first-party full-sync behavior without shortcutting the audited validation claim. |
 
 ## Traceability
 
@@ -96,38 +97,36 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SYNC-01 | Phase 68 | Complete |
-| SYNC-02 | Phase 68 | Complete |
-| SYNC-03 | Phase 68 | Complete |
-| SYNC-04 | Phase 68 | Complete |
-| TIP-01 | Phase 69 | Complete |
-| TIP-02 | Phase 69 | Complete |
-| TIP-03 | Phase 69 | Complete |
-| REC-01 | Phase 70 | Complete |
-| REC-02 | Phase 70 | Complete |
-| REC-03 | Phase 70 | Complete |
-| REC-04 | Phase 70 | Complete |
-| RES-01 | Phase 71 | Complete |
-| RES-02 | Phase 71 | Complete |
-| RES-03 | Phase 71 | Complete |
-| RES-04 | Phase 71 | Complete |
-| OBS-01 | Phase 72 | Complete |
-| OBS-02 | Phase 72 | Complete |
-| OBS-03 | Phase 72 | Complete |
-| OBS-04 | Phase 72 | Complete |
-| VER-01 | Phase 73 | Complete |
-| VER-02 | Phase 73 | Complete |
-| VER-03 | Phase 73 | Complete |
-| VER-04 | Phase 73 | Complete |
-| REL-01 | Phase 74 | Complete |
-| REL-02 | Phase 74 | Complete |
-| REL-03 | Phase 74 | Complete |
+| SOAK-01 | Phase 75 | Pending |
+| SOAK-02 | Phase 75 | Pending |
+| SOAK-03 | Phase 75 | Pending |
+| SOAK-04 | Phase 75 | Pending |
+| RES-05 | Phase 76 | Pending |
+| RES-06 | Phase 76 | Pending |
+| RES-07 | Phase 76 | Pending |
+| RES-08 | Phase 76 | Pending |
+| REC-05 | Phase 77 | Pending |
+| REC-06 | Phase 77 | Pending |
+| REC-07 | Phase 77 | Pending |
+| REC-08 | Phase 77 | Pending |
+| PROG-01 | Phase 78 | Pending |
+| PROG-02 | Phase 78 | Pending |
+| PROG-03 | Phase 78 | Pending |
+| PROG-04 | Phase 78 | Pending |
+| DIAG-01 | Phase 79 | Pending |
+| DIAG-02 | Phase 79 | Pending |
+| DIAG-03 | Phase 79 | Pending |
+| DIAG-04 | Phase 79 | Pending |
+| VER-05 | Phase 80 | Pending |
+| VER-06 | Phase 80 | Pending |
+| VER-07 | Phase 80 | Pending |
+| REL-04 | Phase 80 | Pending |
 
 **Coverage:**
-- v1.6 requirements: 26 total
-- Mapped to phases: 26
+- v1.7 requirements: 24 total
+- Mapped to phases: 24
 - Unmapped: 0
 
 ---
-*Requirements defined: 2026-06-11*
-*Last updated: 2026-06-14 after Phase 74 release-boundary verification*
+*Requirements defined: 2026-06-14*
+*Last updated: 2026-06-14 after v1.7 milestone initialization*

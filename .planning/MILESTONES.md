@@ -1,5 +1,39 @@
 # Milestones: Open Bitcoin
 
+## v1.6 Mainnet Full-Sync Completion (Shipped: 2026-06-14)
+
+**Delivered:** Source-built, explicit opt-in mainnet full-sync completion evidence through durable active-chain validation, tip tracking, stay-current behavior, reorg and peer recovery, resource-bounded restart/resume, coherent operator observability, redacted support evidence, opt-in UAT, deterministic verification, and scoped release-boundary checks.
+
+**Key accomplishments:**
+
+- Added durable active-chain, UTXO, undo, block-index, and runtime metadata needed for a truthful sync-to-tip claim.
+- Exposed best-known tip source, cumulative work, freshness, peer agreement, catch-up, at-tip, stale-tip, recovering, and stay-current states through shared status evidence.
+- Hardened reorg, peer rotation, stale in-flight, no-progress, and storage-blocker paths with typed outcomes and deterministic tests.
+- Documented and tested long-sync resource bounds, same-datadir restart/resume, storage pressure guidance, and synthetic long-chain behavior.
+- Aligned CLI, dashboard, RPC, metrics, structured logs, live-smoke reports, and support bundles around one full-sync truth contract.
+- Added opt-in public-mainnet UAT guidance and deterministic verification checkers while keeping `bash scripts/verify.sh` public-network-free.
+- Closed release-boundary docs and parity roots around the explicit opt-in full-sync completion claim without broad production-node readiness claims.
+
+**Stats:**
+
+- 26/26 v1.6 requirements complete.
+- 7 phases and 27 plans complete.
+- Full repo-native verification passed during Phase 74 closeout.
+
+**Archived artifacts:**
+
+- `.planning/milestones/v1.6-ROADMAP.md`
+- `.planning/milestones/v1.6-REQUIREMENTS.md`
+
+**Residual risk:**
+
+- Public-network full-sync and stay-current evidence remains operator environment dependent and opt-in.
+- Inbound serving, address relay, block serving, transaction relay, compact block relay, production-funds wallet safety, migration apply mode, signed packaging, Windows service support, GUI parity, hosted dashboards, public-network CI, release-blocking live sync, and broad production-node readiness remain future milestone scope.
+
+**What's next:** v1.7 Full-Sync Soak and Recovery Hardening is active.
+
+---
+
 ## v1.5 Unattended Mainnet Node Operation Readiness (Shipped: 2026-06-10)
 
 **Delivered:** Source-built, explicit opt-in unattended mainnet operator-review readiness through bounded daemon sync looping, typed recovery and resource evidence, truthful long-run observability, service lifecycle and restart/resume review, redacted support bundles, an operator compatibility wrapper, and deterministic v1.5 release-boundary checks.
