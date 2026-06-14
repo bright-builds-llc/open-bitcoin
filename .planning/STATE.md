@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Full-Sync Soak and Recovery Hardening
-status: ready
-stopped_at: Milestone v1.7 initialized; Phase 75 ready for discussion
-last_updated: "2026-06-14T18:50:44Z"
+status: Ready to discuss Phase 75
+stopped_at: Phase 75 context gathered
+last_updated: "2026-06-14T23:57:39.328Z"
 last_activity: 2026-06-14
 progress:
   total_phases: 6
@@ -88,6 +88,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-14T18:50:44Z
-Stopped at: Milestone v1.7 initialized; Phase 75 ready for discussion
-Resume file: .planning/ROADMAP.md
+Last session: 2026-06-14T23:57:39.325Z
+Stopped at: Phase 75 context gathered
+Resume file: .planning/phases/75-multi-day-soak-runner-and-evidence-ledger/75-CONTEXT.md
