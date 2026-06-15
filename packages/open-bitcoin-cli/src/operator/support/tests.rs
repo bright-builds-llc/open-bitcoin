@@ -8,7 +8,8 @@ use std::{
 };
 
 use open_bitcoin_node::{
-    BuildProvenance, LogStatus, MetricsStatus, OpenBitcoinStatusSnapshot,
+    BuildProvenance, LogStatus, MetricsStatus, OpenBitcoinStatusSnapshot, RecoveryActionClass,
+    RecoveryCause, RecoveryEvidenceBasis, RecoveryEvidenceSnapshot,
     status::{
         BestKnownTipSource, BestKnownTipStatus, ChainTipStatus, ConfigStatus, FieldAvailability,
         MempoolStatus, NoProgressDiagnosis, NodeRuntimeState, NodeStatus, PeerCounts, PeerStatus,
@@ -36,7 +37,7 @@ use crate::operator::{
 use super::{
     EvidenceAvailability, EvidenceState, LiveSmokeEvidence, MetricsHistoryEvidence,
     RuntimeMetadataEvidence, StoreHealthEvidence, SupportEvidenceBundle, SupportEvidenceOutput,
-    collect_resource_bound_support_evidence, collect_soak_support_evidence,
+    collect_resource_bound_support_evidence, collect_soak_support_evidence, collect_store_health,
     derive_full_sync_evidence, evidence::SupportEvidenceVerdict, redaction_summary, render,
     soak_outcome_label,
 };
@@ -405,6 +406,146 @@ fn phase75_soak_support_summary_excludes_raw_local_evidence() {
     }
 }
 
+#[test]
+fn support_recovery_evidence_json_projects_shared_status_evidence() {
+    // Arrange
+    let temp = TestDirectory::new("recovery-json");
+    let status = phase77_status_with_available_recovery();
+    let bundle = phase77_support_bundle_with_status(temp.path(), status);
+
+    // Act
+    let serialized = serde_json::to_value(&bundle).expect("support bundle json");
+
+    // Assert
+    assert_eq!(serialized["recovery_evidence"]["state"], json!("available"));
+    assert_eq!(
+        serialized["recovery_evidence"]["category"],
+        json!("storage_lock_contention")
+    );
+    assert_eq!(
+        serialized["recovery_evidence"]["cause"],
+        json!("stale_lock_evidence")
+    );
+    assert_eq!(
+        serialized["recovery_evidence"]["action_class"],
+        json!("read_only_inspection")
+    );
+    assert_eq!(
+        serialized["recovery_evidence"]["evidence_basis"],
+        json!(["lock_probe"])
+    );
+    assert_eq!(
+        serialized["recovery_evidence"]["next_action"],
+        json!("Inspect the datadir read-only and avoid deleting lock artifacts automatically.")
+    );
+    assert_eq!(
+        serialized["recovery_evidence"]["maybe_unavailable_reason"],
+        json!(null)
+    );
+    assert_eq!(
+        serialized["recovery_evidence"]["source"],
+        json!("status.recovery_evidence")
+    );
+}
+
+#[test]
+fn support_recovery_evidence_markdown_renders_operator_fields() {
+    // Arrange
+    let temp = TestDirectory::new("recovery-markdown");
+    let status = phase77_status_with_available_recovery();
+    let bundle = phase77_support_bundle_with_status(temp.path(), status);
+
+    // Act
+    let markdown = render::render_support_markdown(&bundle);
+
+    // Assert
+    for expected in [
+        "## Recovery Evidence",
+        "Category: storage_lock_contention",
+        "Cause: stale_lock_evidence",
+        "Action class: read_only_inspection",
+        "Next action: Inspect the datadir read-only and avoid deleting lock artifacts automatically.",
+    ] {
+        assert!(markdown.contains(expected), "missing {expected}");
+    }
+}
+
+#[test]
+fn support_recovery_evidence_collection_preserves_probe_only_store_health() {
+    // Arrange
+    let temp = TestDirectory::new("probe-only-store-health");
+    let metrics_dir = temp.path().join("metrics");
+    fs::create_dir_all(&metrics_dir).expect("metrics dir");
+    let resolution = OperatorConfigResolution {
+        maybe_data_dir: Some(temp.path().to_path_buf()),
+        maybe_metrics_store_path: Some(metrics_dir),
+        ..OperatorConfigResolution::default()
+    };
+
+    // Act
+    let health = collect_store_health(&resolution);
+
+    // Assert
+    assert_eq!(health.state, EvidenceState::Unavailable);
+    assert_eq!(
+        health.runtime_metadata.availability.reason,
+        Some(
+            "runtime metadata unavailable: probe-only support bundle does not open Fjall stores"
+                .to_string()
+        )
+    );
+    assert_eq!(
+        health.metrics_history.availability.reason,
+        Some(
+            "metrics history unavailable: probe-only support bundle does not open Fjall stores"
+                .to_string()
+        )
+    );
+}
+
+#[test]
+fn support_recovery_evidence_unavailable_status_preserves_reason() {
+    // Arrange
+    let temp = TestDirectory::new("recovery-unavailable");
+    let mut status = phase72_status();
+    status.recovery_evidence =
+        FieldAvailability::unavailable("status recovery evidence probe disabled");
+    let bundle = phase77_support_bundle_with_status(temp.path(), status);
+
+    // Act
+    let serialized = serde_json::to_value(&bundle).expect("support bundle json");
+    let markdown = render::render_support_markdown(&bundle);
+
+    // Assert
+    assert_eq!(
+        serialized["recovery_evidence"]["state"],
+        json!("unavailable")
+    );
+    assert_eq!(
+        serialized["recovery_evidence"]["maybe_unavailable_reason"],
+        json!("status recovery evidence probe disabled")
+    );
+    assert!(markdown.contains("Status: Unavailable: status recovery evidence probe disabled"));
+}
+
+#[test]
+fn support_recovery_evidence_full_sync_prefers_top_level_status_evidence() {
+    // Arrange
+    let status = phase77_status_with_available_recovery();
+
+    // Act
+    let evidence = derive_full_sync_evidence(&status, &missing_live_smoke());
+
+    // Assert
+    assert_eq!(evidence.recovery.state, EvidenceState::Available);
+    assert_eq!(
+        evidence.recovery.summary.as_deref(),
+        Some(
+            "category=storage_lock_contention cause=stale_lock_evidence action_class=read_only_inspection next_action=Inspect the datadir read-only and avoid deleting lock artifacts automatically."
+        )
+    );
+}
+
 fn phase72_status_missing_tip_match() -> OpenBitcoinStatusSnapshot {
     let mut status = phase72_status();
     status.sync.best_known_tip =
@@ -599,6 +740,45 @@ fn phase75_support_bundle_for_test(data_dir: &Path) -> SupportEvidenceBundle {
         full_sync_evidence,
         soak_evidence: collect_soak_support_evidence(&resolution),
         resource_bound_evidence: collect_resource_bound_support_evidence(&status, &output_dir),
+    }
+}
+
+fn phase77_support_bundle_with_status(
+    data_dir: &Path,
+    status: OpenBitcoinStatusSnapshot,
+) -> SupportEvidenceBundle {
+    let mut bundle = phase75_support_bundle_for_test(data_dir);
+    bundle.status = status;
+    bundle.full_sync_evidence = derive_full_sync_evidence(&bundle.status, &bundle.live_smoke);
+    bundle.resource_bound_evidence =
+        collect_resource_bound_support_evidence(&bundle.status, &data_dir.join("support"));
+    bundle
+}
+
+fn phase77_status_with_available_recovery() -> OpenBitcoinStatusSnapshot {
+    let mut status = phase72_status();
+    status.sync.recovery_category =
+        FieldAvailability::unavailable("legacy recovery category unavailable");
+    status.sync.recovery_action =
+        FieldAvailability::unavailable("legacy recovery action unavailable");
+    status.recovery_evidence = FieldAvailability::available(phase77_recovery_evidence());
+    status
+}
+
+fn phase77_recovery_evidence() -> RecoveryEvidenceSnapshot {
+    RecoveryEvidenceSnapshot {
+        category: SyncRecoveryCategory::StorageLockContention,
+        action_class: RecoveryActionClass::ReadOnlyInspection,
+        cause: RecoveryCause::StaleLockEvidence,
+        evidence_basis: vec![RecoveryEvidenceBasis::LockProbe],
+        maybe_affected_namespace: None,
+        maybe_affected_path: Some("/tmp/open-bitcoin/LOCK".to_string()),
+        next_action:
+            "Inspect the datadir read-only and avoid deleting lock artifacts automatically."
+                .to_string(),
+        compatibility_action: FieldAvailability::unavailable(
+            "no compatibility recovery action recorded",
+        ),
     }
 }
 
