@@ -6,8 +6,7 @@
 mod recovery;
 mod resource_bounds;
 
-use crate::recovery::RecoveryEvidenceSnapshot;
-use crate::{LogStatus, MetricsStatus};
+use crate::{LogStatus, MetricsStatus, recovery::RecoveryEvidenceSnapshot};
 use serde::{Deserialize, Serialize};
 
 pub use recovery::SyncRecoveryCategory;
@@ -160,19 +159,15 @@ pub struct ServiceStatus {
 fn service_lifecycle_unavailable() -> FieldAvailability<ServiceLifecycleStatus> {
     FieldAvailability::unavailable("service lifecycle unavailable")
 }
-
 fn service_file_path_unavailable() -> FieldAvailability<String> {
     FieldAvailability::unavailable("service file path unavailable")
 }
-
 fn service_log_path_unavailable() -> FieldAvailability<String> {
     FieldAvailability::unavailable("service log path unavailable")
 }
-
 fn service_diagnostics_unavailable() -> FieldAvailability<String> {
     FieldAvailability::unavailable("service diagnostics unavailable")
 }
-
 fn service_restart_resume_unavailable() -> FieldAvailability<ServiceRestartResumeStatus> {
     FieldAvailability::unavailable("service restart/resume evidence unavailable")
 }
