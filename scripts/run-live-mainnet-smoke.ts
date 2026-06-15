@@ -227,6 +227,31 @@ type RecoveryDiagnosis = {
   maybeStorageRecoveryAction: string | null;
 };
 
+type RecoveryEvidenceStatusJson = {
+  action_class?: string;
+  category?: string;
+  cause?: string;
+  compatibility_action?: FieldAvailability<string>;
+  evidence_basis?: unknown[];
+  maybe_affected_namespace?: string | null;
+  maybe_affected_path?: string | null;
+  next_action?: string;
+};
+
+type RecoveryEvidenceSummary = {
+  actionClass: string | null;
+  affectedNamespace: string | null;
+  affectedPath: string | null;
+  category: string | null;
+  cause: string | null;
+  compatibilityAction: string | null;
+  evidenceBasis: string[];
+  maybeUnavailableReason: string | null;
+  nextAction: string | null;
+  source: string;
+  state: string;
+};
+
 type ResourcePressureSummary = {
   blocksInFlight: number;
   maxHeaderRequestsInFlightPerPeer: number;
@@ -307,6 +332,7 @@ type FinalStatusSummary = {
   maybeReconcileProgressUnavailableReason: string | null;
   maybeRecoveryActionUnavailableReason: string | null;
   maybeRecoveryCategoryUnavailableReason: string | null;
+  maybeRecoveryEvidenceUnavailableReason: string | null;
   maybeResourcePressureUnavailableReason: string | null;
   maybeStayCurrentNextActionUnavailableReason: string | null;
   maybeStayCurrentUnavailableReason: string | null;
@@ -326,7 +352,11 @@ type FinalStatusSummary = {
   recentPeers: RuntimePeerTelemetry[];
   reconcileProgress: ObjectSummary | null;
   recoveryAction: string | null;
+  recoveryActionClass: string | null;
   recoveryCategory: RecoveryDiagnosisCategory | null;
+  recoveryCause: string | null;
+  recoveryEvidence: RecoveryEvidenceSummary | null;
+  recoveryNextAction: string | null;
   resourcePressure: ResourcePressureSummary | null;
   stayCurrent: string | null;
   stayCurrentNextAction: string | null;
@@ -396,6 +426,7 @@ type SyncControlStatusJson = {
 
 type RuntimeMetadataJson = {
   maybe_sync_state?: DurableSyncStateJson;
+  recovery_evidence?: FieldAvailability<RecoveryEvidenceStatusJson>;
   sync_control?: {
     paused?: boolean;
   };
@@ -1292,7 +1323,12 @@ function runtimeMetadataFromStatusResponse(
 ): RuntimeMetadataJson {
   const maybeMetadata = (decoded as SyncControlStatusJson).metadata;
   if (maybeMetadata !== undefined) {
-    return maybeMetadata;
+    return {
+      ...maybeMetadata,
+      recovery_evidence:
+        (decoded as RuntimeMetadataJson).recovery_evidence ??
+        maybeMetadata.recovery_evidence,
+    };
   }
 
   return decoded as RuntimeMetadataJson;
@@ -1523,6 +1559,41 @@ function reconcileProgressSummaryFromValue(value: unknown): ObjectSummary | null
   };
 }
 
+function recoveryEvidenceSummaryFromAvailability(
+  value: FieldAvailability<RecoveryEvidenceStatusJson> | undefined,
+): RecoveryEvidenceSummary | null {
+  const maybeEvidence = availableValue(value);
+  if (maybeEvidence === null) {
+    return null;
+  }
+  return {
+    actionClass: valueAsNullableString(maybeEvidence.action_class),
+    affectedNamespace: valueAsNullableString(maybeEvidence.maybe_affected_namespace),
+    affectedPath: valueAsNullableString(maybeEvidence.maybe_affected_path),
+    category: valueAsNullableString(maybeEvidence.category),
+    cause: valueAsNullableString(maybeEvidence.cause),
+    compatibilityAction: valueAsNullableString(
+      availableValue(maybeEvidence.compatibility_action),
+    ),
+    evidenceBasis: Array.isArray(maybeEvidence.evidence_basis)
+      ? maybeEvidence.evidence_basis.map((basis) => String(basis))
+      : [],
+    maybeUnavailableReason: null,
+    nextAction: valueAsNullableString(maybeEvidence.next_action),
+    source: "status.recovery_evidence",
+    state: "available",
+  };
+}
+
+function recoveryEvidenceUnavailableReason(
+  value: FieldAvailability<RecoveryEvidenceStatusJson> | undefined,
+): string | null {
+  if (value === undefined) {
+    return "recovery evidence unavailable";
+  }
+  return unavailableReasonFromFieldAvailability(value);
+}
+
 function peerContributionFromValues(
   attemptCounters: AttemptCountersSummary | null,
   maybePeerCounts: { outbound?: number } | null,
@@ -1633,6 +1704,12 @@ function finalStatusSummaryFromMetadata(metadata: RuntimeMetadataJson): FinalSta
   const attemptCounters = attemptCountersFromValue(
     availableValue(maybeSync?.attempt_counters),
   );
+  const recoveryEvidence = recoveryEvidenceSummaryFromAvailability(
+    metadata.recovery_evidence,
+  );
+  const maybeRecoveryEvidenceUnavailableReason = recoveryEvidenceUnavailableReason(
+    metadata.recovery_evidence,
+  );
   return {
     attemptCounters,
     bestKnownTip: bestKnownTipSummaryFromValue(
@@ -1739,9 +1816,14 @@ function finalStatusSummaryFromMetadata(metadata: RuntimeMetadataJson): FinalSta
       availableValue(maybeSync?.reconcile_progress),
     ),
     recoveryAction: valueAsNullableString(availableValue(maybeSync?.recovery_action)),
+    recoveryActionClass: recoveryEvidence?.actionClass ?? null,
     recoveryCategory: recoveryCategoryFromValue(
       availableValue(maybeSync?.recovery_category),
     ),
+    recoveryCause: recoveryEvidence?.cause ?? null,
+    recoveryEvidence,
+    recoveryNextAction: recoveryEvidence?.nextAction ?? null,
+    maybeRecoveryEvidenceUnavailableReason,
     resourcePressure: resourcePressureSummaryFromValue(
       availableValue(maybeSync?.resource_pressure),
     ),
@@ -2970,6 +3052,9 @@ ${daemonSessionRows}
 - Latest error: ${fieldText(report.final_status?.maybeLastError ?? null, report.final_status?.maybeLastErrorUnavailableReason ?? null)}
 - Recovery category: ${fieldText(report.final_status?.recoveryCategory ?? null, report.final_status?.maybeRecoveryCategoryUnavailableReason ?? null)}
 - Recovery action: ${fieldText(report.final_status?.recoveryAction ?? null, report.final_status?.maybeRecoveryActionUnavailableReason ?? null)}
+- Recovery action class: ${fieldText(report.final_status?.recoveryActionClass ?? null, report.final_status?.maybeRecoveryEvidenceUnavailableReason ?? null)}
+- Recovery cause: ${fieldText(report.final_status?.recoveryCause ?? null, report.final_status?.maybeRecoveryEvidenceUnavailableReason ?? null)}
+- Recovery next action: ${fieldText(report.final_status?.recoveryNextAction ?? null, report.final_status?.maybeRecoveryEvidenceUnavailableReason ?? null)}
 - Resource pressure: ${resourcePressureText(report.final_status?.resourcePressure ?? null, report.final_status?.maybeResourcePressureUnavailableReason ?? null)}
 - Peer health: ${peerHealthText(report.final_status?.outboundPeers ?? null, report.final_status?.maybePeerCountsUnavailableReason ?? null)}
 - Header height: ${fieldText(report.final_status?.headerHeight ?? null, report.final_status?.maybeSyncProgressUnavailableReason ?? null)}

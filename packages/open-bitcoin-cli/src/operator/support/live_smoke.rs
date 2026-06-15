@@ -33,6 +33,14 @@ const TOP_LEVEL_SUMMARY_KEYS: &[&str] = &[
     "poll_seconds",
     "generatedConfigPath",
     "generated_config_path",
+    "recoveryActionClass",
+    "recovery_action_class",
+    "recoveryCause",
+    "recovery_cause",
+    "recoveryNextAction",
+    "recovery_next_action",
+    "maybeRecoveryEvidenceUnavailableReason",
+    "maybe_recovery_evidence_unavailable_reason",
 ];
 const FIRST_HEADER_DIRECT_KEYS: &[&str] = &[
     "observedAtUnixSeconds",
@@ -97,8 +105,36 @@ const FINAL_STATUS_KEYS: &[&str] = &[
     "noProgressDiagnosis",
     "noProgressNextAction",
     "recoveryCategory",
+    "recoveryActionClass",
+    "recovery_action_class",
+    "recoveryCause",
+    "recovery_cause",
+    "recoveryNextAction",
+    "recovery_next_action",
+    "maybeRecoveryEvidenceUnavailableReason",
+    "maybe_recovery_evidence_unavailable_reason",
     "maybeLastError",
     "maybeLastSuccessfulProgressUnixSeconds",
+];
+const RECOVERY_EVIDENCE_KEYS: &[&str] = &[
+    "state",
+    "category",
+    "cause",
+    "action_class",
+    "actionClass",
+    "evidence_basis",
+    "evidenceBasis",
+    "affected_namespace",
+    "affectedNamespace",
+    "affected_path",
+    "affectedPath",
+    "next_action",
+    "nextAction",
+    "compatibility_action",
+    "compatibilityAction",
+    "maybe_unavailable_reason",
+    "maybeUnavailableReason",
+    "source",
 ];
 const BEST_KNOWN_TIP_KEYS: &[&str] = &[
     "source",
@@ -187,6 +223,14 @@ fn summary_from_schema_v2(object: &Map<String, Value>) -> Option<Value> {
 fn summary_from_top_level(object: &Map<String, Value>) -> Option<Value> {
     let mut summary = Map::new();
     copy_fields(&mut summary, object, TOP_LEVEL_SUMMARY_KEYS);
+    insert_summarized_field(
+        &mut summary,
+        "recoveryEvidence",
+        object
+            .get("recoveryEvidence")
+            .or_else(|| object.get("recovery_evidence")),
+        |value| summarize_object_fields(value, RECOVERY_EVIDENCE_KEYS),
+    );
     value_from_map(summary)
 }
 
@@ -311,6 +355,14 @@ fn summarize_final_status(value: &Value) -> Option<Value> {
         "peerContribution",
         object.get("peerContribution"),
         |value| summarize_object_fields(value, PEER_CONTRIBUTION_KEYS),
+    );
+    insert_summarized_field(
+        &mut summary,
+        "recoveryEvidence",
+        object
+            .get("recoveryEvidence")
+            .or_else(|| object.get("recovery_evidence")),
+        |value| summarize_object_fields(value, RECOVERY_EVIDENCE_KEYS),
     );
 
     value_from_map(summary)
