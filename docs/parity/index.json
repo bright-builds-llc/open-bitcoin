@@ -560,6 +560,10 @@
     {
       "name": "v1-6-full-sync-completion-release-boundaries",
       "status": "done"
+    },
+    {
+      "name": "phase75-multi-day-soak-runner-evidence-ledger",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -1089,6 +1093,41 @@
         "suspected_unknowns": [
           "Future production-node readiness, inbound serving, address relay, block serving, transaction relay, compact block relay, production-funds wallet safety, migration apply mode, signed packaging, Windows service support, GUI parity, hosted dashboards, public-network CI, or release-blocking live sync need separate scoped phases and fresh evidence roots."
         ]
+      },
+      {
+        "id": "phase75-multi-day-soak-runner-evidence-ledger",
+        "title": "Phase 75 Multi-Day Soak Runner And Evidence Ledger",
+        "status": "done",
+        "requirements": [
+          "SOAK-01",
+          "SOAK-02",
+          "SOAK-03",
+          "SOAK-04"
+        ],
+        "evidence": [
+          "docs/operator/runtime-guide.md",
+          "docs/architecture/status-snapshot.md",
+          "docs/architecture/operator-observability.md",
+          "docs/parity/index.json",
+          "docs/parity/checklist.md",
+          "docs/parity/README.md",
+          "docs/parity/catalog/p2p.md",
+          "docs/parity/catalog/chainstate.md",
+          "docs/parity/catalog/operator-runtime-release-hardening.md",
+          "README.md",
+          ".planning/phases/75-multi-day-soak-runner-and-evidence-ledger/75-01-SUMMARY.md",
+          ".planning/phases/75-multi-day-soak-runner-and-evidence-ledger/75-02-SUMMARY.md",
+          ".planning/phases/75-multi-day-soak-runner-and-evidence-ledger/75-03-SUMMARY.md",
+          ".planning/phases/75-multi-day-soak-runner-and-evidence-ledger/75-04-SUMMARY.md"
+        ],
+        "rationale": "Phase 75 makes the bounded opt-in full-sync soak workflow auditable through exact repo-local commands, a datadir-owned run index plus JSONL ledger, report/support projection semantics, deterministic synthetic coverage, and scoped README/parity wording.",
+        "known_gaps": [
+          "Public-network multi-day soak execution remains opt-in UAT outside bash scripts/verify.sh.",
+          "Phase 75 does not claim inbound serving, relay, production-funds wallet safety, migration apply mode, signed packages, GUI readiness, hosted dashboards, or broad production-node readiness."
+        ],
+        "suspected_unknowns": [
+          "Future scheduled public soak monitors and signed externally comparable soak result artifacts remain separate scoped work."
+        ]
       }
     ]
   },
@@ -1252,6 +1291,27 @@
         "scripts/check-v1.6-release-boundaries.ts",
         "scripts/verify.sh",
         ".planning/phases/73-opt-in-uat-and-deterministic-verification/73-VERIFICATION.md"
+      ]
+    },
+    "phase75_multi_day_soak_runner_evidence_ledger": {
+      "path": "checklist.md",
+      "status": "done",
+      "requirements": [
+        "SOAK-01",
+        "SOAK-02",
+        "SOAK-03",
+        "SOAK-04"
+      ],
+      "evidence": [
+        "docs/operator/runtime-guide.md",
+        "docs/architecture/status-snapshot.md",
+        "docs/architecture/operator-observability.md",
+        "docs/parity/checklist.md",
+        "docs/parity/README.md",
+        "docs/parity/catalog/p2p.md",
+        "docs/parity/catalog/chainstate.md",
+        "docs/parity/catalog/operator-runtime-release-hardening.md",
+        "README.md"
       ]
     },
     "security_analysis_audit": {

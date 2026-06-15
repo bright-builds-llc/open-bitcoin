@@ -278,6 +278,21 @@ equivalent unavailable-reason path instead of silently dropping unsupported
 facts. Support verdicts and live-smoke summaries must compare exposed values to
 the same snapshot values rather than treating field-name presence as proof.
 
+## Phase 75 soak ledger vocabulary
+
+Phase 75 soak evidence is a ledger/report layer over the shared status
+snapshot, not a replacement for sync status. The ledger event kinds are
+`started`, `checkpoint`, `resume`, `stop`, and `verdict`. Consumers may render
+them with local labels, but JSON and report contracts should preserve those
+machine names.
+
+The final soak outcome vocabulary is `clean_completion`, `diagnosed_blocker`,
+`operator_stop`, `resource_stop`, `recovery_stop`, and
+`unexpected_termination`. These outcomes summarize the soak run and may point
+to `latest_stop_reason`, `recovery_category`, `no_progress_diagnosis`,
+`resource_pressure`, and `evidence_verdict` as source evidence. They must not
+redefine or overload lower-level sync stop reasons or recovery categories.
+
 Phase 71 binds this status contract to deterministic restart/resume evidence:
 `phase71_same_datadir_resume_matrix_covers_clean_unclean_mid_download_mid_connect_and_stale_inflight`
 covers clean shutdown, unclean shutdown, mid-download interruption,

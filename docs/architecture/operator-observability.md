@@ -76,6 +76,21 @@ persisted report contract.
 
 The retry-state bound is: peer retry state is keyed by resolved endpoint and bounded by candidate peers/outbound target per cycle. The storage-write bound is: durable storage writes are synchronous adapter calls with no queued write backlog. Phase 71 keeps `SyncResourcePressure`, `SyncRecoveryCategory::ResourceExhaustion`, and `StorageRecoveryAction::FreeDisk` in this same compact vocabulary so support evidence can explain storage pressure without expanding into raw logs, peer tables, or report archives.
 
+## Phase 75 soak evidence ledger
+
+The durable source of truth is <datadir>/soak/run-index.json plus <datadir>/soak/runs/<run_id>/events.jsonl.
+Reports, support summaries, and operator output are projections from that
+datadir-owned run index and append-only event ledger. They should name source
+paths and latest sequence numbers when available rather than becoming a second
+state store.
+
+The soak ledger event kinds are `started`, `checkpoint`, `resume`, `stop`, and
+`verdict`. Final outcomes are `clean_completion`, `diagnosed_blocker`,
+`operator_stop`, `resource_stop`, `recovery_stop`, and
+`unexpected_termination`. Observability surfaces should render these as soak
+outcomes only; detailed sync stop, recovery, resource, and no-progress evidence
+continues to come from the shared status snapshot.
+
 ## Phase Boundaries
 
 Phase 13 defines serializable contracts only. It must not install a tracing subscriber, create a file appender, write metric samples, prune log files, or render dashboard graphs. Runtime writers and readers are Phase 16 responsibilities.

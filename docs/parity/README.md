@@ -43,6 +43,14 @@ live-smoke reports, deterministic checkers, and source breadcrumbs local and
 auditable without claiming public-network CI, release-blocking live sync, or
 production-node readiness.
 
+Phase 75 multi-day soak evidence is rooted in the
+`phase75-multi-day-soak-runner-evidence-ledger` surface. The root links
+[`catalog/p2p.md`](catalog/p2p.md), [`catalog/chainstate.md`](catalog/chainstate.md),
+[`catalog/operator-runtime-release-hardening.md`](catalog/operator-runtime-release-hardening.md),
+[`checklist.md`](checklist.md), the runtime guide, and the status/observability
+contracts so bounded opt-in soak commands, durable ledger semantics, support
+projections, and non-claim boundaries stay auditable.
+
 Deferred and suspected follow-up work remains visible in
 [`deviations-and-unknowns.md`](deviations-and-unknowns.md).
 

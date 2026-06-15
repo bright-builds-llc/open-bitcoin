@@ -1089,6 +1089,46 @@ mode, signed packaging, Windows service support, GUI parity, hosted dashboards,
 public-network CI, release-blocking live sync, or broad production-node
 readiness.
 
+### Phase 75 multi-day soak runner
+
+Phase 75 adds a bounded, explicit opt-in `open-bitcoin soak` workflow for
+multi-day full-sync review. It records durable run identity and report state in
+the selected Open Bitcoin datadir while keeping public-network and wall-clock
+multi-day execution outside `bash scripts/verify.sh`.
+
+Use these repo-local command forms to start a three-day elapsed-time soak:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir /path/to/open-bitcoin --network mainnet soak start --elapsed-time-seconds 259200 --checkpoint-interval-seconds 300 --target-height <target-height> --peer-policy daemon-configured --disk-budget-bytes 107374182400 --stop-condition elapsed-time
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir /path/to/open-bitcoin --network mainnet soak start --elapsed-time-seconds 259200 --checkpoint-interval-seconds 300 --target-height <target-height> --peer-policy daemon-configured --disk-budget-bytes 107374182400 --stop-condition elapsed-time
+```
+
+Use the same selected datadir and network when resuming, stopping, or
+projecting reports for a run:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir /path/to/open-bitcoin --network mainnet soak resume --run-id <run-id> --checkpoint-interval-seconds 300
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir /path/to/open-bitcoin --network mainnet soak resume --run-id <run-id> --checkpoint-interval-seconds 300
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir /path/to/open-bitcoin --network mainnet soak stop --run-id <run-id> --reason operator-stop
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir /path/to/open-bitcoin --network mainnet soak stop --run-id <run-id> --reason operator-stop
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir /path/to/open-bitcoin --network mainnet soak report --run-id <run-id>
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir /path/to/open-bitcoin --network mainnet soak report --run-id <run-id>
+```
+
+The durable source of truth is <datadir>/soak/run-index.json plus <datadir>/soak/runs/<run_id>/events.jsonl.
+JSON and Markdown reports, operator output, and support-bundle summaries are
+projections from those files. Treat moved or stale reports as review artifacts,
+not as current durable state.
+
+The soak ledger records `started`, `checkpoint`, `resume`, `stop`, and
+`verdict` events. Final outcomes are `clean_completion`,
+`diagnosed_blocker`, `operator_stop`, `resource_stop`, `recovery_stop`, and
+`unexpected_termination`. These labels belong to the soak evidence layer; they
+wrap lower-level sync status, recovery, no-progress, support-verdict, and
+process facts without redefining lower-level sync stop or recovery labels.
+
+A soak run can prove bounded opt-in full-sync soak behavior, durable resume evidence, or diagnosed blocker evidence; it does not prove inbound serving, relay, production-funds wallet safety, migration apply mode, signed packages, GUI readiness, hosted dashboards, or broad production-node readiness.
+
 ## v1.4 operator evidence closeout
 
 Run the deterministic repo checks from the repo root before interpreting any

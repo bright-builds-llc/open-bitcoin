@@ -110,6 +110,20 @@ public-network CI, release-blocking live sync, or broad production-node
 readiness. Public-network evidence remains opt-in UAT outside
 `bash scripts/verify.sh`.
 
+## Phase 75 soak ledger and chainstate evidence
+
+The `phase75-multi-day-soak-runner-evidence-ledger` surface uses shared
+chainstate status evidence when a soak checkpoint or verdict references
+validated active-chain progress. Reviewers should continue to distinguish
+validated active-chain height, hash, and work from downloaded-only block bodies
+or elapsed runtime.
+
+Phase 75 does not add block serving, transaction relay, compact block relay,
+production-funds wallet safety, migration apply mode, signed packages, GUI
+readiness, hosted dashboards, public-network CI, release-blocking live sync, or
+broad production-node readiness. The soak ledger is evidence over existing
+sync and chainstate facts, not a new chainstate-manager claim.
+
 ## First-party implementation
 
 - [`packages/open-bitcoin-chainstate/src/engine.rs`](../../../packages/open-bitcoin-chainstate/src/engine.rs)

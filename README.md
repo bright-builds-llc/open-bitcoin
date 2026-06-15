@@ -118,6 +118,10 @@ which writes local JSON and Markdown reports under
 `packages/target/live-mainnet-smoke-reports` without changing the default
 hermetic verification contract.
 
+For the active v1.7 soak work, `open-bitcoin soak` is documented as a scoped
+operator surface in
+[`docs/operator/runtime-guide.md`](./docs/operator/runtime-guide.md). A soak run can prove bounded opt-in full-sync soak behavior, durable resume evidence, or diagnosed blocker evidence; it does not prove inbound serving, relay, production-funds wallet safety, migration apply mode, signed packages, GUI readiness, hosted dashboards, or broad production-node readiness.
+
 The current release boundary is rooted in
 [`docs/parity/threat-model-v1.6.md`](./docs/parity/threat-model-v1.6.md),
 [`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md), and

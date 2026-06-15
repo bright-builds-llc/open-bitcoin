@@ -58,6 +58,11 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
   without claiming inbound serving, address relay, block serving, transaction
   relay, compact block relay, public-network CI, release-blocking live sync, or
   broad production-node readiness
+- Phase 75 `phase75-multi-day-soak-runner-evidence-ledger` evidence keeps
+  bounded opt-in full-sync soak commands, same-datadir resume records, typed
+  final outcomes, and deterministic synthetic replay auditable without
+  claiming inbound serving, relay, public-network CI, or broad production-node
+  readiness
 - Phase 70 no-credit peer responses retain typed attribution, release stale
   in-flight block work, and rotate through endpoint-keyed backoff without
   claiming peer banning, inbound reputation, address-manager governance, or
@@ -262,6 +267,20 @@ relay, compact block relay, public-network CI, release-blocking live sync, or
 broad production-node readiness claim. Public-network full-sync, manual-peer,
 restart-after-progress, and real service-manager checks remain explicit
 operator UAT outside `bash scripts/verify.sh`.
+
+## Phase 75 multi-day soak runner evidence ledger
+
+The `phase75-multi-day-soak-runner-evidence-ledger` surface is scoped to
+operator-controlled outbound full-sync soak evidence. It records started,
+checkpoint, resume, stop, and verdict events for the selected datadir and
+projects JSON/Markdown reports from that ledger.
+
+This evidence may show bounded opt-in soak behavior, durable resume evidence,
+or a diagnosed blocker. It does not add inbound serving, address relay, block
+serving, transaction relay, compact block relay, production-funds wallet
+safety, migration apply mode, signed packages, GUI readiness, hosted
+dashboards, public-network CI, release-blocking live sync, or broad
+production-node readiness.
 
 ## First-party implementation
 
