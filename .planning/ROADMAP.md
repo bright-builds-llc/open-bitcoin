@@ -93,7 +93,7 @@ Plans:
 
 Plans:
 - [x] 77-01-PLAN.md — Shared recovery evidence contracts and pure classifier.
-- [ ] 77-02-PLAN.md — Probe-only Fjall lock evidence and storage recovery fixtures.
+- [x] 77-02-PLAN.md — Probe-only Fjall lock evidence and storage recovery fixtures.
 - [ ] 77-03-PLAN.md — Non-mutating operator status recovery evidence.
 - [ ] 77-04-PLAN.md — Support and dashboard recovery evidence projection.
 - [ ] 77-05-PLAN.md — Soak checkpoint and report recovery evidence.
@@ -153,7 +153,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 75. Multi-Day Soak Runner and Evidence Ledger | 6/6 | Complete    | 2026-06-15 |
 | 76. Disk and Resource Bound Enforcement | 6/6 | Complete | 2026-06-15 |
-| 77. Corruption and Lock Recovery Hardening | 1/7 | In Progress|  |
+| 77. Corruption and Lock Recovery Hardening | 2/7 | In Progress|  |
 | 78. Progress Guarantees and Stall Diagnosis | 0/0 | Pending | - |
 | 79. Diagnostics and Support Bundle Forensics | 0/0 | Pending | - |
 | 80. Opt-In Soak UAT and Release Boundaries | 0/0 | Pending | - |
