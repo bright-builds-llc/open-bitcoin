@@ -55,9 +55,13 @@ pub(super) fn evaluate_stop_outcome(
                     return Some(outcome);
                 }
             }
-            SoakStopCondition::OperatorStop
-            | SoakStopCondition::ElapsedTime
-            | SoakStopCondition::TargetHeight => {}
+            SoakStopCondition::OperatorStop => {
+                let outcome = outcome_for_snapshot(snapshot);
+                if matches!(outcome, SoakOutcomeLabel::OperatorStop) {
+                    return Some(outcome);
+                }
+            }
+            SoakStopCondition::ElapsedTime | SoakStopCondition::TargetHeight => {}
         }
     }
 

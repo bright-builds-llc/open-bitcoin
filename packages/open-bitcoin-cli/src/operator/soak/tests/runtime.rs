@@ -13,7 +13,7 @@ use open_bitcoin_node::{
         BestKnownTipSource, BestKnownTipStatus, BuildProvenance, ConfigStatus, FieldAvailability,
         MempoolStatus, NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot, PeerStatus,
         StayCurrentStatus, SyncProgress, SyncRecoveryCategory, SyncReorgEvidence, SyncStatus,
-        TipFreshnessStatus, WalletStatus,
+        SyncStopReasonStatus, TipFreshnessStatus, WalletStatus,
     },
 };
 
@@ -171,6 +171,13 @@ fn soak_runtime_target_height_resource_recovery_and_status_verdict_stop_conditio
             recovery_status_snapshot(temp.path()),
             None,
             SoakOutcomeLabel::RecoveryStop,
+        ),
+        (
+            "operator",
+            vec![SoakStopCondition::OperatorStop],
+            operator_stop_status_snapshot(temp.path()),
+            None,
+            SoakOutcomeLabel::OperatorStop,
         ),
         (
             "verdict",
@@ -537,6 +544,15 @@ fn recovery_status_snapshot(datadir: &Path) -> OpenBitcoinStatusSnapshot {
     let mut snapshot = base_status_snapshot(datadir);
     snapshot.sync.recovery_category =
         FieldAvailability::available(SyncRecoveryCategory::StoreCorruption);
+    snapshot
+}
+
+fn operator_stop_status_snapshot(datadir: &Path) -> OpenBitcoinStatusSnapshot {
+    let mut snapshot = base_status_snapshot(datadir);
+    snapshot.sync.latest_stop_reason = FieldAvailability::available(SyncStopReasonStatus {
+        label: "operator_stop".to_string(),
+        message: "operator requested stop".to_string(),
+    });
     snapshot
 }
 
