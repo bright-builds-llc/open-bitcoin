@@ -289,6 +289,9 @@ fn soak_ledger_append_rejects_oversized_events() {
         maybe_lifecycle: Some("active".to_string()),
         maybe_latest_stop_reason_label: None,
         maybe_recovery_category_label: None,
+        maybe_recovery_action_class_label: None,
+        maybe_recovery_cause_label: None,
+        maybe_recovery_next_action: None,
         maybe_no_progress_diagnosis_label: None,
         maybe_resource_bound_state_label: None,
         resource_bound_labels: Vec::new(),
@@ -713,11 +716,27 @@ fn soak_bounds_serializes_peer_policy_and_stop_conditions() {
 #[test]
 fn soak_outcome_classifies_recovery_and_resource_evidence() {
     // Arrange
-    let recovery_categories = [
-        SyncRecoveryCategory::StorageLockContention,
-        SyncRecoveryCategory::IncompatibleSchema,
-        SyncRecoveryCategory::StoreCorruption,
-        SyncRecoveryCategory::StorageBackendFailure,
+    let category_expectations = [
+        (
+            SyncRecoveryCategory::StorageLockContention, // StorageLockContention -> RecoveryStop
+            SoakOutcomeLabel::RecoveryStop,
+        ),
+        (
+            SyncRecoveryCategory::IncompatibleSchema,
+            SoakOutcomeLabel::RecoveryStop,
+        ),
+        (
+            SyncRecoveryCategory::StoreCorruption,
+            SoakOutcomeLabel::RecoveryStop,
+        ),
+        (
+            SyncRecoveryCategory::StorageBackendFailure, // StorageBackendFailure -> RecoveryStop
+            SoakOutcomeLabel::RecoveryStop,
+        ),
+        (
+            SyncRecoveryCategory::ResourceExhaustion, // ResourceExhaustion -> ResourceStop
+            SoakOutcomeLabel::ResourceStop,
+        ),
     ];
     let resource_diagnosis = SoakOutcomeEvidence {
         maybe_no_progress_diagnosis: Some(NoProgressDiagnosis::StorageOrResourceBlocked),
@@ -725,23 +744,16 @@ fn soak_outcome_classifies_recovery_and_resource_evidence() {
     };
 
     // Act / Assert
-    for recovery_category in recovery_categories {
+    for (recovery_category, expected_outcome) in category_expectations {
         assert_eq!(
             classify_soak_outcome(&SoakOutcomeEvidence {
                 maybe_recovery_category: Some(recovery_category),
                 ..SoakOutcomeEvidence::empty()
             }),
-            SoakOutcomeLabel::RecoveryStop,
-            "{recovery_category:?} must preserve the Phase 75 RecoveryStop outcome"
+            expected_outcome,
+            "{recovery_category:?} must preserve the Phase 75 {expected_outcome:?} outcome"
         );
     }
-    assert_eq!(
-        classify_soak_outcome(&SoakOutcomeEvidence {
-            maybe_recovery_category: Some(SyncRecoveryCategory::ResourceExhaustion),
-            ..SoakOutcomeEvidence::empty()
-        }),
-        SoakOutcomeLabel::ResourceStop
-    );
     assert_eq!(
         classify_soak_outcome(&resource_diagnosis),
         SoakOutcomeLabel::ResourceStop
@@ -847,6 +859,9 @@ fn checkpoint_status() -> SoakCheckpointStatus {
         maybe_lifecycle: Some("active".to_string()),
         maybe_latest_stop_reason_label: Some("target_height".to_string()),
         maybe_recovery_category_label: None,
+        maybe_recovery_action_class_label: None,
+        maybe_recovery_cause_label: None,
+        maybe_recovery_next_action: None,
         maybe_no_progress_diagnosis_label: None,
         maybe_resource_bound_state_label: Some("normal".to_string()),
         resource_bound_labels: vec!["all_required_bounds=normal".to_string()],

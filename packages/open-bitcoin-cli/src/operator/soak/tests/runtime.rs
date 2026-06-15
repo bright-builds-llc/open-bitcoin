@@ -369,7 +369,9 @@ fn soak_recovery_evidence_checkpoint_available_top_level_evidence_records_labels
     );
     assert_eq!(
         checkpoint.maybe_recovery_next_action.as_deref(),
-        Some("Back up the selected datadir, then rebuild affected storage before normal operation.")
+        Some(
+            "Back up the selected datadir, then rebuild affected storage before normal operation."
+        )
     );
 }
 
@@ -1086,6 +1088,9 @@ fn checkpoint_status(height: u64) -> SoakCheckpointStatus {
         maybe_lifecycle: Some("active".to_string()),
         maybe_latest_stop_reason_label: None,
         maybe_recovery_category_label: None,
+        maybe_recovery_action_class_label: None,
+        maybe_recovery_cause_label: None,
+        maybe_recovery_next_action: None,
         maybe_no_progress_diagnosis_label: None,
         maybe_resource_bound_state_label: Some("normal".to_string()),
         resource_bound_labels: vec!["all_required_bounds=normal".to_string()],
@@ -1185,10 +1190,7 @@ fn phase77_recovery_status_snapshot(datadir: &Path) -> OpenBitcoinStatusSnapshot
     snapshot
 }
 
-fn latest_checkpoint_status(
-    layout: &SoakLedgerLayout,
-    run_id: &SoakRunId,
-) -> SoakCheckpointStatus {
+fn latest_checkpoint_status(layout: &SoakLedgerLayout, run_id: &SoakRunId) -> SoakCheckpointStatus {
     let events = SoakLedger::read_events(&layout.paths_for_run(run_id).events_path)
         .expect("read soak ledger")
         .events;

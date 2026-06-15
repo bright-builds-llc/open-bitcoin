@@ -92,9 +92,10 @@ fn outcome_for_snapshot(snapshot: &OpenBitcoinStatusSnapshot) -> SoakOutcomeLabe
         return SoakOutcomeLabel::ResourceStop;
     }
 
+    let maybe_recovery_category = snapshot_recovery_category(snapshot);
     classify_soak_outcome(&SoakOutcomeEvidence {
         maybe_sync_stop_reason: maybe_available(&snapshot.sync.latest_stop_reason),
-        maybe_recovery_category: maybe_available(&snapshot.sync.recovery_category),
+        maybe_recovery_category,
         maybe_no_progress_diagnosis: maybe_available(&snapshot.sync.no_progress_diagnosis),
         maybe_full_sync_evidence: Some(derive_full_sync_evidence(
             snapshot,
@@ -107,13 +108,27 @@ fn outcome_for_snapshot(snapshot: &OpenBitcoinStatusSnapshot) -> SoakOutcomeLabe
 pub(super) fn checkpoint_status_from_snapshot(
     snapshot: &OpenBitcoinStatusSnapshot,
 ) -> SoakCheckpointStatus {
+    let maybe_recovery_evidence = match &snapshot.recovery_evidence {
+        FieldAvailability::Available(evidence) => Some(evidence),
+        FieldAvailability::Unavailable { .. } => None,
+    };
     SoakCheckpointStatus {
         maybe_network: maybe_available(&snapshot.sync.network),
         maybe_lifecycle: maybe_available(&snapshot.sync.lifecycle).map(|value| serde_label(&value)),
         maybe_latest_stop_reason_label: maybe_available(&snapshot.sync.latest_stop_reason)
             .map(|value| value.label),
-        maybe_recovery_category_label: maybe_available(&snapshot.sync.recovery_category)
-            .map(|value| value.as_str().to_string()),
+        maybe_recovery_category_label: maybe_recovery_evidence
+            .map(|evidence| evidence.category.as_str().to_string())
+            .or_else(|| {
+                maybe_available(&snapshot.sync.recovery_category)
+                    .map(|value| value.as_str().to_string())
+            }),
+        maybe_recovery_action_class_label: maybe_recovery_evidence
+            .map(|evidence| serde_label(&evidence.action_class)),
+        maybe_recovery_cause_label: maybe_recovery_evidence
+            .map(|evidence| serde_label(&evidence.cause)),
+        maybe_recovery_next_action: maybe_recovery_evidence
+            .map(|evidence| evidence.next_action.clone()),
         maybe_no_progress_diagnosis_label: maybe_available(&snapshot.sync.no_progress_diagnosis)
             .map(|value| serde_label(&value)),
         maybe_resource_bound_state_label: resource_bound_state_label(snapshot),
@@ -129,6 +144,15 @@ pub(super) fn checkpoint_status_from_snapshot(
             .clone()
             .available()
             .map(|path| PathBuf::from(path).join("status-snapshot.json")),
+    }
+}
+
+fn snapshot_recovery_category(
+    snapshot: &OpenBitcoinStatusSnapshot,
+) -> Option<open_bitcoin_node::status::SyncRecoveryCategory> {
+    match &snapshot.recovery_evidence {
+        FieldAvailability::Available(evidence) => Some(evidence.category),
+        FieldAvailability::Unavailable { .. } => maybe_available(&snapshot.sync.recovery_category),
     }
 }
 
