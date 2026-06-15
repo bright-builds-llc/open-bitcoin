@@ -4,7 +4,7 @@
 //! Pure dashboard projection model built from the shared status snapshot.
 
 use open_bitcoin_node::{
-    MetricKind, MetricSample,
+    MetricKind, MetricSample, RecoveryEvidenceSnapshot,
     metrics::MetricsAvailability,
     status::{
         FieldAvailability, HealthSignal, HealthSignalLevel, NodeRuntimeState,
@@ -166,6 +166,10 @@ fn dashboard_sections(snapshot: &OpenBitcoinStatusSnapshot) -> Vec<DashboardSect
                 row(
                     "Recovery",
                     string_availability(&snapshot.sync.recovery_action),
+                ),
+                row(
+                    "Recovery evidence",
+                    recovery_evidence(&snapshot.recovery_evidence),
                 ),
                 row("Pressure", sync_pressure(&snapshot.sync.resource_pressure)),
                 row(
@@ -344,6 +348,19 @@ fn sync_pressure(value: &FieldAvailability<SyncResourcePressure>) -> String {
 fn sync_recovery_category(value: &FieldAvailability<SyncRecoveryCategory>) -> String {
     match value {
         FieldAvailability::Available(value) => value.as_str().to_string(),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
+fn recovery_evidence(value: &FieldAvailability<RecoveryEvidenceSnapshot>) -> String {
+    match value {
+        FieldAvailability::Available(value) => format!(
+            "category={} cause={} action_class={} next_action={}",
+            value.category.as_str(),
+            serialized_label(&value.cause),
+            serialized_label(&value.action_class),
+            value.next_action
+        ),
         FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
     }
 }
@@ -624,4 +641,14 @@ fn sync_progress_signal_name(signal: SyncProgressSignal) -> &'static str {
         SyncProgressSignal::AwaitingBlocks => "awaiting_blocks",
         SyncProgressSignal::Steady => "steady",
     }
+}
+
+fn serialized_label<T>(value: &T) -> String
+where
+    T: serde::Serialize,
+{
+    serde_json::to_value(value)
+        .ok()
+        .and_then(|value| value.as_str().map(str::to_string))
+        .unwrap_or_else(|| "unknown".to_string())
 }

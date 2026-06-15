@@ -135,6 +135,7 @@ fn dashboard_sections_surface_sync_progress_and_peer_counts() {
             "Last error",
             "Recovery category",
             "Recovery",
+            "Recovery evidence",
             "Pressure",
             "Resource bounds",
             "Latest reorg",
