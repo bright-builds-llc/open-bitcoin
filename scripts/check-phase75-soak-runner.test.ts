@@ -35,6 +35,20 @@ const RUNTIME_GUIDE_COMMANDS = [
 ] as const;
 const SOURCE_ANCHORS: Record<string, readonly string[]> = {
   "packages/open-bitcoin-cli/src/operator/soak.rs": [
+    "pub(crate) mod runtime;",
+    "SoakRunId",
+    "SoakBounds",
+    "daemon_configured",
+    "manual_peers_only",
+    "no_dns_seeds",
+    "elapsed_time",
+    "target_height",
+    "status_verdict",
+    "operator_stop",
+    "resource_stop",
+    "recovery_stop",
+  ],
+  "packages/open-bitcoin-cli/src/operator/soak/runtime.rs": [
     "run_bounded_soak_loop",
     "checkpoint_interval_seconds",
     "D-11 same-run resume matrix",
@@ -52,6 +66,13 @@ const SOURCE_ANCHORS: Record<string, readonly string[]> = {
     "markdown_report_path",
     "latest_sequence",
     "final_outcome",
+  ],
+  "packages/open-bitcoin-cli/src/operator/soak/runtime/helpers.rs": [
+    "evaluate_stop_outcome",
+    "checkpoint_status_from_snapshot",
+    "SoakOutcomeLabel::ResourceStop",
+    "SoakOutcomeLabel::RecoveryStop",
+    "SoakOutcomeLabel::UnexpectedTermination",
   ],
   "packages/open-bitcoin-cli/src/operator/soak/ledger.rs": [
     "run-index.json",
@@ -141,6 +162,13 @@ const SOURCE_ANCHORS: Record<string, readonly string[]> = {
     "open_bitcoin_soak_report_is_projection_without_ledger_append",
     "open_bitcoin_soak_resume_refuses_clean_completion",
     "open_bitcoin_support_bundle_includes_phase75_soak_summary",
+    "unexpected_termination",
+    "raw ledger",
+    "raw daemon logs",
+    "raw reports",
+    "wallet material",
+    "RPC credentials",
+    "unbounded peer tables",
   ],
 };
 const DOC_ANCHORS: Record<string, readonly string[]> = {
@@ -172,8 +200,20 @@ const DOC_ANCHORS: Record<string, readonly string[]> = {
     "recovery_stop",
     "unexpected_termination",
   ],
-  "docs/parity/index.json": ["phase75-multi-day-soak-runner-evidence-ledger"],
-  "docs/parity/checklist.md": ["phase75-multi-day-soak-runner-evidence-ledger"],
+  "docs/parity/index.json": [
+    "phase75-multi-day-soak-runner-evidence-ledger",
+    "SOAK-01",
+    "SOAK-02",
+    "SOAK-03",
+    "SOAK-04",
+  ],
+  "docs/parity/checklist.md": [
+    "phase75-multi-day-soak-runner-evidence-ledger",
+    "SOAK-01",
+    "SOAK-02",
+    "SOAK-03",
+    "SOAK-04",
+  ],
   "docs/parity/README.md": ["phase75-multi-day-soak-runner-evidence-ledger"],
   "docs/parity/catalog/p2p.md": ["phase75-multi-day-soak-runner-evidence-ledger"],
   "docs/parity/catalog/chainstate.md": ["phase75-multi-day-soak-runner-evidence-ledger"],
@@ -268,7 +308,7 @@ test("fails when source anchors omit ledger event kinds or D-11 resume matrix an
   // Arrange
   const root = await createFixture({
     maybeSourceOmission: {
-      file: "packages/open-bitcoin-cli/src/operator/soak.rs",
+      file: "packages/open-bitcoin-cli/src/operator/soak/runtime.rs",
       needle: "D-11 same-run resume matrix",
     },
   });

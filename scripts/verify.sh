@@ -130,6 +130,8 @@ bun run scripts/check-phase72-observability-evidence.ts
 bun test scripts/check-phase73-uat-verification.test.ts
 env -u OPEN_BITCOIN_PHASE73_REPO_ROOT bun run scripts/check-phase73-uat-verification.ts
 bun run scripts/check-v1.6-release-boundaries.ts
+bun test scripts/check-phase75-soak-runner.test.ts
+bun run scripts/check-phase75-soak-runner.ts
 bash scripts/check-pure-core-deps.sh
 bash scripts/check-file-lengths.sh
 bash scripts/check-panic-sites.sh

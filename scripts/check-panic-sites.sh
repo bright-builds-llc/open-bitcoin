@@ -31,7 +31,7 @@ is_allowed() {
 }
 
 while IFS= read -r file_path; do
-  [[ "$file_path" == */tests.rs ]] && continue
+  [[ "$file_path" == */tests.rs || "$file_path" == */tests/* ]] && continue
   awk -v file_path="$file_path" '
     /^[[:space:]]*#\[cfg\(test\)\]/ { exit }
     /^[[:space:]]*\/\// { next }

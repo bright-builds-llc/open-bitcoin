@@ -166,7 +166,6 @@ pub fn execute_operator_cli_with_default_data_dir(
         Err(error) => OperatorCommandOutcome::failure(error.to_string()),
     }
 }
-
 fn execute_operator_cli_inner(
     cli: OperatorCli,
     default_data_dir: PathBuf,
@@ -584,7 +583,6 @@ pub(crate) fn authorization_header(auth: &RpcAuthConfig) -> Result<String, Opera
     };
     Ok(format!("Basic {}", base64_encode(credentials.as_bytes())))
 }
-
 pub(crate) fn resolve_service_daemon_binary(operator_binary_path: &Path) -> PathBuf {
     if let Some(parent) = operator_binary_path.parent() {
         let sibling = parent.join("open-bitcoind");
@@ -595,7 +593,6 @@ pub(crate) fn resolve_service_daemon_binary(operator_binary_path: &Path) -> Path
 
     PathBuf::from("open-bitcoind")
 }
-
 fn base64_encode(bytes: &[u8]) -> String {
     const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut output = String::with_capacity(bytes.len().div_ceil(3) * 4);
@@ -619,7 +616,6 @@ fn base64_encode(bytes: &[u8]) -> String {
     }
     output
 }
-
 fn default_operator_data_dir() -> PathBuf {
     if let Some(path) = env::var_os(OPEN_BITCOIN_DATADIR_ENV) {
         return PathBuf::from(path);
