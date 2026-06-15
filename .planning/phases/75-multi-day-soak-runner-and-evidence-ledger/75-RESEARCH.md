@@ -446,22 +446,19 @@ This example reflects the required evidence sources listed in D-10 and existing 
 | A5 | Use existing dependencies without adding a new direct dependency for run IDs. | Standard Stack | Low: if stronger globally unique IDs are required, the planner may add a direct dependency with explicit justification. |
 | A6 | Add a focused Bun checker only if docs/report/parity/default-verification boundaries need machine enforcement. | Summary | Low: Rust tests may cover enough if docs and verify boundaries are simple. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Exact CLI shape**
-   - What we know: `open-bitcoin soak` is locked as the operator-facing entrypoint. [VERIFIED: .planning/phases/75-multi-day-soak-runner-and-evidence-ledger/75-CONTEXT.md]
-   - What's unclear: The context does not lock whether the command is direct flags, `start/resume/report`, or another subcommand layout. [VERIFIED: .planning/phases/75-multi-day-soak-runner-and-evidence-ledger/75-CONTEXT.md]
-   - Recommendation: Plan `open-bitcoin soak start`, `open-bitcoin soak resume --run-id <id>`, and `open-bitcoin soak report --run-id <id>` unless user feedback changes the UX. [ASSUMED]
+   - Resolved decision: Plan `open-bitcoin soak start`, `open-bitcoin soak resume --run-id <id>`, `open-bitcoin soak stop --run-id <id> --reason operator-stop`, and `open-bitcoin soak report --run-id <id>` as the Phase 75 operator contract. [VERIFIED: .planning/phases/75-multi-day-soak-runner-and-evidence-ledger/75-CONTEXT.md; VERIFIED: .planning/phases/75-multi-day-soak-runner-and-evidence-ledger/75-02-PLAN.md]
+   - Traceability: This implements D-01 through D-04 while keeping daemon-owned sync bounds authoritative and retaining `scripts/run-live-mainnet-smoke.ts` as a helper/fixture surface only. [VERIFIED: .planning/phases/75-multi-day-soak-runner-and-evidence-ledger/75-CONTEXT.md]
 
 2. **Run ID generation**
-   - What we know: Durable run identity is required and dependencies should stay minimal. [VERIFIED: .planning/REQUIREMENTS.md; VERIFIED: AGENTS.md]
-   - What's unclear: The context does not specify whether run IDs must be UUIDs, timestamp-derived IDs, or operator-supplied names. [VERIFIED: .planning/phases/75-multi-day-soak-runner-and-evidence-ledger/75-CONTEXT.md]
-   - Recommendation: Use a human-readable, collision-checked ID generated under the datadir index unless a planner task justifies a new direct dependency. [ASSUMED]
+   - Resolved decision: Use a human-readable, collision-checked run ID generated from the datadir-owned index as `soak-<unix_seconds>-<four_digit_sequence>` when the operator does not provide `--run-id`; do not add a new direct dependency for run IDs in Phase 75. [VERIFIED: .planning/phases/75-multi-day-soak-runner-and-evidence-ledger/75-02-PLAN.md]
+   - Traceability: This satisfies durable run identity while preserving the repo dependency-minimization constraint. [VERIFIED: .planning/REQUIREMENTS.md; VERIFIED: AGENTS.md]
 
 3. **Support bundle integration depth**
-   - What we know: Support bundles may include a compact redacted soak summary, and support bundle integration may remain minimal until the ledger/report source of truth is typed and tested. [VERIFIED: .planning/phases/75-multi-day-soak-runner-and-evidence-ledger/75-CONTEXT.md]
-   - What's unclear: The context does not require the support command to include soak summaries in the first plan if ledger and report work consumes the phase. [VERIFIED: .planning/phases/75-multi-day-soak-runner-and-evidence-ledger/75-CONTEXT.md]
-   - Recommendation: Add support-summary projection after ledger and reports are stable, and keep it summary-only. [VERIFIED: packages/open-bitcoin-cli/src/operator/support/live_smoke.rs; ASSUMED]
+   - Resolved decision: Add support-summary projection after the ledger/report contracts and operator runner exist, and keep it compact, redacted, local, and summary-only. [VERIFIED: .planning/phases/75-multi-day-soak-runner-and-evidence-ledger/75-04-PLAN.md]
+   - Traceability: Support bundles remain projections and do not embed raw daemon logs, raw reports, wallet material, credentials, unbounded peer tables, or automatic uploads. [VERIFIED: .planning/phases/75-multi-day-soak-runner-and-evidence-ledger/75-CONTEXT.md; VERIFIED: packages/open-bitcoin-cli/src/operator/support/live_smoke.rs]
 
 ## Environment Availability
 

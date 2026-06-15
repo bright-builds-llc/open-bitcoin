@@ -47,7 +47,15 @@ delete those phase directories.
 **Goal**: Operators can run bounded multi-day full-sync soaks with durable run identity, resumable reports, typed stop reasons, and deterministic synthetic soak coverage.
 **Depends on**: Phase 74
 **Requirements**: SOAK-01, SOAK-02, SOAK-03, SOAK-04
-**Plans**: Pending
+**Plans**: 6 plans
+
+Plans:
+- [ ] 75-01-PLAN.md — Soak domain contracts, durable ledger, report projection, and outcome taxonomy.
+- [ ] 75-02-PLAN.md — `open-bitcoin soak` operator command parsing, dispatch, run/resume/stop/report behavior, and binary tests.
+- [ ] 75-03-PLAN.md — Deterministic synthetic long-run and ledger replay coverage without public-network or multi-day waits.
+- [ ] 75-04-PLAN.md — Compact redacted soak summary projection for support bundles.
+- [ ] 75-05-PLAN.md — Operator docs, architecture notes, parity roots, and scoped README wording.
+- [ ] 75-06-PLAN.md — Phase 75 checker, default verifier wiring, and generated LOC freshness.
 
 **Success Criteria**:
 1. Operator can start an explicit opt-in soak with bounded elapsed time, target height, datadir, network, peer policy, disk budget, and stop conditions.
@@ -126,7 +134,7 @@ delete those phase directories.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 75. Multi-Day Soak Runner and Evidence Ledger | 0/0 | Pending | - |
+| 75. Multi-Day Soak Runner and Evidence Ledger | 0/6 | Pending | - |
 | 76. Disk and Resource Bound Enforcement | 0/0 | Pending | - |
 | 77. Corruption and Lock Recovery Hardening | 0/0 | Pending | - |
 | 78. Progress Guarantees and Stall Diagnosis | 0/0 | Pending | - |
@@ -174,12 +182,12 @@ traceability.
 | v1.4 Mainnet IBD Convergence and Peer Compatibility | 6 | 15 | Shipped | 2026-06-05 |
 | v1.5 Unattended Mainnet Node Operation Readiness | 8 | 22 | Shipped | 2026-06-10 |
 | v1.6 Mainnet Full-Sync Completion | 7 | 27 | Shipped | 2026-06-14 |
-| v1.7 Full-Sync Soak and Recovery Hardening | 6 | 0 | Active | - |
+| v1.7 Full-Sync Soak and Recovery Hardening | 6 | 6 | Active | - |
 
 ## Next Step
 
-Start Phase 75:
+Execute Phase 75:
 
 ```bash
-/gsd-discuss-phase 75
+/gsd-execute-phase 75
 ```

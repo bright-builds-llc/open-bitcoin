@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Full-Sync Soak and Recovery Hardening
-status: Ready to discuss Phase 75
-stopped_at: Phase 75 context gathered
-last_updated: "2026-06-14T23:57:39.328Z"
-last_activity: 2026-06-14
+status: executing
+stopped_at: Phase 75 planning revision complete
+last_updated: "2026-06-15T01:01:33.145Z"
+last_activity: 2026-06-15 -- Phase 75 planning complete
 progress:
   total_phases: 6
   completed_phases: 0
-  total_plans: 0
+  total_plans: 6
   completed_plans: 0
   percent: 0
 ---
@@ -28,8 +28,8 @@ See: `.planning/PROJECT.md` (updated 2026-06-14)
 Milestone: v1.7 Full-Sync Soak and Recovery Hardening
 Phase: 75
 Plan: -
-Status: Ready to discuss Phase 75
-Last activity: 2026-06-14
+Status: Ready to execute
+Last activity: 2026-06-15 -- Phase 75 planning complete
 
 Progress: [----------] 0%
 
@@ -38,14 +38,14 @@ Progress: [----------] 0%
 **Velocity:**
 
 - Current milestone plans completed: 0
-- Current milestone plan count: 0
+- Current milestone plan count: 6
 - Prior milestone plans completed: 27 in v1.6
 
 **By Phase:**
 
 | Phase | Plans | Status |
 |-------|------:|--------|
-| 75. Multi-Day Soak Runner and Evidence Ledger | 0/0 | Pending |
+| 75. Multi-Day Soak Runner and Evidence Ledger | 0/6 | Pending |
 | 76. Disk and Resource Bound Enforcement | 0/0 | Pending |
 | 77. Corruption and Lock Recovery Hardening | 0/0 | Pending |
 | 78. Progress Guarantees and Stall Diagnosis | 0/0 | Pending |
@@ -88,6 +88,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-14T23:57:39.325Z
-Stopped at: Phase 75 context gathered
-Resume file: .planning/phases/75-multi-day-soak-runner-and-evidence-ledger/75-CONTEXT.md
+Last session: 2026-06-15T00:46:59Z
+Stopped at: Phase 75 planning revision complete
+Resume file: .planning/phases/75-multi-day-soak-runner-and-evidence-ledger/75-01-PLAN.md
