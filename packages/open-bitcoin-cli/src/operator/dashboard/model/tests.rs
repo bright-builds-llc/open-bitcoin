@@ -564,6 +564,7 @@ fn test_snapshot() -> OpenBitcoinStatusSnapshot {
             MetricRetentionPolicy::default(),
             vec![MetricSample::new(MetricKind::SyncHeight, 100.0, 10)],
         ),
+        recovery_evidence: FieldAvailability::default(),
         resource_bounds: FieldAvailability::unavailable("resource bounds unavailable"),
         health_signals: vec![HealthSignal {
             level: HealthSignalLevel::Info,

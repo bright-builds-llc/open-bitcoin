@@ -585,10 +585,7 @@ fn recovery_evidence_contract_action_classes_serialize_stable_labels() {
             RecoveryActionClass::BackupThenRebuild,
             "backup_then_rebuild",
         ),
-        (
-            RecoveryActionClass::StopAndEscalate,
-            "stop_and_escalate",
-        ),
+        (RecoveryActionClass::StopAndEscalate, "stop_and_escalate"),
     ];
 
     // Act / Assert
@@ -611,7 +608,10 @@ fn recovery_evidence_contract_causes_serialize_stable_labels() {
         (RecoveryCause::BackendOpenFailure, "backend_open_failure"),
         (RecoveryCause::ActiveLock, "active_lock"),
         (RecoveryCause::StaleLockEvidence, "stale_lock_evidence"),
-        (RecoveryCause::ConcurrentDatadirUse, "concurrent_datadir_use"),
+        (
+            RecoveryCause::ConcurrentDatadirUse,
+            "concurrent_datadir_use",
+        ),
         (RecoveryCause::ResourcePressure, "resource_pressure"),
     ];
 
@@ -655,7 +655,11 @@ fn recovery_evidence_contract_lock_evidence_serializes_plan_77_02_shape() {
 #[test]
 fn status_recovery_evidence_legacy_snapshot_defaults_unavailable() {
     // Arrange
-    let legacy_json = serde_json::to_value(stopped_snapshot()).expect("legacy snapshot json");
+    let mut legacy_json = serde_json::to_value(stopped_snapshot()).expect("legacy snapshot json");
+    let serde_json::Value::Object(fields) = &mut legacy_json else {
+        panic!("snapshot must serialize to an object");
+    };
+    fields.remove("recovery_evidence");
 
     // Act
     let snapshot: OpenBitcoinStatusSnapshot =
@@ -822,6 +826,7 @@ fn populated_snapshot_serializes_obs_01_fields() {
         },
         logs: LogStatus::default(),
         metrics: MetricsStatus::default(),
+        recovery_evidence: FieldAvailability::default(),
         resource_bounds: FieldAvailability::unavailable("resource bounds unavailable"),
         health_signals: vec![HealthSignal {
             level: HealthSignalLevel::Info,
@@ -1009,6 +1014,7 @@ fn stopped_snapshot() -> OpenBitcoinStatusSnapshot {
         },
         logs: LogStatus::default(),
         metrics: MetricsStatus::default(),
+        recovery_evidence: FieldAvailability::default(),
         resource_bounds: FieldAvailability::unavailable("resource bounds unavailable"),
         health_signals: Vec::new(),
         build: BuildProvenance::unavailable(),

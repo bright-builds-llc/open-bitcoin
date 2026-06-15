@@ -250,6 +250,7 @@ fn collect_live_status_snapshot(
         wallet,
         logs: log_status(&input.config_resolution),
         metrics: metrics_status(&input.config_resolution),
+        recovery_evidence: FieldAvailability::default(),
         resource_bounds: collect_resource_bounds(
             &input.config_resolution,
             maybe_durable_sync_state.as_ref(),
@@ -310,6 +311,7 @@ fn stopped_status_snapshot(
         },
         logs: log_status(&input.config_resolution),
         metrics: metrics_status(&input.config_resolution),
+        recovery_evidence: FieldAvailability::default(),
         resource_bounds: collect_resource_bounds(
             &input.config_resolution,
             maybe_durable_sync_state.as_ref(),

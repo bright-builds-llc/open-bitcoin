@@ -453,6 +453,7 @@ fn phase72_status() -> OpenBitcoinStatusSnapshot {
         },
         logs: LogStatus::default(),
         metrics: MetricsStatus::default(),
+        recovery_evidence: FieldAvailability::default(),
         resource_bounds: FieldAvailability::unavailable("resource bounds unavailable"),
         health_signals: Vec::new(),
         build: BuildProvenance::unavailable(),

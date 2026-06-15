@@ -21,6 +21,7 @@ pub mod logging;
 pub mod mempool;
 pub mod metrics;
 pub mod network;
+pub mod recovery;
 pub mod status;
 pub mod storage;
 pub mod sync;
@@ -33,6 +34,11 @@ pub use mempool::ManagedMempool;
 pub use metrics::{MetricKind, MetricRetentionPolicy, MetricSample, MetricsStatus};
 pub use network::{ManagedNetworkError, ManagedPeerNetwork};
 pub use open_bitcoin_core as core;
+pub use recovery::{
+    LockEvidence, LockEvidenceKind, RECOVERY_EVIDENCE_UNAVAILABLE_REASON, RecoveryActionClass,
+    RecoveryCause, RecoveryClassifierInput, RecoveryEvidenceBasis, RecoveryEvidenceSnapshot,
+    classify_recovery,
+};
 pub use status::{
     BuildProvenance, ConfigStatus, DurableSyncState, FieldAvailability, NodeRuntimeState,
     OpenBitcoinStatusSnapshot, PeerStatus, PeerTelemetry, ResourceBoundEntry, ResourceBoundKind,

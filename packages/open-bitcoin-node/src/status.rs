@@ -6,6 +6,7 @@
 mod recovery;
 mod resource_bounds;
 
+use crate::recovery::RecoveryEvidenceSnapshot;
 use crate::{LogStatus, MetricsStatus};
 use serde::{Deserialize, Serialize};
 
@@ -617,6 +618,8 @@ pub struct OpenBitcoinStatusSnapshot {
     pub wallet: WalletStatus,
     pub logs: LogStatus,
     pub metrics: MetricsStatus,
+    #[serde(default)]
+    pub recovery_evidence: FieldAvailability<RecoveryEvidenceSnapshot>,
     #[serde(default)]
     pub resource_bounds: FieldAvailability<ResourceBoundSnapshot>,
     pub health_signals: Vec<HealthSignal>,

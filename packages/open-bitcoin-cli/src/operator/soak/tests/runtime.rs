@@ -1127,6 +1127,7 @@ fn base_status_snapshot(datadir: &Path) -> OpenBitcoinStatusSnapshot {
             MetricRetentionPolicy::default(),
             "metrics unavailable",
         ),
+        recovery_evidence: FieldAvailability::default(),
         resource_bounds: FieldAvailability::available(normal_resource_bounds()),
         health_signals: Vec::new(),
         build: BuildProvenance::unavailable(),
