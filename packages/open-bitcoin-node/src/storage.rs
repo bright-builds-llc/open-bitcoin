@@ -8,9 +8,11 @@ use core::fmt;
 use crate::status::{DurableSyncState, SyncControlState, SyncRecoveryCategory};
 
 pub mod fjall_store;
+mod lock_probe;
 pub mod snapshot_codec;
 
 pub use fjall_store::FjallNodeStore;
+pub use lock_probe::{FJALL_LOCK_FILE_NAME, probe_fjall_lock};
 pub use snapshot_codec::{MetricsStorageSnapshot, StoredHeaderEntries};
 
 /// Logical storage namespaces later adapters must keep distinct.
