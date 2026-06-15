@@ -89,7 +89,16 @@ Plans:
 **Goal**: Operators can diagnose store locks and corruption-style failures safely, with guidance that separates retryable, inspectable, rebuild-required, and escalation cases.
 **Depends on**: Phase 76
 **Requirements**: REC-05, REC-06, REC-07, REC-08
-**Plans**: Pending
+**Plans**: 7 plans
+
+Plans:
+- [ ] 77-01-PLAN.md — Shared recovery evidence contracts and pure classifier.
+- [ ] 77-02-PLAN.md — Probe-only Fjall lock evidence and storage recovery fixtures.
+- [ ] 77-03-PLAN.md — Non-mutating operator status recovery evidence.
+- [ ] 77-04-PLAN.md — Support and dashboard recovery evidence projection.
+- [ ] 77-05-PLAN.md — Soak checkpoint and report recovery evidence.
+- [ ] 77-06-PLAN.md — Operator docs, architecture docs, and parity roots.
+- [ ] 77-07-PLAN.md — Deterministic Phase 77 checker, verifier wiring, and verification evidence.
 
 **Success Criteria**:
 1. Lock contention, stale lock evidence, and concurrent datadir use are detected without hidden mutation.
@@ -144,7 +153,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 75. Multi-Day Soak Runner and Evidence Ledger | 6/6 | Complete    | 2026-06-15 |
 | 76. Disk and Resource Bound Enforcement | 6/6 | Complete | 2026-06-15 |
-| 77. Corruption and Lock Recovery Hardening | 0/0 | Pending | - |
+| 77. Corruption and Lock Recovery Hardening | 0/7 | Pending | - |
 | 78. Progress Guarantees and Stall Diagnosis | 0/0 | Pending | - |
 | 79. Diagnostics and Support Bundle Forensics | 0/0 | Pending | - |
 | 80. Opt-In Soak UAT and Release Boundaries | 0/0 | Pending | - |
@@ -190,7 +199,7 @@ traceability.
 | v1.4 Mainnet IBD Convergence and Peer Compatibility | 6 | 15 | Shipped | 2026-06-05 |
 | v1.5 Unattended Mainnet Node Operation Readiness | 8 | 22 | Shipped | 2026-06-10 |
 | v1.6 Mainnet Full-Sync Completion | 7 | 27 | Shipped | 2026-06-14 |
-| v1.7 Full-Sync Soak and Recovery Hardening | 6 | 12 | Active | - |
+| v1.7 Full-Sync Soak and Recovery Hardening | 6 | 19 | Active | - |
 
 ## Next Step
 

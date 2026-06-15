@@ -395,20 +395,38 @@ pub fn probe_fjall_lock(datadir: &Path) -> LockEvidence {
     let lock_path = datadir.join("lock");
 
     if !lock_path.exists() {
-        return LockEvidence::NoLockPath { lock_path };
+        return LockEvidence {
+            kind: LockEvidenceKind::NoLockArtifact,
+            lock_path: lock_path.display().to_string(),
+            detail: "no Fjall lock artifact found".to_string(),
+        };
     }
 
     let maybe_file = std::fs::File::open(&lock_path);
     let Ok(file) = maybe_file else {
-        return LockEvidence::UnreadableLockPath { lock_path };
+        return LockEvidence {
+            kind: LockEvidenceKind::ProbeUnavailable,
+            lock_path: lock_path.display().to_string(),
+            detail: "lock probe unavailable: lock file could not be opened".to_string(),
+        };
     };
 
     match file.try_lock() {
-        Ok(()) => LockEvidence::LockPathPresentButNotHeld { lock_path },
-        Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
-            LockEvidence::ActiveContention { lock_path }
-        }
-        Err(_) => LockEvidence::ProbeUnavailable { lock_path },
+        Ok(()) => LockEvidence {
+            kind: LockEvidenceKind::StaleLockEvidence,
+            lock_path: lock_path.display().to_string(),
+            detail: "Fjall lock artifact is present but not currently held".to_string(),
+        },
+        Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => LockEvidence {
+            kind: LockEvidenceKind::ActiveContention,
+            lock_path: lock_path.display().to_string(),
+            detail: "Fjall lock is currently held by another opener".to_string(),
+        },
+        Err(_) => LockEvidence {
+            kind: LockEvidenceKind::ProbeUnavailable,
+            lock_path: lock_path.display().to_string(),
+            detail: "lock probe unavailable: advisory lock failed".to_string(),
+        },
     }
 }
 ```
@@ -448,22 +466,22 @@ pub struct OpenBitcoinStatusSnapshot {
 
 All claims in this research were verified from project files, pinned dependency source, local tool output, or cited public documentation. No `[ASSUMED]` claims are used. [VERIFIED: research log]
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Exact stale-lock evidence threshold**
    - What we know: Fjall lock-file existence alone is not enough because the file remains after unlock. [VERIFIED: ~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/locked_file.rs]
-   - What's unclear: The product-level threshold for “stale lock evidence” without a Phase 77 owner heartbeat/PID sentinel is not fully specified. [VERIFIED: .planning/phases/77-corruption-and-lock-recovery-hardening/77-CONTEXT.md]
-   - Recommendation: Require at least a lock artifact plus a currently acquirable/non-contentious advisory probe plus no same-datadir service/RPC evidence, and label the basis explicitly as evidence rather than proof. [VERIFIED: .planning/phases/77-corruption-and-lock-recovery-hardening/77-CONTEXT.md]
+   - Resolution accepted for Phase 77: classify `stale_lock_evidence` only when the Fjall lock artifact exists, the probe can acquire the advisory lock, and same-datadir service/live RPC evidence does not indicate a running daemon. This is evidence, not proof of owner death, and the action class is `read_only_inspection` with wording that forbids automatic lock deletion or cleanup. [VERIFIED: .planning/phases/77-corruption-and-lock-recovery-hardening/77-CONTEXT.md]
+   - Plan impact: Plan 77-01 encodes the classifier precedence and Plan 77-02 implements the probe result as `LockEvidence { kind, lock_path, detail }`; concurrent datadir evidence outranks stale-lock evidence. [VERIFIED: .planning/phases/77-corruption-and-lock-recovery-hardening/77-01-PLAN.md] [VERIFIED: .planning/phases/77-corruption-and-lock-recovery-hardening/77-02-PLAN.md]
 
 2. **Whether to expose a dedicated recovery inspection command**
    - What we know: Required consumers include CLI status, dashboard status, stopped-node status, support evidence, soak summaries, live-smoke summaries if applicable, and docs. [VERIFIED: .planning/phases/77-corruption-and-lock-recovery-hardening/77-CONTEXT.md]
-   - What's unclear: The phase does not require a new standalone `recovery inspect` command. [VERIFIED: .planning/REQUIREMENTS.md]
-   - Recommendation: Plan shared status/support/soak integration first and add a new command only if UAT needs a bounded manual workflow. [VERIFIED: .planning/REQUIREMENTS.md]
+   - Resolution accepted for Phase 77: do not add a standalone `recovery inspect` command. The shared top-level status contract, support bundle projection, dashboard rows, soak reports, live-smoke summary projection, and docs satisfy the required operator surfaces without expanding the CLI command set. [VERIFIED: .planning/REQUIREMENTS.md]
+   - Plan impact: Plans 77-03 through 77-05 project the shared evidence into existing status/support/dashboard/soak/live-smoke surfaces; Plan 77-06 documents the existing status and support commands as the bounded operator workflow. [VERIFIED: .planning/phases/77-corruption-and-lock-recovery-hardening/77-03-PLAN.md] [VERIFIED: .planning/phases/77-corruption-and-lock-recovery-hardening/77-04-PLAN.md] [VERIFIED: .planning/phases/77-corruption-and-lock-recovery-hardening/77-05-PLAN.md] [VERIFIED: .planning/phases/77-corruption-and-lock-recovery-hardening/77-06-PLAN.md]
 
 3. **How broad metrics-store recovery evidence should be**
    - What we know: Metrics status currently opens a Fjall store and can fail separately from the main runtime store. [VERIFIED: packages/open-bitcoin-cli/src/operator/status.rs]
-   - What's unclear: Requirements name runtime stores generally but do not separately define metrics-store action classes. [VERIFIED: .planning/REQUIREMENTS.md]
-   - Recommendation: Use the same classifier shape with affected path/namespace fields so metrics/runtime/wallet evidence stays uniform. [VERIFIED: .planning/phases/77-corruption-and-lock-recovery-hardening/77-CONTEXT.md]
+   - Resolution accepted for Phase 77: status/support inspection must not open Fjall metrics stores for recovery diagnosis. When metrics evidence is not already collected safely, surfaces emit explicit unavailable reasons such as `metrics history unavailable: probe-only status does not open Fjall stores` or `metrics history unavailable: probe-only support bundle does not open Fjall stores`. The shared recovery classifier keeps affected namespace/path fields for future uniform metrics/runtime/wallet evidence without adding metrics-specific action classes now. [VERIFIED: .planning/REQUIREMENTS.md] [VERIFIED: .planning/phases/77-corruption-and-lock-recovery-hardening/77-CONTEXT.md]
+   - Plan impact: Plans 77-03 and 77-04 remove store-backed status/support metrics inspection from probe-only paths and preserve explicit unavailable evidence. [VERIFIED: .planning/phases/77-corruption-and-lock-recovery-hardening/77-03-PLAN.md] [VERIFIED: .planning/phases/77-corruption-and-lock-recovery-hardening/77-04-PLAN.md]
 
 ## Environment Availability
 
