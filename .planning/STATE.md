@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Full-Sync Soak and Recovery Hardening
-status: planning
+status: executing
 stopped_at: Phase 76 context gathered
-last_updated: "2026-06-15T14:19:22.984Z"
-last_activity: 2026-06-15
+last_updated: "2026-06-15T15:35:01.534Z"
+last_activity: 2026-06-15 -- Phase 76 planning complete
 progress:
   total_phases: 6
   completed_phases: 1
-  total_plans: 6
+  total_plans: 12
   completed_plans: 6
-  percent: 100
+  percent: 50
 ---
 
 # Project State
@@ -28,10 +28,10 @@ See: `.planning/PROJECT.md` (updated 2026-06-14)
 Milestone: v1.7 Full-Sync Soak and Recovery Hardening
 Phase: 76
 Plan: Not started
-Status: Ready for Phase 76 planning
-Last activity: 2026-06-15
+Status: Ready to execute
+Last activity: 2026-06-15 -- Phase 76 planning complete
 
-Progress: [##########] 100%
+Progress: [#####-----] 50%
 
 ## Performance Metrics
 
@@ -46,7 +46,7 @@ Progress: [##########] 100%
 | Phase | Plans | Status |
 |-------|------:|--------|
 | 75. Multi-Day Soak Runner and Evidence Ledger | 6/6 | Complete |
-| 76. Disk and Resource Bound Enforcement | 0/0 | Pending |
+| 76. Disk and Resource Bound Enforcement | 0/6 | Planned |
 | 77. Corruption and Lock Recovery Hardening | 0/0 | Pending |
 | 78. Progress Guarantees and Stall Diagnosis | 0/0 | Pending |
 | 79. Diagnostics and Support Bundle Forensics | 0/0 | Pending |
@@ -76,7 +76,7 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ### Pending Todos
 
-- Discuss Phase 76 and decide the exact disk/resource enforcement shape.
+- Execute the six Phase 76 disk and resource bound enforcement plans.
 - Keep raw phase histories in `.planning/phases/` for parity and UAT traceability.
 - Keep public-network full-sync and multi-day soak UAT opt-in and outside default deterministic verification unless a future phase deliberately changes that contract.
 

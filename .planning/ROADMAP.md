@@ -68,7 +68,15 @@ Plans:
 **Goal**: Operators can understand and enforce long-run resource limits before storage pressure turns a soak into an unsafe or opaque failure.
 **Depends on**: Phase 75
 **Requirements**: RES-05, RES-06, RES-07, RES-08
-**Plans**: Pending
+**Plans**: 6 plans
+
+Plans:
+- [ ] 76-01-PLAN.md — Shared resource-bound status contracts, thresholds, and status schema field.
+- [ ] 76-02-PLAN.md — Status resource-bound collection and human rendering.
+- [ ] 76-03-PLAN.md — Soak preflight and runtime resource-stop enforcement.
+- [ ] 76-04-PLAN.md — Support bundle and dashboard resource-bound projections.
+- [ ] 76-05-PLAN.md — Operator docs, architecture docs, README updates, and parity records.
+- [ ] 76-06-PLAN.md — Phase 76 deterministic checker, verifier wiring, and LOC freshness.
 
 **Success Criteria**:
 1. Preflight and status surfaces expose disk, file, cache, queue, peer, in-flight, log, metric, and support-bundle bounds for long soaks.
@@ -135,7 +143,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 75. Multi-Day Soak Runner and Evidence Ledger | 6/6 | Complete    | 2026-06-15 |
-| 76. Disk and Resource Bound Enforcement | 0/0 | Pending | - |
+| 76. Disk and Resource Bound Enforcement | 0/6 | Pending | - |
 | 77. Corruption and Lock Recovery Hardening | 0/0 | Pending | - |
 | 78. Progress Guarantees and Stall Diagnosis | 0/0 | Pending | - |
 | 79. Diagnostics and Support Bundle Forensics | 0/0 | Pending | - |
@@ -182,12 +190,12 @@ traceability.
 | v1.4 Mainnet IBD Convergence and Peer Compatibility | 6 | 15 | Shipped | 2026-06-05 |
 | v1.5 Unattended Mainnet Node Operation Readiness | 8 | 22 | Shipped | 2026-06-10 |
 | v1.6 Mainnet Full-Sync Completion | 7 | 27 | Shipped | 2026-06-14 |
-| v1.7 Full-Sync Soak and Recovery Hardening | 6 | 6 | Active | - |
+| v1.7 Full-Sync Soak and Recovery Hardening | 6 | 12 | Active | - |
 
 ## Next Step
 
-Execute Phase 75:
+Execute Phase 76:
 
 ```bash
-/gsd-execute-phase 75
+/gsd-execute-phase 76
 ```
