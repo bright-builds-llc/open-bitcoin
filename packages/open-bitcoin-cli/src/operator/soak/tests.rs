@@ -362,6 +362,41 @@ fn soak_report_json_includes_projection_source_and_latest_state() {
 }
 
 #[test]
+fn soak_recovery_evidence_report_json_preserves_checkpoint_field_names() {
+    // Arrange
+    let temp = TestDirectory::new("recovery-report-json");
+    let source_ledger_path = temp
+        .path()
+        .join("soak/runs/soak-1781485562-0001/events.jsonl");
+    let projection = SoakReportProjection::from_ledger_events(
+        sample_recovery_report_events(temp.path()),
+        &source_ledger_path,
+    )
+    .expect("projection");
+
+    // Act
+    let rendered = render_soak_report_json(&projection).expect("report json");
+    let value: Value = serde_json::from_str(&rendered).expect("report json value");
+
+    // Assert
+    assert_eq!(
+        value["latest_checkpoint"]["maybe_recovery_action_class_label"],
+        Value::String("backup_then_rebuild".to_string())
+    );
+    assert_eq!(
+        value["latest_checkpoint"]["maybe_recovery_cause_label"],
+        Value::String("partial_write".to_string())
+    );
+    assert_eq!(
+        value["latest_checkpoint"]["maybe_recovery_next_action"],
+        Value::String(
+            "Back up the selected datadir, then rebuild affected storage before normal operation."
+                .to_string()
+        )
+    );
+}
+
+#[test]
 fn soak_report_markdown_includes_operator_projection_summary() {
     // Arrange
     let temp = TestDirectory::new("report-markdown");
@@ -384,6 +419,61 @@ fn soak_report_markdown_includes_operator_projection_summary() {
     assert!(rendered.contains("Report is a projection: true"));
     assert!(rendered.contains("Final outcome:"));
     assert!(!rendered.contains("raw daemon log line"));
+}
+
+#[test]
+fn soak_recovery_evidence_report_markdown_renders_recovery_labels() {
+    // Arrange
+    let temp = TestDirectory::new("recovery-report-markdown");
+    let source_ledger_path = temp
+        .path()
+        .join("soak/runs/soak-1781485562-0001/events.jsonl");
+    let projection = SoakReportProjection::from_ledger_events(
+        sample_recovery_report_events(temp.path()),
+        &source_ledger_path,
+    )
+    .expect("projection");
+
+    // Act
+    let rendered = render_soak_report_markdown(&projection);
+
+    // Assert
+    assert!(rendered.contains("Recovery category: store_corruption"));
+    assert!(rendered.contains("Recovery action class: backup_then_rebuild"));
+    assert!(rendered.contains("Recovery cause: partial_write"));
+    assert!(rendered.contains(
+        "Recovery next action: Back up the selected datadir, then rebuild affected storage before normal operation."
+    ));
+}
+
+#[test]
+fn soak_recovery_evidence_report_excludes_forbidden_raw_material() {
+    // Arrange
+    let temp = TestDirectory::new("recovery-report-redaction");
+    let source_ledger_path = temp
+        .path()
+        .join("soak/runs/soak-1781485562-0001/events.jsonl");
+    let projection = SoakReportProjection::from_ledger_events(
+        sample_recovery_report_events(temp.path()),
+        &source_ledger_path,
+    )
+    .expect("projection");
+    let forbidden_material = [
+        "raw backend",
+        "rpcpassword",
+        "Authorization",
+        "wallet material",
+    ];
+
+    // Act
+    let json = render_soak_report_json(&projection).expect("report json");
+    let markdown = render_soak_report_markdown(&projection);
+
+    // Assert
+    for value in forbidden_material {
+        assert!(!json.contains(value), "JSON report leaked {value}");
+        assert!(!markdown.contains(value), "Markdown report leaked {value}");
+    }
 }
 
 #[test]
@@ -881,6 +971,19 @@ fn resource_checkpoint_status() -> SoakCheckpointStatus {
     }
 }
 
+fn recovery_checkpoint_status() -> SoakCheckpointStatus {
+    SoakCheckpointStatus {
+        maybe_recovery_category_label: Some("store_corruption".to_string()),
+        maybe_recovery_action_class_label: Some("backup_then_rebuild".to_string()),
+        maybe_recovery_cause_label: Some("partial_write".to_string()),
+        maybe_recovery_next_action: Some(
+            "Back up the selected datadir, then rebuild affected storage before normal operation."
+                .to_string(),
+        ),
+        ..checkpoint_status()
+    }
+}
+
 fn sample_report_events(datadir: &Path) -> Vec<SoakLedgerEventEnvelope> {
     let run_id = SoakRunId::try_new("soak-1781485562-0001").expect("run id");
     vec![
@@ -922,6 +1025,36 @@ fn sample_report_events(datadir: &Path) -> Vec<SoakLedgerEventEnvelope> {
             50,
             SoakLedgerEvent::Verdict {
                 outcome: SoakOutcomeLabel::OperatorStop,
+            },
+        ),
+    ]
+}
+
+fn sample_recovery_report_events(datadir: &Path) -> Vec<SoakLedgerEventEnvelope> {
+    let run_id = SoakRunId::try_new("soak-1781485562-0001").expect("run id");
+    vec![
+        SoakLedgerEventEnvelope::new(
+            run_id.clone(),
+            1,
+            10,
+            SoakLedgerEvent::Started {
+                bounds: soak_bounds(datadir),
+            },
+        ),
+        SoakLedgerEventEnvelope::new(
+            run_id.clone(),
+            2,
+            20,
+            SoakLedgerEvent::Checkpoint {
+                status: recovery_checkpoint_status(),
+            },
+        ),
+        SoakLedgerEventEnvelope::new(
+            run_id,
+            3,
+            30,
+            SoakLedgerEvent::Verdict {
+                outcome: SoakOutcomeLabel::RecoveryStop,
             },
         ),
     ]
