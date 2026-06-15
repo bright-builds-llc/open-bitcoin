@@ -355,7 +355,7 @@ fn open_bitcoin_soak_start_writes_durable_ledger_and_reports() {
 }
 
 #[test]
-fn open_bitcoin_soak_stop_records_operator_stop_verdict() {
+fn open_bitcoin_soak_stop_rejects_terminal_verdict() {
     // Arrange
     let sandbox = TestSandbox::new("soak-phase75-stop");
     let data_dir = sandbox.child("open-data");
@@ -384,21 +384,19 @@ fn open_bitcoin_soak_stop_records_operator_stop_verdict() {
     );
 
     // Assert
-    assert_success(&stop);
+    assert_failure(&stop);
+    let stderr = String::from_utf8(stop.stderr).expect("stderr utf8");
+    assert!(stderr.contains("already has a terminal verdict"));
     let run_dir = data_dir.join("soak/runs/soak-1700000000-0001");
     let events = read_jsonl_values(&run_dir.join("events.jsonl"));
-    assert!(events.iter().any(|event| {
-        event["event"]["kind"] == json!("stop")
-            && event["event"]["outcome"] == json!("operator_stop")
-    }));
-    assert!(events.iter().any(|event| {
+    assert!(!events.iter().any(|event| {
         event["event"]["kind"] == json!("verdict")
             && event["event"]["outcome"] == json!("operator_stop")
     }));
     let report: Value =
         serde_json::from_str(&fs::read_to_string(run_dir.join("report.json")).expect("report"))
             .expect("report json");
-    assert_eq!(report["verdict"]["outcome"], json!("operator_stop"));
+    assert_eq!(report["verdict"]["outcome"], json!("clean_completion"));
 }
 
 #[test]

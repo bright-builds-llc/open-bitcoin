@@ -429,6 +429,55 @@ fn soak_runtime_stop_records_operator_stop_verdict() {
 }
 
 #[test]
+fn soak_runtime_stop_rejects_terminal_verdict() {
+    // Arrange
+    let temp = TestDirectory::new("stop-terminal");
+    let layout = SoakLedgerLayout::for_datadir(temp.path());
+    let run_id = SoakRunId::try_new("soak-1700000000-stop-terminal").expect("run id");
+    let mut ledger = SoakLedger::create(&layout, run_id.clone());
+    ledger
+        .append_event(
+            1,
+            SoakLedgerEvent::Started {
+                bounds: soak_bounds(temp.path(), None, vec![SoakStopCondition::ElapsedTime]),
+            },
+        )
+        .expect("started");
+    ledger
+        .append_event(
+            2,
+            SoakLedgerEvent::Stop {
+                outcome: SoakOutcomeLabel::CleanCompletion,
+            },
+        )
+        .expect("stop");
+    ledger
+        .append_event(
+            3,
+            SoakLedgerEvent::Verdict {
+                outcome: SoakOutcomeLabel::CleanCompletion,
+            },
+        )
+        .expect("verdict");
+
+    // Act
+    let error = write_operator_stop(&layout, &run_id, 4).expect_err("terminal stop rejection");
+    let events = SoakLedger::read_events(&layout.paths_for_run(&run_id).events_path)
+        .expect("read events")
+        .events;
+
+    // Assert
+    assert!(error.to_string().contains("already has a terminal verdict"));
+    assert_eq!(events.len(), 3);
+    assert!(matches!(
+        &events[2].event,
+        SoakLedgerEvent::Verdict {
+            outcome: SoakOutcomeLabel::CleanCompletion
+        }
+    ));
+}
+
+#[test]
 fn soak_runtime_report_rewrites_projection_without_ledger_append() {
     // Arrange
     let temp = TestDirectory::new("report");

@@ -158,7 +158,7 @@ const SOURCE_ANCHORS: Record<string, readonly string[]> = {
   ],
   "packages/open-bitcoin-cli/tests/operator_binary.rs": [
     "open_bitcoin_soak_start_writes_durable_ledger_and_reports",
-    "open_bitcoin_soak_stop_records_operator_stop_verdict",
+    "open_bitcoin_soak_stop_rejects_terminal_verdict",
     "open_bitcoin_soak_report_is_projection_without_ledger_append",
     "open_bitcoin_soak_resume_refuses_clean_completion",
     "open_bitcoin_support_bundle_includes_phase75_soak_summary",
