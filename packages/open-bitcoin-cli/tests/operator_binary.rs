@@ -301,6 +301,189 @@ fn sync_control_auth_failure_does_not_fallback_to_store() {
 }
 
 #[test]
+fn open_bitcoin_soak_start_writes_durable_ledger_and_reports() {
+    // Arrange
+    let sandbox = TestSandbox::new("soak-phase75-start");
+    let data_dir = sandbox.child("open-data");
+    fs::create_dir_all(&data_dir).expect("open datadir");
+
+    // Act
+    let output = run_open_bitcoin_vec(&sandbox, soak_start_args(&data_dir, "soak-1700000000-0001"));
+
+    // Assert
+    assert_success(&output);
+    let decoded: Value = serde_json::from_slice(&output.stdout).expect("soak start json");
+    let run_dir = data_dir.join("soak/runs/soak-1700000000-0001");
+    let index_path = data_dir.join("soak/run-index.json");
+    let events_path = run_dir.join("events.jsonl");
+    let report_json_path = run_dir.join("report.json");
+    let report_markdown_path = run_dir.join("report.md");
+    assert_eq!(decoded["run_id"], json!("soak-1700000000-0001"));
+    assert_eq!(
+        decoded["ledger_path"],
+        json!(events_path.display().to_string())
+    );
+    assert_eq!(
+        decoded["json_report_path"],
+        json!(report_json_path.display().to_string())
+    );
+    assert_eq!(
+        decoded["markdown_report_path"],
+        json!(report_markdown_path.display().to_string())
+    );
+    assert!(index_path.exists());
+    assert!(events_path.exists());
+    assert!(report_json_path.exists());
+    assert!(report_markdown_path.exists());
+    let index: Value =
+        serde_json::from_str(&fs::read_to_string(index_path).expect("run index json"))
+            .expect("run index");
+    assert_eq!(index["runs"][0]["run_id"], json!("soak-1700000000-0001"));
+    let events = read_jsonl_values(&events_path);
+    assert_eq!(events[0]["event"]["kind"], json!("started"));
+    assert!(
+        events
+            .iter()
+            .any(|event| event["event"]["kind"] == json!("checkpoint"))
+    );
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(report_json_path).expect("report json"))
+            .expect("report");
+    assert_eq!(report["is_projection"], json!(true));
+    assert_eq!(report["run_id"], json!("soak-1700000000-0001"));
+}
+
+#[test]
+fn open_bitcoin_soak_stop_records_operator_stop_verdict() {
+    // Arrange
+    let sandbox = TestSandbox::new("soak-phase75-stop");
+    let data_dir = sandbox.child("open-data");
+    fs::create_dir_all(&data_dir).expect("open datadir");
+    let start = run_open_bitcoin_vec(&sandbox, soak_start_args(&data_dir, "soak-1700000000-0001"));
+    assert_success(&start);
+
+    // Act
+    let stop = run_open_bitcoin(
+        &sandbox,
+        [
+            "--datadir",
+            data_dir.to_str().expect("datadir"),
+            "--network",
+            "regtest",
+            "--format",
+            "json",
+            "soak",
+            "stop",
+            "--run-id",
+            "soak-1700000000-0001",
+            "--reason",
+            "operator-stop",
+        ],
+    );
+
+    // Assert
+    assert_success(&stop);
+    let run_dir = data_dir.join("soak/runs/soak-1700000000-0001");
+    let events = read_jsonl_values(&run_dir.join("events.jsonl"));
+    assert!(events.iter().any(|event| {
+        event["event"]["kind"] == json!("stop")
+            && event["event"]["outcome"] == json!("operator_stop")
+    }));
+    assert!(events.iter().any(|event| {
+        event["event"]["kind"] == json!("verdict")
+            && event["event"]["outcome"] == json!("operator_stop")
+    }));
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(run_dir.join("report.json")).expect("report"))
+            .expect("report json");
+    assert_eq!(report["verdict"]["outcome"], json!("operator_stop"));
+}
+
+#[test]
+fn open_bitcoin_soak_report_is_projection_without_ledger_append() {
+    // Arrange
+    let sandbox = TestSandbox::new("soak-phase75-report");
+    let data_dir = sandbox.child("open-data");
+    fs::create_dir_all(&data_dir).expect("open datadir");
+    let start = run_open_bitcoin_vec(&sandbox, soak_start_args(&data_dir, "soak-1700000000-0001"));
+    assert_success(&start);
+    let events_path = data_dir.join("soak/runs/soak-1700000000-0001/events.jsonl");
+    let before_count = read_jsonl_values(&events_path).len();
+
+    // Act
+    let report = run_open_bitcoin(
+        &sandbox,
+        [
+            "--datadir",
+            data_dir.to_str().expect("datadir"),
+            "--network",
+            "regtest",
+            "--format",
+            "json",
+            "soak",
+            "report",
+            "--run-id",
+            "soak-1700000000-0001",
+        ],
+    );
+    let after_count = read_jsonl_values(&events_path).len();
+
+    // Assert
+    assert_success(&report);
+    assert_eq!(before_count, after_count);
+    let decoded: Value = serde_json::from_slice(&report.stdout).expect("soak report json");
+    assert_eq!(decoded["run_id"], json!("soak-1700000000-0001"));
+    assert_eq!(
+        decoded["ledger_path"],
+        json!(events_path.display().to_string())
+    );
+}
+
+#[test]
+fn open_bitcoin_soak_resume_refuses_clean_completion() {
+    // Arrange
+    let sandbox = TestSandbox::new("soak-phase75-clean-resume");
+    let data_dir = sandbox.child("open-data");
+    fs::create_dir_all(&data_dir).expect("open datadir");
+    seed_phase72_runtime_metadata(&data_dir, false);
+    let start = run_open_bitcoin_vec(
+        &sandbox,
+        soak_target_height_start_args(&data_dir, "soak-1700000000-0001"),
+    );
+    assert_success(&start);
+    let report: Value = serde_json::from_str(
+        &fs::read_to_string(data_dir.join("soak/runs/soak-1700000000-0001/report.json"))
+            .expect("report"),
+    )
+    .expect("report json");
+    assert_eq!(report["verdict"]["outcome"], json!("clean_completion"));
+
+    // Act
+    let resume = run_open_bitcoin(
+        &sandbox,
+        [
+            "--datadir",
+            data_dir.to_str().expect("datadir"),
+            "--network",
+            "regtest",
+            "--format",
+            "json",
+            "soak",
+            "resume",
+            "--run-id",
+            "soak-1700000000-0001",
+            "--checkpoint-interval-seconds",
+            "15",
+        ],
+    );
+
+    // Assert
+    assert_failure(&resume);
+    let stderr = String::from_utf8(resume.stderr).expect("stderr utf8");
+    assert!(stderr.contains("clean_completion"));
+}
+
+#[test]
 fn http_request_complete_waits_for_lowercase_content_length_body() {
     // Arrange
     let headers = b"POST / HTTP/1.1\r\ncontent-length: 5\r\n\r\n";
@@ -1782,6 +1965,60 @@ fn onboard_args<'a>(
     args
 }
 
+fn soak_start_args<'a>(data_dir: &'a Path, run_id: &'a str) -> Vec<&'a str> {
+    vec![
+        "--datadir",
+        data_dir.to_str().expect("datadir"),
+        "--network",
+        "regtest",
+        "--format",
+        "json",
+        "soak",
+        "start",
+        "--elapsed-time-seconds",
+        "60",
+        "--checkpoint-interval-seconds",
+        "15",
+        "--target-height",
+        "144",
+        "--peer-policy",
+        "daemon-configured",
+        "--disk-budget-bytes",
+        "1048576",
+        "--stop-condition",
+        "elapsed-time",
+        "--run-id",
+        run_id,
+    ]
+}
+
+fn soak_target_height_start_args<'a>(data_dir: &'a Path, run_id: &'a str) -> Vec<&'a str> {
+    vec![
+        "--datadir",
+        data_dir.to_str().expect("datadir"),
+        "--network",
+        "regtest",
+        "--format",
+        "json",
+        "soak",
+        "start",
+        "--elapsed-time-seconds",
+        "60",
+        "--checkpoint-interval-seconds",
+        "15",
+        "--target-height",
+        "840004",
+        "--peer-policy",
+        "daemon-configured",
+        "--disk-budget-bytes",
+        "1048576",
+        "--stop-condition",
+        "target-height",
+        "--run-id",
+        run_id,
+    ]
+}
+
 fn run_open_bitcoin<const N: usize>(sandbox: &TestSandbox, args: [&str; N]) -> Output {
     run_open_bitcoin_vec(sandbox, args.to_vec())
 }
@@ -1828,6 +2065,14 @@ fn assert_absent(text: &str, value: &str) {
         !text.contains(value),
         "unexpected sensitive value in {text}"
     );
+}
+
+fn read_jsonl_values(path: &Path) -> Vec<Value> {
+    fs::read_to_string(path)
+        .expect("jsonl file")
+        .lines()
+        .map(|line| serde_json::from_str(line).expect("jsonl value"))
+        .collect()
 }
 
 fn seed_managed_wallet(data_dir: &Path, wallet_name: &str) {

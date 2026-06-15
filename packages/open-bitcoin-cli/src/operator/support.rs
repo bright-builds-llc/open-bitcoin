@@ -21,10 +21,11 @@ use serde::Serialize;
 use serde_json::Value;
 
 pub(crate) use evidence::{
-    ActiveChainEvidence, EvidenceAvailability, EvidenceState, EvidenceVerdictSummary,
-    FullSyncEvidence, LiveSmokeEvidence, SummaryEvidence, SupportEvidenceVerdict, TipEvidence,
-    derive_full_sync_evidence,
+    ActiveChainEvidence, EvidenceAvailability, EvidenceState, FullSyncEvidence, LiveSmokeEvidence,
+    SummaryEvidence, SupportEvidenceVerdict, derive_full_sync_evidence,
 };
+#[cfg(test)]
+pub(crate) use evidence::{EvidenceVerdictSummary, TipEvidence};
 use render::{render_support_markdown, render_support_outcome};
 
 use super::{

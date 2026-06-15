@@ -29,6 +29,7 @@ pub(crate) struct SoakOutcomeEvidence {
 }
 
 impl SoakOutcomeEvidence {
+    #[cfg(test)]
     pub(crate) const fn empty() -> Self {
         Self {
             maybe_sync_stop_reason: None,
@@ -49,6 +50,7 @@ pub(crate) struct SoakProcessExitEvidence {
 }
 
 impl SoakProcessExitEvidence {
+    #[cfg(test)]
     pub(crate) const fn operator_stop() -> Self {
         Self {
             operator_requested_stop: true,
@@ -58,6 +60,7 @@ impl SoakProcessExitEvidence {
         }
     }
 
+    #[cfg(test)]
     pub(crate) const fn interrupted_process() -> Self {
         Self {
             operator_requested_stop: false,
