@@ -2,7 +2,8 @@
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
 use std::{
-    fs, io,
+    fs::{self, File},
+    io,
     path::{Path, PathBuf},
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
@@ -39,8 +40,7 @@ use open_bitcoin_node::status::{
     WalletScanProgress, WalletStatus,
 };
 use open_bitcoin_node::{
-    DurableSyncState, FjallNodeStore, PersistMode, RuntimeMetadata, WalletRegistry,
-    core::wallet::{AddressNetwork, Wallet},
+    DurableSyncState, FjallNodeStore, PersistMode, RuntimeMetadata, storage::FJALL_LOCK_FILE_NAME,
 };
 use open_bitcoin_rpc::{
     RpcErrorCode, RpcErrorDetail,
@@ -217,6 +217,113 @@ fn rpc_failure_produces_unreachable_snapshot_not_process_failure() {
 }
 
 #[test]
+fn status_recovery_evidence_stopped_empty_datadir_does_not_create_fjall_files() {
+    // Arrange
+    let path = temp_path("recovery-evidence-empty-datadir");
+    remove_dir_if_exists(&path);
+    fs::create_dir_all(&path).expect("empty datadir");
+    let _guard = TempDirGuard { path: path.clone() };
+    let input = status_input_for_data_dir(&path);
+
+    // Act
+    let snapshot = collect_status_snapshot(&input, None);
+    let rendered = render_status(&snapshot, StatusRenderMode::Json).expect("status json");
+    let decoded: serde_json::Value = serde_json::from_str(&rendered).expect("decode status json");
+
+    // Assert
+    assert_eq!(decoded["node"]["state"], "stopped");
+    assert_eq!(decoded["recovery_evidence"]["state"], "unavailable");
+    assert_eq!(
+        decoded["recovery_evidence"]["value"]["reason"],
+        "recovery evidence unavailable: no storage, lock, service, or RPC signal"
+    );
+    assert_empty_dir(&path);
+}
+
+#[test]
+fn status_recovery_evidence_stale_lock_reports_read_only_inspection() {
+    // Arrange
+    let path = temp_path("recovery-evidence-stale-lock");
+    remove_dir_if_exists(&path);
+    fs::create_dir_all(&path).expect("datadir");
+    fs::write(path.join(FJALL_LOCK_FILE_NAME), "").expect("stale lock");
+    let _guard = TempDirGuard { path: path.clone() };
+    let input = status_input_for_data_dir(&path);
+
+    // Act
+    let snapshot = collect_status_snapshot(&input, None);
+    let rendered = render_status(&snapshot, StatusRenderMode::Json).expect("status json");
+    let decoded: serde_json::Value = serde_json::from_str(&rendered).expect("decode status json");
+
+    // Assert
+    assert_eq!(decoded["recovery_evidence"]["state"], "available");
+    assert_eq!(
+        decoded["recovery_evidence"]["value"]["category"],
+        "storage_lock_contention"
+    );
+    assert_eq!(
+        decoded["recovery_evidence"]["value"]["cause"],
+        "stale_lock_evidence"
+    );
+    assert_eq!(
+        decoded["recovery_evidence"]["value"]["action_class"],
+        "read_only_inspection"
+    );
+}
+
+#[test]
+fn status_recovery_evidence_concurrent_datadir_uses_service_and_rpc_evidence() {
+    // Arrange
+    let path = temp_path("recovery-evidence-concurrent-datadir");
+    remove_dir_if_exists(&path);
+    fs::create_dir_all(&path).expect("datadir");
+    let _guard = TempDirGuard { path: path.clone() };
+    let lock_path = path.join(FJALL_LOCK_FILE_NAME);
+    let lock_file = File::create(&lock_path).expect("lock file");
+    lock_file.try_lock().expect("hold lock");
+    let _lock_guard = lock_file;
+    let input = status_input_with_running_manager_and_live_rpc(&path);
+    let rpc = FakeStatusRpcClient::running();
+
+    // Act
+    let snapshot = collect_status_snapshot(&input, Some(&rpc));
+    let rendered = render_status(&snapshot, StatusRenderMode::Json).expect("status json");
+    let decoded: serde_json::Value = serde_json::from_str(&rendered).expect("decode status json");
+
+    // Assert
+    assert_eq!(decoded["node"]["state"], "running");
+    assert_eq!(decoded["recovery_evidence"]["state"], "available");
+    assert_eq!(
+        decoded["recovery_evidence"]["value"]["category"],
+        "storage_lock_contention"
+    );
+    assert_eq!(
+        decoded["recovery_evidence"]["value"]["cause"],
+        "concurrent_datadir_use"
+    );
+}
+
+#[test]
+fn status_recovery_evidence_missing_datadir_remains_explicit_unavailable_json() {
+    // Arrange
+    let path = temp_path("recovery-evidence-missing-datadir");
+    remove_dir_if_exists(&path);
+    let input = status_input_for_data_dir(&path);
+
+    // Act
+    let snapshot = collect_status_snapshot(&input, None);
+    let rendered = render_status(&snapshot, StatusRenderMode::Json).expect("status json");
+    let decoded: serde_json::Value = serde_json::from_str(&rendered).expect("decode status json");
+
+    // Assert
+    assert_eq!(decoded["recovery_evidence"]["state"], "unavailable");
+    assert_eq!(
+        decoded["recovery_evidence"]["value"]["reason"],
+        "recovery evidence unavailable: no storage, lock, service, or RPC signal"
+    );
+}
+
+#[test]
 fn wallet_rpc_failure_keeps_node_running_and_marks_wallet_unavailable() {
     // Arrange
     let input = status_input(Vec::new());
@@ -289,42 +396,18 @@ fn build_provenance_from_inputs_marks_present_fields_available() {
 }
 
 #[test]
-fn status_wallet_rpc_access_uses_sole_loaded_wallet() {
+fn status_wallet_rpc_access_stays_root_without_store_inspection() {
     // Arrange
-    let store = managed_wallet_store("sole", &["alpha"], None);
+    let path = temp_path("wallet-access-probe-only");
+    remove_dir_if_exists(&path);
+    let _guard = TempDirGuard { path: path.clone() };
 
     // Act
-    let access = resolve_status_wallet_rpc_access(Some(store.path()));
+    let access = resolve_status_wallet_rpc_access(Some(&path));
 
     // Assert
-    assert_eq!(access, StatusWalletRpcAccess::Wallet("alpha".to_string()));
-}
-
-#[test]
-fn status_wallet_rpc_access_prefers_selected_wallet_when_multiple_loaded() {
-    // Arrange
-    let store = managed_wallet_store("selected", &["alpha", "beta"], Some("beta"));
-
-    // Act
-    let access = resolve_status_wallet_rpc_access(Some(store.path()));
-
-    // Assert
-    assert_eq!(access, StatusWalletRpcAccess::Wallet("beta".to_string()));
-}
-
-#[test]
-fn status_wallet_rpc_access_marks_ambiguous_wallets_unavailable() {
-    // Arrange
-    let multi_store = managed_wallet_store("multi", &["alpha", "beta"], None);
-
-    // Act
-    let multi_access = resolve_status_wallet_rpc_access(Some(multi_store.path()));
-
-    // Assert
-    assert!(matches!(
-        multi_access,
-        StatusWalletRpcAccess::Unavailable { .. }
-    ));
+    assert_eq!(access, StatusWalletRpcAccess::Root);
+    assert!(!path.exists());
 }
 
 #[test]
@@ -1512,6 +1595,58 @@ fn status_input(detected_installations: Vec<DetectedInstallation>) -> StatusColl
     status_input_with_service_candidates(detected_installations, Vec::new())
 }
 
+fn status_input_for_data_dir(data_dir: &Path) -> StatusCollectorInput {
+    let mut resolution = config_resolution();
+    resolution.maybe_data_dir = Some(data_dir.to_path_buf());
+    resolution.maybe_log_dir = None;
+    resolution.maybe_metrics_store_path = None;
+    StatusCollectorInput {
+        request: StatusRequest {
+            render_mode: StatusRenderMode::Json,
+            maybe_config_path: None,
+            maybe_data_dir: Some(data_dir.to_path_buf()),
+            maybe_network: Some(NetworkSelection::Regtest),
+            include_live_rpc: false,
+            no_color: true,
+        },
+        config_resolution: resolution,
+        detection_evidence: StatusDetectionEvidence {
+            detected_installations: Vec::new(),
+            service_candidates: Vec::new(),
+        },
+        maybe_live_rpc: None,
+        maybe_service_manager: None,
+        wallet_rpc_access: StatusWalletRpcAccess::Root,
+    }
+}
+
+fn status_input_with_running_manager_and_live_rpc(data_dir: &Path) -> StatusCollectorInput {
+    let mut input = status_input_with_manager(
+        Box::new(FakeServiceManager::new(service_snapshot(
+            ServiceLifecycleState::Running,
+            Some(true),
+            data_dir,
+        ))),
+        {
+            let mut resolution = config_resolution();
+            resolution.maybe_data_dir = Some(data_dir.to_path_buf());
+            resolution.maybe_log_dir = None;
+            resolution.maybe_metrics_store_path = None;
+            resolution
+        },
+    );
+    input.request.render_mode = StatusRenderMode::Json;
+    input.request.include_live_rpc = true;
+    input.maybe_live_rpc = Some(StatusLiveRpcAdapterInput {
+        endpoint: "http://127.0.0.1:18443".to_string(),
+        auth_source: StatusRpcAuthSource::CookieFile {
+            path: data_dir.join(".cookie"),
+        },
+        timeout: Duration::from_secs(2),
+    });
+    input
+}
+
 fn status_input_with_service_candidates(
     detected_installations: Vec<DetectedInstallation>,
     service_candidates: Vec<ServiceCandidate>,
@@ -1728,35 +1863,6 @@ impl StatusRpcClient for FakeStatusRpcClient {
     }
 }
 
-fn managed_wallet_store(
-    test_name: &str,
-    wallet_names: &[&str],
-    maybe_selected_wallet_name: Option<&str>,
-) -> TempDirGuard {
-    let path = temp_path(test_name);
-    remove_dir_if_exists(&path);
-    let store = FjallNodeStore::open(&path).expect("wallet store");
-    let mut registry = WalletRegistry::default();
-
-    for wallet_name in wallet_names {
-        registry
-            .create_wallet(
-                &store,
-                *wallet_name,
-                Wallet::new(AddressNetwork::Regtest),
-                PersistMode::Sync,
-            )
-            .expect("create wallet");
-    }
-    if let Some(selected_wallet_name) = maybe_selected_wallet_name {
-        registry
-            .set_selected_wallet(&store, selected_wallet_name, PersistMode::Sync)
-            .expect("select wallet");
-    }
-
-    TempDirGuard { path }
-}
-
 fn temp_path(test_name: &str) -> PathBuf {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -1776,14 +1882,19 @@ fn remove_dir_if_exists(path: &Path) {
     }
 }
 
-struct TempDirGuard {
-    path: PathBuf,
+fn assert_empty_dir(path: &Path) {
+    let entries = fs::read_dir(path)
+        .expect("read datadir")
+        .collect::<Result<Vec<_>, _>>()
+        .expect("datadir entries");
+    assert!(
+        entries.is_empty(),
+        "datadir should remain empty: {entries:?}"
+    );
 }
 
-impl TempDirGuard {
-    fn path(&self) -> &Path {
-        &self.path
-    }
+struct TempDirGuard {
+    path: PathBuf,
 }
 
 impl Drop for TempDirGuard {
