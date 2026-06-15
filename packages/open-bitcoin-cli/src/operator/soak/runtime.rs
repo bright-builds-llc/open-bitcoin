@@ -170,7 +170,12 @@ impl SoakClock for SystemSoakClock {
         current_unix_seconds()
     }
 
-    fn sleep_until(&mut self, _scheduled_unix_seconds: u64) {}
+    fn sleep_until(&mut self, scheduled_unix_seconds: u64) {
+        let now = current_unix_seconds();
+        if scheduled_unix_seconds > now {
+            std::thread::sleep(std::time::Duration::from_secs(scheduled_unix_seconds - now));
+        }
+    }
 }
 
 #[cfg(test)]

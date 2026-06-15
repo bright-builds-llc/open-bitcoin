@@ -306,6 +306,7 @@ fn open_bitcoin_soak_start_writes_durable_ledger_and_reports() {
     let sandbox = TestSandbox::new("soak-phase75-start");
     let data_dir = sandbox.child("open-data");
     fs::create_dir_all(&data_dir).expect("open datadir");
+    seed_phase72_runtime_metadata(&data_dir, false);
 
     // Act
     let output = run_open_bitcoin_vec(&sandbox, soak_start_args(&data_dir, "soak-1700000000-0001"));
@@ -359,6 +360,7 @@ fn open_bitcoin_soak_stop_records_operator_stop_verdict() {
     let sandbox = TestSandbox::new("soak-phase75-stop");
     let data_dir = sandbox.child("open-data");
     fs::create_dir_all(&data_dir).expect("open datadir");
+    seed_phase72_runtime_metadata(&data_dir, false);
     let start = run_open_bitcoin_vec(&sandbox, soak_start_args(&data_dir, "soak-1700000000-0001"));
     assert_success(&start);
 
@@ -405,6 +407,7 @@ fn open_bitcoin_soak_report_is_projection_without_ledger_append() {
     let sandbox = TestSandbox::new("soak-phase75-report");
     let data_dir = sandbox.child("open-data");
     fs::create_dir_all(&data_dir).expect("open datadir");
+    seed_phase72_runtime_metadata(&data_dir, false);
     let start = run_open_bitcoin_vec(&sandbox, soak_start_args(&data_dir, "soak-1700000000-0001"));
     assert_success(&start);
     let events_path = data_dir.join("soak/runs/soak-1700000000-0001/events.jsonl");
@@ -1004,6 +1007,7 @@ fn open_bitcoin_support_bundle_includes_phase75_soak_summary() {
         "__cookie__:phase75-cookie-secret\n",
     )
     .expect("cookie");
+    seed_phase72_runtime_metadata(&data_dir, false);
     let start = run_open_bitcoin_vec(&sandbox, soak_start_args(&data_dir, "soak-1700000000-0001"));
     assert_success(&start);
     let run_dir = data_dir.join("soak/runs/soak-1700000000-0001");
@@ -2092,13 +2096,13 @@ fn soak_start_args<'a>(data_dir: &'a Path, run_id: &'a str) -> Vec<&'a str> {
         "--checkpoint-interval-seconds",
         "15",
         "--target-height",
-        "144",
+        "840004",
         "--peer-policy",
         "daemon-configured",
         "--disk-budget-bytes",
         "1048576",
         "--stop-condition",
-        "elapsed-time",
+        "target-height",
         "--run-id",
         run_id,
     ]
