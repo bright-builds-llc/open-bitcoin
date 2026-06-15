@@ -8,7 +8,8 @@ use std::{
 };
 
 use open_bitcoin_node::{
-    LogStatus, MetricRetentionPolicy, MetricsStatus,
+    LogStatus, MetricRetentionPolicy, MetricsStatus, RecoveryActionClass, RecoveryCause,
+    RecoveryEvidenceBasis, RecoveryEvidenceSnapshot,
     status::{
         BestKnownTipSource, BestKnownTipStatus, BuildProvenance, ConfigStatus, FieldAvailability,
         MempoolStatus, NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot, PeerStatus,
@@ -325,6 +326,116 @@ fn soak_runtime_target_height_resource_recovery_and_status_verdict_stop_conditio
 
         assert_eq!(result.final_outcome, expected, "case {label}");
     }
+}
+
+#[test]
+fn soak_recovery_evidence_checkpoint_available_top_level_evidence_records_labels() {
+    // Arrange
+    let temp = TestDirectory::new("recovery-evidence-checkpoint");
+    let layout = SoakLedgerLayout::for_datadir(temp.path());
+    let run_id = SoakRunId::try_new("soak-1700000000-recovery-evidence").expect("run id");
+    let bounds = soak_bounds(temp.path(), None, vec![SoakStopCondition::StatusVerdict]);
+    let mut ledger = SoakLedger::create(&layout, run_id.clone());
+    let mut collector =
+        ScriptedStatusCollector::repeating(phase77_recovery_status_snapshot(temp.path()));
+    let mut clock = SoakTestClock::new(1_700_000_000);
+
+    // Act
+    let result = run_bounded_soak_loop(
+        &run_id,
+        &bounds,
+        &layout,
+        &mut ledger,
+        &mut collector,
+        &mut clock,
+        SoakLoopMode::Start,
+    )
+    .expect("bounded soak loop");
+    let checkpoint = latest_checkpoint_status(&layout, &run_id);
+
+    // Assert
+    assert_eq!(result.final_outcome, SoakOutcomeLabel::RecoveryStop);
+    assert_eq!(
+        checkpoint.maybe_recovery_category_label.as_deref(),
+        Some("store_corruption")
+    );
+    assert_eq!(
+        checkpoint.maybe_recovery_action_class_label.as_deref(),
+        Some("backup_then_rebuild")
+    );
+    assert_eq!(
+        checkpoint.maybe_recovery_cause_label.as_deref(),
+        Some("partial_write")
+    );
+    assert_eq!(
+        checkpoint.maybe_recovery_next_action.as_deref(),
+        Some("Back up the selected datadir, then rebuild affected storage before normal operation.")
+    );
+}
+
+#[test]
+fn soak_recovery_evidence_checkpoint_unavailable_evidence_leaves_optional_fields_empty() {
+    // Arrange
+    let temp = TestDirectory::new("recovery-evidence-unavailable");
+    let layout = SoakLedgerLayout::for_datadir(temp.path());
+    let run_id = SoakRunId::try_new("soak-1700000000-recovery-unavailable").expect("run id");
+    let bounds = soak_bounds(temp.path(), None, vec![SoakStopCondition::StatusVerdict]);
+    let mut ledger = SoakLedger::create(&layout, run_id.clone());
+    let mut collector = ScriptedStatusCollector::repeating(recovery_status_snapshot(temp.path()));
+    let mut clock = SoakTestClock::new(1_700_000_000);
+
+    // Act
+    let result = run_bounded_soak_loop(
+        &run_id,
+        &bounds,
+        &layout,
+        &mut ledger,
+        &mut collector,
+        &mut clock,
+        SoakLoopMode::Start,
+    )
+    .expect("bounded soak loop");
+    let checkpoint = latest_checkpoint_status(&layout, &run_id);
+
+    // Assert
+    assert_eq!(result.final_outcome, SoakOutcomeLabel::RecoveryStop);
+    assert_eq!(
+        checkpoint.maybe_recovery_category_label.as_deref(),
+        Some("store_corruption")
+    );
+    assert_eq!(checkpoint.maybe_recovery_action_class_label, None);
+    assert_eq!(checkpoint.maybe_recovery_cause_label, None);
+    assert_eq!(checkpoint.maybe_recovery_next_action, None);
+}
+
+#[test]
+fn soak_recovery_evidence_checkpoint_outcome_prefers_top_level_category_over_legacy_sync() {
+    // Arrange
+    let temp = TestDirectory::new("recovery-evidence-outcome");
+    let layout = SoakLedgerLayout::for_datadir(temp.path());
+    let run_id = SoakRunId::try_new("soak-1700000000-recovery-outcome").expect("run id");
+    let bounds = soak_bounds(temp.path(), None, vec![SoakStopCondition::StatusVerdict]);
+    let mut ledger = SoakLedger::create(&layout, run_id.clone());
+    let mut snapshot = phase77_recovery_status_snapshot(temp.path());
+    snapshot.sync.recovery_category =
+        FieldAvailability::available(SyncRecoveryCategory::ResourceExhaustion);
+    let mut collector = ScriptedStatusCollector::repeating(snapshot);
+    let mut clock = SoakTestClock::new(1_700_000_000);
+
+    // Act
+    let result = run_bounded_soak_loop(
+        &run_id,
+        &bounds,
+        &layout,
+        &mut ledger,
+        &mut collector,
+        &mut clock,
+        SoakLoopMode::Start,
+    )
+    .expect("bounded soak loop");
+
+    // Assert
+    assert_eq!(result.final_outcome, SoakOutcomeLabel::RecoveryStop);
 }
 
 #[test]
@@ -1053,6 +1164,45 @@ fn diagnosed_status_snapshot(datadir: &Path) -> OpenBitcoinStatusSnapshot {
         fully_persisted: false,
     });
     snapshot
+}
+
+fn phase77_recovery_status_snapshot(datadir: &Path) -> OpenBitcoinStatusSnapshot {
+    let mut snapshot = base_status_snapshot(datadir);
+    snapshot.recovery_evidence = FieldAvailability::available(RecoveryEvidenceSnapshot {
+        category: SyncRecoveryCategory::StoreCorruption,
+        action_class: RecoveryActionClass::BackupThenRebuild,
+        cause: RecoveryCause::PartialWrite,
+        evidence_basis: vec![RecoveryEvidenceBasis::RecoveryMarker],
+        maybe_affected_namespace: Some("runtime".to_string()),
+        maybe_affected_path: None,
+        next_action:
+            "Back up the selected datadir, then rebuild affected storage before normal operation."
+                .to_string(),
+        compatibility_action: FieldAvailability::unavailable(
+            "no compatibility recovery action recorded",
+        ),
+    });
+    snapshot
+}
+
+fn latest_checkpoint_status(
+    layout: &SoakLedgerLayout,
+    run_id: &SoakRunId,
+) -> SoakCheckpointStatus {
+    let events = SoakLedger::read_events(&layout.paths_for_run(run_id).events_path)
+        .expect("read soak ledger")
+        .events;
+    events
+        .into_iter()
+        .rev()
+        .find_map(|event| match event.event {
+            SoakLedgerEvent::Checkpoint { status } => Some(status),
+            SoakLedgerEvent::Started { .. }
+            | SoakLedgerEvent::Resume { .. }
+            | SoakLedgerEvent::Stop { .. }
+            | SoakLedgerEvent::Verdict { .. } => None,
+        })
+        .expect("latest checkpoint status")
 }
 
 fn base_status_snapshot(datadir: &Path) -> OpenBitcoinStatusSnapshot {

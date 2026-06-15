@@ -713,27 +713,34 @@ fn soak_bounds_serializes_peer_policy_and_stop_conditions() {
 #[test]
 fn soak_outcome_classifies_recovery_and_resource_evidence() {
     // Arrange
-    let resource_recovery = SoakOutcomeEvidence {
-        maybe_recovery_category: Some(SyncRecoveryCategory::ResourceExhaustion),
-        ..SoakOutcomeEvidence::empty()
-    };
-    let storage_recovery = SoakOutcomeEvidence {
-        maybe_recovery_category: Some(SyncRecoveryCategory::StorageBackendFailure),
-        ..SoakOutcomeEvidence::empty()
-    };
+    let recovery_categories = [
+        SyncRecoveryCategory::StorageLockContention,
+        SyncRecoveryCategory::IncompatibleSchema,
+        SyncRecoveryCategory::StoreCorruption,
+        SyncRecoveryCategory::StorageBackendFailure,
+    ];
     let resource_diagnosis = SoakOutcomeEvidence {
         maybe_no_progress_diagnosis: Some(NoProgressDiagnosis::StorageOrResourceBlocked),
         ..SoakOutcomeEvidence::empty()
     };
 
     // Act / Assert
+    for recovery_category in recovery_categories {
+        assert_eq!(
+            classify_soak_outcome(&SoakOutcomeEvidence {
+                maybe_recovery_category: Some(recovery_category),
+                ..SoakOutcomeEvidence::empty()
+            }),
+            SoakOutcomeLabel::RecoveryStop,
+            "{recovery_category:?} must preserve the Phase 75 RecoveryStop outcome"
+        );
+    }
     assert_eq!(
-        classify_soak_outcome(&resource_recovery),
+        classify_soak_outcome(&SoakOutcomeEvidence {
+            maybe_recovery_category: Some(SyncRecoveryCategory::ResourceExhaustion),
+            ..SoakOutcomeEvidence::empty()
+        }),
         SoakOutcomeLabel::ResourceStop
-    );
-    assert_eq!(
-        classify_soak_outcome(&storage_recovery),
-        SoakOutcomeLabel::RecoveryStop
     );
     assert_eq!(
         classify_soak_outcome(&resource_diagnosis),
