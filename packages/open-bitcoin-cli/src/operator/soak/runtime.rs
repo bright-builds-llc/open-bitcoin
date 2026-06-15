@@ -431,7 +431,7 @@ pub(crate) fn write_operator_stop(
 ) -> Result<SoakLoopResult, OperatorRuntimeError> {
     let paths = layout.paths_for_run(run_id);
     let read = SoakLedger::read_events(&paths.events_path).map_err(runtime_error)?;
-    if has_terminal_stop_and_verdict(&read.events) {
+    if has_terminal_stop_and_verdict(latest_invocation_events(&read.events)) {
         return Err(OperatorRuntimeError::InvalidRequest {
             message: format!("soak run {run_id} already has a terminal verdict"),
         });

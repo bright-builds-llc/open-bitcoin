@@ -661,6 +661,79 @@ fn soak_runtime_resume_plan_treats_latest_unterminated_invocation_as_interrupted
 }
 
 #[test]
+fn soak_runtime_stop_accepts_active_resume_after_historical_terminal_verdict() {
+    // Arrange
+    let temp = TestDirectory::new("stop-active-resume");
+    let layout = SoakLedgerLayout::for_datadir(temp.path());
+    let run_id = SoakRunId::try_new("soak-1700000000-stop-active-resume").expect("run id");
+    let started_at = 1_700_000_000;
+    let mut ledger = SoakLedger::create(&layout, run_id.clone());
+    ledger
+        .append_event(
+            started_at,
+            SoakLedgerEvent::Started {
+                bounds: soak_bounds(temp.path(), None, vec![SoakStopCondition::ElapsedTime]),
+            },
+        )
+        .expect("started");
+    ledger
+        .append_event(
+            started_at + 15,
+            SoakLedgerEvent::Stop {
+                outcome: SoakOutcomeLabel::OperatorStop,
+            },
+        )
+        .expect("historical operator stop");
+    ledger
+        .append_event(
+            started_at + 15,
+            SoakLedgerEvent::Verdict {
+                outcome: SoakOutcomeLabel::OperatorStop,
+            },
+        )
+        .expect("historical operator verdict");
+    ledger
+        .append_event(
+            started_at + 30,
+            SoakLedgerEvent::Resume {
+                interrupted_prior_run: false,
+            },
+        )
+        .expect("resume");
+    ledger
+        .append_event(
+            started_at + 30,
+            SoakLedgerEvent::Checkpoint {
+                status: checkpoint_status(10),
+            },
+        )
+        .expect("checkpoint");
+
+    // Act
+    let result = write_operator_stop(&layout, &run_id, started_at + 45).expect("operator stop");
+    let events = SoakLedger::read_events(&layout.paths_for_run(&run_id).events_path)
+        .expect("read events")
+        .events;
+
+    // Assert
+    assert_eq!(result.final_outcome, SoakOutcomeLabel::OperatorStop);
+    assert_eq!(result.latest_sequence, 7);
+    assert_eq!(events.len(), 7);
+    assert!(matches!(
+        &events[5].event,
+        SoakLedgerEvent::Stop {
+            outcome: SoakOutcomeLabel::OperatorStop
+        }
+    ));
+    assert!(matches!(
+        &events[6].event,
+        SoakLedgerEvent::Verdict {
+            outcome: SoakOutcomeLabel::OperatorStop
+        }
+    ));
+}
+
+#[test]
 fn soak_runtime_stop_records_operator_stop_verdict() {
     // Arrange
     let temp = TestDirectory::new("stop");
