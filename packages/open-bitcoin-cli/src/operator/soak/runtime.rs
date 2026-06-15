@@ -284,6 +284,11 @@ pub(crate) fn run_bounded_soak_loop(
             return Ok(result);
         }
         let snapshot = collector.collect();
+        if let Some(result) =
+            existing_terminal_result_after_sequence(layout, run_id, invocation_marker_sequence)?
+        {
+            return Ok(result);
+        }
         let status = checkpoint_status_from_snapshot(&snapshot);
         ledger
             .append_event(checkpoint_at, SoakLedgerEvent::Checkpoint { status })
@@ -366,38 +371,57 @@ pub(crate) fn validate_resume_plan(
         }
     })?;
     bounds.checkpoint_interval_seconds = checkpoint_interval_seconds;
+    let invocation_events = latest_invocation_events(&read.events);
     // D-11 same-run resume matrix: clean_completion refuses; operator_stop,
     // resource_stop, and recovery_stop resume as same-run; unexpected_termination
     // resumes as interrupted recovery evidence.
-    let interrupted_prior_run = match latest_verdict(&read.events) {
-        Some(SoakOutcomeLabel::CleanCompletion) => {
-            return Err(OperatorRuntimeError::InvalidRequest {
-                message: format!(
-                    "soak run {run_id} latest verdict clean_completion cannot be resumed"
-                ),
-            });
-        }
-        Some(
-            SoakOutcomeLabel::OperatorStop
-            | SoakOutcomeLabel::ResourceStop
-            | SoakOutcomeLabel::RecoveryStop,
-        ) => false,
-        Some(SoakOutcomeLabel::UnexpectedTermination) | None => true,
-        Some(SoakOutcomeLabel::DiagnosedBlocker) => {
-            return Err(OperatorRuntimeError::InvalidRequest {
-                message: format!(
-                    "soak run {run_id} ended with diagnosed_blocker and cannot be resumed as the same run"
-                ),
-            });
+    let interrupted_prior_run = if !has_terminal_stop_and_verdict(invocation_events) {
+        true
+    } else {
+        match latest_verdict(invocation_events) {
+            Some(SoakOutcomeLabel::CleanCompletion) => {
+                return Err(OperatorRuntimeError::InvalidRequest {
+                    message: format!(
+                        "soak run {run_id} latest verdict clean_completion cannot be resumed"
+                    ),
+                });
+            }
+            Some(
+                SoakOutcomeLabel::OperatorStop
+                | SoakOutcomeLabel::ResourceStop
+                | SoakOutcomeLabel::RecoveryStop,
+            ) => false,
+            Some(SoakOutcomeLabel::UnexpectedTermination) | None => true,
+            Some(SoakOutcomeLabel::DiagnosedBlocker) => {
+                return Err(OperatorRuntimeError::InvalidRequest {
+                    message: format!(
+                        "soak run {run_id} ended with diagnosed_blocker and cannot be resumed as the same run"
+                    ),
+                });
+            }
         }
     };
     Ok(SoakResumePlan {
         bounds,
-        interrupted_prior_run: interrupted_prior_run
-            || !has_terminal_stop_and_verdict(&read.events),
+        interrupted_prior_run,
         next_sequence: next_sequence(&read.events),
         started_at_unix_seconds,
     })
+}
+
+fn latest_invocation_events(
+    events: &[super::ledger::SoakLedgerEventEnvelope],
+) -> &[super::ledger::SoakLedgerEventEnvelope] {
+    let latest_invocation_index = events
+        .iter()
+        .rposition(|envelope| {
+            matches!(
+                &envelope.event,
+                SoakLedgerEvent::Started { .. } | SoakLedgerEvent::Resume { .. }
+            )
+        })
+        .unwrap_or(0);
+    &events[latest_invocation_index..]
 }
 
 pub(crate) fn write_operator_stop(

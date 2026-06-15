@@ -128,6 +128,45 @@ impl SoakClock for StopDuringSleepClock {
     }
 }
 
+struct StopDuringCollectCollector {
+    snapshot: OpenBitcoinStatusSnapshot,
+    layout: SoakLedgerLayout,
+    run_id: SoakRunId,
+    stop_written: bool,
+}
+
+impl StopDuringCollectCollector {
+    const fn new(
+        snapshot: OpenBitcoinStatusSnapshot,
+        layout: SoakLedgerLayout,
+        run_id: SoakRunId,
+    ) -> Self {
+        Self {
+            snapshot,
+            layout,
+            run_id,
+            stop_written: false,
+        }
+    }
+}
+
+impl SoakStatusCollector for StopDuringCollectCollector {
+    fn collect(&mut self) -> OpenBitcoinStatusSnapshot {
+        if !self.stop_written {
+            write_operator_stop(&self.layout, &self.run_id, self.snapshot_time())
+                .expect("external operator stop during collect");
+            self.stop_written = true;
+        }
+        self.snapshot.clone()
+    }
+}
+
+impl StopDuringCollectCollector {
+    fn snapshot_time(&self) -> u64 {
+        1_700_000_000
+    }
+}
+
 #[test]
 fn soak_runtime_elapsed_writes_started_checkpoints_stop_and_verdict() {
     // Arrange
@@ -505,6 +544,120 @@ fn soak_runtime_resume_continues_after_historical_operator_stop_verdict() {
             outcome: SoakOutcomeLabel::CleanCompletion
         }
     ));
+}
+
+#[test]
+fn soak_runtime_runner_returns_external_stop_written_during_collect() {
+    // Arrange
+    let temp = TestDirectory::new("stop-during-collect");
+    let layout = SoakLedgerLayout::for_datadir(temp.path());
+    let run_id = SoakRunId::try_new("soak-1700000000-stop-collect").expect("run id");
+    let bounds = soak_bounds(temp.path(), None, vec![SoakStopCondition::ElapsedTime]);
+    let mut ledger = SoakLedger::create(&layout, run_id.clone());
+    let snapshot = base_status_snapshot(temp.path());
+    let mut collector = StopDuringCollectCollector::new(snapshot, layout.clone(), run_id.clone());
+    let mut clock = SoakTestClock::new(1_700_000_000);
+
+    // Act
+    let result = run_bounded_soak_loop(
+        &run_id,
+        &bounds,
+        &layout,
+        &mut ledger,
+        &mut collector,
+        &mut clock,
+        SoakLoopMode::Start,
+    )
+    .expect("bounded soak loop with stop during collect");
+    let events = SoakLedger::read_events(&layout.paths_for_run(&run_id).events_path)
+        .expect("read events")
+        .events;
+
+    // Assert
+    assert_eq!(result.final_outcome, SoakOutcomeLabel::OperatorStop);
+    assert_eq!(result.latest_sequence, 3);
+    assert_eq!(events.len(), 3);
+    assert!(matches!(&events[0].event, SoakLedgerEvent::Started { .. }));
+    assert!(matches!(
+        &events[1].event,
+        SoakLedgerEvent::Stop {
+            outcome: SoakOutcomeLabel::OperatorStop
+        }
+    ));
+    assert!(matches!(
+        &events[2].event,
+        SoakLedgerEvent::Verdict {
+            outcome: SoakOutcomeLabel::OperatorStop
+        }
+    ));
+}
+
+#[test]
+fn soak_runtime_resume_plan_treats_latest_unterminated_invocation_as_interrupted() {
+    // Arrange
+    let temp = TestDirectory::new("resume-after-interrupted-resume");
+    let layout = SoakLedgerLayout::for_datadir(temp.path());
+    let run_id = SoakRunId::try_new("soak-1700000000-interrupted-resume").expect("run id");
+    let paths = layout.paths_for_run(&run_id);
+    let started_at = 1_700_000_000;
+    let mut ledger = SoakLedger::create(&layout, run_id.clone());
+    ledger
+        .append_event(
+            started_at,
+            SoakLedgerEvent::Started {
+                bounds: soak_bounds(temp.path(), None, vec![SoakStopCondition::ElapsedTime]),
+            },
+        )
+        .expect("started");
+    ledger
+        .append_event(
+            started_at + 15,
+            SoakLedgerEvent::Stop {
+                outcome: SoakOutcomeLabel::OperatorStop,
+            },
+        )
+        .expect("operator stop");
+    ledger
+        .append_event(
+            started_at + 15,
+            SoakLedgerEvent::Verdict {
+                outcome: SoakOutcomeLabel::OperatorStop,
+            },
+        )
+        .expect("operator verdict");
+    ledger
+        .append_event(
+            started_at + 30,
+            SoakLedgerEvent::Resume {
+                interrupted_prior_run: false,
+            },
+        )
+        .expect("resume");
+    ledger
+        .append_event(
+            started_at + 30,
+            SoakLedgerEvent::Checkpoint {
+                status: checkpoint_status(10),
+            },
+        )
+        .expect("checkpoint");
+    let mut index = SoakRunIndex::empty();
+    index.record_run(SoakRunIndexEntry {
+        run_id: run_id.clone(),
+        ledger_path: paths.events_path.clone(),
+        started_at_unix_seconds: started_at,
+        updated_at_unix_seconds: started_at + 30,
+        maybe_outcome: Some(SoakOutcomeLabel::OperatorStop),
+    });
+    index.write_atomic(&layout).expect("write index");
+
+    // Act
+    let resume = validate_resume_plan(&layout, &run_id, 15).expect("resume plan");
+
+    // Assert
+    assert!(resume.interrupted_prior_run);
+    assert_eq!(resume.next_sequence, 6);
+    assert_eq!(resume.started_at_unix_seconds, started_at);
 }
 
 #[test]
