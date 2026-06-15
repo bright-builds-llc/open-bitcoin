@@ -128,6 +128,9 @@ pub(super) fn render_support_markdown(bundle: &SupportEvidenceBundle) -> String 
     output.push_str("\n## Full Sync Evidence\n\n");
     push_full_sync_evidence(&mut output, &bundle.full_sync_evidence);
 
+    output.push_str("\n## Soak Evidence\n\n");
+    push_soak_evidence(&mut output, &bundle.soak_evidence);
+
     output.push_str("\n## Live Smoke\n\n");
     output.push_str(&format!(
         "- State: {}\n",
@@ -144,6 +147,55 @@ pub(super) fn render_support_markdown(bundle: &SupportEvidenceBundle) -> String 
     }
 
     output
+}
+
+fn push_soak_evidence(output: &mut String, evidence: &super::SoakSupportEvidence) {
+    output.push_str(&format!(
+        "- State: {}\n",
+        evidence_state_name(evidence.state)
+    ));
+    output.push_str(&format!(
+        "- Run: {}\n",
+        evidence.maybe_run_id.as_deref().unwrap_or("unavailable")
+    ));
+    output.push_str(&format!(
+        "- Final outcome: {}\n",
+        evidence
+            .maybe_final_outcome
+            .as_deref()
+            .unwrap_or("unavailable")
+    ));
+    output.push_str(&format!(
+        "- Source ledger: {}\n",
+        evidence
+            .maybe_source_ledger_path
+            .as_deref()
+            .unwrap_or("unavailable")
+    ));
+    output.push_str(&format!(
+        "- JSON report: {}\n",
+        evidence
+            .maybe_json_report_path
+            .as_deref()
+            .unwrap_or("unavailable")
+    ));
+    output.push_str(&format!(
+        "- Markdown report: {}\n",
+        evidence
+            .maybe_markdown_report_path
+            .as_deref()
+            .unwrap_or("unavailable")
+    ));
+    let maybe_latest_sequence = evidence
+        .maybe_latest_sequence
+        .map(|sequence| sequence.to_string());
+    output.push_str(&format!(
+        "- Latest sequence: {}\n",
+        maybe_latest_sequence.as_deref().unwrap_or("unavailable")
+    ));
+    if let Some(reason) = evidence.maybe_unavailable_reason.as_ref() {
+        output.push_str(&format!("- Reason: {reason}\n"));
+    }
 }
 
 fn push_full_sync_evidence(output: &mut String, evidence: &super::FullSyncEvidence) {

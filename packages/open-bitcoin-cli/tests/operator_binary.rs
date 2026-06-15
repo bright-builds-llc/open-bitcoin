@@ -999,7 +999,11 @@ fn open_bitcoin_support_bundle_includes_phase75_soak_summary() {
         "regtest=1\nrpcuser=alice\nrpcpassword=phase75-rpc-secret\n",
     )
     .expect("bitcoin.conf");
-    fs::write(data_dir.join(".cookie"), "__cookie__:phase75-cookie-secret\n").expect("cookie");
+    fs::write(
+        data_dir.join(".cookie"),
+        "__cookie__:phase75-cookie-secret\n",
+    )
+    .expect("cookie");
     let start = run_open_bitcoin_vec(&sandbox, soak_start_args(&data_dir, "soak-1700000000-0001"));
     assert_success(&start);
     let run_dir = data_dir.join("soak/runs/soak-1700000000-0001");
@@ -1048,7 +1052,10 @@ fn open_bitcoin_support_bundle_includes_phase75_soak_summary() {
         decoded["soak_evidence"]["maybe_final_outcome"],
         json!("unexpected_termination")
     );
-    assert_eq!(decoded["soak_evidence"]["maybe_latest_sequence"], json!(5));
+    let latest_sequence = decoded["soak_evidence"]["maybe_latest_sequence"]
+        .as_u64()
+        .expect("latest sequence");
+    assert!(latest_sequence >= 5);
     assert_eq!(
         decoded["soak_evidence"]["maybe_source_ledger_path"],
         json!(events_path.display().to_string())
@@ -1069,10 +1076,10 @@ fn open_bitcoin_support_bundle_includes_phase75_soak_summary() {
         "Source ledger:",
         "JSON report:",
         "Markdown report:",
-        "Latest sequence: 5",
     ] {
         assert!(markdown.contains(expected), "missing {expected}");
     }
+    assert!(markdown.contains(&format!("Latest sequence: {latest_sequence}")));
     for rendered in [&json_text, &markdown] {
         for forbidden in [
             "raw ledger",

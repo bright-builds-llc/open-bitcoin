@@ -35,10 +35,16 @@ use super::{
         OperatorCredentialSource,
     },
     runtime::{OperatorCommandOutcome, OperatorRuntimeError},
+    soak::{
+        ledger::{SoakLedger, SoakLedgerLayout, SoakRunIndex},
+        outcome::SoakOutcomeLabel,
+        report::SoakReportProjection,
+    },
 };
 
 const SUPPORT_EVIDENCE_JSON: &str = "support-evidence.json";
 const SUPPORT_EVIDENCE_MARKDOWN: &str = "support-evidence.md";
+const SOAK_LEDGER_UNAVAILABLE_REASON: &str = "soak ledger unavailable";
 
 pub(crate) fn execute_support_command(
     args: &SupportArgs,
@@ -72,6 +78,7 @@ fn execute_support_bundle(
     let generated_at_unix_seconds = current_unix_seconds();
     let live_smoke = collect_live_smoke_evidence(args.maybe_live_smoke_report.as_deref());
     let full_sync_evidence = derive_full_sync_evidence(&status, &live_smoke);
+    let soak_evidence = collect_soak_support_evidence(config_resolution);
     let bundle = SupportEvidenceBundle {
         generated_at_unix_seconds,
         generated_by: "open-bitcoin support bundle".to_string(),
@@ -86,6 +93,7 @@ fn execute_support_bundle(
         store_health: collect_store_health(config_resolution),
         live_smoke,
         full_sync_evidence,
+        soak_evidence,
     };
 
     let json_text = serde_json::to_string_pretty(&bundle).map_err(|error| {
@@ -144,6 +152,7 @@ struct SupportEvidenceBundle {
     store_health: StoreHealthEvidence,
     live_smoke: LiveSmokeEvidence,
     full_sync_evidence: FullSyncEvidence,
+    soak_evidence: SoakSupportEvidence,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -259,6 +268,102 @@ struct MetricsHistoryEvidence {
     availability: EvidenceAvailability,
     samples: usize,
     status: Option<MetricsStatus>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+struct SoakSupportEvidence {
+    state: EvidenceState,
+    maybe_run_id: Option<String>,
+    maybe_final_outcome: Option<String>,
+    maybe_latest_sequence: Option<u64>,
+    maybe_source_ledger_path: Option<String>,
+    maybe_json_report_path: Option<String>,
+    maybe_markdown_report_path: Option<String>,
+    maybe_unavailable_reason: Option<String>,
+}
+
+impl SoakSupportEvidence {
+    fn available(
+        run_id: String,
+        maybe_final_outcome: Option<String>,
+        latest_sequence: u64,
+        source_ledger_path: &Path,
+        json_report_path: &Path,
+        markdown_report_path: &Path,
+    ) -> Self {
+        Self {
+            state: EvidenceState::Available,
+            maybe_run_id: Some(run_id),
+            maybe_final_outcome,
+            maybe_latest_sequence: Some(latest_sequence),
+            maybe_source_ledger_path: Some(path_to_string(source_ledger_path)),
+            maybe_json_report_path: Some(path_to_string(json_report_path)),
+            maybe_markdown_report_path: Some(path_to_string(markdown_report_path)),
+            maybe_unavailable_reason: None,
+        }
+    }
+
+    fn unavailable() -> Self {
+        Self {
+            state: EvidenceState::Unavailable,
+            maybe_run_id: None,
+            maybe_final_outcome: None,
+            maybe_latest_sequence: None,
+            maybe_source_ledger_path: None,
+            maybe_json_report_path: None,
+            maybe_markdown_report_path: None,
+            maybe_unavailable_reason: Some(SOAK_LEDGER_UNAVAILABLE_REASON.to_string()),
+        }
+    }
+}
+
+fn collect_soak_support_evidence(
+    config_resolution: &OperatorConfigResolution,
+) -> SoakSupportEvidence {
+    let Some(data_dir) = config_resolution.maybe_data_dir.as_ref() else {
+        return SoakSupportEvidence::unavailable();
+    };
+
+    let layout = SoakLedgerLayout::for_datadir(data_dir);
+    let index = match fs::read_to_string(layout.run_index_path())
+        .ok()
+        .and_then(|text| serde_json::from_str::<SoakRunIndex>(&text).ok())
+    {
+        Some(index) => index,
+        None => return SoakSupportEvidence::unavailable(),
+    };
+    let Some(latest_run) = index.runs.first() else {
+        return SoakSupportEvidence::unavailable();
+    };
+
+    let run_paths = layout.paths_for_run(&latest_run.run_id);
+    if latest_run.ledger_path != run_paths.events_path {
+        return SoakSupportEvidence::unavailable();
+    }
+
+    let read = match SoakLedger::read_events(&run_paths.events_path) {
+        Ok(read) => read,
+        Err(_) => return SoakSupportEvidence::unavailable(),
+    };
+    let projection =
+        match SoakReportProjection::from_ledger_events(read.events, &run_paths.events_path) {
+            Ok(projection) => projection,
+            Err(_) => return SoakSupportEvidence::unavailable(),
+        };
+    let maybe_final_outcome = projection
+        .verdict
+        .as_ref()
+        .or(projection.stop.as_ref())
+        .map(|event| soak_outcome_label(event.outcome));
+
+    SoakSupportEvidence::available(
+        projection.run_id.as_str().to_string(),
+        maybe_final_outcome,
+        projection.latest_sequence,
+        &run_paths.events_path,
+        &run_paths.report_json_path,
+        &run_paths.report_markdown_path,
+    )
 }
 
 fn collect_store_health(resolution: &OperatorConfigResolution) -> StoreHealthEvidence {
@@ -474,6 +579,13 @@ fn current_unix_seconds() -> u64 {
 
 fn path_to_string(path: &Path) -> String {
     path.display().to_string()
+}
+
+fn soak_outcome_label(outcome: SoakOutcomeLabel) -> String {
+    serde_json::to_value(outcome)
+        .ok()
+        .and_then(|value| value.as_str().map(str::to_string))
+        .unwrap_or_else(|| "unknown".to_string())
 }
 
 #[cfg(test)]
