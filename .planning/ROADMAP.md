@@ -50,7 +50,7 @@ delete those phase directories.
 **Plans**: 6 plans
 
 Plans:
-- [ ] 75-01-PLAN.md — Soak domain contracts, durable ledger, report projection, and outcome taxonomy.
+- [x] 75-01-PLAN.md — Soak domain contracts, durable ledger, report projection, and outcome taxonomy.
 - [ ] 75-02-PLAN.md — `open-bitcoin soak` operator command parsing, dispatch, run/resume/stop/report behavior, and binary tests.
 - [ ] 75-03-PLAN.md — Deterministic synthetic long-run and ledger replay coverage without public-network or multi-day waits.
 - [ ] 75-04-PLAN.md — Compact redacted soak summary projection for support bundles.
@@ -134,7 +134,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 75. Multi-Day Soak Runner and Evidence Ledger | 0/6 | Pending | - |
+| 75. Multi-Day Soak Runner and Evidence Ledger | 1/6 | In Progress|  |
 | 76. Disk and Resource Bound Enforcement | 0/0 | Pending | - |
 | 77. Corruption and Lock Recovery Hardening | 0/0 | Pending | - |
 | 78. Progress Guarantees and Stall Diagnosis | 0/0 | Pending | - |
