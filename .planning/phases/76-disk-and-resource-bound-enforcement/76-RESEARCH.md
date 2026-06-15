@@ -454,21 +454,19 @@ Phase 76 should add concrete resource-bound evidence behind the existing `resour
 
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
-| A1 | Warning at 80% and stop at 95% of the explicit disk budget is a reasonable default threshold pair. | Architecture Patterns / Pattern 2 | Wrong thresholds could stop soaks too early or too late; planner should lock and test exact values. |
+| A1 | Warning at 80% and stop at 95% of the explicit disk budget is the Phase 76 default threshold pair. | Architecture Patterns / Pattern 2 | If implementation drifts from the chosen values, docs, tests, and operator guidance will disagree. |
 | A2 | Disk free-space checks are point-in-time and cannot prevent every subsequent backend low-disk write failure. | Common Pitfalls / Threshold Flapping And TOCTOU | If the implementation treats preflight as authoritative, it may miss runtime ENOSPC recovery tests. |
-| A3 | Maintainers may prefer filesystem footprint probes in `open-bitcoin-node` for reuse or in `open-bitcoin-cli` to keep node contracts pure. | Open Questions / Where filesystem probes should live | Probe placement affects crate dependencies, public contract shape, and whether daemon status can collect resource evidence directly. |
+| A3 | Pure resource-bound contracts/classifiers live in `open-bitcoin-node::status::resource_bounds`; filesystem probe orchestration lives in `open-bitcoin-cli` status collection for Phase 76. | Open Questions / Where filesystem probes should live | Future daemon-side collection would need an explicit adapter plan rather than moving filesystem effects into pure contracts. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Exact threshold defaults**
    - What we know: Phase context requires `normal`, `warning`, and `stop-required` states, and says planner may choose numeric defaults. [VERIFIED: .planning/phases/76-disk-and-resource-bound-enforcement/76-CONTEXT.md]
-   - What's unclear: The repo has no existing policy for long-soak disk-budget warning/stop percentages. [VERIFIED: rg threshold/resource-bound audit]
-   - Recommendation: Lock 80% warning and 95% stop in the plan unless the user overrides them, and make the constants configurable or derived from `SoakBounds.disk_budget_bytes`. [ASSUMED]
+   - Decision: Phase 76 locks `RESOURCE_BOUND_WARNING_PERCENT = 80` and `RESOURCE_BOUND_STOP_PERCENT = 95` as default classifier constants. Threshold byte values are derived from each explicit budget, including `SoakBounds.disk_budget_bytes`, and must be documented and tested. [RESOLVED]
 
 2. **Where filesystem probes should live**
    - What we know: `open-bitcoin-node` owns status/contracts/storage/logging, while `open-bitcoin-cli` owns operator status/support/soak collection. [VERIFIED: .planning/ARCHITECTURE.md; VERIFIED: packages/open-bitcoin-node/src/status.rs; VERIFIED: packages/open-bitcoin-cli/src/operator/status.rs]
-   - What's unclear: Whether maintainers prefer filesystem footprint probes in `open-bitcoin-node` for reuse or in `open-bitcoin-cli` to keep node contracts more pure. [ASSUMED]
-   - Recommendation: Put pure resource-bound types/classifiers in `open-bitcoin-node::status::resource_bounds`; put probe orchestration in `open-bitcoin-cli` unless runtime daemon status also needs to collect it directly. [VERIFIED: standards/core/architecture.md]
+   - Decision: Put pure resource-bound types/classifiers in `open-bitcoin-node::status::resource_bounds`; put filesystem probe orchestration in `open-bitcoin-cli/src/operator/status/resource_bounds.rs` for Phase 76. Required evidence that cannot be probed must be represented as unavailable with a reason rather than guessed. [RESOLVED]
 
 ## Environment Availability
 
