@@ -274,6 +274,113 @@ fn soak_runtime_resume_refuses_clean_completion_and_flags_interrupted_runs() {
     assert!(clean_result.is_err());
     assert!(interrupted.interrupted_prior_run);
     assert_eq!(interrupted.next_sequence, 2);
+    assert_eq!(interrupted.started_at_unix_seconds, 1);
+}
+
+#[test]
+fn soak_runtime_resume_preserves_original_elapsed_time_budget() {
+    // Arrange
+    let temp = TestDirectory::new("resume-elapsed-budget");
+    let layout = SoakLedgerLayout::for_datadir(temp.path());
+    let run_id = SoakRunId::try_new("soak-1700000000-resume-budget").expect("run id");
+    let started_at = 1_700_000_000;
+    let deadline = started_at + 60;
+    let bounds = soak_bounds(temp.path(), Some(144), vec![SoakStopCondition::ElapsedTime]);
+    let mut initial_ledger = SoakLedger::create(&layout, run_id.clone());
+    initial_ledger
+        .append_event(
+            started_at,
+            SoakLedgerEvent::Started {
+                bounds: bounds.clone(),
+            },
+        )
+        .expect("started");
+    let mut resume_ledger = SoakLedger::resume(&layout, run_id.clone(), 2);
+    let mut collector = ScriptedStatusCollector::repeating(clean_status_snapshot(temp.path(), 144));
+    let mut clock = SoakTestClock::new(started_at + 45);
+
+    // Act
+    let result = run_bounded_soak_loop(
+        &run_id,
+        &bounds,
+        &layout,
+        &mut resume_ledger,
+        &mut collector,
+        &mut clock,
+        SoakLoopMode::Resume {
+            interrupted_prior_run: true,
+            run_started_at_unix_seconds: started_at,
+        },
+    )
+    .expect("resume soak loop");
+    let events = SoakLedger::read_events(&layout.paths_for_run(&run_id).events_path)
+        .expect("read events")
+        .events;
+
+    // Assert
+    assert_eq!(result.updated_at_unix_seconds, deadline);
+    assert_eq!(result.latest_sequence, 6);
+    assert_eq!(
+        events
+            .iter()
+            .filter(|event| matches!(&event.event, SoakLedgerEvent::Checkpoint { .. }))
+            .map(|event| event.recorded_at_unix_seconds)
+            .collect::<Vec<_>>(),
+        vec![started_at + 45, deadline]
+    );
+}
+
+#[test]
+fn soak_runtime_resume_finishes_immediately_after_original_elapsed_deadline() {
+    // Arrange
+    let temp = TestDirectory::new("resume-elapsed-expired");
+    let layout = SoakLedgerLayout::for_datadir(temp.path());
+    let run_id = SoakRunId::try_new("soak-1700000000-resume-expired").expect("run id");
+    let started_at = 1_700_000_000;
+    let resumed_at = started_at + 120;
+    let bounds = soak_bounds(temp.path(), Some(144), vec![SoakStopCondition::ElapsedTime]);
+    let mut initial_ledger = SoakLedger::create(&layout, run_id.clone());
+    initial_ledger
+        .append_event(
+            started_at,
+            SoakLedgerEvent::Started {
+                bounds: bounds.clone(),
+            },
+        )
+        .expect("started");
+    let mut resume_ledger = SoakLedger::resume(&layout, run_id.clone(), 2);
+    let mut collector = ScriptedStatusCollector::repeating(clean_status_snapshot(temp.path(), 144));
+    let mut clock = SoakTestClock::new(resumed_at);
+
+    // Act
+    let result = run_bounded_soak_loop(
+        &run_id,
+        &bounds,
+        &layout,
+        &mut resume_ledger,
+        &mut collector,
+        &mut clock,
+        SoakLoopMode::Resume {
+            interrupted_prior_run: true,
+            run_started_at_unix_seconds: started_at,
+        },
+    )
+    .expect("resume soak loop");
+    let events = SoakLedger::read_events(&layout.paths_for_run(&run_id).events_path)
+        .expect("read events")
+        .events;
+
+    // Assert
+    assert_eq!(result.updated_at_unix_seconds, resumed_at);
+    assert_eq!(result.latest_sequence, 5);
+    assert_eq!(
+        events
+            .iter()
+            .filter(|event| matches!(&event.event, SoakLedgerEvent::Checkpoint { .. }))
+            .map(|event| event.recorded_at_unix_seconds)
+            .collect::<Vec<_>>(),
+        vec![resumed_at]
+    );
 }
 
 #[test]

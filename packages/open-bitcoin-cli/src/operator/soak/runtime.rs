@@ -92,6 +92,7 @@ pub(crate) fn execute_soak_resume(
         clock,
         SoakLoopMode::Resume {
             interrupted_prior_run: resume.interrupted_prior_run,
+            run_started_at_unix_seconds: resume.started_at_unix_seconds,
         },
     )?;
     record_run_index(
@@ -204,7 +205,10 @@ impl SoakClock for SoakTestClock {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum SoakLoopMode {
     Start,
-    Resume { interrupted_prior_run: bool },
+    Resume {
+        interrupted_prior_run: bool,
+        run_started_at_unix_seconds: u64,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -221,6 +225,7 @@ pub(crate) struct SoakResumePlan {
     pub(crate) bounds: SoakBounds,
     pub(crate) interrupted_prior_run: bool,
     pub(crate) next_sequence: u64,
+    pub(crate) started_at_unix_seconds: u64,
 }
 
 pub(crate) fn run_bounded_soak_loop(
@@ -232,12 +237,19 @@ pub(crate) fn run_bounded_soak_loop(
     clock: &mut dyn SoakClock,
     mode: SoakLoopMode,
 ) -> Result<SoakLoopResult, OperatorRuntimeError> {
-    let started_at = clock.now_unix_seconds();
+    let invocation_started_at = clock.now_unix_seconds();
+    let run_started_at = match mode {
+        SoakLoopMode::Start => invocation_started_at,
+        SoakLoopMode::Resume {
+            run_started_at_unix_seconds,
+            ..
+        } => run_started_at_unix_seconds,
+    };
     match mode {
         SoakLoopMode::Start => {
             ledger
                 .append_event(
-                    started_at,
+                    invocation_started_at,
                     SoakLedgerEvent::Started {
                         bounds: bounds.clone(),
                     },
@@ -246,10 +258,11 @@ pub(crate) fn run_bounded_soak_loop(
         }
         SoakLoopMode::Resume {
             interrupted_prior_run,
+            ..
         } => {
             ledger
                 .append_event(
-                    started_at,
+                    invocation_started_at,
                     SoakLedgerEvent::Resume {
                         interrupted_prior_run,
                     },
@@ -258,8 +271,8 @@ pub(crate) fn run_bounded_soak_loop(
         }
     }
 
-    let deadline = started_at.saturating_add(bounds.elapsed_time_seconds);
-    let mut checkpoint_at = started_at;
+    let deadline = run_started_at.saturating_add(bounds.elapsed_time_seconds);
+    let mut checkpoint_at = invocation_started_at;
     let mut final_outcome = None;
     while final_outcome.is_none() {
         clock.sleep_until(checkpoint_at);
@@ -296,7 +309,7 @@ pub(crate) fn run_bounded_soak_loop(
     let result = write_report_projection(layout, run_id)?;
     Ok(SoakLoopResult {
         final_outcome,
-        started_at_unix_seconds: first_started_at(layout, run_id)?.unwrap_or(started_at),
+        started_at_unix_seconds: first_started_at(layout, run_id)?.unwrap_or(run_started_at),
         updated_at_unix_seconds: checkpoint_at,
         ..result
     })
@@ -316,6 +329,11 @@ pub(crate) fn validate_resume_plan(
     let paths = layout.paths_for_run(run_id);
     let read = SoakLedger::read_events(&paths.events_path).map_err(runtime_error)?;
     let mut bounds = started_bounds(&read.events)?;
+    let started_at_unix_seconds = first_started_at_from_events(&read.events).ok_or_else(|| {
+        OperatorRuntimeError::InvalidRequest {
+            message: "soak ledger is missing a started event".to_string(),
+        }
+    })?;
     bounds.checkpoint_interval_seconds = checkpoint_interval_seconds;
     // D-11 same-run resume matrix: clean_completion refuses; operator_stop,
     // resource_stop, and recovery_stop resume as same-run; unexpected_termination
@@ -347,6 +365,7 @@ pub(crate) fn validate_resume_plan(
         interrupted_prior_run: interrupted_prior_run
             || !has_terminal_stop_and_verdict(&read.events),
         next_sequence: next_sequence(&read.events),
+        started_at_unix_seconds,
     })
 }
 
