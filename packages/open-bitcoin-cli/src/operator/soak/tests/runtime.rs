@@ -426,6 +426,88 @@ fn soak_runtime_resume_finishes_immediately_after_original_elapsed_deadline() {
 }
 
 #[test]
+fn soak_runtime_resume_continues_after_historical_operator_stop_verdict() {
+    // Arrange
+    let temp = TestDirectory::new("resume-after-stop");
+    let layout = SoakLedgerLayout::for_datadir(temp.path());
+    let run_id = SoakRunId::try_new("soak-1700000000-resume-after-stop").expect("run id");
+    let started_at = 1_700_000_000;
+    let stopped_at = started_at + 15;
+    let resumed_at = started_at + 30;
+    let bounds = soak_bounds(
+        temp.path(),
+        Some(144),
+        vec![SoakStopCondition::TargetHeight],
+    );
+    let mut initial_ledger = SoakLedger::create(&layout, run_id.clone());
+    initial_ledger
+        .append_event(
+            started_at,
+            SoakLedgerEvent::Started {
+                bounds: bounds.clone(),
+            },
+        )
+        .expect("started");
+    initial_ledger
+        .append_event(
+            stopped_at,
+            SoakLedgerEvent::Stop {
+                outcome: SoakOutcomeLabel::OperatorStop,
+            },
+        )
+        .expect("operator stop");
+    initial_ledger
+        .append_event(
+            stopped_at,
+            SoakLedgerEvent::Verdict {
+                outcome: SoakOutcomeLabel::OperatorStop,
+            },
+        )
+        .expect("operator verdict");
+    let mut resume_ledger = SoakLedger::resume(&layout, run_id.clone(), 4);
+    let mut collector = ScriptedStatusCollector::repeating(clean_status_snapshot(temp.path(), 144));
+    let mut clock = SoakTestClock::new(resumed_at);
+
+    // Act
+    let result = run_bounded_soak_loop(
+        &run_id,
+        &bounds,
+        &layout,
+        &mut resume_ledger,
+        &mut collector,
+        &mut clock,
+        SoakLoopMode::Resume {
+            interrupted_prior_run: false,
+            run_started_at_unix_seconds: started_at,
+        },
+    )
+    .expect("resume soak loop");
+    let events = SoakLedger::read_events(&layout.paths_for_run(&run_id).events_path)
+        .expect("read events")
+        .events;
+
+    // Assert
+    assert_eq!(result.final_outcome, SoakOutcomeLabel::CleanCompletion);
+    assert_eq!(result.latest_sequence, 7);
+    assert!(matches!(
+        &events[3].event,
+        SoakLedgerEvent::Resume {
+            interrupted_prior_run: false
+        }
+    ));
+    assert!(matches!(
+        &events[4].event,
+        SoakLedgerEvent::Checkpoint { .. }
+    ));
+    assert!(matches!(
+        &events[6].event,
+        SoakLedgerEvent::Verdict {
+            outcome: SoakOutcomeLabel::CleanCompletion
+        }
+    ));
+}
+
+#[test]
 fn soak_runtime_stop_records_operator_stop_verdict() {
     // Arrange
     let temp = TestDirectory::new("stop");

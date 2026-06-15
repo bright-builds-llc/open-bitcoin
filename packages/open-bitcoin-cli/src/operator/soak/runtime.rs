@@ -245,7 +245,7 @@ pub(crate) fn run_bounded_soak_loop(
             ..
         } => run_started_at_unix_seconds,
     };
-    match mode {
+    let invocation_marker_sequence = match mode {
         SoakLoopMode::Start => {
             ledger
                 .append_event(
@@ -254,7 +254,8 @@ pub(crate) fn run_bounded_soak_loop(
                         bounds: bounds.clone(),
                     },
                 )
-                .map_err(runtime_error)?;
+                .map_err(runtime_error)?
+                .sequence
         }
         SoakLoopMode::Resume {
             interrupted_prior_run,
@@ -267,16 +268,19 @@ pub(crate) fn run_bounded_soak_loop(
                         interrupted_prior_run,
                     },
                 )
-                .map_err(runtime_error)?;
+                .map_err(runtime_error)?
+                .sequence
         }
-    }
+    };
 
     let deadline = run_started_at.saturating_add(bounds.elapsed_time_seconds);
     let mut checkpoint_at = invocation_started_at;
     let mut final_outcome = None;
     while final_outcome.is_none() {
         clock.sleep_until(checkpoint_at);
-        if let Some(result) = existing_terminal_result(layout, run_id)? {
+        if let Some(result) =
+            existing_terminal_result_after_sequence(layout, run_id, invocation_marker_sequence)?
+        {
             return Ok(result);
         }
         let snapshot = collector.collect();
@@ -293,7 +297,9 @@ pub(crate) fn run_bounded_soak_loop(
     }
 
     let final_outcome = final_outcome.unwrap_or(SoakOutcomeLabel::UnexpectedTermination);
-    if let Some(result) = existing_terminal_result(layout, run_id)? {
+    if let Some(result) =
+        existing_terminal_result_after_sequence(layout, run_id, invocation_marker_sequence)?
+    {
         return Ok(result);
     }
     ledger
@@ -321,13 +327,20 @@ pub(crate) fn run_bounded_soak_loop(
     })
 }
 
-fn existing_terminal_result(
+fn existing_terminal_result_after_sequence(
     layout: &SoakLedgerLayout,
     run_id: &SoakRunId,
+    invocation_marker_sequence: u64,
 ) -> Result<Option<SoakLoopResult>, OperatorRuntimeError> {
     let paths = layout.paths_for_run(run_id);
     let read = SoakLedger::read_events(&paths.events_path).map_err(runtime_error)?;
-    if has_terminal_stop_and_verdict(&read.events) {
+    let later_events = read
+        .events
+        .iter()
+        .filter(|event| event.sequence > invocation_marker_sequence)
+        .cloned()
+        .collect::<Vec<_>>();
+    if has_terminal_stop_and_verdict(&later_events) {
         return write_report_projection(layout, run_id).map(Some);
     }
     Ok(None)
