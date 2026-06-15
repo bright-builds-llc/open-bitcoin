@@ -210,6 +210,21 @@ pub(crate) fn render_soak_report_markdown(projection: &SoakReportProjection) -> 
         );
         push_optional(
             &mut output,
+            "Recovery action class",
+            checkpoint.maybe_recovery_action_class_label.as_deref(),
+        );
+        push_optional(
+            &mut output,
+            "Recovery cause",
+            checkpoint.maybe_recovery_cause_label.as_deref(),
+        );
+        push_optional(
+            &mut output,
+            "Recovery next action",
+            checkpoint.maybe_recovery_next_action.as_deref(),
+        );
+        push_optional(
+            &mut output,
             "No-progress diagnosis",
             checkpoint.maybe_no_progress_diagnosis_label.as_deref(),
         );
