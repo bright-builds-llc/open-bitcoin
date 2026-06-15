@@ -988,6 +988,111 @@ fn open_bitcoin_support_bundle_writes_redacted_json_and_markdown() {
 }
 
 #[test]
+fn open_bitcoin_support_bundle_includes_phase75_soak_summary() {
+    // Arrange
+    let sandbox = TestSandbox::new("support-phase75-soak");
+    let data_dir = sandbox.child("open-data");
+    let output_dir = sandbox.child("support");
+    fs::create_dir_all(&data_dir).expect("open datadir");
+    fs::write(
+        data_dir.join("bitcoin.conf"),
+        "regtest=1\nrpcuser=alice\nrpcpassword=phase75-rpc-secret\n",
+    )
+    .expect("bitcoin.conf");
+    fs::write(data_dir.join(".cookie"), "__cookie__:phase75-cookie-secret\n").expect("cookie");
+    let start = run_open_bitcoin_vec(&sandbox, soak_start_args(&data_dir, "soak-1700000000-0001"));
+    assert_success(&start);
+    let run_dir = data_dir.join("soak/runs/soak-1700000000-0001");
+    let events_path = run_dir.join("events.jsonl");
+    let report_json_path = run_dir.join("report.json");
+    let report_markdown_path = run_dir.join("report.md");
+    fs::write(
+        &report_json_path,
+        r#"{"raw reports phase75-secret":"wallet material phase75-secret"}"#,
+    )
+    .expect("overwrite report json with raw report sentinel");
+    fs::write(
+        &report_markdown_path,
+        "raw daemon logs phase75-secret\nRPC credentials phase75-secret\nunbounded peer tables phase75-secret\n",
+    )
+    .expect("overwrite report markdown with raw report sentinel");
+
+    // Act
+    let output = run_open_bitcoin(
+        &sandbox,
+        [
+            "--network",
+            "regtest",
+            "--datadir",
+            data_dir.to_str().expect("datadir"),
+            "support",
+            "bundle",
+            "--output-dir",
+            output_dir.to_str().expect("output dir"),
+        ],
+    );
+
+    // Assert
+    assert_success(&output);
+    let json_text =
+        fs::read_to_string(output_dir.join("support-evidence.json")).expect("support json");
+    let markdown =
+        fs::read_to_string(output_dir.join("support-evidence.md")).expect("support markdown");
+    let decoded: Value = serde_json::from_str(&json_text).expect("support json");
+    assert_eq!(decoded["soak_evidence"]["state"], "available");
+    assert_eq!(
+        decoded["soak_evidence"]["maybe_run_id"],
+        json!("soak-1700000000-0001")
+    );
+    assert_eq!(
+        decoded["soak_evidence"]["maybe_final_outcome"],
+        json!("unexpected_termination")
+    );
+    assert_eq!(decoded["soak_evidence"]["maybe_latest_sequence"], json!(5));
+    assert_eq!(
+        decoded["soak_evidence"]["maybe_source_ledger_path"],
+        json!(events_path.display().to_string())
+    );
+    assert_eq!(
+        decoded["soak_evidence"]["maybe_json_report_path"],
+        json!(report_json_path.display().to_string())
+    );
+    assert_eq!(
+        decoded["soak_evidence"]["maybe_markdown_report_path"],
+        json!(report_markdown_path.display().to_string())
+    );
+    for expected in [
+        "## Soak Evidence",
+        "State: available",
+        "Run: soak-1700000000-0001",
+        "Final outcome: unexpected_termination",
+        "Source ledger:",
+        "JSON report:",
+        "Markdown report:",
+        "Latest sequence: 5",
+    ] {
+        assert!(markdown.contains(expected), "missing {expected}");
+    }
+    for rendered in [&json_text, &markdown] {
+        for forbidden in [
+            "raw ledger",
+            "raw daemon logs",
+            "raw reports",
+            "wallet material",
+            "RPC credentials",
+            "unbounded peer tables",
+            "phase75-rpc-secret",
+            "phase75-cookie-secret",
+            "phase75-secret",
+            "\"kind\":\"started\"",
+            "\"kind\":\"checkpoint\"",
+        ] {
+            assert_absent(rendered, forbidden);
+        }
+    }
+}
+
+#[test]
 fn open_bitcoin_support_bundle_includes_phase72_full_sync_evidence_and_typed_verdict() {
     // Arrange
     let sandbox = TestSandbox::new("support-phase72-evidence");

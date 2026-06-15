@@ -1,6 +1,12 @@
 // Parity breadcrumbs:
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    time::{SystemTime, UNIX_EPOCH},
+};
+
 use open_bitcoin_node::{
     BuildProvenance, LogStatus, MetricsStatus, OpenBitcoinStatusSnapshot,
     status::{
@@ -14,10 +20,55 @@ use open_bitcoin_node::{
 };
 use serde_json::json;
 
-use super::{
-    LiveSmokeEvidence, derive_full_sync_evidence, evidence::SupportEvidenceVerdict,
-    redaction_summary,
+use crate::operator::{
+    config::OperatorConfigResolution,
+    soak::{
+        SoakBounds, SoakPeerPolicy, SoakRunId, SoakStopCondition,
+        ledger::{
+            SoakCheckpointStatus, SoakLedger, SoakLedgerEvent, SoakLedgerLayout, SoakRunIndex,
+            SoakRunIndexEntry,
+        },
+        outcome::SoakOutcomeLabel,
+        report::write_soak_reports,
+    },
 };
+
+use super::{
+    EvidenceAvailability, EvidenceState, LiveSmokeEvidence, MetricsHistoryEvidence,
+    RuntimeMetadataEvidence, StoreHealthEvidence, SupportEvidenceBundle, SupportEvidenceOutput,
+    collect_soak_support_evidence, derive_full_sync_evidence, evidence::SupportEvidenceVerdict,
+    redaction_summary, render, soak_outcome_label,
+};
+
+#[derive(Debug)]
+struct TestDirectory {
+    path: PathBuf,
+}
+
+impl TestDirectory {
+    fn new(label: &str) -> Self {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time after epoch")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!(
+            "open-bitcoin-support-{label}-{}-{timestamp}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&path).expect("test directory");
+        Self { path }
+    }
+
+    fn path(&self) -> &Path {
+        &self.path
+    }
+}
+
+impl Drop for TestDirectory {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.path);
+    }
+}
 
 #[test]
 fn phase71_support_redaction_names_compact_evidence_bounds() {
@@ -228,6 +279,130 @@ fn phase72_support_verdict_inconclusive_lists_missing_evidence() {
     );
 }
 
+#[test]
+fn phase75_soak_support_evidence_available_projects_latest_ledger_summary() {
+    // Arrange
+    let temp = TestDirectory::new("soak-available");
+    let (run_id, paths) = seed_phase75_soak_run(
+        temp.path(),
+        "soak-1781485562-0001",
+        SoakOutcomeLabel::OperatorStop,
+    );
+    let resolution = phase75_config_resolution(temp.path());
+
+    // Act
+    let evidence = collect_soak_support_evidence(&resolution);
+    let serialized = serde_json::to_value(&evidence).expect("soak evidence json");
+
+    // Assert
+    assert_eq!(serialized["state"], json!("available"));
+    assert_eq!(serialized["maybe_run_id"], json!(run_id.as_str()));
+    assert_eq!(
+        serialized["maybe_final_outcome"],
+        json!(soak_outcome_label(SoakOutcomeLabel::OperatorStop))
+    );
+    assert_eq!(serialized["maybe_latest_sequence"], json!(4));
+    assert_eq!(
+        serialized["maybe_source_ledger_path"],
+        json!(paths.events_path.display().to_string())
+    );
+    assert_eq!(
+        serialized["maybe_json_report_path"],
+        json!(paths.report_json_path.display().to_string())
+    );
+    assert_eq!(
+        serialized["maybe_markdown_report_path"],
+        json!(paths.report_markdown_path.display().to_string())
+    );
+    assert_eq!(serialized["maybe_unavailable_reason"], json!(null));
+}
+
+#[test]
+fn phase75_soak_support_markdown_renders_compact_section() {
+    // Arrange
+    let temp = TestDirectory::new("soak-markdown");
+    let (_run_id, paths) = seed_phase75_soak_run(
+        temp.path(),
+        "soak-1781485562-0002",
+        SoakOutcomeLabel::CleanCompletion,
+    );
+    let bundle = phase75_support_bundle_for_test(temp.path());
+
+    // Act
+    let markdown = render::render_support_markdown(&bundle);
+
+    // Assert
+    for expected in [
+        "## Soak Evidence",
+        "State: available",
+        "Run: soak-1781485562-0002",
+        "Final outcome: clean_completion",
+        "Source ledger:",
+        "JSON report:",
+        "Markdown report:",
+        "Latest sequence: 4",
+    ] {
+        assert!(markdown.contains(expected), "missing {expected}");
+    }
+    assert!(markdown.contains(paths.events_path.to_str().expect("ledger path")));
+}
+
+#[test]
+fn phase75_soak_support_evidence_unavailable_without_ledger() {
+    // Arrange
+    let temp = TestDirectory::new("soak-unavailable");
+    let resolution = phase75_config_resolution(temp.path());
+    let bundle = phase75_support_bundle_for_test(temp.path());
+
+    // Act
+    let evidence = collect_soak_support_evidence(&resolution);
+    let serialized = serde_json::to_value(&evidence).expect("soak evidence json");
+    let markdown = render::render_support_markdown(&bundle);
+
+    // Assert
+    assert_eq!(serialized["state"], json!("unavailable"));
+    assert_eq!(
+        serialized["maybe_unavailable_reason"],
+        json!("soak ledger unavailable")
+    );
+    assert_eq!(serialized["maybe_run_id"], json!(null));
+    assert!(markdown.contains("## Soak Evidence"));
+    assert!(markdown.contains("State: unavailable"));
+    assert!(markdown.contains("Reason: soak ledger unavailable"));
+}
+
+#[test]
+fn phase75_soak_support_summary_excludes_raw_local_evidence() {
+    // Arrange
+    let temp = TestDirectory::new("soak-redaction");
+    seed_phase75_soak_run(
+        temp.path(),
+        "soak-1781485562-0003",
+        SoakOutcomeLabel::ResourceStop,
+    );
+    let bundle = phase75_support_bundle_for_test(temp.path());
+
+    // Act
+    let json_text = serde_json::to_string_pretty(&bundle).expect("support json");
+    let markdown = render::render_support_markdown(&bundle);
+
+    // Assert
+    for rendered in [&json_text, &markdown] {
+        for forbidden in [
+            "raw ledger line phase75-secret",
+            "raw daemon logs phase75-secret",
+            "raw reports phase75-secret",
+            "wallet material phase75-secret",
+            "RPC credentials phase75-secret",
+            "unbounded peer tables phase75-secret",
+            "\"kind\":\"started\"",
+            "\"kind\":\"checkpoint\"",
+        ] {
+            assert_absent(rendered, forbidden);
+        }
+    }
+}
+
 fn phase72_status_missing_tip_match() -> OpenBitcoinStatusSnapshot {
     let mut status = phase72_status();
     status.sync.best_known_tip =
@@ -386,6 +561,140 @@ fn missing_live_smoke() -> LiveSmokeEvidence {
         summary: None,
         reason: Some("live smoke report not provided".to_string()),
     }
+}
+
+fn phase75_config_resolution(data_dir: &Path) -> OperatorConfigResolution {
+    OperatorConfigResolution {
+        maybe_data_dir: Some(data_dir.to_path_buf()),
+        ..OperatorConfigResolution::default()
+    }
+}
+
+fn phase75_support_bundle_for_test(data_dir: &Path) -> SupportEvidenceBundle {
+    let resolution = phase75_config_resolution(data_dir);
+    let status = phase72_status();
+    let live_smoke = missing_live_smoke();
+    let full_sync_evidence = derive_full_sync_evidence(&status, &live_smoke);
+    SupportEvidenceBundle {
+        generated_at_unix_seconds: 1_781_485_562,
+        generated_by: "phase75 test".to_string(),
+        output: SupportEvidenceOutput {
+            directory: data_dir.join("support").display().to_string(),
+            json_path: data_dir
+                .join("support/support-evidence.json")
+                .display()
+                .to_string(),
+            markdown_path: data_dir
+                .join("support/support-evidence.md")
+                .display()
+                .to_string(),
+        },
+        redaction: redaction_summary(),
+        config: super::ConfigEvidence::from_resolution(&resolution),
+        status,
+        store_health: unavailable_store_health(),
+        live_smoke,
+        full_sync_evidence,
+        soak_evidence: collect_soak_support_evidence(&resolution),
+    }
+}
+
+fn unavailable_store_health() -> StoreHealthEvidence {
+    StoreHealthEvidence {
+        state: EvidenceState::Unavailable,
+        durable_store: EvidenceAvailability::unavailable("durable store unavailable"),
+        runtime_metadata: RuntimeMetadataEvidence {
+            availability: EvidenceAvailability::unavailable("runtime metadata unavailable"),
+            metadata: None,
+        },
+        metrics_history: MetricsHistoryEvidence {
+            availability: EvidenceAvailability::unavailable("metrics history unavailable"),
+            samples: 0,
+            status: None,
+        },
+    }
+}
+
+fn seed_phase75_soak_run(
+    data_dir: &Path,
+    run_id_text: &str,
+    outcome: SoakOutcomeLabel,
+) -> (SoakRunId, crate::operator::soak::ledger::SoakRunPaths) {
+    let layout = SoakLedgerLayout::for_datadir(data_dir);
+    let run_id = SoakRunId::try_new(run_id_text).expect("run id");
+    let mut ledger = SoakLedger::create(&layout, run_id.clone());
+    ledger
+        .append_event(
+            1_781_485_562,
+            SoakLedgerEvent::Started {
+                bounds: phase75_soak_bounds(data_dir),
+            },
+        )
+        .expect("append started");
+    ledger
+        .append_event(
+            1_781_485_622,
+            SoakLedgerEvent::Checkpoint {
+                status: phase75_checkpoint_status(),
+            },
+        )
+        .expect("append checkpoint");
+    ledger
+        .append_event(1_781_485_682, SoakLedgerEvent::Stop { outcome })
+        .expect("append stop");
+    ledger
+        .append_event(1_781_485_682, SoakLedgerEvent::Verdict { outcome })
+        .expect("append verdict");
+
+    let paths = layout.paths_for_run(&run_id);
+    let read = SoakLedger::read_events(&paths.events_path).expect("read soak ledger");
+    write_soak_reports(&read, &paths.events_path, &layout).expect("write soak reports");
+
+    let mut index = SoakRunIndex::empty();
+    index.record_run(SoakRunIndexEntry {
+        run_id: run_id.clone(),
+        ledger_path: paths.events_path.clone(),
+        started_at_unix_seconds: 1_781_485_562,
+        updated_at_unix_seconds: 1_781_485_682,
+        maybe_outcome: Some(outcome),
+    });
+    index.write_atomic(&layout).expect("write soak run index");
+
+    (run_id, paths)
+}
+
+fn phase75_soak_bounds(data_dir: &Path) -> SoakBounds {
+    SoakBounds::try_new(
+        86_400,
+        60,
+        Some(900_000),
+        data_dir.to_path_buf(),
+        "raw ledger line phase75-secret",
+        SoakPeerPolicy::DaemonConfigured,
+        4_096,
+        vec![SoakStopCondition::ElapsedTime],
+    )
+    .expect("valid soak bounds")
+}
+
+fn phase75_checkpoint_status() -> SoakCheckpointStatus {
+    SoakCheckpointStatus {
+        maybe_network: Some("mainnet".to_string()),
+        maybe_lifecycle: Some("raw daemon logs phase75-secret".to_string()),
+        maybe_latest_stop_reason_label: Some("raw reports phase75-secret".to_string()),
+        maybe_recovery_category_label: Some("wallet material phase75-secret".to_string()),
+        maybe_no_progress_diagnosis_label: Some("RPC credentials phase75-secret".to_string()),
+        maybe_validated_active_chain_height: Some(900_000),
+        maybe_best_known_tip_height: Some(900_000),
+        maybe_source_status_path: Some(PathBuf::from("unbounded peer tables phase75-secret")),
+    }
+}
+
+fn assert_absent(text: &str, value: &str) {
+    assert!(
+        !text.contains(value),
+        "unexpected sensitive value in {text}"
+    );
 }
 
 trait FieldAvailabilityTestExt<T> {
