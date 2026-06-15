@@ -282,6 +282,15 @@
       "breadcrumbs": []
     },
     {
+      "label": "cli-operator-soak-contracts",
+      "files": [
+        "packages/open-bitcoin-cli/src/operator/soak.rs",
+        "packages/open-bitcoin-cli/src/operator/soak/outcome.rs",
+        "packages/open-bitcoin-cli/src/operator/soak/tests.rs"
+      ],
+      "breadcrumbs": []
+    },
+    {
       "label": "cli-operator-compatibility-harness",
       "files": [
         "packages/open-bitcoin-cli/src/operator/compatibility.rs"

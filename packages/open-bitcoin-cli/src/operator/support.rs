@@ -21,8 +21,9 @@ use serde::Serialize;
 use serde_json::Value;
 
 pub(crate) use evidence::{
-    ActiveChainEvidence, EvidenceAvailability, EvidenceState, FullSyncEvidence, LiveSmokeEvidence,
-    SummaryEvidence, derive_full_sync_evidence,
+    ActiveChainEvidence, EvidenceAvailability, EvidenceState, EvidenceVerdictSummary,
+    FullSyncEvidence, LiveSmokeEvidence, SummaryEvidence, SupportEvidenceVerdict, TipEvidence,
+    derive_full_sync_evidence,
 };
 use render::{render_support_markdown, render_support_outcome};
 

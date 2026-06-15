@@ -19,6 +19,7 @@ pub mod migration;
 pub mod onboarding;
 pub mod runtime;
 pub mod service;
+pub mod soak;
 pub mod status;
 pub mod support;
 pub(crate) mod sync_truth_render;
