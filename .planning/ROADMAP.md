@@ -55,7 +55,7 @@ Plans:
 - [x] 75-03-PLAN.md — Deterministic synthetic long-run and ledger replay coverage without public-network or multi-day waits.
 - [x] 75-04-PLAN.md — Compact redacted soak summary projection for support bundles.
 - [x] 75-05-PLAN.md — Operator docs, architecture notes, parity roots, and scoped README wording.
-- [ ] 75-06-PLAN.md — Phase 75 checker, default verifier wiring, and generated LOC freshness.
+- [x] 75-06-PLAN.md — Phase 75 checker, default verifier wiring, and generated LOC freshness.
 
 **Success Criteria**:
 1. Operator can start an explicit opt-in soak with bounded elapsed time, target height, datadir, network, peer policy, disk budget, and stop conditions.
@@ -134,7 +134,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 75. Multi-Day Soak Runner and Evidence Ledger | 5/6 | In Progress|  |
+| 75. Multi-Day Soak Runner and Evidence Ledger | 6/6 | Complete   | 2026-06-15 |
 | 76. Disk and Resource Bound Enforcement | 0/0 | Pending | - |
 | 77. Corruption and Lock Recovery Hardening | 0/0 | Pending | - |
 | 78. Progress Guarantees and Stall Diagnosis | 0/0 | Pending | - |
