@@ -276,6 +276,9 @@ pub(crate) fn run_bounded_soak_loop(
     let mut final_outcome = None;
     while final_outcome.is_none() {
         clock.sleep_until(checkpoint_at);
+        if let Some(result) = existing_terminal_result(layout, run_id)? {
+            return Ok(result);
+        }
         let snapshot = collector.collect();
         let status = checkpoint_status_from_snapshot(&snapshot);
         ledger
@@ -290,6 +293,9 @@ pub(crate) fn run_bounded_soak_loop(
     }
 
     let final_outcome = final_outcome.unwrap_or(SoakOutcomeLabel::UnexpectedTermination);
+    if let Some(result) = existing_terminal_result(layout, run_id)? {
+        return Ok(result);
+    }
     ledger
         .append_event(
             checkpoint_at,
@@ -313,6 +319,18 @@ pub(crate) fn run_bounded_soak_loop(
         updated_at_unix_seconds: checkpoint_at,
         ..result
     })
+}
+
+fn existing_terminal_result(
+    layout: &SoakLedgerLayout,
+    run_id: &SoakRunId,
+) -> Result<Option<SoakLoopResult>, OperatorRuntimeError> {
+    let paths = layout.paths_for_run(run_id);
+    let read = SoakLedger::read_events(&paths.events_path).map_err(runtime_error)?;
+    if has_terminal_stop_and_verdict(&read.events) {
+        return write_report_projection(layout, run_id).map(Some);
+    }
+    Ok(None)
 }
 
 pub(crate) fn validate_resume_plan(

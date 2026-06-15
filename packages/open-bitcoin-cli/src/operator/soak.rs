@@ -25,8 +25,8 @@ pub(crate) mod runtime;
 
 #[cfg(test)]
 pub(crate) use runtime::{
-    SoakLoopMode, SoakStatusCollector, SoakTestClock, run_bounded_soak_loop, validate_resume_plan,
-    write_operator_stop, write_report_projection,
+    SoakClock, SoakLoopMode, SoakStatusCollector, SoakTestClock, run_bounded_soak_loop,
+    validate_resume_plan, write_operator_stop, write_report_projection,
 };
 
 #[cfg(test)]

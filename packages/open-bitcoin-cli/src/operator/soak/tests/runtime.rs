@@ -18,8 +18,8 @@ use open_bitcoin_node::{
 };
 
 use super::{
-    SoakBounds, SoakLoopMode, SoakPeerPolicy, SoakRunId, SoakStatusCollector, SoakStopCondition,
-    SoakTestClock,
+    SoakBounds, SoakClock, SoakLoopMode, SoakPeerPolicy, SoakRunId, SoakStatusCollector,
+    SoakStopCondition, SoakTestClock,
     ledger::{
         SoakCheckpointStatus, SoakLedger, SoakLedgerEvent, SoakLedgerLayout, SoakRunIndex,
         SoakRunIndexEntry,
@@ -90,6 +90,41 @@ impl SoakStatusCollector for ScriptedStatusCollector {
             .clone();
         self.index += 1;
         snapshot
+    }
+}
+
+struct StopDuringSleepClock {
+    now_unix_seconds: u64,
+    layout: SoakLedgerLayout,
+    run_id: SoakRunId,
+    stop_written: bool,
+}
+
+impl StopDuringSleepClock {
+    const fn new(now_unix_seconds: u64, layout: SoakLedgerLayout, run_id: SoakRunId) -> Self {
+        Self {
+            now_unix_seconds,
+            layout,
+            run_id,
+            stop_written: false,
+        }
+    }
+}
+
+impl SoakClock for StopDuringSleepClock {
+    fn now_unix_seconds(&mut self) -> u64 {
+        self.now_unix_seconds
+    }
+
+    fn sleep_until(&mut self, scheduled_unix_seconds: u64) {
+        let should_write_stop =
+            scheduled_unix_seconds > self.now_unix_seconds && !self.stop_written;
+        self.now_unix_seconds = scheduled_unix_seconds;
+        if should_write_stop {
+            write_operator_stop(&self.layout, &self.run_id, scheduled_unix_seconds)
+                .expect("external operator stop");
+            self.stop_written = true;
+        }
     }
 }
 
@@ -473,6 +508,54 @@ fn soak_runtime_stop_rejects_terminal_verdict() {
         &events[2].event,
         SoakLedgerEvent::Verdict {
             outcome: SoakOutcomeLabel::CleanCompletion
+        }
+    ));
+}
+
+#[test]
+fn soak_runtime_runner_returns_existing_terminal_verdict_after_external_stop() {
+    // Arrange
+    let temp = TestDirectory::new("stop-race");
+    let layout = SoakLedgerLayout::for_datadir(temp.path());
+    let run_id = SoakRunId::try_new("soak-1700000000-stop-race").expect("run id");
+    let bounds = soak_bounds(temp.path(), None, vec![SoakStopCondition::ElapsedTime]);
+    let mut ledger = SoakLedger::create(&layout, run_id.clone());
+    let mut collector = ScriptedStatusCollector::repeating(base_status_snapshot(temp.path()));
+    let mut clock = StopDuringSleepClock::new(1_700_000_000, layout.clone(), run_id.clone());
+
+    // Act
+    let result = run_bounded_soak_loop(
+        &run_id,
+        &bounds,
+        &layout,
+        &mut ledger,
+        &mut collector,
+        &mut clock,
+        SoakLoopMode::Start,
+    )
+    .expect("bounded soak loop with external stop");
+    let events = SoakLedger::read_events(&layout.paths_for_run(&run_id).events_path)
+        .expect("read events")
+        .events;
+
+    // Assert
+    assert_eq!(result.final_outcome, SoakOutcomeLabel::OperatorStop);
+    assert_eq!(result.latest_sequence, 4);
+    assert_eq!(events.len(), 4);
+    assert!(matches!(
+        &events[1].event,
+        SoakLedgerEvent::Checkpoint { .. }
+    ));
+    assert!(matches!(
+        &events[2].event,
+        SoakLedgerEvent::Stop {
+            outcome: SoakOutcomeLabel::OperatorStop
+        }
+    ));
+    assert!(matches!(
+        &events[3].event,
+        SoakLedgerEvent::Verdict {
+            outcome: SoakOutcomeLabel::OperatorStop
         }
     ));
 }
