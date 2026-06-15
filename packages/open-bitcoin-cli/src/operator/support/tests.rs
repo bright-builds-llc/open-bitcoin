@@ -36,8 +36,9 @@ use crate::operator::{
 use super::{
     EvidenceAvailability, EvidenceState, LiveSmokeEvidence, MetricsHistoryEvidence,
     RuntimeMetadataEvidence, StoreHealthEvidence, SupportEvidenceBundle, SupportEvidenceOutput,
-    collect_soak_support_evidence, derive_full_sync_evidence, evidence::SupportEvidenceVerdict,
-    redaction_summary, render, soak_outcome_label,
+    collect_resource_bound_support_evidence, collect_soak_support_evidence,
+    derive_full_sync_evidence, evidence::SupportEvidenceVerdict, redaction_summary, render,
+    soak_outcome_label,
 };
 
 #[derive(Debug)]
@@ -95,6 +96,7 @@ fn phase71_support_redaction_names_compact_evidence_bounds() {
             "credential sources are represented as metadata only",
             "live smoke reports are summarized from allowlisted fields only",
             "logs are limited to existing structured status signals",
+            "resource bounds are recorded as compact status summaries only",
         ]
     );
 }
@@ -451,6 +453,7 @@ fn phase72_status() -> OpenBitcoinStatusSnapshot {
         },
         logs: LogStatus::default(),
         metrics: MetricsStatus::default(),
+        resource_bounds: FieldAvailability::unavailable("resource bounds unavailable"),
         health_signals: Vec::new(),
         build: BuildProvenance::unavailable(),
     }
@@ -575,27 +578,26 @@ fn phase75_support_bundle_for_test(data_dir: &Path) -> SupportEvidenceBundle {
     let status = phase72_status();
     let live_smoke = missing_live_smoke();
     let full_sync_evidence = derive_full_sync_evidence(&status, &live_smoke);
+    let output_dir = data_dir.join("support");
     SupportEvidenceBundle {
         generated_at_unix_seconds: 1_781_485_562,
         generated_by: "phase75 test".to_string(),
         output: SupportEvidenceOutput {
-            directory: data_dir.join("support").display().to_string(),
-            json_path: data_dir
-                .join("support/support-evidence.json")
+            directory: output_dir.display().to_string(),
+            json_path: output_dir
+                .join("support-evidence.json")
                 .display()
                 .to_string(),
-            markdown_path: data_dir
-                .join("support/support-evidence.md")
-                .display()
-                .to_string(),
+            markdown_path: output_dir.join("support-evidence.md").display().to_string(),
         },
         redaction: redaction_summary(),
         config: super::ConfigEvidence::from_resolution(&resolution),
-        status,
+        status: status.clone(),
         store_health: unavailable_store_health(),
         live_smoke,
         full_sync_evidence,
         soak_evidence: collect_soak_support_evidence(&resolution),
+        resource_bound_evidence: collect_resource_bound_support_evidence(&status, &output_dir),
     }
 }
 
@@ -684,6 +686,9 @@ fn phase75_checkpoint_status() -> SoakCheckpointStatus {
         maybe_latest_stop_reason_label: Some("raw reports phase75-secret".to_string()),
         maybe_recovery_category_label: Some("wallet material phase75-secret".to_string()),
         maybe_no_progress_diagnosis_label: Some("RPC credentials phase75-secret".to_string()),
+        maybe_resource_bound_state_label: Some("normal".to_string()),
+        resource_bound_labels: vec!["all_required_bounds=normal".to_string()],
+        maybe_resource_bound_next_action: None,
         maybe_validated_active_chain_height: Some(900_000),
         maybe_best_known_tip_height: Some(900_000),
         maybe_source_status_path: Some(PathBuf::from("unbounded peer tables phase75-secret")),

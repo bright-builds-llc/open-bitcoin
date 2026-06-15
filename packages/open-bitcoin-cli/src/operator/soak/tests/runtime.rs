@@ -12,8 +12,9 @@ use open_bitcoin_node::{
     status::{
         BestKnownTipSource, BestKnownTipStatus, BuildProvenance, ConfigStatus, FieldAvailability,
         MempoolStatus, NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot, PeerStatus,
+        ResourceBoundEntry, ResourceBoundKind, ResourceBoundSnapshot, ResourceBoundUnit,
         StayCurrentStatus, SyncProgress, SyncRecoveryCategory, SyncReorgEvidence, SyncStatus,
-        SyncStopReasonStatus, TipFreshnessStatus, WalletStatus,
+        SyncStopReasonStatus, TipFreshnessStatus, WalletStatus, usage_against_budget,
     },
 };
 
@@ -25,8 +26,10 @@ use super::{
         SoakRunIndexEntry,
     },
     outcome::SoakOutcomeLabel,
-    run_bounded_soak_loop, validate_resume_plan, write_operator_stop, write_report_projection,
+    run_bounded_soak_loop, runtime, validate_resume_plan, write_operator_stop,
+    write_report_projection,
 };
+use crate::operator::OperatorOutputFormat;
 
 #[derive(Debug)]
 struct TestDirectory {
@@ -218,6 +221,44 @@ fn soak_runtime_elapsed_writes_started_checkpoints_stop_and_verdict() {
             outcome: SoakOutcomeLabel::CleanCompletion
         }
     ));
+}
+
+#[test]
+fn soak_start_preflight_refuses_resource_bounds_before_ledger_mutation() {
+    // Arrange
+    let temp = TestDirectory::new("preflight-resource-stop");
+    let layout = SoakLedgerLayout::for_datadir(temp.path());
+    let args = crate::operator::SoakStartArgs {
+        elapsed_time_seconds: 30,
+        checkpoint_interval_seconds: 15,
+        maybe_target_height: None,
+        peer_policy: crate::operator::SoakPeerPolicyArg::DaemonConfigured,
+        disk_budget_bytes: 1_048_576,
+        stop_condition: crate::operator::SoakStopConditionArg::ResourceStop,
+        maybe_run_id: Some("soak-1700000000-0001".to_string()),
+    };
+    let mut collector = ScriptedStatusCollector::repeating(resource_status_snapshot(temp.path()));
+    let mut clock = SoakTestClock::new(1_700_000_000);
+
+    // Act
+    let result = runtime::execute_soak_start(
+        &args,
+        OperatorOutputFormat::Json,
+        &layout,
+        Some(crate::operator::NetworkSelection::Regtest),
+        &mut collector,
+        &mut clock,
+    );
+
+    // Assert
+    assert!(result.is_err());
+    assert!(!layout.run_index_path().exists());
+    assert!(
+        !layout
+            .paths_for_run(&SoakRunId::try_new("soak-1700000000-0001").expect("run id"))
+            .events_path
+            .exists()
+    );
 }
 
 #[test]
@@ -935,6 +976,9 @@ fn checkpoint_status(height: u64) -> SoakCheckpointStatus {
         maybe_latest_stop_reason_label: None,
         maybe_recovery_category_label: None,
         maybe_no_progress_diagnosis_label: None,
+        maybe_resource_bound_state_label: Some("normal".to_string()),
+        resource_bound_labels: vec!["all_required_bounds=normal".to_string()],
+        maybe_resource_bound_next_action: None,
         maybe_validated_active_chain_height: Some(height),
         maybe_best_known_tip_height: Some(height),
         maybe_source_status_path: None,
@@ -977,6 +1021,7 @@ fn resource_status_snapshot(datadir: &Path) -> OpenBitcoinStatusSnapshot {
     let mut snapshot = base_status_snapshot(datadir);
     snapshot.sync.recovery_category =
         FieldAvailability::available(SyncRecoveryCategory::ResourceExhaustion);
+    snapshot.resource_bounds = FieldAvailability::available(resource_stop_bounds());
     snapshot
 }
 
@@ -1082,7 +1127,66 @@ fn base_status_snapshot(datadir: &Path) -> OpenBitcoinStatusSnapshot {
             MetricRetentionPolicy::default(),
             "metrics unavailable",
         ),
+        resource_bounds: FieldAvailability::available(normal_resource_bounds()),
         health_signals: Vec::new(),
         build: BuildProvenance::unavailable(),
+    }
+}
+
+fn normal_resource_bounds() -> ResourceBoundSnapshot {
+    ResourceBoundSnapshot::new(
+        ResourceBoundKind::ALL
+            .into_iter()
+            .map(|kind| {
+                ResourceBoundEntry::available(
+                    kind,
+                    kind.as_str(),
+                    usage_against_budget(
+                        1,
+                        1_048_576,
+                        resource_unit(kind),
+                        "No resource-bound action required.",
+                    ),
+                )
+            })
+            .collect(),
+    )
+}
+
+fn resource_stop_bounds() -> ResourceBoundSnapshot {
+    ResourceBoundSnapshot::new(
+        ResourceBoundKind::ALL
+            .into_iter()
+            .map(|kind| {
+                let current = if kind == ResourceBoundKind::Disk {
+                    1_048_576
+                } else {
+                    1
+                };
+                ResourceBoundEntry::available(
+                    kind,
+                    kind.as_str(),
+                    usage_against_budget(
+                        current,
+                        1_048_576,
+                        resource_unit(kind),
+                        "Free disk space before continuing.",
+                    ),
+                )
+            })
+            .collect(),
+    )
+}
+
+const fn resource_unit(kind: ResourceBoundKind) -> ResourceBoundUnit {
+    match kind {
+        ResourceBoundKind::Disk
+        | ResourceBoundKind::Cache
+        | ResourceBoundKind::Log
+        | ResourceBoundKind::SupportBundle => ResourceBoundUnit::Bytes,
+        ResourceBoundKind::File => ResourceBoundUnit::Files,
+        ResourceBoundKind::Metric => ResourceBoundUnit::Items,
+        ResourceBoundKind::Peer => ResourceBoundUnit::Peers,
+        ResourceBoundKind::Queue | ResourceBoundKind::InFlight => ResourceBoundUnit::Requests,
     }
 }

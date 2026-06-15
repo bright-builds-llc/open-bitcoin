@@ -213,6 +213,22 @@ pub(crate) fn render_soak_report_markdown(projection: &SoakReportProjection) -> 
             "No-progress diagnosis",
             checkpoint.maybe_no_progress_diagnosis_label.as_deref(),
         );
+        push_optional(
+            &mut output,
+            "Resource bound state",
+            checkpoint.maybe_resource_bound_state_label.as_deref(),
+        );
+        if !checkpoint.resource_bound_labels.is_empty() {
+            output.push_str(&format!(
+                "- Resource bound labels: {}\n",
+                checkpoint.resource_bound_labels.join(", ")
+            ));
+        }
+        push_optional(
+            &mut output,
+            "Resource bound next action",
+            checkpoint.maybe_resource_bound_next_action.as_deref(),
+        );
         push_optional_u64(
             &mut output,
             "Validated active-chain height",

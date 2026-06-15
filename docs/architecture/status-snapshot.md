@@ -252,6 +252,28 @@ This keeps status, dashboard, RPC-facing blockchain info, support evidence,
 metrics projections, structured logs, and live-smoke snapshots aligned on one
 source of truth for public-network runtime bounds.
 
+## Phase 76 resource bounds
+
+`resource_bounds` is the top-level `FieldAvailability<ResourceBoundSnapshot>`
+for disk and local runtime resource evidence. It is adjacent to
+`sync.resource_pressure`: `sync.resource_pressure` remains the sync/network
+in-flight envelope, while `resource_bounds` carries the disk, file, cache,
+queue, peer, in-flight, log, metric, and support-bundle resource set used by
+status, dashboard, soak, and support surfaces.
+
+Each resource-bound entry preserves its `kind`, label, current usage, optional
+limit, unit, warning threshold, stop threshold, pressure state, and next action.
+Pressure states are `normal`, `warning`, and `stop_required`; default thresholds
+are `RESOURCE_BOUND_WARNING_PERCENT = 80` and
+`RESOURCE_BOUND_STOP_PERCENT = 95`. Missing required measurements remain
+unavailable evidence with a reason, and soak preflight refuses missing,
+unassessable, or stop-required resource evidence before writing a ledger.
+
+Soak reports keep resource-bound state, labels, next action, and source status
+evidence in checkpoint projections. Support evidence keeps the same data as a
+compact summary and projected support-bundle footprint; raw logs, stores,
+status snapshots, peer tables, and live-smoke inputs are not embedded.
+
 ## Phase 72 evidence comparison fields
 
 Phase 72 keeps operator observability and support evidence as projections of the

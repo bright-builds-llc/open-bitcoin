@@ -564,6 +564,10 @@
     {
       "name": "phase75-multi-day-soak-runner-evidence-ledger",
       "status": "done"
+    },
+    {
+      "name": "phase76-disk-and-resource-bound-enforcement",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -1127,6 +1131,41 @@
         ],
         "suspected_unknowns": [
           "Future scheduled public soak monitors and signed externally comparable soak result artifacts remain separate scoped work."
+        ]
+      },
+      {
+        "id": "phase76-disk-and-resource-bound-enforcement",
+        "title": "Phase 76 Disk And Resource-Bound Enforcement",
+        "status": "done",
+        "requirements": [
+          "RES-05",
+          "RES-06",
+          "RES-07",
+          "RES-08"
+        ],
+        "evidence": [
+          "docs/operator/runtime-guide.md",
+          "docs/architecture/status-snapshot.md",
+          "docs/architecture/operator-observability.md",
+          "docs/parity/index.json",
+          "docs/parity/checklist.md",
+          "docs/parity/README.md",
+          "docs/parity/catalog/operator-runtime-release-hardening.md",
+          "README.md",
+          "scripts/check-phase76-resource-bounds.ts",
+          ".planning/phases/76-disk-and-resource-bound-enforcement/76-01-PLAN.md",
+          ".planning/phases/76-disk-and-resource-bound-enforcement/76-02-PLAN.md",
+          ".planning/phases/76-disk-and-resource-bound-enforcement/76-03-PLAN.md",
+          ".planning/phases/76-disk-and-resource-bound-enforcement/76-04-PLAN.md",
+          ".planning/phases/76-disk-and-resource-bound-enforcement/76-05-PLAN.md",
+          ".planning/phases/76-disk-and-resource-bound-enforcement/76-06-PLAN.md"
+        ],
+        "rationale": "Phase 76 makes disk and resource-bound evidence auditable through a shared typed status contract, status/dashboard rendering, soak preflight and resource_stop report evidence, compact support-bundle summaries, docs, parity roots, and a deterministic checker wired into scripts/verify.sh.",
+        "known_gaps": [
+          "Phase 76 proves compact resource-bound evidence and refusal semantics only; public-network resource stress, production-node readiness, hosted monitoring, raw support upload, and broad resource-governance parity remain outside default verification."
+        ],
+        "suspected_unknowns": [
+          "Future production resource policy, scheduled monitors, signed comparable artifacts, and stronger public-network gates need separate scoped phases and fresh evidence roots."
         ]
       }
     ]

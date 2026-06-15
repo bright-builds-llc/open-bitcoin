@@ -111,6 +111,9 @@ pub(super) fn render_support_markdown(bundle: &SupportEvidenceBundle) -> String 
         json_compact(&bundle.status.metrics.availability)
     ));
 
+    output.push_str("\n## Resource Bound Evidence\n\n");
+    push_resource_bound_evidence(&mut output, &bundle.resource_bound_evidence);
+
     output.push_str("\n## Store Health\n\n");
     output.push_str(&format!(
         "- Overall: {}\n",
@@ -195,6 +198,55 @@ fn push_soak_evidence(output: &mut String, evidence: &super::SoakSupportEvidence
     ));
     if let Some(reason) = evidence.maybe_unavailable_reason.as_ref() {
         output.push_str(&format!("- Reason: {reason}\n"));
+    }
+}
+
+fn push_resource_bound_evidence(
+    output: &mut String,
+    evidence: &super::ResourceBoundSupportEvidence,
+) {
+    output.push_str(&format!(
+        "- State: {}\n",
+        evidence_state_name(evidence.state)
+    ));
+    output.push_str(&format!(
+        "- Overall: {}\n",
+        evidence
+            .maybe_overall_level
+            .as_deref()
+            .unwrap_or("unavailable")
+    ));
+    output.push_str(&format!("- Source: {}\n", evidence.source));
+    let maybe_projected_bundle_size = evidence
+        .maybe_projected_bundle_size_bytes
+        .map(|size| size.to_string());
+    output.push_str(&format!(
+        "- Projected support-bundle size: {} bytes\n",
+        maybe_projected_bundle_size
+            .as_deref()
+            .unwrap_or("unavailable")
+    ));
+    if let Some(reason) = evidence.maybe_unavailable_reason.as_ref() {
+        output.push_str(&format!("- Reason: {reason}\n"));
+    }
+    for entry in &evidence.entries {
+        let current = entry
+            .current
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| "unavailable".to_string());
+        let limit = entry
+            .limit
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| "unavailable".to_string());
+        let unit = entry.unit.as_deref().unwrap_or("unavailable");
+        let next_action = entry.next_action.as_deref().unwrap_or("unavailable");
+        output.push_str(&format!(
+            "- {}: state={} current={} limit={} unit={} next_action={}\n",
+            entry.kind, entry.state, current, limit, unit, next_action
+        ));
+        if let Some(reason) = entry.maybe_unavailable_reason.as_ref() {
+            output.push_str(&format!("  unavailable_reason={reason}\n"));
+        }
     }
 }
 

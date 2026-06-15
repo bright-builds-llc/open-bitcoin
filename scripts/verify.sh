@@ -132,6 +132,8 @@ env -u OPEN_BITCOIN_PHASE73_REPO_ROOT bun run scripts/check-phase73-uat-verifica
 bun run scripts/check-v1.6-release-boundaries.ts
 bun test scripts/check-phase75-soak-runner.test.ts
 bun run scripts/check-phase75-soak-runner.ts
+bun test scripts/check-phase76-resource-bounds.test.ts
+bun run scripts/check-phase76-resource-bounds.ts
 bash scripts/check-pure-core-deps.sh
 bash scripts/check-file-lengths.sh
 bash scripts/check-panic-sites.sh

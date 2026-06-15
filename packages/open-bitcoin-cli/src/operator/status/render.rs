@@ -8,11 +8,11 @@ use open_bitcoin_node::{
     status::{
         BuildProvenance, ChainTipStatus, FieldAvailability, HealthSignal, HealthSignalLevel,
         NodeRuntimeState, OpenBitcoinStatusSnapshot, PeerCounts, PeerTelemetry,
-        ServiceLifecycleStatus, ServicePriorShutdownStatus, ServiceRestartResumeStatus,
-        ServiceResumeProgressStatus, ServiceStaleInflightStatus, ServiceStatus,
-        SyncAttemptCounters, SyncConfiguredTargets, SyncLifecycleState, SyncProgressSignal,
-        SyncRecoveryCategory, SyncResourcePressure, SyncStopReasonStatus, WalletFreshness,
-        WalletScanProgress,
+        ResourceBoundSnapshot, ResourcePressureState, ServiceLifecycleStatus,
+        ServicePriorShutdownStatus, ServiceRestartResumeStatus, ServiceResumeProgressStatus,
+        ServiceStaleInflightStatus, ServiceStatus, SyncAttemptCounters, SyncConfiguredTargets,
+        SyncLifecycleState, SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure,
+        SyncStopReasonStatus, WalletFreshness, WalletScanProgress,
     },
 };
 
@@ -132,6 +132,10 @@ fn render_human_status(snapshot: &OpenBitcoinStatusSnapshot) -> String {
     lines.push(format!(
         "Sync pressure: {}",
         sync_pressure_availability(&snapshot.sync.resource_pressure)
+    ));
+    lines.push(format!(
+        "Resource bounds: {}",
+        resource_bounds_availability(&snapshot.resource_bounds)
     ));
     lines.push(format!(
         "Sync latest reorg: {}",
@@ -255,6 +259,51 @@ fn sync_pressure_availability(value: &FieldAvailability<SyncResourcePressure>) -
             value.outbound_peers,
             value.target_outbound_peers
         ),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
+fn resource_bounds_availability(value: &FieldAvailability<ResourceBoundSnapshot>) -> String {
+    match value {
+        FieldAvailability::Available(value) => {
+            let unavailable = value
+                .entries
+                .iter()
+                .filter_map(|entry| match &entry.usage {
+                    FieldAvailability::Unavailable { .. } => Some(entry.kind.as_str()),
+                    FieldAvailability::Available(_) => None,
+                })
+                .collect::<Vec<_>>();
+            let next_action = value
+                .entries
+                .iter()
+                .filter_map(|entry| match &entry.usage {
+                    FieldAvailability::Available(usage)
+                        if usage.state == ResourcePressureState::StopRequired =>
+                    {
+                        Some(format!("{}: {}", entry.kind.as_str(), usage.next_action))
+                    }
+                    FieldAvailability::Available(usage)
+                        if usage.state == ResourcePressureState::Warning =>
+                    {
+                        Some(format!("{}: {}", entry.kind.as_str(), usage.next_action))
+                    }
+                    FieldAvailability::Available(_) | FieldAvailability::Unavailable { .. } => None,
+                })
+                .next()
+                .unwrap_or_else(|| "none".to_string());
+            let unavailable_text = if unavailable.is_empty() {
+                "none".to_string()
+            } else {
+                unavailable.join(",")
+            };
+            format!(
+                "overall={} unavailable={} next_action={}",
+                value.overall_level.as_str(),
+                unavailable_text,
+                next_action
+            )
+        }
         FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
     }
 }

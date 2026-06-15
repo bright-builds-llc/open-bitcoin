@@ -53,6 +53,7 @@ These are Open Bitcoin design choices, not Knots parity claims:
 | First-party Rust Bitcoin domain types instead of production dependencies on existing Rust Bitcoin libraries | [`packages/`](./packages/) |
 | Functional-core boundaries that keep pure business logic free of direct I/O and runtime effects | [`scripts/check-pure-core-deps.sh`](./scripts/check-pure-core-deps.sh) |
 | Operator runtime contracts for storage, observability, status, CLI routing, and config layering | [`docs/architecture/`](./docs/architecture/) |
+| Typed resource-bound evidence for status, dashboard, soak preflight/resource_stop reports, and support bundles | [`docs/architecture/status-snapshot.md`](./docs/architecture/status-snapshot.md), [`docs/operator/runtime-guide.md`](./docs/operator/runtime-guide.md) |
 | Machine-readable parity and deviation ledger with human catalog pages | [`docs/parity/`](./docs/parity/) |
 | Deterministic parity, benchmark, and lines-of-code reports for review | [`scripts/verify.sh`](./scripts/verify.sh), [`docs/metrics/lines-of-code.md`](./docs/metrics/lines-of-code.md) |
 | Production panic-site guard for first-party Rust code | [`scripts/check-panic-sites.sh`](./scripts/check-panic-sites.sh) |

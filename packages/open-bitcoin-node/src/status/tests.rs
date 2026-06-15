@@ -5,12 +5,14 @@ use super::{
     BestKnownTipStatus, BuildProvenance, ChainTipStatus, ConfigStatus, FieldAvailability,
     HealthSignal, HealthSignalLevel, MempoolStatus, NO_PROGRESS_DIAGNOSIS_UNAVAILABLE_REASON,
     NO_PROGRESS_NEXT_ACTION_UNAVAILABLE_REASON, NoProgressDiagnosis, NodeRuntimeState, NodeStatus,
-    OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, PeerTelemetry, ServiceLifecycleStatus,
-    ServicePriorShutdownStatus, ServiceRestartResumeStatus, ServiceStaleInflightStatus,
-    ServiceStatus, StayCurrentStatus, SyncAttemptCounters, SyncConfiguredTargets, SyncLagStatus,
-    SyncLifecycleState, SyncProgress, SyncProgressSignal, SyncReconcileProgressStatus,
-    SyncReorgEvidence, SyncResourcePressure, SyncStatus, SyncStopReasonStatus, WalletFreshness,
-    WalletScanProgress, WalletStatus,
+    OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, PeerTelemetry, RESOURCE_BOUND_STOP_PERCENT,
+    RESOURCE_BOUND_WARNING_PERCENT, ResourceBoundEntry, ResourceBoundKind, ResourceBoundSnapshot,
+    ResourceBoundUnit, ResourcePressureState, ServiceLifecycleStatus, ServicePriorShutdownStatus,
+    ServiceRestartResumeStatus, ServiceStaleInflightStatus, ServiceStatus, StayCurrentStatus,
+    SyncAttemptCounters, SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState, SyncProgress,
+    SyncProgressSignal, SyncReconcileProgressStatus, SyncReorgEvidence, SyncResourcePressure,
+    SyncStatus, SyncStopReasonStatus, WalletFreshness, WalletScanProgress, WalletStatus,
+    classify_budget_pressure, classify_snapshot_against_disk_budget, usage_against_budget,
 };
 use crate::{LogStatus, MetricsStatus};
 
@@ -488,6 +490,82 @@ fn stopped_node_snapshot_keeps_unavailable_live_fields_explicit() {
         encoded["metrics"]["retention"]["sample_interval_seconds"],
         30
     );
+    assert_eq!(encoded["resource_bounds"]["state"], "unavailable");
+}
+
+#[test]
+fn resource_bounds_classify_thresholds_and_full_kind_set() {
+    // Arrange
+    let kinds = ResourceBoundKind::ALL
+        .into_iter()
+        .map(ResourceBoundKind::as_str)
+        .collect::<Vec<_>>();
+
+    // Act
+    let normal = classify_budget_pressure(79, 100);
+    let warning = classify_budget_pressure(80, 100);
+    let stop_required = classify_budget_pressure(95, 100);
+    let zero_limit = classify_budget_pressure(0, 0);
+
+    // Assert
+    assert_eq!(RESOURCE_BOUND_WARNING_PERCENT, 80);
+    assert_eq!(RESOURCE_BOUND_STOP_PERCENT, 95);
+    assert_eq!(
+        kinds,
+        vec![
+            "disk",
+            "file",
+            "cache",
+            "queue",
+            "peer",
+            "in_flight",
+            "log",
+            "metric",
+            "support_bundle"
+        ]
+    );
+    assert_eq!(normal, ResourcePressureState::Normal);
+    assert_eq!(warning, ResourcePressureState::Warning);
+    assert_eq!(stop_required, ResourcePressureState::StopRequired);
+    assert_eq!(zero_limit, ResourcePressureState::StopRequired);
+}
+
+#[test]
+fn resource_bounds_snapshot_aggregates_pressure_and_disk_budget() {
+    // Arrange
+    let snapshot = ResourceBoundSnapshot::new(vec![
+        ResourceBoundEntry::available(
+            ResourceBoundKind::Disk,
+            "datadir disk budget",
+            usage_against_budget(
+                95,
+                100,
+                ResourceBoundUnit::Bytes,
+                "Free disk space before continuing.",
+            ),
+        ),
+        ResourceBoundEntry::available(
+            ResourceBoundKind::Log,
+            "structured log retention",
+            usage_against_budget(10, 100, ResourceBoundUnit::Bytes, "Review log retention."),
+        ),
+    ]);
+
+    // Act
+    let encoded = serde_json::to_value(&snapshot).expect("resource bounds json");
+
+    // Assert
+    assert_eq!(snapshot.overall_level, ResourcePressureState::StopRequired);
+    assert_eq!(
+        classify_snapshot_against_disk_budget(&snapshot, 100),
+        ResourcePressureState::StopRequired
+    );
+    assert_eq!(encoded["overall_level"], "stop_required");
+    assert_eq!(encoded["entries"][0]["kind"], "disk");
+    assert_eq!(
+        encoded["entries"][0]["usage"]["value"]["state"],
+        "stop_required"
+    );
 }
 
 #[test]
@@ -626,6 +704,7 @@ fn populated_snapshot_serializes_obs_01_fields() {
         },
         logs: LogStatus::default(),
         metrics: MetricsStatus::default(),
+        resource_bounds: FieldAvailability::unavailable("resource bounds unavailable"),
         health_signals: vec![HealthSignal {
             level: HealthSignalLevel::Info,
             source: "status".to_string(),
@@ -812,6 +891,7 @@ fn stopped_snapshot() -> OpenBitcoinStatusSnapshot {
         },
         logs: LogStatus::default(),
         metrics: MetricsStatus::default(),
+        resource_bounds: FieldAvailability::unavailable("resource bounds unavailable"),
         health_signals: Vec::new(),
         build: BuildProvenance::unavailable(),
     }

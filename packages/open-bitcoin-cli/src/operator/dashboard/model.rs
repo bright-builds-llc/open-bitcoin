@@ -21,8 +21,11 @@ use crate::operator::sync_truth_render::{
     sync_reconcile_text, sync_reorg_text,
 };
 
+mod resource_bounds;
 #[cfg(test)]
 mod tests;
+
+use resource_bounds::resource_bounds;
 
 /// Metric series rendered as dashboard charts.
 pub const DASHBOARD_METRIC_KINDS: [MetricKind; 8] = [
@@ -165,6 +168,10 @@ fn dashboard_sections(snapshot: &OpenBitcoinStatusSnapshot) -> Vec<DashboardSect
                     string_availability(&snapshot.sync.recovery_action),
                 ),
                 row("Pressure", sync_pressure(&snapshot.sync.resource_pressure)),
+                row(
+                    "Resource bounds",
+                    resource_bounds(&snapshot.resource_bounds),
+                ),
                 row("Latest reorg", sync_reorg_text(&snapshot.sync.latest_reorg)),
                 row(
                     "Reconcile",

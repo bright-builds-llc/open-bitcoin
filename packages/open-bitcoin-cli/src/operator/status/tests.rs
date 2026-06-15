@@ -416,6 +416,7 @@ fn human_and_json_renderers_surface_wallet_freshness_and_scan_reasons() {
         },
         logs: open_bitcoin_node::LogStatus::default(),
         metrics: open_bitcoin_node::MetricsStatus::default(),
+        resource_bounds: FieldAvailability::unavailable("resource bounds unavailable"),
         health_signals: Vec::new(),
         build: BuildProvenance::unavailable(),
     };

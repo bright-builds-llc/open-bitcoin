@@ -135,6 +135,7 @@ fn dashboard_sections_surface_sync_progress_and_peer_counts() {
             "Recovery category",
             "Recovery",
             "Pressure",
+            "Resource bounds",
             "Latest reorg",
             "Reconcile",
             "Peers",
@@ -563,6 +564,7 @@ fn test_snapshot() -> OpenBitcoinStatusSnapshot {
             MetricRetentionPolicy::default(),
             vec![MetricSample::new(MetricKind::SyncHeight, 100.0, 10)],
         ),
+        resource_bounds: FieldAvailability::unavailable("resource bounds unavailable"),
         health_signals: vec![HealthSignal {
             level: HealthSignalLevel::Info,
             source: "test".to_string(),

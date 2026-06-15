@@ -33,8 +33,8 @@ delete those phase directories.
 
 ## Phases
 
-- [ ] **Phase 75: Multi-Day Soak Runner and Evidence Ledger** - Give operators a bounded, resumable, explicit opt-in soak workflow with durable run identity and deterministic synthetic coverage.
-- [ ] **Phase 76: Disk and Resource Bound Enforcement** - Make long-run disk, cache, queue, log, metric, and support-evidence bounds visible, enforceable, and testable.
+- [x] **Phase 75: Multi-Day Soak Runner and Evidence Ledger** - Give operators a bounded, resumable, explicit opt-in soak workflow with durable run identity and deterministic synthetic coverage.
+- [x] **Phase 76: Disk and Resource Bound Enforcement** - Make long-run disk, cache, queue, log, metric, and support-evidence bounds visible, enforceable, and testable.
 - [ ] **Phase 77: Corruption and Lock Recovery Hardening** - Diagnose lock contention, stale locks, corruption markers, schema mismatches, partial writes, and storage-open failures without hidden mutation.
 - [ ] **Phase 78: Progress Guarantees and Stall Diagnosis** - Ensure long-run progress is credited only for validated durable work and stalled paths produce actionable typed diagnosis.
 - [ ] **Phase 79: Diagnostics and Support Bundle Forensics** - Produce redacted "what happened" support evidence that reconstructs timeline, resource pressure, peer outcomes, recovery events, and final verdict.
@@ -71,12 +71,12 @@ Plans:
 **Plans**: 6 plans
 
 Plans:
-- [ ] 76-01-PLAN.md — Shared resource-bound status contracts, thresholds, and status schema field.
-- [ ] 76-02-PLAN.md — Status resource-bound collection and human rendering.
-- [ ] 76-03-PLAN.md — Soak preflight and runtime resource-stop enforcement.
-- [ ] 76-04-PLAN.md — Support bundle and dashboard resource-bound projections.
-- [ ] 76-05-PLAN.md — Operator docs, architecture docs, README updates, and parity records.
-- [ ] 76-06-PLAN.md — Phase 76 deterministic checker, verifier wiring, and LOC freshness.
+- [x] 76-01-PLAN.md — Shared resource-bound status contracts, thresholds, and status schema field.
+- [x] 76-02-PLAN.md — Status resource-bound collection and human rendering.
+- [x] 76-03-PLAN.md — Soak preflight and runtime resource-stop enforcement.
+- [x] 76-04-PLAN.md — Support bundle and dashboard resource-bound projections.
+- [x] 76-05-PLAN.md — Operator docs, architecture docs, README updates, and parity records.
+- [x] 76-06-PLAN.md — Phase 76 deterministic checker, verifier wiring, and LOC freshness.
 
 **Success Criteria**:
 1. Preflight and status surfaces expose disk, file, cache, queue, peer, in-flight, log, metric, and support-bundle bounds for long soaks.
@@ -143,7 +143,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 75. Multi-Day Soak Runner and Evidence Ledger | 6/6 | Complete    | 2026-06-15 |
-| 76. Disk and Resource Bound Enforcement | 0/6 | Pending | - |
+| 76. Disk and Resource Bound Enforcement | 6/6 | Complete | 2026-06-15 |
 | 77. Corruption and Lock Recovery Hardening | 0/0 | Pending | - |
 | 78. Progress Guarantees and Stall Diagnosis | 0/0 | Pending | - |
 | 79. Diagnostics and Support Bundle Forensics | 0/0 | Pending | - |
@@ -194,8 +194,8 @@ traceability.
 
 ## Next Step
 
-Execute Phase 76:
+Plan Phase 77:
 
 ```bash
-/gsd-execute-phase 76
+/gsd-plan-phase 77
 ```

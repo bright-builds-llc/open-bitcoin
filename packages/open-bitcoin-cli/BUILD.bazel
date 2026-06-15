@@ -20,6 +20,7 @@ rust_library(
         "//packages/open-bitcoin-rpc:open_bitcoin_rpc_lib",
         "@crate_index//:clap",
         "@crate_index//:crossterm",
+        "@crate_index//:fs4",
         "@crate_index//:ratatui",
         "@crate_index//:serde",
         "@crate_index//:serde_json",

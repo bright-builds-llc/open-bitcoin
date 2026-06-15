@@ -4,13 +4,13 @@
 //! Shared operator status snapshot contracts.
 
 mod recovery;
-
-use serde::{Deserialize, Serialize};
+mod resource_bounds;
 
 use crate::{LogStatus, MetricsStatus};
+use serde::{Deserialize, Serialize};
 
 pub use recovery::SyncRecoveryCategory;
-
+pub use resource_bounds::*;
 /// Explicit availability wrapper for status fields that may not be collectible.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", tag = "state", content = "value")]
@@ -617,6 +617,8 @@ pub struct OpenBitcoinStatusSnapshot {
     pub wallet: WalletStatus,
     pub logs: LogStatus,
     pub metrics: MetricsStatus,
+    #[serde(default)]
+    pub resource_bounds: FieldAvailability<ResourceBoundSnapshot>,
     pub health_signals: Vec<HealthSignal>,
     pub build: BuildProvenance,
 }

@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Full-Sync Soak and Recovery Hardening
-status: executing
-stopped_at: Phase 76 context gathered
-last_updated: "2026-06-15T15:35:01.534Z"
-last_activity: 2026-06-15 -- Phase 76 planning complete
+status: ready
+stopped_at: Phase 76 verified; ready for Phase 77 planning
+last_updated: "2026-06-15T17:37:38Z"
+last_activity: 2026-06-15 -- Phase 76 passed full verification and is ready for commit/push
 progress:
   total_phases: 6
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 12
-  completed_plans: 6
-  percent: 50
+  completed_plans: 12
+  percent: 100
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-14)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 76 — Disk and Resource Bound Enforcement
+**Current focus:** Phase 77 — Corruption and Lock Recovery Hardening
 
 ## Current Position
 
 Milestone: v1.7 Full-Sync Soak and Recovery Hardening
 Phase: 76
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-06-15 -- Phase 76 planning complete
+Plan: 6/6 complete
+Status: Verified
+Last activity: 2026-06-15 -- Phase 76 passed full verification and is ready for commit/push
 
-Progress: [#####-----] 50%
+Progress: [##########] 100%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Current milestone plans completed: 6
+- Current milestone plans completed: 12
 - Current milestone plan count: 6
 - Prior milestone plans completed: 27 in v1.6
 
@@ -46,7 +46,7 @@ Progress: [#####-----] 50%
 | Phase | Plans | Status |
 |-------|------:|--------|
 | 75. Multi-Day Soak Runner and Evidence Ledger | 6/6 | Complete |
-| 76. Disk and Resource Bound Enforcement | 0/6 | Planned |
+| 76. Disk and Resource Bound Enforcement | 6/6 | Complete |
 | 77. Corruption and Lock Recovery Hardening | 0/0 | Pending |
 | 78. Progress Guarantees and Stall Diagnosis | 0/0 | Pending |
 | 79. Diagnostics and Support Bundle Forensics | 0/0 | Pending |
@@ -76,7 +76,7 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ### Pending Todos
 
-- Execute the six Phase 76 disk and resource bound enforcement plans.
+- Plan Phase 77 corruption and lock recovery hardening.
 - Keep raw phase histories in `.planning/phases/` for parity and UAT traceability.
 - Keep public-network full-sync and multi-day soak UAT opt-in and outside default deterministic verification unless a future phase deliberately changes that contract.
 
@@ -88,6 +88,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-15T14:19:22.980Z
-Stopped at: Phase 76 context gathered
-Resume file: .planning/phases/76-disk-and-resource-bound-enforcement/76-CONTEXT.md
+Last session: 2026-06-15T17:37:38Z
+Stopped at: Phase 76 verified; ready for Phase 77 planning after commit/push
+Resume file: .planning/phases/76-disk-and-resource-bound-enforcement/76-VERIFICATION.md

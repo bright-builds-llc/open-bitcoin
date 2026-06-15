@@ -276,6 +276,7 @@
         "packages/open-bitcoin-cli/src/operator/support.rs",
         "packages/open-bitcoin-cli/src/operator/support/evidence.rs",
         "packages/open-bitcoin-cli/src/operator/support/live_smoke.rs",
+        "packages/open-bitcoin-cli/src/operator/support/resource_bounds.rs",
         "packages/open-bitcoin-cli/src/operator/support/render.rs",
         "packages/open-bitcoin-cli/src/operator/support/tests.rs"
       ],
@@ -314,6 +315,7 @@
         "packages/open-bitcoin-cli/src/operator/dashboard/app.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/app/tests.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/model.rs",
+        "packages/open-bitcoin-cli/src/operator/dashboard/model/resource_bounds.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/model/tests.rs"
       ],
       "breadcrumbs": []
@@ -763,6 +765,7 @@
       "label": "node-status-contract",
       "files": [
         "packages/open-bitcoin-node/src/status.rs",
+        "packages/open-bitcoin-node/src/status/resource_bounds.rs",
         "packages/open-bitcoin-node/src/status/recovery.rs",
         "packages/open-bitcoin-node/src/status/tests.rs"
       ],

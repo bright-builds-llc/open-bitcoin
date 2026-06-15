@@ -24,6 +24,7 @@ use helpers::{
     first_started_at_from_events, generate_soak_run_id, has_terminal_stop_and_verdict,
     latest_outcome, latest_verdict, next_sequence, outcome_label, record_run_index,
     reject_run_collision, runtime_error, started_bounds, validate_index_entry,
+    validate_resource_bound_preflight,
 };
 
 mod helpers;
@@ -42,6 +43,8 @@ pub(crate) fn execute_soak_start(
     };
     reject_run_collision(layout, &run_id)?;
     let bounds = bounds_from_start_args(args, layout, maybe_network)?;
+    let preflight_snapshot = collector.collect();
+    validate_resource_bound_preflight(&bounds, &preflight_snapshot)?;
     let started_hint = current_unix_seconds();
     let paths = layout.paths_for_run(&run_id);
     record_run_index(

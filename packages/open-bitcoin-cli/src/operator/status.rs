@@ -32,6 +32,7 @@ use super::{
 mod detection;
 mod http;
 mod render;
+mod resource_bounds;
 mod service_status;
 mod sync_state;
 #[cfg(test)]
@@ -40,6 +41,7 @@ mod wallet;
 
 pub use http::HttpStatusRpcClient;
 pub use render::render_status;
+use resource_bounds::collect_resource_bounds;
 use service_status::collect_service_status;
 use sync_state::{durable_sync_state, rpc_sync_status, unavailable_sync_status};
 
@@ -248,6 +250,10 @@ fn collect_live_status_snapshot(
         wallet,
         logs: log_status(&input.config_resolution),
         metrics: metrics_status(&input.config_resolution),
+        resource_bounds: collect_resource_bounds(
+            &input.config_resolution,
+            maybe_durable_sync_state.as_ref(),
+        ),
         health_signals,
         build: current_build_provenance(),
     }
@@ -304,6 +310,10 @@ fn stopped_status_snapshot(
         },
         logs: log_status(&input.config_resolution),
         metrics: metrics_status(&input.config_resolution),
+        resource_bounds: collect_resource_bounds(
+            &input.config_resolution,
+            maybe_durable_sync_state.as_ref(),
+        ),
         health_signals,
         build: current_build_provenance(),
     }

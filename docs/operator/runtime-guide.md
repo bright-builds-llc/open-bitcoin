@@ -1129,6 +1129,36 @@ process facts without redefining lower-level sync stop or recovery labels.
 
 A soak run can prove bounded opt-in full-sync soak behavior, durable resume evidence, or diagnosed blocker evidence; it does not prove inbound serving, relay, production-funds wallet safety, migration apply mode, signed packages, GUI readiness, hosted dashboards, or broad production-node readiness.
 
+### Phase 76 disk and resource-bound enforcement
+
+Phase 76 extends the shared operator status snapshot with top-level
+`resource_bounds` evidence. The resource-bound set is explicit: disk, file, cache, queue, peer, in-flight, log, metric, and support-bundle. Each entry is
+available with current usage, limit, unit, warning threshold, stop threshold,
+state, and next action, or unavailable with a reason. Default warning and stop
+thresholds are 80% and 95% of the relevant explicit budget.
+
+Status and dashboard output render the shared `resource_bounds` contract; JSON
+consumers should prefer the machine field over human strings:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir /path/to/open-bitcoin --network mainnet status --format json
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir /path/to/open-bitcoin --network mainnet status --format json
+```
+
+`soak start` performs resource-bound preflight before it writes a run index or
+events ledger. Missing datadir evidence, unavailable required measurements, a
+zero or invalid disk budget, or stop-required pressure refuses the new run
+before ledger mutation. Warning pressure remains runnable and is recorded in
+checkpoint evidence. When a running soak observes stop-required resource
+pressure, the final outcome is `resource_stop`; the report preserves resource
+bound state, next action, and source status evidence.
+
+Support bundles include a compact `resource_bound_evidence` section and
+Markdown `## Resource Bound Evidence` projection. The section records labels,
+numeric usage, limits, units, next actions, and projected support-bundle
+footprint only; it does not copy raw logs, raw stores, raw status snapshots, or
+unbounded peer tables.
+
 ## v1.4 operator evidence closeout
 
 Run the deterministic repo checks from the repo root before interpreting any

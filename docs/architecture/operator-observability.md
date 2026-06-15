@@ -8,9 +8,9 @@ block height, connected block height, validated_active_chain_height,
 maybe_validated_active_chain_hash, maybe_validated_active_chain_work,
 best_known_tip, stay_current, no_progress_diagnosis,
 no_progress_next_action, latest_reorg, reconcile_progress, resource_pressure,
-peer_contribution, latest_stop_reason, evidence_verdict, recovery_category,
-configured_targets, attempt_counters, or latest error independently from the
-shared snapshot.
+resource_bounds, peer_contribution, latest_stop_reason, evidence_verdict,
+recovery_category, configured_targets, attempt_counters, or latest error
+independently from the shared snapshot.
 
 ## Default metrics retention
 
@@ -90,6 +90,21 @@ The soak ledger event kinds are `started`, `checkpoint`, `resume`, `stop`, and
 `unexpected_termination`. Observability surfaces should render these as soak
 outcomes only; detailed sync stop, recovery, resource, and no-progress evidence
 continues to come from the shared status snapshot.
+
+## Phase 76 resource-bound evidence
+
+Phase 76 makes `resource_bounds` the shared disk/resource contract for status,
+dashboard, soak, support bundles, and report projections. The explicit RES-05
+kind list is disk, file, cache, queue, peer, in-flight, log, metric, and
+support-bundle; pressure states use 80% warning and 95% stop-required
+thresholds against explicit budgets.
+
+`soak start` evaluates resource-bound preflight before ledger mutation and
+refuses missing datadir evidence, unavailable required measurements, invalid
+disk budget evidence, or stop-required pressure. Checkpoints and reports retain
+resource-bound labels, next action, and source status evidence so
+`resource_stop` can be diagnosed without copying raw logs, raw stores, raw
+status snapshots, live-smoke inputs, or unbounded peer tables. Support bundles render the same compact summary under `## Resource Bound Evidence`.
 
 ## Phase Boundaries
 

@@ -51,6 +51,14 @@ Phase 75 multi-day soak evidence is rooted in the
 contracts so bounded opt-in soak commands, durable ledger semantics, support
 projections, and non-claim boundaries stay auditable.
 
+Phase 76 disk and resource-bound enforcement is rooted in the
+`phase76-disk-and-resource-bound-enforcement` surface. The root links the
+runtime guide, status snapshot contract, operator observability contract,
+support bundle evidence, soak `resource_stop` reports, and deterministic
+`scripts/check-phase76-resource-bounds.ts` checker so disk, file, cache, queue,
+peer, in-flight, log, metric, and support-bundle bounds stay auditable without
+public-network or raw-artifact verification.
+
 Deferred and suspected follow-up work remains visible in
 [`deviations-and-unknowns.md`](deviations-and-unknowns.md).
 

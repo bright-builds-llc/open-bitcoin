@@ -6,6 +6,7 @@
 mod evidence;
 mod live_smoke;
 mod render;
+mod resource_bounds;
 
 use std::{
     fs,
@@ -27,6 +28,7 @@ pub(crate) use evidence::{
 #[cfg(test)]
 pub(crate) use evidence::{EvidenceVerdictSummary, TipEvidence};
 use render::{render_support_markdown, render_support_outcome};
+use resource_bounds::{ResourceBoundSupportEvidence, collect_resource_bound_support_evidence};
 
 use super::{
     OperatorOutputFormat, SupportArgs, SupportBundleArgs, SupportCommand,
@@ -79,6 +81,7 @@ fn execute_support_bundle(
     let live_smoke = collect_live_smoke_evidence(args.maybe_live_smoke_report.as_deref());
     let full_sync_evidence = derive_full_sync_evidence(&status, &live_smoke);
     let soak_evidence = collect_soak_support_evidence(config_resolution);
+    let resource_bound_evidence = collect_resource_bound_support_evidence(&status, &output_dir);
     let bundle = SupportEvidenceBundle {
         generated_at_unix_seconds,
         generated_by: "open-bitcoin support bundle".to_string(),
@@ -94,6 +97,7 @@ fn execute_support_bundle(
         live_smoke,
         full_sync_evidence,
         soak_evidence,
+        resource_bound_evidence,
     };
 
     let json_text = serde_json::to_string_pretty(&bundle).map_err(|error| {
@@ -153,6 +157,7 @@ struct SupportEvidenceBundle {
     live_smoke: LiveSmokeEvidence,
     full_sync_evidence: FullSyncEvidence,
     soak_evidence: SoakSupportEvidence,
+    resource_bound_evidence: ResourceBoundSupportEvidence,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -555,6 +560,7 @@ fn redaction_summary() -> RedactionSummary {
             "credential sources are represented as metadata only".to_string(),
             "live smoke reports are summarized from allowlisted fields only".to_string(),
             "logs are limited to existing structured status signals".to_string(),
+            "resource bounds are recorded as compact status summaries only".to_string(),
         ],
     }
 }
