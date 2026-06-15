@@ -50,6 +50,7 @@ pub struct OperatorCli {
 pub enum OperatorCommand {
     Status(StatusArgs),
     Sync(SyncArgs),
+    Soak(SoakArgs),
     Config(ConfigArgs),
     Compatibility(CompatibilityArgs),
     Service(ServiceArgs),
@@ -74,6 +75,93 @@ pub enum SyncCommand {
     Status,
     Pause,
     Resume,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Args)]
+pub struct SoakArgs {
+    #[command(subcommand)]
+    pub command: SoakCommand,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
+pub enum SoakCommand {
+    Start(SoakStartArgs),
+    Resume(SoakResumeArgs),
+    Stop(SoakStopArgs),
+    Report(SoakReportArgs),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Args)]
+pub struct SoakStartArgs {
+    #[arg(long = "elapsed-time-seconds", value_parser = parse_positive_u64)]
+    pub elapsed_time_seconds: u64,
+    #[arg(long = "checkpoint-interval-seconds", value_parser = parse_positive_u64)]
+    pub checkpoint_interval_seconds: u64,
+    #[arg(long = "target-height")]
+    pub maybe_target_height: Option<u64>,
+    #[arg(long = "peer-policy", value_enum)]
+    pub peer_policy: SoakPeerPolicyArg,
+    #[arg(long = "disk-budget-bytes", value_parser = parse_positive_u64)]
+    pub disk_budget_bytes: u64,
+    #[arg(long = "stop-condition", value_enum)]
+    pub stop_condition: SoakStopConditionArg,
+    #[arg(long = "run-id")]
+    pub maybe_run_id: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Args)]
+pub struct SoakResumeArgs {
+    #[arg(long = "run-id")]
+    pub run_id: String,
+    #[arg(long = "checkpoint-interval-seconds", value_parser = parse_positive_u64)]
+    pub checkpoint_interval_seconds: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Args)]
+pub struct SoakStopArgs {
+    #[arg(long = "run-id")]
+    pub run_id: String,
+    #[arg(long = "reason", value_enum)]
+    pub reason: SoakStopReasonArg,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Args)]
+pub struct SoakReportArgs {
+    #[arg(long = "run-id")]
+    pub run_id: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum SoakPeerPolicyArg {
+    DaemonConfigured,
+    ManualPeersOnly,
+    NoDnsSeeds,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum SoakStopConditionArg {
+    ElapsedTime,
+    TargetHeight,
+    StatusVerdict,
+    OperatorStop,
+    ResourceStop,
+    RecoveryStop,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum SoakStopReasonArg {
+    OperatorStop,
+}
+
+fn parse_positive_u64(value: &str) -> Result<u64, String> {
+    let parsed = value
+        .parse::<u64>()
+        .map_err(|error| format!("must be a positive integer: {error}"))?;
+    if parsed == 0 {
+        return Err("must be greater than zero".to_string());
+    }
+
+    Ok(parsed)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Args)]

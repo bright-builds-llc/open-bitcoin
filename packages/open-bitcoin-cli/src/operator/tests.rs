@@ -16,8 +16,8 @@ use serde_json::Value;
 
 use super::{
     CliRoute, ConfigCommand, DashboardArgs, MigrationCommand, NetworkSelection, OperatorCli,
-    OperatorCommand, OperatorOutputFormat, ServiceCommand, StatusArgs, SupportCommand, SyncCommand,
-    SoakCommand, SoakPeerPolicyArg, SoakStopConditionArg, SoakStopReasonArg,
+    OperatorCommand, OperatorOutputFormat, ServiceCommand, SoakCommand, SoakPeerPolicyArg,
+    SoakStopConditionArg, SoakStopReasonArg, StatusArgs, SupportCommand, SyncCommand,
     config::OperatorConfigSource,
     onboarding::{OnboardingWriteDecision, ProposedConfigWrite},
     route_cli_invocation,
@@ -193,10 +193,7 @@ fn soak_cli_start_parses_bounded_operator_contract() {
     assert_eq!(start.maybe_target_height, Some(144));
     assert_eq!(start.peer_policy, SoakPeerPolicyArg::DaemonConfigured);
     assert_eq!(start.disk_budget_bytes, 1_048_576);
-    assert_eq!(
-        start.stop_condition,
-        SoakStopConditionArg::ElapsedTime
-    );
+    assert_eq!(start.stop_condition, SoakStopConditionArg::ElapsedTime);
 }
 
 #[test]

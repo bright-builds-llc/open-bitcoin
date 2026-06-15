@@ -188,6 +188,9 @@ fn execute_operator_cli_inner(
     match &cli.command {
         OperatorCommand::Status(_) => execute_status(&cli, config_resolution, detections),
         OperatorCommand::Sync(args) => execute_sync_command(args, cli.format, &config_resolution),
+        OperatorCommand::Soak(_) => {
+            Err(OperatorRuntimeError::UnsupportedCommand { command: "soak" })
+        }
         OperatorCommand::Config(config) => match config.command {
             ConfigCommand::Paths => Ok(OperatorCommandOutcome::success(render_config_paths(
                 &config_resolution,
@@ -359,6 +362,7 @@ fn command_detections(
         OperatorCommand::Migrate(args) => detect_migration_installations(config_resolution, args),
         OperatorCommand::Status(_)
         | OperatorCommand::Sync(_)
+        | OperatorCommand::Soak(_)
         | OperatorCommand::Config(_)
         | OperatorCommand::Compatibility(_)
         | OperatorCommand::Onboard(_)
