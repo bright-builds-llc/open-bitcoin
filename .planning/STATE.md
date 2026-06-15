@@ -4,8 +4,8 @@ milestone: v1.7
 milestone_name: Full-Sync Soak and Recovery Hardening
 status: executing
 stopped_at: Phase 75 planning revision complete
-last_updated: "2026-06-15T01:01:33.145Z"
-last_activity: 2026-06-15 -- Phase 75 planning complete
+last_updated: "2026-06-15T01:03:41.442Z"
+last_activity: 2026-06-15 -- Phase 75 execution started
 progress:
   total_phases: 6
   completed_phases: 0
@@ -21,15 +21,15 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-14)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** v1.7 Full-Sync Soak and Recovery Hardening
+**Current focus:** Phase 75 — Multi-Day Soak Runner and Evidence Ledger
 
 ## Current Position
 
 Milestone: v1.7 Full-Sync Soak and Recovery Hardening
-Phase: 75
-Plan: -
-Status: Ready to execute
-Last activity: 2026-06-15 -- Phase 75 planning complete
+Phase: 75 (Multi-Day Soak Runner and Evidence Ledger) — EXECUTING
+Plan: 1 of 6
+Status: Executing Phase 75
+Last activity: 2026-06-15 -- Phase 75 execution started
 
 Progress: [----------] 0%
 
