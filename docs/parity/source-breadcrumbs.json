@@ -704,7 +704,8 @@
     {
       "label": "node-sync-tests",
       "files": [
-        "packages/open-bitcoin-node/src/sync/tests.rs"
+        "packages/open-bitcoin-node/src/sync/tests.rs",
+        "packages/open-bitcoin-node/src/sync/tests/soak.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/net_processing.cpp",

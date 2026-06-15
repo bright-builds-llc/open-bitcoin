@@ -45,6 +45,8 @@ use crate::{
     },
 };
 
+mod soak;
+
 const EASY_BITS: u32 = 0x207f_ffff;
 
 #[derive(Debug, Clone)]
