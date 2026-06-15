@@ -24,11 +24,16 @@ use super::{
         SoakReportProjection, render_soak_report_json, render_soak_report_markdown,
         write_soak_reports,
     },
+    validate_resume_plan,
 };
 use crate::operator::support::{
     ActiveChainEvidence, EvidenceState, EvidenceVerdictSummary, FullSyncEvidence, SummaryEvidence,
     SupportEvidenceVerdict, TipEvidence,
 };
+
+const SOAK_SYNTHETIC_STARTED_AT: u64 = 1_777_300_000;
+const SOAK_SYNTHETIC_CHECKPOINT_AT: u64 = 1_777_300_060;
+const SOAK_SYNTHETIC_RESUME_OR_STOP_AT: u64 = 1_777_300_120;
 
 #[derive(Debug)]
 struct TestDirectory {
@@ -45,6 +50,14 @@ impl TestDirectory {
             "open-bitcoin-soak-{label}-{}-{timestamp}",
             std::process::id()
         ));
+        fs::create_dir_all(&path).expect("test directory");
+        Self { path }
+    }
+
+    fn deterministic(label: &str) -> Self {
+        let path =
+            std::env::temp_dir().join(format!("open-bitcoin-soak-{label}-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&path);
         fs::create_dir_all(&path).expect("test directory");
         Self { path }
     }
@@ -396,6 +409,178 @@ fn soak_report_write_uses_ledger_events_without_updating_run_index() {
 }
 
 #[test]
+fn soak_synthetic_interrupted_run_replays_as_unexpected_termination_resume() {
+    // Arrange
+    let temp = TestDirectory::deterministic("synthetic-interrupted");
+    let layout = SoakLedgerLayout::for_datadir(temp.path());
+    let run_id = SoakRunId::try_new("soak-1777300000-interrupted").expect("run id");
+    let paths = layout.paths_for_run(&run_id);
+    let mut ledger = SoakLedger::create(&layout, run_id.clone());
+    ledger
+        .append_event(
+            SOAK_SYNTHETIC_STARTED_AT,
+            SoakLedgerEvent::Started {
+                bounds: soak_bounds(temp.path()),
+            },
+        )
+        .expect("append started");
+    ledger
+        .append_event(
+            SOAK_SYNTHETIC_CHECKPOINT_AT,
+            SoakLedgerEvent::Checkpoint {
+                status: checkpoint_status(),
+            },
+        )
+        .expect("append checkpoint");
+    let mut resume_ledger = SoakLedger::resume(&layout, run_id, 3);
+
+    // Act
+    let resume = resume_ledger
+        .append_event(
+            SOAK_SYNTHETIC_RESUME_OR_STOP_AT,
+            SoakLedgerEvent::Resume {
+                interrupted_prior_run: true,
+            },
+        )
+        .expect("append interrupted resume");
+    let read = SoakLedger::read_events(&paths.events_path).expect("read resumed ledger");
+    let projection = SoakReportProjection::from_ledger_events(read.events, &paths.events_path)
+        .expect("interrupted resume projection");
+
+    // Assert
+    assert_eq!(resume.sequence, 3);
+    assert_eq!(
+        resume.recorded_at_unix_seconds,
+        SOAK_SYNTHETIC_RESUME_OR_STOP_AT
+    );
+    assert_eq!(projection.latest_sequence, 3);
+    assert_eq!(projection.resume_count, 1);
+    assert_eq!(projection.interrupted_resume_count, 1);
+    assert!(projection.stop.is_none());
+    assert!(projection.verdict.is_none());
+}
+
+#[test]
+fn soak_synthetic_clean_completion_refuses_same_run_resume() {
+    // Arrange
+    let temp = TestDirectory::deterministic("synthetic-clean-completion");
+    let layout = SoakLedgerLayout::for_datadir(temp.path());
+    let run_id = SoakRunId::try_new("soak-1777300000-clean").expect("run id");
+    let paths = layout.paths_for_run(&run_id);
+    let mut ledger = SoakLedger::create(&layout, run_id.clone());
+    ledger
+        .append_event(
+            SOAK_SYNTHETIC_STARTED_AT,
+            SoakLedgerEvent::Started {
+                bounds: soak_bounds(temp.path()),
+            },
+        )
+        .expect("append started");
+    ledger
+        .append_event(
+            SOAK_SYNTHETIC_CHECKPOINT_AT,
+            SoakLedgerEvent::Checkpoint {
+                status: checkpoint_status(),
+            },
+        )
+        .expect("append checkpoint");
+    ledger
+        .append_event(
+            SOAK_SYNTHETIC_RESUME_OR_STOP_AT,
+            SoakLedgerEvent::Stop {
+                outcome: SoakOutcomeLabel::CleanCompletion,
+            },
+        )
+        .expect("append clean stop");
+    ledger
+        .append_event(
+            SOAK_SYNTHETIC_RESUME_OR_STOP_AT,
+            SoakLedgerEvent::Verdict {
+                outcome: SoakOutcomeLabel::CleanCompletion,
+            },
+        )
+        .expect("append clean verdict");
+    let mut index = SoakRunIndex::empty();
+    index.record_run(SoakRunIndexEntry {
+        run_id: run_id.clone(),
+        ledger_path: paths.events_path,
+        started_at_unix_seconds: SOAK_SYNTHETIC_STARTED_AT,
+        updated_at_unix_seconds: SOAK_SYNTHETIC_RESUME_OR_STOP_AT,
+        maybe_outcome: Some(SoakOutcomeLabel::CleanCompletion),
+    });
+    index.write_atomic(&layout).expect("write run index");
+
+    // Act
+    let error = validate_resume_plan(&layout, &run_id, 60)
+        .expect_err("clean_completion cannot resume same run");
+
+    // Assert
+    assert!(error.to_string().contains("clean_completion"));
+}
+
+#[test]
+fn soak_synthetic_resource_stop_report_preserves_final_outcome() {
+    // Arrange
+    let temp = TestDirectory::deterministic("synthetic-resource-stop");
+    let layout = SoakLedgerLayout::for_datadir(temp.path());
+    let run_id = SoakRunId::try_new("soak-1777300000-resource").expect("run id");
+    let paths = layout.paths_for_run(&run_id);
+    let mut ledger = SoakLedger::create(&layout, run_id);
+    ledger
+        .append_event(
+            SOAK_SYNTHETIC_STARTED_AT,
+            SoakLedgerEvent::Started {
+                bounds: soak_bounds(temp.path()),
+            },
+        )
+        .expect("append started");
+    ledger
+        .append_event(
+            SOAK_SYNTHETIC_CHECKPOINT_AT,
+            SoakLedgerEvent::Checkpoint {
+                status: resource_checkpoint_status(),
+            },
+        )
+        .expect("append resource checkpoint");
+    ledger
+        .append_event(
+            SOAK_SYNTHETIC_RESUME_OR_STOP_AT,
+            SoakLedgerEvent::Stop {
+                outcome: SoakOutcomeLabel::ResourceStop,
+            },
+        )
+        .expect("append resource stop");
+    ledger
+        .append_event(
+            SOAK_SYNTHETIC_RESUME_OR_STOP_AT,
+            SoakLedgerEvent::Verdict {
+                outcome: SoakOutcomeLabel::ResourceStop,
+            },
+        )
+        .expect("append resource verdict");
+    let read = SoakLedger::read_events(&paths.events_path).expect("read resource ledger");
+
+    // Act
+    let projection =
+        SoakReportProjection::from_ledger_events(read.events.clone(), &paths.events_path)
+            .expect("resource projection");
+    let report_paths =
+        write_soak_reports(&read, &paths.events_path, &layout).expect("write resource reports");
+    let markdown = fs::read_to_string(report_paths.markdown_path).expect("read markdown report");
+
+    // Assert
+    let verdict = projection.verdict.expect("latest resource verdict");
+    assert_eq!(verdict.outcome, SoakOutcomeLabel::ResourceStop);
+    assert_eq!(
+        verdict.recorded_at_unix_seconds,
+        SOAK_SYNTHETIC_RESUME_OR_STOP_AT
+    );
+    assert!(markdown.contains("Final outcome: resource_stop"));
+    assert!(markdown.contains("Recovery category: resource_exhaustion"));
+    assert!(markdown.contains("No-progress diagnosis: storage_or_resource_blocked"));
+}
+
+#[test]
 fn soak_bounds_run_id_rejects_empty_and_path_like_values() {
     // Arrange
     let valid = "soak-1781485562-0001";
@@ -656,6 +841,15 @@ fn checkpoint_status() -> SoakCheckpointStatus {
         maybe_validated_active_chain_height: Some(900_000),
         maybe_best_known_tip_height: Some(900_000),
         maybe_source_status_path: Some(PathBuf::from("/tmp/status.json")),
+    }
+}
+
+fn resource_checkpoint_status() -> SoakCheckpointStatus {
+    SoakCheckpointStatus {
+        maybe_recovery_category_label: Some("resource_exhaustion".to_string()),
+        maybe_no_progress_diagnosis_label: Some("storage_or_resource_blocked".to_string()),
+        maybe_source_status_path: Some(PathBuf::from("/tmp/resource-status.json")),
+        ..checkpoint_status()
     }
 }
 
