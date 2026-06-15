@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Full-Sync Soak and Recovery Hardening
-status: ready
-stopped_at: Phase 76 verified; ready for Phase 77 planning
-last_updated: "2026-06-15T17:37:38Z"
+status: verifying
+stopped_at: Phase 77 context gathered
+last_updated: "2026-06-15T19:08:31.898Z"
 last_activity: 2026-06-15 -- Phase 76 passed full verification and is ready for commit/push
 progress:
   total_phases: 6
@@ -88,6 +88,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-15T17:37:38Z
-Stopped at: Phase 76 verified; ready for Phase 77 planning after commit/push
-Resume file: .planning/phases/76-disk-and-resource-bound-enforcement/76-VERIFICATION.md
+Last session: 2026-06-15T19:08:31.894Z
+Stopped at: Phase 77 context gathered
+Resume file: .planning/phases/77-corruption-and-lock-recovery-hardening/77-CONTEXT.md
