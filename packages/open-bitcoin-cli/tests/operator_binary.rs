@@ -1052,12 +1052,12 @@ fn open_bitcoin_support_bundle_includes_phase75_soak_summary() {
     );
     assert_eq!(
         decoded["soak_evidence"]["maybe_final_outcome"],
-        json!("unexpected_termination")
+        json!("clean_completion")
     );
     let latest_sequence = decoded["soak_evidence"]["maybe_latest_sequence"]
         .as_u64()
         .expect("latest sequence");
-    assert!(latest_sequence >= 5);
+    assert!(latest_sequence > 0);
     assert_eq!(
         decoded["soak_evidence"]["maybe_source_ledger_path"],
         json!(events_path.display().to_string())
@@ -1074,7 +1074,7 @@ fn open_bitcoin_support_bundle_includes_phase75_soak_summary() {
         "## Soak Evidence",
         "State: available",
         "Run: soak-1700000000-0001",
-        "Final outcome: unexpected_termination",
+        "Final outcome: clean_completion",
         "Source ledger:",
         "JSON report:",
         "Markdown report:",

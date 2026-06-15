@@ -171,7 +171,7 @@ const SUPPORT_PROJECTION_ANCHORS = {
   ],
   "packages/open-bitcoin-cli/tests/operator_binary.rs": [
     "open_bitcoin_support_bundle_includes_phase75_soak_summary",
-    "unexpected_termination",
+    "clean_completion",
     "raw ledger",
     "raw daemon logs",
     "raw reports",

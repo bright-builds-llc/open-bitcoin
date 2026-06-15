@@ -162,7 +162,7 @@ const SOURCE_ANCHORS: Record<string, readonly string[]> = {
     "open_bitcoin_soak_report_is_projection_without_ledger_append",
     "open_bitcoin_soak_resume_refuses_clean_completion",
     "open_bitcoin_support_bundle_includes_phase75_soak_summary",
-    "unexpected_termination",
+    "clean_completion",
     "raw ledger",
     "raw daemon logs",
     "raw reports",
