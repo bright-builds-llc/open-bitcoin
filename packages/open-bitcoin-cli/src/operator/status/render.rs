@@ -4,7 +4,7 @@
 //! Human and JSON status rendering.
 
 use open_bitcoin_node::{
-    MetricsStatus,
+    MetricsStatus, RecoveryEvidenceSnapshot,
     status::{
         BuildProvenance, ChainTipStatus, FieldAvailability, HealthSignal, HealthSignalLevel,
         NodeRuntimeState, OpenBitcoinStatusSnapshot, PeerCounts, PeerTelemetry,
@@ -15,6 +15,7 @@ use open_bitcoin_node::{
         SyncStopReasonStatus, WalletFreshness, WalletScanProgress,
     },
 };
+use serde::Serialize;
 
 use crate::operator::sync_truth_render::{
     best_known_tip_text, no_progress_diagnosis_text, stay_current_text, sync_progress_text,
@@ -128,6 +129,10 @@ fn render_human_status(snapshot: &OpenBitcoinStatusSnapshot) -> String {
     lines.push(format!(
         "Sync recovery: {}",
         string_availability(&snapshot.sync.recovery_action)
+    ));
+    lines.push(format!(
+        "Recovery evidence: {}",
+        recovery_evidence_availability(&snapshot.recovery_evidence)
     ));
     lines.push(format!(
         "Sync pressure: {}",
@@ -312,6 +317,27 @@ fn sync_recovery_category_availability(value: &FieldAvailability<SyncRecoveryCat
     match value {
         FieldAvailability::Available(value) => value.as_str().to_string(),
         FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
+fn recovery_evidence_availability(value: &FieldAvailability<RecoveryEvidenceSnapshot>) -> String {
+    match value {
+        FieldAvailability::Available(value) => format!(
+            "category={} cause={} action_class={} next_action={}",
+            stable_json_label(&value.category),
+            stable_json_label(&value.cause),
+            stable_json_label(&value.action_class),
+            value.next_action
+        ),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
+fn stable_json_label(value: &impl Serialize) -> String {
+    match serde_json::to_value(value) {
+        Ok(serde_json::Value::String(label)) => label,
+        Ok(value) => value.to_string(),
+        Err(_) => "unavailable_label".to_string(),
     }
 }
 
