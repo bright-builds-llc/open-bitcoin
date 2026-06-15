@@ -2,7 +2,8 @@
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
 use open_bitcoin_node::{
-    MetricKind, MetricRetentionPolicy, MetricSample, MetricsStatus,
+    MetricKind, MetricRetentionPolicy, MetricSample, MetricsStatus, RecoveryActionClass,
+    RecoveryCause, RecoveryEvidenceBasis, RecoveryEvidenceSnapshot,
     status::{
         BestKnownTipSource, BestKnownTipStatus, BuildProvenance, ConfigStatus, FieldAvailability,
         HealthSignal, HealthSignalLevel, MempoolStatus, NoProgressDiagnosis, NodeRuntimeState,
@@ -462,6 +463,50 @@ fn dashboard_service_restart_resume_rows_surface_phase64_evidence() {
     );
 }
 
+#[test]
+fn dashboard_recovery_evidence_available_row_uses_top_level_status_evidence() {
+    // Arrange
+    let mut snapshot = shared_sync_truth_snapshot();
+    snapshot.recovery_evidence = FieldAvailability::available(phase77_recovery_evidence());
+    snapshot.sync.recovery_action =
+        FieldAvailability::available("legacy action cause=legacy action_class=legacy".to_string());
+
+    // Act
+    let state = DashboardState::from_snapshot(&snapshot);
+
+    // Assert
+    let sync_rows = &state.sections[1].rows;
+    let recovery_evidence = sync_rows
+        .iter()
+        .find(|row| row.label == "Recovery evidence")
+        .expect("recovery evidence row");
+    assert_eq!(
+        recovery_evidence.value,
+        "category=storage_lock_contention cause=stale_lock_evidence action_class=read_only_inspection next_action=Inspect the datadir read-only and avoid deleting lock artifacts automatically."
+    );
+}
+
+#[test]
+fn dashboard_recovery_evidence_unavailable_row_preserves_reason() {
+    // Arrange
+    let mut snapshot = shared_sync_truth_snapshot();
+    snapshot.recovery_evidence = FieldAvailability::unavailable("recovery evidence unavailable");
+
+    // Act
+    let state = DashboardState::from_snapshot(&snapshot);
+
+    // Assert
+    let sync_rows = &state.sections[1].rows;
+    let recovery_evidence = sync_rows
+        .iter()
+        .find(|row| row.label == "Recovery evidence")
+        .expect("recovery evidence row");
+    assert_eq!(
+        recovery_evidence.value,
+        "Unavailable: recovery evidence unavailable"
+    );
+}
+
 fn test_snapshot() -> OpenBitcoinStatusSnapshot {
     OpenBitcoinStatusSnapshot {
         node: NodeStatus {
@@ -656,4 +701,21 @@ fn shared_sync_truth_snapshot() -> OpenBitcoinStatusSnapshot {
         outbound: 2,
     });
     snapshot
+}
+
+fn phase77_recovery_evidence() -> RecoveryEvidenceSnapshot {
+    RecoveryEvidenceSnapshot {
+        category: SyncRecoveryCategory::StorageLockContention,
+        action_class: RecoveryActionClass::ReadOnlyInspection,
+        cause: RecoveryCause::StaleLockEvidence,
+        evidence_basis: vec![RecoveryEvidenceBasis::LockProbe],
+        maybe_affected_namespace: None,
+        maybe_affected_path: Some("/tmp/open-bitcoin/LOCK".to_string()),
+        next_action:
+            "Inspect the datadir read-only and avoid deleting lock artifacts automatically."
+                .to_string(),
+        compatibility_action: FieldAvailability::unavailable(
+            "no compatibility recovery action recorded",
+        ),
+    }
 }
