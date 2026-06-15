@@ -37,6 +37,10 @@ impl SoakLedgerLayout {
         }
     }
 
+    pub(crate) fn datadir(&self) -> PathBuf {
+        self.datadir.clone()
+    }
+
     pub(crate) fn run_index_path(&self) -> PathBuf {
         self.soak_dir().join(RUN_INDEX_FILE)
     }
@@ -214,6 +218,15 @@ impl SoakLedger {
             run_id,
             events_path: paths.events_path,
             next_sequence: 1,
+        }
+    }
+
+    pub(crate) fn resume(layout: &SoakLedgerLayout, run_id: SoakRunId, next_sequence: u64) -> Self {
+        let paths = layout.paths_for_run(&run_id);
+        Self {
+            run_id,
+            events_path: paths.events_path,
+            next_sequence: next_sequence.max(1),
         }
     }
 

@@ -188,8 +188,8 @@ fn execute_operator_cli_inner(
     match &cli.command {
         OperatorCommand::Status(_) => execute_status(&cli, config_resolution, detections),
         OperatorCommand::Sync(args) => execute_sync_command(args, cli.format, &config_resolution),
-        OperatorCommand::Soak(_) => {
-            Err(OperatorRuntimeError::UnsupportedCommand { command: "soak" })
+        OperatorCommand::Soak(args) => {
+            super::soak::execute_soak_command(args, &cli, config_resolution, detections)
         }
         OperatorCommand::Config(config) => match config.command {
             ConfigCommand::Paths => Ok(OperatorCommandOutcome::success(render_config_paths(
@@ -267,9 +267,9 @@ fn execute_operator_cli_inner(
     }
 }
 
-struct StatusRuntimeParts {
-    input: StatusCollectorInput,
-    maybe_rpc_client: Option<Box<dyn StatusRpcClient>>,
+pub(super) struct StatusRuntimeParts {
+    pub(super) input: StatusCollectorInput,
+    pub(super) maybe_rpc_client: Option<Box<dyn StatusRpcClient>>,
 }
 
 fn execute_status(
@@ -303,7 +303,7 @@ fn execute_support(
     )
 }
 
-fn status_runtime_parts(
+pub(super) fn status_runtime_parts(
     cli: &OperatorCli,
     config_resolution: OperatorConfigResolution,
     detections: DetectionScan,
