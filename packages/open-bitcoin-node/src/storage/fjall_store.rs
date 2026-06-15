@@ -569,8 +569,17 @@ fn wallet_rescan_job_key(wallet_name: &str) -> String {
 }
 
 fn backend_failure(namespace: StorageNamespace, error: fjall::Error) -> StorageError {
-    let message = error.to_string();
-    let action = StorageRecoveryAction::for_backend_message(&message);
+    let (message, action) = match error {
+        fjall::Error::Locked => (
+            "database locked by another process".to_string(),
+            StorageRecoveryAction::Restart,
+        ),
+        error => {
+            let message = error.to_string();
+            let action = StorageRecoveryAction::for_backend_message(&message);
+            (message, action)
+        }
+    };
     StorageError::BackendFailure {
         namespace,
         message,
