@@ -324,6 +324,68 @@ fn status_recovery_evidence_missing_datadir_remains_explicit_unavailable_json() 
 }
 
 #[test]
+fn status_recovery_evidence_render_human_line_follows_sync_recovery() {
+    // Arrange
+    let path = temp_path("recovery-evidence-render-position");
+    remove_dir_if_exists(&path);
+    fs::create_dir_all(&path).expect("datadir");
+    fs::write(path.join(FJALL_LOCK_FILE_NAME), "").expect("stale lock");
+    let _guard = TempDirGuard { path: path.clone() };
+    let snapshot = collect_status_snapshot(&status_input_for_data_dir(&path), None);
+
+    // Act
+    let rendered = render_status(&snapshot, StatusRenderMode::Human).expect("human status");
+    let lines = rendered.lines().collect::<Vec<_>>();
+    let sync_recovery_index = lines
+        .iter()
+        .position(|line| line.starts_with("Sync recovery:"))
+        .expect("sync recovery line");
+
+    // Assert
+    assert!(
+        lines
+            .get(sync_recovery_index + 1)
+            .expect("recovery evidence line")
+            .starts_with("Recovery evidence:")
+    );
+}
+
+#[test]
+fn status_recovery_evidence_render_human_available_labels() {
+    // Arrange
+    let path = temp_path("recovery-evidence-render-available");
+    remove_dir_if_exists(&path);
+    fs::create_dir_all(&path).expect("datadir");
+    fs::write(path.join(FJALL_LOCK_FILE_NAME), "").expect("stale lock");
+    let _guard = TempDirGuard { path: path.clone() };
+    let snapshot = collect_status_snapshot(&status_input_for_data_dir(&path), None);
+
+    // Act
+    let rendered = render_status(&snapshot, StatusRenderMode::Human).expect("human status");
+
+    // Assert
+    assert!(rendered.contains(
+        "Recovery evidence: category=storage_lock_contention cause=stale_lock_evidence action_class=read_only_inspection next_action="
+    ));
+}
+
+#[test]
+fn status_recovery_evidence_render_human_unavailable_reason() {
+    // Arrange
+    let path = temp_path("recovery-evidence-render-unavailable");
+    remove_dir_if_exists(&path);
+    let snapshot = collect_status_snapshot(&status_input_for_data_dir(&path), None);
+
+    // Act
+    let rendered = render_status(&snapshot, StatusRenderMode::Human).expect("human status");
+
+    // Assert
+    assert!(rendered.contains(
+        "Recovery evidence: Unavailable: recovery evidence unavailable: no storage, lock, service, or RPC signal"
+    ));
+}
+
+#[test]
 fn wallet_rpc_failure_keeps_node_running_and_marks_wallet_unavailable() {
     // Arrange
     let input = status_input(Vec::new());

@@ -92,6 +92,7 @@ fn open_bitcoin_status_json_succeeds_for_stopped_node() {
         "wallet",
         "logs",
         "metrics",
+        "recovery_evidence",
         "health_signals",
         "build",
     ] {
@@ -99,6 +100,25 @@ fn open_bitcoin_status_json_succeeds_for_stopped_node() {
     }
     assert_eq!(decoded["node"]["state"], "stopped");
     assert_eq!(decoded["sync"]["network"]["state"], "unavailable");
+    match decoded["recovery_evidence"]["state"]
+        .as_str()
+        .expect("recovery evidence state")
+    {
+        "available" => {
+            assert!(decoded["recovery_evidence"]["value"]["category"].is_string());
+            assert!(decoded["recovery_evidence"]["value"]["cause"].is_string());
+            assert!(decoded["recovery_evidence"]["value"]["action_class"].is_string());
+        }
+        "unavailable" => {
+            assert!(
+                decoded["recovery_evidence"]["value"]["reason"]
+                    .as_str()
+                    .expect("recovery evidence reason")
+                    .contains("recovery evidence unavailable")
+            );
+        }
+        state => panic!("unexpected recovery evidence state: {state}"),
+    }
     let rendered = String::from_utf8(output.stdout).expect("stdout utf8");
     assert!(rendered.contains(core_dir.join("bitcoin.conf").to_str().expect("core path")));
     assert!(rendered.contains("uncertain"));
