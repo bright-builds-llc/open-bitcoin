@@ -1,13 +1,22 @@
 // Parity breadcrumbs:
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
-use std::path::PathBuf;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 use open_bitcoin_node::status::{NoProgressDiagnosis, SyncRecoveryCategory, SyncStopReasonStatus};
 use serde_json::Value;
 
 use super::{
     SoakBounds, SoakPeerPolicy, SoakRunId, SoakStopCondition,
+    ledger::{
+        MAX_SOAK_RUNS_IN_INDEX, SOAK_LEDGER_SCHEMA_VERSION, SoakCheckpointStatus, SoakLedger,
+        SoakLedgerEvent, SoakLedgerEventEnvelope, SoakLedgerLayout, SoakRunIndex,
+        SoakRunIndexEntry,
+    },
     outcome::{
         SoakOutcomeEvidence, SoakOutcomeLabel, SoakProcessExitEvidence, classify_soak_outcome,
     },
@@ -16,6 +25,36 @@ use crate::operator::support::{
     ActiveChainEvidence, EvidenceState, EvidenceVerdictSummary, FullSyncEvidence, SummaryEvidence,
     SupportEvidenceVerdict, TipEvidence,
 };
+
+#[derive(Debug)]
+struct TestDirectory {
+    path: PathBuf,
+}
+
+impl TestDirectory {
+    fn new(label: &str) -> Self {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time after epoch")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!(
+            "open-bitcoin-soak-{label}-{}-{timestamp}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&path).expect("test directory");
+        Self { path }
+    }
+
+    fn path(&self) -> &Path {
+        &self.path
+    }
+}
+
+impl Drop for TestDirectory {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.path);
+    }
+}
 
 #[test]
 fn soak_outcome_label_serializes_phase75_vocabulary() {
@@ -39,6 +78,216 @@ fn soak_outcome_label_serializes_phase75_vocabulary() {
             Value::String(expected.to_string())
         );
     }
+}
+
+#[test]
+fn soak_ledger_layout_resolves_datadir_owned_paths() {
+    // Arrange
+    let layout = SoakLedgerLayout::for_datadir(Path::new("/tmp/node"));
+    let run_id = SoakRunId::try_new("soak-1781485562-0001").expect("run id");
+
+    // Act
+    let paths = layout.paths_for_run(&run_id);
+
+    // Assert
+    assert_eq!(
+        layout.run_index_path(),
+        Path::new("/tmp/node").join("soak").join("run-index.json")
+    );
+    assert_eq!(
+        paths.events_path,
+        Path::new("/tmp/node")
+            .join("soak")
+            .join("runs")
+            .join("soak-1781485562-0001")
+            .join("events.jsonl")
+    );
+    assert_eq!(
+        paths.report_json_path,
+        Path::new("/tmp/node")
+            .join("soak")
+            .join("runs")
+            .join("soak-1781485562-0001")
+            .join("report.json")
+    );
+    assert_eq!(
+        paths.report_markdown_path,
+        Path::new("/tmp/node")
+            .join("soak")
+            .join("runs")
+            .join("soak-1781485562-0001")
+            .join("report.md")
+    );
+}
+
+#[test]
+fn soak_ledger_append_writes_complete_json_lines_with_increasing_sequences() {
+    // Arrange
+    let temp = TestDirectory::new("append");
+    let layout = SoakLedgerLayout::for_datadir(temp.path());
+    let run_id = SoakRunId::try_new("soak-1781485562-0001").expect("run id");
+    let mut ledger = SoakLedger::create(&layout, run_id.clone());
+
+    // Act
+    let envelopes = [
+        ledger
+            .append_event(
+                10,
+                SoakLedgerEvent::Started {
+                    bounds: soak_bounds(temp.path()),
+                },
+            )
+            .expect("append started"),
+        ledger
+            .append_event(
+                11,
+                SoakLedgerEvent::Checkpoint {
+                    status: checkpoint_status(),
+                },
+            )
+            .expect("append checkpoint"),
+        ledger
+            .append_event(
+                12,
+                SoakLedgerEvent::Resume {
+                    interrupted_prior_run: true,
+                },
+            )
+            .expect("append resume"),
+        ledger
+            .append_event(
+                13,
+                SoakLedgerEvent::Stop {
+                    outcome: SoakOutcomeLabel::OperatorStop,
+                },
+            )
+            .expect("append stop"),
+        ledger
+            .append_event(
+                14,
+                SoakLedgerEvent::Verdict {
+                    outcome: SoakOutcomeLabel::OperatorStop,
+                },
+            )
+            .expect("append verdict"),
+    ];
+    let read = SoakLedger::read_events(&layout.paths_for_run(&run_id).events_path)
+        .expect("read ledger events");
+
+    // Assert
+    assert_eq!(envelopes.map(|envelope| envelope.sequence), [1, 2, 3, 4, 5]);
+    assert_eq!(read.ignored_trailing_bytes, 0);
+    assert_eq!(read.events.len(), 5);
+    assert_eq!(
+        read.events
+            .iter()
+            .map(|envelope| envelope.sequence)
+            .collect::<Vec<_>>(),
+        vec![1, 2, 3, 4, 5]
+    );
+    let ledger_text =
+        fs::read_to_string(layout.paths_for_run(&run_id).events_path).expect("ledger text");
+    assert_eq!(ledger_text.lines().count(), 5);
+    assert!(ledger_text.ends_with('\n'));
+}
+
+#[test]
+fn soak_ledger_read_events_ignores_truncated_trailing_line() {
+    // Arrange
+    let temp = TestDirectory::new("partial-line");
+    let layout = SoakLedgerLayout::for_datadir(temp.path());
+    let run_id = SoakRunId::try_new("soak-1781485562-0001").expect("run id");
+    let paths = layout.paths_for_run(&run_id);
+    fs::create_dir_all(paths.run_dir).expect("run directory");
+    let envelope = SoakLedgerEventEnvelope::new(
+        run_id,
+        1,
+        10,
+        SoakLedgerEvent::Started {
+            bounds: soak_bounds(temp.path()),
+        },
+    );
+    let complete_line = serde_json::to_string(&envelope).expect("envelope json");
+    fs::write(
+        &paths.events_path,
+        format!("{complete_line}\n{{\"schema_version\":"),
+    )
+    .expect("partial ledger");
+
+    // Act
+    let read = SoakLedger::read_events(&paths.events_path).expect("read partial ledger");
+
+    // Assert
+    assert_eq!(read.events.len(), 1);
+    assert!(read.ignored_trailing_bytes > 0);
+    assert_eq!(read.events[0].sequence, 1);
+}
+
+#[test]
+fn soak_ledger_index_write_atomic_uses_tmp_path_and_retention_cap() {
+    // Arrange
+    let temp = TestDirectory::new("index");
+    let layout = SoakLedgerLayout::for_datadir(temp.path());
+    let mut index = SoakRunIndex::empty();
+    for sequence in 0..40 {
+        let run_id = SoakRunId::try_new(format!("soak-1781485562-{sequence:04}")).expect("run id");
+        let paths = layout.paths_for_run(&run_id);
+        index.record_run(SoakRunIndexEntry {
+            run_id,
+            ledger_path: paths.events_path,
+            started_at_unix_seconds: 10 + sequence,
+            updated_at_unix_seconds: 10 + sequence,
+            maybe_outcome: None,
+        });
+    }
+
+    // Act
+    index.write_atomic(&layout).expect("write index");
+    let written = fs::read_to_string(layout.run_index_path()).expect("run index");
+    let decoded: SoakRunIndex = serde_json::from_str(&written).expect("run index json");
+
+    // Assert
+    assert_eq!(
+        layout
+            .run_index_tmp_path()
+            .file_name()
+            .and_then(|name| name.to_str()),
+        Some("run-index.json.tmp")
+    );
+    assert!(!layout.run_index_tmp_path().exists());
+    assert_eq!(decoded.schema_version, SOAK_LEDGER_SCHEMA_VERSION);
+    assert_eq!(decoded.runs.len(), MAX_SOAK_RUNS_IN_INDEX);
+    assert_eq!(decoded.runs[0].run_id.as_str(), "soak-1781485562-0039");
+}
+
+#[test]
+fn soak_ledger_append_rejects_oversized_events() {
+    // Arrange
+    let temp = TestDirectory::new("oversized");
+    let layout = SoakLedgerLayout::for_datadir(temp.path());
+    let run_id = SoakRunId::try_new("soak-1781485562-0001").expect("run id");
+    let mut ledger = SoakLedger::create(&layout, run_id);
+    let oversized_status = SoakCheckpointStatus {
+        maybe_network: Some("mainnet".to_string()),
+        maybe_lifecycle: Some("active".to_string()),
+        maybe_latest_stop_reason_label: None,
+        maybe_recovery_category_label: None,
+        maybe_no_progress_diagnosis_label: None,
+        maybe_validated_active_chain_height: Some(1),
+        maybe_best_known_tip_height: Some(1),
+        maybe_source_status_path: Some(PathBuf::from("x".repeat(20_000))),
+    };
+
+    // Act
+    let result = ledger.append_event(
+        10,
+        SoakLedgerEvent::Checkpoint {
+            status: oversized_status,
+        },
+    );
+
+    // Assert
+    assert!(result.is_err());
 }
 
 #[test]
@@ -275,5 +524,32 @@ fn active_chain_evidence() -> ActiveChainEvidence {
         hash: None,
         work: None,
         maybe_unavailable_reason: Some("not needed for outcome test".to_string()),
+    }
+}
+
+fn soak_bounds(datadir: &Path) -> SoakBounds {
+    SoakBounds::try_new(
+        86_400,
+        60,
+        Some(900_000),
+        datadir.to_path_buf(),
+        "mainnet",
+        SoakPeerPolicy::DaemonConfigured,
+        4_096,
+        vec![SoakStopCondition::ElapsedTime],
+    )
+    .expect("valid soak bounds")
+}
+
+fn checkpoint_status() -> SoakCheckpointStatus {
+    SoakCheckpointStatus {
+        maybe_network: Some("mainnet".to_string()),
+        maybe_lifecycle: Some("active".to_string()),
+        maybe_latest_stop_reason_label: Some("target_height".to_string()),
+        maybe_recovery_category_label: None,
+        maybe_no_progress_diagnosis_label: None,
+        maybe_validated_active_chain_height: Some(900_000),
+        maybe_best_known_tip_height: Some(900_000),
+        maybe_source_status_path: Some(PathBuf::from("/tmp/status.json")),
     }
 }

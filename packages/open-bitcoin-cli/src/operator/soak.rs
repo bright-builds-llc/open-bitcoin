@@ -10,6 +10,7 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
+pub(crate) mod ledger;
 pub(crate) mod outcome;
 
 #[cfg(test)]
