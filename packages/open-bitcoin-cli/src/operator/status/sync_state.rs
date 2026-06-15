@@ -1,17 +1,11 @@
 // Parity breadcrumbs:
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
-use open_bitcoin_node::{
-    DurableSyncState, FjallNodeStore, RuntimeMetadata,
-    status::{
-        BestKnownTipStatus, ChainTipStatus, FieldAvailability, StayCurrentStatus,
-        SyncAttemptCounters, SyncConfiguredTargets, SyncProgress, SyncProgressSignal, SyncStatus,
-        SyncStopReasonStatus,
-    },
+use open_bitcoin_node::status::{
+    BestKnownTipStatus, ChainTipStatus, FieldAvailability, StayCurrentStatus, SyncAttemptCounters,
+    SyncConfiguredTargets, SyncProgress, SyncProgressSignal, SyncStatus, SyncStopReasonStatus,
 };
 use open_bitcoin_rpc::method::GetBlockchainInfoResponse;
-
-use crate::operator::config::OperatorConfigResolution;
 
 pub(super) fn rpc_sync_status(blockchain_info: &GetBlockchainInfoResponse) -> SyncStatus {
     SyncStatus {
@@ -114,18 +108,4 @@ fn rpc_progress_signal(blockchain_info: &GetBlockchainInfoResponse) -> SyncProgr
         return SyncProgressSignal::AwaitingBlocks;
     }
     SyncProgressSignal::Steady
-}
-
-pub(super) fn durable_sync_state(
-    resolution: &OperatorConfigResolution,
-) -> Option<DurableSyncState> {
-    durable_runtime_metadata(resolution)?.maybe_sync_state
-}
-
-pub(super) fn durable_runtime_metadata(
-    resolution: &OperatorConfigResolution,
-) -> Option<RuntimeMetadata> {
-    let data_dir = resolution.maybe_data_dir.as_ref()?;
-    let store = FjallNodeStore::open(data_dir).ok()?;
-    store.load_runtime_metadata().ok()?
 }

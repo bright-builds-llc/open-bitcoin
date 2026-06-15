@@ -3,18 +3,16 @@
 
 //! Service status projection for the shared operator status snapshot.
 
-use open_bitcoin_node::{
-    RuntimeMetadata,
-    status::{
-        FieldAvailability, ServiceLifecycleStatus, ServicePriorShutdownStatus,
-        ServiceRestartResumeStatus, ServiceResumeProgressStatus, ServiceStaleInflightStatus,
-        ServiceStatus, SyncRecoveryCategory, SyncResourcePressure,
-    },
+use open_bitcoin_node::status::{
+    FieldAvailability, ServiceLifecycleStatus, ServiceRestartResumeStatus, ServiceStatus,
 };
 
-use super::{StatusCollectorInput, StatusDetectionEvidence, detection, sync_state};
+use super::{StatusCollectorInput, StatusDetectionEvidence, detection};
 use crate::operator::config::OperatorConfigResolution;
 use crate::operator::service::{ServiceLifecycleState, ServiceStateSnapshot};
+
+const PROBE_ONLY_RUNTIME_METADATA_REASON: &str =
+    "service restart/resume evidence unavailable: probe-only status does not open Fjall stores";
 
 pub(super) fn service_lifecycle_from_snapshot(
     snapshot: &crate::operator::service::ServiceStateSnapshot,
@@ -29,16 +27,11 @@ pub(super) fn service_lifecycle_from_snapshot(
 }
 
 pub(super) fn collect_service_status(input: &StatusCollectorInput) -> ServiceStatus {
-    let maybe_metadata = sync_state::durable_runtime_metadata(&input.config_resolution);
-
     if let Some(manager) = input.maybe_service_manager.as_ref() {
         match manager.status() {
             Ok(snapshot) => {
-                let restart_resume = service_restart_resume_status(
-                    &input.config_resolution,
-                    maybe_metadata.as_ref(),
-                    Some(&snapshot),
-                );
+                let restart_resume =
+                    service_restart_resume_status(&input.config_resolution, Some(&snapshot));
                 #[cfg(target_os = "macos")]
                 let manager_name = "launchd";
                 #[cfg(target_os = "linux")]
@@ -72,11 +65,7 @@ pub(super) fn collect_service_status(input: &StatusCollectorInput) -> ServiceSta
                 };
             }
             Err(error) => {
-                let restart_resume = service_restart_resume_status(
-                    &input.config_resolution,
-                    maybe_metadata.as_ref(),
-                    None,
-                );
+                let restart_resume = service_restart_resume_status(&input.config_resolution, None);
                 let unavailable_reason = format!("service manager unavailable: {error}");
                 return ServiceStatus {
                     manager: FieldAvailability::unavailable(unavailable_reason.clone()),
@@ -95,8 +84,7 @@ pub(super) fn collect_service_status(input: &StatusCollectorInput) -> ServiceSta
         }
     }
 
-    let restart_resume =
-        service_restart_resume_status(&input.config_resolution, maybe_metadata.as_ref(), None);
+    let restart_resume = service_restart_resume_status(&input.config_resolution, None);
     detection_service_status(&input.detection_evidence, restart_resume)
 }
 
@@ -181,7 +169,6 @@ fn diagnostics_availability(maybe_diagnostics: Option<&str>) -> FieldAvailabilit
 
 pub(super) fn service_restart_resume_status(
     resolution: &OperatorConfigResolution,
-    maybe_metadata: Option<&RuntimeMetadata>,
     maybe_snapshot: Option<&ServiceStateSnapshot>,
 ) -> FieldAvailability<ServiceRestartResumeStatus> {
     let Some(datadir) = resolution.maybe_data_dir.as_ref() else {
@@ -189,7 +176,7 @@ pub(super) fn service_restart_resume_status(
             "service restart/resume evidence unavailable: datadir unavailable",
         );
     };
-    let Some(metadata) = maybe_metadata else {
+    let Some(snapshot) = maybe_snapshot else {
         return FieldAvailability::unavailable(
             "service restart/resume evidence unavailable: runtime metadata unavailable",
         );
@@ -197,16 +184,12 @@ pub(super) fn service_restart_resume_status(
 
     FieldAvailability::available(ServiceRestartResumeStatus {
         datadir: FieldAvailability::available(datadir.display().to_string()),
-        same_datadir: same_datadir_status(datadir, maybe_snapshot),
-        prior_shutdown: FieldAvailability::available(if metadata.last_clean_shutdown {
-            ServicePriorShutdownStatus::Clean
-        } else {
-            ServicePriorShutdownStatus::Unclean
-        }),
-        durable_progress: durable_progress_status(metadata),
-        stale_inflight: stale_inflight_status(metadata),
-        recovery_category: restart_recovery_category(metadata),
-        next_action: restart_next_action(metadata),
+        same_datadir: same_datadir_status(datadir, Some(snapshot)),
+        prior_shutdown: FieldAvailability::unavailable(PROBE_ONLY_RUNTIME_METADATA_REASON),
+        durable_progress: FieldAvailability::unavailable(PROBE_ONLY_RUNTIME_METADATA_REASON),
+        stale_inflight: FieldAvailability::unavailable(PROBE_ONLY_RUNTIME_METADATA_REASON),
+        recovery_category: FieldAvailability::unavailable("no recovery category recorded"),
+        next_action: FieldAvailability::unavailable(PROBE_ONLY_RUNTIME_METADATA_REASON),
     })
 }
 
@@ -226,67 +209,4 @@ fn same_datadir_status(
             .as_deref()
             .unwrap_or("service datadir unavailable"),
     )
-}
-
-fn durable_progress_status(
-    metadata: &RuntimeMetadata,
-) -> FieldAvailability<ServiceResumeProgressStatus> {
-    let Some(sync_state) = metadata.maybe_sync_state.as_ref() else {
-        return FieldAvailability::unavailable("durable sync progress unavailable");
-    };
-    match &sync_state.sync.sync_progress {
-        FieldAvailability::Available(progress) => {
-            FieldAvailability::available(ServiceResumeProgressStatus {
-                downloaded_block_height: progress.downloaded_block_height,
-                connected_block_height: progress.connected_block_height,
-                maybe_downloaded_block_hash: progress.maybe_downloaded_block_hash.clone(),
-                maybe_connected_block_hash: progress.maybe_connected_block_hash.clone(),
-            })
-        }
-        FieldAvailability::Unavailable { reason } => FieldAvailability::unavailable(reason.clone()),
-    }
-}
-
-fn stale_inflight_status(
-    metadata: &RuntimeMetadata,
-) -> FieldAvailability<ServiceStaleInflightStatus> {
-    let Some(sync_state) = metadata.maybe_sync_state.as_ref() else {
-        return FieldAvailability::unavailable("sync resource pressure unavailable");
-    };
-    match &sync_state.sync.resource_pressure {
-        FieldAvailability::Available(SyncResourcePressure {
-            blocks_in_flight, ..
-        }) => {
-            if *blocks_in_flight == 0 {
-                FieldAvailability::available(ServiceStaleInflightStatus::Cleared)
-            } else {
-                FieldAvailability::available(ServiceStaleInflightStatus::StaleRequestsRecorded)
-            }
-        }
-        FieldAvailability::Unavailable { reason } => FieldAvailability::unavailable(reason.clone()),
-    }
-}
-
-fn restart_recovery_category(
-    metadata: &RuntimeMetadata,
-) -> FieldAvailability<SyncRecoveryCategory> {
-    if metadata.maybe_last_recovery_action.is_some() {
-        return FieldAvailability::available(SyncRecoveryCategory::StoreCorruption);
-    }
-    metadata
-        .maybe_sync_state
-        .as_ref()
-        .map(|state| state.sync.recovery_category.clone())
-        .unwrap_or_else(|| FieldAvailability::unavailable("no recovery category recorded"))
-}
-
-fn restart_next_action(metadata: &RuntimeMetadata) -> FieldAvailability<String> {
-    if let Some(action) = metadata.maybe_last_recovery_action {
-        return FieldAvailability::available(action.operator_message().to_string());
-    }
-    metadata
-        .maybe_sync_state
-        .as_ref()
-        .map(|state| state.sync.recovery_action.clone())
-        .unwrap_or_else(|| FieldAvailability::unavailable("no recovery action required"))
 }

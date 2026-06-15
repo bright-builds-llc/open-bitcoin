@@ -33,15 +33,11 @@ use crate::operator::{
 use open_bitcoin_node::status::{
     BestKnownTipStatus, BuildProvenance, ConfigStatus, FieldAvailability, MempoolStatus,
     NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus,
-    ServiceLifecycleStatus, ServicePriorShutdownStatus, ServiceResumeProgressStatus,
-    ServiceStaleInflightStatus, ServiceStatus, StayCurrentStatus, SyncAttemptCounters,
-    SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal,
-    SyncRecoveryCategory, SyncResourcePressure, SyncStatus, SyncStopReasonStatus, WalletFreshness,
+    ServiceLifecycleStatus, ServiceStatus, StayCurrentStatus, SyncAttemptCounters,
+    SyncConfiguredTargets, SyncProgressSignal, SyncStatus, SyncStopReasonStatus, WalletFreshness,
     WalletScanProgress, WalletStatus,
 };
-use open_bitcoin_node::{
-    DurableSyncState, FjallNodeStore, PersistMode, RuntimeMetadata, storage::FJALL_LOCK_FILE_NAME,
-};
+use open_bitcoin_node::storage::FJALL_LOCK_FILE_NAME;
 use open_bitcoin_rpc::{
     RpcErrorCode, RpcErrorDetail,
     method::{
@@ -236,6 +232,10 @@ fn status_recovery_evidence_stopped_empty_datadir_does_not_create_fjall_files() 
     assert_eq!(
         decoded["recovery_evidence"]["value"]["reason"],
         "recovery evidence unavailable: no storage, lock, service, or RPC signal"
+    );
+    assert_eq!(
+        decoded["metrics"]["availability"]["reason"],
+        "metrics history unavailable: probe-only status does not open Fjall stores"
     );
     assert_empty_dir(&path);
 }
@@ -1085,20 +1085,9 @@ fn collect_status_snapshot_with_error_manager_falls_back_to_unavailable() {
         }
     }
 
-    let path = temp_path("phase63-manager-error-sync-preservation");
+    let path = temp_path("phase63-manager-error-probe-only");
     remove_dir_if_exists(&path);
     let _guard = TempDirGuard { path: path.clone() };
-    let store = FjallNodeStore::open(&path).expect("open sync state store");
-    store
-        .save_runtime_metadata(
-            &RuntimeMetadata {
-                maybe_sync_state: Some(phase62_durable_sync_state()),
-                ..RuntimeMetadata::default()
-            },
-            PersistMode::Sync,
-        )
-        .expect("save sync state metadata");
-    drop(store);
 
     let mut resolution = config_resolution();
     resolution.maybe_data_dir = Some(path.clone());
@@ -1155,48 +1144,30 @@ fn collect_status_snapshot_with_error_manager_falls_back_to_unavailable() {
         )
     );
 
-    let FieldAvailability::Available(configured_targets) = snapshot.sync.configured_targets else {
-        panic!("configured targets should survive service manager failure");
-    };
-    assert_eq!(configured_targets.target_outbound_peers, 4);
-    assert_eq!(configured_targets.maybe_target_header_height, Some(840_200));
-
-    let FieldAvailability::Available(attempt_counters) = snapshot.sync.attempt_counters else {
-        panic!("attempt counters should survive service manager failure");
-    };
-    assert_eq!(attempt_counters.attempted_peers, 3);
-    assert_eq!(attempt_counters.connected_peers, 2);
-    assert_eq!(attempt_counters.failed_peers, 1);
-    assert_eq!(attempt_counters.max_sync_rounds, 8);
-
-    let FieldAvailability::Available(stop_reason) = snapshot.sync.latest_stop_reason else {
-        panic!("latest stop reason should survive service manager failure");
-    };
-    assert_eq!(stop_reason.label, "target_header_reached");
+    assert!(matches!(
+        snapshot.sync.configured_targets,
+        FieldAvailability::Unavailable { .. }
+    ));
+    assert!(matches!(
+        snapshot.sync.attempt_counters,
+        FieldAvailability::Unavailable { .. }
+    ));
+    assert!(matches!(
+        snapshot.sync.latest_stop_reason,
+        FieldAvailability::Unavailable { .. }
+    ));
     assert_eq!(
         snapshot.sync.recovery_category,
-        FieldAvailability::available(SyncRecoveryCategory::InvalidPeerData)
+        FieldAvailability::unavailable("no recovery category recorded")
     );
 }
 
 #[test]
-fn service_restart_resume_status_surfaces_clean_same_datadir_metadata() {
+fn service_restart_resume_status_surfaces_same_datadir_without_runtime_metadata() {
     // Arrange
     let path = temp_path("service-restart-resume-clean");
     remove_dir_if_exists(&path);
     let _guard = TempDirGuard { path: path.clone() };
-    let store = FjallNodeStore::open(&path).expect("open sync state store");
-    store
-        .save_runtime_metadata(
-            &RuntimeMetadata {
-                last_clean_shutdown: true,
-                maybe_sync_state: Some(phase62_durable_sync_state()),
-                ..RuntimeMetadata::default()
-            },
-            PersistMode::Sync,
-        )
-        .expect("save clean runtime metadata");
-    drop(store);
 
     let mut resolution = config_resolution();
     resolution.maybe_data_dir = Some(path.clone());
@@ -1226,64 +1197,34 @@ fn service_restart_resume_status_surfaces_clean_same_datadir_metadata() {
     );
     assert_eq!(
         restart_resume.prior_shutdown,
-        FieldAvailability::available(ServicePriorShutdownStatus::Clean)
-    );
-    assert_eq!(
-        restart_resume.durable_progress,
-        FieldAvailability::available(ServiceResumeProgressStatus {
-            downloaded_block_height: 840_006,
-            connected_block_height: 840_004,
-            maybe_downloaded_block_hash: Some("22".repeat(32)),
-            maybe_connected_block_hash: Some("11".repeat(32)),
-        })
+        FieldAvailability::unavailable(
+            "service restart/resume evidence unavailable: probe-only status does not open Fjall stores"
+        )
     );
     assert_eq!(
         restart_resume.stale_inflight,
-        FieldAvailability::available(ServiceStaleInflightStatus::Cleared)
+        FieldAvailability::unavailable(
+            "service restart/resume evidence unavailable: probe-only status does not open Fjall stores"
+        )
     );
     assert_eq!(
         restart_resume.recovery_category,
-        FieldAvailability::available(SyncRecoveryCategory::InvalidPeerData)
+        FieldAvailability::unavailable("no recovery category recorded")
     );
     assert_eq!(
         restart_resume.next_action,
-        FieldAvailability::available(
-            "Retry sync after peer backoff or choose a different peer.".to_string()
+        FieldAvailability::unavailable(
+            "service restart/resume evidence unavailable: probe-only status does not open Fjall stores"
         )
     );
 }
 
 #[test]
-fn service_restart_resume_status_surfaces_unclean_stale_inflight_metadata() {
+fn service_restart_resume_status_does_not_load_unclean_stale_inflight_metadata() {
     // Arrange
     let path = temp_path("service-restart-resume-unclean");
     remove_dir_if_exists(&path);
     let _guard = TempDirGuard { path: path.clone() };
-    let mut durable_sync_state = phase62_durable_sync_state();
-    durable_sync_state.sync.resource_pressure =
-        FieldAvailability::available(SyncResourcePressure {
-            blocks_in_flight: 2,
-            max_header_requests_in_flight_per_peer: 1,
-            max_headers_per_message: 2_000,
-            max_blocks_in_flight_per_peer: 16,
-            max_blocks_in_flight_total: 64,
-            max_messages_per_peer: 64,
-            max_sync_rounds: 8,
-            outbound_peers: 2,
-            target_outbound_peers: 4,
-        });
-    let store = FjallNodeStore::open(&path).expect("open sync state store");
-    store
-        .save_runtime_metadata(
-            &RuntimeMetadata {
-                last_clean_shutdown: false,
-                maybe_sync_state: Some(durable_sync_state),
-                ..RuntimeMetadata::default()
-            },
-            PersistMode::Sync,
-        )
-        .expect("save unclean runtime metadata");
-    drop(store);
 
     let mut resolution = config_resolution();
     resolution.maybe_data_dir = Some(path.clone());
@@ -1305,11 +1246,15 @@ fn service_restart_resume_status_surfaces_unclean_stale_inflight_metadata() {
     };
     assert_eq!(
         restart_resume.prior_shutdown,
-        FieldAvailability::available(ServicePriorShutdownStatus::Unclean)
+        FieldAvailability::unavailable(
+            "service restart/resume evidence unavailable: probe-only status does not open Fjall stores"
+        )
     );
     assert_eq!(
         restart_resume.stale_inflight,
-        FieldAvailability::available(ServiceStaleInflightStatus::StaleRequestsRecorded)
+        FieldAvailability::unavailable(
+            "service restart/resume evidence unavailable: probe-only status does not open Fjall stores"
+        )
     );
 }
 
@@ -1319,18 +1264,6 @@ fn service_restart_resume_status_reports_datadir_mismatch() {
     let path = temp_path("service-restart-resume-datadir-mismatch");
     remove_dir_if_exists(&path);
     let _guard = TempDirGuard { path: path.clone() };
-    let store = FjallNodeStore::open(&path).expect("open sync state store");
-    store
-        .save_runtime_metadata(
-            &RuntimeMetadata {
-                last_clean_shutdown: true,
-                maybe_sync_state: Some(phase62_durable_sync_state()),
-                ..RuntimeMetadata::default()
-            },
-            PersistMode::Sync,
-        )
-        .expect("save runtime metadata");
-    drop(store);
 
     let mut resolution = config_resolution();
     resolution.maybe_data_dir = Some(path);
@@ -1384,24 +1317,11 @@ fn service_restart_resume_status_reports_unavailable_selected_datadir() {
 }
 
 #[test]
-fn service_restart_resume_status_prefers_storage_recovery_action() {
+fn service_restart_resume_status_does_not_load_storage_recovery_action() {
     // Arrange
     let path = temp_path("service-restart-resume-storage-action");
     remove_dir_if_exists(&path);
     let _guard = TempDirGuard { path: path.clone() };
-    let store = FjallNodeStore::open(&path).expect("open sync state store");
-    store
-        .save_runtime_metadata(
-            &RuntimeMetadata {
-                last_clean_shutdown: false,
-                maybe_last_recovery_action: Some(open_bitcoin_node::StorageRecoveryAction::Repair),
-                maybe_sync_state: Some(phase62_durable_sync_state()),
-                ..RuntimeMetadata::default()
-            },
-            PersistMode::Sync,
-        )
-        .expect("save runtime metadata");
-    drop(store);
 
     let mut resolution = config_resolution();
     resolution.maybe_data_dir = Some(path.clone());
@@ -1423,18 +1343,18 @@ fn service_restart_resume_status_prefers_storage_recovery_action() {
     };
     assert_eq!(
         restart_resume.next_action,
-        FieldAvailability::available(
-            "Run the storage repair flow before restarting normal operation.".to_string()
+        FieldAvailability::unavailable(
+            "service restart/resume evidence unavailable: probe-only status does not open Fjall stores"
         )
     );
     assert_eq!(
         restart_resume.recovery_category,
-        FieldAvailability::available(SyncRecoveryCategory::StoreCorruption)
+        FieldAvailability::unavailable("no recovery category recorded")
     );
 }
 
 #[test]
-fn service_restart_resume_status_reports_unavailable_runtime_metadata() {
+fn service_restart_resume_status_reports_probe_only_runtime_metadata_unavailable() {
     // Arrange
     let input = status_input_with_manager(
         Box::new(FakeServiceManager::new(service_snapshot(
@@ -1452,10 +1372,17 @@ fn service_restart_resume_status_reports_unavailable_runtime_metadata() {
     let snapshot = collect_status_snapshot(&input, None);
 
     // Assert
+    let FieldAvailability::Available(restart_resume) = snapshot.service.restart_resume else {
+        panic!("restart/resume evidence should keep service same-datadir evidence");
+    };
     assert_eq!(
-        snapshot.service.restart_resume,
+        restart_resume.same_datadir,
+        FieldAvailability::available(true)
+    );
+    assert_eq!(
+        restart_resume.prior_shutdown,
         FieldAvailability::unavailable(
-            "service restart/resume evidence unavailable: runtime metadata unavailable"
+            "service restart/resume evidence unavailable: probe-only status does not open Fjall stores"
         )
     );
 }
@@ -1498,96 +1425,6 @@ fn status_input_with_manager(
         maybe_live_rpc: None,
         maybe_service_manager: Some(manager),
         wallet_rpc_access: StatusWalletRpcAccess::Root,
-    }
-}
-
-fn phase62_durable_sync_state() -> DurableSyncState {
-    DurableSyncState {
-        sync: SyncStatus {
-            network: FieldAvailability::available("mainnet".to_string()),
-            chain_tip: FieldAvailability::unavailable("chain tip unavailable"),
-            sync_progress: FieldAvailability::available(SyncProgress {
-                header_height: 840_100,
-                block_height: 840_004,
-                downloaded_block_height: 840_006,
-                connected_block_height: 840_004,
-                validated_active_chain_height: 840_004,
-                maybe_downloaded_block_hash: Some("22".repeat(32)),
-                maybe_connected_block_hash: Some("11".repeat(32)),
-                maybe_validated_active_chain_hash: Some("11".repeat(32)),
-                maybe_validated_active_chain_work: Some("840005".to_string()),
-                progress_ratio: 840_004.0 / 840_100.0,
-                messages_processed: 7,
-                headers_received: 3,
-                blocks_received: 1,
-            }),
-            lifecycle: FieldAvailability::available(SyncLifecycleState::Active),
-            phase: FieldAvailability::available("block_download".to_string()),
-            configured_targets: FieldAvailability::available(SyncConfiguredTargets {
-                target_outbound_peers: 4,
-                maybe_target_header_height: Some(840_200),
-            }),
-            attempt_counters: FieldAvailability::available(SyncAttemptCounters {
-                attempted_peers: 3,
-                connected_peers: 2,
-                failed_peers: 1,
-                max_sync_rounds: 8,
-            }),
-            progress_signal: FieldAvailability::available(SyncProgressSignal::AwaitingBlocks),
-            lag: FieldAvailability::available(SyncLagStatus {
-                headers_remaining: 0,
-                blocks_remaining: 96,
-            }),
-            last_successful_progress_unix_seconds: FieldAvailability::available(1_717_000_000),
-            latest_stop_reason: FieldAvailability::available(SyncStopReasonStatus {
-                label: "target_header_reached".to_string(),
-                message:
-                    "sync header target reached: target_header_height=840200 best_header_height=840200"
-                        .to_string(),
-            }),
-            last_error: FieldAvailability::available("peer stalled before block connect".to_string()),
-            recovery_category: FieldAvailability::available(SyncRecoveryCategory::InvalidPeerData),
-            recovery_action: FieldAvailability::available(
-                "Retry sync after peer backoff or choose a different peer.".to_string(),
-            ),
-            resource_pressure: FieldAvailability::available(SyncResourcePressure {
-                blocks_in_flight: 0,
-                max_header_requests_in_flight_per_peer: 1,
-                max_headers_per_message: 2_000,
-                max_blocks_in_flight_per_peer: 16,
-                max_blocks_in_flight_total: 64,
-                max_messages_per_peer: 64,
-                max_sync_rounds: 8,
-                outbound_peers: 2,
-                target_outbound_peers: 4,
-            }),
-            best_known_tip: FieldAvailability::<BestKnownTipStatus>::unavailable(
-                "best-known tip evidence unavailable",
-            ),
-            stay_current: FieldAvailability::<StayCurrentStatus>::unavailable(
-                "stay-current state unavailable",
-            ),
-            stay_current_next_action: FieldAvailability::unavailable(
-                "stay-current next action unavailable",
-            ),
-            no_progress_diagnosis: FieldAvailability::unavailable(
-                "no-progress diagnosis unavailable",
-            ),
-            no_progress_next_action: FieldAvailability::unavailable(
-                "no-progress next action unavailable",
-            ),
-            latest_reorg: FieldAvailability::unavailable("no reorg evidence recorded"),
-            reconcile_progress: FieldAvailability::unavailable("reconcile progress unavailable"),
-        },
-        peers: PeerStatus {
-            peer_counts: FieldAvailability::available(PeerCounts {
-                inbound: 0,
-                outbound: 2,
-            }),
-            recent_peers: FieldAvailability::unavailable("peer telemetry unavailable"),
-        },
-        health_signals: Vec::new(),
-        updated_at_unix_seconds: 1_717_000_010,
     }
 }
 

@@ -10,7 +10,7 @@ use std::{
 };
 
 use open_bitcoin_node::{
-    FjallNodeStore, LogRetentionPolicy, MetricRetentionPolicy, MetricsStatus, WalletRegistry,
+    LogRetentionPolicy, MetricRetentionPolicy, MetricsStatus,
     logging::writer::load_log_status,
     status::{
         BuildProvenance, ConfigStatus, FieldAvailability, HealthSignal, HealthSignalLevel,
@@ -31,6 +31,7 @@ use super::{
 
 mod detection;
 mod http;
+mod recovery_evidence;
 mod render;
 mod resource_bounds;
 mod service_status;
@@ -40,10 +41,11 @@ mod tests;
 mod wallet;
 
 pub use http::HttpStatusRpcClient;
+use recovery_evidence::collect_status_recovery_evidence;
 pub use render::render_status;
 use resource_bounds::collect_resource_bounds;
 use service_status::collect_service_status;
-use sync_state::{durable_sync_state, rpc_sync_status, unavailable_sync_status};
+use sync_state::{rpc_sync_status, unavailable_sync_status};
 
 /// Operator status request supplied by CLI flags and config.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -210,17 +212,16 @@ fn collect_live_status_snapshot(
             );
         }
     };
+    let service = collect_service_status(input);
+    let live_rpc_available = FieldAvailability::available(true);
+    let recovery_evidence = collect_status_recovery_evidence(input, &service, live_rpc_available);
     let mut health_signals = detection::detection_health_signals(&input.detection_evidence);
     health_signals.extend(rpc_warning_signals(
         &network_info.warnings,
         &blockchain_info.warnings,
     ));
-    let maybe_durable_sync_state = durable_sync_state(&input.config_resolution);
     let wallet =
         collect_live_wallet_status(input, rpc_client, &blockchain_info, &mut health_signals);
-    if let Some(durable_sync_state) = maybe_durable_sync_state.as_ref() {
-        health_signals.extend(durable_sync_state.health_signals.clone());
-    }
     health_signals.extend(log_health_signals(input));
 
     OpenBitcoinStatusSnapshot {
@@ -229,32 +230,23 @@ fn collect_live_status_snapshot(
             version: node_version(&network_info),
         },
         config: config_status(&input.config_resolution),
-        service: collect_service_status(input),
-        sync: maybe_durable_sync_state
-            .as_ref()
-            .map(|state| state.sync.clone())
-            .unwrap_or_else(|| rpc_sync_status(&blockchain_info)),
-        peers: maybe_durable_sync_state
-            .as_ref()
-            .map(|state| state.peers.clone())
-            .unwrap_or_else(|| PeerStatus {
-                peer_counts: FieldAvailability::available(PeerCounts {
-                    inbound: saturating_usize_to_u32(network_info.connections_in),
-                    outbound: saturating_usize_to_u32(network_info.connections_out),
-                }),
-                recent_peers: FieldAvailability::unavailable("peer telemetry unavailable"),
+        service,
+        sync: rpc_sync_status(&blockchain_info),
+        peers: PeerStatus {
+            peer_counts: FieldAvailability::available(PeerCounts {
+                inbound: saturating_usize_to_u32(network_info.connections_in),
+                outbound: saturating_usize_to_u32(network_info.connections_out),
             }),
+            recent_peers: FieldAvailability::unavailable("peer telemetry unavailable"),
+        },
         mempool: MempoolStatus {
             transactions: FieldAvailability::available(saturating_usize_to_u64(mempool_info.size)),
         },
         wallet,
         logs: log_status(&input.config_resolution),
-        metrics: metrics_status(&input.config_resolution),
-        recovery_evidence: FieldAvailability::default(),
-        resource_bounds: collect_resource_bounds(
-            &input.config_resolution,
-            maybe_durable_sync_state.as_ref(),
-        ),
+        metrics: metrics_status(),
+        recovery_evidence,
+        resource_bounds: collect_resource_bounds(&input.config_resolution, None),
         health_signals,
         build: current_build_provenance(),
     }
@@ -266,15 +258,17 @@ fn stopped_status_snapshot(
     reason: impl Into<String>,
 ) -> OpenBitcoinStatusSnapshot {
     let reason = reason.into();
-    let maybe_durable_sync_state = durable_sync_state(&input.config_resolution);
+    let service = collect_service_status(input);
+    let recovery_evidence = collect_status_recovery_evidence(
+        input,
+        &service,
+        FieldAvailability::unavailable(reason.clone()),
+    );
     let mut health_signals = detection::detection_health_signals(&input.detection_evidence);
     if let Some(signal) = maybe_live_rpc_bootstrap_health_signal(input) {
         health_signals.push(signal);
     }
     health_signals.extend(log_health_signals(input));
-    if let Some(durable_sync_state) = maybe_durable_sync_state.as_ref() {
-        health_signals.extend(durable_sync_state.health_signals.clone());
-    }
     if state == NodeRuntimeState::Unreachable {
         health_signals.push(HealthSignal {
             level: HealthSignalLevel::Warn,
@@ -289,18 +283,12 @@ fn stopped_status_snapshot(
             version: env!("CARGO_PKG_VERSION").to_string(),
         },
         config: config_status(&input.config_resolution),
-        service: collect_service_status(input),
-        sync: maybe_durable_sync_state
-            .as_ref()
-            .map(|state| state.sync.clone())
-            .unwrap_or_else(|| unavailable_sync_status(&reason)),
-        peers: maybe_durable_sync_state
-            .as_ref()
-            .map(|state| state.peers.clone())
-            .unwrap_or_else(|| PeerStatus {
-                peer_counts: FieldAvailability::unavailable(reason.clone()),
-                recent_peers: FieldAvailability::unavailable(reason.clone()),
-            }),
+        service,
+        sync: unavailable_sync_status(&reason),
+        peers: PeerStatus {
+            peer_counts: FieldAvailability::unavailable(reason.clone()),
+            recent_peers: FieldAvailability::unavailable(reason.clone()),
+        },
         mempool: MempoolStatus {
             transactions: FieldAvailability::unavailable(reason.clone()),
         },
@@ -310,12 +298,9 @@ fn stopped_status_snapshot(
             scan_progress: FieldAvailability::unavailable(reason),
         },
         logs: log_status(&input.config_resolution),
-        metrics: metrics_status(&input.config_resolution),
-        recovery_evidence: FieldAvailability::default(),
-        resource_bounds: collect_resource_bounds(
-            &input.config_resolution,
-            maybe_durable_sync_state.as_ref(),
-        ),
+        metrics: metrics_status(),
+        recovery_evidence,
+        resource_bounds: collect_resource_bounds(&input.config_resolution, None),
         health_signals,
         build: current_build_provenance(),
     }
@@ -389,34 +374,9 @@ fn maybe_live_rpc_bootstrap_health_signal(input: &StatusCollectorInput) -> Optio
 }
 
 pub(crate) fn resolve_status_wallet_rpc_access(
-    maybe_data_dir: Option<&Path>,
+    _maybe_data_dir: Option<&Path>,
 ) -> StatusWalletRpcAccess {
-    let Some(data_dir) = maybe_data_dir else {
-        return StatusWalletRpcAccess::Root;
-    };
-    let Ok(store) = FjallNodeStore::open(data_dir) else {
-        return StatusWalletRpcAccess::Root;
-    };
-    let Ok(registry) = WalletRegistry::load(&store) else {
-        return StatusWalletRpcAccess::Root;
-    };
-    wallet_rpc_access_from_registry(&registry)
-}
-
-fn wallet_rpc_access_from_registry(registry: &WalletRegistry) -> StatusWalletRpcAccess {
-    if let Some(selected_wallet_name) = registry.selected_wallet_name() {
-        return StatusWalletRpcAccess::Wallet(selected_wallet_name.to_string());
-    }
-
-    match registry.wallet_names() {
-        [] => StatusWalletRpcAccess::Root,
-        [wallet_name] => StatusWalletRpcAccess::Wallet(wallet_name.clone()),
-        _ => StatusWalletRpcAccess::Unavailable {
-            reason:
-                "Multiple wallets are loaded and no selected wallet metadata is available. Wallet fields are unavailable until one wallet is selected."
-                    .to_string(),
-        },
-    }
+    StatusWalletRpcAccess::Root
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -496,28 +456,11 @@ fn log_status(resolution: &OperatorConfigResolution) -> open_bitcoin_node::LogSt
     load_log_status(log_dir, LogRetentionPolicy::default(), 10)
 }
 
-fn metrics_status(resolution: &OperatorConfigResolution) -> MetricsStatus {
-    let retention = MetricRetentionPolicy::default();
-    let Some(metrics_path) = resolution.maybe_metrics_store_path.as_ref() else {
-        return MetricsStatus::default();
-    };
-    if !metrics_path.is_dir() {
-        return MetricsStatus::unavailable(
-            retention,
-            format!(
-                "metrics history unavailable: {} does not exist",
-                metrics_path.display()
-            ),
-        );
-    }
-    match FjallNodeStore::open(metrics_path)
-        .and_then(|store| store.load_metrics_status(MetricRetentionPolicy::default()))
-    {
-        Ok(status) => status,
-        Err(error) => {
-            MetricsStatus::unavailable(retention, format!("metrics history unavailable: {error}"))
-        }
-    }
+fn metrics_status() -> MetricsStatus {
+    MetricsStatus::unavailable(
+        MetricRetentionPolicy::default(),
+        "metrics history unavailable: probe-only status does not open Fjall stores",
+    )
 }
 
 fn log_health_signals(input: &StatusCollectorInput) -> Vec<HealthSignal> {
