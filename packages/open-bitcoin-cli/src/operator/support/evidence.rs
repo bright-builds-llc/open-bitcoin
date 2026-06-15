@@ -157,7 +157,7 @@ pub(crate) fn derive_full_sync_evidence(
         peer_contribution: peer_contribution_summary(&status.sync),
         no_progress_or_reorg_events: no_progress_or_reorg_summary(&status.sync),
         resource_pressure: resource_pressure_summary(&status.sync),
-        recovery: recovery_summary(&status.sync),
+        recovery: recovery_summary(status),
         verdict: EvidenceVerdictSummary {
             label,
             justifications,
@@ -378,7 +378,24 @@ fn resource_pressure_summary(sync: &SyncStatus) -> SummaryEvidence {
     }
 }
 
-fn recovery_summary(sync: &SyncStatus) -> SummaryEvidence {
+fn recovery_summary(status: &OpenBitcoinStatusSnapshot) -> SummaryEvidence {
+    match &status.recovery_evidence {
+        FieldAvailability::Available(evidence) => {
+            return SummaryEvidence::available(format!(
+                "category={} cause={} action_class={} next_action={}",
+                evidence.category.as_str(),
+                serialized_label(&evidence.cause),
+                serialized_label(&evidence.action_class),
+                evidence.next_action
+            ));
+        }
+        FieldAvailability::Unavailable { .. } => {}
+    }
+
+    recovery_summary_from_legacy_sync(&status.sync)
+}
+
+fn recovery_summary_from_legacy_sync(sync: &SyncStatus) -> SummaryEvidence {
     match (&sync.recovery_category, &sync.recovery_action) {
         (FieldAvailability::Available(category), FieldAvailability::Available(action)) => {
             SummaryEvidence::available(format!("category={} action={}", category.as_str(), action))

@@ -111,6 +111,9 @@ pub(super) fn render_support_markdown(bundle: &SupportEvidenceBundle) -> String 
         json_compact(&bundle.status.metrics.availability)
     ));
 
+    output.push_str("\n## Recovery Evidence\n\n");
+    push_recovery_evidence(&mut output, &bundle.recovery_evidence);
+
     output.push_str("\n## Resource Bound Evidence\n\n");
     push_resource_bound_evidence(&mut output, &bundle.resource_bound_evidence);
 
@@ -150,6 +153,59 @@ pub(super) fn render_support_markdown(bundle: &SupportEvidenceBundle) -> String 
     }
 
     output
+}
+
+fn push_recovery_evidence(output: &mut String, evidence: &super::RecoverySupportEvidence) {
+    match evidence.state {
+        EvidenceState::Available => {
+            output.push_str(&format!(
+                "- Category: {}\n",
+                evidence.category.as_deref().unwrap_or("unavailable")
+            ));
+            output.push_str(&format!(
+                "- Cause: {}\n",
+                evidence.cause.as_deref().unwrap_or("unavailable")
+            ));
+            output.push_str(&format!(
+                "- Action class: {}\n",
+                evidence.action_class.as_deref().unwrap_or("unavailable")
+            ));
+            output.push_str(&format!(
+                "- Evidence basis: {}\n",
+                evidence.evidence_basis.join(", ")
+            ));
+            output.push_str(&format!(
+                "- Affected namespace: {}\n",
+                evidence
+                    .affected_namespace
+                    .as_deref()
+                    .unwrap_or("unavailable")
+            ));
+            output.push_str(&format!(
+                "- Affected path: {}\n",
+                evidence.affected_path.as_deref().unwrap_or("unavailable")
+            ));
+            output.push_str(&format!(
+                "- Next action: {}\n",
+                evidence.next_action.as_deref().unwrap_or("unavailable")
+            ));
+            output.push_str(&format!(
+                "- Compatibility action: {}\n",
+                evidence
+                    .compatibility_action
+                    .as_deref()
+                    .unwrap_or("unavailable")
+            ));
+        }
+        EvidenceState::Unavailable => {
+            let reason = evidence
+                .maybe_unavailable_reason
+                .as_deref()
+                .unwrap_or("recovery evidence unavailable");
+            output.push_str(&format!("- Status: Unavailable: {reason}\n"));
+        }
+    }
+    output.push_str(&format!("- Source: {}\n", evidence.source));
 }
 
 fn push_soak_evidence(output: &mut String, evidence: &super::SoakSupportEvidence) {

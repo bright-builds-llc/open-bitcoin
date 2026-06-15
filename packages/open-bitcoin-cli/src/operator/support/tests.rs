@@ -36,10 +36,10 @@ use crate::operator::{
 
 use super::{
     EvidenceAvailability, EvidenceState, LiveSmokeEvidence, MetricsHistoryEvidence,
-    RuntimeMetadataEvidence, StoreHealthEvidence, SupportEvidenceBundle, SupportEvidenceOutput,
-    collect_resource_bound_support_evidence, collect_soak_support_evidence, collect_store_health,
-    derive_full_sync_evidence, evidence::SupportEvidenceVerdict, redaction_summary, render,
-    soak_outcome_label,
+    RecoverySupportEvidence, RuntimeMetadataEvidence, StoreHealthEvidence, SupportEvidenceBundle,
+    SupportEvidenceOutput, collect_resource_bound_support_evidence, collect_soak_support_evidence,
+    collect_store_health, derive_full_sync_evidence, evidence::SupportEvidenceVerdict,
+    redaction_summary, render, soak_outcome_label,
 };
 
 #[derive(Debug)]
@@ -735,6 +735,7 @@ fn phase75_support_bundle_for_test(data_dir: &Path) -> SupportEvidenceBundle {
         redaction: redaction_summary(),
         config: super::ConfigEvidence::from_resolution(&resolution),
         status: status.clone(),
+        recovery_evidence: RecoverySupportEvidence::from_status(&status.recovery_evidence),
         store_health: unavailable_store_health(),
         live_smoke,
         full_sync_evidence,
@@ -749,6 +750,8 @@ fn phase77_support_bundle_with_status(
 ) -> SupportEvidenceBundle {
     let mut bundle = phase75_support_bundle_for_test(data_dir);
     bundle.status = status;
+    bundle.recovery_evidence =
+        RecoverySupportEvidence::from_status(&bundle.status.recovery_evidence);
     bundle.full_sync_evidence = derive_full_sync_evidence(&bundle.status, &bundle.live_smoke);
     bundle.resource_bound_evidence =
         collect_resource_bound_support_evidence(&bundle.status, &data_dir.join("support"));

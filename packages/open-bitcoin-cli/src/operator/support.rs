@@ -15,8 +15,8 @@ use std::{
 };
 
 use open_bitcoin_node::{
-    FjallNodeStore, MetricRetentionPolicy, MetricsStatus, OpenBitcoinStatusSnapshot,
-    RuntimeMetadata, metrics::MetricsAvailability,
+    MetricsStatus, OpenBitcoinStatusSnapshot, RuntimeMetadata, recovery::RecoveryEvidenceSnapshot,
+    status::FieldAvailability,
 };
 use serde::Serialize;
 use serde_json::Value;
@@ -47,6 +47,11 @@ use super::{
 const SUPPORT_EVIDENCE_JSON: &str = "support-evidence.json";
 const SUPPORT_EVIDENCE_MARKDOWN: &str = "support-evidence.md";
 const SOAK_LEDGER_UNAVAILABLE_REASON: &str = "soak ledger unavailable";
+const SUPPORT_RECOVERY_EVIDENCE_SOURCE: &str = "status.recovery_evidence";
+const SUPPORT_PROBE_ONLY_RUNTIME_METADATA_REASON: &str =
+    "runtime metadata unavailable: probe-only support bundle does not open Fjall stores";
+const SUPPORT_PROBE_ONLY_METRICS_HISTORY_REASON: &str =
+    "metrics history unavailable: probe-only support bundle does not open Fjall stores";
 
 pub(crate) fn execute_support_command(
     args: &SupportArgs,
@@ -82,6 +87,8 @@ fn execute_support_bundle(
     let full_sync_evidence = derive_full_sync_evidence(&status, &live_smoke);
     let soak_evidence = collect_soak_support_evidence(config_resolution);
     let resource_bound_evidence = collect_resource_bound_support_evidence(&status, &output_dir);
+    let recovery_evidence = RecoverySupportEvidence::from_status(&status.recovery_evidence);
+    let store_health = collect_store_health(&status);
     let bundle = SupportEvidenceBundle {
         generated_at_unix_seconds,
         generated_by: "open-bitcoin support bundle".to_string(),
@@ -93,7 +100,8 @@ fn execute_support_bundle(
         redaction: redaction_summary(),
         config: ConfigEvidence::from_resolution(config_resolution),
         status,
-        store_health: collect_store_health(config_resolution),
+        recovery_evidence,
+        store_health,
         live_smoke,
         full_sync_evidence,
         soak_evidence,
@@ -153,11 +161,64 @@ struct SupportEvidenceBundle {
     redaction: RedactionSummary,
     config: ConfigEvidence,
     status: OpenBitcoinStatusSnapshot,
+    recovery_evidence: RecoverySupportEvidence,
     store_health: StoreHealthEvidence,
     live_smoke: LiveSmokeEvidence,
     full_sync_evidence: FullSyncEvidence,
     soak_evidence: SoakSupportEvidence,
     resource_bound_evidence: ResourceBoundSupportEvidence,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+struct RecoverySupportEvidence {
+    state: EvidenceState,
+    category: Option<String>,
+    cause: Option<String>,
+    action_class: Option<String>,
+    evidence_basis: Vec<String>,
+    affected_namespace: Option<String>,
+    affected_path: Option<String>,
+    next_action: Option<String>,
+    compatibility_action: Option<String>,
+    maybe_unavailable_reason: Option<String>,
+    source: String,
+}
+
+impl RecoverySupportEvidence {
+    fn from_status(status: &FieldAvailability<RecoveryEvidenceSnapshot>) -> Self {
+        match status {
+            FieldAvailability::Available(evidence) => Self {
+                state: EvidenceState::Available,
+                category: Some(evidence.category.as_str().to_string()),
+                cause: Some(serialized_label(&evidence.cause)),
+                action_class: Some(serialized_label(&evidence.action_class)),
+                evidence_basis: evidence
+                    .evidence_basis
+                    .iter()
+                    .map(serialized_label)
+                    .collect(),
+                affected_namespace: evidence.maybe_affected_namespace.clone(),
+                affected_path: evidence.maybe_affected_path.clone(),
+                next_action: Some(evidence.next_action.clone()),
+                compatibility_action: availability_string(&evidence.compatibility_action),
+                maybe_unavailable_reason: None,
+                source: SUPPORT_RECOVERY_EVIDENCE_SOURCE.to_string(),
+            },
+            FieldAvailability::Unavailable { reason } => Self {
+                state: EvidenceState::Unavailable,
+                category: None,
+                cause: None,
+                action_class: None,
+                evidence_basis: Vec::new(),
+                affected_namespace: None,
+                affected_path: None,
+                next_action: None,
+                compatibility_action: None,
+                maybe_unavailable_reason: Some(reason.clone()),
+                source: SUPPORT_RECOVERY_EVIDENCE_SOURCE.to_string(),
+            },
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -371,9 +432,9 @@ fn collect_soak_support_evidence(
     )
 }
 
-fn collect_store_health(resolution: &OperatorConfigResolution) -> StoreHealthEvidence {
-    let runtime_metadata = collect_runtime_metadata(resolution.maybe_data_dir.as_deref());
-    let metrics_history = collect_metrics_history(resolution.maybe_metrics_store_path.as_deref());
+fn collect_store_health(source: &impl StoreHealthProbeSource) -> StoreHealthEvidence {
+    let runtime_metadata = source.runtime_metadata_evidence();
+    let metrics_history = source.metrics_history_evidence();
     let durable_store = if runtime_metadata.availability.is_available() {
         EvidenceAvailability::available()
     } else {
@@ -393,107 +454,62 @@ fn collect_store_health(resolution: &OperatorConfigResolution) -> StoreHealthEvi
     }
 }
 
-fn collect_runtime_metadata(maybe_data_dir: Option<&Path>) -> RuntimeMetadataEvidence {
-    let Some(data_dir) = maybe_data_dir else {
-        return RuntimeMetadataEvidence {
-            availability: EvidenceAvailability::unavailable("datadir unavailable"),
-            metadata: None,
-        };
-    };
-    if !data_dir.is_dir() {
-        return RuntimeMetadataEvidence {
-            availability: EvidenceAvailability::unavailable(format!(
-                "durable store unavailable: {} does not exist",
-                data_dir.display()
-            )),
-            metadata: None,
-        };
-    }
+trait StoreHealthProbeSource {
+    fn runtime_metadata_evidence(&self) -> RuntimeMetadataEvidence;
+    fn metrics_history_evidence(&self) -> MetricsHistoryEvidence;
+}
 
-    let store = match FjallNodeStore::open(data_dir) {
-        Ok(store) => store,
-        Err(error) => {
-            return RuntimeMetadataEvidence {
-                availability: EvidenceAvailability::unavailable(format!(
-                    "durable store unavailable: {error}"
-                )),
-                metadata: None,
-            };
-        }
-    };
-    match store.load_runtime_metadata() {
-        Ok(Some(metadata)) => RuntimeMetadataEvidence {
-            availability: EvidenceAvailability::available(),
-            metadata: Some(metadata),
-        },
-        Ok(None) => RuntimeMetadataEvidence {
+impl StoreHealthProbeSource for OperatorConfigResolution {
+    fn runtime_metadata_evidence(&self) -> RuntimeMetadataEvidence {
+        RuntimeMetadataEvidence {
             availability: EvidenceAvailability::unavailable(
-                "runtime metadata unavailable: no metadata recorded",
+                SUPPORT_PROBE_ONLY_RUNTIME_METADATA_REASON,
             ),
             metadata: None,
-        },
-        Err(error) => RuntimeMetadataEvidence {
-            availability: EvidenceAvailability::unavailable(format!(
-                "runtime metadata unavailable: {error}"
-            )),
-            metadata: None,
-        },
+        }
+    }
+
+    fn metrics_history_evidence(&self) -> MetricsHistoryEvidence {
+        MetricsHistoryEvidence {
+            availability: EvidenceAvailability::unavailable(
+                SUPPORT_PROBE_ONLY_METRICS_HISTORY_REASON,
+            ),
+            samples: 0,
+            status: None,
+        }
     }
 }
 
-fn collect_metrics_history(maybe_metrics_path: Option<&Path>) -> MetricsHistoryEvidence {
-    let Some(metrics_path) = maybe_metrics_path else {
-        return MetricsHistoryEvidence {
-            availability: EvidenceAvailability::unavailable("metrics store path unavailable"),
-            samples: 0,
-            status: None,
-        };
-    };
-    if !metrics_path.is_dir() {
-        return MetricsHistoryEvidence {
-            availability: EvidenceAvailability::unavailable(format!(
-                "metrics history unavailable: {} does not exist",
-                metrics_path.display()
-            )),
-            samples: 0,
-            status: None,
-        };
+impl StoreHealthProbeSource for OpenBitcoinStatusSnapshot {
+    fn runtime_metadata_evidence(&self) -> RuntimeMetadataEvidence {
+        match &self.service.restart_resume {
+            FieldAvailability::Available(_) => RuntimeMetadataEvidence {
+                availability: EvidenceAvailability::available(),
+                metadata: None,
+            },
+            FieldAvailability::Unavailable { .. } => RuntimeMetadataEvidence {
+                availability: EvidenceAvailability::unavailable(
+                    SUPPORT_PROBE_ONLY_RUNTIME_METADATA_REASON,
+                ),
+                metadata: None,
+            },
+        }
     }
 
-    let store = match FjallNodeStore::open(metrics_path) {
-        Ok(store) => store,
-        Err(error) => {
-            return MetricsHistoryEvidence {
-                availability: EvidenceAvailability::unavailable(format!(
-                    "metrics history unavailable: {error}"
-                )),
-                samples: 0,
-                status: None,
-            };
-        }
-    };
-    match store.load_metrics_status(MetricRetentionPolicy::default()) {
-        Ok(status) => {
-            let samples = status.samples.len();
-            let availability = match &status.availability {
-                MetricsAvailability::Available => EvidenceAvailability::available(),
-                MetricsAvailability::Unavailable { reason } => {
-                    EvidenceAvailability::unavailable(reason.clone())
-                }
-            };
-            MetricsHistoryEvidence {
-                availability,
-                samples,
-                status: Some(status),
+    fn metrics_history_evidence(&self) -> MetricsHistoryEvidence {
+        let availability = match &self.metrics.availability {
+            open_bitcoin_node::metrics::MetricsAvailability::Available => {
+                EvidenceAvailability::available()
             }
+            open_bitcoin_node::metrics::MetricsAvailability::Unavailable { .. } => {
+                EvidenceAvailability::unavailable(SUPPORT_PROBE_ONLY_METRICS_HISTORY_REASON)
+            }
+        };
+        MetricsHistoryEvidence {
+            availability,
+            samples: self.metrics.samples.len(),
+            status: Some(self.metrics.clone()),
         }
-        Err(error) => MetricsHistoryEvidence {
-            availability: EvidenceAvailability::unavailable(format!(
-                "metrics history unavailable: {error}"
-            )),
-            samples: 0,
-            status: None,
-        },
     }
 }
 
@@ -589,6 +605,23 @@ fn path_to_string(path: &Path) -> String {
 
 fn soak_outcome_label(outcome: SoakOutcomeLabel) -> String {
     serde_json::to_value(outcome)
+        .ok()
+        .and_then(|value| value.as_str().map(str::to_string))
+        .unwrap_or_else(|| "unknown".to_string())
+}
+
+fn availability_string(value: &FieldAvailability<String>) -> Option<String> {
+    match value {
+        FieldAvailability::Available(value) => Some(value.clone()),
+        FieldAvailability::Unavailable { .. } => None,
+    }
+}
+
+fn serialized_label<T>(value: &T) -> String
+where
+    T: Serialize,
+{
+    serde_json::to_value(value)
         .ok()
         .and_then(|value| value.as_str().map(str::to_string))
         .unwrap_or_else(|| "unknown".to_string())
