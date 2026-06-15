@@ -593,4 +593,116 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn live_smoke_recovery_evidence_phase77_live_smoke_summary_preserves_recovery_evidence() {
+        // Arrange
+        let report = json!({
+            "schema_version": 2,
+            "result": {
+                "status": "progress",
+                "rawPeerTable": "raw peer table phase77-live-smoke-secret",
+                "daemonStdout": "daemon stdout phase77-live-smoke-secret",
+                "daemonStderr": "daemon stderr phase77-live-smoke-secret",
+                "rawLogTail": "raw log phase77-live-smoke-secret",
+                "walletMaterial": "seed phrase phase77-live-smoke-secret",
+            },
+            "final_status": {
+                "recoveryEvidence": {
+                    "state": "available",
+                    "category": "storage_lock_contention",
+                    "cause": "stale_lock_evidence",
+                    "actionClass": "read_only_inspection",
+                    "evidenceBasis": ["lock_probe"],
+                    "affectedNamespace": null,
+                    "affectedPath": "/tmp/open-bitcoin/LOCK",
+                    "nextAction": "Inspect the datadir read-only and avoid deleting lock artifacts automatically.",
+                    "compatibilityAction": null,
+                    "maybeUnavailableReason": null,
+                    "source": "status.recovery_evidence",
+                    "rawLogTail": "nested raw log phase77-live-smoke-secret",
+                    "rpcpassword": "rpcpassword=phase77-live-smoke-secret",
+                    "walletMaterial": "seed phrase phase77-live-smoke-secret"
+                },
+                "recoveryActionClass": "read_only_inspection",
+                "recoveryCause": "stale_lock_evidence",
+                "recoveryNextAction": "Inspect the datadir read-only and avoid deleting lock artifacts automatically.",
+                "maybeRecoveryEvidenceUnavailableReason": null,
+                "rawPeerTable": "final raw peer table phase77-live-smoke-secret",
+                "daemonStdout": "final daemon stdout phase77-live-smoke-secret",
+                "daemonStderr": "final daemon stderr phase77-live-smoke-secret",
+                "rawLogTail": "final raw log phase77-live-smoke-secret",
+                "rpcpassword": "rpcpassword=phase77-live-smoke-secret",
+                "rpcauth": "rpcauth=phase77-live-smoke-secret",
+                "__cookie__": "__cookie__:phase77-live-smoke-secret",
+                "walletMaterial": "seed phrase phase77-live-smoke-secret"
+            }
+        });
+
+        // Act
+        let summarized = summary(&report).expect("summary");
+        let final_status = summarized.get("finalStatus").expect("final status summary");
+        let text = summarized.to_string();
+
+        // Assert
+        assert_eq!(
+            final_status["recoveryEvidence"]["category"],
+            "storage_lock_contention"
+        );
+        assert_eq!(
+            final_status["recoveryEvidence"]["cause"],
+            "stale_lock_evidence"
+        );
+        assert_eq!(
+            final_status["recoveryEvidence"]["actionClass"],
+            "read_only_inspection"
+        );
+        assert_eq!(final_status["recoveryActionClass"], "read_only_inspection");
+        assert_eq!(final_status["recoveryCause"], "stale_lock_evidence");
+        assert_eq!(
+            final_status["recoveryNextAction"],
+            "Inspect the datadir read-only and avoid deleting lock artifacts automatically."
+        );
+        for forbidden in [
+            "rawPeerTable",
+            "daemonStdout",
+            "daemonStderr",
+            "rawLogTail",
+            "rpcpassword",
+            "rpcauth",
+            "__cookie__",
+            "walletMaterial",
+            "phase77-live-smoke-secret",
+        ] {
+            assert!(
+                !text.contains(forbidden),
+                "summary copied forbidden live-smoke material: {forbidden}"
+            );
+        }
+    }
+
+    #[test]
+    fn live_smoke_recovery_evidence_preserves_unavailable_reason() {
+        // Arrange
+        let report = json!({
+            "schema_version": 2,
+            "final_status": {
+                "maybeRecoveryEvidenceUnavailableReason": "recovery evidence unavailable",
+                "recoveryActionClass": null,
+                "recoveryCause": null,
+                "recoveryNextAction": null
+            }
+        });
+
+        // Act
+        let summarized = summary(&report).expect("summary");
+        let final_status = summarized.get("finalStatus").expect("final status summary");
+
+        // Assert
+        assert_eq!(
+            final_status["maybeRecoveryEvidenceUnavailableReason"],
+            "recovery evidence unavailable"
+        );
+        assert!(final_status.get("recoveryEvidence").is_none());
+    }
 }
