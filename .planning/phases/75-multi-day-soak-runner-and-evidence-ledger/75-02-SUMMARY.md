@@ -140,7 +140,7 @@ Each task was committed atomically, with RED commits for TDD tests:
 - **Verification:** `cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-cli --test operator_binary open_bitcoin_soak_ --all-features` passed without those warnings.
 - **Committed in:** `ffba207`
 
----
+***
 
 **Total deviations:** 3 auto-fixed (2 blocking, 1 missing critical)
 **Impact on plan:** All fixes were required for compile correctness, resume durability, or clean verifier readiness. No public-network, daemon-spawn, DNS, source-datadir mutation, or service-manager behavior was added.
@@ -175,6 +175,6 @@ Ready for Plan 75-03. The operator command now writes the Plan 75-01 ledger/repo
 - Task commit exists: `47313d0`
 - Task commit exists: `ffba207`
 
----
+***
 *Phase: 75-multi-day-soak-runner-and-evidence-ledger*
 *Completed: 2026-06-15*

@@ -117,7 +117,7 @@ Each task was committed atomically:
 - **Verification:** Task 1 focused outcome and bounds tests passed.
 - **Committed in:** `141efbb`
 
----
+***
 
 **Total deviations:** 1 auto-fixed (1 blocking)
 **Impact on plan:** The change preserves the planned evidence boundary and avoids duplicating shared support verdict contracts.
@@ -150,6 +150,6 @@ Ready for Plan 75-02 to wire these contracts into the operator-facing soak comma
 - Task commit exists: `29f5e55`
 - Task commit exists: `ab2a751`
 
----
+***
 *Phase: 75-multi-day-soak-runner-and-evidence-ledger*
 *Completed: 2026-06-15*

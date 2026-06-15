@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Full-Sync Soak and Recovery Hardening
 status: executing
-stopped_at: Phase 75 planning revision complete
-last_updated: "2026-06-15T01:03:41.442Z"
-last_activity: 2026-06-15 -- Phase 75 execution started
+stopped_at: Phase 75 complete; ready for Phase 76 planning
+last_updated: "2026-06-15T05:27:39.653Z"
+last_activity: 2026-06-15
 progress:
   total_phases: 6
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 6
-  completed_plans: 0
-  percent: 0
+  completed_plans: 6
+  percent: 100
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-14)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 75 — Multi-Day Soak Runner and Evidence Ledger
+**Current focus:** Phase 76 — Disk and Resource Bound Enforcement
 
 ## Current Position
 
 Milestone: v1.7 Full-Sync Soak and Recovery Hardening
-Phase: 75 (Multi-Day Soak Runner and Evidence Ledger) — EXECUTING
-Plan: 1 of 6
-Status: Executing Phase 75
-Last activity: 2026-06-15 -- Phase 75 execution started
+Phase: 76
+Plan: Not started
+Status: Ready for Phase 76 planning
+Last activity: 2026-06-15
 
-Progress: [----------] 0%
+Progress: [##########] 100%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Current milestone plans completed: 0
+- Current milestone plans completed: 6
 - Current milestone plan count: 6
 - Prior milestone plans completed: 27 in v1.6
 
@@ -45,7 +45,7 @@ Progress: [----------] 0%
 
 | Phase | Plans | Status |
 |-------|------:|--------|
-| 75. Multi-Day Soak Runner and Evidence Ledger | 0/6 | Pending |
+| 75. Multi-Day Soak Runner and Evidence Ledger | 6/6 | Complete |
 | 76. Disk and Resource Bound Enforcement | 0/0 | Pending |
 | 77. Corruption and Lock Recovery Hardening | 0/0 | Pending |
 | 78. Progress Guarantees and Stall Diagnosis | 0/0 | Pending |
@@ -76,7 +76,7 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ### Pending Todos
 
-- Discuss Phase 75 and decide the exact soak-runner and evidence-ledger shape.
+- Discuss Phase 76 and decide the exact disk/resource enforcement shape.
 - Keep raw phase histories in `.planning/phases/` for parity and UAT traceability.
 - Keep public-network full-sync and multi-day soak UAT opt-in and outside default deterministic verification unless a future phase deliberately changes that contract.
 
@@ -88,6 +88,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-15T00:46:59Z
-Stopped at: Phase 75 planning revision complete
-Resume file: .planning/phases/75-multi-day-soak-runner-and-evidence-ledger/75-01-PLAN.md
+Last session: 2026-06-15T05:26:49Z
+Stopped at: Phase 75 complete; ready for Phase 76 planning
+Resume file: .planning/phases/76-disk-and-resource-bound-enforcement/

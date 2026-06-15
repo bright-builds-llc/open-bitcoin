@@ -134,7 +134,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 75. Multi-Day Soak Runner and Evidence Ledger | 6/6 | Complete   | 2026-06-15 |
+| 75. Multi-Day Soak Runner and Evidence Ledger | 6/6 | Complete    | 2026-06-15 |
 | 76. Disk and Resource Bound Enforcement | 0/0 | Pending | - |
 | 77. Corruption and Lock Recovery Hardening | 0/0 | Pending | - |
 | 78. Progress Guarantees and Stall Diagnosis | 0/0 | Pending | - |
