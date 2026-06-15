@@ -20,6 +20,10 @@ use super::{
     outcome::{
         SoakOutcomeEvidence, SoakOutcomeLabel, SoakProcessExitEvidence, classify_soak_outcome,
     },
+    report::{
+        SoakReportProjection, render_soak_report_json, render_soak_report_markdown,
+        write_soak_reports,
+    },
 };
 use crate::operator::support::{
     ActiveChainEvidence, EvidenceState, EvidenceVerdictSummary, FullSyncEvidence, SummaryEvidence,
@@ -291,6 +295,107 @@ fn soak_ledger_append_rejects_oversized_events() {
 }
 
 #[test]
+fn soak_report_json_includes_projection_source_and_latest_state() {
+    // Arrange
+    let temp = TestDirectory::new("report-json");
+    let source_ledger_path = temp
+        .path()
+        .join("soak/runs/soak-1781485562-0001/events.jsonl");
+    let events = sample_report_events(temp.path());
+    let projection =
+        SoakReportProjection::from_ledger_events(events, &source_ledger_path).expect("projection");
+
+    // Act
+    let rendered = render_soak_report_json(&projection).expect("report json");
+    let value: Value = serde_json::from_str(&rendered).expect("report json value");
+
+    // Assert
+    assert_eq!(value["is_projection"], Value::Bool(true));
+    assert_eq!(
+        value["source_ledger_path"],
+        Value::String(source_ledger_path.display().to_string())
+    );
+    assert_eq!(value["latest_sequence"], Value::from(5));
+    assert_eq!(
+        value["run_id"],
+        Value::String("soak-1781485562-0001".to_string())
+    );
+    assert_eq!(
+        value["bounds"]["network"],
+        Value::String("mainnet".to_string())
+    );
+    assert_eq!(value["started_at_unix_seconds"], Value::from(10));
+    assert_eq!(value["checkpoint_count"], Value::from(1));
+    assert_eq!(value["resume_count"], Value::from(1));
+    assert_eq!(value["interrupted_resume_count"], Value::from(1));
+    assert_eq!(
+        value["latest_checkpoint"]["maybe_network"],
+        Value::String("mainnet".to_string())
+    );
+    assert_eq!(
+        value["stop"]["outcome"],
+        Value::String("operator_stop".to_string())
+    );
+    assert_eq!(
+        value["verdict"]["outcome"],
+        Value::String("operator_stop".to_string())
+    );
+}
+
+#[test]
+fn soak_report_markdown_includes_operator_projection_summary() {
+    // Arrange
+    let temp = TestDirectory::new("report-markdown");
+    let source_ledger_path = temp
+        .path()
+        .join("soak/runs/soak-1781485562-0001/events.jsonl");
+    let projection = SoakReportProjection::from_ledger_events(
+        sample_report_events(temp.path()),
+        &source_ledger_path,
+    )
+    .expect("projection");
+
+    // Act
+    let rendered = render_soak_report_markdown(&projection);
+
+    // Assert
+    assert!(rendered.contains("# Open Bitcoin Soak Report"));
+    assert!(rendered.contains("Source ledger:"));
+    assert!(rendered.contains("Latest sequence:"));
+    assert!(rendered.contains("Report is a projection: true"));
+    assert!(rendered.contains("Final outcome:"));
+    assert!(!rendered.contains("raw daemon log line"));
+}
+
+#[test]
+fn soak_report_write_uses_ledger_events_without_updating_run_index() {
+    // Arrange
+    let temp = TestDirectory::new("report-write");
+    let layout = SoakLedgerLayout::for_datadir(temp.path());
+    let run_id = SoakRunId::try_new("soak-1781485562-0001").expect("run id");
+    let paths = layout.paths_for_run(&run_id);
+    let mut ledger = SoakLedger::create(&layout, run_id);
+    for envelope in sample_report_events(temp.path()) {
+        ledger
+            .append_event(envelope.recorded_at_unix_seconds, envelope.event)
+            .expect("append report event");
+    }
+    let read = SoakLedger::read_events(&paths.events_path).expect("read events");
+
+    // Act
+    let report_paths =
+        write_soak_reports(&read, &paths.events_path, &layout).expect("write reports");
+
+    // Assert
+    assert_eq!(report_paths.latest_sequence, 5);
+    assert_eq!(report_paths.json_path, paths.report_json_path);
+    assert_eq!(report_paths.markdown_path, paths.report_markdown_path);
+    assert!(report_paths.json_path.is_file());
+    assert!(report_paths.markdown_path.is_file());
+    assert!(!layout.run_index_path().exists());
+}
+
+#[test]
 fn soak_bounds_run_id_rejects_empty_and_path_like_values() {
     // Arrange
     let valid = "soak-1781485562-0001";
@@ -552,4 +657,50 @@ fn checkpoint_status() -> SoakCheckpointStatus {
         maybe_best_known_tip_height: Some(900_000),
         maybe_source_status_path: Some(PathBuf::from("/tmp/status.json")),
     }
+}
+
+fn sample_report_events(datadir: &Path) -> Vec<SoakLedgerEventEnvelope> {
+    let run_id = SoakRunId::try_new("soak-1781485562-0001").expect("run id");
+    vec![
+        SoakLedgerEventEnvelope::new(
+            run_id.clone(),
+            1,
+            10,
+            SoakLedgerEvent::Started {
+                bounds: soak_bounds(datadir),
+            },
+        ),
+        SoakLedgerEventEnvelope::new(
+            run_id.clone(),
+            2,
+            20,
+            SoakLedgerEvent::Checkpoint {
+                status: checkpoint_status(),
+            },
+        ),
+        SoakLedgerEventEnvelope::new(
+            run_id.clone(),
+            3,
+            30,
+            SoakLedgerEvent::Resume {
+                interrupted_prior_run: true,
+            },
+        ),
+        SoakLedgerEventEnvelope::new(
+            run_id.clone(),
+            4,
+            40,
+            SoakLedgerEvent::Stop {
+                outcome: SoakOutcomeLabel::OperatorStop,
+            },
+        ),
+        SoakLedgerEventEnvelope::new(
+            run_id,
+            5,
+            50,
+            SoakLedgerEvent::Verdict {
+                outcome: SoakOutcomeLabel::OperatorStop,
+            },
+        ),
+    ]
 }

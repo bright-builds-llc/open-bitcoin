@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 
 pub(crate) mod ledger;
 pub(crate) mod outcome;
+pub(crate) mod report;
 
 #[cfg(test)]
 mod tests;

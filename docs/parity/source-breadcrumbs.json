@@ -287,6 +287,7 @@
         "packages/open-bitcoin-cli/src/operator/soak.rs",
         "packages/open-bitcoin-cli/src/operator/soak/ledger.rs",
         "packages/open-bitcoin-cli/src/operator/soak/outcome.rs",
+        "packages/open-bitcoin-cli/src/operator/soak/report.rs",
         "packages/open-bitcoin-cli/src/operator/soak/tests.rs"
       ],
       "breadcrumbs": []
