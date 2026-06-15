@@ -473,17 +473,10 @@ fn support_recovery_evidence_markdown_renders_operator_fields() {
 #[test]
 fn support_recovery_evidence_collection_preserves_probe_only_store_health() {
     // Arrange
-    let temp = TestDirectory::new("probe-only-store-health");
-    let metrics_dir = temp.path().join("metrics");
-    fs::create_dir_all(&metrics_dir).expect("metrics dir");
-    let resolution = OperatorConfigResolution {
-        maybe_data_dir: Some(temp.path().to_path_buf()),
-        maybe_metrics_store_path: Some(metrics_dir),
-        ..OperatorConfigResolution::default()
-    };
+    let status = phase72_status();
 
     // Act
-    let health = collect_store_health(&resolution);
+    let health = collect_store_health(&status);
 
     // Assert
     assert_eq!(health.state, EvidenceState::Unavailable);

@@ -4,15 +4,15 @@
 //! Pure dashboard projection model built from the shared status snapshot.
 
 use open_bitcoin_node::{
-    MetricKind, MetricSample, RecoveryEvidenceSnapshot,
+    MetricKind, MetricSample,
     metrics::MetricsAvailability,
     status::{
         FieldAvailability, HealthSignal, HealthSignalLevel, NodeRuntimeState,
         OpenBitcoinStatusSnapshot, PeerCounts, ServiceLifecycleStatus, ServicePriorShutdownStatus,
         ServiceRestartResumeStatus, ServiceResumeProgressStatus, ServiceStaleInflightStatus,
         ServiceStatus, SyncAttemptCounters, SyncConfiguredTargets, SyncLifecycleState,
-        SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure, SyncStopReasonStatus,
-        WalletFreshness, WalletScanProgress,
+        SyncProgressSignal, SyncResourcePressure, SyncStopReasonStatus, WalletFreshness,
+        WalletScanProgress,
     },
 };
 
@@ -21,10 +21,12 @@ use crate::operator::sync_truth_render::{
     sync_reconcile_text, sync_reorg_text,
 };
 
+mod recovery;
 mod resource_bounds;
 #[cfg(test)]
 mod tests;
 
+use recovery::{recovery_category, recovery_evidence};
 use resource_bounds::resource_bounds;
 
 /// Metric series rendered as dashboard charts.
@@ -161,7 +163,7 @@ fn dashboard_sections(snapshot: &OpenBitcoinStatusSnapshot) -> Vec<DashboardSect
                 row("Last error", string_availability(&snapshot.sync.last_error)),
                 row(
                     "Recovery category",
-                    sync_recovery_category(&snapshot.sync.recovery_category),
+                    recovery_category(&snapshot.sync.recovery_category),
                 ),
                 row(
                     "Recovery",
@@ -345,26 +347,6 @@ fn sync_pressure(value: &FieldAvailability<SyncResourcePressure>) -> String {
     }
 }
 
-fn sync_recovery_category(value: &FieldAvailability<SyncRecoveryCategory>) -> String {
-    match value {
-        FieldAvailability::Available(value) => value.as_str().to_string(),
-        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
-    }
-}
-
-fn recovery_evidence(value: &FieldAvailability<RecoveryEvidenceSnapshot>) -> String {
-    match value {
-        FieldAvailability::Available(value) => format!(
-            "category={} cause={} action_class={} next_action={}",
-            value.category.as_str(),
-            serialized_label(&value.cause),
-            serialized_label(&value.action_class),
-            value.next_action
-        ),
-        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
-    }
-}
-
 fn peer_counts_availability(value: &FieldAvailability<PeerCounts>) -> String {
     match value {
         FieldAvailability::Available(value) => {
@@ -446,7 +428,7 @@ fn service_restart_resume_rows(
                     "datadir={} same_datadir={} recovery_category={}",
                     string_availability(&value.datadir),
                     bool_availability(&value.same_datadir),
-                    sync_recovery_category(&value.recovery_category)
+                    recovery_category(&value.recovery_category)
                 ),
             ),
             row("Prior shutdown", prior_shutdown(&value.prior_shutdown)),
@@ -641,14 +623,4 @@ fn sync_progress_signal_name(signal: SyncProgressSignal) -> &'static str {
         SyncProgressSignal::AwaitingBlocks => "awaiting_blocks",
         SyncProgressSignal::Steady => "steady",
     }
-}
-
-fn serialized_label<T>(value: &T) -> String
-where
-    T: serde::Serialize,
-{
-    serde_json::to_value(value)
-        .ok()
-        .and_then(|value| value.as_str().map(str::to_string))
-        .unwrap_or_else(|| "unknown".to_string())
 }

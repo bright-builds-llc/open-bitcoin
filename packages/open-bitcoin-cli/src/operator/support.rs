@@ -432,9 +432,9 @@ fn collect_soak_support_evidence(
     )
 }
 
-fn collect_store_health(source: &impl StoreHealthProbeSource) -> StoreHealthEvidence {
-    let runtime_metadata = source.runtime_metadata_evidence();
-    let metrics_history = source.metrics_history_evidence();
+fn collect_store_health(status: &OpenBitcoinStatusSnapshot) -> StoreHealthEvidence {
+    let runtime_metadata = runtime_metadata_evidence(status);
+    let metrics_history = metrics_history_evidence(status);
     let durable_store = if runtime_metadata.availability.is_available() {
         EvidenceAvailability::available()
     } else {
@@ -454,62 +454,34 @@ fn collect_store_health(source: &impl StoreHealthProbeSource) -> StoreHealthEvid
     }
 }
 
-trait StoreHealthProbeSource {
-    fn runtime_metadata_evidence(&self) -> RuntimeMetadataEvidence;
-    fn metrics_history_evidence(&self) -> MetricsHistoryEvidence;
-}
-
-impl StoreHealthProbeSource for OperatorConfigResolution {
-    fn runtime_metadata_evidence(&self) -> RuntimeMetadataEvidence {
-        RuntimeMetadataEvidence {
+fn runtime_metadata_evidence(status: &OpenBitcoinStatusSnapshot) -> RuntimeMetadataEvidence {
+    match &status.service.restart_resume {
+        FieldAvailability::Available(_) => RuntimeMetadataEvidence {
+            availability: EvidenceAvailability::available(),
+            metadata: None,
+        },
+        FieldAvailability::Unavailable { .. } => RuntimeMetadataEvidence {
             availability: EvidenceAvailability::unavailable(
                 SUPPORT_PROBE_ONLY_RUNTIME_METADATA_REASON,
             ),
             metadata: None,
-        }
-    }
-
-    fn metrics_history_evidence(&self) -> MetricsHistoryEvidence {
-        MetricsHistoryEvidence {
-            availability: EvidenceAvailability::unavailable(
-                SUPPORT_PROBE_ONLY_METRICS_HISTORY_REASON,
-            ),
-            samples: 0,
-            status: None,
-        }
+        },
     }
 }
 
-impl StoreHealthProbeSource for OpenBitcoinStatusSnapshot {
-    fn runtime_metadata_evidence(&self) -> RuntimeMetadataEvidence {
-        match &self.service.restart_resume {
-            FieldAvailability::Available(_) => RuntimeMetadataEvidence {
-                availability: EvidenceAvailability::available(),
-                metadata: None,
-            },
-            FieldAvailability::Unavailable { .. } => RuntimeMetadataEvidence {
-                availability: EvidenceAvailability::unavailable(
-                    SUPPORT_PROBE_ONLY_RUNTIME_METADATA_REASON,
-                ),
-                metadata: None,
-            },
+fn metrics_history_evidence(status: &OpenBitcoinStatusSnapshot) -> MetricsHistoryEvidence {
+    let availability = match &status.metrics.availability {
+        open_bitcoin_node::metrics::MetricsAvailability::Available => {
+            EvidenceAvailability::available()
         }
-    }
-
-    fn metrics_history_evidence(&self) -> MetricsHistoryEvidence {
-        let availability = match &self.metrics.availability {
-            open_bitcoin_node::metrics::MetricsAvailability::Available => {
-                EvidenceAvailability::available()
-            }
-            open_bitcoin_node::metrics::MetricsAvailability::Unavailable { .. } => {
-                EvidenceAvailability::unavailable(SUPPORT_PROBE_ONLY_METRICS_HISTORY_REASON)
-            }
-        };
-        MetricsHistoryEvidence {
-            availability,
-            samples: self.metrics.samples.len(),
-            status: Some(self.metrics.clone()),
+        open_bitcoin_node::metrics::MetricsAvailability::Unavailable { .. } => {
+            EvidenceAvailability::unavailable(SUPPORT_PROBE_ONLY_METRICS_HISTORY_REASON)
         }
+    };
+    MetricsHistoryEvidence {
+        availability,
+        samples: status.metrics.samples.len(),
+        status: Some(status.metrics.clone()),
     }
 }
 
