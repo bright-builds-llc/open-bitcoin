@@ -17,6 +17,7 @@ use serde_json::Value;
 use super::{
     CliRoute, ConfigCommand, DashboardArgs, MigrationCommand, NetworkSelection, OperatorCli,
     OperatorCommand, OperatorOutputFormat, ServiceCommand, StatusArgs, SupportCommand, SyncCommand,
+    SoakCommand, SoakPeerPolicyArg, SoakStopConditionArg, SoakStopReasonArg,
     config::OperatorConfigSource,
     onboarding::{OnboardingWriteDecision, ProposedConfigWrite},
     route_cli_invocation,
@@ -145,6 +146,193 @@ fn open_bitcoin_sync_pause_routes_to_operator_sync() {
         panic!("expected sync command");
     };
     assert_eq!(sync.command, SyncCommand::Pause);
+}
+
+#[test]
+fn soak_cli_start_parses_bounded_operator_contract() {
+    // Arrange
+    let argv = [
+        "open-bitcoin",
+        "--datadir",
+        "/tmp/node",
+        "--network",
+        "regtest",
+        "soak",
+        "start",
+        "--elapsed-time-seconds",
+        "60",
+        "--checkpoint-interval-seconds",
+        "15",
+        "--target-height",
+        "144",
+        "--peer-policy",
+        "daemon-configured",
+        "--disk-budget-bytes",
+        "1048576",
+        "--stop-condition",
+        "elapsed-time",
+    ];
+
+    // Act
+    let parsed = OperatorCli::try_parse_from(argv).expect("soak start cli");
+
+    // Assert
+    assert_eq!(
+        parsed.maybe_data_dir.as_deref(),
+        Some(std::path::Path::new("/tmp/node"))
+    );
+    assert_eq!(parsed.maybe_network, Some(NetworkSelection::Regtest));
+    let OperatorCommand::Soak(soak) = parsed.command else {
+        panic!("expected soak command");
+    };
+    let SoakCommand::Start(start) = soak.command else {
+        panic!("expected soak start command");
+    };
+    assert_eq!(start.elapsed_time_seconds, 60);
+    assert_eq!(start.checkpoint_interval_seconds, 15);
+    assert_eq!(start.maybe_target_height, Some(144));
+    assert_eq!(start.peer_policy, SoakPeerPolicyArg::DaemonConfigured);
+    assert_eq!(start.disk_budget_bytes, 1_048_576);
+    assert_eq!(
+        start.stop_condition,
+        SoakStopConditionArg::ElapsedTime
+    );
+}
+
+#[test]
+fn soak_cli_rejects_zero_bounds_and_missing_stop_condition() {
+    // Arrange
+    let zero_elapsed = [
+        "open-bitcoin",
+        "soak",
+        "start",
+        "--elapsed-time-seconds",
+        "0",
+        "--checkpoint-interval-seconds",
+        "15",
+        "--peer-policy",
+        "daemon-configured",
+        "--disk-budget-bytes",
+        "1048576",
+        "--stop-condition",
+        "elapsed-time",
+    ];
+    let zero_checkpoint = [
+        "open-bitcoin",
+        "soak",
+        "start",
+        "--elapsed-time-seconds",
+        "60",
+        "--checkpoint-interval-seconds",
+        "0",
+        "--peer-policy",
+        "daemon-configured",
+        "--disk-budget-bytes",
+        "1048576",
+        "--stop-condition",
+        "elapsed-time",
+    ];
+    let zero_disk = [
+        "open-bitcoin",
+        "soak",
+        "start",
+        "--elapsed-time-seconds",
+        "60",
+        "--checkpoint-interval-seconds",
+        "15",
+        "--peer-policy",
+        "daemon-configured",
+        "--disk-budget-bytes",
+        "0",
+        "--stop-condition",
+        "elapsed-time",
+    ];
+    let missing_stop_condition = [
+        "open-bitcoin",
+        "soak",
+        "start",
+        "--elapsed-time-seconds",
+        "60",
+        "--checkpoint-interval-seconds",
+        "15",
+        "--peer-policy",
+        "daemon-configured",
+        "--disk-budget-bytes",
+        "1048576",
+    ];
+
+    // Act
+    let results = [
+        OperatorCli::try_parse_from(zero_elapsed),
+        OperatorCli::try_parse_from(zero_checkpoint),
+        OperatorCli::try_parse_from(zero_disk),
+        OperatorCli::try_parse_from(missing_stop_condition),
+    ];
+
+    // Assert
+    assert!(results.into_iter().all(|result| result.is_err()));
+}
+
+#[test]
+fn soak_cli_resume_stop_and_report_parse_run_id_contract() {
+    // Arrange
+    let resume_argv = [
+        "open-bitcoin",
+        "soak",
+        "resume",
+        "--run-id",
+        "soak-1700000000-0001",
+        "--checkpoint-interval-seconds",
+        "15",
+    ];
+    let stop_argv = [
+        "open-bitcoin",
+        "soak",
+        "stop",
+        "--run-id",
+        "soak-1700000000-0001",
+        "--reason",
+        "operator-stop",
+    ];
+    let report_argv = [
+        "open-bitcoin",
+        "soak",
+        "report",
+        "--run-id",
+        "soak-1700000000-0001",
+    ];
+
+    // Act
+    let resume = OperatorCli::try_parse_from(resume_argv).expect("soak resume cli");
+    let stop = OperatorCli::try_parse_from(stop_argv).expect("soak stop cli");
+    let report = OperatorCli::try_parse_from(report_argv).expect("soak report cli");
+
+    // Assert
+    let OperatorCommand::Soak(resume) = resume.command else {
+        panic!("expected soak resume");
+    };
+    let SoakCommand::Resume(resume) = resume.command else {
+        panic!("expected soak resume command");
+    };
+    assert_eq!(resume.run_id, "soak-1700000000-0001");
+    assert_eq!(resume.checkpoint_interval_seconds, 15);
+
+    let OperatorCommand::Soak(stop) = stop.command else {
+        panic!("expected soak stop");
+    };
+    let SoakCommand::Stop(stop) = stop.command else {
+        panic!("expected soak stop command");
+    };
+    assert_eq!(stop.run_id, "soak-1700000000-0001");
+    assert_eq!(stop.reason, SoakStopReasonArg::OperatorStop);
+
+    let OperatorCommand::Soak(report) = report.command else {
+        panic!("expected soak report");
+    };
+    let SoakCommand::Report(report) = report.command else {
+        panic!("expected soak report command");
+    };
+    assert_eq!(report.run_id, "soak-1700000000-0001");
 }
 
 #[test]
