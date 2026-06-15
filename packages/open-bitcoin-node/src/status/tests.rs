@@ -14,6 +14,10 @@ use super::{
     SyncStatus, SyncStopReasonStatus, WalletFreshness, WalletScanProgress, WalletStatus,
     classify_budget_pressure, classify_snapshot_against_disk_budget, usage_against_budget,
 };
+use crate::recovery::{
+    LockEvidence, LockEvidenceKind, RECOVERY_EVIDENCE_UNAVAILABLE_REASON, RecoveryActionClass,
+    RecoveryCause, RecoveryEvidenceSnapshot,
+};
 use crate::{LogStatus, MetricsStatus};
 
 #[test]
@@ -565,6 +569,120 @@ fn resource_bounds_snapshot_aggregates_pressure_and_disk_budget() {
     assert_eq!(
         encoded["entries"][0]["usage"]["value"]["state"],
         "stop_required"
+    );
+}
+
+#[test]
+fn recovery_evidence_contract_action_classes_serialize_stable_labels() {
+    // Arrange
+    let cases = [
+        (RecoveryActionClass::SafeRetry, "safe_retry"),
+        (
+            RecoveryActionClass::ReadOnlyInspection,
+            "read_only_inspection",
+        ),
+        (
+            RecoveryActionClass::BackupThenRebuild,
+            "backup_then_rebuild",
+        ),
+        (
+            RecoveryActionClass::StopAndEscalate,
+            "stop_and_escalate",
+        ),
+    ];
+
+    // Act / Assert
+    for (action_class, expected_label) in cases {
+        assert_eq!(
+            serde_json::to_value(action_class).expect("action class json"),
+            expected_label
+        );
+    }
+}
+
+#[test]
+fn recovery_evidence_contract_causes_serialize_stable_labels() {
+    // Arrange
+    let cases = [
+        (RecoveryCause::SchemaMismatch, "schema_mismatch"),
+        (RecoveryCause::CorruptionMarker, "corruption_marker"),
+        (RecoveryCause::PartialWrite, "partial_write"),
+        (RecoveryCause::UnreadableNamespace, "unreadable_namespace"),
+        (RecoveryCause::BackendOpenFailure, "backend_open_failure"),
+        (RecoveryCause::ActiveLock, "active_lock"),
+        (RecoveryCause::StaleLockEvidence, "stale_lock_evidence"),
+        (RecoveryCause::ConcurrentDatadirUse, "concurrent_datadir_use"),
+        (RecoveryCause::ResourcePressure, "resource_pressure"),
+    ];
+
+    // Act / Assert
+    for (cause, expected_label) in cases {
+        assert_eq!(
+            serde_json::to_value(cause).expect("recovery cause json"),
+            expected_label
+        );
+    }
+}
+
+#[test]
+fn recovery_evidence_contract_lock_evidence_serializes_plan_77_02_shape() {
+    // Arrange
+    let cases = [
+        (LockEvidenceKind::NoLockArtifact, "no_lock_artifact"),
+        (LockEvidenceKind::ActiveContention, "active_contention"),
+        (LockEvidenceKind::StaleLockEvidence, "stale_lock_evidence"),
+        (LockEvidenceKind::ProbeUnavailable, "probe_unavailable"),
+    ];
+
+    // Act / Assert
+    for (kind, expected_label) in cases {
+        let evidence = LockEvidence {
+            kind,
+            lock_path: "/tmp/open-bitcoin/lock".to_string(),
+            detail: format!("{expected_label} detail"),
+        };
+        let encoded = serde_json::to_value(&evidence).expect("lock evidence json");
+        let decoded: LockEvidence =
+            serde_json::from_value(encoded.clone()).expect("lock evidence round-trip");
+
+        assert_eq!(encoded["kind"], expected_label);
+        assert_eq!(encoded["lock_path"], "/tmp/open-bitcoin/lock");
+        assert_eq!(encoded["detail"], format!("{expected_label} detail"));
+        assert_eq!(decoded, evidence);
+    }
+}
+
+#[test]
+fn status_recovery_evidence_legacy_snapshot_defaults_unavailable() {
+    // Arrange
+    let legacy_json = serde_json::to_value(stopped_snapshot()).expect("legacy snapshot json");
+
+    // Act
+    let snapshot: OpenBitcoinStatusSnapshot =
+        serde_json::from_value(legacy_json).expect("legacy status snapshot json");
+
+    // Assert
+    assert_eq!(
+        snapshot.recovery_evidence,
+        FieldAvailability::<RecoveryEvidenceSnapshot>::unavailable(
+            RECOVERY_EVIDENCE_UNAVAILABLE_REASON
+        )
+    );
+}
+
+#[test]
+fn status_recovery_evidence_snapshot_json_keeps_top_level_field_visible() {
+    // Arrange
+    let snapshot = stopped_snapshot();
+
+    // Act
+    let encoded = serde_json::to_value(snapshot).expect("snapshot json");
+
+    // Assert
+    assert_eq!(encoded["recovery_evidence"]["state"], "unavailable");
+    assert_eq!(
+        encoded["recovery_evidence"]["value"]["reason"],
+        RECOVERY_EVIDENCE_UNAVAILABLE_REASON
     );
 }
 
