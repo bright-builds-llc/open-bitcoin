@@ -385,7 +385,7 @@ impl FjallNodeStore {
     /// Load the last persisted recovery marker, if present.
     pub fn load_recovery_marker(&self) -> Result<Option<RecoveryMarker>, StorageError> {
         self.get_bytes(StorageNamespace::Runtime, RECOVERY_MARKER_KEY)?
-            .map(|bytes| decode_recovery_marker(&bytes))
+            .map(|bytes| decode_recovery_marker(&bytes).map_err(recovery_marker_corruption))
             .transpose()
     }
 
@@ -592,6 +592,17 @@ fn corruption(namespace: StorageNamespace, detail: impl std::fmt::Display) -> St
         namespace,
         detail: detail.to_string(),
         action: StorageRecoveryAction::Repair,
+    }
+}
+
+fn recovery_marker_corruption(error: StorageError) -> StorageError {
+    match error {
+        StorageError::Corruption { detail, action, .. } => StorageError::RecoveryMarkerCorruption {
+            namespace: StorageNamespace::Runtime,
+            detail,
+            action,
+        },
+        error => error,
     }
 }
 

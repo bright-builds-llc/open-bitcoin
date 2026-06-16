@@ -603,6 +603,7 @@ fn recovery_evidence_contract_causes_serialize_stable_labels() {
     let cases = [
         (RecoveryCause::SchemaMismatch, "schema_mismatch"),
         (RecoveryCause::CorruptionMarker, "corruption_marker"),
+        (RecoveryCause::CorruptRecord, "corrupt_record"),
         (RecoveryCause::PartialWrite, "partial_write"),
         (RecoveryCause::UnreadableNamespace, "unreadable_namespace"),
         (RecoveryCause::BackendOpenFailure, "backend_open_failure"),

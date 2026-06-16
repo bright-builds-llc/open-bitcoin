@@ -55,8 +55,8 @@ automatic destructive repair. The shared status field is
 classes `safe_retry`, `read_only_inspection`, `backup_then_rebuild`, and
 `stop_and_escalate`.
 
-The stable causes are `schema_mismatch`, `corruption_marker`, `partial_write`,
-`unreadable_namespace`, `backend_open_failure`, `active_lock`,
+The stable causes are `schema_mismatch`, `corruption_marker`, `corrupt_record`,
+`partial_write`, `unreadable_namespace`, `backend_open_failure`, `active_lock`,
 `stale_lock_evidence`, `concurrent_datadir_use`, and `resource_pressure`. They
 map back to the compatibility categories `incompatible_schema`,
 `store_corruption`, `storage_lock_contention`, `storage_backend_failure`, and

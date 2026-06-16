@@ -29,6 +29,7 @@ pub enum RecoveryActionClass {
 pub enum RecoveryCause {
     SchemaMismatch,
     CorruptionMarker,
+    CorruptRecord,
     PartialWrite,
     UnreadableNamespace,
     BackendOpenFailure,
@@ -184,6 +185,22 @@ pub fn classify_recovery(
                 return recovery_evidence(RecoveryEvidenceParts {
                     category: SyncRecoveryCategory::StoreCorruption,
                     action_class: RecoveryActionClass::BackupThenRebuild,
+                    cause: RecoveryCause::CorruptRecord,
+                    evidence_basis: vec![RecoveryEvidenceBasis::StorageError],
+                    maybe_affected_namespace: Some(namespace_name(*namespace)),
+                    maybe_affected_path: None,
+                    next_action:
+                        "Back up the affected datadir before restoring or rebuilding the corrupted store."
+                            .to_string(),
+                    compatibility_action: compatibility_action(*action),
+                });
+            }
+            StorageError::RecoveryMarkerCorruption {
+                namespace, action, ..
+            } => {
+                return recovery_evidence(RecoveryEvidenceParts {
+                    category: SyncRecoveryCategory::StoreCorruption,
+                    action_class: RecoveryActionClass::BackupThenRebuild,
                     cause: RecoveryCause::CorruptionMarker,
                     evidence_basis: vec![RecoveryEvidenceBasis::StorageError],
                     maybe_affected_namespace: Some(namespace_name(*namespace)),
@@ -279,7 +296,8 @@ pub fn classify_recovery(
             }
             StorageError::InvalidSchemaVersion { .. }
             | StorageError::SchemaMismatch { .. }
-            | StorageError::Corruption { .. } => {}
+            | StorageError::Corruption { .. }
+            | StorageError::RecoveryMarkerCorruption { .. } => {}
         }
     }
 
@@ -440,6 +458,47 @@ mod tests {
         assert_eq!(
             write_evidence.maybe_affected_namespace,
             Some("headers".to_string())
+        );
+    }
+
+    #[test]
+    fn recovery_classifier_corruption_sources_split_record_and_marker_causes() {
+        // Arrange
+        let mut record_input = base_classifier_input();
+        record_input.maybe_storage_error = Some(StorageError::Corruption {
+            namespace: StorageNamespace::Chainstate,
+            detail: "snapshot decode failed".to_string(),
+            action: StorageRecoveryAction::Repair,
+        });
+        let mut marker_input = base_classifier_input();
+        marker_input.maybe_storage_error = Some(StorageError::RecoveryMarkerCorruption {
+            namespace: StorageNamespace::Runtime,
+            detail: "malformed recovery marker".to_string(),
+            action: StorageRecoveryAction::Repair,
+        });
+
+        // Act
+        let record_evidence = available_recovery_evidence(classify_recovery(record_input));
+        let marker_evidence = available_recovery_evidence(classify_recovery(marker_input));
+
+        // Assert
+        assert_eq!(
+            record_evidence.category,
+            SyncRecoveryCategory::StoreCorruption
+        );
+        assert_eq!(record_evidence.cause, RecoveryCause::CorruptRecord);
+        assert_eq!(
+            record_evidence.maybe_affected_namespace,
+            Some("chainstate".to_string())
+        );
+        assert_eq!(
+            marker_evidence.category,
+            SyncRecoveryCategory::StoreCorruption
+        );
+        assert_eq!(marker_evidence.cause, RecoveryCause::CorruptionMarker);
+        assert_eq!(
+            marker_evidence.maybe_affected_namespace,
+            Some("runtime".to_string())
         );
     }
 

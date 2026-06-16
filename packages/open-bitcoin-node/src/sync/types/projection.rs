@@ -160,6 +160,12 @@ pub(super) fn storage_health_message(error: &StorageError) -> String {
         StorageError::Corruption { namespace, .. } => {
             format!("storage corruption in {} during sync", namespace.as_str())
         }
+        StorageError::RecoveryMarkerCorruption { namespace, .. } => {
+            format!(
+                "recovery marker corruption in {} during sync",
+                namespace.as_str()
+            )
+        }
         StorageError::UnavailableNamespace { namespace } => {
             format!("storage namespace unavailable: {}", namespace.as_str())
         }

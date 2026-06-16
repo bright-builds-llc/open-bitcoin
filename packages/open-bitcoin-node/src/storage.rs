@@ -184,6 +184,11 @@ pub enum StorageError {
         detail: String,
         action: StorageRecoveryAction,
     },
+    RecoveryMarkerCorruption {
+        namespace: StorageNamespace,
+        detail: String,
+        action: StorageRecoveryAction,
+    },
     UnavailableNamespace {
         namespace: StorageNamespace,
     },
@@ -208,7 +213,9 @@ impl StorageError {
             Self::InvalidSchemaVersion { .. } | Self::SchemaMismatch { .. } => {
                 SyncRecoveryCategory::IncompatibleSchema
             }
-            Self::Corruption { .. } => SyncRecoveryCategory::StoreCorruption,
+            Self::Corruption { .. } | Self::RecoveryMarkerCorruption { .. } => {
+                SyncRecoveryCategory::StoreCorruption
+            }
             Self::UnavailableNamespace { .. } | Self::InterruptedWrite { .. } => {
                 SyncRecoveryCategory::StorageBackendFailure
             }
@@ -230,6 +237,7 @@ impl StorageError {
             | Self::SchemaMismatch { .. }
             | Self::UnavailableNamespace { .. } => None,
             Self::Corruption { action, .. }
+            | Self::RecoveryMarkerCorruption { action, .. }
             | Self::InterruptedWrite { action, .. }
             | Self::BackendFailure { action, .. } => Some(*action),
         }
@@ -285,6 +293,16 @@ impl fmt::Display for StorageError {
             } => write!(
                 f,
                 "storage corruption in {}: {detail}; {}",
+                namespace.as_str(),
+                action.operator_message()
+            ),
+            Self::RecoveryMarkerCorruption {
+                namespace,
+                detail,
+                action,
+            } => write!(
+                f,
+                "recovery marker corruption in {}: {detail}; {}",
                 namespace.as_str(),
                 action.operator_message()
             ),

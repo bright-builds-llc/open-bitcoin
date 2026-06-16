@@ -964,7 +964,7 @@ fn malformed_recovery_marker_maps_to_runtime_corruption() {
     // Assert
     assert!(matches!(
         error,
-        StorageError::Corruption {
+        StorageError::RecoveryMarkerCorruption {
             namespace: StorageNamespace::Runtime,
             ..
         }

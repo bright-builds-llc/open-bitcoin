@@ -295,6 +295,7 @@ The stable causes are:
 
 - `schema_mismatch`
 - `corruption_marker`
+- `corrupt_record`
 - `partial_write`
 - `unreadable_namespace`
 - `backend_open_failure`

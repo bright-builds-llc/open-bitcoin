@@ -432,7 +432,11 @@ fn sanitize_json_value(value: &Value) -> Value {
 
 fn redact_sensitive_text(text: &str) -> String {
     let lowercase = text.to_ascii_lowercase();
-    if lowercase.contains("rpcpassword")
+    if lowercase.contains("authorization:")
+        || lowercase.contains("authorization=")
+        || lowercase.contains("bearer ")
+        || lowercase.contains("basic ")
+        || lowercase.contains("rpcpassword")
         || lowercase.contains("rpcauth")
         || lowercase.contains("__cookie__")
         || lowercase.contains("private_key")

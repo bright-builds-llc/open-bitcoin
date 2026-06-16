@@ -311,3 +311,36 @@ fn live_smoke_recovery_evidence_preserves_unavailable_reason() {
     );
     assert!(final_status.get("recoveryEvidence").is_none());
 }
+
+#[test]
+fn live_smoke_recovery_evidence_redacts_authorization_from_allowlisted_fields() {
+    // Arrange
+    let report = json!({
+        "schema_version": 2,
+        "final_status": {
+            "recoveryEvidence": {
+                "state": "available",
+                "category": "storage_lock_contention",
+                "cause": "stale_lock_evidence",
+                "actionClass": "read_only_inspection",
+                "evidenceBasis": ["lock_probe"],
+                "nextAction": "Authorization: Bearer phase77-secret",
+                "maybeUnavailableReason": null
+            },
+            "recoveryNextAction": "Authorization: Bearer phase77-secret"
+        }
+    });
+
+    // Act
+    let summarized = summary(&report).expect("summary");
+    let text = summarized.to_string();
+
+    // Assert
+    assert!(text.contains("[redacted]"));
+    for forbidden in ["Authorization", "Bearer", "phase77-secret"] {
+        assert!(
+            !text.contains(forbidden),
+            "summary copied authorization material: {forbidden}"
+        );
+    }
+}
