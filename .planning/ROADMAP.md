@@ -97,7 +97,7 @@ Plans:
 - [x] 77-03-PLAN.md — Non-mutating operator status recovery evidence.
 - [x] 77-04-PLAN.md — Support and dashboard recovery evidence projection.
 - [x] 77-05-PLAN.md — Soak checkpoint and report recovery evidence.
-- [ ] 77-06-PLAN.md — Operator docs, architecture docs, and parity roots.
+- [x] 77-06-PLAN.md — Operator docs, architecture docs, and parity roots.
 - [ ] 77-07-PLAN.md — Deterministic Phase 77 checker, verifier wiring, and verification evidence.
 
 **Success Criteria**:
@@ -153,7 +153,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 75. Multi-Day Soak Runner and Evidence Ledger | 6/6 | Complete    | 2026-06-15 |
 | 76. Disk and Resource Bound Enforcement | 6/6 | Complete | 2026-06-15 |
-| 77. Corruption and Lock Recovery Hardening | 5/7 | In Progress|  |
+| 77. Corruption and Lock Recovery Hardening | 6/7 | In Progress|  |
 | 78. Progress Guarantees and Stall Diagnosis | 0/0 | Pending | - |
 | 79. Diagnostics and Support Bundle Forensics | 0/0 | Pending | - |
 | 80. Opt-In Soak UAT and Release Boundaries | 0/0 | Pending | - |
