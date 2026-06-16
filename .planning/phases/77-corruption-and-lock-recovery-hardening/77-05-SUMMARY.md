@@ -113,7 +113,7 @@ Each task was committed atomically:
 - **Verification:** Focused soak checkpoint, outcome, and report tests passed.
 - **Committed in:** `6eac9ef`
 
----
+***
 
 **Total deviations:** 1 auto-fixed (Rule 3)
 **Impact on plan:** The deviation was a directly required adjacent test-helper update caused by the expanded checkpoint struct. It did not change production behavior outside the planned soak surface.
@@ -138,7 +138,7 @@ None - no external service configuration required.
 
 Ready for Plan 77-06 to build on compact soak recovery evidence without redefining `recovery_stop` or `resource_stop` semantics.
 
----
+***
 *Phase: 77-corruption-and-lock-recovery-hardening*
 *Completed: 2026-06-15*
 

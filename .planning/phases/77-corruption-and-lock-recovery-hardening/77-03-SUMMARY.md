@@ -111,7 +111,7 @@ completed: 2026-06-15
 - **Verification:** Strict forbidden scan passed across `status.rs`, `sync_state.rs`, `recovery_evidence.rs`, and `service_status.rs`.
 - **Committed in:** `a5e31ac`
 
----
+***
 
 **Total deviations:** 1 auto-fixed (1 missing critical)
 **Impact on plan:** The adjustment was required to satisfy the probe-only status inspection rule. It narrowed status behavior and did not add feature scope.
@@ -154,6 +154,6 @@ Ready for Plan 77-04 to project recovery evidence into support/status-adjacent s
 - Task commits found: `7004b04`, `a5e31ac`, `8096f48`, `a51cd16`.
 - No failed self-check marker remains.
 
----
+***
 *Phase: 77-corruption-and-lock-recovery-hardening*
 *Completed: 2026-06-15*

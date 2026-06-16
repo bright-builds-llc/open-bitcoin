@@ -132,7 +132,7 @@ Each task was committed atomically:
 - **Verification:** Focused plan tests, parity breadcrumb check, negative scans, and `wc -l` line-count check passed.
 - **Committed in:** `4a78e44`
 
----
+***
 
 **Total deviations:** 1 auto-fixed (Rule 2)
 **Impact on plan:** The deviation reduced file size and strengthened the probe-only support collection path without changing the requested user-facing behavior.
@@ -153,7 +153,7 @@ None - no external service configuration required.
 
 Plan 77-04 leaves support, live-smoke, and dashboard surfaces aligned on the shared recovery evidence contract. Follow-on recovery work can consume the same top-level status evidence without adding new support-bundle datadir probes or renderer-local recovery classification.
 
----
+***
 *Phase: 77-corruption-and-lock-recovery-hardening*
 *Completed: 2026-06-15*
 

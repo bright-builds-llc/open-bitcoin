@@ -1,11 +1,11 @@
 ---
 phase: 77-corruption-and-lock-recovery-hardening
-verified: 2026-06-16T02:01:43Z
+verified: 2026-06-16T02:13:06Z
 status: passed
 generated_by: gsd-executor
 lifecycle_mode: yolo
 phase_lifecycle_id: 77-2026-06-15T18-33-03
-generated_at: 2026-06-16T02:01:43Z
+generated_at: 2026-06-16T02:13:06Z
 lifecycle_validated: true
 ---
 
@@ -58,6 +58,8 @@ execution.
   the Bazel smoke build/run.
 - `node /Users/peterryszkiewicz/.codex/get-shit-done/bin/gsd-tools.cjs verify lifecycle 77 --require-plans --require-verification --raw`
   is run after this report is written and recorded in the plan summary.
+- Verification metadata was refreshed after summary creation and delimiter
+  cleanup; no production code changed after the recorded full verifier pass.
 
 ## Residual Risks
 
