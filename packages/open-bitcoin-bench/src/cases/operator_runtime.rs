@@ -38,6 +38,8 @@ use crate::{
 
 const STATUS_CASE_ID: &str = "operator-runtime.status-render";
 const DASHBOARD_CASE_ID: &str = "operator-runtime.dashboard-projection";
+const PROBE_ONLY_METRICS_UNAVAILABLE: &str =
+    "metrics history unavailable: probe-only status does not open Fjall stores";
 
 pub const CASES: [BenchCase; 2] = [
     BenchCase {
@@ -301,15 +303,15 @@ fn run_status_render_case() -> Result<(), BenchError> {
     let json = render_status(&snapshot, StatusRenderMode::Json)
         .map_err(|error| BenchError::case_failed(STATUS_CASE_ID, error.to_string()))?;
 
-    if snapshot.metrics.samples.is_empty() {
+    if !snapshot.metrics.samples.is_empty() {
         return Err(BenchError::case_failed(
             STATUS_CASE_ID,
-            "runtime-collected status snapshot did not load seeded metrics history",
+            "probe-only status snapshot unexpectedly loaded metrics history",
         ));
     }
     if !human.contains("Daemon: running")
         || !human.contains("Wallet freshness: fresh")
-        || !human.contains("Metrics: available")
+        || !human.contains(PROBE_ONLY_METRICS_UNAVAILABLE)
     {
         return Err(BenchError::case_failed(
             STATUS_CASE_ID,
@@ -341,15 +343,16 @@ fn run_dashboard_projection_case() -> Result<(), BenchError> {
             "dashboard projection did not produce the expected sections, charts, and actions",
         ));
     }
-    if snapshot.metrics.samples.is_empty() {
+    if !snapshot.metrics.samples.is_empty() {
         return Err(BenchError::case_failed(
             DASHBOARD_CASE_ID,
-            "dashboard projection did not include runtime-collected metrics history",
+            "probe-only dashboard snapshot unexpectedly loaded metrics history",
         ));
     }
     if !rendered.contains("Open Bitcoin Dashboard")
         || !rendered.contains("## Charts")
         || !rendered.contains("Build: version=")
+        || !rendered.contains(PROBE_ONLY_METRICS_UNAVAILABLE)
     {
         return Err(BenchError::case_failed(
             DASHBOARD_CASE_ID,

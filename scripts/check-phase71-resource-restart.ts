@@ -15,6 +15,7 @@ const SOURCE_FILES = [
   "packages/open-bitcoin-cli/src/operator/support.rs",
   "packages/open-bitcoin-cli/src/operator/support/tests.rs",
   "packages/open-bitcoin-cli/src/operator/support/live_smoke.rs",
+  "packages/open-bitcoin-cli/src/operator/support/live_smoke/tests.rs",
   "packages/open-bitcoin-cli/src/operator/runtime/support.rs",
   "packages/open-bitcoin-node/src/storage.rs",
   "packages/open-bitcoin-node/src/storage/fjall_store.rs",

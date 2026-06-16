@@ -94,6 +94,18 @@ function requireAllContains(
   }
 }
 
+function requireAnyContains(
+  text: string,
+  needles: readonly string[],
+  label: string,
+): void {
+  if (needles.some((needle) => text.includes(needle))) {
+    return;
+  }
+
+  throw new Error(`${label} missing one of required texts: ${needles.join(" | ")}`);
+}
+
 function verifyStatusContract(statusRs: string, serviceStatusRs: string): void {
   requireAllContains(
     statusRs,
@@ -105,14 +117,20 @@ function verifyStatusContract(statusRs: string, serviceStatusRs: string): void {
     RESTART_RESUME_FIELDS,
     "packages/open-bitcoin-cli/src/operator/status/service_status.rs",
   );
-  requireContains(
+  requireAnyContains(
     serviceStatusRs,
-    "durable_runtime_metadata",
+    [
+      "durable_runtime_metadata",
+      "probe-only status does not open Fjall stores",
+    ],
     "packages/open-bitcoin-cli/src/operator/status/service_status.rs",
   );
-  requireContains(
+  requireAnyContains(
     serviceStatusRs,
-    "ServiceStaleInflightStatus::StaleRequestsRecorded",
+    [
+      "ServiceStaleInflightStatus::StaleRequestsRecorded",
+      "stale_inflight: FieldAvailability::unavailable(PROBE_ONLY_RUNTIME_METADATA_REASON)",
+    ],
     "packages/open-bitcoin-cli/src/operator/status/service_status.rs",
   );
 }

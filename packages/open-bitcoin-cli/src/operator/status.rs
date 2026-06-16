@@ -43,7 +43,7 @@ mod wallet;
 pub use http::HttpStatusRpcClient;
 use recovery_evidence::collect_status_recovery_evidence;
 pub use render::render_status;
-use resource_bounds::collect_resource_bounds;
+pub(crate) use resource_bounds::collect_resource_bounds;
 use service_status::collect_service_status;
 use sync_state::{rpc_sync_status, unavailable_sync_status};
 

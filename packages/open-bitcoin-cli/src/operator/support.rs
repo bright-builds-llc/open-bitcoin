@@ -15,8 +15,9 @@ use std::{
 };
 
 use open_bitcoin_node::{
-    MetricsStatus, OpenBitcoinStatusSnapshot, RuntimeMetadata, recovery::RecoveryEvidenceSnapshot,
-    status::FieldAvailability,
+    MetricsStatus, OpenBitcoinStatusSnapshot, RuntimeMetadata,
+    recovery::RecoveryEvidenceSnapshot,
+    status::{FieldAvailability, ServiceRestartResumeStatus},
 };
 use serde::Serialize;
 use serde_json::Value;
@@ -456,17 +457,39 @@ fn collect_store_health(status: &OpenBitcoinStatusSnapshot) -> StoreHealthEviden
 
 fn runtime_metadata_evidence(status: &OpenBitcoinStatusSnapshot) -> RuntimeMetadataEvidence {
     match &status.service.restart_resume {
-        FieldAvailability::Available(_) => RuntimeMetadataEvidence {
-            availability: EvidenceAvailability::available(),
-            metadata: None,
-        },
-        FieldAvailability::Unavailable { .. } => RuntimeMetadataEvidence {
-            availability: EvidenceAvailability::unavailable(
-                SUPPORT_PROBE_ONLY_RUNTIME_METADATA_REASON,
-            ),
-            metadata: None,
-        },
+        FieldAvailability::Available(restart_resume)
+            if restart_resume_contains_durable_metadata(restart_resume) =>
+        {
+            RuntimeMetadataEvidence {
+                availability: EvidenceAvailability::available(),
+                metadata: None,
+            }
+        }
+        FieldAvailability::Available(_) | FieldAvailability::Unavailable { .. } => {
+            RuntimeMetadataEvidence {
+                availability: EvidenceAvailability::unavailable(
+                    SUPPORT_PROBE_ONLY_RUNTIME_METADATA_REASON,
+                ),
+                metadata: None,
+            }
+        }
     }
+}
+
+fn restart_resume_contains_durable_metadata(restart_resume: &ServiceRestartResumeStatus) -> bool {
+    let ServiceRestartResumeStatus {
+        prior_shutdown,
+        durable_progress,
+        stale_inflight,
+        recovery_category,
+        next_action,
+        ..
+    } = restart_resume;
+    matches!(prior_shutdown, FieldAvailability::Available(_))
+        || matches!(durable_progress, FieldAvailability::Available(_))
+        || matches!(stale_inflight, FieldAvailability::Available(_))
+        || matches!(recovery_category, FieldAvailability::Available(_))
+        || matches!(next_action, FieldAvailability::Available(_))
 }
 
 fn metrics_history_evidence(status: &OpenBitcoinStatusSnapshot) -> MetricsHistoryEvidence {

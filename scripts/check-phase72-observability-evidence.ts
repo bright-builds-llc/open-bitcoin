@@ -22,6 +22,7 @@ const SUPPORT_FILES = [
   "packages/open-bitcoin-cli/src/operator/support/evidence.rs",
   "packages/open-bitcoin-cli/src/operator/support.rs",
   "packages/open-bitcoin-cli/src/operator/support/live_smoke.rs",
+  "packages/open-bitcoin-cli/src/operator/support/live_smoke/tests.rs",
   "packages/open-bitcoin-cli/src/operator/support/render.rs",
   "packages/open-bitcoin-cli/src/operator/support/tests.rs",
   "packages/open-bitcoin-cli/tests/operator_binary.rs",
@@ -251,8 +252,8 @@ function phase72SurfaceComparisonMatrix(): readonly SurfaceComparison[] {
         peer_contribution_failed: [`"failed": ${available.peer_contribution_failed}`],
       },
       unavailable: {
-        connected_active_chain_hash: [unavailable.connected_active_chain_hash],
-        validated_active_chain_hash: [unavailable.validated_active_chain_hash],
+        connected_active_chain_work: [unavailable.connected_active_chain_work],
+        validated_active_chain_work: [unavailable.validated_active_chain_work],
       },
     },
     {

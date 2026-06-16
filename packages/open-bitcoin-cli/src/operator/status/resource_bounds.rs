@@ -20,7 +20,7 @@ const MAX_DATADIR_FILES: u64 = 100_000;
 const CACHE_BUDGET_BYTES: u64 = 512 * 1024 * 1024;
 const SUPPORT_BUNDLE_BUDGET_BYTES: u64 = 16 * 1024 * 1024;
 
-pub(super) fn collect_resource_bounds(
+pub(crate) fn collect_resource_bounds(
     resolution: &OperatorConfigResolution,
     maybe_durable_sync_state: Option<&DurableSyncState>,
 ) -> FieldAvailability<ResourceBoundSnapshot> {

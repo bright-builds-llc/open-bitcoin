@@ -113,9 +113,25 @@ pub(crate) fn derive_full_sync_evidence(
     status: &OpenBitcoinStatusSnapshot,
     live_smoke: &LiveSmokeEvidence,
 ) -> FullSyncEvidence {
-    let final_tip = final_tip_evidence(&status.sync.best_known_tip);
-    let connected_active_chain = connected_active_chain_evidence(&status.sync.sync_progress);
-    let validated_active_chain = validated_active_chain_evidence(&status.sync.sync_progress);
+    let final_status = live_smoke_final_status(live_smoke);
+    let mut final_tip = final_tip_evidence(&status.sync.best_known_tip);
+    if !tip_can_prove_sync_to_tip(&final_tip)
+        && let Some(live_tip) = live_smoke_final_tip_evidence(final_status)
+    {
+        final_tip = live_tip;
+    }
+    let mut connected_active_chain = connected_active_chain_evidence(&status.sync.sync_progress);
+    if !active_chain_can_prove_sync_to_tip(&connected_active_chain)
+        && let Some(live_chain) = live_smoke_connected_active_chain_evidence(final_status)
+    {
+        connected_active_chain = live_chain;
+    }
+    let mut validated_active_chain = validated_active_chain_evidence(&status.sync.sync_progress);
+    if !active_chain_can_prove_sync_to_tip(&validated_active_chain)
+        && let Some(live_chain) = live_smoke_validated_active_chain_evidence(final_status)
+    {
+        validated_active_chain = live_chain;
+    }
     let mut justifications = Vec::new();
     let sync_to_tip_proven =
         sync_to_tip_proven(&final_tip, &connected_active_chain, &validated_active_chain);
@@ -262,6 +278,72 @@ fn chains_match_tip(chain: &ActiveChainEvidence, tip: &TipEvidence) -> bool {
         && chain.height == tip.height
         && chain.hash == tip.hash
         && chain.work == tip.work
+}
+
+fn tip_can_prove_sync_to_tip(tip: &TipEvidence) -> bool {
+    tip.height.is_some()
+        && tip.hash.is_some()
+        && tip.work.is_some()
+        && tip.freshness.as_deref() == Some("fresh")
+}
+
+fn active_chain_can_prove_sync_to_tip(chain: &ActiveChainEvidence) -> bool {
+    chain.height.is_some() && chain.hash.is_some() && chain.work.is_some()
+}
+
+fn live_smoke_final_status(live_smoke: &LiveSmokeEvidence) -> Option<&Value> {
+    live_smoke
+        .summary
+        .as_ref()
+        .and_then(|summary| summary.get("finalStatus"))
+}
+
+fn live_smoke_final_tip_evidence(final_status: Option<&Value>) -> Option<TipEvidence> {
+    let tip = final_status?.get("bestKnownTip")?;
+    Some(TipEvidence {
+        height: json_u64(tip, "height"),
+        hash: json_string(tip, "blockHash"),
+        work: json_string(tip, "work"),
+        freshness: json_string(tip, "freshness"),
+        maybe_unavailable_reason: None,
+    })
+}
+
+fn live_smoke_connected_active_chain_evidence(
+    final_status: Option<&Value>,
+) -> Option<ActiveChainEvidence> {
+    let final_status = final_status?;
+    Some(ActiveChainEvidence {
+        height: json_u64(final_status, "connectedBlockHeight")
+            .or_else(|| json_u64(final_status, "blockHeight"))
+            .or_else(|| json_u64(final_status, "validatedActiveChainHeight")),
+        hash: json_string(final_status, "maybeValidatedActiveChainHash"),
+        work: json_string(final_status, "maybeValidatedActiveChainWork"),
+        maybe_unavailable_reason: None,
+    })
+}
+
+fn live_smoke_validated_active_chain_evidence(
+    final_status: Option<&Value>,
+) -> Option<ActiveChainEvidence> {
+    let final_status = final_status?;
+    Some(ActiveChainEvidence {
+        height: json_u64(final_status, "validatedActiveChainHeight"),
+        hash: json_string(final_status, "maybeValidatedActiveChainHash"),
+        work: json_string(final_status, "maybeValidatedActiveChainWork"),
+        maybe_unavailable_reason: None,
+    })
+}
+
+fn json_u64(value: &Value, key: &str) -> Option<u64> {
+    value.get(key).and_then(Value::as_u64)
+}
+
+fn json_string(value: &Value, key: &str) -> Option<String> {
+    value
+        .get(key)
+        .and_then(Value::as_str)
+        .map(ToOwned::to_owned)
 }
 
 fn diagnosed_blocker_justifications(sync: &SyncStatus) -> Vec<String> {

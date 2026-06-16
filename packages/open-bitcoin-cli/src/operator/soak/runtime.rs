@@ -3,7 +3,7 @@
 
 use std::path::PathBuf;
 
-use open_bitcoin_node::OpenBitcoinStatusSnapshot;
+use open_bitcoin_node::{FjallNodeStore, OpenBitcoinStatusSnapshot};
 use serde_json::json;
 
 use super::{
@@ -17,7 +17,7 @@ use crate::operator::{
     SoakStartArgs, SoakStopArgs, SoakStopConditionArg, SoakStopReasonArg,
     config::OperatorConfigResolution,
     runtime::{OperatorCommandOutcome, OperatorRuntimeError},
-    status::collect_status_snapshot,
+    status::{collect_resource_bounds, collect_status_snapshot},
 };
 use helpers::{
     checkpoint_status_from_snapshot, current_unix_seconds, evaluate_stop_outcome, first_started_at,
@@ -158,8 +158,32 @@ impl<'a> RuntimeSoakStatusCollector<'a> {
 
 impl SoakStatusCollector for RuntimeSoakStatusCollector<'_> {
     fn collect(&mut self) -> OpenBitcoinStatusSnapshot {
-        collect_status_snapshot(&self.parts.input, self.parts.maybe_rpc_client.as_deref())
+        let mut snapshot =
+            collect_status_snapshot(&self.parts.input, self.parts.maybe_rpc_client.as_deref());
+        enrich_soak_resource_bounds_from_store(&mut snapshot, &self.parts.input.config_resolution);
+        snapshot
     }
+}
+
+fn enrich_soak_resource_bounds_from_store(
+    snapshot: &mut OpenBitcoinStatusSnapshot,
+    resolution: &OperatorConfigResolution,
+) {
+    let Some(datadir) = resolution.maybe_data_dir.as_deref() else {
+        return;
+    };
+    let Ok(store) = FjallNodeStore::open(datadir) else {
+        return;
+    };
+    let Ok(Some(metadata)) = store.load_runtime_metadata() else {
+        return;
+    };
+    if let Some(sync_state) = metadata.maybe_sync_state.as_ref() {
+        snapshot.sync = sync_state.sync.clone();
+        snapshot.peers = sync_state.peers.clone();
+    }
+    snapshot.resource_bounds =
+        collect_resource_bounds(resolution, metadata.maybe_sync_state.as_ref());
 }
 
 pub(crate) trait SoakClock {

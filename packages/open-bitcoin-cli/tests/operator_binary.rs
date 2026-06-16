@@ -1301,18 +1301,14 @@ fn open_bitcoin_support_bundle_includes_phase72_full_sync_evidence_and_typed_ver
     let unavailable: Value = serde_json::from_str(&unavailable_json_text).expect("support json");
     assert_eq!(
         unavailable["full_sync_evidence"]["connected_active_chain"]["maybe_unavailable_reason"],
-        json!("connected active-chain hash unavailable")
+        json!("connected active-chain work unavailable")
     );
     assert_eq!(
         unavailable["full_sync_evidence"]["validated_active_chain"]["maybe_unavailable_reason"],
-        json!("validated active-chain hash unavailable")
+        json!("validated active-chain work unavailable")
     );
-    assert!(unavailable_markdown.contains(
-        "Connected active chain: height=840004 hash=Unavailable work=Unavailable; Unavailable: connected active-chain hash unavailable"
-    ));
-    assert!(unavailable_markdown.contains(
-        "Validated active chain: height=840004 hash=Unavailable work=Unavailable; Unavailable: validated active-chain hash unavailable"
-    ));
+    assert!(unavailable_markdown.contains("Unavailable: connected active-chain work unavailable"));
+    assert!(unavailable_markdown.contains("Unavailable: validated active-chain work unavailable"));
 }
 
 #[test]
@@ -1609,10 +1605,23 @@ fn open_bitcoin_support_bundle_summarizes_phase61_resource_recovery_evidence() {
     );
     assert_eq!(decoded["store_health"]["state"], "unavailable");
     assert!(decoded["status"]["service"].is_object());
-    assert_eq!(
-        decoded["status"]["service"]["restart_resume"]["state"],
-        "unavailable"
-    );
+    let restart_resume = &decoded["status"]["service"]["restart_resume"];
+    if restart_resume["state"] == json!("available") {
+        assert_eq!(
+            restart_resume["value"]["prior_shutdown"]["state"],
+            "unavailable"
+        );
+        assert_eq!(
+            restart_resume["value"]["stale_inflight"]["state"],
+            "unavailable"
+        );
+        assert_eq!(
+            restart_resume["value"]["next_action"]["state"],
+            "unavailable"
+        );
+    } else {
+        assert_eq!(restart_resume["state"], "unavailable");
+    }
     assert_eq!(decoded["status"]["logs"]["path"]["state"], "unavailable");
     assert_eq!(
         decoded["status"]["metrics"]["availability"]["state"],

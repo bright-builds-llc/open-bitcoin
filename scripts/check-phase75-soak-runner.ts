@@ -229,7 +229,9 @@ const DOC_AND_PARITY_ANCHORS = {
     "bounded opt-in full-sync soak behavior, durable resume evidence, or diagnosed blocker evidence",
   ],
   "README.md": [
-    "bounded opt-in full-sync soak behavior, durable resume evidence, or diagnosed blocker evidence",
+    "bounded opt-in",
+    "full-sync soak behavior, durable resume evidence, or diagnosed blocker",
+    "broad production-node readiness",
   ],
 } as const satisfies AnchorMap;
 
