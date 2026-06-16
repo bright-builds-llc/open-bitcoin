@@ -274,6 +274,48 @@ evidence in checkpoint projections. Support evidence keeps the same data as a
 compact summary and projected support-bundle footprint; raw logs, stores,
 status snapshots, peer tables, and live-smoke inputs are not embedded.
 
+## Phase 77 corruption and lock recovery hardening
+
+`recovery_evidence: FieldAvailability<RecoveryEvidenceSnapshot>` is the
+top-level Phase 77 contract for lock, corruption, schema, partial-write,
+unreadable-store, backend-open, and resource-pressure diagnosis. It is adjacent
+to `sync.recovery_category` and `sync.recovery_action`: those legacy sync
+fields remain compatibility summaries, while `recovery_evidence` carries the
+shared status, support, dashboard, and soak evidence used for typed recovery
+guidance even when durable sync state is unavailable.
+
+The stable Phase 77 action classes are:
+
+- `safe_retry`
+- `read_only_inspection`
+- `backup_then_rebuild`
+- `stop_and_escalate`
+
+The stable causes are:
+
+- `schema_mismatch`
+- `corruption_marker`
+- `partial_write`
+- `unreadable_namespace`
+- `backend_open_failure`
+- `active_lock`
+- `stale_lock_evidence`
+- `concurrent_datadir_use`
+- `resource_pressure`
+
+The compatibility categories remain:
+
+- `incompatible_schema`
+- `store_corruption`
+- `storage_lock_contention`
+- `storage_backend_failure`
+- `resource_exhaustion`
+
+Unavailable recovery evidence must remain explicit through
+`FieldAvailability::Unavailable` and its reason. Consumers must not infer a
+healthy store, clear a lock, delete a recovery marker, compact, reindex,
+relocate, repair, or mutate a source datadir from missing evidence.
+
 ## Phase 72 evidence comparison fields
 
 Phase 72 keeps operator observability and support evidence as projections of the

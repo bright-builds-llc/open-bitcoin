@@ -1,13 +1,13 @@
 # Operator Runtime Guide
 
-This guide describes the current v1.6 operator workflow for Open Bitcoin on
+This guide describes the current v1.7 operator workflow for Open Bitcoin on
 macOS and Linux. It is intentionally conservative: the runtime is source-built,
 service integration is local-machine only, migration remains dry-run only, and
 release readiness stays evidence-based rather than timing-threshold based.
-v1.6 is explicit opt-in full-sync completion evidence; it does not make a
-production-node, production-funds, inbound-serving, relay, migration-apply,
-packaging, GUI, hosted-dashboard, public-network CI, or release-blocking live
-sync claim.
+v1.7 adds explicit opt-in soak, resource-bound, corruption, and lock recovery
+diagnosis evidence; it does not make a production-node, production-funds,
+inbound-serving, relay, migration-apply, packaging, GUI, hosted-dashboard,
+public-network CI, or release-blocking live sync claim.
 
 Use this guide for the practical workflow. Use
 [`docs/architecture/config-precedence.md`](../architecture/config-precedence.md),
@@ -1158,6 +1158,46 @@ Markdown `## Resource Bound Evidence` projection. The section records labels,
 numeric usage, limits, units, next actions, and projected support-bundle
 footprint only; it does not copy raw logs, raw stores, raw status snapshots, or
 unbounded peer tables.
+
+### Phase 77 corruption and lock recovery hardening
+
+Phase 77 adds diagnosis-only `recovery_evidence` to the shared status contract.
+JSON consumers should read the top-level
+`recovery_evidence: FieldAvailability<RecoveryEvidenceSnapshot>` field when
+diagnosing store locks, stale lock evidence, concurrent datadir use, corruption
+markers, schema mismatches, partial writes, unreadable namespaces, backend open
+failures, or resource pressure.
+
+The stable recovery action classes are `safe_retry`,
+`read_only_inspection`, `backup_then_rebuild`, and `stop_and_escalate`.
+The stable causes are `schema_mismatch`, `corruption_marker`, `partial_write`,
+`unreadable_namespace`, `backend_open_failure`, `active_lock`,
+`stale_lock_evidence`, `concurrent_datadir_use`, and `resource_pressure`.
+The compatibility categories are `incompatible_schema`, `store_corruption`,
+`storage_lock_contention`, `storage_backend_failure`, and
+`resource_exhaustion`.
+
+Use these repo-local commands to inspect one selected datadir without editing
+store internals:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir <path> status --format json
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir <path> status --format json
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir <path> support bundle --output-dir <path>/support --format json
+```
+
+Interpret action classes conservatively:
+
+- `safe_retry`: retry only after the named transient or resource condition has
+  been addressed.
+- `read_only_inspection`: inspect the selected datadir and status evidence
+  without deleting lock artifacts or changing stores.
+- `backup_then_rebuild`: preserve a backup before any rebuild, restore, or
+  replacement workflow outside Phase 77.
+- `stop_and_escalate`: stop normal operation and preserve evidence for review
+  before retrying.
+
+Phase 77 does not delete lock files, clear recovery markers, repair stores, compact stores, reindex stores, relocate datadirs, mutate source datadirs, scan OS process tables, or upload support bundles automatically.
 
 ## v1.4 operator evidence closeout
 

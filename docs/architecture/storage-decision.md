@@ -46,3 +46,26 @@ from low-disk backend messages, maps to
 `Free disk space for the selected datadir, then retry sync.` This is diagnosis
 only: the adapter does not automatically delete files, compact storage, repair
 chainstate, or change the selected datadir.
+
+## Phase 77 corruption and lock recovery hardening
+
+Phase 77 documents recovery evidence as diagnosis and next-action guidance, not
+automatic destructive repair. The shared status field is
+`recovery_evidence: FieldAvailability<RecoveryEvidenceSnapshot>`, with action
+classes `safe_retry`, `read_only_inspection`, `backup_then_rebuild`, and
+`stop_and_escalate`.
+
+The stable causes are `schema_mismatch`, `corruption_marker`, `partial_write`,
+`unreadable_namespace`, `backend_open_failure`, `active_lock`,
+`stale_lock_evidence`, `concurrent_datadir_use`, and `resource_pressure`. They
+map back to the compatibility categories `incompatible_schema`,
+`store_corruption`, `storage_lock_contention`, `storage_backend_failure`, and
+`resource_exhaustion`.
+
+Lock evidence is probe-only and may distinguish active contention, stale lock
+evidence, and concurrent datadir use. Schema mismatches, corruption markers,
+partial writes, unreadable namespaces, backend open failures, and resource
+pressure remain typed recovery evidence so operators can decide whether to
+retry safely, inspect read-only, back up then rebuild, or stop and escalate.
+
+Phase 77 does not delete lock files, clear recovery markers, repair stores, compact stores, reindex stores, relocate datadirs, mutate source datadirs, scan OS process tables, or upload support bundles automatically.

@@ -54,6 +54,7 @@ These are Open Bitcoin design choices, not Knots parity claims:
 | Functional-core boundaries that keep pure business logic free of direct I/O and runtime effects | [`scripts/check-pure-core-deps.sh`](./scripts/check-pure-core-deps.sh) |
 | Operator runtime contracts for storage, observability, status, CLI routing, and config layering | [`docs/architecture/`](./docs/architecture/) |
 | Typed resource-bound evidence for status, dashboard, soak preflight/resource_stop reports, and support bundles | [`docs/architecture/status-snapshot.md`](./docs/architecture/status-snapshot.md), [`docs/operator/runtime-guide.md`](./docs/operator/runtime-guide.md) |
+| Diagnosis-only recovery evidence for `safe_retry`, `read_only_inspection`, `backup_then_rebuild`, `stop_and_escalate`, `stale_lock_evidence`, and `concurrent_datadir_use` | [`docs/architecture/status-snapshot.md`](./docs/architecture/status-snapshot.md), [`docs/operator/runtime-guide.md`](./docs/operator/runtime-guide.md) |
 | Machine-readable parity and deviation ledger with human catalog pages | [`docs/parity/`](./docs/parity/) |
 | Deterministic parity, benchmark, and lines-of-code reports for review | [`scripts/verify.sh`](./scripts/verify.sh), [`docs/metrics/lines-of-code.md`](./docs/metrics/lines-of-code.md) |
 | Production panic-site guard for first-party Rust code | [`scripts/check-panic-sites.sh`](./scripts/check-panic-sites.sh) |
@@ -119,9 +120,18 @@ which writes local JSON and Markdown reports under
 `packages/target/live-mainnet-smoke-reports` without changing the default
 hermetic verification contract.
 
-For the active v1.7 soak work, `open-bitcoin soak` is documented as a scoped
-operator surface in
-[`docs/operator/runtime-guide.md`](./docs/operator/runtime-guide.md). A soak run can prove bounded opt-in full-sync soak behavior, durable resume evidence, or diagnosed blocker evidence; it does not prove inbound serving, relay, production-funds wallet safety, migration apply mode, signed packages, GUI readiness, hosted dashboards, or broad production-node readiness.
+For the active v1.7 soak and recovery work, `open-bitcoin soak` and
+`recovery_evidence` are documented as scoped operator surfaces in
+[`docs/operator/runtime-guide.md`](./docs/operator/runtime-guide.md). Phase 77
+corruption and lock recovery hardening is diagnosis and evidence only: it
+separates retry, read-only inspection, backup-then-rebuild, and escalation
+guidance for lock contention, stale lock evidence, concurrent datadir use,
+schema mismatch, corruption markers, partial writes, unreadable stores, backend
+open failures, and resource pressure. A soak run can prove bounded opt-in
+full-sync soak behavior, durable resume evidence, or diagnosed blocker
+evidence; it does not prove inbound serving, relay, production-funds wallet
+safety, migration apply mode, signed packages, GUI readiness, hosted
+dashboards, or broad production-node readiness.
 
 The current release boundary is rooted in
 [`docs/parity/threat-model-v1.6.md`](./docs/parity/threat-model-v1.6.md),

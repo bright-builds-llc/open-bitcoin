@@ -106,6 +106,29 @@ resource-bound labels, next action, and source status evidence so
 `resource_stop` can be diagnosed without copying raw logs, raw stores, raw
 status snapshots, live-smoke inputs, or unbounded peer tables. Support bundles render the same compact summary under `## Resource Bound Evidence`.
 
+## Phase 77 corruption and lock recovery hardening
+
+Phase 77 makes `recovery_evidence` the shared status, dashboard, support, and
+soak recovery contract. The top-level field is
+`recovery_evidence: FieldAvailability<RecoveryEvidenceSnapshot>`, and renderers
+should preserve action class, cause, compatibility category, evidence basis,
+affected namespace or path when present, unavailable reason, and next action
+without reclassifying strings locally.
+
+The stable action classes are `safe_retry`, `read_only_inspection`,
+`backup_then_rebuild`, and `stop_and_escalate`. The stable causes are
+`schema_mismatch`, `corruption_marker`, `partial_write`,
+`unreadable_namespace`, `backend_open_failure`, `active_lock`,
+`stale_lock_evidence`, `concurrent_datadir_use`, and `resource_pressure`. The
+compatibility categories are `incompatible_schema`, `store_corruption`,
+`storage_lock_contention`, `storage_backend_failure`, and
+`resource_exhaustion`.
+
+Observability surfaces may report lock and corruption evidence, but they must
+not imply automatic destructive repair, lock cleanup, source datadir mutation,
+process scanning, public-network default verification, or production-node
+readiness.
+
 ## Phase Boundaries
 
 Phase 13 defines serializable contracts only. It must not install a tracing subscriber, create a file appender, write metric samples, prune log files, or render dashboard graphs. Runtime writers and readers are Phase 16 responsibilities.
