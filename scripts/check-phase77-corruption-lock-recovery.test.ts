@@ -88,6 +88,7 @@ const FILE_TEXTS: Record<string, string> = {
     "stale_lock_evidence",
     "concurrent_datadir_use",
   ].join("\n"),
+  "packages/open-bitcoin-cli/src/operator/status.rs": "recovery_evidence\n",
   "packages/open-bitcoin-cli/src/operator/status/recovery_evidence.rs": [
     "collect_status_recovery_evidence",
     "probe_fjall_lock",
@@ -95,6 +96,7 @@ const FILE_TEXTS: Record<string, string> = {
   "packages/open-bitcoin-cli/src/operator/status/render.rs": "Recovery evidence:\n",
   "packages/open-bitcoin-cli/src/operator/status/service_status.rs":
     "probe-only status does not open Fjall stores\n",
+  "packages/open-bitcoin-cli/src/operator/status/sync_state.rs": "sync state unavailable\n",
   "packages/open-bitcoin-cli/src/operator/status/tests.rs": [
     "status_recovery_evidence_stale_lock_reports_read_only_inspection",
     "status_recovery_evidence_concurrent_datadir_uses_service_and_rpc_evidence",

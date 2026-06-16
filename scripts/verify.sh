@@ -134,6 +134,8 @@ bun test scripts/check-phase75-soak-runner.test.ts
 bun run scripts/check-phase75-soak-runner.ts
 bun test scripts/check-phase76-resource-bounds.test.ts
 bun run scripts/check-phase76-resource-bounds.ts
+bun test scripts/check-phase77-corruption-lock-recovery.test.ts
+bun run scripts/check-phase77-corruption-lock-recovery.ts
 bash scripts/check-pure-core-deps.sh
 bash scripts/check-file-lengths.sh
 bash scripts/check-panic-sites.sh
