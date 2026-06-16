@@ -568,6 +568,10 @@
     {
       "name": "phase76-disk-and-resource-bound-enforcement",
       "status": "done"
+    },
+    {
+      "name": "phase77-corruption-and-lock-recovery-hardening",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -1167,6 +1171,34 @@
         "suspected_unknowns": [
           "Future production resource policy, scheduled monitors, signed comparable artifacts, and stronger public-network gates need separate scoped phases and fresh evidence roots."
         ]
+      },
+      {
+        "id": "phase77-corruption-and-lock-recovery-hardening",
+        "title": "Phase 77 Corruption And Lock Recovery Hardening",
+        "status": "done",
+        "requirements": [
+          "REC-05",
+          "REC-06",
+          "REC-07",
+          "REC-08"
+        ],
+        "evidence": [
+          "packages/open-bitcoin-node/src/recovery.rs",
+          "packages/open-bitcoin-node/src/storage/lock_probe.rs",
+          "packages/open-bitcoin-cli/src/operator/status/recovery_evidence.rs",
+          "docs/operator/runtime-guide.md",
+          "docs/architecture/status-snapshot.md",
+          "docs/architecture/storage-decision.md",
+          "scripts/check-phase77-corruption-lock-recovery.ts",
+          ".planning/phases/77-corruption-and-lock-recovery-hardening/"
+        ],
+        "rationale": "Phase 77 makes corruption and lock recovery evidence auditable through typed recovery action classes, causes, compatibility categories, probe-only lock evidence, status/support/dashboard/soak projections, operator docs, and a deterministic checker root.",
+        "known_gaps": [
+          "Phase 77 proves diagnosis and evidence only; automatic destructive repair, lock cleanup, source datadir mutation, process scanning as required evidence, public-network default checks, and production-node readiness remain outside this scope."
+        ],
+        "suspected_unknowns": [
+          "Future destructive repair workflows, lock cleanup policy, source datadir mutation, portable process attribution, public-network gates, and production-node readiness need separate scoped phases and fresh evidence roots."
+        ]
       }
     ]
   },
@@ -1351,6 +1383,26 @@
         "docs/parity/catalog/chainstate.md",
         "docs/parity/catalog/operator-runtime-release-hardening.md",
         "README.md"
+      ]
+    },
+    "phase77_corruption_and_lock_recovery_hardening": {
+      "path": "checklist.md",
+      "status": "done",
+      "requirements": [
+        "REC-05",
+        "REC-06",
+        "REC-07",
+        "REC-08"
+      ],
+      "evidence": [
+        "packages/open-bitcoin-node/src/recovery.rs",
+        "packages/open-bitcoin-node/src/storage/lock_probe.rs",
+        "packages/open-bitcoin-cli/src/operator/status/recovery_evidence.rs",
+        "docs/operator/runtime-guide.md",
+        "docs/architecture/status-snapshot.md",
+        "docs/architecture/storage-decision.md",
+        "scripts/check-phase77-corruption-lock-recovery.ts",
+        ".planning/phases/77-corruption-and-lock-recovery-hardening/"
       ]
     },
     "security_analysis_audit": {

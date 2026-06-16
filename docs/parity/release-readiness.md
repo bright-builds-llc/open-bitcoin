@@ -138,6 +138,17 @@ Primary current-cycle evidence:
 | Signed packaging and Windows service support | No shipped v1.6 claim. | Source-built install docs and deferred-scope rows. | v1.6 does not claim signed packaging, OS distribution, or Windows service support. | Future packaging milestones. | REL-02 |
 | GUI parity and hosted dashboards | No shipped v1.6 claim. | Headless and terminal-first docs. | v1.6 does not claim GUI parity or hosted dashboards. | Future product-surface milestones. | REL-02 |
 
+## v1.7 Phase 77 Recovery-Hardening Scoped Claim
+
+Phase 77 is a scoped recovery-hardening evidence root, not a full v1.7 release
+readiness claim. It documents REC-05, REC-06, REC-07, and REC-08 around typed
+lock and corruption diagnosis from `recovery_evidence`, probe-only lock
+evidence, status/support/dashboard/soak projections, and operator guidance.
+
+| Surface | Phase 77 Scoped Claim | Accepted Evidence | Explicit Non-Claim | Required Next Milestone Or Deferred Gate | Requirement IDs |
+| --- | --- | --- | --- | --- | --- |
+| Corruption and lock recovery hardening | Operators can diagnose lock contention, stale-lock evidence, concurrent datadir use, corruption markers, schema mismatches, partial writes, unreadable stores, and backend-open failures with typed recovery guidance. | `packages/open-bitcoin-node/src/recovery.rs`, `packages/open-bitcoin-node/src/storage/lock_probe.rs`, `packages/open-bitcoin-cli/src/operator/status/recovery_evidence.rs`, `docs/operator/runtime-guide.md`, `docs/architecture/status-snapshot.md`, `docs/architecture/storage-decision.md`, `docs/parity/index.json`, `docs/parity/checklist.md`, and `scripts/check-phase77-corruption-lock-recovery.ts`. | No automatic destructive repair, lock cleanup, source datadir mutation, process scanning as required evidence, public-network default checks, or production-node readiness. | Future destructive repair, lock cleanup, source mutation, portable process attribution, public-network recovery UAT, and production-node readiness gates. | REC-05, REC-06, REC-07, REC-08 |
+
 Final v1.6 traceability covers all 26 milestone requirement IDs:
 SYNC-01, SYNC-02, SYNC-03, SYNC-04, TIP-01, TIP-02, TIP-03, REC-01,
 REC-02, REC-03, REC-04, RES-01, RES-02, RES-03, RES-04, OBS-01, OBS-02,

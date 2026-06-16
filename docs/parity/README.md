@@ -59,6 +59,16 @@ support bundle evidence, soak `resource_stop` reports, and deterministic
 peer, in-flight, log, metric, and support-bundle bounds stay auditable without
 public-network or raw-artifact verification.
 
+Phase 77 corruption and lock recovery hardening is rooted in the
+`phase77-corruption-and-lock-recovery-hardening` surface. The root links
+`packages/open-bitcoin-node/src/recovery.rs`,
+`packages/open-bitcoin-node/src/storage/lock_probe.rs`,
+`packages/open-bitcoin-cli/src/operator/status/recovery_evidence.rs`, the
+runtime guide, status and storage architecture contracts,
+`scripts/check-phase77-corruption-lock-recovery.ts`, and the Phase 77 planning
+directory so REC-05, REC-06, REC-07, and REC-08 stay auditable as diagnosis and
+evidence only.
+
 Deferred and suspected follow-up work remains visible in
 [`deviations-and-unknowns.md`](deviations-and-unknowns.md).
 
