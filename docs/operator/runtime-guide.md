@@ -1426,13 +1426,14 @@ Redaction boundaries:
 - Credential evidence is metadata-only. Cookie paths and whether a cookie file
   was present may be reported, but cookie values are not read into the bundle.
 - Live-smoke input is not embedded as a raw report. For schema v2 live-smoke
-  reports, the support bundle copies only `result.status`,
-  `result.progressDetected`, `result.maybeNoProgressCause`,
-  `result.nextAction`, `result.firstHeaderProgress`,
-  `result.firstBlockProgress`, `result.restartResumeEvidence`,
-  `result.restartResumeEvidence.recoveryDiagnosis.category`,
-  `final_status.headerHeight`, `final_status.downloadedBlockHeight`, and
-  `final_status.connectedBlockHeight` as compact summaries; older or
+  reports, the support bundle copies only the allowlisted compact summary
+  fields from `result` and `final_status`: progress status, no-progress cause,
+  next action, first header/block progress, restart/resume evidence, recovery
+  diagnosis category, header/downloaded/connected heights, Phase 77 recovery
+  evidence (`recoveryEvidence`, `recoveryActionClass`, `recoveryCause`,
+  `recoveryNextAction`, and `maybeRecoveryEvidenceUnavailableReason`), and the
+  compact active-chain, best-tip, stay-current, no-progress, reorg, reconcile,
+  resource-pressure, and peer-contribution final-status evidence. Older or
   hand-authored top-level report fields remain a compatibility fallback.
 - Raw live-smoke input, daemon stdout/stderr tails, raw status snapshots, raw
   options, and endpoint tables are not embedded in the support bundle.
