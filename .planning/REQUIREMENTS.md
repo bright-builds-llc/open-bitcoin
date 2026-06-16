@@ -23,10 +23,10 @@ Requirements for v1.7 Full-Sync Soak and Recovery Hardening. Each requirement ma
 
 ### Corruption And Lock Recovery
 
-- [ ] **REC-05**: Operator can detect lock contention, stale lock evidence, and concurrent datadir use with no hidden mutation of the source datadir.
-- [ ] **REC-06**: Operator can detect corruption markers, schema mismatches, partial writes, and unreadable runtime stores with typed recovery categories.
-- [ ] **REC-07**: Operator can generate recovery evidence that separates safe retry, read-only inspection, backup-then-rebuild, and stop-and-escalate guidance.
-- [ ] **REC-08**: Contributor can run deterministic recovery tests for lock contention, stale lock, corruption marker, schema mismatch, partial write, and storage-open failure paths.
+- [x] **REC-05**: Operator can detect lock contention, stale lock evidence, and concurrent datadir use with no hidden mutation of the source datadir.
+- [x] **REC-06**: Operator can detect corruption markers, schema mismatches, partial writes, and unreadable runtime stores with typed recovery categories.
+- [x] **REC-07**: Operator can generate recovery evidence that separates safe retry, read-only inspection, backup-then-rebuild, and stop-and-escalate guidance.
+- [x] **REC-08**: Contributor can run deterministic recovery tests for lock contention, stale lock, corruption marker, schema mismatch, partial write, and storage-open failure paths.
 
 ### Progress Guarantees And Stall Diagnosis
 
@@ -105,10 +105,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RES-06 | Phase 76 | Pending |
 | RES-07 | Phase 76 | Pending |
 | RES-08 | Phase 76 | Pending |
-| REC-05 | Phase 77 | Pending |
-| REC-06 | Phase 77 | Pending |
-| REC-07 | Phase 77 | Pending |
-| REC-08 | Phase 77 | Pending |
+| REC-05 | Phase 77 | Complete |
+| REC-06 | Phase 77 | Complete |
+| REC-07 | Phase 77 | Complete |
+| REC-08 | Phase 77 | Complete |
 | PROG-01 | Phase 78 | Pending |
 | PROG-02 | Phase 78 | Pending |
 | PROG-03 | Phase 78 | Pending |

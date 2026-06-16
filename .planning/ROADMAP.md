@@ -35,7 +35,7 @@ delete those phase directories.
 
 - [x] **Phase 75: Multi-Day Soak Runner and Evidence Ledger** - Give operators a bounded, resumable, explicit opt-in soak workflow with durable run identity and deterministic synthetic coverage.
 - [x] **Phase 76: Disk and Resource Bound Enforcement** - Make long-run disk, cache, queue, log, metric, and support-evidence bounds visible, enforceable, and testable.
-- [ ] **Phase 77: Corruption and Lock Recovery Hardening** - Diagnose lock contention, stale locks, corruption markers, schema mismatches, partial writes, and storage-open failures without hidden mutation.
+- [x] **Phase 77: Corruption and Lock Recovery Hardening** - Diagnose lock contention, stale locks, corruption markers, schema mismatches, partial writes, and storage-open failures without hidden mutation. (completed 2026-06-16)
 - [ ] **Phase 78: Progress Guarantees and Stall Diagnosis** - Ensure long-run progress is credited only for validated durable work and stalled paths produce actionable typed diagnosis.
 - [ ] **Phase 79: Diagnostics and Support Bundle Forensics** - Produce redacted "what happened" support evidence that reconstructs timeline, resource pressure, peer outcomes, recovery events, and final verdict.
 - [ ] **Phase 80: Opt-In Soak UAT and Release Boundaries** - Keep default verification deterministic while documenting opt-in multi-day soak commands and guarding the scoped v1.7 claim.
@@ -89,7 +89,7 @@ Plans:
 **Goal**: Operators can diagnose store locks and corruption-style failures safely, with guidance that separates retryable, inspectable, rebuild-required, and escalation cases.
 **Depends on**: Phase 76
 **Requirements**: REC-05, REC-06, REC-07, REC-08
-**Plans**: 7 plans
+**Plans**: 7/7 plans complete
 
 Plans:
 - [x] 77-01-PLAN.md — Shared recovery evidence contracts and pure classifier.
@@ -153,7 +153,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 75. Multi-Day Soak Runner and Evidence Ledger | 6/6 | Complete    | 2026-06-15 |
 | 76. Disk and Resource Bound Enforcement | 6/6 | Complete | 2026-06-15 |
-| 77. Corruption and Lock Recovery Hardening | 7/7 | Complete   | 2026-06-16 |
+| 77. Corruption and Lock Recovery Hardening | 7/7 | Complete    | 2026-06-16 |
 | 78. Progress Guarantees and Stall Diagnosis | 0/0 | Pending | - |
 | 79. Diagnostics and Support Bundle Forensics | 0/0 | Pending | - |
 | 80. Opt-In Soak UAT and Release Boundaries | 0/0 | Pending | - |

@@ -1,11 +1,11 @@
 ---
 phase: 77-corruption-and-lock-recovery-hardening
-verified: 2026-06-16T03:06:48Z
+verified: 2026-06-16T03:57:06Z
 status: passed
 generated_by: gsd-executor
 lifecycle_mode: yolo
 phase_lifecycle_id: 77-2026-06-15T18-33-03
-generated_at: 2026-06-16T03:06:48Z
+generated_at: 2026-06-16T03:57:06Z
 lifecycle_validated: true
 ---
 
@@ -41,6 +41,10 @@ execution.
   redact RPC credential arguments; generic corrupt stored records classify as
   `corrupt_record` while malformed recovery marker records classify as
   `corruption_marker`.
+- Verification repair: recovery classifier tests were split into
+  `packages/open-bitcoin-node/src/recovery/tests.rs` so
+  `packages/open-bitcoin-node/src/recovery.rs` stays under the production Rust
+  line limit while preserving the same test coverage.
 
 ## Focused Commands Passed
 
@@ -62,15 +66,15 @@ execution.
 
 ## Full Verification Passed
 
-- `bash scripts/verify.sh` passed on 2026-06-16 in 46m 46.019s. The run
+- `bash scripts/verify.sh` passed on 2026-06-16 in 42m 32.649s. The run
   covered hook installation, LOC freshness, parity breadcrumbs, Phase 61
   through Phase 77 checkers, panic-site and file-length checks, Rust workspace
   lint/build/test coverage, benchmark smoke reports, coverage test pass, and
   the Bazel smoke build/run.
 - `node /Users/peterryszkiewicz/.codex/get-shit-done/bin/gsd-tools.cjs verify lifecycle 77 --require-plans --require-verification --raw`
   is run after this report is written and recorded in the plan summary.
-- Verification metadata was refreshed after review fixes and clean re-review;
-  final full repo verification is rerun by the orchestrator after this report.
+- Verification metadata was refreshed after review fixes, clean re-review, and
+  the recovery classifier line-limit split.
 
 ## Residual Risks
 

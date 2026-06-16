@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Full-Sync Soak and Recovery Hardening
-status: executing
-stopped_at: Phase 77 context gathered
-last_updated: "2026-06-15T21:08:00.907Z"
-last_activity: 2026-06-15 -- Phase 77 execution started
+status: ready_to_plan
+stopped_at: Phase 78 ready to plan
+last_updated: "2026-06-16T03:57:46.679Z"
+last_activity: 2026-06-16 -- Phase 77 complete, transitioned to Phase 78
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 19
-  completed_plans: 12
-  percent: 63
+  completed_plans: 19
+  percent: 100
 ---
 
 # Project State
@@ -21,15 +21,15 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-14)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 77 — corruption-and-lock-recovery-hardening
+**Current focus:** Phase 78 — progress-guarantees-and-stall-diagnosis
 
 ## Current Position
 
 Milestone: v1.7 Full-Sync Soak and Recovery Hardening
-Phase: 77 (corruption-and-lock-recovery-hardening) — EXECUTING
-Plan: 1 of 7
-Status: Executing Phase 77
-Last activity: 2026-06-15 -- Phase 77 execution started
+Phase: 78 (progress-guarantees-and-stall-diagnosis) — READY TO PLAN
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-06-16 -- Phase 77 complete, transitioned to Phase 78
 
 Progress: [##########] 100%
 
@@ -47,7 +47,7 @@ Progress: [##########] 100%
 |-------|------:|--------|
 | 75. Multi-Day Soak Runner and Evidence Ledger | 6/6 | Complete |
 | 76. Disk and Resource Bound Enforcement | 6/6 | Complete |
-| 77. Corruption and Lock Recovery Hardening | 0/0 | Pending |
+| 77. Corruption and Lock Recovery Hardening | 7/7 | Complete |
 | 78. Progress Guarantees and Stall Diagnosis | 0/0 | Pending |
 | 79. Diagnostics and Support Bundle Forensics | 0/0 | Pending |
 | 80. Opt-In Soak UAT and Release Boundaries | 0/0 | Pending |
@@ -76,7 +76,7 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ### Pending Todos
 
-- Plan Phase 77 corruption and lock recovery hardening.
+- Plan Phase 78 progress guarantees and stall diagnosis.
 - Keep raw phase histories in `.planning/phases/` for parity and UAT traceability.
 - Keep public-network full-sync and multi-day soak UAT opt-in and outside default deterministic verification unless a future phase deliberately changes that contract.
 
@@ -88,6 +88,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-15T19:08:31.894Z
-Stopped at: Phase 77 context gathered
-Resume file: .planning/phases/77-corruption-and-lock-recovery-hardening/77-CONTEXT.md
+Last session: 2026-06-16T03:57:46.679Z
+Stopped at: Phase 78 ready to plan
+Resume file: None
