@@ -500,9 +500,9 @@ Security enforcement is enabled by default because `.planning/config.json` does 
 
 All claims in this research were verified against repo files, local command probes, or cited planning/docs artifacts. No `[ASSUMED]` claims are present. [VERIFIED: research session sources]
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **None blocking planning.** [VERIFIED: .planning/phases/78-progress-guarantees-and-stall-diagnosis/78-CONTEXT.md]
+1. **RESOLVED: None blocking planning.** [VERIFIED: .planning/phases/78-progress-guarantees-and-stall-diagnosis/78-CONTEXT.md]
    - What we know: The phase context explicitly allows compact typed structs/enums and adjacent evidence fields. [CITED: .planning/phases/78-progress-guarantees-and-stall-diagnosis/78-CONTEXT.md]
    - What's unclear: Exact final field names should be chosen by the planner for minimal churn and checker clarity. [VERIFIED: codebase inspection]
    - Recommendation: Plan field names around `progress_credit`, `stall_diagnosis`, `stalled_subsystem`, `expected_progress_window`, `no_progress_threshold`, `last_useful_work`, `last_peer_contribution`, `evidence_basis`, and `confidence`, then let implementation adjust only if compile-time conflicts appear. [VERIFIED: codebase inspection; CITED: .planning/phases/78-progress-guarantees-and-stall-diagnosis/78-CONTEXT.md]
