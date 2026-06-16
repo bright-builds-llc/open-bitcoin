@@ -25,6 +25,15 @@ if rg -n "run-live-mainnet-smoke|--manual-peer|--restart-after-progress" scripts
 	exit 1
 fi
 
+assert_report_redacts_command_credentials() {
+	local report_json="$1"
+	local report_markdown="$2"
+	if rg -n "rpcpassword=|rpcauth=|Authorization|Bearer|Basic|__cookie__" "$report_json" "$report_markdown" >/dev/null; then
+		echo "live-smoke reports must redact command credentials" >&2
+		exit 1
+	fi
+}
+
 network_fixture="$tmp_dir/network-preflight.json"
 cat >"$network_fixture" <<'JSON'
 [
@@ -1433,6 +1442,7 @@ bun run scripts/run-live-mainnet-smoke.ts \
 report_json="$output_dir/open-bitcoin-live-mainnet-smoke.json"
 report_markdown="$output_dir/open-bitcoin-live-mainnet-smoke.md"
 generated_config="$output_dir/open-bitcoin-live-mainnet-smoke.jsonc"
+assert_report_redacts_command_credentials "$report_json" "$report_markdown"
 grep -q '"status": "passed"' "$report_json"
 grep -q '"progressDetected": true' "$report_json"
 grep -q '"restartResumeEvidence": null' "$report_json"
@@ -1777,6 +1787,7 @@ fi
 grep -q "requires an existing datadir" "$tmp_dir/preflight.stderr"
 grep -q '"status": "preflight_failed"' "$report_json"
 grep -q "Unavailable: no sync status snapshots captured" "$report_markdown"
+assert_report_redacts_command_credentials "$report_json" "$report_markdown"
 
 set +e
 OPEN_BITCOIN_LIVE_SMOKE_DAEMON_BIN="$tmp_dir/mock-daemon.sh" \

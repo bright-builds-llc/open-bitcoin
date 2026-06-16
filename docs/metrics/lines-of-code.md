@@ -7,10 +7,10 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 346 |
-| Total lines | 128,763 |
-| Code/content lines | 114,134 |
+| Total lines | 128,794 |
+| Code/content lines | 114,161 |
 | Comment-only lines | 3,883 |
-| Blank lines | 10,746 |
+| Blank lines | 10,750 |
 
 ## Per-Crate Modules
 
@@ -36,9 +36,9 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust production | 203 | 57,225 | 49,820 | 1,787 | 5,618 |
 | Rust tests | 56 | 44,063 | 38,876 | 1,952 | 3,235 |
-| TypeScript/Bun scripts | 28 | 11,748 | 10,538 | 93 | 1,117 |
+| TypeScript/Bun scripts | 28 | 11,768 | 10,555 | 93 | 1,120 |
 | Fixture/data | 6 | 8,233 | 8,228 | 5 | 0 |
-| Shell scripts | 13 | 3,472 | 3,089 | 40 | 343 |
+| Shell scripts | 13 | 3,483 | 3,099 | 40 | 344 |
 | TOML/config | 16 | 3,446 | 3,082 | 0 | 364 |
 | Bazel/Starlark | 18 | 409 | 374 | 0 | 35 |
 | YAML | 2 | 104 | 83 | 4 | 17 |
@@ -77,7 +77,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-v1.5-release-boundaries.ts | 296 |
 | scripts/check-v1.6-release-boundaries.ts | 330 |
 | scripts/generate-loc-report.ts | 571 |
-| scripts/run-live-mainnet-smoke.ts | 3,572 |
+| scripts/run-live-mainnet-smoke.ts | 3,592 |
 
 ## Largest Included Files
 
@@ -85,11 +85,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- |
 | 1 | MODULE.bazel.lock | Fixture/data | 8,217 |
 | 2 | packages/open-bitcoin-node/src/sync/tests.rs | Rust tests | 6,541 |
-| 3 | scripts/run-live-mainnet-smoke.ts | TypeScript/Bun scripts | 3,572 |
+| 3 | scripts/run-live-mainnet-smoke.ts | TypeScript/Bun scripts | 3,592 |
 | 4 | packages/open-bitcoin-consensus/src/script/tests.rs | Rust tests | 3,258 |
 | 5 | packages/Cargo.lock | TOML/config | 3,200 |
 | 6 | packages/open-bitcoin-cli/tests/operator_binary.rs | Rust tests | 2,665 |
-| 7 | scripts/test-run-live-mainnet-smoke.sh | Shell scripts | 1,921 |
+| 7 | scripts/test-run-live-mainnet-smoke.sh | Shell scripts | 1,932 |
 | 8 | packages/open-bitcoin-cli/src/operator/status/tests.rs | Rust tests | 1,803 |
 | 9 | packages/open-bitcoin-cli/src/operator/service/tests.rs | Rust tests | 1,652 |
 | 10 | packages/open-bitcoin-consensus/src/block/tests.rs | Rust tests | 1,594 |
@@ -109,7 +109,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 2d1287f1dde6dfcf0b821f9bd0a19026d48d09fc6953a1e3e1875e895a207c70 |
+| Input fingerprint | b5010cd99d7956a6e1091d3575f1064858e9b5e98b8c8054f37492f66269adf1 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

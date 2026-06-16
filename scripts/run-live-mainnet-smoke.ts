@@ -1318,6 +1318,26 @@ function readSyncStatus(
   return syncStatusSnapshotFromMetadata(runtimeMetadataFromStatusResponse(decoded));
 }
 
+const SENSITIVE_COMMAND_ARG_PATTERNS = [
+  /^-rpcpassword=/i,
+  /^-rpcauth=/i,
+  /^-rpc(cookiefile)?=/i,
+] as const;
+
+function reportCommand(commandSpec: CommandSpec): string[] {
+  return [commandSpec.command, ...commandSpec.args].map(redactCommandArg);
+}
+
+function redactCommandArg(arg: string): string {
+  if (SENSITIVE_COMMAND_ARG_PATTERNS.some((pattern) => pattern.test(arg))) {
+    return "[redacted]";
+  }
+  if (/authorization:|authorization=|\bbearer\b|\bbasic\b/i.test(arg)) {
+    return "[redacted]";
+  }
+  return arg;
+}
+
 function runtimeMetadataFromStatusResponse(
   decoded: SyncControlStatusJson | RuntimeMetadataJson,
 ): RuntimeMetadataJson {
@@ -3266,9 +3286,9 @@ function preflightFailureReport(
   return {
     baseline: BASELINE,
     commands: {
-      daemon: [daemonSpec.command, ...daemonSpec.args],
+      daemon: reportCommand(daemonSpec),
       finalStatus: [],
-      status: [statusSpec.command, ...statusSpec.args],
+      status: reportCommand(statusSpec),
     },
     daemon_sessions: [],
     daemon: {
@@ -3388,8 +3408,8 @@ async function main(): Promise<void> {
     ? [firstSession]
     : [firstSession, maybeRestartSession];
   const daemonSessions = sessions.map((session) => ({
-    daemon: [session.daemonSpec.command, ...session.daemonSpec.args],
-    status: [session.statusSpec.command, ...session.statusSpec.args],
+    daemon: reportCommand(session.daemonSpec),
+    status: reportCommand(session.statusSpec),
   }));
   const snapshots = sessions.flatMap((session) => session.snapshots);
   let resultStatus = firstSession.resultStatus;
@@ -3499,9 +3519,9 @@ async function main(): Promise<void> {
   const report: SmokeReport = {
     baseline: BASELINE,
     commands: {
-      daemon: daemonSessions[0]?.daemon ?? [daemonSpec.command, ...daemonSpec.args],
-      finalStatus: [postRunStatusSpec.command, ...postRunStatusSpec.args],
-      status: daemonSessions[0]?.status ?? [statusSpec.command, ...statusSpec.args],
+      daemon: daemonSessions[0]?.daemon ?? reportCommand(daemonSpec),
+      finalStatus: reportCommand(postRunStatusSpec),
+      status: daemonSessions[0]?.status ?? reportCommand(statusSpec),
     },
     daemon_sessions: daemonSessions,
     daemon: {
