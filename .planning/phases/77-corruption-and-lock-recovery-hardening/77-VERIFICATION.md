@@ -1,11 +1,11 @@
 ---
 phase: 77-corruption-and-lock-recovery-hardening
-verified: 2026-06-16T02:13:06Z
+verified: 2026-06-16T03:06:48Z
 status: passed
 generated_by: gsd-executor
 lifecycle_mode: yolo
 phase_lifecycle_id: 77-2026-06-15T18-33-03
-generated_at: 2026-06-16T02:13:06Z
+generated_at: 2026-06-16T03:06:48Z
 lifecycle_validated: true
 ---
 
@@ -36,6 +36,11 @@ execution.
 - Deterministic checker: `scripts/check-phase77-corruption-lock-recovery.ts`
   and its fixture-root test are wired into `scripts/verify.sh` immediately
   after the Phase 76 checker.
+- Code review fixes: live-smoke support summaries redact Authorization,
+  Bearer, and Basic credential material; live-smoke report command arrays
+  redact RPC credential arguments; generic corrupt stored records classify as
+  `corrupt_record` while malformed recovery marker records classify as
+  `corruption_marker`.
 
 ## Focused Commands Passed
 
@@ -48,6 +53,12 @@ execution.
 - Soak recovery evidence: `cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-cli --lib soak_recovery_evidence_ --all-features`
 - Checker tests: `bun test scripts/check-phase77-corruption-lock-recovery.test.ts`
 - Checker: `bun run scripts/check-phase77-corruption-lock-recovery.ts`
+- Review fix support summary redaction:
+  `cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-cli --lib live_smoke_recovery_evidence_redacts_authorization_from_allowlisted_fields --all-features`
+- Review fix corruption split:
+  `cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node --lib recovery_classifier_corruption_sources_split_record_and_marker_causes --all-features`
+- Review fix live-smoke report command redaction:
+  `bash scripts/test-run-live-mainnet-smoke.sh`
 
 ## Full Verification Passed
 
@@ -58,8 +69,8 @@ execution.
   the Bazel smoke build/run.
 - `node /Users/peterryszkiewicz/.codex/get-shit-done/bin/gsd-tools.cjs verify lifecycle 77 --require-plans --require-verification --raw`
   is run after this report is written and recorded in the plan summary.
-- Verification metadata was refreshed after summary creation and delimiter
-  cleanup; no production code changed after the recorded full verifier pass.
+- Verification metadata was refreshed after review fixes and clean re-review;
+  final full repo verification is rerun by the orchestrator after this report.
 
 ## Residual Risks
 
