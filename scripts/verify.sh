@@ -138,6 +138,8 @@ bun test scripts/check-phase77-corruption-lock-recovery.test.ts
 bun run scripts/check-phase77-corruption-lock-recovery.ts
 bun test scripts/check-phase78-progress-guarantees.test.ts
 bun run scripts/check-phase78-progress-guarantees.ts
+bun test scripts/check-phase79-diagnostics-support-bundle.test.ts
+bun run scripts/check-phase79-diagnostics-support-bundle.ts
 bash scripts/check-pure-core-deps.sh
 bash scripts/check-file-lengths.sh
 bash scripts/check-panic-sites.sh

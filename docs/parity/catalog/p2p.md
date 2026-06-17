@@ -321,8 +321,7 @@ consistency.
 That evidence is local forensics only. It does not add inbound serving, address
 relay, block serving, transaction relay, compact block relay, production-funds
 wallet use, migration apply mode, packaging, GUI, hosted dashboards,
-public-network default checks, multi-day default gates, automatic
-support-bundle upload, or production-node readiness.
+public-network default checks, multi-day default gates, automatic support-bundle upload, or production-node readiness.
 
 ## First-party implementation
 

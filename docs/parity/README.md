@@ -82,8 +82,7 @@ Phase 79 diagnostics and support-bundle forensics are rooted in the
 `phase79-diagnostics-support-bundle-forensics` surface for DIAG-01, DIAG-02,
 DIAG-03, and DIAG-04. The root links `support_forensics`, forensic timeline,
 checkpoint chain, failure narrative, likely cause, evidence basis, next action,
-confidence, redaction, size bounds, timeline ordering, and cross-surface
-consistency evidence across the runtime guide, architecture contracts, parity
+confidence, redaction, size bounds, timeline ordering, and cross-surface consistency evidence across the runtime guide, architecture contracts, parity
 catalogs, and Phase 79 summaries. It explicitly excludes inbound serving,
 relay, production-funds wallet use, migration apply mode, packaging, GUI,
 hosted dashboards, public-network default checks, multi-day default gates,
