@@ -137,7 +137,7 @@ Plans:
 
 Plans:
 - [x] 79-01-PLAN.md — Support-forensics sidecar domain projection and support bundle JSON collection.
-- [ ] 79-02-PLAN.md — Markdown rendering and deterministic Rust fixture coverage for forensic narratives.
+- [x] 79-02-PLAN.md — Markdown rendering and deterministic Rust fixture coverage for forensic narratives.
 - [ ] 79-03-PLAN.md — Operator docs, architecture docs, and parity roots for support-bundle forensics.
 - [ ] 79-04-PLAN.md — Deterministic checker, verifier wiring, LOC freshness, and verification evidence.
 
@@ -170,7 +170,7 @@ Plans:
 | 76. Disk and Resource Bound Enforcement | 6/6 | Complete | 2026-06-15 |
 | 77. Corruption and Lock Recovery Hardening | 7/7 | Complete    | 2026-06-16 |
 | 78. Progress Guarantees and Stall Diagnosis | 7/7 | Complete    | 2026-06-17 |
-| 79. Diagnostics and Support Bundle Forensics | 1/4 | In Progress|  |
+| 79. Diagnostics and Support Bundle Forensics | 2/4 | In Progress|  |
 | 80. Opt-In Soak UAT and Release Boundaries | 0/0 | Pending | - |
 
 ## Completed Milestone Summaries
