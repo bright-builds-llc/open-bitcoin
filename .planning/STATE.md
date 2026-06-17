@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Full-Sync Soak and Recovery Hardening
 status: planning
-stopped_at: Completed Phase 78 progress guarantee closeout
-last_updated: "2026-06-17T11:23:32Z"
+stopped_at: Phase 79 context gathered
+last_updated: "2026-06-17T14:24:15.166Z"
 last_activity: 2026-06-17
 progress:
   total_phases: 6
@@ -88,6 +88,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-17T11:23:32Z
-Stopped at: Completed Phase 78 progress guarantee closeout
-Resume file: .planning/phases/78-progress-guarantees-and-stall-diagnosis/78-06-SUMMARY.md
+Last session: 2026-06-17T14:24:15.163Z
+Stopped at: Phase 79 context gathered
+Resume file: .planning/phases/79-diagnostics-and-support-bundle-forensics/79-CONTEXT.md
