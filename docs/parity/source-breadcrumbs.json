@@ -655,8 +655,11 @@
         "packages/open-bitcoin-node/src/sync/block_response.rs",
         "packages/open-bitcoin-node/src/sync/block_reconcile.rs",
         "packages/open-bitcoin-node/src/sync/progress.rs",
+        "packages/open-bitcoin-node/src/sync/progress/guarantee.rs",
+        "packages/open-bitcoin-node/src/sync/progress/tests.rs",
         "packages/open-bitcoin-node/src/sync/reconcile_status.rs",
         "packages/open-bitcoin-node/src/sync/runtime_state.rs",
+        "packages/open-bitcoin-node/src/sync/runtime_state/recovery.rs",
         "packages/open-bitcoin-node/src/sync/session.rs",
         "packages/open-bitcoin-node/src/sync/wallet_rescan.rs"
       ],

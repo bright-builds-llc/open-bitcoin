@@ -11,16 +11,20 @@ use open_bitcoin_network::{LocalPeerConfig, ServiceFlags};
 use crate::{
     logging::{StructuredLogError, StructuredLogLevel},
     status::{
-        HealthSignal, HealthSignalLevel, NoProgressDiagnosis, StayCurrentStatus,
-        SyncProgressSignal, SyncRecoveryCategory,
+        BestKnownTipStatus, FieldAvailability, HealthSignal, HealthSignalLevel,
+        NoProgressDiagnosis, NoProgressThresholdEvidence, PeerContributionEvidence,
+        ProgressCreditEvidence, ProgressWindowEvidence, StallDiagnosisEvidence, StayCurrentStatus,
+        SyncProgress, SyncProgressSignal, SyncRecoveryCategory,
     },
 };
 
 use super::{
     PeerCapabilitySummary, PeerContribution, PeerFailureReason, PeerSyncOutcome, PeerSyncState,
     ResolvedSyncPeerAddress, SyncNetwork, SyncRunSummary, SyncRuntimeConfig, SyncRuntimeError,
-    types::SyncReconcileProgress,
+    SyncStopReason, types::SyncReconcileProgress,
 };
+
+mod guarantee;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct PeerProgress {
@@ -55,6 +59,24 @@ pub(super) struct NoProgressInput<'a> {
     pub(super) blocks_in_flight: u64,
     pub(super) maybe_reconcile_progress: Option<&'a SyncReconcileProgress>,
     pub(super) peer_outcomes: &'a [PeerSyncOutcome],
+    pub(super) maybe_stop_reason: Option<SyncStopReason>,
+}
+
+pub(super) struct ProgressGuaranteeInput<'a> {
+    pub(super) sync_progress: &'a SyncProgress,
+    pub(super) stay_current: StayCurrentStatus,
+    pub(super) best_known_tip: Option<&'a BestKnownTipStatus>,
+    pub(super) progress_signal: Option<SyncProgressSignal>,
+    pub(super) recovery_category: Option<SyncRecoveryCategory>,
+    pub(super) blocks_in_flight: u64,
+    pub(super) maybe_reconcile_progress: Option<&'a SyncReconcileProgress>,
+    pub(super) peer_outcomes: &'a [PeerSyncOutcome],
+    pub(super) maybe_stop_reason: Option<SyncStopReason>,
+    pub(super) retry_backoff_seconds: u64,
+    pub(super) max_sync_rounds: u64,
+    pub(super) tip_freshness_threshold_seconds: u64,
+    pub(super) maybe_previous_credit: Option<&'a ProgressCreditEvidence>,
+    pub(super) evaluated_at_unix_seconds: u64,
 }
 
 impl PeerProgress {
@@ -197,6 +219,13 @@ pub(super) fn classify_no_progress(input: &NoProgressInput<'_>) -> NoProgressDia
         return NoProgressDiagnosis::BranchCompetitionAwaitingBodies;
     }
 
+    if matches!(
+        input.maybe_stop_reason,
+        Some(SyncStopReason::CurrentAtBestKnownTip { .. })
+    ) {
+        return NoProgressDiagnosis::CurrentAtBestKnownTip;
+    }
+
     if input.stay_current == Some(StayCurrentStatus::CurrentAtBestKnownTip) {
         return NoProgressDiagnosis::CurrentAtBestKnownTip;
     }
@@ -229,6 +258,82 @@ pub(super) fn classify_no_progress(input: &NoProgressInput<'_>) -> NoProgressDia
     }
 
     NoProgressDiagnosis::BehindAwaitingHeaders
+}
+
+pub(super) fn classify_progress_credit(
+    input: &ProgressGuaranteeInput<'_>,
+) -> FieldAvailability<ProgressCreditEvidence> {
+    guarantee::classify_progress_credit(input)
+}
+
+pub(super) fn derive_last_useful_work(
+    input: &ProgressGuaranteeInput<'_>,
+    maybe_current_credit: Option<&ProgressCreditEvidence>,
+) -> FieldAvailability<ProgressCreditEvidence> {
+    guarantee::derive_last_useful_work(input, maybe_current_credit)
+}
+
+pub(super) fn derive_progress_window(
+    input: &ProgressGuaranteeInput<'_>,
+) -> FieldAvailability<ProgressWindowEvidence> {
+    guarantee::derive_progress_window(input)
+}
+
+pub(super) fn derive_no_progress_threshold(
+    input: &ProgressGuaranteeInput<'_>,
+    maybe_last_useful_work: Option<&ProgressCreditEvidence>,
+) -> FieldAvailability<NoProgressThresholdEvidence> {
+    guarantee::derive_no_progress_threshold(input, maybe_last_useful_work)
+}
+
+pub(super) fn derive_last_peer_contribution(
+    input: &ProgressGuaranteeInput<'_>,
+) -> FieldAvailability<PeerContributionEvidence> {
+    guarantee::derive_last_peer_contribution(input)
+}
+
+pub(super) fn classify_stall_diagnosis(
+    input: &ProgressGuaranteeInput<'_>,
+    diagnosis: NoProgressDiagnosis,
+) -> FieldAvailability<StallDiagnosisEvidence> {
+    guarantee::classify_stall_diagnosis(input, diagnosis)
+}
+
+pub(super) fn made_validated_durable_progress(
+    progress: &SyncProgress,
+    maybe_previous_credit: Option<&ProgressCreditEvidence>,
+) -> bool {
+    guarantee::made_validated_durable_progress(progress, maybe_previous_credit)
+}
+
+pub(super) fn progress_credit_log_label(
+    field: &FieldAvailability<ProgressCreditEvidence>,
+) -> String {
+    guarantee::progress_credit_log_label(field)
+}
+
+pub(super) fn peer_contribution_log_label(
+    field: &FieldAvailability<PeerContributionEvidence>,
+) -> String {
+    guarantee::peer_contribution_log_label(field)
+}
+
+pub(super) fn no_progress_threshold_log_label(
+    field: &FieldAvailability<NoProgressThresholdEvidence>,
+) -> String {
+    guarantee::no_progress_threshold_log_label(field)
+}
+
+pub(super) fn stalled_subsystem_log_label(
+    field: &FieldAvailability<StallDiagnosisEvidence>,
+) -> String {
+    guarantee::stalled_subsystem_log_label(field)
+}
+
+pub(super) fn stall_confidence_log_label(
+    field: &FieldAvailability<StallDiagnosisEvidence>,
+) -> String {
+    guarantee::stall_confidence_log_label(field)
 }
 
 pub(super) const fn no_progress_next_action(diagnosis: NoProgressDiagnosis) -> &'static str {
@@ -360,127 +465,4 @@ pub(super) fn peer_failure_reason_for_error(error: &SyncRuntimeError) -> PeerFai
 }
 
 #[cfg(test)]
-mod tests {
-    use crate::status::{
-        NoProgressDiagnosis, StayCurrentStatus, SyncProgressSignal, SyncRecoveryCategory,
-    };
-
-    use super::super::{
-        PeerContribution, PeerFailureReason, PeerSyncOutcome, PeerSyncState, SyncNetwork,
-        SyncPeerAddress, types::SyncReconcileProgress,
-    };
-    use super::{NoProgressInput, classify_no_progress, no_progress_next_action};
-
-    #[test]
-    fn phase70_no_progress_classifier_distinguishes_remaining_causes() {
-        // Arrange
-        let branch_progress = SyncReconcileProgress::BranchCompetitionAwaitingBodies {
-            missing_count: 1,
-            first_missing_height: 2,
-            first_missing_hash: "11".repeat(32),
-        };
-        let stalled_peer = [peer_outcome(
-            PeerSyncState::Stalled,
-            Some(PeerFailureReason::Stall),
-        )];
-        let cases = [
-            (
-                NoProgressInput {
-                    stay_current: None,
-                    progress_signal: Some(SyncProgressSignal::AwaitingBlocks),
-                    recovery_category: None,
-                    blocks_in_flight: 0,
-                    maybe_reconcile_progress: None,
-                    peer_outcomes: &[],
-                },
-                NoProgressDiagnosis::AwaitingBlockBodies,
-            ),
-            (
-                NoProgressInput {
-                    stay_current: None,
-                    progress_signal: Some(SyncProgressSignal::Steady),
-                    recovery_category: None,
-                    blocks_in_flight: 0,
-                    maybe_reconcile_progress: Some(&branch_progress),
-                    peer_outcomes: &[],
-                },
-                NoProgressDiagnosis::BranchCompetitionAwaitingBodies,
-            ),
-            (
-                NoProgressInput {
-                    stay_current: None,
-                    progress_signal: Some(SyncProgressSignal::Steady),
-                    recovery_category: None,
-                    blocks_in_flight: 0,
-                    maybe_reconcile_progress: None,
-                    peer_outcomes: &stalled_peer,
-                },
-                NoProgressDiagnosis::PeerStalled,
-            ),
-            (
-                NoProgressInput {
-                    stay_current: None,
-                    progress_signal: Some(SyncProgressSignal::PeerFailures),
-                    recovery_category: None,
-                    blocks_in_flight: 0,
-                    maybe_reconcile_progress: None,
-                    peer_outcomes: &[],
-                },
-                NoProgressDiagnosis::PeerFailuresExhausted,
-            ),
-            (
-                NoProgressInput {
-                    stay_current: Some(StayCurrentStatus::Recovering),
-                    progress_signal: Some(SyncProgressSignal::Steady),
-                    recovery_category: None,
-                    blocks_in_flight: 0,
-                    maybe_reconcile_progress: None,
-                    peer_outcomes: &[],
-                },
-                NoProgressDiagnosis::RecoveringFromReorgOrStorage,
-            ),
-            (
-                NoProgressInput {
-                    stay_current: None,
-                    progress_signal: Some(SyncProgressSignal::Steady),
-                    recovery_category: Some(SyncRecoveryCategory::ResourceExhaustion),
-                    blocks_in_flight: 0,
-                    maybe_reconcile_progress: None,
-                    peer_outcomes: &stalled_peer,
-                },
-                NoProgressDiagnosis::StorageOrResourceBlocked,
-            ),
-        ];
-
-        // Act / Assert
-        for (input, expected) in cases {
-            assert_eq!(classify_no_progress(&input), expected);
-            assert!(!no_progress_next_action(expected).is_empty());
-        }
-    }
-
-    fn peer_outcome(
-        state: PeerSyncState,
-        maybe_failure_reason: Option<PeerFailureReason>,
-    ) -> PeerSyncOutcome {
-        PeerSyncOutcome {
-            peer: SyncPeerAddress::manual("127.0.0.1", 18_444),
-            maybe_resolved_endpoint: Some("127.0.0.1:18444".to_string()),
-            network: SyncNetwork::Regtest,
-            state,
-            attempts: 1,
-            contribution: PeerContribution {
-                messages_processed: 0,
-                headers_received: 0,
-                blocks_received: 0,
-            },
-            maybe_tip_height: None,
-            maybe_tip_hash: None,
-            maybe_tip_work: None,
-            maybe_last_activity_unix_seconds: None,
-            maybe_capabilities: None,
-            maybe_failure_reason,
-            maybe_error: None,
-        }
-    }
-}
+mod tests;

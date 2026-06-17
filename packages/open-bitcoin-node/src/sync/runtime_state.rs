@@ -10,18 +10,22 @@ use open_bitcoin_network::{MAX_HEADERS_RESULTS, PeerId};
 
 use crate::{
     LogRetentionPolicy, MetricRetentionPolicy, RuntimeMetadata,
-    logging::{StructuredLogError, StructuredLogRecord, writer::append_structured_log_record},
+    logging::{
+        StructuredLogError, StructuredLogLevel, StructuredLogRecord,
+        writer::append_structured_log_record,
+    },
     status::{
         DurableSyncState, FieldAvailability, SyncAttemptCounters, SyncConfiguredTargets,
-        SyncControlState, SyncLifecycleState, SyncRecoveryCategory, SyncResourcePressure,
+        SyncControlState, SyncLifecycleState, SyncResourcePressure,
     },
 };
 
 use super::{
     DurableSyncRuntime, PeerCapabilitySummary, PeerRetryState, ResolvedSyncPeerAddress,
     SyncPeerAddress, SyncPeerResolver, SyncRunSummary, SyncRuntimeError, tip,
-    types::recovery::recovery_category_from_error_detail,
 };
+
+mod recovery;
 
 const MAX_HEADER_REQUESTS_IN_FLIGHT_PER_PEER: u64 = 1;
 
@@ -136,6 +140,32 @@ impl DurableSyncRuntime {
             timestamp_unix_seconds: u64::try_from(timestamp).unwrap_or(0),
         };
         let _ = self.append_structured_record(&record);
+    }
+
+    pub(super) fn write_progress_guarantee_log(
+        &self,
+        state: &mut DurableSyncState,
+        timestamp: i64,
+    ) {
+        let record = StructuredLogRecord {
+            level: StructuredLogLevel::Info,
+            source: "sync".to_string(),
+            message: format!(
+                "progress_credit={} last_useful_work={} last_peer_contribution={} no_progress_threshold={} stalled_subsystem={} stall_confidence={}",
+                super::progress::progress_credit_log_label(&state.sync.progress_credit),
+                super::progress::progress_credit_log_label(&state.sync.last_useful_work),
+                super::progress::peer_contribution_log_label(&state.sync.last_peer_contribution),
+                super::progress::no_progress_threshold_log_label(&state.sync.no_progress_threshold),
+                super::progress::stalled_subsystem_log_label(&state.sync.stall_diagnosis),
+                super::progress::stall_confidence_log_label(&state.sync.stall_diagnosis),
+            ),
+            timestamp_unix_seconds: u64::try_from(timestamp).unwrap_or(0),
+        };
+        if let Err(error) = self.append_structured_record(&record) {
+            state
+                .health_signals
+                .push(super::progress::log_write_failed_signal(&error));
+        }
     }
 
     pub(super) fn best_heights(&self) -> (u64, u64) {
@@ -405,23 +435,8 @@ impl DurableSyncRuntime {
                 FieldAvailability::Unavailable { .. } => "steady_state".to_string(),
             },
         });
-        if let FieldAvailability::Unavailable { .. } = sync.last_successful_progress_unix_seconds
-            && let Some(previous_timestamp) =
-                metadata
-                    .maybe_sync_state
-                    .as_ref()
-                    .and_then(|previous_state| {
-                        match &previous_state.sync.last_successful_progress_unix_seconds {
-                            FieldAvailability::Available(value) => Some(*value),
-                            FieldAvailability::Unavailable { .. } => None,
-                        }
-                    })
-        {
-            sync.last_successful_progress_unix_seconds =
-                FieldAvailability::available(previous_timestamp);
-        }
         self.project_reconcile_status(&mut sync, &summary, &metadata);
-        let maybe_recovery_category = recovery_category_for_durable_state(
+        let maybe_recovery_category = recovery::recovery_category_for_durable_state(
             &metadata,
             &summary,
             lifecycle,
@@ -454,6 +469,31 @@ impl DurableSyncRuntime {
             target_outbound_peers: self.config.target_outbound_peers as u32,
         });
         let observed_at_unix_seconds = u64::try_from(timestamp).unwrap_or(0);
+        let maybe_previous_credit = metadata
+            .maybe_sync_state
+            .as_ref()
+            .and_then(
+                |previous_state| match &previous_state.sync.last_useful_work {
+                    FieldAvailability::Available(value) => Some(value.clone()),
+                    FieldAvailability::Unavailable { .. } => None,
+                },
+            );
+        let maybe_previous_progress_timestamp =
+            metadata
+                .maybe_sync_state
+                .as_ref()
+                .and_then(|previous_state| {
+                    maybe_available_ref(&previous_state.sync.last_successful_progress_unix_seconds)
+                        .copied()
+                });
+        let maybe_sync_progress = maybe_available_ref(&sync.sync_progress).cloned();
+        let made_validated_durable_progress =
+            maybe_sync_progress.as_ref().is_some_and(|progress| {
+                super::progress::made_validated_durable_progress(
+                    progress,
+                    maybe_previous_credit.as_ref(),
+                )
+            });
         let maybe_best_tip = self
             .network
             .peer_manager()
@@ -471,7 +511,7 @@ impl DurableSyncRuntime {
             observed_at_unix_seconds,
             tip_freshness_threshold_seconds: self.config.tip_freshness_threshold_seconds,
             lifecycle,
-            made_useful_progress: summary.headers_received > 0 || summary.blocks_received > 0,
+            made_useful_progress: made_validated_durable_progress,
             peer_agreement,
         };
         sync.best_known_tip = tip::build_best_known_tip_status(&tip_input);
@@ -491,12 +531,61 @@ impl DurableSyncRuntime {
             blocks_in_flight: self.inflight_blocks.len() as u64,
             maybe_reconcile_progress: summary.maybe_reconcile_progress.as_ref(),
             peer_outcomes: &summary.peer_outcomes,
+            maybe_stop_reason: summary.maybe_stop_reason,
         };
         let diagnosis = super::progress::classify_no_progress(&no_progress_input);
         sync.no_progress_diagnosis = FieldAvailability::available(diagnosis);
         sync.no_progress_next_action = FieldAvailability::available(
             super::progress::no_progress_next_action(diagnosis).to_string(),
         );
+        if let Some(sync_progress) = maybe_sync_progress.as_ref() {
+            let maybe_best_known_tip = maybe_available_ref(&sync.best_known_tip).cloned();
+            let retry_backoff_seconds = u64::try_from(super::progress::retry_backoff_seconds(
+                self.config.retry_backoff_ms,
+            ))
+            .unwrap_or(u64::MAX);
+            let progress_input = super::progress::ProgressGuaranteeInput {
+                sync_progress,
+                stay_current,
+                best_known_tip: maybe_best_known_tip.as_ref(),
+                progress_signal: maybe_progress_signal,
+                recovery_category: maybe_recovery_category,
+                blocks_in_flight: self.inflight_blocks.len() as u64,
+                maybe_reconcile_progress: summary.maybe_reconcile_progress.as_ref(),
+                peer_outcomes: &summary.peer_outcomes,
+                maybe_stop_reason: summary.maybe_stop_reason,
+                retry_backoff_seconds,
+                max_sync_rounds: self.config.max_rounds as u64,
+                tip_freshness_threshold_seconds: self.config.tip_freshness_threshold_seconds,
+                maybe_previous_credit: maybe_previous_credit.as_ref(),
+                evaluated_at_unix_seconds: observed_at_unix_seconds,
+            };
+            let progress_credit = super::progress::classify_progress_credit(&progress_input);
+            let last_useful_work = super::progress::derive_last_useful_work(
+                &progress_input,
+                maybe_available_ref(&progress_credit),
+            );
+            let maybe_useful_timestamp =
+                maybe_available_ref(&last_useful_work).map(|credit| credit.source_unix_seconds);
+            sync.expected_progress_window =
+                super::progress::derive_progress_window(&progress_input);
+            sync.no_progress_threshold = super::progress::derive_no_progress_threshold(
+                &progress_input,
+                maybe_available_ref(&last_useful_work),
+            );
+            sync.last_peer_contribution =
+                super::progress::derive_last_peer_contribution(&progress_input);
+            sync.stall_diagnosis =
+                super::progress::classify_stall_diagnosis(&progress_input, diagnosis);
+            sync.progress_credit = progress_credit;
+            sync.last_useful_work = last_useful_work;
+            sync.last_successful_progress_unix_seconds = maybe_useful_timestamp
+                .or(maybe_previous_progress_timestamp)
+                .map(FieldAvailability::available)
+                .unwrap_or_else(|| {
+                    FieldAvailability::unavailable("no useful active-chain progress recorded")
+                });
+        }
 
         Ok(DurableSyncState {
             sync,
@@ -521,43 +610,11 @@ impl DurableSyncRuntime {
     }
 }
 
-fn recovery_category_for_durable_state(
-    metadata: &RuntimeMetadata,
-    summary: &SyncRunSummary,
-    lifecycle: SyncLifecycleState,
-    maybe_last_error: Option<&str>,
-) -> Option<SyncRecoveryCategory> {
-    if let Some(category) = metadata
-        .maybe_last_recovery_action
-        .map(|action| action.recovery_category())
-    {
-        return Some(category);
+fn maybe_available_ref<T>(field: &FieldAvailability<T>) -> Option<&T> {
+    match field {
+        FieldAvailability::Available(value) => Some(value),
+        FieldAvailability::Unavailable { .. } => None,
     }
-
-    if let Some(category) = maybe_last_error.and_then(recovery_category_from_error_detail) {
-        return Some(category);
-    }
-
-    if let Some(category) = summary
-        .maybe_stop_reason
-        .and_then(|reason| reason.recovery_category())
-    {
-        return Some(category);
-    }
-
-    if let Some(category) = summary.latest_recovery_category() {
-        return Some(category);
-    }
-
-    if lifecycle == SyncLifecycleState::Stopped && metadata.last_clean_shutdown {
-        return Some(SyncRecoveryCategory::CleanShutdown);
-    }
-
-    if lifecycle == SyncLifecycleState::Recovering && !metadata.last_clean_shutdown {
-        return Some(SyncRecoveryCategory::UncleanShutdown);
-    }
-
-    None
 }
 
 fn progress_ratio(block_height: u64, header_height: u64) -> f64 {

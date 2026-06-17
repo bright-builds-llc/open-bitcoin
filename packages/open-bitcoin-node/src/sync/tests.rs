@@ -38,10 +38,10 @@ use crate::{
     logging::{StructuredLogLevel, StructuredLogRecord, writer::load_log_status},
     status::{
         BestKnownTipSource, BestKnownTipStatus, DurableSyncState, HealthSignal, HealthSignalLevel,
-        NoProgressDiagnosis, PeerTipAgreement, PeerTipAgreementStatus, StayCurrentStatus,
-        SyncLifecycleState, SyncProgress, SyncProgressSignal, SyncReconcileProgressStatus,
-        SyncRecoveryCategory, SyncReorgEvidence, SyncResourcePressure, SyncStatus,
-        TipFreshnessStatus,
+        NoProgressDiagnosis, PeerTipAgreement, PeerTipAgreementStatus, ProgressCreditKind,
+        StayCurrentStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal,
+        SyncReconcileProgressStatus, SyncRecoveryCategory, SyncReorgEvidence, SyncResourcePressure,
+        SyncStatus, TipFreshnessStatus,
     },
 };
 
@@ -4643,12 +4643,12 @@ fn phase69_headers_only_tip_does_not_report_current() {
     ));
     assert_eq!(
         state.sync.stay_current,
-        FieldAvailability::available(StayCurrentStatus::InitialCatchUp)
+        FieldAvailability::available(StayCurrentStatus::NoProgress)
     );
     assert_eq!(
         state.sync.stay_current_next_action,
         FieldAvailability::available(
-            "Continue sync until connected active-chain progress reaches the best-known validated tip."
+            "Retry sync or inspect peer outcomes; no useful stay-current progress was observed."
                 .to_string(),
         )
     );
@@ -4667,6 +4667,86 @@ fn phase69_headers_only_tip_does_not_report_current() {
     assert_eq!(best_known_tip.height, 2);
     assert_eq!(best_known_tip.block_hash, block_hash_hex(grandchild_hash));
     assert_eq!(best_known_tip.freshness, TipFreshnessStatus::Fresh);
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn phase78_progress_guarantee_projection_rejects_headers_only_as_useful_work() {
+    // Arrange
+    let path = temp_store_path("phase78-headers-only-progress-guarantee");
+    let log_dir = path.join("logs");
+    remove_dir_if_exists(&path);
+    let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+    let child = build_block(block_hash(&genesis.header), 1);
+    let grandchild = build_block(block_hash(&child.header), 2);
+    save_best_chain_with_active_blocks(
+        &path,
+        &[(&genesis, 0), (&child, 1)],
+        &[(&genesis, 0), (&child, 1)],
+    );
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime =
+        DurableSyncRuntime::open(store, sync_config_with_log_dir(&log_dir)).expect("runtime");
+    let previous_summary = runtime.snapshot_summary();
+    let previous_timestamp = u64::from(child.header.time);
+    let previous_state = runtime
+        .durable_sync_state_for_summary(
+            &previous_summary,
+            SyncLifecycleState::Active,
+            None,
+            i64::from(child.header.time),
+        )
+        .expect("previous durable status");
+    runtime
+        .persist_durable_sync_state(previous_state)
+        .expect("persist previous state");
+    let mut transport =
+        ScriptedTransport::new(vec![headers_script(2, vec![grandchild.header.clone()])]);
+
+    // Act
+    let summary = runtime
+        .sync_once(&mut transport, i64::from(grandchild.header.time))
+        .expect("headers-only sync");
+    let state = runtime
+        .store()
+        .load_runtime_metadata()
+        .expect("load runtime metadata")
+        .expect("runtime metadata")
+        .maybe_sync_state
+        .expect("persisted sync state");
+    let records = load_structured_log_records(&log_dir);
+
+    // Assert
+    assert_eq!(summary.headers_received, 1);
+    assert_eq!(summary.blocks_received, 0);
+    assert!(matches!(
+        state.sync.progress_credit,
+        FieldAvailability::Unavailable { .. }
+    ));
+    let FieldAvailability::Available(last_work) = state.sync.last_useful_work else {
+        panic!("previous durable active-chain work should be carried");
+    };
+    assert_eq!(
+        last_work.kind,
+        ProgressCreditKind::ValidatedDurableActiveChain
+    );
+    assert_eq!(last_work.credited_validated_active_chain_height, 1);
+    assert_eq!(
+        state.sync.last_successful_progress_unix_seconds,
+        FieldAvailability::available(previous_timestamp)
+    );
+    assert_eq!(
+        state.sync.stay_current,
+        FieldAvailability::available(StayCurrentStatus::NoProgress)
+    );
+    assert!(records.iter().any(|record| {
+        record.message.contains("progress_credit=unavailable")
+            && record
+                .message
+                .contains("last_useful_work=validated_durable_active_chain:1")
+            && record.message.contains("stalled_subsystem=")
+    }));
 
     remove_dir_if_exists(&path);
 }

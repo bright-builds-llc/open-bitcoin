@@ -204,12 +204,13 @@ impl DurableSyncRuntime {
             return Err(error);
         }
         self.write_summary_logs(&mut summary, timestamp);
-        let state = self.durable_sync_state_from_summary(
+        let mut state = self.durable_sync_state_from_summary(
             &summary,
             SyncLifecycleState::Active,
             summary.latest_error_message(),
             timestamp,
         )?;
+        self.write_progress_guarantee_log(&mut state, timestamp);
         self.persist_durable_sync_state(state)?;
 
         Ok(summary)
