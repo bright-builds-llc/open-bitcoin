@@ -1040,6 +1040,8 @@ fn full_sync_evidence(verdict: SupportEvidenceVerdict) -> FullSyncEvidence {
         stay_current_window: summary_evidence(),
         peer_contribution: summary_evidence(),
         no_progress_or_reorg_events: summary_evidence(),
+        progress_guarantee: summary_evidence(),
+        stall_diagnosis: summary_evidence(),
         resource_pressure: summary_evidence(),
         recovery: summary_evidence(),
         verdict: EvidenceVerdictSummary {

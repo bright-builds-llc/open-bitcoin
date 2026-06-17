@@ -12,8 +12,11 @@ use open_bitcoin_node::{
     RecoveryCause, RecoveryEvidenceBasis, RecoveryEvidenceSnapshot,
     status::{
         BestKnownTipSource, BestKnownTipStatus, ChainTipStatus, ConfigStatus, FieldAvailability,
-        MempoolStatus, NoProgressDiagnosis, NodeRuntimeState, NodeStatus, PeerCounts, PeerStatus,
-        PeerTipAgreement, PeerTipAgreementStatus, ServiceLifecycleStatus, ServiceStatus,
+        MempoolStatus, NoProgressDiagnosis, NoProgressThresholdEvidence, NoProgressThresholdState,
+        NodeRuntimeState, NodeStatus, PeerCounts, PeerStatus, PeerTipAgreement,
+        PeerTipAgreementStatus, ProgressCreditEvidence, ProgressCreditKind, ProgressWindowEvidence,
+        RejectedProgressActivity, RejectedProgressActivityKind, ServiceLifecycleStatus,
+        ServiceStatus, StallDiagnosisConfidence, StallDiagnosisEvidence, StalledSubsystem,
         StayCurrentStatus, SyncAttemptCounters, SyncConfiguredTargets, SyncLagStatus,
         SyncLifecycleState, SyncProgress, SyncProgressSignal, SyncRecoveryCategory,
         SyncResourcePressure, SyncStatus, SyncStopReasonStatus, TipFreshnessStatus, WalletStatus,
@@ -537,6 +540,135 @@ fn support_recovery_evidence_full_sync_prefers_top_level_status_evidence() {
             "category=storage_lock_contention cause=stale_lock_evidence action_class=read_only_inspection next_action=Inspect the datadir read-only and avoid deleting lock artifacts automatically."
         )
     );
+}
+
+#[test]
+fn support_phase78_progress_guarantee_json_projects_shared_status() {
+    // Arrange
+    let mut status = phase72_status();
+    apply_phase78_available_sync_fields(&mut status.sync);
+
+    // Act
+    let evidence = derive_full_sync_evidence(&status, &missing_live_smoke());
+    let serialized = serde_json::to_value(&evidence).expect("evidence json");
+
+    // Assert
+    assert_eq!(
+        serialized["progress_guarantee"]["summary"],
+        json!(
+            "credit=kind=validated_durable_active_chain height=840004 source_unix_seconds=1717000020 rejected_activity_count=1 last_useful_work=kind=current_at_best_known_tip height=840004 source_unix_seconds=1717000025 rejected_activity_count=0 expected_window=seconds=300 retry_backoff_seconds=30 max_sync_rounds=8 threshold=state=within_window seconds=300 elapsed_seconds=12"
+        )
+    );
+    assert_eq!(
+        serialized["stall_diagnosis"]["summary"],
+        json!(
+            "stalled_subsystem=at_tip_waiting confidence=high basis=stay_current,current_tip next_action=No operator action required."
+        )
+    );
+}
+
+#[test]
+fn support_phase78_progress_guarantee_markdown_renders_operator_fields() {
+    // Arrange
+    let temp = TestDirectory::new("phase78-progress-markdown");
+    let mut status = phase72_status();
+    apply_phase78_available_sync_fields(&mut status.sync);
+    let bundle = phase77_support_bundle_with_status(temp.path(), status);
+
+    // Act
+    let markdown = render::render_support_markdown(&bundle);
+
+    // Assert
+    for expected in [
+        "- Progress guarantee: credit=kind=validated_durable_active_chain",
+        "last_useful_work=kind=current_at_best_known_tip",
+        "expected_window=seconds=300",
+        "threshold=state=within_window",
+        "- Stall diagnosis: stalled_subsystem=at_tip_waiting confidence=high",
+        "next_action=No operator action required.",
+    ] {
+        assert!(markdown.contains(expected), "missing {expected}");
+    }
+}
+
+#[test]
+fn support_phase78_progress_guarantee_excludes_raw_status_body() {
+    // Arrange
+    let temp = TestDirectory::new("phase78-progress-redaction");
+    let mut status = phase72_status();
+    apply_phase78_available_sync_fields(&mut status.sync);
+    status.sync.stall_diagnosis = FieldAvailability::available(StallDiagnosisEvidence {
+        stalled_subsystem: StalledSubsystem::StorageOrResourcePressure,
+        confidence: StallDiagnosisConfidence::High,
+        evidence_basis: vec!["compact evidence only".to_string()],
+        next_action: "Inspect bounded resource evidence.".to_string(),
+        maybe_no_progress_diagnosis: Some(NoProgressDiagnosis::StorageOrResourceBlocked),
+        maybe_recovery_category: Some(SyncRecoveryCategory::ResourceExhaustion),
+        maybe_latest_stop_reason_label: Some("resource_stop".to_string()),
+        source_unix_seconds: 1_717_000_032,
+    });
+    let bundle = phase77_support_bundle_with_status(temp.path(), status);
+
+    // Act
+    let json_text = serde_json::to_string_pretty(&bundle).expect("support json");
+    let markdown = render::render_support_markdown(&bundle);
+
+    // Assert
+    for rendered in [&json_text, &markdown] {
+        for forbidden in [
+            "raw status snapshot phase78-secret",
+            "raw live-smoke input phase78-secret",
+            "raw daemon log phase78-secret",
+            "credential phase78-secret",
+        ] {
+            assert_absent(rendered, forbidden);
+        }
+    }
+}
+
+fn apply_phase78_available_sync_fields(sync: &mut SyncStatus) {
+    sync.progress_credit = FieldAvailability::available(ProgressCreditEvidence {
+        kind: ProgressCreditKind::ValidatedDurableActiveChain,
+        credited_validated_active_chain_height: 840_004,
+        credited_validated_active_chain_hash: "11".repeat(32),
+        credited_validated_active_chain_work: "840005".to_string(),
+        source_unix_seconds: 1_717_000_020,
+        rejected_activity: vec![RejectedProgressActivity {
+            kind: RejectedProgressActivityKind::HeaderDownload,
+            observed_count: 3,
+            reason: "headers do not prove durable active-chain progress".to_string(),
+        }],
+    });
+    sync.expected_progress_window = FieldAvailability::available(ProgressWindowEvidence {
+        retry_backoff_seconds: 30,
+        max_sync_rounds: 8,
+        expected_progress_window_seconds: 300,
+        tip_freshness_threshold_seconds: 600,
+    });
+    sync.no_progress_threshold = FieldAvailability::available(NoProgressThresholdEvidence {
+        threshold_seconds: 300,
+        elapsed_since_last_useful_work_seconds: 12,
+        state: NoProgressThresholdState::WithinWindow,
+        evaluated_at_unix_seconds: 1_717_000_032,
+    });
+    sync.last_useful_work = FieldAvailability::available(ProgressCreditEvidence {
+        kind: ProgressCreditKind::CurrentAtBestKnownTip,
+        credited_validated_active_chain_height: 840_004,
+        credited_validated_active_chain_hash: "11".repeat(32),
+        credited_validated_active_chain_work: "840005".to_string(),
+        source_unix_seconds: 1_717_000_025,
+        rejected_activity: Vec::new(),
+    });
+    sync.stall_diagnosis = FieldAvailability::available(StallDiagnosisEvidence {
+        stalled_subsystem: StalledSubsystem::AtTipWaiting,
+        confidence: StallDiagnosisConfidence::High,
+        evidence_basis: vec!["stay_current".to_string(), "current_tip".to_string()],
+        next_action: "No operator action required.".to_string(),
+        maybe_no_progress_diagnosis: Some(NoProgressDiagnosis::CurrentAtBestKnownTip),
+        maybe_recovery_category: None,
+        maybe_latest_stop_reason_label: Some("best_known_tip_reached".to_string()),
+        source_unix_seconds: 1_717_000_032,
+    });
 }
 
 fn phase72_status_missing_tip_match() -> OpenBitcoinStatusSnapshot {

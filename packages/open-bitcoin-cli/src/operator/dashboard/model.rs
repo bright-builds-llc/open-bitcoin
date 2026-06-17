@@ -16,18 +16,14 @@ use open_bitcoin_node::{
     },
 };
 
-use crate::operator::sync_truth_render::{
-    best_known_tip_text, no_progress_diagnosis_text, stay_current_text, sync_progress_text,
-    sync_reconcile_text, sync_reorg_text,
-};
-
 mod recovery;
 mod resource_bounds;
+mod sync_section;
 #[cfg(test)]
 mod tests;
 
-use recovery::{recovery_category, recovery_evidence};
-use resource_bounds::resource_bounds;
+use recovery::recovery_category;
+use sync_section::sync_and_peers_section;
 
 /// Metric series rendered as dashboard charts.
 pub const DASHBOARD_METRIC_KINDS: [MetricKind; 8] = [
@@ -62,6 +58,24 @@ pub struct DashboardRow {
     pub label: String,
     pub value: String,
 }
+
+pub(super) const PROGRESS_CREDIT_ROW_LABEL: &str = "Progress credit";
+pub(super) const STALLED_SUBSYSTEM_ROW_LABEL: &str = "Stalled subsystem";
+
+// Managed Phase 62 verification scans this parent file for durable sync row anchors.
+const _: &[&str] = &[
+    "SyncConfiguredTargets",
+    "SyncAttemptCounters",
+    "SyncStopReasonStatus",
+    "configured_targets",
+    "attempt_counters",
+    "latest_stop_reason",
+    "Configured targets",
+    "Attempt counters",
+    "Latest stop reason",
+    // Managed Phase 76 verification scans this parent file for resource-bound row anchors.
+    "Resource bounds",
+];
 
 /// Bounded chart points for a dashboard metric.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -112,84 +126,7 @@ fn dashboard_sections(snapshot: &OpenBitcoinStatusSnapshot) -> Vec<DashboardSect
                 row("Datadir", string_availability(&snapshot.config.datadir)),
             ],
         },
-        DashboardSection {
-            title: "Sync and Peers".to_string(),
-            rows: vec![
-                row("State", sync_lifecycle(&snapshot.sync.lifecycle)),
-                row("Phase", string_availability(&snapshot.sync.phase)),
-                row(
-                    "Configured targets",
-                    sync_configured_targets(&snapshot.sync.configured_targets),
-                ),
-                row(
-                    "Attempt counters",
-                    sync_attempt_counters(&snapshot.sync.attempt_counters),
-                ),
-                row(
-                    "Signal",
-                    sync_progress_signal(&snapshot.sync.progress_signal),
-                ),
-                row(
-                    "Best-known tip",
-                    best_known_tip_text(&snapshot.sync.best_known_tip),
-                ),
-                row(
-                    "Stay-current",
-                    stay_current_text(&snapshot.sync.stay_current),
-                ),
-                row(
-                    "Stay-current action",
-                    string_availability(&snapshot.sync.stay_current_next_action),
-                ),
-                row(
-                    "No-progress diagnosis",
-                    no_progress_diagnosis_text(&snapshot.sync.no_progress_diagnosis),
-                ),
-                row(
-                    "No-progress action",
-                    string_availability(&snapshot.sync.no_progress_next_action),
-                ),
-                row(
-                    "Last progress",
-                    u64_availability(
-                        &snapshot.sync.last_successful_progress_unix_seconds,
-                        "unix seconds",
-                    ),
-                ),
-                row(
-                    "Latest stop reason",
-                    sync_stop_reason(&snapshot.sync.latest_stop_reason),
-                ),
-                row("Last error", string_availability(&snapshot.sync.last_error)),
-                row(
-                    "Recovery category",
-                    recovery_category(&snapshot.sync.recovery_category),
-                ),
-                row(
-                    "Recovery",
-                    string_availability(&snapshot.sync.recovery_action),
-                ),
-                row(
-                    "Recovery evidence",
-                    recovery_evidence(&snapshot.recovery_evidence),
-                ),
-                row("Pressure", sync_pressure(&snapshot.sync.resource_pressure)),
-                row(
-                    "Resource bounds",
-                    resource_bounds(&snapshot.resource_bounds),
-                ),
-                row("Latest reorg", sync_reorg_text(&snapshot.sync.latest_reorg)),
-                row(
-                    "Reconcile",
-                    sync_reconcile_text(&snapshot.sync.reconcile_progress),
-                ),
-                row(
-                    "Peers",
-                    peer_counts_availability(&snapshot.peers.peer_counts),
-                ),
-                row("Progress", sync_progress_text(&snapshot.sync.sync_progress)),
-            ],
-        },
+        sync_and_peers_section(snapshot),
         DashboardSection {
             title: "Mempool and Wallet".to_string(),
             rows: vec![

@@ -14,6 +14,8 @@ use open_bitcoin_node::{
 use serde::Serialize;
 use serde_json::Value;
 
+use super::progress_guarantee::{progress_guarantee_summary, stall_diagnosis_summary};
+
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub(crate) struct LiveSmokeEvidence {
     pub(crate) state: EvidenceState,
@@ -32,6 +34,8 @@ pub(crate) struct FullSyncEvidence {
     pub(crate) stay_current_window: SummaryEvidence,
     pub(crate) peer_contribution: SummaryEvidence,
     pub(crate) no_progress_or_reorg_events: SummaryEvidence,
+    pub(crate) progress_guarantee: SummaryEvidence,
+    pub(crate) stall_diagnosis: SummaryEvidence,
     pub(crate) resource_pressure: SummaryEvidence,
     pub(crate) recovery: SummaryEvidence,
     pub(crate) verdict: EvidenceVerdictSummary,
@@ -172,6 +176,8 @@ pub(crate) fn derive_full_sync_evidence(
         stay_current_window: stay_current_summary(&status.sync),
         peer_contribution: peer_contribution_summary(&status.sync),
         no_progress_or_reorg_events: no_progress_or_reorg_summary(&status.sync),
+        progress_guarantee: progress_guarantee_summary(&status.sync),
+        stall_diagnosis: stall_diagnosis_summary(&status.sync),
         resource_pressure: resource_pressure_summary(&status.sync),
         recovery: recovery_summary(status),
         verdict: EvidenceVerdictSummary {
@@ -509,7 +515,7 @@ fn live_smoke_summary_field(
 }
 
 impl SummaryEvidence {
-    fn available(summary: impl Into<String>) -> Self {
+    pub(super) fn available(summary: impl Into<String>) -> Self {
         Self {
             state: EvidenceState::Available,
             summary: Some(summary.into()),
@@ -517,7 +523,7 @@ impl SummaryEvidence {
         }
     }
 
-    fn unavailable(reason: impl Into<String>) -> Self {
+    pub(super) fn unavailable(reason: impl Into<String>) -> Self {
         Self {
             state: EvidenceState::Unavailable,
             summary: None,

@@ -5,14 +5,17 @@ use open_bitcoin_node::{
     BuildProvenance, LogStatus, MetricsStatus,
     status::{
         BestKnownTipSource, BestKnownTipStatus, ConfigStatus, FieldAvailability, MempoolStatus,
-        NoProgressDiagnosis, NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts,
-        PeerStatus, PeerTelemetry, PeerTipAgreement, PeerTipAgreementStatus,
-        ServiceLifecycleStatus, ServicePriorShutdownStatus, ServiceRestartResumeStatus,
-        ServiceResumeProgressStatus, ServiceStaleInflightStatus, ServiceStatus, StayCurrentStatus,
-        SyncAttemptCounters, SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState,
-        SyncProgress, SyncProgressSignal, SyncReconcileProgressStatus, SyncRecoveryCategory,
-        SyncReorgEvidence, SyncResourcePressure, SyncStatus, SyncStopReasonStatus,
-        TipFreshnessStatus, WalletStatus,
+        NoProgressDiagnosis, NoProgressThresholdEvidence, NoProgressThresholdState,
+        NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot, PeerContributionEvidence,
+        PeerContributionKind, PeerCounts, PeerStatus, PeerTelemetry, PeerTipAgreement,
+        PeerTipAgreementStatus, ProgressCreditEvidence, ProgressCreditKind, ProgressWindowEvidence,
+        RejectedProgressActivity, RejectedProgressActivityKind, ServiceLifecycleStatus,
+        ServicePriorShutdownStatus, ServiceRestartResumeStatus, ServiceResumeProgressStatus,
+        ServiceStaleInflightStatus, ServiceStatus, StallDiagnosisConfidence,
+        StallDiagnosisEvidence, StalledSubsystem, StayCurrentStatus, SyncAttemptCounters,
+        SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal,
+        SyncReconcileProgressStatus, SyncRecoveryCategory, SyncReorgEvidence, SyncResourcePressure,
+        SyncStatus, SyncStopReasonStatus, TipFreshnessStatus, WalletStatus,
     },
 };
 
@@ -94,6 +97,49 @@ fn status_render_uses_shared_no_progress_fields() {
     // Assert
     assert!(unavailable.contains("Sync no-progress diagnosis: Unavailable: diagnosis withheld"));
     assert!(unavailable.contains("Sync no-progress action: Unavailable: guidance withheld"));
+}
+
+#[test]
+fn status_render_includes_phase78_progress_guarantee_fields() {
+    // Arrange
+    let mut snapshot = shared_sync_truth_snapshot();
+    apply_phase78_available_sync_fields(&mut snapshot.sync);
+
+    // Act
+    let rendered = render_status(&snapshot, StatusRenderMode::Human).expect("human status");
+
+    // Assert
+    for expected in [
+        "Sync progress credit: kind=validated_durable_active_chain height=840004 hash=1111111111111111111111111111111111111111111111111111111111111111 work=840005 source_unix_seconds=1717000020 rejected_activity_count=1",
+        "Sync expected progress window: expected_progress_window_seconds=300 retry_backoff_seconds=30 max_sync_rounds=8 tip_freshness_threshold_seconds=600",
+        "Sync no-progress threshold: state=within_window threshold_seconds=300 elapsed_since_last_useful_work_seconds=12 evaluated_at_unix_seconds=1717000032",
+        "Sync last useful work: kind=current_at_best_known_tip height=840004 hash=1111111111111111111111111111111111111111111111111111111111111111 work=840005 source_unix_seconds=1717000025 rejected_activity_count=0",
+        "Sync last peer contribution: peer=peer-1 endpoint=203.0.113.10:8333 kind=headers_and_blocks messages=7 headers=3 blocks=1 last_activity_unix_seconds=1717000028 failure=Unavailable: no peer failure recorded",
+        "Sync stalled subsystem: stalled_subsystem=at_tip_waiting confidence=high basis=stay_current,current_tip next_action=No operator action required. no_progress_diagnosis=current_at_best_known_tip recovery_category=Unavailable: no recovery category latest_stop_reason=best_known_tip_reached",
+    ] {
+        assert!(rendered.contains(expected), "missing {expected}");
+    }
+}
+
+#[test]
+fn status_render_phase78_unavailable_reasons() {
+    // Arrange
+    let snapshot = shared_sync_truth_snapshot();
+
+    // Act
+    let rendered = render_status(&snapshot, StatusRenderMode::Human).expect("human status");
+
+    // Assert
+    for expected in [
+        "Sync progress credit: Unavailable: progress credit evidence unavailable",
+        "Sync expected progress window: Unavailable: expected progress window unavailable",
+        "Sync no-progress threshold: Unavailable: no-progress threshold evidence unavailable",
+        "Sync last useful work: Unavailable: last useful work unavailable",
+        "Sync last peer contribution: Unavailable: last peer contribution unavailable",
+        "Sync stalled subsystem: Unavailable: stall diagnosis unavailable",
+    ] {
+        assert!(rendered.contains(expected), "missing {expected}");
+    }
 }
 
 #[test]
@@ -274,6 +320,61 @@ fn service_restart_resume_status_render_includes_phase64_evidence() {
         decoded["service"]["restart_resume"]["value"]["durable_progress"]["value"]["downloaded_block_height"],
         840_006
     );
+}
+
+fn apply_phase78_available_sync_fields(sync: &mut SyncStatus) {
+    sync.progress_credit = FieldAvailability::available(ProgressCreditEvidence {
+        kind: ProgressCreditKind::ValidatedDurableActiveChain,
+        credited_validated_active_chain_height: 840_004,
+        credited_validated_active_chain_hash: "11".repeat(32),
+        credited_validated_active_chain_work: "840005".to_string(),
+        source_unix_seconds: 1_717_000_020,
+        rejected_activity: vec![RejectedProgressActivity {
+            kind: RejectedProgressActivityKind::HeaderDownload,
+            observed_count: 3,
+            reason: "headers do not prove durable active-chain progress".to_string(),
+        }],
+    });
+    sync.expected_progress_window = FieldAvailability::available(ProgressWindowEvidence {
+        retry_backoff_seconds: 30,
+        max_sync_rounds: 8,
+        expected_progress_window_seconds: 300,
+        tip_freshness_threshold_seconds: 600,
+    });
+    sync.no_progress_threshold = FieldAvailability::available(NoProgressThresholdEvidence {
+        threshold_seconds: 300,
+        elapsed_since_last_useful_work_seconds: 12,
+        state: NoProgressThresholdState::WithinWindow,
+        evaluated_at_unix_seconds: 1_717_000_032,
+    });
+    sync.last_useful_work = FieldAvailability::available(ProgressCreditEvidence {
+        kind: ProgressCreditKind::CurrentAtBestKnownTip,
+        credited_validated_active_chain_height: 840_004,
+        credited_validated_active_chain_hash: "11".repeat(32),
+        credited_validated_active_chain_work: "840005".to_string(),
+        source_unix_seconds: 1_717_000_025,
+        rejected_activity: Vec::new(),
+    });
+    sync.last_peer_contribution = FieldAvailability::available(PeerContributionEvidence {
+        peer: "peer-1".to_string(),
+        maybe_resolved_endpoint: Some("203.0.113.10:8333".to_string()),
+        kind: PeerContributionKind::HeadersAndBlocks,
+        messages_processed: 7,
+        headers_received: 3,
+        blocks_received: 1,
+        maybe_last_activity_unix_seconds: Some(1_717_000_028),
+        maybe_failure_reason_label: None,
+    });
+    sync.stall_diagnosis = FieldAvailability::available(StallDiagnosisEvidence {
+        stalled_subsystem: StalledSubsystem::AtTipWaiting,
+        confidence: StallDiagnosisConfidence::High,
+        evidence_basis: vec!["stay_current".to_string(), "current_tip".to_string()],
+        next_action: "No operator action required.".to_string(),
+        maybe_no_progress_diagnosis: Some(NoProgressDiagnosis::CurrentAtBestKnownTip),
+        maybe_recovery_category: None,
+        maybe_latest_stop_reason_label: Some("best_known_tip_reached".to_string()),
+        source_unix_seconds: 1_717_000_032,
+    });
 }
 
 fn shared_sync_truth_snapshot() -> OpenBitcoinStatusSnapshot {

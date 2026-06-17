@@ -5,6 +5,7 @@
 
 mod evidence;
 mod live_smoke;
+mod progress_guarantee;
 mod render;
 mod resource_bounds;
 

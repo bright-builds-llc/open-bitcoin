@@ -260,6 +260,7 @@
         "packages/open-bitcoin-cli/src/operator/status/http.rs",
         "packages/open-bitcoin-cli/src/operator/status/recovery_evidence.rs",
         "packages/open-bitcoin-cli/src/operator/status/render.rs",
+        "packages/open-bitcoin-cli/src/operator/status/render/progress_guarantee.rs",
         "packages/open-bitcoin-cli/src/operator/status/render/tests.rs",
         "packages/open-bitcoin-cli/src/operator/status/service_status.rs",
         "packages/open-bitcoin-cli/src/operator/status/tests.rs",
@@ -278,6 +279,7 @@
         "packages/open-bitcoin-cli/src/operator/support/evidence.rs",
         "packages/open-bitcoin-cli/src/operator/support/live_smoke.rs",
         "packages/open-bitcoin-cli/src/operator/support/live_smoke/tests.rs",
+        "packages/open-bitcoin-cli/src/operator/support/progress_guarantee.rs",
         "packages/open-bitcoin-cli/src/operator/support/resource_bounds.rs",
         "packages/open-bitcoin-cli/src/operator/support/render.rs",
         "packages/open-bitcoin-cli/src/operator/support/tests.rs"
@@ -319,6 +321,7 @@
         "packages/open-bitcoin-cli/src/operator/dashboard/model.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/model/recovery.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/model/resource_bounds.rs",
+        "packages/open-bitcoin-cli/src/operator/dashboard/model/sync_section.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/model/tests.rs"
       ],
       "breadcrumbs": []

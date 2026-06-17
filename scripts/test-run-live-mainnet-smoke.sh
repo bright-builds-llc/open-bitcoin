@@ -263,6 +263,78 @@ cat <<'JSON'
           "state": "available",
           "value": 1777225005
         },
+        "progress_credit": {
+          "state": "available",
+          "value": {
+            "kind": "validated_durable_active_chain",
+            "credited_validated_active_chain_height": 1,
+            "credited_validated_active_chain_hash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "credited_validated_active_chain_work": "1",
+            "source_unix_seconds": 1777225005,
+            "rejected_activity": [
+              {
+                "kind": "header_download",
+                "observed_count": 2,
+                "reason": "headers alone do not prove durable progress"
+              }
+            ]
+          }
+        },
+        "expected_progress_window": {
+          "state": "available",
+          "value": {
+            "retry_backoff_seconds": 30,
+            "max_sync_rounds": 8,
+            "expected_progress_window_seconds": 300,
+            "tip_freshness_threshold_seconds": 600
+          }
+        },
+        "no_progress_threshold": {
+          "state": "available",
+          "value": {
+            "threshold_seconds": 300,
+            "elapsed_since_last_useful_work_seconds": 5,
+            "state": "within_window",
+            "evaluated_at_unix_seconds": 1777225010
+          }
+        },
+        "last_useful_work": {
+          "state": "available",
+          "value": {
+            "kind": "validated_durable_active_chain",
+            "credited_validated_active_chain_height": 1,
+            "credited_validated_active_chain_hash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "credited_validated_active_chain_work": "1",
+            "source_unix_seconds": 1777225005,
+            "rejected_activity": []
+          }
+        },
+        "last_peer_contribution": {
+          "state": "available",
+          "value": {
+            "peer": "127.0.0.1:8333",
+            "maybe_resolved_endpoint": "127.0.0.1:8333",
+            "kind": "headers_and_blocks",
+            "messages_processed": 4,
+            "headers_received": 2,
+            "blocks_received": 1,
+            "maybe_last_activity_unix_seconds": 1777225005,
+            "maybe_failure_reason_label": null
+          }
+        },
+        "stall_diagnosis": {
+          "state": "available",
+          "value": {
+            "stalled_subsystem": "at_tip_waiting",
+            "confidence": "high",
+            "evidence_basis": ["validated_active_chain", "fresh_tip"],
+            "next_action": "No operator action required.",
+            "maybe_no_progress_diagnosis": "current_at_best_known_tip",
+            "maybe_recovery_category": null,
+            "maybe_latest_stop_reason_label": "target_header_reached",
+            "source_unix_seconds": 1777225010
+          }
+        },
         "last_error": {
           "state": "unavailable",
           "value": {
@@ -1147,6 +1219,78 @@ cat <<'JSON'
         "state": "available",
         "value": "No operator action required."
       },
+      "progress_credit": {
+        "state": "available",
+        "value": {
+          "kind": "validated_durable_active_chain",
+          "credited_validated_active_chain_height": 840004,
+          "credited_validated_active_chain_hash": "1111111111111111111111111111111111111111111111111111111111111111",
+          "credited_validated_active_chain_work": "840005",
+          "source_unix_seconds": 1777225005,
+          "rejected_activity": [
+            {
+              "kind": "header_download",
+              "observed_count": 2,
+              "reason": "headers alone do not prove durable progress"
+            }
+          ]
+        }
+      },
+      "expected_progress_window": {
+        "state": "available",
+        "value": {
+          "retry_backoff_seconds": 30,
+          "max_sync_rounds": 8,
+          "expected_progress_window_seconds": 300,
+          "tip_freshness_threshold_seconds": 600
+        }
+      },
+      "no_progress_threshold": {
+        "state": "available",
+        "value": {
+          "threshold_seconds": 300,
+          "elapsed_since_last_useful_work_seconds": 5,
+          "state": "within_window",
+          "evaluated_at_unix_seconds": 1777225010
+        }
+      },
+      "last_useful_work": {
+        "state": "available",
+        "value": {
+          "kind": "current_at_best_known_tip",
+          "credited_validated_active_chain_height": 840004,
+          "credited_validated_active_chain_hash": "1111111111111111111111111111111111111111111111111111111111111111",
+          "credited_validated_active_chain_work": "840005",
+          "source_unix_seconds": 1777225005,
+          "rejected_activity": []
+        }
+      },
+      "last_peer_contribution": {
+        "state": "available",
+        "value": {
+          "peer": "198.51.100.10:8333",
+          "maybe_resolved_endpoint": "198.51.100.10:8333",
+          "kind": "headers_and_blocks",
+          "messages_processed": 4,
+          "headers_received": 2,
+          "blocks_received": 1,
+          "maybe_last_activity_unix_seconds": 1777225100,
+          "maybe_failure_reason_label": null
+        }
+      },
+      "stall_diagnosis": {
+        "state": "available",
+        "value": {
+          "stalled_subsystem": "at_tip_waiting",
+          "confidence": "high",
+          "evidence_basis": ["validated_active_chain", "fresh_tip"],
+          "next_action": "No operator action required.",
+          "maybe_no_progress_diagnosis": "current_at_best_known_tip",
+          "maybe_recovery_category": null,
+          "maybe_latest_stop_reason_label": "target_header_reached",
+          "source_unix_seconds": 1777225010
+        }
+      },
       "latest_reorg": {
         "state": "available",
         "value": {
@@ -1499,10 +1643,15 @@ grep -q "Recovery next action: Inspect the datadir read-only and avoid deleting 
 grep -q "Best-known tip:" "$report_markdown"
 grep -q "Stay-current:" "$report_markdown"
 grep -q "No-progress diagnosis:" "$report_markdown"
+grep -q "Progress credit:" "$report_markdown"
+grep -q "No-progress threshold:" "$report_markdown"
+grep -q "Last useful work:" "$report_markdown"
+grep -q "Last peer contribution:" "$report_markdown"
+grep -q "Stalled subsystem:" "$report_markdown"
 grep -q "Latest reorg:" "$report_markdown"
 grep -q "Reconcile progress:" "$report_markdown"
 grep -q "Daemon Output Summary" "$report_markdown"
-bun --eval 'const report = await Bun.file(process.argv[1]).json(); if (report.result.firstHeaderProgress.before.headerHeight !== 0 || report.result.firstHeaderProgress.after.headerHeight !== 1) throw new Error("firstHeaderProgress headerHeight evidence missing"); if (report.result.firstHeaderProgress.before.progressSignal !== "waiting_for_peers" || report.result.firstHeaderProgress.after.progressSignal !== "header_progress") throw new Error("firstHeaderProgress progressSignal evidence missing"); if (report.snapshots[0].progressSignal !== "waiting_for_peers") throw new Error("snapshot progressSignal evidence missing"); if (report.final_status.configuredTargets.targetOutboundPeers !== 4 || report.final_status.configuredTargets.maybeTargetHeaderHeight !== 840200) throw new Error("final configuredTargets evidence missing"); if (report.final_status.attemptCounters.attemptedPeers !== 3 || report.final_status.attemptCounters.connectedPeers !== 3 || report.final_status.attemptCounters.failedPeers !== 1 || report.final_status.attemptCounters.maxSyncRounds !== 8) throw new Error("final attemptCounters evidence missing"); if (report.final_status.latestStopReason.label !== "target_header_reached") throw new Error("latestStopReason evidence missing"); if (report.final_status.recoveryAction !== "Retry with a reachable manual peer.") throw new Error("recoveryAction evidence missing"); if (report.final_status.recoveryEvidence?.category !== "storage_lock_contention" || report.final_status.recoveryActionClass !== "read_only_inspection" || report.final_status.recoveryCause !== "stale_lock_evidence" || report.final_status.recoveryNextAction !== "Inspect the datadir read-only and avoid deleting lock artifacts automatically." || report.final_status.maybeRecoveryEvidenceUnavailableReason !== null) throw new Error("phase77 recovery evidence missing"); if (report.final_status.resourcePressure.targetOutboundPeers !== 4) throw new Error("resourcePressure evidence missing"); if (report.final_status.validatedActiveChainHeight !== 840004 || report.final_status.maybeValidatedActiveChainHash !== "1111111111111111111111111111111111111111111111111111111111111111" || report.final_status.maybeValidatedActiveChainWork !== "840005" || report.final_status.bestKnownTip?.freshness !== "fresh" || report.final_status.stayCurrent !== "current_at_best_known_tip" || report.final_status.stayCurrentNextAction !== "Continue monitoring best-known tip freshness." || report.final_status.noProgressDiagnosis !== "current_at_best_known_tip" || report.final_status.noProgressNextAction !== "No operator action required." || report.final_status.latestReorg?.fullyPersisted !== true || report.final_status.reconcileProgress?.state !== "extended_active_chain" || report.final_status.peerContribution?.connected !== 3 || report.final_status.peerContribution?.failed !== 1) throw new Error("phase72 live-smoke final status evidence missing"); if (report.result.firstBlockProgress.before.downloadedBlockHeight !== 0 || report.result.firstBlockProgress.after.connectedBlockHeight !== 1) throw new Error("firstBlockProgress downloadedBlockHeight/connectedBlockHeight evidence missing"); if ("stdoutTail" in report.daemon || "stderrTail" in report.daemon) throw new Error("daemon tails persisted in JSON");' "$report_json"
+bun --eval 'const report = await Bun.file(process.argv[1]).json(); if (report.result.firstHeaderProgress.before.headerHeight !== 0 || report.result.firstHeaderProgress.after.headerHeight !== 1) throw new Error("firstHeaderProgress headerHeight evidence missing"); if (report.result.firstHeaderProgress.before.progressSignal !== "waiting_for_peers" || report.result.firstHeaderProgress.after.progressSignal !== "header_progress") throw new Error("firstHeaderProgress progressSignal evidence missing"); if (report.snapshots[0].progressSignal !== "waiting_for_peers") throw new Error("snapshot progressSignal evidence missing"); if (report.snapshots.at(-1).progressCreditKind !== "validated_durable_active_chain" || report.snapshots.at(-1).expectedProgressWindowSeconds !== 300 || report.snapshots.at(-1).stalledSubsystem !== "at_tip_waiting") throw new Error("phase78 snapshot evidence missing"); if (report.final_status.configuredTargets.targetOutboundPeers !== 4 || report.final_status.configuredTargets.maybeTargetHeaderHeight !== 840200) throw new Error("final configuredTargets evidence missing"); if (report.final_status.attemptCounters.attemptedPeers !== 3 || report.final_status.attemptCounters.connectedPeers !== 3 || report.final_status.attemptCounters.failedPeers !== 1 || report.final_status.attemptCounters.maxSyncRounds !== 8) throw new Error("final attemptCounters evidence missing"); if (report.final_status.latestStopReason.label !== "target_header_reached") throw new Error("latestStopReason evidence missing"); if (report.final_status.recoveryAction !== "Retry with a reachable manual peer.") throw new Error("recoveryAction evidence missing"); if (report.final_status.recoveryEvidence?.category !== "storage_lock_contention" || report.final_status.recoveryActionClass !== "read_only_inspection" || report.final_status.recoveryCause !== "stale_lock_evidence" || report.final_status.recoveryNextAction !== "Inspect the datadir read-only and avoid deleting lock artifacts automatically." || report.final_status.maybeRecoveryEvidenceUnavailableReason !== null) throw new Error("phase77 recovery evidence missing"); if (report.final_status.resourcePressure.targetOutboundPeers !== 4) throw new Error("resourcePressure evidence missing"); if (report.final_status.progressCreditKind !== "validated_durable_active_chain" || report.final_status.progressCreditHeight !== 840004 || report.final_status.progressCreditSourceUnixSeconds !== 1777225005 || report.final_status.expectedProgressWindowSeconds !== 300 || report.final_status.noProgressThresholdState !== "within_window" || report.final_status.noProgressThresholdSeconds !== 300 || report.final_status.lastUsefulWorkKind !== "current_at_best_known_tip" || report.final_status.lastUsefulWorkHeight !== 840004 || report.final_status.lastPeerContribution?.kind !== "headers_and_blocks" || report.final_status.stalledSubsystem !== "at_tip_waiting" || report.final_status.stallConfidence !== "high" || report.final_status.stallEvidenceBasis.join(",") !== "validated_active_chain,fresh_tip" || report.final_status.stallNextAction !== "No operator action required.") throw new Error("phase78 live-smoke final status evidence missing"); if (report.final_status.validatedActiveChainHeight !== 840004 || report.final_status.maybeValidatedActiveChainHash !== "1111111111111111111111111111111111111111111111111111111111111111" || report.final_status.maybeValidatedActiveChainWork !== "840005" || report.final_status.bestKnownTip?.freshness !== "fresh" || report.final_status.stayCurrent !== "current_at_best_known_tip" || report.final_status.stayCurrentNextAction !== "Continue monitoring best-known tip freshness." || report.final_status.noProgressDiagnosis !== "current_at_best_known_tip" || report.final_status.noProgressNextAction !== "No operator action required." || report.final_status.latestReorg?.fullyPersisted !== true || report.final_status.reconcileProgress?.state !== "extended_active_chain" || report.final_status.peerContribution?.connected !== 3 || report.final_status.peerContribution?.failed !== 1) throw new Error("phase72 live-smoke final status evidence missing"); if (report.result.firstBlockProgress.before.downloadedBlockHeight !== 0 || report.result.firstBlockProgress.after.connectedBlockHeight !== 1) throw new Error("firstBlockProgress downloadedBlockHeight/connectedBlockHeight evidence missing"); if ("stdoutTail" in report.daemon || "stderrTail" in report.daemon) throw new Error("daemon tails persisted in JSON");' "$report_json"
 
 rm -f "$counter_file"
 missing_validated_height_output_dir="$tmp_dir/missing-validated-height-output"

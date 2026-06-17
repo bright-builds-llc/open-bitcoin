@@ -61,26 +61,46 @@ type SyncStatusSnapshot = {
   configuredTargets: ConfiguredTargetsSummary | null;
   connectedBlockHeight: number | null;
   downloadedBlockHeight: number | null;
+  expectedProgressWindowSeconds: number | null;
   headerHeight: number | null;
+  lastPeerContribution: ObjectSummary | null;
+  lastUsefulWorkHeight: number | null;
+  lastUsefulWorkKind: string | null;
   lifecycle: string;
   maybeConnectedBlockHash: string | null;
   maybeDownloadedBlockHash: string | null;
   maybeAttemptCountersUnavailableReason: string | null;
   maybeConfiguredTargetsUnavailableReason: string | null;
+  maybeExpectedProgressWindowUnavailableReason: string | null;
   maybeLastSuccessfulProgressUnixSeconds: number | null;
   maybeLastError: string | null;
   maybeLastErrorUnavailableReason: string | null;
+  maybeLastPeerContributionUnavailableReason: string | null;
+  maybeLastUsefulWorkUnavailableReason: string | null;
   maybeLatestStopReasonUnavailableReason: string | null;
+  maybeNoProgressThresholdUnavailableReason: string | null;
   maybePeerCountsUnavailableReason: string | null;
+  maybeProgressCreditUnavailableReason: string | null;
   maybeProgressSignalUnavailableReason: string | null;
   maybeRecoveryActionUnavailableReason: string | null;
   maybeRecoveryCategoryUnavailableReason: string | null;
   maybeResourcePressureUnavailableReason: string | null;
+  maybeStallDiagnosisUnavailableReason: string | null;
   maybeSyncProgressUnavailableReason: string | null;
+  noProgressThresholdSeconds: number | null;
+  noProgressThresholdState: string | null;
   outboundPeers: number | null;
   paused: boolean;
   phase: string;
+  progressCredit: ObjectSummary | null;
+  progressCreditHeight: number | null;
+  progressCreditKind: string | null;
+  progressCreditSourceUnixSeconds: number | null;
   progressSignal: string | null;
+  stallConfidence: string | null;
+  stallEvidenceBasis: string[];
+  stallNextAction: string | null;
+  stalledSubsystem: string | null;
   latestStopReason: StopReasonSummary | null;
   recoveryAction: string | null;
   recoveryCategory: RecoveryDiagnosisCategory | null;
@@ -311,29 +331,39 @@ type FinalStatusSummary = {
   configuredTargets: ConfiguredTargetsSummary | null;
   connectedBlockHeight: number | null;
   downloadedBlockHeight: number | null;
+  expectedProgressWindowSeconds: number | null;
   headerHeight: number | null;
   latestStopReason: StopReasonSummary | null;
   latestReorg: ObjectSummary | null;
+  lastPeerContribution: ObjectSummary | null;
+  lastUsefulWorkHeight: number | null;
+  lastUsefulWorkKind: string | null;
   maybeAttemptCountersUnavailableReason: string | null;
   maybeBestKnownTipUnavailableReason: string | null;
   maybeConfiguredTargetsUnavailableReason: string | null;
   lifecycle: string;
   maybeConnectedBlockHash: string | null;
   maybeDownloadedBlockHash: string | null;
+  maybeExpectedProgressWindowUnavailableReason: string | null;
   maybeLastSuccessfulProgressUnixSeconds: number | null;
   maybeLastError: string | null;
   maybeLastErrorUnavailableReason: string | null;
+  maybeLastPeerContributionUnavailableReason: string | null;
+  maybeLastUsefulWorkUnavailableReason: string | null;
   maybeLatestStopReasonUnavailableReason: string | null;
   maybeLatestReorgUnavailableReason: string | null;
   maybeNoProgressDiagnosisUnavailableReason: string | null;
   maybeNoProgressNextActionUnavailableReason: string | null;
+  maybeNoProgressThresholdUnavailableReason: string | null;
   maybePeerCountsUnavailableReason: string | null;
+  maybeProgressCreditUnavailableReason: string | null;
   maybeProgressSignalUnavailableReason: string | null;
   maybeReconcileProgressUnavailableReason: string | null;
   maybeRecoveryActionUnavailableReason: string | null;
   maybeRecoveryCategoryUnavailableReason: string | null;
   maybeRecoveryEvidenceUnavailableReason: string | null;
   maybeResourcePressureUnavailableReason: string | null;
+  maybeStallDiagnosisUnavailableReason: string | null;
   maybeStayCurrentNextActionUnavailableReason: string | null;
   maybeStayCurrentUnavailableReason: string | null;
   maybeSyncProgressUnavailableReason: string | null;
@@ -345,9 +375,15 @@ type FinalStatusSummary = {
   messagesProcessed: number | null;
   noProgressDiagnosis: string | null;
   noProgressNextAction: string | null;
+  noProgressThresholdSeconds: number | null;
+  noProgressThresholdState: string | null;
   outboundPeers: number | null;
   peerContribution: PeerContributionSummary | null;
   phase: string;
+  progressCredit: ObjectSummary | null;
+  progressCreditHeight: number | null;
+  progressCreditKind: string | null;
+  progressCreditSourceUnixSeconds: number | null;
   progressSignal: string | null;
   recentPeers: RuntimePeerTelemetry[];
   reconcileProgress: ObjectSummary | null;
@@ -358,6 +394,10 @@ type FinalStatusSummary = {
   recoveryEvidence: RecoveryEvidenceSummary | null;
   recoveryNextAction: string | null;
   resourcePressure: ResourcePressureSummary | null;
+  stallConfidence: string | null;
+  stallEvidenceBasis: string[];
+  stallNextAction: string | null;
+  stalledSubsystem: string | null;
   stayCurrent: string | null;
   stayCurrentNextAction: string | null;
   validatedActiveChainHeight: number | null;
@@ -1366,6 +1406,19 @@ function syncStatusSnapshotFromMetadata(metadata: RuntimeMetadataJson): SyncStat
   const maybePeerCountsUnavailableReason = unavailableReasonFromFieldAvailability(
     maybeSyncState?.peers?.peer_counts,
   );
+  const maybeProgressCredit = availableValue(maybeSync?.progress_credit);
+  const progressCreditRecord = recordFromValue(maybeProgressCredit);
+  const maybeExpectedProgressWindow = availableValue(
+    maybeSync?.expected_progress_window,
+  );
+  const expectedProgressWindowRecord = recordFromValue(maybeExpectedProgressWindow);
+  const maybeNoProgressThreshold = availableValue(maybeSync?.no_progress_threshold);
+  const noProgressThresholdRecord = recordFromValue(maybeNoProgressThreshold);
+  const maybeLastUsefulWork = availableValue(maybeSync?.last_useful_work);
+  const lastUsefulWorkRecord = recordFromValue(maybeLastUsefulWork);
+  const maybeLastPeerContribution = availableValue(maybeSync?.last_peer_contribution);
+  const maybeStallDiagnosis = availableValue(maybeSync?.stall_diagnosis);
+  const stallDiagnosisRecord = recordFromValue(maybeStallDiagnosis);
   const blockHeight =
     maybeProgress === null ? null : Number(maybeProgress.block_height ?? 0);
   const connectedBlockHeight =
@@ -1388,8 +1441,18 @@ function syncStatusSnapshotFromMetadata(metadata: RuntimeMetadataJson): SyncStat
     ),
     connectedBlockHeight,
     downloadedBlockHeight,
+    expectedProgressWindowSeconds: numberOrNull(
+      expectedProgressWindowRecord?.expected_progress_window_seconds,
+    ),
     headerHeight:
       maybeProgress === null ? null : Number(maybeProgress.header_height ?? 0),
+    lastPeerContribution: peerContributionEvidenceSummaryFromValue(
+      maybeLastPeerContribution,
+    ),
+    lastUsefulWorkHeight: numberOrNull(
+      lastUsefulWorkRecord?.credited_validated_active_chain_height,
+    ),
+    lastUsefulWorkKind: valueAsNullableString(lastUsefulWorkRecord?.kind),
     lifecycle: String(availableValue(maybeSync?.lifecycle) ?? "unavailable"),
     latestStopReason: stopReasonFromValue(
       availableValue(maybeSync?.latest_stop_reason),
@@ -1406,6 +1469,8 @@ function syncStatusSnapshotFromMetadata(metadata: RuntimeMetadataJson): SyncStat
     maybeConfiguredTargetsUnavailableReason: unavailableReasonFromFieldAvailability(
       maybeSync?.configured_targets,
     ),
+    maybeExpectedProgressWindowUnavailableReason:
+      unavailableReasonFromFieldAvailability(maybeSync?.expected_progress_window),
     maybeLastSuccessfulProgressUnixSeconds: availableValue(
       maybeSync?.last_successful_progress_unix_seconds,
     ),
@@ -1413,10 +1478,22 @@ function syncStatusSnapshotFromMetadata(metadata: RuntimeMetadataJson): SyncStat
     maybeLastErrorUnavailableReason: unavailableReasonFromFieldAvailability(
       maybeSync?.last_error,
     ),
+    maybeLastPeerContributionUnavailableReason: unavailableReasonFromFieldAvailability(
+      maybeSync?.last_peer_contribution,
+    ),
+    maybeLastUsefulWorkUnavailableReason: unavailableReasonFromFieldAvailability(
+      maybeSync?.last_useful_work,
+    ),
     maybeLatestStopReasonUnavailableReason: unavailableReasonFromFieldAvailability(
       maybeSync?.latest_stop_reason,
     ),
+    maybeNoProgressThresholdUnavailableReason: unavailableReasonFromFieldAvailability(
+      maybeSync?.no_progress_threshold,
+    ),
     maybePeerCountsUnavailableReason,
+    maybeProgressCreditUnavailableReason: unavailableReasonFromFieldAvailability(
+      maybeSync?.progress_credit,
+    ),
     maybeProgressSignalUnavailableReason: unavailableReasonFromFieldAvailability(
       maybeSync?.progress_signal,
     ),
@@ -1429,12 +1506,31 @@ function syncStatusSnapshotFromMetadata(metadata: RuntimeMetadataJson): SyncStat
     maybeResourcePressureUnavailableReason: unavailableReasonFromFieldAvailability(
       maybeSync?.resource_pressure,
     ),
+    maybeStallDiagnosisUnavailableReason: unavailableReasonFromFieldAvailability(
+      maybeSync?.stall_diagnosis,
+    ),
     maybeSyncProgressUnavailableReason,
+    noProgressThresholdSeconds: numberOrNull(
+      noProgressThresholdRecord?.threshold_seconds,
+    ),
+    noProgressThresholdState: valueAsNullableString(noProgressThresholdRecord?.state),
     outboundPeers:
       maybePeerCounts === null ? null : Number(maybePeerCounts.outbound ?? 0),
     paused: metadata.sync_control?.paused === true,
     phase: String(availableValue(maybeSync?.phase) ?? "unavailable"),
+    progressCredit: progressCreditSummaryFromValue(maybeProgressCredit),
+    progressCreditHeight: numberOrNull(
+      progressCreditRecord?.credited_validated_active_chain_height,
+    ),
+    progressCreditKind: valueAsNullableString(progressCreditRecord?.kind),
+    progressCreditSourceUnixSeconds: numberOrNull(
+      progressCreditRecord?.source_unix_seconds,
+    ),
     progressSignal: valueAsNullableString(availableValue(maybeSync?.progress_signal)),
+    stallConfidence: valueAsNullableString(stallDiagnosisRecord?.confidence),
+    stallEvidenceBasis: stringArrayFromValue(stallDiagnosisRecord?.evidence_basis),
+    stallNextAction: valueAsNullableString(stallDiagnosisRecord?.next_action),
+    stalledSubsystem: valueAsNullableString(stallDiagnosisRecord?.stalled_subsystem),
     recoveryAction: valueAsNullableString(availableValue(maybeSync?.recovery_action)),
     recoveryCategory: recoveryCategoryFromValue(
       availableValue(maybeSync?.recovery_category),
@@ -1579,6 +1675,40 @@ function reconcileProgressSummaryFromValue(value: unknown): ObjectSummary | null
   };
 }
 
+function progressCreditSummaryFromValue(value: unknown): ObjectSummary | null {
+  const object = recordFromValue(value);
+  if (object === null) {
+    return null;
+  }
+  return {
+    kind: valueAsNullableString(object.kind),
+    height: numberOrNull(object.credited_validated_active_chain_height),
+    hash: valueAsNullableString(object.credited_validated_active_chain_hash),
+    work: valueAsNullableString(object.credited_validated_active_chain_work),
+    sourceUnixSeconds: numberOrNull(object.source_unix_seconds),
+    rejectedActivityCount: Array.isArray(object.rejected_activity)
+      ? object.rejected_activity.length
+      : null,
+  };
+}
+
+function peerContributionEvidenceSummaryFromValue(value: unknown): ObjectSummary | null {
+  const object = recordFromValue(value);
+  if (object === null) {
+    return null;
+  }
+  return {
+    peer: valueAsNullableString(object.peer),
+    endpoint: valueAsNullableString(object.maybe_resolved_endpoint),
+    kind: valueAsNullableString(object.kind),
+    messagesProcessed: numberOrNull(object.messages_processed),
+    headersReceived: numberOrNull(object.headers_received),
+    blocksReceived: numberOrNull(object.blocks_received),
+    lastActivityUnixSeconds: numberOrNull(object.maybe_last_activity_unix_seconds),
+    failureReason: valueAsNullableString(object.maybe_failure_reason_label),
+  };
+}
+
 function recoveryEvidenceSummaryFromAvailability(
   value: FieldAvailability<RecoveryEvidenceStatusJson> | undefined,
 ): RecoveryEvidenceSummary | null {
@@ -1641,6 +1771,13 @@ function numberOrNull(value: unknown): number | null {
   return typeof value === "number" ? value : null;
 }
 
+function stringArrayFromValue(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.map((entry) => String(entry));
+}
+
 function finalStatusCommand(repoRootPath: string, options: Options): CommandSpec {
   const maybeOverride = process.env.OPEN_BITCOIN_LIVE_SMOKE_FINAL_STATUS_BIN;
   if (maybeOverride !== undefined) {
@@ -1698,6 +1835,19 @@ function finalStatusSummaryFromMetadata(metadata: RuntimeMetadataJson): FinalSta
   const maybePeerCountsUnavailableReason = unavailableReasonFromFieldAvailability(
     maybeSyncState.peers?.peer_counts,
   );
+  const maybeProgressCredit = availableValue(maybeSync?.progress_credit);
+  const progressCreditRecord = recordFromValue(maybeProgressCredit);
+  const maybeExpectedProgressWindow = availableValue(
+    maybeSync?.expected_progress_window,
+  );
+  const expectedProgressWindowRecord = recordFromValue(maybeExpectedProgressWindow);
+  const maybeNoProgressThreshold = availableValue(maybeSync?.no_progress_threshold);
+  const noProgressThresholdRecord = recordFromValue(maybeNoProgressThreshold);
+  const maybeLastUsefulWork = availableValue(maybeSync?.last_useful_work);
+  const lastUsefulWorkRecord = recordFromValue(maybeLastUsefulWork);
+  const maybeLastPeerContribution = availableValue(maybeSync?.last_peer_contribution);
+  const maybeStallDiagnosis = availableValue(maybeSync?.stall_diagnosis);
+  const stallDiagnosisRecord = recordFromValue(maybeStallDiagnosis);
   const blockHeight =
     maybeProgress === null ? null : Number(maybeProgress.block_height ?? 0);
   const connectedBlockHeight =
@@ -1741,12 +1891,22 @@ function finalStatusSummaryFromMetadata(metadata: RuntimeMetadataJson): FinalSta
     ),
     connectedBlockHeight,
     downloadedBlockHeight,
+    expectedProgressWindowSeconds: numberOrNull(
+      expectedProgressWindowRecord?.expected_progress_window_seconds,
+    ),
     headerHeight:
       maybeProgress === null ? null : Number(maybeProgress.header_height ?? 0),
     latestStopReason: stopReasonFromValue(
       availableValue(maybeSync?.latest_stop_reason),
     ),
     latestReorg: latestReorgSummaryFromValue(availableValue(maybeSync?.latest_reorg)),
+    lastPeerContribution: peerContributionEvidenceSummaryFromValue(
+      maybeLastPeerContribution,
+    ),
+    lastUsefulWorkHeight: numberOrNull(
+      lastUsefulWorkRecord?.credited_validated_active_chain_height,
+    ),
+    lastUsefulWorkKind: valueAsNullableString(lastUsefulWorkRecord?.kind),
     maybeAttemptCountersUnavailableReason: unavailableReasonFromFieldAvailability(
       maybeSync?.attempt_counters,
     ),
@@ -1763,12 +1923,20 @@ function finalStatusSummaryFromMetadata(metadata: RuntimeMetadataJson): FinalSta
     maybeDownloadedBlockHash: valueAsNullableString(
       maybeProgress?.maybe_downloaded_block_hash,
     ),
+    maybeExpectedProgressWindowUnavailableReason:
+      unavailableReasonFromFieldAvailability(maybeSync?.expected_progress_window),
     maybeLastSuccessfulProgressUnixSeconds: availableValue(
       maybeSync?.last_successful_progress_unix_seconds,
     ),
     maybeLastError: valueAsNullableString(availableValue(maybeSync?.last_error)),
     maybeLastErrorUnavailableReason: unavailableReasonFromFieldAvailability(
       maybeSync?.last_error,
+    ),
+    maybeLastPeerContributionUnavailableReason: unavailableReasonFromFieldAvailability(
+      maybeSync?.last_peer_contribution,
+    ),
+    maybeLastUsefulWorkUnavailableReason: unavailableReasonFromFieldAvailability(
+      maybeSync?.last_useful_work,
     ),
     maybeLatestStopReasonUnavailableReason: unavailableReasonFromFieldAvailability(
       maybeSync?.latest_stop_reason,
@@ -1782,7 +1950,13 @@ function finalStatusSummaryFromMetadata(metadata: RuntimeMetadataJson): FinalSta
     maybeNoProgressNextActionUnavailableReason: unavailableReasonFromFieldAvailability(
       maybeSync?.no_progress_next_action,
     ),
+    maybeNoProgressThresholdUnavailableReason: unavailableReasonFromFieldAvailability(
+      maybeSync?.no_progress_threshold,
+    ),
     maybePeerCountsUnavailableReason,
+    maybeProgressCreditUnavailableReason: unavailableReasonFromFieldAvailability(
+      maybeSync?.progress_credit,
+    ),
     maybeProgressSignalUnavailableReason: unavailableReasonFromFieldAvailability(
       maybeSync?.progress_signal,
     ),
@@ -1797,6 +1971,9 @@ function finalStatusSummaryFromMetadata(metadata: RuntimeMetadataJson): FinalSta
     ),
     maybeResourcePressureUnavailableReason: unavailableReasonFromFieldAvailability(
       maybeSync?.resource_pressure,
+    ),
+    maybeStallDiagnosisUnavailableReason: unavailableReasonFromFieldAvailability(
+      maybeSync?.stall_diagnosis,
     ),
     maybeStayCurrentNextActionUnavailableReason: unavailableReasonFromFieldAvailability(
       maybeSync?.stay_current_next_action,
@@ -1826,10 +2003,22 @@ function finalStatusSummaryFromMetadata(metadata: RuntimeMetadataJson): FinalSta
     noProgressNextAction: valueAsNullableString(
       availableValue(maybeSync?.no_progress_next_action),
     ),
+    noProgressThresholdSeconds: numberOrNull(
+      noProgressThresholdRecord?.threshold_seconds,
+    ),
+    noProgressThresholdState: valueAsNullableString(noProgressThresholdRecord?.state),
     outboundPeers:
       maybePeerCounts === null ? null : Number(maybePeerCounts.outbound ?? 0),
     peerContribution: peerContributionFromValues(attemptCounters, maybePeerCounts),
     phase: String(availableValue(maybeSync?.phase) ?? "unavailable"),
+    progressCredit: progressCreditSummaryFromValue(maybeProgressCredit),
+    progressCreditHeight: numberOrNull(
+      progressCreditRecord?.credited_validated_active_chain_height,
+    ),
+    progressCreditKind: valueAsNullableString(progressCreditRecord?.kind),
+    progressCreditSourceUnixSeconds: numberOrNull(
+      progressCreditRecord?.source_unix_seconds,
+    ),
     progressSignal: valueAsNullableString(availableValue(maybeSync?.progress_signal)),
     recentPeers,
     reconcileProgress: reconcileProgressSummaryFromValue(
@@ -1847,6 +2036,10 @@ function finalStatusSummaryFromMetadata(metadata: RuntimeMetadataJson): FinalSta
     resourcePressure: resourcePressureSummaryFromValue(
       availableValue(maybeSync?.resource_pressure),
     ),
+    stallConfidence: valueAsNullableString(stallDiagnosisRecord?.confidence),
+    stallEvidenceBasis: stringArrayFromValue(stallDiagnosisRecord?.evidence_basis),
+    stallNextAction: valueAsNullableString(stallDiagnosisRecord?.next_action),
+    stalledSubsystem: valueAsNullableString(stallDiagnosisRecord?.stalled_subsystem),
     stayCurrent: valueAsNullableString(availableValue(maybeSync?.stay_current)),
     stayCurrentNextAction: valueAsNullableString(
       availableValue(maybeSync?.stay_current_next_action),
@@ -3091,6 +3284,12 @@ ${daemonSessionRows}
 - Stay-current action: ${fieldText(report.final_status?.stayCurrentNextAction ?? null, report.final_status?.maybeStayCurrentNextActionUnavailableReason ?? null)}
 - No-progress diagnosis: ${fieldText(report.final_status?.noProgressDiagnosis ?? null, report.final_status?.maybeNoProgressDiagnosisUnavailableReason ?? null)}
 - No-progress action: ${fieldText(report.final_status?.noProgressNextAction ?? null, report.final_status?.maybeNoProgressNextActionUnavailableReason ?? null)}
+- Progress credit: ${objectSummaryText(report.final_status?.progressCredit ?? null, report.final_status?.maybeProgressCreditUnavailableReason ?? null)}
+- Expected progress window: ${fieldText(report.final_status?.expectedProgressWindowSeconds ?? null, report.final_status?.maybeExpectedProgressWindowUnavailableReason ?? null)}
+- No-progress threshold: ${noProgressThresholdText(report.final_status)}
+- Last useful work: ${lastUsefulWorkText(report.final_status)}
+- Last peer contribution: ${objectSummaryText(report.final_status?.lastPeerContribution ?? null, report.final_status?.maybeLastPeerContributionUnavailableReason ?? null)}
+- Stalled subsystem: ${stallDiagnosisText(report.final_status)}
 - Latest reorg: ${objectSummaryText(report.final_status?.latestReorg ?? null, report.final_status?.maybeLatestReorgUnavailableReason ?? null)}
 - Reconcile progress: ${objectSummaryText(report.final_status?.reconcileProgress ?? null, report.final_status?.maybeReconcileProgressUnavailableReason ?? null)}
 - Peer contribution: ${peerContributionText(report.final_status?.peerContribution ?? null, report.final_status?.maybeAttemptCountersUnavailableReason ?? report.final_status?.maybePeerCountsUnavailableReason ?? null)}
@@ -3186,6 +3385,31 @@ function objectSummaryText(
   return Object.entries(summary)
     .map(([key, value]) => `${key}=${value === null ? "unavailable" : escapeTableCell(String(value))}`)
     .join(" ");
+}
+
+function noProgressThresholdText(finalStatus: FinalStatusSummary | null): string {
+  if (finalStatus === null || finalStatus.noProgressThresholdState === null) {
+    return unavailableText(finalStatus?.maybeNoProgressThresholdUnavailableReason ?? null);
+  }
+  return `state=${escapeTableCell(finalStatus.noProgressThresholdState)} seconds=${fieldText(finalStatus.noProgressThresholdSeconds, finalStatus.maybeNoProgressThresholdUnavailableReason)}`;
+}
+
+function lastUsefulWorkText(finalStatus: FinalStatusSummary | null): string {
+  if (finalStatus === null || finalStatus.lastUsefulWorkKind === null) {
+    return unavailableText(finalStatus?.maybeLastUsefulWorkUnavailableReason ?? null);
+  }
+  return `kind=${escapeTableCell(finalStatus.lastUsefulWorkKind)} height=${fieldText(finalStatus.lastUsefulWorkHeight, finalStatus.maybeLastUsefulWorkUnavailableReason)}`;
+}
+
+function stallDiagnosisText(finalStatus: FinalStatusSummary | null): string {
+  if (finalStatus === null || finalStatus.stalledSubsystem === null) {
+    return unavailableText(finalStatus?.maybeStallDiagnosisUnavailableReason ?? null);
+  }
+  const basis =
+    finalStatus.stallEvidenceBasis.length === 0
+      ? "none"
+      : finalStatus.stallEvidenceBasis.map(escapeTableCell).join(",");
+  return `stalled_subsystem=${escapeTableCell(finalStatus.stalledSubsystem)} confidence=${fieldText(finalStatus.stallConfidence, finalStatus.maybeStallDiagnosisUnavailableReason)} basis=${basis} next_action=${fieldText(finalStatus.stallNextAction, finalStatus.maybeStallDiagnosisUnavailableReason)}`;
 }
 
 function peerContributionText(

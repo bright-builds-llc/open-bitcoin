@@ -3,6 +3,8 @@
 
 //! Human and JSON status rendering.
 
+mod progress_guarantee;
+
 use open_bitcoin_node::{
     MetricsStatus, RecoveryEvidenceSnapshot,
     status::{
@@ -17,12 +19,17 @@ use open_bitcoin_node::{
 };
 use serde::Serialize;
 
+use progress_guarantee::progress_guarantee_lines;
+
 use crate::operator::sync_truth_render::{
     best_known_tip_text, no_progress_diagnosis_text, stay_current_text, sync_progress_text,
     sync_reconcile_text, sync_reorg_text,
 };
 
 use super::StatusRenderMode;
+
+pub(super) const SYNC_PROGRESS_CREDIT_PREFIX: &str = "Sync progress credit:";
+pub(super) const SYNC_STALLED_SUBSYSTEM_PREFIX: &str = "Sync stalled subsystem:";
 
 /// Render a shared status snapshot as stable JSON or quiet human output.
 pub fn render_status(
@@ -107,6 +114,7 @@ fn render_human_status(snapshot: &OpenBitcoinStatusSnapshot) -> String {
         "Sync no-progress action: {}",
         string_availability(&snapshot.sync.no_progress_next_action)
     ));
+    lines.extend(progress_guarantee_lines(&snapshot.sync));
     lines.push(format!(
         "Sync last progress: {}",
         u64_availability(

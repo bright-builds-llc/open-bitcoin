@@ -336,6 +336,14 @@ fn push_full_sync_evidence(output: &mut String, evidence: &super::FullSyncEviden
         summary_evidence_text(&evidence.no_progress_or_reorg_events)
     ));
     output.push_str(&format!(
+        "- Progress guarantee: {}\n",
+        summary_evidence_text(&evidence.progress_guarantee)
+    ));
+    output.push_str(&format!(
+        "- Stall diagnosis: {}\n",
+        summary_evidence_text(&evidence.stall_diagnosis)
+    ));
+    output.push_str(&format!(
         "- Resource pressure: {}\n",
         summary_evidence_text(&evidence.resource_pressure)
     ));
