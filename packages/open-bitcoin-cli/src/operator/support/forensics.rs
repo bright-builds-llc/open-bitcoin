@@ -353,6 +353,12 @@ fn checkpoint_summary(status: &SoakCheckpointStatus, evidence_basis: &mut Vec<St
         "resource_bound",
         status.maybe_resource_bound_state_label.as_deref(),
     );
+    for label in &status.resource_bound_labels {
+        if let Some(label) = safe_value(label) {
+            parts.push(format!("resource_bound_label={label}"));
+            evidence_basis.push(format!("resource_bound_label={label}"));
+        }
+    }
     push_optional_number(
         &mut parts,
         "validated_active_chain_height",

@@ -13,13 +13,15 @@ use open_bitcoin_node::{
     status::{
         BestKnownTipSource, BestKnownTipStatus, ChainTipStatus, ConfigStatus, FieldAvailability,
         MempoolStatus, NoProgressDiagnosis, NoProgressThresholdEvidence, NoProgressThresholdState,
-        NodeRuntimeState, NodeStatus, PeerCounts, PeerStatus, PeerTipAgreement,
-        PeerTipAgreementStatus, ProgressCreditEvidence, ProgressCreditKind, ProgressWindowEvidence,
-        RejectedProgressActivity, RejectedProgressActivityKind, ServiceLifecycleStatus,
-        ServiceStatus, StallDiagnosisConfidence, StallDiagnosisEvidence, StalledSubsystem,
-        StayCurrentStatus, SyncAttemptCounters, SyncConfiguredTargets, SyncLagStatus,
-        SyncLifecycleState, SyncProgress, SyncProgressSignal, SyncRecoveryCategory,
-        SyncResourcePressure, SyncStatus, SyncStopReasonStatus, TipFreshnessStatus, WalletStatus,
+        NodeRuntimeState, NodeStatus, PeerContributionEvidence, PeerContributionKind, PeerCounts,
+        PeerStatus, PeerTipAgreement, PeerTipAgreementStatus, ProgressCreditEvidence,
+        ProgressCreditKind, ProgressWindowEvidence, RejectedProgressActivity,
+        RejectedProgressActivityKind, ResourceBoundEntry, ResourceBoundKind, ResourceBoundSnapshot,
+        ResourceBoundUnit, ServiceLifecycleStatus, ServiceStatus, StallDiagnosisConfidence,
+        StallDiagnosisEvidence, StalledSubsystem, StayCurrentStatus, SyncAttemptCounters,
+        SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal,
+        SyncRecoveryCategory, SyncResourcePressure, SyncStatus, SyncStopReasonStatus,
+        TipFreshnessStatus, WalletStatus, usage_against_budget,
     },
 };
 use serde_json::json;
@@ -576,6 +578,128 @@ fn phase79_support_forensics_json_excludes_sensitive_seed_material() {
 }
 
 #[test]
+fn phase79_support_forensics_markdown_renders_timeline_chain_and_failure_narrative() {
+    // Arrange
+    let temp = TestDirectory::new("phase79-markdown");
+    seed_phase75_soak_run(
+        temp.path(),
+        "soak-1781485562-0083",
+        SoakOutcomeLabel::CleanCompletion,
+    );
+    let bundle = phase75_support_bundle_for_test(temp.path());
+
+    // Act
+    let markdown = render::render_support_markdown(&bundle);
+
+    // Assert
+    for expected in [
+        "## Forensic Timeline",
+        "## Checkpoint Chain",
+        "## Failure Narrative",
+        "Verdict: soak_stable",
+        "Likely cause: soak completed with validated progress evidence",
+        "Evidence basis: outcome=clean_completion",
+        "Next action: Archive the support bundle as soak stability evidence.",
+        "Confidence: high",
+        "Algorithm: sha256-json-v1",
+        "Event count: 4",
+        "Missing sequence count: 0",
+        "Truncated: false",
+        "Sequence 1: kind=run_start recorded_at=1781485562",
+    ] {
+        assert!(markdown.contains(expected), "missing {expected}");
+    }
+}
+
+#[test]
+fn phase79_support_forensics_cross_surface_agreement_uses_shared_status_contract() {
+    // Arrange
+    let temp = TestDirectory::new("phase79-cross-surface");
+    let status = phase79_shared_contract_status();
+    seed_soak_run_with_checkpoint(
+        temp.path(),
+        "soak-1781485562-0084",
+        SoakOutcomeLabel::RecoveryStop,
+        phase79_shared_checkpoint_status(),
+    );
+    let bundle = phase77_support_bundle_with_status(temp.path(), status);
+
+    // Act
+    let serialized = serde_json::to_value(&bundle).expect("support bundle json");
+    let forensics_text =
+        serde_json::to_string(&serialized["support_forensics"]).expect("forensics json");
+    let markdown = render::render_support_markdown(&bundle);
+
+    // Assert
+    assert_eq!(
+        serialized["support_forensics"]["source"]["event_count"],
+        json!(4)
+    );
+    assert_eq!(
+        serialized["support_forensics"]["narrative"]["evidence_basis"],
+        json!(["recovery=stale_lock_evidence"])
+    );
+    assert!(serialized["resource_bound_evidence"]["maybe_projected_bundle_size_bytes"].is_number());
+    assert!(serialized["support_forensics"]["maybe_projected_bundle_size_bytes"].is_null());
+    for topic in [
+        "RPC cookie contents",
+        "RPC password and RPC auth values",
+        "wallet private material and raw wallet files",
+        "raw unbounded log contents",
+    ] {
+        assert!(
+            serialized["support_forensics"]["redaction"]["omitted"]
+                .as_array()
+                .expect("redaction omitted")
+                .iter()
+                .any(|value| value.as_str() == Some(topic)),
+            "missing redaction topic {topic}"
+        );
+    }
+    for expected in [
+        "recovery=stale_lock_evidence",
+        "resource_bound=warning",
+        "resource_bound_label=support_bundle=warning",
+        "progress_credit=validated_durable_active_chain",
+        "last_peer_contribution=peer=peer-79 kind=headers_and_blocks messages=9 headers=4 blocks=2 failure=unavailable",
+        "stall=storage_or_resource_pressure",
+        "stall_confidence=medium",
+    ] {
+        assert!(
+            forensics_text.contains(expected),
+            "missing JSON label {expected}"
+        );
+        assert!(
+            markdown.contains(expected),
+            "missing Markdown label {expected}"
+        );
+    }
+}
+
+#[test]
+fn phase79_support_forensics_markdown_and_json_exclude_forbidden_sensitive_material() {
+    // Arrange
+    let temp = TestDirectory::new("phase79-sensitive-render");
+    seed_phase79_sensitive_soak_run(
+        temp.path(),
+        "soak-1781485562-0085",
+        SoakOutcomeLabel::ResourceStop,
+    );
+    let bundle = phase75_support_bundle_for_test(temp.path());
+
+    // Act
+    let json_text = serde_json::to_string_pretty(&bundle).expect("support json");
+    let markdown = render::render_support_markdown(&bundle);
+
+    // Assert
+    for rendered in [&json_text, &markdown] {
+        for forbidden in phase79_sensitive_literals() {
+            assert_absent(rendered, forbidden);
+        }
+    }
+}
+
+#[test]
 fn phase75_soak_support_summary_excludes_raw_local_evidence() {
     // Arrange
     let temp = TestDirectory::new("soak-redaction");
@@ -1120,6 +1244,137 @@ fn phase77_recovery_evidence() -> RecoveryEvidenceSnapshot {
         compatibility_action: FieldAvailability::unavailable(
             "no compatibility recovery action recorded",
         ),
+    }
+}
+
+fn phase79_shared_contract_status() -> OpenBitcoinStatusSnapshot {
+    let mut status = phase72_status();
+    status.recovery_evidence = FieldAvailability::available(phase77_recovery_evidence());
+    status.sync.recovery_category =
+        FieldAvailability::available(SyncRecoveryCategory::StorageLockContention);
+    status.sync.progress_credit = FieldAvailability::available(ProgressCreditEvidence {
+        kind: ProgressCreditKind::ValidatedDurableActiveChain,
+        credited_validated_active_chain_height: 840_004,
+        credited_validated_active_chain_hash: "11".repeat(32),
+        credited_validated_active_chain_work: "840005".to_string(),
+        source_unix_seconds: 1_717_000_020,
+        rejected_activity: vec![RejectedProgressActivity {
+            kind: RejectedProgressActivityKind::HeaderDownload,
+            observed_count: 2,
+            reason: "headers without durable active-chain update".to_string(),
+        }],
+    });
+    status.sync.last_peer_contribution = FieldAvailability::available(PeerContributionEvidence {
+        peer: "peer-79".to_string(),
+        maybe_resolved_endpoint: None,
+        kind: PeerContributionKind::HeadersAndBlocks,
+        messages_processed: 9,
+        headers_received: 4,
+        blocks_received: 2,
+        maybe_last_activity_unix_seconds: Some(1_717_000_030),
+        maybe_failure_reason_label: None,
+    });
+    status.sync.stall_diagnosis = FieldAvailability::available(StallDiagnosisEvidence {
+        stalled_subsystem: StalledSubsystem::StorageOrResourcePressure,
+        confidence: StallDiagnosisConfidence::Medium,
+        evidence_basis: vec![
+            "resource_bounds".to_string(),
+            "support_bundle_size".to_string(),
+        ],
+        next_action: "Inspect support bundle resource bounds.".to_string(),
+        maybe_no_progress_diagnosis: Some(NoProgressDiagnosis::StorageOrResourceBlocked),
+        maybe_recovery_category: Some(SyncRecoveryCategory::StorageLockContention),
+        maybe_latest_stop_reason_label: Some("resource_pressure".to_string()),
+        source_unix_seconds: 1_717_000_032,
+    });
+    status.sync.no_progress_diagnosis =
+        FieldAvailability::available(NoProgressDiagnosis::StorageOrResourceBlocked);
+    status.resource_bounds = FieldAvailability::available(phase79_resource_bound_snapshot());
+    status
+}
+
+fn phase79_shared_checkpoint_status() -> SoakCheckpointStatus {
+    SoakCheckpointStatus {
+        maybe_network: Some("mainnet".to_string()),
+        maybe_lifecycle: Some("active".to_string()),
+        maybe_latest_stop_reason_label: Some("resource_pressure".to_string()),
+        maybe_recovery_category_label: Some("storage_lock_contention".to_string()),
+        maybe_recovery_action_class_label: Some("read_only_inspection".to_string()),
+        maybe_recovery_cause_label: Some("stale_lock_evidence".to_string()),
+        maybe_recovery_next_action: Some(
+            "Inspect the datadir read-only and avoid deleting lock artifacts automatically."
+                .to_string(),
+        ),
+        maybe_no_progress_diagnosis_label: Some("storage_or_resource_blocked".to_string()),
+        maybe_progress_credit_kind_label: Some("validated_durable_active_chain".to_string()),
+        maybe_progress_credit_height: Some(840_004),
+        maybe_progress_credit_hash: Some("11".repeat(32)),
+        maybe_progress_credit_work: Some("840005".to_string()),
+        maybe_progress_credit_source_unix_seconds: Some(1_717_000_020),
+        progress_credit_rejected_activity_labels: vec![
+            "kind=header_download observed_count=2 reason=headers without durable active-chain update"
+                .to_string(),
+        ],
+        maybe_expected_progress_window_seconds: Some(300),
+        maybe_no_progress_threshold_state_label: Some("within_window".to_string()),
+        maybe_no_progress_threshold_seconds: Some(300),
+        maybe_last_useful_work_kind_label: Some("current_at_best_known_tip".to_string()),
+        maybe_last_useful_work_height: Some(840_004),
+        maybe_last_peer_contribution_label: Some(
+            "peer=peer-79 kind=headers_and_blocks messages=9 headers=4 blocks=2 failure=unavailable"
+                .to_string(),
+        ),
+        maybe_stalled_subsystem_label: Some("storage_or_resource_pressure".to_string()),
+        maybe_stall_confidence_label: Some("medium".to_string()),
+        stall_evidence_basis: vec![
+            "resource_bounds".to_string(),
+            "support_bundle_size".to_string(),
+        ],
+        maybe_stall_next_action: Some("Inspect support bundle resource bounds.".to_string()),
+        maybe_resource_bound_state_label: Some("warning".to_string()),
+        resource_bound_labels: vec!["support_bundle=warning".to_string()],
+        maybe_resource_bound_next_action: Some("Archive or rotate large support bundles.".to_string()),
+        maybe_validated_active_chain_height: Some(840_004),
+        maybe_best_known_tip_height: Some(840_004),
+        maybe_source_status_path: Some(PathBuf::from("/tmp/open-bitcoin-mainnet/status-snapshot.json")),
+    }
+}
+
+fn phase79_resource_bound_snapshot() -> ResourceBoundSnapshot {
+    ResourceBoundSnapshot::new(
+        ResourceBoundKind::ALL
+            .into_iter()
+            .map(|kind| {
+                let current = if kind == ResourceBoundKind::SupportBundle {
+                    85
+                } else {
+                    10
+                };
+                ResourceBoundEntry::available(
+                    kind,
+                    kind.as_str(),
+                    usage_against_budget(
+                        current,
+                        100,
+                        phase79_resource_unit(kind),
+                        "Review bounded support resource usage.",
+                    ),
+                )
+            })
+            .collect(),
+    )
+}
+
+fn phase79_resource_unit(kind: ResourceBoundKind) -> ResourceBoundUnit {
+    match kind {
+        ResourceBoundKind::File => ResourceBoundUnit::Files,
+        ResourceBoundKind::Queue | ResourceBoundKind::Cache => ResourceBoundUnit::Items,
+        ResourceBoundKind::Peer => ResourceBoundUnit::Peers,
+        ResourceBoundKind::InFlight => ResourceBoundUnit::Requests,
+        ResourceBoundKind::Disk
+        | ResourceBoundKind::Log
+        | ResourceBoundKind::Metric
+        | ResourceBoundKind::SupportBundle => ResourceBoundUnit::Bytes,
     }
 }
 

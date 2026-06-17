@@ -137,6 +137,8 @@ pub(super) fn render_support_markdown(bundle: &SupportEvidenceBundle) -> String 
     output.push_str("\n## Soak Evidence\n\n");
     push_soak_evidence(&mut output, &bundle.soak_evidence);
 
+    push_support_forensics(&mut output, &bundle.support_forensics);
+
     output.push_str("\n## Live Smoke\n\n");
     output.push_str(&format!(
         "- State: {}\n",
@@ -255,6 +257,131 @@ fn push_soak_evidence(output: &mut String, evidence: &super::SoakSupportEvidence
     if let Some(reason) = evidence.maybe_unavailable_reason.as_ref() {
         output.push_str(&format!("- Reason: {reason}\n"));
     }
+}
+
+fn push_support_forensics(
+    output: &mut String,
+    evidence: &super::forensics::SupportForensicsEvidence,
+) {
+    output.push_str("\n## Forensic Timeline\n\n");
+    output.push_str(&format!(
+        "- State: {}\n",
+        evidence_state_name(evidence.state)
+    ));
+    if let Some(reason) = evidence.maybe_unavailable_reason.as_ref() {
+        output.push_str(&format!("- Reason: {reason}\n"));
+    }
+    for entry in &evidence.timeline {
+        let basis = csv_or_unavailable(&entry.evidence_basis);
+        let next_action = entry.next_action.as_deref().unwrap_or("unavailable");
+        output.push_str(&format!(
+            "- Sequence {}: kind={} recorded_at={} summary={} basis={} next_action={}\n",
+            entry.sequence,
+            entry.kind,
+            entry.recorded_at_unix_seconds,
+            entry.summary,
+            basis,
+            next_action
+        ));
+    }
+
+    let checkpoint = &evidence.checkpoint_chain;
+    let first_sequence = checkpoint
+        .first_sequence
+        .map(|sequence| sequence.to_string())
+        .unwrap_or_else(|| "unavailable".to_string());
+    let latest_sequence = checkpoint
+        .latest_sequence
+        .map(|sequence| sequence.to_string())
+        .unwrap_or_else(|| "unavailable".to_string());
+    output.push_str("\n## Checkpoint Chain\n\n");
+    output.push_str(&format!(
+        "- State: {}\n",
+        evidence_state_name(checkpoint.state)
+    ));
+    output.push_str(&format!("- Algorithm: {}\n", checkpoint.algorithm));
+    output.push_str(&format!("- Event count: {}\n", checkpoint.event_count));
+    output.push_str(&format!("- First sequence: {first_sequence}\n"));
+    output.push_str(&format!("- Latest sequence: {latest_sequence}\n"));
+    output.push_str(&format!(
+        "- Latest hash: {}\n",
+        checkpoint.latest_hash.as_deref().unwrap_or("unavailable")
+    ));
+    output.push_str(&format!("- Ordered: {}\n", checkpoint.ordered));
+    output.push_str(&format!(
+        "- Missing sequence count: {}\n",
+        checkpoint.missing_sequence_count
+    ));
+    output.push_str(&format!("- Truncated: {}\n", checkpoint.truncated));
+    if let Some(reason) = checkpoint.maybe_unavailable_reason.as_ref() {
+        output.push_str(&format!("- Reason: {reason}\n"));
+    }
+
+    let narrative = &evidence.narrative;
+    output.push_str("\n## Failure Narrative\n\n");
+    output.push_str(&format!("- Verdict: {}\n", json_string(&narrative.verdict)));
+    output.push_str(&format!("- Likely cause: {}\n", narrative.likely_cause));
+    output.push_str(&format!(
+        "- Evidence basis: {}\n",
+        csv_or_unavailable(&narrative.evidence_basis)
+    ));
+    output.push_str(&format!("- Next action: {}\n", narrative.next_action));
+    output.push_str(&format!(
+        "- Confidence: {}\n",
+        json_string(&narrative.confidence)
+    ));
+    output.push_str(&format!(
+        "- Run: {}\n",
+        evidence
+            .source
+            .maybe_run_id
+            .as_deref()
+            .unwrap_or("unavailable")
+    ));
+    output.push_str(&format!(
+        "- Source event count: {}\n",
+        evidence.source.event_count
+    ));
+    output.push_str(&format!(
+        "- Source checkpoint count: {}\n",
+        evidence.source.checkpoint_count
+    ));
+    output.push_str(&format!(
+        "- Source ledger: {}\n",
+        evidence
+            .source
+            .maybe_source_ledger_path
+            .as_deref()
+            .unwrap_or("unavailable")
+    ));
+    output.push_str(&format!(
+        "- JSON report: {}\n",
+        evidence
+            .source
+            .maybe_json_report_path
+            .as_deref()
+            .unwrap_or("unavailable")
+    ));
+    output.push_str(&format!(
+        "- Markdown report: {}\n",
+        evidence
+            .source
+            .maybe_markdown_report_path
+            .as_deref()
+            .unwrap_or("unavailable")
+    ));
+    output.push_str(&format!(
+        "- Redaction omitted: {}\n",
+        csv_or_unavailable(&evidence.redaction.omitted)
+    ));
+    output.push_str(&format!(
+        "- Redaction safeguards: {}\n",
+        csv_or_unavailable(&evidence.redaction.safeguards)
+    ));
+    output.push_str(&format!(
+        "- Redaction source: {}\n",
+        evidence.redaction.source
+    ));
 }
 
 fn push_resource_bound_evidence(
@@ -465,6 +592,13 @@ fn summary_value(value: &Value) -> String {
 fn push_optional_path(output: &mut String, label: &str, maybe_path: Option<&str>) {
     let path = maybe_path.unwrap_or("unavailable");
     output.push_str(&format!("- {label}: {path}\n"));
+}
+
+fn csv_or_unavailable(values: &[String]) -> String {
+    if values.is_empty() {
+        return "unavailable".to_string();
+    }
+    values.join(", ")
 }
 
 fn json_string<T: Serialize>(value: &T) -> String {
