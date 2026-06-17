@@ -3,12 +3,14 @@
 
 //! Shared operator status snapshot contracts.
 
+mod progress_guarantee;
 mod recovery;
 mod resource_bounds;
 
 use crate::{LogStatus, MetricsStatus, recovery::RecoveryEvidenceSnapshot};
 use serde::{Deserialize, Serialize};
 
+pub use progress_guarantee::*;
 pub use recovery::SyncRecoveryCategory;
 pub use resource_bounds::*;
 /// Explicit availability wrapper for status fields that may not be collectible.
@@ -335,22 +337,6 @@ pub enum StayCurrentStatus {
     NoProgress,
 }
 
-/// Typed cause for why a sync run made no forward progress.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum NoProgressDiagnosis {
-    CurrentAtBestKnownTip,
-    BehindAwaitingHeaders,
-    AwaitingBlockBodies,
-    StaleInflightCleanup,
-    PeerBackoff,
-    PeerStalled,
-    PeerFailuresExhausted,
-    BranchCompetitionAwaitingBodies,
-    RecoveringFromReorgOrStorage,
-    StorageOrResourceBlocked,
-}
-
 /// Bounded evidence for the latest active-chain reorg transition.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SyncReorgEvidence {
@@ -418,6 +404,18 @@ pub struct SyncStatus {
     pub progress_signal: FieldAvailability<SyncProgressSignal>,
     pub lag: FieldAvailability<SyncLagStatus>,
     pub last_successful_progress_unix_seconds: FieldAvailability<u64>,
+    #[serde(default = "progress_guarantee::progress_credit_unavailable")]
+    pub progress_credit: FieldAvailability<ProgressCreditEvidence>,
+    #[serde(default = "progress_guarantee::expected_progress_window_unavailable")]
+    pub expected_progress_window: FieldAvailability<ProgressWindowEvidence>,
+    #[serde(default = "progress_guarantee::no_progress_threshold_unavailable")]
+    pub no_progress_threshold: FieldAvailability<NoProgressThresholdEvidence>,
+    #[serde(default = "progress_guarantee::last_useful_work_unavailable")]
+    pub last_useful_work: FieldAvailability<ProgressCreditEvidence>,
+    #[serde(default = "progress_guarantee::last_peer_contribution_unavailable")]
+    pub last_peer_contribution: FieldAvailability<PeerContributionEvidence>,
+    #[serde(default = "progress_guarantee::stall_diagnosis_unavailable")]
+    pub stall_diagnosis: FieldAvailability<StallDiagnosisEvidence>,
     #[serde(default = "latest_stop_reason_unavailable")]
     pub latest_stop_reason: FieldAvailability<SyncStopReasonStatus>,
     pub last_error: FieldAvailability<String>,

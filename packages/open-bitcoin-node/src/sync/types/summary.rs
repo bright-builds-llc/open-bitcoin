@@ -9,7 +9,10 @@ use crate::{
     FieldAvailability, MetricKind, MetricSample, PeerStatus, SyncStatus,
     logging::{StructuredLogLevel, StructuredLogRecord},
     status::{
-        PeerCounts, SyncAttemptCounters, SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState,
+        EXPECTED_PROGRESS_WINDOW_UNAVAILABLE_REASON, LAST_PEER_CONTRIBUTION_UNAVAILABLE_REASON,
+        LAST_USEFUL_WORK_UNAVAILABLE_REASON, NO_PROGRESS_THRESHOLD_UNAVAILABLE_REASON,
+        PROGRESS_CREDIT_UNAVAILABLE_REASON, PeerCounts, STALL_DIAGNOSIS_UNAVAILABLE_REASON,
+        SyncAttemptCounters, SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState,
         SyncProgress, SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure,
         SyncStopReasonStatus,
     },
@@ -101,6 +104,18 @@ impl SyncRunSummary {
                     "no successful sync progress recorded in this run",
                 ),
             },
+            progress_credit: FieldAvailability::unavailable(PROGRESS_CREDIT_UNAVAILABLE_REASON),
+            expected_progress_window: FieldAvailability::unavailable(
+                EXPECTED_PROGRESS_WINDOW_UNAVAILABLE_REASON,
+            ),
+            no_progress_threshold: FieldAvailability::unavailable(
+                NO_PROGRESS_THRESHOLD_UNAVAILABLE_REASON,
+            ),
+            last_useful_work: FieldAvailability::unavailable(LAST_USEFUL_WORK_UNAVAILABLE_REASON),
+            last_peer_contribution: FieldAvailability::unavailable(
+                LAST_PEER_CONTRIBUTION_UNAVAILABLE_REASON,
+            ),
+            stall_diagnosis: FieldAvailability::unavailable(STALL_DIAGNOSIS_UNAVAILABLE_REASON),
             latest_stop_reason: match self.maybe_stop_reason {
                 Some(stop_reason) => FieldAvailability::available(SyncStopReasonStatus {
                     label: stop_reason.label().to_string(),

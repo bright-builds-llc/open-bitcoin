@@ -154,7 +154,7 @@ Plans:
 | 75. Multi-Day Soak Runner and Evidence Ledger | 6/6 | Complete    | 2026-06-15 |
 | 76. Disk and Resource Bound Enforcement | 6/6 | Complete | 2026-06-15 |
 | 77. Corruption and Lock Recovery Hardening | 7/7 | Complete    | 2026-06-16 |
-| 78. Progress Guarantees and Stall Diagnosis | 0/0 | Pending | - |
+| 78. Progress Guarantees and Stall Diagnosis | 1/7 | In Progress|  |
 | 79. Diagnostics and Support Bundle Forensics | 0/0 | Pending | - |
 | 80. Opt-In Soak UAT and Release Boundaries | 0/0 | Pending | - |
 

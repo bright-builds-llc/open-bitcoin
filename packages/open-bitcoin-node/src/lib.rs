@@ -40,11 +40,15 @@ pub use recovery::{
     classify_recovery,
 };
 pub use status::{
-    BuildProvenance, ConfigStatus, DurableSyncState, FieldAvailability, NodeRuntimeState,
-    OpenBitcoinStatusSnapshot, PeerStatus, PeerTelemetry, ResourceBoundEntry, ResourceBoundKind,
+    BuildProvenance, ConfigStatus, DurableSyncState, FieldAvailability,
+    NoProgressThresholdEvidence, NoProgressThresholdState, NodeRuntimeState,
+    OpenBitcoinStatusSnapshot, PeerContributionEvidence, PeerContributionKind, PeerStatus,
+    PeerTelemetry, ProgressCreditEvidence, ProgressCreditKind, ProgressWindowEvidence,
+    RejectedProgressActivity, RejectedProgressActivityKind, ResourceBoundEntry, ResourceBoundKind,
     ResourceBoundSnapshot, ResourceBoundUnit, ResourceBoundUsage, ResourcePressureLevel,
-    ResourcePressureState, ServiceLifecycleStatus, SyncControlState, SyncLagStatus,
-    SyncLifecycleState, SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure, SyncStatus,
+    ResourcePressureState, ServiceLifecycleStatus, StallDiagnosisConfidence,
+    StallDiagnosisEvidence, StalledSubsystem, SyncControlState, SyncLagStatus, SyncLifecycleState,
+    SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure, SyncStatus,
 };
 pub use storage::{
     FjallNodeStore, MetricsStorageSnapshot, PersistMode, RecoveryMarker, RuntimeMetadata,

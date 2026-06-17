@@ -516,6 +516,18 @@ fn human_and_json_renderers_surface_wallet_freshness_and_scan_reasons() {
             last_successful_progress_unix_seconds: FieldAvailability::unavailable(
                 "sync last progress unavailable",
             ),
+            progress_credit: FieldAvailability::unavailable("progress credit evidence unavailable"),
+            expected_progress_window: FieldAvailability::unavailable(
+                "expected progress window unavailable",
+            ),
+            no_progress_threshold: FieldAvailability::unavailable(
+                "no-progress threshold evidence unavailable",
+            ),
+            last_useful_work: FieldAvailability::unavailable("last useful work unavailable"),
+            last_peer_contribution: FieldAvailability::unavailable(
+                "last peer contribution unavailable",
+            ),
+            stall_diagnosis: FieldAvailability::unavailable("stall diagnosis unavailable"),
             latest_stop_reason: FieldAvailability::<SyncStopReasonStatus>::unavailable(
                 "sync latest stop reason unavailable",
             ),

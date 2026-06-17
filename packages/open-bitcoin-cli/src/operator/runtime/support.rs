@@ -470,6 +470,7 @@ mod tests {
         ))
     }
 
+    #[rustfmt::skip]
     fn runtime_metadata_with_lifecycle(
         lifecycle: SyncLifecycleState,
         last_clean_shutdown: bool,
@@ -486,35 +487,27 @@ mod tests {
                     phase: FieldAvailability::available("block_download".to_string()),
                     configured_targets: FieldAvailability::unavailable(unavailable),
                     attempt_counters: FieldAvailability::unavailable(unavailable),
-                    progress_signal: FieldAvailability::available(
-                        SyncProgressSignal::AwaitingBlocks,
-                    ),
+                    progress_signal: FieldAvailability::available(SyncProgressSignal::AwaitingBlocks),
                     lag: FieldAvailability::unavailable(unavailable),
-                    last_successful_progress_unix_seconds: FieldAvailability::unavailable(
-                        unavailable,
-                    ),
+                    last_successful_progress_unix_seconds: FieldAvailability::unavailable(unavailable),
+                    progress_credit: FieldAvailability::unavailable("progress credit evidence unavailable"),
+                    expected_progress_window: FieldAvailability::unavailable("expected progress window unavailable"),
+                    no_progress_threshold: FieldAvailability::unavailable("no-progress threshold evidence unavailable"),
+                    last_useful_work: FieldAvailability::unavailable("last useful work unavailable"),
+                    last_peer_contribution: FieldAvailability::unavailable("last peer contribution unavailable"),
+                    stall_diagnosis: FieldAvailability::unavailable("stall diagnosis unavailable"),
                     latest_stop_reason: FieldAvailability::unavailable(unavailable),
                     last_error: FieldAvailability::unavailable("no sync error recorded"),
-                    recovery_category: FieldAvailability::unavailable(
-                        "no recovery category recorded",
-                    ),
+                    recovery_category: FieldAvailability::unavailable("no recovery category recorded"),
                     recovery_action: FieldAvailability::unavailable("no recovery action required"),
                     resource_pressure: FieldAvailability::unavailable(unavailable),
-                    best_known_tip: FieldAvailability::<BestKnownTipStatus>::unavailable(
-                        unavailable,
-                    ),
+                    best_known_tip: FieldAvailability::<BestKnownTipStatus>::unavailable(unavailable),
                     stay_current: FieldAvailability::<StayCurrentStatus>::unavailable(unavailable),
                     stay_current_next_action: FieldAvailability::unavailable(unavailable),
-                    no_progress_diagnosis: FieldAvailability::unavailable(
-                        "no-progress diagnosis unavailable",
-                    ),
-                    no_progress_next_action: FieldAvailability::unavailable(
-                        "no-progress next action unavailable",
-                    ),
+                    no_progress_diagnosis: FieldAvailability::unavailable("no-progress diagnosis unavailable"),
+                    no_progress_next_action: FieldAvailability::unavailable("no-progress next action unavailable"),
                     latest_reorg: FieldAvailability::unavailable("no reorg evidence recorded"),
-                    reconcile_progress: FieldAvailability::unavailable(
-                        RECONCILE_PROGRESS_UNAVAILABLE_REASON,
-                    ),
+                    reconcile_progress: FieldAvailability::unavailable(RECONCILE_PROGRESS_UNAVAILABLE_REASON),
                 },
                 peers: PeerStatus {
                     peer_counts: FieldAvailability::unavailable(unavailable),
