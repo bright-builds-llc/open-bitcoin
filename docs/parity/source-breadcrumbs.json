@@ -277,11 +277,13 @@
       "files": [
         "packages/open-bitcoin-cli/src/operator/support.rs",
         "packages/open-bitcoin-cli/src/operator/support/evidence.rs",
+        "packages/open-bitcoin-cli/src/operator/support/forensics.rs",
         "packages/open-bitcoin-cli/src/operator/support/live_smoke.rs",
         "packages/open-bitcoin-cli/src/operator/support/live_smoke/tests.rs",
         "packages/open-bitcoin-cli/src/operator/support/progress_guarantee.rs",
         "packages/open-bitcoin-cli/src/operator/support/resource_bounds.rs",
         "packages/open-bitcoin-cli/src/operator/support/render.rs",
+        "packages/open-bitcoin-cli/src/operator/support/soak_evidence.rs",
         "packages/open-bitcoin-cli/src/operator/support/tests.rs"
       ],
       "breadcrumbs": []

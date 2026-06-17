@@ -29,8 +29,8 @@ use crate::operator::{
     soak::{
         SoakBounds, SoakPeerPolicy, SoakRunId, SoakStopCondition,
         ledger::{
-            SoakCheckpointStatus, SoakLedger, SoakLedgerEvent, SoakLedgerLayout, SoakRunIndex,
-            SoakRunIndexEntry,
+            SoakCheckpointStatus, SoakLedger, SoakLedgerEvent, SoakLedgerEventEnvelope,
+            SoakLedgerLayout, SoakRunIndex, SoakRunIndexEntry,
         },
         outcome::SoakOutcomeLabel,
         report::write_soak_reports,
@@ -42,7 +42,7 @@ use super::{
     RecoverySupportEvidence, RuntimeMetadataEvidence, StoreHealthEvidence, SupportEvidenceBundle,
     SupportEvidenceOutput, collect_resource_bound_support_evidence, collect_soak_support_evidence,
     collect_store_health, derive_full_sync_evidence, evidence::SupportEvidenceVerdict,
-    redaction_summary, render, soak_outcome_label,
+    forensics::SupportForensicsEvidence, redaction_summary, render, soak_outcome_label,
 };
 
 #[derive(Debug)]
@@ -297,7 +297,7 @@ fn phase75_soak_support_evidence_available_projects_latest_ledger_summary() {
     let resolution = phase75_config_resolution(temp.path());
 
     // Act
-    let evidence = collect_soak_support_evidence(&resolution);
+    let evidence = collect_soak_support_evidence(&resolution, &redaction_summary()).soak_evidence;
     let serialized = serde_json::to_value(&evidence).expect("soak evidence json");
 
     // Assert
@@ -361,7 +361,7 @@ fn phase75_soak_support_evidence_unavailable_without_ledger() {
     let bundle = phase75_support_bundle_for_test(temp.path());
 
     // Act
-    let evidence = collect_soak_support_evidence(&resolution);
+    let evidence = collect_soak_support_evidence(&resolution, &redaction_summary()).soak_evidence;
     let serialized = serde_json::to_value(&evidence).expect("soak evidence json");
     let markdown = render::render_support_markdown(&bundle);
 
@@ -375,6 +375,204 @@ fn phase75_soak_support_evidence_unavailable_without_ledger() {
     assert!(markdown.contains("## Soak Evidence"));
     assert!(markdown.contains("State: unavailable"));
     assert!(markdown.contains("Reason: soak ledger unavailable"));
+}
+
+#[test]
+fn phase79_support_forensics_projection_builds_timeline_chain_and_narrative() {
+    // Arrange
+    let temp = TestDirectory::new("phase79-forensics-projection");
+    seed_phase75_soak_run(
+        temp.path(),
+        "soak-1781485562-0079",
+        SoakOutcomeLabel::CleanCompletion,
+    );
+    let bundle = phase75_support_bundle_for_test(temp.path());
+
+    // Act
+    let serialized = serde_json::to_value(&bundle).expect("support bundle json");
+
+    // Assert
+    assert_eq!(serialized["support_forensics"]["state"], json!("available"));
+    assert_eq!(
+        serialized["support_forensics"]["checkpoint_chain"]["algorithm"],
+        json!("sha256-json-v1")
+    );
+    assert_eq!(
+        serialized["support_forensics"]["checkpoint_chain"]["ordered"],
+        json!(true)
+    );
+    assert_eq!(
+        serialized["support_forensics"]["checkpoint_chain"]["missing_sequence_count"],
+        json!(0)
+    );
+    assert_eq!(
+        serialized["support_forensics"]["checkpoint_chain"]["truncated"],
+        json!(false)
+    );
+    assert_eq!(
+        serialized["support_forensics"]["narrative"]["verdict"],
+        json!("soak_stable")
+    );
+    for field in [
+        "likely_cause",
+        "evidence_basis",
+        "next_action",
+        "confidence",
+    ] {
+        assert!(
+            !serialized["support_forensics"]["narrative"][field].is_null(),
+            "missing {field}"
+        );
+    }
+    assert_eq!(
+        serialized["support_forensics"]["source"]["event_count"],
+        json!(4)
+    );
+    assert!(
+        serialized["support_forensics"]["timeline"]
+            .as_array()
+            .expect("timeline array")
+            .len()
+            >= 4
+    );
+}
+
+#[test]
+fn phase79_support_forensics_projection_detects_sequence_gaps_and_truncation() {
+    // Arrange
+    let temp = TestDirectory::new("phase79-gap-truncation");
+    let run_id = SoakRunId::try_new("soak-1781485562-0080").expect("run id");
+    let source_ledger_path = temp.path().join("events.jsonl");
+    let events = vec![
+        soak_event(
+            run_id.clone(),
+            1,
+            SoakLedgerEvent::Started {
+                bounds: phase75_soak_bounds(temp.path()),
+            },
+        ),
+        soak_event(
+            run_id.clone(),
+            2,
+            SoakLedgerEvent::Checkpoint {
+                status: Box::new(phase75_checkpoint_status()),
+            },
+        ),
+        soak_event(
+            run_id,
+            4,
+            SoakLedgerEvent::Verdict {
+                outcome: SoakOutcomeLabel::UnexpectedTermination,
+            },
+        ),
+    ];
+    let projection = crate::operator::soak::report::SoakReportProjection::from_ledger_events(
+        events.clone(),
+        &source_ledger_path,
+    )
+    .expect("projection");
+    let read = crate::operator::soak::ledger::SoakLedgerReadResult {
+        events,
+        ignored_trailing_bytes: 11,
+    };
+
+    // Act
+    let evidence = SupportForensicsEvidence::available(
+        &read,
+        &projection,
+        &source_ledger_path,
+        &temp.path().join("report.json"),
+        &temp.path().join("report.md"),
+        &redaction_summary(),
+    );
+    let serialized = serde_json::to_value(&evidence).expect("forensics json");
+
+    // Assert
+    assert_eq!(serialized["checkpoint_chain"]["ordered"], json!(false));
+    assert_eq!(
+        serialized["checkpoint_chain"]["missing_sequence_count"],
+        json!(1)
+    );
+    assert_eq!(serialized["checkpoint_chain"]["truncated"], json!(true));
+}
+
+#[test]
+fn phase79_support_forensics_projection_keeps_unavailable_evidence_conservative() {
+    // Arrange
+    let temp = TestDirectory::new("phase79-unavailable");
+    let resolution = phase75_config_resolution(temp.path());
+
+    // Act
+    let collection = collect_soak_support_evidence(&resolution, &redaction_summary());
+    let serialized = serde_json::to_value(&collection.support_forensics).expect("forensics json");
+
+    // Assert
+    assert_eq!(serialized["state"], json!("unavailable"));
+    assert_eq!(
+        serialized["narrative"]["verdict"],
+        json!("collection_failed")
+    );
+    assert_eq!(
+        serialized["narrative"]["likely_cause"],
+        json!("soak ledger unavailable")
+    );
+    assert_eq!(serialized["narrative"]["confidence"], json!("low"));
+    assert_eq!(serialized["timeline"], json!([]));
+}
+
+#[test]
+fn phase79_support_forensics_json_includes_sidecar_contract() {
+    // Arrange
+    let temp = TestDirectory::new("phase79-json-contract");
+    seed_phase75_soak_run(
+        temp.path(),
+        "soak-1781485562-0081",
+        SoakOutcomeLabel::CleanCompletion,
+    );
+    let bundle = phase75_support_bundle_for_test(temp.path());
+
+    // Act
+    let serialized = serde_json::to_value(&bundle).expect("support bundle json");
+
+    // Assert
+    for field in [
+        "timeline",
+        "checkpoint_chain",
+        "narrative",
+        "source",
+        "redaction",
+    ] {
+        assert!(
+            !serialized["support_forensics"][field].is_null(),
+            "missing {field}"
+        );
+    }
+    assert!(
+        !serialized["support_forensics"]["narrative"]["evidence_basis"]
+            .as_array()
+            .expect("evidence basis")
+            .is_empty()
+    );
+}
+
+#[test]
+fn phase79_support_forensics_json_excludes_sensitive_seed_material() {
+    // Arrange
+    let temp = TestDirectory::new("phase79-sensitive-json");
+    seed_phase79_sensitive_soak_run(
+        temp.path(),
+        "soak-1781485562-0082",
+        SoakOutcomeLabel::ResourceStop,
+    );
+    let bundle = phase75_support_bundle_for_test(temp.path());
+
+    // Act
+    let json_text = serde_json::to_string_pretty(&bundle).expect("support json");
+
+    // Assert
+    for forbidden in phase79_sensitive_literals() {
+        assert_absent(&json_text, forbidden);
+    }
 }
 
 #[test]
@@ -858,6 +1056,8 @@ fn phase75_support_bundle_for_test(data_dir: &Path) -> SupportEvidenceBundle {
     let live_smoke = missing_live_smoke();
     let full_sync_evidence = derive_full_sync_evidence(&status, &live_smoke);
     let output_dir = data_dir.join("support");
+    let redaction = redaction_summary();
+    let soak_collection = collect_soak_support_evidence(&resolution, &redaction);
     SupportEvidenceBundle {
         generated_at_unix_seconds: 1_781_485_562,
         generated_by: "phase75 test".to_string(),
@@ -869,14 +1069,15 @@ fn phase75_support_bundle_for_test(data_dir: &Path) -> SupportEvidenceBundle {
                 .to_string(),
             markdown_path: output_dir.join("support-evidence.md").display().to_string(),
         },
-        redaction: redaction_summary(),
+        redaction,
         config: super::ConfigEvidence::from_resolution(&resolution),
         status: status.clone(),
         recovery_evidence: RecoverySupportEvidence::from_status(&status.recovery_evidence),
         store_health: unavailable_store_health(),
         live_smoke,
         full_sync_evidence,
-        soak_evidence: collect_soak_support_evidence(&resolution),
+        soak_evidence: soak_collection.soak_evidence,
+        support_forensics: soak_collection.support_forensics,
         resource_bound_evidence: collect_resource_bound_support_evidence(&status, &output_dir),
     }
 }
@@ -943,6 +1144,28 @@ fn seed_phase75_soak_run(
     run_id_text: &str,
     outcome: SoakOutcomeLabel,
 ) -> (SoakRunId, crate::operator::soak::ledger::SoakRunPaths) {
+    seed_soak_run_with_checkpoint(data_dir, run_id_text, outcome, phase75_checkpoint_status())
+}
+
+fn seed_phase79_sensitive_soak_run(
+    data_dir: &Path,
+    run_id_text: &str,
+    outcome: SoakOutcomeLabel,
+) -> (SoakRunId, crate::operator::soak::ledger::SoakRunPaths) {
+    seed_soak_run_with_checkpoint(
+        data_dir,
+        run_id_text,
+        outcome,
+        phase79_sensitive_checkpoint_status(),
+    )
+}
+
+fn seed_soak_run_with_checkpoint(
+    data_dir: &Path,
+    run_id_text: &str,
+    outcome: SoakOutcomeLabel,
+    checkpoint: SoakCheckpointStatus,
+) -> (SoakRunId, crate::operator::soak::ledger::SoakRunPaths) {
     let layout = SoakLedgerLayout::for_datadir(data_dir);
     let run_id = SoakRunId::try_new(run_id_text).expect("run id");
     let mut ledger = SoakLedger::create(&layout, run_id.clone());
@@ -958,7 +1181,7 @@ fn seed_phase75_soak_run(
         .append_event(
             1_781_485_622,
             SoakLedgerEvent::Checkpoint {
-                status: Box::new(phase75_checkpoint_status()),
+                status: Box::new(checkpoint),
             },
         )
         .expect("append checkpoint");
@@ -984,6 +1207,10 @@ fn seed_phase75_soak_run(
     index.write_atomic(&layout).expect("write soak run index");
 
     (run_id, paths)
+}
+
+fn soak_event(run_id: SoakRunId, sequence: u64, event: SoakLedgerEvent) -> SoakLedgerEventEnvelope {
+    SoakLedgerEventEnvelope::new(run_id, sequence, 1_781_485_562 + sequence, event)
 }
 
 fn phase75_soak_bounds(data_dir: &Path) -> SoakBounds {
@@ -1033,6 +1260,54 @@ fn phase75_checkpoint_status() -> SoakCheckpointStatus {
         maybe_best_known_tip_height: Some(900_000),
         maybe_source_status_path: Some(PathBuf::from("unbounded peer tables phase75-secret")),
     }
+}
+
+fn phase79_sensitive_checkpoint_status() -> SoakCheckpointStatus {
+    SoakCheckpointStatus {
+        maybe_network: Some("mainnet".to_string()),
+        maybe_lifecycle: Some("raw daemon stdout phase79-secret".to_string()),
+        maybe_latest_stop_reason_label: Some("raw daemon stderr phase79-secret".to_string()),
+        maybe_recovery_category_label: Some("phase79 wallet seed phrase".to_string()),
+        maybe_recovery_action_class_label: Some("raw options phase79-secret".to_string()),
+        maybe_recovery_cause_label: Some("rpcpassword=phase79-secret".to_string()),
+        maybe_recovery_next_action: Some("rpcauth=phase79-secret".to_string()),
+        maybe_no_progress_diagnosis_label: Some("raw live-smoke input phase79-secret".to_string()),
+        maybe_progress_credit_kind_label: None,
+        maybe_progress_credit_height: None,
+        maybe_progress_credit_hash: None,
+        maybe_progress_credit_work: None,
+        maybe_progress_credit_source_unix_seconds: None,
+        progress_credit_rejected_activity_labels: Vec::new(),
+        maybe_expected_progress_window_seconds: None,
+        maybe_no_progress_threshold_state_label: None,
+        maybe_no_progress_threshold_seconds: None,
+        maybe_last_useful_work_kind_label: None,
+        maybe_last_useful_work_height: None,
+        maybe_last_peer_contribution_label: Some("endpoint table phase79-secret".to_string()),
+        maybe_stalled_subsystem_label: None,
+        maybe_stall_confidence_label: None,
+        stall_evidence_basis: Vec::new(),
+        maybe_stall_next_action: None,
+        maybe_resource_bound_state_label: Some("normal".to_string()),
+        resource_bound_labels: vec!["all_required_bounds=normal".to_string()],
+        maybe_resource_bound_next_action: None,
+        maybe_validated_active_chain_height: Some(900_000),
+        maybe_best_known_tip_height: Some(900_000),
+        maybe_source_status_path: None,
+    }
+}
+
+fn phase79_sensitive_literals() -> [&'static str; 8] {
+    [
+        "rpcpassword=phase79-secret",
+        "rpcauth=phase79-secret",
+        "phase79 wallet seed phrase",
+        "raw daemon stdout phase79-secret",
+        "raw daemon stderr phase79-secret",
+        "raw live-smoke input phase79-secret",
+        "raw options phase79-secret",
+        "endpoint table phase79-secret",
+    ]
 }
 
 fn assert_absent(text: &str, value: &str) {
