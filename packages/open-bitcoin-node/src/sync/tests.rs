@@ -38,10 +38,12 @@ use crate::{
     logging::{StructuredLogLevel, StructuredLogRecord, writer::load_log_status},
     status::{
         BestKnownTipSource, BestKnownTipStatus, DurableSyncState, HealthSignal, HealthSignalLevel,
-        NoProgressDiagnosis, PeerTipAgreement, PeerTipAgreementStatus, ProgressCreditKind,
-        StayCurrentStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal,
-        SyncReconcileProgressStatus, SyncRecoveryCategory, SyncReorgEvidence, SyncResourcePressure,
-        SyncStatus, TipFreshnessStatus,
+        NoProgressDiagnosis, PeerContributionEvidence, PeerContributionKind, PeerTipAgreement,
+        PeerTipAgreementStatus, ProgressCreditEvidence, ProgressCreditKind,
+        RejectedProgressActivityKind, StallDiagnosisEvidence, StalledSubsystem, StayCurrentStatus,
+        SyncLifecycleState, SyncProgress, SyncProgressSignal, SyncReconcileProgressStatus,
+        SyncRecoveryCategory, SyncReorgEvidence, SyncResourcePressure, SyncStatus,
+        TipFreshnessStatus,
     },
 };
 
@@ -238,6 +240,18 @@ fn peer_outcome(
     }
 }
 
+fn peer_outcome_with_contribution(
+    peer: SyncPeerAddress,
+    state: PeerSyncState,
+    attempts: u8,
+    maybe_failure_reason: Option<PeerFailureReason>,
+    contribution: PeerContribution,
+) -> PeerSyncOutcome {
+    let mut outcome = peer_outcome(peer, state, attempts, maybe_failure_reason, None);
+    outcome.contribution = contribution;
+    outcome
+}
+
 fn summary_with_peer_failure(reason: PeerFailureReason, error: &str) -> SyncRunSummary {
     let mut summary = SyncRunSummary::empty(0, 0, 1);
     summary.failed_peers = 1;
@@ -264,6 +278,62 @@ fn assert_no_progress_status(
         state.sync.no_progress_next_action,
         FieldAvailability::available(next_action.to_string())
     );
+}
+
+fn available_progress_credit(state: &DurableSyncState) -> &ProgressCreditEvidence {
+    let FieldAvailability::Available(credit) = &state.sync.progress_credit else {
+        panic!("progress credit should be available");
+    };
+    credit
+}
+
+fn available_last_useful_work(state: &DurableSyncState) -> &ProgressCreditEvidence {
+    let FieldAvailability::Available(credit) = &state.sync.last_useful_work else {
+        panic!("last useful work should be available");
+    };
+    credit
+}
+
+fn available_last_peer_contribution(state: &DurableSyncState) -> &PeerContributionEvidence {
+    let FieldAvailability::Available(contribution) = &state.sync.last_peer_contribution else {
+        panic!("last_peer_contribution should be available");
+    };
+    contribution
+}
+
+fn available_stall_diagnosis(state: &DurableSyncState) -> &StallDiagnosisEvidence {
+    let FieldAvailability::Available(diagnosis) = &state.sync.stall_diagnosis else {
+        panic!("stall diagnosis should be available");
+    };
+    diagnosis
+}
+
+fn assert_progress_credit_unavailable(state: &DurableSyncState) {
+    assert!(matches!(
+        state.sync.progress_credit,
+        FieldAvailability::Unavailable { .. }
+    ));
+}
+
+fn assert_rejected_activity(credit: &ProgressCreditEvidence, kind: RejectedProgressActivityKind) {
+    assert!(
+        credit
+            .rejected_activity
+            .iter()
+            .any(|activity| activity.kind == kind),
+        "missing rejected activity {kind:?} in {credit:?}"
+    );
+}
+
+fn serialized_label<T>(value: T) -> String
+where
+    T: serde::Serialize,
+{
+    serde_json::to_value(value)
+        .expect("status label serializes")
+        .as_str()
+        .expect("status label is a string")
+        .to_string()
 }
 
 impl SyncPeerSession for ScriptedSession {
@@ -2087,6 +2157,42 @@ mod phase70_peer {
         assert!(runtime.peer_backoff.contains_key("127.0.0.1:18444"));
     }
 
+    fn persist_previous_active_chain_credit(
+        runtime: &mut DurableSyncRuntime,
+        observed_at_unix_seconds: i64,
+    ) -> ProgressCreditEvidence {
+        let mut previous_summary = runtime.snapshot_summary();
+        previous_summary.messages_processed = 3;
+        previous_summary.headers_received = 1;
+        previous_summary.blocks_received = 1;
+        previous_summary
+            .peer_outcomes
+            .push(peer_outcome_with_contribution(
+                SyncPeerAddress::manual("127.0.0.1", 18_444),
+                PeerSyncState::Connected,
+                1,
+                None,
+                PeerContribution {
+                    messages_processed: 3,
+                    headers_received: 1,
+                    blocks_received: 1,
+                },
+            ));
+        let previous_state = runtime
+            .durable_sync_state_for_summary(
+                &previous_summary,
+                SyncLifecycleState::Active,
+                None,
+                observed_at_unix_seconds,
+            )
+            .expect("previous durable status");
+        let previous_credit = available_progress_credit(&previous_state).clone();
+        runtime
+            .persist_durable_sync_state(previous_state)
+            .expect("persist previous status");
+        previous_credit
+    }
+
     #[test]
     fn phase70_notfound_releases_inflight_and_rotates_to_second_peer() {
         // Arrange
@@ -2132,6 +2238,217 @@ mod phase70_peer {
         assert!(runtime.inflight_blocks.is_empty());
         assert!(runtime.network.peer_requested_blocks(1).is_err());
         assert_first_peer_backoff(&runtime);
+
+        remove_dir_if_exists(&path);
+    }
+
+    #[test]
+    fn phase78_stale_inflight_cleanup_preserves_prior_credit_and_rotates_peer() {
+        // Arrange
+        let path = temp_store_path("phase78-stale-inflight-prior-credit");
+        remove_dir_if_exists(&path);
+        let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+        let child = build_block(block_hash(&genesis.header), 1);
+        save_best_chain_with_active_blocks(
+            &path,
+            &[(&genesis, 0), (&child, 1)],
+            &[(&genesis, 0), (&child, 1)],
+        );
+        let store = FjallNodeStore::open(&path).expect("store");
+        let mut runtime = DurableSyncRuntime::open(store, rotation_config()).expect("runtime");
+        runtime
+            .inflight_blocks
+            .insert(BlockHash::from_byte_array([78_u8; 32]));
+        let previous_credit =
+            persist_previous_active_chain_credit(&mut runtime, i64::from(child.header.time));
+        assert_eq!(
+            serialized_label(RejectedProgressActivityKind::InFlightRequest),
+            "in_flight_request"
+        );
+        assert_rejected_activity(
+            &previous_credit,
+            RejectedProgressActivityKind::InFlightRequest,
+        );
+        let observed_at_unix_seconds = i64::from(child.header.time) + 10_000;
+        let mut transport = ScriptedTransport::new(vec![Vec::new(), version_verack_script(1)]);
+
+        // Act
+        let summary = runtime
+            .sync_once(&mut transport, observed_at_unix_seconds)
+            .expect("sync with stale in-flight and replacement peer");
+        let state = runtime
+            .durable_sync_state_for_summary(
+                &summary,
+                SyncLifecycleState::Active,
+                None,
+                observed_at_unix_seconds,
+            )
+            .expect("durable stale in-flight status");
+
+        // Assert
+        assert_eq!(summary.attempted_peers, 2);
+        assert_eq!(summary.peer_outcomes[0].state, PeerSyncState::Stalled);
+        assert_eq!(summary.peer_outcomes[1].state, PeerSyncState::Connected);
+        assert_progress_credit_unavailable(&state);
+        let last_work = available_last_useful_work(&state);
+        assert_eq!(
+            last_work.kind,
+            ProgressCreditKind::ValidatedDurableActiveChain
+        );
+        assert_eq!(last_work.credited_validated_active_chain_height, 1);
+        assert_rejected_activity(last_work, RejectedProgressActivityKind::InFlightRequest);
+        assert_eq!(
+            state.sync.no_progress_diagnosis,
+            FieldAvailability::available(NoProgressDiagnosis::StaleInflightCleanup)
+        );
+        let last_peer_contribution = available_last_peer_contribution(&state);
+        assert_eq!(
+            last_peer_contribution.kind,
+            PeerContributionKind::MessagesOnly
+        );
+        let stall = available_stall_diagnosis(&state);
+        assert_eq!(
+            serialized_label(stall.stalled_subsystem),
+            "slow_or_stalled_peers"
+        );
+        assert_eq!(
+            stall.stalled_subsystem,
+            StalledSubsystem::SlowOrStalledPeers
+        );
+        assert_first_peer_backoff(&runtime);
+
+        remove_dir_if_exists(&path);
+    }
+
+    #[test]
+    fn phase78_no_credit_peer_rotation_keeps_last_peer_contribution_without_credit() {
+        // Arrange
+        let path = temp_store_path("phase78-no-credit-peer-rotation");
+        remove_dir_if_exists(&path);
+        let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+        let child = build_block(block_hash(&genesis.header), 1);
+        let child_hash = block_hash(&child.header);
+        save_best_chain_with_active_blocks(&path, &[(&genesis, 0), (&child, 1)], &[(&genesis, 0)]);
+        let store = FjallNodeStore::open(&path).expect("store");
+        let mut runtime = DurableSyncRuntime::open(store, rotation_config()).expect("runtime");
+        let previous_credit =
+            persist_previous_active_chain_credit(&mut runtime, i64::from(genesis.header.time));
+        assert_eq!(previous_credit.credited_validated_active_chain_height, 0);
+        let mut transport = ScriptedTransport::new(vec![
+            vec![
+                WireNetworkMessage::Version(VersionMessage {
+                    start_height: 1,
+                    ..VersionMessage::default()
+                }),
+                WireNetworkMessage::Verack,
+                notfound_for_block(child_hash),
+            ],
+            version_verack_script(1),
+        ]);
+
+        // Act
+        let summary = runtime
+            .sync_once(&mut transport, i64::from(child.header.time))
+            .expect("sync with no-credit peer rotation");
+        let state = runtime
+            .durable_sync_state_for_summary(
+                &summary,
+                SyncLifecycleState::Active,
+                None,
+                i64::from(child.header.time),
+            )
+            .expect("durable no-credit rotation status");
+
+        // Assert
+        assert_eq!(summary.attempted_peers, 2);
+        assert_eq!(
+            summary.peer_outcomes[0].maybe_failure_reason,
+            Some(PeerFailureReason::BlockNotFound)
+        );
+        assert_eq!(summary.peer_outcomes[1].state, PeerSyncState::Connected);
+        assert_progress_credit_unavailable(&state);
+        assert_eq!(
+            available_last_useful_work(&state).credited_validated_active_chain_height,
+            0
+        );
+        let last_peer_contribution = available_last_peer_contribution(&state);
+        assert_eq!(
+            last_peer_contribution.peer,
+            SyncPeerAddress::manual("127.0.0.1", 18_445).label()
+        );
+        assert_eq!(
+            last_peer_contribution.kind,
+            PeerContributionKind::MessagesOnly
+        );
+        let stall = available_stall_diagnosis(&state);
+        assert_eq!(
+            serialized_label(stall.stalled_subsystem),
+            "slow_or_stalled_peers"
+        );
+        assert_eq!(
+            stall.stalled_subsystem,
+            StalledSubsystem::SlowOrStalledPeers
+        );
+        assert_first_peer_backoff(&runtime);
+
+        remove_dir_if_exists(&path);
+    }
+
+    #[test]
+    fn phase78_validation_stall_classifies_validation_subsystem() {
+        // Arrange
+        let path = temp_store_path("phase78-validation-stall");
+        remove_dir_if_exists(&path);
+        let valid_block = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+        let mut invalid_block = valid_block.clone();
+        invalid_block.transactions[0].outputs[0].value =
+            Amount::from_sats(51).expect("valid amount");
+        let first_peer_script = vec![
+            WireNetworkMessage::Version(VersionMessage {
+                start_height: 0,
+                ..VersionMessage::default()
+            }),
+            WireNetworkMessage::Verack,
+            WireNetworkMessage::Headers(HeadersMessage {
+                headers: vec![valid_block.header.clone()],
+            }),
+            WireNetworkMessage::Block(invalid_block),
+        ];
+        let store = FjallNodeStore::open(&path).expect("store");
+        let mut runtime = DurableSyncRuntime::open(store, rotation_config()).expect("runtime");
+        let mut transport =
+            ScriptedTransport::new(vec![first_peer_script, version_verack_script(0)]);
+
+        // Act
+        let summary = runtime
+            .sync_once(&mut transport, i64::from(valid_block.header.time))
+            .expect("sync with invalid block");
+        let state = runtime
+            .durable_sync_state_for_summary(
+                &summary,
+                SyncLifecycleState::Active,
+                None,
+                i64::from(valid_block.header.time),
+            )
+            .expect("durable validation stall status");
+
+        // Assert
+        assert_eq!(
+            summary.peer_outcomes[0].maybe_failure_reason,
+            Some(PeerFailureReason::InvalidBlock)
+        );
+        assert_progress_credit_unavailable(&state);
+        let stall = available_stall_diagnosis(&state);
+        assert_eq!(serialized_label(stall.stalled_subsystem), "validation");
+        assert_eq!(stall.stalled_subsystem, StalledSubsystem::Validation);
+        assert_eq!(
+            stall.evidence_basis,
+            vec![
+                "no_progress_diagnosis=BehindAwaitingHeaders".to_string(),
+                "recovery_category=invalid_peer_data".to_string(),
+                "peer_failure_reason=invalid_block".to_string(),
+            ]
+        );
 
         remove_dir_if_exists(&path);
     }
@@ -4417,6 +4734,106 @@ fn phase70_no_progress_status_projects_storage_or_resource_blocker() {
 }
 
 #[test]
+fn phase78_storage_resource_pressure_outranks_peer_retry_advice() {
+    // Arrange
+    let path = temp_store_path("phase78-storage-outranks-peer-retry");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    let mut summary = SyncRunSummary::empty(0, 0, 1);
+    summary.peer_outcomes.push(peer_outcome(
+        SyncPeerAddress::manual("127.0.0.1", 18_444),
+        PeerSyncState::Waiting,
+        2,
+        Some(PeerFailureReason::RetryBackoff),
+        Some("peer waiting for retry backoff".to_string()),
+    ));
+
+    // Act
+    let state = runtime
+        .durable_sync_state_for_summary(
+            &summary,
+            SyncLifecycleState::Active,
+            Some("resource limit: storage cache exhausted".to_string()),
+            1_777_225_162,
+        )
+        .expect("durable storage-precedence status");
+
+    // Assert
+    assert_eq!(
+        state.sync.recovery_category,
+        FieldAvailability::available(SyncRecoveryCategory::ResourceExhaustion)
+    );
+    assert_eq!(
+        state.sync.no_progress_diagnosis,
+        FieldAvailability::available(NoProgressDiagnosis::StorageOrResourceBlocked)
+    );
+    let stall = available_stall_diagnosis(&state);
+    assert_eq!(
+        serialized_label(stall.stalled_subsystem),
+        "storage_or_resource_pressure"
+    );
+    assert_eq!(
+        stall.stalled_subsystem,
+        StalledSubsystem::StorageOrResourcePressure
+    );
+    assert_eq!(
+        stall.maybe_recovery_category,
+        Some(SyncRecoveryCategory::ResourceExhaustion)
+    );
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn phase78_operator_stop_and_shutdown_classify_local_subsystems() {
+    // Arrange
+    let path = temp_store_path("phase78-local-stop-classification");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    let cases = [
+        (
+            SyncStopReason::OperatorPaused,
+            "operator_stop",
+            StalledSubsystem::OperatorStop,
+        ),
+        (
+            SyncStopReason::ShutdownRequested,
+            "local_shutdown",
+            StalledSubsystem::LocalShutdown,
+        ),
+    ];
+
+    // Act
+    let states = cases
+        .iter()
+        .enumerate()
+        .map(|(index, (stop_reason, _, _))| {
+            let mut summary = SyncRunSummary::empty(0, 0, 1);
+            summary.maybe_stop_reason = Some(*stop_reason);
+            runtime
+                .durable_sync_state_for_summary(
+                    &summary,
+                    SyncLifecycleState::Active,
+                    None,
+                    1_777_225_163 + i64::try_from(index).expect("index fits i64"),
+                )
+                .expect("durable local-stop status")
+        })
+        .collect::<Vec<_>>();
+
+    // Assert
+    for (state, (_, expected_label, expected_subsystem)) in states.iter().zip(cases) {
+        let stall = available_stall_diagnosis(state);
+        assert_eq!(serialized_label(stall.stalled_subsystem), expected_label);
+        assert_eq!(stall.stalled_subsystem, expected_subsystem);
+    }
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
 fn phase69_fresh_idle_cycle_reports_current_at_best_known_tip() {
     // Arrange
     let path = temp_store_path("phase69-fresh-idle-at-tip");
@@ -4747,6 +5164,163 @@ fn phase78_progress_guarantee_projection_rejects_headers_only_as_useful_work() {
                 .contains("last_useful_work=validated_durable_active_chain:1")
             && record.message.contains("stalled_subsystem=")
     }));
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn phase78_branch_competition_does_not_credit_replacement_tip_before_connect() {
+    // Arrange
+    let path = temp_store_path("phase78-branch-competition-no-credit");
+    remove_dir_if_exists(&path);
+    let (genesis, branch_a_one, branch_a_two, branch_b_one, branch_b_two, branch_b_three) =
+        phase70_branch_blocks();
+    save_best_chain_with_active_blocks(
+        &path,
+        &[
+            (&genesis, 0),
+            (&branch_b_one, 1),
+            (&branch_b_two, 2),
+            (&branch_b_three, 3),
+        ],
+        &[(&genesis, 0), (&branch_a_one, 1), (&branch_a_two, 2)],
+    );
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    let previous_summary = runtime.snapshot_summary();
+    let previous_state = runtime
+        .durable_sync_state_for_summary(
+            &previous_summary,
+            SyncLifecycleState::Active,
+            None,
+            i64::from(branch_a_two.header.time),
+        )
+        .expect("previous durable status");
+    runtime
+        .persist_durable_sync_state(previous_state)
+        .expect("persist previous status");
+
+    // Act
+    let progress = super::block_reconcile::reconcile_and_persist_best_chain(
+        &mut runtime,
+        i64::from(branch_b_three.header.time),
+    )
+    .expect("reconcile should wait for missing branch bodies");
+    let snapshot = runtime.snapshot_summary();
+    let state = runtime
+        .durable_sync_state_for_summary(
+            &snapshot,
+            SyncLifecycleState::Active,
+            None,
+            i64::from(branch_b_three.header.time),
+        )
+        .expect("durable branch competition status");
+
+    // Assert
+    assert!(matches!(
+        progress,
+        SyncReconcileProgress::BranchCompetitionAwaitingBodies { .. }
+    ));
+    assert_progress_credit_unavailable(&state);
+    let last_work = available_last_useful_work(&state);
+    assert_eq!(
+        last_work.kind,
+        ProgressCreditKind::ValidatedDurableActiveChain
+    );
+    assert_eq!(last_work.credited_validated_active_chain_height, 2);
+    assert_eq!(
+        state.sync.no_progress_diagnosis,
+        FieldAvailability::available(NoProgressDiagnosis::BranchCompetitionAwaitingBodies)
+    );
+    let stall = available_stall_diagnosis(&state);
+    assert_eq!(
+        serialized_label(stall.stalled_subsystem),
+        "branch_competition_awaiting_bodies"
+    );
+    assert_eq!(
+        stall.stalled_subsystem,
+        StalledSubsystem::BranchCompetitionAwaitingBodies
+    );
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn phase78_current_at_tip_credits_stay_current_useful_work() {
+    // Arrange
+    let path = temp_store_path("phase78-current-at-tip-credit");
+    remove_dir_if_exists(&path);
+    let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+    let child = build_block(block_hash(&genesis.header), 1);
+    let child_hash = block_hash(&child.header);
+    save_best_chain_with_active_blocks(
+        &path,
+        &[(&genesis, 0), (&child, 1)],
+        &[(&genesis, 0), (&child, 1)],
+    );
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime = DurableSyncRuntime::open(
+        store,
+        SyncRuntimeConfig {
+            max_rounds: 2,
+            retry_backoff_ms: 1_000,
+            ..sync_config()
+        },
+    )
+    .expect("runtime");
+    let previous_summary = runtime.snapshot_summary();
+    let previous_state = runtime
+        .durable_sync_state_for_summary(
+            &previous_summary,
+            SyncLifecycleState::Active,
+            None,
+            i64::from(child.header.time),
+        )
+        .expect("previous durable status");
+    assert_eq!(
+        available_progress_credit(&previous_state).kind,
+        ProgressCreditKind::ValidatedDurableActiveChain
+    );
+    runtime
+        .persist_durable_sync_state(previous_state)
+        .expect("persist previous status");
+    let mut transport =
+        ScriptedTransport::new(vec![version_verack_script(1), version_verack_script(1)]);
+
+    // Act
+    let summary = runtime
+        .sync_until_idle(&mut transport, i64::from(child.header.time) + 1)
+        .expect("sync until current at tip");
+    let state = runtime
+        .store()
+        .load_runtime_metadata()
+        .expect("load runtime metadata")
+        .expect("runtime metadata")
+        .maybe_sync_state
+        .expect("persisted sync state");
+
+    // Assert
+    assert_eq!(
+        summary.maybe_stop_reason,
+        Some(SyncStopReason::CurrentAtBestKnownTip {
+            best_header_height: 1,
+            best_block_height: 1,
+        })
+    );
+    let credit = available_progress_credit(&state);
+    assert_eq!(credit.kind, ProgressCreditKind::CurrentAtBestKnownTip);
+    assert_eq!(credit.credited_validated_active_chain_height, 1);
+    assert_eq!(
+        credit.credited_validated_active_chain_hash,
+        block_hash_hex(child_hash)
+    );
+    assert_eq!(
+        state.sync.stay_current,
+        FieldAvailability::available(StayCurrentStatus::CurrentAtBestKnownTip)
+    );
+    let stall = available_stall_diagnosis(&state);
+    assert_eq!(serialized_label(stall.stalled_subsystem), "at_tip_waiting");
+    assert_eq!(stall.stalled_subsystem, StalledSubsystem::AtTipWaiting);
 
     remove_dir_if_exists(&path);
 }

@@ -70,6 +70,129 @@ fn all_headers(blocks: &[Block]) -> Vec<BlockHeader> {
 }
 
 #[test]
+fn phase78_header_and_download_activity_do_not_credit_soak_progress() {
+    // Arrange
+    let path = temp_store_path("phase78-soak-false-progress");
+    remove_dir_if_exists(&path);
+    let blocks = synthetic_soak_blocks();
+    save_best_chain_with_active_blocks(
+        &path,
+        &[(&blocks[0], 0), (&blocks[1], 1), (&blocks[2], 2)],
+        &[(&blocks[0], 0), (&blocks[1], 1)],
+    );
+    let store = FjallNodeStore::open(&path).expect("store");
+    let runtime = DurableSyncRuntime::open(store, synthetic_soak_config()).expect("runtime");
+    let mut credited_summary = runtime.snapshot_summary();
+    credited_summary.messages_processed = 3;
+    credited_summary.headers_received = 1;
+    credited_summary.blocks_received = 1;
+    credited_summary
+        .peer_outcomes
+        .push(peer_outcome_with_contribution(
+            SyncPeerAddress::manual("127.0.0.1", 18_444),
+            PeerSyncState::Connected,
+            1,
+            None,
+            PeerContribution {
+                messages_processed: 3,
+                headers_received: 1,
+                blocks_received: 1,
+            },
+        ));
+    let previous_timestamp = u64::from(blocks[1].header.time);
+    let credited_state = runtime
+        .durable_sync_state_for_summary(
+            &credited_summary,
+            SyncLifecycleState::Active,
+            None,
+            i64::from(blocks[1].header.time),
+        )
+        .expect("credited durable soak status");
+    let credited_progress = available_progress_credit(&credited_state);
+    assert_eq!(
+        credited_progress.kind,
+        ProgressCreditKind::ValidatedDurableActiveChain
+    );
+    assert_eq!(
+        serialized_label(RejectedProgressActivityKind::HeaderDownload),
+        "header_download"
+    );
+    assert_eq!(
+        serialized_label(RejectedProgressActivityKind::BlockDownload),
+        "block_download"
+    );
+    assert_rejected_activity(
+        credited_progress,
+        RejectedProgressActivityKind::HeaderDownload,
+    );
+    assert_rejected_activity(
+        credited_progress,
+        RejectedProgressActivityKind::BlockDownload,
+    );
+    runtime
+        .persist_durable_sync_state(credited_state)
+        .expect("persist credited soak status");
+    let mut evidence_only_summary = credited_summary.clone();
+    evidence_only_summary.best_header_height = 2;
+    evidence_only_summary.downloaded_block_height = 2;
+    evidence_only_summary.best_block_height = 1;
+    evidence_only_summary.maybe_downloaded_block_hash =
+        Some(block_hash_hex(block_hash(&blocks[2].header)));
+    evidence_only_summary.maybe_connected_block_hash =
+        Some(block_hash_hex(block_hash(&blocks[1].header)));
+    evidence_only_summary.maybe_validated_active_chain_work = Some("2".to_string());
+    evidence_only_summary.messages_processed = 2;
+    evidence_only_summary.headers_received = 1;
+    evidence_only_summary.blocks_received = 1;
+    evidence_only_summary.peer_outcomes.clear();
+    evidence_only_summary
+        .peer_outcomes
+        .push(peer_outcome_with_contribution(
+            SyncPeerAddress::manual("127.0.0.1", 18_444),
+            PeerSyncState::Connected,
+            1,
+            None,
+            PeerContribution {
+                messages_processed: 2,
+                headers_received: 1,
+                blocks_received: 1,
+            },
+        ));
+
+    // Act
+    let evidence_only_state = runtime
+        .durable_sync_state_for_summary(
+            &evidence_only_summary,
+            SyncLifecycleState::Active,
+            None,
+            i64::from(blocks[2].header.time),
+        )
+        .expect("evidence-only durable soak status");
+
+    // Assert
+    assert_progress_credit_unavailable(&evidence_only_state);
+    let last_work = available_last_useful_work(&evidence_only_state);
+    assert_eq!(
+        last_work.kind,
+        ProgressCreditKind::ValidatedDurableActiveChain
+    );
+    assert_eq!(last_work.credited_validated_active_chain_height, 1);
+    assert_eq!(
+        evidence_only_state
+            .sync
+            .last_successful_progress_unix_seconds,
+        FieldAvailability::available(previous_timestamp)
+    );
+    let last_peer_contribution = available_last_peer_contribution(&evidence_only_state);
+    assert_eq!(
+        last_peer_contribution.kind,
+        PeerContributionKind::HeadersAndBlocks
+    );
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
 fn phase75_synthetic_soak_long_run_reaches_target_height_without_public_network() {
     // Arrange
     let path = temp_store_path("phase75-synthetic-soak-long-run");
