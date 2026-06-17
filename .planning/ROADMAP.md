@@ -37,7 +37,7 @@ delete those phase directories.
 - [x] **Phase 76: Disk and Resource Bound Enforcement** - Make long-run disk, cache, queue, log, metric, and support-evidence bounds visible, enforceable, and testable.
 - [x] **Phase 77: Corruption and Lock Recovery Hardening** - Diagnose lock contention, stale locks, corruption markers, schema mismatches, partial writes, and storage-open failures without hidden mutation. (completed 2026-06-16)
 - [x] **Phase 78: Progress Guarantees and Stall Diagnosis** - Ensure long-run progress is credited only for validated durable work and stalled paths produce actionable typed diagnosis. (completed 2026-06-17)
-- [ ] **Phase 79: Diagnostics and Support Bundle Forensics** - Produce redacted "what happened" support evidence that reconstructs timeline, resource pressure, peer outcomes, recovery events, and final verdict.
+- [x] **Phase 79: Diagnostics and Support Bundle Forensics** - Produce redacted "what happened" support evidence that reconstructs timeline, resource pressure, peer outcomes, recovery events, and final verdict.
 - [ ] **Phase 80: Opt-In Soak UAT and Release Boundaries** - Keep default verification deterministic while documenting opt-in multi-day soak commands and guarding the scoped v1.7 claim.
 
 ## Phase Details
@@ -139,7 +139,7 @@ Plans:
 - [x] 79-01-PLAN.md — Support-forensics sidecar domain projection and support bundle JSON collection.
 - [x] 79-02-PLAN.md — Markdown rendering and deterministic Rust fixture coverage for forensic narratives.
 - [x] 79-03-PLAN.md — Operator docs, architecture docs, and parity roots for support-bundle forensics.
-- [ ] 79-04-PLAN.md — Deterministic checker, verifier wiring, LOC freshness, and verification evidence.
+- [x] 79-04-PLAN.md — Deterministic checker, verifier wiring, LOC freshness, and verification evidence.
 
 **Success Criteria**:
 1. Support bundles include a redacted soak timeline, checkpoint chain, resource pressure, recovery events, peer outcomes, and final verdict.
@@ -170,7 +170,7 @@ Plans:
 | 76. Disk and Resource Bound Enforcement | 6/6 | Complete | 2026-06-15 |
 | 77. Corruption and Lock Recovery Hardening | 7/7 | Complete    | 2026-06-16 |
 | 78. Progress Guarantees and Stall Diagnosis | 7/7 | Complete    | 2026-06-17 |
-| 79. Diagnostics and Support Bundle Forensics | 3/4 | In Progress|  |
+| 79. Diagnostics and Support Bundle Forensics | 4/4 | Complete   | 2026-06-17 |
 | 80. Opt-In Soak UAT and Release Boundaries | 0/0 | Pending | - |
 
 ## Completed Milestone Summaries
@@ -218,8 +218,8 @@ traceability.
 
 ## Next Step
 
-Plan Phase 79:
+Plan Phase 80:
 
 ```bash
-/gsd-plan-phase 79
+/gsd-plan-phase 80
 ```

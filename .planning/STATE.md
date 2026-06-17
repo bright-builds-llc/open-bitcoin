@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Full-Sync Soak and Recovery Hardening
 status: executing
-stopped_at: Phase 79 context gathered
-last_updated: "2026-06-17T18:31:12.455Z"
+stopped_at: Phase 79 complete; Phase 80 pending planning
+last_updated: "2026-06-17T19:31:16.604Z"
 last_activity: 2026-06-17
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 30
-  completed_plans: 29
-  percent: 97
+  completed_plans: 30
+  percent: 100
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-14)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 79 — Diagnostics and Support Bundle Forensics
+**Current focus:** Phase 80 — Opt-In Soak UAT and Release Boundaries
 
 ## Current Position
 
 Milestone: v1.7 Full-Sync Soak and Recovery Hardening
-Phase: 79 (Diagnostics and Support Bundle Forensics) — EXECUTING
-Plan: 4 of 4
-Status: Executing Phase 79
+Phase: 80 (Opt-In Soak UAT and Release Boundaries) — PENDING
+Plan: Pending
+Status: Phase 79 complete; Phase 80 pending planning
 Last activity: 2026-06-17
 
-Progress: [██████████] 97%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Current milestone plans completed: 29
+- Current milestone plans completed: 30
 - Current milestone plan count: 30
 - Prior milestone plans completed: 27 in v1.6
 
@@ -49,7 +49,7 @@ Progress: [██████████] 97%
 | 76. Disk and Resource Bound Enforcement | 6/6 | Complete |
 | 77. Corruption and Lock Recovery Hardening | 7/7 | Complete |
 | 78. Progress Guarantees and Stall Diagnosis | 7/7 | Complete |
-| 79. Diagnostics and Support Bundle Forensics | 3/4 | In Progress |
+| 79. Diagnostics and Support Bundle Forensics | 4/4 | Complete |
 | 80. Opt-In Soak UAT and Release Boundaries | 0/0 | Pending |
 
 **Recent Trend:**
@@ -76,7 +76,7 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ### Pending Todos
 
-- Plan Phase 79 diagnostics and support bundle forensics.
+- Plan Phase 80 opt-in soak UAT and release boundaries.
 - Keep raw phase histories in `.planning/phases/` for parity and UAT traceability.
 - Keep public-network full-sync and multi-day soak UAT opt-in and outside default deterministic verification unless a future phase deliberately changes that contract.
 
@@ -89,5 +89,5 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 ## Session Continuity
 
 Last session: 2026-06-17T14:24:15.163Z
-Stopped at: Phase 79 context gathered
-Resume file: .planning/phases/79-diagnostics-and-support-bundle-forensics/79-CONTEXT.md
+Stopped at: Phase 79 complete; Phase 80 pending planning
+Resume file: .planning/ROADMAP.md
