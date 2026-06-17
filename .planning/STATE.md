@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Full-Sync Soak and Recovery Hardening
-status: planning
+status: executing
 stopped_at: Phase 79 context gathered
-last_updated: "2026-06-17T14:24:15.166Z"
-last_activity: 2026-06-17
+last_updated: "2026-06-17T15:40:47.490Z"
+last_activity: 2026-06-17 -- Phase 79 execution started
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 26
+  total_plans: 30
   completed_plans: 26
-  percent: 100
+  percent: 87
 ---
 
 # Project State
@@ -21,15 +21,15 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-14)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 79 — diagnostics-and-support-bundle-forensics
+**Current focus:** Phase 79 — Diagnostics and Support Bundle Forensics
 
 ## Current Position
 
 Milestone: v1.7 Full-Sync Soak and Recovery Hardening
-Phase: 79
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-06-17
+Phase: 79 (Diagnostics and Support Bundle Forensics) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 79
+Last activity: 2026-06-17 -- Phase 79 execution started
 
 Progress: [##########] 100%
 
@@ -49,7 +49,7 @@ Progress: [##########] 100%
 | 76. Disk and Resource Bound Enforcement | 6/6 | Complete |
 | 77. Corruption and Lock Recovery Hardening | 7/7 | Complete |
 | 78. Progress Guarantees and Stall Diagnosis | 7/7 | Complete |
-| 79. Diagnostics and Support Bundle Forensics | 0/0 | Pending |
+| 79. Diagnostics and Support Bundle Forensics | 0/4 | Pending |
 | 80. Opt-In Soak UAT and Release Boundaries | 0/0 | Pending |
 
 **Recent Trend:**

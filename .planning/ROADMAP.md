@@ -133,7 +133,13 @@ Plans:
 **Goal**: Operators can generate redacted support evidence that answers what happened during a failed or degraded long run.
 **Depends on**: Phase 78
 **Requirements**: DIAG-01, DIAG-02, DIAG-03, DIAG-04
-**Plans**: Pending
+**Plans**: 4 plans
+
+Plans:
+- [ ] 79-01-PLAN.md — Support-forensics sidecar domain projection and support bundle JSON collection.
+- [ ] 79-02-PLAN.md — Markdown rendering and deterministic Rust fixture coverage for forensic narratives.
+- [ ] 79-03-PLAN.md — Operator docs, architecture docs, and parity roots for support-bundle forensics.
+- [ ] 79-04-PLAN.md — Deterministic checker, verifier wiring, LOC freshness, and verification evidence.
 
 **Success Criteria**:
 1. Support bundles include a redacted soak timeline, checkpoint chain, resource pressure, recovery events, peer outcomes, and final verdict.
@@ -164,7 +170,7 @@ Plans:
 | 76. Disk and Resource Bound Enforcement | 6/6 | Complete | 2026-06-15 |
 | 77. Corruption and Lock Recovery Hardening | 7/7 | Complete    | 2026-06-16 |
 | 78. Progress Guarantees and Stall Diagnosis | 7/7 | Complete    | 2026-06-17 |
-| 79. Diagnostics and Support Bundle Forensics | 0/0 | Pending | - |
+| 79. Diagnostics and Support Bundle Forensics | 0/4 | Pending | - |
 | 80. Opt-In Soak UAT and Release Boundaries | 0/0 | Pending | - |
 
 ## Completed Milestone Summaries
@@ -208,7 +214,7 @@ traceability.
 | v1.4 Mainnet IBD Convergence and Peer Compatibility | 6 | 15 | Shipped | 2026-06-05 |
 | v1.5 Unattended Mainnet Node Operation Readiness | 8 | 22 | Shipped | 2026-06-10 |
 | v1.6 Mainnet Full-Sync Completion | 7 | 27 | Shipped | 2026-06-14 |
-| v1.7 Full-Sync Soak and Recovery Hardening | 6 | 26 | Active | - |
+| v1.7 Full-Sync Soak and Recovery Hardening | 6 | 30 | Active | - |
 
 ## Next Step
 
