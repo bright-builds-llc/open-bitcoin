@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Full-Sync Soak and Recovery Hardening
-status: executing
-stopped_at: Completed 78-05 deterministic progress guarantee tests
-last_updated: "2026-06-17T10:41:21.878Z"
+status: planning
+stopped_at: Completed Phase 78 progress guarantee closeout
+last_updated: "2026-06-17T11:23:32Z"
 last_activity: 2026-06-17
 progress:
   total_phases: 6
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 26
-  completed_plans: 25
-  percent: 96
+  completed_plans: 26
+  percent: 100
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-14)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 78 — progress-guarantees-and-stall-diagnosis
+**Current focus:** Phase 79 — diagnostics-and-support-bundle-forensics
 
 ## Current Position
 
 Milestone: v1.7 Full-Sync Soak and Recovery Hardening
-Phase: 78 (progress-guarantees-and-stall-diagnosis) — EXECUTING
-Plan: 7 of 7
-Status: Ready to execute
+Phase: 79
+Plan: Not started
+Status: Ready to plan
 Last activity: 2026-06-17
 
-Progress: [########--] 81%
+Progress: [##########] 100%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Current milestone plans completed: 21
+- Current milestone plans completed: 26
 - Current milestone plan count: 26
 - Prior milestone plans completed: 27 in v1.6
 
@@ -48,7 +48,7 @@ Progress: [########--] 81%
 | 75. Multi-Day Soak Runner and Evidence Ledger | 6/6 | Complete |
 | 76. Disk and Resource Bound Enforcement | 6/6 | Complete |
 | 77. Corruption and Lock Recovery Hardening | 7/7 | Complete |
-| 78. Progress Guarantees and Stall Diagnosis | 2/7 | In Progress |
+| 78. Progress Guarantees and Stall Diagnosis | 7/7 | Complete |
 | 79. Diagnostics and Support Bundle Forensics | 0/0 | Pending |
 | 80. Opt-In Soak UAT and Release Boundaries | 0/0 | Pending |
 
@@ -76,7 +76,7 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ### Pending Todos
 
-- Execute remaining Phase 78 progress guarantees and stall diagnosis plans.
+- Plan Phase 79 diagnostics and support bundle forensics.
 - Keep raw phase histories in `.planning/phases/` for parity and UAT traceability.
 - Keep public-network full-sync and multi-day soak UAT opt-in and outside default deterministic verification unless a future phase deliberately changes that contract.
 
@@ -88,6 +88,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-17T10:41:21.875Z
-Stopped at: Completed 78-05 deterministic progress guarantee tests
-Resume file: .planning/phases/78-progress-guarantees-and-stall-diagnosis/78-05-SUMMARY.md
+Last session: 2026-06-17T11:23:32Z
+Stopped at: Completed Phase 78 progress guarantee closeout
+Resume file: .planning/phases/78-progress-guarantees-and-stall-diagnosis/78-06-SUMMARY.md

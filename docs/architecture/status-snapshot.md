@@ -317,6 +317,37 @@ Unavailable recovery evidence must remain explicit through
 healthy store, clear a lock, delete a recovery marker, compact, reindex,
 relocate, repair, or mutate a source datadir from missing evidence.
 
+## Phase 78 progress guarantees and stall diagnosis
+
+Phase 78 adds compact progress-guarantee fields to `sync` so status,
+dashboard, soak checkpoint/report, support, and live-smoke projections share
+one contract for PROG-01 through PROG-04:
+
+- `progress_credit`: credited work from `validated_durable_active_chain` or
+  `current_at_best_known_tip` only.
+- `expected_progress_window`: retry, round, and freshness evidence for the
+  current progress window.
+- `no_progress_threshold`: threshold state and elapsed time since
+  `last_useful_work`.
+- `last_useful_work`: the most recent credited active-chain or stay-current
+  evidence.
+- `last_peer_contribution`: the latest bounded peer contribution, kept
+  separate from credited work.
+- `stall_diagnosis`: stalled subsystem, confidence, evidence basis, and next
+  action.
+
+Headers, downloaded block bodies, peer messages, in-flight requests, retries,
+and report generation are rejected activity for progress-credit purposes. They
+can explain `last_peer_contribution` or the `stall_diagnosis`, but they do not
+advance `progress_credit`.
+
+`stall_diagnosis.stalled_subsystem` uses stable labels including
+`public_network_reachability`, `incompatible_peers`, `slow_or_stalled_peers`,
+`validation`, `storage_or_resource_pressure`, `at_tip_waiting`, `operator_stop`,
+and `local_shutdown`. Storage/resource and recovery evidence outrank peer retry
+guidance so status does not tell an operator to rotate peers when the selected
+datadir or configured resource envelope is the blocker.
+
 ## Phase 72 evidence comparison fields
 
 Phase 72 keeps operator observability and support evidence as projections of the

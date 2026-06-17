@@ -63,6 +63,11 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
   final outcomes, and deterministic synthetic replay auditable without
   claiming inbound serving, relay, public-network CI, or broad production-node
   readiness
+- Phase 78 `phase78-progress-guarantees-stall-diagnosis` evidence keeps
+  PROG-01, PROG-02, PROG-03, and PROG-04 auditable by separating peer
+  contribution, retry, in-flight, and message evidence from credited progress
+  while surfacing public-network, incompatible-peer, slow-peer, validation,
+  at-tip, storage, operator-stop, and local-shutdown stall labels
 - Phase 70 no-credit peer responses retain typed attribution, release stale
   in-flight block work, and rotate through endpoint-keyed backoff without
   claiming peer banning, inbound reputation, address-manager governance, or
@@ -281,6 +286,21 @@ serving, transaction relay, compact block relay, production-funds wallet
 safety, migration apply mode, signed packages, GUI readiness, hosted
 dashboards, public-network CI, release-blocking live sync, or broad
 production-node readiness.
+
+## Phase 78 progress guarantees and stall diagnosis
+
+The `phase78-progress-guarantees-stall-diagnosis` surface is scoped to outbound
+sync and soak progress evidence. P2P activity such as headers, block bodies,
+peer messages, retries, and in-flight requests remains diagnostic evidence for
+PROG-01 through PROG-04, but it does not advance the credited progress
+watermark unless the runtime also observes validated durable active-chain
+progress or explicit current-at-best-known-tip evidence.
+
+The P2P-facing stall labels distinguish public-network reachability,
+incompatible peers, slow or stalled peers, validation failures, at-tip waiting,
+storage/resource pressure, operator stop, and local shutdown without adding
+peer banning, address-manager governance, relay scope, public-network default
+verification, or production-node readiness.
 
 ## First-party implementation
 

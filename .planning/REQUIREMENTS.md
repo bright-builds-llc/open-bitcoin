@@ -30,10 +30,10 @@ Requirements for v1.7 Full-Sync Soak and Recovery Hardening. Each requirement ma
 
 ### Progress Guarantees And Stall Diagnosis
 
-- [ ] **PROG-01**: Operator can trust that reported soak progress is credited only after validated, durably connected active-chain progress or explicit stay-current evidence.
-- [ ] **PROG-02**: Operator can see expected progress windows, last useful work, last peer contribution, stalled subsystem, and no-progress threshold evidence.
-- [ ] **PROG-03**: Operator can distinguish public-network reachability issues, incompatible peers, slow peers, stalled validation, storage pressure, at-tip waiting, and local shutdown.
-- [ ] **PROG-04**: Contributor can verify progress-guarantee logic with deterministic tests for false progress, stale in-flight work, peer rotation, at-tip waiting, and validation stalls.
+- [x] **PROG-01**: Operator can trust that reported soak progress is credited only after validated, durably connected active-chain progress or explicit stay-current evidence.
+- [x] **PROG-02**: Operator can see expected progress windows, last useful work, last peer contribution, stalled subsystem, and no-progress threshold evidence.
+- [x] **PROG-03**: Operator can distinguish public-network reachability issues, incompatible peers, slow peers, stalled validation, storage pressure, at-tip waiting, and local shutdown.
+- [x] **PROG-04**: Contributor can verify progress-guarantee logic with deterministic tests for false progress, stale in-flight work, peer rotation, at-tip waiting, and validation stalls.
 
 ### Diagnostics And Support Bundles
 
@@ -109,10 +109,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | REC-06 | Phase 77 | Complete |
 | REC-07 | Phase 77 | Complete |
 | REC-08 | Phase 77 | Complete |
-| PROG-01 | Phase 78 | Pending |
-| PROG-02 | Phase 78 | Pending |
-| PROG-03 | Phase 78 | Pending |
-| PROG-04 | Phase 78 | Pending |
+| PROG-01 | Phase 78 | Complete |
+| PROG-02 | Phase 78 | Complete |
+| PROG-03 | Phase 78 | Complete |
+| PROG-04 | Phase 78 | Complete |
 | DIAG-01 | Phase 79 | Pending |
 | DIAG-02 | Phase 79 | Pending |
 | DIAG-03 | Phase 79 | Pending |

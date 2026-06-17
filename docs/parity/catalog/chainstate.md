@@ -124,6 +124,21 @@ readiness, hosted dashboards, public-network CI, release-blocking live sync, or
 broad production-node readiness. The soak ledger is evidence over existing
 sync and chainstate facts, not a new chainstate-manager claim.
 
+## Phase 78 progress guarantee chainstate boundary
+
+The `phase78-progress-guarantees-stall-diagnosis` surface uses chainstate facts
+for PROG-01, PROG-02, PROG-03, and PROG-04. `progress_credit` is valid only
+when the runtime has validated, connected, and durably persisted active-chain
+height/hash/work, or when `current_at_best_known_tip` evidence proves the
+connected active-chain tip matches the fresh best-known validated tip.
+
+Downloaded-only block bodies, header-only branches, report generation, and
+peer contribution evidence remain diagnostics until chainstate connection and
+durable persistence happen. Better header branches can explain
+`branch_competition_awaiting_bodies` or `stall_diagnosis`, but they do not
+replace the active tip or credit progress before the replacement bodies are
+available and validated.
+
 ## First-party implementation
 
 - [`packages/open-bitcoin-chainstate/src/engine.rs`](../../../packages/open-bitcoin-chainstate/src/engine.rs)

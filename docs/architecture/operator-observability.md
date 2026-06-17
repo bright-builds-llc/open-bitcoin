@@ -129,6 +129,22 @@ not imply automatic destructive repair, lock cleanup, source datadir mutation,
 process scanning, public-network default verification, or production-node
 readiness.
 
+## Phase 78 progress-guarantee evidence
+
+Phase 78 keeps progress guarantees and stall diagnosis in the shared sync
+status contract. Status, dashboard, soak checkpoint/report, support, metrics,
+structured-log, and live-smoke projections should preserve `progress_credit`,
+`expected_progress_window`, `no_progress_threshold`, `last_useful_work`,
+`last_peer_contribution`, and `stall_diagnosis` without deriving local verdicts
+from renderer text.
+
+The compact observability rule is that checkpoints, reports, support summaries,
+and live-smoke rows may expose rejected activity and peer contribution evidence,
+but only `validated_durable_active_chain` or `current_at_best_known_tip`
+advances the credited progress watermark. Missing fields remain unavailable
+evidence with their reason, and `stall_diagnosis` carries the subsystem and next
+action rather than asking each surface to infer one.
+
 ## Phase Boundaries
 
 Phase 13 defines serializable contracts only. It must not install a tracing subscriber, create a file appender, write metric samples, prune log files, or render dashboard graphs. Runtime writers and readers are Phase 16 responsibilities.

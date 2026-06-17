@@ -1156,8 +1156,8 @@ bound state, next action, and source status evidence.
 Support bundles include a compact `resource_bound_evidence` section and
 Markdown `## Resource Bound Evidence` projection. The section records labels,
 numeric usage, limits, units, next actions, and projected support-bundle
-footprint only; it does not copy raw logs, raw stores, raw status snapshots, or
-unbounded peer tables.
+footprint only; it does not copy raw logs, raw stores, complete status payloads,
+or unbounded peer tables.
 
 ### Phase 77 corruption and lock recovery hardening
 
@@ -1198,6 +1198,34 @@ Interpret action classes conservatively:
   before retrying.
 
 Phase 77 does not delete lock files, clear recovery markers, repair stores, compact stores, reindex stores, relocate datadirs, mutate source datadirs, scan OS process tables, or upload support bundles automatically.
+
+### Phase 78 progress guarantees and stall diagnosis
+
+Phase 78 adds progress-guarantee evidence to the shared sync status, soak
+checkpoint/report, dashboard, support, and live-smoke projections. Operators
+should read these machine fields together: `progress_credit`,
+`last_useful_work`, `last_peer_contribution`, `expected_progress_window`,
+`no_progress_threshold`, and `stall_diagnosis`.
+
+`progress_credit` advances only for `validated_durable_active_chain` evidence
+or explicit `current_at_best_known_tip` stay-current evidence. Headers, downloaded block bodies, peer messages, in-flight requests, retries, and report generation are evidence only and do not advance the credited progress watermark.
+
+`last_useful_work` preserves the most recent credited active-chain or at-tip
+evidence across later cycles that only wait, retry, or diagnose.
+`last_peer_contribution` records the latest bounded peer contribution
+separately, so a peer can explain headers, block bodies, messages, or failure
+evidence without fabricating progress credit.
+
+`expected_progress_window` and `no_progress_threshold` show the configured
+retry/backoff and freshness window used to decide when waiting becomes
+diagnosed no-progress evidence. `stall_diagnosis` identifies the current
+subsystem and next action through labels such as
+`storage_or_resource_pressure`, `at_tip_waiting`, `operator_stop`, and
+`local_shutdown`.
+
+Treat missing Phase 78 fields as explicit unavailable evidence. A soak report,
+support summary, dashboard row, or live-smoke report is a compact projection of
+the same shared status contract; it is not a separate source of progress truth.
 
 ## v1.4 operator evidence closeout
 
@@ -1435,8 +1463,8 @@ Redaction boundaries:
   compact active-chain, best-tip, stay-current, no-progress, reorg, reconcile,
   resource-pressure, and peer-contribution final-status evidence. Older or
   hand-authored top-level report fields remain a compatibility fallback.
-- Raw live-smoke input, daemon stdout/stderr tails, raw status snapshots, raw
-  options, and endpoint tables are not embedded in the support bundle.
+- Raw live-smoke input, daemon stdout/stderr tails, complete status payloads,
+  raw options, and endpoint tables are not embedded in the support bundle.
 - The support bundle is local evidence; it is not a production-node claim and
   does not make public-network sync part of `bash scripts/verify.sh`.
 

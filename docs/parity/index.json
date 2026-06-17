@@ -1199,6 +1199,41 @@
         "suspected_unknowns": [
           "Future destructive repair workflows, lock cleanup policy, source datadir mutation, portable process attribution, public-network gates, and production-node readiness need separate scoped phases and fresh evidence roots."
         ]
+      },
+      {
+        "id": "phase78-progress-guarantees-stall-diagnosis",
+        "title": "Phase 78 Progress Guarantees And Stall Diagnosis",
+        "status": "done",
+        "requirements": [
+          "PROG-01",
+          "PROG-02",
+          "PROG-03",
+          "PROG-04"
+        ],
+        "evidence": [
+          "packages/open-bitcoin-node/src/status/progress_guarantee.rs",
+          "packages/open-bitcoin-node/src/sync/progress/guarantee.rs",
+          "packages/open-bitcoin-node/src/sync/runtime_state.rs",
+          "packages/open-bitcoin-node/src/sync/tests.rs",
+          "packages/open-bitcoin-node/src/sync/tests/soak.rs",
+          "docs/operator/runtime-guide.md",
+          "docs/architecture/status-snapshot.md",
+          "docs/architecture/operator-observability.md",
+          "docs/parity/checklist.md",
+          "docs/parity/README.md",
+          "docs/parity/catalog/p2p.md",
+          "docs/parity/catalog/chainstate.md",
+          "docs/parity/catalog/operator-runtime-release-hardening.md",
+          "scripts/check-phase78-progress-guarantees.ts",
+          ".planning/phases/78-progress-guarantees-and-stall-diagnosis/"
+        ],
+        "rationale": "Phase 78 makes credited progress and stall diagnosis auditable through shared typed status fields, durable runtime projection, soak/report/support/dashboard/live-smoke projections, deterministic Rust tests, operator and architecture docs, parity roots, and a focused checker wired into scripts/verify.sh.",
+        "known_gaps": [
+          "Phase 78 proves progress guarantees and stall diagnosis only; public-network default checks, multi-day default gates, support-bundle forensics, inbound serving, relay, production-wallet use, migration apply mode, packaging, GUI, hosted dashboards, and production-node readiness remain outside this scope."
+        ],
+        "suspected_unknowns": [
+          "Future support-bundle forensics, richer failure narratives, opt-in public-network UAT closeout, production-node expansion, and release-boundary wording need separate scoped phases and fresh evidence roots."
+        ]
       }
     ]
   },
@@ -1403,6 +1438,33 @@
         "docs/architecture/storage-decision.md",
         "scripts/check-phase77-corruption-lock-recovery.ts",
         ".planning/phases/77-corruption-and-lock-recovery-hardening/"
+      ]
+    },
+    "phase78_progress_guarantees_stall_diagnosis": {
+      "path": "checklist.md",
+      "status": "done",
+      "requirements": [
+        "PROG-01",
+        "PROG-02",
+        "PROG-03",
+        "PROG-04"
+      ],
+      "evidence": [
+        "packages/open-bitcoin-node/src/status/progress_guarantee.rs",
+        "packages/open-bitcoin-node/src/sync/progress/guarantee.rs",
+        "packages/open-bitcoin-node/src/sync/runtime_state.rs",
+        "packages/open-bitcoin-node/src/sync/tests.rs",
+        "packages/open-bitcoin-node/src/sync/tests/soak.rs",
+        "docs/operator/runtime-guide.md",
+        "docs/architecture/status-snapshot.md",
+        "docs/architecture/operator-observability.md",
+        "docs/parity/checklist.md",
+        "docs/parity/README.md",
+        "docs/parity/catalog/p2p.md",
+        "docs/parity/catalog/chainstate.md",
+        "docs/parity/catalog/operator-runtime-release-hardening.md",
+        "scripts/check-phase78-progress-guarantees.ts",
+        ".planning/phases/78-progress-guarantees-and-stall-diagnosis/"
       ]
     },
     "security_analysis_audit": {

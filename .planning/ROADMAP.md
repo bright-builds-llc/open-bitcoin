@@ -36,7 +36,7 @@ delete those phase directories.
 - [x] **Phase 75: Multi-Day Soak Runner and Evidence Ledger** - Give operators a bounded, resumable, explicit opt-in soak workflow with durable run identity and deterministic synthetic coverage.
 - [x] **Phase 76: Disk and Resource Bound Enforcement** - Make long-run disk, cache, queue, log, metric, and support-evidence bounds visible, enforceable, and testable.
 - [x] **Phase 77: Corruption and Lock Recovery Hardening** - Diagnose lock contention, stale locks, corruption markers, schema mismatches, partial writes, and storage-open failures without hidden mutation. (completed 2026-06-16)
-- [ ] **Phase 78: Progress Guarantees and Stall Diagnosis** - Ensure long-run progress is credited only for validated durable work and stalled paths produce actionable typed diagnosis.
+- [x] **Phase 78: Progress Guarantees and Stall Diagnosis** - Ensure long-run progress is credited only for validated durable work and stalled paths produce actionable typed diagnosis. (completed 2026-06-17)
 - [ ] **Phase 79: Diagnostics and Support Bundle Forensics** - Produce redacted "what happened" support evidence that reconstructs timeline, resource pressure, peer outcomes, recovery events, and final verdict.
 - [ ] **Phase 80: Opt-In Soak UAT and Release Boundaries** - Keep default verification deterministic while documenting opt-in multi-day soak commands and guarding the scoped v1.7 claim.
 
@@ -111,7 +111,16 @@ Plans:
 **Goal**: Operators can trust reported long-run progress and understand exactly which subsystem or external condition prevented useful work.
 **Depends on**: Phase 77
 **Requirements**: PROG-01, PROG-02, PROG-03, PROG-04
-**Plans**: Pending
+**Plans**: 7/7 plans complete
+
+Plans:
+- [x] 78-01-PLAN.md - Progress guarantee status contract.
+- [x] 78-02-PLAN.md - Runtime progress evidence projection.
+- [x] 78-03-PLAN.md - Soak checkpoint and report progress evidence.
+- [x] 78-04-PLAN.md - Operator status, support, and live-smoke progress evidence.
+- [x] 78-05-PLAN.md - Deterministic progress guarantee test coverage.
+- [x] 78-06-PLAN.md - Documentation, checker, and verification closeout.
+- [x] 78-07-PLAN.md - Downstream CLI/RPC status constructor coverage.
 
 **Success Criteria**:
 1. Soak progress is credited only after validated, durably connected active-chain progress or explicit stay-current evidence.
@@ -154,7 +163,7 @@ Plans:
 | 75. Multi-Day Soak Runner and Evidence Ledger | 6/6 | Complete    | 2026-06-15 |
 | 76. Disk and Resource Bound Enforcement | 6/6 | Complete | 2026-06-15 |
 | 77. Corruption and Lock Recovery Hardening | 7/7 | Complete    | 2026-06-16 |
-| 78. Progress Guarantees and Stall Diagnosis | 6/7 | In Progress|  |
+| 78. Progress Guarantees and Stall Diagnosis | 7/7 | Complete    | 2026-06-17 |
 | 79. Diagnostics and Support Bundle Forensics | 0/0 | Pending | - |
 | 80. Opt-In Soak UAT and Release Boundaries | 0/0 | Pending | - |
 
@@ -199,12 +208,12 @@ traceability.
 | v1.4 Mainnet IBD Convergence and Peer Compatibility | 6 | 15 | Shipped | 2026-06-05 |
 | v1.5 Unattended Mainnet Node Operation Readiness | 8 | 22 | Shipped | 2026-06-10 |
 | v1.6 Mainnet Full-Sync Completion | 7 | 27 | Shipped | 2026-06-14 |
-| v1.7 Full-Sync Soak and Recovery Hardening | 6 | 19 | Active | - |
+| v1.7 Full-Sync Soak and Recovery Hardening | 6 | 26 | Active | - |
 
 ## Next Step
 
-Plan Phase 77:
+Plan Phase 79:
 
 ```bash
-/gsd-plan-phase 77
+/gsd-plan-phase 79
 ```

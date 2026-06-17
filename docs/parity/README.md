@@ -69,6 +69,15 @@ runtime guide, status and storage architecture contracts,
 directory so REC-05, REC-06, REC-07, and REC-08 stay auditable as diagnosis and
 evidence only.
 
+Phase 78 progress guarantees and stall diagnosis are rooted in the
+`phase78-progress-guarantees-stall-diagnosis` surface. The root links shared
+progress-credit and stall evidence types, deterministic PROG-01, PROG-02,
+PROG-03, and PROG-04 tests, the runtime guide, status and observability
+contracts, P2P/chainstate/operator-runtime catalogs, and
+`scripts/check-phase78-progress-guarantees.ts` so credited progress and
+diagnosed stalls stay auditable without adding public-network or multi-day
+default verification.
+
 Deferred and suspected follow-up work remains visible in
 [`deviations-and-unknowns.md`](deviations-and-unknowns.md).
 
