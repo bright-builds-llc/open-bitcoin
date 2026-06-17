@@ -572,6 +572,10 @@
     {
       "name": "phase77-corruption-and-lock-recovery-hardening",
       "status": "done"
+    },
+    {
+      "name": "phase79-diagnostics-support-bundle-forensics",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -1234,6 +1238,39 @@
         "suspected_unknowns": [
           "Future support-bundle forensics, richer failure narratives, opt-in public-network UAT closeout, production-node expansion, and release-boundary wording need separate scoped phases and fresh evidence roots."
         ]
+      },
+      {
+        "id": "phase79-diagnostics-support-bundle-forensics",
+        "title": "Phase 79 Diagnostics And Support Bundle Forensics",
+        "status": "done",
+        "requirements": [
+          "DIAG-01",
+          "DIAG-02",
+          "DIAG-03",
+          "DIAG-04"
+        ],
+        "evidence": [
+          "packages/open-bitcoin-cli/src/operator/support/forensics.rs",
+          "packages/open-bitcoin-cli/src/operator/support/render.rs",
+          "packages/open-bitcoin-cli/src/operator/support/tests.rs",
+          "docs/operator/runtime-guide.md",
+          "docs/architecture/status-snapshot.md",
+          "docs/architecture/operator-observability.md",
+          "docs/parity/checklist.md",
+          "docs/parity/README.md",
+          "docs/parity/catalog/p2p.md",
+          "docs/parity/catalog/chainstate.md",
+          "docs/parity/catalog/operator-runtime-release-hardening.md",
+          ".planning/phases/79-diagnostics-and-support-bundle-forensics/"
+        ],
+        "rationale": "Phase 79 makes local support-bundle diagnostics auditable through typed support_forensics, forensic timeline, checkpoint chain, failure narrative, likely cause, evidence basis, next action, confidence, redaction, size bounds, timeline ordering, cross-surface consistency, operator docs, architecture docs, parity roots, and Phase 79 summaries.",
+        "known_gaps": [
+          "Phase 79 proves local diagnostics and support-bundle forensics only; inbound serving, relay, production-funds wallet use, migration apply mode, packaging, GUI, hosted dashboards, public-network default checks, multi-day default gates, automatic support-bundle upload, and production-node readiness remain outside this scope.",
+          "Support bundle existence, elapsed time, peer reachability, daemon startup, raw logs, or stale reports do not prove soak stability."
+        ],
+        "suspected_unknowns": [
+          "Future signed support artifacts, automatic upload, public-network UAT closeout, production-node expansion, and broader incident forensics need separate scoped phases and fresh evidence roots."
+        ]
       }
     ]
   },
@@ -1465,6 +1502,30 @@
         "docs/parity/catalog/operator-runtime-release-hardening.md",
         "scripts/check-phase78-progress-guarantees.ts",
         ".planning/phases/78-progress-guarantees-and-stall-diagnosis/"
+      ]
+    },
+    "phase79_diagnostics_support_bundle_forensics": {
+      "path": "checklist.md",
+      "status": "done",
+      "requirements": [
+        "DIAG-01",
+        "DIAG-02",
+        "DIAG-03",
+        "DIAG-04"
+      ],
+      "evidence": [
+        "packages/open-bitcoin-cli/src/operator/support/forensics.rs",
+        "packages/open-bitcoin-cli/src/operator/support/render.rs",
+        "packages/open-bitcoin-cli/src/operator/support/tests.rs",
+        "docs/operator/runtime-guide.md",
+        "docs/architecture/status-snapshot.md",
+        "docs/architecture/operator-observability.md",
+        "docs/parity/checklist.md",
+        "docs/parity/README.md",
+        "docs/parity/catalog/p2p.md",
+        "docs/parity/catalog/chainstate.md",
+        "docs/parity/catalog/operator-runtime-release-hardening.md",
+        ".planning/phases/79-diagnostics-and-support-bundle-forensics/"
       ]
     },
     "security_analysis_audit": {

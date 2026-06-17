@@ -68,6 +68,12 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
   contribution, retry, in-flight, and message evidence from credited progress
   while surfacing public-network, incompatible-peer, slow-peer, validation,
   at-tip, storage, operator-stop, and local-shutdown stall labels
+- Phase 79 `phase79-diagnostics-support-bundle-forensics` evidence keeps
+  DIAG-01, DIAG-02, DIAG-03, and DIAG-04 auditable by projecting local
+  `support_forensics`, forensic timeline, checkpoint chain, failure narrative,
+  likely cause, evidence basis, next action, confidence, redaction, size
+  bounds, timeline ordering, and cross-surface consistency without adding P2P
+  serving or relay claims
 - Phase 70 no-credit peer responses retain typed attribution, release stale
   in-flight block work, and rotate through endpoint-keyed backoff without
   claiming peer banning, inbound reputation, address-manager governance, or
@@ -301,6 +307,22 @@ incompatible peers, slow or stalled peers, validation failures, at-tip waiting,
 storage/resource pressure, operator stop, and local shutdown without adding
 peer banning, address-manager governance, relay scope, public-network default
 verification, or production-node readiness.
+
+## Phase 79 diagnostics support-bundle forensics boundary
+
+The `phase79-diagnostics-support-bundle-forensics` surface is scoped to local
+support-bundle diagnosis for DIAG-01, DIAG-02, DIAG-03, and DIAG-04. P2P-facing
+evidence may explain peer reachability, rejected activity, no-progress signals,
+and stale report inputs through `support_forensics`, forensic timeline,
+checkpoint chain, failure narrative, likely cause, evidence basis, next action,
+confidence, redaction, size bounds, timeline ordering, and cross-surface
+consistency.
+
+That evidence is local forensics only. It does not add inbound serving, address
+relay, block serving, transaction relay, compact block relay, production-funds
+wallet use, migration apply mode, packaging, GUI, hosted dashboards,
+public-network default checks, multi-day default gates, automatic
+support-bundle upload, or production-node readiness.
 
 ## First-party implementation
 

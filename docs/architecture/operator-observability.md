@@ -145,6 +145,23 @@ advances the credited progress watermark. Missing fields remain unavailable
 evidence with their reason, and `stall_diagnosis` carries the subsystem and next
 action rather than asking each surface to infer one.
 
+## Phase 79 support forensics projection
+
+CLI status, dashboard status, RPC status, metrics, structured logs, live-smoke
+summaries, soak reports, and support bundles consume the shared typed
+status/summary contract. `support_forensics` is a support-bundle projection over
+that contract: it adds a forensic timeline, checkpoint chain, failure narrative,
+source evidence, redaction facts, size bounds, timeline ordering, and
+cross-surface consistency checks without redefining the underlying runtime
+state.
+
+Metrics and structured logs project bounded labels and counts, not high-cardinality forensic objects or unbounded timelines. They may expose
+compact labels such as verdict, checkpoint status, source kind, redaction
+status, and event counts, but full `support_forensics` narratives remain in the
+local support bundle JSON and Markdown artifacts. Default verification remains
+public-network-free, service-manager-free, short-running, and free of large
+disk allocations.
+
 ## Phase Boundaries
 
 Phase 13 defines serializable contracts only. It must not install a tracing subscriber, create a file appender, write metric samples, prune log files, or render dashboard graphs. Runtime writers and readers are Phase 16 responsibilities.

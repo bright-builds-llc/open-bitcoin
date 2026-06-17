@@ -1227,6 +1227,42 @@ Treat missing Phase 78 fields as explicit unavailable evidence. A soak report,
 support summary, dashboard row, or live-smoke report is a compact projection of
 the same shared status contract; it is not a separate source of progress truth.
 
+### Phase 79 support bundle forensics
+
+Phase 79 support bundles include typed `support_forensics` with `forensic timeline`,
+`checkpoint chain`, `failure narrative`, `source evidence`, and `redaction facts`.
+The same support-forensics facts are rendered in JSON and Markdown so reviewers
+can compare the machine sidecar with `## Forensic Timeline`,
+`## Checkpoint Chain`, and `## Failure Narrative` without reading raw logs.
+
+Narrative fields are `verdict`, `likely_cause`, `evidence_basis`,
+`next_action`, and `confidence`. Verdict outcomes are exactly `soak_stable`,
+`blocker_diagnosed`, `inconclusive`, and `collection_failed`.
+
+Checkpoint-chain evidence is ordering and truncation evidence, not authenticity,
+not signing, and not an external trust root. It helps detect missing or reordered
+local support-bundle events; it does not prove who produced the bundle or whether
+the selected node is trustworthy.
+
+support bundle existence, elapsed time, peer reachability, daemon startup, raw logs, or stale reports do not prove soak stability. Reviewers should quote the
+typed `support_forensics` verdict, failure narrative, source evidence, redaction
+facts, and checkpoint-chain validation result instead of trusting artifact
+presence. Default verification remains public-network-free, service-manager-free,
+short-running, and free of large disk allocations.
+
+Use these repo-local support-bundle commands for UAT rather than relying on an
+installed alias:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --datadir=/tmp/open-bitcoin-mainnet \
+  support bundle --output-dir=/tmp/open-bitcoin-support --format json
+
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- \
+  --datadir=/tmp/open-bitcoin-mainnet \
+  support bundle --output-dir=/tmp/open-bitcoin-support --format json
+```
+
 ## v1.4 operator evidence closeout
 
 Run the deterministic repo checks from the repo root before interpreting any

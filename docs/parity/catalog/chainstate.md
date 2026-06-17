@@ -139,6 +139,23 @@ durable persistence happen. Better header branches can explain
 replace the active tip or credit progress before the replacement bodies are
 available and validated.
 
+## Phase 79 diagnostics support-bundle forensics boundary
+
+The `phase79-diagnostics-support-bundle-forensics` surface uses chainstate and
+sync status facts for DIAG-01, DIAG-02, DIAG-03, and DIAG-04. `support_forensics`
+may render a forensic timeline, checkpoint chain, failure narrative, likely
+cause, evidence basis, next action, confidence, redaction, size bounds,
+timeline ordering, and cross-surface consistency, but those fields remain a
+support-bundle projection over existing validated active-chain, downloaded
+block, resource, recovery, and stall evidence.
+
+The sidecar does not credit chainstate progress by itself. Support bundle
+existence, elapsed time, peer reachability, daemon startup, raw logs, or stale
+reports do not prove soak stability, chainstate safety, production-funds wallet
+use, migration apply safety, packaging readiness, GUI parity, hosted dashboard
+readiness, public-network default checks, multi-day default gates, automatic
+support-bundle upload, or production-node readiness.
+
 ## First-party implementation
 
 - [`packages/open-bitcoin-chainstate/src/engine.rs`](../../../packages/open-bitcoin-chainstate/src/engine.rs)

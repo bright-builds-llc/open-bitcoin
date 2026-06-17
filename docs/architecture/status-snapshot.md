@@ -348,6 +348,30 @@ and `local_shutdown`. Storage/resource and recovery evidence outrank peer retry
 guidance so status does not tell an operator to rotate peers when the selected
 datadir or configured resource envelope is the blocker.
 
+## Phase 79 shared diagnostic contract and support-forensics sidecar
+
+Live and runtime truth remains in `OpenBitcoinStatusSnapshot`. CLI status,
+dashboard status, RPC status, metrics, structured logs, soak reports,
+live-smoke summaries, and support bundles must continue to render lifecycle,
+progress, resource, recovery, and stall facts from that shared snapshot rather
+than from renderer-local interpretations.
+
+The `support_forensics` sidecar owns bundle-specific provenance only: source
+ledger and report paths, timeline event counts, redaction summary, bundle
+size/projection facts through
+`resource_bound_evidence.maybe_projected_bundle_size_bytes`,
+checkpoint-chain validation, and comparison metadata. Those sidecar facts can
+explain how the bundle was assembled and whether its local timeline projection
+is ordered and complete, but they do not replace `OpenBitcoinStatusSnapshot` as
+runtime truth.
+
+Checkpoint-chain validation is local ordering and truncation evidence. It is not
+an authenticity proof, signing scheme, public-network check, or external trust
+root. Missing runtime facts still stay `Unavailable` with reasons; a
+`support_forensics` narrative must not infer soak stability from artifact
+existence, elapsed time, daemon startup, peer reachability, raw logs, or stale
+reports.
+
 ## Phase 72 evidence comparison fields
 
 Phase 72 keeps operator observability and support evidence as projections of the
