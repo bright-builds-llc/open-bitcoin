@@ -114,9 +114,9 @@ const SOAK_SOURCE_ANCHORS = {
     "latest_sequence",
     "raw daemon logs",
     "raw live-smoke reports",
-    "wallet material",
+    "private wallet data",
     "RPC credentials",
-    "unbounded peer tables",
+    "peer-list dumps",
   ],
 } as const satisfies AnchorMap;
 

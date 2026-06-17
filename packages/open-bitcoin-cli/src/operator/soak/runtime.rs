@@ -318,7 +318,12 @@ pub(crate) fn run_bounded_soak_loop(
         }
         let status = checkpoint_status_from_snapshot(&snapshot);
         ledger
-            .append_event(checkpoint_at, SoakLedgerEvent::Checkpoint { status })
+            .append_event(
+                checkpoint_at,
+                SoakLedgerEvent::Checkpoint {
+                    status: Box::new(status),
+                },
+            )
             .map_err(runtime_error)?;
         final_outcome = evaluate_stop_outcome(bounds, &snapshot, checkpoint_at, deadline);
         if final_outcome.is_some() {

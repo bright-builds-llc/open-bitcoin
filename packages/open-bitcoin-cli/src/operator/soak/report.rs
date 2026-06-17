@@ -20,7 +20,7 @@ use super::{
 };
 
 // Redaction guard: report projections must not include raw daemon logs,
-// raw live-smoke reports, wallet material, RPC credentials, or unbounded peer tables.
+// raw live-smoke reports, private wallet data, RPC credentials, or peer-list dumps.
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub(crate) struct SoakReportProjection {
@@ -77,7 +77,7 @@ impl SoakReportProjection {
                 }
                 SoakLedgerEvent::Checkpoint { status } => {
                     checkpoint_count += 1;
-                    latest_checkpoint = Some(status);
+                    latest_checkpoint = Some(*status);
                 }
                 SoakLedgerEvent::Resume {
                     interrupted_prior_run,
@@ -228,6 +228,51 @@ pub(crate) fn render_soak_report_markdown(projection: &SoakReportProjection) -> 
             "No-progress diagnosis",
             checkpoint.maybe_no_progress_diagnosis_label.as_deref(),
         );
+        push_progress_credit(&mut output, checkpoint);
+        if !checkpoint
+            .progress_credit_rejected_activity_labels
+            .is_empty()
+        {
+            output.push_str(&format!(
+                "- Rejected progress activity: {}\n",
+                checkpoint
+                    .progress_credit_rejected_activity_labels
+                    .join(", ")
+            ));
+        }
+        push_optional_u64(
+            &mut output,
+            "Expected progress window seconds",
+            checkpoint.maybe_expected_progress_window_seconds,
+        );
+        push_no_progress_threshold(&mut output, checkpoint);
+        push_last_useful_work(&mut output, checkpoint);
+        push_optional(
+            &mut output,
+            "Last peer contribution",
+            checkpoint.maybe_last_peer_contribution_label.as_deref(),
+        );
+        push_optional(
+            &mut output,
+            "Stalled subsystem",
+            checkpoint.maybe_stalled_subsystem_label.as_deref(),
+        );
+        push_optional(
+            &mut output,
+            "Stall confidence",
+            checkpoint.maybe_stall_confidence_label.as_deref(),
+        );
+        if !checkpoint.stall_evidence_basis.is_empty() {
+            output.push_str(&format!(
+                "- Stall evidence basis: {}\n",
+                checkpoint.stall_evidence_basis.join(", ")
+            ));
+        }
+        push_optional(
+            &mut output,
+            "Stall next action",
+            checkpoint.maybe_stall_next_action.as_deref(),
+        );
         push_optional(
             &mut output,
             "Resource bound state",
@@ -306,6 +351,53 @@ fn push_optional_u64(output: &mut String, label: &str, maybe_value: Option<u64>)
     if let Some(value) = maybe_value {
         output.push_str(&format!("- {label}: {value}\n"));
     }
+}
+
+fn push_progress_credit(output: &mut String, checkpoint: &SoakCheckpointStatus) {
+    let Some(kind) = checkpoint.maybe_progress_credit_kind_label.as_deref() else {
+        return;
+    };
+    let mut parts = vec![format!("kind={kind}")];
+    if let Some(height) = checkpoint.maybe_progress_credit_height {
+        parts.push(format!("height={height}"));
+    }
+    if let Some(hash) = checkpoint.maybe_progress_credit_hash.as_deref() {
+        parts.push(format!("hash={hash}"));
+    }
+    if let Some(work) = checkpoint.maybe_progress_credit_work.as_deref() {
+        parts.push(format!("work={work}"));
+    }
+    if let Some(source_unix_seconds) = checkpoint.maybe_progress_credit_source_unix_seconds {
+        parts.push(format!("source_unix_seconds={source_unix_seconds}"));
+    }
+    output.push_str(&format!("- Progress credit: {}\n", parts.join(" ")));
+}
+
+fn push_no_progress_threshold(output: &mut String, checkpoint: &SoakCheckpointStatus) {
+    let mut parts = Vec::new();
+    if let Some(state) = checkpoint
+        .maybe_no_progress_threshold_state_label
+        .as_deref()
+    {
+        parts.push(format!("state={state}"));
+    }
+    if let Some(seconds) = checkpoint.maybe_no_progress_threshold_seconds {
+        parts.push(format!("seconds={seconds}"));
+    }
+    if !parts.is_empty() {
+        output.push_str(&format!("- No-progress threshold: {}\n", parts.join(" ")));
+    }
+}
+
+fn push_last_useful_work(output: &mut String, checkpoint: &SoakCheckpointStatus) {
+    let Some(kind) = checkpoint.maybe_last_useful_work_kind_label.as_deref() else {
+        return;
+    };
+    let mut parts = vec![format!("kind={kind}")];
+    if let Some(height) = checkpoint.maybe_last_useful_work_height {
+        parts.push(format!("height={height}"));
+    }
+    output.push_str(&format!("- Last useful work: {}\n", parts.join(" ")));
 }
 
 fn outcome_label(outcome: SoakOutcomeLabel) -> String {

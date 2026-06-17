@@ -113,9 +113,9 @@ const SOURCE_ANCHORS: Record<string, readonly string[]> = {
     "latest_sequence",
     "raw daemon logs",
     "raw live-smoke reports",
-    "wallet material",
+    "private wallet data",
     "RPC credentials",
-    "unbounded peer tables",
+    "peer-list dumps",
   ],
   "packages/open-bitcoin-cli/src/operator/support.rs": [
     "soak_evidence",

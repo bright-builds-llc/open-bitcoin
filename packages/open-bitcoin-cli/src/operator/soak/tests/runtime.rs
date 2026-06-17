@@ -12,10 +12,14 @@ use open_bitcoin_node::{
     RecoveryEvidenceBasis, RecoveryEvidenceSnapshot,
     status::{
         BestKnownTipSource, BestKnownTipStatus, BuildProvenance, ConfigStatus, FieldAvailability,
-        MempoolStatus, NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot, PeerStatus,
-        ResourceBoundEntry, ResourceBoundKind, ResourceBoundSnapshot, ResourceBoundUnit,
-        StayCurrentStatus, SyncProgress, SyncRecoveryCategory, SyncReorgEvidence, SyncStatus,
-        SyncStopReasonStatus, TipFreshnessStatus, WalletStatus, usage_against_budget,
+        MempoolStatus, NoProgressThresholdEvidence, NoProgressThresholdState, NodeRuntimeState,
+        NodeStatus, OpenBitcoinStatusSnapshot, PeerContributionEvidence, PeerContributionKind,
+        PeerStatus, ProgressCreditEvidence, ProgressCreditKind, ProgressWindowEvidence,
+        RejectedProgressActivity, RejectedProgressActivityKind, ResourceBoundEntry,
+        ResourceBoundKind, ResourceBoundSnapshot, ResourceBoundUnit, StallDiagnosisConfidence,
+        StallDiagnosisEvidence, StalledSubsystem, StayCurrentStatus, SyncProgress,
+        SyncRecoveryCategory, SyncReorgEvidence, SyncStatus, SyncStopReasonStatus,
+        TipFreshnessStatus, WalletStatus, usage_against_budget,
     },
 };
 
@@ -411,6 +415,151 @@ fn soak_recovery_evidence_checkpoint_unavailable_evidence_leaves_optional_fields
 }
 
 #[test]
+fn soak_progress_guarantee_checkpoint_available_status_records_shared_fields() {
+    // Arrange
+    let temp = TestDirectory::new("progress-guarantee-checkpoint");
+    let layout = SoakLedgerLayout::for_datadir(temp.path());
+    let run_id = SoakRunId::try_new("soak-1700000000-progress-guarantee").expect("run id");
+    let bounds = soak_bounds(
+        temp.path(),
+        Some(900_000),
+        vec![SoakStopCondition::TargetHeight],
+    );
+    let mut ledger = SoakLedger::create(&layout, run_id.clone());
+    let mut collector = ScriptedStatusCollector::repeating(progress_guarantee_status_snapshot(
+        temp.path(),
+        900_000,
+    ));
+    let mut clock = SoakTestClock::new(1_700_000_000);
+
+    // Act
+    let result = run_bounded_soak_loop(
+        &run_id,
+        &bounds,
+        &layout,
+        &mut ledger,
+        &mut collector,
+        &mut clock,
+        SoakLoopMode::Start,
+    )
+    .expect("bounded soak loop");
+    let checkpoint = latest_checkpoint_status(&layout, &run_id);
+
+    // Assert
+    assert_eq!(result.final_outcome, SoakOutcomeLabel::CleanCompletion);
+    assert_eq!(
+        checkpoint.maybe_progress_credit_kind_label.as_deref(),
+        Some("validated_durable_active_chain")
+    );
+    assert_eq!(checkpoint.maybe_progress_credit_height, Some(900_000));
+    assert_eq!(
+        checkpoint.maybe_progress_credit_hash.as_deref(),
+        Some("1111111111111111111111111111111111111111111111111111111111111111")
+    );
+    assert_eq!(
+        checkpoint.maybe_progress_credit_work.as_deref(),
+        Some("900001")
+    );
+    assert_eq!(
+        checkpoint.maybe_progress_credit_source_unix_seconds,
+        Some(1_777_300_060)
+    );
+    assert_eq!(
+        checkpoint.progress_credit_rejected_activity_labels,
+        vec![
+            "kind=header_download observed_count=2 reason=headers are not durable active-chain progress"
+                .to_string(),
+        ]
+    );
+    assert_eq!(checkpoint.maybe_expected_progress_window_seconds, Some(240));
+    assert_eq!(
+        checkpoint
+            .maybe_no_progress_threshold_state_label
+            .as_deref(),
+        Some("within_window")
+    );
+    assert_eq!(checkpoint.maybe_no_progress_threshold_seconds, Some(240));
+    assert_eq!(
+        checkpoint.maybe_last_useful_work_kind_label.as_deref(),
+        Some("validated_durable_active_chain")
+    );
+    assert_eq!(checkpoint.maybe_last_useful_work_height, Some(900_000));
+    assert_eq!(
+        checkpoint.maybe_last_peer_contribution_label.as_deref(),
+        Some(
+            "peer=peer-1 kind=headers_and_blocks messages=7 headers=3 blocks=1 failure=unavailable"
+        )
+    );
+    assert_eq!(
+        checkpoint.maybe_stalled_subsystem_label.as_deref(),
+        Some("slow_or_stalled_peers")
+    );
+    assert_eq!(
+        checkpoint.maybe_stall_confidence_label.as_deref(),
+        Some("medium")
+    );
+    assert_eq!(
+        checkpoint.stall_evidence_basis,
+        vec!["latest peer stalled before useful work".to_string()]
+    );
+    assert_eq!(
+        checkpoint.maybe_stall_next_action.as_deref(),
+        Some("Rotate peers and continue bounded sync.")
+    );
+}
+
+#[test]
+fn soak_progress_guarantee_checkpoint_unavailable_status_leaves_optional_fields_empty() {
+    // Arrange
+    let temp = TestDirectory::new("progress-guarantee-unavailable");
+    let layout = SoakLedgerLayout::for_datadir(temp.path());
+    let run_id = SoakRunId::try_new("soak-1700000000-progress-unavailable").expect("run id");
+    let bounds = soak_bounds(
+        temp.path(),
+        Some(144),
+        vec![SoakStopCondition::TargetHeight],
+    );
+    let mut ledger = SoakLedger::create(&layout, run_id.clone());
+    let mut collector = ScriptedStatusCollector::repeating(clean_status_snapshot(temp.path(), 144));
+    let mut clock = SoakTestClock::new(1_700_000_000);
+
+    // Act
+    run_bounded_soak_loop(
+        &run_id,
+        &bounds,
+        &layout,
+        &mut ledger,
+        &mut collector,
+        &mut clock,
+        SoakLoopMode::Start,
+    )
+    .expect("bounded soak loop");
+    let checkpoint = latest_checkpoint_status(&layout, &run_id);
+
+    // Assert
+    assert_eq!(checkpoint.maybe_progress_credit_kind_label, None);
+    assert_eq!(checkpoint.maybe_progress_credit_height, None);
+    assert_eq!(checkpoint.maybe_progress_credit_hash, None);
+    assert_eq!(checkpoint.maybe_progress_credit_work, None);
+    assert_eq!(checkpoint.maybe_progress_credit_source_unix_seconds, None);
+    assert!(
+        checkpoint
+            .progress_credit_rejected_activity_labels
+            .is_empty()
+    );
+    assert_eq!(checkpoint.maybe_expected_progress_window_seconds, None);
+    assert_eq!(checkpoint.maybe_no_progress_threshold_state_label, None);
+    assert_eq!(checkpoint.maybe_no_progress_threshold_seconds, None);
+    assert_eq!(checkpoint.maybe_last_useful_work_kind_label, None);
+    assert_eq!(checkpoint.maybe_last_useful_work_height, None);
+    assert_eq!(checkpoint.maybe_last_peer_contribution_label, None);
+    assert_eq!(checkpoint.maybe_stalled_subsystem_label, None);
+    assert_eq!(checkpoint.maybe_stall_confidence_label, None);
+    assert!(checkpoint.stall_evidence_basis.is_empty());
+    assert_eq!(checkpoint.maybe_stall_next_action, None);
+}
+
+#[test]
 fn soak_recovery_evidence_checkpoint_outcome_prefers_top_level_category_over_legacy_sync() {
     // Arrange
     let temp = TestDirectory::new("recovery-evidence-outcome");
@@ -791,7 +940,7 @@ fn soak_runtime_resume_plan_treats_latest_unterminated_invocation_as_interrupted
         .append_event(
             started_at + 30,
             SoakLedgerEvent::Checkpoint {
-                status: checkpoint_status(10),
+                status: Box::new(checkpoint_status(10)),
             },
         )
         .expect("checkpoint");
@@ -858,7 +1007,7 @@ fn soak_runtime_stop_accepts_active_resume_after_historical_terminal_verdict() {
         .append_event(
             started_at + 30,
             SoakLedgerEvent::Checkpoint {
-                status: checkpoint_status(10),
+                status: Box::new(checkpoint_status(10)),
             },
         )
         .expect("checkpoint");
@@ -1041,7 +1190,7 @@ fn soak_runtime_report_rewrites_projection_without_ledger_append() {
         .append_event(
             2,
             SoakLedgerEvent::Checkpoint {
-                status: checkpoint_status(144),
+                status: Box::new(checkpoint_status(144)),
             },
         )
         .expect("checkpoint");
@@ -1092,6 +1241,22 @@ fn checkpoint_status(height: u64) -> SoakCheckpointStatus {
         maybe_recovery_cause_label: None,
         maybe_recovery_next_action: None,
         maybe_no_progress_diagnosis_label: None,
+        maybe_progress_credit_kind_label: None,
+        maybe_progress_credit_height: None,
+        maybe_progress_credit_hash: None,
+        maybe_progress_credit_work: None,
+        maybe_progress_credit_source_unix_seconds: None,
+        progress_credit_rejected_activity_labels: Vec::new(),
+        maybe_expected_progress_window_seconds: None,
+        maybe_no_progress_threshold_state_label: None,
+        maybe_no_progress_threshold_seconds: None,
+        maybe_last_useful_work_kind_label: None,
+        maybe_last_useful_work_height: None,
+        maybe_last_peer_contribution_label: None,
+        maybe_stalled_subsystem_label: None,
+        maybe_stall_confidence_label: None,
+        stall_evidence_basis: Vec::new(),
+        maybe_stall_next_action: None,
         maybe_resource_bound_state_label: Some("normal".to_string()),
         resource_bound_labels: vec!["all_required_bounds=normal".to_string()],
         maybe_resource_bound_next_action: None,
@@ -1130,6 +1295,58 @@ fn clean_status_snapshot(datadir: &Path, height: u64) -> OpenBitcoinStatusSnapsh
     });
     snapshot.sync.stay_current =
         FieldAvailability::available(StayCurrentStatus::CurrentAtBestKnownTip);
+    snapshot
+}
+
+fn progress_guarantee_status_snapshot(datadir: &Path, height: u64) -> OpenBitcoinStatusSnapshot {
+    let mut snapshot = clean_status_snapshot(datadir, height);
+    let progress_credit = ProgressCreditEvidence {
+        kind: ProgressCreditKind::ValidatedDurableActiveChain,
+        credited_validated_active_chain_height: height,
+        credited_validated_active_chain_hash: "11".repeat(32),
+        credited_validated_active_chain_work: "900001".to_string(),
+        source_unix_seconds: 1_777_300_060,
+        rejected_activity: vec![RejectedProgressActivity {
+            kind: RejectedProgressActivityKind::HeaderDownload,
+            observed_count: 2,
+            reason: "headers are not durable active-chain progress".to_string(),
+        }],
+    };
+    snapshot.sync.progress_credit = FieldAvailability::available(progress_credit.clone());
+    snapshot.sync.expected_progress_window = FieldAvailability::available(ProgressWindowEvidence {
+        retry_backoff_seconds: 30,
+        max_sync_rounds: 8,
+        expected_progress_window_seconds: 240,
+        tip_freshness_threshold_seconds: 600,
+    });
+    snapshot.sync.no_progress_threshold =
+        FieldAvailability::available(NoProgressThresholdEvidence {
+            threshold_seconds: 240,
+            elapsed_since_last_useful_work_seconds: 30,
+            state: NoProgressThresholdState::WithinWindow,
+            evaluated_at_unix_seconds: 1_777_300_090,
+        });
+    snapshot.sync.last_useful_work = FieldAvailability::available(progress_credit);
+    snapshot.sync.last_peer_contribution = FieldAvailability::available(PeerContributionEvidence {
+        peer: "peer-1".to_string(),
+        maybe_resolved_endpoint: Some("203.0.113.10:8333".to_string()),
+        kind: PeerContributionKind::HeadersAndBlocks,
+        messages_processed: 7,
+        headers_received: 3,
+        blocks_received: 1,
+        maybe_last_activity_unix_seconds: Some(1_777_300_060),
+        maybe_failure_reason_label: None,
+    });
+    snapshot.sync.stall_diagnosis = FieldAvailability::available(StallDiagnosisEvidence {
+        stalled_subsystem: StalledSubsystem::SlowOrStalledPeers,
+        confidence: StallDiagnosisConfidence::Medium,
+        evidence_basis: vec!["latest peer stalled before useful work".to_string()],
+        next_action: "Rotate peers and continue bounded sync.".to_string(),
+        maybe_no_progress_diagnosis: None,
+        maybe_recovery_category: None,
+        maybe_latest_stop_reason_label: None,
+        source_unix_seconds: 1_777_300_090,
+    });
     snapshot
 }
 
@@ -1198,7 +1415,7 @@ fn latest_checkpoint_status(layout: &SoakLedgerLayout, run_id: &SoakRunId) -> So
         .into_iter()
         .rev()
         .find_map(|event| match event.event {
-            SoakLedgerEvent::Checkpoint { status } => Some(status),
+            SoakLedgerEvent::Checkpoint { status } => Some(*status),
             SoakLedgerEvent::Started { .. }
             | SoakLedgerEvent::Resume { .. }
             | SoakLedgerEvent::Stop { .. }

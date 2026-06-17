@@ -159,7 +159,7 @@ fn soak_ledger_append_writes_complete_json_lines_with_increasing_sequences() {
             .append_event(
                 11,
                 SoakLedgerEvent::Checkpoint {
-                    status: checkpoint_status(),
+                    status: Box::new(checkpoint_status()),
                 },
             )
             .expect("append checkpoint"),
@@ -293,6 +293,22 @@ fn soak_ledger_append_rejects_oversized_events() {
         maybe_recovery_cause_label: None,
         maybe_recovery_next_action: None,
         maybe_no_progress_diagnosis_label: None,
+        maybe_progress_credit_kind_label: None,
+        maybe_progress_credit_height: None,
+        maybe_progress_credit_hash: None,
+        maybe_progress_credit_work: None,
+        maybe_progress_credit_source_unix_seconds: None,
+        progress_credit_rejected_activity_labels: Vec::new(),
+        maybe_expected_progress_window_seconds: None,
+        maybe_no_progress_threshold_state_label: None,
+        maybe_no_progress_threshold_seconds: None,
+        maybe_last_useful_work_kind_label: None,
+        maybe_last_useful_work_height: None,
+        maybe_last_peer_contribution_label: None,
+        maybe_stalled_subsystem_label: None,
+        maybe_stall_confidence_label: None,
+        stall_evidence_basis: Vec::new(),
+        maybe_stall_next_action: None,
         maybe_resource_bound_state_label: None,
         resource_bound_labels: Vec::new(),
         maybe_resource_bound_next_action: None,
@@ -305,7 +321,7 @@ fn soak_ledger_append_rejects_oversized_events() {
     let result = ledger.append_event(
         10,
         SoakLedgerEvent::Checkpoint {
-            status: oversized_status,
+            status: Box::new(oversized_status),
         },
     );
 
@@ -358,6 +374,60 @@ fn soak_report_json_includes_projection_source_and_latest_state() {
     assert_eq!(
         value["verdict"]["outcome"],
         Value::String("operator_stop".to_string())
+    );
+}
+
+#[test]
+fn soak_progress_guarantee_report_json_preserves_checkpoint_field_names() {
+    // Arrange
+    let temp = TestDirectory::new("progress-report-json");
+    let source_ledger_path = temp
+        .path()
+        .join("soak/runs/soak-1781485562-0001/events.jsonl");
+    let projection = SoakReportProjection::from_ledger_events(
+        sample_report_events(temp.path()),
+        &source_ledger_path,
+    )
+    .expect("projection");
+
+    // Act
+    let rendered = render_soak_report_json(&projection).expect("report json");
+    let value: Value = serde_json::from_str(&rendered).expect("report json value");
+    let latest_checkpoint = value["latest_checkpoint"]
+        .as_object()
+        .expect("latest checkpoint object");
+
+    // Assert
+    for key in [
+        "maybe_progress_credit_kind_label",
+        "maybe_progress_credit_height",
+        "maybe_progress_credit_hash",
+        "maybe_progress_credit_work",
+        "maybe_progress_credit_source_unix_seconds",
+        "progress_credit_rejected_activity_labels",
+        "maybe_expected_progress_window_seconds",
+        "maybe_no_progress_threshold_state_label",
+        "maybe_no_progress_threshold_seconds",
+        "maybe_last_useful_work_kind_label",
+        "maybe_last_useful_work_height",
+        "maybe_last_peer_contribution_label",
+        "maybe_stalled_subsystem_label",
+        "maybe_stall_confidence_label",
+        "stall_evidence_basis",
+        "maybe_stall_next_action",
+    ] {
+        assert!(latest_checkpoint.contains_key(key), "missing {key}");
+    }
+    assert_eq!(
+        value["latest_checkpoint"]["maybe_progress_credit_kind_label"],
+        Value::String("validated_durable_active_chain".to_string())
+    );
+    assert_eq!(
+        value["latest_checkpoint"]["progress_credit_rejected_activity_labels"][0],
+        Value::String(
+            "kind=header_download observed_count=2 reason=headers are not durable active-chain progress"
+                .to_string()
+        )
     );
 }
 
@@ -419,6 +489,73 @@ fn soak_report_markdown_includes_operator_projection_summary() {
     assert!(rendered.contains("Report is a projection: true"));
     assert!(rendered.contains("Final outcome:"));
     assert!(!rendered.contains("raw daemon log line"));
+}
+
+#[test]
+fn soak_progress_guarantee_report_markdown_renders_credit_and_stall_fields() {
+    // Arrange
+    let temp = TestDirectory::new("progress-report-markdown");
+    let source_ledger_path = temp
+        .path()
+        .join("soak/runs/soak-1781485562-0001/events.jsonl");
+    let projection = SoakReportProjection::from_ledger_events(
+        sample_report_events(temp.path()),
+        &source_ledger_path,
+    )
+    .expect("projection");
+
+    // Act
+    let rendered = render_soak_report_markdown(&projection);
+
+    // Assert
+    assert!(
+        rendered.contains("Progress credit: kind=validated_durable_active_chain height=900000")
+    );
+    assert!(rendered.contains(
+        "Rejected progress activity: kind=header_download observed_count=2 reason=headers are not durable active-chain progress"
+    ));
+    assert!(rendered.contains("Expected progress window seconds: 240"));
+    assert!(rendered.contains("No-progress threshold: state=within_window seconds=240"));
+    assert!(
+        rendered.contains("Last useful work: kind=validated_durable_active_chain height=900000")
+    );
+    assert!(rendered.contains(
+        "Last peer contribution: peer=peer-1 kind=headers_and_blocks messages=7 headers=3 blocks=1 failure=unavailable"
+    ));
+    assert!(rendered.contains("Stalled subsystem: slow_or_stalled_peers"));
+    assert!(rendered.contains("Stall confidence: medium"));
+    assert!(rendered.contains("Stall evidence basis: latest peer stalled before useful work"));
+    assert!(rendered.contains("Stall next action: Rotate peers and continue bounded sync."));
+}
+
+#[test]
+fn soak_progress_guarantee_report_excludes_forbidden_raw_material() {
+    // Arrange
+    let temp = TestDirectory::new("progress-report-redaction");
+    let source_ledger_path = temp
+        .path()
+        .join("soak/runs/soak-1781485562-0001/events.jsonl");
+    let projection = SoakReportProjection::from_ledger_events(
+        sample_report_events(temp.path()),
+        &source_ledger_path,
+    )
+    .expect("projection");
+    let forbidden_material = [
+        "raw status snapshot",
+        "rpcpassword",
+        "wallet material",
+        "unbounded peer table",
+    ];
+
+    // Act
+    let json = render_soak_report_json(&projection).expect("report json");
+    let markdown = render_soak_report_markdown(&projection);
+
+    // Assert
+    for value in forbidden_material {
+        assert!(!json.contains(value), "JSON report leaked {value}");
+        assert!(!markdown.contains(value), "Markdown report leaked {value}");
+    }
 }
 
 #[test]
@@ -524,7 +661,7 @@ fn soak_synthetic_interrupted_run_replays_as_unexpected_termination_resume() {
         .append_event(
             SOAK_SYNTHETIC_CHECKPOINT_AT,
             SoakLedgerEvent::Checkpoint {
-                status: checkpoint_status(),
+                status: Box::new(checkpoint_status()),
             },
         )
         .expect("append checkpoint");
@@ -576,7 +713,7 @@ fn soak_synthetic_clean_completion_refuses_same_run_resume() {
         .append_event(
             SOAK_SYNTHETIC_CHECKPOINT_AT,
             SoakLedgerEvent::Checkpoint {
-                status: checkpoint_status(),
+                status: Box::new(checkpoint_status()),
             },
         )
         .expect("append checkpoint");
@@ -634,7 +771,7 @@ fn soak_synthetic_resource_stop_report_preserves_final_outcome() {
         .append_event(
             SOAK_SYNTHETIC_CHECKPOINT_AT,
             SoakLedgerEvent::Checkpoint {
-                status: resource_checkpoint_status(),
+                status: Box::new(resource_checkpoint_status()),
             },
         )
         .expect("append resource checkpoint");
@@ -953,6 +1090,28 @@ fn checkpoint_status() -> SoakCheckpointStatus {
         maybe_recovery_cause_label: None,
         maybe_recovery_next_action: None,
         maybe_no_progress_diagnosis_label: None,
+        maybe_progress_credit_kind_label: Some("validated_durable_active_chain".to_string()),
+        maybe_progress_credit_height: Some(900_000),
+        maybe_progress_credit_hash: Some("11".repeat(32)),
+        maybe_progress_credit_work: Some("900001".to_string()),
+        maybe_progress_credit_source_unix_seconds: Some(1_777_300_060),
+        progress_credit_rejected_activity_labels: vec![
+            "kind=header_download observed_count=2 reason=headers are not durable active-chain progress"
+                .to_string(),
+        ],
+        maybe_expected_progress_window_seconds: Some(240),
+        maybe_no_progress_threshold_state_label: Some("within_window".to_string()),
+        maybe_no_progress_threshold_seconds: Some(240),
+        maybe_last_useful_work_kind_label: Some("validated_durable_active_chain".to_string()),
+        maybe_last_useful_work_height: Some(900_000),
+        maybe_last_peer_contribution_label: Some(
+            "peer=peer-1 kind=headers_and_blocks messages=7 headers=3 blocks=1 failure=unavailable"
+                .to_string(),
+        ),
+        maybe_stalled_subsystem_label: Some("slow_or_stalled_peers".to_string()),
+        maybe_stall_confidence_label: Some("medium".to_string()),
+        stall_evidence_basis: vec!["latest peer stalled before useful work".to_string()],
+        maybe_stall_next_action: Some("Rotate peers and continue bounded sync.".to_string()),
         maybe_resource_bound_state_label: Some("normal".to_string()),
         resource_bound_labels: vec!["all_required_bounds=normal".to_string()],
         maybe_resource_bound_next_action: None,
@@ -966,6 +1125,22 @@ fn resource_checkpoint_status() -> SoakCheckpointStatus {
     SoakCheckpointStatus {
         maybe_recovery_category_label: Some("resource_exhaustion".to_string()),
         maybe_no_progress_diagnosis_label: Some("storage_or_resource_blocked".to_string()),
+        maybe_progress_credit_kind_label: None,
+        maybe_progress_credit_height: None,
+        maybe_progress_credit_hash: None,
+        maybe_progress_credit_work: None,
+        maybe_progress_credit_source_unix_seconds: None,
+        progress_credit_rejected_activity_labels: Vec::new(),
+        maybe_expected_progress_window_seconds: None,
+        maybe_no_progress_threshold_state_label: None,
+        maybe_no_progress_threshold_seconds: None,
+        maybe_last_useful_work_kind_label: None,
+        maybe_last_useful_work_height: None,
+        maybe_last_peer_contribution_label: None,
+        maybe_stalled_subsystem_label: None,
+        maybe_stall_confidence_label: None,
+        stall_evidence_basis: Vec::new(),
+        maybe_stall_next_action: None,
         maybe_source_status_path: Some(PathBuf::from("/tmp/resource-status.json")),
         ..checkpoint_status()
     }
@@ -980,6 +1155,22 @@ fn recovery_checkpoint_status() -> SoakCheckpointStatus {
             "Back up the selected datadir, then rebuild affected storage before normal operation."
                 .to_string(),
         ),
+        maybe_progress_credit_kind_label: None,
+        maybe_progress_credit_height: None,
+        maybe_progress_credit_hash: None,
+        maybe_progress_credit_work: None,
+        maybe_progress_credit_source_unix_seconds: None,
+        progress_credit_rejected_activity_labels: Vec::new(),
+        maybe_expected_progress_window_seconds: None,
+        maybe_no_progress_threshold_state_label: None,
+        maybe_no_progress_threshold_seconds: None,
+        maybe_last_useful_work_kind_label: None,
+        maybe_last_useful_work_height: None,
+        maybe_last_peer_contribution_label: None,
+        maybe_stalled_subsystem_label: None,
+        maybe_stall_confidence_label: None,
+        stall_evidence_basis: Vec::new(),
+        maybe_stall_next_action: None,
         ..checkpoint_status()
     }
 }
@@ -1000,7 +1191,7 @@ fn sample_report_events(datadir: &Path) -> Vec<SoakLedgerEventEnvelope> {
             2,
             20,
             SoakLedgerEvent::Checkpoint {
-                status: checkpoint_status(),
+                status: Box::new(checkpoint_status()),
             },
         ),
         SoakLedgerEventEnvelope::new(
@@ -1046,7 +1237,7 @@ fn sample_recovery_report_events(datadir: &Path) -> Vec<SoakLedgerEventEnvelope>
             2,
             20,
             SoakLedgerEvent::Checkpoint {
-                status: recovery_checkpoint_status(),
+                status: Box::new(recovery_checkpoint_status()),
             },
         ),
         SoakLedgerEventEnvelope::new(

@@ -10,8 +10,8 @@ use std::{
 use open_bitcoin_node::{
     OpenBitcoinStatusSnapshot,
     status::{
-        FieldAvailability, ResourceBoundKind, ResourceBoundSnapshot, ResourcePressureState,
-        classify_snapshot_against_disk_budget,
+        FieldAvailability, PeerContributionEvidence, ProgressCreditEvidence, ResourceBoundKind,
+        ResourceBoundSnapshot, ResourcePressureState, classify_snapshot_against_disk_budget,
     },
 };
 use serde::Serialize;
@@ -108,10 +108,13 @@ fn outcome_for_snapshot(snapshot: &OpenBitcoinStatusSnapshot) -> SoakOutcomeLabe
 pub(super) fn checkpoint_status_from_snapshot(
     snapshot: &OpenBitcoinStatusSnapshot,
 ) -> SoakCheckpointStatus {
-    let maybe_recovery_evidence = match &snapshot.recovery_evidence {
-        FieldAvailability::Available(evidence) => Some(evidence),
-        FieldAvailability::Unavailable { .. } => None,
-    };
+    let maybe_recovery_evidence = maybe_available_ref(&snapshot.recovery_evidence);
+    let maybe_progress_credit = maybe_available_ref(&snapshot.sync.progress_credit);
+    let maybe_progress_window = maybe_available_ref(&snapshot.sync.expected_progress_window);
+    let maybe_no_progress_threshold = maybe_available_ref(&snapshot.sync.no_progress_threshold);
+    let maybe_last_useful_work = maybe_available_ref(&snapshot.sync.last_useful_work);
+    let maybe_last_peer_contribution = maybe_available_ref(&snapshot.sync.last_peer_contribution);
+    let maybe_stall_diagnosis = maybe_available_ref(&snapshot.sync.stall_diagnosis);
     SoakCheckpointStatus {
         maybe_network: maybe_available(&snapshot.sync.network),
         maybe_lifecycle: maybe_available(&snapshot.sync.lifecycle).map(|value| serde_label(&value)),
@@ -131,6 +134,39 @@ pub(super) fn checkpoint_status_from_snapshot(
             .map(|evidence| evidence.next_action.clone()),
         maybe_no_progress_diagnosis_label: maybe_available(&snapshot.sync.no_progress_diagnosis)
             .map(|value| serde_label(&value)),
+        maybe_progress_credit_kind_label: maybe_progress_credit
+            .map(|evidence| serde_label(&evidence.kind)),
+        maybe_progress_credit_height: maybe_progress_credit
+            .map(|evidence| evidence.credited_validated_active_chain_height),
+        maybe_progress_credit_hash: maybe_progress_credit
+            .map(|evidence| evidence.credited_validated_active_chain_hash.clone()),
+        maybe_progress_credit_work: maybe_progress_credit
+            .map(|evidence| evidence.credited_validated_active_chain_work.clone()),
+        maybe_progress_credit_source_unix_seconds: maybe_progress_credit
+            .map(|evidence| evidence.source_unix_seconds),
+        progress_credit_rejected_activity_labels: maybe_progress_credit
+            .map(rejected_progress_activity_labels)
+            .unwrap_or_default(),
+        maybe_expected_progress_window_seconds: maybe_progress_window
+            .map(|evidence| evidence.expected_progress_window_seconds),
+        maybe_no_progress_threshold_state_label: maybe_no_progress_threshold
+            .map(|evidence| serde_label(&evidence.state)),
+        maybe_no_progress_threshold_seconds: maybe_no_progress_threshold
+            .map(|evidence| evidence.threshold_seconds),
+        maybe_last_useful_work_kind_label: maybe_last_useful_work
+            .map(|evidence| serde_label(&evidence.kind)),
+        maybe_last_useful_work_height: maybe_last_useful_work
+            .map(|evidence| evidence.credited_validated_active_chain_height),
+        maybe_last_peer_contribution_label: maybe_last_peer_contribution
+            .map(peer_contribution_label),
+        maybe_stalled_subsystem_label: maybe_stall_diagnosis
+            .map(|evidence| serde_label(&evidence.stalled_subsystem)),
+        maybe_stall_confidence_label: maybe_stall_diagnosis
+            .map(|evidence| serde_label(&evidence.confidence)),
+        stall_evidence_basis: maybe_stall_diagnosis
+            .map(|evidence| evidence.evidence_basis.clone())
+            .unwrap_or_default(),
+        maybe_stall_next_action: maybe_stall_diagnosis.map(|evidence| evidence.next_action.clone()),
         maybe_resource_bound_state_label: resource_bound_state_label(snapshot),
         resource_bound_labels: resource_bound_labels(snapshot),
         maybe_resource_bound_next_action: resource_bound_next_action(snapshot),
@@ -145,6 +181,37 @@ pub(super) fn checkpoint_status_from_snapshot(
             .available()
             .map(|path| PathBuf::from(path).join("status-snapshot.json")),
     }
+}
+
+fn rejected_progress_activity_labels(evidence: &ProgressCreditEvidence) -> Vec<String> {
+    evidence
+        .rejected_activity
+        .iter()
+        .map(|activity| {
+            format!(
+                "kind={} observed_count={} reason={}",
+                serde_label(&activity.kind),
+                activity.observed_count,
+                activity.reason.as_str()
+            )
+        })
+        .collect()
+}
+
+fn peer_contribution_label(evidence: &PeerContributionEvidence) -> String {
+    let failure = evidence
+        .maybe_failure_reason_label
+        .as_deref()
+        .unwrap_or("unavailable");
+    format!(
+        "peer={} kind={} messages={} headers={} blocks={} failure={}",
+        evidence.peer.as_str(),
+        serde_label(&evidence.kind),
+        evidence.messages_processed,
+        evidence.headers_received,
+        evidence.blocks_received,
+        failure
+    )
 }
 
 fn snapshot_recovery_category(
@@ -330,6 +397,13 @@ fn maybe_available<T: Clone>(value: &FieldAvailability<T>) -> Option<T> {
     }
 }
 
+fn maybe_available_ref<T>(value: &FieldAvailability<T>) -> Option<&T> {
+    match value {
+        FieldAvailability::Available(value) => Some(value),
+        FieldAvailability::Unavailable { .. } => None,
+    }
+}
+
 trait FieldAvailabilityExt<T> {
     fn available(self) -> Option<T>;
 }
@@ -509,13 +583,12 @@ pub(super) fn latest_outcome(events: &[SoakLedgerEventEnvelope]) -> Option<SoakO
 }
 
 pub(super) fn has_terminal_stop_and_verdict(events: &[SoakLedgerEventEnvelope]) -> bool {
-    let has_stop = events
+    events
         .iter()
-        .any(|envelope| matches!(&envelope.event, SoakLedgerEvent::Stop { .. }));
-    let has_verdict = events
-        .iter()
-        .any(|envelope| matches!(&envelope.event, SoakLedgerEvent::Verdict { .. }));
-    has_stop && has_verdict
+        .any(|envelope| matches!(&envelope.event, SoakLedgerEvent::Stop { .. }))
+        && events
+            .iter()
+            .any(|envelope| matches!(&envelope.event, SoakLedgerEvent::Verdict { .. }))
 }
 
 pub(super) fn next_sequence(events: &[SoakLedgerEventEnvelope]) -> u64 {
@@ -528,10 +601,9 @@ pub(super) fn next_sequence(events: &[SoakLedgerEventEnvelope]) -> u64 {
 }
 
 pub(super) fn current_unix_seconds() -> u64 {
-    match SystemTime::now().duration_since(UNIX_EPOCH) {
-        Ok(duration) => duration.as_secs(),
-        Err(_) => 0,
-    }
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |duration| duration.as_secs())
 }
 
 fn serde_label<T>(value: &T) -> String

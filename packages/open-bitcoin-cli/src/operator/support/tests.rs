@@ -826,7 +826,7 @@ fn seed_phase75_soak_run(
         .append_event(
             1_781_485_622,
             SoakLedgerEvent::Checkpoint {
-                status: phase75_checkpoint_status(),
+                status: Box::new(phase75_checkpoint_status()),
             },
         )
         .expect("append checkpoint");
@@ -878,6 +878,22 @@ fn phase75_checkpoint_status() -> SoakCheckpointStatus {
         maybe_recovery_cause_label: None,
         maybe_recovery_next_action: None,
         maybe_no_progress_diagnosis_label: Some("RPC credentials phase75-secret".to_string()),
+        maybe_progress_credit_kind_label: None,
+        maybe_progress_credit_height: None,
+        maybe_progress_credit_hash: None,
+        maybe_progress_credit_work: None,
+        maybe_progress_credit_source_unix_seconds: None,
+        progress_credit_rejected_activity_labels: Vec::new(),
+        maybe_expected_progress_window_seconds: None,
+        maybe_no_progress_threshold_state_label: None,
+        maybe_no_progress_threshold_seconds: None,
+        maybe_last_useful_work_kind_label: None,
+        maybe_last_useful_work_height: None,
+        maybe_last_peer_contribution_label: None,
+        maybe_stalled_subsystem_label: None,
+        maybe_stall_confidence_label: None,
+        stall_evidence_basis: Vec::new(),
+        maybe_stall_next_action: None,
         maybe_resource_bound_state_label: Some("normal".to_string()),
         resource_bound_labels: vec!["all_required_bounds=normal".to_string()],
         maybe_resource_bound_next_action: None,
