@@ -469,14 +469,14 @@ SupportForensicsEvidence:
 | # | Claim | Section | Risk if Wrong |
 |---|---|---|---|
 | A1 | The 30-day validity window is an operational freshness estimate for repo-internal research. [ASSUMED] | Metadata | If the repo changes sooner, rerun research before planning against stale anchors. |
-| A2 | Whether the planner should add a new v1.7 threat model is unclear because the locked file list omits it. [ASSUMED] | Open Questions | If the user intended a threat model, the plan may need one extra docs/checker task. |
+| A2 | A new v1.7 threat-model file is not part of Phase 80 unless execution reveals a concrete claim-bearing security gap. [RESOLVED] | Open Questions (RESOLVED) | If execution finds such a gap, stop and replan instead of silently expanding scope. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Should Phase 80 create a new `docs/parity/threat-model-v1.7.md`?**
+1. **RESOLVED: Should Phase 80 create a new `docs/parity/threat-model-v1.7.md`?**
    - What we know: The locked Phase 80 file list includes README, runtime guide, release-readiness, parity README/checklist/index/deviations, and operator runtime catalog, but it does not list a new v1.7 threat model. [VERIFIED: 80-CONTEXT.md]
-   - What's unclear: Whether the planner should add a new threat model anyway as release-closeout polish. [ASSUMED]
-   - Recommendation: Do not plan a new threat-model file unless implementation reveals a concrete claim-bearing security gap; keep Phase 80 to the locked parity-rooted closeout files. [VERIFIED: 80-CONTEXT.md]
+   - Resolution: Do not add `docs/parity/threat-model-v1.7.md`; use the plan-level threat models, and stop/replan only if execution finds a concrete claim-bearing security gap. [VERIFIED: 80-CONTEXT.md; 80-01-PLAN.md; 80-02-PLAN.md; 80-03-PLAN.md]
+   - Recommendation: Keep Phase 80 to the locked parity-rooted closeout files. [VERIFIED: 80-CONTEXT.md]
 
 ## Environment Availability
 
