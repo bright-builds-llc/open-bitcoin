@@ -2,12 +2,13 @@
 
 This release-hardening handoff preserves the headless v1.3 Public Mainnet Sync
 Proof and Node Hardening evidence, the v1.4 Operator Evidence, Threat Model,
-and Release Boundaries closeout, and the v1.5 Unattended Mainnet Node Operation
-Readiness closeout as historical context. It adds the current v1.6 Mainnet
-Full-Sync Completion closeout and points reviewers at repo-owned evidence
-instead of reproducing full phase logs, checking generated benchmark,
-support-bundle, or live-smoke artifacts into git, or making public-network
-checks part of default verification.
+and Release Boundaries closeout, the v1.5 Unattended Mainnet Node Operation
+Readiness closeout, and the v1.6 Mainnet Full-Sync Completion closeout as
+historical context. It adds the current v1.7 Full-Sync Soak and Recovery
+Hardening closeout and points reviewers at repo-owned evidence instead of
+reproducing full phase logs, checking generated benchmark, support-bundle, soak,
+or live-smoke artifacts into git, or making public-network checks part of
+default verification.
 
 ## Readiness Verdict
 
@@ -31,23 +32,32 @@ restart/resume evidence, redacted support evidence, compatibility wrapper
 reports, deterministic local verification, and parity roots that make those
 claims auditable.
 
-The current v1.6 readiness claim is source-built, explicit opt-in full-sync
-completion evidence. It covers validated active-chain progress to the
+The v1.6 readiness claim remains historical: source-built, explicit opt-in
+full-sync completion evidence. It covers validated active-chain progress to the
 best-known peer tip, durable restart/resume state, stay-current review,
 reorg/no-progress/recovery handling, resource bounds, shared status evidence,
 redacted support bundles, opt-in UAT commands, deterministic local verification,
 and parity roots that make those claims auditable.
 
+The current v1.7 readiness claim is source-built, explicit opt-in full-sync soak
+and recovery hardening. It covers durable multi-day soak evidence, disk and
+resource bounds, corruption and lock recovery diagnosis, progress guarantees,
+stall diagnosis, support-bundle forensics, opt-in UAT commands, deterministic
+release-boundary checks, and parity roots that make those claims auditable.
+
 This is not a production-node or production-funds claim. It does not claim
 inbound serving, address relay, block serving, transaction relay, compact block
 relay, production-funds wallet safety, migration apply mode, signed packaging,
-Windows service support, GUI parity, hosted dashboards, public-network CI,
-release-blocking live sync, or broad production-node readiness.
+Windows service support, GUI parity, hosted dashboards, public-network default
+checks, public-network CI, release-blocking live sync, automatic support-bundle
+upload, destructive repair, or broad production-node readiness.
 
 Treat [`docs/parity/index.json`](index.json) as the machine-readable root,
-[`docs/parity/checklist.md`](checklist.md) as the human checklist view, and
-[`docs/parity/threat-model-v1.6.md`](threat-model-v1.6.md) as the current v1.6
-scoped threat model. [`docs/parity/threat-model-v1.5.md`](threat-model-v1.5.md),
+[`docs/parity/checklist.md`](checklist.md) as the human checklist view, this
+release-readiness matrix as the current v1.7 scoped release boundary, and the
+Phase 80 plan threat model as the current v1.7 security boundary for this
+workflow. [`docs/parity/threat-model-v1.6.md`](threat-model-v1.6.md),
+[`docs/parity/threat-model-v1.5.md`](threat-model-v1.5.md),
 [`docs/parity/threat-model-v1.4.md`](threat-model-v1.4.md), and
 [`docs/parity/threat-model-v1.3.md`](threat-model-v1.3.md) remain historical
 scoped threat models.
@@ -62,7 +72,7 @@ bash scripts/verify.sh
 That command remains deterministic and public-network-free. It includes local
 formatting, linting, builds, tests, benchmark smoke evidence, parity breadcrumb
 checks, Bazel smoke builds, coverage, panic-site checks, and deterministic
-release-boundary assertions through v1.6.
+release-boundary assertions through v1.7.
 
 ## Complete Surfaces
 
@@ -88,11 +98,15 @@ surfaces as `done`:
 - `v1-4-operator-evidence-release-boundaries`
 - `v1-5-unattended-operation-release-boundaries`
 - `v1-6-full-sync-completion-release-boundaries`
+- `v1-7-full-sync-soak-recovery-release-boundaries`
 
 Primary current-cycle evidence:
 
+- [`docs/parity/release-readiness.md`](release-readiness.md) records the
+  current v1.7 full-sync soak and recovery hardening boundary matrix and
+  traceability for SOAK-01 through REL-04.
 - [`docs/parity/threat-model-v1.6.md`](threat-model-v1.6.md) records the
-  current v1.6 STRIDE register, ASVS L1 mapping, evidence acceptance, release
+  historical v1.6 STRIDE register, ASVS L1 mapping, evidence acceptance, release
   boundary matrix, and requirement traceability for REL-01, REL-02, and REL-03.
 - [`docs/parity/threat-model-v1.5.md`](threat-model-v1.5.md) records the
   historical v1.5 STRIDE register, ASVS L1 mapping, evidence acceptance,
@@ -119,6 +133,38 @@ Primary current-cycle evidence:
 - [`scripts/verify.sh`](../../scripts/verify.sh) provides the repo-owned local
   verification contract for the release surface.
 
+## v1.7 Full-Sync Soak and Recovery Hardening Claim Boundary Matrix
+
+| Surface | v1.7 Proven Claim | Accepted Evidence | Explicit Non-Claim | Required Next Milestone Or Deferred Gate | Requirement IDs |
+| --- | --- | --- | --- | --- | --- |
+| Phase 75 multi-day soak runner and evidence ledger | Operators can run explicit opt-in full-sync soaks with durable run identity, resumable ledger/report state, bounded stop conditions, and deterministic synthetic replay. | Phase 75 summaries, `docs/operator/runtime-guide.md`, `docs/architecture/status-snapshot.md`, `docs/architecture/operator-observability.md`, `docs/parity/index.json`, `docs/parity/checklist.md`, `README.md`, and `scripts/check-phase75-soak-runner.ts`. | No default multi-day gate, inbound serving, relay, production-funds wallet use, migration apply mode, signed packaging, GUI, hosted dashboard, or broad production-node readiness claim. | Future production-node and release-policy milestones. | SOAK-01, SOAK-02, SOAK-03, SOAK-04 |
+| Phase 76 disk and resource-bound enforcement | Operators can inspect disk, file, cache, queue, peer, in-flight, log, metric, and support-bundle bounds before and during long soaks, with typed stop guidance before unsafe pressure. | Phase 76 summaries, `resource_bounds`, soak preflight/report evidence, support `Resource Bound Evidence`, `docs/operator/runtime-guide.md`, `docs/architecture/status-snapshot.md`, `docs/architecture/operator-observability.md`, `docs/parity/index.json`, and `scripts/check-phase76-resource-bounds.ts`. | No public-network resource stress, unlimited unattended operation, hosted monitoring, raw support upload, full resource-governance parity, or production-node readiness claim. | Future production resource policy and signed comparable soak artifacts. | RES-05, RES-06, RES-07, RES-08 |
+| Phase 77 corruption and lock recovery hardening | Operators can diagnose lock contention, stale-lock evidence, concurrent datadir use, corruption markers, schema mismatches, partial writes, unreadable stores, and backend-open failures with typed non-mutating recovery guidance. | Phase 77 summaries, `recovery_evidence`, lock-probe evidence, status/support/dashboard/soak projections, `docs/operator/runtime-guide.md`, `docs/architecture/storage-decision.md`, `docs/parity/index.json`, `docs/parity/checklist.md`, and `scripts/check-phase77-corruption-lock-recovery.ts`. | No automatic destructive repair, lock cleanup, source datadir mutation, process scanning as required evidence, public-network default checks, or production-node readiness claim. | Future destructive repair, lock cleanup, source mutation, portable process attribution, public-network recovery UAT, and production-node readiness gates. | REC-05, REC-06, REC-07, REC-08 |
+| Phase 78 progress guarantees and stall diagnosis | Soak progress is credited only for validated durable work or explicit stay-current evidence, and stalled paths expose last useful work, peer contribution, expected progress windows, thresholds, subsystem, cause, and next action. | Phase 78 summaries, shared status fields, soak/support/dashboard/live-smoke projections, `docs/operator/runtime-guide.md`, `docs/architecture/status-snapshot.md`, `docs/architecture/operator-observability.md`, `docs/parity/index.json`, and `scripts/check-phase78-progress-guarantees.ts`. | No false-progress acceptance, public-network default checks, multi-day default gates, support-bundle forensics claim by itself, inbound serving, relay, production-wallet use, migration apply mode, packaging, GUI, hosted dashboards, or production-node readiness claim. | Future production-node progress policy and public-network UAT automation decisions. | PROG-01, PROG-02, PROG-03, PROG-04 |
+| Phase 79 diagnostics and support-bundle forensics | Operators can inspect why a soak or support handoff passed, failed, or remained inconclusive through redacted local support forensics, timeline, checkpoint chain, narrative, evidence basis, confidence, next action, size bounds, and cross-surface consistency. | Phase 79 verification, `support_forensics`, support JSON/Markdown projections, `docs/operator/runtime-guide.md`, `docs/architecture/status-snapshot.md`, `docs/architecture/operator-observability.md`, `docs/parity/index.json`, and `scripts/check-phase79-diagnostics-support-bundle.ts`. | No artifact-existence proof, raw-log proof, elapsed-time proof, hosted upload, automatic support-bundle upload, public-network default check, multi-day default gate, or production-node readiness claim. | Future signed/comparable support artifacts or hosted-support design. | DIAG-01, DIAG-02, DIAG-03, DIAG-04 |
+| Phase 80 opt-in soak UAT and release boundaries | Reviewers can audit the v1.7 closeout through source-built opt-in UAT commands, existing parity roots, source breadcrumbs, support schema anchors, deterministic checkers, operator docs, and release-boundary wording. | `docs/operator/runtime-guide.md`, this matrix, `docs/parity/index.json`, `docs/parity/checklist.md`, `docs/parity/README.md`, `docs/parity/deviations-and-unknowns.md`, `docs/parity/catalog/operator-runtime-release-hardening.md`, `docs/parity/source-breadcrumbs.json`, `scripts/check-parity-breadcrumbs.ts`, the Phase 75 through Phase 80 deterministic checkers, `scripts/verify.sh`, and `.planning/phases/80-opt-in-soak-uat-and-release-boundaries/80-VERIFICATION.md`. | No new evidence manifest, broad all-doc scanner, new v1.7 threat-model file, public-network default verification, release-blocking live sync, signed packaging, GUI, hosted dashboards, or broad production-node readiness claim. | Future release-engineering, production-node, packaging, hosted-operations, GUI, or public-network CI milestones. | VER-05, VER-06, VER-07, REL-04 |
+| Default deterministic verification | Contributors can run the repo-native default verifier without internet access, public peers, real service managers, multi-day sleeps, current-tip timing, large disk allocation, or live release-blocking gates. | `scripts/verify.sh`, Phase 75 through Phase 80 deterministic checkers, checker fixture tests, `scripts/check-parity-breadcrumbs.ts --check`, benchmark smoke checks, Bazel smoke builds, Rust tests, coverage, and panic-site checks. | No public-network CI, current-tip SLA, real service-manager proof, process-table proof, public-network default checks, multi-day wall-clock gate, large-disk stress gate, or release-blocking live sync. | Future release-policy decision if public-network or long-run automation becomes default. | VER-05, REL-04 |
+| Parity roots, source breadcrumbs, support schema anchors, deterministic checkers, and operator docs | Reviewers can audit v1.7 evidence from existing roots instead of a new evidence registry. New first-party Rust source/test traceability remains under `docs/parity/source-breadcrumbs.json` and `scripts/check-parity-breadcrumbs.ts --check`; support and soak schema anchors remain typed in first-party code and guarded by deterministic checkers. | `docs/parity/index.json`, `docs/parity/checklist.md`, `docs/parity/README.md`, `docs/parity/source-breadcrumbs.json`, `scripts/check-parity-breadcrumbs.ts`, Phase 75 through Phase 80 checker scripts, `docs/operator/runtime-guide.md`, `docs/architecture/status-snapshot.md`, `docs/architecture/operator-observability.md`, and support/soak typed projections. | No duplicate manifest-driven evidence registry, no broad all-doc release scanner, no unchecked Rust source/test addition, and no claim that support bundles are release validators by themselves. | Future evidence-manifest design only if a later milestone deliberately chooses it. | VER-07, REL-04 |
+| Explicit deferred production-node surfaces | v1.7 explicitly preserves deferred production-adjacent scope while hardening the opt-in soak and recovery workflow. | This matrix, `docs/parity/deviations-and-unknowns.md`, `docs/parity/checklist.md`, `docs/parity/README.md`, `docs/parity/catalog/operator-runtime-release-hardening.md`, `docs/parity/catalog/p2p.md`, and `docs/operator/runtime-guide.md`. | v1.7 does not claim inbound serving, address relay, block serving, transaction relay, compact block relay, production-funds wallet safety, migration apply mode, signed packaging, Windows service support, GUI parity, hosted dashboards, public-network default checks, public-network CI, release-blocking live sync, automatic support-bundle upload, destructive repair, or broad production-node readiness. | Future PNODE, wallet-production, migration-apply, packaging, Windows service, GUI, hosted dashboard, public-network CI, support-upload, and destructive-repair milestones. | REL-04 |
+
+Final v1.7 traceability covers all 24 milestone requirement IDs: SOAK-01,
+SOAK-02, SOAK-03, SOAK-04, RES-05, RES-06, RES-07, RES-08, REC-05, REC-06,
+REC-07, REC-08, PROG-01, PROG-02, PROG-03, PROG-04, DIAG-01, DIAG-02,
+DIAG-03, DIAG-04, VER-05, VER-06, VER-07, and REL-04.
+
+Required deterministic reviewer commands:
+
+```bash
+bun run scripts/check-phase80-opt-in-soak-uat-release-boundaries.ts
+bun run scripts/check-parity-breadcrumbs.ts --check
+bash scripts/verify.sh
+```
+
+Operator UAT commands remain explicit opt-in workflows in
+[`docs/operator/runtime-guide.md`](../operator/runtime-guide.md). Generated
+soak reports, support bundles, daemon logs, metrics stores, compatibility
+reports, live-mainnet reports, and local datadirs stay local and out of git.
+
 ## v1.6 Full-Sync Completion Claim Boundary Matrix
 
 | Surface | v1.6 Proven Claim | Accepted Evidence | Explicit Non-Claim | Required Next Milestone Or Deferred Gate | Requirement IDs |
@@ -138,12 +184,13 @@ Primary current-cycle evidence:
 | Signed packaging and Windows service support | No shipped v1.6 claim. | Source-built install docs and deferred-scope rows. | v1.6 does not claim signed packaging, OS distribution, or Windows service support. | Future packaging milestones. | REL-02 |
 | GUI parity and hosted dashboards | No shipped v1.6 claim. | Headless and terminal-first docs. | v1.6 does not claim GUI parity or hosted dashboards. | Future product-surface milestones. | REL-02 |
 
-## v1.7 Phase 77 Recovery-Hardening Scoped Claim
+## v1.7 Phase 77 Recovery-Hardening Evidence Anchor
 
-Phase 77 is a scoped recovery-hardening evidence root, not a full v1.7 release
-readiness claim. It documents REC-05, REC-06, REC-07, and REC-08 around typed
-lock and corruption diagnosis from `recovery_evidence`, probe-only lock
-evidence, status/support/dashboard/soak projections, and operator guidance.
+Within the full v1.7 closeout above, Phase 77 remains a scoped
+recovery-hardening evidence anchor. It documents REC-05, REC-06, REC-07, and
+REC-08 around typed lock and corruption diagnosis from `recovery_evidence`,
+probe-only lock evidence, status/support/dashboard/soak projections, and
+operator guidance.
 
 | Surface | Phase 77 Scoped Claim | Accepted Evidence | Explicit Non-Claim | Required Next Milestone Or Deferred Gate | Requirement IDs |
 | --- | --- | --- | --- | --- | --- |

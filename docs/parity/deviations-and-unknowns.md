@@ -175,6 +175,41 @@ operator UAT outside `bash scripts/verify.sh`. Generated live-mainnet reports,
 support bundles, daemon logs, metrics stores, compatibility reports, and local
 datadirs stay local.
 
+### v1.7 Full-Sync Soak and Recovery Hardening
+
+The v1.7 release-readiness roots support `VER-05`, `VER-06`, `VER-07`, and
+`REL-04` without expanding the shipped claim beyond source-built, explicit
+opt-in full-sync soak and recovery hardening. v1.7 proves durable multi-day soak
+evidence, disk and resource bounds, recovery diagnosis, progress guarantees,
+stall diagnosis, support-bundle forensics, opt-in UAT commands, deterministic
+release-boundary checks, and auditable parity roots.
+
+The following remain explicit non-claims until separate future gates exist:
+
+- inbound serving
+- address relay
+- block serving
+- transaction relay
+- compact block relay
+- production-funds wallet use or safety
+- migration apply mode, source-service cutover, or source-datadir mutation
+- signed packaging or release installation flows
+- Windows service support
+- GUI parity
+- hosted dashboards or public dashboard operation
+- public-network default checks
+- public-network CI
+- release-blocking live sync
+- automatic support-bundle upload
+- destructive repair of corrupted stores or locks
+- broad production-node readiness or uptime guarantees
+
+Public-network full-sync and multi-day soak UAT remain explicit operator
+workflows outside `bash scripts/verify.sh`. Support bundles, soak reports,
+compatibility reports, daemon logs, metrics stores, live-mainnet reports, and
+local datadirs stay local unless an operator explicitly shares redacted
+artifacts.
+
 ## Suspected Unknowns
 
 Current catalog entries preserve these review targets:
