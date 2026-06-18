@@ -2,34 +2,34 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Full-Sync Soak and Recovery Hardening
-status: executing
-stopped_at: Phase 80 context gathered
-last_updated: "2026-06-18T00:16:17.928Z"
-last_activity: 2026-06-18 -- Phase 80 planning complete
+status: milestone_done
+stopped_at: Phase 80 verified and milestone v1.7 phase work complete
+last_updated: "2026-06-18T06:13:46.969Z"
+last_activity: 2026-06-18
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 33
-  completed_plans: 30
-  percent: 91
+  completed_plans: 33
+  percent: 100
 ---
 
 # Project State
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-06-14)
+See: `.planning/PROJECT.md` (updated 2026-06-18)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 80 — Opt-In Soak UAT and Release Boundaries
+**Current focus:** v1.7 phase work complete — ready for milestone audit/archive
 
 ## Current Position
 
 Milestone: v1.7 Full-Sync Soak and Recovery Hardening
-Phase: 80 (Opt-In Soak UAT and Release Boundaries) — PENDING
-Plan: Pending
-Status: Ready to execute
-Last activity: 2026-06-18 -- Phase 80 planning complete
+Phase: 80 (Opt-In Soak UAT and Release Boundaries) — COMPLETE
+Plan: 3/3 complete
+Status: Phase 80 verified; milestone phase work complete
+Last activity: 2026-06-18
 
 Progress: [██████████] 100%
 
@@ -37,8 +37,8 @@ Progress: [██████████] 100%
 
 **Velocity:**
 
-- Current milestone plans completed: 30
-- Current milestone plan count: 30
+- Current milestone plans completed: 33
+- Current milestone plan count: 33
 - Prior milestone plans completed: 27 in v1.6
 
 **By Phase:**
@@ -50,13 +50,13 @@ Progress: [██████████] 100%
 | 77. Corruption and Lock Recovery Hardening | 7/7 | Complete |
 | 78. Progress Guarantees and Stall Diagnosis | 7/7 | Complete |
 | 79. Diagnostics and Support Bundle Forensics | 4/4 | Complete |
-| 80. Opt-In Soak UAT and Release Boundaries | 0/0 | Pending |
+| 80. Opt-In Soak UAT and Release Boundaries | 3/3 | Complete |
 
 **Recent Trend:**
 
 - v1.5 completed Phases 60 through 67 and archived with a passed milestone audit.
 - v1.6 completed Phases 68 through 74 and shipped explicit opt-in mainnet full-sync completion evidence.
-- v1.7 starts with a focus on multi-day soak stability, resource and disk bounds, corruption and lock recovery, progress guarantees, diagnostics, and support bundles.
+- v1.7 completed with multi-day soak stability evidence, resource and disk bounds, corruption and lock recovery, progress guarantees, diagnostics, support bundles, opt-in UAT, and deterministic release-boundary checks.
 - Public-network soak and real service-manager evidence remain opt-in UAT outside default deterministic verification.
 
 ## Accumulated Context
@@ -76,7 +76,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ### Pending Todos
 
-- Plan Phase 80 opt-in soak UAT and release boundaries.
 - Keep raw phase histories in `.planning/phases/` for parity and UAT traceability.
 - Keep public-network full-sync and multi-day soak UAT opt-in and outside default deterministic verification unless a future phase deliberately changes that contract.
 
@@ -88,6 +87,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-17T23:12:20.360Z
-Stopped at: Phase 80 context gathered
-Resume file: .planning/phases/80-opt-in-soak-uat-and-release-boundaries/80-CONTEXT.md
+Last session: 2026-06-18T06:13:46.967Z
+Stopped at: Phase 80 verified and milestone v1.7 phase work complete
+Resume file: None

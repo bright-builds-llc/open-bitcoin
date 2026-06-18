@@ -35,7 +35,7 @@ key-files:
 key-decisions:
   - "Keep Phase 80 verification local and deterministic by checking existing docs, parity roots, source anchors, and verifier wiring instead of adding public-network, service-manager, process-table, or large-disk gates."
   - "Expose the checker validation as a pure function so fixture tests can assert concrete failure lines while the CLI still uses OPEN_BITCOIN_PHASE80_REPO_ROOT and exits non-zero on failures."
-  - "Allow the checker to pass before Task 2 wiring when Phase 80 commands are absent, but require the Phase 80 test/checker pair to be immediately after Phase 79 once either command is present."
+  - "Require the complete Phase 75 through Phase 80 verifier command sequence so removing either Phase 80 verifier command is a checker failure."
 
 patterns-established:
   - "Release-boundary closeout checks should guard exact current claim-bearing files and historical evidence roots without broad scans for generic production/mainnet terms."
@@ -45,7 +45,7 @@ requirements-completed: [VER-05, VER-06, VER-07, REL-04]
 generated_by: gsd-execute-plan
 lifecycle_mode: yolo
 phase_lifecycle_id: 80-2026-06-17T22-54-57
-generated_at: 2026-06-18T03:55:18Z
+generated_at: 2026-06-18T05:28:37Z
 
 duration: 40m
 completed: 2026-06-18
@@ -75,6 +75,7 @@ completed: 2026-06-18
 1. **Task 1 RED: failing Phase 80 checker tests** - `6474502` (test)
 2. **Task 1 GREEN: deterministic Phase 80 checker** - `00850ef` (feat)
 3. **Task 2: verifier wiring and verification evidence** - `e77ea20` (chore)
+4. **Code review fix: require Phase 80 verifier commands** - `f887b73` (fix)
 
 ## Files Created/Modified
 
@@ -93,7 +94,7 @@ completed: 2026-06-18
 
 ## Verification
 
-- `bun test scripts/check-phase80-opt-in-soak-uat-release-boundaries.test.ts` - passed, 5 tests.
+- `bun test scripts/check-phase80-opt-in-soak-uat-release-boundaries.test.ts` - passed, 6 tests.
 - `bun --check scripts/check-phase80-opt-in-soak-uat-release-boundaries.ts` - passed.
 - `bun run scripts/check-phase80-opt-in-soak-uat-release-boundaries.ts` - passed against the real worktree.
 - `bun run scripts/check-parity-breadcrumbs.ts --check` - passed, 268 Rust files verified.
@@ -112,10 +113,20 @@ completed: 2026-06-18
 - **Verification:** `bun test scripts/check-phase80-opt-in-soak-uat-release-boundaries.test.ts` and `bun run scripts/check-phase80-opt-in-soak-uat-release-boundaries.ts` passed.
 - **Committed in:** `00850ef`
 
----
+***
 
 **Total deviations:** 1 auto-fixed (Rule 3 blocking)
 **Impact on plan:** No scope expansion. The checker remains local, fixture-rooted, and CLI-compatible while tests assert exact failure lines deterministically.
+
+### Code Review Follow-up
+
+**1. [Advisory review fix] Required Phase 80 verifier commands**
+- **Found during:** Phase-level code review after plan execution
+- **Issue:** The first checker implementation failed when one Phase 80 verifier command was removed, but it still passed when both Phase 80 commands were removed from `scripts/verify.sh`.
+- **Fix:** Switched verify-order validation to require the complete Phase 75 through Phase 80 command sequence and added `fails_when_phase80_verify_commands_are_missing`.
+- **Files modified:** `scripts/check-phase80-opt-in-soak-uat-release-boundaries.ts`, `scripts/check-phase80-opt-in-soak-uat-release-boundaries.test.ts`
+- **Verification:** `bun test scripts/check-phase80-opt-in-soak-uat-release-boundaries.test.ts`, `bun --check scripts/check-phase80-opt-in-soak-uat-release-boundaries.ts`, `bun run scripts/check-phase80-opt-in-soak-uat-release-boundaries.ts`, and the commit hook's `bash scripts/verify.sh` passed.
+- **Committed in:** `f887b73`
 
 ## Issues Encountered
 
@@ -140,9 +151,9 @@ Phase 80 now has deterministic closure evidence: the checker guards v1.7 claim d
 ## Self-Check: PASSED
 
 - Found created files: `scripts/check-phase80-opt-in-soak-uat-release-boundaries.ts`, `.planning/phases/80-opt-in-soak-uat-and-release-boundaries/80-VERIFICATION.md`, and `.planning/phases/80-opt-in-soak-uat-and-release-boundaries/80-03-SUMMARY.md`.
-- Found task commits: `6474502`, `00850ef`, and `e77ea20`.
+- Found task commits: `6474502`, `00850ef`, `e77ea20`, and post-review fix `f887b73`.
 - Confirmed `.planning/STATE.md` remains unstaged and orchestrator-owned.
 
----
+***
 *Phase: 80-opt-in-soak-uat-and-release-boundaries*
 *Completed: 2026-06-18*

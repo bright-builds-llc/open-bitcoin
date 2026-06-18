@@ -171,7 +171,7 @@ Plans:
 | 77. Corruption and Lock Recovery Hardening | 7/7 | Complete    | 2026-06-16 |
 | 78. Progress Guarantees and Stall Diagnosis | 7/7 | Complete    | 2026-06-17 |
 | 79. Diagnostics and Support Bundle Forensics | 4/4 | Complete   | 2026-06-17 |
-| 80. Opt-In Soak UAT and Release Boundaries | 0/0 | Pending | - |
+| 80. Opt-In Soak UAT and Release Boundaries | 3/3 | Complete   | 2026-06-18 |
 
 ## Completed Milestone Summaries
 
