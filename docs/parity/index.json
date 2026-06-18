@@ -576,6 +576,10 @@
     {
       "name": "phase79-diagnostics-support-bundle-forensics",
       "status": "done"
+    },
+    {
+      "name": "v1-7-full-sync-soak-recovery-release-boundaries",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -1271,6 +1275,44 @@
         "suspected_unknowns": [
           "Future signed support artifacts, automatic upload, public-network UAT closeout, production-node expansion, and broader incident forensics need separate scoped phases and fresh evidence roots."
         ]
+      },
+      {
+        "id": "v1-7-full-sync-soak-recovery-release-boundaries",
+        "title": "v1.7 Full-Sync Soak And Recovery Release Boundaries",
+        "status": "done",
+        "requirements": [
+          "VER-05",
+          "VER-06",
+          "VER-07",
+          "REL-04"
+        ],
+        "evidence": [
+          "docs/operator/runtime-guide.md",
+          "docs/parity/release-readiness.md",
+          "docs/parity/index.json",
+          "docs/parity/checklist.md",
+          "docs/parity/README.md",
+          "docs/parity/deviations-and-unknowns.md",
+          "docs/parity/catalog/operator-runtime-release-hardening.md",
+          "docs/parity/source-breadcrumbs.json",
+          "scripts/check-parity-breadcrumbs.ts",
+          "scripts/check-phase75-soak-runner.ts",
+          "scripts/check-phase76-resource-bounds.ts",
+          "scripts/check-phase77-corruption-lock-recovery.ts",
+          "scripts/check-phase78-progress-guarantees.ts",
+          "scripts/check-phase79-diagnostics-support-bundle.ts",
+          "scripts/check-phase80-opt-in-soak-uat-release-boundaries.ts",
+          "scripts/verify.sh",
+          ".planning/phases/80-opt-in-soak-uat-and-release-boundaries/80-VERIFICATION.md"
+        ],
+        "rationale": "Phase 80 makes the v1.7 source-built, explicit opt-in full-sync soak and recovery hardening claim auditable through existing parity roots, source breadcrumbs, support schema anchors, deterministic checkers, operator docs, scoped UAT commands, and release-readiness boundaries without adding a new evidence manifest.",
+        "known_gaps": [
+          "v1.7 proves explicit opt-in full-sync soak and recovery hardening only; public-network full-sync soak, real service-manager checks, multi-day wall-clock runs, and current-tip timing remain opt-in evidence outside default verification.",
+          "v1.7 does not claim inbound serving, address relay, block serving, transaction relay, compact block relay, production-funds wallet use, migration apply mode, signed packaging, Windows service support, GUI, hosted dashboards, public-network default checks, public-network CI, release-blocking live sync, automatic support-bundle upload, destructive repair, or broad production-node readiness."
+        ],
+        "suspected_unknowns": [
+          "Future production-node readiness, inbound serving, relay, production-wallet, migration-apply, packaging, Windows service, GUI, hosted-dashboard, public-network CI, support-upload, destructive-repair, signed-artifact, and scheduled-soak claims need separate scoped phases and fresh evidence roots."
+        ]
       }
     ]
   },
@@ -1526,6 +1568,64 @@
         "docs/parity/catalog/chainstate.md",
         "docs/parity/catalog/operator-runtime-release-hardening.md",
         ".planning/phases/79-diagnostics-and-support-bundle-forensics/"
+      ]
+    },
+    "v1_7_release_boundaries": {
+      "path": "release-readiness.md",
+      "status": "done",
+      "requirements": [
+        "VER-05",
+        "VER-06",
+        "VER-07",
+        "REL-04"
+      ],
+      "evidence": [
+        "docs/operator/runtime-guide.md",
+        "docs/parity/release-readiness.md",
+        "docs/parity/index.json",
+        "docs/parity/checklist.md",
+        "docs/parity/README.md",
+        "docs/parity/deviations-and-unknowns.md",
+        "docs/parity/catalog/operator-runtime-release-hardening.md",
+        "docs/parity/source-breadcrumbs.json",
+        "scripts/check-parity-breadcrumbs.ts",
+        "scripts/check-phase75-soak-runner.ts",
+        "scripts/check-phase76-resource-bounds.ts",
+        "scripts/check-phase77-corruption-lock-recovery.ts",
+        "scripts/check-phase78-progress-guarantees.ts",
+        "scripts/check-phase79-diagnostics-support-bundle.ts",
+        "scripts/check-phase80-opt-in-soak-uat-release-boundaries.ts",
+        "scripts/verify.sh",
+        ".planning/phases/80-opt-in-soak-uat-and-release-boundaries/80-VERIFICATION.md"
+      ]
+    },
+    "phase80_opt_in_soak_uat_release_boundaries": {
+      "path": "checklist.md",
+      "status": "done",
+      "requirements": [
+        "VER-05",
+        "VER-06",
+        "VER-07",
+        "REL-04"
+      ],
+      "evidence": [
+        "docs/operator/runtime-guide.md",
+        "docs/parity/release-readiness.md",
+        "docs/parity/index.json",
+        "docs/parity/checklist.md",
+        "docs/parity/README.md",
+        "docs/parity/deviations-and-unknowns.md",
+        "docs/parity/catalog/operator-runtime-release-hardening.md",
+        "docs/parity/source-breadcrumbs.json",
+        "scripts/check-parity-breadcrumbs.ts",
+        "scripts/check-phase75-soak-runner.ts",
+        "scripts/check-phase76-resource-bounds.ts",
+        "scripts/check-phase77-corruption-lock-recovery.ts",
+        "scripts/check-phase78-progress-guarantees.ts",
+        "scripts/check-phase79-diagnostics-support-bundle.ts",
+        "scripts/check-phase80-opt-in-soak-uat-release-boundaries.ts",
+        "scripts/verify.sh",
+        ".planning/phases/80-opt-in-soak-uat-and-release-boundaries/80-VERIFICATION.md"
       ]
     },
     "security_analysis_audit": {

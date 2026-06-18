@@ -20,12 +20,18 @@ The current shipped headless v1 surfaces remain marked `done` in
 The v1.1 drop-in audit and migration slice is tracked through the same ledger,
 with cross-cutting evidence in
 [`catalog/drop-in-audit-and-migration.md`](catalog/drop-in-audit-and-migration.md).
-The current v1.6 closeout evidence is rooted in
+The current v1.7 closeout evidence is rooted in
+[`release-readiness.md`](release-readiness.md), this README,
+[`index.json`](index.json), [`checklist.md`](checklist.md), and the
+`v1-7-full-sync-soak-recovery-release-boundaries` checklist surface. Phase 80
+opt-in soak UAT and release boundaries are the current v1.7 closeout root. The
+v1.6, v1.5, v1.4, and v1.3 threat models remain historical evidence and should
+not be read as the current milestone claim.
+
+The current v1.6 closeout evidence remains preserved as historical context in
 [`threat-model-v1.6.md`](threat-model-v1.6.md),
 [`release-readiness.md`](release-readiness.md), and the
-`v1-6-full-sync-completion-release-boundaries` checklist surface. The v1.5,
-v1.4, and v1.3 threat models remain historical evidence and should not be read
-as the current milestone claim.
+`v1-6-full-sync-completion-release-boundaries` checklist surface.
 
 The current v1.5 closeout evidence remains preserved as historical context in
 [`threat-model-v1.5.md`](threat-model-v1.5.md),
@@ -88,6 +94,18 @@ relay, production-funds wallet use, migration apply mode, packaging, GUI,
 hosted dashboards, public-network default checks, multi-day default gates,
 automatic support-bundle upload, and production-node readiness.
 
+Phase 80 opt-in soak UAT and release boundaries are rooted in the
+`v1-7-full-sync-soak-recovery-release-boundaries` surface for VER-05, VER-06,
+VER-07, and REL-04. The root links the runtime guide UAT matrix,
+release-readiness matrix, machine root, human checklist, parity README,
+deviations register, operator-runtime catalog, source breadcrumbs,
+deterministic Phase 75 through Phase 80 checkers, and `scripts/verify.sh`.
+Source breadcrumbs remain the mechanism for first-party Rust source and test
+traceability, via [`source-breadcrumbs.json`](source-breadcrumbs.json) and
+[`scripts/check-parity-breadcrumbs.ts`](../../scripts/check-parity-breadcrumbs.ts).
+Phase 80 does not add a new evidence manifest; it keeps the v1.7 claim scoped to
+source-built, explicit opt-in full-sync soak and recovery hardening.
+
 Deferred and suspected follow-up work remains visible in
 [`deviations-and-unknowns.md`](deviations-and-unknowns.md).
 
@@ -98,8 +116,8 @@ Deferred and suspected follow-up work remains visible in
 - `checklist.md` is the human-readable parity checklist view backed by `index.json`.
 - `deviations-and-unknowns.md` summarizes current deviations, deferred surfaces, suspected unknowns, and folded todo risks.
 - `benchmarks.md` documents the benchmark groups, Knots mappings, local commands, reports, and non-goals.
-- `release-readiness.md` is the milestone handoff and reviewer inspection checklist.
-- `threat-model-v1.6.md` is the current v1.6 scoped threat model and release-boundary companion for REL-01, REL-02, and REL-03.
+- `release-readiness.md` is the current v1.7 milestone handoff and reviewer inspection checklist.
+- `threat-model-v1.6.md` is the historical v1.6 scoped threat model and release-boundary companion for REL-01, REL-02, and REL-03.
 - `threat-model-v1.5.md` is the historical v1.5 scoped threat model and release-boundary companion for REL-01, REL-02, REL-03, and REL-04.
 - `threat-model-v1.4.md` is the historical v1.4 scoped threat model and release-boundary companion for OBS-01, OBS-02, OBS-03, SEC-01, SEC-02, and SEC-03.
 - `threat-model-v1.3.md` is the historical v1.3 scoped threat model and release-boundary companion for PROOF-06, SEC-01, and SEC-02.
