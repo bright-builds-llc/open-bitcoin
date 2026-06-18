@@ -140,6 +140,8 @@ bun test scripts/check-phase78-progress-guarantees.test.ts
 bun run scripts/check-phase78-progress-guarantees.ts
 bun test scripts/check-phase79-diagnostics-support-bundle.test.ts
 bun run scripts/check-phase79-diagnostics-support-bundle.ts
+bun test scripts/check-phase80-opt-in-soak-uat-release-boundaries.test.ts
+bun run scripts/check-phase80-opt-in-soak-uat-release-boundaries.ts
 bash scripts/check-pure-core-deps.sh
 bash scripts/check-file-lengths.sh
 bash scripts/check-panic-sites.sh
