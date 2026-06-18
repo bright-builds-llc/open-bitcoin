@@ -4,11 +4,8 @@ import { afterEach, expect, test } from "bun:test";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { checkPhase80OptInSoakUatReleaseBoundaries } from "./check-phase80-opt-in-soak-uat-release-boundaries";
 
-const CHECKER_PATH = path.join(
-  import.meta.dir,
-  "check-phase80-opt-in-soak-uat-release-boundaries.ts",
-);
 const PHASE_DIR = ".planning/phases/80-opt-in-soak-uat-and-release-boundaries";
 const PLAN_FILES = [
   `${PHASE_DIR}/80-01-PLAN.md`,
@@ -189,7 +186,7 @@ test("fails_when_uat_matrix_missing_workflow_or_proof_boundary", async () => {
 test("fails_when_parity_roots_omit_v1_7_requirements_or_surface", async () => {
   // Arrange
   const root = await createFixture({
-    maybeParityIndexText: parityIndexText().replace("VER-07", ""),
+    maybeParityIndexText: parityIndexText().replaceAll("VER-07", ""),
   });
 
   // Act
@@ -204,9 +201,19 @@ test("fails_when_verify_order_or_default_boundary_forbidden_strings_drift", asyn
   // Arrange
   const root = await createFixture({
     maybeVerifyScript: [
+      PHASE75_TEST_COMMAND,
+      PHASE75_CHECKER_COMMAND,
+      PHASE76_TEST_COMMAND,
+      PHASE76_CHECKER_COMMAND,
+      PHASE77_TEST_COMMAND,
+      PHASE77_CHECKER_COMMAND,
+      PHASE78_TEST_COMMAND,
+      PHASE78_CHECKER_COMMAND,
+      PHASE79_TEST_COMMAND,
+      PHASE79_CHECKER_COMMAND,
+      "bun run scripts/check-unrelated-boundary.ts",
       PHASE80_TEST_COMMAND,
       PHASE80_CHECKER_COMMAND,
-      PHASE79_CHECKER_COMMAND,
       "bun run scripts/run-live-mainnet-smoke.ts",
     ].join("\n"),
   });
@@ -338,17 +345,10 @@ async function writeFixtureFile(root: string, relativePath: string, text: string
 }
 
 function runChecker(root: string): CheckerRun {
-  const child = Bun.spawnSync(["bun", "run", CHECKER_PATH], {
-    env: {
-      ...process.env,
-      OPEN_BITCOIN_PHASE80_REPO_ROOT: root,
-    },
-    stdout: "pipe",
-    stderr: "pipe",
-  });
+  const failures = checkPhase80OptInSoakUatReleaseBoundaries(root);
 
   return {
-    exitCode: child.exitCode,
-    stderr: new TextDecoder().decode(child.stderr),
+    exitCode: failures.length > 0 ? 1 : 0,
+    stderr: failures.join("\n"),
   };
 }
