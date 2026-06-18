@@ -19,8 +19,9 @@ configuration surfaces while keeping the first-party internals strongly typed,
 auditable, and modular.
 
 > Status: the in-scope headless v1 parity surfaces are implemented and ready
-> for review and operator testing. Open Bitcoin is not yet recommended for
-> production funds or unattended mainnet operation.
+> for review and operator testing. The current v1.7 boundary is source-built,
+> explicit opt-in full-sync soak and recovery hardening, not production-node
+> readiness.
 
 ## Parity At A Glance
 
@@ -102,11 +103,17 @@ tracked hook content changes.
 
 ## Operator Preview
 
-The current v1.6 operator runtime is source-built and intended for local review,
-testing, parity audit, and explicit opt-in full-sync completion evidence. For
-the practical install, onboarding, service, status, dashboard, migration,
-benchmark, and limitation workflow, start with
-[`docs/operator/runtime-guide.md`](./docs/operator/runtime-guide.md).
+The current v1.7 operator/release posture is source-built, explicit opt-in
+full-sync soak and recovery hardening. It covers durable multi-day soak
+evidence, resource bounds, recovery diagnosis, progress guarantees, stall
+diagnosis, support-bundle forensics, and deterministic release-boundary checks.
+For the practical install, onboarding, service, status, dashboard, migration,
+benchmark, limitation, and v1.7 UAT workflow, start with
+[`docs/operator/runtime-guide.md`](./docs/operator/runtime-guide.md). For the
+v1.7 review posture, use the runtime guide with
+[`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md),
+[`docs/parity/index.json`](./docs/parity/index.json), and
+[`docs/parity/checklist.md`](./docs/parity/checklist.md).
 The preview commands below start the current local RPC/operator surfaces; they
 are not a production-node claim. `open-bitcoind` now has an opt-in mainnet sync
 loop plus durable header-and-block sync foundations, truthful operator-facing
@@ -120,29 +127,16 @@ which writes local JSON and Markdown reports under
 `packages/target/live-mainnet-smoke-reports` without changing the default
 hermetic verification contract.
 
-For the active v1.7 soak and recovery work, `open-bitcoin soak` and
-`recovery_evidence` are documented as scoped operator surfaces in
-[`docs/operator/runtime-guide.md`](./docs/operator/runtime-guide.md). Phase 77
-corruption and lock recovery hardening is diagnosis and evidence only: it
-separates retry, read-only inspection, backup-then-rebuild, and escalation
-guidance for lock contention, stale lock evidence, concurrent datadir use,
-schema mismatch, corruption markers, partial writes, unreadable stores, backend
-open failures, and resource pressure. A soak run can prove bounded opt-in
-full-sync soak behavior, durable resume evidence, or diagnosed blocker
-evidence; it does not prove inbound serving, relay, production-funds wallet
-safety, migration apply mode, signed packages, GUI readiness, hosted
-dashboards, or broad production-node readiness.
-
-The current release boundary is rooted in
-[`docs/parity/threat-model-v1.6.md`](./docs/parity/threat-model-v1.6.md),
-[`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md), and
-[`scripts/check-v1.6-release-boundaries.ts`](./scripts/check-v1.6-release-boundaries.ts).
-It describes source-built, explicit opt-in full-sync completion only; inbound
-serving, address relay, block serving, transaction relay, compact block relay,
-production-funds wallet safety, migration apply mode, signed packaging,
-Windows service support, GUI parity, hosted dashboards, public-network CI,
-release-blocking live sync, and broad production-node readiness remain future
-scope.
+v1.6 remains historical source-built, explicit opt-in full-sync completion
+evidence. v1.7 is the current scoped soak/recovery closeout after Phase 80; it
+preserves bounded opt-in full-sync soak behavior, durable resume evidence, or diagnosed blocker
+evidence without broadening release claims. It does not claim
+inbound serving, address relay, block serving, transaction relay, compact block
+relay, production-funds wallet safety, production-funds wallet use, migration
+apply mode, signed packaging, Windows service support, GUI parity or GUI
+readiness, hosted dashboards, public-network default checks, public-network CI,
+release-blocking live sync, automatic support-bundle upload, destructive repair,
+or broad production-node readiness.
 
 The commands below are a minimal regtest preview. Create a scratch data
 directory, start the RPC server, then call it from another shell:
