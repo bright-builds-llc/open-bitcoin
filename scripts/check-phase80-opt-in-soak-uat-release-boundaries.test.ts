@@ -227,6 +227,31 @@ test("fails_when_verify_order_or_default_boundary_forbidden_strings_drift", asyn
   expect(result.stderr).toContain("run-live-mainnet-smoke");
 });
 
+test("fails_when_phase80_verify_commands_are_missing", async () => {
+  // Arrange
+  const root = await createFixture({
+    maybeVerifyScript: [
+      PHASE75_TEST_COMMAND,
+      PHASE75_CHECKER_COMMAND,
+      PHASE76_TEST_COMMAND,
+      PHASE76_CHECKER_COMMAND,
+      PHASE77_TEST_COMMAND,
+      PHASE77_CHECKER_COMMAND,
+      PHASE78_TEST_COMMAND,
+      PHASE78_CHECKER_COMMAND,
+      PHASE79_TEST_COMMAND,
+      PHASE79_CHECKER_COMMAND,
+    ].join("\n"),
+  });
+
+  // Act
+  const result = runChecker(root);
+
+  // Assert
+  expect(result.exitCode).not.toBe(0);
+  expect(result.stderr).toContain("Phase 75 through Phase 80 commands");
+});
+
 test("fails_when_broad_claim_or_new_manifest_appears", async () => {
   // Arrange
   const root = await createFixture({

@@ -37,7 +37,6 @@ const REQUIRED_VERIFY_ORDER = [
   PHASE80_TEST_COMMAND,
   PHASE80_CHECKER_COMMAND,
 ] as const;
-const REQUIRED_PRE_PHASE80_VERIFY_ORDER = REQUIRED_VERIFY_ORDER.slice(0, 10);
 const PLAN_FILES = [
   `${PHASE_DIR}/80-01-PLAN.md`,
   `${PHASE_DIR}/80-02-PLAN.md`,
@@ -466,7 +465,7 @@ function verifyForbiddenManifestPaths(repoRoot: string, failures: string[]): voi
 
 function verifyVerifyScript(repoRoot: string, failures: string[]): void {
   const verifyScript = readText(repoRoot, "scripts/verify.sh", failures);
-  for (const command of REQUIRED_PRE_PHASE80_VERIFY_ORDER) {
+  for (const command of REQUIRED_VERIFY_ORDER) {
     requireContains(verifyScript, command, "scripts/verify.sh", failures);
   }
   verifyCommandOrder(verifyScript, failures);
@@ -480,28 +479,21 @@ function verifyCommandOrder(verifyScript: string, failures: string[]): void {
     .split("\n")
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
-  const indices = REQUIRED_PRE_PHASE80_VERIFY_ORDER.map((command) => lines.indexOf(command));
+  const indices = REQUIRED_VERIFY_ORDER.map((command) => lines.indexOf(command));
 
   if (indices.some((index) => index === -1)) {
-    failures.push("scripts/verify.sh missing one or more Phase 75 through Phase 79 commands");
+    failures.push("scripts/verify.sh missing one or more Phase 75 through Phase 80 commands");
     return;
   }
   for (let index = 1; index < indices.length; index += 1) {
     if (indices[index] <= indices[index - 1]) {
-      failures.push("scripts/verify.sh must run Phase 75 through Phase 79 commands in order");
+      failures.push("scripts/verify.sh must run Phase 75 through Phase 80 commands in order");
       return;
     }
   }
   const phase79Index = lines.indexOf(PHASE79_CHECKER_COMMAND);
   const phase80TestIndex = lines.indexOf(PHASE80_TEST_COMMAND);
   const phase80CheckerIndex = lines.indexOf(PHASE80_CHECKER_COMMAND);
-  if (phase80TestIndex === -1 && phase80CheckerIndex === -1) {
-    return;
-  }
-  if (phase80TestIndex === -1 || phase80CheckerIndex === -1) {
-    failures.push("scripts/verify.sh must include both Phase 80 checker commands when either is present");
-    return;
-  }
   if (phase80TestIndex !== phase79Index + 1 || phase80CheckerIndex !== phase80TestIndex + 1) {
     failures.push(
       "scripts/verify.sh must run the Phase 80 checker test and checker immediately after Phase 79",
