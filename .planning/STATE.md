@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Full-Sync Soak and Recovery Hardening
-status: verifying
-stopped_at: Phase 81 context gathered
-last_updated: "2026-06-19T17:33:37.805Z"
-last_activity: 2026-06-18
+status: executing
+stopped_at: Phase 81 planned
+last_updated: "2026-06-19T18:38:11.505Z"
+last_activity: 2026-06-19 -- Phase 81 planning complete
 progress:
   total_phases: 7
   completed_phases: 6
-  total_plans: 33
+  total_plans: 37
   completed_plans: 33
-  percent: 100
+  percent: 89
 ---
 
 # Project State
@@ -21,24 +21,24 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-18)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** v1.7 phase work complete — ready for milestone audit/archive
+**Current focus:** Phase 81 milestone audit traceability closure planned — ready to execute
 
 ## Current Position
 
 Milestone: v1.7 Full-Sync Soak and Recovery Hardening
-Phase: 80 (Opt-In Soak UAT and Release Boundaries) — COMPLETE
-Plan: 3/3 complete
-Status: Phase 80 verified; milestone phase work complete
-Last activity: 2026-06-18
+Phase: 81 (Milestone Audit Traceability Closure) — READY TO EXECUTE
+Plan: 0/4 complete
+Status: Ready to execute audit traceability closure
+Last activity: 2026-06-19 -- Phase 81 planning complete
 
-Progress: [██████████] 100%
+Progress: [████████░░] 89%
 
 ## Performance Metrics
 
 **Velocity:**
 
 - Current milestone plans completed: 33
-- Current milestone plan count: 33
+- Current milestone plan count: 37
 - Prior milestone plans completed: 27 in v1.6
 
 **By Phase:**
@@ -51,12 +51,13 @@ Progress: [██████████] 100%
 | 78. Progress Guarantees and Stall Diagnosis | 7/7 | Complete |
 | 79. Diagnostics and Support Bundle Forensics | 4/4 | Complete |
 | 80. Opt-In Soak UAT and Release Boundaries | 3/3 | Complete |
+| 81. Milestone Audit Traceability Closure | 0/4 | Planned |
 
 **Recent Trend:**
 
 - v1.5 completed Phases 60 through 67 and archived with a passed milestone audit.
 - v1.6 completed Phases 68 through 74 and shipped explicit opt-in mainnet full-sync completion evidence.
-- v1.7 completed with multi-day soak stability evidence, resource and disk bounds, corruption and lock recovery, progress guarantees, diagnostics, support bundles, opt-in UAT, and deterministic release-boundary checks.
+- v1.7 Phase 75 through Phase 80 implementation completed with multi-day soak stability evidence, resource and disk bounds, corruption and lock recovery, progress guarantees, diagnostics, support bundles, opt-in UAT, and deterministic release-boundary checks; Phase 81 is planned to close milestone audit traceability.
 - Public-network soak and real service-manager evidence remain opt-in UAT outside default deterministic verification.
 
 ## Accumulated Context

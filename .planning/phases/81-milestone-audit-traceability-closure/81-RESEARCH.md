@@ -412,12 +412,12 @@ Source: `gsd-tools.cjs` exposes `roadmap analyze`, `state`, and `verify lifecycl
 |---|---|---|---|
 | A1 | Research validity is estimated through 2026-07-19 or until Phase 81 execution changes target artifacts. [ASSUMED] | Metadata | Planner might rely on stale artifact state if Phase 81 files change before planning. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Which exact command should rerun the full milestone audit?**
    - What we know: `gsd-tools.cjs` exposes `audit-uat`, `roadmap analyze`, `verify lifecycle`, `requirements mark-complete`, and `milestone complete`, but no direct `milestone audit` subcommand was found in the local command listing. [VERIFIED: /Users/peterryszkiewicz/.codex/get-shit-done/bin/gsd-tools.cjs]
    - What's unclear: The prior `.planning/v1.7-MILESTONE-AUDIT.md` may have been produced by the `/gsd-audit-milestone` skill rather than a direct `gsd-tools.cjs` subcommand. [VERIFIED: .planning/v1.7-MILESTONE-AUDIT.md; available skills list]
-   - Recommendation: Plan deterministic orphan-closure scans and `roadmap analyze` as required local checks, then rerun the same GSD milestone-audit workflow used for the prior audit if available in the execution environment. [VERIFIED: 81-CONTEXT.md]
+   - Resolution: Use the exact GSD milestone audit command, `/gsd-audit-milestone`, for v1.7 if it is available in the executor environment. If it is not callable there, the deterministic fallback scans listed in Plan 81-04 are the authoritative rerun evidence for Phase 81, together with `gsd-tools roadmap analyze`, `gsd-tools state validate --raw`, and Task 2 full `bash scripts/verify.sh`. [VERIFIED: 81-CONTEXT.md; .planning/phases/81-milestone-audit-traceability-closure/81-04-PLAN.md]
 
 ## Environment Availability
 

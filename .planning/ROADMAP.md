@@ -172,7 +172,13 @@ Plans:
 **Depends on**: Phase 80
 **Requirements**: RES-05, RES-06, RES-07, RES-08, REC-05, REC-06, REC-07, REC-08
 **Gap Closure**: Closes orphaned requirement gaps from `.planning/v1.7-MILESTONE-AUDIT.md`.
-**Plans**: Pending
+**Plans**: 4 plans
+
+Plans:
+- [ ] 81-01-PLAN.md — Phase 76 RES verification artifact backfill.
+- [ ] 81-02-PLAN.md — Phase 77 REC verification artifact backfill.
+- [ ] 81-03-PLAN.md — Requirements, roadmap, project/state, and release-boundary traceability refresh.
+- [ ] 81-04-PLAN.md — Audit rerun, full verification, and Phase 81 closeout evidence.
 
 **Success Criteria**:
 1. Phase 76 verification evidence explicitly maps RES-05, RES-06, RES-07, and RES-08 to their resource-bound implementation and deterministic checker evidence.
@@ -192,7 +198,7 @@ Plans:
 | 78. Progress Guarantees and Stall Diagnosis | 7/7 | Complete    | 2026-06-17 |
 | 79. Diagnostics and Support Bundle Forensics | 4/4 | Complete   | 2026-06-17 |
 | 80. Opt-In Soak UAT and Release Boundaries | 3/3 | Complete   | 2026-06-18 |
-| 81. Milestone Audit Traceability Closure | 0/0 | Pending | - |
+| 81. Milestone Audit Traceability Closure | 0/4 | Pending | - |
 
 ## Completed Milestone Summaries
 
@@ -235,7 +241,7 @@ traceability.
 | v1.4 Mainnet IBD Convergence and Peer Compatibility | 6 | 15 | Shipped | 2026-06-05 |
 | v1.5 Unattended Mainnet Node Operation Readiness | 8 | 22 | Shipped | 2026-06-10 |
 | v1.6 Mainnet Full-Sync Completion | 7 | 27 | Shipped | 2026-06-14 |
-| v1.7 Full-Sync Soak and Recovery Hardening | 7 | 30 | Active | - |
+| v1.7 Full-Sync Soak and Recovery Hardening | 7 | 37 | Active | - |
 
 ## Next Step
 
