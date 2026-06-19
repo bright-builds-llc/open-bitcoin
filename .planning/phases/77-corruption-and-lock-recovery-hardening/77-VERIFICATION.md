@@ -2,6 +2,8 @@
 phase: 77-corruption-and-lock-recovery-hardening
 verified: 2026-06-16T03:57:06Z
 status: passed
+requirements: [REC-05, REC-06, REC-07, REC-08]
+verified_at: 2026-06-16T03:57:06Z
 generated_by: gsd-executor
 lifecycle_mode: yolo
 phase_lifecycle_id: 77-2026-06-15T18-33-03
@@ -45,6 +47,15 @@ execution.
   `packages/open-bitcoin-node/src/recovery/tests.rs` so
   `packages/open-bitcoin-node/src/recovery.rs` stays under the production Rust
   line limit while preserving the same test coverage.
+
+### Requirements Coverage
+
+| Requirement | Source Plan | Description | Status | Evidence |
+| --- | --- | --- | --- | --- |
+| REC-05 | 77-02, 77-03, 77-04, 77-06, 77-07 | Operator can detect lock contention, stale lock evidence, and concurrent datadir use with no hidden mutation of the source datadir. | SATISFIED | Phase 77 verification records `probe_fjall_lock`, missing datadir, no lock artifact, stale lock evidence, held-lock active contention, probe-only status/support paths, and no hidden source datadir mutation. |
+| REC-06 | 77-01, 77-02, 77-03, 77-04, 77-05, 77-06, 77-07 | Operator can detect corruption markers, schema mismatches, partial writes, and unreadable runtime stores with typed recovery categories. | SATISFIED | Phase 77 verification records `RecoveryEvidenceSnapshot`, recovery classifier coverage, storage-open failure, corruption marker, schema mismatch, partial write, lock-contention, and backend-failure typed recovery evidence. |
+| REC-07 | 77-01, 77-03, 77-04, 77-05, 77-06, 77-07 | Operator can generate recovery evidence that separates safe retry, read-only inspection, backup-then-rebuild, and stop-and-escalate guidance. | SATISFIED | Phase 77 verification records recovery action class, cause, next action, status/support/dashboard projection, soak report recovery evidence, and documentation for `safe_retry`, `read_only_inspection`, `backup_then_rebuild`, and `stop_and_escalate`. |
+| REC-08 | 77-01, 77-02, 77-03, 77-04, 77-05, 77-06, 77-07 | Contributor can run deterministic recovery tests for lock contention, stale lock, corruption marker, schema mismatch, partial write, and storage-open failure paths. | SATISFIED | Phase 77 verification records focused Cargo recovery tests, `bun test scripts/check-phase77-corruption-lock-recovery.test.ts`, `bun run scripts/check-phase77-corruption-lock-recovery.ts`, `bash scripts/test-run-live-mainnet-smoke.sh`, and a passed `bash scripts/verify.sh` run. |
 
 ## Focused Commands Passed
 

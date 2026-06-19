@@ -2,6 +2,8 @@
 phase: 76-disk-and-resource-bound-enforcement
 verified: 2026-06-15T17:37:38Z
 status: passed
+requirements: [RES-05, RES-06, RES-07, RES-08]
+verified_at: 2026-06-15T17:37:38Z
 generated_by: gsd-verifier
 lifecycle_mode: yolo
 phase_lifecycle_id: 76-2026-06-15T13-56-15
@@ -30,6 +32,15 @@ limits before storage pressure turns a soak into an unsafe or opaque failure.
   checklist, release-readiness, and catalog roots now reference Phase 76.
 - Deterministic checker: Phase 76 checker and checker tests are wired into
   `scripts/verify.sh`.
+
+### Requirements Coverage
+
+| Requirement | Source Plan | Description | Status | Evidence |
+| --- | --- | --- | --- | --- |
+| RES-05 | 76-01, 76-02, 76-05, 76-06 | Operator can see disk, file, cache, queue, peer, in-flight, log, metric, and support-bundle bounds before starting a long soak. | SATISFIED | Phase 76 verification records the shared `resource_bounds` contract with disk, file, cache, queue, peer, in-flight, log, metric, and support-bundle entries; status/dashboard rendering, docs, parity roots, and `scripts/check-phase76-resource-bounds.ts` passed. |
+| RES-06 | 76-01, 76-02, 76-04, 76-05, 76-06 | Operator can receive typed low-disk, disk-growth, compaction, log-retention, metrics-retention, and support-bundle size guidance during and after a soak. | SATISFIED | Phase 76 verification records 80% warning and 95% stop-required thresholds, compact `resource_bound_evidence`, Markdown `## Resource Bound Evidence`, support-bundle size pressure, and passed focused resource-bound tests. |
+| RES-07 | 76-01, 76-03, 76-04, 76-05, 76-06 | Operator can stop or pause a soak before unsafe storage pressure while preserving durable progress and an actionable next step. | SATISFIED | Phase 76 verification records soak preflight refusal before ledger mutation, runtime checkpoint resource-bound state, pressure labels, next action, and `resource_stop` source evidence. |
+| RES-08 | 76-01, 76-02, 76-03, 76-04, 76-05, 76-06 | Contributor can verify resource-bound behavior with deterministic fixtures that do not require a public peer, real service manager, or large local disk allocation. | SATISFIED | Phase 76 verification records focused Cargo tests, `bun test scripts/check-phase76-resource-bounds.test.ts`, `bun run scripts/check-phase76-resource-bounds.ts`, and a passed `bash scripts/verify.sh` run. |
 
 ## Commands Passed Before Full Verification
 

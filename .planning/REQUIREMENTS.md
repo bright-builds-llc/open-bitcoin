@@ -9,24 +9,24 @@ Requirements for v1.7 Full-Sync Soak and Recovery Hardening. Each requirement ma
 
 ### Multi-Day Soak Stability
 
-- [ ] **SOAK-01**: Operator can run an explicit opt-in full-sync soak for multiple days with durable run identity, start and end checkpoints, and resumable report state.
-- [ ] **SOAK-02**: Operator can bound a soak by elapsed time, target height, datadir, network, peer policy, disk budget, and stop condition without changing default verification.
-- [ ] **SOAK-03**: Operator can distinguish clean completion, diagnosed blocker, operator stop, resource stop, recovery stop, and unexpected termination in soak evidence.
-- [ ] **SOAK-04**: Contributor can replay deterministic synthetic soak scenarios that exercise long-run control flow without public-network access or wall-clock multi-day tests.
+- [x] **SOAK-01**: Operator can run an explicit opt-in full-sync soak for multiple days with durable run identity, start and end checkpoints, and resumable report state.
+- [x] **SOAK-02**: Operator can bound a soak by elapsed time, target height, datadir, network, peer policy, disk budget, and stop condition without changing default verification.
+- [x] **SOAK-03**: Operator can distinguish clean completion, diagnosed blocker, operator stop, resource stop, recovery stop, and unexpected termination in soak evidence.
+- [x] **SOAK-04**: Contributor can replay deterministic synthetic soak scenarios that exercise long-run control flow without public-network access or wall-clock multi-day tests.
 
 ### Disk And Resource Bounds
 
-- [ ] **RES-05**: Operator can see disk, file, cache, queue, peer, in-flight, log, metric, and support-bundle bounds before starting a long soak.
-- [ ] **RES-06**: Operator can receive typed low-disk, disk-growth, compaction, log-retention, metrics-retention, and support-bundle size guidance during and after a soak.
-- [ ] **RES-07**: Operator can stop or pause a soak before unsafe storage pressure while preserving durable progress and an actionable next step.
-- [ ] **RES-08**: Contributor can verify resource-bound behavior with deterministic fixtures that do not require a public peer, real service manager, or large local disk allocation.
+- [x] **RES-05**: Operator can see disk, file, cache, queue, peer, in-flight, log, metric, and support-bundle bounds before starting a long soak.
+- [x] **RES-06**: Operator can receive typed low-disk, disk-growth, compaction, log-retention, metrics-retention, and support-bundle size guidance during and after a soak.
+- [x] **RES-07**: Operator can stop or pause a soak before unsafe storage pressure while preserving durable progress and an actionable next step.
+- [x] **RES-08**: Contributor can verify resource-bound behavior with deterministic fixtures that do not require a public peer, real service manager, or large local disk allocation.
 
 ### Corruption And Lock Recovery
 
-- [ ] **REC-05**: Operator can detect lock contention, stale lock evidence, and concurrent datadir use with no hidden mutation of the source datadir.
-- [ ] **REC-06**: Operator can detect corruption markers, schema mismatches, partial writes, and unreadable runtime stores with typed recovery categories.
-- [ ] **REC-07**: Operator can generate recovery evidence that separates safe retry, read-only inspection, backup-then-rebuild, and stop-and-escalate guidance.
-- [ ] **REC-08**: Contributor can run deterministic recovery tests for lock contention, stale lock, corruption marker, schema mismatch, partial write, and storage-open failure paths.
+- [x] **REC-05**: Operator can detect lock contention, stale lock evidence, and concurrent datadir use with no hidden mutation of the source datadir.
+- [x] **REC-06**: Operator can detect corruption markers, schema mismatches, partial writes, and unreadable runtime stores with typed recovery categories.
+- [x] **REC-07**: Operator can generate recovery evidence that separates safe retry, read-only inspection, backup-then-rebuild, and stop-and-escalate guidance.
+- [x] **REC-08**: Contributor can run deterministic recovery tests for lock contention, stale lock, corruption marker, schema mismatch, partial write, and storage-open failure paths.
 
 ### Progress Guarantees And Stall Diagnosis
 
@@ -37,17 +37,17 @@ Requirements for v1.7 Full-Sync Soak and Recovery Hardening. Each requirement ma
 
 ### Diagnostics And Support Bundles
 
-- [ ] **DIAG-01**: Operator can generate a redacted "what happened" support bundle that includes the soak timeline, checkpoint chain, resource pressure, recovery events, peer outcomes, and final verdict.
-- [ ] **DIAG-02**: Operator can compare CLI status, dashboard status, RPC status, metrics, structured logs, live-smoke reports, and support bundles against one shared diagnostic contract.
-- [ ] **DIAG-03**: Operator can read concise failure narratives that identify the likely cause, evidence basis, next action, and whether the run proved soak stability, diagnosed a blocker, or stopped inconclusively.
-- [ ] **DIAG-04**: Contributor can verify support-bundle redaction, size bounds, timeline ordering, and cross-surface consistency through deterministic checks.
+- [x] **DIAG-01**: Operator can generate a redacted "what happened" support bundle that includes the soak timeline, checkpoint chain, resource pressure, recovery events, peer outcomes, and final verdict.
+- [x] **DIAG-02**: Operator can compare CLI status, dashboard status, RPC status, metrics, structured logs, live-smoke reports, and support bundles against one shared diagnostic contract.
+- [x] **DIAG-03**: Operator can read concise failure narratives that identify the likely cause, evidence basis, next action, and whether the run proved soak stability, diagnosed a blocker, or stopped inconclusively.
+- [x] **DIAG-04**: Contributor can verify support-bundle redaction, size bounds, timeline ordering, and cross-surface consistency through deterministic checks.
 
 ### Opt-In UAT, Verification, And Release Boundaries
 
-- [ ] **VER-05**: Contributor can run `bash scripts/verify.sh` without internet access, public peers, real service managers, multi-day sleeps, current-tip timing, or large disk consumption.
-- [ ] **VER-06**: Operator can run copy-pasteable repo-local Cargo and Bazel commands for opt-in multi-day soak, bounded recovery drills, support-bundle generation, and post-failure diagnosis.
-- [ ] **VER-07**: Contributor can audit parity breadcrumbs, fixtures, support bundle schemas, deterministic checkers, and operator docs for every new v1.7 source, test, and evidence surface.
-- [ ] **REL-04**: Contributor can verify v1.7 docs and status surfaces describe only explicit opt-in soak and recovery hardening, not broad production-node readiness.
+- [x] **VER-05**: Contributor can run `bash scripts/verify.sh` without internet access, public peers, real service managers, multi-day sleeps, current-tip timing, or large disk consumption.
+- [x] **VER-06**: Operator can run copy-pasteable repo-local Cargo and Bazel commands for opt-in multi-day soak, bounded recovery drills, support-bundle generation, and post-failure diagnosis.
+- [x] **VER-07**: Contributor can audit parity breadcrumbs, fixtures, support bundle schemas, deterministic checkers, and operator docs for every new v1.7 source, test, and evidence surface.
+- [x] **REL-04**: Contributor can verify v1.7 docs and status surfaces describe only explicit opt-in soak and recovery hardening, not broad production-node readiness.
 
 ## Future Requirements
 
@@ -97,36 +97,37 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SOAK-01 | Phase 75 | Pending |
-| SOAK-02 | Phase 75 | Pending |
-| SOAK-03 | Phase 75 | Pending |
-| SOAK-04 | Phase 75 | Pending |
-| RES-05 | Phase 81 | Pending |
-| RES-06 | Phase 81 | Pending |
-| RES-07 | Phase 81 | Pending |
-| RES-08 | Phase 81 | Pending |
-| REC-05 | Phase 81 | Pending |
-| REC-06 | Phase 81 | Pending |
-| REC-07 | Phase 81 | Pending |
-| REC-08 | Phase 81 | Pending |
+| SOAK-01 | Phase 75 | Complete |
+| SOAK-02 | Phase 75 | Complete |
+| SOAK-03 | Phase 75 | Complete |
+| SOAK-04 | Phase 75 | Complete |
+| RES-05 | Phase 76 | Complete |
+| RES-06 | Phase 76 | Complete |
+| RES-07 | Phase 76 | Complete |
+| RES-08 | Phase 76 | Complete |
+| REC-05 | Phase 77 | Complete |
+| REC-06 | Phase 77 | Complete |
+| REC-07 | Phase 77 | Complete |
+| REC-08 | Phase 77 | Complete |
 | PROG-01 | Phase 78 | Complete |
 | PROG-02 | Phase 78 | Complete |
 | PROG-03 | Phase 78 | Complete |
 | PROG-04 | Phase 78 | Complete |
-| DIAG-01 | Phase 79 | Pending |
-| DIAG-02 | Phase 79 | Pending |
-| DIAG-03 | Phase 79 | Pending |
-| DIAG-04 | Phase 79 | Pending |
-| VER-05 | Phase 80 | Pending |
-| VER-06 | Phase 80 | Pending |
-| VER-07 | Phase 80 | Pending |
-| REL-04 | Phase 80 | Pending |
+| DIAG-01 | Phase 79 | Complete |
+| DIAG-02 | Phase 79 | Complete |
+| DIAG-03 | Phase 79 | Complete |
+| DIAG-04 | Phase 79 | Complete |
+| VER-05 | Phase 80 | Complete |
+| VER-06 | Phase 80 | Complete |
+| VER-07 | Phase 80 | Complete |
+| REL-04 | Phase 80 | Complete |
 
 **Coverage:**
 - v1.7 requirements: 24 total
 - Mapped to phases: 24
+- Complete: 24
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-06-14*
-*Last updated: 2026-06-19 after v1.7 milestone gap-closure planning*
+*Last updated: 2026-06-19 during Phase 81 audit traceability closure after RES/REC verification backfill*

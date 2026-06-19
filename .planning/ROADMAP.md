@@ -9,9 +9,9 @@
 - ✅ **v1.4 Mainnet IBD Convergence and Peer Compatibility** - Phases 54 through 59 (shipped 2026-06-05). Archive: [v1.4-ROADMAP.md](milestones/v1.4-ROADMAP.md)
 - ✅ **v1.5 Unattended Mainnet Node Operation Readiness** - Phases 60 through 67 (shipped 2026-06-10). Archive: [v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
 - ✅ **v1.6 Mainnet Full-Sync Completion** - Phases 68 through 74 (shipped 2026-06-14). Archive: [v1.6-ROADMAP.md](milestones/v1.6-ROADMAP.md)
-- **v1.7 Full-Sync Soak and Recovery Hardening** - Phases 75 through 81 (active). Requirements: 24
+- ✅ **v1.7 Full-Sync Soak and Recovery Hardening** - Phases 75 through 81 (shipped 2026-06-19). Requirements: 24
 
-## Current Milestone: v1.7 Full-Sync Soak and Recovery Hardening
+## Completed Milestone: v1.7 Full-Sync Soak and Recovery Hardening
 
 v1.7 Full-Sync Soak and Recovery Hardening turns the v1.6 explicit opt-in
 sync-to-tip claim into a more durable long-run operator-review workflow. The
@@ -39,7 +39,7 @@ delete those phase directories.
 - [x] **Phase 78: Progress Guarantees and Stall Diagnosis** - Ensure long-run progress is credited only for validated durable work and stalled paths produce actionable typed diagnosis. (completed 2026-06-17)
 - [x] **Phase 79: Diagnostics and Support Bundle Forensics** - Produce redacted "what happened" support evidence that reconstructs timeline, resource pressure, peer outcomes, recovery events, and final verdict.
 - [x] **Phase 80: Opt-In Soak UAT and Release Boundaries** - Keep default verification deterministic while documenting opt-in multi-day soak commands and guarding the scoped v1.7 claim.
-- [ ] **Phase 81: Milestone Audit Traceability Closure** - Close v1.7 audit blockers by making Phase 76 and Phase 77 requirement evidence explicit and refreshing stale milestone traceability.
+- [x] **Phase 81: Milestone Audit Traceability Closure** - Close v1.7 audit blockers by making Phase 76 and Phase 77 requirement evidence explicit and refreshing stale milestone traceability.
 
 ## Phase Details
 
@@ -175,15 +175,15 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 81-01-PLAN.md — Phase 76 RES verification artifact backfill.
-- [ ] 81-02-PLAN.md — Phase 77 REC verification artifact backfill.
-- [ ] 81-03-PLAN.md — Requirements, roadmap, project/state, and release-boundary traceability refresh.
-- [ ] 81-04-PLAN.md — Audit rerun, full verification, and Phase 81 closeout evidence.
+- [x] 81-01-PLAN.md — Phase 76 RES verification artifact backfill.
+- [x] 81-02-PLAN.md — Phase 77 REC verification artifact backfill.
+- [x] 81-03-PLAN.md — Requirements, roadmap, project/state, and release-boundary traceability refresh.
+- [x] 81-04-PLAN.md — Audit rerun, full verification, and Phase 81 closeout evidence.
 
 **Success Criteria**:
 1. Phase 76 verification evidence explicitly maps RES-05, RES-06, RES-07, and RES-08 to their resource-bound implementation and deterministic checker evidence.
 2. Phase 77 verification evidence explicitly maps REC-05, REC-06, REC-07, and REC-08 to their recovery implementation and deterministic checker evidence.
-3. `.planning/REQUIREMENTS.md` and `.planning/ROADMAP.md` no longer disagree with completed Phase 75 through Phase 80 evidence except for Phase 81's pending gap-closure work.
+3. `.planning/REQUIREMENTS.md` and `.planning/ROADMAP.md` reflect completed Phase 75 through Phase 81 evidence without stale RES/REC gap-closure status.
 4. The v1.7 milestone audit reruns without orphaned RES/REC requirement gaps.
 
 ## Progress
@@ -198,7 +198,7 @@ Plans:
 | 78. Progress Guarantees and Stall Diagnosis | 7/7 | Complete    | 2026-06-17 |
 | 79. Diagnostics and Support Bundle Forensics | 4/4 | Complete   | 2026-06-17 |
 | 80. Opt-In Soak UAT and Release Boundaries | 3/3 | Complete   | 2026-06-18 |
-| 81. Milestone Audit Traceability Closure | 0/4 | Pending | - |
+| 81. Milestone Audit Traceability Closure | 4/4 | Complete   | 2026-06-19 |
 
 ## Completed Milestone Summaries
 
@@ -241,12 +241,12 @@ traceability.
 | v1.4 Mainnet IBD Convergence and Peer Compatibility | 6 | 15 | Shipped | 2026-06-05 |
 | v1.5 Unattended Mainnet Node Operation Readiness | 8 | 22 | Shipped | 2026-06-10 |
 | v1.6 Mainnet Full-Sync Completion | 7 | 27 | Shipped | 2026-06-14 |
-| v1.7 Full-Sync Soak and Recovery Hardening | 7 | 37 | Active | - |
+| v1.7 Full-Sync Soak and Recovery Hardening | 7 | 37 | Shipped | 2026-06-19 |
 
 ## Next Step
 
-Plan Phase 81:
+Start the next milestone:
 
 ```bash
-/gsd-plan-phase 81
+/gsd-new-milestone
 ```
