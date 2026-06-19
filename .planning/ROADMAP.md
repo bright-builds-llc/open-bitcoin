@@ -9,7 +9,7 @@
 - ✅ **v1.4 Mainnet IBD Convergence and Peer Compatibility** - Phases 54 through 59 (shipped 2026-06-05). Archive: [v1.4-ROADMAP.md](milestones/v1.4-ROADMAP.md)
 - ✅ **v1.5 Unattended Mainnet Node Operation Readiness** - Phases 60 through 67 (shipped 2026-06-10). Archive: [v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
 - ✅ **v1.6 Mainnet Full-Sync Completion** - Phases 68 through 74 (shipped 2026-06-14). Archive: [v1.6-ROADMAP.md](milestones/v1.6-ROADMAP.md)
-- **v1.7 Full-Sync Soak and Recovery Hardening** - Phases 75 through 80 (active). Requirements: 24
+- **v1.7 Full-Sync Soak and Recovery Hardening** - Phases 75 through 81 (active). Requirements: 24
 
 ## Current Milestone: v1.7 Full-Sync Soak and Recovery Hardening
 
@@ -38,7 +38,8 @@ delete those phase directories.
 - [x] **Phase 77: Corruption and Lock Recovery Hardening** - Diagnose lock contention, stale locks, corruption markers, schema mismatches, partial writes, and storage-open failures without hidden mutation. (completed 2026-06-16)
 - [x] **Phase 78: Progress Guarantees and Stall Diagnosis** - Ensure long-run progress is credited only for validated durable work and stalled paths produce actionable typed diagnosis. (completed 2026-06-17)
 - [x] **Phase 79: Diagnostics and Support Bundle Forensics** - Produce redacted "what happened" support evidence that reconstructs timeline, resource pressure, peer outcomes, recovery events, and final verdict.
-- [ ] **Phase 80: Opt-In Soak UAT and Release Boundaries** - Keep default verification deterministic while documenting opt-in multi-day soak commands and guarding the scoped v1.7 claim.
+- [x] **Phase 80: Opt-In Soak UAT and Release Boundaries** - Keep default verification deterministic while documenting opt-in multi-day soak commands and guarding the scoped v1.7 claim.
+- [ ] **Phase 81: Milestone Audit Traceability Closure** - Close v1.7 audit blockers by making Phase 76 and Phase 77 requirement evidence explicit and refreshing stale milestone traceability.
 
 ## Phase Details
 
@@ -152,7 +153,12 @@ Plans:
 **Goal**: Contributors keep default verification deterministic while operators get copy-pasteable long-run UAT commands and reviewers can audit the scoped v1.7 claim.
 **Depends on**: Phase 79
 **Requirements**: VER-05, VER-06, VER-07, REL-04
-**Plans**: Pending
+**Plans**: 3/3 plans complete
+
+Plans:
+- [x] 80-01-PLAN.md — Focused v1.7 opt-in UAT matrix and README release posture.
+- [x] 80-02-PLAN.md — Existing parity roots and release-boundary closeout evidence.
+- [x] 80-03-PLAN.md — Phase 80 deterministic checker, verifier wiring, and verification evidence.
 
 **Success Criteria**:
 1. `bash scripts/verify.sh` runs without internet access, public peers, real service managers, multi-day sleeps, current-tip timing, or large disk consumption.
@@ -160,9 +166,23 @@ Plans:
 3. Parity breadcrumbs, fixtures, support-bundle schemas, deterministic checkers, and operator docs cover every new v1.7 source, test, and evidence surface.
 4. v1.7 docs and status surfaces describe only explicit opt-in soak and recovery hardening, not broad production-node readiness.
 
+### Phase 81: Milestone Audit Traceability Closure
+
+**Goal**: The v1.7 milestone audit can pass because resource-bound and recovery requirements are explicitly covered by verification artifacts, stale traceability is refreshed, and the remaining release-boundary wording reflects implemented Phase 80 evidence.
+**Depends on**: Phase 80
+**Requirements**: RES-05, RES-06, RES-07, RES-08, REC-05, REC-06, REC-07, REC-08
+**Gap Closure**: Closes orphaned requirement gaps from `.planning/v1.7-MILESTONE-AUDIT.md`.
+**Plans**: Pending
+
+**Success Criteria**:
+1. Phase 76 verification evidence explicitly maps RES-05, RES-06, RES-07, and RES-08 to their resource-bound implementation and deterministic checker evidence.
+2. Phase 77 verification evidence explicitly maps REC-05, REC-06, REC-07, and REC-08 to their recovery implementation and deterministic checker evidence.
+3. `.planning/REQUIREMENTS.md` and `.planning/ROADMAP.md` no longer disagree with completed Phase 75 through Phase 80 evidence except for Phase 81's pending gap-closure work.
+4. The v1.7 milestone audit reruns without orphaned RES/REC requirement gaps.
+
 ## Progress
 
-**Execution Order:** Phase 75 -> 76 -> 77 -> 78 -> 79 -> 80
+**Execution Order:** Phase 75 -> 76 -> 77 -> 78 -> 79 -> 80 -> 81
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -172,6 +192,7 @@ Plans:
 | 78. Progress Guarantees and Stall Diagnosis | 7/7 | Complete    | 2026-06-17 |
 | 79. Diagnostics and Support Bundle Forensics | 4/4 | Complete   | 2026-06-17 |
 | 80. Opt-In Soak UAT and Release Boundaries | 3/3 | Complete   | 2026-06-18 |
+| 81. Milestone Audit Traceability Closure | 0/0 | Pending | - |
 
 ## Completed Milestone Summaries
 
@@ -214,12 +235,12 @@ traceability.
 | v1.4 Mainnet IBD Convergence and Peer Compatibility | 6 | 15 | Shipped | 2026-06-05 |
 | v1.5 Unattended Mainnet Node Operation Readiness | 8 | 22 | Shipped | 2026-06-10 |
 | v1.6 Mainnet Full-Sync Completion | 7 | 27 | Shipped | 2026-06-14 |
-| v1.7 Full-Sync Soak and Recovery Hardening | 6 | 30 | Active | - |
+| v1.7 Full-Sync Soak and Recovery Hardening | 7 | 30 | Active | - |
 
 ## Next Step
 
-Plan Phase 80:
+Plan Phase 81:
 
 ```bash
-/gsd-plan-phase 80
+/gsd-plan-phase 81
 ```

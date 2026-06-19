@@ -23,10 +23,10 @@ Requirements for v1.7 Full-Sync Soak and Recovery Hardening. Each requirement ma
 
 ### Corruption And Lock Recovery
 
-- [x] **REC-05**: Operator can detect lock contention, stale lock evidence, and concurrent datadir use with no hidden mutation of the source datadir.
-- [x] **REC-06**: Operator can detect corruption markers, schema mismatches, partial writes, and unreadable runtime stores with typed recovery categories.
-- [x] **REC-07**: Operator can generate recovery evidence that separates safe retry, read-only inspection, backup-then-rebuild, and stop-and-escalate guidance.
-- [x] **REC-08**: Contributor can run deterministic recovery tests for lock contention, stale lock, corruption marker, schema mismatch, partial write, and storage-open failure paths.
+- [ ] **REC-05**: Operator can detect lock contention, stale lock evidence, and concurrent datadir use with no hidden mutation of the source datadir.
+- [ ] **REC-06**: Operator can detect corruption markers, schema mismatches, partial writes, and unreadable runtime stores with typed recovery categories.
+- [ ] **REC-07**: Operator can generate recovery evidence that separates safe retry, read-only inspection, backup-then-rebuild, and stop-and-escalate guidance.
+- [ ] **REC-08**: Contributor can run deterministic recovery tests for lock contention, stale lock, corruption marker, schema mismatch, partial write, and storage-open failure paths.
 
 ### Progress Guarantees And Stall Diagnosis
 
@@ -101,14 +101,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SOAK-02 | Phase 75 | Pending |
 | SOAK-03 | Phase 75 | Pending |
 | SOAK-04 | Phase 75 | Pending |
-| RES-05 | Phase 76 | Pending |
-| RES-06 | Phase 76 | Pending |
-| RES-07 | Phase 76 | Pending |
-| RES-08 | Phase 76 | Pending |
-| REC-05 | Phase 77 | Complete |
-| REC-06 | Phase 77 | Complete |
-| REC-07 | Phase 77 | Complete |
-| REC-08 | Phase 77 | Complete |
+| RES-05 | Phase 81 | Pending |
+| RES-06 | Phase 81 | Pending |
+| RES-07 | Phase 81 | Pending |
+| RES-08 | Phase 81 | Pending |
+| REC-05 | Phase 81 | Pending |
+| REC-06 | Phase 81 | Pending |
+| REC-07 | Phase 81 | Pending |
+| REC-08 | Phase 81 | Pending |
 | PROG-01 | Phase 78 | Complete |
 | PROG-02 | Phase 78 | Complete |
 | PROG-03 | Phase 78 | Complete |
@@ -129,4 +129,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-06-14*
-*Last updated: 2026-06-14 after v1.7 milestone initialization*
+*Last updated: 2026-06-19 after v1.7 milestone gap-closure planning*
