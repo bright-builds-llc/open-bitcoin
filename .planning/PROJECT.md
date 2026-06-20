@@ -12,15 +12,15 @@ When a behavior is in scope, Open Bitcoin must behave like the pinned Knots base
 
 ## Current State
 
-v1.0 Headless Parity shipped on 2026-04-26, v1.1 Operator Runtime and Real-Network Sync shipped on 2026-04-30, v1.2 Full Mainnet Network Syncing shipped on 2026-05-23, v1.3 Public Mainnet Sync Proof and Node Hardening shipped on 2026-06-02, v1.4 Mainnet IBD Convergence and Peer Compatibility shipped on 2026-06-05, v1.5 Unattended Mainnet Node Operation Readiness shipped on 2026-06-10, v1.6 Mainnet Full-Sync Completion shipped on 2026-06-14, and v1.7 Full-Sync Soak and Recovery Hardening shipped on 2026-06-19 after Phase 81 audit traceability closure.
+v1.0 Headless Parity shipped on 2026-04-26, v1.1 Operator Runtime and Real-Network Sync shipped on 2026-04-30, v1.2 Full Mainnet Network Syncing shipped on 2026-05-23, v1.3 Public Mainnet Sync Proof and Node Hardening shipped on 2026-06-02, v1.4 Mainnet IBD Convergence and Peer Compatibility shipped on 2026-06-05, v1.5 Unattended Mainnet Node Operation Readiness shipped on 2026-06-10, v1.6 Mainnet Full-Sync Completion shipped on 2026-06-14, and v1.7 Full-Sync Soak and Recovery Hardening was completed on 2026-06-19 after Phase 81 audit traceability closure and formally archived on 2026-06-20.
 
 The repository now includes durable Fjall-backed runtime storage, real-network sync foundations, bounded metrics and structured logs, the `open-bitcoin` operator binary, launchd/systemd service flows, a Ratatui dashboard, practical wallet runtime workflows, an auditable dry-run migration surface for existing Core or Knots installs, daemon-owned opt-in mainnet IBD review, resilient outbound peer lifecycle behavior, resource bounds, durable recovery, invalid-data handling, truth-aligned sync surfaces, live-smoke reporting, redacted support evidence, public peer compatibility diagnosis, validated header progress, bounded block download/connect progress, same-datadir restart/resume evidence, unattended sync loop control, service-supervised restart/resume evidence, compatibility harness operator reports, sync-to-tip evidence, stay-current evidence, multi-day soak evidence, bounded recovery diagnosis, support-bundle forensics, explicit v1.3 through v1.7 release-boundary evidence, and deterministic guards that keep public-network checks outside default verification.
 
-Milestone archives live under `.planning/milestones/`, including shipped roadmap and requirements archives, final audit artifacts where they exist, and raw phase histories for v1.1 and v1.2. Raw v1.0, v1.3, v1.4, v1.5, v1.6, and v1.7 phase histories remain in `.planning/phases/` for parity and UAT traceability. One residual risk remains from the v1.1 audit: dashboard pseudoterminal repaint and raw-input behavior is still a manual validation surface rather than an end-to-end automated regression. v1.2 did not create a dedicated milestone audit artifact; Phase 40 closeout and Phase 41 security audit, verification, and UAT are the closeout evidence trail. v1.3 archived with a `ready_for_archive` milestone audit and closes public-network evidence through fresh diagnosed-blocker evidence rather than a successful live-progress claim. v1.4 archived with a `tech_debt` milestone audit: implementation and integration coverage passed, while planning traceability was corrected during archive prep and a future operator wrapper around the compatibility harness remained optional cleanup. v1.5 archived with a `passed` milestone audit and no open requirement, integration, flow, or current tech-debt gaps. v1.6 archived as source-built, explicit opt-in full-sync completion evidence. v1.7 shipped after Phase 81 closed RES/REC verification traceability and refreshed stale milestone state, with production-node readiness, inbound serving, relay, production-funds wallet use, migration apply mode, packaging, hosted dashboards, GUI work, public-network CI, automatic support-bundle upload, destructive repair, and release-blocking live sync still deferred.
+Milestone archives live under `.planning/milestones/`, including shipped roadmap and requirements archives, final audit artifacts where they exist, and raw phase histories for v1.1 and v1.2. Raw v1.0, v1.3, v1.4, v1.5, v1.6, and v1.7 phase histories remain in `.planning/phases/` for parity and UAT traceability. One residual risk remains from the v1.1 audit: dashboard pseudoterminal repaint and raw-input behavior is still a manual validation surface rather than an end-to-end automated regression. v1.2 did not create a dedicated milestone audit artifact; Phase 40 closeout and Phase 41 security audit, verification, and UAT are the closeout evidence trail. v1.3 archived with a `ready_for_archive` milestone audit and closes public-network evidence through fresh diagnosed-blocker evidence rather than a successful live-progress claim. v1.4 archived with a `tech_debt` milestone audit: implementation and integration coverage passed, while planning traceability was corrected during archive prep and a future operator wrapper around the compatibility harness remained optional cleanup. v1.5 archived with a `passed` milestone audit and no open requirement, integration, flow, or current tech-debt gaps. v1.6 archived as source-built, explicit opt-in full-sync completion evidence. v1.7 archived with a `passed` milestone audit after Phase 81 closed RES/REC verification traceability and refreshed stale milestone state, with production-node readiness, inbound serving, relay, production-funds wallet use, migration apply mode, packaging, hosted dashboards, GUI work, public-network CI, automatic support-bundle upload, destructive repair, and release-blocking live sync still deferred.
 
 ## Completed Milestone: v1.7 Full-Sync Soak and Recovery Hardening
 
-**Status:** Completed on 2026-06-19 after Phase 81 audit traceability closure.
+**Status:** Shipped and archived on 2026-06-20 after Phase 81 audit traceability closure.
 
 **Goal:** Make multi-day explicit opt-in full-sync runs diagnosable, bounded, restart-safe, and supportable when they fail or degrade.
 
@@ -43,11 +43,11 @@ Milestone archives live under `.planning/milestones/`, including shipped roadmap
 - ✓ v1.4 validated all 22 mainnet IBD convergence and peer-compatibility requirements across compatibility diagnosis, header progress, block download/connect progress, same-datadir restart/resume evidence, operator evidence, support redaction, threat modeling, and release-boundary documentation. Archive: `.planning/milestones/v1.4-REQUIREMENTS.md`
 - ✓ v1.5 validated all 23 unattended mainnet node operation readiness requirements across unattended loop control, resource/recovery taxonomy, sync truth surfaces, service lifecycle, service restart/resume evidence, support review docs, compatibility wrapper reporting, and deterministic release-boundary documentation. Archive: `.planning/milestones/v1.5-REQUIREMENTS.md`
 - ✓ v1.6 validated all 26 mainnet full-sync completion requirements across active-chain validation, tip tracking, stay-current behavior, reorg and peer recovery, resource/restart evidence, observability, support evidence, opt-in UAT, deterministic verification, and release-boundary documentation. Archive: `.planning/milestones/v1.6-REQUIREMENTS.md`
-- ✓ v1.7 validated all 24 full-sync soak and recovery hardening requirements across multi-day soak evidence, resource bounds, recovery diagnosis, progress guarantees, support-bundle forensics, opt-in UAT, deterministic verification, parity roots, scoped release-boundary documentation, and Phase 81 audit traceability closure.
+- ✓ v1.7 validated all 24 full-sync soak and recovery hardening requirements across multi-day soak evidence, resource bounds, recovery diagnosis, progress guarantees, support-bundle forensics, opt-in UAT, deterministic verification, parity roots, scoped release-boundary documentation, and Phase 81 audit traceability closure. Archive: `.planning/milestones/v1.7-REQUIREMENTS.md`
 
 ### Active
 
-- No active milestone requirements are open; v1.7 shipped on 2026-06-19 after Phase 81 audit traceability closure.
+- No active milestone requirements are open; v1.7 is archived and the next milestone should start with fresh requirements.
 
 ### Out of Scope
 
@@ -63,7 +63,7 @@ Milestone archives live under `.planning/milestones/`, including shipped roadmap
 
 - The repository has first-party pure-core domain and codec crates under `packages/`, plus parity catalog artifacts under `docs/parity/`.
 - Bitcoin Knots `29.3.knots20260210` is the pinned behavioral reference baseline.
-- The current codebase totals 108,228 first-party lines, including 50,849 production Rust lines after the post-v1.5 CI stability fix.
+- The current codebase totals 136,450 tracked first-party lines, including 51,585 production Rust lines in the final v1.7 archive LOC report.
 - Repo-native verification remains centered on `bash scripts/verify.sh`, including Rust checks, parity breadcrumbs, benchmark smoke and report validation, and Bazel smoke builds.
 - Bun is a pinned runtime for repo-owned TypeScript automation, not a package-install surface; there is no `package.json` or `bun install` bootstrap step.
 - Operator-facing surfaces should stay quiet, information-dense, and work-focused: terminal dashboard controls, status output, onboarding copy, service actions, and migration guidance should help operators make decisions without marketing language.
@@ -131,9 +131,10 @@ This document evolves at phase transitions and milestone boundaries.
 - v1.4 archive: `.planning/milestones/v1.4-ROADMAP.md`, `.planning/milestones/v1.4-REQUIREMENTS.md`, `.planning/milestones/v1.4-MILESTONE-AUDIT.md`
 - v1.5 archive: `.planning/milestones/v1.5-ROADMAP.md`, `.planning/milestones/v1.5-REQUIREMENTS.md`, `.planning/milestones/v1.5-MILESTONE-AUDIT.md`
 - v1.6 archive: `.planning/milestones/v1.6-ROADMAP.md`, `.planning/milestones/v1.6-REQUIREMENTS.md`
-- Raw phase execution history for v1.0, v1.3, v1.4, v1.5, and v1.6 remains in `.planning/phases/`, while the v1.1 and v1.2 phase histories live in `.planning/milestones/`.
+- v1.7 archive: `.planning/milestones/v1.7-ROADMAP.md`, `.planning/milestones/v1.7-REQUIREMENTS.md`, `.planning/milestones/v1.7-MILESTONE-AUDIT.md`
+- Raw phase execution history for v1.0, v1.3, v1.4, v1.5, v1.6, and v1.7 remains in `.planning/phases/`, while the v1.1 and v1.2 phase histories live in `.planning/milestones/`.
 
 </details>
 
 ---
-*Last updated: 2026-06-19 after Phase 81 audit traceability closure*
+*Last updated: 2026-06-20 after v1.7 milestone archive*

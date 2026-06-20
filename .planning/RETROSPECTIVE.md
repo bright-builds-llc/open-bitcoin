@@ -226,6 +226,52 @@
 
 ---
 
+## Milestone: v1.7 - Full-Sync Soak and Recovery Hardening
+
+**Shipped:** 2026-06-20
+**Phases:** 7 | **Plans:** 37 | **Counted summary tasks:** 65
+
+### What Was Built
+
+- Durable, datadir-owned soak run identity, ledger, report projection, resume behavior, and typed stop reasons for explicit opt-in multi-day full-sync review.
+- Resource-bound contracts, preflight/runtime enforcement, support projection, dashboard/status rendering, docs, and deterministic checker coverage for long-run disk and evidence pressure.
+- Non-mutating lock and corruption recovery diagnosis across status, support, dashboard, live-smoke, and soak report surfaces.
+- Progress-credit and stall-diagnosis contracts that prevent false progress and expose useful work, peer contribution, no-progress thresholds, and stalled subsystems.
+- Redacted support-bundle forensics for soak timelines, checkpoint chains, resource pressure, recovery events, peer outcomes, and final verdicts.
+- Opt-in UAT and release-boundary docs plus deterministic Phase 75 through Phase 80 checker coverage, followed by Phase 81 audit traceability closure.
+
+### What Worked
+
+- Keeping public-network soak evidence opt-in let the milestone add long-run operator workflows without weakening deterministic local verification.
+- Shared contracts for resource, recovery, progress, and forensics kept status, dashboard, support, live-smoke, and soak evidence aligned.
+- The milestone audit caught traceability gaps before archive, and Phase 81 closed them without changing the shipped runtime behavior.
+
+### What Was Inefficient
+
+- Phase 76 and Phase 77 verification artifacts originally described the right evidence but did not name every RES/REC requirement ID, forcing a late traceability closure phase.
+- Automated accomplishment extraction pulled in code-review findings and noisy multi-line summaries, so `MILESTONES.md` still needed manual curation.
+- The archive helper created the v1.7 archive files but left living ROADMAP/PROJECT/STATE/RETROSPECTIVE evolution to manual edits.
+
+### Patterns Established
+
+- Verification artifacts should name requirement IDs directly when the milestone audit depends on cross-source traceability.
+- Long-run operator claims should be represented as deterministic synthetic checks plus explicit opt-in UAT, not default CI or local verifier gates.
+- Support-bundle evidence works best when it is a redacted projection of shared domain contracts rather than a separate diagnostic interpretation layer.
+
+### Key Lessons
+
+1. Requirement IDs belong in verification frontmatter and tables as soon as a phase is verified.
+2. Milestone archive helpers need curated accomplishment inputs or post-helper cleanup to avoid leaking review findings into shipped summaries.
+3. A passed audit should be archived with the milestone, while prior failed audits should remain explainable through a closure trail.
+
+### Cost Observations
+
+- Model mix: not measured in repo artifacts.
+- Sessions: multiple GSD yolo execution, code-review, verification, audit, gap-closure, and archive turns across the v1.7 milestone.
+- Notable: Phase 81 was mostly evidence-control work, confirming that late audit failures can be cheaper to close when implementation evidence is already stable and requirement-mapped.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -237,6 +283,9 @@
 | v1.2 | 7 | Added opt-in public-mainnet IBD review, live-smoke evidence, and security closeout while preserving hermetic default verification. |
 | v1.3 | 12 | Added public-mainnet proof hardening, fresh-status live-smoke closeout, support evidence cleanup, and explicit release-boundary audit closure. |
 | v1.4 | 6 | Converted diagnosed-blocker evidence into scoped outbound IBD convergence evidence with peer compatibility, header/block progress, restart/resume, support evidence, and release-boundary checks. |
+| v1.5 | 8 | Made unattended mainnet operator review bounded, service-reviewable, supportable, and deterministic by default. |
+| v1.6 | 7 | Converted unattended review into an explicit opt-in sync-to-tip and stay-current evidence claim. |
+| v1.7 | 7 | Hardened full-sync evidence for multi-day soak, resource and recovery bounds, progress guarantees, forensics, opt-in UAT, and audit traceability. |
 
 ### Cumulative Quality
 
@@ -247,6 +296,9 @@
 | v1.2 | 26/26 complete | Closed through Phase 40 live-smoke closeout and Phase 41 security audit/UAT; no dedicated milestone audit artifact | Repo-native `scripts/verify.sh`, deterministic sync regressions, opt-in live-mainnet smoke reporting, security audit, and UAT. |
 | v1.3 | 22/22 complete | Ready for archive with zero tracked tech-debt items after Phase 53 | Repo-native `scripts/verify.sh`, release-boundary guard, schema v2 support-bundle tests, live-smoke regression, opt-in public-network UAT, and lifecycle validation. |
 | v1.4 | 22/22 complete | Tech-debt audit with zero blockers; planning traceability corrected during archive prep | Repo-native `scripts/verify.sh`, compatibility/header/block/restart deterministic tests, schema v2 live-smoke fixtures, support redaction tests, release-boundary guard, and lifecycle validation. |
+| v1.5 | 23/23 complete | Passed with no open requirement, integration, flow, or current tech-debt gaps | Repo-native `scripts/verify.sh`, bounded sync loop checks, service lifecycle/restart evidence, support bundles, compatibility wrapper reports, and deterministic release-boundary checks. |
+| v1.6 | 26/26 complete | Closed through Phase 74 verification and source-built full-sync completion evidence | Repo-native `scripts/verify.sh`, active-chain validation, stay-current checks, reorg/peer recovery, support evidence, opt-in UAT, and release-boundary verification. |
+| v1.7 | 24/24 complete | Passed after Phase 81 traceability closure | Repo-native `scripts/verify.sh`, Phase 75-80 deterministic checkers, resource/recovery/progress/forensics fixtures, opt-in UAT docs, and 11/11 integration plus 6/6 flow audit checks. |
 
 ### Top Lessons
 
@@ -256,3 +308,4 @@
 4. Keep requirements traceability current during execution so archive work is historical packaging, not late evidence reconstruction.
 5. Treat successful public-network progress and fresh diagnosed blockers as different outcomes; both can be valid, but the archive must say which one shipped.
 6. Archive helpers need a final human sanity pass until they can safely evolve state, roadmap, project, milestones, and retrospective artifacts together.
+7. Verification reports should name the requirement IDs they satisfy; prose-only evidence creates avoidable audit ambiguity.

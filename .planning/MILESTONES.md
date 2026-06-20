@@ -1,5 +1,46 @@
 # Milestones: Open Bitcoin
 
+## v1.7 Full-Sync Soak and Recovery Hardening (Shipped: 2026-06-20)
+
+**Delivered:** Source-built, explicit opt-in full-sync soak and recovery hardening through durable soak ledgers, bounded resource evidence, typed recovery diagnosis, progress guarantees, support-bundle forensics, opt-in UAT guidance, deterministic release-boundary checks, and closed audit traceability. The shipped scope does not broaden the project into production-node readiness, inbound serving, relay, production-funds wallet use, migration apply mode, packaging, hosted dashboards, GUI work, or public-network default verification.
+
+**Phases completed:** 7 phases, 37 plans, 65 counted summary tasks
+
+**Key accomplishments:**
+
+- Added datadir-owned soak run identity, bounded stop conditions, resume-safe report state, typed stop reasons, and deterministic synthetic soak replay coverage.
+- Added resource-bound status, preflight, runtime stop, support, dashboard, docs, and checker coverage for disk, cache, queue, log, metric, peer, and support-evidence pressure.
+- Added non-mutating lock and corruption recovery diagnosis with safe retry, read-only inspection, backup-then-rebuild, and stop-and-escalate guidance across status, support, dashboard, and soak evidence.
+- Added progress-credit and stall-diagnosis contracts so long-run progress is credited only for validated durable work or stay-current evidence, with operator-visible causes for stalled paths.
+- Added redacted support-bundle forensics that reconstruct soak timelines, checkpoint chains, resource pressure, recovery events, peer outcomes, and final verdicts.
+- Added opt-in soak UAT commands, release-boundary docs, parity roots, and deterministic Phase 75 through Phase 80 checker coverage while keeping `bash scripts/verify.sh` public-network-free.
+- Closed the v1.7 milestone audit through Phase 81 by making RES/REC verification evidence explicit and refreshing stale roadmap, requirements, and release-boundary traceability.
+
+**Stats:**
+
+- 24/24 v1.7 requirements complete.
+- 7 phases, 37 plans, and 65 counted summary tasks complete.
+- 136,450 tracked first-party lines in the final LOC report at archive time, including 51,585 production Rust lines.
+- 219 files changed across the derived Phase 75 through Phase 81 delivery range, with 41,984 insertions and 1,588 deletions before archive.
+- Git range before archive: `3c88d2f` -> `3752340`.
+- Milestone audit status: `passed` with 24/24 requirements, 7/7 phases, 11/11 integration checks, and 6/6 flow checks.
+- Full repo-native verification passed during Phase 81 closeout; the milestone audit validation passed on 2026-06-20.
+
+**Archived artifacts:**
+
+- `.planning/milestones/v1.7-ROADMAP.md`
+- `.planning/milestones/v1.7-REQUIREMENTS.md`
+- `.planning/milestones/v1.7-MILESTONE-AUDIT.md`
+
+**Residual risk:**
+
+- Public-network multi-day soak and real service-manager evidence remain explicit opt-in UAT, not default deterministic verification.
+- Production-node readiness, inbound serving, relay, production-funds wallet use, migration apply mode, automatic destructive repair, automatic support-bundle upload, signed packaging, Windows service support, GUI parity, hosted dashboards, and public-network CI remain future milestone scope.
+
+**What's next:** Start the next milestone with `/gsd-new-milestone`.
+
+---
+
 ## v1.6 Mainnet Full-Sync Completion (Shipped: 2026-06-14)
 
 **Delivered:** Source-built, explicit opt-in mainnet full-sync completion evidence through durable active-chain validation, tip tracking, stay-current behavior, reorg and peer recovery, resource-bounded restart/resume, coherent operator observability, redacted support evidence, opt-in UAT, deterministic verification, and scoped release-boundary checks.
@@ -30,7 +71,7 @@
 - Public-network full-sync and stay-current evidence remains operator environment dependent and opt-in.
 - Inbound serving, address relay, block serving, transaction relay, compact block relay, production-funds wallet safety, migration apply mode, signed packaging, Windows service support, GUI parity, hosted dashboards, public-network CI, release-blocking live sync, and broad production-node readiness remain future milestone scope.
 
-**What's next:** v1.7 Full-Sync Soak and Recovery Hardening is active.
+**What's next:** Start the next milestone with `/gsd-new-milestone`.
 
 ---
 
