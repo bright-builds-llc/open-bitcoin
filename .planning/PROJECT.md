@@ -2,7 +2,7 @@
 
 ## What This Is
 
-Open Bitcoin is a Bitcoin node and wallet implementation in Rust, built to preserve externally observable behavior from Bitcoin Knots `29.3.knots20260210` where a behavior is in scope. After shipping v1.7, the project includes a headless parity baseline, a terminal-first operator surface for status, service management, dashboard workflows, wallet operations, and dry-run migration planning, plus an explicit opt-in `open-bitcoind` workflow for public-mainnet initial block download, unattended operator review, full-sync completion evidence, multi-day soak evidence, resource-bound enforcement, recovery diagnosis, support-bundle forensics, audited node-hardening, public peer compatibility, validated header and block progress, same-datadir restart/resume evidence, service lifecycle evidence, redacted support bundles, compatibility harness reports, sync-to-tip evidence, stay-current evidence, and truthful release boundaries.
+Open Bitcoin is a Bitcoin node and wallet implementation in Rust, built to preserve externally observable behavior from Bitcoin Knots `29.3.knots20260210` where a behavior is in scope. After shipping v1.7, the project includes a headless parity baseline, a terminal-first operator surface for status, service management, dashboard workflows, wallet operations, and dry-run migration planning, plus an explicit opt-in `open-bitcoind` workflow for public-mainnet initial block download, unattended operator review, full-sync completion evidence, multi-day soak evidence, resource-bound enforcement, recovery diagnosis, support-bundle forensics, audited node-hardening, public peer compatibility, validated header and block progress, same-datadir restart/resume evidence, service lifecycle evidence, redacted support bundles, compatibility harness reports, sync-to-tip evidence, stay-current evidence, and truthful release boundaries. The active v1.8 milestone defines the production full-node readiness boundary and evidence gates before any production-readiness claim is made.
 
 It is for contributors and operators who want a reference-grade node with a cleaner, more type-safe internal architecture, auditable parity, and a strict separation between pure domain logic and effectful adapters.
 
@@ -12,11 +12,23 @@ When a behavior is in scope, Open Bitcoin must behave like the pinned Knots base
 
 ## Current State
 
-v1.0 Headless Parity shipped on 2026-04-26, v1.1 Operator Runtime and Real-Network Sync shipped on 2026-04-30, v1.2 Full Mainnet Network Syncing shipped on 2026-05-23, v1.3 Public Mainnet Sync Proof and Node Hardening shipped on 2026-06-02, v1.4 Mainnet IBD Convergence and Peer Compatibility shipped on 2026-06-05, v1.5 Unattended Mainnet Node Operation Readiness shipped on 2026-06-10, v1.6 Mainnet Full-Sync Completion shipped on 2026-06-14, and v1.7 Full-Sync Soak and Recovery Hardening was completed on 2026-06-19 after Phase 81 audit traceability closure and formally archived on 2026-06-20.
+v1.0 Headless Parity shipped on 2026-04-26, v1.1 Operator Runtime and Real-Network Sync shipped on 2026-04-30, v1.2 Full Mainnet Network Syncing shipped on 2026-05-23, v1.3 Public Mainnet Sync Proof and Node Hardening shipped on 2026-06-02, v1.4 Mainnet IBD Convergence and Peer Compatibility shipped on 2026-06-05, v1.5 Unattended Mainnet Node Operation Readiness shipped on 2026-06-10, v1.6 Mainnet Full-Sync Completion shipped on 2026-06-14, and v1.7 Full-Sync Soak and Recovery Hardening was completed on 2026-06-19 after Phase 81 audit traceability closure and formally archived on 2026-06-20. v1.8 Production Full-Node Readiness Boundary started planning on 2026-06-20.
 
 The repository now includes durable Fjall-backed runtime storage, real-network sync foundations, bounded metrics and structured logs, the `open-bitcoin` operator binary, launchd/systemd service flows, a Ratatui dashboard, practical wallet runtime workflows, an auditable dry-run migration surface for existing Core or Knots installs, daemon-owned opt-in mainnet IBD review, resilient outbound peer lifecycle behavior, resource bounds, durable recovery, invalid-data handling, truth-aligned sync surfaces, live-smoke reporting, redacted support evidence, public peer compatibility diagnosis, validated header progress, bounded block download/connect progress, same-datadir restart/resume evidence, unattended sync loop control, service-supervised restart/resume evidence, compatibility harness operator reports, sync-to-tip evidence, stay-current evidence, multi-day soak evidence, bounded recovery diagnosis, support-bundle forensics, explicit v1.3 through v1.7 release-boundary evidence, and deterministic guards that keep public-network checks outside default verification.
 
-Milestone archives live under `.planning/milestones/`, including shipped roadmap and requirements archives, final audit artifacts where they exist, and raw phase histories for v1.1 and v1.2. Raw v1.0, v1.3, v1.4, v1.5, v1.6, and v1.7 phase histories remain in `.planning/phases/` for parity and UAT traceability. One residual risk remains from the v1.1 audit: dashboard pseudoterminal repaint and raw-input behavior is still a manual validation surface rather than an end-to-end automated regression. v1.2 did not create a dedicated milestone audit artifact; Phase 40 closeout and Phase 41 security audit, verification, and UAT are the closeout evidence trail. v1.3 archived with a `ready_for_archive` milestone audit and closes public-network evidence through fresh diagnosed-blocker evidence rather than a successful live-progress claim. v1.4 archived with a `tech_debt` milestone audit: implementation and integration coverage passed, while planning traceability was corrected during archive prep and a future operator wrapper around the compatibility harness remained optional cleanup. v1.5 archived with a `passed` milestone audit and no open requirement, integration, flow, or current tech-debt gaps. v1.6 archived as source-built, explicit opt-in full-sync completion evidence. v1.7 archived with a `passed` milestone audit after Phase 81 closed RES/REC verification traceability and refreshed stale milestone state, with production-node readiness, inbound serving, relay, production-funds wallet use, migration apply mode, packaging, hosted dashboards, GUI work, public-network CI, automatic support-bundle upload, destructive repair, and release-blocking live sync still deferred.
+Milestone archives live under `.planning/milestones/`, including shipped roadmap and requirements archives, final audit artifacts where they exist, and raw phase histories for v1.1 and v1.2. Raw v1.0, v1.3, v1.4, v1.5, v1.6, and v1.7 phase histories remain in `.planning/phases/` for parity and UAT traceability. One residual risk remains from the v1.1 audit: dashboard pseudoterminal repaint and raw-input behavior is still a manual validation surface rather than an end-to-end automated regression. v1.2 did not create a dedicated milestone audit artifact; Phase 40 closeout and Phase 41 security audit, verification, and UAT are the closeout evidence trail. v1.3 archived with a `ready_for_archive` milestone audit and closes public-network evidence through fresh diagnosed-blocker evidence rather than a successful live-progress claim. v1.4 archived with a `tech_debt` milestone audit: implementation and integration coverage passed, while planning traceability was corrected during archive prep and a future operator wrapper around the compatibility harness remained optional cleanup. v1.5 archived with a `passed` milestone audit and no open requirement, integration, flow, or current tech-debt gaps. v1.6 archived as source-built, explicit opt-in full-sync completion evidence. v1.7 archived with a `passed` milestone audit after Phase 81 closed RES/REC verification traceability and refreshed stale milestone state, with production-node readiness, inbound serving, relay, production-funds wallet use, migration apply mode, packaging, hosted dashboards, GUI work, public-network CI, automatic support-bundle upload, destructive repair, and release-blocking live sync still deferred. v1.8 is planned as a boundary-setting milestone for support policy, upgrade expectations, service runbooks, release-readiness evidence, and claim guardrails before any production full-node readiness statement.
+
+## Current Milestone: v1.8 Production Full-Node Readiness Boundary
+
+**Goal:** Define and enforce the support, upgrade, service, runbook, release-readiness, and evidence boundaries required before Open Bitcoin may truthfully claim production full-node readiness.
+
+**Target features:**
+- Production terminology and support-boundary matrix separating supported, preview, opt-in UAT, unsupported, and deferred surfaces.
+- Upgrade policy for source-built installs, state and schema compatibility, rollback guidance, backup expectations, and operator decision points.
+- Operator runbooks for preflight, long-run operation, service supervision, failure triage, recovery, support bundles, and escalation.
+- Service expectation docs that distinguish source-built daemon operation, launchd/systemd supervision, public-network dependencies, and unsupported packaged-service claims.
+- Release-readiness checklist and deterministic verification checks that prevent overbroad production, wallet, relay, inbound-serving, migration, packaging, hosted-dashboard, or public-network CI claims.
+- Explicit production definition with evidence gates and a no-claim boundary until those gates are satisfied.
 
 ## Completed Milestone: v1.7 Full-Sync Soak and Recovery Hardening
 
@@ -47,7 +59,11 @@ Milestone archives live under `.planning/milestones/`, including shipped roadmap
 
 ### Active
 
-- No active milestone requirements are open; v1.7 is archived and the next milestone should start with fresh requirements.
+- [ ] Define production full-node terminology, support levels, and evidence gates before any readiness claim.
+- [ ] Document source-built upgrade, rollback, backup, and state/schema compatibility expectations.
+- [ ] Provide operator runbooks for preflight, service supervision, long-run operation, triage, recovery, support bundles, and escalation.
+- [ ] Define service expectations for source-built daemon operation while keeping packaged-service and broad distribution claims deferred.
+- [ ] Add release-readiness documentation and deterministic checks that prevent false production, wallet, relay, inbound-serving, migration, packaging, hosted-dashboard, or public-network CI claims.
 
 ### Out of Scope
 
@@ -58,6 +74,7 @@ Milestone archives live under `.planning/milestones/`, including shipped roadmap
 - Public marketing sites or hosted dashboards - completed milestones prioritize local operator surfaces and node correctness.
 - Replacing `bitcoin.conf` compatibility with an Open Bitcoin-only config format - JSONC layers on top of, not instead of, baseline config behavior.
 - Full production-node, production-funds wallet, inbound peer serving, address relay, compact block relay, and mempool transaction relay claims - these are deferred beyond shipped milestones.
+- Claiming v1.8 as production full-node ready by default - this milestone defines gates and guardrails before such a claim is allowed.
 
 ## Context
 
@@ -72,6 +89,7 @@ Milestone archives live under `.planning/milestones/`, including shipped roadmap
 - The project explicitly avoids existing Rust Bitcoin libraries in the production path and instead exports first-party Rust Bitcoin libraries from this repository.
 - Verification must emphasize externally observable parity, pure-core correctness, hermetic integration testing, and contributor guardrails against accidental architectural drift.
 - Public-network checks must remain opt-in unless a future milestone deliberately changes the verification contract, so `bash scripts/verify.sh` stays deterministic by default.
+- Production full-node readiness must remain a gated claim, not a marketing label. v1.8 should make the boundary explicit across support docs, upgrade policy, runbooks, service expectations, and release-readiness checks.
 
 ## Constraints
 
@@ -101,6 +119,7 @@ Milestone archives live under `.planning/milestones/`, including shipped roadmap
 | Scope v1.5 to unattended mainnet node operation readiness | v1.4 proved bounded IBD progress and restart/resume evidence, so the next step is making the opt-in daemon workflow safe and observable for extended unattended operator review before expanding inbound serving, relay, wallet, migration apply, or packaging claims | Shipped in v1.5 with bounded loop control, resource/recovery taxonomy, service evidence, support bundles, compatibility wrapper reports, and deterministic release-boundary checks |
 | Scope v1.6 to mainnet full-sync completion | v1.5 made long-running operator review bounded and observable, so the highest-leverage next claim is syncing the active mainnet chain to tip and staying current before inbound serving, relay, packaging, migration apply, or production-wallet scope | Shipped in v1.6 with explicit opt-in full-sync completion evidence |
 | Scope v1.7 to full-sync soak and recovery hardening | v1.6 proved the scoped sync-to-tip and stay-current claim, so the next highest-leverage work is multi-day stability, bounded resources, recovery diagnosis, progress guarantees, and support evidence before production-node expansion | Shipped in v1.7 with opt-in UAT and deterministic release-boundary checks |
+| Scope v1.8 to production full-node readiness boundary | v1.7 left production-node readiness deferred, so the next safe step is defining support, upgrade, service, runbook, release-readiness, and evidence gates before any production claim | Planned |
 
 ## Evolution
 
@@ -137,4 +156,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ---
-*Last updated: 2026-06-20 after v1.7 milestone archive*
+*Last updated: 2026-06-20 after starting v1.8 milestone planning*

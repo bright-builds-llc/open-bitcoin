@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.7
-milestone_name: Full-Sync Soak and Recovery Hardening
-status: archived
-stopped_at: v1.7 archived; ready for next milestone planning
-last_updated: "2026-06-20T14:51:57.000Z"
-last_activity: 2026-06-20 -- v1.7 milestone archived and ready for /gsd-new-milestone
+milestone: v1.8
+milestone_name: Production Full-Node Readiness Boundary
+status: defining_requirements
+stopped_at: v1.8 requirements definition in progress
+last_updated: "2026-06-20T17:14:52.000Z"
+last_activity: 2026-06-20 -- v1.8 milestone started; defining production-readiness boundary requirements
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 37
-  completed_plans: 37
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,17 +21,17 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-20)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Planning next milestone
+**Current focus:** v1.8 Production Full-Node Readiness Boundary
 
 ## Current Position
 
-Milestone: v1.7 Full-Sync Soak and Recovery Hardening
-Phase: none active
+Milestone: v1.8 Production Full-Node Readiness Boundary
+Phase: Not started (defining requirements)
 Plan: none active
-Status: v1.7 archived; ready for next milestone planning
-Last activity: 2026-06-20 -- v1.7 milestone archived and ready for `/gsd-new-milestone`
+Status: Defining requirements
+Last activity: 2026-06-20 -- v1.8 milestone started; defining support, upgrade, runbook, service, release-readiness, and production-claim boundaries
 
-Progress: [██████████] 100%
+Progress: [----------] 0%
 
 ## Performance Metrics
 
@@ -43,21 +43,14 @@ Progress: [██████████] 100%
 
 **By Phase:**
 
-| Phase | Plans | Status |
-|-------|------:|--------|
-| 75. Multi-Day Soak Runner and Evidence Ledger | 6/6 | Complete |
-| 76. Disk and Resource Bound Enforcement | 6/6 | Complete |
-| 77. Corruption and Lock Recovery Hardening | 7/7 | Complete |
-| 78. Progress Guarantees and Stall Diagnosis | 7/7 | Complete |
-| 79. Diagnostics and Support Bundle Forensics | 4/4 | Complete |
-| 80. Opt-In Soak UAT and Release Boundaries | 3/3 | Complete |
-| 81. Milestone Audit Traceability Closure | 4/4 | Complete |
+No v1.8 phases are defined yet. The roadmap will continue from Phase 82 unless the milestone is explicitly reset.
 
 **Recent Trend:**
 
 - v1.5 completed Phases 60 through 67 and archived with a passed milestone audit.
 - v1.6 completed Phases 68 through 74 and shipped explicit opt-in mainnet full-sync completion evidence.
 - v1.7 completed Phases 75 through 81 with multi-day soak stability evidence, resource and disk bounds, corruption and lock recovery, progress guarantees, diagnostics, support bundles, opt-in UAT, deterministic release-boundary checks, and audit traceability closure.
+- v1.8 started as a boundary-setting milestone for production full-node terminology, support limits, upgrade policy, operator runbooks, service expectations, release-readiness checks, and production-claim gates.
 - Public-network soak and real service-manager evidence remain opt-in UAT outside default deterministic verification.
 
 ## Accumulated Context
@@ -66,6 +59,7 @@ Progress: [██████████] 100%
 
 Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
+- [v1.8]: Scope the milestone to production full-node readiness boundaries before any production claim, with docs plus deterministic checks and targeted guardrails against false readiness wording.
 - [v1.7]: Scope the milestone to explicit opt-in full-sync soak and recovery hardening, while continuing to defer inbound serving, relay, production-funds wallet, migration apply mode, packaging polish, hosted dashboard, GUI, and broad production-node claims.
 - [v1.7]: Keep multi-day public-network soak runs opt-in UAT evidence; default `bash scripts/verify.sh` must remain deterministic, public-network-free, service-manager-free, and free of wall-clock multi-day gates.
 - [v1.7]: Archive passed audit evidence in `.planning/milestones/v1.7-MILESTONE-AUDIT.md` and leave raw v1.7 phase histories in `.planning/phases/` for parity and UAT traceability.
@@ -74,7 +68,7 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ### Pending Todos
 
-- Start the next milestone with `/gsd-new-milestone`; that workflow will create fresh requirements.
+- Finish v1.8 requirements and roadmap through `/gsd-new-milestone`.
 - Keep raw phase histories in `.planning/phases/` for parity and UAT traceability.
 - Keep public-network full-sync and multi-day soak UAT opt-in and outside default deterministic verification unless a future milestone or phase explicitly changes that contract.
 
@@ -86,6 +80,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-20T14:51:57.000Z
-Stopped at: v1.7 archived; ready for next milestone planning
-Resume file: `.planning/milestones/v1.7-MILESTONE-AUDIT.md`
+Last session: 2026-06-20T17:14:52.000Z
+Stopped at: v1.8 requirements definition in progress
+Resume file: `.planning/PROJECT.md`
