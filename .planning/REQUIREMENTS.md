@@ -82,35 +82,35 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PROD-01 | TBD | Pending |
-| PROD-02 | TBD | Pending |
-| PROD-03 | TBD | Pending |
-| PROD-04 | TBD | Pending |
-| SUP-01 | TBD | Pending |
-| SUP-02 | TBD | Pending |
-| SUP-03 | TBD | Pending |
-| SUP-04 | TBD | Pending |
-| UPG-01 | TBD | Pending |
-| UPG-02 | TBD | Pending |
-| UPG-03 | TBD | Pending |
-| UPG-04 | TBD | Pending |
-| RUN-01 | TBD | Pending |
-| RUN-02 | TBD | Pending |
-| RUN-03 | TBD | Pending |
-| SVC-01 | TBD | Pending |
-| SVC-02 | TBD | Pending |
-| REL-01 | TBD | Pending |
-| REL-02 | TBD | Pending |
-| REL-03 | TBD | Pending |
-| REL-04 | TBD | Pending |
-| REL-05 | TBD | Pending |
-| REL-06 | TBD | Pending |
+| PROD-01 | Phase 82 | Pending |
+| PROD-02 | Phase 82 | Pending |
+| PROD-03 | Phase 82 | Pending |
+| PROD-04 | Phase 82 | Pending |
+| SUP-01 | Phase 83 | Pending |
+| SUP-02 | Phase 83 | Pending |
+| SUP-03 | Phase 83 | Pending |
+| SUP-04 | Phase 83 | Pending |
+| UPG-01 | Phase 84 | Pending |
+| UPG-02 | Phase 84 | Pending |
+| UPG-03 | Phase 84 | Pending |
+| UPG-04 | Phase 84 | Pending |
+| RUN-01 | Phase 85 | Pending |
+| RUN-02 | Phase 85 | Pending |
+| RUN-03 | Phase 85 | Pending |
+| SVC-01 | Phase 86 | Pending |
+| SVC-02 | Phase 86 | Pending |
+| REL-01 | Phase 87 | Pending |
+| REL-02 | Phase 88 | Pending |
+| REL-03 | Phase 88 | Pending |
+| REL-04 | Phase 88 | Pending |
+| REL-05 | Phase 87 | Pending |
+| REL-06 | Phase 87 | Pending |
 
 **Coverage:**
 - v1.8 requirements: 23 total
-- Mapped to phases: 0
-- Unmapped: 23
+- Mapped to phases: 23
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-06-20*
-*Last updated: 2026-06-20 after initial v1.8 definition*
+*Last updated: 2026-06-20 after v1.8 roadmap creation*

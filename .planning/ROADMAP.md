@@ -10,10 +10,113 @@
 - ✅ **v1.5 Unattended Mainnet Node Operation Readiness** - Phases 60 through 67 (shipped 2026-06-10). Archive: [v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
 - ✅ **v1.6 Mainnet Full-Sync Completion** - Phases 68 through 74 (shipped 2026-06-14). Archive: [v1.6-ROADMAP.md](milestones/v1.6-ROADMAP.md)
 - ✅ **v1.7 Full-Sync Soak and Recovery Hardening** - Phases 75 through 81 (shipped 2026-06-20). Archive: [v1.7-ROADMAP.md](milestones/v1.7-ROADMAP.md)
+- 🚧 **v1.8 Production Full-Node Readiness Boundary** - Phases 82 through 88 (planned).
 
 ## Current Focus
 
-No active milestone is defined. Start the next milestone with `/gsd-new-milestone` to create fresh requirements and a new roadmap section.
+v1.8 Production Full-Node Readiness Boundary is active.
+
+**Goal:** Define and enforce the support, upgrade, service, runbook, release-readiness, and evidence boundaries required before Open Bitcoin may truthfully claim production full-node readiness.
+
+**Granularity:** fine
+**Coverage:** 23/23 v1.8 requirements mapped
+
+## Phases
+
+- [ ] **Phase 82: Production Claim Boundary** - Define production-readiness terminology, support levels, deferred surfaces, and evidence gates.
+- [ ] **Phase 83: Support Matrix and Issue Evidence** - Make supported environments, issue-report evidence, residual risks, and support-matrix update boundaries explicit.
+- [ ] **Phase 84: Upgrade and Rollback Policy** - Document source-built upgrade, rollback, backup, and state/schema compatibility expectations.
+- [ ] **Phase 85: Operator Runbooks** - Provide preflight, long-run operation, diagnosis, recovery, support-bundle, and escalation runbooks.
+- [ ] **Phase 86: Service Operation Expectations** - Bound source-built daemon and service-supervision expectations with repo-local verification commands.
+- [ ] **Phase 87: Release Readiness Checklist** - Map all v1.8 requirements to release evidence, docs, UAT, residual risk, and the no-claim boundary.
+- [ ] **Phase 88: Deterministic Claim Guardrails** - Add default verification checks that fail overbroad production-readiness or deferred-surface claims.
+
+## Phase Details
+
+### Phase 82: Production Claim Boundary
+**Goal**: Operators and release reviewers can understand exactly what production full-node readiness means, what evidence gates are required, and which shipped surfaces remain outside the claim.
+**Depends on**: Nothing (first v1.8 phase)
+**Requirements**: PROD-01, PROD-02, PROD-03, PROD-04
+**Success Criteria** (what must be TRUE):
+  1. Operator can read one production-readiness definition that distinguishes supported, preview, opt-in UAT, unsupported, and deferred surfaces.
+  2. Release reviewer can trace each allowed production-related statement to an evidence gate, current status, and verification source.
+  3. Contributor can identify the full evidence set required before a future production full-node readiness claim is allowed.
+  4. Operator-facing release language preserves the deferred-surface inventory without implying production support.
+**Plans**: TBD
+
+### Phase 83: Support Matrix and Issue Evidence
+**Goal**: Operators, contributors, and release reviewers can use the v1.8 support matrix without accidentally broadening support or hiding carried-forward risks.
+**Depends on**: Phase 82
+**Requirements**: SUP-01, SUP-02, SUP-03, SUP-04
+**Success Criteria** (what must be TRUE):
+  1. Operator can classify source-built install, runtime, network, storage, and service-supervision environments by support level.
+  2. Operator can identify the support information expected for issue reports, including redacted bundles, logs, config summaries, service state, resource evidence, and sync evidence.
+  3. Contributor can update the support matrix while preserving the production-boundary and deferred-surface limits.
+  4. Release reviewer can see residual risks and manual validation surfaces carried forward from v1.1 through v1.7.
+**Plans**: TBD
+
+### Phase 84: Upgrade and Rollback Policy
+**Goal**: Operators can make source-built upgrade, rollback, backup, and state/schema decisions without hidden datadir, wallet, service, or config mutation.
+**Depends on**: Phase 82
+**Requirements**: UPG-01, UPG-02, UPG-03, UPG-04
+**Success Criteria** (what must be TRUE):
+  1. Operator can follow a pre-upgrade checklist covering backups, source-built binaries, config files, datadir ownership, service state, and current sync evidence.
+  2. Operator can distinguish upgrade, retry, rollback, backup-then-rebuild, and stop-and-escalate guidance for state and schema compatibility outcomes.
+  3. Operator can follow failed-upgrade and rollback guidance that avoids hidden mutation of source datadirs, wallets, services, and configs.
+  4. Contributor can run deterministic checks that fail when upgrade policy, rollback boundaries, or backup expectations drift from the release-readiness contract.
+**Plans**: TBD
+
+### Phase 85: Operator Runbooks
+**Goal**: Operators can run, monitor, diagnose, recover, and escalate long-running source-built node operation using the existing v1.3 through v1.7 evidence surfaces.
+**Depends on**: Phase 83, Phase 84
+**Requirements**: RUN-01, RUN-02, RUN-03
+**Success Criteria** (what must be TRUE):
+  1. Operator can complete a production-boundary preflight before long-running source-built node operation.
+  2. Operator can follow long-run monitoring, no-progress diagnosis, recovery, and escalation runbooks using shipped evidence surfaces.
+  3. Operator can collect a redacted support-bundle timeline and identify when evidence is sufficient for support triage.
+**Plans**: TBD
+
+### Phase 86: Service Operation Expectations
+**Goal**: Operators can distinguish source-built daemon operation, service supervision, distribution limits, and production-service claim boundaries, then verify expectations with repo-local commands.
+**Depends on**: Phase 83, Phase 85
+**Requirements**: SVC-01, SVC-02
+**Success Criteria** (what must be TRUE):
+  1. Operator can distinguish source-built daemon operation from service supervision, packaged-service distribution, service-manager availability, and unsupported production-service claims.
+  2. Operator can verify service lifecycle, restart/resume, log, metric, resource-bound, and recovery expectations through repo-local Cargo command forms.
+  3. Operator can verify the same service expectation evidence through repo-local Bazel command forms where applicable.
+**Plans**: TBD
+
+### Phase 87: Release Readiness Checklist
+**Goal**: Release reviewers can decide whether v1.8 release language is truthful by following one checklist that maps requirements to evidence, docs, UAT, checks, residual risk, and the no-claim boundary.
+**Depends on**: Phase 82, Phase 83, Phase 84, Phase 85, Phase 86
+**Requirements**: REL-01, REL-05, REL-06
+**Success Criteria** (what must be TRUE):
+  1. Release reviewer can map every v1.8 requirement to documentation, UAT, deterministic checks, and residual-risk status.
+  2. Contributor-facing README and parity docs point to the v1.8 boundary docs, support policy, upgrade policy, runbooks, and release-readiness checklist.
+  3. Release reviewer can verify that v1.8 ends with a truthful no-claim boundary unless all production readiness gates are satisfied by a future milestone.
+**Plans**: TBD
+
+### Phase 88: Deterministic Claim Guardrails
+**Goal**: Default verification prevents overbroad production-readiness language while keeping public-network, real service-manager, and multi-day checks opt-in.
+**Depends on**: Phase 87
+**Requirements**: REL-02, REL-03, REL-04
+**Success Criteria** (what must be TRUE):
+  1. Deterministic verification fails if release docs claim production full-node readiness without the required v1.8 evidence gates.
+  2. Deterministic verification fails if release docs imply the deferred-surface inventory is production-ready.
+  3. Default `bash scripts/verify.sh` runs the v1.8 release-boundary checker without requiring public-network, real service-manager, or multi-day checks.
+**Plans**: TBD
+
+## Progress Table
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 82. Production Claim Boundary | 0/TBD | Not started | - |
+| 83. Support Matrix and Issue Evidence | 0/TBD | Not started | - |
+| 84. Upgrade and Rollback Policy | 0/TBD | Not started | - |
+| 85. Operator Runbooks | 0/TBD | Not started | - |
+| 86. Service Operation Expectations | 0/TBD | Not started | - |
+| 87. Release Readiness Checklist | 0/TBD | Not started | - |
+| 88. Deterministic Claim Guardrails | 0/TBD | Not started | - |
 
 ## Completed Milestone Summaries
 
@@ -62,11 +165,12 @@ traceability.
 | v1.5 Unattended Mainnet Node Operation Readiness | 8 | 22 | Shipped | 2026-06-10 |
 | v1.6 Mainnet Full-Sync Completion | 7 | 27 | Shipped | 2026-06-14 |
 | v1.7 Full-Sync Soak and Recovery Hardening | 7 | 37 | Shipped | 2026-06-20 |
+| v1.8 Production Full-Node Readiness Boundary | 7 | 0 | Planned | - |
 
 ## Next Step
 
-Start the next milestone:
+Plan the first v1.8 phase:
 
 ```bash
-/gsd-new-milestone
+/gsd-plan-phase 82
 ```
