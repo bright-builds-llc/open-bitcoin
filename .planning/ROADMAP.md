@@ -70,7 +70,13 @@ Plans:
   2. Operator can distinguish upgrade, retry, rollback, backup-then-rebuild, and stop-and-escalate guidance for state and schema compatibility outcomes.
   3. Operator can follow failed-upgrade and rollback guidance that avoids hidden mutation of source datadirs, wallets, services, and configs.
   4. Contributor can run deterministic checks that fail when upgrade policy, rollback boundaries, or backup expectations drift from the release-readiness contract.
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 84-01-PLAN.md - Canonical source-built upgrade and rollback policy.
+- [ ] 84-02-PLAN.md - Parity roots and release-boundary links.
+- [ ] 84-03-PLAN.md - README, runtime guide, and catalog entrypoint links.
+- [ ] 84-04-PLAN.md - Phase 84 checker, verifier wiring, and closeout evidence.
 
 ### Phase 85: Operator Runbooks
 **Goal**: Operators can run, monitor, diagnose, recover, and escalate long-running source-built node operation using the existing v1.3 through v1.7 evidence surfaces.
@@ -118,7 +124,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 82. Production Claim Boundary | 4/4 | Complete    | 2026-06-21 |
 | 83. Support Matrix and Issue Evidence | 4/4 | Complete    | 2026-06-21 |
-| 84. Upgrade and Rollback Policy | 0/TBD | Not started | - |
+| 84. Upgrade and Rollback Policy | 0/4 | Not started | - |
 | 85. Operator Runbooks | 0/TBD | Not started | - |
 | 86. Service Operation Expectations | 0/TBD | Not started | - |
 | 87. Release Readiness Checklist | 0/TBD | Not started | - |
