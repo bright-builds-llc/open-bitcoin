@@ -77,6 +77,11 @@ baseline remains Bitcoin Knots `29.3.knots20260210`.
 
 ## Known gaps
 
+Phase 83 records wallet support boundaries in
+[`docs/parity/support-matrix.md`](../support-matrix.md). The current wallet
+slice remains non-production/preview-scoped where documented; production-funds
+wallet use and production-funds wallet safety remain `deferred`.
+
 - miniscript, multisig, and PSBT flows
 - wallet encryption and restore or import compatibility with external wallet
   formats

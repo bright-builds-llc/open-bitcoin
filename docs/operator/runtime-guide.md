@@ -10,6 +10,10 @@ it defines `supported`, `preview`, `opt-in UAT`, `unsupported`, and `deferred`,
 and it is not a production full-node readiness claim. Public-network, real
 service-manager, multi-day, and release-blocking checks remain opt-in unless
 future phases change the contract.
+The v1.8 support matrix and issue-evidence checklist live at
+[`docs/parity/support-matrix.md`](../parity/support-matrix.md); they classify
+the current support terms and show the local evidence expected for issue
+reports. The matrix confirms public-network, real service-manager, multi-day, and release-blocking checks remain opt-in unless a later scoped gate changes the contract.
 
 Use this guide for the practical workflow. Use
 [`docs/architecture/config-precedence.md`](../architecture/config-precedence.md),
@@ -55,8 +59,9 @@ pre-commit hook intentionally continues to run the strict default verifier.
 
 For release-boundary review, start with the v1.8 production claim boundary
 [`docs/parity/production-claim-boundary.md`](../parity/production-claim-boundary.md)
-and [`docs/parity/release-readiness.md`](../parity/release-readiness.md). The
-v1.8 boundary defines gate vocabulary and future evidence requirements only.
+[`docs/parity/support-matrix.md`](../parity/support-matrix.md), and
+[`docs/parity/release-readiness.md`](../parity/release-readiness.md). The v1.8
+boundary defines gate vocabulary and future evidence requirements only.
 Historical v1.6 and v1.7 sections preserve source-built, explicit opt-in
 full-sync completion and soak evidence; reviewers should inspect validated
 active-chain progress, best-known-tip freshness, stay-current state,
@@ -1490,6 +1495,12 @@ bazel run //packages/open-bitcoin-cli:open_bitcoin -- \
   --datadir=/tmp/open-bitcoin-mainnet \
   support bundle --output-dir=/tmp/open-bitcoin-support
 ```
+
+Use the issue-evidence checklist in
+[`docs/parity/support-matrix.md`](../parity/support-matrix.md) when preparing
+an issue report. Include the smallest useful redacted evidence set for the
+selected datadir, or write `Unavailable: <reason>` for evidence that cannot be
+provided.
 
 If you already ran the live-mainnet smoke wrapper, attach its JSON report as a
 summary-only input:

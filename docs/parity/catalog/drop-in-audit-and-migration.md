@@ -66,6 +66,12 @@ cutover step.
 
 ## Known Gaps
 
+Phase 83 records migration support boundaries in
+[`docs/parity/support-matrix.md`](../support-matrix.md). The currently
+classified migration support slice is migration dry-run/read-only behavior;
+migration apply, source service mutation, and source datadir rewrite remain
+`deferred`.
+
 - automatic service cutover or daemon handoff
 - source-datadir mutation or in-place migration
 - external-wallet import, restore, rewrite, or Core-compatible migration

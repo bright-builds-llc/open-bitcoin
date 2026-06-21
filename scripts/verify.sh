@@ -274,6 +274,8 @@ bun test scripts/check-phase80-opt-in-soak-uat-release-boundaries.test.ts
 bun run scripts/check-phase80-opt-in-soak-uat-release-boundaries.ts
 bun test scripts/check-phase82-production-claim-boundary.test.ts
 bun run scripts/check-phase82-production-claim-boundary.ts
+bun test scripts/check-phase83-support-matrix-issue-evidence.test.ts
+bun run scripts/check-phase83-support-matrix-issue-evidence.ts
 VERIFY_COMMAND_ORDER
 
 parse_args "$@"
@@ -331,6 +333,8 @@ run_step "test Phase 80 opt-in soak UAT release boundaries checker" bun test scr
 run_step "check Phase 80 opt-in soak UAT release boundaries" bun run scripts/check-phase80-opt-in-soak-uat-release-boundaries.ts
 run_step "test Phase 82 production claim boundary checker" bun test scripts/check-phase82-production-claim-boundary.test.ts
 run_step "check Phase 82 production claim boundary" bun run scripts/check-phase82-production-claim-boundary.ts
+run_step "test Phase 83 support matrix issue evidence checker" bun test scripts/check-phase83-support-matrix-issue-evidence.test.ts
+run_step "check Phase 83 support matrix issue evidence" bun run scripts/check-phase83-support-matrix-issue-evidence.ts
 run_step "check pure-core dependencies" bash scripts/check-pure-core-deps.sh
 run_step "check file lengths" bash scripts/check-file-lengths.sh
 run_step "check panic sites" bash scripts/check-panic-sites.sh

@@ -117,6 +117,13 @@ readiness, machine root, human checklist, deviations register, README, runtime
 guide, and `scripts/verify.sh`. It defines gates only and does not duplicate
 the canonical claim-to-evidence matrix here.
 
+Phase 83 support matrix and issue evidence is rooted in the
+`v1-8-support-matrix-issue-evidence` surface for SUP-01, SUP-02, SUP-03, and
+SUP-04. The canonical [`support-matrix.md`](support-matrix.md) uses the Phase
+82 terms from [`production-claim-boundary.md`](production-claim-boundary.md)
+and is the single source for support levels, issue evidence, contributor update
+rules, residual risks, and next gates; this README only points to it.
+
 Deferred and suspected follow-up work remains visible in
 [`deviations-and-unknowns.md`](deviations-and-unknowns.md).
 
@@ -128,6 +135,7 @@ Deferred and suspected follow-up work remains visible in
 - `deviations-and-unknowns.md` summarizes current deviations, deferred surfaces, suspected unknowns, and folded todo risks.
 - `benchmarks.md` documents the benchmark groups, Knots mappings, local commands, reports, and non-goals.
 - `production-claim-boundary.md` is the current v1.8 production claim boundary and support-term root.
+- `support-matrix.md` is the canonical v1.8 support matrix, issue-evidence checklist, contributor update-rule, and residual-risk root.
 - `release-readiness.md` is the current v1.8 handoff plus historical milestone inspection checklist.
 - `threat-model-v1.6.md` is the historical v1.6 scoped threat model and release-boundary companion for REL-01, REL-02, and REL-03.
 - `threat-model-v1.5.md` is the historical v1.5 scoped threat model and release-boundary companion for REL-01, REL-02, REL-03, and REL-04.

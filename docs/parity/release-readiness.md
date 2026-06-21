@@ -43,7 +43,10 @@ The current v1.8 boundary defines the support terms and evidence gates required
 before a future production full-node readiness claim. It does not claim
 production full-node readiness. The canonical boundary is
 [`docs/parity/production-claim-boundary.md`](production-claim-boundary.md) with
-surface id `v1-8-production-claim-boundary`.
+surface id `v1-8-production-claim-boundary`. The Phase 83 support matrix and
+issue-evidence handoff is
+[`docs/parity/support-matrix.md`](support-matrix.md) with surface id
+`v1-8-support-matrix-issue-evidence`.
 
 The v1.7 readiness claim remains historical: source-built, explicit opt-in
 full-sync soak and recovery hardening. It covers durable multi-day soak
@@ -62,9 +65,11 @@ upload, destructive repair, or broad production-node readiness.
 Treat [`docs/parity/index.json`](index.json) as the machine-readable root,
 [`docs/parity/checklist.md`](checklist.md) as the human checklist view,
 [`docs/parity/production-claim-boundary.md`](production-claim-boundary.md) as
-the current v1.8 production claim boundary, this release-readiness page as the
-handoff record, and the Phase 80 plan threat model as the historical v1.7
-security boundary for the soak workflow.
+the current v1.8 production claim boundary,
+[`docs/parity/support-matrix.md`](support-matrix.md) as the canonical support
+matrix and issue-evidence root, this release-readiness page as the handoff
+record, and the Phase 80 plan threat model as the historical v1.7 security
+boundary for the soak workflow.
 [`docs/parity/threat-model-v1.6.md`](threat-model-v1.6.md),
 [`docs/parity/threat-model-v1.5.md`](threat-model-v1.5.md),
 [`docs/parity/threat-model-v1.4.md`](threat-model-v1.4.md), and
@@ -82,7 +87,8 @@ That command remains deterministic and public-network-free. It includes local
 formatting, linting, builds, tests, benchmark smoke evidence, parity breadcrumb
 checks, Bazel smoke builds, coverage, panic-site checks, and deterministic
 release-boundary assertions through v1.7.
-Phase 82 adds the narrow v1.8 production-boundary traceability check.
+Phase 82 and Phase 83 add the narrow v1.8 production-boundary and
+support-matrix traceability checks.
 
 ## Complete Surfaces
 
@@ -110,14 +116,17 @@ surfaces as `done`:
 - `v1-6-full-sync-completion-release-boundaries`
 - `v1-7-full-sync-soak-recovery-release-boundaries`
 - `v1-8-production-claim-boundary`
+- `v1-8-support-matrix-issue-evidence`
 
 Primary current-cycle evidence:
 
-- [`docs/parity/release-readiness.md`](release-readiness.md) records the
 - [`docs/parity/production-claim-boundary.md`](production-claim-boundary.md)
   records the current v1.8 support-term glossary, production claim boundary,
   claim-to-evidence matrix, and deferred-surface inventory for PROD-01 through
   PROD-04.
+- [`docs/parity/support-matrix.md`](support-matrix.md) records the canonical
+  v1.8 support matrix, issue-evidence checklist, contributor update rules, and
+  carried-forward residual risks for SUP-01 through SUP-04.
 - [`docs/parity/release-readiness.md`](release-readiness.md) records this
   current v1.8 handoff plus the historical v1.7 full-sync soak and recovery
   hardening boundary matrix and traceability for SOAK-01 through REL-04.
@@ -165,6 +174,18 @@ allowed production-related statement, its evidence gate, the future gates
 required before broader claims are allowed, and the deferred production-adjacent
 surface inventory. This section is a docs/parity traceability handoff rather
 than the Phase 88 scanner. Phase 88 owns broad deterministic claim guardrails.
+
+## v1.8 Support Matrix And Issue Evidence
+
+The current support-matrix root is
+[`docs/parity/support-matrix.md`](support-matrix.md). It records the canonical
+`v1-8-support-matrix-issue-evidence` surface for SUP-01, SUP-02, SUP-03, and
+SUP-04 without duplicating the matrix in this release-readiness handoff.
+
+Release reviewers should use it to inspect support level, evidence basis,
+default verification status, opt-in UAT/manual validation, residual risk, and
+next gate for the supported, preview, opt-in UAT, unsupported, and deferred
+surfaces. Broad all-doc claim guardrails remain Phase 88 scope per D-13.
 
 ## v1.7 Full-Sync Soak and Recovery Hardening Claim Boundary Matrix
 

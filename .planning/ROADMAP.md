@@ -117,7 +117,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 82. Production Claim Boundary | 4/4 | Complete    | 2026-06-21 |
-| 83. Support Matrix and Issue Evidence | 0/TBD | Not started | - |
+| 83. Support Matrix and Issue Evidence | 4/4 | Complete    | 2026-06-21 |
 | 84. Upgrade and Rollback Policy | 0/TBD | Not started | - |
 | 85. Operator Runbooks | 0/TBD | Not started | - |
 | 86. Service Operation Expectations | 0/TBD | Not started | - |

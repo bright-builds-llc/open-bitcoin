@@ -217,6 +217,13 @@ gates and preserving deferred status. It does not expand support for any
 production-adjacent surface. The canonical boundary is
 [`production-claim-boundary.md`](production-claim-boundary.md).
 
+Phase 83 adds [`support-matrix.md`](support-matrix.md) as the canonical
+`v1-8-support-matrix-issue-evidence` support-matrix and issue-evidence root for
+residual risks and support-matrix update boundaries. Use that page for
+support-level changes, contributor update rules, issue-evidence expectations,
+carried-forward residual risks, and next gates instead of duplicating the matrix
+or promoting deferred rows here.
+
 | Surface | Support term | Why deferred | Required future gate |
 | --- | --- | --- | --- |
 | inbound serving | `deferred` | Current P2P evidence is outbound review and does not prove production inbound policy. | Scoped P2P production milestone with inbound policy, resource, abuse, and UAT evidence. |

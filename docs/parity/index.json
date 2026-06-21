@@ -584,6 +584,10 @@
     {
       "name": "v1-8-production-claim-boundary",
       "status": "done"
+    },
+    {
+      "name": "v1-8-support-matrix-issue-evidence",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -1346,6 +1350,40 @@
         "suspected_unknowns": [
           "Future production-node readiness, inbound serving, relay, production-wallet, migration-apply, signed packaging, Windows service, GUI, hosted-dashboard, public-network CI, support-upload, destructive-repair, and Phase 88 guardrails need separate scoped phases and fresh evidence roots."
         ]
+      },
+      {
+        "id": "v1-8-support-matrix-issue-evidence",
+        "title": "v1.8 Support Matrix And Issue Evidence",
+        "status": "done",
+        "requirements": [
+          "SUP-01",
+          "SUP-02",
+          "SUP-03",
+          "SUP-04"
+        ],
+        "evidence": [
+          "docs/parity/support-matrix.md",
+          "docs/parity/production-claim-boundary.md",
+          "docs/parity/release-readiness.md",
+          "docs/parity/deviations-and-unknowns.md",
+          "docs/parity/checklist.md",
+          "docs/parity/README.md",
+          "README.md",
+          "docs/operator/runtime-guide.md",
+          "docs/parity/catalog/operator-runtime-release-hardening.md",
+          "docs/parity/catalog/p2p.md",
+          "docs/parity/catalog/chainstate.md",
+          "docs/parity/catalog/wallet.md",
+          "docs/parity/catalog/drop-in-audit-and-migration.md",
+          "scripts/verify.sh"
+        ],
+        "rationale": "Phase 83 registers the canonical support matrix and issue-evidence policy without creating a second evidence registry or duplicating the matrix across docs.",
+        "known_gaps": [
+          "Public-network, real service-manager, multi-day wall-clock, production-funds wallet, migration apply, signed packaging, hosted dashboard, GUI, public-network CI, destructive repair, automatic support upload, and broad production readiness remain outside current support."
+        ],
+        "suspected_unknowns": [
+          "Future support promotion requires a concrete evidence source, verifier or opt-in UAT command, residual-risk statement, and next gate per D-12."
+        ]
       }
     ]
   },
@@ -1649,6 +1687,32 @@
         "docs/parity/README.md",
         "README.md",
         "docs/operator/runtime-guide.md",
+        "scripts/verify.sh"
+      ]
+    },
+    "v1_8_support_matrix_issue_evidence": {
+      "path": "support-matrix.md",
+      "status": "done",
+      "requirements": [
+        "SUP-01",
+        "SUP-02",
+        "SUP-03",
+        "SUP-04"
+      ],
+      "evidence": [
+        "docs/parity/support-matrix.md",
+        "docs/parity/production-claim-boundary.md",
+        "docs/parity/release-readiness.md",
+        "docs/parity/deviations-and-unknowns.md",
+        "docs/parity/checklist.md",
+        "docs/parity/README.md",
+        "README.md",
+        "docs/operator/runtime-guide.md",
+        "docs/parity/catalog/operator-runtime-release-hardening.md",
+        "docs/parity/catalog/p2p.md",
+        "docs/parity/catalog/chainstate.md",
+        "docs/parity/catalog/wallet.md",
+        "docs/parity/catalog/drop-in-audit-and-migration.md",
         "scripts/verify.sh"
       ]
     },

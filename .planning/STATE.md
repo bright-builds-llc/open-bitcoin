@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: Production Full-Node Readiness Boundary
 status: executing
-stopped_at: Phase 82 context gathered
-last_updated: "2026-06-21T14:37:29.060Z"
+stopped_at: Phase 83 context gathered
+last_updated: "2026-06-21T19:15:12.745Z"
 last_activity: 2026-06-21
 progress:
   total_phases: 7
-  completed_phases: 1
-  total_plans: 4
-  completed_plans: 4
+  completed_phases: 2
+  total_plans: 8
+  completed_plans: 8
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-20)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** v1.8 Production Full-Node Readiness Boundary
+**Current focus:** Phase 83 — Support Matrix and Issue Evidence
 
 ## Current Position
 
 Milestone: v1.8 Production Full-Node Readiness Boundary
-Phase: 83
+Phase: 84
 Plan: Not started
-Status: Ready to execute
+Status: Executing Phase 83
 Last activity: 2026-06-21
 
 Progress: [----------] 0%
@@ -89,6 +89,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-21T12:41:41.076Z
-Stopped at: Phase 82 context gathered
-Resume file: .planning/phases/82-production-claim-boundary/82-CONTEXT.md
+Last session: 2026-06-21T16:04:36.325Z
+Stopped at: Phase 83 context gathered
+Resume file: .planning/phases/83-support-matrix-and-issue-evidence/83-CONTEXT.md

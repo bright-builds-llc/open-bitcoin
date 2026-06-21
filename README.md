@@ -31,6 +31,8 @@ The current status source is the parity ledger:
 handoff [`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md),
 the v1.8 production claim boundary
 [`docs/parity/production-claim-boundary.md`](./docs/parity/production-claim-boundary.md),
+the support matrix
+[`docs/parity/support-matrix.md`](./docs/parity/support-matrix.md),
 and project state [`.planning/STATE.md`](./.planning/STATE.md). Older roadmap
 or requirements rows may lag those artifacts.
 
@@ -108,6 +110,9 @@ tracked hook content changes.
 v1.8 defines the support terms and evidence gates required before a future production full-node readiness claim. It
 does not claim production full-node readiness. The canonical boundary is
 [`docs/parity/production-claim-boundary.md`](./docs/parity/production-claim-boundary.md).
+The companion support matrix
+[`docs/parity/support-matrix.md`](./docs/parity/support-matrix.md)
+classifies source-built install, runtime, network, storage, service-supervision, wallet, migration, packaging, dashboard, GUI, support-upload, destructive-repair, and verification/CI surfaces by the same Phase 82 support terms and does not claim production full-node readiness.
 v1.7 remains historical source-built, explicit opt-in full-sync soak and recovery hardening evidence covering durable multi-day soak evidence, resource
 bounds, recovery diagnosis, progress guarantees, stall diagnosis,
 support-bundle forensics, and deterministic release-boundary checks.
@@ -269,3 +274,4 @@ For contributor workflow details beyond those two entrypoints, see [CONTRIBUTING
 - [`docs/parity/index.json`](./docs/parity/index.json) is the machine-readable status index for in-scope surfaces, intentional deviations, catalog entries, checklist state, and audit roots.
 - [`docs/parity/checklist.md`](./docs/parity/checklist.md) is the human-readable parity checklist.
 - [`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md) is the current headless v1 review handoff.
+- [`docs/parity/support-matrix.md`](./docs/parity/support-matrix.md) is the canonical support classification and issue-evidence checklist.

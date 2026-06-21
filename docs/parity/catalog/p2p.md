@@ -332,6 +332,11 @@ transaction relay, and compact block relay remain `deferred` until scoped P2P
 production gates exist. Historical outbound sync, soak, and diagnostics evidence
 does not satisfy those future inbound or relay gates by itself.
 
+The Phase 83 support matrix is
+[`docs/parity/support-matrix.md`](../support-matrix.md). It keeps public-network
+outbound evidence at `opt-in UAT`, while inbound serving, address relay, block
+serving, transaction relay, and compact block relay remain `deferred`.
+
 ## First-party implementation
 
 - [`packages/open-bitcoin-network/src/message.rs`](../../../packages/open-bitcoin-network/src/message.rs)

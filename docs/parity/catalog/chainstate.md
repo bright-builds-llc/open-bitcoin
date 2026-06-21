@@ -163,6 +163,12 @@ soak, recovery, and diagnostics claims. It does not satisfy broad
 production-node readiness, destructive repair, public-network CI, or
 release-blocking live sync gates by itself.
 
+The Phase 83 support matrix is
+[`docs/parity/support-matrix.md`](../support-matrix.md). Chainstate
+sync/recovery/resource evidence supports scoped source-built evidence only; it
+does not satisfy broad production-node readiness, destructive repair,
+public-network CI, or release-blocking live sync gates.
+
 ## First-party implementation
 
 - [`packages/open-bitcoin-chainstate/src/engine.rs`](../../../packages/open-bitcoin-chainstate/src/engine.rs)
