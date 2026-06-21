@@ -44,6 +44,13 @@ That verification path stays offline by default. It runs formatting, linting,
 builds, tests, parity-breadcrumb checks, bounded smoke benchmarks, and Bazel
 smoke targets without requiring public-network sync.
 
+For local iteration, `bash scripts/verify.sh --fast` keeps the offline Bun
+boundary checks, architecture checks, formatting, clippy, and Cargo tests while
+skipping benchmark smoke, Bazel smoke, and coverage. For runtime diagnosis of
+the full gate, use `bash scripts/verify.sh --profile`; it runs the same strict
+contract as `bash scripts/verify.sh` and prints per-step timings. The repo
+pre-commit hook intentionally continues to run the strict default verifier.
+
 For release-boundary review, use
 [`docs/parity/threat-model-v1.6.md`](../parity/threat-model-v1.6.md) and
 [`docs/parity/release-readiness.md`](../parity/release-readiness.md). The v1.6

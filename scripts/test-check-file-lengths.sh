@@ -99,6 +99,13 @@ EOF
   cat >"${repo_dir}/scripts/run-benchmarks.sh" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
+touch "${VERIFY_MARKER_DIR:?}/benchmark-called"
+if [[ "$*" == *"--list"* ]]; then
+  touch "${VERIFY_MARKER_DIR:?}/benchmark-list-called"
+fi
+if [[ "$*" == *"--smoke"* ]]; then
+  touch "${VERIFY_MARKER_DIR:?}/benchmark-smoke-called"
+fi
 exit 0
 EOF
   chmod +x "${repo_dir}/scripts/run-benchmarks.sh"
@@ -109,6 +116,9 @@ EOF
 #!/usr/bin/env bash
 set -euo pipefail
 touch "${VERIFY_MARKER_DIR:?}/cargo-called"
+if [[ "${1:-}" == "llvm-cov" ]]; then
+  touch "${VERIFY_MARKER_DIR:?}/cargo-llvm-cov-called"
+fi
 exit 0
 EOF
   cat >"${fake_bin}/cargo-llvm-cov" <<'EOF'
@@ -135,8 +145,10 @@ if [[ "${1:-}" == "run" && "${2:-}" == "scripts/generate-loc-report.ts" ]]; then
   touch "${VERIFY_MARKER_DIR:?}/loc-report-called"
   exit 0
 fi
-if [[ "${1:-}" == "run" && ( "${2:-}" == "scripts/check-parity-breadcrumbs.ts" || "${2:-}" == "scripts/check-benchmark-report.ts" || "${2:-}" == "scripts/check-bazel-build-provenance.ts" ) ]]; then
-  touch "${VERIFY_MARKER_DIR:?}/bun-called"
+if [[ "${1:-}" == "run" && "${2:-}" == scripts/*.ts ]]; then
+  exit 0
+fi
+if [[ "${1:-}" == "test" && "${2:-}" == scripts/*.test.ts ]]; then
   exit 0
 fi
 echo "unexpected bun invocation: $*" >&2
@@ -285,6 +297,85 @@ run_verify_success_timing_case() {
   assert_not_contains "$output" "verify.sh failed after "
 }
 
+run_verify_invalid_flag_case() {
+  local repo_dir="${tmp_root}/verify-invalid-flag"
+  local output=""
+
+  init_repo "$repo_dir"
+
+  (
+    cd "$repo_dir"
+    set +e
+    output="$(bash "$verify_script" --unknown 2>&1)"
+    status=$?
+    set -e
+    printf '%s' "$output" >invalid-output.txt
+    printf '%s' "$status" >invalid-status.txt
+  )
+
+  output="$(cat "${repo_dir}/invalid-output.txt")"
+  status="$(cat "${repo_dir}/invalid-status.txt")"
+  assert_eq "$status" "2"
+  assert_contains "$output" "error: unsupported verify option --unknown"
+  assert_contains "$output" "usage: bash scripts/verify.sh"
+}
+
+run_verify_fast_mode_case() {
+  local repo_dir="${tmp_root}/verify-fast"
+  local fake_bin="${repo_dir}/fake-bin"
+  local output=""
+
+  init_repo "$repo_dir"
+  write_verify_test_fixture "$repo_dir" "$fake_bin"
+  write_rust_file "${repo_dir}/packages/open-bitcoin-foo/src/lib.rs" 40
+
+  (
+    cd "$repo_dir"
+    git add packages scripts .githooks
+    output="$(PATH="${fake_bin}:$PATH" VERIFY_MARKER_DIR="$repo_dir" bash "$verify_script" --fast --timings 2>&1)"
+    printf '%s' "$output" >fast-output.txt
+  )
+
+  output="$(cat "${repo_dir}/fast-output.txt")"
+  assert_contains "$output" "verify.sh completed in "
+  assert_contains "$output" "verify.sh step timings:"
+  assert_contains "$output" "cargo clippy"
+  assert_contains "$output" "cargo test"
+  assert_not_contains "$output" "cargo llvm-cov"
+  if [[ -e "${repo_dir}/benchmark-called" || -e "${repo_dir}/bazel-called" || -e "${repo_dir}/cargo-llvm-cov-called" ]]; then
+    echo "verify.sh --fast should skip benchmarks, Bazel, and cargo llvm-cov" >&2
+    exit 1
+  fi
+}
+
+run_verify_profile_timing_case() {
+  local repo_dir="${tmp_root}/verify-profile"
+  local fake_bin="${repo_dir}/fake-bin"
+  local output=""
+
+  init_repo "$repo_dir"
+  write_verify_test_fixture "$repo_dir" "$fake_bin"
+  write_rust_file "${repo_dir}/packages/open-bitcoin-foo/src/lib.rs" 40
+
+  (
+    cd "$repo_dir"
+    git add packages scripts .githooks
+    output="$(PATH="${fake_bin}:$PATH" VERIFY_MARKER_DIR="$repo_dir" bash "$verify_script" --profile 2>&1)"
+    printf '%s' "$output" >profile-output.txt
+  )
+
+  output="$(cat "${repo_dir}/profile-output.txt")"
+  assert_contains "$output" "verify.sh completed in "
+  assert_contains "$output" "verify.sh step timings:"
+  assert_contains "$output" "benchmark smoke"
+  assert_contains "$output" "bazel build"
+  assert_contains "$output" "cargo llvm-cov pure core"
+  if [[ ! -e "${repo_dir}/benchmark-smoke-called" || ! -e "${repo_dir}/bazel-called" || ! -e "${repo_dir}/cargo-llvm-cov-called" ]]; then
+    echo "verify.sh --profile should keep benchmarks, Bazel, and cargo llvm-cov" >&2
+    exit 1
+  fi
+}
+
 run_verify_auto_installs_hooks_case() {
   local repo_dir="${tmp_root}/verify-hooks-install"
   local fake_bin="${repo_dir}/fake-bin"
@@ -334,6 +425,9 @@ run_negative_case
 run_scope_case
 run_verify_integration_case
 run_verify_success_timing_case
+run_verify_invalid_flag_case
+run_verify_fast_mode_case
+run_verify_profile_timing_case
 run_verify_auto_installs_hooks_case
 run_verify_skips_hook_install_in_ci_case
 
