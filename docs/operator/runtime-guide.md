@@ -1,13 +1,15 @@
 # Operator Runtime Guide
 
-This guide describes the current v1.7 operator workflow for Open Bitcoin on
-macOS and Linux. It is intentionally conservative: the runtime is source-built,
-service integration is local-machine only, migration remains dry-run only, and
-release readiness stays evidence-based rather than timing-threshold based.
-v1.7 adds explicit opt-in soak, resource-bound, corruption, and lock recovery
-diagnosis evidence; it does not make a production-node, production-funds,
-inbound-serving, relay, migration-apply, packaging, GUI, hosted-dashboard,
-public-network CI, or release-blocking live sync claim.
+This guide describes the current source-built operator workflow for Open
+Bitcoin on macOS and Linux. It is intentionally conservative: the runtime is
+source-built, service integration is local-machine only, migration remains
+dry-run only, and release readiness stays evidence-based rather than
+timing-threshold based. The current v1.8 production claim boundary is
+[`docs/parity/production-claim-boundary.md`](../parity/production-claim-boundary.md):
+it defines `supported`, `preview`, `opt-in UAT`, `unsupported`, and `deferred`,
+and it is not a production full-node readiness claim. Public-network, real
+service-manager, multi-day, and release-blocking checks remain opt-in unless
+future phases change the contract.
 
 Use this guide for the practical workflow. Use
 [`docs/architecture/config-precedence.md`](../architecture/config-precedence.md),
@@ -51,14 +53,15 @@ the full gate, use `bash scripts/verify.sh --profile`; it runs the same strict
 contract as `bash scripts/verify.sh` and prints per-step timings. The repo
 pre-commit hook intentionally continues to run the strict default verifier.
 
-For release-boundary review, use
-[`docs/parity/threat-model-v1.6.md`](../parity/threat-model-v1.6.md) and
-[`docs/parity/release-readiness.md`](../parity/release-readiness.md). The v1.6
-release boundary is source-built, explicit opt-in full-sync completion only:
-reviewers should inspect validated active-chain progress, best-known-tip
-freshness, stay-current state, restart/resume continuity, no-progress guidance,
-support evidence, and the Phase 73 UAT matrix below before accepting a
-sync-to-tip claim.
+For release-boundary review, start with the v1.8 production claim boundary
+[`docs/parity/production-claim-boundary.md`](../parity/production-claim-boundary.md)
+and [`docs/parity/release-readiness.md`](../parity/release-readiness.md). The
+v1.8 boundary defines gate vocabulary and future evidence requirements only.
+Historical v1.6 and v1.7 sections preserve source-built, explicit opt-in
+full-sync completion and soak evidence; reviewers should inspect validated
+active-chain progress, best-known-tip freshness, stay-current state,
+restart/resume continuity, no-progress guidance, support evidence, and the UAT
+matrices below before accepting any scoped sync evidence claim.
 
 ## Binaries
 
@@ -1563,11 +1566,14 @@ Open Bitcoin does not currently claim all of the following:
 - external-wallet import, restore, or rewrite
 - public-network sync as part of the default local verification contract
 - checked-in live-mainnet report fixtures or timing-threshold release gates
+- public-network CI, release-blocking live sync, automatic support-bundle
+  upload, destructive repair, or broad production-node readiness
 - a hosted public dashboard or GUI parity with the reference Qt app
 
 The parity ledger and deferred-surface record live under
 [`docs/parity/`](../parity/). Start with:
 
+- [`docs/parity/production-claim-boundary.md`](../parity/production-claim-boundary.md)
 - [`docs/parity/index.json`](../parity/index.json)
 - [`docs/parity/checklist.md`](../parity/checklist.md)
 - [`docs/parity/deviations-and-unknowns.md`](../parity/deviations-and-unknowns.md)

@@ -19,9 +19,9 @@ configuration surfaces while keeping the first-party internals strongly typed,
 auditable, and modular.
 
 > Status: the in-scope headless v1 parity surfaces are implemented and ready
-> for review and operator testing. The current v1.7 boundary is source-built,
-> explicit opt-in full-sync soak and recovery hardening, not production-node
-> readiness.
+> for review and operator testing. v1.8 defines the
+> support terms and evidence gates required before a future production
+> full-node readiness claim; it does not claim production full-node readiness.
 
 ## Parity At A Glance
 
@@ -29,6 +29,8 @@ The current status source is the parity ledger:
 [`docs/parity/index.json`](./docs/parity/index.json), the human checklist
 [`docs/parity/checklist.md`](./docs/parity/checklist.md), the release-readiness
 handoff [`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md),
+the v1.8 production claim boundary
+[`docs/parity/production-claim-boundary.md`](./docs/parity/production-claim-boundary.md),
 and project state [`.planning/STATE.md`](./.planning/STATE.md). Older roadmap
 or requirements rows may lag those artifacts.
 
@@ -103,14 +105,17 @@ tracked hook content changes.
 
 ## Operator Preview
 
-The current v1.7 operator/release posture is source-built, explicit opt-in
-full-sync soak and recovery hardening. It covers durable multi-day soak
-evidence, resource bounds, recovery diagnosis, progress guarantees, stall
-diagnosis, support-bundle forensics, and deterministic release-boundary checks.
+v1.8 defines the support terms and evidence gates required before a future production full-node readiness claim. It
+does not claim production full-node readiness. The canonical boundary is
+[`docs/parity/production-claim-boundary.md`](./docs/parity/production-claim-boundary.md).
+v1.7 remains historical source-built, explicit opt-in full-sync soak and recovery hardening evidence covering durable multi-day soak evidence, resource
+bounds, recovery diagnosis, progress guarantees, stall diagnosis,
+support-bundle forensics, and deterministic release-boundary checks.
 For the practical install, onboarding, service, status, dashboard, migration,
 benchmark, limitation, and v1.7 UAT workflow, start with
 [`docs/operator/runtime-guide.md`](./docs/operator/runtime-guide.md). For the
-v1.7 review posture, use the runtime guide with
+v1.8 boundary and historical v1.7 review posture, use the runtime guide with
+[`docs/parity/production-claim-boundary.md`](./docs/parity/production-claim-boundary.md),
 [`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md),
 [`docs/parity/index.json`](./docs/parity/index.json), and
 [`docs/parity/checklist.md`](./docs/parity/checklist.md).
@@ -128,15 +133,15 @@ which writes local JSON and Markdown reports under
 hermetic verification contract.
 
 v1.6 remains historical source-built, explicit opt-in full-sync completion
-evidence. v1.7 is the current scoped soak/recovery closeout after Phase 80; it
-preserves bounded opt-in full-sync soak behavior, durable resume evidence, or diagnosed blocker
-evidence without broadening release claims. It does not claim
-inbound serving, address relay, block serving, transaction relay, compact block
-relay, production-funds wallet safety, production-funds wallet use, migration
-apply mode, signed packaging, Windows service support, GUI parity or GUI
-readiness, hosted dashboards, public-network default checks, public-network CI,
-release-blocking live sync, automatic support-bundle upload, destructive repair,
-or broad production-node readiness.
+evidence. v1.7 remains historical source-built, explicit opt-in full-sync soak and recovery hardening evidence without broadening release claims. It preserves bounded opt-in
+full-sync soak behavior, durable resume evidence, or diagnosed blocker
+evidence. v1.8 does
+not claim inbound serving, address relay, block serving, transaction relay,
+compact block relay, production-funds wallet safety, production-funds wallet
+use, migration apply mode, signed packaging, Windows service integration,
+hosted dashboards, GUI parity, public-network default checks,
+public-network CI, release-blocking live sync, automatic support-bundle upload,
+destructive repair, or broad production-node readiness.
 
 The commands below are a minimal regtest preview. Create a scratch data
 directory, start the RPC server, then call it from another shell:

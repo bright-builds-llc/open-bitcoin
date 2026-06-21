@@ -42,7 +42,13 @@ v1.8 Production Full-Node Readiness Boundary is active.
   2. Release reviewer can trace each allowed production-related statement to an evidence gate, current status, and verification source.
   3. Contributor can identify the full evidence set required before a future production full-node readiness claim is allowed.
   4. Operator-facing release language preserves the deferred-surface inventory without implying production support.
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [x] 82-01-PLAN.md - Canonical production claim boundary and release-readiness handoff.
+- [x] 82-02-PLAN.md - Parity metadata roots and deferred-surface register.
+- [x] 82-03-PLAN.md - README, runtime guide, and catalog boundary pointers.
+- [x] 82-04-PLAN.md - Narrow Phase 82 checker, verifier wiring, and closeout evidence.
 
 ### Phase 83: Support Matrix and Issue Evidence
 **Goal**: Operators, contributors, and release reviewers can use the v1.8 support matrix without accidentally broadening support or hiding carried-forward risks.
@@ -110,7 +116,7 @@ v1.8 Production Full-Node Readiness Boundary is active.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 82. Production Claim Boundary | 0/TBD | Not started | - |
+| 82. Production Claim Boundary | 4/4 | Complete    | 2026-06-21 |
 | 83. Support Matrix and Issue Evidence | 0/TBD | Not started | - |
 | 84. Upgrade and Rollback Policy | 0/TBD | Not started | - |
 | 85. Operator Runbooks | 0/TBD | Not started | - |

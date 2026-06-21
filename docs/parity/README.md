@@ -20,13 +20,16 @@ The current shipped headless v1 surfaces remain marked `done` in
 The v1.1 drop-in audit and migration slice is tracked through the same ledger,
 with cross-cutting evidence in
 [`catalog/drop-in-audit-and-migration.md`](catalog/drop-in-audit-and-migration.md).
-The current v1.7 closeout evidence is rooted in
+The current v1.8 production claim boundary is rooted in
+[`production-claim-boundary.md`](production-claim-boundary.md),
 [`release-readiness.md`](release-readiness.md), this README,
 [`index.json`](index.json), [`checklist.md`](checklist.md), and the
-`v1-7-full-sync-soak-recovery-release-boundaries` checklist surface. Phase 80
-opt-in soak UAT and release boundaries are the current v1.7 closeout root. The
-v1.6, v1.5, v1.4, and v1.3 threat models remain historical evidence and should
-not be read as the current milestone claim.
+`v1-8-production-claim-boundary` checklist surface. Phase 82 defines the
+support terms and evidence gates required before a future production full-node
+readiness claim. v1.7 remains historical evidence for source-built, explicit
+opt-in full-sync soak and recovery hardening; the v1.6, v1.5, v1.4, and v1.3
+threat models also remain historical evidence and should not be read as the
+current milestone claim.
 
 The current v1.6 closeout evidence remains preserved as historical context in
 [`threat-model-v1.6.md`](threat-model-v1.6.md),
@@ -106,6 +109,14 @@ traceability, via [`source-breadcrumbs.json`](source-breadcrumbs.json) and
 Phase 80 does not add a new evidence manifest; it keeps the v1.7 claim scoped to
 source-built, explicit opt-in full-sync soak and recovery hardening.
 
+Phase 82 production claim boundary evidence is rooted in the
+`v1-8-production-claim-boundary` surface for PROD-01, PROD-02, PROD-03, and
+PROD-04. The root links the canonical
+[`production-claim-boundary.md`](production-claim-boundary.md), release
+readiness, machine root, human checklist, deviations register, README, runtime
+guide, and `scripts/verify.sh`. It defines gates only and does not duplicate
+the canonical claim-to-evidence matrix here.
+
 Deferred and suspected follow-up work remains visible in
 [`deviations-and-unknowns.md`](deviations-and-unknowns.md).
 
@@ -116,7 +127,8 @@ Deferred and suspected follow-up work remains visible in
 - `checklist.md` is the human-readable parity checklist view backed by `index.json`.
 - `deviations-and-unknowns.md` summarizes current deviations, deferred surfaces, suspected unknowns, and folded todo risks.
 - `benchmarks.md` documents the benchmark groups, Knots mappings, local commands, reports, and non-goals.
-- `release-readiness.md` is the current v1.7 milestone handoff and reviewer inspection checklist.
+- `production-claim-boundary.md` is the current v1.8 production claim boundary and support-term root.
+- `release-readiness.md` is the current v1.8 handoff plus historical milestone inspection checklist.
 - `threat-model-v1.6.md` is the historical v1.6 scoped threat model and release-boundary companion for REL-01, REL-02, and REL-03.
 - `threat-model-v1.5.md` is the historical v1.5 scoped threat model and release-boundary companion for REL-01, REL-02, REL-03, and REL-04.
 - `threat-model-v1.4.md` is the historical v1.4 scoped threat model and release-boundary companion for OBS-01, OBS-02, OBS-03, SEC-01, SEC-02, and SEC-03.

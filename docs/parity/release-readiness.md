@@ -4,11 +4,11 @@ This release-hardening handoff preserves the headless v1.3 Public Mainnet Sync
 Proof and Node Hardening evidence, the v1.4 Operator Evidence, Threat Model,
 and Release Boundaries closeout, the v1.5 Unattended Mainnet Node Operation
 Readiness closeout, and the v1.6 Mainnet Full-Sync Completion closeout as
-historical context. It adds the current v1.7 Full-Sync Soak and Recovery
-Hardening closeout and points reviewers at repo-owned evidence instead of
-reproducing full phase logs, checking generated benchmark, support-bundle, soak,
-or live-smoke artifacts into git, or making public-network checks part of
-default verification.
+historical context. It adds the current v1.8 Production Claim Boundary handoff
+and points reviewers at repo-owned evidence instead of reproducing full phase
+logs, checking generated benchmark, support-bundle, soak, or live-smoke
+artifacts into git, or making public-network checks part of default
+verification.
 
 ## Readiness Verdict
 
@@ -39,11 +39,18 @@ reorg/no-progress/recovery handling, resource bounds, shared status evidence,
 redacted support bundles, opt-in UAT commands, deterministic local verification,
 and parity roots that make those claims auditable.
 
-The current v1.7 readiness claim is source-built, explicit opt-in full-sync soak
-and recovery hardening. It covers durable multi-day soak evidence, disk and
-resource bounds, corruption and lock recovery diagnosis, progress guarantees,
-stall diagnosis, support-bundle forensics, opt-in UAT commands, deterministic
-release-boundary checks, and parity roots that make those claims auditable.
+The current v1.8 boundary defines the support terms and evidence gates required
+before a future production full-node readiness claim. It does not claim
+production full-node readiness. The canonical boundary is
+[`docs/parity/production-claim-boundary.md`](production-claim-boundary.md) with
+surface id `v1-8-production-claim-boundary`.
+
+The v1.7 readiness claim remains historical: source-built, explicit opt-in
+full-sync soak and recovery hardening. It covers durable multi-day soak
+evidence, disk and resource bounds, corruption and lock recovery diagnosis,
+progress guarantees, stall diagnosis, support-bundle forensics, opt-in UAT
+commands, deterministic release-boundary checks, and parity roots that make
+those claims auditable.
 
 This is not a production-node or production-funds claim. It does not claim
 inbound serving, address relay, block serving, transaction relay, compact block
@@ -53,10 +60,12 @@ checks, public-network CI, release-blocking live sync, automatic support-bundle
 upload, destructive repair, or broad production-node readiness.
 
 Treat [`docs/parity/index.json`](index.json) as the machine-readable root,
-[`docs/parity/checklist.md`](checklist.md) as the human checklist view, this
-release-readiness matrix as the current v1.7 scoped release boundary, and the
-Phase 80 plan threat model as the current v1.7 security boundary for this
-workflow. [`docs/parity/threat-model-v1.6.md`](threat-model-v1.6.md),
+[`docs/parity/checklist.md`](checklist.md) as the human checklist view,
+[`docs/parity/production-claim-boundary.md`](production-claim-boundary.md) as
+the current v1.8 production claim boundary, this release-readiness page as the
+handoff record, and the Phase 80 plan threat model as the historical v1.7
+security boundary for the soak workflow.
+[`docs/parity/threat-model-v1.6.md`](threat-model-v1.6.md),
 [`docs/parity/threat-model-v1.5.md`](threat-model-v1.5.md),
 [`docs/parity/threat-model-v1.4.md`](threat-model-v1.4.md), and
 [`docs/parity/threat-model-v1.3.md`](threat-model-v1.3.md) remain historical
@@ -73,6 +82,7 @@ That command remains deterministic and public-network-free. It includes local
 formatting, linting, builds, tests, benchmark smoke evidence, parity breadcrumb
 checks, Bazel smoke builds, coverage, panic-site checks, and deterministic
 release-boundary assertions through v1.7.
+Phase 82 adds the narrow v1.8 production-boundary traceability check.
 
 ## Complete Surfaces
 
@@ -99,12 +109,18 @@ surfaces as `done`:
 - `v1-5-unattended-operation-release-boundaries`
 - `v1-6-full-sync-completion-release-boundaries`
 - `v1-7-full-sync-soak-recovery-release-boundaries`
+- `v1-8-production-claim-boundary`
 
 Primary current-cycle evidence:
 
 - [`docs/parity/release-readiness.md`](release-readiness.md) records the
-  current v1.7 full-sync soak and recovery hardening boundary matrix and
-  traceability for SOAK-01 through REL-04.
+- [`docs/parity/production-claim-boundary.md`](production-claim-boundary.md)
+  records the current v1.8 support-term glossary, production claim boundary,
+  claim-to-evidence matrix, and deferred-surface inventory for PROD-01 through
+  PROD-04.
+- [`docs/parity/release-readiness.md`](release-readiness.md) records this
+  current v1.8 handoff plus the historical v1.7 full-sync soak and recovery
+  hardening boundary matrix and traceability for SOAK-01 through REL-04.
 - [`docs/parity/threat-model-v1.6.md`](threat-model-v1.6.md) records the
   historical v1.6 STRIDE register, ASVS L1 mapping, evidence acceptance, release
   boundary matrix, and requirement traceability for REL-01, REL-02, and REL-03.
@@ -132,6 +148,23 @@ Primary current-cycle evidence:
   preserves deferred production-adjacent surfaces for review.
 - [`scripts/verify.sh`](../../scripts/verify.sh) provides the repo-owned local
   verification contract for the release surface.
+
+## v1.8 Production Claim Boundary
+
+The current production-boundary root is
+[`docs/parity/production-claim-boundary.md`](production-claim-boundary.md). It
+defines the production full-node readiness gate vocabulary and does not claim
+production full-node readiness.
+
+The support terms are exactly `supported`, `preview`, `opt-in UAT`,
+`unsupported`, and `deferred`. The canonical surface id is
+`v1-8-production-claim-boundary`.
+
+Phase 82 satisfies PROD-01, PROD-02, PROD-03, and PROD-04 by defining the
+allowed production-related statement, its evidence gate, the future gates
+required before broader claims are allowed, and the deferred production-adjacent
+surface inventory. This section is a docs/parity traceability handoff rather
+than the Phase 88 scanner. Phase 88 owns broad deterministic claim guardrails.
 
 ## v1.7 Full-Sync Soak and Recovery Hardening Claim Boundary Matrix
 

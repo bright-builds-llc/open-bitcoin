@@ -210,6 +210,34 @@ compatibility reports, daemon logs, metrics stores, live-mainnet reports, and
 local datadirs stay local unless an operator explicitly shares redacted
 artifacts.
 
+### v1.8 Production Claim Boundary
+
+Phase 82 supports PROD-01, PROD-02, PROD-03, and PROD-04 by defining claim
+gates and preserving deferred status. It does not expand support for any
+production-adjacent surface. The canonical boundary is
+[`production-claim-boundary.md`](production-claim-boundary.md).
+
+| Surface | Support term | Why deferred | Required future gate |
+| --- | --- | --- | --- |
+| inbound serving | `deferred` | Current P2P evidence is outbound review and does not prove production inbound policy. | Scoped P2P production milestone with inbound policy, resource, abuse, and UAT evidence. |
+| address relay | `deferred` | Address-manager and relay governance are not production-scoped. | P2P address-relay milestone with privacy, poisoning, eviction, and parity evidence. |
+| block serving | `deferred` | Current block evidence is validation/download-oriented, not serving policy. | Block-serving gate with serving correctness, resource bounds, peer policy, and production UAT. |
+| transaction relay | `deferred` | Mempool relay behavior is not production-scoped. | Transaction-relay milestone with relay policy, DoS controls, and parity fixtures. |
+| compact block relay | `deferred` | Compact-block protocol depth remains follow-up work. | Compact-block relay milestone with protocol fixtures, peer behavior, and recovery evidence. |
+| production-funds wallet use | `deferred` | Current wallet workflows are not approved for production funds. | Wallet-production threat model, backup/restore proof, audit, and operator UAT. |
+| production-funds wallet safety | `deferred` | Key, signing, recovery, and support boundaries need a production wallet review. | Wallet-production safety audit with threat model, failure drills, and regression coverage. |
+| migration apply mode | `deferred` | Migration remains dry-run and does not mutate source services or datadirs. | Migration apply safety design with backup, rollback, consent, and source mutation evidence. |
+| signed packaging or package-manager distribution | `deferred` | The supported install path is source-built. | Release-engineering milestone for signing, provenance, reproducibility, and package-manager delivery. |
+| Windows service integration | `deferred` | Current service work targets local macOS/Linux operator review. | Windows service milestone with install, supervision, rollback, and platform UAT. |
+| hosted dashboards | `deferred` | Dashboard operation is local and terminal-first. | Hosted-operations design with auth, privacy, retention, monitoring, and incident gates. |
+| GUI parity | `deferred` | GUI work is outside the current headless scope. | GUI milestone with parity mapping, accessibility, state management, and release UAT. |
+| public-network default checks | `deferred` | Default verification must remain deterministic and local. | Release-policy decision with flake budget, opt-in boundary, and evidence retention rules. |
+| public-network CI | `deferred` | Public-network CI would be environment-dependent and potentially flaky. | CI policy milestone with isolation, quotas, retention, and release-blocking criteria. |
+| release-blocking live sync | `deferred` | Live sync remains opt-in evidence rather than a default gate. | Release-readiness milestone that defines blocking criteria, timing policy, and reviewer evidence. |
+| automatic support-bundle upload | `deferred` | Support bundles are local redacted evidence only. | Support-upload design with consent, privacy, retention, redaction, and transport gates. |
+| destructive repair | `deferred` | Recovery guidance is diagnostic and non-mutating. | Destructive-repair policy with backup, rollback, corruption fixtures, and explicit operator consent. |
+| broad production-node readiness | `deferred` | Phase 82 defines gates only; the gates are not satisfied. | Future production-readiness milestone after all deferred surfaces have scoped evidence and Phase 88 guardrails. |
+
 ## Suspected Unknowns
 
 Current catalog entries preserve these review targets:

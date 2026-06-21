@@ -580,6 +580,10 @@
     {
       "name": "v1-7-full-sync-soak-recovery-release-boundaries",
       "status": "done"
+    },
+    {
+      "name": "v1-8-production-claim-boundary",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -1313,6 +1317,35 @@
         "suspected_unknowns": [
           "Future production-node readiness, inbound serving, relay, production-wallet, migration-apply, packaging, Windows service, GUI, hosted-dashboard, public-network CI, support-upload, destructive-repair, signed-artifact, and scheduled-soak claims need separate scoped phases and fresh evidence roots."
         ]
+      },
+      {
+        "id": "v1-8-production-claim-boundary",
+        "title": "v1.8 Production Claim Boundary",
+        "status": "done",
+        "requirements": [
+          "PROD-01",
+          "PROD-02",
+          "PROD-03",
+          "PROD-04"
+        ],
+        "evidence": [
+          "docs/parity/production-claim-boundary.md",
+          "docs/parity/release-readiness.md",
+          "docs/parity/deviations-and-unknowns.md",
+          "docs/parity/checklist.md",
+          "docs/parity/README.md",
+          "README.md",
+          "docs/operator/runtime-guide.md",
+          "scripts/verify.sh"
+        ],
+        "rationale": "Phase 82 defines the support-term vocabulary, allowed production-related statement, claim-to-evidence matrix, future production-readiness gates, and deferred production-adjacent surface inventory.",
+        "known_gaps": [
+          "v1.8 defines gates only and does not claim production full-node readiness.",
+          "v1.8 does not mark deferred production-adjacent surfaces as supported."
+        ],
+        "suspected_unknowns": [
+          "Future production-node readiness, inbound serving, relay, production-wallet, migration-apply, signed packaging, Windows service, GUI, hosted-dashboard, public-network CI, support-upload, destructive-repair, and Phase 88 guardrails need separate scoped phases and fresh evidence roots."
+        ]
       }
     ]
   },
@@ -1596,7 +1629,27 @@
         "scripts/check-phase79-diagnostics-support-bundle.ts",
         "scripts/check-phase80-opt-in-soak-uat-release-boundaries.ts",
         "scripts/verify.sh",
-        ".planning/phases/80-opt-in-soak-uat-and-release-boundaries/80-VERIFICATION.md"
+          ".planning/phases/80-opt-in-soak-uat-and-release-boundaries/80-VERIFICATION.md"
+        ]
+    },
+    "v1_8_production_claim_boundary": {
+      "path": "production-claim-boundary.md",
+      "status": "done",
+      "requirements": [
+        "PROD-01",
+        "PROD-02",
+        "PROD-03",
+        "PROD-04"
+      ],
+      "evidence": [
+        "docs/parity/production-claim-boundary.md",
+        "docs/parity/release-readiness.md",
+        "docs/parity/deviations-and-unknowns.md",
+        "docs/parity/checklist.md",
+        "docs/parity/README.md",
+        "README.md",
+        "docs/operator/runtime-guide.md",
+        "scripts/verify.sh"
       ]
     },
     "phase80_opt_in_soak_uat_release_boundaries": {

@@ -323,6 +323,15 @@ relay, block serving, transaction relay, compact block relay, production-funds
 wallet use, migration apply mode, packaging, GUI, hosted dashboards,
 public-network default checks, multi-day default gates, automatic support-bundle upload, or production-node readiness.
 
+## v1.8 production claim boundary
+
+The v1.8 production claim boundary is
+[`docs/parity/production-claim-boundary.md`](../production-claim-boundary.md).
+Under that boundary, inbound serving, address relay, block serving,
+transaction relay, and compact block relay remain `deferred` until scoped P2P
+production gates exist. Historical outbound sync, soak, and diagnostics evidence
+does not satisfy those future inbound or relay gates by itself.
+
 ## First-party implementation
 
 - [`packages/open-bitcoin-network/src/message.rs`](../../../packages/open-bitcoin-network/src/message.rs)
@@ -341,7 +350,7 @@ public-network default checks, multi-day default gates, automatic support-bundle
 - compact blocks, blocktxn, filtered blocks, bloom filters, and compact filters
 - peer eviction, bans, resource-governance scoring, and timeout parity beyond
   the basic lifecycle surface
-- production-grade daemon-integrated full sync guarantees
+- production daemon-integrated full-sync guarantees
 - automatic public-mainnet recovery loops and broad production-node service
   guarantees
 - long-running socket orchestration and transport persistence beyond the current

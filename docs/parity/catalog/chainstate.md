@@ -154,6 +154,15 @@ reports do not prove soak stability, chainstate safety, inbound serving, relay,
 production-funds wallet use, migration apply mode, packaging, GUI, hosted
 dashboards, public-network default checks, multi-day default gates, automatic support-bundle upload, or production-node readiness.
 
+## v1.8 production claim boundary
+
+The v1.8 production claim boundary is
+[`docs/parity/production-claim-boundary.md`](../production-claim-boundary.md).
+Validated chainstate evidence remains historical support for scoped sync,
+soak, recovery, and diagnostics claims. It does not satisfy broad
+production-node readiness, destructive repair, public-network CI, or
+release-blocking live sync gates by itself.
+
 ## First-party implementation
 
 - [`packages/open-bitcoin-chainstate/src/engine.rs`](../../../packages/open-bitcoin-chainstate/src/engine.rs)
