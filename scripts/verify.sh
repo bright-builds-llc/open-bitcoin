@@ -276,6 +276,8 @@ bun test scripts/check-phase82-production-claim-boundary.test.ts
 bun run scripts/check-phase82-production-claim-boundary.ts
 bun test scripts/check-phase83-support-matrix-issue-evidence.test.ts
 bun run scripts/check-phase83-support-matrix-issue-evidence.ts
+bun test scripts/check-phase84-upgrade-rollback-policy.test.ts
+bun run scripts/check-phase84-upgrade-rollback-policy.ts
 VERIFY_COMMAND_ORDER
 
 parse_args "$@"
@@ -335,6 +337,8 @@ run_step "test Phase 82 production claim boundary checker" bun test scripts/chec
 run_step "check Phase 82 production claim boundary" bun run scripts/check-phase82-production-claim-boundary.ts
 run_step "test Phase 83 support matrix issue evidence checker" bun test scripts/check-phase83-support-matrix-issue-evidence.test.ts
 run_step "check Phase 83 support matrix issue evidence" bun run scripts/check-phase83-support-matrix-issue-evidence.ts
+run_step "test Phase 84 upgrade rollback policy checker" bun test scripts/check-phase84-upgrade-rollback-policy.test.ts
+run_step "check Phase 84 upgrade rollback policy" bun run scripts/check-phase84-upgrade-rollback-policy.ts
 run_step "check pure-core dependencies" bash scripts/check-pure-core-deps.sh
 run_step "check file lengths" bash scripts/check-file-lengths.sh
 run_step "check panic sites" bash scripts/check-panic-sites.sh

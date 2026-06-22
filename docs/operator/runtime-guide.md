@@ -16,8 +16,8 @@ the current support terms and show the local evidence expected for issue
 reports. The matrix confirms public-network, real service-manager, multi-day, and release-blocking checks remain opt-in unless a later scoped gate changes the contract.
 The v1.8 source-built upgrade and rollback policy lives at
 [`docs/parity/upgrade-and-rollback-policy.md`](../parity/upgrade-and-rollback-policy.md);
-it provides the pre-upgrade checklist, failed-upgrade guidance, rollback
-guidance, and no hidden source datadir, wallet, service, or config mutation
+it is the source for the pre-upgrade checklist, failed-upgrade handling,
+rollback steps, and no hidden source datadir, wallet, service, or config mutation
 boundary.
 
 Use this guide for the practical workflow. Use
