@@ -97,3 +97,53 @@ External Core/Knots source datadirs and wallets are high-value input. Rollback
 guidance must not rewrite, repair, restore, import, or otherwise mutate them;
 any such action requires a future scoped migration, wallet, or recovery plan
 with explicit backup and operator-consent gates.
+
+## Failed Upgrade Guidance
+
+When an attempted upgrade fails, preserve evidence before repeating commands or
+changing local state:
+
+1. stop the attempted upgraded process
+2. record exact command and commit
+3. collect redacted local evidence
+4. preserve backups
+5. avoid repeated mutation until the compatibility class is understood
+
+Use the pre-upgrade checklist, state/schema table, and support-matrix redaction
+rules together. Attach the smallest useful redacted local evidence set and
+write `Unavailable: &lt;reason&gt;` for missing fields rather than inferring a
+healthy or incompatible state from logs, elapsed time, or startup behavior.
+
+## Rollback Guidance
+
+Rollback guidance is source-built and local-first:
+
+1. return to the previous checked-out source revision or known binary
+2. use the same explicit datadir and config paths
+3. verify with repo-local commands
+4. record rollback evidence
+
+The repo-local verification path stays explicit: run `bash scripts/verify.sh`
+for the checked-out source and collect status/support evidence through the
+Cargo or Bazel command forms in the pre-upgrade checklist. Use the same selected
+datadir and config paths when comparing before-upgrade, failed-upgrade, and
+rollback evidence.
+
+This policy does not imply package-manager rollback, signed release channels,
+or automatic update behavior. Those surfaces remain deferred until a future
+release-engineering plan defines signing, provenance, distribution, rollback,
+and operator-support gates.
+
+## Boundary And Deferred Work
+
+Phase 84 does not recommend hidden mutation of source datadirs, external wallets, service files, launchd/systemd state, bitcoin.conf, or Open Bitcoin JSONC config.
+
+Any future mutation guidance must be explicit, scoped, backup-aware, and tied to
+the relevant migration, wallet, service, storage, or release-engineering plan.
+This policy may tell an operator to stop, inspect, preserve, back up, retry
+safely, return to a previous source revision, or escalate with redacted
+evidence; it does not authorize the policy text itself to change local state.
+
+Destructive repair remains deferred.
+
+backup_then_rebuild is evidence and operator-decision guidance, not permission for automated destructive rebuild or repair.
