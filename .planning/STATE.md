@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: Production Full-Node Readiness Boundary
-status: executing
-stopped_at: Phase 84 complete
-last_updated: "2026-06-22T02:05:47.189Z"
+status: planning
+stopped_at: Phase 85 context gathered
+last_updated: "2026-06-22T12:58:02.202Z"
 last_activity: 2026-06-22 -- Phase 84 complete; ready to plan Phase 85
 progress:
   total_phases: 7
@@ -89,6 +89,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-21T22:12:01.949Z
-Stopped at: Phase 84 complete
-Resume file: .planning/phases/84-upgrade-and-rollback-policy/84-VERIFICATION.md
+Last session: 2026-06-22T12:58:02.197Z
+Stopped at: Phase 85 context gathered
+Resume file: .planning/phases/85-operator-runbooks/85-CONTEXT.md
