@@ -596,6 +596,10 @@
     {
       "name": "v1-8-operator-runbooks",
       "status": "done"
+    },
+    {
+      "name": "v1-8-service-operation-expectations",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -1457,6 +1461,39 @@
         "suspected_unknowns": [
           "Future service-operation and deterministic claim-guardrail phases own Phase 86 and Phase 88 scope; this surface stays limited to RUN-01 through RUN-03."
         ]
+      },
+      {
+        "id": "v1-8-service-operation-expectations",
+        "title": "v1.8 Service Operation Expectations",
+        "status": "done",
+        "requirements": [
+          "SVC-01",
+          "SVC-02"
+        ],
+        "evidence": [
+          "docs/parity/service-operation-expectations.md",
+          "docs/parity/production-claim-boundary.md",
+          "docs/parity/support-matrix.md",
+          "docs/parity/operator-runbooks.md",
+          "docs/parity/upgrade-and-rollback-policy.md",
+          "docs/parity/release-readiness.md",
+          "docs/parity/deviations-and-unknowns.md",
+          "docs/parity/checklist.md",
+          "docs/parity/README.md",
+          "README.md",
+          "docs/operator/runtime-guide.md",
+          "docs/parity/catalog/operator-runtime-release-hardening.md",
+          "scripts/check-phase86-service-operation-expectations.ts",
+          "scripts/check-phase86-service-operation-expectations.test.ts",
+          "scripts/verify.sh"
+        ],
+        "rationale": "Phase 86 registers the canonical service expectation root for source-built daemon operation, launchd/systemd preview, opt-in real service lifecycle UAT, restart/resume field interpretation, repo-local Cargo/Bazel command evidence, and production-service non-claims.",
+        "known_gaps": [
+          "Service expectations define evidence and support boundaries only; packaged service distribution, Windows service support, automatic update behavior, production service ownership, uptime guarantees, public-network default checks, real service-manager defaults, multi-day default gates, automatic support-bundle upload, destructive repair, and broad production-node readiness remain future-scoped."
+        ],
+        "suspected_unknowns": [
+          "Future production service operation, packaged distribution, Windows service integration, automatic update channels, support-upload workflows, and broad production-node readiness need separate scoped phases and fresh evidence roots."
+        ]
       }
     ]
   },
@@ -1740,8 +1777,8 @@
         "scripts/check-phase79-diagnostics-support-bundle.ts",
         "scripts/check-phase80-opt-in-soak-uat-release-boundaries.ts",
         "scripts/verify.sh",
-          ".planning/phases/80-opt-in-soak-uat-and-release-boundaries/80-VERIFICATION.md"
-        ]
+        ".planning/phases/80-opt-in-soak-uat-and-release-boundaries/80-VERIFICATION.md"
+      ]
     },
     "v1_8_production_claim_boundary": {
       "path": "production-claim-boundary.md",
@@ -1890,6 +1927,31 @@
         "scripts/check-v1.3-release-boundaries.ts",
         "scripts/check-benchmark-report.ts",
         "scripts/run-live-mainnet-smoke.ts"
+      ]
+    },
+    "v1_8_service_operation_expectations": {
+      "path": "service-operation-expectations.md",
+      "status": "done",
+      "requirements": [
+        "SVC-01",
+        "SVC-02"
+      ],
+      "evidence": [
+        "docs/parity/service-operation-expectations.md",
+        "docs/parity/production-claim-boundary.md",
+        "docs/parity/support-matrix.md",
+        "docs/parity/operator-runbooks.md",
+        "docs/parity/upgrade-and-rollback-policy.md",
+        "docs/parity/release-readiness.md",
+        "docs/parity/deviations-and-unknowns.md",
+        "docs/parity/checklist.md",
+        "docs/parity/README.md",
+        "README.md",
+        "docs/operator/runtime-guide.md",
+        "docs/parity/catalog/operator-runtime-release-hardening.md",
+        "scripts/check-phase86-service-operation-expectations.ts",
+        "scripts/check-phase86-service-operation-expectations.test.ts",
+        "scripts/verify.sh"
       ]
     }
   }

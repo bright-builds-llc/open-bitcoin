@@ -16,6 +16,11 @@ review, no-progress handling, support-bundle timelines, and escalation evidence,
 use the canonical [`operator-runbooks.md`](operator-runbooks.md). It follows the
 Phase 82 support terms exactly: `supported`, `preview`, `opt-in UAT`,
 `unsupported`, and `deferred`.
+For service operation expectations, use
+[`service-operation-expectations.md`](service-operation-expectations.md); that
+guidance preserves no-hidden service/config/datadir mutation boundaries while
+keeping service preview, opt-in lifecycle UAT, and production-service non-claims
+separate.
 
 The current policy covers UPG-01, UPG-02, and UPG-03. UPG-04 is the
 deterministic drift-check requirement for later Phase 84 verification wiring,

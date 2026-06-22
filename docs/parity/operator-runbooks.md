@@ -15,6 +15,9 @@ Use this runbook with [`production-claim-boundary.md`](production-claim-boundary
 terms remain exactly `supported`, `preview`, `opt-in UAT`, `unsupported`, and
 `deferred`; this page does not add new support terms or promote any deferred
 surface.
+Service-specific lifecycle, restart/resume, log path, manager command,
+generated file path, and unavailable-reason expectations live in
+[`service-operation-expectations.md`](service-operation-expectations.md).
 
 This runbook tells an operator what to record, what to inspect, when to stop,
 and what to preserve for support triage. It does not authorize source datadir

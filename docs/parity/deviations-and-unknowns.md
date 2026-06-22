@@ -238,6 +238,16 @@ production-node readiness, destructive repair, migration apply, automatic
 upload, and production service ownership boundaries; this page does not create
 a second runbook.
 
+Phase 86 adds
+[`service-operation-expectations.md`](service-operation-expectations.md) as the
+canonical `v1-8-service-operation-expectations` root. It distinguishes
+source-built daemon operation, launchd/systemd preview, opt-in real service
+lifecycle UAT, restart/resume fields, repo-local Cargo/Bazel command evidence,
+and production-service non-claims while preserving deferred production service
+operation, packaged service distribution, Windows service support, automatic
+update behavior, automatic support-bundle upload, destructive repair, and broad
+production-node readiness boundaries.
+
 | Surface | Support term | Why deferred | Required future gate |
 | --- | --- | --- | --- |
 | inbound serving | `deferred` | Current P2P evidence is outbound review and does not prove production inbound policy. | Scoped P2P production milestone with inbound policy, resource, abuse, and UAT evidence. |

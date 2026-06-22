@@ -53,6 +53,9 @@ id `v1-8-upgrade-rollback-policy`.
 The Phase 85 operator runbook is
 [`operator-runbooks.md`](operator-runbooks.md) with surface id
 `v1-8-operator-runbooks`.
+The Phase 86 service operation expectations document is
+[`service-operation-expectations.md`](service-operation-expectations.md) with
+surface id `v1-8-service-operation-expectations`.
 
 The v1.7 readiness claim remains historical: source-built, explicit opt-in
 full-sync soak and recovery hardening. It covers durable multi-day soak
@@ -77,7 +80,9 @@ matrix and issue-evidence root,
 [`upgrade-and-rollback-policy.md`](upgrade-and-rollback-policy.md) as the
 canonical source-built upgrade and rollback policy, this release-readiness page
 [`operator-runbooks.md`](operator-runbooks.md) as the canonical operator
-runbook, this release-readiness page as the handoff record, and the Phase 80 plan threat model as the historical
+runbook, [`service-operation-expectations.md`](service-operation-expectations.md)
+as the canonical service operation expectation root, this release-readiness page
+as the handoff record, and the Phase 80 plan threat model as the historical
 v1.7 security boundary for the soak workflow.
 [`docs/parity/threat-model-v1.6.md`](threat-model-v1.6.md),
 [`docs/parity/threat-model-v1.5.md`](threat-model-v1.5.md),
@@ -130,6 +135,7 @@ surfaces as `done`:
 - `v1-8-support-matrix-issue-evidence`
 - `v1-8-upgrade-rollback-policy`
 - `v1-8-operator-runbooks`
+- `v1-8-service-operation-expectations`
 
 Primary current-cycle evidence:
 
@@ -149,6 +155,11 @@ Primary current-cycle evidence:
   production-boundary preflight, long-run monitoring, no-progress diagnosis,
   recovery/stop decisions, redacted support-bundle timeline, and escalation
   evidence.
+- [`service-operation-expectations.md`](service-operation-expectations.md)
+  records the canonical v1.8 service operation expectations for SVC-01 and
+  SVC-02, including source-built daemon operation, launchd/systemd preview,
+  opt-in real service lifecycle UAT, restart/resume fields, repo-local
+  Cargo/Bazel commands, and production-service non-claims.
 - [`docs/parity/release-readiness.md`](release-readiness.md) records this
   current v1.8 handoff plus the historical v1.7 full-sync soak and recovery
   hardening boundary matrix and traceability for SOAK-01 through REL-04.
@@ -234,6 +245,23 @@ support-bundle timeline, and escalation evidence. It is procedural evidence
 guidance only; public-network default checks, real service-manager defaults,
 multi-day default gates, automatic support-bundle upload, destructive repair,
 and broad production-node readiness remain out of scope.
+
+## v1.8 Service Operation Expectations
+
+The current service-expectation root is
+[`service-operation-expectations.md`](service-operation-expectations.md). It
+records the canonical `v1-8-service-operation-expectations` surface for SVC-01
+and SVC-02 without duplicating the service classification table in this
+release-readiness handoff.
+
+Release reviewers should use it for source-built daemon operation,
+launchd/systemd preview, opt-in real service lifecycle UAT, restart/resume
+fields, repo-local Cargo/Bazel commands, and production-service non-claims.
+The document preserves deferred packaged service distribution, Windows service
+support, automatic update behavior, production service ownership, uptime
+guarantees, public-network default checks, real service-manager defaults,
+multi-day default gates, automatic support-bundle upload, destructive repair,
+and broad production-node readiness boundaries.
 
 ## v1.7 Full-Sync Soak and Recovery Hardening Claim Boundary Matrix
 

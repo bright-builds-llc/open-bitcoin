@@ -24,6 +24,11 @@ The v1.8 operator runbook lives at
 production-boundary preflight, long-run monitoring, no-progress diagnosis,
 recovery/stop decisions, redacted support-bundle timeline, and escalation
 evidence without changing the current production-readiness boundary.
+The v1.8 service operation expectations live at
+[`../parity/service-operation-expectations.md`](../parity/service-operation-expectations.md);
+use that handoff for service support classification, restart/resume field
+interpretation, repo-local Cargo/Bazel service commands, and production-service
+non-claims.
 
 Use this guide for the practical workflow. Use
 [`docs/architecture/config-precedence.md`](../architecture/config-precedence.md),
@@ -693,6 +698,10 @@ Linux `systemd`. These workflows are for explicit opt-in extended operator
 review of the `open-bitcoind` daemon path. They are not part of
 `bash scripts/verify.sh`, and default verification must not start, stop, or
 restart a service or call public peers.
+The canonical service expectation handoff is
+[`../parity/service-operation-expectations.md`](../parity/service-operation-expectations.md);
+it classifies source-built daemon operation, generated service preview, opt-in
+real lifecycle UAT, restart/resume fields, and production-service non-claims.
 
 Generated launchd plist and systemd unit definitions supervise
 `open-bitcoind`, not the `open-bitcoin` operator wrapper. launchd remains

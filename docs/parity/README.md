@@ -138,6 +138,14 @@ production-boundary preflight, long-run monitoring, no-progress diagnosis,
 recovery and stop decisions, redacted support-bundle timelines, and escalation
 evidence; this README only points to it.
 
+Phase 86 service operation expectations are rooted in the
+`v1-8-service-operation-expectations` surface for SVC-01 and SVC-02. The
+canonical
+[`service-operation-expectations.md`](service-operation-expectations.md) is the
+single source for source-built daemon operation, service preview, opt-in real
+service lifecycle UAT, restart/resume fields, repo-local Cargo/Bazel commands,
+and production-service non-claims; this README only points to it.
+
 Deferred and suspected follow-up work remains visible in
 [`deviations-and-unknowns.md`](deviations-and-unknowns.md).
 
@@ -152,6 +160,7 @@ Deferred and suspected follow-up work remains visible in
 - `support-matrix.md` is the canonical v1.8 support matrix, issue-evidence checklist, contributor update-rule, and residual-risk root.
 - `upgrade-and-rollback-policy.md` is the canonical v1.8 source-built upgrade, rollback, backup, and state/schema compatibility root.
 - `operator-runbooks.md` is the canonical v1.8 operator runbook for preflight, monitoring, no-progress diagnosis, recovery, support-bundle timelines, and escalation evidence.
+- `service-operation-expectations.md` is the canonical v1.8 service operation expectation root.
 - `release-readiness.md` is the current v1.8 handoff plus historical milestone inspection checklist.
 - `threat-model-v1.6.md` is the historical v1.6 scoped threat model and release-boundary companion for REL-01, REL-02, and REL-03.
 - `threat-model-v1.5.md` is the historical v1.5 scoped threat model and release-boundary companion for REL-01, REL-02, REL-03, and REL-04.

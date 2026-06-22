@@ -23,7 +23,7 @@ readiness claim.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Open Bitcoin defines gates required before a future production full-node readiness claim. | `supported` | allowed | `docs/parity/production-claim-boundary.md`, `docs/parity/release-readiness.md`, `docs/parity/index.json`, and `bash scripts/verify.sh` | `bash scripts/verify.sh` | docs/parity verification only | Gates are defined but not yet satisfied | Phase 87 release-readiness checklist plus Phase 88 deterministic claim guardrails |
 | Open Bitcoin has production full-node readiness. | `deferred` | not allowed yet | This boundary, `docs/parity/deviations-and-unknowns.md`, and historical v1.3 through v1.7 evidence | No default verifier may prove this in v1.8 | none | Future gates are unsatisfied | Future production-readiness milestone with scoped P2P, chainstate, wallet, operator, packaging, support, and release-policy evidence |
-| Open Bitcoin supports production service operation. | `deferred` | not allowed yet | Runtime guide limitations and operator-runtime catalog | No default verifier may prove this in v1.8 | none | Service operation lacks production policy, packaging, and platform evidence | Future service-operation milestone with uptime, install, supervision, rollback, and platform gates |
+| Open Bitcoin supports production service operation. | `deferred` | not allowed yet | Runtime guide limitations, `docs/parity/service-operation-expectations.md`, and operator-runtime catalog | No default verifier may prove this in v1.8 | none | Service operation lacks production policy, packaging, and platform evidence | Future service-operation milestone with uptime, install, supervision, rollback, and platform gates |
 | Open Bitcoin supports relay/inbound serving. | `deferred` | not allowed yet | P2P catalog and deferred-surface register | No default verifier may prove this in v1.8 | none | Inbound and relay policy are not production-scoped | Scoped P2P production milestone for inbound serving, address relay, block serving, transaction relay, and compact block relay |
 | Open Bitcoin supports production wallet use. | `deferred` | not allowed yet | Wallet catalog and runtime guide limitations | No default verifier may prove this in v1.8 | none | Production-funds safety, backups, recovery, and threat model are incomplete | Wallet-production threat model, audit, UAT, and operator rollback gates |
 | Open Bitcoin supports migration apply mode. | `deferred` | not allowed yet | Drop-in audit catalog and deviations register | No default verifier may prove this in v1.8 | none | Current migration is dry-run only | Migration apply safety design, backup, rollback, source-service, and source-datadir mutation gates |
@@ -50,6 +50,12 @@ monitoring, no-progress diagnosis, recovery/stop decisions, redacted
 support-bundle timelines, and escalation evidence. It does not satisfy future
 production-readiness gates, authorize hidden mutation, or promote any deferred
 surface.
+
+The service expectation document in
+[`service-operation-expectations.md`](service-operation-expectations.md)
+classifies source-built daemon operation, service preview, opt-in real
+lifecycle UAT, and deferred production service claims without satisfying
+production-service gates.
 
 ## Deferred Production-Adjacent Surfaces
 

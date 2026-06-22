@@ -280,6 +280,8 @@ bun test scripts/check-phase84-upgrade-rollback-policy.test.ts
 bun run scripts/check-phase84-upgrade-rollback-policy.ts
 bun test scripts/check-phase85-operator-runbooks.test.ts
 bun run scripts/check-phase85-operator-runbooks.ts
+bun test scripts/check-phase86-service-operation-expectations.test.ts
+bun run scripts/check-phase86-service-operation-expectations.ts
 VERIFY_COMMAND_ORDER
 
 parse_args "$@"
@@ -343,6 +345,8 @@ run_step "test Phase 84 upgrade rollback policy checker" bun test scripts/check-
 run_step "check Phase 84 upgrade rollback policy" bun run scripts/check-phase84-upgrade-rollback-policy.ts
 run_step "test Phase 85 operator runbooks checker" bun test scripts/check-phase85-operator-runbooks.test.ts
 run_step "check Phase 85 operator runbooks" bun run scripts/check-phase85-operator-runbooks.ts
+run_step "test Phase 86 service operation expectations checker" bun test scripts/check-phase86-service-operation-expectations.test.ts
+run_step "check Phase 86 service operation expectations" bun run scripts/check-phase86-service-operation-expectations.ts
 run_step "check pure-core dependencies" bash scripts/check-pure-core-deps.sh
 run_step "check file lengths" bash scripts/check-file-lengths.sh
 run_step "check panic sites" bash scripts/check-panic-sites.sh

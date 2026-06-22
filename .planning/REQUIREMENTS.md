@@ -31,8 +31,8 @@
 - [ ] **RUN-01**: Operator can follow a production-boundary preflight runbook before long-running source-built node operation.
 - [ ] **RUN-02**: Operator can follow long-run operation, monitoring, no-progress diagnosis, recovery, and escalation runbooks using existing v1.3 through v1.7 evidence surfaces.
 - [ ] **RUN-03**: Operator can collect a redacted support-bundle timeline and identify what evidence is sufficient for support triage.
-- [ ] **SVC-01**: Operator can distinguish source-built daemon operation from launchd/systemd supervision, packaged-service distribution, service-manager availability, and unsupported production-service claims.
-- [ ] **SVC-02**: Operator can verify service lifecycle, restart/resume, log, metric, resource-bound, and recovery expectations through repo-local Cargo and Bazel command forms.
+- [x] **SVC-01**: Operator can distinguish source-built daemon operation from launchd/systemd supervision, packaged-service distribution, service-manager availability, and unsupported production-service claims.
+- [x] **SVC-02**: Operator can verify service lifecycle, restart/resume, log, metric, resource-bound, and recovery expectations through repo-local Cargo and Bazel command forms.
 
 ### Release Readiness and Guardrails
 
@@ -97,8 +97,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RUN-01 | Phase 85 | Pending |
 | RUN-02 | Phase 85 | Pending |
 | RUN-03 | Phase 85 | Pending |
-| SVC-01 | Phase 86 | Pending |
-| SVC-02 | Phase 86 | Pending |
+| SVC-01 | Phase 86 | Complete |
+| SVC-02 | Phase 86 | Complete |
 | REL-01 | Phase 87 | Pending |
 | REL-02 | Phase 88 | Pending |
 | REL-03 | Phase 88 | Pending |

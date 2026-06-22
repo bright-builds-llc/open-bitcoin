@@ -132,7 +132,7 @@ Plans:
 | 83. Support Matrix and Issue Evidence | 4/4 | Complete    | 2026-06-21 |
 | 84. Upgrade and Rollback Policy | 4/4 | Complete    | 2026-06-22 |
 | 85. Operator Runbooks | 4/4 | Complete    | 2026-06-22 |
-| 86. Service Operation Expectations | 0/TBD | Not started | - |
+| 86. Service Operation Expectations | 4/4 | Complete    | 2026-06-22 |
 | 87. Release Readiness Checklist | 0/TBD | Not started | - |
 | 88. Deterministic Claim Guardrails | 0/TBD | Not started | - |
 

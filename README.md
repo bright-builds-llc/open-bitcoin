@@ -37,6 +37,8 @@ the source-built upgrade, rollback, backup, and compatibility decisions policy
 [`docs/parity/upgrade-and-rollback-policy.md`](./docs/parity/upgrade-and-rollback-policy.md),
 the operator runbooks
 [`docs/parity/operator-runbooks.md`](./docs/parity/operator-runbooks.md),
+the service operation expectations
+[`docs/parity/service-operation-expectations.md`](./docs/parity/service-operation-expectations.md),
 and project state [`.planning/STATE.md`](./.planning/STATE.md). Older roadmap
 or requirements rows may lag those artifacts.
 
@@ -123,6 +125,10 @@ For production-boundary preflight, long-run monitoring, no-progress diagnosis,
 recovery/stop decisions, redacted support-bundle timelines, and escalation
 evidence, use
 [`docs/parity/operator-runbooks.md`](./docs/parity/operator-runbooks.md).
+For direct `open-bitcoind` operation, source-built service preview,
+opt-in launchd/systemd lifecycle UAT, restart/resume fields, repo-local
+Cargo/Bazel commands, and production-service non-claims, use
+[`docs/parity/service-operation-expectations.md`](./docs/parity/service-operation-expectations.md).
 v1.7 remains historical source-built, explicit opt-in full-sync soak and recovery hardening evidence covering durable multi-day soak evidence, resource
 bounds, recovery diagnosis, progress guarantees, stall diagnosis,
 support-bundle forensics, and deterministic release-boundary checks.
