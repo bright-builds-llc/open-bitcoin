@@ -588,6 +588,10 @@
     {
       "name": "v1-8-support-matrix-issue-evidence",
       "status": "done"
+    },
+    {
+      "name": "v1-8-upgrade-rollback-policy",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -1384,6 +1388,40 @@
         "suspected_unknowns": [
           "Future support promotion requires a concrete evidence source, verifier or opt-in UAT command, residual-risk statement, and next gate per D-12."
         ]
+      },
+      {
+        "id": "v1-8-upgrade-rollback-policy",
+        "title": "v1.8 Upgrade And Rollback Policy",
+        "status": "done",
+        "requirements": [
+          "UPG-01",
+          "UPG-02",
+          "UPG-03",
+          "UPG-04"
+        ],
+        "evidence": [
+          "docs/parity/upgrade-and-rollback-policy.md",
+          "docs/parity/production-claim-boundary.md",
+          "docs/parity/support-matrix.md",
+          "docs/parity/release-readiness.md",
+          "docs/parity/deviations-and-unknowns.md",
+          "docs/parity/checklist.md",
+          "docs/parity/README.md",
+          "README.md",
+          "docs/operator/runtime-guide.md",
+          "docs/parity/catalog/operator-runtime-release-hardening.md",
+          "docs/parity/catalog/drop-in-audit-and-migration.md",
+          "docs/parity/catalog/wallet.md",
+          "docs/parity/catalog/chainstate.md",
+          "scripts/verify.sh"
+        ],
+        "rationale": "Phase 84 registers the canonical source-built upgrade, rollback, backup, and compatibility policy without creating a second support matrix or authorizing hidden mutation.",
+        "known_gaps": [
+          "The policy defines boundaries and evidence expectations only; migration apply mode, destructive repair, automatic backup or restore, signed packaging, and automatic update channels remain future-scoped."
+        ],
+        "suspected_unknowns": [
+          "Broad all-doc production-claim guardrails remain Phase 88 scope."
+        ]
       }
     ]
   },
@@ -1713,6 +1751,32 @@
         "docs/parity/catalog/chainstate.md",
         "docs/parity/catalog/wallet.md",
         "docs/parity/catalog/drop-in-audit-and-migration.md",
+        "scripts/verify.sh"
+      ]
+    },
+    "v1_8_upgrade_rollback_policy": {
+      "path": "upgrade-and-rollback-policy.md",
+      "status": "done",
+      "requirements": [
+        "UPG-01",
+        "UPG-02",
+        "UPG-03",
+        "UPG-04"
+      ],
+      "evidence": [
+        "docs/parity/upgrade-and-rollback-policy.md",
+        "docs/parity/production-claim-boundary.md",
+        "docs/parity/support-matrix.md",
+        "docs/parity/release-readiness.md",
+        "docs/parity/deviations-and-unknowns.md",
+        "docs/parity/checklist.md",
+        "docs/parity/README.md",
+        "README.md",
+        "docs/operator/runtime-guide.md",
+        "docs/parity/catalog/operator-runtime-release-hardening.md",
+        "docs/parity/catalog/drop-in-audit-and-migration.md",
+        "docs/parity/catalog/wallet.md",
+        "docs/parity/catalog/chainstate.md",
         "scripts/verify.sh"
       ]
     },
