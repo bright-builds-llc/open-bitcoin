@@ -4,8 +4,8 @@ milestone: v1.8
 milestone_name: Production Full-Node Readiness Boundary
 status: executing
 stopped_at: Phase 84 context gathered
-last_updated: "2026-06-22T00:17:11.325Z"
-last_activity: 2026-06-22 -- Phase 84 planning complete
+last_updated: "2026-06-22T00:17:37.346Z"
+last_activity: 2026-06-22 -- Phase 84 execution started
 progress:
   total_phases: 7
   completed_phases: 2
@@ -21,15 +21,15 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-20)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 83 — Support Matrix and Issue Evidence
+**Current focus:** Phase 84 — Upgrade and Rollback Policy
 
 ## Current Position
 
 Milestone: v1.8 Production Full-Node Readiness Boundary
-Phase: 84
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-06-22 -- Phase 84 planning complete
+Phase: 84 (Upgrade and Rollback Policy) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 84
+Last activity: 2026-06-22 -- Phase 84 execution started
 
 Progress: [----------] 0%
 
