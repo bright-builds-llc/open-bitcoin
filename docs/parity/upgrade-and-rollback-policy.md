@@ -48,3 +48,52 @@ Status, support bundle, config summary, service state, source revision, and
 backup-location recording are all review-only evidence. Source datadir, wallet,
 service, and config mutation requires a future scoped plan before any operator
 workflow may recommend or automate it.
+
+## State And Schema Compatibility Decision Table
+
+Compatibility decisions use existing recovery vocabulary from status, support
+evidence, runtime guidance, and storage decisions. They require field-level
+evidence from the selected Open Bitcoin datadir, plus `Unavailable: &lt;reason&gt;`
+for any expected field that cannot be collected.
+
+| Evidence observed | Compatibility category | Action class | Allowed next action | Forbidden hidden mutation | Required evidence |
+| --- | --- | --- | --- | --- | --- |
+| `clean_shutdown` | clean selected store state | `safe_retry` | Retry the source-built command after confirming the same explicit datadir and config paths. | Changing source datadirs, wallets, service files, or configs because shutdown was clean. | Status or support fields naming `clean_shutdown`, source revision, command, datadir, and config paths. |
+| `unclean_shutdown` | interrupted selected store state | `safe_retry` | Retry only after preserving the current status fields and confirming no higher-priority recovery evidence is present. | Clearing markers, deleting files, or rewriting the store before the retry. | Status or support fields naming `unclean_shutdown`, latest stop reason, recovery action, and unavailable reasons. |
+| `storage_lock_contention` | selected store lock contention | `read_only_inspection` | Inspect read-only evidence, confirm whether another process owns the selected datadir, and stop normal upgrade attempts until classified. | Deleting lock artifacts, scanning OS process tables as policy, or changing supervisor state. | Recovery evidence naming `storage_lock_contention`, affected path or namespace when available, and lock evidence basis. |
+| `incompatible_schema` | selected store schema is incompatible | `stop_and_escalate` | Stop the upgraded process, preserve redacted evidence, and escalate with source revision and command context. | Rewriting schema records, downgrading files in place, or auto-converting stores. | Recovery category/action fields, schema version evidence, `schema_mismatch` when present, and unavailable reasons. |
+| `schema_mismatch` | schema mismatch cause | `stop_and_escalate` | Stop and attach redacted field-level evidence before any retry or rollback decision. | Inferring compatibility from daemon startup or mutating schema metadata. | `recovery_evidence.cause` or equivalent support field naming `schema_mismatch`. |
+| `store_corruption` | selected store corruption | `backup_then_rebuild` | Preserve a backup and field evidence before any future operator-decided rebuild workflow. | Automatic destructive rebuild, repair, compaction, reindex, or source datadir mutation. | Recovery category/action fields, affected namespace or path when available, and corruption evidence basis. |
+| `corruption_marker` | corruption marker cause | `backup_then_rebuild` | Preserve the marker evidence and backup before any future rebuild plan. | Clearing markers or rewriting records as part of rollback guidance. | `recovery_evidence.cause` or equivalent support field naming `corruption_marker`. |
+| `corrupt_record` | corrupt record cause | `backup_then_rebuild` | Preserve redacted evidence and backup before future rebuild or escalation. | Editing records in place or treating partial status as repair permission. | `recovery_evidence.cause` or equivalent support field naming `corrupt_record`. |
+| `partial_write` | partial write cause | `backup_then_rebuild` | Preserve the selected store and backup before future rebuild planning. | Retrying repeated mutations until the partial-write class is understood. | `recovery_evidence.cause` or equivalent support field naming `partial_write`. |
+| `unreadable_namespace` | unreadable namespace cause | `backup_then_rebuild` | Preserve a backup and namespace evidence before escalation or future rebuild work. | Dropping namespaces, compacting, or replacing files inside this policy. | `recovery_evidence.cause` or equivalent support field naming `unreadable_namespace`. |
+| `backend_open_failure` | backend-open failure pending classification | `read_only_inspection` | Inspect read-only evidence first; escalate when field evidence cannot classify the cause. | Assuming corruption, deleting locks, or changing datadir ownership without evidence. | Backend error class, unavailable-field reasons, datadir path, and any recovery category/action fields that were available. |
+
+## Evidence That Is Not Sufficient
+
+The following signals are useful context but are not compatibility proof by
+themselves:
+
+- daemon startup
+- elapsed time
+- peer reachability
+- raw logs
+- report existence alone
+
+Compatibility decisions require field-level evidence and `Unavailable:
+&lt;reason&gt;` for missing fields. A status command, support bundle, log tail, or
+report may support a decision only when it preserves the typed recovery category,
+cause, action class, evidence basis, and unavailable-field reasons needed to
+interpret the selected datadir.
+
+## Open Bitcoin Store Versus External State
+
+Open Bitcoin-owned durable store state is the selected Open Bitcoin datadir and
+its typed status/support evidence. It is separate from external Core/Knots
+source datadirs and wallets.
+
+External Core/Knots source datadirs and wallets are high-value input. Rollback
+guidance must not rewrite, repair, restore, import, or otherwise mutate them;
+any such action requires a future scoped migration, wallet, or recovery plan
+with explicit backup and operator-consent gates.
