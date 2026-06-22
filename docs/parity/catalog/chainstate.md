@@ -169,6 +169,11 @@ sync/recovery/resource evidence supports scoped source-built evidence only; it
 does not satisfy broad production-node readiness, destructive repair,
 public-network CI, or release-blocking live sync gates.
 
+The Phase 84 upgrade policy is
+[`docs/parity/upgrade-and-rollback-policy.md`](../upgrade-and-rollback-policy.md).
+Chainstate schema/storage compatibility decisions use field-level evidence and
+do not imply destructive repair.
+
 ## First-party implementation
 
 - [`packages/open-bitcoin-chainstate/src/engine.rs`](../../../packages/open-bitcoin-chainstate/src/engine.rs)

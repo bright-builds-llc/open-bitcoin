@@ -82,6 +82,11 @@ Phase 83 records wallet support boundaries in
 slice remains non-production/preview-scoped where documented; production-funds
 wallet use and production-funds wallet safety remain `deferred`.
 
+Phase 84 rollback guidance in
+[`docs/parity/upgrade-and-rollback-policy.md`](../upgrade-and-rollback-policy.md)
+does not authorize production-funds wallet use, external wallet rewrite, raw
+wallet copy, or hidden wallet mutation.
+
 - miniscript, multisig, and PSBT flows
 - wallet encryption and restore or import compatibility with external wallet
   formats

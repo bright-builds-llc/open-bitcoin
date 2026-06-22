@@ -72,6 +72,12 @@ classified migration support slice is migration dry-run/read-only behavior;
 migration apply, source service mutation, and source datadir rewrite remain
 `deferred`.
 
+Phase 84 adds the source-built upgrade policy at
+[`docs/parity/upgrade-and-rollback-policy.md`](../upgrade-and-rollback-policy.md);
+it keeps migration apply, source service mutation, source datadir rewrite, and
+external wallet rewrite deferred rather than turning rollback guidance into
+source-install mutation permission.
+
 - automatic service cutover or daemon handoff
 - source-datadir mutation or in-place migration
 - external-wallet import, restore, rewrite, or Core-compatible migration
