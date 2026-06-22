@@ -487,22 +487,19 @@ Source pattern: Phase 83 keeps default verification public-network-free, real-se
 
 All claims in this research were verified from the phase context, project files, local command probes, or cited official OWASP ASVS sources; no `[ASSUMED]` claims are intentionally present. [VERIFIED: .planning/phases/84-upgrade-and-rollback-policy/84-CONTEXT.md; CITED: https://owasp.org/www-project-application-security-verification-standard/]
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Exact policy filename**
    - What we know: The executor may choose `docs/parity/upgrade-and-rollback-policy.md` or a narrower filename with the same canonical role. [VERIFIED: .planning/phases/84-upgrade-and-rollback-policy/84-CONTEXT.md]
-   - What's unclear: The filename is not locked beyond the `docs/parity/` canonical-role requirement. [VERIFIED: .planning/phases/84-upgrade-and-rollback-policy/84-CONTEXT.md]
-   - Recommendation: Use `docs/parity/upgrade-and-rollback-policy.md` because it matches the phase name and is explicit for link targets. [VERIFIED: .planning/phases/84-upgrade-and-rollback-policy/84-CONTEXT.md]
+   - RESOLVED: Use `docs/parity/upgrade-and-rollback-policy.md` because it matches the phase name, is explicit for link targets, and is the path selected by the Phase 84 plans. [VERIFIED: .planning/phases/84-upgrade-and-rollback-policy/84-01-PLAN.md]
 
 2. **Whether to add Rust checks**
    - What we know: No Rust source changes are expected. [VERIFIED: .planning/phases/84-upgrade-and-rollback-policy/84-CONTEXT.md]
-   - What's unclear: Implementation may discover a narrow Rust gap, though none was identified during research. [VERIFIED: rg recovery terms docs scripts packages]
-   - Recommendation: Do not plan Rust work; include a contingency that any new first-party Rust source/test file must add parity breadcrumbs. [VERIFIED: AGENTS.md; VERIFIED: .planning/phases/84-upgrade-and-rollback-policy/84-CONTEXT.md]
+   - RESOLVED: Do not plan Rust work. Keep Phase 84 to docs, parity metadata, Bun checker/test coverage, verifier wiring, and the existing contingency that any newly discovered first-party Rust source/test file must add parity breadcrumbs. [VERIFIED: .planning/phases/84-upgrade-and-rollback-policy/84-04-PLAN.md; VERIFIED: AGENTS.md]
 
 3. **How much runtime-guide detail to duplicate**
    - What we know: The phase requires a canonical policy and links from the runtime guide; existing runtime guide already contains command forms, recovery vocabulary, status evidence, support-bundle collection, service state, and opt-in UAT material. [VERIFIED: docs/operator/runtime-guide.md; VERIFIED: .planning/phases/84-upgrade-and-rollback-policy/84-CONTEXT.md]
-   - What's unclear: The final amount of copied command prose depends on how the executor organizes the policy. [VERIFIED: .planning/phases/84-upgrade-and-rollback-policy/84-CONTEXT.md]
-   - Recommendation: Keep the policy table-driven and include only the minimum command snippets needed for pre-upgrade/status/support evidence; link to the runtime guide for broader workflows. [VERIFIED: docs/operator/runtime-guide.md; VERIFIED: docs/parity/support-matrix.md]
+   - RESOLVED: Keep runtime-guide updates pointer-first. The canonical policy should include the minimum command snippets needed for pre-upgrade/status/support evidence and link to the runtime guide for broader workflows. [VERIFIED: .planning/phases/84-upgrade-and-rollback-policy/84-03-PLAN.md; VERIFIED: docs/operator/runtime-guide.md; VERIFIED: docs/parity/support-matrix.md]
 
 ## Environment Availability
 
