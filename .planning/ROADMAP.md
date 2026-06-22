@@ -23,9 +23,9 @@ v1.8 Production Full-Node Readiness Boundary is active.
 
 ## Phases
 
-- [ ] **Phase 82: Production Claim Boundary** - Define production-readiness terminology, support levels, deferred surfaces, and evidence gates.
-- [ ] **Phase 83: Support Matrix and Issue Evidence** - Make supported environments, issue-report evidence, residual risks, and support-matrix update boundaries explicit.
-- [ ] **Phase 84: Upgrade and Rollback Policy** - Document source-built upgrade, rollback, backup, and state/schema compatibility expectations.
+- [x] **Phase 82: Production Claim Boundary** - Define production-readiness terminology, support levels, deferred surfaces, and evidence gates.
+- [x] **Phase 83: Support Matrix and Issue Evidence** - Make supported environments, issue-report evidence, residual risks, and support-matrix update boundaries explicit.
+- [x] **Phase 84: Upgrade and Rollback Policy** - Document source-built upgrade, rollback, backup, and state/schema compatibility expectations.
 - [ ] **Phase 85: Operator Runbooks** - Provide preflight, long-run operation, diagnosis, recovery, support-bundle, and escalation runbooks.
 - [ ] **Phase 86: Service Operation Expectations** - Bound source-built daemon and service-supervision expectations with repo-local verification commands.
 - [ ] **Phase 87: Release Readiness Checklist** - Map all v1.8 requirements to release evidence, docs, UAT, residual risk, and the no-claim boundary.
@@ -73,10 +73,10 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 84-01-PLAN.md - Canonical source-built upgrade and rollback policy.
-- [ ] 84-02-PLAN.md - Parity roots and release-boundary links.
-- [ ] 84-03-PLAN.md - README, runtime guide, and catalog entrypoint links.
-- [ ] 84-04-PLAN.md - Phase 84 checker, verifier wiring, and closeout evidence.
+- [x] 84-01-PLAN.md - Canonical source-built upgrade and rollback policy.
+- [x] 84-02-PLAN.md - Parity roots and release-boundary links.
+- [x] 84-03-PLAN.md - README, runtime guide, and catalog entrypoint links.
+- [x] 84-04-PLAN.md - Phase 84 checker, verifier wiring, and closeout evidence.
 
 ### Phase 85: Operator Runbooks
 **Goal**: Operators can run, monitor, diagnose, recover, and escalate long-running source-built node operation using the existing v1.3 through v1.7 evidence surfaces.
@@ -124,7 +124,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 82. Production Claim Boundary | 4/4 | Complete    | 2026-06-21 |
 | 83. Support Matrix and Issue Evidence | 4/4 | Complete    | 2026-06-21 |
-| 84. Upgrade and Rollback Policy | 0/4 | Not started | - |
+| 84. Upgrade and Rollback Policy | 4/4 | Complete    | 2026-06-22 |
 | 85. Operator Runbooks | 0/TBD | Not started | - |
 | 86. Service Operation Expectations | 0/TBD | Not started | - |
 | 87. Release Readiness Checklist | 0/TBD | Not started | - |

@@ -21,10 +21,10 @@
 
 ### Upgrade Policy
 
-- [ ] **UPG-01**: Operator can follow a pre-upgrade checklist covering backups, source-built binaries, config files, datadir ownership, service state, and current sync evidence.
-- [ ] **UPG-02**: Operator can understand state and schema compatibility expectations, including when upgrade, retry, rollback, backup-then-rebuild, or stop-and-escalate guidance applies.
-- [ ] **UPG-03**: Operator can follow rollback and failed-upgrade guidance without hidden source datadir, wallet, service, or config mutation.
-- [ ] **UPG-04**: Contributor can run deterministic checks that fail when upgrade policy docs, rollback boundaries, or backup expectations drift out of the release-readiness contract.
+- [x] **UPG-01**: Operator can follow a pre-upgrade checklist covering backups, source-built binaries, config files, datadir ownership, service state, and current sync evidence.
+- [x] **UPG-02**: Operator can understand state and schema compatibility expectations, including when upgrade, retry, rollback, backup-then-rebuild, or stop-and-escalate guidance applies.
+- [x] **UPG-03**: Operator can follow rollback and failed-upgrade guidance without hidden source datadir, wallet, service, or config mutation.
+- [x] **UPG-04**: Contributor can run deterministic checks that fail when upgrade policy docs, rollback boundaries, or backup expectations drift out of the release-readiness contract.
 
 ### Runbooks and Service Expectations
 
@@ -90,10 +90,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SUP-02 | Phase 83 | Pending |
 | SUP-03 | Phase 83 | Pending |
 | SUP-04 | Phase 83 | Pending |
-| UPG-01 | Phase 84 | Pending |
-| UPG-02 | Phase 84 | Pending |
-| UPG-03 | Phase 84 | Pending |
-| UPG-04 | Phase 84 | Pending |
+| UPG-01 | Phase 84 | Complete |
+| UPG-02 | Phase 84 | Complete |
+| UPG-03 | Phase 84 | Complete |
+| UPG-04 | Phase 84 | Complete |
 | RUN-01 | Phase 85 | Pending |
 | RUN-02 | Phase 85 | Pending |
 | RUN-03 | Phase 85 | Pending |
@@ -113,4 +113,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-06-20*
-*Last updated: 2026-06-20 after v1.8 roadmap creation*
+*Last updated: 2026-06-22 after completing Phase 84 upgrade and rollback policy*
