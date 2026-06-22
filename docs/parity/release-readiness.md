@@ -46,7 +46,10 @@ production full-node readiness. The canonical boundary is
 surface id `v1-8-production-claim-boundary`. The Phase 83 support matrix and
 issue-evidence handoff is
 [`docs/parity/support-matrix.md`](support-matrix.md) with surface id
-`v1-8-support-matrix-issue-evidence`.
+`v1-8-support-matrix-issue-evidence`. The Phase 84 source-built upgrade,
+rollback, backup, and compatibility policy is
+[`upgrade-and-rollback-policy.md`](upgrade-and-rollback-policy.md) with surface
+id `v1-8-upgrade-rollback-policy`.
 
 The v1.7 readiness claim remains historical: source-built, explicit opt-in
 full-sync soak and recovery hardening. It covers durable multi-day soak
@@ -67,9 +70,11 @@ Treat [`docs/parity/index.json`](index.json) as the machine-readable root,
 [`docs/parity/production-claim-boundary.md`](production-claim-boundary.md) as
 the current v1.8 production claim boundary,
 [`docs/parity/support-matrix.md`](support-matrix.md) as the canonical support
-matrix and issue-evidence root, this release-readiness page as the handoff
-record, and the Phase 80 plan threat model as the historical v1.7 security
-boundary for the soak workflow.
+matrix and issue-evidence root,
+[`upgrade-and-rollback-policy.md`](upgrade-and-rollback-policy.md) as the
+canonical source-built upgrade and rollback policy, this release-readiness page
+as the handoff record, and the Phase 80 plan threat model as the historical
+v1.7 security boundary for the soak workflow.
 [`docs/parity/threat-model-v1.6.md`](threat-model-v1.6.md),
 [`docs/parity/threat-model-v1.5.md`](threat-model-v1.5.md),
 [`docs/parity/threat-model-v1.4.md`](threat-model-v1.4.md), and
@@ -88,7 +93,8 @@ formatting, linting, builds, tests, benchmark smoke evidence, parity breadcrumb
 checks, Bazel smoke builds, coverage, panic-site checks, and deterministic
 release-boundary assertions through v1.7.
 Phase 82 and Phase 83 add the narrow v1.8 production-boundary and
-support-matrix traceability checks.
+support-matrix traceability checks. Phase 84 adds the upgrade-policy roots that
+later UPG-04 drift checks consume.
 
 ## Complete Surfaces
 
@@ -117,6 +123,7 @@ surfaces as `done`:
 - `v1-7-full-sync-soak-recovery-release-boundaries`
 - `v1-8-production-claim-boundary`
 - `v1-8-support-matrix-issue-evidence`
+- `v1-8-upgrade-rollback-policy`
 
 Primary current-cycle evidence:
 
@@ -127,6 +134,10 @@ Primary current-cycle evidence:
 - [`docs/parity/support-matrix.md`](support-matrix.md) records the canonical
   v1.8 support matrix, issue-evidence checklist, contributor update rules, and
   carried-forward residual risks for SUP-01 through SUP-04.
+- [`upgrade-and-rollback-policy.md`](upgrade-and-rollback-policy.md) records
+  the canonical source-built upgrade, rollback, backup, and compatibility
+  policy for UPG-01 through UPG-04. Path:
+  `docs/parity/upgrade-and-rollback-policy.md`.
 - [`docs/parity/release-readiness.md`](release-readiness.md) records this
   current v1.8 handoff plus the historical v1.7 full-sync soak and recovery
   hardening boundary matrix and traceability for SOAK-01 through REL-04.
@@ -186,6 +197,18 @@ Release reviewers should use it to inspect support level, evidence basis,
 default verification status, opt-in UAT/manual validation, residual risk, and
 next gate for the supported, preview, opt-in UAT, unsupported, and deferred
 surfaces. Broad all-doc claim guardrails remain Phase 88 scope per D-13.
+
+## v1.8 Upgrade And Rollback Policy
+
+The current upgrade-policy root is
+[`upgrade-and-rollback-policy.md`](upgrade-and-rollback-policy.md). It records
+the canonical `v1-8-upgrade-rollback-policy` surface for UPG-01, UPG-02,
+UPG-03, and UPG-04 without duplicating the pre-upgrade checklist, compatibility
+tables, or support matrix in this release-readiness handoff.
+
+Release reviewers should use it for source-built rollback, backup, state/schema
+compatibility, failed-upgrade evidence, and no-hidden-mutation boundaries.
+Broad all-doc claim guardrails remain Phase 88 scope.
 
 ## v1.7 Full-Sync Soak and Recovery Hardening Claim Boundary Matrix
 

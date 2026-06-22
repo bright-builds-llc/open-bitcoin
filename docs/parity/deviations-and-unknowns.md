@@ -224,6 +224,12 @@ support-level changes, contributor update rules, issue-evidence expectations,
 carried-forward residual risks, and next gates instead of duplicating the matrix
 or promoting deferred rows here.
 
+Phase 84 adds [`upgrade-and-rollback-policy.md`](upgrade-and-rollback-policy.md)
+as the canonical `v1-8-upgrade-rollback-policy` root. Rollback, backup,
+state/schema compatibility, destructive repair, migration apply, and hidden
+source-state mutation remain governed by that policy and by future scoped gates;
+this page does not create a second upgrade policy.
+
 | Surface | Support term | Why deferred | Required future gate |
 | --- | --- | --- | --- |
 | inbound serving | `deferred` | Current P2P evidence is outbound review and does not prove production inbound policy. | Scoped P2P production milestone with inbound policy, resource, abuse, and UAT evidence. |

@@ -124,6 +124,13 @@ SUP-04. The canonical [`support-matrix.md`](support-matrix.md) uses the Phase
 and is the single source for support levels, issue evidence, contributor update
 rules, residual risks, and next gates; this README only points to it.
 
+Phase 84 upgrade and rollback policy is rooted in the
+`v1-8-upgrade-rollback-policy` surface for UPG-01, UPG-02, UPG-03, and UPG-04.
+The canonical [`upgrade-and-rollback-policy.md`](upgrade-and-rollback-policy.md)
+is the single source for source-built rollback, backup, schema compatibility,
+failed-upgrade evidence, and no-hidden-mutation boundaries; this README only
+points to it.
+
 Deferred and suspected follow-up work remains visible in
 [`deviations-and-unknowns.md`](deviations-and-unknowns.md).
 
@@ -136,6 +143,7 @@ Deferred and suspected follow-up work remains visible in
 - `benchmarks.md` documents the benchmark groups, Knots mappings, local commands, reports, and non-goals.
 - `production-claim-boundary.md` is the current v1.8 production claim boundary and support-term root.
 - `support-matrix.md` is the canonical v1.8 support matrix, issue-evidence checklist, contributor update-rule, and residual-risk root.
+- `upgrade-and-rollback-policy.md` is the canonical v1.8 source-built upgrade, rollback, backup, and state/schema compatibility root.
 - `release-readiness.md` is the current v1.8 handoff plus historical milestone inspection checklist.
 - `threat-model-v1.6.md` is the historical v1.6 scoped threat model and release-boundary companion for REL-01, REL-02, and REL-03.
 - `threat-model-v1.5.md` is the historical v1.5 scoped threat model and release-boundary companion for REL-01, REL-02, REL-03, and REL-04.

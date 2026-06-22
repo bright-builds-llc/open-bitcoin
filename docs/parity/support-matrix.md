@@ -126,9 +126,15 @@ term promotion requires all of the following:
 Deferred surfaces cannot be promoted by prose-only edits. Keep the Phase 82
 boundary links and support vocabulary intact when editing this file, including
 `docs/parity/production-claim-boundary.md`,
+`docs/parity/upgrade-and-rollback-policy.md`,
 `docs/parity/release-readiness.md`,
 `docs/parity/deviations-and-unknowns.md`, parity roots, README,
 `docs/operator/runtime-guide.md`, and `scripts/verify.sh`.
+
+Upgrade-policy changes must preserve
+[`upgrade-and-rollback-policy.md`](upgrade-and-rollback-policy.md) as the
+canonical source-built upgrade and rollback policy and must not create a second
+support matrix in this file.
 
 The Phase 83 checker scope is intentionally narrow: support matrix rows,
 issue-evidence checklist content, residual-risk table entries, canonical links,
