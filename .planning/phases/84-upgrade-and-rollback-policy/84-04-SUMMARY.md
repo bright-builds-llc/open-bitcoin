@@ -117,7 +117,7 @@ Each task was committed atomically:
 - **Verification:** `bun run scripts/check-phase69-tip-stay-current.ts` passed, then full `bash scripts/verify.sh` passed.
 - **Committed in:** `941151d` (Task 2 commit)
 
----
+***
 
 **Total deviations:** 1 user-approved scoped deviation.
 **Impact on plan:** The fix was required to complete the default verifier, preserved the Phase 84 pointer, and did not change policy meaning or broaden support claims.
@@ -173,6 +173,6 @@ UPG-04 is complete. Phase 84 now has deterministic checker coverage, default ver
 - `git diff --check -- .planning/phases/84-upgrade-and-rollback-policy/84-04-SUMMARY.md` passed.
 - `git status --short` showed only the intended new summary artifact before the metadata commit.
 
----
+***
 *Phase: 84-upgrade-and-rollback-policy*
 *Completed: 2026-06-22*
