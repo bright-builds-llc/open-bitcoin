@@ -14,6 +14,11 @@ The v1.8 support matrix and issue-evidence checklist live at
 [`docs/parity/support-matrix.md`](../parity/support-matrix.md); they classify
 the current support terms and show the local evidence expected for issue
 reports. The matrix confirms public-network, real service-manager, multi-day, and release-blocking checks remain opt-in unless a later scoped gate changes the contract.
+The v1.8 source-built upgrade and rollback policy lives at
+[`docs/parity/upgrade-and-rollback-policy.md`](../parity/upgrade-and-rollback-policy.md);
+it provides the pre-upgrade checklist, failed-upgrade guidance, rollback
+guidance, and no hidden source datadir, wallet, service, or config mutation
+boundary.
 
 Use this guide for the practical workflow. Use
 [`docs/architecture/config-precedence.md`](../architecture/config-precedence.md),
@@ -58,8 +63,12 @@ contract as `bash scripts/verify.sh` and prints per-step timings. The repo
 pre-commit hook intentionally continues to run the strict default verifier.
 
 For release-boundary review, start with the v1.8 production claim boundary
-[`docs/parity/production-claim-boundary.md`](../parity/production-claim-boundary.md)
-[`docs/parity/support-matrix.md`](../parity/support-matrix.md), and
+[`docs/parity/production-claim-boundary.md`](../parity/production-claim-boundary.md),
+the support matrix
+[`docs/parity/support-matrix.md`](../parity/support-matrix.md), the source-built
+upgrade and rollback policy
+[`docs/parity/upgrade-and-rollback-policy.md`](../parity/upgrade-and-rollback-policy.md),
+and
 [`docs/parity/release-readiness.md`](../parity/release-readiness.md). The v1.8
 boundary defines gate vocabulary and future evidence requirements only.
 Historical v1.6 and v1.7 sections preserve source-built, explicit opt-in

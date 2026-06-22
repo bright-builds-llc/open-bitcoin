@@ -33,6 +33,8 @@ the v1.8 production claim boundary
 [`docs/parity/production-claim-boundary.md`](./docs/parity/production-claim-boundary.md),
 the support matrix
 [`docs/parity/support-matrix.md`](./docs/parity/support-matrix.md),
+the source-built upgrade, rollback, backup, and compatibility decisions policy
+[`docs/parity/upgrade-and-rollback-policy.md`](./docs/parity/upgrade-and-rollback-policy.md),
 and project state [`.planning/STATE.md`](./.planning/STATE.md). Older roadmap
 or requirements rows may lag those artifacts.
 
@@ -113,6 +115,8 @@ does not claim production full-node readiness. The canonical boundary is
 The companion support matrix
 [`docs/parity/support-matrix.md`](./docs/parity/support-matrix.md)
 classifies source-built install, runtime, network, storage, service-supervision, wallet, migration, packaging, dashboard, GUI, support-upload, destructive-repair, and verification/CI surfaces by the same Phase 82 support terms and does not claim production full-node readiness.
+For source-built upgrade, rollback, backup, and compatibility decisions, use
+[`docs/parity/upgrade-and-rollback-policy.md`](./docs/parity/upgrade-and-rollback-policy.md).
 v1.7 remains historical source-built, explicit opt-in full-sync soak and recovery hardening evidence covering durable multi-day soak evidence, resource
 bounds, recovery diagnosis, progress guarantees, stall diagnosis,
 support-bundle forensics, and deterministic release-boundary checks.
