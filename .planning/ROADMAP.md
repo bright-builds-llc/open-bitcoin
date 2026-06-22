@@ -26,7 +26,7 @@ v1.8 Production Full-Node Readiness Boundary is active.
 - [x] **Phase 82: Production Claim Boundary** - Define production-readiness terminology, support levels, deferred surfaces, and evidence gates.
 - [x] **Phase 83: Support Matrix and Issue Evidence** - Make supported environments, issue-report evidence, residual risks, and support-matrix update boundaries explicit.
 - [x] **Phase 84: Upgrade and Rollback Policy** - Document source-built upgrade, rollback, backup, and state/schema compatibility expectations.
-- [ ] **Phase 85: Operator Runbooks** - Provide preflight, long-run operation, diagnosis, recovery, support-bundle, and escalation runbooks.
+- [x] **Phase 85: Operator Runbooks** - Provide preflight, long-run operation, diagnosis, recovery, support-bundle, and escalation runbooks.
 - [ ] **Phase 86: Service Operation Expectations** - Bound source-built daemon and service-supervision expectations with repo-local verification commands.
 - [ ] **Phase 87: Release Readiness Checklist** - Map all v1.8 requirements to release evidence, docs, UAT, residual risk, and the no-claim boundary.
 - [ ] **Phase 88: Deterministic Claim Guardrails** - Add default verification checks that fail overbroad production-readiness or deferred-surface claims.
@@ -86,7 +86,13 @@ Plans:
   1. Operator can complete a production-boundary preflight before long-running source-built node operation.
   2. Operator can follow long-run monitoring, no-progress diagnosis, recovery, and escalation runbooks using shipped evidence surfaces.
   3. Operator can collect a redacted support-bundle timeline and identify when evidence is sufficient for support triage.
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [x] 85-01-PLAN.md - Canonical operator runbook for preflight, monitoring, diagnosis, recovery, support timeline, and escalation.
+- [x] 85-02-PLAN.md - Parity roots, release-boundary links, README, runtime guide, and operator-runtime catalog pointers.
+- [x] 85-03-PLAN.md - Narrow deterministic Bun checker, fixture tests, and verifier wiring for Phase 85 runbooks.
+- [x] 85-04-PLAN.md - Generated docs freshness, focused checker runs, and full repo-native verification closeout.
 
 ### Phase 86: Service Operation Expectations
 **Goal**: Operators can distinguish source-built daemon operation, service supervision, distribution limits, and production-service claim boundaries, then verify expectations with repo-local commands.
@@ -125,7 +131,7 @@ Plans:
 | 82. Production Claim Boundary | 4/4 | Complete    | 2026-06-21 |
 | 83. Support Matrix and Issue Evidence | 4/4 | Complete    | 2026-06-21 |
 | 84. Upgrade and Rollback Policy | 4/4 | Complete    | 2026-06-22 |
-| 85. Operator Runbooks | 0/TBD | Not started | - |
+| 85. Operator Runbooks | 4/4 | Complete    | 2026-06-22 |
 | 86. Service Operation Expectations | 0/TBD | Not started | - |
 | 87. Release Readiness Checklist | 0/TBD | Not started | - |
 | 88. Deterministic Claim Guardrails | 0/TBD | Not started | - |

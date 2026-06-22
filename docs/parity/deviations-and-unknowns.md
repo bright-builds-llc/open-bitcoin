@@ -230,6 +230,14 @@ state/schema compatibility, destructive repair, migration apply, and hidden
 source-state mutation remain governed by that policy and by future scoped gates;
 this page does not create a second upgrade policy.
 
+Phase 85 adds [`operator-runbooks.md`](operator-runbooks.md) as the canonical
+`v1-8-operator-runbooks` root for production-boundary preflight, long-run
+monitoring, no-progress diagnosis, recovery/stop decisions, redacted
+support-bundle timelines, and escalation evidence. It preserves deferred
+production-node readiness, destructive repair, migration apply, automatic
+upload, and production service ownership boundaries; this page does not create
+a second runbook.
+
 | Surface | Support term | Why deferred | Required future gate |
 | --- | --- | --- | --- |
 | inbound serving | `deferred` | Current P2P evidence is outbound review and does not prove production inbound policy. | Scoped P2P production milestone with inbound policy, resource, abuse, and UAT evidence. |

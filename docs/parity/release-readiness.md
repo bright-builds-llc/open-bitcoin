@@ -50,6 +50,9 @@ issue-evidence handoff is
 rollback, backup, and compatibility policy is
 [`upgrade-and-rollback-policy.md`](upgrade-and-rollback-policy.md) with surface
 id `v1-8-upgrade-rollback-policy`.
+The Phase 85 operator runbook is
+[`operator-runbooks.md`](operator-runbooks.md) with surface id
+`v1-8-operator-runbooks`.
 
 The v1.7 readiness claim remains historical: source-built, explicit opt-in
 full-sync soak and recovery hardening. It covers durable multi-day soak
@@ -73,7 +76,8 @@ the current v1.8 production claim boundary,
 matrix and issue-evidence root,
 [`upgrade-and-rollback-policy.md`](upgrade-and-rollback-policy.md) as the
 canonical source-built upgrade and rollback policy, this release-readiness page
-as the handoff record, and the Phase 80 plan threat model as the historical
+[`operator-runbooks.md`](operator-runbooks.md) as the canonical operator
+runbook, this release-readiness page as the handoff record, and the Phase 80 plan threat model as the historical
 v1.7 security boundary for the soak workflow.
 [`docs/parity/threat-model-v1.6.md`](threat-model-v1.6.md),
 [`docs/parity/threat-model-v1.5.md`](threat-model-v1.5.md),
@@ -94,7 +98,8 @@ checks, Bazel smoke builds, coverage, panic-site checks, and deterministic
 release-boundary assertions through v1.7.
 Phase 82 and Phase 83 add the narrow v1.8 production-boundary and
 support-matrix traceability checks. Phase 84 adds the upgrade-policy roots that
-later UPG-04 drift checks consume.
+later UPG-04 drift checks consume. Phase 85 adds the operator-runbook root for
+RUN-01 through RUN-03.
 
 ## Complete Surfaces
 
@@ -124,6 +129,7 @@ surfaces as `done`:
 - `v1-8-production-claim-boundary`
 - `v1-8-support-matrix-issue-evidence`
 - `v1-8-upgrade-rollback-policy`
+- `v1-8-operator-runbooks`
 
 Primary current-cycle evidence:
 
@@ -138,6 +144,11 @@ Primary current-cycle evidence:
   the canonical source-built upgrade, rollback, backup, and compatibility
   policy for UPG-01 through UPG-04. Path:
   `docs/parity/upgrade-and-rollback-policy.md`.
+- [`operator-runbooks.md`](operator-runbooks.md) records the canonical v1.8
+  operator runbook for RUN-01 through RUN-03, including
+  production-boundary preflight, long-run monitoring, no-progress diagnosis,
+  recovery/stop decisions, redacted support-bundle timeline, and escalation
+  evidence.
 - [`docs/parity/release-readiness.md`](release-readiness.md) records this
   current v1.8 handoff plus the historical v1.7 full-sync soak and recovery
   hardening boundary matrix and traceability for SOAK-01 through REL-04.
@@ -209,6 +220,20 @@ tables, or support matrix in this release-readiness handoff.
 Release reviewers should use it for source-built rollback, backup, state/schema
 compatibility, failed-upgrade evidence, and no-hidden-mutation boundaries.
 Broad all-doc claim guardrails remain Phase 88 scope.
+
+## v1.8 Operator Runbooks
+
+The current operator-runbook root is
+[`operator-runbooks.md`](operator-runbooks.md). It records the canonical
+`v1-8-operator-runbooks` surface for RUN-01, RUN-02, and RUN-03 without
+duplicating the runbook tables in this release-readiness handoff.
+
+Release reviewers should use it for production-boundary preflight, long-run
+monitoring, no-progress diagnosis, recovery/stop decisions, redacted
+support-bundle timeline, and escalation evidence. It is procedural evidence
+guidance only; public-network default checks, real service-manager defaults,
+multi-day default gates, automatic support-bundle upload, destructive repair,
+and broad production-node readiness remain out of scope.
 
 ## v1.7 Full-Sync Soak and Recovery Hardening Claim Boundary Matrix
 

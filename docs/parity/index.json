@@ -592,6 +592,10 @@
     {
       "name": "v1-8-upgrade-rollback-policy",
       "status": "done"
+    },
+    {
+      "name": "v1-8-operator-runbooks",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -1422,6 +1426,37 @@
         "suspected_unknowns": [
           "Broad all-doc production-claim guardrails remain Phase 88 scope."
         ]
+      },
+      {
+        "id": "v1-8-operator-runbooks",
+        "title": "v1.8 Operator Runbooks",
+        "status": "done",
+        "requirements": [
+          "RUN-01",
+          "RUN-02",
+          "RUN-03"
+        ],
+        "evidence": [
+          "docs/parity/operator-runbooks.md",
+          "docs/parity/production-claim-boundary.md",
+          "docs/parity/support-matrix.md",
+          "docs/parity/upgrade-and-rollback-policy.md",
+          "docs/parity/release-readiness.md",
+          "docs/parity/deviations-and-unknowns.md",
+          "docs/parity/checklist.md",
+          "docs/parity/README.md",
+          "README.md",
+          "docs/operator/runtime-guide.md",
+          "docs/parity/catalog/operator-runtime-release-hardening.md",
+          "scripts/verify.sh"
+        ],
+        "rationale": "Phase 85 registers the canonical operator runbook for source-built preflight, long-run monitoring, no-progress diagnosis, recovery and stop decisions, redacted support-bundle timelines, and escalation evidence without broadening v1.8 production readiness.",
+        "known_gaps": [
+          "The runbook is procedural evidence guidance only; public-network default checks, real service-manager defaults, multi-day default gates, automatic support-bundle upload, destructive repair, and broad production-node readiness remain future-scoped."
+        ],
+        "suspected_unknowns": [
+          "Future service-operation and deterministic claim-guardrail phases own Phase 86 and Phase 88 scope; this surface stays limited to RUN-01 through RUN-03."
+        ]
       }
     ]
   },
@@ -1777,6 +1812,29 @@
         "docs/parity/catalog/drop-in-audit-and-migration.md",
         "docs/parity/catalog/wallet.md",
         "docs/parity/catalog/chainstate.md",
+        "scripts/verify.sh"
+      ]
+    },
+    "v1_8_operator_runbooks": {
+      "path": "operator-runbooks.md",
+      "status": "done",
+      "requirements": [
+        "RUN-01",
+        "RUN-02",
+        "RUN-03"
+      ],
+      "evidence": [
+        "docs/parity/operator-runbooks.md",
+        "docs/parity/production-claim-boundary.md",
+        "docs/parity/support-matrix.md",
+        "docs/parity/upgrade-and-rollback-policy.md",
+        "docs/parity/release-readiness.md",
+        "docs/parity/deviations-and-unknowns.md",
+        "docs/parity/checklist.md",
+        "docs/parity/README.md",
+        "README.md",
+        "docs/operator/runtime-guide.md",
+        "docs/parity/catalog/operator-runtime-release-hardening.md",
         "scripts/verify.sh"
       ]
     },

@@ -9,6 +9,10 @@ reviewers without widening any deferred production-adjacent surface.
 Use this document with the Phase 82
 [`production-claim-boundary.md`](production-claim-boundary.md) and the operator
 [`runtime-guide.md`](../operator/runtime-guide.md). Artifact existence alone is not an evidence basis; support changes require the fields, verifier, residual risk, and next gate named below.
+For operational issue-evidence collection, use the canonical
+[`operator-runbooks.md`](operator-runbooks.md); it preserves these support
+terms while routing operators through preflight, monitoring, no-progress,
+recovery, redaction, and escalation evidence.
 
 ## Support Terms
 
@@ -135,6 +139,10 @@ Upgrade-policy changes must preserve
 [`upgrade-and-rollback-policy.md`](upgrade-and-rollback-policy.md) as the
 canonical source-built upgrade and rollback policy and must not create a second
 support matrix in this file.
+
+Runbook changes must preserve [`operator-runbooks.md`](operator-runbooks.md) as
+procedural evidence guidance and must not change any support term in this
+matrix.
 
 The Phase 83 checker scope is intentionally narrow: support matrix rows,
 issue-evidence checklist content, residual-risk table entries, canonical links,

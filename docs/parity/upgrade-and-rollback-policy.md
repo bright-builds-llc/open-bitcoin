@@ -11,7 +11,9 @@ evidence and future-scoped mutation plans.
 
 Use this policy with [`runtime-guide.md`](../operator/runtime-guide.md),
 [`status-snapshot.md`](../architecture/status-snapshot.md), and
-[`storage-decision.md`](../architecture/storage-decision.md). It follows the
+[`storage-decision.md`](../architecture/storage-decision.md). For long-run
+review, no-progress handling, support-bundle timelines, and escalation evidence,
+use the canonical [`operator-runbooks.md`](operator-runbooks.md). It follows the
 Phase 82 support terms exactly: `supported`, `preview`, `opt-in UAT`,
 `unsupported`, and `deferred`.
 
@@ -22,6 +24,9 @@ not an operator permission to mutate local state.
 This document is source-built and local-first. It does not widen the Phase 82
 production claim boundary, create a second support matrix, or turn historical
 public-network evidence into a production-node support statement.
+The operator runbook link above is long-run and escalation guidance only; it
+does not authorize hidden mutation, automatic rebuild, destructive repair, or
+config/service changes.
 
 ## Pre-Upgrade Checklist
 

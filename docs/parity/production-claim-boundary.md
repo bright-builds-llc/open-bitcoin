@@ -44,6 +44,13 @@ failed-upgrade handling. It does not satisfy the future gates for production
 full-node readiness or authorize hidden source datadir, wallet, service, or
 config mutation.
 
+The operator runbook in [`operator-runbooks.md`](operator-runbooks.md) is
+procedural evidence guidance for production-boundary preflight, long-run
+monitoring, no-progress diagnosis, recovery/stop decisions, redacted
+support-bundle timelines, and escalation evidence. It does not satisfy future
+production-readiness gates, authorize hidden mutation, or promote any deferred
+surface.
+
 ## Deferred Production-Adjacent Surfaces
 
 | Surface | Support term | Why deferred | Required future gate |

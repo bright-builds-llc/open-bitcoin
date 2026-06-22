@@ -131,6 +131,13 @@ is the single source for source-built rollback, backup, schema compatibility,
 failed-upgrade evidence, and no-hidden-mutation boundaries; this README only
 points to it.
 
+Phase 85 operator runbooks are rooted in the `v1-8-operator-runbooks` surface
+for RUN-01, RUN-02, and RUN-03. The canonical
+[`operator-runbooks.md`](operator-runbooks.md) is the single source for
+production-boundary preflight, long-run monitoring, no-progress diagnosis,
+recovery and stop decisions, redacted support-bundle timelines, and escalation
+evidence; this README only points to it.
+
 Deferred and suspected follow-up work remains visible in
 [`deviations-and-unknowns.md`](deviations-and-unknowns.md).
 
@@ -144,6 +151,7 @@ Deferred and suspected follow-up work remains visible in
 - `production-claim-boundary.md` is the current v1.8 production claim boundary and support-term root.
 - `support-matrix.md` is the canonical v1.8 support matrix, issue-evidence checklist, contributor update-rule, and residual-risk root.
 - `upgrade-and-rollback-policy.md` is the canonical v1.8 source-built upgrade, rollback, backup, and state/schema compatibility root.
+- `operator-runbooks.md` is the canonical v1.8 operator runbook for preflight, monitoring, no-progress diagnosis, recovery, support-bundle timelines, and escalation evidence.
 - `release-readiness.md` is the current v1.8 handoff plus historical milestone inspection checklist.
 - `threat-model-v1.6.md` is the historical v1.6 scoped threat model and release-boundary companion for REL-01, REL-02, and REL-03.
 - `threat-model-v1.5.md` is the historical v1.5 scoped threat model and release-boundary companion for REL-01, REL-02, REL-03, and REL-04.

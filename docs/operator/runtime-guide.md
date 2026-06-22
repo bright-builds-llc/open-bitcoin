@@ -19,6 +19,11 @@ The v1.8 source-built upgrade and rollback policy lives at
 it is the source for the pre-upgrade checklist, failed-upgrade handling,
 rollback steps, and no hidden source datadir, wallet, service, or config mutation
 boundary.
+The v1.8 operator runbook lives at
+[`../parity/operator-runbooks.md`](../parity/operator-runbooks.md); use it for
+production-boundary preflight, long-run monitoring, no-progress diagnosis,
+recovery/stop decisions, redacted support-bundle timeline, and escalation
+evidence without changing the current production-readiness boundary.
 
 Use this guide for the practical workflow. Use
 [`docs/architecture/config-precedence.md`](../architecture/config-precedence.md),
@@ -68,6 +73,8 @@ the support matrix
 [`docs/parity/support-matrix.md`](../parity/support-matrix.md), the source-built
 upgrade and rollback policy
 [`docs/parity/upgrade-and-rollback-policy.md`](../parity/upgrade-and-rollback-policy.md),
+the operator runbook
+[`../parity/operator-runbooks.md`](../parity/operator-runbooks.md),
 and
 [`docs/parity/release-readiness.md`](../parity/release-readiness.md). The v1.8
 boundary defines gate vocabulary and future evidence requirements only.
@@ -542,6 +549,13 @@ serving, address relay, block serving, transaction relay, compact block relay,
 production-funds wallet claims, migration apply mode, signed packaging,
 Windows service support, GUI, hosted dashboards, or broad production-node
 readiness.
+
+For preflight, long-run monitoring, no-progress diagnosis, support-bundle
+timeline, and escalation evidence, use
+[`../parity/operator-runbooks.md`](../parity/operator-runbooks.md) together with
+the support matrix. The runbook keeps public-network, stay-current, and
+multi-day reports opt-in and keeps automatic support-bundle upload outside the
+current scope.
 
 <!-- README impact reviewed: README.md already points operator preview readers to this runtime guide and describes explicit live-smoke evidence without making new production claims; packages/README.md is crate inventory only; docs/parity/README.md describes ledger structure rather than operator workflow. No README changes required for Phase 72. -->
 
