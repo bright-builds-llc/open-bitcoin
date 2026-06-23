@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: Production Full-Node Readiness Boundary
 status: planning
-stopped_at: Phase 86 complete; ready to plan Phase 87
-last_updated: "2026-06-22T21:15:02.740Z"
-last_activity: 2026-06-22 -- Phase 86 complete; ready to plan Phase 87
+stopped_at: Phase 87 complete; ready to plan Phase 88
+last_updated: "2026-06-23T18:48:28.034Z"
+last_activity: 2026-06-23
 progress:
   total_phases: 7
-  completed_phases: 5
-  total_plans: 20
-  completed_plans: 20
+  completed_phases: 6
+  total_plans: 21
+  completed_plans: 21
   percent: 100
 ---
 
@@ -18,18 +18,18 @@ progress:
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-06-22)
+See: `.planning/PROJECT.md` (updated 2026-06-23)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 87 — Release Readiness Checklist
+**Current focus:** Phase 88 — Deterministic Claim Guardrails
 
 ## Current Position
 
 Milestone: v1.8 Production Full-Node Readiness Boundary
-Phase: 87 (Release Readiness Checklist) — READY TO PLAN
+Phase: 88
 Plan: Not started
-Status: Ready to plan Phase 87
-Last activity: 2026-06-22 -- Phase 86 complete; ready to plan Phase 87
+Status: Ready to plan Phase 88
+Last activity: 2026-06-23
 
 Progress: [##########] 100%
 
@@ -50,7 +50,7 @@ Progress: [##########] 100%
 | 84 | Upgrade and Rollback Policy | UPG-01, UPG-02, UPG-03, UPG-04 | Complete |
 | 85 | Operator Runbooks | RUN-01, RUN-02, RUN-03 | Complete |
 | 86 | Service Operation Expectations | SVC-01, SVC-02 | Complete |
-| 87 | Release Readiness Checklist | REL-01, REL-05, REL-06 | Not started |
+| 87 | Release Readiness Checklist | REL-01, REL-05, REL-06 | Complete |
 | 88 | Deterministic Claim Guardrails | REL-02, REL-03, REL-04 | Not started |
 
 **Recent Trend:**
@@ -77,7 +77,7 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ### Pending Todos
 
-- Plan Phase 87 with `/gsd-plan-phase 87`.
+- Discuss and plan Phase 88 with `/gsd-discuss-phase 88 --chain` or `/gsd-plan-phase 88`.
 - Keep raw phase histories in `.planning/phases/` for parity and UAT traceability.
 - Keep public-network full-sync and multi-day soak UAT opt-in and outside default deterministic verification unless a future milestone or phase explicitly changes that contract.
 
@@ -89,6 +89,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-22T21:14:00.561Z
-Stopped at: Phase 86 complete; ready to plan Phase 87
+Last session: 2026-06-23T18:48:28.034Z
+Stopped at: Phase 87 complete; ready to plan Phase 88
 Resume file: None

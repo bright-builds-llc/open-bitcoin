@@ -27,8 +27,8 @@ v1.8 Production Full-Node Readiness Boundary is active.
 - [x] **Phase 83: Support Matrix and Issue Evidence** - Make supported environments, issue-report evidence, residual risks, and support-matrix update boundaries explicit.
 - [x] **Phase 84: Upgrade and Rollback Policy** - Document source-built upgrade, rollback, backup, and state/schema compatibility expectations.
 - [x] **Phase 85: Operator Runbooks** - Provide preflight, long-run operation, diagnosis, recovery, support-bundle, and escalation runbooks.
-- [ ] **Phase 86: Service Operation Expectations** - Bound source-built daemon and service-supervision expectations with repo-local verification commands.
-- [ ] **Phase 87: Release Readiness Checklist** - Map all v1.8 requirements to release evidence, docs, UAT, residual risk, and the no-claim boundary.
+- [x] **Phase 86: Service Operation Expectations** - Bound source-built daemon and service-supervision expectations with repo-local verification commands. (completed 2026-06-22)
+- [x] **Phase 87: Release Readiness Checklist** - Map all v1.8 requirements to release evidence, docs, UAT, residual risk, and the no-claim boundary. (completed 2026-06-23)
 - [ ] **Phase 88: Deterministic Claim Guardrails** - Add default verification checks that fail overbroad production-readiness or deferred-surface claims.
 
 ## Phase Details
@@ -59,7 +59,7 @@ Plans:
   2. Operator can identify the support information expected for issue reports, including redacted bundles, logs, config summaries, service state, resource evidence, and sync evidence.
   3. Contributor can update the support matrix while preserving the production-boundary and deferred-surface limits.
   4. Release reviewer can see residual risks and manual validation surfaces carried forward from v1.1 through v1.7.
-**Plans**: TBD
+**Plans**: 4/4 plans complete
 
 ### Phase 84: Upgrade and Rollback Policy
 **Goal**: Operators can make source-built upgrade, rollback, backup, and state/schema decisions without hidden datadir, wallet, service, or config mutation.
@@ -102,7 +102,7 @@ Plans:
   1. Operator can distinguish source-built daemon operation from service supervision, packaged-service distribution, service-manager availability, and unsupported production-service claims.
   2. Operator can verify service lifecycle, restart/resume, log, metric, resource-bound, and recovery expectations through repo-local Cargo command forms.
   3. Operator can verify the same service expectation evidence through repo-local Bazel command forms where applicable.
-**Plans**: TBD
+**Plans**: 4/4 plans complete
 
 ### Phase 87: Release Readiness Checklist
 **Goal**: Release reviewers can decide whether v1.8 release language is truthful by following one checklist that maps requirements to evidence, docs, UAT, checks, residual risk, and the no-claim boundary.
@@ -112,7 +112,7 @@ Plans:
   1. Release reviewer can map every v1.8 requirement to documentation, UAT, deterministic checks, and residual-risk status.
   2. Contributor-facing README and parity docs point to the v1.8 boundary docs, support policy, upgrade policy, runbooks, and release-readiness checklist.
   3. Release reviewer can verify that v1.8 ends with a truthful no-claim boundary unless all production readiness gates are satisfied by a future milestone.
-**Plans**: TBD
+**Plans**: 1/1 plans complete
 
 ### Phase 88: Deterministic Claim Guardrails
 **Goal**: Default verification prevents overbroad production-readiness language while keeping public-network, real service-manager, and multi-day checks opt-in.
@@ -133,7 +133,7 @@ Plans:
 | 84. Upgrade and Rollback Policy | 4/4 | Complete    | 2026-06-22 |
 | 85. Operator Runbooks | 4/4 | Complete    | 2026-06-22 |
 | 86. Service Operation Expectations | 4/4 | Complete    | 2026-06-22 |
-| 87. Release Readiness Checklist | 0/TBD | Not started | - |
+| 87. Release Readiness Checklist | 1/1 | Complete    | 2026-06-23 |
 | 88. Deterministic Claim Guardrails | 0/TBD | Not started | - |
 
 ## Completed Milestone Summaries
