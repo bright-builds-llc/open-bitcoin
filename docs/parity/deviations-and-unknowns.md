@@ -248,6 +248,13 @@ operation, packaged service distribution, Windows service support, automatic
 update behavior, automatic support-bundle upload, destructive repair, and broad
 production-node readiness boundaries.
 
+Phase 87 adds the v1.8 release-readiness checklist in
+[`release-readiness.md`](release-readiness.md#v18-release-readiness-checklist)
+as the canonical `v1-8-release-readiness-checklist` root. It maps all current
+v1.8 requirements to canonical evidence, deterministic checks, UAT or manual
+evidence, residual risk, and no-claim or next-gate status without promoting any
+deferred surface below.
+
 | Surface | Support term | Why deferred | Required future gate |
 | --- | --- | --- | --- |
 | inbound serving | `deferred` | Current P2P evidence is outbound review and does not prove production inbound policy. | Scoped P2P production milestone with inbound policy, resource, abuse, and UAT evidence. |

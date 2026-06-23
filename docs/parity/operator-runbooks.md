@@ -18,6 +18,9 @@ surface.
 Service-specific lifecycle, restart/resume, log path, manager command,
 generated file path, and unavailable-reason expectations live in
 [`service-operation-expectations.md`](service-operation-expectations.md).
+For release review, use the v1.8 release-readiness checklist in
+[`release-readiness.md`](release-readiness.md#v18-release-readiness-checklist);
+it points back to these runbooks rather than duplicating the procedural tables.
 
 This runbook tells an operator what to record, what to inspect, when to stop,
 and what to preserve for support triage. It does not authorize source datadir

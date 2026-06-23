@@ -16,6 +16,9 @@ recovery, redaction, and escalation evidence.
 For service operation classification, command evidence, restart/resume fields,
 and production-service non-claims, use the canonical
 [`service-operation-expectations.md`](service-operation-expectations.md).
+For release review, use the v1.8 release-readiness checklist in
+[`release-readiness.md`](release-readiness.md#v18-release-readiness-checklist);
+it points back to this support matrix rather than duplicating the table.
 
 ## Support Terms
 

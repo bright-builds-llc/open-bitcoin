@@ -21,6 +21,9 @@ For service operation expectations, use
 guidance preserves no-hidden service/config/datadir mutation boundaries while
 keeping service preview, opt-in lifecycle UAT, and production-service non-claims
 separate.
+For release review, use the v1.8 release-readiness checklist in
+[`release-readiness.md`](release-readiness.md#v18-release-readiness-checklist);
+it points back to this upgrade policy rather than duplicating the policy tables.
 
 The current policy covers UPG-01, UPG-02, and UPG-03. UPG-04 is the
 deterministic drift-check requirement for later Phase 84 verification wiring,

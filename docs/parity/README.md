@@ -146,6 +146,14 @@ single source for source-built daemon operation, service preview, opt-in real
 service lifecycle UAT, restart/resume fields, repo-local Cargo/Bazel commands,
 and production-service non-claims; this README only points to it.
 
+Phase 87 release readiness is rooted in the
+`v1-8-release-readiness-checklist` surface for REL-01, REL-05, and REL-06. The
+canonical checklist lives in
+[`release-readiness.md`](release-readiness.md#v18-release-readiness-checklist)
+and maps all current v1.8 requirements to canonical evidence, deterministic
+verification, UAT or manual evidence, residual risk, and no-claim or next-gate
+status; this README only points to it.
+
 Deferred and suspected follow-up work remains visible in
 [`deviations-and-unknowns.md`](deviations-and-unknowns.md).
 
@@ -161,7 +169,7 @@ Deferred and suspected follow-up work remains visible in
 - `upgrade-and-rollback-policy.md` is the canonical v1.8 source-built upgrade, rollback, backup, and state/schema compatibility root.
 - `operator-runbooks.md` is the canonical v1.8 operator runbook for preflight, monitoring, no-progress diagnosis, recovery, support-bundle timelines, and escalation evidence.
 - `service-operation-expectations.md` is the canonical v1.8 service operation expectation root.
-- `release-readiness.md` is the current v1.8 handoff plus historical milestone inspection checklist.
+- `release-readiness.md` is the current v1.8 release-readiness checklist and handoff plus historical milestone inspection checklist.
 - `threat-model-v1.6.md` is the historical v1.6 scoped threat model and release-boundary companion for REL-01, REL-02, and REL-03.
 - `threat-model-v1.5.md` is the historical v1.5 scoped threat model and release-boundary companion for REL-01, REL-02, REL-03, and REL-04.
 - `threat-model-v1.4.md` is the historical v1.4 scoped threat model and release-boundary companion for OBS-01, OBS-02, OBS-03, SEC-01, SEC-02, and SEC-03.

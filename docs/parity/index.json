@@ -600,6 +600,10 @@
     {
       "name": "v1-8-service-operation-expectations",
       "status": "done"
+    },
+    {
+      "name": "v1-8-release-readiness-checklist",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -1494,6 +1498,56 @@
         "suspected_unknowns": [
           "Future production service operation, packaged distribution, Windows service integration, automatic update channels, support-upload workflows, and broad production-node readiness need separate scoped phases and fresh evidence roots."
         ]
+      },
+      {
+        "id": "v1-8-release-readiness-checklist",
+        "title": "v1.8 Release Readiness Checklist",
+        "status": "done",
+        "requirements": [
+          "PROD-01",
+          "PROD-02",
+          "PROD-03",
+          "PROD-04",
+          "SUP-01",
+          "SUP-02",
+          "SUP-03",
+          "SUP-04",
+          "UPG-01",
+          "UPG-02",
+          "UPG-03",
+          "UPG-04",
+          "RUN-01",
+          "RUN-02",
+          "RUN-03",
+          "SVC-01",
+          "SVC-02",
+          "REL-01",
+          "REL-05",
+          "REL-06"
+        ],
+        "evidence": [
+          "docs/parity/release-readiness.md",
+          "docs/parity/production-claim-boundary.md",
+          "docs/parity/support-matrix.md",
+          "docs/parity/upgrade-and-rollback-policy.md",
+          "docs/parity/operator-runbooks.md",
+          "docs/parity/service-operation-expectations.md",
+          "docs/parity/deviations-and-unknowns.md",
+          "docs/parity/checklist.md",
+          "docs/parity/README.md",
+          "README.md",
+          "docs/parity/catalog/operator-runtime-release-hardening.md",
+          "scripts/check-phase87-release-readiness.ts",
+          "scripts/check-phase87-release-readiness.test.ts",
+          "scripts/verify.sh"
+        ],
+        "rationale": "Phase 87 registers the canonical v1.8 release-readiness checklist that maps current v1.8 requirements to canonical evidence, deterministic checks, UAT/manual evidence, residual risk, and no-claim or next-gate status without promoting production full-node readiness.",
+        "known_gaps": [
+          "Phase 87 is a release-review checklist only and does not claim production full-node readiness, production service operation, inbound serving, relay, production-funds wallet use, migration apply mode, signed packaging, Windows service support, hosted dashboards, GUI parity, public-network default checks, public-network CI, release-blocking live sync, destructive repair, or automatic support-bundle upload."
+        ],
+        "suspected_unknowns": [
+          "Phase 88 owns broad deterministic claim guardrails for REL-02, REL-03, and REL-04; future production-readiness gates need separate scoped evidence."
+        ]
       }
     ]
   },
@@ -1951,6 +2005,48 @@
         "docs/parity/catalog/operator-runtime-release-hardening.md",
         "scripts/check-phase86-service-operation-expectations.ts",
         "scripts/check-phase86-service-operation-expectations.test.ts",
+        "scripts/verify.sh"
+      ]
+    },
+    "v1_8_release_readiness_checklist": {
+      "path": "release-readiness.md",
+      "status": "done",
+      "requirements": [
+        "PROD-01",
+        "PROD-02",
+        "PROD-03",
+        "PROD-04",
+        "SUP-01",
+        "SUP-02",
+        "SUP-03",
+        "SUP-04",
+        "UPG-01",
+        "UPG-02",
+        "UPG-03",
+        "UPG-04",
+        "RUN-01",
+        "RUN-02",
+        "RUN-03",
+        "SVC-01",
+        "SVC-02",
+        "REL-01",
+        "REL-05",
+        "REL-06"
+      ],
+      "evidence": [
+        "docs/parity/release-readiness.md",
+        "docs/parity/production-claim-boundary.md",
+        "docs/parity/support-matrix.md",
+        "docs/parity/upgrade-and-rollback-policy.md",
+        "docs/parity/operator-runbooks.md",
+        "docs/parity/service-operation-expectations.md",
+        "docs/parity/deviations-and-unknowns.md",
+        "docs/parity/checklist.md",
+        "docs/parity/README.md",
+        "README.md",
+        "docs/parity/catalog/operator-runtime-release-hardening.md",
+        "scripts/check-phase87-release-readiness.ts",
+        "scripts/check-phase87-release-readiness.test.ts",
         "scripts/verify.sh"
       ]
     }

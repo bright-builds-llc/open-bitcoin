@@ -39,6 +39,8 @@ the operator runbooks
 [`docs/parity/operator-runbooks.md`](./docs/parity/operator-runbooks.md),
 the service operation expectations
 [`docs/parity/service-operation-expectations.md`](./docs/parity/service-operation-expectations.md),
+the v1.8 release-readiness checklist
+[`docs/parity/release-readiness.md#v18-release-readiness-checklist`](./docs/parity/release-readiness.md#v18-release-readiness-checklist),
 and project state [`.planning/STATE.md`](./.planning/STATE.md). Older roadmap
 or requirements rows may lag those artifacts.
 
@@ -129,6 +131,10 @@ For direct `open-bitcoind` operation, source-built service preview,
 opt-in launchd/systemd lifecycle UAT, restart/resume fields, repo-local
 Cargo/Bazel commands, and production-service non-claims, use
 [`docs/parity/service-operation-expectations.md`](./docs/parity/service-operation-expectations.md).
+For release review, use the v1.8 release-readiness checklist in
+[`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md), which
+maps the current v1.8 requirements to canonical evidence, deterministic checks,
+UAT or manual evidence, residual risk, and no-claim or next-gate status.
 v1.7 remains historical source-built, explicit opt-in full-sync soak and recovery hardening evidence covering durable multi-day soak evidence, resource
 bounds, recovery diagnosis, progress guarantees, stall diagnosis,
 support-bundle forensics, and deterministic release-boundary checks.

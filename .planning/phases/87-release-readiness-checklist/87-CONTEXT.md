@@ -1,0 +1,286 @@
+---
+generated_by: gsd-discuss-phase
+lifecycle_mode: yolo
+phase_lifecycle_id: 87-2026-06-23T01-49-01
+generated_at: 2026-06-23T01:49:01.279Z
+---
+
+# Phase 87: Release Readiness Checklist - Context
+
+**Gathered:** 2026-06-23
+**Status:** Ready for planning
+**Mode:** Yolo
+
+<domain>
+## Phase Boundary
+
+Phase 87 creates the v1.8 release-readiness checklist that release reviewers use
+to decide whether v1.8 release language is truthful. The checklist must map
+every v1.8 requirement to the relevant docs, UAT posture, deterministic checks,
+residual risk, and next gate while preserving the no-claim boundary for
+production full-node readiness.
+
+This phase should not implement the broad Phase 88 all-doc claim scanner, add
+new production support, make public-network or real service-manager checks part
+of default verification, or promote deferred surfaces such as inbound serving,
+relay, production-funds wallet use, migration apply mode, signed packaging,
+hosted dashboards, GUI parity, public-network CI, destructive repair, or
+automatic support-bundle upload.
+</domain>
+
+<decisions>
+## Implementation Decisions
+
+### Checklist Shape
+
+- **D-01:** Extend `docs/parity/release-readiness.md` with a current v1.8
+  release-readiness checklist instead of creating a second checklist document.
+  This keeps release reviewers on the existing release handoff while preserving
+  historical v1.3 through v1.7 sections.
+- **D-02:** The checklist should map all v1.8 requirements, not only REL-01,
+  REL-05, and REL-06. Each row should include requirement id, source phase,
+  canonical docs, parity surface id or evidence root, deterministic verification
+  command, UAT/manual evidence posture, residual risk, and current no-claim or
+  next-gate status.
+- **D-03:** The checklist should group rows by v1.8 domain: production boundary,
+  support boundaries, upgrade policy, runbooks/service expectations, and
+  release readiness/guardrails. This matches the existing requirement taxonomy
+  without duplicating full policy tables from the canonical docs.
+
+### Entrypoint Links
+
+- **D-04:** README and parity entrypoints should point to the release-readiness
+  checklist compactly. Do not duplicate the full matrix outside
+  `docs/parity/release-readiness.md`.
+- **D-05:** Required entrypoints include `README.md`, `docs/parity/README.md`,
+  `docs/parity/checklist.md`, `docs/parity/index.json`,
+  `docs/parity/production-claim-boundary.md`, `docs/parity/support-matrix.md`,
+  `docs/parity/upgrade-and-rollback-policy.md`,
+  `docs/parity/operator-runbooks.md`,
+  `docs/parity/service-operation-expectations.md`,
+  `docs/parity/deviations-and-unknowns.md`, and
+  `docs/parity/catalog/operator-runtime-release-hardening.md` where planning
+  confirms the link belongs.
+- **D-06:** Link text should keep the Phase 82 support terms and avoid new
+  maturity labels. The phrase "production full-node readiness" must stay paired
+  with the no-claim boundary unless a future milestone satisfies every gate.
+
+### No-Claim Boundary
+
+- **D-07:** Add an explicit v1.8 no-claim review section stating that v1.8 ends
+  with a truthful boundary-setting claim only: Open Bitcoin defines gates
+  required before a future production full-node readiness claim.
+- **D-08:** The release-readiness checklist must preserve visible non-claims for
+  production full-node readiness, production service operation, inbound serving,
+  address relay, block serving, transaction relay, compact block relay,
+  production-funds wallet use or safety, migration apply mode, signed packaging
+  or package-manager distribution, Windows service support, hosted dashboards,
+  GUI parity, public-network default checks, public-network CI,
+  release-blocking live sync, destructive repair, and automatic support-bundle
+  upload.
+- **D-09:** Artifact existence, daemon startup, elapsed time, peer reachability,
+  raw log tail, service file existence, or support-bundle path must not be
+  accepted as release-readiness proof by itself. The checklist should require
+  field-based evidence and named verification roots.
+
+### Verification And Guardrails
+
+- **D-10:** Add a narrow Phase 87 Bun checker and fixture tests for the
+  release-readiness checklist, entrypoint links, parity roots, required
+  requirement ids, support terms, no-claim wording, and verifier wiring. Keep it
+  deterministic, public-network-free, real-service-manager-free, and
+  multi-day-free.
+- **D-11:** Wire the Phase 87 checker and test into `bash scripts/verify.sh`
+  after the Phase 86 service expectation checker. Keep Phase 88 responsible for
+  broad all-doc scanning that fails overbroad production-readiness or
+  deferred-surface claims.
+- **D-12:** If scripts are added or touched, use Bun/TypeScript following the
+  Phase 82 through Phase 86 checker pattern. Do not add Python automation.
+- **D-13:** Final closeout should run focused Phase 87 checker commands, refresh
+  `docs/metrics/lines-of-code.md` if generated by verification, and then run the
+  repo-native `bash scripts/verify.sh` gate.
+
+### Folded Todos
+
+No pending todos matched Phase 87.
+
+### the agent's Discretion
+
+- The planner may split Phase 87 into release-readiness checklist docs,
+  entrypoint/parity link updates, deterministic checker plus fixture tests, and
+  closeout/verification freshness work.
+- The executor may keep Phase 87 documentation and Bun automation only; no Rust
+  source changes are expected.
+- The executor may update requirement traceability status only where existing
+  repo patterns support it and verification confirms the related evidence roots.
+</decisions>
+
+<canonical_refs>
+## Canonical References
+
+**Downstream agents MUST read these before planning or implementing.**
+
+### Phase Scope
+
+- `.planning/ROADMAP.md` - Phase 87 goal, dependencies, success criteria, and
+  v1.8 sequencing.
+- `.planning/REQUIREMENTS.md` - REL-01, REL-05, REL-06, all v1.8 requirement
+  rows, future requirements, and the v1.8 out-of-scope table.
+- `.planning/PROJECT.md` - active v1.8 boundary-setting posture, core value,
+  production-claim constraints, and current project state.
+- `.planning/STATE.md` - current milestone state and accumulated decisions.
+- `AGENTS.md` - repo-local verification, UAT command, parity breadcrumb, GSD,
+  generated artifact, and workflow rules.
+- `AGENTS.bright-builds.md` - Bright Builds workflow and standards routing.
+- `standards-overrides.md` - local standards override registry.
+- `standards/core/architecture.md` - functional-core and illegal-state rules.
+- `standards/core/code-shape.md` - code shape, script, and naming rules.
+- `standards/core/verification.md` - sync-first and repo-native verification
+  requirements.
+- `standards/core/testing.md` - unit-test and Arrange/Act/Assert expectations.
+- `standards/languages/typescript-javascript.md` - Bun/TS automation guidance.
+- `standards/languages/rust.md` - Rust guidance if planning unexpectedly
+  discovers a first-party Rust change.
+
+### Locked v1.8 Decisions
+
+- `.planning/phases/82-production-claim-boundary/82-CONTEXT.md` - locked
+  production vocabulary, evidence-gate model, deferred-surface inventory, and
+  documentation/verification posture.
+- `.planning/phases/83-support-matrix-and-issue-evidence/83-CONTEXT.md` -
+  locked support matrix, issue-evidence expectations, residual-risk posture,
+  and contributor update boundaries.
+- `.planning/phases/84-upgrade-and-rollback-policy/84-CONTEXT.md` - locked
+  source-built upgrade, rollback, backup, state/schema, and hidden-mutation
+  boundaries.
+- `.planning/phases/85-operator-runbooks/85-CONTEXT.md` - locked preflight,
+  long-run monitoring, no-progress, recovery, support-bundle, and escalation
+  evidence guidance.
+- `.planning/phases/86-service-operation-expectations/86-CONTEXT.md` - locked
+  source-built daemon, service preview, opt-in lifecycle UAT, service evidence,
+  and production-service non-claim guidance.
+
+### Release-Readiness And Parity Roots
+
+- `docs/parity/release-readiness.md` - existing release-readiness handoff to
+  extend with the current v1.8 checklist and no-claim review section.
+- `docs/parity/production-claim-boundary.md` - Phase 82 support terms,
+  claim-to-evidence matrix, deferred production-adjacent surfaces, and no-claim
+  boundary.
+- `docs/parity/support-matrix.md` - Phase 83 support matrix, issue evidence,
+  residual risks, and contributor update rules.
+- `docs/parity/upgrade-and-rollback-policy.md` - Phase 84 source-built upgrade,
+  rollback, backup, state/schema, and no-hidden-mutation policy.
+- `docs/parity/operator-runbooks.md` - Phase 85 preflight, long-run,
+  diagnosis, recovery, support-bundle, and escalation runbooks.
+- `docs/parity/service-operation-expectations.md` - Phase 86 source-built
+  daemon, service preview, opt-in lifecycle UAT, and service non-claims.
+- `docs/parity/deviations-and-unknowns.md` - deferred production-adjacent
+  surfaces and residual-risk register.
+- `docs/parity/index.json` - machine-readable parity root.
+- `docs/parity/checklist.md` - human-readable parity checklist root.
+- `docs/parity/README.md` - parity entrypoint.
+- `docs/operator/runtime-guide.md` - operator workflow, support-bundle,
+  service, UAT, and known-limitation entrypoint.
+- `README.md` - contributor/operator entrypoint requiring a compact Phase 87
+  pointer without duplicating the full checklist.
+- `docs/parity/catalog/operator-runtime-release-hardening.md` - catalog rows
+  for v1.8 production boundary, support matrix, upgrade policy, runbooks,
+  service expectations, and release-hardening evidence.
+
+### Existing Checker Patterns
+
+- `scripts/check-phase82-production-claim-boundary.ts` and
+  `scripts/check-phase82-production-claim-boundary.test.ts` - v1.8 production
+  boundary checker and fixture-test pattern.
+- `scripts/check-phase83-support-matrix-issue-evidence.ts` and
+  `scripts/check-phase83-support-matrix-issue-evidence.test.ts` - support
+  matrix and issue-evidence checker pattern.
+- `scripts/check-phase84-upgrade-rollback-policy.ts` and
+  `scripts/check-phase84-upgrade-rollback-policy.test.ts` - upgrade-policy
+  checker pattern.
+- `scripts/check-phase85-operator-runbooks.ts` and
+  `scripts/check-phase85-operator-runbooks.test.ts` - operator-runbook checker
+  pattern.
+- `scripts/check-phase86-service-operation-expectations.ts` and
+  `scripts/check-phase86-service-operation-expectations.test.ts` - closest
+  checker and verifier-wiring pattern for Phase 87.
+- `scripts/verify.sh` - repo-native verification contract and checker wiring.
+</canonical_refs>
+
+<code_context>
+## Existing Code Insights
+
+### Reusable Assets
+
+- `docs/parity/release-readiness.md` already has the v1.8 handoff roots for
+  production boundary, support matrix, upgrade policy, operator runbooks, and
+  service expectations, but it needs a current release-readiness checklist that
+  maps all v1.8 requirements to evidence and no-claim status.
+- `README.md`, `docs/parity/README.md`, `docs/parity/checklist.md`, and
+  `docs/parity/index.json` already contain v1.8 parity roots through Phase 86
+  and are natural integration points for the Phase 87 release-readiness surface.
+- Phase 82 through Phase 86 TypeScript checkers already validate fixed doc
+  surfaces, parity roots, forbidden default-verification drift, and
+  `scripts/verify.sh` command order.
+
+### Established Patterns
+
+- v1.8 docs phases add one canonical parity document or section, compact links
+  from entrypoints, a narrow deterministic Bun checker, fixture tests,
+  verifier wiring after the previous phase, generated LOC freshness, and full
+  `bash scripts/verify.sh` closeout evidence.
+- Public-network, real service-manager, and multi-day checks remain opt-in UAT
+  and outside default deterministic verification.
+- Release-boundary docs preserve historical v1.3 through v1.7 evidence without
+  promoting it into current production support.
+- Broad production-readiness and deferred-surface claim scanning is deliberately
+  deferred to Phase 88.
+
+### Integration Points
+
+- Update `docs/parity/release-readiness.md` with the Phase 87 checklist and
+  no-claim review section.
+- Add or update the Phase 87 parity surface in `docs/parity/index.json`,
+  `docs/parity/checklist.md`, `docs/parity/README.md`, README, and relevant
+  v1.8 boundary docs.
+- Add `scripts/check-phase87-release-readiness.ts` and
+  `scripts/check-phase87-release-readiness.test.ts`, then wire them into
+  `scripts/verify.sh` after Phase 86.
+</code_context>
+
+<specifics>
+## Specific Ideas
+
+- Prefer surface id `v1-8-release-readiness-checklist`.
+- Prefer audit key `v1_8_release_readiness_checklist`.
+- Use a table header close to: `Requirement | Phase | Canonical evidence |
+  Default verification | UAT or manual evidence | Residual risk | No-claim
+  or next gate`.
+- Include focused commands:
+  `bun test scripts/check-phase87-release-readiness.test.ts`,
+  `bun run scripts/check-phase87-release-readiness.ts`, and
+  `bash scripts/verify.sh`.
+- Mention that Phase 88 owns REL-02 through REL-04 broad deterministic claim
+  guardrails.
+</specifics>
+
+<deferred>
+## Deferred Ideas
+
+- Phase 88 deterministic broad-claim scanner and default-verification guardrail
+  suite for REL-02, REL-03, and REL-04.
+- Future production full-node readiness claim after all gates pass in a later
+  milestone.
+- Inbound serving, address relay, block serving, transaction relay, compact
+  block relay, production-funds wallet use or safety, migration apply mode,
+  signed packaging or package-manager distribution, Windows service
+  integration, hosted dashboards, GUI parity, public-network CI,
+  release-blocking live sync, destructive repair, and automatic support-bundle
+  upload.
+</deferred>
+
+---
+
+*Phase: 87-release-readiness-checklist*
+*Context gathered: 2026-06-23*

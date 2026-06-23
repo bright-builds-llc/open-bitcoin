@@ -7,6 +7,12 @@ Its current allowed statement is limited to this release-control claim:
 Open Bitcoin defines gates required before a future production full-node
 readiness claim.
 
+For release review, use the v1.8 release-readiness checklist in
+[`release-readiness.md`](release-readiness.md#v18-release-readiness-checklist).
+It maps this boundary and the other current v1.8 requirements to canonical
+evidence, deterministic checks, UAT or manual evidence, residual risk, and
+no-claim or next-gate status.
+
 ## Support Terms
 
 | Term | Definition |

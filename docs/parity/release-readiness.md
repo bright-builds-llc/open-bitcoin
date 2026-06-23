@@ -56,6 +56,8 @@ The Phase 85 operator runbook is
 The Phase 86 service operation expectations document is
 [`service-operation-expectations.md`](service-operation-expectations.md) with
 surface id `v1-8-service-operation-expectations`.
+The Phase 87 release-readiness checklist is this document with surface id
+`v1-8-release-readiness-checklist`.
 
 The v1.7 readiness claim remains historical: source-built, explicit opt-in
 full-sync soak and recovery hardening. It covers durable multi-day soak
@@ -104,7 +106,9 @@ release-boundary assertions through v1.7.
 Phase 82 and Phase 83 add the narrow v1.8 production-boundary and
 support-matrix traceability checks. Phase 84 adds the upgrade-policy roots that
 later UPG-04 drift checks consume. Phase 85 adds the operator-runbook root for
-RUN-01 through RUN-03.
+RUN-01 through RUN-03. Phase 86 adds the service-operation root for SVC-01 and
+SVC-02. Phase 87 adds this release-readiness checklist and narrow deterministic
+checker for REL-01, REL-05, and REL-06.
 
 ## Complete Surfaces
 
@@ -136,6 +140,7 @@ surfaces as `done`:
 - `v1-8-upgrade-rollback-policy`
 - `v1-8-operator-runbooks`
 - `v1-8-service-operation-expectations`
+- `v1-8-release-readiness-checklist`
 
 Primary current-cycle evidence:
 
@@ -160,6 +165,11 @@ Primary current-cycle evidence:
   SVC-02, including source-built daemon operation, launchd/systemd preview,
   opt-in real service lifecycle UAT, restart/resume fields, repo-local
   Cargo/Bazel commands, and production-service non-claims.
+- [`docs/parity/release-readiness.md`](release-readiness.md) records the
+  canonical v1.8 release-readiness checklist for REL-01, REL-05, and REL-06,
+  mapping all current v1.8 requirements to canonical evidence, deterministic
+  verification, UAT/manual evidence, residual risk, and no-claim or next-gate
+  status.
 - [`docs/parity/release-readiness.md`](release-readiness.md) records this
   current v1.8 handoff plus the historical v1.7 full-sync soak and recovery
   hardening boundary matrix and traceability for SOAK-01 through REL-04.
@@ -262,6 +272,67 @@ support, automatic update behavior, production service ownership, uptime
 guarantees, public-network default checks, real service-manager defaults,
 multi-day default gates, automatic support-bundle upload, destructive repair,
 and broad production-node readiness boundaries.
+
+## v1.8 Release Readiness Checklist
+
+Surface id: `v1-8-release-readiness-checklist`
+
+This checklist is the current v1.8 release-review map. It links every current
+v1.8 requirement to canonical evidence, default deterministic verification,
+operator UAT or manual evidence posture, residual risk, and the no-claim or
+next-gate status. It does not duplicate the full support, rollback, runbook, or
+service tables from their canonical documents.
+
+| Requirement | Phase | Canonical evidence | Default verification | UAT or manual evidence | Residual risk | No-claim or next gate |
+| --- | --- | --- | --- | --- | --- | --- |
+| PROD-01 | Phase 82 production boundary | `docs/parity/production-claim-boundary.md`, `docs/parity/index.json`, `docs/parity/checklist.md`, `README.md` | `bun run scripts/check-phase82-production-claim-boundary.ts`; `bash scripts/verify.sh` | Reviewer inspects the allowed production-related statement and support vocabulary. | Gates are defined but not satisfied. | v1.8 defines gates only and does not claim production full-node readiness. |
+| PROD-02 | Phase 82 production boundary | `docs/parity/production-claim-boundary.md`, `docs/parity/deviations-and-unknowns.md`, `docs/parity/catalog/operator-runtime-release-hardening.md` | `bun run scripts/check-phase82-production-claim-boundary.ts`; `bash scripts/verify.sh` | Reviewer confirms each deferred production-adjacent surface remains deferred. | Future scope can still be misread if copied without the support terms. | Deferred surfaces need future scoped gates and Phase 88 broad claim guardrails. |
+| PROD-03 | Phase 82 production boundary | `docs/parity/production-claim-boundary.md`, `docs/operator/runtime-guide.md`, `docs/parity/release-readiness.md` | `bun run scripts/check-phase82-production-claim-boundary.ts`; `bash scripts/verify.sh` | Reviewer checks that artifact existence, daemon startup, peer reachability, elapsed time, raw logs, and support bundle existence are not accepted as proof by themselves. | Evidence can still be incomplete or unavailable. | Field-based evidence and unavailable reasons are required before stronger claims. |
+| PROD-04 | Phase 82 production boundary | `docs/parity/production-claim-boundary.md`, `docs/parity/index.json`, `docs/parity/checklist.md` | `bun run scripts/check-phase82-production-claim-boundary.ts`; `bash scripts/verify.sh` | Reviewer confirms the support terms remain exactly `supported`, `preview`, `opt-in UAT`, `unsupported`, and `deferred`. | New terms can dilute release meaning. | Future support-term changes need a scoped support-policy phase. |
+| SUP-01 | Phase 83 support matrix | `docs/parity/support-matrix.md`, `docs/parity/production-claim-boundary.md`, `docs/parity/index.json` | `bun run scripts/check-phase83-support-matrix-issue-evidence.ts`; `bash scripts/verify.sh` | Reviewer inspects support classifications for source-built install, runtime, network, storage, service, wallet, migration, packaging, dashboard, GUI, support upload, destructive repair, and verification/CI. | Support labels can drift if copied into catalogs. | Support classification remains canonical in `support-matrix.md`. |
+| SUP-02 | Phase 83 support matrix | `docs/parity/support-matrix.md`, `docs/operator/runtime-guide.md`, `docs/parity/deviations-and-unknowns.md` | `bun run scripts/check-phase83-support-matrix-issue-evidence.ts`; `bash scripts/verify.sh` | Issue evidence includes the smallest useful redacted evidence set or `Unavailable: <reason>`. | Reports may omit fields or include excessive raw material. | Future support promotion needs concrete evidence, verifier or opt-in UAT, residual risk, and next gate. |
+| SUP-03 | Phase 83 support matrix | `docs/parity/support-matrix.md`, `docs/parity/catalog/operator-runtime-release-hardening.md`, `docs/parity/catalog/p2p.md`, `docs/parity/catalog/chainstate.md`, `docs/parity/catalog/wallet.md` | `bun run scripts/check-phase83-support-matrix-issue-evidence.ts`; `bash scripts/verify.sh` | Reviewer checks catalog pages point to the canonical support matrix instead of duplicating support rows. | Catalog prose can become stale. | Catalogs remain evidence pointers; support changes go through the matrix. |
+| SUP-04 | Phase 83 support matrix | `docs/parity/support-matrix.md`, `docs/parity/deviations-and-unknowns.md`, `docs/parity/release-readiness.md` | `bun run scripts/check-phase83-support-matrix-issue-evidence.ts`; `bash scripts/verify.sh` | Reviewer inspects residual risks and next gates for current and deferred surfaces. | Residual risk can be under-specified. | Future scoped phases must update residual risk and next gate before support promotion. |
+| UPG-01 | Phase 84 upgrade policy | `docs/parity/upgrade-and-rollback-policy.md`, `docs/operator/runtime-guide.md`, `docs/architecture/storage-decision.md` | `bun run scripts/check-phase84-upgrade-rollback-policy.ts`; `bash scripts/verify.sh` | Reviewer inspects pre-upgrade evidence and source-built command provenance. | Evidence collection can be incomplete on local hosts. | Upgrade guidance remains review-only and source-built. |
+| UPG-02 | Phase 84 upgrade policy | `docs/parity/upgrade-and-rollback-policy.md`, `docs/parity/support-matrix.md`, `docs/parity/deviations-and-unknowns.md` | `bun run scripts/check-phase84-upgrade-rollback-policy.ts`; `bash scripts/verify.sh` | Reviewer checks compatibility decisions use recovery vocabulary and unavailable reasons. | State/schema evidence can be unavailable or inconclusive. | Hidden datadir, wallet, service, or config mutation remains forbidden without future scope. |
+| UPG-03 | Phase 84 upgrade policy | `docs/parity/upgrade-and-rollback-policy.md`, `docs/parity/production-claim-boundary.md`, `docs/parity/release-readiness.md` | `bun run scripts/check-phase84-upgrade-rollback-policy.ts`; `bash scripts/verify.sh` | Reviewer verifies rollback and backup steps are review-only unless a future mutation plan exists. | Operators can still choose local actions outside the docs. | Automatic backup/restore, destructive repair, signed packaging, and automatic updates need separate gates. |
+| UPG-04 | Phase 84 upgrade policy | `docs/parity/upgrade-and-rollback-policy.md`, `scripts/check-phase84-upgrade-rollback-policy.ts`, `scripts/verify.sh` | `bun run scripts/check-phase84-upgrade-rollback-policy.ts`; `bash scripts/verify.sh` | Reviewer confirms upgrade-policy drift checks remain deterministic and default-local. | Broad all-doc production-claim scanning is not in Phase 84. | Phase 88 owns broad deterministic claim guardrails. |
+| RUN-01 | Phase 85 operator runbooks | `docs/parity/operator-runbooks.md`, `docs/operator/runtime-guide.md`, `docs/parity/support-matrix.md` | `bun run scripts/check-phase85-operator-runbooks.ts`; `bash scripts/verify.sh` | Reviewer inspects production-boundary preflight and long-run monitoring evidence fields. | Live public-network behavior remains environment-dependent. | Public-network default checks and production-node readiness remain future-scoped. |
+| RUN-02 | Phase 85 operator runbooks | `docs/parity/operator-runbooks.md`, `docs/architecture/status-snapshot.md`, `docs/architecture/operator-observability.md` | `bun run scripts/check-phase85-operator-runbooks.ts`; `bash scripts/verify.sh` | Reviewer checks no-progress diagnosis, recovery or stop decisions, and escalation evidence. | Diagnosis can be inconclusive when fields are unavailable. | Recovery remains diagnosis and evidence only, not destructive repair. |
+| RUN-03 | Phase 85 operator runbooks | `docs/parity/operator-runbooks.md`, `docs/parity/support-matrix.md`, `docs/operator/runtime-guide.md` | `bun run scripts/check-phase85-operator-runbooks.ts`; `bash scripts/verify.sh` | Reviewer checks redacted support-bundle timeline and support escalation guidance. | Sensitive evidence can be over-shared if docs are ignored. | Automatic support-bundle upload and hosted support workflows need future gates. |
+| SVC-01 | Phase 86 service expectations | `docs/parity/service-operation-expectations.md`, `docs/parity/support-matrix.md`, `docs/parity/production-claim-boundary.md` | `bun run scripts/check-phase86-service-operation-expectations.ts`; `bash scripts/verify.sh` | Reviewer inspects service surface classification and support terms. | Preview or opt-in UAT service evidence can be overread as production support. | Production service ownership, uptime guarantees, packaged services, and Windows service support remain deferred. |
+| SVC-02 | Phase 86 service expectations | `docs/parity/service-operation-expectations.md`, `docs/operator/runtime-guide.md`, `docs/parity/operator-runbooks.md` | `bun run scripts/check-phase86-service-operation-expectations.ts`; `bash scripts/verify.sh` | Reviewer checks repo-local Cargo/Bazel command evidence, restart/resume fields, and service unavailable reasons. | Host service-manager behavior varies. | Real service-manager lifecycle remains opt-in UAT outside default verification. |
+| REL-01 | Phase 87 release readiness | `docs/parity/release-readiness.md`, `docs/parity/index.json`, `docs/parity/checklist.md` | `bun run scripts/check-phase87-release-readiness.ts`; `bash scripts/verify.sh` | Reviewer uses this checklist as the current v1.8 release handoff. | Checklist rows can become stale when future phases add gates. | Future release-readiness updates must refresh this checklist and parity roots. |
+| REL-05 | Phase 87 release readiness | `README.md`, `docs/parity/README.md`, `docs/parity/checklist.md`, `docs/parity/index.json`, `docs/parity/catalog/operator-runtime-release-hardening.md` | `bun run scripts/check-phase87-release-readiness.ts`; `bash scripts/verify.sh` | Reviewer follows compact entrypoint links to the checklist without duplicated matrices. | Entrypoints can drift from canonical docs. | Future docs changes should keep compact pointers and avoid duplicate checklist tables. |
+| REL-06 | Phase 87 release readiness | `docs/parity/release-readiness.md`, `docs/parity/production-claim-boundary.md`, `docs/parity/deviations-and-unknowns.md` | `bun run scripts/check-phase87-release-readiness.ts`; `bash scripts/verify.sh` | Reviewer confirms the no-claim review preserves production full-node readiness and deferred-surface boundaries. | Broad overclaim scanning is intentionally not implemented here. | Phase 88 owns REL-02, REL-03, and REL-04 broad deterministic claim guardrails. |
+
+Required deterministic reviewer commands:
+
+```bash
+bun test scripts/check-phase87-release-readiness.test.ts
+bun run scripts/check-phase87-release-readiness.ts
+bash scripts/verify.sh
+```
+
+## v1.8 Release Readiness No-Claim Review
+
+v1.8 is a boundary-setting milestone: it defines gates only and does not claim
+production full-node readiness. It does not claim production service operation,
+inbound serving, address relay, block serving, transaction relay, compact block
+relay, production-funds wallet use or safety, migration apply mode, signed
+packaging or package-manager distribution, Windows service integration, hosted
+dashboards, GUI parity, public-network default checks, public-network CI,
+release-blocking live sync, destructive repair, automatic support-bundle upload,
+or broad production-node readiness.
+
+Artifact existence, daemon startup, elapsed time, peer reachability, raw log
+tail, service file existence, and support bundle path are context only. Release
+reviewers must use named fields, unavailable reasons, canonical evidence roots,
+and deterministic checker output before accepting any scoped claim.
+
+Phase 88 owns REL-02, REL-03, and REL-04 broad deterministic claim guardrails.
+Phase 87 deliberately adds the release-readiness checklist and narrow checker
+only; it does not scan every documentation file for every possible overclaim.
 
 ## v1.7 Full-Sync Soak and Recovery Hardening Claim Boundary Matrix
 

@@ -13,6 +13,10 @@ Use this document with [`production-claim-boundary.md`](production-claim-boundar
 [`operator-runbooks.md`](operator-runbooks.md),
 [`upgrade-and-rollback-policy.md`](upgrade-and-rollback-policy.md), and the
 operator [`runtime-guide.md`](../operator/runtime-guide.md).
+For release review, use the v1.8 release-readiness checklist in
+[`release-readiness.md`](release-readiness.md#v18-release-readiness-checklist);
+it points back to this service expectation root rather than duplicating the
+service classification table.
 
 This document distinguishes direct source-built `open-bitcoind` operation,
 local launchd/systemd definition preview, opt-in real user-service lifecycle
