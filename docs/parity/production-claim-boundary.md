@@ -12,6 +12,9 @@ For release review, use the v1.8 release-readiness checklist in
 It maps this boundary and the other current v1.8 requirements to canonical
 evidence, deterministic checks, UAT or manual evidence, residual risk, and
 no-claim or next-gate status.
+The v1.8 deterministic claim guardrails prevent overbroad
+production-readiness and deferred-surface claims in the public release/operator
+docs; they do not claim production full-node readiness.
 
 ## Support Terms
 

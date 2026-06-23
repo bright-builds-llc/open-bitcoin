@@ -19,6 +19,9 @@ and production-service non-claims, use the canonical
 For release review, use the v1.8 release-readiness checklist in
 [`release-readiness.md`](release-readiness.md#v18-release-readiness-checklist);
 it points back to this support matrix rather than duplicating the table.
+The v1.8 deterministic claim guardrails prevent overbroad
+production-readiness and deferred-surface claims in the public release/operator
+docs; they do not claim production full-node readiness.
 
 ## Support Terms
 

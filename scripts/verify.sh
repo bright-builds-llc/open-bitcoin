@@ -284,6 +284,8 @@ bun test scripts/check-phase86-service-operation-expectations.test.ts
 bun run scripts/check-phase86-service-operation-expectations.ts
 bun test scripts/check-phase87-release-readiness.test.ts
 bun run scripts/check-phase87-release-readiness.ts
+bun test scripts/check-phase88-deterministic-claim-guardrails.test.ts
+bun run scripts/check-phase88-deterministic-claim-guardrails.ts
 VERIFY_COMMAND_ORDER
 
 parse_args "$@"
@@ -351,6 +353,8 @@ run_step "test Phase 86 service operation expectations checker" bun test scripts
 run_step "check Phase 86 service operation expectations" bun run scripts/check-phase86-service-operation-expectations.ts
 run_step "test Phase 87 release readiness checker" bun test scripts/check-phase87-release-readiness.test.ts
 run_step "check Phase 87 release readiness" bun run scripts/check-phase87-release-readiness.ts
+run_step "test Phase 88 deterministic claim guardrails checker" bun test scripts/check-phase88-deterministic-claim-guardrails.test.ts
+run_step "check Phase 88 deterministic claim guardrails" bun run scripts/check-phase88-deterministic-claim-guardrails.ts
 run_step "check pure-core dependencies" bash scripts/check-pure-core-deps.sh
 run_step "check file lengths" bash scripts/check-file-lengths.sh
 run_step "check panic sites" bash scripts/check-panic-sites.sh

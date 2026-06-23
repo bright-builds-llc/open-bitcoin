@@ -58,6 +58,11 @@ The Phase 86 service operation expectations document is
 surface id `v1-8-service-operation-expectations`.
 The Phase 87 release-readiness checklist is this document with surface id
 `v1-8-release-readiness-checklist`.
+The Phase 88 deterministic claim guardrails are rooted in this handoff with
+surface id `v1-8-deterministic-claim-guardrails`. The v1.8 deterministic claim
+guardrails prevent overbroad production-readiness and deferred-surface claims
+in the public release/operator docs; they do not claim production full-node
+readiness.
 
 The v1.7 readiness claim remains historical: source-built, explicit opt-in
 full-sync soak and recovery hardening. It covers durable multi-day soak
@@ -141,6 +146,7 @@ surfaces as `done`:
 - `v1-8-operator-runbooks`
 - `v1-8-service-operation-expectations`
 - `v1-8-release-readiness-checklist`
+- `v1-8-deterministic-claim-guardrails`
 
 Primary current-cycle evidence:
 
@@ -170,6 +176,10 @@ Primary current-cycle evidence:
   mapping all current v1.8 requirements to canonical evidence, deterministic
   verification, UAT/manual evidence, residual risk, and no-claim or next-gate
   status.
+- The v1.8 deterministic claim guardrails record REL-02, REL-03, and REL-04
+  as deterministic checks over the public release/operator docs, preventing
+  overbroad production-readiness and deferred-surface claims without claiming
+  production full-node readiness.
 - [`docs/parity/release-readiness.md`](release-readiness.md) records this
   current v1.8 handoff plus the historical v1.7 full-sync soak and recovery
   hardening boundary matrix and traceability for SOAK-01 through REL-04.

@@ -255,6 +255,11 @@ v1.8 requirements to canonical evidence, deterministic checks, UAT or manual
 evidence, residual risk, and no-claim or next-gate status without promoting any
 deferred surface below.
 
+Phase 88 adds the `v1-8-deterministic-claim-guardrails` root. The v1.8
+deterministic claim guardrails prevent overbroad production-readiness and
+deferred-surface claims in the public release/operator docs; they do not claim
+production full-node readiness.
+
 | Surface | Support term | Why deferred | Required future gate |
 | --- | --- | --- | --- |
 | inbound serving | `deferred` | Current P2P evidence is outbound review and does not prove production inbound policy. | Scoped P2P production milestone with inbound policy, resource, abuse, and UAT evidence. |

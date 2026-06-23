@@ -135,6 +135,9 @@ For release review, use the v1.8 release-readiness checklist in
 [`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md), which
 maps the current v1.8 requirements to canonical evidence, deterministic checks,
 UAT or manual evidence, residual risk, and no-claim or next-gate status.
+The v1.8 deterministic claim guardrails prevent overbroad production-readiness
+and deferred-surface claims in the public release/operator docs; they do not
+claim production full-node readiness.
 v1.7 remains historical source-built, explicit opt-in full-sync soak and recovery hardening evidence covering durable multi-day soak evidence, resource
 bounds, recovery diagnosis, progress guarantees, stall diagnosis,
 support-bundle forensics, and deterministic release-boundary checks.

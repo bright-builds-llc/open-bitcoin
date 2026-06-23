@@ -604,6 +604,10 @@
     {
       "name": "v1-8-release-readiness-checklist",
       "status": "done"
+    },
+    {
+      "name": "v1-8-deterministic-claim-guardrails",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -1548,6 +1552,38 @@
         "suspected_unknowns": [
           "Phase 88 owns broad deterministic claim guardrails for REL-02, REL-03, and REL-04; future production-readiness gates need separate scoped evidence."
         ]
+      },
+      {
+        "id": "v1-8-deterministic-claim-guardrails",
+        "title": "v1.8 Deterministic Claim Guardrails",
+        "status": "done",
+        "requirements": [
+          "REL-02",
+          "REL-03",
+          "REL-04"
+        ],
+        "evidence": [
+          "docs/parity/production-claim-boundary.md",
+          "docs/parity/support-matrix.md",
+          "docs/parity/release-readiness.md",
+          "docs/parity/deviations-and-unknowns.md",
+          "docs/parity/index.json",
+          "docs/parity/checklist.md",
+          "docs/parity/README.md",
+          "README.md",
+          "docs/operator/runtime-guide.md",
+          "docs/parity/catalog/operator-runtime-release-hardening.md",
+          "scripts/check-phase88-deterministic-claim-guardrails.ts",
+          "scripts/check-phase88-deterministic-claim-guardrails.test.ts",
+          "scripts/verify.sh"
+        ],
+        "rationale": "Phase 88 registers deterministic claim guardrails for the curated public release/operator corpus so overbroad production-readiness and deferred-surface claims fail local verification without introducing a new evidence manifest.",
+        "known_gaps": [
+          "The v1.8 deterministic claim guardrails are deterministic local docs/checker coverage only and do not claim production full-node readiness."
+        ],
+        "suspected_unknowns": [
+          "Future production-readiness gates need separate scoped evidence before any deferred production-adjacent surface is promoted."
+        ]
       }
     ]
   },
@@ -2047,6 +2083,30 @@
         "docs/parity/catalog/operator-runtime-release-hardening.md",
         "scripts/check-phase87-release-readiness.ts",
         "scripts/check-phase87-release-readiness.test.ts",
+        "scripts/verify.sh"
+      ]
+    },
+    "v1_8_deterministic_claim_guardrails": {
+      "path": "release-readiness.md",
+      "status": "done",
+      "requirements": [
+        "REL-02",
+        "REL-03",
+        "REL-04"
+      ],
+      "evidence": [
+        "docs/parity/production-claim-boundary.md",
+        "docs/parity/support-matrix.md",
+        "docs/parity/release-readiness.md",
+        "docs/parity/deviations-and-unknowns.md",
+        "docs/parity/index.json",
+        "docs/parity/checklist.md",
+        "docs/parity/README.md",
+        "README.md",
+        "docs/operator/runtime-guide.md",
+        "docs/parity/catalog/operator-runtime-release-hardening.md",
+        "scripts/check-phase88-deterministic-claim-guardrails.ts",
+        "scripts/check-phase88-deterministic-claim-guardrails.test.ts",
         "scripts/verify.sh"
       ]
     }

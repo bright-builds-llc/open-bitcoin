@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: Production Full-Node Readiness Boundary
-status: planning
-stopped_at: Phase 87 complete; ready to plan Phase 88
-last_updated: "2026-06-23T18:48:28.034Z"
+status: complete
+stopped_at: Phase 88 completed and verified
+last_updated: "2026-06-23T22:27:22.036Z"
 last_activity: 2026-06-23
 progress:
   total_phases: 7
-  completed_phases: 6
-  total_plans: 21
-  completed_plans: 21
+  completed_phases: 7
+  total_plans: 23
+  completed_plans: 23
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-23)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 88 — Deterministic Claim Guardrails
+**Current focus:** v1.8 milestone complete — ready for closeout
 
 ## Current Position
 
 Milestone: v1.8 Production Full-Node Readiness Boundary
 Phase: 88
-Plan: Not started
-Status: Ready to plan Phase 88
+Plan: 2/2 complete
+Status: Phase complete; milestone ready for closeout
 Last activity: 2026-06-23
 
 Progress: [##########] 100%
@@ -51,7 +51,7 @@ Progress: [##########] 100%
 | 85 | Operator Runbooks | RUN-01, RUN-02, RUN-03 | Complete |
 | 86 | Service Operation Expectations | SVC-01, SVC-02 | Complete |
 | 87 | Release Readiness Checklist | REL-01, REL-05, REL-06 | Complete |
-| 88 | Deterministic Claim Guardrails | REL-02, REL-03, REL-04 | Not started |
+| 88 | Deterministic Claim Guardrails | REL-02, REL-03, REL-04 | Complete |
 
 **Recent Trend:**
 
@@ -77,7 +77,7 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ### Pending Todos
 
-- Discuss and plan Phase 88 with `/gsd-discuss-phase 88 --chain` or `/gsd-plan-phase 88`.
+- Run the milestone closeout workflow when ready to archive v1.8.
 - Keep raw phase histories in `.planning/phases/` for parity and UAT traceability.
 - Keep public-network full-sync and multi-day soak UAT opt-in and outside default deterministic verification unless a future milestone or phase explicitly changes that contract.
 
@@ -89,6 +89,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-23T18:48:28.034Z
-Stopped at: Phase 87 complete; ready to plan Phase 88
-Resume file: None
+Last session: 2026-06-23T22:27:22.034Z
+Stopped at: Phase 88 completed and verified
+Resume file: .planning/phases/88-deterministic-claim-guardrails/88-VERIFICATION.md

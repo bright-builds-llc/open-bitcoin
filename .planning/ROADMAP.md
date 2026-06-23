@@ -29,7 +29,7 @@ v1.8 Production Full-Node Readiness Boundary is active.
 - [x] **Phase 85: Operator Runbooks** - Provide preflight, long-run operation, diagnosis, recovery, support-bundle, and escalation runbooks.
 - [x] **Phase 86: Service Operation Expectations** - Bound source-built daemon and service-supervision expectations with repo-local verification commands. (completed 2026-06-22)
 - [x] **Phase 87: Release Readiness Checklist** - Map all v1.8 requirements to release evidence, docs, UAT, residual risk, and the no-claim boundary. (completed 2026-06-23)
-- [ ] **Phase 88: Deterministic Claim Guardrails** - Add default verification checks that fail overbroad production-readiness or deferred-surface claims.
+- [x] **Phase 88: Deterministic Claim Guardrails** - Add default verification checks that fail overbroad production-readiness or deferred-surface claims. (completed 2026-06-23)
 
 ## Phase Details
 
@@ -122,7 +122,7 @@ Plans:
   1. Deterministic verification fails if release docs claim production full-node readiness without the required v1.8 evidence gates.
   2. Deterministic verification fails if release docs imply the deferred-surface inventory is production-ready.
   3. Default `bash scripts/verify.sh` runs the v1.8 release-boundary checker without requiring public-network, real service-manager, or multi-day checks.
-**Plans**: TBD
+**Plans**: 2/2 plans complete
 
 ## Progress Table
 
@@ -134,7 +134,7 @@ Plans:
 | 85. Operator Runbooks | 4/4 | Complete    | 2026-06-22 |
 | 86. Service Operation Expectations | 4/4 | Complete    | 2026-06-22 |
 | 87. Release Readiness Checklist | 1/1 | Complete    | 2026-06-23 |
-| 88. Deterministic Claim Guardrails | 0/TBD | Not started | - |
+| 88. Deterministic Claim Guardrails | 2/2 | Complete   | 2026-06-23 |
 
 ## Completed Milestone Summaries
 

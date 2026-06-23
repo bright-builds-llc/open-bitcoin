@@ -154,6 +154,12 @@ and maps all current v1.8 requirements to canonical evidence, deterministic
 verification, UAT or manual evidence, residual risk, and no-claim or next-gate
 status; this README only points to it.
 
+Phase 88 deterministic claim guardrails are rooted in the
+`v1-8-deterministic-claim-guardrails` surface for REL-02, REL-03, and REL-04.
+The v1.8 deterministic claim guardrails prevent overbroad
+production-readiness and deferred-surface claims in the curated public
+release/operator docs; they do not claim production full-node readiness.
+
 Deferred and suspected follow-up work remains visible in
 [`deviations-and-unknowns.md`](deviations-and-unknowns.md).
 

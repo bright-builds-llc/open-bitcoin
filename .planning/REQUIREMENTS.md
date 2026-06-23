@@ -37,9 +37,9 @@
 ### Release Readiness and Guardrails
 
 - [x] **REL-01**: Release reviewer can use a v1.8 release-readiness checklist that maps every production-boundary requirement to docs, UAT, deterministic checks, and residual risk.
-- [ ] **REL-02**: Deterministic verification fails if release docs claim production full-node readiness without the required v1.8 evidence gates.
-- [ ] **REL-03**: Deterministic verification fails if docs imply deferred surfaces are production-ready, including inbound serving, relay, production-funds wallet use, migration apply mode, signed packaging, hosted dashboards, GUI parity, public-network CI, destructive repair, or automatic support-bundle upload.
-- [ ] **REL-04**: Default `bash scripts/verify.sh` runs the v1.8 release-boundary checker while keeping public-network, real service-manager, and multi-day checks opt-in.
+- [x] **REL-02**: Deterministic verification fails if release docs claim production full-node readiness without the required v1.8 evidence gates.
+- [x] **REL-03**: Deterministic verification fails if docs imply deferred surfaces are production-ready, including inbound serving, relay, production-funds wallet use, migration apply mode, signed packaging, hosted dashboards, GUI parity, public-network CI, destructive repair, or automatic support-bundle upload.
+- [x] **REL-04**: Default `bash scripts/verify.sh` runs the v1.8 release-boundary checker while keeping public-network, real service-manager, and multi-day checks opt-in.
 - [x] **REL-05**: Contributor-facing README and parity docs point to the v1.8 boundary docs, support policy, upgrade policy, runbooks, and release-readiness checklist.
 - [x] **REL-06**: Release reviewer can verify that v1.8 ends with a truthful no-claim boundary unless all production readiness gates are explicitly satisfied by a future milestone.
 
@@ -100,9 +100,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SVC-01 | Phase 86 | Complete |
 | SVC-02 | Phase 86 | Complete |
 | REL-01 | Phase 87 | Complete |
-| REL-02 | Phase 88 | Pending |
-| REL-03 | Phase 88 | Pending |
-| REL-04 | Phase 88 | Pending |
+| REL-02 | Phase 88 | Complete |
+| REL-03 | Phase 88 | Complete |
+| REL-04 | Phase 88 | Complete |
 | REL-05 | Phase 87 | Complete |
 | REL-06 | Phase 87 | Complete |
 

@@ -29,6 +29,9 @@ The v1.8 service operation expectations live at
 use that handoff for service support classification, restart/resume field
 interpretation, repo-local Cargo/Bazel service commands, and production-service
 non-claims.
+The v1.8 deterministic claim guardrails prevent overbroad
+production-readiness and deferred-surface claims in release/operator docs; they
+do not claim production full-node readiness.
 
 Use this guide for the practical workflow. Use
 [`docs/architecture/config-precedence.md`](../architecture/config-precedence.md),
