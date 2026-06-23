@@ -9,6 +9,11 @@ version.workspace = true
 path = "src/lib.rs"
 
 [[bin]]
+name = "open-bitcoin-cli"
+path = "src/main.rs"
+test = false
+
+[[bin]]
 name = "open-bitcoin"
 path = "src/bin/open-bitcoin.rs"
 

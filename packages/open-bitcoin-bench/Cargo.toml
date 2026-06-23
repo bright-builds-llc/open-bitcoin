@@ -8,6 +8,11 @@ version.workspace = true
 [lib]
 path = "src/lib.rs"
 
+[[bin]]
+name = "open-bitcoin-bench"
+path = "src/main.rs"
+test = false
+
 [dependencies]
 open-bitcoin-chainstate = { path = "../open-bitcoin-chainstate" }
 open-bitcoin-codec = { path = "../open-bitcoin-codec" }

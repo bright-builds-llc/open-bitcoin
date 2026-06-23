@@ -8,7 +8,7 @@ use std::{
     path::{Path, PathBuf},
     process::{Command, Output},
     sync::{
-        Arc, Mutex,
+        Arc, Mutex, MutexGuard,
         atomic::{AtomicU64, Ordering},
     },
     thread,
@@ -29,21 +29,30 @@ use open_bitcoin_node::{
 use serde_json::{Value, json};
 
 static NEXT_SANDBOX_ID: AtomicU64 = AtomicU64::new(0);
+static SANDBOX_MUTEX: Mutex<()> = Mutex::new(());
 const RECEIVE_DESCRIPTOR: &str = "wpkh(cMec2DGaTXkYJYfi7x3ZGjRXkeqmAvYAoWzMAcWj5fdLaqudWsNi)";
 const CHANGE_DESCRIPTOR: &str = "sh(wpkh(cMec2DGaTXkYJYfi7x3ZGjRXkeqmAvYAoWzMAcWj5fdLaqudWsNi))";
 
 struct TestSandbox {
     home: PathBuf,
+    _guard: MutexGuard<'static, ()>,
 }
 
 impl TestSandbox {
     fn new(label: &str) -> Self {
+        let guard = match SANDBOX_MUTEX.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
+        };
         let home = std::env::temp_dir().join(format!(
             "open-bitcoin-operator-binary-{label}-{}",
             NEXT_SANDBOX_ID.fetch_add(1, Ordering::Relaxed)
         ));
         fs::create_dir_all(&home).expect("sandbox");
-        Self { home }
+        Self {
+            home,
+            _guard: guard,
+        }
     }
 
     fn child(&self, relative: &str) -> PathBuf {
