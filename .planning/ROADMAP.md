@@ -10,16 +10,16 @@
 - ✅ **v1.5 Unattended Mainnet Node Operation Readiness** - Phases 60 through 67 (shipped 2026-06-10). Archive: [v1.5-ROADMAP.md](milestones/v1.5-ROADMAP.md)
 - ✅ **v1.6 Mainnet Full-Sync Completion** - Phases 68 through 74 (shipped 2026-06-14). Archive: [v1.6-ROADMAP.md](milestones/v1.6-ROADMAP.md)
 - ✅ **v1.7 Full-Sync Soak and Recovery Hardening** - Phases 75 through 81 (shipped 2026-06-20). Archive: [v1.7-ROADMAP.md](milestones/v1.7-ROADMAP.md)
-- 🚧 **v1.8 Production Full-Node Readiness Boundary** - Phases 82 through 88 (planned).
+- 🚧 **v1.8 Production Full-Node Readiness Boundary** - Phases 82 through 89 (gap closure active).
 
 ## Current Focus
 
-v1.8 Production Full-Node Readiness Boundary is active.
+v1.8 Production Full-Node Readiness Boundary is in audit gap closure.
 
 **Goal:** Define and enforce the support, upgrade, service, runbook, release-readiness, and evidence boundaries required before Open Bitcoin may truthfully claim production full-node readiness.
 
 **Granularity:** fine
-**Coverage:** 23/23 v1.8 requirements mapped
+**Coverage:** 23/23 v1.8 requirements mapped; REL-01 through REL-04 routed to Phase 89 gap closure.
 
 ## Phases
 
@@ -30,6 +30,7 @@ v1.8 Production Full-Node Readiness Boundary is active.
 - [x] **Phase 86: Service Operation Expectations** - Bound source-built daemon and service-supervision expectations with repo-local verification commands. (completed 2026-06-22)
 - [x] **Phase 87: Release Readiness Checklist** - Map all v1.8 requirements to release evidence, docs, UAT, residual risk, and the no-claim boundary. (completed 2026-06-23)
 - [x] **Phase 88: Deterministic Claim Guardrails** - Add default verification checks that fail overbroad production-readiness or deferred-surface claims. (completed 2026-06-23)
+- [ ] **Phase 89: Release Readiness Guardrail Closure** - Close v1.8 milestone audit gaps by wiring Phase 88 guardrail evidence into the release checklist and expanding the deterministic claim-guardrail corpus. (gap closure)
 
 ## Phase Details
 
@@ -124,6 +125,18 @@ Plans:
   3. Default `bash scripts/verify.sh` runs the v1.8 release-boundary checker without requiring public-network, real service-manager, or multi-day checks.
 **Plans**: 2/2 plans complete
 
+### Phase 89: Release Readiness Guardrail Closure
+**Goal**: Release reviewers can audit Phase 88 guardrails from the canonical v1.8 checklist, and deterministic claim guardrails cover every canonical v1.8 policy document that could otherwise promote deferred production-adjacent surfaces.
+**Depends on**: Phase 88
+**Requirements**: REL-01, REL-02, REL-03, REL-04
+**Gap Closure**: Closes `.planning/v1.8-MILESTONE-AUDIT.md` GAP-01 and GAP-02, plus the release-readiness reviewer flow and deterministic claim-guardrail flow gaps.
+**Success Criteria** (what must be TRUE):
+  1. Release reviewer can find REL-02, REL-03, and REL-04 rows in the canonical v1.8 release-readiness checklist with evidence, default verification, UAT/manual posture, residual risk, and no-claim or next-gate status.
+  2. Phase 88 deterministic claim-guardrail scanning covers the canonical upgrade policy, operator runbooks, and service expectation docs in addition to the existing release/operator corpus.
+  3. Fixture coverage proves deferred-surface promotion in those canonical policy docs fails deterministically while scoped no-claim wording still passes.
+  4. Gap-closure closeout records stale planning metadata refresh or explicitly routes any remaining planning hygiene to milestone closeout.
+**Plans**: 0 plans
+
 ## Progress Table
 
 | Phase | Plans Complete | Status | Completed |
@@ -135,6 +148,7 @@ Plans:
 | 86. Service Operation Expectations | 4/4 | Complete    | 2026-06-22 |
 | 87. Release Readiness Checklist | 1/1 | Complete    | 2026-06-23 |
 | 88. Deterministic Claim Guardrails | 2/2 | Complete   | 2026-06-23 |
+| 89. Release Readiness Guardrail Closure | 0/0 | Pending | - |
 
 ## Completed Milestone Summaries
 
@@ -183,12 +197,12 @@ traceability.
 | v1.5 Unattended Mainnet Node Operation Readiness | 8 | 22 | Shipped | 2026-06-10 |
 | v1.6 Mainnet Full-Sync Completion | 7 | 27 | Shipped | 2026-06-14 |
 | v1.7 Full-Sync Soak and Recovery Hardening | 7 | 37 | Shipped | 2026-06-20 |
-| v1.8 Production Full-Node Readiness Boundary | 7 | 0 | Planned | - |
+| v1.8 Production Full-Node Readiness Boundary | 8 | 23 | Gap closure | - |
 
 ## Next Step
 
-Plan the first v1.8 phase:
+Plan the v1.8 gap closure phase:
 
 ```bash
-/gsd-plan-phase 82
+/gsd-plan-phase 89
 ```
