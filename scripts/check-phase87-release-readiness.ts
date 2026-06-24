@@ -14,6 +14,10 @@ const PHASE86_CHECKER_COMMAND =
   "bun run scripts/check-phase86-service-operation-expectations.ts";
 const PHASE87_TEST_COMMAND = "bun test scripts/check-phase87-release-readiness.test.ts";
 const PHASE87_CHECKER_COMMAND = "bun run scripts/check-phase87-release-readiness.ts";
+const PHASE88_TEST_COMMAND =
+  "bun test scripts/check-phase88-deterministic-claim-guardrails.test.ts";
+const PHASE88_CHECKER_COMMAND =
+  "bun run scripts/check-phase88-deterministic-claim-guardrails.ts";
 const PHASE87_REQUIREMENTS = [
   "PROD-01",
   "PROD-02",
@@ -33,6 +37,9 @@ const PHASE87_REQUIREMENTS = [
   "SVC-01",
   "SVC-02",
   "REL-01",
+  "REL-02",
+  "REL-03",
+  "REL-04",
   "REL-05",
   "REL-06",
 ] as const;
@@ -71,6 +78,8 @@ const REQUIRED_EVIDENCE = [
   "docs/parity/catalog/operator-runtime-release-hardening.md",
   "scripts/check-phase87-release-readiness.ts",
   "scripts/check-phase87-release-readiness.test.ts",
+  "scripts/check-phase88-deterministic-claim-guardrails.ts",
+  "scripts/check-phase88-deterministic-claim-guardrails.test.ts",
   "scripts/verify.sh",
 ] as const;
 const CANONICAL_ROOTS = [
@@ -94,6 +103,8 @@ const RELEASE_CHECKER_COMMANDS = [
   PHASE86_CHECKER_COMMAND,
   PHASE87_CHECKER_COMMAND,
   PHASE87_TEST_COMMAND,
+  PHASE88_TEST_COMMAND,
+  PHASE88_CHECKER_COMMAND,
   "bash scripts/verify.sh",
 ] as const;
 const NO_CLAIM_TERMS = [

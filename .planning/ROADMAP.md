@@ -135,7 +135,12 @@ Plans:
   2. Phase 88 deterministic claim-guardrail scanning covers the canonical upgrade policy, operator runbooks, and service expectation docs in addition to the existing release/operator corpus.
   3. Fixture coverage proves deferred-surface promotion in those canonical policy docs fails deterministically while scoped no-claim wording still passes.
   4. Gap-closure closeout records stale planning metadata refresh or explicitly routes any remaining planning hygiene to milestone closeout.
-**Plans**: 0 plans
+**Plans**: 3 plans
+
+Plans:
+- [ ] 89-01-PLAN.md - Release-readiness checklist rows and Phase 87 enforcement for REL-02 through REL-04.
+- [ ] 89-02-PLAN.md - Phase 88 curated policy-doc corpus expansion, fixtures, and parity roots.
+- [ ] 89-03-PLAN.md - Focused verification, LOC freshness, final verifier, and metadata-hygiene closeout.
 
 ## Progress Table
 
@@ -148,7 +153,7 @@ Plans:
 | 86. Service Operation Expectations | 4/4 | Complete    | 2026-06-22 |
 | 87. Release Readiness Checklist | 1/1 | Complete    | 2026-06-23 |
 | 88. Deterministic Claim Guardrails | 2/2 | Complete   | 2026-06-23 |
-| 89. Release Readiness Guardrail Closure | 0/0 | Pending | - |
+| 89. Release Readiness Guardrail Closure | 0/3 | Pending | - |
 
 ## Completed Milestone Summaries
 
@@ -197,7 +202,7 @@ traceability.
 | v1.5 Unattended Mainnet Node Operation Readiness | 8 | 22 | Shipped | 2026-06-10 |
 | v1.6 Mainnet Full-Sync Completion | 7 | 27 | Shipped | 2026-06-14 |
 | v1.7 Full-Sync Soak and Recovery Hardening | 7 | 37 | Shipped | 2026-06-20 |
-| v1.8 Production Full-Node Readiness Boundary | 8 | 23 | Gap closure | - |
+| v1.8 Production Full-Node Readiness Boundary | 8 | 26 | Gap closure | - |
 
 ## Next Step
 

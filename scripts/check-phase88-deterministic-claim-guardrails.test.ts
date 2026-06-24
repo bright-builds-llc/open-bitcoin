@@ -20,6 +20,9 @@ const TARGET_FILES = [
   "docs/operator/runtime-guide.md",
   "docs/parity/production-claim-boundary.md",
   "docs/parity/support-matrix.md",
+  "docs/parity/upgrade-and-rollback-policy.md",
+  "docs/parity/operator-runbooks.md",
+  "docs/parity/service-operation-expectations.md",
   "docs/parity/release-readiness.md",
   "docs/parity/deviations-and-unknowns.md",
   "docs/parity/index.json",
@@ -31,6 +34,9 @@ const TARGET_FILES = [
 const REQUIRED_EVIDENCE = [
   "docs/parity/production-claim-boundary.md",
   "docs/parity/support-matrix.md",
+  "docs/parity/upgrade-and-rollback-policy.md",
+  "docs/parity/operator-runbooks.md",
+  "docs/parity/service-operation-expectations.md",
   "docs/parity/release-readiness.md",
   "docs/parity/deviations-and-unknowns.md",
   "docs/parity/checklist.md",
@@ -110,24 +116,70 @@ test("fails_when_deferred_surface_is_promoted_with_positive_predicate", async ()
   expect(failures.join("\n")).toContain("deferred surface promotion");
 });
 
-test("allows_scoped_no_claim_deferred_or_opt_in_uat_wording", async () => {
+test("fails_when_new_policy_docs_promote_deferred_surfaces", async () => {
   // Arrange
-  const root = await createFixture({
-    maybeDocAppend: {
-      file: "docs/parity/production-claim-boundary.md",
-      text: [
-        "This does not claim Open Bitcoin has production full-node readiness.",
-        "| migration apply mode | `deferred` | not allowed yet | future gate before any production-ready language |",
-        "The opt-in UAT wording may mention public-network default checks outside default verification.",
-      ].join("\n"),
-    },
-  });
+  const fixtures = await Promise.all(
+    [
+      {
+        file: "docs/parity/upgrade-and-rollback-policy.md",
+        text: "Migration apply mode is production-ready for existing datadirs.",
+      },
+      {
+        file: "docs/parity/operator-runbooks.md",
+        text: "Inbound serving is fully supported by the operator runbook.",
+      },
+      {
+        file: "docs/parity/service-operation-expectations.md",
+        text: "Windows service integration is production-grade for default releases.",
+      },
+    ].map((maybeDocAppend) => createFixture({ maybeDocAppend })),
+  );
 
   // Act
-  const failures = checkPhase88DeterministicClaimGuardrails(root);
+  const failureMessages = fixtures.map((root) =>
+    checkPhase88DeterministicClaimGuardrails(root).join("\n"),
+  );
 
   // Assert
-  expect(failures).toEqual([]);
+  for (const message of failureMessages) {
+    expect(message).toContain("deferred surface promotion");
+  }
+});
+
+test("allows_scoped_no_claim_deferred_or_opt_in_uat_wording", async () => {
+  // Arrange
+  const roots = await Promise.all(
+    [
+      {
+        file: "docs/parity/production-claim-boundary.md",
+        text: [
+          "This does not claim Open Bitcoin has production full-node readiness.",
+          "| migration apply mode | `deferred` | not allowed yet | future gate before any production-ready language |",
+          "The opt-in UAT wording may mention public-network default checks outside default verification.",
+        ].join("\n"),
+      },
+      {
+        file: "docs/parity/upgrade-and-rollback-policy.md",
+        text: "Migration apply mode remains deferred until a future gate.",
+      },
+      {
+        file: "docs/parity/operator-runbooks.md",
+        text: "Inbound serving remains outside default verification.",
+      },
+      {
+        file: "docs/parity/service-operation-expectations.md",
+        text: "Windows service integration is unsupported for this milestone.",
+      },
+    ].map((maybeDocAppend) => createFixture({ maybeDocAppend })),
+  );
+
+  // Act
+  const failureSets = roots.map((root) => checkPhase88DeterministicClaimGuardrails(root));
+
+  // Assert
+  for (const failures of failureSets) {
+    expect(failures).toEqual([]);
+  }
 });
 
 test("fails_when_phase88_verify_commands_exist_only_in_legacy_heredoc", async () => {

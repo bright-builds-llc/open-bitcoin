@@ -17,6 +17,7 @@ For release review, use the v1.8 release-readiness checklist in
 [`release-readiness.md`](release-readiness.md#v18-release-readiness-checklist);
 it points back to this service expectation root rather than duplicating the
 service classification table.
+The v1.8 deterministic claim guardrails scan this document for overbroad production-readiness and deferred-surface promotion; they define gates only and do not claim production full-node readiness.
 
 This document distinguishes direct source-built `open-bitcoind` operation,
 local launchd/systemd definition preview, opt-in real user-service lifecycle

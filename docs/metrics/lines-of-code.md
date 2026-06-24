@@ -7,10 +7,10 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 376 |
-| Total lines | 143,914 |
-| Code/content lines | 127,652 |
-| Comment-only lines | 4,270 |
-| Blank lines | 11,992 |
+| Total lines | 144,055 |
+| Code/content lines | 127,776 |
+| Comment-only lines | 4,276 |
+| Blank lines | 12,003 |
 
 ## Per-Crate Modules
 
@@ -36,12 +36,12 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust production | 211 | 59,167 | 51,585 | 1,822 | 5,760 |
 | Rust tests | 58 | 47,176 | 41,720 | 2,070 | 3,386 |
-| TypeScript/Bun scripts | 48 | 21,356 | 18,998 | 324 | 2,034 |
+| TypeScript/Bun scripts | 48 | 21,471 | 19,101 | 330 | 2,040 |
 | Fixture/data | 6 | 8,233 | 8,228 | 5 | 0 |
 | Shell scripts | 13 | 3,950 | 3,530 | 43 | 377 |
 | TOML/config | 16 | 3,456 | 3,090 | 0 | 366 |
 | Bazel/Starlark | 18 | 409 | 374 | 0 | 35 |
-| YAML | 2 | 104 | 83 | 4 | 17 |
+| YAML | 2 | 130 | 104 | 4 | 22 |
 | CI/templates | 1 | 27 | 16 | 1 | 10 |
 | Other config | 2 | 26 | 22 | 0 | 4 |
 | Hooks | 1 | 10 | 6 | 1 | 3 |
@@ -88,10 +88,10 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase85-operator-runbooks.ts | 643 |
 | scripts/check-phase86-service-operation-expectations.test.ts | 455 |
 | scripts/check-phase86-service-operation-expectations.ts | 656 |
-| scripts/check-phase87-release-readiness.test.ts | 351 |
-| scripts/check-phase87-release-readiness.ts | 444 |
-| scripts/check-phase88-deterministic-claim-guardrails.test.ts | 273 |
-| scripts/check-phase88-deterministic-claim-guardrails.ts | 501 |
+| scripts/check-phase87-release-readiness.test.ts | 394 |
+| scripts/check-phase87-release-readiness.ts | 455 |
+| scripts/check-phase88-deterministic-claim-guardrails.test.ts | 325 |
+| scripts/check-phase88-deterministic-claim-guardrails.ts | 510 |
 | scripts/check-v1.3-release-boundaries.ts | 184 |
 | scripts/check-v1.4-release-boundaries.ts | 241 |
 | scripts/check-v1.5-release-boundaries.ts | 296 |
@@ -129,7 +129,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 2fd6350ca68308a8f55facada7a0413f3ca6e0aebbc777a9bbf8f3d96f7a4621 |
+| Input fingerprint | 3452ed8eff54fd4fbe808b7446d3256b7c0a03df2848def686ba1b1c9994be9e |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

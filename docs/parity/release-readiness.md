@@ -113,7 +113,8 @@ support-matrix traceability checks. Phase 84 adds the upgrade-policy roots that
 later UPG-04 drift checks consume. Phase 85 adds the operator-runbook root for
 RUN-01 through RUN-03. Phase 86 adds the service-operation root for SVC-01 and
 SVC-02. Phase 87 adds this release-readiness checklist and narrow deterministic
-checker for REL-01, REL-05, and REL-06.
+checker for the current v1.8 release-review map, including the Phase 88
+guardrail evidence rows for REL-02, REL-03, and REL-04.
 
 ## Complete Surfaces
 
@@ -172,8 +173,9 @@ Primary current-cycle evidence:
   opt-in real service lifecycle UAT, restart/resume fields, repo-local
   Cargo/Bazel commands, and production-service non-claims.
 - [`docs/parity/release-readiness.md`](release-readiness.md) records the
-  canonical v1.8 release-readiness checklist for REL-01, REL-05, and REL-06,
-  mapping all current v1.8 requirements to canonical evidence, deterministic
+  canonical v1.8 release-readiness checklist for REL-01 through REL-06,
+  including Phase 88 guardrail evidence for REL-02, REL-03, and REL-04, mapping
+  all current v1.8 requirements to canonical evidence, deterministic
   verification, UAT/manual evidence, residual risk, and no-claim or next-gate
   status.
 - The v1.8 deterministic claim guardrails record REL-02, REL-03, and REL-04
@@ -313,6 +315,9 @@ service tables from their canonical documents.
 | SVC-01 | Phase 86 service expectations | `docs/parity/service-operation-expectations.md`, `docs/parity/support-matrix.md`, `docs/parity/production-claim-boundary.md` | `bun run scripts/check-phase86-service-operation-expectations.ts`; `bash scripts/verify.sh` | Reviewer inspects service surface classification and support terms. | Preview or opt-in UAT service evidence can be overread as production support. | Production service ownership, uptime guarantees, packaged services, and Windows service support remain deferred. |
 | SVC-02 | Phase 86 service expectations | `docs/parity/service-operation-expectations.md`, `docs/operator/runtime-guide.md`, `docs/parity/operator-runbooks.md` | `bun run scripts/check-phase86-service-operation-expectations.ts`; `bash scripts/verify.sh` | Reviewer checks repo-local Cargo/Bazel command evidence, restart/resume fields, and service unavailable reasons. | Host service-manager behavior varies. | Real service-manager lifecycle remains opt-in UAT outside default verification. |
 | REL-01 | Phase 87 release readiness | `docs/parity/release-readiness.md`, `docs/parity/index.json`, `docs/parity/checklist.md` | `bun run scripts/check-phase87-release-readiness.ts`; `bash scripts/verify.sh` | Reviewer uses this checklist as the current v1.8 release handoff. | Checklist rows can become stale when future phases add gates. | Future release-readiness updates must refresh this checklist and parity roots. |
+| REL-02 | Phase 88 deterministic claim guardrails | `docs/parity/release-readiness.md`, `docs/parity/production-claim-boundary.md`, `docs/parity/support-matrix.md`, `docs/parity/deviations-and-unknowns.md`, `scripts/check-phase88-deterministic-claim-guardrails.ts`, `scripts/check-phase88-deterministic-claim-guardrails.test.ts` | `bun test scripts/check-phase88-deterministic-claim-guardrails.test.ts`; `bun run scripts/check-phase88-deterministic-claim-guardrails.ts`; `bash scripts/verify.sh` | Reviewer inspects scoped no-claim wording and checker output only; public-network, real service-manager, and multi-day checks remain outside default verification. | The production full-node readiness claim remains gated by future evidence and cannot be inferred from artifact existence or daemon startup. | v1.8 defines gates only and does not claim production full-node readiness. |
+| REL-03 | Phase 88 deterministic claim guardrails | `docs/parity/deviations-and-unknowns.md`, `docs/parity/upgrade-and-rollback-policy.md`, `docs/parity/operator-runbooks.md`, `docs/parity/service-operation-expectations.md`, `scripts/check-phase88-deterministic-claim-guardrails.ts`, `scripts/check-phase88-deterministic-claim-guardrails.test.ts` | `bun test scripts/check-phase88-deterministic-claim-guardrails.test.ts`; `bun run scripts/check-phase88-deterministic-claim-guardrails.ts`; `bash scripts/verify.sh` | Reviewer confirms deferred surfaces remain scoped as deferred, unsupported, opt-in UAT, outside default verification, historical, or future-gated. | Deferred-surface wording can still drift if copied into docs outside the curated corpus. | Inbound serving, relay, production-funds wallet use, migration apply mode, signed packaging, hosted dashboards, GUI parity, public-network CI, destructive repair, and automatic support-bundle upload need separate scoped gates before promotion. |
+| REL-04 | Phase 88 deterministic claim guardrails | `scripts/verify.sh`, `scripts/check-phase87-release-readiness.ts`, `scripts/check-phase88-deterministic-claim-guardrails.ts`, `docs/parity/release-readiness.md` | `bun test scripts/check-phase87-release-readiness.test.ts`; `bun run scripts/check-phase87-release-readiness.ts`; `bun test scripts/check-phase88-deterministic-claim-guardrails.test.ts`; `bun run scripts/check-phase88-deterministic-claim-guardrails.ts`; `bash scripts/verify.sh` | Public-network, real service-manager, and multi-day checks remain opt-in evidence only. | The default verifier proves deterministic guardrail coverage, not live-network production readiness. | Default verification must stay deterministic unless a later release-policy decision changes it. |
 | REL-05 | Phase 87 release readiness | `README.md`, `docs/parity/README.md`, `docs/parity/checklist.md`, `docs/parity/index.json`, `docs/parity/catalog/operator-runtime-release-hardening.md` | `bun run scripts/check-phase87-release-readiness.ts`; `bash scripts/verify.sh` | Reviewer follows compact entrypoint links to the checklist without duplicated matrices. | Entrypoints can drift from canonical docs. | Future docs changes should keep compact pointers and avoid duplicate checklist tables. |
 | REL-06 | Phase 87 release readiness | `docs/parity/release-readiness.md`, `docs/parity/production-claim-boundary.md`, `docs/parity/deviations-and-unknowns.md` | `bun run scripts/check-phase87-release-readiness.ts`; `bash scripts/verify.sh` | Reviewer confirms the no-claim review preserves production full-node readiness and deferred-surface boundaries. | Broad overclaim scanning is intentionally not implemented here. | Phase 88 owns REL-02, REL-03, and REL-04 broad deterministic claim guardrails. |
 
@@ -321,6 +326,8 @@ Required deterministic reviewer commands:
 ```bash
 bun test scripts/check-phase87-release-readiness.test.ts
 bun run scripts/check-phase87-release-readiness.ts
+bun test scripts/check-phase88-deterministic-claim-guardrails.test.ts
+bun run scripts/check-phase88-deterministic-claim-guardrails.ts
 bash scripts/verify.sh
 ```
 

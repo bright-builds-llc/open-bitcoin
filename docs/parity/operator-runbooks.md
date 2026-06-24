@@ -21,6 +21,7 @@ generated file path, and unavailable-reason expectations live in
 For release review, use the v1.8 release-readiness checklist in
 [`release-readiness.md`](release-readiness.md#v18-release-readiness-checklist);
 it points back to these runbooks rather than duplicating the procedural tables.
+The v1.8 deterministic claim guardrails scan this document for overbroad production-readiness and deferred-surface promotion; they define gates only and do not claim production full-node readiness.
 
 This runbook tells an operator what to record, what to inspect, when to stop,
 and what to preserve for support triage. It does not authorize source datadir

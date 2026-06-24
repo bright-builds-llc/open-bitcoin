@@ -1526,6 +1526,9 @@
           "SVC-01",
           "SVC-02",
           "REL-01",
+          "REL-02",
+          "REL-03",
+          "REL-04",
           "REL-05",
           "REL-06"
         ],
@@ -1543,7 +1546,9 @@
           "docs/parity/catalog/operator-runtime-release-hardening.md",
           "scripts/check-phase87-release-readiness.ts",
           "scripts/check-phase87-release-readiness.test.ts",
-          "scripts/verify.sh"
+          "scripts/verify.sh",
+          "scripts/check-phase88-deterministic-claim-guardrails.ts",
+          "scripts/check-phase88-deterministic-claim-guardrails.test.ts"
         ],
         "rationale": "Phase 87 registers the canonical v1.8 release-readiness checklist that maps current v1.8 requirements to canonical evidence, deterministic checks, UAT/manual evidence, residual risk, and no-claim or next-gate status without promoting production full-node readiness.",
         "known_gaps": [
@@ -1575,7 +1580,10 @@
           "docs/parity/catalog/operator-runtime-release-hardening.md",
           "scripts/check-phase88-deterministic-claim-guardrails.ts",
           "scripts/check-phase88-deterministic-claim-guardrails.test.ts",
-          "scripts/verify.sh"
+          "scripts/verify.sh",
+          "docs/parity/upgrade-and-rollback-policy.md",
+          "docs/parity/operator-runbooks.md",
+          "docs/parity/service-operation-expectations.md"
         ],
         "rationale": "Phase 88 registers deterministic claim guardrails for the curated public release/operator corpus so overbroad production-readiness and deferred-surface claims fail local verification without introducing a new evidence manifest.",
         "known_gaps": [
@@ -2066,6 +2074,9 @@
         "SVC-01",
         "SVC-02",
         "REL-01",
+        "REL-02",
+        "REL-03",
+        "REL-04",
         "REL-05",
         "REL-06"
       ],
@@ -2083,7 +2094,9 @@
         "docs/parity/catalog/operator-runtime-release-hardening.md",
         "scripts/check-phase87-release-readiness.ts",
         "scripts/check-phase87-release-readiness.test.ts",
-        "scripts/verify.sh"
+        "scripts/verify.sh",
+        "scripts/check-phase88-deterministic-claim-guardrails.ts",
+        "scripts/check-phase88-deterministic-claim-guardrails.test.ts"
       ]
     },
     "v1_8_deterministic_claim_guardrails": {
@@ -2107,7 +2120,10 @@
         "docs/parity/catalog/operator-runtime-release-hardening.md",
         "scripts/check-phase88-deterministic-claim-guardrails.ts",
         "scripts/check-phase88-deterministic-claim-guardrails.test.ts",
-        "scripts/verify.sh"
+        "scripts/verify.sh",
+        "docs/parity/upgrade-and-rollback-policy.md",
+        "docs/parity/operator-runbooks.md",
+        "docs/parity/service-operation-expectations.md"
       ]
     }
   }

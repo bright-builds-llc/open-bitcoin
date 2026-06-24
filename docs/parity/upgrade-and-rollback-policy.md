@@ -24,6 +24,7 @@ separate.
 For release review, use the v1.8 release-readiness checklist in
 [`release-readiness.md`](release-readiness.md#v18-release-readiness-checklist);
 it points back to this upgrade policy rather than duplicating the policy tables.
+The v1.8 deterministic claim guardrails scan this document for overbroad production-readiness and deferred-surface promotion; they define gates only and do not claim production full-node readiness.
 
 The current policy covers UPG-01, UPG-02, and UPG-03. UPG-04 is the
 deterministic drift-check requirement for later Phase 84 verification wiring,

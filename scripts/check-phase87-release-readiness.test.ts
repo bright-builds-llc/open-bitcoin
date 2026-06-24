@@ -16,6 +16,10 @@ const PHASE86_CHECKER_COMMAND =
   "bun run scripts/check-phase86-service-operation-expectations.ts";
 const PHASE87_TEST_COMMAND = "bun test scripts/check-phase87-release-readiness.test.ts";
 const PHASE87_CHECKER_COMMAND = "bun run scripts/check-phase87-release-readiness.ts";
+const PHASE88_TEST_COMMAND =
+  "bun test scripts/check-phase88-deterministic-claim-guardrails.test.ts";
+const PHASE88_CHECKER_COMMAND =
+  "bun run scripts/check-phase88-deterministic-claim-guardrails.ts";
 const PHASE87_REQUIREMENTS = [
   "PROD-01",
   "PROD-02",
@@ -35,6 +39,9 @@ const PHASE87_REQUIREMENTS = [
   "SVC-01",
   "SVC-02",
   "REL-01",
+  "REL-02",
+  "REL-03",
+  "REL-04",
   "REL-05",
   "REL-06",
 ] as const;
@@ -67,6 +74,8 @@ const REQUIRED_EVIDENCE = [
   "docs/parity/catalog/operator-runtime-release-hardening.md",
   "scripts/check-phase87-release-readiness.ts",
   "scripts/check-phase87-release-readiness.test.ts",
+  "scripts/check-phase88-deterministic-claim-guardrails.ts",
+  "scripts/check-phase88-deterministic-claim-guardrails.test.ts",
   "scripts/verify.sh",
 ] as const;
 const tempRoots: string[] = [];
@@ -128,10 +137,36 @@ test("fails_when_release_readiness_omits_requirement_or_no_claim", async () => {
   expect(missingNoClaimFailures.join("\n")).toContain("release-readiness no-claim review");
 });
 
+test("fails_when_phase88_guardrail_rows_are_missing_from_release_readiness", async () => {
+  // Arrange
+  const missingRel02Root = await createFixture({
+    maybeOmission: { file: RELEASE_READINESS_PATH, needle: "REL-02" },
+  });
+  const missingRel03Root = await createFixture({
+    maybeOmission: { file: RELEASE_READINESS_PATH, needle: "REL-03" },
+  });
+  const missingRel04Root = await createFixture({
+    maybeOmission: { file: RELEASE_READINESS_PATH, needle: "REL-04" },
+  });
+
+  // Act
+  const failureMessages = [missingRel02Root, missingRel03Root, missingRel04Root].map((root) =>
+    checkPhase87ReleaseReadiness(root).join("\n"),
+  );
+
+  // Assert
+  for (const message of failureMessages) {
+    expect(message).toContain("release-readiness checklist requirements");
+  }
+});
+
 test("fails_when_parity_roots_omit_release_requirement_or_evidence", async () => {
   // Arrange
   const missingRequirementRoot = await createFixture({
-    maybeParityIndexText: parityIndexText().replaceAll('"REL-06"', '"REL-XX"'),
+    maybeParityIndexText: parityIndexText().replaceAll('"REL-02"', '"REL-XX"'),
+  });
+  const missingPhase88RequirementRoot = await createFixture({
+    maybeParityIndexText: parityIndexText().replaceAll('"REL-03"', '"REL-XX"'),
   });
   const missingEvidenceRoot = await createFixture({
     maybeParityIndexText: parityIndexText().replaceAll(
@@ -142,10 +177,14 @@ test("fails_when_parity_roots_omit_release_requirement_or_evidence", async () =>
 
   // Act
   const missingRequirementFailures = checkPhase87ReleaseReadiness(missingRequirementRoot);
+  const missingPhase88RequirementFailures = checkPhase87ReleaseReadiness(
+    missingPhase88RequirementRoot,
+  );
   const missingEvidenceFailures = checkPhase87ReleaseReadiness(missingEvidenceRoot);
 
   // Assert
   expect(missingRequirementFailures.join("\n")).toContain("parity root");
+  expect(missingPhase88RequirementFailures.join("\n")).toContain("parity root");
   expect(missingEvidenceFailures.join("\n")).toContain("parity root");
 });
 
@@ -277,6 +316,8 @@ function releaseReadinessText(): string {
     PHASE86_CHECKER_COMMAND,
     PHASE87_TEST_COMMAND,
     PHASE87_CHECKER_COMMAND,
+    PHASE88_TEST_COMMAND,
+    PHASE88_CHECKER_COMMAND,
     "bash scripts/verify.sh",
     "## v1.8 Release Readiness No-Claim Review",
     "v1.8 is a boundary-setting milestone: it defines gates only and does not claim production full-node readiness. It does not claim production service operation, inbound serving, address relay, block serving, transaction relay, compact block relay, production-funds wallet use or safety, migration apply mode, signed packaging or package-manager distribution, Windows service integration, hosted dashboards, GUI parity, public-network default checks, public-network CI, release-blocking live sync, destructive repair, automatic support-bundle upload, or broad production-node readiness.",
@@ -347,5 +388,7 @@ function verifyScriptText(): string {
     `run_step "check Phase 86 service operation expectations" bun run scripts/check-phase86-service-operation-expectations.ts`,
     `run_step "test Phase 87 release readiness checker" bun test scripts/check-phase87-release-readiness.test.ts`,
     `run_step "check Phase 87 release readiness" bun run scripts/check-phase87-release-readiness.ts`,
+    `run_step "test Phase 88 deterministic claim guardrails checker" ${PHASE88_TEST_COMMAND}`,
+    `run_step "check Phase 88 deterministic claim guardrails" ${PHASE88_CHECKER_COMMAND}`,
   ].join("\n");
 }
