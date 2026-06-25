@@ -12,16 +12,19 @@ use std::collections::{BTreeMap, BTreeSet};
 use open_bitcoin_chainstate::ChainPosition;
 use open_bitcoin_consensus::{block_hash, check_block_header, transaction_txid, transaction_wtxid};
 use open_bitcoin_primitives::{
-    Block, BlockHash, BlockHeader, Hash32, InventoryType, InventoryVector, Transaction, Txid, Wtxid,
+    Block, BlockHash, BlockHeader, InventoryType, InventoryVector, Transaction, Txid, Wtxid,
 };
 
 use crate::error::{DisconnectReason, NetworkError, PeerId};
 use crate::header_store::{HeaderStore, InsertedHeader};
-use crate::inbound::{
-    InboundAdmissionCounters, InboundAdmissionRejectionReason, InboundAdmissionSlotClass,
-    InboundHandshakeState, InboundPeerRecord,
-};
+use crate::inbound::{InboundAdmissionRejectionReason, InboundHandshakeState, InboundPeerRecord};
 use crate::message::{HeadersMessage, InventoryList, LocalPeerConfig, WireNetworkMessage};
+
+mod inbound_state;
+mod inventory_state;
+
+use inbound_state::reject_self_connection;
+use inventory_state::forget_requested_inventory;
 
 pub const DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER: usize = 128;
 
@@ -121,25 +124,6 @@ impl PeerManager {
             .ok_or(NetworkError::UnknownPeer(peer_id))
     }
 
-    fn forget_requested_inventory(
-        peer: &mut PeerState,
-        inventory_type: InventoryType,
-        object_hash: Hash32,
-    ) {
-        match inventory_type {
-            InventoryType::Block | InventoryType::WitnessBlock => {
-                peer.requested_blocks.remove(&BlockHash::from(object_hash));
-            }
-            InventoryType::Transaction => {
-                peer.requested_txids.remove(&Txid::from(object_hash));
-            }
-            InventoryType::WitnessTransaction => {
-                peer.requested_wtxids.remove(&Wtxid::from(object_hash));
-            }
-            _ => {}
-        }
-    }
-
     pub fn new(local_config: LocalPeerConfig) -> Self {
         Self::with_max_blocks_in_flight(local_config, DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER)
     }
@@ -205,33 +189,6 @@ impl PeerManager {
         self.peers.keys().copied().collect()
     }
 
-    pub fn inbound_endpoint_keys(&self) -> BTreeSet<String> {
-        self.peers
-            .values()
-            .filter_map(active_inbound_record)
-            .map(|record| record.remote_endpoint.clone())
-            .collect()
-    }
-
-    pub fn inbound_admission_counters(&self) -> InboundAdmissionCounters {
-        let mut counters = InboundAdmissionCounters::default();
-        for peer in self.peers.values() {
-            match peer.role {
-                ConnectionRole::Inbound => {
-                    let Some(record) = active_inbound_record(peer) else {
-                        continue;
-                    };
-                    counters.current_inbound_peers += 1;
-                    if record.slot_class == InboundAdmissionSlotClass::Reserved {
-                        counters.current_reserved_inbound_peers += 1;
-                    }
-                }
-                ConnectionRole::Outbound => counters.current_outbound_peers += 1,
-            }
-        }
-        counters
-    }
-
     pub fn peer_requested_blocks(&self, peer_id: PeerId) -> Result<Vec<BlockHash>, NetworkError> {
         let peer = self
             .peers
@@ -244,32 +201,6 @@ impl PeerManager {
         let Some(_) = self.peers.remove(&peer_id) else {
             return Err(NetworkError::UnknownPeer(peer_id));
         };
-        Ok(())
-    }
-
-    pub fn add_inbound_peer(&mut self, peer_id: PeerId) -> Result<(), NetworkError> {
-        let counters = self.inbound_admission_counters();
-        let record = InboundPeerRecord {
-            peer_id,
-            remote_endpoint: format!("compat-inbound-peer:{peer_id}"),
-            slot_class: InboundAdmissionSlotClass::Ordinary,
-            handshake_state: InboundHandshakeState::Accepted,
-            maybe_remote_nonce: None,
-            observed_inbound_peers: counters.current_inbound_peers,
-            observed_outbound_peers: counters.current_outbound_peers,
-        };
-        self.add_inbound_peer_record(record)
-    }
-
-    pub fn add_inbound_peer_record(
-        &mut self,
-        record: InboundPeerRecord,
-    ) -> Result<(), NetworkError> {
-        if self.peers.contains_key(&record.peer_id) {
-            return Err(NetworkError::PeerAlreadyExists(record.peer_id));
-        }
-        self.peers
-            .insert(record.peer_id, PeerState::from_inbound_record(record));
         Ok(())
     }
 
@@ -397,7 +328,7 @@ impl PeerManager {
             WireNetworkMessage::NotFound(inventory) => {
                 let peer = Self::peer_mut(&mut self.peers, peer_id)?;
                 for item in inventory.inventory {
-                    Self::forget_requested_inventory(peer, item.inventory_type, item.object_hash);
+                    forget_requested_inventory(peer, item.inventory_type, item.object_hash);
                 }
                 Ok(Vec::new())
             }
@@ -668,8 +599,8 @@ impl PeerManager {
         self.known_wtxids.insert(wtxid);
 
         let peer = Self::peer_mut(&mut self.peers, peer_id)?;
-        Self::forget_requested_inventory(peer, InventoryType::Transaction, txid.into());
-        Self::forget_requested_inventory(peer, InventoryType::WitnessTransaction, wtxid.into());
+        forget_requested_inventory(peer, InventoryType::Transaction, txid.into());
+        forget_requested_inventory(peer, InventoryType::WitnessTransaction, wtxid.into());
 
         Ok(vec![PeerAction::ReceivedTransaction(transaction)])
     }
@@ -682,28 +613,10 @@ impl PeerManager {
         let hash = block_hash(&block.header);
 
         let peer = Self::peer_mut(&mut self.peers, peer_id)?;
-        Self::forget_requested_inventory(peer, InventoryType::Block, hash.into());
+        forget_requested_inventory(peer, InventoryType::Block, hash.into());
 
         Ok(vec![PeerAction::ReceivedBlock(block)])
     }
-}
-
-fn active_inbound_record(peer: &PeerState) -> Option<&InboundPeerRecord> {
-    let maybe_record = peer.maybe_inbound_record.as_ref()?;
-    if maybe_record.handshake_state == InboundHandshakeState::Disconnected {
-        return None;
-    }
-    Some(maybe_record)
-}
-
-fn reject_self_connection(peer: &mut PeerState, remote_nonce: u64) -> PeerAction {
-    if let Some(record) = peer.maybe_inbound_record.as_mut() {
-        record.handshake_state = InboundHandshakeState::Disconnected;
-        record.maybe_remote_nonce = Some(remote_nonce);
-    }
-    peer.maybe_inbound_rejection_reason = Some(InboundAdmissionRejectionReason::SelfConnection);
-
-    PeerAction::Disconnect(DisconnectReason::SelfConnection)
 }
 
 #[cfg(test)]

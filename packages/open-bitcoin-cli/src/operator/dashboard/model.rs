@@ -503,6 +503,12 @@ fn metric_label(kind: MetricKind) -> &'static str {
         MetricKind::DiskUsageBytes => "Disk bytes",
         MetricKind::RpcHealth => "RPC health",
         MetricKind::ServiceRestarts => "Service restarts",
+        MetricKind::InboundAdmittedPeerCount => "Inbound admits",
+        MetricKind::InboundRejectedPeerCount => "Inbound rejects",
+        MetricKind::InboundCapRejectCount => "Inbound cap rejects",
+        MetricKind::InboundReservedSlotRejectCount => "Inbound reserved rejects",
+        MetricKind::InboundDuplicateRejectCount => "Inbound duplicate rejects",
+        MetricKind::InboundSelfConnectionRejectCount => "Inbound self-connection rejects",
     }
 }
 

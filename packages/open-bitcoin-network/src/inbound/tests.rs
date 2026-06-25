@@ -10,8 +10,8 @@ use crate::PeerId;
 use super::{
     InboundAdmissionCounters, InboundAdmissionDecision, InboundAdmissionPolicy,
     InboundAdmissionRejectionReason, InboundAdmissionRequest, InboundAdmissionSlotClass,
-    InboundListenerActivationDiagnostic, InboundListenerConfig, InboundPreflightReason,
-    classify_inbound_preflight,
+    InboundHandshakeState, InboundListenerActivationDiagnostic, InboundListenerConfig,
+    InboundPreflightReason, classify_inbound_preflight,
 };
 
 fn enabled_config(addresses: Vec<&str>) -> InboundListenerConfig {
@@ -245,6 +245,73 @@ fn activation_diagnostics_represent_os_observed_bind_results() {
     assert_eq!(
         already_bound.maybe_endpoint.as_deref(),
         Some("127.0.0.1:18444"),
+    );
+}
+
+#[test]
+fn activation_diagnostic_converts_to_preflight_shape() {
+    // Arrange
+    let config = enabled_config(vec!["127.0.0.1:18444"]);
+    let plan = classify_inbound_preflight(&config);
+    let endpoint = &plan.ready_endpoints()[0];
+    let activation = InboundListenerActivationDiagnostic::already_bound(endpoint, "address in use");
+
+    // Act
+    let diagnostic = activation.into_preflight_diagnostic();
+
+    // Assert
+    assert_eq!(diagnostic.reason, InboundPreflightReason::AlreadyBound);
+    assert_eq!(
+        diagnostic.maybe_endpoint.as_deref(),
+        Some("127.0.0.1:18444"),
+    );
+    assert_eq!(diagnostic.field, "inbound.listen_addresses");
+}
+
+#[test]
+fn inbound_small_helpers_cover_status_and_counter_branches() {
+    // Arrange
+    let counters = InboundAdmissionCounters {
+        current_inbound_peers: 2,
+        current_outbound_peers: 5,
+        current_reserved_inbound_peers: 1,
+    };
+
+    // Act
+    let ordinary = counters.after_admitted(InboundAdmissionSlotClass::Ordinary);
+    let reserved = counters.after_admitted(InboundAdmissionSlotClass::Reserved);
+    let admitted = InboundAdmissionDecision::Admit(super::InboundPeerRecord {
+        peer_id: 21,
+        remote_endpoint: "127.0.0.1:20021".to_string(),
+        slot_class: InboundAdmissionSlotClass::Ordinary,
+        handshake_state: InboundHandshakeState::Accepted,
+        maybe_remote_nonce: None,
+        observed_inbound_peers: 2,
+        observed_outbound_peers: 5,
+    });
+    let rejected = InboundAdmissionDecision::Reject(super::InboundAdmissionRejection {
+        reason: InboundAdmissionRejectionReason::Shutdown,
+        peer_id: 22,
+        maybe_endpoint: None,
+        message: "shutdown requested".to_string(),
+        next_action: "retry after shutdown completes".to_string(),
+    });
+
+    // Assert
+    assert_eq!(InboundHandshakeState::Accepted.as_str(), "accepted");
+    assert_eq!(InboundHandshakeState::Handshaking.as_str(), "handshaking");
+    assert_eq!(InboundHandshakeState::Established.as_str(), "established");
+    assert_eq!(InboundHandshakeState::Disconnected.as_str(), "disconnected");
+    assert_eq!(ordinary.current_inbound_peers, 3);
+    assert_eq!(ordinary.current_outbound_peers, 5);
+    assert_eq!(ordinary.current_reserved_inbound_peers, 1);
+    assert_eq!(reserved.current_inbound_peers, 3);
+    assert_eq!(reserved.current_reserved_inbound_peers, 2);
+    assert!(admitted.is_admitted());
+    assert!(!rejected.is_admitted());
+    assert_eq!(
+        InboundAdmissionPolicy::new(2, 5).effective_reserved_slots(),
+        2,
     );
 }
 

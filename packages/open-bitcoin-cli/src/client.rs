@@ -206,6 +206,7 @@ fn method_call_to_json(call: MethodCall) -> Result<Value, CliCommandFailure> {
         MethodCall::GetBlockchainInfo(request) => to_json_value(request),
         MethodCall::GetMempoolInfo(request) => to_json_value(request),
         MethodCall::GetNetworkInfo(request) => to_json_value(request),
+        MethodCall::OpenBitcoinNetworkStatus(request) => to_json_value(request),
         MethodCall::OpenBitcoinSyncStatus(request) => to_json_value(request),
         MethodCall::OpenBitcoinSyncPause(request) => to_json_value(request),
         MethodCall::OpenBitcoinSyncResume(request) => to_json_value(request),

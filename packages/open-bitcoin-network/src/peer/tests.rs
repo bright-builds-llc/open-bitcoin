@@ -7,6 +7,8 @@
 // - packages/bitcoin-knots/test/functional/p2p_handshake.py
 // - packages/bitcoin-knots/test/functional/p2p_initial_headers_sync.py
 
+use std::collections::BTreeSet;
+
 use open_bitcoin_chainstate::ChainPosition;
 use open_bitcoin_consensus::{check_block_header, transaction_txid, transaction_wtxid};
 use open_bitcoin_primitives::{Block, BlockHash, BlockHeader, Hash32, MerkleRoot, NetworkMagic};
@@ -273,6 +275,62 @@ fn inbound_handshake_uses_existing_peer_action_flow() {
             .handshake_state,
         InboundHandshakeState::Handshaking,
     );
+}
+
+#[test]
+fn inbound_counters_and_endpoint_keys_ignore_disconnected_records() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager
+        .add_outbound_peer(40, 10)
+        .expect("outbound peer should be added");
+    manager
+        .add_inbound_peer_record(InboundPeerRecord {
+            peer_id: 41,
+            remote_endpoint: "127.0.0.1:18441".to_string(),
+            slot_class: InboundAdmissionSlotClass::Ordinary,
+            handshake_state: InboundHandshakeState::Accepted,
+            maybe_remote_nonce: None,
+            observed_inbound_peers: 0,
+            observed_outbound_peers: 1,
+        })
+        .expect("ordinary inbound peer should be added");
+    manager
+        .add_inbound_peer_record(InboundPeerRecord {
+            peer_id: 42,
+            remote_endpoint: "127.0.0.1:18442".to_string(),
+            slot_class: InboundAdmissionSlotClass::Reserved,
+            handshake_state: InboundHandshakeState::Accepted,
+            maybe_remote_nonce: None,
+            observed_inbound_peers: 1,
+            observed_outbound_peers: 1,
+        })
+        .expect("reserved inbound peer should be added");
+    manager
+        .handle_message(
+            41,
+            WireNetworkMessage::Version(crate::VersionMessage {
+                nonce: local_config().nonce,
+                ..crate::VersionMessage::default()
+            }),
+            11,
+        )
+        .expect("self connection should be represented as a disconnect action");
+
+    // Act
+    let endpoint_keys = manager.inbound_endpoint_keys();
+    let counters = manager.inbound_admission_counters();
+    let peer_ids = manager.peer_ids();
+
+    // Assert
+    assert_eq!(
+        endpoint_keys,
+        BTreeSet::from(["127.0.0.1:18442".to_string()])
+    );
+    assert_eq!(counters.current_inbound_peers, 1);
+    assert_eq!(counters.current_reserved_inbound_peers, 1);
+    assert_eq!(counters.current_outbound_peers, 1);
+    assert_eq!(peer_ids, BTreeSet::from([40, 41, 42]));
 }
 
 #[test]

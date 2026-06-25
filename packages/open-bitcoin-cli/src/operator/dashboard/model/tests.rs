@@ -18,6 +18,7 @@ use open_bitcoin_node::{
         SyncLifecycleState, SyncProgress, SyncProgressSignal, SyncReconcileProgressStatus,
         SyncRecoveryCategory, SyncReorgEvidence, SyncResourcePressure, SyncStatus,
         SyncStopReasonStatus, TipFreshnessStatus, WalletFreshness, WalletStatus,
+        inbound_status_unavailable,
     },
 };
 
@@ -768,6 +769,7 @@ fn test_snapshot() -> OpenBitcoinStatusSnapshot {
                 outbound: 2,
             }),
             recent_peers: FieldAvailability::unavailable("no peer telemetry"),
+            inbound: inbound_status_unavailable(),
         },
         mempool: MempoolStatus {
             transactions: FieldAvailability::available(4),

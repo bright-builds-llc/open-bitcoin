@@ -3,8 +3,8 @@
 // - packages/bitcoin-knots/src/net_processing.cpp
 // - packages/bitcoin-knots/test/functional/p2p_handshake.py
 
+use core::net::SocketAddr;
 use std::collections::BTreeSet;
-use std::net::SocketAddr;
 
 use crate::error::PeerId;
 
@@ -222,21 +222,25 @@ fn parse_listener_endpoint(
     raw_endpoint: &str,
 ) -> Result<InboundListenerEndpoint, InboundPreflightDiagnostic> {
     let trimmed = raw_endpoint.trim();
-    let address = trimmed.parse::<SocketAddr>().map_err(|_error| {
-        InboundPreflightDiagnostic::new(
-            InboundPreflightReason::InvalidEndpoint,
-            Some(raw_endpoint.to_string()),
-            INBOUND_LISTEN_ADDRESSES_FIELD,
-            "inbound listener endpoint must be a socket address",
-            "set inbound.listen_addresses entries to host:port values such as 127.0.0.1:8333",
-        )
-    })?;
+    let address = trimmed
+        .parse::<SocketAddr>()
+        .map_err(|_error| invalid_endpoint_diagnostic(raw_endpoint))?;
 
     Ok(InboundListenerEndpoint {
         raw: raw_endpoint.to_string(),
         normalized: address.to_string(),
         address,
     })
+}
+
+fn invalid_endpoint_diagnostic(raw_endpoint: &str) -> InboundPreflightDiagnostic {
+    InboundPreflightDiagnostic::new(
+        InboundPreflightReason::InvalidEndpoint,
+        Some(raw_endpoint.to_string()),
+        INBOUND_LISTEN_ADDRESSES_FIELD,
+        "inbound listener endpoint must be a literal host:port endpoint",
+        "set inbound.listen_addresses entries to literal host:port endpoints such as 127.0.0.1:8333 or [::1]:8333",
+    )
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -22,10 +22,13 @@ use open_bitcoin_cli::operator::{
         render_status,
     },
 };
-use open_bitcoin_node::{FjallNodeStore, PersistMode};
+use open_bitcoin_node::{
+    FjallNodeStore, PersistMode,
+    status::{FieldAvailability, INBOUND_STATUS_UNAVAILABLE_REASON, InboundPeerServingStatus},
+};
 use open_bitcoin_rpc::method::{
     GetBalancesResponse, GetBlockchainInfoResponse, GetMempoolInfoResponse, GetNetworkInfoResponse,
-    GetWalletInfoResponse, WalletBalanceDetails,
+    GetWalletInfoResponse, OpenBitcoinNetworkStatusResponse, WalletBalanceDetails,
 };
 
 use crate::{
@@ -276,6 +279,16 @@ impl RunningStatusRpcClient {
 impl StatusRpcClient for RunningStatusRpcClient {
     fn get_network_info(&self) -> Result<GetNetworkInfoResponse, StatusRpcError> {
         Ok(self.network_info.clone())
+    }
+
+    fn get_open_bitcoin_network_status(
+        &self,
+    ) -> Result<OpenBitcoinNetworkStatusResponse, StatusRpcError> {
+        Ok(OpenBitcoinNetworkStatusResponse {
+            inbound: FieldAvailability::<InboundPeerServingStatus>::unavailable(
+                INBOUND_STATUS_UNAVAILABLE_REASON,
+            ),
+        })
     }
 
     fn get_blockchain_info(&self) -> Result<GetBlockchainInfoResponse, StatusRpcError> {

@@ -585,6 +585,7 @@
         "packages/open-bitcoin-network/src/compatibility.rs",
         "packages/open-bitcoin-network/src/header_store.rs",
         "packages/open-bitcoin-network/src/peer.rs",
+        "packages/open-bitcoin-network/src/peer/inventory_state.rs",
         "packages/open-bitcoin-network/src/peer/tests.rs",
         "packages/open-bitcoin-network/tests/parity.rs",
         "packages/open-bitcoin-network/tests/properties.rs"
@@ -603,7 +604,8 @@
       "label": "network-inbound-admission",
       "files": [
         "packages/open-bitcoin-network/src/inbound.rs",
-        "packages/open-bitcoin-network/src/inbound/tests.rs"
+        "packages/open-bitcoin-network/src/inbound/tests.rs",
+        "packages/open-bitcoin-network/src/peer/inbound_state.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/net.cpp",
@@ -645,6 +647,7 @@
       "label": "node-network-adapter",
       "files": [
         "packages/open-bitcoin-node/src/network.rs",
+        "packages/open-bitcoin-node/src/network/inbound.rs",
         "packages/open-bitcoin-node/src/network/inventory.rs",
         "packages/open-bitcoin-node/src/network/tests.rs"
       ],
@@ -870,6 +873,7 @@
         "packages/open-bitcoin-rpc/src/config.rs",
         "packages/open-bitcoin-rpc/src/config/loader.rs",
         "packages/open-bitcoin-rpc/src/config/loader/chain.rs",
+        "packages/open-bitcoin-rpc/src/config/loader/inbound.rs",
         "packages/open-bitcoin-rpc/src/config/loader/rpc_address.rs",
         "packages/open-bitcoin-rpc/src/config/tests.rs"
       ],

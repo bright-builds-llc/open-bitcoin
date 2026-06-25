@@ -1043,7 +1043,7 @@ fn inbound_support_preserves_unavailable_reason_in_json_and_markdown() {
         json!("unavailable")
     );
     assert_eq!(
-        serialized["status"]["peers"]["inbound"]["reason"],
+        serialized["status"]["peers"]["inbound"]["value"]["reason"],
         json!("inbound probe not collected")
     );
     assert!(markdown.contains("## Inbound Serving"));
@@ -1357,8 +1357,8 @@ fn phase90_status_with_available_inbound() -> OpenBitcoinStatusSnapshot {
 fn phase90_raw_inbound_endpoints() -> [&'static str; 4] {
     [
         "127.0.0.1:18444",
-        "203.0.113.10:8333",
-        "198.51.100.20:8333",
+        "203.0.113.11:8333",
+        "198.51.100.21:8333",
         "0.0.0.0:8333",
     ]
 }

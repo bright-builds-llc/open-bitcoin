@@ -19,7 +19,7 @@ use open_bitcoin_node::{
         ResourceBoundKind, ResourceBoundSnapshot, ResourceBoundUnit, StallDiagnosisConfidence,
         StallDiagnosisEvidence, StalledSubsystem, StayCurrentStatus, SyncProgress,
         SyncRecoveryCategory, SyncReorgEvidence, SyncStatus, SyncStopReasonStatus,
-        TipFreshnessStatus, WalletStatus, usage_against_budget,
+        TipFreshnessStatus, WalletStatus, inbound_status_unavailable, usage_against_budget,
     },
 };
 
@@ -1494,6 +1494,7 @@ fn base_status_snapshot(datadir: &Path) -> OpenBitcoinStatusSnapshot {
         peers: PeerStatus {
             peer_counts: FieldAvailability::unavailable("peer counts unavailable"),
             recent_peers: FieldAvailability::unavailable("recent peers unavailable"),
+            inbound: inbound_status_unavailable(),
         },
         mempool: MempoolStatus {
             transactions: FieldAvailability::unavailable("mempool unavailable"),

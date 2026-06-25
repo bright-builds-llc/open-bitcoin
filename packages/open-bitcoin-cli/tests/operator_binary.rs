@@ -23,7 +23,7 @@ use open_bitcoin_node::{
         PeerStatus, PeerTipAgreement, PeerTipAgreementStatus, StayCurrentStatus,
         SyncAttemptCounters, SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState,
         SyncProgress, SyncProgressSignal, SyncResourcePressure, SyncStatus, SyncStopReasonStatus,
-        TipFreshnessStatus,
+        TipFreshnessStatus, inbound_status_unavailable,
     },
 };
 use serde_json::{Value, json};
@@ -2279,6 +2279,7 @@ fn phase72_durable_sync_state(missing_active_chain: bool) -> DurableSyncState {
                 outbound: 3,
             }),
             recent_peers: FieldAvailability::unavailable("peer telemetry unavailable"),
+            inbound: inbound_status_unavailable(),
         },
         health_signals: Vec::new(),
         updated_at_unix_seconds: 1_717_000_020,

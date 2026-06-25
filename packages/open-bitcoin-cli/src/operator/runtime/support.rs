@@ -453,6 +453,7 @@ mod tests {
             BestKnownTipStatus, PeerCounts, RECONCILE_PROGRESS_UNAVAILABLE_REASON,
             StayCurrentStatus, SyncAttemptCounters, SyncConfiguredTargets, SyncProgress,
             SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure, SyncStopReasonStatus,
+            inbound_status_unavailable,
         },
     };
 
@@ -512,6 +513,7 @@ mod tests {
                 peers: PeerStatus {
                     peer_counts: FieldAvailability::unavailable(unavailable),
                     recent_peers: FieldAvailability::unavailable(unavailable),
+                    inbound: inbound_status_unavailable(),
                 },
                 health_signals: Vec::new(),
                 updated_at_unix_seconds: 1,

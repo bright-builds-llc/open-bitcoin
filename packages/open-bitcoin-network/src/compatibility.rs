@@ -556,6 +556,8 @@ mod tests {
         let missing_ancestor_diagnosis = super::diagnose_actions(&[PeerAction::Disconnect(
             DisconnectReason::MissingHeaderAncestor(missing_parent),
         )]);
+        let self_connection_diagnosis =
+            super::diagnose_actions(&[PeerAction::Disconnect(DisconnectReason::SelfConnection)]);
         let unknown_peer_diagnosis = super::diagnose_error(&NetworkError::UnknownPeer(77));
         let duplicate_version_diagnosis =
             super::diagnose_error(&NetworkError::DuplicateVersion(77));
@@ -564,6 +566,10 @@ mod tests {
         assert_eq!(
             missing_ancestor_diagnosis,
             CompatibilityDiagnosis::MalformedPayload,
+        );
+        assert_eq!(
+            self_connection_diagnosis,
+            CompatibilityDiagnosis::VersionRejected,
         );
         assert_eq!(
             unknown_peer_diagnosis,

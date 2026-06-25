@@ -22,6 +22,7 @@ use super::{
 };
 
 mod chain;
+mod inbound;
 mod open_bitcoin_runtime;
 mod rpc_address;
 
@@ -200,6 +201,9 @@ fn parse_cli_args(cli_args: &[OsString]) -> Result<CliSettings, ConfigError> {
         let (key, negated) = raw_key
             .strip_prefix("no")
             .map_or((raw_key, false), |stripped| (stripped, true));
+        if inbound::parse_inbound_cli_arg(&mut settings, key, maybe_value, negated)? {
+            continue;
+        }
 
         match key {
             "server" => {
@@ -282,41 +286,6 @@ fn parse_cli_args(cli_args: &[OsString]) -> Result<CliSettings, ConfigError> {
                     ));
                 };
                 settings.maybe_daemon_sync_mode = Some(DaemonSyncMode::parse(value)?);
-            }
-            "openbitcoininbound" => {
-                settings.maybe_inbound_enabled = Some(parse_bool(maybe_value, negated)?);
-            }
-            "openbitcoinlisten" => {
-                let Some(value) = maybe_value else {
-                    return Err(ConfigError::new(
-                        "Error parsing command line arguments: Can not set -openbitcoinlisten with no value. Please specify value with -openbitcoinlisten=value.",
-                    ));
-                };
-                settings
-                    .maybe_inbound_listen_addresses
-                    .get_or_insert_with(Vec::new)
-                    .push(value.to_string());
-            }
-            "openbitcoinmaxinbound" => {
-                let Some(value) = maybe_value else {
-                    return Err(ConfigError::new(
-                        "Error parsing command line arguments: Can not set -openbitcoinmaxinbound with no value. Please specify value with -openbitcoinmaxinbound=value.",
-                    ));
-                };
-                settings.maybe_max_inbound_peers =
-                    Some(parse_usize("openbitcoinmaxinbound", value)?);
-            }
-            "openbitcoinreservedslots" => {
-                let Some(value) = maybe_value else {
-                    return Err(ConfigError::new(
-                        "Error parsing command line arguments: Can not set -openbitcoinreservedslots with no value. Please specify value with -openbitcoinreservedslots=value.",
-                    ));
-                };
-                settings.maybe_inbound_reserved_slots =
-                    Some(parse_usize("openbitcoinreservedslots", value)?);
-            }
-            "openbitcoinallowpublic" => {
-                settings.maybe_inbound_allow_public = Some(parse_bool(maybe_value, negated)?);
             }
             "includeconf" | "rpcauth" | "rpcwhitelist" => {
                 return Err(ConfigError::new(format!(
