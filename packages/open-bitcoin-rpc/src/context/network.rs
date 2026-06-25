@@ -369,10 +369,15 @@ fn latest_inbound_admission_event(
     }
 
     if admission.admitted_inbound_peers > 0 {
+        let slot_class = admission
+            .maybe_latest_permission_decision
+            .as_ref()
+            .map(|decision| decision.connection_class.slot_class().as_str())
+            .unwrap_or("ordinary");
         return FieldAvailability::available(InboundAdmissionEvent {
             outcome: "admitted".to_string(),
             reason: "admitted".to_string(),
-            slot_class: "ordinary".to_string(),
+            slot_class: slot_class.to_string(),
             message: "inbound peer admitted".to_string(),
         });
     }

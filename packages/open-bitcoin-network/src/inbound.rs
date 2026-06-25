@@ -260,6 +260,15 @@ pub enum InboundAdmissionSlotClass {
     Reserved,
 }
 
+impl InboundAdmissionSlotClass {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Ordinary => "ordinary",
+            Self::Reserved => "reserved",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InboundHandshakeState {
     Accepted,

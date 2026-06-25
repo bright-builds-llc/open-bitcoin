@@ -658,7 +658,20 @@ fn open_bitcoin_network_status_preserves_unavailable_reason() {
 fn open_bitcoin_network_status_reports_permission_evidence_without_raw_class_names() {
     // Arrange
     let mut context = permission_context(vec![
-        parsed_permission_class("operator-loopback-relay-like", "127.0.0.1", &["in", "all"]),
+        parsed_permission_class(
+            "operator-loopback-relay-like",
+            "127.0.0.1",
+            &[
+                "in",
+                "download",
+                "addr",
+                "relay",
+                "forcerelay",
+                "mempool",
+                "bloomfilter",
+                "blockfilters",
+            ],
+        ),
         parsed_permission_class(
             "operator-loopback-protected",
             "127.0.0.2",
@@ -712,6 +725,10 @@ fn open_bitcoin_network_status_reports_permission_evidence_without_raw_class_nam
     assert_eq!(
         inbound["latest_permission_decision"]["value"]["permission_class"],
         json!("protected_inbound")
+    );
+    assert_eq!(
+        inbound["latest_admission_event"]["value"]["slot_class"],
+        json!("reserved")
     );
     assert_eq!(
         inbound["latest_permission_decision"]["value"]["active_permission_effects"],
