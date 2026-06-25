@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Inbound Peer Serving and Network Participation Boundary
 status: executing
-stopped_at: Completed 91-01-PLAN.md
-last_updated: "2026-06-25T15:59:09.571Z"
+stopped_at: Completed 91-02-PLAN.md
+last_updated: "2026-06-25T16:40:29.778Z"
 last_activity: 2026-06-25
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 20
-  completed_plans: 11
-  percent: 55
+  completed_plans: 12
+  percent: 60
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-06-25)
 
 Milestone: v1.9 Inbound Peer Serving and Network Participation Boundary
 Phase: 91 (peer-permissions-and-connection-classes) — PLANNED
-Plan: 2 of 10
+Plan: 3 of 10
 Status: Ready to execute
 Last activity: 2026-06-25
 
@@ -60,6 +60,7 @@ Progress: [----------] 0%
 - v1.9 now expands toward opt-in inbound peer serving while keeping transaction relay, compact blocks, mempool propagation, production-funds wallet use, migration apply mode, packaging, hosted dashboard, GUI, public-network CI, and production full-node readiness deferred.
 
 | Phase 91-peer-permissions-and-connection-classes P01 | 27min | 2 tasks | 5 files |
+| Phase 91 P02 | 34min | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -76,6 +77,9 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 - [Phase 91-peer-permissions-and-connection-classes]: Treat relay, forcerelay, mempool, bloomfilter, and blockfilters as inactive effect labels in the Phase 91 network domain model.
 - [Phase 91-peer-permissions-and-connection-classes]: Map only forceinbound-protected inbound classes to reserved admission capacity; ordinary and permissioned inbound stay ordinary slots.
 - [Phase 91-peer-permissions-and-connection-classes]: Use literal IpAddr class matching and reject ranges, hostnames, and endpoint-shaped values at the class parser boundary.
+- [Phase 91]: Use Open Bitcoin-owned JSONC and Open Bitcoin-prefixed CLI flags only; Knots whitelist and whitebind-style inputs remain rejected.
+- [Phase 91]: CLI permission-class flags replace the JSONC class list as a complete override, preserving deterministic order.
+- [Phase 91]: Carry the parsed PeerPermissionClassRegistry on InboundListenerConfig so later listener wiring can use the typed registry directly.
 
 ### Pending Todos
 
@@ -96,6 +100,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-25T15:59:09.569Z
-Stopped at: Completed 91-01-PLAN.md
+Last session: 2026-06-25T16:40:29.774Z
+Stopped at: Completed 91-02-PLAN.md
 Resume file: None
