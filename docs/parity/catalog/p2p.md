@@ -86,10 +86,21 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
   breadcrumbs without adding relay, permission-class, address-relay,
   eviction, ban, broad DoS policy, public default, or production readiness
   claims
+- Phase 91 `v1-9-peer-permissions-connection-classes` evidence keeps PERM-01,
+  PERM-02, PERM-03, and PERM-04 auditable through Open Bitcoin-owned
+  permission-class config, literal-IP matching, bounded connection classes,
+  active admission/download policy inputs, inactive relay-like effect labels,
+  shared status/support evidence, and negative peer tests without adding Knots
+  `whitelist` or `whitebind` compatibility, transaction relay, compact block
+  relay, mempool propagation, BIP37 or compact-filter serving, full address
+  relay, ban/misbehavior semantics, public inbound defaults, or production
+  readiness claims
 
 ## Knots sources
 
 - [`packages/bitcoin-knots/src/protocol.h`](../../../packages/bitcoin-knots/src/protocol.h)
+- [`packages/bitcoin-knots/src/net_permissions.h`](../../../packages/bitcoin-knots/src/net_permissions.h)
+- [`packages/bitcoin-knots/src/net_permissions.cpp`](../../../packages/bitcoin-knots/src/net_permissions.cpp)
 - [`packages/bitcoin-knots/src/net.cpp`](../../../packages/bitcoin-knots/src/net.cpp)
 - [`packages/bitcoin-knots/src/net_processing.cpp`](../../../packages/bitcoin-knots/src/net_processing.cpp)
 - [`packages/bitcoin-knots/src/headerssync.h`](../../../packages/bitcoin-knots/src/headerssync.h)
@@ -99,6 +110,7 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
 - [`packages/bitcoin-knots/test/functional/p2p_handshake.py`](../../../packages/bitcoin-knots/test/functional/p2p_handshake.py)
 - [`packages/bitcoin-knots/test/functional/p2p_initial_headers_sync.py`](../../../packages/bitcoin-knots/test/functional/p2p_initial_headers_sync.py)
 - [`packages/bitcoin-knots/test/functional/p2p_tx_download.py`](../../../packages/bitcoin-knots/test/functional/p2p_tx_download.py)
+- [`packages/bitcoin-knots/test/functional/p2p_permissions.py`](../../../packages/bitcoin-knots/test/functional/p2p_permissions.py)
 - [`packages/bitcoin-knots/test/functional/test_framework/messages.py`](../../../packages/bitcoin-knots/test/functional/test_framework/messages.py)
 
 ## Knots behaviors mirrored here
@@ -385,9 +397,48 @@ listener defaults, or production node readiness. Reserved slots are admission
 evidence only until the later permission phase deliberately expands that
 surface.
 
+## Phase 91 peer permissions and connection-class boundary
+
+The `v1-9-peer-permissions-connection-classes` surface covers PERM-01 through
+PERM-04 for bounded peer permission evidence. Its Knots anchors are
+[`packages/bitcoin-knots/src/net_permissions.h`](../../../packages/bitcoin-knots/src/net_permissions.h),
+[`packages/bitcoin-knots/src/net_permissions.cpp`](../../../packages/bitcoin-knots/src/net_permissions.cpp),
+[`packages/bitcoin-knots/test/functional/p2p_permissions.py`](../../../packages/bitcoin-knots/test/functional/p2p_permissions.py),
+[`packages/bitcoin-knots/src/net.cpp`](../../../packages/bitcoin-knots/src/net.cpp),
+and
+[`packages/bitcoin-knots/src/net_processing.cpp`](../../../packages/bitcoin-knots/src/net_processing.cpp).
+
+Open Bitcoin intentionally owns the Phase 91 activation surface:
+
+- config uses `open-bitcoin.jsonc` `inbound.permission_classes` and the
+  repeatable CLI override
+  `-openbitcoininboundpermissionclass=<name>@<literal_ip>=<tokens>`
+- class matching uses literal IP addresses only; ranges, hostnames, and
+  endpoint-shaped values are rejected
+- Knots `whitelist` and `whitebind` compatibility is not silently accepted
+- `permissioned_inbound` and `protected_inbound` are bounded machine classes;
+  protected inbound peers are the only permission class that can use reserved
+  admission capacity
+- active effects are admission protection, eviction-policy input,
+  misbehavior-policy input, address-response policy input,
+  download-serving policy input, and diagnostics
+- inactive effects are `inactive_relay`, `inactive_forcerelay`,
+  `inactive_mempool`, `inactive_bloomfilter`, and `inactive_blockfilters`
+- `openbitcoinnetworkstatus`, `OpenBitcoinStatusSnapshot.peers.inbound`,
+  operator status, metrics, and support bundles expose bounded permission
+  counts, labels, and latest decisions without raw class names, raw permission
+  strings, peer ids, endpoint tables, or credentials
+
+Phase 91 does not claim Knots `whitelist` or `whitebind` compatibility,
+transaction relay, compact block relay, mempool propagation, BIP37 bloom
+serving, compact-filter serving, full address relay, ban or misbehavior
+semantics, public inbound defaults, broad DoS/resource governance, or
+production readiness.
+
 ## First-party implementation
 
 - [`packages/open-bitcoin-network/src/inbound.rs`](../../../packages/open-bitcoin-network/src/inbound.rs)
+- [`packages/open-bitcoin-network/src/inbound/permissions.rs`](../../../packages/open-bitcoin-network/src/inbound/permissions.rs)
 - [`packages/open-bitcoin-network/src/message.rs`](../../../packages/open-bitcoin-network/src/message.rs)
 - [`packages/open-bitcoin-network/src/compatibility.rs`](../../../packages/open-bitcoin-network/src/compatibility.rs)
 - [`packages/open-bitcoin-network/src/header_store.rs`](../../../packages/open-bitcoin-network/src/header_store.rs)
@@ -406,8 +457,8 @@ surface.
 - address relay, `addrv2`, peer discovery policy, and DNS-seed governance
 - encrypted transport and other non-v1 wire transports
 - compact blocks, blocktxn, filtered blocks, bloom filters, and compact filters
-- peer permission classes, eviction, bans, resource-governance scoring, and
-  timeout parity beyond the Phase 90 admission evidence surface
+- eviction, bans, resource-governance scoring, and timeout parity beyond the
+  Phase 91 permission evidence surface
 - production daemon-integrated full-sync guarantees
 - automatic public-mainnet recovery loops and broad production-node service
   guarantees

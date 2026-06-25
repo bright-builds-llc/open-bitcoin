@@ -39,6 +39,14 @@ endpoints, addresses, user labels, permission classes, ban state, or relay
 state as metric labels. Listener endpoints and latest admission details remain
 bounded status/support evidence instead of metric dimensions.
 
+Phase 91 permission metrics remain low-cardinality numeric counters only.
+Allowed series include `InboundPermissionedAdmitCount`,
+`InboundProtectedAdmitCount`, `InboundInactivePermissionEffectCount`, and
+`InboundPermissionValidationFailureCount`. They count permissioned admission,
+protected admission, inactive effect observations, and validation failures
+without dynamic labels, raw class names, peer ids, endpoint strings, or raw
+permission specs.
+
 No metric or log retention contract may require public network access. Default verification must remain hermetic; live-network telemetry belongs behind explicit opt-in tests or operator runtime paths.
 
 ## Default log retention
@@ -192,6 +200,31 @@ review. It keeps outbound sync evidence separate from inbound admission
 evidence and does not add public inbound defaults, relay behavior, permission
 classes, address relay, eviction, ban, broad DoS policy, or production readiness
 claims.
+
+## Phase 91 peer permission evidence
+
+Peer permission observability is sourced from the shared inbound status fields
+on `OpenBitcoinStatusSnapshot.peers.inbound`, `openbitcoinnetworkstatus`,
+operator status output, and support bundles. The stable labels are
+`permission_class`, `permissioned_inbound_peers`,
+`protected_inbound_peers`, `active_permission_effects`,
+`inactive_permission_effects`, and `latest_permission_decision`.
+
+Active bounded effects are admission protection, eviction-policy input,
+misbehavior-policy input, address-response policy input, download-serving
+policy input, and diagnostics. Inactive/deferred effects are relay,
+forcerelay, mempool, bloomfilter, and blockfilters; support bundles should
+render them as inactive labels such as `inactive_relay`, `inactive_mempool`,
+`inactive_bloomfilter`, and `inactive_blockfilters`. Those inactive labels are
+not relay support, mempool propagation, BIP37 serving, compact-filter serving,
+compact-block behavior, full address relay, ban/misbehavior enforcement, public
+inbound defaults, or production readiness claims.
+
+Support evidence keeps permission output shareable by sanitizing unknown
+permission classes or effect-like strings to bounded redaction labels. It may
+preserve safe machine labels and aggregate counts, but it must not copy raw
+class names, raw `in,noban,...` config strings, peer ids, raw endpoint tables,
+RPC password values, cookie contents, or unbounded peer details.
 
 ## Phase Boundaries
 

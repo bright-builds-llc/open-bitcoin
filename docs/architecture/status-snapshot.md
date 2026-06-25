@@ -212,6 +212,32 @@ promote public inbound defaults, transaction relay, compact block relay,
 mempool forwarding, address propagation, permission classes, eviction, ban
 policy, broader DoS/resource governance, or production full-node readiness.
 
+## Phase 91 peer permission status
+
+Phase 91 extends `OpenBitcoinStatusSnapshot.peers.inbound` with bounded
+permission evidence. The shared fields are:
+
+- `permission_class`: a low-cardinality machine class such as
+  `ordinary_inbound`, `permissioned_inbound`, or `protected_inbound`.
+- `permissioned_inbound_peers` and `protected_inbound_peers`: aggregate counts
+  only, not peer tables.
+- `active_permission_effects`: bounded labels for admission protection,
+  eviction-policy input, misbehavior-policy input, address-response policy
+  input, download-serving policy input, and diagnostics.
+- `inactive_permission_effects`: bounded labels for deferred behavior such as
+  `inactive_relay`, `inactive_forcerelay`, `inactive_mempool`,
+  `inactive_bloomfilter`, and `inactive_blockfilters`.
+- `latest_permission_decision`: the latest bounded decision reason, machine
+  class, active effects, inactive effects, and sanitized message.
+
+Support bundles and status renderers must preserve these labels from the shared
+snapshot. They must not expose raw permission class names, raw permission
+strings, peer ids, unbounded endpoints, or credential material. Inactive relay,
+forcerelay, mempool, bloomfilter, and blockfilters labels are diagnostic
+evidence only; they do not claim transaction relay, mempool propagation, BIP37
+bloom serving, compact-filter serving, compact block relay, full address relay,
+public inbound defaults, or production node readiness.
+
 ## Reorg and no-progress semantics
 
 Phase 70 keeps branch competition, reorg recovery, peer recovery, and

@@ -612,6 +612,10 @@
     {
       "name": "v1-9-inbound-listener-admission-policy",
       "status": "done"
+    },
+    {
+      "name": "v1-9-peer-permissions-connection-classes",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -1630,6 +1634,36 @@
         "suspected_unknowns": [
           "Future Phase 91 through Phase 95 work owns richer permissions, address advertisement, eviction/ban policy, resource governance, and release-boundary evidence before any broader network-participation claim can be made."
         ]
+      },
+      {
+        "id": "v1-9-peer-permissions-connection-classes",
+        "title": "v1.9 Peer Permissions and Connection Classes",
+        "status": "done",
+        "requirements": [
+          "PERM-01",
+          "PERM-02",
+          "PERM-03",
+          "PERM-04"
+        ],
+        "evidence": [
+          "docs/operator/runtime-guide.md",
+          "docs/architecture/config-precedence.md",
+          "docs/architecture/status-snapshot.md",
+          "docs/architecture/operator-observability.md",
+          "docs/parity/catalog/p2p.md",
+          "docs/parity/source-breadcrumbs.json",
+          ".planning/phases/91-peer-permissions-and-connection-classes/91-01-SUMMARY.md",
+          ".planning/phases/91-peer-permissions-and-connection-classes/91-02-SUMMARY.md",
+          ".planning/phases/91-peer-permissions-and-connection-classes/91-05-SUMMARY.md",
+          ".planning/phases/91-peer-permissions-and-connection-classes/91-08-SUMMARY.md"
+        ],
+        "rationale": "Phase 91 registers Open Bitcoin-owned permission classes, literal-IP matching, bounded connection classes, active admission/download policy inputs, inactive relay-like effect labels, redacted status/support evidence, and negative peer-message safeguards.",
+        "known_gaps": [
+          "Knots whitelist/whitebind compatibility, transaction relay, compact block relay, mempool propagation, BIP37 bloom serving, compact-filter serving, full address relay, ban/misbehavior semantics, public inbound defaults, broad DoS/resource governance, and production readiness remain outside Phase 91."
+        ],
+        "suspected_unknowns": [
+          "Future Phase 92 through Phase 95 work owns address advertisement, eviction/ban policy, resource governance, and release-boundary evidence before any broader network-participation claim can be made."
+        ]
       }
     ]
   },
@@ -2187,6 +2221,42 @@
         ".planning/phases/90-inbound-listener-and-admission-policy/90-06-SUMMARY.md",
         ".planning/phases/90-inbound-listener-and-admission-policy/90-07-SUMMARY.md",
         ".planning/phases/90-inbound-listener-and-admission-policy/90-08-SUMMARY.md"
+      ]
+    },
+    "v1_9_peer_permissions_connection_classes": {
+      "path": "catalog/p2p.md",
+      "status": "done",
+      "requirements": [
+        "PERM-01",
+        "PERM-02",
+        "PERM-03",
+        "PERM-04"
+      ],
+      "evidence": [
+        "docs/operator/runtime-guide.md",
+        "docs/architecture/config-precedence.md",
+        "docs/architecture/status-snapshot.md",
+        "docs/architecture/operator-observability.md",
+        "docs/parity/catalog/p2p.md",
+        "docs/parity/source-breadcrumbs.json",
+        ".planning/phases/91-peer-permissions-and-connection-classes/91-01-SUMMARY.md",
+        ".planning/phases/91-peer-permissions-and-connection-classes/91-02-SUMMARY.md",
+        ".planning/phases/91-peer-permissions-and-connection-classes/91-05-SUMMARY.md",
+        ".planning/phases/91-peer-permissions-and-connection-classes/91-08-SUMMARY.md"
+      ],
+      "upstream": {
+        "sources": [
+          "packages/bitcoin-knots/src/net_permissions.h",
+          "packages/bitcoin-knots/src/net_permissions.cpp",
+          "packages/bitcoin-knots/src/net.cpp",
+          "packages/bitcoin-knots/src/net_processing.cpp"
+        ],
+        "tests": [
+          "packages/bitcoin-knots/test/functional/p2p_permissions.py"
+        ]
+      },
+      "boundaries": [
+        "Knots whitelist/whitebind compatibility, transaction relay, compact block relay, mempool propagation, BIP37 bloom serving, compact-filter serving, full address relay, ban/misbehavior semantics, public inbound defaults, broad DoS/resource governance, and production readiness remain outside Phase 91."
       ]
     }
   }

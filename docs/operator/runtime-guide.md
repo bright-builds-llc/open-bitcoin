@@ -257,6 +257,102 @@ Expected review evidence is bounded and label-driven:
 - Support bundles render bounded and redacted inbound evidence rather than raw
   peer tables or unbounded endpoint lists.
 
+## Phase 91 Loopback Peer Permission Review
+
+Phase 91 adds Open Bitcoin-owned peer permission classes to the explicit
+loopback listener review path. It does not accept Knots `whitelist` or
+`whitebind` compatibility inputs, and it does not enable public inbound
+defaults, transaction relay, compact block relay, mempool propagation, BIP37
+bloom serving, compact-filter serving, full address relay, ban or misbehavior
+semantics, or production full-node readiness.
+
+The CLI form is repeatable:
+`-openbitcoininboundpermissionclass=<name>@<literal_ip>=<tokens>`. The address
+component must be a literal IP address. Relay-like tokens are expected to show
+up as inactive permission effects.
+
+Daemon CLI forms:
+
+```bash
+mkdir -p /tmp/open-bitcoin-permission-loopback
+
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --bin open-bitcoind -- \
+  -regtest \
+  -datadir=/tmp/open-bitcoin-permission-loopback \
+  -openbitcoininbound=1 \
+  -openbitcoinlisten=127.0.0.1:18444 \
+  -openbitcoinreservedslots=1 \
+  -openbitcoininboundpermissionclass=operator_loopback@127.0.0.1=in,noban,forceinbound,download,addr,relay,forcerelay,mempool,bloomfilter,blockfilters \
+  -server=1
+
+bazel run //packages/open-bitcoin-rpc:open_bitcoind -- \
+  -regtest \
+  -datadir=/tmp/open-bitcoin-permission-loopback \
+  -openbitcoininbound=1 \
+  -openbitcoinlisten=127.0.0.1:18444 \
+  -openbitcoinreservedslots=1 \
+  -openbitcoininboundpermissionclass=operator_loopback@127.0.0.1=in,noban,forceinbound,download,addr,relay,forcerelay,mempool,bloomfilter,blockfilters \
+  -server=1
+```
+
+Inspect Open Bitcoin-owned permission evidence:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin-cli -- \
+  -regtest \
+  -rpcconnect=127.0.0.1 \
+  -rpcport=18443 \
+  openbitcoinnetworkstatus
+
+bazel run //packages/open-bitcoin-cli:open_bitcoin_cli -- \
+  -regtest \
+  -rpcconnect=127.0.0.1 \
+  -rpcport=18443 \
+  openbitcoinnetworkstatus
+```
+
+Inspect shared operator status:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --network regtest \
+  --datadir=/tmp/open-bitcoin-permission-loopback \
+  status --format json
+
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- \
+  --network regtest \
+  --datadir=/tmp/open-bitcoin-permission-loopback \
+  status --format json
+```
+
+Collect a redacted permission support bundle:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --network regtest \
+  --datadir=/tmp/open-bitcoin-permission-loopback \
+  support bundle --output-dir=/tmp/open-bitcoin-permission-support
+
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- \
+  --network regtest \
+  --datadir=/tmp/open-bitcoin-permission-loopback \
+  support bundle --output-dir=/tmp/open-bitcoin-permission-support
+```
+
+Expected review evidence:
+
+- `permission_class` is a bounded machine label such as `permissioned_inbound`
+  or `protected_inbound`, never the raw class name.
+- `active_permission_effects` may include admission protection,
+  eviction-policy input, misbehavior-policy input, address-response policy
+  input, and download-serving policy input.
+- `inactive_permission_effects` should include inactive relay,
+  inactive forcerelay, inactive mempool, inactive bloomfilter, and inactive
+  blockfilter labels for the command above.
+- `latest_permission_decision` should explain the latest bounded decision
+  without raw peer ids, raw endpoints, raw config strings, RPC password values,
+  or cookie contents.
+
 ## Mainnet Sync Activation
 
 Mainnet sync activation is disabled by default. It can be enabled only for the
