@@ -234,11 +234,75 @@ mod tests {
             (MetricKind::DiskUsageBytes, "disk_usage_bytes"),
             (MetricKind::RpcHealth, "rpc_health"),
             (MetricKind::ServiceRestarts, "service_restarts"),
+            (
+                MetricKind::InboundAdmittedPeerCount,
+                "inbound_admitted_peer_count",
+            ),
+            (
+                MetricKind::InboundRejectedPeerCount,
+                "inbound_rejected_peer_count",
+            ),
+            (
+                MetricKind::InboundCapRejectCount,
+                "inbound_cap_reject_count",
+            ),
+            (
+                MetricKind::InboundReservedSlotRejectCount,
+                "inbound_reserved_slot_reject_count",
+            ),
+            (
+                MetricKind::InboundDuplicateRejectCount,
+                "inbound_duplicate_reject_count",
+            ),
+            (
+                MetricKind::InboundSelfConnectionRejectCount,
+                "inbound_self_connection_reject_count",
+            ),
         ];
 
         // Act / Assert
         for (kind, expected_name) in kinds {
             assert_eq!(kind.as_str(), expected_name);
+        }
+    }
+
+    #[test]
+    fn inbound_metric_kinds_are_low_cardinality_counters() {
+        // Arrange
+        let inbound_kinds = [
+            MetricKind::InboundAdmittedPeerCount,
+            MetricKind::InboundRejectedPeerCount,
+            MetricKind::InboundCapRejectCount,
+            MetricKind::InboundReservedSlotRejectCount,
+            MetricKind::InboundDuplicateRejectCount,
+            MetricKind::InboundSelfConnectionRejectCount,
+        ];
+
+        // Act
+        let labels = inbound_kinds
+            .into_iter()
+            .map(MetricKind::as_str)
+            .collect::<Vec<_>>();
+
+        // Assert
+        assert_eq!(MetricKind::ALL.len(), 17);
+        assert_eq!(
+            labels,
+            vec![
+                "inbound_admitted_peer_count",
+                "inbound_rejected_peer_count",
+                "inbound_cap_reject_count",
+                "inbound_reserved_slot_reject_count",
+                "inbound_duplicate_reject_count",
+                "inbound_self_connection_reject_count",
+            ]
+        );
+        for label in labels {
+            assert!(label.ends_with("_count"));
+            assert!(!label.contains("endpoint"));
+            assert!(!label.contains("peer_id"));
+            assert!(!label.contains("remote_addr"));
+            assert!(!label.contains("remote_endpoint"));
         }
     }
 
