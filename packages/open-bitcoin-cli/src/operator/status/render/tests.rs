@@ -4,8 +4,9 @@
 use open_bitcoin_node::{
     BuildProvenance, LogStatus, MetricsStatus,
     status::{
-        BestKnownTipSource, BestKnownTipStatus, ConfigStatus, FieldAvailability, MempoolStatus,
-        NoProgressDiagnosis, NoProgressThresholdEvidence, NoProgressThresholdState,
+        BestKnownTipSource, BestKnownTipStatus, ConfigStatus, FieldAvailability,
+        InboundAdmissionEvent, InboundHandshakeStatusCounts, InboundPeerServingStatus,
+        MempoolStatus, NoProgressDiagnosis, NoProgressThresholdEvidence, NoProgressThresholdState,
         NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot, PeerContributionEvidence,
         PeerContributionKind, PeerCounts, PeerStatus, PeerTelemetry, PeerTipAgreement,
         PeerTipAgreementStatus, ProgressCreditEvidence, ProgressCreditKind, ProgressWindowEvidence,
@@ -66,6 +67,47 @@ fn status_render_includes_sync_progress_and_peer_evidence() {
     ] {
         assert!(!rendered.contains(unexpected));
     }
+}
+
+#[test]
+fn inbound_status_render_includes_listener_and_admission_evidence() {
+    // Arrange
+    let snapshot = shared_sync_truth_snapshot();
+
+    // Act
+    let rendered = render_status(&snapshot, StatusRenderMode::Human).expect("human status");
+
+    // Assert
+    assert!(rendered.contains("Peers: in=0 out=2"));
+    assert!(rendered.contains("Inbound serving:"));
+    for expected in [
+        "listener_state=listening",
+        "bound_endpoints=127.0.0.1:18444,[::1]:18444",
+        "preflight_reason=ready",
+        "admitted_inbound_peers=2",
+        "rejected_inbound_peers=5",
+        "handshake=awaiting_version=1 awaiting_verack=2 established=3 disconnected=4",
+        "duplicate_rejects=1",
+        "self_connection_rejects=1",
+        "cap_rejects=2",
+        "reserved_slot_rejects=1",
+        "latest_admission_event=outcome=rejected reason=cap_reached slot_class=ordinary message=inbound cap reached",
+    ] {
+        assert!(rendered.contains(expected), "missing {expected}");
+    }
+}
+
+#[test]
+fn inbound_status_render_preserves_unavailable_reason() {
+    // Arrange
+    let mut snapshot = shared_sync_truth_snapshot();
+    snapshot.peers.inbound = FieldAvailability::unavailable("legacy daemon");
+
+    // Act
+    let rendered = render_status(&snapshot, StatusRenderMode::Human).expect("human status");
+
+    // Assert
+    assert!(rendered.contains("Inbound serving: Unavailable: legacy daemon"));
 }
 
 #[test]
@@ -530,6 +572,7 @@ fn shared_sync_truth_snapshot() -> OpenBitcoinStatusSnapshot {
                     "failed:seed.bitcoin.sipa.be:8333 via dns_seed".to_string(),
                 ),
             }]),
+            inbound: FieldAvailability::available(inbound_peer_serving_status()),
         },
         mempool: MempoolStatus {
             transactions: FieldAvailability::unavailable("mempool unavailable"),
@@ -545,5 +588,31 @@ fn shared_sync_truth_snapshot() -> OpenBitcoinStatusSnapshot {
         resource_bounds: FieldAvailability::unavailable("resource bounds unavailable"),
         health_signals: Vec::new(),
         build: BuildProvenance::unavailable(),
+    }
+}
+
+fn inbound_peer_serving_status() -> InboundPeerServingStatus {
+    InboundPeerServingStatus {
+        listener_state: "listening".to_string(),
+        bound_endpoints: vec!["127.0.0.1:18444".to_string(), "[::1]:18444".to_string()],
+        preflight_reason: "ready".to_string(),
+        admitted_inbound_peers: 2,
+        rejected_inbound_peers: 5,
+        handshake: InboundHandshakeStatusCounts {
+            awaiting_version: 1,
+            awaiting_verack: 2,
+            established: 3,
+            disconnected: 4,
+        },
+        duplicate_rejects: 1,
+        self_connection_rejects: 1,
+        cap_rejects: 2,
+        reserved_slot_rejects: 1,
+        latest_admission_event: FieldAvailability::available(InboundAdmissionEvent {
+            outcome: "rejected".to_string(),
+            reason: "cap_reached".to_string(),
+            slot_class: "ordinary".to_string(),
+            message: "inbound cap reached".to_string(),
+        }),
     }
 }
