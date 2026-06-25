@@ -19,6 +19,7 @@
 mod compatibility;
 mod error;
 mod header_store;
+mod inbound;
 mod message;
 mod peer;
 
