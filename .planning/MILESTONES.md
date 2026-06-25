@@ -1,5 +1,46 @@
 # Milestones: Open Bitcoin
 
+## v1.8 Production Full-Node Readiness Boundary (Shipped: 2026-06-25)
+
+**Delivered:** Source-built production readiness boundary documentation, support classification, upgrade and rollback policy, operator runbooks, service-operation expectations, release-readiness evidence, and deterministic claim guardrails. The milestone deliberately does not claim production full-node readiness; it defines the gates and no-claim boundary that future production-readiness work must satisfy.
+
+**Phases completed:** 8 phases, 26 plans, 49 counted summary tasks
+
+**Key accomplishments:**
+
+- Defined canonical production-readiness vocabulary, support terms, claim and evidence gates, and deferred-surface inventory.
+- Added support matrix and redacted issue-evidence expectations without broadening production, wallet, relay, migration, packaging, hosted-dashboard, GUI, or CI claims.
+- Added source-built upgrade and rollback policy with pre-upgrade evidence, state/schema compatibility, rollback guidance, backup expectations, and no-hidden-mutation boundaries.
+- Added operator runbooks and service-operation expectations with repo-local Cargo and Bazel command forms, opt-in UAT posture, and unsupported production-service boundaries.
+- Added release-readiness checklist and parity roots mapping all 23 v1.8 requirements to evidence, deterministic checks, residual risk, and no-claim boundaries.
+- Added deterministic Phase 88 and Phase 89 claim guardrails covering release/operator docs plus upgrade policy, runbooks, and service expectations, with fixture tests for deferred-surface promotion.
+- Closed the milestone audit through Phase 89; all 23 requirements, 8 phases, 23/23 integration checks, and 8/8 flows passed, with only a checker-hardening opportunity as tech debt.
+
+**Stats:**
+
+- 23/23 v1.8 requirements complete.
+- 8 phases, 26 plans, and 49 counted summary tasks complete.
+- 144,055 tracked first-party lines in the final LOC report at archive time.
+- 136 files changed across the v1.8 delivery range, with 26,861 insertions and 159 deletions before archive.
+- Git range after v1.7: `2187c8c` -> `1a405d1`.
+- Milestone audit status: `tech_debt` with zero requirement, integration, or flow blockers; remaining debt is Phase 87 row-parser hardening.
+- Full repo-native verification passed during Phase 89 closeout.
+
+**Archived artifacts:**
+
+- `.planning/milestones/v1.8-ROADMAP.md`
+- `.planning/milestones/v1.8-REQUIREMENTS.md`
+- `.planning/milestones/v1.8-MILESTONE-AUDIT.md`
+
+**Residual risk:**
+
+- Production full-node readiness, inbound serving, relay, production-funds wallet use, migration apply mode, signed packaging, hosted dashboards, GUI parity, public-network CI, destructive repair, automatic support-bundle upload, and production-service claims remain future milestone scope.
+- Phase 87 checker hardening remains a non-blocking improvement: parse strict release-readiness checklist rows instead of checking only requirement ID presence.
+
+**What's next:** Start the next milestone with `/gsd-new-milestone`.
+
+---
+
 ## v1.7 Full-Sync Soak and Recovery Hardening (Shipped: 2026-06-20)
 
 **Delivered:** Source-built, explicit opt-in full-sync soak and recovery hardening through durable soak ledgers, bounded resource evidence, typed recovery diagnosis, progress guarantees, support-bundle forensics, opt-in UAT guidance, deterministic release-boundary checks, and closed audit traceability. The shipped scope does not broaden the project into production-node readiness, inbound serving, relay, production-funds wallet use, migration apply mode, packaging, hosted dashboards, GUI work, or public-network default verification.

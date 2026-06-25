@@ -272,6 +272,52 @@
 
 ---
 
+## Milestone: v1.8 - Production Full-Node Readiness Boundary
+
+**Shipped:** 2026-06-25
+**Phases:** 8 | **Plans:** 26 | **Counted summary tasks:** 49
+
+### What Was Built
+
+- Canonical production-readiness vocabulary, support levels, claim matrix, evidence gates, and deferred-surface inventory.
+- Support matrix and issue-evidence policy that classify source-built environments, redacted support expectations, residual risk, and support-update boundaries.
+- Source-built upgrade and rollback policy with pre-upgrade evidence, state/schema compatibility guidance, backup expectations, and no-hidden-mutation boundaries.
+- Operator runbooks and service-operation expectations for preflight, monitoring, no-progress diagnosis, recovery, support-bundle timelines, escalation, and service-supervision posture.
+- Release-readiness checklist and parity roots mapping all 23 v1.8 requirements to docs, deterministic checks, opt-in UAT posture, residual risk, and no-claim boundaries.
+- Deterministic Phase 88 and Phase 89 claim guardrails that scan release/operator docs plus upgrade, runbook, and service policy docs for overbroad production-readiness or deferred-surface claims.
+
+### What Worked
+
+- Treating production readiness as a gated claim kept v1.8 useful without implying unsupported node, relay, wallet, migration, packaging, GUI, hosted-dashboard, service, or public-network CI readiness.
+- Narrow Bun checkers made release-language policy enforceable in default verification without introducing public-network, real service-manager, or multi-day test gates.
+- Phase 89 closed the audit gaps by expanding the canonical checker corpus and making Phase 88 evidence visible from the release-readiness checklist.
+
+### What Was Inefficient
+
+- Requirements, roadmap, and lifecycle metadata drifted after Phase 89 and needed a closeout refresh before archive.
+- The first milestone audit correctly reported `tech_debt`, but the Phase 89 verification file still needed lifecycle metadata refresh before every phase could validate as current.
+- The archive helper generated a noisy accomplishment list and stale state frontmatter, requiring a manual curation pass.
+
+### Patterns Established
+
+- Production-adjacent release language should be represented as evidence gates and deterministic no-claim guardrails before any future readiness claim is allowed.
+- Canonical policy docs should be part of the guardrail corpus when they can accidentally promote deferred surfaces.
+- Repo-local Cargo and Bazel command forms should appear in operator-facing UAT guidance so archived instructions remain copy-pasteable without assuming an installed alias.
+
+### Key Lessons
+
+1. Closeout metadata should be refreshed before archive so helper output copies clean source artifacts.
+2. Verification artifacts must have current `generated_at` and `lifecycle_validated` metadata after the latest summary timestamp.
+3. Release-readiness checkers should eventually parse strict table rows, not only requirement ID presence.
+
+### Cost Observations
+
+- Model mix: not measured in repo artifacts.
+- Sessions: multiple GSD execution, audit, gap-closure, archive, and manual planning-curation turns across the v1.8 milestone.
+- Notable: the remaining audit debt is checker hardening only; all requirement, integration, and release-flow blockers were closed before archive.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -286,6 +332,7 @@
 | v1.5 | 8 | Made unattended mainnet operator review bounded, service-reviewable, supportable, and deterministic by default. |
 | v1.6 | 7 | Converted unattended review into an explicit opt-in sync-to-tip and stay-current evidence claim. |
 | v1.7 | 7 | Hardened full-sync evidence for multi-day soak, resource and recovery bounds, progress guarantees, forensics, opt-in UAT, and audit traceability. |
+| v1.8 | 8 | Added production-readiness claim gates, support/update/runbook/service policies, release-readiness evidence, and deterministic no-claim guardrails. |
 
 ### Cumulative Quality
 
@@ -299,6 +346,7 @@
 | v1.5 | 23/23 complete | Passed with no open requirement, integration, flow, or current tech-debt gaps | Repo-native `scripts/verify.sh`, bounded sync loop checks, service lifecycle/restart evidence, support bundles, compatibility wrapper reports, and deterministic release-boundary checks. |
 | v1.6 | 26/26 complete | Closed through Phase 74 verification and source-built full-sync completion evidence | Repo-native `scripts/verify.sh`, active-chain validation, stay-current checks, reorg/peer recovery, support evidence, opt-in UAT, and release-boundary verification. |
 | v1.7 | 24/24 complete | Passed after Phase 81 traceability closure | Repo-native `scripts/verify.sh`, Phase 75-80 deterministic checkers, resource/recovery/progress/forensics fixtures, opt-in UAT docs, and 11/11 integration plus 6/6 flow audit checks. |
+| v1.8 | 23/23 complete | Tech-debt audit with zero requirement, integration, or flow blockers after Phase 89 closure | Repo-native `scripts/verify.sh`, production no-claim guardrails, support/update/runbook/service policy checks, release-readiness evidence, opt-in UAT docs, and 23/23 integration plus 8/8 flow audit checks. |
 
 ### Top Lessons
 
@@ -309,3 +357,4 @@
 5. Treat successful public-network progress and fresh diagnosed blockers as different outcomes; both can be valid, but the archive must say which one shipped.
 6. Archive helpers need a final human sanity pass until they can safely evolve state, roadmap, project, milestones, and retrospective artifacts together.
 7. Verification reports should name the requirement IDs they satisfy; prose-only evidence creates avoidable audit ambiguity.
+8. Production-adjacent docs need deterministic guardrails as soon as the project introduces terms that sound stronger than the evidence actually supports.
