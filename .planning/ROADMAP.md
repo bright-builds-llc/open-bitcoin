@@ -28,7 +28,7 @@ v1.9 Inbound Peer Serving and Network Participation Boundary started on 2026-06-
 | Phase | Name | Goal | Requirements | Status |
 |-------|------|------|--------------|--------|
 | 90 | Inbound Listener and Admission Policy | 10/10 | Complete   | 2026-06-25 |
-| 91 | Peer Permissions and Connection Classes | 7/10 | In Progress|  |
+| 91 | Peer Permissions and Connection Classes | 8/10 | In Progress|  |
 | 92 | Address Advertisement and Discovery Boundaries | Scope listener advertisement, bounded address responses, address-management contracts, and docs that distinguish these from full address relay. | ADDR-01, ADDR-02, ADDR-03, ADDR-04 | Pending |
 | 93 | Eviction, Ban, and Misbehavior Policy | Add deterministic eviction scoring, disconnect reasons, discourage/ban persistence, expiry, unban, and permission-aware misbehavior handling. | EVICT-01, EVICT-02, EVICT-03, EVICT-04 | Pending |
 | 94 | DoS and Resource Governance | Bound inbound message parsing, queues, requests, slow handshakes, churn, idle peers, reconnect attempts, and resource-pressure evidence. | DOS-01, DOS-02, DOS-03, DOS-04, DOS-05 | Pending |
@@ -79,7 +79,7 @@ Plans:
 - [x] 91-05-PLAN.md — Shared status, RPC, and metrics permission evidence
 - [x] 91-06-PLAN.md — Operator status permission rendering
 - [x] 91-07-PLAN.md — Support-bundle permission evidence and redaction
-- [ ] 91-08-PLAN.md — Relay, mempool, filter, and compact-block negative safeguards
+- [x] 91-08-PLAN.md — Relay, mempool, filter, and compact-block negative safeguards
 - [ ] 91-09-PLAN.md — Operator docs, parity roots, and UAT commands
 - [ ] 91-10-PLAN.md — Deterministic Phase 91 checker and verifier wiring
 
