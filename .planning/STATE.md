@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Inbound Peer Serving and Network Participation Boundary
 status: executing
-stopped_at: Completed 91-05-PLAN.md
-last_updated: "2026-06-25T17:42:38.711Z"
+stopped_at: Completed 91-06-PLAN.md
+last_updated: "2026-06-25T18:14:00.000Z"
 last_activity: 2026-06-25
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 20
-  completed_plans: 15
-  percent: 75
+  completed_plans: 16
+  percent: 80
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-06-25)
 
 Milestone: v1.9 Inbound Peer Serving and Network Participation Boundary
 Phase: 91 (peer-permissions-and-connection-classes) — PLANNED
-Plan: 6 of 10
+Plan: 7 of 10
 Status: Ready to execute
 Last activity: 2026-06-25
 
@@ -64,6 +64,7 @@ Progress: [----------] 0%
 | Phase 91 P03 | 16min | 2 tasks | 7 files |
 | Phase 91 P04 | 14min | 2 tasks | 6 files |
 | Phase 91 P05 | 13min | 2 tasks | 11 files |
+| Phase 91 P06 | stalled verification | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -88,6 +89,7 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 - [Phase 91]: Keep legacy add_inbound_peer compatibility records ordinary with empty permission evidence.
 - [Phase 91]: Store the resolved PeerPermissionClassRegistry on ManagedRpcContext but omit it from Debug/status surfaces to avoid raw class-name leakage.
 - [Phase 91]: Keep record_inbound_admission as an ordinary compatibility path and add record_inbound_admission_for_remote_addr for runtime listener use.
+- [Phase 91]: Render operator status permission evidence from shared status fields only, with raw class names, raw permission strings, peer ids, and credentials kept out of output.
 - [Phase 91]: Use listener remote_addr.ip() as the only runtime matching input for permission class resolution.
 - [Phase 91]: Store only typed low-cardinality permission class/effect labels in managed admission evidence; do not store raw class names, endpoints, peer ids, or raw config strings.
 - [Phase 91]: Expose permission evidence through openbitcoinnetworkstatus and the shared inbound status contract, while keeping getnetworkinfo free of permission fields.
