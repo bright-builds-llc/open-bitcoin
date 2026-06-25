@@ -810,8 +810,123 @@ fn daemon_inbound_cli_listen_values_override_jsonc_in_order() {
 }
 
 #[test]
+fn daemon_inbound_permission_cli_overrides_jsonc_permission_classes() {
+    // Arrange
+    let sandbox = TestDirectory::new("daemon-inbound-permission-cli-override");
+    fs::write(
+        sandbox.child("open-bitcoin.jsonc"),
+        r#"
+        {
+          "inbound": {
+            "permission_classes": [
+              {
+                "name": "jsonc_loopback",
+                "addresses": ["127.0.0.2"],
+                "permissions": ["in", "noban", "download"]
+              }
+            ]
+          }
+        }
+        "#,
+    )
+    .expect("open bitcoin config");
+
+    // Act
+    let runtime = load_runtime_config_for_args(
+        &[
+            cli_arg("datadir", &sandbox.path),
+            os("-openbitcoininboundpermissionclass=name@127.0.0.1=in,noban,forceinbound,download,addr"),
+            os("-openbitcoininboundpermissionclass=download_only@127.0.0.3=in,download"),
+        ],
+        &sandbox.path,
+    )
+    .expect("cli permission class override");
+    let protected = runtime
+        .inbound
+        .permission_classes
+        .resolve_inbound("127.0.0.1".parse().expect("literal ip"));
+    let jsonc_replaced = runtime
+        .inbound
+        .permission_classes
+        .resolve_inbound("127.0.0.2".parse().expect("literal ip"));
+    let permissioned = runtime
+        .inbound
+        .permission_classes
+        .resolve_inbound("127.0.0.3".parse().expect("literal ip"));
+
+    // Assert
+    assert_eq!(
+        protected.connection_class(),
+        PeerConnectionClass::ProtectedInbound
+    );
+    assert!(
+        protected
+            .active_effects()
+            .contains(&PermissionEffectLabel::AdmissionProtected)
+    );
+    assert_eq!(
+        jsonc_replaced.connection_class(),
+        PeerConnectionClass::OrdinaryInbound
+    );
+    assert_eq!(
+        permissioned.connection_class(),
+        PeerConnectionClass::PermissionedInbound
+    );
+    assert!(
+        permissioned
+            .active_effects()
+            .contains(&PermissionEffectLabel::DownloadServingPolicyInput)
+    );
+}
+
+#[test]
+fn daemon_inbound_permission_cli_rejects_missing_and_malformed_specs() {
+    let cases = [
+        (
+            "missing-value",
+            os("-openbitcoininboundpermissionclass"),
+            "Error parsing command line arguments: Can not set -openbitcoininboundpermissionclass with no value. Please specify value with -openbitcoininboundpermissionclass=value.",
+        ),
+        (
+            "missing-at",
+            os("-openbitcoininboundpermissionclass=name=127.0.0.1=in,noban"),
+            "Error parsing command line arguments: -openbitcoininboundpermissionclass must use <class_name>@<literal_ip>=<comma-separated tokens>.",
+        ),
+        (
+            "missing-equals",
+            os("-openbitcoininboundpermissionclass=name@127.0.0.1"),
+            "Error parsing command line arguments: -openbitcoininboundpermissionclass must use <class_name>@<literal_ip>=<comma-separated tokens>.",
+        ),
+        (
+            "missing-permissions",
+            os("-openbitcoininboundpermissionclass=name@127.0.0.1="),
+            "Error parsing command line arguments: -openbitcoininboundpermissionclass must use <class_name>@<literal_ip>=<comma-separated tokens>.",
+        ),
+    ];
+
+    for (label, arg, expected_error) in cases {
+        // Arrange
+        let sandbox = TestDirectory::new(&format!("daemon-inbound-permission-cli-{label}"));
+
+        // Act
+        let error = load_runtime_config_for_args(&[arg], &sandbox.path)
+            .expect_err("invalid permission CLI spec should fail");
+
+        // Assert
+        assert_eq!(error.to_string(), expected_error, "{label}");
+    }
+}
+
+#[test]
 fn daemon_inbound_rejects_baseline_listener_and_permission_keys() {
-    for key in ["listen", "bind", "whitebind", "whitelist"] {
+    for key in [
+        "listen",
+        "bind",
+        "whitebind",
+        "whitelist",
+        "whitelistrelay",
+        "whitelistforcerelay",
+    ] {
         // Arrange
         let sandbox = TestDirectory::new(&format!("daemon-inbound-baseline-{key}"));
         let conf_path = sandbox.child("bitcoin.conf");
@@ -825,6 +940,30 @@ fn daemon_inbound_rejects_baseline_listener_and_permission_keys() {
         assert_eq!(
             error.to_string(),
             format!("Error reading configuration file: Invalid configuration value {key}")
+        );
+    }
+}
+
+#[test]
+fn daemon_inbound_rejects_baseline_permission_cli_parameters() {
+    for key in [
+        "whitelist",
+        "whitebind",
+        "whitelistrelay",
+        "whitelistforcerelay",
+    ] {
+        // Arrange
+        let sandbox = TestDirectory::new(&format!("daemon-inbound-baseline-cli-{key}"));
+        let arg = os(&format!("-{key}=127.0.0.1"));
+
+        // Act
+        let error = load_runtime_config_for_args(&[arg], &sandbox.path)
+            .expect_err("baseline permission CLI key should fail");
+
+        // Assert
+        assert_eq!(
+            error.to_string(),
+            format!("Error parsing command line arguments: Invalid parameter -{key}=127.0.0.1")
         );
     }
 }

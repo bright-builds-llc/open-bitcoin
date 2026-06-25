@@ -37,6 +37,13 @@ pub(super) fn parse_inbound_cli_arg(
         "openbitcoinallowpublic" => {
             settings.maybe_inbound_allow_public = Some(parse_bool(maybe_value, negated)?);
         }
+        "openbitcoininboundpermissionclass" => {
+            let value = required_value("openbitcoininboundpermissionclass", maybe_value)?;
+            settings
+                .maybe_inbound_permission_class_specs
+                .get_or_insert_with(Vec::new)
+                .push(value.to_string());
+        }
         _ => return Ok(false),
     }
 

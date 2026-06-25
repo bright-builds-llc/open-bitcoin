@@ -83,10 +83,8 @@ pub(super) fn resolve_inbound_listener_config(
     if let Some(allow_public) = cli.maybe_inbound_allow_public {
         inbound.allow_public = allow_public;
     }
-    let permission_classes = maybe_config
-        .map(|config| config.inbound.permission_classes.as_slice())
-        .unwrap_or_default();
-    inbound.permission_classes = resolve_permission_class_registry(permission_classes)?;
+    let permission_classes = resolve_effective_permission_class_configs(cli, maybe_config)?;
+    inbound.permission_classes = resolve_permission_class_registry(&permission_classes)?;
     validate_inbound_listener_config(&inbound)?;
     Ok(inbound)
 }
@@ -274,6 +272,51 @@ fn resolve_permission_class_registry(
     }
 
     Ok(PeerPermissionClassRegistry::new(classes))
+}
+
+fn resolve_effective_permission_class_configs(
+    cli: &CliSettings,
+    maybe_config: Option<&OpenBitcoinConfig>,
+) -> Result<Vec<InboundPermissionClassConfig>, ConfigError> {
+    if let Some(specs) = cli.maybe_inbound_permission_class_specs.as_ref() {
+        return specs
+            .iter()
+            .map(|spec| parse_cli_permission_class_spec(spec))
+            .collect();
+    }
+
+    Ok(maybe_config
+        .map(|config| config.inbound.permission_classes.clone())
+        .unwrap_or_default())
+}
+
+fn parse_cli_permission_class_spec(
+    spec: &str,
+) -> Result<InboundPermissionClassConfig, ConfigError> {
+    let Some((class_and_address, permission_tokens)) = spec.split_once('=') else {
+        return Err(invalid_cli_permission_class_spec());
+    };
+    let Some((name, address)) = class_and_address.split_once('@') else {
+        return Err(invalid_cli_permission_class_spec());
+    };
+    if permission_tokens.is_empty() {
+        return Err(invalid_cli_permission_class_spec());
+    }
+
+    Ok(InboundPermissionClassConfig {
+        name: name.to_string(),
+        addresses: vec![address.to_string()],
+        permissions: permission_tokens
+            .split(',')
+            .map(str::to_string)
+            .collect::<Vec<_>>(),
+    })
+}
+
+fn invalid_cli_permission_class_spec() -> ConfigError {
+    ConfigError::new(
+        "Error parsing command line arguments: -openbitcoininboundpermissionclass must use <class_name>@<literal_ip>=<comma-separated tokens>.",
+    )
 }
 
 fn inbound_permission_class_error(index: usize, error: PeerPermissionParseError) -> ConfigError {

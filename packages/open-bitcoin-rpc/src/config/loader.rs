@@ -54,6 +54,7 @@ struct CliSettings {
     maybe_max_inbound_peers: Option<usize>,
     maybe_inbound_reserved_slots: Option<usize>,
     maybe_inbound_allow_public: Option<bool>,
+    maybe_inbound_permission_class_specs: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone)]
