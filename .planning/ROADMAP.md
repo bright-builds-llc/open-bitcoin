@@ -28,7 +28,7 @@ v1.9 Inbound Peer Serving and Network Participation Boundary started on 2026-06-
 | Phase | Name | Goal | Requirements | Status |
 |-------|------|------|--------------|--------|
 | 90 | Inbound Listener and Admission Policy | 10/10 | Complete   | 2026-06-25 |
-| 91 | Peer Permissions and Connection Classes | 2/10 | In Progress|  |
+| 91 | Peer Permissions and Connection Classes | 3/10 | In Progress|  |
 | 92 | Address Advertisement and Discovery Boundaries | Scope listener advertisement, bounded address responses, address-management contracts, and docs that distinguish these from full address relay. | ADDR-01, ADDR-02, ADDR-03, ADDR-04 | Pending |
 | 93 | Eviction, Ban, and Misbehavior Policy | Add deterministic eviction scoring, disconnect reasons, discourage/ban persistence, expiry, unban, and permission-aware misbehavior handling. | EVICT-01, EVICT-02, EVICT-03, EVICT-04 | Pending |
 | 94 | DoS and Resource Governance | Bound inbound message parsing, queues, requests, slow handshakes, churn, idle peers, reconnect attempts, and resource-pressure evidence. | DOS-01, DOS-02, DOS-03, DOS-04, DOS-05 | Pending |
@@ -69,12 +69,12 @@ Plans:
 
 **Requirements:** PERM-01, PERM-02, PERM-03, PERM-04
 
-**Plans:** 2/10 plans executed
+**Plans:** 3/10 plans executed
 
 Plans:
 - [x] 91-01-PLAN.md — Pure permission vocabulary and connection-class domain model
 - [x] 91-02-PLAN.md — Open Bitcoin JSONC and CLI permission-class config
-- [ ] 91-03-PLAN.md — Permission evidence in admission records and managed counters
+- [x] 91-03-PLAN.md — Permission evidence in admission records and managed counters
 - [ ] 91-04-PLAN.md — Runtime listener permission-aware admission wiring
 - [ ] 91-05-PLAN.md — Shared status, RPC, and metrics permission evidence
 - [ ] 91-06-PLAN.md — Operator status permission rendering

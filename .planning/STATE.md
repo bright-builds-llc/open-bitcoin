@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Inbound Peer Serving and Network Participation Boundary
 status: executing
-stopped_at: Completed 91-02-PLAN.md
-last_updated: "2026-06-25T16:40:29.778Z"
+stopped_at: Completed 91-03-PLAN.md
+last_updated: "2026-06-25T17:03:27.617Z"
 last_activity: 2026-06-25
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 20
-  completed_plans: 12
-  percent: 60
+  completed_plans: 13
+  percent: 65
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-06-25)
 
 Milestone: v1.9 Inbound Peer Serving and Network Participation Boundary
 Phase: 91 (peer-permissions-and-connection-classes) — PLANNED
-Plan: 3 of 10
+Plan: 4 of 10
 Status: Ready to execute
 Last activity: 2026-06-25
 
@@ -61,6 +61,7 @@ Progress: [----------] 0%
 
 | Phase 91-peer-permissions-and-connection-classes P01 | 27min | 2 tasks | 5 files |
 | Phase 91 P02 | 34min | 2 tasks | 13 files |
+| Phase 91 P03 | 16min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -80,6 +81,9 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 - [Phase 91]: Use Open Bitcoin-owned JSONC and Open Bitcoin-prefixed CLI flags only; Knots whitelist and whitebind-style inputs remain rejected.
 - [Phase 91]: CLI permission-class flags replace the JSONC class list as a complete override, preserving deterministic order.
 - [Phase 91]: Carry the parsed PeerPermissionClassRegistry on InboundListenerConfig so later listener wiring can use the typed registry directly.
+- [Phase 91]: Derive effective admission slot class from InboundPermissionDecision so protected inbound peers consume reserved capacity while ordinary and permissioned peers remain ordinary.
+- [Phase 91]: Count permission effects as low-cardinality numeric observations on ManagedInboundAdmissionInfo, not by peer id, endpoint, or raw config name.
+- [Phase 91]: Keep legacy add_inbound_peer compatibility records ordinary with empty permission evidence.
 
 ### Pending Todos
 
@@ -100,6 +104,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-25T16:40:29.774Z
-Stopped at: Completed 91-02-PLAN.md
+Last session: 2026-06-25T17:03:27.614Z
+Stopped at: Completed 91-03-PLAN.md
 Resume file: None

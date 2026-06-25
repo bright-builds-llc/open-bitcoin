@@ -20,7 +20,7 @@ Requirements for the active v1.9 milestone. Each maps to exactly one roadmap pha
 - [x] **PERM-01**: Operators can define permissioned peer classes from config using Knots-aligned permission concepts, connection direction boundaries, and explicit validation errors.
 - [x] **PERM-02**: Permission rules affect only v1.9 in-scope privileges: admission protection, eviction immunity, address response policy, download serving policy, and diagnostics.
 - [x] **PERM-03**: Relay, mempool, force-relay, and compact-block-style permissions can be rejected, deferred, or parsed as inactive without enabling transaction relay, compact block relay, or mempool propagation.
-- [ ] **PERM-04**: Permission effects are visible in status/support evidence without leaking secrets or hiding why a peer was admitted, protected, disconnected, discouraged, or banned.
+- [x] **PERM-04**: Permission effects are visible in status/support evidence without leaking secrets or hiding why a peer was admitted, protected, disconnected, discouraged, or banned.
 
 ### Address Advertisement
 
@@ -98,7 +98,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PERM-01 | Phase 91 | Complete |
 | PERM-02 | Phase 91 | Complete |
 | PERM-03 | Phase 91 | Complete |
-| PERM-04 | Phase 91 | Pending |
+| PERM-04 | Phase 91 | Complete |
 | ADDR-01 | Phase 92 | Pending |
 | ADDR-02 | Phase 92 | Pending |
 | ADDR-03 | Phase 92 | Pending |
