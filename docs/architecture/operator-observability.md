@@ -31,6 +31,14 @@ and support evidence. Stop reasons, recovery labels, configured targets,
 resource_pressure, peer_contribution, latest_stop_reason, and attempt counters
 belong in status or compact structured logs, not as unbounded metric objects.
 
+Phase 90 inbound admission metrics are low-cardinality numeric counters only.
+They may include admitted, rejected, cap-reject, reserved-slot-reject,
+duplicate-reject, and self-connection-reject series such as
+`InboundReservedSlotRejectCount`, but they must not attach peer ids, raw
+endpoints, addresses, user labels, permission classes, ban state, or relay
+state as metric labels. Listener endpoints and latest admission details remain
+bounded status/support evidence instead of metric dimensions.
+
 No metric or log retention contract may require public network access. Default verification must remain hermetic; live-network telemetry belongs behind explicit opt-in tests or operator runtime paths.
 
 ## Default log retention
@@ -57,6 +65,12 @@ stable labels such as `progress_signal=`, `latest_stop_reason=`,
 `validated_active_chain_height=`, and `maybe_validated_active_chain_work` so
 operators can compare logs with status and live-smoke snapshots without parsing
 prose.
+
+Phase 90 inbound listener and admission logs use stable labels including
+`inbound_listener_state`, `inbound_preflight_reason`, `bound_endpoint`, and
+`admission_reject_reason`. Log records should keep those labels comparable with
+`OpenBitcoinStatusSnapshot.peers.inbound` and `openbitcoinnetworkstatus`, while
+avoiding raw peer tables or high-cardinality metric-style labels.
 
 Status and dashboard consumers must read these contracts instead of inventing renderer-local retention windows.
 
@@ -161,6 +175,23 @@ status, and event counts, but full `support_forensics` narratives remain in the
 local support bundle JSON and Markdown artifacts. Default verification remains
 public-network-free, service-manager-free, short-running, and free of large
 disk allocations.
+
+## Phase 90 inbound serving evidence
+
+Inbound serving observability is sourced from
+`OpenBitcoinStatusSnapshot.peers.inbound` and the Open Bitcoin RPC extension
+`openbitcoinnetworkstatus`. Human status, JSON status, support bundles,
+structured logs, and metrics should agree on listener state, preflight reason,
+bounded bound-endpoint evidence, admission totals, handshake-state totals,
+rejection counters, and the latest admission event. Support bundles render a
+bounded and redacted projection so operators can share diagnostics without
+copying raw peer tables or unbounded endpoint lists.
+
+This observability surface is limited to opt-in Phase 90 listener/admission
+review. It keeps outbound sync evidence separate from inbound admission
+evidence and does not add public inbound defaults, relay behavior, permission
+classes, address relay, eviction, ban, broad DoS policy, or production readiness
+claims.
 
 ## Phase Boundaries
 

@@ -24,6 +24,24 @@ Phase 36 extends that JSONC-owned sync surface with peer-lifecycle config:
 Those settings remain Open Bitcoin-only knobs owned by `open-bitcoin.jsonc`, not
 baseline `bitcoin.conf`.
 
+Phase 90 adds an Open Bitcoin-owned inbound listener section. It is disabled by
+default and is resolved before any listener socket is bound:
+
+- `inbound.enabled` explicitly opts into inbound listener activation.
+- `inbound.listen_addresses` lists configured listener endpoints.
+- `inbound.max_peers` caps admitted inbound peers independently from outbound
+  sync targets.
+- `inbound.reserved_slots` reserves Phase 90 admission slots without adding
+  Phase 91 permission classes.
+- `inbound.allow_public` is the explicit public-exposure acknowledgement for
+  wildcard or non-loopback endpoints.
+
+The daemon also accepts Open Bitcoin-only CLI overrides such as
+`-openbitcoininbound=1` and `-openbitcoinlisten=127.0.0.1:18444`. These flags
+belong to `open-bitcoind` startup resolution; they are not baseline
+`bitcoin.conf` keys and do not imply compatibility with Knots `-listen`,
+`-bind`, `-whitebind`, or peer-permission options.
+
 The operator resolver reports the selected Open Bitcoin JSONC path, baseline-compatible `bitcoin.conf` path, datadir, structured log directory, metrics store directory, network, and credential source. Credential reporting is metadata-only: cookie files are reported by path/source and presence, never by cookie contents. Cookie contents, `rpcpassword`, and `rpcauth` values are not support evidence; support bundles may record which credential source was selected, but they must not copy credential values.
 
 ## Precedence
@@ -36,6 +54,6 @@ Cookie files are an auth fallback, not an application-settings layer.
 
 ## bitcoin.conf compatibility boundary
 
-Baseline Bitcoin/Knots keys remain in `bitcoin.conf`. Open Bitcoin-only keys must not be written to `bitcoin.conf`; that includes wizard, onboarding, dashboard, service, migration, metrics, logging, storage, and sync settings.
+Baseline Bitcoin/Knots keys remain in `bitcoin.conf`. Open Bitcoin-only keys must not be written to `bitcoin.conf`; that includes wizard, onboarding, dashboard, service, migration, metrics, logging, storage, sync, and inbound listener settings.
 
-The existing `bitcoin.conf` loader should continue to reject unknown Open Bitcoin-only keys such as `dashboard`, `service`, or `openbitcoinsync` instead of silently accepting them.
+The existing `bitcoin.conf` loader should continue to reject unknown Open Bitcoin-only keys such as `dashboard`, `service`, `openbitcoinsync`, `openbitcoininbound`, or `openbitcoinlisten` instead of silently accepting them.

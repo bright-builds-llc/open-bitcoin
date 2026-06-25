@@ -180,6 +180,38 @@ reason label and message when a cycle stopped for a known reason.
 header and block counts rather than a wall-clock ETA so deterministic local
 status remains truthful even when the public network is unavailable.
 
+## Phase 90 inbound serving status
+
+`OpenBitcoinStatusSnapshot.peers.inbound` is the shared Phase 90 contract for
+inbound listener and admission evidence. It is a child of the existing peer
+status, not a renderer-local summary. CLI status, JSON status, dashboard
+status, RPC-facing status, metrics projections, structured logs, and support
+bundles should preserve the same listener state, preflight reason, bounded
+endpoint summary, admission counters, handshake state counts, rejection
+counters, latest admission event, and unavailable reason.
+
+The baseline-shaped `getnetworkinfo` response remains responsible for
+`connections`, `connections_in`, and `connections_out`. Detailed Phase 90
+listener and admission evidence belongs to Open Bitcoin-owned status surfaces,
+including the `openbitcoinnetworkstatus` RPC extension and the shared
+`OpenBitcoinStatusSnapshot.peers.inbound` projection. A missing older-daemon RPC
+extension should render inbound evidence as unavailable with a reason while
+preserving baseline peer counts when `getnetworkinfo` is available.
+
+Supported Phase 90 status labels include disabled listener state, ready
+listener state, stable preflight reasons such as `disabled`,
+`no_listen_addresses`, `invalid_endpoint`, `unsafe_endpoint`,
+`bind_unavailable`, `already_bound`, and `ready`, plus admission reject labels
+for cap, duplicate endpoint, duplicate peer id, self-connection, reserved slot,
+and shutdown outcomes. Endpoint evidence stays bounded and may be redacted in
+support bundles; raw peer tables and unbounded endpoint lists are not status
+requirements.
+
+These fields document opt-in listener/admission evidence only. They do not
+promote public inbound defaults, transaction relay, compact block relay,
+mempool forwarding, address propagation, permission classes, eviction, ban
+policy, broader DoS/resource governance, or production full-node readiness.
+
 ## Reorg and no-progress semantics
 
 Phase 70 keeps branch competition, reorg recovery, peer recovery, and

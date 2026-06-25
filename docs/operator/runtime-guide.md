@@ -135,6 +135,128 @@ The onboarding and migration flows should not write Open Bitcoin-only keys into
 [`docs/architecture/config-precedence.md`](../architecture/config-precedence.md)
 for the stricter contract language.
 
+## Phase 90 Loopback Inbound Listener Review
+
+Inbound peer serving remains disabled by default. Phase 90 provides an explicit
+Open Bitcoin-owned listener and admission review path for loopback endpoints.
+It does not make public inbound listening a default, and it does not add
+transaction relay, compact block relay, mempool forwarding, address propagation,
+peer permission classes, eviction, ban policy, broader DoS governance, or
+production full-node readiness.
+
+JSONC form:
+
+```jsonc
+{
+  "inbound": {
+    "enabled": true,
+    "listen_addresses": ["127.0.0.1:18444"],
+    "max_peers": 4,
+    "reserved_slots": 1,
+    "allow_public": false
+  }
+}
+```
+
+`inbound.allow_public = true` is required before wildcard or public endpoints
+can pass listener preflight. Public or wildcard listener review is explicit
+operator UAT only and stays outside `bash scripts/verify.sh`.
+
+Daemon CLI forms:
+
+```bash
+mkdir -p /tmp/open-bitcoin-inbound-loopback
+
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --bin open-bitcoind -- \
+  -regtest \
+  -datadir=/tmp/open-bitcoin-inbound-loopback \
+  -openbitcoininbound=1 \
+  -openbitcoinlisten=127.0.0.1:18444 \
+  -server=1
+
+bazel run //packages/open-bitcoin-rpc:open_bitcoind -- \
+  -regtest \
+  -datadir=/tmp/open-bitcoin-inbound-loopback \
+  -openbitcoininbound=1 \
+  -openbitcoinlisten=127.0.0.1:18444 \
+  -server=1
+```
+
+Inspect baseline peer counts through `getnetworkinfo`:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin-cli -- \
+  -regtest \
+  -rpcconnect=127.0.0.1 \
+  -rpcport=18443 \
+  getnetworkinfo
+
+bazel run //packages/open-bitcoin-cli:open_bitcoin_cli -- \
+  -regtest \
+  -rpcconnect=127.0.0.1 \
+  -rpcport=18443 \
+  getnetworkinfo
+```
+
+Inspect Open Bitcoin-owned inbound listener/admission evidence:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin-cli -- \
+  -regtest \
+  -rpcconnect=127.0.0.1 \
+  -rpcport=18443 \
+  openbitcoinnetworkstatus
+
+bazel run //packages/open-bitcoin-cli:open_bitcoin_cli -- \
+  -regtest \
+  -rpcconnect=127.0.0.1 \
+  -rpcport=18443 \
+  openbitcoinnetworkstatus
+```
+
+Inspect the shared operator status snapshot:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --network regtest \
+  --datadir=/tmp/open-bitcoin-inbound-loopback \
+  --format json \
+  status
+
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- \
+  --network regtest \
+  --datadir=/tmp/open-bitcoin-inbound-loopback \
+  --format json \
+  status
+```
+
+Collect a bounded local support bundle:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --network regtest \
+  --datadir=/tmp/open-bitcoin-inbound-loopback \
+  support bundle --output-dir=/tmp/open-bitcoin-inbound-support
+
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- \
+  --network regtest \
+  --datadir=/tmp/open-bitcoin-inbound-loopback \
+  support bundle --output-dir=/tmp/open-bitcoin-inbound-support
+```
+
+Expected review evidence is bounded and label-driven:
+
+- `getnetworkinfo.connections_in` and `connections_out` remain the
+  baseline-shaped peer count fields.
+- `openbitcoinnetworkstatus` and `status --format json` expose
+  `OpenBitcoinStatusSnapshot.peers.inbound` for listener state, preflight
+  reason, bound endpoint evidence, admission counters, handshake state counts,
+  rejection counters, and latest admission event.
+- Structured logs use stable labels such as `inbound_listener_state`,
+  `inbound_preflight_reason`, `bound_endpoint`, and `admission_reject_reason`.
+- Support bundles render bounded and redacted inbound evidence rather than raw
+  peer tables or unbounded endpoint lists.
+
 ## Mainnet Sync Activation
 
 Mainnet sync activation is disabled by default. It can be enabled only for the
