@@ -598,6 +598,18 @@
       ]
     },
     {
+      "label": "network-inbound-admission",
+      "files": [
+        "packages/open-bitcoin-network/src/inbound.rs",
+        "packages/open-bitcoin-network/src/inbound/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/test/functional/p2p_handshake.py"
+      ]
+    },
+    {
       "label": "network-support",
       "files": [
         "packages/open-bitcoin-network/src/error.rs",
@@ -779,6 +791,8 @@
         "packages/open-bitcoin-node/src/recovery.rs",
         "packages/open-bitcoin-node/src/recovery/tests.rs",
         "packages/open-bitcoin-node/src/status.rs",
+        "packages/open-bitcoin-node/src/status/inbound.rs",
+        "packages/open-bitcoin-node/src/status/inbound/tests.rs",
         "packages/open-bitcoin-node/src/status/progress_guarantee.rs",
         "packages/open-bitcoin-node/src/status/resource_bounds.rs",
         "packages/open-bitcoin-node/src/status/recovery.rs",
