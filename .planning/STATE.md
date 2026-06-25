@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Inbound Peer Serving and Network Participation Boundary
 status: executing
-stopped_at: Completed 91-03-PLAN.md
-last_updated: "2026-06-25T17:03:27.617Z"
+stopped_at: Completed 91-04-PLAN.md
+last_updated: "2026-06-25T17:24:20.626Z"
 last_activity: 2026-06-25
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 20
-  completed_plans: 13
-  percent: 65
+  completed_plans: 14
+  percent: 70
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-06-25)
 
 Milestone: v1.9 Inbound Peer Serving and Network Participation Boundary
 Phase: 91 (peer-permissions-and-connection-classes) — PLANNED
-Plan: 4 of 10
+Plan: 5 of 10
 Status: Ready to execute
 Last activity: 2026-06-25
 
@@ -62,6 +62,7 @@ Progress: [----------] 0%
 | Phase 91-peer-permissions-and-connection-classes P01 | 27min | 2 tasks | 5 files |
 | Phase 91 P02 | 34min | 2 tasks | 13 files |
 | Phase 91 P03 | 16min | 2 tasks | 7 files |
+| Phase 91 P04 | 14min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -84,6 +85,9 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 - [Phase 91]: Derive effective admission slot class from InboundPermissionDecision so protected inbound peers consume reserved capacity while ordinary and permissioned peers remain ordinary.
 - [Phase 91]: Count permission effects as low-cardinality numeric observations on ManagedInboundAdmissionInfo, not by peer id, endpoint, or raw config name.
 - [Phase 91]: Keep legacy add_inbound_peer compatibility records ordinary with empty permission evidence.
+- [Phase 91]: Store the resolved PeerPermissionClassRegistry on ManagedRpcContext but omit it from Debug/status surfaces to avoid raw class-name leakage.
+- [Phase 91]: Keep record_inbound_admission as an ordinary compatibility path and add record_inbound_admission_for_remote_addr for runtime listener use.
+- [Phase 91]: Use listener remote_addr.ip() as the only runtime matching input for permission class resolution.
 
 ### Pending Todos
 
@@ -104,6 +108,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-25T17:03:27.614Z
-Stopped at: Completed 91-03-PLAN.md
+Last session: 2026-06-25T17:24:20.622Z
+Stopped at: Completed 91-04-PLAN.md
 Resume file: None
