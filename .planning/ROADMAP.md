@@ -69,6 +69,20 @@ Plans:
 
 **Requirements:** PERM-01, PERM-02, PERM-03, PERM-04
 
+**Plans:** 10 plans
+
+Plans:
+- [ ] 91-01-PLAN.md — Pure permission vocabulary and connection-class domain model
+- [ ] 91-02-PLAN.md — Open Bitcoin JSONC and CLI permission-class config
+- [ ] 91-03-PLAN.md — Permission evidence in admission records and managed counters
+- [ ] 91-04-PLAN.md — Runtime listener permission-aware admission wiring
+- [ ] 91-05-PLAN.md — Shared status, RPC, and metrics permission evidence
+- [ ] 91-06-PLAN.md — Operator status permission rendering
+- [ ] 91-07-PLAN.md — Support-bundle permission evidence and redaction
+- [ ] 91-08-PLAN.md — Relay, mempool, filter, and compact-block negative safeguards
+- [ ] 91-09-PLAN.md — Operator docs, parity roots, and UAT commands
+- [ ] 91-10-PLAN.md — Deterministic Phase 91 checker and verifier wiring
+
 **Success criteria:**
 1. Config parsing accepts only explicit, documented peer permission classes and returns stable validation errors for unsupported combinations.
 2. Permission effects are observable in admission, eviction, address-response, download-serving, and diagnostic paths.

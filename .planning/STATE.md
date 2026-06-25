@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Inbound Peer Serving and Network Participation Boundary
-status: executing
-stopped_at: Phase 91 context gathered
-last_updated: "2026-06-25T14:29:45.124Z"
-last_activity: 2026-06-25 -- Phase 90 execution started
+status: planning
+stopped_at: Phase 91 plans validated
+last_updated: "2026-06-25T15:17:18.075Z"
+last_activity: 2026-06-25 -- Phase 91 planning complete
 progress:
   total_phases: 6
   completed_phases: 1
-  total_plans: 10
+  total_plans: 20
   completed_plans: 10
-  percent: 100
+  percent: 50
 ---
 
 # Project State
@@ -21,15 +21,15 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-25)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 90 — inbound-listener-and-admission-policy
+**Current focus:** Phase 91 — peer-permissions-and-connection-classes
 
 ## Current Position
 
 Milestone: v1.9 Inbound Peer Serving and Network Participation Boundary
-Phase: 90 (inbound-listener-and-admission-policy) — EXECUTING
+Phase: 91 (peer-permissions-and-connection-classes) — PLANNED
 Plan: 1 of 10
-Status: Executing Phase 90
-Last activity: 2026-06-25 -- Phase 90 execution started
+Status: Ready to execute
+Last activity: 2026-06-25 -- Phase 91 planning complete
 
 Progress: [----------] 0%
 
@@ -45,8 +45,8 @@ Progress: [----------] 0%
 
 | Phase | Name | Requirements | Status |
 |-------|------|--------------|--------|
-| 90 | Inbound Listener and Admission Policy | INB-01, INB-02, INB-03, INB-04, INB-05 | Pending |
-| 91 | Peer Permissions and Connection Classes | PERM-01, PERM-02, PERM-03, PERM-04 | Pending |
+| 90 | Inbound Listener and Admission Policy | INB-01, INB-02, INB-03, INB-04, INB-05 | Complete |
+| 91 | Peer Permissions and Connection Classes | PERM-01, PERM-02, PERM-03, PERM-04 | Planned |
 | 92 | Address Advertisement and Discovery Boundaries | ADDR-01, ADDR-02, ADDR-03, ADDR-04 | Pending |
 | 93 | Eviction, Ban, and Misbehavior Policy | EVICT-01, EVICT-02, EVICT-03, EVICT-04 | Pending |
 | 94 | DoS and Resource Governance | DOS-01, DOS-02, DOS-03, DOS-04, DOS-05 | Pending |
@@ -74,7 +74,7 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ### Pending Todos
 
-- Plan Phase 90 with `/gsd-discuss-phase 90` or `/gsd-plan-phase 90`.
+- Execute Phase 91 with `/gsd-execute-phase 91`.
 - Keep v1.9 phase directories numbered 90+ under `.planning/phases/`; historical phase directories remain tracked because verifier scripts still depend on selected phase evidence.
 - Keep repo-local Cargo and Bazel command forms in UAT guidance:
   - `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- ...`

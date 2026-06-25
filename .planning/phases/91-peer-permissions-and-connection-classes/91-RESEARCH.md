@@ -531,14 +531,13 @@ Security enforcement is enabled by default because `.planning/config.json` has n
 
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
-| A1 | The recommended v1.9 class matching shape should use literal remote IP addresses rather than CIDR/subnet matching. [ASSUMED] | Standard Stack / Architecture Patterns | If Phase 91 must support CIDR now, the planner needs a separate dependency/design task and additional parser/security tests. |
+| A1 | The v1.9 class matching shape uses literal remote IP addresses rather than CIDR/subnet matching. [RESOLVED: Phase 91 decision] | Standard Stack / Architecture Patterns | If a later phase adds CIDR/subnet compatibility, it needs a separate dependency/design task and additional parser/security tests. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should Phase 91 support CIDR/subnet class matching now?**
    - What we know: Knots supports IP/network matching through `-whitelist`, but Open Bitcoin has no existing first-party subnet/CIDR type and the user locked Open Bitcoin-owned config rather than full `-whitelist` compatibility. [VERIFIED: packages/bitcoin-knots/src/net_permissions.cpp; rg SubNet/Cidr/IpNet; 91-CONTEXT.md]
-   - What's unclear: Whether the planner should broaden Phase 91 with a new subnet parser/dependency despite the minimal dependency policy. [VERIFIED: AGENTS.md]
-   - Recommendation: Use literal `IpAddr` matches for v1.9 and reject CIDR/hostnames with stable errors; defer subnet compatibility to a later explicit phase or decision. [ASSUMED]
+   - Decision: Phase 91 uses literal `IpAddr` matches only, rejects CIDR ranges, hostnames, and socket endpoints with stable field/value errors, and defers subnet compatibility to a later explicit phase or decision. [RESOLVED: 2026-06-25]
 
 ## Sources
 
@@ -573,7 +572,7 @@ Security enforcement is enabled by default because `.planning/config.json` has n
 - Standard stack: HIGH - no new dependency is recommended; versions/tooling verified locally through manifests and commands. [VERIFIED: cargo metadata; rustc --version; bun --version; bazelisk version]
 - Architecture: HIGH - existing Phase 90 seams and Bright Builds standards directly support the recommended module split. [VERIFIED: packages/open-bitcoin-network/src/inbound.rs; packages/open-bitcoin-rpc/src/inbound_listener.rs; standards/core/architecture.md]
 - Pitfalls: HIGH - hazards are anchored to Knots source and current Open Bitcoin peer/config/status paths. [VERIFIED: packages/bitcoin-knots/src/net_permissions.h; packages/bitcoin-knots/src/net_processing.cpp; packages/open-bitcoin-network/src/peer.rs]
-- Config class matching: MEDIUM - literal `IpAddr` matching is recommended from current repo constraints, but CIDR support remains an explicit open question. [ASSUMED]
+- Config class matching: HIGH - Phase 91 uses literal `IpAddr` matching and rejects CIDR, hostnames, and socket endpoints; subnet compatibility is deferred to a later explicit phase or decision. [RESOLVED: 2026-06-25]
 
 **Research date:** 2026-06-25
 **Valid until:** 2026-07-25 for local repo and pinned Knots findings; re-check immediately if the Knots submodule, Rust toolchain, or v1.9 phase scope changes. [VERIFIED: current_date; git submodule status packages/bitcoin-knots; rustc --version]
