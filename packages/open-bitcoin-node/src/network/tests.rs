@@ -20,8 +20,8 @@ use open_bitcoin_mempool::PolicyConfig;
 use open_bitcoin_network::{
     InboundAdmissionDecision, InboundAdmissionPolicy, InboundAdmissionRejectionReason,
     InboundAdmissionRequest, InboundAdmissionSlotClass, InboundPermissionDecision, InventoryList,
-    LocalPeerConfig, ParsedPeerPermissionClass, PeerPermissionClassRegistry, ServiceFlags,
-    WireNetworkMessage,
+    LocalPeerConfig, ParsedPeerPermissionClass, PeerConnectionClass, PeerPermissionClassRegistry,
+    ServiceFlags, WireNetworkMessage,
 };
 
 use crate::{ManagedPeerNetwork, MemoryChainstateStore, network::BlockConnectDisposition};
@@ -174,6 +174,18 @@ fn inbound_request(
     InboundAdmissionRequest::from_permission_decision(peer_id, remote_endpoint, permission_decision)
 }
 
+fn permissioned_inbound_request(
+    peer_id: u64,
+    remote_endpoint: &str,
+    permissions: &[&str],
+) -> InboundAdmissionRequest {
+    InboundAdmissionRequest::from_permission_decision(
+        peer_id,
+        remote_endpoint,
+        permission_decision(permissions),
+    )
+}
+
 fn permission_decision(permissions: &[&str]) -> InboundPermissionDecision {
     let class = ParsedPeerPermissionClass::parse("test-class", ["203.0.113.7"], permissions)
         .expect("permission class");
@@ -233,8 +245,50 @@ fn managed_inbound_admission_increments_inbound_counts() {
     assert_eq!(info.connected_peers, 1);
     assert_eq!(info.inbound_peers, 1);
     assert_eq!(info.outbound_peers, 0);
-    assert_eq!(network.inbound_admission_info().admitted_inbound_peers, 1);
-    assert_eq!(network.inbound_admission_info().rejected_inbound_peers, 0);
+    let admission = network.inbound_admission_info();
+    assert_eq!(admission.admitted_inbound_peers, 1);
+    assert_eq!(admission.ordinary_inbound_admits, 1);
+    assert_eq!(admission.permissioned_inbound_admits, 0);
+    assert_eq!(admission.protected_inbound_admits, 0);
+    assert_eq!(admission.active_permission_effect_observations, 0);
+    assert_eq!(admission.inactive_permission_effect_observations, 0);
+    assert_eq!(admission.rejected_inbound_peers, 0);
+}
+
+#[test]
+fn permissioned_inbound_admission_counts_effects_without_reserved_capacity() {
+    // Arrange
+    let mut network = ManagedPeerNetwork::new(
+        MemoryChainstateStore::default(),
+        local_config(211),
+        PolicyConfig::default(),
+    );
+    network.set_inbound_admission_policy(InboundAdmissionPolicy::new(2, 1));
+
+    // Act
+    let decision = network.admit_inbound_peer(permissioned_inbound_request(
+        211,
+        "127.0.0.1:18446",
+        &["in", "download", "addr", "relay", "mempool"],
+    ));
+
+    // Assert
+    let InboundAdmissionDecision::Admit(record) = decision else {
+        panic!("expected permissioned inbound admission");
+    };
+    assert_eq!(
+        record.connection_class,
+        PeerConnectionClass::PermissionedInbound,
+    );
+    assert_eq!(record.slot_class, InboundAdmissionSlotClass::Ordinary);
+    let admission = network.inbound_admission_info();
+    assert_eq!(admission.admitted_inbound_peers, 1);
+    assert_eq!(admission.ordinary_inbound_admits, 0);
+    assert_eq!(admission.permissioned_inbound_admits, 1);
+    assert_eq!(admission.protected_inbound_admits, 0);
+    assert_eq!(admission.reserved_inbound_admits, 0);
+    assert_eq!(admission.active_permission_effect_observations, 2);
+    assert_eq!(admission.inactive_permission_effect_observations, 2);
 }
 
 #[test]
@@ -335,6 +389,10 @@ fn reserved_inbound_admission_uses_reserved_capacity_then_rejects_when_exhausted
     ));
     let admission = network.inbound_admission_info();
     assert_eq!(admission.reserved_inbound_admits, 1);
+    assert_eq!(admission.permissioned_inbound_admits, 0);
+    assert_eq!(admission.protected_inbound_admits, 1);
+    assert_eq!(admission.active_permission_effect_observations, 4);
+    assert_eq!(admission.inactive_permission_effect_observations, 0);
     assert_eq!(admission.reserved_slot_rejections, 1);
     assert_eq!(network.network_info().inbound_peers, 1);
 }
@@ -371,6 +429,46 @@ fn inbound_admission_preserves_outbound_count_and_observed_outbound_evidence() {
         .and_then(|peer| peer.maybe_inbound_record.as_ref())
         .expect("inbound record");
     assert_eq!(inbound_record.observed_outbound_peers, 1);
+}
+
+#[test]
+fn permissioned_and_protected_inbound_admits_do_not_starve_outbound_accounting() {
+    // Arrange
+    let mut network = ManagedPeerNetwork::new(
+        MemoryChainstateStore::default(),
+        local_config(212),
+        PolicyConfig::default(),
+    );
+    network.set_inbound_admission_policy(InboundAdmissionPolicy::new(3, 1));
+    network
+        .connect_outbound_peer(212, 1)
+        .expect("outbound peer");
+
+    // Act
+    let permissioned = network.admit_inbound_peer(permissioned_inbound_request(
+        213,
+        "127.0.0.1:18447",
+        &["in", "download", "addr"],
+    ));
+    let protected = network.admit_inbound_peer(inbound_request(
+        214,
+        "127.0.0.1:18448",
+        InboundAdmissionSlotClass::Reserved,
+    ));
+
+    // Assert
+    assert!(matches!(permissioned, InboundAdmissionDecision::Admit(_)));
+    assert!(matches!(protected, InboundAdmissionDecision::Admit(_)));
+    let info = network.network_info();
+    assert_eq!(info.connected_peers, 3);
+    assert_eq!(info.inbound_peers, 2);
+    assert_eq!(info.outbound_peers, 1);
+    let admission = network.inbound_admission_info();
+    assert_eq!(admission.permissioned_inbound_admits, 1);
+    assert_eq!(admission.protected_inbound_admits, 1);
+    assert_eq!(admission.reserved_inbound_admits, 1);
+    assert_eq!(admission.active_permission_effect_observations, 6);
+    assert_eq!(admission.inactive_permission_effect_observations, 0);
 }
 
 #[test]

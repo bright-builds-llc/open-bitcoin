@@ -7,7 +7,7 @@
 use open_bitcoin_network::{
     InboundAdmissionDecision, InboundAdmissionPolicy, InboundAdmissionRejection,
     InboundAdmissionRejectionReason, InboundAdmissionRequest, InboundAdmissionSlotClass,
-    InboundHandshakeState, InboundPeerRecord, PeerState,
+    InboundHandshakeState, InboundPeerRecord, PeerConnectionClass, PeerState,
 };
 
 use crate::ChainstateStore;
@@ -18,7 +18,12 @@ use super::{ManagedNetworkError, ManagedPeerNetwork};
 pub struct ManagedInboundAdmissionInfo {
     pub admitted_inbound_peers: usize,
     pub rejected_inbound_peers: usize,
+    pub ordinary_inbound_admits: usize,
+    pub permissioned_inbound_admits: usize,
+    pub protected_inbound_admits: usize,
     pub reserved_inbound_admits: usize,
+    pub active_permission_effect_observations: usize,
+    pub inactive_permission_effect_observations: usize,
     pub cap_rejections: usize,
     pub reserved_slot_rejections: usize,
     pub duplicate_endpoint_rejections: usize,
@@ -29,11 +34,21 @@ pub struct ManagedInboundAdmissionInfo {
 }
 
 impl ManagedInboundAdmissionInfo {
-    pub(super) fn record_admit(&mut self, slot_class: InboundAdmissionSlotClass) {
+    pub(super) fn record_admit(&mut self, record: &InboundPeerRecord) {
         self.admitted_inbound_peers += 1;
-        if slot_class == InboundAdmissionSlotClass::Reserved {
+        match record.connection_class {
+            PeerConnectionClass::OrdinaryInbound => self.ordinary_inbound_admits += 1,
+            PeerConnectionClass::PermissionedInbound => self.permissioned_inbound_admits += 1,
+            PeerConnectionClass::ProtectedInbound => self.protected_inbound_admits += 1,
+            PeerConnectionClass::Outbound | PeerConnectionClass::ManualConfigured => {}
+        }
+        if record.slot_class == InboundAdmissionSlotClass::Reserved {
             self.reserved_inbound_admits += 1;
         }
+        self.active_permission_effect_observations +=
+            record.permission_decision.active_effects().len();
+        self.inactive_permission_effect_observations +=
+            record.permission_decision.inactive_effects().len();
     }
 
     pub(super) fn record_rejection(&mut self, rejection: &InboundAdmissionRejection) {
@@ -69,8 +84,14 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     ) -> Result<(), ManagedNetworkError> {
         self.peer_manager.add_inbound_peer(peer_id)?;
         self.peer_ids.insert(peer_id);
-        self.inbound_admission_info
-            .record_admit(InboundAdmissionSlotClass::Ordinary);
+        let maybe_record = self
+            .peer_manager
+            .peer_state(peer_id)
+            .and_then(|peer| peer.maybe_inbound_record.as_ref())
+            .cloned();
+        if let Some(record) = maybe_record.as_ref() {
+            self.inbound_admission_info.record_admit(record);
+        }
         Ok(())
     }
 
@@ -105,7 +126,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         }
 
         self.peer_ids.insert(record.peer_id);
-        self.inbound_admission_info.record_admit(record.slot_class);
+        self.inbound_admission_info.record_admit(&record);
         InboundAdmissionDecision::Admit(record)
     }
 }
