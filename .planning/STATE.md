@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Inbound Peer Serving and Network Participation Boundary
 status: executing
-stopped_at: Completed 91-08-PLAN.md
-last_updated: "2026-06-25T18:56:56.000Z"
+stopped_at: Completed 91-09-PLAN.md
+last_updated: "2026-06-25T19:01:22.000Z"
 last_activity: 2026-06-25
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 20
-  completed_plans: 18
-  percent: 90
+  completed_plans: 19
+  percent: 95
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-06-25)
 
 Milestone: v1.9 Inbound Peer Serving and Network Participation Boundary
 Phase: 91 (peer-permissions-and-connection-classes) — PLANNED
-Plan: 9 of 10
+Plan: 10 of 10
 Status: Ready to execute
 Last activity: 2026-06-25
 
@@ -67,6 +67,7 @@ Progress: [----------] 0%
 | Phase 91 P06 | stalled verification | 2 tasks | 3 files |
 | Phase 91 P07 | 25min | 2 tasks | 5 files |
 | Phase 91 P08 | 11min | 2 tasks | 1 file |
+| Phase 91 P09 | 4min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -98,6 +99,7 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 - [Phase 91]: Add permission metrics as fixed MetricKind variants without dynamic labels or dimensions.
 - [Phase 91]: Support bundles sanitize inbound permission evidence to bounded machine class/effect labels and redact raw class names, raw permission strings, peer ids, endpoints, and credential literals.
 - [Phase 91]: Treat relay, forcerelay, mempool, bloomfilter, blockfilters, and all-expansion permission data as inactive labels that do not alter peer message handling, service bits, or compact-block behavior.
+- [Phase 91]: Document permission-class UAT with repo-local Cargo and Bazel commands and register `v1-9-peer-permissions-connection-classes` as the PERM-01 through PERM-04 parity surface.
 
 ### Pending Todos
 
@@ -118,6 +120,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-25T18:56:56.000Z
-Stopped at: Completed 91-08-PLAN.md
+Last session: 2026-06-25T19:01:22.000Z
+Stopped at: Completed 91-09-PLAN.md
 Resume file: None
