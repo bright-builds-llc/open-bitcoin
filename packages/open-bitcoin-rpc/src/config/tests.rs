@@ -533,6 +533,140 @@ fn inbound_config_rejects_zero_max_peers_and_reserved_slots_over_cap() {
 }
 
 #[test]
+fn daemon_inbound_cli_override_can_enable_or_disable_open_bitcoin_jsonc() {
+    // Arrange
+    let disabled_sandbox = TestDirectory::new("daemon-inbound-cli-enable");
+    fs::write(
+        disabled_sandbox.child("open-bitcoin.jsonc"),
+        r#"
+        {
+          "inbound": {
+            "enabled": false,
+            "listen_addresses": ["127.0.0.1:18444"],
+            "max_peers": 8
+          }
+        }
+        "#,
+    )
+    .expect("open bitcoin config");
+    let enabled_sandbox = TestDirectory::new("daemon-inbound-cli-disable");
+    fs::write(
+        enabled_sandbox.child("open-bitcoin.jsonc"),
+        r#"
+        {
+          "inbound": {
+            "enabled": true,
+            "listen_addresses": ["127.0.0.1:18444"],
+            "max_peers": 8
+          }
+        }
+        "#,
+    )
+    .expect("open bitcoin config");
+
+    // Act
+    let cli_enabled = load_runtime_config_for_args(
+        &[
+            cli_arg("datadir", &disabled_sandbox.path),
+            os("-openbitcoininbound=1"),
+        ],
+        &disabled_sandbox.path,
+    )
+    .expect("cli enables inbound");
+    let cli_disabled = load_runtime_config_for_args(
+        &[
+            cli_arg("datadir", &enabled_sandbox.path),
+            os("-openbitcoininbound=0"),
+        ],
+        &enabled_sandbox.path,
+    )
+    .expect("cli disables inbound");
+
+    // Assert
+    assert!(cli_enabled.inbound.enabled);
+    assert!(!cli_disabled.inbound.enabled);
+}
+
+#[test]
+fn daemon_inbound_cli_listen_values_override_jsonc_in_order() {
+    // Arrange
+    let sandbox = TestDirectory::new("daemon-inbound-cli-listen-order");
+    fs::write(
+        sandbox.child("open-bitcoin.jsonc"),
+        r#"
+        {
+          "inbound": {
+            "enabled": true,
+            "listen_addresses": ["127.0.0.1:18444"],
+            "max_peers": 8
+          }
+        }
+        "#,
+    )
+    .expect("open bitcoin config");
+
+    // Act
+    let runtime = load_runtime_config_for_args(
+        &[
+            cli_arg("datadir", &sandbox.path),
+            os("-openbitcoinlisten=127.0.0.1:18445"),
+            os("-openbitcoinlisten=[::1]:18446"),
+        ],
+        &sandbox.path,
+    )
+    .expect("cli listen override");
+
+    // Assert
+    assert_eq!(
+        runtime.inbound.listen_addresses,
+        vec!["127.0.0.1:18445".to_string(), "[::1]:18446".to_string(),]
+    );
+}
+
+#[test]
+fn daemon_inbound_rejects_baseline_listener_and_permission_keys() {
+    for key in ["listen", "bind", "whitebind", "whitelist"] {
+        // Arrange
+        let sandbox = TestDirectory::new(&format!("daemon-inbound-baseline-{key}"));
+        let conf_path = sandbox.child("bitcoin.conf");
+        fs::write(&conf_path, format!("{key}=127.0.0.1:18444\n")).expect("config");
+
+        // Act
+        let error = load_runtime_config_for_args(&[cli_arg("conf", &conf_path)], &sandbox.path)
+            .expect_err("baseline listener key should fail");
+
+        // Assert
+        assert_eq!(
+            error.to_string(),
+            format!("Error reading configuration file: Invalid configuration value {key}")
+        );
+    }
+}
+
+#[test]
+fn daemon_inbound_cli_public_endpoint_stays_unsafe_without_allow_public() {
+    // Arrange
+    let sandbox = TestDirectory::new("daemon-inbound-public-preflight");
+
+    // Act
+    let runtime = load_runtime_config_for_args(
+        &[
+            os("-openbitcoininbound=1"),
+            os("-openbitcoinlisten=0.0.0.0:18444"),
+        ],
+        &sandbox.path,
+    )
+    .expect("public endpoint config loads");
+    let preflight = classify_inbound_preflight(&runtime.inbound);
+
+    // Assert
+    assert!(runtime.inbound.enabled);
+    assert!(!runtime.inbound.allow_public);
+    assert_eq!(preflight.reason(), InboundPreflightReason::UnsafeEndpoint);
+    assert_eq!(preflight.diagnostics()[0].field, "inbound.listen_addresses");
+}
+
+#[test]
 fn open_bitcoin_jsonc_accepts_manual_peers_seed_overrides_and_resource_bounds() {
     // Arrange
     let text = r#"
