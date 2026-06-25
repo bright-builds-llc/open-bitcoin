@@ -23,6 +23,7 @@ fn loopback_config(max_peers: usize) -> InboundListenerConfig {
         max_peers,
         reserved_slots: 0,
         allow_public: false,
+        permission_classes: Default::default(),
     }
 }
 
@@ -79,6 +80,7 @@ async fn disabled_runtime_reports_disabled_without_bound_endpoints() {
         max_peers: 8,
         reserved_slots: 0,
         allow_public: false,
+        permission_classes: Default::default(),
     };
 
     // Act
@@ -108,6 +110,7 @@ async fn invalid_endpoint_reports_typed_diagnostic_before_bind() {
         max_peers: 8,
         reserved_slots: 0,
         allow_public: false,
+        permission_classes: Default::default(),
     };
 
     // Act
@@ -135,6 +138,7 @@ async fn unsafe_public_endpoint_reports_typed_diagnostic_before_bind() {
         max_peers: 8,
         reserved_slots: 0,
         allow_public: false,
+        permission_classes: Default::default(),
     };
 
     // Act
@@ -163,6 +167,7 @@ async fn held_loopback_address_reports_bind_failure_with_next_action() {
         max_peers: 8,
         reserved_slots: 0,
         allow_public: false,
+        permission_classes: Default::default(),
     };
 
     // Act
@@ -191,6 +196,7 @@ async fn enabled_loopback_zero_port_binds_without_public_network_dependency() {
         max_peers: 8,
         reserved_slots: 0,
         allow_public: false,
+        permission_classes: Default::default(),
     };
 
     // Act

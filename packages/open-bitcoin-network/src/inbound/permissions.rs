@@ -341,6 +341,10 @@ impl ParsedPeerPermissionClass {
         &self.permissions
     }
 
+    pub fn addresses(&self) -> &[IpAddr] {
+        &self.addresses
+    }
+
     fn matches_inbound(&self, remote_address: IpAddr) -> bool {
         self.addresses.contains(&remote_address)
     }
@@ -408,7 +412,7 @@ where
     Ok(parsed)
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct PeerPermissionClassRegistry {
     classes: Vec<ParsedPeerPermissionClass>,
 }

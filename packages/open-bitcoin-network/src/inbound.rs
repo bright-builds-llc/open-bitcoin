@@ -28,6 +28,7 @@ pub struct InboundListenerConfig {
     pub max_peers: usize,
     pub reserved_slots: usize,
     pub allow_public: bool,
+    pub permission_classes: PeerPermissionClassRegistry,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

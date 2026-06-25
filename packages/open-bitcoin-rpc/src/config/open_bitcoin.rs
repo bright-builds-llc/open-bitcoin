@@ -179,6 +179,7 @@ pub struct InboundConfig {
     pub max_peers: usize,
     pub reserved_slots: usize,
     pub allow_public: bool,
+    pub permission_classes: Vec<InboundPermissionClassConfig>,
 }
 
 impl InboundConfig {
@@ -189,6 +190,7 @@ impl InboundConfig {
             max_peers: self.max_peers,
             reserved_slots: self.reserved_slots,
             allow_public: self.allow_public,
+            permission_classes: Default::default(),
         }
     }
 }
@@ -201,8 +203,17 @@ impl Default for InboundConfig {
             max_peers: DEFAULT_MAX_INBOUND_PEERS,
             reserved_slots: 0,
             allow_public: false,
+            permission_classes: Vec::new(),
         }
     }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct InboundPermissionClassConfig {
+    pub name: String,
+    pub addresses: Vec<String>,
+    pub permissions: Vec<String>,
 }
 
 /// Config source precedence identifiers.

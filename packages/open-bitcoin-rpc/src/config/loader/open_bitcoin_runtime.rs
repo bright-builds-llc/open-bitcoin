@@ -4,15 +4,19 @@
 
 //! Open Bitcoin-owned daemon runtime config layered above `bitcoin.conf`.
 
-use std::{fs, path::Path};
+use std::{collections::BTreeMap, fs, net::IpAddr, path::Path};
 
-use open_bitcoin_network::InboundListenerConfig;
+use open_bitcoin_network::{
+    INBOUND_PERMISSION_ADDRESSES_FIELD, INBOUND_PERMISSION_CLASS_NAME_FIELD,
+    INBOUND_PERMISSION_TOKENS_FIELD, InboundListenerConfig, ParsedPeerPermissionClass,
+    PeerPermissionClassRegistry, PeerPermissionParseError,
+};
 use open_bitcoin_node::core::wallet::AddressNetwork;
 use open_bitcoin_node::{SyncPeerAddress, SyncRuntimeConfig};
 
 use crate::config::{
-    ConfigError, DaemonSyncConfig, DaemonSyncMode, InboundConfig, OPEN_BITCOIN_CONFIG_FILE_NAME,
-    OpenBitcoinConfig, SyncNetwork, parse_open_bitcoin_jsonc_config,
+    ConfigError, DaemonSyncConfig, DaemonSyncMode, InboundConfig, InboundPermissionClassConfig,
+    OPEN_BITCOIN_CONFIG_FILE_NAME, OpenBitcoinConfig, SyncNetwork, parse_open_bitcoin_jsonc_config,
 };
 
 use super::{CliSettings, chain::chain_name, resolve_path, rpc_address::parse_rpc_client_address};
@@ -79,6 +83,10 @@ pub(super) fn resolve_inbound_listener_config(
     if let Some(allow_public) = cli.maybe_inbound_allow_public {
         inbound.allow_public = allow_public;
     }
+    let permission_classes = maybe_config
+        .map(|config| config.inbound.permission_classes.as_slice())
+        .unwrap_or_default();
+    inbound.permission_classes = resolve_permission_class_registry(permission_classes)?;
     validate_inbound_listener_config(&inbound)?;
     Ok(inbound)
 }
@@ -246,6 +254,66 @@ fn validate_inbound_listener_config(config: &InboundListenerConfig) -> Result<()
         ));
     }
     Ok(())
+}
+
+fn resolve_permission_class_registry(
+    configs: &[InboundPermissionClassConfig],
+) -> Result<PeerPermissionClassRegistry, ConfigError> {
+    let mut classes = Vec::with_capacity(configs.len());
+    let mut addresses = BTreeMap::<IpAddr, usize>::new();
+    for (index, config) in configs.iter().enumerate() {
+        let parsed =
+            ParsedPeerPermissionClass::parse(&config.name, &config.addresses, &config.permissions)
+                .map_err(|error| inbound_permission_class_error(index, error))?;
+        for address in parsed.addresses() {
+            if addresses.insert(*address, index).is_some() {
+                return Err(duplicate_permission_address_error(index, *address));
+            }
+        }
+        classes.push(parsed);
+    }
+
+    Ok(PeerPermissionClassRegistry::new(classes))
+}
+
+fn inbound_permission_class_error(index: usize, error: PeerPermissionParseError) -> ConfigError {
+    let field = indexed_permission_field(index, error.field());
+    let value_kind = permission_error_value_kind(error.field());
+    ConfigError::new(format!(
+        "Error resolving Open Bitcoin inbound config: {field} {value_kind} \"{}\" ({}): {}",
+        error.token(),
+        error.reason(),
+        error.message()
+    ))
+}
+
+fn duplicate_permission_address_error(index: usize, address: IpAddr) -> ConfigError {
+    ConfigError::new(format!(
+        "Error resolving Open Bitcoin inbound config: inbound.permission_classes[{index}].addresses value \"{address}\" (duplicate_literal_ip_address): peer permission class address duplicates an earlier permission class."
+    ))
+}
+
+fn indexed_permission_field(index: usize, field: &str) -> String {
+    match field {
+        INBOUND_PERMISSION_CLASS_NAME_FIELD => {
+            format!("inbound.permission_classes[{index}].name")
+        }
+        INBOUND_PERMISSION_ADDRESSES_FIELD => {
+            format!("inbound.permission_classes[{index}].addresses")
+        }
+        INBOUND_PERMISSION_TOKENS_FIELD => {
+            format!("inbound.permission_classes[{index}].permissions")
+        }
+        _ => field.replace("[]", &format!("[{index}]")),
+    }
+}
+
+fn permission_error_value_kind(field: &str) -> &'static str {
+    if field == INBOUND_PERMISSION_TOKENS_FIELD {
+        "token"
+    } else {
+        "value"
+    }
 }
 
 fn inbound_config_error(message: &str) -> ConfigError {

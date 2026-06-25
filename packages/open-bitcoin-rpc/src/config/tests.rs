@@ -14,7 +14,10 @@ use std::{
 
 use open_bitcoin_node::{SyncNetwork, SyncPeerAddress, core::wallet::AddressNetwork};
 
-use open_bitcoin_network::{InboundPreflightReason, classify_inbound_preflight};
+use open_bitcoin_network::{
+    InboundAdmissionSlotClass, InboundPreflightReason, PeerConnectionClass, PermissionEffectLabel,
+    classify_inbound_preflight,
+};
 
 use super::{
     ConfigPrecedence, ConfigSource, DEFAULT_COOKIE_FILE_NAME, DaemonSyncMode, OpenBitcoinConfig,
@@ -454,6 +457,185 @@ fn open_bitcoin_jsonc_accepts_inbound_listener_contract() {
     assert!(!runtime.inbound.allow_public);
     assert_eq!(preflight.reason(), InboundPreflightReason::Ready);
     assert_eq!(preflight.ready_endpoints()[0].normalized, "127.0.0.1:18444");
+}
+
+#[test]
+fn open_bitcoin_jsonc_accepts_inbound_permission_classes() {
+    // Arrange
+    let text = r#"
+    {
+      "inbound": {
+        "permission_classes": [
+          {
+            "name": "operator_loopback",
+            "addresses": ["127.0.0.1"],
+            "permissions": ["in", "noban", "forceinbound", "download", "addr"]
+          }
+        ]
+      }
+    }
+    "#;
+    let sandbox = TestDirectory::new("inbound-permission-jsonc");
+    fs::write(sandbox.child("open-bitcoin.jsonc"), text).expect("open bitcoin config");
+
+    // Act
+    let config = parse_open_bitcoin_jsonc_config(text).expect("jsonc config");
+    let runtime = load_runtime_config_for_args(&[cli_arg("datadir", &sandbox.path)], &sandbox.path)
+        .expect("inbound permission runtime config");
+    let permissioned = runtime
+        .inbound
+        .permission_classes
+        .resolve_inbound("127.0.0.1".parse().expect("literal ip"));
+    let ordinary = runtime
+        .inbound
+        .permission_classes
+        .resolve_inbound("127.0.0.2".parse().expect("literal ip"));
+
+    // Assert
+    assert_eq!(config.inbound.permission_classes.len(), 1);
+    assert_eq!(
+        config.inbound.permission_classes[0].name,
+        "operator_loopback"
+    );
+    assert_eq!(
+        permissioned.connection_class(),
+        PeerConnectionClass::ProtectedInbound
+    );
+    assert_eq!(
+        permissioned.slot_class(),
+        InboundAdmissionSlotClass::Reserved
+    );
+    assert!(
+        permissioned
+            .active_effects()
+            .contains(&PermissionEffectLabel::AdmissionProtected)
+    );
+    assert!(
+        permissioned
+            .active_effects()
+            .contains(&PermissionEffectLabel::DownloadServingPolicyInput)
+    );
+    assert!(
+        permissioned
+            .active_effects()
+            .contains(&PermissionEffectLabel::AddressResponsePolicyInput)
+    );
+    assert!(permissioned.inactive_effects().is_empty());
+    assert_eq!(
+        ordinary.connection_class(),
+        PeerConnectionClass::OrdinaryInbound
+    );
+}
+
+#[test]
+fn open_bitcoin_jsonc_rejects_unknown_inbound_permission_class_fields() {
+    // Arrange
+    let text = r#"
+    {
+      "inbound": {
+        "permission_classes": [
+          {
+            "name": "operator_loopback",
+            "addresses": ["127.0.0.1"],
+            "permissions": ["in", "noban"],
+            "surprise": true
+          }
+        ]
+      }
+    }
+    "#;
+
+    // Act
+    let error = parse_open_bitcoin_jsonc_config(text).expect_err("unknown field should fail");
+
+    // Assert
+    assert!(error.to_string().contains("unknown field"));
+    assert!(error.to_string().contains("surprise"));
+}
+
+#[test]
+fn inbound_permission_config_rejects_malformed_classes_with_stable_errors() {
+    let cases = [
+        (
+            "empty-name",
+            r#"{ "name": "", "addresses": ["127.0.0.1"], "permissions": ["in", "noban"] }"#,
+            "Error resolving Open Bitcoin inbound config: inbound.permission_classes[0].name value \"\" (empty_class_name): peer permission class name must not be empty",
+        ),
+        (
+            "empty-addresses",
+            r#"{ "name": "operator_loopback", "addresses": [], "permissions": ["in", "noban"] }"#,
+            "Error resolving Open Bitcoin inbound config: inbound.permission_classes[0].addresses value \"\" (empty_address_list): peer permission class must include at least one literal IP address",
+        ),
+        (
+            "cidr-address",
+            r#"{ "name": "operator_loopback", "addresses": ["127.0.0.1/24"], "permissions": ["in", "noban"] }"#,
+            "Error resolving Open Bitcoin inbound config: inbound.permission_classes[0].addresses value \"127.0.0.1/24\" (invalid_literal_ip_address): peer permission class address must be a literal IP address: 127.0.0.1/24",
+        ),
+        (
+            "hostname-address",
+            r#"{ "name": "operator_loopback", "addresses": ["localhost"], "permissions": ["in", "noban"] }"#,
+            "Error resolving Open Bitcoin inbound config: inbound.permission_classes[0].addresses value \"localhost\" (invalid_literal_ip_address): peer permission class address must be a literal IP address: localhost",
+        ),
+        (
+            "socket-endpoint",
+            r#"{ "name": "operator_loopback", "addresses": ["127.0.0.1:8333"], "permissions": ["in", "noban"] }"#,
+            "Error resolving Open Bitcoin inbound config: inbound.permission_classes[0].addresses value \"127.0.0.1:8333\" (invalid_literal_ip_address): peer permission class address must be a literal IP address: 127.0.0.1:8333",
+        ),
+        (
+            "unsupported-token",
+            r#"{ "name": "operator_loopback", "addresses": ["127.0.0.1"], "permissions": ["in", "oopsie"] }"#,
+            "Error resolving Open Bitcoin inbound config: inbound.permission_classes[0].permissions token \"oopsie\" (unsupported_token): unsupported peer permission token: oopsie",
+        ),
+        (
+            "direction-only",
+            r#"{ "name": "operator_loopback", "addresses": ["127.0.0.1"], "permissions": ["in"] }"#,
+            "Error resolving Open Bitcoin inbound config: inbound.permission_classes[0].permissions token \"in\" (direction_only): peer permission class sets only direction token: in",
+        ),
+        (
+            "missing-in",
+            r#"{ "name": "operator_loopback", "addresses": ["127.0.0.1"], "permissions": ["noban"] }"#,
+            "Error resolving Open Bitcoin inbound config: inbound.permission_classes[0].permissions token \"in\" (missing_inbound_direction): peer permission class must include the in direction",
+        ),
+        (
+            "out-combination",
+            r#"{ "name": "operator_loopback", "addresses": ["127.0.0.1"], "permissions": ["in", "out", "noban"] }"#,
+            "Error resolving Open Bitcoin inbound config: inbound.permission_classes[0].permissions token \"out\" (outbound_direction_unsupported): peer permission class cannot include the out direction in Phase 91",
+        ),
+        (
+            "duplicate-address",
+            r#"
+            { "name": "operator_loopback", "addresses": ["127.0.0.1"], "permissions": ["in", "noban"] },
+            { "name": "operator_second", "addresses": ["127.0.0.1"], "permissions": ["in", "download"] }
+            "#,
+            "Error resolving Open Bitcoin inbound config: inbound.permission_classes[1].addresses value \"127.0.0.1\" (duplicate_literal_ip_address): peer permission class address duplicates an earlier permission class.",
+        ),
+    ];
+
+    for (label, class_json, expected_error) in cases {
+        // Arrange
+        let sandbox = TestDirectory::new(&format!("inbound-permission-invalid-{label}"));
+        fs::write(
+            sandbox.child("open-bitcoin.jsonc"),
+            format!(
+                r#"
+                {{
+                  "inbound": {{
+                    "permission_classes": [{class_json}]
+                  }}
+                }}
+                "#
+            ),
+        )
+        .expect("open bitcoin config");
+
+        // Act
+        let error =
+            load_runtime_config_for_args(&[cli_arg("datadir", &sandbox.path)], &sandbox.path)
+                .expect_err("invalid inbound permission class should fail");
+
+        // Assert
+        assert_eq!(error.to_string(), expected_error, "{label}");
+    }
 }
 
 #[test]

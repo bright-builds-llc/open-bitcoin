@@ -24,6 +24,7 @@ fn enabled_config(addresses: Vec<&str>) -> InboundListenerConfig {
         max_peers: 8,
         reserved_slots: 2,
         allow_public: false,
+        permission_classes: PeerPermissionClassRegistry::default(),
     }
 }
 

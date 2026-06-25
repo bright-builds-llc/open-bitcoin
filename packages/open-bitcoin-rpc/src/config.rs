@@ -22,7 +22,7 @@ mod open_bitcoin;
 
 pub use open_bitcoin::{
     ConfigPrecedence, ConfigSource, DEFAULT_INBOUND_LISTEN_ADDRESS, DEFAULT_MAX_INBOUND_PEERS,
-    InboundConfig, OPEN_BITCOIN_CONFIG_FILE_NAME, OpenBitcoinConfig,
+    InboundConfig, InboundPermissionClassConfig, OPEN_BITCOIN_CONFIG_FILE_NAME, OpenBitcoinConfig,
     parse_open_bitcoin_jsonc_config,
 };
 

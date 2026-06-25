@@ -343,6 +343,7 @@ async fn open_bitcoind_inbound_loopback_runtime_binds_before_rpc_serving() {
             max_peers: 2,
             reserved_slots: 0,
             allow_public: false,
+            permission_classes: Default::default(),
         },
         ..RuntimeConfig::default()
     };
@@ -369,6 +370,7 @@ async fn open_bitcoind_inbound_shutdown_closes_listener_without_sync_shutdown_re
             max_peers: 2,
             reserved_slots: 0,
             allow_public: false,
+            permission_classes: Default::default(),
         },
         ..RuntimeConfig::default()
     };

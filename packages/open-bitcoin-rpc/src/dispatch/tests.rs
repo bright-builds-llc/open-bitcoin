@@ -275,6 +275,7 @@ fn inbound_context(max_peers: usize, reserved_slots: usize) -> ManagedRpcContext
             max_peers,
             reserved_slots,
             allow_public: false,
+            permission_classes: Default::default(),
         },
         wallet: WalletRuntimeConfig {
             coinbase_maturity: 1,
