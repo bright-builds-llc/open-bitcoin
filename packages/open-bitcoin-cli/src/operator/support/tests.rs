@@ -12,6 +12,7 @@ use open_bitcoin_node::{
     RecoveryCause, RecoveryEvidenceBasis, RecoveryEvidenceSnapshot,
     status::{
         BestKnownTipSource, BestKnownTipStatus, ChainTipStatus, ConfigStatus, FieldAvailability,
+        InboundAdmissionEvent, InboundHandshakeStatusCounts, InboundPeerServingStatus,
         MempoolStatus, NoProgressDiagnosis, NoProgressThresholdEvidence, NoProgressThresholdState,
         NodeRuntimeState, NodeStatus, PeerContributionEvidence, PeerContributionKind, PeerCounts,
         PeerStatus, PeerTipAgreement, PeerTipAgreementStatus, ProgressCreditEvidence,
@@ -21,7 +22,7 @@ use open_bitcoin_node::{
         StallDiagnosisEvidence, StalledSubsystem, StayCurrentStatus, SyncAttemptCounters,
         SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal,
         SyncRecoveryCategory, SyncResourcePressure, SyncStatus, SyncStopReasonStatus,
-        TipFreshnessStatus, WalletStatus, usage_against_budget,
+        TipFreshnessStatus, WalletStatus, inbound_status_unavailable, usage_against_budget,
     },
 };
 use serde_json::json;
@@ -103,6 +104,7 @@ fn phase71_support_redaction_names_compact_evidence_bounds() {
             "live smoke reports are summarized from allowlisted fields only",
             "logs are limited to existing structured status signals",
             "resource bounds are recorded as compact status summaries only",
+            "inbound peer endpoints bounded/redacted",
         ]
     );
 }
@@ -948,6 +950,102 @@ fn support_phase78_progress_guarantee_excludes_raw_status_body() {
     }
 }
 
+#[test]
+fn inbound_support_json_projects_shared_status_evidence_with_redacted_endpoints() {
+    // Arrange
+    let temp = TestDirectory::new("inbound-support-json");
+    let status = phase90_status_with_available_inbound();
+    let bundle = phase77_support_bundle_with_status(temp.path(), status);
+
+    // Act
+    let serialized = serde_json::to_value(&bundle).expect("support bundle json");
+    let json_text = serde_json::to_string_pretty(&bundle).expect("support json");
+    let inbound = &serialized["status"]["peers"]["inbound"]["value"];
+
+    // Assert
+    assert_eq!(serialized["status"]["peers"]["inbound"]["state"], json!("available"));
+    assert_eq!(inbound["listener_state"], json!("listening"));
+    assert_eq!(inbound["preflight_reason"], json!("ready"));
+    assert_eq!(inbound["admitted_inbound_peers"], json!(3));
+    assert_eq!(inbound["rejected_inbound_peers"], json!(4));
+    assert_eq!(inbound["duplicate_rejects"], json!(1));
+    assert_eq!(inbound["self_connection_rejects"], json!(1));
+    assert_eq!(inbound["cap_rejects"], json!(1));
+    assert_eq!(inbound["reserved_slot_rejects"], json!(1));
+    assert_eq!(
+        inbound["bound_endpoints"],
+        json!([
+            "1 loopback endpoint redacted",
+            "2 non-loopback endpoints redacted",
+            "1 wildcard endpoint redacted"
+        ])
+    );
+    for forbidden in phase90_raw_inbound_endpoints() {
+        assert_absent(&json_text, forbidden);
+    }
+}
+
+#[test]
+fn inbound_support_markdown_renders_bounded_admission_labels_and_next_action() {
+    // Arrange
+    let temp = TestDirectory::new("inbound-support-markdown");
+    let status = phase90_status_with_available_inbound();
+    let bundle = phase77_support_bundle_with_status(temp.path(), status);
+
+    // Act
+    let markdown = render::render_support_markdown(&bundle);
+
+    // Assert
+    for expected in [
+        "## Inbound Serving",
+        "listener_state: listening",
+        "preflight_reason: ready",
+        "bound_endpoints: 1 loopback endpoint redacted, 2 non-loopback endpoints redacted, 1 wildcard endpoint redacted",
+        "admitted_inbound_peers: 3",
+        "rejected_inbound_peers: 4",
+        "handshake.awaiting_version: 1",
+        "handshake.awaiting_verack: 2",
+        "handshake.established: 3",
+        "handshake.disconnected: 4",
+        "duplicate_rejects: 1",
+        "self_connection_rejects: 1",
+        "cap_rejects: 1",
+        "reserved_slot_rejects: 1",
+        "latest_admission_event: outcome=rejected reason=cap_reject slot_class=ordinary message=inbound cap reached",
+        "Next action: Review configured inbound caps and reserved slots before increasing listener exposure.",
+    ] {
+        assert!(markdown.contains(expected), "missing {expected}");
+    }
+    for forbidden in phase90_raw_inbound_endpoints() {
+        assert_absent(&markdown, forbidden);
+    }
+}
+
+#[test]
+fn inbound_support_preserves_unavailable_reason_in_json_and_markdown() {
+    // Arrange
+    let temp = TestDirectory::new("inbound-support-unavailable");
+    let mut status = phase72_status();
+    status.peers.inbound = FieldAvailability::unavailable("inbound probe not collected");
+    let bundle = phase77_support_bundle_with_status(temp.path(), status);
+
+    // Act
+    let serialized = serde_json::to_value(&bundle).expect("support bundle json");
+    let markdown = render::render_support_markdown(&bundle);
+
+    // Assert
+    assert_eq!(
+        serialized["status"]["peers"]["inbound"]["state"],
+        json!("unavailable")
+    );
+    assert_eq!(
+        serialized["status"]["peers"]["inbound"]["reason"],
+        json!("inbound probe not collected")
+    );
+    assert!(markdown.contains("## Inbound Serving"));
+    assert!(markdown.contains("Status: Unavailable: inbound probe not collected"));
+}
+
 fn apply_phase78_available_sync_fields(sync: &mut SyncStatus) {
     sync.progress_credit = FieldAvailability::available(ProgressCreditEvidence {
         kind: ProgressCreditKind::ValidatedDurableActiveChain,
@@ -1030,6 +1128,7 @@ fn phase72_status() -> OpenBitcoinStatusSnapshot {
                 outbound: 3,
             }),
             recent_peers: FieldAvailability::unavailable("peer telemetry unavailable"),
+            inbound: inbound_status_unavailable(),
         },
         mempool: MempoolStatus {
             transactions: FieldAvailability::unavailable("mempool unavailable"),
@@ -1218,6 +1317,46 @@ fn phase77_support_bundle_with_status(
     bundle.resource_bound_evidence =
         collect_resource_bound_support_evidence(&bundle.status, &data_dir.join("support"));
     bundle
+}
+
+fn phase90_status_with_available_inbound() -> OpenBitcoinStatusSnapshot {
+    let mut status = phase72_status();
+    status.peers.inbound = FieldAvailability::available(InboundPeerServingStatus {
+        listener_state: "listening".to_string(),
+        bound_endpoints: phase90_raw_inbound_endpoints()
+            .into_iter()
+            .map(str::to_string)
+            .collect(),
+        preflight_reason: "ready".to_string(),
+        admitted_inbound_peers: 3,
+        rejected_inbound_peers: 4,
+        handshake: InboundHandshakeStatusCounts {
+            awaiting_version: 1,
+            awaiting_verack: 2,
+            established: 3,
+            disconnected: 4,
+        },
+        duplicate_rejects: 1,
+        self_connection_rejects: 1,
+        cap_rejects: 1,
+        reserved_slot_rejects: 1,
+        latest_admission_event: FieldAvailability::available(InboundAdmissionEvent {
+            outcome: "rejected".to_string(),
+            reason: "cap_reject".to_string(),
+            slot_class: "ordinary".to_string(),
+            message: "inbound cap reached".to_string(),
+        }),
+    });
+    status
+}
+
+fn phase90_raw_inbound_endpoints() -> [&'static str; 4] {
+    [
+        "127.0.0.1:18444",
+        "203.0.113.10:8333",
+        "198.51.100.20:8333",
+        "0.0.0.0:8333",
+    ]
 }
 
 fn phase77_status_with_available_recovery() -> OpenBitcoinStatusSnapshot {
