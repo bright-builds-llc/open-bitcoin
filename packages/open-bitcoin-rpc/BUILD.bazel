@@ -6,6 +6,7 @@ rust_library(
     crate_name = "open_bitcoin_rpc",
     edition = "2024",
     deps = [
+        "//packages/open-bitcoin-network:open_bitcoin_network_lib",
         "//packages/open-bitcoin-node:open_bitcoin_node_lib",
         "@crate_index//:axum",
         "@crate_index//:base64",

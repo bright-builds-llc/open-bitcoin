@@ -1522,6 +1522,7 @@ dependencies = [
  "base64",
  "getrandom 0.3.4",
  "jsonc-parser",
+ "open-bitcoin-network",
  "open-bitcoin-node",
  "open-bitcoin-test-harness",
  "serde",

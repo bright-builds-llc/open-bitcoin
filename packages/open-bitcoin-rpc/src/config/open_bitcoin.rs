@@ -6,11 +6,14 @@
 
 use std::collections::BTreeMap;
 
+use open_bitcoin_network::InboundListenerConfig;
 use serde::{Deserialize, Serialize};
 
 use super::ConfigError;
 
 pub const OPEN_BITCOIN_CONFIG_FILE_NAME: &str = "open-bitcoin.jsonc";
+pub const DEFAULT_INBOUND_LISTEN_ADDRESS: &str = "127.0.0.1:18444";
+pub const DEFAULT_MAX_INBOUND_PEERS: usize = 8;
 
 /// Open Bitcoin-only settings layered above baseline `bitcoin.conf`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -25,6 +28,7 @@ pub struct OpenBitcoinConfig {
     pub migration: MigrationConfig,
     pub storage: StorageConfig,
     pub sync: SyncConfig,
+    pub inbound: InboundConfig,
 }
 
 impl Default for OpenBitcoinConfig {
@@ -39,6 +43,7 @@ impl Default for OpenBitcoinConfig {
             migration: MigrationConfig::default(),
             storage: StorageConfig::default(),
             sync: SyncConfig::default(),
+            inbound: InboundConfig::default(),
         }
     }
 }
@@ -163,6 +168,40 @@ impl SyncConfig {
 impl Default for SyncConfig {
     fn default() -> Self {
         Self::disabled()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct InboundConfig {
+    pub enabled: bool,
+    pub listen_addresses: Vec<String>,
+    pub max_peers: usize,
+    pub reserved_slots: usize,
+    pub allow_public: bool,
+}
+
+impl InboundConfig {
+    pub fn to_listener_config(&self) -> InboundListenerConfig {
+        InboundListenerConfig {
+            enabled: self.enabled,
+            listen_addresses: self.listen_addresses.clone(),
+            max_peers: self.max_peers,
+            reserved_slots: self.reserved_slots,
+            allow_public: self.allow_public,
+        }
+    }
+}
+
+impl Default for InboundConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            listen_addresses: vec![DEFAULT_INBOUND_LISTEN_ADDRESS.to_string()],
+            max_peers: DEFAULT_MAX_INBOUND_PEERS,
+            reserved_slots: 0,
+            allow_public: false,
+        }
     }
 }
 

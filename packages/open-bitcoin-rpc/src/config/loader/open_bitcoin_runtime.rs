@@ -6,11 +6,12 @@
 
 use std::{fs, path::Path};
 
+use open_bitcoin_network::InboundListenerConfig;
 use open_bitcoin_node::core::wallet::AddressNetwork;
 use open_bitcoin_node::{SyncPeerAddress, SyncRuntimeConfig};
 
 use crate::config::{
-    ConfigError, DaemonSyncConfig, DaemonSyncMode, OPEN_BITCOIN_CONFIG_FILE_NAME,
+    ConfigError, DaemonSyncConfig, DaemonSyncMode, InboundConfig, OPEN_BITCOIN_CONFIG_FILE_NAME,
     OpenBitcoinConfig, SyncNetwork, parse_open_bitcoin_jsonc_config,
 };
 
@@ -54,6 +55,17 @@ pub(super) fn load_open_bitcoin_config(
         ))
     })?;
     parse_open_bitcoin_jsonc_config(&text).map(Some)
+}
+
+pub(super) fn resolve_inbound_listener_config(
+    _cli: &CliSettings,
+    maybe_config: Option<&OpenBitcoinConfig>,
+) -> Result<InboundListenerConfig, ConfigError> {
+    let inbound = maybe_config
+        .map(|config| config.inbound.to_listener_config())
+        .unwrap_or_else(|| InboundConfig::default().to_listener_config());
+    validate_inbound_listener_config(&inbound)?;
+    Ok(inbound)
 }
 
 pub(super) fn resolve_daemon_sync_config(
@@ -191,4 +203,38 @@ fn parse_sync_peer_address(
         SyncPeerAddress::dns_seed(endpoint.host, endpoint.port)
     };
     Ok(peer)
+}
+
+fn validate_inbound_listener_config(config: &InboundListenerConfig) -> Result<(), ConfigError> {
+    if config.max_peers == 0 {
+        return Err(inbound_config_error(
+            "inbound.max_peers must be greater than zero.",
+        ));
+    }
+    if config.reserved_slots > config.max_peers {
+        return Err(inbound_config_error(
+            "inbound.reserved_slots must be less than or equal to inbound.max_peers.",
+        ));
+    }
+    if config.enabled && config.listen_addresses.is_empty() {
+        return Err(inbound_config_error(
+            "inbound.listen_addresses must include at least one endpoint when inbound.enabled is true.",
+        ));
+    }
+    if config
+        .listen_addresses
+        .iter()
+        .any(|address| address.trim().is_empty())
+    {
+        return Err(inbound_config_error(
+            "inbound.listen_addresses entries must not be empty.",
+        ));
+    }
+    Ok(())
+}
+
+fn inbound_config_error(message: &str) -> ConfigError {
+    ConfigError::new(format!(
+        "Error resolving Open Bitcoin inbound config: {message}"
+    ))
 }

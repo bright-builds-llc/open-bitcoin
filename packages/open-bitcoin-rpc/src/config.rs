@@ -11,6 +11,7 @@ use std::{
     path::PathBuf,
 };
 
+use open_bitcoin_network::InboundListenerConfig;
 use open_bitcoin_node::{
     SyncNetwork, SyncRuntimeConfig,
     core::{consensus::ConsensusParams, wallet::AddressNetwork},
@@ -20,7 +21,8 @@ mod loader;
 mod open_bitcoin;
 
 pub use open_bitcoin::{
-    ConfigPrecedence, ConfigSource, OPEN_BITCOIN_CONFIG_FILE_NAME, OpenBitcoinConfig,
+    ConfigPrecedence, ConfigSource, DEFAULT_INBOUND_LISTEN_ADDRESS, DEFAULT_MAX_INBOUND_PEERS,
+    InboundConfig, OPEN_BITCOIN_CONFIG_FILE_NAME, OpenBitcoinConfig,
     parse_open_bitcoin_jsonc_config,
 };
 
@@ -213,10 +215,12 @@ pub struct RuntimeConfig {
     pub rpc_client: RpcClientConfig,
     pub wallet: WalletRuntimeConfig,
     pub sync: DaemonSyncConfig,
+    pub inbound: InboundListenerConfig,
 }
 
 impl Default for RuntimeConfig {
     fn default() -> Self {
+        let open_bitcoin_defaults = OpenBitcoinConfig::default();
         Self {
             chain: AddressNetwork::Mainnet,
             maybe_data_dir: None,
@@ -224,6 +228,7 @@ impl Default for RuntimeConfig {
             rpc_client: RpcClientConfig::default(),
             wallet: WalletRuntimeConfig::default(),
             sync: DaemonSyncConfig::default(),
+            inbound: open_bitcoin_defaults.inbound.to_listener_config(),
         }
     }
 }
