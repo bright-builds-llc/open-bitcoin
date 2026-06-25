@@ -6,10 +6,11 @@ use open_bitcoin_node::{
     status::{
         BestKnownTipSource, BestKnownTipStatus, ConfigStatus, FieldAvailability,
         InboundAdmissionEvent, InboundHandshakeStatusCounts, InboundPeerServingStatus,
-        MempoolStatus, NoProgressDiagnosis, NoProgressThresholdEvidence, NoProgressThresholdState,
-        NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot, PeerContributionEvidence,
-        PeerContributionKind, PeerCounts, PeerStatus, PeerTelemetry, PeerTipAgreement,
-        PeerTipAgreementStatus, ProgressCreditEvidence, ProgressCreditKind, ProgressWindowEvidence,
+        InboundPermissionDecisionEvent, MempoolStatus, NoProgressDiagnosis,
+        NoProgressThresholdEvidence, NoProgressThresholdState, NodeRuntimeState, NodeStatus,
+        OpenBitcoinStatusSnapshot, PeerContributionEvidence, PeerContributionKind, PeerCounts,
+        PeerStatus, PeerTelemetry, PeerTipAgreement, PeerTipAgreementStatus,
+        ProgressCreditEvidence, ProgressCreditKind, ProgressWindowEvidence,
         RejectedProgressActivity, RejectedProgressActivityKind, ServiceLifecycleStatus,
         ServicePriorShutdownStatus, ServiceRestartResumeStatus, ServiceResumeProgressStatus,
         ServiceStaleInflightStatus, ServiceStatus, StallDiagnosisConfidence,
@@ -91,10 +92,46 @@ fn inbound_status_render_includes_listener_and_admission_evidence() {
         "self_connection_rejects=1",
         "cap_rejects=2",
         "reserved_slot_rejects=1",
+        "permission_class=protected_inbound",
+        "permissioned_inbound_peers=1",
+        "protected_inbound_peers=1",
+        "active_permission_effects=admission_protected,eviction_policy_protected,download_serving_policy_input",
+        "inactive_permission_effects=inactive_relay,inactive_mempool,inactive_blockfilters",
+        "latest_permission_decision=outcome=admitted reason=admitted permission_class=protected_inbound active_permission_effects=admission_protected,download_serving_policy_input inactive_permission_effects=inactive_relay message=inbound permission decision admitted as protected_inbound",
         "latest_admission_event=outcome=rejected reason=cap_reached slot_class=ordinary message=inbound cap reached",
     ] {
         assert!(rendered.contains(expected), "missing {expected}");
     }
+}
+
+#[test]
+fn inbound_status_render_uses_none_for_empty_permission_effects() {
+    // Arrange
+    let mut snapshot = shared_sync_truth_snapshot();
+    let FieldAvailability::Available(inbound) = &mut snapshot.peers.inbound else {
+        panic!("inbound status fixture should be available");
+    };
+    inbound.active_permission_effects = Vec::new();
+    inbound.inactive_permission_effects = Vec::new();
+    inbound.latest_permission_decision =
+        FieldAvailability::available(InboundPermissionDecisionEvent {
+            outcome: "admitted".to_string(),
+            reason: "admitted".to_string(),
+            permission_class: "ordinary_inbound".to_string(),
+            active_permission_effects: Vec::new(),
+            inactive_permission_effects: Vec::new(),
+            message: "inbound permission decision admitted as ordinary_inbound".to_string(),
+        });
+
+    // Act
+    let rendered = render_status(&snapshot, StatusRenderMode::Human).expect("human status");
+
+    // Assert
+    assert!(rendered.contains("active_permission_effects=none"));
+    assert!(rendered.contains("inactive_permission_effects=none"));
+    assert!(rendered.contains(
+        "latest_permission_decision=outcome=admitted reason=admitted permission_class=ordinary_inbound active_permission_effects=none inactive_permission_effects=none message=inbound permission decision admitted as ordinary_inbound"
+    ));
 }
 
 #[test]
@@ -614,13 +651,29 @@ fn inbound_peer_serving_status() -> InboundPeerServingStatus {
             slot_class: "ordinary".to_string(),
             message: "inbound cap reached".to_string(),
         }),
-        permissioned_inbound_peers: 0,
-        protected_inbound_peers: 0,
-        permission_class: "ordinary_inbound".to_string(),
-        active_permission_effects: Vec::new(),
-        inactive_permission_effects: Vec::new(),
-        latest_permission_decision: FieldAvailability::unavailable(
-            "inbound permission decision evidence unavailable",
-        ),
+        permissioned_inbound_peers: 1,
+        protected_inbound_peers: 1,
+        permission_class: "protected_inbound".to_string(),
+        active_permission_effects: vec![
+            "admission_protected".to_string(),
+            "eviction_policy_protected".to_string(),
+            "download_serving_policy_input".to_string(),
+        ],
+        inactive_permission_effects: vec![
+            "inactive_relay".to_string(),
+            "inactive_mempool".to_string(),
+            "inactive_blockfilters".to_string(),
+        ],
+        latest_permission_decision: FieldAvailability::available(InboundPermissionDecisionEvent {
+            outcome: "admitted".to_string(),
+            reason: "admitted".to_string(),
+            permission_class: "protected_inbound".to_string(),
+            active_permission_effects: vec![
+                "admission_protected".to_string(),
+                "download_serving_policy_input".to_string(),
+            ],
+            inactive_permission_effects: vec!["inactive_relay".to_string()],
+            message: "inbound permission decision admitted as protected_inbound".to_string(),
+        }),
     }
 }
