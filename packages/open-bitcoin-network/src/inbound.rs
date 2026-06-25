@@ -406,6 +406,7 @@ impl InboundAdmissionRejectionReason {
 pub struct InboundAdmissionRejection {
     pub reason: InboundAdmissionRejectionReason,
     pub peer_id: PeerId,
+    pub slot_class: InboundAdmissionSlotClass,
     pub maybe_endpoint: Option<String>,
     pub message: String,
     pub next_action: String,
@@ -541,6 +542,7 @@ fn reject_admission(
     InboundAdmissionDecision::Reject(InboundAdmissionRejection {
         reason,
         peer_id: request.peer_id,
+        slot_class: request.effective_slot_class(),
         maybe_endpoint: Some(request.remote_endpoint.clone()),
         message,
         next_action,

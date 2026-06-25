@@ -13,7 +13,7 @@ use std::net::SocketAddr;
 
 use open_bitcoin_network::{
     InboundAdmissionDecision, InboundAdmissionPolicy, InboundAdmissionRequest,
-    InboundPermissionDecision,
+    InboundAdmissionSlotClass, InboundPermissionDecision,
 };
 use open_bitcoin_node::core::chainstate::ChainstateSnapshot;
 use open_bitcoin_node::core::consensus::{ConsensusParams, ScriptVerifyFlags};
@@ -360,10 +360,14 @@ fn latest_inbound_admission_event(
 ) -> FieldAvailability<InboundAdmissionEvent> {
     if let Some(reason) = admission.maybe_latest_rejection_reason {
         let reason = reason.as_str().to_string();
+        let slot_class = admission
+            .maybe_latest_rejection_slot_class
+            .map(InboundAdmissionSlotClass::as_str)
+            .unwrap_or("ordinary");
         return FieldAvailability::available(InboundAdmissionEvent {
             outcome: "rejected".to_string(),
             reason: reason.clone(),
-            slot_class: "ordinary".to_string(),
+            slot_class: slot_class.to_string(),
             message: format!("inbound admission rejected: {reason}"),
         });
     }

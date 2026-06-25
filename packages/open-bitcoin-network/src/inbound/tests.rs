@@ -731,6 +731,7 @@ fn inbound_small_helpers_cover_status_and_counter_branches() {
     let rejected = InboundAdmissionDecision::Reject(super::InboundAdmissionRejection {
         reason: InboundAdmissionRejectionReason::Shutdown,
         peer_id: 22,
+        slot_class: InboundAdmissionSlotClass::Reserved,
         maybe_endpoint: None,
         message: "shutdown requested".to_string(),
         next_action: "retry after shutdown completes".to_string(),

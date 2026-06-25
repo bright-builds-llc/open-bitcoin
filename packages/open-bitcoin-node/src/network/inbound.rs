@@ -51,6 +51,7 @@ pub struct ManagedInboundAdmissionInfo {
     pub self_connection_rejections: usize,
     pub shutdown_rejections: usize,
     pub maybe_latest_rejection_reason: Option<InboundAdmissionRejectionReason>,
+    pub maybe_latest_rejection_slot_class: Option<InboundAdmissionSlotClass>,
     pub maybe_latest_permission_decision: Option<ManagedInboundPermissionDecisionInfo>,
 }
 
@@ -79,6 +80,7 @@ impl ManagedInboundAdmissionInfo {
     pub(super) fn record_rejection(&mut self, rejection: &InboundAdmissionRejection) {
         self.rejected_inbound_peers += 1;
         self.maybe_latest_rejection_reason = Some(rejection.reason);
+        self.maybe_latest_rejection_slot_class = Some(rejection.slot_class);
         match rejection.reason {
             InboundAdmissionRejectionReason::CapReached => self.cap_rejections += 1,
             InboundAdmissionRejectionReason::ReservedSlotUnavailable => {
@@ -184,6 +186,7 @@ fn duplicate_peer_rejection(record: &InboundPeerRecord) -> InboundAdmissionRejec
     InboundAdmissionRejection {
         reason: InboundAdmissionRejectionReason::DuplicatePeerId,
         peer_id: record.peer_id,
+        slot_class: record.slot_class,
         maybe_endpoint: Some(record.remote_endpoint.clone()),
         message: "inbound peer id already has an admitted peer record".to_string(),
         next_action: "allocate a fresh peer id before retrying admission".to_string(),

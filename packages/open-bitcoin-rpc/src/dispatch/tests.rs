@@ -290,13 +290,21 @@ fn inbound_context(max_peers: usize, reserved_slots: usize) -> ManagedRpcContext
 }
 
 fn permission_context(classes: Vec<ParsedPeerPermissionClass>) -> ManagedRpcContext {
+    permission_context_with_limits(classes, 8, 1)
+}
+
+fn permission_context_with_limits(
+    classes: Vec<ParsedPeerPermissionClass>,
+    max_peers: usize,
+    reserved_slots: usize,
+) -> ManagedRpcContext {
     ManagedRpcContext::from_runtime_config(&RuntimeConfig {
         chain: AddressNetwork::Regtest,
         inbound: InboundListenerConfig {
             enabled: true,
             listen_addresses: vec!["127.0.0.1:18444".to_string()],
-            max_peers: 8,
-            reserved_slots: 1,
+            max_peers,
+            reserved_slots,
             allow_public: false,
             permission_classes: open_bitcoin_network::PeerPermissionClassRegistry::new(classes),
         },
@@ -752,6 +760,25 @@ fn open_bitcoin_network_status_reports_cap_and_reserved_slot_rejections() {
     let mut reserved_context = inbound_context(2, 1);
     reserved_context.record_inbound_admission(21, "127.0.0.1:18444".to_string(), false);
     reserved_context.record_inbound_admission(22, "127.0.0.1:18445".to_string(), false);
+    let mut protected_reserved_context = permission_context_with_limits(
+        vec![parsed_permission_class(
+            "operator-loopback-protected",
+            "127.0.0.1",
+            &["in", "noban", "forceinbound"],
+        )],
+        1,
+        1,
+    );
+    protected_reserved_context.record_inbound_admission_for_remote_addr(
+        31,
+        "127.0.0.1:50031".parse().expect("first protected peer"),
+        false,
+    );
+    protected_reserved_context.record_inbound_admission_for_remote_addr(
+        32,
+        "127.0.0.1:50032".parse().expect("second protected peer"),
+        false,
+    );
 
     // Act
     let cap_status = dispatch(
@@ -764,6 +791,11 @@ fn open_bitcoin_network_status_reports_cap_and_reserved_slot_rejections() {
         MethodCall::OpenBitcoinNetworkStatus(OpenBitcoinNetworkStatusRequest::default()),
     )
     .expect("reserved status");
+    let protected_reserved_status = dispatch(
+        &mut protected_reserved_context,
+        MethodCall::OpenBitcoinNetworkStatus(OpenBitcoinNetworkStatusRequest::default()),
+    )
+    .expect("protected reserved status");
 
     // Assert
     assert_eq!(cap_status["inbound"]["value"]["cap_rejects"], json!(1));
@@ -778,6 +810,18 @@ fn open_bitcoin_network_status_reports_cap_and_reserved_slot_rejections() {
     assert_eq!(
         reserved_status["inbound"]["value"]["latest_admission_event"]["value"]["reason"],
         json!("reserved_slot_unavailable")
+    );
+    assert_eq!(
+        reserved_status["inbound"]["value"]["latest_admission_event"]["value"]["slot_class"],
+        json!("ordinary")
+    );
+    assert_eq!(
+        protected_reserved_status["inbound"]["value"]["latest_admission_event"]["value"]["reason"],
+        json!("reserved_slot_unavailable")
+    );
+    assert_eq!(
+        protected_reserved_status["inbound"]["value"]["latest_admission_event"]["value"]["slot_class"],
+        json!("reserved")
     );
 }
 
