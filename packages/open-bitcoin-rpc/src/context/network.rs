@@ -25,8 +25,9 @@ use open_bitcoin_node::network::{
     ManagedInboundAdmissionInfo, ManagedMempoolInfo, ManagedNetworkInfo,
 };
 use open_bitcoin_node::status::{
-    FieldAvailability, InboundAdmissionEvent, InboundHandshakeStatusCounts,
-    InboundPeerServingStatus, inbound_status_unavailable,
+    FieldAvailability, INBOUND_PERMISSION_DECISION_UNAVAILABLE_REASON, InboundAdmissionEvent,
+    InboundHandshakeStatusCounts, InboundPeerServingStatus, InboundPermissionDecisionEvent,
+    InboundPermissionEvidence, inbound_status_unavailable,
 };
 use open_bitcoin_node::{DurableSyncState, FjallNodeStore};
 use open_bitcoin_node::{
@@ -182,6 +183,7 @@ impl ManagedRpcContext {
         }
 
         let network_info = self.network_info();
+        let permission_evidence = inbound_permission_evidence(&admission);
         FieldAvailability::available(InboundPeerServingStatus {
             listener_state: "listening".to_string(),
             bound_endpoints: Vec::new(),
@@ -201,6 +203,12 @@ impl ManagedRpcContext {
             cap_rejects: usize_to_u32(admission.cap_rejections),
             reserved_slot_rejects: usize_to_u32(admission.reserved_slot_rejections),
             latest_admission_event: latest_inbound_admission_event(&admission),
+            permissioned_inbound_peers: usize_to_u32(admission.permissioned_inbound_admits),
+            protected_inbound_peers: usize_to_u32(admission.protected_inbound_admits),
+            permission_class: permission_evidence.permission_class,
+            active_permission_effects: permission_evidence.active_permission_effects,
+            inactive_permission_effects: permission_evidence.inactive_permission_effects,
+            latest_permission_decision: latest_inbound_permission_decision(&admission),
         })
     }
 
@@ -315,6 +323,52 @@ fn latest_inbound_admission_event(
     }
 
     FieldAvailability::unavailable("no inbound admission event recorded")
+}
+
+fn inbound_permission_evidence(
+    admission: &ManagedInboundAdmissionInfo,
+) -> InboundPermissionEvidence {
+    let mut evidence = InboundPermissionEvidence::ordinary();
+    if let Some(permission_decision) = &admission.maybe_latest_permission_decision {
+        evidence.permission_class = permission_decision.connection_class.as_str().to_string();
+    }
+    evidence.active_permission_effects = admission
+        .observed_active_permission_effects
+        .iter()
+        .map(|effect| effect.as_str().to_string())
+        .collect();
+    evidence.inactive_permission_effects = admission
+        .observed_inactive_permission_effects
+        .iter()
+        .map(|effect| effect.as_str().to_string())
+        .collect();
+    evidence
+}
+
+fn latest_inbound_permission_decision(
+    admission: &ManagedInboundAdmissionInfo,
+) -> FieldAvailability<InboundPermissionDecisionEvent> {
+    let Some(permission_decision) = &admission.maybe_latest_permission_decision else {
+        return FieldAvailability::unavailable(INBOUND_PERMISSION_DECISION_UNAVAILABLE_REASON);
+    };
+
+    let permission_class = permission_decision.connection_class.as_str().to_string();
+    FieldAvailability::available(InboundPermissionDecisionEvent {
+        outcome: "admitted".to_string(),
+        reason: "admitted".to_string(),
+        permission_class: permission_class.clone(),
+        active_permission_effects: permission_decision
+            .active_effects
+            .iter()
+            .map(|effect| effect.as_str().to_string())
+            .collect(),
+        inactive_permission_effects: permission_decision
+            .inactive_effects
+            .iter()
+            .map(|effect| effect.as_str().to_string())
+            .collect(),
+        message: format!("inbound permission decision admitted as {permission_class}"),
+    })
 }
 
 fn usize_to_u32(value: usize) -> u32 {

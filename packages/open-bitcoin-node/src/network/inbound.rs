@@ -5,14 +5,32 @@
 // - packages/bitcoin-knots/src/protocol.h
 
 use open_bitcoin_network::{
-    InboundAdmissionDecision, InboundAdmissionPolicy, InboundAdmissionRejection,
-    InboundAdmissionRejectionReason, InboundAdmissionRequest, InboundAdmissionSlotClass,
-    InboundHandshakeState, InboundPeerRecord, PeerConnectionClass, PeerState,
+    InactivePermissionEffectLabel, InboundAdmissionDecision, InboundAdmissionPolicy,
+    InboundAdmissionRejection, InboundAdmissionRejectionReason, InboundAdmissionRequest,
+    InboundAdmissionSlotClass, InboundHandshakeState, InboundPeerRecord, InboundPermissionDecision,
+    PeerConnectionClass, PeerState, PermissionEffectLabel,
 };
 
 use crate::ChainstateStore;
 
 use super::{ManagedNetworkError, ManagedPeerNetwork};
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ManagedInboundPermissionDecisionInfo {
+    pub connection_class: PeerConnectionClass,
+    pub active_effects: Vec<PermissionEffectLabel>,
+    pub inactive_effects: Vec<InactivePermissionEffectLabel>,
+}
+
+impl ManagedInboundPermissionDecisionInfo {
+    fn from_decision(decision: &InboundPermissionDecision) -> Self {
+        Self {
+            connection_class: decision.connection_class(),
+            active_effects: decision.active_effects().to_vec(),
+            inactive_effects: decision.inactive_effects().to_vec(),
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ManagedInboundAdmissionInfo {
@@ -24,6 +42,8 @@ pub struct ManagedInboundAdmissionInfo {
     pub reserved_inbound_admits: usize,
     pub active_permission_effect_observations: usize,
     pub inactive_permission_effect_observations: usize,
+    pub observed_active_permission_effects: Vec<PermissionEffectLabel>,
+    pub observed_inactive_permission_effects: Vec<InactivePermissionEffectLabel>,
     pub cap_rejections: usize,
     pub reserved_slot_rejections: usize,
     pub duplicate_endpoint_rejections: usize,
@@ -31,6 +51,7 @@ pub struct ManagedInboundAdmissionInfo {
     pub self_connection_rejections: usize,
     pub shutdown_rejections: usize,
     pub maybe_latest_rejection_reason: Option<InboundAdmissionRejectionReason>,
+    pub maybe_latest_permission_decision: Option<ManagedInboundPermissionDecisionInfo>,
 }
 
 impl ManagedInboundAdmissionInfo {
@@ -49,6 +70,10 @@ impl ManagedInboundAdmissionInfo {
             record.permission_decision.active_effects().len();
         self.inactive_permission_effect_observations +=
             record.permission_decision.inactive_effects().len();
+        self.record_permission_effects(&record.permission_decision);
+        self.maybe_latest_permission_decision = Some(
+            ManagedInboundPermissionDecisionInfo::from_decision(&record.permission_decision),
+        );
     }
 
     pub(super) fn record_rejection(&mut self, rejection: &InboundAdmissionRejection) {
@@ -67,6 +92,19 @@ impl ManagedInboundAdmissionInfo {
             }
             InboundAdmissionRejectionReason::SelfConnection => self.self_connection_rejections += 1,
             InboundAdmissionRejectionReason::Shutdown => self.shutdown_rejections += 1,
+        }
+    }
+
+    fn record_permission_effects(&mut self, decision: &InboundPermissionDecision) {
+        for effect in decision.active_effects() {
+            if !self.observed_active_permission_effects.contains(effect) {
+                self.observed_active_permission_effects.push(*effect);
+            }
+        }
+        for effect in decision.inactive_effects() {
+            if !self.observed_inactive_permission_effects.contains(effect) {
+                self.observed_inactive_permission_effects.push(*effect);
+            }
         }
     }
 }

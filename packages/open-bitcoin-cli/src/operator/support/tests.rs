@@ -1350,6 +1350,14 @@ fn phase90_status_with_available_inbound() -> OpenBitcoinStatusSnapshot {
             slot_class: "ordinary".to_string(),
             message: "inbound cap reached".to_string(),
         }),
+        permissioned_inbound_peers: 0,
+        protected_inbound_peers: 0,
+        permission_class: "ordinary_inbound".to_string(),
+        active_permission_effects: Vec::new(),
+        inactive_permission_effects: Vec::new(),
+        latest_permission_decision: FieldAvailability::unavailable(
+            "inbound permission decision evidence unavailable",
+        ),
     });
     status
 }

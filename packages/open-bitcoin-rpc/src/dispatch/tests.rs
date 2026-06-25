@@ -581,6 +581,18 @@ fn open_bitcoin_network_status_returns_available_inbound_evidence() {
         inbound["value"]["latest_admission_event"]["value"]["reason"],
         json!("duplicate_peer_id")
     );
+    assert_eq!(inbound["value"]["permissioned_inbound_peers"], json!(0));
+    assert_eq!(inbound["value"]["protected_inbound_peers"], json!(0));
+    assert_eq!(
+        inbound["value"]["permission_class"],
+        json!("ordinary_inbound")
+    );
+    assert_eq!(inbound["value"]["active_permission_effects"], json!([]));
+    assert_eq!(inbound["value"]["inactive_permission_effects"], json!([]));
+    assert_eq!(
+        inbound["value"]["latest_permission_decision"]["value"]["permission_class"],
+        json!("ordinary_inbound")
+    );
 }
 
 #[test]
@@ -601,6 +613,78 @@ fn open_bitcoin_network_status_preserves_unavailable_reason() {
         status["inbound"]["value"]["reason"],
         json!(INBOUND_STATUS_UNAVAILABLE_REASON)
     );
+}
+
+#[test]
+fn open_bitcoin_network_status_reports_permission_evidence_without_raw_class_names() {
+    // Arrange
+    let mut context = permission_context(vec![
+        parsed_permission_class("operator-loopback-relay-like", "127.0.0.1", &["in", "all"]),
+        parsed_permission_class(
+            "operator-loopback-protected",
+            "127.0.0.2",
+            &["in", "noban", "forceinbound"],
+        ),
+    ]);
+    context.record_inbound_admission_for_remote_addr(
+        31,
+        "127.0.0.1:50031".parse().expect("permissioned remote"),
+        false,
+    );
+    context.record_inbound_admission_for_remote_addr(
+        32,
+        "127.0.0.2:50032".parse().expect("protected remote"),
+        false,
+    );
+
+    // Act
+    let status = dispatch(
+        &mut context,
+        MethodCall::OpenBitcoinNetworkStatus(OpenBitcoinNetworkStatusRequest::default()),
+    )
+    .expect("network status");
+    let serialized = serde_json::to_string(&status).expect("status json");
+
+    // Assert
+    let inbound = &status["inbound"]["value"];
+    assert_eq!(inbound["permissioned_inbound_peers"], json!(1));
+    assert_eq!(inbound["protected_inbound_peers"], json!(1));
+    assert_eq!(inbound["permission_class"], json!("protected_inbound"));
+    assert_eq!(
+        inbound["active_permission_effects"],
+        json!([
+            "admission_protected",
+            "eviction_policy_protected",
+            "misbehavior_policy_protected",
+            "address_response_policy_input",
+            "download_serving_policy_input"
+        ])
+    );
+    assert_eq!(
+        inbound["inactive_permission_effects"],
+        json!([
+            "inactive_relay",
+            "inactive_forcerelay",
+            "inactive_mempool",
+            "inactive_bloomfilter",
+            "inactive_blockfilters"
+        ])
+    );
+    assert_eq!(
+        inbound["latest_permission_decision"]["value"]["permission_class"],
+        json!("protected_inbound")
+    );
+    assert_eq!(
+        inbound["latest_permission_decision"]["value"]["active_permission_effects"],
+        json!([
+            "admission_protected",
+            "eviction_policy_protected",
+            "misbehavior_policy_protected",
+            "download_serving_policy_input"
+        ])
+    );
+    assert!(!serialized.contains("operator-loopback-relay-like"));
+    assert!(!serialized.contains("operator-loopback-protected"));
 }
 
 #[test]
@@ -646,6 +730,7 @@ fn get_network_info_omits_open_bitcoin_inbound_status_details() {
     // Arrange
     let mut context = node_context_with_chain_and_mempool();
     context.record_inbound_admission(17, "127.0.0.1:18447".to_string(), false);
+    let regression_scope = "getnetworkinfo permission evidence regression";
 
     // Act
     let network = dispatch(
@@ -665,10 +750,16 @@ fn get_network_info_omits_open_bitcoin_inbound_status_details() {
         "self_connection_rejects",
         "reserved_slot_rejects",
         "cap_rejects",
+        "permission_class",
+        "permissioned_inbound_peers",
+        "protected_inbound_peers",
+        "active_permission_effects",
+        "inactive_permission_effects",
+        "latest_permission_decision",
     ] {
         assert!(
             !serialized.contains(forbidden),
-            "baseline getnetworkinfo exposed {forbidden}"
+            "{regression_scope}: baseline method exposed {forbidden}"
         );
     }
 }

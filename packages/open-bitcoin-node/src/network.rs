@@ -29,7 +29,7 @@ use crate::{ChainstateStore, ManagedChainstate, ManagedMempool};
 use header_sync::validate_header_for_sync;
 use inbound::{default_inbound_admission_policy, is_active_inbound_peer};
 
-pub use inbound::ManagedInboundAdmissionInfo;
+pub use inbound::{ManagedInboundAdmissionInfo, ManagedInboundPermissionDecisionInfo};
 
 #[derive(Debug)]
 pub enum ManagedNetworkError {

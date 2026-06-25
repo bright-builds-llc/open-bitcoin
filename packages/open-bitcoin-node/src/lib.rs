@@ -33,7 +33,8 @@ pub use logging::{LogRetentionPolicy, LogStatus};
 pub use mempool::ManagedMempool;
 pub use metrics::{MetricKind, MetricRetentionPolicy, MetricSample, MetricsStatus};
 pub use network::{
-    ManagedInboundAdmissionInfo, ManagedNetworkError, ManagedNetworkInfo, ManagedPeerNetwork,
+    ManagedInboundAdmissionInfo, ManagedInboundPermissionDecisionInfo, ManagedNetworkError,
+    ManagedNetworkInfo, ManagedPeerNetwork,
 };
 pub use open_bitcoin_core as core;
 pub use recovery::{
@@ -43,15 +44,17 @@ pub use recovery::{
 };
 pub use status::{
     BuildProvenance, ConfigStatus, DurableSyncState, FieldAvailability,
-    INBOUND_STATUS_UNAVAILABLE_REASON, InboundAdmissionEvent, InboundHandshakeStatusCounts,
-    InboundPeerServingStatus, NoProgressThresholdEvidence, NoProgressThresholdState,
-    NodeRuntimeState, OpenBitcoinStatusSnapshot, PeerContributionEvidence, PeerContributionKind,
-    PeerStatus, PeerTelemetry, ProgressCreditEvidence, ProgressCreditKind, ProgressWindowEvidence,
-    RejectedProgressActivity, RejectedProgressActivityKind, ResourceBoundEntry, ResourceBoundKind,
-    ResourceBoundSnapshot, ResourceBoundUnit, ResourceBoundUsage, ResourcePressureLevel,
-    ResourcePressureState, ServiceLifecycleStatus, StallDiagnosisConfidence,
-    StallDiagnosisEvidence, StalledSubsystem, SyncControlState, SyncLagStatus, SyncLifecycleState,
-    SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure, SyncStatus,
+    INBOUND_PERMISSION_DECISION_UNAVAILABLE_REASON, INBOUND_STATUS_UNAVAILABLE_REASON,
+    InboundAdmissionEvent, InboundHandshakeStatusCounts, InboundPeerServingStatus,
+    InboundPermissionDecisionEvent, InboundPermissionEvidence, NoProgressThresholdEvidence,
+    NoProgressThresholdState, NodeRuntimeState, OpenBitcoinStatusSnapshot,
+    PeerContributionEvidence, PeerContributionKind, PeerStatus, PeerTelemetry,
+    ProgressCreditEvidence, ProgressCreditKind, ProgressWindowEvidence, RejectedProgressActivity,
+    RejectedProgressActivityKind, ResourceBoundEntry, ResourceBoundKind, ResourceBoundSnapshot,
+    ResourceBoundUnit, ResourceBoundUsage, ResourcePressureLevel, ResourcePressureState,
+    ServiceLifecycleStatus, StallDiagnosisConfidence, StallDiagnosisEvidence, StalledSubsystem,
+    SyncControlState, SyncLagStatus, SyncLifecycleState, SyncProgressSignal, SyncRecoveryCategory,
+    SyncResourcePressure, SyncStatus,
 };
 pub use storage::{
     FjallNodeStore, MetricsStorageSnapshot, PersistMode, RecoveryMarker, RuntimeMetadata,

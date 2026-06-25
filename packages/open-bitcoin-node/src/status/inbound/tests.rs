@@ -2,8 +2,9 @@
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
 use super::{
-    INBOUND_STATUS_UNAVAILABLE_REASON, InboundAdmissionEvent, InboundHandshakeStatusCounts,
-    InboundPeerServingStatus,
+    INBOUND_PERMISSION_DECISION_UNAVAILABLE_REASON, INBOUND_STATUS_UNAVAILABLE_REASON,
+    InboundAdmissionEvent, InboundHandshakeStatusCounts, InboundPeerServingStatus,
+    InboundPermissionDecisionEvent,
 };
 use crate::status::{FieldAvailability, PeerCounts, PeerStatus};
 
@@ -89,6 +90,28 @@ fn inbound_status_serializes_listener_and_admission_evidence() {
                 slot_class: "ordinary".to_string(),
                 message: "inbound peer cap has been reached".to_string(),
             }),
+            permissioned_inbound_peers: 1,
+            protected_inbound_peers: 1,
+            permission_class: "protected_inbound".to_string(),
+            active_permission_effects: vec![
+                "admission_protected".to_string(),
+                "eviction_policy_protected".to_string(),
+            ],
+            inactive_permission_effects: vec![
+                "inactive_relay".to_string(),
+                "inactive_mempool".to_string(),
+            ],
+            latest_permission_decision: FieldAvailability::available(
+                InboundPermissionDecisionEvent {
+                    outcome: "admitted".to_string(),
+                    reason: "admitted".to_string(),
+                    permission_class: "protected_inbound".to_string(),
+                    active_permission_effects: vec!["admission_protected".to_string()],
+                    inactive_permission_effects: vec!["inactive_relay".to_string()],
+                    message: "inbound permission decision admitted as protected_inbound"
+                        .to_string(),
+                },
+            ),
         }),
     };
 
@@ -130,5 +153,75 @@ fn inbound_status_serializes_listener_and_admission_evidence() {
     assert_eq!(
         encoded["inbound"]["value"]["latest_admission_event"]["value"]["slot_class"],
         "ordinary"
+    );
+    assert_eq!(encoded["inbound"]["value"]["permissioned_inbound_peers"], 1);
+    assert_eq!(encoded["inbound"]["value"]["protected_inbound_peers"], 1);
+    assert_eq!(
+        encoded["inbound"]["value"]["permission_class"],
+        "protected_inbound"
+    );
+    assert_eq!(
+        encoded["inbound"]["value"]["active_permission_effects"],
+        serde_json::json!(["admission_protected", "eviction_policy_protected"])
+    );
+    assert_eq!(
+        encoded["inbound"]["value"]["inactive_permission_effects"],
+        serde_json::json!(["inactive_relay", "inactive_mempool"])
+    );
+    assert_eq!(
+        encoded["inbound"]["value"]["latest_permission_decision"]["value"]["permission_class"],
+        "protected_inbound"
+    );
+    assert_eq!(
+        encoded["inbound"]["value"]["latest_permission_decision"]["value"]["inactive_permission_effects"],
+        serde_json::json!(["inactive_relay"])
+    );
+}
+
+#[test]
+fn inbound_status_permission_fields_default_for_legacy_status_json() {
+    // Arrange
+    let legacy_status = serde_json::json!({
+        "listener_state": "listening",
+        "bound_endpoints": [],
+        "preflight_reason": "ready",
+        "admitted_inbound_peers": 1,
+        "rejected_inbound_peers": 0,
+        "handshake": {
+            "awaiting_version": 0,
+            "awaiting_verack": 0,
+            "established": 1,
+            "disconnected": 0
+        },
+        "duplicate_rejects": 0,
+        "self_connection_rejects": 0,
+        "cap_rejects": 0,
+        "reserved_slot_rejects": 0,
+        "latest_admission_event": {
+            "state": "available",
+            "value": {
+                "outcome": "admitted",
+                "reason": "admitted",
+                "slot_class": "ordinary",
+                "message": "inbound peer admitted"
+            }
+        }
+    });
+
+    // Act
+    let status: InboundPeerServingStatus =
+        serde_json::from_value(legacy_status).expect("legacy inbound status");
+
+    // Assert
+    assert_eq!(status.permissioned_inbound_peers, 0);
+    assert_eq!(status.protected_inbound_peers, 0);
+    assert_eq!(status.permission_class, "ordinary_inbound");
+    assert!(status.active_permission_effects.is_empty());
+    assert!(status.inactive_permission_effects.is_empty());
+    assert_eq!(
+        status.latest_permission_decision,
+        FieldAvailability::<InboundPermissionDecisionEvent>::unavailable(
+            INBOUND_PERMISSION_DECISION_UNAVAILABLE_REASON
+        )
     );
 }
