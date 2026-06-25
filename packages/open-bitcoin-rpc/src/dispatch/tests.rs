@@ -36,10 +36,11 @@ use open_bitcoin_node::{
     },
     status::{
         BestKnownTipSource, BestKnownTipStatus, ChainTipStatus, FieldAvailability,
-        NoProgressDiagnosis, PeerCounts, PeerStatus, StayCurrentStatus, SyncAttemptCounters,
-        SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal,
-        SyncReconcileProgressStatus, SyncRecoveryCategory, SyncReorgEvidence, SyncResourcePressure,
-        SyncStatus, SyncStopReasonStatus, TipFreshnessStatus,
+        INBOUND_STATUS_UNAVAILABLE_REASON, InboundPeerServingStatus, NoProgressDiagnosis,
+        PeerCounts, PeerStatus, StayCurrentStatus, SyncAttemptCounters, SyncConfiguredTargets,
+        SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal,
+        SyncReconcileProgressStatus, SyncRecoveryCategory, SyncReorgEvidence,
+        SyncResourcePressure, SyncStatus, SyncStopReasonStatus, TipFreshnessStatus,
     },
 };
 
@@ -660,6 +661,9 @@ fn phase62_runtime_metadata() -> RuntimeMetadata {
                     outbound: 2,
                 }),
                 recent_peers: FieldAvailability::available(Vec::new()),
+                inbound: FieldAvailability::<InboundPeerServingStatus>::unavailable(
+                    INBOUND_STATUS_UNAVAILABLE_REASON,
+                ),
             },
             health_signals: Vec::new(),
             updated_at_unix_seconds: 1_715_000_000,
@@ -847,6 +851,9 @@ fn get_blockchain_info_uses_durable_connected_block_height_not_downloaded_height
                             outbound: 2,
                         }),
                         recent_peers: FieldAvailability::available(Vec::new()),
+                        inbound: FieldAvailability::<InboundPeerServingStatus>::unavailable(
+                            INBOUND_STATUS_UNAVAILABLE_REASON,
+                        ),
                     },
                     health_signals: Vec::new(),
                     updated_at_unix_seconds: 1_715_000_000,
