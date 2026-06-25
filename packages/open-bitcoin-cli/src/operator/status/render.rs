@@ -3,6 +3,7 @@
 
 //! Human and JSON status rendering.
 
+mod inbound;
 mod progress_guarantee;
 
 use open_bitcoin_node::{
@@ -19,6 +20,7 @@ use open_bitcoin_node::{
 };
 use serde::Serialize;
 
+use inbound::inbound_status_text;
 use progress_guarantee::progress_guarantee_lines;
 
 use crate::operator::sync_truth_render::{
@@ -161,6 +163,10 @@ fn render_human_status(snapshot: &OpenBitcoinStatusSnapshot) -> String {
     lines.push(format!(
         "Peers: {}",
         peer_counts_availability(&snapshot.peers.peer_counts)
+    ));
+    lines.push(format!(
+        "Inbound serving: {}",
+        inbound_status_text(&snapshot.peers.inbound)
     ));
     lines.push(format!(
         "Peer detail: {}",

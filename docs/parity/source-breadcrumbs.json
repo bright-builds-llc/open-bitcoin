@@ -260,6 +260,7 @@
         "packages/open-bitcoin-cli/src/operator/status/http.rs",
         "packages/open-bitcoin-cli/src/operator/status/recovery_evidence.rs",
         "packages/open-bitcoin-cli/src/operator/status/render.rs",
+        "packages/open-bitcoin-cli/src/operator/status/render/inbound.rs",
         "packages/open-bitcoin-cli/src/operator/status/render/progress_guarantee.rs",
         "packages/open-bitcoin-cli/src/operator/status/render/tests.rs",
         "packages/open-bitcoin-cli/src/operator/status/service_status.rs",
