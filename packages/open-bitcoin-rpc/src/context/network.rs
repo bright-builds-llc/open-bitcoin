@@ -9,8 +9,11 @@
 // - packages/bitcoin-knots/src/rpc/rawtransaction.cpp
 // - packages/bitcoin-knots/test/functional/interface_rpc.py
 
+use std::net::SocketAddr;
+
 use open_bitcoin_network::{
     InboundAdmissionDecision, InboundAdmissionPolicy, InboundAdmissionRequest,
+    InboundPermissionDecision,
 };
 use open_bitcoin_node::core::chainstate::ChainstateSnapshot;
 use open_bitcoin_node::core::consensus::{ConsensusParams, ScriptVerifyFlags};
@@ -49,6 +52,7 @@ impl ManagedRpcContext {
             consensus_params,
             verify_flags,
             network,
+            permission_classes: Default::default(),
             maybe_durable_sync_state: None,
             maybe_daemon_sync_control: None,
             wallet_state: super::wallet_state::WalletState::Local(wallet),
@@ -87,6 +91,7 @@ impl ManagedRpcContext {
                 consensus_params,
                 verify_flags: default_verify_flags(),
                 network: managed_network,
+                permission_classes: config.inbound.permission_classes.clone(),
                 maybe_durable_sync_state: load_durable_sync_state(config),
                 maybe_daemon_sync_control: None,
                 wallet_state: super::wallet_state::WalletState::Local(wallet),
@@ -99,6 +104,7 @@ impl ManagedRpcContext {
                 consensus_params,
                 verify_flags: default_verify_flags(),
                 network: managed_network,
+                permission_classes: config.inbound.permission_classes.clone(),
                 maybe_durable_sync_state: store
                     .load_runtime_metadata()
                     .ok()
@@ -207,6 +213,13 @@ impl ManagedRpcContext {
         let mut request = InboundAdmissionRequest::ordinary(peer_id, remote_endpoint);
         request.is_shutdown_requested = is_shutdown_requested;
         self.network.admit_inbound_peer(request)
+    }
+
+    pub fn permission_decision_for_remote_addr(
+        &self,
+        remote_addr: SocketAddr,
+    ) -> InboundPermissionDecision {
+        self.permission_classes.resolve_inbound(remote_addr.ip())
     }
 
     pub fn receive_inbound_wire_message(

@@ -9,6 +9,7 @@
 // - packages/bitcoin-knots/src/rpc/rawtransaction.cpp
 // - packages/bitcoin-knots/test/functional/interface_rpc.py
 
+use open_bitcoin_network::PeerPermissionClassRegistry;
 use open_bitcoin_node::MemoryChainstateStore;
 use open_bitcoin_node::core::consensus::{ConsensusParams, ScriptVerifyFlags};
 use open_bitcoin_node::core::wallet::AddressNetwork;
@@ -34,6 +35,7 @@ pub struct ManagedRpcContext {
     consensus_params: ConsensusParams,
     verify_flags: ScriptVerifyFlags,
     network: ManagedPeerNetwork<MemoryChainstateStore>,
+    permission_classes: PeerPermissionClassRegistry,
     maybe_durable_sync_state: Option<DurableSyncState>,
     maybe_daemon_sync_control: Option<DaemonSyncControl>,
     wallet_state: WalletState,
