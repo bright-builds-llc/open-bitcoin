@@ -78,10 +78,20 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
   in-flight block work, and rotate through endpoint-keyed backoff without
   claiming peer banning, inbound reputation, address-manager governance, or
   relay readiness
+- Phase 90 `v1-9-inbound-listener-admission-policy` evidence keeps INB-01,
+  INB-02, INB-03, INB-04, and INB-05 auditable through disabled-by-default
+  Open Bitcoin-owned listener controls, loopback-first listener UAT, typed
+  preflight/admission evidence, managed inbound/outbound counts, shared
+  inbound status, RPC status, metrics/log labels, support evidence, and source
+  breadcrumbs without adding relay, permission-class, address-relay,
+  eviction, ban, broad DoS policy, public default, or production readiness
+  claims
 
 ## Knots sources
 
 - [`packages/bitcoin-knots/src/protocol.h`](../../../packages/bitcoin-knots/src/protocol.h)
+- [`packages/bitcoin-knots/src/net.cpp`](../../../packages/bitcoin-knots/src/net.cpp)
+- [`packages/bitcoin-knots/src/net_processing.cpp`](../../../packages/bitcoin-knots/src/net_processing.cpp)
 - [`packages/bitcoin-knots/src/headerssync.h`](../../../packages/bitcoin-knots/src/headerssync.h)
 - [`packages/bitcoin-knots/src/headerssync.cpp`](../../../packages/bitcoin-knots/src/headerssync.cpp)
 - [`packages/bitcoin-knots/src/sync.cpp`](../../../packages/bitcoin-knots/src/sync.cpp)
@@ -337,15 +347,58 @@ The Phase 83 support matrix is
 outbound evidence at `opt-in UAT`, while inbound serving, address relay, block
 serving, transaction relay, and compact block relay remain `deferred`.
 
+## Phase 90 inbound listener and admission boundary
+
+The `v1-9-inbound-listener-admission-policy` surface covers INB-01 through
+INB-05 for opt-in inbound listener/admission review. Its Knots anchors are
+[`packages/bitcoin-knots/src/net.cpp`](../../../packages/bitcoin-knots/src/net.cpp)
+for bind/listen and connection-manager behavior,
+[`packages/bitcoin-knots/src/net_processing.cpp`](../../../packages/bitcoin-knots/src/net_processing.cpp)
+for handshake and peer-processing behavior, and
+[`packages/bitcoin-knots/test/functional/p2p_handshake.py`](../../../packages/bitcoin-knots/test/functional/p2p_handshake.py)
+for version/verack handshake fixture behavior.
+
+Open Bitcoin intentionally owns the Phase 90 activation surface:
+
+- listener enablement is disabled by default and uses `open-bitcoin.jsonc`
+  `inbound.enabled`, `inbound.listen_addresses`, `inbound.max_peers`,
+  `inbound.reserved_slots`, and `inbound.allow_public`
+- daemon CLI overrides use Open Bitcoin-prefixed flags such as
+  `-openbitcoininbound=1` and `-openbitcoinlisten=127.0.0.1:18444`
+- loopback endpoints are the deterministic UAT target; wildcard or public
+  endpoints require `inbound.allow_public = true` and remain outside
+  `bash scripts/verify.sh`
+- baseline `getnetworkinfo` keeps `connections`, `connections_in`, and
+  `connections_out`, while `openbitcoinnetworkstatus` and
+  `OpenBitcoinStatusSnapshot.peers.inbound` carry detailed listener and
+  admission evidence
+- metrics and logs expose low-cardinality counters and stable labels such as
+  `inbound_listener_state`, `inbound_preflight_reason`, `bound_endpoint`, and
+  `admission_reject_reason`
+- support bundles render bounded and redacted inbound evidence instead of raw
+  peer tables or unbounded endpoint lists
+
+Phase 90 does not claim Phase 91+ peer permission classes, address
+advertisement or address relay, eviction, ban, discourage, reputation, broad
+DoS/resource governance, transaction relay, compact block relay, public
+listener defaults, or production node readiness. Reserved slots are admission
+evidence only until the later permission phase deliberately expands that
+surface.
+
 ## First-party implementation
 
+- [`packages/open-bitcoin-network/src/inbound.rs`](../../../packages/open-bitcoin-network/src/inbound.rs)
 - [`packages/open-bitcoin-network/src/message.rs`](../../../packages/open-bitcoin-network/src/message.rs)
 - [`packages/open-bitcoin-network/src/compatibility.rs`](../../../packages/open-bitcoin-network/src/compatibility.rs)
 - [`packages/open-bitcoin-network/src/header_store.rs`](../../../packages/open-bitcoin-network/src/header_store.rs)
 - [`packages/open-bitcoin-network/src/peer.rs`](../../../packages/open-bitcoin-network/src/peer.rs)
 - [`packages/open-bitcoin-network/tests/parity.rs`](../../../packages/open-bitcoin-network/tests/parity.rs)
 - [`packages/open-bitcoin-node/src/network.rs`](../../../packages/open-bitcoin-node/src/network.rs)
+- [`packages/open-bitcoin-node/src/status/inbound.rs`](../../../packages/open-bitcoin-node/src/status/inbound.rs)
+- [`packages/open-bitcoin-rpc/src/inbound_listener.rs`](../../../packages/open-bitcoin-rpc/src/inbound_listener.rs)
 - [`packages/open-bitcoin-node/src/sync.rs`](../../../packages/open-bitcoin-node/src/sync.rs)
+- [`packages/open-bitcoin-cli/src/operator/status/render/inbound.rs`](../../../packages/open-bitcoin-cli/src/operator/status/render/inbound.rs)
+- [`packages/open-bitcoin-cli/src/operator/support/render/inbound.rs`](../../../packages/open-bitcoin-cli/src/operator/support/render/inbound.rs)
 - [`scripts/run-live-mainnet-smoke.ts`](../../../scripts/run-live-mainnet-smoke.ts)
 
 ## Known gaps
@@ -353,13 +406,13 @@ serving, transaction relay, and compact block relay remain `deferred`.
 - address relay, `addrv2`, peer discovery policy, and DNS-seed governance
 - encrypted transport and other non-v1 wire transports
 - compact blocks, blocktxn, filtered blocks, bloom filters, and compact filters
-- peer eviction, bans, resource-governance scoring, and timeout parity beyond
-  the basic lifecycle surface
+- peer permission classes, eviction, bans, resource-governance scoring, and
+  timeout parity beyond the Phase 90 admission evidence surface
 - production daemon-integrated full-sync guarantees
 - automatic public-mainnet recovery loops and broad production-node service
   guarantees
-- long-running socket orchestration and transport persistence beyond the current
-  sync-runtime foundation
+- public inbound defaults and transport persistence beyond the current explicit
+  listener review surface
 
 ## Follow-up triggers
 

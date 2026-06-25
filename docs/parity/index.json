@@ -608,6 +608,10 @@
     {
       "name": "v1-8-deterministic-claim-guardrails",
       "status": "done"
+    },
+    {
+      "name": "v1-9-inbound-listener-admission-policy",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -1592,6 +1596,40 @@
         "suspected_unknowns": [
           "Future production-readiness gates need separate scoped evidence before any deferred production-adjacent surface is promoted."
         ]
+      },
+      {
+        "id": "v1-9-inbound-listener-admission-policy",
+        "title": "v1.9 Inbound Listener Admission Policy",
+        "status": "done",
+        "requirements": [
+          "INB-01",
+          "INB-02",
+          "INB-03",
+          "INB-04",
+          "INB-05"
+        ],
+        "evidence": [
+          "docs/operator/runtime-guide.md",
+          "docs/architecture/config-precedence.md",
+          "docs/architecture/status-snapshot.md",
+          "docs/architecture/operator-observability.md",
+          "docs/parity/catalog/p2p.md",
+          "docs/parity/source-breadcrumbs.json",
+          ".planning/phases/90-inbound-listener-and-admission-policy/90-01-SUMMARY.md",
+          ".planning/phases/90-inbound-listener-and-admission-policy/90-04-SUMMARY.md",
+          ".planning/phases/90-inbound-listener-and-admission-policy/90-05-SUMMARY.md",
+          ".planning/phases/90-inbound-listener-and-admission-policy/90-06-SUMMARY.md",
+          ".planning/phases/90-inbound-listener-and-admission-policy/90-07-SUMMARY.md",
+          ".planning/phases/90-inbound-listener-and-admission-policy/90-08-SUMMARY.md"
+        ],
+        "rationale": "Phase 90 registers disabled-by-default, Open Bitcoin-owned inbound listener and admission evidence with loopback-first UAT, typed preflight/admission status, shared RPC/status/support observability, and source breadcrumbs.",
+        "known_gaps": [
+          "Phase 90 proves opt-in listener/admission evidence only; public or wildcard endpoint review stays explicit UAT outside bash scripts/verify.sh.",
+          "Peer permission classes, address relay, eviction, ban, discourage, broad DoS/resource governance, transaction relay, compact block relay, public listener defaults, and production readiness remain future-scoped."
+        ],
+        "suspected_unknowns": [
+          "Future Phase 91 through Phase 95 work owns richer permissions, address advertisement, eviction/ban policy, resource governance, and release-boundary evidence before any broader network-participation claim can be made."
+        ]
       }
     ]
   },
@@ -2124,6 +2162,31 @@
         "docs/parity/upgrade-and-rollback-policy.md",
         "docs/parity/operator-runbooks.md",
         "docs/parity/service-operation-expectations.md"
+      ]
+    },
+    "v1_9_inbound_listener_admission_policy": {
+      "path": "catalog/p2p.md",
+      "status": "done",
+      "requirements": [
+        "INB-01",
+        "INB-02",
+        "INB-03",
+        "INB-04",
+        "INB-05"
+      ],
+      "evidence": [
+        "docs/operator/runtime-guide.md",
+        "docs/architecture/config-precedence.md",
+        "docs/architecture/status-snapshot.md",
+        "docs/architecture/operator-observability.md",
+        "docs/parity/catalog/p2p.md",
+        "docs/parity/source-breadcrumbs.json",
+        ".planning/phases/90-inbound-listener-and-admission-policy/90-01-SUMMARY.md",
+        ".planning/phases/90-inbound-listener-and-admission-policy/90-04-SUMMARY.md",
+        ".planning/phases/90-inbound-listener-and-admission-policy/90-05-SUMMARY.md",
+        ".planning/phases/90-inbound-listener-and-admission-policy/90-06-SUMMARY.md",
+        ".planning/phases/90-inbound-listener-and-admission-policy/90-07-SUMMARY.md",
+        ".planning/phases/90-inbound-listener-and-admission-policy/90-08-SUMMARY.md"
       ]
     }
   }
