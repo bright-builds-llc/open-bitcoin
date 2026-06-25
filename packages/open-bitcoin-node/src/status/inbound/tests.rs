@@ -13,6 +13,7 @@ fn inbound_status_default_serializes_unavailable_reason() {
     let peers = PeerStatus {
         peer_counts: FieldAvailability::unavailable("node stopped"),
         recent_peers: FieldAvailability::unavailable("node stopped"),
+        inbound: FieldAvailability::unavailable(INBOUND_STATUS_UNAVAILABLE_REASON),
     };
 
     // Act
@@ -104,8 +105,14 @@ fn inbound_status_serializes_listener_and_admission_evidence() {
     );
     assert_eq!(encoded["inbound"]["value"]["admitted_inbound_peers"], 2);
     assert_eq!(encoded["inbound"]["value"]["rejected_inbound_peers"], 5);
-    assert_eq!(encoded["inbound"]["value"]["handshake"]["awaiting_version"], 1);
-    assert_eq!(encoded["inbound"]["value"]["handshake"]["awaiting_verack"], 1);
+    assert_eq!(
+        encoded["inbound"]["value"]["handshake"]["awaiting_version"],
+        1
+    );
+    assert_eq!(
+        encoded["inbound"]["value"]["handshake"]["awaiting_verack"],
+        1
+    );
     assert_eq!(encoded["inbound"]["value"]["handshake"]["established"], 2);
     assert_eq!(encoded["inbound"]["value"]["handshake"]["disconnected"], 0);
     assert_eq!(encoded["inbound"]["value"]["duplicate_rejects"], 2);

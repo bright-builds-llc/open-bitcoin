@@ -43,9 +43,10 @@ pub use recovery::{
 };
 pub use status::{
     BuildProvenance, ConfigStatus, DurableSyncState, FieldAvailability,
-    NoProgressThresholdEvidence, NoProgressThresholdState, NodeRuntimeState,
-    OpenBitcoinStatusSnapshot, PeerContributionEvidence, PeerContributionKind, PeerStatus,
-    PeerTelemetry, ProgressCreditEvidence, ProgressCreditKind, ProgressWindowEvidence,
+    INBOUND_STATUS_UNAVAILABLE_REASON, InboundAdmissionEvent, InboundHandshakeStatusCounts,
+    InboundPeerServingStatus, NoProgressThresholdEvidence, NoProgressThresholdState,
+    NodeRuntimeState, OpenBitcoinStatusSnapshot, PeerContributionEvidence, PeerContributionKind,
+    PeerStatus, PeerTelemetry, ProgressCreditEvidence, ProgressCreditKind, ProgressWindowEvidence,
     RejectedProgressActivity, RejectedProgressActivityKind, ResourceBoundEntry, ResourceBoundKind,
     ResourceBoundSnapshot, ResourceBoundUnit, ResourceBoundUsage, ResourcePressureLevel,
     ResourcePressureState, ServiceLifecycleStatus, StallDiagnosisConfidence,

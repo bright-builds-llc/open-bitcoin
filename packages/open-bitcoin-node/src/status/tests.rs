@@ -3,13 +3,13 @@
 
 use super::{
     BestKnownTipStatus, BuildProvenance, ChainTipStatus, ConfigStatus, FieldAvailability,
-    HealthSignal, HealthSignalLevel, LAST_PEER_CONTRIBUTION_UNAVAILABLE_REASON,
-    LAST_USEFUL_WORK_UNAVAILABLE_REASON, MempoolStatus, NO_PROGRESS_DIAGNOSIS_UNAVAILABLE_REASON,
-    NO_PROGRESS_NEXT_ACTION_UNAVAILABLE_REASON, NO_PROGRESS_THRESHOLD_UNAVAILABLE_REASON,
-    NoProgressDiagnosis, NoProgressThresholdEvidence, NoProgressThresholdState, NodeRuntimeState,
-    NodeStatus, OpenBitcoinStatusSnapshot, PROGRESS_CREDIT_UNAVAILABLE_REASON,
-    PeerContributionEvidence, PeerContributionKind, PeerCounts, PeerStatus, PeerTelemetry,
-    ProgressCreditEvidence, ProgressCreditKind, ProgressWindowEvidence,
+    HealthSignal, HealthSignalLevel, INBOUND_STATUS_UNAVAILABLE_REASON,
+    LAST_PEER_CONTRIBUTION_UNAVAILABLE_REASON, LAST_USEFUL_WORK_UNAVAILABLE_REASON, MempoolStatus,
+    NO_PROGRESS_DIAGNOSIS_UNAVAILABLE_REASON, NO_PROGRESS_NEXT_ACTION_UNAVAILABLE_REASON,
+    NO_PROGRESS_THRESHOLD_UNAVAILABLE_REASON, NoProgressDiagnosis, NoProgressThresholdEvidence,
+    NoProgressThresholdState, NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot,
+    PROGRESS_CREDIT_UNAVAILABLE_REASON, PeerContributionEvidence, PeerContributionKind, PeerCounts,
+    PeerStatus, PeerTelemetry, ProgressCreditEvidence, ProgressCreditKind, ProgressWindowEvidence,
     RESOURCE_BOUND_STOP_PERCENT, RESOURCE_BOUND_WARNING_PERCENT, RejectedProgressActivity,
     RejectedProgressActivityKind, ResourceBoundEntry, ResourceBoundKind, ResourceBoundSnapshot,
     ResourceBoundUnit, ResourcePressureState, STALL_DIAGNOSIS_UNAVAILABLE_REASON,
@@ -798,6 +798,7 @@ fn stopped_node_snapshot_keeps_unavailable_live_fields_explicit() {
     assert_eq!(encoded["sync"]["resource_pressure"]["state"], "unavailable");
     assert_eq!(encoded["peers"]["peer_counts"]["state"], "unavailable");
     assert_eq!(encoded["peers"]["recent_peers"]["state"], "unavailable");
+    assert_eq!(encoded["peers"]["inbound"]["state"], "unavailable");
     assert_eq!(encoded["mempool"]["transactions"]["state"], "unavailable");
     assert_eq!(
         encoded["wallet"]["trusted_balance_sats"]["state"],
@@ -1145,6 +1146,7 @@ fn populated_snapshot_serializes_obs_01_fields() {
                 failure_reason: FieldAvailability::unavailable("peer healthy"),
                 error: FieldAvailability::unavailable("peer healthy"),
             }]),
+            inbound: FieldAvailability::unavailable(INBOUND_STATUS_UNAVAILABLE_REASON),
         },
         mempool: MempoolStatus {
             transactions: FieldAvailability::available(12),
@@ -1360,6 +1362,7 @@ fn stopped_snapshot() -> OpenBitcoinStatusSnapshot {
         peers: PeerStatus {
             peer_counts: FieldAvailability::unavailable(unavailable),
             recent_peers: FieldAvailability::unavailable(unavailable),
+            inbound: FieldAvailability::unavailable(INBOUND_STATUS_UNAVAILABLE_REASON),
         },
         mempool: MempoolStatus {
             transactions: FieldAvailability::unavailable(unavailable),

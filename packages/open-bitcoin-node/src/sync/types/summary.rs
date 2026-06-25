@@ -9,12 +9,12 @@ use crate::{
     FieldAvailability, MetricKind, MetricSample, PeerStatus, SyncStatus,
     logging::{StructuredLogLevel, StructuredLogRecord},
     status::{
-        EXPECTED_PROGRESS_WINDOW_UNAVAILABLE_REASON, LAST_PEER_CONTRIBUTION_UNAVAILABLE_REASON,
-        LAST_USEFUL_WORK_UNAVAILABLE_REASON, NO_PROGRESS_THRESHOLD_UNAVAILABLE_REASON,
-        PROGRESS_CREDIT_UNAVAILABLE_REASON, PeerCounts, STALL_DIAGNOSIS_UNAVAILABLE_REASON,
-        SyncAttemptCounters, SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState,
-        SyncProgress, SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure,
-        SyncStopReasonStatus,
+        EXPECTED_PROGRESS_WINDOW_UNAVAILABLE_REASON, INBOUND_STATUS_UNAVAILABLE_REASON,
+        LAST_PEER_CONTRIBUTION_UNAVAILABLE_REASON, LAST_USEFUL_WORK_UNAVAILABLE_REASON,
+        NO_PROGRESS_THRESHOLD_UNAVAILABLE_REASON, PROGRESS_CREDIT_UNAVAILABLE_REASON, PeerCounts,
+        STALL_DIAGNOSIS_UNAVAILABLE_REASON, SyncAttemptCounters, SyncConfiguredTargets,
+        SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal, SyncRecoveryCategory,
+        SyncResourcePressure, SyncStopReasonStatus,
     },
 };
 
@@ -241,6 +241,7 @@ impl SyncRunSummary {
                     .map(peer_telemetry)
                     .collect::<Vec<_>>(),
             ),
+            inbound: FieldAvailability::unavailable(INBOUND_STATUS_UNAVAILABLE_REASON),
         }
     }
 

@@ -3,16 +3,16 @@
 
 //! Shared operator status snapshot contracts.
 
-mod progress_guarantee;
 mod inbound;
+mod progress_guarantee;
 mod recovery;
 mod resource_bounds;
 
 use crate::{LogStatus, MetricsStatus, recovery::RecoveryEvidenceSnapshot};
 use serde::{Deserialize, Serialize};
 
-pub use progress_guarantee::*;
 pub use inbound::*;
+pub use progress_guarantee::*;
 pub use recovery::SyncRecoveryCategory;
 pub use resource_bounds::*;
 /// Explicit availability wrapper for status fields that may not be collectible.
@@ -514,6 +514,8 @@ pub struct PeerTelemetry {
 pub struct PeerStatus {
     pub peer_counts: FieldAvailability<PeerCounts>,
     pub recent_peers: FieldAvailability<Vec<PeerTelemetry>>,
+    #[serde(default = "inbound::inbound_status_unavailable")]
+    pub inbound: FieldAvailability<InboundPeerServingStatus>,
 }
 
 /// Mempool status fields.
