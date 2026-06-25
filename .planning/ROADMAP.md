@@ -27,7 +27,7 @@ v1.9 Inbound Peer Serving and Network Participation Boundary started on 2026-06-
 
 | Phase | Name | Goal | Requirements | Status |
 |-------|------|------|--------------|--------|
-| 90 | Inbound Listener and Admission Policy | 9/10 | In Progress|  |
+| 90 | Inbound Listener and Admission Policy | 10/10 | Complete   | 2026-06-25 |
 | 91 | Peer Permissions and Connection Classes | Add permissioned peer classes and bounded permission effects without enabling deferred relay behavior. | PERM-01, PERM-02, PERM-03, PERM-04 | Pending |
 | 92 | Address Advertisement and Discovery Boundaries | Scope listener advertisement, bounded address responses, address-management contracts, and docs that distinguish these from full address relay. | ADDR-01, ADDR-02, ADDR-03, ADDR-04 | Pending |
 | 93 | Eviction, Ban, and Misbehavior Policy | Add deterministic eviction scoring, disconnect reasons, discourage/ban persistence, expiry, unban, and permission-aware misbehavior handling. | EVICT-01, EVICT-02, EVICT-03, EVICT-04 | Pending |
@@ -42,7 +42,7 @@ v1.9 Inbound Peer Serving and Network Participation Boundary started on 2026-06-
 
 **Requirements:** INB-01, INB-02, INB-03, INB-04, INB-05
 
-**Plans:** 9/10 plans executed
+**Plans:** 10/10 plans complete
 
 Plans:
 - [x] 90-01-PLAN.md - Pure inbound listener and admission contracts
@@ -54,7 +54,7 @@ Plans:
 - [x] 90-07-PLAN.md - Operator status collection and rendering
 - [x] 90-08-PLAN.md - Support bundle inbound evidence and redaction
 - [x] 90-09-PLAN.md - Operator docs, parity roots, breadcrumbs, and UAT commands
-- [ ] 90-10-PLAN.md - Deterministic Phase 90 checker and final verification
+- [x] 90-10-PLAN.md - Deterministic Phase 90 checker and final verification (completed 2026-06-25)
 
 **Success criteria:**
 1. Operators can enable/disable inbound serving through explicit config or CLI controls, and the disabled path cannot bind a listener.
