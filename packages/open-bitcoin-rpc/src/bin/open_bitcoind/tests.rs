@@ -15,11 +15,11 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
+use open_bitcoin_network::{InboundListenerConfig, InboundPreflightReason};
 use open_bitcoin_node::{
     DurableSyncRuntime, FieldAvailability, FjallNodeStore, SyncLifecycleState, SyncRunSummary,
     SyncRuntimeConfig, SyncRuntimeError, SyncStopReason,
 };
-use open_bitcoin_network::{InboundListenerConfig, InboundPreflightReason};
 use open_bitcoin_rpc::config::{DaemonSyncConfig, RuntimeConfig};
 use open_bitcoin_rpc::inbound_listener::InboundListenerState;
 

@@ -24,11 +24,12 @@
 use std::{
     error::Error,
     path::PathBuf,
-    sync::mpsc,
+    sync::{Arc, mpsc},
     thread,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
+use open_bitcoin_network::{InboundPreflightDiagnostic, InboundPreflightReason};
 use open_bitcoin_node::{
     DurableSyncRuntime, FjallNodeStore, SyncLifecycleState, SyncRunSummary, SyncRuntimeError,
     SyncStopReason, TcpPeerTransport,
@@ -37,6 +38,10 @@ use open_bitcoin_rpc::{
     DaemonSyncControl, ManagedRpcContext,
     config::{DaemonSyncMode, RuntimeConfig, load_runtime_config},
     http,
+    inbound_listener::{
+        InboundListenerState, InboundListenerWorker, activate_inbound_listener,
+        start_inbound_accept_loop,
+    },
 };
 
 #[tokio::main]
@@ -58,10 +63,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let state = http::build_http_state(auth, context)?;
     let listener = tokio::net::TcpListener::bind(bind_address).await?;
+    let mut inbound_listener = start_inbound_listener_for_runtime(&runtime).await;
+    report_inbound_listener_startup(&inbound_listener);
 
     let serve_result = axum::serve(listener, http::router(state))
         .with_graceful_shutdown(shutdown_signal())
         .await;
+    inbound_listener.shutdown().await;
     if let Some(worker) = maybe_sync_worker {
         worker.shutdown();
     }
@@ -86,6 +94,15 @@ struct DaemonSyncWorker {
     join_handle: thread::JoinHandle<()>,
     shutdown_sender: mpsc::Sender<()>,
     control: DaemonSyncControl,
+}
+
+#[derive(Debug)]
+struct InboundDaemonListener {
+    state: InboundListenerState,
+    preflight_reason: InboundPreflightReason,
+    bound_endpoints: Vec<String>,
+    diagnostics: Vec<InboundPreflightDiagnostic>,
+    maybe_worker: Option<InboundListenerWorker>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -128,6 +145,15 @@ impl DaemonSyncWorker {
         if let Err(error) = self.join_handle.join() {
             eprintln!("open-bitcoind daemon sync worker shutdown join failed: {error:?}");
         }
+    }
+}
+
+impl InboundDaemonListener {
+    async fn shutdown(&mut self) {
+        let Some(worker) = self.maybe_worker.take() else {
+            return;
+        };
+        worker.shutdown().await;
     }
 }
 
@@ -185,6 +211,10 @@ fn report_daemon_sync_preflight(preflight: &DaemonSyncPreflight) {
     eprintln!("{}", daemon_sync_preflight_message(preflight));
 }
 
+fn report_inbound_listener_startup(listener: &InboundDaemonListener) {
+    eprintln!("{}", inbound_listener_startup_message(listener));
+}
+
 fn daemon_sync_preflight_message(preflight: &DaemonSyncPreflight) -> String {
     format!(
         "open-bitcoind mainnet sync preflight opened durable store: mode={}, datadir=\"{}\", best_header_height={}, best_block_height={}; enabled startup will run the explicit opt-in bounded unattended review loop with stop, retry, and backoff policy. This is not unattended production-node operation and is not a packaged-service guarantee.",
@@ -193,6 +223,63 @@ fn daemon_sync_preflight_message(preflight: &DaemonSyncPreflight) -> String {
         preflight.best_header_height,
         preflight.best_block_height
     )
+}
+
+async fn start_inbound_listener_for_runtime(runtime: &RuntimeConfig) -> InboundDaemonListener {
+    let activation = activate_inbound_listener(&runtime.inbound).await;
+    let state = activation.state();
+    let preflight_reason = activation.preflight_reason();
+    let bound_endpoints = activation
+        .bound_endpoints()
+        .iter()
+        .map(|endpoint| endpoint.bound_endpoint.clone())
+        .collect::<Vec<_>>();
+    let diagnostics = activation.diagnostics().to_vec();
+    let maybe_worker = if state == InboundListenerState::Listening {
+        let listener_context = Arc::new(tokio::sync::Mutex::new(
+            ManagedRpcContext::from_runtime_config(runtime),
+        ));
+        start_inbound_accept_loop(activation, listener_context)
+    } else {
+        None
+    };
+
+    InboundDaemonListener {
+        state,
+        preflight_reason,
+        bound_endpoints,
+        diagnostics,
+        maybe_worker,
+    }
+}
+
+fn inbound_listener_startup_message(listener: &InboundDaemonListener) -> String {
+    let bound_endpoint = listener
+        .bound_endpoints
+        .first()
+        .cloned()
+        .unwrap_or_else(|| "unavailable".to_string());
+    let next_action = listener
+        .diagnostics
+        .first()
+        .map(|diagnostic| diagnostic.next_action.as_str())
+        .unwrap_or("no listener action needed");
+    format!(
+        "open-bitcoind inbound listener startup: inbound_listener_state={} inbound_preflight_reason={} bound_endpoint={} admission_reject_reason=unavailable; opt-in inbound listener/admission {}; next_action=\"{}\"; deferred network participation remains out of scope.",
+        listener.state.as_str(),
+        listener.preflight_reason.as_str(),
+        bound_endpoint,
+        inbound_listener_state_description(listener.state),
+        next_action
+    )
+}
+
+fn inbound_listener_state_description(state: InboundListenerState) -> &'static str {
+    match state {
+        InboundListenerState::Disabled => "is disabled by configuration",
+        InboundListenerState::Blocked => "is blocked before socket serving",
+        InboundListenerState::Listening => "is active on configured endpoints",
+    }
 }
 
 fn start_daemon_sync_worker(
