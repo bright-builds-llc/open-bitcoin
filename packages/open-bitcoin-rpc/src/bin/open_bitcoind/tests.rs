@@ -19,11 +19,14 @@ use open_bitcoin_node::{
     DurableSyncRuntime, FieldAvailability, FjallNodeStore, SyncLifecycleState, SyncRunSummary,
     SyncRuntimeConfig, SyncRuntimeError, SyncStopReason,
 };
+use open_bitcoin_network::{InboundListenerConfig, InboundPreflightReason};
 use open_bitcoin_rpc::config::{DaemonSyncConfig, RuntimeConfig};
+use open_bitcoin_rpc::inbound_listener::InboundListenerState;
 
 use super::{
     DaemonSyncLoopDecision, DaemonSyncLoopPolicy, DaemonSyncPreflight,
-    daemon_sync_preflight_message, preflight_daemon_sync, run_daemon_sync_loop_cycle,
+    daemon_sync_preflight_message, inbound_listener_startup_message, preflight_daemon_sync,
+    run_daemon_sync_loop_cycle, start_inbound_listener_for_runtime,
 };
 
 fn temp_store_path(label: &str) -> PathBuf {
@@ -313,4 +316,105 @@ fn daemon_sync_loop_successful_cycle_preserves_summary_stop_reason() {
         state.sync.phase,
         FieldAvailability::available("max_rounds_reached".to_string())
     );
+}
+
+#[tokio::test]
+async fn open_bitcoind_inbound_default_runtime_reports_disabled_without_worker() {
+    // Arrange
+    let runtime = RuntimeConfig::default();
+
+    // Act
+    let listener = start_inbound_listener_for_runtime(&runtime).await;
+
+    // Assert
+    assert_eq!(listener.state, InboundListenerState::Disabled);
+    assert_eq!(listener.preflight_reason, InboundPreflightReason::Disabled);
+    assert!(listener.bound_endpoints.is_empty());
+    assert!(listener.maybe_worker.is_none());
+}
+
+#[tokio::test]
+async fn open_bitcoind_inbound_loopback_runtime_binds_before_rpc_serving() {
+    // Arrange
+    let runtime = RuntimeConfig {
+        inbound: InboundListenerConfig {
+            enabled: true,
+            listen_addresses: vec!["127.0.0.1:0".to_string()],
+            max_peers: 2,
+            reserved_slots: 0,
+            allow_public: false,
+        },
+        ..RuntimeConfig::default()
+    };
+
+    // Act
+    let mut listener = start_inbound_listener_for_runtime(&runtime).await;
+
+    // Assert
+    assert_eq!(listener.state, InboundListenerState::Listening);
+    assert_eq!(listener.preflight_reason, InboundPreflightReason::Ready);
+    assert_eq!(listener.bound_endpoints.len(), 1);
+    assert!(listener.bound_endpoints[0].starts_with("127.0.0.1:"));
+    assert!(listener.maybe_worker.is_some());
+    listener.shutdown().await;
+}
+
+#[tokio::test]
+async fn open_bitcoind_inbound_shutdown_closes_listener_without_sync_shutdown_regression() {
+    // Arrange
+    let runtime = RuntimeConfig {
+        inbound: InboundListenerConfig {
+            enabled: true,
+            listen_addresses: vec!["127.0.0.1:0".to_string()],
+            max_peers: 2,
+            reserved_slots: 0,
+            allow_public: false,
+        },
+        ..RuntimeConfig::default()
+    };
+    let mut listener = start_inbound_listener_for_runtime(&runtime).await;
+    let endpoint = listener.bound_endpoints[0]
+        .parse()
+        .expect("bound endpoint socket address");
+    std::net::TcpStream::connect(endpoint).expect("listener accepts before shutdown");
+    let mut sync_runtime = test_sync_runtime("inbound-shutdown-sync");
+    let policy = DaemonSyncLoopPolicy::from_runtime(&sync_runtime);
+
+    // Act
+    listener.shutdown().await;
+    let reconnect = std::net::TcpStream::connect_timeout(&endpoint, Duration::from_millis(100));
+    let sync_decision = run_daemon_sync_loop_cycle(
+        &mut sync_runtime,
+        policy,
+        1_777_225_194,
+        true,
+        |_runtime, _| panic!("shutdown cycle must not run network work"),
+    );
+
+    // Assert
+    assert!(reconnect.is_err());
+    assert_eq!(sync_decision, DaemonSyncLoopDecision::Stopped);
+}
+
+#[test]
+fn open_bitcoind_inbound_startup_message_uses_stable_labels_without_scope_creep() {
+    // Arrange
+    let listener = super::InboundDaemonListener {
+        state: InboundListenerState::Listening,
+        preflight_reason: InboundPreflightReason::Ready,
+        bound_endpoints: vec!["127.0.0.1:18444".to_string()],
+        diagnostics: Vec::new(),
+        maybe_worker: None,
+    };
+
+    // Act
+    let message = inbound_listener_startup_message(&listener);
+
+    // Assert
+    assert!(message.contains("inbound_listener_state=listening"));
+    assert!(message.contains("inbound_preflight_reason=ready"));
+    assert!(message.contains("bound_endpoint=127.0.0.1:18444"));
+    assert!(message.contains("admission_reject_reason=unavailable"));
+    assert!(message.contains("opt-in inbound listener/admission"));
+    assert!(message.contains("deferred network participation remains out of scope"));
 }
