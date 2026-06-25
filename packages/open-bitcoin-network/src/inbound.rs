@@ -11,8 +11,11 @@ use crate::error::PeerId;
 mod permissions;
 
 pub use permissions::{
-    INBOUND_PERMISSION_TOKENS_FIELD, InactivePermissionEffectLabel, PeerPermissionDirection,
-    PeerPermissionParseError, PeerPermissionSet, PeerPermissionToken, PermissionEffectLabel,
+    INBOUND_PERMISSION_ADDRESSES_FIELD, INBOUND_PERMISSION_CLASS_NAME_FIELD,
+    INBOUND_PERMISSION_TOKENS_FIELD, InactivePermissionEffectLabel, InboundPermissionDecision,
+    ParsedPeerPermissionClass, PeerConnectionClass, PeerPermissionClassRegistry,
+    PeerPermissionDirection, PeerPermissionParseError, PeerPermissionSet, PeerPermissionToken,
+    PermissionClassName, PermissionEffectLabel,
 };
 
 pub const INBOUND_LISTEN_ADDRESSES_FIELD: &str = "inbound.listen_addresses";

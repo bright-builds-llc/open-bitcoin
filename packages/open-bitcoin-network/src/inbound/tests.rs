@@ -4,6 +4,7 @@
 // - packages/bitcoin-knots/test/functional/p2p_handshake.py
 
 use std::collections::BTreeSet;
+use std::net::IpAddr;
 
 use crate::PeerId;
 
@@ -11,7 +12,8 @@ use super::{
     InboundAdmissionCounters, InboundAdmissionDecision, InboundAdmissionPolicy,
     InboundAdmissionRejectionReason, InboundAdmissionRequest, InboundAdmissionSlotClass,
     InboundHandshakeState, InboundListenerActivationDiagnostic, InboundListenerConfig,
-    InboundPreflightReason, PeerPermissionDirection, PeerPermissionSet, PeerPermissionToken,
+    InboundPreflightReason, ParsedPeerPermissionClass, PeerConnectionClass,
+    PeerPermissionClassRegistry, PeerPermissionDirection, PeerPermissionSet, PeerPermissionToken,
     classify_inbound_preflight,
 };
 
@@ -41,6 +43,13 @@ fn admission_request(
         local_nonce: 99,
         maybe_remote_nonce: Some(101),
         is_shutdown_requested: false,
+    }
+}
+
+fn test_ip(raw: &str) -> IpAddr {
+    match raw.parse() {
+        Ok(address) => address,
+        Err(error) => panic!("test IP address should parse: {error}"),
     }
 }
 
@@ -144,6 +153,205 @@ fn all_permission_keeps_bounded_effects_active_and_relay_like_effects_inactive()
             "inactive_blockfilters",
         ],
     );
+}
+
+#[test]
+fn protected_literal_ip_class_uses_reserved_admission_capacity() {
+    // Arrange
+    let class = match ParsedPeerPermissionClass::parse(
+        "trusted-protected",
+        ["203.0.113.7"],
+        ["in", "noban", "forceinbound"],
+    ) {
+        Ok(class) => class,
+        Err(error) => panic!("expected protected class to parse: {error:?}"),
+    };
+    let registry = PeerPermissionClassRegistry::new([class]);
+
+    // Act
+    let decision = registry.resolve_inbound(test_ip("203.0.113.7"));
+
+    // Assert
+    assert_eq!(
+        decision.connection_class(),
+        PeerConnectionClass::ProtectedInbound
+    );
+    assert_eq!(decision.connection_class().as_str(), "protected_inbound");
+    assert_eq!(decision.slot_class(), InboundAdmissionSlotClass::Reserved);
+    assert!(
+        decision
+            .active_effects()
+            .iter()
+            .any(|effect| effect.as_str() == "admission_protected")
+    );
+}
+
+#[test]
+fn permissioned_literal_ip_class_keeps_ordinary_admission_slot() {
+    // Arrange
+    let class = match ParsedPeerPermissionClass::parse(
+        "download-address",
+        ["203.0.113.8"],
+        ["in", "download", "addr"],
+    ) {
+        Ok(class) => class,
+        Err(error) => panic!("expected permissioned class to parse: {error:?}"),
+    };
+    let registry = PeerPermissionClassRegistry::new([class]);
+
+    // Act
+    let decision = registry.resolve_inbound(test_ip("203.0.113.8"));
+    let active_labels: Vec<&str> = decision
+        .active_effects()
+        .iter()
+        .map(|effect| effect.as_str())
+        .collect();
+
+    // Assert
+    assert_eq!(
+        decision.connection_class(),
+        PeerConnectionClass::PermissionedInbound,
+    );
+    assert_eq!(decision.connection_class().as_str(), "permissioned_inbound");
+    assert_eq!(decision.slot_class(), InboundAdmissionSlotClass::Ordinary);
+    assert_eq!(
+        active_labels,
+        vec![
+            "address_response_policy_input",
+            "download_serving_policy_input",
+        ],
+    );
+}
+
+#[test]
+fn unmatched_inbound_peer_stays_ordinary_and_never_uses_reserved_capacity() {
+    // Arrange
+    let class = match ParsedPeerPermissionClass::parse(
+        "download-address",
+        ["203.0.113.9"],
+        ["in", "download", "addr"],
+    ) {
+        Ok(class) => class,
+        Err(error) => panic!("expected permissioned class to parse: {error:?}"),
+    };
+    let registry = PeerPermissionClassRegistry::new([class]);
+
+    // Act
+    let decision = registry.resolve_inbound(test_ip("203.0.113.10"));
+
+    // Assert
+    assert_eq!(
+        decision.connection_class(),
+        PeerConnectionClass::OrdinaryInbound
+    );
+    assert_eq!(decision.connection_class().as_str(), "ordinary_inbound");
+    assert_eq!(decision.slot_class(), InboundAdmissionSlotClass::Ordinary);
+    assert!(decision.active_effects().is_empty());
+    assert!(decision.inactive_effects().is_empty());
+}
+
+#[test]
+fn class_definitions_reject_direction_only_missing_in_and_outbound_rules() {
+    // Arrange
+    let cases = [
+        (["in"].as_slice(), "direction_only", "in"),
+        (
+            ["download", "addr"].as_slice(),
+            "missing_inbound_direction",
+            "in",
+        ),
+        (
+            ["in", "out", "download"].as_slice(),
+            "outbound_direction_unsupported",
+            "out",
+        ),
+    ];
+
+    for (tokens, reason, token) in cases {
+        // Act
+        let parsed = ParsedPeerPermissionClass::parse("bad-class", ["203.0.113.11"], tokens);
+
+        // Assert
+        let Err(error) = parsed else {
+            panic!("expected invalid class definition rejection");
+        };
+        assert_eq!(error.field(), "inbound.permission_classes[].permissions[]");
+        assert_eq!(error.reason(), reason);
+        assert_eq!(error.token(), token);
+    }
+}
+
+#[test]
+fn class_addresses_accept_only_literal_ip_values() {
+    // Arrange
+    let invalid_addresses = ["203.0.113.0/24", "peer.example", "203.0.113.7:8333"];
+
+    for invalid_address in invalid_addresses {
+        // Act
+        let parsed =
+            ParsedPeerPermissionClass::parse("bad-address", [invalid_address], ["in", "download"]);
+
+        // Assert
+        let Err(error) = parsed else {
+            panic!("expected invalid literal IP rejection");
+        };
+        assert_eq!(error.field(), "inbound.permission_classes[].addresses[]");
+        assert_eq!(error.reason(), "invalid_literal_ip_address");
+        assert_eq!(error.token(), invalid_address);
+    }
+}
+
+#[test]
+fn connection_class_labels_and_slot_mapping_are_stable() {
+    // Arrange
+    let classes = [
+        (
+            PeerConnectionClass::OrdinaryInbound,
+            "ordinary_inbound",
+            InboundAdmissionSlotClass::Ordinary,
+        ),
+        (
+            PeerConnectionClass::PermissionedInbound,
+            "permissioned_inbound",
+            InboundAdmissionSlotClass::Ordinary,
+        ),
+        (
+            PeerConnectionClass::ProtectedInbound,
+            "protected_inbound",
+            InboundAdmissionSlotClass::Reserved,
+        ),
+        (
+            PeerConnectionClass::Outbound,
+            "outbound",
+            InboundAdmissionSlotClass::Ordinary,
+        ),
+        (
+            PeerConnectionClass::ManualConfigured,
+            "manual_configured",
+            InboundAdmissionSlotClass::Ordinary,
+        ),
+    ];
+
+    // Act
+    let labels: Vec<&str> = classes
+        .iter()
+        .map(|(connection_class, _label, _slot)| connection_class.as_str())
+        .collect();
+
+    // Assert
+    assert_eq!(
+        labels,
+        vec![
+            "ordinary_inbound",
+            "permissioned_inbound",
+            "protected_inbound",
+            "outbound",
+            "manual_configured",
+        ],
+    );
+    for (connection_class, _label, slot_class) in classes {
+        assert_eq!(connection_class.slot_class(), slot_class);
+    }
 }
 
 #[test]

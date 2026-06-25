@@ -5,8 +5,13 @@
 
 use std::collections::BTreeSet;
 use std::fmt;
+use std::net::IpAddr;
+
+use super::InboundAdmissionSlotClass;
 
 pub const INBOUND_PERMISSION_TOKENS_FIELD: &str = "inbound.permission_classes[].permissions[]";
+pub const INBOUND_PERMISSION_ADDRESSES_FIELD: &str = "inbound.permission_classes[].addresses[]";
+pub const INBOUND_PERMISSION_CLASS_NAME_FIELD: &str = "inbound.permission_classes[].name";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum PeerPermissionToken {
@@ -177,6 +182,11 @@ impl PeerPermissionSet {
         !self.permissions.is_empty()
     }
 
+    pub fn is_admission_protected(&self) -> bool {
+        self.permissions
+            .contains(&PeerPermissionToken::ForceInbound)
+    }
+
     pub fn active_effects(&self) -> Vec<PermissionEffectLabel> {
         let mut effects = Vec::new();
         if self
@@ -272,6 +282,223 @@ impl PeerPermissionSet {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PermissionClassName(String);
+
+impl PermissionClassName {
+    pub fn parse(
+        field: &'static str,
+        name: impl AsRef<str>,
+    ) -> Result<Self, PeerPermissionParseError> {
+        let name = name.as_ref().trim();
+        if name.is_empty() {
+            return Err(PeerPermissionParseError::empty_class_name(field));
+        }
+
+        Ok(Self(name.to_string()))
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParsedPeerPermissionClass {
+    name: PermissionClassName,
+    addresses: Vec<IpAddr>,
+    permissions: PeerPermissionSet,
+}
+
+impl ParsedPeerPermissionClass {
+    pub fn parse<A, P, AS, PS>(
+        name: impl AsRef<str>,
+        addresses: A,
+        permissions: P,
+    ) -> Result<Self, PeerPermissionParseError>
+    where
+        A: IntoIterator<Item = AS>,
+        AS: AsRef<str>,
+        P: IntoIterator<Item = PS>,
+        PS: AsRef<str>,
+    {
+        let name = PermissionClassName::parse(INBOUND_PERMISSION_CLASS_NAME_FIELD, name)?;
+        let permissions = PeerPermissionSet::parse(INBOUND_PERMISSION_TOKENS_FIELD, permissions)?;
+        validate_inbound_class_permissions(&permissions)?;
+        let addresses = parse_literal_ip_addresses(addresses)?;
+
+        Ok(Self {
+            name,
+            addresses,
+            permissions,
+        })
+    }
+
+    pub fn name(&self) -> &PermissionClassName {
+        &self.name
+    }
+
+    pub fn permissions(&self) -> &PeerPermissionSet {
+        &self.permissions
+    }
+
+    fn matches_inbound(&self, remote_address: IpAddr) -> bool {
+        self.addresses.contains(&remote_address)
+    }
+
+    fn inbound_decision(&self) -> InboundPermissionDecision {
+        let connection_class = if self.permissions.is_admission_protected() {
+            PeerConnectionClass::ProtectedInbound
+        } else {
+            PeerConnectionClass::PermissionedInbound
+        };
+        InboundPermissionDecision {
+            connection_class,
+            active_effects: self.permissions.active_effects(),
+            inactive_effects: self.permissions.inactive_effects(),
+        }
+    }
+}
+
+fn validate_inbound_class_permissions(
+    permissions: &PeerPermissionSet,
+) -> Result<(), PeerPermissionParseError> {
+    if permissions.has_direction(PeerPermissionDirection::Outbound) {
+        return Err(PeerPermissionParseError::outbound_direction_unsupported(
+            INBOUND_PERMISSION_TOKENS_FIELD,
+        ));
+    }
+
+    if !permissions.has_any_permission() {
+        return Err(PeerPermissionParseError::direction_only(
+            INBOUND_PERMISSION_TOKENS_FIELD,
+            "in",
+        ));
+    }
+
+    if !permissions.has_direction(PeerPermissionDirection::Inbound) {
+        return Err(PeerPermissionParseError::missing_inbound_direction(
+            INBOUND_PERMISSION_TOKENS_FIELD,
+        ));
+    }
+
+    Ok(())
+}
+
+fn parse_literal_ip_addresses<A, AS>(addresses: A) -> Result<Vec<IpAddr>, PeerPermissionParseError>
+where
+    A: IntoIterator<Item = AS>,
+    AS: AsRef<str>,
+{
+    let mut parsed = Vec::new();
+    for address in addresses {
+        let raw_address = address.as_ref();
+        let parsed_address = raw_address
+            .trim()
+            .parse::<IpAddr>()
+            .map_err(|_error| PeerPermissionParseError::invalid_address(raw_address))?;
+        parsed.push(parsed_address);
+    }
+
+    if parsed.is_empty() {
+        return Err(PeerPermissionParseError::empty_address_list(
+            INBOUND_PERMISSION_ADDRESSES_FIELD,
+        ));
+    }
+
+    Ok(parsed)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PeerPermissionClassRegistry {
+    classes: Vec<ParsedPeerPermissionClass>,
+}
+
+impl PeerPermissionClassRegistry {
+    pub fn new<I>(classes: I) -> Self
+    where
+        I: IntoIterator<Item = ParsedPeerPermissionClass>,
+    {
+        Self {
+            classes: classes.into_iter().collect(),
+        }
+    }
+
+    pub fn resolve_inbound(&self, remote_address: IpAddr) -> InboundPermissionDecision {
+        for permission_class in &self.classes {
+            if permission_class.matches_inbound(remote_address) {
+                return permission_class.inbound_decision();
+            }
+        }
+
+        InboundPermissionDecision::ordinary()
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PeerConnectionClass {
+    OrdinaryInbound,
+    PermissionedInbound,
+    ProtectedInbound,
+    Outbound,
+    ManualConfigured,
+}
+
+impl PeerConnectionClass {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::OrdinaryInbound => "ordinary_inbound",
+            Self::PermissionedInbound => "permissioned_inbound",
+            Self::ProtectedInbound => "protected_inbound",
+            Self::Outbound => "outbound",
+            Self::ManualConfigured => "manual_configured",
+        }
+    }
+
+    pub const fn slot_class(self) -> InboundAdmissionSlotClass {
+        match self {
+            Self::ProtectedInbound => InboundAdmissionSlotClass::Reserved,
+            Self::OrdinaryInbound
+            | Self::PermissionedInbound
+            | Self::Outbound
+            | Self::ManualConfigured => InboundAdmissionSlotClass::Ordinary,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InboundPermissionDecision {
+    connection_class: PeerConnectionClass,
+    active_effects: Vec<PermissionEffectLabel>,
+    inactive_effects: Vec<InactivePermissionEffectLabel>,
+}
+
+impl InboundPermissionDecision {
+    pub fn ordinary() -> Self {
+        Self {
+            connection_class: PeerConnectionClass::OrdinaryInbound,
+            active_effects: Vec::new(),
+            inactive_effects: Vec::new(),
+        }
+    }
+
+    pub const fn connection_class(&self) -> PeerConnectionClass {
+        self.connection_class
+    }
+
+    pub const fn slot_class(&self) -> InboundAdmissionSlotClass {
+        self.connection_class.slot_class()
+    }
+
+    pub fn active_effects(&self) -> &[PermissionEffectLabel] {
+        &self.active_effects
+    }
+
+    pub fn inactive_effects(&self) -> &[InactivePermissionEffectLabel] {
+        &self.inactive_effects
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PeerPermissionParseError {
     field: &'static str,
     token: String,
@@ -287,6 +514,64 @@ impl PeerPermissionParseError {
             token: token.clone(),
             reason: PeerPermissionParseErrorReason::UnsupportedToken,
             message: format!("unsupported peer permission token: {token}"),
+        }
+    }
+
+    pub fn direction_only(field: &'static str, token: impl Into<String>) -> Self {
+        let token = token.into();
+        Self {
+            field,
+            token: token.clone(),
+            reason: PeerPermissionParseErrorReason::DirectionOnly,
+            message: format!("peer permission class sets only direction token: {token}"),
+        }
+    }
+
+    pub fn missing_inbound_direction(field: &'static str) -> Self {
+        Self {
+            field,
+            token: "in".to_string(),
+            reason: PeerPermissionParseErrorReason::MissingInboundDirection,
+            message: "peer permission class must include the in direction".to_string(),
+        }
+    }
+
+    pub fn outbound_direction_unsupported(field: &'static str) -> Self {
+        Self {
+            field,
+            token: "out".to_string(),
+            reason: PeerPermissionParseErrorReason::OutboundDirectionUnsupported,
+            message: "peer permission class cannot include the out direction in Phase 91"
+                .to_string(),
+        }
+    }
+
+    pub fn invalid_address(token: impl Into<String>) -> Self {
+        let token = token.into();
+        Self {
+            field: INBOUND_PERMISSION_ADDRESSES_FIELD,
+            token: token.clone(),
+            reason: PeerPermissionParseErrorReason::InvalidLiteralIpAddress,
+            message: format!("peer permission class address must be a literal IP address: {token}"),
+        }
+    }
+
+    pub fn empty_class_name(field: &'static str) -> Self {
+        Self {
+            field,
+            token: String::new(),
+            reason: PeerPermissionParseErrorReason::EmptyClassName,
+            message: "peer permission class name must not be empty".to_string(),
+        }
+    }
+
+    pub fn empty_address_list(field: &'static str) -> Self {
+        Self {
+            field,
+            token: String::new(),
+            reason: PeerPermissionParseErrorReason::EmptyAddressList,
+            message: "peer permission class must include at least one literal IP address"
+                .to_string(),
         }
     }
 
@@ -322,12 +607,24 @@ impl std::error::Error for PeerPermissionParseError {}
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PeerPermissionParseErrorReason {
     UnsupportedToken,
+    DirectionOnly,
+    MissingInboundDirection,
+    OutboundDirectionUnsupported,
+    InvalidLiteralIpAddress,
+    EmptyClassName,
+    EmptyAddressList,
 }
 
 impl PeerPermissionParseErrorReason {
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::UnsupportedToken => "unsupported_token",
+            Self::DirectionOnly => "direction_only",
+            Self::MissingInboundDirection => "missing_inbound_direction",
+            Self::OutboundDirectionUnsupported => "outbound_direction_unsupported",
+            Self::InvalidLiteralIpAddress => "invalid_literal_ip_address",
+            Self::EmptyClassName => "empty_class_name",
+            Self::EmptyAddressList => "empty_address_list",
         }
     }
 }
