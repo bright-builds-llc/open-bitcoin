@@ -19,6 +19,7 @@ use std::{
 
 use serde_json::json;
 
+use open_bitcoin_network::InboundListenerConfig;
 use open_bitcoin_node::{
     DurableSyncState, FjallNodeStore, PersistMode, RuntimeMetadata, WalletRegistry,
     core::{
@@ -53,9 +54,9 @@ use crate::{
         BuildAndSignTransactionRequest, DeriveAddressesRequest, GetBalancesRequest,
         GetBlockchainInfoRequest, GetMempoolInfoRequest, GetNetworkInfoRequest,
         GetWalletInfoRequest, ImportDescriptorsRequest, ListUnspentRequest, MethodCall,
-        OpenBitcoinSyncPauseRequest, OpenBitcoinSyncResumeRequest, OpenBitcoinSyncStatusRequest,
-        RescanBlockchainRequest, SendRawTransactionRequest, SendToAddressRequest,
-        TransactionRecipient,
+        OpenBitcoinNetworkStatusRequest, OpenBitcoinSyncPauseRequest,
+        OpenBitcoinSyncResumeRequest, OpenBitcoinSyncStatusRequest, RescanBlockchainRequest,
+        SendRawTransactionRequest, SendToAddressRequest, TransactionRecipient,
     },
 };
 
@@ -265,6 +266,24 @@ fn empty_context() -> ManagedRpcContext {
     })
 }
 
+fn inbound_context(max_peers: usize, reserved_slots: usize) -> ManagedRpcContext {
+    ManagedRpcContext::from_runtime_config(&RuntimeConfig {
+        chain: AddressNetwork::Regtest,
+        inbound: InboundListenerConfig {
+            enabled: true,
+            listen_addresses: vec!["127.0.0.1:18444".to_string()],
+            max_peers,
+            reserved_slots,
+            allow_public: false,
+        },
+        wallet: WalletRuntimeConfig {
+            coinbase_maturity: 1,
+            ..WalletRuntimeConfig::default()
+        },
+        ..RuntimeConfig::default()
+    })
+}
+
 fn funded_wallet_context() -> ManagedRpcContext {
     let mut context = empty_context();
     context
@@ -404,6 +423,129 @@ fn node_context_with_chain_and_mempool() -> ManagedRpcContext {
         .submit_local_transaction(transaction)
         .expect("submit");
     context
+}
+
+#[test]
+fn open_bitcoin_network_status_returns_available_inbound_evidence() {
+    // Arrange
+    let mut context = inbound_context(4, 0);
+    context.record_inbound_admission(7, "127.0.0.1:18444".to_string(), false);
+    context.record_inbound_admission(8, "127.0.0.1:18444".to_string(), false);
+    context.record_inbound_admission(7, "127.0.0.1:18445".to_string(), false);
+
+    // Act
+    let status = dispatch(
+        &mut context,
+        MethodCall::OpenBitcoinNetworkStatus(OpenBitcoinNetworkStatusRequest::default()),
+    )
+    .expect("network status");
+
+    // Assert
+    let inbound = &status["inbound"];
+    assert_eq!(inbound["state"], json!("available"));
+    assert_eq!(inbound["value"]["listener_state"], json!("listening"));
+    assert_eq!(inbound["value"]["preflight_reason"], json!("ready"));
+    assert_eq!(inbound["value"]["admitted_inbound_peers"], json!(1));
+    assert_eq!(inbound["value"]["rejected_inbound_peers"], json!(2));
+    assert_eq!(inbound["value"]["handshake"]["established"], json!(1));
+    assert_eq!(inbound["value"]["duplicate_rejects"], json!(2));
+    assert_eq!(inbound["value"]["self_connection_rejects"], json!(0));
+    assert_eq!(inbound["value"]["cap_rejects"], json!(0));
+    assert_eq!(inbound["value"]["reserved_slot_rejects"], json!(0));
+    assert_eq!(
+        inbound["value"]["latest_admission_event"]["value"]["reason"],
+        json!("duplicate_peer_id")
+    );
+}
+
+#[test]
+fn open_bitcoin_network_status_preserves_unavailable_reason() {
+    // Arrange
+    let mut context = empty_context();
+
+    // Act
+    let status = dispatch(
+        &mut context,
+        MethodCall::OpenBitcoinNetworkStatus(OpenBitcoinNetworkStatusRequest::default()),
+    )
+    .expect("network status");
+
+    // Assert
+    assert_eq!(status["inbound"]["state"], json!("unavailable"));
+    assert_eq!(
+        status["inbound"]["value"]["reason"],
+        json!(INBOUND_STATUS_UNAVAILABLE_REASON)
+    );
+}
+
+#[test]
+fn open_bitcoin_network_status_reports_cap_and_reserved_slot_rejections() {
+    // Arrange
+    let mut cap_context = inbound_context(1, 0);
+    cap_context.record_inbound_admission(11, "127.0.0.1:18444".to_string(), false);
+    cap_context.record_inbound_admission(12, "127.0.0.1:18445".to_string(), false);
+    let mut reserved_context = inbound_context(2, 1);
+    reserved_context.record_inbound_admission(21, "127.0.0.1:18444".to_string(), false);
+    reserved_context.record_inbound_admission(22, "127.0.0.1:18445".to_string(), false);
+
+    // Act
+    let cap_status = dispatch(
+        &mut cap_context,
+        MethodCall::OpenBitcoinNetworkStatus(OpenBitcoinNetworkStatusRequest::default()),
+    )
+    .expect("cap status");
+    let reserved_status = dispatch(
+        &mut reserved_context,
+        MethodCall::OpenBitcoinNetworkStatus(OpenBitcoinNetworkStatusRequest::default()),
+    )
+    .expect("reserved status");
+
+    // Assert
+    assert_eq!(cap_status["inbound"]["value"]["cap_rejects"], json!(1));
+    assert_eq!(
+        cap_status["inbound"]["value"]["latest_admission_event"]["value"]["reason"],
+        json!("cap_reached")
+    );
+    assert_eq!(
+        reserved_status["inbound"]["value"]["reserved_slot_rejects"],
+        json!(1)
+    );
+    assert_eq!(
+        reserved_status["inbound"]["value"]["latest_admission_event"]["value"]["reason"],
+        json!("reserved_slot_unavailable")
+    );
+}
+
+#[test]
+fn get_network_info_omits_open_bitcoin_inbound_status_details() {
+    // Arrange
+    let mut context = node_context_with_chain_and_mempool();
+    context.record_inbound_admission(17, "127.0.0.1:18447".to_string(), false);
+
+    // Act
+    let network = dispatch(
+        &mut context,
+        MethodCall::GetNetworkInfo(GetNetworkInfoRequest::default()),
+    )
+    .expect("network");
+    let serialized = serde_json::to_string(&network).expect("serialize network info");
+
+    // Assert
+    assert_eq!(network["connections_in"], json!(2));
+    for forbidden in [
+        "listener_state",
+        "preflight_reason",
+        "admission",
+        "duplicate_rejects",
+        "self_connection_rejects",
+        "reserved_slot_rejects",
+        "cap_rejects",
+    ] {
+        assert!(
+            !serialized.contains(forbidden),
+            "baseline getnetworkinfo exposed {forbidden}"
+        );
+    }
 }
 
 #[test]
