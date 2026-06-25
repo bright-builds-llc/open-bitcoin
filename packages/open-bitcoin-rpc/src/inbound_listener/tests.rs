@@ -23,7 +23,10 @@ async fn disabled_runtime_reports_disabled_without_bound_endpoints() {
 
     // Assert
     assert_eq!(activation.state(), InboundListenerState::Disabled);
-    assert_eq!(activation.preflight_reason(), InboundPreflightReason::Disabled);
+    assert_eq!(
+        activation.preflight_reason(),
+        InboundPreflightReason::Disabled
+    );
     assert!(activation.bound_endpoints().is_empty());
     assert_eq!(
         activation

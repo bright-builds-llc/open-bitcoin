@@ -890,6 +890,17 @@
       ]
     },
     {
+      "label": "rpc-inbound-listener",
+      "files": [
+        "packages/open-bitcoin-rpc/src/inbound_listener.rs",
+        "packages/open-bitcoin-rpc/src/inbound_listener/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp"
+      ]
+    },
+    {
       "label": "rpc-surface",
       "files": [
         "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",

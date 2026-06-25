@@ -39,8 +39,8 @@ use open_bitcoin_node::{
         INBOUND_STATUS_UNAVAILABLE_REASON, InboundPeerServingStatus, NoProgressDiagnosis,
         PeerCounts, PeerStatus, StayCurrentStatus, SyncAttemptCounters, SyncConfiguredTargets,
         SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal,
-        SyncReconcileProgressStatus, SyncRecoveryCategory, SyncReorgEvidence,
-        SyncResourcePressure, SyncStatus, SyncStopReasonStatus, TipFreshnessStatus,
+        SyncReconcileProgressStatus, SyncRecoveryCategory, SyncReorgEvidence, SyncResourcePressure,
+        SyncStatus, SyncStopReasonStatus, TipFreshnessStatus,
     },
 };
 

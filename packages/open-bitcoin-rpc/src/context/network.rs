@@ -9,13 +9,19 @@
 // - packages/bitcoin-knots/src/rpc/rawtransaction.cpp
 // - packages/bitcoin-knots/test/functional/interface_rpc.py
 
+use open_bitcoin_network::{
+    InboundAdmissionDecision, InboundAdmissionPolicy, InboundAdmissionRequest,
+    InboundAdmissionSlotClass,
+};
 use open_bitcoin_node::core::chainstate::ChainstateSnapshot;
 use open_bitcoin_node::core::consensus::{ConsensusParams, ScriptVerifyFlags};
 use open_bitcoin_node::core::mempool::PolicyConfig;
 use open_bitcoin_node::core::network::{LocalPeerConfig, ServiceFlags, WireNetworkMessage};
 use open_bitcoin_node::core::primitives::{Block, NetworkAddress, NetworkMagic, Transaction};
 use open_bitcoin_node::core::wallet::AddressNetwork;
-use open_bitcoin_node::network::{ManagedMempoolInfo, ManagedNetworkInfo};
+use open_bitcoin_node::network::{
+    ManagedInboundAdmissionInfo, ManagedMempoolInfo, ManagedNetworkInfo,
+};
 use open_bitcoin_node::{DurableSyncState, FjallNodeStore};
 use open_bitcoin_node::{
     ManagedNetworkError, ManagedPeerNetwork, ManagedWallet, MemoryChainstateStore,
@@ -63,11 +69,15 @@ impl ManagedRpcContext {
             relay: true,
             user_agent: "/open-bitcoin:0.1.0/".to_string(),
         };
-        let managed_network = ManagedPeerNetwork::new(
+        let mut managed_network = ManagedPeerNetwork::new(
             MemoryChainstateStore::default(),
             local_config,
             PolicyConfig::default(),
         );
+        managed_network.set_inbound_admission_policy(InboundAdmissionPolicy::new(
+            config.inbound.max_peers,
+            config.inbound.reserved_slots,
+        ));
         match build_wallet_state(config) {
             super::wallet_state::WalletState::Local(wallet) => Self {
                 chain: config.chain,
@@ -150,6 +160,39 @@ impl ManagedRpcContext {
 
     pub fn network_info(&self) -> ManagedNetworkInfo {
         self.network.network_info()
+    }
+
+    pub fn inbound_admission_info(&self) -> ManagedInboundAdmissionInfo {
+        self.network.inbound_admission_info().clone()
+    }
+
+    pub fn record_inbound_admission(
+        &mut self,
+        peer_id: u64,
+        remote_endpoint: String,
+        is_shutdown_requested: bool,
+    ) -> InboundAdmissionDecision {
+        self.network.admit_inbound_peer(InboundAdmissionRequest {
+            peer_id,
+            remote_endpoint,
+            slot_class: InboundAdmissionSlotClass::Ordinary,
+            counters: Default::default(),
+            existing_endpoint_keys: Default::default(),
+            existing_peer_ids: Default::default(),
+            local_nonce: 0,
+            maybe_remote_nonce: None,
+            is_shutdown_requested,
+        })
+    }
+
+    pub fn receive_inbound_wire_message(
+        &mut self,
+        peer_id: u64,
+        message: WireNetworkMessage,
+        timestamp: i64,
+    ) -> Result<Vec<Vec<u8>>, ManagedNetworkError> {
+        let responses = self.receive_network_message(peer_id, message, timestamp)?;
+        self.network.encode_messages(&responses)
     }
 
     pub fn add_inbound_peer(&mut self, peer_id: u64) -> Result<(), ManagedNetworkError> {
