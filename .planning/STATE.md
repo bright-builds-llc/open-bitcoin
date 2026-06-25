@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Inbound Peer Serving and Network Participation Boundary
-status: planning
-stopped_at: Phase 91 plans validated
-last_updated: "2026-06-25T15:17:18.075Z"
-last_activity: 2026-06-25 -- Phase 91 planning complete
+status: executing
+stopped_at: Completed 91-01-PLAN.md
+last_updated: "2026-06-25T15:59:09.571Z"
+last_activity: 2026-06-25
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 20
-  completed_plans: 10
-  percent: 50
+  completed_plans: 11
+  percent: 55
 ---
 
 # Project State
@@ -27,9 +27,9 @@ See: `.planning/PROJECT.md` (updated 2026-06-25)
 
 Milestone: v1.9 Inbound Peer Serving and Network Participation Boundary
 Phase: 91 (peer-permissions-and-connection-classes) — PLANNED
-Plan: 1 of 10
+Plan: 2 of 10
 Status: Ready to execute
-Last activity: 2026-06-25 -- Phase 91 planning complete
+Last activity: 2026-06-25
 
 Progress: [----------] 0%
 
@@ -59,6 +59,8 @@ Progress: [----------] 0%
 - v1.8 defined production-readiness claim gates, support/update/runbook/service policies, release-readiness evidence, and deterministic no-claim guardrails.
 - v1.9 now expands toward opt-in inbound peer serving while keeping transaction relay, compact blocks, mempool propagation, production-funds wallet use, migration apply mode, packaging, hosted dashboard, GUI, public-network CI, and production full-node readiness deferred.
 
+| Phase 91-peer-permissions-and-connection-classes P01 | 27min | 2 tasks | 5 files |
+
 ## Accumulated Context
 
 ### Decisions
@@ -71,6 +73,9 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 - [v1.8]: Keep production-readiness language guarded by evidence gates and deterministic no-claim checkers.
 - [v1.7]: Keep multi-day public-network soak runs opt-in UAT evidence; default `bash scripts/verify.sh` must remain deterministic, public-network-free, service-manager-free, and free of wall-clock multi-day gates.
 - [v1.6]: Continue keeping public-network full-sync and service checks opt-in UAT evidence unless a future phase deliberately changes the deterministic verification contract.
+- [Phase 91-peer-permissions-and-connection-classes]: Treat relay, forcerelay, mempool, bloomfilter, and blockfilters as inactive effect labels in the Phase 91 network domain model.
+- [Phase 91-peer-permissions-and-connection-classes]: Map only forceinbound-protected inbound classes to reserved admission capacity; ordinary and permissioned inbound stay ordinary slots.
+- [Phase 91-peer-permissions-and-connection-classes]: Use literal IpAddr class matching and reject ranges, hostnames, and endpoint-shaped values at the class parser boundary.
 
 ### Pending Todos
 
@@ -87,9 +92,10 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 - `.planning/phases/` still contains historical phase directories required by verifier scripts; new v1.9 phase directories should use Phase 90+ names to avoid collisions.
 - Default local verification must remain deterministic; public-network inbound serving review should be opt-in UAT evidence unless deliberately changed.
 - Existing outbound sync, full-sync, soak, support-bundle, and release-boundary behavior must not regress while adding inbound serving.
+- Local generated Rust test binaries hang at dyld start before test execution; Plan 91-01 used cargo test --no-run, cargo check, build, clippy, and breadcrumb checks as verification evidence.
 
 ## Session Continuity
 
-Last session: 2026-06-25T14:29:45.121Z
-Stopped at: Phase 91 context gathered
-Resume file: .planning/phases/91-peer-permissions-and-connection-classes/91-CONTEXT.md
+Last session: 2026-06-25T15:59:09.569Z
+Stopped at: Completed 91-01-PLAN.md
+Resume file: None
