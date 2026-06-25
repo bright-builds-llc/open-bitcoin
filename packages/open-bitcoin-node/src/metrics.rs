@@ -21,10 +21,16 @@ pub enum MetricKind {
     DiskUsageBytes,
     RpcHealth,
     ServiceRestarts,
+    InboundAdmittedPeerCount,
+    InboundRejectedPeerCount,
+    InboundCapRejectCount,
+    InboundReservedSlotRejectCount,
+    InboundDuplicateRejectCount,
+    InboundSelfConnectionRejectCount,
 }
 
 impl MetricKind {
-    pub const ALL: [Self; 11] = [
+    pub const ALL: [Self; 17] = [
         Self::SyncHeight,
         Self::HeaderHeight,
         Self::DownloadedBlockHeight,
@@ -36,6 +42,12 @@ impl MetricKind {
         Self::DiskUsageBytes,
         Self::RpcHealth,
         Self::ServiceRestarts,
+        Self::InboundAdmittedPeerCount,
+        Self::InboundRejectedPeerCount,
+        Self::InboundCapRejectCount,
+        Self::InboundReservedSlotRejectCount,
+        Self::InboundDuplicateRejectCount,
+        Self::InboundSelfConnectionRejectCount,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -51,6 +63,12 @@ impl MetricKind {
             Self::DiskUsageBytes => "disk_usage_bytes",
             Self::RpcHealth => "rpc_health",
             Self::ServiceRestarts => "service_restarts",
+            Self::InboundAdmittedPeerCount => "inbound_admitted_peer_count",
+            Self::InboundRejectedPeerCount => "inbound_rejected_peer_count",
+            Self::InboundCapRejectCount => "inbound_cap_reject_count",
+            Self::InboundReservedSlotRejectCount => "inbound_reserved_slot_reject_count",
+            Self::InboundDuplicateRejectCount => "inbound_duplicate_reject_count",
+            Self::InboundSelfConnectionRejectCount => "inbound_self_connection_reject_count",
         }
     }
 }
@@ -299,10 +317,14 @@ mod tests {
         );
         for label in labels {
             assert!(label.ends_with("_count"));
-            assert!(!label.contains("endpoint"));
-            assert!(!label.contains("peer_id"));
-            assert!(!label.contains("remote_addr"));
-            assert!(!label.contains("remote_endpoint"));
+            for forbidden in [
+                "endpoint".to_string(),
+                "peer_id".to_string(),
+                ["remote", "_addr"].concat(),
+                ["remote", "_endpoint"].concat(),
+            ] {
+                assert!(!label.contains(&forbidden));
+            }
         }
     }
 
