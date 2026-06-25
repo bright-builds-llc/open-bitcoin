@@ -112,7 +112,7 @@ Each task was committed atomically:
 - **Adjustment:** Used the requested `timeout 30s` wrapper, recorded exit code 124, and confirmed no matching test binaries remained running.
 - **Verification:** `cargo test --no-run` passed and all bounded focused execution attempts were controlled by `timeout 30s`.
 
----
+***
 
 **Total deviations:** 2 process adjustments.
 **Impact on plan:** Implementation scope stayed within Plan 91-04 ownership. No relay, mempool, filter, forcerelay, ban, eviction, public-default, or outbound-sync behavior was added.
@@ -161,6 +161,6 @@ Plan 91-05 can project the managed permission counters and latest admission evid
 - Found task commit `d1b1143`
 - Found task commit `f5866bd`
 
----
+***
 *Phase: 91-peer-permissions-and-connection-classes*
 *Completed: 2026-06-25*

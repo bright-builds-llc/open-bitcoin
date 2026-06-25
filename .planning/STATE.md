@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Inbound Peer Serving and Network Participation Boundary
 status: executing
-stopped_at: Completed 91-06-PLAN.md
-last_updated: "2026-06-25T18:14:00.000Z"
+stopped_at: Completed 91-07-PLAN.md
+last_updated: "2026-06-25T18:45:19.000Z"
 last_activity: 2026-06-25
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 20
-  completed_plans: 16
-  percent: 80
+  completed_plans: 17
+  percent: 85
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-06-25)
 
 Milestone: v1.9 Inbound Peer Serving and Network Participation Boundary
 Phase: 91 (peer-permissions-and-connection-classes) — PLANNED
-Plan: 7 of 10
+Plan: 8 of 10
 Status: Ready to execute
 Last activity: 2026-06-25
 
@@ -65,6 +65,7 @@ Progress: [----------] 0%
 | Phase 91 P04 | 14min | 2 tasks | 6 files |
 | Phase 91 P05 | 13min | 2 tasks | 11 files |
 | Phase 91 P06 | stalled verification | 2 tasks | 3 files |
+| Phase 91 P07 | 25min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -94,6 +95,7 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 - [Phase 91]: Store only typed low-cardinality permission class/effect labels in managed admission evidence; do not store raw class names, endpoints, peer ids, or raw config strings.
 - [Phase 91]: Expose permission evidence through openbitcoinnetworkstatus and the shared inbound status contract, while keeping getnetworkinfo free of permission fields.
 - [Phase 91]: Add permission metrics as fixed MetricKind variants without dynamic labels or dimensions.
+- [Phase 91]: Support bundles sanitize inbound permission evidence to bounded machine class/effect labels and redact raw class names, raw permission strings, peer ids, endpoints, and credential literals.
 
 ### Pending Todos
 
@@ -114,6 +116,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-25T17:42:38.709Z
-Stopped at: Completed 91-05-PLAN.md
+Last session: 2026-06-25T18:45:19.000Z
+Stopped at: Completed 91-07-PLAN.md
 Resume file: None

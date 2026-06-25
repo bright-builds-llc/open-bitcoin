@@ -129,7 +129,7 @@ Each task was committed atomically:
 - **Verification:** See verification results below.
 - **Committed in:** `3b60e4f`, `d216e9a`
 
----
+***
 
 **Total deviations:** 1 auto-fixed issue plus 1 process adjustment.
 **Impact on plan:** The network API addition was the small registry-carrying change explicitly allowed by the execution prompt. No Knots whitelist compatibility or deferred relay behavior was added.
@@ -179,6 +179,6 @@ Plan 91-03 can consume `RuntimeConfig.inbound.permission_classes` and thread per
 - Found task commit `3b60e4f`
 - Found task commit `d216e9a`
 
----
+***
 *Phase: 91-peer-permissions-and-connection-classes*
 *Completed: 2026-06-25*

@@ -127,7 +127,7 @@ Each task was committed atomically:
 - **Adjustment:** Used `timeout 30s` for focused executable test attempts, confirmed exit code 124, and used check/build/clippy/no-run evidence as interim local verification.
 - **Verification:** No `open_bitcoin_network` or `open_bitcoin_node` test binaries were left running after timeout cleanup.
 
----
+***
 
 **Total deviations:** 1 auto-fixed blocking issue plus 2 process adjustments.
 **Impact on plan:** The public API compile fixes were necessary fallout from the planned admission-record shape change. No relay, mempool, filter, compact-block, address-relay, ban, or eviction behavior was added.
@@ -174,6 +174,6 @@ Plan 91-04 can wire the runtime listener to resolve remote IPs through the parse
 - Found task commit `5c879fe`
 - Found task commit `6f92622`
 
----
+***
 *Phase: 91-peer-permissions-and-connection-classes*
 *Completed: 2026-06-25*

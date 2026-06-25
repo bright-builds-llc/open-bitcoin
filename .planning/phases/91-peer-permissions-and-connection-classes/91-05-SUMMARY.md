@@ -144,7 +144,7 @@ Each task was committed atomically:
 - **Adjustment:** Used `timeout 30s` for focused executable attempts and confirmed no matching test binaries remained running afterward.
 - **Verification:** No `open_bitcoin_node`, `open_bitcoin_rpc`, `open_bitcoind`, or `black_box_parity` processes remained after timeout cleanup.
 
----
+***
 
 **Total deviations:** 2 auto-fixed issues plus 2 process adjustments.
 **Impact on plan:** The managed-evidence and fixture updates were required to satisfy the planned status/RPC contract. No relay, mempool, filter, compact-block, public-default, production-readiness, address-relay, ban, or eviction behavior was added.
@@ -205,6 +205,6 @@ None - the new status/RPC/metrics surfaces were covered by the Plan 91-05 threat
 - Found task commit `955888d`
 - Found task commit `41db611`
 
----
+***
 *Phase: 91-peer-permissions-and-connection-classes*
 *Completed: 2026-06-25*
