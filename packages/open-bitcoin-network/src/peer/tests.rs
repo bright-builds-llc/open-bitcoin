@@ -12,9 +12,10 @@ use open_bitcoin_consensus::{check_block_header, transaction_txid, transaction_w
 use open_bitcoin_primitives::{Block, BlockHash, BlockHeader, Hash32, MerkleRoot, NetworkMagic};
 
 use crate::{
-    ConnectionRole, HeaderStore, HeaderSyncPolicy, HeadersMessage, InboundAdmissionRejectionReason,
-    InboundAdmissionSlotClass, InboundHandshakeState, InboundPeerRecord, InventoryList,
-    LocalPeerConfig, PeerAction, PeerManager, ServiceFlags, WireNetworkMessage,
+    ConnectionRole, DisconnectReason, HeaderStore, HeaderSyncPolicy, HeadersMessage,
+    InboundAdmissionRejectionReason, InboundAdmissionSlotClass, InboundHandshakeState,
+    InboundPeerRecord, InventoryList, LocalPeerConfig, PeerAction, PeerManager, ServiceFlags,
+    WireNetworkMessage,
 };
 use open_bitcoin_primitives::{InventoryType, InventoryVector};
 
@@ -201,7 +202,10 @@ fn inbound_self_connection_version_rejects_without_establishing_peer() {
         .expect("self connection should be rejected as an action");
 
     // Assert
-    assert!(matches!(actions.as_slice(), [PeerAction::Disconnect(_)]));
+    assert_eq!(
+        actions,
+        vec![PeerAction::Disconnect(DisconnectReason::SelfConnection)],
+    );
     let peer = manager.peer_state(33).expect("peer state");
     let inbound_record = peer.maybe_inbound_record.as_ref().expect("inbound record");
     assert_eq!(

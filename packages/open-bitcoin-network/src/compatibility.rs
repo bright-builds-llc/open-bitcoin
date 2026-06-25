@@ -220,6 +220,7 @@ fn diagnose_actions(actions: &[PeerAction]) -> CompatibilityDiagnosis {
     });
     match maybe_disconnect {
         Some(DisconnectReason::DuplicateVersion) => CompatibilityDiagnosis::VersionRejected,
+        Some(DisconnectReason::SelfConnection) => CompatibilityDiagnosis::VersionRejected,
         Some(DisconnectReason::MissingHeaderAncestor(_)) => {
             CompatibilityDiagnosis::MalformedPayload
         }
@@ -232,7 +233,9 @@ fn diagnose_error(error: &NetworkError) -> CompatibilityDiagnosis {
         NetworkError::PeerAlreadyExists(_) | NetworkError::UnknownPeer(_) => {
             CompatibilityDiagnosis::LocalConfigurationFailure
         }
-        NetworkError::DuplicateVersion(_) => CompatibilityDiagnosis::VersionRejected,
+        NetworkError::DuplicateVersion(_) | NetworkError::SelfConnection(_) => {
+            CompatibilityDiagnosis::VersionRejected
+        }
         _ => CompatibilityDiagnosis::MalformedPayload,
     }
 }

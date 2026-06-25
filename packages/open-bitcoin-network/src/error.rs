@@ -11,6 +11,7 @@ pub type PeerId = u64;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DisconnectReason {
     DuplicateVersion,
+    SelfConnection,
     MissingHeaderAncestor(BlockHash),
 }
 
@@ -18,6 +19,7 @@ impl fmt::Display for DisconnectReason {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::DuplicateVersion => write!(f, "duplicate version message"),
+            Self::SelfConnection => write!(f, "self connection"),
             Self::MissingHeaderAncestor(hash) => {
                 write!(f, "missing header ancestor: {:?}", hash.to_byte_array(),)
             }
@@ -43,6 +45,7 @@ pub enum NetworkError {
     PeerAlreadyExists(PeerId),
     UnknownPeer(PeerId),
     DuplicateVersion(PeerId),
+    SelfConnection(PeerId),
 }
 
 impl fmt::Display for NetworkError {
@@ -78,6 +81,9 @@ impl fmt::Display for NetworkError {
             Self::UnknownPeer(peer_id) => write!(f, "unknown peer: {peer_id}"),
             Self::DuplicateVersion(peer_id) => {
                 write!(f, "peer {peer_id} sent duplicate version message")
+            }
+            Self::SelfConnection(peer_id) => {
+                write!(f, "peer {peer_id} connected to self")
             }
         }
     }
@@ -136,6 +142,10 @@ mod tests {
             "duplicate version message",
         );
         assert_eq!(
+            DisconnectReason::SelfConnection.to_string(),
+            "self connection",
+        );
+        assert_eq!(
             NetworkError::InvalidUserAgentEncoding.to_string(),
             "version message user agent is not valid UTF-8",
         );
@@ -167,6 +177,10 @@ mod tests {
         assert_eq!(
             NetworkError::DuplicateVersion(7).to_string(),
             "peer 7 sent duplicate version message",
+        );
+        assert_eq!(
+            NetworkError::SelfConnection(8).to_string(),
+            "peer 8 connected to self",
         );
     }
 }

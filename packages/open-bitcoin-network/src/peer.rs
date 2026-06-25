@@ -703,7 +703,7 @@ fn reject_self_connection(peer: &mut PeerState, remote_nonce: u64) -> PeerAction
     }
     peer.maybe_inbound_rejection_reason = Some(InboundAdmissionRejectionReason::SelfConnection);
 
-    PeerAction::Disconnect(DisconnectReason::DuplicateVersion)
+    PeerAction::Disconnect(DisconnectReason::SelfConnection)
 }
 
 #[cfg(test)]

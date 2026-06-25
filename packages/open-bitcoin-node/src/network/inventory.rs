@@ -78,6 +78,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
 pub(super) fn disconnect_network_error(peer_id: PeerId, reason: DisconnectReason) -> NetworkError {
     match reason {
         DisconnectReason::DuplicateVersion => NetworkError::DuplicateVersion(peer_id),
+        DisconnectReason::SelfConnection => NetworkError::SelfConnection(peer_id),
         DisconnectReason::MissingHeaderAncestor(hash) => NetworkError::MissingHeaderAncestor(hash),
     }
 }
