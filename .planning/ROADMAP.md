@@ -27,7 +27,7 @@ v1.9 Inbound Peer Serving and Network Participation Boundary started on 2026-06-
 
 | Phase | Name | Goal | Requirements | Status |
 |-------|------|------|--------------|--------|
-| 90 | Inbound Listener and Admission Policy | Add the opt-in listener, admission model, handshake lifecycle, caps, and operator-visible inbound/outbound distinction. | INB-01, INB-02, INB-03, INB-04, INB-05 | Pending |
+| 90 | Inbound Listener and Admission Policy | 1/10 | In Progress|  |
 | 91 | Peer Permissions and Connection Classes | Add permissioned peer classes and bounded permission effects without enabling deferred relay behavior. | PERM-01, PERM-02, PERM-03, PERM-04 | Pending |
 | 92 | Address Advertisement and Discovery Boundaries | Scope listener advertisement, bounded address responses, address-management contracts, and docs that distinguish these from full address relay. | ADDR-01, ADDR-02, ADDR-03, ADDR-04 | Pending |
 | 93 | Eviction, Ban, and Misbehavior Policy | Add deterministic eviction scoring, disconnect reasons, discourage/ban persistence, expiry, unban, and permission-aware misbehavior handling. | EVICT-01, EVICT-02, EVICT-03, EVICT-04 | Pending |
@@ -42,10 +42,10 @@ v1.9 Inbound Peer Serving and Network Participation Boundary started on 2026-06-
 
 **Requirements:** INB-01, INB-02, INB-03, INB-04, INB-05
 
-**Plans:** 10 plans
+**Plans:** 1/10 plans executed
 
 Plans:
-- [ ] 90-01-PLAN.md - Pure inbound listener and admission contracts
+- [x] 90-01-PLAN.md - Pure inbound listener and admission contracts
 - [ ] 90-02-PLAN.md - Open Bitcoin-owned inbound config and CLI controls
 - [ ] 90-03-PLAN.md - Peer manager inbound state, handshake, and counters
 - [ ] 90-04-PLAN.md - Runtime listener adapter, daemon startup, and loopback integration
