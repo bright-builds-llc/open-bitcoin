@@ -14,10 +14,12 @@ use std::{
 
 use open_bitcoin_node::{SyncNetwork, SyncPeerAddress, core::wallet::AddressNetwork};
 
+use open_bitcoin_network::{InboundPreflightReason, classify_inbound_preflight};
+
 use super::{
-    ConfigPrecedence, ConfigSource, DEFAULT_COOKIE_FILE_NAME, DaemonSyncMode, RpcAuthConfig,
-    RuntimeConfig, WalletRuntimeConfig, WalletRuntimeScope, load_runtime_config_for_args,
-    parse_open_bitcoin_jsonc_config,
+    ConfigPrecedence, ConfigSource, DEFAULT_COOKIE_FILE_NAME, DaemonSyncMode, OpenBitcoinConfig,
+    RpcAuthConfig, RuntimeConfig, WalletRuntimeConfig, WalletRuntimeScope,
+    load_runtime_config_for_args, parse_open_bitcoin_jsonc_config,
 };
 
 static NEXT_TEST_DIRECTORY_ID: AtomicU64 = AtomicU64::new(0);
@@ -390,6 +392,144 @@ fn open_bitcoin_jsonc_accepts_mainnet_sync_activation_contract() {
     assert_eq!(config.sync.maybe_max_rounds, None);
     assert_eq!(config.sync.maybe_max_blocks_in_flight_per_peer, None);
     assert_eq!(config.sync.maybe_max_blocks_in_flight_total, None);
+}
+
+#[test]
+fn open_bitcoin_config_default_disables_inbound_listener() {
+    // Arrange / Act
+    let config = OpenBitcoinConfig::default();
+    let runtime = RuntimeConfig::default();
+
+    // Assert
+    assert!(!config.inbound.enabled);
+    assert!(!runtime.inbound.enabled);
+    assert_eq!(
+        runtime.inbound.listen_addresses,
+        vec!["127.0.0.1:18444".to_string()]
+    );
+    assert_eq!(runtime.inbound.max_peers, 8);
+    assert_eq!(runtime.inbound.reserved_slots, 0);
+    assert!(!runtime.inbound.allow_public);
+}
+
+#[test]
+fn open_bitcoin_jsonc_accepts_inbound_listener_contract() {
+    // Arrange
+    let text = r#"
+    {
+      "inbound": {
+        "enabled": true,
+        "listen_addresses": ["127.0.0.1:18444"],
+        "max_peers": 8,
+        "reserved_slots": 1,
+        "allow_public": false
+      }
+    }
+    "#;
+    let sandbox = TestDirectory::new("inbound-jsonc-contract");
+    fs::write(sandbox.child("open-bitcoin.jsonc"), text).expect("open bitcoin config");
+
+    // Act
+    let config = parse_open_bitcoin_jsonc_config(text).expect("jsonc config");
+    let runtime = load_runtime_config_for_args(&[cli_arg("datadir", &sandbox.path)], &sandbox.path)
+        .expect("inbound runtime config");
+    let preflight = classify_inbound_preflight(&runtime.inbound);
+
+    // Assert
+    assert!(config.inbound.enabled);
+    assert_eq!(
+        config.inbound.listen_addresses,
+        vec!["127.0.0.1:18444".to_string()]
+    );
+    assert_eq!(config.inbound.max_peers, 8);
+    assert_eq!(config.inbound.reserved_slots, 1);
+    assert!(!config.inbound.allow_public);
+    assert!(runtime.inbound.enabled);
+    assert_eq!(
+        runtime.inbound.listen_addresses,
+        vec!["127.0.0.1:18444".to_string()]
+    );
+    assert_eq!(runtime.inbound.max_peers, 8);
+    assert_eq!(runtime.inbound.reserved_slots, 1);
+    assert!(!runtime.inbound.allow_public);
+    assert_eq!(preflight.reason(), InboundPreflightReason::Ready);
+    assert_eq!(preflight.ready_endpoints()[0].normalized, "127.0.0.1:18444");
+}
+
+#[test]
+fn open_bitcoin_jsonc_rejects_unknown_inbound_fields() {
+    // Arrange
+    let text = r#"
+    {
+      "inbound": {
+        "enabled": false,
+        "surprise": true
+      }
+    }
+    "#;
+
+    // Act
+    let error = parse_open_bitcoin_jsonc_config(text).expect_err("unknown field should fail");
+
+    // Assert
+    assert!(error.to_string().contains("unknown field"));
+    assert!(error.to_string().contains("surprise"));
+}
+
+#[test]
+fn inbound_config_rejects_zero_max_peers_and_reserved_slots_over_cap() {
+    // Arrange
+    let zero_max_sandbox = TestDirectory::new("inbound-zero-max");
+    fs::write(
+        zero_max_sandbox.child("open-bitcoin.jsonc"),
+        r#"
+        {
+          "inbound": {
+            "enabled": true,
+            "listen_addresses": ["127.0.0.1:18444"],
+            "max_peers": 0
+          }
+        }
+        "#,
+    )
+    .expect("open bitcoin config");
+    let reserved_over_cap_sandbox = TestDirectory::new("inbound-reserved-over-cap");
+    fs::write(
+        reserved_over_cap_sandbox.child("open-bitcoin.jsonc"),
+        r#"
+        {
+          "inbound": {
+            "enabled": true,
+            "listen_addresses": ["127.0.0.1:18444"],
+            "max_peers": 2,
+            "reserved_slots": 3
+          }
+        }
+        "#,
+    )
+    .expect("open bitcoin config");
+
+    // Act
+    let zero_max_error = load_runtime_config_for_args(
+        &[cli_arg("datadir", &zero_max_sandbox.path)],
+        &zero_max_sandbox.path,
+    )
+    .expect_err("zero max peers should fail");
+    let reserved_over_cap_error = load_runtime_config_for_args(
+        &[cli_arg("datadir", &reserved_over_cap_sandbox.path)],
+        &reserved_over_cap_sandbox.path,
+    )
+    .expect_err("reserved slots over cap should fail");
+
+    // Assert
+    assert_eq!(
+        zero_max_error.to_string(),
+        "Error resolving Open Bitcoin inbound config: inbound.max_peers must be greater than zero."
+    );
+    assert_eq!(
+        reserved_over_cap_error.to_string(),
+        "Error resolving Open Bitcoin inbound config: inbound.reserved_slots must be less than or equal to inbound.max_peers."
+    );
 }
 
 #[test]
