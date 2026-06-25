@@ -12,8 +12,9 @@ use open_bitcoin_consensus::{check_block_header, transaction_txid, transaction_w
 use open_bitcoin_primitives::{Block, BlockHash, BlockHeader, Hash32, MerkleRoot, NetworkMagic};
 
 use crate::{
-    ConnectionRole, HeaderStore, HeaderSyncPolicy, HeadersMessage, InventoryList, LocalPeerConfig,
-    PeerAction, PeerManager, ServiceFlags, WireNetworkMessage,
+    ConnectionRole, HeaderStore, HeaderSyncPolicy, HeadersMessage, InventoryList,
+    InboundAdmissionRejectionReason, InboundAdmissionSlotClass, InboundHandshakeState,
+    InboundPeerRecord, LocalPeerConfig, PeerAction, PeerManager, ServiceFlags, WireNetworkMessage,
 };
 use open_bitcoin_primitives::{InventoryType, InventoryVector};
 
@@ -99,6 +100,174 @@ fn outbound_handshake_negotiates_verack_sendheaders_and_wtxidrelay() {
     assert_eq!(
         manager.peer_state(11).expect("state").role,
         ConnectionRole::Outbound,
+    );
+}
+
+#[test]
+fn inbound_peer_record_stores_endpoint_and_starts_handshaking() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    let record = InboundPeerRecord {
+        peer_id: 31,
+        remote_endpoint: "127.0.0.1:18444".to_string(),
+        slot_class: InboundAdmissionSlotClass::Reserved,
+        handshake_state: InboundHandshakeState::Accepted,
+        maybe_remote_nonce: None,
+        observed_inbound_peers: 0,
+        observed_outbound_peers: 2,
+    };
+
+    // Act
+    manager
+        .add_inbound_peer_record(record)
+        .expect("inbound record should be stored");
+
+    // Assert
+    let peer = manager.peer_state(31).expect("peer state");
+    assert_eq!(peer.role, ConnectionRole::Inbound);
+    assert_eq!(
+        peer.maybe_inbound_record
+            .as_ref()
+            .expect("inbound record")
+            .remote_endpoint,
+        "127.0.0.1:18444",
+    );
+    assert_eq!(
+        peer.maybe_inbound_record
+            .as_ref()
+            .expect("inbound record")
+            .slot_class,
+        InboundAdmissionSlotClass::Reserved,
+    );
+    assert_eq!(
+        peer.maybe_inbound_record
+            .as_ref()
+            .expect("inbound record")
+            .handshake_state,
+        InboundHandshakeState::Handshaking,
+    );
+}
+
+#[test]
+fn simple_inbound_helper_creates_compatible_inbound_record() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+
+    // Act
+    manager.add_inbound_peer(32).expect("peer should be added");
+
+    // Assert
+    let peer = manager.peer_state(32).expect("peer state");
+    assert_eq!(peer.role, ConnectionRole::Inbound);
+    assert_eq!(
+        peer.maybe_inbound_record
+            .as_ref()
+            .expect("compatible inbound record")
+            .peer_id,
+        32,
+    );
+    assert_eq!(
+        peer.maybe_inbound_record
+            .as_ref()
+            .expect("compatible inbound record")
+            .slot_class,
+        InboundAdmissionSlotClass::Ordinary,
+    );
+    assert_eq!(
+        peer.maybe_inbound_record
+            .as_ref()
+            .expect("compatible inbound record")
+            .handshake_state,
+        InboundHandshakeState::Handshaking,
+    );
+}
+
+#[test]
+fn inbound_self_connection_version_rejects_without_establishing_peer() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_inbound_peer(33).expect("peer should be added");
+
+    // Act
+    let actions = manager
+        .handle_message(
+            33,
+            WireNetworkMessage::Version(crate::VersionMessage {
+                nonce: local_config().nonce,
+                ..crate::VersionMessage::default()
+            }),
+            11,
+        )
+        .expect("self connection should be rejected as an action");
+
+    // Assert
+    assert!(matches!(
+        actions.as_slice(),
+        [PeerAction::RejectInbound(rejection)]
+            if rejection.reason == InboundAdmissionRejectionReason::SelfConnection
+    ));
+    let peer = manager.peer_state(33).expect("peer state");
+    let inbound_record = peer
+        .maybe_inbound_record
+        .as_ref()
+        .expect("inbound record");
+    assert_eq!(
+        inbound_record.handshake_state,
+        InboundHandshakeState::Disconnected,
+    );
+    assert_eq!(inbound_record.maybe_remote_nonce, Some(local_config().nonce));
+    assert!(!peer.remote_version_received);
+    assert!(!peer.local_verack_sent);
+}
+
+#[test]
+fn inbound_handshake_uses_existing_peer_action_flow() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_inbound_peer(34).expect("peer should be added");
+
+    // Act
+    let actions = manager
+        .handle_message(
+            34,
+            WireNetworkMessage::Version(crate::VersionMessage {
+                nonce: 99,
+                start_height: 3,
+                ..crate::VersionMessage::default()
+            }),
+            11,
+        )
+        .expect("version should process");
+
+    // Assert
+    assert_eq!(
+        actions,
+        vec![
+            PeerAction::Send(WireNetworkMessage::Version(
+                local_config().version_message(11, -1)
+            )),
+            PeerAction::Send(WireNetworkMessage::WtxidRelay),
+            PeerAction::Send(WireNetworkMessage::Verack),
+            PeerAction::Send(WireNetworkMessage::SendHeaders),
+        ],
+    );
+    let peer = manager.peer_state(34).expect("peer state");
+    assert!(peer.remote_version_received);
+    assert!(peer.local_version_sent);
+    assert!(peer.local_verack_sent);
+    assert_eq!(
+        peer.maybe_inbound_record
+            .as_ref()
+            .expect("inbound record")
+            .maybe_remote_nonce,
+        Some(99),
+    );
+    assert_eq!(
+        peer.maybe_inbound_record
+            .as_ref()
+            .expect("inbound record")
+            .handshake_state,
+        InboundHandshakeState::Handshaking,
     );
 }
 
