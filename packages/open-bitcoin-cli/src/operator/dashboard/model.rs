@@ -509,6 +509,12 @@ fn metric_label(kind: MetricKind) -> &'static str {
         MetricKind::InboundReservedSlotRejectCount => "Inbound reserved rejects",
         MetricKind::InboundDuplicateRejectCount => "Inbound duplicate rejects",
         MetricKind::InboundSelfConnectionRejectCount => "Inbound self-connection rejects",
+        MetricKind::InboundPermissionedAdmitCount => "Inbound permissioned admits",
+        MetricKind::InboundProtectedAdmitCount => "Inbound protected admits",
+        MetricKind::InboundInactivePermissionEffectCount => "Inbound inactive permission effects",
+        MetricKind::InboundPermissionValidationFailureCount => {
+            "Inbound permission validation failures"
+        }
     }
 }
 

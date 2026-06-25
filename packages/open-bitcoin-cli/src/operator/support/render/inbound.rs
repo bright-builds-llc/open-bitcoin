@@ -5,7 +5,10 @@
 
 use open_bitcoin_node::status::{
     FieldAvailability, InboundAdmissionEvent, InboundPeerServingStatus,
+    InboundPermissionDecisionEvent,
 };
+
+const INACTIVE_RELAY_PERMISSION_NEXT_ACTION: &str = "Relay, mempool, bloom, and blockfilter permissions are recorded as inactive Phase 91 evidence; do not treat them as relay support.";
 
 pub(super) fn push_inbound_serving(
     output: &mut String,
@@ -67,6 +70,27 @@ fn push_available_inbound(output: &mut String, evidence: &InboundPeerServingStat
         "- reserved_slot_rejects: {}\n",
         evidence.reserved_slot_rejects
     ));
+    output.push_str(&format!(
+        "- permission_class: {}\n",
+        evidence.permission_class
+    ));
+    output.push_str(&format!(
+        "- permissioned_inbound_peers: {}\n",
+        evidence.permissioned_inbound_peers
+    ));
+    output.push_str(&format!(
+        "- protected_inbound_peers: {}\n",
+        evidence.protected_inbound_peers
+    ));
+    output.push_str(&format!(
+        "- active_permission_effects: {}\n",
+        label_list_text(&evidence.active_permission_effects)
+    ));
+    output.push_str(&format!(
+        "- inactive_permission_effects: {}\n",
+        label_list_text(&evidence.inactive_permission_effects)
+    ));
+    push_latest_permission_decision(output, &evidence.latest_permission_decision);
     push_latest_admission_event(output, &evidence.latest_admission_event);
     output.push_str(&format!("- Next action: {}\n", next_action(evidence)));
 }
@@ -86,7 +110,30 @@ fn push_latest_admission_event(
     }
 }
 
+fn push_latest_permission_decision(
+    output: &mut String,
+    event: &FieldAvailability<InboundPermissionDecisionEvent>,
+) {
+    match event {
+        FieldAvailability::Available(event) => output.push_str(&format!(
+            "- latest_permission_decision: outcome={} reason={} permission_class={} active_permission_effects={} inactive_permission_effects={} message={}\n",
+            event.outcome,
+            event.reason,
+            event.permission_class,
+            label_list_text(&event.active_permission_effects),
+            label_list_text(&event.inactive_permission_effects),
+            event.message
+        )),
+        FieldAvailability::Unavailable { reason } => output.push_str(&format!(
+            "- latest_permission_decision: Unavailable: {reason}\n"
+        )),
+    }
+}
+
 fn next_action(evidence: &InboundPeerServingStatus) -> &'static str {
+    if has_inactive_relay_like_effects(&evidence.inactive_permission_effects) {
+        return INACTIVE_RELAY_PERMISSION_NEXT_ACTION;
+    }
     if evidence.cap_rejects > 0 || evidence.reserved_slot_rejects > 0 {
         return "Review configured inbound caps and reserved slots before increasing listener exposure.";
     }
@@ -111,9 +158,29 @@ fn next_action(evidence: &InboundPeerServingStatus) -> &'static str {
     }
 }
 
+fn has_inactive_relay_like_effects(effects: &[String]) -> bool {
+    effects.iter().any(|effect| {
+        matches!(
+            effect.as_str(),
+            "inactive_relay"
+                | "inactive_forcerelay"
+                | "inactive_mempool"
+                | "inactive_bloomfilter"
+                | "inactive_blockfilters"
+        )
+    })
+}
+
 fn csv_or_unavailable(values: &[String]) -> String {
     if values.is_empty() {
         return "unavailable".to_string();
+    }
+    values.join(", ")
+}
+
+fn label_list_text(values: &[String]) -> String {
+    if values.is_empty() {
+        return "none".to_string();
     }
     values.join(", ")
 }

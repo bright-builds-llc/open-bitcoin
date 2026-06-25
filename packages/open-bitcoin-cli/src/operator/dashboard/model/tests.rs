@@ -22,7 +22,7 @@ use open_bitcoin_node::{
     },
 };
 
-use super::{DASHBOARD_METRIC_KINDS, DashboardState, derive_metric_points};
+use super::{DASHBOARD_METRIC_KINDS, DashboardState, derive_metric_points, metric_label};
 
 #[test]
 fn dashboard_projection_includes_required_sections_and_charts() {
@@ -53,6 +53,22 @@ fn dashboard_projection_includes_required_sections_and_charts() {
     let wallet_rows = &state.sections[2].rows;
     assert_eq!(wallet_rows[2].label, "Freshness");
     assert_eq!(wallet_rows[2].value, "fresh");
+}
+
+#[test]
+fn dashboard_metric_labels_cover_all_metric_kinds() {
+    // Arrange
+    let kinds = MetricKind::ALL;
+
+    // Act
+    let labels = kinds.into_iter().map(metric_label).collect::<Vec<_>>();
+
+    // Assert
+    assert_eq!(labels.len(), MetricKind::ALL.len());
+    assert!(labels.contains(&"Inbound permissioned admits"));
+    assert!(labels.contains(&"Inbound protected admits"));
+    assert!(labels.contains(&"Inbound inactive permission effects"));
+    assert!(labels.contains(&"Inbound permission validation failures"));
 }
 
 #[test]

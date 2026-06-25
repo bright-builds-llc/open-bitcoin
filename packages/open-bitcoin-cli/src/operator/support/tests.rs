@@ -13,16 +13,17 @@ use open_bitcoin_node::{
     status::{
         BestKnownTipSource, BestKnownTipStatus, ChainTipStatus, ConfigStatus, FieldAvailability,
         InboundAdmissionEvent, InboundHandshakeStatusCounts, InboundPeerServingStatus,
-        MempoolStatus, NoProgressDiagnosis, NoProgressThresholdEvidence, NoProgressThresholdState,
-        NodeRuntimeState, NodeStatus, PeerContributionEvidence, PeerContributionKind, PeerCounts,
-        PeerStatus, PeerTipAgreement, PeerTipAgreementStatus, ProgressCreditEvidence,
-        ProgressCreditKind, ProgressWindowEvidence, RejectedProgressActivity,
-        RejectedProgressActivityKind, ResourceBoundEntry, ResourceBoundKind, ResourceBoundSnapshot,
-        ResourceBoundUnit, ServiceLifecycleStatus, ServiceStatus, StallDiagnosisConfidence,
-        StallDiagnosisEvidence, StalledSubsystem, StayCurrentStatus, SyncAttemptCounters,
-        SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal,
-        SyncRecoveryCategory, SyncResourcePressure, SyncStatus, SyncStopReasonStatus,
-        TipFreshnessStatus, WalletStatus, inbound_status_unavailable, usage_against_budget,
+        InboundPermissionDecisionEvent, MempoolStatus, NoProgressDiagnosis,
+        NoProgressThresholdEvidence, NoProgressThresholdState, NodeRuntimeState, NodeStatus,
+        PeerContributionEvidence, PeerContributionKind, PeerCounts, PeerStatus, PeerTipAgreement,
+        PeerTipAgreementStatus, ProgressCreditEvidence, ProgressCreditKind, ProgressWindowEvidence,
+        RejectedProgressActivity, RejectedProgressActivityKind, ResourceBoundEntry,
+        ResourceBoundKind, ResourceBoundSnapshot, ResourceBoundUnit, ServiceLifecycleStatus,
+        ServiceStatus, StallDiagnosisConfidence, StallDiagnosisEvidence, StalledSubsystem,
+        StayCurrentStatus, SyncAttemptCounters, SyncConfiguredTargets, SyncLagStatus,
+        SyncLifecycleState, SyncProgress, SyncProgressSignal, SyncRecoveryCategory,
+        SyncResourcePressure, SyncStatus, SyncStopReasonStatus, TipFreshnessStatus, WalletStatus,
+        inbound_status_unavailable, usage_against_budget,
     },
 };
 use serde_json::json;
@@ -106,6 +107,7 @@ fn phase71_support_redaction_names_compact_evidence_bounds() {
             "logs are limited to existing structured status signals",
             "resource bounds are recorded as compact status summaries only",
             "inbound peer endpoints bounded/redacted",
+            "inbound permission labels bounded to machine classes/effects",
         ]
     );
 }
@@ -1026,6 +1028,114 @@ fn inbound_support_markdown_renders_bounded_admission_labels_and_next_action() {
 }
 
 #[test]
+fn inbound_support_markdown_renders_permission_labels_and_inactive_relay_guidance() {
+    // Arrange
+    let temp = TestDirectory::new("inbound-support-permissions");
+    let status = phase91_status_with_permissioned_inbound();
+    let bundle = phase77_support_bundle_with_status(temp.path(), status);
+
+    // Act
+    let markdown = render::render_support_markdown(&bundle);
+
+    // Assert
+    for expected in [
+        "permission_class: protected_inbound",
+        "permissioned_inbound_peers: 2",
+        "protected_inbound_peers: 1",
+        "active_permission_effects: admission_protected, download_serving_policy_input",
+        "inactive_permission_effects: inactive_relay, inactive_mempool",
+        "latest_permission_decision: outcome=admitted reason=admitted permission_class=protected_inbound active_permission_effects=admission_protected inactive_permission_effects=inactive_relay message=inbound permission decision admitted as protected_inbound",
+        "Next action: Relay, mempool, bloom, and blockfilter permissions are recorded as inactive Phase 91 evidence; do not treat them as relay support.",
+    ] {
+        assert!(markdown.contains(expected), "missing {expected}");
+    }
+}
+
+#[test]
+fn inbound_support_json_and_markdown_redact_raw_permission_config_evidence() {
+    // Arrange
+    let temp = TestDirectory::new("inbound-support-permission-redaction");
+    let mut status = phase91_status_with_permissioned_inbound();
+    let FieldAvailability::Available(inbound) = &mut status.peers.inbound else {
+        panic!("inbound status fixture should be available");
+    };
+    inbound.permission_class = "operator_loopback".to_string();
+    inbound.active_permission_effects = vec![
+        "admission_protected".to_string(),
+        "in,noban,forceinbound".to_string(),
+    ];
+    inbound.inactive_permission_effects =
+        vec!["inactive_relay".to_string(), "peer_id=91".to_string()];
+    inbound.latest_permission_decision =
+        FieldAvailability::available(InboundPermissionDecisionEvent {
+            outcome: "admitted".to_string(),
+            reason: "admitted".to_string(),
+            permission_class: "operator_loopback".to_string(),
+            active_permission_effects: vec![
+                "admission_protected".to_string(),
+                "in,noban,forceinbound".to_string(),
+            ],
+            inactive_permission_effects: vec![
+                "inactive_relay".to_string(),
+                "peer_id=91".to_string(),
+            ],
+            message: "operator_loopback in,noban,forceinbound peer_id=91 127.0.0.1:18444 rpc_password cookie=phase91-secret"
+                .to_string(),
+        });
+    let bundle = phase77_support_bundle_with_status(temp.path(), status);
+
+    // Act
+    let serialized = serde_json::to_value(&bundle).expect("support bundle json");
+    let json_text = serde_json::to_string_pretty(&bundle).expect("support json");
+    let markdown = render::render_support_markdown(&bundle);
+    let inbound = &serialized["status"]["peers"]["inbound"]["value"];
+    let latest_decision = &inbound["latest_permission_decision"]["value"];
+
+    // Assert
+    assert_eq!(
+        inbound["permission_class"],
+        json!("redacted_permission_class")
+    );
+    assert_eq!(
+        inbound["active_permission_effects"],
+        json!(["admission_protected", "redacted_permission_effect"])
+    );
+    assert_eq!(
+        inbound["inactive_permission_effects"],
+        json!(["inactive_relay", "redacted_permission_effect"])
+    );
+    assert_eq!(
+        latest_decision["permission_class"],
+        json!("redacted_permission_class")
+    );
+    assert_eq!(
+        latest_decision["message"],
+        json!("inbound permission decision admitted as redacted_permission_class")
+    );
+    for rendered in [&json_text, &markdown] {
+        for forbidden in [
+            "operator_loopback",
+            "in,noban,forceinbound",
+            "peer_id=",
+            "127.0.0.1:",
+            "rpc_password",
+            "cookie=phase91-secret",
+        ] {
+            assert_absent(rendered, forbidden);
+        }
+    }
+    assert!(markdown.contains("permission_class: redacted_permission_class"));
+    assert!(
+        markdown
+            .contains("active_permission_effects: admission_protected, redacted_permission_effect")
+    );
+    assert!(
+        markdown
+            .contains("inactive_permission_effects: inactive_relay, redacted_permission_effect")
+    );
+}
+
+#[test]
 fn inbound_support_preserves_unavailable_reason_in_json_and_markdown() {
     // Arrange
     let temp = TestDirectory::new("inbound-support-unavailable");
@@ -1359,6 +1469,36 @@ fn phase90_status_with_available_inbound() -> OpenBitcoinStatusSnapshot {
             "inbound permission decision evidence unavailable",
         ),
     });
+    status
+}
+
+fn phase91_status_with_permissioned_inbound() -> OpenBitcoinStatusSnapshot {
+    let mut status = phase90_status_with_available_inbound();
+    let FieldAvailability::Available(inbound) = &mut status.peers.inbound else {
+        panic!("inbound status fixture should be available");
+    };
+    inbound.duplicate_rejects = 0;
+    inbound.self_connection_rejects = 0;
+    inbound.cap_rejects = 0;
+    inbound.reserved_slot_rejects = 0;
+    inbound.permissioned_inbound_peers = 2;
+    inbound.protected_inbound_peers = 1;
+    inbound.permission_class = "protected_inbound".to_string();
+    inbound.active_permission_effects = vec![
+        "admission_protected".to_string(),
+        "download_serving_policy_input".to_string(),
+    ];
+    inbound.inactive_permission_effects =
+        vec!["inactive_relay".to_string(), "inactive_mempool".to_string()];
+    inbound.latest_permission_decision =
+        FieldAvailability::available(InboundPermissionDecisionEvent {
+            outcome: "admitted".to_string(),
+            reason: "admitted".to_string(),
+            permission_class: "protected_inbound".to_string(),
+            active_permission_effects: vec!["admission_protected".to_string()],
+            inactive_permission_effects: vec!["inactive_relay".to_string()],
+            message: "inbound permission decision admitted as protected_inbound".to_string(),
+        });
     status
 }
 
