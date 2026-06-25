@@ -11,7 +11,8 @@ use super::{
     InboundAdmissionCounters, InboundAdmissionDecision, InboundAdmissionPolicy,
     InboundAdmissionRejectionReason, InboundAdmissionRequest, InboundAdmissionSlotClass,
     InboundHandshakeState, InboundListenerActivationDiagnostic, InboundListenerConfig,
-    InboundPreflightReason, classify_inbound_preflight,
+    InboundPreflightReason, PeerPermissionDirection, PeerPermissionSet, PeerPermissionToken,
+    classify_inbound_preflight,
 };
 
 fn enabled_config(addresses: Vec<&str>) -> InboundListenerConfig {
@@ -41,6 +42,108 @@ fn admission_request(
         maybe_remote_nonce: Some(101),
         is_shutdown_requested: false,
     }
+}
+
+#[test]
+fn permission_tokens_accept_exact_knots_anchored_vocabulary() {
+    // Arrange
+    let tokens = [
+        "bloomfilter",
+        "blockfilters",
+        "noban",
+        "forcerelay",
+        "relay",
+        "mempool",
+        "download",
+        "addr",
+        "forceinbound",
+        "in",
+        "out",
+        "all",
+    ];
+
+    // Act
+    let parsed = PeerPermissionSet::parse("inbound.permission_classes[].permissions[]", tokens);
+
+    // Assert
+    let Ok(set) = parsed else {
+        panic!("expected exact permission vocabulary to parse");
+    };
+    assert!(set.contains_token(PeerPermissionToken::BloomFilter));
+    assert!(set.contains_token(PeerPermissionToken::BlockFilters));
+    assert!(set.contains_token(PeerPermissionToken::NoBan));
+    assert!(set.contains_token(PeerPermissionToken::ForceRelay));
+    assert!(set.contains_token(PeerPermissionToken::Relay));
+    assert!(set.contains_token(PeerPermissionToken::Mempool));
+    assert!(set.contains_token(PeerPermissionToken::Download));
+    assert!(set.contains_token(PeerPermissionToken::Addr));
+    assert!(set.contains_token(PeerPermissionToken::ForceInbound));
+    assert!(set.has_direction(PeerPermissionDirection::Inbound));
+    assert!(set.has_direction(PeerPermissionDirection::Outbound));
+}
+
+#[test]
+fn permission_tokens_reject_unsupported_knots_aliases_with_field_and_token() {
+    // Arrange
+    let aliases = ["bloom", "compactfilters", "cfilters"];
+
+    for alias in aliases {
+        // Act
+        let parsed =
+            PeerPermissionSet::parse("inbound.permission_classes[].permissions[]", [alias]);
+
+        // Assert
+        let Err(error) = parsed else {
+            panic!("expected unsupported alias rejection for {alias}");
+        };
+        assert_eq!(error.field(), "inbound.permission_classes[].permissions[]");
+        assert_eq!(error.token(), alias);
+        assert_eq!(error.reason(), "unsupported_token");
+    }
+}
+
+#[test]
+fn all_permission_keeps_bounded_effects_active_and_relay_like_effects_inactive() {
+    // Arrange
+    let set = match PeerPermissionSet::parse("inbound.permission_classes[].permissions[]", ["all"])
+    {
+        Ok(set) => set,
+        Err(error) => panic!("expected all to parse: {error:?}"),
+    };
+
+    // Act
+    let active_labels: Vec<&str> = set
+        .active_effects()
+        .iter()
+        .map(|effect| effect.as_str())
+        .collect();
+    let inactive_labels: Vec<&str> = set
+        .inactive_effects()
+        .iter()
+        .map(|effect| effect.as_str())
+        .collect();
+
+    // Assert
+    assert_eq!(
+        active_labels,
+        vec![
+            "admission_protected",
+            "eviction_policy_protected",
+            "misbehavior_policy_protected",
+            "address_response_policy_input",
+            "download_serving_policy_input",
+        ],
+    );
+    assert_eq!(
+        inactive_labels,
+        vec![
+            "inactive_relay",
+            "inactive_forcerelay",
+            "inactive_mempool",
+            "inactive_bloomfilter",
+            "inactive_blockfilters",
+        ],
+    );
 }
 
 #[test]

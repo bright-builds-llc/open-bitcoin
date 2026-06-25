@@ -601,6 +601,17 @@
       ]
     },
     {
+      "label": "network-peer-permissions",
+      "files": [
+        "packages/open-bitcoin-network/src/inbound/permissions.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net_permissions.h",
+        "packages/bitcoin-knots/src/net_permissions.cpp",
+        "packages/bitcoin-knots/test/functional/p2p_permissions.py"
+      ]
+    },
+    {
       "label": "network-inbound-admission",
       "files": [
         "packages/open-bitcoin-network/src/inbound.rs",

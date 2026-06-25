@@ -8,6 +8,13 @@ use std::collections::BTreeSet;
 
 use crate::error::PeerId;
 
+mod permissions;
+
+pub use permissions::{
+    INBOUND_PERMISSION_TOKENS_FIELD, InactivePermissionEffectLabel, PeerPermissionDirection,
+    PeerPermissionParseError, PeerPermissionSet, PeerPermissionToken, PermissionEffectLabel,
+};
+
 pub const INBOUND_LISTEN_ADDRESSES_FIELD: &str = "inbound.listen_addresses";
 pub const INBOUND_ENABLED_FIELD: &str = "inbound.enabled";
 
