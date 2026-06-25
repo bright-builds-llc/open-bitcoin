@@ -9,7 +9,7 @@ use open_bitcoin_rpc::{
     RpcAuthConfig, RpcErrorDetail,
     method::{
         GetBalancesResponse, GetBlockchainInfoResponse, GetMempoolInfoResponse,
-        GetNetworkInfoResponse, GetWalletInfoResponse,
+        GetNetworkInfoResponse, GetWalletInfoResponse, OpenBitcoinNetworkStatusResponse,
     },
 };
 use serde::de::DeserializeOwned;
@@ -85,6 +85,12 @@ impl HttpStatusRpcClient {
 impl StatusRpcClient for HttpStatusRpcClient {
     fn get_network_info(&self) -> Result<GetNetworkInfoResponse, StatusRpcError> {
         self.call("getnetworkinfo")
+    }
+
+    fn get_open_bitcoin_network_status(
+        &self,
+    ) -> Result<OpenBitcoinNetworkStatusResponse, StatusRpcError> {
+        self.call("openbitcoinnetworkstatus")
     }
 
     fn get_blockchain_info(&self) -> Result<GetBlockchainInfoResponse, StatusRpcError> {

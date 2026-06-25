@@ -31,12 +31,12 @@ use crate::operator::{
     },
 };
 use open_bitcoin_node::status::{
-    BestKnownTipStatus, BuildProvenance, ConfigStatus, FieldAvailability, MempoolStatus,
-    InboundAdmissionEvent, InboundHandshakeStatusCounts, InboundPeerServingStatus,
-    NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus,
-    ServiceLifecycleStatus, ServiceStatus, StayCurrentStatus, SyncAttemptCounters,
-    SyncConfiguredTargets, SyncProgressSignal, SyncStatus, SyncStopReasonStatus,
-    INBOUND_STATUS_UNAVAILABLE_REASON, WalletFreshness, WalletScanProgress, WalletStatus,
+    BestKnownTipStatus, BuildProvenance, ConfigStatus, FieldAvailability,
+    INBOUND_STATUS_UNAVAILABLE_REASON, InboundAdmissionEvent, InboundHandshakeStatusCounts,
+    InboundPeerServingStatus, MempoolStatus, NodeRuntimeState, NodeStatus,
+    OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, ServiceLifecycleStatus, ServiceStatus,
+    StayCurrentStatus, SyncAttemptCounters, SyncConfiguredTargets, SyncProgressSignal, SyncStatus,
+    SyncStopReasonStatus, WalletFreshness, WalletScanProgress, WalletStatus,
 };
 use open_bitcoin_node::storage::FJALL_LOCK_FILE_NAME;
 use open_bitcoin_rpc::{
@@ -653,6 +653,9 @@ fn human_and_json_renderers_surface_wallet_freshness_and_scan_reasons() {
                 outbound: 2,
             }),
             recent_peers: FieldAvailability::unavailable("peer telemetry unavailable"),
+            inbound: FieldAvailability::<InboundPeerServingStatus>::unavailable(
+                INBOUND_STATUS_UNAVAILABLE_REASON,
+            ),
         },
         mempool: MempoolStatus {
             transactions: FieldAvailability::available(3),
@@ -1758,6 +1761,8 @@ fn detected_service_candidate() -> ServiceCandidate {
 #[derive(Debug, Clone)]
 struct FakeStatusRpcClient {
     maybe_node_error: Option<StatusRpcError>,
+    maybe_network_status_error: Option<StatusRpcError>,
+    maybe_network_status: Option<OpenBitcoinNetworkStatusResponse>,
     maybe_wallet_error: Option<StatusRpcError>,
 }
 
@@ -1765,20 +1770,49 @@ impl FakeStatusRpcClient {
     fn running() -> Self {
         Self {
             maybe_node_error: None,
+            maybe_network_status_error: None,
+            maybe_network_status: Some(OpenBitcoinNetworkStatusResponse {
+                inbound: FieldAvailability::<InboundPeerServingStatus>::unavailable(
+                    INBOUND_STATUS_UNAVAILABLE_REASON,
+                ),
+            }),
             maybe_wallet_error: None,
+        }
+    }
+
+    fn running_with_inbound_status() -> Self {
+        Self {
+            maybe_network_status: Some(inbound_status_response()),
+            ..Self::running()
         }
     }
 
     fn failing(message: &str) -> Self {
         Self {
             maybe_node_error: Some(StatusRpcError::new(message)),
+            maybe_network_status_error: None,
+            maybe_network_status: None,
             maybe_wallet_error: None,
+        }
+    }
+
+    fn network_status_failing(error: StatusRpcError) -> Self {
+        Self {
+            maybe_network_status_error: Some(error),
+            maybe_network_status: None,
+            ..Self::running()
         }
     }
 
     fn wallet_failing(error: StatusRpcError) -> Self {
         Self {
             maybe_node_error: None,
+            maybe_network_status_error: None,
+            maybe_network_status: Some(OpenBitcoinNetworkStatusResponse {
+                inbound: FieldAvailability::<InboundPeerServingStatus>::unavailable(
+                    INBOUND_STATUS_UNAVAILABLE_REASON,
+                ),
+            }),
             maybe_wallet_error: Some(error),
         }
     }
@@ -1815,6 +1849,24 @@ impl StatusRpcClient for FakeStatusRpcClient {
             incrementalfee: 1_000,
             warnings: vec!["network warning".to_string()],
         })
+    }
+
+    fn get_open_bitcoin_network_status(
+        &self,
+    ) -> Result<OpenBitcoinNetworkStatusResponse, StatusRpcError> {
+        self.maybe_node_error()?;
+        if let Some(error) = &self.maybe_network_status_error {
+            return Err(error.clone());
+        }
+
+        Ok(self
+            .maybe_network_status
+            .clone()
+            .unwrap_or_else(|| OpenBitcoinNetworkStatusResponse {
+                inbound: FieldAvailability::<InboundPeerServingStatus>::unavailable(
+                    INBOUND_STATUS_UNAVAILABLE_REASON,
+                ),
+            }))
     }
 
     fn get_blockchain_info(&self) -> Result<GetBlockchainInfoResponse, StatusRpcError> {
@@ -1865,6 +1917,34 @@ impl StatusRpcClient for FakeStatusRpcClient {
                 immature_sats: 0,
             },
         })
+    }
+}
+
+fn inbound_status_response() -> OpenBitcoinNetworkStatusResponse {
+    OpenBitcoinNetworkStatusResponse {
+        inbound: FieldAvailability::available(InboundPeerServingStatus {
+            listener_state: "listening".to_string(),
+            bound_endpoints: vec!["127.0.0.1:18444".to_string()],
+            preflight_reason: "ready".to_string(),
+            admitted_inbound_peers: 2,
+            rejected_inbound_peers: 3,
+            handshake: InboundHandshakeStatusCounts {
+                awaiting_version: 1,
+                awaiting_verack: 0,
+                established: 2,
+                disconnected: 1,
+            },
+            duplicate_rejects: 1,
+            self_connection_rejects: 1,
+            cap_rejects: 1,
+            reserved_slot_rejects: 0,
+            latest_admission_event: FieldAvailability::available(InboundAdmissionEvent {
+                outcome: "rejected".to_string(),
+                reason: "duplicate_peer_id".to_string(),
+                slot_class: "ordinary".to_string(),
+                message: "duplicate inbound peer id rejected".to_string(),
+            }),
+        }),
     }
 }
 

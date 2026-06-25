@@ -14,13 +14,14 @@ use open_bitcoin_node::{
     logging::writer::load_log_status,
     status::{
         BuildProvenance, ConfigStatus, FieldAvailability, HealthSignal, HealthSignalLevel,
-        MempoolStatus, NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts,
-        PeerStatus, WalletStatus,
+        INBOUND_STATUS_UNAVAILABLE_REASON, InboundPeerServingStatus, MempoolStatus,
+        NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus,
+        WalletStatus,
     },
 };
 use open_bitcoin_rpc::method::{
     GetBalancesResponse, GetBlockchainInfoResponse, GetMempoolInfoResponse, GetNetworkInfoResponse,
-    GetWalletInfoResponse,
+    GetWalletInfoResponse, OpenBitcoinNetworkStatusResponse,
 };
 
 use super::{
@@ -101,6 +102,9 @@ pub enum StatusRpcAuthSource {
 /// Live RPC adapter contract used by status collection.
 pub trait StatusRpcClient {
     fn get_network_info(&self) -> Result<GetNetworkInfoResponse, StatusRpcError>;
+    fn get_open_bitcoin_network_status(
+        &self,
+    ) -> Result<OpenBitcoinNetworkStatusResponse, StatusRpcError>;
     fn get_blockchain_info(&self) -> Result<GetBlockchainInfoResponse, StatusRpcError>;
     fn get_mempool_info(&self) -> Result<GetMempoolInfoResponse, StatusRpcError>;
     fn get_wallet_info(&self) -> Result<GetWalletInfoResponse, StatusRpcError>;
@@ -224,6 +228,8 @@ fn collect_live_status_snapshot(
         collect_live_wallet_status(input, rpc_client, &blockchain_info, &mut health_signals);
     health_signals.extend(log_health_signals(input));
 
+    let inbound = collect_inbound_status(rpc_client);
+
     OpenBitcoinStatusSnapshot {
         node: NodeStatus {
             state: NodeRuntimeState::Running,
@@ -238,6 +244,7 @@ fn collect_live_status_snapshot(
                 outbound: saturating_usize_to_u32(network_info.connections_out),
             }),
             recent_peers: FieldAvailability::unavailable("peer telemetry unavailable"),
+            inbound,
         },
         mempool: MempoolStatus {
             transactions: FieldAvailability::available(saturating_usize_to_u64(mempool_info.size)),
@@ -288,6 +295,7 @@ fn stopped_status_snapshot(
         peers: PeerStatus {
             peer_counts: FieldAvailability::unavailable(reason.clone()),
             recent_peers: FieldAvailability::unavailable(reason.clone()),
+            inbound: FieldAvailability::unavailable(reason.clone()),
         },
         mempool: MempoolStatus {
             transactions: FieldAvailability::unavailable(reason.clone()),
@@ -304,6 +312,30 @@ fn stopped_status_snapshot(
         health_signals,
         build: current_build_provenance(),
     }
+}
+
+fn collect_inbound_status(
+    rpc_client: &dyn StatusRpcClient,
+) -> FieldAvailability<InboundPeerServingStatus> {
+    match rpc_client.get_open_bitcoin_network_status() {
+        Ok(status) => status.inbound,
+        Err(error) => FieldAvailability::unavailable(inbound_status_unavailable_reason(&error)),
+    }
+}
+
+fn inbound_status_unavailable_reason(error: &StatusRpcError) -> String {
+    let prefix = match error.maybe_code() {
+        Some(open_bitcoin_rpc::RpcErrorCode::MethodNotFound) => {
+            "openbitcoinnetworkstatus unavailable: daemon does not expose Phase 90 inbound status"
+        }
+        _ => "openbitcoinnetworkstatus unavailable",
+    };
+    let error_text = error.to_string();
+    if error_text.trim().is_empty() {
+        return format!("{prefix}: {INBOUND_STATUS_UNAVAILABLE_REASON}");
+    }
+
+    format!("{prefix}: {error_text}")
 }
 
 fn collect_live_wallet_status(
