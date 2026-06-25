@@ -43,6 +43,8 @@ pub enum SupportedMethod {
     GetMempoolInfo,
     #[serde(rename = "getnetworkinfo")]
     GetNetworkInfo,
+    #[serde(rename = "openbitcoinnetworkstatus")]
+    OpenBitcoinNetworkStatus,
     #[serde(rename = "openbitcoinsyncstatus")]
     OpenBitcoinSyncStatus,
     #[serde(rename = "openbitcoinsyncpause")]
@@ -83,6 +85,7 @@ impl SupportedMethod {
             Self::GetBlockchainInfo,
             Self::GetMempoolInfo,
             Self::GetNetworkInfo,
+            Self::OpenBitcoinNetworkStatus,
             Self::OpenBitcoinSyncStatus,
             Self::OpenBitcoinSyncPause,
             Self::OpenBitcoinSyncResume,
@@ -107,6 +110,7 @@ impl SupportedMethod {
             Self::GetBlockchainInfo => "getblockchaininfo",
             Self::GetMempoolInfo => "getmempoolinfo",
             Self::GetNetworkInfo => "getnetworkinfo",
+            Self::OpenBitcoinNetworkStatus => "openbitcoinnetworkstatus",
             Self::OpenBitcoinSyncStatus => "openbitcoinsyncstatus",
             Self::OpenBitcoinSyncPause => "openbitcoinsyncpause",
             Self::OpenBitcoinSyncResume => "openbitcoinsyncresume",
@@ -128,7 +132,8 @@ impl SupportedMethod {
 
     pub const fn origin(self) -> MethodOrigin {
         match self {
-            Self::OpenBitcoinSyncStatus
+            Self::OpenBitcoinNetworkStatus
+            | Self::OpenBitcoinSyncStatus
             | Self::OpenBitcoinSyncPause
             | Self::OpenBitcoinSyncResume
             | Self::BuildTransaction
@@ -153,6 +158,7 @@ impl SupportedMethod {
             Self::GetBlockchainInfo
             | Self::GetMempoolInfo
             | Self::GetNetworkInfo
+            | Self::OpenBitcoinNetworkStatus
             | Self::OpenBitcoinSyncStatus
             | Self::OpenBitcoinSyncPause
             | Self::OpenBitcoinSyncResume
@@ -196,6 +202,7 @@ pub enum MethodCall {
     GetBlockchainInfo(GetBlockchainInfoRequest),
     GetMempoolInfo(GetMempoolInfoRequest),
     GetNetworkInfo(GetNetworkInfoRequest),
+    OpenBitcoinNetworkStatus(OpenBitcoinNetworkStatusRequest),
     OpenBitcoinSyncStatus(OpenBitcoinSyncStatusRequest),
     OpenBitcoinSyncPause(OpenBitcoinSyncPauseRequest),
     OpenBitcoinSyncResume(OpenBitcoinSyncResumeRequest),
@@ -231,6 +238,7 @@ impl MethodCall {
             Self::GetBlockchainInfo(_)
             | Self::GetMempoolInfo(_)
             | Self::GetNetworkInfo(_)
+            | Self::OpenBitcoinNetworkStatus(_)
             | Self::OpenBitcoinSyncStatus(_)
             | Self::OpenBitcoinSyncPause(_)
             | Self::OpenBitcoinSyncResume(_)
@@ -260,6 +268,10 @@ pub fn normalize_method_call(
         SupportedMethod::GetNetworkInfo => {
             normalize::normalize_request::<GetNetworkInfoRequest>(&[], params)
                 .map(MethodCall::GetNetworkInfo)
+        }
+        SupportedMethod::OpenBitcoinNetworkStatus => {
+            normalize::normalize_request::<OpenBitcoinNetworkStatusRequest>(&[], params)
+                .map(MethodCall::OpenBitcoinNetworkStatus)
         }
         SupportedMethod::OpenBitcoinSyncStatus => {
             normalize::normalize_request::<OpenBitcoinSyncStatusRequest>(&[], params)

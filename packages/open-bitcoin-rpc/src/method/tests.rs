@@ -58,10 +58,10 @@ fn supported_http_methods_match_phase_20_wallet_surface() {
 fn build_transaction_methods_are_marked_as_open_bitcoin_extensions() {
     // Arrange
     let expected = [
+        "openbitcoinnetworkstatus",
         "openbitcoinsyncstatus",
         "openbitcoinsyncpause",
         "openbitcoinsyncresume",
-        "openbitcoinnetworkstatus",
         "buildtransaction",
         "buildandsigntransaction",
     ];
