@@ -2,7 +2,7 @@
 // - packages/bitcoin-knots/src/net.cpp
 // - packages/bitcoin-knots/src/net_processing.cpp
 
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
 use open_bitcoin_network::{
     InboundListenerConfig, InboundPreflightReason, ParsedNetworkMessage, VersionMessage,
@@ -255,6 +255,12 @@ async fn loopback_inbound_cap_rejection_records_evidence_without_admitting_peer(
         }),
     )
     .await;
+    for _ in 0..100 {
+        if context.lock().await.network_info().inbound_peers == 1 {
+            break;
+        }
+        tokio::task::yield_now().await;
+    }
     drop(first);
 
     // Act
@@ -266,7 +272,7 @@ async fn loopback_inbound_cap_rejection_records_evidence_without_admitting_peer(
         if context.lock().await.inbound_admission_info().cap_rejections == 1 {
             break;
         }
-        std::thread::sleep(Duration::from_millis(10));
+        tokio::task::yield_now().await;
     }
     let network_info = context.lock().await.network_info();
     let admission = context.lock().await.inbound_admission_info();

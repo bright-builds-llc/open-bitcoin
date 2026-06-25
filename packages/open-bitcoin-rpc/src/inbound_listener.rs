@@ -191,6 +191,7 @@ impl InboundListenerActivation {
 #[derive(Debug)]
 pub struct InboundListenerWorker {
     handles: Vec<JoinHandle<()>>,
+    connection_handles: Arc<tokio::sync::Mutex<Vec<JoinHandle<()>>>>,
     evidence: Arc<Mutex<InboundListenerEvidence>>,
     shutdown_requested: Arc<AtomicBool>,
 }
@@ -203,6 +204,11 @@ impl InboundListenerWorker {
     pub async fn shutdown(self) {
         self.shutdown_requested.store(true, Ordering::Relaxed);
         for handle in self.handles {
+            handle.abort();
+            let _ = handle.await;
+        }
+        let mut connection_handles = self.connection_handles.lock().await;
+        for handle in connection_handles.drain(..) {
             handle.abort();
             let _ = handle.await;
         }
@@ -256,6 +262,7 @@ pub fn start_inbound_accept_loop(
 
     let evidence = Arc::new(Mutex::new(activation.evidence.clone()));
     let shutdown_requested = Arc::new(AtomicBool::new(false));
+    let connection_handles = Arc::new(tokio::sync::Mutex::new(Vec::new()));
     let next_peer_id = Arc::new(AtomicU64::new(1));
     let mut handles = Vec::with_capacity(activation.listeners.len());
 
@@ -266,11 +273,13 @@ pub fn start_inbound_accept_loop(
             Arc::clone(&evidence),
             Arc::clone(&shutdown_requested),
             Arc::clone(&next_peer_id),
+            Arc::clone(&connection_handles),
         )));
     }
 
     Some(InboundListenerWorker {
         handles,
+        connection_handles,
         evidence,
         shutdown_requested,
     })
@@ -314,6 +323,7 @@ async fn accept_loop(
     evidence: Arc<Mutex<InboundListenerEvidence>>,
     shutdown_requested: Arc<AtomicBool>,
     next_peer_id: Arc<AtomicU64>,
+    connection_handles: Arc<tokio::sync::Mutex<Vec<JoinHandle<()>>>>,
 ) {
     loop {
         if shutdown_requested.load(Ordering::Relaxed) {
@@ -323,7 +333,16 @@ async fn accept_loop(
             break;
         };
         let peer_id = next_peer_id.fetch_add(1, Ordering::Relaxed);
-        handle_inbound_stream(peer_id, remote_addr, stream, &context, &evidence).await;
+        let handle = tokio::spawn(handle_inbound_stream(
+            peer_id,
+            remote_addr,
+            stream,
+            Arc::clone(&context),
+            Arc::clone(&evidence),
+        ));
+        let mut connection_handles = connection_handles.lock().await;
+        connection_handles.retain(|handle| !handle.is_finished());
+        connection_handles.push(handle);
     }
 }
 
@@ -331,8 +350,8 @@ async fn handle_inbound_stream(
     peer_id: u64,
     remote_addr: SocketAddr,
     stream: tokio::net::TcpStream,
-    context: &Arc<tokio::sync::Mutex<ManagedRpcContext>>,
-    evidence: &Arc<Mutex<InboundListenerEvidence>>,
+    context: Arc<tokio::sync::Mutex<ManagedRpcContext>>,
+    evidence: Arc<Mutex<InboundListenerEvidence>>,
 ) {
     let decision = {
         let mut context = context.lock().await;
@@ -340,10 +359,10 @@ async fn handle_inbound_stream(
     };
     match decision {
         InboundAdmissionDecision::Admit(_record) => {
-            lock_evidence(evidence).record_admitted();
+            lock_evidence(&evidence).record_admitted();
         }
         InboundAdmissionDecision::Reject(rejection) => {
-            lock_evidence(evidence).record_rejected(rejection.reason);
+            lock_evidence(&evidence).record_rejected(rejection.reason);
             return;
         }
     }
@@ -352,7 +371,7 @@ async fn handle_inbound_stream(
         let Ok(parsed) = ParsedNetworkMessage::decode_wire(&bytes) else {
             break;
         };
-        lock_evidence(evidence).record_handshake(&parsed.message);
+        lock_evidence(&evidence).record_handshake(&parsed.message);
         let responses = {
             let mut context = context.lock().await;
             context.receive_inbound_wire_message(peer_id, parsed.message, current_timestamp())
