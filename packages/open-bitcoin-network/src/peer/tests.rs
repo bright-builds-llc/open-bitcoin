@@ -18,7 +18,7 @@ use crate::{
     ConnectionRole, DisconnectReason, HeaderStore, HeaderSyncPolicy, HeadersMessage,
     InboundAdmissionRejectionReason, InboundAdmissionSlotClass, InboundHandshakeState,
     InboundPeerRecord, InboundPermissionDecision, InventoryList, LocalPeerConfig,
-    ParsedPeerPermissionClass, PeerAction, PeerConnectionClass, PeerManager,
+    ParsedPeerPermissionClass, PeerAction, PeerConnectionClass, PeerId, PeerManager,
     PeerPermissionClassRegistry, ServiceFlags, WireNetworkMessage,
 };
 use open_bitcoin_primitives::{InventoryType, InventoryVector};
@@ -40,6 +40,48 @@ fn protected_permission_decision() -> InboundPermissionDecision {
             .expect("protected class");
     let address: IpAddr = "203.0.113.7".parse().expect("test address");
     PeerPermissionClassRegistry::new([class]).resolve_inbound(address)
+}
+
+fn permission_decision(
+    tokens: impl IntoIterator<Item = &'static str>,
+) -> InboundPermissionDecision {
+    let class = ParsedPeerPermissionClass::parse("phase91-test", ["203.0.113.91"], tokens)
+        .expect("permission class");
+    let address: IpAddr = "203.0.113.91".parse().expect("test address");
+    PeerPermissionClassRegistry::new([class]).resolve_inbound(address)
+}
+
+fn permissioned_inbound_record(
+    peer_id: PeerId,
+    permission_decision: InboundPermissionDecision,
+) -> InboundPeerRecord {
+    InboundPeerRecord {
+        peer_id,
+        remote_endpoint: format!("127.0.0.1:{peer_id}"),
+        slot_class: permission_decision.slot_class(),
+        connection_class: permission_decision.connection_class(),
+        permission_decision,
+        handshake_state: InboundHandshakeState::Accepted,
+        maybe_remote_nonce: None,
+        observed_inbound_peers: 0,
+        observed_outbound_peers: 1,
+    }
+}
+
+fn active_permission_labels(decision: &InboundPermissionDecision) -> Vec<&'static str> {
+    decision
+        .active_effects()
+        .iter()
+        .map(|effect| effect.as_str())
+        .collect()
+}
+
+fn inactive_permission_labels(decision: &InboundPermissionDecision) -> Vec<&'static str> {
+    decision
+        .inactive_effects()
+        .iter()
+        .map(|effect| effect.as_str())
+        .collect()
 }
 
 fn header(previous_block_hash: BlockHash, nonce: u32) -> BlockHeader {
@@ -526,6 +568,150 @@ fn announce_transaction_uses_wtxidrelay_when_peer_negotiates_it() {
         announcement,
         WireNetworkMessage::Inv(InventoryList { inventory })
         if inventory[0].inventory_type == InventoryType::WitnessTransaction
+    ));
+}
+
+#[test]
+fn relay_permission_labels_remain_inactive_for_transaction_paths() {
+    // Arrange
+    let permission_decision = permission_decision(["in", "relay", "forcerelay", "mempool"]);
+    assert!(active_permission_labels(&permission_decision).is_empty());
+    assert_eq!(
+        inactive_permission_labels(&permission_decision),
+        vec!["inactive_relay", "inactive_forcerelay", "inactive_mempool"]
+    );
+    let transaction = open_bitcoin_primitives::Transaction::default();
+    let txid = transaction_txid(&transaction).expect("txid");
+    let wtxid = transaction_wtxid(&transaction).expect("wtxid");
+    let mut manager = PeerManager::new(local_config());
+    manager
+        .add_inbound_peer_record(permissioned_inbound_record(91, permission_decision))
+        .expect("permissioned inbound peer should be added");
+
+    // Act
+    let txid_inventory_actions = manager
+        .handle_message(
+            91,
+            WireNetworkMessage::Inv(InventoryList::new(vec![InventoryVector {
+                inventory_type: InventoryType::Transaction,
+                object_hash: txid.into(),
+            }])),
+            1,
+        )
+        .expect("transaction inventory");
+    let wtxidrelay_actions = manager
+        .handle_message(91, WireNetworkMessage::WtxidRelay, 2)
+        .expect("wtxidrelay");
+    let wtxid_inventory_actions = manager
+        .handle_message(
+            91,
+            WireNetworkMessage::Inv(InventoryList::new(vec![InventoryVector {
+                inventory_type: InventoryType::WitnessTransaction,
+                object_hash: wtxid.into(),
+            }])),
+            3,
+        )
+        .expect("witness transaction inventory");
+    let tx_actions = manager
+        .handle_message(91, WireNetworkMessage::Tx(transaction.clone()), 4)
+        .expect("transaction");
+    let getdata_actions = manager
+        .handle_message(
+            91,
+            WireNetworkMessage::GetData(InventoryList::new(vec![InventoryVector {
+                inventory_type: InventoryType::Transaction,
+                object_hash: txid.into(),
+            }])),
+            5,
+        )
+        .expect("getdata");
+
+    // Assert
+    let [PeerAction::Send(WireNetworkMessage::GetData(txid_inventory))] =
+        txid_inventory_actions.as_slice()
+    else {
+        panic!("expected txid getdata action");
+    };
+    assert_eq!(txid_inventory.inventory.len(), 1);
+    assert_eq!(
+        txid_inventory.inventory[0].inventory_type,
+        InventoryType::Transaction
+    );
+    assert!(wtxidrelay_actions.is_empty());
+    let [PeerAction::Send(WireNetworkMessage::GetData(wtxid_inventory))] =
+        wtxid_inventory_actions.as_slice()
+    else {
+        panic!("expected wtxid getdata action");
+    };
+    assert_eq!(wtxid_inventory.inventory.len(), 1);
+    assert_eq!(
+        wtxid_inventory.inventory[0].inventory_type,
+        InventoryType::WitnessTransaction
+    );
+    assert_eq!(
+        tx_actions,
+        vec![PeerAction::ReceivedTransaction(transaction)]
+    );
+    assert_eq!(
+        getdata_actions,
+        vec![PeerAction::ServeInventory(vec![InventoryVector {
+            inventory_type: InventoryType::Transaction,
+            object_hash: txid.into(),
+        }])]
+    );
+}
+
+#[test]
+fn filter_permission_labels_remain_inactive_without_service_bits_or_compact_blocks() {
+    // Arrange
+    let permission_decision = permission_decision(["in", "all"]);
+    assert_eq!(
+        inactive_permission_labels(&permission_decision),
+        vec![
+            "inactive_relay",
+            "inactive_forcerelay",
+            "inactive_mempool",
+            "inactive_bloomfilter",
+            "inactive_blockfilters",
+        ]
+    );
+    let config = local_config();
+    assert_eq!(
+        config.services,
+        ServiceFlags::NETWORK | ServiceFlags::WITNESS
+    );
+    assert_eq!(
+        config.version_message(1, 0).services,
+        ServiceFlags::NETWORK | ServiceFlags::WITNESS
+    );
+    let mut manager = PeerManager::new(config);
+    manager
+        .add_inbound_peer_record(permissioned_inbound_record(92, permission_decision))
+        .expect("permissioned inbound peer should be added");
+    let compact_block_inventory = InventoryList::new(vec![InventoryVector {
+        inventory_type: InventoryType::CompactBlock,
+        object_hash: Hash32::from_byte_array([9_u8; 32]),
+    }]);
+    let block = Block {
+        header: mined_header(BlockHash::from_byte_array([0_u8; 32]), 9),
+        transactions: Vec::new(),
+    };
+
+    // Act
+    let compact_block_actions = manager
+        .handle_message(92, WireNetworkMessage::Inv(compact_block_inventory), 1)
+        .expect("compact block inventory");
+    let announcement = manager
+        .announce_block(92, &block)
+        .expect("block announcement")
+        .expect("announcement");
+
+    // Assert
+    assert!(compact_block_actions.is_empty());
+    assert!(matches!(
+        announcement,
+        WireNetworkMessage::Inv(InventoryList { inventory })
+        if inventory.len() == 1 && inventory[0].inventory_type == InventoryType::Block
     ));
 }
 
