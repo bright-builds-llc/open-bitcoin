@@ -433,7 +433,7 @@ async fn loopback_inbound_peer_handshake_increments_inbound_without_outbound() {
 }
 
 #[tokio::test]
-async fn loopback_inbound_cap_rejection_records_evidence_without_admitting_peer() {
+async fn dropped_loopback_inbound_releases_capacity_for_next_peer() {
     // Arrange
     let (context, worker, endpoint) = running_loopback_listener(1).await;
     let first = TcpStream::connect(&endpoint)
@@ -454,18 +454,21 @@ async fn loopback_inbound_cap_rejection_records_evidence_without_admitting_peer(
         tokio::task::yield_now().await;
     }
     drop(first);
+    wait_for_inbound_peers(&context, 0).await;
 
     // Act
     let second = TcpStream::connect(&endpoint)
         .await
-        .expect("connect cap-rejected loopback peer");
-    drop(second);
-    for _ in 0..10 {
-        if context.lock().await.inbound_admission_info().cap_rejections == 1 {
-            break;
-        }
-        tokio::task::yield_now().await;
-    }
+        .expect("connect next loopback peer after drop");
+    send_message(
+        &second,
+        WireNetworkMessage::Version(VersionMessage {
+            nonce: 44,
+            ..VersionMessage::default()
+        }),
+    )
+    .await;
+    wait_for_inbound_peers(&context, 1).await;
     let network_info = context.lock().await.network_info();
     let admission = context.lock().await.inbound_admission_info();
     let evidence = worker.evidence();
@@ -473,11 +476,10 @@ async fn loopback_inbound_cap_rejection_records_evidence_without_admitting_peer(
     // Assert
     assert_eq!(network_info.inbound_peers, 1);
     assert_eq!(network_info.outbound_peers, 0);
-    assert_eq!(admission.rejected_inbound_peers, 1);
-    assert_eq!(admission.cap_rejections, 1);
-    assert_eq!(
-        evidence.maybe_admission_reject_reason.as_deref(),
-        Some("cap_reached")
-    );
+    assert_eq!(admission.admitted_inbound_peers, 2);
+    assert_eq!(admission.rejected_inbound_peers, 0);
+    assert_eq!(admission.cap_rejections, 0);
+    assert_eq!(evidence.maybe_admission_reject_reason, None);
+    drop(second);
     worker.shutdown().await;
 }

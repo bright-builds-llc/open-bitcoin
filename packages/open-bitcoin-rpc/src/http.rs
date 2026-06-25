@@ -77,9 +77,16 @@ pub fn build_http_state(
     auth: RpcAuthConfig,
     context: ManagedRpcContext,
 ) -> std::io::Result<RpcHttpState> {
+    build_http_state_with_shared_context(auth, Arc::new(Mutex::new(context)))
+}
+
+pub fn build_http_state_with_shared_context(
+    auth: RpcAuthConfig,
+    context: Arc<Mutex<ManagedRpcContext>>,
+) -> std::io::Result<RpcHttpState> {
     Ok(RpcHttpState {
         auth: resolve_auth(auth)?,
-        context: Arc::new(Mutex::new(context)),
+        context,
     })
 }
 

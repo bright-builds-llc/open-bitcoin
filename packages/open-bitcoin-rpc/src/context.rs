@@ -19,6 +19,7 @@ use open_bitcoin_node::{
     DurableSyncState, FjallNodeStore, ManagedPeerNetwork, PersistMode, RuntimeMetadata,
 };
 
+use crate::inbound_listener::InboundListenerEvidence;
 use crate::{RpcFailure, RpcFailureKind};
 
 mod network;
@@ -36,6 +37,7 @@ pub struct ManagedRpcContext {
     verify_flags: ScriptVerifyFlags,
     network: ManagedPeerNetwork<MemoryChainstateStore>,
     permission_classes: PeerPermissionClassRegistry,
+    maybe_inbound_listener_evidence: Option<InboundListenerEvidence>,
     maybe_durable_sync_state: Option<DurableSyncState>,
     maybe_daemon_sync_control: Option<DaemonSyncControl>,
     wallet_state: WalletState,

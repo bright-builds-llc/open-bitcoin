@@ -12,6 +12,7 @@
 use std::{
     fs, io,
     path::{Path, PathBuf},
+    sync::Arc,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
@@ -20,13 +21,17 @@ use open_bitcoin_node::{
     DurableSyncRuntime, FieldAvailability, FjallNodeStore, SyncLifecycleState, SyncRunSummary,
     SyncRuntimeConfig, SyncRuntimeError, SyncStopReason,
 };
-use open_bitcoin_rpc::config::{DaemonSyncConfig, RuntimeConfig};
 use open_bitcoin_rpc::inbound_listener::InboundListenerState;
+use open_bitcoin_rpc::{
+    ManagedRpcContext,
+    config::{DaemonSyncConfig, RuntimeConfig},
+};
 
 use super::{
     DaemonSyncLoopDecision, DaemonSyncLoopPolicy, DaemonSyncPreflight,
     daemon_sync_preflight_message, inbound_listener_startup_message, preflight_daemon_sync,
     run_daemon_sync_loop_cycle, start_inbound_listener_for_runtime,
+    start_inbound_listener_for_runtime_with_context,
 };
 
 fn temp_store_path(label: &str) -> PathBuf {
@@ -357,6 +362,42 @@ async fn open_bitcoind_inbound_loopback_runtime_binds_before_rpc_serving() {
     assert_eq!(listener.bound_endpoints.len(), 1);
     assert!(listener.bound_endpoints[0].starts_with("127.0.0.1:"));
     assert!(listener.maybe_worker.is_some());
+    listener.shutdown().await;
+}
+
+#[tokio::test]
+async fn open_bitcoind_inbound_listener_evidence_reaches_shared_rpc_status() {
+    // Arrange
+    let runtime = RuntimeConfig {
+        inbound: InboundListenerConfig {
+            enabled: true,
+            listen_addresses: vec!["127.0.0.1:0".to_string()],
+            max_peers: 2,
+            reserved_slots: 0,
+            allow_public: false,
+            permission_classes: Default::default(),
+        },
+        ..RuntimeConfig::default()
+    };
+    let shared_context = Arc::new(tokio::sync::Mutex::new(
+        ManagedRpcContext::from_runtime_config(&runtime),
+    ));
+
+    // Act
+    let mut listener =
+        start_inbound_listener_for_runtime_with_context(&runtime, Arc::clone(&shared_context))
+            .await;
+    let inbound_status = shared_context.lock().await.current_inbound_status();
+
+    // Assert
+    let FieldAvailability::Available(status) = inbound_status else {
+        panic!("listener activation should publish inbound status evidence");
+    };
+    assert_eq!(status.listener_state, "listening");
+    assert_eq!(status.preflight_reason, "ready");
+    assert_eq!(status.bound_endpoints, listener.bound_endpoints);
+    assert_eq!(status.admitted_inbound_peers, 0);
+    assert_eq!(status.rejected_inbound_peers, 0);
     listener.shutdown().await;
 }
 

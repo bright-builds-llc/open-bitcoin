@@ -35,7 +35,7 @@ use open_bitcoin_node::{
     MemoryWalletStore,
 };
 
-use crate::config::RuntimeConfig;
+use crate::{config::RuntimeConfig, inbound_listener::InboundListenerEvidence};
 
 use super::ManagedRpcContext;
 use super::wallet_state::build_wallet_state;
@@ -54,6 +54,7 @@ impl ManagedRpcContext {
             verify_flags,
             network,
             permission_classes: Default::default(),
+            maybe_inbound_listener_evidence: None,
             maybe_durable_sync_state: None,
             maybe_daemon_sync_control: None,
             wallet_state: super::wallet_state::WalletState::Local(wallet),
@@ -93,6 +94,7 @@ impl ManagedRpcContext {
                 verify_flags: default_verify_flags(),
                 network: managed_network,
                 permission_classes: config.inbound.permission_classes.clone(),
+                maybe_inbound_listener_evidence: None,
                 maybe_durable_sync_state: load_durable_sync_state(config),
                 maybe_daemon_sync_control: None,
                 wallet_state: super::wallet_state::WalletState::Local(wallet),
@@ -106,6 +108,7 @@ impl ManagedRpcContext {
                 verify_flags: default_verify_flags(),
                 network: managed_network,
                 permission_classes: config.inbound.permission_classes.clone(),
+                maybe_inbound_listener_evidence: None,
                 maybe_durable_sync_state: store
                     .load_runtime_metadata()
                     .ok()
@@ -176,18 +179,26 @@ impl ManagedRpcContext {
         self.network.inbound_admission_info().clone()
     }
 
+    pub fn set_inbound_listener_evidence(&mut self, evidence: InboundListenerEvidence) {
+        self.maybe_inbound_listener_evidence = Some(evidence);
+    }
+
     pub fn current_inbound_status(&self) -> FieldAvailability<InboundPeerServingStatus> {
         let admission = self.inbound_admission_info();
-        if admission.admitted_inbound_peers == 0 && admission.rejected_inbound_peers == 0 {
+        let maybe_listener_evidence = self.maybe_inbound_listener_evidence.as_ref();
+        if admission.admitted_inbound_peers == 0
+            && admission.rejected_inbound_peers == 0
+            && maybe_listener_evidence.is_none()
+        {
             return inbound_status_unavailable();
         }
 
         let network_info = self.network_info();
         let permission_evidence = inbound_permission_evidence(&admission);
         FieldAvailability::available(InboundPeerServingStatus {
-            listener_state: "listening".to_string(),
-            bound_endpoints: Vec::new(),
-            preflight_reason: "ready".to_string(),
+            listener_state: listener_state(&admission, maybe_listener_evidence),
+            bound_endpoints: bound_endpoints(maybe_listener_evidence),
+            preflight_reason: preflight_reason(&admission, maybe_listener_evidence),
             admitted_inbound_peers: usize_to_u32(admission.admitted_inbound_peers),
             rejected_inbound_peers: usize_to_u32(admission.rejected_inbound_peers),
             handshake: InboundHandshakeStatusCounts {
@@ -202,7 +213,10 @@ impl ManagedRpcContext {
             self_connection_rejects: usize_to_u32(admission.self_connection_rejections),
             cap_rejects: usize_to_u32(admission.cap_rejections),
             reserved_slot_rejects: usize_to_u32(admission.reserved_slot_rejections),
-            latest_admission_event: latest_inbound_admission_event(&admission),
+            latest_admission_event: latest_inbound_admission_event(
+                &admission,
+                maybe_listener_evidence,
+            ),
             permissioned_inbound_peers: usize_to_u32(admission.permissioned_inbound_admits),
             protected_inbound_peers: usize_to_u32(admission.protected_inbound_admits),
             permission_class: permission_evidence.permission_class,
@@ -260,6 +274,10 @@ impl ManagedRpcContext {
         self.network.add_inbound_peer(peer_id)
     }
 
+    pub fn disconnect_peer(&mut self, peer_id: u64) -> Result<(), ManagedNetworkError> {
+        self.network.disconnect_peer(peer_id)
+    }
+
     pub fn connect_outbound_peer(
         &mut self,
         peer_id: u64,
@@ -300,8 +318,45 @@ impl ManagedRpcContext {
     }
 }
 
+fn listener_state(
+    admission: &ManagedInboundAdmissionInfo,
+    maybe_listener_evidence: Option<&InboundListenerEvidence>,
+) -> String {
+    maybe_listener_evidence
+        .map(|evidence| evidence.listener_state.clone())
+        .unwrap_or_else(|| {
+            if admission.admitted_inbound_peers > 0 || admission.rejected_inbound_peers > 0 {
+                "listening".to_string()
+            } else {
+                "unavailable".to_string()
+            }
+        })
+}
+
+fn bound_endpoints(maybe_listener_evidence: Option<&InboundListenerEvidence>) -> Vec<String> {
+    maybe_listener_evidence
+        .map(|evidence| evidence.bound_endpoints.clone())
+        .unwrap_or_default()
+}
+
+fn preflight_reason(
+    admission: &ManagedInboundAdmissionInfo,
+    maybe_listener_evidence: Option<&InboundListenerEvidence>,
+) -> String {
+    maybe_listener_evidence
+        .map(|evidence| evidence.preflight_reason.clone())
+        .unwrap_or_else(|| {
+            if admission.admitted_inbound_peers > 0 || admission.rejected_inbound_peers > 0 {
+                "ready".to_string()
+            } else {
+                "unavailable".to_string()
+            }
+        })
+}
+
 fn latest_inbound_admission_event(
     admission: &ManagedInboundAdmissionInfo,
+    maybe_listener_evidence: Option<&InboundListenerEvidence>,
 ) -> FieldAvailability<InboundAdmissionEvent> {
     if let Some(reason) = admission.maybe_latest_rejection_reason {
         let reason = reason.as_str().to_string();
@@ -319,6 +374,17 @@ fn latest_inbound_admission_event(
             reason: "admitted".to_string(),
             slot_class: "ordinary".to_string(),
             message: "inbound peer admitted".to_string(),
+        });
+    }
+
+    if let Some(event) = maybe_listener_evidence
+        .and_then(|evidence| evidence.maybe_latest_admission_event.as_deref())
+    {
+        return FieldAvailability::available(InboundAdmissionEvent {
+            outcome: "listener".to_string(),
+            reason: event.to_string(),
+            slot_class: "ordinary".to_string(),
+            message: format!("inbound listener event: {event}"),
         });
     }
 

@@ -53,6 +53,7 @@ use crate::{
     RpcErrorCode, RpcFailureKind,
     config::{RuntimeConfig, WalletRuntimeConfig},
     dispatch::dispatch,
+    inbound_listener::InboundListenerEvidence,
     method::{
         BuildAndSignTransactionRequest, DeriveAddressesRequest, GetBalancesRequest,
         GetBlockchainInfoRequest, GetMempoolInfoRequest, GetNetworkInfoRequest,
@@ -592,6 +593,44 @@ fn open_bitcoin_network_status_returns_available_inbound_evidence() {
     assert_eq!(
         inbound["value"]["latest_permission_decision"]["value"]["permission_class"],
         json!("ordinary_inbound")
+    );
+}
+
+#[test]
+fn open_bitcoin_network_status_projects_listener_activation_before_admissions() {
+    // Arrange
+    let mut context = empty_context();
+    context.set_inbound_listener_evidence(InboundListenerEvidence {
+        listener_state: "listening".to_string(),
+        preflight_reason: "ready".to_string(),
+        bound_endpoints: vec!["127.0.0.1:18444".to_string()],
+        admitted_inbound_peers: 0,
+        rejected_inbound_peers: 0,
+        maybe_admission_reject_reason: None,
+        maybe_latest_admission_event: Some("ready".to_string()),
+    });
+
+    // Act
+    let status = dispatch(
+        &mut context,
+        MethodCall::OpenBitcoinNetworkStatus(OpenBitcoinNetworkStatusRequest::default()),
+    )
+    .expect("network status");
+
+    // Assert
+    let inbound = &status["inbound"];
+    assert_eq!(inbound["state"], json!("available"));
+    assert_eq!(inbound["value"]["listener_state"], json!("listening"));
+    assert_eq!(inbound["value"]["preflight_reason"], json!("ready"));
+    assert_eq!(
+        inbound["value"]["bound_endpoints"],
+        json!(["127.0.0.1:18444"])
+    );
+    assert_eq!(inbound["value"]["admitted_inbound_peers"], json!(0));
+    assert_eq!(inbound["value"]["rejected_inbound_peers"], json!(0));
+    assert_eq!(
+        inbound["value"]["latest_admission_event"]["value"]["reason"],
+        json!("ready")
     );
 }
 

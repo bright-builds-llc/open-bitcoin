@@ -367,7 +367,7 @@ async fn handle_inbound_stream(
         }
     }
 
-    while let Ok(bytes) = read_wire_message(&stream).await {
+    'message_loop: while let Ok(bytes) = read_wire_message(&stream).await {
         let Ok(parsed) = ParsedNetworkMessage::decode_wire(&bytes) else {
             break;
         };
@@ -381,9 +381,23 @@ async fn handle_inbound_stream(
         };
         for response in encoded_responses {
             if write_all(&stream, &response).await.is_err() {
-                return;
+                break 'message_loop;
             }
         }
+    }
+    disconnect_admitted_peer(&context, peer_id).await;
+}
+
+async fn disconnect_admitted_peer(
+    context: &Arc<tokio::sync::Mutex<ManagedRpcContext>>,
+    peer_id: u64,
+) {
+    let mut context = context.lock().await;
+    if let Err(_error) = context.disconnect_peer(peer_id) {
+        debug_assert!(
+            false,
+            "admitted inbound peer should be present before listener cleanup"
+        );
     }
 }
 

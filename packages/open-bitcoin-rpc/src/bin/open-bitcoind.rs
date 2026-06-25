@@ -61,9 +61,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(worker) = maybe_sync_worker.as_ref() {
         context.set_daemon_sync_control(worker.control.clone());
     }
-    let state = http::build_http_state(auth, context)?;
+    let shared_context = Arc::new(tokio::sync::Mutex::new(context));
+    let state = http::build_http_state_with_shared_context(auth, Arc::clone(&shared_context))?;
     let listener = tokio::net::TcpListener::bind(bind_address).await?;
-    let mut inbound_listener = start_inbound_listener_for_runtime(&runtime).await;
+    let mut inbound_listener =
+        start_inbound_listener_for_runtime_with_context(&runtime, shared_context).await;
     report_inbound_listener_startup(&inbound_listener);
 
     let serve_result = axum::serve(listener, http::router(state))
@@ -225,7 +227,18 @@ fn daemon_sync_preflight_message(preflight: &DaemonSyncPreflight) -> String {
     )
 }
 
+#[cfg(test)]
 async fn start_inbound_listener_for_runtime(runtime: &RuntimeConfig) -> InboundDaemonListener {
+    let context = Arc::new(tokio::sync::Mutex::new(
+        ManagedRpcContext::from_runtime_config(runtime),
+    ));
+    start_inbound_listener_for_runtime_with_context(runtime, context).await
+}
+
+async fn start_inbound_listener_for_runtime_with_context(
+    runtime: &RuntimeConfig,
+    context: Arc<tokio::sync::Mutex<ManagedRpcContext>>,
+) -> InboundDaemonListener {
     let activation = activate_inbound_listener(&runtime.inbound).await;
     let state = activation.state();
     let preflight_reason = activation.preflight_reason();
@@ -235,11 +248,12 @@ async fn start_inbound_listener_for_runtime(runtime: &RuntimeConfig) -> InboundD
         .map(|endpoint| endpoint.bound_endpoint.clone())
         .collect::<Vec<_>>();
     let diagnostics = activation.diagnostics().to_vec();
+    {
+        let mut context = context.lock().await;
+        context.set_inbound_listener_evidence(activation.evidence().clone());
+    }
     let maybe_worker = if state == InboundListenerState::Listening {
-        let listener_context = Arc::new(tokio::sync::Mutex::new(
-            ManagedRpcContext::from_runtime_config(runtime),
-        ));
-        start_inbound_accept_loop(activation, listener_context)
+        start_inbound_accept_loop(activation, context)
     } else {
         None
     };
