@@ -826,6 +826,35 @@ fn open_bitcoin_network_status_reports_cap_and_reserved_slot_rejections() {
 }
 
 #[test]
+fn open_bitcoin_network_status_latest_event_updates_after_rejection_then_admission() {
+    // Arrange
+    let mut context = inbound_context(2, 0);
+    context.record_inbound_admission(41, "127.0.0.1:18444".to_string(), false);
+    context.record_inbound_admission(42, "127.0.0.1:18444".to_string(), false);
+    context.record_inbound_admission(43, "127.0.0.1:18445".to_string(), false);
+
+    // Act
+    let status = dispatch(
+        &mut context,
+        MethodCall::OpenBitcoinNetworkStatus(OpenBitcoinNetworkStatusRequest::default()),
+    )
+    .expect("network status");
+
+    // Assert
+    let inbound = &status["inbound"]["value"];
+    assert_eq!(inbound["admitted_inbound_peers"], json!(2));
+    assert_eq!(inbound["rejected_inbound_peers"], json!(1));
+    assert_eq!(
+        inbound["latest_admission_event"]["value"]["outcome"],
+        json!("admitted")
+    );
+    assert_eq!(
+        inbound["latest_admission_event"]["value"]["reason"],
+        json!("admitted")
+    );
+}
+
+#[test]
 fn get_network_info_omits_open_bitcoin_inbound_status_details() {
     // Arrange
     let mut context = node_context_with_chain_and_mempool();

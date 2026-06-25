@@ -58,6 +58,8 @@ pub struct ManagedInboundAdmissionInfo {
 impl ManagedInboundAdmissionInfo {
     pub(super) fn record_admit(&mut self, record: &InboundPeerRecord) {
         self.admitted_inbound_peers += 1;
+        self.maybe_latest_rejection_reason = None;
+        self.maybe_latest_rejection_slot_class = None;
         match record.connection_class {
             PeerConnectionClass::OrdinaryInbound => self.ordinary_inbound_admits += 1,
             PeerConnectionClass::PermissionedInbound => self.permissioned_inbound_admits += 1,
