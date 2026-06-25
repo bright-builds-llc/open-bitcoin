@@ -27,10 +27,14 @@ pub enum MetricKind {
     InboundReservedSlotRejectCount,
     InboundDuplicateRejectCount,
     InboundSelfConnectionRejectCount,
+    InboundPermissionedAdmitCount,
+    InboundProtectedAdmitCount,
+    InboundInactivePermissionEffectCount,
+    InboundPermissionValidationFailureCount,
 }
 
 impl MetricKind {
-    pub const ALL: [Self; 17] = [
+    pub const ALL: [Self; 21] = [
         Self::SyncHeight,
         Self::HeaderHeight,
         Self::DownloadedBlockHeight,
@@ -48,6 +52,10 @@ impl MetricKind {
         Self::InboundReservedSlotRejectCount,
         Self::InboundDuplicateRejectCount,
         Self::InboundSelfConnectionRejectCount,
+        Self::InboundPermissionedAdmitCount,
+        Self::InboundProtectedAdmitCount,
+        Self::InboundInactivePermissionEffectCount,
+        Self::InboundPermissionValidationFailureCount,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -69,6 +77,14 @@ impl MetricKind {
             Self::InboundReservedSlotRejectCount => "inbound_reserved_slot_reject_count",
             Self::InboundDuplicateRejectCount => "inbound_duplicate_reject_count",
             Self::InboundSelfConnectionRejectCount => "inbound_self_connection_reject_count",
+            Self::InboundPermissionedAdmitCount => "inbound_permissioned_admit_count",
+            Self::InboundProtectedAdmitCount => "inbound_protected_admit_count",
+            Self::InboundInactivePermissionEffectCount => {
+                "inbound_inactive_permission_effect_count"
+            }
+            Self::InboundPermissionValidationFailureCount => {
+                "inbound_permission_validation_failure_count"
+            }
         }
     }
 }
@@ -276,6 +292,22 @@ mod tests {
                 MetricKind::InboundSelfConnectionRejectCount,
                 "inbound_self_connection_reject_count",
             ),
+            (
+                MetricKind::InboundPermissionedAdmitCount,
+                "inbound_permissioned_admit_count",
+            ),
+            (
+                MetricKind::InboundProtectedAdmitCount,
+                "inbound_protected_admit_count",
+            ),
+            (
+                MetricKind::InboundInactivePermissionEffectCount,
+                "inbound_inactive_permission_effect_count",
+            ),
+            (
+                MetricKind::InboundPermissionValidationFailureCount,
+                "inbound_permission_validation_failure_count",
+            ),
         ];
 
         // Act / Assert
@@ -294,6 +326,10 @@ mod tests {
             MetricKind::InboundReservedSlotRejectCount,
             MetricKind::InboundDuplicateRejectCount,
             MetricKind::InboundSelfConnectionRejectCount,
+            MetricKind::InboundPermissionedAdmitCount,
+            MetricKind::InboundProtectedAdmitCount,
+            MetricKind::InboundInactivePermissionEffectCount,
+            MetricKind::InboundPermissionValidationFailureCount,
         ];
 
         // Act
@@ -303,7 +339,7 @@ mod tests {
             .collect::<Vec<_>>();
 
         // Assert
-        assert_eq!(MetricKind::ALL.len(), 17);
+        assert_eq!(MetricKind::ALL.len(), 21);
         assert_eq!(
             labels,
             vec![
@@ -313,15 +349,22 @@ mod tests {
                 "inbound_reserved_slot_reject_count",
                 "inbound_duplicate_reject_count",
                 "inbound_self_connection_reject_count",
+                "inbound_permissioned_admit_count",
+                "inbound_protected_admit_count",
+                "inbound_inactive_permission_effect_count",
+                "inbound_permission_validation_failure_count",
             ]
         );
         for label in labels {
             assert!(label.ends_with("_count"));
             for forbidden in [
-                "endpoint".to_string(),
-                "peer_id".to_string(),
+                ["end", "point"].concat(),
+                ["peer", "_id"].concat(),
                 ["remote", "_addr"].concat(),
-                ["remote", "_endpoint"].concat(),
+                ["remote", "_end", "point"].concat(),
+                ["class", "_name"].concat(),
+                ["raw", "_permission"].concat(),
+                ["raw", "_config"].concat(),
             ] {
                 assert!(!label.contains(&forbidden));
             }
