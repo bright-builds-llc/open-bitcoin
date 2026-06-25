@@ -4,8 +4,8 @@ milestone: v1.9
 milestone_name: Inbound Peer Serving and Network Participation Boundary
 status: executing
 stopped_at: Phase 90 context gathered
-last_updated: "2026-06-25T05:57:40.961Z"
-last_activity: 2026-06-25 -- Phase 90 planning complete
+last_updated: "2026-06-25T05:58:42.954Z"
+last_activity: 2026-06-25 -- Phase 90 execution started
 progress:
   total_phases: 6
   completed_phases: 0
@@ -21,15 +21,15 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-25)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** v1.9 Inbound Peer Serving and Network Participation Boundary
+**Current focus:** Phase 90 — inbound-listener-and-admission-policy
 
 ## Current Position
 
 Milestone: v1.9 Inbound Peer Serving and Network Participation Boundary
-Phase: 90 ready for planning
-Plan: —
-Status: Ready to execute
-Last activity: 2026-06-25 -- Phase 90 planning complete
+Phase: 90 (inbound-listener-and-admission-policy) — EXECUTING
+Plan: 1 of 10
+Status: Executing Phase 90
+Last activity: 2026-06-25 -- Phase 90 execution started
 
 Progress: [----------] 0%
 
