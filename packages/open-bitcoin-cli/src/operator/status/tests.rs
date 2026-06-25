@@ -33,10 +33,11 @@ use crate::operator::{
 use open_bitcoin_node::status::{
     BestKnownTipStatus, BuildProvenance, ConfigStatus, FieldAvailability,
     INBOUND_STATUS_UNAVAILABLE_REASON, InboundAdmissionEvent, InboundHandshakeStatusCounts,
-    InboundPeerServingStatus, MempoolStatus, NodeRuntimeState, NodeStatus,
-    OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, ServiceLifecycleStatus, ServiceStatus,
-    StayCurrentStatus, SyncAttemptCounters, SyncConfiguredTargets, SyncProgressSignal, SyncStatus,
-    SyncStopReasonStatus, WalletFreshness, WalletScanProgress, WalletStatus,
+    InboundPeerServingStatus, InboundPermissionDecisionEvent, MempoolStatus, NodeRuntimeState,
+    NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, ServiceLifecycleStatus,
+    ServiceStatus, StayCurrentStatus, SyncAttemptCounters, SyncConfiguredTargets,
+    SyncProgressSignal, SyncStatus, SyncStopReasonStatus, WalletFreshness, WalletScanProgress,
+    WalletStatus,
 };
 use open_bitcoin_node::storage::FJALL_LOCK_FILE_NAME;
 use open_bitcoin_rpc::{
@@ -145,7 +146,7 @@ fn fake_live_rpc_maps_into_shared_status_snapshot() {
     let rpc = FakeStatusRpcClient::running();
 
     // Act
-    let snapshot = collect_status_snapshot(&input, Some(&rpc));
+    let snapshot: OpenBitcoinStatusSnapshot = collect_status_snapshot(&input, Some(&rpc));
     let rendered = render_status(&snapshot, StatusRenderMode::Json).expect("status json");
     let decoded: serde_json::Value = serde_json::from_str(&rendered).expect("decode status json");
 
@@ -227,6 +228,46 @@ fn inbound_status_fake_live_rpc_maps_into_shared_status_snapshot() {
         decoded["peers"]["inbound"]["value"]["latest_admission_event"]["value"]["reason"],
         "duplicate_peer_id"
     );
+    assert_eq!(
+        decoded["peers"]["inbound"]["value"]["permissioned_inbound_peers"],
+        1
+    );
+    assert_eq!(
+        decoded["peers"]["inbound"]["value"]["protected_inbound_peers"],
+        1
+    );
+    assert_eq!(
+        decoded["peers"]["inbound"]["value"]["permission_class"],
+        "protected_inbound"
+    );
+    assert_eq!(
+        decoded["peers"]["inbound"]["value"]["active_permission_effects"],
+        serde_json::json!([
+            "admission_protected",
+            "eviction_policy_protected",
+            "download_serving_policy_input"
+        ])
+    );
+    assert_eq!(
+        decoded["peers"]["inbound"]["value"]["inactive_permission_effects"],
+        serde_json::json!([
+            "inactive_relay",
+            "inactive_mempool",
+            "inactive_blockfilters"
+        ])
+    );
+    assert_eq!(
+        decoded["peers"]["inbound"]["value"]["latest_permission_decision"]["value"]["permission_class"],
+        "protected_inbound"
+    );
+    assert_eq!(
+        decoded["peers"]["inbound"]["value"]["latest_permission_decision"]["value"]["active_permission_effects"],
+        serde_json::json!(["admission_protected", "download_serving_policy_input"])
+    );
+    assert_eq!(
+        decoded["peers"]["inbound"]["value"]["latest_permission_decision"]["value"]["inactive_permission_effects"],
+        serde_json::json!(["inactive_relay"])
+    );
 }
 
 #[test]
@@ -274,9 +315,19 @@ fn inbound_status_snapshot_does_not_render_rpc_secrets() {
     let rendered = render_status(&snapshot, StatusRenderMode::Json).expect("status json");
 
     // Assert
-    assert!(!rendered.contains("super-secret"));
-    assert!(!rendered.contains("rpcuser"));
-    assert!(!rendered.contains(".cookie"));
+    for forbidden in [
+        "super-secret",
+        "rpcuser",
+        ".cookie",
+        "operator_loopback",
+        "operator-loopback",
+        "in,noban",
+        "127.0.0.1 permission class",
+        "rpc_password",
+        "cookie",
+    ] {
+        assert!(!rendered.contains(forbidden), "leaked {forbidden}");
+    }
 }
 
 #[test]
@@ -1944,13 +1995,32 @@ fn inbound_status_response() -> OpenBitcoinNetworkStatusResponse {
                 slot_class: "ordinary".to_string(),
                 message: "duplicate inbound peer id rejected".to_string(),
             }),
-            permissioned_inbound_peers: 0,
-            protected_inbound_peers: 0,
-            permission_class: "ordinary_inbound".to_string(),
-            active_permission_effects: Vec::new(),
-            inactive_permission_effects: Vec::new(),
-            latest_permission_decision: FieldAvailability::unavailable(
-                "inbound permission decision evidence unavailable",
+            permissioned_inbound_peers: 1,
+            protected_inbound_peers: 1,
+            permission_class: "protected_inbound".to_string(),
+            active_permission_effects: vec![
+                "admission_protected".to_string(),
+                "eviction_policy_protected".to_string(),
+                "download_serving_policy_input".to_string(),
+            ],
+            inactive_permission_effects: vec![
+                "inactive_relay".to_string(),
+                "inactive_mempool".to_string(),
+                "inactive_blockfilters".to_string(),
+            ],
+            latest_permission_decision: FieldAvailability::available(
+                InboundPermissionDecisionEvent {
+                    outcome: "admitted".to_string(),
+                    reason: "admitted".to_string(),
+                    permission_class: "protected_inbound".to_string(),
+                    active_permission_effects: vec![
+                        "admission_protected".to_string(),
+                        "download_serving_policy_input".to_string(),
+                    ],
+                    inactive_permission_effects: vec!["inactive_relay".to_string()],
+                    message: "inbound permission decision admitted as protected_inbound"
+                        .to_string(),
+                },
             ),
         }),
     }
