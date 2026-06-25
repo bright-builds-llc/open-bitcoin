@@ -30,6 +30,14 @@ pub use compatibility::{
 pub use error::PeerId;
 pub use error::{DisconnectReason, NetworkError};
 pub use header_store::{HeaderEntry, HeaderStore, InsertedHeader};
+pub use inbound::{
+    INBOUND_ENABLED_FIELD, INBOUND_LISTEN_ADDRESSES_FIELD, InboundAdmissionCounters,
+    InboundAdmissionDecision, InboundAdmissionPolicy, InboundAdmissionRejection,
+    InboundAdmissionRejectionReason, InboundAdmissionRequest, InboundAdmissionSlotClass,
+    InboundHandshakeState, InboundListenerActivationDiagnostic, InboundListenerConfig,
+    InboundListenerEndpoint, InboundPeerRecord, InboundPreflightDiagnostic, InboundPreflightPlan,
+    InboundPreflightReason, classify_inbound_preflight,
+};
 pub use message::{
     HeadersMessage, InventoryList, LocalPeerConfig, MAX_HEADERS_RESULTS, MAX_INV_SIZE,
     PROTOCOL_VERSION, ParsedNetworkMessage, ServiceFlags, USER_AGENT, VersionMessage,

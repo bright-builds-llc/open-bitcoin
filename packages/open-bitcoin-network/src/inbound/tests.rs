@@ -271,7 +271,10 @@ fn admission_rejects_cap_reached_without_using_outbound_count() {
     let InboundAdmissionDecision::Reject(rejection) = decision else {
         panic!("expected cap rejection");
     };
-    assert_eq!(rejection.reason, InboundAdmissionRejectionReason::CapReached);
+    assert_eq!(
+        rejection.reason,
+        InboundAdmissionRejectionReason::CapReached
+    );
     assert_eq!(counters.current_inbound_peers, 2);
     assert_eq!(counters.current_outbound_peers, 99);
 }
