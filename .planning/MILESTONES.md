@@ -34,10 +34,10 @@
 
 **Residual risk:**
 
-- Production full-node readiness, inbound serving, relay, production-funds wallet use, migration apply mode, signed packaging, hosted dashboards, GUI parity, public-network CI, destructive repair, automatic support-bundle upload, and production-service claims remain future milestone scope.
+- Inbound serving moved into active v1.9 planning and remains unshipped until that milestone completes. Production full-node readiness, relay, production-funds wallet use, migration apply mode, signed packaging, hosted dashboards, GUI parity, public-network CI, destructive repair, automatic support-bundle upload, and production-service claims remain future milestone scope.
 - Phase 87 checker hardening remains a non-blocking improvement: parse strict release-readiness checklist rows instead of checking only requirement ID presence.
 
-**What's next:** Start the next milestone with `/gsd-new-milestone`.
+**What's next:** v1.9 Inbound Peer Serving and Network Participation Boundary is active; start Phase 90 with `/gsd-discuss-phase 90` or `/gsd-plan-phase 90`.
 
 ---
 

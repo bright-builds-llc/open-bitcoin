@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.8
-milestone_name: Production Full-Node Readiness Boundary
-status: v1.8 milestone complete
-stopped_at: v1.8 milestone completion
-last_updated: "2026-06-25T01:09:50Z"
-last_activity: 2026-06-25 -- v1.8 milestone completion
+milestone: v1.9
+milestone_name: Inbound Peer Serving and Network Participation Boundary
+status: ready_for_phase_planning
+stopped_at: v1.9 milestone initialized
+last_updated: "2026-06-25T03:31:14Z"
+last_activity: 2026-06-25 -- v1.9 milestone initialized
 progress:
-  total_phases: 8
-  completed_phases: 8
-  total_plans: 26
-  completed_plans: 26
-  percent: 100
+  total_phases: 6
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,46 +21,43 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-25)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** v1.8 milestone complete — ready to start next milestone
+**Current focus:** v1.9 Inbound Peer Serving and Network Participation Boundary
 
 ## Current Position
 
-Milestone: v1.8 Production Full-Node Readiness Boundary
-Phase: 89
-Plan: 3/3 complete
-Status: Milestone complete
+Milestone: v1.9 Inbound Peer Serving and Network Participation Boundary
+Phase: 90 ready for planning
+Plan: —
+Status: Requirements and roadmap initialized
 Last activity: 2026-06-25
 
-Progress: [##########] 100%
+Progress: [----------] 0%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Archived milestone plans completed: 26 in v1.8
-- Prior milestone plans completed: 37 in v1.7
-- Counted v1.8 summary tasks: 49
+- New milestone initialized with 6 planned phases and 28 scoped requirements.
+- Prior milestone plans completed: 26 in v1.8.
+- Prior milestone summary tasks counted: 49 in v1.8.
 
 **By Phase:**
 
 | Phase | Name | Requirements | Status |
 |-------|------|--------------|--------|
-| 82 | Production Claim Boundary | PROD-01, PROD-02, PROD-03, PROD-04 | Complete |
-| 83 | Support Matrix and Issue Evidence | SUP-01, SUP-02, SUP-03, SUP-04 | Complete |
-| 84 | Upgrade and Rollback Policy | UPG-01, UPG-02, UPG-03, UPG-04 | Complete |
-| 85 | Operator Runbooks | RUN-01, RUN-02, RUN-03 | Complete |
-| 86 | Service Operation Expectations | SVC-01, SVC-02 | Complete |
-| 87 | Release Readiness Checklist | REL-01, REL-05, REL-06 | Complete |
-| 88 | Deterministic Claim Guardrails | REL-02, REL-03, REL-04 | Complete |
-| 89 | Release Readiness Guardrail Closure | REL-01, REL-02, REL-03, REL-04 | Complete |
+| 90 | Inbound Listener and Admission Policy | INB-01, INB-02, INB-03, INB-04, INB-05 | Pending |
+| 91 | Peer Permissions and Connection Classes | PERM-01, PERM-02, PERM-03, PERM-04 | Pending |
+| 92 | Address Advertisement and Discovery Boundaries | ADDR-01, ADDR-02, ADDR-03, ADDR-04 | Pending |
+| 93 | Eviction, Ban, and Misbehavior Policy | EVICT-01, EVICT-02, EVICT-03, EVICT-04 | Pending |
+| 94 | DoS and Resource Governance | DOS-01, DOS-02, DOS-03, DOS-04, DOS-05 | Pending |
+| 95 | Network Participation Evidence and Release Boundary | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05, BOUND-06 | Pending |
 
 **Recent Trend:**
 
-- v1.5 completed Phases 60 through 67 and archived with a passed milestone audit.
-- v1.6 completed Phases 68 through 74 and shipped explicit opt-in mainnet full-sync completion evidence.
-- v1.7 completed Phases 75 through 81 with multi-day soak stability evidence, resource and disk bounds, corruption and lock recovery, progress guarantees, diagnostics, support bundles, opt-in UAT, deterministic release-boundary checks, and audit traceability closure.
-- v1.8 completed Phases 82 through 89, covering 23/23 requirements for production-readiness terminology, support boundaries, upgrade policy, operator runbooks, service expectations, release-readiness documentation, deterministic claim guardrails, and Phase 89 gap closure.
-- Public-network soak and real service-manager evidence remain opt-in UAT outside default deterministic verification.
+- v1.6 completed explicit opt-in mainnet full-sync completion evidence.
+- v1.7 hardened multi-day full-sync soak, bounded resources, recovery diagnosis, progress guarantees, and support-bundle forensics.
+- v1.8 defined production-readiness claim gates, support/update/runbook/service policies, release-readiness evidence, and deterministic no-claim guardrails.
+- v1.9 now expands toward opt-in inbound peer serving while keeping transaction relay, compact blocks, mempool propagation, production-funds wallet use, migration apply mode, packaging, hosted dashboard, GUI, public-network CI, and production full-node readiness deferred.
 
 ## Accumulated Context
 
@@ -68,28 +65,31 @@ Progress: [##########] 100%
 
 Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
-- [v1.8]: Structure the milestone as eight continuation phases, starting at Phase 82 after the completed v1.7 Phase 81 archive and closing audit gaps through Phase 89.
-- [v1.8]: Keep the milestone boundary-setting only; v1.8 defines evidence gates and guardrails before any production full-node readiness claim is allowed.
-- [v1.8]: Keep default verification deterministic and public-network-free while adding release-boundary checks that fail overbroad production-readiness language.
-- [v1.7]: Scope the milestone to explicit opt-in full-sync soak and recovery hardening, while continuing to defer inbound serving, relay, production-funds wallet, migration apply mode, packaging polish, hosted dashboard, GUI, and broad production-node claims.
+- [v1.9]: Structure the milestone as six continuation phases, starting at Phase 90 after completed v1.8 Phase 89.
+- [v1.9]: Scope inbound serving to explicit opt-in listener/admission, peer permissions, address boundaries, eviction/ban policy, DoS/resource governance, and release-boundary evidence.
+- [v1.9]: Keep transaction relay, compact block relay, mempool propagation, public inbound defaults, and production-readiness claims out of scope until later milestones deliberately plan them.
+- [v1.8]: Keep production-readiness language guarded by evidence gates and deterministic no-claim checkers.
 - [v1.7]: Keep multi-day public-network soak runs opt-in UAT evidence; default `bash scripts/verify.sh` must remain deterministic, public-network-free, service-manager-free, and free of wall-clock multi-day gates.
-- [v1.7]: Archive passed audit evidence in `.planning/milestones/v1.7-MILESTONE-AUDIT.md` and leave raw v1.7 phase histories in `.planning/phases/` for parity and UAT traceability.
 - [v1.6]: Continue keeping public-network full-sync and service checks opt-in UAT evidence unless a future phase deliberately changes the deterministic verification contract.
 
 ### Pending Todos
 
-- Start the next milestone with `/gsd-new-milestone` when ready.
-- Keep raw phase histories in `.planning/phases/` for parity and UAT traceability.
-- Keep public-network full-sync and multi-day soak UAT opt-in and outside default deterministic verification unless a future milestone or phase explicitly changes that contract.
+- Plan Phase 90 with `/gsd-discuss-phase 90` or `/gsd-plan-phase 90`.
+- Keep v1.9 phase directories numbered 90+ under `.planning/phases/`; historical phase directories remain tracked because verifier scripts still depend on selected phase evidence.
+- Keep repo-local Cargo and Bazel command forms in UAT guidance:
+  - `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- ...`
+  - `bazel run //packages/open-bitcoin-cli:open_bitcoin -- ...`
+- Keep public-network listener exposure opt-in and outside default deterministic verification unless a future phase explicitly changes that contract.
 
 ### Blockers/Concerns
 
 - No active milestone blockers are recorded.
-- Default local verification must remain deterministic; public-network full-sync and multi-day soak checks stay opt-in UAT evidence unless a future milestone or phase explicitly changes that contract.
-- `.planning/phases/` retains raw v1.0, v1.3, v1.4, v1.5, v1.6, v1.7, and v1.8 evidence referenced by parity docs and milestone archives.
+- `.planning/phases/` still contains historical phase directories required by verifier scripts; new v1.9 phase directories should use Phase 90+ names to avoid collisions.
+- Default local verification must remain deterministic; public-network inbound serving review should be opt-in UAT evidence unless deliberately changed.
+- Existing outbound sync, full-sync, soak, support-bundle, and release-boundary behavior must not regress while adding inbound serving.
 
 ## Session Continuity
 
-Last session: 2026-06-25T01:02:16Z
-Stopped at: v1.8 milestone completion
-Resume file: .planning/milestones/v1.8-MILESTONE-AUDIT.md
+Last session: 2026-06-25T03:31:14Z
+Stopped at: v1.9 milestone initialized
+Resume file: .planning/ROADMAP.md

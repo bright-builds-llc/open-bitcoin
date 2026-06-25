@@ -11,24 +11,106 @@
 - ✅ **v1.6 Mainnet Full-Sync Completion** - Phases 68 through 74 (shipped 2026-06-14). Archive: [v1.6-ROADMAP.md](milestones/v1.6-ROADMAP.md)
 - ✅ **v1.7 Full-Sync Soak and Recovery Hardening** - Phases 75 through 81 (shipped 2026-06-20). Archive: [v1.7-ROADMAP.md](milestones/v1.7-ROADMAP.md)
 - ✅ **v1.8 Production Full-Node Readiness Boundary** - Phases 82 through 89 (shipped 2026-06-25). Archive: [v1.8-ROADMAP.md](milestones/v1.8-ROADMAP.md)
+- 🚧 **v1.9 Inbound Peer Serving and Network Participation Boundary** - Phases 90 through 95 (active).
 
 ## Current Focus
 
-v1.8 Production Full-Node Readiness Boundary shipped on 2026-06-25.
+v1.9 Inbound Peer Serving and Network Participation Boundary started on 2026-06-25.
 
-**Goal delivered:** Open Bitcoin now has the support, upgrade, service, runbook, release-readiness, and evidence boundaries required before a future milestone may truthfully claim production full-node readiness.
+**Goal:** Let Open Bitcoin accept and serve inbound peers under explicit admission, permission, address, eviction/ban, and resource-governance rules while keeping relay and production participation claims deferred.
 
-**Current state:** No active milestone phases. Start the next milestone cycle with `/gsd-new-milestone`.
+**Current state:** Requirements and roadmap are initialized. Phase 90 is ready for discussion or planning.
+
+**Boundary:** v1.9 does not claim transaction relay, compact block relay, mempool propagation, public inbound serving by default, production service operation, or production full-node readiness.
 
 ## Phases
 
-No active milestone phases.
+| Phase | Name | Goal | Requirements | Status |
+|-------|------|------|--------------|--------|
+| 90 | Inbound Listener and Admission Policy | Add the opt-in listener, admission model, handshake lifecycle, caps, and operator-visible inbound/outbound distinction. | INB-01, INB-02, INB-03, INB-04, INB-05 | Pending |
+| 91 | Peer Permissions and Connection Classes | Add permissioned peer classes and bounded permission effects without enabling deferred relay behavior. | PERM-01, PERM-02, PERM-03, PERM-04 | Pending |
+| 92 | Address Advertisement and Discovery Boundaries | Scope listener advertisement, bounded address responses, address-management contracts, and docs that distinguish these from full address relay. | ADDR-01, ADDR-02, ADDR-03, ADDR-04 | Pending |
+| 93 | Eviction, Ban, and Misbehavior Policy | Add deterministic eviction scoring, disconnect reasons, discourage/ban persistence, expiry, unban, and permission-aware misbehavior handling. | EVICT-01, EVICT-02, EVICT-03, EVICT-04 | Pending |
+| 94 | DoS and Resource Governance | Bound inbound message parsing, queues, requests, slow handshakes, churn, idle peers, reconnect attempts, and resource-pressure evidence. | DOS-01, DOS-02, DOS-03, DOS-04, DOS-05 | Pending |
+| 95 | Network Participation Evidence and Release Boundary | Prove parity anchors, non-regression, support redaction, UAT commands, and deterministic no-claim guardrails for deferred network participation. | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05, BOUND-06 | Pending |
 
-Raw v1.8 phase execution artifacts remain in [.planning/phases/](phases/) for parity and UAT traceability. The archived roadmap, requirements, and audit are:
+## Phase Details
 
-- [milestones/v1.8-ROADMAP.md](milestones/v1.8-ROADMAP.md)
-- [milestones/v1.8-REQUIREMENTS.md](milestones/v1.8-REQUIREMENTS.md)
-- [milestones/v1.8-MILESTONE-AUDIT.md](milestones/v1.8-MILESTONE-AUDIT.md)
+### Phase 90: Inbound Listener and Admission Policy
+
+**Goal:** Introduce an explicit opt-in inbound listener and admission path that creates typed inbound peers, performs the handshake lifecycle, enforces caps, and exposes operator evidence without regressing outbound sync.
+
+**Requirements:** INB-01, INB-02, INB-03, INB-04, INB-05
+
+**Success criteria:**
+1. Operators can enable/disable inbound serving through explicit config or CLI controls, and the disabled path cannot bind a listener.
+2. Listener preflight returns deterministic diagnostics for disabled, invalid, unsafe, unavailable, or already-bound endpoints.
+3. Inbound peer admission creates typed connection records with handshake state, duplicate/self-connection protections, and accurate inbound/outbound counters.
+4. Inbound caps and protected slots are enforced without starving outbound sync or changing existing full-sync defaults.
+5. Status, metrics, logs, RPC-facing status, and support evidence expose inbound admission and handshake outcomes.
+
+### Phase 91: Peer Permissions and Connection Classes
+
+**Goal:** Model Knots-aligned permission concepts and connection classes while keeping v1.9 permission effects bounded to admission, eviction, address, download-serving, and diagnostics behavior.
+
+**Requirements:** PERM-01, PERM-02, PERM-03, PERM-04
+
+**Success criteria:**
+1. Config parsing accepts only explicit, documented peer permission classes and returns stable validation errors for unsupported combinations.
+2. Permission effects are observable in admission, eviction, address-response, download-serving, and diagnostic paths.
+3. Relay, mempool, force-relay, and compact-block-style permissions cannot silently enable deferred relay behavior.
+4. Status and support evidence explain permission decisions without leaking secrets.
+
+### Phase 92: Address Advertisement and Discovery Boundaries
+
+**Goal:** Add privacy-aware listener advertisement and bounded address request/management behavior without claiming full address relay or broader public-network discovery parity.
+
+**Requirements:** ADDR-01, ADDR-02, ADDR-03, ADDR-04
+
+**Success criteria:**
+1. Local address candidate selection respects configured listener addresses, routability, reachability, and privacy-network boundaries.
+2. Bounded `getaddr` response behavior is deterministic, permission-aware, and capped by count, age, cache, and source policy.
+3. Learned addresses enter a typed address-management contract with routability, source, freshness, and persistence evidence.
+4. Documentation and release checks distinguish local listener advertisement, address request responses, peer discovery, and full address relay.
+
+### Phase 93: Eviction, Ban, and Misbehavior Policy
+
+**Goal:** Add deterministic peer eviction, disconnect, discourage, ban, expiry, unban, and misbehavior handling with Knots anchors and operator-visible reasons.
+
+**Requirements:** EVICT-01, EVICT-02, EVICT-03, EVICT-04
+
+**Success criteria:**
+1. Eviction scoring uses explicit, deterministic criteria for connection class, handshake progress, diversity, activity, and permissions.
+2. Admission caps and abuse policy can evict or disconnect peers while preserving reason codes, metrics, logs, and support evidence.
+3. Discourage/ban state is durable, expiry-aware, scoped to address/subnet, manually reversible, and never hidden behind broad implicit bans.
+4. Misbehavior accounting applies bounded responses and respects protected peer classes.
+
+### Phase 94: DoS and Resource Governance
+
+**Goal:** Bound inbound sockets, parsing, queues, requests, timeouts, churn, and reconnect behavior while making resource pressure visible and deterministically testable.
+
+**Requirements:** DOS-01, DOS-02, DOS-03, DOS-04, DOS-05
+
+**Success criteria:**
+1. Inbound message parsing rejects invalid magic, malformed headers, oversized payloads, unsupported commands, and malformed payloads before unbounded allocation.
+2. Per-peer and aggregate read/write queues, inventory/request bounds, header/block/transaction request caps, and backpressure behavior are enforced.
+3. Slow handshakes, idle peers, connection churn, repeated failures, and banned/discouraged reconnect attempts have deterministic limits and tests.
+4. Metrics, structured logs, support bundles, and status output expose resource pressure and next actions.
+5. Default `bash scripts/verify.sh` remains public-network-free while proving inbound resource policy through synthetic and loopback-safe checks.
+
+### Phase 95: Network Participation Evidence and Release Boundary
+
+**Goal:** Close v1.9 by proving parity roots, non-regression, UAT guidance, support redaction, and deterministic release-boundary checks that keep deferred network participation claims out of scope.
+
+**Requirements:** BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05, BOUND-06
+
+**Success criteria:**
+1. Release and parity docs cite Knots anchors or record intentional deviations for inbound serving, permissions, address handling, eviction/ban, and resource governance.
+2. Deterministic checkers reject transaction relay, compact block relay, mempool propagation, public inbound default, production-service, and production-readiness claims for v1.9.
+3. Existing outbound sync, full-sync, soak, support-bundle, production no-claim, and release-boundary behavior remains verified and non-regressed.
+4. Operator UAT includes copy-pasteable repo-local Cargo and Bazel commands for loopback or synthetic inbound review.
+5. Support bundles preserve useful inbound serving diagnosis while redacting peer addresses where needed.
+6. Requirements, roadmap, summaries, verification, and audit artifacts maintain 28/28 requirement traceability.
 
 ## Milestone History
 
@@ -43,11 +125,31 @@ Raw v1.8 phase execution artifacts remain in [.planning/phases/](phases/) for pa
 | v1.6 Mainnet Full-Sync Completion | 7 | 27 | Shipped | 2026-06-14 |
 | v1.7 Full-Sync Soak and Recovery Hardening | 7 | 37 | Shipped | 2026-06-20 |
 | v1.8 Production Full-Node Readiness Boundary | 8 | 26 | Shipped | 2026-06-25 |
+| v1.9 Inbound Peer Serving and Network Participation Boundary | 6 | 0 | Active | — |
+
+## Traceability
+
+**Coverage:** 28/28 v1.9 requirements mapped, 0 unmapped.
+
+| Phase | Requirements | Count |
+|-------|--------------|------:|
+| Phase 90 | INB-01, INB-02, INB-03, INB-04, INB-05 | 5 |
+| Phase 91 | PERM-01, PERM-02, PERM-03, PERM-04 | 4 |
+| Phase 92 | ADDR-01, ADDR-02, ADDR-03, ADDR-04 | 4 |
+| Phase 93 | EVICT-01, EVICT-02, EVICT-03, EVICT-04 | 4 |
+| Phase 94 | DOS-01, DOS-02, DOS-03, DOS-04, DOS-05 | 5 |
+| Phase 95 | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05, BOUND-06 | 6 |
 
 ## Next Step
 
-Start the next milestone cycle:
+Start Phase 90:
 
 ```bash
-/gsd-new-milestone
+/gsd-discuss-phase 90
+```
+
+Also available:
+
+```bash
+/gsd-plan-phase 90
 ```

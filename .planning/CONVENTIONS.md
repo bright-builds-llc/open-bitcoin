@@ -48,8 +48,12 @@ Last updated: 2026-05-01
 
 - `.planning/PROJECT.md`, `.planning/ROADMAP.md`, `.planning/STATE.md`, and
   `.planning/MILESTONES.md` are the current planning entrypoints.
-- v1.0 raw phase history remains in `.planning/phases/`.
+- `.planning/phases/` contains active phase execution artifacts plus historical
+  phase artifacts that verifier scripts still reference. New milestone phases
+  should continue numbering to avoid collisions with retained directories.
 - v1.1 raw phase history is archived under
   `.planning/milestones/v1.1-phases/`.
+- v1.2 raw phase history is archived under
+  `.planning/milestones/v1.2-phases/`.
 - `.planning/research/` contains historical pre-v1.1 research unless a file
   explicitly says it has been refreshed.
