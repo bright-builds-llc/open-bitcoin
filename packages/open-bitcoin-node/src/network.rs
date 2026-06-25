@@ -19,9 +19,11 @@ use open_bitcoin_core::{
 };
 use open_bitcoin_mempool::{AdmissionResult, MempoolError, PolicyConfig};
 use open_bitcoin_network::{
-    ConnectionRole, HeaderEntry, HeaderStore, HeaderSyncPolicy, HeadersMessage, InventoryList,
-    LocalPeerConfig, NetworkError, PROTOCOL_VERSION, ParsedNetworkMessage, PeerAction, PeerId,
-    PeerManager, WireNetworkMessage,
+    ConnectionRole, HeaderEntry, HeaderStore, HeaderSyncPolicy, HeadersMessage,
+    InboundAdmissionDecision, InboundAdmissionPolicy, InboundAdmissionRejection,
+    InboundAdmissionRejectionReason, InboundAdmissionRequest, InboundAdmissionSlotClass,
+    InboundHandshakeState, InboundPeerRecord, InventoryList, LocalPeerConfig, NetworkError,
+    PROTOCOL_VERSION, ParsedNetworkMessage, PeerAction, PeerId, PeerManager, WireNetworkMessage,
 };
 
 use crate::{ChainstateStore, ManagedChainstate, ManagedMempool};
@@ -96,6 +98,48 @@ pub struct ManagedNetworkInfo {
     pub header_preferring_peers: usize,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ManagedInboundAdmissionInfo {
+    pub admitted_inbound_peers: usize,
+    pub rejected_inbound_peers: usize,
+    pub reserved_inbound_admits: usize,
+    pub cap_rejections: usize,
+    pub reserved_slot_rejections: usize,
+    pub duplicate_endpoint_rejections: usize,
+    pub duplicate_peer_id_rejections: usize,
+    pub self_connection_rejections: usize,
+    pub shutdown_rejections: usize,
+    pub maybe_latest_rejection_reason: Option<InboundAdmissionRejectionReason>,
+}
+
+impl ManagedInboundAdmissionInfo {
+    fn record_admit(&mut self, slot_class: InboundAdmissionSlotClass) {
+        self.admitted_inbound_peers += 1;
+        if slot_class == InboundAdmissionSlotClass::Reserved {
+            self.reserved_inbound_admits += 1;
+        }
+    }
+
+    fn record_rejection(&mut self, rejection: &InboundAdmissionRejection) {
+        self.rejected_inbound_peers += 1;
+        self.maybe_latest_rejection_reason = Some(rejection.reason);
+        match rejection.reason {
+            InboundAdmissionRejectionReason::CapReached => self.cap_rejections += 1,
+            InboundAdmissionRejectionReason::ReservedSlotUnavailable => {
+                self.reserved_slot_rejections += 1;
+            }
+            InboundAdmissionRejectionReason::DuplicateEndpoint => {
+                self.duplicate_endpoint_rejections += 1;
+            }
+            InboundAdmissionRejectionReason::DuplicatePeerId => {
+                self.duplicate_peer_id_rejections += 1;
+            }
+            InboundAdmissionRejectionReason::SelfConnection => self.self_connection_rejections += 1,
+            InboundAdmissionRejectionReason::Shutdown => self.shutdown_rejections += 1,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BlockConnectDisposition {
     Connected(ChainPosition),
@@ -121,6 +165,8 @@ pub struct ManagedPeerNetwork<S> {
     mempool: ManagedMempool,
     peer_manager: PeerManager,
     peer_ids: BTreeSet<PeerId>,
+    inbound_admission_policy: InboundAdmissionPolicy,
+    inbound_admission_info: ManagedInboundAdmissionInfo,
     local_config: LocalPeerConfig,
     blocks_by_hash: BTreeMap<BlockHash, Block>,
     transactions_by_txid: BTreeMap<Txid, Transaction>,
@@ -138,6 +184,8 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             mempool: ManagedMempool::new(mempool_config),
             peer_manager,
             peer_ids: BTreeSet::new(),
+            inbound_admission_policy: default_inbound_admission_policy(),
+            inbound_admission_info: ManagedInboundAdmissionInfo::default(),
             local_config,
             blocks_by_hash: BTreeMap::new(),
             transactions_by_txid: BTreeMap::new(),
@@ -163,6 +211,8 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             mempool: ManagedMempool::new(mempool_config),
             peer_manager,
             peer_ids: BTreeSet::new(),
+            inbound_admission_policy: default_inbound_admission_policy(),
+            inbound_admission_info: ManagedInboundAdmissionInfo::default(),
             local_config,
             blocks_by_hash: BTreeMap::new(),
             transactions_by_txid: BTreeMap::new(),
@@ -178,6 +228,12 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
 
     #[rustfmt::skip]
     pub fn peer_manager(&self) -> &PeerManager { &self.peer_manager }
+
+    #[rustfmt::skip]
+    pub fn inbound_admission_info(&self) -> &ManagedInboundAdmissionInfo { &self.inbound_admission_info }
+
+    #[rustfmt::skip]
+    pub fn set_inbound_admission_policy(&mut self, policy: InboundAdmissionPolicy) { self.inbound_admission_policy = policy; }
 
     pub fn disconnect_peer(&mut self, peer_id: PeerId) -> Result<(), ManagedNetworkError> {
         self.peer_manager.remove_peer(peer_id)?;
@@ -234,6 +290,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     }
 
     pub fn network_info(&self) -> ManagedNetworkInfo {
+        let mut connected_peers = 0;
         let mut inbound_peers = 0;
         let mut outbound_peers = 0;
         let mut wtxidrelay_peers = 0;
@@ -245,8 +302,17 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             };
 
             match peer.role {
-                ConnectionRole::Inbound => inbound_peers += 1,
-                ConnectionRole::Outbound => outbound_peers += 1,
+                ConnectionRole::Inbound => {
+                    if !is_active_inbound_peer(peer) {
+                        continue;
+                    }
+                    connected_peers += 1;
+                    inbound_peers += 1;
+                }
+                ConnectionRole::Outbound => {
+                    connected_peers += 1;
+                    outbound_peers += 1;
+                }
             }
             if peer.remote_wtxidrelay {
                 wtxidrelay_peers += 1;
@@ -262,7 +328,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             user_agent: self.local_config.user_agent.clone(),
             local_services_bits: self.local_config.services.bits(),
             relay: self.local_config.relay,
-            connected_peers: self.peer_ids.len(),
+            connected_peers,
             inbound_peers,
             outbound_peers,
             wtxidrelay_peers,
@@ -273,7 +339,28 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     pub fn add_inbound_peer(&mut self, peer_id: PeerId) -> Result<(), ManagedNetworkError> {
         self.peer_manager.add_inbound_peer(peer_id)?;
         self.peer_ids.insert(peer_id);
+        self.inbound_admission_info
+            .record_admit(InboundAdmissionSlotClass::Ordinary);
         Ok(())
+    }
+
+    pub fn admit_inbound_peer(
+        &mut self,
+        mut request: InboundAdmissionRequest,
+    ) -> InboundAdmissionDecision {
+        request.counters = self.peer_manager.inbound_admission_counters();
+        request.existing_endpoint_keys = self.peer_manager.inbound_endpoint_keys();
+        request.existing_peer_ids = self.peer_manager.peer_ids();
+        request.local_nonce = self.local_config.nonce;
+
+        let decision = self.inbound_admission_policy.decide(request);
+        match decision {
+            InboundAdmissionDecision::Admit(record) => self.record_inbound_admission(record),
+            InboundAdmissionDecision::Reject(rejection) => {
+                self.inbound_admission_info.record_rejection(&rejection);
+                InboundAdmissionDecision::Reject(rejection)
+            }
+        }
     }
 
     pub fn connect_outbound_peer(
@@ -284,6 +371,22 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         let actions = self.peer_manager.add_outbound_peer(peer_id, timestamp)?;
         self.peer_ids.insert(peer_id);
         self.collect_outbound(actions)
+    }
+
+    fn record_inbound_admission(&mut self, record: InboundPeerRecord) -> InboundAdmissionDecision {
+        if self
+            .peer_manager
+            .add_inbound_peer_record(record.clone())
+            .is_err()
+        {
+            let rejection = duplicate_peer_rejection(&record);
+            self.inbound_admission_info.record_rejection(&rejection);
+            return InboundAdmissionDecision::Reject(rejection);
+        }
+
+        self.peer_ids.insert(record.peer_id);
+        self.inbound_admission_info.record_admit(record.slot_class);
+        InboundAdmissionDecision::Admit(record)
     }
 
     pub fn receive_message(
@@ -570,6 +673,27 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             outbound,
             maybe_block_disposition,
         })
+    }
+}
+
+const fn default_inbound_admission_policy() -> InboundAdmissionPolicy {
+    InboundAdmissionPolicy::new(usize::MAX, 0)
+}
+
+fn is_active_inbound_peer(peer: &open_bitcoin_network::PeerState) -> bool {
+    let Some(record) = peer.maybe_inbound_record.as_ref() else {
+        return true;
+    };
+    record.handshake_state != InboundHandshakeState::Disconnected
+}
+
+fn duplicate_peer_rejection(record: &InboundPeerRecord) -> InboundAdmissionRejection {
+    InboundAdmissionRejection {
+        reason: InboundAdmissionRejectionReason::DuplicatePeerId,
+        peer_id: record.peer_id,
+        maybe_endpoint: Some(record.remote_endpoint.clone()),
+        message: "inbound peer id already has an admitted peer record".to_string(),
+        next_action: "allocate a fresh peer id before retrying admission".to_string(),
     }
 }
 

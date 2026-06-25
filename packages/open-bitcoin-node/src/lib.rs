@@ -32,7 +32,9 @@ pub use chainstate::{ChainstateStore, ManagedChainstate, MemoryChainstateStore};
 pub use logging::{LogRetentionPolicy, LogStatus};
 pub use mempool::ManagedMempool;
 pub use metrics::{MetricKind, MetricRetentionPolicy, MetricSample, MetricsStatus};
-pub use network::{ManagedNetworkError, ManagedPeerNetwork};
+pub use network::{
+    ManagedInboundAdmissionInfo, ManagedNetworkError, ManagedNetworkInfo, ManagedPeerNetwork,
+};
 pub use open_bitcoin_core as core;
 pub use recovery::{
     LockEvidence, LockEvidenceKind, RECOVERY_EVIDENCE_UNAVAILABLE_REASON, RecoveryActionClass,

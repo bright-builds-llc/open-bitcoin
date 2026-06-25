@@ -267,7 +267,7 @@ fn cap_rejected_inbound_peer_updates_evidence_without_counts() {
 }
 
 #[test]
-fn ordinary_admission_cannot_consume_reserved_capacity() {
+fn ordinary_inbound_admission_cannot_consume_reserved_capacity() {
     // Arrange
     let mut network = ManagedPeerNetwork::new(
         MemoryChainstateStore::default(),
@@ -295,14 +295,11 @@ fn ordinary_admission_cannot_consume_reserved_capacity() {
             if rejection.reason == InboundAdmissionRejectionReason::ReservedSlotUnavailable
     ));
     assert_eq!(network.network_info().inbound_peers, 1);
-    assert_eq!(
-        network.inbound_admission_info().reserved_slot_rejections,
-        1,
-    );
+    assert_eq!(network.inbound_admission_info().reserved_slot_rejections, 1,);
 }
 
 #[test]
-fn reserved_admission_uses_reserved_capacity_then_rejects_when_exhausted() {
+fn reserved_inbound_admission_uses_reserved_capacity_then_rejects_when_exhausted() {
     // Arrange
     let mut network = ManagedPeerNetwork::new(
         MemoryChainstateStore::default(),
@@ -371,7 +368,7 @@ fn inbound_admission_preserves_outbound_count_and_observed_outbound_evidence() {
 }
 
 #[test]
-fn duplicate_endpoint_or_peer_id_rejects_before_counts_change() {
+fn duplicate_inbound_endpoint_or_peer_id_rejects_before_counts_change() {
     // Arrange
     let mut network = ManagedPeerNetwork::new(
         MemoryChainstateStore::default(),
@@ -652,7 +649,7 @@ fn managed_network_requests_transactions_using_wtxidrelay_when_negotiated() {
 }
 
 #[test]
-fn managed_network_exposes_rpc_projection_helpers() {
+fn managed_network_info_exposes_rpc_projection_helpers() {
     // Arrange
     let mut network = ManagedPeerNetwork::new(
         MemoryChainstateStore::default(),
