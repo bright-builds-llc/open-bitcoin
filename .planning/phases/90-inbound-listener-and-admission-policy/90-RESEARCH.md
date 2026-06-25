@@ -560,17 +560,15 @@ The planner should add a deterministic synthetic peer command or test helper if 
 | A2 | Phase 90 reserved slots can be modeled as a minimal ordinary/reserved slot primitive without exposing Knots permission classes. [ASSUMED] | Architecture Patterns / Test Strategy | If reserved eligibility must be operator-configurable in Phase 90, the plan needs an additional explicit non-permission config field and tests. |
 | A3 | Manual UAT may need a new synthetic peer helper if operators must prove version/verack over TCP from the command line. [ASSUMED] | UAT Commands | If no helper is added, UAT can still inspect listener preflight/status, but handshake UAT may stay test-only. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **How should the final taxonomy separate pure preflight from OS bind activation?** [ASSUMED]
+1. **How should the final taxonomy separate pure preflight from OS bind activation?** RESOLVED: Use a two-stage typed contract. Plan 01 owns the pure config classifier for `disabled`, `no_listen_addresses`, `invalid_endpoint`, `unsafe_endpoint`, and `ready`; Plan 04 owns OS-observed activation diagnostics for `bind_unavailable` and `already_bound`. [VERIFIED: .planning/phases/90-inbound-listener-and-admission-policy/90-01-PLAN.md; .planning/phases/90-inbound-listener-and-admission-policy/90-04-PLAN.md]
    - What we know: Phase 90 requires stable labels including `bind_unavailable` and `already_bound`. [VERIFIED: 90-CONTEXT.md]
-   - What's unclear: Those two outcomes require an OS bind attempt, while D-03 also says preflight precedes socket side effects. [ASSUMED]
-   - Recommendation: Use a two-stage typed contract and keep both stages visible in status/support evidence. [VERIFIED: standards/core/architecture.md]
+   - Resolution detail: Those two outcomes require an OS bind attempt, so the plans keep them out of the pure classifier and preserve both classifier and activation results in status/support evidence. [VERIFIED: standards/core/architecture.md; .planning/phases/90-inbound-listener-and-admission-policy/90-04-PLAN.md]
 
-2. **Should Phase 90 expose a manual synthetic peer UAT helper?** [ASSUMED]
+2. **Should Phase 90 expose a manual synthetic peer UAT helper?** RESOLVED: Do not require a standalone operator synthetic peer helper for Phase 90 execution readiness. Plan 04 must prove version/verack admission through hermetic loopback integration tests; Plan 09 must document repo-local daemon, `getnetworkinfo`, status, and support-bundle UAT commands. If execution introduces a loopback-only helper as test infrastructure, Plan 09 must document its scope, but the helper is not a required public operator surface. [VERIFIED: .planning/phases/90-inbound-listener-and-admission-policy/90-04-PLAN.md; .planning/phases/90-inbound-listener-and-admission-policy/90-09-PLAN.md]
    - What we know: Default verification can use injected transports and hermetic fixtures. [VERIFIED: 90-CONTEXT.md]
-   - What's unclear: Operator UAT text may be more useful if a repo-local helper can initiate a minimal loopback version/verack exchange. [ASSUMED]
-   - Recommendation: Planner should add a test-only or operator-owned helper only if it does not imply public-network probing or relay. [VERIFIED: 90-CONTEXT.md]
+   - Resolution detail: Operator UAT remains command-based and loopback-first, while handshake proof remains in deterministic tests unless a local helper naturally falls out of Plan 04 implementation. [VERIFIED: 90-CONTEXT.md; AGENTS.md]
 
 ## Environment Availability
 

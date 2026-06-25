@@ -42,6 +42,20 @@ v1.9 Inbound Peer Serving and Network Participation Boundary started on 2026-06-
 
 **Requirements:** INB-01, INB-02, INB-03, INB-04, INB-05
 
+**Plans:** 10 plans
+
+Plans:
+- [ ] 90-01-PLAN.md - Pure inbound listener and admission contracts
+- [ ] 90-02-PLAN.md - Open Bitcoin-owned inbound config and CLI controls
+- [ ] 90-03-PLAN.md - Peer manager inbound state, handshake, and counters
+- [ ] 90-04-PLAN.md - Runtime listener adapter, daemon startup, and loopback integration
+- [ ] 90-05-PLAN.md - Shared inbound status and metrics contract
+- [ ] 90-06-PLAN.md - RPC-facing inbound status without changing getnetworkinfo shape
+- [ ] 90-07-PLAN.md - Operator status collection and rendering
+- [ ] 90-08-PLAN.md - Support bundle inbound evidence and redaction
+- [ ] 90-09-PLAN.md - Operator docs, parity roots, breadcrumbs, and UAT commands
+- [ ] 90-10-PLAN.md - Deterministic Phase 90 checker and final verification
+
 **Success criteria:**
 1. Operators can enable/disable inbound serving through explicit config or CLI controls, and the disabled path cannot bind a listener.
 2. Listener preflight returns deterministic diagnostics for disabled, invalid, unsafe, unavailable, or already-bound endpoints.
