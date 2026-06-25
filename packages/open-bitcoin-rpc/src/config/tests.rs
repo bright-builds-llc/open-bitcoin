@@ -569,6 +569,8 @@ fn daemon_inbound_cli_override_can_enable_or_disable_open_bitcoin_jsonc() {
         &[
             cli_arg("datadir", &disabled_sandbox.path),
             os("-openbitcoininbound=1"),
+            os("-openbitcoinmaxinbound=5"),
+            os("-openbitcoinreservedslots=2"),
         ],
         &disabled_sandbox.path,
     )
@@ -584,6 +586,8 @@ fn daemon_inbound_cli_override_can_enable_or_disable_open_bitcoin_jsonc() {
 
     // Assert
     assert!(cli_enabled.inbound.enabled);
+    assert_eq!(cli_enabled.inbound.max_peers, 5);
+    assert_eq!(cli_enabled.inbound.reserved_slots, 2);
     assert!(!cli_disabled.inbound.enabled);
 }
 
@@ -658,12 +662,24 @@ fn daemon_inbound_cli_public_endpoint_stays_unsafe_without_allow_public() {
     )
     .expect("public endpoint config loads");
     let preflight = classify_inbound_preflight(&runtime.inbound);
+    let allowed_runtime = load_runtime_config_for_args(
+        &[
+            os("-openbitcoininbound=1"),
+            os("-openbitcoinlisten=0.0.0.0:18444"),
+            os("-openbitcoinallowpublic=1"),
+        ],
+        &sandbox.path,
+    )
+    .expect("public endpoint config loads with acknowledgement");
+    let allowed_preflight = classify_inbound_preflight(&allowed_runtime.inbound);
 
     // Assert
     assert!(runtime.inbound.enabled);
     assert!(!runtime.inbound.allow_public);
     assert_eq!(preflight.reason(), InboundPreflightReason::UnsafeEndpoint);
     assert_eq!(preflight.diagnostics()[0].field, "inbound.listen_addresses");
+    assert!(allowed_runtime.inbound.allow_public);
+    assert_eq!(allowed_preflight.reason(), InboundPreflightReason::Ready);
 }
 
 #[test]

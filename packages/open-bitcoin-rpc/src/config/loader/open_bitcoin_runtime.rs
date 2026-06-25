@@ -58,12 +58,27 @@ pub(super) fn load_open_bitcoin_config(
 }
 
 pub(super) fn resolve_inbound_listener_config(
-    _cli: &CliSettings,
+    cli: &CliSettings,
     maybe_config: Option<&OpenBitcoinConfig>,
 ) -> Result<InboundListenerConfig, ConfigError> {
-    let inbound = maybe_config
+    let mut inbound = maybe_config
         .map(|config| config.inbound.to_listener_config())
         .unwrap_or_else(|| InboundConfig::default().to_listener_config());
+    if let Some(enabled) = cli.maybe_inbound_enabled {
+        inbound.enabled = enabled;
+    }
+    if let Some(listen_addresses) = cli.maybe_inbound_listen_addresses.as_ref() {
+        inbound.listen_addresses = listen_addresses.clone();
+    }
+    if let Some(max_peers) = cli.maybe_max_inbound_peers {
+        inbound.max_peers = max_peers;
+    }
+    if let Some(reserved_slots) = cli.maybe_inbound_reserved_slots {
+        inbound.reserved_slots = reserved_slots;
+    }
+    if let Some(allow_public) = cli.maybe_inbound_allow_public {
+        inbound.allow_public = allow_public;
+    }
     validate_inbound_listener_config(&inbound)?;
     Ok(inbound)
 }

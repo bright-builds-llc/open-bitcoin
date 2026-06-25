@@ -48,6 +48,11 @@ struct CliSettings {
     maybe_cookie_file: Option<PathBuf>,
     maybe_open_bitcoin_config_path: Option<PathBuf>,
     maybe_daemon_sync_mode: Option<DaemonSyncMode>,
+    maybe_inbound_enabled: Option<bool>,
+    maybe_inbound_listen_addresses: Option<Vec<String>>,
+    maybe_max_inbound_peers: Option<usize>,
+    maybe_inbound_reserved_slots: Option<usize>,
+    maybe_inbound_allow_public: Option<bool>,
 }
 
 #[derive(Debug, Clone)]
@@ -278,6 +283,41 @@ fn parse_cli_args(cli_args: &[OsString]) -> Result<CliSettings, ConfigError> {
                 };
                 settings.maybe_daemon_sync_mode = Some(DaemonSyncMode::parse(value)?);
             }
+            "openbitcoininbound" => {
+                settings.maybe_inbound_enabled = Some(parse_bool(maybe_value, negated)?);
+            }
+            "openbitcoinlisten" => {
+                let Some(value) = maybe_value else {
+                    return Err(ConfigError::new(
+                        "Error parsing command line arguments: Can not set -openbitcoinlisten with no value. Please specify value with -openbitcoinlisten=value.",
+                    ));
+                };
+                settings
+                    .maybe_inbound_listen_addresses
+                    .get_or_insert_with(Vec::new)
+                    .push(value.to_string());
+            }
+            "openbitcoinmaxinbound" => {
+                let Some(value) = maybe_value else {
+                    return Err(ConfigError::new(
+                        "Error parsing command line arguments: Can not set -openbitcoinmaxinbound with no value. Please specify value with -openbitcoinmaxinbound=value.",
+                    ));
+                };
+                settings.maybe_max_inbound_peers =
+                    Some(parse_usize("openbitcoinmaxinbound", value)?);
+            }
+            "openbitcoinreservedslots" => {
+                let Some(value) = maybe_value else {
+                    return Err(ConfigError::new(
+                        "Error parsing command line arguments: Can not set -openbitcoinreservedslots with no value. Please specify value with -openbitcoinreservedslots=value.",
+                    ));
+                };
+                settings.maybe_inbound_reserved_slots =
+                    Some(parse_usize("openbitcoinreservedslots", value)?);
+            }
+            "openbitcoinallowpublic" => {
+                settings.maybe_inbound_allow_public = Some(parse_bool(maybe_value, negated)?);
+            }
             "includeconf" | "rpcauth" | "rpcwhitelist" => {
                 return Err(ConfigError::new(format!(
                     "Error parsing command line arguments: Invalid parameter {arg}"
@@ -312,6 +352,12 @@ fn parse_port(value: &str) -> Result<u16, ConfigError> {
     value
         .parse::<u16>()
         .map_err(|_| ConfigError::new(format!("invalid rpc port: {value}")))
+}
+
+fn parse_usize(field: &str, value: &str) -> Result<usize, ConfigError> {
+    value
+        .parse::<usize>()
+        .map_err(|_| ConfigError::new(format!("invalid {field}: {value}")))
 }
 
 fn parse_config_entries(
