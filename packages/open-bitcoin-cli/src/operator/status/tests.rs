@@ -32,17 +32,19 @@ use crate::operator::{
 };
 use open_bitcoin_node::status::{
     BestKnownTipStatus, BuildProvenance, ConfigStatus, FieldAvailability, MempoolStatus,
+    InboundAdmissionEvent, InboundHandshakeStatusCounts, InboundPeerServingStatus,
     NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus,
     ServiceLifecycleStatus, ServiceStatus, StayCurrentStatus, SyncAttemptCounters,
-    SyncConfiguredTargets, SyncProgressSignal, SyncStatus, SyncStopReasonStatus, WalletFreshness,
-    WalletScanProgress, WalletStatus,
+    SyncConfiguredTargets, SyncProgressSignal, SyncStatus, SyncStopReasonStatus,
+    INBOUND_STATUS_UNAVAILABLE_REASON, WalletFreshness, WalletScanProgress, WalletStatus,
 };
 use open_bitcoin_node::storage::FJALL_LOCK_FILE_NAME;
 use open_bitcoin_rpc::{
     RpcErrorCode, RpcErrorDetail,
     method::{
         GetBalancesResponse, GetBlockchainInfoResponse, GetMempoolInfoResponse,
-        GetNetworkInfoResponse, GetWalletInfoResponse, WalletBalanceDetails,
+        GetNetworkInfoResponse, GetWalletInfoResponse, OpenBitcoinNetworkStatusResponse,
+        WalletBalanceDetails,
     },
 };
 
@@ -183,6 +185,98 @@ fn fake_live_rpc_maps_into_shared_status_snapshot() {
     assert_eq!(decoded["build"]["build_time"]["state"], "available");
     assert_eq!(decoded["build"]["target"]["state"], "available");
     assert_eq!(decoded["build"]["profile"]["state"], "available");
+}
+
+#[test]
+fn inbound_status_fake_live_rpc_maps_into_shared_status_snapshot() {
+    // Arrange
+    let input = status_input(Vec::new());
+    let rpc = FakeStatusRpcClient::running_with_inbound_status();
+
+    // Act
+    let snapshot = collect_status_snapshot(&input, Some(&rpc));
+    let rendered = render_status(&snapshot, StatusRenderMode::Json).expect("status json");
+    let decoded: serde_json::Value = serde_json::from_str(&rendered).expect("decode status json");
+
+    // Assert
+    assert_eq!(decoded["node"]["state"], "running");
+    assert_eq!(decoded["peers"]["peer_counts"]["value"]["inbound"], 2);
+    assert_eq!(decoded["peers"]["peer_counts"]["value"]["outbound"], 5);
+    assert_eq!(decoded["peers"]["inbound"]["state"], "available");
+    assert_eq!(
+        decoded["peers"]["inbound"]["value"]["listener_state"],
+        "listening"
+    );
+    assert_eq!(
+        decoded["peers"]["inbound"]["value"]["bound_endpoints"][0],
+        "127.0.0.1:18444"
+    );
+    assert_eq!(
+        decoded["peers"]["inbound"]["value"]["preflight_reason"],
+        "ready"
+    );
+    assert_eq!(
+        decoded["peers"]["inbound"]["value"]["admitted_inbound_peers"],
+        2
+    );
+    assert_eq!(
+        decoded["peers"]["inbound"]["value"]["rejected_inbound_peers"],
+        3
+    );
+    assert_eq!(
+        decoded["peers"]["inbound"]["value"]["latest_admission_event"]["value"]["reason"],
+        "duplicate_peer_id"
+    );
+}
+
+#[test]
+fn inbound_status_missing_method_keeps_peer_counts_available() {
+    // Arrange
+    let input = status_input(Vec::new());
+    let rpc = FakeStatusRpcClient::network_status_failing(StatusRpcError::from_rpc_detail(
+        RpcErrorDetail::new(RpcErrorCode::MethodNotFound, "Method not found"),
+    ));
+
+    // Act
+    let snapshot = collect_status_snapshot(&input, Some(&rpc));
+    let rendered = render_status(&snapshot, StatusRenderMode::Json).expect("status json");
+    let decoded: serde_json::Value = serde_json::from_str(&rendered).expect("decode status json");
+
+    // Assert
+    assert_eq!(decoded["node"]["state"], "running");
+    assert_eq!(decoded["peers"]["peer_counts"]["state"], "available");
+    assert_eq!(decoded["peers"]["peer_counts"]["value"]["inbound"], 2);
+    assert_eq!(decoded["peers"]["peer_counts"]["value"]["outbound"], 5);
+    assert_eq!(decoded["peers"]["inbound"]["state"], "unavailable");
+    let reason = decoded["peers"]["inbound"]["value"]["reason"]
+        .as_str()
+        .expect("inbound unavailable reason");
+    assert!(reason.contains("openbitcoinnetworkstatus"));
+    assert!(reason.contains("Method not found"));
+    assert_ne!(reason, INBOUND_STATUS_UNAVAILABLE_REASON);
+}
+
+#[test]
+fn inbound_status_snapshot_does_not_render_rpc_secrets() {
+    // Arrange
+    let mut input = status_input(Vec::new());
+    input.maybe_live_rpc = Some(StatusLiveRpcAdapterInput {
+        endpoint: "http://rpcuser:super-secret@127.0.0.1:18443".to_string(),
+        auth_source: StatusRpcAuthSource::CookieFile {
+            path: PathBuf::from("/tmp/open-bitcoin/super-secret.cookie"),
+        },
+        timeout: Duration::from_secs(2),
+    });
+    let rpc = FakeStatusRpcClient::running_with_inbound_status();
+
+    // Act
+    let snapshot = collect_status_snapshot(&input, Some(&rpc));
+    let rendered = render_status(&snapshot, StatusRenderMode::Json).expect("status json");
+
+    // Assert
+    assert!(!rendered.contains("super-secret"));
+    assert!(!rendered.contains("rpcuser"));
+    assert!(!rendered.contains(".cookie"));
 }
 
 #[test]
