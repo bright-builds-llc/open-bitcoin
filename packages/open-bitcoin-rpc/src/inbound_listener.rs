@@ -355,7 +355,7 @@ async fn handle_inbound_stream(
 ) {
     let decision = {
         let mut context = context.lock().await;
-        context.record_inbound_admission(peer_id, remote_addr.to_string(), false)
+        context.record_inbound_admission_for_remote_addr(peer_id, remote_addr, false)
     };
     match decision {
         InboundAdmissionDecision::Admit(_record) => {

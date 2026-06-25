@@ -5,7 +5,8 @@
 use std::sync::Arc;
 
 use open_bitcoin_network::{
-    InboundListenerConfig, InboundPreflightReason, ParsedNetworkMessage, VersionMessage,
+    InboundAdmissionSlotClass, InboundListenerConfig, InboundPreflightReason, ParsedNetworkMessage,
+    ParsedPeerPermissionClass, PeerConnectionClass, PeerPermissionClassRegistry, VersionMessage,
     WireNetworkMessage,
 };
 use open_bitcoin_node::core::primitives::NetworkMagic;
@@ -17,13 +18,21 @@ use crate::{ManagedRpcContext, RuntimeConfig};
 use super::{InboundListenerState, activate_inbound_listener, start_inbound_accept_loop};
 
 fn loopback_config(max_peers: usize) -> InboundListenerConfig {
+    loopback_config_with_permission_classes(max_peers, 0, PeerPermissionClassRegistry::default())
+}
+
+fn loopback_config_with_permission_classes(
+    max_peers: usize,
+    reserved_slots: usize,
+    permission_classes: PeerPermissionClassRegistry,
+) -> InboundListenerConfig {
     InboundListenerConfig {
         enabled: true,
         listen_addresses: vec!["127.0.0.1:0".to_string()],
         max_peers,
-        reserved_slots: 0,
+        reserved_slots,
         allow_public: false,
-        permission_classes: Default::default(),
+        permission_classes,
     }
 }
 
@@ -34,8 +43,18 @@ async fn running_loopback_listener(
     super::InboundListenerWorker,
     String,
 ) {
+    running_loopback_listener_with_config(loopback_config(max_peers)).await
+}
+
+async fn running_loopback_listener_with_config(
+    inbound: InboundListenerConfig,
+) -> (
+    Arc<tokio::sync::Mutex<ManagedRpcContext>>,
+    super::InboundListenerWorker,
+    String,
+) {
     let runtime = RuntimeConfig {
-        inbound: loopback_config(max_peers),
+        inbound,
         ..RuntimeConfig::default()
     };
     let context = Arc::new(tokio::sync::Mutex::new(
@@ -51,6 +70,15 @@ async fn running_loopback_listener(
     let worker = start_inbound_accept_loop(activation, Arc::clone(&context))
         .expect("listener worker should start");
     (context, worker, endpoint)
+}
+
+fn loopback_permission_registry(permissions: &[&str]) -> PeerPermissionClassRegistry {
+    PeerPermissionClassRegistry::new([ParsedPeerPermissionClass::parse(
+        "loopback-permission",
+        ["127.0.0.1"],
+        permissions.iter().copied(),
+    )
+    .expect("loopback permission class should parse")])
 }
 
 async fn send_message(stream: &TcpStream, message: WireNetworkMessage) {
@@ -69,6 +97,36 @@ async fn receive_message(stream: &TcpStream) -> WireNetworkMessage {
     ParsedNetworkMessage::decode_wire(&bytes)
         .expect("decode wire message")
         .message
+}
+
+async fn wait_for_inbound_peers(
+    context: &Arc<tokio::sync::Mutex<ManagedRpcContext>>,
+    expected: usize,
+) {
+    for _ in 0..100 {
+        if context.lock().await.network_info().inbound_peers == expected {
+            return;
+        }
+        tokio::task::yield_now().await;
+    }
+}
+
+async fn wait_for_reserved_slot_rejections(
+    context: &Arc<tokio::sync::Mutex<ManagedRpcContext>>,
+    expected: usize,
+) {
+    for _ in 0..100 {
+        if context
+            .lock()
+            .await
+            .inbound_admission_info()
+            .reserved_slot_rejections
+            == expected
+        {
+            return;
+        }
+        tokio::task::yield_now().await;
+    }
 }
 
 #[tokio::test]
@@ -211,6 +269,134 @@ async fn enabled_loopback_zero_port_binds_without_public_network_dependency() {
         .expect("loopback endpoint should bind");
     assert!(endpoint.bound_endpoint.starts_with("127.0.0.1:"));
     assert_ne!(endpoint.bound_endpoint, "127.0.0.1:0");
+}
+
+#[tokio::test]
+async fn ordinary_loopback_inbound_cannot_consume_reserved_capacity() {
+    // Arrange
+    let config =
+        loopback_config_with_permission_classes(2, 1, PeerPermissionClassRegistry::default());
+    let (context, worker, endpoint) = running_loopback_listener_with_config(config).await;
+    let first = TcpStream::connect(&endpoint)
+        .await
+        .expect("connect first ordinary loopback peer");
+    wait_for_inbound_peers(&context, 1).await;
+
+    // Act
+    let second = TcpStream::connect(&endpoint)
+        .await
+        .expect("connect second ordinary loopback peer");
+    drop(second);
+    wait_for_reserved_slot_rejections(&context, 1).await;
+    let admission = context.lock().await.inbound_admission_info();
+
+    // Assert
+    assert_eq!(admission.ordinary_inbound_admits, 1);
+    assert_eq!(admission.permissioned_inbound_admits, 0);
+    assert_eq!(admission.protected_inbound_admits, 0);
+    assert_eq!(admission.reserved_inbound_admits, 0);
+    assert_eq!(admission.rejected_inbound_peers, 1);
+    assert_eq!(admission.reserved_slot_rejections, 1);
+    drop(first);
+    worker.shutdown().await;
+}
+
+#[tokio::test]
+async fn protected_loopback_inbound_consumes_reserved_capacity() {
+    // Arrange
+    let config = loopback_config_with_permission_classes(
+        2,
+        1,
+        loopback_permission_registry(&["in", "noban", "forceinbound"]),
+    );
+    let (context, worker, endpoint) = running_loopback_listener_with_config(config).await;
+
+    // Act
+    let first = TcpStream::connect(&endpoint)
+        .await
+        .expect("connect protected loopback peer");
+    wait_for_inbound_peers(&context, 1).await;
+    let permission_decision = context
+        .lock()
+        .await
+        .permission_decision_for_remote_addr("127.0.0.1:50000".parse().expect("remote address"));
+    let admission = context.lock().await.inbound_admission_info();
+
+    // Assert
+    assert_eq!(
+        permission_decision.connection_class(),
+        PeerConnectionClass::ProtectedInbound
+    );
+    assert_eq!(
+        permission_decision.slot_class(),
+        InboundAdmissionSlotClass::Reserved
+    );
+    assert_eq!(admission.ordinary_inbound_admits, 0);
+    assert_eq!(admission.permissioned_inbound_admits, 0);
+    assert_eq!(admission.protected_inbound_admits, 1);
+    assert_eq!(admission.reserved_inbound_admits, 1);
+    assert_eq!(admission.active_permission_effect_observations, 4);
+    assert_eq!(admission.inactive_permission_effect_observations, 0);
+    drop(first);
+    worker.shutdown().await;
+}
+
+#[tokio::test]
+async fn permissioned_loopback_inbound_uses_ordinary_capacity_with_inactive_effect_evidence() {
+    // Arrange
+    let config = loopback_config_with_permission_classes(
+        2,
+        1,
+        loopback_permission_registry(&[
+            "in",
+            "download",
+            "addr",
+            "relay",
+            "forcerelay",
+            "mempool",
+            "bloomfilter",
+            "blockfilters",
+        ]),
+    );
+    let (context, worker, endpoint) = running_loopback_listener_with_config(config).await;
+    let first = TcpStream::connect(&endpoint)
+        .await
+        .expect("connect first permissioned loopback peer");
+    wait_for_inbound_peers(&context, 1).await;
+
+    // Act
+    let second = TcpStream::connect(&endpoint)
+        .await
+        .expect("connect second permissioned loopback peer");
+    drop(second);
+    wait_for_reserved_slot_rejections(&context, 1).await;
+    let permission_decision = context
+        .lock()
+        .await
+        .permission_decision_for_remote_addr("127.0.0.1:50000".parse().expect("remote address"));
+    let admission = context.lock().await.inbound_admission_info();
+    let network_info = context.lock().await.network_info();
+
+    // Assert
+    assert_eq!(
+        permission_decision.connection_class(),
+        PeerConnectionClass::PermissionedInbound
+    );
+    assert_eq!(
+        permission_decision.slot_class(),
+        InboundAdmissionSlotClass::Ordinary
+    );
+    assert_eq!(admission.ordinary_inbound_admits, 0);
+    assert_eq!(admission.permissioned_inbound_admits, 1);
+    assert_eq!(admission.protected_inbound_admits, 0);
+    assert_eq!(admission.reserved_inbound_admits, 0);
+    assert_eq!(admission.active_permission_effect_observations, 2);
+    assert_eq!(admission.inactive_permission_effect_observations, 5);
+    assert_eq!(admission.reserved_slot_rejections, 1);
+    assert_eq!(network_info.inbound_peers, 1);
+    assert_eq!(network_info.outbound_peers, 0);
+    drop(first);
+    worker.shutdown().await;
 }
 
 #[tokio::test]

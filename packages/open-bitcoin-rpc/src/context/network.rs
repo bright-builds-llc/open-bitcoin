@@ -215,6 +215,22 @@ impl ManagedRpcContext {
         self.network.admit_inbound_peer(request)
     }
 
+    pub fn record_inbound_admission_for_remote_addr(
+        &mut self,
+        peer_id: u64,
+        remote_addr: SocketAddr,
+        is_shutdown_requested: bool,
+    ) -> InboundAdmissionDecision {
+        let permission_decision = self.permission_decision_for_remote_addr(remote_addr);
+        let mut request = InboundAdmissionRequest::from_permission_decision(
+            peer_id,
+            remote_addr.to_string(),
+            permission_decision,
+        );
+        request.is_shutdown_requested = is_shutdown_requested;
+        self.network.admit_inbound_peer(request)
+    }
+
     pub fn permission_decision_for_remote_addr(
         &self,
         remote_addr: SocketAddr,
