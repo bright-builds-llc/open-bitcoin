@@ -8,6 +8,7 @@
 // - packages/bitcoin-knots/test/functional/p2p_initial_headers_sync.py
 
 use std::collections::BTreeSet;
+use std::net::IpAddr;
 
 use open_bitcoin_chainstate::ChainPosition;
 use open_bitcoin_consensus::{check_block_header, transaction_txid, transaction_wtxid};
@@ -16,8 +17,9 @@ use open_bitcoin_primitives::{Block, BlockHash, BlockHeader, Hash32, MerkleRoot,
 use crate::{
     ConnectionRole, DisconnectReason, HeaderStore, HeaderSyncPolicy, HeadersMessage,
     InboundAdmissionRejectionReason, InboundAdmissionSlotClass, InboundHandshakeState,
-    InboundPeerRecord, InventoryList, LocalPeerConfig, PeerAction, PeerManager, ServiceFlags,
-    WireNetworkMessage,
+    InboundPeerRecord, InboundPermissionDecision, InventoryList, LocalPeerConfig,
+    ParsedPeerPermissionClass, PeerAction, PeerConnectionClass, PeerManager,
+    PeerPermissionClassRegistry, ServiceFlags, WireNetworkMessage,
 };
 use open_bitcoin_primitives::{InventoryType, InventoryVector};
 
@@ -30,6 +32,14 @@ fn local_config() -> LocalPeerConfig {
         relay: true,
         user_agent: "/open-bitcoin:test/".to_string(),
     }
+}
+
+fn protected_permission_decision() -> InboundPermissionDecision {
+    let class =
+        ParsedPeerPermissionClass::parse("protected-test", ["203.0.113.7"], ["in", "forceinbound"])
+            .expect("protected class");
+    let address: IpAddr = "203.0.113.7".parse().expect("test address");
+    PeerPermissionClassRegistry::new([class]).resolve_inbound(address)
 }
 
 fn header(previous_block_hash: BlockHash, nonce: u32) -> BlockHeader {
@@ -114,6 +124,8 @@ fn inbound_peer_record_stores_endpoint_and_starts_handshaking() {
         peer_id: 31,
         remote_endpoint: "127.0.0.1:18444".to_string(),
         slot_class: InboundAdmissionSlotClass::Reserved,
+        connection_class: PeerConnectionClass::ProtectedInbound,
+        permission_decision: protected_permission_decision(),
         handshake_state: InboundHandshakeState::Accepted,
         maybe_remote_nonce: None,
         observed_inbound_peers: 0,
@@ -289,6 +301,8 @@ fn inbound_counters_and_endpoint_keys_ignore_disconnected_records() {
             peer_id: 41,
             remote_endpoint: "127.0.0.1:18441".to_string(),
             slot_class: InboundAdmissionSlotClass::Ordinary,
+            connection_class: PeerConnectionClass::OrdinaryInbound,
+            permission_decision: InboundPermissionDecision::ordinary(),
             handshake_state: InboundHandshakeState::Accepted,
             maybe_remote_nonce: None,
             observed_inbound_peers: 0,
@@ -300,6 +314,8 @@ fn inbound_counters_and_endpoint_keys_ignore_disconnected_records() {
             peer_id: 42,
             remote_endpoint: "127.0.0.1:18442".to_string(),
             slot_class: InboundAdmissionSlotClass::Reserved,
+            connection_class: PeerConnectionClass::ProtectedInbound,
+            permission_decision: protected_permission_decision(),
             handshake_state: InboundHandshakeState::Accepted,
             maybe_remote_nonce: None,
             observed_inbound_peers: 1,

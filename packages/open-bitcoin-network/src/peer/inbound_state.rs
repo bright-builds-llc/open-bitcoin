@@ -9,7 +9,7 @@ use crate::{
     DisconnectReason, NetworkError, PeerId,
     inbound::{
         InboundAdmissionCounters, InboundAdmissionRejectionReason, InboundAdmissionSlotClass,
-        InboundHandshakeState, InboundPeerRecord,
+        InboundHandshakeState, InboundPeerRecord, InboundPermissionDecision, PeerConnectionClass,
     },
 };
 
@@ -49,6 +49,8 @@ impl PeerManager {
             peer_id,
             remote_endpoint: format!("compat-inbound-peer:{peer_id}"),
             slot_class: InboundAdmissionSlotClass::Ordinary,
+            connection_class: PeerConnectionClass::OrdinaryInbound,
+            permission_decision: InboundPermissionDecision::ordinary(),
             handshake_state: InboundHandshakeState::Accepted,
             maybe_remote_nonce: None,
             observed_inbound_peers: counters.current_inbound_peers,

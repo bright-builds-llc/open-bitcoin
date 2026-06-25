@@ -11,7 +11,6 @@
 
 use open_bitcoin_network::{
     InboundAdmissionDecision, InboundAdmissionPolicy, InboundAdmissionRequest,
-    InboundAdmissionSlotClass,
 };
 use open_bitcoin_node::core::chainstate::ChainstateSnapshot;
 use open_bitcoin_node::core::consensus::{ConsensusParams, ScriptVerifyFlags};
@@ -205,17 +204,9 @@ impl ManagedRpcContext {
         remote_endpoint: String,
         is_shutdown_requested: bool,
     ) -> InboundAdmissionDecision {
-        self.network.admit_inbound_peer(InboundAdmissionRequest {
-            peer_id,
-            remote_endpoint,
-            slot_class: InboundAdmissionSlotClass::Ordinary,
-            counters: Default::default(),
-            existing_endpoint_keys: Default::default(),
-            existing_peer_ids: Default::default(),
-            local_nonce: 0,
-            maybe_remote_nonce: None,
-            is_shutdown_requested,
-        })
+        let mut request = InboundAdmissionRequest::ordinary(peer_id, remote_endpoint);
+        request.is_shutdown_requested = is_shutdown_requested;
+        self.network.admit_inbound_peer(request)
     }
 
     pub fn receive_inbound_wire_message(

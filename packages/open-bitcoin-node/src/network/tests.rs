@@ -4,7 +4,7 @@
 // - packages/bitcoin-knots/src/node/txdownloadman.h
 // - packages/bitcoin-knots/src/protocol.h
 
-use std::collections::BTreeSet;
+use std::net::IpAddr;
 
 use open_bitcoin_core::consensus::crypto::hash160;
 use open_bitcoin_core::{
@@ -19,8 +19,9 @@ use open_bitcoin_core::{
 use open_bitcoin_mempool::PolicyConfig;
 use open_bitcoin_network::{
     InboundAdmissionDecision, InboundAdmissionPolicy, InboundAdmissionRejectionReason,
-    InboundAdmissionRequest, InboundAdmissionSlotClass, InventoryList, LocalPeerConfig,
-    ServiceFlags, WireNetworkMessage,
+    InboundAdmissionRequest, InboundAdmissionSlotClass, InboundPermissionDecision, InventoryList,
+    LocalPeerConfig, ParsedPeerPermissionClass, PeerPermissionClassRegistry, ServiceFlags,
+    WireNetworkMessage,
 };
 
 use crate::{ManagedPeerNetwork, MemoryChainstateStore, network::BlockConnectDisposition};
@@ -166,17 +167,22 @@ fn inbound_request(
     remote_endpoint: &str,
     slot_class: InboundAdmissionSlotClass,
 ) -> InboundAdmissionRequest {
-    InboundAdmissionRequest {
-        peer_id,
-        remote_endpoint: remote_endpoint.to_string(),
-        slot_class,
-        counters: Default::default(),
-        existing_endpoint_keys: BTreeSet::new(),
-        existing_peer_ids: BTreeSet::new(),
-        local_nonce: 0,
-        maybe_remote_nonce: None,
-        is_shutdown_requested: false,
-    }
+    let permission_decision = match slot_class {
+        InboundAdmissionSlotClass::Ordinary => InboundPermissionDecision::ordinary(),
+        InboundAdmissionSlotClass::Reserved => protected_permission_decision(),
+    };
+    InboundAdmissionRequest::from_permission_decision(peer_id, remote_endpoint, permission_decision)
+}
+
+fn permission_decision(permissions: &[&str]) -> InboundPermissionDecision {
+    let class = ParsedPeerPermissionClass::parse("test-class", ["203.0.113.7"], permissions)
+        .expect("permission class");
+    let address: IpAddr = "203.0.113.7".parse().expect("test address");
+    PeerPermissionClassRegistry::new([class]).resolve_inbound(address)
+}
+
+fn protected_permission_decision() -> InboundPermissionDecision {
+    permission_decision(&["in", "noban", "forceinbound"])
 }
 
 fn deliver(

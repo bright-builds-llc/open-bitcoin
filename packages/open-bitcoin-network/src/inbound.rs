@@ -305,6 +305,8 @@ pub struct InboundAdmissionRequest {
     pub peer_id: PeerId,
     pub remote_endpoint: String,
     pub slot_class: InboundAdmissionSlotClass,
+    pub connection_class: PeerConnectionClass,
+    pub permission_decision: InboundPermissionDecision,
     pub counters: InboundAdmissionCounters,
     pub existing_endpoint_keys: BTreeSet<String>,
     pub existing_peer_ids: BTreeSet<PeerId>,
@@ -313,11 +315,55 @@ pub struct InboundAdmissionRequest {
     pub is_shutdown_requested: bool,
 }
 
+impl InboundAdmissionRequest {
+    pub fn ordinary(peer_id: PeerId, remote_endpoint: impl Into<String>) -> Self {
+        Self::from_permission_decision(
+            peer_id,
+            remote_endpoint,
+            InboundPermissionDecision::ordinary(),
+        )
+    }
+
+    pub fn from_permission_decision(
+        peer_id: PeerId,
+        remote_endpoint: impl Into<String>,
+        permission_decision: InboundPermissionDecision,
+    ) -> Self {
+        let connection_class = permission_decision.connection_class();
+        let slot_class = permission_decision.slot_class();
+        Self {
+            peer_id,
+            remote_endpoint: remote_endpoint.into(),
+            slot_class,
+            connection_class,
+            permission_decision,
+            counters: InboundAdmissionCounters::default(),
+            existing_endpoint_keys: BTreeSet::new(),
+            existing_peer_ids: BTreeSet::new(),
+            local_nonce: 0,
+            maybe_remote_nonce: None,
+            is_shutdown_requested: false,
+        }
+    }
+
+    pub fn set_permission_decision(&mut self, permission_decision: InboundPermissionDecision) {
+        self.connection_class = permission_decision.connection_class();
+        self.slot_class = permission_decision.slot_class();
+        self.permission_decision = permission_decision;
+    }
+
+    pub const fn effective_slot_class(&self) -> InboundAdmissionSlotClass {
+        self.permission_decision.slot_class()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InboundPeerRecord {
     pub peer_id: PeerId,
     pub remote_endpoint: String,
     pub slot_class: InboundAdmissionSlotClass,
+    pub connection_class: PeerConnectionClass,
+    pub permission_decision: InboundPermissionDecision,
     pub handshake_state: InboundHandshakeState,
     pub maybe_remote_nonce: Option<u64>,
     pub observed_inbound_peers: usize,
@@ -414,7 +460,7 @@ impl InboundAdmissionPolicy {
             return reject_admission(&request, InboundAdmissionRejectionReason::SelfConnection);
         }
 
-        match request.slot_class {
+        match request.effective_slot_class() {
             InboundAdmissionSlotClass::Ordinary => self.decide_ordinary(request),
             InboundAdmissionSlotClass::Reserved => self.decide_reserved(request),
         }
@@ -463,10 +509,14 @@ fn reserved_inbound_in_use(counters: InboundAdmissionCounters) -> usize {
 }
 
 fn admit_request(request: InboundAdmissionRequest) -> InboundAdmissionDecision {
+    let connection_class = request.permission_decision.connection_class();
+    let slot_class = request.permission_decision.slot_class();
     InboundAdmissionDecision::Admit(InboundPeerRecord {
         peer_id: request.peer_id,
         remote_endpoint: request.remote_endpoint,
-        slot_class: request.slot_class,
+        slot_class,
+        connection_class,
+        permission_decision: request.permission_decision,
         handshake_state: InboundHandshakeState::Accepted,
         maybe_remote_nonce: request.maybe_remote_nonce,
         observed_inbound_peers: request.counters.current_inbound_peers,

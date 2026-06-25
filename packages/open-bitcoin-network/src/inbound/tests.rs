@@ -12,9 +12,9 @@ use super::{
     InboundAdmissionCounters, InboundAdmissionDecision, InboundAdmissionPolicy,
     InboundAdmissionRejectionReason, InboundAdmissionRequest, InboundAdmissionSlotClass,
     InboundHandshakeState, InboundListenerActivationDiagnostic, InboundListenerConfig,
-    InboundPreflightReason, ParsedPeerPermissionClass, PeerConnectionClass,
-    PeerPermissionClassRegistry, PeerPermissionDirection, PeerPermissionSet, PeerPermissionToken,
-    classify_inbound_preflight,
+    InboundPermissionDecision, InboundPreflightReason, ParsedPeerPermissionClass,
+    PeerConnectionClass, PeerPermissionClassRegistry, PeerPermissionDirection, PeerPermissionSet,
+    PeerPermissionToken, classify_inbound_preflight,
 };
 
 fn enabled_config(addresses: Vec<&str>) -> InboundListenerConfig {
@@ -34,17 +34,21 @@ fn admission_request(
     slot_class: InboundAdmissionSlotClass,
     counters: InboundAdmissionCounters,
 ) -> InboundAdmissionRequest {
-    InboundAdmissionRequest {
+    let permission_decision = match slot_class {
+        InboundAdmissionSlotClass::Ordinary => InboundPermissionDecision::ordinary(),
+        InboundAdmissionSlotClass::Reserved => protected_permission_decision(),
+    };
+    let mut request = InboundAdmissionRequest::from_permission_decision(
         peer_id,
-        remote_endpoint: remote_endpoint.to_string(),
-        slot_class,
-        counters,
-        existing_endpoint_keys: BTreeSet::new(),
-        existing_peer_ids: BTreeSet::new(),
-        local_nonce: 99,
-        maybe_remote_nonce: Some(101),
-        is_shutdown_requested: false,
-    }
+        remote_endpoint,
+        permission_decision,
+    );
+    request.counters = counters;
+    request.existing_endpoint_keys = BTreeSet::new();
+    request.existing_peer_ids = BTreeSet::new();
+    request.local_nonce = 99;
+    request.maybe_remote_nonce = Some(101);
+    request
 }
 
 fn test_ip(raw: &str) -> IpAddr {
@@ -52,6 +56,18 @@ fn test_ip(raw: &str) -> IpAddr {
         Ok(address) => address,
         Err(error) => panic!("test IP address should parse: {error}"),
     }
+}
+
+fn permission_decision(permissions: &[&str]) -> InboundPermissionDecision {
+    let class = match ParsedPeerPermissionClass::parse("test-class", ["203.0.113.7"], permissions) {
+        Ok(class) => class,
+        Err(error) => panic!("expected test permission class to parse: {error:?}"),
+    };
+    PeerPermissionClassRegistry::new([class]).resolve_inbound(test_ip("203.0.113.7"))
+}
+
+fn protected_permission_decision() -> InboundPermissionDecision {
+    permission_decision(&["in", "noban", "forceinbound"])
 }
 
 #[test]
@@ -249,6 +265,115 @@ fn unmatched_inbound_peer_stays_ordinary_and_never_uses_reserved_capacity() {
     assert_eq!(decision.slot_class(), InboundAdmissionSlotClass::Ordinary);
     assert!(decision.active_effects().is_empty());
     assert!(decision.inactive_effects().is_empty());
+}
+
+#[test]
+fn ordinary_admission_request_defaults_to_empty_permission_evidence() {
+    // Arrange
+    let request = InboundAdmissionRequest::ordinary(5, "127.0.0.1:20005");
+
+    // Act
+    let active_effects = request.permission_decision.active_effects();
+    let inactive_effects = request.permission_decision.inactive_effects();
+
+    // Assert
+    assert_eq!(
+        request.connection_class,
+        PeerConnectionClass::OrdinaryInbound
+    );
+    assert_eq!(request.slot_class, InboundAdmissionSlotClass::Ordinary);
+    assert_eq!(
+        request.effective_slot_class(),
+        InboundAdmissionSlotClass::Ordinary,
+    );
+    assert!(active_effects.is_empty());
+    assert!(inactive_effects.is_empty());
+}
+
+#[test]
+fn permissioned_admission_record_preserves_active_and_inactive_effect_evidence() {
+    // Arrange
+    let policy = InboundAdmissionPolicy::new(3, 1);
+    let permission_decision = permission_decision(&["in", "download", "addr", "relay", "mempool"]);
+    let mut request = InboundAdmissionRequest::from_permission_decision(
+        6,
+        "127.0.0.1:20006",
+        permission_decision,
+    );
+    request.local_nonce = 99;
+    request.maybe_remote_nonce = Some(101);
+
+    // Act
+    let decision = policy.decide(request);
+
+    // Assert
+    let InboundAdmissionDecision::Admit(record) = decision else {
+        panic!("expected permissioned inbound admission");
+    };
+    let active_labels: Vec<&str> = record
+        .permission_decision
+        .active_effects()
+        .iter()
+        .map(|effect| effect.as_str())
+        .collect();
+    let inactive_labels: Vec<&str> = record
+        .permission_decision
+        .inactive_effects()
+        .iter()
+        .map(|effect| effect.as_str())
+        .collect();
+    assert_eq!(
+        record.connection_class,
+        PeerConnectionClass::PermissionedInbound,
+    );
+    assert_eq!(record.slot_class, InboundAdmissionSlotClass::Ordinary);
+    assert_eq!(
+        active_labels,
+        vec![
+            "address_response_policy_input",
+            "download_serving_policy_input",
+        ],
+    );
+    assert_eq!(inactive_labels, vec!["inactive_relay", "inactive_mempool"]);
+}
+
+#[test]
+fn protected_admission_record_preserves_reserved_slot_and_permission_evidence() {
+    // Arrange
+    let policy = InboundAdmissionPolicy::new(3, 1);
+    let mut request = InboundAdmissionRequest::from_permission_decision(
+        16,
+        "127.0.0.1:20016",
+        protected_permission_decision(),
+    );
+    request.counters = InboundAdmissionCounters {
+        current_inbound_peers: 2,
+        current_outbound_peers: 4,
+        current_reserved_inbound_peers: 0,
+    };
+    request.local_nonce = 99;
+    request.maybe_remote_nonce = Some(101);
+
+    // Act
+    let decision = policy.decide(request);
+
+    // Assert
+    let InboundAdmissionDecision::Admit(record) = decision else {
+        panic!("expected protected inbound admission");
+    };
+    assert_eq!(
+        record.connection_class,
+        PeerConnectionClass::ProtectedInbound
+    );
+    assert_eq!(record.slot_class, InboundAdmissionSlotClass::Reserved);
+    assert_eq!(record.observed_outbound_peers, 4);
+    assert!(
+        record
+            .permission_decision
+            .active_effects()
+            .iter()
+            .any(|effect| effect.as_str() == "admission_protected")
+    );
 }
 
 #[test]
@@ -596,6 +721,8 @@ fn inbound_small_helpers_cover_status_and_counter_branches() {
         peer_id: 21,
         remote_endpoint: "127.0.0.1:20021".to_string(),
         slot_class: InboundAdmissionSlotClass::Ordinary,
+        connection_class: PeerConnectionClass::OrdinaryInbound,
+        permission_decision: InboundPermissionDecision::ordinary(),
         handshake_state: InboundHandshakeState::Accepted,
         maybe_remote_nonce: None,
         observed_inbound_peers: 2,
