@@ -44,7 +44,8 @@ pub fn dispatch(context: &mut ManagedRpcContext, call: MethodCall) -> Result<Val
                 .map_err(|error| RpcFailure::internal_error(error.to_string()))
         }
         MethodCall::OpenBitcoinNetworkStatus(_request) => {
-            Err(RpcFailure::method_not_found("openbitcoinnetworkstatus"))
+            serde_json::to_value(node::open_bitcoin_network_status(context))
+                .map_err(|error| RpcFailure::internal_error(error.to_string()))
         }
         MethodCall::OpenBitcoinSyncStatus(_request) => {
             serde_json::to_value(node::open_bitcoin_sync_status(context)?)

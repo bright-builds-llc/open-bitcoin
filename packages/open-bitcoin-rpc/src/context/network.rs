@@ -22,6 +22,10 @@ use open_bitcoin_node::core::wallet::AddressNetwork;
 use open_bitcoin_node::network::{
     ManagedInboundAdmissionInfo, ManagedMempoolInfo, ManagedNetworkInfo,
 };
+use open_bitcoin_node::status::{
+    FieldAvailability, InboundAdmissionEvent, InboundHandshakeStatusCounts,
+    InboundPeerServingStatus, inbound_status_unavailable,
+};
 use open_bitcoin_node::{DurableSyncState, FjallNodeStore};
 use open_bitcoin_node::{
     ManagedNetworkError, ManagedPeerNetwork, ManagedWallet, MemoryChainstateStore,
@@ -166,6 +170,35 @@ impl ManagedRpcContext {
         self.network.inbound_admission_info().clone()
     }
 
+    pub fn current_inbound_status(&self) -> FieldAvailability<InboundPeerServingStatus> {
+        let admission = self.inbound_admission_info();
+        if admission.admitted_inbound_peers == 0 && admission.rejected_inbound_peers == 0 {
+            return inbound_status_unavailable();
+        }
+
+        let network_info = self.network_info();
+        FieldAvailability::available(InboundPeerServingStatus {
+            listener_state: "listening".to_string(),
+            bound_endpoints: Vec::new(),
+            preflight_reason: "ready".to_string(),
+            admitted_inbound_peers: usize_to_u32(admission.admitted_inbound_peers),
+            rejected_inbound_peers: usize_to_u32(admission.rejected_inbound_peers),
+            handshake: InboundHandshakeStatusCounts {
+                awaiting_version: 0,
+                awaiting_verack: 0,
+                established: usize_to_u32(network_info.inbound_peers),
+                disconnected: 0,
+            },
+            duplicate_rejects: usize_to_u32(
+                admission.duplicate_endpoint_rejections + admission.duplicate_peer_id_rejections,
+            ),
+            self_connection_rejects: usize_to_u32(admission.self_connection_rejections),
+            cap_rejects: usize_to_u32(admission.cap_rejections),
+            reserved_slot_rejects: usize_to_u32(admission.reserved_slot_rejections),
+            latest_admission_event: latest_inbound_admission_event(&admission),
+        })
+    }
+
     pub fn record_inbound_admission(
         &mut self,
         peer_id: u64,
@@ -237,6 +270,35 @@ impl ManagedRpcContext {
         self.network
             .submit_local_transaction(transaction, self.verify_flags, self.consensus_params)
     }
+}
+
+fn latest_inbound_admission_event(
+    admission: &ManagedInboundAdmissionInfo,
+) -> FieldAvailability<InboundAdmissionEvent> {
+    if let Some(reason) = admission.maybe_latest_rejection_reason {
+        let reason = reason.as_str().to_string();
+        return FieldAvailability::available(InboundAdmissionEvent {
+            outcome: "rejected".to_string(),
+            reason: reason.clone(),
+            slot_class: "ordinary".to_string(),
+            message: format!("inbound admission rejected: {reason}"),
+        });
+    }
+
+    if admission.admitted_inbound_peers > 0 {
+        return FieldAvailability::available(InboundAdmissionEvent {
+            outcome: "admitted".to_string(),
+            reason: "admitted".to_string(),
+            slot_class: "ordinary".to_string(),
+            message: "inbound peer admitted".to_string(),
+        });
+    }
+
+    FieldAvailability::unavailable("no inbound admission event recorded")
+}
+
+fn usize_to_u32(value: usize) -> u32 {
+    u32::try_from(value).unwrap_or(u32::MAX)
 }
 
 fn load_durable_sync_state(config: &RuntimeConfig) -> Option<DurableSyncState> {

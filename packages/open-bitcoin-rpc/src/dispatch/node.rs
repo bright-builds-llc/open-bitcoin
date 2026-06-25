@@ -19,8 +19,8 @@ use crate::{
     error::RpcFailure,
     method::{
         DeriveAddressesRequest, DeriveAddressesResponse, GetBlockchainInfoResponse,
-        GetMempoolInfoResponse, GetNetworkInfoResponse, OpenBitcoinSyncControlResponse,
-        SendRawTransactionRequest, SendRawTransactionResponse,
+        GetMempoolInfoResponse, GetNetworkInfoResponse, OpenBitcoinNetworkStatusResponse,
+        OpenBitcoinSyncControlResponse, SendRawTransactionRequest, SendRawTransactionResponse,
     },
 };
 
@@ -174,6 +174,14 @@ pub(super) fn get_network_info(context: &ManagedRpcContext) -> GetNetworkInfoRes
         relayfee: mempool_info.min_relay_feerate_sats_per_kvb,
         incrementalfee: mempool_info.incremental_relay_feerate_sats_per_kvb,
         warnings: Vec::new(),
+    }
+}
+
+pub(super) fn open_bitcoin_network_status(
+    context: &ManagedRpcContext,
+) -> OpenBitcoinNetworkStatusResponse {
+    OpenBitcoinNetworkStatusResponse {
+        inbound: context.current_inbound_status(),
     }
 }
 
