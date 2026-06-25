@@ -3,6 +3,8 @@
 
 //! Rendering helpers for support bundle command output.
 
+mod inbound;
+
 use serde::Serialize;
 use serde_json::{Value, json};
 
@@ -53,32 +55,7 @@ pub(super) fn render_support_markdown(bundle: &SupportEvidenceBundle) -> String 
         output.push_str(&format!("- Safeguard: {item}\n"));
     }
 
-    output.push_str("\n## Config\n\n");
-    push_optional_path(
-        &mut output,
-        "Datadir",
-        bundle.config.selected_data_dir.as_deref(),
-    );
-    push_optional_path(
-        &mut output,
-        "Open Bitcoin config",
-        bundle.config.selected_config_path.as_deref(),
-    );
-    push_optional_path(
-        &mut output,
-        "Bitcoin config",
-        bundle.config.selected_bitcoin_conf_path.as_deref(),
-    );
-    push_optional_path(
-        &mut output,
-        "Logs",
-        bundle.config.selected_log_dir.as_deref(),
-    );
-    push_optional_path(
-        &mut output,
-        "Metrics",
-        bundle.config.selected_metrics_store_path.as_deref(),
-    );
+    push_config_evidence(&mut output, &bundle.config);
 
     output.push_str("\n## Status Snapshot\n\n");
     output.push_str(&format!(
@@ -111,6 +88,7 @@ pub(super) fn render_support_markdown(bundle: &SupportEvidenceBundle) -> String 
         json_compact(&bundle.status.metrics.availability)
     ));
 
+    inbound::push_inbound_serving(&mut output, &bundle.status.peers.inbound);
     output.push_str("\n## Recovery Evidence\n\n");
     push_recovery_evidence(&mut output, &bundle.recovery_evidence);
 
@@ -586,6 +564,25 @@ fn summary_value(value: &Value) -> String {
         Value::Null | Value::Bool(_) | Value::Number(_) | Value::Array(_) | Value::Object(_) => {
             value.to_string()
         }
+    }
+}
+
+fn push_config_evidence(output: &mut String, config: &super::ConfigEvidence) {
+    output.push_str("\n## Config\n\n");
+    for (label, maybe_path) in [
+        ("Datadir", config.selected_data_dir.as_deref()),
+        (
+            "Open Bitcoin config",
+            config.selected_config_path.as_deref(),
+        ),
+        (
+            "Bitcoin config",
+            config.selected_bitcoin_conf_path.as_deref(),
+        ),
+        ("Logs", config.selected_log_dir.as_deref()),
+        ("Metrics", config.selected_metrics_store_path.as_deref()),
+    ] {
+        push_optional_path(output, label, maybe_path);
     }
 }
 

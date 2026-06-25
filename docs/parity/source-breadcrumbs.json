@@ -283,6 +283,7 @@
         "packages/open-bitcoin-cli/src/operator/support/progress_guarantee.rs",
         "packages/open-bitcoin-cli/src/operator/support/resource_bounds.rs",
         "packages/open-bitcoin-cli/src/operator/support/render.rs",
+        "packages/open-bitcoin-cli/src/operator/support/render/inbound.rs",
         "packages/open-bitcoin-cli/src/operator/support/soak_evidence.rs",
         "packages/open-bitcoin-cli/src/operator/support/tests.rs"
       ],

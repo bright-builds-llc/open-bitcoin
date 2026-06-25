@@ -46,6 +46,7 @@ use super::{
     SupportEvidenceOutput, collect_resource_bound_support_evidence, collect_soak_support_evidence,
     collect_store_health, derive_full_sync_evidence, evidence::SupportEvidenceVerdict,
     forensics::SupportForensicsEvidence, redaction_summary, render, soak_outcome_label,
+    support_status_for_bundle,
 };
 
 #[derive(Debug)]
@@ -963,7 +964,10 @@ fn inbound_support_json_projects_shared_status_evidence_with_redacted_endpoints(
     let inbound = &serialized["status"]["peers"]["inbound"]["value"];
 
     // Assert
-    assert_eq!(serialized["status"]["peers"]["inbound"]["state"], json!("available"));
+    assert_eq!(
+        serialized["status"]["peers"]["inbound"]["state"],
+        json!("available")
+    );
     assert_eq!(inbound["listener_state"], json!("listening"));
     assert_eq!(inbound["preflight_reason"], json!("ready"));
     assert_eq!(inbound["admitted_inbound_peers"], json!(3));
@@ -1310,7 +1314,7 @@ fn phase77_support_bundle_with_status(
     status: OpenBitcoinStatusSnapshot,
 ) -> SupportEvidenceBundle {
     let mut bundle = phase75_support_bundle_for_test(data_dir);
-    bundle.status = status;
+    bundle.status = support_status_for_bundle(status);
     bundle.recovery_evidence =
         RecoverySupportEvidence::from_status(&bundle.status.recovery_evidence);
     bundle.full_sync_evidence = derive_full_sync_evidence(&bundle.status, &bundle.live_smoke);

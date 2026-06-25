@@ -13,6 +13,7 @@ mod soak_evidence;
 
 use std::{
     fs,
+    net::SocketAddr,
     path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -20,7 +21,7 @@ use std::{
 use open_bitcoin_node::{
     MetricsStatus, OpenBitcoinStatusSnapshot, RuntimeMetadata,
     recovery::RecoveryEvidenceSnapshot,
-    status::{FieldAvailability, ServiceRestartResumeStatus},
+    status::{FieldAvailability, InboundPeerServingStatus, ServiceRestartResumeStatus},
 };
 use serde::Serialize;
 use serde_json::Value;
@@ -54,6 +55,7 @@ const SUPPORT_PROBE_ONLY_RUNTIME_METADATA_REASON: &str =
     "runtime metadata unavailable: probe-only support bundle does not open Fjall stores";
 const SUPPORT_PROBE_ONLY_METRICS_HISTORY_REASON: &str =
     "metrics history unavailable: probe-only support bundle does not open Fjall stores";
+const INBOUND_ENDPOINT_REDACTION_SAFEGUARD: &str = "inbound peer endpoints bounded/redacted";
 
 pub(crate) fn execute_support_command(
     args: &SupportArgs,
@@ -86,6 +88,7 @@ fn execute_support_bundle(
     let markdown_path = output_dir.join(SUPPORT_EVIDENCE_MARKDOWN);
     let generated_at_unix_seconds = current_unix_seconds();
     let live_smoke = collect_live_smoke_evidence(args.maybe_live_smoke_report.as_deref());
+    let status = support_status_for_bundle(status);
     let full_sync_evidence = derive_full_sync_evidence(&status, &live_smoke);
     let redaction = redaction_summary();
     let soak_collection = collect_soak_support_evidence(config_resolution, &redaction);
@@ -480,8 +483,76 @@ fn redaction_summary() -> RedactionSummary {
             "live smoke reports are summarized from allowlisted fields only".to_string(),
             "logs are limited to existing structured status signals".to_string(),
             "resource bounds are recorded as compact status summaries only".to_string(),
+            INBOUND_ENDPOINT_REDACTION_SAFEGUARD.to_string(),
         ],
     }
+}
+
+fn support_status_for_bundle(mut status: OpenBitcoinStatusSnapshot) -> OpenBitcoinStatusSnapshot {
+    redact_inbound_endpoint_evidence(&mut status.peers.inbound);
+    status
+}
+
+fn redact_inbound_endpoint_evidence(inbound: &mut FieldAvailability<InboundPeerServingStatus>) {
+    let FieldAvailability::Available(evidence) = inbound else {
+        return;
+    };
+    evidence.bound_endpoints = redacted_inbound_endpoint_summary(&evidence.bound_endpoints);
+}
+
+fn redacted_inbound_endpoint_summary(endpoints: &[String]) -> Vec<String> {
+    let mut loopback = 0;
+    let mut non_loopback = 0;
+    let mut wildcard = 0;
+    let mut compact_label = 0;
+    for endpoint in endpoints {
+        match inbound_endpoint_class(endpoint) {
+            InboundEndpointClass::Loopback => loopback += 1,
+            InboundEndpointClass::NonLoopback => non_loopback += 1,
+            InboundEndpointClass::Wildcard => wildcard += 1,
+            InboundEndpointClass::CompactLabel => compact_label += 1,
+        }
+    }
+
+    let mut summary = Vec::new();
+    push_endpoint_redaction_summary(&mut summary, loopback, "loopback endpoint");
+    push_endpoint_redaction_summary(&mut summary, non_loopback, "non-loopback endpoint");
+    push_endpoint_redaction_summary(&mut summary, wildcard, "wildcard endpoint");
+    push_endpoint_redaction_summary(&mut summary, compact_label, "compact endpoint label");
+    summary
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum InboundEndpointClass {
+    Loopback,
+    NonLoopback,
+    Wildcard,
+    CompactLabel,
+}
+
+fn inbound_endpoint_class(endpoint: &str) -> InboundEndpointClass {
+    let Ok(address) = endpoint.parse::<SocketAddr>() else {
+        return InboundEndpointClass::CompactLabel;
+    };
+    if address.ip().is_loopback() {
+        return InboundEndpointClass::Loopback;
+    }
+    if address.ip().is_unspecified() {
+        return InboundEndpointClass::Wildcard;
+    }
+    InboundEndpointClass::NonLoopback
+}
+
+fn push_endpoint_redaction_summary(summary: &mut Vec<String>, count: usize, singular: &str) {
+    if count == 0 {
+        return;
+    }
+    let label = if count == 1 {
+        singular.to_string()
+    } else {
+        format!("{singular}s")
+    };
+    summary.push(format!("{count} {label} redacted"));
 }
 
 fn config_path_kind_name(kind: OperatorConfigPathKind) -> &'static str {
