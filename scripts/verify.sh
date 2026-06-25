@@ -288,6 +288,8 @@ bun test scripts/check-phase88-deterministic-claim-guardrails.test.ts
 bun run scripts/check-phase88-deterministic-claim-guardrails.ts
 bun test scripts/check-phase90-inbound-listener-admission.test.ts
 bun run scripts/check-phase90-inbound-listener-admission.ts
+bun test scripts/check-phase91-peer-permissions.test.ts
+bun run scripts/check-phase91-peer-permissions.ts
 VERIFY_COMMAND_ORDER
 
 parse_args "$@"
@@ -359,6 +361,8 @@ run_step "test Phase 88 deterministic claim guardrails checker" bun test scripts
 run_step "check Phase 88 deterministic claim guardrails" bun run scripts/check-phase88-deterministic-claim-guardrails.ts
 run_step "test Phase 90 inbound listener admission checker" bun test scripts/check-phase90-inbound-listener-admission.test.ts
 run_step "check Phase 90 inbound listener admission" bun run scripts/check-phase90-inbound-listener-admission.ts
+run_step "test Phase 91 peer permissions checker" bun test scripts/check-phase91-peer-permissions.test.ts
+run_step "check Phase 91 peer permissions" bun run scripts/check-phase91-peer-permissions.ts
 run_step "check pure-core dependencies" bash scripts/check-pure-core-deps.sh
 run_step "check file lengths" bash scripts/check-file-lengths.sh
 run_step "check panic sites" bash scripts/check-panic-sites.sh

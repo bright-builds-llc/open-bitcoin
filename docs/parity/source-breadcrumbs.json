@@ -282,6 +282,7 @@
         "packages/open-bitcoin-cli/src/operator/support/live_smoke.rs",
         "packages/open-bitcoin-cli/src/operator/support/live_smoke/tests.rs",
         "packages/open-bitcoin-cli/src/operator/support/progress_guarantee.rs",
+        "packages/open-bitcoin-cli/src/operator/support/redaction.rs",
         "packages/open-bitcoin-cli/src/operator/support/resource_bounds.rs",
         "packages/open-bitcoin-cli/src/operator/support/render.rs",
         "packages/open-bitcoin-cli/src/operator/support/render/inbound.rs",
@@ -603,7 +604,8 @@
     {
       "label": "network-peer-permissions",
       "files": [
-        "packages/open-bitcoin-network/src/inbound/permissions.rs"
+        "packages/open-bitcoin-network/src/inbound/permissions.rs",
+        "packages/open-bitcoin-network/src/inbound/permissions/error.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/net_permissions.h",
