@@ -25,6 +25,7 @@ fn supported_http_methods_match_phase_20_wallet_surface() {
         "getblockchaininfo",
         "getmempoolinfo",
         "getnetworkinfo",
+        "openbitcoinnetworkstatus",
         "openbitcoinsyncstatus",
         "openbitcoinsyncpause",
         "openbitcoinsyncresume",
@@ -60,6 +61,7 @@ fn build_transaction_methods_are_marked_as_open_bitcoin_extensions() {
         "openbitcoinsyncstatus",
         "openbitcoinsyncpause",
         "openbitcoinsyncresume",
+        "openbitcoinnetworkstatus",
         "buildtransaction",
         "buildandsigntransaction",
     ];
@@ -73,6 +75,40 @@ fn build_transaction_methods_are_marked_as_open_bitcoin_extensions() {
 
     // Assert
     assert_eq!(names, expected);
+}
+
+#[test]
+fn network_status_method_is_open_bitcoin_node_extension() {
+    // Arrange
+    let method = SupportedMethod::OpenBitcoinNetworkStatus;
+
+    // Act
+    let call =
+        normalize_method_call("openbitcoinnetworkstatus", RequestParameters::None).expect("status");
+    let positional_error = normalize_method_call(
+        "openbitcoinnetworkstatus",
+        RequestParameters::Positional(vec![json!("unexpected")]),
+    )
+    .expect_err("positional parameters should fail");
+    let named_error = normalize_method_call(
+        "openbitcoinnetworkstatus",
+        RequestParameters::Named(vec![("unexpected".to_string(), json!(true))]),
+    )
+    .expect_err("named parameters should fail");
+
+    // Assert
+    assert_eq!(method.origin(), MethodOrigin::OpenBitcoinExtension);
+    assert_eq!(method.scope(), MethodScope::Node);
+    assert!(matches!(call, MethodCall::OpenBitcoinNetworkStatus(_)));
+    assert_eq!(call.scope(), MethodScope::Node);
+    assert_eq!(
+        positional_error,
+        RpcFailure::invalid_params("too many positional parameters: expected at most 0, got 1"),
+    );
+    assert_eq!(
+        named_error,
+        RpcFailure::invalid_params("unknown named parameter unexpected"),
+    );
 }
 
 #[test]
