@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Inbound Peer Serving and Network Participation Boundary
 status: executing
-stopped_at: Completed 91-09-PLAN.md
-last_updated: "2026-06-25T19:01:22.000Z"
+stopped_at: Completed 91-10-PLAN.md
+last_updated: "2026-06-25T19:27:57.000Z"
 last_activity: 2026-06-25
 progress:
   total_phases: 6
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 20
-  completed_plans: 19
-  percent: 95
+  completed_plans: 20
+  percent: 100
 ---
 
 # Project State
@@ -26,12 +26,12 @@ See: `.planning/PROJECT.md` (updated 2026-06-25)
 ## Current Position
 
 Milestone: v1.9 Inbound Peer Serving and Network Participation Boundary
-Phase: 91 (peer-permissions-and-connection-classes) — PLANNED
+Phase: 91 (peer-permissions-and-connection-classes) — PLAN COMPLETE
 Plan: 10 of 10
-Status: Ready to execute
+Status: Ready for code review and phase verification
 Last activity: 2026-06-25
 
-Progress: [----------] 0%
+Progress: [##########] 100%
 
 ## Performance Metrics
 
@@ -46,7 +46,7 @@ Progress: [----------] 0%
 | Phase | Name | Requirements | Status |
 |-------|------|--------------|--------|
 | 90 | Inbound Listener and Admission Policy | INB-01, INB-02, INB-03, INB-04, INB-05 | Complete |
-| 91 | Peer Permissions and Connection Classes | PERM-01, PERM-02, PERM-03, PERM-04 | Planned |
+| 91 | Peer Permissions and Connection Classes | PERM-01, PERM-02, PERM-03, PERM-04 | Complete |
 | 92 | Address Advertisement and Discovery Boundaries | ADDR-01, ADDR-02, ADDR-03, ADDR-04 | Pending |
 | 93 | Eviction, Ban, and Misbehavior Policy | EVICT-01, EVICT-02, EVICT-03, EVICT-04 | Pending |
 | 94 | DoS and Resource Governance | DOS-01, DOS-02, DOS-03, DOS-04, DOS-05 | Pending |
@@ -68,6 +68,7 @@ Progress: [----------] 0%
 | Phase 91 P07 | 25min | 2 tasks | 5 files |
 | Phase 91 P08 | 11min | 2 tasks | 1 file |
 | Phase 91 P09 | 4min | 3 tasks | 7 files |
+| Phase 91 P10 | 27min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -100,10 +101,11 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 - [Phase 91]: Support bundles sanitize inbound permission evidence to bounded machine class/effect labels and redact raw class names, raw permission strings, peer ids, endpoints, and credential literals.
 - [Phase 91]: Treat relay, forcerelay, mempool, bloomfilter, blockfilters, and all-expansion permission data as inactive labels that do not alter peer message handling, service bits, or compact-block behavior.
 - [Phase 91]: Document permission-class UAT with repo-local Cargo and Bazel commands and register `v1-9-peer-permissions-connection-classes` as the PERM-01 through PERM-04 parity surface.
+- [Phase 91]: Guard permission evidence, inactive/deferred labels, parity roots, source breadcrumbs, UAT commands, verifier order, support redaction, and no-claim language with a deterministic fixed-file checker.
 
 ### Pending Todos
 
-- Execute Phase 91 with `/gsd-execute-phase 91`.
+- Run Phase 91 code review and phase verification before advancing to Phase 92.
 - Keep v1.9 phase directories numbered 90+ under `.planning/phases/`; historical phase directories remain tracked because verifier scripts still depend on selected phase evidence.
 - Keep repo-local Cargo and Bazel command forms in UAT guidance:
   - `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- ...`
@@ -120,6 +122,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-25T19:01:22.000Z
-Stopped at: Completed 91-09-PLAN.md
+Last session: 2026-06-25T19:27:57.000Z
+Stopped at: Completed 91-10-PLAN.md
 Resume file: None

@@ -19,7 +19,7 @@ v1.9 Inbound Peer Serving and Network Participation Boundary started on 2026-06-
 
 **Goal:** Let Open Bitcoin accept and serve inbound peers under explicit admission, permission, address, eviction/ban, and resource-governance rules while keeping relay and production participation claims deferred.
 
-**Current state:** Requirements and roadmap are initialized. Phase 90 is ready for discussion or planning.
+**Current state:** Phase 91 plan work is complete and ready for code review plus phase verification.
 
 **Boundary:** v1.9 does not claim transaction relay, compact block relay, mempool propagation, public inbound serving by default, production service operation, or production full-node readiness.
 
@@ -28,7 +28,7 @@ v1.9 Inbound Peer Serving and Network Participation Boundary started on 2026-06-
 | Phase | Name | Goal | Requirements | Status |
 |-------|------|------|--------------|--------|
 | 90 | Inbound Listener and Admission Policy | 10/10 | Complete   | 2026-06-25 |
-| 91 | Peer Permissions and Connection Classes | 9/10 | In Progress|  |
+| 91 | Peer Permissions and Connection Classes | 10/10 | Complete | 2026-06-25 |
 | 92 | Address Advertisement and Discovery Boundaries | Scope listener advertisement, bounded address responses, address-management contracts, and docs that distinguish these from full address relay. | ADDR-01, ADDR-02, ADDR-03, ADDR-04 | Pending |
 | 93 | Eviction, Ban, and Misbehavior Policy | Add deterministic eviction scoring, disconnect reasons, discourage/ban persistence, expiry, unban, and permission-aware misbehavior handling. | EVICT-01, EVICT-02, EVICT-03, EVICT-04 | Pending |
 | 94 | DoS and Resource Governance | Bound inbound message parsing, queues, requests, slow handshakes, churn, idle peers, reconnect attempts, and resource-pressure evidence. | DOS-01, DOS-02, DOS-03, DOS-04, DOS-05 | Pending |
@@ -69,7 +69,7 @@ Plans:
 
 **Requirements:** PERM-01, PERM-02, PERM-03, PERM-04
 
-**Plans:** 6/10 plans executed
+**Plans:** 10/10 plans complete
 
 Plans:
 - [x] 91-01-PLAN.md — Pure permission vocabulary and connection-class domain model
@@ -81,7 +81,7 @@ Plans:
 - [x] 91-07-PLAN.md — Support-bundle permission evidence and redaction
 - [x] 91-08-PLAN.md — Relay, mempool, filter, and compact-block negative safeguards
 - [x] 91-09-PLAN.md — Operator docs, parity roots, and UAT commands
-- [ ] 91-10-PLAN.md — Deterministic Phase 91 checker and verifier wiring
+- [x] 91-10-PLAN.md — Deterministic Phase 91 checker and verifier wiring (completed 2026-06-25)
 
 **Success criteria:**
 1. Config parsing accepts only explicit, documented peer permission classes and returns stable validation errors for unsupported combinations.
@@ -153,7 +153,7 @@ Plans:
 | v1.6 Mainnet Full-Sync Completion | 7 | 27 | Shipped | 2026-06-14 |
 | v1.7 Full-Sync Soak and Recovery Hardening | 7 | 37 | Shipped | 2026-06-20 |
 | v1.8 Production Full-Node Readiness Boundary | 8 | 26 | Shipped | 2026-06-25 |
-| v1.9 Inbound Peer Serving and Network Participation Boundary | 6 | 0 | Active | — |
+| v1.9 Inbound Peer Serving and Network Participation Boundary | 6 | 20 | Active | — |
 
 ## Traceability
 
@@ -170,14 +170,14 @@ Plans:
 
 ## Next Step
 
-Start Phase 90:
+Run Phase 91 code review and phase verification:
 
 ```bash
-/gsd-discuss-phase 90
+/gsd-code-review 91
 ```
 
 Also available:
 
 ```bash
-/gsd-plan-phase 90
+/gsd-verify-work 91
 ```
