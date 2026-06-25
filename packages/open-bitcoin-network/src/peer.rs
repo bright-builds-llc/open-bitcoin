@@ -17,6 +17,10 @@ use open_bitcoin_primitives::{
 
 use crate::error::{DisconnectReason, NetworkError, PeerId};
 use crate::header_store::{HeaderStore, InsertedHeader};
+use crate::inbound::{
+    InboundAdmissionCounters, InboundAdmissionRejectionReason, InboundAdmissionSlotClass,
+    InboundHandshakeState, InboundPeerRecord,
+};
 use crate::message::{HeadersMessage, InventoryList, LocalPeerConfig, WireNetworkMessage};
 
 pub const DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER: usize = 128;
@@ -60,6 +64,8 @@ pub struct PeerState {
     pub requested_txids: BTreeSet<Txid>,
     pub requested_wtxids: BTreeSet<Wtxid>,
     pub last_ping_nonce: Option<u64>,
+    pub maybe_inbound_record: Option<InboundPeerRecord>,
+    pub maybe_inbound_rejection_reason: Option<InboundAdmissionRejectionReason>,
 }
 
 impl PeerState {
@@ -81,7 +87,16 @@ impl PeerState {
             requested_txids: BTreeSet::new(),
             requested_wtxids: BTreeSet::new(),
             last_ping_nonce: None,
+            maybe_inbound_record: None,
+            maybe_inbound_rejection_reason: None,
         }
+    }
+
+    fn from_inbound_record(mut record: InboundPeerRecord) -> Self {
+        record.handshake_state = InboundHandshakeState::Handshaking;
+        let mut state = Self::new(ConnectionRole::Inbound);
+        state.maybe_inbound_record = Some(record);
+        state
     }
 }
 
@@ -186,6 +201,37 @@ impl PeerManager {
         self.peers.get(&peer_id)
     }
 
+    pub fn peer_ids(&self) -> BTreeSet<PeerId> {
+        self.peers.keys().copied().collect()
+    }
+
+    pub fn inbound_endpoint_keys(&self) -> BTreeSet<String> {
+        self.peers
+            .values()
+            .filter_map(active_inbound_record)
+            .map(|record| record.remote_endpoint.clone())
+            .collect()
+    }
+
+    pub fn inbound_admission_counters(&self) -> InboundAdmissionCounters {
+        let mut counters = InboundAdmissionCounters::default();
+        for peer in self.peers.values() {
+            match peer.role {
+                ConnectionRole::Inbound => {
+                    let Some(record) = active_inbound_record(peer) else {
+                        continue;
+                    };
+                    counters.current_inbound_peers += 1;
+                    if record.slot_class == InboundAdmissionSlotClass::Reserved {
+                        counters.current_reserved_inbound_peers += 1;
+                    }
+                }
+                ConnectionRole::Outbound => counters.current_outbound_peers += 1,
+            }
+        }
+        counters
+    }
+
     pub fn peer_requested_blocks(&self, peer_id: PeerId) -> Result<Vec<BlockHash>, NetworkError> {
         let peer = self
             .peers
@@ -202,11 +248,28 @@ impl PeerManager {
     }
 
     pub fn add_inbound_peer(&mut self, peer_id: PeerId) -> Result<(), NetworkError> {
-        if self.peers.contains_key(&peer_id) {
-            return Err(NetworkError::PeerAlreadyExists(peer_id));
+        let counters = self.inbound_admission_counters();
+        let record = InboundPeerRecord {
+            peer_id,
+            remote_endpoint: format!("compat-inbound-peer:{peer_id}"),
+            slot_class: InboundAdmissionSlotClass::Ordinary,
+            handshake_state: InboundHandshakeState::Accepted,
+            maybe_remote_nonce: None,
+            observed_inbound_peers: counters.current_inbound_peers,
+            observed_outbound_peers: counters.current_outbound_peers,
+        };
+        self.add_inbound_peer_record(record)
+    }
+
+    pub fn add_inbound_peer_record(
+        &mut self,
+        record: InboundPeerRecord,
+    ) -> Result<(), NetworkError> {
+        if self.peers.contains_key(&record.peer_id) {
+            return Err(NetworkError::PeerAlreadyExists(record.peer_id));
         }
         self.peers
-            .insert(peer_id, PeerState::new(ConnectionRole::Inbound));
+            .insert(record.peer_id, PeerState::from_inbound_record(record));
         Ok(())
     }
 
@@ -350,6 +413,7 @@ impl PeerManager {
         timestamp: i64,
     ) -> Result<Vec<PeerAction>, NetworkError> {
         let best_height = self.headers.best_height();
+        let local_nonce = self.local_config.nonce;
         let peer = Self::peer_mut(&mut self.peers, peer_id)?;
         if peer.remote_version_received {
             return Ok(vec![PeerAction::Disconnect(
@@ -357,10 +421,18 @@ impl PeerManager {
             )]);
         }
 
+        if peer.role == ConnectionRole::Inbound && version.nonce == local_nonce {
+            return Ok(vec![reject_self_connection(peer, version.nonce)]);
+        }
+
         peer.remote_version_received = true;
         peer.remote_start_height = version.start_height;
         peer.remote_services_bits = version.services.bits();
         peer.remote_user_agent = version.user_agent.clone();
+        if let Some(record) = peer.maybe_inbound_record.as_mut() {
+            record.maybe_remote_nonce = Some(version.nonce);
+            record.handshake_state = InboundHandshakeState::Handshaking;
+        }
 
         let mut actions = Vec::new();
         if !peer.local_version_sent {
@@ -383,6 +455,12 @@ impl PeerManager {
         let best_height = self.headers.best_height();
         let peer = Self::peer_mut(&mut self.peers, peer_id)?;
         peer.remote_verack_received = true;
+        if let Some(record) = peer.maybe_inbound_record.as_mut()
+            && peer.remote_version_received
+            && peer.local_verack_sent
+        {
+            record.handshake_state = InboundHandshakeState::Established;
+        }
 
         if peer.remote_start_height > best_height && !peer.getheaders_in_flight {
             peer.getheaders_in_flight = true;
@@ -608,6 +686,24 @@ impl PeerManager {
 
         Ok(vec![PeerAction::ReceivedBlock(block)])
     }
+}
+
+fn active_inbound_record(peer: &PeerState) -> Option<&InboundPeerRecord> {
+    let maybe_record = peer.maybe_inbound_record.as_ref()?;
+    if maybe_record.handshake_state == InboundHandshakeState::Disconnected {
+        return None;
+    }
+    Some(maybe_record)
+}
+
+fn reject_self_connection(peer: &mut PeerState, remote_nonce: u64) -> PeerAction {
+    if let Some(record) = peer.maybe_inbound_record.as_mut() {
+        record.handshake_state = InboundHandshakeState::Disconnected;
+        record.maybe_remote_nonce = Some(remote_nonce);
+    }
+    peer.maybe_inbound_rejection_reason = Some(InboundAdmissionRejectionReason::SelfConnection);
+
+    PeerAction::Disconnect(DisconnectReason::DuplicateVersion)
 }
 
 #[cfg(test)]
