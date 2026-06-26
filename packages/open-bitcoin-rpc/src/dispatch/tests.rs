@@ -20,8 +20,9 @@ use std::{
 use serde_json::json;
 
 use open_bitcoin_network::{
-    InactivePermissionEffectLabel, InboundAdmissionSlotClass, InboundListenerConfig,
-    ParsedPeerPermissionClass, PeerConnectionClass, PermissionEffectLabel, VersionMessage,
+    AddressAnnouncement, AddressList, InactivePermissionEffectLabel, InboundAdmissionSlotClass,
+    InboundListenerConfig, ParsedPeerPermissionClass, PeerConnectionClass, PermissionEffectLabel,
+    VersionMessage,
 };
 use open_bitcoin_node::{
     DurableSyncState, FjallNodeStore, PersistMode, RuntimeMetadata, WalletRegistry,
@@ -31,10 +32,10 @@ use open_bitcoin_node::{
         consensus::{
             block_hash, block_merkle_root, check_block_header, crypto::hash160, transaction_txid,
         },
-        network::WireNetworkMessage,
+        network::{ServiceFlags, WireNetworkMessage},
         primitives::{
-            Amount, Block, BlockHash, BlockHeader, OutPoint, ScriptBuf, ScriptWitness, Transaction,
-            TransactionInput, TransactionOutput, Txid,
+            Amount, Block, BlockHash, BlockHeader, NetworkAddress, OutPoint, ScriptBuf,
+            ScriptWitness, Transaction, TransactionInput, TransactionOutput, Txid,
         },
         wallet::{AddressNetwork, DescriptorRole, SingleKeyDescriptor, Wallet},
     },
@@ -323,6 +324,54 @@ fn parsed_permission_class(
 ) -> ParsedPeerPermissionClass {
     ParsedPeerPermissionClass::parse(name, [address], permissions.iter().copied())
         .expect("permission class should parse")
+}
+
+fn address_boundary_context() -> ManagedRpcContext {
+    ManagedRpcContext::from_runtime_config(&RuntimeConfig {
+        chain: AddressNetwork::Regtest,
+        inbound: InboundListenerConfig {
+            enabled: true,
+            listen_addresses: vec!["8.8.8.8:18444".to_string(), "127.0.0.1:18445".to_string()],
+            max_peers: 8,
+            reserved_slots: 1,
+            allow_public: true,
+            permission_classes: open_bitcoin_network::PeerPermissionClassRegistry::new(vec![
+                parsed_permission_class(
+                    "operator-private-addr-secret",
+                    "127.0.0.1",
+                    &["in", "addr"],
+                ),
+            ]),
+        },
+        wallet: WalletRuntimeConfig {
+            coinbase_maturity: 1,
+            ..WalletRuntimeConfig::default()
+        },
+        ..RuntimeConfig::default()
+    })
+}
+
+fn address_announcement(time_unix_seconds: u64, address: NetworkAddress) -> AddressAnnouncement {
+    AddressAnnouncement {
+        time_unix_seconds: time_unix_seconds as u32,
+        address,
+    }
+}
+
+fn public_ipv4_network_address(a: u8, b: u8, c: u8, d: u8, port: u16) -> NetworkAddress {
+    NetworkAddress {
+        services: ServiceFlags::NETWORK.bits(),
+        address_bytes: ipv4_mapped_address_bytes([a, b, c, d]),
+        port,
+    }
+}
+
+fn ipv4_mapped_address_bytes(octets: [u8; 4]) -> [u8; 16] {
+    let mut bytes = [0_u8; 16];
+    bytes[10] = 0xff;
+    bytes[11] = 0xff;
+    bytes[12..].copy_from_slice(&octets);
+    bytes
 }
 
 fn funded_wallet_context() -> ManagedRpcContext {
@@ -643,6 +692,138 @@ fn open_bitcoin_network_status_projects_listener_activation_before_admissions() 
 }
 
 #[test]
+fn open_bitcoin_network_status_projects_address_boundary_evidence_without_raw_details() {
+    // Arrange
+    let mut context = address_boundary_context();
+    let peer_id = 9_206_101;
+    let now_unix_seconds = 1_700_000_000;
+    context.set_inbound_listener_evidence(InboundListenerEvidence {
+        listener_state: "listening".to_string(),
+        preflight_reason: "ready".to_string(),
+        bound_endpoints: vec!["8.8.8.8:18444".to_string(), "127.0.0.1:18445".to_string()],
+        admitted_inbound_peers: 0,
+        rejected_inbound_peers: 0,
+        maybe_admission_reject_reason: None,
+        maybe_latest_admission_event: Some("ready".to_string()),
+    });
+    context.record_inbound_admission_for_remote_addr(
+        peer_id,
+        "127.0.0.1:52061".parse().expect("permissioned remote"),
+        false,
+    );
+    context
+        .receive_network_message(
+            peer_id,
+            WireNetworkMessage::Addr(AddressList {
+                addresses: vec![
+                    address_announcement(
+                        now_unix_seconds,
+                        public_ipv4_network_address(9, 9, 9, 9, 8333),
+                    ),
+                    address_announcement(
+                        now_unix_seconds,
+                        public_ipv4_network_address(10, 0, 0, 1, 8333),
+                    ),
+                ],
+            }),
+            now_unix_seconds as i64,
+        )
+        .expect("addr evidence should be recorded");
+    let first_getaddr_response = context
+        .receive_network_message(
+            peer_id,
+            WireNetworkMessage::GetAddr,
+            now_unix_seconds as i64 + 1,
+        )
+        .expect("first getaddr should be served");
+    let second_getaddr_response = context
+        .receive_network_message(
+            peer_id,
+            WireNetworkMessage::GetAddr,
+            now_unix_seconds as i64 + 2,
+        )
+        .expect("second getaddr should be suppressed");
+
+    // Act
+    let status = dispatch(
+        &mut context,
+        MethodCall::OpenBitcoinNetworkStatus(OpenBitcoinNetworkStatusRequest::default()),
+    )
+    .expect("network status");
+
+    // Assert
+    assert!(matches!(
+        first_getaddr_response.as_slice(),
+        [WireNetworkMessage::Addr(addresses)] if !addresses.addresses.is_empty()
+    ));
+    assert!(second_getaddr_response.is_empty());
+    let inbound = &status["inbound"]["value"];
+    assert_eq!(
+        inbound["local_advertisement_candidates"],
+        json!([{
+            "source": "source_local_listener",
+            "network_kind": "ipv4",
+            "routability": "publicly_routable",
+            "freshness": "fresh",
+            "services_bits": 9,
+            "port": 18444,
+            "persistence_eligible": false
+        }])
+    );
+    assert_eq!(
+        inbound["suppressed_advertisements"][0]["label"],
+        json!("advertise_suppressed")
+    );
+    assert_eq!(
+        inbound["suppressed_advertisements"][0]["reason"],
+        json!("not_publicly_routable")
+    );
+    assert_eq!(inbound["getaddr_responses_served"], json!(1));
+    assert_eq!(inbound["getaddr_requests_suppressed"], json!(1));
+    assert_eq!(inbound["learned_address_entries"], json!(1));
+    assert_eq!(inbound["learned_address_rejections"], json!(1));
+    assert_eq!(
+        inbound["latest_address_decision"]["value"]["label"],
+        json!("getaddr_suppressed")
+    );
+    assert_eq!(
+        inbound["latest_address_decision"]["value"]["reason"],
+        json!("already_served")
+    );
+    let address_evidence = json!({
+        "local_advertisement_candidates": inbound["local_advertisement_candidates"],
+        "suppressed_advertisements": inbound["suppressed_advertisements"],
+        "getaddr_responses_served": inbound["getaddr_responses_served"],
+        "getaddr_requests_suppressed": inbound["getaddr_requests_suppressed"],
+        "learned_address_entries": inbound["learned_address_entries"],
+        "learned_address_rejections": inbound["learned_address_rejections"],
+        "latest_address_decision": inbound["latest_address_decision"],
+    });
+    let serialized_address_evidence =
+        serde_json::to_string(&address_evidence).expect("serialize address evidence");
+    for forbidden in [
+        "operator-private-addr-secret",
+        "8.8.8.8:18444",
+        "127.0.0.1:18445",
+        "127.0.0.1",
+        "8.8.8.8",
+        "9.9.9.9",
+        "10.0.0.1",
+        "9206101",
+        "address_bytes",
+        "raw_permission",
+        "raw_config",
+        "class_name",
+        "00000000000000000000ffff08080808",
+    ] {
+        assert!(
+            !serialized_address_evidence.contains(forbidden),
+            "address evidence exposed raw detail {forbidden}"
+        );
+    }
+}
+
+#[test]
 fn open_bitcoin_network_status_preserves_unavailable_reason() {
     // Arrange
     let mut context = empty_context();
@@ -905,11 +1086,12 @@ fn open_bitcoin_network_status_records_runtime_self_connection_rejection() {
 }
 
 #[test]
-fn get_network_info_omits_open_bitcoin_inbound_status_details() {
+fn open_bitcoin_network_status_get_network_info_omits_open_bitcoin_inbound_status_details() {
     // Arrange
     let mut context = node_context_with_chain_and_mempool();
     context.record_inbound_admission(17, "127.0.0.1:18447".to_string(), false);
-    let regression_scope = "getnetworkinfo permission evidence regression";
+    let regression_scope =
+        "getnetworkinfo local_advertisement_candidates latest_address_decision regression";
 
     // Act
     let network = dispatch(
@@ -935,6 +1117,13 @@ fn get_network_info_omits_open_bitcoin_inbound_status_details() {
         "active_permission_effects",
         "inactive_permission_effects",
         "latest_permission_decision",
+        "local_advertisement_candidates",
+        "suppressed_advertisements",
+        "getaddr_responses_served",
+        "getaddr_requests_suppressed",
+        "learned_address_entries",
+        "learned_address_rejections",
+        "latest_address_decision",
     ] {
         assert!(
             !serialized.contains(forbidden),
