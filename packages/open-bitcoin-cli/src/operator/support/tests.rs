@@ -14,17 +14,17 @@ use open_bitcoin_node::{
         BestKnownTipSource, BestKnownTipStatus, ChainTipStatus, ConfigStatus, FieldAvailability,
         InboundAddressDecisionEvent, InboundAddressEvidenceEntry, InboundAdmissionEvent,
         InboundHandshakeStatusCounts, InboundPeerPolicyEvent, InboundPeerServingStatus,
-        InboundPermissionDecisionEvent, MempoolStatus, NoProgressDiagnosis,
-        NoProgressThresholdEvidence, NoProgressThresholdState, NodeRuntimeState, NodeStatus,
-        PeerContributionEvidence, PeerContributionKind, PeerCounts, PeerStatus, PeerTipAgreement,
-        PeerTipAgreementStatus, ProgressCreditEvidence, ProgressCreditKind, ProgressWindowEvidence,
-        RejectedProgressActivity, RejectedProgressActivityKind, ResourceBoundEntry,
-        ResourceBoundKind, ResourceBoundSnapshot, ResourceBoundUnit, ServiceLifecycleStatus,
-        ServiceStatus, StallDiagnosisConfidence, StallDiagnosisEvidence, StalledSubsystem,
-        StayCurrentStatus, SyncAttemptCounters, SyncConfiguredTargets, SyncLagStatus,
-        SyncLifecycleState, SyncProgress, SyncProgressSignal, SyncRecoveryCategory,
-        SyncResourcePressure, SyncStatus, SyncStopReasonStatus, TipFreshnessStatus, WalletStatus,
-        inbound_status_unavailable, usage_against_budget,
+        InboundPermissionDecisionEvent, InboundResourceGovernanceEvent, MempoolStatus,
+        NoProgressDiagnosis, NoProgressThresholdEvidence, NoProgressThresholdState,
+        NodeRuntimeState, NodeStatus, PeerContributionEvidence, PeerContributionKind, PeerCounts,
+        PeerStatus, PeerTipAgreement, PeerTipAgreementStatus, ProgressCreditEvidence,
+        ProgressCreditKind, ProgressWindowEvidence, RejectedProgressActivity,
+        RejectedProgressActivityKind, ResourceBoundEntry, ResourceBoundKind, ResourceBoundSnapshot,
+        ResourceBoundUnit, ServiceLifecycleStatus, ServiceStatus, StallDiagnosisConfidence,
+        StallDiagnosisEvidence, StalledSubsystem, StayCurrentStatus, SyncAttemptCounters,
+        SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal,
+        SyncRecoveryCategory, SyncResourcePressure, SyncStatus, SyncStopReasonStatus,
+        TipFreshnessStatus, WalletStatus, inbound_status_unavailable, usage_against_budget,
     },
 };
 use serde_json::json;
@@ -1121,6 +1121,34 @@ fn inbound_support_markdown_renders_phase93_peer_policy_evidence() {
 }
 
 #[test]
+fn inbound_support_markdown_renders_phase94_resource_governance_evidence() {
+    // Arrange
+    let temp = TestDirectory::new("inbound-support-resource-governance");
+    let status = phase94_status_with_resource_governance_evidence();
+    let bundle = phase77_support_bundle_with_status(temp.path(), status);
+
+    // Act
+    let markdown = render::render_support_markdown(&bundle);
+
+    // Assert
+    for expected in [
+        "## Inbound Resource Governance Evidence",
+        "Resource pressure events: 8",
+        "Read queue pressure events: 7",
+        "Write queue pressure events: 6",
+        "Request cap events: 5",
+        "Payload rejections: 1",
+        "Timeout disconnects: 3",
+        "Churn rejections: 2",
+        "Reconnect suppressions: 4",
+        "Latest resource governance decision: outcome=rejected reason=invalid_checksum label=payload_rejected source=source_inbound_resource_governance message=bounded payload rejected next_action=payload_rejected",
+        "Next action: Treat Phase 94 as bounded inbound resource-governance evidence only; inspect resource labels before raising listener exposure, queue caps, request caps, or timeout thresholds.",
+    ] {
+        assert!(markdown.contains(expected), "missing {expected}");
+    }
+}
+
+#[test]
 fn inbound_support_redacts_raw_phase92_address_boundary_material() {
     // Arrange
     let temp = TestDirectory::new("inbound-support-address-redaction");
@@ -1748,6 +1776,31 @@ fn phase93_status_with_peer_policy_evidence() -> OpenBitcoinStatusSnapshot {
         source: "source_eviction_policy".to_string(),
         message: "peer eviction decision eviction_candidate_selected: low_activity".to_string(),
     });
+    status
+}
+
+fn phase94_status_with_resource_governance_evidence() -> OpenBitcoinStatusSnapshot {
+    let mut status = phase93_status_with_peer_policy_evidence();
+    let FieldAvailability::Available(inbound) = &mut status.peers.inbound else {
+        panic!("inbound status fixture should be available");
+    };
+    inbound.resource_pressure_events = 8;
+    inbound.read_queue_pressure_events = 7;
+    inbound.write_queue_pressure_events = 6;
+    inbound.request_cap_events = 5;
+    inbound.payload_rejections = 1;
+    inbound.timeout_disconnects = 3;
+    inbound.churn_rejections = 2;
+    inbound.reconnect_suppressions = 4;
+    inbound.latest_resource_governance_decision =
+        FieldAvailability::available(InboundResourceGovernanceEvent {
+            outcome: "rejected".to_string(),
+            reason: "invalid_checksum".to_string(),
+            label: "payload_rejected".to_string(),
+            source: "source_inbound_resource_governance".to_string(),
+            message: "bounded payload rejected".to_string(),
+            next_action: "payload_rejected".to_string(),
+        });
     status
 }
 

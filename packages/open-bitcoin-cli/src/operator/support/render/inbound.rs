@@ -6,12 +6,13 @@
 use open_bitcoin_node::status::{
     FieldAvailability, InboundAddressDecisionEvent, InboundAddressEvidenceEntry,
     InboundAdmissionEvent, InboundPeerPolicyEvent, InboundPeerServingStatus,
-    InboundPermissionDecisionEvent,
+    InboundPermissionDecisionEvent, InboundResourceGovernanceEvent,
 };
 
 const INACTIVE_RELAY_PERMISSION_NEXT_ACTION: &str = "Relay, mempool, bloom, and blockfilter permissions are recorded as inactive Phase 91 evidence; do not treat them as relay support.";
 const PHASE92_ADDRESS_BOUNDARY_NEXT_ACTION: &str = "Treat Phase 92 as bounded local advertisement and direct getaddr evidence only; peer discovery, unsolicited address relay, DNS seed discovery, UPnP/NAT-PMP discovery, and public-network readiness remain outside this surface.";
 const PHASE93_PEER_POLICY_NEXT_ACTION: &str = "Treat Phase 93 as bounded eviction, ban, unban, and misbehavior policy evidence only; review labels and counters before changing peer policy.";
+const PHASE94_RESOURCE_GOVERNANCE_NEXT_ACTION: &str = "Treat Phase 94 as bounded inbound resource-governance evidence only; inspect resource labels before raising listener exposure, queue caps, request caps, or timeout thresholds.";
 
 pub(super) fn push_inbound_serving(
     output: &mut String,
@@ -98,6 +99,7 @@ fn push_available_inbound(output: &mut String, evidence: &InboundPeerServingStat
     output.push_str(&format!("- Next action: {}\n", next_action(evidence)));
     push_inbound_address_boundary(output, evidence);
     push_inbound_peer_policy(output, evidence);
+    push_inbound_resource_governance(output, evidence);
 }
 
 fn push_latest_admission_event(
@@ -266,6 +268,65 @@ fn peer_policy_decision_text(event: &InboundPeerPolicyEvent) -> String {
     format!(
         "outcome={} reason={} label={} source={} message={}",
         event.outcome, event.reason, event.label, event.source, event.message
+    )
+}
+
+fn push_inbound_resource_governance(output: &mut String, evidence: &InboundPeerServingStatus) {
+    output.push_str("\n## Inbound Resource Governance Evidence\n\n");
+    output.push_str(&format!(
+        "- Resource pressure events: {}\n",
+        evidence.resource_pressure_events
+    ));
+    output.push_str(&format!(
+        "- Read queue pressure events: {}\n",
+        evidence.read_queue_pressure_events
+    ));
+    output.push_str(&format!(
+        "- Write queue pressure events: {}\n",
+        evidence.write_queue_pressure_events
+    ));
+    output.push_str(&format!(
+        "- Request cap events: {}\n",
+        evidence.request_cap_events
+    ));
+    output.push_str(&format!(
+        "- Payload rejections: {}\n",
+        evidence.payload_rejections
+    ));
+    output.push_str(&format!(
+        "- Timeout disconnects: {}\n",
+        evidence.timeout_disconnects
+    ));
+    output.push_str(&format!(
+        "- Churn rejections: {}\n",
+        evidence.churn_rejections
+    ));
+    output.push_str(&format!(
+        "- Reconnect suppressions: {}\n",
+        evidence.reconnect_suppressions
+    ));
+    output.push_str(&format!(
+        "- Latest resource governance decision: {}\n",
+        latest_resource_governance_decision_text(&evidence.latest_resource_governance_decision)
+    ));
+    output.push_str(&format!(
+        "- Next action: {PHASE94_RESOURCE_GOVERNANCE_NEXT_ACTION}\n"
+    ));
+}
+
+fn latest_resource_governance_decision_text(
+    event: &FieldAvailability<InboundResourceGovernanceEvent>,
+) -> String {
+    match event {
+        FieldAvailability::Available(event) => resource_governance_decision_text(event),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
+fn resource_governance_decision_text(event: &InboundResourceGovernanceEvent) -> String {
+    format!(
+        "outcome={} reason={} label={} source={} message={} next_action={}",
+        event.outcome, event.reason, event.label, event.source, event.message, event.next_action
     )
 }
 
