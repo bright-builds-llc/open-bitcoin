@@ -38,11 +38,11 @@ Requirements for the active v1.9 milestone. Each maps to exactly one roadmap pha
 
 ### DoS And Resource Governance
 
-- [ ] **DOS-01**: Inbound sessions enforce network magic, message header, payload size, malformed message, and unsupported command limits before allocating unbounded memory.
+- [x] **DOS-01**: Inbound sessions enforce network magic, message header, payload size, malformed message, and unsupported command limits before allocating unbounded memory.
 - [ ] **DOS-02**: Inbound sessions enforce per-peer and aggregate read/write queues, inventory/request bounds, header/block/transaction request caps, and backpressure behavior.
 - [ ] **DOS-03**: The node limits connection churn, slow handshakes, idle peers, repeated failures, and banned or discouraged reconnect attempts with deterministic synthetic tests.
 - [ ] **DOS-04**: Resource pressure and abuse responses appear in metrics, structured logs, support bundles, and operator status with clear next actions.
-- [ ] **DOS-05**: Default verification covers inbound DoS/resource policy deterministically and keeps public-network listener exposure outside `bash scripts/verify.sh`.
+- [x] **DOS-05**: Default verification covers inbound DoS/resource policy deterministically and keeps public-network listener exposure outside `bash scripts/verify.sh`.
 
 ### Release Boundary
 
@@ -107,11 +107,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EVICT-02 | Phase 93 | Complete |
 | EVICT-03 | Phase 93 | Complete |
 | EVICT-04 | Phase 93 | Complete |
-| DOS-01 | Phase 94 | Pending |
+| DOS-01 | Phase 94 | Complete |
 | DOS-02 | Phase 94 | Pending |
 | DOS-03 | Phase 94 | Pending |
 | DOS-04 | Phase 94 | Pending |
-| DOS-05 | Phase 94 | Pending |
+| DOS-05 | Phase 94 | Complete |
 | BOUND-01 | Phase 95 | Pending |
 | BOUND-02 | Phase 95 | Pending |
 | BOUND-03 | Phase 95 | Pending |
