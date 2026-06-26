@@ -281,6 +281,31 @@ enforcement, Knots discourage parity, broad DoS/resource governance,
 transaction relay abuse handling, public inbound by default, or production
 full-node readiness.
 
+## Phase 94 resource-governance evidence
+
+Resource-governance observability is sourced from the shared inbound status
+fields on `OpenBitcoinStatusSnapshot.peers.inbound`,
+`openbitcoinnetworkstatus`, operator status output, structured logs, fixed
+metrics, and redacted support bundles. The stable field vocabulary is
+`latest_resource_governance_decision`, `payload_rejections`,
+`timeout_disconnects`, `churn_rejections`, and `reconnect_suppressions`.
+
+The structured log source is `inbound_resource_governance`. Structured log
+records preserve the allowlisted key/value fields `outcome`, `reason`, `label`,
+`source`, `message`, and `next_action`. Structured logs must not include raw peer ids, endpoints, payload bytes, permission strings, credentials, or dynamic labels.
+
+Metrics remain fixed aggregate counters with no runtime-created dimensions.
+The Phase 94 metric names are `inbound_resource_pressure_active_count`,
+`inbound_read_queue_pressure_count`, `inbound_write_queue_pressure_count`,
+`inbound_request_cap_reached_count`, `inbound_payload_rejected_count`,
+`inbound_timeout_disconnect_count`, `inbound_churn_rejected_count`, and
+`inbound_reconnect_suppressed_count`.
+
+Support evidence should preserve bounded counters and the latest safe decision
+while keeping default verification loopback/synthetic and public-network-free.
+This evidence documents bounded resource-governance review only and does not
+expand listener exposure or release claims.
+
 ## Phase Boundaries
 
 Phase 13 defines serializable contracts only. It must not install a tracing subscriber, create a file appender, write metric samples, prune log files, or render dashboard graphs. Runtime writers and readers are Phase 16 responsibilities.

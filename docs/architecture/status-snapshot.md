@@ -294,6 +294,43 @@ claim production banlist parity, public ban enforcement, Knots discourage
 parity, transaction relay abuse handling, public inbound by default, or
 production full-node readiness.
 
+## Phase 94 resource governance status
+
+Phase 94 extends `OpenBitcoinStatusSnapshot.peers.inbound` with bounded
+resource-governance evidence sourced from the shared inbound status contract.
+The shared fields are:
+
+- `resource_pressure_events`: aggregate count of resource-pressure decisions.
+- `read_queue_pressure_events` and `write_queue_pressure_events`: aggregate
+  queue pressure counters.
+- `request_cap_events`: aggregate request-cap counter.
+- `payload_rejections`: aggregate message-envelope and payload rejection
+  counter.
+- `timeout_disconnects`, `churn_rejections`, and `reconnect_suppressions`:
+  aggregate lifecycle response counters.
+- `latest_resource_governance_decision`: the latest bounded
+  resource-governance event with `outcome`, `reason`, `label`, `source`,
+  `message`, and `next_action`.
+
+Status consumers should preserve these field names in JSON and render them
+from the shared snapshot in human output. They should not derive
+resource-governance summaries in CLI, support, dashboard, RPC, log, or metric
+layers.
+
+The structured log source is `inbound_resource_governance`. Structured log
+records preserve the allowlisted key/value fields `outcome`, `reason`, `label`,
+`source`, `message`, and `next_action`. Structured logs must not include raw peer ids, endpoints, payload bytes, permission strings, credentials, or dynamic labels.
+
+The fixed metric names are `inbound_resource_pressure_active_count`,
+`inbound_read_queue_pressure_count`, `inbound_write_queue_pressure_count`,
+`inbound_request_cap_reached_count`, `inbound_payload_rejected_count`,
+`inbound_timeout_disconnect_count`, `inbound_churn_rejected_count`, and
+`inbound_reconnect_suppressed_count`.
+
+Default verification remains loopback/synthetic and public-network-free. The
+fields document bounded resource-governance evidence only; they do not change
+listener defaults or widen the release boundary.
+
 ## Reorg and no-progress semantics
 
 Phase 70 keeps branch competition, reorg recovery, peer recovery, and

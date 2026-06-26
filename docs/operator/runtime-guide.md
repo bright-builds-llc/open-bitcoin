@@ -542,6 +542,70 @@ Expected review evidence is bounded and label-driven:
 - Support bundles render peer-policy evidence with bounded labels and counts
   and redact raw peer ids, endpoints, raw permission strings, and credentials.
 
+## Phase 94 Resource Governance Review
+
+Phase 94 adds bounded inbound resource-governance evidence to the explicit
+loopback listener review path. It covers message-envelope rejection,
+queue/request pressure, slow or idle session limits, connection churn,
+repeated failures, and reconnect suppression. It does not change listener
+defaults or turn local UAT into public-network verification.
+
+Expected resource violation labels are `wrong_network_magic`,
+`malformed_header`, `payload_oversized`, `invalid_checksum`,
+`unsupported_command`, `malformed_payload`, and `trailing_payload`. Expected
+timeout, churn, and reconnect labels are `slow_handshake`, `idle_peer`,
+`connection_churn_limited`, `repeated_failure_limited`,
+`reconnect_suppressed_banned`, and `reconnect_suppressed_discouraged`.
+Expected pressure labels are `resource_pressure_active`,
+`read_queue_pressure`, `write_queue_pressure`, and `request_cap_reached`.
+Expected next-action labels are `payload_rejected`, `timeout_disconnect`,
+`churn_rejected`, and `reconnect_suppressed`.
+
+Daemon UAT command forms:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --bin open-bitcoind -- -chain=regtest -openbitcoininbound=1 -openbitcoinlisten=127.0.0.1:18444
+bazel run //packages/open-bitcoin-rpc:open_bitcoind -- -chain=regtest -openbitcoininbound=1 -openbitcoinlisten=127.0.0.1:18444
+```
+
+Inspect Open Bitcoin-owned resource-governance evidence:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin-cli -- -regtest openbitcoinnetworkstatus
+bazel run //packages/open-bitcoin-cli:open_bitcoin_cli -- -regtest openbitcoinnetworkstatus
+```
+
+Inspect shared operator status:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- status --format json
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- status --format json
+```
+
+Collect a bounded resource-governance support bundle:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- support bundle --output-dir=/tmp/open-bitcoin-resource-support
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- support bundle --output-dir=/tmp/open-bitcoin-resource-support
+```
+
+Expected review evidence is bounded and label-driven:
+
+- `openbitcoinnetworkstatus` and `status --format json` expose
+  `latest_resource_governance_decision`, `payload_rejections`,
+  `timeout_disconnects`, `churn_rejections`, and `reconnect_suppressions`
+  through `OpenBitcoinStatusSnapshot.peers.inbound`.
+- Structured logs use the `inbound_resource_governance` source and the
+  allowlisted fields `outcome`, `reason`, `label`, `source`, `message`, and
+  `next_action`.
+- Metrics remain fixed aggregate counters such as
+  `inbound_resource_pressure_active_count`, `inbound_read_queue_pressure_count`,
+  `inbound_write_queue_pressure_count`, `inbound_request_cap_reached_count`,
+  `inbound_payload_rejected_count`, `inbound_timeout_disconnect_count`,
+  `inbound_churn_rejected_count`, and `inbound_reconnect_suppressed_count`.
+- Support bundles render bounded counters plus the latest safe decision only.
+  Default verification remains loopback/synthetic and public-network-free.
+
 ## Mainnet Sync Activation
 
 Mainnet sync activation is disabled by default. It can be enabled only for the
