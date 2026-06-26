@@ -20,7 +20,7 @@ use open_bitcoin_core::{
 };
 use open_bitcoin_mempool::{AdmissionResult, MempoolError, PolicyConfig};
 use open_bitcoin_network::{
-    ConnectionRole, HeaderEntry, HeaderStore, HeaderSyncPolicy, HeadersMessage,
+    ConnectionRole, DisconnectReason, HeaderEntry, HeaderStore, HeaderSyncPolicy, HeadersMessage,
     InboundAdmissionPolicy, InventoryList, LocalPeerConfig, NetworkError, PROTOCOL_VERSION,
     ParsedNetworkMessage, PeerAction, PeerId, PeerManager, WireNetworkMessage,
 };
@@ -572,6 +572,9 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                     )?);
                 }
                 PeerAction::Disconnect(reason) => {
+                    if reason == DisconnectReason::SelfConnection {
+                        self.record_runtime_self_connection_rejection(peer_id);
+                    }
                     self.disconnect_peer(peer_id)?;
                     return Err(ManagedNetworkError::Network(
                         inventory::disconnect_network_error(peer_id, reason),

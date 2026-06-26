@@ -8,7 +8,7 @@ use open_bitcoin_network::{
     InactivePermissionEffectLabel, InboundAdmissionDecision, InboundAdmissionPolicy,
     InboundAdmissionRejection, InboundAdmissionRejectionReason, InboundAdmissionRequest,
     InboundAdmissionSlotClass, InboundHandshakeState, InboundPeerRecord, InboundPermissionDecision,
-    PeerConnectionClass, PeerState, PermissionEffectLabel,
+    PeerConnectionClass, PeerId, PeerState, PermissionEffectLabel,
 };
 
 use crate::ChainstateStore;
@@ -83,6 +83,7 @@ impl ManagedInboundAdmissionInfo {
         self.rejected_inbound_peers += 1;
         self.maybe_latest_rejection_reason = Some(rejection.reason);
         self.maybe_latest_rejection_slot_class = Some(rejection.slot_class);
+        self.maybe_latest_permission_decision = None;
         match rejection.reason {
             InboundAdmissionRejectionReason::CapReached => self.cap_rejections += 1,
             InboundAdmissionRejectionReason::ReservedSlotUnavailable => {
@@ -110,6 +111,8 @@ impl ManagedInboundAdmissionInfo {
                 self.observed_inactive_permission_effects.push(*effect);
             }
         }
+        self.observed_active_permission_effects.sort();
+        self.observed_inactive_permission_effects.sort();
     }
 }
 
@@ -120,10 +123,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     #[rustfmt::skip]
     pub fn set_inbound_admission_policy(&mut self, policy: InboundAdmissionPolicy) { self.inbound_admission_policy = policy; }
 
-    pub fn add_inbound_peer(
-        &mut self,
-        peer_id: open_bitcoin_network::PeerId,
-    ) -> Result<(), ManagedNetworkError> {
+    pub fn add_inbound_peer(&mut self, peer_id: PeerId) -> Result<(), ManagedNetworkError> {
         self.peer_manager.add_inbound_peer(peer_id)?;
         self.peer_ids.insert(peer_id);
         let maybe_record = self
@@ -135,6 +135,26 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             self.inbound_admission_info.record_admit(record);
         }
         Ok(())
+    }
+
+    pub(super) fn record_runtime_self_connection_rejection(&mut self, peer_id: PeerId) {
+        let Some(record) = self
+            .peer_manager
+            .peer_state(peer_id)
+            .and_then(|peer| peer.maybe_inbound_record.as_ref())
+        else {
+            return;
+        };
+
+        let rejection = InboundAdmissionRejection {
+            reason: InboundAdmissionRejectionReason::SelfConnection,
+            peer_id: record.peer_id,
+            slot_class: record.slot_class,
+            maybe_endpoint: Some(record.remote_endpoint.clone()),
+            message: "remote peer nonce matches the local peer nonce".to_string(),
+            next_action: "disconnect the self-connection candidate before continuing".to_string(),
+        };
+        self.inbound_admission_info.record_rejection(&rejection);
     }
 
     pub fn admit_inbound_peer(

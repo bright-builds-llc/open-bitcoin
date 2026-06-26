@@ -394,10 +394,8 @@ async fn disconnect_admitted_peer(
 ) {
     let mut context = context.lock().await;
     if let Err(_error) = context.disconnect_peer(peer_id) {
-        debug_assert!(
-            false,
-            "admitted inbound peer should be present before listener cleanup"
-        );
+        // The message loop may already have removed the peer, for example after
+        // a runtime self-connection rejection.
     }
 }
 

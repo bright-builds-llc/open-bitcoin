@@ -5,8 +5,8 @@
 
 mod error;
 
+use core::net::IpAddr;
 use std::collections::BTreeSet;
-use std::net::IpAddr;
 
 use super::InboundAdmissionSlotClass;
 pub use error::PeerPermissionParseError;
@@ -107,7 +107,7 @@ impl PeerPermissionDirection {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum PermissionEffectLabel {
     AdmissionProtected,
     EvictionPolicyProtected,
@@ -128,7 +128,7 @@ impl PermissionEffectLabel {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum InactivePermissionEffectLabel {
     Relay,
     ForceRelay,
@@ -250,18 +250,16 @@ impl PeerPermissionSet {
 
     fn insert_permission(&mut self, permission: PeerPermissionToken) {
         self.requested_tokens.insert(permission);
+        self.insert_expanded_permission(permission);
+    }
+
+    fn insert_expanded_permission(&mut self, permission: PeerPermissionToken) {
         match permission {
             PeerPermissionToken::All => {
                 for expanded in PeerPermissionToken::all_expansion() {
                     self.insert_expanded_permission(expanded);
                 }
             }
-            _ => self.insert_expanded_permission(permission),
-        }
-    }
-
-    fn insert_expanded_permission(&mut self, permission: PeerPermissionToken) {
-        match permission {
             PeerPermissionToken::ForceRelay => {
                 self.permissions.insert(PeerPermissionToken::ForceRelay);
                 self.permissions.insert(PeerPermissionToken::Relay);
@@ -275,7 +273,6 @@ impl PeerPermissionSet {
                 self.permissions.insert(PeerPermissionToken::NoBan);
                 self.permissions.insert(PeerPermissionToken::Download);
             }
-            PeerPermissionToken::All => {}
             _ => {
                 self.permissions.insert(permission);
             }

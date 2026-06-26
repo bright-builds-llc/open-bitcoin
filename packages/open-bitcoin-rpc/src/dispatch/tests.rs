@@ -21,7 +21,7 @@ use serde_json::json;
 
 use open_bitcoin_network::{
     InactivePermissionEffectLabel, InboundAdmissionSlotClass, InboundListenerConfig,
-    ParsedPeerPermissionClass, PeerConnectionClass, PermissionEffectLabel,
+    ParsedPeerPermissionClass, PeerConnectionClass, PermissionEffectLabel, VersionMessage,
 };
 use open_bitcoin_node::{
     DurableSyncState, FjallNodeStore, PersistMode, RuntimeMetadata, WalletRegistry,
@@ -599,8 +599,8 @@ fn open_bitcoin_network_status_returns_available_inbound_evidence() {
     assert_eq!(inbound["value"]["active_permission_effects"], json!([]));
     assert_eq!(inbound["value"]["inactive_permission_effects"], json!([]));
     assert_eq!(
-        inbound["value"]["latest_permission_decision"]["value"]["permission_class"],
-        json!("ordinary_inbound")
+        inbound["value"]["latest_permission_decision"]["state"],
+        json!("unavailable")
     );
 }
 
@@ -823,6 +823,10 @@ fn open_bitcoin_network_status_reports_cap_and_reserved_slot_rejections() {
         protected_reserved_status["inbound"]["value"]["latest_admission_event"]["value"]["slot_class"],
         json!("reserved")
     );
+    assert_eq!(
+        protected_reserved_status["inbound"]["value"]["latest_permission_decision"]["state"],
+        json!("unavailable")
+    );
 }
 
 #[test]
@@ -851,6 +855,52 @@ fn open_bitcoin_network_status_latest_event_updates_after_rejection_then_admissi
     assert_eq!(
         inbound["latest_admission_event"]["value"]["reason"],
         json!("admitted")
+    );
+}
+
+#[test]
+fn open_bitcoin_network_status_records_runtime_self_connection_rejection() {
+    // Arrange
+    let mut context = inbound_context(2, 0);
+    context.record_inbound_admission(51, "127.0.0.1:18451".to_string(), false);
+
+    // Act
+    let error = context
+        .receive_network_message(
+            51,
+            WireNetworkMessage::Version(VersionMessage {
+                nonce: 0,
+                ..VersionMessage::default()
+            }),
+            1,
+        )
+        .expect_err("self-connection should disconnect admitted inbound peer");
+    let status = dispatch(
+        &mut context,
+        MethodCall::OpenBitcoinNetworkStatus(OpenBitcoinNetworkStatusRequest::default()),
+    )
+    .expect("network status");
+
+    // Assert
+    assert_eq!(error.to_string(), "peer 51 connected to self");
+    let inbound = &status["inbound"]["value"];
+    assert_eq!(inbound["rejected_inbound_peers"], json!(1));
+    assert_eq!(inbound["self_connection_rejects"], json!(1));
+    assert_eq!(
+        inbound["latest_admission_event"]["value"]["outcome"],
+        json!("rejected")
+    );
+    assert_eq!(
+        inbound["latest_admission_event"]["value"]["reason"],
+        json!("self_connection")
+    );
+    assert_eq!(
+        inbound["latest_admission_event"]["value"]["slot_class"],
+        json!("ordinary")
+    );
+    assert_eq!(
+        inbound["latest_permission_decision"]["state"],
+        json!("unavailable")
     );
 }
 

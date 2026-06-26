@@ -92,6 +92,7 @@ fn execute_support_bundle(
     let full_sync_evidence = derive_full_sync_evidence(&status, &live_smoke);
     let redaction = redaction_summary();
     let soak_collection = collect_soak_support_evidence(config_resolution, &redaction);
+    // Phase 76 invariant: resource bounds are recorded as compact status summaries only.
     let resource_bound_evidence = collect_resource_bound_support_evidence(&status, &output_dir);
     let recovery_evidence = RecoverySupportEvidence::from_status(&status.recovery_evidence);
     let store_health = collect_store_health(&status);

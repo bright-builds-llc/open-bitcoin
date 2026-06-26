@@ -7,8 +7,8 @@
 // - packages/bitcoin-knots/test/functional/p2p_handshake.py
 // - packages/bitcoin-knots/test/functional/p2p_initial_headers_sync.py
 
+use core::net::IpAddr;
 use std::collections::BTreeSet;
-use std::net::IpAddr;
 
 use open_bitcoin_chainstate::ChainPosition;
 use open_bitcoin_consensus::{check_block_header, transaction_txid, transaction_wtxid};

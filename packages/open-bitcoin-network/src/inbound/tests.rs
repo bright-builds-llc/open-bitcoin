@@ -3,8 +3,8 @@
 // - packages/bitcoin-knots/src/net_processing.cpp
 // - packages/bitcoin-knots/test/functional/p2p_handshake.py
 
+use core::net::IpAddr;
 use std::collections::BTreeSet;
-use std::net::IpAddr;
 
 use crate::PeerId;
 
@@ -170,6 +170,132 @@ fn all_permission_keeps_bounded_effects_active_and_relay_like_effects_inactive()
             "inactive_blockfilters",
         ],
     );
+    assert!(set.contains_token(PeerPermissionToken::All));
+}
+
+#[test]
+fn permission_tokens_and_directions_use_knots_labels() {
+    // Arrange
+    let tokens = [
+        (PeerPermissionToken::BloomFilter, "bloomfilter"),
+        (PeerPermissionToken::BlockFilters, "blockfilters"),
+        (PeerPermissionToken::NoBan, "noban"),
+        (PeerPermissionToken::ForceRelay, "forcerelay"),
+        (PeerPermissionToken::Relay, "relay"),
+        (PeerPermissionToken::Mempool, "mempool"),
+        (PeerPermissionToken::Download, "download"),
+        (PeerPermissionToken::Addr, "addr"),
+        (PeerPermissionToken::ForceInbound, "forceinbound"),
+        (PeerPermissionToken::All, "all"),
+    ];
+    let directions = [
+        (PeerPermissionDirection::Inbound, "in"),
+        (PeerPermissionDirection::Outbound, "out"),
+    ];
+
+    // Act
+    let token_labels: Vec<&str> = tokens
+        .into_iter()
+        .map(|(token, _label)| token.as_str())
+        .collect();
+    let direction_labels: Vec<&str> = directions
+        .into_iter()
+        .map(|(direction, _label)| direction.as_str())
+        .collect();
+
+    // Assert
+    assert_eq!(
+        token_labels,
+        vec![
+            "bloomfilter",
+            "blockfilters",
+            "noban",
+            "forcerelay",
+            "relay",
+            "mempool",
+            "download",
+            "addr",
+            "forceinbound",
+            "all",
+        ],
+    );
+    assert_eq!(direction_labels, vec!["in", "out"]);
+}
+
+#[test]
+fn permission_class_accessors_preserve_sanitized_domain_values() {
+    // Arrange
+    let parsed = ParsedPeerPermissionClass::parse(
+        "  trusted-download  ",
+        ["203.0.113.20"],
+        ["in", "download"],
+    );
+
+    // Act
+    let class = match parsed {
+        Ok(class) => class,
+        Err(error) => panic!("expected permission class to parse: {error:?}"),
+    };
+
+    // Assert
+    assert_eq!(class.name().as_str(), "trusted-download");
+    assert_eq!(class.addresses(), &[test_ip("203.0.113.20")]);
+    assert!(
+        class
+            .permissions()
+            .contains_token(PeerPermissionToken::Download)
+    );
+}
+
+#[test]
+fn permission_class_rejects_empty_name_and_empty_address_list() {
+    // Arrange
+    let empty_name = "";
+    let empty_addresses: [&str; 0] = [];
+
+    // Act
+    let name_result =
+        ParsedPeerPermissionClass::parse(empty_name, ["203.0.113.21"], ["in", "download"]);
+    let address_result =
+        ParsedPeerPermissionClass::parse("missing-address", empty_addresses, ["in", "download"]);
+
+    // Assert
+    let Err(name_error) = name_result else {
+        panic!("expected empty class name rejection");
+    };
+    assert_eq!(name_error.field(), "inbound.permission_classes[].name");
+    assert_eq!(name_error.reason(), "empty_class_name");
+    let Err(address_error) = address_result else {
+        panic!("expected empty address list rejection");
+    };
+    assert_eq!(
+        address_error.field(),
+        "inbound.permission_classes[].addresses[]",
+    );
+    assert_eq!(address_error.reason(), "empty_address_list");
+}
+
+#[test]
+fn permission_parse_error_exposes_operator_safe_message_and_display_text() {
+    // Arrange
+    let invalid_address = "peer.example";
+
+    // Act
+    let parsed =
+        ParsedPeerPermissionClass::parse("bad-address", [invalid_address], ["in", "download"]);
+
+    // Assert
+    let Err(error) = parsed else {
+        panic!("expected invalid address rejection");
+    };
+    assert_eq!(
+        error.message(),
+        "peer permission class address must be a literal IP address: peer.example",
+    );
+    assert_eq!(
+        format!("{error}"),
+        "inbound.permission_classes[].addresses[] contains invalid token peer.example: peer permission class address must be a literal IP address: peer.example",
+    );
 }
 
 #[test]
@@ -288,6 +414,26 @@ fn ordinary_admission_request_defaults_to_empty_permission_evidence() {
     );
     assert!(active_effects.is_empty());
     assert!(inactive_effects.is_empty());
+}
+
+#[test]
+fn admission_request_rebinds_slot_class_when_permission_decision_changes() {
+    // Arrange
+    let mut request = InboundAdmissionRequest::ordinary(17, "127.0.0.1:20017");
+
+    // Act
+    request.set_permission_decision(protected_permission_decision());
+
+    // Assert
+    assert_eq!(
+        request.connection_class,
+        PeerConnectionClass::ProtectedInbound,
+    );
+    assert_eq!(request.slot_class, InboundAdmissionSlotClass::Reserved);
+    assert_eq!(
+        request.effective_slot_class(),
+        InboundAdmissionSlotClass::Reserved,
+    );
 }
 
 #[test]
@@ -478,6 +624,24 @@ fn connection_class_labels_and_slot_mapping_are_stable() {
     for (connection_class, _label, slot_class) in classes {
         assert_eq!(connection_class.slot_class(), slot_class);
     }
+}
+
+#[test]
+fn admission_slot_class_labels_are_stable() {
+    // Arrange
+    let slot_classes = [
+        (InboundAdmissionSlotClass::Ordinary, "ordinary"),
+        (InboundAdmissionSlotClass::Reserved, "reserved"),
+    ];
+
+    // Act
+    let labels: Vec<&str> = slot_classes
+        .into_iter()
+        .map(|(slot_class, _label)| slot_class.as_str())
+        .collect();
+
+    // Assert
+    assert_eq!(labels, vec!["ordinary", "reserved"]);
 }
 
 #[test]
