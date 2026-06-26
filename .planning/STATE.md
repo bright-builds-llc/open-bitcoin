@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Inbound Peer Serving and Network Participation Boundary
-status: executing
-stopped_at: Completed 94-07-PLAN.md
-last_updated: "2026-06-26T22:51:54.454Z"
+status: verifying
+stopped_at: Completed 94-08-PLAN.md
+last_updated: "2026-06-26T23:35:39.359Z"
 last_activity: 2026-06-26
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 40
-  completed_plans: 39
-  percent: 98
+  completed_plans: 40
+  percent: 100
 ---
 
 # Project State
@@ -26,12 +26,12 @@ See: `.planning/PROJECT.md` (updated 2026-06-26)
 ## Current Position
 
 Milestone: v1.9 Inbound Peer Serving and Network Participation Boundary
-Phase: 94 (DoS and Resource Governance) — EXECUTING
+Phase: 94 (DoS and Resource Governance) — COMPLETE
 Plan: 8 of 8
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-26
 
-Progress: [#########-] 85%
+Progress: [##########] 100%
 
 ## Performance Metrics
 
@@ -49,7 +49,7 @@ Progress: [#########-] 85%
 | 91 | Peer Permissions and Connection Classes | PERM-01, PERM-02, PERM-03, PERM-04 | Complete |
 | 92 | Address Advertisement and Discovery Boundaries | ADDR-01, ADDR-02, ADDR-03, ADDR-04 | Complete |
 | 93 | Eviction, Ban, and Misbehavior Policy | EVICT-01, EVICT-02, EVICT-03, EVICT-04 | Complete |
-| 94 | DoS and Resource Governance | DOS-01, DOS-02, DOS-03, DOS-04, DOS-05 | In Progress |
+| 94 | DoS and Resource Governance | DOS-01, DOS-02, DOS-03, DOS-04, DOS-05 | Complete |
 | 95 | Network Participation Evidence and Release Boundary | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05, BOUND-06 | Pending |
 
 **Recent Trend:**
@@ -76,6 +76,7 @@ Progress: [#########-] 85%
 | Phase 94 P05 | 65m 12s | 3 tasks | 20 files |
 | Phase 94 P06 | 22m 44s | 2 tasks | 5 files |
 | Phase 94 P07 | 21m 14s | 2 tasks | 7 files |
+| Phase 94 P08 | 30m 15s | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -132,6 +133,8 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 - [Phase 94]: Document Phase 94 operator review as bounded loopback/regtest UAT with exact repo-local Cargo and Bazel command forms.
 - [Phase 94]: Register v1-9-dos-resource-governance as the DOS-01 through DOS-05 parity surface with explicit Knots anchors.
 - [Phase 94]: Preserve the Phase 94 no-claim boundary sentence across parity docs and index JSON.
+- [Phase 94]: Validate actual ManagedRpcContext structured-log append wiring, not only helper projection strings.
+- [Phase 94]: Keep Phase 94 verification local/static and wired immediately after Phase 93 in the default verifier.
 
 ### Pending Todos
 
@@ -152,6 +155,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-26T22:51:54.451Z
-Stopped at: Completed 94-07-PLAN.md
+Last session: 2026-06-26T23:35:39.356Z
+Stopped at: Completed 94-08-PLAN.md
 Resume file: None
