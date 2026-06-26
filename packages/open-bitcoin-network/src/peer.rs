@@ -380,21 +380,12 @@ impl PeerManager {
             }
             WireNetworkMessage::Inv(inventory) => self.handle_inventory(peer_id, inventory),
             WireNetworkMessage::GetHeaders { locator, stop_hash } => {
-                let headers = self.headers.headers_after_locator(
-                    &locator,
-                    stop_hash,
-                    crate::MAX_HEADERS_RESULTS,
-                );
-                Ok(vec![PeerAction::Send(WireNetworkMessage::Headers(
-                    HeadersMessage { headers },
-                ))])
+                self.handle_getheaders(peer_id, locator, stop_hash)
             }
             WireNetworkMessage::Headers(message) => self.handle_headers(peer_id, message),
             WireNetworkMessage::GetAddr => self.handle_getaddr(peer_id, timestamp),
             WireNetworkMessage::Addr(addresses) => self.handle_addr(peer_id, addresses, timestamp),
-            WireNetworkMessage::GetData(inventory) => {
-                Ok(vec![PeerAction::ServeInventory(inventory.inventory)])
-            }
+            WireNetworkMessage::GetData(inventory) => self.handle_getdata(peer_id, inventory),
             WireNetworkMessage::NotFound(inventory) => {
                 let peer = Self::peer_mut(&mut self.peers, peer_id)?;
                 for item in inventory.inventory {
@@ -479,66 +470,6 @@ impl PeerManager {
         Ok(Vec::new())
     }
 
-    fn handle_inventory(
-        &mut self,
-        peer_id: PeerId,
-        inventory: InventoryList,
-    ) -> Result<Vec<PeerAction>, NetworkError> {
-        let locator = self.headers.locator();
-        let mut tx_requests = Vec::new();
-        let mut request_headers = false;
-
-        let peer = Self::peer_mut(&mut self.peers, peer_id)?;
-
-        for item in inventory.inventory {
-            match item.inventory_type {
-                InventoryType::Block | InventoryType::WitnessBlock => {
-                    let block_hash = BlockHash::from(item.object_hash);
-                    if !self.known_blocks.contains(&block_hash) {
-                        request_headers = true;
-                    }
-                }
-                InventoryType::Transaction => {
-                    let txid = Txid::from(item.object_hash);
-                    if !peer.remote_wtxidrelay
-                        && !self.known_txids.contains(&txid)
-                        && !peer.requested_txids.contains(&txid)
-                    {
-                        peer.requested_txids.insert(txid);
-                        tx_requests.push(item);
-                    }
-                }
-                InventoryType::WitnessTransaction => {
-                    let wtxid = Wtxid::from(item.object_hash);
-                    if peer.remote_wtxidrelay
-                        && !self.known_wtxids.contains(&wtxid)
-                        && !peer.requested_wtxids.contains(&wtxid)
-                    {
-                        peer.requested_wtxids.insert(wtxid);
-                        tx_requests.push(item);
-                    }
-                }
-                _ => {}
-            }
-        }
-
-        let mut actions = Vec::new();
-        if request_headers && !peer.getheaders_in_flight {
-            peer.getheaders_in_flight = true;
-            peer.sync_started = true;
-            actions.push(PeerAction::Send(WireNetworkMessage::GetHeaders {
-                locator,
-                stop_hash: BlockHash::from_byte_array([0_u8; 32]),
-            }));
-        }
-        if !tx_requests.is_empty() {
-            actions.push(PeerAction::Send(WireNetworkMessage::GetData(
-                InventoryList::new(tx_requests),
-            )));
-        }
-        Ok(actions)
-    }
-
     fn handle_headers(
         &mut self,
         peer_id: PeerId,
@@ -583,7 +514,9 @@ impl PeerManager {
 
         let best_height = self.headers.best_height();
         let locator = self.headers.locator();
-        let max_blocks_in_flight_per_peer = self.max_blocks_in_flight_per_peer;
+        let max_blocks_in_flight_per_peer = self
+            .max_blocks_in_flight_per_peer
+            .min(crate::PHASE94_MAX_INBOUND_BLOCK_REQUESTS_PER_PEER);
         let peer = Self::peer_mut(&mut self.peers, peer_id)?;
         peer.getheaders_in_flight = false;
 

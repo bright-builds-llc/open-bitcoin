@@ -13,15 +13,18 @@ use std::collections::BTreeSet;
 use open_bitcoin_chainstate::ChainPosition;
 use open_bitcoin_consensus::{check_block_header, transaction_txid, transaction_wtxid};
 use open_bitcoin_primitives::{
-    Block, BlockHash, BlockHeader, Hash32, MerkleRoot, NetworkAddress, NetworkMagic,
+    Block, BlockHash, BlockHeader, Hash32, MerkleRoot, MessageCommand, NetworkAddress, NetworkMagic,
 };
 
 use crate::{
     ConnectionRole, DisconnectReason, HeaderStore, HeaderSyncPolicy, HeadersMessage,
     InboundAdmissionRejectionReason, InboundAdmissionSlotClass, InboundHandshakeState,
-    InboundPeerRecord, InboundPermissionDecision, InventoryList, LocalPeerConfig,
+    InboundPeerRecord, InboundPermissionDecision, InventoryList, LocalPeerConfig, NetworkError,
+    PHASE94_MAX_HEADER_LOCATOR_HASHES, PHASE94_MAX_INBOUND_BLOCK_REQUESTS_PER_PEER,
+    PHASE94_MAX_INBOUND_REQUEST_INVENTORY_ITEMS, PHASE94_MAX_INBOUND_TX_REQUESTS_PER_PEER,
     ParsedPeerPermissionClass, PeerAction, PeerConnectionClass, PeerId, PeerManager,
-    PeerPermissionClassRegistry, ServiceFlags, WireNetworkMessage,
+    PeerPermissionClassRegistry, PermissionEffectLabel, RequestPressureInput,
+    ResourceGovernanceDecision, ResourceGovernancePolicy, ServiceFlags, WireNetworkMessage,
 };
 use open_bitcoin_primitives::{InventoryType, InventoryVector};
 
@@ -30,6 +33,8 @@ use crate::address::{
     AddressNetworkKind, AddressSourceKind, GetAddrResponseDecision, LocalAdvertisementDecision,
     PHASE92_GETADDR_RESPONSE_LIMIT, PHASE92_LEARNED_ADDR_BATCH_LIMIT, RoutabilityClass,
 };
+
+use super::DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER;
 
 fn local_config() -> LocalPeerConfig {
     LocalPeerConfig {
@@ -515,6 +520,78 @@ fn block_inventory_triggers_getheaders_then_getdata_for_missing_blocks() {
 }
 
 #[test]
+fn inbound_inv_over_tx_request_cap_returns_resource_limit_disconnect() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_inbound_peer(104).expect("inbound peer");
+    let inventory = transaction_inventory(PHASE94_MAX_INBOUND_TX_REQUESTS_PER_PEER + 1);
+
+    // Act
+    let actions = manager
+        .handle_message(104, WireNetworkMessage::Inv(inventory), 1)
+        .expect("inventory cap should be handled as a disconnect action");
+
+    // Assert
+    assert_resource_limit_disconnect(&actions);
+    let peer = manager.peer_state(104).expect("peer state");
+    assert!(peer.requested_txids.is_empty());
+    assert!(peer.requested_wtxids.is_empty());
+}
+
+#[test]
+fn inbound_getdata_over_inventory_cap_disconnects_without_serving_inventory() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_inbound_peer(105).expect("inbound peer");
+    let inventory = block_inventory(PHASE94_MAX_INBOUND_REQUEST_INVENTORY_ITEMS + 1);
+
+    // Act
+    let actions = manager
+        .handle_message(105, WireNetworkMessage::GetData(inventory), 1)
+        .expect("getdata cap should be handled as a disconnect action");
+
+    // Assert
+    assert_resource_limit_disconnect(&actions);
+    assert!(
+        !actions
+            .iter()
+            .any(|action| matches!(action, PeerAction::ServeInventory(_)))
+    );
+}
+
+#[test]
+fn inbound_getheaders_over_locator_cap_disconnects_without_header_response() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_inbound_peer(108).expect("inbound peer");
+    let locator = open_bitcoin_primitives::BlockLocator {
+        block_hashes: (0..=PHASE94_MAX_HEADER_LOCATOR_HASHES)
+            .map(hash_from_index)
+            .collect(),
+    };
+
+    // Act
+    let actions = manager
+        .handle_message(
+            108,
+            WireNetworkMessage::GetHeaders {
+                locator,
+                stop_hash: BlockHash::from_byte_array([0_u8; 32]),
+            },
+            1,
+        )
+        .expect("getheaders cap should be handled as a disconnect action");
+
+    // Assert
+    assert_resource_limit_disconnect(&actions);
+    assert!(
+        !actions
+            .iter()
+            .any(|action| matches!(action, PeerAction::Send(WireNetworkMessage::Headers(_))))
+    );
+}
+
+#[test]
 fn headers_response_caps_block_requests_to_in_flight_limit() {
     // Arrange
     let mut manager = PeerManager::with_max_blocks_in_flight(local_config(), 1);
@@ -558,6 +635,133 @@ fn headers_response_caps_block_requests_to_in_flight_limit() {
             .requested_blocks
             .contains(&open_bitcoin_consensus::block_hash(&second_header))
     );
+}
+
+#[test]
+fn headers_to_block_requests_never_exceed_phase94_inflight_cap() {
+    // Arrange
+    assert_phase94_block_cap_matches_peer_default();
+    let mut manager = PeerManager::new(local_config());
+    manager.add_inbound_peer(106).expect("inbound peer");
+    let headers = header_chain(PHASE94_MAX_INBOUND_BLOCK_REQUESTS_PER_PEER + 1);
+
+    // Act
+    let actions = manager
+        .handle_headers_with_policy(
+            106,
+            HeadersMessage { headers },
+            HeaderSyncPolicy::HeadersAndBlocks,
+            |store: &mut HeaderStore, header: &BlockHeader| store.insert_header(header.clone()),
+        )
+        .expect("headers should be processed");
+
+    // Assert
+    let [PeerAction::Send(WireNetworkMessage::GetData(inventory))] = actions.as_slice() else {
+        panic!("expected capped getdata action");
+    };
+    assert_eq!(
+        inventory.inventory.len(),
+        PHASE94_MAX_INBOUND_BLOCK_REQUESTS_PER_PEER,
+    );
+    assert_eq!(
+        manager
+            .peer_state(106)
+            .expect("peer state")
+            .requested_blocks
+            .len(),
+        PHASE94_MAX_INBOUND_BLOCK_REQUESTS_PER_PEER,
+    );
+}
+
+#[test]
+fn request_pressure_input_records_bounded_permission_effect_evidence() {
+    // Arrange
+    let permission_decision =
+        permission_decision(["in", "download", "addr", "noban", "forceinbound"]);
+    let mut manager = PeerManager::new(local_config());
+    manager
+        .add_inbound_peer_record(permissioned_inbound_record(107, permission_decision))
+        .expect("permissioned inbound peer should be added");
+    let peer = manager.peer_state(107).expect("peer state");
+    let (active_permission_effects, inactive_permission_effects) =
+        super::inventory_state::permission_effect_vectors(peer);
+    let input = RequestPressureInput {
+        requested_txids_in_flight: PHASE94_MAX_INBOUND_TX_REQUESTS_PER_PEER + 1,
+        active_permission_effects: active_permission_effects.clone(),
+        inactive_permission_effects,
+        ..RequestPressureInput::default()
+    };
+
+    // Act
+    let policy_decision = ResourceGovernancePolicy::default().decide_request(input.clone());
+    let actions = manager
+        .handle_message(
+            107,
+            WireNetworkMessage::Inv(transaction_inventory(
+                PHASE94_MAX_INBOUND_TX_REQUESTS_PER_PEER + 1,
+            )),
+            1,
+        )
+        .expect("permissioned over-cap inventory should disconnect");
+
+    // Assert
+    assert!(
+        input
+            .active_permission_effects
+            .contains(&PermissionEffectLabel::DownloadServingPolicyInput)
+    );
+    assert!(
+        input
+            .active_permission_effects
+            .contains(&PermissionEffectLabel::AddressResponsePolicyInput)
+    );
+    assert!(
+        input
+            .active_permission_effects
+            .contains(&PermissionEffectLabel::EvictionPolicyProtected)
+    );
+    assert!(
+        input
+            .active_permission_effects
+            .contains(&PermissionEffectLabel::MisbehaviorPolicyProtected)
+    );
+    assert!(
+        input
+            .active_permission_effects
+            .contains(&PermissionEffectLabel::AdmissionProtected)
+    );
+    let ResourceGovernanceDecision::Disconnect(event) = policy_decision else {
+        panic!("expected request-cap disconnect decision");
+    };
+    assert_eq!(event.label, "request_cap_reached");
+    assert_resource_limit_disconnect(&actions);
+}
+
+#[test]
+fn deferred_relay_commands_remain_absent_from_peer_message_surface() {
+    // Arrange
+    let deferred_commands = [
+        "mempool",
+        "cmpctblock",
+        "getcfheaders",
+        "getcfcheckpt",
+        "filterload",
+        "filteradd",
+        "filterclear",
+    ];
+
+    for command in deferred_commands {
+        let command = MessageCommand::new(command).expect("test command should be valid");
+
+        // Act
+        let result = WireNetworkMessage::decode_payload(&command, &[]);
+
+        // Assert
+        assert!(matches!(
+            result,
+            Err(NetworkError::UnknownCommand(rejected)) if rejected == command.as_str()
+        ));
+    }
 }
 
 #[test]
@@ -1971,6 +2175,50 @@ fn assert_resource_limit_disconnect(actions: &[PeerAction]) {
         actions,
         [PeerAction::Disconnect(DisconnectReason::ResourceLimit)]
     );
+}
+
+#[rustfmt::skip]
+fn assert_phase94_block_cap_matches_peer_default() {
+    assert_eq!(PHASE94_MAX_INBOUND_BLOCK_REQUESTS_PER_PEER, DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER);
+}
+
+fn transaction_inventory(count: usize) -> InventoryList {
+    InventoryList::new(
+        (0..count)
+            .map(|index| InventoryVector {
+                inventory_type: InventoryType::Transaction,
+                object_hash: hash_from_index(index),
+            })
+            .collect(),
+    )
+}
+
+fn block_inventory(count: usize) -> InventoryList {
+    InventoryList::new(
+        (0..count)
+            .map(|index| InventoryVector {
+                inventory_type: InventoryType::Block,
+                object_hash: hash_from_index(index),
+            })
+            .collect(),
+    )
+}
+
+fn header_chain(count: usize) -> Vec<BlockHeader> {
+    let mut headers = Vec::new();
+    let mut previous = BlockHash::from_byte_array([0_u8; 32]);
+    for index in 0..count {
+        let next = header(previous, index as u32 + 1);
+        previous = open_bitcoin_consensus::block_hash(&next);
+        headers.push(next);
+    }
+    headers
+}
+
+fn hash_from_index(index: usize) -> Hash32 {
+    let mut bytes = [0_u8; 32];
+    bytes[..8].copy_from_slice(&(index as u64).to_le_bytes());
+    Hash32::from_byte_array(bytes)
 }
 
 fn ipv4_mapped_address_bytes(octets: [u8; 4]) -> [u8; 16] {
