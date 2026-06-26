@@ -24,10 +24,10 @@ Requirements for the active v1.9 milestone. Each maps to exactly one roadmap pha
 
 ### Address Advertisement
 
-- [ ] **ADDR-01**: The node can derive local listen address candidates and advertise only configured, reachable, and privacy-safe addresses according to scoped Knots parity rules.
-- [ ] **ADDR-02**: The node can answer inbound address requests within bounded cache, count, age, and permission rules without claiming full address-relay network participation.
-- [ ] **ADDR-03**: Learned peer addresses enter a typed address-management contract with routability, source, freshness, and persistence boundaries that can be verified deterministically.
-- [ ] **ADDR-04**: Documentation and release checks distinguish local listener advertisement, inbound `getaddr` response behavior, peer discovery, and full address relay.
+- [x] **ADDR-01**: The node can derive local listen address candidates and advertise only configured, reachable, and privacy-safe addresses according to scoped Knots parity rules.
+- [x] **ADDR-02**: The node can answer inbound address requests within bounded cache, count, age, and permission rules without claiming full address-relay network participation.
+- [x] **ADDR-03**: Learned peer addresses enter a typed address-management contract with routability, source, freshness, and persistence boundaries that can be verified deterministically.
+- [x] **ADDR-04**: Documentation and release checks distinguish local listener advertisement, inbound `getaddr` response behavior, peer discovery, and full address relay.
 
 ### Eviction And Ban Policy
 
@@ -99,10 +99,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PERM-02 | Phase 91 | Complete |
 | PERM-03 | Phase 91 | Complete |
 | PERM-04 | Phase 91 | Complete |
-| ADDR-01 | Phase 92 | Pending |
-| ADDR-02 | Phase 92 | Pending |
-| ADDR-03 | Phase 92 | Pending |
-| ADDR-04 | Phase 92 | Pending |
+| ADDR-01 | Phase 92 | Complete |
+| ADDR-02 | Phase 92 | Complete |
+| ADDR-03 | Phase 92 | Complete |
+| ADDR-04 | Phase 92 | Complete |
 | EVICT-01 | Phase 93 | Pending |
 | EVICT-02 | Phase 93 | Pending |
 | EVICT-03 | Phase 93 | Pending |
@@ -126,4 +126,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-06-25*
-*Last updated: 2026-06-25 after v1.9 roadmap creation*
+*Last updated: 2026-06-26 after Phase 92 completion*

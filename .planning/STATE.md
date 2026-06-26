@@ -3,35 +3,35 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Inbound Peer Serving and Network Participation Boundary
 status: executing
-stopped_at: Phase 92 context gathered
-last_updated: "2026-06-26T05:22:49.568Z"
-last_activity: 2026-06-26 -- Phase 92 execution started
+stopped_at: Phase 92 complete; Phase 93 pending
+last_updated: "2026-06-26T10:47:04.485Z"
+last_activity: 2026-06-26 -- Phase 92 completed and verified
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 29
-  completed_plans: 20
-  percent: 69
+  completed_plans: 29
+  percent: 50
 ---
 
 # Project State
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-06-25)
+See: `.planning/PROJECT.md` (updated 2026-06-26)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 92 — Address Advertisement and Discovery Boundaries
+**Current focus:** Phase 93 — Eviction, Ban, and Misbehavior Policy
 
 ## Current Position
 
 Milestone: v1.9 Inbound Peer Serving and Network Participation Boundary
-Phase: 92 (Address Advertisement and Discovery Boundaries) — EXECUTING
-Plan: 1 of 9
-Status: Executing Phase 92
-Last activity: 2026-06-26 -- Phase 92 execution started
+Phase: 93 (Eviction, Ban, and Misbehavior Policy) — PENDING
+Plan: Not started
+Status: Phase 92 complete; Phase 93 ready for planning
+Last activity: 2026-06-26 -- Phase 92 completed and verified
 
-Progress: [#######---] 69%
+Progress: [#####-----] 50%
 
 ## Performance Metrics
 
@@ -47,7 +47,7 @@ Progress: [#######---] 69%
 |-------|------|--------------|--------|
 | 90 | Inbound Listener and Admission Policy | INB-01, INB-02, INB-03, INB-04, INB-05 | Complete |
 | 91 | Peer Permissions and Connection Classes | PERM-01, PERM-02, PERM-03, PERM-04 | Complete |
-| 92 | Address Advertisement and Discovery Boundaries | ADDR-01, ADDR-02, ADDR-03, ADDR-04 | Planned |
+| 92 | Address Advertisement and Discovery Boundaries | ADDR-01, ADDR-02, ADDR-03, ADDR-04 | Complete |
 | 93 | Eviction, Ban, and Misbehavior Policy | EVICT-01, EVICT-02, EVICT-03, EVICT-04 | Pending |
 | 94 | DoS and Resource Governance | DOS-01, DOS-02, DOS-03, DOS-04, DOS-05 | Pending |
 | 95 | Network Participation Evidence and Release Boundary | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05, BOUND-06 | Pending |
@@ -102,10 +102,13 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 - [Phase 91]: Treat relay, forcerelay, mempool, bloomfilter, blockfilters, and all-expansion permission data as inactive labels that do not alter peer message handling, service bits, or compact-block behavior.
 - [Phase 91]: Document permission-class UAT with repo-local Cargo and Bazel commands and register `v1-9-peer-permissions-connection-classes` as the PERM-01 through PERM-04 parity surface.
 - [Phase 91]: Guard permission evidence, inactive/deferred labels, parity roots, source breadcrumbs, UAT commands, verifier order, support redaction, and no-claim language with a deterministic fixed-file checker.
+- [Phase 92]: Scope local listener advertisement, legacy `getaddr` responses, and learned-address evidence without claiming full address relay or broader public-network discovery parity.
+- [Phase 92]: Preserve aggregate learned-address rejection counts separately from bounded rejection samples so over-cap `addr` batches remain visible in managed status.
+- [Phase 92]: Route empty-payload peer messages through shared trailing-payload validation so `verack`, `wtxidrelay`, `sendheaders`, and `getaddr` reject non-empty payloads consistently.
 
 ### Pending Todos
 
-- Run Phase 91 code review and phase verification before advancing to Phase 92.
+- Plan Phase 93 eviction, ban, and misbehavior policy before execution.
 - Keep v1.9 phase directories numbered 90+ under `.planning/phases/`; historical phase directories remain tracked because verifier scripts still depend on selected phase evidence.
 - Keep repo-local Cargo and Bazel command forms in UAT guidance:
   - `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- ...`
