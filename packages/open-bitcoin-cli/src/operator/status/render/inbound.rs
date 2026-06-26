@@ -6,7 +6,7 @@
 use open_bitcoin_node::status::{
     FieldAvailability, InboundAddressDecisionEvent, InboundAddressEvidenceEntry,
     InboundAdmissionEvent, InboundPeerPolicyEvent, InboundPeerServingStatus,
-    InboundPermissionDecisionEvent,
+    InboundPermissionDecisionEvent, InboundResourceGovernanceEvent,
 };
 
 pub(super) fn inbound_status_text(status: &FieldAvailability<InboundPeerServingStatus>) -> String {
@@ -18,7 +18,7 @@ pub(super) fn inbound_status_text(status: &FieldAvailability<InboundPeerServingS
 
 fn available_inbound_status_text(status: &InboundPeerServingStatus) -> String {
     format!(
-        "listener_state={} bound_endpoints={} preflight_reason={} admitted_inbound_peers={} rejected_inbound_peers={} handshake={} duplicate_rejects={} self_connection_rejects={} cap_rejects={} reserved_slot_rejects={} permission_class={} permissioned_inbound_peers={} protected_inbound_peers={} active_permission_effects={} inactive_permission_effects={} latest_permission_decision={} latest_admission_event={} {} {}",
+        "listener_state={} bound_endpoints={} preflight_reason={} admitted_inbound_peers={} rejected_inbound_peers={} handshake={} duplicate_rejects={} self_connection_rejects={} cap_rejects={} reserved_slot_rejects={} permission_class={} permissioned_inbound_peers={} protected_inbound_peers={} active_permission_effects={} inactive_permission_effects={} latest_permission_decision={} latest_admission_event={} {} {} {}",
         status.listener_state,
         bound_endpoints_text(&status.bound_endpoints),
         status.preflight_reason,
@@ -38,6 +38,7 @@ fn available_inbound_status_text(status: &InboundPeerServingStatus) -> String {
         latest_event_text(&status.latest_admission_event),
         address_boundary_text(status),
         peer_policy_text(status),
+        resource_governance_text(status),
     )
 }
 
@@ -186,5 +187,36 @@ fn peer_policy_decision_text(event: &InboundPeerPolicyEvent) -> String {
     format!(
         "outcome={} reason={} label={} source={} message={}",
         event.outcome, event.reason, event.label, event.source, event.message
+    )
+}
+
+fn resource_governance_text(status: &InboundPeerServingStatus) -> String {
+    format!(
+        "resource evidence: resource_pressure_events={} read_queue_pressure_events={} write_queue_pressure_events={} request_cap_events={} payload_rejections={} timeout_disconnects={} churn_rejections={} reconnect_suppressions={} latest resource governance decision={}",
+        status.resource_pressure_events,
+        status.read_queue_pressure_events,
+        status.write_queue_pressure_events,
+        status.request_cap_events,
+        status.payload_rejections,
+        status.timeout_disconnects,
+        status.churn_rejections,
+        status.reconnect_suppressions,
+        latest_resource_governance_decision_text(&status.latest_resource_governance_decision),
+    )
+}
+
+fn latest_resource_governance_decision_text(
+    event: &FieldAvailability<InboundResourceGovernanceEvent>,
+) -> String {
+    match event {
+        FieldAvailability::Available(event) => resource_governance_decision_text(event),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
+fn resource_governance_decision_text(event: &InboundResourceGovernanceEvent) -> String {
+    format!(
+        "outcome={} reason={} label={} source={} message={} next_action={}",
+        event.outcome, event.reason, event.label, event.source, event.message, event.next_action
     )
 }

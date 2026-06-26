@@ -7,11 +7,11 @@ use open_bitcoin_node::{
         BestKnownTipSource, BestKnownTipStatus, ConfigStatus, FieldAvailability,
         InboundAddressDecisionEvent, InboundAddressEvidenceEntry, InboundAdmissionEvent,
         InboundHandshakeStatusCounts, InboundPeerPolicyEvent, InboundPeerServingStatus,
-        InboundPermissionDecisionEvent, MempoolStatus, NoProgressDiagnosis,
-        NoProgressThresholdEvidence, NoProgressThresholdState, NodeRuntimeState, NodeStatus,
-        OpenBitcoinStatusSnapshot, PeerContributionEvidence, PeerContributionKind, PeerCounts,
-        PeerStatus, PeerTelemetry, PeerTipAgreement, PeerTipAgreementStatus,
-        ProgressCreditEvidence, ProgressCreditKind, ProgressWindowEvidence,
+        InboundPermissionDecisionEvent, InboundResourceGovernanceEvent, MempoolStatus,
+        NoProgressDiagnosis, NoProgressThresholdEvidence, NoProgressThresholdState,
+        NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot, PeerContributionEvidence,
+        PeerContributionKind, PeerCounts, PeerStatus, PeerTelemetry, PeerTipAgreement,
+        PeerTipAgreementStatus, ProgressCreditEvidence, ProgressCreditKind, ProgressWindowEvidence,
         RejectedProgressActivity, RejectedProgressActivityKind, ServiceLifecycleStatus,
         ServicePriorShutdownStatus, ServiceRestartResumeStatus, ServiceResumeProgressStatus,
         ServiceStaleInflightStatus, ServiceStatus, StallDiagnosisConfidence,
@@ -153,6 +153,65 @@ fn inbound_status_render_includes_phase93_peer_policy_evidence() {
     ] {
         assert!(rendered.contains(expected), "missing {expected}");
     }
+}
+
+#[test]
+fn inbound_status_render_includes_phase94_resource_governance_evidence() {
+    // Arrange
+    let mut snapshot = shared_sync_truth_snapshot();
+    let FieldAvailability::Available(inbound) = &mut snapshot.peers.inbound else {
+        panic!("inbound status fixture should be available");
+    };
+    inbound.resource_pressure_events = 8;
+    inbound.read_queue_pressure_events = 7;
+    inbound.write_queue_pressure_events = 6;
+    inbound.request_cap_events = 5;
+    inbound.payload_rejections = 1;
+    inbound.timeout_disconnects = 3;
+    inbound.churn_rejections = 2;
+    inbound.reconnect_suppressions = 4;
+    inbound.latest_resource_governance_decision =
+        FieldAvailability::available(InboundResourceGovernanceEvent {
+            outcome: "rejected".to_string(),
+            reason: "invalid_checksum".to_string(),
+            label: "payload_rejected".to_string(),
+            source: "source_inbound_resource_governance".to_string(),
+            message: "bounded payload rejected".to_string(),
+            next_action: "payload_rejected".to_string(),
+        });
+
+    // Act
+    let rendered = render_status(&snapshot, StatusRenderMode::Human).expect("human status");
+
+    // Assert
+    for expected in [
+        "resource evidence:",
+        "resource_pressure_events=8",
+        "read_queue_pressure_events=7",
+        "write_queue_pressure_events=6",
+        "request_cap_events=5",
+        "payload_rejections=1",
+        "timeout_disconnects=3",
+        "churn_rejections=2",
+        "reconnect_suppressions=4",
+        "latest resource governance decision=outcome=rejected reason=invalid_checksum label=payload_rejected source=source_inbound_resource_governance message=bounded payload rejected next_action=payload_rejected",
+    ] {
+        assert!(rendered.contains(expected), "missing {expected}");
+    }
+}
+
+#[test]
+fn inbound_status_render_preserves_unavailable_resource_decision_reason() {
+    // Arrange
+    let snapshot = shared_sync_truth_snapshot();
+
+    // Act
+    let rendered = render_status(&snapshot, StatusRenderMode::Human).expect("human status");
+
+    // Assert
+    assert!(rendered.contains(
+        "latest resource governance decision=Unavailable: inbound resource governance evidence unavailable"
+    ));
 }
 
 #[test]
