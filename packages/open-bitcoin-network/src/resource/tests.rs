@@ -7,16 +7,20 @@
 use open_bitcoin_primitives::{MessageCommand, MessageHeader, NetworkMagic};
 
 use super::{
-    INBOUND_MESSAGE_HEADER_LEN, InboundEnvelopeDecision, InboundEnvelopePolicy,
-    PHASE94_MAX_AGGREGATE_WRITE_QUEUE_BYTES, PHASE94_MAX_HEADER_LOCATOR_HASHES,
+    ConnectionChurnInput, INBOUND_MESSAGE_HEADER_LEN, InboundEnvelopeDecision,
+    InboundEnvelopePolicy, PHASE94_MAX_AGGREGATE_WRITE_QUEUE_BYTES,
+    PHASE94_MAX_CONNECTIONS_PER_CHURN_WINDOW, PHASE94_MAX_HEADER_LOCATOR_HASHES,
     PHASE94_MAX_INBOUND_BLOCK_REQUESTS_PER_PEER, PHASE94_MAX_INBOUND_REQUEST_INVENTORY_ITEMS,
     PHASE94_MAX_INBOUND_RUNTIME_PAYLOAD_BYTES, PHASE94_MAX_INBOUND_TX_REQUESTS_PER_PEER,
     PHASE94_MAX_PEER_QUEUED_MESSAGES, PHASE94_MAX_PEER_READ_QUEUE_BYTES,
-    PHASE94_MAX_PEER_WRITE_QUEUE_BYTES, QueuePressureInput, RequestPressureInput,
+    PHASE94_MAX_PEER_WRITE_QUEUE_BYTES, PHASE94_MAX_REPEATED_FAILURES_PER_WINDOW,
+    PHASE94_REPEATED_FAILURE_WINDOW_SECONDS, PHASE94_SLOW_HANDSHAKE_TIMEOUT_SECONDS,
+    QueuePressureInput, ReconnectSuppressionInput, RepeatedFailureInput, RequestPressureInput,
     ResourceGovernanceDecision, ResourceGovernancePolicy, ResourceGovernanceSource,
-    ResourcePressureLabel, ResourceViolationLabel, WireNetworkMessage,
+    ResourceLifecycleLabel, ResourcePressureLabel, ResourceTimeoutInput, ResourceViolationLabel,
+    WireNetworkMessage,
 };
-use crate::{InactivePermissionEffectLabel, PermissionEffectLabel};
+use crate::{InactivePermissionEffectLabel, InboundHandshakeState, PermissionEffectLabel};
 
 fn valid_ping_header_and_payload() -> (MessageHeader, Vec<u8>) {
     let wire = WireNetworkMessage::Ping { nonce: 7 }
@@ -70,6 +74,23 @@ fn assert_resource_event(
 ) {
     let event = match decision {
         ResourceGovernanceDecision::Accept => panic!("expected resource event"),
+        ResourceGovernanceDecision::Backpressure(event)
+        | ResourceGovernanceDecision::Disconnect(event)
+        | ResourceGovernanceDecision::RecordMisbehavior(event) => event,
+    };
+
+    assert_eq!(event.outcome, "resource_governance");
+    assert_eq!(event.label, label.as_str());
+    assert_eq!(event.next_action, next_action);
+}
+
+fn assert_lifecycle_event(
+    decision: ResourceGovernanceDecision,
+    label: ResourceLifecycleLabel,
+    next_action: &str,
+) {
+    let event = match decision {
+        ResourceGovernanceDecision::Accept => panic!("expected lifecycle event"),
         ResourceGovernanceDecision::Backpressure(event)
         | ResourceGovernanceDecision::Disconnect(event)
         | ResourceGovernanceDecision::RecordMisbehavior(event) => event,
@@ -328,6 +349,202 @@ fn inactive_relay_like_effects_do_not_raise_resource_caps() {
         request_decision,
         ResourcePressureLabel::RequestCapReached,
         "request_cap_reached",
+    );
+}
+
+#[test]
+fn slow_handshake_timeout_disconnects_with_stable_label() {
+    // Arrange
+    let policy = ResourceGovernancePolicy::default();
+    let input = ResourceTimeoutInput {
+        handshake_state: InboundHandshakeState::Handshaking,
+        connected_at_unix_seconds: 100,
+        last_activity_unix_seconds: 100,
+        now_unix_seconds: 100 + PHASE94_SLOW_HANDSHAKE_TIMEOUT_SECONDS + 1,
+    };
+
+    // Act
+    let decision = policy.decide_timeout(input);
+
+    // Assert
+    assert_lifecycle_event(
+        decision,
+        ResourceLifecycleLabel::SlowHandshake,
+        "timeout_disconnect",
+    );
+}
+
+#[test]
+fn established_idle_timeout_disconnects_with_stable_label() {
+    // Arrange
+    let policy = ResourceGovernancePolicy::default();
+    let input = ResourceTimeoutInput {
+        handshake_state: InboundHandshakeState::Established,
+        connected_at_unix_seconds: 100,
+        last_activity_unix_seconds: 200,
+        now_unix_seconds: 200 + policy.idle_peer_timeout_seconds + 1,
+    };
+
+    // Act
+    let decision = policy.decide_timeout(input);
+
+    // Assert
+    assert_lifecycle_event(
+        decision,
+        ResourceLifecycleLabel::IdlePeer,
+        "timeout_disconnect",
+    );
+}
+
+#[test]
+fn connection_churn_window_rejects_above_configured_cap() {
+    // Arrange
+    let policy = ResourceGovernancePolicy::default();
+    let input = ConnectionChurnInput {
+        window_started_unix_seconds: 300,
+        now_unix_seconds: 300,
+        connection_attempts_in_window: PHASE94_MAX_CONNECTIONS_PER_CHURN_WINDOW + 1,
+    };
+
+    // Act
+    let decision = policy.decide_churn(input);
+
+    // Assert
+    assert_lifecycle_event(
+        decision,
+        ResourceLifecycleLabel::ConnectionChurnLimited,
+        "churn_rejected",
+    );
+}
+
+#[test]
+fn repeated_failure_window_rejects_above_configured_cap() {
+    // Arrange
+    let policy = ResourceGovernancePolicy::default();
+    let input = RepeatedFailureInput {
+        window_started_unix_seconds: 400,
+        now_unix_seconds: 400 + PHASE94_REPEATED_FAILURE_WINDOW_SECONDS,
+        failures_in_window: PHASE94_MAX_REPEATED_FAILURES_PER_WINDOW + 1,
+    };
+
+    // Act
+    let decision = policy.decide_repeated_failure(input);
+
+    // Assert
+    assert_lifecycle_event(
+        decision,
+        ResourceLifecycleLabel::RepeatedFailureLimited,
+        "churn_rejected",
+    );
+}
+
+#[test]
+fn active_ban_and_discouraged_reconnect_are_suppressed() {
+    // Arrange
+    let policy = ResourceGovernancePolicy::default();
+    let banned_input = ReconnectSuppressionInput {
+        banned: true,
+        discouraged: true,
+    };
+    let discouraged_input = ReconnectSuppressionInput {
+        banned: false,
+        discouraged: true,
+    };
+
+    // Act
+    let banned_decision = policy.decide_reconnect(banned_input);
+    let discouraged_decision = policy.decide_reconnect(discouraged_input);
+
+    // Assert
+    assert_lifecycle_event(
+        banned_decision,
+        ResourceLifecycleLabel::ReconnectSuppressedBanned,
+        "reconnect_suppressed",
+    );
+    assert_lifecycle_event(
+        discouraged_decision,
+        ResourceLifecycleLabel::ReconnectSuppressedDiscouraged,
+        "reconnect_suppressed",
+    );
+}
+
+#[test]
+fn lifecycle_policy_accepts_inputs_at_configured_caps() {
+    // Arrange
+    let policy = ResourceGovernancePolicy::default();
+    let handshake_input = ResourceTimeoutInput {
+        handshake_state: InboundHandshakeState::Handshaking,
+        connected_at_unix_seconds: 500,
+        last_activity_unix_seconds: 500,
+        now_unix_seconds: 500 + policy.slow_handshake_timeout_seconds,
+    };
+    let idle_input = ResourceTimeoutInput {
+        handshake_state: InboundHandshakeState::Established,
+        connected_at_unix_seconds: 500,
+        last_activity_unix_seconds: 600,
+        now_unix_seconds: 600 + policy.idle_peer_timeout_seconds,
+    };
+    let churn_input = ConnectionChurnInput {
+        window_started_unix_seconds: 700,
+        now_unix_seconds: 700 + policy.connection_churn_window_seconds,
+        connection_attempts_in_window: policy.max_connections_per_churn_window,
+    };
+    let expired_failure_input = RepeatedFailureInput {
+        window_started_unix_seconds: 800,
+        now_unix_seconds: 800 + policy.repeated_failure_window_seconds + 1,
+        failures_in_window: policy.max_repeated_failures_per_window + 1,
+    };
+    let reconnect_input = ReconnectSuppressionInput {
+        banned: false,
+        discouraged: false,
+    };
+
+    // Act
+    let handshake_decision = policy.decide_timeout(handshake_input);
+    let idle_decision = policy.decide_timeout(idle_input);
+    let churn_decision = policy.decide_churn(churn_input);
+    let failure_decision = policy.decide_repeated_failure(expired_failure_input);
+    let reconnect_decision = policy.decide_reconnect(reconnect_input);
+
+    // Assert
+    assert_eq!(handshake_decision, ResourceGovernanceDecision::Accept);
+    assert_eq!(idle_decision, ResourceGovernanceDecision::Accept);
+    assert_eq!(churn_decision, ResourceGovernanceDecision::Accept);
+    assert_eq!(failure_decision, ResourceGovernanceDecision::Accept);
+    assert_eq!(reconnect_decision, ResourceGovernanceDecision::Accept);
+}
+
+#[test]
+fn lifecycle_label_strings_cover_phase94_contract() {
+    // Arrange
+    let labels = [
+        (ResourceLifecycleLabel::SlowHandshake, "slow_handshake"),
+        (ResourceLifecycleLabel::IdlePeer, "idle_peer"),
+        (
+            ResourceLifecycleLabel::ConnectionChurnLimited,
+            "connection_churn_limited",
+        ),
+        (
+            ResourceLifecycleLabel::RepeatedFailureLimited,
+            "repeated_failure_limited",
+        ),
+        (
+            ResourceLifecycleLabel::ReconnectSuppressedBanned,
+            "reconnect_suppressed_banned",
+        ),
+        (
+            ResourceLifecycleLabel::ReconnectSuppressedDiscouraged,
+            "reconnect_suppressed_discouraged",
+        ),
+    ];
+
+    // Act
+    let label_strings = labels.map(|(label, _)| label.as_str());
+
+    // Assert
+    assert_eq!(
+        label_strings,
+        labels.map(|(_, expected_label)| expected_label)
     );
 }
 

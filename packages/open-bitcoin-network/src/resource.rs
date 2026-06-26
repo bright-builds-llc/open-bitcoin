@@ -11,8 +11,8 @@ use open_bitcoin_primitives::{MessageHeader, NetworkMagic};
 use crate::message::{MAX_HEADERS_RESULTS, MAX_INV_SIZE};
 use crate::peer::DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER;
 use crate::{
-    InactivePermissionEffectLabel, NetworkError, ParsedNetworkMessage, PermissionEffectLabel,
-    WireNetworkMessage,
+    InactivePermissionEffectLabel, InboundHandshakeState, NetworkError, ParsedNetworkMessage,
+    PermissionEffectLabel, WireNetworkMessage,
 };
 
 pub const INBOUND_MESSAGE_HEADER_LEN: usize = 24;
@@ -28,6 +28,12 @@ pub const PHASE94_MAX_INBOUND_BLOCK_REQUESTS_PER_PEER: usize =
     DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER;
 pub const PHASE94_MAX_HEADER_LOCATOR_HASHES: usize = MAX_HEADERS_RESULTS;
 pub const PHASE94_MAX_INBOUND_REQUEST_INVENTORY_ITEMS: usize = MAX_INV_SIZE;
+pub const PHASE94_SLOW_HANDSHAKE_TIMEOUT_SECONDS: i64 = 60;
+pub const PHASE94_IDLE_PEER_TIMEOUT_SECONDS: i64 = 1_800;
+pub const PHASE94_CONNECTION_CHURN_WINDOW_SECONDS: i64 = 60;
+pub const PHASE94_MAX_CONNECTIONS_PER_CHURN_WINDOW: usize = 16;
+pub const PHASE94_REPEATED_FAILURE_WINDOW_SECONDS: i64 = 300;
+pub const PHASE94_MAX_REPEATED_FAILURES_PER_WINDOW: usize = 8;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ResourceViolationLabel {
@@ -69,6 +75,29 @@ impl ResourcePressureLabel {
             Self::ReadQueuePressure => "read_queue_pressure",
             Self::WriteQueuePressure => "write_queue_pressure",
             Self::RequestCapReached => "request_cap_reached",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ResourceLifecycleLabel {
+    SlowHandshake,
+    IdlePeer,
+    ConnectionChurnLimited,
+    RepeatedFailureLimited,
+    ReconnectSuppressedBanned,
+    ReconnectSuppressedDiscouraged,
+}
+
+impl ResourceLifecycleLabel {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::SlowHandshake => "slow_handshake",
+            Self::IdlePeer => "idle_peer",
+            Self::ConnectionChurnLimited => "connection_churn_limited",
+            Self::RepeatedFailureLimited => "repeated_failure_limited",
+            Self::ReconnectSuppressedBanned => "reconnect_suppressed_banned",
+            Self::ReconnectSuppressedDiscouraged => "reconnect_suppressed_discouraged",
         }
     }
 }
@@ -145,6 +174,34 @@ pub struct RequestPressureInput {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ResourceTimeoutInput {
+    pub handshake_state: InboundHandshakeState,
+    pub connected_at_unix_seconds: i64,
+    pub last_activity_unix_seconds: i64,
+    pub now_unix_seconds: i64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ConnectionChurnInput {
+    pub window_started_unix_seconds: i64,
+    pub now_unix_seconds: i64,
+    pub connection_attempts_in_window: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RepeatedFailureInput {
+    pub window_started_unix_seconds: i64,
+    pub now_unix_seconds: i64,
+    pub failures_in_window: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct ReconnectSuppressionInput {
+    pub banned: bool,
+    pub discouraged: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ResourceGovernancePolicy {
     pub max_peer_read_queue_bytes: usize,
     pub max_peer_write_queue_bytes: usize,
@@ -156,6 +213,12 @@ pub struct ResourceGovernancePolicy {
     pub max_inbound_block_requests_per_peer: usize,
     pub max_header_locator_hashes: usize,
     pub max_inbound_request_inventory_items: usize,
+    pub slow_handshake_timeout_seconds: i64,
+    pub idle_peer_timeout_seconds: i64,
+    pub connection_churn_window_seconds: i64,
+    pub max_connections_per_churn_window: usize,
+    pub repeated_failure_window_seconds: i64,
+    pub max_repeated_failures_per_window: usize,
 }
 
 impl Default for ResourceGovernancePolicy {
@@ -171,6 +234,12 @@ impl Default for ResourceGovernancePolicy {
             max_inbound_block_requests_per_peer: PHASE94_MAX_INBOUND_BLOCK_REQUESTS_PER_PEER,
             max_header_locator_hashes: PHASE94_MAX_HEADER_LOCATOR_HASHES,
             max_inbound_request_inventory_items: PHASE94_MAX_INBOUND_REQUEST_INVENTORY_ITEMS,
+            slow_handshake_timeout_seconds: PHASE94_SLOW_HANDSHAKE_TIMEOUT_SECONDS,
+            idle_peer_timeout_seconds: PHASE94_IDLE_PEER_TIMEOUT_SECONDS,
+            connection_churn_window_seconds: PHASE94_CONNECTION_CHURN_WINDOW_SECONDS,
+            max_connections_per_churn_window: PHASE94_MAX_CONNECTIONS_PER_CHURN_WINDOW,
+            repeated_failure_window_seconds: PHASE94_REPEATED_FAILURE_WINDOW_SECONDS,
+            max_repeated_failures_per_window: PHASE94_MAX_REPEATED_FAILURES_PER_WINDOW,
         }
     }
 }
@@ -224,6 +293,91 @@ impl ResourceGovernancePolicy {
                 ResourcePressureLabel::RequestCapReached,
                 "inbound request or inventory cap exceeded configured limit",
                 "request_cap_reached",
+            ));
+        }
+
+        ResourceGovernanceDecision::Accept
+    }
+
+    pub fn decide_timeout(&self, input: ResourceTimeoutInput) -> ResourceGovernanceDecision {
+        if matches!(
+            input.handshake_state,
+            InboundHandshakeState::Accepted | InboundHandshakeState::Handshaking
+        ) && elapsed_seconds(input.connected_at_unix_seconds, input.now_unix_seconds)
+            > self.slow_handshake_timeout_seconds
+        {
+            return ResourceGovernanceDecision::Disconnect(resource_lifecycle_event(
+                ResourceLifecycleLabel::SlowHandshake,
+                "inbound peer did not complete handshake before timeout",
+                "timeout_disconnect",
+            ));
+        }
+
+        if input.handshake_state == InboundHandshakeState::Established
+            && elapsed_seconds(input.last_activity_unix_seconds, input.now_unix_seconds)
+                > self.idle_peer_timeout_seconds
+        {
+            return ResourceGovernanceDecision::Disconnect(resource_lifecycle_event(
+                ResourceLifecycleLabel::IdlePeer,
+                "established inbound peer exceeded idle timeout",
+                "timeout_disconnect",
+            ));
+        }
+
+        ResourceGovernanceDecision::Accept
+    }
+
+    pub fn decide_churn(&self, input: ConnectionChurnInput) -> ResourceGovernanceDecision {
+        if is_within_window(
+            input.window_started_unix_seconds,
+            input.now_unix_seconds,
+            self.connection_churn_window_seconds,
+        ) && input.connection_attempts_in_window > self.max_connections_per_churn_window
+        {
+            return ResourceGovernanceDecision::Backpressure(resource_lifecycle_event(
+                ResourceLifecycleLabel::ConnectionChurnLimited,
+                "connection churn exceeded configured window cap",
+                "churn_rejected",
+            ));
+        }
+
+        ResourceGovernanceDecision::Accept
+    }
+
+    pub fn decide_repeated_failure(
+        &self,
+        input: RepeatedFailureInput,
+    ) -> ResourceGovernanceDecision {
+        if is_within_window(
+            input.window_started_unix_seconds,
+            input.now_unix_seconds,
+            self.repeated_failure_window_seconds,
+        ) && input.failures_in_window > self.max_repeated_failures_per_window
+        {
+            return ResourceGovernanceDecision::Backpressure(resource_lifecycle_event(
+                ResourceLifecycleLabel::RepeatedFailureLimited,
+                "connection failures exceeded configured window cap",
+                "churn_rejected",
+            ));
+        }
+
+        ResourceGovernanceDecision::Accept
+    }
+
+    pub fn decide_reconnect(&self, input: ReconnectSuppressionInput) -> ResourceGovernanceDecision {
+        if input.banned {
+            return ResourceGovernanceDecision::Disconnect(resource_lifecycle_event(
+                ResourceLifecycleLabel::ReconnectSuppressedBanned,
+                "active ban suppresses reconnect",
+                "reconnect_suppressed",
+            ));
+        }
+
+        if input.discouraged {
+            return ResourceGovernanceDecision::Backpressure(resource_lifecycle_event(
+                ResourceLifecycleLabel::ReconnectSuppressedDiscouraged,
+                "discouraged peer reconnect is suppressed",
+                "reconnect_suppressed",
             ));
         }
 
@@ -379,6 +533,29 @@ fn resource_pressure_event(
         message: "inbound_resource_governance".to_string(),
         next_action: next_action.to_string(),
     }
+}
+
+fn resource_lifecycle_event(
+    label: ResourceLifecycleLabel,
+    reason: impl Into<String>,
+    next_action: &'static str,
+) -> InboundResourceEvent {
+    InboundResourceEvent {
+        outcome: "resource_governance".to_string(),
+        reason: reason.into(),
+        label: label.as_str().to_string(),
+        source: ResourceGovernanceSource::RuntimeRead.as_str().to_string(),
+        message: "inbound_resource_governance".to_string(),
+        next_action: next_action.to_string(),
+    }
+}
+
+fn elapsed_seconds(start_unix_seconds: i64, now_unix_seconds: i64) -> i64 {
+    now_unix_seconds.saturating_sub(start_unix_seconds)
+}
+
+fn is_within_window(start_unix_seconds: i64, now_unix_seconds: i64, window_seconds: i64) -> bool {
+    elapsed_seconds(start_unix_seconds, now_unix_seconds) <= window_seconds
 }
 
 fn resource_event_for_decode_error(error: NetworkError) -> InboundResourceEvent {
