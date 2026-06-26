@@ -13,7 +13,7 @@ use std::net::SocketAddr;
 
 use open_bitcoin_network::{
     InboundAdmissionDecision, InboundAdmissionPolicy, InboundAdmissionRequest,
-    InboundAdmissionSlotClass, InboundPermissionDecision,
+    InboundAdmissionSlotClass, InboundListenerConfig, InboundPermissionDecision,
 };
 use open_bitcoin_node::core::chainstate::ChainstateSnapshot;
 use open_bitcoin_node::core::consensus::{ConsensusParams, ScriptVerifyFlags};
@@ -39,6 +39,7 @@ use open_bitcoin_node::{
 use crate::{config::RuntimeConfig, inbound_listener::InboundListenerEvidence};
 
 use super::ManagedRpcContext;
+use super::address_boundary::local_advertisement_decisions;
 use super::wallet_state::build_wallet_state;
 
 impl ManagedRpcContext {
@@ -55,6 +56,7 @@ impl ManagedRpcContext {
             verify_flags,
             network,
             permission_classes: Default::default(),
+            inbound_listener_config: InboundListenerConfig::default(),
             maybe_inbound_listener_evidence: None,
             maybe_durable_sync_state: None,
             maybe_daemon_sync_control: None,
@@ -95,6 +97,7 @@ impl ManagedRpcContext {
                 verify_flags: default_verify_flags(),
                 network: managed_network,
                 permission_classes: config.inbound.permission_classes.clone(),
+                inbound_listener_config: config.inbound.clone(),
                 maybe_inbound_listener_evidence: None,
                 maybe_durable_sync_state: load_durable_sync_state(config),
                 maybe_daemon_sync_control: None,
@@ -109,6 +112,7 @@ impl ManagedRpcContext {
                 verify_flags: default_verify_flags(),
                 network: managed_network,
                 permission_classes: config.inbound.permission_classes.clone(),
+                inbound_listener_config: config.inbound.clone(),
                 maybe_inbound_listener_evidence: None,
                 maybe_durable_sync_state: store
                     .load_runtime_metadata()
@@ -181,6 +185,10 @@ impl ManagedRpcContext {
     }
 
     pub fn set_inbound_listener_evidence(&mut self, evidence: InboundListenerEvidence) {
+        let services = ServiceFlags::from_bits(self.network_info().local_services_bits);
+        let decisions =
+            local_advertisement_decisions(&self.inbound_listener_config, &evidence, services);
+        self.network.set_local_address_decisions(decisions);
         self.maybe_inbound_listener_evidence = Some(evidence);
     }
 

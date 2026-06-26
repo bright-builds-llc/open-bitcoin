@@ -9,7 +9,7 @@
 // - packages/bitcoin-knots/src/rpc/rawtransaction.cpp
 // - packages/bitcoin-knots/test/functional/interface_rpc.py
 
-use open_bitcoin_network::PeerPermissionClassRegistry;
+use open_bitcoin_network::{InboundListenerConfig, PeerPermissionClassRegistry};
 use open_bitcoin_node::MemoryChainstateStore;
 use open_bitcoin_node::core::consensus::{ConsensusParams, ScriptVerifyFlags};
 use open_bitcoin_node::core::wallet::AddressNetwork;
@@ -22,6 +22,7 @@ use open_bitcoin_node::{
 use crate::inbound_listener::InboundListenerEvidence;
 use crate::{RpcFailure, RpcFailureKind};
 
+mod address_boundary;
 mod network;
 mod rescan;
 #[cfg(test)]
@@ -37,6 +38,7 @@ pub struct ManagedRpcContext {
     verify_flags: ScriptVerifyFlags,
     network: ManagedPeerNetwork<MemoryChainstateStore>,
     permission_classes: PeerPermissionClassRegistry,
+    inbound_listener_config: InboundListenerConfig,
     maybe_inbound_listener_evidence: Option<InboundListenerEvidence>,
     maybe_durable_sync_state: Option<DurableSyncState>,
     maybe_daemon_sync_control: Option<DaemonSyncControl>,

@@ -10,12 +10,16 @@ use open_bitcoin_network::{
     WireNetworkMessage,
 };
 use open_bitcoin_node::core::primitives::NetworkMagic;
+use open_bitcoin_node::status::{FieldAvailability, InboundPeerServingStatus};
 use open_bitcoin_test_harness::PortReservation;
 use tokio::net::TcpStream;
 
 use crate::{ManagedRpcContext, RuntimeConfig};
 
-use super::{InboundListenerState, activate_inbound_listener, start_inbound_accept_loop};
+use super::{
+    InboundListenerEvidence, InboundListenerState, activate_inbound_listener,
+    start_inbound_accept_loop,
+};
 
 fn loopback_config(max_peers: usize) -> InboundListenerConfig {
     loopback_config_with_permission_classes(max_peers, 0, PeerPermissionClassRegistry::default())
@@ -79,6 +83,30 @@ fn loopback_permission_registry(permissions: &[&str]) -> PeerPermissionClassRegi
         permissions.iter().copied(),
     )
     .expect("loopback permission class should parse")])
+}
+
+fn listener_evidence(bound_endpoints: &[&str]) -> InboundListenerEvidence {
+    InboundListenerEvidence {
+        listener_state: "listening".to_string(),
+        preflight_reason: "ready".to_string(),
+        bound_endpoints: bound_endpoints
+            .iter()
+            .map(|endpoint| (*endpoint).to_string())
+            .collect(),
+        admitted_inbound_peers: 0,
+        rejected_inbound_peers: 0,
+        maybe_admission_reject_reason: None,
+        maybe_latest_admission_event: Some("ready".to_string()),
+    }
+}
+
+fn inbound_status(context: &ManagedRpcContext) -> InboundPeerServingStatus {
+    match context.current_inbound_status() {
+        FieldAvailability::Available(status) => status,
+        FieldAvailability::Unavailable { reason } => {
+            panic!("expected inbound status to be available, got {reason}")
+        }
+    }
 }
 
 async fn send_message(stream: &TcpStream, message: WireNetworkMessage) {
@@ -243,6 +271,111 @@ async fn held_loopback_address_reports_bind_failure_with_next_action() {
         Some(held.address().to_string().as_str())
     );
     assert!(!activation.diagnostics()[0].next_action.is_empty());
+}
+
+#[test]
+fn loopback_listener_evidence_is_suppressed_for_public_advertisement() {
+    // Arrange
+    let runtime = RuntimeConfig {
+        inbound: InboundListenerConfig {
+            enabled: true,
+            listen_addresses: vec!["127.0.0.1:18444".to_string()],
+            max_peers: 8,
+            reserved_slots: 0,
+            allow_public: false,
+            permission_classes: Default::default(),
+        },
+        ..RuntimeConfig::default()
+    };
+    let mut context = ManagedRpcContext::from_runtime_config(&runtime);
+
+    // Act
+    context.set_inbound_listener_evidence(listener_evidence(&["127.0.0.1:18444"]));
+    let status = inbound_status(&context);
+
+    // Assert
+    assert!(status.local_advertisement_candidates.is_empty());
+    assert_eq!(status.suppressed_advertisements.len(), 1);
+    assert_eq!(
+        status.suppressed_advertisements[0].label,
+        "advertise_suppressed"
+    );
+    assert_eq!(
+        status.suppressed_advertisements[0].reason,
+        "not_publicly_routable"
+    );
+}
+
+#[test]
+fn public_literal_listener_evidence_can_be_advertisement_candidate_when_allowed() {
+    // Arrange
+    let runtime = RuntimeConfig {
+        inbound: InboundListenerConfig {
+            enabled: true,
+            listen_addresses: vec!["8.8.8.8:8333".to_string()],
+            max_peers: 8,
+            reserved_slots: 0,
+            allow_public: true,
+            permission_classes: Default::default(),
+        },
+        ..RuntimeConfig::default()
+    };
+    let mut context = ManagedRpcContext::from_runtime_config(&runtime);
+
+    // Act
+    context.set_inbound_listener_evidence(listener_evidence(&["8.8.8.8:8333"]));
+    let status = inbound_status(&context);
+
+    // Assert
+    assert_eq!(status.local_advertisement_candidates.len(), 1);
+    assert_eq!(
+        status.local_advertisement_candidates[0].source,
+        "source_local_listener"
+    );
+    assert_eq!(
+        status.local_advertisement_candidates[0].network_kind,
+        "ipv4"
+    );
+    assert_eq!(
+        status.local_advertisement_candidates[0].routability,
+        "publicly_routable"
+    );
+    assert_eq!(status.local_advertisement_candidates[0].port, 8333);
+    assert!(status.suppressed_advertisements.is_empty());
+}
+
+#[test]
+fn invalid_runtime_bound_evidence_is_suppressed_without_falling_back_to_configured_public_address()
+{
+    // Arrange
+    let runtime = RuntimeConfig {
+        inbound: InboundListenerConfig {
+            enabled: true,
+            listen_addresses: vec!["8.8.8.8:8333".to_string()],
+            max_peers: 8,
+            reserved_slots: 0,
+            allow_public: true,
+            permission_classes: Default::default(),
+        },
+        ..RuntimeConfig::default()
+    };
+    let mut context = ManagedRpcContext::from_runtime_config(&runtime);
+
+    // Act
+    context.set_inbound_listener_evidence(listener_evidence(&["not-a-socket-address"]));
+    let status = inbound_status(&context);
+
+    // Assert
+    assert!(status.local_advertisement_candidates.is_empty());
+    assert_eq!(status.suppressed_advertisements.len(), 1);
+    assert_eq!(
+        status.suppressed_advertisements[0].label,
+        "advertise_suppressed"
+    );
+    assert_eq!(
+        status.suppressed_advertisements[0].reason,
+        "unsupported_address_network"
+    );
 }
 
 #[tokio::test]
