@@ -19,6 +19,7 @@ use crate::message::ServiceFlags;
 
 pub mod advertisement;
 pub mod book;
+pub mod response;
 
 pub use advertisement::{
     LocalAdvertisementDecision, LocalAdvertisementInput, maybe_version_sender_address,
@@ -28,6 +29,11 @@ pub use book::{
     LearnedAddressBatchDecision, LearnedAddressBook, LearnedAddressDecision, LearnedAddressEntry,
     PHASE92_LEARNED_ADDR_BATCH_LIMIT, PHASE92_MAX_ADDR_AGE_SECONDS,
     PHASE92_MAX_FUTURE_SKEW_SECONDS,
+};
+pub use response::{
+    AddressResponseCache, AddressResponseEntryEvidence, GetAddrPeerEligibility,
+    GetAddrRequestState, GetAddrResponseDecision, PHASE92_GETADDR_RESPONSE_LIMIT,
+    select_getaddr_response,
 };
 
 const IPV4_IN_IPV6_PREFIX: [u8; 12] = [

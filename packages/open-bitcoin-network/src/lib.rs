@@ -26,11 +26,13 @@ mod peer;
 
 pub use address::{
     AddressClassification, AddressDecisionLabel, AddressDecisionReason, AddressNetworkKind,
-    AddressSourceKind, LearnedAddressBatchDecision, LearnedAddressBook, LearnedAddressDecision,
-    LearnedAddressEntry, LocalAdvertisementDecision, LocalAdvertisementInput,
-    PHASE92_LEARNED_ADDR_BATCH_LIMIT, PHASE92_MAX_ADDR_AGE_SECONDS,
-    PHASE92_MAX_FUTURE_SKEW_SECONDS, RoutabilityClass, classify_network_address,
-    maybe_version_sender_address, privacy_network_deferred_classification,
+    AddressResponseCache, AddressResponseEntryEvidence, AddressSourceKind, GetAddrPeerEligibility,
+    GetAddrRequestState, GetAddrResponseDecision, LearnedAddressBatchDecision, LearnedAddressBook,
+    LearnedAddressDecision, LearnedAddressEntry, LocalAdvertisementDecision,
+    LocalAdvertisementInput, PHASE92_GETADDR_RESPONSE_LIMIT, PHASE92_LEARNED_ADDR_BATCH_LIMIT,
+    PHASE92_MAX_ADDR_AGE_SECONDS, PHASE92_MAX_FUTURE_SKEW_SECONDS, RoutabilityClass,
+    classify_network_address, maybe_version_sender_address,
+    privacy_network_deferred_classification, select_getaddr_response,
     select_local_advertisement_candidates, unsupported_future_network_classification,
 };
 pub use compatibility::{

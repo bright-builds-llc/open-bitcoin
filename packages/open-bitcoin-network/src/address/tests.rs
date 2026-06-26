@@ -15,14 +15,15 @@ use core::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 
 use open_bitcoin_primitives::NetworkAddress;
 
-use crate::{InboundListenerEndpoint, ServiceFlags};
+use crate::{InboundListenerEndpoint, PermissionEffectLabel, ServiceFlags};
 
 use super::{
     AddressAnnouncement, AddressDecisionLabel, AddressDecisionReason, AddressNetworkKind,
-    AddressSourceKind, LearnedAddressBook, LocalAdvertisementInput,
-    PHASE92_LEARNED_ADDR_BATCH_LIMIT, PHASE92_MAX_ADDR_AGE_SECONDS,
+    AddressResponseCache, AddressResponseEntryEvidence, AddressSourceKind, GetAddrPeerEligibility,
+    GetAddrRequestState, GetAddrResponseDecision, LearnedAddressBook, LocalAdvertisementInput,
+    PHASE92_GETADDR_RESPONSE_LIMIT, PHASE92_LEARNED_ADDR_BATCH_LIMIT, PHASE92_MAX_ADDR_AGE_SECONDS,
     PHASE92_MAX_FUTURE_SKEW_SECONDS, RoutabilityClass, classify_network_address,
-    maybe_version_sender_address, privacy_network_deferred_classification,
+    maybe_version_sender_address, privacy_network_deferred_classification, select_getaddr_response,
     select_local_advertisement_candidates, unsupported_future_network_classification,
 };
 
@@ -613,6 +614,209 @@ fn learned_address_batches_above_phase92_limit_are_rejected_without_partial_inse
     assert!(book.entries().is_empty());
 }
 
+#[test]
+fn getaddr_response_combines_local_and_learned_candidates_under_phase92_limit() {
+    // Arrange
+    let now_unix_seconds = 1_700_000_000;
+    let local_inputs = [
+        LocalAdvertisementInput {
+            listener_endpoint: listener_endpoint("8.8.8.8:8333"),
+            maybe_bound_addr: None,
+            services: ServiceFlags::NETWORK,
+            allow_public: true,
+        },
+        LocalAdvertisementInput {
+            listener_endpoint: listener_endpoint("1.1.1.1:8333"),
+            maybe_bound_addr: None,
+            services: ServiceFlags::NETWORK,
+            allow_public: true,
+        },
+    ];
+    let local_decisions = select_local_advertisement_candidates(&local_inputs);
+    let mut book = LearnedAddressBook::default();
+    let learned_announcements: Vec<_> = (1..=10)
+        .map(|index| {
+            address_announcement(
+                now_unix_seconds,
+                public_ipv4_network_address(9, 9, 9, index, 8333),
+            )
+        })
+        .collect();
+    let learned_batch = book.learn_batch(
+        &learned_announcements,
+        AddressSourceKind::InboundAddr,
+        now_unix_seconds,
+    );
+    let cache =
+        AddressResponseCache::from_sources(&local_decisions, book.entries(), now_unix_seconds);
+    let eligibility = GetAddrPeerEligibility::from_permission_effects(
+        true,
+        &[PermissionEffectLabel::AddressResponsePolicyInput],
+    );
+    let mut request_state = GetAddrRequestState::default();
+
+    // Act
+    let decision =
+        select_getaddr_response(eligibility, &mut request_state, &cache, now_unix_seconds);
+
+    // Assert
+    assert_eq!(PHASE92_GETADDR_RESPONSE_LIMIT, 8);
+    assert_eq!(learned_batch.accepted_count, 10);
+    assert_eq!(cache.entries().len(), 12);
+    let entries = served_response_entries(&decision);
+    assert_eq!(entries.len(), PHASE92_GETADDR_RESPONSE_LIMIT);
+    assert_eq!(
+        entries.iter().map(|entry| entry.source).collect::<Vec<_>>(),
+        vec![
+            AddressSourceKind::LocalListener,
+            AddressSourceKind::LocalListener,
+            AddressSourceKind::InboundAddr,
+            AddressSourceKind::InboundAddr,
+            AddressSourceKind::InboundAddr,
+            AddressSourceKind::InboundAddr,
+            AddressSourceKind::InboundAddr,
+            AddressSourceKind::InboundAddr,
+        ],
+    );
+    assert!(request_state.served);
+}
+
+#[test]
+fn getaddr_response_suppression_reasons_are_stable() {
+    // Arrange
+    let now_unix_seconds = 1_700_000_000;
+    let fresh_cache = AddressResponseCache::from_entries(vec![response_entry(
+        public_ipv4_network_address(8, 8, 4, 4, 8333),
+        AddressSourceKind::InboundAddr,
+        now_unix_seconds,
+    )]);
+    let empty_cache = AddressResponseCache::default();
+    let stale_cache = AddressResponseCache::from_entries(vec![response_entry(
+        public_ipv4_network_address(8, 8, 8, 8, 8333),
+        AddressSourceKind::InboundAddr,
+        now_unix_seconds - PHASE92_MAX_ADDR_AGE_SECONDS - 1,
+    )]);
+    let suppressed_local_decisions =
+        select_local_advertisement_candidates(&[LocalAdvertisementInput {
+            listener_endpoint: listener_endpoint("127.0.0.1:8333"),
+            maybe_bound_addr: None,
+            services: ServiceFlags::NETWORK,
+            allow_public: true,
+        }]);
+    let suppressed_local_cache =
+        AddressResponseCache::from_sources(&suppressed_local_decisions, &[], now_unix_seconds);
+    let permitted_inbound = GetAddrPeerEligibility::from_permission_effects(
+        true,
+        &[PermissionEffectLabel::AddressResponsePolicyInput],
+    );
+    let outbound = GetAddrPeerEligibility::from_permission_effects(
+        false,
+        &[PermissionEffectLabel::AddressResponsePolicyInput],
+    );
+    let missing_policy_input = GetAddrPeerEligibility::from_permission_effects(true, &[]);
+
+    // Act
+    let outbound_decision = select_getaddr_response(
+        outbound,
+        &mut GetAddrRequestState::default(),
+        &fresh_cache,
+        now_unix_seconds,
+    );
+    let missing_policy_decision = select_getaddr_response(
+        missing_policy_input,
+        &mut GetAddrRequestState::default(),
+        &fresh_cache,
+        now_unix_seconds,
+    );
+    let empty_decision = select_getaddr_response(
+        permitted_inbound,
+        &mut GetAddrRequestState::default(),
+        &empty_cache,
+        now_unix_seconds,
+    );
+    let stale_decision = select_getaddr_response(
+        permitted_inbound,
+        &mut GetAddrRequestState::default(),
+        &stale_cache,
+        now_unix_seconds,
+    );
+    let suppressed_local_decision = select_getaddr_response(
+        permitted_inbound,
+        &mut GetAddrRequestState::default(),
+        &suppressed_local_cache,
+        now_unix_seconds,
+    );
+    let mut served_state = GetAddrRequestState { served: false };
+    let first_decision = select_getaddr_response(
+        permitted_inbound,
+        &mut served_state,
+        &fresh_cache,
+        now_unix_seconds,
+    );
+    let second_decision = select_getaddr_response(
+        permitted_inbound,
+        &mut served_state,
+        &fresh_cache,
+        now_unix_seconds,
+    );
+
+    // Assert
+    assert_suppressed_reason(&outbound_decision, AddressDecisionReason::NotInbound);
+    assert_suppressed_reason(
+        &missing_policy_decision,
+        AddressDecisionReason::PermissionPolicyDenied,
+    );
+    assert_suppressed_reason(&empty_decision, AddressDecisionReason::EmptyResponseCache);
+    assert_suppressed_reason(&stale_decision, AddressDecisionReason::EmptyResponseCache);
+    assert_suppressed_reason(
+        &suppressed_local_decision,
+        AddressDecisionReason::EmptyResponseCache,
+    );
+    assert_eq!(served_response_entries(&first_decision).len(), 1);
+    assert_suppressed_reason(&second_decision, AddressDecisionReason::AlreadyServed);
+}
+
+#[test]
+fn getaddr_response_preserves_source_freshness_and_service_evidence() {
+    // Arrange
+    let now_unix_seconds = 1_700_000_000;
+    let services = ServiceFlags::NETWORK | ServiceFlags::WITNESS;
+    let learned_address = public_ipv4_network_address_with_services(8, 8, 8, 8, 18444, services);
+    let mut book = LearnedAddressBook::default();
+    let learned_batch = book.learn_batch(
+        &[address_announcement(
+            now_unix_seconds - 42,
+            learned_address.clone(),
+        )],
+        AddressSourceKind::InboundAddr,
+        now_unix_seconds,
+    );
+    let cache = AddressResponseCache::from_sources(&[], book.entries(), now_unix_seconds);
+    let eligibility = GetAddrPeerEligibility::from_permission_effects(
+        true,
+        &[PermissionEffectLabel::AddressResponsePolicyInput],
+    );
+    let mut request_state = GetAddrRequestState::default();
+
+    // Act
+    let decision =
+        select_getaddr_response(eligibility, &mut request_state, &cache, now_unix_seconds);
+
+    // Assert
+    assert_eq!(learned_batch.accepted_count, 1);
+    let entry = served_response_entries(&decision)
+        .first()
+        .expect("fresh learned entry should be served");
+    assert_eq!(entry.address, learned_address);
+    assert_eq!(entry.source, AddressSourceKind::InboundAddr);
+    assert_eq!(entry.first_seen_unix_seconds, now_unix_seconds - 42);
+    assert_eq!(entry.last_seen_unix_seconds, now_unix_seconds - 42);
+    assert_eq!(entry.services_bits, services.bits());
+    assert_eq!(entry.port, 18444);
+    assert_eq!(entry.routability, RoutabilityClass::PubliclyRoutable);
+    assert!(entry.persistence_eligible);
+}
+
 fn listener_endpoint(raw_endpoint: &str) -> InboundListenerEndpoint {
     let address = socket_addr(raw_endpoint);
     InboundListenerEndpoint {
@@ -645,8 +849,19 @@ fn address_announcement(time_unix_seconds: u64, address: NetworkAddress) -> Addr
 }
 
 fn public_ipv4_network_address(a: u8, b: u8, c: u8, d: u8, port: u16) -> NetworkAddress {
+    public_ipv4_network_address_with_services(a, b, c, d, port, ServiceFlags::NETWORK)
+}
+
+fn public_ipv4_network_address_with_services(
+    a: u8,
+    b: u8,
+    c: u8,
+    d: u8,
+    port: u16,
+    services: ServiceFlags,
+) -> NetworkAddress {
     NetworkAddress {
-        services: ServiceFlags::NETWORK.bits(),
+        services: services.bits(),
         address_bytes: ipv4_mapped_address_bytes([a, b, c, d]),
         port,
     }
@@ -661,4 +876,47 @@ fn public_ipv6_network_address(raw_address: &str, port: u16) -> NetworkAddress {
             .octets(),
         port,
     }
+}
+
+fn response_entry(
+    address: NetworkAddress,
+    source: AddressSourceKind,
+    last_seen_unix_seconds: u64,
+) -> AddressResponseEntryEvidence {
+    AddressResponseEntryEvidence {
+        network_kind: AddressNetworkKind::Ipv4,
+        source,
+        first_seen_unix_seconds: last_seen_unix_seconds,
+        last_seen_unix_seconds,
+        services_bits: address.services,
+        port: address.port,
+        routability: RoutabilityClass::PubliclyRoutable,
+        persistence_eligible: source == AddressSourceKind::InboundAddr,
+        address,
+    }
+}
+
+fn served_response_entries(decision: &GetAddrResponseDecision) -> &[AddressResponseEntryEvidence] {
+    let GetAddrResponseDecision::Served {
+        label,
+        reason,
+        entries,
+    } = decision
+    else {
+        panic!("expected getaddr_served decision, got {decision:?}");
+    };
+    assert_eq!(*label, AddressDecisionLabel::GetAddrServed);
+    assert_eq!(*reason, AddressDecisionReason::PolicyAccepted);
+    entries
+}
+
+fn assert_suppressed_reason(
+    decision: &GetAddrResponseDecision,
+    expected_reason: AddressDecisionReason,
+) {
+    let GetAddrResponseDecision::Suppressed { label, reason } = decision else {
+        panic!("expected getaddr_suppressed decision, got {decision:?}");
+    };
+    assert_eq!(*label, AddressDecisionLabel::GetAddrSuppressed);
+    assert_eq!(*reason, expected_reason);
 }
