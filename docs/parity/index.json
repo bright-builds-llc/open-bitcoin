@@ -616,6 +616,10 @@
     {
       "name": "v1-9-peer-permissions-connection-classes",
       "status": "done"
+    },
+    {
+      "name": "v1-9-address-advertisement-discovery-boundaries",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -1663,6 +1667,38 @@
         ],
         "suspected_unknowns": [
           "Future Phase 92 through Phase 95 work owns address advertisement, eviction/ban policy, resource governance, and release-boundary evidence before any broader network-participation claim can be made."
+        ]
+      },
+      {
+        "id": "v1-9-address-advertisement-discovery-boundaries",
+        "title": "v1.9 Address Advertisement and Discovery Boundaries",
+        "status": "done",
+        "requirements": [
+          "ADDR-01",
+          "ADDR-02",
+          "ADDR-03",
+          "ADDR-04"
+        ],
+        "evidence": [
+          "docs/operator/runtime-guide.md",
+          "docs/architecture/status-snapshot.md",
+          "docs/architecture/operator-observability.md",
+          "docs/parity/catalog/p2p.md",
+          "docs/parity/source-breadcrumbs.json",
+          ".planning/phases/92-address-advertisement-and-discovery-boundaries/92-01-SUMMARY.md",
+          ".planning/phases/92-address-advertisement-and-discovery-boundaries/92-02-SUMMARY.md",
+          ".planning/phases/92-address-advertisement-and-discovery-boundaries/92-03-SUMMARY.md",
+          ".planning/phases/92-address-advertisement-and-discovery-boundaries/92-04-SUMMARY.md",
+          ".planning/phases/92-address-advertisement-and-discovery-boundaries/92-05-SUMMARY.md",
+          ".planning/phases/92-address-advertisement-and-discovery-boundaries/92-06-SUMMARY.md",
+          ".planning/phases/92-address-advertisement-and-discovery-boundaries/92-07-SUMMARY.md"
+        ],
+        "rationale": "Phase 92 proves local listener-derived advertisement policy, bounded direct getaddr/addr response handling, typed learned-address acceptance/persistence evidence, and redacted status/support documentation.",
+        "known_gaps": [
+          "Full address relay, unsolicited fanout, addr gossip relay, DNS seed discovery, UPnP/NAT-PMP discovery, -discover/-externalip parity, public inbound defaults, public-network CI, and production full-node readiness remain outside this surface."
+        ],
+        "suspected_unknowns": [
+          "Future Phase 93 through Phase 95 work owns eviction/ban policy, resource governance, and release-boundary evidence before any broader network-participation claim can be made."
         ]
       }
     ]
