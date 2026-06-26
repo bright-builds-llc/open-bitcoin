@@ -2,14 +2,16 @@
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
 use super::{
-    LogPathStatus, LogRetentionPolicy, LogRotation, LogStatus, RecentLogSignal, StructuredLogLevel,
-    StructuredLogRecord, health_signals_from_recent_logs, recent_log_signals_from_records,
+    INBOUND_RESOURCE_GOVERNANCE_LOG_SOURCE, LogPathStatus, LogRetentionPolicy, LogRotation,
+    LogStatus, RecentLogSignal, StructuredLogLevel, StructuredLogRecord,
+    health_signals_from_recent_logs, inbound_resource_governance_log_record,
+    recent_log_signals_from_records,
 };
 use super::{
     prune::{LogFileMetadata, plan_log_retention},
     writer::{append_structured_log_record, load_log_status},
 };
-use crate::status::HealthSignalLevel;
+use crate::status::{HealthSignalLevel, InboundResourceGovernanceEvent};
 use std::{
     fs,
     path::PathBuf,
@@ -95,6 +97,58 @@ fn structured_log_record_serializes_required_fields() {
     assert_eq!(encoded["source"], "sync");
     assert_eq!(encoded["message"], "peer stalled");
     assert_eq!(encoded["timestamp_unix_seconds"], 1_777_225_022);
+}
+
+#[test]
+fn inbound_resource_governance_log_record_uses_allowlisted_fields() {
+    // Arrange
+    let event = InboundResourceGovernanceEvent {
+        outcome: "rejected".to_string(),
+        reason: "invalid_checksum".to_string(),
+        label: "payload_rejected".to_string(),
+        source: "source_envelope_gate".to_string(),
+        message: "inbound_message_resource_governance".to_string(),
+        next_action: "payload_rejected".to_string(),
+    };
+
+    // Act
+    let record = inbound_resource_governance_log_record(&event, 1_777_225_022);
+
+    // Assert
+    assert_eq!(record.level, StructuredLogLevel::Warn);
+    assert_eq!(record.source, INBOUND_RESOURCE_GOVERNANCE_LOG_SOURCE);
+    assert_eq!(record.timestamp_unix_seconds, 1_777_225_022);
+    assert_eq!(
+        record.message,
+        "outcome=rejected reason=invalid_checksum label=payload_rejected source=source_envelope_gate message=inbound_message_resource_governance next_action=payload_rejected"
+    );
+}
+
+#[test]
+fn inbound_resource_governance_log_record_redacts_suspicious_raw_fields() {
+    // Arrange
+    let event = InboundResourceGovernanceEvent {
+        outcome: "rejected".to_string(),
+        reason: "peer_id=42".to_string(),
+        label: "raw_endpoint=192.0.2.1:8333".to_string(),
+        source: "payload_bytes=00112233445566778899aabbccddeeff".to_string(),
+        message: "permission_string=admin credential=fixture".to_string(),
+        next_action: "secret=fixture".to_string(),
+    };
+
+    // Act
+    let record = inbound_resource_governance_log_record(&event, 1_777_225_022);
+
+    // Assert
+    assert_eq!(record.source, INBOUND_RESOURCE_GOVERNANCE_LOG_SOURCE);
+    assert_eq!(
+        record.message,
+        "outcome=rejected reason=redacted_resource_field label=redacted_resource_field source=redacted_resource_field message=redacted_resource_field next_action=redacted_resource_field"
+    );
+    assert!(!record.message.contains("42"));
+    assert!(!record.message.contains("192.0.2.1:8333"));
+    assert!(!record.message.contains("00112233445566778899aabbccddeeff"));
+    assert!(!record.message.contains("admin"));
 }
 
 #[test]

@@ -10,10 +10,11 @@
 // - packages/bitcoin-knots/test/functional/interface_rpc.py
 
 use open_bitcoin_network::{InboundListenerConfig, PeerPermissionClassRegistry};
+use open_bitcoin_node::LogRetentionPolicy;
 use open_bitcoin_node::MemoryChainstateStore;
 use open_bitcoin_node::core::consensus::{ConsensusParams, ScriptVerifyFlags};
 use open_bitcoin_node::core::wallet::AddressNetwork;
-use std::{sync::mpsc, time::Duration};
+use std::{path::PathBuf, sync::mpsc, time::Duration};
 
 use open_bitcoin_node::{
     DurableSyncState, FjallNodeStore, ManagedPeerNetwork, PersistMode, RuntimeMetadata,
@@ -41,6 +42,9 @@ pub struct ManagedRpcContext {
     permission_classes: PeerPermissionClassRegistry,
     inbound_listener_config: InboundListenerConfig,
     maybe_inbound_listener_evidence: Option<InboundListenerEvidence>,
+    maybe_resource_governance_log_dir: Option<PathBuf>,
+    resource_governance_log_retention: LogRetentionPolicy,
+    resource_governance_log_write_failures: u64,
     maybe_durable_sync_state: Option<DurableSyncState>,
     maybe_daemon_sync_control: Option<DaemonSyncControl>,
     wallet_state: WalletState,
@@ -252,6 +256,14 @@ impl core::fmt::Debug for ManagedRpcContext {
             .field(
                 "has_daemon_sync_control",
                 &self.maybe_daemon_sync_control.is_some(),
+            )
+            .field(
+                "has_resource_governance_log_dir",
+                &self.maybe_resource_governance_log_dir.is_some(),
+            )
+            .field(
+                "resource_governance_log_write_failures",
+                &self.resource_governance_log_write_failures,
             )
             .field("wallet_mode", &wallet_mode)
             .finish()

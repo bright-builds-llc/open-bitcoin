@@ -16,6 +16,7 @@ use open_bitcoin_network::{
 
 use crate::{
     ChainstateStore,
+    logging::{StructuredLogRecord, inbound_resource_governance_log_record},
     status::{
         InboundAddressDecisionEvent, InboundAddressEvidenceEntry, InboundPeerPolicyEvent,
         InboundResourceGovernanceEvent,
@@ -286,6 +287,15 @@ impl ManagedResourceGovernanceInfo {
             _ => {}
         }
         self.maybe_latest_resource_governance_decision = Some(event.into());
+    }
+
+    pub fn maybe_structured_log_record(
+        &self,
+        timestamp_unix_seconds: u64,
+    ) -> Option<StructuredLogRecord> {
+        self.maybe_latest_resource_governance_decision
+            .as_ref()
+            .map(|event| inbound_resource_governance_log_record(event, timestamp_unix_seconds))
     }
 }
 

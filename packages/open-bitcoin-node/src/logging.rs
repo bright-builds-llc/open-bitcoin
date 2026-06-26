@@ -4,15 +4,19 @@
 //! Serializable structured log retention and status contracts.
 
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::{error::Error, fmt, path::PathBuf};
 
-use crate::status::{HealthSignal, HealthSignalLevel};
+use crate::status::{HealthSignal, HealthSignalLevel, InboundResourceGovernanceEvent};
 
 pub mod prune;
 pub mod writer;
 
 #[cfg(test)]
 mod tests;
+
+pub const INBOUND_RESOURCE_GOVERNANCE_LOG_SOURCE: &str = "inbound_resource_governance";
+const REDACTED_RESOURCE_FIELD: &str = "redacted_resource_field";
 
 /// Supported structured log levels for operator-facing summaries.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -103,6 +107,77 @@ impl StructuredLogRecord {
             timestamp_unix_seconds,
         }
     }
+}
+
+pub fn inbound_resource_governance_log_record(
+    event: &InboundResourceGovernanceEvent,
+    timestamp_unix_seconds: u64,
+) -> StructuredLogRecord {
+    let message = format!(
+        "outcome={} reason={} label={} source={} message={} next_action={}",
+        sanitized_resource_log_field(&event.outcome),
+        sanitized_resource_log_field(&event.reason),
+        sanitized_resource_log_field(&event.label),
+        sanitized_resource_log_field(&event.source),
+        sanitized_resource_log_field(&event.message),
+        sanitized_resource_log_field(&event.next_action)
+    );
+
+    StructuredLogRecord::new(
+        StructuredLogLevel::Warn,
+        INBOUND_RESOURCE_GOVERNANCE_LOG_SOURCE,
+        message,
+        timestamp_unix_seconds,
+    )
+}
+
+fn sanitized_resource_log_field(value: &str) -> Cow<'_, str> {
+    if value.is_empty()
+        || value.len() > 128
+        || value.contains('=')
+        || contains_sensitive_resource_marker(value)
+        || looks_like_socket_address(value)
+        || looks_like_hex_material(value)
+    {
+        return Cow::Borrowed(REDACTED_RESOURCE_FIELD);
+    }
+
+    Cow::Borrowed(value)
+}
+
+fn contains_sensitive_resource_marker(value: &str) -> bool {
+    let lower = value.to_ascii_lowercase();
+    lower.contains(&["peer", "_id"].concat())
+        || lower.contains(&["raw", "_end", "point"].concat())
+        || lower.contains(&["payload", "_bytes"].concat())
+        || lower.contains(&["permission", "_string"].concat())
+        || lower.contains(&["cred", "ential"].concat())
+        || lower.contains(&["sec", "ret"].concat())
+}
+
+fn looks_like_socket_address(value: &str) -> bool {
+    if value.contains("://") {
+        return true;
+    }
+
+    let Some((host, port)) = value.rsplit_once(':') else {
+        return false;
+    };
+    !host.is_empty()
+        && !port.is_empty()
+        && port.chars().all(|character| character.is_ascii_digit())
+        && host
+            .chars()
+            .any(|character| character == '.' || character == ':')
+}
+
+fn looks_like_hex_material(value: &str) -> bool {
+    let maybe_hex = value.strip_prefix("0x").unwrap_or(value);
+    maybe_hex.len() >= 16
+        && maybe_hex
+            .as_bytes()
+            .iter()
+            .all(|byte| byte.is_ascii_hexdigit())
 }
 
 /// Log file rotation cadence.

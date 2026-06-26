@@ -14,7 +14,7 @@ use std::net::SocketAddr;
 use open_bitcoin_network::{
     InboundAdmissionDecision, InboundAdmissionPolicy, InboundAdmissionRequest,
     InboundAdmissionSlotClass, InboundListenerConfig, InboundPermissionDecision,
-    InboundResourceEvent, ReconnectSuppressionInput,
+    ReconnectSuppressionInput,
 };
 use open_bitcoin_node::core::chainstate::ChainstateSnapshot;
 use open_bitcoin_node::core::consensus::{ConsensusParams, ScriptVerifyFlags};
@@ -63,6 +63,9 @@ impl ManagedRpcContext {
             permission_classes: Default::default(),
             inbound_listener_config: InboundListenerConfig::default(),
             maybe_inbound_listener_evidence: None,
+            maybe_resource_governance_log_dir: None,
+            resource_governance_log_retention: Default::default(),
+            resource_governance_log_write_failures: 0,
             maybe_durable_sync_state: None,
             maybe_daemon_sync_control: None,
             wallet_state: super::wallet_state::WalletState::Local(wallet),
@@ -95,6 +98,8 @@ impl ManagedRpcContext {
             config.inbound.max_peers,
             config.inbound.reserved_slots,
         ));
+        let maybe_resource_governance_log_dir =
+            config.maybe_data_dir.as_ref().map(|dir| dir.join("logs"));
         match build_wallet_state(config) {
             super::wallet_state::WalletState::Local(wallet) => Self {
                 chain: config.chain,
@@ -104,6 +109,9 @@ impl ManagedRpcContext {
                 permission_classes: config.inbound.permission_classes.clone(),
                 inbound_listener_config: config.inbound.clone(),
                 maybe_inbound_listener_evidence: None,
+                maybe_resource_governance_log_dir: maybe_resource_governance_log_dir.clone(),
+                resource_governance_log_retention: Default::default(),
+                resource_governance_log_write_failures: 0,
                 maybe_durable_sync_state: load_durable_sync_state(config),
                 maybe_daemon_sync_control: None,
                 wallet_state: super::wallet_state::WalletState::Local(wallet),
@@ -119,6 +127,9 @@ impl ManagedRpcContext {
                 permission_classes: config.inbound.permission_classes.clone(),
                 inbound_listener_config: config.inbound.clone(),
                 maybe_inbound_listener_evidence: None,
+                maybe_resource_governance_log_dir,
+                resource_governance_log_retention: Default::default(),
+                resource_governance_log_write_failures: 0,
                 maybe_durable_sync_state: store
                     .load_runtime_metadata()
                     .ok()
@@ -195,13 +206,6 @@ impl ManagedRpcContext {
             local_advertisement_decisions(&self.inbound_listener_config, &evidence, services);
         self.network.set_local_address_decisions(decisions);
         self.maybe_inbound_listener_evidence = Some(evidence);
-    }
-
-    pub fn record_inbound_resource_event(&mut self, event: InboundResourceEvent) {
-        if let Some(evidence) = &mut self.maybe_inbound_listener_evidence {
-            evidence.record_resource_event(event.clone());
-        }
-        self.network.record_resource_governance_event(event);
     }
 
     pub fn reconnect_suppression_input_for_remote_addr(
