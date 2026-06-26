@@ -757,6 +757,7 @@ fn inbound_addr_messages_update_learned_address_evidence_without_actions() {
     // Assert
     assert!(addr_actions.is_empty());
     assert_eq!(evidence.learned_address_entries.len(), 2);
+    assert_eq!(evidence.learned_address_rejection_count, 0);
     assert!(evidence.learned_address_entries.iter().all(|entry| {
         entry.source == AddressSourceKind::InboundAddr
             && entry.routability == RoutabilityClass::PubliclyRoutable
@@ -832,6 +833,7 @@ fn inbound_addr_rejections_are_recorded_without_disconnect_actions() {
     // Assert
     assert!(actions.is_empty());
     assert_eq!(evidence.learned_address_entries.len(), 1);
+    assert_eq!(evidence.learned_address_rejection_count, 7);
     assert_eq!(
         evidence
             .learned_address_rejections
@@ -897,6 +899,11 @@ fn over_cap_addr_batch_records_batch_rejection_without_partial_inserts() {
     // Assert
     assert!(actions.is_empty());
     assert!(evidence.learned_address_entries.is_empty());
+    assert_eq!(
+        evidence.learned_address_rejection_count,
+        PHASE92_LEARNED_ADDR_BATCH_LIMIT + 1,
+    );
+    assert!(evidence.learned_address_rejections.is_empty());
     assert_eq!(latest.label, AddressDecisionLabel::LearnedRejected);
     assert_eq!(latest.reason, AddressDecisionReason::OverCapBatch);
     assert_eq!(latest.label.as_str(), "learned_rejected");

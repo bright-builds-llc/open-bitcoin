@@ -125,6 +125,7 @@ pub struct PeerManager {
     getaddr_responses_served: Vec<GetAddrResponseDecision>,
     getaddr_requests_suppressed: Vec<GetAddrResponseDecision>,
     learned_address_rejections: Vec<LearnedAddressDecision>,
+    learned_address_rejection_count: usize,
     maybe_latest_address_decision: Option<PeerAddressBoundaryDecision>,
 }
 
@@ -159,6 +160,7 @@ impl PeerManager {
             getaddr_responses_served: Vec::new(),
             getaddr_requests_suppressed: Vec::new(),
             learned_address_rejections: Vec::new(),
+            learned_address_rejection_count: 0,
             maybe_latest_address_decision: None,
         }
     }

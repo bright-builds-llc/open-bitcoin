@@ -78,16 +78,22 @@ fn getaddr_message_uses_empty_payload() {
 }
 
 #[test]
-fn getaddr_rejects_non_empty_payload() {
+fn empty_payload_messages_reject_non_empty_payload() {
     // Arrange
-    let command = MessageCommand::new("getaddr").expect("command");
+    let command_names = ["verack", "wtxidrelay", "sendheaders", "getaddr"];
 
     // Act
-    let error =
-        WireNetworkMessage::decode_payload(&command, &[0x00]).expect_err("payload must fail");
+    let errors = command_names.map(|command_name| {
+        let command = MessageCommand::new(command_name).expect("command");
+        WireNetworkMessage::decode_payload(&command, &[0x00]).expect_err("payload must fail")
+    });
 
     // Assert
-    assert_eq!(error.to_string(), "trailing data: 1 bytes");
+    assert!(
+        errors
+            .iter()
+            .all(|error| error.to_string() == "trailing data: 1 bytes")
+    );
 }
 
 #[test]

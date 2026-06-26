@@ -250,13 +250,10 @@ impl WireNetworkMessage {
     pub fn decode_payload(command: &MessageCommand, payload: &[u8]) -> Result<Self, NetworkError> {
         match command.as_str() {
             "version" => Ok(Self::Version(decode_version_payload(payload)?)),
-            "verack" => Ok(Self::Verack),
-            "wtxidrelay" => Ok(Self::WtxidRelay),
-            "sendheaders" => Ok(Self::SendHeaders),
-            "getaddr" => {
-                decode_empty_payload(payload)?;
-                Ok(Self::GetAddr)
-            }
+            "verack" => decode_empty_message(payload, Self::Verack),
+            "wtxidrelay" => decode_empty_message(payload, Self::WtxidRelay),
+            "sendheaders" => decode_empty_message(payload, Self::SendHeaders),
+            "getaddr" => decode_empty_message(payload, Self::GetAddr),
             "ping" => Ok(Self::Ping {
                 nonce: decode_nonce_payload(payload)?,
             }),
@@ -438,9 +435,16 @@ fn validate_addr_count(count: usize) -> Result<(), NetworkError> {
 }
 
 fn decode_empty_payload(payload: &[u8]) -> Result<(), NetworkError> {
-    let cursor = Cursor::new(payload);
-    cursor.finish()?;
+    Cursor::new(payload).finish()?;
     Ok(())
+}
+
+fn decode_empty_message(
+    payload: &[u8],
+    message: WireNetworkMessage,
+) -> Result<WireNetworkMessage, NetworkError> {
+    decode_empty_payload(payload)?;
+    Ok(message)
 }
 
 fn encode_inventory_payload(payload: &InventoryList) -> Result<Vec<u8>, NetworkError> {

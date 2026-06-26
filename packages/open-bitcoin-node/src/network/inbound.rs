@@ -75,7 +75,7 @@ impl From<PeerAddressBoundaryEvidence> for ManagedAddressBoundaryInfo {
             getaddr_responses_served: usize_to_u32(evidence.getaddr_responses_served.len()),
             getaddr_requests_suppressed: usize_to_u32(evidence.getaddr_requests_suppressed.len()),
             learned_address_entries: usize_to_u32(evidence.learned_address_entries.len()),
-            learned_address_rejections: usize_to_u32(evidence.learned_address_rejections.len()),
+            learned_address_rejections: usize_to_u32(evidence.learned_address_rejection_count),
             maybe_latest_address_decision: evidence
                 .maybe_latest_address_decision
                 .map(project_address_decision),

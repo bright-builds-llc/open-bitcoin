@@ -18,10 +18,11 @@ use open_bitcoin_core::{
 };
 use open_bitcoin_mempool::PolicyConfig;
 use open_bitcoin_network::{
-    AddressDecisionLabel, AddressDecisionReason, AddressNetworkKind, AddressSourceKind,
-    InboundAdmissionDecision, InboundAdmissionPolicy, InboundAdmissionRejectionReason,
-    InboundAdmissionRequest, InboundAdmissionSlotClass, InboundPermissionDecision, InventoryList,
-    LearnedAddressDecision, LearnedAddressEntry, LocalAdvertisementDecision, LocalPeerConfig,
+    AddressAnnouncement, AddressDecisionLabel, AddressDecisionReason, AddressList,
+    AddressNetworkKind, AddressSourceKind, InboundAdmissionDecision, InboundAdmissionPolicy,
+    InboundAdmissionRejectionReason, InboundAdmissionRequest, InboundAdmissionSlotClass,
+    InboundPermissionDecision, InventoryList, LearnedAddressDecision, LearnedAddressEntry,
+    LocalAdvertisementDecision, LocalPeerConfig, PHASE92_LEARNED_ADDR_BATCH_LIMIT,
     ParsedPeerPermissionClass, PeerAddressBoundaryDecision, PeerAddressBoundaryEvidence,
     PeerConnectionClass, PeerPermissionClassRegistry, RoutabilityClass, ServiceFlags,
     WireNetworkMessage,
@@ -458,6 +459,50 @@ fn managed_address_boundary_info_projects_peer_manager_evidence() {
 }
 
 #[test]
+fn managed_address_boundary_info_projects_over_cap_addr_rejections() {
+    // Arrange
+    let services = ServiceFlags::NETWORK | ServiceFlags::WITNESS;
+    let mut network = ManagedPeerNetwork::new(
+        MemoryChainstateStore::default(),
+        local_config(302),
+        PolicyConfig::default(),
+    );
+    network.add_inbound_peer(302).expect("peer should be added");
+    let now_unix_seconds = 1_700_000_000;
+    let addresses = (0..=PHASE92_LEARNED_ADDR_BATCH_LIMIT)
+        .map(|index| AddressAnnouncement {
+            time_unix_seconds: now_unix_seconds,
+            address: public_ipv4_network_address(9, 9, 9, index as u8, 18_444, services),
+        })
+        .collect();
+
+    // Act
+    let actions = network
+        .receive_message(
+            302,
+            WireNetworkMessage::Addr(AddressList { addresses }),
+            now_unix_seconds as i64,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("over-cap addr batch should be evidence only");
+    let info = network.address_boundary_info();
+
+    // Assert
+    assert!(actions.is_empty());
+    assert_eq!(info.learned_address_entries, 0);
+    assert_eq!(
+        info.learned_address_rejections,
+        u32::try_from(PHASE92_LEARNED_ADDR_BATCH_LIMIT + 1).expect("phase limit fits"),
+    );
+    let latest = info
+        .maybe_latest_address_decision
+        .expect("latest address decision");
+    assert_eq!(latest.label, "learned_rejected");
+    assert_eq!(latest.reason, "over_cap_batch");
+}
+
+#[test]
 fn managed_address_boundary_info_projects_learned_counts() {
     // Arrange
     let services = ServiceFlags::NETWORK | ServiceFlags::WITNESS;
@@ -469,6 +514,7 @@ fn managed_address_boundary_info_projects_learned_counts() {
         getaddr_requests_suppressed: Vec::new(),
         learned_address_entries: vec![learned_address_entry(learned_address)],
         learned_address_rejections: vec![learned_address_rejection(18_446, services)],
+        learned_address_rejection_count: 1,
         maybe_latest_address_decision: Some(PeerAddressBoundaryDecision {
             label: AddressDecisionLabel::LearnedRejected,
             reason: AddressDecisionReason::DuplicateAddress,
@@ -541,6 +587,7 @@ fn managed_address_boundary_info_latest_decision_labels_are_stable() {
                 getaddr_requests_suppressed: Vec::new(),
                 learned_address_entries: Vec::new(),
                 learned_address_rejections: Vec::new(),
+                learned_address_rejection_count: 0,
                 maybe_latest_address_decision: Some(PeerAddressBoundaryDecision { label, reason }),
             });
             let event = info

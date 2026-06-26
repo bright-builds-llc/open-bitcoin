@@ -39,6 +39,7 @@ pub struct PeerAddressBoundaryEvidence {
     pub getaddr_requests_suppressed: Vec<GetAddrResponseDecision>,
     pub learned_address_entries: Vec<LearnedAddressEntry>,
     pub learned_address_rejections: Vec<LearnedAddressDecision>,
+    pub learned_address_rejection_count: usize,
     pub maybe_latest_address_decision: Option<PeerAddressBoundaryDecision>,
 }
 
@@ -68,6 +69,7 @@ impl PeerManager {
             getaddr_requests_suppressed: self.getaddr_requests_suppressed.clone(),
             learned_address_entries: self.learned_addresses.entries().to_vec(),
             learned_address_rejections: self.learned_address_rejections.clone(),
+            learned_address_rejection_count: self.learned_address_rejection_count,
             maybe_latest_address_decision: self.maybe_latest_address_decision,
         }
     }
@@ -89,6 +91,9 @@ impl PeerManager {
                 AddressSourceKind::InboundAddr,
                 now_unix_seconds,
             );
+            self.learned_address_rejection_count = self
+                .learned_address_rejection_count
+                .saturating_add(batch.rejected_count);
             self.maybe_latest_address_decision =
                 maybe_peer_address_decision(batch.label, batch.reason, &[]);
             return Ok(Vec::new());
@@ -109,6 +114,9 @@ impl PeerManager {
             AddressSourceKind::InboundAddr,
             now_unix_seconds,
         );
+        self.learned_address_rejection_count = self
+            .learned_address_rejection_count
+            .saturating_add(batch.rejected_count + local_rejections.len());
         self.learned_address_rejections.extend(
             batch
                 .decisions
