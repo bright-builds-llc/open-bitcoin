@@ -204,11 +204,11 @@ pub enum RoutabilityClass {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AddressSourceKind {
     LocalListener,
-    InboundAddrMessage,
+    InboundAddr,
 }
 ```
 
-The exact type names are recommendations, not existing repo APIs. [ASSUMED]
+The exact type names are recommendations, but the Phase 92 plans now lock the source labels to `source_local_listener` and `source_inbound_addr`. [RESOLVED: 92-01-PLAN.md]
 
 ### Pattern 2: Legacy `getaddr`/`addr` Wire Support Without `addrv2`
 
@@ -490,28 +490,24 @@ pub fn learn_address(
 
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
-| A1 | Exact Rust type names in examples such as `AddressNetworkKind`, `AddressAnnouncement`, and `LearnedAddressEntry` are recommendations, not existing APIs. [ASSUMED] | Architecture Patterns, Code Examples | Planner may choose different names while preserving the same typed contract. |
-| A2 | A small fixed response cap should be chosen by the planner, with example values left unspecified in research. [ASSUMED] | Standard Stack, Architecture Patterns | Planner must pick and test a concrete cap before implementation. |
-| A3 | In-memory learned-address storage is sufficient if it exposes persistence eligibility evidence. [ASSUMED] | Architecture Patterns, Open Questions | If the user wants snapshot-backed evidence in Phase 92, plans need storage tasks. |
+| A1 | Exact Rust type names in examples such as `AddressNetworkKind`, `AddressAnnouncement`, and `LearnedAddressEntry` are recommendations, but Plan 92-01 locks the shared label/reason contract. [RESOLVED: 92-01-PLAN.md] | Architecture Patterns, Code Examples | Executor may choose idiomatic Rust variant names only when `as_str()` labels remain identical. |
+| A2 | Phase 92 plans choose a fixed `PHASE92_GETADDR_RESPONSE_LIMIT` of 8. [RESOLVED: 92-03-PLAN.md] | Standard Stack, Architecture Patterns | Executor must test cap, cap+1, empty, stale, duplicate, and permission-denied response paths. |
+| A3 | Phase 92 plans use an in-memory learned-address store with explicit `persistence_eligible` evidence. [RESOLVED: 92-03-PLAN.md] | Architecture Patterns, Open Questions | Snapshot-backed or full AddrMan persistence remains outside Phase 92. |
 
 ## Open Questions
 
-1. **Should the first learned-address store be in-memory or snapshot-backed?** [ASSUMED]
+1. **Should the first learned-address store be in-memory or snapshot-backed?** [RESOLVED]
    - What we know: D-13 allows either in-memory or snapshot-backed persistence evidence. [VERIFIED: .planning/phases/92-address-advertisement-and-discovery-boundaries/92-CONTEXT.md]
-   - What's unclear: The user did not lock a storage backend or snapshot format. [VERIFIED: .planning/phases/92-address-advertisement-and-discovery-boundaries/92-CONTEXT.md]
-   - Recommendation: Plan in-memory first with explicit `persistence_eligible` evidence unless a later discussion requires snapshot files. [ASSUMED]
-2. **What exact response cap should Phase 92 use?** [ASSUMED]
+   - Plan decision: Use an in-memory learned-address book in Plan 92-03 with explicit `persistence_eligible` evidence and no snapshot file format. [RESOLVED: 92-03-PLAN.md]
+2. **What exact response cap should Phase 92 use?** [RESOLVED]
    - What we know: Knots uses 1000 addresses and 23 percent of addrman for full-network behavior, while D-08 requires a small deterministic cap. [VERIFIED: packages/bitcoin-knots/src/net_processing.cpp; .planning/phases/92-address-advertisement-and-discovery-boundaries/92-CONTEXT.md]
-   - What's unclear: The phase context does not specify the exact cap. [VERIFIED: .planning/phases/92-address-advertisement-and-discovery-boundaries/92-CONTEXT.md]
-   - Recommendation: Planner should choose one constant and test boundary values at cap, cap+1, empty, stale, and duplicate sets. [ASSUMED]
-3. **Should Phase 92 expose address metrics or status-only evidence?** [ASSUMED]
+   - Plan decision: Use `PHASE92_GETADDR_RESPONSE_LIMIT: usize = 8` and test cap, cap+1, empty, stale, duplicate, and already-served paths. [RESOLVED: 92-03-PLAN.md]
+3. **Should Phase 92 expose address metrics or status-only evidence?** [RESOLVED]
    - What we know: Existing inbound metrics are low-cardinality, and D-15 requires status/support evidence. [VERIFIED: packages/open-bitcoin-node/src/metrics.rs; .planning/phases/92-address-advertisement-and-discovery-boundaries/92-CONTEXT.md]
-   - What's unclear: The context does not require new metrics. [VERIFIED: .planning/phases/92-address-advertisement-and-discovery-boundaries/92-CONTEXT.md]
-   - Recommendation: Prefer status/support first and add metrics only for aggregate counters with no raw endpoints or peer IDs. [VERIFIED: AGENTS.bright-builds.md; docs/architecture/operator-observability.md]
-4. **Should unsupported `addrv2` be unknown-command behavior or an explicit deferred label?** [ASSUMED]
+   - Plan decision: Keep Phase 92 to shared status/support evidence and do not add new metrics; Plan 92-05 explicitly keeps metrics unchanged. [RESOLVED: 92-05-PLAN.md]
+4. **Should unsupported `addrv2` be unknown-command behavior or an explicit deferred label?** [RESOLVED]
    - What we know: `WireNetworkMessage` currently rejects unknown commands and D-04 allows typed placeholders only if tests prove no leak/relay. [VERIFIED: packages/open-bitcoin-network/src/message.rs; .planning/phases/92-address-advertisement-and-discovery-boundaries/92-CONTEXT.md]
-   - What's unclear: The phase context does not require implementing `addrv2`. [VERIFIED: .planning/phases/92-address-advertisement-and-discovery-boundaries/92-CONTEXT.md]
-   - Recommendation: Keep `addrv2` deferred unless a planner task needs an explicit unsupported status label. [ASSUMED]
+   - Plan decision: Keep `addrv2` and `sendaddrv2` as unknown/deferred wire surfaces in Plan 92-02; privacy-network labels remain no-leak placeholders only. [RESOLVED: 92-02-PLAN.md]
 
 ## Environment Availability
 
@@ -566,7 +562,7 @@ The planner should map tasks to the repo-native verification contract, not to ad
 | Phase 92 checker | `bun run scripts/check-phase92-address-boundaries.ts` [VERIFIED: scripts/check-phase91-peer-permissions.ts; AGENTS.md] |
 | Full repo-native verification | `bash scripts/verify.sh` [VERIFIED: AGENTS.md; scripts/verify.sh] |
 
-The exact targeted test names may change after implementation creates concrete modules and tests. [ASSUMED]
+The exact targeted test names may change after implementation creates concrete modules and tests. [PLANNER NOTE]
 
 ## Sources
 
@@ -601,7 +597,7 @@ The exact targeted test names may change after implementation creates concrete m
 - Standard stack: HIGH - All recommended stack pieces are existing repo crates/tools or pinned submodule sources verified locally. [VERIFIED: packages/Cargo.toml; rust-toolchain.toml; .bun-version; MODULE.bazel; git submodule status packages/bitcoin-knots]
 - Architecture: HIGH - The recommended module boundaries follow existing Phase 90/91 code and repo standards. [VERIFIED: packages/open-bitcoin-network/src/inbound.rs; packages/open-bitcoin-network/src/inbound/permissions.rs; standards/core/architecture.md; standards/languages/rust.md]
 - Pitfalls: HIGH - Pitfalls are anchored to explicit user decisions and pinned Knots behavior that is broader than Phase 92. [VERIFIED: .planning/phases/92-address-advertisement-and-discovery-boundaries/92-CONTEXT.md; packages/bitcoin-knots/src/net_processing.cpp; packages/bitcoin-knots/src/addrman.cpp]
-- Exact type names/caps/storage choice: MEDIUM - These are planner-facing recommendations where the user left discretion. [ASSUMED]
+- Exact type names: MEDIUM - Example names remain planner-facing recommendations, while the plans now resolve storage, response cap, metrics, and `addrv2` decisions. [RESOLVED: 92-02-PLAN.md; 92-03-PLAN.md; 92-05-PLAN.md]
 
 **Research date:** 2026-06-26 [VERIFIED: developer current date]
-**Valid until:** 2026-07-26 for repo-local planning unless Knots baseline, Phase 92 context, or repo standards change first. [ASSUMED]
+**Valid until:** 2026-07-26 for repo-local planning unless Knots baseline, Phase 92 context, or repo standards change first. [ESTIMATE]
