@@ -2022,6 +2022,15 @@ fn inbound_status_response() -> OpenBitcoinNetworkStatusResponse {
                         .to_string(),
                 },
             ),
+            local_advertisement_candidates: Vec::new(),
+            suppressed_advertisements: Vec::new(),
+            getaddr_responses_served: 0,
+            getaddr_requests_suppressed: 0,
+            learned_address_entries: 0,
+            learned_address_rejections: 0,
+            latest_address_decision: FieldAvailability::unavailable(
+                "inbound address boundary evidence unavailable",
+            ),
         }),
     }
 }

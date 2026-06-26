@@ -13,6 +13,10 @@ pub const INBOUND_STATUS_UNAVAILABLE_REASON: &str = "inbound listener evidence u
 pub const INBOUND_PERMISSION_DECISION_UNAVAILABLE_REASON: &str =
     "inbound permission decision evidence unavailable";
 
+/// Default unavailable reason when address-boundary evidence has not been projected.
+pub const INBOUND_ADDRESS_DECISION_UNAVAILABLE_REASON: &str =
+    "inbound address boundary evidence unavailable";
+
 /// Conservative default for peer status snapshots without inbound serving evidence.
 pub fn inbound_status_unavailable() -> FieldAvailability<InboundPeerServingStatus> {
     FieldAvailability::unavailable(INBOUND_STATUS_UNAVAILABLE_REASON)
@@ -71,6 +75,28 @@ pub struct InboundPermissionDecisionEvent {
     pub message: String,
 }
 
+/// Bounded address evidence safe for shared status and support surfaces.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct InboundAddressEvidenceEntry {
+    pub source: String,
+    pub network_kind: String,
+    pub routability: String,
+    pub freshness: String,
+    pub services_bits: u64,
+    pub port: u16,
+    pub persistence_eligible: bool,
+}
+
+/// Latest bounded address-boundary decision event.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct InboundAddressDecisionEvent {
+    pub outcome: String,
+    pub reason: String,
+    pub label: String,
+    pub source: String,
+    pub message: String,
+}
+
 /// Shared inbound listener and admission evidence under peer status.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct InboundPeerServingStatus {
@@ -97,6 +123,20 @@ pub struct InboundPeerServingStatus {
     pub inactive_permission_effects: Vec<String>,
     #[serde(default = "latest_permission_decision_unavailable")]
     pub latest_permission_decision: FieldAvailability<InboundPermissionDecisionEvent>,
+    #[serde(default)]
+    pub local_advertisement_candidates: Vec<InboundAddressEvidenceEntry>,
+    #[serde(default)]
+    pub suppressed_advertisements: Vec<InboundAddressDecisionEvent>,
+    #[serde(default)]
+    pub getaddr_responses_served: u32,
+    #[serde(default)]
+    pub getaddr_requests_suppressed: u32,
+    #[serde(default)]
+    pub learned_address_entries: u32,
+    #[serde(default)]
+    pub learned_address_rejections: u32,
+    #[serde(default = "latest_address_decision_unavailable")]
+    pub latest_address_decision: FieldAvailability<InboundAddressDecisionEvent>,
 }
 
 fn ordinary_permission_class() -> String {
@@ -105,6 +145,10 @@ fn ordinary_permission_class() -> String {
 
 fn latest_permission_decision_unavailable() -> FieldAvailability<InboundPermissionDecisionEvent> {
     FieldAvailability::unavailable(INBOUND_PERMISSION_DECISION_UNAVAILABLE_REASON)
+}
+
+fn latest_address_decision_unavailable() -> FieldAvailability<InboundAddressDecisionEvent> {
+    FieldAvailability::unavailable(INBOUND_ADDRESS_DECISION_UNAVAILABLE_REASON)
 }
 
 #[cfg(test)]

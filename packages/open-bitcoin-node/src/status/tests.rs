@@ -4,12 +4,14 @@
 use super::{
     BestKnownTipStatus, BuildProvenance, ChainTipStatus, ConfigStatus, FieldAvailability,
     HealthSignal, HealthSignalLevel, INBOUND_STATUS_UNAVAILABLE_REASON,
-    LAST_PEER_CONTRIBUTION_UNAVAILABLE_REASON, LAST_USEFUL_WORK_UNAVAILABLE_REASON, MempoolStatus,
-    NO_PROGRESS_DIAGNOSIS_UNAVAILABLE_REASON, NO_PROGRESS_NEXT_ACTION_UNAVAILABLE_REASON,
-    NO_PROGRESS_THRESHOLD_UNAVAILABLE_REASON, NoProgressDiagnosis, NoProgressThresholdEvidence,
-    NoProgressThresholdState, NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot,
-    PROGRESS_CREDIT_UNAVAILABLE_REASON, PeerContributionEvidence, PeerContributionKind, PeerCounts,
-    PeerStatus, PeerTelemetry, ProgressCreditEvidence, ProgressCreditKind, ProgressWindowEvidence,
+    InboundAddressDecisionEvent, InboundAddressEvidenceEntry, InboundHandshakeStatusCounts,
+    InboundPeerServingStatus, LAST_PEER_CONTRIBUTION_UNAVAILABLE_REASON,
+    LAST_USEFUL_WORK_UNAVAILABLE_REASON, MempoolStatus, NO_PROGRESS_DIAGNOSIS_UNAVAILABLE_REASON,
+    NO_PROGRESS_NEXT_ACTION_UNAVAILABLE_REASON, NO_PROGRESS_THRESHOLD_UNAVAILABLE_REASON,
+    NoProgressDiagnosis, NoProgressThresholdEvidence, NoProgressThresholdState, NodeRuntimeState,
+    NodeStatus, OpenBitcoinStatusSnapshot, PROGRESS_CREDIT_UNAVAILABLE_REASON,
+    PeerContributionEvidence, PeerContributionKind, PeerCounts, PeerStatus, PeerTelemetry,
+    ProgressCreditEvidence, ProgressCreditKind, ProgressWindowEvidence,
     RESOURCE_BOUND_STOP_PERCENT, RESOURCE_BOUND_WARNING_PERCENT, RejectedProgressActivity,
     RejectedProgressActivityKind, ResourceBoundEntry, ResourceBoundKind, ResourceBoundSnapshot,
     ResourceBoundUnit, ResourcePressureState, STALL_DIAGNOSIS_UNAVAILABLE_REASON,
@@ -1292,6 +1294,75 @@ fn wallet_freshness_states_serialize_distinctly_in_snapshot() {
     assert_eq!(
         encoded[3].0["wallet"]["scan_progress"]["value"]["target_tip_height"],
         100
+    );
+}
+
+#[test]
+fn inbound_status_snapshot_serializes_address_boundary_evidence_under_peers_inbound() {
+    // Arrange
+    let mut snapshot = stopped_snapshot();
+    snapshot.peers.inbound = FieldAvailability::available(InboundPeerServingStatus {
+        listener_state: "ready".to_string(),
+        bound_endpoints: Vec::new(),
+        preflight_reason: "ready".to_string(),
+        admitted_inbound_peers: 1,
+        rejected_inbound_peers: 0,
+        handshake: InboundHandshakeStatusCounts::default(),
+        duplicate_rejects: 0,
+        self_connection_rejects: 0,
+        cap_rejects: 0,
+        reserved_slot_rejects: 0,
+        latest_admission_event: FieldAvailability::unavailable("no admission decision recorded"),
+        permissioned_inbound_peers: 0,
+        protected_inbound_peers: 0,
+        permission_class: "ordinary_inbound".to_string(),
+        active_permission_effects: Vec::new(),
+        inactive_permission_effects: Vec::new(),
+        latest_permission_decision: FieldAvailability::unavailable(
+            "inbound permission decision evidence unavailable",
+        ),
+        local_advertisement_candidates: vec![InboundAddressEvidenceEntry {
+            source: "source_local_listener".to_string(),
+            network_kind: "ipv4".to_string(),
+            routability: "publicly_routable".to_string(),
+            freshness: "fresh".to_string(),
+            services_bits: 1,
+            port: 18_444,
+            persistence_eligible: true,
+        }],
+        suppressed_advertisements: Vec::new(),
+        getaddr_responses_served: 1,
+        getaddr_requests_suppressed: 0,
+        learned_address_entries: 1,
+        learned_address_rejections: 0,
+        latest_address_decision: FieldAvailability::available(InboundAddressDecisionEvent {
+            outcome: "accepted".to_string(),
+            reason: "empty_response_cache".to_string(),
+            label: "learned_accepted".to_string(),
+            source: "source_inbound_addr".to_string(),
+            message: "learned address accepted".to_string(),
+        }),
+    });
+
+    // Act
+    let encoded = serde_json::to_value(snapshot).expect("status snapshot json");
+
+    // Assert
+    assert_eq!(
+        encoded["peers"]["inbound"]["value"]["local_advertisement_candidates"][0]["source"],
+        "source_local_listener"
+    );
+    assert_eq!(
+        encoded["peers"]["inbound"]["value"]["local_advertisement_candidates"][0]["port"],
+        18_444
+    );
+    assert_eq!(
+        encoded["peers"]["inbound"]["value"]["getaddr_responses_served"],
+        1
+    );
+    assert_eq!(
+        encoded["peers"]["inbound"]["value"]["latest_address_decision"]["value"]["source"],
+        "source_inbound_addr"
     );
 }
 

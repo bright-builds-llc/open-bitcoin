@@ -44,7 +44,8 @@ pub use recovery::{
 };
 pub use status::{
     BuildProvenance, ConfigStatus, DurableSyncState, FieldAvailability,
-    INBOUND_PERMISSION_DECISION_UNAVAILABLE_REASON, INBOUND_STATUS_UNAVAILABLE_REASON,
+    INBOUND_ADDRESS_DECISION_UNAVAILABLE_REASON, INBOUND_PERMISSION_DECISION_UNAVAILABLE_REASON,
+    INBOUND_STATUS_UNAVAILABLE_REASON, InboundAddressDecisionEvent, InboundAddressEvidenceEntry,
     InboundAdmissionEvent, InboundHandshakeStatusCounts, InboundPeerServingStatus,
     InboundPermissionDecisionEvent, InboundPermissionEvidence, NoProgressThresholdEvidence,
     NoProgressThresholdState, NodeRuntimeState, OpenBitcoinStatusSnapshot,

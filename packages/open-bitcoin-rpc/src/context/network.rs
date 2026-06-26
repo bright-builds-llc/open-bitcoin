@@ -223,6 +223,15 @@ impl ManagedRpcContext {
             active_permission_effects: permission_evidence.active_permission_effects,
             inactive_permission_effects: permission_evidence.inactive_permission_effects,
             latest_permission_decision: latest_inbound_permission_decision(&admission),
+            local_advertisement_candidates: Vec::new(),
+            suppressed_advertisements: Vec::new(),
+            getaddr_responses_served: 0,
+            getaddr_requests_suppressed: 0,
+            learned_address_entries: 0,
+            learned_address_rejections: 0,
+            latest_address_decision: FieldAvailability::unavailable(
+                "inbound address boundary evidence unavailable",
+            ),
         })
     }
 

@@ -2,7 +2,8 @@
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
 use super::{
-    INBOUND_PERMISSION_DECISION_UNAVAILABLE_REASON, INBOUND_STATUS_UNAVAILABLE_REASON,
+    INBOUND_ADDRESS_DECISION_UNAVAILABLE_REASON, INBOUND_PERMISSION_DECISION_UNAVAILABLE_REASON,
+    INBOUND_STATUS_UNAVAILABLE_REASON, InboundAddressDecisionEvent, InboundAddressEvidenceEntry,
     InboundAdmissionEvent, InboundHandshakeStatusCounts, InboundPeerServingStatus,
     InboundPermissionDecisionEvent,
 };
@@ -112,6 +113,33 @@ fn inbound_status_serializes_listener_and_admission_evidence() {
                         .to_string(),
                 },
             ),
+            local_advertisement_candidates: vec![InboundAddressEvidenceEntry {
+                source: "source_local_listener".to_string(),
+                network_kind: "ipv4".to_string(),
+                routability: "publicly_routable".to_string(),
+                freshness: "fresh".to_string(),
+                services_bits: 1,
+                port: 18_444,
+                persistence_eligible: true,
+            }],
+            suppressed_advertisements: vec![InboundAddressDecisionEvent {
+                outcome: "suppressed".to_string(),
+                reason: "not_inbound".to_string(),
+                label: "advertise_suppressed".to_string(),
+                source: "source_local_listener".to_string(),
+                message: "local listener advertisement suppressed".to_string(),
+            }],
+            getaddr_responses_served: 1,
+            getaddr_requests_suppressed: 2,
+            learned_address_entries: 3,
+            learned_address_rejections: 4,
+            latest_address_decision: FieldAvailability::available(InboundAddressDecisionEvent {
+                outcome: "served".to_string(),
+                reason: "empty_response_cache".to_string(),
+                label: "getaddr_served".to_string(),
+                source: "source_inbound_addr".to_string(),
+                message: "bounded getaddr response served".to_string(),
+            }),
         }),
     };
 
@@ -176,6 +204,53 @@ fn inbound_status_serializes_listener_and_admission_evidence() {
         encoded["inbound"]["value"]["latest_permission_decision"]["value"]["inactive_permission_effects"],
         serde_json::json!(["inactive_relay"])
     );
+    assert_eq!(
+        encoded["inbound"]["value"]["local_advertisement_candidates"][0]["source"],
+        "source_local_listener"
+    );
+    assert_eq!(
+        encoded["inbound"]["value"]["local_advertisement_candidates"][0]["network_kind"],
+        "ipv4"
+    );
+    assert_eq!(
+        encoded["inbound"]["value"]["local_advertisement_candidates"][0]["routability"],
+        "publicly_routable"
+    );
+    assert_eq!(
+        encoded["inbound"]["value"]["local_advertisement_candidates"][0]["freshness"],
+        "fresh"
+    );
+    assert_eq!(
+        encoded["inbound"]["value"]["local_advertisement_candidates"][0]["services_bits"],
+        1
+    );
+    assert_eq!(
+        encoded["inbound"]["value"]["local_advertisement_candidates"][0]["port"],
+        18_444
+    );
+    assert_eq!(
+        encoded["inbound"]["value"]["local_advertisement_candidates"][0]["persistence_eligible"],
+        true
+    );
+    assert_eq!(
+        encoded["inbound"]["value"]["suppressed_advertisements"][0]["reason"],
+        "not_inbound"
+    );
+    assert_eq!(
+        encoded["inbound"]["value"]["suppressed_advertisements"][0]["label"],
+        "advertise_suppressed"
+    );
+    assert_eq!(encoded["inbound"]["value"]["getaddr_responses_served"], 1);
+    assert_eq!(
+        encoded["inbound"]["value"]["getaddr_requests_suppressed"],
+        2
+    );
+    assert_eq!(encoded["inbound"]["value"]["learned_address_entries"], 3);
+    assert_eq!(encoded["inbound"]["value"]["learned_address_rejections"], 4);
+    assert_eq!(
+        encoded["inbound"]["value"]["latest_address_decision"]["value"]["label"],
+        "getaddr_served"
+    );
 }
 
 #[test]
@@ -224,4 +299,82 @@ fn inbound_status_permission_fields_default_for_legacy_status_json() {
             INBOUND_PERMISSION_DECISION_UNAVAILABLE_REASON
         )
     );
+    assert!(status.local_advertisement_candidates.is_empty());
+    assert!(status.suppressed_advertisements.is_empty());
+    assert_eq!(status.getaddr_responses_served, 0);
+    assert_eq!(status.getaddr_requests_suppressed, 0);
+    assert_eq!(status.learned_address_entries, 0);
+    assert_eq!(status.learned_address_rejections, 0);
+    assert_eq!(
+        status.latest_address_decision,
+        FieldAvailability::<InboundAddressDecisionEvent>::unavailable(
+            INBOUND_ADDRESS_DECISION_UNAVAILABLE_REASON
+        )
+    );
+}
+
+#[test]
+fn inbound_status_address_entries_exclude_raw_peer_and_address_details() {
+    // Arrange
+    let status = InboundPeerServingStatus {
+        listener_state: "ready".to_string(),
+        bound_endpoints: Vec::new(),
+        preflight_reason: "ready".to_string(),
+        admitted_inbound_peers: 1,
+        rejected_inbound_peers: 0,
+        handshake: InboundHandshakeStatusCounts::default(),
+        duplicate_rejects: 0,
+        self_connection_rejects: 0,
+        cap_rejects: 0,
+        reserved_slot_rejects: 0,
+        latest_admission_event: FieldAvailability::unavailable("no admission decision recorded"),
+        permissioned_inbound_peers: 0,
+        protected_inbound_peers: 0,
+        permission_class: "ordinary_inbound".to_string(),
+        active_permission_effects: Vec::new(),
+        inactive_permission_effects: Vec::new(),
+        latest_permission_decision: FieldAvailability::unavailable(
+            INBOUND_PERMISSION_DECISION_UNAVAILABLE_REASON,
+        ),
+        local_advertisement_candidates: vec![InboundAddressEvidenceEntry {
+            source: "source_local_listener".to_string(),
+            network_kind: "ipv6".to_string(),
+            routability: "publicly_routable".to_string(),
+            freshness: "fresh".to_string(),
+            services_bits: 1,
+            port: 8_333,
+            persistence_eligible: true,
+        }],
+        suppressed_advertisements: Vec::new(),
+        getaddr_responses_served: 0,
+        getaddr_requests_suppressed: 0,
+        learned_address_entries: 1,
+        learned_address_rejections: 0,
+        latest_address_decision: FieldAvailability::available(InboundAddressDecisionEvent {
+            outcome: "accepted".to_string(),
+            reason: "permission_policy_denied".to_string(),
+            label: "learned_accepted".to_string(),
+            source: "source_inbound_addr".to_string(),
+            message: "learned address evidence accepted".to_string(),
+        }),
+    };
+
+    // Act
+    let encoded = serde_json::to_value(status).expect("inbound address evidence json");
+    let encoded_text = encoded.to_string();
+
+    // Assert
+    assert_eq!(
+        encoded["local_advertisement_candidates"][0]["source"],
+        "source_local_listener"
+    );
+    assert_eq!(
+        encoded["latest_address_decision"]["value"]["reason"],
+        "permission_policy_denied"
+    );
+    assert!(!encoded_text.contains("address_bytes"));
+    assert!(!encoded_text.contains("peer_id"));
+    assert!(!encoded_text.contains("raw_permission"));
+    assert!(!encoded_text.contains("raw_config"));
+    assert!(!encoded_text.contains("class_name"));
 }
