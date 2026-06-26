@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Inbound Peer Serving and Network Participation Boundary
 status: executing
-stopped_at: Completed 94-04-PLAN.md
-last_updated: "2026-06-26T20:35:51.319Z"
+stopped_at: Completed 94-05-PLAN.md
+last_updated: "2026-06-26T21:49:48.880Z"
 last_activity: 2026-06-26
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 40
-  completed_plans: 36
-  percent: 90
+  completed_plans: 37
+  percent: 93
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-06-26)
 
 Milestone: v1.9 Inbound Peer Serving and Network Participation Boundary
 Phase: 94 (DoS and Resource Governance) — EXECUTING
-Plan: 5 of 8
+Plan: 6 of 8
 Status: Ready to execute
 Last activity: 2026-06-26
 
@@ -73,6 +73,7 @@ Progress: [#########-] 85%
 | Phase 94 P02 | 29min | 2 tasks | 4 files |
 | Phase 94 P03 | 71min | 3 tasks | 11 files |
 | Phase 94 P04 | 27m | 2 tasks | 7 files |
+| Phase 94 P05 | 65m 12s | 3 tasks | 20 files |
 
 ## Accumulated Context
 
@@ -121,6 +122,9 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 - [Phase 94]: Preserve hook requirements by running TDD RED checks locally and committing only verification-passing task states.
 - [Phase 94]: Map all request-policy non-accept decisions in PeerManager to DisconnectReason::ResourceLimit for stable peer-facing evidence.
 - [Phase 94]: Keep request-cap logic in peer/inventory_state.rs so peer.rs stays below the production file-length gate.
+- [Phase 94]: Project Phase 94 resource-governance events once through shared inbound status and reuse that contract for RPC/log evidence.
+- [Phase 94]: Keep resource-governance metrics as fixed MetricKind variants with static CLI dashboard labels; do not add dynamic metric labels.
+- [Phase 94]: Make managed RPC resource-event logging datadir-backed and bounded, with redaction for suspicious raw fields and a bounded write-failure count.
 
 ### Pending Todos
 
@@ -141,6 +145,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-26T20:35:51.317Z
-Stopped at: Completed 94-04-PLAN.md
+Last session: 2026-06-26T21:49:48.878Z
+Stopped at: Completed 94-05-PLAN.md
 Resume file: None
