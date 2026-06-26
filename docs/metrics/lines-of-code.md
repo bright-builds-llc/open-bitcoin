@@ -6,11 +6,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Metric | Value |
 | --- | --- |
-| Included files | 414 |
-| Total lines | 167,125 |
-| Code/content lines | 147,808 |
-| Comment-only lines | 5,273 |
-| Blank lines | 14,044 |
+| Included files | 416 |
+| Total lines | 168,223 |
+| Code/content lines | 148,781 |
+| Comment-only lines | 5,285 |
+| Blank lines | 14,157 |
 
 ## Per-Crate Modules
 
@@ -36,7 +36,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust production | 234 | 67,152 | 58,659 | 1,972 | 6,521 |
 | Rust tests | 65 | 57,932 | 50,854 | 2,840 | 4,238 |
-| TypeScript/Bun scripts | 56 | 25,764 | 22,891 | 407 | 2,466 |
+| TypeScript/Bun scripts | 58 | 26,862 | 23,864 | 419 | 2,579 |
 | Fixture/data | 6 | 8,233 | 8,228 | 5 | 0 |
 | Shell scripts | 13 | 3,968 | 3,548 | 43 | 377 |
 | TOML/config | 16 | 3,460 | 3,094 | 0 | 366 |
@@ -100,6 +100,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase92-address-boundaries.ts | 627 |
 | scripts/check-phase93-peer-policy.test.ts | 206 |
 | scripts/check-phase93-peer-policy.ts | 556 |
+| scripts/check-phase94-dos-resource-governance.test.ts | 471 |
+| scripts/check-phase94-dos-resource-governance.ts | 627 |
 | scripts/check-v1.3-release-boundaries.ts | 184 |
 | scripts/check-v1.4-release-boundaries.ts | 241 |
 | scripts/check-v1.5-release-boundaries.ts | 296 |
@@ -137,7 +139,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 2954d59e0ed4a262474c3b4f73c09d4ede0ee2088c92efae4f61e7ee767adb73 |
+| Input fingerprint | ee00fa2f54edad57763b56031a2ec22722a6683b9b95ba907bba727360b0bd46 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |
