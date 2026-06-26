@@ -4,11 +4,12 @@
 //! Inbound serving support Markdown rendering.
 
 use open_bitcoin_node::status::{
-    FieldAvailability, InboundAdmissionEvent, InboundPeerServingStatus,
-    InboundPermissionDecisionEvent,
+    FieldAvailability, InboundAddressDecisionEvent, InboundAddressEvidenceEntry,
+    InboundAdmissionEvent, InboundPeerServingStatus, InboundPermissionDecisionEvent,
 };
 
 const INACTIVE_RELAY_PERMISSION_NEXT_ACTION: &str = "Relay, mempool, bloom, and blockfilter permissions are recorded as inactive Phase 91 evidence; do not treat them as relay support.";
+const PHASE92_ADDRESS_BOUNDARY_NEXT_ACTION: &str = "Treat Phase 92 as bounded local advertisement and direct getaddr evidence only; peer discovery, unsolicited address relay, DNS seed discovery, UPnP/NAT-PMP discovery, and public-network readiness remain outside this surface.";
 
 pub(super) fn push_inbound_serving(
     output: &mut String,
@@ -93,6 +94,7 @@ fn push_available_inbound(output: &mut String, evidence: &InboundPeerServingStat
     push_latest_permission_decision(output, &evidence.latest_permission_decision);
     push_latest_admission_event(output, &evidence.latest_admission_event);
     output.push_str(&format!("- Next action: {}\n", next_action(evidence)));
+    push_inbound_address_boundary(output, evidence);
 }
 
 fn push_latest_admission_event(
@@ -127,6 +129,92 @@ fn push_latest_permission_decision(
         FieldAvailability::Unavailable { reason } => output.push_str(&format!(
             "- latest_permission_decision: Unavailable: {reason}\n"
         )),
+    }
+}
+
+fn push_inbound_address_boundary(output: &mut String, evidence: &InboundPeerServingStatus) {
+    output.push_str("\n## Inbound Address Boundary Evidence\n\n");
+    output.push_str(&format!(
+        "- Local advertisement candidates: {} {}\n",
+        evidence.local_advertisement_candidates.len(),
+        address_entries_text(&evidence.local_advertisement_candidates)
+    ));
+    output.push_str(&format!(
+        "- Suppressed advertisements: {} {}\n",
+        evidence.suppressed_advertisements.len(),
+        address_decisions_text(&evidence.suppressed_advertisements)
+    ));
+    output.push_str(&format!(
+        "- Bounded getaddr responses served: {}\n",
+        evidence.getaddr_responses_served
+    ));
+    output.push_str(&format!(
+        "- Bounded getaddr requests suppressed: {}\n",
+        evidence.getaddr_requests_suppressed
+    ));
+    output.push_str(&format!(
+        "- Learned address entries: {}\n",
+        evidence.learned_address_entries
+    ));
+    output.push_str(&format!(
+        "- Learned address rejections: {}\n",
+        evidence.learned_address_rejections
+    ));
+    output.push_str(&format!(
+        "- Latest address decision: {}\n",
+        latest_address_decision_text(&evidence.latest_address_decision)
+    ));
+    output.push_str(&format!(
+        "- Next action: {PHASE92_ADDRESS_BOUNDARY_NEXT_ACTION}\n"
+    ));
+}
+
+fn address_entries_text(entries: &[InboundAddressEvidenceEntry]) -> String {
+    if entries.is_empty() {
+        return "none".to_string();
+    }
+    entries
+        .iter()
+        .map(address_entry_text)
+        .collect::<Vec<_>>()
+        .join("; ")
+}
+
+fn address_entry_text(entry: &InboundAddressEvidenceEntry) -> String {
+    format!(
+        "source={} network_kind={} routability={} freshness={} services_bits={} port={} persistence_eligible={}",
+        entry.source,
+        entry.network_kind,
+        entry.routability,
+        entry.freshness,
+        entry.services_bits,
+        entry.port,
+        entry.persistence_eligible
+    )
+}
+
+fn address_decisions_text(events: &[InboundAddressDecisionEvent]) -> String {
+    if events.is_empty() {
+        return "none".to_string();
+    }
+    events
+        .iter()
+        .map(address_decision_text)
+        .collect::<Vec<_>>()
+        .join("; ")
+}
+
+fn address_decision_text(event: &InboundAddressDecisionEvent) -> String {
+    format!(
+        "outcome={} reason={} label={} source={} message={}",
+        event.outcome, event.reason, event.label, event.source, event.message
+    )
+}
+
+fn latest_address_decision_text(event: &FieldAvailability<InboundAddressDecisionEvent>) -> String {
+    match event {
+        FieldAvailability::Available(event) => address_decision_text(event),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
     }
 }
 

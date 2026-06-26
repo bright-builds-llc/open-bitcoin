@@ -12,18 +12,18 @@ use open_bitcoin_node::{
     RecoveryCause, RecoveryEvidenceBasis, RecoveryEvidenceSnapshot,
     status::{
         BestKnownTipSource, BestKnownTipStatus, ChainTipStatus, ConfigStatus, FieldAvailability,
-        InboundAdmissionEvent, InboundHandshakeStatusCounts, InboundPeerServingStatus,
-        InboundPermissionDecisionEvent, MempoolStatus, NoProgressDiagnosis,
-        NoProgressThresholdEvidence, NoProgressThresholdState, NodeRuntimeState, NodeStatus,
-        PeerContributionEvidence, PeerContributionKind, PeerCounts, PeerStatus, PeerTipAgreement,
-        PeerTipAgreementStatus, ProgressCreditEvidence, ProgressCreditKind, ProgressWindowEvidence,
-        RejectedProgressActivity, RejectedProgressActivityKind, ResourceBoundEntry,
-        ResourceBoundKind, ResourceBoundSnapshot, ResourceBoundUnit, ServiceLifecycleStatus,
-        ServiceStatus, StallDiagnosisConfidence, StallDiagnosisEvidence, StalledSubsystem,
-        StayCurrentStatus, SyncAttemptCounters, SyncConfiguredTargets, SyncLagStatus,
-        SyncLifecycleState, SyncProgress, SyncProgressSignal, SyncRecoveryCategory,
-        SyncResourcePressure, SyncStatus, SyncStopReasonStatus, TipFreshnessStatus, WalletStatus,
-        inbound_status_unavailable, usage_against_budget,
+        InboundAddressDecisionEvent, InboundAddressEvidenceEntry, InboundAdmissionEvent,
+        InboundHandshakeStatusCounts, InboundPeerServingStatus, InboundPermissionDecisionEvent,
+        MempoolStatus, NoProgressDiagnosis, NoProgressThresholdEvidence, NoProgressThresholdState,
+        NodeRuntimeState, NodeStatus, PeerContributionEvidence, PeerContributionKind, PeerCounts,
+        PeerStatus, PeerTipAgreement, PeerTipAgreementStatus, ProgressCreditEvidence,
+        ProgressCreditKind, ProgressWindowEvidence, RejectedProgressActivity,
+        RejectedProgressActivityKind, ResourceBoundEntry, ResourceBoundKind, ResourceBoundSnapshot,
+        ResourceBoundUnit, ServiceLifecycleStatus, ServiceStatus, StallDiagnosisConfidence,
+        StallDiagnosisEvidence, StalledSubsystem, StayCurrentStatus, SyncAttemptCounters,
+        SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal,
+        SyncRecoveryCategory, SyncResourcePressure, SyncStatus, SyncStopReasonStatus,
+        TipFreshnessStatus, WalletStatus, inbound_status_unavailable, usage_against_budget,
     },
 };
 use serde_json::json;
@@ -108,6 +108,7 @@ fn phase71_support_redaction_names_compact_evidence_bounds() {
             "resource bounds are recorded as compact status summaries only",
             "inbound peer endpoints bounded/redacted",
             "inbound permission labels bounded to machine classes/effects",
+            "inbound address boundary evidence bounded/redacted",
         ]
     );
 }
@@ -1052,6 +1053,89 @@ fn inbound_support_markdown_renders_permission_labels_and_inactive_relay_guidanc
 }
 
 #[test]
+fn inbound_support_markdown_renders_phase92_address_boundary_evidence() {
+    // Arrange
+    let temp = TestDirectory::new("inbound-support-address-boundary");
+    let status = phase92_status_with_address_boundary_evidence();
+    let bundle = phase77_support_bundle_with_status(temp.path(), status);
+
+    // Act
+    let markdown = render::render_support_markdown(&bundle);
+
+    // Assert
+    for expected in [
+        "## Inbound Address Boundary Evidence",
+        "Local advertisement candidates: 1",
+        "source=source_local_listener",
+        "routability=publicly_routable",
+        "persistence_eligible=true",
+        "Suppressed advertisements: 2",
+        "not_publicly_routable",
+        "local evidence only",
+        "Bounded getaddr responses served: 3",
+        "Bounded getaddr requests suppressed: 2",
+        "Learned address entries: 5",
+        "Learned address rejections: 1",
+        "Latest address decision: outcome=suppressed reason=already_served label=getaddr_suppressed source=source_inbound_addr message=bounded getaddr already served",
+        "Next action: Treat Phase 92 as bounded local advertisement and direct getaddr evidence only; peer discovery, unsolicited address relay, DNS seed discovery, UPnP/NAT-PMP discovery, and public-network readiness remain outside this surface.",
+    ] {
+        assert!(markdown.contains(expected), "missing {expected}");
+    }
+    for forbidden in [
+        "full address relay support",
+        "peer discovery support",
+        "addr gossip support",
+    ] {
+        assert_absent(&markdown, forbidden);
+    }
+}
+
+#[test]
+fn inbound_support_redacts_raw_phase92_address_boundary_material() {
+    // Arrange
+    let temp = TestDirectory::new("inbound-support-address-redaction");
+    let mut status = phase92_status_with_address_boundary_evidence();
+    let FieldAvailability::Available(inbound) = &mut status.peers.inbound else {
+        panic!("inbound status fixture should be available");
+    };
+    inbound.local_advertisement_candidates[0].source =
+        "source_local_listener 127.0.0.1:18444 address_bytes=[127,0,0,1]".to_string();
+    inbound.suppressed_advertisements[0].message =
+        "local evidence only peer_id=92 ::1 operator_loopback raw_permission".to_string();
+    inbound.latest_address_decision = FieldAvailability::available(InboundAddressDecisionEvent {
+        outcome: "suppressed".to_string(),
+        reason: "permission_policy_denied".to_string(),
+        label: "getaddr_suppressed".to_string(),
+        source: "source_inbound_addr".to_string(),
+        message: "bounded getaddr denied 0.0.0.0:8333 peer_id=92 raw_permission config=operator"
+            .to_string(),
+    });
+    let bundle = phase77_support_bundle_with_status(temp.path(), status);
+
+    // Act
+    let json_text = serde_json::to_string_pretty(&bundle).expect("support json");
+    let markdown = render::render_support_markdown(&bundle);
+
+    // Assert
+    for rendered in [&json_text, &markdown] {
+        for forbidden in [
+            "127.0.0.1:",
+            "0.0.0.0:",
+            "::1",
+            "address_bytes",
+            "peer_id=",
+            "operator_loopback",
+            "raw_permission",
+            "full address relay support",
+            "peer discovery support",
+        ] {
+            assert_absent(rendered, forbidden);
+        }
+    }
+    assert!(markdown.contains("redacted_address_evidence"));
+}
+
+#[test]
 fn inbound_support_json_and_markdown_redact_raw_permission_config_evidence() {
     // Arrange
     let temp = TestDirectory::new("inbound-support-permission-redaction");
@@ -1508,6 +1592,50 @@ fn phase91_status_with_permissioned_inbound() -> OpenBitcoinStatusSnapshot {
             inactive_permission_effects: vec!["inactive_relay".to_string()],
             message: "inbound permission decision admitted as protected_inbound".to_string(),
         });
+    status
+}
+
+fn phase92_status_with_address_boundary_evidence() -> OpenBitcoinStatusSnapshot {
+    let mut status = phase90_status_with_available_inbound();
+    let FieldAvailability::Available(inbound) = &mut status.peers.inbound else {
+        panic!("inbound status fixture should be available");
+    };
+    inbound.local_advertisement_candidates = vec![InboundAddressEvidenceEntry {
+        source: "source_local_listener".to_string(),
+        network_kind: "ipv4".to_string(),
+        routability: "publicly_routable".to_string(),
+        freshness: "fresh".to_string(),
+        services_bits: 1,
+        port: 8333,
+        persistence_eligible: true,
+    }];
+    inbound.suppressed_advertisements = vec![
+        InboundAddressDecisionEvent {
+            outcome: "suppressed".to_string(),
+            reason: "not_publicly_routable".to_string(),
+            label: "not_publicly_routable".to_string(),
+            source: "source_local_listener".to_string(),
+            message: "local evidence only".to_string(),
+        },
+        InboundAddressDecisionEvent {
+            outcome: "suppressed".to_string(),
+            reason: "permission_policy_denied".to_string(),
+            label: "permission_policy_denied".to_string(),
+            source: "source_inbound_addr".to_string(),
+            message: "bounded getaddr permission policy denied".to_string(),
+        },
+    ];
+    inbound.getaddr_responses_served = 3;
+    inbound.getaddr_requests_suppressed = 2;
+    inbound.learned_address_entries = 5;
+    inbound.learned_address_rejections = 1;
+    inbound.latest_address_decision = FieldAvailability::available(InboundAddressDecisionEvent {
+        outcome: "suppressed".to_string(),
+        reason: "already_served".to_string(),
+        label: "getaddr_suppressed".to_string(),
+        source: "source_inbound_addr".to_string(),
+        message: "bounded getaddr already served".to_string(),
+    });
     status
 }
 

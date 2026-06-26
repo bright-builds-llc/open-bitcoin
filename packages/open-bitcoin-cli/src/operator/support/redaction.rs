@@ -5,15 +5,18 @@ use std::net::SocketAddr;
 
 use open_bitcoin_node::{
     OpenBitcoinStatusSnapshot,
-    status::{FieldAvailability, InboundPeerServingStatus},
+    status::{FieldAvailability, InboundAddressDecisionEvent, InboundPeerServingStatus},
 };
 use serde::Serialize;
 
 const INBOUND_ENDPOINT_REDACTION_SAFEGUARD: &str = "inbound peer endpoints bounded/redacted";
 const INBOUND_PERMISSION_REDACTION_SAFEGUARD: &str =
     "inbound permission labels bounded to machine classes/effects";
+const INBOUND_ADDRESS_REDACTION_SAFEGUARD: &str =
+    "inbound address boundary evidence bounded/redacted";
 const REDACTED_PERMISSION_CLASS_LABEL: &str = "redacted_permission_class";
 const REDACTED_PERMISSION_EFFECT_LABEL: &str = "redacted_permission_effect";
+const REDACTED_ADDRESS_EVIDENCE_LABEL: &str = "redacted_address_evidence";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub(crate) struct RedactionSummary {
@@ -36,6 +39,7 @@ pub(crate) fn redaction_summary() -> RedactionSummary {
             "resource bounds are recorded as compact status summaries only".to_string(),
             INBOUND_ENDPOINT_REDACTION_SAFEGUARD.to_string(),
             INBOUND_PERMISSION_REDACTION_SAFEGUARD.to_string(),
+            INBOUND_ADDRESS_REDACTION_SAFEGUARD.to_string(),
         ],
     }
 }
@@ -45,6 +49,7 @@ pub(crate) fn support_status_for_bundle(
 ) -> OpenBitcoinStatusSnapshot {
     redact_inbound_endpoint_evidence(&mut status.peers.inbound);
     redact_inbound_permission_evidence(&mut status.peers.inbound);
+    redact_inbound_address_evidence(&mut status.peers.inbound);
     status
 }
 
@@ -86,6 +91,33 @@ fn redact_inbound_permission_evidence(inbound: &mut FieldAvailability<InboundPee
         "inbound permission decision {} as {}",
         event.outcome, event.permission_class
     );
+}
+
+fn redact_inbound_address_evidence(inbound: &mut FieldAvailability<InboundPeerServingStatus>) {
+    let FieldAvailability::Available(evidence) = inbound else {
+        return;
+    };
+
+    for entry in &mut evidence.local_advertisement_candidates {
+        entry.source = sanitized_address_evidence_text(&entry.source);
+        entry.network_kind = sanitized_address_evidence_text(&entry.network_kind);
+        entry.routability = sanitized_address_evidence_text(&entry.routability);
+        entry.freshness = sanitized_address_evidence_text(&entry.freshness);
+    }
+    for event in &mut evidence.suppressed_advertisements {
+        sanitize_address_decision(event);
+    }
+    if let FieldAvailability::Available(event) = &mut evidence.latest_address_decision {
+        sanitize_address_decision(event);
+    }
+}
+
+fn sanitize_address_decision(event: &mut InboundAddressDecisionEvent) {
+    event.outcome = sanitized_address_evidence_text(&event.outcome);
+    event.reason = sanitized_address_evidence_text(&event.reason);
+    event.label = sanitized_address_evidence_text(&event.label);
+    event.source = sanitized_address_evidence_text(&event.source);
+    event.message = sanitized_address_evidence_text(&event.message);
 }
 
 fn redacted_inbound_endpoint_summary(endpoints: &[String]) -> Vec<String> {
@@ -194,4 +226,26 @@ fn is_safe_inactive_permission_effect_label(label: &str) -> bool {
             | "inactive_bloomfilter"
             | "inactive_blockfilters"
     )
+}
+
+fn sanitized_address_evidence_text(value: &str) -> String {
+    if contains_raw_address_evidence(value) {
+        return REDACTED_ADDRESS_EVIDENCE_LABEL.to_string();
+    }
+    value.to_string()
+}
+
+fn contains_raw_address_evidence(value: &str) -> bool {
+    let lower_value = value.to_ascii_lowercase();
+    value.contains("127.0.0.1:")
+        || value.contains("0.0.0.0:")
+        || value.contains("::1")
+        || lower_value.contains("address_bytes")
+        || lower_value.contains("peer_id=")
+        || lower_value.contains("operator_loopback")
+        || lower_value.contains("raw_permission")
+        || lower_value.contains("in,noban")
+        || lower_value.contains("rpc_password")
+        || lower_value.contains("cookie=")
+        || lower_value.contains("config=")
 }
