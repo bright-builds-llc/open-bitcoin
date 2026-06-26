@@ -336,6 +336,15 @@ fn inbound_self_connection_version_rejects_without_establishing_peer() {
 }
 
 #[test]
+fn resource_limit_disconnect_action_is_available_for_request_cap_tests() {
+    // Arrange
+    let actions = vec![PeerAction::Disconnect(DisconnectReason::ResourceLimit)];
+
+    // Act / Assert
+    assert_resource_limit_disconnect(&actions);
+}
+
+#[test]
 fn inbound_handshake_uses_existing_peer_action_flow() {
     // Arrange
     let mut manager = PeerManager::new(local_config());
@@ -1954,6 +1963,13 @@ fn assert_no_addr_actions(actions: &[PeerAction]) {
         actions
             .iter()
             .all(|action| !matches!(action, PeerAction::Send(WireNetworkMessage::Addr(_)))),
+    );
+}
+
+fn assert_resource_limit_disconnect(actions: &[PeerAction]) {
+    assert_eq!(
+        actions,
+        [PeerAction::Disconnect(DisconnectReason::ResourceLimit)]
     );
 }
 

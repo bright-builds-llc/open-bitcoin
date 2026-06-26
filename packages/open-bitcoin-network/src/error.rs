@@ -12,6 +12,7 @@ pub type PeerId = u64;
 pub enum DisconnectReason {
     DuplicateVersion,
     SelfConnection,
+    ResourceLimit,
     MissingHeaderAncestor(BlockHash),
 }
 
@@ -20,6 +21,7 @@ impl fmt::Display for DisconnectReason {
         match self {
             Self::DuplicateVersion => write!(f, "duplicate version message"),
             Self::SelfConnection => write!(f, "self connection"),
+            Self::ResourceLimit => write!(f, "resource limit reached"),
             Self::MissingHeaderAncestor(hash) => {
                 write!(f, "missing header ancestor: {:?}", hash.to_byte_array(),)
             }
@@ -46,6 +48,7 @@ pub enum NetworkError {
     UnknownPeer(PeerId),
     DuplicateVersion(PeerId),
     SelfConnection(PeerId),
+    ResourceLimit(PeerId),
 }
 
 impl fmt::Display for NetworkError {
@@ -84,6 +87,9 @@ impl fmt::Display for NetworkError {
             }
             Self::SelfConnection(peer_id) => {
                 write!(f, "peer {peer_id} connected to self")
+            }
+            Self::ResourceLimit(peer_id) => {
+                write!(f, "peer {peer_id} reached resource limit")
             }
         }
     }
@@ -146,6 +152,10 @@ mod tests {
             "self connection",
         );
         assert_eq!(
+            DisconnectReason::ResourceLimit.to_string(),
+            "resource limit reached",
+        );
+        assert_eq!(
             NetworkError::InvalidUserAgentEncoding.to_string(),
             "version message user agent is not valid UTF-8",
         );
@@ -181,6 +191,10 @@ mod tests {
         assert_eq!(
             NetworkError::SelfConnection(8).to_string(),
             "peer 8 connected to self",
+        );
+        assert_eq!(
+            NetworkError::ResourceLimit(9).to_string(),
+            "peer 9 reached resource limit",
         );
     }
 }

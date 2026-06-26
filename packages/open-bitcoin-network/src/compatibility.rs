@@ -221,6 +221,7 @@ fn diagnose_actions(actions: &[PeerAction]) -> CompatibilityDiagnosis {
     match maybe_disconnect {
         Some(DisconnectReason::DuplicateVersion) => CompatibilityDiagnosis::VersionRejected,
         Some(DisconnectReason::SelfConnection) => CompatibilityDiagnosis::VersionRejected,
+        Some(DisconnectReason::ResourceLimit) => CompatibilityDiagnosis::VersionRejected,
         Some(DisconnectReason::MissingHeaderAncestor(_)) => {
             CompatibilityDiagnosis::MalformedPayload
         }
@@ -579,5 +580,17 @@ mod tests {
             duplicate_version_diagnosis,
             CompatibilityDiagnosis::VersionRejected,
         );
+    }
+
+    #[test]
+    fn resource_limit_disconnect_maps_to_version_rejected() {
+        // Arrange
+        let actions = vec![PeerAction::Disconnect(DisconnectReason::ResourceLimit)];
+
+        // Act
+        let diagnosis = super::diagnose_actions(&actions);
+
+        // Assert
+        assert_eq!(diagnosis, CompatibilityDiagnosis::VersionRejected);
     }
 }
