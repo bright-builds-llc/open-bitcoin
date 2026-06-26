@@ -22,12 +22,13 @@ use open_bitcoin_node::core::network::{LocalPeerConfig, ServiceFlags, WireNetwor
 use open_bitcoin_node::core::primitives::{Block, NetworkAddress, NetworkMagic, Transaction};
 use open_bitcoin_node::core::wallet::AddressNetwork;
 use open_bitcoin_node::network::{
-    ManagedInboundAdmissionInfo, ManagedMempoolInfo, ManagedNetworkInfo,
+    ManagedAddressBoundaryInfo, ManagedInboundAdmissionInfo, ManagedMempoolInfo, ManagedNetworkInfo,
 };
 use open_bitcoin_node::status::{
-    FieldAvailability, INBOUND_PERMISSION_DECISION_UNAVAILABLE_REASON, InboundAdmissionEvent,
-    InboundHandshakeStatusCounts, InboundPeerServingStatus, InboundPermissionDecisionEvent,
-    InboundPermissionEvidence, inbound_status_unavailable,
+    FieldAvailability, INBOUND_ADDRESS_DECISION_UNAVAILABLE_REASON,
+    INBOUND_PERMISSION_DECISION_UNAVAILABLE_REASON, InboundAddressDecisionEvent,
+    InboundAdmissionEvent, InboundHandshakeStatusCounts, InboundPeerServingStatus,
+    InboundPermissionDecisionEvent, InboundPermissionEvidence, inbound_status_unavailable,
 };
 use open_bitcoin_node::{DurableSyncState, FjallNodeStore};
 use open_bitcoin_node::{
@@ -185,16 +186,19 @@ impl ManagedRpcContext {
 
     pub fn current_inbound_status(&self) -> FieldAvailability<InboundPeerServingStatus> {
         let admission = self.inbound_admission_info();
+        let address_info = self.network.address_boundary_info();
         let maybe_listener_evidence = self.maybe_inbound_listener_evidence.as_ref();
         if admission.admitted_inbound_peers == 0
             && admission.rejected_inbound_peers == 0
             && maybe_listener_evidence.is_none()
+            && address_info.is_empty()
         {
             return inbound_status_unavailable();
         }
 
         let network_info = self.network_info();
         let permission_evidence = inbound_permission_evidence(&admission);
+        let latest_address_decision = latest_inbound_address_decision(&address_info);
         FieldAvailability::available(InboundPeerServingStatus {
             listener_state: listener_state(&admission, maybe_listener_evidence),
             bound_endpoints: bound_endpoints(maybe_listener_evidence),
@@ -208,7 +212,7 @@ impl ManagedRpcContext {
                 disconnected: 0,
             },
             duplicate_rejects: usize_to_u32(
-                admission.duplicate_endpoint_rejections + admission.duplicate_peer_id_rejections,
+                admission.duplicate_endpoint_rejections + admission.duplicate_identity_rejections,
             ),
             self_connection_rejects: usize_to_u32(admission.self_connection_rejections),
             cap_rejects: usize_to_u32(admission.cap_rejections),
@@ -223,15 +227,13 @@ impl ManagedRpcContext {
             active_permission_effects: permission_evidence.active_permission_effects,
             inactive_permission_effects: permission_evidence.inactive_permission_effects,
             latest_permission_decision: latest_inbound_permission_decision(&admission),
-            local_advertisement_candidates: Vec::new(),
-            suppressed_advertisements: Vec::new(),
-            getaddr_responses_served: 0,
-            getaddr_requests_suppressed: 0,
-            learned_address_entries: 0,
-            learned_address_rejections: 0,
-            latest_address_decision: FieldAvailability::unavailable(
-                "inbound address boundary evidence unavailable",
-            ),
+            local_advertisement_candidates: address_info.local_advertisement_candidates,
+            suppressed_advertisements: address_info.suppressed_advertisements,
+            getaddr_responses_served: address_info.getaddr_responses_served,
+            getaddr_requests_suppressed: address_info.getaddr_requests_suppressed,
+            learned_address_entries: address_info.learned_address_entries,
+            learned_address_rejections: address_info.learned_address_rejections,
+            latest_address_decision,
         })
     }
 
@@ -453,6 +455,18 @@ fn latest_inbound_permission_decision(
             .collect(),
         message: format!("inbound permission decision admitted as {permission_class}"),
     })
+}
+
+fn latest_inbound_address_decision(
+    address_info: &ManagedAddressBoundaryInfo,
+) -> FieldAvailability<InboundAddressDecisionEvent> {
+    address_info
+        .maybe_latest_address_decision
+        .clone()
+        .map(FieldAvailability::available)
+        .unwrap_or_else(|| {
+            FieldAvailability::unavailable(INBOUND_ADDRESS_DECISION_UNAVAILABLE_REASON)
+        })
 }
 
 fn usize_to_u32(value: usize) -> u32 {

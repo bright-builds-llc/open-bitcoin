@@ -364,6 +364,10 @@ impl InboundAdmissionRequest {
     pub const fn effective_slot_class(&self) -> InboundAdmissionSlotClass {
         self.permission_decision.slot_class()
     }
+
+    pub fn set_existing_identities(&mut self, identities: BTreeSet<PeerId>) {
+        self.existing_peer_ids = identities;
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -377,6 +381,12 @@ pub struct InboundPeerRecord {
     pub maybe_remote_nonce: Option<u64>,
     pub observed_inbound_peers: usize,
     pub observed_outbound_peers: usize,
+}
+
+impl InboundPeerRecord {
+    pub const fn identity(&self) -> PeerId {
+        self.peer_id
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -410,6 +420,30 @@ pub struct InboundAdmissionRejection {
     pub maybe_endpoint: Option<String>,
     pub message: String,
     pub next_action: String,
+}
+
+impl InboundAdmissionRejection {
+    pub fn runtime_self_connection(record: &InboundPeerRecord) -> Self {
+        Self {
+            reason: InboundAdmissionRejectionReason::SelfConnection,
+            peer_id: record.peer_id,
+            slot_class: record.slot_class,
+            maybe_endpoint: Some(record.remote_endpoint.clone()),
+            message: "remote peer nonce matches the local peer nonce".to_string(),
+            next_action: "disconnect the self-connection candidate before continuing".to_string(),
+        }
+    }
+
+    pub fn duplicate_identity(record: &InboundPeerRecord) -> Self {
+        Self {
+            reason: InboundAdmissionRejectionReason::DuplicatePeerId,
+            peer_id: record.peer_id,
+            slot_class: record.slot_class,
+            maybe_endpoint: Some(record.remote_endpoint.clone()),
+            message: "inbound peer id already has an admitted peer record".to_string(),
+            next_action: "allocate a fresh peer id before retrying admission".to_string(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

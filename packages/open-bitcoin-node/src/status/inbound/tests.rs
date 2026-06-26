@@ -378,3 +378,34 @@ fn inbound_status_address_entries_exclude_raw_peer_and_address_details() {
     assert!(!encoded_text.contains("raw_config"));
     assert!(!encoded_text.contains("class_name"));
 }
+
+#[test]
+fn inbound_status_address_decision_labels_cover_boundary_contract() {
+    // Arrange
+    let labels = [
+        "advertise_candidate",
+        "advertise_suppressed",
+        "getaddr_served",
+        "getaddr_suppressed",
+        "learned_accepted",
+        "learned_rejected",
+    ];
+
+    // Act
+    let events: Vec<_> = labels
+        .into_iter()
+        .map(|label| InboundAddressDecisionEvent {
+            outcome: "recorded".to_string(),
+            reason: "policy_accepted".to_string(),
+            label: label.to_string(),
+            source: "source_inbound_addr".to_string(),
+            message: format!("address boundary decision {label}"),
+        })
+        .collect();
+
+    // Assert
+    assert_eq!(events.len(), 6);
+    assert_eq!(events[0].label, "advertise_candidate");
+    assert_eq!(events[3].label, "getaddr_suppressed");
+    assert_eq!(events[5].label, "learned_rejected");
+}

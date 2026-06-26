@@ -21,15 +21,18 @@ use open_bitcoin_core::{
 use open_bitcoin_mempool::{AdmissionResult, MempoolError, PolicyConfig};
 use open_bitcoin_network::{
     ConnectionRole, DisconnectReason, HeaderEntry, HeaderStore, HeaderSyncPolicy, HeadersMessage,
-    InboundAdmissionPolicy, InventoryList, LocalPeerConfig, NetworkError, PROTOCOL_VERSION,
-    ParsedNetworkMessage, PeerAction, PeerId, PeerManager, WireNetworkMessage,
+    InboundAdmissionPolicy, InventoryList, LocalAdvertisementDecision, LocalPeerConfig,
+    NetworkError, PROTOCOL_VERSION, ParsedNetworkMessage, PeerAction, PeerId, PeerManager,
+    WireNetworkMessage,
 };
 
 use crate::{ChainstateStore, ManagedChainstate, ManagedMempool};
 use header_sync::validate_header_for_sync;
 use inbound::{default_inbound_admission_policy, is_active_inbound_peer};
 
-pub use inbound::{ManagedInboundAdmissionInfo, ManagedInboundPermissionDecisionInfo};
+pub use inbound::{
+    ManagedAddressBoundaryInfo, ManagedInboundAdmissionInfo, ManagedInboundPermissionDecisionInfo,
+};
 
 #[derive(Debug)]
 pub enum ManagedNetworkError {
@@ -124,7 +127,7 @@ pub struct ManagedPeerNetwork<S> {
     chainstate: ManagedChainstate<S>,
     mempool: ManagedMempool,
     peer_manager: PeerManager,
-    peer_ids: BTreeSet<PeerId>,
+    known_peers: BTreeSet<PeerId>,
     inbound_admission_policy: InboundAdmissionPolicy,
     inbound_admission_info: ManagedInboundAdmissionInfo,
     local_config: LocalPeerConfig,
@@ -143,7 +146,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             chainstate,
             mempool: ManagedMempool::new(mempool_config),
             peer_manager,
-            peer_ids: BTreeSet::new(),
+            known_peers: BTreeSet::new(),
             inbound_admission_policy: default_inbound_admission_policy(),
             inbound_admission_info: ManagedInboundAdmissionInfo::default(),
             local_config,
@@ -170,7 +173,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             chainstate,
             mempool: ManagedMempool::new(mempool_config),
             peer_manager,
-            peer_ids: BTreeSet::new(),
+            known_peers: BTreeSet::new(),
             inbound_admission_policy: default_inbound_admission_policy(),
             inbound_admission_info: ManagedInboundAdmissionInfo::default(),
             local_config,
@@ -189,9 +192,17 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     #[rustfmt::skip]
     pub fn peer_manager(&self) -> &PeerManager { &self.peer_manager }
 
+    pub fn set_local_address_decisions(&mut self, decisions: Vec<LocalAdvertisementDecision>) {
+        self.peer_manager.set_local_address_decisions(decisions);
+    }
+
+    pub fn address_boundary_info(&self) -> ManagedAddressBoundaryInfo {
+        self.peer_manager.address_boundary_evidence().into()
+    }
+
     pub fn disconnect_peer(&mut self, peer_id: PeerId) -> Result<(), ManagedNetworkError> {
         self.peer_manager.remove_peer(peer_id)?;
-        self.peer_ids.remove(&peer_id);
+        self.known_peers.remove(&peer_id);
         Ok(())
     }
 
@@ -250,7 +261,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         let mut wtxidrelay_peers = 0;
         let mut header_preferring_peers = 0;
 
-        for peer_id in &self.peer_ids {
+        for peer_id in &self.known_peers {
             let Some(peer) = self.peer_manager.peer_state(*peer_id) else {
                 continue;
             };
@@ -296,7 +307,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         timestamp: i64,
     ) -> Result<Vec<WireNetworkMessage>, ManagedNetworkError> {
         let actions = self.peer_manager.add_outbound_peer(peer_id, timestamp)?;
-        self.peer_ids.insert(peer_id);
+        self.known_peers.insert(peer_id);
         self.collect_outbound(actions)
     }
 

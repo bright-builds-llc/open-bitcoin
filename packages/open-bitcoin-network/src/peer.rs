@@ -209,6 +209,10 @@ impl PeerManager {
         self.peers.keys().copied().collect()
     }
 
+    pub fn identities(&self) -> BTreeSet<PeerId> {
+        self.peer_ids()
+    }
+
     pub fn peer_requested_blocks(&self, peer_id: PeerId) -> Result<Vec<BlockHash>, NetworkError> {
         let peer = self
             .peers

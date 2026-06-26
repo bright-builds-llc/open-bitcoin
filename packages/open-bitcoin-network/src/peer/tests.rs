@@ -387,6 +387,7 @@ fn inbound_counters_and_endpoint_keys_ignore_disconnected_records() {
     let endpoint_keys = manager.inbound_endpoint_keys();
     let counters = manager.inbound_admission_counters();
     let peer_ids = manager.peer_ids();
+    let identities = manager.identities();
 
     // Assert
     assert_eq!(
@@ -397,6 +398,7 @@ fn inbound_counters_and_endpoint_keys_ignore_disconnected_records() {
     assert_eq!(counters.current_reserved_inbound_peers, 1);
     assert_eq!(counters.current_outbound_peers, 1);
     assert_eq!(peer_ids, BTreeSet::from([40, 41, 42]));
+    assert_eq!(identities, peer_ids);
 }
 
 #[test]

@@ -920,6 +920,57 @@ fn inbound_small_helpers_cover_status_and_counter_branches() {
 }
 
 #[test]
+fn admission_identity_helpers_project_existing_record_fields() {
+    // Arrange
+    let mut identities = BTreeSet::new();
+    identities.insert(31);
+    identities.insert(32);
+    let mut request = InboundAdmissionRequest::ordinary(30, "127.0.0.1:20030");
+    let record = super::InboundPeerRecord {
+        peer_id: 31,
+        remote_endpoint: "127.0.0.1:20031".to_string(),
+        slot_class: InboundAdmissionSlotClass::Reserved,
+        connection_class: PeerConnectionClass::ProtectedInbound,
+        permission_decision: protected_permission_decision(),
+        handshake_state: InboundHandshakeState::Accepted,
+        maybe_remote_nonce: None,
+        observed_inbound_peers: 2,
+        observed_outbound_peers: 1,
+    };
+
+    // Act
+    request.set_existing_identities(identities.clone());
+    let self_connection = super::InboundAdmissionRejection::runtime_self_connection(&record);
+    let duplicate_identity = super::InboundAdmissionRejection::duplicate_identity(&record);
+
+    // Assert
+    assert_eq!(request.existing_peer_ids, identities);
+    assert_eq!(record.identity(), 31);
+    assert_eq!(
+        self_connection.reason,
+        InboundAdmissionRejectionReason::SelfConnection
+    );
+    assert_eq!(self_connection.peer_id, 31);
+    assert_eq!(
+        self_connection.slot_class,
+        InboundAdmissionSlotClass::Reserved
+    );
+    assert_eq!(
+        self_connection.maybe_endpoint.as_deref(),
+        Some("127.0.0.1:20031")
+    );
+    assert_eq!(
+        duplicate_identity.reason,
+        InboundAdmissionRejectionReason::DuplicatePeerId
+    );
+    assert_eq!(duplicate_identity.peer_id, 31);
+    assert_eq!(
+        duplicate_identity.next_action,
+        "allocate a fresh peer id before retrying admission"
+    );
+}
+
+#[test]
 fn admission_rejects_cap_reached_without_using_outbound_count() {
     // Arrange
     let policy = InboundAdmissionPolicy::new(2, 0);

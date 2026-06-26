@@ -18,13 +18,19 @@ use open_bitcoin_core::{
 };
 use open_bitcoin_mempool::PolicyConfig;
 use open_bitcoin_network::{
+    AddressDecisionLabel, AddressDecisionReason, AddressNetworkKind, AddressSourceKind,
     InboundAdmissionDecision, InboundAdmissionPolicy, InboundAdmissionRejectionReason,
     InboundAdmissionRequest, InboundAdmissionSlotClass, InboundPermissionDecision, InventoryList,
-    LocalPeerConfig, ParsedPeerPermissionClass, PeerConnectionClass, PeerPermissionClassRegistry,
-    ServiceFlags, WireNetworkMessage,
+    LearnedAddressDecision, LearnedAddressEntry, LocalAdvertisementDecision, LocalPeerConfig,
+    ParsedPeerPermissionClass, PeerAddressBoundaryDecision, PeerAddressBoundaryEvidence,
+    PeerConnectionClass, PeerPermissionClassRegistry, RoutabilityClass, ServiceFlags,
+    WireNetworkMessage,
 };
 
-use crate::{ManagedPeerNetwork, MemoryChainstateStore, network::BlockConnectDisposition};
+use crate::{
+    ManagedAddressBoundaryInfo, ManagedPeerNetwork, MemoryChainstateStore,
+    network::BlockConnectDisposition,
+};
 
 const EASY_BITS: u32 = 0x207f_ffff;
 
@@ -146,6 +152,81 @@ fn local_config(nonce: u64) -> LocalPeerConfig {
         nonce,
         relay: true,
         user_agent: "/open-bitcoin:test/".to_string(),
+    }
+}
+
+fn public_ipv4_network_address(
+    a: u8,
+    b: u8,
+    c: u8,
+    d: u8,
+    port: u16,
+    services: ServiceFlags,
+) -> NetworkAddress {
+    let mut address_bytes = [0_u8; 16];
+    address_bytes[10] = 0xff;
+    address_bytes[11] = 0xff;
+    address_bytes[12] = a;
+    address_bytes[13] = b;
+    address_bytes[14] = c;
+    address_bytes[15] = d;
+    NetworkAddress {
+        services: services.bits(),
+        address_bytes,
+        port,
+    }
+}
+
+fn local_advertisement_candidate(address: NetworkAddress) -> LocalAdvertisementDecision {
+    LocalAdvertisementDecision {
+        label: AddressDecisionLabel::AdvertiseCandidate,
+        reason: AddressDecisionReason::PolicyAccepted,
+        source: AddressSourceKind::LocalListener,
+        network_kind: AddressNetworkKind::Ipv4,
+        routability: RoutabilityClass::PubliclyRoutable,
+        services_bits: address.services,
+        port: address.port,
+        maybe_wire_address: Some(address),
+    }
+}
+
+fn suppressed_local_advertisement(port: u16, services: ServiceFlags) -> LocalAdvertisementDecision {
+    LocalAdvertisementDecision {
+        label: AddressDecisionLabel::AdvertiseSuppressed,
+        reason: AddressDecisionReason::PermissionPolicyDenied,
+        source: AddressSourceKind::LocalListener,
+        network_kind: AddressNetworkKind::Ipv4,
+        routability: RoutabilityClass::PubliclyRoutable,
+        services_bits: services.bits(),
+        port,
+        maybe_wire_address: None,
+    }
+}
+
+fn learned_address_entry(address: NetworkAddress) -> LearnedAddressEntry {
+    LearnedAddressEntry {
+        network_kind: AddressNetworkKind::Ipv4,
+        source: AddressSourceKind::InboundAddr,
+        first_seen_unix_seconds: 100,
+        last_seen_unix_seconds: 100,
+        services_bits: address.services,
+        routability: RoutabilityClass::PubliclyRoutable,
+        persistence_eligible: true,
+        address,
+    }
+}
+
+fn learned_address_rejection(port: u16, services: ServiceFlags) -> LearnedAddressDecision {
+    LearnedAddressDecision {
+        label: AddressDecisionLabel::LearnedRejected,
+        reason: AddressDecisionReason::DuplicateAddress,
+        source: AddressSourceKind::InboundAddr,
+        network_kind: AddressNetworkKind::Ipv4,
+        routability: RoutabilityClass::PubliclyRoutable,
+        services_bits: services.bits(),
+        port,
+        persistence_eligible: false,
+        maybe_entry: None,
     }
 }
 
@@ -289,6 +370,198 @@ fn permissioned_inbound_admission_counts_effects_without_reserved_capacity() {
     assert_eq!(admission.reserved_inbound_admits, 0);
     assert_eq!(admission.active_permission_effect_observations, 2);
     assert_eq!(admission.inactive_permission_effect_observations, 2);
+}
+
+#[test]
+fn managed_address_boundary_info_projects_peer_manager_evidence() {
+    // Arrange
+    let services = ServiceFlags::NETWORK | ServiceFlags::WITNESS;
+    let local_address = public_ipv4_network_address(8, 8, 8, 8, 18_444, services);
+    let mut network = ManagedPeerNetwork::new(
+        MemoryChainstateStore::default(),
+        local_config(301),
+        PolicyConfig::default(),
+    );
+    network.set_local_address_decisions(vec![
+        local_advertisement_candidate(local_address),
+        suppressed_local_advertisement(18_446, services),
+    ]);
+    let decision = network.admit_inbound_peer(permissioned_inbound_request(
+        301,
+        "127.0.0.1:18444",
+        &["in", "addr"],
+    ));
+    assert!(matches!(decision, InboundAdmissionDecision::Admit(_)));
+    let served = network
+        .receive_message(
+            301,
+            WireNetworkMessage::GetAddr,
+            101,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("first getaddr should be served");
+    let suppressed = network
+        .receive_message(
+            301,
+            WireNetworkMessage::GetAddr,
+            101,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("second getaddr should be suppressed");
+
+    // Act
+    let info = network.address_boundary_info();
+
+    // Assert
+    assert!(matches!(
+        served.as_slice(),
+        [WireNetworkMessage::Addr(addresses)] if addresses.addresses.len() == 1
+    ));
+    assert!(suppressed.is_empty());
+    assert_eq!(info.local_advertisement_candidates.len(), 1);
+    assert_eq!(
+        info.local_advertisement_candidates[0].source,
+        "source_local_listener"
+    );
+    assert_eq!(info.local_advertisement_candidates[0].network_kind, "ipv4");
+    assert_eq!(
+        info.local_advertisement_candidates[0].routability,
+        "publicly_routable"
+    );
+    assert_eq!(info.local_advertisement_candidates[0].freshness, "fresh");
+    assert_eq!(
+        info.local_advertisement_candidates[0].services_bits,
+        services.bits()
+    );
+    assert_eq!(info.local_advertisement_candidates[0].port, 18_444);
+    assert!(!info.local_advertisement_candidates[0].persistence_eligible);
+    assert_eq!(info.suppressed_advertisements.len(), 1);
+    assert_eq!(
+        info.suppressed_advertisements[0].label,
+        "advertise_suppressed"
+    );
+    assert_eq!(
+        info.suppressed_advertisements[0].reason,
+        "permission_policy_denied"
+    );
+    assert_eq!(info.getaddr_responses_served, 1);
+    assert_eq!(info.getaddr_requests_suppressed, 1);
+    assert_eq!(info.learned_address_entries, 0);
+    assert_eq!(info.learned_address_rejections, 0);
+    let latest = info
+        .maybe_latest_address_decision
+        .expect("latest address decision");
+    assert_eq!(latest.label, "getaddr_suppressed");
+    assert_eq!(latest.reason, "already_served");
+}
+
+#[test]
+fn managed_address_boundary_info_projects_learned_counts() {
+    // Arrange
+    let services = ServiceFlags::NETWORK | ServiceFlags::WITNESS;
+    let learned_address = public_ipv4_network_address(9, 9, 9, 9, 18_445, services);
+    let evidence = PeerAddressBoundaryEvidence {
+        local_advertisement_candidates: Vec::new(),
+        suppressed_advertisements: Vec::new(),
+        getaddr_responses_served: Vec::new(),
+        getaddr_requests_suppressed: Vec::new(),
+        learned_address_entries: vec![learned_address_entry(learned_address)],
+        learned_address_rejections: vec![learned_address_rejection(18_446, services)],
+        maybe_latest_address_decision: Some(PeerAddressBoundaryDecision {
+            label: AddressDecisionLabel::LearnedRejected,
+            reason: AddressDecisionReason::DuplicateAddress,
+        }),
+    };
+
+    // Act
+    let info = ManagedAddressBoundaryInfo::from(evidence);
+
+    // Assert
+    assert_eq!(info.learned_address_entries, 1);
+    assert_eq!(info.learned_address_rejections, 1);
+    let latest = info
+        .maybe_latest_address_decision
+        .expect("latest learned decision");
+    assert_eq!(latest.label, "learned_rejected");
+    assert_eq!(latest.reason, "duplicate_address");
+}
+
+#[test]
+fn managed_address_boundary_info_latest_decision_labels_are_stable() {
+    // Arrange
+    let cases = [
+        (
+            AddressDecisionLabel::AdvertiseCandidate,
+            AddressDecisionReason::PolicyAccepted,
+            "advertise_candidate",
+            "source_local_listener",
+        ),
+        (
+            AddressDecisionLabel::AdvertiseSuppressed,
+            AddressDecisionReason::PermissionPolicyDenied,
+            "advertise_suppressed",
+            "source_local_listener",
+        ),
+        (
+            AddressDecisionLabel::GetAddrServed,
+            AddressDecisionReason::PolicyAccepted,
+            "getaddr_served",
+            "source_inbound_addr",
+        ),
+        (
+            AddressDecisionLabel::GetAddrSuppressed,
+            AddressDecisionReason::AlreadyServed,
+            "getaddr_suppressed",
+            "source_inbound_addr",
+        ),
+        (
+            AddressDecisionLabel::LearnedAccepted,
+            AddressDecisionReason::PolicyAccepted,
+            "learned_accepted",
+            "source_inbound_addr",
+        ),
+        (
+            AddressDecisionLabel::LearnedRejected,
+            AddressDecisionReason::DuplicateAddress,
+            "learned_rejected",
+            "source_inbound_addr",
+        ),
+    ];
+
+    // Act
+    let projected: Vec<_> = cases
+        .into_iter()
+        .map(|(label, reason, expected_label, expected_source)| {
+            let info = ManagedAddressBoundaryInfo::from(PeerAddressBoundaryEvidence {
+                local_advertisement_candidates: Vec::new(),
+                suppressed_advertisements: Vec::new(),
+                getaddr_responses_served: Vec::new(),
+                getaddr_requests_suppressed: Vec::new(),
+                learned_address_entries: Vec::new(),
+                learned_address_rejections: Vec::new(),
+                maybe_latest_address_decision: Some(PeerAddressBoundaryDecision { label, reason }),
+            });
+            let event = info
+                .maybe_latest_address_decision
+                .expect("latest decision should project");
+            (
+                event.label,
+                event.reason,
+                event.source,
+                expected_label,
+                expected_source,
+            )
+        })
+        .collect();
+
+    // Assert
+    for (label, reason, source, expected_label, expected_source) in projected {
+        assert_eq!(label, expected_label);
+        assert!(!reason.is_empty());
+        assert_eq!(source, expected_source);
+    }
 }
 
 #[test]
@@ -514,7 +787,7 @@ fn duplicate_inbound_endpoint_or_peer_id_rejects_before_counts_change() {
     assert_eq!(info.inbound_peers, 1);
     let admission = network.inbound_admission_info();
     assert_eq!(admission.duplicate_endpoint_rejections, 1);
-    assert_eq!(admission.duplicate_peer_id_rejections, 1);
+    assert_eq!(admission.duplicate_identity_rejections, 1);
     assert_eq!(admission.rejected_inbound_peers, 2);
 }
 

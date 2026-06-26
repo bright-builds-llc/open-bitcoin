@@ -33,8 +33,8 @@ pub use logging::{LogRetentionPolicy, LogStatus};
 pub use mempool::ManagedMempool;
 pub use metrics::{MetricKind, MetricRetentionPolicy, MetricSample, MetricsStatus};
 pub use network::{
-    ManagedInboundAdmissionInfo, ManagedInboundPermissionDecisionInfo, ManagedNetworkError,
-    ManagedNetworkInfo, ManagedPeerNetwork,
+    ManagedAddressBoundaryInfo, ManagedInboundAdmissionInfo, ManagedInboundPermissionDecisionInfo,
+    ManagedNetworkError, ManagedNetworkInfo, ManagedPeerNetwork,
 };
 pub use open_bitcoin_core as core;
 pub use recovery::{
