@@ -9,6 +9,7 @@ use open_bitcoin_network::{
     INBOUND_MESSAGE_HEADER_LEN, InboundAdmissionSlotClass, InboundEnvelopePolicy,
     InboundHandshakeState, InboundListenerConfig, InboundPreflightReason,
     PHASE94_MAX_CONNECTIONS_PER_CHURN_WINDOW, PHASE94_MAX_INBOUND_RUNTIME_PAYLOAD_BYTES,
+    PHASE94_MAX_PEER_READ_QUEUE_BYTES, PHASE94_MAX_PEER_WRITE_QUEUE_BYTES,
     PHASE94_MAX_REPEATED_FAILURES_PER_WINDOW, PHASE94_SLOW_HANDSHAKE_TIMEOUT_SECONDS,
     ParsedPeerPermissionClass, PeerConnectionClass, PeerPermissionClassRegistry,
     ReconnectSuppressionInput, ResourceGovernanceDecision, ResourceGovernancePolicy,
@@ -859,6 +860,75 @@ fn runtime_window_counters_limit_churn_and_repeated_failures() {
     };
     assert_eq!(failure_event.label, "repeated_failure_limited");
     assert_eq!(failure_event.next_action, "churn_rejected");
+}
+
+#[test]
+fn read_queue_pressure_is_decided_before_socket_read() {
+    // Arrange
+    let policy = ResourceGovernancePolicy::default();
+    let mut queue = super::RuntimeQueuePressureState::default();
+    queue.record_pending_read(PHASE94_MAX_PEER_READ_QUEUE_BYTES + 1);
+
+    // Act
+    let event = super::queue_pressure_event(&policy, &queue, Vec::new(), Vec::new())
+        .expect("read queue pressure event");
+
+    // Assert
+    assert_eq!(event.label, "read_queue_pressure");
+    assert_eq!(event.next_action, "read_queue_pressure");
+}
+
+#[test]
+fn write_queue_pressure_skips_socket_write() {
+    // Arrange
+    let policy = ResourceGovernancePolicy::default();
+    let mut queue = super::RuntimeQueuePressureState::default();
+    queue.record_pending_write(PHASE94_MAX_PEER_WRITE_QUEUE_BYTES + 1);
+
+    // Act
+    let event = super::queue_pressure_event(&policy, &queue, Vec::new(), Vec::new())
+        .expect("write queue pressure event");
+
+    // Assert
+    assert_eq!(event.label, "write_queue_pressure");
+    assert_eq!(event.next_action, "write_queue_pressure");
+}
+
+#[test]
+fn aggregate_queue_pressure_records_shared_resource_evidence() {
+    // Arrange
+    let policy = ResourceGovernancePolicy::default();
+    let mut queue = super::RuntimeQueuePressureState::default();
+    queue.record_aggregate_queued_messages(policy.max_aggregate_queued_messages + 1);
+    let event = super::queue_pressure_event(&policy, &queue, Vec::new(), Vec::new())
+        .expect("aggregate queue pressure event");
+    let mut evidence = listener_evidence(&["127.0.0.1:18444"]);
+    let mut context = ManagedRpcContext::for_local_operator(AddressNetwork::Regtest);
+    context.set_inbound_listener_evidence(listener_evidence(&["127.0.0.1:18444"]));
+
+    // Act
+    evidence.record_resource_event(event.clone());
+    context.record_inbound_resource_event(event);
+
+    // Assert
+    assert_eq!(
+        evidence
+            .maybe_latest_resource_event
+            .as_ref()
+            .expect("listener resource event")
+            .label,
+        "resource_pressure_active"
+    );
+    assert_eq!(
+        context
+            .maybe_inbound_listener_evidence()
+            .expect("managed evidence")
+            .maybe_latest_resource_event
+            .as_ref()
+            .expect("managed resource event")
+            .label,
+        "resource_pressure_active"
+    );
 }
 
 #[tokio::test]

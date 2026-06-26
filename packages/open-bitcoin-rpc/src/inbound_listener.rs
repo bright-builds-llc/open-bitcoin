@@ -15,20 +15,20 @@ use std::{
 };
 
 use open_bitcoin_network::{
-    InboundAdmissionDecision, InboundAdmissionRejectionReason, InboundEnvelopePolicy,
-    InboundHandshakeState, InboundListenerActivationDiagnostic, InboundListenerConfig,
-    InboundListenerEndpoint, InboundPreflightDiagnostic, InboundPreflightReason,
-    InboundResourceEvent, ResourceGovernancePolicy, WireNetworkMessage, classify_inbound_preflight,
+    INBOUND_MESSAGE_HEADER_LEN, InboundAdmissionDecision, InboundAdmissionRejectionReason,
+    InboundEnvelopePolicy, InboundHandshakeState, InboundListenerActivationDiagnostic,
+    InboundListenerConfig, InboundListenerEndpoint, InboundPreflightDiagnostic,
+    InboundPreflightReason, InboundResourceEvent, ResourceGovernancePolicy, WireNetworkMessage,
+    classify_inbound_preflight,
 };
 use tokio::{net::TcpListener, task::JoinHandle};
 
 use crate::ManagedRpcContext;
 
-// Resource-governed read_exact/write_all timeout waits live in resource_runtime,
-// where tokio::time::timeout wraps socket readiness without growing this adapter.
 mod resource_runtime;
 use resource_runtime::{
-    InboundRuntimeCounters, ReadWireMessageOutcome, WriteWireMessageOutcome, next_handshake_state,
+    InboundRuntimeCounters, ReadWireMessageOutcome, RuntimeQueuePressureState,
+    WriteWireMessageOutcome, next_handshake_state, queue_pressure_event,
     read_wire_message_for_state, resource_event_from_decision, resource_timeout_event,
     write_all_for_state,
 };
@@ -454,9 +454,10 @@ async fn handle_inbound_stream(
         let mut context = context.lock().await;
         context.record_inbound_admission_for_remote_addr(peer_id, remote_addr, false)
     };
-    match decision {
-        InboundAdmissionDecision::Admit(_record) => {
+    let permission_decision = match decision {
+        InboundAdmissionDecision::Admit(record) => {
             lock_evidence(&evidence).record_admitted();
+            record.permission_decision
         }
         InboundAdmissionDecision::Reject(rejection) => {
             lock_evidence(&evidence).record_rejected(rejection.reason);
@@ -464,7 +465,8 @@ async fn handle_inbound_stream(
                 .record_failure(&resource_policy, current_timestamp());
             return;
         }
-    }
+    };
+    let mut queue_pressure = RuntimeQueuePressureState::default();
 
     let envelope_policy =
         InboundEnvelopePolicy::new(context.lock().await.network_info().network_magic);
@@ -482,7 +484,19 @@ async fn handle_inbound_stream(
                 .record_failure(&resource_policy, current_timestamp());
             break;
         }
-        let outcome = match read_wire_message_for_state(
+        queue_pressure.record_pending_read(INBOUND_MESSAGE_HEADER_LEN);
+        if let Some(event) = queue_pressure_event(
+            &resource_policy,
+            &queue_pressure,
+            permission_decision.active_effects().to_vec(),
+            permission_decision.inactive_effects().to_vec(),
+        ) {
+            record_shared_resource_event(&context, &evidence, event).await;
+            lock_runtime_counters(&runtime_counters)
+                .record_failure(&resource_policy, current_timestamp());
+            break;
+        }
+        let read_result = read_wire_message_for_state(
             &stream,
             &envelope_policy,
             &resource_policy,
@@ -490,8 +504,9 @@ async fn handle_inbound_stream(
             last_activity_unix_seconds,
             handshake_state,
         )
-        .await
-        {
+        .await;
+        queue_pressure.clear_pending_read();
+        let outcome = match read_result {
             Ok(outcome) => outcome,
             Err(_error) => break,
         };
@@ -521,7 +536,19 @@ async fn handle_inbound_stream(
             break;
         };
         for response in encoded_responses {
-            match write_all_for_state(
+            queue_pressure.record_pending_write(response.len());
+            if let Some(event) = queue_pressure_event(
+                &resource_policy,
+                &queue_pressure,
+                permission_decision.active_effects().to_vec(),
+                permission_decision.inactive_effects().to_vec(),
+            ) {
+                record_shared_resource_event(&context, &evidence, event).await;
+                lock_runtime_counters(&runtime_counters)
+                    .record_failure(&resource_policy, current_timestamp());
+                break 'message_loop;
+            }
+            let write_result = write_all_for_state(
                 &stream,
                 &response,
                 &resource_policy,
@@ -529,8 +556,9 @@ async fn handle_inbound_stream(
                 last_activity_unix_seconds,
                 handshake_state,
             )
-            .await
-            {
+            .await;
+            queue_pressure.clear_pending_write();
+            match write_result {
                 Ok(WriteWireMessageOutcome::Written) => {}
                 Ok(WriteWireMessageOutcome::Rejected(event)) => {
                     record_shared_resource_event(&context, &evidence, event).await;

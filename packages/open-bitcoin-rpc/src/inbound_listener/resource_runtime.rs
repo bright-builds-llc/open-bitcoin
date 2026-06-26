@@ -8,10 +8,10 @@ use std::{io, time::Duration};
 
 use open_bitcoin_codec::parse_message_header;
 use open_bitcoin_network::{
-    ConnectionChurnInput, INBOUND_MESSAGE_HEADER_LEN, InboundEnvelopeDecision,
-    InboundEnvelopePolicy, InboundHandshakeState, InboundResourceEvent, ParsedNetworkMessage,
-    RepeatedFailureInput, ResourceGovernanceDecision, ResourceGovernancePolicy,
-    ResourceTimeoutInput, WireNetworkMessage,
+    ConnectionChurnInput, INBOUND_MESSAGE_HEADER_LEN, InactivePermissionEffectLabel,
+    InboundEnvelopeDecision, InboundEnvelopePolicy, InboundHandshakeState, InboundResourceEvent,
+    ParsedNetworkMessage, PermissionEffectLabel, QueuePressureInput, RepeatedFailureInput,
+    ResourceGovernanceDecision, ResourceGovernancePolicy, ResourceTimeoutInput, WireNetworkMessage,
 };
 
 #[cfg(test)]
@@ -80,6 +80,89 @@ impl InboundRuntimeCounters {
         let _ = self.repeated_failure_input(policy, now_unix_seconds);
         self.failures_in_window = self.failures_in_window.saturating_add(1);
     }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(super) struct RuntimeQueuePressureState {
+    peer_read_queue_bytes: usize,
+    peer_write_queue_bytes: usize,
+    aggregate_read_queue_bytes: usize,
+    aggregate_write_queue_bytes: usize,
+    peer_queued_messages: usize,
+    aggregate_queued_messages: usize,
+}
+
+impl RuntimeQueuePressureState {
+    pub(super) fn record_pending_read(&mut self, bytes: usize) {
+        self.peer_read_queue_bytes = self.peer_read_queue_bytes.saturating_add(bytes);
+        self.aggregate_read_queue_bytes = self.aggregate_read_queue_bytes.saturating_add(bytes);
+        self.record_queued_message();
+    }
+
+    pub(super) fn clear_pending_read(&mut self) {
+        self.aggregate_read_queue_bytes = self
+            .aggregate_read_queue_bytes
+            .saturating_sub(self.peer_read_queue_bytes);
+        self.peer_read_queue_bytes = 0;
+        self.clear_queued_message();
+    }
+
+    pub(super) fn record_pending_write(&mut self, bytes: usize) {
+        self.peer_write_queue_bytes = self.peer_write_queue_bytes.saturating_add(bytes);
+        self.aggregate_write_queue_bytes = self.aggregate_write_queue_bytes.saturating_add(bytes);
+        self.record_queued_message();
+    }
+
+    pub(super) fn clear_pending_write(&mut self) {
+        self.aggregate_write_queue_bytes = self
+            .aggregate_write_queue_bytes
+            .saturating_sub(self.peer_write_queue_bytes);
+        self.peer_write_queue_bytes = 0;
+        self.clear_queued_message();
+    }
+
+    pub(super) fn queue_pressure_input(
+        &self,
+        active_permission_effects: Vec<PermissionEffectLabel>,
+        inactive_permission_effects: Vec<InactivePermissionEffectLabel>,
+    ) -> QueuePressureInput {
+        QueuePressureInput {
+            peer_read_queue_bytes: self.peer_read_queue_bytes,
+            peer_write_queue_bytes: self.peer_write_queue_bytes,
+            aggregate_read_queue_bytes: self.aggregate_read_queue_bytes,
+            aggregate_write_queue_bytes: self.aggregate_write_queue_bytes,
+            peer_queued_messages: self.peer_queued_messages,
+            aggregate_queued_messages: self.aggregate_queued_messages,
+            active_permission_effects,
+            inactive_permission_effects,
+        }
+    }
+
+    fn record_queued_message(&mut self) {
+        self.peer_queued_messages = self.peer_queued_messages.saturating_add(1);
+        self.aggregate_queued_messages = self.aggregate_queued_messages.saturating_add(1);
+    }
+
+    fn clear_queued_message(&mut self) {
+        self.peer_queued_messages = self.peer_queued_messages.saturating_sub(1);
+        self.aggregate_queued_messages = self.aggregate_queued_messages.saturating_sub(1);
+    }
+
+    #[cfg(test)]
+    pub(super) fn record_aggregate_queued_messages(&mut self, messages: usize) {
+        self.aggregate_queued_messages = self.aggregate_queued_messages.saturating_add(messages);
+    }
+}
+
+pub(super) fn queue_pressure_event(
+    policy: &ResourceGovernancePolicy,
+    state: &RuntimeQueuePressureState,
+    active_permission_effects: Vec<PermissionEffectLabel>,
+    inactive_permission_effects: Vec<InactivePermissionEffectLabel>,
+) -> Option<InboundResourceEvent> {
+    resource_event_from_decision(policy.decide_queue(
+        state.queue_pressure_input(active_permission_effects, inactive_permission_effects),
+    ))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
