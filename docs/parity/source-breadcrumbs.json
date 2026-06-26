@@ -964,6 +964,7 @@
       "label": "rpc-inbound-listener",
       "files": [
         "packages/open-bitcoin-rpc/src/inbound_listener.rs",
+        "packages/open-bitcoin-rpc/src/inbound_listener/resource_runtime.rs",
         "packages/open-bitcoin-rpc/src/inbound_listener/tests.rs"
       ],
       "breadcrumbs": [

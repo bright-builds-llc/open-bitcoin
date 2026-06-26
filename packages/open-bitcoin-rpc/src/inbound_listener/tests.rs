@@ -3,14 +3,19 @@
 // - packages/bitcoin-knots/src/net_processing.cpp
 
 use std::sync::Arc;
+use std::time::Duration;
 
 use open_bitcoin_network::{
     INBOUND_MESSAGE_HEADER_LEN, InboundAdmissionSlotClass, InboundEnvelopePolicy,
-    InboundListenerConfig, InboundPreflightReason, PHASE94_MAX_INBOUND_RUNTIME_PAYLOAD_BYTES,
-    ParsedPeerPermissionClass, PeerConnectionClass, PeerPermissionClassRegistry, VersionMessage,
-    WireNetworkMessage,
+    InboundHandshakeState, InboundListenerConfig, InboundPreflightReason,
+    PHASE94_MAX_CONNECTIONS_PER_CHURN_WINDOW, PHASE94_MAX_INBOUND_RUNTIME_PAYLOAD_BYTES,
+    PHASE94_MAX_REPEATED_FAILURES_PER_WINDOW, PHASE94_SLOW_HANDSHAKE_TIMEOUT_SECONDS,
+    ParsedPeerPermissionClass, PeerConnectionClass, PeerPermissionClassRegistry,
+    ReconnectSuppressionInput, ResourceGovernanceDecision, ResourceGovernancePolicy,
+    VersionMessage, WireNetworkMessage,
 };
 use open_bitcoin_node::core::primitives::NetworkMagic;
+use open_bitcoin_node::core::wallet::AddressNetwork;
 use open_bitcoin_node::status::{FieldAvailability, InboundPeerServingStatus};
 use open_bitcoin_test_harness::PortReservation;
 use tokio::net::TcpStream;
@@ -97,6 +102,9 @@ fn listener_evidence(bound_endpoints: &[&str]) -> InboundListenerEvidence {
         admitted_inbound_peers: 0,
         rejected_inbound_peers: 0,
         resource_rejections: 0,
+        timeout_disconnects: 0,
+        churn_rejections: 0,
+        reconnect_suppressions: 0,
         maybe_admission_reject_reason: None,
         maybe_latest_admission_event: Some("ready".to_string()),
         maybe_latest_resource_event: None,
@@ -744,4 +752,171 @@ async fn unsupported_command_records_evidence_without_receive_inbound_wire_messa
     );
     assert_eq!(network_info.outbound_peers, 0);
     worker.shutdown().await;
+}
+
+#[test]
+fn record_resource_event_counts_timeout_churn_and_reconnect_actions() {
+    // Arrange
+    let policy = ResourceGovernancePolicy::default();
+    let mut evidence = listener_evidence(&["127.0.0.1:18444"]);
+    let timeout = super::resource_timeout_event(
+        &policy,
+        10,
+        10,
+        10 + PHASE94_SLOW_HANDSHAKE_TIMEOUT_SECONDS + 1,
+        InboundHandshakeState::Handshaking,
+    )
+    .expect("slow_handshake timeout event");
+    let churn = match policy.decide_churn(open_bitcoin_network::ConnectionChurnInput {
+        window_started_unix_seconds: 10,
+        now_unix_seconds: 10,
+        connection_attempts_in_window: PHASE94_MAX_CONNECTIONS_PER_CHURN_WINDOW + 1,
+    }) {
+        ResourceGovernanceDecision::Backpressure(event) => event,
+        other => panic!("expected connection_churn_limited event, got {other:?}"),
+    };
+    let reconnect = match policy.decide_reconnect(ReconnectSuppressionInput {
+        banned: true,
+        discouraged: false,
+    }) {
+        ResourceGovernanceDecision::Disconnect(event) => event,
+        other => panic!("expected reconnect_suppressed event, got {other:?}"),
+    };
+
+    // Act
+    evidence.record_resource_event(timeout);
+    evidence.record_resource_event(churn);
+    evidence.record_resource_event(reconnect);
+
+    // Assert
+    assert_eq!(evidence.timeout_disconnects, 1);
+    assert_eq!(evidence.churn_rejections, 1);
+    assert_eq!(evidence.reconnect_suppressions, 1);
+    assert_eq!(
+        evidence
+            .maybe_latest_resource_event
+            .expect("latest resource event")
+            .label,
+        "reconnect_suppressed_banned"
+    );
+}
+
+#[test]
+fn resource_timeout_event_distinguishes_slow_handshake_and_idle_peer() {
+    // Arrange
+    let policy = ResourceGovernancePolicy::default();
+
+    // Act
+    let slow_handshake = super::resource_timeout_event(
+        &policy,
+        100,
+        100,
+        100 + policy.slow_handshake_timeout_seconds + 1,
+        InboundHandshakeState::Accepted,
+    )
+    .expect("slow_handshake timeout");
+    let idle_peer = super::resource_timeout_event(
+        &policy,
+        100,
+        200,
+        200 + policy.idle_peer_timeout_seconds + 1,
+        InboundHandshakeState::Established,
+    )
+    .expect("idle_peer timeout");
+
+    // Assert
+    assert_eq!(slow_handshake.label, "slow_handshake");
+    assert_eq!(slow_handshake.next_action, "timeout_disconnect");
+    assert_eq!(idle_peer.label, "idle_peer");
+    assert_eq!(idle_peer.next_action, "timeout_disconnect");
+}
+
+#[test]
+fn runtime_window_counters_limit_churn_and_repeated_failures() {
+    // Arrange
+    let policy = ResourceGovernancePolicy::default();
+    let mut counters = super::InboundRuntimeCounters::new(1_000);
+
+    // Act
+    let mut latest_churn = ResourceGovernanceDecision::Accept;
+    for _ in 0..=PHASE94_MAX_CONNECTIONS_PER_CHURN_WINDOW {
+        let input = counters.record_connection_attempt(&policy, 1_000);
+        latest_churn = policy.decide_churn(input);
+    }
+    for _ in 0..=PHASE94_MAX_REPEATED_FAILURES_PER_WINDOW {
+        counters.record_failure(&policy, 1_000);
+    }
+    let repeated_failure =
+        policy.decide_repeated_failure(counters.repeated_failure_input(&policy, 1_000));
+
+    // Assert
+    let ResourceGovernanceDecision::Backpressure(churn_event) = latest_churn else {
+        panic!("expected connection_churn_limited backpressure");
+    };
+    assert_eq!(churn_event.label, "connection_churn_limited");
+    let ResourceGovernanceDecision::Backpressure(failure_event) = repeated_failure else {
+        panic!("expected repeated_failure_limited backpressure");
+    };
+    assert_eq!(failure_event.label, "repeated_failure_limited");
+    assert_eq!(failure_event.next_action, "churn_rejected");
+}
+
+#[tokio::test]
+async fn read_wire_message_returns_timeout_disconnect_without_wall_clock_wait() {
+    // Arrange
+    let (_client, server) = tcp_pair().await;
+    let envelope_policy = InboundEnvelopePolicy::new(NetworkMagic::MAINNET);
+    let resource_policy = ResourceGovernancePolicy::default();
+
+    // Act
+    let outcome = super::read_wire_message_with_timeout_duration(
+        &server,
+        &envelope_policy,
+        &resource_policy,
+        100,
+        100,
+        InboundHandshakeState::Handshaking,
+        Duration::ZERO,
+    )
+    .await
+    .expect("read timeout should return resource event");
+
+    // Assert
+    let ReadWireMessageOutcome::Rejected(event) = outcome else {
+        panic!("expected timeout_disconnect resource event");
+    };
+    assert_eq!(event.label, "slow_handshake");
+    assert_eq!(event.next_action, "timeout_disconnect");
+}
+
+#[test]
+fn context_records_inbound_resource_event_for_managed_evidence() {
+    // Arrange
+    let mut context = ManagedRpcContext::for_local_operator(AddressNetwork::Regtest);
+    context.set_inbound_listener_evidence(listener_evidence(&["127.0.0.1:18444"]));
+    let policy = ResourceGovernancePolicy::default();
+    let reconnect = match policy.decide_reconnect(ReconnectSuppressionInput {
+        banned: false,
+        discouraged: true,
+    }) {
+        ResourceGovernanceDecision::Backpressure(event) => event,
+        other => panic!("expected reconnect_suppressed event, got {other:?}"),
+    };
+
+    // Act
+    context.record_inbound_resource_event(reconnect);
+
+    // Assert
+    let evidence = context
+        .maybe_inbound_listener_evidence()
+        .expect("managed evidence should be present");
+    assert_eq!(evidence.reconnect_suppressions, 1);
+    assert_eq!(
+        evidence
+            .maybe_latest_resource_event
+            .as_ref()
+            .expect("latest resource event")
+            .next_action,
+        "reconnect_suppressed"
+    );
 }

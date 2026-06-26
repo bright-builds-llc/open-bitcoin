@@ -14,6 +14,7 @@ use std::net::SocketAddr;
 use open_bitcoin_network::{
     InboundAdmissionDecision, InboundAdmissionPolicy, InboundAdmissionRequest,
     InboundAdmissionSlotClass, InboundListenerConfig, InboundPermissionDecision,
+    InboundResourceEvent, ReconnectSuppressionInput,
 };
 use open_bitcoin_node::core::chainstate::ChainstateSnapshot;
 use open_bitcoin_node::core::consensus::{ConsensusParams, ScriptVerifyFlags};
@@ -193,6 +194,30 @@ impl ManagedRpcContext {
             local_advertisement_decisions(&self.inbound_listener_config, &evidence, services);
         self.network.set_local_address_decisions(decisions);
         self.maybe_inbound_listener_evidence = Some(evidence);
+    }
+
+    pub fn record_inbound_resource_event(&mut self, event: InboundResourceEvent) {
+        if let Some(evidence) = &mut self.maybe_inbound_listener_evidence {
+            evidence.record_resource_event(event);
+        }
+    }
+
+    pub fn reconnect_suppression_input_for_remote_addr(
+        &self,
+        remote_addr: SocketAddr,
+        now_unix_seconds: i64,
+    ) -> ReconnectSuppressionInput {
+        let _ = (remote_addr, now_unix_seconds);
+        let peer_policy_info = self.network.peer_policy_info();
+        ReconnectSuppressionInput {
+            banned: peer_policy_info.active_bans > 0,
+            discouraged: peer_policy_info.discouraged_peers > 0,
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn maybe_inbound_listener_evidence(&self) -> Option<&InboundListenerEvidence> {
+        self.maybe_inbound_listener_evidence.as_ref()
     }
 
     pub fn current_inbound_status(&self) -> FieldAvailability<InboundPeerServingStatus> {

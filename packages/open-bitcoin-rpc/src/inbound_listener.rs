@@ -14,17 +14,26 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use open_bitcoin_codec::parse_message_header;
 use open_bitcoin_network::{
-    INBOUND_MESSAGE_HEADER_LEN, InboundAdmissionDecision, InboundAdmissionRejectionReason,
-    InboundEnvelopeDecision, InboundEnvelopePolicy, InboundListenerActivationDiagnostic,
-    InboundListenerConfig, InboundListenerEndpoint, InboundPreflightDiagnostic,
-    InboundPreflightReason, InboundResourceEvent, ParsedNetworkMessage, WireNetworkMessage,
-    classify_inbound_preflight,
+    InboundAdmissionDecision, InboundAdmissionRejectionReason, InboundEnvelopePolicy,
+    InboundHandshakeState, InboundListenerActivationDiagnostic, InboundListenerConfig,
+    InboundListenerEndpoint, InboundPreflightDiagnostic, InboundPreflightReason,
+    InboundResourceEvent, ResourceGovernancePolicy, WireNetworkMessage, classify_inbound_preflight,
 };
 use tokio::{net::TcpListener, task::JoinHandle};
 
 use crate::ManagedRpcContext;
+
+// Resource-governed read_exact/write_all timeout waits live in resource_runtime,
+// where tokio::time::timeout wraps socket readiness without growing this adapter.
+mod resource_runtime;
+use resource_runtime::{
+    InboundRuntimeCounters, ReadWireMessageOutcome, WriteWireMessageOutcome, next_handshake_state,
+    read_wire_message_for_state, resource_event_from_decision, resource_timeout_event,
+    write_all_for_state,
+};
+#[cfg(test)]
+use resource_runtime::{read_wire_message, read_wire_message_with_timeout_duration, write_all};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InboundListenerState {
@@ -62,6 +71,9 @@ pub struct InboundListenerEvidence {
     pub admitted_inbound_peers: usize,
     pub rejected_inbound_peers: usize,
     pub resource_rejections: usize,
+    pub timeout_disconnects: usize,
+    pub churn_rejections: usize,
+    pub reconnect_suppressions: usize,
     pub maybe_admission_reject_reason: Option<String>,
     pub maybe_latest_admission_event: Option<String>,
     pub maybe_latest_resource_event: Option<InboundResourceEvent>,
@@ -80,6 +92,9 @@ impl InboundListenerEvidence {
             admitted_inbound_peers: 0,
             rejected_inbound_peers: 0,
             resource_rejections: 0,
+            timeout_disconnects: 0,
+            churn_rejections: 0,
+            reconnect_suppressions: 0,
             maybe_admission_reject_reason: None,
             maybe_latest_admission_event: Some(activation.preflight_reason.as_str().to_string()),
             maybe_latest_resource_event: None,
@@ -101,9 +116,21 @@ impl InboundListenerEvidence {
         self.maybe_latest_admission_event = Some(message.command_name().to_string());
     }
 
-    fn record_resource_event(&mut self, event: InboundResourceEvent) {
-        if event.next_action == "payload_rejected" {
-            self.resource_rejections += 1;
+    pub(crate) fn record_resource_event(&mut self, event: InboundResourceEvent) {
+        match event.next_action.as_str() {
+            "payload_rejected" => {
+                self.resource_rejections += 1;
+            }
+            "timeout_disconnect" => {
+                self.timeout_disconnects += 1;
+            }
+            "churn_rejected" => {
+                self.churn_rejections += 1;
+            }
+            "reconnect_suppressed" => {
+                self.reconnect_suppressions += 1;
+            }
+            _ => {}
         }
         self.maybe_latest_resource_event = Some(event);
     }
@@ -162,6 +189,9 @@ impl InboundListenerActivation {
                 admitted_inbound_peers: 0,
                 rejected_inbound_peers: 0,
                 resource_rejections: 0,
+                timeout_disconnects: 0,
+                churn_rejections: 0,
+                reconnect_suppressions: 0,
                 maybe_admission_reject_reason: None,
                 maybe_latest_admission_event: Some(reason.as_str().to_string()),
                 maybe_latest_resource_event: None,
@@ -189,6 +219,9 @@ impl InboundListenerActivation {
                 admitted_inbound_peers: 0,
                 rejected_inbound_peers: 0,
                 resource_rejections: 0,
+                timeout_disconnects: 0,
+                churn_rejections: 0,
+                reconnect_suppressions: 0,
                 maybe_admission_reject_reason: None,
                 maybe_latest_admission_event: Some(
                     InboundPreflightReason::Ready.as_str().to_string(),
@@ -226,6 +259,17 @@ impl InboundListenerWorker {
             let _ = handle.await;
         }
     }
+}
+
+#[derive(Clone)]
+struct InboundAcceptLoopShared {
+    context: Arc<tokio::sync::Mutex<ManagedRpcContext>>,
+    evidence: Arc<Mutex<InboundListenerEvidence>>,
+    initial_evidence: InboundListenerEvidence,
+    shutdown_requested: Arc<AtomicBool>,
+    next_peer_id: Arc<AtomicU64>,
+    runtime_counters: Arc<Mutex<InboundRuntimeCounters>>,
+    connection_handles: Arc<tokio::sync::Mutex<Vec<JoinHandle<()>>>>,
 }
 
 pub async fn activate_inbound_listener(
@@ -277,17 +321,20 @@ pub fn start_inbound_accept_loop(
     let shutdown_requested = Arc::new(AtomicBool::new(false));
     let connection_handles = Arc::new(tokio::sync::Mutex::new(Vec::new()));
     let next_peer_id = Arc::new(AtomicU64::new(1));
+    let runtime_counters = Arc::new(Mutex::new(InboundRuntimeCounters::new(current_timestamp())));
+    let shared = InboundAcceptLoopShared {
+        context: Arc::clone(&context),
+        evidence: Arc::clone(&evidence),
+        initial_evidence: activation.evidence.clone(),
+        shutdown_requested: Arc::clone(&shutdown_requested),
+        next_peer_id: Arc::clone(&next_peer_id),
+        runtime_counters: Arc::clone(&runtime_counters),
+        connection_handles: Arc::clone(&connection_handles),
+    };
     let mut handles = Vec::with_capacity(activation.listeners.len());
 
     for bound_listener in activation.listeners {
-        handles.push(tokio::spawn(accept_loop(
-            bound_listener,
-            Arc::clone(&context),
-            Arc::clone(&evidence),
-            Arc::clone(&shutdown_requested),
-            Arc::clone(&next_peer_id),
-            Arc::clone(&connection_handles),
-        )));
+        handles.push(tokio::spawn(accept_loop(bound_listener, shared.clone())));
     }
 
     Some(InboundListenerWorker {
@@ -330,30 +377,62 @@ fn activation_bind_diagnostic(
     .into_preflight_diagnostic()
 }
 
-async fn accept_loop(
-    bound_listener: BoundInboundListener,
-    context: Arc<tokio::sync::Mutex<ManagedRpcContext>>,
-    evidence: Arc<Mutex<InboundListenerEvidence>>,
-    shutdown_requested: Arc<AtomicBool>,
-    next_peer_id: Arc<AtomicU64>,
-    connection_handles: Arc<tokio::sync::Mutex<Vec<JoinHandle<()>>>>,
-) {
+async fn accept_loop(bound_listener: BoundInboundListener, shared: InboundAcceptLoopShared) {
+    shared
+        .context
+        .lock()
+        .await
+        .set_inbound_listener_evidence(shared.initial_evidence.clone());
+    let resource_policy = ResourceGovernancePolicy::default();
     loop {
-        if shutdown_requested.load(Ordering::Relaxed) {
+        if shared.shutdown_requested.load(Ordering::Relaxed) {
             break;
         }
         let Ok((stream, remote_addr)) = bound_listener.listener.accept().await else {
             break;
         };
-        let peer_id = next_peer_id.fetch_add(1, Ordering::Relaxed);
+        let now_unix_seconds = current_timestamp();
+        let maybe_churn_event = {
+            let mut counters = lock_runtime_counters(&shared.runtime_counters);
+            let churn_input =
+                counters.record_connection_attempt(&resource_policy, now_unix_seconds);
+            resource_event_from_decision(resource_policy.decide_churn(churn_input)).or_else(|| {
+                let failure_input =
+                    counters.repeated_failure_input(&resource_policy, now_unix_seconds);
+                resource_event_from_decision(resource_policy.decide_repeated_failure(failure_input))
+            })
+        };
+        if let Some(event) = maybe_churn_event {
+            record_shared_resource_event(&shared.context, &shared.evidence, event).await;
+            lock_runtime_counters(&shared.runtime_counters)
+                .record_failure(&resource_policy, now_unix_seconds);
+            continue;
+        }
+
+        let reconnect_input = shared
+            .context
+            .lock()
+            .await
+            .reconnect_suppression_input_for_remote_addr(remote_addr, now_unix_seconds);
+        if let Some(event) =
+            resource_event_from_decision(resource_policy.decide_reconnect(reconnect_input))
+        {
+            record_shared_resource_event(&shared.context, &shared.evidence, event).await;
+            lock_runtime_counters(&shared.runtime_counters)
+                .record_failure(&resource_policy, now_unix_seconds);
+            continue;
+        }
+
+        let peer_id = shared.next_peer_id.fetch_add(1, Ordering::Relaxed);
         let handle = tokio::spawn(handle_inbound_stream(
             peer_id,
             remote_addr,
             stream,
-            Arc::clone(&context),
-            Arc::clone(&evidence),
+            Arc::clone(&shared.context),
+            Arc::clone(&shared.evidence),
+            Arc::clone(&shared.runtime_counters),
         ));
-        let mut connection_handles = connection_handles.lock().await;
+        let mut connection_handles = shared.connection_handles.lock().await;
         connection_handles.retain(|handle| !handle.is_finished());
         connection_handles.push(handle);
     }
@@ -365,7 +444,12 @@ async fn handle_inbound_stream(
     stream: tokio::net::TcpStream,
     context: Arc<tokio::sync::Mutex<ManagedRpcContext>>,
     evidence: Arc<Mutex<InboundListenerEvidence>>,
+    runtime_counters: Arc<Mutex<InboundRuntimeCounters>>,
 ) {
+    let resource_policy = ResourceGovernancePolicy::default();
+    let connected_at_unix_seconds = current_timestamp();
+    let mut last_activity_unix_seconds = connected_at_unix_seconds;
+    let mut handshake_state = InboundHandshakeState::Accepted;
     let decision = {
         let mut context = context.lock().await;
         context.record_inbound_admission_for_remote_addr(peer_id, remote_addr, false)
@@ -376,6 +460,8 @@ async fn handle_inbound_stream(
         }
         InboundAdmissionDecision::Reject(rejection) => {
             lock_evidence(&evidence).record_rejected(rejection.reason);
+            lock_runtime_counters(&runtime_counters)
+                .record_failure(&resource_policy, current_timestamp());
             return;
         }
     }
@@ -383,35 +469,84 @@ async fn handle_inbound_stream(
     let envelope_policy =
         InboundEnvelopePolicy::new(context.lock().await.network_info().network_magic);
 
-    'message_loop: while let Ok(outcome) = read_wire_message(&stream, &envelope_policy).await {
+    'message_loop: loop {
+        if let Some(event) = resource_timeout_event(
+            &resource_policy,
+            connected_at_unix_seconds,
+            last_activity_unix_seconds,
+            current_timestamp(),
+            handshake_state,
+        ) {
+            record_shared_resource_event(&context, &evidence, event).await;
+            lock_runtime_counters(&runtime_counters)
+                .record_failure(&resource_policy, current_timestamp());
+            break;
+        }
+        let outcome = match read_wire_message_for_state(
+            &stream,
+            &envelope_policy,
+            &resource_policy,
+            connected_at_unix_seconds,
+            last_activity_unix_seconds,
+            handshake_state,
+        )
+        .await
+        {
+            Ok(outcome) => outcome,
+            Err(_error) => break,
+        };
         let parsed = match outcome {
             ReadWireMessageOutcome::Message(parsed) => parsed,
             ReadWireMessageOutcome::Rejected(event) => {
-                lock_evidence(&evidence).record_resource_event(event);
+                record_shared_resource_event(&context, &evidence, event).await;
+                lock_runtime_counters(&runtime_counters)
+                    .record_failure(&resource_policy, current_timestamp());
                 break;
             }
         };
+        last_activity_unix_seconds = current_timestamp();
+        handshake_state = next_handshake_state(handshake_state, &parsed.message);
         lock_evidence(&evidence).record_handshake(&parsed.message);
         let responses = {
             let mut context = context.lock().await;
-            context.receive_inbound_wire_message(peer_id, parsed.message, current_timestamp())
+            context.receive_inbound_wire_message(
+                peer_id,
+                parsed.message,
+                last_activity_unix_seconds,
+            )
         };
         let Ok(encoded_responses) = responses else {
+            lock_runtime_counters(&runtime_counters)
+                .record_failure(&resource_policy, current_timestamp());
             break;
         };
         for response in encoded_responses {
-            if write_all(&stream, &response).await.is_err() {
-                break 'message_loop;
+            match write_all_for_state(
+                &stream,
+                &response,
+                &resource_policy,
+                connected_at_unix_seconds,
+                last_activity_unix_seconds,
+                handshake_state,
+            )
+            .await
+            {
+                Ok(WriteWireMessageOutcome::Written) => {}
+                Ok(WriteWireMessageOutcome::Rejected(event)) => {
+                    record_shared_resource_event(&context, &evidence, event).await;
+                    lock_runtime_counters(&runtime_counters)
+                        .record_failure(&resource_policy, current_timestamp());
+                    break 'message_loop;
+                }
+                Err(_error) => {
+                    lock_runtime_counters(&runtime_counters)
+                        .record_failure(&resource_policy, current_timestamp());
+                    break 'message_loop;
+                }
             }
         }
     }
     disconnect_admitted_peer(&context, peer_id).await;
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum ReadWireMessageOutcome {
-    Message(ParsedNetworkMessage),
-    Rejected(InboundResourceEvent),
 }
 
 async fn disconnect_admitted_peer(
@@ -425,60 +560,6 @@ async fn disconnect_admitted_peer(
     }
 }
 
-async fn read_wire_message(
-    stream: &tokio::net::TcpStream,
-    policy: &InboundEnvelopePolicy,
-) -> io::Result<ReadWireMessageOutcome> {
-    let mut header = [0_u8; INBOUND_MESSAGE_HEADER_LEN];
-    read_exact(stream, &mut header).await?;
-    let payload_len = match policy.evaluate_header(&header) {
-        InboundEnvelopeDecision::ReadPayload { payload_len } => payload_len,
-        InboundEnvelopeDecision::Reject(event) => {
-            return Ok(ReadWireMessageOutcome::Rejected(event));
-        }
-    };
-    let header_message = parse_message_header(&header).map_err(|error| {
-        io::Error::new(
-            io::ErrorKind::InvalidData,
-            format!("inbound wire message header rejected after policy evaluation: {error}"),
-        )
-    })?;
-    let mut payload = vec![0_u8; payload_len];
-    read_exact(stream, &mut payload).await?;
-    match policy.decode_payload(&header_message, &payload) {
-        Ok(parsed) => Ok(ReadWireMessageOutcome::Message(parsed)),
-        Err(event) => Ok(ReadWireMessageOutcome::Rejected(event)),
-    }
-}
-
-async fn read_exact(stream: &tokio::net::TcpStream, buffer: &mut [u8]) -> io::Result<()> {
-    let mut offset = 0;
-    while offset < buffer.len() {
-        stream.readable().await?;
-        match stream.try_read(&mut buffer[offset..]) {
-            Ok(0) => return Err(io::Error::from(io::ErrorKind::UnexpectedEof)),
-            Ok(read) => offset += read,
-            Err(error) if error.kind() == io::ErrorKind::WouldBlock => {}
-            Err(error) => return Err(error),
-        }
-    }
-    Ok(())
-}
-
-async fn write_all(stream: &tokio::net::TcpStream, buffer: &[u8]) -> io::Result<()> {
-    let mut offset = 0;
-    while offset < buffer.len() {
-        stream.writable().await?;
-        match stream.try_write(&buffer[offset..]) {
-            Ok(0) => return Err(io::Error::from(io::ErrorKind::WriteZero)),
-            Ok(written) => offset += written,
-            Err(error) if error.kind() == io::ErrorKind::WouldBlock => {}
-            Err(error) => return Err(error),
-        }
-    }
-    Ok(())
-}
-
 fn lock_evidence(
     evidence: &Arc<Mutex<InboundListenerEvidence>>,
 ) -> std::sync::MutexGuard<'_, InboundListenerEvidence> {
@@ -486,6 +567,24 @@ fn lock_evidence(
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     }
+}
+
+fn lock_runtime_counters(
+    counters: &Arc<Mutex<InboundRuntimeCounters>>,
+) -> std::sync::MutexGuard<'_, InboundRuntimeCounters> {
+    match counters.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    }
+}
+
+async fn record_shared_resource_event(
+    context: &Arc<tokio::sync::Mutex<ManagedRpcContext>>,
+    evidence: &Arc<Mutex<InboundListenerEvidence>>,
+    event: InboundResourceEvent,
+) {
+    lock_evidence(evidence).record_resource_event(event.clone());
+    context.lock().await.record_inbound_resource_event(event);
 }
 
 fn current_timestamp() -> i64 {
