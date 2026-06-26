@@ -581,6 +581,19 @@
       ]
     },
     {
+      "label": "network-resource-governance",
+      "files": [
+        "packages/open-bitcoin-network/src/resource.rs",
+        "packages/open-bitcoin-network/src/resource/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/protocol.h",
+        "packages/bitcoin-knots/src/net.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/test/functional/p2p_invalid_messages.py"
+      ]
+    },
+    {
       "label": "network-peer-sync",
       "files": [
         "packages/open-bitcoin-network/src/compatibility.rs",

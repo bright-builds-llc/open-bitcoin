@@ -24,6 +24,7 @@ mod inbound;
 mod message;
 mod peer;
 mod peer_policy;
+mod resource;
 
 pub use address::{
     AddressAnnouncement, AddressClassification, AddressDecisionLabel, AddressDecisionReason,
@@ -70,6 +71,11 @@ pub use peer_policy::{
     EvictionReason, EvictionScoreComponent, MisbehaviorDecision, MisbehaviorKind,
     MisbehaviorObservation, MisbehaviorPolicy, MisbehaviorResponse, PeerBanBook, PeerBanEntry,
     UnbanDecision, select_eviction_candidate,
+};
+pub use resource::{
+    INBOUND_MESSAGE_HEADER_LEN, InboundEnvelopeDecision, InboundEnvelopePolicy,
+    InboundResourceEvent, PHASE94_MAX_INBOUND_RUNTIME_PAYLOAD_BYTES, ResourceGovernanceSource,
+    ResourceViolationLabel,
 };
 
 pub const fn crate_ready() -> bool {
