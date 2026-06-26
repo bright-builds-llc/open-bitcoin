@@ -52,10 +52,28 @@ fn wrong_magic_is_rejected_before_payload_allocation() {
     };
     assert_eq!(event.outcome, "rejected");
     assert_eq!(event.next_action, "payload_rejected");
-    assert_eq!(
-        event.label,
-        ResourceViolationLabel::WrongNetworkMagic.as_str()
-    );
+    assert_eq!(event.label, "wrong_network_magic");
+}
+
+#[test]
+fn malformed_header_is_rejected() {
+    // Arrange
+    let policy = InboundEnvelopePolicy::new(NetworkMagic::MAINNET);
+    let mut malformed_header = [0_u8; INBOUND_MESSAGE_HEADER_LEN];
+    malformed_header[..4].copy_from_slice(NetworkMagic::MAINNET.as_bytes());
+    malformed_header[4] = b'p';
+    malformed_header[6] = b'g';
+
+    // Act
+    let decision = policy.evaluate_header(&malformed_header);
+
+    // Assert
+    let InboundEnvelopeDecision::Reject(event) = decision else {
+        panic!("malformed header must reject");
+    };
+    assert_eq!(event.outcome, "rejected");
+    assert_eq!(event.next_action, "payload_rejected");
+    assert_eq!(event.label, "malformed_header");
 }
 
 #[test]
@@ -79,10 +97,7 @@ fn oversized_payload_is_rejected_before_vec_allocation() {
     };
     assert_eq!(event.outcome, "rejected");
     assert_eq!(event.next_action, "payload_rejected");
-    assert_eq!(
-        event.label,
-        ResourceViolationLabel::PayloadOversized.as_str()
-    );
+    assert_eq!(event.label, "payload_oversized");
 }
 
 #[test]
@@ -106,10 +121,61 @@ fn unsupported_command_is_bounded_evidence() {
     };
     assert_eq!(event.outcome, "rejected");
     assert_eq!(event.next_action, "payload_rejected");
-    assert_eq!(
-        event.label,
-        ResourceViolationLabel::UnsupportedCommand.as_str()
-    );
+    assert_eq!(event.label, "unsupported_command");
+}
+
+#[test]
+fn invalid_checksum_is_resource_label() {
+    // Arrange
+    let policy = InboundEnvelopePolicy::new(NetworkMagic::MAINNET);
+    let (header, mut payload) = valid_ping_header_and_payload();
+    payload[0] ^= 0x01;
+
+    // Act
+    let event = policy
+        .decode_payload(&header, &payload)
+        .expect_err("invalid checksum must reject");
+
+    // Assert
+    assert_eq!(event.outcome, "rejected");
+    assert_eq!(event.next_action, "payload_rejected");
+    assert_eq!(event.label, "invalid_checksum");
+}
+
+#[test]
+fn malformed_payload_is_resource_label() {
+    // Arrange
+    let policy = InboundEnvelopePolicy::new(NetworkMagic::MAINNET);
+    let (header, payload) = valid_ping_header_and_payload();
+    let short_payload = &payload[..payload.len() - 1];
+
+    // Act
+    let event = policy
+        .decode_payload(&header, short_payload)
+        .expect_err("malformed payload must reject");
+
+    // Assert
+    assert_eq!(event.outcome, "rejected");
+    assert_eq!(event.next_action, "payload_rejected");
+    assert_eq!(event.label, "malformed_payload");
+}
+
+#[test]
+fn trailing_payload_is_resource_label() {
+    // Arrange
+    let policy = InboundEnvelopePolicy::new(NetworkMagic::MAINNET);
+    let (header, mut payload) = valid_ping_header_and_payload();
+    payload.push(0x00);
+
+    // Act
+    let event = policy
+        .decode_payload(&header, &payload)
+        .expect_err("trailing payload must reject");
+
+    // Assert
+    assert_eq!(event.outcome, "rejected");
+    assert_eq!(event.next_action, "payload_rejected");
+    assert_eq!(event.label, "trailing_payload");
 }
 
 #[test]
