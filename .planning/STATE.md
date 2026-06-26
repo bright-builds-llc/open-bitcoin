@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Inbound Peer Serving and Network Participation Boundary
 status: executing
-stopped_at: Completed 94-03-PLAN.md
-last_updated: "2026-06-26T19:49:39.828Z"
+stopped_at: Completed 94-04-PLAN.md
+last_updated: "2026-06-26T20:35:51.319Z"
 last_activity: 2026-06-26
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 40
-  completed_plans: 35
-  percent: 88
+  completed_plans: 36
+  percent: 90
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-06-26)
 
 Milestone: v1.9 Inbound Peer Serving and Network Participation Boundary
 Phase: 94 (DoS and Resource Governance) — EXECUTING
-Plan: 4 of 8
+Plan: 5 of 8
 Status: Ready to execute
 Last activity: 2026-06-26
 
@@ -72,6 +72,7 @@ Progress: [#########-] 85%
 | Phase 94 P01 | 31min | 2 tasks | 5 files |
 | Phase 94 P02 | 29min | 2 tasks | 4 files |
 | Phase 94 P03 | 71min | 3 tasks | 11 files |
+| Phase 94 P04 | 27m | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -118,6 +119,8 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 - [Phase 94]: Use existing Phase 93 managed peer-policy aggregate projection for reconnect suppression instead of adding listener-local ban maps.
 - [Phase 94]: Place runtime resource accounting helpers in an inbound_listener child module to satisfy repo production file-length limits while keeping the root listener as the adapter orchestration surface.
 - [Phase 94]: Preserve hook requirements by running TDD RED checks locally and committing only verification-passing task states.
+- [Phase 94]: Map all request-policy non-accept decisions in PeerManager to DisconnectReason::ResourceLimit for stable peer-facing evidence.
+- [Phase 94]: Keep request-cap logic in peer/inventory_state.rs so peer.rs stays below the production file-length gate.
 
 ### Pending Todos
 
@@ -138,6 +141,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-26T19:49:39.826Z
-Stopped at: Completed 94-03-PLAN.md
+Last session: 2026-06-26T20:35:51.317Z
+Stopped at: Completed 94-04-PLAN.md
 Resume file: None

@@ -31,7 +31,7 @@ v1.9 Inbound Peer Serving and Network Participation Boundary started on 2026-06-
 | 91 | Peer Permissions and Connection Classes | 10/10 | Complete | 2026-06-25 |
 | 92 | Address Advertisement and Discovery Boundaries | 9/9 | Complete    | 2026-06-26 |
 | 93 | Eviction, Ban, and Misbehavior Policy | 3/3 | Complete    | 2026-06-26 |
-| 94 | DoS and Resource Governance | 3/8 | In Progress|  |
+| 94 | DoS and Resource Governance | 4/8 | In Progress|  |
 | 95 | Network Participation Evidence and Release Boundary | Prove parity anchors, non-regression, support redaction, UAT commands, and deterministic no-claim guardrails for deferred network participation. | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05, BOUND-06 | Pending |
 
 ## Phase Details
@@ -132,13 +132,13 @@ Plans:
 
 **Requirements:** DOS-01, DOS-02, DOS-03, DOS-04, DOS-05
 
-**Plans:** 3/8 plans executed
+**Plans:** 4/8 plans executed
 
 Plans:
 - [x] 94-01-PLAN.md - Pure message-envelope resource gate
 - [x] 94-02-PLAN.md - Pure queue, request, timeout, churn, and reconnect policy
 - [x] 94-03-PLAN.md - Runtime listener resource-envelope and timeout wiring
-- [ ] 94-04-PLAN.md - Peer request-cap enforcement and resource-limit disconnects
+- [x] 94-04-PLAN.md - Peer request-cap enforcement and resource-limit disconnects
 - [ ] 94-05-PLAN.md - Shared status and fixed metrics projection
 - [ ] 94-06-PLAN.md - Operator status and support rendering
 - [ ] 94-07-PLAN.md - Operator, architecture, and parity documentation
