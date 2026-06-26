@@ -19,7 +19,7 @@ v1.9 Inbound Peer Serving and Network Participation Boundary started on 2026-06-
 
 **Goal:** Let Open Bitcoin accept and serve inbound peers under explicit admission, permission, address, eviction/ban, and resource-governance rules while keeping relay and production participation claims deferred.
 
-**Current state:** Phase 92 is complete; Phase 93 eviction, ban, and misbehavior policy is next.
+**Current state:** Phase 93 is complete; Phase 94 DoS and Resource Governance is planned for execution.
 
 **Boundary:** v1.9 does not claim transaction relay, compact block relay, mempool propagation, public inbound serving by default, production service operation, or production full-node readiness.
 
@@ -132,6 +132,18 @@ Plans:
 
 **Requirements:** DOS-01, DOS-02, DOS-03, DOS-04, DOS-05
 
+**Plans:** 8 plans
+
+Plans:
+- [ ] 94-01-PLAN.md - Pure message-envelope resource gate
+- [ ] 94-02-PLAN.md - Pure queue, request, timeout, churn, and reconnect policy
+- [ ] 94-03-PLAN.md - Runtime listener resource-envelope and timeout wiring
+- [ ] 94-04-PLAN.md - Peer request-cap enforcement and resource-limit disconnects
+- [ ] 94-05-PLAN.md - Shared status and fixed metrics projection
+- [ ] 94-06-PLAN.md - Operator status and support rendering
+- [ ] 94-07-PLAN.md - Operator, architecture, and parity documentation
+- [ ] 94-08-PLAN.md - Deterministic Phase 94 checker and verifier wiring
+
 **Success criteria:**
 1. Inbound message parsing rejects invalid magic, malformed headers, oversized payloads, unsupported commands, and malformed payloads before unbounded allocation.
 2. Per-peer and aggregate read/write queues, inventory/request bounds, header/block/transaction request caps, and backpressure behavior are enforced.
@@ -183,14 +195,14 @@ Plans:
 
 ## Next Step
 
-Run Phase 91 code review and phase verification:
+Execute Phase 94:
 
 ```bash
-/gsd-code-review 91
+/gsd-execute-phase 94
 ```
 
 Also available:
 
 ```bash
-/gsd-verify-work 91
+/gsd-progress
 ```
