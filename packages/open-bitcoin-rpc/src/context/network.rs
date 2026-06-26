@@ -44,6 +44,7 @@ use crate::{config::RuntimeConfig, inbound_listener::InboundListenerEvidence};
 
 use super::ManagedRpcContext;
 use super::address_boundary::local_advertisement_decisions;
+use super::resource_governance::{latest_resource_governance_decision, resource_governance_info};
 use super::wallet_state::build_wallet_state;
 
 impl ManagedRpcContext {
@@ -198,8 +199,9 @@ impl ManagedRpcContext {
 
     pub fn record_inbound_resource_event(&mut self, event: InboundResourceEvent) {
         if let Some(evidence) = &mut self.maybe_inbound_listener_evidence {
-            evidence.record_resource_event(event);
+            evidence.record_resource_event(event.clone());
         }
+        self.network.record_resource_governance_event(event);
     }
 
     pub fn reconnect_suppression_input_for_remote_addr(
@@ -225,11 +227,16 @@ impl ManagedRpcContext {
         let address_info = self.network.address_boundary_info();
         let peer_policy_info = self.network.peer_policy_info();
         let maybe_listener_evidence = self.maybe_inbound_listener_evidence.as_ref();
+        let resource_info = resource_governance_info(
+            self.network.resource_governance_info(),
+            maybe_listener_evidence,
+        );
         if admission.admitted_inbound_peers == 0
             && admission.rejected_inbound_peers == 0
             && maybe_listener_evidence.is_none()
             && address_info.is_empty()
             && peer_policy_info.is_empty()
+            && resource_info.is_empty()
         {
             return inbound_status_unavailable();
         }
@@ -238,6 +245,8 @@ impl ManagedRpcContext {
         let permission_evidence = inbound_permission_evidence(&admission);
         let latest_address_decision = latest_inbound_address_decision(&address_info);
         let latest_peer_policy_decision = latest_inbound_peer_policy_decision(&peer_policy_info);
+        let latest_resource_governance_decision =
+            latest_resource_governance_decision(&resource_info);
         FieldAvailability::available(InboundPeerServingStatus {
             listener_state: listener_state(&admission, maybe_listener_evidence),
             bound_endpoints: bound_endpoints(maybe_listener_evidence),
@@ -282,6 +291,15 @@ impl ManagedRpcContext {
             misbehavior_observations: peer_policy_info.misbehavior_observations,
             protected_no_actions: peer_policy_info.protected_no_actions,
             latest_peer_policy_decision,
+            resource_pressure_events: resource_info.resource_pressure_events,
+            read_queue_pressure_events: resource_info.read_queue_pressure_events,
+            write_queue_pressure_events: resource_info.write_queue_pressure_events,
+            request_cap_events: resource_info.request_cap_events,
+            payload_rejections: resource_info.payload_rejections,
+            timeout_disconnects: resource_info.timeout_disconnects,
+            churn_rejections: resource_info.churn_rejections,
+            reconnect_suppressions: resource_info.reconnect_suppressions,
+            latest_resource_governance_decision,
         })
     }
 

@@ -3,12 +3,14 @@
 
 use super::{
     INBOUND_ADDRESS_DECISION_UNAVAILABLE_REASON, INBOUND_PEER_POLICY_DECISION_UNAVAILABLE_REASON,
-    INBOUND_PERMISSION_DECISION_UNAVAILABLE_REASON, INBOUND_STATUS_UNAVAILABLE_REASON,
-    InboundAddressDecisionEvent, InboundAddressEvidenceEntry, InboundAdmissionEvent,
-    InboundHandshakeStatusCounts, InboundPeerPolicyEvent, InboundPeerServingStatus,
-    InboundPermissionDecisionEvent,
+    INBOUND_PERMISSION_DECISION_UNAVAILABLE_REASON, INBOUND_RESOURCE_DECISION_UNAVAILABLE_REASON,
+    INBOUND_STATUS_UNAVAILABLE_REASON, InboundAddressDecisionEvent, InboundAddressEvidenceEntry,
+    InboundAdmissionEvent, InboundHandshakeStatusCounts, InboundPeerPolicyEvent,
+    InboundPeerServingStatus, InboundPermissionDecisionEvent, InboundResourceGovernanceEvent,
 };
+use crate::network::ManagedResourceGovernanceInfo;
 use crate::status::{FieldAvailability, PeerCounts, PeerStatus};
+use open_bitcoin_network::InboundResourceEvent;
 
 #[test]
 fn inbound_status_default_serializes_unavailable_reason() {
@@ -157,6 +159,24 @@ fn inbound_status_serializes_listener_and_admission_evidence() {
                 message: "peer eviction decision eviction_candidate_selected: low_activity"
                     .to_string(),
             }),
+            resource_pressure_events: 1,
+            read_queue_pressure_events: 1,
+            write_queue_pressure_events: 1,
+            request_cap_events: 1,
+            payload_rejections: 1,
+            timeout_disconnects: 1,
+            churn_rejections: 1,
+            reconnect_suppressions: 1,
+            latest_resource_governance_decision: FieldAvailability::available(
+                InboundResourceGovernanceEvent {
+                    outcome: "resource_governance".to_string(),
+                    reason: "payload rejected".to_string(),
+                    label: "invalid_checksum".to_string(),
+                    source: "source_envelope_gate".to_string(),
+                    message: "inbound_message_resource_governance".to_string(),
+                    next_action: "payload_rejected".to_string(),
+                },
+            ),
         }),
     };
 
@@ -283,6 +303,21 @@ fn inbound_status_serializes_listener_and_admission_evidence() {
         encoded["inbound"]["value"]["latest_peer_policy_decision"]["value"]["label"],
         "eviction_candidate_selected"
     );
+    assert_eq!(encoded["inbound"]["value"]["resource_pressure_events"], 1);
+    assert_eq!(encoded["inbound"]["value"]["read_queue_pressure_events"], 1);
+    assert_eq!(
+        encoded["inbound"]["value"]["write_queue_pressure_events"],
+        1
+    );
+    assert_eq!(encoded["inbound"]["value"]["request_cap_events"], 1);
+    assert_eq!(encoded["inbound"]["value"]["payload_rejections"], 1);
+    assert_eq!(encoded["inbound"]["value"]["timeout_disconnects"], 1);
+    assert_eq!(encoded["inbound"]["value"]["churn_rejections"], 1);
+    assert_eq!(encoded["inbound"]["value"]["reconnect_suppressions"], 1);
+    assert_eq!(
+        encoded["inbound"]["value"]["latest_resource_governance_decision"]["value"]["next_action"],
+        "payload_rejected"
+    );
 }
 
 #[test]
@@ -357,6 +392,20 @@ fn inbound_status_permission_fields_default_for_legacy_status_json() {
             INBOUND_PEER_POLICY_DECISION_UNAVAILABLE_REASON
         )
     );
+    assert_eq!(status.resource_pressure_events, 0);
+    assert_eq!(status.read_queue_pressure_events, 0);
+    assert_eq!(status.write_queue_pressure_events, 0);
+    assert_eq!(status.request_cap_events, 0);
+    assert_eq!(status.payload_rejections, 0);
+    assert_eq!(status.timeout_disconnects, 0);
+    assert_eq!(status.churn_rejections, 0);
+    assert_eq!(status.reconnect_suppressions, 0);
+    assert_eq!(
+        status.latest_resource_governance_decision,
+        FieldAvailability::<InboundResourceGovernanceEvent>::unavailable(
+            INBOUND_RESOURCE_DECISION_UNAVAILABLE_REASON
+        )
+    );
 }
 
 #[test]
@@ -414,6 +463,17 @@ fn inbound_status_address_entries_exclude_raw_peer_and_address_details() {
         latest_peer_policy_decision: FieldAvailability::unavailable(
             INBOUND_PEER_POLICY_DECISION_UNAVAILABLE_REASON,
         ),
+        resource_pressure_events: 0,
+        read_queue_pressure_events: 0,
+        write_queue_pressure_events: 0,
+        request_cap_events: 0,
+        payload_rejections: 0,
+        timeout_disconnects: 0,
+        churn_rejections: 0,
+        reconnect_suppressions: 0,
+        latest_resource_governance_decision: FieldAvailability::unavailable(
+            INBOUND_RESOURCE_DECISION_UNAVAILABLE_REASON,
+        ),
     };
 
     // Act
@@ -465,4 +525,71 @@ fn inbound_status_address_decision_labels_cover_boundary_contract() {
     assert_eq!(events[0].label, "advertise_candidate");
     assert_eq!(events[3].label, "getaddr_suppressed");
     assert_eq!(events[5].label, "learned_rejected");
+}
+
+#[test]
+fn managed_resource_governance_payload_rejected_sets_latest_decision() {
+    // Arrange
+    let event = resource_event("payload_rejected");
+    let mut info = ManagedResourceGovernanceInfo::default();
+
+    // Act
+    info.record_event(event);
+
+    // Assert
+    assert_eq!(info.payload_rejections, 1);
+    assert_eq!(
+        info.maybe_latest_resource_governance_decision
+            .expect("latest resource governance event")
+            .next_action,
+        "payload_rejected"
+    );
+}
+
+#[test]
+fn managed_resource_governance_maps_next_actions_to_separate_counters() {
+    // Arrange
+    let mut info = ManagedResourceGovernanceInfo::default();
+    let actions = [
+        "resource_pressure_active",
+        "read_queue_pressure",
+        "write_queue_pressure",
+        "request_cap_reached",
+        "payload_rejected",
+        "timeout_disconnect",
+        "churn_rejected",
+        "reconnect_suppressed",
+    ];
+
+    // Act
+    for action in actions {
+        info.record_event(resource_event(action));
+    }
+
+    // Assert
+    assert_eq!(info.resource_pressure_events, 1);
+    assert_eq!(info.read_queue_pressure_events, 1);
+    assert_eq!(info.write_queue_pressure_events, 1);
+    assert_eq!(info.request_cap_events, 1);
+    assert_eq!(info.payload_rejections, 1);
+    assert_eq!(info.timeout_disconnects, 1);
+    assert_eq!(info.churn_rejections, 1);
+    assert_eq!(info.reconnect_suppressions, 1);
+    assert_eq!(
+        info.maybe_latest_resource_governance_decision
+            .expect("latest resource governance event")
+            .next_action,
+        "reconnect_suppressed"
+    );
+}
+
+fn resource_event(next_action: &str) -> InboundResourceEvent {
+    InboundResourceEvent {
+        outcome: "resource_governance".to_string(),
+        reason: format!("{next_action} reason"),
+        label: next_action.to_string(),
+        source: "source_runtime_read".to_string(),
+        message: "inbound_resource_governance".to_string(),
+        next_action: next_action.to_string(),
+    }
 }

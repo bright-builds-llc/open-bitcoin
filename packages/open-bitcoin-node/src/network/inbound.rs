@@ -8,7 +8,7 @@ use open_bitcoin_network::{
     AddressDecisionLabel, BanDecision, EvictionDecision, InactivePermissionEffectLabel,
     InboundAdmissionDecision, InboundAdmissionPolicy, InboundAdmissionRejection,
     InboundAdmissionRejectionReason, InboundAdmissionRequest, InboundAdmissionSlotClass,
-    InboundHandshakeState, InboundPeerRecord, InboundPermissionDecision,
+    InboundHandshakeState, InboundPeerRecord, InboundPermissionDecision, InboundResourceEvent,
     LocalAdvertisementDecision, MisbehaviorDecision, MisbehaviorResponse,
     PeerAddressBoundaryDecision, PeerAddressBoundaryEvidence, PeerConnectionClass, PeerId,
     PeerState, PermissionEffectLabel, UnbanDecision,
@@ -16,7 +16,10 @@ use open_bitcoin_network::{
 
 use crate::{
     ChainstateStore,
-    status::{InboundAddressDecisionEvent, InboundAddressEvidenceEntry, InboundPeerPolicyEvent},
+    status::{
+        InboundAddressDecisionEvent, InboundAddressEvidenceEntry, InboundPeerPolicyEvent,
+        InboundResourceGovernanceEvent,
+    },
 };
 
 use super::{ManagedNetworkError, ManagedPeerNetwork};
@@ -224,6 +227,78 @@ impl ManagedPeerPolicyInfo {
                 unban_decision_reason(decision)
             ),
         });
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ManagedResourceGovernanceInfo {
+    pub resource_pressure_events: u32,
+    pub read_queue_pressure_events: u32,
+    pub write_queue_pressure_events: u32,
+    pub request_cap_events: u32,
+    pub payload_rejections: u32,
+    pub timeout_disconnects: u32,
+    pub churn_rejections: u32,
+    pub reconnect_suppressions: u32,
+    pub maybe_latest_resource_governance_decision: Option<InboundResourceGovernanceEvent>,
+}
+
+impl ManagedResourceGovernanceInfo {
+    pub fn is_empty(&self) -> bool {
+        self.resource_pressure_events == 0
+            && self.read_queue_pressure_events == 0
+            && self.write_queue_pressure_events == 0
+            && self.request_cap_events == 0
+            && self.payload_rejections == 0
+            && self.timeout_disconnects == 0
+            && self.churn_rejections == 0
+            && self.reconnect_suppressions == 0
+            && self.maybe_latest_resource_governance_decision.is_none()
+    }
+
+    pub fn record_event(&mut self, event: InboundResourceEvent) {
+        match event.next_action.as_str() {
+            "resource_pressure_active" => {
+                self.resource_pressure_events = self.resource_pressure_events.saturating_add(1);
+            }
+            "read_queue_pressure" => {
+                self.read_queue_pressure_events = self.read_queue_pressure_events.saturating_add(1);
+            }
+            "write_queue_pressure" => {
+                self.write_queue_pressure_events =
+                    self.write_queue_pressure_events.saturating_add(1);
+            }
+            "request_cap_reached" => {
+                self.request_cap_events = self.request_cap_events.saturating_add(1);
+            }
+            "payload_rejected" => {
+                self.payload_rejections = self.payload_rejections.saturating_add(1);
+            }
+            "timeout_disconnect" => {
+                self.timeout_disconnects = self.timeout_disconnects.saturating_add(1);
+            }
+            "churn_rejected" => {
+                self.churn_rejections = self.churn_rejections.saturating_add(1);
+            }
+            "reconnect_suppressed" => {
+                self.reconnect_suppressions = self.reconnect_suppressions.saturating_add(1);
+            }
+            _ => {}
+        }
+        self.maybe_latest_resource_governance_decision = Some(event.into());
+    }
+}
+
+impl From<InboundResourceEvent> for InboundResourceGovernanceEvent {
+    fn from(event: InboundResourceEvent) -> Self {
+        Self {
+            outcome: event.outcome,
+            reason: event.reason,
+            label: event.label,
+            source: event.source,
+            message: event.message,
+            next_action: event.next_action,
+        }
     }
 }
 

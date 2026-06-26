@@ -1639,6 +1639,17 @@ fn phase90_status_with_available_inbound() -> OpenBitcoinStatusSnapshot {
         latest_peer_policy_decision: FieldAvailability::unavailable(
             "inbound peer policy evidence unavailable",
         ),
+        resource_pressure_events: 0,
+        read_queue_pressure_events: 0,
+        write_queue_pressure_events: 0,
+        request_cap_events: 0,
+        payload_rejections: 0,
+        timeout_disconnects: 0,
+        churn_rejections: 0,
+        reconnect_suppressions: 0,
+        latest_resource_governance_decision: FieldAvailability::unavailable(
+            "inbound resource governance evidence unavailable",
+        ),
     });
     status
 }

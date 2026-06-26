@@ -21,9 +21,9 @@ use open_bitcoin_core::{
 use open_bitcoin_mempool::{AdmissionResult, MempoolError, PolicyConfig};
 use open_bitcoin_network::{
     ConnectionRole, DisconnectReason, HeaderEntry, HeaderStore, HeaderSyncPolicy, HeadersMessage,
-    InboundAdmissionPolicy, InventoryList, LocalAdvertisementDecision, LocalPeerConfig,
-    NetworkError, PROTOCOL_VERSION, ParsedNetworkMessage, PeerAction, PeerId, PeerManager,
-    WireNetworkMessage,
+    InboundAdmissionPolicy, InboundResourceEvent, InventoryList, LocalAdvertisementDecision,
+    LocalPeerConfig, NetworkError, PROTOCOL_VERSION, ParsedNetworkMessage, PeerAction, PeerId,
+    PeerManager, WireNetworkMessage,
 };
 
 use crate::{ChainstateStore, ManagedChainstate, ManagedMempool};
@@ -32,7 +32,7 @@ use inbound::{default_inbound_admission_policy, is_active_inbound_peer};
 
 pub use inbound::{
     ManagedAddressBoundaryInfo, ManagedInboundAdmissionInfo, ManagedInboundPermissionDecisionInfo,
-    ManagedPeerPolicyInfo,
+    ManagedPeerPolicyInfo, ManagedResourceGovernanceInfo,
 };
 
 #[derive(Debug)]
@@ -131,6 +131,7 @@ pub struct ManagedPeerNetwork<S> {
     known_peers: BTreeSet<PeerId>,
     inbound_admission_policy: InboundAdmissionPolicy,
     inbound_admission_info: ManagedInboundAdmissionInfo,
+    resource_governance_info: ManagedResourceGovernanceInfo,
     local_config: LocalPeerConfig,
     blocks_by_hash: BTreeMap<BlockHash, Block>,
     transactions_by_txid: BTreeMap<Txid, Transaction>,
@@ -150,6 +151,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             known_peers: BTreeSet::new(),
             inbound_admission_policy: default_inbound_admission_policy(),
             inbound_admission_info: ManagedInboundAdmissionInfo::default(),
+            resource_governance_info: ManagedResourceGovernanceInfo::default(),
             local_config,
             blocks_by_hash: BTreeMap::new(),
             transactions_by_txid: BTreeMap::new(),
@@ -177,6 +179,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             known_peers: BTreeSet::new(),
             inbound_admission_policy: default_inbound_admission_policy(),
             inbound_admission_info: ManagedInboundAdmissionInfo::default(),
+            resource_governance_info: ManagedResourceGovernanceInfo::default(),
             local_config,
             blocks_by_hash: BTreeMap::new(),
             transactions_by_txid: BTreeMap::new(),
@@ -211,6 +214,12 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             &[],
         )
     }
+
+    #[rustfmt::skip]
+    pub fn resource_governance_info(&self) -> ManagedResourceGovernanceInfo { self.resource_governance_info.clone() }
+
+    #[rustfmt::skip]
+    pub fn record_resource_governance_event(&mut self, event: InboundResourceEvent) { self.resource_governance_info.record_event(event); }
 
     pub fn disconnect_peer(&mut self, peer_id: PeerId) -> Result<(), ManagedNetworkError> {
         self.peer_manager.remove_peer(peer_id)?;

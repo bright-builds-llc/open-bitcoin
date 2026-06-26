@@ -21,6 +21,10 @@ pub const INBOUND_ADDRESS_DECISION_UNAVAILABLE_REASON: &str =
 pub const INBOUND_PEER_POLICY_DECISION_UNAVAILABLE_REASON: &str =
     "inbound peer policy evidence unavailable";
 
+/// Default unavailable reason when resource-governance evidence has not been projected.
+pub const INBOUND_RESOURCE_DECISION_UNAVAILABLE_REASON: &str =
+    "inbound resource governance evidence unavailable";
+
 /// Conservative default for peer status snapshots without inbound serving evidence.
 pub fn inbound_status_unavailable() -> FieldAvailability<InboundPeerServingStatus> {
     FieldAvailability::unavailable(INBOUND_STATUS_UNAVAILABLE_REASON)
@@ -111,6 +115,19 @@ pub struct InboundPeerPolicyEvent {
     pub message: String,
 }
 
+/// Latest bounded resource-governance decision event.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct InboundResourceGovernanceEvent {
+    pub outcome: String,
+    pub reason: String,
+    pub label: String,
+    pub source: String,
+    pub message: String,
+    pub next_action: String,
+}
+
+type InboundResourceGovernanceAvailability = FieldAvailability<InboundResourceGovernanceEvent>;
+
 /// Shared inbound listener and admission evidence under peer status.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct InboundPeerServingStatus {
@@ -169,6 +186,24 @@ pub struct InboundPeerServingStatus {
     pub protected_no_actions: u32,
     #[serde(default = "latest_peer_policy_decision_unavailable")]
     pub latest_peer_policy_decision: FieldAvailability<InboundPeerPolicyEvent>,
+    #[serde(default)]
+    pub resource_pressure_events: u32,
+    #[serde(default)]
+    pub read_queue_pressure_events: u32,
+    #[serde(default)]
+    pub write_queue_pressure_events: u32,
+    #[serde(default)]
+    pub request_cap_events: u32,
+    #[serde(default)]
+    pub payload_rejections: u32,
+    #[serde(default)]
+    pub timeout_disconnects: u32,
+    #[serde(default)]
+    pub churn_rejections: u32,
+    #[serde(default)]
+    pub reconnect_suppressions: u32,
+    #[serde(default = "latest_resource_governance_decision_unavailable")]
+    pub latest_resource_governance_decision: FieldAvailability<InboundResourceGovernanceEvent>,
 }
 
 fn ordinary_permission_class() -> String {
@@ -185,6 +220,10 @@ fn latest_address_decision_unavailable() -> FieldAvailability<InboundAddressDeci
 
 fn latest_peer_policy_decision_unavailable() -> FieldAvailability<InboundPeerPolicyEvent> {
     FieldAvailability::unavailable(INBOUND_PEER_POLICY_DECISION_UNAVAILABLE_REASON)
+}
+
+pub fn latest_resource_governance_decision_unavailable() -> InboundResourceGovernanceAvailability {
+    FieldAvailability::unavailable(INBOUND_RESOURCE_DECISION_UNAVAILABLE_REASON)
 }
 
 #[cfg(test)]
