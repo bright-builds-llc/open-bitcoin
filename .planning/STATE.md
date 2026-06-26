@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Inbound Peer Serving and Network Participation Boundary
 status: executing
-stopped_at: Completed 94-05-PLAN.md
-last_updated: "2026-06-26T21:49:48.880Z"
+stopped_at: Completed 94-06-PLAN.md
+last_updated: "2026-06-26T22:21:48.841Z"
 last_activity: 2026-06-26
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 40
-  completed_plans: 37
-  percent: 93
+  completed_plans: 38
+  percent: 95
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-06-26)
 
 Milestone: v1.9 Inbound Peer Serving and Network Participation Boundary
 Phase: 94 (DoS and Resource Governance) — EXECUTING
-Plan: 6 of 8
+Plan: 7 of 8
 Status: Ready to execute
 Last activity: 2026-06-26
 
@@ -74,6 +74,7 @@ Progress: [#########-] 85%
 | Phase 94 P03 | 71min | 3 tasks | 11 files |
 | Phase 94 P04 | 27m | 2 tasks | 7 files |
 | Phase 94 P05 | 65m 12s | 3 tasks | 20 files |
+| Phase 94 P06 | 22m 44s | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -125,6 +126,8 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 - [Phase 94]: Project Phase 94 resource-governance events once through shared inbound status and reuse that contract for RPC/log evidence.
 - [Phase 94]: Keep resource-governance metrics as fixed MetricKind variants with static CLI dashboard labels; do not add dynamic metric labels.
 - [Phase 94]: Make managed RPC resource-event logging datadir-backed and bounded, with redaction for suspicious raw fields and a bounded write-failure count.
+- [Phase 94]: Render Phase 94 resource-governance status and support output from shared InboundPeerServingStatus fields only.
+- [Phase 94]: Keep Phase 94 support guidance bounded to evidence review and avoid public exposure, relay, raw peer, payload, permission, credential, or production-readiness claims.
 
 ### Pending Todos
 
@@ -145,6 +148,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-26T21:49:48.878Z
-Stopped at: Completed 94-05-PLAN.md
+Last session: 2026-06-26T22:21:48.839Z
+Stopped at: Completed 94-06-PLAN.md
 Resume file: None
