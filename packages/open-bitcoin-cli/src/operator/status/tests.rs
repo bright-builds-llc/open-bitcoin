@@ -32,12 +32,12 @@ use crate::operator::{
 };
 use open_bitcoin_node::status::{
     BestKnownTipStatus, BuildProvenance, ConfigStatus, FieldAvailability,
-    INBOUND_STATUS_UNAVAILABLE_REASON, InboundAdmissionEvent, InboundHandshakeStatusCounts,
-    InboundPeerServingStatus, InboundPermissionDecisionEvent, MempoolStatus, NodeRuntimeState,
-    NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, ServiceLifecycleStatus,
-    ServiceStatus, StayCurrentStatus, SyncAttemptCounters, SyncConfiguredTargets,
-    SyncProgressSignal, SyncStatus, SyncStopReasonStatus, WalletFreshness, WalletScanProgress,
-    WalletStatus,
+    INBOUND_STATUS_UNAVAILABLE_REASON, InboundAddressDecisionEvent, InboundAddressEvidenceEntry,
+    InboundAdmissionEvent, InboundHandshakeStatusCounts, InboundPeerServingStatus,
+    InboundPermissionDecisionEvent, MempoolStatus, NodeRuntimeState, NodeStatus,
+    OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, ServiceLifecycleStatus, ServiceStatus,
+    StayCurrentStatus, SyncAttemptCounters, SyncConfiguredTargets, SyncProgressSignal, SyncStatus,
+    SyncStopReasonStatus, WalletFreshness, WalletScanProgress, WalletStatus,
 };
 use open_bitcoin_node::storage::FJALL_LOCK_FILE_NAME;
 use open_bitcoin_rpc::{
@@ -268,6 +268,69 @@ fn inbound_status_fake_live_rpc_maps_into_shared_status_snapshot() {
         decoded["peers"]["inbound"]["value"]["latest_permission_decision"]["value"]["inactive_permission_effects"],
         serde_json::json!(["inactive_relay"])
     );
+    let inbound = decoded["peers"]["inbound"]["value"]
+        .as_object()
+        .expect("inbound status object");
+    for field_name in [
+        "local_advertisement_candidates",
+        "suppressed_advertisements",
+        "getaddr_responses_served",
+        "getaddr_requests_suppressed",
+        "learned_address_entries",
+        "learned_address_rejections",
+        "latest_address_decision",
+    ] {
+        assert!(inbound.contains_key(field_name), "missing {field_name}");
+    }
+    assert_eq!(
+        decoded["peers"]["inbound"]["value"]["local_advertisement_candidates"][0]["source"],
+        "source_local_listener"
+    );
+    assert_eq!(
+        decoded["peers"]["inbound"]["value"]["suppressed_advertisements"][0]["reason"],
+        "not_publicly_routable"
+    );
+    assert_eq!(
+        decoded["peers"]["inbound"]["value"]["getaddr_responses_served"],
+        3
+    );
+    assert_eq!(
+        decoded["peers"]["inbound"]["value"]["getaddr_requests_suppressed"],
+        2
+    );
+    assert_eq!(
+        decoded["peers"]["inbound"]["value"]["learned_address_entries"],
+        5
+    );
+    assert_eq!(
+        decoded["peers"]["inbound"]["value"]["learned_address_rejections"],
+        1
+    );
+}
+
+#[test]
+fn inbound_status_output_names_bounded_address_behavior_without_relay_claims() {
+    // Arrange
+    let input = status_input(Vec::new());
+    let rpc = FakeStatusRpcClient::running_with_inbound_status();
+
+    // Act
+    let snapshot = collect_status_snapshot(&input, Some(&rpc));
+    let rendered = render_status(&snapshot, StatusRenderMode::Human).expect("human status");
+
+    // Assert
+    assert!(rendered.contains("bounded getaddr"));
+    for forbidden in [
+        "full address relay",
+        "peer discovery support",
+        "public inbound by default",
+        "address_bytes",
+        "peer_id=",
+        "operator_loopback",
+        "raw_permission",
+    ] {
+        assert!(!rendered.contains(forbidden), "leaked {forbidden}");
+    }
 }
 
 #[test]
@@ -2022,15 +2085,42 @@ fn inbound_status_response() -> OpenBitcoinNetworkStatusResponse {
                         .to_string(),
                 },
             ),
-            local_advertisement_candidates: Vec::new(),
-            suppressed_advertisements: Vec::new(),
-            getaddr_responses_served: 0,
-            getaddr_requests_suppressed: 0,
-            learned_address_entries: 0,
-            learned_address_rejections: 0,
-            latest_address_decision: FieldAvailability::unavailable(
-                "inbound address boundary evidence unavailable",
-            ),
+            local_advertisement_candidates: vec![InboundAddressEvidenceEntry {
+                source: "source_local_listener".to_string(),
+                network_kind: "ipv4".to_string(),
+                routability: "publicly_routable".to_string(),
+                freshness: "fresh".to_string(),
+                services_bits: 1,
+                port: 8333,
+                persistence_eligible: true,
+            }],
+            suppressed_advertisements: vec![
+                InboundAddressDecisionEvent {
+                    outcome: "suppressed".to_string(),
+                    reason: "not_publicly_routable".to_string(),
+                    label: "not_publicly_routable".to_string(),
+                    source: "source_local_listener".to_string(),
+                    message: "local evidence only".to_string(),
+                },
+                InboundAddressDecisionEvent {
+                    outcome: "suppressed".to_string(),
+                    reason: "permission_policy_denied".to_string(),
+                    label: "permission_policy_denied".to_string(),
+                    source: "source_inbound_addr".to_string(),
+                    message: "bounded getaddr permission policy denied".to_string(),
+                },
+            ],
+            getaddr_responses_served: 3,
+            getaddr_requests_suppressed: 2,
+            learned_address_entries: 5,
+            learned_address_rejections: 1,
+            latest_address_decision: FieldAvailability::available(InboundAddressDecisionEvent {
+                outcome: "suppressed".to_string(),
+                reason: "empty_response_cache".to_string(),
+                label: "getaddr_suppressed".to_string(),
+                source: "source_inbound_addr".to_string(),
+                message: "bounded getaddr empty response cache".to_string(),
+            }),
         }),
     }
 }

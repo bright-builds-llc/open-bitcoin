@@ -5,12 +5,12 @@ use open_bitcoin_node::{
     BuildProvenance, LogStatus, MetricsStatus,
     status::{
         BestKnownTipSource, BestKnownTipStatus, ConfigStatus, FieldAvailability,
-        InboundAdmissionEvent, InboundHandshakeStatusCounts, InboundPeerServingStatus,
-        InboundPermissionDecisionEvent, MempoolStatus, NoProgressDiagnosis,
-        NoProgressThresholdEvidence, NoProgressThresholdState, NodeRuntimeState, NodeStatus,
-        OpenBitcoinStatusSnapshot, PeerContributionEvidence, PeerContributionKind, PeerCounts,
-        PeerStatus, PeerTelemetry, PeerTipAgreement, PeerTipAgreementStatus,
-        ProgressCreditEvidence, ProgressCreditKind, ProgressWindowEvidence,
+        InboundAddressDecisionEvent, InboundAddressEvidenceEntry, InboundAdmissionEvent,
+        InboundHandshakeStatusCounts, InboundPeerServingStatus, InboundPermissionDecisionEvent,
+        MempoolStatus, NoProgressDiagnosis, NoProgressThresholdEvidence, NoProgressThresholdState,
+        NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot, PeerContributionEvidence,
+        PeerContributionKind, PeerCounts, PeerStatus, PeerTelemetry, PeerTipAgreement,
+        PeerTipAgreementStatus, ProgressCreditEvidence, ProgressCreditKind, ProgressWindowEvidence,
         RejectedProgressActivity, RejectedProgressActivityKind, ServiceLifecycleStatus,
         ServicePriorShutdownStatus, ServiceRestartResumeStatus, ServiceResumeProgressStatus,
         ServiceStaleInflightStatus, ServiceStatus, StallDiagnosisConfidence,
@@ -102,6 +102,51 @@ fn inbound_status_render_includes_listener_and_admission_evidence() {
     ] {
         assert!(rendered.contains(expected), "missing {expected}");
     }
+}
+
+#[test]
+fn inbound_status_render_includes_phase92_address_boundary_evidence() {
+    // Arrange
+    let snapshot = shared_sync_truth_snapshot();
+
+    // Act
+    let rendered = render_status(&snapshot, StatusRenderMode::Human).expect("human status");
+
+    // Assert
+    for expected in [
+        "local advertisement candidates: 1",
+        "source=source_local_listener",
+        "routability=publicly_routable",
+        "persistence_eligible=true",
+        "suppressed advertisements: 2",
+        "label=not_publicly_routable",
+        "bounded getaddr responses served: 3",
+        "bounded getaddr requests suppressed: 2",
+        "learned address entries: 5",
+        "learned address rejections: 1",
+        "latest address decision=outcome=suppressed reason=already_served label=getaddr_suppressed source=source_inbound_addr message=bounded getaddr request already served",
+    ] {
+        assert!(rendered.contains(expected), "missing {expected}");
+    }
+}
+
+#[test]
+fn inbound_status_render_preserves_unavailable_address_decision_reason() {
+    // Arrange
+    let mut snapshot = shared_sync_truth_snapshot();
+    let FieldAvailability::Available(inbound) = &mut snapshot.peers.inbound else {
+        panic!("inbound status fixture should be available");
+    };
+    inbound.latest_address_decision =
+        FieldAvailability::unavailable("inbound address boundary evidence unavailable");
+
+    // Act
+    let rendered = render_status(&snapshot, StatusRenderMode::Human).expect("human status");
+
+    // Assert
+    assert!(rendered.contains(
+        "latest address decision=Unavailable: inbound address boundary evidence unavailable"
+    ));
 }
 
 #[test]
@@ -675,14 +720,41 @@ fn inbound_peer_serving_status() -> InboundPeerServingStatus {
             inactive_permission_effects: vec!["inactive_relay".to_string()],
             message: "inbound permission decision admitted as protected_inbound".to_string(),
         }),
-        local_advertisement_candidates: Vec::new(),
-        suppressed_advertisements: Vec::new(),
-        getaddr_responses_served: 0,
-        getaddr_requests_suppressed: 0,
-        learned_address_entries: 0,
-        learned_address_rejections: 0,
-        latest_address_decision: FieldAvailability::unavailable(
-            "inbound address boundary evidence unavailable",
-        ),
+        local_advertisement_candidates: vec![InboundAddressEvidenceEntry {
+            source: "source_local_listener".to_string(),
+            network_kind: "ipv4".to_string(),
+            routability: "publicly_routable".to_string(),
+            freshness: "fresh".to_string(),
+            services_bits: 1,
+            port: 8333,
+            persistence_eligible: true,
+        }],
+        suppressed_advertisements: vec![
+            InboundAddressDecisionEvent {
+                outcome: "suppressed".to_string(),
+                reason: "not_publicly_routable".to_string(),
+                label: "not_publicly_routable".to_string(),
+                source: "source_local_listener".to_string(),
+                message: "local evidence only".to_string(),
+            },
+            InboundAddressDecisionEvent {
+                outcome: "suppressed".to_string(),
+                reason: "not_publicly_routable".to_string(),
+                label: "not_publicly_routable".to_string(),
+                source: "source_local_listener".to_string(),
+                message: "local evidence only".to_string(),
+            },
+        ],
+        getaddr_responses_served: 3,
+        getaddr_requests_suppressed: 2,
+        learned_address_entries: 5,
+        learned_address_rejections: 1,
+        latest_address_decision: FieldAvailability::available(InboundAddressDecisionEvent {
+            outcome: "suppressed".to_string(),
+            reason: "already_served".to_string(),
+            label: "getaddr_suppressed".to_string(),
+            source: "source_inbound_addr".to_string(),
+            message: "bounded getaddr request already served".to_string(),
+        }),
     }
 }
