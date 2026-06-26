@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Inbound Peer Serving and Network Participation Boundary
 status: executing
-stopped_at: Completed 94-02-PLAN.md
-last_updated: "2026-06-26T18:30:26.929Z"
+stopped_at: Completed 94-03-PLAN.md
+last_updated: "2026-06-26T19:49:39.828Z"
 last_activity: 2026-06-26
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 40
-  completed_plans: 34
-  percent: 85
+  completed_plans: 35
+  percent: 88
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-06-26)
 
 Milestone: v1.9 Inbound Peer Serving and Network Participation Boundary
 Phase: 94 (DoS and Resource Governance) — EXECUTING
-Plan: 3 of 8
+Plan: 4 of 8
 Status: Ready to execute
 Last activity: 2026-06-26
 
@@ -71,6 +71,7 @@ Progress: [#########-] 85%
 | Phase 91 P10 | 27min | 3 tasks | 9 files |
 | Phase 94 P01 | 31min | 2 tasks | 5 files |
 | Phase 94 P02 | 29min | 2 tasks | 4 files |
+| Phase 94 P03 | 71min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -114,6 +115,9 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 - [Phase 94]: Treated inactive relay-like permission effects as evidence only, never as capacity multipliers.
 - [Phase 94]: Exported the resource governance API from open-bitcoin-network so later runtime plans can consume the policy without private-module access.
 - [Phase 94]: Preserved repo hook requirements by recording TDD RED locally and committing only verification-passing task states.
+- [Phase 94]: Use existing Phase 93 managed peer-policy aggregate projection for reconnect suppression instead of adding listener-local ban maps.
+- [Phase 94]: Place runtime resource accounting helpers in an inbound_listener child module to satisfy repo production file-length limits while keeping the root listener as the adapter orchestration surface.
+- [Phase 94]: Preserve hook requirements by running TDD RED checks locally and committing only verification-passing task states.
 
 ### Pending Todos
 
@@ -134,6 +138,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-26T18:30:26.927Z
-Stopped at: Completed 94-02-PLAN.md
+Last session: 2026-06-26T19:49:39.826Z
+Stopped at: Completed 94-03-PLAN.md
 Resume file: None
