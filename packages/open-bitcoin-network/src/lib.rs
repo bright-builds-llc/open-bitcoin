@@ -26,8 +26,10 @@ mod peer;
 
 pub use address::{
     AddressClassification, AddressDecisionLabel, AddressDecisionReason, AddressNetworkKind,
-    AddressSourceKind, RoutabilityClass, classify_network_address,
-    privacy_network_deferred_classification, unsupported_future_network_classification,
+    AddressSourceKind, LocalAdvertisementDecision, LocalAdvertisementInput, RoutabilityClass,
+    classify_network_address, maybe_version_sender_address,
+    privacy_network_deferred_classification, select_local_advertisement_candidates,
+    unsupported_future_network_classification,
 };
 pub use compatibility::{
     CompatibilityDiagnosis, CompatibilityReport, TranscriptEvent, TranscriptStep,

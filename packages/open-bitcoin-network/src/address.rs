@@ -17,6 +17,13 @@ use open_bitcoin_primitives::NetworkAddress;
 
 use crate::message::ServiceFlags;
 
+pub mod advertisement;
+
+pub use advertisement::{
+    LocalAdvertisementDecision, LocalAdvertisementInput, maybe_version_sender_address,
+    select_local_advertisement_candidates,
+};
+
 const IPV4_IN_IPV6_PREFIX: [u8; 12] = [
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff,
 ];

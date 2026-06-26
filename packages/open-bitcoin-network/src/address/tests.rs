@@ -11,14 +11,15 @@
 // - packages/bitcoin-knots/src/addrdb.h
 // - packages/bitcoin-knots/src/addrdb.cpp
 
-use core::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+use core::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 
-use crate::ServiceFlags;
+use crate::{InboundListenerEndpoint, ServiceFlags};
 
 use super::{
     AddressDecisionLabel, AddressDecisionReason, AddressNetworkKind, AddressSourceKind,
-    RoutabilityClass, classify_network_address, privacy_network_deferred_classification,
-    unsupported_future_network_classification,
+    LocalAdvertisementInput, RoutabilityClass, classify_network_address,
+    maybe_version_sender_address, privacy_network_deferred_classification,
+    select_local_advertisement_candidates, unsupported_future_network_classification,
 };
 
 #[test]
@@ -277,4 +278,185 @@ fn unsupported_future_networks_are_rejected_without_wire_address_bytes() {
     );
     assert_eq!(classification.services_bits, services.bits());
     assert_eq!(classification.maybe_wire_address, None);
+}
+
+#[test]
+fn local_advertisement_uses_runtime_bound_address_before_configured_listener() {
+    // Arrange
+    let services = ServiceFlags::NETWORK | ServiceFlags::WITNESS;
+    let inputs = [LocalAdvertisementInput {
+        listener_endpoint: listener_endpoint("127.0.0.1:8333"),
+        maybe_bound_addr: Some(socket_addr("8.8.8.8:18444")),
+        services,
+        allow_public: true,
+    }];
+
+    // Act
+    let decisions = select_local_advertisement_candidates(&inputs);
+
+    // Assert
+    assert_eq!(decisions.len(), 1);
+    let decision = &decisions[0];
+    assert_eq!(decision.label, AddressDecisionLabel::AdvertiseCandidate);
+    assert_eq!(decision.reason, AddressDecisionReason::PolicyAccepted);
+    assert_eq!(decision.source, AddressSourceKind::LocalListener);
+    assert_eq!(decision.network_kind, AddressNetworkKind::Ipv4);
+    assert_eq!(decision.routability, RoutabilityClass::PubliclyRoutable);
+    assert_eq!(decision.services_bits, services.bits());
+    assert_eq!(decision.port, 18444);
+
+    let wire_address = decision
+        .maybe_wire_address
+        .as_ref()
+        .expect("candidate should have a wire address");
+    assert_eq!(wire_address.services, services.bits());
+    assert_eq!(wire_address.port, 18444);
+    assert_eq!(
+        wire_address.address_bytes,
+        ipv4_mapped_address_bytes([8, 8, 8, 8]),
+    );
+    assert_eq!(
+        maybe_version_sender_address(&decisions),
+        decision.maybe_wire_address.clone(),
+    );
+}
+
+#[test]
+fn local_private_documentation_and_multicast_listener_addresses_are_not_advertised() {
+    // Arrange
+    let inputs: Vec<_> = [
+        "127.0.0.1:8333",
+        "10.0.0.1:8333",
+        "172.16.0.1:8333",
+        "192.168.0.1:8333",
+        "0.0.0.0:8333",
+        "224.0.0.1:8333",
+        "192.0.2.1:8333",
+        "203.0.113.1:8333",
+        "[::1]:8333",
+        "[::]:8333",
+        "[ff02::1]:8333",
+        "[fc00::1]:8333",
+        "[fe80::1]:8333",
+        "[2001:db8::1]:8333",
+    ]
+    .into_iter()
+    .map(|raw_endpoint| LocalAdvertisementInput {
+        listener_endpoint: listener_endpoint(raw_endpoint),
+        maybe_bound_addr: None,
+        services: ServiceFlags::NETWORK,
+        allow_public: true,
+    })
+    .collect();
+
+    // Act
+    let decisions = select_local_advertisement_candidates(&inputs);
+
+    // Assert
+    assert_eq!(decisions.len(), inputs.len());
+    assert!(decisions.iter().all(|decision| {
+        decision.label == AddressDecisionLabel::AdvertiseSuppressed
+            && decision.reason == AddressDecisionReason::NotPubliclyRoutable
+            && decision.source == AddressSourceKind::LocalListener
+            && decision.routability == RoutabilityClass::NotPubliclyRoutable
+            && decision.maybe_wire_address.is_none()
+    }));
+}
+
+#[test]
+fn public_listener_with_public_acknowledgement_is_advertised_and_used_for_version_sender() {
+    // Arrange
+    let services = ServiceFlags::NETWORK | ServiceFlags::WITNESS;
+    let inputs = [LocalAdvertisementInput {
+        listener_endpoint: listener_endpoint("8.8.4.4:8333"),
+        maybe_bound_addr: None,
+        services,
+        allow_public: true,
+    }];
+
+    // Act
+    let decisions = select_local_advertisement_candidates(&inputs);
+    let maybe_sender = maybe_version_sender_address(&decisions);
+
+    // Assert
+    assert_eq!(decisions.len(), 1);
+    let decision = &decisions[0];
+    assert_eq!(decision.label, AddressDecisionLabel::AdvertiseCandidate);
+    assert_eq!(decision.reason, AddressDecisionReason::PolicyAccepted);
+    assert_eq!(decision.source, AddressSourceKind::LocalListener);
+    assert_eq!(decision.network_kind, AddressNetworkKind::Ipv4);
+    assert_eq!(decision.routability, RoutabilityClass::PubliclyRoutable);
+    assert_eq!(decision.services_bits, services.bits());
+    assert_eq!(decision.port, 8333);
+    assert_eq!(maybe_sender, decision.maybe_wire_address.clone());
+}
+
+#[test]
+fn version_sender_address_stays_empty_without_advertisement_candidate() {
+    // Arrange
+    let inputs = [
+        LocalAdvertisementInput {
+            listener_endpoint: listener_endpoint("127.0.0.1:8333"),
+            maybe_bound_addr: None,
+            services: ServiceFlags::NETWORK,
+            allow_public: true,
+        },
+        LocalAdvertisementInput {
+            listener_endpoint: listener_endpoint("8.8.8.8:8333"),
+            maybe_bound_addr: None,
+            services: ServiceFlags::NETWORK,
+            allow_public: false,
+        },
+    ];
+
+    // Act
+    let decisions = select_local_advertisement_candidates(&inputs);
+    let maybe_sender = maybe_version_sender_address(&decisions);
+
+    // Assert
+    assert_eq!(decisions.len(), 2);
+    assert_eq!(
+        decisions
+            .iter()
+            .map(|decision| decision.label)
+            .collect::<Vec<_>>(),
+        vec![
+            AddressDecisionLabel::AdvertiseSuppressed,
+            AddressDecisionLabel::AdvertiseSuppressed,
+        ],
+    );
+    assert_eq!(
+        decisions
+            .iter()
+            .map(|decision| decision.reason)
+            .collect::<Vec<_>>(),
+        vec![
+            AddressDecisionReason::NotPubliclyRoutable,
+            AddressDecisionReason::PermissionPolicyDenied,
+        ],
+    );
+    assert_eq!(maybe_sender, None);
+}
+
+fn listener_endpoint(raw_endpoint: &str) -> InboundListenerEndpoint {
+    let address = socket_addr(raw_endpoint);
+    InboundListenerEndpoint {
+        raw: raw_endpoint.to_string(),
+        normalized: address.to_string(),
+        address,
+    }
+}
+
+fn socket_addr(raw_endpoint: &str) -> SocketAddr {
+    raw_endpoint
+        .parse()
+        .expect("test listener endpoint should parse")
+}
+
+fn ipv4_mapped_address_bytes(octets: [u8; 4]) -> [u8; 16] {
+    let mut bytes = [0_u8; 16];
+    bytes[10] = 0xff;
+    bytes[11] = 0xff;
+    bytes[12..].copy_from_slice(&octets);
+    bytes
 }
