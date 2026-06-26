@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Inbound Peer Serving and Network Participation Boundary
 status: executing
-stopped_at: Completed 94-01-PLAN.md
-last_updated: "2026-06-26T17:53:17.649Z"
+stopped_at: Completed 94-02-PLAN.md
+last_updated: "2026-06-26T18:30:26.929Z"
 last_activity: 2026-06-26
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 40
-  completed_plans: 33
-  percent: 83
+  completed_plans: 34
+  percent: 85
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: `.planning/PROJECT.md` (updated 2026-06-26)
 
 Milestone: v1.9 Inbound Peer Serving and Network Participation Boundary
 Phase: 94 (DoS and Resource Governance) — EXECUTING
-Plan: 2 of 8
+Plan: 3 of 8
 Status: Ready to execute
 Last activity: 2026-06-26
 
-Progress: [########--] 80%
+Progress: [#########-] 85%
 
 ## Performance Metrics
 
@@ -49,7 +49,7 @@ Progress: [########--] 80%
 | 91 | Peer Permissions and Connection Classes | PERM-01, PERM-02, PERM-03, PERM-04 | Complete |
 | 92 | Address Advertisement and Discovery Boundaries | ADDR-01, ADDR-02, ADDR-03, ADDR-04 | Complete |
 | 93 | Eviction, Ban, and Misbehavior Policy | EVICT-01, EVICT-02, EVICT-03, EVICT-04 | Complete |
-| 94 | DoS and Resource Governance | DOS-01, DOS-02, DOS-03, DOS-04, DOS-05 | Pending |
+| 94 | DoS and Resource Governance | DOS-01, DOS-02, DOS-03, DOS-04, DOS-05 | In Progress |
 | 95 | Network Participation Evidence and Release Boundary | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05, BOUND-06 | Pending |
 
 **Recent Trend:**
@@ -70,6 +70,7 @@ Progress: [########--] 80%
 | Phase 91 P09 | 4min | 3 tasks | 7 files |
 | Phase 91 P10 | 27min | 3 tasks | 9 files |
 | Phase 94 P01 | 31min | 2 tasks | 5 files |
+| Phase 94 P02 | 29min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -109,6 +110,10 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 - [Phase 94]: Kept Phase 94 resource governance in a pure open-bitcoin-network module with no socket, runtime, or peer-manager side effects.
 - [Phase 94]: Used existing codec and message decoding APIs rather than introducing a new wire parser.
 - [Phase 94]: Preserved repo hook requirements by recording TDD RED locally and committing only verification-passing task states.
+- [Phase 94]: Kept Phase 94 queue, request, timeout, churn, failure, and reconnect decisions as pure data-in/data-out policy.
+- [Phase 94]: Treated inactive relay-like permission effects as evidence only, never as capacity multipliers.
+- [Phase 94]: Exported the resource governance API from open-bitcoin-network so later runtime plans can consume the policy without private-module access.
+- [Phase 94]: Preserved repo hook requirements by recording TDD RED locally and committing only verification-passing task states.
 
 ### Pending Todos
 
@@ -129,6 +134,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-26T17:53:17.647Z
-Stopped at: Completed 94-01-PLAN.md
+Last session: 2026-06-26T18:30:26.927Z
+Stopped at: Completed 94-02-PLAN.md
 Resume file: None
