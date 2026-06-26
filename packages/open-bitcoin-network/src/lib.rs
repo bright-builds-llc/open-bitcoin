@@ -74,8 +74,14 @@ pub use peer_policy::{
 };
 pub use resource::{
     INBOUND_MESSAGE_HEADER_LEN, InboundEnvelopeDecision, InboundEnvelopePolicy,
-    InboundResourceEvent, PHASE94_MAX_INBOUND_RUNTIME_PAYLOAD_BYTES, ResourceGovernanceSource,
-    ResourceViolationLabel,
+    InboundResourceEvent, PHASE94_MAX_AGGREGATE_QUEUED_MESSAGES,
+    PHASE94_MAX_AGGREGATE_READ_QUEUE_BYTES, PHASE94_MAX_AGGREGATE_WRITE_QUEUE_BYTES,
+    PHASE94_MAX_HEADER_LOCATOR_HASHES, PHASE94_MAX_INBOUND_BLOCK_REQUESTS_PER_PEER,
+    PHASE94_MAX_INBOUND_REQUEST_INVENTORY_ITEMS, PHASE94_MAX_INBOUND_RUNTIME_PAYLOAD_BYTES,
+    PHASE94_MAX_INBOUND_TX_REQUESTS_PER_PEER, PHASE94_MAX_PEER_QUEUED_MESSAGES,
+    PHASE94_MAX_PEER_READ_QUEUE_BYTES, PHASE94_MAX_PEER_WRITE_QUEUE_BYTES, QueuePressureInput,
+    RequestPressureInput, ResourceGovernanceDecision, ResourceGovernancePolicy,
+    ResourceGovernanceSource, ResourcePressureLabel, ResourceViolationLabel,
 };
 
 pub const fn crate_ready() -> bool {

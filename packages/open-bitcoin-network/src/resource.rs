@@ -8,10 +8,26 @@ use open_bitcoin_codec::{CodecError, parse_message_header};
 use open_bitcoin_consensus::crypto::double_sha256;
 use open_bitcoin_primitives::{MessageHeader, NetworkMagic};
 
-use crate::{NetworkError, ParsedNetworkMessage, WireNetworkMessage};
+use crate::message::{MAX_HEADERS_RESULTS, MAX_INV_SIZE};
+use crate::peer::DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER;
+use crate::{
+    InactivePermissionEffectLabel, NetworkError, ParsedNetworkMessage, PermissionEffectLabel,
+    WireNetworkMessage,
+};
 
 pub const INBOUND_MESSAGE_HEADER_LEN: usize = 24;
 pub const PHASE94_MAX_INBOUND_RUNTIME_PAYLOAD_BYTES: usize = 32 * 1024 * 1024;
+pub const PHASE94_MAX_PEER_READ_QUEUE_BYTES: usize = 1024 * 1024;
+pub const PHASE94_MAX_PEER_WRITE_QUEUE_BYTES: usize = 1024 * 1024;
+pub const PHASE94_MAX_AGGREGATE_READ_QUEUE_BYTES: usize = 8 * 1024 * 1024;
+pub const PHASE94_MAX_AGGREGATE_WRITE_QUEUE_BYTES: usize = 8 * 1024 * 1024;
+pub const PHASE94_MAX_PEER_QUEUED_MESSAGES: usize = 128;
+pub const PHASE94_MAX_AGGREGATE_QUEUED_MESSAGES: usize = 1024;
+pub const PHASE94_MAX_INBOUND_TX_REQUESTS_PER_PEER: usize = 1024;
+pub const PHASE94_MAX_INBOUND_BLOCK_REQUESTS_PER_PEER: usize =
+    DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER;
+pub const PHASE94_MAX_HEADER_LOCATOR_HASHES: usize = MAX_HEADERS_RESULTS;
+pub const PHASE94_MAX_INBOUND_REQUEST_INVENTORY_ITEMS: usize = MAX_INV_SIZE;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ResourceViolationLabel {
@@ -39,6 +55,25 @@ impl ResourceViolationLabel {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ResourcePressureLabel {
+    ResourcePressureActive,
+    ReadQueuePressure,
+    WriteQueuePressure,
+    RequestCapReached,
+}
+
+impl ResourcePressureLabel {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::ResourcePressureActive => "resource_pressure_active",
+            Self::ReadQueuePressure => "read_queue_pressure",
+            Self::WriteQueuePressure => "write_queue_pressure",
+            Self::RequestCapReached => "request_cap_reached",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ResourceGovernanceSource {
     EnvelopeGate,
     PayloadDecoder,
@@ -53,6 +88,14 @@ impl ResourceGovernanceSource {
             Self::RuntimeRead => "source_runtime_read",
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ResourceGovernanceDecision {
+    Accept,
+    Backpressure(InboundResourceEvent),
+    Disconnect(InboundResourceEvent),
+    RecordMisbehavior(InboundResourceEvent),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -75,6 +118,117 @@ pub enum InboundEnvelopeDecision {
 pub struct InboundEnvelopePolicy {
     pub expected_magic: NetworkMagic,
     pub max_payload_bytes: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct QueuePressureInput {
+    pub peer_read_queue_bytes: usize,
+    pub peer_write_queue_bytes: usize,
+    pub aggregate_read_queue_bytes: usize,
+    pub aggregate_write_queue_bytes: usize,
+    pub peer_queued_messages: usize,
+    pub aggregate_queued_messages: usize,
+    pub active_permission_effects: Vec<PermissionEffectLabel>,
+    pub inactive_permission_effects: Vec<InactivePermissionEffectLabel>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct RequestPressureInput {
+    pub inventory_items: usize,
+    pub getdata_items: usize,
+    pub header_locator_hashes: usize,
+    pub requested_blocks_in_flight: usize,
+    pub requested_txids_in_flight: usize,
+    pub requested_wtxids_in_flight: usize,
+    pub active_permission_effects: Vec<PermissionEffectLabel>,
+    pub inactive_permission_effects: Vec<InactivePermissionEffectLabel>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ResourceGovernancePolicy {
+    pub max_peer_read_queue_bytes: usize,
+    pub max_peer_write_queue_bytes: usize,
+    pub max_aggregate_read_queue_bytes: usize,
+    pub max_aggregate_write_queue_bytes: usize,
+    pub max_peer_queued_messages: usize,
+    pub max_aggregate_queued_messages: usize,
+    pub max_inbound_tx_requests_per_peer: usize,
+    pub max_inbound_block_requests_per_peer: usize,
+    pub max_header_locator_hashes: usize,
+    pub max_inbound_request_inventory_items: usize,
+}
+
+impl Default for ResourceGovernancePolicy {
+    fn default() -> Self {
+        Self {
+            max_peer_read_queue_bytes: PHASE94_MAX_PEER_READ_QUEUE_BYTES,
+            max_peer_write_queue_bytes: PHASE94_MAX_PEER_WRITE_QUEUE_BYTES,
+            max_aggregate_read_queue_bytes: PHASE94_MAX_AGGREGATE_READ_QUEUE_BYTES,
+            max_aggregate_write_queue_bytes: PHASE94_MAX_AGGREGATE_WRITE_QUEUE_BYTES,
+            max_peer_queued_messages: PHASE94_MAX_PEER_QUEUED_MESSAGES,
+            max_aggregate_queued_messages: PHASE94_MAX_AGGREGATE_QUEUED_MESSAGES,
+            max_inbound_tx_requests_per_peer: PHASE94_MAX_INBOUND_TX_REQUESTS_PER_PEER,
+            max_inbound_block_requests_per_peer: PHASE94_MAX_INBOUND_BLOCK_REQUESTS_PER_PEER,
+            max_header_locator_hashes: PHASE94_MAX_HEADER_LOCATOR_HASHES,
+            max_inbound_request_inventory_items: PHASE94_MAX_INBOUND_REQUEST_INVENTORY_ITEMS,
+        }
+    }
+}
+
+impl ResourceGovernancePolicy {
+    pub fn decide_queue(&self, input: QueuePressureInput) -> ResourceGovernanceDecision {
+        if input.peer_read_queue_bytes > self.max_peer_read_queue_bytes
+            || input.aggregate_read_queue_bytes > self.max_aggregate_read_queue_bytes
+        {
+            return ResourceGovernanceDecision::Backpressure(resource_pressure_event(
+                ResourcePressureLabel::ReadQueuePressure,
+                "read queue resource pressure exceeded configured cap",
+                "read_queue_pressure",
+            ));
+        }
+
+        if input.peer_write_queue_bytes > self.max_peer_write_queue_bytes
+            || input.aggregate_write_queue_bytes > self.max_aggregate_write_queue_bytes
+        {
+            return ResourceGovernanceDecision::Backpressure(resource_pressure_event(
+                ResourcePressureLabel::WriteQueuePressure,
+                "write queue resource pressure exceeded configured cap",
+                "write_queue_pressure",
+            ));
+        }
+
+        if input.peer_queued_messages > self.max_peer_queued_messages
+            || input.aggregate_queued_messages > self.max_aggregate_queued_messages
+        {
+            return ResourceGovernanceDecision::Backpressure(resource_pressure_event(
+                ResourcePressureLabel::ResourcePressureActive,
+                "queued message resource pressure exceeded configured cap",
+                "resource_pressure_active",
+            ));
+        }
+
+        ResourceGovernanceDecision::Accept
+    }
+
+    pub fn decide_request(&self, input: RequestPressureInput) -> ResourceGovernanceDecision {
+        let requested_transactions = input
+            .requested_txids_in_flight
+            .saturating_add(input.requested_wtxids_in_flight);
+        if input.inventory_items > self.max_inbound_request_inventory_items
+            || input.getdata_items > self.max_inbound_request_inventory_items
+            || input.header_locator_hashes > self.max_header_locator_hashes
+            || input.requested_blocks_in_flight > self.max_inbound_block_requests_per_peer
+            || requested_transactions > self.max_inbound_tx_requests_per_peer
+        {
+            return ResourceGovernanceDecision::Disconnect(resource_pressure_event(
+                ResourcePressureLabel::RequestCapReached,
+                "inbound request or inventory cap exceeded configured limit",
+                "request_cap_reached",
+            ));
+        }
+
+        ResourceGovernanceDecision::Accept
+    }
 }
 
 impl InboundEnvelopePolicy {
@@ -209,6 +363,21 @@ impl InboundEnvelopePolicy {
             message: "inbound_message_resource_governance".to_string(),
             next_action: "payload_rejected".to_string(),
         }
+    }
+}
+
+fn resource_pressure_event(
+    label: ResourcePressureLabel,
+    reason: impl Into<String>,
+    next_action: &'static str,
+) -> InboundResourceEvent {
+    InboundResourceEvent {
+        outcome: "resource_governance".to_string(),
+        reason: reason.into(),
+        label: label.as_str().to_string(),
+        source: ResourceGovernanceSource::RuntimeRead.as_str().to_string(),
+        message: "inbound_resource_governance".to_string(),
+        next_action: next_action.to_string(),
     }
 }
 
