@@ -520,6 +520,14 @@ fn metric_label(kind: MetricKind) -> &'static str {
         MetricKind::InboundActiveBanCount => "Inbound active bans",
         MetricKind::InboundMisbehaviorObservationCount => "Inbound misbehavior observations",
         MetricKind::InboundProtectedNoActionCount => "Inbound protected no-actions",
+        MetricKind::InboundResourcePressureActiveCount => "Inbound resource pressure",
+        MetricKind::InboundReadQueuePressureCount => "Inbound read queue pressure",
+        MetricKind::InboundWriteQueuePressureCount => "Inbound write queue pressure",
+        MetricKind::InboundRequestCapReachedCount => "Inbound request cap reached",
+        MetricKind::InboundPayloadRejectedCount => "Inbound payload rejects",
+        MetricKind::InboundTimeoutDisconnectCount => "Inbound timeout disconnects",
+        MetricKind::InboundChurnRejectedCount => "Inbound churn rejects",
+        MetricKind::InboundReconnectSuppressedCount => "Inbound reconnect suppressions",
     }
 }
 

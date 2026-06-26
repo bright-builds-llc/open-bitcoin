@@ -848,6 +848,7 @@
       "label": "node-observability-contracts",
       "files": [
         "packages/open-bitcoin-node/src/metrics.rs",
+        "packages/open-bitcoin-node/src/metrics/tests.rs",
         "packages/open-bitcoin-node/src/logging.rs",
         "packages/open-bitcoin-node/src/logging/prune.rs",
         "packages/open-bitcoin-node/src/logging/tests.rs",

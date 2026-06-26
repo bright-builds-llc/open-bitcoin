@@ -69,6 +69,8 @@ fn dashboard_metric_labels_cover_all_metric_kinds() {
     assert!(labels.contains(&"Inbound protected admits"));
     assert!(labels.contains(&"Inbound inactive permission effects"));
     assert!(labels.contains(&"Inbound permission validation failures"));
+    assert!(labels.contains(&"Inbound payload rejects"));
+    assert!(labels.contains(&"Inbound reconnect suppressions"));
 }
 
 #[test]
