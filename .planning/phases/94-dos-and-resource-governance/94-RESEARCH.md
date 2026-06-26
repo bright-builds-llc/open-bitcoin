@@ -394,22 +394,22 @@ bun run scripts/check-phase94-dos-resource-governance.ts
 | A1 | Research validity is estimated at 30 days, or sooner if Phase 90-93 inbound APIs change. [ASSUMED: planning freshness estimate] | Metadata | Planner might rely on stale integration points after nearby inbound code changes. |
 | A2 | The GSD ASVS table is used as a planning taxonomy for application-security concerns, not as a formal OWASP ASVS compliance claim. [ASSUMED: GSD template interpretation] | Security Domain | A compliance reviewer could require a separate ASVS mapping using the exact current OWASP chapter taxonomy. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Exact new cap values for Phase 94 queues/timeouts/churn**
+   - **RESOLVED:** Phase 94 plans choose conservative named defaults in `packages/open-bitcoin-network/src/resource.rs`: `PHASE94_MAX_PEER_READ_QUEUE_BYTES = 1 * 1024 * 1024`, `PHASE94_MAX_PEER_WRITE_QUEUE_BYTES = 1 * 1024 * 1024`, `PHASE94_MAX_AGGREGATE_READ_QUEUE_BYTES = 8 * 1024 * 1024`, `PHASE94_MAX_AGGREGATE_WRITE_QUEUE_BYTES = 8 * 1024 * 1024`, `PHASE94_MAX_PEER_QUEUED_MESSAGES = 128`, `PHASE94_MAX_AGGREGATE_QUEUED_MESSAGES = 1024`, `PHASE94_SLOW_HANDSHAKE_TIMEOUT_SECONDS = 60`, `PHASE94_IDLE_PEER_TIMEOUT_SECONDS = 1_800`, `PHASE94_CONNECTION_CHURN_WINDOW_SECONDS = 60`, `PHASE94_MAX_CONNECTIONS_PER_CHURN_WINDOW = 16`, `PHASE94_REPEATED_FAILURE_WINDOW_SECONDS = 300`, and `PHASE94_MAX_REPEATED_FAILURES_PER_WINDOW = 8`. These are policy-module constants with boundary tests, not hidden runtime literals. [RESOLVED: .planning/phases/94-dos-and-resource-governance/94-02-PLAN.md; D-02; D-05; D-06; D-12]
    - What we know: The user explicitly left exact cap values to planner discretion while requiring named constants and boundary tests. [VERIFIED: .planning/phases/94-dos-and-resource-governance/94-CONTEXT.md]
-   - What's unclear: The exact numeric defaults for read/write queues, aggregate queues, repeated failures, churn windows, slow handshakes, and idle peers are not locked. [VERIFIED: .planning/phases/94-dos-and-resource-governance/94-CONTEXT.md]
-   - Recommendation: Choose conservative named defaults in the new pure policy module and assert boundary behavior; do not change existing caps unless a task explicitly documents the parity reason. [VERIFIED: D-02; D-20]
+   - Resolution basis: The exact numeric defaults were planner discretion; the revised plans lock them as named constants and assert boundary behavior. Existing caps remain preserved unless an implementation task explicitly documents the parity reason. [RESOLVED: D-02; D-20]
 
 2. **How much structured log emission is required beyond status/support/metrics**
+   - **RESOLVED:** Phase 94 includes a structured log projection in `packages/open-bitcoin-node/src/logging.rs`: `INBOUND_RESOURCE_GOVERNANCE_LOG_SOURCE = "inbound_resource_governance"` and `inbound_resource_governance_log_record(event, timestamp_unix_seconds) -> StructuredLogRecord`. The projection uses shared `InboundResourceGovernanceEvent` fields only (`outcome`, `reason`, `label`, `source`, `message`, `next_action`), applies bounded redaction, and is verified by node logging tests plus the Phase 94 checker. [RESOLVED: .planning/phases/94-dos-and-resource-governance/94-05-PLAN.md; .planning/phases/94-dos-and-resource-governance/94-08-PLAN.md; D-13; D-14; D-16]
    - What we know: DOS-04 requires metrics, structured logs, support bundles, and operator status. [VERIFIED: .planning/REQUIREMENTS.md]
-   - What's unclear: Existing inbound listener evidence is status-centric, while structured log projection may require a small managed runtime event bridge. [VERIFIED: packages/open-bitcoin-rpc/src/inbound_listener.rs; packages/open-bitcoin-node/src/logging.rs]
-   - Recommendation: Plan at least one low-cardinality structured resource event path using the same event labels as status; avoid raw payload or endpoint logs. [VERIFIED: D-14; D-16]
+   - Resolution basis: The revised plans add a low-cardinality structured resource event path using the same labels and fields as shared status, with explicit no raw peer id, endpoint, payload, permission string, credential, or dynamic label leakage. [RESOLVED: D-14; D-16]
 
 3. **Whether `DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER = 128` should remain different from Knots' in-transit cap**
+   - **RESOLVED:** Phase 94 preserves Open Bitcoin's existing `DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER` by defining `PHASE94_MAX_INBOUND_BLOCK_REQUESTS_PER_PEER = DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER` and adding tests that assert the equality. Any future change to lower this to Knots' `MAX_BLOCKS_IN_TRANSIT_PER_PEER = 16` is outside Phase 94 and belongs to a later parity decision. [RESOLVED: .planning/phases/94-dos-and-resource-governance/94-02-PLAN.md; .planning/phases/94-dos-and-resource-governance/94-04-PLAN.md; D-02]
    - What we know: Phase 94 D-02 says preserve `DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER`, and local code defines it as `128`; Knots `net_processing.cpp` defines `MAX_BLOCKS_IN_TRANSIT_PER_PEER = 16`. [VERIFIED: packages/open-bitcoin-network/src/peer.rs; packages/bitcoin-knots/src/net_processing.cpp; .planning/phases/94-dos-and-resource-governance/94-CONTEXT.md]
-   - What's unclear: Whether a future parity phase will intentionally lower this default is not part of Phase 94. [VERIFIED: .planning/REQUIREMENTS.md]
-   - Recommendation: Preserve the Open Bitcoin constant in Phase 94 and document any new resource cap separately. [VERIFIED: D-02]
+   - Resolution basis: The revised plans preserve the Open Bitcoin constant in Phase 94 and document the boundary through tests and parity docs rather than silently changing request behavior. [RESOLVED: D-02]
 
 ## Environment Availability
 

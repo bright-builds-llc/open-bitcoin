@@ -111,7 +111,7 @@ The planner may choose exact cap values, type names, and module splits. Prefer f
 - `scripts/check-phase90-inbound-listener-admission.ts` - deterministic checker and no-claim pattern for Phase 90.
 - `scripts/check-phase91-peer-permissions.ts` - deterministic checker and permission-evidence pattern for Phase 91.
 - `scripts/check-phase92-address-boundaries.ts` - deterministic checker and address-boundary/no-claim pattern for Phase 92.
-- `scripts/check-phase93-eviction-ban-policy.ts` - deterministic checker and peer-policy/no-claim pattern for Phase 93.
+- `scripts/check-phase93-peer-policy.ts` - deterministic checker and peer-policy/no-claim pattern for Phase 93.
 
 ### Docs, Evidence, And Release Boundaries
 
