@@ -624,6 +624,10 @@
     {
       "name": "v1-9-eviction-ban-misbehavior-policy",
       "status": "done"
+    },
+    {
+      "name": "v1-9-dos-resource-governance",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -1730,6 +1734,54 @@
         ],
         "suspected_unknowns": [
           "Future Phase 94 through Phase 95 work owns resource governance and release-boundary evidence before any broader network-participation claim can be made."
+        ]
+      },
+      {
+        "id": "v1-9-dos-resource-governance",
+        "title": "v1.9 DoS and Resource Governance",
+        "status": "done",
+        "requirements": [
+          "DOS-01",
+          "DOS-02",
+          "DOS-03",
+          "DOS-04",
+          "DOS-05"
+        ],
+        "evidence": [
+          "docs/operator/runtime-guide.md",
+          "docs/architecture/status-snapshot.md",
+          "docs/architecture/operator-observability.md",
+          "docs/parity/catalog/p2p.md",
+          "docs/parity/source-breadcrumbs.json",
+          ".planning/phases/94-dos-and-resource-governance/94-01-SUMMARY.md",
+          ".planning/phases/94-dos-and-resource-governance/94-02-SUMMARY.md",
+          ".planning/phases/94-dos-and-resource-governance/94-03-SUMMARY.md",
+          ".planning/phases/94-dos-and-resource-governance/94-04-SUMMARY.md",
+          ".planning/phases/94-dos-and-resource-governance/94-05-SUMMARY.md",
+          ".planning/phases/94-dos-and-resource-governance/94-06-SUMMARY.md"
+        ],
+        "rationale": "Phase 94 proves bounded message-envelope rejection, queue/request pressure, timeout/churn/reconnect decisions, shared resource status, fixed metrics, structured logs, support evidence, and loopback UAT command forms.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/protocol.h",
+            "packages/bitcoin-knots/src/net.cpp",
+            "packages/bitcoin-knots/src/net_processing.cpp",
+            "packages/bitcoin-knots/src/banman.cpp",
+            "packages/bitcoin-knots/src/net_permissions.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/test/functional/p2p_invalid_messages.py",
+            "packages/bitcoin-knots/test/functional/p2p_dos_header_tree.py",
+            "packages/bitcoin-knots/test/functional/p2p_timeouts.py",
+            "packages/bitcoin-knots/test/functional/p2p_ibd_stalling.py",
+            "packages/bitcoin-knots/test/functional/p2p_getdata.py"
+          ]
+        },
+        "known_gaps": [
+          "Phase 94 does not claim transaction relay, compact block relay, mempool propagation, broad address relay, public inbound defaults, public-network CI, production service operation, or production full-node readiness."
+        ],
+        "suspected_unknowns": [
+          "Future Phase 95 work owns release-boundary evidence before any broader network-participation claim can be made."
         ]
       }
     ]

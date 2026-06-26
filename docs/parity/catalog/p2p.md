@@ -102,6 +102,11 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
   without adding peer discovery support, full address relay support, public
   inbound by default, DNS seed discovery, UPnP/NAT-PMP discovery, or
   production full-node readiness
+- Phase 94 `v1-9-dos-resource-governance` evidence keeps DOS-01, DOS-02,
+  DOS-03, DOS-04, and DOS-05 auditable through bounded message-envelope
+  rejection, queue/request pressure, timeout/churn/reconnect decisions, shared
+  status/support fields, fixed metrics, structured logs, and loopback UAT
+  command forms
 
 ## Knots sources
 
@@ -113,6 +118,7 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
 - [`packages/bitcoin-knots/src/net_permissions.cpp`](../../../packages/bitcoin-knots/src/net_permissions.cpp)
 - [`packages/bitcoin-knots/src/net.cpp`](../../../packages/bitcoin-knots/src/net.cpp)
 - [`packages/bitcoin-knots/src/net_processing.cpp`](../../../packages/bitcoin-knots/src/net_processing.cpp)
+- [`packages/bitcoin-knots/src/banman.cpp`](../../../packages/bitcoin-knots/src/banman.cpp)
 - [`packages/bitcoin-knots/src/addrman.h`](../../../packages/bitcoin-knots/src/addrman.h)
 - [`packages/bitcoin-knots/src/addrman.cpp`](../../../packages/bitcoin-knots/src/addrman.cpp)
 - [`packages/bitcoin-knots/src/addrdb.h`](../../../packages/bitcoin-knots/src/addrdb.h)
@@ -126,6 +132,11 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
 - [`packages/bitcoin-knots/test/functional/p2p_tx_download.py`](../../../packages/bitcoin-knots/test/functional/p2p_tx_download.py)
 - [`packages/bitcoin-knots/test/functional/p2p_permissions.py`](../../../packages/bitcoin-knots/test/functional/p2p_permissions.py)
 - [`packages/bitcoin-knots/test/functional/p2p_getaddr_caching.py`](../../../packages/bitcoin-knots/test/functional/p2p_getaddr_caching.py)
+- [`packages/bitcoin-knots/test/functional/p2p_invalid_messages.py`](../../../packages/bitcoin-knots/test/functional/p2p_invalid_messages.py)
+- [`packages/bitcoin-knots/test/functional/p2p_dos_header_tree.py`](../../../packages/bitcoin-knots/test/functional/p2p_dos_header_tree.py)
+- [`packages/bitcoin-knots/test/functional/p2p_timeouts.py`](../../../packages/bitcoin-knots/test/functional/p2p_timeouts.py)
+- [`packages/bitcoin-knots/test/functional/p2p_ibd_stalling.py`](../../../packages/bitcoin-knots/test/functional/p2p_ibd_stalling.py)
+- [`packages/bitcoin-knots/test/functional/p2p_getdata.py`](../../../packages/bitcoin-knots/test/functional/p2p_getdata.py)
 - [`packages/bitcoin-knots/test/functional/p2p_addrfetch.py`](../../../packages/bitcoin-knots/test/functional/p2p_addrfetch.py)
 - [`packages/bitcoin-knots/test/functional/p2p_addr_relay.py`](../../../packages/bitcoin-knots/test/functional/p2p_addr_relay.py)
 - [`packages/bitcoin-knots/test/functional/p2p_addrv2_relay.py`](../../../packages/bitcoin-knots/test/functional/p2p_addrv2_relay.py)
@@ -542,6 +553,47 @@ coverage, transaction relay abuse handling, compact block relay abuse
 handling, public inbound defaults, public-network CI, or production full-node
 readiness.
 
+## Phase 94 DoS and resource-governance boundary
+
+The `v1-9-dos-resource-governance` surface covers `DOS-01`, `DOS-02`,
+`DOS-03`, `DOS-04`, and `DOS-05` for bounded inbound DoS and
+resource-governance evidence.
+Its Knots anchors are
+[`packages/bitcoin-knots/src/protocol.h`](../../../packages/bitcoin-knots/src/protocol.h)
+for message command and size constants,
+[`packages/bitcoin-knots/src/net.cpp`](../../../packages/bitcoin-knots/src/net.cpp)
+for connection-manager resource and timeout comparison points,
+[`packages/bitcoin-knots/src/net_processing.cpp`](../../../packages/bitcoin-knots/src/net_processing.cpp)
+for request and inventory comparison points,
+[`packages/bitcoin-knots/src/banman.cpp`](../../../packages/bitcoin-knots/src/banman.cpp)
+for banned or discouraged reconnect comparison points,
+[`packages/bitcoin-knots/src/net_permissions.cpp`](../../../packages/bitcoin-knots/src/net_permissions.cpp)
+for scoped permission-effect comparison points,
+[`packages/bitcoin-knots/test/functional/p2p_invalid_messages.py`](../../../packages/bitcoin-knots/test/functional/p2p_invalid_messages.py),
+[`packages/bitcoin-knots/test/functional/p2p_dos_header_tree.py`](../../../packages/bitcoin-knots/test/functional/p2p_dos_header_tree.py),
+[`packages/bitcoin-knots/test/functional/p2p_timeouts.py`](../../../packages/bitcoin-knots/test/functional/p2p_timeouts.py),
+[`packages/bitcoin-knots/test/functional/p2p_ibd_stalling.py`](../../../packages/bitcoin-knots/test/functional/p2p_ibd_stalling.py),
+and
+[`packages/bitcoin-knots/test/functional/p2p_getdata.py`](../../../packages/bitcoin-knots/test/functional/p2p_getdata.py).
+
+Open Bitcoin intentionally owns the Phase 94 evidence surface:
+
+- message-envelope policy records stable labels for wrong network magic,
+  malformed headers, oversized messages, checksum failures, unsupported
+  commands, malformed messages, and trailing data.
+- queue and request governance records bounded pressure labels for read queue,
+  write queue, queued-message, and request-cap decisions.
+- lifecycle governance records slow-handshake, idle-peer, connection-churn,
+  repeated-failure, banned-reconnect, and discouraged-reconnect decisions from
+  deterministic inputs.
+- `openbitcoinnetworkstatus`, `OpenBitcoinStatusSnapshot.peers.inbound`,
+  operator status, fixed metrics, structured logs, and support bundles expose
+  bounded counts and the latest resource-governance decision.
+- default verification remains deterministic, local, loopback/synthetic, and
+  outside public-network execution.
+
+Phase 94 does not claim transaction relay, compact block relay, mempool propagation, broad address relay, public inbound defaults, public-network CI, production service operation, or production full-node readiness.
+
 ## First-party implementation
 
 - [`packages/open-bitcoin-network/src/address.rs`](../../../packages/open-bitcoin-network/src/address.rs)
@@ -558,6 +610,8 @@ readiness.
 - [`packages/open-bitcoin-network/src/peer.rs`](../../../packages/open-bitcoin-network/src/peer.rs)
 - [`packages/open-bitcoin-network/src/peer/policy_state.rs`](../../../packages/open-bitcoin-network/src/peer/policy_state.rs)
 - [`packages/open-bitcoin-network/src/peer_policy.rs`](../../../packages/open-bitcoin-network/src/peer_policy.rs)
+- [`packages/open-bitcoin-network/src/resource.rs`](../../../packages/open-bitcoin-network/src/resource.rs)
+- [`packages/open-bitcoin-network/src/resource/tests.rs`](../../../packages/open-bitcoin-network/src/resource/tests.rs)
 - [`packages/open-bitcoin-network/tests/parity.rs`](../../../packages/open-bitcoin-network/tests/parity.rs)
 - [`packages/open-bitcoin-node/src/network.rs`](../../../packages/open-bitcoin-node/src/network.rs)
 - [`packages/open-bitcoin-node/src/status/inbound.rs`](../../../packages/open-bitcoin-node/src/status/inbound.rs)
@@ -572,8 +626,7 @@ readiness.
 - address relay, `addrv2`, peer discovery policy, and DNS-seed governance
 - encrypted transport and other non-v1 wire transports
 - compact blocks, blocktxn, filtered blocks, bloom filters, and compact filters
-- resource-governance scoring and timeout parity beyond the Phase 93
-  peer-policy evidence surface
+- resource-governance parity beyond the Phase 94 bounded evidence surface
 - production daemon-integrated full-sync guarantees
 - automatic public-mainnet recovery loops and broad production-node service
   guarantees
