@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Inbound Peer Serving and Network Participation Boundary
-status: verifying
+status: executing
 stopped_at: Phase 92 context gathered
-last_updated: "2026-06-26T03:59:19.215Z"
-last_activity: 2026-06-25
+last_updated: "2026-06-26T04:39:52.590Z"
+last_activity: 2026-06-26 -- Phase 92 planning complete
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 20
+  total_plans: 29
   completed_plans: 20
-  percent: 100
+  percent: 69
 ---
 
 # Project State
@@ -21,17 +21,17 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-25)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 91 — peer-permissions-and-connection-classes
+**Current focus:** Phase 92 — address-advertisement-and-discovery-boundaries
 
 ## Current Position
 
 Milestone: v1.9 Inbound Peer Serving and Network Participation Boundary
-Phase: 91 (peer-permissions-and-connection-classes) — PLAN COMPLETE
-Plan: 10 of 10
-Status: Ready for code review and phase verification
-Last activity: 2026-06-25
+Phase: 92 (address-advertisement-and-discovery-boundaries) — PLAN COMPLETE
+Plan: 0 of 9
+Status: Ready to execute
+Last activity: 2026-06-26 -- Phase 92 planning complete
 
-Progress: [##########] 100%
+Progress: [#######---] 69%
 
 ## Performance Metrics
 
@@ -47,7 +47,7 @@ Progress: [##########] 100%
 |-------|------|--------------|--------|
 | 90 | Inbound Listener and Admission Policy | INB-01, INB-02, INB-03, INB-04, INB-05 | Complete |
 | 91 | Peer Permissions and Connection Classes | PERM-01, PERM-02, PERM-03, PERM-04 | Complete |
-| 92 | Address Advertisement and Discovery Boundaries | ADDR-01, ADDR-02, ADDR-03, ADDR-04 | Pending |
+| 92 | Address Advertisement and Discovery Boundaries | ADDR-01, ADDR-02, ADDR-03, ADDR-04 | Planned |
 | 93 | Eviction, Ban, and Misbehavior Policy | EVICT-01, EVICT-02, EVICT-03, EVICT-04 | Pending |
 | 94 | DoS and Resource Governance | DOS-01, DOS-02, DOS-03, DOS-04, DOS-05 | Pending |
 | 95 | Network Participation Evidence and Release Boundary | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05, BOUND-06 | Pending |

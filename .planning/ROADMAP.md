@@ -19,7 +19,7 @@ v1.9 Inbound Peer Serving and Network Participation Boundary started on 2026-06-
 
 **Goal:** Let Open Bitcoin accept and serve inbound peers under explicit admission, permission, address, eviction/ban, and resource-governance rules while keeping relay and production participation claims deferred.
 
-**Current state:** Phase 91 plan work is complete and ready for code review plus phase verification.
+**Current state:** Phase 92 planning is complete and ready for execution.
 
 **Boundary:** v1.9 does not claim transaction relay, compact block relay, mempool propagation, public inbound serving by default, production service operation, or production full-node readiness.
 
@@ -29,7 +29,7 @@ v1.9 Inbound Peer Serving and Network Participation Boundary started on 2026-06-
 |-------|------|------|--------------|--------|
 | 90 | Inbound Listener and Admission Policy | 10/10 | Complete   | 2026-06-25 |
 | 91 | Peer Permissions and Connection Classes | 10/10 | Complete | 2026-06-25 |
-| 92 | Address Advertisement and Discovery Boundaries | Scope listener advertisement, bounded address responses, address-management contracts, and docs that distinguish these from full address relay. | ADDR-01, ADDR-02, ADDR-03, ADDR-04 | Pending |
+| 92 | Address Advertisement and Discovery Boundaries | Scope listener advertisement, bounded address responses, address-management contracts, and docs that distinguish these from full address relay. | ADDR-01, ADDR-02, ADDR-03, ADDR-04 | Planned |
 | 93 | Eviction, Ban, and Misbehavior Policy | Add deterministic eviction scoring, disconnect reasons, discourage/ban persistence, expiry, unban, and permission-aware misbehavior handling. | EVICT-01, EVICT-02, EVICT-03, EVICT-04 | Pending |
 | 94 | DoS and Resource Governance | Bound inbound message parsing, queues, requests, slow handshakes, churn, idle peers, reconnect attempts, and resource-pressure evidence. | DOS-01, DOS-02, DOS-03, DOS-04, DOS-05 | Pending |
 | 95 | Network Participation Evidence and Release Boundary | Prove parity anchors, non-regression, support redaction, UAT commands, and deterministic no-claim guardrails for deferred network participation. | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05, BOUND-06 | Pending |
@@ -94,6 +94,19 @@ Plans:
 **Goal:** Add privacy-aware listener advertisement and bounded address request/management behavior without claiming full address relay or broader public-network discovery parity.
 
 **Requirements:** ADDR-01, ADDR-02, ADDR-03, ADDR-04
+
+**Plans:** 9 plans
+
+Plans:
+- [ ] 92-01-PLAN.md — Pure local address advertisement contracts
+- [ ] 92-02-PLAN.md — Bounded getaddr/addr wire support and version sender gating
+- [ ] 92-03-PLAN.md — Learned-address contract and getaddr response policy
+- [ ] 92-04-PLAN.md — PeerManager address intake and permission-aware getaddr handling
+- [ ] 92-05-PLAN.md — Shared node status address-boundary evidence
+- [ ] 92-06-PLAN.md — Runtime listener evidence and RPC status projection
+- [ ] 92-07-PLAN.md — CLI status and support rendering for address evidence
+- [ ] 92-08-PLAN.md — Operator docs, parity metadata, and source breadcrumbs
+- [ ] 92-09-PLAN.md — Deterministic Phase 92 checker and verifier wiring
 
 **Success criteria:**
 1. Local address candidate selection respects configured listener addresses, routability, reachability, and privacy-network boundaries.
