@@ -241,20 +241,21 @@ test("fails_when_default_verifier_contains_public_network_command_fragments", as
 
 test("fails_when_docs_claim_full_relay_discovery_public_or_production_support", async () => {
   // Arrange
+  const claims = [
+    "Phase 92 supports full address relay.",
+    "Phase 92 includes peer discovery support.",
+    "public inbound by default is enabled.",
+    "public-network readiness is achieved.",
+    "production full-node readiness is achieved.",
+    "unsolicited address relay is supported.",
+    "addr gossip relay is supported.",
+    "DNS seed discovery support is enabled.",
+    "UPnP/NAT-PMP discovery support is enabled.",
+    "-discover parity is supported.",
+    "-externalip parity is supported.",
+  ];
   const roots = await Promise.all(
-    [
-      "Phase 92 supports full address relay.",
-      "Phase 92 includes peer discovery support.",
-      "public inbound by default is enabled.",
-      "public-network readiness is achieved.",
-      "production full-node readiness is achieved.",
-      "unsolicited address relay is supported.",
-      "addr gossip relay is supported.",
-      "DNS seed discovery support is enabled.",
-      "UPnP/NAT-PMP discovery support is enabled.",
-      "-discover parity is supported.",
-      "-externalip parity is supported.",
-    ].map((claim) =>
+    claims.map((claim) =>
       createFixture({
         maybeMutateFiles(files) {
           const current = files.get("docs/parity/catalog/p2p.md") ?? "";
@@ -270,8 +271,8 @@ test("fails_when_docs_claim_full_relay_discovery_public_or_production_support", 
   );
 
   // Assert
-  for (const message of failureMessages) {
-    expect(message).toContain("Phase 92 no-claim boundary");
+  for (const [index, message] of failureMessages.entries()) {
+    expect(`${claims[index]}\n${message}`).toContain("Phase 92 no-claim boundary");
   }
 });
 

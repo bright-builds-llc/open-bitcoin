@@ -290,6 +290,8 @@ bun test scripts/check-phase90-inbound-listener-admission.test.ts
 bun run scripts/check-phase90-inbound-listener-admission.ts
 bun test scripts/check-phase91-peer-permissions.test.ts
 bun run scripts/check-phase91-peer-permissions.ts
+bun test scripts/check-phase92-address-boundaries.test.ts
+bun run scripts/check-phase92-address-boundaries.ts
 VERIFY_COMMAND_ORDER
 
 parse_args "$@"
@@ -363,6 +365,8 @@ run_step "test Phase 90 inbound listener admission checker" bun test scripts/che
 run_step "check Phase 90 inbound listener admission" bun run scripts/check-phase90-inbound-listener-admission.ts
 run_step "test Phase 91 peer permissions checker" bun test scripts/check-phase91-peer-permissions.test.ts
 run_step "check Phase 91 peer permissions" bun run scripts/check-phase91-peer-permissions.ts
+run_step "test Phase 92 address boundaries checker" bun test scripts/check-phase92-address-boundaries.test.ts
+run_step "check Phase 92 address boundaries" bun run scripts/check-phase92-address-boundaries.ts
 run_step "check pure-core dependencies" bash scripts/check-pure-core-deps.sh
 run_step "check file lengths" bash scripts/check-file-lengths.sh
 run_step "check panic sites" bash scripts/check-panic-sites.sh
