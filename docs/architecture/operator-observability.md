@@ -226,6 +226,33 @@ preserve safe machine labels and aggregate counts, but it must not copy raw
 class names, raw `in,noban,...` config strings, peer ids, raw endpoint tables,
 RPC password values, cookie contents, or unbounded peer details.
 
+## Phase 92 address advertisement and discovery evidence
+
+Address-boundary observability is sourced from the shared inbound status fields
+on `OpenBitcoinStatusSnapshot.peers.inbound`, `openbitcoinnetworkstatus`,
+operator status output, and redacted support bundles. The stable field and
+label vocabulary is `local_advertisement_candidates`,
+`suppressed_advertisements`, `not_publicly_routable`, bounded getaddr,
+`learned_address_entries`, `latest_address_decision`, and
+`full_relay_deferred`.
+
+Local advertisement evidence means configured listener endpoints and
+runtime-bound listener evidence passed through the Phase 92 policy. Suppressed
+advertisement evidence means the policy rejected a local candidate before it
+could appear in a version sender address or direct address response. Bounded
+getaddr evidence means a direct inbound `getaddr` request was served or
+suppressed by count, permission, role, and served-once rules. Learned-address
+evidence means typed inbound `addr` entries were accepted or rejected by the
+in-memory address contract.
+
+Metrics remain aggregate and low-cardinality; Phase 92 does not add dynamic
+address labels, peer ids, raw endpoint tables, raw address bytes, raw permission
+class names, or raw config strings as metric or log dimensions. Support bundles
+must preserve safe machine labels and counts while redacting raw address
+material. These observability fields do not claim peer discovery support, full
+address relay support, public inbound by default, unsolicited addr gossip, DNS
+seed discovery, UPnP/NAT-PMP discovery, or production full-node readiness.
+
 ## Phase Boundaries
 
 Phase 13 defines serializable contracts only. It must not install a tracing subscriber, create a file appender, write metric samples, prune log files, or render dashboard graphs. Runtime writers and readers are Phase 16 responsibilities.

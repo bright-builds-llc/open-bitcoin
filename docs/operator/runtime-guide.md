@@ -353,6 +353,100 @@ Expected review evidence:
   without raw peer ids, raw endpoints, raw config strings, RPC password values,
   or cookie contents.
 
+## Phase 92 Address Advertisement and Discovery Boundary Review
+
+Phase 92 adds bounded address-boundary evidence to the same explicit loopback
+listener review path. It covers local listener-derived advertisement decisions,
+direct `getaddr`/`addr` request-response evidence, and learned-address intake
+counts. It does not add peer discovery support, full address relay support,
+public inbound by default, or production full-node readiness.
+
+Daemon CLI forms:
+
+```bash
+mkdir -p /tmp/open-bitcoin-address-boundary
+
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --bin open-bitcoind -- \
+  -regtest \
+  -datadir=/tmp/open-bitcoin-address-boundary \
+  -openbitcoininbound=1 \
+  -openbitcoinlisten=127.0.0.1:18444 \
+  -openbitcoinreservedslots=1 \
+  -openbitcoininboundpermissionclass=operator_loopback@127.0.0.1=in,noban,forceinbound,download,addr \
+  -server=1
+
+bazel run //packages/open-bitcoin-rpc:open_bitcoind -- \
+  -regtest \
+  -datadir=/tmp/open-bitcoin-address-boundary \
+  -openbitcoininbound=1 \
+  -openbitcoinlisten=127.0.0.1:18444 \
+  -openbitcoinreservedslots=1 \
+  -openbitcoininboundpermissionclass=operator_loopback@127.0.0.1=in,noban,forceinbound,download,addr \
+  -server=1
+```
+
+Inspect Open Bitcoin-owned address-boundary evidence:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin-cli -- \
+  -regtest \
+  -rpcconnect=127.0.0.1 \
+  -rpcport=18443 \
+  openbitcoinnetworkstatus
+
+bazel run //packages/open-bitcoin-cli:open_bitcoin_cli -- \
+  -regtest \
+  -rpcconnect=127.0.0.1 \
+  -rpcport=18443 \
+  openbitcoinnetworkstatus
+```
+
+Inspect shared operator status:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --network regtest \
+  --datadir=/tmp/open-bitcoin-address-boundary \
+  status --format json
+
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- \
+  --network regtest \
+  --datadir=/tmp/open-bitcoin-address-boundary \
+  status --format json
+```
+
+Collect a redacted address-boundary support bundle:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --network regtest \
+  --datadir=/tmp/open-bitcoin-address-boundary \
+  support bundle --output-dir=/tmp/open-bitcoin-address-support
+
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- \
+  --network regtest \
+  --datadir=/tmp/open-bitcoin-address-boundary \
+  support bundle --output-dir=/tmp/open-bitcoin-address-support
+```
+
+Expected review evidence is bounded and label-driven:
+
+- `local_advertisement_candidates` lists accepted listener-derived candidates
+  only after the same local advertisement policy used for version sender and
+  direct `getaddr` response evidence accepts them.
+- `suppressed_advertisements` records rejected local candidates with stable
+  reasons such as `not_publicly_routable`; loopback review evidence is
+  diagnostic, not public advertisement proof.
+- `bounded getaddr` evidence is limited to direct inbound request handling:
+  `getaddr_responses_served`, `getaddr_requests_suppressed`, and
+  `latest_address_decision` explain served-once, permission-gated responses.
+- `learned_address_entries` and `learned_address_rejections` summarize typed
+  inbound `addr` intake without claiming Knots `addrman.dat`, `peers.dat`, DNS
+  seed discovery, or outbound peer discovery.
+- `full_relay_deferred` remains the no-claim label for unsolicited address
+  fanout, addr gossip, rebroadcast scheduling, `addrv2` relay, DNS seed
+  discovery, UPnP/NAT-PMP discovery, and public-network readiness.
+
 ## Mainnet Sync Activation
 
 Mainnet sync activation is disabled by default. It can be enabled only for the

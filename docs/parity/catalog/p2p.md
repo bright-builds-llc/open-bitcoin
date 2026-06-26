@@ -95,14 +95,28 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
   relay, mempool propagation, BIP37 or compact-filter serving, full address
   relay, ban/misbehavior semantics, public inbound defaults, or production
   readiness claims
+- Phase 92 `v1-9-address-advertisement-discovery-boundaries` evidence keeps
+  ADDR-01, ADDR-02, ADDR-03, and ADDR-04 auditable through local listener
+  advertisement policy, direct bounded getaddr handling, typed learned-address
+  storage evidence, shared status/support fields, and source breadcrumbs
+  without adding peer discovery support, full address relay support, public
+  inbound by default, DNS seed discovery, UPnP/NAT-PMP discovery, or
+  production full-node readiness
 
 ## Knots sources
 
 - [`packages/bitcoin-knots/src/protocol.h`](../../../packages/bitcoin-knots/src/protocol.h)
+- [`packages/bitcoin-knots/src/protocol.cpp`](../../../packages/bitcoin-knots/src/protocol.cpp)
+- [`packages/bitcoin-knots/src/netaddress.h`](../../../packages/bitcoin-knots/src/netaddress.h)
+- [`packages/bitcoin-knots/src/netaddress.cpp`](../../../packages/bitcoin-knots/src/netaddress.cpp)
 - [`packages/bitcoin-knots/src/net_permissions.h`](../../../packages/bitcoin-knots/src/net_permissions.h)
 - [`packages/bitcoin-knots/src/net_permissions.cpp`](../../../packages/bitcoin-knots/src/net_permissions.cpp)
 - [`packages/bitcoin-knots/src/net.cpp`](../../../packages/bitcoin-knots/src/net.cpp)
 - [`packages/bitcoin-knots/src/net_processing.cpp`](../../../packages/bitcoin-knots/src/net_processing.cpp)
+- [`packages/bitcoin-knots/src/addrman.h`](../../../packages/bitcoin-knots/src/addrman.h)
+- [`packages/bitcoin-knots/src/addrman.cpp`](../../../packages/bitcoin-knots/src/addrman.cpp)
+- [`packages/bitcoin-knots/src/addrdb.h`](../../../packages/bitcoin-knots/src/addrdb.h)
+- [`packages/bitcoin-knots/src/addrdb.cpp`](../../../packages/bitcoin-knots/src/addrdb.cpp)
 - [`packages/bitcoin-knots/src/headerssync.h`](../../../packages/bitcoin-knots/src/headerssync.h)
 - [`packages/bitcoin-knots/src/headerssync.cpp`](../../../packages/bitcoin-knots/src/headerssync.cpp)
 - [`packages/bitcoin-knots/src/sync.cpp`](../../../packages/bitcoin-knots/src/sync.cpp)
@@ -111,6 +125,11 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
 - [`packages/bitcoin-knots/test/functional/p2p_initial_headers_sync.py`](../../../packages/bitcoin-knots/test/functional/p2p_initial_headers_sync.py)
 - [`packages/bitcoin-knots/test/functional/p2p_tx_download.py`](../../../packages/bitcoin-knots/test/functional/p2p_tx_download.py)
 - [`packages/bitcoin-knots/test/functional/p2p_permissions.py`](../../../packages/bitcoin-knots/test/functional/p2p_permissions.py)
+- [`packages/bitcoin-knots/test/functional/p2p_getaddr_caching.py`](../../../packages/bitcoin-knots/test/functional/p2p_getaddr_caching.py)
+- [`packages/bitcoin-knots/test/functional/p2p_addrfetch.py`](../../../packages/bitcoin-knots/test/functional/p2p_addrfetch.py)
+- [`packages/bitcoin-knots/test/functional/p2p_addr_relay.py`](../../../packages/bitcoin-knots/test/functional/p2p_addr_relay.py)
+- [`packages/bitcoin-knots/test/functional/p2p_addrv2_relay.py`](../../../packages/bitcoin-knots/test/functional/p2p_addrv2_relay.py)
+- [`packages/bitcoin-knots/test/functional/feature_addrman.py`](../../../packages/bitcoin-knots/test/functional/feature_addrman.py)
 - [`packages/bitcoin-knots/test/functional/test_framework/messages.py`](../../../packages/bitcoin-knots/test/functional/test_framework/messages.py)
 
 ## Knots behaviors mirrored here
@@ -435,8 +454,63 @@ serving, compact-filter serving, full address relay, ban or misbehavior
 semantics, public inbound defaults, broad DoS/resource governance, or
 production readiness.
 
+## Phase 92 address advertisement and discovery boundary
+
+The `v1-9-address-advertisement-discovery-boundaries` surface covers ADDR-01
+through ADDR-04 for the address advertisement and discovery boundary. Its Knots
+anchors are
+[`packages/bitcoin-knots/src/protocol.h`](../../../packages/bitcoin-knots/src/protocol.h)
+and
+[`packages/bitcoin-knots/src/protocol.cpp`](../../../packages/bitcoin-knots/src/protocol.cpp)
+for netaddress and legacy `addr` wire representation,
+[`packages/bitcoin-knots/src/netaddress.h`](../../../packages/bitcoin-knots/src/netaddress.h)
+and
+[`packages/bitcoin-knots/src/netaddress.cpp`](../../../packages/bitcoin-knots/src/netaddress.cpp)
+for routability and address-network classification,
+[`packages/bitcoin-knots/src/net.cpp`](../../../packages/bitcoin-knots/src/net.cpp)
+for local address advertisement boundaries,
+[`packages/bitcoin-knots/src/net_processing.cpp`](../../../packages/bitcoin-knots/src/net_processing.cpp)
+for `getaddr` and `addr` request-response behavior, and
+[`packages/bitcoin-knots/src/addrman.h`](../../../packages/bitcoin-knots/src/addrman.h),
+[`packages/bitcoin-knots/src/addrman.cpp`](../../../packages/bitcoin-knots/src/addrman.cpp),
+[`packages/bitcoin-knots/src/addrdb.h`](../../../packages/bitcoin-knots/src/addrdb.h),
+and
+[`packages/bitcoin-knots/src/addrdb.cpp`](../../../packages/bitcoin-knots/src/addrdb.cpp)
+as comparison anchors for intentionally bounded learned-address storage.
+
+Open Bitcoin intentionally separates these claims:
+
+- local listener advertisement is limited to configured listener endpoints and
+  runtime-bound listener evidence. Accepted evidence appears as
+  `local_advertisement_candidates`; rejected listener evidence appears as
+  `suppressed_advertisements` with stable reasons such as
+  `not_publicly_routable`.
+- direct `getaddr` handling is bounded getaddr evidence only. The peer manager
+  can answer eligible inbound requests from a deterministic local/learned cache
+  and records served or suppressed counts without enabling unsolicited relay.
+- learned-address storage is an in-memory typed contract with
+  `learned_address_entries`, rejection counts, freshness, source, routability,
+  service, port, and persistence-eligibility evidence. It does not claim Knots
+  `addrman.dat`, `peers.dat`, anchors, bucket randomization, or production peer
+  selection parity.
+- peer discovery remains outside this surface: no peer discovery support, DNS
+  seed discovery, address-fetch crawling, public peer probing, or outbound
+  connection selection is claimed.
+- unsolicited addr relay, addr gossip relay, rebroadcast scheduling, trickle
+  relay, known-address filters, and `addrv2` relay remain
+  `full_relay_deferred`; no full address relay support is claimed.
+- DNS seed discovery, UPnP/NAT-PMP discovery, `-discover` and `-externalip`
+  parity, public inbound defaults, public inbound by default, public-network CI,
+  and production full-node readiness remain outside this surface.
+
 ## First-party implementation
 
+- [`packages/open-bitcoin-network/src/address.rs`](../../../packages/open-bitcoin-network/src/address.rs)
+- [`packages/open-bitcoin-network/src/address/advertisement.rs`](../../../packages/open-bitcoin-network/src/address/advertisement.rs)
+- [`packages/open-bitcoin-network/src/address/book.rs`](../../../packages/open-bitcoin-network/src/address/book.rs)
+- [`packages/open-bitcoin-network/src/address/response.rs`](../../../packages/open-bitcoin-network/src/address/response.rs)
+- [`packages/open-bitcoin-network/src/address/tests.rs`](../../../packages/open-bitcoin-network/src/address/tests.rs)
+- [`packages/open-bitcoin-network/src/peer/address_boundary.rs`](../../../packages/open-bitcoin-network/src/peer/address_boundary.rs)
 - [`packages/open-bitcoin-network/src/inbound.rs`](../../../packages/open-bitcoin-network/src/inbound.rs)
 - [`packages/open-bitcoin-network/src/inbound/permissions.rs`](../../../packages/open-bitcoin-network/src/inbound/permissions.rs)
 - [`packages/open-bitcoin-network/src/message.rs`](../../../packages/open-bitcoin-network/src/message.rs)

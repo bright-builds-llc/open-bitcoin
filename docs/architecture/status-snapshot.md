@@ -238,6 +238,33 @@ evidence only; they do not claim transaction relay, mempool propagation, BIP37
 bloom serving, compact-filter serving, compact block relay, full address relay,
 public inbound defaults, or production node readiness.
 
+## Phase 92 address advertisement and discovery status
+
+Phase 92 extends `OpenBitcoinStatusSnapshot.peers.inbound` with bounded address
+evidence sourced from the network/domain address-boundary policy and projected
+through managed networking. The shared fields are:
+
+- `local_advertisement_candidates`: low-cardinality evidence entries for local
+  listener-derived candidates accepted by the advertisement policy.
+- `suppressed_advertisements`: bounded decision events for local listener
+  candidates rejected with reasons such as `not_publicly_routable`.
+- `getaddr_responses_served` and `getaddr_requests_suppressed`: counters for
+  bounded getaddr direct response handling.
+- `learned_address_entries` and `learned_address_rejections`: aggregate counts
+  for typed inbound `addr` intake and learned-address policy decisions.
+- `latest_address_decision`: the latest bounded address-boundary event with
+  outcome, reason, label, source, and sanitized message.
+
+Status consumers should preserve these field names in JSON and render them from
+the shared snapshot in human output. They should not derive address summaries in
+CLI, support, dashboard, RPC, log, or metric layers. The fields separate local
+listener advertisement, direct bounded getaddr handling, and learned-address
+storage evidence from broader peer discovery and relay claims. They do not
+claim peer discovery support, full address relay support, public inbound by
+default, DNS seed discovery, UPnP/NAT-PMP discovery, public-network CI, or
+production full-node readiness. Use `full_relay_deferred` for the deferred
+relay boundary when a no-claim label is needed.
+
 ## Reorg and no-progress semantics
 
 Phase 70 keeps branch competition, reorg recovery, peer recovery, and
