@@ -60,7 +60,10 @@ pub use message::{
     PROTOCOL_VERSION, ParsedNetworkMessage, ServiceFlags, USER_AGENT, VersionMessage,
     WireNetworkMessage,
 };
-pub use peer::{ConnectionRole, HeaderSyncPolicy, PeerAction, PeerManager, PeerState};
+pub use peer::{
+    ConnectionRole, HeaderSyncPolicy, PeerAction, PeerAddressBoundaryDecision,
+    PeerAddressBoundaryEvidence, PeerManager, PeerState,
+};
 
 pub const fn crate_ready() -> bool {
     true

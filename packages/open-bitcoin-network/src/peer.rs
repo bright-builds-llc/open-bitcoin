@@ -15,14 +15,19 @@ use open_bitcoin_primitives::{
     Block, BlockHash, BlockHeader, InventoryType, InventoryVector, Transaction, Txid, Wtxid,
 };
 
+use crate::address::{
+    GetAddrResponseDecision, LearnedAddressBook, LearnedAddressDecision, LocalAdvertisementDecision,
+};
 use crate::error::{DisconnectReason, NetworkError, PeerId};
 use crate::header_store::{HeaderStore, InsertedHeader};
 use crate::inbound::{InboundAdmissionRejectionReason, InboundHandshakeState, InboundPeerRecord};
 use crate::message::{HeadersMessage, InventoryList, LocalPeerConfig, WireNetworkMessage};
 
+mod address_boundary;
 mod inbound_state;
 mod inventory_state;
 
+pub use address_boundary::{PeerAddressBoundaryDecision, PeerAddressBoundaryEvidence};
 use inbound_state::reject_self_connection;
 use inventory_state::forget_requested_inventory;
 
@@ -112,6 +117,12 @@ pub struct PeerManager {
     known_txids: BTreeSet<Txid>,
     known_wtxids: BTreeSet<Wtxid>,
     max_blocks_in_flight_per_peer: usize,
+    learned_addresses: LearnedAddressBook,
+    local_address_decisions: Vec<LocalAdvertisementDecision>,
+    getaddr_responses_served: Vec<GetAddrResponseDecision>,
+    getaddr_requests_suppressed: Vec<GetAddrResponseDecision>,
+    learned_address_rejections: Vec<LearnedAddressDecision>,
+    maybe_latest_address_decision: Option<PeerAddressBoundaryDecision>,
 }
 
 impl PeerManager {
@@ -140,6 +151,12 @@ impl PeerManager {
             known_txids: BTreeSet::new(),
             known_wtxids: BTreeSet::new(),
             max_blocks_in_flight_per_peer,
+            learned_addresses: LearnedAddressBook::default(),
+            local_address_decisions: Vec::new(),
+            getaddr_responses_served: Vec::new(),
+            getaddr_requests_suppressed: Vec::new(),
+            learned_address_rejections: Vec::new(),
+            maybe_latest_address_decision: None,
         }
     }
 
@@ -322,10 +339,8 @@ impl PeerManager {
                 ))])
             }
             WireNetworkMessage::Headers(message) => self.handle_headers(peer_id, message),
-            WireNetworkMessage::GetAddr | WireNetworkMessage::Addr(_) => {
-                // Plan 92-02 only makes these messages parseable; bounded policy is wired later.
-                Ok(Vec::new())
-            }
+            WireNetworkMessage::GetAddr => Ok(Vec::new()),
+            WireNetworkMessage::Addr(addresses) => self.handle_addr(peer_id, addresses, timestamp),
             WireNetworkMessage::GetData(inventory) => {
                 Ok(vec![PeerAction::ServeInventory(inventory.inventory)])
             }
@@ -548,48 +563,6 @@ impl PeerManager {
         }
 
         Ok(actions)
-    }
-
-    pub fn request_missing_blocks(
-        &mut self,
-        peer_id: PeerId,
-        block_hashes: &[BlockHash],
-    ) -> Result<Option<WireNetworkMessage>, NetworkError> {
-        let known_blocks = self.known_blocks.clone();
-        let peer = Self::peer_mut(&mut self.peers, peer_id)?;
-        if !peer.remote_verack_received || !peer.local_verack_sent {
-            return Ok(None);
-        }
-
-        let available_slots = self
-            .max_blocks_in_flight_per_peer
-            .saturating_sub(peer.requested_blocks.len());
-        if available_slots == 0 {
-            return Ok(None);
-        }
-
-        let mut inventory = Vec::new();
-        for block_hash in block_hashes.iter().copied() {
-            if inventory.len() >= available_slots {
-                break;
-            }
-            if known_blocks.contains(&block_hash) || peer.requested_blocks.contains(&block_hash) {
-                continue;
-            }
-            peer.requested_blocks.insert(block_hash);
-            inventory.push(InventoryVector {
-                inventory_type: InventoryType::Block,
-                object_hash: block_hash.into(),
-            });
-        }
-
-        if inventory.is_empty() {
-            return Ok(None);
-        }
-
-        Ok(Some(WireNetworkMessage::GetData(InventoryList::new(
-            inventory,
-        ))))
     }
 
     fn handle_transaction(

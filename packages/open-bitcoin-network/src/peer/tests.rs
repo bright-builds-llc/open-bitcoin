@@ -12,7 +12,9 @@ use std::collections::BTreeSet;
 
 use open_bitcoin_chainstate::ChainPosition;
 use open_bitcoin_consensus::{check_block_header, transaction_txid, transaction_wtxid};
-use open_bitcoin_primitives::{Block, BlockHash, BlockHeader, Hash32, MerkleRoot, NetworkMagic};
+use open_bitcoin_primitives::{
+    Block, BlockHash, BlockHeader, Hash32, MerkleRoot, NetworkAddress, NetworkMagic,
+};
 
 use crate::{
     ConnectionRole, DisconnectReason, HeaderStore, HeaderSyncPolicy, HeadersMessage,
@@ -23,7 +25,11 @@ use crate::{
 };
 use open_bitcoin_primitives::{InventoryType, InventoryVector};
 
-use crate::address::AddressList;
+use crate::address::{
+    AddressAnnouncement, AddressDecisionLabel, AddressDecisionReason, AddressList,
+    AddressNetworkKind, AddressSourceKind, LocalAdvertisementDecision,
+    PHASE92_LEARNED_ADDR_BATCH_LIMIT, RoutabilityClass,
+};
 
 fn local_config() -> LocalPeerConfig {
     LocalPeerConfig {
@@ -718,22 +724,288 @@ fn filter_permission_labels_remain_inactive_without_service_bits_or_compact_bloc
 }
 
 #[test]
-fn address_messages_are_deferred_until_bounded_policy_wiring() {
+fn inbound_addr_messages_update_learned_address_evidence_without_actions() {
     // Arrange
     let mut manager = PeerManager::new(local_config());
     manager.add_inbound_peer(93).expect("peer should be added");
+    let now_unix_seconds = 1_700_000_000;
+    let addresses = AddressList {
+        addresses: vec![
+            address_announcement(
+                now_unix_seconds,
+                public_ipv4_network_address(8, 8, 8, 8, 8333),
+            ),
+            address_announcement(
+                now_unix_seconds,
+                public_ipv6_network_address("2606:4700:4700::1111", 8333),
+            ),
+        ],
+    };
 
     // Act
-    let getaddr_actions = manager
-        .handle_message(93, WireNetworkMessage::GetAddr, 1)
-        .expect("getaddr should be deferred");
     let addr_actions = manager
-        .handle_message(93, WireNetworkMessage::Addr(AddressList::default()), 2)
-        .expect("addr should be deferred");
+        .handle_message(
+            93,
+            WireNetworkMessage::Addr(addresses),
+            now_unix_seconds as i64,
+        )
+        .expect("addr should be learned");
+    let evidence = manager.address_boundary_evidence();
 
     // Assert
-    assert!(getaddr_actions.is_empty());
     assert!(addr_actions.is_empty());
+    assert_eq!(evidence.learned_address_entries.len(), 2);
+    assert!(evidence.learned_address_entries.iter().all(|entry| {
+        entry.source == AddressSourceKind::InboundAddr
+            && entry.routability == RoutabilityClass::PubliclyRoutable
+            && entry.persistence_eligible
+    }));
+    assert!(evidence.learned_address_rejections.is_empty());
+    assert_eq!(
+        evidence
+            .maybe_latest_address_decision
+            .expect("latest decision")
+            .label
+            .as_str(),
+        "learned_accepted",
+    );
+}
+
+#[test]
+fn inbound_addr_rejections_are_recorded_without_disconnect_actions() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_inbound_peer(94).expect("peer should be added");
+    let now_unix_seconds = 1_700_000_000;
+    let accepted = address_announcement(
+        now_unix_seconds,
+        public_ipv4_network_address(8, 8, 4, 4, 8333),
+    );
+    manager
+        .handle_message(
+            94,
+            WireNetworkMessage::Addr(AddressList {
+                addresses: vec![accepted.clone()],
+            }),
+            now_unix_seconds as i64,
+        )
+        .expect("seed address should be learned");
+    let rejected_addresses = AddressList {
+        addresses: vec![
+            address_announcement(now_unix_seconds, public_ipv4_network_address(8, 8, 8, 8, 0)),
+            address_announcement(
+                now_unix_seconds - crate::PHASE92_MAX_ADDR_AGE_SECONDS - 1,
+                public_ipv4_network_address(8, 8, 8, 8, 8333),
+            ),
+            address_announcement(
+                now_unix_seconds + crate::PHASE92_MAX_FUTURE_SKEW_SECONDS + 1,
+                public_ipv4_network_address(1, 1, 1, 1, 8333),
+            ),
+            accepted,
+            address_announcement(
+                now_unix_seconds,
+                public_ipv4_network_address(127, 0, 0, 1, 8333),
+            ),
+            address_announcement(
+                now_unix_seconds,
+                public_ipv4_network_address(10, 0, 0, 1, 8333),
+            ),
+            address_announcement(
+                now_unix_seconds,
+                public_ipv4_network_address(192, 0, 2, 1, 8333),
+            ),
+        ],
+    };
+
+    // Act
+    let actions = manager
+        .handle_message(
+            94,
+            WireNetworkMessage::Addr(rejected_addresses),
+            now_unix_seconds as i64,
+        )
+        .expect("addr rejections should be evidence only");
+    let evidence = manager.address_boundary_evidence();
+
+    // Assert
+    assert!(actions.is_empty());
+    assert_eq!(evidence.learned_address_entries.len(), 1);
+    assert_eq!(
+        evidence
+            .learned_address_rejections
+            .iter()
+            .map(|decision| decision.label.as_str())
+            .collect::<Vec<_>>(),
+        vec![
+            "learned_rejected",
+            "learned_rejected",
+            "learned_rejected",
+            "learned_rejected",
+            "learned_rejected",
+            "learned_rejected",
+            "learned_rejected",
+        ],
+    );
+    assert_eq!(
+        evidence
+            .learned_address_rejections
+            .iter()
+            .map(|decision| decision.reason.as_str())
+            .collect::<Vec<_>>(),
+        vec![
+            "invalid_port",
+            "stale_or_future",
+            "stale_or_future",
+            "duplicate_address",
+            "not_publicly_routable",
+            "not_publicly_routable",
+            "not_publicly_routable",
+        ],
+    );
+}
+
+#[test]
+fn over_cap_addr_batch_records_batch_rejection_without_partial_inserts() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_inbound_peer(95).expect("peer should be added");
+    let now_unix_seconds = 1_700_000_000;
+    let addresses = (0..=PHASE92_LEARNED_ADDR_BATCH_LIMIT)
+        .map(|index| {
+            address_announcement(
+                now_unix_seconds,
+                public_ipv4_network_address(8, 8, 8, index as u8, 8333),
+            )
+        })
+        .collect();
+
+    // Act
+    let actions = manager
+        .handle_message(
+            95,
+            WireNetworkMessage::Addr(AddressList { addresses }),
+            now_unix_seconds as i64,
+        )
+        .expect("over-cap addr should be rejected as evidence");
+    let evidence = manager.address_boundary_evidence();
+    let latest = evidence
+        .maybe_latest_address_decision
+        .expect("batch rejection should be latest decision");
+
+    // Assert
+    assert!(actions.is_empty());
+    assert!(evidence.learned_address_entries.is_empty());
+    assert_eq!(latest.label, AddressDecisionLabel::LearnedRejected);
+    assert_eq!(latest.reason, AddressDecisionReason::OverCapBatch);
+    assert_eq!(latest.label.as_str(), "learned_rejected");
+    assert_eq!(latest.reason.as_str(), "over_cap_batch");
+}
+
+#[test]
+fn outbound_addr_messages_parse_without_response_or_relay_actions() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager
+        .add_outbound_peer(96, 1)
+        .expect("outbound peer should be added");
+    let now_unix_seconds = 1_700_000_000;
+    let addresses = AddressList {
+        addresses: vec![address_announcement(
+            now_unix_seconds,
+            public_ipv4_network_address(8, 8, 8, 8, 8333),
+        )],
+    };
+
+    // Act
+    let actions = manager
+        .handle_message(
+            96,
+            WireNetworkMessage::Addr(addresses),
+            now_unix_seconds as i64,
+        )
+        .expect("outbound addr should parse");
+    let evidence = manager.address_boundary_evidence();
+
+    // Assert
+    assert!(actions.is_empty());
+    assert_eq!(evidence.learned_address_entries.len(), 1);
+    assert!(evidence.getaddr_responses_served.is_empty());
+    assert!(evidence.getaddr_requests_suppressed.is_empty());
+}
+
+#[test]
+fn addr_unknown_peer_empty_and_local_duplicate_paths_are_evidence_only() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_inbound_peer(97).expect("peer should be added");
+    let local_address = public_ipv4_network_address(8, 8, 8, 8, 8333);
+    manager.local_address_decisions = vec![LocalAdvertisementDecision {
+        label: AddressDecisionLabel::AdvertiseCandidate,
+        reason: AddressDecisionReason::PolicyAccepted,
+        source: AddressSourceKind::LocalListener,
+        network_kind: AddressNetworkKind::Ipv4,
+        routability: RoutabilityClass::PubliclyRoutable,
+        services_bits: (ServiceFlags::NETWORK | ServiceFlags::WITNESS).bits(),
+        port: local_address.port,
+        maybe_wire_address: Some(local_address.clone()),
+    }];
+
+    // Act
+    let unknown_peer_error = manager
+        .handle_message(404, WireNetworkMessage::Addr(AddressList::default()), -1)
+        .expect_err("unknown peer should fail");
+    let empty_actions = manager
+        .handle_message(97, WireNetworkMessage::Addr(AddressList::default()), -1)
+        .expect("empty addr should be evidence only");
+    let duplicate_actions = manager
+        .handle_message(
+            97,
+            WireNetworkMessage::Addr(AddressList {
+                addresses: vec![address_announcement(0, local_address)],
+            }),
+            -1,
+        )
+        .expect("duplicate local addr should be evidence only");
+    let evidence = manager.address_boundary_evidence();
+
+    // Assert
+    assert_eq!(unknown_peer_error.to_string(), "unknown peer: 404");
+    assert!(empty_actions.is_empty());
+    assert!(duplicate_actions.is_empty());
+    assert!(evidence.learned_address_entries.is_empty());
+    assert_eq!(evidence.learned_address_rejections.len(), 1);
+    assert_eq!(
+        evidence.learned_address_rejections[0].reason,
+        AddressDecisionReason::DuplicateAddress,
+    );
+    assert_eq!(
+        evidence
+            .maybe_latest_address_decision
+            .expect("local duplicate latest decision")
+            .reason
+            .as_str(),
+        "duplicate_address",
+    );
+}
+
+#[test]
+fn getaddr_is_deferred_without_side_effects_until_response_policy_wiring() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_inbound_peer(98).expect("peer should be added");
+
+    // Act
+    let actions = manager
+        .handle_message(98, WireNetworkMessage::GetAddr, 1)
+        .expect("getaddr should parse");
+    let evidence = manager.address_boundary_evidence();
+
+    // Assert
+    assert!(actions.is_empty());
+    assert!(evidence.getaddr_responses_served.is_empty());
+    assert!(evidence.getaddr_requests_suppressed.is_empty());
+    assert!(evidence.learned_address_entries.is_empty());
+    assert!(evidence.learned_address_rejections.is_empty());
 }
 
 #[test]
@@ -1387,4 +1659,35 @@ fn getheaders_headers_tx_and_block_paths_are_explicit() {
     assert!(!peer.requested_txids.contains(&txid));
     assert!(!peer.requested_wtxids.contains(&wtxid));
     assert!(!peer.requested_blocks.contains(&block_hash));
+}
+
+fn address_announcement(time_unix_seconds: u64, address: NetworkAddress) -> AddressAnnouncement {
+    AddressAnnouncement {
+        time_unix_seconds: time_unix_seconds as u32,
+        address,
+    }
+}
+
+fn public_ipv4_network_address(a: u8, b: u8, c: u8, d: u8, port: u16) -> NetworkAddress {
+    NetworkAddress {
+        services: ServiceFlags::NETWORK.bits(),
+        address_bytes: ipv4_mapped_address_bytes([a, b, c, d]),
+        port,
+    }
+}
+
+fn public_ipv6_network_address(raw_address: &str, port: u16) -> NetworkAddress {
+    let address: core::net::Ipv6Addr = raw_address.parse().expect("test IPv6 should parse");
+    NetworkAddress {
+        services: ServiceFlags::NETWORK.bits(),
+        address_bytes: address.octets(),
+        port,
+    }
+}
+
+fn ipv4_mapped_address_bytes(octets: [u8; 4]) -> [u8; 16] {
+    let mut bytes = [0_u8; 16];
+    bytes[..12].copy_from_slice(&[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff]);
+    bytes[12..].copy_from_slice(&octets);
+    bytes
 }

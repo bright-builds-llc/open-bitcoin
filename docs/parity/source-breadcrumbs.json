@@ -633,7 +633,8 @@
         "packages/open-bitcoin-network/src/address/advertisement.rs",
         "packages/open-bitcoin-network/src/address/book.rs",
         "packages/open-bitcoin-network/src/address/response.rs",
-        "packages/open-bitcoin-network/src/address/tests.rs"
+        "packages/open-bitcoin-network/src/address/tests.rs",
+        "packages/open-bitcoin-network/src/peer/address_boundary.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/protocol.h",
