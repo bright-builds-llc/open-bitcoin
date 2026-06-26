@@ -28,6 +28,8 @@ const IPV4_IN_IPV6_PREFIX: [u8; 12] = [
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff,
 ];
 
+pub const PHASE92_ADDR_BATCH_LIMIT: usize = 64;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AddressNetworkKind {
     Ipv4,
@@ -79,6 +81,17 @@ impl AddressSourceKind {
             Self::InboundAddr => "source_inbound_addr",
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AddressAnnouncement {
+    pub time_unix_seconds: u32,
+    pub address: NetworkAddress,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct AddressList {
+    pub addresses: Vec<AddressAnnouncement>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

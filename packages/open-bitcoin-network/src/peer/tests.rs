@@ -23,6 +23,8 @@ use crate::{
 };
 use open_bitcoin_primitives::{InventoryType, InventoryVector};
 
+use crate::address::AddressList;
+
 fn local_config() -> LocalPeerConfig {
     LocalPeerConfig {
         magic: NetworkMagic::MAINNET,
@@ -713,6 +715,25 @@ fn filter_permission_labels_remain_inactive_without_service_bits_or_compact_bloc
         WireNetworkMessage::Inv(InventoryList { inventory })
         if inventory.len() == 1 && inventory[0].inventory_type == InventoryType::Block
     ));
+}
+
+#[test]
+fn address_messages_are_deferred_until_bounded_policy_wiring() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_inbound_peer(93).expect("peer should be added");
+
+    // Act
+    let getaddr_actions = manager
+        .handle_message(93, WireNetworkMessage::GetAddr, 1)
+        .expect("getaddr should be deferred");
+    let addr_actions = manager
+        .handle_message(93, WireNetworkMessage::Addr(AddressList::default()), 2)
+        .expect("addr should be deferred");
+
+    // Assert
+    assert!(getaddr_actions.is_empty());
+    assert!(addr_actions.is_empty());
 }
 
 #[test]

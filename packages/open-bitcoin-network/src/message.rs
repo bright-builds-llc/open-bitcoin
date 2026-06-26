@@ -15,6 +15,7 @@ use open_bitcoin_primitives::{
     NetworkAddress, NetworkMagic, Transaction,
 };
 
+use crate::address::{AddressAnnouncement, AddressList, PHASE92_ADDR_BATCH_LIMIT};
 use crate::error::NetworkError;
 
 pub const PROTOCOL_VERSION: i32 = 70_016;
@@ -151,6 +152,7 @@ pub enum WireNetworkMessage {
     Verack,
     WtxidRelay,
     SendHeaders,
+    GetAddr,
     Ping {
         nonce: u64,
     },
@@ -162,6 +164,7 @@ pub enum WireNetworkMessage {
         stop_hash: BlockHash,
     },
     Headers(HeadersMessage),
+    Addr(AddressList),
     Inv(InventoryList),
     GetData(InventoryList),
     NotFound(InventoryList),
@@ -176,10 +179,12 @@ impl WireNetworkMessage {
             Self::Verack => "verack",
             Self::WtxidRelay => "wtxidrelay",
             Self::SendHeaders => "sendheaders",
+            Self::GetAddr => "getaddr",
             Self::Ping { .. } => "ping",
             Self::Pong { .. } => "pong",
             Self::GetHeaders { .. } => "getheaders",
             Self::Headers(_) => "headers",
+            Self::Addr(_) => "addr",
             Self::Inv(_) => "inv",
             Self::GetData(_) => "getdata",
             Self::NotFound(_) => "notfound",
@@ -191,7 +196,7 @@ impl WireNetworkMessage {
     pub fn encode_payload(&self) -> Result<Vec<u8>, NetworkError> {
         match self {
             Self::Version(message) => encode_version_payload(message),
-            Self::Verack | Self::WtxidRelay | Self::SendHeaders => Ok(Vec::new()),
+            Self::Verack | Self::WtxidRelay | Self::SendHeaders | Self::GetAddr => Ok(Vec::new()),
             Self::Ping { nonce } | Self::Pong { nonce } => Ok(nonce.to_le_bytes().to_vec()),
             Self::GetHeaders { locator, stop_hash } => {
                 let mut payload = encode_block_locator(locator)?;
@@ -199,6 +204,7 @@ impl WireNetworkMessage {
                 Ok(payload)
             }
             Self::Headers(message) => encode_headers_payload(message),
+            Self::Addr(addresses) => encode_addr_payload(addresses),
             Self::Inv(inventory) | Self::GetData(inventory) | Self::NotFound(inventory) => {
                 encode_inventory_payload(inventory)
             }
@@ -236,6 +242,10 @@ impl WireNetworkMessage {
             "verack" => Ok(Self::Verack),
             "wtxidrelay" => Ok(Self::WtxidRelay),
             "sendheaders" => Ok(Self::SendHeaders),
+            "getaddr" => {
+                decode_empty_payload(payload)?;
+                Ok(Self::GetAddr)
+            }
             "ping" => Ok(Self::Ping {
                 nonce: decode_nonce_payload(payload)?,
             }),
@@ -244,6 +254,7 @@ impl WireNetworkMessage {
             }),
             "getheaders" => decode_getheaders_payload(payload),
             "headers" => Ok(Self::Headers(decode_headers_payload(payload)?)),
+            "addr" => Ok(Self::Addr(decode_addr_payload(payload)?)),
             "inv" => Ok(Self::Inv(decode_inventory_payload(payload)?)),
             "getdata" => Ok(Self::GetData(decode_inventory_payload(payload)?)),
             "notfound" => Ok(Self::NotFound(decode_inventory_payload(payload)?)),
@@ -373,6 +384,54 @@ fn decode_headers_payload(payload: &[u8]) -> Result<HeadersMessage, NetworkError
     Ok(HeadersMessage { headers })
 }
 
+fn encode_addr_payload(address_list: &AddressList) -> Result<Vec<u8>, NetworkError> {
+    validate_addr_count(address_list.addresses.len())?;
+
+    let mut encoded = Vec::new();
+    write_compact_size(&mut encoded, address_list.addresses.len() as u64)?;
+    for announcement in &address_list.addresses {
+        encoded.extend_from_slice(&announcement.time_unix_seconds.to_le_bytes());
+        encoded.extend_from_slice(&encode_network_address(&announcement.address));
+    }
+    Ok(encoded)
+}
+
+fn decode_addr_payload(payload: &[u8]) -> Result<AddressList, NetworkError> {
+    let mut cursor = Cursor::new(payload);
+    let count = compact_size_to_usize(cursor.read_compact_size()?, "addr count");
+    validate_addr_count(count)?;
+
+    let mut addresses = Vec::with_capacity(count);
+    for _ in 0..count {
+        let time_unix_seconds = cursor.read_u32_le()?;
+        let address = parse_network_address(cursor.read_slice(NETWORK_ADDRESS_LEN)?)?;
+        addresses.push(AddressAnnouncement {
+            time_unix_seconds,
+            address,
+        });
+    }
+    cursor.finish()?;
+    Ok(AddressList { addresses })
+}
+
+fn validate_addr_count(count: usize) -> Result<(), NetworkError> {
+    if count <= PHASE92_ADDR_BATCH_LIMIT {
+        return Ok(());
+    }
+
+    Err(CodecError::LengthOutOfRange {
+        field: "addr count",
+        value: count as u64,
+    }
+    .into())
+}
+
+fn decode_empty_payload(payload: &[u8]) -> Result<(), NetworkError> {
+    let cursor = Cursor::new(payload);
+    cursor.finish()?;
+    Ok(())
+}
+
 fn encode_inventory_payload(payload: &InventoryList) -> Result<Vec<u8>, NetworkError> {
     let mut encoded = Vec::new();
     write_compact_size(&mut encoded, payload.inventory.len() as u64)?;
@@ -473,6 +532,10 @@ impl<'a> Cursor<'a> {
 
     fn read_u64_le(&mut self) -> Result<u64, CodecError> {
         Ok(u64::from_le_bytes(self.read_array()?))
+    }
+
+    fn read_u32_le(&mut self) -> Result<u32, CodecError> {
+        Ok(u32::from_le_bytes(self.read_array()?))
     }
 
     fn read_i32_le(&mut self) -> Result<i32, CodecError> {

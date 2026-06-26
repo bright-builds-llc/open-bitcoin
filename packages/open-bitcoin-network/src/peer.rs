@@ -322,6 +322,10 @@ impl PeerManager {
                 ))])
             }
             WireNetworkMessage::Headers(message) => self.handle_headers(peer_id, message),
+            WireNetworkMessage::GetAddr | WireNetworkMessage::Addr(_) => {
+                // Plan 92-02 only makes these messages parseable; bounded policy is wired later.
+                Ok(Vec::new())
+            }
             WireNetworkMessage::GetData(inventory) => {
                 Ok(vec![PeerAction::ServeInventory(inventory.inventory)])
             }
