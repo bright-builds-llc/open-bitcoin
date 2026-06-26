@@ -627,6 +627,29 @@
       ]
     },
     {
+      "label": "network-address-boundaries",
+      "files": [
+        "packages/open-bitcoin-network/src/address.rs",
+        "packages/open-bitcoin-network/src/address/advertisement.rs",
+        "packages/open-bitcoin-network/src/address/book.rs",
+        "packages/open-bitcoin-network/src/address/response.rs",
+        "packages/open-bitcoin-network/src/address/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/protocol.h",
+        "packages/bitcoin-knots/src/protocol.cpp",
+        "packages/bitcoin-knots/src/netaddress.h",
+        "packages/bitcoin-knots/src/netaddress.cpp",
+        "packages/bitcoin-knots/src/net.h",
+        "packages/bitcoin-knots/src/net.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/addrman.h",
+        "packages/bitcoin-knots/src/addrman.cpp",
+        "packages/bitcoin-knots/src/addrdb.h",
+        "packages/bitcoin-knots/src/addrdb.cpp"
+      ]
+    },
+    {
       "label": "network-support",
       "files": [
         "packages/open-bitcoin-network/src/error.rs",
