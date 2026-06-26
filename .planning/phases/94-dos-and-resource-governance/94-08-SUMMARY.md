@@ -109,7 +109,7 @@ completed: 2026-06-26
 - **Verification:** Checker fixture tests passed; real-corpus checker passed after verifier wiring; full `scripts/verify.sh` hook passed.
 - **Committed in:** `df3368d3`
 
----
+***
 
 **Total deviations:** 1 auto-fixed (1 missing critical)
 **Impact on plan:** The adjustment was required to satisfy the user's actual-wiring requirement and did not expand runtime behavior or release claims.
@@ -142,6 +142,6 @@ DOS-05 is complete. Future Phase 94 or release-boundary work can rely on the def
 - Confirmed task commits exist: `df3368d3`, `32b6bbd2`.
 - No missing self-check items.
 
----
+***
 *Phase: 94-dos-and-resource-governance*
 *Completed: 2026-06-26*

@@ -134,7 +134,7 @@ Each task was committed atomically:
 - **Verification:** Both task commits were made through normal hooks without `--no-verify`.
 - **Committed in:** `bb34d894`, `9c6e3c6c`
 
----
+***
 
 **Total deviations:** 3 auto-handled (1 missing critical, 1 blocking, 1 process constraint)
 **Impact on plan:** No scope creep. The extra export and coverage tests were required for correct integration and repo verification while preserving the pure policy boundary.
@@ -162,6 +162,6 @@ Later Phase 94 plans can consume `ResourceGovernancePolicy` from the crate root 
 - Confirmed summary, resource source/tests, exports, and LOC report exist.
 - Confirmed task commits `bb34d894` and `9c6e3c6c` exist in git history.
 
----
+***
 *Phase: 94-dos-and-resource-governance*
 *Completed: 2026-06-26*

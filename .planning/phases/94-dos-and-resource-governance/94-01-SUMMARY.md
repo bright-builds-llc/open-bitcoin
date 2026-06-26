@@ -121,7 +121,7 @@ Each task was committed atomically:
 - **Verification:** Task commits were made through normal hooks without `--no-verify`
 - **Committed in:** `60606e28`, `b6d0eaa1`
 
----
+***
 
 **Total deviations:** 3 auto-handled (2 blocking, 1 process constraint)
 **Impact on plan:** No scope creep. The changes were required to satisfy the repo verifier and higher-priority commit rules while preserving the plan's API and behavior.
@@ -144,6 +144,6 @@ The pure resource gate is ready for later Phase 94 runtime wiring. Future plans 
 - Confirmed summary, resource source/tests, exports, parity breadcrumbs, and LOC report exist.
 - Confirmed task commits `60606e28` and `b6d0eaa1` exist in git history.
 
----
+***
 *Phase: 94-dos-and-resource-governance*
 *Completed: 2026-06-26*
