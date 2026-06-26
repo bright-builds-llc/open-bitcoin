@@ -18,10 +18,16 @@ use open_bitcoin_primitives::NetworkAddress;
 use crate::message::ServiceFlags;
 
 pub mod advertisement;
+pub mod book;
 
 pub use advertisement::{
     LocalAdvertisementDecision, LocalAdvertisementInput, maybe_version_sender_address,
     select_local_advertisement_candidates,
+};
+pub use book::{
+    LearnedAddressBatchDecision, LearnedAddressBook, LearnedAddressDecision, LearnedAddressEntry,
+    PHASE92_LEARNED_ADDR_BATCH_LIMIT, PHASE92_MAX_ADDR_AGE_SECONDS,
+    PHASE92_MAX_FUTURE_SKEW_SECONDS,
 };
 
 const IPV4_IN_IPV6_PREFIX: [u8; 12] = [

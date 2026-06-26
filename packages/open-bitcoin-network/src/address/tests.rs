@@ -13,11 +13,15 @@
 
 use core::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 
+use open_bitcoin_primitives::NetworkAddress;
+
 use crate::{InboundListenerEndpoint, ServiceFlags};
 
 use super::{
-    AddressDecisionLabel, AddressDecisionReason, AddressNetworkKind, AddressSourceKind,
-    LocalAdvertisementInput, RoutabilityClass, classify_network_address,
+    AddressAnnouncement, AddressDecisionLabel, AddressDecisionReason, AddressNetworkKind,
+    AddressSourceKind, LearnedAddressBook, LocalAdvertisementInput,
+    PHASE92_LEARNED_ADDR_BATCH_LIMIT, PHASE92_MAX_ADDR_AGE_SECONDS,
+    PHASE92_MAX_FUTURE_SKEW_SECONDS, RoutabilityClass, classify_network_address,
     maybe_version_sender_address, privacy_network_deferred_classification,
     select_local_advertisement_candidates, unsupported_future_network_classification,
 };
@@ -438,6 +442,177 @@ fn version_sender_address_stays_empty_without_advertisement_candidate() {
     assert_eq!(maybe_sender, None);
 }
 
+#[test]
+fn learned_public_ipv4_and_ipv6_from_inbound_addr_are_persistence_eligible() {
+    // Arrange
+    let mut book = LearnedAddressBook::default();
+    let now_unix_seconds = 1_700_000_000;
+    let announcements = [
+        address_announcement(
+            now_unix_seconds,
+            public_ipv4_network_address(8, 8, 8, 8, 8333),
+        ),
+        address_announcement(
+            now_unix_seconds,
+            public_ipv6_network_address("2606:4700:4700::1111", 8333),
+        ),
+    ];
+
+    // Act
+    let batch = book.learn_batch(
+        &announcements,
+        AddressSourceKind::InboundAddr,
+        now_unix_seconds,
+    );
+
+    // Assert
+    assert_eq!(batch.decisions.len(), 2);
+    assert_eq!(batch.accepted_count, 2);
+    assert_eq!(batch.rejected_count, 0);
+    assert!(batch.decisions.iter().all(|decision| {
+        decision.label == AddressDecisionLabel::LearnedAccepted
+            && decision.reason == AddressDecisionReason::PolicyAccepted
+            && decision
+                .maybe_entry
+                .as_ref()
+                .is_some_and(|entry| entry.persistence_eligible)
+    }));
+    assert_eq!(book.entries().len(), 2);
+    assert!(book.entries().iter().all(|entry| {
+        entry.source == AddressSourceKind::InboundAddr
+            && entry.routability == RoutabilityClass::PubliclyRoutable
+            && entry.persistence_eligible
+            && entry.first_seen_unix_seconds == now_unix_seconds
+            && entry.last_seen_unix_seconds == now_unix_seconds
+    }));
+}
+
+#[test]
+fn learned_addresses_reject_invalid_freshness_duplicate_and_unroutable_inputs() {
+    // Arrange
+    let mut book = LearnedAddressBook::default();
+    let now_unix_seconds = 1_700_000_000;
+    let first = address_announcement(
+        now_unix_seconds,
+        public_ipv4_network_address(8, 8, 4, 4, 8333),
+    );
+    let stale = address_announcement(
+        now_unix_seconds - PHASE92_MAX_ADDR_AGE_SECONDS - 1,
+        public_ipv4_network_address(8, 8, 8, 8, 8333),
+    );
+    let future = address_announcement(
+        now_unix_seconds + PHASE92_MAX_FUTURE_SKEW_SECONDS + 1,
+        public_ipv4_network_address(1, 1, 1, 1, 8333),
+    );
+    let invalid_port =
+        address_announcement(now_unix_seconds, public_ipv4_network_address(8, 8, 8, 8, 0));
+    let loopback = address_announcement(
+        now_unix_seconds,
+        public_ipv4_network_address(127, 0, 0, 1, 8333),
+    );
+    let private = address_announcement(
+        now_unix_seconds,
+        public_ipv4_network_address(10, 0, 0, 1, 8333),
+    );
+    let documentation = address_announcement(
+        now_unix_seconds,
+        public_ipv4_network_address(192, 0, 2, 1, 8333),
+    );
+
+    // Act
+    let accepted = book.learn_batch(
+        core::slice::from_ref(&first),
+        AddressSourceKind::InboundAddr,
+        now_unix_seconds,
+    );
+    let rejected = book.learn_batch(
+        &[
+            invalid_port,
+            stale,
+            future,
+            first,
+            loopback,
+            private,
+            documentation,
+        ],
+        AddressSourceKind::InboundAddr,
+        now_unix_seconds,
+    );
+
+    // Assert
+    assert_eq!(accepted.accepted_count, 1);
+    assert_eq!(rejected.accepted_count, 0);
+    assert_eq!(
+        rejected
+            .decisions
+            .iter()
+            .map(|decision| decision.label)
+            .collect::<Vec<_>>(),
+        vec![
+            AddressDecisionLabel::LearnedRejected,
+            AddressDecisionLabel::LearnedRejected,
+            AddressDecisionLabel::LearnedRejected,
+            AddressDecisionLabel::LearnedRejected,
+            AddressDecisionLabel::LearnedRejected,
+            AddressDecisionLabel::LearnedRejected,
+            AddressDecisionLabel::LearnedRejected,
+        ],
+    );
+    assert_eq!(
+        rejected
+            .decisions
+            .iter()
+            .map(|decision| decision.reason)
+            .collect::<Vec<_>>(),
+        vec![
+            AddressDecisionReason::InvalidPort,
+            AddressDecisionReason::StaleOrFuture,
+            AddressDecisionReason::StaleOrFuture,
+            AddressDecisionReason::DuplicateAddress,
+            AddressDecisionReason::NotPubliclyRoutable,
+            AddressDecisionReason::NotPubliclyRoutable,
+            AddressDecisionReason::NotPubliclyRoutable,
+        ],
+    );
+    assert!(
+        rejected
+            .decisions
+            .iter()
+            .all(|decision| decision.maybe_entry.is_none())
+    );
+    assert_eq!(book.entries().len(), 1);
+}
+
+#[test]
+fn learned_address_batches_above_phase92_limit_are_rejected_without_partial_inserts() {
+    // Arrange
+    let mut book = LearnedAddressBook::default();
+    let now_unix_seconds = 1_700_000_000;
+    let announcements: Vec<_> = (0..=PHASE92_LEARNED_ADDR_BATCH_LIMIT)
+        .map(|index| {
+            address_announcement(
+                now_unix_seconds,
+                public_ipv4_network_address(8, 8, 8, index as u8, 8333),
+            )
+        })
+        .collect();
+
+    // Act
+    let batch = book.learn_batch(
+        &announcements,
+        AddressSourceKind::InboundAddr,
+        now_unix_seconds,
+    );
+
+    // Assert
+    assert_eq!(batch.label, AddressDecisionLabel::LearnedRejected);
+    assert_eq!(batch.reason, AddressDecisionReason::OverCapBatch);
+    assert_eq!(batch.accepted_count, 0);
+    assert_eq!(batch.rejected_count, announcements.len());
+    assert!(batch.decisions.is_empty());
+    assert!(book.entries().is_empty());
+}
+
 fn listener_endpoint(raw_endpoint: &str) -> InboundListenerEndpoint {
     let address = socket_addr(raw_endpoint);
     InboundListenerEndpoint {
@@ -459,4 +634,31 @@ fn ipv4_mapped_address_bytes(octets: [u8; 4]) -> [u8; 16] {
     bytes[11] = 0xff;
     bytes[12..].copy_from_slice(&octets);
     bytes
+}
+
+fn address_announcement(time_unix_seconds: u64, address: NetworkAddress) -> AddressAnnouncement {
+    AddressAnnouncement {
+        time_unix_seconds: u32::try_from(time_unix_seconds)
+            .expect("test timestamp should fit in legacy addr timestamp"),
+        address,
+    }
+}
+
+fn public_ipv4_network_address(a: u8, b: u8, c: u8, d: u8, port: u16) -> NetworkAddress {
+    NetworkAddress {
+        services: ServiceFlags::NETWORK.bits(),
+        address_bytes: ipv4_mapped_address_bytes([a, b, c, d]),
+        port,
+    }
+}
+
+fn public_ipv6_network_address(raw_address: &str, port: u16) -> NetworkAddress {
+    NetworkAddress {
+        services: ServiceFlags::NETWORK.bits(),
+        address_bytes: raw_address
+            .parse::<Ipv6Addr>()
+            .expect("test IPv6 address should parse")
+            .octets(),
+        port,
+    }
 }
