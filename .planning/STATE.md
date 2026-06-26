@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Inbound Peer Serving and Network Participation Boundary
 status: executing
-stopped_at: Completed 94-06-PLAN.md
-last_updated: "2026-06-26T22:21:48.841Z"
+stopped_at: Completed 94-07-PLAN.md
+last_updated: "2026-06-26T22:51:54.454Z"
 last_activity: 2026-06-26
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 40
-  completed_plans: 38
-  percent: 95
+  completed_plans: 39
+  percent: 98
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-06-26)
 
 Milestone: v1.9 Inbound Peer Serving and Network Participation Boundary
 Phase: 94 (DoS and Resource Governance) — EXECUTING
-Plan: 7 of 8
+Plan: 8 of 8
 Status: Ready to execute
 Last activity: 2026-06-26
 
@@ -75,6 +75,7 @@ Progress: [#########-] 85%
 | Phase 94 P04 | 27m | 2 tasks | 7 files |
 | Phase 94 P05 | 65m 12s | 3 tasks | 20 files |
 | Phase 94 P06 | 22m 44s | 2 tasks | 5 files |
+| Phase 94 P07 | 21m 14s | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -128,6 +129,9 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 - [Phase 94]: Make managed RPC resource-event logging datadir-backed and bounded, with redaction for suspicious raw fields and a bounded write-failure count.
 - [Phase 94]: Render Phase 94 resource-governance status and support output from shared InboundPeerServingStatus fields only.
 - [Phase 94]: Keep Phase 94 support guidance bounded to evidence review and avoid public exposure, relay, raw peer, payload, permission, credential, or production-readiness claims.
+- [Phase 94]: Document Phase 94 operator review as bounded loopback/regtest UAT with exact repo-local Cargo and Bazel command forms.
+- [Phase 94]: Register v1-9-dos-resource-governance as the DOS-01 through DOS-05 parity surface with explicit Knots anchors.
+- [Phase 94]: Preserve the Phase 94 no-claim boundary sentence across parity docs and index JSON.
 
 ### Pending Todos
 
@@ -148,6 +152,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-26T22:21:48.839Z
-Stopped at: Completed 94-06-PLAN.md
+Last session: 2026-06-26T22:51:54.451Z
+Stopped at: Completed 94-07-PLAN.md
 Resume file: None
