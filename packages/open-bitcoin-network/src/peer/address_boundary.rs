@@ -14,13 +14,16 @@
 use open_bitcoin_primitives::NetworkAddress;
 
 use crate::address::{
-    AddressDecisionLabel, AddressDecisionReason, AddressList, AddressSourceKind,
+    AddressAnnouncement, AddressDecisionLabel, AddressDecisionReason, AddressList,
+    AddressResponseCache, AddressResponseEntryEvidence, AddressSourceKind, GetAddrPeerEligibility,
     GetAddrResponseDecision, LearnedAddressDecision, LearnedAddressEntry,
-    LocalAdvertisementDecision, PHASE92_LEARNED_ADDR_BATCH_LIMIT,
+    LocalAdvertisementDecision, PHASE92_LEARNED_ADDR_BATCH_LIMIT, select_getaddr_response,
 };
 use crate::error::{NetworkError, PeerId};
+use crate::inbound::PermissionEffectLabel;
+use crate::message::WireNetworkMessage;
 
-use super::{PeerAction, PeerManager};
+use super::{ConnectionRole, PeerAction, PeerManager};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PeerAddressBoundaryDecision {
@@ -40,6 +43,10 @@ pub struct PeerAddressBoundaryEvidence {
 }
 
 impl PeerManager {
+    pub fn set_local_address_decisions(&mut self, decisions: Vec<LocalAdvertisementDecision>) {
+        self.local_address_decisions = decisions;
+    }
+
     pub fn address_boundary_evidence(&self) -> PeerAddressBoundaryEvidence {
         let local_advertisement_candidates = self
             .local_address_decisions
@@ -118,6 +125,65 @@ impl PeerManager {
         Ok(Vec::new())
     }
 
+    pub(super) fn handle_getaddr(
+        &mut self,
+        peer_id: PeerId,
+        timestamp: i64,
+    ) -> Result<Vec<PeerAction>, NetworkError> {
+        let now_unix_seconds = unix_timestamp_for_address_policy(timestamp);
+        let cache = AddressResponseCache::from_sources(
+            &self.local_address_decisions,
+            self.learned_addresses.entries(),
+            now_unix_seconds,
+        );
+        let peer = Self::peer_mut(&mut self.peers, peer_id)?;
+        let permission_effects: &[PermissionEffectLabel] = peer
+            .maybe_inbound_record
+            .as_ref()
+            .map(|record| record.permission_decision.active_effects())
+            .unwrap_or(&[]);
+        let eligibility = GetAddrPeerEligibility::from_permission_effects(
+            peer.role == ConnectionRole::Inbound,
+            permission_effects,
+        );
+        let decision = select_getaddr_response(
+            eligibility,
+            &mut peer.getaddr_request_state,
+            &cache,
+            now_unix_seconds,
+        );
+        let boundary_decision = peer_decision_from_getaddr(&decision);
+
+        match decision {
+            GetAddrResponseDecision::Served { entries, .. } => {
+                self.getaddr_responses_served
+                    .push(GetAddrResponseDecision::Served {
+                        label: boundary_decision.label,
+                        reason: boundary_decision.reason,
+                        entries: entries.clone(),
+                    });
+                self.maybe_latest_address_decision = Some(boundary_decision);
+                Ok(vec![PeerAction::Send(WireNetworkMessage::Addr(
+                    AddressList {
+                        addresses: entries
+                            .into_iter()
+                            .map(address_announcement_from_response)
+                            .collect(),
+                    },
+                ))])
+            }
+            GetAddrResponseDecision::Suppressed { .. } => {
+                self.getaddr_requests_suppressed
+                    .push(GetAddrResponseDecision::Suppressed {
+                        label: boundary_decision.label,
+                        reason: boundary_decision.reason,
+                    });
+                self.maybe_latest_address_decision = Some(boundary_decision);
+                Ok(Vec::new())
+            }
+        }
+    }
+
     fn local_address_rejection(&self, address: &NetworkAddress) -> Option<LearnedAddressDecision> {
         let local_decision = self.local_address_decisions.iter().find(|decision| {
             decision
@@ -137,6 +203,23 @@ impl PeerManager {
             persistence_eligible: false,
             maybe_entry: None,
         })
+    }
+}
+
+fn peer_decision_from_getaddr(decision: &GetAddrResponseDecision) -> PeerAddressBoundaryDecision {
+    match decision {
+        GetAddrResponseDecision::Served { label, reason, .. }
+        | GetAddrResponseDecision::Suppressed { label, reason } => PeerAddressBoundaryDecision {
+            label: *label,
+            reason: *reason,
+        },
+    }
+}
+
+fn address_announcement_from_response(entry: AddressResponseEntryEvidence) -> AddressAnnouncement {
+    AddressAnnouncement {
+        time_unix_seconds: entry.last_seen_unix_seconds.min(u64::from(u32::MAX)) as u32,
+        address: entry.address,
     }
 }
 

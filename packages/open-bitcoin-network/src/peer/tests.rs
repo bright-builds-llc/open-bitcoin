@@ -27,8 +27,8 @@ use open_bitcoin_primitives::{InventoryType, InventoryVector};
 
 use crate::address::{
     AddressAnnouncement, AddressDecisionLabel, AddressDecisionReason, AddressList,
-    AddressNetworkKind, AddressSourceKind, LocalAdvertisementDecision,
-    PHASE92_LEARNED_ADDR_BATCH_LIMIT, RoutabilityClass,
+    AddressNetworkKind, AddressSourceKind, GetAddrResponseDecision, LocalAdvertisementDecision,
+    PHASE92_GETADDR_RESPONSE_LIMIT, PHASE92_LEARNED_ADDR_BATCH_LIMIT, RoutabilityClass,
 };
 
 fn local_config() -> LocalPeerConfig {
@@ -989,23 +989,195 @@ fn addr_unknown_peer_empty_and_local_duplicate_paths_are_evidence_only() {
 }
 
 #[test]
-fn getaddr_is_deferred_without_side_effects_until_response_policy_wiring() {
+fn permissioned_inbound_getaddr_serves_once_and_records_repeated_suppression() {
     // Arrange
     let mut manager = PeerManager::new(local_config());
-    manager.add_inbound_peer(98).expect("peer should be added");
+    let now_unix_seconds = 1_700_000_000;
+    let local_address = public_ipv4_network_address(9, 9, 9, 9, 8333);
+    manager.set_local_address_decisions(vec![local_advertisement_candidate(local_address.clone())]);
+    manager.add_inbound_peer(98).expect("seed peer");
+    let learned_addresses = (0..(PHASE92_GETADDR_RESPONSE_LIMIT + 2))
+        .map(|index| {
+            address_announcement(
+                now_unix_seconds,
+                public_ipv4_network_address(11, 0, 0, (index + 1) as u8, 8333),
+            )
+        })
+        .collect();
+    manager
+        .handle_message(
+            98,
+            WireNetworkMessage::Addr(AddressList {
+                addresses: learned_addresses,
+            }),
+            now_unix_seconds as i64,
+        )
+        .expect("seed learned addresses");
+    manager
+        .add_inbound_peer_record(permissioned_inbound_record(
+            99,
+            permission_decision(["in", "addr"]),
+        ))
+        .expect("permissioned addr peer");
 
     // Act
-    let actions = manager
-        .handle_message(98, WireNetworkMessage::GetAddr, 1)
-        .expect("getaddr should parse");
+    let first_actions = manager
+        .handle_message(99, WireNetworkMessage::GetAddr, now_unix_seconds as i64)
+        .expect("first getaddr should be served");
+    let second_actions = manager
+        .handle_message(99, WireNetworkMessage::GetAddr, now_unix_seconds as i64)
+        .expect("second getaddr should be suppressed");
     let evidence = manager.address_boundary_evidence();
 
     // Assert
-    assert!(actions.is_empty());
-    assert!(evidence.getaddr_responses_served.is_empty());
-    assert!(evidence.getaddr_requests_suppressed.is_empty());
-    assert!(evidence.learned_address_entries.is_empty());
-    assert!(evidence.learned_address_rejections.is_empty());
+    let [PeerAction::Send(WireNetworkMessage::Addr(response))] = first_actions.as_slice() else {
+        panic!("expected getaddr addr response");
+    };
+    assert_eq!(response.addresses.len(), PHASE92_GETADDR_RESPONSE_LIMIT);
+    assert_eq!(response.addresses[0].address, local_address);
+    assert!(second_actions.is_empty());
+    let GetAddrResponseDecision::Served {
+        label,
+        reason,
+        entries,
+    } = &evidence.getaddr_responses_served[0]
+    else {
+        panic!("expected getaddr served evidence");
+    };
+    assert_eq!(label.as_str(), "getaddr_served");
+    assert_eq!(*reason, AddressDecisionReason::PolicyAccepted);
+    assert_eq!(entries.len(), PHASE92_GETADDR_RESPONSE_LIMIT);
+    let GetAddrResponseDecision::Suppressed { label, reason } =
+        &evidence.getaddr_requests_suppressed[0]
+    else {
+        panic!("expected getaddr suppressed evidence");
+    };
+    assert_eq!(label.as_str(), "getaddr_suppressed");
+    assert_eq!(reason.as_str(), "already_served");
+}
+
+#[test]
+fn getaddr_suppression_records_permission_and_outbound_reasons() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager
+        .add_inbound_peer(100)
+        .expect("ordinary inbound peer");
+    manager
+        .add_outbound_peer(101, 1)
+        .expect("outbound peer should be added");
+
+    // Act
+    let ordinary_actions = manager
+        .handle_message(100, WireNetworkMessage::GetAddr, 2)
+        .expect("ordinary inbound getaddr should be suppressed");
+    let outbound_actions = manager
+        .handle_message(101, WireNetworkMessage::GetAddr, 3)
+        .expect("outbound getaddr should be suppressed");
+    let evidence = manager.address_boundary_evidence();
+
+    // Assert
+    assert!(ordinary_actions.is_empty());
+    assert!(outbound_actions.is_empty());
+    assert_eq!(
+        evidence
+            .getaddr_requests_suppressed
+            .iter()
+            .map(|decision| match decision {
+                GetAddrResponseDecision::Suppressed { reason, .. } => reason.as_str(),
+                GetAddrResponseDecision::Served { .. } => "unexpected_served",
+            })
+            .collect::<Vec<_>>(),
+        vec!["permission_policy_denied", "not_inbound"],
+    );
+}
+
+#[test]
+fn inbound_version_response_uses_sender_policy_and_suppressed_advertisements_keep_zero_sender() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.set_local_address_decisions(vec![local_advertisement_suppressed(
+        public_ipv4_network_address(12, 0, 0, 1, 8333),
+        AddressDecisionReason::PermissionPolicyDenied,
+    )]);
+    manager.add_inbound_peer(102).expect("inbound peer");
+
+    // Act
+    let version_actions = manager
+        .handle_message(
+            102,
+            WireNetworkMessage::Version(crate::VersionMessage {
+                start_height: 0,
+                ..crate::VersionMessage::default()
+            }),
+            10,
+        )
+        .expect("version should process");
+    let evidence = manager.address_boundary_evidence();
+
+    // Assert
+    assert_no_addr_actions(&version_actions);
+    let [PeerAction::Send(WireNetworkMessage::Version(version)), ..] = version_actions.as_slice()
+    else {
+        panic!("expected local version response");
+    };
+    assert_eq!(version.sender, super::super::message::zero_address());
+    assert_eq!(evidence.suppressed_advertisements.len(), 1);
+}
+
+#[test]
+fn ordinary_peer_flows_do_not_send_unsolicited_addr_messages() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.set_local_address_decisions(vec![local_advertisement_candidate(
+        public_ipv4_network_address(13, 0, 0, 1, 8333),
+    )]);
+    manager.add_inbound_peer(103).expect("inbound peer");
+
+    // Act
+    let version_actions = manager
+        .handle_message(
+            103,
+            WireNetworkMessage::Version(crate::VersionMessage {
+                start_height: 0,
+                ..crate::VersionMessage::default()
+            }),
+            10,
+        )
+        .expect("version should process");
+    let verack_actions = manager
+        .handle_message(103, WireNetworkMessage::Verack, 11)
+        .expect("verack should process");
+    let ping_actions = manager
+        .handle_message(103, WireNetworkMessage::Ping { nonce: 7 }, 12)
+        .expect("ping should process");
+    let inv_actions = manager
+        .handle_message(
+            103,
+            WireNetworkMessage::Inv(InventoryList::new(Vec::new())),
+            13,
+        )
+        .expect("inventory should process");
+    let headers_actions = manager
+        .handle_message(
+            103,
+            WireNetworkMessage::Headers(HeadersMessage {
+                headers: Vec::new(),
+            }),
+            14,
+        )
+        .expect("headers should process");
+
+    // Assert
+    for actions in [
+        version_actions,
+        verack_actions,
+        ping_actions,
+        inv_actions,
+        headers_actions,
+    ] {
+        assert_no_addr_actions(&actions);
+    }
 }
 
 #[test]
@@ -1061,6 +1233,13 @@ fn helper_methods_and_unknown_peer_errors_are_covered() {
     assert_eq!(
         manager
             .handle_message(99, WireNetworkMessage::Verack, 1)
+            .expect_err("unknown peer")
+            .to_string(),
+        "unknown peer: 99",
+    );
+    assert_eq!(
+        manager
+            .handle_message(99, WireNetworkMessage::GetAddr, 1)
             .expect_err("unknown peer")
             .to_string(),
         "unknown peer: 99",
@@ -1683,6 +1862,43 @@ fn public_ipv6_network_address(raw_address: &str, port: u16) -> NetworkAddress {
         address_bytes: address.octets(),
         port,
     }
+}
+
+fn local_advertisement_candidate(address: NetworkAddress) -> LocalAdvertisementDecision {
+    LocalAdvertisementDecision {
+        label: AddressDecisionLabel::AdvertiseCandidate,
+        reason: AddressDecisionReason::PolicyAccepted,
+        source: AddressSourceKind::LocalListener,
+        network_kind: AddressNetworkKind::Ipv4,
+        routability: RoutabilityClass::PubliclyRoutable,
+        services_bits: address.services,
+        port: address.port,
+        maybe_wire_address: Some(address),
+    }
+}
+
+fn local_advertisement_suppressed(
+    address: NetworkAddress,
+    reason: AddressDecisionReason,
+) -> LocalAdvertisementDecision {
+    LocalAdvertisementDecision {
+        label: AddressDecisionLabel::AdvertiseSuppressed,
+        reason,
+        source: AddressSourceKind::LocalListener,
+        network_kind: AddressNetworkKind::Ipv4,
+        routability: RoutabilityClass::PubliclyRoutable,
+        services_bits: address.services,
+        port: address.port,
+        maybe_wire_address: None,
+    }
+}
+
+fn assert_no_addr_actions(actions: &[PeerAction]) {
+    assert!(
+        actions
+            .iter()
+            .all(|action| !matches!(action, PeerAction::Send(WireNetworkMessage::Addr(_)))),
+    );
 }
 
 fn ipv4_mapped_address_bytes(octets: [u8; 4]) -> [u8; 16] {

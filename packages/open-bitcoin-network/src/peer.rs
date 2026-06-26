@@ -16,7 +16,8 @@ use open_bitcoin_primitives::{
 };
 
 use crate::address::{
-    GetAddrResponseDecision, LearnedAddressBook, LearnedAddressDecision, LocalAdvertisementDecision,
+    GetAddrRequestState, GetAddrResponseDecision, LearnedAddressBook, LearnedAddressDecision,
+    LocalAdvertisementDecision, maybe_version_sender_address,
 };
 use crate::error::{DisconnectReason, NetworkError, PeerId};
 use crate::header_store::{HeaderStore, InsertedHeader};
@@ -72,6 +73,7 @@ pub struct PeerState {
     pub requested_txids: BTreeSet<Txid>,
     pub requested_wtxids: BTreeSet<Wtxid>,
     pub last_ping_nonce: Option<u64>,
+    pub getaddr_request_state: GetAddrRequestState,
     pub maybe_inbound_record: Option<InboundPeerRecord>,
     pub maybe_inbound_rejection_reason: Option<InboundAdmissionRejectionReason>,
 }
@@ -95,6 +97,7 @@ impl PeerState {
             requested_txids: BTreeSet::new(),
             requested_wtxids: BTreeSet::new(),
             last_ping_nonce: None,
+            getaddr_request_state: GetAddrRequestState::default(),
             maybe_inbound_record: None,
             maybe_inbound_rejection_reason: None,
         }
@@ -339,7 +342,7 @@ impl PeerManager {
                 ))])
             }
             WireNetworkMessage::Headers(message) => self.handle_headers(peer_id, message),
-            WireNetworkMessage::GetAddr => Ok(Vec::new()),
+            WireNetworkMessage::GetAddr => self.handle_getaddr(peer_id, timestamp),
             WireNetworkMessage::Addr(addresses) => self.handle_addr(peer_id, addresses, timestamp),
             WireNetworkMessage::GetData(inventory) => {
                 Ok(vec![PeerAction::ServeInventory(inventory.inventory)])
@@ -364,6 +367,7 @@ impl PeerManager {
     ) -> Result<Vec<PeerAction>, NetworkError> {
         let best_height = self.headers.best_height();
         let local_nonce = self.local_config.nonce;
+        let maybe_sender = maybe_version_sender_address(&self.local_address_decisions);
         let peer = Self::peer_mut(&mut self.peers, peer_id)?;
         if peer.remote_version_received {
             return Ok(vec![PeerAction::Disconnect(
@@ -388,7 +392,11 @@ impl PeerManager {
         if !peer.local_version_sent {
             peer.local_version_sent = true;
             actions.push(PeerAction::Send(WireNetworkMessage::Version(
-                self.local_config.version_message(timestamp, best_height),
+                self.local_config.version_message_with_sender_policy(
+                    timestamp,
+                    best_height,
+                    maybe_sender,
+                ),
             )));
         }
         if !peer.local_verack_sent {
