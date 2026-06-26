@@ -215,20 +215,75 @@ fn wire_message_round_trips_version_and_inventory_payloads() {
 
 #[test]
 fn local_peer_config_builds_expected_version_message() {
+    // Arrange
+    let address = sample_peer_address(8333);
     let config = LocalPeerConfig {
         magic: NetworkMagic::MAINNET,
         services: ServiceFlags::NETWORK | ServiceFlags::WITNESS,
-        address: zero_address(),
+        address: address.clone(),
         nonce: 5,
         relay: false,
         user_agent: "/open-bitcoin:test/".to_string(),
     };
 
+    // Act
     let version = config.version_message(9, 3);
+
+    // Assert
     assert_eq!(version.timestamp, 9);
     assert_eq!(version.start_height, 3);
     assert!(!version.relay);
     assert_eq!(version.nonce, 5);
+    assert_eq!(version.receiver, address);
+    assert_eq!(version.sender, address);
+}
+
+#[test]
+fn version_sender_policy_uses_zero_sender_without_advertisement_candidate() {
+    // Arrange
+    let address = sample_peer_address(8333);
+    let config = LocalPeerConfig {
+        magic: NetworkMagic::MAINNET,
+        services: ServiceFlags::NETWORK | ServiceFlags::WITNESS,
+        address: address.clone(),
+        nonce: 6,
+        relay: true,
+        user_agent: "/open-bitcoin:test/".to_string(),
+    };
+    let maybe_sender = None;
+
+    // Act
+    let version = config.version_message_with_sender_policy(10, 4, maybe_sender);
+
+    // Assert
+    assert_eq!(version.receiver, address);
+    assert_eq!(version.sender, zero_address());
+    assert_eq!(version.timestamp, 10);
+    assert_eq!(version.start_height, 4);
+}
+
+#[test]
+fn version_sender_policy_uses_advertisement_candidate_when_present() {
+    // Arrange
+    let address = sample_peer_address(8333);
+    let sender = sample_peer_address(18333);
+    let config = LocalPeerConfig {
+        magic: NetworkMagic::MAINNET,
+        services: ServiceFlags::NETWORK | ServiceFlags::WITNESS,
+        address: address.clone(),
+        nonce: 7,
+        relay: true,
+        user_agent: "/open-bitcoin:test/".to_string(),
+    };
+    let maybe_sender = Some(sender.clone());
+
+    // Act
+    let version = config.version_message_with_sender_policy(11, 5, maybe_sender);
+
+    // Assert
+    assert_eq!(version.receiver, address);
+    assert_eq!(version.sender, sender);
+    assert_eq!(version.nonce, 7);
 }
 
 #[test]

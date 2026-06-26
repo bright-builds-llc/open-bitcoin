@@ -115,6 +115,17 @@ impl LocalPeerConfig {
             relay: self.relay,
         }
     }
+
+    pub fn version_message_with_sender_policy(
+        &self,
+        timestamp: i64,
+        start_height: i32,
+        maybe_sender: Option<NetworkAddress>,
+    ) -> VersionMessage {
+        let mut message = self.version_message(timestamp, start_height);
+        message.sender = maybe_sender.unwrap_or_else(zero_address);
+        message
+    }
 }
 
 impl Default for LocalPeerConfig {
