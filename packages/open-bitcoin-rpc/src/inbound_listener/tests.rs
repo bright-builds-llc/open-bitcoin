@@ -5,7 +5,8 @@
 use std::sync::Arc;
 
 use open_bitcoin_network::{
-    InboundAdmissionSlotClass, InboundListenerConfig, InboundPreflightReason, ParsedNetworkMessage,
+    INBOUND_MESSAGE_HEADER_LEN, InboundAdmissionSlotClass, InboundEnvelopePolicy,
+    InboundListenerConfig, InboundPreflightReason, PHASE94_MAX_INBOUND_RUNTIME_PAYLOAD_BYTES,
     ParsedPeerPermissionClass, PeerConnectionClass, PeerPermissionClassRegistry, VersionMessage,
     WireNetworkMessage,
 };
@@ -17,8 +18,8 @@ use tokio::net::TcpStream;
 use crate::{ManagedRpcContext, RuntimeConfig};
 
 use super::{
-    InboundListenerEvidence, InboundListenerState, activate_inbound_listener,
-    start_inbound_accept_loop,
+    InboundListenerEvidence, InboundListenerState, ReadWireMessageOutcome,
+    activate_inbound_listener, start_inbound_accept_loop,
 };
 
 fn loopback_config(max_peers: usize) -> InboundListenerConfig {
@@ -95,8 +96,10 @@ fn listener_evidence(bound_endpoints: &[&str]) -> InboundListenerEvidence {
             .collect(),
         admitted_inbound_peers: 0,
         rejected_inbound_peers: 0,
+        resource_rejections: 0,
         maybe_admission_reject_reason: None,
         maybe_latest_admission_event: Some("ready".to_string()),
+        maybe_latest_resource_event: None,
     }
 }
 
@@ -119,12 +122,66 @@ async fn send_message(stream: &TcpStream, message: WireNetworkMessage) {
 }
 
 async fn receive_message(stream: &TcpStream) -> WireNetworkMessage {
-    let bytes = super::read_wire_message(stream)
+    let policy = InboundEnvelopePolicy::new(NetworkMagic::MAINNET);
+    let outcome = super::read_wire_message(stream, &policy)
         .await
         .expect("read wire message");
-    ParsedNetworkMessage::decode_wire(&bytes)
-        .expect("decode wire message")
-        .message
+    match outcome {
+        ReadWireMessageOutcome::Message(parsed) => parsed.message,
+        ReadWireMessageOutcome::Rejected(event) => {
+            panic!("expected inbound response message, got {}", event.label)
+        }
+    }
+}
+
+async fn tcp_pair() -> (TcpStream, TcpStream) {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("bind loopback test listener");
+    let endpoint = listener.local_addr().expect("loopback listener address");
+    let client = TcpStream::connect(endpoint)
+        .await
+        .expect("connect loopback test client");
+    let (server, _) = listener.accept().await.expect("accept loopback test peer");
+    (client, server)
+}
+
+fn verack_header(magic: NetworkMagic) -> [u8; INBOUND_MESSAGE_HEADER_LEN] {
+    let encoded = WireNetworkMessage::Verack
+        .encode_wire(magic)
+        .expect("encode verack message");
+    encoded[..INBOUND_MESSAGE_HEADER_LEN]
+        .try_into()
+        .expect("encoded message should include header")
+}
+
+fn unsupported_command_header() -> [u8; INBOUND_MESSAGE_HEADER_LEN] {
+    let mut header = verack_header(NetworkMagic::MAINNET);
+    header[4..16].fill(0);
+    header[4..11].copy_from_slice(b"mempool");
+    header
+}
+
+async fn read_rejected_header(header: [u8; INBOUND_MESSAGE_HEADER_LEN]) -> String {
+    // Arrange
+    let (client, server) = tcp_pair().await;
+    let policy = InboundEnvelopePolicy::new(NetworkMagic::MAINNET);
+
+    // Act
+    super::write_all(&client, &header)
+        .await
+        .expect("write header under test");
+    let outcome = super::read_wire_message(&server, &policy)
+        .await
+        .expect("read rejected header");
+
+    // Assert
+    match outcome {
+        ReadWireMessageOutcome::Rejected(event) => event.label,
+        ReadWireMessageOutcome::Message(_) => {
+            panic!("expected inbound envelope policy to reject header")
+        }
+    }
 }
 
 async fn wait_for_inbound_peers(
@@ -614,5 +671,77 @@ async fn dropped_loopback_inbound_releases_capacity_for_next_peer() {
     assert_eq!(admission.cap_rejections, 0);
     assert_eq!(evidence.maybe_admission_reject_reason, None);
     drop(second);
+    worker.shutdown().await;
+}
+
+#[tokio::test]
+async fn oversized_header_returns_payload_oversized_before_payload_allocation() {
+    // Arrange
+    let mut header = verack_header(NetworkMagic::MAINNET);
+    let oversized_len = (PHASE94_MAX_INBOUND_RUNTIME_PAYLOAD_BYTES as u32)
+        .saturating_add(1)
+        .to_le_bytes();
+    header[16..20].copy_from_slice(&oversized_len);
+
+    // Act
+    let label = read_rejected_header(header).await;
+
+    // Assert
+    assert_eq!(label, "payload_oversized");
+}
+
+#[tokio::test]
+async fn wrong_magic_returns_wrong_network_magic_and_closes_message_loop() {
+    // Arrange
+    let regtest_magic = NetworkMagic::from_bytes([0xfa, 0xbf, 0xb5, 0xda]);
+    let header = verack_header(regtest_magic);
+
+    // Act
+    let label = read_rejected_header(header).await;
+
+    // Assert
+    assert_eq!(label, "wrong_network_magic");
+}
+
+#[tokio::test]
+async fn unsupported_command_records_evidence_without_receive_inbound_wire_message() {
+    // Arrange
+    let (context, worker, endpoint) = running_loopback_listener(2).await;
+    let stream = TcpStream::connect(&endpoint)
+        .await
+        .expect("connect loopback inbound listener");
+    let header = unsupported_command_header();
+
+    // Act
+    super::write_all(&stream, &header)
+        .await
+        .expect("write unsupported command header");
+    for _ in 0..100 {
+        if worker
+            .evidence()
+            .maybe_latest_resource_event
+            .as_ref()
+            .is_some_and(|event| event.label == "unsupported_command")
+        {
+            break;
+        }
+        tokio::task::yield_now().await;
+    }
+    let evidence = worker.evidence();
+    let network_info = context.lock().await.network_info();
+
+    // Assert
+    assert_eq!(
+        evidence
+            .maybe_latest_resource_event
+            .expect("resource event should be recorded")
+            .label,
+        "unsupported_command"
+    );
+    assert_eq!(
+        evidence.maybe_latest_admission_event.as_deref(),
+        Some("admitted")
+    );
+    assert_eq!(network_info.outbound_peers, 0);
     worker.shutdown().await;
 }

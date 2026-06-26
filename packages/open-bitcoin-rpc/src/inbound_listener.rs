@@ -14,19 +14,17 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+use open_bitcoin_codec::parse_message_header;
 use open_bitcoin_network::{
-    InboundAdmissionDecision, InboundAdmissionRejectionReason, InboundListenerActivationDiagnostic,
+    INBOUND_MESSAGE_HEADER_LEN, InboundAdmissionDecision, InboundAdmissionRejectionReason,
+    InboundEnvelopeDecision, InboundEnvelopePolicy, InboundListenerActivationDiagnostic,
     InboundListenerConfig, InboundListenerEndpoint, InboundPreflightDiagnostic,
-    InboundPreflightReason, ParsedNetworkMessage, WireNetworkMessage, classify_inbound_preflight,
+    InboundPreflightReason, InboundResourceEvent, ParsedNetworkMessage, WireNetworkMessage,
+    classify_inbound_preflight,
 };
 use tokio::{net::TcpListener, task::JoinHandle};
 
 use crate::ManagedRpcContext;
-
-const MESSAGE_HEADER_LEN: usize = 24;
-const PAYLOAD_SIZE_OFFSET: usize = 16;
-const PAYLOAD_SIZE_LEN: usize = 4;
-const MAX_INBOUND_RUNTIME_PAYLOAD_BYTES: usize = 32 * 1024 * 1024;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InboundListenerState {
@@ -63,8 +61,10 @@ pub struct InboundListenerEvidence {
     pub bound_endpoints: Vec<String>,
     pub admitted_inbound_peers: usize,
     pub rejected_inbound_peers: usize,
+    pub resource_rejections: usize,
     pub maybe_admission_reject_reason: Option<String>,
     pub maybe_latest_admission_event: Option<String>,
+    pub maybe_latest_resource_event: Option<InboundResourceEvent>,
 }
 
 impl InboundListenerEvidence {
@@ -79,8 +79,10 @@ impl InboundListenerEvidence {
                 .collect(),
             admitted_inbound_peers: 0,
             rejected_inbound_peers: 0,
+            resource_rejections: 0,
             maybe_admission_reject_reason: None,
             maybe_latest_admission_event: Some(activation.preflight_reason.as_str().to_string()),
+            maybe_latest_resource_event: None,
         }
     }
 
@@ -97,6 +99,13 @@ impl InboundListenerEvidence {
 
     fn record_handshake(&mut self, message: &WireNetworkMessage) {
         self.maybe_latest_admission_event = Some(message.command_name().to_string());
+    }
+
+    fn record_resource_event(&mut self, event: InboundResourceEvent) {
+        if event.next_action == "payload_rejected" {
+            self.resource_rejections += 1;
+        }
+        self.maybe_latest_resource_event = Some(event);
     }
 }
 
@@ -152,8 +161,10 @@ impl InboundListenerActivation {
                 bound_endpoints: Vec::new(),
                 admitted_inbound_peers: 0,
                 rejected_inbound_peers: 0,
+                resource_rejections: 0,
                 maybe_admission_reject_reason: None,
                 maybe_latest_admission_event: Some(reason.as_str().to_string()),
+                maybe_latest_resource_event: None,
             },
         };
         activation.evidence = InboundListenerEvidence::from_activation(&activation);
@@ -177,10 +188,12 @@ impl InboundListenerActivation {
                 bound_endpoints: Vec::new(),
                 admitted_inbound_peers: 0,
                 rejected_inbound_peers: 0,
+                resource_rejections: 0,
                 maybe_admission_reject_reason: None,
                 maybe_latest_admission_event: Some(
                     InboundPreflightReason::Ready.as_str().to_string(),
                 ),
+                maybe_latest_resource_event: None,
             },
         };
         activation.evidence = InboundListenerEvidence::from_activation(&activation);
@@ -367,9 +380,16 @@ async fn handle_inbound_stream(
         }
     }
 
-    'message_loop: while let Ok(bytes) = read_wire_message(&stream).await {
-        let Ok(parsed) = ParsedNetworkMessage::decode_wire(&bytes) else {
-            break;
+    let envelope_policy =
+        InboundEnvelopePolicy::new(context.lock().await.network_info().network_magic);
+
+    'message_loop: while let Ok(outcome) = read_wire_message(&stream, &envelope_policy).await {
+        let parsed = match outcome {
+            ReadWireMessageOutcome::Message(parsed) => parsed,
+            ReadWireMessageOutcome::Rejected(event) => {
+                lock_evidence(&evidence).record_resource_event(event);
+                break;
+            }
         };
         lock_evidence(&evidence).record_handshake(&parsed.message);
         let responses = {
@@ -388,6 +408,12 @@ async fn handle_inbound_stream(
     disconnect_admitted_peer(&context, peer_id).await;
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum ReadWireMessageOutcome {
+    Message(ParsedNetworkMessage),
+    Rejected(InboundResourceEvent),
+}
+
 async fn disconnect_admitted_peer(
     context: &Arc<tokio::sync::Mutex<ManagedRpcContext>>,
     peer_id: u64,
@@ -399,29 +425,30 @@ async fn disconnect_admitted_peer(
     }
 }
 
-async fn read_wire_message(stream: &tokio::net::TcpStream) -> io::Result<Vec<u8>> {
-    let mut header = [0_u8; MESSAGE_HEADER_LEN];
+async fn read_wire_message(
+    stream: &tokio::net::TcpStream,
+    policy: &InboundEnvelopePolicy,
+) -> io::Result<ReadWireMessageOutcome> {
+    let mut header = [0_u8; INBOUND_MESSAGE_HEADER_LEN];
     read_exact(stream, &mut header).await?;
-    let payload_len = payload_len_from_header(&header)?;
-    let mut encoded = header.to_vec();
+    let payload_len = match policy.evaluate_header(&header) {
+        InboundEnvelopeDecision::ReadPayload { payload_len } => payload_len,
+        InboundEnvelopeDecision::Reject(event) => {
+            return Ok(ReadWireMessageOutcome::Rejected(event));
+        }
+    };
+    let header_message = parse_message_header(&header).map_err(|error| {
+        io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("inbound wire message header rejected after policy evaluation: {error}"),
+        )
+    })?;
     let mut payload = vec![0_u8; payload_len];
     read_exact(stream, &mut payload).await?;
-    encoded.extend_from_slice(&payload);
-    Ok(encoded)
-}
-
-fn payload_len_from_header(header: &[u8; MESSAGE_HEADER_LEN]) -> io::Result<usize> {
-    let mut payload_len = [0_u8; PAYLOAD_SIZE_LEN];
-    payload_len
-        .copy_from_slice(&header[PAYLOAD_SIZE_OFFSET..PAYLOAD_SIZE_OFFSET + PAYLOAD_SIZE_LEN]);
-    let payload_len = u32::from_le_bytes(payload_len) as usize;
-    if payload_len > MAX_INBOUND_RUNTIME_PAYLOAD_BYTES {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            "inbound wire message payload exceeds runtime listener bound",
-        ));
+    match policy.decode_payload(&header_message, &payload) {
+        Ok(parsed) => Ok(ReadWireMessageOutcome::Message(parsed)),
+        Err(event) => Ok(ReadWireMessageOutcome::Rejected(event)),
     }
-    Ok(payload_len)
 }
 
 async fn read_exact(stream: &tokio::net::TcpStream, buffer: &mut [u8]) -> io::Result<()> {

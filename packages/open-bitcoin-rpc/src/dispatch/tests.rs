@@ -673,8 +673,10 @@ fn open_bitcoin_network_status_projects_listener_activation_before_admissions() 
         bound_endpoints: vec!["127.0.0.1:18444".to_string()],
         admitted_inbound_peers: 0,
         rejected_inbound_peers: 0,
+        resource_rejections: 0,
         maybe_admission_reject_reason: None,
         maybe_latest_admission_event: Some("ready".to_string()),
+        maybe_latest_resource_event: None,
     });
 
     // Act
@@ -713,8 +715,10 @@ fn open_bitcoin_network_status_projects_address_boundary_evidence_without_raw_de
         bound_endpoints: vec!["8.8.8.8:18444".to_string(), "127.0.0.1:18445".to_string()],
         admitted_inbound_peers: 0,
         rejected_inbound_peers: 0,
+        resource_rejections: 0,
         maybe_admission_reject_reason: None,
         maybe_latest_admission_event: Some("ready".to_string()),
+        maybe_latest_resource_event: None,
     });
     context.record_inbound_admission_for_remote_addr(
         peer_id,
