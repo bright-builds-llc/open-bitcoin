@@ -4,8 +4,8 @@ milestone: v1.9
 milestone_name: Inbound Peer Serving and Network Participation Boundary
 status: executing
 stopped_at: Phase 92 context gathered
-last_updated: "2026-06-26T05:20:20.106Z"
-last_activity: 2026-06-26 -- Phase 92 planning complete
+last_updated: "2026-06-26T05:22:49.568Z"
+last_activity: 2026-06-26 -- Phase 92 execution started
 progress:
   total_phases: 6
   completed_phases: 2
@@ -21,15 +21,15 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-25)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 92 — address-advertisement-and-discovery-boundaries
+**Current focus:** Phase 92 — Address Advertisement and Discovery Boundaries
 
 ## Current Position
 
 Milestone: v1.9 Inbound Peer Serving and Network Participation Boundary
-Phase: 92 (address-advertisement-and-discovery-boundaries) — PLAN COMPLETE
-Plan: 0 of 9
-Status: Ready to execute
-Last activity: 2026-06-26 -- Phase 92 planning complete
+Phase: 92 (Address Advertisement and Discovery Boundaries) — EXECUTING
+Plan: 1 of 9
+Status: Executing Phase 92
+Last activity: 2026-06-26 -- Phase 92 execution started
 
 Progress: [#######---] 69%
 
