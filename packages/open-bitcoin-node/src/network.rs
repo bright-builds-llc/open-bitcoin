@@ -32,6 +32,7 @@ use inbound::{default_inbound_admission_policy, is_active_inbound_peer};
 
 pub use inbound::{
     ManagedAddressBoundaryInfo, ManagedInboundAdmissionInfo, ManagedInboundPermissionDecisionInfo,
+    ManagedPeerPolicyInfo,
 };
 
 #[derive(Debug)]
@@ -198,6 +199,17 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
 
     pub fn address_boundary_info(&self) -> ManagedAddressBoundaryInfo {
         self.peer_manager.address_boundary_evidence().into()
+    }
+
+    pub fn peer_policy_info(&self) -> ManagedPeerPolicyInfo {
+        let eviction_candidate_count = self.peer_manager.eviction_candidate_inputs().len();
+        ManagedPeerPolicyInfo::from_policy_decisions(
+            eviction_candidate_count,
+            Some(self.peer_manager.eviction_decision()),
+            &[],
+            &[],
+            &[],
+        )
     }
 
     pub fn disconnect_peer(&mut self, peer_id: PeerId) -> Result<(), ManagedNetworkError> {

@@ -33,11 +33,12 @@ use crate::operator::{
 use open_bitcoin_node::status::{
     BestKnownTipStatus, BuildProvenance, ConfigStatus, FieldAvailability,
     INBOUND_STATUS_UNAVAILABLE_REASON, InboundAddressDecisionEvent, InboundAddressEvidenceEntry,
-    InboundAdmissionEvent, InboundHandshakeStatusCounts, InboundPeerServingStatus,
-    InboundPermissionDecisionEvent, MempoolStatus, NodeRuntimeState, NodeStatus,
-    OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, ServiceLifecycleStatus, ServiceStatus,
-    StayCurrentStatus, SyncAttemptCounters, SyncConfiguredTargets, SyncProgressSignal, SyncStatus,
-    SyncStopReasonStatus, WalletFreshness, WalletScanProgress, WalletStatus,
+    InboundAdmissionEvent, InboundHandshakeStatusCounts, InboundPeerPolicyEvent,
+    InboundPeerServingStatus, InboundPermissionDecisionEvent, MempoolStatus, NodeRuntimeState,
+    NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, ServiceLifecycleStatus,
+    ServiceStatus, StayCurrentStatus, SyncAttemptCounters, SyncConfiguredTargets,
+    SyncProgressSignal, SyncStatus, SyncStopReasonStatus, WalletFreshness, WalletScanProgress,
+    WalletStatus,
 };
 use open_bitcoin_node::storage::FJALL_LOCK_FILE_NAME;
 use open_bitcoin_rpc::{
@@ -279,6 +280,15 @@ fn inbound_status_fake_live_rpc_maps_into_shared_status_snapshot() {
         "learned_address_entries",
         "learned_address_rejections",
         "latest_address_decision",
+        "eviction_candidates_evaluated",
+        "disconnects_requested",
+        "discouraged_peers",
+        "active_bans",
+        "expired_bans",
+        "manual_unbans",
+        "misbehavior_observations",
+        "protected_no_actions",
+        "latest_peer_policy_decision",
     ] {
         assert!(inbound.contains_key(field_name), "missing {field_name}");
     }
@@ -305,6 +315,26 @@ fn inbound_status_fake_live_rpc_maps_into_shared_status_snapshot() {
     assert_eq!(
         decoded["peers"]["inbound"]["value"]["learned_address_rejections"],
         1
+    );
+    assert_eq!(
+        decoded["peers"]["inbound"]["value"]["eviction_candidates_evaluated"],
+        2
+    );
+    assert_eq!(
+        decoded["peers"]["inbound"]["value"]["disconnects_requested"],
+        1
+    );
+    assert_eq!(
+        decoded["peers"]["inbound"]["value"]["misbehavior_observations"],
+        1
+    );
+    assert_eq!(
+        decoded["peers"]["inbound"]["value"]["protected_no_actions"],
+        1
+    );
+    assert_eq!(
+        decoded["peers"]["inbound"]["value"]["latest_peer_policy_decision"]["value"]["label"],
+        "misbehavior_policy_decision"
     );
 }
 
@@ -2120,6 +2150,22 @@ fn inbound_status_response() -> OpenBitcoinNetworkStatusResponse {
                 label: "getaddr_suppressed".to_string(),
                 source: "source_inbound_addr".to_string(),
                 message: "bounded getaddr empty response cache".to_string(),
+            }),
+            eviction_candidates_evaluated: 2,
+            disconnects_requested: 1,
+            discouraged_peers: 0,
+            active_bans: 0,
+            expired_bans: 0,
+            manual_unbans: 0,
+            misbehavior_observations: 1,
+            protected_no_actions: 1,
+            latest_peer_policy_decision: FieldAvailability::available(InboundPeerPolicyEvent {
+                outcome: "protected_no_action".to_string(),
+                reason: "malformed_message".to_string(),
+                label: "misbehavior_policy_decision".to_string(),
+                source: "source_misbehavior_policy".to_string(),
+                message: "misbehavior policy decision protected_no_action: malformed_message"
+                    .to_string(),
             }),
         }),
     }

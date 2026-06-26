@@ -22,13 +22,16 @@ use open_bitcoin_node::core::network::{LocalPeerConfig, ServiceFlags, WireNetwor
 use open_bitcoin_node::core::primitives::{Block, NetworkAddress, NetworkMagic, Transaction};
 use open_bitcoin_node::core::wallet::AddressNetwork;
 use open_bitcoin_node::network::{
-    ManagedAddressBoundaryInfo, ManagedInboundAdmissionInfo, ManagedMempoolInfo, ManagedNetworkInfo,
+    ManagedAddressBoundaryInfo, ManagedInboundAdmissionInfo, ManagedMempoolInfo,
+    ManagedNetworkInfo, ManagedPeerPolicyInfo,
 };
 use open_bitcoin_node::status::{
     FieldAvailability, INBOUND_ADDRESS_DECISION_UNAVAILABLE_REASON,
+    INBOUND_PEER_POLICY_DECISION_UNAVAILABLE_REASON,
     INBOUND_PERMISSION_DECISION_UNAVAILABLE_REASON, InboundAddressDecisionEvent,
-    InboundAdmissionEvent, InboundHandshakeStatusCounts, InboundPeerServingStatus,
-    InboundPermissionDecisionEvent, InboundPermissionEvidence, inbound_status_unavailable,
+    InboundAdmissionEvent, InboundHandshakeStatusCounts, InboundPeerPolicyEvent,
+    InboundPeerServingStatus, InboundPermissionDecisionEvent, InboundPermissionEvidence,
+    inbound_status_unavailable,
 };
 use open_bitcoin_node::{DurableSyncState, FjallNodeStore};
 use open_bitcoin_node::{
@@ -195,11 +198,13 @@ impl ManagedRpcContext {
     pub fn current_inbound_status(&self) -> FieldAvailability<InboundPeerServingStatus> {
         let admission = self.inbound_admission_info();
         let address_info = self.network.address_boundary_info();
+        let peer_policy_info = self.network.peer_policy_info();
         let maybe_listener_evidence = self.maybe_inbound_listener_evidence.as_ref();
         if admission.admitted_inbound_peers == 0
             && admission.rejected_inbound_peers == 0
             && maybe_listener_evidence.is_none()
             && address_info.is_empty()
+            && peer_policy_info.is_empty()
         {
             return inbound_status_unavailable();
         }
@@ -207,6 +212,7 @@ impl ManagedRpcContext {
         let network_info = self.network_info();
         let permission_evidence = inbound_permission_evidence(&admission);
         let latest_address_decision = latest_inbound_address_decision(&address_info);
+        let latest_peer_policy_decision = latest_inbound_peer_policy_decision(&peer_policy_info);
         FieldAvailability::available(InboundPeerServingStatus {
             listener_state: listener_state(&admission, maybe_listener_evidence),
             bound_endpoints: bound_endpoints(maybe_listener_evidence),
@@ -242,6 +248,15 @@ impl ManagedRpcContext {
             learned_address_entries: address_info.learned_address_entries,
             learned_address_rejections: address_info.learned_address_rejections,
             latest_address_decision,
+            eviction_candidates_evaluated: peer_policy_info.eviction_candidates_evaluated,
+            disconnects_requested: peer_policy_info.disconnects_requested,
+            discouraged_peers: peer_policy_info.discouraged_peers,
+            active_bans: peer_policy_info.active_bans,
+            expired_bans: peer_policy_info.expired_bans,
+            manual_unbans: peer_policy_info.manual_unbans,
+            misbehavior_observations: peer_policy_info.misbehavior_observations,
+            protected_no_actions: peer_policy_info.protected_no_actions,
+            latest_peer_policy_decision,
         })
     }
 
@@ -474,6 +489,18 @@ fn latest_inbound_address_decision(
         .map(FieldAvailability::available)
         .unwrap_or_else(|| {
             FieldAvailability::unavailable(INBOUND_ADDRESS_DECISION_UNAVAILABLE_REASON)
+        })
+}
+
+fn latest_inbound_peer_policy_decision(
+    peer_policy_info: &ManagedPeerPolicyInfo,
+) -> FieldAvailability<InboundPeerPolicyEvent> {
+    peer_policy_info
+        .maybe_latest_peer_policy_decision
+        .clone()
+        .map(FieldAvailability::available)
+        .unwrap_or_else(|| {
+            FieldAvailability::unavailable(INBOUND_PEER_POLICY_DECISION_UNAVAILABLE_REASON)
         })
 }
 

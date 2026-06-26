@@ -515,6 +515,11 @@ fn metric_label(kind: MetricKind) -> &'static str {
         MetricKind::InboundPermissionValidationFailureCount => {
             "Inbound permission validation failures"
         }
+        MetricKind::InboundEvictionCandidateCount => "Inbound eviction candidates",
+        MetricKind::InboundDisconnectCount => "Inbound disconnects",
+        MetricKind::InboundActiveBanCount => "Inbound active bans",
+        MetricKind::InboundMisbehaviorObservationCount => "Inbound misbehavior observations",
+        MetricKind::InboundProtectedNoActionCount => "Inbound protected no-actions",
     }
 }
 

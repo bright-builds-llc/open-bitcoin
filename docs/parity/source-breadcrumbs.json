@@ -614,6 +614,21 @@
       ]
     },
     {
+      "label": "network-peer-policy",
+      "files": [
+        "packages/open-bitcoin-network/src/peer/policy_state.rs",
+        "packages/open-bitcoin-network/src/peer_policy.rs",
+        "packages/open-bitcoin-network/src/peer_policy/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/banman.h",
+        "packages/bitcoin-knots/src/banman.cpp",
+        "packages/bitcoin-knots/src/net_permissions.cpp"
+      ]
+    },
+    {
       "label": "network-inbound-admission",
       "files": [
         "packages/open-bitcoin-network/src/inbound.rs",

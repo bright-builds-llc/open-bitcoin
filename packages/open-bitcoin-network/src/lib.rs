@@ -23,6 +23,7 @@ mod header_store;
 mod inbound;
 mod message;
 mod peer;
+mod peer_policy;
 
 pub use address::{
     AddressAnnouncement, AddressClassification, AddressDecisionLabel, AddressDecisionReason,
@@ -63,6 +64,12 @@ pub use message::{
 pub use peer::{
     ConnectionRole, HeaderSyncPolicy, PeerAction, PeerAddressBoundaryDecision,
     PeerAddressBoundaryEvidence, PeerManager, PeerState,
+};
+pub use peer_policy::{
+    BanDecision, BanReason, BanScope, EvictionCandidate, EvictionCandidateInput, EvictionDecision,
+    EvictionReason, EvictionScoreComponent, MisbehaviorDecision, MisbehaviorKind,
+    MisbehaviorObservation, MisbehaviorPolicy, MisbehaviorResponse, PeerBanBook, PeerBanEntry,
+    UnbanDecision, select_eviction_candidate,
 };
 
 pub const fn crate_ready() -> bool {

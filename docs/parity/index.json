@@ -620,6 +620,10 @@
     {
       "name": "v1-9-address-advertisement-discovery-boundaries",
       "status": "done"
+    },
+    {
+      "name": "v1-9-eviction-ban-misbehavior-policy",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -1699,6 +1703,33 @@
         ],
         "suspected_unknowns": [
           "Future Phase 93 through Phase 95 work owns eviction/ban policy, resource governance, and release-boundary evidence before any broader network-participation claim can be made."
+        ]
+      },
+      {
+        "id": "v1-9-eviction-ban-misbehavior-policy",
+        "status": "done",
+        "requirements": [
+          "EVICT-01",
+          "EVICT-02",
+          "EVICT-03",
+          "EVICT-04"
+        ],
+        "evidence": [
+          "docs/operator/runtime-guide.md",
+          "docs/architecture/status-snapshot.md",
+          "docs/architecture/operator-observability.md",
+          "docs/parity/catalog/p2p.md",
+          "docs/parity/source-breadcrumbs.json",
+          ".planning/phases/93-eviction-ban-and-misbehavior-policy/93-01-SUMMARY.md",
+          ".planning/phases/93-eviction-ban-and-misbehavior-policy/93-02-SUMMARY.md",
+          ".planning/phases/93-eviction-ban-and-misbehavior-policy/93-03-SUMMARY.md"
+        ],
+        "rationale": "Phase 93 proves deterministic eviction candidate selection, protected peer suppression, scoped ban/unban policy labels, misbehavior response labels, and redacted status/support documentation.",
+        "known_gaps": [
+          "Production banlist parity, public ban enforcement, Knots discourage parity, broad DoS/resource governance, transaction relay abuse handling, compact block relay abuse handling, public inbound defaults, public-network CI, and production full-node readiness remain outside this surface."
+        ],
+        "suspected_unknowns": [
+          "Future Phase 94 through Phase 95 work owns resource governance and release-boundary evidence before any broader network-participation claim can be made."
         ]
       }
     ]

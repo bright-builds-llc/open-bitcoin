@@ -265,6 +265,35 @@ default, DNS seed discovery, UPnP/NAT-PMP discovery, public-network CI, or
 production full-node readiness. Use `full_relay_deferred` for the deferred
 relay boundary when a no-claim label is needed.
 
+## Phase 93 eviction, ban, and misbehavior policy status
+
+Phase 93 extends `OpenBitcoinStatusSnapshot.peers.inbound` with bounded
+peer-policy evidence sourced from the network/domain peer-policy rules and
+projected through managed networking. The shared fields are:
+
+- `eviction_candidates_evaluated`: aggregate count of inbound peers considered
+  by the deterministic eviction policy.
+- `disconnects_requested` and `discouraged_peers`: aggregate response counters
+  for eviction and misbehavior policy decisions.
+- `active_bans`, `expired_bans`, and `manual_unbans`: scoped ban/unban policy
+  counters without raw banlist entries or peer identities.
+- `misbehavior_observations`: aggregate count of malformed message,
+  duplicate-version, invalid-address, unsupported-command, and
+  header-violation observations.
+- `protected_no_actions`: aggregate count of protected peers that were not
+  disconnected, discouraged, or banned by the policy decision.
+- `latest_peer_policy_decision`: the latest bounded peer-policy event with
+  outcome, reason, label, source, and sanitized message.
+
+Status consumers should preserve these field names in JSON and render them
+from the shared snapshot in human output. They should not derive peer-policy
+summaries in CLI, support, dashboard, RPC, log, or metric layers. The fields
+separate deterministic eviction, ban, unban, and misbehavior evidence from
+broad DoS/resource governance and production readiness claims. They do not
+claim production banlist parity, public ban enforcement, Knots discourage
+parity, transaction relay abuse handling, public inbound by default, or
+production full-node readiness.
+
 ## Reorg and no-progress semantics
 
 Phase 70 keeps branch competition, reorg recovery, peer recovery, and

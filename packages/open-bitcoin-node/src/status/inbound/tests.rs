@@ -2,9 +2,10 @@
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
 use super::{
-    INBOUND_ADDRESS_DECISION_UNAVAILABLE_REASON, INBOUND_PERMISSION_DECISION_UNAVAILABLE_REASON,
-    INBOUND_STATUS_UNAVAILABLE_REASON, InboundAddressDecisionEvent, InboundAddressEvidenceEntry,
-    InboundAdmissionEvent, InboundHandshakeStatusCounts, InboundPeerServingStatus,
+    INBOUND_ADDRESS_DECISION_UNAVAILABLE_REASON, INBOUND_PEER_POLICY_DECISION_UNAVAILABLE_REASON,
+    INBOUND_PERMISSION_DECISION_UNAVAILABLE_REASON, INBOUND_STATUS_UNAVAILABLE_REASON,
+    InboundAddressDecisionEvent, InboundAddressEvidenceEntry, InboundAdmissionEvent,
+    InboundHandshakeStatusCounts, InboundPeerPolicyEvent, InboundPeerServingStatus,
     InboundPermissionDecisionEvent,
 };
 use crate::status::{FieldAvailability, PeerCounts, PeerStatus};
@@ -140,6 +141,22 @@ fn inbound_status_serializes_listener_and_admission_evidence() {
                 source: "source_inbound_addr".to_string(),
                 message: "bounded getaddr response served".to_string(),
             }),
+            eviction_candidates_evaluated: 2,
+            disconnects_requested: 1,
+            discouraged_peers: 1,
+            active_bans: 1,
+            expired_bans: 1,
+            manual_unbans: 1,
+            misbehavior_observations: 3,
+            protected_no_actions: 1,
+            latest_peer_policy_decision: FieldAvailability::available(InboundPeerPolicyEvent {
+                outcome: "selected".to_string(),
+                reason: "low_activity".to_string(),
+                label: "eviction_candidate_selected".to_string(),
+                source: "source_eviction_policy".to_string(),
+                message: "peer eviction decision eviction_candidate_selected: low_activity"
+                    .to_string(),
+            }),
         }),
     };
 
@@ -251,6 +268,21 @@ fn inbound_status_serializes_listener_and_admission_evidence() {
         encoded["inbound"]["value"]["latest_address_decision"]["value"]["label"],
         "getaddr_served"
     );
+    assert_eq!(
+        encoded["inbound"]["value"]["eviction_candidates_evaluated"],
+        2
+    );
+    assert_eq!(encoded["inbound"]["value"]["disconnects_requested"], 1);
+    assert_eq!(encoded["inbound"]["value"]["discouraged_peers"], 1);
+    assert_eq!(encoded["inbound"]["value"]["active_bans"], 1);
+    assert_eq!(encoded["inbound"]["value"]["expired_bans"], 1);
+    assert_eq!(encoded["inbound"]["value"]["manual_unbans"], 1);
+    assert_eq!(encoded["inbound"]["value"]["misbehavior_observations"], 3);
+    assert_eq!(encoded["inbound"]["value"]["protected_no_actions"], 1);
+    assert_eq!(
+        encoded["inbound"]["value"]["latest_peer_policy_decision"]["value"]["label"],
+        "eviction_candidate_selected"
+    );
 }
 
 #[test]
@@ -311,6 +343,20 @@ fn inbound_status_permission_fields_default_for_legacy_status_json() {
             INBOUND_ADDRESS_DECISION_UNAVAILABLE_REASON
         )
     );
+    assert_eq!(status.eviction_candidates_evaluated, 0);
+    assert_eq!(status.disconnects_requested, 0);
+    assert_eq!(status.discouraged_peers, 0);
+    assert_eq!(status.active_bans, 0);
+    assert_eq!(status.expired_bans, 0);
+    assert_eq!(status.manual_unbans, 0);
+    assert_eq!(status.misbehavior_observations, 0);
+    assert_eq!(status.protected_no_actions, 0);
+    assert_eq!(
+        status.latest_peer_policy_decision,
+        FieldAvailability::<InboundPeerPolicyEvent>::unavailable(
+            INBOUND_PEER_POLICY_DECISION_UNAVAILABLE_REASON
+        )
+    );
 }
 
 #[test]
@@ -357,6 +403,17 @@ fn inbound_status_address_entries_exclude_raw_peer_and_address_details() {
             source: "source_inbound_addr".to_string(),
             message: "learned address evidence accepted".to_string(),
         }),
+        eviction_candidates_evaluated: 0,
+        disconnects_requested: 0,
+        discouraged_peers: 0,
+        active_bans: 0,
+        expired_bans: 0,
+        manual_unbans: 0,
+        misbehavior_observations: 0,
+        protected_no_actions: 0,
+        latest_peer_policy_decision: FieldAvailability::unavailable(
+            INBOUND_PEER_POLICY_DECISION_UNAVAILABLE_REASON,
+        ),
     };
 
     // Act

@@ -31,10 +31,15 @@ pub enum MetricKind {
     InboundProtectedAdmitCount,
     InboundInactivePermissionEffectCount,
     InboundPermissionValidationFailureCount,
+    InboundEvictionCandidateCount,
+    InboundDisconnectCount,
+    InboundActiveBanCount,
+    InboundMisbehaviorObservationCount,
+    InboundProtectedNoActionCount,
 }
 
 impl MetricKind {
-    pub const ALL: [Self; 21] = [
+    pub const ALL: [Self; 26] = [
         Self::SyncHeight,
         Self::HeaderHeight,
         Self::DownloadedBlockHeight,
@@ -56,6 +61,11 @@ impl MetricKind {
         Self::InboundProtectedAdmitCount,
         Self::InboundInactivePermissionEffectCount,
         Self::InboundPermissionValidationFailureCount,
+        Self::InboundEvictionCandidateCount,
+        Self::InboundDisconnectCount,
+        Self::InboundActiveBanCount,
+        Self::InboundMisbehaviorObservationCount,
+        Self::InboundProtectedNoActionCount,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -85,6 +95,11 @@ impl MetricKind {
             Self::InboundPermissionValidationFailureCount => {
                 "inbound_permission_validation_failure_count"
             }
+            Self::InboundEvictionCandidateCount => "inbound_eviction_candidate_count",
+            Self::InboundDisconnectCount => "inbound_disconnect_count",
+            Self::InboundActiveBanCount => "inbound_active_ban_count",
+            Self::InboundMisbehaviorObservationCount => "inbound_misbehavior_observation_count",
+            Self::InboundProtectedNoActionCount => "inbound_protected_no_action_count",
         }
     }
 }
@@ -308,6 +323,26 @@ mod tests {
                 MetricKind::InboundPermissionValidationFailureCount,
                 "inbound_permission_validation_failure_count",
             ),
+            (
+                MetricKind::InboundEvictionCandidateCount,
+                "inbound_eviction_candidate_count",
+            ),
+            (
+                MetricKind::InboundDisconnectCount,
+                "inbound_disconnect_count",
+            ),
+            (
+                MetricKind::InboundActiveBanCount,
+                "inbound_active_ban_count",
+            ),
+            (
+                MetricKind::InboundMisbehaviorObservationCount,
+                "inbound_misbehavior_observation_count",
+            ),
+            (
+                MetricKind::InboundProtectedNoActionCount,
+                "inbound_protected_no_action_count",
+            ),
         ];
 
         // Act / Assert
@@ -330,6 +365,11 @@ mod tests {
             MetricKind::InboundProtectedAdmitCount,
             MetricKind::InboundInactivePermissionEffectCount,
             MetricKind::InboundPermissionValidationFailureCount,
+            MetricKind::InboundEvictionCandidateCount,
+            MetricKind::InboundDisconnectCount,
+            MetricKind::InboundActiveBanCount,
+            MetricKind::InboundMisbehaviorObservationCount,
+            MetricKind::InboundProtectedNoActionCount,
         ];
 
         // Act
@@ -339,7 +379,7 @@ mod tests {
             .collect::<Vec<_>>();
 
         // Assert
-        assert_eq!(MetricKind::ALL.len(), 21);
+        assert_eq!(MetricKind::ALL.len(), 26);
         assert_eq!(
             labels,
             vec![
@@ -353,6 +393,11 @@ mod tests {
                 "inbound_protected_admit_count",
                 "inbound_inactive_permission_effect_count",
                 "inbound_permission_validation_failure_count",
+                "inbound_eviction_candidate_count",
+                "inbound_disconnect_count",
+                "inbound_active_ban_count",
+                "inbound_misbehavior_observation_count",
+                "inbound_protected_no_action_count",
             ]
         );
         for label in labels {

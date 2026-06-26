@@ -17,6 +17,10 @@ pub const INBOUND_PERMISSION_DECISION_UNAVAILABLE_REASON: &str =
 pub const INBOUND_ADDRESS_DECISION_UNAVAILABLE_REASON: &str =
     "inbound address boundary evidence unavailable";
 
+/// Default unavailable reason when peer-policy evidence has not been projected.
+pub const INBOUND_PEER_POLICY_DECISION_UNAVAILABLE_REASON: &str =
+    "inbound peer policy evidence unavailable";
+
 /// Conservative default for peer status snapshots without inbound serving evidence.
 pub fn inbound_status_unavailable() -> FieldAvailability<InboundPeerServingStatus> {
     FieldAvailability::unavailable(INBOUND_STATUS_UNAVAILABLE_REASON)
@@ -97,6 +101,16 @@ pub struct InboundAddressDecisionEvent {
     pub message: String,
 }
 
+/// Latest bounded eviction, ban, unban, or misbehavior policy decision event.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct InboundPeerPolicyEvent {
+    pub outcome: String,
+    pub reason: String,
+    pub label: String,
+    pub source: String,
+    pub message: String,
+}
+
 /// Shared inbound listener and admission evidence under peer status.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct InboundPeerServingStatus {
@@ -137,6 +151,24 @@ pub struct InboundPeerServingStatus {
     pub learned_address_rejections: u32,
     #[serde(default = "latest_address_decision_unavailable")]
     pub latest_address_decision: FieldAvailability<InboundAddressDecisionEvent>,
+    #[serde(default)]
+    pub eviction_candidates_evaluated: u32,
+    #[serde(default)]
+    pub disconnects_requested: u32,
+    #[serde(default)]
+    pub discouraged_peers: u32,
+    #[serde(default)]
+    pub active_bans: u32,
+    #[serde(default)]
+    pub expired_bans: u32,
+    #[serde(default)]
+    pub manual_unbans: u32,
+    #[serde(default)]
+    pub misbehavior_observations: u32,
+    #[serde(default)]
+    pub protected_no_actions: u32,
+    #[serde(default = "latest_peer_policy_decision_unavailable")]
+    pub latest_peer_policy_decision: FieldAvailability<InboundPeerPolicyEvent>,
 }
 
 fn ordinary_permission_class() -> String {
@@ -149,6 +181,10 @@ fn latest_permission_decision_unavailable() -> FieldAvailability<InboundPermissi
 
 fn latest_address_decision_unavailable() -> FieldAvailability<InboundAddressDecisionEvent> {
     FieldAvailability::unavailable(INBOUND_ADDRESS_DECISION_UNAVAILABLE_REASON)
+}
+
+fn latest_peer_policy_decision_unavailable() -> FieldAvailability<InboundPeerPolicyEvent> {
+    FieldAvailability::unavailable(INBOUND_PEER_POLICY_DECISION_UNAVAILABLE_REASON)
 }
 
 #[cfg(test)]

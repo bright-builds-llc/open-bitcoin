@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Inbound Peer Serving and Network Participation Boundary
 status: executing
-stopped_at: Phase 92 complete; Phase 93 pending
-last_updated: "2026-06-26T10:47:04.485Z"
-last_activity: 2026-06-26 -- Phase 92 completed and verified
+stopped_at: Phase 93 complete; ready to plan Phase 94
+last_updated: "2026-06-26T14:25:05.940Z"
+last_activity: 2026-06-26 -- Phase 93 complete; transitioned to Phase 94
 progress:
   total_phases: 6
-  completed_phases: 3
-  total_plans: 29
-  completed_plans: 29
-  percent: 50
+  completed_phases: 4
+  total_plans: 32
+  completed_plans: 32
+  percent: 67
 ---
 
 # Project State
@@ -21,17 +21,17 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-26)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 93 — Eviction, Ban, and Misbehavior Policy
+**Current focus:** Phase 94 — DoS and Resource Governance
 
 ## Current Position
 
 Milestone: v1.9 Inbound Peer Serving and Network Participation Boundary
-Phase: 93 (Eviction, Ban, and Misbehavior Policy) — PENDING
+Phase: 94 (DoS and Resource Governance) — PENDING
 Plan: Not started
-Status: Phase 92 complete; Phase 93 ready for planning
-Last activity: 2026-06-26 -- Phase 92 completed and verified
+Status: Ready to plan
+Last activity: 2026-06-26 -- Phase 93 complete; transitioned to Phase 94
 
-Progress: [#####-----] 50%
+Progress: [#######---] 67%
 
 ## Performance Metrics
 
@@ -48,7 +48,7 @@ Progress: [#####-----] 50%
 | 90 | Inbound Listener and Admission Policy | INB-01, INB-02, INB-03, INB-04, INB-05 | Complete |
 | 91 | Peer Permissions and Connection Classes | PERM-01, PERM-02, PERM-03, PERM-04 | Complete |
 | 92 | Address Advertisement and Discovery Boundaries | ADDR-01, ADDR-02, ADDR-03, ADDR-04 | Complete |
-| 93 | Eviction, Ban, and Misbehavior Policy | EVICT-01, EVICT-02, EVICT-03, EVICT-04 | Pending |
+| 93 | Eviction, Ban, and Misbehavior Policy | EVICT-01, EVICT-02, EVICT-03, EVICT-04 | Complete |
 | 94 | DoS and Resource Governance | DOS-01, DOS-02, DOS-03, DOS-04, DOS-05 | Pending |
 | 95 | Network Participation Evidence and Release Boundary | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05, BOUND-06 | Pending |
 
@@ -108,7 +108,7 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ### Pending Todos
 
-- Plan Phase 93 eviction, ban, and misbehavior policy before execution.
+- Plan Phase 94 DoS and resource governance before execution.
 - Keep v1.9 phase directories numbered 90+ under `.planning/phases/`; historical phase directories remain tracked because verifier scripts still depend on selected phase evidence.
 - Keep repo-local Cargo and Bazel command forms in UAT guidance:
   - `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- ...`
@@ -125,6 +125,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-26T03:59:19.213Z
-Stopped at: Phase 92 context gathered
-Resume file: .planning/phases/92-address-advertisement-and-discovery-boundaries/92-CONTEXT.md
+Last session: 2026-06-26T14:25:05.940Z
+Stopped at: Phase 93 complete; Phase 94 ready for planning
+Resume file: None

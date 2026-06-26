@@ -13,17 +13,18 @@ use open_bitcoin_node::{
     status::{
         BestKnownTipSource, BestKnownTipStatus, ChainTipStatus, ConfigStatus, FieldAvailability,
         InboundAddressDecisionEvent, InboundAddressEvidenceEntry, InboundAdmissionEvent,
-        InboundHandshakeStatusCounts, InboundPeerServingStatus, InboundPermissionDecisionEvent,
-        MempoolStatus, NoProgressDiagnosis, NoProgressThresholdEvidence, NoProgressThresholdState,
-        NodeRuntimeState, NodeStatus, PeerContributionEvidence, PeerContributionKind, PeerCounts,
-        PeerStatus, PeerTipAgreement, PeerTipAgreementStatus, ProgressCreditEvidence,
-        ProgressCreditKind, ProgressWindowEvidence, RejectedProgressActivity,
-        RejectedProgressActivityKind, ResourceBoundEntry, ResourceBoundKind, ResourceBoundSnapshot,
-        ResourceBoundUnit, ServiceLifecycleStatus, ServiceStatus, StallDiagnosisConfidence,
-        StallDiagnosisEvidence, StalledSubsystem, StayCurrentStatus, SyncAttemptCounters,
-        SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal,
-        SyncRecoveryCategory, SyncResourcePressure, SyncStatus, SyncStopReasonStatus,
-        TipFreshnessStatus, WalletStatus, inbound_status_unavailable, usage_against_budget,
+        InboundHandshakeStatusCounts, InboundPeerPolicyEvent, InboundPeerServingStatus,
+        InboundPermissionDecisionEvent, MempoolStatus, NoProgressDiagnosis,
+        NoProgressThresholdEvidence, NoProgressThresholdState, NodeRuntimeState, NodeStatus,
+        PeerContributionEvidence, PeerContributionKind, PeerCounts, PeerStatus, PeerTipAgreement,
+        PeerTipAgreementStatus, ProgressCreditEvidence, ProgressCreditKind, ProgressWindowEvidence,
+        RejectedProgressActivity, RejectedProgressActivityKind, ResourceBoundEntry,
+        ResourceBoundKind, ResourceBoundSnapshot, ResourceBoundUnit, ServiceLifecycleStatus,
+        ServiceStatus, StallDiagnosisConfidence, StallDiagnosisEvidence, StalledSubsystem,
+        StayCurrentStatus, SyncAttemptCounters, SyncConfiguredTargets, SyncLagStatus,
+        SyncLifecycleState, SyncProgress, SyncProgressSignal, SyncRecoveryCategory,
+        SyncResourcePressure, SyncStatus, SyncStopReasonStatus, TipFreshnessStatus, WalletStatus,
+        inbound_status_unavailable, usage_against_budget,
     },
 };
 use serde_json::json;
@@ -109,6 +110,7 @@ fn phase71_support_redaction_names_compact_evidence_bounds() {
             "inbound peer endpoints bounded/redacted",
             "inbound permission labels bounded to machine classes/effects",
             "inbound address boundary evidence bounded/redacted",
+            "inbound peer policy evidence bounded/redacted",
         ]
     );
 }
@@ -1091,6 +1093,34 @@ fn inbound_support_markdown_renders_phase92_address_boundary_evidence() {
 }
 
 #[test]
+fn inbound_support_markdown_renders_phase93_peer_policy_evidence() {
+    // Arrange
+    let temp = TestDirectory::new("inbound-support-peer-policy");
+    let status = phase93_status_with_peer_policy_evidence();
+    let bundle = phase77_support_bundle_with_status(temp.path(), status);
+
+    // Act
+    let markdown = render::render_support_markdown(&bundle);
+
+    // Assert
+    for expected in [
+        "## Inbound Peer Policy Evidence",
+        "Eviction candidates evaluated: 2",
+        "Disconnects requested: 1",
+        "Discouraged peers: 1",
+        "Active bans: 1",
+        "Expired bans: 0",
+        "Manual unbans: 0",
+        "Misbehavior observations: 2",
+        "Protected no-actions: 1",
+        "Latest peer policy decision: outcome=selected reason=low_activity label=eviction_candidate_selected source=source_eviction_policy message=peer policy decision selected: low_activity",
+        "Next action: Treat Phase 93 as bounded eviction, ban, unban, and misbehavior policy evidence only; review labels and counters before changing peer policy.",
+    ] {
+        assert!(markdown.contains(expected), "missing {expected}");
+    }
+}
+
+#[test]
 fn inbound_support_redacts_raw_phase92_address_boundary_material() {
     // Arrange
     let temp = TestDirectory::new("inbound-support-address-redaction");
@@ -1133,6 +1163,43 @@ fn inbound_support_redacts_raw_phase92_address_boundary_material() {
         }
     }
     assert!(markdown.contains("redacted_address_evidence"));
+}
+
+#[test]
+fn inbound_support_redacts_raw_phase93_peer_policy_material() {
+    // Arrange
+    let temp = TestDirectory::new("inbound-support-peer-policy-redaction");
+    let mut status = phase93_status_with_peer_policy_evidence();
+    let FieldAvailability::Available(inbound) = &mut status.peers.inbound else {
+        panic!("inbound status fixture should be available");
+    };
+    inbound.latest_peer_policy_decision = FieldAvailability::available(InboundPeerPolicyEvent {
+        outcome: "peer-93-disconnect".to_string(),
+        reason: "operator-loopback-secret".to_string(),
+        label: "peer_id=93".to_string(),
+        source: "127.0.0.1:18444".to_string(),
+        message: "peer-93 127.0.0.1:18444 raw_permission config=operator".to_string(),
+    });
+    let bundle = phase77_support_bundle_with_status(temp.path(), status);
+
+    // Act
+    let json_text = serde_json::to_string_pretty(&bundle).expect("support json");
+    let markdown = render::render_support_markdown(&bundle);
+
+    // Assert
+    for rendered in [&json_text, &markdown] {
+        assert!(rendered.contains("redacted_peer_policy_label"));
+        for forbidden in [
+            "peer-93",
+            "peer_id=93",
+            "127.0.0.1:",
+            "operator-loopback-secret",
+            "raw_permission",
+            "config=operator",
+        ] {
+            assert_absent(rendered, forbidden);
+        }
+    }
 }
 
 #[test]
@@ -1561,6 +1628,17 @@ fn phase90_status_with_available_inbound() -> OpenBitcoinStatusSnapshot {
         latest_address_decision: FieldAvailability::unavailable(
             "inbound address boundary evidence unavailable",
         ),
+        eviction_candidates_evaluated: 0,
+        disconnects_requested: 0,
+        discouraged_peers: 0,
+        active_bans: 0,
+        expired_bans: 0,
+        manual_unbans: 0,
+        misbehavior_observations: 0,
+        protected_no_actions: 0,
+        latest_peer_policy_decision: FieldAvailability::unavailable(
+            "inbound peer policy evidence unavailable",
+        ),
     });
     status
 }
@@ -1635,6 +1713,29 @@ fn phase92_status_with_address_boundary_evidence() -> OpenBitcoinStatusSnapshot 
         label: "getaddr_suppressed".to_string(),
         source: "source_inbound_addr".to_string(),
         message: "bounded getaddr already served".to_string(),
+    });
+    status
+}
+
+fn phase93_status_with_peer_policy_evidence() -> OpenBitcoinStatusSnapshot {
+    let mut status = phase92_status_with_address_boundary_evidence();
+    let FieldAvailability::Available(inbound) = &mut status.peers.inbound else {
+        panic!("inbound status fixture should be available");
+    };
+    inbound.eviction_candidates_evaluated = 2;
+    inbound.disconnects_requested = 1;
+    inbound.discouraged_peers = 1;
+    inbound.active_bans = 1;
+    inbound.expired_bans = 0;
+    inbound.manual_unbans = 0;
+    inbound.misbehavior_observations = 2;
+    inbound.protected_no_actions = 1;
+    inbound.latest_peer_policy_decision = FieldAvailability::available(InboundPeerPolicyEvent {
+        outcome: "selected".to_string(),
+        reason: "low_activity".to_string(),
+        label: "eviction_candidate_selected".to_string(),
+        source: "source_eviction_policy".to_string(),
+        message: "peer eviction decision eviction_candidate_selected: low_activity".to_string(),
     });
     status
 }

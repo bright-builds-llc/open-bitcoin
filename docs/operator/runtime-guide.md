@@ -447,6 +447,101 @@ Expected review evidence is bounded and label-driven:
   fanout, addr gossip, rebroadcast scheduling, `addrv2` relay, DNS seed
   discovery, UPnP/NAT-PMP discovery, and public-network readiness.
 
+## Phase 93 Eviction, Ban, and Misbehavior Policy Review
+
+Phase 93 adds bounded peer-policy evidence to the same explicit loopback
+listener review path. It covers deterministic eviction candidate selection,
+protected peer suppression, scoped ban/unban policy labels, and misbehavior
+response labels. It does not add production banlist parity, broad DoS/resource
+governance, transaction relay abuse handling, public inbound by default, or
+production full-node readiness.
+
+Daemon CLI forms:
+
+```bash
+mkdir -p /tmp/open-bitcoin-peer-policy
+
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --bin open-bitcoind -- \
+  -regtest \
+  -datadir=/tmp/open-bitcoin-peer-policy \
+  -openbitcoininbound=1 \
+  -openbitcoinlisten=127.0.0.1:18444 \
+  -openbitcoinreservedslots=1 \
+  -openbitcoininboundpermissionclass=operator_loopback@127.0.0.1=in,noban,forceinbound,download,addr \
+  -server=1
+
+bazel run //packages/open-bitcoin-rpc:open_bitcoind -- \
+  -regtest \
+  -datadir=/tmp/open-bitcoin-peer-policy \
+  -openbitcoininbound=1 \
+  -openbitcoinlisten=127.0.0.1:18444 \
+  -openbitcoinreservedslots=1 \
+  -openbitcoininboundpermissionclass=operator_loopback@127.0.0.1=in,noban,forceinbound,download,addr \
+  -server=1
+```
+
+Inspect Open Bitcoin-owned peer-policy evidence:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin-cli -- \
+  -regtest \
+  -rpcconnect=127.0.0.1 \
+  -rpcport=18443 \
+  openbitcoinnetworkstatus
+
+bazel run //packages/open-bitcoin-cli:open_bitcoin_cli -- \
+  -regtest \
+  -rpcconnect=127.0.0.1 \
+  -rpcport=18443 \
+  openbitcoinnetworkstatus
+```
+
+Inspect shared operator status:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --network regtest \
+  --datadir=/tmp/open-bitcoin-peer-policy \
+  status --format json
+
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- \
+  --network regtest \
+  --datadir=/tmp/open-bitcoin-peer-policy \
+  status --format json
+```
+
+Collect a redacted peer-policy support bundle:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --network regtest \
+  --datadir=/tmp/open-bitcoin-peer-policy \
+  support bundle --output-dir=/tmp/open-bitcoin-peer-policy-support
+
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- \
+  --network regtest \
+  --datadir=/tmp/open-bitcoin-peer-policy \
+  support bundle --output-dir=/tmp/open-bitcoin-peer-policy-support
+```
+
+Expected review evidence is bounded and label-driven:
+
+- `eviction_candidates_evaluated` counts inbound peers considered by the
+  deterministic eviction policy.
+- `disconnects_requested`, `discouraged_peers`, `active_bans`,
+  `expired_bans`, and `manual_unbans` are aggregate policy counters, not raw
+  banlist or peer identity dumps.
+- `misbehavior_observations` and `protected_no_actions` explain whether
+  malformed, duplicate-version, invalid-address, unsupported-command, or
+  header-violation evidence led to observe, disconnect, discourage, ban, or
+  protected no-action labels.
+- `latest_peer_policy_decision` records the latest bounded event with stable
+  labels such as `eviction_candidate_selected`, `eviction_suppressed`,
+  `misbehavior_policy_decision`, `source_eviction_policy`, and
+  `source_misbehavior_policy`.
+- Support bundles render peer-policy evidence with bounded labels and counts
+  and redact raw peer ids, endpoints, raw permission strings, and credentials.
+
 ## Mainnet Sync Activation
 
 Mainnet sync activation is disabled by default. It can be enabled only for the

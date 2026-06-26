@@ -34,7 +34,7 @@ pub use mempool::ManagedMempool;
 pub use metrics::{MetricKind, MetricRetentionPolicy, MetricSample, MetricsStatus};
 pub use network::{
     ManagedAddressBoundaryInfo, ManagedInboundAdmissionInfo, ManagedInboundPermissionDecisionInfo,
-    ManagedNetworkError, ManagedNetworkInfo, ManagedPeerNetwork,
+    ManagedNetworkError, ManagedNetworkInfo, ManagedPeerNetwork, ManagedPeerPolicyInfo,
 };
 pub use open_bitcoin_core as core;
 pub use recovery::{
@@ -44,9 +44,10 @@ pub use recovery::{
 };
 pub use status::{
     BuildProvenance, ConfigStatus, DurableSyncState, FieldAvailability,
-    INBOUND_ADDRESS_DECISION_UNAVAILABLE_REASON, INBOUND_PERMISSION_DECISION_UNAVAILABLE_REASON,
-    INBOUND_STATUS_UNAVAILABLE_REASON, InboundAddressDecisionEvent, InboundAddressEvidenceEntry,
-    InboundAdmissionEvent, InboundHandshakeStatusCounts, InboundPeerServingStatus,
+    INBOUND_ADDRESS_DECISION_UNAVAILABLE_REASON, INBOUND_PEER_POLICY_DECISION_UNAVAILABLE_REASON,
+    INBOUND_PERMISSION_DECISION_UNAVAILABLE_REASON, INBOUND_STATUS_UNAVAILABLE_REASON,
+    InboundAddressDecisionEvent, InboundAddressEvidenceEntry, InboundAdmissionEvent,
+    InboundHandshakeStatusCounts, InboundPeerPolicyEvent, InboundPeerServingStatus,
     InboundPermissionDecisionEvent, InboundPermissionEvidence, NoProgressThresholdEvidence,
     NoProgressThresholdState, NodeRuntimeState, OpenBitcoinStatusSnapshot,
     PeerContributionEvidence, PeerContributionKind, PeerStatus, PeerTelemetry,

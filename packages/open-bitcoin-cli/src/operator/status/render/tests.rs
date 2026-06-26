@@ -6,11 +6,12 @@ use open_bitcoin_node::{
     status::{
         BestKnownTipSource, BestKnownTipStatus, ConfigStatus, FieldAvailability,
         InboundAddressDecisionEvent, InboundAddressEvidenceEntry, InboundAdmissionEvent,
-        InboundHandshakeStatusCounts, InboundPeerServingStatus, InboundPermissionDecisionEvent,
-        MempoolStatus, NoProgressDiagnosis, NoProgressThresholdEvidence, NoProgressThresholdState,
-        NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot, PeerContributionEvidence,
-        PeerContributionKind, PeerCounts, PeerStatus, PeerTelemetry, PeerTipAgreement,
-        PeerTipAgreementStatus, ProgressCreditEvidence, ProgressCreditKind, ProgressWindowEvidence,
+        InboundHandshakeStatusCounts, InboundPeerPolicyEvent, InboundPeerServingStatus,
+        InboundPermissionDecisionEvent, MempoolStatus, NoProgressDiagnosis,
+        NoProgressThresholdEvidence, NoProgressThresholdState, NodeRuntimeState, NodeStatus,
+        OpenBitcoinStatusSnapshot, PeerContributionEvidence, PeerContributionKind, PeerCounts,
+        PeerStatus, PeerTelemetry, PeerTipAgreement, PeerTipAgreementStatus,
+        ProgressCreditEvidence, ProgressCreditKind, ProgressWindowEvidence,
         RejectedProgressActivity, RejectedProgressActivityKind, ServiceLifecycleStatus,
         ServicePriorShutdownStatus, ServiceRestartResumeStatus, ServiceResumeProgressStatus,
         ServiceStaleInflightStatus, ServiceStatus, StallDiagnosisConfidence,
@@ -125,6 +126,30 @@ fn inbound_status_render_includes_phase92_address_boundary_evidence() {
         "learned address entries: 5",
         "learned address rejections: 1",
         "latest address decision=outcome=suppressed reason=already_served label=getaddr_suppressed source=source_inbound_addr message=bounded getaddr request already served",
+    ] {
+        assert!(rendered.contains(expected), "missing {expected}");
+    }
+}
+
+#[test]
+fn inbound_status_render_includes_phase93_peer_policy_evidence() {
+    // Arrange
+    let snapshot = shared_sync_truth_snapshot();
+
+    // Act
+    let rendered = render_status(&snapshot, StatusRenderMode::Human).expect("human status");
+
+    // Assert
+    for expected in [
+        "peer policy evidence: eviction_candidates_evaluated=2",
+        "disconnects_requested=1",
+        "discouraged_peers=1",
+        "active_bans=1",
+        "expired_bans=0",
+        "manual_unbans=0",
+        "misbehavior_observations=2",
+        "protected_no_actions=1",
+        "latest peer policy decision=outcome=selected reason=low_activity label=eviction_candidate_selected source=source_eviction_policy message=peer eviction decision eviction_candidate_selected: low_activity",
     ] {
         assert!(rendered.contains(expected), "missing {expected}");
     }
@@ -755,6 +780,21 @@ fn inbound_peer_serving_status() -> InboundPeerServingStatus {
             label: "getaddr_suppressed".to_string(),
             source: "source_inbound_addr".to_string(),
             message: "bounded getaddr request already served".to_string(),
+        }),
+        eviction_candidates_evaluated: 2,
+        disconnects_requested: 1,
+        discouraged_peers: 1,
+        active_bans: 1,
+        expired_bans: 0,
+        manual_unbans: 0,
+        misbehavior_observations: 2,
+        protected_no_actions: 1,
+        latest_peer_policy_decision: FieldAvailability::available(InboundPeerPolicyEvent {
+            outcome: "selected".to_string(),
+            reason: "low_activity".to_string(),
+            label: "eviction_candidate_selected".to_string(),
+            source: "source_eviction_policy".to_string(),
+            message: "peer eviction decision eviction_candidate_selected: low_activity".to_string(),
         }),
     }
 }

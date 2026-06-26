@@ -5,11 +5,13 @@
 
 use open_bitcoin_node::status::{
     FieldAvailability, InboundAddressDecisionEvent, InboundAddressEvidenceEntry,
-    InboundAdmissionEvent, InboundPeerServingStatus, InboundPermissionDecisionEvent,
+    InboundAdmissionEvent, InboundPeerPolicyEvent, InboundPeerServingStatus,
+    InboundPermissionDecisionEvent,
 };
 
 const INACTIVE_RELAY_PERMISSION_NEXT_ACTION: &str = "Relay, mempool, bloom, and blockfilter permissions are recorded as inactive Phase 91 evidence; do not treat them as relay support.";
 const PHASE92_ADDRESS_BOUNDARY_NEXT_ACTION: &str = "Treat Phase 92 as bounded local advertisement and direct getaddr evidence only; peer discovery, unsolicited address relay, DNS seed discovery, UPnP/NAT-PMP discovery, and public-network readiness remain outside this surface.";
+const PHASE93_PEER_POLICY_NEXT_ACTION: &str = "Treat Phase 93 as bounded eviction, ban, unban, and misbehavior policy evidence only; review labels and counters before changing peer policy.";
 
 pub(super) fn push_inbound_serving(
     output: &mut String,
@@ -95,6 +97,7 @@ fn push_available_inbound(output: &mut String, evidence: &InboundPeerServingStat
     push_latest_admission_event(output, &evidence.latest_admission_event);
     output.push_str(&format!("- Next action: {}\n", next_action(evidence)));
     push_inbound_address_boundary(output, evidence);
+    push_inbound_peer_policy(output, evidence);
 }
 
 fn push_latest_admission_event(
@@ -216,6 +219,54 @@ fn latest_address_decision_text(event: &FieldAvailability<InboundAddressDecision
         FieldAvailability::Available(event) => address_decision_text(event),
         FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
     }
+}
+
+fn push_inbound_peer_policy(output: &mut String, evidence: &InboundPeerServingStatus) {
+    output.push_str("\n## Inbound Peer Policy Evidence\n\n");
+    output.push_str(&format!(
+        "- Eviction candidates evaluated: {}\n",
+        evidence.eviction_candidates_evaluated
+    ));
+    output.push_str(&format!(
+        "- Disconnects requested: {}\n",
+        evidence.disconnects_requested
+    ));
+    output.push_str(&format!(
+        "- Discouraged peers: {}\n",
+        evidence.discouraged_peers
+    ));
+    output.push_str(&format!("- Active bans: {}\n", evidence.active_bans));
+    output.push_str(&format!("- Expired bans: {}\n", evidence.expired_bans));
+    output.push_str(&format!("- Manual unbans: {}\n", evidence.manual_unbans));
+    output.push_str(&format!(
+        "- Misbehavior observations: {}\n",
+        evidence.misbehavior_observations
+    ));
+    output.push_str(&format!(
+        "- Protected no-actions: {}\n",
+        evidence.protected_no_actions
+    ));
+    output.push_str(&format!(
+        "- Latest peer policy decision: {}\n",
+        latest_peer_policy_decision_text(&evidence.latest_peer_policy_decision)
+    ));
+    output.push_str(&format!(
+        "- Next action: {PHASE93_PEER_POLICY_NEXT_ACTION}\n"
+    ));
+}
+
+fn latest_peer_policy_decision_text(event: &FieldAvailability<InboundPeerPolicyEvent>) -> String {
+    match event {
+        FieldAvailability::Available(event) => peer_policy_decision_text(event),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
+fn peer_policy_decision_text(event: &InboundPeerPolicyEvent) -> String {
+    format!(
+        "outcome={} reason={} label={} source={} message={}",
+        event.outcome, event.reason, event.label, event.source, event.message
+    )
 }
 
 fn next_action(evidence: &InboundPeerServingStatus) -> &'static str {

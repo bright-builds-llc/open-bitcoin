@@ -7,12 +7,15 @@
 // - packages/bitcoin-knots/test/functional/p2p_handshake.py
 // - packages/bitcoin-knots/test/functional/p2p_initial_headers_sync.py
 
-use open_bitcoin_primitives::{BlockHash, Hash32, InventoryType, InventoryVector, Txid, Wtxid};
+use open_bitcoin_consensus::{block_hash, transaction_txid, transaction_wtxid};
+use open_bitcoin_primitives::{
+    Block, BlockHash, Hash32, InventoryType, InventoryVector, Transaction, Txid, Wtxid,
+};
 
 use crate::error::{NetworkError, PeerId};
 use crate::message::{InventoryList, WireNetworkMessage};
 
-use super::{PeerManager, PeerState};
+use super::{PeerAction, PeerManager, PeerState};
 
 impl PeerManager {
     pub fn request_missing_blocks(
@@ -55,6 +58,36 @@ impl PeerManager {
         Ok(Some(WireNetworkMessage::GetData(InventoryList::new(
             inventory,
         ))))
+    }
+
+    pub(super) fn handle_transaction(
+        &mut self,
+        peer_id: PeerId,
+        transaction: Transaction,
+    ) -> Result<Vec<PeerAction>, NetworkError> {
+        let txid = transaction_txid(&transaction)?;
+        let wtxid = transaction_wtxid(&transaction)?;
+        self.known_txids.insert(txid);
+        self.known_wtxids.insert(wtxid);
+
+        let peer = Self::peer_mut(&mut self.peers, peer_id)?;
+        forget_requested_inventory(peer, InventoryType::Transaction, txid.into());
+        forget_requested_inventory(peer, InventoryType::WitnessTransaction, wtxid.into());
+
+        Ok(vec![PeerAction::ReceivedTransaction(transaction)])
+    }
+
+    pub(super) fn handle_block(
+        &mut self,
+        peer_id: PeerId,
+        block: Block,
+    ) -> Result<Vec<PeerAction>, NetworkError> {
+        let hash = block_hash(&block.header);
+
+        let peer = Self::peer_mut(&mut self.peers, peer_id)?;
+        forget_requested_inventory(peer, InventoryType::Block, hash.into());
+
+        Ok(vec![PeerAction::ReceivedBlock(block)])
     }
 }
 

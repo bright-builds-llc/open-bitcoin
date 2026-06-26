@@ -5,7 +5,8 @@
 
 use open_bitcoin_node::status::{
     FieldAvailability, InboundAddressDecisionEvent, InboundAddressEvidenceEntry,
-    InboundAdmissionEvent, InboundPeerServingStatus, InboundPermissionDecisionEvent,
+    InboundAdmissionEvent, InboundPeerPolicyEvent, InboundPeerServingStatus,
+    InboundPermissionDecisionEvent,
 };
 
 pub(super) fn inbound_status_text(status: &FieldAvailability<InboundPeerServingStatus>) -> String {
@@ -17,7 +18,7 @@ pub(super) fn inbound_status_text(status: &FieldAvailability<InboundPeerServingS
 
 fn available_inbound_status_text(status: &InboundPeerServingStatus) -> String {
     format!(
-        "listener_state={} bound_endpoints={} preflight_reason={} admitted_inbound_peers={} rejected_inbound_peers={} handshake={} duplicate_rejects={} self_connection_rejects={} cap_rejects={} reserved_slot_rejects={} permission_class={} permissioned_inbound_peers={} protected_inbound_peers={} active_permission_effects={} inactive_permission_effects={} latest_permission_decision={} latest_admission_event={} {}",
+        "listener_state={} bound_endpoints={} preflight_reason={} admitted_inbound_peers={} rejected_inbound_peers={} handshake={} duplicate_rejects={} self_connection_rejects={} cap_rejects={} reserved_slot_rejects={} permission_class={} permissioned_inbound_peers={} protected_inbound_peers={} active_permission_effects={} inactive_permission_effects={} latest_permission_decision={} latest_admission_event={} {} {}",
         status.listener_state,
         bound_endpoints_text(&status.bound_endpoints),
         status.preflight_reason,
@@ -36,6 +37,7 @@ fn available_inbound_status_text(status: &InboundPeerServingStatus) -> String {
         latest_permission_decision_text(&status.latest_permission_decision),
         latest_event_text(&status.latest_admission_event),
         address_boundary_text(status),
+        peer_policy_text(status),
     )
 }
 
@@ -156,4 +158,33 @@ fn latest_address_decision_text(event: &FieldAvailability<InboundAddressDecision
         FieldAvailability::Available(event) => address_decision_text(event),
         FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
     }
+}
+
+fn peer_policy_text(status: &InboundPeerServingStatus) -> String {
+    format!(
+        "peer policy evidence: eviction_candidates_evaluated={} disconnects_requested={} discouraged_peers={} active_bans={} expired_bans={} manual_unbans={} misbehavior_observations={} protected_no_actions={} latest peer policy decision={}",
+        status.eviction_candidates_evaluated,
+        status.disconnects_requested,
+        status.discouraged_peers,
+        status.active_bans,
+        status.expired_bans,
+        status.manual_unbans,
+        status.misbehavior_observations,
+        status.protected_no_actions,
+        latest_peer_policy_decision_text(&status.latest_peer_policy_decision),
+    )
+}
+
+fn latest_peer_policy_decision_text(event: &FieldAvailability<InboundPeerPolicyEvent>) -> String {
+    match event {
+        FieldAvailability::Available(event) => peer_policy_decision_text(event),
+        FieldAvailability::Unavailable { reason } => format!("Unavailable: {reason}"),
+    }
+}
+
+fn peer_policy_decision_text(event: &InboundPeerPolicyEvent) -> String {
+    format!(
+        "outcome={} reason={} label={} source={} message={}",
+        event.outcome, event.reason, event.label, event.source, event.message
+    )
 }

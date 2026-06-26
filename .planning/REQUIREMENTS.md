@@ -31,10 +31,10 @@ Requirements for the active v1.9 milestone. Each maps to exactly one roadmap pha
 
 ### Eviction And Ban Policy
 
-- [ ] **EVICT-01**: The node scores inbound peers for eviction using deterministic, Knots-anchored criteria such as connection class, handshake progress, netgroup or diversity, activity, and permissions.
-- [ ] **EVICT-02**: The node can disconnect or evict peers when admission caps or abuse policy require it, preserving stable reason codes and support evidence.
-- [ ] **EVICT-03**: The node can discourage or ban peers through durable policy with expiry, address/subnet scope, manual unban, and no hidden broad-ban behavior.
-- [ ] **EVICT-04**: Misbehavior accounting maps protocol violations to bounded responses without incorrectly banning or evicting permissioned peers.
+- [x] **EVICT-01**: The node scores inbound peers for eviction using deterministic, Knots-anchored criteria such as connection class, handshake progress, netgroup or diversity, activity, and permissions.
+- [x] **EVICT-02**: The node can disconnect or evict peers when admission caps or abuse policy require it, preserving stable reason codes and support evidence.
+- [x] **EVICT-03**: The node can discourage or ban peers through durable policy with expiry, address/subnet scope, manual unban, and no hidden broad-ban behavior.
+- [x] **EVICT-04**: Misbehavior accounting maps protocol violations to bounded responses without incorrectly banning or evicting permissioned peers.
 
 ### DoS And Resource Governance
 
@@ -103,10 +103,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ADDR-02 | Phase 92 | Complete |
 | ADDR-03 | Phase 92 | Complete |
 | ADDR-04 | Phase 92 | Complete |
-| EVICT-01 | Phase 93 | Pending |
-| EVICT-02 | Phase 93 | Pending |
-| EVICT-03 | Phase 93 | Pending |
-| EVICT-04 | Phase 93 | Pending |
+| EVICT-01 | Phase 93 | Complete |
+| EVICT-02 | Phase 93 | Complete |
+| EVICT-03 | Phase 93 | Complete |
+| EVICT-04 | Phase 93 | Complete |
 | DOS-01 | Phase 94 | Pending |
 | DOS-02 | Phase 94 | Pending |
 | DOS-03 | Phase 94 | Pending |

@@ -651,6 +651,16 @@ fn open_bitcoin_network_status_returns_available_inbound_evidence() {
         inbound["value"]["latest_permission_decision"]["state"],
         json!("unavailable")
     );
+    assert_eq!(inbound["value"]["eviction_candidates_evaluated"], json!(1));
+    assert_eq!(inbound["value"]["disconnects_requested"], json!(1));
+    assert_eq!(
+        inbound["value"]["latest_peer_policy_decision"]["state"],
+        json!("available")
+    );
+    assert_eq!(
+        inbound["value"]["latest_peer_policy_decision"]["value"]["label"],
+        json!("eviction_candidate_selected")
+    );
 }
 
 #[test]
@@ -1124,6 +1134,15 @@ fn open_bitcoin_network_status_get_network_info_omits_open_bitcoin_inbound_statu
         "learned_address_entries",
         "learned_address_rejections",
         "latest_address_decision",
+        "eviction_candidates_evaluated",
+        "disconnects_requested",
+        "discouraged_peers",
+        "active_bans",
+        "expired_bans",
+        "manual_unbans",
+        "misbehavior_observations",
+        "protected_no_actions",
+        "latest_peer_policy_decision",
     ] {
         assert!(
             !serialized.contains(forbidden),

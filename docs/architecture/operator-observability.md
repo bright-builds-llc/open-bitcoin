@@ -253,6 +253,34 @@ material. These observability fields do not claim peer discovery support, full
 address relay support, public inbound by default, unsolicited addr gossip, DNS
 seed discovery, UPnP/NAT-PMP discovery, or production full-node readiness.
 
+## Phase 93 eviction, ban, and misbehavior policy evidence
+
+Peer-policy observability is sourced from the shared inbound status fields on
+`OpenBitcoinStatusSnapshot.peers.inbound`, `openbitcoinnetworkstatus`,
+operator status output, and redacted support bundles. The stable field and
+label vocabulary is `eviction_candidates_evaluated`, `disconnects_requested`,
+`discouraged_peers`, `active_bans`, `expired_bans`, `manual_unbans`,
+`misbehavior_observations`, `protected_no_actions`,
+`latest_peer_policy_decision`, `eviction_candidate_selected`,
+`eviction_suppressed`, `misbehavior_policy_decision`,
+`source_eviction_policy`, and `source_misbehavior_policy`.
+
+Eviction evidence means inbound peers were scored by the deterministic
+peer-policy core and either selected as bounded disconnect candidates or
+suppressed because no unprotected candidate was eligible. Misbehavior evidence
+means typed observations were mapped to observe, disconnect, discourage, ban,
+or protected no-action labels. Ban and unban evidence is scoped to aggregate
+counter and latest-event labels rather than raw banlist entries.
+
+Metrics remain aggregate and low-cardinality; Phase 93 does not add dynamic
+peer ids, raw endpoints, raw ban scopes, raw permission class names, or raw
+config strings as metric or log dimensions. Support bundles must preserve safe
+machine labels and counts while redacting raw peer-policy material. These
+observability fields do not claim production banlist parity, public ban
+enforcement, Knots discourage parity, broad DoS/resource governance,
+transaction relay abuse handling, public inbound by default, or production
+full-node readiness.
+
 ## Phase Boundaries
 
 Phase 13 defines serializable contracts only. It must not install a tracing subscriber, create a file appender, write metric samples, prune log files, or render dashboard graphs. Runtime writers and readers are Phase 16 responsibilities.

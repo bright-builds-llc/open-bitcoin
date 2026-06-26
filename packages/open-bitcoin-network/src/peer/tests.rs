@@ -248,6 +248,53 @@ fn simple_inbound_helper_creates_compatible_inbound_record() {
 }
 
 #[test]
+fn eviction_decision_selects_unprotected_inbound_candidate() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_inbound_peer(34).expect("ordinary peer");
+    manager
+        .add_inbound_peer_record(permissioned_inbound_record(
+            35,
+            protected_permission_decision(),
+        ))
+        .expect("protected peer");
+
+    // Act
+    let decision = manager.eviction_decision();
+
+    // Assert
+    let crate::EvictionDecision::Select(candidate) = decision else {
+        panic!("expected eviction candidate");
+    };
+    assert_eq!(candidate.peer_label, "peer-34");
+    assert_eq!(candidate.reason.as_str(), "handshake_stalled");
+}
+
+#[test]
+fn misbehavior_decision_respects_protected_inbound_peer() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager
+        .add_inbound_peer_record(permissioned_inbound_record(
+            36,
+            protected_permission_decision(),
+        ))
+        .expect("protected peer");
+
+    // Act
+    let decision = manager
+        .misbehavior_decision(36, crate::MisbehaviorKind::MalformedMessage, 500, 100)
+        .expect("misbehavior decision");
+
+    // Assert
+    assert_eq!(
+        decision.response,
+        crate::MisbehaviorResponse::ProtectedNoAction,
+    );
+    assert_eq!(decision.response.as_str(), "protected_no_action");
+}
+
+#[test]
 fn inbound_self_connection_version_rejects_without_establishing_peer() {
     // Arrange
     let mut manager = PeerManager::new(local_config());

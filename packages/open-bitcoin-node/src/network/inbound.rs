@@ -5,16 +5,18 @@
 // - packages/bitcoin-knots/src/protocol.h
 
 use open_bitcoin_network::{
-    AddressDecisionLabel, InactivePermissionEffectLabel, InboundAdmissionDecision,
-    InboundAdmissionPolicy, InboundAdmissionRejection, InboundAdmissionRejectionReason,
-    InboundAdmissionRequest, InboundAdmissionSlotClass, InboundHandshakeState, InboundPeerRecord,
-    InboundPermissionDecision, LocalAdvertisementDecision, PeerAddressBoundaryDecision,
-    PeerAddressBoundaryEvidence, PeerConnectionClass, PeerId, PeerState, PermissionEffectLabel,
+    AddressDecisionLabel, BanDecision, EvictionDecision, InactivePermissionEffectLabel,
+    InboundAdmissionDecision, InboundAdmissionPolicy, InboundAdmissionRejection,
+    InboundAdmissionRejectionReason, InboundAdmissionRequest, InboundAdmissionSlotClass,
+    InboundHandshakeState, InboundPeerRecord, InboundPermissionDecision,
+    LocalAdvertisementDecision, MisbehaviorDecision, MisbehaviorResponse,
+    PeerAddressBoundaryDecision, PeerAddressBoundaryEvidence, PeerConnectionClass, PeerId,
+    PeerState, PermissionEffectLabel, UnbanDecision,
 };
 
 use crate::{
     ChainstateStore,
-    status::{InboundAddressDecisionEvent, InboundAddressEvidenceEntry},
+    status::{InboundAddressDecisionEvent, InboundAddressEvidenceEntry, InboundPeerPolicyEvent},
 };
 
 use super::{ManagedNetworkError, ManagedPeerNetwork};
@@ -56,6 +58,188 @@ impl ManagedAddressBoundaryInfo {
             && self.learned_address_entries == 0
             && self.learned_address_rejections == 0
             && self.maybe_latest_address_decision.is_none()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ManagedPeerPolicyInfo {
+    pub eviction_candidates_evaluated: u32,
+    pub disconnects_requested: u32,
+    pub discouraged_peers: u32,
+    pub active_bans: u32,
+    pub expired_bans: u32,
+    pub manual_unbans: u32,
+    pub misbehavior_observations: u32,
+    pub protected_no_actions: u32,
+    pub maybe_latest_peer_policy_decision: Option<InboundPeerPolicyEvent>,
+}
+
+impl ManagedPeerPolicyInfo {
+    pub fn is_empty(&self) -> bool {
+        self.eviction_candidates_evaluated == 0
+            && self.disconnects_requested == 0
+            && self.discouraged_peers == 0
+            && self.active_bans == 0
+            && self.expired_bans == 0
+            && self.manual_unbans == 0
+            && self.misbehavior_observations == 0
+            && self.protected_no_actions == 0
+            && self.maybe_latest_peer_policy_decision.is_none()
+    }
+
+    pub fn from_policy_decisions(
+        eviction_candidate_count: usize,
+        maybe_eviction: Option<EvictionDecision>,
+        misbehavior_decisions: &[MisbehaviorDecision],
+        ban_decisions: &[BanDecision],
+        unban_decisions: &[UnbanDecision],
+    ) -> Self {
+        let mut info = Self {
+            eviction_candidates_evaluated: usize_to_u32(eviction_candidate_count),
+            misbehavior_observations: usize_to_u32(misbehavior_decisions.len()),
+            ..Self::default()
+        };
+
+        if let Some(eviction) = maybe_eviction.filter(|_| eviction_candidate_count > 0) {
+            info.record_eviction_decision(&eviction);
+        }
+        for decision in misbehavior_decisions {
+            info.record_misbehavior_decision(decision);
+        }
+        for decision in ban_decisions {
+            info.record_ban_decision(decision);
+        }
+        for decision in unban_decisions {
+            info.record_unban_decision(decision);
+        }
+
+        info
+    }
+
+    fn record_eviction_decision(&mut self, decision: &EvictionDecision) {
+        match decision {
+            EvictionDecision::Select(candidate) => {
+                self.disconnects_requested = self.disconnects_requested.saturating_add(1);
+                self.maybe_latest_peer_policy_decision = Some(InboundPeerPolicyEvent {
+                    outcome: "selected".to_string(),
+                    reason: candidate.reason.as_str().to_string(),
+                    label: decision.outcome_label().to_string(),
+                    source: "source_eviction_policy".to_string(),
+                    message: format!(
+                        "peer eviction decision {}: {}",
+                        decision.outcome_label(),
+                        candidate.reason.as_str()
+                    ),
+                });
+            }
+            EvictionDecision::Suppress {
+                reason,
+                protected_peer_count,
+            } => {
+                self.protected_no_actions = self
+                    .protected_no_actions
+                    .saturating_add(usize_to_u32(*protected_peer_count));
+                self.maybe_latest_peer_policy_decision = Some(InboundPeerPolicyEvent {
+                    outcome: "suppressed".to_string(),
+                    reason: reason.as_str().to_string(),
+                    label: decision.outcome_label().to_string(),
+                    source: "source_eviction_policy".to_string(),
+                    message: format!(
+                        "peer eviction decision {}: {}",
+                        decision.outcome_label(),
+                        reason.as_str()
+                    ),
+                });
+            }
+        }
+    }
+
+    fn record_misbehavior_decision(&mut self, decision: &MisbehaviorDecision) {
+        match decision.response {
+            MisbehaviorResponse::ObserveOnly => {}
+            MisbehaviorResponse::Disconnect => {
+                self.disconnects_requested = self.disconnects_requested.saturating_add(1);
+            }
+            MisbehaviorResponse::Discourage => {
+                self.discouraged_peers = self.discouraged_peers.saturating_add(1);
+            }
+            MisbehaviorResponse::Ban => {
+                self.active_bans = self.active_bans.saturating_add(1);
+            }
+            MisbehaviorResponse::ProtectedNoAction => {
+                self.protected_no_actions = self.protected_no_actions.saturating_add(1);
+            }
+        }
+        self.maybe_latest_peer_policy_decision = Some(InboundPeerPolicyEvent {
+            outcome: decision.response.as_str().to_string(),
+            reason: decision.kind.as_str().to_string(),
+            label: "misbehavior_policy_decision".to_string(),
+            source: "source_misbehavior_policy".to_string(),
+            message: format!(
+                "misbehavior policy decision {}: {}",
+                decision.response.as_str(),
+                decision.kind.as_str()
+            ),
+        });
+    }
+
+    fn record_ban_decision(&mut self, decision: &BanDecision) {
+        let (reason, source) = match decision {
+            BanDecision::Active(entry) => {
+                self.active_bans = self.active_bans.saturating_add(1);
+                (entry.reason.as_str(), peer_policy_source(entry.source))
+            }
+            BanDecision::Expired(entry) => {
+                self.expired_bans = self.expired_bans.saturating_add(1);
+                (entry.reason.as_str(), peer_policy_source(entry.source))
+            }
+        };
+        self.maybe_latest_peer_policy_decision = Some(InboundPeerPolicyEvent {
+            outcome: decision.outcome_label().to_string(),
+            reason: reason.to_string(),
+            label: decision.outcome_label().to_string(),
+            source: source.to_string(),
+            message: format!("ban policy decision {}: {reason}", decision.outcome_label()),
+        });
+    }
+
+    fn record_unban_decision(&mut self, decision: &UnbanDecision) {
+        match decision {
+            UnbanDecision::Unbanned(_) => {
+                self.manual_unbans = self.manual_unbans.saturating_add(1);
+            }
+            UnbanDecision::NotFound(_) => {}
+            UnbanDecision::AlreadyExpired(_) => {
+                self.expired_bans = self.expired_bans.saturating_add(1);
+            }
+        }
+        self.maybe_latest_peer_policy_decision = Some(InboundPeerPolicyEvent {
+            outcome: decision.outcome_label().to_string(),
+            reason: unban_decision_reason(decision).to_string(),
+            label: decision.outcome_label().to_string(),
+            source: "source_unban_policy".to_string(),
+            message: format!(
+                "unban policy decision {}: {}",
+                decision.outcome_label(),
+                unban_decision_reason(decision)
+            ),
+        });
+    }
+}
+
+fn peer_policy_source(source: &str) -> &'static str {
+    match source {
+        "misbehavior_policy" => "source_misbehavior_policy",
+        "manual" | "manual_ban" => "source_manual_ban",
+        _ => "source_ban_policy",
+    }
+}
+
+fn unban_decision_reason(decision: &UnbanDecision) -> &'static str {
+    match decision {
+        UnbanDecision::Unbanned(_) => "manual_unban",
+        UnbanDecision::NotFound(_) => "unban_not_found",
+        UnbanDecision::AlreadyExpired(_) => "ban_already_expired",
     }
 }
 

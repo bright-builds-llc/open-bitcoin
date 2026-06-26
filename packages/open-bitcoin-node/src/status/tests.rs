@@ -1342,6 +1342,17 @@ fn inbound_status_snapshot_serializes_address_boundary_evidence_under_peers_inbo
             source: "source_inbound_addr".to_string(),
             message: "learned address accepted".to_string(),
         }),
+        eviction_candidates_evaluated: 0,
+        disconnects_requested: 0,
+        discouraged_peers: 0,
+        active_bans: 0,
+        expired_bans: 0,
+        manual_unbans: 0,
+        misbehavior_observations: 0,
+        protected_no_actions: 0,
+        latest_peer_policy_decision: FieldAvailability::unavailable(
+            "inbound peer policy evidence unavailable",
+        ),
     });
 
     // Act

@@ -30,7 +30,7 @@ v1.9 Inbound Peer Serving and Network Participation Boundary started on 2026-06-
 | 90 | Inbound Listener and Admission Policy | 10/10 | Complete   | 2026-06-25 |
 | 91 | Peer Permissions and Connection Classes | 10/10 | Complete | 2026-06-25 |
 | 92 | Address Advertisement and Discovery Boundaries | 9/9 | Complete    | 2026-06-26 |
-| 93 | Eviction, Ban, and Misbehavior Policy | Add deterministic eviction scoring, disconnect reasons, discourage/ban persistence, expiry, unban, and permission-aware misbehavior handling. | EVICT-01, EVICT-02, EVICT-03, EVICT-04 | Pending |
+| 93 | Eviction, Ban, and Misbehavior Policy | 3/3 | Complete    | 2026-06-26 |
 | 94 | DoS and Resource Governance | Bound inbound message parsing, queues, requests, slow handshakes, churn, idle peers, reconnect attempts, and resource-pressure evidence. | DOS-01, DOS-02, DOS-03, DOS-04, DOS-05 | Pending |
 | 95 | Network Participation Evidence and Release Boundary | Prove parity anchors, non-regression, support redaction, UAT commands, and deterministic no-claim guardrails for deferred network participation. | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05, BOUND-06 | Pending |
 

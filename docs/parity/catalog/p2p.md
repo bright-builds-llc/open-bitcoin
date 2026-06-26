@@ -503,6 +503,45 @@ Open Bitcoin intentionally separates these claims:
   parity, public inbound defaults, public inbound by default, public-network CI,
   and production full-node readiness remain outside this surface.
 
+## Phase 93 eviction, ban, and misbehavior policy boundary
+
+The `v1-9-eviction-ban-misbehavior-policy` surface covers `EVICT-01`,
+`EVICT-02`, `EVICT-03`, and `EVICT-04` for bounded eviction, ban, unban, and
+misbehavior policy evidence.
+Its Knots anchors are
+[`packages/bitcoin-knots/src/net.cpp`](../../../packages/bitcoin-knots/src/net.cpp)
+for connection-manager eviction and protected-peer behavior,
+[`packages/bitcoin-knots/src/net_processing.cpp`](../../../packages/bitcoin-knots/src/net_processing.cpp)
+for peer-processing and misbehavior comparison points,
+[`packages/bitcoin-knots/src/banman.h`](../../../packages/bitcoin-knots/src/banman.h)
+and
+[`packages/bitcoin-knots/src/banman.cpp`](../../../packages/bitcoin-knots/src/banman.cpp)
+for banlist scope and expiry behavior, and
+[`packages/bitcoin-knots/src/net_permissions.cpp`](../../../packages/bitcoin-knots/src/net_permissions.cpp)
+for protected permission effects.
+
+Open Bitcoin intentionally owns the Phase 93 policy surface:
+
+- pure network code scores inbound eviction candidates using bounded inputs
+  and emits `eviction_candidate_selected` or `eviction_suppressed` labels.
+- protected peers are excluded from eviction and misbehavior action paths, with
+  `protected_no_actions` evidence instead of raw peer identities.
+- ban and unban policy evidence uses scoped labels and expiry/manual counters
+  such as `active_bans`, `expired_bans`, and `manual_unbans`.
+- misbehavior observations use stable labels such as `malformed_message`,
+  `duplicate_version`, `invalid_address`, `unsupported_command_abuse`,
+  `header_violation`, and `misbehavior_policy_decision`.
+- `openbitcoinnetworkstatus`, `OpenBitcoinStatusSnapshot.peers.inbound`,
+  operator status, metrics, and support bundles expose bounded counts and the
+  latest peer-policy decision without raw peer ids, raw endpoints, raw ban
+  scopes, raw permission strings, or credentials.
+
+Phase 93 does not claim production banlist parity, public ban enforcement,
+Knots discourage parity, broad DoS/resource governance, resource exhaustion
+coverage, transaction relay abuse handling, compact block relay abuse
+handling, public inbound defaults, public-network CI, or production full-node
+readiness.
+
 ## First-party implementation
 
 - [`packages/open-bitcoin-network/src/address.rs`](../../../packages/open-bitcoin-network/src/address.rs)
@@ -517,6 +556,8 @@ Open Bitcoin intentionally separates these claims:
 - [`packages/open-bitcoin-network/src/compatibility.rs`](../../../packages/open-bitcoin-network/src/compatibility.rs)
 - [`packages/open-bitcoin-network/src/header_store.rs`](../../../packages/open-bitcoin-network/src/header_store.rs)
 - [`packages/open-bitcoin-network/src/peer.rs`](../../../packages/open-bitcoin-network/src/peer.rs)
+- [`packages/open-bitcoin-network/src/peer/policy_state.rs`](../../../packages/open-bitcoin-network/src/peer/policy_state.rs)
+- [`packages/open-bitcoin-network/src/peer_policy.rs`](../../../packages/open-bitcoin-network/src/peer_policy.rs)
 - [`packages/open-bitcoin-network/tests/parity.rs`](../../../packages/open-bitcoin-network/tests/parity.rs)
 - [`packages/open-bitcoin-node/src/network.rs`](../../../packages/open-bitcoin-node/src/network.rs)
 - [`packages/open-bitcoin-node/src/status/inbound.rs`](../../../packages/open-bitcoin-node/src/status/inbound.rs)
@@ -531,8 +572,8 @@ Open Bitcoin intentionally separates these claims:
 - address relay, `addrv2`, peer discovery policy, and DNS-seed governance
 - encrypted transport and other non-v1 wire transports
 - compact blocks, blocktxn, filtered blocks, bloom filters, and compact filters
-- eviction, bans, resource-governance scoring, and timeout parity beyond the
-  Phase 91 permission evidence surface
+- resource-governance scoring and timeout parity beyond the Phase 93
+  peer-policy evidence surface
 - production daemon-integrated full-sync guarantees
 - automatic public-mainnet recovery loops and broad production-node service
   guarantees

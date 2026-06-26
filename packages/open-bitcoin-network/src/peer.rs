@@ -23,14 +23,20 @@ use crate::error::{DisconnectReason, NetworkError, PeerId};
 use crate::header_store::{HeaderStore, InsertedHeader};
 use crate::inbound::{InboundAdmissionRejectionReason, InboundHandshakeState, InboundPeerRecord};
 use crate::message::{HeadersMessage, InventoryList, LocalPeerConfig, WireNetworkMessage};
+use crate::peer_policy::{
+    EvictionCandidateInput, EvictionDecision, MisbehaviorDecision, MisbehaviorKind,
+    MisbehaviorObservation, MisbehaviorPolicy, select_eviction_candidate,
+};
 
 mod address_boundary;
 mod inbound_state;
 mod inventory_state;
+mod policy_state;
 
 pub use address_boundary::{PeerAddressBoundaryDecision, PeerAddressBoundaryEvidence};
 use inbound_state::reject_self_connection;
 use inventory_state::forget_requested_inventory;
+use policy_state::{eviction_candidate_input, peer_policy_label, peer_policy_protected};
 
 pub const DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER: usize = 128;
 
@@ -213,6 +219,42 @@ impl PeerManager {
 
     pub fn identities(&self) -> BTreeSet<PeerId> {
         self.peer_ids()
+    }
+
+    pub fn eviction_candidate_inputs(&self) -> Vec<EvictionCandidateInput> {
+        self.peers
+            .iter()
+            .filter(|(_peer_id, peer)| peer.role == ConnectionRole::Inbound)
+            .map(|(peer_id, peer)| eviction_candidate_input(*peer_id, peer))
+            .collect()
+    }
+
+    pub fn eviction_decision(&self) -> EvictionDecision {
+        let inputs = self.eviction_candidate_inputs();
+        select_eviction_candidate(&inputs)
+    }
+
+    pub fn misbehavior_decision(
+        &self,
+        peer_id: PeerId,
+        kind: MisbehaviorKind,
+        points: u32,
+        now_unix_seconds: i64,
+    ) -> Result<MisbehaviorDecision, NetworkError> {
+        let peer = self
+            .peers
+            .get(&peer_id)
+            .ok_or(NetworkError::UnknownPeer(peer_id))?;
+        let protected = peer_policy_protected(peer);
+        let observation = MisbehaviorObservation {
+            peer_label: peer_policy_label(peer_id),
+            kind,
+            points,
+            prior_score: 0,
+            protected,
+        };
+        let _ = now_unix_seconds;
+        Ok(MisbehaviorPolicy::default().decide(observation))
     }
 
     pub fn peer_requested_blocks(&self, peer_id: PeerId) -> Result<Vec<BlockHash>, NetworkError> {
@@ -577,36 +619,6 @@ impl PeerManager {
         }
 
         Ok(actions)
-    }
-
-    fn handle_transaction(
-        &mut self,
-        peer_id: PeerId,
-        transaction: Transaction,
-    ) -> Result<Vec<PeerAction>, NetworkError> {
-        let txid = transaction_txid(&transaction)?;
-        let wtxid = transaction_wtxid(&transaction)?;
-        self.known_txids.insert(txid);
-        self.known_wtxids.insert(wtxid);
-
-        let peer = Self::peer_mut(&mut self.peers, peer_id)?;
-        forget_requested_inventory(peer, InventoryType::Transaction, txid.into());
-        forget_requested_inventory(peer, InventoryType::WitnessTransaction, wtxid.into());
-
-        Ok(vec![PeerAction::ReceivedTransaction(transaction)])
-    }
-
-    fn handle_block(
-        &mut self,
-        peer_id: PeerId,
-        block: Block,
-    ) -> Result<Vec<PeerAction>, NetworkError> {
-        let hash = block_hash(&block.header);
-
-        let peer = Self::peer_mut(&mut self.peers, peer_id)?;
-        forget_requested_inventory(peer, InventoryType::Block, hash.into());
-
-        Ok(vec![PeerAction::ReceivedBlock(block)])
     }
 }
 

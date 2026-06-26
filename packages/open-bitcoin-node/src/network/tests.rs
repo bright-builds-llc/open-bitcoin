@@ -459,6 +459,61 @@ fn managed_address_boundary_info_projects_peer_manager_evidence() {
 }
 
 #[test]
+fn managed_peer_policy_info_projects_eviction_candidate_evidence() {
+    // Arrange
+    let mut network = ManagedPeerNetwork::new(
+        MemoryChainstateStore::default(),
+        local_config(401),
+        PolicyConfig::default(),
+    );
+    network.add_inbound_peer(401).expect("peer should be added");
+
+    // Act
+    let info = network.peer_policy_info();
+
+    // Assert
+    assert_eq!(info.eviction_candidates_evaluated, 1);
+    assert_eq!(info.disconnects_requested, 1);
+    assert_eq!(info.protected_no_actions, 0);
+    let latest = info
+        .maybe_latest_peer_policy_decision
+        .expect("latest policy decision");
+    assert_eq!(latest.label, "eviction_candidate_selected");
+    assert_eq!(latest.source, "source_eviction_policy");
+    assert!(!latest.message.contains("peer-"));
+}
+
+#[test]
+fn managed_peer_policy_info_projects_protected_eviction_suppression() {
+    // Arrange
+    let mut network = ManagedPeerNetwork::new(
+        MemoryChainstateStore::default(),
+        local_config(402),
+        PolicyConfig::default(),
+    );
+    network.set_inbound_admission_policy(InboundAdmissionPolicy::new(2, 1));
+    let decision = network.admit_inbound_peer(permissioned_inbound_request(
+        402,
+        "127.0.0.1:18444",
+        &["in", "noban", "forceinbound"],
+    ));
+    assert!(matches!(decision, InboundAdmissionDecision::Admit(_)));
+
+    // Act
+    let info = network.peer_policy_info();
+
+    // Assert
+    assert_eq!(info.eviction_candidates_evaluated, 1);
+    assert_eq!(info.disconnects_requested, 0);
+    assert_eq!(info.protected_no_actions, 1);
+    let latest = info
+        .maybe_latest_peer_policy_decision
+        .expect("latest policy decision");
+    assert_eq!(latest.label, "eviction_suppressed");
+    assert_eq!(latest.reason, "no_eviction_candidate");
+}
+
+#[test]
 fn managed_address_boundary_info_projects_over_cap_addr_rejections() {
     // Arrange
     let services = ServiceFlags::NETWORK | ServiceFlags::WITNESS;
