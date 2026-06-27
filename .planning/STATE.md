@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Inbound Peer Serving and Network Participation Boundary
 status: verifying
-stopped_at: Completed 94-08-PLAN.md
-last_updated: "2026-06-27T01:23:40.875Z"
+stopped_at: Phase 95 context gathered
+last_updated: "2026-06-27T12:55:33.214Z"
 last_activity: 2026-06-27
 progress:
   total_phases: 6
@@ -155,6 +155,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-26T23:35:39.356Z
-Stopped at: Completed 94-08-PLAN.md
-Resume file: None
+Last session: 2026-06-27T12:55:33.208Z
+Stopped at: Phase 95 context gathered
+Resume file: .planning/phases/95-network-participation-evidence-and-release-boundary/95-CONTEXT.md
