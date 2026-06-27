@@ -19,7 +19,7 @@ v1.9 Inbound Peer Serving and Network Participation Boundary started on 2026-06-
 
 **Goal:** Let Open Bitcoin accept and serve inbound peers under explicit admission, permission, address, eviction/ban, and resource-governance rules while keeping relay and production participation claims deferred.
 
-**Current state:** Phase 95 Plan 01 is complete; Plans 02 through 04 remain for parity roots, UAT/public boundary wording, and aggregate checker wiring.
+**Current state:** Phase 95 is complete and verified; v1.9 has 28/28 scoped requirements mapped and all six phases complete.
 
 **Boundary:** v1.9 does not claim transaction relay, compact block relay, mempool propagation, public inbound serving by default, production service operation, or production full-node readiness.
 
@@ -157,13 +157,13 @@ Plans:
 
 **Requirements:** BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05, BOUND-06
 
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 95-01-PLAN.md — Support resource-governance redaction and regression tests
 - [x] 95-02-PLAN.md — Parity closeout roots and release-readiness traceability
 - [x] 95-03-PLAN.md — Operator UAT commands and public boundary wording
-- [ ] 95-04-PLAN.md — Aggregate Phase 95 checker and verifier wiring
+- [x] 95-04-PLAN.md — Aggregate Phase 95 checker and verifier wiring (completed 2026-06-27)
 
 **Success criteria:**
 1. Release and parity docs cite Knots anchors or record intentional deviations for inbound serving, permissions, address handling, eviction/ban, and resource governance.
