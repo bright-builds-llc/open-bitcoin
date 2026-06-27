@@ -32,7 +32,7 @@ v1.9 Inbound Peer Serving and Network Participation Boundary started on 2026-06-
 | 92 | Address Advertisement and Discovery Boundaries | 9/9 | Complete    | 2026-06-26 |
 | 93 | Eviction, Ban, and Misbehavior Policy | 3/3 | Complete    | 2026-06-26 |
 | 94 | DoS and Resource Governance | 8/8 | Complete    | 2026-06-27 |
-| 95 | Network Participation Evidence and Release Boundary | 3/4 | In Progress|  |
+| 95 | Network Participation Evidence and Release Boundary | 4/4 | Complete    | 2026-06-27 |
 
 ## Phase Details
 
@@ -203,10 +203,10 @@ Plans:
 
 ## Next Step
 
-Execute Phase 95 Plan 02:
+Run the milestone audit or completion flow for v1.9:
 
 ```bash
-/gsd-execute-phase 95
+/gsd-audit-milestone
 ```
 
 Also available:

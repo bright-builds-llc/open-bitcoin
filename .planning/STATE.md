@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Inbound Peer Serving and Network Participation Boundary
-status: executing
-stopped_at: Completed 95-03-PLAN.md
-last_updated: "2026-06-27T15:18:12.880Z"
-last_activity: 2026-06-27 -- Phase 95 Plan 03 complete
+status: complete
+stopped_at: Completed 95-04-PLAN.md
+last_updated: "2026-06-27T16:03:11.000Z"
+last_activity: 2026-06-27 -- Phase 95 Plan 04 complete
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 44
-  completed_plans: 43
-  percent: 98
+  completed_plans: 44
+  percent: 100
 ---
 
 # Project State
@@ -28,10 +28,10 @@ See: `.planning/PROJECT.md` (updated 2026-06-26)
 Milestone: v1.9 Inbound Peer Serving and Network Participation Boundary
 Phase: 95
 Plan: 04
-Status: In progress
-Last activity: 2026-06-27 -- Phase 95 Plan 03 complete
+Status: Complete
+Last activity: 2026-06-27 -- Phase 95 Plan 04 complete
 
-Progress: [##########] 98%
+Progress: [##########] 100%
 
 ## Performance Metrics
 
@@ -50,7 +50,7 @@ Progress: [##########] 98%
 | 92 | Address Advertisement and Discovery Boundaries | ADDR-01, ADDR-02, ADDR-03, ADDR-04 | Complete |
 | 93 | Eviction, Ban, and Misbehavior Policy | EVICT-01, EVICT-02, EVICT-03, EVICT-04 | Complete |
 | 94 | DoS and Resource Governance | DOS-01, DOS-02, DOS-03, DOS-04, DOS-05 | Complete |
-| 95 | Network Participation Evidence and Release Boundary | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05, BOUND-06 | In Progress |
+| 95 | Network Participation Evidence and Release Boundary | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05, BOUND-06 | Complete |
 
 **Recent Trend:**
 
@@ -80,6 +80,7 @@ Progress: [##########] 98%
 | Phase 95 P01 | 13m 04s | 2 tasks | 3 files |
 | Phase 95 P02 | 17m 47s | 2 tasks | 5 files |
 | Phase 95 P03 | 32m20s | 2 tasks | 5 files |
+| Phase 95 P04 | 30m07s | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -146,6 +147,9 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 - [Phase 95]: Bounded v1.9 inbound evidence is documented as opt-in UAT, not broad relay or public-default support.
 - [Phase 95]: Legacy Phase 82/87 guardrail literals remain present while newer v1.9 wording points at the closeout roots.
 - [Phase 95]: Runtime guide no-claim wording uses production-service vocabulary to satisfy service-lifecycle guardrails.
+- [Phase 95]: Phase 95 verification is a static release-boundary checker over a fixed corpus, not a runtime public-network or service-manager gate.
+- [Phase 95]: Validate both visible VERIFY_COMMAND_ORDER text and executable run_step order so documentation-only verifier wiring cannot pass.
+- [Phase 95]: Check support redaction evidence through sanitizer, test, and safeguard identifiers rather than raw support-bundle material.
 
 ### Pending Todos
 
@@ -166,6 +170,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-27T15:18:12.878Z
-Stopped at: Completed 95-03-PLAN.md
+Last session: 2026-06-27T16:03:11.000Z
+Stopped at: Completed 95-04-PLAN.md
 Resume file: None
