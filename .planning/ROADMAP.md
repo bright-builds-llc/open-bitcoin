@@ -32,7 +32,7 @@ v1.9 Inbound Peer Serving and Network Participation Boundary started on 2026-06-
 | 92 | Address Advertisement and Discovery Boundaries | 9/9 | Complete    | 2026-06-26 |
 | 93 | Eviction, Ban, and Misbehavior Policy | 3/3 | Complete    | 2026-06-26 |
 | 94 | DoS and Resource Governance | 8/8 | Complete    | 2026-06-27 |
-| 95 | Network Participation Evidence and Release Boundary | 2/4 | In Progress|  |
+| 95 | Network Participation Evidence and Release Boundary | 3/4 | In Progress|  |
 
 ## Phase Details
 
@@ -157,12 +157,12 @@ Plans:
 
 **Requirements:** BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05, BOUND-06
 
-**Plans:** 2/4 plans executed
+**Plans:** 3/4 plans executed
 
 Plans:
 - [x] 95-01-PLAN.md — Support resource-governance redaction and regression tests
 - [x] 95-02-PLAN.md — Parity closeout roots and release-readiness traceability
-- [ ] 95-03-PLAN.md — Operator UAT commands and public boundary wording
+- [x] 95-03-PLAN.md — Operator UAT commands and public boundary wording
 - [ ] 95-04-PLAN.md — Aggregate Phase 95 checker and verifier wiring
 
 **Success criteria:**

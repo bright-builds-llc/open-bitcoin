@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Inbound Peer Serving and Network Participation Boundary
 status: executing
-stopped_at: Completed 95-02-PLAN.md
-last_updated: "2026-06-27T14:35:02.618Z"
-last_activity: 2026-06-27 -- Phase 95 Plan 02 complete
+stopped_at: Completed 95-03-PLAN.md
+last_updated: "2026-06-27T15:18:12.880Z"
+last_activity: 2026-06-27 -- Phase 95 Plan 03 complete
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 44
-  completed_plans: 42
-  percent: 95
+  completed_plans: 43
+  percent: 98
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: `.planning/PROJECT.md` (updated 2026-06-26)
 
 Milestone: v1.9 Inbound Peer Serving and Network Participation Boundary
 Phase: 95
-Plan: 03
+Plan: 04
 Status: In progress
-Last activity: 2026-06-27 -- Phase 95 Plan 02 complete
+Last activity: 2026-06-27 -- Phase 95 Plan 03 complete
 
-Progress: [##########] 95%
+Progress: [##########] 98%
 
 ## Performance Metrics
 
@@ -79,6 +79,7 @@ Progress: [##########] 95%
 | Phase 94 P08 | 30m 15s | 2 tasks | 5 files |
 | Phase 95 P01 | 13m 04s | 2 tasks | 3 files |
 | Phase 95 P02 | 17m 47s | 2 tasks | 5 files |
+| Phase 95 P03 | 32m20s | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -142,6 +143,9 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 - [Phase 95]: Keep resource-governance redaction in support_status_for_bundle so both support JSON and Markdown consume the sanitized status snapshot.
 - [Phase 95]: Keep Phase 95 closeout evidence inside existing parity roots instead of introducing a separate release manifest.
 - [Phase 95]: Document Phase 95 aggregate checker paths as the next deterministic gate owned by Plan 04.
+- [Phase 95]: Bounded v1.9 inbound evidence is documented as opt-in UAT, not broad relay or public-default support.
+- [Phase 95]: Legacy Phase 82/87 guardrail literals remain present while newer v1.9 wording points at the closeout roots.
+- [Phase 95]: Runtime guide no-claim wording uses production-service vocabulary to satisfy service-lifecycle guardrails.
 
 ### Pending Todos
 
@@ -162,6 +166,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-27T14:35:02.615Z
-Stopped at: Completed 95-02-PLAN.md
+Last session: 2026-06-27T15:18:12.878Z
+Stopped at: Completed 95-03-PLAN.md
 Resume file: None
