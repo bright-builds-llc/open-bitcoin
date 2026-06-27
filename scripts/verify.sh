@@ -243,7 +243,7 @@ run_coverage_report() {
 # these legacy command lines to remain visible in order. The timed run_step
 # calls below are the executed verification path. Ordered checker invariant:
 # check-phase93-peer-policy precedes check-phase94-dos-resource-governance, and
-# Phase 93 is followed by Phase 94.
+# Phase 93 is followed by Phase 94. Phase 94 is followed by Phase 95.
 : <<'VERIFY_COMMAND_ORDER'
 bun run scripts/check-v1.3-release-boundaries.ts
 bun run scripts/check-v1.4-release-boundaries.ts
@@ -298,6 +298,8 @@ bun test scripts/check-phase93-peer-policy.test.ts
 bun run scripts/check-phase93-peer-policy.ts
 bun test scripts/check-phase94-dos-resource-governance.test.ts
 bun run scripts/check-phase94-dos-resource-governance.ts
+bun test scripts/check-phase95-network-participation-release-boundary.test.ts
+bun run scripts/check-phase95-network-participation-release-boundary.ts
 VERIFY_COMMAND_ORDER
 
 parse_args "$@"
@@ -377,6 +379,8 @@ run_step "test Phase 93 peer policy checker" bun test scripts/check-phase93-peer
 run_step "check Phase 93 peer policy" bun run scripts/check-phase93-peer-policy.ts
 run_step "Phase 94 DoS/resource governance checker tests" bun test scripts/check-phase94-dos-resource-governance.test.ts
 run_step "Phase 94 DoS/resource governance checker" bun run scripts/check-phase94-dos-resource-governance.ts
+run_step "Phase 95 network participation release boundary checker tests" bun test scripts/check-phase95-network-participation-release-boundary.test.ts
+run_step "Phase 95 network participation release boundary checker" bun run scripts/check-phase95-network-participation-release-boundary.ts
 run_step "check pure-core dependencies" bash scripts/check-pure-core-deps.sh
 run_step "check file lengths" bash scripts/check-file-lengths.sh
 run_step "check panic sites" bash scripts/check-panic-sites.sh
