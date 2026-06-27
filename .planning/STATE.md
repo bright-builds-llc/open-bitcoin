@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Inbound Peer Serving and Network Participation Boundary
 status: executing
-stopped_at: Completed 95-01-PLAN.md
-last_updated: "2026-06-27T14:08:31.595Z"
-last_activity: 2026-06-27 -- Phase 95 planning complete
+stopped_at: Completed 95-02-PLAN.md
+last_updated: "2026-06-27T14:35:02.618Z"
+last_activity: 2026-06-27 -- Phase 95 Plan 02 complete
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 44
-  completed_plans: 41
-  percent: 93
+  completed_plans: 42
+  percent: 95
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: `.planning/PROJECT.md` (updated 2026-06-26)
 
 Milestone: v1.9 Inbound Peer Serving and Network Participation Boundary
 Phase: 95
-Plan: 02
+Plan: 03
 Status: In progress
-Last activity: 2026-06-27 -- Phase 95 Plan 01 complete
+Last activity: 2026-06-27 -- Phase 95 Plan 02 complete
 
-Progress: [#########-] 93%
+Progress: [##########] 95%
 
 ## Performance Metrics
 
@@ -50,7 +50,7 @@ Progress: [#########-] 93%
 | 92 | Address Advertisement and Discovery Boundaries | ADDR-01, ADDR-02, ADDR-03, ADDR-04 | Complete |
 | 93 | Eviction, Ban, and Misbehavior Policy | EVICT-01, EVICT-02, EVICT-03, EVICT-04 | Complete |
 | 94 | DoS and Resource Governance | DOS-01, DOS-02, DOS-03, DOS-04, DOS-05 | Complete |
-| 95 | Network Participation Evidence and Release Boundary | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05, BOUND-06 | Pending |
+| 95 | Network Participation Evidence and Release Boundary | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05, BOUND-06 | In Progress |
 
 **Recent Trend:**
 
@@ -78,6 +78,7 @@ Progress: [#########-] 93%
 | Phase 94 P07 | 21m 14s | 2 tasks | 7 files |
 | Phase 94 P08 | 30m 15s | 2 tasks | 5 files |
 | Phase 95 P01 | 13m 04s | 2 tasks | 3 files |
+| Phase 95 P02 | 17m 47s | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -139,6 +140,8 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 - [Phase 95]: Redact only resource-governance decision fields that contain raw peer, endpoint, payload, permission, config, credential, cookie, or secret markers.
 - [Phase 95]: Preserve safe Phase 94 labels such as invalid_checksum, payload_rejected, and source_inbound_resource_governance when they do not contain raw material.
 - [Phase 95]: Keep resource-governance redaction in support_status_for_bundle so both support JSON and Markdown consume the sanitized status snapshot.
+- [Phase 95]: Keep Phase 95 closeout evidence inside existing parity roots instead of introducing a separate release manifest.
+- [Phase 95]: Document Phase 95 aggregate checker paths as the next deterministic gate owned by Plan 04.
 
 ### Pending Todos
 
@@ -159,6 +162,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-27T14:08:01.422Z
-Stopped at: Completed 95-01-PLAN.md
+Last session: 2026-06-27T14:35:02.615Z
+Stopped at: Completed 95-02-PLAN.md
 Resume file: None
