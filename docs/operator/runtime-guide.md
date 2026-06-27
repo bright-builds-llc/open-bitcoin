@@ -606,6 +606,96 @@ Expected review evidence is bounded and label-driven:
 - Support bundles render bounded counters plus the latest safe decision only.
   Default verification remains loopback/synthetic and public-network-free.
 
+## Phase 95 Network Participation Closeout Review
+
+Phase 95 closes the v1.9 network participation evidence boundary. The closeout
+is deterministic by default, public-network-free, service-manager-free, and not
+a production readiness claim. It does not claim production full-node readiness,
+public inbound defaults, transaction relay, compact block relay, mempool
+propagation, full address relay, `production-service` operation, or live
+support upload. Use the commands below for loopback or synthetic inbound review
+only.
+
+Start the explicit loopback listener/admission path with either repo-local
+daemon form:
+
+```bash
+mkdir -p /tmp/open-bitcoin-inbound-loopback
+
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --bin open-bitcoind -- \
+  -regtest \
+  -datadir=/tmp/open-bitcoin-inbound-loopback \
+  -openbitcoininbound=1 \
+  -openbitcoinlisten=127.0.0.1:18444 \
+  -openbitcoinreservedslots=1 \
+  -openbitcoininboundpermissionclass=operator_loopback@127.0.0.1=in,noban,forceinbound,download,addr \
+  -server=1
+
+bazel run //packages/open-bitcoin-rpc:open_bitcoind -- \
+  -regtest \
+  -datadir=/tmp/open-bitcoin-inbound-loopback \
+  -openbitcoininbound=1 \
+  -openbitcoinlisten=127.0.0.1:18444 \
+  -openbitcoinreservedslots=1 \
+  -openbitcoininboundpermissionclass=operator_loopback@127.0.0.1=in,noban,forceinbound,download,addr \
+  -server=1
+```
+
+Inspect Open Bitcoin-owned inbound, permission, address, peer-policy, and
+resource-governance status through the baseline-compatible RPC client forms:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin-cli -- \
+  -regtest \
+  -rpcconnect=127.0.0.1 \
+  -rpcport=18443 \
+  openbitcoinnetworkstatus
+
+bazel run //packages/open-bitcoin-cli:open_bitcoin_cli -- \
+  -regtest \
+  -rpcconnect=127.0.0.1 \
+  -rpcport=18443 \
+  openbitcoinnetworkstatus
+```
+
+Inspect the shared operator status snapshot and collect a local redacted support
+bundle through the Open Bitcoin operator forms:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --network regtest \
+  --datadir=/tmp/open-bitcoin-inbound-loopback \
+  status --format json
+
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- \
+  --network regtest \
+  --datadir=/tmp/open-bitcoin-inbound-loopback \
+  status --format json
+
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --network regtest \
+  --datadir=/tmp/open-bitcoin-inbound-loopback \
+  support bundle --output-dir=/tmp/open-bitcoin-inbound-support
+
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- \
+  --network regtest \
+  --datadir=/tmp/open-bitcoin-inbound-loopback \
+  support bundle --output-dir=/tmp/open-bitcoin-inbound-support
+```
+
+Focused local closeout verification uses the Phase 95 checker pair and the full
+repo-native non-regression contract:
+
+```bash
+bun test scripts/check-phase95-network-participation-release-boundary.test.ts
+bun run scripts/check-phase95-network-participation-release-boundary.ts
+bash scripts/verify.sh
+```
+
+Expected evidence is bounded to local status, metrics, structured-log labels,
+parity roots, and redacted support-bundle fields. Treat unavailable fields as
+diagnostic facts, not as proof of network participation.
+
 ## Mainnet Sync Activation
 
 Mainnet sync activation is disabled by default. It can be enabled only for the
