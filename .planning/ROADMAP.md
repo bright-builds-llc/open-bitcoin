@@ -31,7 +31,7 @@ v1.9 Inbound Peer Serving and Network Participation Boundary started on 2026-06-
 | 91 | Peer Permissions and Connection Classes | 10/10 | Complete | 2026-06-25 |
 | 92 | Address Advertisement and Discovery Boundaries | 9/9 | Complete    | 2026-06-26 |
 | 93 | Eviction, Ban, and Misbehavior Policy | 3/3 | Complete    | 2026-06-26 |
-| 94 | DoS and Resource Governance | 8/8 | Complete   | 2026-06-26 |
+| 94 | DoS and Resource Governance | 8/8 | Complete    | 2026-06-27 |
 | 95 | Network Participation Evidence and Release Boundary | Prove parity anchors, non-regression, support redaction, UAT commands, and deterministic no-claim guardrails for deferred network participation. | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05, BOUND-06 | Pending |
 
 ## Phase Details
