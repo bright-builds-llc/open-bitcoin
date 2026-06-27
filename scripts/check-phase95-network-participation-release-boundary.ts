@@ -97,45 +97,9 @@ const FORBIDDEN_POSITIVE_CLAIMS = [
   "production-service operation",
   "production full-node readiness",
 ] as const;
-const POSITIVE_CLAIM_MARKERS = [
-  " provides ",
-  " supports ",
-  " adds ",
-  " enables ",
-  " includes ",
-  " ships ",
-  " has ",
-  " support is enabled",
-  " support is supported",
-  " is supported",
-  " is enabled",
-  " is complete",
-  " is achieved",
-  " readiness is achieved",
-] as const;
-const ALLOWED_SCOPE_TERMS = [
-  "does not",
-  "do not",
-  "not ",
-  "no ",
-  "without",
-  "outside",
-  "remain outside",
-  "remains outside",
-  "deferred",
-  "future",
-  "unsupported",
-  "opt-in uat",
-  "not claim",
-  "not claiming",
-  "no-claim",
-  "non-claim",
-  "evidence-boundary",
-  "release-boundary",
-  "boundary only",
-  "bounded evidence only",
-  "not allowed yet",
-  "future scoped",
+const POSITIVE_CLAIM_VERBS = [
+  "provides", "provide", "supports", "support", "adds", "add", "enables", "enable",
+  "includes", "include", "ships", "ship", "has", "have",
 ] as const;
 const FORBIDDEN_VERIFY_STRINGS = [
   "openbitcoinlisten=0.0.0.0",
@@ -152,6 +116,7 @@ const FORBIDDEN_VERIFY_STRINGS = [
   "run-live-mainnet-smoke",
 ] as const;
 const CLAIM_SCAN_FILES = [
+  "README.md",
   "docs/parity/checklist.md",
   "docs/parity/catalog/p2p.md",
   "docs/parity/release-readiness.md",
@@ -162,6 +127,7 @@ const CLAIM_SCAN_FILES = [
 const TARGET_FILES = [
   ".planning/REQUIREMENTS.md",
   ".planning/ROADMAP.md",
+  "README.md",
   "docs/parity/index.json",
   "docs/parity/checklist.md",
   "docs/parity/catalog/p2p.md",
@@ -359,25 +325,58 @@ function verifyNoClaimBoundary(texts: Map<TargetFile, string>, failures: string[
 }
 
 function verifyNoForbiddenClaim(file: string, unit: string, failures: string[]): void {
-  if (isScopedAllowance(unit)) {
+  if (isExplicitDeferredMatrixRow(unit)) {
     return;
   }
 
   const lower = normalizedLower(unit);
   for (const claim of FORBIDDEN_POSITIVE_CLAIMS) {
-    if (lower.includes(claim) && isPositiveClaim(lower)) {
+    if (lower.includes(claim) && isPositiveClaim(lower, claim)) {
       failures.push(`BOUND-01 forbidden v1.9 network participation claim in ${file}: ${unit}`);
     }
   }
 }
 
-function isScopedAllowance(unit: string): boolean {
-  const lower = normalizedLower(unit);
-  return ALLOWED_SCOPE_TERMS.some((term) => lower.includes(term));
+function isPositiveClaim(lowerUnit: string, claim: string): boolean {
+  return (
+    POSITIVE_CLAIM_VERBS.some((verb) => containsUnnegatedVerbClaim(lowerUnit, verb, claim))
+    || [
+      `${claim} support is enabled`,
+      `${claim} support is supported`,
+      `${claim} is available`,
+      `${claim} is supported`,
+      `${claim} is enabled`,
+      `${claim} is complete`,
+      `${claim} is achieved`,
+      `${claim} readiness is achieved`,
+    ].some((phrase) => lowerUnit.includes(phrase))
+  );
 }
 
-function isPositiveClaim(lowerUnit: string): boolean {
-  return POSITIVE_CLAIM_MARKERS.some((marker) => lowerUnit.includes(marker));
+function containsUnnegatedVerbClaim(lowerUnit: string, verb: string, claim: string): boolean {
+  const phrase = `${verb} ${claim}`;
+  let searchFrom = 0;
+  while (searchFrom < lowerUnit.length) {
+    const phraseIndex = lowerUnit.indexOf(phrase, searchFrom);
+    if (phraseIndex === -1) {
+      return false;
+    }
+    const prefix = lowerUnit.slice(Math.max(0, phraseIndex - 16), phraseIndex);
+    if (!/(does not |do not |doesn't |don't |not )$/.test(prefix)) {
+      return true;
+    }
+    searchFrom = phraseIndex + phrase.length;
+  }
+  return false;
+}
+
+function isExplicitDeferredMatrixRow(unit: string): boolean {
+  const lower = normalizedLower(unit);
+  return (
+    lower.startsWith("|")
+    && lower.includes("| `deferred` |")
+    && lower.includes("| not allowed yet |")
+  );
 }
 
 function verifyUatCommands(text: string, failures: string[]): void {

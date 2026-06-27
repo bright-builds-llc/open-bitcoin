@@ -67,6 +67,7 @@ const PHASE_REQUIREMENTS = {
 const TARGET_FILES = [
   ".planning/REQUIREMENTS.md",
   ".planning/ROADMAP.md",
+  "README.md",
   "docs/parity/index.json",
   "docs/parity/checklist.md",
   "docs/parity/catalog/p2p.md",
@@ -148,6 +149,56 @@ test("fails positive deferred network participation claims", () => {
   for (const message of failureMessages) {
     expect(message).toContain("BOUND-01");
   }
+});
+
+test("fails same-unit positive claims with unrelated allowance wording", () => {
+  // Arrange
+  const roots = [
+    createFixture({
+      maybeMutateFiles(files) {
+        const current = files.get("docs/parity/checklist.md") ?? "";
+        files.set(
+          "docs/parity/checklist.md",
+          `${current}\n| \`future-mask\` | \`done\` | \`BOUND-01\` | Phase 95 provides transaction relay support. | Future scoped evidence required. |\n`,
+        );
+      },
+    }),
+    createFixture({
+      maybeMutateFiles(files) {
+        const current = files.get("docs/parity/catalog/p2p.md") ?? "";
+        files.set(
+          "docs/parity/catalog/p2p.md",
+          `${current}\nPhase 95 provides transaction relay support while a future scoped relay audit remains pending.\n`,
+        );
+      },
+    }),
+  ];
+
+  // Act
+  const failureMessages = roots.map((root) =>
+    checkPhase95NetworkParticipationReleaseBoundary({ rootDir: root }).join("\n"),
+  );
+
+  // Assert
+  for (const message of failureMessages) {
+    expect(message).toContain("BOUND-01");
+  }
+});
+
+test("fails positive README network participation claims", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutateFiles(files) {
+      const current = files.get("README.md") ?? "";
+      files.set("README.md", `${current}\nPhase 95 provides transaction relay support.\n`);
+    },
+  });
+
+  // Act
+  const failures = checkPhase95NetworkParticipationReleaseBoundary({ rootDir: root });
+
+  // Assert
+  expect(failures.join("\n")).toContain("BOUND-01");
 });
 
 test("fails when required Cargo or Bazel UAT command families are missing", () => {
@@ -264,6 +315,7 @@ function fixtureFiles(): Map<TargetFile, string> {
   return new Map<TargetFile, string>([
     [".planning/REQUIREMENTS.md", requirementsText()],
     [".planning/ROADMAP.md", roadmapText()],
+    ["README.md", readmeText()],
     ["docs/parity/index.json", parityIndexText()],
     ["docs/parity/checklist.md", checklistText()],
     ["docs/parity/catalog/p2p.md", p2pCatalogText()],
@@ -326,6 +378,14 @@ function parityIndexText(): string {
     null,
     2,
   );
+}
+
+function readmeText(): string {
+  return [
+    "# Open Bitcoin",
+    "v1.9 documents bounded opt-in inbound listener, admission, permission, address, eviction, ban, and resource-governance evidence.",
+    "It does not claim transaction relay support, compact block relay support, mempool propagation support, public inbound defaults, production service operation, or production full-node readiness.",
+  ].join("\n");
 }
 
 function checklistText(): string {

@@ -306,7 +306,8 @@ fn sanitized_resource_governance_text(value: &str) -> String {
 
 fn contains_raw_address_evidence(value: &str) -> bool {
     let lower_value = value.to_ascii_lowercase();
-    value.contains("127.0.0.1:")
+    contains_endpoint_shape(value)
+        || value.contains("127.0.0.1:")
         || value.contains("0.0.0.0:")
         || value.contains("::1")
         || lower_value.contains("peer-")
@@ -326,4 +327,22 @@ fn contains_raw_address_evidence(value: &str) -> bool {
         || lower_value.contains("secret")
         || lower_value.contains("cookie=")
         || lower_value.contains("config=")
+}
+
+fn contains_endpoint_shape(value: &str) -> bool {
+    value
+        .split_whitespace()
+        .map(|token| {
+            token.trim_matches(|ch: char| {
+                matches!(ch, ',' | ';' | '(' | ')' | '"' | '\'' | '`' | '.')
+            })
+        })
+        .any(|token| {
+            token.parse::<SocketAddr>().is_ok()
+                || token.rsplit_once(':').is_some_and(|(host, port)| {
+                    !host.is_empty()
+                        && port.parse::<u16>().is_ok()
+                        && (host.contains('.') || host.starts_with('['))
+                })
+        })
 }

@@ -1159,11 +1159,12 @@ fn inbound_support_redacts_raw_phase94_resource_governance_material() {
     };
     inbound.latest_resource_governance_decision =
         FieldAvailability::available(InboundResourceGovernanceEvent {
-            outcome: "rejected 127.0.0.1:18444 peer-94".to_string(),
-            reason: "invalid_checksum peer_id=94 raw_endpoint=0.0.0.0:8333".to_string(),
+            outcome: "rejected 127.0.0.1:18444 198.51.100.94:8333 peer-94".to_string(),
+            reason: "invalid_checksum peer_id=94 raw_endpoint=0.0.0.0:8333 [2001:db8:95::1]:8333"
+                .to_string(),
             label: "payload_rejected payload_bytes=[00] raw_permission".to_string(),
             source: "source_inbound_resource_governance permission_string=in,noban".to_string(),
-            message: "0.0.0.0:8333 ::1 config=operator rpc_password=phase95 credential=phase95 secret=phase95 cookie=phase95"
+            message: "node.example:8333 0.0.0.0:8333 ::1 config=operator rpc_password=phase95 credential=phase95 secret=phase95 cookie=phase95"
                 .to_string(),
             next_action: "peer-94 payload_bytes raw_endpoint permission_string config=operator"
                 .to_string(),
@@ -1200,6 +1201,9 @@ fn inbound_support_redacts_raw_phase94_resource_governance_material() {
         assert!(rendered.contains("redacted_resource_governance_evidence"));
         for forbidden in [
             "127.0.0.1:",
+            "198.51.100.94:8333",
+            "[2001:db8:95::1]:8333",
+            "node.example:8333",
             "0.0.0.0:",
             "::1",
             "peer_id=",
@@ -1228,7 +1232,7 @@ fn inbound_support_redacts_raw_phase92_address_boundary_material() {
         panic!("inbound status fixture should be available");
     };
     inbound.local_advertisement_candidates[0].source =
-        "source_local_listener 127.0.0.1:18444 address_bytes=[127,0,0,1]".to_string();
+        "source_local_listener 198.51.100.92:8333 address_bytes=[127,0,0,1]".to_string();
     inbound.suppressed_advertisements[0].message =
         "local evidence only peer_id=92 ::1 operator_loopback raw_permission".to_string();
     inbound.latest_address_decision = FieldAvailability::available(InboundAddressDecisionEvent {
@@ -1236,7 +1240,7 @@ fn inbound_support_redacts_raw_phase92_address_boundary_material() {
         reason: "permission_policy_denied".to_string(),
         label: "getaddr_suppressed".to_string(),
         source: "source_inbound_addr".to_string(),
-        message: "bounded getaddr denied 0.0.0.0:8333 peer_id=92 raw_permission config=operator"
+        message: "bounded getaddr denied [2001:db8:92::1]:8333 0.0.0.0:8333 peer_id=92 raw_permission config=operator"
             .to_string(),
     });
     let bundle = phase77_support_bundle_with_status(temp.path(), status);
@@ -1249,6 +1253,8 @@ fn inbound_support_redacts_raw_phase92_address_boundary_material() {
     for rendered in [&json_text, &markdown] {
         for forbidden in [
             "127.0.0.1:",
+            "198.51.100.92:8333",
+            "[2001:db8:92::1]:8333",
             "0.0.0.0:",
             "::1",
             "address_bytes",
@@ -1276,8 +1282,9 @@ fn inbound_support_redacts_raw_phase93_peer_policy_material() {
         outcome: "peer-93-disconnect".to_string(),
         reason: "operator-loopback-secret".to_string(),
         label: "peer_id=93".to_string(),
-        source: "127.0.0.1:18444".to_string(),
-        message: "peer-93 127.0.0.1:18444 raw_permission config=operator".to_string(),
+        source: "node.example:8333".to_string(),
+        message: "peer-93 127.0.0.1:18444 198.51.100.93:8333 raw_permission config=operator"
+            .to_string(),
     });
     let bundle = phase77_support_bundle_with_status(temp.path(), status);
 
@@ -1291,6 +1298,8 @@ fn inbound_support_redacts_raw_phase93_peer_policy_material() {
         for forbidden in [
             "peer-93",
             "peer_id=93",
+            "node.example:8333",
+            "198.51.100.93:8333",
             "127.0.0.1:",
             "operator-loopback-secret",
             "raw_permission",
