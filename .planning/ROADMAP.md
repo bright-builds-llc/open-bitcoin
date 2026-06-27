@@ -157,6 +157,14 @@ Plans:
 
 **Requirements:** BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05, BOUND-06
 
+**Plans:** 4 plans
+
+Plans:
+- [ ] 95-01-PLAN.md — Support resource-governance redaction and regression tests
+- [ ] 95-02-PLAN.md — Parity closeout roots and release-readiness traceability
+- [ ] 95-03-PLAN.md — Operator UAT commands and public boundary wording
+- [ ] 95-04-PLAN.md — Aggregate Phase 95 checker and verifier wiring
+
 **Success criteria:**
 1. Release and parity docs cite Knots anchors or record intentional deviations for inbound serving, permissions, address handling, eviction/ban, and resource governance.
 2. Deterministic checkers reject transaction relay, compact block relay, mempool propagation, public inbound default, production-service, and production-readiness claims for v1.9.
