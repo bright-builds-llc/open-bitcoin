@@ -223,10 +223,9 @@ pub(super) async fn read_wire_message_with_timeout_duration(
     handshake_state: InboundHandshakeState,
     timeout_duration: Duration,
 ) -> io::Result<ReadWireMessageOutcome> {
+    let deadline = tokio::time::Instant::now() + timeout_duration;
     let mut header = [0_u8; INBOUND_MESSAGE_HEADER_LEN];
-    if read_exact_with_timeout(stream, &mut header, timeout_duration).await?
-        == SocketIoOutcome::Timeout
-    {
+    if read_exact_until_deadline(stream, &mut header, deadline).await? == SocketIoOutcome::Timeout {
         return Ok(ReadWireMessageOutcome::Rejected(
             timeout_event_after_elapsed(
                 resource_policy,
@@ -249,8 +248,7 @@ pub(super) async fn read_wire_message_with_timeout_duration(
         )
     })?;
     let mut payload = vec![0_u8; payload_len];
-    if read_exact_with_timeout(stream, &mut payload, timeout_duration).await?
-        == SocketIoOutcome::Timeout
+    if read_exact_until_deadline(stream, &mut payload, deadline).await? == SocketIoOutcome::Timeout
     {
         return Ok(ReadWireMessageOutcome::Rejected(
             timeout_event_after_elapsed(
@@ -273,14 +271,14 @@ enum SocketIoOutcome {
     Timeout,
 }
 
-async fn read_exact_with_timeout(
+async fn read_exact_until_deadline(
     stream: &tokio::net::TcpStream,
     buffer: &mut [u8],
-    timeout_duration: Duration,
+    deadline: tokio::time::Instant,
 ) -> io::Result<SocketIoOutcome> {
     let mut offset = 0;
     while offset < buffer.len() {
-        match tokio::time::timeout(timeout_duration, stream.readable()).await {
+        match tokio::time::timeout_at(deadline, stream.readable()).await {
             Ok(result) => result?,
             Err(_elapsed) => return Ok(SocketIoOutcome::Timeout),
         }

@@ -959,6 +959,66 @@ async fn read_wire_message_returns_timeout_disconnect_without_wall_clock_wait() 
     assert_eq!(event.next_action, "timeout_disconnect");
 }
 
+#[tokio::test(start_paused = true)]
+async fn read_wire_message_times_out_across_partial_header_bytes() {
+    // Arrange
+    let (client, server) = tcp_pair().await;
+    let envelope_policy = InboundEnvelopePolicy::new(NetworkMagic::MAINNET);
+    let resource_policy = ResourceGovernancePolicy::default();
+    let header = verack_header(NetworkMagic::MAINNET);
+    let timeout_duration = Duration::from_secs(5);
+    let read_task = tokio::spawn(async move {
+        super::read_wire_message_with_timeout_duration(
+            &server,
+            &envelope_policy,
+            &resource_policy,
+            100,
+            100,
+            InboundHandshakeState::Handshaking,
+            timeout_duration,
+        )
+        .await
+        .expect("partial read timeout should return resource event")
+    });
+    tokio::task::yield_now().await;
+
+    // Act
+    client.writable().await.expect("client socket writable");
+    assert_eq!(
+        client
+            .try_write(&header[..1])
+            .expect("write first header byte"),
+        1
+    );
+    tokio::time::advance(Duration::from_secs(4)).await;
+    tokio::task::yield_now().await;
+    client
+        .writable()
+        .await
+        .expect("client socket writable again");
+    assert_eq!(
+        client
+            .try_write(&header[1..2])
+            .expect("write second header byte"),
+        1
+    );
+    tokio::time::advance(Duration::from_secs(2)).await;
+    for _ in 0..10 {
+        if read_task.is_finished() {
+            break;
+        }
+        tokio::task::yield_now().await;
+    }
+    let outcome = read_task.await.expect("read task should join");
+
+    // Assert
+    let ReadWireMessageOutcome::Rejected(event) = outcome else {
+        panic!("expected timeout_disconnect resource event");
+    };
+    assert_eq!(event.label, "slow_handshake");
+    assert_eq!(event.next_action, "timeout_disconnect");
+}
+
 #[test]
 fn context_records_inbound_resource_event_for_managed_evidence() {
     // Arrange
