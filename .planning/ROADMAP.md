@@ -11,7 +11,7 @@
 - ✅ **v1.6 Mainnet Full-Sync Completion** - Phases 68 through 74 (shipped 2026-06-14). Archive: [v1.6-ROADMAP.md](milestones/v1.6-ROADMAP.md)
 - ✅ **v1.7 Full-Sync Soak and Recovery Hardening** - Phases 75 through 81 (shipped 2026-06-20). Archive: [v1.7-ROADMAP.md](milestones/v1.7-ROADMAP.md)
 - ✅ **v1.8 Production Full-Node Readiness Boundary** - Phases 82 through 89 (shipped 2026-06-25). Archive: [v1.8-ROADMAP.md](milestones/v1.8-ROADMAP.md)
-- 🚧 **v1.9 Inbound Peer Serving and Network Participation Boundary** - Phases 90 through 95 (active).
+- 🚧 **v1.9 Inbound Peer Serving and Network Participation Boundary** - Phases 90 through 98 (active).
 
 ## Current Focus
 
@@ -19,7 +19,7 @@ v1.9 Inbound Peer Serving and Network Participation Boundary started on 2026-06-
 
 **Goal:** Let Open Bitcoin accept and serve inbound peers under explicit admission, permission, address, eviction/ban, and resource-governance rules while keeping relay and production participation claims deferred.
 
-**Current state:** Phase 95 is complete and verified; v1.9 has 28/28 scoped requirements mapped and all six phases complete.
+**Current state:** Phase 95 is complete and verified. The milestone audit found integration gaps, so Phases 96 through 98 close the peer-policy runtime bridge, inbound metric sample production, and traceability reconciliation before v1.9 can be completed. v1.9 has 28/28 scoped requirements mapped, with 18 complete and 10 pending gap-closure verification.
 
 **Boundary:** v1.9 does not claim transaction relay, compact block relay, mempool propagation, public inbound serving by default, production service operation, or production full-node readiness.
 
@@ -33,6 +33,9 @@ v1.9 Inbound Peer Serving and Network Participation Boundary started on 2026-06-
 | 93 | Eviction, Ban, and Misbehavior Policy | 3/3 | Complete    | 2026-06-26 |
 | 94 | DoS and Resource Governance | 8/8 | Complete    | 2026-06-27 |
 | 95 | Network Participation Evidence and Release Boundary | 4/4 | Complete    | 2026-06-27 |
+| 96 | Peer Policy Runtime Bridge | 0/4 | Pending | — |
+| 97 | Inbound Metrics Sample Production | 0/4 | Pending | — |
+| 98 | Traceability Reconciliation | 0/3 | Pending | — |
 
 ## Phase Details
 
@@ -173,6 +176,75 @@ Plans:
 5. Support bundles preserve useful inbound serving diagnosis while redacting peer addresses where needed.
 6. Requirements, roadmap, summaries, verification, and audit artifacts maintain 28/28 requirement traceability.
 
+### Phase 96: Peer Policy Runtime Bridge
+
+**Goal:** Connect durable ban, unban, and misbehavior policy decisions into live managed runtime state, reconnect suppression, status/RPC/CLI/support evidence, and deterministic verification without expanding public banlist or production participation claims.
+
+**Requirements:** EVICT-03, EVICT-04, DOS-03
+
+**Gap Closure:** Closes `INT-01-peer-policy-runtime-bridge` and `FLOW-01-peer-policy-to-runtime` from `.planning/v1.9-MILESTONE-AUDIT.md`.
+
+**Plans:** 0/4 plans complete
+
+Plans:
+- [ ] 96-01-PLAN.md — Managed peer-policy state and decision recording
+- [ ] 96-02-PLAN.md — Reconnect suppression and runtime admission integration
+- [ ] 96-03-PLAN.md — Status, RPC, CLI, and support evidence projection
+- [ ] 96-04-PLAN.md — Deterministic checker and final verification
+
+**Success criteria:**
+1. Managed runtime state records ban, expiry, unban, and misbehavior decisions instead of projecting empty decision slices.
+2. Reconnect suppression uses scoped ban or discourage state for the connecting remote address without introducing hidden broad bans.
+3. Status, RPC, CLI, support, logs, and tests expose bounded peer-policy outcomes without raw peer material.
+4. Default verification proves the peer-policy bridge with deterministic, local-only checks.
+
+### Phase 97: Inbound Metrics Sample Production
+
+**Goal:** Produce persisted low-cardinality metric samples from inbound admission, permission, peer-policy, and resource-governance counters so metrics and dashboard history reflect real runtime outcomes.
+
+**Requirements:** INB-05, DOS-04
+
+**Depends on:** Phase 96
+
+**Gap Closure:** Closes `INT-02-inbound-metric-sample-production` and `FLOW-02-inbound-counters-to-metrics` from `.planning/v1.9-MILESTONE-AUDIT.md`.
+
+**Plans:** 0/4 plans complete
+
+Plans:
+- [ ] 97-01-PLAN.md — Pure inbound metrics snapshot and sample mapping
+- [ ] 97-02-PLAN.md — Runtime metric sample production and storage append path
+- [ ] 97-03-PLAN.md — Dashboard, status, and support verification for retained inbound samples
+- [ ] 97-04-PLAN.md — Deterministic checker and final verification
+
+**Success criteria:**
+1. Inbound admission, permission, peer-policy, and resource-governance counters map to bounded `MetricSample` values without peer identifiers or endpoint labels.
+2. Runtime code appends inbound metric samples through the existing retention path.
+3. Dashboard history can render retained inbound samples for the registered inbound metric kinds.
+4. Default verification proves inbound metrics are produced from real runtime evidence and remain public-network-free.
+
+### Phase 98: Traceability Reconciliation
+
+**Goal:** Reconcile requirements, roadmap, phase summaries, verification reports, and milestone audit artifacts after gap closure so v1.9 again has exact, consistent 28/28 requirement traceability.
+
+**Requirements:** INB-01, INB-02, INB-03, INB-04, BOUND-06
+
+**Depends on:** Phases 96 and 97
+
+**Gap Closure:** Closes `INT-03-phase-90-requirements-status` and `FLOW-03-phase-completion-to-traceability` from `.planning/v1.9-MILESTONE-AUDIT.md`.
+
+**Plans:** 0/3 plans complete
+
+Plans:
+- [ ] 98-01-PLAN.md — Requirements and roadmap traceability reconciliation
+- [ ] 98-02-PLAN.md — Audit, parity, and checker consistency update
+- [ ] 98-03-PLAN.md — Final verification and re-audit readiness
+
+**Success criteria:**
+1. `INB-01` through `INB-05` no longer have stale pending status once their assigned closure phases pass.
+2. `BOUND-06` is backed by exact-once traceability across requirements, roadmap, summaries, verification, and audit artifacts.
+3. The milestone audit can be rerun without orphaned, partial, or stale requirement status findings.
+4. Contributor-facing docs still preserve the v1.9 no-claim boundary for relay, public defaults, production service operation, and production full-node readiness.
+
 ## Milestone History
 
 | Milestone | Phases | Plans | Status | Shipped |
@@ -186,27 +258,30 @@ Plans:
 | v1.6 Mainnet Full-Sync Completion | 7 | 27 | Shipped | 2026-06-14 |
 | v1.7 Full-Sync Soak and Recovery Hardening | 7 | 37 | Shipped | 2026-06-20 |
 | v1.8 Production Full-Node Readiness Boundary | 8 | 26 | Shipped | 2026-06-25 |
-| v1.9 Inbound Peer Serving and Network Participation Boundary | 6 | 20 | Active | — |
+| v1.9 Inbound Peer Serving and Network Participation Boundary | 9 | 20 | Active | — |
 
 ## Traceability
 
-**Coverage:** 28/28 v1.9 requirements mapped, 0 unmapped.
+**Coverage:** 28/28 v1.9 requirements mapped, 0 unmapped. Ten requirements are pending gap-closure verification across Phases 96 through 98.
 
 | Phase | Requirements | Count |
 |-------|--------------|------:|
-| Phase 90 | INB-01, INB-02, INB-03, INB-04, INB-05 | 5 |
+| Phase 90 | — | 0 |
 | Phase 91 | PERM-01, PERM-02, PERM-03, PERM-04 | 4 |
 | Phase 92 | ADDR-01, ADDR-02, ADDR-03, ADDR-04 | 4 |
-| Phase 93 | EVICT-01, EVICT-02, EVICT-03, EVICT-04 | 4 |
-| Phase 94 | DOS-01, DOS-02, DOS-03, DOS-04, DOS-05 | 5 |
-| Phase 95 | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05, BOUND-06 | 6 |
+| Phase 93 | EVICT-01, EVICT-02 | 2 |
+| Phase 94 | DOS-01, DOS-02, DOS-05 | 3 |
+| Phase 95 | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05 | 5 |
+| Phase 96 | EVICT-03, EVICT-04, DOS-03 | 3 |
+| Phase 97 | INB-05, DOS-04 | 2 |
+| Phase 98 | INB-01, INB-02, INB-03, INB-04, BOUND-06 | 5 |
 
 ## Next Step
 
-Run the milestone audit or completion flow for v1.9:
+Plan and execute the gap-closure phases for v1.9:
 
 ```bash
-/gsd-audit-milestone
+/gsd-plan-phase 96
 ```
 
 Also available:

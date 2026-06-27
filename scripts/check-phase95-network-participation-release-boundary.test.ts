@@ -64,6 +64,59 @@ const PHASE_REQUIREMENTS = {
     "BOUND-06",
   ],
 } as const;
+const REQUIREMENT_PHASE_ASSIGNMENTS = {
+  "INB-01": 98,
+  "INB-02": 98,
+  "INB-03": 98,
+  "INB-04": 98,
+  "INB-05": 97,
+  "PERM-01": 91,
+  "PERM-02": 91,
+  "PERM-03": 91,
+  "PERM-04": 91,
+  "ADDR-01": 92,
+  "ADDR-02": 92,
+  "ADDR-03": 92,
+  "ADDR-04": 92,
+  "EVICT-01": 93,
+  "EVICT-02": 93,
+  "EVICT-03": 96,
+  "EVICT-04": 96,
+  "DOS-01": 94,
+  "DOS-02": 94,
+  "DOS-03": 96,
+  "DOS-04": 97,
+  "DOS-05": 94,
+  "BOUND-01": 95,
+  "BOUND-02": 95,
+  "BOUND-03": 95,
+  "BOUND-04": 95,
+  "BOUND-05": 95,
+  "BOUND-06": 98,
+} as const;
+const GAP_CLOSURE_REQUIREMENTS = new Set<string>([
+  "INB-01",
+  "INB-02",
+  "INB-03",
+  "INB-04",
+  "INB-05",
+  "EVICT-03",
+  "EVICT-04",
+  "DOS-03",
+  "DOS-04",
+  "BOUND-06",
+]);
+const ROADMAP_TRACEABILITY_ROWS = [
+  { phase: 90, requirements: [] },
+  { phase: 91, requirements: ["PERM-01", "PERM-02", "PERM-03", "PERM-04"] },
+  { phase: 92, requirements: ["ADDR-01", "ADDR-02", "ADDR-03", "ADDR-04"] },
+  { phase: 93, requirements: ["EVICT-01", "EVICT-02"] },
+  { phase: 94, requirements: ["DOS-01", "DOS-02", "DOS-05"] },
+  { phase: 95, requirements: ["BOUND-01", "BOUND-02", "BOUND-03", "BOUND-04", "BOUND-05"] },
+  { phase: 96, requirements: ["EVICT-03", "EVICT-04", "DOS-03"] },
+  { phase: 97, requirements: ["INB-05", "DOS-04"] },
+  { phase: 98, requirements: ["INB-01", "INB-02", "INB-03", "INB-04", "BOUND-06"] },
+] as const;
 const TARGET_FILES = [
   ".planning/REQUIREMENTS.md",
   ".planning/ROADMAP.md",
@@ -263,6 +316,35 @@ test("fails when v1.9 requirement IDs are duplicated or omitted", () => {
 
   // Assert
   expect(failures.join("\n")).toContain("BOUND-06");
+});
+
+test("fails when gap-closure traceability maps requirements to stale phases", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutateFiles(files) {
+      replaceInFile(
+        files,
+        ".planning/REQUIREMENTS.md",
+        "| INB-05 | Phase 97 | Pending |",
+        "| INB-05 | Phase 90 | Pending |",
+      );
+      replaceInFile(
+        files,
+        ".planning/ROADMAP.md",
+        "| Phase 97 | INB-05, DOS-04 | 2 |",
+        "| Phase 97 | — | 0 |",
+      );
+    },
+  });
+
+  // Act
+  const failures = checkPhase95NetworkParticipationReleaseBoundary({ rootDir: root });
+
+  // Assert
+  expect(failures.join("\n")).toContain(
+    "BOUND-06 requirements traceability missing INB-05 -> Phase 97",
+  );
+  expect(failures.join("\n")).toContain("BOUND-06 roadmap phase traceability");
 });
 
 test("fails when Phase 95 verifier commands exist only in VERIFY_COMMAND_ORDER", () => {
@@ -487,21 +569,23 @@ function requirementsText(): string {
     "- v1.9 requirements: 28 total",
     "- Mapped to phases: 28",
     "- Unmapped: 0",
+    "- Pending gap-closure verification: 10",
   ].join("\n");
 }
 
 function roadmapText(): string {
   return [
     "# Roadmap",
-    "**Coverage:** 28/28 v1.9 requirements mapped, 0 unmapped.",
+    [
+      "**Coverage:** 28/28 v1.9 requirements mapped, 0 unmapped.",
+      "Ten requirements are pending gap-closure verification across Phases 96 through 98.",
+    ].join(" "),
     "| Phase | Requirements | Count |",
     "| --- | --- | ---: |",
-    "| Phase 90 | INB-01, INB-02, INB-03, INB-04, INB-05 | 5 |",
-    "| Phase 91 | PERM-01, PERM-02, PERM-03, PERM-04 | 4 |",
-    "| Phase 92 | ADDR-01, ADDR-02, ADDR-03, ADDR-04 | 4 |",
-    "| Phase 93 | EVICT-01, EVICT-02, EVICT-03, EVICT-04 | 4 |",
-    "| Phase 94 | DOS-01, DOS-02, DOS-03, DOS-04, DOS-05 | 5 |",
-    "| Phase 95 | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05, BOUND-06 | 6 |",
+    ...ROADMAP_TRACEABILITY_ROWS.map(({ phase, requirements }) => {
+      const requirementText = requirements.length === 0 ? "—" : requirements.join(", ");
+      return `| Phase ${phase} | ${requirementText} | ${requirements.length} |`;
+    }),
   ].join("\n");
 }
 
@@ -510,18 +594,11 @@ function phaseTraceRows(): string[] {
     "| Requirement | Phase | Status |",
     "| --- | --- | --- |",
   ];
-  for (const [surface, requirements] of Object.entries(PHASE_REQUIREMENTS)) {
-    const phase = phaseNumberForSurface(surface);
-    for (const requirement of requirements) {
-      rows.push(`| ${requirement} | Phase ${phase} | Complete |`);
-    }
+  for (const [requirement, phase] of Object.entries(REQUIREMENT_PHASE_ASSIGNMENTS)) {
+    const status = GAP_CLOSURE_REQUIREMENTS.has(requirement) ? "Pending" : "Complete";
+    rows.push(`| ${requirement} | Phase ${phase} | ${status} |`);
   }
   return rows;
-}
-
-function phaseNumberForSurface(surface: string): number {
-  const surfaces = Object.keys(PHASE_REQUIREMENTS);
-  return 90 + surfaces.indexOf(surface);
 }
 
 function verifyScriptText(): string {

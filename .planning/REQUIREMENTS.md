@@ -33,15 +33,15 @@ Requirements for the active v1.9 milestone. Each maps to exactly one roadmap pha
 
 - [x] **EVICT-01**: The node scores inbound peers for eviction using deterministic, Knots-anchored criteria such as connection class, handshake progress, netgroup or diversity, activity, and permissions.
 - [x] **EVICT-02**: The node can disconnect or evict peers when admission caps or abuse policy require it, preserving stable reason codes and support evidence.
-- [x] **EVICT-03**: The node can discourage or ban peers through durable policy with expiry, address/subnet scope, manual unban, and no hidden broad-ban behavior.
-- [x] **EVICT-04**: Misbehavior accounting maps protocol violations to bounded responses without incorrectly banning or evicting permissioned peers.
+- [ ] **EVICT-03**: The node can discourage or ban peers through durable policy with expiry, address/subnet scope, manual unban, and no hidden broad-ban behavior.
+- [ ] **EVICT-04**: Misbehavior accounting maps protocol violations to bounded responses without incorrectly banning or evicting permissioned peers.
 
 ### DoS And Resource Governance
 
 - [x] **DOS-01**: Inbound sessions enforce network magic, message header, payload size, malformed message, and unsupported command limits before allocating unbounded memory.
 - [x] **DOS-02**: Inbound sessions enforce per-peer and aggregate read/write queues, inventory/request bounds, header/block/transaction request caps, and backpressure behavior.
-- [x] **DOS-03**: The node limits connection churn, slow handshakes, idle peers, repeated failures, and banned or discouraged reconnect attempts with deterministic synthetic tests.
-- [x] **DOS-04**: Resource pressure and abuse responses appear in metrics, structured logs, support bundles, and operator status with clear next actions.
+- [ ] **DOS-03**: The node limits connection churn, slow handshakes, idle peers, repeated failures, and banned or discouraged reconnect attempts with deterministic synthetic tests.
+- [ ] **DOS-04**: Resource pressure and abuse responses appear in metrics, structured logs, support bundles, and operator status with clear next actions.
 - [x] **DOS-05**: Default verification covers inbound DoS/resource policy deterministically and keeps public-network listener exposure outside `bash scripts/verify.sh`.
 
 ### Release Boundary
@@ -51,7 +51,7 @@ Requirements for the active v1.9 milestone. Each maps to exactly one roadmap pha
 - [x] **BOUND-03**: Existing outbound sync, full-sync, soak, support-bundle, release-boundary, and production no-claim behavior remains non-regressed while inbound serving is added.
 - [x] **BOUND-04**: Operator UAT guidance includes repo-local Cargo and Bazel command forms for loopback or synthetic inbound review, not only an installed `open-bitcoin` alias.
 - [x] **BOUND-05**: Support bundles redact inbound peer addresses where needed while preserving enough admission, permission, eviction, ban, and resource evidence for diagnosis.
-- [x] **BOUND-06**: Requirements, roadmap, phase summaries, verification reports, and milestone audit artifacts map every v1.9 requirement exactly once.
+- [ ] **BOUND-06**: Requirements, roadmap, phase summaries, verification reports, and milestone audit artifacts map every v1.9 requirement exactly once.
 
 ## Future Requirements
 
@@ -90,11 +90,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INB-01 | Phase 90 | Pending |
-| INB-02 | Phase 90 | Pending |
-| INB-03 | Phase 90 | Pending |
-| INB-04 | Phase 90 | Pending |
-| INB-05 | Phase 90 | Pending |
+| INB-01 | Phase 98 | Pending |
+| INB-02 | Phase 98 | Pending |
+| INB-03 | Phase 98 | Pending |
+| INB-04 | Phase 98 | Pending |
+| INB-05 | Phase 97 | Pending |
 | PERM-01 | Phase 91 | Complete |
 | PERM-02 | Phase 91 | Complete |
 | PERM-03 | Phase 91 | Complete |
@@ -105,25 +105,26 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ADDR-04 | Phase 92 | Complete |
 | EVICT-01 | Phase 93 | Complete |
 | EVICT-02 | Phase 93 | Complete |
-| EVICT-03 | Phase 93 | Complete |
-| EVICT-04 | Phase 93 | Complete |
+| EVICT-03 | Phase 96 | Pending |
+| EVICT-04 | Phase 96 | Pending |
 | DOS-01 | Phase 94 | Complete |
 | DOS-02 | Phase 94 | Complete |
-| DOS-03 | Phase 94 | Complete |
-| DOS-04 | Phase 94 | Complete |
+| DOS-03 | Phase 96 | Pending |
+| DOS-04 | Phase 97 | Pending |
 | DOS-05 | Phase 94 | Complete |
 | BOUND-01 | Phase 95 | Complete |
 | BOUND-02 | Phase 95 | Complete |
 | BOUND-03 | Phase 95 | Complete |
 | BOUND-04 | Phase 95 | Complete |
 | BOUND-05 | Phase 95 | Complete |
-| BOUND-06 | Phase 95 | Complete |
+| BOUND-06 | Phase 98 | Pending |
 
 **Coverage:**
 - v1.9 requirements: 28 total
 - Mapped to phases: 28
 - Unmapped: 0
+- Pending gap-closure verification: 10
 
 ---
 *Requirements defined: 2026-06-25*
-*Last updated: 2026-06-26 after Phase 92 completion*
+*Last updated: 2026-06-27 after v1.9 milestone audit gap planning*

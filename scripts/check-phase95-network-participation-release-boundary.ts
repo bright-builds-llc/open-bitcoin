@@ -32,6 +32,47 @@ const PHASE_REQUIREMENTS = {
   [SURFACE_ID]: REQUIRED_PHASE95_REQUIREMENTS,
 } as const;
 const REQUIRED_V1_9_REQUIREMENTS = Object.values(PHASE_REQUIREMENTS).flat();
+const REQUIREMENT_PHASE_ASSIGNMENTS = {
+  "INB-01": 98,
+  "INB-02": 98,
+  "INB-03": 98,
+  "INB-04": 98,
+  "INB-05": 97,
+  "PERM-01": 91,
+  "PERM-02": 91,
+  "PERM-03": 91,
+  "PERM-04": 91,
+  "ADDR-01": 92,
+  "ADDR-02": 92,
+  "ADDR-03": 92,
+  "ADDR-04": 92,
+  "EVICT-01": 93,
+  "EVICT-02": 93,
+  "EVICT-03": 96,
+  "EVICT-04": 96,
+  "DOS-01": 94,
+  "DOS-02": 94,
+  "DOS-03": 96,
+  "DOS-04": 97,
+  "DOS-05": 94,
+  "BOUND-01": 95,
+  "BOUND-02": 95,
+  "BOUND-03": 95,
+  "BOUND-04": 95,
+  "BOUND-05": 95,
+  "BOUND-06": 98,
+} as const;
+const ROADMAP_TRACEABILITY_ROWS = [
+  { phase: 90, requirements: [] },
+  { phase: 91, requirements: ["PERM-01", "PERM-02", "PERM-03", "PERM-04"] },
+  { phase: 92, requirements: ["ADDR-01", "ADDR-02", "ADDR-03", "ADDR-04"] },
+  { phase: 93, requirements: ["EVICT-01", "EVICT-02"] },
+  { phase: 94, requirements: ["DOS-01", "DOS-02", "DOS-05"] },
+  { phase: 95, requirements: ["BOUND-01", "BOUND-02", "BOUND-03", "BOUND-04", "BOUND-05"] },
+  { phase: 96, requirements: ["EVICT-03", "EVICT-04", "DOS-03"] },
+  { phase: 97, requirements: ["INB-05", "DOS-04"] },
+  { phase: 98, requirements: ["INB-01", "INB-02", "INB-03", "INB-04", "BOUND-06"] },
+] as const;
 const REQUIRED_KNOTS_ANCHORS = [
   "packages/bitcoin-knots/src/net.cpp", "packages/bitcoin-knots/src/net_processing.cpp",
   "packages/bitcoin-knots/src/addrman.cpp", "packages/bitcoin-knots/src/banman.cpp",
@@ -510,13 +551,15 @@ function verifyRequirementsTable(text: string, failures: string[]): void {
   requireContains(text, "v1.9 requirements: 28 total", "BOUND-06 requirements coverage", failures);
   requireContains(text, "Mapped to phases: 28", "BOUND-06 requirements coverage", failures);
   requireContains(text, "Unmapped: 0", "BOUND-06 requirements coverage", failures);
-  for (const [surfaceId, requirements] of Object.entries(PHASE_REQUIREMENTS)) {
-    const phase = phaseNumberForSurface(surfaceId);
-    for (const requirement of requirements) {
-      const rowPattern = new RegExp(`\\|\\s*${escapeRegExp(requirement)}\\s*\\|\\s*Phase ${phase}\\s*\\|`);
-      if (!rowPattern.test(text)) {
-        failures.push(`BOUND-06 requirements traceability missing ${requirement} -> Phase ${phase}`);
-      }
+  verifyRequirementCountsFromArrays(
+    Object.keys(REQUIREMENT_PHASE_ASSIGNMENTS),
+    "BOUND-06 requirements traceability assignment map",
+    failures,
+  );
+  for (const [requirement, phase] of Object.entries(REQUIREMENT_PHASE_ASSIGNMENTS)) {
+    const rowPattern = new RegExp(`\\|\\s*${escapeRegExp(requirement)}\\s*\\|\\s*Phase ${phase}\\s*\\|`);
+    if (!rowPattern.test(text)) {
+      failures.push(`BOUND-06 requirements traceability missing ${requirement} -> Phase ${phase}`);
     }
   }
 }
@@ -528,9 +571,14 @@ function verifyRoadmapTraceability(text: string, failures: string[]): void {
     "BOUND-06 roadmap coverage",
     failures,
   );
-  for (const [surfaceId, requirements] of Object.entries(PHASE_REQUIREMENTS)) {
-    const phase = phaseNumberForSurface(surfaceId);
-    const expected = `| Phase ${phase} | ${requirements.join(", ")} | ${requirements.length} |`;
+  verifyRequirementCountsFromArrays(
+    ROADMAP_TRACEABILITY_ROWS.flatMap(({ requirements }) => requirements),
+    "BOUND-06 roadmap traceability rows",
+    failures,
+  );
+  for (const { phase, requirements } of ROADMAP_TRACEABILITY_ROWS) {
+    const requirementText = requirements.length === 0 ? "—" : requirements.join(", ");
+    const expected = `| Phase ${phase} | ${requirementText} | ${requirements.length} |`;
     requireContains(text, expected, "BOUND-06 roadmap phase traceability", failures);
   }
 }
@@ -553,10 +601,6 @@ function verifyRequirementCountsFromArrays(
       failures.push(`${label} BOUND-06 expected ${id} exactly once, found ${count}`);
     }
   }
-}
-
-function phaseNumberForSurface(surface: string): number {
-  return 90 + Object.keys(PHASE_REQUIREMENTS).indexOf(surface);
 }
 
 function requirementIds(text: string): string[] {
