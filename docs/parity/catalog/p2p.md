@@ -107,6 +107,11 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
   rejection, queue/request pressure, timeout/churn/reconnect decisions, shared
   status/support fields, fixed metrics, structured logs, and loopback UAT
   command forms
+- Phase 95 `v1-9-network-participation-release-boundary` evidence keeps
+  BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05, and BOUND-06 auditable
+  through the existing parity roots, release-readiness matrix, support
+  redaction roots, deterministic verification references, and 28/28 v1.9
+  requirement traceability
 
 ## Knots sources
 
@@ -593,6 +598,43 @@ Open Bitcoin intentionally owns the Phase 94 evidence surface:
   outside public-network execution.
 
 Phase 94 does not claim transaction relay, compact block relay, mempool propagation, broad address relay, public inbound defaults, public-network CI, production service operation, or production full-node readiness.
+
+## Phase 95 network participation evidence and release boundary
+
+The `v1-9-network-participation-release-boundary` surface covers `BOUND-01`,
+`BOUND-02`, `BOUND-03`, `BOUND-04`, `BOUND-05`, and `BOUND-06` for the v1.9
+closeout surface. Its role is to connect the Phase 90 through Phase 94 evidence
+roots to release reviewers, not to introduce a new runtime networking surface or
+a competing evidence manifest.
+
+Its Knots anchors are
+[`packages/bitcoin-knots/src/net.cpp`](../../../packages/bitcoin-knots/src/net.cpp)
+for listener, connection-manager, protected-slot, timeout, and resource
+comparison points,
+[`packages/bitcoin-knots/src/net_processing.cpp`](../../../packages/bitcoin-knots/src/net_processing.cpp)
+for peer-processing, handshake, request, inventory, and misbehavior comparison
+points,
+[`packages/bitcoin-knots/src/addrman.cpp`](../../../packages/bitcoin-knots/src/addrman.cpp)
+for address-manager and learned-address comparison points,
+[`packages/bitcoin-knots/src/banman.cpp`](../../../packages/bitcoin-knots/src/banman.cpp)
+for ban, unban, expiry, and discouraged-reconnect comparison points, and
+[`packages/bitcoin-knots/src/net_permissions.cpp`](../../../packages/bitcoin-knots/src/net_permissions.cpp)
+for permission-effect comparison points.
+
+Release reviewers should read this surface through
+[`docs/parity/index.json`](../index.json),
+[`docs/parity/checklist.md`](../checklist.md),
+[`docs/parity/release-readiness.md`](../release-readiness.md),
+[`docs/parity/production-claim-boundary.md`](../production-claim-boundary.md),
+[`docs/parity/support-matrix.md`](../support-matrix.md), and
+[`docs/operator/runtime-guide.md`](../../operator/runtime-guide.md). The
+deterministic Phase 95 checker paths are
+[`scripts/check-phase95-network-participation-release-boundary.ts`](../../../scripts/check-phase95-network-participation-release-boundary.ts)
+and
+[`scripts/check-phase95-network-participation-release-boundary.test.ts`](../../../scripts/check-phase95-network-participation-release-boundary.test.ts),
+with final wiring owned by the Phase 95 aggregate checker plan.
+
+Phase 95 does not claim transaction relay, compact block relay, mempool propagation, full address relay beyond Phase 92, public inbound defaults, public-network CI, production service operation, or production full-node readiness. Those surfaces remain deferred until future milestones add scoped parity, release, support, and verification evidence.
 
 ## First-party implementation
 

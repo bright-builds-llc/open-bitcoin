@@ -9,6 +9,9 @@ and points reviewers at repo-owned evidence instead of reproducing full phase
 logs, checking generated benchmark, support-bundle, soak, or live-smoke
 artifacts into git, or making public-network checks part of default
 verification.
+For v1.9, this handoff adds the Network Participation Evidence and Release
+Boundary closeout for opt-in inbound peer serving evidence while keeping relay,
+public-default, service-operation, and production-readiness claims deferred.
 
 ## Readiness Verdict
 
@@ -71,15 +74,28 @@ progress guarantees, stall diagnosis, support-bundle forensics, opt-in UAT
 commands, deterministic release-boundary checks, and parity roots that make
 those claims auditable.
 
+The current v1.9 Network Participation Evidence and Release Boundary closes
+the inbound-serving milestone as bounded, explicit opt-in evidence. It connects
+the Phase 90 listener/admission, Phase 91 permissions, Phase 92 address
+boundaries, Phase 93 eviction/ban/misbehavior policy, Phase 94 resource
+governance, and Phase 95 support-redaction evidence through existing parity
+roots. The canonical surface id is
+`v1-9-network-participation-release-boundary`.
+
 This is not a production-node or production-funds claim. It does not claim
-inbound serving, address relay, block serving, transaction relay, compact block
-relay, production-funds wallet safety, migration apply mode, signed packaging,
-Windows service support, GUI parity, hosted dashboards, public-network default
-checks, public-network CI, release-blocking live sync, automatic support-bundle
-upload, destructive repair, or broad production-node readiness.
+public inbound serving by default, full address relay beyond the Phase 92
+boundary, block serving, transaction relay, compact block relay,
+production-funds wallet safety, migration apply mode, signed packaging, Windows
+service support, GUI parity, hosted dashboards, public-network default checks,
+public-network CI, release-blocking live sync, automatic support-bundle upload,
+destructive repair, production service operation, or broad production-node
+readiness.
 
 Treat [`docs/parity/index.json`](index.json) as the machine-readable root,
 [`docs/parity/checklist.md`](checklist.md) as the human checklist view,
+[`docs/parity/catalog/p2p.md`](catalog/p2p.md) as the P2P and v1.9 network
+participation catalog root, this release-readiness page as the v1.9 closeout
+handoff record,
 [`docs/parity/production-claim-boundary.md`](production-claim-boundary.md) as
 the current v1.8 production claim boundary,
 [`docs/parity/support-matrix.md`](support-matrix.md) as the canonical support
@@ -114,7 +130,10 @@ later UPG-04 drift checks consume. Phase 85 adds the operator-runbook root for
 RUN-01 through RUN-03. Phase 86 adds the service-operation root for SVC-01 and
 SVC-02. Phase 87 adds this release-readiness checklist and narrow deterministic
 checker for the current v1.8 release-review map, including the Phase 88
-guardrail evidence rows for REL-02, REL-03, and REL-04.
+guardrail evidence rows for REL-02, REL-03, and REL-04. Phase 95 adds the
+v1.9 closeout matrix here and points the default-verification gate at the
+planned aggregate Phase 95 checker without making public-network or service
+operations part of default verification.
 
 ## Complete Surfaces
 
@@ -148,6 +167,12 @@ surfaces as `done`:
 - `v1-8-service-operation-expectations`
 - `v1-8-release-readiness-checklist`
 - `v1-8-deterministic-claim-guardrails`
+- `v1-9-inbound-listener-admission-policy`
+- `v1-9-peer-permissions-connection-classes`
+- `v1-9-address-advertisement-discovery-boundaries`
+- `v1-9-eviction-ban-misbehavior-policy`
+- `v1-9-dos-resource-governance`
+- `v1-9-network-participation-release-boundary`
 
 Primary current-cycle evidence:
 
@@ -182,6 +207,12 @@ Primary current-cycle evidence:
   as deterministic checks over the public release/operator docs, preventing
   overbroad production-readiness and deferred-surface claims without claiming
   production full-node readiness.
+- [`docs/parity/catalog/p2p.md`](catalog/p2p.md), this release-readiness page,
+  [`docs/parity/index.json`](index.json), and
+  [`docs/parity/checklist.md`](checklist.md) record the canonical v1.9
+  Network Participation Evidence and Release Boundary for BOUND-01 through
+  BOUND-06, including Knots anchors for `net.cpp`, `net_processing.cpp`,
+  `addrman.cpp`, `banman.cpp`, and `net_permissions.cpp`.
 - [`docs/parity/release-readiness.md`](release-readiness.md) records this
   current v1.8 handoff plus the historical v1.7 full-sync soak and recovery
   hardening boundary matrix and traceability for SOAK-01 through REL-04.
@@ -330,6 +361,39 @@ bun test scripts/check-phase88-deterministic-claim-guardrails.test.ts
 bun run scripts/check-phase88-deterministic-claim-guardrails.ts
 bash scripts/verify.sh
 ```
+
+## v1.9 Network Participation Evidence and Release Boundary
+
+Surface id: `v1-9-network-participation-release-boundary`
+
+This closeout is the current v1.9 release-review map for bounded network
+participation evidence. It links BOUND-01 through BOUND-06 to canonical parity
+roots, deterministic verification, opt-in UAT posture, residual risk, and the
+no-claim or next gate. It reuses existing roots instead of creating a separate
+release manifest.
+
+| Requirement | Canonical evidence | Deterministic verification | Opt-in UAT posture | Residual risk | No-claim or next gate |
+| --- | --- | --- | --- | --- | --- |
+| BOUND-01 | `docs/parity/catalog/p2p.md`, `docs/parity/checklist.md`, `docs/parity/release-readiness.md`, `docs/parity/production-claim-boundary.md`, `docs/parity/support-matrix.md` | Plan 04 aggregate checker path: `bun run scripts/check-phase95-network-participation-release-boundary.ts`; current focused checks parse `docs/parity/index.json` and scan this root. | Reviewers use the runtime-guide loopback or synthetic inbound commands only when they deliberately opt in. | Broad release language can still drift until the aggregate checker is wired. | v1.9 does not claim transaction relay, compact block relay, mempool propagation, public inbound defaults, production service operation, or production full-node readiness. |
+| BOUND-02 | `docs/parity/catalog/p2p.md`, `docs/parity/index.json`, and Knots anchors for `packages/bitcoin-knots/src/net.cpp`, `packages/bitcoin-knots/src/net_processing.cpp`, `packages/bitcoin-knots/src/addrman.cpp`, `packages/bitcoin-knots/src/banman.cpp`, and `packages/bitcoin-knots/src/net_permissions.cpp` | Focused `rg` anchor checks in Plan 02; Plan 04 will make these aggregate checker assertions. | UAT remains source-built review evidence; Knots anchors are audit references, not live Knots process execution. | Future implementation can add new anchors and must update this surface. | Missing or changed anchors need a scoped parity-doc update before a broader claim. |
+| BOUND-03 | Phase 90 through Phase 94 summaries, `scripts/verify.sh`, `docs/parity/production-claim-boundary.md`, and historical release-readiness sections | `bash scripts/verify.sh` remains the repo-native non-regression contract after Phase 95 checker wiring. | Public-network full-sync, soak, real service-manager, and live support-bundle collection remain optional operator evidence only. | Default verification cannot prove public-network reachability or production uptime. | Existing outbound sync, full-sync, soak, support-bundle, production no-claim, and release-boundary behavior must remain non-regressed before any stronger release gate. |
+| BOUND-04 | `docs/operator/runtime-guide.md`, `docs/parity/checklist.md`, and Phase 90 through Phase 94 summaries | Plan 04 aggregate checker verifies repo-local Cargo and Bazel command forms. | Operators use copy-pasteable Cargo and Bazel loopback/synthetic commands; installed aliases are not the only path. | Local hosts can still lack ports, permissions, or build cache state. | Public-network listener exposure and CI remain future-scoped. |
+| BOUND-05 | `packages/open-bitcoin-cli/src/operator/support/redaction.rs`, `packages/open-bitcoin-cli/src/operator/support/tests.rs`, `docs/parity/support-matrix.md`, and Phase 95 Plan 01 summary | Rust support tests and the Phase 95 aggregate checker guard redaction boundaries. | Support bundles are local redacted evidence for diagnosis, not public uploads or release validators by themselves. | New support fields can leak raw peer material unless the redaction tests and checker are kept current. | Automatic support-bundle upload and raw peer/payload/permission evidence remain out of scope. |
+| BOUND-06 | `.planning/REQUIREMENTS.md`, `.planning/ROADMAP.md`, `docs/parity/index.json`, `docs/parity/checklist.md`, and this release matrix | JSON parsing plus exact BOUND row checks in Plan 02; Plan 04 aggregate checker verifies the stable roots. | Milestone audit and UAT reviewers should cite these roots instead of adding a parallel traceability manifest. | Final GSD summaries and audit artifacts are produced by lifecycle steps after implementation. | v1.9 requirement traceability stays exactly once across Phase 90 through Phase 95; new requirement IDs need a future roadmap update. |
+
+Required deterministic reviewer commands for this closeout:
+
+```bash
+bun -e 'JSON.parse(await Bun.file("docs/parity/index.json").text()); console.log("index json ok")'
+rg -n "v1-9-network-participation-release-boundary|BOUND-01|BOUND-06|Network Participation Evidence and Release Boundary" docs/parity/checklist.md docs/parity/catalog/p2p.md docs/parity/release-readiness.md
+bash scripts/verify.sh
+```
+
+Plan 04 owns the aggregate checker wiring for
+`scripts/check-phase95-network-participation-release-boundary.ts` and
+`scripts/check-phase95-network-participation-release-boundary.test.ts`. Until
+that plan lands, reviewers should treat those paths as the next deterministic
+gate, not as a separate evidence manifest.
 
 ## v1.8 Release Readiness No-Claim Review
 
