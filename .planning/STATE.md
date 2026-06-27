@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Inbound Peer Serving and Network Participation Boundary
 status: executing
-stopped_at: Phase 95 context gathered
-last_updated: "2026-06-27T13:44:03.861Z"
+stopped_at: Completed 95-01-PLAN.md
+last_updated: "2026-06-27T14:08:31.595Z"
 last_activity: 2026-06-27 -- Phase 95 planning complete
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 44
-  completed_plans: 40
-  percent: 91
+  completed_plans: 41
+  percent: 93
 ---
 
 # Project State
@@ -21,17 +21,17 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-26)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 94 — DoS and Resource Governance
+**Current focus:** Phase 95 — Network Participation Evidence and Release Boundary
 
 ## Current Position
 
 Milestone: v1.9 Inbound Peer Serving and Network Participation Boundary
 Phase: 95
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-06-27 -- Phase 95 planning complete
+Plan: 02
+Status: In progress
+Last activity: 2026-06-27 -- Phase 95 Plan 01 complete
 
-Progress: [##########] 100%
+Progress: [#########-] 93%
 
 ## Performance Metrics
 
@@ -77,6 +77,7 @@ Progress: [##########] 100%
 | Phase 94 P06 | 22m 44s | 2 tasks | 5 files |
 | Phase 94 P07 | 21m 14s | 2 tasks | 7 files |
 | Phase 94 P08 | 30m 15s | 2 tasks | 5 files |
+| Phase 95 P01 | 13m 04s | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -135,6 +136,9 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 - [Phase 94]: Preserve the Phase 94 no-claim boundary sentence across parity docs and index JSON.
 - [Phase 94]: Validate actual ManagedRpcContext structured-log append wiring, not only helper projection strings.
 - [Phase 94]: Keep Phase 94 verification local/static and wired immediately after Phase 93 in the default verifier.
+- [Phase 95]: Redact only resource-governance decision fields that contain raw peer, endpoint, payload, permission, config, credential, cookie, or secret markers.
+- [Phase 95]: Preserve safe Phase 94 labels such as invalid_checksum, payload_rejected, and source_inbound_resource_governance when they do not contain raw material.
+- [Phase 95]: Keep resource-governance redaction in support_status_for_bundle so both support JSON and Markdown consume the sanitized status snapshot.
 
 ### Pending Todos
 
@@ -155,6 +159,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-27T12:55:33.208Z
-Stopped at: Phase 95 context gathered
-Resume file: .planning/phases/95-network-participation-evidence-and-release-boundary/95-CONTEXT.md
+Last session: 2026-06-27T14:08:01.422Z
+Stopped at: Completed 95-01-PLAN.md
+Resume file: None

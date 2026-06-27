@@ -19,7 +19,7 @@ v1.9 Inbound Peer Serving and Network Participation Boundary started on 2026-06-
 
 **Goal:** Let Open Bitcoin accept and serve inbound peers under explicit admission, permission, address, eviction/ban, and resource-governance rules while keeping relay and production participation claims deferred.
 
-**Current state:** Phase 93 is complete; Phase 94 DoS and Resource Governance is planned for execution.
+**Current state:** Phase 95 Plan 01 is complete; Plans 02 through 04 remain for parity roots, UAT/public boundary wording, and aggregate checker wiring.
 
 **Boundary:** v1.9 does not claim transaction relay, compact block relay, mempool propagation, public inbound serving by default, production service operation, or production full-node readiness.
 
@@ -32,7 +32,7 @@ v1.9 Inbound Peer Serving and Network Participation Boundary started on 2026-06-
 | 92 | Address Advertisement and Discovery Boundaries | 9/9 | Complete    | 2026-06-26 |
 | 93 | Eviction, Ban, and Misbehavior Policy | 3/3 | Complete    | 2026-06-26 |
 | 94 | DoS and Resource Governance | 8/8 | Complete    | 2026-06-27 |
-| 95 | Network Participation Evidence and Release Boundary | Prove parity anchors, non-regression, support redaction, UAT commands, and deterministic no-claim guardrails for deferred network participation. | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05, BOUND-06 | Pending |
+| 95 | Network Participation Evidence and Release Boundary | 1/4 | In Progress|  |
 
 ## Phase Details
 
@@ -157,10 +157,10 @@ Plans:
 
 **Requirements:** BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05, BOUND-06
 
-**Plans:** 4 plans
+**Plans:** 1/4 plans executed
 
 Plans:
-- [ ] 95-01-PLAN.md — Support resource-governance redaction and regression tests
+- [x] 95-01-PLAN.md — Support resource-governance redaction and regression tests
 - [ ] 95-02-PLAN.md — Parity closeout roots and release-readiness traceability
 - [ ] 95-03-PLAN.md — Operator UAT commands and public boundary wording
 - [ ] 95-04-PLAN.md — Aggregate Phase 95 checker and verifier wiring
@@ -203,10 +203,10 @@ Plans:
 
 ## Next Step
 
-Execute Phase 94:
+Execute Phase 95 Plan 02:
 
 ```bash
-/gsd-execute-phase 94
+/gsd-execute-phase 95
 ```
 
 Also available:

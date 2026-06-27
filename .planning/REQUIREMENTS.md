@@ -50,7 +50,7 @@ Requirements for the active v1.9 milestone. Each maps to exactly one roadmap pha
 - [ ] **BOUND-02**: v1.9 parity breadcrumbs and documentation cite Knots anchors for `net.cpp`, `net_processing.cpp`, `addrman.cpp`, `banman.cpp`, and `net_permissions.cpp`, or record intentional deviations.
 - [ ] **BOUND-03**: Existing outbound sync, full-sync, soak, support-bundle, release-boundary, and production no-claim behavior remains non-regressed while inbound serving is added.
 - [ ] **BOUND-04**: Operator UAT guidance includes repo-local Cargo and Bazel command forms for loopback or synthetic inbound review, not only an installed `open-bitcoin` alias.
-- [ ] **BOUND-05**: Support bundles redact inbound peer addresses where needed while preserving enough admission, permission, eviction, ban, and resource evidence for diagnosis.
+- [x] **BOUND-05**: Support bundles redact inbound peer addresses where needed while preserving enough admission, permission, eviction, ban, and resource evidence for diagnosis.
 - [ ] **BOUND-06**: Requirements, roadmap, phase summaries, verification reports, and milestone audit artifacts map every v1.9 requirement exactly once.
 
 ## Future Requirements
@@ -116,7 +116,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BOUND-02 | Phase 95 | Pending |
 | BOUND-03 | Phase 95 | Pending |
 | BOUND-04 | Phase 95 | Pending |
-| BOUND-05 | Phase 95 | Pending |
+| BOUND-05 | Phase 95 | Complete |
 | BOUND-06 | Phase 95 | Pending |
 
 **Coverage:**
