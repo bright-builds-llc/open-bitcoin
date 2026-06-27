@@ -7,11 +7,23 @@ Its current allowed statement is limited to this release-control claim:
 Open Bitcoin defines gates required before a future production full-node
 readiness claim.
 
+v1.9 adds bounded opt-in inbound listener/admission, permission,
+address-boundary, eviction/ban, and resource-governance evidence for loopback
+or synthetic review through the existing parity roots. This boundary does not claim production full-node readiness. That evidence does not claim public inbound
+defaults, transaction relay, compact block relay, mempool propagation, full
+address relay, production-service operation, or production network
+participation.
+
 For release review, use the v1.8 release-readiness checklist in
 [`release-readiness.md`](release-readiness.md#v18-release-readiness-checklist).
 It maps this boundary and the other current v1.8 requirements to canonical
 evidence, deterministic checks, UAT or manual evidence, residual risk, and
 no-claim or next-gate status.
+For the v1.9 network participation boundary closeout, use
+[`release-readiness.md`](release-readiness.md#v19-network-participation-evidence-and-release-boundary),
+[`catalog/p2p.md`](catalog/p2p.md), the parity
+[`checklist.md`](checklist.md), and the operator
+[`runtime-guide.md`](../operator/runtime-guide.md).
 The v1.8 deterministic claim guardrails prevent overbroad
 production-readiness and deferred-surface claims in the public release/operator
 docs; they do not claim production full-node readiness.
@@ -33,7 +45,9 @@ docs; they do not claim production full-node readiness.
 | Open Bitcoin defines gates required before a future production full-node readiness claim. | `supported` | allowed | `docs/parity/production-claim-boundary.md`, `docs/parity/release-readiness.md`, `docs/parity/index.json`, and `bash scripts/verify.sh` | `bash scripts/verify.sh` | docs/parity verification only | Gates are defined but not yet satisfied | Phase 87 release-readiness checklist plus Phase 88 deterministic claim guardrails |
 | Open Bitcoin has production full-node readiness. | `deferred` | not allowed yet | This boundary, `docs/parity/deviations-and-unknowns.md`, and historical v1.3 through v1.7 evidence | No default verifier may prove this in v1.8 | none | Future gates are unsatisfied | Future production-readiness milestone with scoped P2P, chainstate, wallet, operator, packaging, support, and release-policy evidence |
 | Open Bitcoin supports production service operation. | `deferred` | not allowed yet | Runtime guide limitations, `docs/parity/service-operation-expectations.md`, and operator-runtime catalog | No default verifier may prove this in v1.8 | none | Service operation lacks production policy, packaging, and platform evidence | Future service-operation milestone with uptime, install, supervision, rollback, and platform gates |
-| Open Bitcoin supports relay/inbound serving. | `deferred` | not allowed yet | P2P catalog and deferred-surface register | No default verifier may prove this in v1.8 | none | Inbound and relay policy are not production-scoped | Scoped P2P production milestone for inbound serving, address relay, block serving, transaction relay, and compact block relay |
+| Open Bitcoin supports relay/inbound serving. | `deferred` | not allowed yet | P2P catalog, release-readiness closeout, support matrix, runtime guide, and deferred-surface register | No default verifier may prove this in v1.8 or broad public relay or production inbound serving in v1.9 | bounded opt-in inbound review only | Public inbound defaults, production network participation, transaction relay, compact block relay, mempool propagation, full address relay, and production full-node readiness remain unsatisfied. | Scoped P2P production milestone for public inbound defaults, inbound serving, address relay, block serving, transaction relay, compact block relay, and relay policy |
+| Open Bitcoin has bounded opt-in inbound listener/admission, permission, address-boundary, eviction/ban, and resource-governance evidence for v1.9 loopback or synthetic review. | `opt-in UAT` | allowed as bounded evidence only | `docs/operator/runtime-guide.md`, `docs/parity/catalog/p2p.md`, `docs/parity/release-readiness.md`, `docs/parity/checklist.md`, and `docs/parity/index.json` | `bash scripts/verify.sh` remains the non-regression contract; Plan 04 owns the aggregate Phase 95 checker | loopback or synthetic review only | The evidence does not prove public inbound defaults, production-service operation, production network participation, relay, or production full-node readiness. | Future scoped milestones for public defaults, service operation, relay, packaging, and production readiness |
+| Open Bitcoin has transaction relay, compact block relay, mempool propagation, full address relay, public inbound defaults, production-service operation, or production full-node readiness. | `deferred` | not allowed yet | P2P catalog, release-readiness closeout, support matrix, and deferred-surface register | No default verifier may prove these in v1.9 | none | Relay, full address relay, public exposure by default, service operation, and production-readiness gates are unsatisfied. | Future scoped P2P, service, support, packaging, public-network, and production-readiness milestones |
 | Open Bitcoin supports production wallet use. | `deferred` | not allowed yet | Wallet catalog and runtime guide limitations | No default verifier may prove this in v1.8 | none | Production-funds safety, backups, recovery, and threat model are incomplete | Wallet-production threat model, audit, UAT, and operator rollback gates |
 | Open Bitcoin supports migration apply mode. | `deferred` | not allowed yet | Drop-in audit catalog and deviations register | No default verifier may prove this in v1.8 | none | Current migration is dry-run only | Migration apply safety design, backup, rollback, source-service, and source-datadir mutation gates |
 | Open Bitcoin supports signed distribution. | `deferred` | not allowed yet | Runtime guide and operator-runtime catalog | No default verifier may prove this in v1.8 | none | Release signing, provenance, and package-manager policy are not complete | Release-engineering signing, provenance, reproducibility, and package-manager gates |
@@ -70,8 +84,9 @@ production-service gates.
 
 | Surface | Support term | Why deferred | Required future gate |
 | --- | --- | --- | --- |
-| inbound serving | `deferred` | Current P2P evidence is outbound review and does not prove production inbound policy. | Scoped P2P production milestone with inbound policy, resource, abuse, and UAT evidence. |
-| address relay | `deferred` | Address-manager and relay governance are not production-scoped. | P2P address-relay milestone with privacy, poisoning, eviction, and parity evidence. |
+| inbound serving | `deferred` | Broad inbound serving remains deferred; v1.9 documents bounded opt-in inbound review evidence only, not public exposure or production network participation. | Scoped P2P production milestone with inbound policy, resource, abuse, support, relay, and UAT evidence. |
+| public inbound defaults and production network participation | `deferred` | v1.9 documents bounded opt-in inbound review evidence only; public exposure by default and production network participation are not scoped. | Scoped production-network milestone with public-default, resource, abuse, support, and UAT evidence. |
+| full address relay | `deferred` | Address-manager and relay governance beyond Phase 92 bounded direct response evidence are not production-scoped. | P2P address-relay milestone with privacy, poisoning, eviction, and parity evidence. |
 | block serving | `deferred` | Current block evidence is validation/download-oriented, not serving policy. | Block-serving gate with serving correctness, resource bounds, peer policy, and production UAT. |
 | transaction relay | `deferred` | Mempool relay behavior is not production-scoped. | Transaction-relay milestone with relay policy, DoS controls, and parity fixtures. |
 | compact block relay | `deferred` | Compact-block protocol depth remains follow-up work. | Compact-block relay milestone with protocol fixtures, peer behavior, and recovery evidence. |

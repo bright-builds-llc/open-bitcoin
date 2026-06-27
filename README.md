@@ -19,9 +19,12 @@ configuration surfaces while keeping the first-party internals strongly typed,
 auditable, and modular.
 
 > Status: the in-scope headless v1 parity surfaces are implemented and ready
-> for review and operator testing. v1.8 defines the
-> support terms and evidence gates required before a future production
-> full-node readiness claim; it does not claim production full-node readiness.
+> for review and operator testing. v1.9 is the network participation boundary
+> closeout: bounded opt-in inbound listener/admission, permission,
+> address-boundary, eviction/ban, and resource-governance evidence exists for
+> loopback or synthetic review. It still does not claim production full-node
+> readiness, public inbound defaults, transaction relay, compact block relay,
+> mempool propagation, full address relay, or production-service operation.
 
 ## Parity At A Glance
 
@@ -29,7 +32,7 @@ The current status source is the parity ledger:
 [`docs/parity/index.json`](./docs/parity/index.json), the human checklist
 [`docs/parity/checklist.md`](./docs/parity/checklist.md), the release-readiness
 handoff [`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md),
-the v1.8 production claim boundary
+the v1.8/v1.9 production claim boundary
 [`docs/parity/production-claim-boundary.md`](./docs/parity/production-claim-boundary.md),
 the support matrix
 [`docs/parity/support-matrix.md`](./docs/parity/support-matrix.md),
@@ -39,10 +42,13 @@ the operator runbooks
 [`docs/parity/operator-runbooks.md`](./docs/parity/operator-runbooks.md),
 the service operation expectations
 [`docs/parity/service-operation-expectations.md`](./docs/parity/service-operation-expectations.md),
-the v1.8 release-readiness checklist
-[`docs/parity/release-readiness.md#v18-release-readiness-checklist`](./docs/parity/release-readiness.md#v18-release-readiness-checklist),
+the v1.9 network participation release-boundary closeout
+[`docs/parity/release-readiness.md#v19-network-participation-evidence-and-release-boundary`](./docs/parity/release-readiness.md#v19-network-participation-evidence-and-release-boundary),
 and project state [`.planning/STATE.md`](./.planning/STATE.md). Older roadmap
 or requirements rows may lag those artifacts.
+The compact Phase 87 v1.8 release-readiness checklist remains at
+docs/parity/release-readiness.md#v18-release-readiness-checklist for legacy
+guardrails.
 
 | Surface | Bitcoin Knots baseline | Open Bitcoin | Evidence | Notes |
 | --- | --- | --- | --- | --- |
@@ -51,7 +57,7 @@ or requirements rows may lag those artifacts.
 | Consensus and validation | Script execution, transaction checks, block checks, PoW, merkle behavior | ✓ done | [`catalog/consensus-validation.md`](./docs/parity/catalog/consensus-validation.md) | Consensus parity includes legacy, segwit-v0, taproot, and parity-closure fixes. |
 | Chainstate and UTXO engine | Connect, disconnect, reorg, UTXO, undo, and best-chain behavior | ✓ done | [`catalog/chainstate.md`](./docs/parity/catalog/chainstate.md) | Disk-backed databases and full manager behavior remain follow-up depth. |
 | Mempool policy | Admission, replacement, fee accounting, ancestor/descendant, eviction | ✓ done | [`catalog/mempool-policy.md`](./docs/parity/catalog/mempool-policy.md) | Long-lived pressure and package-relay depth remain future work. |
-| P2P networking and sync | Handshake, peer lifecycle, headers, blocks, inventory, tx relay | ✓ done | [`catalog/p2p.md`](./docs/parity/catalog/p2p.md) | Discovery, address relay, bans, and long-running socket policy are deferred. |
+| P2P networking and sync | Handshake, peer lifecycle, headers, blocks, inventory, tx relay | ✓ done | [`catalog/p2p.md`](./docs/parity/catalog/p2p.md) | v1.9 has bounded opt-in inbound listener/admission, permission, address-boundary, eviction/ban, and resource-governance evidence; transaction relay, compact block relay, mempool propagation, full address relay, public inbound defaults, and production full-node readiness remain deferred. |
 | Wallet | Descriptors, addresses, balances, UTXOs, coin selection, signing | ✓ done | [`catalog/wallet.md`](./docs/parity/catalog/wallet.md) | HD, multisig, PSBT, encryption, and external signers remain follow-up surfaces. |
 | RPC, CLI, and config | Local JSON-RPC, `bitcoin-cli`-style flags, config, auth, operator flows | ✓ done | [`catalog/rpc-cli-config.md`](./docs/parity/catalog/rpc-cli-config.md) | The supported slice is single-wallet and local-operator focused. |
 | Verification harnesses and property tests | Functional-suite concepts and fuzz/property targets | ✓ done | [`catalog/verification-harnesses.md`](./docs/parity/catalog/verification-harnesses.md) | Managed Knots process spawning and full upstream Python-suite coverage are deferred. |
@@ -115,12 +121,18 @@ tracked hook content changes.
 
 ## Operator Preview
 
-v1.8 defines the support terms and evidence gates required before a future production full-node readiness claim. It
-does not claim production full-node readiness. The canonical boundary is
+v1.9 closes the network participation boundary while preserving the Phase 82
+support terms and evidence gates required before a future production full-node
+readiness claim. It does not claim production full-node readiness. The canonical
+boundary is
 [`docs/parity/production-claim-boundary.md`](./docs/parity/production-claim-boundary.md).
+v1.8 defines the support terms and evidence gates required before a future production full-node readiness claim; v1.9 adds bounded opt-in inbound evidence without broadening that claim.
 The companion support matrix
 [`docs/parity/support-matrix.md`](./docs/parity/support-matrix.md)
-classifies source-built install, runtime, network, storage, service-supervision, wallet, migration, packaging, dashboard, GUI, support-upload, destructive-repair, and verification/CI surfaces by the same Phase 82 support terms and does not claim production full-node readiness.
+classifies source-built install, runtime, bounded opt-in inbound evidence,
+storage, service-supervision, wallet, migration, packaging, dashboard, GUI,
+support-upload, destructive-repair, and verification/CI surfaces by the same
+Phase 82 support terms and does not claim production full-node readiness.
 For source-built upgrade, rollback, backup, and compatibility decisions, use
 [`docs/parity/upgrade-and-rollback-policy.md`](./docs/parity/upgrade-and-rollback-policy.md).
 For production-boundary preflight, long-run monitoring, no-progress diagnosis,
@@ -131,10 +143,11 @@ For direct `open-bitcoind` operation, source-built service preview,
 opt-in launchd/systemd lifecycle UAT, restart/resume fields, repo-local
 Cargo/Bazel commands, and production-service non-claims, use
 [`docs/parity/service-operation-expectations.md`](./docs/parity/service-operation-expectations.md).
-For release review, use the v1.8 release-readiness checklist in
+For release review, use the v1.9 network participation closeout in
 [`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md), which
-maps the current v1.8 requirements to canonical evidence, deterministic checks,
-UAT or manual evidence, residual risk, and no-claim or next-gate status.
+maps the current Phase 95 boundary requirements to canonical evidence,
+deterministic checks, UAT or manual evidence, residual risk, and no-claim or
+next-gate status.
 The v1.8 deterministic claim guardrails prevent overbroad production-readiness
 and deferred-surface claims in the public release/operator docs; they do not
 claim production full-node readiness.
@@ -144,7 +157,7 @@ support-bundle forensics, and deterministic release-boundary checks.
 For the practical install, onboarding, service, status, dashboard, migration,
 benchmark, limitation, and v1.7 UAT workflow, start with
 [`docs/operator/runtime-guide.md`](./docs/operator/runtime-guide.md). For the
-v1.8 boundary and historical v1.7 review posture, use the runtime guide with
+v1.9 boundary and historical v1.7 review posture, use the runtime guide with
 [`docs/parity/production-claim-boundary.md`](./docs/parity/production-claim-boundary.md),
 [`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md),
 [`docs/parity/index.json`](./docs/parity/index.json), and
@@ -165,13 +178,14 @@ hermetic verification contract.
 v1.6 remains historical source-built, explicit opt-in full-sync completion
 evidence. v1.7 remains historical source-built, explicit opt-in full-sync soak and recovery hardening evidence without broadening release claims. It preserves bounded opt-in
 full-sync soak behavior, durable resume evidence, or diagnosed blocker
-evidence. v1.8 does
-not claim inbound serving, address relay, block serving, transaction relay,
-compact block relay, production-funds wallet safety, production-funds wallet
-use, migration apply mode, signed packaging, Windows service integration,
-hosted dashboards, GUI parity, public-network default checks,
-public-network CI, release-blocking live sync, automatic support-bundle upload,
-destructive repair, or broad production-node readiness.
+evidence. v1.9 has bounded opt-in inbound listener/admission, permission,
+address-boundary, eviction/ban, and resource-governance evidence for local
+review only. It does not claim public inbound defaults, transaction relay,
+compact block relay, mempool propagation, full address relay, block serving,
+production-funds wallet safety, production-funds wallet use, migration apply
+mode, signed packaging, Windows service integration, hosted dashboards, GUI
+parity, public-network default checks, public-network CI, release-blocking live
+sync, automatic support-bundle upload, destructive repair, or broad production-node readiness.
 
 The commands below are a minimal regtest preview. Create a scratch data
 directory, start the RPC server, then call it from another shell:
