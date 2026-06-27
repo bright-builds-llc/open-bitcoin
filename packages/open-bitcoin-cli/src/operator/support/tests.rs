@@ -111,6 +111,7 @@ fn phase71_support_redaction_names_compact_evidence_bounds() {
             "inbound permission labels bounded to machine classes/effects",
             "inbound address boundary evidence bounded/redacted",
             "inbound peer policy evidence bounded/redacted",
+            "inbound resource-governance evidence bounded/redacted",
         ]
     );
 }
@@ -1145,6 +1146,76 @@ fn inbound_support_markdown_renders_phase94_resource_governance_evidence() {
         "Next action: Treat Phase 94 as bounded inbound resource-governance evidence only; inspect resource labels before raising listener exposure, queue caps, request caps, or timeout thresholds.",
     ] {
         assert!(markdown.contains(expected), "missing {expected}");
+    }
+}
+
+#[test]
+fn inbound_support_redacts_raw_phase94_resource_governance_material() {
+    // Arrange
+    let temp = TestDirectory::new("inbound-support-resource-governance-redaction");
+    let mut status = phase94_status_with_resource_governance_evidence();
+    let FieldAvailability::Available(inbound) = &mut status.peers.inbound else {
+        panic!("inbound status fixture should be available");
+    };
+    inbound.latest_resource_governance_decision =
+        FieldAvailability::available(InboundResourceGovernanceEvent {
+            outcome: "rejected 127.0.0.1:18444 peer-94".to_string(),
+            reason: "invalid_checksum peer_id=94 raw_endpoint=0.0.0.0:8333".to_string(),
+            label: "payload_rejected payload_bytes=[00] raw_permission".to_string(),
+            source: "source_inbound_resource_governance permission_string=in,noban".to_string(),
+            message: "0.0.0.0:8333 ::1 config=operator rpc_password=phase95 credential=phase95 secret=phase95 cookie=phase95"
+                .to_string(),
+            next_action: "peer-94 payload_bytes raw_endpoint permission_string config=operator"
+                .to_string(),
+        });
+    let bundle = phase77_support_bundle_with_status(temp.path(), status);
+
+    // Act
+    let serialized = serde_json::to_value(&bundle).expect("support bundle json");
+    let markdown = render::render_support_markdown(&bundle);
+    let decision = &serialized["status"]["peers"]["inbound"]["value"]["latest_resource_governance_decision"]
+        ["value"];
+    let decision_json_text = serde_json::to_string_pretty(decision).expect("decision json");
+    let decision_markdown_line = markdown
+        .lines()
+        .find(|line| line.contains("Latest resource governance decision:"))
+        .expect("resource governance decision line");
+
+    // Assert
+    for field in [
+        "outcome",
+        "reason",
+        "label",
+        "source",
+        "message",
+        "next_action",
+    ] {
+        assert_eq!(
+            decision[field],
+            json!("redacted_resource_governance_evidence"),
+            "unexpected {field} redaction"
+        );
+    }
+    for rendered in [&decision_json_text, decision_markdown_line] {
+        assert!(rendered.contains("redacted_resource_governance_evidence"));
+        for forbidden in [
+            "127.0.0.1:",
+            "0.0.0.0:",
+            "::1",
+            "peer_id=",
+            "peer-",
+            "raw_endpoint",
+            "payload_bytes",
+            "raw_permission",
+            "permission_string",
+            "config=",
+            "rpc_password",
+            "credential",
+            "secret",
+            "cookie=",
+        ] {
+            assert_absent(rendered, forbidden);
+        }
     }
 }
 

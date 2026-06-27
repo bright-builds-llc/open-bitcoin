@@ -7,7 +7,7 @@ use open_bitcoin_node::{
     OpenBitcoinStatusSnapshot,
     status::{
         FieldAvailability, InboundAddressDecisionEvent, InboundPeerPolicyEvent,
-        InboundPeerServingStatus,
+        InboundPeerServingStatus, InboundResourceGovernanceEvent,
     },
 };
 use serde::Serialize;
@@ -19,10 +19,13 @@ const INBOUND_ADDRESS_REDACTION_SAFEGUARD: &str =
     "inbound address boundary evidence bounded/redacted";
 const INBOUND_PEER_POLICY_REDACTION_SAFEGUARD: &str =
     "inbound peer policy evidence bounded/redacted";
+const INBOUND_RESOURCE_GOVERNANCE_REDACTION_SAFEGUARD: &str =
+    "inbound resource-governance evidence bounded/redacted";
 const REDACTED_PERMISSION_CLASS_LABEL: &str = "redacted_permission_class";
 const REDACTED_PERMISSION_EFFECT_LABEL: &str = "redacted_permission_effect";
 const REDACTED_ADDRESS_EVIDENCE_LABEL: &str = "redacted_address_evidence";
 const REDACTED_PEER_POLICY_LABEL: &str = "redacted_peer_policy_label";
+const REDACTED_RESOURCE_GOVERNANCE_LABEL: &str = "redacted_resource_governance_evidence";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub(crate) struct RedactionSummary {
@@ -47,6 +50,7 @@ pub(crate) fn redaction_summary() -> RedactionSummary {
             INBOUND_PERMISSION_REDACTION_SAFEGUARD.to_string(),
             INBOUND_ADDRESS_REDACTION_SAFEGUARD.to_string(),
             INBOUND_PEER_POLICY_REDACTION_SAFEGUARD.to_string(),
+            INBOUND_RESOURCE_GOVERNANCE_REDACTION_SAFEGUARD.to_string(),
         ],
     }
 }
@@ -58,6 +62,7 @@ pub(crate) fn support_status_for_bundle(
     redact_inbound_permission_evidence(&mut status.peers.inbound);
     redact_inbound_address_evidence(&mut status.peers.inbound);
     redact_inbound_peer_policy_evidence(&mut status.peers.inbound);
+    redact_inbound_resource_governance_evidence(&mut status.peers.inbound);
     status
 }
 
@@ -144,6 +149,30 @@ fn sanitize_peer_policy_decision(event: &mut InboundPeerPolicyEvent) {
     event.label = sanitized_peer_policy_text(&event.label);
     event.source = sanitized_peer_policy_text(&event.source);
     event.message = format!("peer policy decision {}: {}", event.outcome, event.reason);
+}
+
+fn redact_inbound_resource_governance_evidence(
+    inbound: &mut FieldAvailability<InboundPeerServingStatus>,
+) {
+    let FieldAvailability::Available(evidence) = inbound else {
+        return;
+    };
+
+    let FieldAvailability::Available(event) = &mut evidence.latest_resource_governance_decision
+    else {
+        return;
+    };
+
+    sanitize_resource_governance_decision(event);
+}
+
+fn sanitize_resource_governance_decision(event: &mut InboundResourceGovernanceEvent) {
+    event.outcome = sanitized_resource_governance_text(&event.outcome);
+    event.reason = sanitized_resource_governance_text(&event.reason);
+    event.label = sanitized_resource_governance_text(&event.label);
+    event.source = sanitized_resource_governance_text(&event.source);
+    event.message = sanitized_resource_governance_text(&event.message);
+    event.next_action = sanitized_resource_governance_text(&event.next_action);
 }
 
 fn redacted_inbound_endpoint_summary(endpoints: &[String]) -> Vec<String> {
@@ -268,6 +297,13 @@ fn sanitized_peer_policy_text(value: &str) -> String {
     value.to_string()
 }
 
+fn sanitized_resource_governance_text(value: &str) -> String {
+    if contains_raw_address_evidence(value) {
+        return REDACTED_RESOURCE_GOVERNANCE_LABEL.to_string();
+    }
+    value.to_string()
+}
+
 fn contains_raw_address_evidence(value: &str) -> bool {
     let lower_value = value.to_ascii_lowercase();
     value.contains("127.0.0.1:")
@@ -275,12 +311,19 @@ fn contains_raw_address_evidence(value: &str) -> bool {
         || value.contains("::1")
         || lower_value.contains("peer-")
         || lower_value.contains("address_bytes")
+        || lower_value.contains("raw_endpoint")
+        || lower_value.contains("payload_bytes")
         || lower_value.contains("peer_id=")
         || lower_value.contains("operator_loopback")
         || lower_value.contains("operator-loopback")
         || lower_value.contains("raw_permission")
+        || lower_value.contains("permission_string")
         || lower_value.contains("in,noban")
         || lower_value.contains("rpc_password")
+        || lower_value.contains("rpcpassword")
+        || lower_value.contains("rpcauth")
+        || lower_value.contains("credential")
+        || lower_value.contains("secret")
         || lower_value.contains("cookie=")
         || lower_value.contains("config=")
 }
