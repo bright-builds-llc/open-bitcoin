@@ -628,6 +628,10 @@
     {
       "name": "v1-9-dos-resource-governance",
       "status": "done"
+    },
+    {
+      "name": "v1-9-network-participation-release-boundary",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -1782,6 +1786,50 @@
         ],
         "suspected_unknowns": [
           "Future Phase 95 work owns release-boundary evidence before any broader network-participation claim can be made."
+        ]
+      },
+      {
+        "id": "v1-9-network-participation-release-boundary",
+        "title": "v1.9 Network Participation Evidence and Release Boundary",
+        "status": "done",
+        "requirements": [
+          "BOUND-01",
+          "BOUND-02",
+          "BOUND-03",
+          "BOUND-04",
+          "BOUND-05",
+          "BOUND-06"
+        ],
+        "evidence": [
+          "docs/parity/catalog/p2p.md",
+          "docs/parity/checklist.md",
+          "docs/parity/release-readiness.md",
+          "docs/parity/production-claim-boundary.md",
+          "docs/parity/support-matrix.md",
+          "docs/operator/runtime-guide.md",
+          "packages/open-bitcoin-cli/src/operator/support/redaction.rs",
+          "packages/open-bitcoin-cli/src/operator/support/tests.rs",
+          "scripts/check-phase95-network-participation-release-boundary.ts",
+          "scripts/check-phase95-network-participation-release-boundary.test.ts",
+          "scripts/verify.sh",
+          ".planning/REQUIREMENTS.md",
+          ".planning/ROADMAP.md"
+        ],
+        "rationale": "Phase 95 records the v1.9 release-boundary closeout in existing parity roots, maps BOUND-01 through BOUND-06 exactly once, and keeps broader network-participation claims gated by future evidence.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/net.cpp",
+            "packages/bitcoin-knots/src/net_processing.cpp",
+            "packages/bitcoin-knots/src/addrman.cpp",
+            "packages/bitcoin-knots/src/banman.cpp",
+            "packages/bitcoin-knots/src/net_permissions.cpp"
+          ]
+        },
+        "known_gaps": [
+          "Transaction relay, compact block relay, mempool propagation, full address relay beyond Phase 92, public inbound defaults, public-network CI, production service operation, and production full-node readiness remain deferred scope, not supported claims."
+        ],
+        "suspected_unknowns": [
+          "Future relay, public-default, service, packaging, public-network CI, and production-readiness milestones need fresh scoped evidence before these deferred surfaces can be promoted."
         ]
       }
     ]
