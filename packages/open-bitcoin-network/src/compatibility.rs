@@ -215,7 +215,8 @@ impl CompatibilityHarness {
 
 fn diagnose_actions(actions: &[PeerAction]) -> CompatibilityDiagnosis {
     let maybe_disconnect = actions.iter().find_map(|action| match action {
-        PeerAction::Disconnect(reason) => Some(reason),
+        PeerAction::Disconnect(reason) => Some(reason.clone()),
+        PeerAction::ResourceGovernanceDisconnect(_) => Some(DisconnectReason::ResourceLimit),
         _ => None,
     });
     match maybe_disconnect {
@@ -321,7 +322,8 @@ mod tests {
 
     use super::{CompatibilityDiagnosis, TranscriptEvent, evaluate_transcript};
     use crate::{
-        DisconnectReason, HeadersMessage, NetworkError, PeerAction, ServiceFlags, VersionMessage,
+        DisconnectReason, HeadersMessage, InboundEnvelopePolicy, NetworkError, PeerAction,
+        ResourceGovernanceSource, ResourceViolationLabel, ServiceFlags, VersionMessage,
         WireNetworkMessage,
     };
 
@@ -586,6 +588,23 @@ mod tests {
     fn resource_limit_disconnect_maps_to_version_rejected() {
         // Arrange
         let actions = vec![PeerAction::Disconnect(DisconnectReason::ResourceLimit)];
+
+        // Act
+        let diagnosis = super::diagnose_actions(&actions);
+
+        // Assert
+        assert_eq!(diagnosis, CompatibilityDiagnosis::VersionRejected);
+    }
+
+    #[test]
+    fn resource_governance_disconnect_maps_to_version_rejected() {
+        // Arrange
+        let event = InboundEnvelopePolicy::event(
+            ResourceViolationLabel::PayloadOversized,
+            ResourceGovernanceSource::EnvelopeGate,
+            "payload exceeded compatibility harness fixture",
+        );
+        let actions = vec![PeerAction::ResourceGovernanceDisconnect(event)];
 
         // Act
         let diagnosis = super::diagnose_actions(&actions);

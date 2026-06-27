@@ -7,10 +7,10 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 416 |
-| Total lines | 168,287 |
-| Code/content lines | 148,837 |
-| Comment-only lines | 5,290 |
-| Blank lines | 14,160 |
+| Total lines | 168,513 |
+| Code/content lines | 149,027 |
+| Comment-only lines | 5,305 |
+| Blank lines | 14,181 |
 
 ## Per-Crate Modules
 
@@ -23,8 +23,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | open-bitcoin-consensus | 30 | 6,346 | 7,519 | 28 | 13,893 | 118.5% |
 | open-bitcoin-core | 3 | 39 | 0 | 36 | 75 | 0.0% |
 | open-bitcoin-mempool | 10 | 1,867 | 1,268 | 30 | 3,165 | 67.9% |
-| open-bitcoin-network | 29 | 6,658 | 6,520 | 30 | 13,208 | 97.9% |
-| open-bitcoin-node | 56 | 12,949 | 13,735 | 36 | 26,720 | 106.1% |
+| open-bitcoin-network | 29 | 6,687 | 6,559 | 30 | 13,276 | 98.1% |
+| open-bitcoin-node | 56 | 12,964 | 13,878 | 36 | 26,878 | 107.1% |
 | open-bitcoin-primitives | 9 | 877 | 0 | 20 | 897 | 0.0% |
 | open-bitcoin-rpc | 39 | 7,981 | 6,022 | 57 | 14,060 | 75.5% |
 | open-bitcoin-test-harness | 7 | 662 | 0 | 28 | 690 | 0.0% |
@@ -34,8 +34,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Category | Files | Total | Code/Content | Comments | Blank |
 | --- | --- | --- | --- | --- | --- |
-| Rust production | 234 | 67,150 | 58,657 | 1,972 | 6,521 |
-| Rust tests | 65 | 57,992 | 50,908 | 2,843 | 4,241 |
+| Rust production | 234 | 67,194 | 58,693 | 1,975 | 6,526 |
+| Rust tests | 65 | 58,174 | 51,062 | 2,855 | 4,257 |
 | TypeScript/Bun scripts | 58 | 26,862 | 23,864 | 419 | 2,579 |
 | Fixture/data | 6 | 8,233 | 8,228 | 5 | 0 |
 | Shell scripts | 13 | 3,974 | 3,552 | 45 | 377 |
@@ -119,7 +119,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | 4 | packages/open-bitcoin-consensus/src/script/tests.rs | Rust tests | 3,258 |
 | 5 | packages/Cargo.lock | TOML/config | 3,202 |
 | 6 | packages/open-bitcoin-cli/tests/operator_binary.rs | Rust tests | 2,687 |
-| 7 | packages/open-bitcoin-network/src/peer/tests.rs | Rust tests | 2,229 |
+| 7 | packages/open-bitcoin-network/src/peer/tests.rs | Rust tests | 2,265 |
 | 8 | packages/open-bitcoin-cli/src/operator/status/tests.rs | Rust tests | 2,223 |
 | 9 | packages/open-bitcoin-cli/src/operator/support/tests.rs | Rust tests | 2,179 |
 | 10 | packages/open-bitcoin-rpc/src/dispatch/tests.rs | Rust tests | 2,178 |
@@ -129,9 +129,9 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | 14 | packages/open-bitcoin-cli/src/operator/soak/tests/runtime.rs | Rust tests | 1,575 |
 | 15 | packages/open-bitcoin-chainstate/src/engine/tests.rs | Rust tests | 1,553 |
 | 16 | packages/open-bitcoin-node/src/status/tests.rs | Rust tests | 1,475 |
-| 17 | packages/open-bitcoin-wallet/src/wallet/tests.rs | Rust tests | 1,384 |
-| 18 | packages/open-bitcoin-rpc/src/config/tests.rs | Rust tests | 1,357 |
-| 19 | packages/open-bitcoin-node/src/network/tests.rs | Rust tests | 1,297 |
+| 17 | packages/open-bitcoin-node/src/network/tests.rs | Rust tests | 1,440 |
+| 18 | packages/open-bitcoin-wallet/src/wallet/tests.rs | Rust tests | 1,384 |
+| 19 | packages/open-bitcoin-rpc/src/config/tests.rs | Rust tests | 1,357 |
 | 20 | packages/open-bitcoin-cli/src/operator/soak/tests.rs | Rust tests | 1,254 |
 
 ## Metadata
@@ -139,7 +139,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 955ebe3d4eb9a81f5e06967b126dd2a45180839f78686f3e9ddaff2e7742cdf4 |
+| Input fingerprint | 9081ab5a7ee8c63b79fb0760b98d87b41cdc3ec440d2b52e09929e6739e9988c |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

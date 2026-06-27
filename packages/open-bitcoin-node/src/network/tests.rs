@@ -12,8 +12,9 @@ use open_bitcoin_core::{
         ConsensusParams, ScriptVerifyFlags, block_merkle_root, check_block_header, transaction_txid,
     },
     primitives::{
-        Amount, Block, BlockHash, BlockHeader, InventoryType, NetworkAddress, NetworkMagic,
-        OutPoint, ScriptBuf, ScriptWitness, Transaction, TransactionInput, TransactionOutput,
+        Amount, Block, BlockHash, BlockHeader, Hash32, InventoryType, InventoryVector,
+        NetworkAddress, NetworkMagic, OutPoint, ScriptBuf, ScriptWitness, Transaction,
+        TransactionInput, TransactionOutput,
     },
 };
 use open_bitcoin_mempool::PolicyConfig;
@@ -22,10 +23,11 @@ use open_bitcoin_network::{
     AddressNetworkKind, AddressSourceKind, InboundAdmissionDecision, InboundAdmissionPolicy,
     InboundAdmissionRejectionReason, InboundAdmissionRequest, InboundAdmissionSlotClass,
     InboundPermissionDecision, InventoryList, LearnedAddressDecision, LearnedAddressEntry,
-    LocalAdvertisementDecision, LocalPeerConfig, PHASE92_LEARNED_ADDR_BATCH_LIMIT,
-    ParsedPeerPermissionClass, PeerAddressBoundaryDecision, PeerAddressBoundaryEvidence,
-    PeerConnectionClass, PeerPermissionClassRegistry, RoutabilityClass, ServiceFlags,
-    WireNetworkMessage,
+    LocalAdvertisementDecision, LocalPeerConfig, NetworkError, PHASE92_LEARNED_ADDR_BATCH_LIMIT,
+    PHASE94_MAX_HEADER_LOCATOR_HASHES, PHASE94_MAX_INBOUND_REQUEST_INVENTORY_ITEMS,
+    PHASE94_MAX_INBOUND_TX_REQUESTS_PER_PEER, ParsedPeerPermissionClass,
+    PeerAddressBoundaryDecision, PeerAddressBoundaryEvidence, PeerConnectionClass,
+    PeerPermissionClassRegistry, RoutabilityClass, ServiceFlags, WireNetworkMessage,
 };
 
 use crate::{
@@ -302,6 +304,45 @@ fn deliver(
         );
     }
     outbound
+}
+
+fn hash_from_index(index: usize) -> Hash32 {
+    let mut bytes = [0_u8; 32];
+    bytes[..8].copy_from_slice(&(index as u64).to_le_bytes());
+    Hash32::from_byte_array(bytes)
+}
+
+fn transaction_inventory(count: usize) -> InventoryList {
+    InventoryList::new(
+        (0..count)
+            .map(|index| InventoryVector {
+                inventory_type: InventoryType::Transaction,
+                object_hash: hash_from_index(index),
+            })
+            .collect(),
+    )
+}
+
+fn block_inventory(count: usize) -> InventoryList {
+    InventoryList::new(
+        (0..count)
+            .map(|index| InventoryVector {
+                inventory_type: InventoryType::Block,
+                object_hash: hash_from_index(index),
+            })
+            .collect(),
+    )
+}
+
+fn assert_request_cap_resource_governance(network: &ManagedPeerNetwork<MemoryChainstateStore>) {
+    let info = network.resource_governance_info();
+    assert_eq!(info.request_cap_events, 1);
+    let latest = info
+        .maybe_latest_resource_governance_decision
+        .as_ref()
+        .expect("latest resource-governance decision");
+    assert_eq!(latest.label, "request_cap_reached");
+    assert_eq!(latest.next_action, "request_cap_reached");
 }
 
 #[test]
@@ -699,6 +740,108 @@ fn cap_rejected_inbound_peer_updates_evidence_without_counts() {
     assert_eq!(info.inbound_peers, 1);
     assert_eq!(network.inbound_admission_info().rejected_inbound_peers, 1);
     assert_eq!(network.inbound_admission_info().cap_rejections, 1);
+}
+
+#[test]
+fn managed_network_records_request_cap_event_for_over_cap_inv() {
+    // Arrange
+    let mut network = ManagedPeerNetwork::new(
+        MemoryChainstateStore::default(),
+        local_config(240),
+        PolicyConfig::default(),
+    );
+    network.add_inbound_peer(240).expect("inbound peer");
+
+    // Act
+    let error = network
+        .receive_message(
+            240,
+            WireNetworkMessage::Inv(transaction_inventory(
+                PHASE94_MAX_INBOUND_TX_REQUESTS_PER_PEER + 1,
+            )),
+            1,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect_err("over-cap inv should disconnect");
+
+    // Assert
+    assert!(matches!(
+        error,
+        crate::network::ManagedNetworkError::Network(NetworkError::ResourceLimit(240))
+    ));
+    assert_eq!(network.network_info().inbound_peers, 0);
+    assert_request_cap_resource_governance(&network);
+}
+
+#[test]
+fn managed_network_records_request_cap_event_for_over_cap_getdata() {
+    // Arrange
+    let mut network = ManagedPeerNetwork::new(
+        MemoryChainstateStore::default(),
+        local_config(241),
+        PolicyConfig::default(),
+    );
+    network.add_inbound_peer(241).expect("inbound peer");
+
+    // Act
+    let error = network
+        .receive_message(
+            241,
+            WireNetworkMessage::GetData(block_inventory(
+                PHASE94_MAX_INBOUND_REQUEST_INVENTORY_ITEMS + 1,
+            )),
+            1,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect_err("over-cap getdata should disconnect");
+
+    // Assert
+    assert!(matches!(
+        error,
+        crate::network::ManagedNetworkError::Network(NetworkError::ResourceLimit(241))
+    ));
+    assert_eq!(network.network_info().inbound_peers, 0);
+    assert_request_cap_resource_governance(&network);
+}
+
+#[test]
+fn managed_network_records_request_cap_event_for_over_cap_getheaders() {
+    // Arrange
+    let mut network = ManagedPeerNetwork::new(
+        MemoryChainstateStore::default(),
+        local_config(242),
+        PolicyConfig::default(),
+    );
+    network.add_inbound_peer(242).expect("inbound peer");
+    let locator = open_bitcoin_core::primitives::BlockLocator {
+        block_hashes: (0..=PHASE94_MAX_HEADER_LOCATOR_HASHES)
+            .map(hash_from_index)
+            .collect(),
+    };
+
+    // Act
+    let error = network
+        .receive_message(
+            242,
+            WireNetworkMessage::GetHeaders {
+                locator,
+                stop_hash: BlockHash::from_byte_array([0_u8; 32]),
+            },
+            1,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect_err("over-cap getheaders should disconnect");
+
+    // Assert
+    assert!(matches!(
+        error,
+        crate::network::ManagedNetworkError::Network(NetworkError::ResourceLimit(242))
+    ));
+    assert_eq!(network.network_info().inbound_peers, 0);
+    assert_request_cap_resource_governance(&network);
 }
 
 #[test]

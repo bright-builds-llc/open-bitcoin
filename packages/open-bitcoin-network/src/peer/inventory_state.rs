@@ -13,7 +13,7 @@ use open_bitcoin_primitives::{
     Wtxid,
 };
 
-use crate::error::{DisconnectReason, NetworkError, PeerId};
+use crate::error::{NetworkError, PeerId};
 use crate::message::{HeadersMessage, InventoryList, WireNetworkMessage};
 use crate::{
     InactivePermissionEffectLabel, PermissionEffectLabel, RequestPressureInput,
@@ -295,12 +295,20 @@ fn request_pressure_input(
 }
 
 fn resource_limit_disconnect_actions(input: RequestPressureInput) -> Option<Vec<PeerAction>> {
-    match ResourceGovernancePolicy::default().decide_request(input) {
+    resource_limit_disconnect_actions_from_decision(
+        ResourceGovernancePolicy::default().decide_request(input),
+    )
+}
+
+pub(super) fn resource_limit_disconnect_actions_from_decision(
+    decision: ResourceGovernanceDecision,
+) -> Option<Vec<PeerAction>> {
+    match decision {
         ResourceGovernanceDecision::Accept => None,
-        ResourceGovernanceDecision::Backpressure(_)
-        | ResourceGovernanceDecision::Disconnect(_)
-        | ResourceGovernanceDecision::RecordMisbehavior(_) => Some(vec![PeerAction::Disconnect(
-            DisconnectReason::ResourceLimit,
-        )]),
+        ResourceGovernanceDecision::Backpressure(event)
+        | ResourceGovernanceDecision::Disconnect(event)
+        | ResourceGovernanceDecision::RecordMisbehavior(event) => {
+            Some(vec![PeerAction::ResourceGovernanceDisconnect(event)])
+        }
     }
 }

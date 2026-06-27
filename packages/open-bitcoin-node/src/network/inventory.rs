@@ -8,9 +8,11 @@ use open_bitcoin_core::{
     consensus::{transaction_txid, transaction_wtxid},
     primitives::{BlockHash, InventoryType, InventoryVector, Transaction, Txid, Wtxid},
 };
-use open_bitcoin_network::{DisconnectReason, NetworkError, PeerId, WireNetworkMessage};
+use open_bitcoin_network::{
+    DisconnectReason, InboundResourceEvent, NetworkError, PeerId, WireNetworkMessage,
+};
 
-use super::{ManagedNetworkError, ManagedPeerNetwork};
+use super::{ManagedNetworkError, ManagedPeerNetwork, ManagedSyncMessageResult};
 use crate::ChainstateStore;
 
 impl<S: ChainstateStore> ManagedPeerNetwork<S> {
@@ -72,6 +74,18 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             .chainstate()
             .tip()
             .map_or(1, |tip| tip.chain_work.saturating_add(1))
+    }
+
+    pub(super) fn disconnect_for_resource_governance(
+        &mut self,
+        peer_id: PeerId,
+        event: InboundResourceEvent,
+    ) -> Result<ManagedSyncMessageResult, ManagedNetworkError> {
+        self.record_resource_governance_event(event);
+        self.disconnect_peer(peer_id)?;
+        Err(ManagedNetworkError::Network(NetworkError::ResourceLimit(
+            peer_id,
+        )))
     }
 }
 

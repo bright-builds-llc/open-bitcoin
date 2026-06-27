@@ -27,6 +27,7 @@ use crate::peer_policy::{
     EvictionCandidateInput, EvictionDecision, MisbehaviorDecision, MisbehaviorKind,
     MisbehaviorObservation, MisbehaviorPolicy, select_eviction_candidate,
 };
+use crate::resource::InboundResourceEvent;
 
 mod address_boundary;
 mod inbound_state;
@@ -59,6 +60,7 @@ pub enum PeerAction {
     ReceivedTransaction(Transaction),
     ReceivedBlock(Block),
     Disconnect(DisconnectReason),
+    ResourceGovernanceDisconnect(InboundResourceEvent),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

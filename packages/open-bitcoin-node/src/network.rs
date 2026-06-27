@@ -608,9 +608,10 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                         self.record_runtime_self_connection_rejection(peer_id);
                     }
                     self.disconnect_peer(peer_id)?;
-                    return Err(ManagedNetworkError::Network(
-                        inventory::disconnect_network_error(peer_id, reason),
-                    ));
+                    return Err(inventory::disconnect_network_error(peer_id, reason).into());
+                }
+                PeerAction::ResourceGovernanceDisconnect(event) => {
+                    return self.disconnect_for_resource_governance(peer_id, event);
                 }
             }
         }

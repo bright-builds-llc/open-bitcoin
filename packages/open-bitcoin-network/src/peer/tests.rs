@@ -343,10 +343,45 @@ fn inbound_self_connection_version_rejects_without_establishing_peer() {
 #[test]
 fn resource_limit_disconnect_action_is_available_for_request_cap_tests() {
     // Arrange
-    let actions = vec![PeerAction::Disconnect(DisconnectReason::ResourceLimit)];
+    let decision = ResourceGovernancePolicy::default().decide_request(RequestPressureInput {
+        inventory_items: PHASE94_MAX_INBOUND_REQUEST_INVENTORY_ITEMS + 1,
+        ..RequestPressureInput::default()
+    });
+    let ResourceGovernanceDecision::Disconnect(event) = decision else {
+        panic!("expected request-cap disconnect decision");
+    };
+    let actions = vec![PeerAction::ResourceGovernanceDisconnect(event)];
 
     // Act / Assert
     assert_resource_limit_disconnect(&actions);
+}
+
+#[test]
+fn resource_limit_disconnect_mapping_preserves_all_resource_events() {
+    // Arrange
+    let decision = ResourceGovernancePolicy::default().decide_request(RequestPressureInput {
+        inventory_items: PHASE94_MAX_INBOUND_REQUEST_INVENTORY_ITEMS + 1,
+        ..RequestPressureInput::default()
+    });
+    let ResourceGovernanceDecision::Disconnect(event) = decision else {
+        panic!("expected request-cap disconnect decision");
+    };
+
+    // Act
+    let backpressure_actions =
+        super::inventory_state::resource_limit_disconnect_actions_from_decision(
+            ResourceGovernanceDecision::Backpressure(event.clone()),
+        )
+        .expect("backpressure event should map to disconnect action");
+    let misbehavior_actions =
+        super::inventory_state::resource_limit_disconnect_actions_from_decision(
+            ResourceGovernanceDecision::RecordMisbehavior(event),
+        )
+        .expect("misbehavior event should map to disconnect action");
+
+    // Assert
+    assert_resource_limit_disconnect(&backpressure_actions);
+    assert_resource_limit_disconnect(&misbehavior_actions);
 }
 
 #[test]
@@ -2171,10 +2206,11 @@ fn assert_no_addr_actions(actions: &[PeerAction]) {
 }
 
 fn assert_resource_limit_disconnect(actions: &[PeerAction]) {
-    assert_eq!(
-        actions,
-        [PeerAction::Disconnect(DisconnectReason::ResourceLimit)]
-    );
+    let [PeerAction::ResourceGovernanceDisconnect(event)] = actions else {
+        panic!("expected resource-governance disconnect action, got {actions:?}");
+    };
+    assert_eq!(event.label, "request_cap_reached");
+    assert_eq!(event.next_action, "request_cap_reached");
 }
 
 #[rustfmt::skip]
