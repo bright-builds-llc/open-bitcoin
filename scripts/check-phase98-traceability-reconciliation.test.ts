@@ -240,6 +240,43 @@ test("fails Phase 98 verifier wiring before Phase 97", () => {
   expect(failures.join("\n")).toContain("P98 verifier wiring");
 });
 
+test("fails when comments contain correct command order but run_step order is stale", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutateFiles(files) {
+      files.set(
+        "scripts/verify.sh",
+        [
+          "#!/usr/bin/env bash",
+          "set -euo pipefail",
+          "# Phase 96 is followed by Phase 97. Phase 97 is followed by Phase 98.",
+          ": <<'VERIFY_COMMAND_ORDER'",
+          PHASE97_TEST_COMMAND,
+          PHASE97_CHECKER_COMMAND,
+          PHASE98_TEST_COMMAND,
+          PHASE98_CHECKER_COMMAND,
+          "VERIFY_COMMAND_ORDER",
+          `# ${PHASE97_TEST_COMMAND}`,
+          `# ${PHASE97_CHECKER_COMMAND}`,
+          `# ${PHASE98_TEST_COMMAND}`,
+          `# ${PHASE98_CHECKER_COMMAND}`,
+          `run_step "test Phase 98 traceability reconciliation checker" ${PHASE98_TEST_COMMAND}`,
+          `run_step "check Phase 98 traceability reconciliation" ${PHASE98_CHECKER_COMMAND}`,
+          `run_step "test Phase 97 inbound metrics checker" ${PHASE97_TEST_COMMAND}`,
+          `run_step "check Phase 97 inbound metrics" ${PHASE97_CHECKER_COMMAND}`,
+          `run_step "check pure-core dependencies" ${PURE_CORE_COMMAND}`,
+        ].join("\n"),
+      );
+    },
+  });
+
+  // Act
+  const failures = checkPhase98TraceabilityReconciliation({ rootDir: root });
+
+  // Assert
+  expect(failures.join("\n")).toContain("P98 verifier wiring executable command order");
+});
+
 function createFixture(options: FixtureOptions = {}): string {
   const root = mkdtempSync(path.join(tmpdir(), "open-bitcoin-phase98-"));
   tempRoots.push(root);

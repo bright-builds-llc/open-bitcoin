@@ -309,15 +309,27 @@ function verifyVerifierWiring(verifyScript: string, failures: string[]): void {
   }
 
   const executableText = executableVerifyText(verifyScript);
-  for (const needle of [
-    `run_step "test Phase 98 traceability reconciliation checker" ${PHASE98_TEST_COMMAND}`,
-    `run_step "check Phase 98 traceability reconciliation" ${PHASE98_CHECKER_COMMAND}`,
-    "Phase 97 is followed by Phase 98",
-  ]) {
-    requireContains(executableText === "" ? verifyScript : `${verifyScript}\n${executableText}`, needle, "P98 verifier wiring", failures);
-  }
-  requireOrdered(
+  const runSteps = executableRunSteps(executableText);
+  requireRunStep(
+    runSteps,
+    "test Phase 98 traceability reconciliation checker",
+    PHASE98_TEST_COMMAND,
+    failures,
+  );
+  requireRunStep(
+    runSteps,
+    "check Phase 98 traceability reconciliation",
+    PHASE98_CHECKER_COMMAND,
+    failures,
+  );
+  requireContains(
     executableText,
+    "Phase 97 is followed by Phase 98",
+    "P98 verifier wiring",
+    failures,
+  );
+  requireOrderedRunStepCommands(
+    runSteps.map((runStep) => runStep.command),
     [
       PHASE97_TEST_COMMAND,
       PHASE97_CHECKER_COMMAND,
@@ -330,11 +342,41 @@ function verifyVerifierWiring(verifyScript: string, failures: string[]): void {
   );
 }
 
+type RunStep = {
+  label: string;
+  command: string;
+};
+
 function executableVerifyText(text: string): string {
   return text.replace(
     /^: <<'VERIFY_COMMAND_ORDER'\n[\s\S]*?\nVERIFY_COMMAND_ORDER\n/m,
     "",
   );
+}
+
+function executableRunSteps(text: string): RunStep[] {
+  return text
+    .split("\n")
+    .map((line) => line.match(/^run_step\s+"([^"]+)"\s+(.+)$/))
+    .filter((maybeMatch): maybeMatch is RegExpMatchArray => maybeMatch !== null)
+    .map((match) => ({
+      label: match[1],
+      command: match[2],
+    }));
+}
+
+function requireRunStep(
+  runSteps: RunStep[],
+  label: string,
+  command: string,
+  failures: string[],
+): void {
+  const hasRunStep = runSteps.some(
+    (runStep) => runStep.label === label && runStep.command === command,
+  );
+  if (!hasRunStep) {
+    failures.push(`P98 verifier wiring missing executable run_step: ${label} ${command}`);
+  }
 }
 
 function requireContains(
@@ -345,6 +387,27 @@ function requireContains(
 ): void {
   if (!text.includes(needle)) {
     failures.push(`${label} missing required text: ${needle}`);
+  }
+}
+
+function requireOrderedRunStepCommands(
+  commands: readonly string[],
+  expectedCommands: readonly string[],
+  label: string,
+  failures: string[],
+): void {
+  let cursor = -1;
+  for (const expectedCommand of expectedCommands) {
+    const index = commands.indexOf(expectedCommand);
+    if (index === -1) {
+      failures.push(`${label} missing ${expectedCommand}`);
+      continue;
+    }
+    if (index <= cursor) {
+      failures.push(`${label} has ${expectedCommand} out of order`);
+      continue;
+    }
+    cursor = index;
   }
 }
 
