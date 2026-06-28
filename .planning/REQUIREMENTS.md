@@ -90,10 +90,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INB-01 | Phase 98 | Pending |
-| INB-02 | Phase 98 | Pending |
-| INB-03 | Phase 98 | Pending |
-| INB-04 | Phase 98 | Pending |
+| INB-01 | Phase 98 | Pending Phase 98 verification |
+| INB-02 | Phase 98 | Pending Phase 98 verification |
+| INB-03 | Phase 98 | Pending Phase 98 verification |
+| INB-04 | Phase 98 | Pending Phase 98 verification |
 | INB-05 | Phase 97 | Complete |
 | PERM-01 | Phase 91 | Complete |
 | PERM-02 | Phase 91 | Complete |
@@ -117,14 +117,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BOUND-03 | Phase 95 | Complete |
 | BOUND-04 | Phase 95 | Complete |
 | BOUND-05 | Phase 95 | Complete |
-| BOUND-06 | Phase 98 | Pending |
+| BOUND-06 | Phase 98 | Pending Phase 98 verification |
 
 **Coverage:**
 - v1.9 requirements: 28 total
 - Mapped to phases: 28
 - Unmapped: 0
-- Pending gap-closure verification: 7
+- Complete after Phase 97: 23
+- Pending Phase 98 verification: 5
 
 ---
 *Requirements defined: 2026-06-25*
-*Last updated: 2026-06-28 after Phase 96 completion*
+*Last updated: 2026-06-28 after Phase 97 completion and before Phase 98 final verification*
