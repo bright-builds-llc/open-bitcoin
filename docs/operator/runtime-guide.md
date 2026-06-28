@@ -736,6 +736,53 @@ support output, and the deterministic Phase 96 checker. Treat this as scoped
 runtime peer-policy bridge evidence only; review ban, discourage, unban, and
 misbehavior labels before changing listener exposure or peer policy.
 
+## Phase 97 Inbound Metrics Review
+
+Phase 97 persists retained inbound metric history from shared inbound status
+aggregates. InboundPeerServingStatus aggregate counters -> fixed MetricSample values -> FjallNodeStore::append_metric_samples -> dashboard/status/support retained history.
+Retained local inbound metric evidence does not claim transaction relay, compact block relay, mempool propagation, public inbound defaults, packaged service operation, or production full-node readiness.
+
+Review retained inbound metric history through the repo-local status,
+dashboard, and support bundle forms:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --network regtest \
+  --datadir=/tmp/open-bitcoin-inbound-loopback \
+  status --format json
+
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- \
+  --network regtest \
+  --datadir=/tmp/open-bitcoin-inbound-loopback \
+  status --format json
+
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --network regtest \
+  --datadir=/tmp/open-bitcoin-inbound-loopback \
+  dashboard --tick-ms 1000
+
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- \
+  --network regtest \
+  --datadir=/tmp/open-bitcoin-inbound-loopback \
+  dashboard --tick-ms 1000
+
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --network regtest \
+  --datadir=/tmp/open-bitcoin-inbound-loopback \
+  support bundle --output-dir=/tmp/open-bitcoin-inbound-support
+
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- \
+  --network regtest \
+  --datadir=/tmp/open-bitcoin-inbound-loopback \
+  support bundle --output-dir=/tmp/open-bitcoin-inbound-support
+```
+
+Expected evidence is bounded to fixed inbound `MetricKind` samples, their
+numeric values, timestamps, status JSON, dashboard retained charts, support
+store-health metrics history, and the deterministic Phase 97 checker. Treat
+unavailable inbound status as no inbound samples recorded, not as a relay or
+participation signal.
+
 ## Mainnet Sync Activation
 
 Mainnet sync activation is disabled by default. It can be enabled only for the

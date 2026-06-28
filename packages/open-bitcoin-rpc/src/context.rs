@@ -24,6 +24,7 @@ use crate::inbound_listener::InboundListenerEvidence;
 use crate::{RpcFailure, RpcFailureKind};
 
 mod address_boundary;
+mod inbound_status;
 mod network;
 mod peer_policy;
 mod rescan;
@@ -41,11 +42,13 @@ pub struct ManagedRpcContext {
     verify_flags: ScriptVerifyFlags,
     network: ManagedPeerNetwork<MemoryChainstateStore>,
     permission_classes: PeerPermissionClassRegistry,
+    inbound_permission_validation_failures: u32,
     inbound_listener_config: InboundListenerConfig,
     maybe_inbound_listener_evidence: Option<InboundListenerEvidence>,
     maybe_resource_governance_log_dir: Option<PathBuf>,
     resource_governance_log_retention: LogRetentionPolicy,
     resource_governance_log_write_failures: u64,
+    maybe_metrics_store: Option<FjallNodeStore>,
     maybe_durable_sync_state: Option<DurableSyncState>,
     maybe_daemon_sync_control: Option<DaemonSyncControl>,
     wallet_state: WalletState,

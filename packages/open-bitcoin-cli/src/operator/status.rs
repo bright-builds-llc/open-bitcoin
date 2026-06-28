@@ -14,9 +14,8 @@ use open_bitcoin_node::{
     logging::writer::load_log_status,
     status::{
         BuildProvenance, ConfigStatus, FieldAvailability, HealthSignal, HealthSignalLevel,
-        INBOUND_STATUS_UNAVAILABLE_REASON, InboundPeerServingStatus, MempoolStatus,
-        NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus,
-        WalletStatus,
+        INBOUND_STATUS_UNAVAILABLE_REASON, MempoolStatus, NodeRuntimeState, NodeStatus,
+        OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, WalletStatus,
     },
 };
 use open_bitcoin_rpc::method::{
@@ -228,7 +227,9 @@ fn collect_live_status_snapshot(
         collect_live_wallet_status(input, rpc_client, &blockchain_info, &mut health_signals);
     health_signals.extend(log_health_signals(input));
 
-    let inbound = collect_inbound_status(rpc_client);
+    let network_status = collect_open_bitcoin_network_status(rpc_client);
+    let inbound = network_status.inbound;
+    let metrics = network_status.metrics;
 
     OpenBitcoinStatusSnapshot {
         node: NodeStatus {
@@ -251,7 +252,7 @@ fn collect_live_status_snapshot(
         },
         wallet,
         logs: log_status(&input.config_resolution),
-        metrics: metrics_status(),
+        metrics,
         recovery_evidence,
         resource_bounds: collect_resource_bounds(&input.config_resolution, None),
         health_signals,
@@ -314,12 +315,15 @@ fn stopped_status_snapshot(
     }
 }
 
-fn collect_inbound_status(
+fn collect_open_bitcoin_network_status(
     rpc_client: &dyn StatusRpcClient,
-) -> FieldAvailability<InboundPeerServingStatus> {
+) -> OpenBitcoinNetworkStatusResponse {
     match rpc_client.get_open_bitcoin_network_status() {
-        Ok(status) => status.inbound,
-        Err(error) => FieldAvailability::unavailable(inbound_status_unavailable_reason(&error)),
+        Ok(status) => status,
+        Err(error) => OpenBitcoinNetworkStatusResponse {
+            inbound: FieldAvailability::unavailable(inbound_status_unavailable_reason(&error)),
+            metrics: metrics_status(),
+        },
     }
 }
 

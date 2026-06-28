@@ -8,8 +8,9 @@ use std::{
 };
 
 use open_bitcoin_node::{
-    BuildProvenance, LogStatus, MetricsStatus, OpenBitcoinStatusSnapshot, RecoveryActionClass,
-    RecoveryCause, RecoveryEvidenceBasis, RecoveryEvidenceSnapshot,
+    BuildProvenance, LogStatus, MetricKind, MetricRetentionPolicy, MetricSample, MetricsStatus,
+    OpenBitcoinStatusSnapshot, RecoveryActionClass, RecoveryCause, RecoveryEvidenceBasis,
+    RecoveryEvidenceSnapshot,
     status::{
         BestKnownTipSource, BestKnownTipStatus, ChainTipStatus, ConfigStatus, FieldAvailability,
         InboundAddressDecisionEvent, InboundAddressEvidenceEntry, InboundAdmissionEvent,
@@ -830,6 +831,35 @@ fn support_recovery_evidence_collection_preserves_probe_only_store_health() {
                 .to_string()
         )
     );
+}
+
+#[test]
+fn support_bundle_preserves_retained_inbound_metric_samples() {
+    // Arrange
+    let mut status = phase72_status();
+    status.metrics = MetricsStatus::available_with_samples(
+        MetricRetentionPolicy::default(),
+        vec![MetricSample::new(
+            MetricKind::InboundResourcePressureActiveCount,
+            16.0,
+            1_777_225_022,
+        )],
+    );
+
+    // Act
+    let health = collect_store_health(&status);
+    let serialized = serde_json::to_value(&health).expect("store health json");
+    let sample = &serialized["metrics_history"]["status"]["samples"][0];
+
+    // Assert
+    assert_eq!(health.state, EvidenceState::Available);
+    assert_eq!(health.metrics_history.samples, 1);
+    assert_eq!(sample["kind"], "inbound_resource_pressure_active_count");
+    assert_eq!(sample["value"], 16.0);
+    assert_eq!(sample["timestamp_unix_seconds"], 1_777_225_022);
+    assert!(sample.get("peer_id").is_none());
+    assert!(sample.get("endpoint").is_none());
+    assert!(sample.get("permission_class").is_none());
 }
 
 #[test]
@@ -1769,6 +1799,8 @@ fn phase90_status_with_available_inbound() -> OpenBitcoinStatusSnapshot {
         permission_class: "ordinary_inbound".to_string(),
         active_permission_effects: Vec::new(),
         inactive_permission_effects: Vec::new(),
+        inactive_permission_effect_observations: 0,
+        permission_validation_failures: 0,
         latest_permission_decision: FieldAvailability::unavailable(
             "inbound permission decision evidence unavailable",
         ),

@@ -152,6 +152,10 @@ pub struct InboundPeerServingStatus {
     pub active_permission_effects: Vec<String>,
     #[serde(default)]
     pub inactive_permission_effects: Vec<String>,
+    #[serde(default)]
+    pub inactive_permission_effect_observations: u32,
+    #[serde(default)]
+    pub permission_validation_failures: u32,
     #[serde(default = "latest_permission_decision_unavailable")]
     pub latest_permission_decision: FieldAvailability<InboundPermissionDecisionEvent>,
     #[serde(default)]

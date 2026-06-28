@@ -318,7 +318,10 @@ impl ManagedRpcContext {
     }
 }
 
-pub(super) fn build_wallet_state(config: &RuntimeConfig) -> WalletState {
+pub(super) fn build_wallet_state_with_store(
+    config: &RuntimeConfig,
+    maybe_store: Option<FjallNodeStore>,
+) -> WalletState {
     let Some(data_dir) = config.maybe_data_dir.as_ref() else {
         return WalletState::Local(ManagedWallet::from_store(
             MemoryWalletStore::default(),
@@ -330,6 +333,12 @@ pub(super) fn build_wallet_state(config: &RuntimeConfig) -> WalletState {
         config.wallet.scope,
         WalletRuntimeScope::DurableNamedRegistry | WalletRuntimeScope::LocalOperatorSingleWallet
     );
+    if should_use_registry && let Some(store) = maybe_store {
+        return WalletState::DurableNamedRegistry {
+            store,
+            maybe_request_wallet_name: None,
+        };
+    }
     if should_use_registry && let Ok(store) = FjallNodeStore::open(data_dir) {
         return WalletState::DurableNamedRegistry {
             store,

@@ -11,7 +11,9 @@
 
 use serde::{Deserialize, Serialize};
 
-use open_bitcoin_node::{FieldAvailability, InboundPeerServingStatus, RuntimeMetadata};
+use open_bitcoin_node::{
+    FieldAvailability, InboundPeerServingStatus, MetricsStatus, RuntimeMetadata,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -72,9 +74,11 @@ pub struct GetNetworkInfoResponse {
 #[serde(deny_unknown_fields)]
 pub struct OpenBitcoinNetworkStatusRequest {}
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct OpenBitcoinNetworkStatusResponse {
     pub inbound: FieldAvailability<InboundPeerServingStatus>,
+    #[serde(default)]
+    pub metrics: MetricsStatus,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]

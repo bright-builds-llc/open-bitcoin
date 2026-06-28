@@ -38,12 +38,13 @@ use crate::{
     logging::{StructuredLogLevel, StructuredLogRecord, writer::load_log_status},
     status::{
         BestKnownTipSource, BestKnownTipStatus, DurableSyncState, HealthSignal, HealthSignalLevel,
-        NoProgressDiagnosis, PeerContributionEvidence, PeerContributionKind, PeerTipAgreement,
-        PeerTipAgreementStatus, ProgressCreditEvidence, ProgressCreditKind,
-        RejectedProgressActivityKind, StallDiagnosisEvidence, StalledSubsystem, StayCurrentStatus,
-        SyncLifecycleState, SyncProgress, SyncProgressSignal, SyncReconcileProgressStatus,
-        SyncRecoveryCategory, SyncReorgEvidence, SyncResourcePressure, SyncStatus,
-        TipFreshnessStatus,
+        InboundHandshakeStatusCounts, InboundPeerServingStatus, NoProgressDiagnosis,
+        PeerContributionEvidence, PeerContributionKind, PeerTipAgreement, PeerTipAgreementStatus,
+        ProgressCreditEvidence, ProgressCreditKind, RejectedProgressActivityKind,
+        StallDiagnosisEvidence, StalledSubsystem, StayCurrentStatus, SyncLifecycleState,
+        SyncProgress, SyncProgressSignal, SyncReconcileProgressStatus, SyncRecoveryCategory,
+        SyncReorgEvidence, SyncResourcePressure, SyncStatus, TipFreshnessStatus,
+        inbound_status_unavailable,
     },
 };
 
@@ -4133,6 +4134,149 @@ fn sync_metrics_history_appends_across_runs() {
     assert!(sync_height_timestamps.len() >= 2);
 
     remove_dir_if_exists(&path);
+}
+
+#[test]
+fn persist_metrics_appends_inbound_status_samples_with_sync_samples() {
+    // Arrange
+    let path = temp_store_path("metrics-inbound");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    let inbound = inbound_status_for_metrics();
+    runtime
+        .set_inbound_metric_status_provider(move || FieldAvailability::available(inbound.clone()));
+    let summary = runtime.snapshot_summary();
+
+    // Act
+    runtime
+        .persist_metrics(&summary, 1_777_225_022)
+        .expect("persist metrics");
+
+    // Assert
+    let metrics = runtime
+        .store()
+        .load_metrics_snapshot()
+        .expect("load metrics")
+        .expect("metrics snapshot");
+    assert!(metrics.samples.iter().any(|sample| {
+        sample.kind == MetricKind::SyncHeight && sample.timestamp_unix_seconds == 1_777_225_022
+    }));
+    assert!(metrics.samples.iter().any(|sample| {
+        sample.kind == MetricKind::InboundResourcePressureActiveCount
+            && sample.value == 16.0
+            && sample.timestamp_unix_seconds == 1_777_225_022
+    }));
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn persist_metrics_omits_inbound_samples_when_status_unavailable() {
+    // Arrange
+    let path = temp_store_path("metrics-inbound-unavailable");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    runtime.set_inbound_metric_status_provider(inbound_status_unavailable);
+    let summary = runtime.snapshot_summary();
+
+    // Act
+    runtime
+        .persist_metrics(&summary, 1_777_225_022)
+        .expect("persist metrics");
+
+    // Assert
+    let metrics = runtime
+        .store()
+        .load_metrics_snapshot()
+        .expect("load metrics")
+        .expect("metrics snapshot");
+    assert!(
+        metrics
+            .samples
+            .iter()
+            .any(|sample| sample.kind == MetricKind::SyncHeight)
+    );
+    assert!(!metrics.samples.iter().any(|sample| matches!(
+        sample.kind,
+        MetricKind::InboundAdmittedPeerCount
+            | MetricKind::InboundRejectedPeerCount
+            | MetricKind::InboundCapRejectCount
+            | MetricKind::InboundReservedSlotRejectCount
+            | MetricKind::InboundDuplicateRejectCount
+            | MetricKind::InboundSelfConnectionRejectCount
+            | MetricKind::InboundPermissionedAdmitCount
+            | MetricKind::InboundProtectedAdmitCount
+            | MetricKind::InboundInactivePermissionEffectCount
+            | MetricKind::InboundPermissionValidationFailureCount
+            | MetricKind::InboundEvictionCandidateCount
+            | MetricKind::InboundDisconnectCount
+            | MetricKind::InboundActiveBanCount
+            | MetricKind::InboundMisbehaviorObservationCount
+            | MetricKind::InboundProtectedNoActionCount
+            | MetricKind::InboundResourcePressureActiveCount
+            | MetricKind::InboundReadQueuePressureCount
+            | MetricKind::InboundWriteQueuePressureCount
+            | MetricKind::InboundRequestCapReachedCount
+            | MetricKind::InboundPayloadRejectedCount
+            | MetricKind::InboundTimeoutDisconnectCount
+            | MetricKind::InboundChurnRejectedCount
+            | MetricKind::InboundReconnectSuppressedCount
+    )));
+
+    remove_dir_if_exists(&path);
+}
+
+fn inbound_status_for_metrics() -> InboundPeerServingStatus {
+    InboundPeerServingStatus {
+        listener_state: "ready".to_string(),
+        bound_endpoints: Vec::new(),
+        preflight_reason: "ready".to_string(),
+        admitted_inbound_peers: 1,
+        rejected_inbound_peers: 2,
+        handshake: InboundHandshakeStatusCounts::default(),
+        duplicate_rejects: 5,
+        self_connection_rejects: 6,
+        cap_rejects: 3,
+        reserved_slot_rejects: 4,
+        latest_admission_event: FieldAvailability::unavailable("no admission event"),
+        permissioned_inbound_peers: 7,
+        protected_inbound_peers: 8,
+        permission_class: "ordinary_inbound".to_string(),
+        active_permission_effects: Vec::new(),
+        inactive_permission_effects: Vec::new(),
+        inactive_permission_effect_observations: 9,
+        permission_validation_failures: 10,
+        latest_permission_decision: FieldAvailability::unavailable("no permission decision"),
+        local_advertisement_candidates: Vec::new(),
+        suppressed_advertisements: Vec::new(),
+        getaddr_responses_served: 0,
+        getaddr_requests_suppressed: 0,
+        learned_address_entries: 0,
+        learned_address_rejections: 0,
+        latest_address_decision: FieldAvailability::unavailable("no address decision"),
+        eviction_candidates_evaluated: 11,
+        disconnects_requested: 12,
+        discouraged_peers: 0,
+        active_bans: 13,
+        expired_bans: 0,
+        manual_unbans: 0,
+        misbehavior_observations: 14,
+        protected_no_actions: 15,
+        latest_peer_policy_decision: FieldAvailability::unavailable("no peer policy decision"),
+        resource_pressure_events: 16,
+        read_queue_pressure_events: 17,
+        write_queue_pressure_events: 18,
+        request_cap_events: 19,
+        payload_rejections: 20,
+        timeout_disconnects: 21,
+        churn_rejections: 22,
+        reconnect_suppressions: 23,
+        latest_resource_governance_decision: FieldAvailability::unavailable(
+            "no resource governance decision",
+        ),
+    }
 }
 
 #[test]

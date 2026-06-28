@@ -30,7 +30,9 @@ use chain::{
     config_section_name, determine_chain, parse_chain_key, parse_chain_name, supported_chain_key,
 };
 use open_bitcoin_runtime::{
-    load_open_bitcoin_config, resolve_daemon_sync_config, resolve_inbound_listener_config,
+    count_inbound_permission_validation_failures, load_open_bitcoin_config,
+    resolve_daemon_sync_config, resolve_effective_permission_class_configs,
+    resolve_inbound_listener_config,
 };
 use rpc_address::parse_rpc_client_address;
 
@@ -127,7 +129,15 @@ pub(super) fn load_runtime_config_for_args(
     }
     let open_bitcoin_base_dir = maybe_data_dir.as_deref().unwrap_or(&initial_data_dir);
     let maybe_open_bitcoin_config = load_open_bitcoin_config(&cli, open_bitcoin_base_dir)?;
-    let inbound = resolve_inbound_listener_config(&cli, maybe_open_bitcoin_config.as_ref())?;
+    let inbound_permission_class_configs =
+        resolve_effective_permission_class_configs(&cli, maybe_open_bitcoin_config.as_ref())?;
+    let inbound_permission_validation_failures =
+        count_inbound_permission_validation_failures(&inbound_permission_class_configs);
+    let inbound = resolve_inbound_listener_config(
+        &cli,
+        maybe_open_bitcoin_config.as_ref(),
+        Some(&inbound_permission_class_configs),
+    )?;
     let sync = resolve_daemon_sync_config(
         chain,
         cli.maybe_daemon_sync_mode,
@@ -180,6 +190,7 @@ pub(super) fn load_runtime_config_for_args(
         wallet: WalletRuntimeConfig::default(),
         sync,
         inbound,
+        inbound_permission_validation_failures,
     })
 }
 

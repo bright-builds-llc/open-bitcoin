@@ -7,10 +7,14 @@
 
 //! Real-network sync runtime shell.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+};
 
 mod block_reconcile;
 mod block_response;
+mod metrics;
 mod progress;
 mod reconcile_status;
 mod resolver;
@@ -40,7 +44,8 @@ pub use types::{
 pub use wallet_rescan::WalletRescanRuntime;
 
 use crate::{
-    ChainstateStore, FjallNodeStore, ManagedPeerNetwork, MemoryChainstateStore, SyncLifecycleState,
+    ChainstateStore, FieldAvailability, FjallNodeStore, InboundPeerServingStatus,
+    ManagedPeerNetwork, MemoryChainstateStore, SyncLifecycleState,
     network::BlockConnectDisposition,
 };
 use progress::{PeerFailure, PeerProgress};
@@ -62,6 +67,8 @@ pub struct DurableSyncRuntime {
     peer_backoff: BTreeMap<String, PeerRetryState>,
     inflight_blocks: BTreeSet<BlockHash>,
     maybe_reconcile_progress: Option<SyncReconcileProgress>,
+    maybe_inbound_metric_status_provider:
+        Option<Arc<dyn Fn() -> FieldAvailability<InboundPeerServingStatus> + Send + Sync>>,
 }
 
 impl DurableSyncRuntime {
@@ -96,6 +103,7 @@ impl DurableSyncRuntime {
             peer_backoff: BTreeMap::new(),
             inflight_blocks: BTreeSet::new(),
             maybe_reconcile_progress: None,
+            maybe_inbound_metric_status_provider: None,
         })
     }
 

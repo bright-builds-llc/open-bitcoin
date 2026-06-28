@@ -34,7 +34,7 @@ v1.9 Inbound Peer Serving and Network Participation Boundary started on 2026-06-
 | 94 | DoS and Resource Governance | 8/8 | Complete    | 2026-06-27 |
 | 95 | Network Participation Evidence and Release Boundary | 4/4 | Complete    | 2026-06-27 |
 | 96 | Peer Policy Runtime Bridge | 4/4 | Complete   | 2026-06-28 |
-| 97 | Inbound Metrics Sample Production | 0/4 | Pending | — |
+| 97 | Inbound Metrics Sample Production | 4/4 | Complete    | 2026-06-28 |
 | 98 | Traceability Reconciliation | 0/3 | Pending | — |
 
 ## Phase Details
@@ -208,13 +208,13 @@ Plans:
 
 **Gap Closure:** Closes `INT-02-inbound-metric-sample-production` and `FLOW-02-inbound-counters-to-metrics` from `.planning/v1.9-MILESTONE-AUDIT.md`.
 
-**Plans:** 0/4 plans complete
+**Plans:** 4/4 plans complete
 
 Plans:
-- [ ] 97-01-PLAN.md — Pure inbound metrics snapshot and sample mapping
-- [ ] 97-02-PLAN.md — Runtime metric sample production and storage append path
-- [ ] 97-03-PLAN.md — Dashboard, status, and support verification for retained inbound samples
-- [ ] 97-04-PLAN.md — Deterministic checker and final verification
+- [x] 97-01-PLAN.md — Pure inbound metrics snapshot and sample mapping
+- [x] 97-02-PLAN.md — Runtime metric sample production and storage append path
+- [x] 97-03-PLAN.md — Dashboard, status, and support verification for retained inbound samples
+- [x] 97-04-PLAN.md — Deterministic checker and final verification
 
 **Success criteria:**
 1. Inbound admission, permission, peer-policy, and resource-governance counters map to bounded `MetricSample` values without peer identifiers or endpoint labels.

@@ -22,7 +22,10 @@ use open_bitcoin_node::{
     },
 };
 
-use super::{DASHBOARD_METRIC_KINDS, DashboardState, derive_metric_points, metric_label};
+use super::{
+    DASHBOARD_METRIC_KINDS, DashboardState, MAX_DASHBOARD_CHARTS, derive_metric_points,
+    metric_label,
+};
 
 #[test]
 fn dashboard_projection_includes_required_sections_and_charts() {
@@ -71,6 +74,36 @@ fn dashboard_metric_labels_cover_all_metric_kinds() {
     assert!(labels.contains(&"Inbound permission validation failures"));
     assert!(labels.contains(&"Inbound payload rejects"));
     assert!(labels.contains(&"Inbound reconnect suppressions"));
+}
+
+#[test]
+fn dashboard_charts_render_retained_inbound_metric_samples_without_expanding_row() {
+    // Arrange
+    let mut snapshot = test_snapshot();
+    snapshot.metrics = MetricsStatus::available_with_samples(
+        MetricRetentionPolicy::default(),
+        vec![
+            MetricSample::new(MetricKind::SyncHeight, 100.0, 10),
+            MetricSample::new(MetricKind::InboundAdmittedPeerCount, 1.0, 10),
+            MetricSample::new(MetricKind::InboundResourcePressureActiveCount, 16.0, 10),
+            MetricSample::new(MetricKind::InboundReconnectSuppressedCount, 23.0, 10),
+        ],
+    );
+
+    // Act
+    let state = DashboardState::from_snapshot(&snapshot);
+    let charts = state
+        .charts
+        .iter()
+        .map(|chart| (chart.title.as_str(), chart.points.clone()))
+        .collect::<Vec<_>>();
+
+    // Assert
+    assert_eq!(state.charts.len(), MAX_DASHBOARD_CHARTS);
+    assert!(state.charts.len() <= DASHBOARD_METRIC_KINDS.len());
+    assert!(charts.contains(&("Inbound admits", vec![1])));
+    assert!(charts.contains(&("Inbound resource pressure", vec![16])));
+    assert!(charts.contains(&("Inbound reconnect suppressions", vec![23])));
 }
 
 #[test]

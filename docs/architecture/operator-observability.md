@@ -47,6 +47,13 @@ protected admission, inactive effect observations, and validation failures
 without dynamic labels, raw class names, peer ids, endpoint strings, or raw
 permission specs.
 
+Phase 97 persists inbound admission, permission, peer-policy, and resource
+governance counters as retained metric samples from the shared inbound status
+projection. InboundPeerServingStatus aggregate counters -> fixed MetricSample values -> FjallNodeStore::append_metric_samples -> dashboard/status/support retained history.
+The retained samples use fixed `MetricKind` values only; dashboard, status, and
+support consumers must not derive peer labels, endpoint labels, permission-class
+dimensions, or raw policy material from retained inbound metrics.
+
 No metric or log retention contract may require public network access. Default verification must remain hermetic; live-network telemetry belongs behind explicit opt-in tests or operator runtime paths.
 
 ## Default log retention

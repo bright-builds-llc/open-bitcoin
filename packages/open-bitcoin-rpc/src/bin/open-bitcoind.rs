@@ -32,7 +32,7 @@ use std::{
 use open_bitcoin_network::{InboundPreflightDiagnostic, InboundPreflightReason};
 use open_bitcoin_node::{
     DurableSyncRuntime, FjallNodeStore, SyncLifecycleState, SyncRunSummary, SyncRuntimeError,
-    SyncStopReason, TcpPeerTransport,
+    SyncStopReason, TcpPeerTransport, status::inbound_status_unavailable,
 };
 use open_bitcoin_rpc::{
     DaemonSyncControl, ManagedRpcContext,
@@ -44,6 +44,11 @@ use open_bitcoin_rpc::{
     },
 };
 
+#[path = "open_bitcoind/inbound_metrics.rs"]
+mod inbound_metrics;
+
+use inbound_metrics::start_inbound_metrics_worker;
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let runtime = load_runtime_config()?;
@@ -53,25 +58,45 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(preflight) = preflight_daemon_sync(&runtime)? {
         report_daemon_sync_preflight(&preflight);
     }
-    let maybe_sync_worker = start_daemon_sync_worker(&runtime)?;
 
     let bind_address = runtime.rpc_server.bind_address;
     let auth = runtime.rpc_server.auth.clone();
-    let mut context = ManagedRpcContext::from_runtime_config(&runtime);
-    if let Some(worker) = maybe_sync_worker.as_ref() {
-        context.set_daemon_sync_control(worker.control.clone());
-    }
+    let maybe_runtime_store = open_runtime_store(&runtime)?;
+    let context =
+        ManagedRpcContext::from_runtime_config_with_store(&runtime, maybe_runtime_store.clone());
     let shared_context = Arc::new(tokio::sync::Mutex::new(context));
+    let maybe_sync_worker = start_daemon_sync_worker(
+        &runtime,
+        Arc::clone(&shared_context),
+        maybe_runtime_store.clone(),
+    )?;
+    if let Some(worker) = maybe_sync_worker.as_ref() {
+        let mut context = shared_context.lock().await;
+        context.set_daemon_sync_control(worker.control.clone());
+        context.set_metrics_store(worker.metrics_store.clone());
+    }
     let state = http::build_http_state_with_shared_context(auth, Arc::clone(&shared_context))?;
     let listener = tokio::net::TcpListener::bind(bind_address).await?;
     let mut inbound_listener =
-        start_inbound_listener_for_runtime_with_context(&runtime, shared_context).await;
+        start_inbound_listener_for_runtime_with_context(&runtime, Arc::clone(&shared_context))
+            .await;
+    let maybe_inbound_metrics_worker =
+        start_inbound_metrics_worker(&runtime, Arc::clone(&shared_context), maybe_runtime_store)?;
+    if let Some(worker) = maybe_inbound_metrics_worker.as_ref() {
+        shared_context
+            .lock()
+            .await
+            .set_metrics_store(worker.metrics_store.clone());
+    }
     report_inbound_listener_startup(&inbound_listener);
 
     let serve_result = axum::serve(listener, http::router(state))
         .with_graceful_shutdown(shutdown_signal())
         .await;
     inbound_listener.shutdown().await;
+    if let Some(worker) = maybe_inbound_metrics_worker {
+        worker.shutdown();
+    }
     if let Some(worker) = maybe_sync_worker {
         worker.shutdown();
     }
@@ -96,6 +121,7 @@ struct DaemonSyncWorker {
     join_handle: thread::JoinHandle<()>,
     shutdown_sender: mpsc::Sender<()>,
     control: DaemonSyncControl,
+    metrics_store: FjallNodeStore,
 }
 
 #[derive(Debug)]
@@ -217,6 +243,25 @@ fn report_inbound_listener_startup(listener: &InboundDaemonListener) {
     eprintln!("{}", inbound_listener_startup_message(listener));
 }
 
+fn open_runtime_store(
+    runtime: &RuntimeConfig,
+) -> Result<Option<FjallNodeStore>, DaemonSyncPreflightError> {
+    if !runtime.sync.is_enabled() && !runtime.inbound.enabled {
+        return Ok(None);
+    }
+
+    let Some(data_dir) = runtime.maybe_data_dir.as_ref() else {
+        return Ok(None);
+    };
+
+    FjallNodeStore::open(data_dir).map(Some).map_err(|error| {
+        DaemonSyncPreflightError::new(format!(
+            "open-bitcoind runtime failed to open durable store at \"{}\": {error}",
+            data_dir.display()
+        ))
+    })
+}
+
 fn daemon_sync_preflight_message(preflight: &DaemonSyncPreflight) -> String {
     format!(
         "open-bitcoind mainnet sync preflight opened durable store: mode={}, datadir=\"{}\", best_header_height={}, best_block_height={}; enabled startup will run the explicit opt-in bounded unattended review loop with stop, retry, and backoff policy. This is not unattended production-node operation and is not a packaged-service guarantee.",
@@ -298,6 +343,8 @@ fn inbound_listener_state_description(state: InboundListenerState) -> &'static s
 
 fn start_daemon_sync_worker(
     runtime: &RuntimeConfig,
+    shared_context: Arc<tokio::sync::Mutex<ManagedRpcContext>>,
+    maybe_store: Option<FjallNodeStore>,
 ) -> Result<Option<DaemonSyncWorker>, DaemonSyncPreflightError> {
     if !runtime.sync.is_enabled() {
         return Ok(None);
@@ -308,19 +355,29 @@ fn start_daemon_sync_worker(
             "open-bitcoind mainnet sync activation requires an existing datadir; set -datadir=<path> or create the default Bitcoin datadir before enabling -openbitcoinsync=mainnet-ibd.",
         ));
     };
-    let store = FjallNodeStore::open(data_dir).map_err(|error| {
-        DaemonSyncPreflightError::new(format!(
-            "open-bitcoind daemon sync failed to open durable store at \"{}\": {error}",
-            data_dir.display()
-        ))
-    })?;
+    let store = match maybe_store {
+        Some(store) => store,
+        None => FjallNodeStore::open(data_dir).map_err(|error| {
+            DaemonSyncPreflightError::new(format!(
+                "open-bitcoind daemon sync failed to open durable store at \"{}\": {error}",
+                data_dir.display()
+            ))
+        })?,
+    };
     let sync_config = runtime.sync.runtime.clone();
     let control = DaemonSyncControl::store_backed(store.clone(), sync_config.persist_mode);
-    let sync_runtime = DurableSyncRuntime::open(store, sync_config).map_err(|error| {
+    let metrics_store = store.clone();
+    let mut sync_runtime = DurableSyncRuntime::open(store, sync_config).map_err(|error| {
         DaemonSyncPreflightError::new(format!(
             "open-bitcoind daemon sync failed to construct durable sync runtime: {error}"
         ))
     })?;
+    sync_runtime.set_inbound_metric_status_provider(move || {
+        let Ok(context) = shared_context.try_lock() else {
+            return inbound_status_unavailable();
+        };
+        context.current_inbound_status()
+    });
     seed_initial_sync_state(&sync_runtime)?;
     let (shutdown_sender, shutdown_receiver) = mpsc::channel();
 
@@ -328,6 +385,7 @@ fn start_daemon_sync_worker(
         join_handle: thread::spawn(move || daemon_sync_worker(sync_runtime, shutdown_receiver)),
         shutdown_sender,
         control,
+        metrics_store,
     }))
 }
 

@@ -18,8 +18,8 @@ use std::{
 
 use open_bitcoin_network::{InboundListenerConfig, InboundPreflightReason};
 use open_bitcoin_node::{
-    DurableSyncRuntime, FieldAvailability, FjallNodeStore, SyncLifecycleState, SyncRunSummary,
-    SyncRuntimeConfig, SyncRuntimeError, SyncStopReason,
+    DurableSyncRuntime, FieldAvailability, FjallNodeStore, MetricKind, SyncLifecycleState,
+    SyncRunSummary, SyncRuntimeConfig, SyncRuntimeError, SyncStopReason,
 };
 use open_bitcoin_rpc::inbound_listener::InboundListenerState;
 use open_bitcoin_rpc::{
@@ -31,7 +31,7 @@ use super::{
     DaemonSyncLoopDecision, DaemonSyncLoopPolicy, DaemonSyncPreflight,
     daemon_sync_preflight_message, inbound_listener_startup_message, preflight_daemon_sync,
     run_daemon_sync_loop_cycle, start_inbound_listener_for_runtime,
-    start_inbound_listener_for_runtime_with_context,
+    start_inbound_listener_for_runtime_with_context, start_inbound_metrics_worker,
 };
 
 fn temp_store_path(label: &str) -> PathBuf {
@@ -402,6 +402,53 @@ async fn open_bitcoind_inbound_listener_evidence_reaches_shared_rpc_status() {
 }
 
 #[tokio::test]
+async fn open_bitcoind_inbound_metrics_worker_persists_sync_disabled_inbound_samples() {
+    // Arrange
+    let data_dir = temp_store_path("inbound-metrics-worker");
+    remove_dir_if_exists(&data_dir);
+    let runtime = RuntimeConfig {
+        maybe_data_dir: Some(data_dir.clone()),
+        inbound: InboundListenerConfig {
+            enabled: true,
+            listen_addresses: vec!["127.0.0.1:0".to_string()],
+            max_peers: 2,
+            reserved_slots: 0,
+            allow_public: false,
+            permission_classes: Default::default(),
+        },
+        ..RuntimeConfig::default()
+    };
+    let metrics_store = FjallNodeStore::open(&data_dir).expect("metrics store");
+    let shared_context = Arc::new(tokio::sync::Mutex::new(
+        ManagedRpcContext::from_runtime_config_with_store(&runtime, Some(metrics_store.clone())),
+    ));
+    let mut listener =
+        start_inbound_listener_for_runtime_with_context(&runtime, Arc::clone(&shared_context))
+            .await;
+    let worker =
+        start_inbound_metrics_worker(&runtime, Arc::clone(&shared_context), Some(metrics_store))
+            .expect("start inbound metrics worker")
+            .expect("inbound metrics worker");
+    shared_context
+        .lock()
+        .await
+        .set_metrics_store(worker.metrics_store.clone());
+
+    // Act
+    let metrics = wait_for_inbound_metric_sample(&worker.metrics_store);
+    worker.shutdown();
+    let status = shared_context.lock().await.metrics_status();
+    listener.shutdown().await;
+
+    // Assert
+    assert!(metrics);
+    assert!(status.samples.iter().any(|sample| {
+        sample.kind == MetricKind::InboundAdmittedPeerCount && sample.timestamp_unix_seconds > 0
+    }));
+    remove_dir_if_exists(&data_dir);
+}
+
+#[tokio::test]
 async fn open_bitcoind_inbound_shutdown_closes_listener_without_sync_shutdown_regression() {
     // Arrange
     let runtime = RuntimeConfig {
@@ -437,6 +484,27 @@ async fn open_bitcoind_inbound_shutdown_closes_listener_without_sync_shutdown_re
     // Assert
     assert!(reconnect.is_err());
     assert_eq!(sync_decision, DaemonSyncLoopDecision::Stopped);
+}
+
+fn wait_for_inbound_metric_sample(store: &FjallNodeStore) -> bool {
+    for _ in 0..40 {
+        let maybe_has_sample =
+            store
+                .load_metrics_snapshot()
+                .ok()
+                .flatten()
+                .is_some_and(|snapshot| {
+                    snapshot
+                        .samples
+                        .iter()
+                        .any(|sample| matches!(sample.kind, MetricKind::InboundAdmittedPeerCount))
+                });
+        if maybe_has_sample {
+            return true;
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    }
+    false
 }
 
 #[test]

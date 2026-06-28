@@ -13,7 +13,7 @@ Requirements for the active v1.9 milestone. Each maps to exactly one roadmap pha
 - [ ] **INB-02**: The daemon can bind and listen on configured interfaces with deterministic preflight and diagnostic errors when disabled, unavailable, unsafe, or already in use.
 - [ ] **INB-03**: The node admits inbound peers through typed connection records, handshake lifecycle state, duplicate/self-connection protections, and inbound/outbound counters.
 - [ ] **INB-04**: The node enforces configurable inbound connection caps, reserved slots, and protected peer handling without starving the existing outbound sync workflow.
-- [ ] **INB-05**: Operator status, metrics, logs, RPC-facing status, and support evidence distinguish inbound serving from outbound sync and expose admission and handshake outcomes.
+- [x] **INB-05**: Operator status, metrics, logs, RPC-facing status, and support evidence distinguish inbound serving from outbound sync and expose admission and handshake outcomes.
 
 ### Peer Permissions
 
@@ -41,7 +41,7 @@ Requirements for the active v1.9 milestone. Each maps to exactly one roadmap pha
 - [x] **DOS-01**: Inbound sessions enforce network magic, message header, payload size, malformed message, and unsupported command limits before allocating unbounded memory.
 - [x] **DOS-02**: Inbound sessions enforce per-peer and aggregate read/write queues, inventory/request bounds, header/block/transaction request caps, and backpressure behavior.
 - [x] **DOS-03**: The node limits connection churn, slow handshakes, idle peers, repeated failures, and banned or discouraged reconnect attempts with deterministic synthetic tests.
-- [ ] **DOS-04**: Resource pressure and abuse responses appear in metrics, structured logs, support bundles, and operator status with clear next actions.
+- [x] **DOS-04**: Resource pressure and abuse responses appear in metrics, structured logs, support bundles, and operator status with clear next actions.
 - [x] **DOS-05**: Default verification covers inbound DoS/resource policy deterministically and keeps public-network listener exposure outside `bash scripts/verify.sh`.
 
 ### Release Boundary
@@ -94,7 +94,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INB-02 | Phase 98 | Pending |
 | INB-03 | Phase 98 | Pending |
 | INB-04 | Phase 98 | Pending |
-| INB-05 | Phase 97 | Pending |
+| INB-05 | Phase 97 | Complete |
 | PERM-01 | Phase 91 | Complete |
 | PERM-02 | Phase 91 | Complete |
 | PERM-03 | Phase 91 | Complete |
@@ -110,7 +110,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DOS-01 | Phase 94 | Complete |
 | DOS-02 | Phase 94 | Complete |
 | DOS-03 | Phase 96 | Complete |
-| DOS-04 | Phase 97 | Pending |
+| DOS-04 | Phase 97 | Complete |
 | DOS-05 | Phase 94 | Complete |
 | BOUND-01 | Phase 95 | Complete |
 | BOUND-02 | Phase 95 | Complete |

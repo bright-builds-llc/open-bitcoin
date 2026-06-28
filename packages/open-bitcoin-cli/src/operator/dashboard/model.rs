@@ -16,6 +16,7 @@ use open_bitcoin_node::{
     },
 };
 
+mod metrics;
 mod recovery;
 mod resource_bounds;
 mod sync_section;
@@ -25,17 +26,7 @@ mod tests;
 use recovery::recovery_category;
 use sync_section::sync_and_peers_section;
 
-/// Metric series rendered as dashboard charts.
-pub const DASHBOARD_METRIC_KINDS: [MetricKind; 8] = [
-    MetricKind::HeaderHeight,
-    MetricKind::DownloadedBlockHeight,
-    MetricKind::ConnectedBlockHeight,
-    MetricKind::SyncHeight,
-    MetricKind::PeerCount,
-    MetricKind::MempoolTransactions,
-    MetricKind::DiskUsageBytes,
-    MetricKind::RpcHealth,
-];
+pub use metrics::{DASHBOARD_METRIC_KINDS, MAX_DASHBOARD_CHARTS};
 
 /// Dashboard projection consumed by text and interactive renderers.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -158,7 +149,7 @@ fn dashboard_sections(snapshot: &OpenBitcoinStatusSnapshot) -> Vec<DashboardSect
 }
 
 fn dashboard_charts(snapshot: &OpenBitcoinStatusSnapshot) -> Vec<MetricChart> {
-    DASHBOARD_METRIC_KINDS
+    metrics::dashboard_metric_kinds(snapshot)
         .into_iter()
         .map(|kind| {
             let points = snapshot

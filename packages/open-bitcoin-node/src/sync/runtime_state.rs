@@ -9,7 +9,7 @@ use open_bitcoin_core::primitives::BlockHash;
 use open_bitcoin_network::{MAX_HEADERS_RESULTS, PeerId};
 
 use crate::{
-    LogRetentionPolicy, MetricRetentionPolicy, RuntimeMetadata,
+    LogRetentionPolicy, RuntimeMetadata,
     logging::{
         StructuredLogError, StructuredLogLevel, StructuredLogRecord,
         writer::append_structured_log_record,
@@ -92,23 +92,6 @@ impl DurableSyncRuntime {
         metadata.last_clean_shutdown = false;
         self.store
             .save_runtime_metadata(&metadata, self.config.persist_mode)?;
-
-        Ok(())
-    }
-
-    pub(super) fn persist_metrics(
-        &self,
-        summary: &SyncRunSummary,
-        timestamp: i64,
-    ) -> Result<(), SyncRuntimeError> {
-        let timestamp = u64::try_from(timestamp).unwrap_or(0);
-        let summary = self.summary_with_configured_targets(summary);
-        self.store.append_metric_samples(
-            &summary.metric_samples(timestamp),
-            MetricRetentionPolicy::default(),
-            timestamp,
-            self.config.persist_mode,
-        )?;
 
         Ok(())
     }
@@ -599,7 +582,10 @@ impl DurableSyncRuntime {
         summary.maybe_target_header_height = self.config.maybe_target_header_height;
     }
 
-    fn summary_with_configured_targets(&self, summary: &SyncRunSummary) -> SyncRunSummary {
+    pub(super) fn summary_with_configured_targets(
+        &self,
+        summary: &SyncRunSummary,
+    ) -> SyncRunSummary {
         let mut summary = summary.clone();
         self.set_summary_configured_targets(&mut summary);
         summary

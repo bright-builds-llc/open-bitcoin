@@ -216,6 +216,7 @@ pub struct RuntimeConfig {
     pub wallet: WalletRuntimeConfig,
     pub sync: DaemonSyncConfig,
     pub inbound: InboundListenerConfig,
+    pub inbound_permission_validation_failures: u32,
 }
 
 impl Default for RuntimeConfig {
@@ -229,6 +230,7 @@ impl Default for RuntimeConfig {
             wallet: WalletRuntimeConfig::default(),
             sync: DaemonSyncConfig::default(),
             inbound: open_bitcoin_defaults.inbound.to_listener_config(),
+            inbound_permission_validation_failures: 0,
         }
     }
 }

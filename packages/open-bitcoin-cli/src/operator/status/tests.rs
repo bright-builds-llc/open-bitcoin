@@ -41,6 +41,7 @@ use open_bitcoin_node::status::{
     WalletStatus,
 };
 use open_bitcoin_node::storage::FJALL_LOCK_FILE_NAME;
+use open_bitcoin_node::{MetricKind, MetricRetentionPolicy, MetricSample, MetricsStatus};
 use open_bitcoin_rpc::{
     RpcErrorCode, RpcErrorDetail,
     method::{
@@ -187,6 +188,39 @@ fn fake_live_rpc_maps_into_shared_status_snapshot() {
     assert_eq!(decoded["build"]["build_time"]["state"], "available");
     assert_eq!(decoded["build"]["target"]["state"], "available");
     assert_eq!(decoded["build"]["profile"]["state"], "available");
+}
+
+#[test]
+fn fake_live_rpc_maps_metrics_from_open_bitcoin_network_status() {
+    // Arrange
+    let input = status_input(Vec::new());
+    let rpc = FakeStatusRpcClient {
+        maybe_network_status: Some(OpenBitcoinNetworkStatusResponse {
+            inbound: FieldAvailability::<InboundPeerServingStatus>::unavailable(
+                INBOUND_STATUS_UNAVAILABLE_REASON,
+            ),
+            metrics: MetricsStatus::available_with_samples(
+                MetricRetentionPolicy::default(),
+                vec![MetricSample::new(
+                    MetricKind::InboundAdmittedPeerCount,
+                    2.0,
+                    1_777_225_022,
+                )],
+            ),
+        }),
+        ..FakeStatusRpcClient::running()
+    };
+
+    // Act
+    let snapshot = collect_status_snapshot(&input, Some(&rpc));
+
+    // Assert
+    assert_eq!(snapshot.metrics.samples.len(), 1);
+    assert_eq!(
+        snapshot.metrics.samples[0].kind,
+        MetricKind::InboundAdmittedPeerCount
+    );
+    assert_eq!(snapshot.metrics.samples[0].value, 2.0);
 }
 
 #[test]
@@ -1919,6 +1953,7 @@ impl FakeStatusRpcClient {
                 inbound: FieldAvailability::<InboundPeerServingStatus>::unavailable(
                     INBOUND_STATUS_UNAVAILABLE_REASON,
                 ),
+                metrics: MetricsStatus::default(),
             }),
             maybe_wallet_error: None,
         }
@@ -1956,6 +1991,7 @@ impl FakeStatusRpcClient {
                 inbound: FieldAvailability::<InboundPeerServingStatus>::unavailable(
                     INBOUND_STATUS_UNAVAILABLE_REASON,
                 ),
+                metrics: MetricsStatus::default(),
             }),
             maybe_wallet_error: Some(error),
         }
@@ -2010,6 +2046,7 @@ impl StatusRpcClient for FakeStatusRpcClient {
                 inbound: FieldAvailability::<InboundPeerServingStatus>::unavailable(
                     INBOUND_STATUS_UNAVAILABLE_REASON,
                 ),
+                metrics: MetricsStatus::default(),
             }))
     }
 
@@ -2101,6 +2138,8 @@ fn inbound_status_response() -> OpenBitcoinNetworkStatusResponse {
                 "inactive_mempool".to_string(),
                 "inactive_blockfilters".to_string(),
             ],
+            inactive_permission_effect_observations: 3,
+            permission_validation_failures: 0,
             latest_permission_decision: FieldAvailability::available(
                 InboundPermissionDecisionEvent {
                     outcome: "admitted".to_string(),
@@ -2179,6 +2218,7 @@ fn inbound_status_response() -> OpenBitcoinNetworkStatusResponse {
                 "inbound resource governance evidence unavailable",
             ),
         }),
+        metrics: MetricsStatus::default(),
     }
 }
 

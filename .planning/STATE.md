@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Inbound Peer Serving and Network Participation Boundary
-status: completed
-stopped_at: Completed Phase 96 peer-policy runtime bridge after clean verification
-last_updated: "2026-06-28T05:01:15.206Z"
-last_activity: 2026-06-28 -- Phase 96 verified and completed
+status: planning
+stopped_at: Phase 97 complete; Phase 98 ready to plan
+last_updated: "2026-06-28T18:22:12.169Z"
+last_activity: 2026-06-28
 progress:
   total_phases: 9
-  completed_phases: 7
-  total_plans: 48
-  completed_plans: 48
+  completed_phases: 8
+  total_plans: 52
+  completed_plans: 52
   percent: 100
 ---
 
@@ -21,15 +21,15 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-26)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 96 — Peer Policy Runtime Bridge complete
+**Current focus:** Phase 98 — Traceability Reconciliation ready to plan
 
 ## Current Position
 
 Milestone: v1.9 Inbound Peer Serving and Network Participation Boundary
-Phase: 96 (peer-policy-runtime-bridge) — COMPLETE
-Plan: 04 of 4
-Status: Phase 96 complete -- next Phase 97
-Last activity: 2026-06-28 -- Phase 96 verified and completed
+Phase: 98
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-06-28
 
 Progress: [##########] 100%
 
@@ -52,6 +52,8 @@ Progress: [##########] 100%
 | 94 | DoS and Resource Governance | DOS-01, DOS-02, DOS-03, DOS-04, DOS-05 | Complete |
 | 95 | Network Participation Evidence and Release Boundary | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05, BOUND-06 | Complete |
 | 96 | Peer Policy Runtime Bridge | EVICT-03, EVICT-04, DOS-03 | Complete |
+| 97 | Inbound Metrics Sample Production | INB-05, DOS-04 | Complete |
+| 98 | Traceability Reconciliation | INB-01, INB-02, INB-03, INB-04, BOUND-06 | Ready to plan |
 
 **Recent Trend:**
 
@@ -154,7 +156,7 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ### Pending Todos
 
-- Plan Phase 94 DoS and resource governance before execution.
+- Plan Phase 98 traceability reconciliation before execution.
 - Keep v1.9 phase directories numbered 90+ under `.planning/phases/`; historical phase directories remain tracked because verifier scripts still depend on selected phase evidence.
 - Keep repo-local Cargo and Bazel command forms in UAT guidance:
   - `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- ...`
@@ -171,6 +173,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-28T05:00:11.164Z
-Stopped at: Completed Phase 96 peer-policy runtime bridge after clean verification
-Resume file: None
+Last session: 2026-06-28T18:22:12.169Z
+Stopped at: Phase 97 complete; Phase 98 ready to plan
+Resume file: .planning/ROADMAP.md

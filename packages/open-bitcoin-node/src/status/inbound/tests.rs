@@ -105,6 +105,8 @@ fn inbound_status_serializes_listener_and_admission_evidence() {
                 "inactive_relay".to_string(),
                 "inactive_mempool".to_string(),
             ],
+            inactive_permission_effect_observations: 2,
+            permission_validation_failures: 0,
             latest_permission_decision: FieldAvailability::available(
                 InboundPermissionDecisionEvent {
                     outcome: "admitted".to_string(),
@@ -428,6 +430,8 @@ fn inbound_status_address_entries_exclude_raw_peer_and_address_details() {
         permission_class: "ordinary_inbound".to_string(),
         active_permission_effects: Vec::new(),
         inactive_permission_effects: Vec::new(),
+        inactive_permission_effect_observations: 0,
+        permission_validation_failures: 0,
         latest_permission_decision: FieldAvailability::unavailable(
             INBOUND_PERMISSION_DECISION_UNAVAILABLE_REASON,
         ),

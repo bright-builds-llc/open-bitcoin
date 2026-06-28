@@ -27,7 +27,7 @@ use crate::recovery::{
     LockEvidence, LockEvidenceKind, RECOVERY_EVIDENCE_UNAVAILABLE_REASON, RecoveryActionClass,
     RecoveryCause, RecoveryEvidenceSnapshot,
 };
-use crate::{LogStatus, MetricsStatus};
+use crate::{LogStatus, MetricKind, MetricRetentionPolicy, MetricSample, MetricsStatus};
 
 #[test]
 fn unavailable_field_serializes_with_reason() {
@@ -1318,6 +1318,8 @@ fn inbound_status_snapshot_serializes_address_boundary_evidence_under_peers_inbo
         permission_class: "ordinary_inbound".to_string(),
         active_permission_effects: Vec::new(),
         inactive_permission_effects: Vec::new(),
+        inactive_permission_effect_observations: 0,
+        permission_validation_failures: 0,
         latest_permission_decision: FieldAvailability::unavailable(
             "inbound permission decision evidence unavailable",
         ),
@@ -1386,6 +1388,42 @@ fn inbound_status_snapshot_serializes_address_boundary_evidence_under_peers_inbo
         encoded["peers"]["inbound"]["value"]["latest_address_decision"]["value"]["source"],
         "source_inbound_addr"
     );
+}
+
+#[test]
+fn status_metrics_json_preserves_retained_inbound_samples_without_dynamic_labels() {
+    // Arrange
+    let mut snapshot = stopped_snapshot();
+    snapshot.metrics = MetricsStatus::available_with_samples(
+        MetricRetentionPolicy::default(),
+        vec![MetricSample::new(
+            MetricKind::InboundResourcePressureActiveCount,
+            16.0,
+            1_777_225_022,
+        )],
+    );
+
+    // Act
+    let encoded = serde_json::to_value(snapshot).expect("status snapshot json");
+    let sample = encoded["metrics"]["samples"][0]
+        .as_object()
+        .expect("metric sample object");
+
+    // Assert
+    assert_eq!(
+        sample.get("kind").expect("metric kind"),
+        "inbound_resource_pressure_active_count"
+    );
+    assert_eq!(sample.get("value").expect("metric value"), 16.0);
+    assert_eq!(
+        sample
+            .get("timestamp_unix_seconds")
+            .expect("metric timestamp"),
+        1_777_225_022
+    );
+    for forbidden in ["peer_id", "endpoint", "permission_class", "label"] {
+        assert!(!sample.contains_key(forbidden));
+    }
 }
 
 fn stopped_snapshot() -> OpenBitcoinStatusSnapshot {

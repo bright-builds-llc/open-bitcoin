@@ -3,8 +3,9 @@
 
 use super::{
     MetricKind, MetricRetentionPolicy, MetricSample, MetricsAvailability, MetricsStatus,
-    append_and_prune_metric_samples,
+    append_and_prune_metric_samples, inbound_metric_samples,
 };
+use crate::status::{FieldAvailability, InboundHandshakeStatusCounts, InboundPeerServingStatus};
 
 #[test]
 fn default_metric_retention_matches_operator_contract() {
@@ -224,6 +225,94 @@ fn inbound_metric_kinds_are_low_cardinality_counters() {
 }
 
 #[test]
+fn unavailable_inbound_status_emits_no_metric_samples() {
+    // Arrange
+    let inbound = FieldAvailability::unavailable("inbound status unavailable");
+
+    // Act
+    let samples = inbound_metric_samples(&inbound, 1_777_225_022);
+
+    // Assert
+    assert!(samples.is_empty());
+}
+
+#[test]
+fn inbound_status_maps_to_each_fixed_inbound_metric_kind() {
+    // Arrange
+    let timestamp = 1_777_225_022;
+    let inbound = FieldAvailability::available(inbound_status_fixture());
+
+    // Act
+    let samples = inbound_metric_samples(&inbound, timestamp);
+
+    // Assert
+    assert_eq!(
+        samples,
+        vec![
+            MetricSample::new(MetricKind::InboundAdmittedPeerCount, 1.0, timestamp),
+            MetricSample::new(MetricKind::InboundRejectedPeerCount, 2.0, timestamp),
+            MetricSample::new(MetricKind::InboundCapRejectCount, 3.0, timestamp),
+            MetricSample::new(MetricKind::InboundReservedSlotRejectCount, 4.0, timestamp),
+            MetricSample::new(MetricKind::InboundDuplicateRejectCount, 5.0, timestamp),
+            MetricSample::new(MetricKind::InboundSelfConnectionRejectCount, 6.0, timestamp,),
+            MetricSample::new(MetricKind::InboundPermissionedAdmitCount, 7.0, timestamp),
+            MetricSample::new(MetricKind::InboundProtectedAdmitCount, 8.0, timestamp),
+            MetricSample::new(
+                MetricKind::InboundInactivePermissionEffectCount,
+                9.0,
+                timestamp,
+            ),
+            MetricSample::new(
+                MetricKind::InboundPermissionValidationFailureCount,
+                10.0,
+                timestamp,
+            ),
+            MetricSample::new(MetricKind::InboundEvictionCandidateCount, 11.0, timestamp),
+            MetricSample::new(MetricKind::InboundDisconnectCount, 12.0, timestamp),
+            MetricSample::new(MetricKind::InboundActiveBanCount, 13.0, timestamp),
+            MetricSample::new(
+                MetricKind::InboundMisbehaviorObservationCount,
+                14.0,
+                timestamp,
+            ),
+            MetricSample::new(MetricKind::InboundProtectedNoActionCount, 15.0, timestamp),
+            MetricSample::new(
+                MetricKind::InboundResourcePressureActiveCount,
+                16.0,
+                timestamp,
+            ),
+            MetricSample::new(MetricKind::InboundReadQueuePressureCount, 17.0, timestamp),
+            MetricSample::new(MetricKind::InboundWriteQueuePressureCount, 18.0, timestamp),
+            MetricSample::new(MetricKind::InboundRequestCapReachedCount, 19.0, timestamp),
+            MetricSample::new(MetricKind::InboundPayloadRejectedCount, 20.0, timestamp),
+            MetricSample::new(MetricKind::InboundTimeoutDisconnectCount, 21.0, timestamp),
+            MetricSample::new(MetricKind::InboundChurnRejectedCount, 22.0, timestamp),
+            MetricSample::new(MetricKind::InboundReconnectSuppressedCount, 23.0, timestamp,),
+        ]
+    );
+}
+
+#[test]
+fn inactive_permission_metric_uses_observation_count_not_label_count() {
+    // Arrange
+    let timestamp = 1_777_225_022;
+    let mut status = inbound_status_fixture();
+    status.inactive_permission_effects = vec!["label_one".to_string(), "label_two".to_string()];
+    status.inactive_permission_effect_observations = 9;
+    let inbound = FieldAvailability::available(status);
+
+    // Act
+    let samples = inbound_metric_samples(&inbound, timestamp);
+    let sample = samples
+        .iter()
+        .find(|sample| sample.kind == MetricKind::InboundInactivePermissionEffectCount)
+        .expect("inactive permission metric sample");
+
+    // Assert
+    assert_eq!(sample.value, 9.0);
+}
+
+#[test]
 fn metric_sample_round_trips_through_json() {
     // Arrange
     let sample = MetricSample::new(MetricKind::HeaderHeight, 840_000.0, 1_777_225_022);
@@ -273,6 +362,57 @@ fn append_and_prune_metric_samples_drops_expired_samples() {
 
     // Assert
     assert_eq!(retained, new_samples);
+}
+
+fn inbound_status_fixture() -> InboundPeerServingStatus {
+    InboundPeerServingStatus {
+        listener_state: "ready".to_string(),
+        bound_endpoints: Vec::new(),
+        preflight_reason: "ready".to_string(),
+        admitted_inbound_peers: 1,
+        rejected_inbound_peers: 2,
+        handshake: InboundHandshakeStatusCounts::default(),
+        duplicate_rejects: 5,
+        self_connection_rejects: 6,
+        cap_rejects: 3,
+        reserved_slot_rejects: 4,
+        latest_admission_event: FieldAvailability::unavailable("no admission event"),
+        permissioned_inbound_peers: 7,
+        protected_inbound_peers: 8,
+        permission_class: "ordinary_inbound".to_string(),
+        active_permission_effects: Vec::new(),
+        inactive_permission_effects: Vec::new(),
+        inactive_permission_effect_observations: 9,
+        permission_validation_failures: 10,
+        latest_permission_decision: FieldAvailability::unavailable("no permission decision"),
+        local_advertisement_candidates: Vec::new(),
+        suppressed_advertisements: Vec::new(),
+        getaddr_responses_served: 0,
+        getaddr_requests_suppressed: 0,
+        learned_address_entries: 0,
+        learned_address_rejections: 0,
+        latest_address_decision: FieldAvailability::unavailable("no address decision"),
+        eviction_candidates_evaluated: 11,
+        disconnects_requested: 12,
+        discouraged_peers: 0,
+        active_bans: 13,
+        expired_bans: 0,
+        manual_unbans: 0,
+        misbehavior_observations: 14,
+        protected_no_actions: 15,
+        latest_peer_policy_decision: FieldAvailability::unavailable("no peer policy decision"),
+        resource_pressure_events: 16,
+        read_queue_pressure_events: 17,
+        write_queue_pressure_events: 18,
+        request_cap_events: 19,
+        payload_rejections: 20,
+        timeout_disconnects: 21,
+        churn_rejections: 22,
+        reconnect_suppressions: 23,
+        latest_resource_governance_decision: FieldAvailability::unavailable(
+            "no resource governance decision",
+        ),
+    }
 }
 
 #[test]

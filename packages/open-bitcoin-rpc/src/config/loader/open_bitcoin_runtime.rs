@@ -64,6 +64,7 @@ pub(super) fn load_open_bitcoin_config(
 pub(super) fn resolve_inbound_listener_config(
     cli: &CliSettings,
     maybe_config: Option<&OpenBitcoinConfig>,
+    maybe_effective_permission_classes: Option<&[InboundPermissionClassConfig]>,
 ) -> Result<InboundListenerConfig, ConfigError> {
     let mut inbound = maybe_config
         .map(|config| config.inbound.to_listener_config())
@@ -83,8 +84,16 @@ pub(super) fn resolve_inbound_listener_config(
     if let Some(allow_public) = cli.maybe_inbound_allow_public {
         inbound.allow_public = allow_public;
     }
-    let permission_classes = resolve_effective_permission_class_configs(cli, maybe_config)?;
-    inbound.permission_classes = resolve_permission_class_registry(&permission_classes)?;
+    let owned_permission_classes;
+    let permission_classes = match maybe_effective_permission_classes {
+        Some(permission_classes) => permission_classes,
+        None => {
+            owned_permission_classes =
+                resolve_effective_permission_class_configs(cli, maybe_config)?;
+            &owned_permission_classes
+        }
+    };
+    inbound.permission_classes = resolve_permission_class_registry(permission_classes)?;
     validate_inbound_listener_config(&inbound)?;
     Ok(inbound)
 }
@@ -274,7 +283,7 @@ fn resolve_permission_class_registry(
     Ok(PeerPermissionClassRegistry::new(classes))
 }
 
-fn resolve_effective_permission_class_configs(
+pub(super) fn resolve_effective_permission_class_configs(
     cli: &CliSettings,
     maybe_config: Option<&OpenBitcoinConfig>,
 ) -> Result<Vec<InboundPermissionClassConfig>, ConfigError> {
@@ -288,6 +297,29 @@ fn resolve_effective_permission_class_configs(
     Ok(maybe_config
         .map(|config| config.inbound.permission_classes.clone())
         .unwrap_or_default())
+}
+
+pub(super) fn count_inbound_permission_validation_failures(
+    configs: &[InboundPermissionClassConfig],
+) -> u32 {
+    let mut failures = 0_u32;
+    let mut addresses = BTreeMap::<IpAddr, usize>::new();
+    for (index, config) in configs.iter().enumerate() {
+        match ParsedPeerPermissionClass::parse(&config.name, &config.addresses, &config.permissions)
+        {
+            Ok(parsed) => {
+                for address in parsed.addresses() {
+                    if addresses.insert(*address, index).is_some() {
+                        failures = failures.saturating_add(1);
+                    }
+                }
+            }
+            Err(_) => {
+                failures = failures.saturating_add(1);
+            }
+        }
+    }
+    failures
 }
 
 fn parse_cli_permission_class_spec(
@@ -363,4 +395,37 @@ fn inbound_config_error(message: &str) -> ConfigError {
     ConfigError::new(format!(
         "Error resolving Open Bitcoin inbound config: {message}"
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn inbound_permission_validation_failure_count_is_config_validation_aggregate() {
+        // Arrange
+        let configs = vec![
+            InboundPermissionClassConfig {
+                name: "operator_loopback".to_string(),
+                addresses: vec!["127.0.0.1".to_string()],
+                permissions: vec!["in".to_string(), "noban".to_string()],
+            },
+            InboundPermissionClassConfig {
+                name: "operator_duplicate".to_string(),
+                addresses: vec!["127.0.0.1".to_string()],
+                permissions: vec!["in".to_string(), "download".to_string()],
+            },
+            InboundPermissionClassConfig {
+                name: String::new(),
+                addresses: vec!["127.0.0.2".to_string()],
+                permissions: vec!["in".to_string(), "noban".to_string()],
+            },
+        ];
+
+        // Act
+        let failures = count_inbound_permission_validation_failures(&configs);
+
+        // Assert
+        assert_eq!(failures, 2);
+    }
 }

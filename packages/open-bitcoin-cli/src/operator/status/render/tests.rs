@@ -832,6 +832,8 @@ fn inbound_peer_serving_status() -> InboundPeerServingStatus {
             "inactive_mempool".to_string(),
             "inactive_blockfilters".to_string(),
         ],
+        inactive_permission_effect_observations: 3,
+        permission_validation_failures: 0,
         latest_permission_decision: FieldAvailability::available(InboundPermissionDecisionEvent {
             outcome: "admitted".to_string(),
             reason: "admitted".to_string(),
