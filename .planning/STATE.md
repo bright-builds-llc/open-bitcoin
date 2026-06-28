@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Inbound Peer Serving and Network Participation Boundary
-status: verifying
-stopped_at: Completed 98-03-PLAN.md
-last_updated: "2026-06-28T21:00:03.914Z"
+status: planning
+stopped_at: Added Phase 99 optional cleanup
+last_updated: "2026-06-28T22:33:58Z"
 last_activity: 2026-06-28
 progress:
-  total_phases: 9
+  total_phases: 10
   completed_phases: 9
   total_plans: 55
   completed_plans: 55
-  percent: 100
+  percent: 90
 ---
 
 # Project State
@@ -21,17 +21,17 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-26)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 98 — Traceability Reconciliation complete
+**Current focus:** Phase 99 — Peer Policy Structured Log Emission not planned
 
 ## Current Position
 
 Milestone: v1.9 Inbound Peer Serving and Network Participation Boundary
-Phase: 98 (traceability-reconciliation) — COMPLETE
-Plan: 3 of 3
-Status: Phase 98 verified; v1.9 ready for final milestone audit
+Phase: 99 (peer-policy-structured-log-emission) — NOT PLANNED
+Plan: 0 of 0
+Status: Phase 99 added to close optional audit tech debt before milestone archive
 Last activity: 2026-06-28
 
-Progress: [##########] 100%
+Progress: [#########-] 90%
 
 ## Performance Metrics
 
@@ -54,6 +54,7 @@ Progress: [##########] 100%
 | 96 | Peer Policy Runtime Bridge | EVICT-03, EVICT-04, DOS-03 | Complete |
 | 97 | Inbound Metrics Sample Production | INB-05, DOS-04 | Complete |
 | 98 | Traceability Reconciliation | INB-01, INB-02, INB-03, INB-04, BOUND-06 | Complete |
+| 99 | Peer Policy Structured Log Emission | none (optional cleanup) | Not Planned |
 
 **Recent Trend:**
 
@@ -63,6 +64,7 @@ Progress: [##########] 100%
 - v1.9 now expands toward opt-in inbound peer serving while keeping transaction relay, compact blocks, mempool propagation, production-funds wallet use, migration apply mode, packaging, hosted dashboard, GUI, public-network CI, and production full-node readiness deferred.
 - Phase 90 remains historical implementation evidence for INB-01 through INB-04 while Phase 98 is canonical closure.
 - Phase 98 preserves the no-claim boundary for transaction relay, compact block relay, mempool propagation, public inbound defaults, production service operation, and production full-node readiness.
+- Phase 99 closes optional audit tech debt for automatic sanitized `inbound_peer_policy` structured-log emission without remapping completed v1.9 requirements.
 
 | Phase 91-peer-permissions-and-connection-classes P01 | 27min | 2 tasks | 5 files |
 | Phase 91 P02 | 34min | 2 tasks | 13 files |
@@ -91,6 +93,10 @@ Progress: [##########] 100%
 | Phase 98 P03 | 27m31s | 2 tasks | 8 files |
 
 ## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 99 added: Peer Policy Structured Log Emission.
 
 ### Decisions
 
@@ -169,7 +175,7 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ### Pending Todos
 
-- Plan Phase 98 traceability reconciliation before execution.
+- Plan Phase 99 peer-policy structured-log emission before execution.
 - Keep v1.9 phase directories numbered 90+ under `.planning/phases/`; historical phase directories remain tracked because verifier scripts still depend on selected phase evidence.
 - Keep repo-local Cargo and Bazel command forms in UAT guidance:
   - `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- ...`

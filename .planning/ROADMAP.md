@@ -11,7 +11,7 @@
 - ✅ **v1.6 Mainnet Full-Sync Completion** - Phases 68 through 74 (shipped 2026-06-14). Archive: [v1.6-ROADMAP.md](milestones/v1.6-ROADMAP.md)
 - ✅ **v1.7 Full-Sync Soak and Recovery Hardening** - Phases 75 through 81 (shipped 2026-06-20). Archive: [v1.7-ROADMAP.md](milestones/v1.7-ROADMAP.md)
 - ✅ **v1.8 Production Full-Node Readiness Boundary** - Phases 82 through 89 (shipped 2026-06-25). Archive: [v1.8-ROADMAP.md](milestones/v1.8-ROADMAP.md)
-- 🚧 **v1.9 Inbound Peer Serving and Network Participation Boundary** - Phases 90 through 98 (active).
+- 🚧 **v1.9 Inbound Peer Serving and Network Participation Boundary** - Phases 90 through 99 (active).
 
 ## Current Focus
 
@@ -19,7 +19,7 @@ v1.9 Inbound Peer Serving and Network Participation Boundary started on 2026-06-
 
 **Goal:** Let Open Bitcoin accept and serve inbound peers under explicit admission, permission, address, eviction/ban, and resource-governance rules while keeping relay and production participation claims deferred.
 
-**Current state:** Phase 98 is complete and verified. v1.9 has 28/28 scoped requirements mapped and complete, with 0 pending gap-closure requirements.
+**Current state:** Phase 99 is added as optional cleanup for audit tech debt. v1.9 has 28/28 scoped requirements mapped and complete, with 0 pending gap-closure requirements.
 
 **Boundary:** v1.9 does not claim transaction relay, compact block relay, mempool propagation, public inbound serving by default, production service operation, or production full-node readiness.
 
@@ -36,6 +36,7 @@ v1.9 Inbound Peer Serving and Network Participation Boundary started on 2026-06-
 | 96 | Peer Policy Runtime Bridge | 4/4 | Complete   | 2026-06-28 |
 | 97 | Inbound Metrics Sample Production | 4/4 | Complete    | 2026-06-28 |
 | 98 | Traceability Reconciliation | 3/3 | Complete   | 2026-06-28 |
+| 99 | Peer Policy Structured Log Emission | 0/0 | Not Planned | — |
 
 ## Phase Details
 
@@ -245,6 +246,27 @@ Plans:
 3. The milestone audit can be rerun without orphaned, partial, or stale requirement status findings.
 4. Contributor-facing docs still preserve the v1.9 no-claim boundary for relay, public defaults, production service operation, and production full-node readiness.
 
+### Phase 99: Peer Policy Structured Log Emission
+
+**Goal:** Close the v1.9 audit tech debt by wiring automatic production structured-log emission for sanitized inbound peer-policy decisions without changing requirement traceability or public-network claims.
+
+**Requirements:** none (optional cleanup; evidence hardening for EVICT-03, EVICT-04, and DOS-03)
+
+**Depends on:** Phase 98
+
+**Gap Closure:** Closes `.planning/v1.9-MILESTONE-AUDIT.md` tech debt `TD-01-peer-policy-log-emission-edge`.
+
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 99 to break down)
+
+**Success criteria:**
+1. Production runtime code emits sanitized `inbound_peer_policy` structured logs automatically for ban, discourage, unban, and misbehavior decisions using real peer-policy runtime events rather than test-only callers.
+2. Log records stay low-cardinality and avoid raw peer identifiers, endpoints, credentials, payloads, config names, and other sensitive material.
+3. Status, RPC, CLI, support, and metrics behavior from Phase 96 remains unchanged except for proven log evidence.
+4. Deterministic default verification proves the automatic emission path and keeps v1.9 no-claim boundaries intact.
+
 ## Milestone History
 
 | Milestone | Phases | Plans | Status | Shipped |
@@ -258,7 +280,7 @@ Plans:
 | v1.6 Mainnet Full-Sync Completion | 7 | 27 | Shipped | 2026-06-14 |
 | v1.7 Full-Sync Soak and Recovery Hardening | 7 | 37 | Shipped | 2026-06-20 |
 | v1.8 Production Full-Node Readiness Boundary | 8 | 26 | Shipped | 2026-06-25 |
-| v1.9 Inbound Peer Serving and Network Participation Boundary | 9 | 20 | Active | — |
+| v1.9 Inbound Peer Serving and Network Participation Boundary | 10 | 20 | Active | — |
 
 ## Traceability
 
@@ -275,17 +297,19 @@ Plans:
 | Phase 96 | EVICT-03, EVICT-04, DOS-03 | 3 |
 | Phase 97 | INB-05, DOS-04 | 2 |
 | Phase 98 | INB-01, INB-02, INB-03, INB-04, BOUND-06 | 5 |
+| Phase 99 | — | 0 |
 
 ## Next Step
 
-Run the final v1.9 milestone audit:
+Plan the optional cleanup phase:
 
 ```bash
-/gsd-audit-milestone v1.9
+/gsd-plan-phase 99
 ```
 
 Also available:
 
 ```bash
+/gsd-audit-milestone v1.9
 /gsd-progress
 ```
