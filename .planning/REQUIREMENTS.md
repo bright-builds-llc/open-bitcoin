@@ -9,10 +9,10 @@ Requirements for the active v1.9 milestone. Each maps to exactly one roadmap pha
 
 ### Inbound Admission
 
-- [ ] **INB-01**: Operators can enable inbound peer serving only through explicit config or CLI controls, with inbound serving disabled by default unless a later release boundary says otherwise.
-- [ ] **INB-02**: The daemon can bind and listen on configured interfaces with deterministic preflight and diagnostic errors when disabled, unavailable, unsafe, or already in use.
-- [ ] **INB-03**: The node admits inbound peers through typed connection records, handshake lifecycle state, duplicate/self-connection protections, and inbound/outbound counters.
-- [ ] **INB-04**: The node enforces configurable inbound connection caps, reserved slots, and protected peer handling without starving the existing outbound sync workflow.
+- [x] **INB-01**: Operators can enable inbound peer serving only through explicit config or CLI controls, with inbound serving disabled by default unless a later release boundary says otherwise.
+- [x] **INB-02**: The daemon can bind and listen on configured interfaces with deterministic preflight and diagnostic errors when disabled, unavailable, unsafe, or already in use.
+- [x] **INB-03**: The node admits inbound peers through typed connection records, handshake lifecycle state, duplicate/self-connection protections, and inbound/outbound counters.
+- [x] **INB-04**: The node enforces configurable inbound connection caps, reserved slots, and protected peer handling without starving the existing outbound sync workflow.
 - [x] **INB-05**: Operator status, metrics, logs, RPC-facing status, and support evidence distinguish inbound serving from outbound sync and expose admission and handshake outcomes.
 
 ### Peer Permissions
@@ -51,7 +51,7 @@ Requirements for the active v1.9 milestone. Each maps to exactly one roadmap pha
 - [x] **BOUND-03**: Existing outbound sync, full-sync, soak, support-bundle, release-boundary, and production no-claim behavior remains non-regressed while inbound serving is added.
 - [x] **BOUND-04**: Operator UAT guidance includes repo-local Cargo and Bazel command forms for loopback or synthetic inbound review, not only an installed `open-bitcoin` alias.
 - [x] **BOUND-05**: Support bundles redact inbound peer addresses where needed while preserving enough admission, permission, eviction, ban, and resource evidence for diagnosis.
-- [ ] **BOUND-06**: Requirements, roadmap, phase summaries, verification reports, and milestone audit artifacts map every v1.9 requirement exactly once.
+- [x] **BOUND-06**: Requirements, roadmap, phase summaries, verification reports, and milestone audit artifacts map every v1.9 requirement exactly once.
 
 ## Future Requirements
 
@@ -90,10 +90,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INB-01 | Phase 98 | Pending Phase 98 verification |
-| INB-02 | Phase 98 | Pending Phase 98 verification |
-| INB-03 | Phase 98 | Pending Phase 98 verification |
-| INB-04 | Phase 98 | Pending Phase 98 verification |
+| INB-01 | Phase 98 | Complete |
+| INB-02 | Phase 98 | Complete |
+| INB-03 | Phase 98 | Complete |
+| INB-04 | Phase 98 | Complete |
 | INB-05 | Phase 97 | Complete |
 | PERM-01 | Phase 91 | Complete |
 | PERM-02 | Phase 91 | Complete |
@@ -117,15 +117,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BOUND-03 | Phase 95 | Complete |
 | BOUND-04 | Phase 95 | Complete |
 | BOUND-05 | Phase 95 | Complete |
-| BOUND-06 | Phase 98 | Pending Phase 98 verification |
+| BOUND-06 | Phase 98 | Complete |
 
 **Coverage:**
 - v1.9 requirements: 28 total
 - Mapped to phases: 28
 - Unmapped: 0
-- Complete after Phase 97: 23
-- Pending Phase 98 verification: 5
+- Complete: 28
+- Pending: 0
 
 ---
 *Requirements defined: 2026-06-25*
-*Last updated: 2026-06-28 after Phase 97 completion and before Phase 98 final verification*
+*Last updated: 2026-06-28 after Phase 98 final verification*

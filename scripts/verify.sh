@@ -245,6 +245,7 @@ run_coverage_report() {
 # check-phase93-peer-policy precedes check-phase94-dos-resource-governance, and
 # Phase 93 is followed by Phase 94. Phase 94 is followed by Phase 95.
 # Phase 95 is followed by Phase 96. Phase 96 is followed by Phase 97.
+# Phase 97 is followed by Phase 98.
 : <<'VERIFY_COMMAND_ORDER'
 bun run scripts/check-v1.3-release-boundaries.ts
 bun run scripts/check-v1.4-release-boundaries.ts
@@ -305,6 +306,8 @@ bun test scripts/check-phase96-peer-policy-runtime-bridge.test.ts
 bun run scripts/check-phase96-peer-policy-runtime-bridge.ts
 bun test scripts/check-phase97-inbound-metrics.test.ts
 bun run scripts/check-phase97-inbound-metrics.ts
+bun test scripts/check-phase98-traceability-reconciliation.test.ts
+bun run scripts/check-phase98-traceability-reconciliation.ts
 VERIFY_COMMAND_ORDER
 
 parse_args "$@"
@@ -390,6 +393,8 @@ run_step "Phase 96 peer-policy runtime bridge checker tests" bun test scripts/ch
 run_step "Phase 96 peer-policy runtime bridge checker" bun run scripts/check-phase96-peer-policy-runtime-bridge.ts
 run_step "test Phase 97 inbound metrics checker" bun test scripts/check-phase97-inbound-metrics.test.ts
 run_step "check Phase 97 inbound metrics" bun run scripts/check-phase97-inbound-metrics.ts
+run_step "test Phase 98 traceability reconciliation checker" bun test scripts/check-phase98-traceability-reconciliation.test.ts
+run_step "check Phase 98 traceability reconciliation" bun run scripts/check-phase98-traceability-reconciliation.ts
 run_step "check pure-core dependencies" bash scripts/check-pure-core-deps.sh
 run_step "check file lengths" bash scripts/check-file-lengths.sh
 run_step "check panic sites" bash scripts/check-panic-sites.sh

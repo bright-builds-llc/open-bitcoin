@@ -19,7 +19,7 @@ v1.9 Inbound Peer Serving and Network Participation Boundary started on 2026-06-
 
 **Goal:** Let Open Bitcoin accept and serve inbound peers under explicit admission, permission, address, eviction/ban, and resource-governance rules while keeping relay and production participation claims deferred.
 
-**Current state:** Phase 97 is complete and verified. Phase 98 is active and reconciles the remaining canonical traceability for INB-01, INB-02, INB-03, INB-04, and BOUND-06 before v1.9 closeout. v1.9 has 28/28 scoped requirements mapped, with 23 complete after Phase 97 and 5 pending Phase 98 verification.
+**Current state:** Phase 98 is complete and verified. v1.9 has 28/28 scoped requirements mapped and complete, with 0 pending gap-closure requirements.
 
 **Boundary:** v1.9 does not claim transaction relay, compact block relay, mempool propagation, public inbound serving by default, production service operation, or production full-node readiness.
 
@@ -35,7 +35,7 @@ v1.9 Inbound Peer Serving and Network Participation Boundary started on 2026-06-
 | 95 | Network Participation Evidence and Release Boundary | 4/4 | Complete    | 2026-06-27 |
 | 96 | Peer Policy Runtime Bridge | 4/4 | Complete   | 2026-06-28 |
 | 97 | Inbound Metrics Sample Production | 4/4 | Complete    | 2026-06-28 |
-| 98 | Traceability Reconciliation | 2/3 | In Progress|  |
+| 98 | Traceability Reconciliation | 3/3 | Complete | 2026-06-28 |
 
 ## Phase Details
 
@@ -232,12 +232,12 @@ Plans:
 
 **Gap Closure:** Closes `INT-03-phase-90-requirements-status` and `FLOW-03-phase-completion-to-traceability` from `.planning/v1.9-MILESTONE-AUDIT.md`.
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 98-01-PLAN.md — Requirements and roadmap traceability reconciliation
 - [x] 98-02-PLAN.md — Audit, parity, and checker consistency update
-- [ ] 98-03-PLAN.md — Final verification and re-audit readiness
+- [x] 98-03-PLAN.md — Final verification and re-audit readiness
 
 **Success criteria:**
 1. `INB-01` through `INB-05` no longer have stale pending status once their assigned closure phases pass.
@@ -262,7 +262,7 @@ Plans:
 
 ## Traceability
 
-**Coverage:** 28/28 v1.9 requirements mapped, 0 unmapped. 23 complete after Phase 97 and 5 pending Phase 98 verification.
+**Coverage:** 28/28 v1.9 requirements mapped, 0 unmapped, 28 complete, 0 pending. Traceability coverage: 28/28 v1.9 requirements mapped and complete, 0 unmapped, 0 pending.
 
 | Phase | Requirements | Count |
 |-------|--------------|------:|
@@ -278,10 +278,10 @@ Plans:
 
 ## Next Step
 
-Execute the active traceability reconciliation phase for v1.9:
+Run the final v1.9 milestone audit:
 
 ```bash
-/gsd-execute-phase 98
+/gsd-audit-milestone v1.9
 ```
 
 Also available:
