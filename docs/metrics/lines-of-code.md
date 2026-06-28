@@ -6,11 +6,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Metric | Value |
 | --- | --- |
-| Included files | 428 |
-| Total lines | 173,822 |
-| Code/content lines | 153,681 |
-| Comment-only lines | 5,536 |
-| Blank lines | 14,605 |
+| Included files | 430 |
+| Total lines | 174,639 |
+| Code/content lines | 154,404 |
+| Comment-only lines | 5,560 |
+| Blank lines | 14,675 |
 
 ## Per-Crate Modules
 
@@ -36,7 +36,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust production | 240 | 68,199 | 59,566 | 2,017 | 6,616 |
 | Rust tests | 65 | 59,482 | 52,149 | 2,960 | 4,373 |
-| TypeScript/Bun scripts | 64 | 29,845 | 26,546 | 502 | 2,797 |
+| TypeScript/Bun scripts | 66 | 30,662 | 27,269 | 526 | 2,867 |
 | Fixture/data | 6 | 8,233 | 8,228 | 5 | 0 |
 | Shell scripts | 13 | 3,987 | 3,564 | 46 | 377 |
 | TOML/config | 16 | 3,460 | 3,094 | 0 | 366 |
@@ -108,6 +108,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase96-peer-policy-runtime-bridge.ts | 428 |
 | scripts/check-phase97-inbound-metrics.test.ts | 450 |
 | scripts/check-phase97-inbound-metrics.ts | 439 |
+| scripts/check-phase98-traceability-reconciliation.test.ts | 431 |
+| scripts/check-phase98-traceability-reconciliation.ts | 386 |
 | scripts/check-v1.3-release-boundaries.ts | 184 |
 | scripts/check-v1.4-release-boundaries.ts | 241 |
 | scripts/check-v1.5-release-boundaries.ts | 296 |
@@ -145,7 +147,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 7a6aba062f0e7e6f285438158e8b1343c6bcb42ece0960f19630e2138937d7b3 |
+| Input fingerprint | 188fefa6e7c7431ef19fc2b9b482e5299355254703e09a549745dacbb29ad745 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |
