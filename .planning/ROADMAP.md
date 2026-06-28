@@ -19,7 +19,7 @@ v1.9 Inbound Peer Serving and Network Participation Boundary started on 2026-06-
 
 **Goal:** Let Open Bitcoin accept and serve inbound peers under explicit admission, permission, address, eviction/ban, and resource-governance rules while keeping relay and production participation claims deferred.
 
-**Current state:** Phase 95 is complete and verified. The milestone audit found integration gaps, so Phases 96 through 98 close the peer-policy runtime bridge, inbound metric sample production, and traceability reconciliation before v1.9 can be completed. v1.9 has 28/28 scoped requirements mapped, with 18 complete and 10 pending gap-closure verification.
+**Current state:** Phase 96 is complete and verified. The milestone audit found integration gaps, so Phases 97 and 98 close inbound metric sample production and traceability reconciliation before v1.9 can be completed. v1.9 has 28/28 scoped requirements mapped, with 21 complete and 7 pending gap-closure verification.
 
 **Boundary:** v1.9 does not claim transaction relay, compact block relay, mempool propagation, public inbound serving by default, production service operation, or production full-node readiness.
 
@@ -33,7 +33,7 @@ v1.9 Inbound Peer Serving and Network Participation Boundary started on 2026-06-
 | 93 | Eviction, Ban, and Misbehavior Policy | 3/3 | Complete    | 2026-06-26 |
 | 94 | DoS and Resource Governance | 8/8 | Complete    | 2026-06-27 |
 | 95 | Network Participation Evidence and Release Boundary | 4/4 | Complete    | 2026-06-27 |
-| 96 | Peer Policy Runtime Bridge | 0/4 | Pending | — |
+| 96 | Peer Policy Runtime Bridge | 4/4 | Complete   | 2026-06-28 |
 | 97 | Inbound Metrics Sample Production | 0/4 | Pending | — |
 | 98 | Traceability Reconciliation | 0/3 | Pending | — |
 
@@ -184,13 +184,13 @@ Plans:
 
 **Gap Closure:** Closes `INT-01-peer-policy-runtime-bridge` and `FLOW-01-peer-policy-to-runtime` from `.planning/v1.9-MILESTONE-AUDIT.md`.
 
-**Plans:** 0/4 plans complete
+**Plans:** 4/4 plans complete
 
 Plans:
-- [ ] 96-01-PLAN.md — Managed peer-policy state and decision recording
-- [ ] 96-02-PLAN.md — Reconnect suppression and runtime admission integration
-- [ ] 96-03-PLAN.md — Status, RPC, CLI, and support evidence projection
-- [ ] 96-04-PLAN.md — Deterministic checker and final verification
+- [x] 96-01-PLAN.md — Managed peer-policy state and decision recording
+- [x] 96-02-PLAN.md — Reconnect suppression and runtime admission integration
+- [x] 96-03-PLAN.md — Status, RPC, CLI, and support evidence projection
+- [x] 96-04-PLAN.md — Deterministic checker and final verification
 
 **Success criteria:**
 1. Managed runtime state records ban, expiry, unban, and misbehavior decisions instead of projecting empty decision slices.
@@ -262,7 +262,7 @@ Plans:
 
 ## Traceability
 
-**Coverage:** 28/28 v1.9 requirements mapped, 0 unmapped. Ten requirements are pending gap-closure verification across Phases 96 through 98.
+**Coverage:** 28/28 v1.9 requirements mapped, 0 unmapped. Seven requirements are pending gap-closure verification across Phases 97 and 98.
 
 | Phase | Requirements | Count |
 |-------|--------------|------:|

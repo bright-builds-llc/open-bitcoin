@@ -51,6 +51,8 @@ use super::{
     support_status_for_bundle,
 };
 
+const PHASE96_PEER_POLICY_RUNTIME_BRIDGE_NEXT_ACTION: &str = "Treat Phase 96 as scoped runtime peer policy bridge evidence only; review ban, discourage, unban, and misbehavior labels before changing listener exposure or peer policy.";
+
 #[derive(Debug)]
 struct TestDirectory {
     path: PathBuf,
@@ -1115,7 +1117,7 @@ fn inbound_support_markdown_renders_phase93_peer_policy_evidence() {
         "Misbehavior observations: 2",
         "Protected no-actions: 1",
         "Latest peer policy decision: outcome=selected reason=low_activity label=eviction_candidate_selected source=source_eviction_policy message=peer policy decision selected: low_activity",
-        "Next action: Treat Phase 93 as bounded eviction, ban, unban, and misbehavior policy evidence only; review labels and counters before changing peer policy.",
+        PHASE96_PEER_POLICY_RUNTIME_BRIDGE_NEXT_ACTION,
     ] {
         assert!(markdown.contains(expected), "missing {expected}");
     }
@@ -1283,7 +1285,7 @@ fn inbound_support_redacts_raw_phase93_peer_policy_material() {
         reason: "operator-loopback-secret".to_string(),
         label: "peer_id=93".to_string(),
         source: "node.example:8333".to_string(),
-        message: "peer-93 127.0.0.1:18444 198.51.100.93:8333 raw_permission config=operator"
+        message: "peer-93 127.0.0.1:18444 198.51.100.93:8333 raw_permission permission_string credential=phase96 secret=phase96 cookie=phase96 config=operator"
             .to_string(),
     });
     let bundle = phase77_support_bundle_with_status(temp.path(), status);
@@ -1303,9 +1305,52 @@ fn inbound_support_redacts_raw_phase93_peer_policy_material() {
             "127.0.0.1:",
             "operator-loopback-secret",
             "raw_permission",
+            "permission_string",
+            "credential=phase96",
+            "secret=phase96",
+            "cookie=phase96",
             "config=operator",
         ] {
             assert_absent(rendered, forbidden);
+        }
+    }
+}
+
+#[test]
+fn inbound_support_redaction_preserves_safe_phase96_peer_policy_labels() {
+    // Arrange
+    let temp = TestDirectory::new("inbound-support-peer-policy-safe-labels");
+    let mut status = phase93_status_with_peer_policy_evidence();
+    let FieldAvailability::Available(inbound) = &mut status.peers.inbound else {
+        panic!("inbound status fixture should be available");
+    };
+    inbound.active_bans = 1;
+    inbound.manual_unbans = 1;
+    inbound.misbehavior_observations = 1;
+    inbound.protected_no_actions = 1;
+    inbound.latest_peer_policy_decision = FieldAvailability::available(InboundPeerPolicyEvent {
+        outcome: "protected_no_action".to_string(),
+        reason: "unbanned".to_string(),
+        label: "ban_active".to_string(),
+        source: "source_peer_policy_runtime_bridge".to_string(),
+        message: "protected_no_action ban_active unbanned source_peer_policy_runtime_bridge"
+            .to_string(),
+    });
+    let bundle = phase77_support_bundle_with_status(temp.path(), status);
+
+    // Act
+    let json_text = serde_json::to_string_pretty(&bundle).expect("support json");
+    let markdown = render::render_support_markdown(&bundle);
+
+    // Assert
+    for rendered in [&json_text, &markdown] {
+        for expected in [
+            "protected_no_action",
+            "unbanned",
+            "ban_active",
+            "source_peer_policy_runtime_bridge",
+        ] {
+            assert!(rendered.contains(expected), "missing {expected}");
         }
     }
 }

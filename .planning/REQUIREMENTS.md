@@ -33,14 +33,14 @@ Requirements for the active v1.9 milestone. Each maps to exactly one roadmap pha
 
 - [x] **EVICT-01**: The node scores inbound peers for eviction using deterministic, Knots-anchored criteria such as connection class, handshake progress, netgroup or diversity, activity, and permissions.
 - [x] **EVICT-02**: The node can disconnect or evict peers when admission caps or abuse policy require it, preserving stable reason codes and support evidence.
-- [ ] **EVICT-03**: The node can discourage or ban peers through durable policy with expiry, address/subnet scope, manual unban, and no hidden broad-ban behavior.
-- [ ] **EVICT-04**: Misbehavior accounting maps protocol violations to bounded responses without incorrectly banning or evicting permissioned peers.
+- [x] **EVICT-03**: The node can discourage or ban peers through durable policy with expiry, address/subnet scope, manual unban, and no hidden broad-ban behavior.
+- [x] **EVICT-04**: Misbehavior accounting maps protocol violations to bounded responses without incorrectly banning or evicting permissioned peers.
 
 ### DoS And Resource Governance
 
 - [x] **DOS-01**: Inbound sessions enforce network magic, message header, payload size, malformed message, and unsupported command limits before allocating unbounded memory.
 - [x] **DOS-02**: Inbound sessions enforce per-peer and aggregate read/write queues, inventory/request bounds, header/block/transaction request caps, and backpressure behavior.
-- [ ] **DOS-03**: The node limits connection churn, slow handshakes, idle peers, repeated failures, and banned or discouraged reconnect attempts with deterministic synthetic tests.
+- [x] **DOS-03**: The node limits connection churn, slow handshakes, idle peers, repeated failures, and banned or discouraged reconnect attempts with deterministic synthetic tests.
 - [ ] **DOS-04**: Resource pressure and abuse responses appear in metrics, structured logs, support bundles, and operator status with clear next actions.
 - [x] **DOS-05**: Default verification covers inbound DoS/resource policy deterministically and keeps public-network listener exposure outside `bash scripts/verify.sh`.
 
@@ -105,11 +105,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ADDR-04 | Phase 92 | Complete |
 | EVICT-01 | Phase 93 | Complete |
 | EVICT-02 | Phase 93 | Complete |
-| EVICT-03 | Phase 96 | Pending |
-| EVICT-04 | Phase 96 | Pending |
+| EVICT-03 | Phase 96 | Complete |
+| EVICT-04 | Phase 96 | Complete |
 | DOS-01 | Phase 94 | Complete |
 | DOS-02 | Phase 94 | Complete |
-| DOS-03 | Phase 96 | Pending |
+| DOS-03 | Phase 96 | Complete |
 | DOS-04 | Phase 97 | Pending |
 | DOS-05 | Phase 94 | Complete |
 | BOUND-01 | Phase 95 | Complete |
@@ -123,8 +123,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 - v1.9 requirements: 28 total
 - Mapped to phases: 28
 - Unmapped: 0
-- Pending gap-closure verification: 10
+- Pending gap-closure verification: 7
 
 ---
 *Requirements defined: 2026-06-25*
-*Last updated: 2026-06-27 after v1.9 milestone audit gap planning*
+*Last updated: 2026-06-28 after Phase 96 completion*

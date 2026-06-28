@@ -11,8 +11,9 @@ use crate::inbound::PermissionEffectLabel;
 
 use super::{
     BanDecision, BanReason, BanScope, EvictionCandidateInput, EvictionDecision, EvictionReason,
-    MisbehaviorKind, MisbehaviorObservation, MisbehaviorPolicy, MisbehaviorResponse, PeerBanBook,
-    PeerBanEntry, UnbanDecision, select_eviction_candidate,
+    MAX_PEER_POLICY_RUNTIME_DECISIONS, MisbehaviorDecision, MisbehaviorKind,
+    MisbehaviorObservation, MisbehaviorPolicy, MisbehaviorResponse, PeerBanBook, PeerBanEntry,
+    PeerPolicyRuntimeState, UnbanDecision, select_eviction_candidate,
 };
 
 fn peer(label: &str) -> EvictionCandidateInput {
@@ -162,6 +163,45 @@ fn ban_scope_and_reason_labels_are_stable() {
             .iter()
             .all(|(actual, expected)| actual == expected)
     );
+}
+
+#[test]
+fn ban_scope_matches_ipv6_and_zero_prefix_subnets() {
+    // Arrange
+    let ipv6_scope = BanScope::Subnet {
+        network: "2001:db8:1::".parse().expect("test IPv6 network"),
+        prefix_bits: 64,
+    };
+    let ipv6_zero_scope = BanScope::Subnet {
+        network: "::".parse().expect("test IPv6 zero network"),
+        prefix_bits: 0,
+    };
+    let ipv4_zero_scope = BanScope::Subnet {
+        network: IpAddr::from([0, 0, 0, 0]),
+        prefix_bits: 0,
+    };
+    let invalid_prefix_scope = BanScope::Subnet {
+        network: IpAddr::from([192, 0, 2, 0]),
+        prefix_bits: 33,
+    };
+
+    // Act
+    let ipv6_match = ipv6_scope.matches_ip("2001:db8:1::f00d".parse().expect("test IPv6 peer"));
+    let ipv6_mismatch = ipv6_scope.matches_ip("2001:db8:2::f00d".parse().expect("test IPv6 peer"));
+    let ipv6_zero_match =
+        ipv6_zero_scope.matches_ip("2001:db8:ffff::1".parse().expect("test IPv6 peer"));
+    let ipv4_zero_match = ipv4_zero_scope.matches_ip(IpAddr::from([203, 0, 113, 99]));
+    let family_mismatch =
+        ipv4_zero_scope.matches_ip("2001:db8::1".parse().expect("test IPv6 peer"));
+    let invalid_prefix_match = invalid_prefix_scope.matches_ip(IpAddr::from([192, 0, 2, 1]));
+
+    // Assert
+    assert!(ipv6_match);
+    assert!(!ipv6_mismatch);
+    assert!(ipv6_zero_match);
+    assert!(ipv4_zero_match);
+    assert!(!family_mismatch);
+    assert!(!invalid_prefix_match);
 }
 
 #[test]
@@ -324,4 +364,153 @@ fn protected_misbehavior_records_no_action() {
     assert_eq!(decision.response, MisbehaviorResponse::ProtectedNoAction);
     assert_eq!(decision.response.as_str(), "protected_no_action");
     assert_eq!(decision.kind.as_str(), "malformed_message");
+}
+
+fn runtime_ban_entry(scope: BanScope, expires_at_unix_seconds: i64) -> PeerBanEntry {
+    PeerBanEntry {
+        scope,
+        reason: BanReason::Manual,
+        created_at_unix_seconds: 100,
+        expires_at_unix_seconds,
+        source: "runtime_test",
+    }
+}
+
+#[test]
+fn runtime_state_scopes_address_bans_to_matching_remote() {
+    // Arrange
+    let mut state = PeerPolicyRuntimeState::default();
+    let banned_ip = IpAddr::from([127, 0, 0, 2]);
+    let unrelated_ip = IpAddr::from([127, 0, 0, 3]);
+
+    // Act
+    state.record_ban(runtime_ban_entry(BanScope::Address(banned_ip), 300), 150);
+    let banned = state.reconnect_suppression_input_for_ip(banned_ip, 150);
+    let unrelated = state.reconnect_suppression_input_for_ip(unrelated_ip, 150);
+
+    // Assert
+    assert!(banned.banned);
+    assert!(!banned.discouraged);
+    assert!(!unrelated.banned);
+    assert!(!unrelated.discouraged);
+}
+
+#[test]
+fn runtime_state_scopes_subnet_bans_to_matching_remote() {
+    // Arrange
+    let mut state = PeerPolicyRuntimeState::default();
+    let scope = BanScope::Subnet {
+        network: IpAddr::from([192, 0, 2, 0]),
+        prefix_bits: 24,
+    };
+
+    // Act
+    state.record_ban(runtime_ban_entry(scope, 300), 150);
+    let matching = state.reconnect_suppression_input_for_ip(IpAddr::from([192, 0, 2, 10]), 150);
+    let unrelated = state.reconnect_suppression_input_for_ip(IpAddr::from([198, 51, 100, 10]), 150);
+
+    // Assert
+    assert!(matching.banned);
+    assert!(!matching.discouraged);
+    assert!(!unrelated.banned);
+    assert!(!unrelated.discouraged);
+}
+
+#[test]
+fn runtime_state_ignores_expired_bans_for_reconnect() {
+    // Arrange
+    let mut state = PeerPolicyRuntimeState::default();
+    let remote_ip = IpAddr::from([203, 0, 113, 20]);
+
+    // Act
+    state.record_ban(runtime_ban_entry(BanScope::Address(remote_ip), 120), 150);
+    let reconnect = state.reconnect_suppression_input_for_ip(remote_ip, 150);
+
+    // Assert
+    assert!(!reconnect.banned);
+    assert!(!reconnect.discouraged);
+}
+
+#[test]
+fn runtime_state_records_discouraged_reconnects_separately() {
+    // Arrange
+    let mut state = PeerPolicyRuntimeState::default();
+    let remote_ip = IpAddr::from([203, 0, 113, 21]);
+
+    // Act
+    state.record_discouragement(runtime_ban_entry(BanScope::Address(remote_ip), 300), 150);
+    let reconnect = state.reconnect_suppression_input_for_ip(remote_ip, 150);
+
+    // Assert
+    assert!(!reconnect.banned);
+    assert!(reconnect.discouraged);
+    assert!(state.ban_decisions().is_empty());
+}
+
+#[test]
+fn runtime_state_ignores_expired_discouragement_for_reconnect() {
+    // Arrange
+    let mut state = PeerPolicyRuntimeState::default();
+    let remote_ip = IpAddr::from([203, 0, 113, 23]);
+
+    // Act
+    let decision =
+        state.record_discouragement(runtime_ban_entry(BanScope::Address(remote_ip), 120), 150);
+    let reconnect = state.reconnect_suppression_input_for_ip(remote_ip, 150);
+
+    // Assert
+    assert!(matches!(decision, BanDecision::Expired(_)));
+    assert!(!reconnect.banned);
+    assert!(!reconnect.discouraged);
+}
+
+#[test]
+fn runtime_state_records_unban_and_misbehavior_decisions() {
+    // Arrange
+    let mut state = PeerPolicyRuntimeState::default();
+    let scope = BanScope::Address(IpAddr::from([203, 0, 113, 22]));
+    let decision = MisbehaviorDecision {
+        peer_label: "peer-protected".to_string(),
+        kind: MisbehaviorKind::MalformedMessage,
+        score: 500,
+        response: MisbehaviorResponse::ProtectedNoAction,
+    };
+
+    // Act
+    state.record_ban(runtime_ban_entry(scope.clone(), 300), 150);
+    let unban = state.record_unban(&scope, 160);
+    state.record_misbehavior(decision);
+
+    // Assert
+    assert!(matches!(unban, UnbanDecision::Unbanned(_)));
+    assert_eq!(state.ban_decisions().len(), 1);
+    assert_eq!(state.unban_decisions().len(), 1);
+    assert_eq!(state.misbehavior_decisions().len(), 1);
+    assert_eq!(
+        state.misbehavior_decisions()[0].response,
+        MisbehaviorResponse::ProtectedNoAction
+    );
+}
+
+#[test]
+fn runtime_state_bounds_recorded_decision_history() {
+    // Arrange
+    let mut state = PeerPolicyRuntimeState::default();
+
+    // Act
+    for score in 0..=MAX_PEER_POLICY_RUNTIME_DECISIONS {
+        state.record_misbehavior(MisbehaviorDecision {
+            peer_label: format!("peer-{score}"),
+            kind: MisbehaviorKind::MalformedMessage,
+            score: score as u32,
+            response: MisbehaviorResponse::Disconnect,
+        });
+    }
+
+    // Assert
+    assert_eq!(
+        state.misbehavior_decisions().len(),
+        MAX_PEER_POLICY_RUNTIME_DECISIONS
+    );
+    assert_eq!(state.misbehavior_decisions()[0].peer_label, "peer-1");
 }

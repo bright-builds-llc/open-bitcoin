@@ -9,6 +9,7 @@ use std::collections::{BTreeMap, BTreeSet};
 mod header_sync;
 mod inbound;
 mod inventory;
+mod peer_policy;
 
 use open_bitcoin_core::{
     chainstate::{
@@ -202,17 +203,6 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
 
     pub fn address_boundary_info(&self) -> ManagedAddressBoundaryInfo {
         self.peer_manager.address_boundary_evidence().into()
-    }
-
-    pub fn peer_policy_info(&self) -> ManagedPeerPolicyInfo {
-        let eviction_candidate_count = self.peer_manager.eviction_candidate_inputs().len();
-        ManagedPeerPolicyInfo::from_policy_decisions(
-            eviction_candidate_count,
-            Some(self.peer_manager.eviction_decision()),
-            &[],
-            &[],
-            &[],
-        )
     }
 
     #[rustfmt::skip]

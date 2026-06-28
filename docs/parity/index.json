@@ -632,6 +632,10 @@
     {
       "name": "v1-9-network-participation-release-boundary",
       "status": "done"
+    },
+    {
+      "name": "v1-9-peer-policy-runtime-bridge",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -1830,6 +1834,44 @@
         ],
         "suspected_unknowns": [
           "Future relay, public-default, service, packaging, public-network CI, and production-readiness milestones need fresh scoped evidence before these deferred surfaces can be promoted."
+        ]
+      },
+      {
+        "id": "v1-9-peer-policy-runtime-bridge",
+        "title": "v1.9 Peer-Policy Runtime Bridge",
+        "status": "done",
+        "requirements": [],
+        "evidence": [
+          "docs/parity/catalog/p2p.md",
+          "docs/operator/runtime-guide.md",
+          "packages/open-bitcoin-network/src/peer_policy.rs",
+          "packages/open-bitcoin-node/src/network.rs",
+          "packages/open-bitcoin-node/src/network/peer_policy.rs",
+          "packages/open-bitcoin-node/src/logging.rs",
+          "packages/open-bitcoin-rpc/src/context/network.rs",
+          "packages/open-bitcoin-rpc/src/context/peer_policy.rs",
+          "packages/open-bitcoin-cli/src/operator/status/render/inbound.rs",
+          "packages/open-bitcoin-cli/src/operator/support/render/inbound.rs",
+          "packages/open-bitcoin-cli/src/operator/support/redaction.rs",
+          "scripts/check-phase96-peer-policy-runtime-bridge.ts",
+          "scripts/check-phase96-peer-policy-runtime-bridge.test.ts",
+          "scripts/verify.sh"
+        ],
+        "rationale": "Phase 96 records scoped runtime peer-policy bridge evidence, bounded reconnect suppression, sanitized structured logs, status/support rendering, and deterministic local checker coverage without promoting public banlist or production participation claims.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/net.cpp",
+            "packages/bitcoin-knots/src/net_processing.cpp",
+            "packages/bitcoin-knots/src/banman.h",
+            "packages/bitcoin-knots/src/banman.cpp",
+            "packages/bitcoin-knots/src/net_permissions.cpp"
+          ]
+        },
+        "known_gaps": [
+          "Public banlist parity, transaction relay, compact block relay, mempool propagation, public inbound defaults, public-network CI, production service operation, and production readiness remain deferred scope, not supported claims."
+        ],
+        "suspected_unknowns": [
+          "Future public-network, service, relay, banlist, and production-readiness milestones need fresh scoped evidence before these deferred surfaces can be promoted."
         ]
       }
     ]

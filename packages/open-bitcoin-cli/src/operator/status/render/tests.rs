@@ -156,6 +156,45 @@ fn inbound_status_render_includes_phase93_peer_policy_evidence() {
 }
 
 #[test]
+fn inbound_status_render_includes_phase96_peer_policy_runtime_bridge_labels() {
+    // Arrange
+    let mut snapshot = shared_sync_truth_snapshot();
+    let FieldAvailability::Available(inbound) = &mut snapshot.peers.inbound else {
+        panic!("inbound status fixture should be available");
+    };
+    inbound.active_bans = 1;
+    inbound.manual_unbans = 1;
+    inbound.misbehavior_observations = 1;
+    inbound.protected_no_actions = 1;
+    inbound.latest_peer_policy_decision = FieldAvailability::available(InboundPeerPolicyEvent {
+        outcome: "protected_no_action".to_string(),
+        reason: "unbanned".to_string(),
+        label: "ban_active".to_string(),
+        source: "source_peer_policy_runtime_bridge".to_string(),
+        message: "protected_no_action ban_active unbanned source_peer_policy_runtime_bridge"
+            .to_string(),
+    });
+
+    // Act
+    let rendered = render_status(&snapshot, StatusRenderMode::Human).expect("human status");
+
+    // Assert
+    for expected in [
+        "peer policy evidence:",
+        "active_bans=1",
+        "manual_unbans=1",
+        "misbehavior_observations=1",
+        "protected_no_actions=1",
+        "protected_no_action",
+        "unbanned",
+        "ban_active",
+        "source_peer_policy_runtime_bridge",
+    ] {
+        assert!(rendered.contains(expected), "missing {expected}");
+    }
+}
+
+#[test]
 fn inbound_status_render_includes_phase94_resource_governance_evidence() {
     // Arrange
     let mut snapshot = shared_sync_truth_snapshot();

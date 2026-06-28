@@ -17,14 +17,15 @@ use open_bitcoin_primitives::{
 };
 
 use crate::{
-    ConnectionRole, DisconnectReason, HeaderStore, HeaderSyncPolicy, HeadersMessage,
-    InboundAdmissionRejectionReason, InboundAdmissionSlotClass, InboundHandshakeState,
-    InboundPeerRecord, InboundPermissionDecision, InventoryList, LocalPeerConfig, NetworkError,
-    PHASE94_MAX_HEADER_LOCATOR_HASHES, PHASE94_MAX_INBOUND_BLOCK_REQUESTS_PER_PEER,
-    PHASE94_MAX_INBOUND_REQUEST_INVENTORY_ITEMS, PHASE94_MAX_INBOUND_TX_REQUESTS_PER_PEER,
-    ParsedPeerPermissionClass, PeerAction, PeerConnectionClass, PeerId, PeerManager,
-    PeerPermissionClassRegistry, PermissionEffectLabel, RequestPressureInput,
-    ResourceGovernanceDecision, ResourceGovernancePolicy, ServiceFlags, WireNetworkMessage,
+    BanDecision, BanReason, BanScope, ConnectionRole, DisconnectReason, HeaderStore,
+    HeaderSyncPolicy, HeadersMessage, InboundAdmissionRejectionReason, InboundAdmissionSlotClass,
+    InboundHandshakeState, InboundPeerRecord, InboundPermissionDecision, InventoryList,
+    LocalPeerConfig, NetworkError, PHASE94_MAX_HEADER_LOCATOR_HASHES,
+    PHASE94_MAX_INBOUND_BLOCK_REQUESTS_PER_PEER, PHASE94_MAX_INBOUND_REQUEST_INVENTORY_ITEMS,
+    PHASE94_MAX_INBOUND_TX_REQUESTS_PER_PEER, ParsedPeerPermissionClass, PeerAction, PeerBanEntry,
+    PeerConnectionClass, PeerId, PeerManager, PeerPermissionClassRegistry, PermissionEffectLabel,
+    RequestPressureInput, ResourceGovernanceDecision, ResourceGovernancePolicy, ServiceFlags,
+    WireNetworkMessage,
 };
 use open_bitcoin_primitives::{InventoryType, InventoryVector};
 
@@ -95,6 +96,33 @@ fn inactive_permission_labels(decision: &InboundPermissionDecision) -> Vec<&'sta
         .iter()
         .map(|effect| effect.as_str())
         .collect()
+}
+
+#[test]
+fn peer_manager_exposes_peer_policy_runtime_state_accessors() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    let remote_ip = IpAddr::from([203, 0, 113, 240]);
+    let entry = PeerBanEntry {
+        scope: BanScope::Address(remote_ip),
+        reason: BanReason::Manual,
+        created_at_unix_seconds: 100,
+        expires_at_unix_seconds: 300,
+        source: "peer_manager_test",
+    };
+
+    // Act
+    let decision = manager
+        .peer_policy_runtime_state_mut()
+        .record_ban(entry, 150);
+    let reconnect = manager
+        .peer_policy_runtime_state()
+        .reconnect_suppression_input_for_ip(remote_ip, 150);
+
+    // Assert
+    assert!(matches!(decision, BanDecision::Active(_)));
+    assert!(reconnect.banned);
+    assert!(!reconnect.discouraged);
 }
 
 fn header(previous_block_hash: BlockHash, nonce: u32) -> BlockHeader {

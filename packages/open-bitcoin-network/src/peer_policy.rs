@@ -5,10 +5,11 @@
 // - packages/bitcoin-knots/src/banman.cpp
 // - packages/bitcoin-knots/src/net_permissions.cpp
 
-use core::net::IpAddr;
+use core::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::collections::BTreeMap;
 
 use crate::inbound::{InboundHandshakeState, PermissionEffectLabel};
+use crate::resource::ReconnectSuppressionInput;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum EvictionReason {
@@ -186,6 +187,56 @@ impl BanScope {
             Self::Subnet { .. } => "subnet",
         }
     }
+
+    pub fn matches_ip(&self, remote_ip: IpAddr) -> bool {
+        match self {
+            Self::Address(address) => *address == remote_ip,
+            Self::Subnet {
+                network,
+                prefix_bits,
+            } => subnet_matches_ip(*network, remote_ip, *prefix_bits),
+        }
+    }
+}
+
+fn subnet_matches_ip(network: IpAddr, remote_ip: IpAddr, prefix_bits: u8) -> bool {
+    match (network, remote_ip) {
+        (IpAddr::V4(network), IpAddr::V4(remote_ip)) if prefix_bits <= 32 => {
+            ipv4_prefix_matches(network, remote_ip, prefix_bits)
+        }
+        (IpAddr::V6(network), IpAddr::V6(remote_ip)) if prefix_bits <= 128 => {
+            ipv6_prefix_matches(network, remote_ip, prefix_bits)
+        }
+        _ => false,
+    }
+}
+
+fn ipv4_prefix_matches(network: Ipv4Addr, remote_ip: Ipv4Addr, prefix_bits: u8) -> bool {
+    let mask = prefix_mask_u32(prefix_bits);
+    let network_bits = u32::from(network);
+    let remote_bits = u32::from(remote_ip);
+    network_bits & mask == remote_bits & mask
+}
+
+fn ipv6_prefix_matches(network: Ipv6Addr, remote_ip: Ipv6Addr, prefix_bits: u8) -> bool {
+    let mask = prefix_mask_u128(prefix_bits);
+    let network_bits = u128::from(network);
+    let remote_bits = u128::from(remote_ip);
+    network_bits & mask == remote_bits & mask
+}
+
+fn prefix_mask_u32(prefix_bits: u8) -> u32 {
+    if prefix_bits == 0 {
+        return 0;
+    }
+    u32::MAX << (32 - prefix_bits)
+}
+
+fn prefix_mask_u128(prefix_bits: u8) -> u128 {
+    if prefix_bits == 0 {
+        return 0;
+    }
+    u128::MAX << (128 - prefix_bits)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -278,6 +329,22 @@ impl PeerBanBook {
         Some(BanDecision::Active(entry))
     }
 
+    pub fn maybe_ban_decision_for_ip(
+        &self,
+        remote_ip: IpAddr,
+        now_unix_seconds: i64,
+    ) -> Option<BanDecision> {
+        let entry = self
+            .entries
+            .values()
+            .find(|entry| entry.scope.matches_ip(remote_ip))?
+            .clone();
+        if entry.is_expired(now_unix_seconds) {
+            return Some(BanDecision::Expired(entry));
+        }
+        Some(BanDecision::Active(entry))
+    }
+
     pub fn unban(&mut self, scope: &BanScope, now_unix_seconds: i64) -> UnbanDecision {
         let Some(entry) = self.entries.remove(scope) else {
             return UnbanDecision::NotFound(scope.clone());
@@ -294,6 +361,93 @@ impl PeerBanBook {
             .filter(|entry| !entry.is_expired(now_unix_seconds))
             .count()
     }
+}
+
+pub const MAX_PEER_POLICY_RUNTIME_DECISIONS: usize = 32;
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct PeerPolicyRuntimeState {
+    ban_book: PeerBanBook,
+    discouraged_entries: BTreeMap<BanScope, PeerBanEntry>,
+    misbehavior_decisions: Vec<MisbehaviorDecision>,
+    ban_decisions: Vec<BanDecision>,
+    unban_decisions: Vec<UnbanDecision>,
+}
+
+impl PeerPolicyRuntimeState {
+    pub fn record_ban(&mut self, entry: PeerBanEntry, now_unix_seconds: i64) -> BanDecision {
+        let decision = self.ban_book.ban(entry, now_unix_seconds);
+        push_bounded(&mut self.ban_decisions, decision.clone());
+        decision
+    }
+
+    pub fn record_unban(&mut self, scope: &BanScope, now_unix_seconds: i64) -> UnbanDecision {
+        self.discouraged_entries.remove(scope);
+        let decision = self.ban_book.unban(scope, now_unix_seconds);
+        push_bounded(&mut self.unban_decisions, decision.clone());
+        decision
+    }
+
+    pub fn record_discouragement(
+        &mut self,
+        entry: PeerBanEntry,
+        now_unix_seconds: i64,
+    ) -> BanDecision {
+        if entry.is_expired(now_unix_seconds) {
+            return BanDecision::Expired(entry);
+        }
+        self.discouraged_entries
+            .insert(entry.scope.clone(), entry.clone());
+        BanDecision::Active(entry)
+    }
+
+    pub fn record_misbehavior(&mut self, decision: MisbehaviorDecision) {
+        push_bounded(&mut self.misbehavior_decisions, decision);
+    }
+
+    pub fn reconnect_suppression_input_for_ip(
+        &self,
+        remote_ip: IpAddr,
+        now_unix_seconds: i64,
+    ) -> ReconnectSuppressionInput {
+        ReconnectSuppressionInput {
+            banned: self.active_ban_for_ip(remote_ip, now_unix_seconds),
+            discouraged: self.active_discouragement_for_ip(remote_ip, now_unix_seconds),
+        }
+    }
+
+    pub fn misbehavior_decisions(&self) -> &[MisbehaviorDecision] {
+        &self.misbehavior_decisions
+    }
+
+    pub fn ban_decisions(&self) -> &[BanDecision] {
+        &self.ban_decisions
+    }
+
+    pub fn unban_decisions(&self) -> &[UnbanDecision] {
+        &self.unban_decisions
+    }
+
+    fn active_ban_for_ip(&self, remote_ip: IpAddr, now_unix_seconds: i64) -> bool {
+        matches!(
+            self.ban_book
+                .maybe_ban_decision_for_ip(remote_ip, now_unix_seconds),
+            Some(BanDecision::Active(_))
+        )
+    }
+
+    fn active_discouragement_for_ip(&self, remote_ip: IpAddr, now_unix_seconds: i64) -> bool {
+        self.discouraged_entries
+            .values()
+            .any(|entry| entry.scope.matches_ip(remote_ip) && !entry.is_expired(now_unix_seconds))
+    }
+}
+
+fn push_bounded<T>(items: &mut Vec<T>, item: T) {
+    if items.len() >= MAX_PEER_POLICY_RUNTIME_DECISIONS {
+        items.remove(0);
+    }
+    items.push(item);
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

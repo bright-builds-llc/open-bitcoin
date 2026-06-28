@@ -68,9 +68,9 @@ pub use peer::{
 };
 pub use peer_policy::{
     BanDecision, BanReason, BanScope, EvictionCandidate, EvictionCandidateInput, EvictionDecision,
-    EvictionReason, EvictionScoreComponent, MisbehaviorDecision, MisbehaviorKind,
-    MisbehaviorObservation, MisbehaviorPolicy, MisbehaviorResponse, PeerBanBook, PeerBanEntry,
-    UnbanDecision, select_eviction_candidate,
+    EvictionReason, EvictionScoreComponent, MAX_PEER_POLICY_RUNTIME_DECISIONS, MisbehaviorDecision,
+    MisbehaviorKind, MisbehaviorObservation, MisbehaviorPolicy, MisbehaviorResponse, PeerBanBook,
+    PeerBanEntry, PeerPolicyRuntimeState, UnbanDecision, select_eviction_candidate,
 };
 pub use resource::{
     ConnectionChurnInput, INBOUND_MESSAGE_HEADER_LEN, InboundEnvelopeDecision,

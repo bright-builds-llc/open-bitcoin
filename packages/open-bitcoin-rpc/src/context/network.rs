@@ -11,6 +11,8 @@
 
 use std::net::SocketAddr;
 
+#[cfg(test)]
+use open_bitcoin_network::{BanDecision, PeerBanEntry};
 use open_bitcoin_network::{
     InboundAdmissionDecision, InboundAdmissionPolicy, InboundAdmissionRequest,
     InboundAdmissionSlotClass, InboundListenerConfig, InboundPermissionDecision,
@@ -213,12 +215,27 @@ impl ManagedRpcContext {
         remote_addr: SocketAddr,
         now_unix_seconds: i64,
     ) -> ReconnectSuppressionInput {
-        let _ = (remote_addr, now_unix_seconds);
-        let peer_policy_info = self.network.peer_policy_info();
-        ReconnectSuppressionInput {
-            banned: peer_policy_info.active_bans > 0,
-            discouraged: peer_policy_info.discouraged_peers > 0,
-        }
+        self.network
+            .reconnect_suppression_input_for_ip(remote_addr.ip(), now_unix_seconds)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn record_peer_policy_ban(
+        &mut self,
+        entry: PeerBanEntry,
+        now_unix_seconds: i64,
+    ) -> BanDecision {
+        self.network.record_peer_policy_ban(entry, now_unix_seconds)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn record_peer_policy_discouragement(
+        &mut self,
+        entry: PeerBanEntry,
+        now_unix_seconds: i64,
+    ) -> BanDecision {
+        self.network
+            .record_peer_policy_discouragement(entry, now_unix_seconds)
     }
 
     #[cfg(test)]

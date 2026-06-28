@@ -316,6 +316,7 @@ fn peer_policy_source(source: &str) -> &'static str {
     match source {
         "misbehavior_policy" => "source_misbehavior_policy",
         "manual" | "manual_ban" => "source_manual_ban",
+        "peer_policy_runtime_bridge" => "source_peer_policy_runtime_bridge",
         _ => "source_ban_policy",
     }
 }

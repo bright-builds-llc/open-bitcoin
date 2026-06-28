@@ -724,6 +724,17 @@
       ]
     },
     {
+      "label": "node-peer-policy-runtime-bridge",
+      "files": [
+        "packages/open-bitcoin-node/src/network/peer_policy.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/banman.cpp",
+        "packages/bitcoin-knots/src/net_permissions.cpp"
+      ]
+    },
+    {
       "label": "node-network-header-sync",
       "files": [
         "packages/open-bitcoin-node/src/network/header_sync.rs"
@@ -974,12 +985,29 @@
       ]
     },
     {
+      "label": "rpc-peer-policy-runtime-bridge",
+      "files": [
+        "packages/open-bitcoin-rpc/src/context/peer_policy.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/banman.cpp",
+        "packages/bitcoin-knots/src/net_permissions.cpp"
+      ]
+    },
+    {
       "label": "rpc-surface",
       "files": [
         "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
         "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests.rs",
         "packages/open-bitcoin-rpc/src/context.rs",
+        "packages/open-bitcoin-rpc/src/context/address_boundary.rs",
+        "packages/open-bitcoin-rpc/src/context/network.rs",
+        "packages/open-bitcoin-rpc/src/context/rescan.rs",
+        "packages/open-bitcoin-rpc/src/context/resource_governance.rs",
         "packages/open-bitcoin-rpc/src/context/tests.rs",
+        "packages/open-bitcoin-rpc/src/context/wallet_state.rs",
         "packages/open-bitcoin-rpc/src/dispatch.rs",
         "packages/open-bitcoin-rpc/src/dispatch/tests.rs",
         "packages/open-bitcoin-rpc/src/envelope.rs",
@@ -992,7 +1020,6 @@
         "packages/open-bitcoin-rpc/tests/black_box_parity.rs"
       ],
       "patterns": [
-        "packages/open-bitcoin-rpc/src/context/*.rs",
         "packages/open-bitcoin-rpc/src/dispatch/*.rs",
         "packages/open-bitcoin-rpc/src/method/*.rs"
       ],

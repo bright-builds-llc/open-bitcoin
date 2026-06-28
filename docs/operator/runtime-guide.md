@@ -696,6 +696,46 @@ Expected evidence is bounded to local status, metrics, structured-log labels,
 parity roots, and redacted support-bundle fields. Treat unavailable fields as
 diagnostic facts, not as proof of network participation.
 
+## Phase 96 Peer-Policy Runtime Bridge Review
+
+Phase 96 adds scoped runtime peer-policy bridge evidence for active ban, unban,
+discourage, protected misbehavior, and bounded reconnect suppression decisions.
+This is not a public banlist or production participation claim. It does not
+claim transaction relay, compact block relay, mempool propagation, public
+inbound defaults, public-network CI, production-service operation, or production
+readiness.
+
+Review Phase 96 through the same repo-local operator status and support bundle
+forms shown above:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --network regtest \
+  --datadir=/tmp/open-bitcoin-inbound-loopback \
+  status --format json
+
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- \
+  --network regtest \
+  --datadir=/tmp/open-bitcoin-inbound-loopback \
+  status --format json
+
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --network regtest \
+  --datadir=/tmp/open-bitcoin-inbound-loopback \
+  support bundle --output-dir=/tmp/open-bitcoin-inbound-support
+
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- \
+  --network regtest \
+  --datadir=/tmp/open-bitcoin-inbound-loopback \
+  support bundle --output-dir=/tmp/open-bitcoin-inbound-support
+```
+
+Expected evidence is bounded to shared inbound status counters, latest safe
+peer-policy labels, sanitized `inbound_peer_policy` structured logs, redacted
+support output, and the deterministic Phase 96 checker. Treat this as scoped
+runtime peer-policy bridge evidence only; review ban, discourage, unban, and
+misbehavior labels before changing listener exposure or peer policy.
+
 ## Mainnet Sync Activation
 
 Mainnet sync activation is disabled by default. It can be enabled only for the

@@ -25,6 +25,7 @@ use crate::{RpcFailure, RpcFailureKind};
 
 mod address_boundary;
 mod network;
+mod peer_policy;
 mod rescan;
 mod resource_governance;
 #[cfg(test)]

@@ -20,13 +20,14 @@ use open_bitcoin_core::{
 use open_bitcoin_mempool::PolicyConfig;
 use open_bitcoin_network::{
     AddressAnnouncement, AddressDecisionLabel, AddressDecisionReason, AddressList,
-    AddressNetworkKind, AddressSourceKind, InboundAdmissionDecision, InboundAdmissionPolicy,
-    InboundAdmissionRejectionReason, InboundAdmissionRequest, InboundAdmissionSlotClass,
-    InboundPermissionDecision, InventoryList, LearnedAddressDecision, LearnedAddressEntry,
-    LocalAdvertisementDecision, LocalPeerConfig, NetworkError, PHASE92_LEARNED_ADDR_BATCH_LIMIT,
+    AddressNetworkKind, AddressSourceKind, BanReason, BanScope, InboundAdmissionDecision,
+    InboundAdmissionPolicy, InboundAdmissionRejectionReason, InboundAdmissionRequest,
+    InboundAdmissionSlotClass, InboundPermissionDecision, InventoryList, LearnedAddressDecision,
+    LearnedAddressEntry, LocalAdvertisementDecision, LocalPeerConfig, MisbehaviorDecision,
+    MisbehaviorKind, MisbehaviorResponse, NetworkError, PHASE92_LEARNED_ADDR_BATCH_LIMIT,
     PHASE94_MAX_HEADER_LOCATOR_HASHES, PHASE94_MAX_INBOUND_REQUEST_INVENTORY_ITEMS,
     PHASE94_MAX_INBOUND_TX_REQUESTS_PER_PEER, ParsedPeerPermissionClass,
-    PeerAddressBoundaryDecision, PeerAddressBoundaryEvidence, PeerConnectionClass,
+    PeerAddressBoundaryDecision, PeerAddressBoundaryEvidence, PeerBanEntry, PeerConnectionClass,
     PeerPermissionClassRegistry, RoutabilityClass, ServiceFlags, WireNetworkMessage,
 };
 
@@ -155,6 +156,20 @@ fn local_config(nonce: u64) -> LocalPeerConfig {
         nonce,
         relay: true,
         user_agent: "/open-bitcoin:test/".to_string(),
+    }
+}
+
+fn peer_policy_entry(
+    scope: BanScope,
+    expires_at_unix_seconds: i64,
+    source: &'static str,
+) -> PeerBanEntry {
+    PeerBanEntry {
+        scope,
+        reason: BanReason::Manual,
+        created_at_unix_seconds: 100,
+        expires_at_unix_seconds,
+        source,
     }
 }
 
@@ -552,6 +567,83 @@ fn managed_peer_policy_info_projects_protected_eviction_suppression() {
         .expect("latest policy decision");
     assert_eq!(latest.label, "eviction_suppressed");
     assert_eq!(latest.reason, "no_eviction_candidate");
+}
+
+#[test]
+fn managed_peer_policy_info_projects_active_runtime_bans() {
+    // Arrange
+    let mut network = ManagedPeerNetwork::new(
+        MemoryChainstateStore::default(),
+        local_config(403),
+        PolicyConfig::default(),
+    );
+    let entry = peer_policy_entry(
+        BanScope::Address(IpAddr::from([203, 0, 113, 10])),
+        300,
+        "manual_ban",
+    );
+
+    // Act
+    network.record_peer_policy_ban(entry, 150);
+    let info = network.peer_policy_info();
+
+    // Assert
+    assert_eq!(info.active_bans, 1);
+    let latest = info
+        .maybe_latest_peer_policy_decision
+        .expect("latest policy decision");
+    assert_eq!(latest.label, "ban_active");
+}
+
+#[test]
+fn managed_peer_policy_info_projects_manual_unbans() {
+    // Arrange
+    let mut network = ManagedPeerNetwork::new(
+        MemoryChainstateStore::default(),
+        local_config(404),
+        PolicyConfig::default(),
+    );
+    let scope = BanScope::Address(IpAddr::from([203, 0, 113, 11]));
+    network.record_peer_policy_ban(peer_policy_entry(scope.clone(), 300, "manual_ban"), 150);
+
+    // Act
+    network.record_peer_policy_unban(&scope, 160);
+    let info = network.peer_policy_info();
+
+    // Assert
+    assert_eq!(info.manual_unbans, 1);
+    let latest = info
+        .maybe_latest_peer_policy_decision
+        .expect("latest policy decision");
+    assert_eq!(latest.label, "unbanned");
+}
+
+#[test]
+fn managed_peer_policy_info_projects_runtime_misbehavior() {
+    // Arrange
+    let mut network = ManagedPeerNetwork::new(
+        MemoryChainstateStore::default(),
+        local_config(405),
+        PolicyConfig::default(),
+    );
+    let decision = MisbehaviorDecision {
+        peer_label: "peer-protected".to_string(),
+        kind: MisbehaviorKind::MalformedMessage,
+        score: 500,
+        response: MisbehaviorResponse::ProtectedNoAction,
+    };
+
+    // Act
+    network.record_peer_policy_misbehavior(decision);
+    let info = network.peer_policy_info();
+
+    // Assert
+    assert_eq!(info.misbehavior_observations, 1);
+    assert_eq!(info.protected_no_actions, 1);
+    let latest = info
+        .maybe_latest_peer_policy_decision
+        .expect("latest policy decision");
+    assert_eq!(latest.outcome, "protected_no_action");
 }
 
 #[test]

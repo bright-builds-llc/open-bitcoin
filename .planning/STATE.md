@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Inbound Peer Serving and Network Participation Boundary
-status: complete
-stopped_at: Completed 95-04-PLAN.md
-last_updated: "2026-06-27T16:03:11.000Z"
-last_activity: 2026-06-27 -- Phase 95 Plan 04 complete
+status: completed
+stopped_at: Completed Phase 96 peer-policy runtime bridge after clean verification
+last_updated: "2026-06-28T05:01:15.206Z"
+last_activity: 2026-06-28 -- Phase 96 verified and completed
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 44
-  completed_plans: 44
+  total_phases: 9
+  completed_phases: 7
+  total_plans: 48
+  completed_plans: 48
   percent: 100
 ---
 
@@ -21,15 +21,15 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-26)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 95 — Network Participation Evidence and Release Boundary
+**Current focus:** Phase 96 — Peer Policy Runtime Bridge complete
 
 ## Current Position
 
 Milestone: v1.9 Inbound Peer Serving and Network Participation Boundary
-Phase: 95
-Plan: 04
-Status: Complete
-Last activity: 2026-06-27 -- Phase 95 Plan 04 complete
+Phase: 96 (peer-policy-runtime-bridge) — COMPLETE
+Plan: 04 of 4
+Status: Phase 96 complete -- next Phase 97
+Last activity: 2026-06-28 -- Phase 96 verified and completed
 
 Progress: [##########] 100%
 
@@ -51,6 +51,7 @@ Progress: [##########] 100%
 | 93 | Eviction, Ban, and Misbehavior Policy | EVICT-01, EVICT-02, EVICT-03, EVICT-04 | Complete |
 | 94 | DoS and Resource Governance | DOS-01, DOS-02, DOS-03, DOS-04, DOS-05 | Complete |
 | 95 | Network Participation Evidence and Release Boundary | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05, BOUND-06 | Complete |
+| 96 | Peer Policy Runtime Bridge | EVICT-03, EVICT-04, DOS-03 | Complete |
 
 **Recent Trend:**
 
@@ -170,6 +171,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-27T16:03:11.000Z
-Stopped at: Completed 95-04-PLAN.md
+Last session: 2026-06-28T05:00:11.164Z
+Stopped at: Completed Phase 96 peer-policy runtime bridge after clean verification
 Resume file: None

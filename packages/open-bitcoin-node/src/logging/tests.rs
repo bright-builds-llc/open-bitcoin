@@ -2,16 +2,16 @@
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
 use super::{
-    INBOUND_RESOURCE_GOVERNANCE_LOG_SOURCE, LogPathStatus, LogRetentionPolicy, LogRotation,
-    LogStatus, RecentLogSignal, StructuredLogLevel, StructuredLogRecord,
-    health_signals_from_recent_logs, inbound_resource_governance_log_record,
-    recent_log_signals_from_records,
+    INBOUND_PEER_POLICY_LOG_SOURCE, INBOUND_RESOURCE_GOVERNANCE_LOG_SOURCE, LogPathStatus,
+    LogRetentionPolicy, LogRotation, LogStatus, RecentLogSignal, StructuredLogLevel,
+    StructuredLogRecord, health_signals_from_recent_logs, inbound_peer_policy_log_record,
+    inbound_resource_governance_log_record, recent_log_signals_from_records,
 };
 use super::{
     prune::{LogFileMetadata, plan_log_retention},
     writer::{append_structured_log_record, load_log_status},
 };
-use crate::status::{HealthSignalLevel, InboundResourceGovernanceEvent};
+use crate::status::{HealthSignalLevel, InboundPeerPolicyEvent, InboundResourceGovernanceEvent};
 use std::{
     fs,
     path::PathBuf,
@@ -149,6 +149,64 @@ fn inbound_resource_governance_log_record_redacts_suspicious_raw_fields() {
     assert!(!record.message.contains("192.0.2.1:8333"));
     assert!(!record.message.contains("00112233445566778899aabbccddeeff"));
     assert!(!record.message.contains("admin"));
+}
+
+#[test]
+fn inbound_peer_policy_log_record_uses_allowlisted_fields() {
+    // Arrange
+    let event = InboundPeerPolicyEvent {
+        outcome: "ban_active".to_string(),
+        reason: "manual_ban".to_string(),
+        label: "ban_active".to_string(),
+        source: "source_peer_policy_runtime_bridge".to_string(),
+        message: "peer_policy_runtime_bridge".to_string(),
+    };
+
+    // Act
+    let record = inbound_peer_policy_log_record(&event, 1_777_225_023);
+
+    // Assert
+    assert_eq!(record.level, StructuredLogLevel::Warn);
+    assert_eq!(record.source, INBOUND_PEER_POLICY_LOG_SOURCE);
+    assert_eq!(record.timestamp_unix_seconds, 1_777_225_023);
+    assert_eq!(
+        record.message,
+        "outcome=ban_active reason=manual_ban label=ban_active source=source_peer_policy_runtime_bridge message=peer_policy_runtime_bridge"
+    );
+}
+
+#[test]
+fn inbound_peer_policy_log_record_redacts_suspicious_raw_fields() {
+    // Arrange
+    let event = InboundPeerPolicyEvent {
+        outcome: "ban_active".to_string(),
+        reason: "127.0.0.1:18444".to_string(),
+        label: "peer_id=42".to_string(),
+        source: "raw_endpoint=192.0.2.1:8333".to_string(),
+        message: "permission_string=admin credential=fixture secret=fixture cookie=value payload_bytes=00112233445566778899aabbccddeeff".to_string(),
+    };
+
+    // Act
+    let record = inbound_peer_policy_log_record(&event, 1_777_225_023);
+
+    // Assert
+    assert_eq!(record.source, INBOUND_PEER_POLICY_LOG_SOURCE);
+    assert_eq!(
+        record.message,
+        "outcome=ban_active reason=redacted_peer_policy_field label=redacted_peer_policy_field source=redacted_peer_policy_field message=redacted_peer_policy_field"
+    );
+    for raw in [
+        "127.0.0.1:18444",
+        "peer_id=42",
+        "192.0.2.1:8333",
+        "admin",
+        "credential",
+        "secret",
+        "cookie=value",
+        "00112233445566778899aabbccddeeff",
+    ] {
+        assert!(!record.message.contains(raw));
+    }
 }
 
 #[test]

@@ -7,7 +7,9 @@ use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::{error::Error, fmt, path::PathBuf};
 
-use crate::status::{HealthSignal, HealthSignalLevel, InboundResourceGovernanceEvent};
+use crate::status::{
+    HealthSignal, HealthSignalLevel, InboundPeerPolicyEvent, InboundResourceGovernanceEvent,
+};
 
 pub mod prune;
 pub mod writer;
@@ -16,7 +18,9 @@ pub mod writer;
 mod tests;
 
 pub const INBOUND_RESOURCE_GOVERNANCE_LOG_SOURCE: &str = "inbound_resource_governance";
+pub const INBOUND_PEER_POLICY_LOG_SOURCE: &str = "inbound_peer_policy";
 const REDACTED_RESOURCE_FIELD: &str = "redacted_resource_field";
+const REDACTED_PEER_POLICY_FIELD: &str = "redacted_peer_policy_field";
 
 /// Supported structured log levels for operator-facing summaries.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -131,6 +135,27 @@ pub fn inbound_resource_governance_log_record(
     )
 }
 
+pub fn inbound_peer_policy_log_record(
+    event: &InboundPeerPolicyEvent,
+    timestamp_unix_seconds: u64,
+) -> StructuredLogRecord {
+    let message = format!(
+        "outcome={} reason={} label={} source={} message={}",
+        sanitized_peer_policy_log_field(&event.outcome),
+        sanitized_peer_policy_log_field(&event.reason),
+        sanitized_peer_policy_log_field(&event.label),
+        sanitized_peer_policy_log_field(&event.source),
+        sanitized_peer_policy_log_field(&event.message)
+    );
+
+    StructuredLogRecord::new(
+        StructuredLogLevel::Warn,
+        INBOUND_PEER_POLICY_LOG_SOURCE,
+        message,
+        timestamp_unix_seconds,
+    )
+}
+
 fn sanitized_resource_log_field(value: &str) -> Cow<'_, str> {
     if value.is_empty()
         || value.len() > 128
@@ -145,6 +170,20 @@ fn sanitized_resource_log_field(value: &str) -> Cow<'_, str> {
     Cow::Borrowed(value)
 }
 
+fn sanitized_peer_policy_log_field(value: &str) -> Cow<'_, str> {
+    if value.is_empty()
+        || value.len() > 128
+        || value.contains('=')
+        || contains_sensitive_peer_policy_marker(value)
+        || looks_like_socket_address(value)
+        || looks_like_hex_material(value)
+    {
+        return Cow::Borrowed(REDACTED_PEER_POLICY_FIELD);
+    }
+
+    Cow::Borrowed(value)
+}
+
 fn contains_sensitive_resource_marker(value: &str) -> bool {
     let lower = value.to_ascii_lowercase();
     lower.contains(&["peer", "_id"].concat())
@@ -153,6 +192,18 @@ fn contains_sensitive_resource_marker(value: &str) -> bool {
         || lower.contains(&["permission", "_string"].concat())
         || lower.contains(&["cred", "ential"].concat())
         || lower.contains(&["sec", "ret"].concat())
+}
+
+fn contains_sensitive_peer_policy_marker(value: &str) -> bool {
+    let lower = value.to_ascii_lowercase();
+    lower.contains(&["peer", "_id"].concat())
+        || lower.contains("peer-")
+        || lower.contains(&["raw", "_end", "point"].concat())
+        || lower.contains(&["payload", "_bytes"].concat())
+        || lower.contains(&["permission", "_string"].concat())
+        || lower.contains(&["cred", "ential"].concat())
+        || lower.contains(&["sec", "ret"].concat())
+        || lower.contains("cookie")
 }
 
 fn looks_like_socket_address(value: &str) -> bool {

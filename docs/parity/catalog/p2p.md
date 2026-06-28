@@ -636,6 +636,33 @@ with final wiring owned by the Phase 95 aggregate checker plan.
 
 Phase 95 does not claim transaction relay, compact block relay, mempool propagation, full address relay beyond Phase 92, public inbound defaults, public-network CI, production service operation, or production full-node readiness. Those surfaces remain deferred until future milestones add scoped parity, release, support, and verification evidence.
 
+## Phase 96 peer-policy runtime bridge
+
+The `v1-9-peer-policy-runtime-bridge` surface covers `EVICT-03`, `EVICT-04`,
+and `DOS-03` for scoped runtime peer-policy bridge evidence. It connects the
+pure ban, unban, discourage, and misbehavior policy state to managed status,
+bounded reconnect suppression, sanitized structured logs, CLI status, and
+redacted support output.
+
+Its Knots anchors are
+[`packages/bitcoin-knots/src/net.cpp`](../../../packages/bitcoin-knots/src/net.cpp)
+for connection-manager and reconnect comparison points,
+[`packages/bitcoin-knots/src/net_processing.cpp`](../../../packages/bitcoin-knots/src/net_processing.cpp)
+for peer-processing and misbehavior comparison points,
+[`packages/bitcoin-knots/src/banman.h`](../../../packages/bitcoin-knots/src/banman.h)
+and
+[`packages/bitcoin-knots/src/banman.cpp`](../../../packages/bitcoin-knots/src/banman.cpp)
+for ban, unban, expiry, and discouraged-reconnect comparison points, and
+[`packages/bitcoin-knots/src/net_permissions.cpp`](../../../packages/bitcoin-knots/src/net_permissions.cpp)
+for protected-peer permission comparison points.
+
+Phase 96 evidence is intentionally scoped runtime peer-policy bridge evidence,
+not a public banlist or production participation claim. It does not claim
+transaction relay, compact block relay, mempool propagation, public inbound
+defaults, public-network CI, production service operation, or production
+readiness. Those surfaces remain deferred until future milestones add scoped
+parity, support, release, and verification evidence.
+
 ## First-party implementation
 
 - [`packages/open-bitcoin-network/src/address.rs`](../../../packages/open-bitcoin-network/src/address.rs)

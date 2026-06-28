@@ -25,7 +25,7 @@ use crate::inbound::{InboundAdmissionRejectionReason, InboundHandshakeState, Inb
 use crate::message::{HeadersMessage, InventoryList, LocalPeerConfig, WireNetworkMessage};
 use crate::peer_policy::{
     EvictionCandidateInput, EvictionDecision, MisbehaviorDecision, MisbehaviorKind,
-    MisbehaviorObservation, MisbehaviorPolicy, select_eviction_candidate,
+    MisbehaviorObservation, MisbehaviorPolicy, PeerPolicyRuntimeState, select_eviction_candidate,
 };
 use crate::resource::InboundResourceEvent;
 
@@ -135,6 +135,7 @@ pub struct PeerManager {
     learned_address_rejections: Vec<LearnedAddressDecision>,
     learned_address_rejection_count: usize,
     maybe_latest_address_decision: Option<PeerAddressBoundaryDecision>,
+    peer_policy_runtime_state: PeerPolicyRuntimeState,
 }
 
 impl PeerManager {
@@ -170,6 +171,7 @@ impl PeerManager {
             learned_address_rejections: Vec::new(),
             learned_address_rejection_count: 0,
             maybe_latest_address_decision: None,
+            peer_policy_runtime_state: PeerPolicyRuntimeState::default(),
         }
     }
 
@@ -234,6 +236,14 @@ impl PeerManager {
     pub fn eviction_decision(&self) -> EvictionDecision {
         let inputs = self.eviction_candidate_inputs();
         select_eviction_candidate(&inputs)
+    }
+
+    pub fn peer_policy_runtime_state(&self) -> &PeerPolicyRuntimeState {
+        &self.peer_policy_runtime_state
+    }
+
+    pub fn peer_policy_runtime_state_mut(&mut self) -> &mut PeerPolicyRuntimeState {
+        &mut self.peer_policy_runtime_state
     }
 
     pub fn misbehavior_decision(
