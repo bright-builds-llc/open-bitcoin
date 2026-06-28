@@ -78,8 +78,9 @@ The current v1.9 Network Participation Evidence and Release Boundary closes
 the inbound-serving milestone as bounded, explicit opt-in evidence. It connects
 the Phase 90 listener/admission, Phase 91 permissions, Phase 92 address
 boundaries, Phase 93 eviction/ban/misbehavior policy, Phase 94 resource
-governance, and Phase 95 support-redaction evidence through existing parity
-roots. The canonical surface id is
+governance, Phase 95 support-redaction evidence, Phase 96 peer-policy runtime
+bridge evidence, Phase 97 inbound metrics evidence, and Phase 98 traceability
+reconciliation through existing parity roots. The canonical surface id is
 `v1-9-network-participation-release-boundary`.
 
 This is not a production-node or production-funds claim. It does not claim
@@ -123,7 +124,7 @@ bash scripts/verify.sh
 That command remains deterministic and public-network-free. It includes local
 formatting, linting, builds, tests, benchmark smoke evidence, parity breadcrumb
 checks, Bazel smoke builds, coverage, panic-site checks, and deterministic
-release-boundary assertions through v1.7.
+release-boundary assertions through v1.9.
 Phase 82 and Phase 83 add the narrow v1.8 production-boundary and
 support-matrix traceability checks. Phase 84 adds the upgrade-policy roots that
 later UPG-04 drift checks consume. Phase 85 adds the operator-runbook root for
@@ -131,9 +132,10 @@ RUN-01 through RUN-03. Phase 86 adds the service-operation root for SVC-01 and
 SVC-02. Phase 87 adds this release-readiness checklist and narrow deterministic
 checker for the current v1.8 release-review map, including the Phase 88
 guardrail evidence rows for REL-02, REL-03, and REL-04. Phase 95 adds the
-v1.9 closeout matrix here and points the default-verification gate at the
-planned aggregate Phase 95 checker without making public-network or service
-operations part of default verification.
+v1.9 closeout matrix here, Phase 97 closes retained inbound metrics evidence,
+and Phase 98 adds `scripts/check-phase98-traceability-reconciliation.ts`
+without making public-network or service operations part of default
+verification.
 
 ## Complete Surfaces
 
@@ -379,7 +381,7 @@ release manifest.
 | BOUND-03 | Phase 90 through Phase 94 summaries, `scripts/verify.sh`, `docs/parity/production-claim-boundary.md`, and historical release-readiness sections | `bash scripts/verify.sh` remains the repo-native non-regression contract after Phase 95 checker wiring. | Public-network full-sync, soak, real service-manager, and live support-bundle collection remain optional operator evidence only. | Default verification cannot prove public-network reachability or production uptime. | Existing outbound sync, full-sync, soak, support-bundle, production no-claim, and release-boundary behavior must remain non-regressed before any stronger release gate. |
 | BOUND-04 | `docs/operator/runtime-guide.md`, `docs/parity/checklist.md`, and Phase 90 through Phase 94 summaries | Plan 04 aggregate checker verifies repo-local Cargo and Bazel command forms. | Operators use copy-pasteable Cargo and Bazel loopback/synthetic commands; installed aliases are not the only path. | Local hosts can still lack ports, permissions, or build cache state. | Public-network listener exposure and CI remain future-scoped. |
 | BOUND-05 | `packages/open-bitcoin-cli/src/operator/support/redaction.rs`, `packages/open-bitcoin-cli/src/operator/support/tests.rs`, `docs/parity/support-matrix.md`, and Phase 95 Plan 01 summary | Rust support tests and the Phase 95 aggregate checker guard redaction boundaries. | Support bundles are local redacted evidence for diagnosis, not public uploads or release validators by themselves. | New support fields can leak raw peer material unless the redaction tests and checker are kept current. | Automatic support-bundle upload and raw peer/payload/permission evidence remain out of scope. |
-| BOUND-06 | `.planning/REQUIREMENTS.md`, `.planning/ROADMAP.md`, `docs/parity/index.json`, `docs/parity/checklist.md`, and this release matrix | JSON parsing plus exact BOUND row checks in Plan 02; Plan 04 aggregate checker verifies the stable roots. | Milestone audit and UAT reviewers should cite these roots instead of adding a parallel traceability manifest. | Final GSD summaries and audit artifacts are produced by lifecycle steps after implementation. | v1.9 requirement traceability stays exactly once across Phase 90 through Phase 95; new requirement IDs need a future roadmap update. |
+| BOUND-06 | `.planning/REQUIREMENTS.md`, `.planning/ROADMAP.md`, `.planning/v1.9-MILESTONE-AUDIT.md`, `.planning/phases/98-traceability-reconciliation/98-VERIFICATION.md`, `docs/parity/index.json`, `docs/parity/checklist.md`, and this release matrix | `scripts/check-phase98-traceability-reconciliation.ts` verifies Phase 90 through Phase 98 traceability, selected verification notes, audit closure text, and verifier wiring after Phase 97. | Milestone audit and UAT reviewers should cite these roots instead of adding a parallel traceability manifest. | Final Phase 98 verification remains the last traceability closeout before marking all Phase 98-owned requirements complete. | v1.9 requirement traceability stays exactly once across Phase 90 through Phase 98; new requirement IDs need a future roadmap update. |
 
 Required deterministic reviewer commands for this closeout:
 
@@ -389,11 +391,11 @@ rg -n "v1-9-network-participation-release-boundary|BOUND-01|BOUND-06|Network Par
 bash scripts/verify.sh
 ```
 
-Plan 04 owns the aggregate checker wiring for
-`scripts/check-phase95-network-participation-release-boundary.ts` and
-`scripts/check-phase95-network-participation-release-boundary.test.ts`. Until
-that plan lands, reviewers should treat those paths as the next deterministic
-gate, not as a separate evidence manifest.
+Phase 98 owns the final traceability reconciliation checker:
+`scripts/check-phase98-traceability-reconciliation.ts` and
+`scripts/check-phase98-traceability-reconciliation.test.ts`. Until the final
+Phase 98 verification report lands, reviewers should treat those paths as the
+next deterministic gate, not as a separate evidence manifest.
 
 ## v1.8 Release Readiness No-Claim Review
 

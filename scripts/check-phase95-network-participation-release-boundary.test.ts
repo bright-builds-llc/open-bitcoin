@@ -94,18 +94,6 @@ const REQUIREMENT_PHASE_ASSIGNMENTS = {
   "BOUND-05": 95,
   "BOUND-06": 98,
 } as const;
-const GAP_CLOSURE_REQUIREMENTS = new Set<string>([
-  "INB-01",
-  "INB-02",
-  "INB-03",
-  "INB-04",
-  "INB-05",
-  "EVICT-03",
-  "EVICT-04",
-  "DOS-03",
-  "DOS-04",
-  "BOUND-06",
-]);
 const ROADMAP_TRACEABILITY_ROWS = [
   { phase: 90, requirements: [] },
   { phase: 91, requirements: ["PERM-01", "PERM-02", "PERM-03", "PERM-04"] },
@@ -325,8 +313,8 @@ test("fails when gap-closure traceability maps requirements to stale phases", ()
       replaceInFile(
         files,
         ".planning/REQUIREMENTS.md",
-        "| INB-05 | Phase 97 | Pending |",
-        "| INB-05 | Phase 90 | Pending |",
+        "| INB-05 | Phase 97 | Complete |",
+        "| INB-05 | Phase 90 | Complete |",
       );
       replaceInFile(
         files,
@@ -501,7 +489,7 @@ function releaseReadinessText(): string {
     "The v1.9 closeout links BOUND-01 through BOUND-06 to parity roots and runtime guide commands.",
     REQUIRED_KNOTS_ANCHORS.join(" "),
     "v1.9 does not claim transaction relay, compact block relay, mempool propagation, public inbound defaults, production service operation, or production full-node readiness.",
-    "Requirement traceability stays exactly once across Phase 90 through Phase 95.",
+    "Requirement traceability stays exactly once across Phase 90 through Phase 98.",
   ].join("\n");
 }
 
@@ -569,7 +557,7 @@ function requirementsText(): string {
     "- v1.9 requirements: 28 total",
     "- Mapped to phases: 28",
     "- Unmapped: 0",
-    "- Pending gap-closure verification: 10",
+    "- Pending Phase 98 verification: 5",
   ].join("\n");
 }
 
@@ -578,7 +566,7 @@ function roadmapText(): string {
     "# Roadmap",
     [
       "**Coverage:** 28/28 v1.9 requirements mapped, 0 unmapped.",
-      "Ten requirements are pending gap-closure verification across Phases 96 through 98.",
+      "Five requirements are pending Phase 98 verification.",
     ].join(" "),
     "| Phase | Requirements | Count |",
     "| --- | --- | ---: |",
@@ -595,8 +583,7 @@ function phaseTraceRows(): string[] {
     "| --- | --- | --- |",
   ];
   for (const [requirement, phase] of Object.entries(REQUIREMENT_PHASE_ASSIGNMENTS)) {
-    const status = GAP_CLOSURE_REQUIREMENTS.has(requirement) ? "Pending" : "Complete";
-    rows.push(`| ${requirement} | Phase ${phase} | ${status} |`);
+    rows.push(`| ${requirement} | Phase ${phase} | Complete |`);
   }
   return rows;
 }

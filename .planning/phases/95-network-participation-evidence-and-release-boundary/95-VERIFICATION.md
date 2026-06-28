@@ -18,6 +18,8 @@ overrides_applied: 0
 **Status:** passed
 **Re-verification:** No - initial verification
 
+Canonical ownership note: Phase 95 remains historical release-boundary evidence for BOUND-01 through BOUND-05; Phase 98 is the canonical closure phase for BOUND-06.
+
 ## Goal Achievement
 
 ### Observable Truths

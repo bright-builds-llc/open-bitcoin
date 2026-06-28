@@ -15,6 +15,8 @@ lifecycle_validated: true
 
 Phase 97 passed targeted checks, the Rust pre-commit gate, the Phase 97 structural checker, file-length verification, and the repo-native verifier.
 
+Canonical ownership note: Phase 97 is the canonical closure phase for INB-05 and DOS-04.
+
 ## Evidence
 
 - `cargo fmt --manifest-path packages/Cargo.toml --all`

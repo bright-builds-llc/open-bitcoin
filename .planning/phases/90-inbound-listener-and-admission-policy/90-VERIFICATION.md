@@ -26,6 +26,8 @@ typed inbound peer admission, duplicate/self-connection protections, separate
 inbound caps and reserved slots, operator/RPC/status evidence, support bundle
 redaction, parity breadcrumbs, and a deterministic Phase 90 checker.
 
+Canonical ownership note: Phase 90 remains historical implementation evidence for INB-01 through INB-04; Phase 98 is the canonical closure phase for INB-01 through INB-04. Phase 97 is the canonical closure phase for INB-05.
+
 ## Requirement Coverage
 
 | Requirement | Status | Evidence |
