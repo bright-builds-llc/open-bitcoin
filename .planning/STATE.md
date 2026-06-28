@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Inbound Peer Serving and Network Participation Boundary
-status: planning
-stopped_at: Phase 98 context gathered
-last_updated: "2026-06-28T19:28:50.249Z"
-last_activity: 2026-06-28
+status: executing
+stopped_at: Phase 98 traceability reconciliation executing
+last_updated: "2026-06-28T19:48:35.137Z"
+last_activity: 2026-06-28 -- Phase 98 execution started
 progress:
   total_phases: 9
   completed_phases: 8
-  total_plans: 52
+  total_plans: 55
   completed_plans: 52
-  percent: 100
+  percent: 95
 ---
 
 # Project State
@@ -21,15 +21,15 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-26)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 98 — Traceability Reconciliation ready to plan
+**Current focus:** Phase 98 — Traceability Reconciliation executing
 
 ## Current Position
 
 Milestone: v1.9 Inbound Peer Serving and Network Participation Boundary
-Phase: 98
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-06-28
+Phase: 98 (traceability-reconciliation) — EXECUTING
+Plan: 1 of 3
+Status: Executing Phase 98
+Last activity: 2026-06-28 -- Phase 98 execution started
 
 Progress: [##########] 100%
 
@@ -53,7 +53,7 @@ Progress: [##########] 100%
 | 95 | Network Participation Evidence and Release Boundary | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05, BOUND-06 | Complete |
 | 96 | Peer Policy Runtime Bridge | EVICT-03, EVICT-04, DOS-03 | Complete |
 | 97 | Inbound Metrics Sample Production | INB-05, DOS-04 | Complete |
-| 98 | Traceability Reconciliation | INB-01, INB-02, INB-03, INB-04, BOUND-06 | Ready to plan |
+| 98 | Traceability Reconciliation | INB-01, INB-02, INB-03, INB-04, BOUND-06 | In progress |
 
 **Recent Trend:**
 
@@ -61,6 +61,7 @@ Progress: [##########] 100%
 - v1.7 hardened multi-day full-sync soak, bounded resources, recovery diagnosis, progress guarantees, and support-bundle forensics.
 - v1.8 defined production-readiness claim gates, support/update/runbook/service policies, release-readiness evidence, and deterministic no-claim guardrails.
 - v1.9 now expands toward opt-in inbound peer serving while keeping transaction relay, compact blocks, mempool propagation, production-funds wallet use, migration apply mode, packaging, hosted dashboard, GUI, public-network CI, and production full-node readiness deferred.
+- Phase 90 remains historical implementation evidence for INB-01 through INB-04 while Phase 98 is canonical closure.
 
 | Phase 91-peer-permissions-and-connection-classes P01 | 27min | 2 tasks | 5 files |
 | Phase 91 P02 | 34min | 2 tasks | 13 files |
@@ -174,5 +175,5 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 ## Session Continuity
 
 Last session: 2026-06-28T19:28:50.242Z
-Stopped at: Phase 98 context gathered
+Stopped at: Phase 98 traceability reconciliation executing
 Resume file: .planning/phases/98-traceability-reconciliation/98-CONTEXT.md

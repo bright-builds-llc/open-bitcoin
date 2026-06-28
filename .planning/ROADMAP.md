@@ -19,7 +19,7 @@ v1.9 Inbound Peer Serving and Network Participation Boundary started on 2026-06-
 
 **Goal:** Let Open Bitcoin accept and serve inbound peers under explicit admission, permission, address, eviction/ban, and resource-governance rules while keeping relay and production participation claims deferred.
 
-**Current state:** Phase 96 is complete and verified. The milestone audit found integration gaps, so Phases 97 and 98 close inbound metric sample production and traceability reconciliation before v1.9 can be completed. v1.9 has 28/28 scoped requirements mapped, with 21 complete and 7 pending gap-closure verification.
+**Current state:** Phase 97 is complete and verified. Phase 98 is active and reconciles the remaining canonical traceability for INB-01, INB-02, INB-03, INB-04, and BOUND-06 before v1.9 closeout. v1.9 has 28/28 scoped requirements mapped, with 23 complete after Phase 97 and 5 pending Phase 98 verification.
 
 **Boundary:** v1.9 does not claim transaction relay, compact block relay, mempool propagation, public inbound serving by default, production service operation, or production full-node readiness.
 
@@ -262,7 +262,7 @@ Plans:
 
 ## Traceability
 
-**Coverage:** 28/28 v1.9 requirements mapped, 0 unmapped. Seven requirements are pending gap-closure verification across Phases 97 and 98.
+**Coverage:** 28/28 v1.9 requirements mapped, 0 unmapped. 23 complete after Phase 97 and 5 pending Phase 98 verification.
 
 | Phase | Requirements | Count |
 |-------|--------------|------:|
@@ -278,10 +278,10 @@ Plans:
 
 ## Next Step
 
-Plan and execute the gap-closure phases for v1.9:
+Execute the active traceability reconciliation phase for v1.9:
 
 ```bash
-/gsd-plan-phase 96
+/gsd-execute-phase 98
 ```
 
 Also available:
