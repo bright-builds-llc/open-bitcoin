@@ -86,7 +86,7 @@ Milestone archives live under `.planning/milestones/`, including shipped roadmap
 
 ### Active
 
-- v2.0 Transaction Relay and Mempool Participation Boundary requirements are being defined in `.planning/REQUIREMENTS.md`.
+- v2.0 Transaction Relay and Mempool Participation Boundary has 32 scoped requirements defined in `.planning/REQUIREMENTS.md` and mapped to Phase 100 through Phase 106 in `.planning/ROADMAP.md`.
 
 ### Out of Scope
 
@@ -150,7 +150,7 @@ Milestone archives live under `.planning/milestones/`, including shipped roadmap
 | Scope v1.7 to full-sync soak and recovery hardening | v1.6 proved the scoped sync-to-tip and stay-current claim, so the next highest-leverage work is multi-day stability, bounded resources, recovery diagnosis, progress guarantees, and support evidence before production-node expansion | Shipped in v1.7 with opt-in UAT and deterministic release-boundary checks |
 | Scope v1.8 to production full-node readiness boundary | v1.7 left production-node readiness deferred, so the next safe step is defining support, upgrade, service, runbook, release-readiness, and evidence gates before any production claim | Shipped in v1.8 with Phase 89 gap closure, deterministic claim guardrails, and a `tech_debt` audit limited to closeout metadata and checker hardening |
 | Scope v1.9 to inbound peer serving and network participation boundaries | v1.8 defined claim gates, so the next safe expansion is opt-in inbound serving with admission, permissions, address, eviction/ban, and DoS governance before relay or production participation claims | Shipped in v1.9 with 28/28 requirements, 10/10 integration categories, and 8/8 flows passing; transaction relay, compact blocks, mempool propagation, public inbound defaults, and production readiness remain deferred |
-| Scope v2.0 to transaction relay and mempool participation boundaries | v1.9 created opt-in inbound serving and left relay-like permission labels inert, so the next fundamental node capability is bounded transaction relay and mempool propagation before compact blocks or production full-node readiness | Active milestone; requirements and roadmap are being defined with Phase 100+ numbering |
+| Scope v2.0 to transaction relay and mempool participation boundaries | v1.9 created opt-in inbound serving and left relay-like permission labels inert, so the next fundamental node capability is bounded transaction relay and mempool propagation before compact blocks or production full-node readiness | Active milestone; 32 requirements mapped to Phase 100 through Phase 106 |
 
 ## Evolution
 
@@ -188,5 +188,5 @@ This document evolves at phase transitions and milestone boundaries.
 
 </details>
 
----
-*Last updated: 2026-06-29 after v2.0 milestone start*
+***
+*Last updated: 2026-06-29 after v2.0 requirements and roadmap creation*

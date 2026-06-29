@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Transaction Relay and Mempool Participation Boundary
-status: defining_requirements
-stopped_at: defining v2.0 requirements and roadmap
-last_updated: "2026-06-29T15:08:45Z"
-last_activity: 2026-06-29 -- v2.0 milestone started
+status: ready_for_phase_discussion
+stopped_at: ready to discuss Phase 100
+last_updated: "2026-06-29T15:43:58Z"
+last_activity: 2026-06-29 -- v2.0 requirements and roadmap created
 progress:
-  total_phases: 0
+  total_phases: 7
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,15 +21,15 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-29)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Defining v2.0 transaction relay and mempool participation requirements
+**Current focus:** Ready to discuss Phase 100 relay activation boundary and permission semantics
 
 ## Current Position
 
 Milestone: v2.0 Transaction Relay and Mempool Participation Boundary
-Phase: Not started (defining requirements)
+Phase: 100 - Relay Activation Boundary and Permission Semantics (not started)
 Plan: -
-Status: Defining requirements and roadmap
-Last activity: 2026-06-29 -- v2.0 milestone started
+Status: Ready for Phase 100 discussion
+Last activity: 2026-06-29 -- v2.0 requirements and roadmap created
 
 Progress: [----------] 0%
 
@@ -37,7 +37,7 @@ Progress: [----------] 0%
 
 **Velocity:**
 
-- New milestone initialized with 6 planned phases and 28 scoped requirements.
+- Current milestone initialized with 7 planned phases and 32 scoped requirements.
 - Prior milestone plans completed: 26 in v1.8.
 - Prior milestone summary tasks counted: 49 in v1.8.
 
@@ -45,26 +45,25 @@ Progress: [----------] 0%
 
 | Phase | Name | Requirements | Status |
 |-------|------|--------------|--------|
-| 90 | Inbound Listener and Admission Policy | INB-01, INB-02, INB-03, INB-04, INB-05 | Complete |
-| 91 | Peer Permissions and Connection Classes | PERM-01, PERM-02, PERM-03, PERM-04 | Complete |
-| 92 | Address Advertisement and Discovery Boundaries | ADDR-01, ADDR-02, ADDR-03, ADDR-04 | Complete |
-| 93 | Eviction, Ban, and Misbehavior Policy | EVICT-01, EVICT-02, EVICT-03, EVICT-04 | Complete |
-| 94 | DoS and Resource Governance | DOS-01, DOS-02, DOS-03, DOS-04, DOS-05 | Complete |
-| 95 | Network Participation Evidence and Release Boundary | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05, BOUND-06 | Complete |
-| 96 | Peer Policy Runtime Bridge | EVICT-03, EVICT-04, DOS-03 | Complete |
-| 97 | Inbound Metrics Sample Production | INB-05, DOS-04 | Complete |
-| 98 | Traceability Reconciliation | INB-01, INB-02, INB-03, INB-04, BOUND-06 | Complete |
-| 99 | Peer Policy Structured Log Emission | none (optional cleanup) | Complete |
+| 100 | Relay Activation Boundary and Permission Semantics | ACT-01, ACT-02, ACT-03, ACT-04 | Pending |
+| 101 | Transaction Inventory Identity and Download Scheduling | INV-01, INV-02, INV-03, INV-04, DL-01, DL-02 | Pending |
+| 102 | Orphan Handling and Admission Outcome Bridge | DL-03, DL-04, DL-05, MEM-01, MEM-02 | Pending |
+| 103 | Mempool Chainstate Lifecycle and Durable Recovery | MEM-03, MEM-04, MEM-05, MEM-06 | Pending |
+| 104 | Relay Serving, Fanout, and Rebroadcast Policy | REL-01, REL-02, REL-03, REL-04 | Pending |
+| 105 | Operator, RPC, Metrics, Logs, and Support Evidence | OBS-01, OBS-02, OBS-03, OBS-04 | Pending |
+| 106 | Parity Traceability, UAT, and Release Boundary Guardrails | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05 | Pending |
 
 **Recent Trend:**
 
 - v1.6 completed explicit opt-in mainnet full-sync completion evidence.
 - v1.7 hardened multi-day full-sync soak, bounded resources, recovery diagnosis, progress guarantees, and support-bundle forensics.
 - v1.8 defined production-readiness claim gates, support/update/runbook/service policies, release-readiness evidence, and deterministic no-claim guardrails.
-- v1.9 now expands toward opt-in inbound peer serving while keeping transaction relay, compact blocks, mempool propagation, production-funds wallet use, migration apply mode, packaging, hosted dashboard, GUI, public-network CI, and production full-node readiness deferred.
+- v1.9 expanded toward opt-in inbound peer serving while keeping transaction relay, compact blocks, mempool propagation, production-funds wallet use, migration apply mode, packaging, hosted dashboard, GUI, public-network CI, and production full-node readiness deferred.
 - Phase 90 remains historical implementation evidence for INB-01 through INB-04 while Phase 98 is canonical closure.
+- Phase 98 canonical ownership remains archived for INB-01, INB-02, INB-03, INB-04, BOUND-06.
 - Phase 98 preserves the no-claim boundary for transaction relay, compact block relay, mempool propagation, public inbound defaults, production service operation, and production full-node readiness.
 - Phase 99 closed optional audit tech debt for automatic sanitized `inbound_peer_policy` structured-log emission without remapping completed v1.9 requirements.
+- v2.0 is now planned as 7 phases and 32 requirements covering scoped transaction relay and mempool participation while keeping compact block relay, public relay defaults, production service operation, production-funds wallet use, public-network CI, and production full-node readiness deferred.
 
 | Phase 91-peer-permissions-and-connection-classes P01 | 27min | 2 tasks | 5 files |
 | Phase 91 P02 | 34min | 2 tasks | 13 files |
@@ -99,6 +98,7 @@ Progress: [----------] 0%
 - Phase 99 completed: Peer Policy Structured Log Emission.
 - v1.9 archived to `.planning/milestones/v1.9-ROADMAP.md`, `.planning/milestones/v1.9-REQUIREMENTS.md`, and `.planning/milestones/v1.9-MILESTONE-AUDIT.md`.
 - v2.0 started as Transaction Relay and Mempool Participation Boundary, continuing phase numbering after Phase 99.
+- v2.0 requirements were defined in `.planning/REQUIREMENTS.md` and mapped to Phase 100 through Phase 106 in `.planning/ROADMAP.md`.
 
 ### Decisions
 
@@ -107,6 +107,8 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 - [v1.9]: Structure the milestone as six continuation phases, starting at Phase 90 after completed v1.8 Phase 89.
 - [v1.9]: Scope inbound serving to explicit opt-in listener/admission, peer permissions, address boundaries, eviction/ban policy, DoS/resource governance, and release-boundary evidence.
 - [v1.9]: Keep transaction relay, compact block relay, mempool propagation, public inbound defaults, and production-readiness claims out of scope until later milestones deliberately plan them.
+- [v2.0]: Scope transaction relay and mempool participation to explicit activation, txid/wtxid inventory, bounded download/orphan handling, mempool lifecycle, relay serving/fanout, operator evidence, and release guardrails.
+- [v2.0]: Keep compact block relay, bloom/filter serving, package relay, public relay defaults, public-network CI, production service operation, production full-node readiness, and production-funds wallet use deferred.
 - [v1.8]: Keep production-readiness language guarded by evidence gates and deterministic no-claim checkers.
 - [v1.7]: Keep multi-day public-network soak runs opt-in UAT evidence; default `bash scripts/verify.sh` must remain deterministic, public-network-free, service-manager-free, and free of wall-clock multi-day gates.
 - [v1.6]: Continue keeping public-network full-sync and service checks opt-in UAT evidence unless a future phase deliberately changes the deterministic verification contract.
@@ -177,13 +179,13 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ### Pending Todos
 
-- Define v2.0 scoped requirements for transaction relay and mempool participation.
-- Create v2.0 roadmap phases starting at Phase 100.
+- Discuss Phase 100 and write `.planning/phases/100-relay-activation-boundary-and-permission-semantics/CONTEXT.md`.
+- Plan and execute Phase 100 after discussion is complete.
 - Keep v1.9 phase directories numbered 90+ under `.planning/phases/`; historical phase directories remain tracked because verifier scripts still depend on selected phase evidence.
 - Keep repo-local Cargo and Bazel command forms in UAT guidance:
   - `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- ...`
   - `bazel run //packages/open-bitcoin-cli:open_bitcoin -- ...`
-- Keep public-network listener exposure opt-in and outside default deterministic verification unless a future phase explicitly changes that contract.
+- Keep public-network relay exposure opt-in and outside default deterministic verification unless a future phase explicitly changes that contract.
 
 ### Blockers/Concerns
 

@@ -1,5 +1,31 @@
 # Milestones: Open Bitcoin
 
+## v2.0 Transaction Relay and Mempool Participation Boundary (Active: started 2026-06-29)
+
+**Planned:** Bounded transaction relay and mempool participation through explicit activation, permission semantics, txid/wtxid inventory, bounded transaction download, orphan handling, mempool admission and lifecycle evidence, relay serving/fanout, operator surfaces, support redaction, parity traceability, and deterministic release-boundary guardrails.
+
+**Phases planned:** 7 phases, Phase 100 through Phase 106, covering 32 scoped requirements.
+
+**Key planned outcomes:**
+
+- Define default-off transaction relay activation and scoped effects for `relay`, `forcerelay`, and `mempool` without activating bloom/filter or compact-block behavior.
+- Add txid/wtxid transaction inventory, request, response, duplicate, mismatch, timeout, `notfound`, and disconnect cleanup policy.
+- Add bounded transaction download and missing-parent/orphan handling that preserves v1.9 resource-governance limits.
+- Add a stable mempool admission, removal, pressure, chainstate, persistence, and restart recovery outcome contract.
+- Add relay serving, announcement, fanout, local submission, and rebroadcast evidence without guaranteeing public propagation.
+- Align RPC, CLI, dashboard, metrics, logs, and support bundles around shared redacted relay/mempool status.
+- Close the milestone with Knots parity anchors, repo-local UAT commands, deterministic no-claim checkers, and docs that keep public relay defaults, compact blocks, package relay, public-network CI, production service operation, production full-node readiness, and production-funds wallet use deferred.
+
+**Current artifacts:**
+
+- `.planning/REQUIREMENTS.md`
+- `.planning/ROADMAP.md`
+- `.planning/research/SUMMARY.md`
+
+**What's next:** Discuss Phase 100 with `/gsd-discuss-phase 100`.
+
+***
+
 ## v1.9 Inbound Peer Serving and Network Participation Boundary (Shipped: 2026-06-29)
 
 **Delivered:** Opt-in inbound peer serving and network participation evidence through disabled-by-default listener activation, inbound admission, permission classes, bounded address behavior, eviction/ban/misbehavior policy, DoS/resource governance, retained inbound metrics, peer-policy runtime bridging, structured peer-policy logs, and deterministic release-boundary guardrails. The milestone deliberately does not claim transaction relay, compact block relay, mempool propagation, public inbound defaults, production service operation, or production full-node readiness.
@@ -38,7 +64,7 @@
 - INB-01 through INB-04 have intentionally non-obvious ownership: Phase 90 remains historical implementation evidence, while Phase 98 owns final traceability closure.
 - Historical Phase 98-era notes may still mention prior INT-04/FLOW-04 caveats; the archived v1.9 audit supersedes them with no active integration or flow gaps.
 
-**What's next:** Start the next milestone with `/gsd-new-milestone`.
+**What's next:** v2.0 is active; see `.planning/ROADMAP.md`.
 
 ---
 
