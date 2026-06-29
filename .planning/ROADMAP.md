@@ -44,7 +44,7 @@
 
 Plans:
 - [x] 100-01-PLAN.md — Pure relay activation and eligibility policy in `open-bitcoin-network`.
-- [ ] 100-02-PLAN.md — Open Bitcoin JSONC/CLI relay activation config and parser wiring.
+- [x] 100-02-PLAN.md — Open Bitcoin JSONC/CLI relay activation config and parser wiring.
 - [ ] 100-03-PLAN.md — Docs, parity roots, no-claim checker, verifier wiring, and phase verification.
 
 ### Phase 101: Transaction Inventory Identity and Download Scheduling

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Transaction Relay and Mempool Participation Boundary
 status: executing
-stopped_at: Phase 100 Plan 100-01 completed
-last_updated: "2026-06-29T18:39:56.000Z"
-last_activity: 2026-06-29 -- Phase 100 Plan 100-01 completed; Plan 100-02 next
+stopped_at: Phase 100 Plan 100-02 completed
+last_updated: "2026-06-29T19:05:20.000Z"
+last_activity: 2026-06-29 -- Phase 100 Plan 100-02 completed; Plan 100-03 next
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
-  percent: 33
+  completed_plans: 2
+  percent: 67
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: `.planning/PROJECT.md` (updated 2026-06-29)
 
 Milestone: v2.0 Transaction Relay and Mempool Participation Boundary
 Phase: 100 (relay-activation-boundary-and-permission-semantics) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Executing Phase 100
-Last activity: 2026-06-29 -- Phase 100 Plan 100-01 completed; Plan 100-02 next
+Last activity: 2026-06-29 -- Phase 100 Plan 100-02 completed; Plan 100-03 next
 
-Progress: [###-------] 33%
+Progress: [#######---] 67%
 
 ## Performance Metrics
 
@@ -65,6 +65,7 @@ Progress: [###-------] 33%
 - Phase 99 closed optional audit tech debt for automatic sanitized `inbound_peer_policy` structured-log emission without remapping completed v1.9 requirements.
 - v2.0 is now planned as 7 phases and 32 requirements covering scoped transaction relay and mempool participation while keeping compact block relay, public relay defaults, production service operation, production-funds wallet use, public-network CI, and production full-node readiness deferred.
 - Phase 100 Plan 100-01 added scoped relay permission-effect labels and a pure default-off relay activation eligibility policy without changing peer socket, mempool, or service-bit behavior.
+- Phase 100 Plan 100-02 added default-off Open Bitcoin JSONC/CLI relay activation config and typed runtime wiring without changing peer socket, mempool, service-bit, or public status behavior.
 
 | Phase 91-peer-permissions-and-connection-classes P01 | 27min | 2 tasks | 5 files |
 | Phase 91 P02 | 34min | 2 tasks | 13 files |
@@ -92,6 +93,7 @@ Progress: [###-------] 33%
 | Phase 98 P02 | 14m52s | 2 tasks | 10 files |
 | Phase 98 P03 | 27m31s | 2 tasks | 8 files |
 | Phase 100 P01 | 60m | 2 tasks | 11 files |
+| Phase 100 P02 | 25m | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -181,7 +183,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ### Pending Todos
 
-- Execute Phase 100 Plan 100-02 for Open Bitcoin JSONC/CLI relay activation config and parser wiring.
 - Execute Phase 100 Plan 100-03 for docs, parity roots, no-claim checker, verifier wiring, and final phase verification.
 - Keep v1.9 phase directories numbered 90+ under `.planning/phases/`; historical phase directories remain tracked because verifier scripts still depend on selected phase evidence.
 - Keep repo-local Cargo and Bazel command forms in UAT guidance:
@@ -199,6 +200,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-29T18:39:56.000Z
-Stopped at: Phase 100 Plan 100-01 completed
-Resume file: .planning/phases/100-relay-activation-boundary-and-permission-semantics/100-02-PLAN.md
+Last session: 2026-06-29T19:05:20.000Z
+Stopped at: Phase 100 Plan 100-02 completed
+Resume file: .planning/phases/100-relay-activation-boundary-and-permission-semantics/100-03-PLAN.md
