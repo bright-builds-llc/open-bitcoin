@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Transaction Relay and Mempool Participation Boundary
 status: executing
-stopped_at: Phase 100 context gathered
-last_updated: "2026-06-29T17:39:25.545Z"
-last_activity: 2026-06-29 -- Phase 100 execution started
+stopped_at: Phase 100 Plan 100-01 completed
+last_updated: "2026-06-29T18:39:56.000Z"
+last_activity: 2026-06-29 -- Phase 100 Plan 100-01 completed; Plan 100-02 next
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 3
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 33
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: `.planning/PROJECT.md` (updated 2026-06-29)
 
 Milestone: v2.0 Transaction Relay and Mempool Participation Boundary
 Phase: 100 (relay-activation-boundary-and-permission-semantics) — EXECUTING
-Plan: 1 of 3
+Plan: 2 of 3
 Status: Executing Phase 100
-Last activity: 2026-06-29 -- Phase 100 execution started
+Last activity: 2026-06-29 -- Phase 100 Plan 100-01 completed; Plan 100-02 next
 
-Progress: [----------] 0%
+Progress: [###-------] 33%
 
 ## Performance Metrics
 
@@ -45,7 +45,7 @@ Progress: [----------] 0%
 
 | Phase | Name | Requirements | Status |
 |-------|------|--------------|--------|
-| 100 | Relay Activation Boundary and Permission Semantics | ACT-01, ACT-02, ACT-03, ACT-04 | Pending |
+| 100 | Relay Activation Boundary and Permission Semantics | ACT-01, ACT-02, ACT-03, ACT-04 | In Progress |
 | 101 | Transaction Inventory Identity and Download Scheduling | INV-01, INV-02, INV-03, INV-04, DL-01, DL-02 | Pending |
 | 102 | Orphan Handling and Admission Outcome Bridge | DL-03, DL-04, DL-05, MEM-01, MEM-02 | Pending |
 | 103 | Mempool Chainstate Lifecycle and Durable Recovery | MEM-03, MEM-04, MEM-05, MEM-06 | Pending |
@@ -64,6 +64,7 @@ Progress: [----------] 0%
 - Phase 98 preserves the no-claim boundary for transaction relay, compact block relay, mempool propagation, public inbound defaults, production service operation, and production full-node readiness.
 - Phase 99 closed optional audit tech debt for automatic sanitized `inbound_peer_policy` structured-log emission without remapping completed v1.9 requirements.
 - v2.0 is now planned as 7 phases and 32 requirements covering scoped transaction relay and mempool participation while keeping compact block relay, public relay defaults, production service operation, production-funds wallet use, public-network CI, and production full-node readiness deferred.
+- Phase 100 Plan 100-01 added scoped relay permission-effect labels and a pure default-off relay activation eligibility policy without changing peer socket, mempool, or service-bit behavior.
 
 | Phase 91-peer-permissions-and-connection-classes P01 | 27min | 2 tasks | 5 files |
 | Phase 91 P02 | 34min | 2 tasks | 13 files |
@@ -90,6 +91,7 @@ Progress: [----------] 0%
 | Phase 98 P01 | 11m47s | 2 tasks | 4 files |
 | Phase 98 P02 | 14m52s | 2 tasks | 10 files |
 | Phase 98 P03 | 27m31s | 2 tasks | 8 files |
+| Phase 100 P01 | 60m | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -179,8 +181,8 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ### Pending Todos
 
-- Discuss Phase 100 and write `.planning/phases/100-relay-activation-boundary-and-permission-semantics/CONTEXT.md`.
-- Plan and execute Phase 100 after discussion is complete.
+- Execute Phase 100 Plan 100-02 for Open Bitcoin JSONC/CLI relay activation config and parser wiring.
+- Execute Phase 100 Plan 100-03 for docs, parity roots, no-claim checker, verifier wiring, and final phase verification.
 - Keep v1.9 phase directories numbered 90+ under `.planning/phases/`; historical phase directories remain tracked because verifier scripts still depend on selected phase evidence.
 - Keep repo-local Cargo and Bazel command forms in UAT guidance:
   - `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- ...`
@@ -197,6 +199,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-29T16:27:20.948Z
-Stopped at: Phase 100 context gathered
-Resume file: .planning/phases/100-relay-activation-boundary-and-permission-semantics/100-CONTEXT.md
+Last session: 2026-06-29T18:39:56.000Z
+Stopped at: Phase 100 Plan 100-01 completed
+Resume file: .planning/phases/100-relay-activation-boundary-and-permission-semantics/100-02-PLAN.md

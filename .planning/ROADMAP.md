@@ -12,7 +12,7 @@
 
 | Phase | Name | Requirements | Status |
 | --- | --- | --- | --- |
-| 100 | Relay Activation Boundary and Permission Semantics | ACT-01, ACT-02, ACT-03, ACT-04 | Pending |
+| 100 | Relay Activation Boundary and Permission Semantics | ACT-01, ACT-02, ACT-03, ACT-04 | In Progress |
 | 101 | Transaction Inventory Identity and Download Scheduling | INV-01, INV-02, INV-03, INV-04, DL-01, DL-02 | Pending |
 | 102 | Orphan Handling and Admission Outcome Bridge | DL-03, DL-04, DL-05, MEM-01, MEM-02 | Pending |
 | 103 | Mempool Chainstate Lifecycle and Durable Recovery | MEM-03, MEM-04, MEM-05, MEM-06 | Pending |
@@ -43,7 +43,7 @@
 **Plans:** 3 plans
 
 Plans:
-- [ ] 100-01-PLAN.md — Pure relay activation and eligibility policy in `open-bitcoin-network`.
+- [x] 100-01-PLAN.md — Pure relay activation and eligibility policy in `open-bitcoin-network`.
 - [ ] 100-02-PLAN.md — Open Bitcoin JSONC/CLI relay activation config and parser wiring.
 - [ ] 100-03-PLAN.md — Docs, parity roots, no-claim checker, verifier wiring, and phase verification.
 
