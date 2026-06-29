@@ -1,364 +1,354 @@
 # Pitfalls Research
 
-**Domain:** Open Bitcoin v1.6 mainnet full-sync completion
-**Researched:** 2026-06-11
-**Confidence:** HIGH for risk classes and scope boundaries, MEDIUM for phase numbering until the v1.6 roadmap is created.
+**Domain:** Open Bitcoin v2.0 transaction relay and mempool participation boundary
+**Researched:** 2026-06-29
+**Confidence:** HIGH
 
-## Context
+## Scope Note
 
-v1.5 shipped a source-built, explicit opt-in unattended mainnet operator-review
-loop with bounded progress, durable restart/resume evidence, service lifecycle
-evidence, compatibility reports, support bundles, and deterministic release
-boundaries. v1.6 raises the claim from bounded review to explicit opt-in sync to
-the active mainnet tip and staying current.
+This research is for a subsequent milestone that adds bounded transaction relay and mempool participation to existing Open Bitcoin. The roadmap for v2.0 is still being defined, so phase names below are recommended Phase 100+ prevention gates for roadmap creation rather than claims that those phases already exist.
 
-The main mistake is treating this as "run the loop longer." Full sync-to-tip is
-a different claim: consensus validation, active chainstate, durable UTXO state,
-reorg handling, peer scheduling, restart recovery, and operator evidence must
-all agree before the release can truthfully say the node reached tip.
-
-## Proposed v1.6 Phase Map
-
-The active roadmap has not yet assigned v1.6 phases. These proposed slots
-continue after shipped Phase 67 and should be adjusted when the roadmap is
-created.
-
-| Proposed phase | Responsibility |
-| --- | --- |
-| Phase 68: Full-Sync Requirements and Claim Boundary | Define sync-to-tip acceptance criteria, explicit non-claims, parity roots, and deterministic-versus-opt-in verification split. |
-| Phase 69: Consensus and Active Chainstate at Mainnet Scale | Ensure every connected block path is consensus-gated and chainwork-driven before progress can count as connected. |
-| Phase 70: Durable UTXO Storage and Corruption Recovery | Persist chainstate and UTXO data with atomicity, schema, crash recovery, size bounds, and repair guidance. |
-| Phase 71: Sustained Peer Scheduling and Anti-Stall Sync | Drive long-running headers and block download across peer rotation, in-flight limits, replacement, backoff, and no-progress diagnosis. |
-| Phase 72: Reorg and Restart/Resume Correctness | Prove disconnect/reconnect, stale in-flight cleanup, same-datadir resume, and multi-block reorg behavior. |
-| Phase 73: Operator Tip Truth and Opt-In Full-Sync UAT | Expose truthful progress, tip, lag, stay-current, support, and UAT evidence without overstating production readiness. |
-| Phase 74: Release Boundaries and Deterministic Verification | Lock the v1.6 parity docs, threat model, default verification exclusions, and out-of-scope surfaces. |
+The central failure mode is over-activation: making a parsing, policy, or local mempool feature look like public relay readiness. v2.0 should keep the current project boundaries intact: pinned Bitcoin Knots `29.3.knots20260210` behavior for in-scope surfaces, first-party Rust implementation, functional-core/imperative-shell separation, deterministic default verification, no public-network CI default, redacted support surfaces, opt-in inbound serving, and no production-readiness overclaim.
 
 ## Critical Pitfalls
 
-### 1. Counting Downloaded Blocks As Consensus-Connected Blocks
+### Pitfall 1: Activating Relay-Like Permissions Too Broadly
 
-**What goes wrong:** The node reports full sync because it has headers or block
-bodies near tip, but active chainstate has not connected those blocks through
-the full consensus path. This can hide invalid block acceptance, missing UTXO
-updates, or a chainstate stuck far behind header progress.
+**What goes wrong:**
+The existing `relay`, `forcerelay`, and `mempool` permission tokens are parsed and surfaced, but v1.9 intentionally kept their runtime effects inactive. A v2.0 implementation can accidentally treat those labels as full Bitcoin Knots permission semantics, enabling transaction relay, mempool dumps, eviction immunity, or public serving paths that were never explicitly scoped.
 
-**Warning signs:**
-- Status language uses "synced" when only `header_height` or
-  `downloaded_block_height` advanced.
-- Tests assert height counters without checking active tip hash, chainwork,
-  UTXO deltas, and undo data.
-- Live reports treat support bundle existence or block-body receipt as success.
+**Why it happens:**
+The permission parser already recognizes Knots-like names, and the implementation has an `InactivePermissionEffectLabel` type. It is tempting to replace "inactive" with broad conditionals and assume that matching token names means matching all Knots effects.
 
-**Prevention strategy:** Keep `header_height`, `downloaded_block_height`, and
-`connected_block_height` separate. Only connected progress should count toward a
-sync-to-tip claim. Require deterministic fixtures and parity checks for invalid
-headers, invalid blocks, coinbase maturity, subsidy-plus-fees limits, BIP30
-overwrite behavior, merkle roots, contextual header checks, and script/spend
-validation before live UAT can be accepted.
-
-**Phase to address:** Phase 68 defines the claim; Phase 69 enforces the
-consensus and chainstate gate; Phase 73 prevents operator-surface drift.
-
-### 2. Treating Full Chainstate As A Height Counter
-
-**What goes wrong:** The durable store preserves the last connected height but
-not a complete, reloadable, internally consistent UTXO view. The node can appear
-to resume at tip but fail to validate the next block, survive reorgs, or answer
-truthful status about active chainstate.
+**How to avoid:**
+Create an explicit relay activation matrix before implementation. The matrix must separate ordinary relay behavior, permissioned relay behavior, protected peer admission, BIP35-style `mempool` handling, `forcerelay`, bloom/filter permissions, and unrelated compact-block behavior. Add tests proving that enabling one permission does not imply the others. Keep public listener defaults, inbound serving defaults, and relay defaults independent.
 
 **Warning signs:**
-- Restart tests reopen a tip hash but do not validate a subsequent spend against
-  persisted coins.
-- UTXO, undo, block index, and active chain pointers are written independently
-  without a recovery invariant.
-- Reindex or corruption recovery guidance exists only as generic "delete the
-  datadir" text.
+Code branches directly on parsed permission strings outside a narrow activation module; tests assert only that tokens parse; `relay` or `mempool` permissions silently bypass normal policy; support/status output reports permissions as active effects without evidence.
 
-**Prevention strategy:** Define a durable chainstate contract: block index,
-chainwork, active tip, UTXO entries, undo records, schema version, flush
-ordering, and crash recovery must move through explicit states. Test reload after
-partial writes, incompatible schema, lock contention, corruption markers, and
-unclean shutdown. Do not promote a sync-to-tip claim until a fresh process can
-connect more blocks from the reopened state.
+**Phase to address:**
+Phase 100: Relay Activation Boundary and Permission Semantics.
 
-**Phase to address:** Phase 69 for chainstate invariants; Phase 70 for durable
-storage, recovery, and growth controls; Phase 72 for restart/resume proof.
+### Pitfall 2: Mixing Txid and Wtxid Relay Identity
 
-### 3. Linear-Only IBD With No Serious Reorg Path
+**What goes wrong:**
+The node requests or announces the wrong inventory type, such as asking a wtxid-relay peer for `MSG_TX`, asking a non-wtxid peer for `MSG_WTX`, or clearing only one identity after receiving a transaction. This causes missed downloads, repeated requests, privacy leaks through unnecessary announcements, and parity drift from Knots tx download behavior.
 
-**What goes wrong:** The IBD loop handles the best chain only as a straight line.
-At mainnet scale, competing headers, late-arriving blocks, peer disagreement, and
-short reorgs are normal. A linear-only implementation can corrupt active
-chainstate, double-connect blocks, or refuse the most-work chain.
+**Why it happens:**
+Open Bitcoin already tracks both txids and wtxids, but they are both represented as hash-like values. A simplified relay path can collapse them into one "transaction hash" concept and lose the protocol distinction.
+
+**How to avoid:**
+Keep a typed relay identity model equivalent to a `GenTxid`: every announcement, request, notfound, known-inventory update, and received transaction path must know whether it is keyed by txid or wtxid. Tests must cover mismatch ignoring, correct request type selection, `notfound` cleanup, received-transaction cleanup for both identities, and announcement choice based on the peer's negotiated `wtxidrelay` state.
 
 **Warning signs:**
-- Reorg tests cover one toy disconnect but not multi-block disconnect/reconnect
-  with persisted undo.
-- Chain selection uses height, latest peer, or arrival order rather than
-  cumulative work.
-- In-flight block requests survive a reorg without being invalidated or
-  reclassified.
+Maps keyed only by raw `Hash32`; helper names like `request_transaction(hash)` with no identity type; announcing `MSG_TX` to all peers; treating incoming `tx` messages as satisfying only txid requests; no tests for wtxidrelay mismatch cases.
 
-**Prevention strategy:** Model chain selection around cumulative work and make
-reorg application explicit: disconnect old active blocks with undo, reconnect
-the better branch, reconcile in-flight downloads, and persist the transition
-atomically enough to recover after a crash. Include deterministic reorg
-fixtures, restart-after-reorg tests, and support evidence that distinguishes
-headers, downloaded bodies, and connected active tip.
+**Phase to address:**
+Phase 101: Transaction Download, Request Scheduling, and Orphan Handling.
 
-**Phase to address:** Phase 69 establishes chainwork and active-chain rules;
-Phase 72 owns reorg and restart/resume correctness.
+### Pitfall 3: Treating `ReceivedTransaction` as Direct Mempool Admission
 
-### 4. Peer Scheduling That Works Only With One Friendly Peer
+**What goes wrong:**
+An inbound `tx` message is submitted directly to the mempool and any rejection bubbles out as a peer/network error. The node then lacks recent-reject tracking, orphan handling, request expiry, peer fallback, notfound fallback, candidate-peer selection, and clean peer disconnect cleanup.
 
-**What goes wrong:** A bounded review loop can show progress with one useful
-peer, but full IBD needs sustained scheduling across churn, idle peers, partial
-responses, malformed data, `notfound`, disconnects, and rate differences. Weak
-scheduling either stalls forever or overreacts by churning good peers.
+**Why it happens:**
+The current node path can accept a simple peer transaction into the mempool, store it, and serve it. That makes a narrow smoke path look like a complete relay manager.
+
+**How to avoid:**
+Introduce a first-party pure relay/download state machine before enabling real mempool participation. It should model announcement registration, per-peer in-flight request caps, request expiry, `notfound`, peer disconnect fallback, accepted/rejected callbacks from mempool policy, recent rejects, reconsiderable rejects, and bounded orphan state. The node shell should call this manager on peer events, mempool accept/reject results, and chain events.
 
 **Warning signs:**
-- One peer owns all useful progress and replacement peers never catch up.
-- In-flight limits are global but not peer-attributed, or peer failures clear
-  useful work from other peers.
-- `notfound`, duplicate blocks, malformed blocks, and disconnects are logged but
-  do not affect scheduling decisions.
+`PeerAction::ReceivedTransaction` calls mempool admission and returns the error directly; no state transition after mempool acceptance or rejection; no fake-clock tests for request timeout; no tests for `notfound` or disconnect fallback.
 
-**Prevention strategy:** Keep peer contribution accounting typed and durable
-enough for operator evidence. Separate header sync, block body scheduling, block
-connect, and peer health. Cap in-flight work, rotate stalled peers, preserve
-useful peers, retry missing blocks without duplicate connects, and keep failure
-credit local to the responsible peer.
+**Phase to address:**
+Phase 101: Transaction Download, Request Scheduling, and Orphan Handling.
 
-**Phase to address:** Phase 71 owns sustained scheduling, peer rotation,
-anti-stall behavior, and no-progress taxonomy; Phase 72 verifies stale in-flight
-cleanup across reorgs and restarts.
+### Pitfall 4: Letting Missing-Input Handling Become Either Permanent Rejection or Unbounded Orphan Storage
 
-### 5. Misdetecting "At Tip" And "Staying Current"
+**What goes wrong:**
+Transactions with missing parents are permanently rejected, endlessly re-requested, or stored in an unbounded orphan pool. Valid child-before-parent relay fails, invalid orphan floods consume memory, and package-related behavior is overclaimed without package validation.
 
-**What goes wrong:** The node calls itself current based on local headers,
-wall-clock freshness, or a single peer's claim. It can be behind the network,
-stuck after reaching a historical height, or unable to process new blocks while
-still showing reassuring status.
+**Why it happens:**
+The current mempool core correctly rejects missing inputs for direct single-transaction admission. Real relay needs a separate bounded orphan/download path, and Knots has substantial logic around missing parents, orphan candidates, reconsideration, and package validation.
+
+**How to avoid:**
+Scope v2.0 orphan behavior explicitly. Implement a bounded orphanage, parent-request generation, orphan reconsideration after parent acceptance, orphan cleanup on block connection and peer disconnect, and deterministic eviction when the orphan cap is reached. If package relay is not implemented, say so in docs and tests. Never bypass normal validation to admit a child before its parents are available.
 
 **Warning signs:**
-- "Synced" is derived from elapsed time, last peer message time, or local best
-  header alone.
-- Lag is rendered as a precise ETA without a clear source and confidence.
-- No-progress states disappear after restart or are overwritten by generic
-  `steady` status.
+`MissingInput` is logged as a final policy rejection; an orphan map has no explicit max count or byte budget; a child transaction is inserted by bypassing consensus/policy validation; docs imply package relay because orphan handling exists.
 
-**Prevention strategy:** Define tip truth as an evidence bundle, not one number:
-validated headers, connected active chainstate, peer-observed best height or
-headers, last useful progress timestamp, no-progress category, and stay-current
-window. Use cautious wording such as "connected to known validated tip" when the
-global public tip cannot be proven. Require opt-in UAT to demonstrate reaching a
-mainnet tip candidate and then connecting newly announced blocks or diagnosing
-why that did not happen.
+**Phase to address:**
+Phase 101 for orphan/download state and Phase 102 for mempool admission integration.
 
-**Phase to address:** Phase 68 defines the acceptance language; Phase 71
-provides no-progress evidence; Phase 73 owns operator truth and UAT.
+### Pitfall 5: Breaking Mempool, Relay Cache, and Chainstate Coherence
 
-### 6. Storage Growth, Compaction, And Corruption Becoming An Afterthought
+**What goes wrong:**
+Confirmed, evicted, replaced, or conflicted transactions remain in the mempool-facing relay store. The node serves stale transactions through `getdata`, relays transactions already mined in a block, fails to reconsider transactions on reorg, or leaves descendant/ancestor state inconsistent.
 
-**What goes wrong:** Full mainnet sync changes the storage profile from bounded
-evidence to long-running, high-volume writes. Without explicit bounds and
-recovery, block bodies, UTXO data, indexes, metrics, logs, and support evidence
-can grow without control or leave the store unrecoverable after a crash.
+**Why it happens:**
+Open Bitcoin currently stores accepted transactions in maps separate from the mempool structure for simple serving. Without explicit chain-event callbacks, those maps can diverge from mempool truth.
+
+**How to avoid:**
+Phase 102 must own chain-event integration. On block connect, remove block transactions, conflicts, and dependent relay cache entries through normal mempool APIs. On disconnect or reorg, reconsider eligible disconnected transactions through normal admission rules, not direct insertion. Notify the relay/download manager about accepted, rejected, confirmed, disconnected, and removed transactions.
 
 **Warning signs:**
-- Tests use tiny fixture stores only and never inspect large-store behavior.
-- Metrics/log retention is bounded but chainstate or block-body retention is not.
-- Corruption handling exists but cannot identify which store family failed.
+`transactions_by_txid` or `transactions_by_wtxid` grows independently of mempool entries; `connect_stored_block` has no mempool side effects; support status shows unchanged mempool counts after connecting a block that includes mempool transactions; tests inspect maps instead of observable serving behavior.
 
-**Prevention strategy:** Budget disk usage by store family, document which data
-is retained, define pruning as out of scope unless deliberately added, and add
-store-health evidence that points at the failing component. Cover schema
-versions, atomic write batches, flush ordering, recovery precedence, compaction
-expectations, lock contention, and operator-safe repair guidance.
+**Phase to address:**
+Phase 102: Mempool/Chainstate Admission, Pressure, and Repair.
 
-**Phase to address:** Phase 70 owns durable storage growth and corruption
-recovery; Phase 73 surfaces store health in status and support evidence.
+### Pitfall 6: Advertising Mempool Pressure Behavior Without Rolling Minimum-Fee State
 
-### 7. Restart/Resume Evidence That Does Not Prove Resume Safety
+**What goes wrong:**
+The node accepts or announces transactions below the effective mempool minimum fee after eviction pressure, reports misleading `mempoolminfee` values, or repeatedly churns low-fee transactions when the mempool is full.
 
-**What goes wrong:** The node reopens the same datadir and reports previous
-progress, but stale in-flight requests, half-applied chainstate, duplicate block
-connects, or peer retry state can corrupt the next run. v1.5 proved bounded
-restart/resume evidence; v1.6 needs restart safety at full-chain scale.
+**Why it happens:**
+The current policy config includes static minimum relay and incremental relay fee settings, and the mempool can trim to a maximum size. The parity catalog already flags long-lived rolling minimum-fee behavior as a gap, while Knots updates and decays rolling fee state under pressure.
+
+**How to avoid:**
+Either implement rolling minimum-fee state with deterministic time/block inputs and surface it accurately, or explicitly bound v2.0 to static minrelay behavior and mark pressure parity deferred. Tests must prove that trimming raises the effective admission threshold, that later decay or reset behavior is deterministic, and that operator/RPC surfaces match the actual admission rule.
 
 **Warning signs:**
-- Resume tests stop after reading durable status and do not continue syncing.
-- In-flight headers or blocks are replayed blindly after restart.
-- Clean and unclean shutdown share the same recovery category and next action.
+`mempoolminfee` is always equal to `minrelaytxfee`; policy code has no time or block-height input for decay; docs claim Knots-compatible mempool pressure behavior without eviction-threshold tests.
 
-**Prevention strategy:** On startup, reconcile durable active tip, downloaded
-block bodies, pending requests, peer retry state, and latest stop reason before
-opening sockets. Treat in-flight work as suspect unless it can be revalidated.
-Test same-datadir resume after clean shutdown, unclean shutdown, mid-batch block
-download, mid-connect crash, reorg, and storage pressure.
+**Phase to address:**
+Phase 102: Mempool/Chainstate Admission, Pressure, and Repair.
 
-**Phase to address:** Phase 72 owns restart/resume correctness; Phase 70 owns
-storage recovery categories; Phase 73 owns operator-facing evidence.
+### Pitfall 7: Serving Any Locally Stored Transaction Instead of Relay-Eligible Transactions
 
-### 8. Nondeterministic Verification Sneaking Into Default Checks
+**What goes wrong:**
+The node serves transactions from a local cache even after they are replaced, evicted, confirmed, conflicted, or rejected. Peers can request stale transactions outside the intended relay window, and `notfound` behavior no longer reflects mempool relay eligibility.
 
-**What goes wrong:** Full-sync ambition pressures the project to put public
-mainnet, service-manager, timing, or disk-size-sensitive checks into default
-verification. That makes `bash scripts/verify.sh` flaky and pushes contributors
-toward skipping the very guardrails that protect consensus work.
+**Why it happens:**
+The existing `serve_inventory` path can return from `transactions_by_txid` and `transactions_by_wtxid`. That is useful for current bounded behavior, but it is not enough for relay serving once transaction lifecycle transitions matter.
+
+**How to avoid:**
+Make relay serving derive from mempool entries plus a bounded relay cache with explicit sequence and last-announced semantics. Remove or mark entries on replacement, eviction, block connection, reorg repair, and rejection. Test `getdata` for unknown, stale, confirmed, replaced, and valid relay-eligible transactions.
 
 **Warning signs:**
-- Default tests require internet, public peers, `launchctl`, `systemctl`, or a
-  long wall-clock sync.
-- Test pass/fail depends on current tip height, mempool contents, peer behavior,
-  DNS seed availability, or elapsed time thresholds.
-- Live reports are checked into git as golden fixtures.
+`ServeInventory` bypasses mempool lookup; no tests assert `notfound` after replacement or block connection; old txids remain in maps after RBF replacement; every stored local transaction is considered servable.
 
-**Prevention strategy:** Keep deterministic checks hermetic: synthetic peers,
-fixed fixtures, local stores, fake clocks, and controlled service adapters.
-Reserve public-network full-sync attempts for explicit opt-in UAT commands and
-local generated reports. Default verification should check the boundaries,
-schemas, redaction, docs roots, parity breadcrumbs, and deterministic model
-behavior, not public network availability.
+**Phase to address:**
+Phase 103: Relay Serving, Announcement, and Rebroadcast Policy.
 
-**Phase to address:** Every phase should carry deterministic tests for its
-domain. Phase 74 owns the final verification contract and release-boundary
-guards.
+### Pitfall 8: Broadcasting Accepted Transactions Without Peer Eligibility, Fee, Rate, or Queue Controls
 
-### 9. Operator Claims That Outrun Evidence
+**What goes wrong:**
+Every accepted transaction is announced immediately to every peer. The node ignores relay opt-outs, wtxidrelay negotiation, future fee filters, permission boundaries, preferred-peer delays, unbroadcast retry semantics, inventory caps, and bandwidth budgets.
 
-**What goes wrong:** The project truthfully ships sync-to-tip evidence but copy,
-status, docs, or support artifacts imply production full-node support, network
-service readiness, or wallet safety. This is especially risky because v1.6 is
-closer to a normal node than prior bounded review milestones.
+**Why it happens:**
+The network core already has an `announce_transaction` helper, so a loop over peers is the shortest path to a visible relay demo. Knots, however, uses per-peer inventory queues, intervals, caps, fee filtering, and retry behavior.
+
+**How to avoid:**
+Add a relay announcement scheduler with a fake-clock test surface. It must maintain per-peer queues, enforce inventory and rate limits, respect negotiated inventory identity, avoid relay to ineligible peers, and represent unbroadcast local transactions separately from externally learned transactions. If fee filters or rebroadcast are deferred, the roadmap and release docs must say so.
 
 **Warning signs:**
-- Docs say "full node ready" without naming source-built, explicit opt-in, and
-  non-claim boundaries.
-- `synced=true` lacks fields explaining known tip source, connected height, and
-  latest progress.
-- Support bundles blur successful full sync, diagnosed blocker, and partial
-  progress into one "healthy" label.
+A mempool acceptance path iterates all peer IDs immediately; no per-peer queue type exists; tests do not advance a clock; metrics count "broadcasted" without distinguishing queued, sent, skipped, rejected, or deferred.
 
-**Prevention strategy:** Keep release language evidence-based. Use separate
-states for partial progress, reached known tip, stayed current, diagnosed
-blocker, storage recovery, and operator cancellation. Require support and
-readiness docs to state explicit non-claims: no inbound serving, relay,
-production-funds wallet use, migration apply mode, packaging, hosted dashboard,
-GUI, Windows service, public-network CI, or broad production-node guarantee.
+**Phase to address:**
+Phase 103: Relay Serving, Announcement, and Rebroadcast Policy.
 
-**Phase to address:** Phase 73 owns operator truth and support evidence; Phase
-74 owns final release-readiness and parity roots.
+### Pitfall 9: Changing Default Verification or Runtime Into Public Relay Participation
 
-### 10. Scope Creep Into Production Node Surfaces
+**What goes wrong:**
+The milestone accidentally makes public-network relay the default daemon behavior, or adds live public-network checks to the default verifier. That contradicts current release boundaries and makes deterministic verification dependent on external peers.
 
-**What goes wrong:** Full sync-to-tip sounds like a production-node milestone, so
-inbound serving, transaction relay, compact blocks, wallet production use,
-migration apply, packaging, pruning, and hosted monitoring get pulled in before
-the outbound full-sync claim is correct and auditable.
+**Why it happens:**
+Transaction relay is network-facing, and implementation teams often equate "feature exists" with "feature should run by default." Existing v1.9 inbound serving is already opt-in, so the activation boundary must remain explicit.
+
+**How to avoid:**
+Keep default verification hermetic and deterministic. Public-network relay, if tested at all, belongs in opt-in UAT or manually run operator workflows. Add release-boundary checks for docs, help text, and defaults: no public relay default, no public-network CI default, no compact-block claim, and no production full-node readiness claim.
 
 **Warning signs:**
-- A full-sync phase starts adding relay, inbound peer serving, address
-  advertisement, or wallet-funds language to "make it feel complete."
-- Requirements include packaging, signed installers, hosted dashboards, or
-  migration apply as acceptance criteria for sync-to-tip.
-- Mempool repair during reorg becomes a blocker even though transaction relay is
-  still deferred.
+`scripts/verify.sh` opens public peers; default config enables listener plus relay on public interfaces; README or release docs say "production-ready relay"; tests rely on live peer discovery or external transaction propagation.
 
-**Prevention strategy:** Treat v1.6 as one expansion: explicit opt-in outbound
-mainnet sync to active tip and staying current. Document every production-adjacent
-surface as deferred unless a separate requirement explicitly scopes it with
-parity evidence, threat model, and verification plan.
+**Phase to address:**
+Phase 100 for activation defaults and Phase 105 for release boundary verification.
 
-**Phase to address:** Phase 68 sets the requirement boundary; Phase 74 enforces
-it in docs, parity roots, and release checks.
+### Pitfall 10: Leaking Transaction, Peer, Permission, or Wallet-Adjacent Data in Support Surfaces
 
-## Risk-To-Phase Matrix
+**What goes wrong:**
+Relay debugging adds raw tx hex, txids/wtxids, inventory payloads, peer endpoints, permission strings, wallet-created transaction data, or high-cardinality peer labels to logs, metrics, support bundles, or operator reports.
 
-| Risk class | Primary warning sign | Prevention owner |
-| --- | --- | --- |
-| Consensus safety | Downloaded or header-only progress is reported as connected active-chain progress. | Phase 69, with Phase 73 truth-surface checks. |
-| Chainstate correctness | Persisted height/hash cannot validate the next block after restart. | Phase 69 and Phase 70. |
-| Reorg behavior | Chain selection follows height or arrival order instead of cumulative work. | Phase 72, with chainwork rules in Phase 69. |
-| Peer scheduling | One friendly peer masks stalls, duplicate requests, or bad-peer attribution. | Phase 71. |
-| Storage growth/corruption | Store size, schema, compaction, and corruption recovery are undocumented or untested. | Phase 70. |
-| Restart/resume | Same-datadir reopen shows previous status but cannot safely continue work. | Phase 72. |
-| Operator claims | Docs or status say "synced" without connected-tip evidence and non-claims. | Phase 73 and Phase 74. |
-| Nondeterministic tests | Default verification touches public peers, real services, or timing thresholds. | Phase 74, with per-phase deterministic fixtures. |
-| Scope creep | Inbound serving, relay, wallet, migration, or packaging become hidden acceptance criteria. | Phase 68 and Phase 74. |
+**Why it happens:**
+Relay failures are hard to diagnose, so raw payloads are attractive. v1.9 already tightened support-bundle redaction for peer-serving evidence, but transaction relay adds more sensitive and high-cardinality data.
 
-## Explicit Out-Of-Scope Pitfalls
+**How to avoid:**
+Use allowlisted, low-cardinality status fields. Support bundles should report counts, bounded redacted samples, capability summaries, and `Unavailable` reasons instead of raw payloads. Add sanitizer tests for tx hex, txids/wtxids where not explicitly allowed, peer endpoints, permission class names, and wallet-adjacent fields. Metrics labels must remain fixed enums, not transaction or peer identifiers.
 
-These are real Bitcoin-node pitfalls, but they should not become v1.6 blockers
-unless the roadmap deliberately expands scope.
+**Warning signs:**
+Structured logs include raw `tx` payloads; support markdown dumps inv lists; metrics labels contain txids, wtxids, peer addresses, or permission names; `Debug` output from relay state is embedded directly in reports.
 
-- **Inbound serving and address advertisement:** Important for production node
-  usefulness, but v1.6 should not claim inbound reachability or peer-serving
-  parity.
-- **Transaction relay, mempool propagation, and package relay:** Reorgs must keep
-  active chainstate correct, but full relay policy and mempool repair can remain
-  deferred while transaction relay is out of scope.
-- **Compact block relay and block serving:** Sync-to-tip can use existing block
-  download behavior without claiming compact-block serving or relay parity.
-- **Production-funds wallet use:** Wallet status may depend on chain progress,
-  but spending real funds safely needs a separate threat model and parity gate.
-- **Migration apply mode or source datadir mutation:** Full sync must not imply
-  automatic Core/Knots cutover, service disable, wallet import, or source-datadir
-  writes.
-- **Packaging, signed installers, Windows service support, and hosted
-  dashboards:** These are operator-distribution or hosted-product milestones, not
-  prerequisites for the source-built opt-in sync claim.
-- **Public-network CI and checked-in live reports:** Live full-sync evidence
-  should remain opt-in and locally generated unless a future release-policy phase
-  explicitly changes the verification contract.
-- **Timing-threshold release gates:** Benchmarks can provide trend evidence, but
-  a release should not pass or fail only because one public-network run met a
-  wall-clock threshold.
-- **Pruning, assumeutxo, assumevalid, and snapshot bootstrap:** These can be
-  valuable later, but adding them while first claiming full validation to tip
-  risks weakening the evidence story.
+**Phase to address:**
+Phase 104: Operator, RPC, Metrics, Support Evidence, and Redaction.
+
+### Pitfall 11: Overclaiming RPC and Operator Surfaces Before Relay Parity Exists
+
+**What goes wrong:**
+RPC or CLI surfaces expose Knots-like fields for mempool and network relay status even when behavior is scoped, disabled, or deferred. Operators infer that relay, rebroadcast, package behavior, or production readiness exists when it does not.
+
+**Why it happens:**
+RPC shapes are easy to copy before backing semantics are complete, and Open Bitcoin already has operator-facing workflows that value clear status. Filling fields with zeros, constants, or "true" flags can look harmless but creates false evidence.
+
+**How to avoid:**
+Every new operator/RPC field must have an evidence basis: implemented, unavailable, deferred, or deliberately different. Help text and release docs should use the same vocabulary as the runtime. Do not add `getrawmempool`, full `sendrawtransaction` parity, fee-filter status, or network relay claims unless the corresponding behavior has deterministic tests and parity anchors.
+
+**Warning signs:**
+`localrelay` or similar status is `true` while relay activation is disabled; copied Knots fields are hardcoded; docs omit residual risks; CLI output says "mempool synced" or "relay ready" without scoped qualifiers.
+
+**Phase to address:**
+Phase 104 for surfaces and Phase 105 for release readiness.
+
+### Pitfall 12: Losing Parity Traceability While Adding Cross-Cutting Relay Code
+
+**What goes wrong:**
+New Rust relay, mempool, network, node, or tests are added without specific Bitcoin Knots breadcrumbs or without recording intentional differences. Later roadmap work cannot audit whether behavior matches the pinned baseline or is an Open Bitcoin-specific boundary.
+
+**Why it happens:**
+Transaction relay cuts across network processing, mempool policy, validation, chain events, RPC, and support evidence. It is tempting to cite broad files such as `net_processing.cpp` once and move on.
+
+**How to avoid:**
+Require source-breadcrumb updates in every implementation phase that adds first-party Rust source or tests under the checked paths. Use concrete anchors such as Knots `net_processing.cpp`, `node/txdownloadman.*`, `txmempool.cpp`, `policy/policy.h`, functional `p2p_tx_download.py`, RBF tests, and package tests. Use an explicit `none` breadcrumb only for genuinely Open Bitcoin-specific support glue, and record behavior differences in `docs/parity/`.
+
+**Warning signs:**
+New relay files use `none` breadcrumbs for baseline behavior; tests mention parity but have no source anchor; docs claim parity without catalog updates; phase verification does not run the breadcrumb checker.
+
+**Phase to address:**
+Phase 105 as a closeout gate, with enforcement in every implementation phase.
+
+## Technical Debt Patterns
+
+Shortcuts that seem reasonable but create long-term problems.
+
+| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
+|----------|-------------------|----------------|-----------------|
+| Submit inbound peer transactions directly to mempool admission | Fastest demo for "peer tx accepted" | No orphan handling, fallback, recent rejects, peer attribution, or bounded request lifecycle | Only for pre-relay hermetic smoke paths hidden behind disabled activation |
+| Use raw hashes for all tx request state | Less type plumbing | Txid/wtxid mismatch bugs, wrong inv type, incorrect `notfound` cleanup | Never for v2.0 relay code |
+| Keep `transactions_by_txid`/`transactions_by_wtxid` as the relay truth | Reuses existing serving maps | Stale, replaced, confirmed, or invalid transactions remain servable | Only as an internal cache if reconciled by mempool lifecycle tests |
+| Treat static `minrelaytxfee` as full mempool pressure policy | Avoids rolling fee state | Overclaims Knots-compatible eviction behavior and reports misleading `mempoolminfee` | Acceptable only if documented as a scoped deviation and not surfaced as pressure parity |
+| Enable permission tokens by name before defining effects | Quick config story | `relay`, `forcerelay`, and `mempool` become accidental broad capabilities | Never without the Phase 100 activation matrix |
+| Add operator/RPC fields before semantics are implemented | UI and docs look complete | False release evidence and future compatibility debt | Only when fields explicitly return unavailable/deferred states |
+
+## Integration Gotchas
+
+Common mistakes when connecting relay and mempool behavior to existing project boundaries.
+
+| Integration | Common Mistake | Correct Approach |
+|-------------|----------------|------------------|
+| Peer permissions | Mapping parsed permission tokens directly to active relay effects | Route every token through an activation matrix with explicit tests for inactive, ordinary, and permissioned effects |
+| Peer inventory | Requesting every announced tx immediately and uniformly | Use a tx download scheduler with caps, peer eligibility, identity type, timeout, and fallback |
+| Wtxid relay | Treating txid and wtxid as interchangeable transaction hashes | Keep typed identity in announcement, request, response, known-inventory, and serving state |
+| Mempool admission | Mutating mempool or relay cache before all policy/replacement checks pass | Preserve atomic admission: validate first, mutate once, then notify relay state |
+| Chainstate | Connecting or disconnecting blocks without mempool and relay-cache callbacks | Use block connect/disconnect/reorg hooks that remove, reconsider, and notify through normal APIs |
+| RPC/CLI | Copying Knots-compatible field names before matching behavior exists | Surface scoped capability states and only expose parity-shaped values when backed by tests |
+| Support bundles | Dumping raw relay state for diagnosability | Use allowlisted redacted counts, bounded samples, and sanitizer tests |
+| Verification | Adding live peer tests to prove relay works | Keep default verification deterministic; put public-network checks behind opt-in UAT commands |
+
+## Performance Traps
+
+Patterns that work at small scale but fail as usage grows.
+
+| Trap | Symptoms | Prevention | When It Breaks |
+|------|----------|------------|----------------|
+| Unbounded orphan storage | Memory growth under child-before-parent or adversarial peers | Max orphan count/bytes, eviction policy, peer cleanup, and tests at cap | As soon as a peer sends many missing-parent children |
+| Immediate fanout to all peers | Bandwidth spikes, duplicate invs, hard-to-reproduce relay ordering | Per-peer inventory queues, rate caps, fake-clock tests, and eligibility checks | With tens of peers or large mempool churn |
+| Oversized inbound inv/getdata handling | CPU spikes and request-state explosions | Enforce Knots-anchored or explicitly scoped caps for inv items, getdata items, in-flight txs, and per-peer announcements | During adversarial large-inventory messages |
+| Full mempool recomputation on every relay tx without bounds | Slow acceptance under large mempools | Keep v2.0 load claims bounded, add benches before public relay/load claims, and avoid broad runtime promises | As mempool entries approach realistic relay sizes |
+| High-cardinality metrics labels | Metrics backend growth, privacy leakage, slow dashboards | Fixed enum labels and redacted counters only | Any real peer count with per-tx or per-peer labels |
+| Re-request loops for rejected or missing transactions | Repeated getdata/notfound cycles, wasted bandwidth | Recent-reject, reconsiderable, and orphan tracking with expiry | Under malformed txs, missing parents, or flaky peers |
+
+## Security Mistakes
+
+Domain-specific security issues beyond general application security.
+
+| Mistake | Risk | Prevention |
+|---------|------|------------|
+| Letting `forcerelay` bypass policy for invalid transactions | The node forwards invalid or non-standard data and becomes an abuse amplifier | Only relay transactions that pass the scoped acceptance path; test invalid txs are not forwarded |
+| No per-peer tx request and announcement caps | Memory, CPU, and bandwidth denial of service | Apply request, inv, orphan, and queue limits with deterministic cap tests |
+| Txid/wtxid confusion | Malleability-related cache mistakes, wrong requests, or false "already have" results | Typed relay identity and mismatch tests |
+| Raw tx/peer data in support artifacts | Privacy leakage and operational exposure | Redaction allowlists, sanitizer tests, and low-cardinality summaries |
+| Public relay default drift | Users expose relay behavior without explicit consent | Explicit opt-in activation and release-boundary checks |
+| Serving stale replaced or confirmed transactions | Peers receive misleading data and local policy state is bypassed | Relay serving must be tied to mempool lifecycle and bounded relay-cache state |
+
+## UX Pitfalls
+
+Common user experience mistakes in this domain.
+
+| Pitfall | User Impact | Better Approach |
+|---------|-------------|-----------------|
+| Status says "relay enabled" when only message parsing exists | Operators overestimate readiness and may expose the node publicly | Report exact states: disabled, parsing-only, download-only, serve-only, relay-active, or unavailable |
+| Rejection errors are flattened | Operators cannot distinguish missing inputs, policy rejection, replacement failure, eviction, or unsupported package behavior | Return scoped, redacted rejection categories with links to local docs |
+| Support bundle exists but lacks boundary context | Reviewers treat support output as release validation | Include explicit unavailable/deferred reasons and release-boundary notes |
+| CLI examples use aliases only | UAT is harder to reproduce from the repo | Provide repo-local Cargo and Bazel commands for relay/mempool workflows |
+| Docs omit compact-block and public-network boundaries | Users assume full public node readiness | Keep explicit deferred/no-claim sections in release readiness and operator docs |
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] Connected active chainstate, not just headers or downloaded bodies, reaches
-  the known mainnet tip candidate.
-- [ ] A fresh process reopens the same datadir and validates additional blocks
-  from persisted UTXO state.
-- [ ] Multi-block reorg fixtures cover disconnect, reconnect, undo persistence,
-  stale in-flight cleanup, and restart after reorg.
-- [ ] Peer scheduling handles idle, slow, malformed, disconnecting, and
-  `notfound` peers without losing useful progress from healthy peers.
-- [ ] Store-health evidence distinguishes schema mismatch, corruption, lock
-  contention, backend failure, resource exhaustion, and operator cancellation.
-- [ ] Status, dashboard, RPC, logs, metrics, support bundles, and live UAT reports
-  use the same progress vocabulary and do not call partial progress "synced."
-- [ ] `bash scripts/verify.sh` remains deterministic and public-network-free.
-- [ ] Release-readiness docs explicitly preserve non-claims for inbound serving,
-  relay, production wallet use, migration apply, packaging, hosted dashboard,
-  GUI, Windows service support, public-network CI, and broad production-node
-  guarantees.
+Things that appear complete but are missing critical pieces.
+
+- [ ] **Permission activation:** Tokens parse, but verify an activation matrix exists and tests prove no accidental `relay`, `forcerelay`, `mempool`, bloom, filter, compact-block, or public-default coupling.
+- [ ] **Wtxid relay:** Announcements work, but verify mismatch cases, request identity, received-tx cleanup, and `notfound` cleanup for txid and wtxid separately.
+- [ ] **Tx download:** `getdata` is sent, but verify in-flight caps, expiry, disconnect fallback, notfound fallback, peer cleanup, and recent-reject behavior.
+- [ ] **Orphans:** Missing-input txs are stored or rejected, but verify bounded orphanage, parent request generation, reconsideration on parent acceptance, and cap eviction.
+- [ ] **Mempool admission:** A tx can enter the mempool, but verify RBF, ancestor/descendant limits, fee checks, eviction, no partial mutation on rejection, and parity breadcrumbs.
+- [ ] **Chain events:** Blocks connect, but verify mempool removal, conflict cleanup, relay-cache cleanup, and reorg reconsideration.
+- [ ] **Relay serving:** `getdata` returns txs, but verify replaced, evicted, confirmed, rejected, unknown, and stale transactions return the correct result.
+- [ ] **Announcement/rebroadcast:** Accepted txs announce, but verify peer eligibility, rate limits, per-peer queues, wtxid negotiation, and explicit treatment of deferred fee-filter or rebroadcast behavior.
+- [ ] **Operator/RPC surfaces:** Fields exist, but verify every value is implemented, unavailable, deferred, or intentionally different with tests and docs.
+- [ ] **Support and metrics:** Relay status appears, but verify sanitizer tests reject raw tx hex, txids/wtxids where disallowed, peer endpoints, permission strings, and dynamic labels.
+- [ ] **Release boundary:** The feature works locally, but verify no default public relay, no public-network CI default, no compact-block claim, and no production-readiness claim.
+
+## Recovery Strategies
+
+When pitfalls occur despite prevention, how to recover.
+
+| Pitfall | Recovery Cost | Recovery Steps |
+|---------|---------------|----------------|
+| Relay-like permission over-activation | MEDIUM | Restore inactive/default-off behavior, add activation matrix tests, update release docs, and audit support/RPC surfaces for overstated state |
+| Txid/wtxid request confusion | MEDIUM | Introduce typed relay identity, migrate maps and APIs, add mismatch tests, and replay existing peer inventory tests |
+| Direct mempool admission from peer txs | HIGH | Insert a relay/download manager boundary, route accept/reject callbacks through it, and add fake-clock fallback tests before re-enabling relay |
+| Unbounded orphan or request state | HIGH | Disable relay activation, add caps and eviction, purge persisted/debug artifacts if any, and test adversarial limits |
+| Stale relay serving cache | HIGH | Tie serving to mempool lifecycle, remove stale stores, add replacement/block/reorg tests, and update support evidence |
+| Misleading mempool pressure claims | MEDIUM | Either implement rolling minimum-fee state or downgrade docs/status to static-minrelay behavior with explicit deferred parity |
+| Support or metrics data leak | HIGH | Remove or redact artifacts, add sanitizer regressions, review logs/metrics labels, and update support-bundle allowlists |
+| Public relay or live CI drift | MEDIUM | Revert defaults, move network checks to opt-in UAT, add release-boundary checks, and update README/release readiness |
+| Missing parity breadcrumbs | LOW | Add concrete source anchors, update parity docs for intentional differences, and rerun breadcrumb verification |
+
+## Pitfall-to-Phase Mapping
+
+How roadmap phases should address these pitfalls.
+
+| Pitfall | Prevention Phase | Verification |
+|---------|------------------|--------------|
+| Activating relay-like permissions too broadly | Phase 100: Relay Activation Boundary and Permission Semantics | Activation matrix tests prove each permission effect is explicit, scoped, and default-off where required |
+| Mixing txid and wtxid relay identity | Phase 101: Transaction Download, Request Scheduling, and Orphan Handling | Typed identity tests cover announcement, request, received tx, `notfound`, and mismatch cases |
+| Treating `ReceivedTransaction` as direct mempool admission | Phase 101 | Peer tx acceptance tests route through relay/download state and cover accept, reject, timeout, disconnect, and fallback |
+| Permanent rejection or unbounded orphan handling | Phase 101 and Phase 102 | Missing-parent tests cover bounded orphanage, parent request, reconsideration, cap eviction, and package-deferred docs |
+| Mempool, relay cache, and chainstate incoherence | Phase 102: Mempool/Chainstate Admission, Pressure, and Repair | Block connect, disconnect, reorg, replacement, and eviction tests prove cache and mempool lifecycle coherence |
+| Advertising pressure behavior without rolling min fee | Phase 102 | Eviction tests either prove rolling min-fee behavior or release docs mark pressure parity deferred |
+| Serving any locally stored transaction | Phase 103: Relay Serving, Announcement, and Rebroadcast Policy | `getdata` tests prove stale, replaced, confirmed, rejected, unknown, and valid relay-eligible outcomes |
+| Broadcasting without eligibility/rate/queue controls | Phase 103 | Fake-clock scheduler tests prove per-peer queues, caps, eligibility, and negotiated identity |
+| Public relay or public-network CI default drift | Phase 100 and Phase 105 | Default config and `scripts/verify.sh` remain deterministic; release-boundary checker catches public relay or production claims |
+| Leaking tx/peer/permission data in support surfaces | Phase 104: Operator, RPC, Metrics, Support Evidence, and Redaction | Sanitizer and metrics tests reject raw tx payloads, endpoints, dynamic labels, and disallowed identifiers |
+| Overclaiming RPC/operator surfaces | Phase 104 and Phase 105 | Field-by-field evidence tests and docs classify each surface as implemented, unavailable, deferred, or intentionally different |
+| Losing parity traceability | Phase 105 and every implementation phase | Breadcrumb checker and parity docs include concrete Knots anchors or explicit Open Bitcoin-specific `none` justifications |
 
 ## Sources
 
-- `.planning/PROJECT.md`
-- `.planning/MILESTONES.md`
-- `.planning/STATE.md`
-- `.planning/milestones/v1.5-MILESTONE-AUDIT.md`
-- `docs/parity/release-readiness.md`
-- `docs/parity/catalog/chainstate.md`
-- `docs/parity/catalog/p2p.md`
-- `docs/parity/deviations-and-unknowns.md`
-- `docs/operator/runtime-guide.md`
-- `AGENTS.md`
-- `AGENTS.bright-builds.md`
-- `standards-overrides.md`
+- `.planning/PROJECT.md` - project constraints, v2.0 scope, pinned Knots baseline, first-party Rust implementation, no production-readiness overclaim.
+- `.planning/RETROSPECTIVE.md` - accumulated verification and release-boundary lessons through v1.9.
+- `.planning/milestones/v1.9-MILESTONE-AUDIT.md` - v1.9 opt-in inbound serving result and relay-like permission watch item.
+- `docs/parity/release-readiness.md` - deterministic verifier, no public-network default, redacted support evidence, and no-claim boundaries.
+- `docs/parity/catalog/mempool-policy.md` - current mempool policy parity status and known gaps such as package relay, rolling minimum-fee state, and reorg repair.
+- `docs/parity/catalog/p2p.md` - current P2P parity scope, inventory handling, inbound serving, and relay boundaries.
+- `packages/open-bitcoin-mempool/src/lib.rs`, `types.rs`, `policy.rs`, and `pool.rs` - current pure mempool model, policy config, RBF, ancestor/descendant limits, and admission behavior.
+- `packages/open-bitcoin-network/src/lib.rs`, `message.rs`, `peer.rs`, `peer/inventory_state.rs`, `resource.rs`, and `inbound/permissions.rs` - current P2P message model, wtxidrelay state, inventory request paths, resource caps, and inactive permission effects.
+- `packages/open-bitcoin-node/src/network.rs`, `network/inventory.rs`, and `mempool.rs` - current node integration, peer tx handling, relay stores, and serving path.
+- `packages/bitcoin-knots/src/net_processing.cpp` - pinned baseline inventory relay, `mempool` request handling, per-peer relay state, inventory broadcast intervals/caps, and relay serving guards.
+- `packages/bitcoin-knots/src/node/txdownloadman.h` and `txdownloadman_impl.cpp` - pinned baseline tx announcement, request, timeout, orphan, recent-reject, and accept/reject callback behavior.
+- `packages/bitcoin-knots/src/txmempool.cpp`, `policy/policy.h`, and `kernel/mempool_options.h` - pinned baseline mempool admission, eviction, fee, and size-policy anchors.
+- `packages/bitcoin-knots/test/functional/p2p_tx_download.py`, `p2p_permissions.py`, `src/test/rbf_tests.cpp`, and `src/test/txpackage_tests.cpp` - pinned baseline tests for tx download, permissions, RBF, and package-related behavior.
+- BIP references for protocol context: BIP 35 (`mempool`), BIP 125 (opt-in full-RBF signaling policy), BIP 130 (`sendheaders`), BIP 133 (`feefilter`), BIP 338 (`disabletx` / disable transaction relay), BIP 339 (`wtxidrelay`), BIP 330 (transaction announcement reconciliation), and BIP 331 (ancestor package relay).
 
-The checked-in Bright Builds sidecar and repo-local guidance materially informed
-the functional-core, deterministic-verification, and opt-in public-network
-boundaries. The pinned canonical standards pages referenced by the sidecar were
-not available through the fetch tool in this environment, so this research uses
-the local sidecar summary plus repo-owned milestone and parity artifacts.
-
----
-*Pitfalls research for: Open Bitcoin v1.6*
-*Researched: 2026-06-11*
+*Pitfalls research for: Open Bitcoin v2.0 transaction relay and mempool participation boundary*
+*Researched: 2026-06-29*
