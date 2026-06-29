@@ -4,8 +4,8 @@ milestone: v2.0
 milestone_name: Transaction Relay and Mempool Participation Boundary
 status: executing
 stopped_at: Phase 101 context gathered
-last_updated: "2026-06-29T22:12:45.981Z"
-last_activity: 2026-06-29 -- Phase 101 planning complete
+last_updated: "2026-06-29T22:18:30.105Z"
+last_activity: 2026-06-29 -- Phase 101 execution started
 progress:
   total_phases: 7
   completed_phases: 1
@@ -21,15 +21,15 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-29)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 101 — transaction-inventory-identity-and-download-scheduling
+**Current focus:** Phase 101 — Transaction Inventory Identity and Download Scheduling
 
 ## Current Position
 
 Milestone: v2.0 Transaction Relay and Mempool Participation Boundary
-Phase: 101 (transaction-inventory-identity-and-download-scheduling) — PENDING
-Plan: not started
-Status: Ready to execute
-Last activity: 2026-06-29 -- Phase 101 planning complete
+Phase: 101 (Transaction Inventory Identity and Download Scheduling) — EXECUTING
+Plan: 1 of 3
+Status: Executing Phase 101
+Last activity: 2026-06-29 -- Phase 101 execution started
 
 Progress: [##########] 100% for Phase 100
 
