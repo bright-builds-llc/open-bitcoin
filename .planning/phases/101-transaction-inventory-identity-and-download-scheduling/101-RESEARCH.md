@@ -390,31 +390,31 @@ let actions = scheduler.expire_and_schedule(TxSchedulerTick {
 - Scheduler logic that emits `WireNetworkMessage::GetData` directly from every accepted `inv` is insufficient because the phase requires typed request, suppression, fallback, expiry, and cleanup actions. [VERIFIED: packages/open-bitcoin-network/src/peer/inventory_state.rs; VERIFIED: .planning/phases/101-transaction-inventory-identity-and-download-scheduling/101-CONTEXT.md]
 - Treating `notfound` as only a set removal is insufficient because the phase requires immediate fallback when another eligible announcer exists. [VERIFIED: packages/open-bitcoin-network/src/peer.rs; VERIFIED: .planning/phases/101-transaction-inventory-identity-and-download-scheduling/101-CONTEXT.md; VERIFIED: packages/bitcoin-knots/test/functional/p2p_tx_download.py]
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Should constants mirror Knots exactly or use smaller test-friendly values?** [VERIFIED: .planning/phases/101-transaction-inventory-identity-and-download-scheduling/101-CONTEXT.md]
+1. **[RESOLVED] Should constants mirror Knots exactly or use smaller test-friendly values?** [VERIFIED: .planning/phases/101-transaction-inventory-identity-and-download-scheduling/101-CONTEXT.md]
    - What we know: Knots defines `MAX_PEER_TX_REQUEST_IN_FLIGHT = 100`, `MAX_PEER_TX_ANNOUNCEMENTS = 5000`, `TXID_RELAY_DELAY = 2s`, `NONPREF_PEER_TX_DELAY = 2s`, `OVERLOADED_PEER_TX_DELAY = 2s`, and `GETDATA_TX_INTERVAL = 60s`. [VERIFIED: packages/bitcoin-knots/src/node/txdownloadman.h]
    - What's unclear: The context allows simplified values if tests preserve Phase 101's claimed observable behavior. [VERIFIED: .planning/phases/101-transaction-inventory-identity-and-download-scheduling/101-CONTEXT.md]
-   - Recommendation: Keep Knots names and defaults in production policy, but allow tests to construct a scheduler policy with shorter durations. [ASSUMED]
+   - Planner resolution: Use Knots-named production constants where they define observable behavior. Tests may construct configurable shorter scheduler policy values through fake-clock scheduler inputs to prove behavior deterministically without changing production defaults. [RESOLVED]
 
-2. **Where should relay eligibility feed into scheduler input?** [VERIFIED: packages/open-bitcoin-network/src/relay.rs; VERIFIED: packages/open-bitcoin-network/src/peer.rs]
+2. **[RESOLVED] Where should relay eligibility feed into scheduler input?** [VERIFIED: packages/open-bitcoin-network/src/relay.rs; VERIFIED: packages/open-bitcoin-network/src/peer.rs]
    - What we know: Phase 100 added pure relay activation/eligibility policy, and `PeerState` currently records connection role and negotiation fields but not an explicit transaction download eligibility object. [VERIFIED: packages/open-bitcoin-network/src/relay.rs; VERIFIED: packages/open-bitcoin-network/src/peer.rs]
    - What's unclear: The planner must choose whether `PeerManager` stores per-peer scheduler eligibility directly or passes it from a higher-level activation bridge. [ASSUMED]
-   - Recommendation: Pass scheduler peer facts explicitly as data and avoid having scheduler call activation/config APIs. [VERIFIED: standards/core/architecture.md; ASSUMED]
+   - Planner resolution: Pass relay eligibility into the scheduler as typed peer metadata / scheduler input derived from Phase 100 policy. The scheduler must not query config, activation, runtime, or socket state directly. [RESOLVED]
 
-3. **Should `PeerAction::ReceivedTransaction` be split in Phase 101 or left compatible until Phase 102?** [VERIFIED: packages/open-bitcoin-network/src/peer.rs; VERIFIED: packages/open-bitcoin-node/src/network.rs]
+3. **[RESOLVED] Should `PeerAction::ReceivedTransaction` be split in Phase 101 or left compatible until Phase 102?** [VERIFIED: packages/open-bitcoin-network/src/peer.rs; VERIFIED: packages/open-bitcoin-node/src/network.rs]
    - What we know: The context permits continuing to return a received transaction action while leaving mempool admission semantics to Phase 102. [VERIFIED: .planning/phases/101-transaction-inventory-identity-and-download-scheduling/101-CONTEXT.md]
    - What's unclear: The planner must decide whether to add a richer `ReceivedTransaction` payload now or add a sibling cleanup action consumed only by tests. [ASSUMED]
-   - Recommendation: Add typed cleanup/suppression actions now and keep managed mempool admission behavior compatible unless a narrow adapter change is needed. [ASSUMED]
+   - Planner resolution: Preserve `PeerAction::ReceivedTransaction` compatibility in Phase 101 while adding typed scheduler cleanup and mismatch actions. Split the admission-facing action only in Phase 102 if the admission bridge requires it. [RESOLVED]
 
 ## Assumptions Log
 
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
 | A1 | Recommended module name `peer/transaction_relay.rs` is a good planner default. | Architecture Patterns | Low; the context allows exact module split and type names at planner discretion. |
-| A2 | Tests can use shorter scheduler durations while production defaults keep Knots-inspired names and values. | Open Questions | Medium; exact constants affect parity claims and should be locked by the planner. |
-| A3 | Scheduler eligibility should be passed as peer facts rather than stored as a direct config dependency inside the scheduler. | Open Questions | Low; this follows functional-core guidance but integration shape is planner-owned. |
-| A4 | `PeerAction::ReceivedTransaction` compatibility should be preserved unless a narrow adapter change is required. | Open Questions | Medium; Phase 102 may prefer a richer action contract, so Phase 101 should avoid overfitting. |
+| A2 | Tests can use shorter scheduler durations while production defaults keep Knots-inspired names and values. | Open Questions (RESOLVED) | Low; planner locked production constants plus configurable fake-clock test policy values. |
+| A3 | Scheduler eligibility should be passed as peer facts rather than stored as a direct config dependency inside the scheduler. | Open Questions (RESOLVED) | Low; planner locked typed scheduler input derived from Phase 100 policy. |
+| A4 | `PeerAction::ReceivedTransaction` compatibility should be preserved unless a narrow adapter change is required. | Open Questions (RESOLVED) | Low; planner locked Phase 101 compatibility and deferred admission-facing split to Phase 102 if needed. |
 
 ## Environment Availability
 
