@@ -11,6 +11,8 @@ use open_bitcoin_primitives::{Hash32, InventoryType, InventoryVector, Txid, Wtxi
 
 use super::*;
 
+mod scheduler_cases;
+
 fn txid(byte: u8) -> Txid {
     Txid::from_byte_array([byte; 32])
 }
@@ -372,4 +374,74 @@ fn download_policy_defaults_use_knots_inspired_names_and_values() {
     assert_eq!(policy.non_preferred_peer_delay_seconds, 2);
     assert_eq!(policy.overloaded_peer_delay_seconds, 2);
     assert_eq!(policy.getdata_tx_interval_seconds, 60);
+}
+
+#[test]
+fn txid_announcement_requests_transaction_inventory() {
+    scheduler_cases::txid_announcement_requests_transaction_inventory();
+}
+
+#[test]
+fn wtxid_announcement_requests_witness_transaction_inventory() {
+    scheduler_cases::wtxid_announcement_requests_witness_transaction_inventory();
+}
+
+#[test]
+fn identity_mismatch_suppresses_without_candidate_or_inflight_state() {
+    scheduler_cases::identity_mismatch_suppresses_without_candidate_or_inflight_state();
+}
+
+#[test]
+fn duplicate_announcement_retains_fallback_candidate_without_second_request() {
+    scheduler_cases::duplicate_announcement_retains_fallback_candidate_without_second_request();
+}
+
+#[test]
+fn already_have_recent_reject_and_mempool_known_suppress_requests() {
+    scheduler_cases::already_have_recent_reject_and_mempool_known_suppress_requests();
+}
+
+#[test]
+fn inflight_cap_suppresses_additional_ready_requests() {
+    scheduler_cases::inflight_cap_suppresses_additional_ready_requests();
+}
+
+#[test]
+fn txid_delay_waits_until_fake_clock_reaches_ready_time() {
+    scheduler_cases::txid_delay_waits_until_fake_clock_reaches_ready_time();
+}
+
+#[test]
+fn non_preferred_peer_delay_waits_until_fake_clock_reaches_ready_time() {
+    scheduler_cases::non_preferred_peer_delay_waits_until_fake_clock_reaches_ready_time();
+}
+
+#[test]
+fn overloaded_peer_delay_waits_until_fake_clock_reaches_ready_time() {
+    scheduler_cases::overloaded_peer_delay_waits_until_fake_clock_reaches_ready_time();
+}
+
+#[test]
+fn expiry_fallback_waits_until_fake_clock_reaches_getdata_interval() {
+    scheduler_cases::expiry_fallback_waits_until_fake_clock_reaches_getdata_interval();
+}
+
+#[test]
+fn timeout_expires_request_and_falls_back_to_duplicate_announcer() {
+    scheduler_cases::timeout_expires_request_and_falls_back_to_duplicate_announcer();
+}
+
+#[test]
+fn notfound_clears_matching_request_and_falls_back() {
+    scheduler_cases::notfound_clears_matching_request_and_falls_back();
+}
+
+#[test]
+fn disconnect_cleanup_removes_peer_state_and_falls_back() {
+    scheduler_cases::disconnect_cleanup_removes_peer_state_and_falls_back();
+}
+
+#[test]
+fn received_transaction_cleanup_marks_txid_and_wtxid_already_have() {
+    scheduler_cases::received_transaction_cleanup_marks_txid_and_wtxid_already_have();
 }

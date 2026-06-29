@@ -11,6 +11,13 @@ use open_bitcoin_primitives::{Hash32, InventoryType, InventoryVector, Txid, Wtxi
 
 use crate::error::PeerId;
 
+mod scheduler;
+
+pub use scheduler::{
+    TxAnnouncementInput, TxDownloadLocalFacts, TxDownloadScheduler, TxDownloadSnapshot,
+    TxPeerRequestSnapshot,
+};
+
 pub const PHASE101_MAX_TX_ANNOUNCEMENTS_PER_PEER: usize = 5_000;
 pub const PHASE101_MAX_TX_REQUESTS_IN_FLIGHT_PER_PEER: usize = 100;
 pub const PHASE101_TXID_RELAY_DELAY_SECONDS: i64 = 2;

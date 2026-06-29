@@ -1,0 +1,60 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/protocol.h
+// - packages/bitcoin-knots/src/net_processing.cpp
+// - packages/bitcoin-knots/src/node/txdownloadman.h
+// - packages/bitcoin-knots/src/node/txdownloadman_impl.cpp
+// - packages/bitcoin-knots/src/txrequest.h
+// - packages/bitcoin-knots/src/txrequest.cpp
+// - packages/bitcoin-knots/test/functional/p2p_tx_download.py
+
+use super::*;
+
+pub(super) fn received_transaction_cleanup_marks_txid_and_wtxid_already_have() {
+    // Arrange
+    let mut scheduler = scheduler();
+    let txid = txid(22);
+    let wtxid = wtxid(23);
+    let _ = scheduler.record_announcement(announcement(
+        22,
+        TxRelayId::Txid(txid).to_inventory_vector(),
+        TxRelayPeerMode::TxidOnly,
+        0,
+    ));
+    let _ = scheduler.record_announcement(announcement(
+        23,
+        TxRelayId::Wtxid(wtxid).to_inventory_vector(),
+        TxRelayPeerMode::WtxidRelay,
+        0,
+    ));
+
+    // Act
+    let cleanup = scheduler.record_received_transaction(22, txid, wtxid);
+    let txid_again = scheduler.record_announcement(announcement(
+        24,
+        TxRelayId::Txid(txid).to_inventory_vector(),
+        TxRelayPeerMode::TxidOnly,
+        1,
+    ));
+    let wtxid_again = scheduler.record_announcement(announcement(
+        25,
+        TxRelayId::Wtxid(wtxid).to_inventory_vector(),
+        TxRelayPeerMode::WtxidRelay,
+        1,
+    ));
+
+    // Assert
+    assert_eq!(
+        cleanup,
+        [TxDownloadAction::ReceivedTxCleanup {
+            peer_id: 22,
+            txid,
+            wtxid,
+        }],
+    );
+    assert_eq!(scheduler.snapshot().already_have_count, 2);
+    assert_eq!(txid_again, [expect_already_have(24, TxRelayId::Txid(txid))]);
+    assert_eq!(
+        wtxid_again,
+        [expect_already_have(25, TxRelayId::Wtxid(wtxid))]
+    );
+}

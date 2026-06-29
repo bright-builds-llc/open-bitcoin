@@ -68,8 +68,10 @@ pub use peer::{
     PHASE101_MAX_TX_ANNOUNCEMENTS_PER_PEER, PHASE101_MAX_TX_REQUESTS_IN_FLIGHT_PER_PEER,
     PHASE101_NONPREF_PEER_TX_DELAY_SECONDS, PHASE101_OVERLOADED_PEER_TX_DELAY_SECONDS,
     PHASE101_TXID_RELAY_DELAY_SECONDS, PeerAction, PeerAddressBoundaryDecision,
-    PeerAddressBoundaryEvidence, PeerManager, PeerState, TxDownloadAction, TxDownloadPolicy,
-    TxDownloadSuppressionReason, TxRelayId, TxRelayIdentityError, TxRelayPeerMode,
+    PeerAddressBoundaryEvidence, PeerManager, PeerState, TxAnnouncementInput, TxDownloadAction,
+    TxDownloadLocalFacts, TxDownloadPolicy, TxDownloadScheduler, TxDownloadSnapshot,
+    TxDownloadSuppressionReason, TxPeerRequestSnapshot, TxRelayId, TxRelayIdentityError,
+    TxRelayPeerMode,
 };
 pub use peer_policy::{
     BanDecision, BanReason, BanScope, EvictionCandidate, EvictionCandidateInput, EvictionDecision,

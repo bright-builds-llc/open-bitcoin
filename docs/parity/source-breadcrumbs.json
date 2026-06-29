@@ -619,6 +619,10 @@
       "label": "network-transaction-relay-download",
       "files": [
         "packages/open-bitcoin-network/src/peer/transaction_relay.rs",
+        "packages/open-bitcoin-network/src/peer/transaction_relay/scheduler.rs",
+        "packages/open-bitcoin-network/src/peer/transaction_relay/tests/scheduler_cases/edge_cases.rs",
+        "packages/open-bitcoin-network/src/peer/transaction_relay/tests/scheduler_cases/received_cases.rs",
+        "packages/open-bitcoin-network/src/peer/transaction_relay/tests/scheduler_cases.rs",
         "packages/open-bitcoin-network/src/peer/transaction_relay/tests.rs"
       ],
       "breadcrumbs": [

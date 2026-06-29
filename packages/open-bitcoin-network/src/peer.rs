@@ -42,9 +42,10 @@ use policy_state::{eviction_candidate_input, peer_policy_label, peer_policy_prot
 pub use transaction_relay::{
     PHASE101_GETDATA_TX_INTERVAL_SECONDS, PHASE101_MAX_TX_ANNOUNCEMENTS_PER_PEER,
     PHASE101_MAX_TX_REQUESTS_IN_FLIGHT_PER_PEER, PHASE101_NONPREF_PEER_TX_DELAY_SECONDS,
-    PHASE101_OVERLOADED_PEER_TX_DELAY_SECONDS, PHASE101_TXID_RELAY_DELAY_SECONDS, TxDownloadAction,
-    TxDownloadPolicy, TxDownloadSuppressionReason, TxRelayId, TxRelayIdentityError,
-    TxRelayPeerMode,
+    PHASE101_OVERLOADED_PEER_TX_DELAY_SECONDS, PHASE101_TXID_RELAY_DELAY_SECONDS,
+    TxAnnouncementInput, TxDownloadAction, TxDownloadLocalFacts, TxDownloadPolicy,
+    TxDownloadScheduler, TxDownloadSnapshot, TxDownloadSuppressionReason, TxPeerRequestSnapshot,
+    TxRelayId, TxRelayIdentityError, TxRelayPeerMode,
 };
 
 pub const DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER: usize = 128;
