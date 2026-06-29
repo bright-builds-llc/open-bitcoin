@@ -106,8 +106,8 @@ const ROADMAP_TRACEABILITY_ROWS = [
   { phase: 98, requirements: ["INB-01", "INB-02", "INB-03", "INB-04", "BOUND-06"] },
 ] as const;
 const TARGET_FILES = [
-  ".planning/REQUIREMENTS.md",
-  ".planning/ROADMAP.md",
+  ".planning/milestones/v1.9-REQUIREMENTS.md",
+  ".planning/milestones/v1.9-ROADMAP.md",
   "README.md",
   "docs/parity/index.json",
   "docs/parity/checklist.md",
@@ -312,13 +312,13 @@ test("fails when gap-closure traceability maps requirements to stale phases", ()
     maybeMutateFiles(files) {
       replaceInFile(
         files,
-        ".planning/REQUIREMENTS.md",
+        ".planning/milestones/v1.9-REQUIREMENTS.md",
         "| INB-05 | Phase 97 | Complete |",
         "| INB-05 | Phase 90 | Complete |",
       );
       replaceInFile(
         files,
-        ".planning/ROADMAP.md",
+        ".planning/milestones/v1.9-ROADMAP.md",
         "| Phase 97 | INB-05, DOS-04 | 2 |",
         "| Phase 97 | — | 0 |",
       );
@@ -383,8 +383,8 @@ function createFixture(options: FixtureOptions = {}): string {
 
 function fixtureFiles(): Map<TargetFile, string> {
   return new Map<TargetFile, string>([
-    [".planning/REQUIREMENTS.md", requirementsText()],
-    [".planning/ROADMAP.md", roadmapText()],
+    [".planning/milestones/v1.9-REQUIREMENTS.md", requirementsText()],
+    [".planning/milestones/v1.9-ROADMAP.md", roadmapText()],
     ["README.md", readmeText()],
     ["docs/parity/index.json", parityIndexText()],
     ["docs/parity/checklist.md", checklistText()],
@@ -437,8 +437,8 @@ function parityIndexText(): string {
                   "scripts/check-phase95-network-participation-release-boundary.ts",
                   "scripts/check-phase95-network-participation-release-boundary.test.ts",
                   "scripts/verify.sh",
-                  ".planning/REQUIREMENTS.md",
-                  ".planning/ROADMAP.md",
+                  ".planning/milestones/v1.9-REQUIREMENTS.md",
+                  ".planning/milestones/v1.9-ROADMAP.md",
                 ]
               : ["docs/parity/catalog/p2p.md"],
           upstream: id === SURFACE_ID ? { sources: [...REQUIRED_KNOTS_ANCHORS] } : undefined,

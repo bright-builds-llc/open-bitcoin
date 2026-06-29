@@ -7,8 +7,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 432 |
-| Total lines | 175,501 |
-| Code/content lines | 155,159 |
+| Total lines | 175,519 |
+| Code/content lines | 155,177 |
 | Comment-only lines | 5,591 |
 | Blank lines | 14,751 |
 
@@ -36,7 +36,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust production | 240 | 68,318 | 59,676 | 2,017 | 6,625 |
 | Rust tests | 65 | 59,547 | 52,208 | 2,963 | 4,376 |
-| TypeScript/Bun scripts | 68 | 31,331 | 27,847 | 553 | 2,931 |
+| TypeScript/Bun scripts | 68 | 31,349 | 27,865 | 553 | 2,931 |
 | Fixture/data | 6 | 8,233 | 8,228 | 5 | 0 |
 | Shell scripts | 13 | 3,996 | 3,572 | 47 | 377 |
 | TOML/config | 16 | 3,460 | 3,094 | 0 | 366 |
@@ -108,8 +108,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase96-peer-policy-runtime-bridge.ts | 428 |
 | scripts/check-phase97-inbound-metrics.test.ts | 450 |
 | scripts/check-phase97-inbound-metrics.ts | 439 |
-| scripts/check-phase98-traceability-reconciliation.test.ts | 468 |
-| scripts/check-phase98-traceability-reconciliation.ts | 449 |
+| scripts/check-phase98-traceability-reconciliation.test.ts | 483 |
+| scripts/check-phase98-traceability-reconciliation.ts | 452 |
 | scripts/check-phase99-peer-policy-structured-log-emission.test.ts | 330 |
 | scripts/check-phase99-peer-policy-structured-log-emission.ts | 252 |
 | scripts/check-v1.3-release-boundaries.ts | 184 |
@@ -149,7 +149,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 1fd16b2661d5d44a4326ff30f30b5f0e3545d1c336de731f39d93d745c454d29 |
+| Input fingerprint | 767a1c2c10ec263cfa94229bebf7d2f3ddefe86b5a473936f1185e453dda29b6 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

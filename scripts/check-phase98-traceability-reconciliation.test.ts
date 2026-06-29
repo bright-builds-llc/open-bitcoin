@@ -45,10 +45,10 @@ const CANONICAL_ASSIGNMENTS = {
   "BOUND-06": 98,
 } as const;
 const TARGET_FILES = [
-  ".planning/REQUIREMENTS.md",
-  ".planning/ROADMAP.md",
+  ".planning/milestones/v1.9-REQUIREMENTS.md",
+  ".planning/milestones/v1.9-ROADMAP.md",
   ".planning/STATE.md",
-  ".planning/v1.9-MILESTONE-AUDIT.md",
+  ".planning/milestones/v1.9-MILESTONE-AUDIT.md",
   ".planning/phases/90-inbound-listener-and-admission-policy/90-VERIFICATION.md",
   ".planning/phases/95-network-participation-evidence-and-release-boundary/95-VERIFICATION.md",
   ".planning/phases/97-inbound-metrics-sample-production/97-VERIFICATION.md",
@@ -88,7 +88,7 @@ test("fails stale Phase 90 canonical ownership", () => {
     maybeMutateFiles(files) {
       replaceInFile(
         files,
-        ".planning/REQUIREMENTS.md",
+        ".planning/milestones/v1.9-REQUIREMENTS.md",
         "| INB-01 | Phase 98 | Complete |",
         "| INB-01 | Phase 90 | Complete |",
       );
@@ -108,7 +108,7 @@ test("fails stale BOUND-06 canonical ownership", () => {
     maybeMutateFiles(files) {
       replaceInFile(
         files,
-        ".planning/REQUIREMENTS.md",
+        ".planning/milestones/v1.9-REQUIREMENTS.md",
         "| BOUND-06 | Phase 98 | Complete |",
         "| BOUND-06 | Phase 95 | Complete |",
       );
@@ -133,7 +133,7 @@ test("fails stale roadmap or state status text", () => {
   const roots = stalePhrases.map((phrase) =>
     createFixture({
       maybeMutateFiles(files) {
-        appendToFile(files, ".planning/ROADMAP.md", phrase);
+        appendToFile(files, ".planning/milestones/v1.9-ROADMAP.md", phrase);
       },
     }),
   );
@@ -153,12 +153,27 @@ test("fails stale audit closure evidence", () => {
   // Arrange
   const root = createFixture({
     maybeMutateFiles(files) {
-      replaceInFile(files, ".planning/v1.9-MILESTONE-AUDIT.md", 'requirements: "23/28"', 'requirements: "21/28"');
-      replaceInFile(files, ".planning/v1.9-MILESTONE-AUDIT.md", "status: pending_final_verification", "status: gaps_found");
-      replaceInFile(files, ".planning/v1.9-MILESTONE-AUDIT.md", "Phase 97 verification: passed", "");
       replaceInFile(
         files,
-        ".planning/v1.9-MILESTONE-AUDIT.md",
+        ".planning/milestones/v1.9-MILESTONE-AUDIT.md",
+        'requirements: "23/28"',
+        'requirements: "21/28"',
+      );
+      replaceInFile(
+        files,
+        ".planning/milestones/v1.9-MILESTONE-AUDIT.md",
+        "status: pending_final_verification",
+        "status: gaps_found",
+      );
+      replaceInFile(
+        files,
+        ".planning/milestones/v1.9-MILESTONE-AUDIT.md",
+        "Phase 97 verification: passed",
+        "",
+      );
+      replaceInFile(
+        files,
+        ".planning/milestones/v1.9-MILESTONE-AUDIT.md",
         ".planning/phases/98-traceability-reconciliation/98-VERIFICATION.md",
         "",
       );
@@ -295,10 +310,10 @@ function createFixture(options: FixtureOptions = {}): string {
 
 function fixtureFiles(): Map<TargetFile, string> {
   return new Map<TargetFile, string>([
-    [".planning/REQUIREMENTS.md", requirementsText()],
-    [".planning/ROADMAP.md", roadmapText()],
+    [".planning/milestones/v1.9-REQUIREMENTS.md", requirementsText()],
+    [".planning/milestones/v1.9-ROADMAP.md", roadmapText()],
     [".planning/STATE.md", stateText()],
-    [".planning/v1.9-MILESTONE-AUDIT.md", auditText()],
+    [".planning/milestones/v1.9-MILESTONE-AUDIT.md", auditText()],
     [
       ".planning/phases/90-inbound-listener-and-admission-policy/90-VERIFICATION.md",
       phase90VerificationText(),

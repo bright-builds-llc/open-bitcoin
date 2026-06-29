@@ -90,8 +90,8 @@ const REQUIRED_PHASE95_EVIDENCE = [
   "scripts/check-phase95-network-participation-release-boundary.ts",
   "scripts/check-phase95-network-participation-release-boundary.test.ts",
   "scripts/verify.sh",
-  ".planning/REQUIREMENTS.md",
-  ".planning/ROADMAP.md",
+  ".planning/milestones/v1.9-REQUIREMENTS.md",
+  ".planning/milestones/v1.9-ROADMAP.md",
 ] as const;
 const REQUIRED_UAT_COMMANDS = [
   "cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --bin open-bitcoind",
@@ -166,8 +166,8 @@ const CLAIM_SCAN_FILES = [
   "docs/operator/runtime-guide.md",
 ] as const;
 const TARGET_FILES = [
-  ".planning/REQUIREMENTS.md",
-  ".planning/ROADMAP.md",
+  ".planning/milestones/v1.9-REQUIREMENTS.md",
+  ".planning/milestones/v1.9-ROADMAP.md",
   "README.md",
   "docs/parity/index.json",
   "docs/parity/checklist.md",
@@ -524,8 +524,8 @@ function verifyRequirementTraceability(
   failures: string[],
 ): void {
   verifyChecklistMarkdown(texts.get("docs/parity/checklist.md") ?? "", failures);
-  verifyRequirementsTable(texts.get(".planning/REQUIREMENTS.md") ?? "", failures);
-  verifyRoadmapTraceability(texts.get(".planning/ROADMAP.md") ?? "", failures);
+  verifyRequirementsTable(texts.get(".planning/milestones/v1.9-REQUIREMENTS.md") ?? "", failures);
+  verifyRoadmapTraceability(texts.get(".planning/milestones/v1.9-ROADMAP.md") ?? "", failures);
 }
 
 function verifyChecklistMarkdown(text: string, failures: string[]): void {

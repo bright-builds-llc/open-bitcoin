@@ -318,6 +318,52 @@
 
 ---
 
+## Milestone: v1.9 - Inbound Peer Serving and Network Participation Boundary
+
+**Shipped:** 2026-06-29
+**Phases:** 10 | **Plans:** 56 | **Counted summary tasks:** 81
+
+### What Was Built
+
+- Explicit opt-in inbound listener and admission path with deterministic preflight/bind diagnostics, typed inbound peer records, duplicate/self protections, caps, reserved/protected slots, and shared status evidence.
+- Knots-aligned peer permission and connection-class model with active effects bounded to admission/protection/address/download diagnostics and relay-like permissions kept inert for v1.9.
+- Scoped listener advertisement, bounded `getaddr` response behavior, learned-address evidence, and docs that distinguish local address behavior from full address relay.
+- Eviction, ban, discourage, unban, misbehavior, reconnect suppression, and peer-policy runtime evidence across status, RPC, CLI, support bundles, metrics, and sanitized structured logs.
+- Inbound DoS/resource governance for malformed messages, payloads, queues, request caps, backpressure, timeouts, churn, and reconnect attempts.
+- Retained inbound metric samples and deterministic Phase 90 through Phase 99 checkers that keep the v1.9 public-network and relay no-claim boundary enforceable.
+
+### What Worked
+
+- Keeping inbound serving opt-in let the milestone add real listener/admission capability without weakening default public-network verification or production-readiness boundaries.
+- The Phase 96 through Phase 99 gap-closure chain was effective because each cleanup phase had a narrow integration or evidence target.
+- Moving Phase 98/99 checkers to archived v1.9 planning artifacts during closeout preserved default verification after deleting the active requirements file.
+
+### What Was Inefficient
+
+- Phase 90 remained historical implementation evidence while Phase 98 became canonical requirement closure, which was correct but harder to audit than a single owner phase.
+- Some summary one-liners included review-finding text, so the archive helper generated a noisy MILESTONES entry that needed manual curation.
+- Checker corpora that referenced active milestone files had to be updated during archive, because completion intentionally moves those files into `.planning/milestones/`.
+
+### Patterns Established
+
+- Archive-aware deterministic checkers should read historical milestone artifacts once a milestone is complete.
+- Permission labels for deferred relay-like behavior should be explicit and observable while remaining behaviorally inert until future relay scope is planned.
+- Cross-phase flow audits should distinguish true blockers from watch items that preserve future-scope clarity without blocking shipment.
+
+### Key Lessons
+
+1. Checker corpora should be designed for the artifact lifecycle: active files before archive, milestone archive files after closeout.
+2. Canonical requirement ownership needs to be obvious in requirements, roadmap, summaries, verification reports, and audit text before final archive.
+3. Auto-generated accomplishment lists still need a closeout curation pass before becoming durable project history.
+
+### Cost Observations
+
+- Model mix: not measured in repo artifacts.
+- Sessions: multiple GSD yolo execution, code-review, verification, audit, gap-closure, and archive turns across the v1.9 milestone.
+- Notable: the late archive work was mostly evidence lifecycle and planning-control cleanup; the shipped runtime behavior was already verified before archival.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -333,6 +379,7 @@
 | v1.6 | 7 | Converted unattended review into an explicit opt-in sync-to-tip and stay-current evidence claim. |
 | v1.7 | 7 | Hardened full-sync evidence for multi-day soak, resource and recovery bounds, progress guarantees, forensics, opt-in UAT, and audit traceability. |
 | v1.8 | 8 | Added production-readiness claim gates, support/update/runbook/service policies, release-readiness evidence, and deterministic no-claim guardrails. |
+| v1.9 | 10 | Added opt-in inbound peer serving, permission/address/peer-policy/resource governance, retained inbound metrics, structured peer-policy logs, and release-boundary no-claim checks. |
 
 ### Cumulative Quality
 
@@ -347,6 +394,7 @@
 | v1.6 | 26/26 complete | Closed through Phase 74 verification and source-built full-sync completion evidence | Repo-native `scripts/verify.sh`, active-chain validation, stay-current checks, reorg/peer recovery, support evidence, opt-in UAT, and release-boundary verification. |
 | v1.7 | 24/24 complete | Passed after Phase 81 traceability closure | Repo-native `scripts/verify.sh`, Phase 75-80 deterministic checkers, resource/recovery/progress/forensics fixtures, opt-in UAT docs, and 11/11 integration plus 6/6 flow audit checks. |
 | v1.8 | 23/23 complete | Tech-debt audit with zero requirement, integration, or flow blockers after Phase 89 closure | Repo-native `scripts/verify.sh`, production no-claim guardrails, support/update/runbook/service policy checks, release-readiness evidence, opt-in UAT docs, and 23/23 integration plus 8/8 flow audit checks. |
+| v1.9 | 28/28 complete | Passed with zero critical gaps after Phase 99 closed structured-log tech debt | Repo-native `scripts/verify.sh`, Phase 90-99 deterministic checkers, inbound listener/permission/address/peer-policy/resource metrics evidence, and 10/10 integration plus 8/8 flow audit checks. |
 
 ### Top Lessons
 

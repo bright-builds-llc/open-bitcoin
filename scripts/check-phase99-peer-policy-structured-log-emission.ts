@@ -16,8 +16,8 @@ const TARGET_FILES = [
   "packages/open-bitcoin-rpc/src/context/peer_policy.rs",
   "packages/open-bitcoin-rpc/src/context/tests.rs",
   "packages/open-bitcoin-node/src/logging.rs",
-  ".planning/ROADMAP.md",
-  ".planning/v1.9-MILESTONE-AUDIT.md",
+  ".planning/milestones/v1.9-ROADMAP.md",
+  ".planning/milestones/v1.9-MILESTONE-AUDIT.md",
   ".planning/phases/99-peer-policy-structured-log-emission/99-VERIFICATION.md",
   "scripts/verify.sh",
 ] as const;
@@ -151,8 +151,8 @@ function verifySanitizer(texts: Map<TargetFile, string>, failures: string[]): vo
 }
 
 function verifyPhaseCompletion(texts: Map<TargetFile, string>, failures: string[]): void {
-  const roadmap = texts.get(".planning/ROADMAP.md") ?? "";
-  const audit = texts.get(".planning/v1.9-MILESTONE-AUDIT.md") ?? "";
+  const roadmap = texts.get(".planning/milestones/v1.9-ROADMAP.md") ?? "";
+  const audit = texts.get(".planning/milestones/v1.9-MILESTONE-AUDIT.md") ?? "";
   const verification =
     texts.get(".planning/phases/99-peer-policy-structured-log-emission/99-VERIFICATION.md") ?? "";
   for (const needle of [

@@ -1816,8 +1816,8 @@
           "scripts/check-phase95-network-participation-release-boundary.ts",
           "scripts/check-phase95-network-participation-release-boundary.test.ts",
           "scripts/verify.sh",
-          ".planning/REQUIREMENTS.md",
-          ".planning/ROADMAP.md"
+          ".planning/milestones/v1.9-REQUIREMENTS.md",
+          ".planning/milestones/v1.9-ROADMAP.md"
         ],
         "rationale": "Phase 95 records the v1.9 release-boundary closeout in existing parity roots, maps BOUND-01 through BOUND-06 exactly once, and keeps broader network-participation claims gated by future evidence.",
         "upstream": {

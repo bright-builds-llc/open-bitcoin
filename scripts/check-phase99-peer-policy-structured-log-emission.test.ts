@@ -9,8 +9,8 @@ const TARGET_FILES = [
   "packages/open-bitcoin-rpc/src/context/peer_policy.rs",
   "packages/open-bitcoin-rpc/src/context/tests.rs",
   "packages/open-bitcoin-node/src/logging.rs",
-  ".planning/ROADMAP.md",
-  ".planning/v1.9-MILESTONE-AUDIT.md",
+  ".planning/milestones/v1.9-ROADMAP.md",
+  ".planning/milestones/v1.9-MILESTONE-AUDIT.md",
   ".planning/phases/99-peer-policy-structured-log-emission/99-VERIFICATION.md",
   "scripts/verify.sh",
 ] as const;
@@ -209,8 +209,8 @@ function createFixture(options: FixtureOptions = {}): string {
     ["packages/open-bitcoin-rpc/src/context/peer_policy.rs", contextPeerPolicyFixture()],
     ["packages/open-bitcoin-rpc/src/context/tests.rs", contextTestsFixture()],
     ["packages/open-bitcoin-node/src/logging.rs", loggingFixture()],
-    [".planning/ROADMAP.md", roadmapFixture()],
-    [".planning/v1.9-MILESTONE-AUDIT.md", auditFixture()],
+    [".planning/milestones/v1.9-ROADMAP.md", roadmapFixture()],
+    [".planning/milestones/v1.9-MILESTONE-AUDIT.md", auditFixture()],
     [
       ".planning/phases/99-peer-policy-structured-log-emission/99-VERIFICATION.md",
       verificationFixture(),

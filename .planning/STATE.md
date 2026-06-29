@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Inbound Peer Serving and Network Participation Boundary
-status: complete
-stopped_at: Completed Phase 99 peer-policy structured log emission
-last_updated: "2026-06-29T02:14:04Z"
-last_activity: 2026-06-29 -- Phase 99 verified
+status: archived
+stopped_at: v1.9 milestone archived; ready for next milestone planning
+last_updated: "2026-06-29T14:07:42Z"
+last_activity: 2026-06-29 -- v1.9 archived
 progress:
   total_phases: 10
   completed_phases: 10
@@ -18,18 +18,18 @@ progress:
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-06-26)
+See: `.planning/PROJECT.md` (updated 2026-06-29)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 99 — Peer Policy Structured Log Emission complete
+**Current focus:** Planning the next milestone
 
 ## Current Position
 
 Milestone: v1.9 Inbound Peer Serving and Network Participation Boundary
-Phase: 99 (peer-policy-structured-log-emission) — COMPLETE
-Plan: 1 of 1
-Status: Phase 99 verified; v1.9 optional peer-policy structured-log tech debt closed
-Last activity: 2026-06-29 -- Phase 99 verified
+Phase: none active
+Plan: none active
+Status: v1.9 archived with 28/28 requirements complete and audit passed
+Last activity: 2026-06-29 -- v1.9 archived
 
 Progress: [##########] 100%
 
@@ -97,6 +97,7 @@ Progress: [##########] 100%
 ### Roadmap Evolution
 
 - Phase 99 completed: Peer Policy Structured Log Emission.
+- v1.9 archived to `.planning/milestones/v1.9-ROADMAP.md`, `.planning/milestones/v1.9-REQUIREMENTS.md`, and `.planning/milestones/v1.9-MILESTONE-AUDIT.md`.
 
 ### Decisions
 
@@ -175,7 +176,7 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ### Pending Todos
 
-- Run final milestone archive flow after confirming Phase 99 verification and push are complete.
+- Start the next milestone with `/gsd-new-milestone` and create a fresh `.planning/REQUIREMENTS.md`.
 - Keep v1.9 phase directories numbered 90+ under `.planning/phases/`; historical phase directories remain tracked because verifier scripts still depend on selected phase evidence.
 - Keep repo-local Cargo and Bazel command forms in UAT guidance:
   - `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- ...`

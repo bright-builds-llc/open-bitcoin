@@ -62,10 +62,10 @@ const STALE_STATUS_PHRASES = [
   "Phase 97 and 98 are still unplanned and unverified",
 ] as const;
 const TARGET_FILES = [
-  ".planning/REQUIREMENTS.md",
-  ".planning/ROADMAP.md",
+  ".planning/milestones/v1.9-REQUIREMENTS.md",
+  ".planning/milestones/v1.9-ROADMAP.md",
   ".planning/STATE.md",
-  ".planning/v1.9-MILESTONE-AUDIT.md",
+  ".planning/milestones/v1.9-MILESTONE-AUDIT.md",
   ".planning/phases/90-inbound-listener-and-admission-policy/90-VERIFICATION.md",
   ".planning/phases/95-network-participation-evidence-and-release-boundary/95-VERIFICATION.md",
   ".planning/phases/97-inbound-metrics-sample-production/97-VERIFICATION.md",
@@ -91,7 +91,10 @@ export function checkPhase98TraceabilityReconciliation(
 
   verifyCanonicalOwnership(texts, failures);
   verifyStaleStatus(texts, failures);
-  verifyAuditClosure(texts.get(".planning/v1.9-MILESTONE-AUDIT.md") ?? "", failures);
+  verifyAuditClosure(
+    texts.get(".planning/milestones/v1.9-MILESTONE-AUDIT.md") ?? "",
+    failures,
+  );
   verifyVerificationNotes(texts, failures);
   verifyReleaseReadiness(texts, failures);
   verifyVerifierWiring(texts.get("scripts/verify.sh") ?? "", failures);
@@ -113,8 +116,8 @@ function verifyCanonicalOwnership(
   texts: Map<TargetFile, string>,
   failures: string[],
 ): void {
-  const requirements = texts.get(".planning/REQUIREMENTS.md") ?? "";
-  const roadmap = texts.get(".planning/ROADMAP.md") ?? "";
+  const requirements = texts.get(".planning/milestones/v1.9-REQUIREMENTS.md") ?? "";
+  const roadmap = texts.get(".planning/milestones/v1.9-ROADMAP.md") ?? "";
   const state = texts.get(".planning/STATE.md") ?? "";
 
   requireContains(
@@ -162,10 +165,10 @@ function verifyCanonicalOwnership(
 
 function verifyStaleStatus(texts: Map<TargetFile, string>, failures: string[]): void {
   const filesToScan: TargetFile[] = [
-    ".planning/REQUIREMENTS.md",
-    ".planning/ROADMAP.md",
+    ".planning/milestones/v1.9-REQUIREMENTS.md",
+    ".planning/milestones/v1.9-ROADMAP.md",
     ".planning/STATE.md",
-    ".planning/v1.9-MILESTONE-AUDIT.md",
+    ".planning/milestones/v1.9-MILESTONE-AUDIT.md",
     "docs/parity/release-readiness.md",
     "scripts/check-phase95-network-participation-release-boundary.test.ts",
   ];

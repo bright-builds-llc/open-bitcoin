@@ -1,5 +1,47 @@
 # Milestones: Open Bitcoin
 
+## v1.9 Inbound Peer Serving and Network Participation Boundary (Shipped: 2026-06-29)
+
+**Delivered:** Opt-in inbound peer serving and network participation evidence through disabled-by-default listener activation, inbound admission, permission classes, bounded address behavior, eviction/ban/misbehavior policy, DoS/resource governance, retained inbound metrics, peer-policy runtime bridging, structured peer-policy logs, and deterministic release-boundary guardrails. The milestone deliberately does not claim transaction relay, compact block relay, mempool propagation, public inbound defaults, production service operation, or production full-node readiness.
+
+**Phases completed:** 10 phases, 56 plans, 81 counted summary tasks
+
+**Key accomplishments:**
+
+- Added explicit opt-in inbound listener and admission policy with deterministic bind/preflight diagnostics, typed inbound peer records, duplicate/self protections, caps, reserved/protected slots, and operator-visible status evidence.
+- Added Knots-aligned peer permission and connection-class modeling while keeping relay-like, mempool, filter, and compact-block-style permissions inert labels for v1.9.
+- Added scoped listener advertisement, bounded `getaddr` response behavior, learned-address evidence, and release wording that avoids full address-relay or broader discovery claims.
+- Added eviction, ban, unban, discourage, misbehavior, reconnect suppression, and peer-policy runtime evidence across status, RPC, CLI, support bundles, metrics, and sanitized structured logs.
+- Added inbound DoS/resource governance for malformed messages, payload limits, queues, request caps, backpressure, timeouts, churn, and reconnect limits with deterministic local checkers.
+- Added retained low-cardinality inbound metric samples and dashboard/status/support projection without exposing peer identifiers or dynamic metric labels.
+- Closed traceability and audit gaps so v1.9 has 28/28 requirements, 10/10 integration categories, and 8/8 cross-phase flows passing.
+
+**Stats:**
+
+- 28/28 v1.9 requirements complete.
+- 10 phases, 56 plans, and 81 counted summary tasks complete.
+- 175,519 tracked first-party lines in the final LOC report at archive time.
+- 312 files changed across the post-v1.8 delivery range, with 61,671 insertions and 1,060 deletions before archive.
+- Git range after v1.8 archive: `1edc11e9` -> `49d9b473`.
+- Milestone audit status: `passed` with 28/28 requirements, 10/10 integration categories, 8/8 cross-phase flows, and zero critical gaps.
+- Full repo-native verification passed during the v1.9 audit and was rerun during archive closeout.
+
+**Archived artifacts:**
+
+- `.planning/milestones/v1.9-ROADMAP.md`
+- `.planning/milestones/v1.9-REQUIREMENTS.md`
+- `.planning/milestones/v1.9-MILESTONE-AUDIT.md`
+
+**Residual risk:**
+
+- Relay-like permission tokens remain inactive v1.9 labels; broader transaction relay, mempool propagation, and compact-block behavior remain future scope.
+- INB-01 through INB-04 have intentionally non-obvious ownership: Phase 90 remains historical implementation evidence, while Phase 98 owns final traceability closure.
+- Historical Phase 98-era notes may still mention prior INT-04/FLOW-04 caveats; the archived v1.9 audit supersedes them with no active integration or flow gaps.
+
+**What's next:** Start the next milestone with `/gsd-new-milestone`.
+
+---
+
 ## v1.8 Production Full-Node Readiness Boundary (Shipped: 2026-06-25)
 
 **Delivered:** Source-built production readiness boundary documentation, support classification, upgrade and rollback policy, operator runbooks, service-operation expectations, release-readiness evidence, and deterministic claim guardrails. The milestone deliberately does not claim production full-node readiness; it defines the gates and no-claim boundary that future production-readiness work must satisfy.
@@ -34,10 +76,10 @@
 
 **Residual risk:**
 
-- Inbound serving moved into active v1.9 planning and remains unshipped until that milestone completes. Production full-node readiness, relay, production-funds wallet use, migration apply mode, signed packaging, hosted dashboards, GUI parity, public-network CI, destructive repair, automatic support-bundle upload, and production-service claims remain future milestone scope.
+- v1.9 later shipped opt-in inbound peer serving and network participation boundaries. Production full-node readiness, relay, production-funds wallet use, migration apply mode, signed packaging, hosted dashboards, GUI parity, public-network CI, destructive repair, automatic support-bundle upload, and production-service claims remain future milestone scope.
 - Phase 87 checker hardening remains a non-blocking improvement: parse strict release-readiness checklist rows instead of checking only requirement ID presence.
 
-**What's next:** v1.9 Inbound Peer Serving and Network Participation Boundary is active; start Phase 90 with `/gsd-discuss-phase 90` or `/gsd-plan-phase 90`.
+**What's next:** v1.9 has shipped. Start the next milestone with `/gsd-new-milestone`.
 
 ---
 
