@@ -411,6 +411,97 @@ fn open_bitcoin_jsonc_rejects_unknown_relay_fields() {
 }
 
 #[test]
+fn daemon_relay_cli_override_can_enable_or_disable_open_bitcoin_jsonc() {
+    // Arrange
+    let disabled_sandbox = TestDirectory::new("daemon-relay-cli-enable");
+    fs::write(
+        disabled_sandbox.child("open-bitcoin.jsonc"),
+        r#"
+        {
+          "relay": {
+            "enabled": false
+          }
+        }
+        "#,
+    )
+    .expect("open bitcoin config");
+    let enabled_sandbox = TestDirectory::new("daemon-relay-cli-disable");
+    fs::write(
+        enabled_sandbox.child("open-bitcoin.jsonc"),
+        r#"
+        {
+          "relay": {
+            "enabled": true
+          }
+        }
+        "#,
+    )
+    .expect("open bitcoin config");
+
+    // Act
+    let cli_enabled = load_runtime_config_for_args(
+        &[
+            cli_arg("datadir", &disabled_sandbox.path),
+            os("-openbitcoinrelay=1"),
+        ],
+        &disabled_sandbox.path,
+    )
+    .expect("cli enables relay");
+    let cli_disabled = load_runtime_config_for_args(
+        &[
+            cli_arg("datadir", &enabled_sandbox.path),
+            os("-openbitcoinrelay=0"),
+        ],
+        &enabled_sandbox.path,
+    )
+    .expect("cli disables relay");
+
+    // Assert
+    assert!(cli_enabled.relay.enabled);
+    assert!(!cli_disabled.relay.enabled);
+}
+
+#[test]
+fn daemon_relay_cli_accepts_negated_open_bitcoin_flag() {
+    // Arrange
+    let sandbox = TestDirectory::new("daemon-relay-cli-negated");
+    fs::write(
+        sandbox.child("open-bitcoin.jsonc"),
+        r#"
+        {
+          "relay": {
+            "enabled": true
+          }
+        }
+        "#,
+    )
+    .expect("open bitcoin config");
+
+    // Act
+    let runtime = load_runtime_config_for_args(
+        &[cli_arg("datadir", &sandbox.path), os("-noopenbitcoinrelay")],
+        &sandbox.path,
+    )
+    .expect("cli disables relay");
+
+    // Assert
+    assert!(!runtime.relay.enabled);
+}
+
+#[test]
+fn daemon_relay_cli_rejects_invalid_boolean() {
+    // Arrange
+    let sandbox = TestDirectory::new("daemon-relay-cli-invalid-bool");
+
+    // Act
+    let error = load_runtime_config_for_args(&[os("-openbitcoinrelay=maybe")], &sandbox.path)
+        .expect_err("invalid relay boolean should fail");
+
+    // Assert
+    assert_eq!(error.to_string(), "invalid boolean value: maybe");
+}
+
+#[test]
 fn open_bitcoin_jsonc_accepts_wizard_onboarding_answers() {
     // Arrange
     let text = r#"

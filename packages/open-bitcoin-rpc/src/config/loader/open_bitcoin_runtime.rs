@@ -116,12 +116,16 @@ pub(super) fn resolve_daemon_sync_config(
 }
 
 pub(super) fn resolve_relay_activation_config(
-    _cli: &CliSettings,
+    cli: &CliSettings,
     maybe_config: Option<&OpenBitcoinConfig>,
 ) -> RelayActivationConfig {
-    maybe_config
+    let mut relay = maybe_config
         .map(|config| config.relay.to_activation_config())
-        .unwrap_or_default()
+        .unwrap_or_default();
+    if let Some(enabled) = cli.maybe_relay_enabled {
+        relay.enabled = enabled;
+    }
+    relay
 }
 
 fn daemon_sync_config_for_mode(

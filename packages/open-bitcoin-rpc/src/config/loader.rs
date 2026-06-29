@@ -52,6 +52,7 @@ struct CliSettings {
     maybe_open_bitcoin_config_path: Option<PathBuf>,
     maybe_daemon_sync_mode: Option<DaemonSyncMode>,
     maybe_inbound_enabled: Option<bool>,
+    maybe_relay_enabled: Option<bool>,
     maybe_inbound_listen_addresses: Option<Vec<String>>,
     maybe_max_inbound_peers: Option<usize>,
     maybe_inbound_reserved_slots: Option<usize>,
@@ -300,6 +301,9 @@ fn parse_cli_args(cli_args: &[OsString]) -> Result<CliSettings, ConfigError> {
                     ));
                 };
                 settings.maybe_daemon_sync_mode = Some(DaemonSyncMode::parse(value)?);
+            }
+            "openbitcoinrelay" => {
+                settings.maybe_relay_enabled = Some(parse_bool(maybe_value, negated)?);
             }
             "includeconf" | "rpcauth" | "rpcwhitelist" => {
                 return Err(ConfigError::new(format!(
