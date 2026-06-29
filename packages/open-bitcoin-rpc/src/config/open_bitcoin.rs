@@ -6,7 +6,7 @@
 
 use std::collections::BTreeMap;
 
-use open_bitcoin_network::InboundListenerConfig;
+use open_bitcoin_network::{InboundListenerConfig, RelayActivationConfig};
 use serde::{Deserialize, Serialize};
 
 use super::ConfigError;
@@ -29,6 +29,7 @@ pub struct OpenBitcoinConfig {
     pub storage: StorageConfig,
     pub sync: SyncConfig,
     pub inbound: InboundConfig,
+    pub relay: RelayConfig,
 }
 
 impl Default for OpenBitcoinConfig {
@@ -44,6 +45,7 @@ impl Default for OpenBitcoinConfig {
             storage: StorageConfig::default(),
             sync: SyncConfig::default(),
             inbound: InboundConfig::default(),
+            relay: RelayConfig::default(),
         }
     }
 }
@@ -123,6 +125,20 @@ pub struct MigrationConfig {
 #[serde(default, deny_unknown_fields)]
 pub struct StorageConfig {
     pub engine: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct RelayConfig {
+    pub enabled: bool,
+}
+
+impl RelayConfig {
+    pub const fn to_activation_config(&self) -> RelayActivationConfig {
+        RelayActivationConfig {
+            enabled: self.enabled,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

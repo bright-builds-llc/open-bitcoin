@@ -32,7 +32,7 @@ use chain::{
 use open_bitcoin_runtime::{
     count_inbound_permission_validation_failures, load_open_bitcoin_config,
     resolve_daemon_sync_config, resolve_effective_permission_class_configs,
-    resolve_inbound_listener_config,
+    resolve_inbound_listener_config, resolve_relay_activation_config,
 };
 use rpc_address::parse_rpc_client_address;
 
@@ -143,6 +143,7 @@ pub(super) fn load_runtime_config_for_args(
         cli.maybe_daemon_sync_mode,
         maybe_open_bitcoin_config.as_ref(),
     )?;
+    let relay = resolve_relay_activation_config(&cli, maybe_open_bitcoin_config.as_ref());
 
     let rpc_bind = cli
         .maybe_rpc_bind
@@ -190,6 +191,7 @@ pub(super) fn load_runtime_config_for_args(
         wallet: WalletRuntimeConfig::default(),
         sync,
         inbound,
+        relay,
         inbound_permission_validation_failures,
     })
 }

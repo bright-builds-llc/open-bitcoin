@@ -88,6 +88,7 @@ fn runtime_config_defaults_to_local_single_wallet_auth() {
     );
     assert_eq!(runtime.sync.mode, DaemonSyncMode::Disabled);
     assert!(!runtime.sync.is_enabled());
+    assert!(!runtime.relay.enabled);
     assert!(matches!(
         runtime.rpc_server.auth,
         RpcAuthConfig::Cookie {
@@ -335,6 +336,78 @@ fn open_bitcoin_jsonc_accepts_comments() {
     assert_eq!(config.metrics.sample_interval_seconds, 30);
     assert_eq!(config.logs.rotation, "daily");
     assert_eq!(config.logs.max_files, 14);
+}
+
+#[test]
+fn open_bitcoin_jsonc_defaults_relay_activation_to_disabled() {
+    // Arrange
+    let sandbox = TestDirectory::new("relay-default");
+
+    // Act
+    let config = OpenBitcoinConfig::default();
+    let runtime = load_runtime_config_for_args(&[cli_arg("datadir", &sandbox.path)], &sandbox.path)
+        .expect("default runtime config");
+
+    // Assert
+    assert!(!config.relay.enabled);
+    assert!(!config.relay.to_activation_config().enabled);
+    assert!(!runtime.relay.enabled);
+}
+
+#[test]
+fn open_bitcoin_jsonc_accepts_relay_activation_enabled() {
+    // Arrange
+    let sandbox = TestDirectory::new("relay-jsonc-enabled");
+    fs::write(
+        sandbox.child("open-bitcoin.jsonc"),
+        r#"
+        {
+          "relay": {
+            "enabled": true
+          }
+        }
+        "#,
+    )
+    .expect("open bitcoin config");
+
+    // Act
+    let config = parse_open_bitcoin_jsonc_config(
+        r#"
+        {
+          "relay": {
+            "enabled": true
+          }
+        }
+        "#,
+    )
+    .expect("jsonc config");
+    let runtime = load_runtime_config_for_args(&[cli_arg("datadir", &sandbox.path)], &sandbox.path)
+        .expect("runtime config");
+
+    // Assert
+    assert!(config.relay.enabled);
+    assert!(config.relay.to_activation_config().enabled);
+    assert!(runtime.relay.enabled);
+}
+
+#[test]
+fn open_bitcoin_jsonc_rejects_unknown_relay_fields() {
+    // Arrange
+    let text = r#"
+    {
+      "relay": {
+        "enabled": false,
+        "surprise": true
+      }
+    }
+    "#;
+
+    // Act
+    let error = parse_open_bitcoin_jsonc_config(text).expect_err("unknown field should fail");
+
+    // Assert
+    assert!(error.to_string().contains("unknown field"));
+    assert!(error.to_string().contains("surprise"));
 }
 
 #[test]

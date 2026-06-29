@@ -9,7 +9,7 @@ use std::{collections::BTreeMap, fs, net::IpAddr, path::Path};
 use open_bitcoin_network::{
     INBOUND_PERMISSION_ADDRESSES_FIELD, INBOUND_PERMISSION_CLASS_NAME_FIELD,
     INBOUND_PERMISSION_TOKENS_FIELD, InboundListenerConfig, ParsedPeerPermissionClass,
-    PeerPermissionClassRegistry, PeerPermissionParseError,
+    PeerPermissionClassRegistry, PeerPermissionParseError, RelayActivationConfig,
 };
 use open_bitcoin_node::core::wallet::AddressNetwork;
 use open_bitcoin_node::{SyncPeerAddress, SyncRuntimeConfig};
@@ -113,6 +113,15 @@ pub(super) fn resolve_daemon_sync_config(
         apply_sync_overrides(&mut sync.runtime, maybe_config)?;
     }
     Ok(sync)
+}
+
+pub(super) fn resolve_relay_activation_config(
+    _cli: &CliSettings,
+    maybe_config: Option<&OpenBitcoinConfig>,
+) -> RelayActivationConfig {
+    maybe_config
+        .map(|config| config.relay.to_activation_config())
+        .unwrap_or_default()
 }
 
 fn daemon_sync_config_for_mode(
