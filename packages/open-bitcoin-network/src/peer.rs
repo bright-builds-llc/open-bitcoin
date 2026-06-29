@@ -33,11 +33,19 @@ mod address_boundary;
 mod inbound_state;
 mod inventory_state;
 mod policy_state;
+mod transaction_relay;
 
 pub use address_boundary::{PeerAddressBoundaryDecision, PeerAddressBoundaryEvidence};
 use inbound_state::reject_self_connection;
 use inventory_state::forget_requested_inventory;
 use policy_state::{eviction_candidate_input, peer_policy_label, peer_policy_protected};
+pub use transaction_relay::{
+    PHASE101_GETDATA_TX_INTERVAL_SECONDS, PHASE101_MAX_TX_ANNOUNCEMENTS_PER_PEER,
+    PHASE101_MAX_TX_REQUESTS_IN_FLIGHT_PER_PEER, PHASE101_NONPREF_PEER_TX_DELAY_SECONDS,
+    PHASE101_OVERLOADED_PEER_TX_DELAY_SECONDS, PHASE101_TXID_RELAY_DELAY_SECONDS, TxDownloadAction,
+    TxDownloadPolicy, TxDownloadSuppressionReason, TxRelayId, TxRelayIdentityError,
+    TxRelayPeerMode,
+};
 
 pub const DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER: usize = 128;
 
