@@ -19,7 +19,7 @@ v1.9 Inbound Peer Serving and Network Participation Boundary started on 2026-06-
 
 **Goal:** Let Open Bitcoin accept and serve inbound peers under explicit admission, permission, address, eviction/ban, and resource-governance rules while keeping relay and production participation claims deferred.
 
-**Current state:** Phase 99 is added as optional cleanup for audit tech debt. v1.9 has 28/28 scoped requirements mapped and complete, with 0 pending gap-closure requirements.
+**Current state:** Phase 99 is complete and verified. v1.9 has 28/28 scoped requirements mapped and complete, with 0 pending gap-closure requirements.
 
 **Boundary:** v1.9 does not claim transaction relay, compact block relay, mempool propagation, public inbound serving by default, production service operation, or production full-node readiness.
 
@@ -36,7 +36,7 @@ v1.9 Inbound Peer Serving and Network Participation Boundary started on 2026-06-
 | 96 | Peer Policy Runtime Bridge | 4/4 | Complete   | 2026-06-28 |
 | 97 | Inbound Metrics Sample Production | 4/4 | Complete    | 2026-06-28 |
 | 98 | Traceability Reconciliation | 3/3 | Complete   | 2026-06-28 |
-| 99 | Peer Policy Structured Log Emission | 0/0 | Not Planned | — |
+| 99 | Peer Policy Structured Log Emission | 1/1 | Complete | 2026-06-29 |
 
 ## Phase Details
 
@@ -256,10 +256,10 @@ Plans:
 
 **Gap Closure:** Closes `.planning/v1.9-MILESTONE-AUDIT.md` tech debt `TD-01-peer-policy-log-emission-edge`.
 
-**Plans:** 0 plans
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 99 to break down)
+- [x] 99-01-PLAN.md — Automatic peer-policy structured log emission and verification
 
 **Success criteria:**
 1. Production runtime code emits sanitized `inbound_peer_policy` structured logs automatically for ban, discourage, unban, and misbehavior decisions using real peer-policy runtime events rather than test-only callers.
@@ -301,10 +301,10 @@ Plans:
 
 ## Next Step
 
-Plan the optional cleanup phase:
+Archive the completed milestone:
 
 ```bash
-/gsd-plan-phase 99
+/gsd-complete-milestone v1.9
 ```
 
 Also available:

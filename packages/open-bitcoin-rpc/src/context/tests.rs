@@ -178,6 +178,73 @@ fn record_inbound_peer_policy_event_appends_inbound_peer_policy_log_record() {
 }
 
 #[test]
+fn record_peer_policy_runtime_decisions_append_sanitized_logs_automatically() {
+    // Arrange
+    let data_dir = test_data_dir("peer-policy-runtime-auto-log");
+    let runtime = RuntimeConfig {
+        chain: AddressNetwork::Regtest,
+        maybe_data_dir: Some(data_dir.clone()),
+        ..RuntimeConfig::default()
+    };
+    let mut context = ManagedRpcContext::from_runtime_config(&runtime);
+    let ban_scope = BanScope::Address(std::net::IpAddr::from([203, 0, 113, 32]));
+    let discouragement_scope = BanScope::Address(std::net::IpAddr::from([203, 0, 113, 33]));
+    let misbehavior = MisbehaviorDecision {
+        peer_label: "peer-raw-42 credential=cookie".to_string(),
+        kind: MisbehaviorKind::MalformedMessage,
+        score: 500,
+        response: MisbehaviorResponse::Discourage,
+    };
+
+    // Act
+    context.record_peer_policy_ban(peer_policy_entry(ban_scope.clone(), 300), 150);
+    context.record_peer_policy_discouragement(peer_policy_entry(discouragement_scope, 300), 150);
+    context.record_peer_policy_misbehavior(misbehavior);
+    context.record_peer_policy_unban(&ban_scope, 160);
+
+    // Assert
+    let records = read_structured_log_records(&data_dir.join("logs"));
+    assert_eq!(records.len(), 4);
+    for record in &records {
+        assert_eq!(record.source, INBOUND_PEER_POLICY_LOG_SOURCE);
+        assert_eq!(record.level, StructuredLogLevel::Warn);
+    }
+    let messages = records
+        .iter()
+        .map(|record| record.message.as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+    for required in [
+        "outcome=ban_active",
+        "outcome=discouragement_active",
+        "outcome=discouraged",
+        "outcome=unbanned",
+        "source=source_peer_policy_runtime_bridge",
+        "source=source_misbehavior_policy",
+        "source=source_unban_policy",
+    ] {
+        assert!(
+            messages.contains(required),
+            "missing peer-policy log field: {required}"
+        );
+    }
+    for raw in [
+        "203.0.113.32",
+        "203.0.113.33",
+        "peer-raw-42",
+        "credential=cookie",
+        "peer_id=",
+        "raw_endpoint",
+        "cookie=",
+    ] {
+        assert!(
+            !messages.contains(raw),
+            "raw peer-policy data leaked: {raw}"
+        );
+    }
+}
+
+#[test]
 fn record_inbound_peer_policy_runtime_decision_projects_status_and_log() {
     // Arrange
     let data_dir = test_data_dir("peer-policy-runtime-log");
@@ -187,7 +254,7 @@ fn record_inbound_peer_policy_runtime_decision_projects_status_and_log() {
         ..RuntimeConfig::default()
     };
     let mut context = ManagedRpcContext::from_runtime_config(&runtime);
-    context.network.record_peer_policy_ban(
+    context.record_peer_policy_ban(
         peer_policy_entry(
             BanScope::Address(std::net::IpAddr::from([203, 0, 113, 31])),
             300,
@@ -214,7 +281,7 @@ fn record_inbound_peer_policy_runtime_decision_projects_status_and_log() {
     assert_eq!(decision.source, "source_peer_policy_runtime_bridge");
 
     let records = read_structured_log_records(&data_dir.join("logs"));
-    assert_eq!(records.len(), 1);
+    assert_eq!(records.len(), 2);
     let record = &records[0];
     assert_eq!(record.source, "inbound_peer_policy");
     assert!(record.message.contains("outcome=ban_active"));
@@ -244,11 +311,9 @@ fn current_inbound_status_projects_runtime_peer_policy_bridge() {
     };
 
     // Act
-    context
-        .network
-        .record_peer_policy_ban(peer_policy_entry(scope.clone(), 300), 150);
-    context.network.record_peer_policy_unban(&scope, 160);
-    context.network.record_peer_policy_misbehavior(decision);
+    context.record_peer_policy_ban(peer_policy_entry(scope.clone(), 300), 150);
+    context.record_peer_policy_unban(&scope, 160);
+    context.record_peer_policy_misbehavior(decision);
     let status = context.current_inbound_status();
 
     // Assert

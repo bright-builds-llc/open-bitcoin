@@ -6,11 +6,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Metric | Value |
 | --- | --- |
-| Included files | 430 |
-| Total lines | 174,731 |
-| Code/content lines | 154,485 |
-| Comment-only lines | 5,564 |
-| Blank lines | 14,682 |
+| Included files | 432 |
+| Total lines | 175,501 |
+| Code/content lines | 155,159 |
+| Comment-only lines | 5,591 |
+| Blank lines | 14,751 |
 
 ## Per-Crate Modules
 
@@ -26,7 +26,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | open-bitcoin-network | 29 | 6,851 | 6,776 | 30 | 13,657 | 98.9% |
 | open-bitcoin-node | 58 | 13,255 | 14,354 | 36 | 27,645 | 108.3% |
 | open-bitcoin-primitives | 9 | 877 | 0 | 20 | 897 | 0.0% |
-| open-bitcoin-rpc | 42 | 8,382 | 6,366 | 57 | 14,805 | 75.9% |
+| open-bitcoin-rpc | 42 | 8,501 | 6,431 | 57 | 14,989 | 75.6% |
 | open-bitcoin-test-harness | 7 | 662 | 0 | 28 | 690 | 0.0% |
 | open-bitcoin-wallet | 16 | 3,523 | 2,467 | 34 | 6,024 | 70.0% |
 
@@ -34,11 +34,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Category | Files | Total | Code/Content | Comments | Blank |
 | --- | --- | --- | --- | --- | --- |
-| Rust production | 240 | 68,199 | 59,566 | 2,017 | 6,616 |
-| Rust tests | 65 | 59,482 | 52,149 | 2,960 | 4,373 |
-| TypeScript/Bun scripts | 66 | 30,749 | 27,346 | 529 | 2,874 |
+| Rust production | 240 | 68,318 | 59,676 | 2,017 | 6,625 |
+| Rust tests | 65 | 59,547 | 52,208 | 2,963 | 4,376 |
+| TypeScript/Bun scripts | 68 | 31,331 | 27,847 | 553 | 2,931 |
 | Fixture/data | 6 | 8,233 | 8,228 | 5 | 0 |
-| Shell scripts | 13 | 3,992 | 3,568 | 47 | 377 |
+| Shell scripts | 13 | 3,996 | 3,572 | 47 | 377 |
 | TOML/config | 16 | 3,460 | 3,094 | 0 | 366 |
 | Bazel/Starlark | 18 | 411 | 376 | 0 | 35 |
 | YAML | 2 | 142 | 114 | 4 | 24 |
@@ -110,6 +110,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase97-inbound-metrics.ts | 439 |
 | scripts/check-phase98-traceability-reconciliation.test.ts | 468 |
 | scripts/check-phase98-traceability-reconciliation.ts | 449 |
+| scripts/check-phase99-peer-policy-structured-log-emission.test.ts | 330 |
+| scripts/check-phase99-peer-policy-structured-log-emission.ts | 252 |
 | scripts/check-v1.3-release-boundaries.ts | 184 |
 | scripts/check-v1.4-release-boundaries.ts | 241 |
 | scripts/check-v1.5-release-boundaries.ts | 296 |
@@ -147,7 +149,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | bcc3fd8282f0158bc8d2c647b51a12b2201cca2de2c15194b9a1ec662c2e8065 |
+| Input fingerprint | 1fd16b2661d5d44a4326ff30f30b5f0e3545d1c336de731f39d93d745c454d29 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |
