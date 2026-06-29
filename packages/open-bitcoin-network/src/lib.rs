@@ -24,6 +24,7 @@ mod inbound;
 mod message;
 mod peer;
 mod peer_policy;
+mod relay;
 mod resource;
 
 pub use address::{
@@ -71,6 +72,10 @@ pub use peer_policy::{
     EvictionReason, EvictionScoreComponent, MAX_PEER_POLICY_RUNTIME_DECISIONS, MisbehaviorDecision,
     MisbehaviorKind, MisbehaviorObservation, MisbehaviorPolicy, MisbehaviorResponse, PeerBanBook,
     PeerBanEntry, PeerPolicyRuntimeState, UnbanDecision, select_eviction_candidate,
+};
+pub use relay::{
+    RelayActivationConfig, RelayEligibilityDecision, RelayEligibilityInput, RelayEligibilityReason,
+    classify_relay_eligibility,
 };
 pub use resource::{
     ConnectionChurnInput, INBOUND_MESSAGE_HEADER_LEN, InboundEnvelopeDecision,

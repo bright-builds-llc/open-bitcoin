@@ -628,6 +628,18 @@
       ]
     },
     {
+      "label": "network-relay-activation-boundary",
+      "files": [
+        "packages/open-bitcoin-network/src/relay.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net_permissions.h",
+        "packages/bitcoin-knots/src/net_permissions.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/test/functional/p2p_permissions.py"
+      ]
+    },
+    {
       "label": "network-peer-policy",
       "files": [
         "packages/open-bitcoin-network/src/peer/policy_state.rs",
