@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.9
-milestone_name: Inbound Peer Serving and Network Participation Boundary
-status: archived
-stopped_at: v1.9 milestone archived; ready for next milestone planning
-last_updated: "2026-06-29T14:07:42Z"
-last_activity: 2026-06-29 -- v1.9 archived
+milestone: v2.0
+milestone_name: Transaction Relay and Mempool Participation Boundary
+status: defining_requirements
+stopped_at: defining v2.0 requirements and roadmap
+last_updated: "2026-06-29T15:08:45Z"
+last_activity: 2026-06-29 -- v2.0 milestone started
 progress:
-  total_phases: 10
-  completed_phases: 10
-  total_plans: 56
-  completed_plans: 56
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,17 +21,17 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-29)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Planning the next milestone
+**Current focus:** Defining v2.0 transaction relay and mempool participation requirements
 
 ## Current Position
 
-Milestone: v1.9 Inbound Peer Serving and Network Participation Boundary
-Phase: none active
-Plan: none active
-Status: v1.9 archived with 28/28 requirements complete and audit passed
-Last activity: 2026-06-29 -- v1.9 archived
+Milestone: v2.0 Transaction Relay and Mempool Participation Boundary
+Phase: Not started (defining requirements)
+Plan: -
+Status: Defining requirements and roadmap
+Last activity: 2026-06-29 -- v2.0 milestone started
 
-Progress: [##########] 100%
+Progress: [----------] 0%
 
 ## Performance Metrics
 
@@ -98,6 +98,7 @@ Progress: [##########] 100%
 
 - Phase 99 completed: Peer Policy Structured Log Emission.
 - v1.9 archived to `.planning/milestones/v1.9-ROADMAP.md`, `.planning/milestones/v1.9-REQUIREMENTS.md`, and `.planning/milestones/v1.9-MILESTONE-AUDIT.md`.
+- v2.0 started as Transaction Relay and Mempool Participation Boundary, continuing phase numbering after Phase 99.
 
 ### Decisions
 
@@ -176,7 +177,8 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ### Pending Todos
 
-- Start the next milestone with `/gsd-new-milestone` and create a fresh `.planning/REQUIREMENTS.md`.
+- Define v2.0 scoped requirements for transaction relay and mempool participation.
+- Create v2.0 roadmap phases starting at Phase 100.
 - Keep v1.9 phase directories numbered 90+ under `.planning/phases/`; historical phase directories remain tracked because verifier scripts still depend on selected phase evidence.
 - Keep repo-local Cargo and Bazel command forms in UAT guidance:
   - `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- ...`
@@ -186,9 +188,9 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 ### Blockers/Concerns
 
 - No active milestone blockers are recorded.
-- `.planning/phases/` still contains historical phase directories required by verifier scripts; new v1.9 phase directories should use Phase 90+ names to avoid collisions.
-- Default local verification must remain deterministic; public-network inbound serving review should be opt-in UAT evidence unless deliberately changed.
-- Existing outbound sync, full-sync, soak, support-bundle, and release-boundary behavior must not regress while adding inbound serving.
+- `.planning/phases/` still contains historical phase directories required by verifier scripts; new v2.0 phase directories should use Phase 100+ names to avoid collisions.
+- Default local verification must remain deterministic; public-network relay review should be opt-in UAT evidence unless deliberately changed.
+- Existing outbound sync, inbound serving, full-sync, soak, support-bundle, and release-boundary behavior must not regress while adding transaction relay and mempool participation.
 - Local generated Rust test binaries hang at dyld start before test execution; Plan 91-01 used cargo test --no-run, cargo check, build, clippy, and breadcrumb checks as verification evidence.
 
 ## Session Continuity
