@@ -9,12 +9,12 @@ use std::collections::BTreeSet;
 use crate::PeerId;
 
 use super::{
-    InboundAdmissionCounters, InboundAdmissionDecision, InboundAdmissionPolicy,
-    InboundAdmissionRejectionReason, InboundAdmissionRequest, InboundAdmissionSlotClass,
-    InboundHandshakeState, InboundListenerActivationDiagnostic, InboundListenerConfig,
-    InboundPermissionDecision, InboundPreflightReason, ParsedPeerPermissionClass,
-    PeerConnectionClass, PeerPermissionClassRegistry, PeerPermissionDirection, PeerPermissionSet,
-    PeerPermissionToken, classify_inbound_preflight,
+    InactivePermissionEffectLabel, InboundAdmissionCounters, InboundAdmissionDecision,
+    InboundAdmissionPolicy, InboundAdmissionRejectionReason, InboundAdmissionRequest,
+    InboundAdmissionSlotClass, InboundHandshakeState, InboundListenerActivationDiagnostic,
+    InboundListenerConfig, InboundPermissionDecision, InboundPreflightReason,
+    ParsedPeerPermissionClass, PeerConnectionClass, PeerPermissionClassRegistry,
+    PeerPermissionDirection, PeerPermissionSet, PeerPermissionToken, classify_inbound_preflight,
 };
 
 fn enabled_config(addresses: Vec<&str>) -> InboundListenerConfig {
@@ -68,6 +68,33 @@ fn permission_decision(permissions: &[&str]) -> InboundPermissionDecision {
 
 fn protected_permission_decision() -> InboundPermissionDecision {
     permission_decision(&["in", "noban", "forceinbound"])
+}
+
+fn relay_permission_labels(decision: &InboundPermissionDecision) -> Vec<&'static str> {
+    decision
+        .relay_permission_effects()
+        .iter()
+        .map(|effect| effect.as_str())
+        .collect()
+}
+
+#[test]
+fn legacy_inactive_relay_like_effect_labels_remain_stable() {
+    // Arrange
+    let labels = [
+        InactivePermissionEffectLabel::Relay,
+        InactivePermissionEffectLabel::ForceRelay,
+        InactivePermissionEffectLabel::Mempool,
+    ];
+
+    // Act
+    let serialized: Vec<&str> = labels.into_iter().map(|label| label.as_str()).collect();
+
+    // Assert
+    assert_eq!(
+        serialized,
+        vec!["inactive_relay", "inactive_forcerelay", "inactive_mempool"],
+    );
 }
 
 #[test]
@@ -129,7 +156,7 @@ fn permission_tokens_reject_unsupported_knots_aliases_with_field_and_token() {
 }
 
 #[test]
-fn all_permission_keeps_bounded_effects_active_and_relay_like_effects_inactive() {
+fn all_permission_emits_scoped_relay_policy_effects_and_keeps_filters_inactive() {
     // Arrange
     let set = match PeerPermissionSet::parse("inbound.permission_classes[].permissions[]", ["all"])
     {
@@ -148,6 +175,11 @@ fn all_permission_keeps_bounded_effects_active_and_relay_like_effects_inactive()
         .iter()
         .map(|effect| effect.as_str())
         .collect();
+    let relay_labels: Vec<&str> = set
+        .relay_permission_effects()
+        .iter()
+        .map(|effect| effect.as_str())
+        .collect();
 
     // Assert
     assert_eq!(
@@ -162,12 +194,14 @@ fn all_permission_keeps_bounded_effects_active_and_relay_like_effects_inactive()
     );
     assert_eq!(
         inactive_labels,
+        vec!["inactive_bloomfilter", "inactive_blockfilters"],
+    );
+    assert_eq!(
+        relay_labels,
         vec![
-            "inactive_relay",
-            "inactive_forcerelay",
-            "inactive_mempool",
-            "inactive_bloomfilter",
-            "inactive_blockfilters",
+            "transaction_relay_policy_input",
+            "force_relay_policy_input",
+            "mempool_policy_input",
         ],
     );
     assert!(set.contains_token(PeerPermissionToken::All));
@@ -437,7 +471,7 @@ fn admission_request_rebinds_slot_class_when_permission_decision_changes() {
 }
 
 #[test]
-fn permissioned_admission_record_preserves_active_and_inactive_effect_evidence() {
+fn permissioned_admission_record_preserves_scoped_relay_policy_effect_evidence() {
     // Arrange
     let policy = InboundAdmissionPolicy::new(3, 1);
     let permission_decision = permission_decision(&["in", "download", "addr", "relay", "mempool"]);
@@ -468,6 +502,7 @@ fn permissioned_admission_record_preserves_active_and_inactive_effect_evidence()
         .iter()
         .map(|effect| effect.as_str())
         .collect();
+    let relay_labels = relay_permission_labels(&record.permission_decision);
     assert_eq!(
         record.connection_class,
         PeerConnectionClass::PermissionedInbound,
@@ -480,7 +515,11 @@ fn permissioned_admission_record_preserves_active_and_inactive_effect_evidence()
             "download_serving_policy_input",
         ],
     );
-    assert_eq!(inactive_labels, vec!["inactive_relay", "inactive_mempool"]);
+    assert_eq!(
+        relay_labels,
+        vec!["transaction_relay_policy_input", "mempool_policy_input",],
+    );
+    assert!(inactive_labels.is_empty());
 }
 
 #[test]

@@ -20,9 +20,9 @@ use std::{
 use serde_json::json;
 
 use open_bitcoin_network::{
-    AddressAnnouncement, AddressList, InactivePermissionEffectLabel, InboundAdmissionSlotClass,
-    InboundListenerConfig, ParsedPeerPermissionClass, PeerConnectionClass, PermissionEffectLabel,
-    VersionMessage,
+    AddressAnnouncement, AddressList, InboundAdmissionSlotClass, InboundListenerConfig,
+    ParsedPeerPermissionClass, PeerConnectionClass, PermissionEffectLabel,
+    RelayPermissionEffectLabel, VersionMessage,
 };
 use open_bitcoin_node::{
     DurableSyncState, FjallNodeStore, PersistMode, RuntimeMetadata, WalletRegistry,
@@ -564,9 +564,10 @@ fn permission_context_resolves_permissioned_literal_ip_from_runtime_config() {
     );
     assert!(
         decision
-            .inactive_effects()
-            .contains(&InactivePermissionEffectLabel::Relay)
+            .relay_permission_effects()
+            .contains(&RelayPermissionEffectLabel::TransactionRelayPolicyInput)
     );
+    assert!(decision.inactive_effects().is_empty());
 }
 
 #[test]
@@ -923,13 +924,7 @@ fn open_bitcoin_network_status_reports_permission_evidence_without_raw_class_nam
     );
     assert_eq!(
         inbound["inactive_permission_effects"],
-        json!([
-            "inactive_relay",
-            "inactive_forcerelay",
-            "inactive_mempool",
-            "inactive_bloomfilter",
-            "inactive_blockfilters"
-        ])
+        json!(["inactive_bloomfilter", "inactive_blockfilters"])
     );
     assert_eq!(
         inbound["latest_permission_decision"]["value"]["permission_class"],

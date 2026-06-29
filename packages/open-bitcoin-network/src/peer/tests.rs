@@ -98,6 +98,14 @@ fn inactive_permission_labels(decision: &InboundPermissionDecision) -> Vec<&'sta
         .collect()
 }
 
+fn relay_permission_labels(decision: &InboundPermissionDecision) -> Vec<&'static str> {
+    decision
+        .relay_permission_effects()
+        .iter()
+        .map(|effect| effect.as_str())
+        .collect()
+}
+
 #[test]
 fn peer_manager_exposes_peer_policy_runtime_state_accessors() {
     // Arrange
@@ -905,13 +913,21 @@ fn announce_transaction_uses_wtxidrelay_when_peer_negotiates_it() {
 }
 
 #[test]
-fn relay_permission_labels_remain_inactive_for_transaction_paths() {
+fn scoped_relay_permission_effects_remain_policy_only_for_transaction_paths() {
     // Arrange
     let permission_decision = permission_decision(["in", "relay", "forcerelay", "mempool"]);
     assert!(active_permission_labels(&permission_decision).is_empty());
     assert_eq!(
+        relay_permission_labels(&permission_decision),
+        vec![
+            "transaction_relay_policy_input",
+            "force_relay_policy_input",
+            "mempool_policy_input",
+        ],
+    );
+    assert_eq!(
         inactive_permission_labels(&permission_decision),
-        vec!["inactive_relay", "inactive_forcerelay", "inactive_mempool"]
+        Vec::<&'static str>::new(),
     );
     let transaction = open_bitcoin_primitives::Transaction::default();
     let txid = transaction_txid(&transaction).expect("txid");
@@ -999,14 +1015,16 @@ fn filter_permission_labels_remain_inactive_without_service_bits_or_compact_bloc
     // Arrange
     let permission_decision = permission_decision(["in", "all"]);
     assert_eq!(
-        inactive_permission_labels(&permission_decision),
+        relay_permission_labels(&permission_decision),
         vec![
-            "inactive_relay",
-            "inactive_forcerelay",
-            "inactive_mempool",
-            "inactive_bloomfilter",
-            "inactive_blockfilters",
-        ]
+            "transaction_relay_policy_input",
+            "force_relay_policy_input",
+            "mempool_policy_input",
+        ],
+    );
+    assert_eq!(
+        inactive_permission_labels(&permission_decision),
+        vec!["inactive_bloomfilter", "inactive_blockfilters"]
     );
     let config = local_config();
     assert_eq!(

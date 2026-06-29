@@ -129,6 +129,23 @@ impl PermissionEffectLabel {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum RelayPermissionEffectLabel {
+    TransactionRelayPolicyInput,
+    ForceRelayPolicyInput,
+    MempoolPolicyInput,
+}
+
+impl RelayPermissionEffectLabel {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::TransactionRelayPolicyInput => "transaction_relay_policy_input",
+            Self::ForceRelayPolicyInput => "force_relay_policy_input",
+            Self::MempoolPolicyInput => "mempool_policy_input",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum InactivePermissionEffectLabel {
     Relay,
     ForceRelay,
@@ -210,17 +227,22 @@ impl PeerPermissionSet {
         effects
     }
 
-    pub fn inactive_effects(&self) -> Vec<InactivePermissionEffectLabel> {
+    pub fn relay_permission_effects(&self) -> Vec<RelayPermissionEffectLabel> {
         let mut effects = Vec::new();
         if self.permissions.contains(&PeerPermissionToken::Relay) {
-            effects.push(InactivePermissionEffectLabel::Relay);
+            effects.push(RelayPermissionEffectLabel::TransactionRelayPolicyInput);
         }
         if self.permissions.contains(&PeerPermissionToken::ForceRelay) {
-            effects.push(InactivePermissionEffectLabel::ForceRelay);
+            effects.push(RelayPermissionEffectLabel::ForceRelayPolicyInput);
         }
         if self.permissions.contains(&PeerPermissionToken::Mempool) {
-            effects.push(InactivePermissionEffectLabel::Mempool);
+            effects.push(RelayPermissionEffectLabel::MempoolPolicyInput);
         }
+        effects
+    }
+
+    pub fn inactive_effects(&self) -> Vec<InactivePermissionEffectLabel> {
+        let mut effects = Vec::new();
         if self.permissions.contains(&PeerPermissionToken::BloomFilter) {
             effects.push(InactivePermissionEffectLabel::BloomFilter);
         }
@@ -357,6 +379,7 @@ impl ParsedPeerPermissionClass {
         InboundPermissionDecision {
             connection_class,
             active_effects: self.permissions.active_effects(),
+            relay_permission_effects: self.permissions.relay_permission_effects(),
             inactive_effects: self.permissions.inactive_effects(),
         }
     }
@@ -472,6 +495,7 @@ impl PeerConnectionClass {
 pub struct InboundPermissionDecision {
     connection_class: PeerConnectionClass,
     active_effects: Vec<PermissionEffectLabel>,
+    relay_permission_effects: Vec<RelayPermissionEffectLabel>,
     inactive_effects: Vec<InactivePermissionEffectLabel>,
 }
 
@@ -480,6 +504,7 @@ impl InboundPermissionDecision {
         Self {
             connection_class: PeerConnectionClass::OrdinaryInbound,
             active_effects: Vec::new(),
+            relay_permission_effects: Vec::new(),
             inactive_effects: Vec::new(),
         }
     }
@@ -494,6 +519,10 @@ impl InboundPermissionDecision {
 
     pub fn active_effects(&self) -> &[PermissionEffectLabel] {
         &self.active_effects
+    }
+
+    pub fn relay_permission_effects(&self) -> &[RelayPermissionEffectLabel] {
+        &self.relay_permission_effects
     }
 
     pub fn inactive_effects(&self) -> &[InactivePermissionEffectLabel] {

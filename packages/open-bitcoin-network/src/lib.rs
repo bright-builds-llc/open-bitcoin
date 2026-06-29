@@ -55,7 +55,7 @@ pub use inbound::{
     InboundPreflightReason, ParsedPeerPermissionClass, PeerConnectionClass,
     PeerPermissionClassRegistry, PeerPermissionDirection, PeerPermissionParseError,
     PeerPermissionSet, PeerPermissionToken, PermissionClassName, PermissionEffectLabel,
-    classify_inbound_preflight,
+    RelayPermissionEffectLabel, classify_inbound_preflight,
 };
 pub use message::{
     HeadersMessage, InventoryList, LocalPeerConfig, MAX_HEADERS_RESULTS, MAX_INV_SIZE,

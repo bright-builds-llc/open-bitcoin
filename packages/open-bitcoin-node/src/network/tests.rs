@@ -426,7 +426,7 @@ fn permissioned_inbound_admission_counts_effects_without_reserved_capacity() {
     assert_eq!(admission.protected_inbound_admits, 0);
     assert_eq!(admission.reserved_inbound_admits, 0);
     assert_eq!(admission.active_permission_effect_observations, 2);
-    assert_eq!(admission.inactive_permission_effect_observations, 2);
+    assert_eq!(admission.inactive_permission_effect_observations, 0);
 }
 
 #[test]

@@ -15,7 +15,7 @@ pub use permissions::{
     INBOUND_PERMISSION_TOKENS_FIELD, InactivePermissionEffectLabel, InboundPermissionDecision,
     ParsedPeerPermissionClass, PeerConnectionClass, PeerPermissionClassRegistry,
     PeerPermissionDirection, PeerPermissionParseError, PeerPermissionSet, PeerPermissionToken,
-    PermissionClassName, PermissionEffectLabel,
+    PermissionClassName, PermissionEffectLabel, RelayPermissionEffectLabel,
 };
 
 pub const INBOUND_LISTEN_ADDRESSES_FIELD: &str = "inbound.listen_addresses";

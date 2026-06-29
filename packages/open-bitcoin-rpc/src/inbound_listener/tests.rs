@@ -656,7 +656,7 @@ async fn protected_loopback_inbound_consumes_reserved_capacity() {
 }
 
 #[tokio::test]
-async fn permissioned_loopback_inbound_uses_ordinary_capacity_with_inactive_effect_evidence() {
+async fn permissioned_loopback_inbound_uses_ordinary_capacity_with_scoped_filter_evidence() {
     // Arrange
     let config = loopback_config_with_permission_classes(
         2,
@@ -705,7 +705,7 @@ async fn permissioned_loopback_inbound_uses_ordinary_capacity_with_inactive_effe
     assert_eq!(admission.protected_inbound_admits, 0);
     assert_eq!(admission.reserved_inbound_admits, 0);
     assert_eq!(admission.active_permission_effect_observations, 2);
-    assert_eq!(admission.inactive_permission_effect_observations, 5);
+    assert_eq!(admission.inactive_permission_effect_observations, 2);
     assert_eq!(admission.reserved_slot_rejections, 1);
     assert_eq!(network_info.inbound_peers, 1);
     assert_eq!(network_info.outbound_peers, 0);
