@@ -353,6 +353,60 @@ Expected review evidence:
   without raw peer ids, raw endpoints, raw config strings, RPC password values,
   or cookie contents.
 
+## Phase 100 Relay Activation Boundary Review
+
+Phase 100 adds the default-off Open Bitcoin-owned relay activation boundary for
+v2.0. `relay.enabled` in `open-bitcoin.jsonc` and the daemon
+`-openbitcoinrelay` override feed the pure relay eligibility policy only. They
+do not implement transaction download scheduling, orphan handling, mempool
+admission, relay serving/fanout, rebroadcast, compact block relay,
+bloom/filter serving, package relay, public relay by default, public-network
+relay CI, production-service operation, production full-node readiness, or
+production-funds wallet use.
+
+Review a loopback relay-eligible permission class with either repo-local daemon
+form:
+
+```bash
+mkdir -p /tmp/open-bitcoin-relay-activation
+
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --bin open-bitcoind -- \
+  -regtest \
+  -datadir=/tmp/open-bitcoin-relay-activation \
+  -openbitcoinrelay=1 \
+  -openbitcoininbound=1 \
+  -openbitcoinlisten=127.0.0.1:18444 \
+  -openbitcoininboundpermissionclass=relay_loopback@127.0.0.1=in,relay,forcerelay,mempool \
+  -server=1
+
+bazel run //packages/open-bitcoin-rpc:open_bitcoind -- \
+  -regtest \
+  -datadir=/tmp/open-bitcoin-relay-activation \
+  -openbitcoinrelay=1 \
+  -openbitcoininbound=1 \
+  -openbitcoinlisten=127.0.0.1:18444 \
+  -openbitcoininboundpermissionclass=relay_loopback@127.0.0.1=in,relay,forcerelay,mempool \
+  -server=1
+```
+
+Expected review evidence is bounded to the activation policy and existing
+permission-status vocabulary:
+
+- `transaction_relay_policy_input`, `force_relay_policy_input`, and
+  `mempool_policy_input` identify scoped Phase 100 v2.0 permission effects.
+- `eligible`, `disabled`, `activation_required`, `inbound_serving_required`,
+  `permission_required`, `protected_not_relay`, and
+  `permission_effect_inactive` identify the peer eligibility decision.
+- `inactive_bloomfilter` and `inactive_blockfilters` remain inactive filter
+  labels.
+- `download_serving_policy_input` and `address_response_policy_input` remain
+  bounded non-relay permission effects from earlier phases.
+
+Public-network relay review is opt-in and outside `bash scripts/verify.sh`.
+Default verification must stay deterministic, loopback/synthetic, and free of
+public-network relay, service-manager, wall-clock soak, production-deployment,
+or public relay CI gates.
+
 ## Phase 92 Address Advertisement and Discovery Boundary Review
 
 Phase 92 adds bounded address-boundary evidence to the same explicit loopback

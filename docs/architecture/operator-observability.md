@@ -233,6 +233,30 @@ preserve safe machine labels and aggregate counts, but it must not copy raw
 class names, raw `in,noban,...` config strings, peer ids, raw endpoint tables,
 RPC password values, cookie contents, or unbounded peer details.
 
+## Phase 100 relay activation evidence
+
+Phase 100 relay activation evidence uses only low-cardinality policy labels:
+`transaction_relay_policy_input`, `force_relay_policy_input`,
+`mempool_policy_input`, `inactive_bloomfilter`, `inactive_blockfilters`,
+`permission_effect_inactive`, `eligible`, `disabled`,
+`activation_required`, `inbound_serving_required`, `permission_required`, and
+`protected_not_relay`. These labels explain the scoped v2.0 eligibility policy
+created by `relay.enabled` and `-openbitcoinrelay`; they are not transaction,
+mempool, or public-network telemetry.
+
+Observability surfaces must not expose raw permission class names, raw
+permission strings, peer ids, endpoints, transaction ids, raw transaction hex,
+credentials, or dynamic labels for Phase 100. Metrics, structured logs, status,
+dashboard, RPC, and support evidence should preserve only bounded aggregate
+counts and the fixed policy labels above.
+
+Phase 100 evidence does not claim transaction download scheduling, orphan
+handling, mempool admission, relay serving/fanout, rebroadcast, compact block
+relay, bloom/filter serving, package relay, public relay by default,
+public-network relay CI, production service operation, production full-node
+readiness, or production-funds wallet use. Public-network relay review stays
+explicit opt-in UAT outside `bash scripts/verify.sh`.
+
 ## Phase 92 address advertisement and discovery evidence
 
 Address-boundary observability is sourced from the shared inbound status fields

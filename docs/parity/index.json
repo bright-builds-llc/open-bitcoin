@@ -636,6 +636,10 @@
     {
       "name": "v1-9-peer-policy-runtime-bridge",
       "status": "done"
+    },
+    {
+      "name": "v2-0-relay-activation-boundary",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -1872,6 +1876,53 @@
         ],
         "suspected_unknowns": [
           "Future public-network, service, relay, banlist, and production-readiness milestones need fresh scoped evidence before these deferred surfaces can be promoted."
+        ]
+      },
+      {
+        "id": "v2-0-relay-activation-boundary",
+        "title": "v2.0 Relay Activation Boundary",
+        "status": "done",
+        "requirements": [
+          "ACT-01",
+          "ACT-02",
+          "ACT-03",
+          "ACT-04"
+        ],
+        "evidence": [
+          "docs/architecture/config-precedence.md",
+          "docs/architecture/status-snapshot.md",
+          "docs/architecture/operator-observability.md",
+          "docs/operator/runtime-guide.md",
+          "docs/parity/catalog/p2p.md",
+          "docs/parity/checklist.md",
+          "docs/parity/source-breadcrumbs.json",
+          "packages/open-bitcoin-network/src/relay.rs",
+          "packages/open-bitcoin-network/src/inbound/permissions.rs",
+          "packages/open-bitcoin-rpc/src/config/open_bitcoin.rs",
+          "packages/open-bitcoin-rpc/src/config/loader.rs",
+          "scripts/check-phase100-relay-activation-boundary.ts",
+          "scripts/check-phase100-relay-activation-boundary.test.ts",
+          "scripts/verify.sh",
+          ".planning/phases/100-relay-activation-boundary-and-permission-semantics/100-01-SUMMARY.md",
+          ".planning/phases/100-relay-activation-boundary-and-permission-semantics/100-02-SUMMARY.md"
+        ],
+        "rationale": "Phase 100 records default-off Open Bitcoin-owned relay activation through relay.enabled and -openbitcoinrelay, the peer eligibility matrix, scoped relay/forcerelay/mempool policy inputs, inactive bloom/filter labels, source breadcrumbs, and deterministic checker coverage.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/net_permissions.h",
+            "packages/bitcoin-knots/src/net_permissions.cpp",
+            "packages/bitcoin-knots/src/net.cpp",
+            "packages/bitcoin-knots/src/net_processing.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/test/functional/p2p_permissions.py"
+          ]
+        },
+        "known_gaps": [
+          "Phase 100 defines activation and eligibility only; transaction download scheduling, orphan handling, mempool admission, relay serving/fanout, rebroadcast, compact block relay, bloom/filter serving, package relay, public relay by default, public-network relay CI, production service operation, production full-node readiness, and production-funds wallet use remain out of scope."
+        ],
+        "suspected_unknowns": [
+          "Future v2.0 phases own transaction inventory, download, admission, lifecycle, serving/fanout, operator evidence, and release-boundary guardrails before any broader relay or mempool participation claim can be made."
         ]
       }
     ]

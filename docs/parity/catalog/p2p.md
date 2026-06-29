@@ -112,6 +112,16 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
   through the existing parity roots, release-readiness matrix, support
   redaction roots, deterministic verification references, and 28/28 v1.9
   requirement traceability
+- Phase 100 `v2-0-relay-activation-boundary` evidence keeps ACT-01, ACT-02,
+  ACT-03, and ACT-04 auditable through default-off `relay.enabled` and
+  `-openbitcoinrelay` activation, bounded peer eligibility reasons,
+  `transaction_relay_policy_input`, `force_relay_policy_input`,
+  `mempool_policy_input`, `inactive_bloomfilter`, and
+  `inactive_blockfilters` without adding transaction download scheduling,
+  orphan handling, mempool admission, relay serving/fanout, rebroadcast,
+  compact block relay, bloom/filter serving, package relay, public relay by
+  default, public-network relay CI, production service operation, production
+  full-node readiness, or production-funds wallet use
 
 ## Knots sources
 
@@ -663,6 +673,48 @@ defaults, public-network CI, production service operation, or production
 readiness. Those surfaces remain deferred until future milestones add scoped
 parity, support, release, and verification evidence.
 
+## Phase 100 relay activation boundary
+
+The `v2-0-relay-activation-boundary` surface covers `ACT-01`, `ACT-02`,
+`ACT-03`, and `ACT-04` for explicit relay activation and peer eligibility
+semantics. It is a v2.0 activation boundary only; later phases own
+transaction inventory identity, transaction download scheduling, orphan
+handling, mempool admission, relay serving/fanout, rebroadcast, RPC status,
+metrics, logs, support evidence, and milestone release closeout.
+
+Its Knots anchors are
+[`packages/bitcoin-knots/src/net_permissions.h`](../../../packages/bitcoin-knots/src/net_permissions.h),
+[`packages/bitcoin-knots/src/net_permissions.cpp`](../../../packages/bitcoin-knots/src/net_permissions.cpp),
+[`packages/bitcoin-knots/src/net.cpp`](../../../packages/bitcoin-knots/src/net.cpp),
+[`packages/bitcoin-knots/src/net_processing.cpp`](../../../packages/bitcoin-knots/src/net_processing.cpp),
+and
+[`packages/bitcoin-knots/test/functional/p2p_permissions.py`](../../../packages/bitcoin-knots/test/functional/p2p_permissions.py).
+
+Open Bitcoin intentionally owns the Phase 100 activation surface:
+
+- `relay.enabled` and `-openbitcoinrelay` are explicit default-off activation
+  controls. They do not change service bits, peer socket behavior, or public
+  relay defaults by themselves.
+- Relay eligibility classifies peers with bounded reason labels:
+  `eligible`, `disabled`, `activation_required`, `inbound_serving_required`,
+  `permission_required`, `protected_not_relay`, and
+  `permission_effect_inactive`.
+- `relay`, `forcerelay`, and `mempool` permission tokens become scoped v2.0
+  policy inputs exposed as `transaction_relay_policy_input`,
+  `force_relay_policy_input`, and `mempool_policy_input`.
+- `download` and `addr` remain their existing bounded non-relay effects, such
+  as `download_serving_policy_input` and `address_response_policy_input`.
+- Bloom and filter permissions remain inactive labels:
+  `inactive_bloomfilter` and `inactive_blockfilters`.
+- Public-network relay review remains opt-in UAT outside `bash scripts/verify.sh`.
+
+Phase 100 does not claim compact block relay, bloom/filter serving, package
+relay, public relay by default, public-network relay CI, production service
+operation, production full-node readiness, production-funds wallet use,
+transaction download scheduling, orphan handling, mempool admission, relay
+serving/fanout, or rebroadcast. Those surfaces remain outside this phase until
+future scoped requirements add implementation and evidence.
+
 ## First-party implementation
 
 - [`packages/open-bitcoin-network/src/address.rs`](../../../packages/open-bitcoin-network/src/address.rs)
@@ -679,6 +731,7 @@ parity, support, release, and verification evidence.
 - [`packages/open-bitcoin-network/src/peer.rs`](../../../packages/open-bitcoin-network/src/peer.rs)
 - [`packages/open-bitcoin-network/src/peer/policy_state.rs`](../../../packages/open-bitcoin-network/src/peer/policy_state.rs)
 - [`packages/open-bitcoin-network/src/peer_policy.rs`](../../../packages/open-bitcoin-network/src/peer_policy.rs)
+- [`packages/open-bitcoin-network/src/relay.rs`](../../../packages/open-bitcoin-network/src/relay.rs)
 - [`packages/open-bitcoin-network/src/resource.rs`](../../../packages/open-bitcoin-network/src/resource.rs)
 - [`packages/open-bitcoin-network/src/resource/tests.rs`](../../../packages/open-bitcoin-network/src/resource/tests.rs)
 - [`packages/open-bitcoin-network/tests/parity.rs`](../../../packages/open-bitcoin-network/tests/parity.rs)

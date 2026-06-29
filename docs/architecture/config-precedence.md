@@ -82,6 +82,26 @@ Open Bitcoin config surface.
 
 The operator resolver reports the selected Open Bitcoin JSONC path, baseline-compatible `bitcoin.conf` path, datadir, structured log directory, metrics store directory, network, and credential source. Credential reporting is metadata-only: cookie files are reported by path/source and presence, never by cookie contents. Cookie contents, `rpcpassword`, and `rpcauth` values are not support evidence; support bundles may record which credential source was selected, but they must not copy credential values.
 
+Phase 100 adds an Open Bitcoin-owned relay activation section for the v2.0
+transaction-relay boundary:
+
+- `relay.enabled` is the explicit JSONC relay activation switch and remains
+  default-off.
+- `-openbitcoinrelay`, `-openbitcoinrelay=1`, `-openbitcoinrelay=0`, and
+  `-noopenbitcoinrelay` are daemon CLI overrides for the same activation bit.
+- CLI values keep the existing precedence over environment, Open Bitcoin JSONC,
+  `bitcoin.conf`, cookies, and defaults.
+- `relay.enabled` and `-openbitcoinrelay` only activate the Phase 100
+  eligibility policy. They do not add transaction download scheduling, orphan
+  handling, mempool admission, relay serving/fanout, rebroadcast, compact block
+  relay, bloom/filter serving, package relay, public relay by default,
+  public-network relay CI, production service operation, production full-node
+  readiness, or production-funds wallet use.
+
+Baseline whitelist and whitebind remain rejected as relay activation aliases;
+whitelist and whitebind remain rejected by the Open Bitcoin-owned config
+boundary rather than silently accepted as Knots compatibility shortcuts.
+
 ## Precedence
 
 Configuration precedence is:
@@ -92,6 +112,6 @@ Cookie files are an auth fallback, not an application-settings layer.
 
 ## bitcoin.conf compatibility boundary
 
-Baseline Bitcoin/Knots keys remain in `bitcoin.conf`. Open Bitcoin-only keys must not be written to `bitcoin.conf`; that includes wizard, onboarding, dashboard, service, migration, metrics, logging, storage, sync, inbound listener, and inbound permission-class settings.
+Baseline Bitcoin/Knots keys remain in `bitcoin.conf`. Open Bitcoin-only keys must not be written to `bitcoin.conf`; that includes wizard, onboarding, dashboard, service, migration, metrics, logging, storage, sync, inbound listener, inbound permission-class, and relay activation settings.
 
-The existing `bitcoin.conf` loader should continue to reject unknown Open Bitcoin-only keys such as `dashboard`, `service`, `openbitcoinsync`, `openbitcoininbound`, `openbitcoinlisten`, or `openbitcoininboundpermissionclass` instead of silently accepting them.
+The existing `bitcoin.conf` loader should continue to reject unknown Open Bitcoin-only keys such as `dashboard`, `service`, `openbitcoinsync`, `openbitcoininbound`, `openbitcoinlisten`, `openbitcoininboundpermissionclass`, or `openbitcoinrelay` instead of silently accepting them.

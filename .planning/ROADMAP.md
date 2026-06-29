@@ -12,7 +12,7 @@
 
 | Phase | Name | Requirements | Status |
 | --- | --- | --- | --- |
-| 100 | Relay Activation Boundary and Permission Semantics | ACT-01, ACT-02, ACT-03, ACT-04 | In Progress |
+| 100 | Relay Activation Boundary and Permission Semantics | ACT-01, ACT-02, ACT-03, ACT-04 | Complete |
 | 101 | Transaction Inventory Identity and Download Scheduling | INV-01, INV-02, INV-03, INV-04, DL-01, DL-02 | Pending |
 | 102 | Orphan Handling and Admission Outcome Bridge | DL-03, DL-04, DL-05, MEM-01, MEM-02 | Pending |
 | 103 | Mempool Chainstate Lifecycle and Durable Recovery | MEM-03, MEM-04, MEM-05, MEM-06 | Pending |
@@ -45,7 +45,7 @@
 Plans:
 - [x] 100-01-PLAN.md — Pure relay activation and eligibility policy in `open-bitcoin-network`.
 - [x] 100-02-PLAN.md — Open Bitcoin JSONC/CLI relay activation config and parser wiring.
-- [ ] 100-03-PLAN.md — Docs, parity roots, no-claim checker, verifier wiring, and phase verification.
+- [x] 100-03-PLAN.md — Docs, parity roots, no-claim checker, verifier wiring, and phase verification.
 
 ### Phase 101: Transaction Inventory Identity and Download Scheduling
 
@@ -212,7 +212,7 @@ Plans:
 | v1.7 Full-Sync Soak and Recovery Hardening | 7 | 37 | Shipped | 2026-06-20 | [roadmap](milestones/v1.7-ROADMAP.md) |
 | v1.8 Production Full-Node Readiness Boundary | 8 | 26 | Shipped | 2026-06-25 | [roadmap](milestones/v1.8-ROADMAP.md) |
 | v1.9 Inbound Peer Serving and Network Participation Boundary | 10 | 56 | Shipped | 2026-06-29 | [roadmap](milestones/v1.9-ROADMAP.md) |
-| v2.0 Transaction Relay and Mempool Participation Boundary | 7 | 0 | Active | - | active |
+| v2.0 Transaction Relay and Mempool Participation Boundary | 7 | 3 | Active | - | active |
 
 ## Traceability
 
@@ -223,8 +223,8 @@ Plans:
 
 ## Next Step
 
-Start Phase 100 discussion:
+Start Phase 101 discussion:
 
 ```bash
-/gsd-discuss-phase 100
+/gsd-discuss-phase 101
 ```

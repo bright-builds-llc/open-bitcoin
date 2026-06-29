@@ -238,6 +238,30 @@ evidence only; they do not claim transaction relay, mempool propagation, BIP37
 bloom serving, compact-filter serving, compact block relay, full address relay,
 public inbound defaults, or production node readiness.
 
+## Phase 100 relay activation policy boundary
+
+Phase 100 is a policy/config boundary for v2.0 relay activation, not a new
+broad public status claim. `relay.enabled` and `-openbitcoinrelay` feed the
+pure relay eligibility policy, which can classify a peer as `eligible`,
+`disabled`, `activation_required`, `inbound_serving_required`,
+`permission_required`, `protected_not_relay`, or
+`permission_effect_inactive`.
+
+The Phase 100 permission effects are low-cardinality policy inputs only:
+`transaction_relay_policy_input`, `force_relay_policy_input`, and
+`mempool_policy_input`. `active_permission_effects` still covers bounded
+non-relay effects such as `download_serving_policy_input` and
+`address_response_policy_input`. Bloom and filter permissions remain inactive
+labels, specifically `inactive_bloomfilter` and `inactive_blockfilters`, until
+a later scoped requirement activates them.
+
+Status consumers must not render Phase 100 activation as transaction download
+scheduling, orphan handling, mempool admission, relay serving/fanout,
+rebroadcast, compact block relay, bloom/filter serving, package relay, public
+relay by default, public-network relay CI, production service operation,
+production full-node readiness, or production-funds wallet use. Those remain
+out of scope for Phase 100.
+
 ## Phase 92 address advertisement and discovery status
 
 Phase 92 extends `OpenBitcoinStatusSnapshot.peers.inbound` with bounded address

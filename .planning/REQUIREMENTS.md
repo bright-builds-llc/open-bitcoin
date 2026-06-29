@@ -10,10 +10,10 @@ Requirements for the current milestone. Each requirement maps to exactly one roa
 
 ### Relay Activation And Permission Boundary
 
-- [ ] **ACT-01**: Operator can enable transaction relay only through explicit relay activation settings that keep public relay off by default.
-- [ ] **ACT-02**: Node classifies peer relay eligibility across outbound, inbound, manual, protected, and permissioned peers without changing service bits or public defaults accidentally.
-- [ ] **ACT-03**: Permission effects for `relay`, `forcerelay`, and `mempool` activate only the scoped behavior documented for v2.0.
-- [ ] **ACT-04**: Bloom/filter permissions, compact-block behavior, and unrelated peer permissions remain inactive unless a later requirement explicitly activates them.
+- [x] **ACT-01**: Operator can enable transaction relay only through explicit relay activation settings that keep public relay off by default.
+- [x] **ACT-02**: Node classifies peer relay eligibility across outbound, inbound, manual, protected, and permissioned peers without changing service bits or public defaults accidentally.
+- [x] **ACT-03**: Permission effects for `relay`, `forcerelay`, and `mempool` activate only the scoped behavior documented for v2.0.
+- [x] **ACT-04**: Bloom/filter permissions, compact-block behavior, and unrelated peer permissions remain inactive unless a later requirement explicitly activates them.
 
 ### Transaction Inventory And Identity
 
@@ -105,10 +105,10 @@ Explicitly excluded from v2.0 to prevent scope creep.
 
 | Requirement | Phase | Status |
 | --- | --- | --- |
-| ACT-01 | Phase 100 | Pending |
-| ACT-02 | Phase 100 | Pending |
-| ACT-03 | Phase 100 | Pending |
-| ACT-04 | Phase 100 | Pending |
+| ACT-01 | Phase 100 | Complete |
+| ACT-02 | Phase 100 | Complete |
+| ACT-03 | Phase 100 | Complete |
+| ACT-04 | Phase 100 | Complete |
 | INV-01 | Phase 101 | Pending |
 | INV-02 | Phase 101 | Pending |
 | INV-03 | Phase 101 | Pending |
@@ -145,4 +145,4 @@ Explicitly excluded from v2.0 to prevent scope creep.
 - Unmapped: 0
 
 *Requirements defined: 2026-06-29*
-*Last updated: 2026-06-29 after v2.0 milestone research*
+*Last updated: 2026-06-29 after Phase 100 completion*

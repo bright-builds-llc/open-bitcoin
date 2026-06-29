@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Transaction Relay and Mempool Participation Boundary
 status: executing
-stopped_at: Phase 100 Plan 100-02 completed
-last_updated: "2026-06-29T19:05:20.000Z"
-last_activity: 2026-06-29 -- Phase 100 Plan 100-02 completed; Plan 100-03 next
+stopped_at: Phase 100 completed
+last_updated: "2026-06-29T19:29:43.000Z"
+last_activity: 2026-06-29 -- Phase 100 completed; Phase 101 next
 progress:
   total_phases: 7
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
-  percent: 67
+  completed_plans: 3
+  percent: 100
 ---
 
 # Project State
@@ -21,17 +21,17 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-29)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 100 — relay-activation-boundary-and-permission-semantics
+**Current focus:** Phase 101 — transaction-inventory-identity-and-download-scheduling
 
 ## Current Position
 
 Milestone: v2.0 Transaction Relay and Mempool Participation Boundary
-Phase: 100 (relay-activation-boundary-and-permission-semantics) — EXECUTING
-Plan: 3 of 3
-Status: Executing Phase 100
-Last activity: 2026-06-29 -- Phase 100 Plan 100-02 completed; Plan 100-03 next
+Phase: 101 (transaction-inventory-identity-and-download-scheduling) — PENDING
+Plan: not started
+Status: Phase 100 complete; Phase 101 next
+Last activity: 2026-06-29 -- Phase 100 completed; Phase 101 next
 
-Progress: [#######---] 67%
+Progress: [##########] 100% for Phase 100
 
 ## Performance Metrics
 
@@ -45,7 +45,7 @@ Progress: [#######---] 67%
 
 | Phase | Name | Requirements | Status |
 |-------|------|--------------|--------|
-| 100 | Relay Activation Boundary and Permission Semantics | ACT-01, ACT-02, ACT-03, ACT-04 | In Progress |
+| 100 | Relay Activation Boundary and Permission Semantics | ACT-01, ACT-02, ACT-03, ACT-04 | Complete |
 | 101 | Transaction Inventory Identity and Download Scheduling | INV-01, INV-02, INV-03, INV-04, DL-01, DL-02 | Pending |
 | 102 | Orphan Handling and Admission Outcome Bridge | DL-03, DL-04, DL-05, MEM-01, MEM-02 | Pending |
 | 103 | Mempool Chainstate Lifecycle and Durable Recovery | MEM-03, MEM-04, MEM-05, MEM-06 | Pending |
@@ -66,6 +66,7 @@ Progress: [#######---] 67%
 - v2.0 is now planned as 7 phases and 32 requirements covering scoped transaction relay and mempool participation while keeping compact block relay, public relay defaults, production service operation, production-funds wallet use, public-network CI, and production full-node readiness deferred.
 - Phase 100 Plan 100-01 added scoped relay permission-effect labels and a pure default-off relay activation eligibility policy without changing peer socket, mempool, or service-bit behavior.
 - Phase 100 Plan 100-02 added default-off Open Bitcoin JSONC/CLI relay activation config and typed runtime wiring without changing peer socket, mempool, service-bit, or public status behavior.
+- Phase 100 Plan 100-03 documented the relay activation boundary, registered `v2-0-relay-activation-boundary`, added the deterministic no-claim checker, wired it after Phase 99 in `bash scripts/verify.sh`, and recorded passed verification.
 
 | Phase 91-peer-permissions-and-connection-classes P01 | 27min | 2 tasks | 5 files |
 | Phase 91 P02 | 34min | 2 tasks | 13 files |
@@ -94,6 +95,7 @@ Progress: [#######---] 67%
 | Phase 98 P03 | 27m31s | 2 tasks | 8 files |
 | Phase 100 P01 | 60m | 2 tasks | 11 files |
 | Phase 100 P02 | 25m | 2 tasks | 6 files |
+| Phase 100 P03 | 25m | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -183,7 +185,7 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ### Pending Todos
 
-- Execute Phase 100 Plan 100-03 for docs, parity roots, no-claim checker, verifier wiring, and final phase verification.
+- Discuss and plan Phase 101 for transaction inventory identity and download scheduling.
 - Keep v1.9 phase directories numbered 90+ under `.planning/phases/`; historical phase directories remain tracked because verifier scripts still depend on selected phase evidence.
 - Keep repo-local Cargo and Bazel command forms in UAT guidance:
   - `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- ...`
@@ -200,6 +202,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-06-29T19:05:20.000Z
-Stopped at: Phase 100 Plan 100-02 completed
-Resume file: .planning/phases/100-relay-activation-boundary-and-permission-semantics/100-03-PLAN.md
+Last session: 2026-06-29T19:29:43.000Z
+Stopped at: Phase 100 completed
+Resume file: .planning/ROADMAP.md#phase-101-transaction-inventory-identity-and-download-scheduling
