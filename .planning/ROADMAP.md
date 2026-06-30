@@ -13,7 +13,7 @@
 | Phase | Name | Requirements | Status |
 | --- | --- | --- | --- |
 | 100 | Relay Activation Boundary and Permission Semantics | ACT-01, ACT-02, ACT-03, ACT-04 | Complete |
-| 101 | Transaction Inventory Identity and Download Scheduling | INV-01, INV-02, INV-03, INV-04, DL-01, DL-02 | Pending |
+| 101 | Transaction Inventory Identity and Download Scheduling | INV-01, INV-02, INV-03, INV-04, DL-01, DL-02 | Complete |
 | 102 | Orphan Handling and Admission Outcome Bridge | DL-03, DL-04, DL-05, MEM-01, MEM-02 | Pending |
 | 103 | Mempool Chainstate Lifecycle and Durable Recovery | MEM-03, MEM-04, MEM-05, MEM-06 | Pending |
 | 104 | Relay Serving, Fanout, and Rebroadcast Policy | REL-01, REL-02, REL-03, REL-04 | Pending |
@@ -65,12 +65,12 @@ Plans:
 
 **Verification:** Pure `open-bitcoin-network` tests, deterministic fake-clock request expiry tests, and `bash scripts/verify.sh`.
 
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
-- [ ] 101-01-PLAN.md — Pure typed transaction relay identity and download scheduler in `open-bitcoin-network`.
-- [ ] 101-02-PLAN.md — PeerManager and managed-network scheduler integration without mempool admission side effects.
-- [ ] 101-03-PLAN.md — Parity documentation, deterministic checker, verifier wiring, and phase verification evidence.
+- [x] 101-01-PLAN.md — Pure typed transaction relay identity and download scheduler in `open-bitcoin-network`.
+- [x] 101-02-PLAN.md — PeerManager and managed-network scheduler integration without mempool admission side effects.
+- [x] 101-03-PLAN.md — Parity documentation, deterministic checker, verifier wiring, and phase verification evidence.
 
 ### Phase 102: Orphan Handling and Admission Outcome Bridge
 

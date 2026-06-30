@@ -6,6 +6,7 @@
 // - packages/bitcoin-knots/src/txrequest.h
 // - packages/bitcoin-knots/src/txrequest.cpp
 // - packages/bitcoin-knots/test/functional/p2p_tx_download.py
+// - packages/bitcoin-knots/test/functional/p2p_getdata.py
 
 use std::collections::BTreeSet;
 

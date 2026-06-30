@@ -122,6 +122,24 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
   compact block relay, bloom/filter serving, package relay, public relay by
   default, public-network relay CI, production service operation, production
   full-node readiness, or production-funds wallet use
+- Phase 101 `v2-0-transaction-inventory-download-scheduling` evidence keeps
+  INV-01, INV-02, INV-03, INV-04, DL-01, and DL-02 auditable through typed
+  `TxRelayId` transaction inventory identity, `TxDownloadScheduler` request
+  scheduling, `TxDownloadSuppressionReason::MempoolKnown`, bounded
+  `request_getdata`, `suppress_duplicate`, `suppress_already_have`,
+  `suppress_recent_reject`, `suppress_mempool_known`, `mempool_known`,
+  `suppress_identity_mismatch`, `suppress_request_cap`, `fallback_request`,
+  `request_expired`, `notfound_cleanup`, `received_tx_cleanup`, and
+  `peer_cleanup` labels, plus
+  `PHASE101_MAX_TX_REQUESTS_IN_FLIGHT_PER_PEER` and
+  `PHASE101_GETDATA_TX_INTERVAL_SECONDS` constants. Phase 101 does not claim
+  orphan handling, parent request behavior, mempool admission outcomes,
+  standardness or fee policy, RBF, ancestor or descendant policy, mempool
+  lifecycle or persistence, block connect/disconnect mempool behavior, relay
+  serving/fanout, rebroadcast, RPC/operator/support surfaces, compact block
+  relay, package relay, bloom/filter serving, public relay by default,
+  public-network relay CI, production service operation, production full-node
+  readiness, or production-funds wallet use.
 
 ## Knots sources
 
@@ -141,10 +159,15 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
 - [`packages/bitcoin-knots/src/headerssync.h`](../../../packages/bitcoin-knots/src/headerssync.h)
 - [`packages/bitcoin-knots/src/headerssync.cpp`](../../../packages/bitcoin-knots/src/headerssync.cpp)
 - [`packages/bitcoin-knots/src/sync.cpp`](../../../packages/bitcoin-knots/src/sync.cpp)
+- [`packages/bitcoin-knots/src/node/txdownloadman.h`](../../../packages/bitcoin-knots/src/node/txdownloadman.h)
+- [`packages/bitcoin-knots/src/node/txdownloadman_impl.cpp`](../../../packages/bitcoin-knots/src/node/txdownloadman_impl.cpp)
+- [`packages/bitcoin-knots/src/txrequest.h`](../../../packages/bitcoin-knots/src/txrequest.h)
+- [`packages/bitcoin-knots/src/txrequest.cpp`](../../../packages/bitcoin-knots/src/txrequest.cpp)
 - [`packages/bitcoin-knots/src/test/peerman_tests.cpp`](../../../packages/bitcoin-knots/src/test/peerman_tests.cpp)
 - [`packages/bitcoin-knots/test/functional/p2p_handshake.py`](../../../packages/bitcoin-knots/test/functional/p2p_handshake.py)
 - [`packages/bitcoin-knots/test/functional/p2p_initial_headers_sync.py`](../../../packages/bitcoin-knots/test/functional/p2p_initial_headers_sync.py)
 - [`packages/bitcoin-knots/test/functional/p2p_tx_download.py`](../../../packages/bitcoin-knots/test/functional/p2p_tx_download.py)
+- [`packages/bitcoin-knots/test/functional/p2p_getdata.py`](../../../packages/bitcoin-knots/test/functional/p2p_getdata.py)
 - [`packages/bitcoin-knots/test/functional/p2p_permissions.py`](../../../packages/bitcoin-knots/test/functional/p2p_permissions.py)
 - [`packages/bitcoin-knots/test/functional/p2p_getaddr_caching.py`](../../../packages/bitcoin-knots/test/functional/p2p_getaddr_caching.py)
 - [`packages/bitcoin-knots/test/functional/p2p_invalid_messages.py`](../../../packages/bitcoin-knots/test/functional/p2p_invalid_messages.py)
@@ -714,6 +737,53 @@ operation, production full-node readiness, production-funds wallet use,
 transaction download scheduling, orphan handling, mempool admission, relay
 serving/fanout, or rebroadcast. Those surfaces remain outside this phase until
 future scoped requirements add implementation and evidence.
+
+## Phase 101 transaction inventory download scheduling
+
+The `v2-0-transaction-inventory-download-scheduling` surface covers `INV-01`,
+`INV-02`, `INV-03`, `INV-04`, `DL-01`, and `DL-02` for typed transaction
+inventory identity and bounded transaction download scheduling. It is a v2.0
+inventory/download scheduling boundary only; later phases own orphan handling,
+parent request behavior, mempool admission outcomes, relay serving/fanout,
+rebroadcast, RPC/operator/support surfaces, and release closeout.
+
+Its Knots anchors are
+[`packages/bitcoin-knots/src/protocol.h`](../../../packages/bitcoin-knots/src/protocol.h),
+[`packages/bitcoin-knots/src/net_processing.cpp`](../../../packages/bitcoin-knots/src/net_processing.cpp),
+[`packages/bitcoin-knots/src/node/txdownloadman.h`](../../../packages/bitcoin-knots/src/node/txdownloadman.h),
+[`packages/bitcoin-knots/src/node/txdownloadman_impl.cpp`](../../../packages/bitcoin-knots/src/node/txdownloadman_impl.cpp),
+[`packages/bitcoin-knots/src/txrequest.h`](../../../packages/bitcoin-knots/src/txrequest.h),
+[`packages/bitcoin-knots/src/txrequest.cpp`](../../../packages/bitcoin-knots/src/txrequest.cpp),
+[`packages/bitcoin-knots/test/functional/p2p_tx_download.py`](../../../packages/bitcoin-knots/test/functional/p2p_tx_download.py),
+and
+[`packages/bitcoin-knots/test/functional/p2p_getdata.py`](../../../packages/bitcoin-knots/test/functional/p2p_getdata.py).
+
+Open Bitcoin intentionally owns the Phase 101 inventory/download surface:
+
+- `TxRelayId` is the typed boundary for txid and wtxid inventory.
+- Types validated by this surface include `TxRelayPeerMode`,
+  `TxDownloadPolicy`, `TxDownloadLocalFacts`, `TxDownloadAction`, and
+  `PeerAction::TransactionRelay`.
+- `TxDownloadScheduler` owns in-memory transaction request, duplicate,
+  fallback, timeout, `notfound`, disconnect, and received-transaction cleanup
+  state.
+- `TxDownloadSuppressionReason::MempoolKnown` and the `mempool_known` reason
+  keep future mempool-known facts typed without adding mempool admission
+  outcomes in this phase.
+- Fixed action labels are `request_getdata`, `suppress_duplicate`,
+  `suppress_already_have`, `suppress_recent_reject`,
+  `suppress_mempool_known`, `suppress_identity_mismatch`,
+  `suppress_request_cap`, `fallback_request`, `request_expired`,
+  `notfound_cleanup`, `received_tx_cleanup`, and `peer_cleanup`.
+- Scheduler policy constants include
+  `PHASE101_MAX_TX_ANNOUNCEMENTS_PER_PEER`,
+  `PHASE101_MAX_TX_REQUESTS_IN_FLIGHT_PER_PEER` and
+  `PHASE101_TXID_RELAY_DELAY_SECONDS`,
+  `PHASE101_NONPREF_PEER_TX_DELAY_SECONDS`,
+  `PHASE101_OVERLOADED_PEER_TX_DELAY_SECONDS`, and
+  `PHASE101_GETDATA_TX_INTERVAL_SECONDS`.
+
+Phase 101 does not claim orphan handling, parent request behavior, mempool admission outcomes, standardness or fee policy, RBF, ancestor or descendant policy, mempool lifecycle or persistence, block connect/disconnect mempool behavior, relay serving/fanout, rebroadcast, RPC/operator/support surfaces, compact block relay, package relay, bloom/filter serving, public relay by default, public-network relay CI, production service operation, production full-node readiness, or production-funds wallet use. Those surfaces remain outside this phase until future scoped requirements add implementation and evidence.
 
 ## First-party implementation
 

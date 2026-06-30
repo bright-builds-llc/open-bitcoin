@@ -246,7 +246,7 @@ run_coverage_report() {
 # Phase 93 is followed by Phase 94. Phase 94 is followed by Phase 95.
 # Phase 95 is followed by Phase 96. Phase 96 is followed by Phase 97.
 # Phase 97 is followed by Phase 98. Phase 98 is followed by Phase 99.
-# Phase 99 is followed by Phase 100.
+# Phase 99 is followed by Phase 100. Phase 100 is followed by Phase 101.
 : <<'VERIFY_COMMAND_ORDER'
 bun run scripts/check-v1.3-release-boundaries.ts
 bun run scripts/check-v1.4-release-boundaries.ts
@@ -313,6 +313,8 @@ bun test scripts/check-phase99-peer-policy-structured-log-emission.test.ts
 bun run scripts/check-phase99-peer-policy-structured-log-emission.ts
 bun test scripts/check-phase100-relay-activation-boundary.test.ts
 bun run scripts/check-phase100-relay-activation-boundary.ts
+bun test scripts/check-phase101-transaction-inventory-download-scheduling.test.ts
+bun run scripts/check-phase101-transaction-inventory-download-scheduling.ts
 VERIFY_COMMAND_ORDER
 
 parse_args "$@"
@@ -404,6 +406,8 @@ run_step "test Phase 99 peer-policy structured log emission checker" bun test sc
 run_step "check Phase 99 peer-policy structured log emission" bun run scripts/check-phase99-peer-policy-structured-log-emission.ts
 run_step "test Phase 100 relay activation boundary checker" bun test scripts/check-phase100-relay-activation-boundary.test.ts
 run_step "check Phase 100 relay activation boundary" bun run scripts/check-phase100-relay-activation-boundary.ts
+run_step "test Phase 101 transaction inventory download scheduling checker" bun test scripts/check-phase101-transaction-inventory-download-scheduling.test.ts
+run_step "check Phase 101 transaction inventory download scheduling" bun run scripts/check-phase101-transaction-inventory-download-scheduling.ts
 run_step "check pure-core dependencies" bash scripts/check-pure-core-deps.sh
 run_step "check file lengths" bash scripts/check-file-lengths.sh
 run_step "check panic sites" bash scripts/check-panic-sites.sh

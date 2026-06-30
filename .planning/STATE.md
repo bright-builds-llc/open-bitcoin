@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Transaction Relay and Mempool Participation Boundary
 status: executing
-stopped_at: Phase 101 context gathered
-last_updated: "2026-06-29T22:18:30.105Z"
-last_activity: 2026-06-29 -- Phase 101 execution started
+stopped_at: Phase 101 completed; Phase 102 not started
+last_updated: "2026-06-30T01:13:08.969Z"
+last_activity: 2026-06-30 -- Phase 101 completed
 progress:
   total_phases: 7
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 6
-  completed_plans: 3
-  percent: 50
+  completed_plans: 6
+  percent: 100
 ---
 
 # Project State
@@ -21,17 +21,17 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-29)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 101 — Transaction Inventory Identity and Download Scheduling
+**Current focus:** Phase 102 — Orphan Handling and Admission Outcome Bridge
 
 ## Current Position
 
 Milestone: v2.0 Transaction Relay and Mempool Participation Boundary
-Phase: 101 (Transaction Inventory Identity and Download Scheduling) — EXECUTING
-Plan: 1 of 3
-Status: Executing Phase 101
-Last activity: 2026-06-29 -- Phase 101 execution started
+Phase: 102
+Plan: Not started
+Status: Ready for Phase 102
+Last activity: 2026-06-30 -- Phase 101 completed
 
-Progress: [##########] 100% for Phase 100
+Progress: [##########] 100% for Phase 101
 
 ## Performance Metrics
 
@@ -46,7 +46,7 @@ Progress: [##########] 100% for Phase 100
 | Phase | Name | Requirements | Status |
 |-------|------|--------------|--------|
 | 100 | Relay Activation Boundary and Permission Semantics | ACT-01, ACT-02, ACT-03, ACT-04 | Complete |
-| 101 | Transaction Inventory Identity and Download Scheduling | INV-01, INV-02, INV-03, INV-04, DL-01, DL-02 | Pending |
+| 101 | Transaction Inventory Identity and Download Scheduling | INV-01, INV-02, INV-03, INV-04, DL-01, DL-02 | Complete |
 | 102 | Orphan Handling and Admission Outcome Bridge | DL-03, DL-04, DL-05, MEM-01, MEM-02 | Pending |
 | 103 | Mempool Chainstate Lifecycle and Durable Recovery | MEM-03, MEM-04, MEM-05, MEM-06 | Pending |
 | 104 | Relay Serving, Fanout, and Rebroadcast Policy | REL-01, REL-02, REL-03, REL-04 | Pending |
@@ -67,6 +67,7 @@ Progress: [##########] 100% for Phase 100
 - Phase 100 Plan 100-01 added scoped relay permission-effect labels and a pure default-off relay activation eligibility policy without changing peer socket, mempool, or service-bit behavior.
 - Phase 100 Plan 100-02 added default-off Open Bitcoin JSONC/CLI relay activation config and typed runtime wiring without changing peer socket, mempool, service-bit, or public status behavior.
 - Phase 100 Plan 100-03 documented the relay activation boundary, registered `v2-0-relay-activation-boundary`, added the deterministic no-claim checker, wired it after Phase 99 in `bash scripts/verify.sh`, and recorded passed verification.
+- Phase 101 completed typed txid/wtxid transaction relay identity, bounded download scheduling, PeerManager and managed-network integration, parity roots, deterministic checker coverage, and passed verification.
 
 | Phase 91-peer-permissions-and-connection-classes P01 | 27min | 2 tasks | 5 files |
 | Phase 91 P02 | 34min | 2 tasks | 13 files |

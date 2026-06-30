@@ -640,6 +640,10 @@
     {
       "name": "v2-0-relay-activation-boundary",
       "status": "done"
+    },
+    {
+      "name": "v2-0-transaction-inventory-download-scheduling",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -1923,6 +1927,57 @@
         ],
         "suspected_unknowns": [
           "Future v2.0 phases own transaction inventory, download, admission, lifecycle, serving/fanout, operator evidence, and release-boundary guardrails before any broader relay or mempool participation claim can be made."
+        ]
+      },
+      {
+        "id": "v2-0-transaction-inventory-download-scheduling",
+        "title": "v2.0 Transaction Inventory Identity and Download Scheduling",
+        "status": "done",
+        "requirements": [
+          "INV-01",
+          "INV-02",
+          "INV-03",
+          "INV-04",
+          "DL-01",
+          "DL-02"
+        ],
+        "evidence": [
+          "docs/parity/catalog/p2p.md",
+          "docs/parity/checklist.md",
+          "docs/parity/source-breadcrumbs.json",
+          "packages/open-bitcoin-network/src/peer/transaction_relay.rs",
+          "packages/open-bitcoin-network/src/peer/transaction_relay/tests.rs",
+          "packages/open-bitcoin-network/src/peer.rs",
+          "packages/open-bitcoin-network/src/peer/inventory_state.rs",
+          "packages/open-bitcoin-network/src/peer/tests.rs",
+          "packages/open-bitcoin-node/src/network.rs",
+          "packages/open-bitcoin-node/src/network/tests.rs",
+          "scripts/check-phase101-transaction-inventory-download-scheduling.ts",
+          "scripts/check-phase101-transaction-inventory-download-scheduling.test.ts",
+          "scripts/verify.sh",
+          ".planning/phases/101-transaction-inventory-identity-and-download-scheduling/101-01-SUMMARY.md",
+          ".planning/phases/101-transaction-inventory-identity-and-download-scheduling/101-02-SUMMARY.md"
+        ],
+        "rationale": "Phase 101 records typed txid/wtxid inventory identity, pure transaction download scheduling, PeerManager request-state integration, managed getdata translation, bounded action labels, source breadcrumbs, and deterministic checker coverage.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/protocol.h",
+            "packages/bitcoin-knots/src/net_processing.cpp",
+            "packages/bitcoin-knots/src/node/txdownloadman.h",
+            "packages/bitcoin-knots/src/node/txdownloadman_impl.cpp",
+            "packages/bitcoin-knots/src/txrequest.h",
+            "packages/bitcoin-knots/src/txrequest.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/test/functional/p2p_tx_download.py",
+            "packages/bitcoin-knots/test/functional/p2p_getdata.py"
+          ]
+        },
+        "known_gaps": [
+          "Phase 101 defines typed transaction inventory identity and bounded download scheduling only; orphan handling, parent request behavior, mempool admission outcomes, standardness or fee policy, RBF, ancestor or descendant policy, mempool lifecycle or persistence, block connect/disconnect mempool behavior, relay serving/fanout, rebroadcast, RPC/operator/support surfaces, compact block relay, package relay, bloom/filter serving, public relay by default, public-network relay CI, production service operation, production full-node readiness, and production-funds wallet use remain out of scope."
+        ],
+        "suspected_unknowns": [
+          "Future v2.0 phases own mempool admission, relay serving/fanout, rebroadcast, compact block relay, package relay, filters, operator evidence, and release-boundary guardrails before any broader relay or mempool participation claim can be made."
         ]
       }
     ]
