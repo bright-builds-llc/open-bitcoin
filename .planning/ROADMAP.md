@@ -91,6 +91,14 @@ Plans:
 
 **Verification:** Pure mempool tests, relay/admission bridge tests, managed in-memory integration tests, and `bash scripts/verify.sh`.
 
+**Plans:** 4 plans
+
+Plans:
+- [ ] 102-01-PLAN.md — Stable mempool outcome contract and no-partial-mutation admission tests.
+- [ ] 102-02-PLAN.md — Pure bounded orphan staging, parent requests, reconsideration, expiry, and eviction.
+- [ ] 102-03-PLAN.md — Managed runtime bridge from transaction download to mempool outcomes and orphan reconsideration.
+- [ ] 102-04-PLAN.md — Parity roots, deterministic checker, verifier wiring, and phase verification.
+
 ### Phase 103: Mempool Chainstate Lifecycle and Durable Recovery
 
 **Purpose:** Make mempool participation coherent across blocks, reorg boundaries, trimming, persistence, and restart.
