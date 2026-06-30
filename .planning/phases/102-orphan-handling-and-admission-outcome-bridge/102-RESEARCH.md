@@ -408,21 +408,24 @@ The snapshot should cover accepted entry keys, spent-outpoint indexes, total vir
 | A4 | Missing-parent collection should return all unique parent txids, not only the first missing `OutPoint`. [ASSUMED] | Don't Hand-Roll, Common Pitfalls, Code Examples | Medium: parent request tests for multiple missing parents may fail or become under-specified if only one missing parent is exposed. |
 | A5 | Replacement/eviction should update managed in-memory transaction indexes only to the degree needed for current outcome and duplicate/mempool-known behavior, not for Phase 104 relay serving. [ASSUMED] | Open Questions | Medium: stale indexes could affect duplicate suppression or later serving if the bridge keeps evicted/replaced txs as available. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Should `MempoolError::MissingInput` stay singular or should the new outcome collect all missing parents?** [VERIFIED: packages/open-bitcoin-mempool/src/error.rs; ASSUMED]
+1. **[RESOLVED] Should `MempoolError::MissingInput` stay singular or should the new outcome collect all missing parents?** [VERIFIED: packages/open-bitcoin-mempool/src/error.rs; ASSUMED]
    - What we know: The current error contains one `OutPoint`, while Phase 102 needs parent request behavior and Knots can reason about multiple missing parents. [VERIFIED: packages/open-bitcoin-mempool/src/error.rs; VERIFIED: packages/bitcoin-knots/src/node/txdownloadman_impl.cpp]
    - What's unclear: Whether to change the internal error, add a helper, or collect missing parents in the outcome wrapper. [ASSUMED]
+   - Resolution: Collect all unique missing parent txids in the new outcome/orphan path while preserving existing `MempoolError::MissingInput` compatibility where useful. [ASSUMED: chosen planning answer]
    - Recommendation: Add a pure mempool helper or outcome-building path that returns all unique missing parent txids while keeping existing error compatibility if that reduces churn. [ASSUMED]
 
-2. **Should the managed transaction store remove replaced and evicted transactions in Phase 102?** [VERIFIED: packages/open-bitcoin-node/src/network.rs; ASSUMED]
+2. **[RESOLVED] Should the managed transaction store remove replaced and evicted transactions in Phase 102?** [VERIFIED: packages/open-bitcoin-node/src/network.rs; ASSUMED]
    - What we know: `AdmissionResult` already returns `replaced` and `evicted` txids, and `ManagedPeerNetwork` stores accepted transactions by txid/wtxid. [VERIFIED: packages/open-bitcoin-mempool/src/types.rs; VERIFIED: packages/open-bitcoin-node/src/network.rs]
    - What's unclear: Relay serving is Phase 104, but stale store indexes can still influence duplicate suppression and mempool-known facts. [VERIFIED: .planning/REQUIREMENTS.md; ASSUMED]
+   - Resolution: Remove or clean only the managed in-memory transaction indexes required for Phase 102 duplicate/mempool-known behavior when replaced or evicted outcomes occur, leaving relay-serving cache lifecycle to Phase 104. [ASSUMED: chosen planning answer]
    - Recommendation: Update only the indexes used by Phase 102 duplicate/mempool-known behavior and document that serving/fanout remains deferred. [ASSUMED]
 
-3. **What exact orphan caps should the first implementation use?** [VERIFIED: .planning/phases/102-orphan-handling-and-admission-outcome-bridge/102-CONTEXT.md; VERIFIED: packages/bitcoin-knots/src/net_processing.h]
+3. **[RESOLVED] What exact orphan caps should the first implementation use?** [VERIFIED: .planning/phases/102-orphan-handling-and-admission-outcome-bridge/102-CONTEXT.md; VERIFIED: packages/bitcoin-knots/src/net_processing.h]
    - What we know: Knots defaults to 100 orphan transactions, a 20 minute orphan expiry, and a 5 minute sweep interval. [VERIFIED: packages/bitcoin-knots/src/net_processing.h; VERIFIED: packages/bitcoin-knots/src/txorphanage.h]
    - What's unclear: Phase 102 leaves exact constant names and values to the planner. [VERIFIED: .planning/phases/102-orphan-handling-and-admission-outcome-bridge/102-CONTEXT.md]
+   - Resolution: Use Knots-derived production defaults with test policies using tiny caps and short injected durations. [ASSUMED: chosen planning answer]
    - Recommendation: Use Knots-derived production defaults with test policies that set tiny caps and short injected durations. [VERIFIED: packages/bitcoin-knots/src/net_processing.h; ASSUMED]
 
 ## Environment Availability
