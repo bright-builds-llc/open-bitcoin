@@ -189,6 +189,23 @@ pub enum TxDownloadAction {
 }
 
 impl TxDownloadAction {
+    pub const fn peer_id(&self) -> PeerId {
+        match self {
+            Self::RequestGetData { peer_id, .. }
+            | Self::SuppressDuplicate { peer_id, .. }
+            | Self::SuppressAlreadyHave { peer_id, .. }
+            | Self::SuppressRecentReject { peer_id, .. }
+            | Self::Suppress { peer_id, .. }
+            | Self::SuppressIdentityMismatch { peer_id, .. }
+            | Self::SuppressRequestCap { peer_id, .. }
+            | Self::FallbackRequest { peer_id, .. }
+            | Self::RequestExpired { peer_id, .. }
+            | Self::NotFoundCleanup { peer_id, .. }
+            | Self::ReceivedTxCleanup { peer_id, .. }
+            | Self::PeerCleanup { peer_id } => *peer_id,
+        }
+    }
+
     pub const fn as_str(&self) -> &'static str {
         match self {
             Self::RequestGetData { .. } => "request_getdata",

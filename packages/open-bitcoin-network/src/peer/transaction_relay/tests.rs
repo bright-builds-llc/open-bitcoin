@@ -203,6 +203,7 @@ fn transaction_relay_action_labels_are_fixed() {
 
     // Act
     let labels = actions.map(|action| action.as_str());
+    let peer_ids = actions.map(|action| action.peer_id());
     let mempool_reason = actions[4]
         .suppression_reason()
         .expect("mempool-known suppression reason");
@@ -225,6 +226,7 @@ fn transaction_relay_action_labels_are_fixed() {
             "peer_cleanup",
         ],
     );
+    assert_eq!(peer_ids, [1; 12]);
     assert_eq!(mempool_reason, TxDownloadSuppressionReason::MempoolKnown);
     assert_eq!(mempool_reason.as_str(), "mempool_known");
 }

@@ -9,7 +9,8 @@ use std::net::IpAddr;
 use open_bitcoin_core::consensus::crypto::hash160;
 use open_bitcoin_core::{
     consensus::{
-        ConsensusParams, ScriptVerifyFlags, block_merkle_root, check_block_header, transaction_txid,
+        ConsensusParams, ScriptVerifyFlags, block_merkle_root, check_block_header,
+        transaction_txid, transaction_wtxid,
     },
     primitives::{
         Amount, Block, BlockHash, BlockHeader, Hash32, InventoryType, InventoryVector,
@@ -26,9 +27,10 @@ use open_bitcoin_network::{
     LearnedAddressEntry, LocalAdvertisementDecision, LocalPeerConfig, MisbehaviorDecision,
     MisbehaviorKind, MisbehaviorResponse, NetworkError, PHASE92_LEARNED_ADDR_BATCH_LIMIT,
     PHASE94_MAX_HEADER_LOCATOR_HASHES, PHASE94_MAX_INBOUND_REQUEST_INVENTORY_ITEMS,
-    PHASE94_MAX_INBOUND_TX_REQUESTS_PER_PEER, ParsedPeerPermissionClass,
-    PeerAddressBoundaryDecision, PeerAddressBoundaryEvidence, PeerBanEntry, PeerConnectionClass,
-    PeerPermissionClassRegistry, RoutabilityClass, ServiceFlags, WireNetworkMessage,
+    PHASE94_MAX_INBOUND_TX_REQUESTS_PER_PEER, PHASE101_GETDATA_TX_INTERVAL_SECONDS,
+    ParsedPeerPermissionClass, PeerAddressBoundaryDecision, PeerAddressBoundaryEvidence,
+    PeerBanEntry, PeerConnectionClass, PeerPermissionClassRegistry, RoutabilityClass, ServiceFlags,
+    WireNetworkMessage,
 };
 
 use crate::{
@@ -349,6 +351,38 @@ fn block_inventory(count: usize) -> InventoryList {
     )
 }
 
+fn transaction_relay_inventory(transaction: &Transaction) -> InventoryList {
+    InventoryList::new(vec![InventoryVector {
+        inventory_type: InventoryType::Transaction,
+        object_hash: transaction_txid(transaction).expect("txid").into(),
+    }])
+}
+
+fn witness_transaction_relay_inventory(transaction: &Transaction) -> InventoryList {
+    InventoryList::new(vec![InventoryVector {
+        inventory_type: InventoryType::WitnessTransaction,
+        object_hash: transaction_wtxid(transaction).expect("wtxid").into(),
+    }])
+}
+
+fn assert_getdata(messages: &[WireNetworkMessage], expected_inventory: InventoryList) {
+    assert_eq!(messages, &[WireNetworkMessage::GetData(expected_inventory)],);
+}
+
+fn assert_targeted_getdata(
+    messages: &[(u64, WireNetworkMessage)],
+    expected_peer_id: u64,
+    expected_inventory: InventoryList,
+) {
+    assert_eq!(
+        messages,
+        &[(
+            expected_peer_id,
+            WireNetworkMessage::GetData(expected_inventory)
+        )],
+    );
+}
+
 fn assert_request_cap_resource_governance(network: &ManagedPeerNetwork<MemoryChainstateStore>) {
     let info = network.resource_governance_info();
     assert_eq!(info.request_cap_events, 1);
@@ -358,6 +392,215 @@ fn assert_request_cap_resource_governance(network: &ManagedPeerNetwork<MemoryCha
         .expect("latest resource-governance decision");
     assert_eq!(latest.label, "request_cap_reached");
     assert_eq!(latest.next_action, "request_cap_reached");
+}
+
+#[test]
+fn managed_network_transaction_relay_inv_translates_request_action_to_getdata() {
+    // Arrange
+    let mut network = ManagedPeerNetwork::new(
+        MemoryChainstateStore::default(),
+        local_config(501),
+        PolicyConfig::default(),
+    );
+    network.add_inbound_peer(501).expect("txid peer");
+    network.add_inbound_peer(502).expect("wtxid peer");
+    network
+        .receive_message(
+            502,
+            WireNetworkMessage::WtxidRelay,
+            1,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("wtxidrelay");
+    let transaction = Transaction::default();
+    let txid_inventory = transaction_relay_inventory(&transaction);
+    let wtxid_inventory = witness_transaction_relay_inventory(&transaction);
+
+    // Act
+    let txid_outbound = network
+        .receive_message(
+            501,
+            WireNetworkMessage::Inv(txid_inventory.clone()),
+            2,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("txid inventory");
+    let wtxid_outbound = network
+        .receive_message(
+            502,
+            WireNetworkMessage::Inv(wtxid_inventory.clone()),
+            3,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("wtxid inventory");
+
+    // Assert
+    assert_getdata(&txid_outbound, txid_inventory);
+    assert_getdata(&wtxid_outbound, wtxid_inventory);
+}
+
+#[test]
+fn managed_network_transaction_relay_duplicate_suppression_emits_no_extra_getdata() {
+    // Arrange
+    let mut network = ManagedPeerNetwork::new(
+        MemoryChainstateStore::default(),
+        local_config(503),
+        PolicyConfig::default(),
+    );
+    network.add_inbound_peer(503).expect("first peer");
+    network.add_inbound_peer(504).expect("duplicate peer");
+    let inventory = transaction_relay_inventory(&Transaction::default());
+
+    // Act
+    let first_outbound = network
+        .receive_message(
+            503,
+            WireNetworkMessage::Inv(inventory.clone()),
+            1,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("first inventory");
+    let duplicate_outbound = network
+        .receive_message(
+            504,
+            WireNetworkMessage::Inv(inventory.clone()),
+            2,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("duplicate inventory");
+
+    // Assert
+    assert_getdata(&first_outbound, inventory);
+    assert!(duplicate_outbound.is_empty());
+}
+
+#[test]
+fn managed_network_transaction_relay_timeout_fallback_returns_getdata_for_alternate_peer() {
+    // Arrange
+    let mut network = ManagedPeerNetwork::new(
+        MemoryChainstateStore::default(),
+        local_config(505),
+        PolicyConfig::default(),
+    );
+    network.add_inbound_peer(505).expect("first peer");
+    network.add_inbound_peer(506).expect("fallback peer");
+    let inventory = transaction_relay_inventory(&Transaction::default());
+    network
+        .receive_message(
+            505,
+            WireNetworkMessage::Inv(inventory.clone()),
+            1,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("first inventory");
+    network
+        .receive_message(
+            506,
+            WireNetworkMessage::Inv(inventory.clone()),
+            2,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("fallback inventory");
+
+    // Act
+    let fallback_messages = network
+        .expire_transaction_requests(1 + PHASE101_GETDATA_TX_INTERVAL_SECONDS)
+        .expect("expire requests");
+
+    // Assert
+    assert_targeted_getdata(&fallback_messages, 506, inventory);
+}
+
+#[test]
+fn managed_network_transaction_relay_notfound_fallback_returns_getdata_for_alternate_peer() {
+    // Arrange
+    let mut network = ManagedPeerNetwork::new(
+        MemoryChainstateStore::default(),
+        local_config(507),
+        PolicyConfig::default(),
+    );
+    network.add_inbound_peer(507).expect("first peer");
+    network.add_inbound_peer(508).expect("fallback peer");
+    let inventory = transaction_relay_inventory(&Transaction::default());
+    network
+        .receive_message(
+            507,
+            WireNetworkMessage::Inv(inventory.clone()),
+            10,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("first inventory");
+    network
+        .receive_message(
+            508,
+            WireNetworkMessage::Inv(inventory.clone()),
+            11,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("fallback inventory");
+
+    // Act
+    let result = network
+        .receive_sync_message(
+            507,
+            WireNetworkMessage::NotFound(inventory.clone()),
+            12,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("notfound");
+
+    // Assert
+    assert!(result.outbound.is_empty());
+    assert_targeted_getdata(&result.targeted_outbound, 508, inventory);
+}
+
+#[test]
+fn managed_network_transaction_relay_disconnect_fallback_returns_getdata_for_alternate_peer() {
+    // Arrange
+    let mut network = ManagedPeerNetwork::new(
+        MemoryChainstateStore::default(),
+        local_config(509),
+        PolicyConfig::default(),
+    );
+    network.add_inbound_peer(509).expect("first peer");
+    network.add_inbound_peer(510).expect("fallback peer");
+    let inventory = transaction_relay_inventory(&Transaction::default());
+    network
+        .receive_message(
+            509,
+            WireNetworkMessage::Inv(inventory.clone()),
+            20,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("first inventory");
+    network
+        .receive_message(
+            510,
+            WireNetworkMessage::Inv(inventory.clone()),
+            21,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("fallback inventory");
+
+    // Act
+    let fallback_messages = network
+        .disconnect_peer_with_transaction_cleanup(509, 22)
+        .expect("disconnect cleanup");
+
+    // Assert
+    assert_targeted_getdata(&fallback_messages, 510, inventory);
 }
 
 #[test]

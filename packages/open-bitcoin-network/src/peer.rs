@@ -37,7 +37,6 @@ mod transaction_relay;
 
 pub use address_boundary::{PeerAddressBoundaryDecision, PeerAddressBoundaryEvidence};
 use inbound_state::reject_self_connection;
-use inventory_state::forget_requested_inventory;
 use policy_state::{eviction_candidate_input, peer_policy_label, peer_policy_protected};
 pub use transaction_relay::{
     PHASE101_GETDATA_TX_INTERVAL_SECONDS, PHASE101_MAX_TX_ANNOUNCEMENTS_PER_PEER,
@@ -66,6 +65,7 @@ pub enum HeaderSyncPolicy {
 pub enum PeerAction {
     Send(WireNetworkMessage),
     ServeInventory(Vec<InventoryVector>),
+    TransactionRelay(TxDownloadAction),
     ReceivedTransaction(Transaction),
     ReceivedBlock(Block),
     Disconnect(DisconnectReason),
@@ -87,8 +87,6 @@ pub struct PeerState {
     pub sync_started: bool,
     pub getheaders_in_flight: bool,
     pub requested_blocks: BTreeSet<BlockHash>,
-    pub requested_txids: BTreeSet<Txid>,
-    pub requested_wtxids: BTreeSet<Wtxid>,
     pub last_ping_nonce: Option<u64>,
     pub getaddr_request_state: GetAddrRequestState,
     pub maybe_inbound_record: Option<InboundPeerRecord>,
@@ -111,8 +109,6 @@ impl PeerState {
             sync_started: false,
             getheaders_in_flight: false,
             requested_blocks: BTreeSet::new(),
-            requested_txids: BTreeSet::new(),
-            requested_wtxids: BTreeSet::new(),
             last_ping_nonce: None,
             getaddr_request_state: GetAddrRequestState::default(),
             maybe_inbound_record: None,
@@ -136,6 +132,8 @@ pub struct PeerManager {
     known_blocks: BTreeSet<BlockHash>,
     known_txids: BTreeSet<Txid>,
     known_wtxids: BTreeSet<Wtxid>,
+    tx_download: TxDownloadScheduler,
+    recent_rejects: BTreeSet<TxRelayId>,
     max_blocks_in_flight_per_peer: usize,
     learned_addresses: LearnedAddressBook,
     local_address_decisions: Vec<LocalAdvertisementDecision>,
@@ -172,6 +170,8 @@ impl PeerManager {
             known_blocks: BTreeSet::new(),
             known_txids: BTreeSet::new(),
             known_wtxids: BTreeSet::new(),
+            tx_download: TxDownloadScheduler::new(TxDownloadPolicy::default()),
+            recent_rejects: BTreeSet::new(),
             max_blocks_in_flight_per_peer,
             learned_addresses: LearnedAddressBook::default(),
             local_address_decisions: Vec::new(),
@@ -214,6 +214,14 @@ impl PeerManager {
         Ok(())
     }
 
+    pub fn note_recent_reject(&mut self, relay_id: TxRelayId) {
+        self.recent_rejects.insert(relay_id);
+    }
+
+    pub fn transaction_request_snapshot(&self, peer_id: PeerId) -> TxPeerRequestSnapshot {
+        self.tx_download.peer_snapshot(peer_id)
+    }
+
     pub fn header_store(&self) -> &HeaderStore {
         &self.headers
     }
@@ -238,7 +246,13 @@ impl PeerManager {
         self.peers
             .iter()
             .filter(|(_peer_id, peer)| peer.role == ConnectionRole::Inbound)
-            .map(|(peer_id, peer)| eviction_candidate_input(*peer_id, peer))
+            .map(|(peer_id, peer)| {
+                eviction_candidate_input(
+                    *peer_id,
+                    peer,
+                    self.tx_download.peer_snapshot(*peer_id).in_flight_count,
+                )
+            })
             .collect()
     }
 
@@ -286,10 +300,32 @@ impl PeerManager {
         Ok(peer.requested_blocks.iter().copied().collect())
     }
 
-    pub fn remove_peer(&mut self, peer_id: PeerId) -> Result<(), NetworkError> {
+    pub fn expire_transaction_requests(
+        &mut self,
+        now_unix_seconds: i64,
+    ) -> Vec<(PeerId, PeerAction)> {
+        self.tx_download
+            .expire_and_schedule(now_unix_seconds)
+            .into_iter()
+            .map(|action| (action.peer_id(), PeerAction::TransactionRelay(action)))
+            .collect()
+    }
+
+    pub fn remove_peer_with_transaction_cleanup(
+        &mut self,
+        peer_id: PeerId,
+        now_unix_seconds: i64,
+    ) -> Result<Vec<PeerAction>, NetworkError> {
         let Some(_) = self.peers.remove(&peer_id) else {
             return Err(NetworkError::UnknownPeer(peer_id));
         };
+        Ok(inventory_state::handle_transaction_relay_actions(
+            self.tx_download.cleanup_peer(peer_id, now_unix_seconds),
+        ))
+    }
+
+    pub fn remove_peer(&mut self, peer_id: PeerId) -> Result<(), NetworkError> {
+        self.remove_peer_with_transaction_cleanup(peer_id, 0)?;
         Ok(())
     }
 
@@ -399,7 +435,9 @@ impl PeerManager {
                 }
                 Ok(Vec::new())
             }
-            WireNetworkMessage::Inv(inventory) => self.handle_inventory(peer_id, inventory),
+            WireNetworkMessage::Inv(inventory) => {
+                self.handle_inventory(peer_id, inventory, timestamp)
+            }
             WireNetworkMessage::GetHeaders { locator, stop_hash } => {
                 self.handle_getheaders(peer_id, locator, stop_hash)
             }
@@ -408,11 +446,7 @@ impl PeerManager {
             WireNetworkMessage::Addr(addresses) => self.handle_addr(peer_id, addresses, timestamp),
             WireNetworkMessage::GetData(inventory) => self.handle_getdata(peer_id, inventory),
             WireNetworkMessage::NotFound(inventory) => {
-                let peer = Self::peer_mut(&mut self.peers, peer_id)?;
-                for item in inventory.inventory {
-                    forget_requested_inventory(peer, item.inventory_type, item.object_hash);
-                }
-                Ok(Vec::new())
+                self.handle_notfound(peer_id, inventory, timestamp)
             }
             WireNetworkMessage::Tx(transaction) => self.handle_transaction(peer_id, transaction),
             WireNetworkMessage::Block(block) => self.handle_block(peer_id, block),

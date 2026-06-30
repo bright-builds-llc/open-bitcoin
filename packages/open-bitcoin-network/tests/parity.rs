@@ -140,6 +140,7 @@ fn messages_from_actions(
             }
             PeerAction::ReceivedBlock(block) => received_blocks.push(block_hash(&block.header)),
             PeerAction::ReceivedTransaction(_) => {}
+            PeerAction::TransactionRelay(_) => {}
             PeerAction::Disconnect(reason) => panic!("unexpected disconnect: {reason}"),
             PeerAction::ResourceGovernanceDisconnect(event) => {
                 panic!("unexpected resource-governance disconnect: {}", event.label)

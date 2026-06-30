@@ -22,12 +22,13 @@ use crate::{
     InboundHandshakeState, InboundPeerRecord, InboundPermissionDecision, InventoryList,
     LocalPeerConfig, NetworkError, PHASE94_MAX_HEADER_LOCATOR_HASHES,
     PHASE94_MAX_INBOUND_BLOCK_REQUESTS_PER_PEER, PHASE94_MAX_INBOUND_REQUEST_INVENTORY_ITEMS,
-    PHASE94_MAX_INBOUND_TX_REQUESTS_PER_PEER, ParsedPeerPermissionClass, PeerAction, PeerBanEntry,
-    PeerConnectionClass, PeerId, PeerManager, PeerPermissionClassRegistry, PermissionEffectLabel,
-    RequestPressureInput, ResourceGovernanceDecision, ResourceGovernancePolicy, ServiceFlags,
-    WireNetworkMessage,
+    PHASE94_MAX_INBOUND_TX_REQUESTS_PER_PEER, PHASE101_GETDATA_TX_INTERVAL_SECONDS,
+    ParsedPeerPermissionClass, PeerAction, PeerBanEntry, PeerConnectionClass, PeerId, PeerManager,
+    PeerPermissionClassRegistry, PermissionEffectLabel, RequestPressureInput,
+    ResourceGovernanceDecision, ResourceGovernancePolicy, ServiceFlags, TxDownloadAction,
+    TxRelayId, WireNetworkMessage,
 };
-use open_bitcoin_primitives::{InventoryType, InventoryVector};
+use open_bitcoin_primitives::{InventoryType, InventoryVector, Txid};
 
 use crate::address::{
     AddressAnnouncement, AddressDecisionLabel, AddressDecisionReason, AddressList,
@@ -604,9 +605,9 @@ fn inbound_inv_over_tx_request_cap_returns_resource_limit_disconnect() {
 
     // Assert
     assert_resource_limit_disconnect(&actions);
-    let peer = manager.peer_state(104).expect("peer state");
-    assert!(peer.requested_txids.is_empty());
-    assert!(peer.requested_wtxids.is_empty());
+    let snapshot = manager.transaction_request_snapshot(104);
+    assert_eq!(snapshot.in_flight_count, 0);
+    assert_eq!(snapshot.candidate_count, 0);
 }
 
 #[test]
@@ -757,7 +758,7 @@ fn request_pressure_input_records_bounded_permission_effect_evidence() {
     let (active_permission_effects, inactive_permission_effects) =
         super::inventory_state::permission_effect_vectors(peer);
     let input = RequestPressureInput {
-        requested_txids_in_flight: PHASE94_MAX_INBOUND_TX_REQUESTS_PER_PEER + 1,
+        inventory_items: PHASE94_MAX_INBOUND_REQUEST_INVENTORY_ITEMS + 1,
         active_permission_effects: active_permission_effects.clone(),
         inactive_permission_effects,
         ..RequestPressureInput::default()
@@ -769,7 +770,7 @@ fn request_pressure_input_records_bounded_permission_effect_evidence() {
         .handle_message(
             107,
             WireNetworkMessage::Inv(transaction_inventory(
-                PHASE94_MAX_INBOUND_TX_REQUESTS_PER_PEER + 1,
+                PHASE94_MAX_INBOUND_REQUEST_INVENTORY_ITEMS + 1,
             )),
             1,
         )
@@ -974,32 +975,31 @@ fn scoped_relay_permission_effects_remain_policy_only_for_transaction_paths() {
             5,
         )
         .expect("getdata");
+    let wtxid_getdata_actions = manager
+        .handle_message(
+            91,
+            WireNetworkMessage::GetData(InventoryList::new(vec![InventoryVector {
+                inventory_type: InventoryType::WitnessTransaction,
+                object_hash: wtxid.into(),
+            }])),
+            6,
+        )
+        .expect("witness transaction getdata");
 
     // Assert
-    let [PeerAction::Send(WireNetworkMessage::GetData(txid_inventory))] =
-        txid_inventory_actions.as_slice()
-    else {
-        panic!("expected txid getdata action");
-    };
-    assert_eq!(txid_inventory.inventory.len(), 1);
-    assert_eq!(
-        txid_inventory.inventory[0].inventory_type,
-        InventoryType::Transaction
-    );
+    assert_transaction_relay_request(&txid_inventory_actions, 91, TxRelayId::Txid(txid));
     assert!(wtxidrelay_actions.is_empty());
-    let [PeerAction::Send(WireNetworkMessage::GetData(wtxid_inventory))] =
-        wtxid_inventory_actions.as_slice()
-    else {
-        panic!("expected wtxid getdata action");
-    };
-    assert_eq!(wtxid_inventory.inventory.len(), 1);
-    assert_eq!(
-        wtxid_inventory.inventory[0].inventory_type,
-        InventoryType::WitnessTransaction
-    );
+    assert_transaction_relay_request(&wtxid_inventory_actions, 91, TxRelayId::Wtxid(wtxid));
     assert_eq!(
         tx_actions,
-        vec![PeerAction::ReceivedTransaction(transaction)]
+        vec![
+            PeerAction::TransactionRelay(TxDownloadAction::ReceivedTxCleanup {
+                peer_id: 91,
+                txid,
+                wtxid,
+            }),
+            PeerAction::ReceivedTransaction(transaction),
+        ],
     );
     assert_eq!(
         getdata_actions,
@@ -1008,6 +1008,373 @@ fn scoped_relay_permission_effects_remain_policy_only_for_transaction_paths() {
             object_hash: txid.into(),
         }])]
     );
+    assert_eq!(
+        wtxid_getdata_actions,
+        vec![PeerAction::ServeInventory(vec![InventoryVector {
+            inventory_type: InventoryType::WitnessTransaction,
+            object_hash: wtxid.into(),
+        }])]
+    );
+}
+
+#[test]
+fn peer_manager_transaction_relay_txid_inv_emits_typed_request_action() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_inbound_peer(201).expect("peer");
+    let transaction = open_bitcoin_primitives::Transaction::default();
+    let txid = transaction_txid(&transaction).expect("txid");
+
+    // Act
+    let actions = manager
+        .handle_message(
+            201,
+            WireNetworkMessage::Inv(transaction_relay_inventory(TxRelayId::Txid(txid))),
+            1,
+        )
+        .expect("txid inventory");
+
+    // Assert
+    assert_transaction_relay_request(&actions, 201, TxRelayId::Txid(txid));
+}
+
+#[test]
+fn peer_manager_transaction_relay_wtxid_inv_emits_typed_request_action() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_inbound_peer(202).expect("peer");
+    manager
+        .handle_message(202, WireNetworkMessage::WtxidRelay, 1)
+        .expect("wtxidrelay");
+    let transaction = open_bitcoin_primitives::Transaction::default();
+    let wtxid = transaction_wtxid(&transaction).expect("wtxid");
+
+    // Act
+    let actions = manager
+        .handle_message(
+            202,
+            WireNetworkMessage::Inv(transaction_relay_inventory(TxRelayId::Wtxid(wtxid))),
+            2,
+        )
+        .expect("wtxid inventory");
+
+    // Assert
+    assert_transaction_relay_request(&actions, 202, TxRelayId::Wtxid(wtxid));
+}
+
+#[test]
+fn peer_manager_transaction_relay_mismatch_emits_suppression_without_state() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_inbound_peer(203).expect("txid-only peer");
+    manager.add_inbound_peer(204).expect("wtxid peer");
+    manager
+        .handle_message(204, WireNetworkMessage::WtxidRelay, 1)
+        .expect("wtxidrelay");
+    let transaction = open_bitcoin_primitives::Transaction::default();
+    let txid = transaction_txid(&transaction).expect("txid");
+    let wtxid = transaction_wtxid(&transaction).expect("wtxid");
+
+    // Act
+    let txid_to_wtxid_peer = manager
+        .handle_message(
+            204,
+            WireNetworkMessage::Inv(transaction_relay_inventory(TxRelayId::Txid(txid))),
+            2,
+        )
+        .expect("mismatched txid inventory");
+    let wtxid_to_txid_peer = manager
+        .handle_message(
+            203,
+            WireNetworkMessage::Inv(transaction_relay_inventory(TxRelayId::Wtxid(wtxid))),
+            3,
+        )
+        .expect("mismatched wtxid inventory");
+
+    // Assert
+    assert_transaction_relay_identity_mismatch(&txid_to_wtxid_peer, 204);
+    assert_transaction_relay_identity_mismatch(&wtxid_to_txid_peer, 203);
+    assert_eq!(manager.transaction_request_snapshot(204).in_flight_count, 0);
+    assert_eq!(manager.transaction_request_snapshot(203).in_flight_count, 0);
+}
+
+#[test]
+fn peer_manager_transaction_relay_duplicate_inv_suppresses_second_getdata_but_keeps_fallback() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_inbound_peer(205).expect("first peer");
+    manager.add_inbound_peer(206).expect("fallback peer");
+    let transaction = open_bitcoin_primitives::Transaction::default();
+    let relay_id = TxRelayId::Txid(transaction_txid(&transaction).expect("txid"));
+
+    // Act
+    let first_actions = manager
+        .handle_message(
+            205,
+            WireNetworkMessage::Inv(transaction_relay_inventory(relay_id)),
+            1,
+        )
+        .expect("first inventory");
+    let duplicate_actions = manager
+        .handle_message(
+            206,
+            WireNetworkMessage::Inv(transaction_relay_inventory(relay_id)),
+            2,
+        )
+        .expect("duplicate inventory");
+    let fallback_actions =
+        manager.expire_transaction_requests(1 + PHASE101_GETDATA_TX_INTERVAL_SECONDS);
+
+    // Assert
+    assert_transaction_relay_request(&first_actions, 205, relay_id);
+    assert_transaction_relay_duplicate(&duplicate_actions, 206, relay_id);
+    assert_eq!(
+        fallback_actions,
+        vec![
+            (
+                205,
+                PeerAction::TransactionRelay(TxDownloadAction::RequestExpired {
+                    peer_id: 205,
+                    relay_id,
+                }),
+            ),
+            (
+                206,
+                PeerAction::TransactionRelay(TxDownloadAction::FallbackRequest {
+                    peer_id: 206,
+                    relay_id,
+                }),
+            ),
+        ],
+    );
+}
+
+#[test]
+fn peer_manager_transaction_relay_already_have_and_recent_reject_suppress_requests() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_inbound_peer(207).expect("already-have peer");
+    manager.add_inbound_peer(208).expect("recent-reject peer");
+    let local_transaction = open_bitcoin_primitives::Transaction::default();
+    let local_txid = transaction_txid(&local_transaction).expect("txid");
+    let rejected_relay_id = TxRelayId::Txid(Txid::from(Hash32::from_byte_array([88_u8; 32])));
+    manager
+        .note_local_transaction(&local_transaction)
+        .expect("local transaction");
+    manager.note_recent_reject(rejected_relay_id);
+
+    // Act
+    let already_have_actions = manager
+        .handle_message(
+            207,
+            WireNetworkMessage::Inv(transaction_relay_inventory(TxRelayId::Txid(local_txid))),
+            1,
+        )
+        .expect("already-have inventory");
+    let recent_reject_actions = manager
+        .handle_message(
+            208,
+            WireNetworkMessage::Inv(transaction_relay_inventory(rejected_relay_id)),
+            2,
+        )
+        .expect("recent-reject inventory");
+
+    // Assert
+    assert_eq!(
+        already_have_actions,
+        vec![PeerAction::TransactionRelay(
+            TxDownloadAction::SuppressAlreadyHave {
+                peer_id: 207,
+                relay_id: TxRelayId::Txid(local_txid),
+            },
+        )],
+    );
+    assert_eq!(
+        recent_reject_actions,
+        vec![PeerAction::TransactionRelay(
+            TxDownloadAction::SuppressRecentReject {
+                peer_id: 208,
+                relay_id: rejected_relay_id,
+            },
+        )],
+    );
+}
+
+#[test]
+fn peer_manager_transaction_relay_notfound_timeout_and_disconnect_cleanup_fallback() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    for peer_id in 209..=214 {
+        manager.add_inbound_peer(peer_id).expect("peer");
+    }
+    let notfound_relay_id = TxRelayId::Txid(Txid::from(Hash32::from_byte_array([91_u8; 32])));
+    let timeout_relay_id = TxRelayId::Txid(Txid::from(Hash32::from_byte_array([92_u8; 32])));
+    let disconnect_relay_id = TxRelayId::Txid(Txid::from(Hash32::from_byte_array([93_u8; 32])));
+    seed_duplicate_announcements(&mut manager, 209, 210, notfound_relay_id, 1);
+    seed_duplicate_announcements(&mut manager, 211, 212, timeout_relay_id, 10);
+    seed_duplicate_announcements(&mut manager, 213, 214, disconnect_relay_id, 20);
+
+    // Act
+    let notfound_actions = manager
+        .handle_message(
+            209,
+            WireNetworkMessage::NotFound(transaction_relay_inventory(notfound_relay_id)),
+            30,
+        )
+        .expect("notfound");
+    let timeout_actions =
+        manager.expire_transaction_requests(10 + PHASE101_GETDATA_TX_INTERVAL_SECONDS);
+    let disconnect_actions = manager
+        .remove_peer_with_transaction_cleanup(213, 40)
+        .expect("disconnect cleanup");
+
+    // Assert
+    assert_eq!(
+        notfound_actions,
+        vec![
+            PeerAction::TransactionRelay(TxDownloadAction::NotFoundCleanup {
+                peer_id: 209,
+                relay_id: notfound_relay_id,
+            }),
+            PeerAction::TransactionRelay(TxDownloadAction::FallbackRequest {
+                peer_id: 210,
+                relay_id: notfound_relay_id,
+            }),
+        ],
+    );
+    assert_eq!(
+        timeout_actions,
+        vec![
+            (
+                211,
+                PeerAction::TransactionRelay(TxDownloadAction::RequestExpired {
+                    peer_id: 211,
+                    relay_id: timeout_relay_id,
+                }),
+            ),
+            (
+                212,
+                PeerAction::TransactionRelay(TxDownloadAction::FallbackRequest {
+                    peer_id: 212,
+                    relay_id: timeout_relay_id,
+                }),
+            ),
+        ],
+    );
+    assert_eq!(
+        disconnect_actions,
+        vec![
+            PeerAction::TransactionRelay(TxDownloadAction::PeerCleanup { peer_id: 213 }),
+            PeerAction::TransactionRelay(TxDownloadAction::FallbackRequest {
+                peer_id: 214,
+                relay_id: disconnect_relay_id,
+            }),
+        ],
+    );
+    assert!(manager.peer_state(213).is_none());
+}
+
+#[test]
+fn peer_manager_transaction_relay_received_transaction_cleanup_marks_both_identities() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    for peer_id in 215..=217 {
+        manager.add_inbound_peer(peer_id).expect("peer");
+    }
+    manager
+        .handle_message(217, WireNetworkMessage::WtxidRelay, 1)
+        .expect("wtxidrelay");
+    let transaction = open_bitcoin_primitives::Transaction::default();
+    let txid = transaction_txid(&transaction).expect("txid");
+    let wtxid = transaction_wtxid(&transaction).expect("wtxid");
+    manager
+        .handle_message(
+            215,
+            WireNetworkMessage::Inv(transaction_relay_inventory(TxRelayId::Txid(txid))),
+            2,
+        )
+        .expect("request inventory");
+
+    // Act
+    let received_actions = manager
+        .handle_message(215, WireNetworkMessage::Tx(transaction.clone()), 3)
+        .expect("received transaction");
+    let txid_again = manager
+        .handle_message(
+            216,
+            WireNetworkMessage::Inv(transaction_relay_inventory(TxRelayId::Txid(txid))),
+            4,
+        )
+        .expect("txid already-have inventory");
+    let wtxid_again = manager
+        .handle_message(
+            217,
+            WireNetworkMessage::Inv(transaction_relay_inventory(TxRelayId::Wtxid(wtxid))),
+            5,
+        )
+        .expect("wtxid already-have inventory");
+
+    // Assert
+    assert_eq!(
+        received_actions,
+        vec![
+            PeerAction::TransactionRelay(TxDownloadAction::ReceivedTxCleanup {
+                peer_id: 215,
+                txid,
+                wtxid,
+            }),
+            PeerAction::ReceivedTransaction(transaction),
+        ],
+    );
+    assert_eq!(
+        txid_again,
+        vec![PeerAction::TransactionRelay(
+            TxDownloadAction::SuppressAlreadyHave {
+                peer_id: 216,
+                relay_id: TxRelayId::Txid(txid),
+            },
+        )],
+    );
+    assert_eq!(
+        wtxid_again,
+        vec![PeerAction::TransactionRelay(
+            TxDownloadAction::SuppressAlreadyHave {
+                peer_id: 217,
+                relay_id: TxRelayId::Wtxid(wtxid),
+            },
+        )],
+    );
+}
+
+#[test]
+fn peer_manager_transaction_relay_received_transaction_mismatch_does_not_satisfy_unrelated_request()
+{
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_inbound_peer(218).expect("peer");
+    let requested_relay_id = TxRelayId::Txid(Txid::from(Hash32::from_byte_array([94_u8; 32])));
+    manager
+        .handle_message(
+            218,
+            WireNetworkMessage::Inv(transaction_relay_inventory(requested_relay_id)),
+            1,
+        )
+        .expect("request inventory");
+    let unrelated_transaction = open_bitcoin_primitives::Transaction::default();
+
+    // Act
+    let actions = manager
+        .handle_message(218, WireNetworkMessage::Tx(unrelated_transaction), 2)
+        .expect("unrelated transaction");
+
+    // Assert
+    assert_transaction_relay_identity_mismatch(&actions, 218);
+    assert!(
+        !actions
+            .iter()
+            .any(|action| matches!(action, PeerAction::ReceivedTransaction(_)))
+    );
+    assert_eq!(manager.transaction_request_snapshot(218).in_flight_count, 1);
 }
 
 #[test]
@@ -1872,13 +2239,11 @@ fn inventory_requests_and_notfound_paths_cover_tx_and_block_modes() {
         inventory_type: InventoryType::Transaction,
         object_hash: Hash32::from_byte_array([2_u8; 32]),
     }]);
+    let txid_relay_id = TxRelayId::Txid(Txid::from(Hash32::from_byte_array([2_u8; 32])));
     let txid_actions = manager
         .handle_message(6, WireNetworkMessage::Inv(txid_inv), 1)
         .expect("txid inventory");
-    assert!(matches!(
-        txid_actions.as_slice(),
-        [PeerAction::Send(WireNetworkMessage::GetData(_))]
-    ));
+    assert_transaction_relay_request(&txid_actions, 6, txid_relay_id);
 
     manager
         .handle_message(6, WireNetworkMessage::WtxidRelay, 1)
@@ -1908,13 +2273,13 @@ fn inventory_requests_and_notfound_paths_cover_tx_and_block_modes() {
         inventory_type: InventoryType::WitnessTransaction,
         object_hash: Hash32::from_byte_array([3_u8; 32]),
     }]);
+    let wtxid_relay_id = TxRelayId::Wtxid(open_bitcoin_primitives::Wtxid::from(
+        Hash32::from_byte_array([3_u8; 32]),
+    ));
     let wtxid_actions = manager
         .handle_message(6, WireNetworkMessage::Inv(wtxid_inv), 2)
         .expect("wtxid inventory");
-    assert!(matches!(
-        wtxid_actions.as_slice(),
-        [PeerAction::Send(WireNetworkMessage::GetData(_))]
-    ));
+    assert_transaction_relay_request(&wtxid_actions, 6, wtxid_relay_id);
     let ignored_inventory = manager
         .handle_message(
             6,
@@ -1962,8 +2327,9 @@ fn inventory_requests_and_notfound_paths_cover_tx_and_block_modes() {
         .handle_message(6, WireNetworkMessage::NotFound(not_found), 4)
         .expect("notfound");
     let peer = manager.peer_state(6).expect("peer");
-    assert!(peer.requested_txids.is_empty());
-    assert!(peer.requested_wtxids.is_empty());
+    let snapshot = manager.transaction_request_snapshot(6);
+    assert_eq!(snapshot.in_flight_count, 0);
+    assert_eq!(snapshot.candidate_count, 0);
     assert!(peer.requested_blocks.is_empty());
 }
 
@@ -2031,8 +2397,9 @@ fn received_tx_and_block_clear_requested_inventory() {
 
     // Assert
     let peer = manager.peer_state(8).expect("peer");
-    assert!(peer.requested_txids.is_empty());
-    assert!(peer.requested_wtxids.is_empty());
+    let snapshot = manager.transaction_request_snapshot(8);
+    assert_eq!(snapshot.in_flight_count, 0);
+    assert_eq!(snapshot.candidate_count, 0);
     assert!(peer.requested_blocks.is_empty());
 }
 
@@ -2145,7 +2512,10 @@ fn getheaders_headers_tx_and_block_paths_are_explicit() {
         .expect("tx");
     assert!(matches!(
         tx_actions.as_slice(),
-        [PeerAction::ReceivedTransaction(_)]
+        [
+            PeerAction::TransactionRelay(TxDownloadAction::ReceivedTxCleanup { .. }),
+            PeerAction::ReceivedTransaction(_),
+        ]
     ));
     assert_eq!(
         manager
@@ -2185,8 +2555,11 @@ fn getheaders_headers_tx_and_block_paths_are_explicit() {
         "unknown peer: 99",
     );
     let peer = manager.peer_state(7).expect("peer");
-    assert!(!peer.requested_txids.contains(&txid));
-    assert!(!peer.requested_wtxids.contains(&wtxid));
+    let _ = txid;
+    let _ = wtxid;
+    let snapshot = manager.transaction_request_snapshot(7);
+    assert_eq!(snapshot.in_flight_count, 0);
+    assert_eq!(snapshot.candidate_count, 0);
     assert!(!peer.requested_blocks.contains(&block_hash));
 }
 
@@ -2257,6 +2630,71 @@ fn assert_resource_limit_disconnect(actions: &[PeerAction]) {
     };
     assert_eq!(event.label, "request_cap_reached");
     assert_eq!(event.next_action, "request_cap_reached");
+}
+
+fn assert_transaction_relay_request(
+    actions: &[PeerAction],
+    expected_peer_id: PeerId,
+    expected_relay_id: TxRelayId,
+) {
+    let [PeerAction::TransactionRelay(TxDownloadAction::RequestGetData { peer_id, relay_id })] =
+        actions
+    else {
+        panic!("expected transaction relay request action, got {actions:?}");
+    };
+    assert_eq!((*peer_id, *relay_id), (expected_peer_id, expected_relay_id));
+}
+
+fn assert_transaction_relay_identity_mismatch(actions: &[PeerAction], expected_peer_id: PeerId) {
+    let [
+        PeerAction::TransactionRelay(TxDownloadAction::SuppressIdentityMismatch {
+            peer_id, ..
+        }),
+    ] = actions
+    else {
+        panic!("expected transaction relay identity mismatch, got {actions:?}");
+    };
+    assert_eq!(*peer_id, expected_peer_id);
+}
+
+fn assert_transaction_relay_duplicate(
+    actions: &[PeerAction],
+    expected_peer_id: PeerId,
+    expected_relay_id: TxRelayId,
+) {
+    let [PeerAction::TransactionRelay(TxDownloadAction::SuppressDuplicate { peer_id, relay_id })] =
+        actions
+    else {
+        panic!("expected transaction relay duplicate suppression, got {actions:?}");
+    };
+    assert_eq!((*peer_id, *relay_id), (expected_peer_id, expected_relay_id));
+}
+
+fn seed_duplicate_announcements(
+    manager: &mut PeerManager,
+    first_peer_id: PeerId,
+    fallback_peer_id: PeerId,
+    relay_id: TxRelayId,
+    timestamp: i64,
+) {
+    manager
+        .handle_message(
+            first_peer_id,
+            WireNetworkMessage::Inv(transaction_relay_inventory(relay_id)),
+            timestamp,
+        )
+        .expect("first transaction announcement");
+    manager
+        .handle_message(
+            fallback_peer_id,
+            WireNetworkMessage::Inv(transaction_relay_inventory(relay_id)),
+            timestamp + 1,
+        )
+        .expect("fallback transaction announcement");
+}
+
+fn transaction_relay_inventory(relay_id: TxRelayId) -> InventoryList {
+    InventoryList::new(vec![relay_id.to_inventory_vector()])
 }
 
 #[rustfmt::skip]

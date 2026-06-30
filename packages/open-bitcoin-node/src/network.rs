@@ -6,6 +6,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+mod action_translation;
 mod header_sync;
 mod inbound;
 mod inventory;
@@ -28,6 +29,7 @@ use open_bitcoin_network::{
 };
 
 use crate::{ChainstateStore, ManagedChainstate, ManagedMempool};
+use action_translation::process_transaction_relay_action;
 use header_sync::validate_header_for_sync;
 use inbound::{default_inbound_admission_policy, is_active_inbound_peer};
 
@@ -121,6 +123,7 @@ pub enum BlockConnectDisposition {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ManagedSyncMessageResult {
     pub outbound: Vec<WireNetworkMessage>,
+    pub targeted_outbound: Vec<(PeerId, WireNetworkMessage)>,
     pub maybe_block_disposition: Option<BlockConnectDisposition>,
 }
 
@@ -210,12 +213,6 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
 
     #[rustfmt::skip]
     pub fn record_resource_governance_event(&mut self, event: InboundResourceEvent) { self.resource_governance_info.record_event(event); }
-
-    pub fn disconnect_peer(&mut self, peer_id: PeerId) -> Result<(), ManagedNetworkError> {
-        self.peer_manager.remove_peer(peer_id)?;
-        self.known_peers.remove(&peer_id);
-        Ok(())
-    }
 
     #[rustfmt::skip]
     pub fn seed_header_store(&mut self, header_store: HeaderStore) { self.peer_manager.seed_header_store(header_store); }
@@ -518,19 +515,6 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         Ok(transition)
     }
 
-    fn collect_outbound(
-        &mut self,
-        actions: Vec<PeerAction>,
-    ) -> Result<Vec<WireNetworkMessage>, ManagedNetworkError> {
-        Ok(actions
-            .into_iter()
-            .filter_map(|action| match action {
-                PeerAction::Send(message) => Some(message),
-                _ => None,
-            })
-            .collect())
-    }
-
     fn handle_headers_message(
         &mut self,
         peer_id: PeerId,
@@ -560,6 +544,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         consensus_params: ConsensusParams,
     ) -> Result<ManagedSyncMessageResult, ManagedNetworkError> {
         let mut outbound = Vec::new();
+        let mut targeted_outbound = Vec::new();
         let mut maybe_block_disposition = None;
 
         for action in actions {
@@ -582,6 +567,17 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                             consensus_params,
                         )?;
                         self.store_transaction(transaction)?;
+                    }
+                }
+                PeerAction::TransactionRelay(action) => {
+                    if let Some((target_peer_id, message)) =
+                        process_transaction_relay_action(action)
+                    {
+                        if target_peer_id == peer_id {
+                            outbound.push(message);
+                        } else {
+                            targeted_outbound.push((target_peer_id, message));
+                        }
                     }
                 }
                 PeerAction::ReceivedBlock(block) => {
@@ -608,6 +604,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
 
         Ok(ManagedSyncMessageResult {
             outbound,
+            targeted_outbound,
             maybe_block_disposition,
         })
     }

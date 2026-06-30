@@ -13,6 +13,7 @@ use crate::{
 pub(super) fn eviction_candidate_input(
     peer_id: PeerId,
     peer: &PeerState,
+    transaction_request_count: usize,
 ) -> EvictionCandidateInput {
     let maybe_record = peer.maybe_inbound_record.as_ref();
     let active_permission_effects = maybe_record
@@ -36,9 +37,7 @@ pub(super) fn eviction_candidate_input(
         handshake_state,
         connection_class,
         slot_class,
-        requested_inventory_count: peer.requested_blocks.len()
-            + peer.requested_txids.len()
-            + peer.requested_wtxids.len(),
+        requested_inventory_count: peer.requested_blocks.len() + transaction_request_count,
         active_permission_effects,
         diversity_group,
     }

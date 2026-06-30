@@ -208,8 +208,26 @@ impl TxDownloadScheduler {
         txid: Txid,
         wtxid: Wtxid,
     ) -> Vec<TxDownloadAction> {
-        self.mark_already_have(TxRelayId::Txid(txid));
-        self.mark_already_have(TxRelayId::Wtxid(wtxid));
+        let txid_relay_id = TxRelayId::Txid(txid);
+        let wtxid_relay_id = TxRelayId::Wtxid(wtxid);
+        let peer_has_in_flight = self
+            .in_flight
+            .values()
+            .any(|request| request.peer_id == peer_id);
+        let matches_peer_in_flight = self.in_flight.iter().any(|(relay_id, request)| {
+            request.peer_id == peer_id
+                && (*relay_id == txid_relay_id || *relay_id == wtxid_relay_id)
+        });
+
+        if peer_has_in_flight && !matches_peer_in_flight {
+            return vec![TxDownloadAction::SuppressIdentityMismatch {
+                peer_id,
+                reason: TxDownloadSuppressionReason::IdentityMismatch,
+            }];
+        }
+
+        self.mark_already_have(txid_relay_id);
+        self.mark_already_have(wtxid_relay_id);
         vec![TxDownloadAction::ReceivedTxCleanup {
             peer_id,
             txid,

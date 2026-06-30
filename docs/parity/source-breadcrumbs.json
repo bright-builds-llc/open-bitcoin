@@ -745,6 +745,7 @@
       "label": "node-network-adapter",
       "files": [
         "packages/open-bitcoin-node/src/network.rs",
+        "packages/open-bitcoin-node/src/network/action_translation.rs",
         "packages/open-bitcoin-node/src/network/inbound.rs",
         "packages/open-bitcoin-node/src/network/inventory.rs",
         "packages/open-bitcoin-node/src/network/tests.rs"

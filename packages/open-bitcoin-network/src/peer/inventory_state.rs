@@ -7,10 +7,11 @@
 // - packages/bitcoin-knots/test/functional/p2p_handshake.py
 // - packages/bitcoin-knots/test/functional/p2p_initial_headers_sync.py
 
+use std::collections::BTreeSet;
+
 use open_bitcoin_consensus::{block_hash, transaction_txid, transaction_wtxid};
 use open_bitcoin_primitives::{
-    Block, BlockHash, BlockLocator, Hash32, InventoryType, InventoryVector, Transaction, Txid,
-    Wtxid,
+    Block, BlockHash, BlockLocator, InventoryType, InventoryVector, Transaction, Txid, Wtxid,
 };
 
 use crate::error::{NetworkError, PeerId};
@@ -20,7 +21,10 @@ use crate::{
     ResourceGovernanceDecision, ResourceGovernancePolicy,
 };
 
-use super::{PeerAction, PeerManager, PeerState};
+use super::{
+    PeerAction, PeerManager, PeerState, TxAnnouncementInput, TxDownloadAction,
+    TxDownloadLocalFacts, TxRelayId, TxRelayPeerMode,
+};
 
 impl PeerManager {
     pub(super) fn handle_getheaders(
@@ -39,8 +43,8 @@ impl PeerManager {
             0,
             locator.block_hashes.len(),
             peer.requested_blocks.len(),
-            peer.requested_txids.len(),
-            peer.requested_wtxids.len(),
+            self.tx_download.peer_snapshot(peer_id).in_flight_count,
+            0,
         );
         if let Some(actions) = resource_limit_disconnect_actions(input) {
             return Ok(actions);
@@ -69,31 +73,39 @@ impl PeerManager {
             inventory.inventory.len(),
             0,
             peer.requested_blocks.len(),
-            peer.requested_txids.len(),
-            peer.requested_wtxids.len(),
+            self.tx_download.peer_snapshot(peer_id).in_flight_count,
+            0,
         );
         if let Some(actions) = resource_limit_disconnect_actions(input) {
             return Ok(actions);
         }
 
-        Ok(vec![PeerAction::ServeInventory(inventory.inventory)])
+        Ok(vec![PeerAction::ServeInventory(
+            inventory
+                .inventory
+                .into_iter()
+                .map(typed_serve_inventory_vector)
+                .collect(),
+        )])
     }
 
     pub(super) fn handle_inventory(
         &mut self,
         peer_id: PeerId,
         inventory: InventoryList,
+        timestamp: i64,
     ) -> Result<Vec<PeerAction>, NetworkError> {
         let locator = self.headers.locator();
-        let mut tx_requests = Vec::new();
-        let mut candidate_txids = std::collections::BTreeSet::new();
-        let mut candidate_wtxids = std::collections::BTreeSet::new();
+        let mut transaction_inputs = Vec::new();
+        let mut transaction_candidate_count = 0;
         let mut request_headers = false;
 
         let peer = self
             .peers
             .get(&peer_id)
             .ok_or(NetworkError::UnknownPeer(peer_id))?;
+        let peer_mode = TxRelayPeerMode::from_remote_wtxidrelay(peer.remote_wtxidrelay);
+        let local_facts = self.transaction_download_local_facts();
 
         for item in &inventory.inventory {
             match item.inventory_type {
@@ -103,25 +115,17 @@ impl PeerManager {
                         request_headers = true;
                     }
                 }
-                InventoryType::Transaction => {
-                    let txid = Txid::from(item.object_hash);
-                    if !peer.remote_wtxidrelay
-                        && !self.known_txids.contains(&txid)
-                        && !peer.requested_txids.contains(&txid)
-                        && candidate_txids.insert(txid)
-                    {
-                        tx_requests.push(item.clone());
-                    }
-                }
-                InventoryType::WitnessTransaction => {
-                    let wtxid = Wtxid::from(item.object_hash);
-                    if peer.remote_wtxidrelay
-                        && !self.known_wtxids.contains(&wtxid)
-                        && !peer.requested_wtxids.contains(&wtxid)
-                        && candidate_wtxids.insert(wtxid)
-                    {
-                        tx_requests.push(item.clone());
-                    }
+                InventoryType::Transaction | InventoryType::WitnessTransaction => {
+                    transaction_candidate_count += 1;
+                    transaction_inputs.push(TxAnnouncementInput {
+                        peer_id,
+                        inventory: item.clone(),
+                        peer_mode,
+                        now_unix_seconds: timestamp,
+                        local_facts: local_facts.clone(),
+                        preferred_peer: true,
+                        peer_overloaded: false,
+                    });
                 }
                 _ => {}
             }
@@ -133,21 +137,22 @@ impl PeerManager {
             0,
             0,
             peer.requested_blocks.len(),
-            peer.requested_txids
-                .len()
-                .saturating_add(candidate_txids.len()),
-            peer.requested_wtxids
-                .len()
-                .saturating_add(candidate_wtxids.len()),
+            self.tx_download
+                .peer_snapshot(peer_id)
+                .in_flight_count
+                .saturating_add(transaction_candidate_count),
+            0,
         );
         if let Some(actions) = resource_limit_disconnect_actions(input) {
             return Ok(actions);
         }
 
-        let peer = Self::peer_mut(&mut self.peers, peer_id)?;
-        peer.requested_txids.extend(candidate_txids);
-        peer.requested_wtxids.extend(candidate_wtxids);
+        let mut transaction_actions = Vec::new();
+        for input in transaction_inputs {
+            transaction_actions.extend(self.tx_download.record_announcement(input));
+        }
 
+        let peer = Self::peer_mut(&mut self.peers, peer_id)?;
         let mut actions = Vec::new();
         if request_headers && !peer.getheaders_in_flight {
             peer.getheaders_in_flight = true;
@@ -157,12 +162,47 @@ impl PeerManager {
                 stop_hash: BlockHash::from_byte_array([0_u8; 32]),
             }));
         }
-        if !tx_requests.is_empty() {
-            actions.push(PeerAction::Send(WireNetworkMessage::GetData(
-                InventoryList::new(tx_requests),
-            )));
-        }
+        actions.extend(handle_transaction_relay_actions(transaction_actions));
         Ok(actions)
+    }
+
+    pub(super) fn handle_notfound(
+        &mut self,
+        peer_id: PeerId,
+        inventory: InventoryList,
+        timestamp: i64,
+    ) -> Result<Vec<PeerAction>, NetworkError> {
+        if !self.peers.contains_key(&peer_id) {
+            return Err(NetworkError::UnknownPeer(peer_id));
+        }
+
+        let mut transaction_actions = Vec::new();
+        for item in inventory.inventory {
+            match item.inventory_type {
+                InventoryType::Block | InventoryType::WitnessBlock => {
+                    let peer = Self::peer_mut(&mut self.peers, peer_id)?;
+                    peer.requested_blocks
+                        .remove(&BlockHash::from(item.object_hash));
+                }
+                InventoryType::Transaction => {
+                    transaction_actions.extend(self.tx_download.record_notfound(
+                        peer_id,
+                        TxRelayId::Txid(Txid::from(item.object_hash)),
+                        timestamp,
+                    ));
+                }
+                InventoryType::WitnessTransaction => {
+                    transaction_actions.extend(self.tx_download.record_notfound(
+                        peer_id,
+                        TxRelayId::Wtxid(Wtxid::from(item.object_hash)),
+                        timestamp,
+                    ));
+                }
+                _ => {}
+            }
+        }
+
+        Ok(handle_transaction_relay_actions(transaction_actions))
     }
 
     pub fn request_missing_blocks(
@@ -212,16 +252,26 @@ impl PeerManager {
         peer_id: PeerId,
         transaction: Transaction,
     ) -> Result<Vec<PeerAction>, NetworkError> {
+        if !self.peers.contains_key(&peer_id) {
+            return Err(NetworkError::UnknownPeer(peer_id));
+        }
         let txid = transaction_txid(&transaction)?;
         let wtxid = transaction_wtxid(&transaction)?;
         self.known_txids.insert(txid);
         self.known_wtxids.insert(wtxid);
 
-        let peer = Self::peer_mut(&mut self.peers, peer_id)?;
-        forget_requested_inventory(peer, InventoryType::Transaction, txid.into());
-        forget_requested_inventory(peer, InventoryType::WitnessTransaction, wtxid.into());
+        let transaction_actions = self
+            .tx_download
+            .record_received_transaction(peer_id, txid, wtxid);
+        let should_suppress_received_transaction = transaction_actions
+            .iter()
+            .any(|action| matches!(action, TxDownloadAction::SuppressIdentityMismatch { .. }));
+        let mut actions = handle_transaction_relay_actions(transaction_actions);
+        if !should_suppress_received_transaction {
+            actions.push(PeerAction::ReceivedTransaction(transaction));
+        }
 
-        Ok(vec![PeerAction::ReceivedTransaction(transaction)])
+        Ok(actions)
     }
 
     pub(super) fn handle_block(
@@ -232,28 +282,42 @@ impl PeerManager {
         let hash = block_hash(&block.header);
 
         let peer = Self::peer_mut(&mut self.peers, peer_id)?;
-        forget_requested_inventory(peer, InventoryType::Block, hash.into());
+        peer.requested_blocks.remove(&hash);
 
         Ok(vec![PeerAction::ReceivedBlock(block)])
     }
 }
 
-pub(super) fn forget_requested_inventory(
-    peer: &mut PeerState,
-    inventory_type: InventoryType,
-    object_hash: Hash32,
-) {
-    match inventory_type {
-        InventoryType::Block | InventoryType::WitnessBlock => {
-            peer.requested_blocks.remove(&BlockHash::from(object_hash));
-        }
+pub(super) fn handle_transaction_relay_actions(actions: Vec<TxDownloadAction>) -> Vec<PeerAction> {
+    actions
+        .into_iter()
+        .map(PeerAction::TransactionRelay)
+        .collect()
+}
+
+fn typed_serve_inventory_vector(item: InventoryVector) -> InventoryVector {
+    match item.inventory_type {
         InventoryType::Transaction => {
-            peer.requested_txids.remove(&Txid::from(object_hash));
+            TxRelayId::Txid(Txid::from(item.object_hash)).to_inventory_vector()
         }
         InventoryType::WitnessTransaction => {
-            peer.requested_wtxids.remove(&Wtxid::from(object_hash));
+            TxRelayId::Wtxid(Wtxid::from(item.object_hash)).to_inventory_vector()
         }
-        _ => {}
+        _ => item,
+    }
+}
+
+impl PeerManager {
+    fn transaction_download_local_facts(&self) -> TxDownloadLocalFacts {
+        let mut already_have = BTreeSet::new();
+        already_have.extend(self.known_txids.iter().copied().map(TxRelayId::Txid));
+        already_have.extend(self.known_wtxids.iter().copied().map(TxRelayId::Wtxid));
+
+        TxDownloadLocalFacts {
+            already_have,
+            recent_rejects: self.recent_rejects.clone(),
+            mempool_known: BTreeSet::new(),
+        }
     }
 }
 
@@ -277,18 +341,18 @@ fn request_pressure_input(
     inventory_items: usize,
     getdata_items: usize,
     header_locator_hashes: usize,
-    requested_blocks_in_flight: usize,
-    requested_txids_in_flight: usize,
-    requested_wtxids_in_flight: usize,
+    block_in_flight_count: usize,
+    txid_in_flight_count: usize,
+    wtxid_in_flight_count: usize,
 ) -> RequestPressureInput {
     let (active_permission_effects, inactive_permission_effects) = permission_effect_vectors(peer);
     RequestPressureInput {
         inventory_items,
         getdata_items,
         header_locator_hashes,
-        requested_blocks_in_flight,
-        requested_txids_in_flight,
-        requested_wtxids_in_flight,
+        requested_blocks_in_flight: block_in_flight_count,
+        requested_txids_in_flight: txid_in_flight_count,
+        requested_wtxids_in_flight: wtxid_in_flight_count,
         active_permission_effects,
         inactive_permission_effects,
     }
