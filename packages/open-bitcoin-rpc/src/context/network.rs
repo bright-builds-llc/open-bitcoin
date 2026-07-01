@@ -18,11 +18,13 @@ use open_bitcoin_network::{
 use open_bitcoin_node::core::chainstate::ChainstateSnapshot;
 use open_bitcoin_node::core::consensus::{ConsensusParams, ScriptVerifyFlags};
 use open_bitcoin_node::core::mempool::PolicyConfig;
+use open_bitcoin_node::core::mempool::{AdmissionResult, MempoolOutcome};
 use open_bitcoin_node::core::network::{LocalPeerConfig, ServiceFlags, WireNetworkMessage};
 use open_bitcoin_node::core::primitives::{Block, NetworkAddress, NetworkMagic, Transaction};
 use open_bitcoin_node::core::wallet::AddressNetwork;
 use open_bitcoin_node::network::{
-    ManagedInboundAdmissionInfo, ManagedMempoolInfo, ManagedNetworkInfo,
+    LocalRelaySubmissionEvidence, ManagedInboundAdmissionInfo, ManagedMempoolInfo,
+    ManagedNetworkInfo,
 };
 use open_bitcoin_node::{DurableSyncState, FjallNodeStore, MetricRetentionPolicy, MetricsStatus};
 use open_bitcoin_node::{
@@ -330,9 +332,24 @@ impl ManagedRpcContext {
     pub fn submit_local_transaction(
         &mut self,
         transaction: Transaction,
-    ) -> Result<open_bitcoin_node::core::mempool::AdmissionResult, ManagedNetworkError> {
+    ) -> Result<AdmissionResult, ManagedNetworkError> {
         self.network
             .submit_local_transaction(transaction, self.verify_flags, self.consensus_params)
+    }
+
+    pub fn submit_local_transaction_with_relay_evidence(
+        &mut self,
+        transaction: Transaction,
+    ) -> Result<MempoolOutcome, ManagedNetworkError> {
+        self.network.submit_local_transaction_outcome(
+            transaction,
+            self.verify_flags,
+            self.consensus_params,
+        )
+    }
+
+    pub fn latest_local_submission_evidence(&self) -> Option<LocalRelaySubmissionEvidence> {
+        self.network.latest_local_submission_evidence()
     }
 }
 

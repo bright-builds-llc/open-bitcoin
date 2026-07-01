@@ -14,8 +14,8 @@ use open_bitcoin_core::primitives::Txid;
 use open_bitcoin_mempool::MempoolOutcome;
 use open_bitcoin_network::{
     InventoryList, PeerId, TxFanoutAction, TxFanoutAdmission, TxFanoutAdmissionOutcome,
-    TxFanoutCleanupReason, TxFanoutPeerInput, TxFanoutQueue, TxRelayId, TxServingRecordStatus,
-    WireNetworkMessage,
+    TxFanoutCleanupReason, TxFanoutPeerInput, TxFanoutQueue, TxFanoutSuppressionReason, TxRelayId,
+    TxServingRecordStatus, WireNetworkMessage, defer_local_rebroadcast,
 };
 
 use super::ManagedPeerNetwork;
@@ -35,12 +35,69 @@ pub struct ManagedRelayFanoutActionInfo {
     pub reason: Option<&'static str>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LocalRelaySubmissionLabel {
+    Accepted,
+    Queued,
+    Suppressed,
+    NotEligible,
+    RelayDisabled,
+    Duplicate,
+    Rejected,
+    Orphaned,
+    Evicted,
+    Expired,
+    RebroadcastDeferred,
+}
+
+impl LocalRelaySubmissionLabel {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Accepted => "accepted",
+            Self::Queued => "queued",
+            Self::Suppressed => "suppressed",
+            Self::NotEligible => "not_eligible",
+            Self::RelayDisabled => "relay_disabled",
+            Self::Duplicate => "duplicate",
+            Self::Rejected => "rejected",
+            Self::Orphaned => "orphaned",
+            Self::Evicted => "evicted",
+            Self::Expired => "expired",
+            Self::RebroadcastDeferred => "rebroadcast_deferred",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RebroadcastEvidenceLabel {
+    Deferred,
+}
+
+impl RebroadcastEvidenceLabel {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Deferred => "rebroadcast_deferred",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LocalRelaySubmissionEvidence {
+    pub labels: Vec<LocalRelaySubmissionLabel>,
+    pub queued_count: usize,
+    pub suppressed_count: usize,
+    pub not_eligible_count: usize,
+    pub relay_disabled_count: usize,
+    pub maybe_rebroadcast: Option<RebroadcastEvidenceLabel>,
+}
+
 #[derive(Debug, Clone, Default)]
 pub(super) struct ManagedRelayFanoutState {
     queue: TxFanoutQueue,
     wtxids_by_txid: BTreeMap<Txid, open_bitcoin_core::primitives::Wtxid>,
     recent_rejects_by_peer: BTreeMap<PeerId, BTreeSet<TxRelayId>>,
     latest_actions: Vec<ManagedRelayFanoutActionInfo>,
+    latest_local_submission: Option<LocalRelaySubmissionEvidence>,
 }
 
 impl ManagedRelayFanoutState {
@@ -89,6 +146,40 @@ impl ManagedRelayFanoutState {
             }
             MempoolOutcome::Duplicate { .. } | MempoolOutcome::Orphaned { .. } => Vec::new(),
         };
+        if !actions.is_empty() {
+            self.replace_latest_actions(&actions);
+        }
+        actions
+    }
+
+    pub(super) fn record_local_submission_outcome(
+        &mut self,
+        outcome: &MempoolOutcome,
+        peers: &[TxFanoutPeerInput],
+        periodic_rebroadcast_requested: bool,
+    ) -> Vec<TxFanoutAction> {
+        let queued_before = self.queue.snapshot().queued_count;
+        let mut actions = match outcome {
+            MempoolOutcome::Accepted { .. } | MempoolOutcome::Replaced { .. } => {
+                self.record_admission_outcome(None, outcome, peers)
+            }
+            MempoolOutcome::Rejected { .. }
+            | MempoolOutcome::Duplicate { .. }
+            | MempoolOutcome::Orphaned { .. }
+            | MempoolOutcome::Evicted { .. }
+            | MempoolOutcome::Expired { .. } => Vec::new(),
+        };
+        if let Some(rebroadcast_action) =
+            tx_fanout_admission_from_outcome(outcome).and_then(|admission| {
+                defer_local_rebroadcast(admission, true, periodic_rebroadcast_requested)
+            })
+        {
+            actions.push(rebroadcast_action);
+        }
+        let queued_after = self.queue.snapshot().queued_count;
+        let queued_count = queued_after.saturating_sub(queued_before);
+        self.latest_local_submission =
+            Some(local_submission_evidence(outcome, queued_count, &actions));
         if !actions.is_empty() {
             self.replace_latest_actions(&actions);
         }
@@ -154,6 +245,10 @@ impl ManagedRelayFanoutState {
         }
     }
 
+    pub(super) fn latest_local_submission_evidence(&self) -> Option<LocalRelaySubmissionEvidence> {
+        self.latest_local_submission.clone()
+    }
+
     pub(super) fn is_recent_reject(&self, peer_id: PeerId, relay_id: TxRelayId) -> bool {
         self.recent_rejects_by_peer
             .get(&peer_id)
@@ -190,6 +285,21 @@ impl From<&TxFanoutAction> for ManagedRelayFanoutActionInfo {
 impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     pub fn relay_fanout_info(&self) -> ManagedRelayFanoutInfo {
         self.relay_fanout.info()
+    }
+
+    pub fn latest_local_submission_evidence(&self) -> Option<LocalRelaySubmissionEvidence> {
+        self.relay_fanout.latest_local_submission_evidence()
+    }
+
+    pub(super) fn record_local_submission_outcome(
+        &mut self,
+        outcome: &MempoolOutcome,
+        _now_unix_seconds: i64,
+    ) -> Vec<TxFanoutAction> {
+        let maybe_admission = tx_fanout_admission_from_outcome(outcome);
+        let peer_inputs = self.relay_fanout_peer_inputs(None, maybe_admission);
+        self.relay_fanout
+            .record_local_submission_outcome(outcome, &peer_inputs, true)
     }
 
     pub(super) fn record_relay_fanout_for_outcome(
@@ -297,5 +407,87 @@ fn fanout_action_reason(action: &TxFanoutAction) -> Option<&'static str> {
         TxFanoutAction::QueueCap { .. } => Some("queue_cap_reached"),
         TxFanoutAction::RateLimit { .. } => Some("rate_limited"),
         TxFanoutAction::Announce { .. } | TxFanoutAction::RebroadcastDeferred { .. } => None,
+    }
+}
+
+fn local_submission_evidence(
+    outcome: &MempoolOutcome,
+    queued_count: usize,
+    actions: &[TxFanoutAction],
+) -> LocalRelaySubmissionEvidence {
+    let mut labels = vec![local_submission_outcome_label(outcome)];
+    if queued_count > 0 {
+        labels.push(LocalRelaySubmissionLabel::Queued);
+    }
+
+    let mut suppressed_count = 0;
+    let mut not_eligible_count = 0;
+    let mut relay_disabled_count = 0;
+    let mut maybe_rebroadcast = None;
+    for action in actions {
+        match action {
+            TxFanoutAction::Suppress { reason, .. } => match reason {
+                TxFanoutSuppressionReason::NotRelayEligible => {
+                    suppressed_count += 1;
+                    not_eligible_count += 1;
+                }
+                TxFanoutSuppressionReason::RelayDisabled => {
+                    suppressed_count += 1;
+                    relay_disabled_count += 1;
+                }
+                TxFanoutSuppressionReason::OriginPeer
+                | TxFanoutSuppressionReason::AlreadyHave
+                | TxFanoutSuppressionReason::RecentReject
+                | TxFanoutSuppressionReason::InFlight
+                | TxFanoutSuppressionReason::MempoolKnown
+                | TxFanoutSuppressionReason::QueueCapReached
+                | TxFanoutSuppressionReason::RateLimited
+                | TxFanoutSuppressionReason::IdentityUnavailable => {
+                    suppressed_count += 1;
+                }
+            },
+            TxFanoutAction::QueueCap { .. } | TxFanoutAction::RateLimit { .. } => {
+                suppressed_count += 1;
+            }
+            TxFanoutAction::RebroadcastDeferred { .. } => {
+                maybe_rebroadcast = Some(RebroadcastEvidenceLabel::Deferred);
+            }
+            TxFanoutAction::Announce { .. } | TxFanoutAction::Cleanup { .. } => {}
+        }
+    }
+
+    if suppressed_count > 0 {
+        labels.push(LocalRelaySubmissionLabel::Suppressed);
+    }
+    if not_eligible_count > 0 {
+        labels.push(LocalRelaySubmissionLabel::NotEligible);
+    }
+    if relay_disabled_count > 0 {
+        labels.push(LocalRelaySubmissionLabel::RelayDisabled);
+    }
+    if maybe_rebroadcast.is_some() {
+        labels.push(LocalRelaySubmissionLabel::RebroadcastDeferred);
+    }
+
+    LocalRelaySubmissionEvidence {
+        labels,
+        queued_count,
+        suppressed_count,
+        not_eligible_count,
+        relay_disabled_count,
+        maybe_rebroadcast,
+    }
+}
+
+fn local_submission_outcome_label(outcome: &MempoolOutcome) -> LocalRelaySubmissionLabel {
+    match outcome {
+        MempoolOutcome::Accepted { .. } | MempoolOutcome::Replaced { .. } => {
+            LocalRelaySubmissionLabel::Accepted
+        }
+        MempoolOutcome::Duplicate { .. } => LocalRelaySubmissionLabel::Duplicate,
+        MempoolOutcome::Rejected { .. } => LocalRelaySubmissionLabel::Rejected,
+        MempoolOutcome::Orphaned { .. } => LocalRelaySubmissionLabel::Orphaned,
+        MempoolOutcome::Evicted { .. } => LocalRelaySubmissionLabel::Evicted,
+        MempoolOutcome::Expired { .. } => LocalRelaySubmissionLabel::Expired,
     }
 }

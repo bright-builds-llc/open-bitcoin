@@ -779,6 +779,7 @@
         "packages/open-bitcoin-node/src/network/relay_serving.rs",
         "packages/open-bitcoin-node/src/network/tests/admission_bridge_cases.rs",
         "packages/open-bitcoin-node/src/network/tests/relay_fanout_cases.rs",
+        "packages/open-bitcoin-node/src/network/tests/relay_local_submission_cases.rs",
         "packages/open-bitcoin-node/src/network/tests/relay_serving_cases.rs",
         "packages/open-bitcoin-node/src/network/tests.rs"
       ],

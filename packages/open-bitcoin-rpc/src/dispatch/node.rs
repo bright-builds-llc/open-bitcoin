@@ -9,7 +9,12 @@
 // - packages/bitcoin-knots/src/rpc/rawtransaction.cpp
 // - packages/bitcoin-knots/test/functional/interface_rpc.py
 
-use open_bitcoin_node::core::{codec::parse_transaction, wallet::SingleKeyDescriptor};
+use open_bitcoin_node::core::{
+    codec::parse_transaction,
+    mempool::{MempoolError, MempoolOutcome},
+    primitives::{OutPoint, Transaction},
+    wallet::SingleKeyDescriptor,
+};
 use open_bitcoin_node::status::{
     FieldAvailability, SyncLifecycleState, SyncProgress, SyncProgressSignal,
 };
@@ -241,21 +246,88 @@ pub(super) fn send_raw_transaction(
         .map_err(|error| RpcFailure::invalid_params(error.to_string()))?;
     let transaction = parse_transaction(&transaction_bytes)
         .map_err(|error| RpcFailure::invalid_params(error.to_string()))?;
-    let result = context
-        .submit_local_transaction(transaction)
+    let outcome = context
+        .submit_local_transaction_with_relay_evidence(transaction.clone())
         .map_err(network_error_to_failure)?;
 
-    Ok(SendRawTransactionResponse {
-        txid_hex: decode::encode_hex(result.accepted.as_bytes()),
-        replaced_txids: result
-            .replaced
-            .into_iter()
-            .map(|txid| decode::encode_hex(txid.as_bytes()))
-            .collect(),
-        evicted_txids: result
-            .evicted
-            .into_iter()
-            .map(|txid| decode::encode_hex(txid.as_bytes()))
-            .collect(),
-    })
+    send_raw_transaction_response(outcome, &transaction)
+}
+
+fn send_raw_transaction_response(
+    outcome: MempoolOutcome,
+    transaction: &Transaction,
+) -> Result<SendRawTransactionResponse, RpcFailure> {
+    match outcome {
+        MempoolOutcome::Accepted { txid, evicted, .. } => Ok(SendRawTransactionResponse {
+            txid_hex: decode::encode_hex(txid.as_bytes()),
+            replaced_txids: Vec::new(),
+            evicted_txids: evicted
+                .into_iter()
+                .map(|txid| decode::encode_hex(txid.as_bytes()))
+                .collect(),
+        }),
+        MempoolOutcome::Replaced {
+            txid,
+            replaced,
+            evicted,
+            ..
+        } => Ok(SendRawTransactionResponse {
+            txid_hex: decode::encode_hex(txid.as_bytes()),
+            replaced_txids: replaced
+                .into_iter()
+                .map(|txid| decode::encode_hex(txid.as_bytes()))
+                .collect(),
+            evicted_txids: evicted
+                .into_iter()
+                .map(|txid| decode::encode_hex(txid.as_bytes()))
+                .collect(),
+        }),
+        MempoolOutcome::Duplicate { txid } => Err(mempool_outcome_failure(
+            MempoolError::DuplicateTransaction { txid },
+        )),
+        MempoolOutcome::Orphaned {
+            missing_parents, ..
+        } => Err(mempool_outcome_failure(orphaned_submission_error(
+            transaction,
+            &missing_parents,
+        ))),
+        MempoolOutcome::Rejected { category, .. } => {
+            Err(mempool_outcome_failure(MempoolError::InternalInvariant {
+                reason: format!("local submission rejected: {}", category.as_str()),
+            }))
+        }
+        MempoolOutcome::Evicted { txid, .. } | MempoolOutcome::Expired { txid, .. } => {
+            Err(mempool_outcome_failure(MempoolError::CandidateEvicted {
+                txid,
+            }))
+        }
+    }
+}
+
+fn orphaned_submission_error(
+    transaction: &Transaction,
+    missing_parents: &[open_bitcoin_node::core::primitives::Txid],
+) -> MempoolError {
+    let Some(outpoint) = missing_input_outpoint(transaction, missing_parents) else {
+        return MempoolError::InternalInvariant {
+            reason: "local submission orphaned without inspectable missing input".to_string(),
+        };
+    };
+    MempoolError::MissingInput { outpoint }
+}
+
+fn missing_input_outpoint(
+    transaction: &Transaction,
+    missing_parents: &[open_bitcoin_node::core::primitives::Txid],
+) -> Option<OutPoint> {
+    transaction
+        .inputs
+        .iter()
+        .find(|input| missing_parents.contains(&input.previous_output.txid))
+        .or_else(|| transaction.inputs.first())
+        .map(|input| input.previous_output.clone())
+}
+
+fn mempool_outcome_failure(error: MempoolError) -> RpcFailure {
+    RpcFailure::verify_rejected(error.to_string())
 }

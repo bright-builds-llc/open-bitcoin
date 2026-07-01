@@ -182,6 +182,16 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> Result<MempoolOutcome, ManagedNetworkError> {
+        self.submit_local_transaction_outcome_at(transaction, verify_flags, consensus_params, 0)
+    }
+
+    pub fn submit_local_transaction_outcome_at(
+        &mut self,
+        transaction: Transaction,
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+        now_unix_seconds: i64,
+    ) -> Result<MempoolOutcome, ManagedNetworkError> {
         let outcome = self.mempool.submit_transaction_outcome(
             &self.chainstate,
             transaction.clone(),
@@ -199,6 +209,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             | MempoolOutcome::Duplicate { .. }
             | MempoolOutcome::Orphaned { .. } => {}
         }
+        self.record_local_submission_outcome(&outcome, now_unix_seconds);
         Ok(outcome)
     }
 

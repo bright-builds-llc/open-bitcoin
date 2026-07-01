@@ -45,6 +45,10 @@ pub use inbound::{
     ManagedAddressBoundaryInfo, ManagedInboundAdmissionInfo, ManagedInboundPermissionDecisionInfo,
     ManagedPeerPolicyInfo, ManagedResourceGovernanceInfo,
 };
+pub use relay_fanout::{
+    LocalRelaySubmissionEvidence, LocalRelaySubmissionLabel, ManagedRelayFanoutInfo,
+    RebroadcastEvidenceLabel,
+};
 
 #[derive(Debug)]
 pub enum ManagedNetworkError {

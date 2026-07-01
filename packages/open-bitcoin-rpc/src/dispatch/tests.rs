@@ -21,21 +21,24 @@ use serde_json::json;
 
 use open_bitcoin_network::{
     AddressAnnouncement, AddressList, InboundAdmissionSlotClass, InboundListenerConfig,
-    ParsedPeerPermissionClass, PeerConnectionClass, PermissionEffectLabel,
+    ParsedPeerPermissionClass, PeerConnectionClass, PermissionEffectLabel, RelayActivationConfig,
     RelayPermissionEffectLabel, VersionMessage,
 };
 use open_bitcoin_node::{
-    DurableSyncState, FjallNodeStore, PersistMode, RuntimeMetadata, WalletRegistry,
+    DurableSyncState, FjallNodeStore, ManagedPeerNetwork, ManagedWallet, MemoryChainstateStore,
+    MemoryWalletStore, PersistMode, RuntimeMetadata, WalletRegistry,
     core::{
         chainstate::{ChainPosition, ChainstateSnapshot, Coin},
         codec::{TransactionEncoding, encode_transaction, parse_transaction},
         consensus::{
-            block_hash, block_merkle_root, check_block_header, crypto::hash160, transaction_txid,
+            ConsensusParams, ScriptVerifyFlags, block_hash, block_merkle_root, check_block_header,
+            crypto::hash160, transaction_txid,
         },
-        network::{ServiceFlags, WireNetworkMessage},
+        mempool::PolicyConfig,
+        network::{LocalPeerConfig, ServiceFlags, WireNetworkMessage},
         primitives::{
-            Amount, Block, BlockHash, BlockHeader, NetworkAddress, OutPoint, ScriptBuf,
-            ScriptWitness, Transaction, TransactionInput, TransactionOutput, Txid,
+            Amount, Block, BlockHash, BlockHeader, NetworkAddress, NetworkMagic, OutPoint,
+            ScriptBuf, ScriptWitness, Transaction, TransactionInput, TransactionOutput, Txid,
         },
         wallet::{AddressNetwork, DescriptorRole, SingleKeyDescriptor, Wallet},
     },
@@ -269,6 +272,60 @@ fn empty_context() -> ManagedRpcContext {
         },
         ..RuntimeConfig::default()
     })
+}
+
+fn relay_enabled_context(nonce: u64) -> ManagedRpcContext {
+    let local_config = LocalPeerConfig {
+        magic: NetworkMagic::MAINNET,
+        services: ServiceFlags::NETWORK | ServiceFlags::WITNESS,
+        address: NetworkAddress {
+            services: 0,
+            address_bytes: [0_u8; 16],
+            port: 18_444,
+        },
+        nonce,
+        relay: true,
+        user_agent: "/open-bitcoin:rpc-test/".to_string(),
+    };
+    let network = ManagedPeerNetwork::new_with_relay_activation(
+        MemoryChainstateStore::default(),
+        local_config,
+        PolicyConfig::default(),
+        RelayActivationConfig { enabled: true },
+        true,
+    );
+    let wallet = ManagedWallet::from_store(
+        MemoryWalletStore::default(),
+        Wallet::new(AddressNetwork::Regtest),
+    );
+    ManagedRpcContext::new(
+        AddressNetwork::Regtest,
+        ConsensusParams {
+            coinbase_maturity: 1,
+            ..ConsensusParams::default()
+        },
+        rpc_verify_flags(),
+        network,
+        wallet,
+    )
+}
+
+fn rpc_verify_flags() -> ScriptVerifyFlags {
+    ScriptVerifyFlags::P2SH
+        | ScriptVerifyFlags::STRICTENC
+        | ScriptVerifyFlags::DERSIG
+        | ScriptVerifyFlags::LOW_S
+        | ScriptVerifyFlags::NULLDUMMY
+        | ScriptVerifyFlags::SIGPUSHONLY
+        | ScriptVerifyFlags::MINIMALDATA
+        | ScriptVerifyFlags::CLEANSTACK
+        | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
+        | ScriptVerifyFlags::CHECKSEQUENCEVERIFY
+        | ScriptVerifyFlags::WITNESS
+        | ScriptVerifyFlags::MINIMALIF
+        | ScriptVerifyFlags::NULLFAIL
+        | ScriptVerifyFlags::WITNESS_PUBKEYTYPE
+        | ScriptVerifyFlags::TAPROOT
 }
 
 fn inbound_context(max_peers: usize, reserved_slots: usize) -> ManagedRpcContext {
@@ -2030,6 +2087,127 @@ fn sendrawtransaction_returns_txid_and_maps_rejections() {
     assert_eq!(
         failure.maybe_detail.as_ref().map(|detail| detail.code),
         Some(RpcErrorCode::VerifyRejected),
+    );
+}
+
+#[test]
+fn sendrawtransaction_queues_internal_relay_evidence_without_propagation_claim() {
+    // Arrange
+    let mut context = relay_enabled_context(44);
+    let genesis = build_block(
+        BlockHash::from_byte_array([0_u8; 32]),
+        0,
+        500_000_000,
+        p2sh_script(),
+    );
+    let spendable = build_block(block_hash(&genesis.header), 1, 500_000_000, p2sh_script());
+    context.connect_local_block(&genesis).expect("genesis");
+    context.connect_local_block(&spendable).expect("spendable");
+    context.connect_outbound_peer(44, 1).expect("outbound");
+    let transaction = spend_transaction(
+        transaction_txid(&genesis.transactions[0]).expect("txid"),
+        499_999_000,
+    );
+    let transaction_hex = encode_hex(
+        &encode_transaction(&transaction, TransactionEncoding::WithWitness).expect("encode"),
+    );
+
+    // Act
+    let success = dispatch(
+        &mut context,
+        MethodCall::SendRawTransaction(SendRawTransactionRequest {
+            transaction_hex,
+            maybe_max_fee_rate_sat_per_kvb: None,
+            maybe_max_burn_amount_sats: None,
+            ignore_rejects: Vec::new(),
+        }),
+    )
+    .expect("submit");
+
+    // Assert
+    let response = success.as_object().expect("response object");
+    assert_eq!(response.len(), 3);
+    assert!(response.contains_key("txid_hex"));
+    assert!(response.contains_key("replaced_txids"));
+    assert!(response.contains_key("evicted_txids"));
+    let response_json = success.to_string();
+    for forbidden in ["broadcast", "propagation", "public", "guaranteed"] {
+        assert!(!response_json.contains(forbidden));
+    }
+    let evidence = context
+        .latest_local_submission_evidence()
+        .expect("relay evidence");
+    assert_eq!(evidence.queued_count, 1);
+    assert_eq!(
+        evidence
+            .labels
+            .iter()
+            .map(|label| label.as_str())
+            .collect::<Vec<_>>(),
+        vec!["accepted", "queued", "rebroadcast_deferred"],
+    );
+}
+
+#[test]
+fn sendrawtransaction_duplicate_does_not_queue_new_fanout() {
+    // Arrange
+    let mut context = relay_enabled_context(45);
+    let genesis = build_block(
+        BlockHash::from_byte_array([0_u8; 32]),
+        0,
+        500_000_000,
+        p2sh_script(),
+    );
+    let spendable = build_block(block_hash(&genesis.header), 1, 500_000_000, p2sh_script());
+    context.connect_local_block(&genesis).expect("genesis");
+    context.connect_local_block(&spendable).expect("spendable");
+    context.connect_outbound_peer(45, 1).expect("outbound");
+    let transaction = spend_transaction(
+        transaction_txid(&genesis.transactions[0]).expect("txid"),
+        499_999_000,
+    );
+    let transaction_hex = encode_hex(
+        &encode_transaction(&transaction, TransactionEncoding::WithWitness).expect("encode"),
+    );
+    dispatch(
+        &mut context,
+        MethodCall::SendRawTransaction(SendRawTransactionRequest {
+            transaction_hex: transaction_hex.clone(),
+            maybe_max_fee_rate_sat_per_kvb: None,
+            maybe_max_burn_amount_sats: None,
+            ignore_rejects: Vec::new(),
+        }),
+    )
+    .expect("initial submit");
+
+    // Act
+    let duplicate = dispatch(
+        &mut context,
+        MethodCall::SendRawTransaction(SendRawTransactionRequest {
+            transaction_hex,
+            maybe_max_fee_rate_sat_per_kvb: None,
+            maybe_max_burn_amount_sats: None,
+            ignore_rejects: Vec::new(),
+        }),
+    )
+    .expect_err("duplicate");
+
+    // Assert
+    assert_eq!(
+        duplicate.maybe_detail.as_ref().map(|detail| detail.code),
+        Some(RpcErrorCode::VerifyRejected),
+    );
+    let evidence = context
+        .latest_local_submission_evidence()
+        .expect("relay evidence");
+    assert_eq!(evidence.queued_count, 0);
+    assert_eq!(
+        evidence
+            .labels
+            .iter()
+            .map(|label| label.as_str())
+            .collect::<Vec<_>>(),
+        vec!["duplicate"],
     );
 }
 
