@@ -103,29 +103,10 @@ impl TxDownloadScheduler {
                 }
             };
 
-        if self.already_have.contains(&relay_id)
-            || input.local_facts.already_have.contains(&relay_id)
+        if let Some(action) =
+            self.local_fact_suppression(input.peer_id, relay_id, &input.local_facts)
         {
-            self.mark_already_have(relay_id);
-            return vec![TxDownloadAction::SuppressAlreadyHave {
-                peer_id: input.peer_id,
-                relay_id,
-            }];
-        }
-
-        if input.local_facts.recent_rejects.contains(&relay_id) {
-            return vec![TxDownloadAction::SuppressRecentReject {
-                peer_id: input.peer_id,
-                relay_id,
-            }];
-        }
-
-        if input.local_facts.mempool_known.contains(&relay_id) {
-            return vec![TxDownloadAction::Suppress {
-                peer_id: input.peer_id,
-                relay_id,
-                reason: TxDownloadSuppressionReason::MempoolKnown,
-            }];
+            return vec![action];
         }
 
         if self.has_pending_relay(relay_id) {
@@ -159,6 +140,29 @@ impl TxDownloadScheduler {
             input.preferred_peer,
         );
         Vec::new()
+    }
+
+    pub fn request_parent(
+        &mut self,
+        peer_id: PeerId,
+        relay_id: TxRelayId,
+        now_unix_seconds: i64,
+        local_facts: TxDownloadLocalFacts,
+    ) -> Vec<TxDownloadAction> {
+        if let Some(action) = self.local_fact_suppression(peer_id, relay_id, &local_facts) {
+            return vec![action];
+        }
+
+        if self.has_pending_relay(relay_id) {
+            return vec![TxDownloadAction::SuppressDuplicate { peer_id, relay_id }];
+        }
+
+        if self.peer_is_at_request_cap(peer_id) {
+            return vec![TxDownloadAction::SuppressRequestCap { peer_id, relay_id }];
+        }
+
+        self.insert_in_flight(relay_id, peer_id, now_unix_seconds);
+        vec![TxDownloadAction::RequestGetData { peer_id, relay_id }]
     }
 
     pub fn expire_and_schedule(&mut self, now_unix_seconds: i64) -> Vec<TxDownloadAction> {
@@ -318,6 +322,32 @@ impl TxDownloadScheduler {
                 .announcements
                 .get(&relay_id)
                 .is_some_and(|announcements| !announcements.is_empty())
+    }
+
+    fn local_fact_suppression(
+        &mut self,
+        peer_id: PeerId,
+        relay_id: TxRelayId,
+        local_facts: &TxDownloadLocalFacts,
+    ) -> Option<TxDownloadAction> {
+        if self.already_have.contains(&relay_id) || local_facts.already_have.contains(&relay_id) {
+            self.mark_already_have(relay_id);
+            return Some(TxDownloadAction::SuppressAlreadyHave { peer_id, relay_id });
+        }
+
+        if local_facts.recent_rejects.contains(&relay_id) {
+            return Some(TxDownloadAction::SuppressRecentReject { peer_id, relay_id });
+        }
+
+        if local_facts.mempool_known.contains(&relay_id) {
+            return Some(TxDownloadAction::Suppress {
+                peer_id,
+                relay_id,
+                reason: TxDownloadSuppressionReason::MempoolKnown,
+            });
+        }
+
+        None
     }
 
     fn record_fallback_candidate_if_allowed(

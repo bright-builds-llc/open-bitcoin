@@ -23,7 +23,7 @@ use crate::{
 
 use super::{
     PeerAction, PeerManager, PeerState, TxAnnouncementInput, TxDownloadAction,
-    TxDownloadLocalFacts, TxRelayId, TxRelayPeerMode,
+    TxDownloadLocalFacts, TxPeerRequestSnapshot, TxRelayId, TxRelayPeerMode,
 };
 
 impl PeerManager {
@@ -308,7 +308,35 @@ fn typed_serve_inventory_vector(item: InventoryVector) -> InventoryVector {
 }
 
 impl PeerManager {
-    fn transaction_download_local_facts(&self) -> TxDownloadLocalFacts {
+    pub fn transaction_request_snapshot(&self, peer_id: PeerId) -> TxPeerRequestSnapshot {
+        self.tx_download.peer_snapshot(peer_id)
+    }
+
+    pub fn note_mempool_known(&mut self, relay_id: TxRelayId) {
+        self.mempool_known.insert(relay_id);
+    }
+
+    pub(super) fn request_orphan_parent_relay(
+        &mut self,
+        peer_id: PeerId,
+        relay_id: TxRelayId,
+        now_unix_seconds: i64,
+    ) -> Result<Vec<PeerAction>, NetworkError> {
+        if !self.peers.contains_key(&peer_id) {
+            return Err(NetworkError::UnknownPeer(peer_id));
+        }
+
+        Ok(handle_transaction_relay_actions(
+            self.tx_download.request_parent(
+                peer_id,
+                relay_id,
+                now_unix_seconds,
+                self.transaction_download_local_facts(),
+            ),
+        ))
+    }
+
+    pub(super) fn transaction_download_local_facts(&self) -> TxDownloadLocalFacts {
         let mut already_have = BTreeSet::new();
         already_have.extend(self.known_txids.iter().copied().map(TxRelayId::Txid));
         already_have.extend(self.known_wtxids.iter().copied().map(TxRelayId::Wtxid));
@@ -316,7 +344,7 @@ impl PeerManager {
         TxDownloadLocalFacts {
             already_have,
             recent_rejects: self.recent_rejects.clone(),
-            mempool_known: BTreeSet::new(),
+            mempool_known: self.mempool_known.clone(),
         }
     }
 }

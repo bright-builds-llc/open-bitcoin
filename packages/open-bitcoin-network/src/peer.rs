@@ -137,6 +137,7 @@ pub struct PeerManager {
     known_wtxids: BTreeSet<Wtxid>,
     tx_download: TxDownloadScheduler,
     recent_rejects: BTreeSet<TxRelayId>,
+    mempool_known: BTreeSet<TxRelayId>,
     max_blocks_in_flight_per_peer: usize,
     learned_addresses: LearnedAddressBook,
     local_address_decisions: Vec<LocalAdvertisementDecision>,
@@ -175,6 +176,7 @@ impl PeerManager {
             known_wtxids: BTreeSet::new(),
             tx_download: TxDownloadScheduler::new(TxDownloadPolicy::default()),
             recent_rejects: BTreeSet::new(),
+            mempool_known: BTreeSet::new(),
             max_blocks_in_flight_per_peer,
             learned_addresses: LearnedAddressBook::default(),
             local_address_decisions: Vec::new(),
@@ -219,10 +221,6 @@ impl PeerManager {
 
     pub fn note_recent_reject(&mut self, relay_id: TxRelayId) {
         self.recent_rejects.insert(relay_id);
-    }
-
-    pub fn transaction_request_snapshot(&self, peer_id: PeerId) -> TxPeerRequestSnapshot {
-        self.tx_download.peer_snapshot(peer_id)
     }
 
     pub fn header_store(&self) -> &HeaderStore {
@@ -312,6 +310,15 @@ impl PeerManager {
             .into_iter()
             .map(|action| (action.peer_id(), PeerAction::TransactionRelay(action)))
             .collect()
+    }
+
+    pub fn request_orphan_parent(
+        &mut self,
+        peer_id: PeerId,
+        parent_txid: Txid,
+        now_unix_seconds: i64,
+    ) -> Result<Vec<PeerAction>, NetworkError> {
+        self.request_orphan_parent_relay(peer_id, TxRelayId::Txid(parent_txid), now_unix_seconds)
     }
 
     pub fn remove_peer_with_transaction_cleanup(

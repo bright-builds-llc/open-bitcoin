@@ -404,6 +404,11 @@ fn duplicate_announcement_retains_fallback_candidate_without_second_request() {
 }
 
 #[test]
+fn orphan_parent_request_suppresses_duplicate_pending_parent() {
+    scheduler_cases::orphan_parent_request_suppresses_duplicate_pending_parent();
+}
+
+#[test]
 fn already_have_recent_reject_and_mempool_known_suppress_requests() {
     scheduler_cases::already_have_recent_reject_and_mempool_known_suppress_requests();
 }

@@ -23,9 +23,10 @@ use crate::{
     LocalPeerConfig, NetworkError, PHASE94_MAX_HEADER_LOCATOR_HASHES,
     PHASE94_MAX_INBOUND_BLOCK_REQUESTS_PER_PEER, PHASE94_MAX_INBOUND_REQUEST_INVENTORY_ITEMS,
     PHASE94_MAX_INBOUND_TX_REQUESTS_PER_PEER, PHASE101_GETDATA_TX_INTERVAL_SECONDS,
-    ParsedPeerPermissionClass, PeerAction, PeerBanEntry, PeerConnectionClass, PeerId, PeerManager,
-    PeerPermissionClassRegistry, PermissionEffectLabel, RequestPressureInput,
-    ResourceGovernanceDecision, ResourceGovernancePolicy, ServiceFlags, TxDownloadAction,
+    PHASE101_MAX_TX_REQUESTS_IN_FLIGHT_PER_PEER, ParsedPeerPermissionClass, PeerAction,
+    PeerBanEntry, PeerConnectionClass, PeerId, PeerManager, PeerPermissionClassRegistry,
+    PermissionEffectLabel, RequestPressureInput, ResourceGovernanceDecision,
+    ResourceGovernancePolicy, ServiceFlags, TxDownloadAction, TxDownloadSuppressionReason,
     TxRelayId, WireNetworkMessage,
 };
 use open_bitcoin_primitives::{InventoryType, InventoryVector, Txid};
@@ -1198,6 +1199,162 @@ fn peer_manager_transaction_relay_already_have_and_recent_reject_suppress_reques
             },
         )],
     );
+}
+
+#[test]
+fn peer_manager_orphan_parent_request_uses_transaction_scheduler() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_inbound_peer(219).expect("peer");
+    let parent_txid = txid_from_byte(101);
+
+    // Act
+    let actions = manager
+        .request_orphan_parent(219, parent_txid, 10)
+        .expect("parent request");
+
+    // Assert
+    assert_transaction_relay_request(&actions, 219, TxRelayId::Txid(parent_txid));
+    assert_eq!(manager.transaction_request_snapshot(219).in_flight_count, 1);
+}
+
+#[test]
+fn peer_manager_orphan_parent_request_respects_inflight_cap() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_inbound_peer(220).expect("peer");
+
+    // Act
+    for index in 0..PHASE101_MAX_TX_REQUESTS_IN_FLIGHT_PER_PEER {
+        let parent_txid = txid_from_byte(index as u8);
+        let actions = manager
+            .request_orphan_parent(220, parent_txid, index as i64)
+            .expect("parent request");
+        assert_transaction_relay_request(&actions, 220, TxRelayId::Txid(parent_txid));
+    }
+    let capped_txid = txid_from_byte(250);
+    let capped_actions = manager
+        .request_orphan_parent(220, capped_txid, 500)
+        .expect("capped parent request");
+
+    // Assert
+    assert_eq!(
+        manager.transaction_request_snapshot(220).in_flight_count,
+        PHASE101_MAX_TX_REQUESTS_IN_FLIGHT_PER_PEER
+    );
+    assert_eq!(
+        capped_actions,
+        vec![PeerAction::TransactionRelay(
+            TxDownloadAction::SuppressRequestCap {
+                peer_id: 220,
+                relay_id: TxRelayId::Txid(capped_txid),
+            },
+        )],
+    );
+}
+
+#[test]
+fn peer_manager_orphan_parent_request_suppresses_already_have_recent_reject_and_mempool_known() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_inbound_peer(221).expect("already-have peer");
+    manager.add_inbound_peer(222).expect("recent-reject peer");
+    manager.add_inbound_peer(223).expect("mempool-known peer");
+    let local_transaction = open_bitcoin_primitives::Transaction::default();
+    let local_txid = transaction_txid(&local_transaction).expect("txid");
+    let rejected_txid = txid_from_byte(102);
+    let mempool_txid = txid_from_byte(103);
+    manager
+        .note_local_transaction(&local_transaction)
+        .expect("local transaction");
+    manager.note_recent_reject(TxRelayId::Txid(rejected_txid));
+    manager.note_mempool_known(TxRelayId::Txid(mempool_txid));
+
+    // Act
+    let already_have_actions = manager
+        .request_orphan_parent(221, local_txid, 1)
+        .expect("already-have parent request");
+    let recent_reject_actions = manager
+        .request_orphan_parent(222, rejected_txid, 2)
+        .expect("recent-reject parent request");
+    let mempool_known_actions = manager
+        .request_orphan_parent(223, mempool_txid, 3)
+        .expect("mempool-known parent request");
+
+    // Assert
+    assert_eq!(
+        already_have_actions,
+        vec![PeerAction::TransactionRelay(
+            TxDownloadAction::SuppressAlreadyHave {
+                peer_id: 221,
+                relay_id: TxRelayId::Txid(local_txid),
+            },
+        )],
+    );
+    assert_eq!(
+        recent_reject_actions,
+        vec![PeerAction::TransactionRelay(
+            TxDownloadAction::SuppressRecentReject {
+                peer_id: 222,
+                relay_id: TxRelayId::Txid(rejected_txid),
+            },
+        )],
+    );
+    assert_eq!(
+        mempool_known_actions,
+        vec![PeerAction::TransactionRelay(TxDownloadAction::Suppress {
+            peer_id: 223,
+            relay_id: TxRelayId::Txid(mempool_txid),
+            reason: TxDownloadSuppressionReason::MempoolKnown,
+        })],
+    );
+}
+
+#[test]
+fn peer_manager_orphan_parent_request_counts_toward_resource_governance() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_inbound_peer(224).expect("peer");
+    let parent_txid = txid_from_byte(104);
+
+    // Act
+    let actions = manager
+        .request_orphan_parent(224, parent_txid, 10)
+        .expect("parent request");
+    let snapshot = manager.transaction_request_snapshot(224);
+    let candidates = manager.eviction_candidate_inputs();
+    let [candidate] = candidates.as_slice() else {
+        panic!("expected one eviction candidate");
+    };
+    let decision = ResourceGovernancePolicy::default().decide_request(RequestPressureInput {
+        requested_txids_in_flight: PHASE94_MAX_INBOUND_TX_REQUESTS_PER_PEER
+            .saturating_add(snapshot.in_flight_count),
+        ..RequestPressureInput::default()
+    });
+
+    // Assert
+    assert_transaction_relay_request(&actions, 224, TxRelayId::Txid(parent_txid));
+    assert_eq!(snapshot.in_flight_count, 1);
+    assert_eq!(candidate.requested_inventory_count, 1);
+    assert!(
+        matches!(decision, ResourceGovernanceDecision::Disconnect(event) if event.label == "request_cap_reached"),
+        "expected orphan parent request to contribute to resource governance cap"
+    );
+}
+
+#[test]
+fn peer_manager_orphan_parent_request_rejects_unknown_peer() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    let parent_txid = txid_from_byte(105);
+
+    // Act
+    let error = manager
+        .request_orphan_parent(225, parent_txid, 10)
+        .expect_err("unknown peer should fail");
+
+    // Assert
+    assert_eq!(error, NetworkError::UnknownPeer(225));
 }
 
 #[test]
@@ -2695,6 +2852,10 @@ fn seed_duplicate_announcements(
 
 fn transaction_relay_inventory(relay_id: TxRelayId) -> InventoryList {
     InventoryList::new(vec![relay_id.to_inventory_vector()])
+}
+
+fn txid_from_byte(byte: u8) -> Txid {
+    Txid::from(Hash32::from_byte_array([byte; 32]))
 }
 
 #[rustfmt::skip]

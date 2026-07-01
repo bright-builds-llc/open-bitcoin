@@ -258,6 +258,23 @@ pub(super) fn duplicate_announcement_retains_fallback_candidate_without_second_r
     assert_eq!(scheduler.peer_snapshot(5).candidate_count, 1);
 }
 
+pub(super) fn orphan_parent_request_suppresses_duplicate_pending_parent() {
+    // Arrange
+    let mut scheduler = scheduler();
+    let relay_id = txid_relay(5);
+
+    // Act
+    let first_actions = scheduler.request_parent(5, relay_id, 0, TxDownloadLocalFacts::default());
+    let duplicate_actions =
+        scheduler.request_parent(6, relay_id, 1, TxDownloadLocalFacts::default());
+
+    // Assert
+    assert_eq!(first_actions, [request(5, relay_id)]);
+    assert_eq!(duplicate_actions, [duplicate(6, relay_id)]);
+    assert_eq!(scheduler.snapshot().in_flight_count, 1);
+    assert_eq!(scheduler.peer_snapshot(6).in_flight_count, 0);
+}
+
 pub(super) fn already_have_recent_reject_and_mempool_known_suppress_requests() {
     // Arrange
     let mut scheduler = scheduler();
