@@ -284,16 +284,22 @@ serde/serde_json support the needed status, RPC, metrics, log, and support
 projections. Adding an external telemetry or Bitcoin library would conflict with
 the project's minimal dependency and first-party domain-model constraints.
 
-## Open Planning Questions
+## Planning Decisions
 
-- Exact type names for the relay/mempool status structs and whether to place
-  them in `status.rs` or `status/relay.rs`.
-- Whether runtime structured relay log append hooks belong in Plan 105-02 or
-  should be limited to pure log record helpers plus tests if no stable event
-  call site exists.
-- Whether dashboard should show relay evidence as rows only or replace optional
-  charts with fixed relay metric candidates when samples exist.
-- Exact no-claim checker corpus if Phase 105 updates docs beyond parity roots.
+- Use `status.rs` as the initial shared contract boundary and split to
+  `status/relay.rs` only if implementation would otherwise worsen file length
+  or readability. Any new Rust source or test file under first-party package
+  roots must receive a parity breadcrumb.
+- Include structured relay log work in Plan 105-02. If no stable runtime append
+  call site exists, implement pure sanitized log record helpers plus tests and
+  document that runtime append wiring remains deferred.
+- Render relay evidence as compact dashboard rows sourced from the shared status
+  contract. Do not replace existing dashboard metric concepts unless the fixed
+  relay metric samples naturally fit the existing candidate list.
+- Make the Phase 105 checker use a fixed corpus: shared status/RPC source,
+  operator status/dashboard/support source and tests, node metrics/logging
+  source and tests, parity docs, runtime/operator docs, README when touched,
+  and `scripts/verify.sh`.
 
 ## Recommended Planner Constraints
 
