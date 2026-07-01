@@ -140,6 +140,13 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
   relay, package relay, bloom/filter serving, public relay by default,
   public-network relay CI, production service operation, production full-node
   readiness, or production-funds wallet use.
+- Phase 102 `v2-0-orphan-handling-admission-outcome-bridge` evidence keeps
+  DL-03, DL-04, DL-05, MEM-01, and MEM-02 auditable through typed
+  `MempoolOutcome`, bounded `TxOrphanage` staging, scheduler-mediated
+  `request_orphan_parent`, managed `process_peer_transaction_admission`,
+  `submit_transaction_outcome`, `disconnect_peer_at`, and `cleanup_peer`
+  evidence without adding deferred relay, lifecycle, operator, support, or
+  production claims.
 
 ## Knots sources
 
@@ -784,6 +791,66 @@ Open Bitcoin intentionally owns the Phase 101 inventory/download surface:
   `PHASE101_GETDATA_TX_INTERVAL_SECONDS`.
 
 Phase 101 does not claim orphan handling, parent request behavior, mempool admission outcomes, standardness or fee policy, RBF, ancestor or descendant policy, mempool lifecycle or persistence, block connect/disconnect mempool behavior, relay serving/fanout, rebroadcast, RPC/operator/support surfaces, compact block relay, package relay, bloom/filter serving, public relay by default, public-network relay CI, production service operation, production full-node readiness, or production-funds wallet use. Those surfaces remain outside this phase until future scoped requirements add implementation and evidence.
+
+## Phase 102 orphan handling admission outcome bridge
+
+The `v2-0-orphan-handling-admission-outcome-bridge` surface covers `DL-03`,
+`DL-04`, `DL-05`, `MEM-01`, and `MEM-02` for bounded missing-parent staging,
+eligible parent requests, deterministic orphan reconsideration, stable mempool
+admission outcomes, and managed runtime bridging after the Phase 101
+transaction download boundary.
+
+Its Knots anchors are
+[`packages/bitcoin-knots/src/txorphanage.h`](../../../packages/bitcoin-knots/src/txorphanage.h),
+[`packages/bitcoin-knots/src/txorphanage.cpp`](../../../packages/bitcoin-knots/src/txorphanage.cpp),
+[`packages/bitcoin-knots/src/node/txdownloadman.h`](../../../packages/bitcoin-knots/src/node/txdownloadman.h),
+[`packages/bitcoin-knots/src/node/txdownloadman_impl.cpp`](../../../packages/bitcoin-knots/src/node/txdownloadman_impl.cpp),
+[`packages/bitcoin-knots/src/net_processing.cpp`](../../../packages/bitcoin-knots/src/net_processing.cpp),
+[`packages/bitcoin-knots/src/validation.cpp`](../../../packages/bitcoin-knots/src/validation.cpp),
+[`packages/bitcoin-knots/src/txmempool.cpp`](../../../packages/bitcoin-knots/src/txmempool.cpp),
+[`packages/bitcoin-knots/src/policy/policy.cpp`](../../../packages/bitcoin-knots/src/policy/policy.cpp),
+[`packages/bitcoin-knots/src/policy/rbf.cpp`](../../../packages/bitcoin-knots/src/policy/rbf.cpp),
+[`packages/bitcoin-knots/test/functional/p2p_orphan_handling.py`](../../../packages/bitcoin-knots/test/functional/p2p_orphan_handling.py),
+[`packages/bitcoin-knots/test/functional/mempool_accept.py`](../../../packages/bitcoin-knots/test/functional/mempool_accept.py),
+and
+[`packages/bitcoin-knots/test/functional/feature_rbf.py`](../../../packages/bitcoin-knots/test/functional/feature_rbf.py).
+
+Open Bitcoin intentionally owns the Phase 102 orphan/admission bridge surface:
+
+- `MempoolOutcome`, `MempoolOutcomeLabel`, and `MempoolRejectionCategory`
+  classify admission results as `accepted`, `rejected`, `duplicate`,
+  `replaced`, `orphaned`, `evicted`, and `expired`.
+- `TxOrphanage` and `OrphanPolicy` keep missing-parent transactions bounded
+  by `PHASE102_MAX_ORPHAN_TRANSACTIONS`,
+  `PHASE102_MAX_ORPHANS_PER_PEER`, `PHASE102_ORPHAN_TTL_SECONDS`, and
+  `PHASE102_MAX_RECONSIDERATIONS_PER_PARENT`.
+- `OrphanEvidenceLabel` uses fixed labels: `parent_requested`,
+  `orphan_evicted`, `orphan_expired`, and `orphan_reconsidered`.
+- Parent requests use `request_orphan_parent` and the Phase 101 scheduler
+  path instead of direct socket writes.
+- Managed runtime admission uses `process_peer_transaction_admission`,
+  `submit_transaction_outcome`, `accept_transaction_outcome`,
+  `reconsider_orphans_after_acceptance`, `expire_orphan_transactions`,
+  `remove_stored_transactions`, `disconnect_peer_at`, and `cleanup_peer`
+  evidence.
+- Evidence roots for this surface are
+  `packages/open-bitcoin-mempool/src/outcome.rs`,
+  `packages/open-bitcoin-mempool/src/pool.rs`,
+  `packages/open-bitcoin-mempool/src/pool/tests/outcome_cases.rs`,
+  `packages/open-bitcoin-node/src/mempool.rs`,
+  `packages/open-bitcoin-network/src/peer/transaction_relay/orphanage.rs`,
+  `packages/open-bitcoin-network/src/peer/transaction_relay/scheduler.rs`,
+  `packages/open-bitcoin-network/src/peer.rs`,
+  `packages/open-bitcoin-network/src/peer/tests.rs`,
+  `packages/open-bitcoin-node/src/network/admission_bridge.rs`,
+  `packages/open-bitcoin-node/src/network/tests/admission_bridge_cases.rs`,
+  `docs/parity/source-breadcrumbs.json`,
+  `.planning/phases/102-orphan-handling-and-admission-outcome-bridge/102-01-SUMMARY.md`,
+  `.planning/phases/102-orphan-handling-and-admission-outcome-bridge/102-02-SUMMARY.md`,
+  and
+  `.planning/phases/102-orphan-handling-and-admission-outcome-bridge/102-03-SUMMARY.md`.
+
+Phase 102 does not claim durable mempool persistence, block connect/disconnect mempool lifecycle, long-lived mempool pressure/trimming evidence, relay serving, relay fanout, rebroadcast, RPC/operator/support evidence, support-bundle redaction for transaction material, release-boundary closeout, compact block relay, package relay, bloom/filter serving, public relay defaults, public-network relay CI, production full-node readiness, production service operation, or production-funds wallet use. Those surfaces remain outside this phase until future scoped requirements add implementation and evidence.
 
 ## First-party implementation
 
