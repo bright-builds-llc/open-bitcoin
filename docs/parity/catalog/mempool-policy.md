@@ -99,17 +99,34 @@ The `v2-0-mempool-chainstate-lifecycle-durable-recovery` surface covers
 - The Phase 103 checker and summaries keep this surface auditable through
   deterministic local verification.
 
+## Phase 104 relay cache boundary
+
+The `v2-0-relay-serving-fanout-rebroadcast-policy` surface extends the Phase
+103 lifecycle work only where relay serving and fanout need coherent mempool
+state. `RelayServingCache` and `ManagedRelayFanoutState` consume
+`MempoolOutcome` and lifecycle cleanup evidence so accepted transactions can be
+served or queued, while confirmed, replaced, evicted, and expired transactions
+are removed from serving and fanout state. `LocalRelaySubmissionEvidence`
+records `sendrawtransaction` outcomes with fixed labels such as `queued`,
+`suppressed`, `relay_disabled`, `not_eligible`, and `rebroadcast_deferred`.
+
+This Phase 104 bridge does not add periodic rebroadcast scheduling, compact
+block relay, package relay, bloom/filter serving, public relay defaults,
+internet-connected relay CI, Phase 105 operator/RPC/metrics/log/support
+presentation, Phase 106 release-boundary closeout, production service
+operation, production full-node readiness, or production-funds wallet use.
+
 ## Known gaps
 
 - package relay beyond single-transaction admission
 - rolling minimum-fee decay and long-lived relay-fee state
 - Knots `mempool.dat` binary compatibility
-- relay serving, transaction fanout, and rebroadcast
+- periodic rebroadcast scheduling beyond `rebroadcast_deferred` evidence
 - broad RPC, CLI, dashboard, support-bundle, and operator presentation surfaces
 
 ## Follow-up triggers
 
 Update this entry when later phases add package relay, dynamic rolling-min-fee
-behavior, relay serving/fanout, rebroadcast, broad operator-facing mempool
-interfaces, or Knots-compatible mempool file import/export that materially
-changes the externally visible policy surface.
+behavior, rebroadcast scheduling, broad operator-facing mempool interfaces, or
+Knots-compatible mempool file import/export that materially changes the
+externally visible policy surface.

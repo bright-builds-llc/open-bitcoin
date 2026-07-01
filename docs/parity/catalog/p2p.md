@@ -147,6 +147,15 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
   `submit_transaction_outcome`, `disconnect_peer_at`, and `cleanup_peer`
   evidence without adding deferred relay, lifecycle, operator, support, or
   production claims.
+- Phase 104 `v2-0-relay-serving-fanout-rebroadcast-policy` evidence keeps
+  REL-01, REL-02, REL-03, and REL-04 auditable through `TxServeOutcomeLabel`,
+  `TxFanoutAction`, `RelayServingCache`, `ManagedRelayFanoutState`,
+  `LocalRelaySubmissionEvidence`, and `rebroadcast_deferred` labels without
+  adding periodic rebroadcast scheduling, compact block relay, package relay,
+  bloom/filter serving, public relay defaults, public-network relay CI,
+  operator/RPC/metrics/log/support presentation, release-boundary closeout,
+  production service operation, production full-node readiness, or
+  production-funds wallet use.
 
 ## Knots sources
 
@@ -857,6 +866,66 @@ Open Bitcoin intentionally owns the Phase 102 orphan/admission bridge surface:
 
 Phase 102 does not claim durable mempool persistence, block connect/disconnect mempool lifecycle, long-lived mempool pressure/trimming evidence, relay serving, relay fanout, rebroadcast, RPC/operator/support evidence, support-bundle redaction for transaction material, release-boundary closeout, compact block relay, package relay, bloom/filter serving, public relay defaults, public-network relay CI, production full-node readiness, production service operation, or production-funds wallet use. Those surfaces remain outside this phase until future scoped requirements add implementation and evidence.
 
+## Phase 104 relay serving, fanout, and rebroadcast policy
+
+The `v2-0-relay-serving-fanout-rebroadcast-policy` surface covers `REL-01`,
+`REL-02`, `REL-03`, and `REL-04` for bounded transaction serving, fanout,
+local submission relay evidence, and explicit rebroadcast deferral after the
+Phase 103 mempool lifecycle boundary.
+
+Its Knots anchors are
+[`packages/bitcoin-knots/src/net_processing.cpp`](../../../packages/bitcoin-knots/src/net_processing.cpp),
+[`packages/bitcoin-knots/src/node/txdownloadman.h`](../../../packages/bitcoin-knots/src/node/txdownloadman.h),
+[`packages/bitcoin-knots/src/node/txdownloadman_impl.cpp`](../../../packages/bitcoin-knots/src/node/txdownloadman_impl.cpp),
+[`packages/bitcoin-knots/src/protocol.h`](../../../packages/bitcoin-knots/src/protocol.h),
+[`packages/bitcoin-knots/src/rpc/rawtransaction.cpp`](../../../packages/bitcoin-knots/src/rpc/rawtransaction.cpp),
+[`packages/bitcoin-knots/test/functional/p2p_getdata.py`](../../../packages/bitcoin-knots/test/functional/p2p_getdata.py),
+and
+[`packages/bitcoin-knots/test/functional/p2p_tx_download.py`](../../../packages/bitcoin-knots/test/functional/p2p_tx_download.py).
+
+Open Bitcoin intentionally owns the Phase 104 relay serving/fanout boundary:
+
+- `TxServeOutcomeLabel`, `TxServingRecordStatus`, and
+  `classify_tx_serve_request` classify transaction `getdata` requests before
+  any managed node serves a transaction.
+- `TxFanoutAction`, `TxFanoutQueue`, and
+  `PHASE104_MAX_TX_FANOUT_QUEUE_PER_PEER` keep fanout bounded and
+  fake-clock-driven.
+- `RelayServingCache` serves accepted relay-eligible transactions and returns
+  `notfound` for unknown, stale, confirmed, rejected, replaced, evicted,
+  expired, identity-mismatched, or non-transaction request paths.
+- `ManagedRelayFanoutState` queues accepted and replaced transaction
+  announcements for eligible peers using negotiated txid or wtxid identity.
+- `LocalRelaySubmissionEvidence` records local `sendrawtransaction` relay
+  evidence as fixed labels and counts only; RPC success does not guarantee
+  public propagation.
+- `rebroadcast_deferred` records the Phase 104 rebroadcast boundary without a
+  timer, scheduler, or background broadcast loop.
+- Evidence roots for this surface include
+  `packages/open-bitcoin-network/src/peer/transaction_relay/serving.rs`,
+  `packages/open-bitcoin-network/src/peer/transaction_relay/fanout.rs`,
+  `packages/open-bitcoin-node/src/network/relay_serving.rs`,
+  `packages/open-bitcoin-node/src/network/relay_fanout.rs`,
+  `packages/open-bitcoin-node/src/network/tests/relay_serving_cases.rs`,
+  `packages/open-bitcoin-node/src/network/tests/relay_fanout_cases.rs`,
+  `packages/open-bitcoin-node/src/network/tests/relay_local_submission_cases.rs`,
+  `packages/open-bitcoin-rpc/src/dispatch/tests.rs`,
+  `scripts/check-phase104-relay-serving-fanout.ts`,
+  `scripts/check-phase104-relay-serving-fanout.test.ts`,
+  `scripts/verify.sh`,
+  `docs/parity/source-breadcrumbs.json`,
+  `.planning/phases/104-relay-serving-fanout-and-rebroadcast-policy/104-01-SUMMARY.md`,
+  `.planning/phases/104-relay-serving-fanout-and-rebroadcast-policy/104-02-SUMMARY.md`,
+  and
+  `.planning/phases/104-relay-serving-fanout-and-rebroadcast-policy/104-03-SUMMARY.md`.
+
+Phase 104 does not add periodic rebroadcast scheduling, compact block relay,
+package relay, bloom/filter serving, public relay defaults, public-network
+relay CI, Phase 105 operator/RPC/metrics/log/support presentation, Phase 106
+release-boundary closeout, production service operation, production full-node
+readiness, or production-funds wallet use. Those surfaces remain outside this
+phase until future scoped requirements add implementation and evidence.
+
 ## First-party implementation
 
 - [`packages/open-bitcoin-network/src/address.rs`](../../../packages/open-bitcoin-network/src/address.rs)
@@ -871,6 +940,8 @@ Phase 102 does not claim durable mempool persistence, block connect/disconnect m
 - [`packages/open-bitcoin-network/src/compatibility.rs`](../../../packages/open-bitcoin-network/src/compatibility.rs)
 - [`packages/open-bitcoin-network/src/header_store.rs`](../../../packages/open-bitcoin-network/src/header_store.rs)
 - [`packages/open-bitcoin-network/src/peer.rs`](../../../packages/open-bitcoin-network/src/peer.rs)
+- [`packages/open-bitcoin-network/src/peer/transaction_relay/serving.rs`](../../../packages/open-bitcoin-network/src/peer/transaction_relay/serving.rs)
+- [`packages/open-bitcoin-network/src/peer/transaction_relay/fanout.rs`](../../../packages/open-bitcoin-network/src/peer/transaction_relay/fanout.rs)
 - [`packages/open-bitcoin-network/src/peer/policy_state.rs`](../../../packages/open-bitcoin-network/src/peer/policy_state.rs)
 - [`packages/open-bitcoin-network/src/peer_policy.rs`](../../../packages/open-bitcoin-network/src/peer_policy.rs)
 - [`packages/open-bitcoin-network/src/relay.rs`](../../../packages/open-bitcoin-network/src/relay.rs)
@@ -878,6 +949,12 @@ Phase 102 does not claim durable mempool persistence, block connect/disconnect m
 - [`packages/open-bitcoin-network/src/resource/tests.rs`](../../../packages/open-bitcoin-network/src/resource/tests.rs)
 - [`packages/open-bitcoin-network/tests/parity.rs`](../../../packages/open-bitcoin-network/tests/parity.rs)
 - [`packages/open-bitcoin-node/src/network.rs`](../../../packages/open-bitcoin-node/src/network.rs)
+- [`packages/open-bitcoin-node/src/network/relay_serving.rs`](../../../packages/open-bitcoin-node/src/network/relay_serving.rs)
+- [`packages/open-bitcoin-node/src/network/relay_fanout.rs`](../../../packages/open-bitcoin-node/src/network/relay_fanout.rs)
+- [`packages/open-bitcoin-node/src/network/tests/relay_serving_cases.rs`](../../../packages/open-bitcoin-node/src/network/tests/relay_serving_cases.rs)
+- [`packages/open-bitcoin-node/src/network/tests/relay_fanout_cases.rs`](../../../packages/open-bitcoin-node/src/network/tests/relay_fanout_cases.rs)
+- [`packages/open-bitcoin-node/src/network/tests/relay_local_submission_cases.rs`](../../../packages/open-bitcoin-node/src/network/tests/relay_local_submission_cases.rs)
+- [`packages/open-bitcoin-rpc/src/dispatch/tests.rs`](../../../packages/open-bitcoin-rpc/src/dispatch/tests.rs)
 - [`packages/open-bitcoin-node/src/status/inbound.rs`](../../../packages/open-bitcoin-node/src/status/inbound.rs)
 - [`packages/open-bitcoin-rpc/src/inbound_listener.rs`](../../../packages/open-bitcoin-rpc/src/inbound_listener.rs)
 - [`packages/open-bitcoin-node/src/sync.rs`](../../../packages/open-bitcoin-node/src/sync.rs)
@@ -886,6 +963,9 @@ Phase 102 does not claim durable mempool persistence, block connect/disconnect m
 - [`scripts/run-live-mainnet-smoke.ts`](../../../scripts/run-live-mainnet-smoke.ts)
 
 ## Known gaps
+
+These networking gaps remain deferred or out of scope unless a later phase adds
+fresh implementation, parity roots, and verification evidence.
 
 - address relay, `addrv2`, peer discovery policy, and DNS-seed governance
 - encrypted transport and other non-v1 wire transports
@@ -896,10 +976,16 @@ Phase 102 does not claim durable mempool persistence, block connect/disconnect m
   guarantees
 - public inbound defaults and transport persistence beyond the current explicit
   listener review surface
+- remain deferred: periodic rebroadcast scheduling, compact block relay, package relay,
+  bloom/filter serving, public relay defaults, public-network relay CI,
+  Phase 105 operator/RPC/metrics/log/support presentation, Phase 106
+  release-boundary closeout, production service operation, production full-node
+  readiness, and production-funds wallet use beyond the Phase 104 relay
+  serving/fanout/rebroadcast-deferred boundary
 
 ## Follow-up triggers
 
-Update this entry when later phases add discovery, compact-block relay,
-transport encryption, daemon-integrated sync orchestration, or
-connection-governance behavior that materially changes the externally visible
-networking surface.
+Future phases should update this entry when they add discovery, compact-block
+relay, transport encryption, daemon-integrated sync orchestration, local
+rebroadcast scheduling, operator relay evidence, or connection-governance
+behavior that materially changes the externally visible networking surface.

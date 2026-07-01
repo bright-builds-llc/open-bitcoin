@@ -247,7 +247,8 @@ run_coverage_report() {
 # Phase 95 is followed by Phase 96. Phase 96 is followed by Phase 97.
 # Phase 97 is followed by Phase 98. Phase 98 is followed by Phase 99.
 # Phase 99 is followed by Phase 100. Phase 100 is followed by Phase 101.
-# Phase 101 is followed by Phase 102.
+# Phase 101 is followed by Phase 102. Phase 102 is followed by Phase 103.
+# Phase 103 is followed by Phase 104.
 : <<'VERIFY_COMMAND_ORDER'
 bun run scripts/check-v1.3-release-boundaries.ts
 bun run scripts/check-v1.4-release-boundaries.ts
@@ -320,6 +321,8 @@ bun test scripts/check-phase102-orphan-admission-bridge.test.ts
 bun run scripts/check-phase102-orphan-admission-bridge.ts
 bun test scripts/check-phase103-mempool-lifecycle.test.ts
 bun run scripts/check-phase103-mempool-lifecycle.ts
+bun test scripts/check-phase104-relay-serving-fanout.test.ts
+bun run scripts/check-phase104-relay-serving-fanout.ts
 VERIFY_COMMAND_ORDER
 
 parse_args "$@"
@@ -417,6 +420,8 @@ run_step "test Phase 102 orphan admission bridge checker" bun test scripts/check
 run_step "check Phase 102 orphan admission bridge" bun run scripts/check-phase102-orphan-admission-bridge.ts
 run_step "test Phase 103 mempool lifecycle checker" bun test scripts/check-phase103-mempool-lifecycle.test.ts
 run_step "check Phase 103 mempool lifecycle" bun run scripts/check-phase103-mempool-lifecycle.ts
+run_step "test Phase 104 relay serving/fanout checker" bun test scripts/check-phase104-relay-serving-fanout.test.ts
+run_step "check Phase 104 relay serving/fanout" bun run scripts/check-phase104-relay-serving-fanout.ts
 run_step "check pure-core dependencies" bash scripts/check-pure-core-deps.sh
 run_step "check file lengths" bash scripts/check-file-lengths.sh
 run_step "check panic sites" bash scripts/check-panic-sites.sh

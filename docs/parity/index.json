@@ -2100,6 +2100,60 @@
         "suspected_unknowns": [
           "Future v2.0 phases own relay serving/fanout, rebroadcast, broad operator evidence, support-bundle redaction, release-boundary guardrails, and any stronger Knots mempool file compatibility claim."
         ]
+      },
+      {
+        "id": "v2-0-relay-serving-fanout-rebroadcast-policy",
+        "title": "v2.0 Relay Serving, Fanout, and Rebroadcast Policy",
+        "status": "done",
+        "requirements": [
+          "REL-01",
+          "REL-02",
+          "REL-03",
+          "REL-04"
+        ],
+        "evidence": [
+          "docs/parity/catalog/p2p.md",
+          "docs/parity/catalog/mempool-policy.md",
+          "docs/parity/checklist.md",
+          "docs/parity/source-breadcrumbs.json",
+          "packages/open-bitcoin-network/src/peer/transaction_relay/serving.rs",
+          "packages/open-bitcoin-network/src/peer/transaction_relay/fanout.rs",
+          "packages/open-bitcoin-network/src/peer/transaction_relay/tests/serving_cases.rs",
+          "packages/open-bitcoin-network/src/peer/transaction_relay/tests/fanout_cases.rs",
+          "packages/open-bitcoin-node/src/network/relay_serving.rs",
+          "packages/open-bitcoin-node/src/network/relay_fanout.rs",
+          "packages/open-bitcoin-node/src/network/tests/relay_serving_cases.rs",
+          "packages/open-bitcoin-node/src/network/tests/relay_fanout_cases.rs",
+          "packages/open-bitcoin-node/src/network/tests/relay_local_submission_cases.rs",
+          "packages/open-bitcoin-rpc/src/dispatch/tests.rs",
+          "scripts/check-phase104-relay-serving-fanout.ts",
+          "scripts/check-phase104-relay-serving-fanout.test.ts",
+          "scripts/verify.sh",
+          ".planning/phases/104-relay-serving-fanout-and-rebroadcast-policy/104-01-SUMMARY.md",
+          ".planning/phases/104-relay-serving-fanout-and-rebroadcast-policy/104-02-SUMMARY.md",
+          ".planning/phases/104-relay-serving-fanout-and-rebroadcast-policy/104-03-SUMMARY.md"
+        ],
+        "rationale": "Phase 104 records typed transaction getdata serving, bounded fanout queues, managed tx/notfound/inv translation, local sendrawtransaction relay evidence, rebroadcast_deferred labels, source breadcrumbs, and deterministic checker coverage.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/net_processing.cpp",
+            "packages/bitcoin-knots/src/node/txdownloadman.h",
+            "packages/bitcoin-knots/src/node/txdownloadman_impl.cpp",
+            "packages/bitcoin-knots/src/protocol.h",
+            "packages/bitcoin-knots/src/rpc/rawtransaction.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/test/functional/p2p_getdata.py",
+            "packages/bitcoin-knots/test/functional/p2p_tx_download.py",
+            "packages/bitcoin-knots/test/functional/mempool_accept.py"
+          ]
+        },
+        "known_gaps": [
+          "Phase 104 does not add periodic rebroadcast scheduling, compact block relay, package relay, bloom/filter serving, public relay defaults, public-network relay CI, Phase 105 operator/RPC/metrics/log/support presentation, Phase 106 release-boundary closeout, production service operation, production full-node readiness, or production-funds wallet use."
+        ],
+        "suspected_unknowns": [
+          "Future v2.0 phases own periodic rebroadcast scheduling, operator/RPC/metrics/log/support presentation, support-bundle redaction, release-boundary guardrails, public-network relay UAT, and any production-readiness claim."
+        ]
       }
     ]
   },
