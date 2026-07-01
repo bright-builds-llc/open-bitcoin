@@ -25,6 +25,7 @@ const TARGET_FILES = [
   "packages/open-bitcoin-network/src/peer/transaction_relay/orphanage.rs",
   "packages/open-bitcoin-network/src/peer/transaction_relay/tests/orphanage_cases.rs",
   "packages/open-bitcoin-network/src/peer/transaction_relay/scheduler.rs",
+  "packages/open-bitcoin-network/src/peer/transaction_relay/tests/scheduler_cases.rs",
   "packages/open-bitcoin-network/src/peer.rs",
   "packages/open-bitcoin-network/src/peer/tests.rs",
   "packages/open-bitcoin-node/src/network/action_translation.rs",
@@ -113,8 +114,10 @@ const REQUIRED_BRIDGE_SYMBOLS = [
 const REQUIRED_BEHAVIOR_TESTS = [
   "no_partial_mutation_for_low_fee_rejection",
   "missing_parent_stage_requests_each_unique_parent_by_txid",
+  "orphan_parent_request_suppresses_duplicate_pending_parent_with_fallback",
   "peer_manager_orphan_parent_request_respects_inflight_cap",
   "managed_admission_bridge_parent_acceptance_reconsiders_child",
+  "managed_admission_bridge_drains_ready_orphans_after_reconsideration_cap",
   "managed_admission_bridge_disconnect_cleans_peer_orphans_and_request_state",
 ] as const;
 const REQUIRED_BREADCRUMB_GROUPS = [
@@ -467,6 +470,7 @@ function verifyBehaviorTests(texts: TextCorpus, failures: string[]): void {
     texts.get("packages/open-bitcoin-network/src/peer/transaction_relay/orphanage.rs") ?? "",
     texts.get("packages/open-bitcoin-network/src/peer/transaction_relay/tests/orphanage_cases.rs") ?? "",
     texts.get("packages/open-bitcoin-network/src/peer/transaction_relay/scheduler.rs") ?? "",
+    texts.get("packages/open-bitcoin-network/src/peer/transaction_relay/tests/scheduler_cases.rs") ?? "",
     texts.get("packages/open-bitcoin-network/src/peer/tests.rs") ?? "",
     texts.get("packages/open-bitcoin-node/src/network/tests/admission_bridge_cases.rs") ?? "",
     texts.get(".planning/phases/102-orphan-handling-and-admission-outcome-bridge/102-01-SUMMARY.md") ?? "",

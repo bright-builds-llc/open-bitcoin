@@ -1,8 +1,8 @@
 ---
 phase: 102-orphan-handling-and-admission-outcome-bridge
-reviewed: 2026-07-01T05:18:15Z
+reviewed: 2026-07-01T05:59:10Z
 depth: standard
-files_reviewed: 34
+files_reviewed: 36
 files_reviewed_list:
   - docs/metrics/lines-of-code.md
   - docs/parity/catalog/p2p.md
@@ -35,87 +35,72 @@ files_reviewed_list:
   - packages/open-bitcoin-node/src/network/inventory.rs
   - packages/open-bitcoin-node/src/network/tests.rs
   - packages/open-bitcoin-node/src/network/tests/admission_bridge_cases.rs
+  - scripts/check-phase101-transaction-inventory-download-scheduling.ts
+  - scripts/check-phase101-transaction-inventory-download-scheduling.test.ts
   - scripts/check-phase102-orphan-admission-bridge.test.ts
   - scripts/check-phase102-orphan-admission-bridge.ts
   - scripts/verify.sh
 findings:
   critical: 0
-  warning: 3
+  warning: 1
   info: 0
-  total: 3
+  total: 1
 status: issues_found
 ---
 
 # Phase 102: Code Review Report
 
-**Reviewed:** 2026-07-01T05:18:15Z
+**Reviewed:** 2026-07-01T05:59:10Z
 **Depth:** standard
-**Files Reviewed:** 34
+**Files Reviewed:** 36
 **Status:** issues_found
 
 ## Summary
 
-Reviewed Phase 102's mempool outcome contract, bounded orphanage, scheduler-mediated parent requests, managed admission bridge, disconnect cleanup, deterministic checker, and parity evidence. This review applied repo-local guidance from `AGENTS.md`, `AGENTS.bright-builds.md`, `standards-overrides.md`, and the relevant Bright Builds architecture, code-shape, verification, testing, Rust, and TypeScript standards.
+Re-reviewed the Phase 102 orphan handling and admission outcome bridge after commit `0d92e52e` addressed the prior review warnings. This pass used the repo-local `AGENTS.md` guidance, `AGENTS.bright-builds.md`, `standards-overrides.md`, and the relevant Bright Builds architecture, code-shape, verification, testing, Rust, and TypeScript standards.
 
-The implementation is well-covered for the intended happy paths, caps, and evidence wiring, but I found three behavioral risks around transaction-known state, orphan parent fallback scheduling, and capped orphan reconsideration.
+Prior findings WR-01, WR-02, and WR-03 are resolved in the implementation:
+
+- WR-01: received transaction cleanup no longer marks txid/wtxid as locally known before managed admission accepts the transaction.
+- WR-02: duplicate orphan parent requests now retain fallback peers through scheduler candidates.
+- WR-03: capped orphan reconsideration now has an explicit pending-drain path, and the managed bridge drains ready children.
+
+Verification run during review:
+
+- `bun test scripts/check-phase101-transaction-inventory-download-scheduling.test.ts` passed.
+- `bun run scripts/check-phase101-transaction-inventory-download-scheduling.ts` passed.
+- `bun test scripts/check-phase102-orphan-admission-bridge.test.ts` passed.
+- `bun run scripts/check-phase102-orphan-admission-bridge.ts` passed.
+- `cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-mempool -p open-bitcoin-network -p open-bitcoin-node --all-features` passed.
+
+One verification-surface gap remains: the deterministic Phase 102 checker does not require the new regression tests that protect two of the prior fixes.
 
 ## Warnings
 
-### WR-01: Received Transactions Can Poison Already-Have State Before Admission
+### WR-01: Phase 102 Checker Does Not Require Prior-Fix Regression Tests
 
-**File:** `packages/open-bitcoin-network/src/peer/inventory_state.rs:260`
+**File:** `scripts/check-phase102-orphan-admission-bridge.ts:113`
 
-**Issue:** `handle_transaction` inserts the txid and wtxid into `known_txids` / `known_wtxids` before the scheduler and managed mempool admission decide whether the transaction is valid, matched to a request, accepted, rejected, or orphaned. The scheduler also marks both identities as already-have in `record_received_transaction` before the managed admission bridge knows the outcome. This means an identity-mismatched transaction can be suppressed from admission while still making future inventory look locally known, and an orphan can remain globally already-have even after `disconnect_peer_at` removes that peer's orphan entry. A later peer announcing the same transaction can be suppressed instead of being requested and re-admitted.
-
-**Fix:**
-
-```rust
-// Do not mark global known/already-have state until the managed admission
-// outcome proves the transaction should be retained locally.
-let transaction_actions = self.tx_download.record_received_transaction(peer_id, txid, wtxid);
-let suppress = transaction_actions
-    .iter()
-    .any(|action| matches!(action, TxDownloadAction::SuppressIdentityMismatch { .. }));
-let mut actions = handle_transaction_relay_actions(transaction_actions);
-if suppress {
-    return Ok(actions);
-}
-
-actions.push(PeerAction::ReceivedTransaction(transaction));
-Ok(actions)
-```
-
-Then move the durable `known_txids` / `known_wtxids` and scheduler already-have transition behind the managed admission outcome, or add an explicit outcome callback that converts `Accepted` / `Replaced` to already-have and clears or avoids already-have for `Orphaned`, `Rejected`, and identity-mismatch paths. Add regressions for mismatch-then-second-peer-inv and orphan-disconnect-then-second-peer-inv.
-
-### WR-02: Duplicate Orphan Parent Requests Lose Fallback Peers
-
-**File:** `packages/open-bitcoin-network/src/peer/transaction_relay/scheduler.rs:156`
-
-**Issue:** `request_parent` suppresses a duplicate parent request when that relay id is already pending, but it does not retain the duplicate peer as a fallback candidate. Normal transaction announcements do retain fallback candidates before suppressing duplicates. As a result, if peer A is asked for an orphan parent and peer B later provides the same orphan-parent opportunity, peer B is discarded; when peer A times out, returns `notfound`, or disconnects, `schedule_relay` has no alternate peer to request from.
+**Issue:** The implementation now includes passing Rust regressions for duplicate orphan-parent fallback (`orphan_parent_request_suppresses_duplicate_pending_parent_with_fallback`) and capped ready-orphan draining (`managed_admission_bridge_drains_ready_orphans_after_reconsideration_cap`), but `REQUIRED_BEHAVIOR_TESTS` does not require either name. The checker would still pass if those two prior-fix guard tests were deleted, weakening Phase 102's deterministic evidence contract for WR-02 and WR-03.
 
 **Fix:**
 
-```rust
-if self.has_pending_relay(relay_id) {
-    if self.peer_total_count(peer_id) < self.policy.max_announcements_per_peer {
-        self.insert_candidate(relay_id, peer_id, now_unix_seconds, true);
-    }
-    return vec![TxDownloadAction::SuppressDuplicate { peer_id, relay_id }];
-}
+```ts
+const REQUIRED_BEHAVIOR_TESTS = [
+  "no_partial_mutation_for_low_fee_rejection",
+  "missing_parent_stage_requests_each_unique_parent_by_txid",
+  "orphan_parent_request_suppresses_duplicate_pending_parent_with_fallback",
+  "peer_manager_orphan_parent_request_respects_inflight_cap",
+  "managed_admission_bridge_parent_acceptance_reconsiders_child",
+  "managed_admission_bridge_drains_ready_orphans_after_reconsideration_cap",
+  "managed_admission_bridge_disconnect_cleans_peer_orphans_and_request_state",
+] as const;
 ```
 
-Add scheduler and managed-bridge tests showing duplicate orphan-parent requests from a second peer produce a fallback `GetData` after timeout, `notfound`, and disconnect cleanup.
-
-### WR-03: Reconsideration Cap Can Leave Ready Orphans Without A Drain Path
-
-**File:** `packages/open-bitcoin-network/src/peer/transaction_relay/orphanage.rs:231`
-
-**Issue:** `reconsider_after_parent` inserts every newly ready orphan into `pending_reconsideration`, but only drains `max_reconsiderations_per_parent` entries and then returns. The remaining ready children have empty `missing_parents`, stay staged, and are only reconsidered if a later accepted parent happens to call `reconsider_after_parent` again. A parent with more than the capped number of children can therefore leave valid ready children stuck until expiry.
-
-**Fix:** Add an explicit drain mechanism for pending ready children, or return a continuation action/status that the managed bridge can call on subsequent bounded ticks without requiring another parent acceptance. Cover it with a test where the cap is `2`, three children become ready from one parent, and the third child is reconsidered by the follow-up drain instead of expiring.
+Update `scripts/check-phase102-orphan-admission-bridge.test.ts` fixture coverage so `fails_when_required_behavior_test_is_missing` also proves those two required names are enforced.
 
 ***
 
-_Reviewed: 2026-07-01T05:18:15Z_
+_Reviewed: 2026-07-01T05:59:10Z_
 _Reviewer: the agent (gsd-code-reviewer)_
 _Depth: standard_

@@ -18,6 +18,7 @@ const REQUIRED_EVIDENCE_ROOTS = [
   "packages/open-bitcoin-network/src/peer/transaction_relay/orphanage.rs",
   "packages/open-bitcoin-network/src/peer/transaction_relay/tests/orphanage_cases.rs",
   "packages/open-bitcoin-network/src/peer/transaction_relay/scheduler.rs",
+  "packages/open-bitcoin-network/src/peer/transaction_relay/tests/scheduler_cases.rs",
   "packages/open-bitcoin-network/src/peer.rs",
   "packages/open-bitcoin-network/src/peer/tests.rs",
   "packages/open-bitcoin-node/src/network/action_translation.rs",
@@ -157,8 +158,10 @@ test("fails_when_required_behavior_test_is_missing", () => {
   const missingTests = [
     "no_partial_mutation_for_low_fee_rejection",
     "missing_parent_stage_requests_each_unique_parent_by_txid",
+    "orphan_parent_request_suppresses_duplicate_pending_parent_with_fallback",
     "peer_manager_orphan_parent_request_respects_inflight_cap",
     "managed_admission_bridge_parent_acceptance_reconsiders_child",
+    "managed_admission_bridge_drains_ready_orphans_after_reconsideration_cap",
     "managed_admission_bridge_disconnect_cleans_peer_orphans_and_request_state",
   ];
   const roots = missingTests.map((testName) =>
@@ -301,6 +304,7 @@ function fixtureFiles(): Map<TargetFile, string> {
     ["packages/open-bitcoin-network/src/peer/transaction_relay/orphanage.rs", orphanageText()],
     ["packages/open-bitcoin-network/src/peer/transaction_relay/tests/orphanage_cases.rs", orphanageTestsText()],
     ["packages/open-bitcoin-network/src/peer/transaction_relay/scheduler.rs", schedulerText()],
+    ["packages/open-bitcoin-network/src/peer/transaction_relay/tests/scheduler_cases.rs", schedulerTestsText()],
     ["packages/open-bitcoin-network/src/peer.rs", peerText()],
     ["packages/open-bitcoin-network/src/peer/tests.rs", peerTestsText()],
     ["packages/open-bitcoin-node/src/network/action_translation.rs", actionTranslationText()],
@@ -506,11 +510,18 @@ function orphanageText(): string {
 }
 
 function orphanageTestsText(): string {
-  return "fn missing_parent_stage_requests_each_unique_parent_by_txid() {}";
+  return [
+    "fn missing_parent_stage_requests_each_unique_parent_by_txid() {}",
+    "fn orphan_parent_request_suppresses_duplicate_pending_parent_with_fallback() {}",
+  ].join("\n");
 }
 
 function schedulerText(): string {
   return "fn cleanup_peer() {}";
+}
+
+function schedulerTestsText(): string {
+  return "fn orphan_parent_request_suppresses_duplicate_pending_parent_with_fallback() {}";
 }
 
 function peerText(): string {
@@ -548,6 +559,7 @@ function admissionBridgeText(): string {
 function admissionBridgeTestsText(): string {
   return [
     "fn managed_admission_bridge_parent_acceptance_reconsiders_child() {}",
+    "fn managed_admission_bridge_drains_ready_orphans_after_reconsideration_cap() {}",
     "fn managed_admission_bridge_disconnect_cleans_peer_orphans_and_request_state() {}",
   ].join("\n");
 }
