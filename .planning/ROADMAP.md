@@ -14,7 +14,7 @@
 | --- | --- | --- | --- |
 | 100 | Relay Activation Boundary and Permission Semantics | ACT-01, ACT-02, ACT-03, ACT-04 | Complete |
 | 101 | Transaction Inventory Identity and Download Scheduling | INV-01, INV-02, INV-03, INV-04, DL-01, DL-02 | Complete |
-| 102 | 1/4 | In Progress|  |
+| 102 | 2/4 | In Progress|  |
 | 103 | Mempool Chainstate Lifecycle and Durable Recovery | MEM-03, MEM-04, MEM-05, MEM-06 | Pending |
 | 104 | Relay Serving, Fanout, and Rebroadcast Policy | REL-01, REL-02, REL-03, REL-04 | Pending |
 | 105 | Operator, RPC, Metrics, Logs, and Support Evidence | OBS-01, OBS-02, OBS-03, OBS-04 | Pending |
@@ -91,11 +91,11 @@ Plans:
 
 **Verification:** Pure mempool tests, relay/admission bridge tests, managed in-memory integration tests, and `bash scripts/verify.sh`.
 
-**Plans:** 1/4 plans executed
+**Plans:** 2/4 plans executed
 
 Plans:
 - [x] 102-01-PLAN.md — Stable mempool outcome contract and no-partial-mutation admission tests.
-- [ ] 102-02-PLAN.md — Pure bounded orphan staging, parent requests, reconsideration, expiry, and eviction.
+- [x] 102-02-PLAN.md — Pure bounded orphan staging, parent requests, reconsideration, expiry, and eviction.
 - [ ] 102-03-PLAN.md — Managed runtime bridge from transaction download to mempool outcomes and orphan reconsideration.
 - [ ] 102-04-PLAN.md — Parity roots, deterministic checker, verifier wiring, and phase verification.
 

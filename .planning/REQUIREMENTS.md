@@ -26,9 +26,9 @@ Requirements for the current milestone. Each requirement maps to exactly one roa
 
 - [ ] **DL-01**: Node schedules transaction downloads with bounded in-flight request caps, expiry, peer fallback, and retry evidence.
 - [ ] **DL-02**: Node suppresses redundant transaction requests through already-have, recent-reject, in-flight, and mempool-state checks.
-- [ ] **DL-03**: Node stages missing-parent transactions in a bounded orphan or candidate state and requests eligible parents.
-- [ ] **DL-04**: Node reconsiders staged missing-parent transactions after parent acceptance and expires or evicts them with evidence when limits are reached.
-- [ ] **DL-05**: Transaction download behavior preserves v1.9 queue, request, timeout, churn, and resource-governance limits under adversarial bursts.
+- [x] **DL-03**: Node stages missing-parent transactions in a bounded orphan or candidate state and requests eligible parents.
+- [x] **DL-04**: Node reconsiders staged missing-parent transactions after parent acceptance and expires or evicts them with evidence when limits are reached.
+- [x] **DL-05**: Transaction download behavior preserves v1.9 queue, request, timeout, churn, and resource-governance limits under adversarial bursts.
 
 ### Mempool Admission And Lifecycle
 
@@ -115,9 +115,9 @@ Explicitly excluded from v2.0 to prevent scope creep.
 | INV-04 | Phase 101 | Pending |
 | DL-01 | Phase 101 | Pending |
 | DL-02 | Phase 101 | Pending |
-| DL-03 | Phase 102 | Pending |
-| DL-04 | Phase 102 | Pending |
-| DL-05 | Phase 102 | Pending |
+| DL-03 | Phase 102 | Complete |
+| DL-04 | Phase 102 | Complete |
+| DL-05 | Phase 102 | Complete |
 | MEM-01 | Phase 102 | Complete |
 | MEM-02 | Phase 102 | Complete |
 | MEM-03 | Phase 103 | Pending |
