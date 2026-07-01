@@ -48,7 +48,7 @@ Requirements for the current milestone. Each requirement maps to exactly one roa
 
 ### Operator, RPC, Metrics, Logs, And Support Evidence
 
-- [ ] **OBS-01**: RPC surfaces such as `sendrawtransaction`, `getmempoolinfo`, `getnetworkinfo`, and Open Bitcoin network status report relay and mempool participation truthfully.
+- [x] **OBS-01**: RPC surfaces such as `sendrawtransaction`, `getmempoolinfo`, `getnetworkinfo`, and Open Bitcoin network status report relay and mempool participation truthfully.
 - [ ] **OBS-02**: CLI and dashboard surfaces render relay and mempool state from the shared status contract without raw transaction, peer, permission, or credential leakage.
 - [ ] **OBS-03**: Metrics and structured logs use fixed low-cardinality relay outcomes for accepted, rejected, orphaned, requested, served, announced, suppressed, evicted, and expired events.
 - [ ] **OBS-04**: Support bundles sanitize relay and mempool evidence, including raw transaction hex, disallowed txids or wtxids, peer endpoints, permission strings, dynamic labels, and credentials.
@@ -128,7 +128,7 @@ Explicitly excluded from v2.0 to prevent scope creep.
 | REL-02 | Phase 104 | Pending |
 | REL-03 | Phase 104 | Pending |
 | REL-04 | Phase 104 | Pending |
-| OBS-01 | Phase 105 | Pending |
+| OBS-01 | Phase 105 | Complete |
 | OBS-02 | Phase 105 | Pending |
 | OBS-03 | Phase 105 | Pending |
 | OBS-04 | Phase 105 | Pending |

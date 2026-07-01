@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Transaction Relay and Mempool Participation Boundary
 status: executing
-stopped_at: Phase 105 planning complete; ready to execute
-last_updated: "2026-07-01T21:58:30.600Z"
-last_activity: 2026-07-01 -- Phase 105 planning complete
+stopped_at: Completed 105-01-PLAN.md
+last_updated: "2026-07-01T23:35:49.363Z"
+last_activity: 2026-07-01
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 22
-  completed_plans: 18
-  percent: 82
+  completed_plans: 19
+  percent: 86
 ---
 
 # Project State
@@ -26,12 +26,12 @@ See: `.planning/PROJECT.md` (updated 2026-06-29)
 ## Current Position
 
 Milestone: v2.0 Transaction Relay and Mempool Participation Boundary
-Phase: 105 (Operator, RPC, Metrics, Logs, and Support Evidence) — READY TO EXECUTE
-Plan: 4 plans ready
-Status: Ready to execute
-Last activity: 2026-07-01 -- Phase 105 planning complete
+Phase: 105 (Operator, RPC, Metrics, Logs, and Support Evidence) — EXECUTING
+Plan: 2 of 4
+Status: Executing Phase 105
+Last activity: 2026-07-01
 
-Progress: [########--] 82% milestone plan progress; Phase 105 is ready to execute
+Progress: [#########-] 86% milestone plan progress; Phase 105 plan 2 of 4 is ready to execute
 
 ## Performance Metrics
 
@@ -104,6 +104,7 @@ Progress: [########--] 82% milestone plan progress; Phase 105 is ready to execut
 | Phase 102 P02 | 1h 35m | 2 tasks | 14 files |
 | Phase 102 P03 | 50m 54s | 2 tasks | 9 files |
 | Phase 102 P04 | 40m 19s | 3 tasks | 9 files |
+| Phase 105 P01 | 1h 16m | 3 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -202,6 +203,9 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 - [Phase 102]: Validated managed disconnect orphan cleanup through network/action_translation.rs because disconnect_peer_at is implemented in the split module.
 - [Phase 102]: Included Phase 102 checker, checker tests, action translation, and orphanage case tests as parity evidence roots so docs match the exact guarded files.
 - [Phase 102]: Wired the Phase 102 checker immediately after Phase 101 in the default verifier and before pure-core checks.
+- [Phase 105]: Relay evidence is represented as typed implemented, unavailable, deferred, or intentionally_different fields with stable reasons for non-implemented states. — Downstream RPC, CLI, metrics, logs, and support surfaces need one truthful sanitized contract.
+- [Phase 105]: Relay fanout, serving, and local submission records collapse to fixed counters before reaching RPC or operator-facing status. — This prevents transaction, peer, endpoint, permission, and free-form reason material from entering serialized support surfaces.
+- [Phase 105]: Baseline-compatible RPC methods retain their existing response shapes; Open Bitcoin-specific network status is the truth surface for relay evidence. — Phase 105 must expose operator evidence without implying public relay readiness or changing Knots-compatible RPC surfaces.
 
 ### Pending Todos
 
@@ -222,6 +226,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-07-01T21:58:30.598Z
-Stopped at: Phase 105 planning complete; ready to execute
-Resume file: .planning/phases/105-operator-rpc-metrics-logs-and-support-evidence/105-04-PLAN.md
+Last session: 2026-07-01T23:35:49.360Z
+Stopped at: Completed 105-01-PLAN.md
+Resume file: None
