@@ -19,7 +19,12 @@ use open_bitcoin_network::{
 };
 
 use super::ManagedPeerNetwork;
+use super::relay_serving::ManagedRelayServingInfo;
 use crate::ChainstateStore;
+use crate::status::relay_evidence::{
+    RelayCapabilityEvidence, RelayEvidenceCapability, RelayEvidenceCounters, RelayEvidenceField,
+    RelayEvidenceStatus,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ManagedRelayFanoutInfo {
@@ -291,6 +296,17 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         self.relay_fanout.latest_local_submission_evidence()
     }
 
+    pub fn relay_evidence_status(&self) -> RelayEvidenceStatus {
+        let maybe_local_submission = self.latest_local_submission_evidence();
+        let fanout_info = self.relay_fanout_info();
+        let serving_info = self.relay_serving_info();
+        relay_evidence_status_from_parts(
+            maybe_local_submission.as_ref(),
+            &fanout_info,
+            &serving_info,
+        )
+    }
+
     pub(super) fn record_local_submission_outcome(
         &mut self,
         outcome: &MempoolOutcome,
@@ -407,6 +423,95 @@ fn fanout_action_reason(action: &TxFanoutAction) -> Option<&'static str> {
         TxFanoutAction::QueueCap { .. } => Some("queue_cap_reached"),
         TxFanoutAction::RateLimit { .. } => Some("rate_limited"),
         TxFanoutAction::Announce { .. } | TxFanoutAction::RebroadcastDeferred { .. } => None,
+    }
+}
+
+fn relay_evidence_status_from_parts(
+    maybe_local_submission: Option<&LocalRelaySubmissionEvidence>,
+    fanout_info: &ManagedRelayFanoutInfo,
+    serving_info: &ManagedRelayServingInfo,
+) -> RelayEvidenceStatus {
+    let mut counters = RelayEvidenceCounters::default();
+    if let Some(local_submission) = maybe_local_submission {
+        project_local_submission_counters(&mut counters, local_submission);
+    }
+    project_fanout_counters(&mut counters, fanout_info);
+    project_serving_counters(&mut counters, serving_info);
+
+    let mut status = RelayEvidenceStatus::with_counters(counters);
+    if maybe_local_submission.is_some() {
+        status.mempool_admission =
+            implemented_capability(RelayEvidenceCapability::MempoolAdmission);
+        status.local_submission =
+            implemented_capability(RelayEvidenceCapability::LocalSubmissionRelay);
+    }
+    status.fanout = implemented_capability(RelayEvidenceCapability::RelayFanout);
+    status.serving = implemented_capability(RelayEvidenceCapability::RelayServing);
+    if counters.rebroadcast_deferred_count > 0 {
+        status.rebroadcast = implemented_capability(RelayEvidenceCapability::Rebroadcast);
+    }
+    status
+}
+
+fn implemented_capability(
+    capability: RelayEvidenceCapability,
+) -> RelayEvidenceField<RelayCapabilityEvidence> {
+    RelayEvidenceField::implemented(RelayCapabilityEvidence::new(capability))
+}
+
+fn project_local_submission_counters(
+    counters: &mut RelayEvidenceCounters,
+    evidence: &LocalRelaySubmissionEvidence,
+) {
+    for label in &evidence.labels {
+        match label {
+            LocalRelaySubmissionLabel::Accepted => counters.accepted_count += 1,
+            LocalRelaySubmissionLabel::Rejected => counters.rejected_count += 1,
+            LocalRelaySubmissionLabel::Orphaned => counters.orphaned_count += 1,
+            LocalRelaySubmissionLabel::Evicted => counters.evicted_count += 1,
+            LocalRelaySubmissionLabel::Expired => counters.expired_count += 1,
+            LocalRelaySubmissionLabel::Queued
+            | LocalRelaySubmissionLabel::Suppressed
+            | LocalRelaySubmissionLabel::NotEligible
+            | LocalRelaySubmissionLabel::RelayDisabled
+            | LocalRelaySubmissionLabel::Duplicate
+            | LocalRelaySubmissionLabel::RebroadcastDeferred => {}
+        }
+    }
+}
+
+fn project_fanout_counters(
+    counters: &mut RelayEvidenceCounters,
+    fanout_info: &ManagedRelayFanoutInfo,
+) {
+    for action in &fanout_info.latest_actions {
+        match action.label {
+            "announce" => counters.announced_count += 1,
+            "suppress" | "queue_cap" | "rate_limit" => counters.suppressed_count += 1,
+            "cleanup" => match action.reason {
+                Some("evicted") => counters.evicted_count += 1,
+                Some("expired") => counters.expired_count += 1,
+                Some(_) | None => {}
+            },
+            "rebroadcast_deferred" => counters.rebroadcast_deferred_count += 1,
+            _ => {}
+        }
+    }
+}
+
+fn project_serving_counters(
+    counters: &mut RelayEvidenceCounters,
+    serving_info: &ManagedRelayServingInfo,
+) {
+    for outcome in &serving_info.latest_outcomes {
+        counters.requested_count += 1;
+        match outcome.label {
+            "served" => counters.served_count += 1,
+            "rejected" => counters.rejected_count += 1,
+            "evicted" => counters.evicted_count += 1,
+            "expired" => counters.expired_count += 1,
+            _ => {}
+        }
     }
 }
 

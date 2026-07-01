@@ -20,6 +20,7 @@ use open_bitcoin_network::{
 use super::{
     build_block, consensus_params, local_config, mine_header, spend_transaction, verify_flags,
 };
+use crate::status::relay_evidence::RelayEvidenceField;
 use crate::{ManagedPeerNetwork, MemoryChainstateStore};
 
 fn txid(transaction: &Transaction) -> Txid {
@@ -110,6 +111,12 @@ fn managed_getdata_serves_only_accepted_relay_eligible_transaction() {
         network.relay_serving_info().latest_outcomes[0].label,
         "served",
     );
+    let status = network.relay_evidence_status();
+    let RelayEvidenceField::Implemented(counters) = &status.outcome_counters else {
+        panic!("expected implemented relay evidence counters");
+    };
+    assert_eq!(counters.requested_count, 1);
+    assert_eq!(counters.served_count, 1);
 }
 
 #[test]
@@ -193,6 +200,14 @@ fn managed_getdata_reports_unknown_confirmed_replaced_evicted_expired_notfound()
             "rejected"
         ],
     );
+    let status = network.relay_evidence_status();
+    let RelayEvidenceField::Implemented(counters) = &status.outcome_counters else {
+        panic!("expected implemented relay evidence counters");
+    };
+    assert_eq!(counters.requested_count, 6);
+    assert_eq!(counters.rejected_count, 1);
+    assert_eq!(counters.evicted_count, 1);
+    assert_eq!(counters.expired_count, 1);
 }
 
 #[test]

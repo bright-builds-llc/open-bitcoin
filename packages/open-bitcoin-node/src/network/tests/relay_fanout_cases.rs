@@ -21,6 +21,7 @@ use super::{
     build_block, consensus_params, local_config, mine_header, permissioned_inbound_request,
     spend_transaction, verify_flags,
 };
+use crate::status::relay_evidence::RelayEvidenceField;
 use crate::{ManagedPeerNetwork, MemoryChainstateStore};
 
 fn txid(transaction: &Transaction) -> Txid {
@@ -192,6 +193,16 @@ fn managed_fanout_suppresses_origin_ineligible_and_recent_reject_peers() {
             .iter()
             .any(|action| action.label == "announce")
     );
+    let status = network.relay_evidence_status();
+    let RelayEvidenceField::Implemented(counters) = &status.outcome_counters else {
+        panic!("expected implemented relay evidence counters");
+    };
+    assert_eq!(counters.announced_count, 1);
+    assert_eq!(counters.suppressed_count, 3);
+    let json = serde_json::to_string(&status).expect("relay evidence json");
+    assert!(!json.contains("origin_peer"));
+    assert!(!json.contains("not_relay_eligible"));
+    assert!(!json.contains("recent_reject"));
 }
 
 #[test]

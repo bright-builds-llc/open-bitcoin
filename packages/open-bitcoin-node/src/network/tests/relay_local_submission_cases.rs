@@ -16,6 +16,7 @@ use open_bitcoin_mempool::{MempoolOutcome, PolicyConfig};
 use open_bitcoin_network::RelayActivationConfig;
 
 use super::{build_block, consensus_params, local_config, script, spend_transaction, verify_flags};
+use crate::status::relay_evidence::RelayEvidenceField;
 use crate::{ManagedPeerNetwork, MemoryChainstateStore};
 
 fn txid(transaction: &Transaction) -> Txid {
@@ -99,6 +100,21 @@ fn local_submission_records_queued_internal_relay_evidence() {
         Some("rebroadcast_deferred"),
     );
     assert_eq!(network.relay_fanout_info().queued_transactions, 1);
+    let status = network.relay_evidence_status();
+    let RelayEvidenceField::Implemented(counters) = &status.outcome_counters else {
+        panic!("expected implemented relay evidence counters");
+    };
+    assert_eq!(counters.accepted_count, 1);
+    assert_eq!(counters.rebroadcast_deferred_count, 1);
+    assert_eq!(counters.requested_count, 0);
+    assert!(matches!(
+        status.local_submission,
+        RelayEvidenceField::Implemented(_)
+    ));
+    assert!(matches!(
+        status.rebroadcast,
+        RelayEvidenceField::Implemented(_)
+    ));
 }
 
 #[test]
@@ -154,6 +170,12 @@ fn local_submission_duplicate_rejected_or_orphaned_does_not_enqueue_fanout() {
             .queued_count,
         0,
     );
+    let status = network.relay_evidence_status();
+    let RelayEvidenceField::Implemented(counters) = &status.outcome_counters else {
+        panic!("expected implemented relay evidence counters");
+    };
+    assert_eq!(counters.orphaned_count, 1);
+    assert_eq!(counters.accepted_count, 0);
 }
 
 #[test]
