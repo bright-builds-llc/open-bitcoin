@@ -64,14 +64,17 @@ pub use message::{
     WireNetworkMessage,
 };
 pub use peer::{
-    ConnectionRole, HeaderSyncPolicy, PHASE101_GETDATA_TX_INTERVAL_SECONDS,
-    PHASE101_MAX_TX_ANNOUNCEMENTS_PER_PEER, PHASE101_MAX_TX_REQUESTS_IN_FLIGHT_PER_PEER,
-    PHASE101_NONPREF_PEER_TX_DELAY_SECONDS, PHASE101_OVERLOADED_PEER_TX_DELAY_SECONDS,
-    PHASE101_TXID_RELAY_DELAY_SECONDS, PeerAction, PeerAddressBoundaryDecision,
-    PeerAddressBoundaryEvidence, PeerManager, PeerState, TxAnnouncementInput, TxDownloadAction,
-    TxDownloadLocalFacts, TxDownloadPolicy, TxDownloadScheduler, TxDownloadSnapshot,
-    TxDownloadSuppressionReason, TxPeerRequestSnapshot, TxRelayId, TxRelayIdentityError,
-    TxRelayPeerMode,
+    ConnectionRole, HeaderSyncPolicy, OrphanAction, OrphanEvidenceLabel, OrphanPolicy,
+    OrphanReconsiderationCandidate, OrphanReconsiderationStatus, OrphanStageInput,
+    PHASE101_GETDATA_TX_INTERVAL_SECONDS, PHASE101_MAX_TX_ANNOUNCEMENTS_PER_PEER,
+    PHASE101_MAX_TX_REQUESTS_IN_FLIGHT_PER_PEER, PHASE101_NONPREF_PEER_TX_DELAY_SECONDS,
+    PHASE101_OVERLOADED_PEER_TX_DELAY_SECONDS, PHASE101_TXID_RELAY_DELAY_SECONDS,
+    PHASE102_MAX_ORPHAN_TRANSACTIONS, PHASE102_MAX_ORPHANS_PER_PEER,
+    PHASE102_MAX_RECONSIDERATIONS_PER_PARENT, PHASE102_ORPHAN_TTL_SECONDS, PeerAction,
+    PeerAddressBoundaryDecision, PeerAddressBoundaryEvidence, PeerManager, PeerState,
+    TxAnnouncementInput, TxDownloadAction, TxDownloadLocalFacts, TxDownloadPolicy,
+    TxDownloadScheduler, TxDownloadSnapshot, TxDownloadSuppressionReason, TxOrphanage,
+    TxPeerRequestSnapshot, TxRelayId, TxRelayIdentityError, TxRelayPeerMode,
 };
 pub use peer_policy::{
     BanDecision, BanReason, BanScope, EvictionCandidate, EvictionCandidateInput, EvictionDecision,

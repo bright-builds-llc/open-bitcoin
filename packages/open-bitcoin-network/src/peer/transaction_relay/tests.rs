@@ -3,8 +3,11 @@
 // - packages/bitcoin-knots/src/net_processing.cpp
 // - packages/bitcoin-knots/src/node/txdownloadman.h
 // - packages/bitcoin-knots/src/node/txdownloadman_impl.cpp
+// - packages/bitcoin-knots/src/txorphanage.h
+// - packages/bitcoin-knots/src/txorphanage.cpp
 // - packages/bitcoin-knots/src/txrequest.h
 // - packages/bitcoin-knots/src/txrequest.cpp
+// - packages/bitcoin-knots/test/functional/p2p_orphan_handling.py
 // - packages/bitcoin-knots/test/functional/p2p_tx_download.py
 // - packages/bitcoin-knots/test/functional/p2p_getdata.py
 
@@ -12,6 +15,7 @@ use open_bitcoin_primitives::{Hash32, InventoryType, InventoryVector, Txid, Wtxi
 
 use super::*;
 
+mod orphanage_cases;
 mod scheduler_cases;
 
 fn txid(byte: u8) -> Txid {

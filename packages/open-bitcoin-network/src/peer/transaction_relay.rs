@@ -3,8 +3,11 @@
 // - packages/bitcoin-knots/src/net_processing.cpp
 // - packages/bitcoin-knots/src/node/txdownloadman.h
 // - packages/bitcoin-knots/src/node/txdownloadman_impl.cpp
+// - packages/bitcoin-knots/src/txorphanage.h
+// - packages/bitcoin-knots/src/txorphanage.cpp
 // - packages/bitcoin-knots/src/txrequest.h
 // - packages/bitcoin-knots/src/txrequest.cpp
+// - packages/bitcoin-knots/test/functional/p2p_orphan_handling.py
 // - packages/bitcoin-knots/test/functional/p2p_tx_download.py
 // - packages/bitcoin-knots/test/functional/p2p_getdata.py
 
@@ -14,6 +17,14 @@ use crate::error::PeerId;
 
 mod scheduler;
 
+pub mod orphanage;
+
+pub use orphanage::{
+    OrphanAction, OrphanEvidenceLabel, OrphanPolicy, OrphanReconsiderationCandidate,
+    OrphanReconsiderationStatus, OrphanStageInput, PHASE102_MAX_ORPHAN_TRANSACTIONS,
+    PHASE102_MAX_ORPHANS_PER_PEER, PHASE102_MAX_RECONSIDERATIONS_PER_PARENT,
+    PHASE102_ORPHAN_TTL_SECONDS, TxOrphanage,
+};
 pub use scheduler::{
     TxAnnouncementInput, TxDownloadLocalFacts, TxDownloadScheduler, TxDownloadSnapshot,
     TxPeerRequestSnapshot,

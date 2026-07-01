@@ -622,6 +622,8 @@
       "label": "network-transaction-relay-download",
       "files": [
         "packages/open-bitcoin-network/src/peer/transaction_relay.rs",
+        "packages/open-bitcoin-network/src/peer/transaction_relay/orphanage.rs",
+        "packages/open-bitcoin-network/src/peer/transaction_relay/tests/orphanage_cases.rs",
         "packages/open-bitcoin-network/src/peer/transaction_relay/scheduler.rs",
         "packages/open-bitcoin-network/src/peer/transaction_relay/tests/scheduler_cases/edge_cases.rs",
         "packages/open-bitcoin-network/src/peer/transaction_relay/tests/scheduler_cases/received_cases.rs",
@@ -633,8 +635,11 @@
         "packages/bitcoin-knots/src/net_processing.cpp",
         "packages/bitcoin-knots/src/node/txdownloadman.h",
         "packages/bitcoin-knots/src/node/txdownloadman_impl.cpp",
+        "packages/bitcoin-knots/src/txorphanage.h",
+        "packages/bitcoin-knots/src/txorphanage.cpp",
         "packages/bitcoin-knots/src/txrequest.h",
         "packages/bitcoin-knots/src/txrequest.cpp",
+        "packages/bitcoin-knots/test/functional/p2p_orphan_handling.py",
         "packages/bitcoin-knots/test/functional/p2p_tx_download.py",
         "packages/bitcoin-knots/test/functional/p2p_getdata.py"
       ]
