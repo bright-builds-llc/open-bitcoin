@@ -565,6 +565,19 @@
       ]
     },
     {
+      "label": "mempool-lifecycle",
+      "files": [
+        "packages/open-bitcoin-mempool/src/pool/lifecycle.rs",
+        "packages/open-bitcoin-mempool/src/pool/topology.rs",
+        "packages/open-bitcoin-mempool/src/pool/tests/lifecycle_cases.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/txmempool.h",
+        "packages/bitcoin-knots/src/txmempool.cpp",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
       "label": "mempool-support",
       "files": [
         "packages/open-bitcoin-mempool/src/error.rs",
@@ -773,6 +786,18 @@
       ]
     },
     {
+      "label": "node-mempool-lifecycle",
+      "files": [
+        "packages/open-bitcoin-node/src/network/mempool_lifecycle.rs",
+        "packages/open-bitcoin-node/src/network/tests/mempool_lifecycle_cases.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/txmempool.cpp",
+        "packages/bitcoin-knots/src/kernel/disconnected_transactions.cpp"
+      ]
+    },
+    {
       "label": "node-peer-policy-runtime-bridge",
       "files": [
         "packages/open-bitcoin-node/src/network/peer_policy.rs"
@@ -904,6 +929,18 @@
         "packages/open-bitcoin-node/src/storage/snapshot_codec/wallet.rs"
       ],
       "breadcrumbs": []
+    },
+    {
+      "label": "node-mempool-storage",
+      "files": [
+        "packages/open-bitcoin-node/src/storage/fjall_store/mempool.rs",
+        "packages/open-bitcoin-node/src/storage/mempool_snapshot.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/node/mempool_persist.cpp",
+        "packages/bitcoin-knots/src/node/mempool_persist.h",
+        "packages/bitcoin-knots/test/functional/mempool_persist.py"
+      ]
     },
     {
       "label": "node-observability-contracts",

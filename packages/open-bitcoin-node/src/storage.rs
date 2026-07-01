@@ -9,10 +9,14 @@ use crate::status::{DurableSyncState, SyncControlState, SyncRecoveryCategory};
 
 pub mod fjall_store;
 mod lock_probe;
+pub mod mempool_snapshot;
 pub mod snapshot_codec;
 
 pub use fjall_store::FjallNodeStore;
 pub use lock_probe::{FJALL_LOCK_FILE_NAME, probe_fjall_lock};
+pub use mempool_snapshot::{
+    MempoolRecoveryRecord, MempoolRecoveryStatus, MempoolSnapshot, MempoolSnapshotRecord,
+};
 pub use snapshot_codec::{MetricsStorageSnapshot, StoredHeaderEntries};
 
 /// Logical storage namespaces later adapters must keep distinct.
@@ -24,6 +28,7 @@ pub enum StorageNamespace {
     Chainstate,
     Wallet,
     Metrics,
+    Mempool,
     Runtime,
     Schema,
 }
@@ -36,6 +41,7 @@ impl StorageNamespace {
             Self::Chainstate => "chainstate",
             Self::Wallet => "wallet",
             Self::Metrics => "metrics",
+            Self::Mempool => "mempool",
             Self::Runtime => "runtime",
             Self::Schema => "schema",
         }

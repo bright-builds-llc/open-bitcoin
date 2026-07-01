@@ -5,8 +5,10 @@ use std::collections::HashMap;
 
 use open_bitcoin_core::{
     chainstate::{BlockUndo, ChainPosition, ChainstateSnapshot, Coin, TxUndo},
+    consensus::{transaction_txid, transaction_wtxid},
     primitives::{
-        BlockHash, BlockHeader, MerkleRoot, OutPoint, ScriptBuf, TransactionOutput, Txid,
+        BlockHash, BlockHeader, MerkleRoot, OutPoint, ScriptBuf, ScriptWitness, Transaction,
+        TransactionInput, TransactionOutput, Txid,
     },
     wallet::{AddressNetwork, DescriptorRole, Wallet, WalletSnapshot, WalletUtxo},
 };
@@ -14,11 +16,13 @@ use open_bitcoin_network::HeaderEntry;
 
 use super::{
     MetricsStorageSnapshot, decode_chainstate_snapshot, decode_header_entries,
-    decode_metrics_snapshot, decode_selected_wallet, decode_wallet_registry_snapshot,
-    decode_wallet_rescan_job, decode_wallet_snapshot, encode_chainstate_snapshot,
-    encode_header_entries, encode_metrics_snapshot, encode_selected_wallet,
-    encode_wallet_registry_snapshot, encode_wallet_rescan_job, encode_wallet_snapshot,
+    decode_mempool_snapshot, decode_metrics_snapshot, decode_selected_wallet,
+    decode_wallet_registry_snapshot, decode_wallet_rescan_job, decode_wallet_snapshot,
+    encode_chainstate_snapshot, encode_header_entries, encode_mempool_snapshot,
+    encode_metrics_snapshot, encode_selected_wallet, encode_wallet_registry_snapshot,
+    encode_wallet_rescan_job, encode_wallet_snapshot,
 };
+use crate::storage::{MempoolSnapshot, MempoolSnapshotRecord};
 use crate::{
     MetricKind, MetricSample, SelectedWalletRecord, StorageError, StorageNamespace,
     WalletRegistrySnapshot, WalletRescanFreshness, WalletRescanJob, WalletRescanJobState,
@@ -43,6 +47,39 @@ fn output(value: i64) -> TransactionOutput {
     TransactionOutput {
         value: open_bitcoin_core::primitives::Amount::from_sats(value).expect("valid amount"),
         script_pubkey: script(&[0x51]),
+    }
+}
+
+fn mempool_transaction(seed: u8) -> Transaction {
+    Transaction {
+        version: 2,
+        inputs: vec![TransactionInput {
+            previous_output: OutPoint {
+                txid: Txid::from_byte_array([seed; 32]),
+                vout: 0,
+            },
+            script_sig: script(&[0x01, 0x51]),
+            sequence: TransactionInput::SEQUENCE_FINAL,
+            witness: ScriptWitness::default(),
+        }],
+        outputs: vec![output(10_000)],
+        lock_time: 0,
+    }
+}
+
+fn mempool_snapshot() -> MempoolSnapshot {
+    let transaction = mempool_transaction(24);
+    let txid = transaction_txid(&transaction).expect("txid");
+    let wtxid = transaction_wtxid(&transaction).expect("wtxid");
+
+    MempoolSnapshot {
+        records: vec![MempoolSnapshotRecord {
+            txid,
+            wtxid,
+            transaction,
+            fee_sats: 1_000,
+            virtual_size: 100,
+        }],
     }
 }
 
@@ -207,6 +244,49 @@ fn metrics_snapshot_round_trips_samples() {
 
     // Assert
     assert_eq!(decoded, snapshot);
+}
+
+#[test]
+fn mempool_snapshot_round_trips_transactions() {
+    // Arrange
+    let snapshot = mempool_snapshot();
+
+    // Act
+    let encoded = encode_mempool_snapshot(&snapshot).expect("encode mempool");
+    let decoded = decode_mempool_snapshot(&encoded).expect("decode mempool");
+
+    // Assert
+    assert_eq!(decoded, snapshot);
+}
+
+#[test]
+fn mempool_snapshot_codec_rejects_schema_mismatch() {
+    // Arrange
+    let mismatched = br#"{"schema_version":999,"payload":{"records":[]}}"#;
+
+    // Act
+    let error = decode_mempool_snapshot(mismatched).expect_err("schema mismatch should fail");
+
+    // Assert
+    assert!(matches!(error, StorageError::SchemaMismatch { .. }));
+}
+
+#[test]
+fn mempool_snapshot_codec_rejects_corrupt_bytes() {
+    // Arrange
+    let corrupt = b"{not-json";
+
+    // Act
+    let error = decode_mempool_snapshot(corrupt).expect_err("corrupt bytes should fail");
+
+    // Assert
+    assert!(matches!(
+        error,
+        StorageError::Corruption {
+            namespace: StorageNamespace::Mempool,
+            ..
+        }
+    ));
 }
 
 #[test]

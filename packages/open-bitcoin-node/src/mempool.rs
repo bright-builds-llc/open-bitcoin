@@ -33,6 +33,10 @@ impl ManagedMempool {
         &self.mempool
     }
 
+    pub(crate) fn mempool_mut(&mut self) -> &mut Mempool {
+        &mut self.mempool
+    }
+
     pub fn submit_transaction<S: ChainstateStore>(
         &mut self,
         chainstate: &ManagedChainstate<S>,

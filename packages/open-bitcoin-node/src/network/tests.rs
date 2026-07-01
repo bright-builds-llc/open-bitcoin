@@ -43,6 +43,7 @@ use crate::{
 };
 
 mod admission_bridge_cases;
+mod mempool_lifecycle_cases;
 
 const EASY_BITS: u32 = 0x207f_ffff;
 

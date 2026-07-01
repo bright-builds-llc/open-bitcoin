@@ -318,6 +318,8 @@ bun test scripts/check-phase101-transaction-inventory-download-scheduling.test.t
 bun run scripts/check-phase101-transaction-inventory-download-scheduling.ts
 bun test scripts/check-phase102-orphan-admission-bridge.test.ts
 bun run scripts/check-phase102-orphan-admission-bridge.ts
+bun test scripts/check-phase103-mempool-lifecycle.test.ts
+bun run scripts/check-phase103-mempool-lifecycle.ts
 VERIFY_COMMAND_ORDER
 
 parse_args "$@"
@@ -413,6 +415,8 @@ run_step "test Phase 101 transaction inventory download scheduling checker" bun 
 run_step "check Phase 101 transaction inventory download scheduling" bun run scripts/check-phase101-transaction-inventory-download-scheduling.ts
 run_step "test Phase 102 orphan admission bridge checker" bun test scripts/check-phase102-orphan-admission-bridge.test.ts
 run_step "check Phase 102 orphan admission bridge" bun run scripts/check-phase102-orphan-admission-bridge.ts
+run_step "test Phase 103 mempool lifecycle checker" bun test scripts/check-phase103-mempool-lifecycle.test.ts
+run_step "check Phase 103 mempool lifecycle" bun run scripts/check-phase103-mempool-lifecycle.ts
 run_step "check pure-core dependencies" bash scripts/check-pure-core-deps.sh
 run_step "check file lengths" bash scripts/check-file-lengths.sh
 run_step "check panic sites" bash scripts/check-panic-sites.sh

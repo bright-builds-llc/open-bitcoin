@@ -15,6 +15,7 @@ mod admission_bridge;
 mod header_sync;
 mod inbound;
 mod inventory;
+mod mempool_lifecycle;
 mod peer_policy;
 
 use open_bitcoin_core::{
@@ -25,7 +26,9 @@ use open_bitcoin_core::{
     consensus::{ConsensusParams, ScriptVerifyFlags, block_hash},
     primitives::{Block, BlockHash, NetworkMagic, Transaction, Txid, Wtxid},
 };
-use open_bitcoin_mempool::{MempoolError, PolicyConfig};
+use open_bitcoin_mempool::{
+    MempoolCapacityStatus, MempoolError, PolicyConfig, RollingFeeParityStatus,
+};
 use open_bitcoin_network::{
     ConnectionRole, DisconnectReason, HeaderEntry, HeaderStore, HeaderSyncPolicy, HeadersMessage,
     InboundAdmissionPolicy, InboundResourceEvent, InventoryList, LocalAdvertisementDecision,
@@ -96,6 +99,8 @@ pub struct ManagedMempoolInfo {
     pub min_relay_feerate_sats_per_kvb: i64,
     pub incremental_relay_feerate_sats_per_kvb: i64,
     pub max_mempool_virtual_size: usize,
+    pub capacity_status: MempoolCapacityStatus,
+    pub rolling_fee_parity: RollingFeeParityStatus,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -258,15 +263,17 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     pub fn mempool_info(&self) -> ManagedMempoolInfo {
         let entries = self.mempool.mempool().entries();
         let total_fee_sats = entries.values().map(|entry| entry.fee_sats()).sum();
-        let config = self.mempool.mempool().config();
+        let pressure = self.mempool.mempool().pressure_summary();
 
         ManagedMempoolInfo {
-            transaction_count: entries.len(),
-            total_virtual_size: self.mempool.mempool().total_virtual_size(),
+            transaction_count: pressure.transaction_count,
+            total_virtual_size: pressure.total_virtual_size,
             total_fee_sats,
-            min_relay_feerate_sats_per_kvb: config.min_relay_feerate.sats_per_kvb(),
-            incremental_relay_feerate_sats_per_kvb: config.incremental_relay_feerate.sats_per_kvb(),
-            max_mempool_virtual_size: config.max_mempool_virtual_size,
+            min_relay_feerate_sats_per_kvb: pressure.min_relay_feerate_sats_per_kvb,
+            incremental_relay_feerate_sats_per_kvb: pressure.incremental_relay_feerate_sats_per_kvb,
+            max_mempool_virtual_size: pressure.max_mempool_virtual_size,
+            capacity_status: pressure.capacity_status,
+            rolling_fee_parity: pressure.rolling_fee_parity,
         }
     }
 
@@ -406,6 +413,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         self.blocks_by_hash
             .insert(position.block_hash, block.clone());
         self.peer_manager.note_local_position(&position);
+        self.apply_connected_block_mempool_lifecycle(block)?;
         Ok(position)
     }
 
@@ -479,6 +487,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         )?;
         self.blocks_by_hash.insert(block_hash, block.clone());
         self.peer_manager.note_local_position(&position);
+        self.apply_connected_block_mempool_lifecycle(block)?;
         Ok(BlockConnectDisposition::Connected(position))
     }
 
@@ -504,6 +513,12 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         for position in &transition.connected {
             self.peer_manager.note_local_position(position);
         }
+        self.apply_reorg_mempool_lifecycle(
+            disconnect_blocks,
+            replacement_branch,
+            verify_flags,
+            consensus_params,
+        )?;
         Ok(transition)
     }
 

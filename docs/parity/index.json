@@ -648,6 +648,10 @@
     {
       "name": "v2-0-orphan-handling-admission-outcome-bridge",
       "status": "done"
+    },
+    {
+      "name": "v2-0-mempool-chainstate-lifecycle-durable-recovery",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -2042,6 +2046,59 @@
         ],
         "suspected_unknowns": [
           "Future v2.0 phases own long-lived mempool pressure, block lifecycle, durable persistence, relay serving/fanout, rebroadcast, operator evidence, support-bundle redaction, and release-boundary guardrails before any broader relay or mempool participation claim can be made."
+        ]
+      },
+      {
+        "id": "v2-0-mempool-chainstate-lifecycle-durable-recovery",
+        "title": "v2.0 Mempool Chainstate Lifecycle and Durable Recovery",
+        "status": "done",
+        "requirements": [
+          "MEM-03",
+          "MEM-04",
+          "MEM-05",
+          "MEM-06"
+        ],
+        "evidence": [
+          "docs/parity/catalog/mempool-policy.md",
+          "docs/parity/checklist.md",
+          "docs/parity/source-breadcrumbs.json",
+          "packages/open-bitcoin-mempool/src/pool/lifecycle.rs",
+          "packages/open-bitcoin-mempool/src/pool/tests/lifecycle_cases.rs",
+          "packages/open-bitcoin-node/src/network/mempool_lifecycle.rs",
+          "packages/open-bitcoin-node/src/network/tests/mempool_lifecycle_cases.rs",
+          "packages/open-bitcoin-node/src/storage/mempool_snapshot.rs",
+          "packages/open-bitcoin-node/src/storage/fjall_store.rs",
+          "packages/open-bitcoin-node/src/storage/fjall_store/tests.rs",
+          "packages/open-bitcoin-node/src/storage/snapshot_codec.rs",
+          "packages/open-bitcoin-node/src/storage/snapshot_codec/tests.rs",
+          "scripts/check-phase103-mempool-lifecycle.ts",
+          "scripts/check-phase103-mempool-lifecycle.test.ts",
+          "scripts/verify.sh",
+          ".planning/phases/103-mempool-chainstate-lifecycle-and-durable-recovery/103-01-SUMMARY.md",
+          ".planning/phases/103-mempool-chainstate-lifecycle-and-durable-recovery/103-02-SUMMARY.md",
+          ".planning/phases/103-mempool-chainstate-lifecycle-and-durable-recovery/103-03-SUMMARY.md"
+        ],
+        "rationale": "Phase 103 records typed mempool pressure evidence, pure block-connect cleanup, managed runtime cache cleanup, bounded reorg reconsideration, Open Bitcoin-owned durable mempool snapshots, recovery replay evidence, source breadcrumbs, and deterministic checker coverage.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/txmempool.h",
+            "packages/bitcoin-knots/src/txmempool.cpp",
+            "packages/bitcoin-knots/src/validation.cpp",
+            "packages/bitcoin-knots/src/kernel/disconnected_transactions.cpp",
+            "packages/bitcoin-knots/src/node/mempool_persist.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/test/functional/mempool_limit.py",
+            "packages/bitcoin-knots/test/functional/mempool_reorg.py",
+            "packages/bitcoin-knots/test/functional/mempool_persist.py",
+            "packages/bitcoin-knots/test/functional/mempool_accept.py"
+          ]
+        },
+        "known_gaps": [
+          "Phase 103 does not claim full Knots rolling minimum fee decay, Knots mempool.dat binary compatibility, relay serving, relay fanout, rebroadcast, RPC/operator/support evidence, support-bundle redaction for transaction material, release-boundary closeout, compact block relay, package relay, bloom/filter serving, public relay defaults, public-network relay CI, production full-node readiness, production service operation, or production-funds wallet use."
+        ],
+        "suspected_unknowns": [
+          "Future v2.0 phases own relay serving/fanout, rebroadcast, broad operator evidence, support-bundle redaction, release-boundary guardrails, and any stronger Knots mempool file compatibility claim."
         ]
       }
     ]

@@ -11,11 +11,13 @@ use open_bitcoin_consensus::{
     ConsensusParams, ScriptVerifyFlags, block_merkle_root, check_block_header, transaction_txid,
 };
 use open_bitcoin_mempool::{
-    LimitDirection, LimitKind, Mempool, MempoolError, PolicyConfig, RbfPolicy,
+    LimitDirection, LimitKind, Mempool, MempoolCapacityStatus, MempoolError,
+    MempoolLifecycleRemoval, MempoolLifecycleRemovalReason, MempoolLifecycleSummary,
+    MempoolPressureSummary, PolicyConfig, RbfPolicy, RollingFeeParityStatus,
 };
 use open_bitcoin_primitives::{
     Amount, Block, BlockHash, BlockHeader, OutPoint, ScriptBuf, ScriptWitness, Transaction,
-    TransactionInput, TransactionOutput, Txid,
+    TransactionInput, TransactionOutput, Txid, Wtxid,
 };
 
 const EASY_BITS: u32 = 0x207f_ffff;
@@ -301,4 +303,89 @@ fn ancestor_limit_and_eviction_truths_hold_through_public_api() {
     .expect("high fee");
 
     assert_eq!(high_fee_result.evicted, vec![low_fee_result.accepted]);
+}
+
+#[test]
+fn lifecycle_cleanup_and_pressure_truths_hold_through_public_api() {
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(3);
+    let parent = spend_transaction(
+        coinbase_txids[0],
+        499_999_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let parent_txid = transaction_txid(&parent).expect("parent txid");
+    let child = spend_transaction(parent_txid, 499_998_000, TransactionInput::SEQUENCE_FINAL);
+    let child_txid = transaction_txid(&child).expect("child txid");
+    let replacement = spend_transaction(
+        coinbase_txids[0],
+        499_997_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let mut mempool = Mempool::default();
+
+    submit(&mut mempool, &snapshot, parent.clone()).expect("parent");
+    submit(&mut mempool, &snapshot, child).expect("child");
+    let initial_pressure = mempool.pressure_summary();
+    let empty_cleanup = mempool
+        .remove_for_connected_transactions(std::iter::empty::<&Transaction>())
+        .expect("empty cleanup");
+    let conflict_cleanup = mempool
+        .remove_for_connected_transactions([&replacement])
+        .expect("conflict cleanup");
+
+    assert_eq!(
+        initial_pressure.capacity_status,
+        MempoolCapacityStatus::UnderCapacity
+    );
+    assert_eq!(initial_pressure.capacity_status.as_str(), "under_capacity");
+    assert_eq!(
+        initial_pressure.rolling_fee_parity,
+        RollingFeeParityStatus::Deferred
+    );
+    assert_eq!(initial_pressure.rolling_fee_parity.as_str(), "deferred");
+    assert!(empty_cleanup.removed.is_empty());
+    assert!(conflict_cleanup.removed.iter().any(|removal| {
+        removal.txid == parent_txid && removal.reason == MempoolLifecycleRemovalReason::Conflict
+    }));
+    assert!(conflict_cleanup.removed.iter().any(|removal| {
+        removal.txid == child_txid && removal.reason == MempoolLifecycleRemovalReason::Descendant
+    }));
+    assert_eq!(
+        MempoolLifecycleRemovalReason::Confirmed.as_str(),
+        "confirmed"
+    );
+    assert_eq!(MempoolLifecycleRemovalReason::Conflict.as_str(), "conflict");
+    assert_eq!(
+        MempoolLifecycleRemovalReason::Descendant.as_str(),
+        "descendant"
+    );
+    assert_eq!(MempoolLifecycleRemovalReason::Trimmed.as_str(), "trimmed");
+
+    let removal = MempoolLifecycleRemoval {
+        txid: Txid::from_byte_array([4_u8; 32]),
+        wtxid: Wtxid::from_byte_array([5_u8; 32]),
+        reason: MempoolLifecycleRemovalReason::Trimmed,
+    };
+    let pressure = MempoolPressureSummary {
+        transaction_count: 1,
+        total_virtual_size: 2,
+        max_mempool_virtual_size: 1,
+        min_relay_feerate_sats_per_kvb: 1_000,
+        incremental_relay_feerate_sats_per_kvb: 1_000,
+        capacity_status: MempoolCapacityStatus::OverCapacity,
+        rolling_fee_parity: RollingFeeParityStatus::Deferred,
+    };
+    let summary = MempoolLifecycleSummary {
+        removed: vec![removal.clone()],
+        pressure: pressure.clone(),
+    };
+
+    assert_eq!(MempoolCapacityStatus::Empty.as_str(), "empty");
+    assert_eq!(MempoolCapacityStatus::AtCapacity.as_str(), "at_capacity");
+    assert_eq!(
+        MempoolCapacityStatus::OverCapacity.as_str(),
+        "over_capacity"
+    );
+    assert!(format!("{removal:?}{pressure:?}{summary:?}").contains("Trimmed"));
+    assert_eq!(summary.clone(), summary);
 }

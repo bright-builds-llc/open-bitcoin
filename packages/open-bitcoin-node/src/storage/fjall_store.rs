@@ -34,6 +34,8 @@ use super::{
 };
 use crate::{SelectedWalletRecord, WalletRegistrySnapshot, WalletRescanJob};
 
+mod mempool;
+
 const SNAPSHOT_KEY: &str = "snapshot";
 const SCHEMA_VERSION_KEY: &str = "schema_version";
 const RECOVERY_MARKER_KEY: &str = "recovery_marker";
@@ -49,6 +51,7 @@ pub struct FjallNodeStore {
     chainstate: Keyspace,
     wallet: Keyspace,
     metrics: Keyspace,
+    mempool: Keyspace,
     runtime: Keyspace,
     schema: Keyspace,
 }
@@ -66,6 +69,7 @@ impl FjallNodeStore {
             chainstate: open_keyspace(&db, StorageNamespace::Chainstate)?,
             wallet: open_keyspace(&db, StorageNamespace::Wallet)?,
             metrics: open_keyspace(&db, StorageNamespace::Metrics)?,
+            mempool: open_keyspace(&db, StorageNamespace::Mempool)?,
             runtime: open_keyspace(&db, StorageNamespace::Runtime)?,
             schema: open_keyspace(&db, StorageNamespace::Schema)?,
             db,
@@ -488,6 +492,7 @@ impl FjallNodeStore {
             StorageNamespace::Chainstate => &self.chainstate,
             StorageNamespace::Wallet => &self.wallet,
             StorageNamespace::Metrics => &self.metrics,
+            StorageNamespace::Mempool => &self.mempool,
             StorageNamespace::Runtime => &self.runtime,
             StorageNamespace::Schema => &self.schema,
         }

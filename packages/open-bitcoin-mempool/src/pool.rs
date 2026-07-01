@@ -21,7 +21,14 @@ use crate::{
 };
 
 mod admission_outcome;
+mod lifecycle;
+mod topology;
 use self::admission_outcome::accept as accept_outcome;
+use self::topology::{collect_ancestors, collect_conflicts_and_descendants, collect_descendants};
+pub use lifecycle::{
+    MempoolCapacityStatus, MempoolLifecycleRemoval, MempoolLifecycleRemovalReason,
+    MempoolLifecycleSummary, MempoolPressureSummary, RollingFeeParityStatus,
+};
 #[derive(Debug, Clone)]
 struct MempoolState {
     entries: HashMap<Txid, MempoolEntry>,
@@ -572,55 +579,6 @@ fn recompute_state(mut entries: HashMap<Txid, MempoolEntry>) -> MempoolState {
         spent_outpoints,
         total_virtual_size,
     }
-}
-
-fn collect_conflicts_and_descendants(
-    entries: &HashMap<Txid, MempoolEntry>,
-    direct_conflicts: &BTreeSet<Txid>,
-) -> BTreeSet<Txid> {
-    let mut txids = BTreeSet::new();
-    for txid in direct_conflicts {
-        txids.insert(*txid);
-        txids.extend(collect_descendants(entries, *txid));
-    }
-
-    txids
-}
-
-fn collect_ancestors(entries: &HashMap<Txid, MempoolEntry>, txid: Txid) -> BTreeSet<Txid> {
-    let mut visited = BTreeSet::new();
-    let Some(entry) = entries.get(&txid) else {
-        return visited;
-    };
-    let mut stack = entry.parents.iter().copied().collect::<Vec<_>>();
-    while let Some(next_txid) = stack.pop() {
-        if !visited.insert(next_txid) {
-            continue;
-        }
-        if let Some(next_entry) = entries.get(&next_txid) {
-            stack.extend(next_entry.parents.iter().copied());
-        }
-    }
-
-    visited
-}
-
-fn collect_descendants(entries: &HashMap<Txid, MempoolEntry>, txid: Txid) -> BTreeSet<Txid> {
-    let mut visited = BTreeSet::new();
-    let Some(entry) = entries.get(&txid) else {
-        return visited;
-    };
-    let mut stack = entry.children.iter().copied().collect::<Vec<_>>();
-    while let Some(next_txid) = stack.pop() {
-        if !visited.insert(next_txid) {
-            continue;
-        }
-        if let Some(next_entry) = entries.get(&next_txid) {
-            stack.extend(next_entry.children.iter().copied());
-        }
-    }
-
-    visited
 }
 
 #[cfg(test)]

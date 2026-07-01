@@ -34,10 +34,10 @@ Requirements for the current milestone. Each requirement maps to exactly one roa
 
 - [x] **MEM-01**: Peer and local transaction submissions flow through one stable mempool outcome contract for accepted, rejected, duplicate, replaced, orphaned, evicted, and expired states.
 - [x] **MEM-02**: Mempool admission tests cover standardness, fees, RBF, ancestor/descendant limits, duplicate handling, and no partial mutation on rejection.
-- [ ] **MEM-03**: Mempool pressure and trimming behavior produce truthful relay-facing eviction, fee-floor, and capacity evidence, or explicitly document any deferred Knots parity gap.
-- [ ] **MEM-04**: Block connect removes confirmed and conflicting transactions from mempool and relay-serving caches.
-- [ ] **MEM-05**: Block disconnect or reorg handling reconsiders eligible disconnected transactions within the documented v2.0 boundary.
-- [ ] **MEM-06**: Durable mempool persistence saves accepted transaction state and recovers or repairs stale, corrupt, or incompatible records safely on restart.
+- [x] **MEM-03**: Mempool pressure and trimming behavior produce truthful relay-facing eviction, fee-floor, and capacity evidence, or explicitly document any deferred Knots parity gap.
+- [x] **MEM-04**: Block connect removes confirmed and conflicting transactions from mempool and relay-serving caches.
+- [x] **MEM-05**: Block disconnect or reorg handling reconsiders eligible disconnected transactions within the documented v2.0 boundary.
+- [x] **MEM-06**: Durable mempool persistence saves accepted transaction state and recovers or repairs stale, corrupt, or incompatible records safely on restart.
 
 ### Relay Serving And Fanout
 
@@ -120,10 +120,10 @@ Explicitly excluded from v2.0 to prevent scope creep.
 | DL-05 | Phase 102 | Complete |
 | MEM-01 | Phase 102 | Complete |
 | MEM-02 | Phase 102 | Complete |
-| MEM-03 | Phase 103 | Pending |
-| MEM-04 | Phase 103 | Pending |
-| MEM-05 | Phase 103 | Pending |
-| MEM-06 | Phase 103 | Pending |
+| MEM-03 | Phase 103 | Complete |
+| MEM-04 | Phase 103 | Complete |
+| MEM-05 | Phase 103 | Complete |
+| MEM-06 | Phase 103 | Complete |
 | REL-01 | Phase 104 | Pending |
 | REL-02 | Phase 104 | Pending |
 | REL-03 | Phase 104 | Pending |
@@ -145,4 +145,4 @@ Explicitly excluded from v2.0 to prevent scope creep.
 - Unmapped: 0
 
 *Requirements defined: 2026-06-29*
-*Last updated: 2026-06-29 after Phase 100 completion*
+*Last updated: 2026-07-01 after Phase 103 completion*

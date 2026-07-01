@@ -7,9 +7,11 @@ use std::collections::HashMap;
 
 use open_bitcoin_core::{
     chainstate::{BlockUndo, ChainPosition, ChainstateSnapshot, Coin, TxUndo},
-    consensus::block_hash,
+    codec::{TransactionEncoding, encode_transaction, parse_transaction},
+    consensus::{block_hash, transaction_txid, transaction_wtxid},
     primitives::{
         Amount, BlockHash, BlockHeader, MerkleRoot, OutPoint, ScriptBuf, TransactionOutput, Txid,
+        Wtxid,
     },
 };
 use open_bitcoin_network::HeaderEntry;
@@ -19,6 +21,8 @@ use crate::{
     RecoveryMarker, RuntimeMetadata, SchemaVersion, StorageError, StorageNamespace,
     StorageRecoveryAction, metrics::MetricSample,
 };
+
+use super::{MempoolSnapshot, MempoolSnapshotRecord};
 
 mod wallet;
 
@@ -115,6 +119,20 @@ struct HeaderEntriesDto {
     entries: Vec<HeaderEntryDto>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct MempoolSnapshotDto {
+    records: Vec<MempoolSnapshotRecordDto>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct MempoolSnapshotRecordDto {
+    txid: [u8; 32],
+    wtxid: [u8; 32],
+    transaction: Vec<u8>,
+    fee_sats: i64,
+    virtual_size: usize,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MetricsStorageSnapshot {
     pub samples: Vec<MetricSample>,
@@ -207,6 +225,18 @@ pub(crate) fn decode_metrics_snapshot(
     bytes: &[u8],
 ) -> Result<MetricsStorageSnapshot, StorageError> {
     decode_versioned(StorageNamespace::Metrics, bytes)
+}
+
+pub(crate) fn encode_mempool_snapshot(snapshot: &MempoolSnapshot) -> Result<Vec<u8>, StorageError> {
+    encode_versioned(
+        StorageNamespace::Mempool,
+        &MempoolSnapshotDto::try_from(snapshot)?,
+    )
+}
+
+pub(crate) fn decode_mempool_snapshot(bytes: &[u8]) -> Result<MempoolSnapshot, StorageError> {
+    let dto: MempoolSnapshotDto = decode_versioned(StorageNamespace::Mempool, bytes)?;
+    dto.try_into()
 }
 
 fn encode_versioned<T: Serialize>(
@@ -507,6 +537,84 @@ impl TryFrom<HeaderEntryDto> for HeaderEntry {
             header,
             height: dto.height,
             chain_work: dto.chain_work,
+        })
+    }
+}
+
+impl TryFrom<&MempoolSnapshot> for MempoolSnapshotDto {
+    type Error = StorageError;
+
+    fn try_from(snapshot: &MempoolSnapshot) -> Result<Self, Self::Error> {
+        let records = snapshot
+            .records
+            .iter()
+            .map(MempoolSnapshotRecordDto::try_from)
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(Self { records })
+    }
+}
+
+impl TryFrom<MempoolSnapshotDto> for MempoolSnapshot {
+    type Error = StorageError;
+
+    fn try_from(dto: MempoolSnapshotDto) -> Result<Self, Self::Error> {
+        let records = dto
+            .records
+            .into_iter()
+            .map(MempoolSnapshotRecord::try_from)
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(Self { records })
+    }
+}
+
+impl TryFrom<&MempoolSnapshotRecord> for MempoolSnapshotRecordDto {
+    type Error = StorageError;
+
+    fn try_from(record: &MempoolSnapshotRecord) -> Result<Self, Self::Error> {
+        Ok(Self {
+            txid: record.txid.to_byte_array(),
+            wtxid: record.wtxid.to_byte_array(),
+            transaction: encode_transaction(&record.transaction, TransactionEncoding::WithWitness)
+                .map_err(|error| corruption(StorageNamespace::Mempool, error))?,
+            fee_sats: record.fee_sats,
+            virtual_size: record.virtual_size,
+        })
+    }
+}
+
+impl TryFrom<MempoolSnapshotRecordDto> for MempoolSnapshotRecord {
+    type Error = StorageError;
+
+    fn try_from(dto: MempoolSnapshotRecordDto) -> Result<Self, Self::Error> {
+        let transaction = parse_transaction(&dto.transaction)
+            .map_err(|error| corruption(StorageNamespace::Mempool, error))?;
+        let txid = Txid::from_byte_array(dto.txid);
+        let wtxid = Wtxid::from_byte_array(dto.wtxid);
+        let actual_txid = transaction_txid(&transaction)
+            .map_err(|error| corruption(StorageNamespace::Mempool, error))?;
+        let actual_wtxid = transaction_wtxid(&transaction)
+            .map_err(|error| corruption(StorageNamespace::Mempool, error))?;
+        if actual_txid != txid {
+            return Err(corruption(
+                StorageNamespace::Mempool,
+                "stored mempool txid does not match transaction",
+            ));
+        }
+        if actual_wtxid != wtxid {
+            return Err(corruption(
+                StorageNamespace::Mempool,
+                "stored mempool wtxid does not match transaction",
+            ));
+        }
+
+        Ok(Self {
+            txid,
+            wtxid,
+            transaction,
+            fee_sats: dto.fee_sats,
+            virtual_size: dto.virtual_size,
         })
     }
 }

@@ -15,7 +15,7 @@
 | 100 | Relay Activation Boundary and Permission Semantics | ACT-01, ACT-02, ACT-03, ACT-04 | Complete |
 | 101 | Transaction Inventory Identity and Download Scheduling | INV-01, INV-02, INV-03, INV-04, DL-01, DL-02 | Complete |
 | 102 | Orphan Handling and Admission Outcome Bridge | DL-03, DL-04, DL-05, MEM-01, MEM-02 | Complete |
-| 103 | Mempool Chainstate Lifecycle and Durable Recovery | MEM-03, MEM-04, MEM-05, MEM-06 | Pending |
+| 103 | Mempool Chainstate Lifecycle and Durable Recovery | MEM-03, MEM-04, MEM-05, MEM-06 | Complete |
 | 104 | Relay Serving, Fanout, and Rebroadcast Policy | REL-01, REL-02, REL-03, REL-04 | Pending |
 | 105 | Operator, RPC, Metrics, Logs, and Support Evidence | OBS-01, OBS-02, OBS-03, OBS-04 | Pending |
 | 106 | Parity Traceability, UAT, and Release Boundary Guardrails | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05 | Pending |
@@ -117,6 +117,14 @@ Plans:
 - Operator-visible state distinguishes implemented pressure behavior from deferred parity.
 
 **Verification:** Mempool lifecycle tests, Fjall adapter tests, restart/recovery tests, parity docs, and `bash scripts/verify.sh`.
+
+**Plans:** 4/4 plans complete
+
+Plans:
+- [x] 103-01-PLAN.md — Pure mempool lifecycle pressure, block-connect cleanup, and conflict/descendant cleanup.
+- [x] 103-02-PLAN.md — Managed chainstate lifecycle hooks and bounded reorg reconsideration.
+- [x] 103-03-PLAN.md — Durable mempool snapshot persistence, codec, Fjall storage, and replay evidence.
+- [x] 103-04-PLAN.md — Parity roots, deterministic checker, verifier wiring, and phase verification.
 
 ### Phase 104: Relay Serving, Fanout, and Rebroadcast Policy
 

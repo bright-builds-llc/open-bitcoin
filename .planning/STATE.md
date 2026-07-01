@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Transaction Relay and Mempool Participation Boundary
-status: ready_to_plan
-stopped_at: Phase 102 complete, transitioned to Phase 103
-last_updated: "2026-07-01T06:37:19.000Z"
-last_activity: 2026-07-01
+status: executing
+stopped_at: Phase 103 completed; Phase 104 ready to plan
+last_updated: "2026-07-01T14:13:30.690Z"
+last_activity: 2026-07-01 -- Phase 103 completed; Phase 104 ready to plan
 progress:
   total_phases: 7
-  completed_phases: 3
-  total_plans: 10
-  completed_plans: 10
-  percent: 43
+  completed_phases: 4
+  total_plans: 14
+  completed_plans: 14
+  percent: 100
 ---
 
 # Project State
@@ -21,17 +21,17 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-29)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 103 — Mempool Chainstate Lifecycle and Durable Recovery
+**Current focus:** Phase 104 — Relay Serving, Fanout, and Rebroadcast Policy
 
 ## Current Position
 
 Milestone: v2.0 Transaction Relay and Mempool Participation Boundary
-Phase: 103
+Phase: 104
 Plan: Not started
-Status: Ready to plan
-Last activity: 2026-07-01
+Status: Ready to execute
+Last activity: 2026-07-01 -- Phase 103 completed; Phase 104 ready to plan
 
-Progress: [####------] 43% milestone complete; Phase 103 is not started
+Progress: [######----] 57% milestone complete; Phase 104 is ready to plan
 
 ## Performance Metrics
 
@@ -48,7 +48,7 @@ Progress: [####------] 43% milestone complete; Phase 103 is not started
 | 100 | Relay Activation Boundary and Permission Semantics | ACT-01, ACT-02, ACT-03, ACT-04 | Complete |
 | 101 | Transaction Inventory Identity and Download Scheduling | INV-01, INV-02, INV-03, INV-04, DL-01, DL-02 | Complete |
 | 102 | Orphan Handling and Admission Outcome Bridge | DL-03, DL-04, DL-05, MEM-01, MEM-02 | Complete |
-| 103 | Mempool Chainstate Lifecycle and Durable Recovery | MEM-03, MEM-04, MEM-05, MEM-06 | Pending |
+| 103 | Mempool Chainstate Lifecycle and Durable Recovery | MEM-03, MEM-04, MEM-05, MEM-06 | Complete |
 | 104 | Relay Serving, Fanout, and Rebroadcast Policy | REL-01, REL-02, REL-03, REL-04 | Pending |
 | 105 | Operator, RPC, Metrics, Logs, and Support Evidence | OBS-01, OBS-02, OBS-03, OBS-04 | Pending |
 | 106 | Parity Traceability, UAT, and Release Boundary Guardrails | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05 | Pending |
@@ -69,6 +69,7 @@ Progress: [####------] 43% milestone complete; Phase 103 is not started
 - Phase 100 Plan 100-03 documented the relay activation boundary, registered `v2-0-relay-activation-boundary`, added the deterministic no-claim checker, wired it after Phase 99 in `bash scripts/verify.sh`, and recorded passed verification.
 - Phase 101 completed typed txid/wtxid transaction relay identity, bounded download scheduling, PeerManager and managed-network integration, parity roots, deterministic checker coverage, and passed verification.
 - Phase 102 completed bounded orphan handling, the shared mempool admission outcome bridge, clean code review, deterministic checker hardening, and passed verification.
+- Phase 103 completed mempool pressure truth, block-connect cleanup, bounded reorg reconsideration, durable mempool snapshot recovery, parity roots, deterministic checker coverage, and passed verification.
 
 | Phase 91-peer-permissions-and-connection-classes P01 | 27min | 2 tasks | 5 files |
 | Phase 91 P02 | 34min | 2 tasks | 13 files |
@@ -220,6 +221,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-07-01T05:03:30.048Z
-Stopped at: Completed 102-04-PLAN.md
-Resume file: None
+Last session: 2026-07-01T12:40:26.460Z
+Stopped at: Phase 103 context gathered
+Resume file: .planning/phases/103-mempool-chainstate-lifecycle-and-durable-recovery/103-CONTEXT.md

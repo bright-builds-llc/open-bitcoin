@@ -5,6 +5,7 @@
 // - packages/bitcoin-knots/src/policy/rbf.cpp
 // - packages/bitcoin-knots/src/policy/packages.cpp
 
+mod lifecycle_cases;
 mod outcome_cases;
 
 use open_bitcoin_chainstate::{Chainstate, ChainstateSnapshot};

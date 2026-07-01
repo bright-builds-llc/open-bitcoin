@@ -6,11 +6,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Metric | Value |
 | --- | --- |
-| Included files | 453 |
-| Total lines | 185,608 |
-| Code/content lines | 163,855 |
-| Comment-only lines | 6,115 |
-| Blank lines | 15,638 |
+| Included files | 462 |
+| Total lines | 187,831 |
+| Code/content lines | 165,733 |
+| Comment-only lines | 6,233 |
+| Blank lines | 15,865 |
 
 ## Per-Crate Modules
 
@@ -22,9 +22,9 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | open-bitcoin-codec | 13 | 1,144 | 170 | 28 | 1,345 | 14.9% |
 | open-bitcoin-consensus | 30 | 6,346 | 7,519 | 28 | 13,893 | 118.5% |
 | open-bitcoin-core | 3 | 39 | 0 | 36 | 75 | 0.0% |
-| open-bitcoin-mempool | 13 | 2,173 | 2,202 | 30 | 4,405 | 101.3% |
+| open-bitcoin-mempool | 16 | 2,428 | 2,618 | 30 | 5,076 | 107.8% |
 | open-bitcoin-network | 38 | 8,642 | 8,941 | 30 | 17,613 | 103.5% |
-| open-bitcoin-node | 61 | 13,765 | 15,219 | 36 | 29,020 | 110.6% |
+| open-bitcoin-node | 65 | 14,336 | 15,618 | 36 | 29,990 | 108.9% |
 | open-bitcoin-primitives | 9 | 877 | 0 | 20 | 897 | 0.0% |
 | open-bitcoin-rpc | 42 | 8,538 | 6,590 | 57 | 15,185 | 77.2% |
 | open-bitcoin-test-harness | 7 | 662 | 0 | 28 | 690 | 0.0% |
@@ -34,11 +34,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Category | Files | Total | Code/Content | Comments | Blank |
 | --- | --- | --- | --- | --- | --- |
-| Rust production | 248 | 70,962 | 61,954 | 2,124 | 6,884 |
-| Rust tests | 72 | 63,670 | 55,626 | 3,309 | 4,735 |
-| TypeScript/Bun scripts | 74 | 34,657 | 30,835 | 622 | 3,200 |
+| Rust production | 253 | 71,788 | 62,653 | 2,159 | 6,976 |
+| Rust tests | 74 | 64,485 | 56,301 | 3,371 | 4,813 |
+| TypeScript/Bun scripts | 76 | 35,235 | 31,335 | 643 | 3,257 |
 | Fixture/data | 6 | 8,233 | 8,228 | 5 | 0 |
-| Shell scripts | 13 | 4,010 | 3,584 | 49 | 377 |
+| Shell scripts | 13 | 4,014 | 3,588 | 49 | 377 |
 | TOML/config | 16 | 3,460 | 3,094 | 0 | 366 |
 | Bazel/Starlark | 18 | 411 | 376 | 0 | 35 |
 | YAML | 2 | 142 | 114 | 4 | 24 |
@@ -59,6 +59,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase101-transaction-inventory-download-scheduling.ts | 585 |
 | scripts/check-phase102-orphan-admission-bridge.test.ts | 582 |
 | scripts/check-phase102-orphan-admission-bridge.ts | 682 |
+| scripts/check-phase103-mempool-lifecycle.test.ts | 202 |
+| scripts/check-phase103-mempool-lifecycle.ts | 376 |
 | scripts/check-phase61-resource-recovery-boundaries.ts | 152 |
 | scripts/check-phase62-sync-truth-surfaces.ts | 265 |
 | scripts/check-phase63-service-lifecycle.ts | 308 |
@@ -140,7 +142,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | 9 | packages/open-bitcoin-cli/src/operator/status/tests.rs | Rust tests | 2,263 |
 | 10 | packages/open-bitcoin-rpc/src/dispatch/tests.rs | Rust tests | 2,173 |
 | 11 | scripts/test-run-live-mainnet-smoke.sh | Shell scripts | 2,081 |
-| 12 | packages/open-bitcoin-node/src/network/tests.rs | Rust tests | 1,781 |
+| 12 | packages/open-bitcoin-node/src/network/tests.rs | Rust tests | 1,782 |
 | 13 | packages/open-bitcoin-cli/src/operator/service/tests.rs | Rust tests | 1,652 |
 | 14 | packages/open-bitcoin-consensus/src/block/tests.rs | Rust tests | 1,594 |
 | 15 | packages/open-bitcoin-cli/src/operator/soak/tests/runtime.rs | Rust tests | 1,575 |
@@ -155,7 +157,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | f08d5476081e15a0fa106c510cd8eabcc18861a72e7dc1887e43882f7c2c2fc8 |
+| Input fingerprint | 2f9b7db534dd969d46457fd8ef97f26937e5930780f05f05ebf43967454df2c4 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

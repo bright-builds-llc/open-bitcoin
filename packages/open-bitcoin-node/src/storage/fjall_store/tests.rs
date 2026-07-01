@@ -10,10 +10,10 @@ use std::{
 
 use open_bitcoin_core::{
     chainstate::{BlockUndo, ChainPosition, ChainstateSnapshot, Coin, TxUndo},
-    consensus::block_hash,
+    consensus::{block_hash, transaction_txid, transaction_wtxid},
     primitives::{
-        Amount, Block, BlockHash, BlockHeader, MerkleRoot, OutPoint, ScriptBuf, TransactionOutput,
-        Txid,
+        Amount, Block, BlockHash, BlockHeader, MerkleRoot, OutPoint, ScriptBuf, ScriptWitness,
+        Transaction, TransactionInput, TransactionOutput, Txid,
     },
     wallet::{AddressNetwork, DescriptorRole, Wallet, WalletSnapshot, WalletUtxo},
 };
@@ -30,6 +30,7 @@ use crate::recovery::{
 };
 use crate::status::{FieldAvailability, SyncRecoveryCategory};
 use crate::storage::{FJALL_LOCK_FILE_NAME, probe_fjall_lock};
+use crate::storage::{MempoolSnapshot, MempoolSnapshotRecord};
 use crate::{
     MetricKind, MetricRetentionPolicy, MetricSample, MetricsStorageSnapshot, PersistMode,
     SchemaVersion, SelectedWalletRecord, WalletRegistrySnapshot, WalletRescanFreshness,
@@ -136,6 +137,39 @@ fn output(value: i64) -> TransactionOutput {
     TransactionOutput {
         value: Amount::from_sats(value).expect("valid amount"),
         script_pubkey: script(&[0x51]),
+    }
+}
+
+fn mempool_transaction(seed: u8) -> Transaction {
+    Transaction {
+        version: 2,
+        inputs: vec![TransactionInput {
+            previous_output: OutPoint {
+                txid: Txid::from_byte_array([seed; 32]),
+                vout: 0,
+            },
+            script_sig: script(&[0x01, 0x51]),
+            sequence: TransactionInput::SEQUENCE_FINAL,
+            witness: ScriptWitness::default(),
+        }],
+        outputs: vec![output(10_000)],
+        lock_time: 0,
+    }
+}
+
+fn mempool_snapshot() -> MempoolSnapshot {
+    let transaction = mempool_transaction(42);
+    let txid = transaction_txid(&transaction).expect("txid");
+    let wtxid = transaction_wtxid(&transaction).expect("wtxid");
+
+    MempoolSnapshot {
+        records: vec![MempoolSnapshotRecord {
+            txid,
+            wtxid,
+            transaction,
+            fee_sats: 1_000,
+            virtual_size: 100,
+        }],
     }
 }
 
@@ -285,6 +319,91 @@ fn fjall_store_reopens_saved_snapshots_and_metadata() {
         reopened.load_runtime_metadata().expect("load metadata"),
         Some(metadata)
     );
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn fjall_mempool_snapshot_round_trips_after_reopen() {
+    // Arrange
+    let path = temp_store_path("mempool-reopen");
+    remove_dir_if_exists(&path);
+    let snapshot = mempool_snapshot();
+
+    // Act
+    {
+        let store = FjallNodeStore::open(&path).expect("open store");
+        store
+            .save_mempool_snapshot(&snapshot, PersistMode::Sync)
+            .expect("save mempool snapshot");
+    }
+    let reopened = FjallNodeStore::open(&path).expect("reopen store");
+
+    // Assert
+    assert_eq!(
+        reopened
+            .load_mempool_snapshot()
+            .expect("load mempool snapshot"),
+        Some(snapshot)
+    );
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn fjall_mempool_snapshot_remove_clears_persisted_state() {
+    // Arrange
+    let path = temp_store_path("mempool-clear");
+    remove_dir_if_exists(&path);
+    let snapshot = mempool_snapshot();
+    let store = FjallNodeStore::open(&path).expect("open store");
+    store
+        .save_mempool_snapshot(&snapshot, PersistMode::Sync)
+        .expect("save mempool snapshot");
+
+    // Act
+    store
+        .clear_mempool_snapshot(PersistMode::Sync)
+        .expect("clear mempool snapshot");
+
+    // Assert
+    assert_eq!(
+        store
+            .load_mempool_snapshot()
+            .expect("load cleared mempool snapshot"),
+        None
+    );
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn fjall_mempool_snapshot_reports_corruption() {
+    // Arrange
+    let path = temp_store_path("mempool-corruption");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("open store");
+    store
+        .write_raw_for_test(
+            StorageNamespace::Mempool,
+            SNAPSHOT_KEY,
+            b"{not-json".to_vec(),
+        )
+        .expect("write corrupt mempool snapshot");
+
+    // Act
+    let error = store
+        .load_mempool_snapshot()
+        .expect_err("corrupt mempool snapshot should fail");
+
+    // Assert
+    assert!(matches!(
+        error,
+        StorageError::Corruption {
+            namespace: StorageNamespace::Mempool,
+            ..
+        }
+    ));
 
     remove_dir_if_exists(&path);
 }

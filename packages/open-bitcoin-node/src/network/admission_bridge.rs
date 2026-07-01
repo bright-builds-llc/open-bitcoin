@@ -254,7 +254,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         Ok(())
     }
 
-    fn apply_admitted_outcome(
+    pub(super) fn apply_admitted_outcome(
         &mut self,
         outcome: &MempoolOutcome,
         transaction: Transaction,
