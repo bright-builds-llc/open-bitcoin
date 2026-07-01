@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Transaction Relay and Mempool Participation Boundary
-status: executing
-stopped_at: Phase 104 context gathered
-last_updated: "2026-07-01T16:00:53.691Z"
-last_activity: 2026-07-01 -- Phase 104 execution started
+status: planning
+stopped_at: Phase 105 ready to discuss
+last_updated: "2026-07-01T19:33:12Z"
+last_activity: 2026-07-01 -- Phase 104 completed and verified
 progress:
   total_phases: 7
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 18
-  completed_plans: 14
-  percent: 78
+  completed_plans: 18
+  percent: 71
 ---
 
 # Project State
@@ -21,17 +21,17 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-29)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 104 — Relay Serving, Fanout, and Rebroadcast Policy
+**Current focus:** Phase 105 — Operator, RPC, Metrics, Logs, and Support Evidence
 
 ## Current Position
 
 Milestone: v2.0 Transaction Relay and Mempool Participation Boundary
-Phase: 104 (Relay Serving, Fanout, and Rebroadcast Policy) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 104
-Last activity: 2026-07-01 -- Phase 104 execution started
+Phase: 105 (Operator, RPC, Metrics, Logs, and Support Evidence) — READY TO DISCUSS
+Plan: not yet planned
+Status: Phase 104 complete; Phase 105 ready to discuss
+Last activity: 2026-07-01 -- Phase 104 completed and verified
 
-Progress: [######----] 57% milestone complete; Phase 104 is ready to plan
+Progress: [#######---] 71% milestone complete; Phase 105 is ready to discuss
 
 ## Performance Metrics
 
@@ -49,7 +49,7 @@ Progress: [######----] 57% milestone complete; Phase 104 is ready to plan
 | 101 | Transaction Inventory Identity and Download Scheduling | INV-01, INV-02, INV-03, INV-04, DL-01, DL-02 | Complete |
 | 102 | Orphan Handling and Admission Outcome Bridge | DL-03, DL-04, DL-05, MEM-01, MEM-02 | Complete |
 | 103 | Mempool Chainstate Lifecycle and Durable Recovery | MEM-03, MEM-04, MEM-05, MEM-06 | Complete |
-| 104 | Relay Serving, Fanout, and Rebroadcast Policy | REL-01, REL-02, REL-03, REL-04 | Pending |
+| 104 | Relay Serving, Fanout, and Rebroadcast Policy | REL-01, REL-02, REL-03, REL-04 | Complete |
 | 105 | Operator, RPC, Metrics, Logs, and Support Evidence | OBS-01, OBS-02, OBS-03, OBS-04 | Pending |
 | 106 | Parity Traceability, UAT, and Release Boundary Guardrails | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05 | Pending |
 
@@ -70,6 +70,7 @@ Progress: [######----] 57% milestone complete; Phase 104 is ready to plan
 - Phase 101 completed typed txid/wtxid transaction relay identity, bounded download scheduling, PeerManager and managed-network integration, parity roots, deterministic checker coverage, and passed verification.
 - Phase 102 completed bounded orphan handling, the shared mempool admission outcome bridge, clean code review, deterministic checker hardening, and passed verification.
 - Phase 103 completed mempool pressure truth, block-connect cleanup, bounded reorg reconsideration, durable mempool snapshot recovery, parity roots, deterministic checker coverage, and passed verification.
+- Phase 104 completed relay serving classification, managed `getdata` serving, fanout queues, local submission relay evidence, explicit `rebroadcast_deferred` evidence, parity roots, deterministic checker coverage, and passed verification.
 
 | Phase 91-peer-permissions-and-connection-classes P01 | 27min | 2 tasks | 5 files |
 | Phase 91 P02 | 34min | 2 tasks | 13 files |
@@ -204,7 +205,7 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ### Pending Todos
 
-- Discuss and plan Phase 101 for transaction inventory identity and download scheduling.
+- Discuss and plan Phase 105 for operator, RPC, metrics, logs, and support evidence over the implemented relay serving/fanout state.
 - Keep v1.9 phase directories numbered 90+ under `.planning/phases/`; historical phase directories remain tracked because verifier scripts still depend on selected phase evidence.
 - Keep repo-local Cargo and Bazel command forms in UAT guidance:
   - `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- ...`
@@ -221,6 +222,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-07-01T14:54:22.627Z
-Stopped at: Phase 104 context gathered
-Resume file: .planning/phases/104-relay-serving-fanout-and-rebroadcast-policy/104-CONTEXT.md
+Last session: 2026-07-01T19:33:12Z
+Stopped at: Phase 105 ready to discuss
+Resume file: .planning/ROADMAP.md#phase-105-operator-rpc-metrics-logs-and-support-evidence
