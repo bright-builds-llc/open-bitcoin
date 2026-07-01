@@ -17,6 +17,7 @@ use super::*;
 
 mod orphanage_cases;
 mod scheduler_cases;
+mod serving_cases;
 
 fn txid(byte: u8) -> Txid {
     Txid::from_byte_array([byte; 32])
@@ -456,4 +457,14 @@ fn disconnect_cleanup_removes_peer_state_and_falls_back() {
 #[test]
 fn received_transaction_cleanup_waits_for_admission_before_already_have() {
     scheduler_cases::received_transaction_cleanup_waits_for_admission_before_already_have();
+}
+
+#[test]
+fn tx_serving_policy_reports_low_cardinality_outcomes() {
+    serving_cases::tx_serving_policy_reports_low_cardinality_outcomes();
+}
+
+#[test]
+fn tx_serving_policy_rejects_identity_mismatch_and_non_transaction_inventory() {
+    serving_cases::tx_serving_policy_rejects_identity_mismatch_and_non_transaction_inventory();
 }

@@ -636,7 +636,9 @@
       "files": [
         "packages/open-bitcoin-network/src/peer/transaction_relay.rs",
         "packages/open-bitcoin-network/src/peer/transaction_relay/orphanage.rs",
+        "packages/open-bitcoin-network/src/peer/transaction_relay/serving.rs",
         "packages/open-bitcoin-network/src/peer/transaction_relay/tests/orphanage_cases.rs",
+        "packages/open-bitcoin-network/src/peer/transaction_relay/tests/serving_cases.rs",
         "packages/open-bitcoin-network/src/peer/transaction_relay/scheduler.rs",
         "packages/open-bitcoin-network/src/peer/transaction_relay/tests/scheduler_cases/edge_cases.rs",
         "packages/open-bitcoin-network/src/peer/transaction_relay/tests/scheduler_cases/received_cases.rs",

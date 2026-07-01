@@ -16,6 +16,7 @@ use open_bitcoin_primitives::{Hash32, InventoryType, InventoryVector, Txid, Wtxi
 use crate::error::PeerId;
 
 mod scheduler;
+mod serving;
 
 pub mod orphanage;
 
@@ -28,6 +29,9 @@ pub use orphanage::{
 pub use scheduler::{
     TxAnnouncementInput, TxDownloadLocalFacts, TxDownloadScheduler, TxDownloadSnapshot,
     TxPeerRequestSnapshot,
+};
+pub use serving::{
+    TxServeDecision, TxServeOutcomeLabel, TxServingRecordStatus, classify_tx_serve_request,
 };
 
 pub const PHASE101_MAX_TX_ANNOUNCEMENTS_PER_PEER: usize = 5_000;

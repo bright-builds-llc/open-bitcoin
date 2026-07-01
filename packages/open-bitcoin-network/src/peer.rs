@@ -48,6 +48,7 @@ pub use transaction_relay::{
     PHASE102_ORPHAN_TTL_SECONDS, TxAnnouncementInput, TxDownloadAction, TxDownloadLocalFacts,
     TxDownloadPolicy, TxDownloadScheduler, TxDownloadSnapshot, TxDownloadSuppressionReason,
     TxOrphanage, TxPeerRequestSnapshot, TxRelayId, TxRelayIdentityError, TxRelayPeerMode,
+    TxServeDecision, TxServeOutcomeLabel, TxServingRecordStatus, classify_tx_serve_request,
 };
 
 pub const DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER: usize = 128;

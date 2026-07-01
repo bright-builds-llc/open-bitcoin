@@ -74,7 +74,8 @@ pub use peer::{
     PeerAddressBoundaryDecision, PeerAddressBoundaryEvidence, PeerManager, PeerState,
     TxAnnouncementInput, TxDownloadAction, TxDownloadLocalFacts, TxDownloadPolicy,
     TxDownloadScheduler, TxDownloadSnapshot, TxDownloadSuppressionReason, TxOrphanage,
-    TxPeerRequestSnapshot, TxRelayId, TxRelayIdentityError, TxRelayPeerMode,
+    TxPeerRequestSnapshot, TxRelayId, TxRelayIdentityError, TxRelayPeerMode, TxServeDecision,
+    TxServeOutcomeLabel, TxServingRecordStatus, classify_tx_serve_request,
 };
 pub use peer_policy::{
     BanDecision, BanReason, BanScope, EvictionCandidate, EvictionCandidateInput, EvictionDecision,
