@@ -528,16 +528,12 @@ If Phase 104 adds docs/parity/verifier wiring, the checker should guard required
 | --- | --- | --- | --- |
 | None | All factual claims in this research are sourced from local repo files, local tool probes, the pinned Bitcoin Knots submodule, or official OWASP ASVS pages. [VERIFIED: this research pass] | All | No user confirmation is needed for assumed technical facts; planning should still validate design choices against implementation constraints. [VERIFIED: this research pass] |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Where should the minimal Phase 105-facing relay evidence type live?**
-   - What we know: Phase 104 must make internal evidence available, but rich RPC/CLI/dashboard/log/support presentation is Phase 105. [VERIFIED: .planning/phases/104-relay-serving-fanout-and-rebroadcast-policy/104-CONTEXT.md]
-   - What's unclear: The exact type name and crate boundary for a minimal shared evidence carrier are left to planner discretion. [VERIFIED: .planning/phases/104-relay-serving-fanout-and-rebroadcast-policy/104-CONTEXT.md]
-   - Recommendation: Put pure labels/actions in `open-bitcoin-network`; put managed aggregation/status snapshots in `open-bitcoin-node`; expose only what `open-bitcoin-rpc` needs to preserve REL-03 truthfulness. [VERIFIED: standards/core/architecture.md; packages/open-bitcoin-network/src/peer/transaction_relay.rs; packages/open-bitcoin-node/src/network.rs; packages/open-bitcoin-rpc/src/dispatch/node.rs]
+   - RESOLVED: Put pure labels/actions in `open-bitcoin-network`; put managed aggregation/status snapshots in `open-bitcoin-node`; expose only what `open-bitcoin-rpc` needs to preserve REL-03 truthfulness. [VERIFIED: standards/core/architecture.md; packages/open-bitcoin-network/src/peer/transaction_relay.rs; packages/open-bitcoin-node/src/network.rs; packages/open-bitcoin-rpc/src/dispatch/node.rs]
 2. **Is a Phase 104 checker mandatory or conditional?**
-   - What we know: Context requires a checker if docs, parity roots, or verifier wiring change. [VERIFIED: .planning/phases/104-relay-serving-fanout-and-rebroadcast-policy/104-CONTEXT.md]
-   - What's unclear: The implementation plan may or may not touch docs/parity/verifier beyond source breadcrumbs. [VERIFIED: docs/parity/source-breadcrumbs.json]
-   - Recommendation: Plan for the checker if REL-04 docs/status evidence or parity indexes change; otherwise still add source breadcrumbs for any new Rust files. [VERIFIED: AGENTS.md; docs/parity/source-breadcrumbs.json; scripts/verify.sh]
+   - RESOLVED: Phase 104 will add docs/parity/verifier wiring and therefore must include a deterministic checker in Plan 04. Source breadcrumbs remain mandatory for any new Rust files. [VERIFIED: AGENTS.md; docs/parity/source-breadcrumbs.json; scripts/verify.sh]
 
 ## Environment Availability
 

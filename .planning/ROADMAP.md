@@ -146,6 +146,14 @@ Plans:
 
 **Verification:** Managed peer network tests, fake-clock fanout tests, RPC submission tests, status/doc checks, and `bash scripts/verify.sh`.
 
+**Plans:** 4 plans
+
+Plans:
+- [ ] 104-01-PLAN.md — Pure relay serving/fanout/rebroadcast-deferred policy in `open-bitcoin-network`.
+- [ ] 104-02-PLAN.md — Managed transaction serving, fanout queues, inv/tx/notfound translation, and lifecycle cleanup.
+- [ ] 104-03-PLAN.md — Local `sendrawtransaction` relay evidence without public propagation guarantees.
+- [ ] 104-04-PLAN.md — Parity roots, deterministic checker, verifier wiring, and phase verification.
+
 ### Phase 105: Operator, RPC, Metrics, Logs, and Support Evidence
 
 **Purpose:** Project relay and mempool participation through one shared evidence contract without leaking sensitive transaction or peer material.
