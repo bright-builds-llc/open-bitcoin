@@ -6,9 +6,11 @@
 // - packages/bitcoin-knots/src/policy/packages.cpp
 
 use open_bitcoin_consensus::{ConsensusParams, ScriptVerifyFlags};
-use open_bitcoin_primitives::{Amount, OutPoint, ScriptWitness, TransactionInput, Txid, Wtxid};
+use open_bitcoin_primitives::{
+    Amount, OutPoint, ScriptWitness, Transaction, TransactionInput, Txid, Wtxid,
+};
 
-use super::{sample_chainstate_snapshot, script, spend_transaction, submit};
+use super::{non_standard_spend, sample_chainstate_snapshot, script, spend_transaction, submit};
 use crate::{
     LimitDirection, LimitKind, Mempool, MempoolError, MempoolOutcome, MempoolOutcomeLabel,
     MempoolRejectionCategory, PolicyConfig, RbfPolicy,
@@ -640,6 +642,288 @@ fn replacement_outcome_distinguishes_replaced_and_evicted_transactions() {
     assert_eq!(outcome.label(), MempoolOutcomeLabel::Replaced);
     assert_eq!(outcome.replaced(), &[original_txid]);
     assert_eq!(outcome.evicted(), &[evicted_txid]);
+}
+
+#[test]
+fn no_partial_mutation_for_non_standard_rejection() {
+    // Arrange
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(3);
+    let mut mempool = Mempool::default();
+    submit(
+        &mut mempool,
+        &snapshot,
+        spend_transaction(
+            coinbase_txids[0],
+            0,
+            499_999_000,
+            TransactionInput::SEQUENCE_FINAL,
+        ),
+    )
+    .expect("baseline admission");
+    let before = MempoolAdmissionSnapshot::capture(&mempool);
+
+    // Act
+    let outcome = submit_outcome(
+        &mut mempool,
+        &snapshot,
+        non_standard_spend(coinbase_txids[1]),
+    );
+
+    // Assert
+    assert_eq!(outcome.label(), MempoolOutcomeLabel::Rejected);
+    assert_eq!(
+        outcome.maybe_rejection_category(),
+        Some(MempoolRejectionCategory::NonStandard)
+    );
+    assert_eq!(MempoolAdmissionSnapshot::capture(&mempool), before);
+}
+
+#[test]
+fn no_partial_mutation_for_low_fee_rejection() {
+    // Arrange
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(3);
+    let mut mempool = Mempool::default();
+    submit(
+        &mut mempool,
+        &snapshot,
+        spend_transaction(
+            coinbase_txids[0],
+            0,
+            499_999_000,
+            TransactionInput::SEQUENCE_FINAL,
+        ),
+    )
+    .expect("baseline admission");
+    let low_fee = spend_transaction(
+        coinbase_txids[1],
+        0,
+        499_999_999,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let before = MempoolAdmissionSnapshot::capture(&mempool);
+
+    // Act
+    let outcome = submit_outcome(&mut mempool, &snapshot, low_fee);
+
+    // Assert
+    assert_eq!(outcome.label(), MempoolOutcomeLabel::Rejected);
+    assert_eq!(
+        outcome.maybe_rejection_category(),
+        Some(MempoolRejectionCategory::RelayFeeTooLow)
+    );
+    assert_eq!(MempoolAdmissionSnapshot::capture(&mempool), before);
+}
+
+#[test]
+fn no_partial_mutation_for_failed_replacement() {
+    // Arrange
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(2);
+    let mut mempool = Mempool::new(PolicyConfig {
+        rbf_policy: RbfPolicy::Always,
+        ..PolicyConfig::default()
+    });
+    let original = spend_transaction(
+        coinbase_txids[0],
+        0,
+        499_999_000,
+        TransactionInput::MAX_SEQUENCE_NONFINAL - 1,
+    );
+    submit(&mut mempool, &snapshot, original).expect("original admission");
+    let equal_fee_replacement = spend_transaction(
+        coinbase_txids[0],
+        0,
+        499_999_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let before = MempoolAdmissionSnapshot::capture(&mempool);
+
+    // Act
+    let outcome = submit_outcome(&mut mempool, &snapshot, equal_fee_replacement);
+
+    // Assert
+    assert_eq!(outcome.label(), MempoolOutcomeLabel::Rejected);
+    assert_eq!(
+        outcome.maybe_rejection_category(),
+        Some(MempoolRejectionCategory::ReplacementRejected)
+    );
+    assert_eq!(MempoolAdmissionSnapshot::capture(&mempool), before);
+}
+
+#[test]
+fn no_partial_mutation_for_ancestor_limit_rejection() {
+    // Arrange
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(1);
+    let mut mempool = Mempool::new(PolicyConfig {
+        max_ancestor_count: 1,
+        ..PolicyConfig::default()
+    });
+    let parent_txid = submit(
+        &mut mempool,
+        &snapshot,
+        spend_transaction(
+            coinbase_txids[0],
+            0,
+            499_999_000,
+            TransactionInput::SEQUENCE_FINAL,
+        ),
+    )
+    .expect("parent admission")
+    .accepted;
+    let child = spend_transaction(
+        parent_txid,
+        0,
+        499_998_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let before = MempoolAdmissionSnapshot::capture(&mempool);
+
+    // Act
+    let outcome = submit_outcome(&mut mempool, &snapshot, child);
+
+    // Assert
+    assert_eq!(outcome.label(), MempoolOutcomeLabel::Rejected);
+    assert_eq!(
+        outcome.maybe_rejection_category(),
+        Some(MempoolRejectionCategory::LimitExceeded)
+    );
+    assert_eq!(MempoolAdmissionSnapshot::capture(&mempool), before);
+}
+
+#[test]
+fn no_partial_mutation_for_descendant_limit_rejection() {
+    // Arrange
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(1);
+    let mut mempool = Mempool::new(PolicyConfig {
+        max_descendant_count: 1,
+        ..PolicyConfig::default()
+    });
+    let parent_txid = submit(
+        &mut mempool,
+        &snapshot,
+        spend_transaction(
+            coinbase_txids[0],
+            0,
+            499_999_000,
+            TransactionInput::SEQUENCE_FINAL,
+        ),
+    )
+    .expect("parent admission")
+    .accepted;
+    let child = spend_transaction(
+        parent_txid,
+        0,
+        499_998_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let before = MempoolAdmissionSnapshot::capture(&mempool);
+
+    // Act
+    let outcome = submit_outcome(&mut mempool, &snapshot, child);
+
+    // Assert
+    assert_eq!(outcome.label(), MempoolOutcomeLabel::Rejected);
+    assert_eq!(
+        outcome.maybe_rejection_category(),
+        Some(MempoolRejectionCategory::LimitExceeded)
+    );
+    assert_eq!(MempoolAdmissionSnapshot::capture(&mempool), before);
+}
+
+#[test]
+fn no_partial_mutation_for_candidate_evicted() {
+    // Arrange
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(1);
+    let mut mempool = Mempool::new(PolicyConfig {
+        max_mempool_virtual_size: 1,
+        ..PolicyConfig::default()
+    });
+    let candidate = spend_transaction(
+        coinbase_txids[0],
+        0,
+        499_999_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let before = MempoolAdmissionSnapshot::capture(&mempool);
+
+    // Act
+    let outcome = submit_outcome(&mut mempool, &snapshot, candidate);
+
+    // Assert
+    assert_eq!(outcome.label(), MempoolOutcomeLabel::Evicted);
+    assert_eq!(MempoolAdmissionSnapshot::capture(&mempool), before);
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct MempoolAdmissionSnapshot {
+    accepted_txids: Vec<Txid>,
+    parents: Vec<(Txid, Vec<Txid>)>,
+    children: Vec<(Txid, Vec<Txid>)>,
+    spent_outpoints: Vec<(OutPoint, Txid)>,
+    total_virtual_size: usize,
+}
+
+impl MempoolAdmissionSnapshot {
+    fn capture(mempool: &Mempool) -> Self {
+        let mut accepted_txids = mempool.entries().keys().copied().collect::<Vec<_>>();
+        accepted_txids.sort();
+
+        let mut parents = mempool
+            .entries()
+            .iter()
+            .map(|(txid, entry)| (*txid, entry.parents.iter().copied().collect::<Vec<_>>()))
+            .collect::<Vec<_>>();
+        parents.sort_by(|(left_txid, _), (right_txid, _)| left_txid.cmp(right_txid));
+
+        let mut children = mempool
+            .entries()
+            .iter()
+            .map(|(txid, entry)| (*txid, entry.children.iter().copied().collect::<Vec<_>>()))
+            .collect::<Vec<_>>();
+        children.sort_by(|(left_txid, _), (right_txid, _)| left_txid.cmp(right_txid));
+
+        let mut spent_outpoints = mempool
+            .spent_outpoints
+            .iter()
+            .map(|(outpoint, spender_txid)| (outpoint.clone(), *spender_txid))
+            .collect::<Vec<_>>();
+        spent_outpoints.sort_by(
+            |(left_outpoint, left_spender), (right_outpoint, right_spender)| {
+                left_outpoint
+                    .txid
+                    .cmp(&right_outpoint.txid)
+                    .then_with(|| left_outpoint.vout.cmp(&right_outpoint.vout))
+                    .then_with(|| left_spender.cmp(right_spender))
+            },
+        );
+
+        Self {
+            accepted_txids,
+            parents,
+            children,
+            spent_outpoints,
+            total_virtual_size: mempool.total_virtual_size(),
+        }
+    }
+}
+
+fn submit_outcome(
+    mempool: &mut Mempool,
+    snapshot: &open_bitcoin_chainstate::ChainstateSnapshot,
+    transaction: Transaction,
+) -> MempoolOutcome {
+    mempool
+        .accept_transaction_outcome(
+            transaction,
+            snapshot,
+            ScriptVerifyFlags::P2SH
+                | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
+                | ScriptVerifyFlags::CHECKSEQUENCEVERIFY,
+            ConsensusParams {
+                coinbase_maturity: 1,
+                ..ConsensusParams::default()
+            },
+        )
+        .expect("outcome")
 }
 
 #[allow(dead_code)]
