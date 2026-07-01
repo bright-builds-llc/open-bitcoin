@@ -17,11 +17,13 @@
 //! Pure-core mempool and policy domain models for Open Bitcoin.
 
 pub mod error;
+pub mod outcome;
 pub mod policy;
 pub mod pool;
 pub mod types;
 
 pub use error::{LimitDirection, LimitKind, MempoolError};
+pub use outcome::{MempoolOutcome, MempoolOutcomeLabel, MempoolRejectionCategory};
 pub use policy::{
     dust_threshold_sats, signals_opt_in_rbf, transaction_sigops_cost,
     transaction_weight_and_virtual_size, validate_standard_transaction,

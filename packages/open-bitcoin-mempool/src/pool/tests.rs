@@ -5,6 +5,8 @@
 // - packages/bitcoin-knots/src/policy/rbf.cpp
 // - packages/bitcoin-knots/src/policy/packages.cpp
 
+mod outcome_cases;
+
 use open_bitcoin_chainstate::{Chainstate, ChainstateSnapshot};
 use std::collections::{BTreeSet, HashMap};
 
@@ -22,15 +24,15 @@ use crate::{LimitDirection, LimitKind, MempoolEntry, MempoolError, PolicyConfig,
 
 const EASY_BITS: u32 = 0x207f_ffff;
 
-fn script(bytes: &[u8]) -> ScriptBuf {
+pub(super) fn script(bytes: &[u8]) -> ScriptBuf {
     ScriptBuf::from_bytes(bytes.to_vec()).expect("valid script")
 }
 
-fn redeem_script() -> ScriptBuf {
+pub(super) fn redeem_script() -> ScriptBuf {
     script(&[0x51])
 }
 
-fn p2sh_script() -> ScriptBuf {
+pub(super) fn p2sh_script() -> ScriptBuf {
     let redeem_hash = hash160(redeem_script().as_bytes());
     let mut bytes = vec![0xa9, 20];
     bytes.extend_from_slice(&redeem_hash);
@@ -38,7 +40,7 @@ fn p2sh_script() -> ScriptBuf {
     script(&bytes)
 }
 
-fn serialized_script_num(value: i64) -> Vec<u8> {
+pub(super) fn serialized_script_num(value: i64) -> Vec<u8> {
     if value == 0 {
         return vec![0x00];
     }
@@ -57,7 +59,7 @@ fn serialized_script_num(value: i64) -> Vec<u8> {
     script
 }
 
-fn coinbase_transaction(height: u32, value: i64) -> Transaction {
+pub(super) fn coinbase_transaction(height: u32, value: i64) -> Transaction {
     let mut script_sig = serialized_script_num(i64::from(height));
     script_sig.push(0x51);
     Transaction {
@@ -76,7 +78,7 @@ fn coinbase_transaction(height: u32, value: i64) -> Transaction {
     }
 }
 
-fn spend_transaction(
+pub(super) fn spend_transaction(
     previous_txid: Txid,
     vout: u32,
     output_value: i64,
@@ -101,7 +103,7 @@ fn spend_transaction(
     }
 }
 
-fn non_standard_spend(previous_txid: Txid) -> Transaction {
+pub(super) fn non_standard_spend(previous_txid: Txid) -> Transaction {
     let mut transaction = spend_transaction(
         previous_txid,
         0,
@@ -112,7 +114,7 @@ fn non_standard_spend(previous_txid: Txid) -> Transaction {
     transaction
 }
 
-fn build_block(previous_block_hash: BlockHash, height: u32, value: i64) -> Block {
+pub(super) fn build_block(previous_block_hash: BlockHash, height: u32, value: i64) -> Block {
     let transactions = vec![coinbase_transaction(height, value)];
     let (merkle_root, maybe_mutated) = block_merkle_root(&transactions).expect("merkle root");
     assert!(!maybe_mutated);
@@ -132,7 +134,7 @@ fn build_block(previous_block_hash: BlockHash, height: u32, value: i64) -> Block
     block
 }
 
-fn mine_header(block: &mut Block) {
+pub(super) fn mine_header(block: &mut Block) {
     block.header.nonce = (0..=u32::MAX)
         .find(|nonce| {
             block.header.nonce = *nonce;
@@ -141,7 +143,7 @@ fn mine_header(block: &mut Block) {
         .expect("expected nonce at easy target");
 }
 
-fn sample_chainstate_snapshot(block_count: u32) -> (ChainstateSnapshot, Vec<Txid>) {
+pub(super) fn sample_chainstate_snapshot(block_count: u32) -> (ChainstateSnapshot, Vec<Txid>) {
     let mut chainstate = Chainstate::new();
     let mut previous_hash = BlockHash::from_byte_array([0_u8; 32]);
     let mut txids = Vec::new();
@@ -169,7 +171,7 @@ fn sample_chainstate_snapshot(block_count: u32) -> (ChainstateSnapshot, Vec<Txid
     (chainstate.snapshot(), txids)
 }
 
-fn submit(
+pub(super) fn submit(
     mempool: &mut Mempool,
     snapshot: &ChainstateSnapshot,
     transaction: Transaction,

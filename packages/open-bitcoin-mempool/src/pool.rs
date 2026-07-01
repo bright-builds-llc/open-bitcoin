@@ -16,10 +16,12 @@ use open_bitcoin_primitives::{OutPoint, Transaction, Txid};
 
 use crate::{
     AdmissionResult, LimitDirection, LimitKind, MEMPOOL_HEIGHT, MempoolEntry, MempoolError,
-    PolicyConfig, RbfPolicy, signals_opt_in_rbf, transaction_sigops_cost,
+    MempoolOutcome, PolicyConfig, RbfPolicy, signals_opt_in_rbf, transaction_sigops_cost,
     transaction_weight_and_virtual_size, validate_standard_transaction,
 };
 
+mod admission_outcome;
+use self::admission_outcome::accept as accept_outcome;
 #[derive(Debug, Clone)]
 struct MempoolState {
     entries: HashMap<Txid, MempoolEntry>,
@@ -136,6 +138,16 @@ impl Mempool {
             replaced: replace_set.into_iter().collect(),
             evicted: evicted.into_iter().collect(),
         })
+    }
+
+    pub fn accept_transaction_outcome(
+        &mut self,
+        tx: Transaction,
+        chainstate: &ChainstateSnapshot,
+        flags: ScriptVerifyFlags,
+        params: ConsensusParams,
+    ) -> Result<MempoolOutcome, MempoolError> {
+        accept_outcome(self, tx, chainstate, flags, params)
     }
 
     fn replacement_set(

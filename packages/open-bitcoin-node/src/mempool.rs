@@ -7,7 +7,7 @@ use open_bitcoin_core::{
     consensus::{ConsensusParams, ScriptVerifyFlags},
     primitives::Transaction,
 };
-use open_bitcoin_mempool::{AdmissionResult, Mempool, MempoolError, PolicyConfig};
+use open_bitcoin_mempool::{AdmissionResult, Mempool, MempoolError, MempoolOutcome, PolicyConfig};
 
 use crate::{ChainstateStore, ManagedChainstate};
 
@@ -41,6 +41,21 @@ impl ManagedMempool {
         consensus_params: ConsensusParams,
     ) -> Result<AdmissionResult, MempoolError> {
         self.mempool.accept_transaction(
+            transaction,
+            &chainstate.chainstate().snapshot(),
+            verify_flags,
+            consensus_params,
+        )
+    }
+
+    pub fn submit_transaction_outcome<S: ChainstateStore>(
+        &mut self,
+        chainstate: &ManagedChainstate<S>,
+        transaction: Transaction,
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+    ) -> Result<MempoolOutcome, MempoolError> {
+        self.mempool.accept_transaction_outcome(
             transaction,
             &chainstate.chainstate().snapshot(),
             verify_flags,
