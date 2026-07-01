@@ -9,6 +9,7 @@ use open_bitcoin_core::{
     primitives::Block,
 };
 use open_bitcoin_mempool::{MempoolLifecycleSummary, MempoolOutcome};
+use open_bitcoin_network::TxServingRecordStatus;
 
 use super::{ManagedNetworkError, ManagedPeerNetwork};
 use crate::ChainstateStore;
@@ -33,7 +34,10 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             .iter()
             .map(|removal| removal.txid)
             .collect::<Vec<_>>();
-        self.remove_stored_transactions(&removed_txids)?;
+        self.remove_stored_transactions_with_status(
+            &removed_txids,
+            TxServingRecordStatus::Confirmed,
+        )?;
 
         Ok(summary)
     }
@@ -64,7 +68,12 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                         self.apply_admitted_outcome(&outcome, transaction.clone())?;
                     }
                     MempoolOutcome::Evicted { txid, .. } | MempoolOutcome::Expired { txid, .. } => {
-                        self.remove_stored_transactions(&[*txid])?;
+                        let status = match outcome {
+                            MempoolOutcome::Evicted { .. } => TxServingRecordStatus::Evicted,
+                            MempoolOutcome::Expired { .. } => TxServingRecordStatus::Expired,
+                            _ => TxServingRecordStatus::Stale,
+                        };
+                        self.remove_stored_transactions_with_status(&[*txid], status)?;
                     }
                     MempoolOutcome::Rejected { .. }
                     | MempoolOutcome::Duplicate { .. }

@@ -13,7 +13,8 @@ use open_bitcoin_core::{
     primitives::{BlockHash, InventoryType, InventoryVector, Transaction, Txid, Wtxid},
 };
 use open_bitcoin_network::{
-    DisconnectReason, InboundResourceEvent, NetworkError, PeerId, WireNetworkMessage,
+    DisconnectReason, InboundResourceEvent, NetworkError, PeerId, TxServeOutcomeLabel,
+    TxServingRecordStatus, WireNetworkMessage,
 };
 
 use super::{ManagedNetworkError, ManagedPeerNetwork, ManagedSyncMessageResult};
@@ -21,11 +22,14 @@ use crate::ChainstateStore;
 
 impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     pub(super) fn serve_inventory(
-        &self,
+        &mut self,
+        peer_id: PeerId,
         requests: Vec<InventoryVector>,
     ) -> (Vec<WireNetworkMessage>, Vec<InventoryVector>) {
         let mut messages = Vec::new();
         let mut missing = Vec::new();
+        let (peer_mode, relay_eligibility) = self.relay_serving_context_for_peer(peer_id);
+        self.relay_serving.clear_latest_outcomes();
 
         for request in requests {
             match request.inventory_type {
@@ -37,20 +41,20 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                     };
                     messages.push(WireNetworkMessage::Block(block.clone()));
                 }
-                InventoryType::Transaction => {
-                    let txid = Txid::from(request.object_hash);
-                    let Some(transaction) = self.transactions_by_txid.get(&txid) else {
+                InventoryType::Transaction | InventoryType::WitnessTransaction => {
+                    let decision = self.relay_serving.classify_request(
+                        &request,
+                        peer_mode,
+                        &relay_eligibility,
+                    );
+                    let Some(transaction) = decision.maybe_transaction else {
                         missing.push(request);
                         continue;
                     };
-                    messages.push(WireNetworkMessage::Tx(transaction.clone()));
-                }
-                InventoryType::WitnessTransaction => {
-                    let wtxid = Wtxid::from(request.object_hash);
-                    let Some(transaction) = self.transactions_by_wtxid.get(&wtxid) else {
+                    if decision.label != TxServeOutcomeLabel::Served {
                         missing.push(request);
                         continue;
-                    };
+                    }
                     messages.push(WireNetworkMessage::Tx(transaction.clone()));
                 }
                 _ => missing.push(request),
@@ -69,13 +73,15 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         self.transactions_by_txid.insert(txid, transaction.clone());
         self.transactions_by_wtxid
             .insert(wtxid, transaction.clone());
+        self.relay_serving.record_accepted(transaction.clone())?;
         self.peer_manager.note_local_transaction(&transaction)?;
         Ok((txid, wtxid))
     }
 
-    pub(super) fn remove_stored_transactions(
+    pub(super) fn remove_stored_transactions_with_status(
         &mut self,
         txids: &[Txid],
+        status: TxServingRecordStatus,
     ) -> Result<(), ManagedNetworkError> {
         for txid in txids {
             let Some(transaction) = self.transactions_by_txid.remove(txid) else {
@@ -84,6 +90,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             let wtxid = transaction_wtxid(&transaction)?;
             self.transactions_by_wtxid.remove(&wtxid);
         }
+        self.relay_serving.remove_transactions(txids, status)?;
         Ok(())
     }
 

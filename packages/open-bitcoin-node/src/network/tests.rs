@@ -33,8 +33,8 @@ use open_bitcoin_network::{
     PHASE94_MAX_HEADER_LOCATOR_HASHES, PHASE94_MAX_INBOUND_REQUEST_INVENTORY_ITEMS,
     PHASE94_MAX_INBOUND_TX_REQUESTS_PER_PEER, PHASE101_GETDATA_TX_INTERVAL_SECONDS,
     ParsedPeerPermissionClass, PeerAddressBoundaryDecision, PeerAddressBoundaryEvidence,
-    PeerBanEntry, PeerConnectionClass, PeerPermissionClassRegistry, RoutabilityClass, ServiceFlags,
-    WireNetworkMessage,
+    PeerBanEntry, PeerConnectionClass, PeerPermissionClassRegistry, RelayActivationConfig,
+    RoutabilityClass, ServiceFlags, WireNetworkMessage,
 };
 
 use crate::{
@@ -44,6 +44,7 @@ use crate::{
 
 mod admission_bridge_cases;
 mod mempool_lifecycle_cases;
+mod relay_serving_cases;
 
 const EASY_BITS: u32 = 0x207f_ffff;
 
@@ -1685,10 +1686,12 @@ fn managed_network_info_exposes_rpc_projection_helpers() {
 
 #[test]
 fn managed_nodes_sync_blocks_and_relay_transactions_in_memory() {
-    let mut source = ManagedPeerNetwork::new(
+    let mut source = ManagedPeerNetwork::new_with_relay_activation(
         MemoryChainstateStore::default(),
         local_config(10),
         PolicyConfig::default(),
+        RelayActivationConfig { enabled: true },
+        true,
     );
     let mut sink = ManagedPeerNetwork::new(
         MemoryChainstateStore::default(),
@@ -1709,7 +1712,15 @@ fn managed_nodes_sync_blocks_and_relay_transactions_in_memory() {
         .connect_local_block(&spendable, verify_flags(), consensus_params())
         .expect("spendable");
 
-    source.add_inbound_peer(7).expect("source peer");
+    let source_admission = source.admit_inbound_peer(permissioned_inbound_request(
+        7,
+        "127.0.0.1:18447",
+        &["in", "relay", "mempool"],
+    ));
+    assert!(matches!(
+        source_admission,
+        InboundAdmissionDecision::Admit(_)
+    ));
     let sync_timestamp = i64::from(spendable.header.time);
     let mut to_source = sink.connect_outbound_peer(7, 1).expect("connect");
     let mut to_sink = deliver(&sink, &mut source, 7, to_source, sync_timestamp);

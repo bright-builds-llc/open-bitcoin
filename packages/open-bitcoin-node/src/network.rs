@@ -17,6 +17,7 @@ mod inbound;
 mod inventory;
 mod mempool_lifecycle;
 mod peer_policy;
+mod relay_serving;
 
 use open_bitcoin_core::{
     chainstate::{
@@ -26,20 +27,18 @@ use open_bitcoin_core::{
     consensus::{ConsensusParams, ScriptVerifyFlags, block_hash},
     primitives::{Block, BlockHash, NetworkMagic, Transaction, Txid, Wtxid},
 };
-use open_bitcoin_mempool::{
-    MempoolCapacityStatus, MempoolError, PolicyConfig, RollingFeeParityStatus,
-};
+use open_bitcoin_mempool::{MempoolCapacityStatus, MempoolError, RollingFeeParityStatus};
 use open_bitcoin_network::{
     ConnectionRole, DisconnectReason, HeaderEntry, HeaderStore, HeaderSyncPolicy, HeadersMessage,
     InboundAdmissionPolicy, InboundResourceEvent, InventoryList, LocalAdvertisementDecision,
-    LocalPeerConfig, NetworkError, OrphanPolicy, PROTOCOL_VERSION, ParsedNetworkMessage,
-    PeerAction, PeerId, PeerManager, TxOrphanage, WireNetworkMessage,
+    LocalPeerConfig, NetworkError, PROTOCOL_VERSION, ParsedNetworkMessage, PeerAction, PeerId,
+    PeerManager, RelayActivationConfig, TxOrphanage, WireNetworkMessage,
 };
 
 use crate::{ChainstateStore, ManagedChainstate, ManagedMempool};
 use action_translation::process_transaction_relay_action;
 use header_sync::validate_header_for_sync;
-use inbound::{default_inbound_admission_policy, is_active_inbound_peer};
+use inbound::is_active_inbound_peer;
 
 pub use inbound::{
     ManagedAddressBoundaryInfo, ManagedInboundAdmissionInfo, ManagedInboundPermissionDecisionInfo,
@@ -147,6 +146,9 @@ pub struct ManagedPeerNetwork<S> {
     inbound_admission_policy: InboundAdmissionPolicy,
     inbound_admission_info: ManagedInboundAdmissionInfo,
     resource_governance_info: ManagedResourceGovernanceInfo,
+    relay_activation: RelayActivationConfig,
+    inbound_serving_enabled: bool,
+    relay_serving: relay_serving::RelayServingCache,
     local_config: LocalPeerConfig,
     blocks_by_hash: BTreeMap<BlockHash, Block>,
     transactions_by_txid: BTreeMap<Txid, Transaction>,
@@ -154,56 +156,6 @@ pub struct ManagedPeerNetwork<S> {
 }
 
 impl<S: ChainstateStore> ManagedPeerNetwork<S> {
-    pub fn new(store: S, local_config: LocalPeerConfig, mempool_config: PolicyConfig) -> Self {
-        let chainstate = ManagedChainstate::from_store(store);
-        let mut peer_manager = PeerManager::new(local_config.clone());
-        peer_manager.seed_local_chain(&chainstate.chainstate().snapshot().active_chain);
-
-        Self {
-            chainstate,
-            mempool: ManagedMempool::new(mempool_config),
-            peer_manager,
-            orphanage: TxOrphanage::new(OrphanPolicy::default()),
-            known_peers: BTreeSet::new(),
-            inbound_admission_policy: default_inbound_admission_policy(),
-            inbound_admission_info: ManagedInboundAdmissionInfo::default(),
-            resource_governance_info: ManagedResourceGovernanceInfo::default(),
-            local_config,
-            blocks_by_hash: BTreeMap::new(),
-            transactions_by_txid: BTreeMap::new(),
-            transactions_by_wtxid: BTreeMap::new(),
-        }
-    }
-
-    pub fn with_sync_limits(
-        store: S,
-        local_config: LocalPeerConfig,
-        mempool_config: PolicyConfig,
-        max_blocks_in_flight_per_peer: usize,
-    ) -> Self {
-        let chainstate = ManagedChainstate::from_store(store);
-        let mut peer_manager = PeerManager::with_max_blocks_in_flight(
-            local_config.clone(),
-            max_blocks_in_flight_per_peer,
-        );
-        peer_manager.seed_local_chain(&chainstate.chainstate().snapshot().active_chain);
-
-        Self {
-            chainstate,
-            mempool: ManagedMempool::new(mempool_config),
-            peer_manager,
-            orphanage: TxOrphanage::new(OrphanPolicy::default()),
-            known_peers: BTreeSet::new(),
-            inbound_admission_policy: default_inbound_admission_policy(),
-            inbound_admission_info: ManagedInboundAdmissionInfo::default(),
-            resource_governance_info: ManagedResourceGovernanceInfo::default(),
-            local_config,
-            blocks_by_hash: BTreeMap::new(),
-            transactions_by_txid: BTreeMap::new(),
-            transactions_by_wtxid: BTreeMap::new(),
-        }
-    }
-
     #[rustfmt::skip]
     pub fn chainstate(&self) -> &ManagedChainstate<S> { &self.chainstate }
 
@@ -558,7 +510,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             match action {
                 PeerAction::Send(message) => outbound.push(message),
                 PeerAction::ServeInventory(requests) => {
-                    let (messages, missing) = self.serve_inventory(requests);
+                    let (messages, missing) = self.serve_inventory(peer_id, requests);
                     outbound.extend(messages);
                     if !missing.is_empty() {
                         outbound.push(WireNetworkMessage::NotFound(InventoryList::new(missing)));

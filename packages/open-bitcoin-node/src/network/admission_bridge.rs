@@ -15,7 +15,7 @@ use open_bitcoin_core::{
 use open_bitcoin_mempool::{AdmissionResult, MempoolOutcome};
 use open_bitcoin_network::{
     OrphanAction, OrphanReconsiderationCandidate, OrphanReconsiderationStatus, OrphanStageInput,
-    PeerAction, PeerId, TxRelayId, WireNetworkMessage,
+    PeerAction, PeerId, TxRelayId, TxServingRecordStatus, WireNetworkMessage,
 };
 
 use super::action_translation::process_transaction_relay_action;
@@ -164,8 +164,14 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             verify_flags,
             consensus_params,
         )?;
-        self.remove_stored_transactions(&result.replaced)?;
-        self.remove_stored_transactions(&result.evicted)?;
+        self.remove_stored_transactions_with_status(
+            &result.replaced,
+            TxServingRecordStatus::Replaced,
+        )?;
+        self.remove_stored_transactions_with_status(
+            &result.evicted,
+            TxServingRecordStatus::Evicted,
+        )?;
         self.store_transaction(transaction)?;
         Ok(result)
     }
@@ -259,9 +265,16 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         outcome: &MempoolOutcome,
         transaction: Transaction,
     ) -> Result<(), ManagedNetworkError> {
-        let mut removed = outcome.replaced().to_vec();
-        removed.extend_from_slice(outcome.evicted());
-        self.remove_stored_transactions(&removed)?;
+        let removed = outcome.replaced().to_vec();
+        self.remove_stored_transactions_with_status(&removed, TxServingRecordStatus::Replaced)?;
+        self.remove_stored_transactions_with_status(
+            outcome.evicted(),
+            TxServingRecordStatus::Evicted,
+        )?;
+        if matches!(outcome, MempoolOutcome::Replaced { .. }) {
+            self.relay_serving
+                .record_replaced(transaction.clone(), &removed)?;
+        }
         self.store_transaction(transaction)?;
         Ok(())
     }
@@ -272,7 +285,12 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     ) -> Result<(), ManagedNetworkError> {
         match outcome {
             MempoolOutcome::Evicted { txid, .. } | MempoolOutcome::Expired { txid, .. } => {
-                self.remove_stored_transactions(&[*txid])?;
+                let status = match outcome {
+                    MempoolOutcome::Evicted { .. } => TxServingRecordStatus::Evicted,
+                    MempoolOutcome::Expired { .. } => TxServingRecordStatus::Expired,
+                    _ => TxServingRecordStatus::Stale,
+                };
+                self.remove_stored_transactions_with_status(&[*txid], status)?;
             }
             MempoolOutcome::Accepted { .. }
             | MempoolOutcome::Rejected { .. }

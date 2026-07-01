@@ -582,10 +582,6 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     }
 }
 
-pub(super) const fn default_inbound_admission_policy() -> InboundAdmissionPolicy {
-    InboundAdmissionPolicy::new(usize::MAX, 0)
-}
-
 pub(super) fn is_active_inbound_peer(peer: &PeerState) -> bool {
     let Some(record) = peer.maybe_inbound_record.as_ref() else {
         return true;
