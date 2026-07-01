@@ -144,6 +144,11 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         self.orphanage.len()
     }
 
+    #[cfg(test)]
+    pub(super) fn with_orphan_policy(&mut self, policy: open_bitcoin_network::OrphanPolicy) {
+        self.orphanage = open_bitcoin_network::TxOrphanage::new(policy);
+    }
+
     pub fn submit_local_transaction(
         &mut self,
         transaction: Transaction,

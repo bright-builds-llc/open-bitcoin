@@ -42,6 +42,8 @@ use crate::{
     network::BlockConnectDisposition,
 };
 
+mod admission_bridge_cases;
+
 const EASY_BITS: u32 = 0x207f_ffff;
 
 fn script(bytes: &[u8]) -> ScriptBuf {

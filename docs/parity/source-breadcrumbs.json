@@ -758,6 +758,7 @@
         "packages/open-bitcoin-node/src/network/admission_bridge.rs",
         "packages/open-bitcoin-node/src/network/inbound.rs",
         "packages/open-bitcoin-node/src/network/inventory.rs",
+        "packages/open-bitcoin-node/src/network/tests/admission_bridge_cases.rs",
         "packages/open-bitcoin-node/src/network/tests.rs"
       ],
       "breadcrumbs": [
