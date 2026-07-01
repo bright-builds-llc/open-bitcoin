@@ -3,6 +3,10 @@
 // - packages/bitcoin-knots/src/node/txdownloadman_impl.cpp
 // - packages/bitcoin-knots/src/node/txdownloadman.h
 // - packages/bitcoin-knots/src/protocol.h
+// - packages/bitcoin-knots/src/txorphanage.cpp
+// - packages/bitcoin-knots/src/validation.cpp
+// - packages/bitcoin-knots/test/functional/p2p_orphan_handling.py
+// - packages/bitcoin-knots/test/functional/mempool_accept.py
 
 use open_bitcoin_network::{
     AddressDecisionLabel, BanDecision, EvictionDecision, InactivePermissionEffectLabel,

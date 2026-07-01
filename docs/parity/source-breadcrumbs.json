@@ -755,6 +755,7 @@
       "files": [
         "packages/open-bitcoin-node/src/network.rs",
         "packages/open-bitcoin-node/src/network/action_translation.rs",
+        "packages/open-bitcoin-node/src/network/admission_bridge.rs",
         "packages/open-bitcoin-node/src/network/inbound.rs",
         "packages/open-bitcoin-node/src/network/inventory.rs",
         "packages/open-bitcoin-node/src/network/tests.rs"
@@ -763,7 +764,11 @@
         "packages/bitcoin-knots/src/net_processing.cpp",
         "packages/bitcoin-knots/src/node/txdownloadman_impl.cpp",
         "packages/bitcoin-knots/src/node/txdownloadman.h",
-        "packages/bitcoin-knots/src/protocol.h"
+        "packages/bitcoin-knots/src/protocol.h",
+        "packages/bitcoin-knots/src/txorphanage.cpp",
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/test/functional/p2p_orphan_handling.py",
+        "packages/bitcoin-knots/test/functional/mempool_accept.py"
       ]
     },
     {

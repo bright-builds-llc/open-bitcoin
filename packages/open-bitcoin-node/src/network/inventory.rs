@@ -3,6 +3,10 @@
 // - packages/bitcoin-knots/src/node/txdownloadman_impl.cpp
 // - packages/bitcoin-knots/src/node/txdownloadman.h
 // - packages/bitcoin-knots/src/protocol.h
+// - packages/bitcoin-knots/src/txorphanage.cpp
+// - packages/bitcoin-knots/src/validation.cpp
+// - packages/bitcoin-knots/test/functional/p2p_orphan_handling.py
+// - packages/bitcoin-knots/test/functional/mempool_accept.py
 
 use open_bitcoin_core::{
     consensus::{transaction_txid, transaction_wtxid},
@@ -67,6 +71,20 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             .insert(wtxid, transaction.clone());
         self.peer_manager.note_local_transaction(&transaction)?;
         Ok((txid, wtxid))
+    }
+
+    pub(super) fn remove_stored_transactions(
+        &mut self,
+        txids: &[Txid],
+    ) -> Result<(), ManagedNetworkError> {
+        for txid in txids {
+            let Some(transaction) = self.transactions_by_txid.remove(txid) else {
+                continue;
+            };
+            let wtxid = transaction_wtxid(&transaction)?;
+            self.transactions_by_wtxid.remove(&wtxid);
+        }
+        Ok(())
     }
 
     pub(super) fn next_chain_work(&self) -> u128 {

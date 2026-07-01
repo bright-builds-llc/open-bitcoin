@@ -3,10 +3,15 @@
 // - packages/bitcoin-knots/src/node/txdownloadman_impl.cpp
 // - packages/bitcoin-knots/src/node/txdownloadman.h
 // - packages/bitcoin-knots/src/protocol.h
+// - packages/bitcoin-knots/src/txorphanage.cpp
+// - packages/bitcoin-knots/src/validation.cpp
+// - packages/bitcoin-knots/test/functional/p2p_orphan_handling.py
+// - packages/bitcoin-knots/test/functional/mempool_accept.py
 
 use std::collections::{BTreeMap, BTreeSet};
 
 mod action_translation;
+mod admission_bridge;
 mod header_sync;
 mod inbound;
 mod inventory;
@@ -17,15 +22,15 @@ use open_bitcoin_core::{
         AnchoredBlock, ChainPosition, ChainTransition, ChainstateError, ChainstateSnapshot,
     },
     codec::CodecError,
-    consensus::{ConsensusParams, ScriptVerifyFlags, block_hash, transaction_txid},
+    consensus::{ConsensusParams, ScriptVerifyFlags, block_hash},
     primitives::{Block, BlockHash, NetworkMagic, Transaction, Txid, Wtxid},
 };
-use open_bitcoin_mempool::{AdmissionResult, MempoolError, PolicyConfig};
+use open_bitcoin_mempool::{MempoolError, PolicyConfig};
 use open_bitcoin_network::{
     ConnectionRole, DisconnectReason, HeaderEntry, HeaderStore, HeaderSyncPolicy, HeadersMessage,
     InboundAdmissionPolicy, InboundResourceEvent, InventoryList, LocalAdvertisementDecision,
-    LocalPeerConfig, NetworkError, PROTOCOL_VERSION, ParsedNetworkMessage, PeerAction, PeerId,
-    PeerManager, WireNetworkMessage,
+    LocalPeerConfig, NetworkError, OrphanPolicy, PROTOCOL_VERSION, ParsedNetworkMessage,
+    PeerAction, PeerId, PeerManager, TxOrphanage, WireNetworkMessage,
 };
 
 use crate::{ChainstateStore, ManagedChainstate, ManagedMempool};
@@ -132,6 +137,7 @@ pub struct ManagedPeerNetwork<S> {
     chainstate: ManagedChainstate<S>,
     mempool: ManagedMempool,
     peer_manager: PeerManager,
+    orphanage: TxOrphanage,
     known_peers: BTreeSet<PeerId>,
     inbound_admission_policy: InboundAdmissionPolicy,
     inbound_admission_info: ManagedInboundAdmissionInfo,
@@ -152,6 +158,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             chainstate,
             mempool: ManagedMempool::new(mempool_config),
             peer_manager,
+            orphanage: TxOrphanage::new(OrphanPolicy::default()),
             known_peers: BTreeSet::new(),
             inbound_admission_policy: default_inbound_admission_policy(),
             inbound_admission_info: ManagedInboundAdmissionInfo::default(),
@@ -180,6 +187,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             chainstate,
             mempool: ManagedMempool::new(mempool_config),
             peer_manager,
+            orphanage: TxOrphanage::new(OrphanPolicy::default()),
             known_peers: BTreeSet::new(),
             inbound_admission_policy: default_inbound_admission_policy(),
             inbound_admission_info: ManagedInboundAdmissionInfo::default(),
@@ -401,22 +409,6 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         Ok(position)
     }
 
-    pub fn submit_local_transaction(
-        &mut self,
-        transaction: Transaction,
-        verify_flags: ScriptVerifyFlags,
-        consensus_params: ConsensusParams,
-    ) -> Result<AdmissionResult, ManagedNetworkError> {
-        let result = self.mempool.submit_transaction(
-            &self.chainstate,
-            transaction.clone(),
-            verify_flags,
-            consensus_params,
-        )?;
-        self.store_transaction(transaction)?;
-        Ok(result)
-    }
-
     pub fn announce_block(
         &self,
         peer_id: PeerId,
@@ -558,15 +550,21 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                     }
                 }
                 PeerAction::ReceivedTransaction(transaction) => {
-                    let txid = transaction_txid(&transaction)?;
-                    if !self.transactions_by_txid.contains_key(&txid) {
-                        self.mempool.submit_transaction(
-                            &self.chainstate,
-                            transaction.clone(),
-                            verify_flags,
-                            consensus_params,
-                        )?;
-                        self.store_transaction(transaction)?;
+                    let bridge = self.process_peer_transaction_admission(
+                        peer_id,
+                        transaction,
+                        timestamp,
+                        verify_flags,
+                        consensus_params,
+                    )?;
+                    let _outcome = bridge.outcome;
+                    let _reconsidered = bridge.reconsidered;
+                    for (target_peer_id, message) in bridge.targeted_outbound {
+                        if target_peer_id == peer_id {
+                            outbound.push(message);
+                        } else {
+                            targeted_outbound.push((target_peer_id, message));
+                        }
                     }
                 }
                 PeerAction::TransactionRelay(action) => {

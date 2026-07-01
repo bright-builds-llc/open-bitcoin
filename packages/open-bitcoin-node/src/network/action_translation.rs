@@ -3,6 +3,10 @@
 // - packages/bitcoin-knots/src/node/txdownloadman_impl.cpp
 // - packages/bitcoin-knots/src/node/txdownloadman.h
 // - packages/bitcoin-knots/src/protocol.h
+// - packages/bitcoin-knots/src/txorphanage.cpp
+// - packages/bitcoin-knots/src/validation.cpp
+// - packages/bitcoin-knots/test/functional/p2p_orphan_handling.py
+// - packages/bitcoin-knots/test/functional/mempool_accept.py
 
 use open_bitcoin_network::{
     InventoryList, PeerAction, PeerId, TxDownloadAction, WireNetworkMessage,
@@ -25,13 +29,10 @@ pub(super) fn process_transaction_relay_action(
 
 impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     pub fn disconnect_peer(&mut self, peer_id: PeerId) -> Result<(), ManagedNetworkError> {
-        self.peer_manager
-            .remove_peer_with_transaction_cleanup(peer_id, 0)?;
-        self.known_peers.remove(&peer_id);
-        Ok(())
+        self.disconnect_peer_at(peer_id, 0).map(|_| ())
     }
 
-    pub fn disconnect_peer_with_transaction_cleanup(
+    pub fn disconnect_peer_at(
         &mut self,
         peer_id: PeerId,
         now_unix_seconds: i64,
@@ -39,8 +40,17 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         let actions = self
             .peer_manager
             .remove_peer_with_transaction_cleanup(peer_id, now_unix_seconds)?;
+        self.orphanage.cleanup_peer(peer_id);
         self.known_peers.remove(&peer_id);
         Ok(transaction_relay_targeted_messages(actions))
+    }
+
+    pub fn disconnect_peer_with_transaction_cleanup(
+        &mut self,
+        peer_id: PeerId,
+        now_unix_seconds: i64,
+    ) -> ManagedResult<Vec<(PeerId, WireNetworkMessage)>> {
+        self.disconnect_peer_at(peer_id, now_unix_seconds)
     }
 
     pub fn expire_transaction_requests(
