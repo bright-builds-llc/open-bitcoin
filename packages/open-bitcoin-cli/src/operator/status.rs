@@ -16,6 +16,7 @@ use open_bitcoin_node::{
         BuildProvenance, ConfigStatus, FieldAvailability, HealthSignal, HealthSignalLevel,
         INBOUND_STATUS_UNAVAILABLE_REASON, MempoolStatus, NodeRuntimeState, NodeStatus,
         OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, WalletStatus,
+        relay_evidence::RelayEvidenceStatus,
     },
 };
 use open_bitcoin_rpc::method::{
@@ -322,6 +323,7 @@ fn collect_open_bitcoin_network_status(
         Ok(status) => status,
         Err(error) => OpenBitcoinNetworkStatusResponse {
             inbound: FieldAvailability::unavailable(inbound_status_unavailable_reason(&error)),
+            relay: RelayEvidenceStatus::default(),
             metrics: metrics_status(),
         },
     }

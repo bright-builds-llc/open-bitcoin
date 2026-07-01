@@ -187,6 +187,7 @@ pub(super) fn open_bitcoin_network_status(
 ) -> OpenBitcoinNetworkStatusResponse {
     OpenBitcoinNetworkStatusResponse {
         inbound: context.current_inbound_status(),
+        relay: context.relay_evidence_status(),
         metrics: context.metrics_status(),
     }
 }

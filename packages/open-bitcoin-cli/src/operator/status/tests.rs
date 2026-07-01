@@ -38,7 +38,7 @@ use open_bitcoin_node::status::{
     NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, ServiceLifecycleStatus,
     ServiceStatus, StayCurrentStatus, SyncAttemptCounters, SyncConfiguredTargets,
     SyncProgressSignal, SyncStatus, SyncStopReasonStatus, WalletFreshness, WalletScanProgress,
-    WalletStatus,
+    WalletStatus, relay_evidence::RelayEvidenceStatus,
 };
 use open_bitcoin_node::storage::FJALL_LOCK_FILE_NAME;
 use open_bitcoin_node::{MetricKind, MetricRetentionPolicy, MetricSample, MetricsStatus};
@@ -199,6 +199,7 @@ fn fake_live_rpc_maps_metrics_from_open_bitcoin_network_status() {
             inbound: FieldAvailability::<InboundPeerServingStatus>::unavailable(
                 INBOUND_STATUS_UNAVAILABLE_REASON,
             ),
+            relay: RelayEvidenceStatus::default(),
             metrics: MetricsStatus::available_with_samples(
                 MetricRetentionPolicy::default(),
                 vec![MetricSample::new(
@@ -1953,6 +1954,7 @@ impl FakeStatusRpcClient {
                 inbound: FieldAvailability::<InboundPeerServingStatus>::unavailable(
                     INBOUND_STATUS_UNAVAILABLE_REASON,
                 ),
+                relay: RelayEvidenceStatus::default(),
                 metrics: MetricsStatus::default(),
             }),
             maybe_wallet_error: None,
@@ -1991,6 +1993,7 @@ impl FakeStatusRpcClient {
                 inbound: FieldAvailability::<InboundPeerServingStatus>::unavailable(
                     INBOUND_STATUS_UNAVAILABLE_REASON,
                 ),
+                relay: RelayEvidenceStatus::default(),
                 metrics: MetricsStatus::default(),
             }),
             maybe_wallet_error: Some(error),
@@ -2046,6 +2049,7 @@ impl StatusRpcClient for FakeStatusRpcClient {
                 inbound: FieldAvailability::<InboundPeerServingStatus>::unavailable(
                     INBOUND_STATUS_UNAVAILABLE_REASON,
                 ),
+                relay: RelayEvidenceStatus::default(),
                 metrics: MetricsStatus::default(),
             }))
     }
@@ -2218,6 +2222,7 @@ fn inbound_status_response() -> OpenBitcoinNetworkStatusResponse {
                 "inbound resource governance evidence unavailable",
             ),
         }),
+        relay: RelayEvidenceStatus::default(),
         metrics: MetricsStatus::default(),
     }
 }

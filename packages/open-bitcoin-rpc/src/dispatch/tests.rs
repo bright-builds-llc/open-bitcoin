@@ -719,6 +719,22 @@ fn open_bitcoin_network_status_returns_available_inbound_evidence() {
         inbound["value"]["latest_peer_policy_decision"]["value"]["label"],
         json!("eviction_candidate_selected")
     );
+    assert_eq!(
+        status["relay"]["outcome_counters"]["state"],
+        json!("implemented")
+    );
+    assert_eq!(
+        status["relay"]["outcome_counters"]["value"]["accepted_count"],
+        json!(0)
+    );
+    assert_eq!(
+        status["relay"]["mempool_admission"]["state"],
+        json!("unavailable")
+    );
+    assert_eq!(
+        status["relay"]["public_relay"]["state"],
+        json!("intentionally_different")
+    );
 }
 
 #[test]
@@ -1205,6 +1221,11 @@ fn open_bitcoin_network_status_get_network_info_omits_open_bitcoin_inbound_statu
         "misbehavior_observations",
         "protected_no_actions",
         "latest_peer_policy_decision",
+        "outcome_counters",
+        "accepted_count",
+        "rebroadcast_deferred_count",
+        "public_relay",
+        "mempool_admission",
     ] {
         assert!(
             !serialized.contains(forbidden),
@@ -1247,6 +1268,8 @@ fn node_info_methods_return_documented_phase_8_fields() {
     assert_eq!(mempool["size"], json!(1));
     assert_eq!(mempool["total_fee_sats"], json!(1000));
     assert_eq!(mempool["loaded"], json!(true));
+    assert!(!network.to_string().contains("outcome_counters"));
+    assert!(!mempool.to_string().contains("outcome_counters"));
 }
 
 #[test]
@@ -2111,6 +2134,8 @@ fn sendrawtransaction_queues_internal_relay_evidence_without_propagation_claim()
     let transaction_hex = encode_hex(
         &encode_transaction(&transaction, TransactionEncoding::WithWitness).expect("encode"),
     );
+    let submitted_transaction_hex = transaction_hex.clone();
+    let expected_txid = encode_hex(transaction_txid(&transaction).expect("txid").as_bytes());
 
     // Act
     let success = dispatch(
@@ -2146,6 +2171,30 @@ fn sendrawtransaction_queues_internal_relay_evidence_without_propagation_claim()
             .collect::<Vec<_>>(),
         vec!["accepted", "queued", "rebroadcast_deferred"],
     );
+    let status = dispatch(
+        &mut context,
+        MethodCall::OpenBitcoinNetworkStatus(OpenBitcoinNetworkStatusRequest::default()),
+    )
+    .expect("network status");
+    assert_eq!(
+        status["relay"]["outcome_counters"]["value"]["accepted_count"],
+        json!(1)
+    );
+    assert_eq!(
+        status["relay"]["outcome_counters"]["value"]["rebroadcast_deferred_count"],
+        json!(1)
+    );
+    assert_eq!(
+        status["relay"]["local_submission"]["state"],
+        json!("implemented")
+    );
+    assert_eq!(
+        status["relay"]["rebroadcast"]["state"],
+        json!("implemented")
+    );
+    let status_json = serde_json::to_string(&status).expect("network status json");
+    assert!(!status_json.contains(&submitted_transaction_hex));
+    assert!(!status_json.contains(&expected_txid));
 }
 
 #[test]
