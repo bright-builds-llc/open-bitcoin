@@ -32,8 +32,8 @@ Requirements for the current milestone. Each requirement maps to exactly one roa
 
 ### Mempool Admission And Lifecycle
 
-- [ ] **MEM-01**: Peer and local transaction submissions flow through one stable mempool outcome contract for accepted, rejected, duplicate, replaced, orphaned, evicted, and expired states.
-- [ ] **MEM-02**: Mempool admission tests cover standardness, fees, RBF, ancestor/descendant limits, duplicate handling, and no partial mutation on rejection.
+- [x] **MEM-01**: Peer and local transaction submissions flow through one stable mempool outcome contract for accepted, rejected, duplicate, replaced, orphaned, evicted, and expired states.
+- [x] **MEM-02**: Mempool admission tests cover standardness, fees, RBF, ancestor/descendant limits, duplicate handling, and no partial mutation on rejection.
 - [ ] **MEM-03**: Mempool pressure and trimming behavior produce truthful relay-facing eviction, fee-floor, and capacity evidence, or explicitly document any deferred Knots parity gap.
 - [ ] **MEM-04**: Block connect removes confirmed and conflicting transactions from mempool and relay-serving caches.
 - [ ] **MEM-05**: Block disconnect or reorg handling reconsiders eligible disconnected transactions within the documented v2.0 boundary.
@@ -118,8 +118,8 @@ Explicitly excluded from v2.0 to prevent scope creep.
 | DL-03 | Phase 102 | Pending |
 | DL-04 | Phase 102 | Pending |
 | DL-05 | Phase 102 | Pending |
-| MEM-01 | Phase 102 | Pending |
-| MEM-02 | Phase 102 | Pending |
+| MEM-01 | Phase 102 | Complete |
+| MEM-02 | Phase 102 | Complete |
 | MEM-03 | Phase 103 | Pending |
 | MEM-04 | Phase 103 | Pending |
 | MEM-05 | Phase 103 | Pending |
