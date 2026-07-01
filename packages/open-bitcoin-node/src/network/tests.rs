@@ -44,6 +44,7 @@ use crate::{
 
 mod admission_bridge_cases;
 mod mempool_lifecycle_cases;
+mod relay_fanout_cases;
 mod relay_serving_cases;
 
 const EASY_BITS: u32 = 0x207f_ffff;

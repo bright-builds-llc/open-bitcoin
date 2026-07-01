@@ -17,6 +17,7 @@ mod inbound;
 mod inventory;
 mod mempool_lifecycle;
 mod peer_policy;
+mod relay_fanout;
 mod relay_serving;
 
 use open_bitcoin_core::{
@@ -148,6 +149,7 @@ pub struct ManagedPeerNetwork<S> {
     resource_governance_info: ManagedResourceGovernanceInfo,
     relay_activation: RelayActivationConfig,
     inbound_serving_enabled: bool,
+    relay_fanout: relay_fanout::ManagedRelayFanoutState,
     relay_serving: relay_serving::RelayServingCache,
     local_config: LocalPeerConfig,
     blocks_by_hash: BTreeMap<BlockHash, Block>,
@@ -524,7 +526,17 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                         verify_flags,
                         consensus_params,
                     )?;
-                    let _outcome = bridge.outcome;
+                    for (target_peer_id, message) in self.record_relay_fanout_for_outcome(
+                        Some(peer_id),
+                        &bridge.outcome,
+                        timestamp,
+                    ) {
+                        if target_peer_id == peer_id {
+                            outbound.push(message);
+                        } else {
+                            targeted_outbound.push((target_peer_id, message));
+                        }
+                    }
                     let _reconsidered = bridge.reconsidered;
                     for (target_peer_id, message) in bridge.targeted_outbound {
                         if target_peer_id == peer_id {

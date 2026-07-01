@@ -367,6 +367,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             resource_governance_info: ManagedResourceGovernanceInfo::default(),
             relay_activation,
             inbound_serving_enabled,
+            relay_fanout: super::relay_fanout::ManagedRelayFanoutState::default(),
             relay_serving: RelayServingCache::default(),
             local_config,
             blocks_by_hash: BTreeMap::new(),

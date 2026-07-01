@@ -90,6 +90,9 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             let wtxid = transaction_wtxid(&transaction)?;
             self.transactions_by_wtxid.remove(&wtxid);
         }
+        if let Some(reason) = super::relay_fanout::cleanup_reason_for_serving_status(status) {
+            self.relay_fanout.cleanup_transactions(txids, reason);
+        }
         self.relay_serving.remove_transactions(txids, status)?;
         Ok(())
     }

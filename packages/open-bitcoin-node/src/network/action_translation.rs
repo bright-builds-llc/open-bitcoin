@@ -41,6 +41,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             .peer_manager
             .remove_peer_with_transaction_cleanup(peer_id, now_unix_seconds)?;
         self.orphanage.cleanup_peer(peer_id);
+        self.relay_fanout.cleanup_peer(peer_id);
         self.known_peers.remove(&peer_id);
         Ok(transaction_relay_targeted_messages(actions))
     }
