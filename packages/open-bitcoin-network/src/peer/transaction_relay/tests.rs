@@ -15,6 +15,7 @@ use open_bitcoin_primitives::{Hash32, InventoryType, InventoryVector, Txid, Wtxi
 
 use super::*;
 
+mod fanout_cases;
 mod orphanage_cases;
 mod scheduler_cases;
 mod serving_cases;
@@ -467,4 +468,29 @@ fn tx_serving_policy_reports_low_cardinality_outcomes() {
 #[test]
 fn tx_serving_policy_rejects_identity_mismatch_and_non_transaction_inventory() {
     serving_cases::tx_serving_policy_rejects_identity_mismatch_and_non_transaction_inventory();
+}
+
+#[test]
+fn tx_fanout_policy_honors_identity_and_limits() {
+    fanout_cases::tx_fanout_policy_honors_identity_and_limits();
+}
+
+#[test]
+fn tx_fanout_policy_suppresses_origin_and_ineligible_peers() {
+    fanout_cases::tx_fanout_policy_suppresses_origin_and_ineligible_peers();
+}
+
+#[test]
+fn tx_fanout_policy_reports_rebroadcast_deferred_without_timer() {
+    fanout_cases::tx_fanout_policy_reports_rebroadcast_deferred_without_timer();
+}
+
+#[test]
+fn tx_fanout_policy_covers_fixed_labels_and_suppression_edges() {
+    fanout_cases::tx_fanout_policy_covers_fixed_labels_and_suppression_edges();
+}
+
+#[test]
+fn tx_fanout_policy_cleans_up_duplicates_and_empty_state() {
+    fanout_cases::tx_fanout_policy_cleans_up_duplicates_and_empty_state();
 }

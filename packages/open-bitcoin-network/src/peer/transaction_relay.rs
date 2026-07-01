@@ -15,11 +15,18 @@ use open_bitcoin_primitives::{Hash32, InventoryType, InventoryVector, Txid, Wtxi
 
 use crate::error::PeerId;
 
+mod fanout;
 mod scheduler;
 mod serving;
 
 pub mod orphanage;
 
+pub use fanout::{
+    PHASE104_MAX_TX_FANOUT_DRAIN_PER_PEER, PHASE104_MAX_TX_FANOUT_QUEUE_PER_PEER,
+    PHASE104_TX_FANOUT_MIN_INTERVAL_SECONDS, TxFanoutAction, TxFanoutAdmission,
+    TxFanoutAdmissionOutcome, TxFanoutCleanupReason, TxFanoutPeerInput, TxFanoutPolicy,
+    TxFanoutQueue, TxFanoutSnapshot, TxFanoutSuppressionReason, defer_local_rebroadcast,
+};
 pub use orphanage::{
     OrphanAction, OrphanEvidenceLabel, OrphanPolicy, OrphanReconsiderationCandidate,
     OrphanReconsiderationStatus, OrphanStageInput, PHASE102_MAX_ORPHAN_TRANSACTIONS,

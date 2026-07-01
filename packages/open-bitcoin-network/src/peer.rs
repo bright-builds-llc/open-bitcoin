@@ -7,13 +7,12 @@
 // - packages/bitcoin-knots/test/functional/p2p_handshake.py
 // - packages/bitcoin-knots/test/functional/p2p_initial_headers_sync.py
 
-use std::collections::{BTreeMap, BTreeSet};
-
 use open_bitcoin_chainstate::ChainPosition;
 use open_bitcoin_consensus::{block_hash, check_block_header, transaction_txid, transaction_wtxid};
 use open_bitcoin_primitives::{
     Block, BlockHash, BlockHeader, InventoryType, InventoryVector, Transaction, Txid, Wtxid,
 };
+use std::collections::{BTreeMap, BTreeSet};
 
 use crate::address::{
     GetAddrRequestState, GetAddrResponseDecision, LearnedAddressBook, LearnedAddressDecision,
@@ -45,12 +44,15 @@ pub use transaction_relay::{
     PHASE101_NONPREF_PEER_TX_DELAY_SECONDS, PHASE101_OVERLOADED_PEER_TX_DELAY_SECONDS,
     PHASE101_TXID_RELAY_DELAY_SECONDS, PHASE102_MAX_ORPHAN_TRANSACTIONS,
     PHASE102_MAX_ORPHANS_PER_PEER, PHASE102_MAX_RECONSIDERATIONS_PER_PARENT,
-    PHASE102_ORPHAN_TTL_SECONDS, TxAnnouncementInput, TxDownloadAction, TxDownloadLocalFacts,
-    TxDownloadPolicy, TxDownloadScheduler, TxDownloadSnapshot, TxDownloadSuppressionReason,
-    TxOrphanage, TxPeerRequestSnapshot, TxRelayId, TxRelayIdentityError, TxRelayPeerMode,
-    TxServeDecision, TxServeOutcomeLabel, TxServingRecordStatus, classify_tx_serve_request,
+    PHASE102_ORPHAN_TTL_SECONDS, PHASE104_MAX_TX_FANOUT_DRAIN_PER_PEER,
+    PHASE104_MAX_TX_FANOUT_QUEUE_PER_PEER, PHASE104_TX_FANOUT_MIN_INTERVAL_SECONDS,
+    TxAnnouncementInput, TxDownloadAction, TxDownloadLocalFacts, TxDownloadPolicy,
+    TxDownloadScheduler, TxDownloadSnapshot, TxDownloadSuppressionReason, TxFanoutAction,
+    TxFanoutAdmission, TxFanoutAdmissionOutcome, TxFanoutCleanupReason, TxFanoutPeerInput,
+    TxFanoutPolicy, TxFanoutQueue, TxFanoutSnapshot, TxFanoutSuppressionReason, TxOrphanage,
+    TxPeerRequestSnapshot, TxRelayId, TxRelayIdentityError, TxRelayPeerMode, TxServeDecision,
+    TxServeOutcomeLabel, TxServingRecordStatus, classify_tx_serve_request, defer_local_rebroadcast,
 };
-
 pub const DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER: usize = 128;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
