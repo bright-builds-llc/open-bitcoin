@@ -110,23 +110,26 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             wtxid: Wtxid::from(Hash32::from(accepted_parent)),
             evicted: Vec::new(),
         });
-        let actions = self
+        let mut actions = self
             .orphanage
             .reconsider_after_parent(TxRelayId::Txid(accepted_parent), timestamp);
 
-        for action in actions {
-            match action {
-                OrphanAction::Reconsider { candidate, .. } => {
-                    self.reconsider_child(
-                        candidate,
-                        timestamp,
-                        verify_flags,
-                        consensus_params,
-                        &mut result,
-                    )?;
+        while !actions.is_empty() {
+            for action in actions {
+                match action {
+                    OrphanAction::Reconsider { candidate, .. } => {
+                        self.reconsider_child(
+                            candidate,
+                            timestamp,
+                            verify_flags,
+                            consensus_params,
+                            &mut result,
+                        )?;
+                    }
+                    other => self.apply_orphan_action(other, timestamp, &mut result)?,
                 }
-                other => self.apply_orphan_action(other, timestamp, &mut result)?,
             }
+            actions = self.orphanage.drain_pending_reconsiderations(timestamp);
         }
 
         Ok(result)

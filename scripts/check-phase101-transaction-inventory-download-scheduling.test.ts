@@ -423,7 +423,7 @@ function transactionRelayTestsText(): string {
     "fn timeout_expires_request_and_falls_back_to_duplicate_announcer() {}",
     "fn notfound_clears_matching_request_and_falls_back() {}",
     "fn disconnect_cleanup_removes_peer_state_and_falls_back() {}",
-    "fn received_transaction_cleanup_marks_txid_and_wtxid_already_have() {}",
+    "fn received_transaction_cleanup_waits_for_admission_before_already_have() {}",
   ].join("\n");
 }
 
@@ -461,7 +461,7 @@ function peerTestsText(): string {
     "fn peer_manager_transaction_relay_duplicate_inv_suppresses_second_getdata_but_keeps_fallback() {}",
     "fn peer_manager_transaction_relay_already_have_and_recent_reject_suppress_requests() {}",
     "fn peer_manager_transaction_relay_notfound_timeout_and_disconnect_cleanup_fallback() {}",
-    "fn peer_manager_transaction_relay_received_transaction_cleanup_marks_both_identities() {}",
+    "fn peer_manager_transaction_relay_received_transaction_cleanup_waits_for_admission() {}",
   ].join("\n");
 }
 

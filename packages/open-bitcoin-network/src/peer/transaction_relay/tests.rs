@@ -404,8 +404,8 @@ fn duplicate_announcement_retains_fallback_candidate_without_second_request() {
 }
 
 #[test]
-fn orphan_parent_request_suppresses_duplicate_pending_parent() {
-    scheduler_cases::orphan_parent_request_suppresses_duplicate_pending_parent();
+fn orphan_parent_request_suppresses_duplicate_pending_parent_with_fallback() {
+    scheduler_cases::orphan_parent_request_suppresses_duplicate_pending_parent_with_fallback();
 }
 
 #[test]
@@ -454,6 +454,6 @@ fn disconnect_cleanup_removes_peer_state_and_falls_back() {
 }
 
 #[test]
-fn received_transaction_cleanup_marks_txid_and_wtxid_already_have() {
-    scheduler_cases::received_transaction_cleanup_marks_txid_and_wtxid_already_have();
+fn received_transaction_cleanup_waits_for_admission_before_already_have() {
+    scheduler_cases::received_transaction_cleanup_waits_for_admission_before_already_have();
 }

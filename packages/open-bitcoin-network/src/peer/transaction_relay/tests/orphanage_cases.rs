@@ -214,21 +214,29 @@ fn parent_acceptance_reconsiders_ready_children_with_work_cap() {
     let _ = orphanage.stage_missing_parent(orphan_input(1, 52, 2, [7], 0));
 
     // Act
-    let actions = orphanage.reconsider_after_parent(TxRelayId::Txid(txid(7)), 1);
+    let first_batch = orphanage.reconsider_after_parent(TxRelayId::Txid(txid(7)), 1);
+    let second_batch = orphanage.drain_pending_reconsiderations(2);
 
     // Assert
-    assert_eq!(actions.len(), 2);
+    assert_eq!(first_batch.len(), 2);
     assert!(matches!(
-        &actions[0],
+        &first_batch[0],
         OrphanAction::Reconsider { candidate, label }
             if candidate.wtxid == wtxid(1)
                 && candidate.missing_parents.is_empty()
                 && *label == OrphanEvidenceLabel::OrphanReconsidered
     ));
     assert!(matches!(
-        &actions[1],
+        &first_batch[1],
         OrphanAction::Reconsider { candidate, label }
             if candidate.wtxid == wtxid(2)
+                && candidate.missing_parents.is_empty()
+                && *label == OrphanEvidenceLabel::OrphanReconsidered
+    ));
+    assert!(matches!(
+        &second_batch[..],
+        [OrphanAction::Reconsider { candidate, label }]
+            if candidate.wtxid == wtxid(3)
                 && candidate.missing_parents.is_empty()
                 && *label == OrphanEvidenceLabel::OrphanReconsidered
     ));

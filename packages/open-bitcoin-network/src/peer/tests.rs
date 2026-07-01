@@ -1432,7 +1432,7 @@ fn peer_manager_transaction_relay_notfound_timeout_and_disconnect_cleanup_fallba
 }
 
 #[test]
-fn peer_manager_transaction_relay_received_transaction_cleanup_marks_both_identities() {
+fn peer_manager_transaction_relay_received_transaction_cleanup_waits_for_admission() {
     // Arrange
     let mut manager = PeerManager::new(local_config());
     for peer_id in 215..=217 {
@@ -1462,14 +1462,14 @@ fn peer_manager_transaction_relay_received_transaction_cleanup_marks_both_identi
             WireNetworkMessage::Inv(transaction_relay_inventory(TxRelayId::Txid(txid))),
             4,
         )
-        .expect("txid already-have inventory");
+        .expect("txid inventory after receipt");
     let wtxid_again = manager
         .handle_message(
             217,
             WireNetworkMessage::Inv(transaction_relay_inventory(TxRelayId::Wtxid(wtxid))),
             5,
         )
-        .expect("wtxid already-have inventory");
+        .expect("wtxid inventory after receipt");
 
     // Assert
     assert_eq!(
@@ -1486,7 +1486,7 @@ fn peer_manager_transaction_relay_received_transaction_cleanup_marks_both_identi
     assert_eq!(
         txid_again,
         vec![PeerAction::TransactionRelay(
-            TxDownloadAction::SuppressAlreadyHave {
+            TxDownloadAction::RequestGetData {
                 peer_id: 216,
                 relay_id: TxRelayId::Txid(txid),
             },
@@ -1495,7 +1495,7 @@ fn peer_manager_transaction_relay_received_transaction_cleanup_marks_both_identi
     assert_eq!(
         wtxid_again,
         vec![PeerAction::TransactionRelay(
-            TxDownloadAction::SuppressAlreadyHave {
+            TxDownloadAction::RequestGetData {
                 peer_id: 217,
                 relay_id: TxRelayId::Wtxid(wtxid),
             },

@@ -104,11 +104,19 @@ fn low_fee_spend(previous_txid: Txid) -> Transaction {
 }
 
 fn test_orphan_policy(max_total_orphans: usize, max_orphans_per_peer: usize) -> OrphanPolicy {
+    test_orphan_policy_with_reconsideration_cap(max_total_orphans, max_orphans_per_peer, 8)
+}
+
+fn test_orphan_policy_with_reconsideration_cap(
+    max_total_orphans: usize,
+    max_orphans_per_peer: usize,
+    max_reconsiderations_per_parent: usize,
+) -> OrphanPolicy {
     OrphanPolicy {
         max_total_orphans,
         max_orphans_per_peer,
         orphan_ttl_seconds: 1,
-        max_reconsiderations_per_parent: 8,
+        max_reconsiderations_per_parent,
     }
 }
 
@@ -217,6 +225,53 @@ fn managed_admission_bridge_parent_acceptance_reconsiders_child() {
     assert_eq!(network.orphan_count(), 0);
     assert_mempool_contains(&network, parent_txid);
     assert_mempool_contains(&network, child_txid);
+}
+
+#[test]
+fn managed_admission_bridge_drains_ready_orphans_after_reconsideration_cap() {
+    // Arrange
+    let (mut network, coinbase_txids) = network_with_chain(620, 2, PolicyConfig::default());
+    network.with_orphan_policy(test_orphan_policy_with_reconsideration_cap(10, 10, 1));
+    network.add_inbound_peer(620).expect("peer");
+    let parent = spend_transaction(coinbase_txids[0], 499_999_000);
+    let parent_txid = txid(&parent);
+    let children = vec![
+        spend_transaction(parent_txid, 499_998_000),
+        spend_transaction(parent_txid, 499_997_000),
+        spend_transaction(parent_txid, 499_996_000),
+    ];
+    let child_txids: Vec<_> = children.iter().map(txid).collect();
+    for (index, child) in children.into_iter().enumerate() {
+        network
+            .process_peer_transaction_admission(
+                620,
+                child,
+                20 + index as i64,
+                verify_flags(),
+                consensus_params(),
+            )
+            .expect("stage child");
+    }
+    assert_eq!(network.orphan_count(), 3);
+
+    // Act
+    let result = network
+        .process_peer_transaction_admission(620, parent, 30, verify_flags(), consensus_params())
+        .expect("accept parent");
+
+    // Assert
+    assert!(matches!(result.outcome, MempoolOutcome::Accepted { txid, .. } if txid == parent_txid));
+    for child_txid in child_txids {
+        assert!(
+            result
+                .reconsidered
+                .iter()
+                .any(|outcome| outcome.txid() == child_txid),
+            "missing reconsidered outcome for child {child_txid:?}"
+        );
+    }
+    assert_eq!(result.reconsidered.len(), 3);
+    assert_eq!(network.orphan_count(), 0);
 }
 
 #[test]

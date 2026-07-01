@@ -257,8 +257,6 @@ impl PeerManager {
         }
         let txid = transaction_txid(&transaction)?;
         let wtxid = transaction_wtxid(&transaction)?;
-        self.known_txids.insert(txid);
-        self.known_wtxids.insert(wtxid);
 
         let transaction_actions = self
             .tx_download

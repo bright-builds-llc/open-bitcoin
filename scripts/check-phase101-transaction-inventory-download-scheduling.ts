@@ -97,7 +97,7 @@ const REQUIRED_BEHAVIOR_TESTS = [
   "timeout_expires_request_and_falls_back_to_duplicate_announcer",
   "notfound_clears_matching_request_and_falls_back",
   "disconnect_cleanup_removes_peer_state_and_falls_back",
-  "received_transaction_cleanup_marks_txid_and_wtxid_already_have",
+  "received_transaction_cleanup_waits_for_admission_before_already_have",
   "peer_manager_transaction_relay",
   "managed_network_transaction_relay",
 ] as const;

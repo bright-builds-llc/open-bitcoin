@@ -40,6 +40,33 @@ fn duplicate_fallback_candidate_respects_peer_candidate_cap() {
 }
 
 #[test]
+fn duplicate_orphan_parent_fallback_candidate_respects_peer_candidate_cap() {
+    // Arrange
+    let mut scheduler = scheduler();
+    let relay_id = txid_relay(45);
+    let _ = scheduler.request_parent(45, relay_id, 0, TxDownloadLocalFacts::default());
+    for byte in 46..49 {
+        assert!(
+            scheduler
+                .record_announcement(not_preferred(announcement(
+                    46,
+                    txid_inventory(byte),
+                    TxRelayPeerMode::TxidOnly,
+                    1,
+                )))
+                .is_empty()
+        );
+    }
+
+    // Act
+    let actions = scheduler.request_parent(46, relay_id, 2, TxDownloadLocalFacts::default());
+
+    // Assert
+    assert_eq!(actions, [duplicate(46, relay_id)]);
+    assert_eq!(scheduler.peer_snapshot(46).candidate_count, 3);
+}
+
+#[test]
 fn notfound_missing_or_wrong_peer_is_noop() {
     // Arrange
     let mut scheduler = scheduler();

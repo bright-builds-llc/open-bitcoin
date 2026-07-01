@@ -228,12 +228,25 @@ impl TxOrphanage {
             }
         }
 
+        actions.extend(self.drain_reconsideration_batch());
+
+        actions
+    }
+
+    pub fn drain_pending_reconsiderations(&mut self, now_unix_seconds: i64) -> Vec<OrphanAction> {
+        let mut actions = self.expire(now_unix_seconds);
+        actions.extend(self.drain_reconsideration_batch());
+        actions
+    }
+
+    fn drain_reconsideration_batch(&mut self) -> Vec<OrphanAction> {
         let ready: Vec<_> = self
             .pending_reconsideration
             .iter()
             .copied()
             .take(self.policy.max_reconsiderations_per_parent)
             .collect();
+        let mut actions = Vec::new();
         for wtxid in ready {
             self.pending_reconsideration.remove(&wtxid);
             if let Some(entry) = self.orphans.get(&wtxid) {

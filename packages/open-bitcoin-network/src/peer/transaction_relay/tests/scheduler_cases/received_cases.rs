@@ -13,7 +13,7 @@
 
 use super::*;
 
-pub(super) fn received_transaction_cleanup_marks_txid_and_wtxid_already_have() {
+pub(super) fn received_transaction_cleanup_waits_for_admission_before_already_have() {
     // Arrange
     let mut scheduler = scheduler();
     let txid = txid(22);
@@ -55,10 +55,7 @@ pub(super) fn received_transaction_cleanup_marks_txid_and_wtxid_already_have() {
             wtxid,
         }],
     );
-    assert_eq!(scheduler.snapshot().already_have_count, 2);
-    assert_eq!(txid_again, [expect_already_have(24, TxRelayId::Txid(txid))]);
-    assert_eq!(
-        wtxid_again,
-        [expect_already_have(25, TxRelayId::Wtxid(wtxid))]
-    );
+    assert_eq!(scheduler.snapshot().already_have_count, 0);
+    assert_eq!(txid_again, [request(24, TxRelayId::Txid(txid))]);
+    assert_eq!(wtxid_again, [request(25, TxRelayId::Wtxid(wtxid))]);
 }

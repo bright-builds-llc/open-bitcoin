@@ -154,6 +154,11 @@ impl TxDownloadScheduler {
         }
 
         if self.has_pending_relay(relay_id) {
+            self.record_orphan_parent_fallback_candidate_if_allowed(
+                relay_id,
+                peer_id,
+                now_unix_seconds,
+            );
             return vec![TxDownloadAction::SuppressDuplicate { peer_id, relay_id }];
         }
 
@@ -234,8 +239,8 @@ impl TxDownloadScheduler {
             }];
         }
 
-        self.mark_already_have(txid_relay_id);
-        self.mark_already_have(wtxid_relay_id);
+        self.clear_pending_relay(txid_relay_id);
+        self.clear_pending_relay(wtxid_relay_id);
         vec![TxDownloadAction::ReceivedTxCleanup {
             peer_id,
             txid,
@@ -368,6 +373,19 @@ impl TxDownloadScheduler {
         );
     }
 
+    fn record_orphan_parent_fallback_candidate_if_allowed(
+        &mut self,
+        relay_id: TxRelayId,
+        peer_id: PeerId,
+        now_unix_seconds: i64,
+    ) {
+        if self.peer_total_count(peer_id) >= self.policy.max_announcements_per_peer {
+            return;
+        }
+
+        self.insert_candidate(relay_id, peer_id, now_unix_seconds, true);
+    }
+
     fn peer_is_at_request_cap(&self, peer_id: PeerId) -> bool {
         self.peer_in_flight_count(peer_id) >= self.policy.max_in_flight_per_peer
             || self.peer_total_count(peer_id) >= self.policy.max_announcements_per_peer
@@ -400,6 +418,11 @@ impl TxDownloadScheduler {
                     .saturating_add(self.policy.getdata_tx_interval_seconds),
             },
         );
+    }
+
+    fn clear_pending_relay(&mut self, relay_id: TxRelayId) {
+        self.announcements.remove(&relay_id);
+        self.in_flight.remove(&relay_id);
     }
 
     fn schedule_ready_candidates(&mut self, now_unix_seconds: i64) -> Vec<TxDownloadAction> {
