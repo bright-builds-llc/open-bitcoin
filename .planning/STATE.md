@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Transaction Relay and Mempool Participation Boundary
 status: executing
-stopped_at: Completed 105-02-PLAN.md
-last_updated: "2026-07-02T00:52:00.251Z"
+stopped_at: Completed 105-03-PLAN.md
+last_updated: "2026-07-02T01:19:32.000Z"
 last_activity: 2026-07-02
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 22
-  completed_plans: 20
-  percent: 91
+  completed_plans: 21
+  percent: 95
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: `.planning/PROJECT.md` (updated 2026-06-29)
 
 Milestone: v2.0 Transaction Relay and Mempool Participation Boundary
 Phase: 105 (Operator, RPC, Metrics, Logs, and Support Evidence) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-07-02
 
-Progress: [#########-] 91% milestone plan progress; Phase 105 plan 3 of 4 is ready to execute
+Progress: [#########-] 95% milestone plan progress; Phase 105 plan 4 of 4 is ready to execute
 
 ## Performance Metrics
 
@@ -50,7 +50,7 @@ Progress: [#########-] 91% milestone plan progress; Phase 105 plan 3 of 4 is rea
 | 102 | Orphan Handling and Admission Outcome Bridge | DL-03, DL-04, DL-05, MEM-01, MEM-02 | Complete |
 | 103 | Mempool Chainstate Lifecycle and Durable Recovery | MEM-03, MEM-04, MEM-05, MEM-06 | Complete |
 | 104 | Relay Serving, Fanout, and Rebroadcast Policy | REL-01, REL-02, REL-03, REL-04 | Complete |
-| 105 | Operator, RPC, Metrics, Logs, and Support Evidence | OBS-01, OBS-02, OBS-03, OBS-04 | In Progress (2/4) |
+| 105 | Operator, RPC, Metrics, Logs, and Support Evidence | OBS-01, OBS-02, OBS-03, OBS-04 | In Progress (3/4) |
 | 106 | Parity Traceability, UAT, and Release Boundary Guardrails | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05 | Pending |
 
 **Recent Trend:**
@@ -71,6 +71,7 @@ Progress: [#########-] 91% milestone plan progress; Phase 105 plan 3 of 4 is rea
 - Phase 102 completed bounded orphan handling, the shared mempool admission outcome bridge, clean code review, deterministic checker hardening, and passed verification.
 - Phase 103 completed mempool pressure truth, block-connect cleanup, bounded reorg reconsideration, durable mempool snapshot recovery, parity roots, deterministic checker coverage, and passed verification.
 - Phase 104 completed relay serving classification, managed `getdata` serving, fanout queues, local submission relay evidence, explicit `rebroadcast_deferred` evidence, parity roots, deterministic checker coverage, and passed verification.
+- Phase 105 Plan 105-03 completed support-bundle relay and mempool evidence rendering from the shared sanitized projection, relay-specific redaction coverage for OBS-04, and passed verification.
 
 | Phase 91-peer-permissions-and-connection-classes P01 | 27min | 2 tasks | 5 files |
 | Phase 91 P02 | 34min | 2 tasks | 13 files |
@@ -106,6 +107,7 @@ Progress: [#########-] 91% milestone plan progress; Phase 105 plan 3 of 4 is rea
 | Phase 102 P04 | 40m 19s | 3 tasks | 9 files |
 | Phase 105 P01 | 1h 16m | 3 tasks | 16 files |
 | Phase 105 P02 | 1h 7m | 4 tasks | 22 files |
+| Phase 105 P03 | 27m | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -210,7 +212,7 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ### Pending Todos
 
-- Discuss and plan Phase 105 for operator, RPC, metrics, logs, and support evidence over the implemented relay serving/fanout state.
+- Complete Phase 105 Plan 105-04 for docs, parity records, the deterministic Phase 105 checker, final verification evidence, and phase closeout.
 - Keep v1.9 phase directories numbered 90+ under `.planning/phases/`; historical phase directories remain tracked because verifier scripts still depend on selected phase evidence.
 - Keep repo-local Cargo and Bazel command forms in UAT guidance:
   - `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- ...`
@@ -227,6 +229,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-07-02T00:52:00.247Z
-Stopped at: Completed 105-02-PLAN.md
+Last session: 2026-07-02T01:19:32.000Z
+Stopped at: Completed 105-03-PLAN.md
 Resume file: None
