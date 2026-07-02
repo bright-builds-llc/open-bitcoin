@@ -43,6 +43,19 @@ pub const INBOUND_DASHBOARD_METRIC_CANDIDATES: [MetricKind; 23] = [
     MetricKind::InboundReconnectSuppressedCount,
 ];
 
+pub const RELAY_DASHBOARD_METRIC_CANDIDATES: [MetricKind; 10] = [
+    MetricKind::RelayAcceptedCount,
+    MetricKind::RelayRejectedCount,
+    MetricKind::RelayOrphanedCount,
+    MetricKind::RelayRequestedCount,
+    MetricKind::RelayServedCount,
+    MetricKind::RelayAnnouncedCount,
+    MetricKind::RelaySuppressedCount,
+    MetricKind::RelayEvictedCount,
+    MetricKind::RelayExpiredCount,
+    MetricKind::RelayRebroadcastDeferredCount,
+];
+
 const OPTIONAL_DASHBOARD_METRIC_KINDS: [MetricKind; 3] = [
     MetricKind::MempoolTransactions,
     MetricKind::DiskUsageBytes,
@@ -51,13 +64,13 @@ const OPTIONAL_DASHBOARD_METRIC_KINDS: [MetricKind; 3] = [
 
 pub(super) fn dashboard_metric_kinds(snapshot: &OpenBitcoinStatusSnapshot) -> Vec<MetricKind> {
     let mut kinds = DASHBOARD_METRIC_KINDS.to_vec();
-    let retained_inbound = retained_inbound_metric_kinds(snapshot);
-    for (slot_kind, inbound_kind) in OPTIONAL_DASHBOARD_METRIC_KINDS
+    let retained_optional = retained_inbound_metric_kinds(snapshot);
+    for (slot_kind, optional_kind) in OPTIONAL_DASHBOARD_METRIC_KINDS
         .into_iter()
-        .zip(retained_inbound)
+        .zip(retained_optional)
     {
         if let Some(slot) = kinds.iter_mut().find(|kind| **kind == slot_kind) {
-            *slot = inbound_kind;
+            *slot = optional_kind;
         }
     }
 
@@ -77,6 +90,7 @@ pub(super) fn dashboard_metric_kinds(snapshot: &OpenBitcoinStatusSnapshot) -> Ve
 fn retained_inbound_metric_kinds(snapshot: &OpenBitcoinStatusSnapshot) -> Vec<MetricKind> {
     INBOUND_DASHBOARD_METRIC_CANDIDATES
         .into_iter()
+        .chain(RELAY_DASHBOARD_METRIC_CANDIDATES)
         .filter(|kind| {
             snapshot
                 .metrics

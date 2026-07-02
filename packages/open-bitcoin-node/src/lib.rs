@@ -33,6 +33,7 @@ pub use logging::{LogRetentionPolicy, LogStatus};
 pub use mempool::ManagedMempool;
 pub use metrics::{
     MetricKind, MetricRetentionPolicy, MetricSample, MetricsStatus, inbound_metric_samples,
+    relay_metric_samples,
 };
 pub use network::{
     ManagedAddressBoundaryInfo, ManagedInboundAdmissionInfo, ManagedInboundPermissionDecisionInfo,

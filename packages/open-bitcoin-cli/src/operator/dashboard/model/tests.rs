@@ -19,6 +19,7 @@ use open_bitcoin_node::{
         SyncRecoveryCategory, SyncReorgEvidence, SyncResourcePressure, SyncStatus,
         SyncStopReasonStatus, TipFreshnessStatus, WalletFreshness, WalletStatus,
         inbound_status_unavailable,
+        relay_evidence::{RelayEvidenceCounters, RelayEvidenceStatus},
     },
 };
 
@@ -54,8 +55,14 @@ fn dashboard_projection_includes_required_sections_and_charts() {
     assert_eq!(state.charts.len(), DASHBOARD_METRIC_KINDS.len());
     assert!(state.actions.iter().any(|action| action.destructive));
     let wallet_rows = &state.sections[2].rows;
-    assert_eq!(wallet_rows[2].label, "Freshness");
-    assert_eq!(wallet_rows[2].value, "fresh");
+    assert_eq!(
+        wallet_rows
+            .iter()
+            .find(|row| row.label == "Freshness")
+            .expect("freshness row")
+            .value,
+        "fresh"
+    );
 }
 
 #[test]
@@ -74,6 +81,8 @@ fn dashboard_metric_labels_cover_all_metric_kinds() {
     assert!(labels.contains(&"Inbound permission validation failures"));
     assert!(labels.contains(&"Inbound payload rejects"));
     assert!(labels.contains(&"Inbound reconnect suppressions"));
+    assert!(labels.contains(&"Relay accepted"));
+    assert!(labels.contains(&"Relay rebroadcast deferred"));
 }
 
 #[test]
@@ -104,6 +113,100 @@ fn dashboard_charts_render_retained_inbound_metric_samples_without_expanding_row
     assert!(charts.contains(&("Inbound admits", vec![1])));
     assert!(charts.contains(&("Inbound resource pressure", vec![16])));
     assert!(charts.contains(&("Inbound reconnect suppressions", vec![23])));
+}
+
+#[test]
+fn dashboard_sections_surface_relay_evidence_rows() {
+    // Arrange
+    let mut snapshot = test_snapshot();
+    snapshot.mempool.relay = RelayEvidenceStatus::with_counters(RelayEvidenceCounters {
+        accepted_count: 1,
+        rejected_count: 2,
+        orphaned_count: 3,
+        requested_count: 4,
+        served_count: 5,
+        announced_count: 6,
+        suppressed_count: 7,
+        evicted_count: 8,
+        expired_count: 9,
+        rebroadcast_deferred_count: 10,
+    });
+
+    // Act
+    let state = DashboardState::from_snapshot(&snapshot);
+    let rows = &state.sections[2].rows;
+
+    // Assert
+    assert_eq!(
+        rows.iter()
+            .find(|row| row.label == "Relay evidence")
+            .expect("relay evidence row")
+            .value,
+        "accepted_count=1 rejected_count=2 orphaned_count=3 requested_count=4 served_count=5 announced_count=6 suppressed_count=7 evicted_count=8 expired_count=9 rebroadcast_deferred_count=10"
+    );
+    assert_eq!(
+        rows.iter()
+            .find(|row| row.label == "Mempool evidence")
+            .expect("mempool evidence row")
+            .value,
+        "Unavailable: mempool admission evidence unavailable"
+    );
+    assert_eq!(
+        rows.iter()
+            .find(|row| row.label == "Rebroadcast: deferred")
+            .expect("rebroadcast row")
+            .value,
+        "Deferred: rebroadcast relay evidence not projected"
+    );
+    assert_eq!(
+        rows.iter()
+            .find(|row| row.label == "Public relay")
+            .expect("public relay row")
+            .value,
+        "Intentionally different: public relay readiness is intentionally not claimed"
+    );
+}
+
+#[test]
+fn dashboard_charts_render_retained_relay_metric_samples_without_dynamic_labels() {
+    // Arrange
+    let mut snapshot = test_snapshot();
+    snapshot.metrics = MetricsStatus::available_with_samples(
+        MetricRetentionPolicy::default(),
+        vec![
+            MetricSample::new(MetricKind::RelayAcceptedCount, 1.0, 10),
+            MetricSample::new(MetricKind::RelayRejectedCount, 2.0, 10),
+            MetricSample::new(MetricKind::RelayRebroadcastDeferredCount, 10.0, 10),
+        ],
+    );
+
+    // Act
+    let state = DashboardState::from_snapshot(&snapshot);
+    let charts = state
+        .charts
+        .iter()
+        .map(|chart| (chart.title.as_str(), chart.points.clone()))
+        .collect::<Vec<_>>();
+
+    // Assert
+    assert_eq!(state.charts.len(), MAX_DASHBOARD_CHARTS);
+    assert!(charts.contains(&("Relay accepted", vec![1])));
+    assert!(charts.contains(&("Relay rejected", vec![2])));
+    assert!(charts.contains(&("Relay rebroadcast deferred", vec![10])));
+    let serialized = format!("{charts:?}");
+    for forbidden in [
+        "peer_id",
+        "endpoint",
+        "txid",
+        "wtxid",
+        "permission",
+        "credential",
+        "cookie",
+        "secret",
+        "dynamic_label",
+    ] {
+        assert!(!serialized.contains(forbidden), "leaked {forbidden}");
+    }
 }
 
 #[test]
@@ -824,6 +927,7 @@ fn test_snapshot() -> OpenBitcoinStatusSnapshot {
         },
         mempool: MempoolStatus {
             transactions: FieldAvailability::available(4),
+            relay: RelayEvidenceStatus::default(),
         },
         wallet: WalletStatus {
             trusted_balance_sats: FieldAvailability::available(50_000),

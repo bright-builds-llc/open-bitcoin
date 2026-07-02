@@ -17,6 +17,7 @@ use std::{
 
 use open_bitcoin_node::{
     FjallNodeStore, MetricRetentionPolicy, PersistMode, inbound_metric_samples,
+    relay_metric_samples,
 };
 use open_bitcoin_rpc::{ManagedRpcContext, config::RuntimeConfig};
 
@@ -103,9 +104,13 @@ fn persist_inbound_metrics_once(
     shared_context: Arc<tokio::sync::Mutex<ManagedRpcContext>>,
 ) {
     let timestamp = current_timestamp_unix_seconds();
-    let inbound = shared_context.blocking_lock().current_inbound_status();
+    let context = shared_context.blocking_lock();
+    let inbound = context.current_inbound_status();
+    let relay = context.relay_evidence_status();
+    drop(context);
     let timestamp = u64::try_from(timestamp).unwrap_or(0);
-    let samples = inbound_metric_samples(&inbound, timestamp);
+    let mut samples = inbound_metric_samples(&inbound, timestamp);
+    samples.extend(relay_metric_samples(&relay, timestamp));
     if samples.is_empty() {
         return;
     }

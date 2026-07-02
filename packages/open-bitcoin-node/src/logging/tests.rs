@@ -3,15 +3,19 @@
 
 use super::{
     INBOUND_PEER_POLICY_LOG_SOURCE, INBOUND_RESOURCE_GOVERNANCE_LOG_SOURCE, LogPathStatus,
-    LogRetentionPolicy, LogRotation, LogStatus, RecentLogSignal, StructuredLogLevel,
-    StructuredLogRecord, health_signals_from_recent_logs, inbound_peer_policy_log_record,
-    inbound_resource_governance_log_record, recent_log_signals_from_records,
+    LogRetentionPolicy, LogRotation, LogStatus, RELAY_MEMPOOL_LOG_SOURCE, RecentLogSignal,
+    StructuredLogLevel, StructuredLogRecord, health_signals_from_recent_logs,
+    inbound_peer_policy_log_record, inbound_resource_governance_log_record,
+    recent_log_signals_from_records, relay_mempool_log_record,
 };
 use super::{
     prune::{LogFileMetadata, plan_log_retention},
     writer::{append_structured_log_record, load_log_status},
 };
-use crate::status::{HealthSignalLevel, InboundPeerPolicyEvent, InboundResourceGovernanceEvent};
+use crate::status::{
+    HealthSignalLevel, InboundPeerPolicyEvent, InboundResourceGovernanceEvent,
+    relay_evidence::{RelayEvidenceCounters, RelayEvidenceField, RelayEvidenceStatus},
+};
 use std::{
     fs,
     path::PathBuf,
@@ -206,6 +210,86 @@ fn inbound_peer_policy_log_record_redacts_suspicious_raw_fields() {
         "00112233445566778899aabbccddeeff",
     ] {
         assert!(!record.message.contains(raw));
+    }
+}
+
+#[test]
+fn relay_mempool_log_record_uses_fixed_outcome_counts() {
+    // Arrange
+    let relay = RelayEvidenceStatus::with_counters(RelayEvidenceCounters {
+        accepted_count: 1,
+        rejected_count: 2,
+        orphaned_count: 3,
+        requested_count: 4,
+        served_count: 5,
+        announced_count: 6,
+        suppressed_count: 7,
+        evicted_count: 8,
+        expired_count: 9,
+        rebroadcast_deferred_count: 10,
+    });
+
+    // Act
+    let record = relay_mempool_log_record(&relay, 1_777_225_105);
+
+    // Assert
+    assert_eq!(record.level, StructuredLogLevel::Info);
+    assert_eq!(record.source, RELAY_MEMPOOL_LOG_SOURCE);
+    assert_eq!(record.timestamp_unix_seconds, 1_777_225_105);
+    assert_eq!(
+        record.message,
+        "accepted=1 rejected=2 orphaned=3 requested=4 served=5 announced=6 suppressed=7 evicted=8 expired=9 rebroadcast_deferred=10"
+    );
+}
+
+#[test]
+fn relay_mempool_log_record_omits_sensitive_and_dynamic_material() {
+    // Arrange
+    let mut relay = RelayEvidenceStatus::with_counters(RelayEvidenceCounters {
+        accepted_count: 1,
+        rejected_count: 0,
+        orphaned_count: 0,
+        requested_count: 0,
+        served_count: 0,
+        announced_count: 0,
+        suppressed_count: 0,
+        evicted_count: 0,
+        expired_count: 0,
+        rebroadcast_deferred_count: 0,
+    });
+    relay.mempool_admission = RelayEvidenceField::unavailable(
+        "txid=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    );
+    relay.local_submission =
+        RelayEvidenceField::deferred("wtxid=abcdef0123456789 endpoint=127.0.0.1:18444");
+    relay.fanout =
+        RelayEvidenceField::deferred("peer_id=42 permission_string=forcerelay dynamic_label=raw");
+    relay.public_relay = RelayEvidenceField::intentionally_different(
+        "credential=fixture cookie=value secret=fixture reject_reason=freeform",
+    );
+
+    // Act
+    let record = relay_mempool_log_record(&relay, 1_777_225_106);
+
+    // Assert
+    assert_eq!(record.source, RELAY_MEMPOOL_LOG_SOURCE);
+    assert_eq!(
+        record.message,
+        "accepted=1 rejected=0 orphaned=0 requested=0 served=0 announced=0 suppressed=0 evicted=0 expired=0 rebroadcast_deferred=0"
+    );
+    for raw in [
+        "0123456789abcdef",
+        "wtxid",
+        "127.0.0.1:18444",
+        "peer_id",
+        "permission_string",
+        "credential",
+        "cookie",
+        "secret",
+        "dynamic_label",
+        "reject_reason",
+    ] {
+        assert!(!record.message.contains(raw), "leaked {raw}");
     }
 }
 

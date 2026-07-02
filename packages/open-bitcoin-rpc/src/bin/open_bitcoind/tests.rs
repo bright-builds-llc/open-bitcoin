@@ -445,6 +445,9 @@ async fn open_bitcoind_inbound_metrics_worker_persists_sync_disabled_inbound_sam
     assert!(status.samples.iter().any(|sample| {
         sample.kind == MetricKind::InboundAdmittedPeerCount && sample.timestamp_unix_seconds > 0
     }));
+    assert!(status.samples.iter().any(|sample| {
+        sample.kind == MetricKind::RelayAcceptedCount && sample.timestamp_unix_seconds > 0
+    }));
     remove_dir_if_exists(&data_dir);
 }
 
@@ -494,10 +497,15 @@ fn wait_for_inbound_metric_sample(store: &FjallNodeStore) -> bool {
                 .ok()
                 .flatten()
                 .is_some_and(|snapshot| {
-                    snapshot
+                    let has_inbound = snapshot
                         .samples
                         .iter()
-                        .any(|sample| matches!(sample.kind, MetricKind::InboundAdmittedPeerCount))
+                        .any(|sample| matches!(sample.kind, MetricKind::InboundAdmittedPeerCount));
+                    let has_relay = snapshot
+                        .samples
+                        .iter()
+                        .any(|sample| matches!(sample.kind, MetricKind::RelayAcceptedCount));
+                    has_inbound && has_relay
                 });
         if maybe_has_sample {
             return true;

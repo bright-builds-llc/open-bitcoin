@@ -9,6 +9,7 @@ use std::{error::Error, fmt, path::PathBuf};
 
 use crate::status::{
     HealthSignal, HealthSignalLevel, InboundPeerPolicyEvent, InboundResourceGovernanceEvent,
+    relay_evidence::{RelayEvidenceCounters, RelayEvidenceField, RelayEvidenceStatus},
 };
 
 pub mod prune;
@@ -19,6 +20,7 @@ mod tests;
 
 pub const INBOUND_RESOURCE_GOVERNANCE_LOG_SOURCE: &str = "inbound_resource_governance";
 pub const INBOUND_PEER_POLICY_LOG_SOURCE: &str = "inbound_peer_policy";
+pub const RELAY_MEMPOOL_LOG_SOURCE: &str = "relay_mempool";
 const REDACTED_RESOURCE_FIELD: &str = "redacted_resource_field";
 const REDACTED_PEER_POLICY_FIELD: &str = "redacted_peer_policy_field";
 
@@ -151,6 +153,38 @@ pub fn inbound_peer_policy_log_record(
     StructuredLogRecord::new(
         StructuredLogLevel::Warn,
         INBOUND_PEER_POLICY_LOG_SOURCE,
+        message,
+        timestamp_unix_seconds,
+    )
+}
+
+pub fn relay_mempool_log_record(
+    relay: &RelayEvidenceStatus,
+    timestamp_unix_seconds: u64,
+) -> StructuredLogRecord {
+    let counters = match &relay.outcome_counters {
+        RelayEvidenceField::Implemented(counters) => *counters,
+        RelayEvidenceField::Unavailable { .. }
+        | RelayEvidenceField::Deferred { .. }
+        | RelayEvidenceField::IntentionallyDifferent { .. } => RelayEvidenceCounters::default(),
+    };
+    let message = format!(
+        "accepted={} rejected={} orphaned={} requested={} served={} announced={} suppressed={} evicted={} expired={} rebroadcast_deferred={}",
+        counters.accepted_count,
+        counters.rejected_count,
+        counters.orphaned_count,
+        counters.requested_count,
+        counters.served_count,
+        counters.announced_count,
+        counters.suppressed_count,
+        counters.evicted_count,
+        counters.expired_count,
+        counters.rebroadcast_deferred_count
+    );
+
+    StructuredLogRecord::new(
+        StructuredLogLevel::Info,
+        RELAY_MEMPOOL_LOG_SOURCE,
         message,
         timestamp_unix_seconds,
     )

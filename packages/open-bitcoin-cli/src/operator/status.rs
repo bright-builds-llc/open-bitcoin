@@ -230,6 +230,7 @@ fn collect_live_status_snapshot(
 
     let network_status = collect_open_bitcoin_network_status(rpc_client);
     let inbound = network_status.inbound;
+    let relay = network_status.relay;
     let metrics = network_status.metrics;
 
     OpenBitcoinStatusSnapshot {
@@ -250,6 +251,7 @@ fn collect_live_status_snapshot(
         },
         mempool: MempoolStatus {
             transactions: FieldAvailability::available(saturating_usize_to_u64(mempool_info.size)),
+            relay,
         },
         wallet,
         logs: log_status(&input.config_resolution),
@@ -301,6 +303,7 @@ fn stopped_status_snapshot(
         },
         mempool: MempoolStatus {
             transactions: FieldAvailability::unavailable(reason.clone()),
+            relay: RelayEvidenceStatus::default(),
         },
         wallet: WalletStatus {
             trusted_balance_sats: FieldAvailability::unavailable(reason.clone()),

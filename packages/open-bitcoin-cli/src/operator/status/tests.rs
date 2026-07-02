@@ -38,7 +38,11 @@ use open_bitcoin_node::status::{
     NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, ServiceLifecycleStatus,
     ServiceStatus, StayCurrentStatus, SyncAttemptCounters, SyncConfiguredTargets,
     SyncProgressSignal, SyncStatus, SyncStopReasonStatus, WalletFreshness, WalletScanProgress,
-    WalletStatus, relay_evidence::RelayEvidenceStatus,
+    WalletStatus,
+    relay_evidence::{
+        RelayCapabilityEvidence, RelayEvidenceCapability, RelayEvidenceCounters,
+        RelayEvidenceField, RelayEvidenceStatus,
+    },
 };
 use open_bitcoin_node::storage::FJALL_LOCK_FILE_NAME;
 use open_bitcoin_node::{MetricKind, MetricRetentionPolicy, MetricSample, MetricsStatus};
@@ -222,6 +226,69 @@ fn fake_live_rpc_maps_metrics_from_open_bitcoin_network_status() {
         MetricKind::InboundAdmittedPeerCount
     );
     assert_eq!(snapshot.metrics.samples[0].value, 2.0);
+}
+
+#[test]
+fn operator_status_renders_relay_evidence_from_open_bitcoin_network_status() {
+    // Arrange
+    let input = status_input(Vec::new());
+    let rpc = FakeStatusRpcClient {
+        maybe_network_status: Some(OpenBitcoinNetworkStatusResponse {
+            inbound: FieldAvailability::<InboundPeerServingStatus>::unavailable(
+                INBOUND_STATUS_UNAVAILABLE_REASON,
+            ),
+            relay: relay_evidence_status_fixture(),
+            metrics: MetricsStatus::default(),
+        }),
+        ..FakeStatusRpcClient::running()
+    };
+
+    // Act
+    let snapshot = collect_status_snapshot(&input, Some(&rpc));
+    let human = render_status(&snapshot, StatusRenderMode::Human).expect("human status");
+    let json = render_status(&snapshot, StatusRenderMode::Json).expect("status json");
+    let decoded: serde_json::Value = serde_json::from_str(&json).expect("decode status json");
+
+    // Assert
+    assert_eq!(
+        decoded["mempool"]["relay"]["outcome_counters"]["value"]["accepted_count"],
+        1
+    );
+    assert_eq!(
+        decoded["mempool"]["relay"]["outcome_counters"]["value"]["rebroadcast_deferred_count"],
+        10
+    );
+    assert_eq!(
+        decoded["mempool"]["relay"]["mempool_admission"]["state"],
+        "implemented"
+    );
+    assert_eq!(
+        decoded["mempool"]["relay"]["rebroadcast"]["state"],
+        "deferred"
+    );
+    assert!(human.contains("Relay evidence: accepted_count=1 rejected_count=2"));
+    assert!(human.contains("Mempool evidence: Implemented: mempool_admission"));
+    assert!(
+        human.contains("Rebroadcast: deferred: Deferred: rebroadcast relay evidence not projected")
+    );
+    assert!(human.contains(
+        "Public relay: Intentionally different: public relay readiness is intentionally not claimed"
+    ));
+    for forbidden in [
+        "0100000001",
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "wtxid",
+        "127.0.0.1:18444",
+        "peer_id",
+        "permission_string",
+        "credential",
+        "cookie",
+        "secret",
+        "dynamic_label",
+    ] {
+        assert!(!human.contains(forbidden), "human leaked {forbidden}");
+        assert!(!json.contains(forbidden), "json leaked {forbidden}");
+    }
 }
 
 #[test]
@@ -838,6 +905,7 @@ fn human_and_json_renderers_surface_wallet_freshness_and_scan_reasons() {
         },
         mempool: MempoolStatus {
             transactions: FieldAvailability::available(3),
+            relay: RelayEvidenceStatus::default(),
         },
         wallet: WalletStatus {
             trusted_balance_sats: FieldAvailability::available(25_000),
@@ -2225,6 +2293,34 @@ fn inbound_status_response() -> OpenBitcoinNetworkStatusResponse {
         relay: RelayEvidenceStatus::default(),
         metrics: MetricsStatus::default(),
     }
+}
+
+fn relay_evidence_status_fixture() -> RelayEvidenceStatus {
+    let mut status = RelayEvidenceStatus::with_counters(RelayEvidenceCounters {
+        accepted_count: 1,
+        rejected_count: 2,
+        orphaned_count: 3,
+        requested_count: 4,
+        served_count: 5,
+        announced_count: 6,
+        suppressed_count: 7,
+        evicted_count: 8,
+        expired_count: 9,
+        rebroadcast_deferred_count: 10,
+    });
+    status.mempool_admission = RelayEvidenceField::implemented(RelayCapabilityEvidence::new(
+        RelayEvidenceCapability::MempoolAdmission,
+    ));
+    status.local_submission = RelayEvidenceField::implemented(RelayCapabilityEvidence::new(
+        RelayEvidenceCapability::LocalSubmissionRelay,
+    ));
+    status.fanout = RelayEvidenceField::implemented(RelayCapabilityEvidence::new(
+        RelayEvidenceCapability::RelayFanout,
+    ));
+    status.serving = RelayEvidenceField::implemented(RelayCapabilityEvidence::new(
+        RelayEvidenceCapability::RelayServing,
+    ));
+    status
 }
 
 fn temp_path(test_name: &str) -> PathBuf {

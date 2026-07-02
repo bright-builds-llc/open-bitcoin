@@ -3,9 +3,12 @@
 
 use super::{
     MetricKind, MetricRetentionPolicy, MetricSample, MetricsAvailability, MetricsStatus,
-    append_and_prune_metric_samples, inbound_metric_samples,
+    append_and_prune_metric_samples, inbound_metric_samples, relay_metric_samples,
 };
-use crate::status::{FieldAvailability, InboundHandshakeStatusCounts, InboundPeerServingStatus};
+use crate::status::{
+    FieldAvailability, InboundHandshakeStatusCounts, InboundPeerServingStatus,
+    relay_evidence::{RelayEvidenceCounters, RelayEvidenceStatus},
+};
 
 #[test]
 fn default_metric_retention_matches_operator_contract() {
@@ -135,6 +138,19 @@ fn metric_kind_names_are_stable() {
             MetricKind::InboundReconnectSuppressedCount,
             "inbound_reconnect_suppressed_count",
         ),
+        (MetricKind::RelayAcceptedCount, "relay_accepted_count"),
+        (MetricKind::RelayRejectedCount, "relay_rejected_count"),
+        (MetricKind::RelayOrphanedCount, "relay_orphaned_count"),
+        (MetricKind::RelayRequestedCount, "relay_requested_count"),
+        (MetricKind::RelayServedCount, "relay_served_count"),
+        (MetricKind::RelayAnnouncedCount, "relay_announced_count"),
+        (MetricKind::RelaySuppressedCount, "relay_suppressed_count"),
+        (MetricKind::RelayEvictedCount, "relay_evicted_count"),
+        (MetricKind::RelayExpiredCount, "relay_expired_count"),
+        (
+            MetricKind::RelayRebroadcastDeferredCount,
+            "relay_rebroadcast_deferred_count",
+        ),
     ];
 
     // Act / Assert
@@ -179,7 +195,7 @@ fn inbound_metric_kinds_are_low_cardinality_counters() {
         .collect::<Vec<_>>();
 
     // Assert
-    assert_eq!(MetricKind::ALL.len(), 34);
+    assert_eq!(MetricKind::ALL.len(), 44);
     assert_eq!(
         labels,
         vec![
@@ -221,6 +237,115 @@ fn inbound_metric_kinds_are_low_cardinality_counters() {
         ] {
             assert!(!label.contains(&forbidden));
         }
+    }
+}
+
+#[test]
+fn relay_metric_kinds_are_low_cardinality_counters() {
+    // Arrange
+    let relay_kinds = [
+        MetricKind::RelayAcceptedCount,
+        MetricKind::RelayRejectedCount,
+        MetricKind::RelayOrphanedCount,
+        MetricKind::RelayRequestedCount,
+        MetricKind::RelayServedCount,
+        MetricKind::RelayAnnouncedCount,
+        MetricKind::RelaySuppressedCount,
+        MetricKind::RelayEvictedCount,
+        MetricKind::RelayExpiredCount,
+        MetricKind::RelayRebroadcastDeferredCount,
+    ];
+
+    // Act
+    let labels = relay_kinds
+        .into_iter()
+        .map(MetricKind::as_str)
+        .collect::<Vec<_>>();
+
+    // Assert
+    assert_eq!(
+        labels,
+        vec![
+            "relay_accepted_count",
+            "relay_rejected_count",
+            "relay_orphaned_count",
+            "relay_requested_count",
+            "relay_served_count",
+            "relay_announced_count",
+            "relay_suppressed_count",
+            "relay_evicted_count",
+            "relay_expired_count",
+            "relay_rebroadcast_deferred_count",
+        ]
+    );
+    for label in labels {
+        assert!(label.ends_with("_count"));
+        for forbidden in [
+            "peer_id",
+            "endpoint",
+            "txid",
+            "wtxid",
+            "permission",
+            "credential",
+            "cookie",
+            "secret",
+            "reject_reason",
+            "label_",
+        ] {
+            assert!(!label.contains(forbidden));
+        }
+    }
+}
+
+#[test]
+fn relay_status_maps_to_each_fixed_relay_metric_kind() {
+    // Arrange
+    let timestamp = 1_777_225_105;
+    let relay = RelayEvidenceStatus::with_counters(RelayEvidenceCounters {
+        accepted_count: 1,
+        rejected_count: 2,
+        orphaned_count: 3,
+        requested_count: 4,
+        served_count: 5,
+        announced_count: 6,
+        suppressed_count: 7,
+        evicted_count: 8,
+        expired_count: 9,
+        rebroadcast_deferred_count: 10,
+    });
+
+    // Act
+    let samples = relay_metric_samples(&relay, timestamp);
+
+    // Assert
+    assert_eq!(
+        samples,
+        vec![
+            MetricSample::new(MetricKind::RelayAcceptedCount, 1.0, timestamp),
+            MetricSample::new(MetricKind::RelayRejectedCount, 2.0, timestamp),
+            MetricSample::new(MetricKind::RelayOrphanedCount, 3.0, timestamp),
+            MetricSample::new(MetricKind::RelayRequestedCount, 4.0, timestamp),
+            MetricSample::new(MetricKind::RelayServedCount, 5.0, timestamp),
+            MetricSample::new(MetricKind::RelayAnnouncedCount, 6.0, timestamp),
+            MetricSample::new(MetricKind::RelaySuppressedCount, 7.0, timestamp),
+            MetricSample::new(MetricKind::RelayEvictedCount, 8.0, timestamp),
+            MetricSample::new(MetricKind::RelayExpiredCount, 9.0, timestamp),
+            MetricSample::new(MetricKind::RelayRebroadcastDeferredCount, 10.0, timestamp),
+        ]
+    );
+    let serialized = serde_json::to_string(&samples).expect("relay metric samples json");
+    for forbidden in [
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "wtxid",
+        "127.0.0.1:18444",
+        "peer_id",
+        "permission",
+        "credential",
+        "cookie",
+        "secret",
+        "dynamic_label",
+    ] {
+        assert!(!serialized.contains(forbidden));
     }
 }
 

@@ -517,13 +517,13 @@ pub struct PeerStatus {
     #[serde(default = "inbound::inbound_status_unavailable")]
     pub inbound: FieldAvailability<InboundPeerServingStatus>,
 }
-
 /// Mempool status fields.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MempoolStatus {
     pub transactions: FieldAvailability<u64>,
+    #[serde(default)]
+    pub relay: relay_evidence::RelayEvidenceStatus,
 }
-
 /// Wallet status fields.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WalletStatus {

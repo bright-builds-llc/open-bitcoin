@@ -25,7 +25,8 @@ use open_bitcoin_node::{
         StallDiagnosisEvidence, StalledSubsystem, StayCurrentStatus, SyncAttemptCounters,
         SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal,
         SyncRecoveryCategory, SyncResourcePressure, SyncStatus, SyncStopReasonStatus,
-        TipFreshnessStatus, WalletStatus, inbound_status_unavailable, usage_against_budget,
+        TipFreshnessStatus, WalletStatus, inbound_status_unavailable,
+        relay_evidence::RelayEvidenceStatus, usage_against_budget,
     },
 };
 use serde_json::json;
@@ -1580,6 +1581,7 @@ fn phase72_status() -> OpenBitcoinStatusSnapshot {
         },
         mempool: MempoolStatus {
             transactions: FieldAvailability::unavailable("mempool unavailable"),
+            relay: RelayEvidenceStatus::default(),
         },
         wallet: WalletStatus {
             trusted_balance_sats: FieldAvailability::unavailable("wallet unavailable"),

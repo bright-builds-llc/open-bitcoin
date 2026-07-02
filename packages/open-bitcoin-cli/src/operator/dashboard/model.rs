@@ -18,12 +18,14 @@ use open_bitcoin_node::{
 
 mod metrics;
 mod recovery;
+mod relay;
 mod resource_bounds;
 mod sync_section;
 #[cfg(test)]
 mod tests;
 
 use recovery::recovery_category;
+use relay::mempool_and_wallet_rows;
 use sync_section::sync_and_peers_section;
 
 pub use metrics::{DASHBOARD_METRIC_KINDS, MAX_DASHBOARD_CHARTS};
@@ -120,18 +122,7 @@ fn dashboard_sections(snapshot: &OpenBitcoinStatusSnapshot) -> Vec<DashboardSect
         sync_and_peers_section(snapshot),
         DashboardSection {
             title: "Mempool and Wallet".to_string(),
-            rows: vec![
-                row(
-                    "Mempool",
-                    u64_availability(&snapshot.mempool.transactions, "transactions"),
-                ),
-                row(
-                    "Wallet",
-                    u64_availability(&snapshot.wallet.trusted_balance_sats, "trusted sats"),
-                ),
-                row("Freshness", wallet_freshness(&snapshot.wallet.freshness)),
-                row("Scan", wallet_scan_progress(&snapshot.wallet.scan_progress)),
-            ],
+            rows: mempool_and_wallet_rows(snapshot),
         },
         DashboardSection {
             title: "Service".to_string(),
@@ -519,6 +510,16 @@ fn metric_label(kind: MetricKind) -> &'static str {
         MetricKind::InboundTimeoutDisconnectCount => "Inbound timeout disconnects",
         MetricKind::InboundChurnRejectedCount => "Inbound churn rejects",
         MetricKind::InboundReconnectSuppressedCount => "Inbound reconnect suppressions",
+        MetricKind::RelayAcceptedCount => "Relay accepted",
+        MetricKind::RelayRejectedCount => "Relay rejected",
+        MetricKind::RelayOrphanedCount => "Relay orphaned",
+        MetricKind::RelayRequestedCount => "Relay requested",
+        MetricKind::RelayServedCount => "Relay served",
+        MetricKind::RelayAnnouncedCount => "Relay announced",
+        MetricKind::RelaySuppressedCount => "Relay suppressed",
+        MetricKind::RelayEvictedCount => "Relay evicted",
+        MetricKind::RelayExpiredCount => "Relay expired",
+        MetricKind::RelayRebroadcastDeferredCount => "Relay rebroadcast deferred",
     }
 }
 

@@ -6,7 +6,10 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-use crate::status::{FieldAvailability, InboundPeerServingStatus};
+use crate::status::{
+    FieldAvailability, InboundPeerServingStatus,
+    relay_evidence::{RelayEvidenceCounters, RelayEvidenceField, RelayEvidenceStatus},
+};
 
 /// Metric series names exposed to status and dashboard consumers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -46,10 +49,20 @@ pub enum MetricKind {
     InboundTimeoutDisconnectCount,
     InboundChurnRejectedCount,
     InboundReconnectSuppressedCount,
+    RelayAcceptedCount,
+    RelayRejectedCount,
+    RelayOrphanedCount,
+    RelayRequestedCount,
+    RelayServedCount,
+    RelayAnnouncedCount,
+    RelaySuppressedCount,
+    RelayEvictedCount,
+    RelayExpiredCount,
+    RelayRebroadcastDeferredCount,
 }
 
 impl MetricKind {
-    pub const ALL: [Self; 34] = [
+    pub const ALL: [Self; 44] = [
         Self::SyncHeight,
         Self::HeaderHeight,
         Self::DownloadedBlockHeight,
@@ -84,6 +97,16 @@ impl MetricKind {
         Self::InboundTimeoutDisconnectCount,
         Self::InboundChurnRejectedCount,
         Self::InboundReconnectSuppressedCount,
+        Self::RelayAcceptedCount,
+        Self::RelayRejectedCount,
+        Self::RelayOrphanedCount,
+        Self::RelayRequestedCount,
+        Self::RelayServedCount,
+        Self::RelayAnnouncedCount,
+        Self::RelaySuppressedCount,
+        Self::RelayEvictedCount,
+        Self::RelayExpiredCount,
+        Self::RelayRebroadcastDeferredCount,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -126,6 +149,16 @@ impl MetricKind {
             Self::InboundTimeoutDisconnectCount => "inbound_timeout_disconnect_count",
             Self::InboundChurnRejectedCount => "inbound_churn_rejected_count",
             Self::InboundReconnectSuppressedCount => "inbound_reconnect_suppressed_count",
+            Self::RelayAcceptedCount => "relay_accepted_count",
+            Self::RelayRejectedCount => "relay_rejected_count",
+            Self::RelayOrphanedCount => "relay_orphaned_count",
+            Self::RelayRequestedCount => "relay_requested_count",
+            Self::RelayServedCount => "relay_served_count",
+            Self::RelayAnnouncedCount => "relay_announced_count",
+            Self::RelaySuppressedCount => "relay_suppressed_count",
+            Self::RelayEvictedCount => "relay_evicted_count",
+            Self::RelayExpiredCount => "relay_expired_count",
+            Self::RelayRebroadcastDeferredCount => "relay_rebroadcast_deferred_count",
         }
     }
 }
@@ -289,6 +322,79 @@ pub fn inbound_metric_samples(
         MetricSample::new(
             MetricKind::InboundReconnectSuppressedCount,
             f64::from(status.reconnect_suppressions),
+            timestamp_unix_seconds,
+        ),
+    ]
+}
+
+/// Project sanitized relay evidence counters into fixed low-cardinality metric samples.
+pub fn relay_metric_samples(
+    relay: &RelayEvidenceStatus,
+    timestamp_unix_seconds: u64,
+) -> Vec<MetricSample> {
+    match &relay.outcome_counters {
+        RelayEvidenceField::Implemented(counters) => {
+            relay_counter_metric_samples(*counters, timestamp_unix_seconds)
+        }
+        RelayEvidenceField::Unavailable { .. }
+        | RelayEvidenceField::Deferred { .. }
+        | RelayEvidenceField::IntentionallyDifferent { .. } => Vec::new(),
+    }
+}
+
+fn relay_counter_metric_samples(
+    counters: RelayEvidenceCounters,
+    timestamp_unix_seconds: u64,
+) -> Vec<MetricSample> {
+    vec![
+        MetricSample::new(
+            MetricKind::RelayAcceptedCount,
+            counters.accepted_count as f64,
+            timestamp_unix_seconds,
+        ),
+        MetricSample::new(
+            MetricKind::RelayRejectedCount,
+            counters.rejected_count as f64,
+            timestamp_unix_seconds,
+        ),
+        MetricSample::new(
+            MetricKind::RelayOrphanedCount,
+            counters.orphaned_count as f64,
+            timestamp_unix_seconds,
+        ),
+        MetricSample::new(
+            MetricKind::RelayRequestedCount,
+            counters.requested_count as f64,
+            timestamp_unix_seconds,
+        ),
+        MetricSample::new(
+            MetricKind::RelayServedCount,
+            counters.served_count as f64,
+            timestamp_unix_seconds,
+        ),
+        MetricSample::new(
+            MetricKind::RelayAnnouncedCount,
+            counters.announced_count as f64,
+            timestamp_unix_seconds,
+        ),
+        MetricSample::new(
+            MetricKind::RelaySuppressedCount,
+            counters.suppressed_count as f64,
+            timestamp_unix_seconds,
+        ),
+        MetricSample::new(
+            MetricKind::RelayEvictedCount,
+            counters.evicted_count as f64,
+            timestamp_unix_seconds,
+        ),
+        MetricSample::new(
+            MetricKind::RelayExpiredCount,
+            counters.expired_count as f64,
+            timestamp_unix_seconds,
+        ),
+        MetricSample::new(
+            MetricKind::RelayRebroadcastDeferredCount,
+            counters.rebroadcast_deferred_count as f64,
             timestamp_unix_seconds,
         ),
     ]

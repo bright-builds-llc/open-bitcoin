@@ -5,6 +5,7 @@
 
 mod inbound;
 mod progress_guarantee;
+mod relay;
 
 use open_bitcoin_node::{
     MetricsStatus, RecoveryEvidenceSnapshot,
@@ -22,6 +23,7 @@ use serde::Serialize;
 
 use inbound::inbound_status_text;
 use progress_guarantee::progress_guarantee_lines;
+use relay::relay_evidence_lines;
 
 use crate::operator::sync_truth_render::{
     best_known_tip_text, no_progress_diagnosis_text, stay_current_text, sync_progress_text,
@@ -180,6 +182,7 @@ fn render_human_status(snapshot: &OpenBitcoinStatusSnapshot) -> String {
         "Mempool: {}",
         u64_availability(&snapshot.mempool.transactions, "transactions")
     ));
+    lines.extend(relay_evidence_lines(&snapshot.mempool));
     lines.push(format!(
         "Wallet: {}",
         u64_availability(&snapshot.wallet.trusted_balance_sats, "trusted sats")

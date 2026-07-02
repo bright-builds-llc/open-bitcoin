@@ -1283,6 +1283,7 @@ fn populated_snapshot_serializes_obs_01_fields() {
         },
         mempool: MempoolStatus {
             transactions: FieldAvailability::available(12),
+            relay: RelayEvidenceStatus::default(),
         },
         wallet: WalletStatus {
             trusted_balance_sats: FieldAvailability::available(25_000),
@@ -1628,6 +1629,7 @@ fn stopped_snapshot() -> OpenBitcoinStatusSnapshot {
         },
         mempool: MempoolStatus {
             transactions: FieldAvailability::unavailable(unavailable),
+            relay: RelayEvidenceStatus::default(),
         },
         wallet: WalletStatus {
             trusted_balance_sats: FieldAvailability::unavailable(unavailable),

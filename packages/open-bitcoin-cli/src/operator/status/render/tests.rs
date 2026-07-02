@@ -19,6 +19,7 @@ use open_bitcoin_node::{
         SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal,
         SyncReconcileProgressStatus, SyncRecoveryCategory, SyncReorgEvidence, SyncResourcePressure,
         SyncStatus, SyncStopReasonStatus, TipFreshnessStatus, WalletStatus,
+        relay_evidence::RelayEvidenceStatus,
     },
 };
 
@@ -781,6 +782,7 @@ fn shared_sync_truth_snapshot() -> OpenBitcoinStatusSnapshot {
         },
         mempool: MempoolStatus {
             transactions: FieldAvailability::unavailable("mempool unavailable"),
+            relay: RelayEvidenceStatus::default(),
         },
         wallet: WalletStatus {
             trusted_balance_sats: FieldAvailability::unavailable("wallet unavailable"),
