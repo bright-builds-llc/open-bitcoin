@@ -652,6 +652,18 @@
     {
       "name": "v2-0-mempool-chainstate-lifecycle-durable-recovery",
       "status": "done"
+    },
+    {
+      "name": "v2-0-relay-serving-fanout-rebroadcast-policy",
+      "status": "done"
+    },
+    {
+      "name": "v2-0-operator-rpc-metrics-logs-support-evidence",
+      "status": "done"
+    },
+    {
+      "name": "v2-0-parity-uat-release-boundary",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -2221,6 +2233,88 @@
         ],
         "suspected_unknowns": [
           "Future v2.0 phases own release-boundary guardrails, public-network relay UAT, public relay defaults, compact block relay, package relay, filter serving, production-service proof, production full-node readiness proof, and production-funds wallet safety proof before any broader relay readiness claim can be made."
+        ]
+      },
+      {
+        "id": "v2-0-parity-uat-release-boundary",
+        "title": "v2.0 Parity, UAT, and Release Boundary Guardrails",
+        "status": "done",
+        "requirements": [
+          "BOUND-01",
+          "BOUND-02",
+          "BOUND-03",
+          "BOUND-04",
+          "BOUND-05"
+        ],
+        "evidence": [
+          "README.md",
+          ".planning/REQUIREMENTS.md",
+          ".planning/ROADMAP.md",
+          "docs/operator/runtime-guide.md",
+          "docs/parity/catalog/p2p.md",
+          "docs/parity/catalog/mempool-policy.md",
+          "docs/parity/catalog/rpc-cli-config.md",
+          "docs/parity/release-readiness.md",
+          "docs/parity/checklist.md",
+          "docs/parity/index.json",
+          "docs/parity/source-breadcrumbs.json",
+          "scripts/check-phase106-parity-uat-release-boundary.ts",
+          "scripts/check-phase106-parity-uat-release-boundary.test.ts",
+          "scripts/verify.sh",
+          ".planning/phases/106-parity-traceability-uat-and-release-boundary-guardrails/106-CONTEXT.md",
+          ".planning/phases/106-parity-traceability-uat-and-release-boundary-guardrails/106-DISCUSSION-LOG.md",
+          ".planning/phases/106-parity-traceability-uat-and-release-boundary-guardrails/106-RESEARCH.md",
+          ".planning/phases/106-parity-traceability-uat-and-release-boundary-guardrails/106-01-PLAN.md",
+          ".planning/phases/106-parity-traceability-uat-and-release-boundary-guardrails/106-02-PLAN.md",
+          ".planning/phases/106-parity-traceability-uat-and-release-boundary-guardrails/106-01-SUMMARY.md",
+          ".planning/phases/106-parity-traceability-uat-and-release-boundary-guardrails/106-02-SUMMARY.md",
+          ".planning/phases/106-parity-traceability-uat-and-release-boundary-guardrails/106-VERIFICATION.md"
+        ],
+        "rationale": "Phase 106 records the v2.0 closeout boundary across Phase 100-105 relay, mempool, and operator evidence roots, adds repo-local Cargo/Bazel UAT guidance, and wires deterministic no-claim guardrails into the default verifier.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/net_permissions.h",
+            "packages/bitcoin-knots/src/net_permissions.cpp",
+            "packages/bitcoin-knots/src/net.cpp",
+            "packages/bitcoin-knots/src/net_processing.cpp",
+            "packages/bitcoin-knots/src/protocol.h",
+            "packages/bitcoin-knots/src/node/txdownloadman.h",
+            "packages/bitcoin-knots/src/node/txdownloadman_impl.cpp",
+            "packages/bitcoin-knots/src/txrequest.h",
+            "packages/bitcoin-knots/src/txrequest.cpp",
+            "packages/bitcoin-knots/src/txorphanage.h",
+            "packages/bitcoin-knots/src/txorphanage.cpp",
+            "packages/bitcoin-knots/src/txmempool.h",
+            "packages/bitcoin-knots/src/txmempool.cpp",
+            "packages/bitcoin-knots/src/validation.cpp",
+            "packages/bitcoin-knots/src/policy/policy.cpp",
+            "packages/bitcoin-knots/src/policy/rbf.cpp",
+            "packages/bitcoin-knots/src/kernel/disconnected_transactions.cpp",
+            "packages/bitcoin-knots/src/node/mempool_persist.cpp",
+            "packages/bitcoin-knots/src/rpc/net.cpp",
+            "packages/bitcoin-knots/src/rpc/mempool.cpp",
+            "packages/bitcoin-knots/src/rpc/rawtransaction.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/test/functional/p2p_permissions.py",
+            "packages/bitcoin-knots/test/functional/p2p_tx_download.py",
+            "packages/bitcoin-knots/test/functional/p2p_getdata.py",
+            "packages/bitcoin-knots/test/functional/p2p_orphan_handling.py",
+            "packages/bitcoin-knots/test/functional/mempool_accept.py",
+            "packages/bitcoin-knots/test/functional/feature_rbf.py",
+            "packages/bitcoin-knots/test/functional/mempool_limit.py",
+            "packages/bitcoin-knots/test/functional/mempool_reorg.py",
+            "packages/bitcoin-knots/test/functional/mempool_persist.py",
+            "packages/bitcoin-knots/test/functional/rpc_net.py",
+            "packages/bitcoin-knots/test/functional/rpc_mempool_info.py",
+            "packages/bitcoin-knots/test/functional/rpc_rawtransaction.py"
+          ]
+        },
+        "known_gaps": [
+          "Phase 106 closes parity traceability, repo-local UAT guidance, and deterministic release-boundary guardrails only; compact block relay, package relay, bloom/filter serving, public relay defaults, public relay by default, public-network relay CI, production service operation, production-service proof, production full-node readiness, production full-node readiness proof, production-funds wallet use, and production-funds wallet safety proof remain out of scope."
+        ],
+        "suspected_unknowns": [
+          "Future milestones need fresh implementation, threat models, public-network evidence scope, and deterministic guardrails before any compact block relay, package relay, filter serving, public relay default, production service, production full-node readiness, or production-funds wallet safety claim can be made."
         ]
       }
     ]

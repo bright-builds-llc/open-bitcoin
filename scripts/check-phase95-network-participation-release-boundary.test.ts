@@ -306,6 +306,28 @@ test("fails when v1.9 requirement IDs are duplicated or omitted", () => {
   expect(failures.join("\n")).toContain("BOUND-06");
 });
 
+test("allows later non-v1.9 checklist surfaces to reuse requirement ids", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutateFiles(files) {
+      const index = JSON.parse(files.get("docs/parity/index.json") ?? "{}");
+      index.checklist.surfaces.push({
+        id: "v2-0-later-boundary",
+        status: "done",
+        requirements: ["BOUND-01"],
+        evidence: ["docs/parity/catalog/p2p.md"],
+      });
+      files.set("docs/parity/index.json", `${JSON.stringify(index, null, 2)}\n`);
+    },
+  });
+
+  // Act
+  const failures = checkPhase95NetworkParticipationReleaseBoundary({ rootDir: root });
+
+  // Assert
+  expect(failures).toEqual([]);
+});
+
 test("fails when gap-closure traceability maps requirements to stale phases", () => {
   // Arrange
   const root = createFixture({

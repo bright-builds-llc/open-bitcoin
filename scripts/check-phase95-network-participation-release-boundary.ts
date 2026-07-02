@@ -277,8 +277,14 @@ function verifyPhaseRequirementSurfaces(parsed: ParityIndex, failures: string[])
     );
   }
   verifyRequirementCountsFromArrays(
-    surfaces
-      .map((entry) => (entry as ChecklistSurface).requirements)
+    Object.keys(PHASE_REQUIREMENTS)
+      .map((surfaceId) => {
+        const surface = surfaces.find((entry) => {
+          const maybeSurface = entry as ChecklistSurface;
+          return maybeSurface.id === surfaceId;
+        }) as ChecklistSurface | undefined;
+        return surface?.requirements;
+      })
       .filter(Array.isArray)
       .flat() as string[],
     "BOUND-06 parity index v1.9 checklist surfaces",

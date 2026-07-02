@@ -12,6 +12,12 @@ verification.
 For v1.9, this handoff adds the Network Participation Evidence and Release
 Boundary closeout for opt-in inbound peer serving evidence while keeping relay,
 public-default, service-operation, and production-readiness claims deferred.
+For v2.0, this handoff adds the Transaction Relay and Mempool Participation
+Boundary closeout for deterministic local relay/mempool evidence, repo-local
+UAT commands, and no-claim guardrails while keeping public relay defaults,
+compact block relay, package relay, bloom/filter serving, public-network relay
+CI, production service operation, production full-node readiness, and
+production-funds wallet use deferred.
 
 ## Readiness Verdict
 
@@ -83,12 +89,21 @@ bridge evidence, Phase 97 inbound metrics evidence, and Phase 98 traceability
 reconciliation through existing parity roots. The canonical surface id is
 `v1-9-network-participation-release-boundary`.
 
+The current v2.0 Transaction Relay and Mempool Participation Boundary closes
+the bounded local relay/mempool evidence milestone through Phase 100 relay
+activation, Phase 101 inventory/download scheduling, Phase 102
+orphan/admission bridging, Phase 103 mempool lifecycle and recovery, Phase 104
+relay serving/fanout, Phase 105 operator evidence, and Phase 106 parity/UAT
+guardrails. The canonical surface id is
+`v2-0-parity-uat-release-boundary`.
+
 This is not a production-node or production-funds claim. It does not claim
-public inbound serving by default, full address relay beyond the Phase 92
-boundary, block serving, transaction relay, compact block relay,
-production-funds wallet safety, migration apply mode, signed packaging, Windows
-service support, GUI parity, hosted dashboards, public-network default checks,
-public-network CI, release-blocking live sync, automatic support-bundle upload,
+public inbound serving by default, public relay defaults, full address relay
+beyond the Phase 92 boundary, block serving, compact block relay, package
+relay, bloom/filter serving, production-funds wallet safety, production-funds
+wallet use, migration apply mode, signed packaging, Windows service support,
+GUI parity, hosted dashboards, public-network default checks, public-network
+relay CI, release-blocking live sync, automatic support-bundle upload,
 destructive repair, production service operation, or broad production-node
 readiness.
 
@@ -124,7 +139,7 @@ bash scripts/verify.sh
 That command remains deterministic and public-network-free. It includes local
 formatting, linting, builds, tests, benchmark smoke evidence, parity breadcrumb
 checks, Bazel smoke builds, coverage, panic-site checks, and deterministic
-release-boundary assertions through v1.9.
+release-boundary assertions through v2.0.
 Phase 82 and Phase 83 add the narrow v1.8 production-boundary and
 support-matrix traceability checks. Phase 84 adds the upgrade-policy roots that
 later UPG-04 drift checks consume. Phase 85 adds the operator-runbook root for
@@ -135,6 +150,10 @@ guardrail evidence rows for REL-02, REL-03, and REL-04. Phase 95 adds the
 v1.9 closeout matrix here, Phase 97 closes retained inbound metrics evidence,
 and Phase 98 adds `scripts/check-phase98-traceability-reconciliation.ts`
 without making public-network or service operations part of default
+verification.
+Phase 106 adds the v2.0 parity/UAT/release-boundary guardrail checker without
+making public-network relay review, service-manager operation, production
+deployment, wall-clock soak, or production-funds wallet use part of default
 verification.
 
 ## Complete Surfaces
@@ -175,6 +194,13 @@ surfaces as `done`:
 - `v1-9-eviction-ban-misbehavior-policy`
 - `v1-9-dos-resource-governance`
 - `v1-9-network-participation-release-boundary`
+- `v2-0-relay-activation-boundary`
+- `v2-0-transaction-inventory-download-scheduling`
+- `v2-0-orphan-handling-admission-outcome-bridge`
+- `v2-0-mempool-chainstate-lifecycle-durable-recovery`
+- `v2-0-relay-serving-fanout-rebroadcast-policy`
+- `v2-0-operator-rpc-metrics-logs-support-evidence`
+- `v2-0-parity-uat-release-boundary`
 
 Primary current-cycle evidence:
 
@@ -215,6 +241,17 @@ Primary current-cycle evidence:
   Network Participation Evidence and Release Boundary for BOUND-01 through
   BOUND-06, including Knots anchors for `net.cpp`, `net_processing.cpp`,
   `addrman.cpp`, `banman.cpp`, and `net_permissions.cpp`.
+- [`docs/parity/catalog/p2p.md`](catalog/p2p.md),
+  [`docs/parity/catalog/mempool-policy.md`](catalog/mempool-policy.md),
+  [`docs/parity/catalog/rpc-cli-config.md`](catalog/rpc-cli-config.md),
+  [`docs/operator/runtime-guide.md`](../operator/runtime-guide.md), this
+  release-readiness page, [`docs/parity/index.json`](index.json), and
+  [`docs/parity/checklist.md`](checklist.md) record the canonical v2.0
+  Transaction Relay and Mempool Participation Boundary for `BOUND-01` through
+  `BOUND-05`, including Knots anchors for `net_processing.cpp`,
+  `txdownloadman_impl.cpp`, `txorphanage.cpp`, `txmempool.cpp`,
+  `validation.cpp`, `policy.cpp`, `rpc/net.cpp`, `rpc/mempool.cpp`, and
+  `rpc/rawtransaction.cpp`.
 - [`docs/parity/release-readiness.md`](release-readiness.md) records this
   current v1.8 handoff plus the historical v1.7 full-sync soak and recovery
   hardening boundary matrix and traceability for SOAK-01 through REL-04.

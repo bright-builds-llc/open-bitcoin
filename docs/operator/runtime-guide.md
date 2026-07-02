@@ -457,6 +457,54 @@ Expected review evidence is bounded:
   identifiers, permission strings, credentials, cookies, secrets, suspicious
   long hex, and dynamic labels to `redacted_relay_mempool_evidence`.
 
+## Phase 106 Parity UAT and Release Boundary Review
+
+Phase 106 closes the bounded v2.0 transaction relay and mempool participation
+boundary through parity traceability, repo-local UAT commands, and
+deterministic no-claim guardrails. It is deterministic by default,
+public-network-free, service-manager-free, and not a production readiness
+claim.
+
+Inspect the shared operator status with both repo-local operator forms:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- status --format human
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- status --format json
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- status --format human
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- status --format json
+```
+
+Inspect Open Bitcoin-owned relay evidence through the baseline-compatible RPC
+client forms:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin-cli -- -regtest openbitcoinnetworkstatus
+bazel run //packages/open-bitcoin-cli:open_bitcoin_cli -- -regtest openbitcoinnetworkstatus
+```
+
+Collect a redacted local support bundle:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- support bundle --output-dir=/tmp/open-bitcoin-relay-support
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- support bundle --output-dir=/tmp/open-bitcoin-relay-support
+```
+
+Focused closeout verification uses the Phase 106 checker pair and the
+repo-native contract:
+
+```bash
+bun test scripts/check-phase106-parity-uat-release-boundary.test.ts
+bun run scripts/check-phase106-parity-uat-release-boundary.ts
+bash scripts/verify.sh
+```
+
+Public-network relay review remains explicit opt-in UAT outside
+`bash scripts/verify.sh`. Phase 106 does not claim compact block relay, package
+relay, bloom/filter serving, public relay defaults, public relay by default,
+public-network relay CI, production-service operation, production full-node
+readiness, production-service proof, production full-node readiness proof,
+production-funds wallet use, or production-funds wallet safety proof.
+
 ## Phase 92 Address Advertisement and Discovery Boundary Review
 
 Phase 92 adds bounded address-boundary evidence to the same explicit loopback

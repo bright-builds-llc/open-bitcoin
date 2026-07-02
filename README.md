@@ -21,10 +21,11 @@ auditable, and modular.
 > Status: the in-scope headless v1 parity surfaces are implemented and ready
 > for review and operator testing. v2.0 now has bounded transaction relay and
 > mempool participation evidence through local status, RPC extension status,
-> metrics, logs, dashboard rows, and redacted support bundles. It still does
-> not claim public relay defaults, compact block relay, package relay,
-> bloom/filter serving, public-network relay CI, production full-node
-> readiness, production-service operation, or production-funds wallet use.
+> metrics, logs, dashboard rows, redacted support bundles, repo-local UAT
+> commands, and deterministic release-boundary guardrails. It still does not
+> claim public relay defaults, compact block relay, package relay, bloom/filter
+> serving, public-network relay CI, production full-node readiness,
+> production-service operation, or production-funds wallet use.
 
 ## Parity At A Glance
 
@@ -120,6 +121,16 @@ Hook and verification flows may refresh it when first-party code, scripts, or
 tracked hook content changes.
 
 ## Operator Preview
+
+v2.0 closes the bounded transaction relay and mempool participation evidence
+boundary through deterministic local traceability, repo-local UAT commands, and
+no-claim guardrails. It covers Phase 100 relay activation, Phase 101 inventory
+and download scheduling, Phase 102 orphan/admission bridging, Phase 103 mempool
+lifecycle and recovery, Phase 104 relay serving/fanout, Phase 105 operator
+evidence, and Phase 106 parity/UAT/release-boundary closeout. It does not claim
+public relay defaults, compact block relay, package relay, bloom/filter serving,
+public-network relay CI, production full-node readiness, production-service
+operation, or production-funds wallet use.
 
 v1.9 closes the network participation boundary while preserving the Phase 82
 support terms and evidence gates required before a future production full-node

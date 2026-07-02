@@ -137,14 +137,29 @@ relay, package relay, bloom/filter serving, public relay defaults,
 public-network relay CI, production service operation, production full-node
 readiness, or production-funds wallet use.
 
+## Phase 106 release boundary guardrails
+
+The `v2-0-parity-uat-release-boundary` surface closes the v2.0 mempool and
+relay evidence boundary by linking the Phase 100 through Phase 105 evidence
+roots to deterministic claim checks and repo-local UAT commands. It does not
+change mempool admission, replacement, eviction, rolling-fee, or persistence
+behavior.
+
+The Phase 106 checker keeps the mempool-policy claim bounded to local relay and
+mempool evidence. It rejects unsupported positive claims for compact block
+relay, package relay, bloom/filter serving, public relay defaults,
+public-network relay CI, production service operation, production full-node
+readiness, production-service proof, production full-node readiness proof,
+production-funds wallet use, and production-funds wallet safety proof.
+
 ## Known gaps
 
 - package relay beyond single-transaction admission
 - rolling minimum-fee decay and long-lived relay-fee state
 - Knots `mempool.dat` binary compatibility
 - periodic rebroadcast scheduling beyond `rebroadcast_deferred` evidence
-- release-boundary and public-network relay readiness evidence beyond the
-  bounded Phase 105 operator presentation surfaces
+- public-network relay readiness evidence beyond the bounded Phase 105 operator
+  presentation and Phase 106 deterministic closeout surfaces
 
 ## Follow-up triggers
 

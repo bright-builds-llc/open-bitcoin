@@ -90,6 +90,19 @@ relay, package relay, bloom/filter serving, public relay defaults,
 public-network relay CI, production service operation, production full-node
 readiness, or production-funds wallet use.
 
+## Phase 106 UAT and release boundary commands
+
+Phase 106 records the repo-local UAT command boundary for the Open
+Bitcoin-owned operator and RPC evidence surfaces. The runtime guide keeps the
+canonical Cargo and Bazel forms for `status --format human`, `status --format
+json`, `openbitcoinnetworkstatus`, and redacted support bundle collection.
+
+The Phase 106 RPC and CLI closeout does not claim public propagation, compact
+block relay, package relay, bloom/filter serving, public relay defaults,
+public-network relay CI, production service operation, production full-node
+readiness, production-service proof, production full-node readiness proof,
+production-funds wallet use, or production-funds wallet safety proof.
+
 ## Deferred surfaces
 
 - deferred `sendtoaddress` and richer wallet-send RPC ergonomics beyond the current

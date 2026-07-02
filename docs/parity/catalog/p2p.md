@@ -976,6 +976,56 @@ production-service proof, production full-node readiness proof, or
 production-funds wallet safety proof. Phase 106 owns release-boundary
 guardrails and any broader public-network relay UAT.
 
+## Phase 106 parity, UAT, and release boundary guardrails
+
+The `v2-0-parity-uat-release-boundary` surface covers `BOUND-01`, `BOUND-02`,
+`BOUND-03`, `BOUND-04`, and `BOUND-05` for the bounded v2.0 closeout. It ties
+Phase 100 relay activation, Phase 101 inventory/download scheduling, Phase 102
+orphan/admission bridging, Phase 103 mempool lifecycle, Phase 104 relay
+serving/fanout, and Phase 105 operator evidence to one auditable
+release-boundary surface.
+
+Its Knots anchors include
+[`packages/bitcoin-knots/src/net_processing.cpp`](../../../packages/bitcoin-knots/src/net_processing.cpp),
+[`packages/bitcoin-knots/src/protocol.h`](../../../packages/bitcoin-knots/src/protocol.h),
+[`packages/bitcoin-knots/src/node/txdownloadman.h`](../../../packages/bitcoin-knots/src/node/txdownloadman.h),
+[`packages/bitcoin-knots/src/node/txdownloadman_impl.cpp`](../../../packages/bitcoin-knots/src/node/txdownloadman_impl.cpp),
+[`packages/bitcoin-knots/src/txorphanage.cpp`](../../../packages/bitcoin-knots/src/txorphanage.cpp),
+[`packages/bitcoin-knots/src/txmempool.cpp`](../../../packages/bitcoin-knots/src/txmempool.cpp),
+[`packages/bitcoin-knots/src/validation.cpp`](../../../packages/bitcoin-knots/src/validation.cpp),
+[`packages/bitcoin-knots/src/policy/policy.cpp`](../../../packages/bitcoin-knots/src/policy/policy.cpp),
+[`packages/bitcoin-knots/src/rpc/net.cpp`](../../../packages/bitcoin-knots/src/rpc/net.cpp),
+[`packages/bitcoin-knots/src/rpc/mempool.cpp`](../../../packages/bitcoin-knots/src/rpc/mempool.cpp),
+[`packages/bitcoin-knots/src/rpc/rawtransaction.cpp`](../../../packages/bitcoin-knots/src/rpc/rawtransaction.cpp),
+[`packages/bitcoin-knots/test/functional/p2p_tx_download.py`](../../../packages/bitcoin-knots/test/functional/p2p_tx_download.py),
+[`packages/bitcoin-knots/test/functional/p2p_orphan_handling.py`](../../../packages/bitcoin-knots/test/functional/p2p_orphan_handling.py),
+[`packages/bitcoin-knots/test/functional/mempool_accept.py`](../../../packages/bitcoin-knots/test/functional/mempool_accept.py),
+and
+[`packages/bitcoin-knots/test/functional/rpc_rawtransaction.py`](../../../packages/bitcoin-knots/test/functional/rpc_rawtransaction.py).
+
+Open Bitcoin intentionally owns the Phase 106 closeout boundary:
+
+- `docs/parity/index.json` and `docs/parity/checklist.md` map the v2.0
+  requirements across exactly one owner surface each.
+- `docs/operator/runtime-guide.md` provides repo-local Cargo and Bazel UAT
+  commands for status, `openbitcoinnetworkstatus`, and redacted support bundle
+  review.
+- `scripts/check-phase106-parity-uat-release-boundary.ts` does not permit
+  supported-surface wording for compact block relay, package relay,
+  bloom/filter serving, public relay defaults, public relay by default,
+  public-network relay CI, production service operation, production full-node
+  readiness, production service proof, production full-node readiness proof,
+  production-funds wallet use, and production-funds wallet safety proof.
+- `scripts/verify.sh` runs the Phase 106 checker pair in the default
+  deterministic verification path after Phase 105 and before pure-core checks.
+- Public-network relay review remains opt-in UAT outside default verification.
+
+Phase 106 does not add compact block relay, package relay, bloom/filter
+serving, public relay defaults, public relay by default, public-network relay
+CI, production service operation, production full-node readiness,
+production-service proof, production full-node readiness proof,
+production-funds wallet use, or production-funds wallet safety proof.
+
 ## First-party implementation
 
 - [`packages/open-bitcoin-network/src/address.rs`](../../../packages/open-bitcoin-network/src/address.rs)
@@ -1026,16 +1076,15 @@ fresh implementation, parity roots, and verification evidence.
   guarantees
 - public inbound defaults and transport persistence beyond the current explicit
   listener review surface
-- remain deferred: periodic rebroadcast scheduling, compact block relay, package relay,
-  bloom/filter serving, public relay defaults, public-network relay CI,
-  Phase 105 operator/RPC/metrics/log/support presentation, Phase 106
-  release-boundary closeout, production service operation, production full-node
-  readiness, and production-funds wallet use beyond the Phase 104 relay
-  serving/fanout/rebroadcast-deferred boundary
+- remain deferred: periodic rebroadcast scheduling beyond
+  `rebroadcast_deferred`, compact block relay, package relay, bloom/filter
+  serving, public relay defaults, public-network relay CI, production service
+  operation, production full-node readiness, and production-funds wallet use
 
 ## Follow-up triggers
 
 Future phases should update this entry when they add discovery, compact-block
 relay, transport encryption, daemon-integrated sync orchestration, local
-rebroadcast scheduling, operator relay evidence, or connection-governance
-behavior that materially changes the externally visible networking surface.
+rebroadcast scheduling, public-network relay UAT, production service evidence,
+or connection-governance behavior that materially changes the externally
+visible networking surface.
