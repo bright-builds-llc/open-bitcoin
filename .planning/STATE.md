@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Transaction Relay and Mempool Participation Boundary
 status: executing
-stopped_at: Completed 105-03-PLAN.md
-last_updated: "2026-07-02T01:19:32.000Z"
+stopped_at: Completed 105-04-PLAN.md
+last_updated: "2026-07-02T01:59:09.000Z"
 last_activity: 2026-07-02
 progress:
   total_phases: 7
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 22
-  completed_plans: 21
-  percent: 95
+  completed_plans: 22
+  percent: 100
 ---
 
 # Project State
@@ -21,17 +21,17 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-29)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 105 — Operator, RPC, Metrics, Logs, and Support Evidence
+**Current focus:** Phase 106 — Parity Traceability, UAT, and Release Boundary Guardrails
 
 ## Current Position
 
 Milestone: v2.0 Transaction Relay and Mempool Participation Boundary
-Phase: 105 (Operator, RPC, Metrics, Logs, and Support Evidence) — EXECUTING
-Plan: 4 of 4
-Status: Ready to execute
+Phase: 106 (Parity Traceability, UAT, and Release Boundary Guardrails) — READY
+Plan: Pending discussion
+Status: Ready for discussion
 Last activity: 2026-07-02
 
-Progress: [#########-] 95% milestone plan progress; Phase 105 plan 4 of 4 is ready to execute
+Progress: [##########] 100% planned milestone progress; Phase 106 is ready for discussion
 
 ## Performance Metrics
 
@@ -50,7 +50,7 @@ Progress: [#########-] 95% milestone plan progress; Phase 105 plan 4 of 4 is rea
 | 102 | Orphan Handling and Admission Outcome Bridge | DL-03, DL-04, DL-05, MEM-01, MEM-02 | Complete |
 | 103 | Mempool Chainstate Lifecycle and Durable Recovery | MEM-03, MEM-04, MEM-05, MEM-06 | Complete |
 | 104 | Relay Serving, Fanout, and Rebroadcast Policy | REL-01, REL-02, REL-03, REL-04 | Complete |
-| 105 | Operator, RPC, Metrics, Logs, and Support Evidence | OBS-01, OBS-02, OBS-03, OBS-04 | In Progress (3/4) |
+| 105 | Operator, RPC, Metrics, Logs, and Support Evidence | OBS-01, OBS-02, OBS-03, OBS-04 | Complete |
 | 106 | Parity Traceability, UAT, and Release Boundary Guardrails | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05 | Pending |
 
 **Recent Trend:**
@@ -71,7 +71,7 @@ Progress: [#########-] 95% milestone plan progress; Phase 105 plan 4 of 4 is rea
 - Phase 102 completed bounded orphan handling, the shared mempool admission outcome bridge, clean code review, deterministic checker hardening, and passed verification.
 - Phase 103 completed mempool pressure truth, block-connect cleanup, bounded reorg reconsideration, durable mempool snapshot recovery, parity roots, deterministic checker coverage, and passed verification.
 - Phase 104 completed relay serving classification, managed `getdata` serving, fanout queues, local submission relay evidence, explicit `rebroadcast_deferred` evidence, parity roots, deterministic checker coverage, and passed verification.
-- Phase 105 Plan 105-03 completed support-bundle relay and mempool evidence rendering from the shared sanitized projection, relay-specific redaction coverage for OBS-04, and passed verification.
+- Phase 105 completed shared relay evidence status, RPC projection, operator status, dashboard rows, fixed metrics, structured logs, support-bundle sanitization, parity roots, deterministic checker coverage, and final verification for OBS-01 through OBS-04.
 
 | Phase 91-peer-permissions-and-connection-classes P01 | 27min | 2 tasks | 5 files |
 | Phase 91 P02 | 34min | 2 tasks | 13 files |
@@ -108,6 +108,7 @@ Progress: [#########-] 95% milestone plan progress; Phase 105 plan 4 of 4 is rea
 | Phase 105 P01 | 1h 16m | 3 tasks | 16 files |
 | Phase 105 P02 | 1h 7m | 4 tasks | 22 files |
 | Phase 105 P03 | 27m | 2 tasks | 6 files |
+| Phase 105 P04 | 1h 35m | 3 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -209,10 +210,11 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 - [Phase 105]: Relay evidence is represented as typed implemented, unavailable, deferred, or intentionally_different fields with stable reasons for non-implemented states. — Downstream RPC, CLI, metrics, logs, and support surfaces need one truthful sanitized contract.
 - [Phase 105]: Relay fanout, serving, and local submission records collapse to fixed counters before reaching RPC or operator-facing status. — This prevents transaction, peer, endpoint, permission, and free-form reason material from entering serialized support surfaces.
 - [Phase 105]: Baseline-compatible RPC methods retain their existing response shapes; Open Bitcoin-specific network status is the truth surface for relay evidence. — Phase 105 must expose operator evidence without implying public relay readiness or changing Knots-compatible RPC surfaces.
+- [Phase 105]: Deterministic no-claim checkers must use the current repo vocabulary for deferred support surfaces. — Positive closeout rationale should avoid legacy future-scope phrases such as `support-bundle redaction` unless they are clearly no-claim marked.
 
 ### Pending Todos
 
-- Complete Phase 105 Plan 105-04 for docs, parity records, the deterministic Phase 105 checker, final verification evidence, and phase closeout.
+- Start Phase 106 for parity traceability, UAT, and release-boundary guardrails.
 - Keep v1.9 phase directories numbered 90+ under `.planning/phases/`; historical phase directories remain tracked because verifier scripts still depend on selected phase evidence.
 - Keep repo-local Cargo and Bazel command forms in UAT guidance:
   - `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- ...`

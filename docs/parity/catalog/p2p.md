@@ -926,6 +926,56 @@ release-boundary closeout, production service operation, production full-node
 readiness, or production-funds wallet use. Those surfaces remain outside this
 phase until future scoped requirements add implementation and evidence.
 
+## Phase 105 operator, RPC, metrics, logs, and support evidence
+
+The `v2-0-operator-rpc-metrics-logs-support-evidence` surface covers `OBS-01`,
+`OBS-02`, `OBS-03`, and `OBS-04` for the operator-facing relay evidence layer
+after Phase 104 serving and fanout policy. It makes local relay and mempool
+evidence auditable through the shared `OpenBitcoinStatusSnapshot.mempool.relay`
+contract, the `openbitcoinnetworkstatus.relay` RPC extension projection,
+operator status, dashboard rows, fixed metrics, structured logs, and redacted
+support bundles.
+
+Its Knots anchors are
+[`packages/bitcoin-knots/src/rpc/net.cpp`](../../../packages/bitcoin-knots/src/rpc/net.cpp),
+[`packages/bitcoin-knots/src/rpc/mempool.cpp`](../../../packages/bitcoin-knots/src/rpc/mempool.cpp),
+[`packages/bitcoin-knots/src/rpc/rawtransaction.cpp`](../../../packages/bitcoin-knots/src/rpc/rawtransaction.cpp),
+[`packages/bitcoin-knots/src/net_processing.cpp`](../../../packages/bitcoin-knots/src/net_processing.cpp),
+[`packages/bitcoin-knots/src/txmempool.cpp`](../../../packages/bitcoin-knots/src/txmempool.cpp),
+[`packages/bitcoin-knots/test/functional/rpc_net.py`](../../../packages/bitcoin-knots/test/functional/rpc_net.py),
+[`packages/bitcoin-knots/test/functional/rpc_mempool_info.py`](../../../packages/bitcoin-knots/test/functional/rpc_mempool_info.py),
+[`packages/bitcoin-knots/test/functional/rpc_rawtransaction.py`](../../../packages/bitcoin-knots/test/functional/rpc_rawtransaction.py),
+[`packages/bitcoin-knots/test/functional/mempool_accept.py`](../../../packages/bitcoin-knots/test/functional/mempool_accept.py),
+and
+[`packages/bitcoin-knots/test/functional/p2p_tx_download.py`](../../../packages/bitcoin-knots/test/functional/p2p_tx_download.py).
+
+Open Bitcoin intentionally owns the Phase 105 evidence boundary:
+
+- `RelayEvidenceStatus`, `RelayEvidenceCounters`, `RelayEvidenceField`, and
+  `RelayEvidenceCapability` define the shared classified contract.
+- `accepted_count`, `rejected_count`, `orphaned_count`, `requested_count`,
+  `served_count`, `announced_count`, `suppressed_count`, `evicted_count`,
+  `expired_count`, and `rebroadcast_deferred_count` are fixed aggregate relay
+  counters.
+- `MetricKind::RelayAcceptedCount` through
+  `MetricKind::RelayRebroadcastDeferredCount` keep metric names fixed and
+  label-free.
+- `RELAY_MEMPOOL_LOG_SOURCE` and `relay_mempool_log_record` emit the same
+  aggregate count evidence without raw relay material.
+- `redacted_relay_mempool_evidence` protects support bundles from raw
+  transaction hex, txids, wtxids, endpoints, peer ids, permission strings,
+  credentials, cookies, secrets, suspicious long hex, and dynamic labels.
+- Evidence roots include operator status, dashboard, RPC, support, metrics,
+  logging, source-breadcrumb, and Phase 105 plan-summary files plus
+  `scripts/check-phase105-operator-relay-evidence.ts` and its test.
+
+Phase 105 does not claim public propagation, compact block relay, package
+relay, bloom/filter serving, public relay defaults, public-network relay CI,
+production service operation, production full-node readiness,
+production-service proof, production full-node readiness proof, or
+production-funds wallet safety proof. Phase 106 owns release-boundary
+guardrails and any broader public-network relay UAT.
+
 ## First-party implementation
 
 - [`packages/open-bitcoin-network/src/address.rs`](../../../packages/open-bitcoin-network/src/address.rs)

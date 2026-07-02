@@ -116,13 +116,35 @@ internet-connected relay CI, Phase 105 operator/RPC/metrics/log/support
 presentation, Phase 106 release-boundary closeout, production service
 operation, production full-node readiness, or production-funds wallet use.
 
+## Phase 105 operator relay evidence
+
+The `v2-0-operator-rpc-metrics-logs-support-evidence` surface documents the
+operator-facing mempool and relay evidence that Phase 105 projects from the
+shared status contract. The mempool policy surface now exposes fixed aggregate
+relay outcome counters through status, RPC extension status, metrics, logs, and
+support bundles without adding new mempool acceptance rules.
+
+The fixed counter vocabulary is `accepted_count`, `rejected_count`,
+`orphaned_count`, `requested_count`, `served_count`, `announced_count`,
+`suppressed_count`, `evicted_count`, `expired_count`, and
+`rebroadcast_deferred_count`. Capability fields are classified as
+`implemented`, `unavailable`, `deferred`, or `intentionally_different` so
+operators can distinguish local mempool evidence from deferred public relay
+readiness.
+
+This Phase 105 bridge does not add Knots-complete mempool policy, compact block
+relay, package relay, bloom/filter serving, public relay defaults,
+public-network relay CI, production service operation, production full-node
+readiness, or production-funds wallet use.
+
 ## Known gaps
 
 - package relay beyond single-transaction admission
 - rolling minimum-fee decay and long-lived relay-fee state
 - Knots `mempool.dat` binary compatibility
 - periodic rebroadcast scheduling beyond `rebroadcast_deferred` evidence
-- broad RPC, CLI, dashboard, support-bundle, and operator presentation surfaces
+- release-boundary and public-network relay readiness evidence beyond the
+  bounded Phase 105 operator presentation surfaces
 
 ## Follow-up triggers
 

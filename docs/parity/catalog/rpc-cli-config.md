@@ -57,6 +57,12 @@ adapters can back honestly.
   `openbitcoinsyncresume` are repo-owned extension methods that let the
   operator CLI inspect or update daemon-owned durable sync control without
   opening the Fjall store from a second process.
+- `openbitcoinnetworkstatus` is a repo-owned extension method that exposes
+  Open Bitcoin network status evidence including bounded inbound status,
+  metrics availability, and Phase 105 relay/mempool evidence under `relay`.
+- Operator `status --format human`, `status --format json`, dashboard rows,
+  and support bundles consume the same shared `mempool.relay` evidence
+  contract instead of renderer-local relay summaries.
 - `rescanblockchain` supports full active-snapshot rescans and rejects partial height ranges with invalid params because bounded wallet rescans are outside the Phase 8 adapter surface.
 - `sendrawtransaction` explicit `maxfeerate` and `maxburnamount` values are rejected because those safety limits are not enforced by the supported dispatcher surface.
 - `-rpcconnect=localhost` and other client-path hostname endpoints are supported, with explicit `-rpcport` taking precedence over embedded `-rpcconnect` ports and embedded ports taking precedence over the chain-default RPC port.
@@ -66,6 +72,23 @@ adapters can back honestly.
 - open-stdin regression coverage proves a normal CLI invocation without stdin flags does not wait on an open stdin pipe.
 - cookie-auth creation uses a generated `__cookie__:<64 lowercase hex chars>`
   secret and owner-only Unix file mode for newly created cookie files.
+
+## Phase 105 relay evidence classification
+
+Phase 105 classifies operator-facing relay and mempool evidence as
+implemented, unavailable, deferred, or intentionally different. The supported
+RPC and CLI surfaces expose fixed counters only: `accepted_count`,
+`rejected_count`, `orphaned_count`, `requested_count`, `served_count`,
+`announced_count`, `suppressed_count`, `evicted_count`, `expired_count`, and
+`rebroadcast_deferred_count`.
+
+Support-bundle redaction protects raw transaction hex, txids, wtxids,
+endpoints, socket-address shapes, peer identifiers, permission strings,
+credentials, cookies, secrets, suspicious long hex, and dynamic labels. The
+Phase 105 RPC and CLI surface does not claim public propagation, compact block
+relay, package relay, bloom/filter serving, public relay defaults,
+public-network relay CI, production service operation, production full-node
+readiness, or production-funds wallet use.
 
 ## Deferred surfaces
 

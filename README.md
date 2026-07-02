@@ -19,12 +19,12 @@ configuration surfaces while keeping the first-party internals strongly typed,
 auditable, and modular.
 
 > Status: the in-scope headless v1 parity surfaces are implemented and ready
-> for review and operator testing. v1.9 is the network participation boundary
-> closeout: bounded opt-in inbound listener/admission, permission,
-> address-boundary, eviction/ban, and resource-governance evidence exists for
-> loopback or synthetic review. It still does not claim production full-node
-> readiness, public inbound defaults, transaction relay, compact block relay,
-> mempool propagation, full address relay, or production-service operation.
+> for review and operator testing. v2.0 now has bounded transaction relay and
+> mempool participation evidence through local status, RPC extension status,
+> metrics, logs, dashboard rows, and redacted support bundles. It still does
+> not claim public relay defaults, compact block relay, package relay,
+> bloom/filter serving, public-network relay CI, production full-node
+> readiness, production-service operation, or production-funds wallet use.
 
 ## Parity At A Glance
 
@@ -57,7 +57,7 @@ guardrails.
 | Consensus and validation | Script execution, transaction checks, block checks, PoW, merkle behavior | ✓ done | [`catalog/consensus-validation.md`](./docs/parity/catalog/consensus-validation.md) | Consensus parity includes legacy, segwit-v0, taproot, and parity-closure fixes. |
 | Chainstate and UTXO engine | Connect, disconnect, reorg, UTXO, undo, and best-chain behavior | ✓ done | [`catalog/chainstate.md`](./docs/parity/catalog/chainstate.md) | Disk-backed databases and full manager behavior remain follow-up depth. |
 | Mempool policy | Admission, replacement, fee accounting, ancestor/descendant, eviction | ✓ done | [`catalog/mempool-policy.md`](./docs/parity/catalog/mempool-policy.md) | Long-lived pressure and package-relay depth remain future work. |
-| P2P networking and sync | Handshake, peer lifecycle, headers, blocks, inventory, tx relay | ✓ done | [`catalog/p2p.md`](./docs/parity/catalog/p2p.md) | v1.9 has bounded opt-in inbound listener/admission, permission, address-boundary, eviction/ban, and resource-governance evidence; transaction relay, compact block relay, mempool propagation, full address relay, public inbound defaults, and production full-node readiness remain deferred. |
+| P2P networking and sync | Handshake, peer lifecycle, headers, blocks, inventory, tx relay | ✓ done | [`catalog/p2p.md`](./docs/parity/catalog/p2p.md) | v2.0 has bounded local relay/mempool evidence for inventory, download, orphan admission, lifecycle, serving/fanout, metrics/logs, and redacted support; compact block relay, package relay, bloom/filter serving, public relay defaults, public-network relay CI, and production full-node readiness remain deferred. |
 | Wallet | Descriptors, addresses, balances, UTXOs, coin selection, signing | ✓ done | [`catalog/wallet.md`](./docs/parity/catalog/wallet.md) | HD, multisig, PSBT, encryption, and external signers remain follow-up surfaces. |
 | RPC, CLI, and config | Local JSON-RPC, `bitcoin-cli`-style flags, config, auth, operator flows | ✓ done | [`catalog/rpc-cli-config.md`](./docs/parity/catalog/rpc-cli-config.md) | The supported slice is single-wallet and local-operator focused. |
 | Verification harnesses and property tests | Functional-suite concepts and fuzz/property targets | ✓ done | [`catalog/verification-harnesses.md`](./docs/parity/catalog/verification-harnesses.md) | Managed Knots process spawning and full upstream Python-suite coverage are deferred. |

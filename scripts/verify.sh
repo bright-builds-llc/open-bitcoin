@@ -323,6 +323,8 @@ bun test scripts/check-phase103-mempool-lifecycle.test.ts
 bun run scripts/check-phase103-mempool-lifecycle.ts
 bun test scripts/check-phase104-relay-serving-fanout.test.ts
 bun run scripts/check-phase104-relay-serving-fanout.ts
+bun test scripts/check-phase105-operator-relay-evidence.test.ts
+bun run scripts/check-phase105-operator-relay-evidence.ts
 VERIFY_COMMAND_ORDER
 
 parse_args "$@"
@@ -422,6 +424,8 @@ run_step "test Phase 103 mempool lifecycle checker" bun test scripts/check-phase
 run_step "check Phase 103 mempool lifecycle" bun run scripts/check-phase103-mempool-lifecycle.ts
 run_step "test Phase 104 relay serving/fanout checker" bun test scripts/check-phase104-relay-serving-fanout.test.ts
 run_step "check Phase 104 relay serving/fanout" bun run scripts/check-phase104-relay-serving-fanout.ts
+run_step "test Phase 105 operator relay evidence checker" bun test scripts/check-phase105-operator-relay-evidence.test.ts
+run_step "check Phase 105 operator relay evidence" bun run scripts/check-phase105-operator-relay-evidence.ts
 run_step "check pure-core dependencies" bash scripts/check-pure-core-deps.sh
 run_step "check file lengths" bash scripts/check-file-lengths.sh
 run_step "check panic sites" bash scripts/check-panic-sites.sh

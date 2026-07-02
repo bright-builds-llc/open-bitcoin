@@ -16,8 +16,8 @@
 | 101 | Transaction Inventory Identity and Download Scheduling | INV-01, INV-02, INV-03, INV-04, DL-01, DL-02 | Complete |
 | 102 | Orphan Handling and Admission Outcome Bridge | DL-03, DL-04, DL-05, MEM-01, MEM-02 | Complete |
 | 103 | Mempool Chainstate Lifecycle and Durable Recovery | MEM-03, MEM-04, MEM-05, MEM-06 | Complete |
-| 104 | Relay Serving, Fanout, and Rebroadcast Policy | REL-01, REL-02, REL-03, REL-04 | Pending |
-| 105 | Operator, RPC, Metrics, Logs, and Support Evidence | OBS-01, OBS-02, OBS-03, OBS-04 | In Progress (3/4) |
+| 104 | Relay Serving, Fanout, and Rebroadcast Policy | REL-01, REL-02, REL-03, REL-04 | Complete |
+| 105 | Operator, RPC, Metrics, Logs, and Support Evidence | OBS-01, OBS-02, OBS-03, OBS-04 | Complete |
 | 106 | Parity Traceability, UAT, and Release Boundary Guardrails | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05 | Pending |
 
 ## Phase Details
@@ -173,6 +173,14 @@ Plans:
 
 **Verification:** RPC dispatch tests, CLI renderer tests, dashboard/status tests, metrics/log tests, support redaction tests, and `bash scripts/verify.sh`.
 
+**Plans:** 4/4 plans complete
+
+Plans:
+- [x] 105-01-PLAN.md — Shared relay evidence status contract and RPC projection.
+- [x] 105-02-PLAN.md — Operator status, dashboard, metrics, and structured logs.
+- [x] 105-03-PLAN.md — Support bundle rendering and relay/mempool sanitization.
+- [x] 105-04-PLAN.md — Docs, parity roots, deterministic checker, and phase closeout.
+
 ### Phase 106: Parity Traceability, UAT, and Release Boundary Guardrails
 
 **Purpose:** Close the milestone with auditable Knots anchors, deterministic no-claim checks, and operator UAT guidance.
@@ -243,7 +251,7 @@ Plans:
 | v1.7 Full-Sync Soak and Recovery Hardening | 7 | 37 | Shipped | 2026-06-20 | [roadmap](milestones/v1.7-ROADMAP.md) |
 | v1.8 Production Full-Node Readiness Boundary | 8 | 26 | Shipped | 2026-06-25 | [roadmap](milestones/v1.8-ROADMAP.md) |
 | v1.9 Inbound Peer Serving and Network Participation Boundary | 10 | 56 | Shipped | 2026-06-29 | [roadmap](milestones/v1.9-ROADMAP.md) |
-| v2.0 Transaction Relay and Mempool Participation Boundary | 7 | 6 | Active | - | active |
+| v2.0 Transaction Relay and Mempool Participation Boundary | 7 | 22 | Active | - | active |
 
 ## Traceability
 
@@ -254,8 +262,8 @@ Plans:
 
 ## Next Step
 
-Start Phase 101 discussion:
+Start Phase 106 discussion:
 
 ```bash
-/gsd-discuss-phase 101
+/gsd-discuss-phase 106
 ```

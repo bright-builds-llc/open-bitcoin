@@ -407,6 +407,56 @@ Default verification must stay deterministic, loopback/synthetic, and free of
 public-network relay, service-manager, wall-clock soak, production-deployment,
 or public relay CI gates.
 
+## Phase 105 Operator Relay Evidence Review
+
+Phase 105 exposes bounded relay and mempool evidence across operator status,
+dashboard, RPC extension status, metrics, logs, and support bundles. Reviewers
+should treat this as local troubleshooting and parity-review evidence only. It
+does not prove public propagation, compact block relay, package relay,
+bloom/filter serving, public relay defaults, public-network relay CI,
+production-service operation, production full-node readiness, or
+production-funds wallet use.
+
+Inspect shared operator status:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- status --format human
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- status --format json
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- status --format human
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- status --format json
+```
+
+Inspect the Open Bitcoin-owned RPC extension surface:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin-cli -- -regtest openbitcoinnetworkstatus
+bazel run //packages/open-bitcoin-cli:open_bitcoin_cli -- -regtest openbitcoinnetworkstatus
+```
+
+Collect a redacted relay evidence support bundle:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- support bundle --output-dir=/tmp/open-bitcoin-relay-support
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- support bundle --output-dir=/tmp/open-bitcoin-relay-support
+```
+
+Expected review evidence is bounded:
+
+- `status --format json` and `openbitcoinnetworkstatus` expose
+  `mempool.relay` or `relay` with `outcome_counters`, `mempool_admission`,
+  `local_submission`, `fanout`, `serving`, `rebroadcast`, and `public_relay`.
+- The fixed relay counter vocabulary is `accepted_count`, `rejected_count`,
+  `orphaned_count`, `requested_count`, `served_count`, `announced_count`,
+  `suppressed_count`, `evicted_count`, `expired_count`, and
+  `rebroadcast_deferred_count`.
+- Metrics use fixed aggregate names such as `relay_accepted_count`,
+  `relay_rejected_count`, and `relay_rebroadcast_deferred_count`.
+- Structured logs use the `relay_mempool` source and aggregate counts only.
+- Support bundles preserve safe states and counts while redacting raw
+  transaction hex, txids, wtxids, endpoints, socket-address shapes, peer
+  identifiers, permission strings, credentials, cookies, secrets, suspicious
+  long hex, and dynamic labels to `redacted_relay_mempool_evidence`.
+
 ## Phase 92 Address Advertisement and Discovery Boundary Review
 
 Phase 92 adds bounded address-boundary evidence to the same explicit loopback

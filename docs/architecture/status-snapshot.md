@@ -262,6 +262,42 @@ relay by default, public-network relay CI, production service operation,
 production full-node readiness, or production-funds wallet use. Those remain
 out of scope for Phase 100.
 
+## Phase 105 operator relay and mempool evidence
+
+Phase 105 makes the shared relay and mempool evidence contract visible through
+operator status, dashboard, RPC extension status, metrics, structured logs, and
+support bundles. The shared contract lives under
+`OpenBitcoinStatusSnapshot.mempool.relay` and is also projected through
+`openbitcoinnetworkstatus.relay`; renderers and adapters should consume that
+contract instead of inventing local relay summaries.
+
+The relay evidence shape is deliberately small and classified:
+
+- `outcome_counters` is `implemented` when fixed counters are available.
+- `mempool_admission` is `implemented` or `unavailable` depending on the
+  available managed-mempool evidence.
+- `local_submission`, `fanout`, `serving`, and `rebroadcast` are implemented,
+  unavailable, or deferred according to the current managed relay boundary.
+- `public_relay` is intentionally different until a future phase adds public
+  relay readiness evidence.
+
+The fixed counter set is `accepted_count`, `rejected_count`, `orphaned_count`,
+`requested_count`, `served_count`, `announced_count`, `suppressed_count`,
+`evicted_count`, `expired_count`, and `rebroadcast_deferred_count`. Metrics and
+logs should expose those counters as low-cardinality aggregate fields only.
+
+Status consumers and support-bundle renderers must not expose raw transaction
+hex, txids, wtxids, peer ids, endpoints, socket-address shapes, permission
+strings, credentials, cookies, secrets, raw reject labels, or dynamic metric
+labels. Support bundles preserve safe states and counts while replacing
+sensitive relay reasons with `redacted_relay_mempool_evidence`.
+
+This is bounded local relay and mempool status evidence. It does not claim
+public propagation, compact block relay, package relay, bloom/filter serving,
+public relay defaults, public-network relay CI, production service operation,
+production full-node readiness, production-readiness proof, or
+production-funds wallet use.
+
 ## Phase 92 address advertisement and discovery status
 
 Phase 92 extends `OpenBitcoinStatusSnapshot.peers.inbound` with bounded address

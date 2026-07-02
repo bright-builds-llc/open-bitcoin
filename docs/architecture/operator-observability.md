@@ -257,6 +257,36 @@ public-network relay CI, production service operation, production full-node
 readiness, or production-funds wallet use. Public-network relay review stays
 explicit opt-in UAT outside `bash scripts/verify.sh`.
 
+## Phase 105 relay and mempool evidence
+
+Phase 105 observability uses one shared relay evidence contract instead of
+surface-specific summaries. `OpenBitcoinStatusSnapshot.mempool.relay`,
+`openbitcoinnetworkstatus.relay`, operator status, dashboard rows, support
+bundles, metrics, and structured logs should agree on the same classified field
+states: `implemented`, `unavailable`, `deferred`, and `intentionally_different`.
+
+The stable counter vocabulary is `accepted_count`, `rejected_count`,
+`orphaned_count`, `requested_count`, `served_count`, `announced_count`,
+`suppressed_count`, `evicted_count`, `expired_count`, and
+`rebroadcast_deferred_count`. Metric kinds remain fixed aggregate counters such
+as `relay_accepted_count`, `relay_rejected_count`, and
+`relay_rebroadcast_deferred_count`. Structured logs use the
+`relay_mempool` source and the same aggregate count values.
+
+Support-bundle evidence is shareable only after redaction. It may preserve safe
+states, counter values, and bounded capability labels such as
+`mempool_admission`, `local_submission_relay`, `relay_fanout`,
+`relay_serving`, `rebroadcast`, and `public_relay_readiness`. It must redact
+raw transaction hex, txids, wtxids, endpoints, socket-address shapes, peer
+identifiers, permission strings, credentials, cookies, secrets, suspicious long
+hex, and dynamic labels.
+
+Phase 105 does not claim public propagation, compact block relay, package
+relay, bloom/filter serving, public relay defaults, public-network relay CI,
+production service operation, production full-node readiness,
+production-service proof, production full-node readiness proof, or
+production-funds wallet safety proof. Those remain future scoped surfaces.
+
 ## Phase 92 address advertisement and discovery evidence
 
 Address-boundary observability is sourced from the shared inbound status fields
