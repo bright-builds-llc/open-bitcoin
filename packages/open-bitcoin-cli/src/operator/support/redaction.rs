@@ -8,6 +8,7 @@ use open_bitcoin_node::{
     status::{
         FieldAvailability, InboundAddressDecisionEvent, InboundPeerPolicyEvent,
         InboundPeerServingStatus, InboundResourceGovernanceEvent,
+        relay_evidence::{RelayEvidenceField, RelayEvidenceStatus},
     },
 };
 use serde::Serialize;
@@ -21,11 +22,13 @@ const INBOUND_PEER_POLICY_REDACTION_SAFEGUARD: &str =
     "inbound peer policy evidence bounded/redacted";
 const INBOUND_RESOURCE_GOVERNANCE_REDACTION_SAFEGUARD: &str =
     "inbound resource-governance evidence bounded/redacted";
+const RELAY_MEMPOOL_REDACTION_SAFEGUARD: &str = "relay and mempool evidence bounded/redacted";
 const REDACTED_PERMISSION_CLASS_LABEL: &str = "redacted_permission_class";
 const REDACTED_PERMISSION_EFFECT_LABEL: &str = "redacted_permission_effect";
 const REDACTED_ADDRESS_EVIDENCE_LABEL: &str = "redacted_address_evidence";
 const REDACTED_PEER_POLICY_LABEL: &str = "redacted_peer_policy_label";
 const REDACTED_RESOURCE_GOVERNANCE_LABEL: &str = "redacted_resource_governance_evidence";
+const REDACTED_RELAY_MEMPOOL_LABEL: &str = "redacted_relay_mempool_evidence";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub(crate) struct RedactionSummary {
@@ -40,12 +43,15 @@ pub(crate) fn redaction_summary() -> RedactionSummary {
             "RPC password and RPC auth values".to_string(),
             "wallet private material and raw wallet files".to_string(),
             "raw unbounded log contents".to_string(),
+            "raw transaction hex, txids, wtxids, peer endpoints, permission strings, credentials, and dynamic relay labels"
+                .to_string(),
         ],
         safeguards: vec![
             "credential sources are represented as metadata only".to_string(),
             "live smoke reports are summarized from allowlisted fields only".to_string(),
             "logs are limited to existing structured status signals".to_string(),
             "resource bounds are recorded as compact status summaries only".to_string(),
+            RELAY_MEMPOOL_REDACTION_SAFEGUARD.to_string(),
             INBOUND_ENDPOINT_REDACTION_SAFEGUARD.to_string(),
             INBOUND_PERMISSION_REDACTION_SAFEGUARD.to_string(),
             INBOUND_ADDRESS_REDACTION_SAFEGUARD.to_string(),
@@ -58,12 +64,41 @@ pub(crate) fn redaction_summary() -> RedactionSummary {
 pub(crate) fn support_status_for_bundle(
     mut status: OpenBitcoinStatusSnapshot,
 ) -> OpenBitcoinStatusSnapshot {
+    redact_relay_mempool_evidence(&mut status.mempool.relay);
     redact_inbound_endpoint_evidence(&mut status.peers.inbound);
     redact_inbound_permission_evidence(&mut status.peers.inbound);
     redact_inbound_address_evidence(&mut status.peers.inbound);
     redact_inbound_peer_policy_evidence(&mut status.peers.inbound);
     redact_inbound_resource_governance_evidence(&mut status.peers.inbound);
     status
+}
+
+fn redact_relay_mempool_evidence(relay: &mut RelayEvidenceStatus) {
+    sanitize_relay_reason_field(&mut relay.outcome_counters);
+    sanitize_relay_reason_field(&mut relay.mempool_admission);
+    sanitize_relay_reason_field(&mut relay.local_submission);
+    sanitize_relay_reason_field(&mut relay.fanout);
+    sanitize_relay_reason_field(&mut relay.serving);
+    sanitize_relay_reason_field(&mut relay.rebroadcast);
+    sanitize_relay_reason_field(&mut relay.public_relay);
+}
+
+fn sanitize_relay_reason_field<T>(field: &mut RelayEvidenceField<T>) {
+    match field {
+        RelayEvidenceField::Implemented(_) => {}
+        RelayEvidenceField::Unavailable { reason }
+        | RelayEvidenceField::Deferred { reason }
+        | RelayEvidenceField::IntentionallyDifferent { reason } => {
+            *reason = sanitized_relay_evidence_text(reason);
+        }
+    }
+}
+
+fn sanitized_relay_evidence_text(value: &str) -> String {
+    if contains_relay_sensitive_material(value) {
+        return REDACTED_RELAY_MEMPOOL_LABEL.to_string();
+    }
+    value.to_string()
 }
 
 fn redact_inbound_endpoint_evidence(inbound: &mut FieldAvailability<InboundPeerServingStatus>) {
@@ -327,6 +362,31 @@ fn contains_raw_address_evidence(value: &str) -> bool {
         || lower_value.contains("secret")
         || lower_value.contains("cookie=")
         || lower_value.contains("config=")
+}
+
+fn contains_relay_sensitive_material(value: &str) -> bool {
+    let lower_value = value.to_ascii_lowercase();
+    contains_raw_address_evidence(value)
+        || contains_long_hex_token(value)
+        || lower_value.contains("raw_tx")
+        || lower_value.contains("raw tx")
+        || lower_value.contains("transaction_hex")
+        || lower_value.contains("txid=")
+        || lower_value.contains("wtxid=")
+        || lower_value.contains("peer_id=")
+        || lower_value.contains("peer-")
+        || lower_value.contains("permission_string")
+        || lower_value.contains("metric_label")
+        || lower_value.contains("dynamic_label")
+        || lower_value.contains("label=")
+}
+
+fn contains_long_hex_token(value: &str) -> bool {
+    value
+        .split(|character: char| !character.is_ascii_hexdigit())
+        .any(|token| {
+            token.len() >= 64 && token.chars().all(|character| character.is_ascii_hexdigit())
+        })
 }
 
 fn contains_endpoint_shape(value: &str) -> bool {

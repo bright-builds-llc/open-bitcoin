@@ -4,6 +4,7 @@
 //! Rendering helpers for support bundle command output.
 
 mod inbound;
+mod relay;
 
 use serde::Serialize;
 use serde_json::{Value, json};
@@ -88,6 +89,7 @@ pub(super) fn render_support_markdown(bundle: &SupportEvidenceBundle) -> String 
         json_compact(&bundle.status.metrics.availability)
     ));
 
+    relay::push_relay_mempool_evidence(&mut output, &bundle.status.mempool);
     inbound::push_inbound_serving(&mut output, &bundle.status.peers.inbound);
     output.push_str("\n## Recovery Evidence\n\n");
     push_recovery_evidence(&mut output, &bundle.recovery_evidence);

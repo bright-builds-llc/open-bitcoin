@@ -26,7 +26,11 @@ use open_bitcoin_node::{
         SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal,
         SyncRecoveryCategory, SyncResourcePressure, SyncStatus, SyncStopReasonStatus,
         TipFreshnessStatus, WalletStatus, inbound_status_unavailable,
-        relay_evidence::RelayEvidenceStatus, usage_against_budget,
+        relay_evidence::{
+            RelayCapabilityEvidence, RelayEvidenceCapability, RelayEvidenceCounters,
+            RelayEvidenceField, RelayEvidenceStatus,
+        },
+        usage_against_budget,
     },
 };
 use serde_json::json;
@@ -102,6 +106,7 @@ fn phase71_support_redaction_names_compact_evidence_bounds() {
             "RPC password and RPC auth values",
             "wallet private material and raw wallet files",
             "raw unbounded log contents",
+            "raw transaction hex, txids, wtxids, peer endpoints, permission strings, credentials, and dynamic relay labels",
         ]
     );
     assert_eq!(
@@ -111,6 +116,7 @@ fn phase71_support_redaction_names_compact_evidence_bounds() {
             "live smoke reports are summarized from allowlisted fields only",
             "logs are limited to existing structured status signals",
             "resource bounds are recorded as compact status summaries only",
+            "relay and mempool evidence bounded/redacted",
             "inbound peer endpoints bounded/redacted",
             "inbound permission labels bounded to machine classes/effects",
             "inbound address boundary evidence bounded/redacted",
@@ -118,6 +124,10 @@ fn phase71_support_redaction_names_compact_evidence_bounds() {
             "inbound resource-governance evidence bounded/redacted",
         ]
     );
+    assert!(omitted.contains(
+        &"raw transaction hex, txids, wtxids, peer endpoints, permission strings, credentials, and dynamic relay labels"
+            .to_string()
+    ));
 }
 
 #[test]
@@ -861,6 +871,88 @@ fn support_bundle_preserves_retained_inbound_metric_samples() {
     assert!(sample.get("peer_id").is_none());
     assert!(sample.get("endpoint").is_none());
     assert!(sample.get("permission_class").is_none());
+}
+
+#[test]
+fn support_bundle_renders_relay_and_mempool_evidence_from_shared_projection() {
+    // Arrange
+    let temp = TestDirectory::new("phase105-relay-support");
+    let status = phase105_status_with_relay_evidence();
+    let bundle = phase77_support_bundle_with_status(temp.path(), status);
+
+    // Act
+    let serialized = serde_json::to_value(&bundle).expect("support bundle json");
+    let markdown = render::render_support_markdown(&bundle);
+
+    // Assert
+    assert_eq!(
+        serialized["status"]["mempool"]["relay"]["outcome_counters"]["state"],
+        json!("implemented")
+    );
+    assert_eq!(
+        serialized["status"]["mempool"]["relay"]["outcome_counters"]["value"]["accepted_count"],
+        json!(11)
+    );
+    for expected in [
+        "## Relay and Mempool Evidence",
+        "Mempool: transactions=7",
+        "Relay evidence: accepted_count=11 rejected_count=2 orphaned_count=3 requested_count=5 served_count=4 announced_count=13 suppressed_count=8 evicted_count=1 expired_count=6 rebroadcast_deferred_count=9",
+        "Mempool evidence: Implemented: mempool_admission",
+        "Relay local submission: Implemented: local_submission_relay",
+        "Relay fanout: Implemented: relay_fanout",
+        "Relay serving: Implemented: relay_serving",
+        "Rebroadcast: deferred: Deferred: rebroadcast relay evidence not projected",
+        "Public relay: Intentionally different: public relay readiness is intentionally not claimed",
+        "bounded local status only",
+        "local troubleshooting/parity-review evidence only",
+        "public propagation",
+        "compact-block relay",
+        "release validator",
+        "public-network proof",
+        "production-service proof",
+        "production full-node readiness proof",
+        "production-funds wallet safety proof",
+    ] {
+        assert!(markdown.contains(expected), "missing {expected}");
+    }
+}
+
+#[test]
+fn support_bundle_redacts_sensitive_relay_reasons_in_json_and_markdown() {
+    // Arrange
+    let temp = TestDirectory::new("phase105-relay-redaction");
+    let status = phase105_status_with_sensitive_relay_reasons();
+    let bundle = phase77_support_bundle_with_status(temp.path(), status);
+
+    // Act
+    let serialized = serde_json::to_value(&bundle).expect("support bundle json");
+    let json_text = serde_json::to_string_pretty(&bundle).expect("support json");
+    let markdown = render::render_support_markdown(&bundle);
+
+    // Assert
+    assert_eq!(
+        serialized["status"]["mempool"]["relay"]["mempool_admission"]["value"]["reason"],
+        json!("redacted_relay_mempool_evidence")
+    );
+    assert!(markdown.contains("redacted_relay_mempool_evidence"));
+    for rendered in [&json_text, &markdown] {
+        for forbidden in [
+            "raw tx hex",
+            "020000000001",
+            "txid=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "wtxid=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "127.0.0.1:",
+            "198.51.100.105:8333",
+            "peer_id=",
+            "permission_string",
+            "credential=phase105",
+            "secret=phase105",
+            "cookie=phase105",
+            "dynamic_label",
+        ] {
+            assert_absent(rendered, forbidden);
+        }
+    }
 }
 
 #[test]
@@ -1691,6 +1783,52 @@ fn phase72_sync_status() -> SyncStatus {
         latest_reorg: FieldAvailability::unavailable("no reorg evidence recorded"),
         reconcile_progress: FieldAvailability::unavailable("reconcile progress unavailable"),
     }
+}
+
+fn phase105_status_with_relay_evidence() -> OpenBitcoinStatusSnapshot {
+    let mut status = phase72_status();
+    status.mempool.transactions = FieldAvailability::available(7);
+    status.mempool.relay = RelayEvidenceStatus {
+        outcome_counters: RelayEvidenceField::implemented(RelayEvidenceCounters {
+            accepted_count: 11,
+            rejected_count: 2,
+            orphaned_count: 3,
+            requested_count: 5,
+            served_count: 4,
+            announced_count: 13,
+            suppressed_count: 8,
+            evicted_count: 1,
+            expired_count: 6,
+            rebroadcast_deferred_count: 9,
+        }),
+        mempool_admission: RelayEvidenceField::implemented(RelayCapabilityEvidence::new(
+            RelayEvidenceCapability::MempoolAdmission,
+        )),
+        local_submission: RelayEvidenceField::implemented(RelayCapabilityEvidence::new(
+            RelayEvidenceCapability::LocalSubmissionRelay,
+        )),
+        fanout: RelayEvidenceField::implemented(RelayCapabilityEvidence::new(
+            RelayEvidenceCapability::RelayFanout,
+        )),
+        serving: RelayEvidenceField::implemented(RelayCapabilityEvidence::new(
+            RelayEvidenceCapability::RelayServing,
+        )),
+        ..RelayEvidenceStatus::default()
+    };
+    status
+}
+
+fn phase105_status_with_sensitive_relay_reasons() -> OpenBitcoinStatusSnapshot {
+    let mut status = phase105_status_with_relay_evidence();
+    let sensitive = "raw tx hex 020000000001 txid=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa wtxid=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb 127.0.0.1:18444 198.51.100.105:8333 peer_id=105 permission_string=in,noban credential=phase105 secret=phase105 cookie=phase105 dynamic_label=peer";
+    status.mempool.relay.outcome_counters = RelayEvidenceField::unavailable(sensitive);
+    status.mempool.relay.mempool_admission = RelayEvidenceField::unavailable(sensitive);
+    status.mempool.relay.local_submission = RelayEvidenceField::deferred(sensitive);
+    status.mempool.relay.fanout = RelayEvidenceField::deferred(sensitive);
+    status.mempool.relay.serving = RelayEvidenceField::deferred(sensitive);
+    status.mempool.relay.rebroadcast = RelayEvidenceField::deferred(sensitive);
+    status.mempool.relay.public_relay = RelayEvidenceField::intentionally_different(sensitive);
+    status
 }
 
 fn normal_resource_pressure() -> SyncResourcePressure {
