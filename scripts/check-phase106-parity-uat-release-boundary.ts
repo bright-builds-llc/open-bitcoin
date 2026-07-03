@@ -72,8 +72,8 @@ const REQUIREMENT_PHASE_ASSIGNMENTS = {
 } as const;
 const TARGET_FILES = [
   "README.md",
-  ".planning/REQUIREMENTS.md",
-  ".planning/ROADMAP.md",
+  ".planning/milestones/v2.0-REQUIREMENTS.md",
+  ".planning/milestones/v2.0-ROADMAP.md",
   "docs/operator/runtime-guide.md",
   "docs/parity/catalog/p2p.md",
   "docs/parity/catalog/mempool-policy.md",
@@ -88,8 +88,8 @@ const TARGET_FILES = [
 ] as const;
 const REQUIRED_EVIDENCE_ROOTS = [
   "README.md",
-  ".planning/REQUIREMENTS.md",
-  ".planning/ROADMAP.md",
+  ".planning/milestones/v2.0-REQUIREMENTS.md",
+  ".planning/milestones/v2.0-ROADMAP.md",
   "docs/operator/runtime-guide.md",
   "docs/parity/catalog/p2p.md",
   "docs/parity/catalog/mempool-policy.md",
@@ -354,7 +354,7 @@ function checkPhase106Surface(surfaces: ParitySurface[], failures: string[]): vo
 }
 
 function checkRequirementTraceability(texts: TextCorpus, failures: string[]): void {
-  const requirementsText = texts.get(".planning/REQUIREMENTS.md") ?? "";
+  const requirementsText = texts.get(".planning/milestones/v2.0-REQUIREMENTS.md") ?? "";
   for (const [requirement, phase] of Object.entries(REQUIREMENT_PHASE_ASSIGNMENTS) as Array<
     [RequirementId, string]
   >) {
@@ -365,7 +365,7 @@ function checkRequirementTraceability(texts: TextCorpus, failures: string[]): vo
     }
   }
 
-  const roadmapText = texts.get(".planning/ROADMAP.md") ?? "";
+  const roadmapText = texts.get(".planning/milestones/v2.0-ROADMAP.md") ?? "";
   const phase106Row = roadmapText
     .split("\n")
     .find((line) => line.startsWith("| 106 |") && line.includes("Parity Traceability"));

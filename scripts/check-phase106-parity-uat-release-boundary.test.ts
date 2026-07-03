@@ -7,8 +7,8 @@ import { checkPhase106ParityUatReleaseBoundary } from "./check-phase106-parity-u
 
 const TARGET_FILES = [
   "README.md",
-  ".planning/REQUIREMENTS.md",
-  ".planning/ROADMAP.md",
+  ".planning/milestones/v2.0-REQUIREMENTS.md",
+  ".planning/milestones/v2.0-ROADMAP.md",
   "docs/operator/runtime-guide.md",
   "docs/parity/catalog/p2p.md",
   "docs/parity/catalog/mempool-policy.md",
@@ -92,7 +92,7 @@ test("fails_when_gap_closure_requirement_maps_to_stale_phase", () => {
     maybeMutateFiles(files) {
       replaceInFile(
         files,
-        ".planning/REQUIREMENTS.md",
+        ".planning/milestones/v2.0-REQUIREMENTS.md",
         "| ACT-01 | Phase 107 | Complete |",
         "| ACT-01 | Phase 100 | Complete |",
       );

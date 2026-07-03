@@ -364,6 +364,52 @@
 
 ---
 
+## Milestone: v2.0 - Transaction Relay and Mempool Participation Boundary
+
+**Shipped:** 2026-07-03
+**Phases:** 10 | **Plans:** 36 | **Counted summary tasks:** 44
+
+### What Was Built
+
+- Default-off transaction relay activation plus scoped `relay`, `forcerelay`, and `mempool` permission effects without changing service bits, public defaults, compact-block behavior, or bloom/filter behavior.
+- Typed txid/wtxid transaction inventory and bounded download scheduling with duplicate, mismatch, timeout, `notfound`, disconnect cleanup, peer fallback, and recent-reject suppression.
+- Bounded orphan handling, parent requests, reconsideration, expiry, eviction evidence, and a stable mempool outcome contract for peer and local submissions.
+- Mempool pressure truth, block-connect cleanup, bounded reorg reconsideration, durable snapshot persistence, restart recovery, stale-record handling, and corruption repair evidence.
+- Relay serving, fanout queues, local `sendrawtransaction` relay evidence, explicit rebroadcast-deferred status, and shared sanitized RPC, CLI, dashboard, metrics, log, and support-bundle projection.
+- Parity roots, source breadcrumbs, repo-local Cargo/Bazel UAT commands, deterministic Phase 100 through Phase 108 guardrails, and Phase 109 archive-readiness audit debt closure.
+
+### What Worked
+
+- Keeping relay activation explicit and default-off let the milestone add transaction relay behavior without creating public relay, compact-block, or production-readiness claims.
+- The Phase 107 and Phase 108 extension phases were effective because they closed real integration gaps without remapping the original 32 requirement owners.
+- Shared relay evidence prevented RPC, CLI, dashboard, metrics, logs, and support bundles from inventing separate interpretations or leaking raw transaction and peer material.
+
+### What Was Inefficient
+
+- The initial Phase 106 closeout was not enough to catch runtime activation propagation and durable recovery gaps, so follow-up phases were required before archive.
+- The archive helper again generated a noisy milestone entry and duplicated the active v2.0 record, requiring a manual curation pass.
+- One deterministic checker still referenced active `.planning/REQUIREMENTS.md` after archive, so it needed an archive-aware path update before deleting the active requirements file.
+
+### Patterns Established
+
+- Treat relay and mempool participation as opt-in, evidence-backed capability until production-readiness and public-default requirements explicitly change that boundary.
+- Design deterministic checkers around milestone artifact lifecycles: active files during execution and archived files after closeout.
+- Use supplemental gap-closure phases for integration debt without rewriting canonical requirement ownership when the original mapping remains true.
+
+### Key Lessons
+
+1. Release-boundary closeout should include live runtime wiring and restart recovery evidence, not only docs, parity roots, and no-claim text.
+2. Archive helpers need archive-aware checker rewrites or post-helper validation before deleting active milestone files.
+3. Shared sanitized status contracts are the right control point for relay evidence because they prevent downstream operator surfaces from diverging.
+
+### Cost Observations
+
+- Model mix: not measured in repo artifacts.
+- Sessions: multiple GSD yolo execution, code-review, verification, audit, gap-closure, milestone audit, and archive turns across the v2.0 milestone.
+- Notable: late Phase 107 through Phase 109 work was integration and evidence-control cleanup, not scope expansion; it preserved the milestone boundary while making the shipped claim auditable.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -380,6 +426,7 @@
 | v1.7 | 7 | Hardened full-sync evidence for multi-day soak, resource and recovery bounds, progress guarantees, forensics, opt-in UAT, and audit traceability. |
 | v1.8 | 8 | Added production-readiness claim gates, support/update/runbook/service policies, release-readiness evidence, and deterministic no-claim guardrails. |
 | v1.9 | 10 | Added opt-in inbound peer serving, permission/address/peer-policy/resource governance, retained inbound metrics, structured peer-policy logs, and release-boundary no-claim checks. |
+| v2.0 | 10 | Added bounded transaction relay and mempool participation, explicit relay activation, txid/wtxid download, orphan/admission outcomes, durable recovery, relay evidence surfaces, and release-boundary no-claim checks. |
 
 ### Cumulative Quality
 
@@ -395,6 +442,7 @@
 | v1.7 | 24/24 complete | Passed after Phase 81 traceability closure | Repo-native `scripts/verify.sh`, Phase 75-80 deterministic checkers, resource/recovery/progress/forensics fixtures, opt-in UAT docs, and 11/11 integration plus 6/6 flow audit checks. |
 | v1.8 | 23/23 complete | Tech-debt audit with zero requirement, integration, or flow blockers after Phase 89 closure | Repo-native `scripts/verify.sh`, production no-claim guardrails, support/update/runbook/service policy checks, release-readiness evidence, opt-in UAT docs, and 23/23 integration plus 8/8 flow audit checks. |
 | v1.9 | 28/28 complete | Passed with zero critical gaps after Phase 99 closed structured-log tech debt | Repo-native `scripts/verify.sh`, Phase 90-99 deterministic checkers, inbound listener/permission/address/peer-policy/resource metrics evidence, and 10/10 integration plus 8/8 flow audit checks. |
+| v2.0 | 32/32 complete | Passed with zero critical gaps after Phase 109 closed archive-readiness metadata debt | Repo-native `scripts/verify.sh`, Phase 100-108 deterministic checkers, transaction relay/mempool/orphan/durable recovery/operator evidence, archived requirements and roadmap checks, and 8/8 integration plus 8/8 flow audit checks. |
 
 ### Top Lessons
 

@@ -2256,8 +2256,8 @@
         ],
         "evidence": [
           "README.md",
-          ".planning/REQUIREMENTS.md",
-          ".planning/ROADMAP.md",
+          ".planning/milestones/v2.0-REQUIREMENTS.md",
+          ".planning/milestones/v2.0-ROADMAP.md",
           "docs/operator/runtime-guide.md",
           "docs/parity/catalog/p2p.md",
           "docs/parity/catalog/mempool-policy.md",

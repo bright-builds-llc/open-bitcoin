@@ -1,30 +1,44 @@
 # Milestones: Open Bitcoin
 
-## v2.0 Transaction Relay and Mempool Participation Boundary (Active: started 2026-06-29)
+## v2.0 Transaction Relay and Mempool Participation Boundary (Shipped: 2026-07-03)
 
-**Planned:** Bounded transaction relay and mempool participation through explicit activation, permission semantics, txid/wtxid inventory, bounded transaction download, orphan handling, mempool admission and lifecycle evidence, relay serving/fanout, operator surfaces, support redaction, parity traceability, deterministic release-boundary guardrails, and archive-readiness metadata closure.
+**Delivered:** Bounded transaction relay and mempool participation through explicit activation, permission-aware txid/wtxid download, orphan and admission outcomes, durable mempool recovery, relay serving/fanout, sanitized operator evidence, and deterministic no-claim guardrails. The milestone deliberately does not claim compact block relay, bloom/filter serving, broad package relay, public relay by default, public-network relay CI, production service operation, production full-node readiness, or production-funds wallet safety.
 
-**Phases planned:** 10 phases, Phase 100 through Phase 109, covering 32 scoped requirements plus archive-readiness audit debt closure. Implementation requirements are complete through Phase 108; Phase 109 owns audit-debt closure only.
+**Phases completed:** 10 phases, 36 plans, 44 counted summary tasks
 
-**Key planned outcomes:**
+**Key accomplishments:**
 
-- Define default-off transaction relay activation and scoped effects for `relay`, `forcerelay`, and `mempool` without activating bloom/filter or compact-block behavior.
-- Add txid/wtxid transaction inventory, request, response, duplicate, mismatch, timeout, `notfound`, and disconnect cleanup policy.
-- Add bounded transaction download and missing-parent/orphan handling that preserves v1.9 resource-governance limits.
-- Add a stable mempool admission, removal, pressure, chainstate, persistence, and restart recovery outcome contract.
-- Add relay serving, announcement, fanout, local submission, and rebroadcast evidence without guaranteeing public propagation.
-- Align RPC, CLI, dashboard, metrics, logs, and support bundles around shared redacted relay/mempool status.
-- Close the milestone with Knots parity anchors, repo-local UAT commands, deterministic no-claim checkers, and docs that keep public relay defaults, compact blocks, package relay, public-network CI, production service operation, production full-node readiness, and production-funds wallet use deferred.
-- Closed Phase 109 archive-readiness metadata debt so project, roadmap, milestone, audit, and checker-ownership notes agree before archive.
+- Added default-off transaction relay activation semantics and scoped `relay`, `forcerelay`, and `mempool` permission effects without changing service bits, public defaults, compact-block behavior, or bloom/filter behavior.
+- Added typed txid/wtxid transaction inventory and bounded download scheduling with duplicate, mismatch, timeout, `notfound`, disconnect cleanup, peer fallback, and recent-reject suppression.
+- Added bounded orphan handling, parent requests, reconsideration, expiry, eviction evidence, and one stable mempool outcome contract for peer and local submissions.
+- Added mempool pressure truth, block-connect cleanup, bounded reorg reconsideration, durable snapshot persistence, restart recovery, stale-record handling, and corruption repair evidence.
+- Added relay serving, fanout queues, local `sendrawtransaction` relay evidence, and explicit rebroadcast-deferred status without promising public propagation.
+- Projected relay and mempool evidence through RPC, CLI, dashboard, metrics, structured logs, and support bundles using shared sanitized low-cardinality status.
+- Closed parity roots, source breadcrumbs, repo-local Cargo/Bazel UAT commands, deterministic Phase 100 through Phase 108 guardrails, and Phase 109 archive-readiness audit debt.
 
-**Current artifacts:**
+**Stats:**
 
-- `.planning/REQUIREMENTS.md`
-- `.planning/ROADMAP.md`
+- 32/32 v2.0 requirements complete.
+- 10 phases, 36 plans, and 44 counted summary tasks complete.
+- 198,709 tracked first-party lines in the final LOC report at archive time, including 175,221 code/content lines.
+- 256 files changed across the v2.0 delivery range, with 48,591 insertions and 1,728 deletions before archive.
+- Git range after v1.9 archive: `65ea0154` -> `f3b9d852`.
+- Milestone audit status: `passed` with 32/32 requirements, 10/10 phases, 8/8 integration checks, 8/8 cross-phase flows, and zero tracked tech debt.
+- Full repo-native verification passed during Phase 109 closeout and the milestone audit rerun.
+
+**Archived artifacts:**
+
+- `.planning/milestones/v2.0-ROADMAP.md`
+- `.planning/milestones/v2.0-REQUIREMENTS.md`
 - `.planning/milestones/v2.0-MILESTONE-AUDIT.md`
-- `.planning/research/SUMMARY.md`
 
-**What's next:** Complete/archive v2.0 with `/gsd-complete-milestone v2.0`.
+**Residual risk:**
+
+- Compact block relay, bloom/filter serving, package relay, public relay defaults, public-network relay CI, production service operation, production full-node readiness, production-funds wallet safety, GUI, hosted dashboards, packaging, installer, migration apply mode, and destructive migration behavior remain future milestone scope.
+- Public-network relay review remains opt-in UAT evidence, not a default CI or pre-commit gate.
+- Historical `.planning/phases/` directories remain tracked because repo verifier scripts still depend on selected phase evidence.
+
+**What's next:** Start the next milestone with `/gsd-new-milestone`.
 
 ***
 
@@ -66,7 +80,7 @@
 - INB-01 through INB-04 have intentionally non-obvious ownership: Phase 90 remains historical implementation evidence, while Phase 98 owns final traceability closure.
 - Historical Phase 98-era notes may still mention prior INT-04/FLOW-04 caveats; the archived v1.9 audit supersedes them with no active integration or flow gaps.
 
-**What's next:** v2.0 is active; see `.planning/ROADMAP.md`.
+**What's next:** v2.0 has shipped; see the latest milestone entry above.
 
 ---
 
