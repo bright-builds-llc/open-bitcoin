@@ -1,11 +1,12 @@
 ---
 gsd_state_version: 1.0
-milestone: none
-milestone_name: none
-status: ready_for_next_milestone
-stopped_at: v2.0 archived; start next milestone with /gsd-new-milestone
-last_updated: "2026-07-03T20:18:07.000Z"
-last_activity: 2026-07-03 -- v2.0 archived and ready for next milestone
+milestone: v2.1
+milestone: v2.1
+milestone_name: Block Serving and Compact Block Relay Boundary
+status: defining_requirements
+stopped_at: v2.1 started; defining requirements
+last_updated: "2026-07-03T21:05:00.000Z"
+last_activity: 2026-07-03 -- v2.1 milestone started
 progress:
   total_phases: 0
   completed_phases: 0
@@ -18,20 +19,22 @@ progress:
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-07-03 after v2.0 archive).
+See: `.planning/PROJECT.md` (updated 2026-07-03 after v2.1 milestone start).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** No active milestone. The project is ready for `/gsd-new-milestone`.
+**Current focus:** v2.1 Block Serving and Compact Block Relay Boundary requirements.
 
 ## Current Position
 
-Milestone: none active
-Phase: none active
-Plan: none active
-Status: Ready for next milestone
-Last activity: 2026-07-03 -- v2.0 archived after the milestone audit passed.
+Milestone: v2.1 Block Serving and Compact Block Relay Boundary
+Phase: not started
+Plan: requirements definition
+Status: Defining requirements
+Last activity: 2026-07-03 -- v2.1 milestone started.
 
 v2.0 Transaction Relay and Mempool Participation Boundary shipped on 2026-07-03. The archived audit reports 32/32 requirements, 10/10 phases, 8/8 integration checks, 8/8 cross-phase flows, and no tracked tech debt.
+
+v2.1 focuses on bounded, opt-in block-serving and compact-block relay behavior with Bitcoin Knots parity evidence, deterministic local verification, and explicit no-claim guardrails for package relay, public defaults, public-network CI, production full-node readiness, and production-funds wallet use.
 
 ## Latest Milestone Archive
 
@@ -59,7 +62,8 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Pending Todos
 
-- Start the next milestone with `/gsd-new-milestone`.
+- Define v2.1 requirements in `.planning/REQUIREMENTS.md`.
+- Create the v2.1 roadmap in `.planning/ROADMAP.md`, continuing phase numbering after Phase 109.
 - Keep historical `.planning/phases/` directories tracked because repo verifier scripts still depend on selected phase evidence.
 - Keep repo-local Cargo and Bazel command forms in UAT guidance:
   - `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- ...`
@@ -71,9 +75,10 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 - No active milestone blockers are recorded.
 - Default local verification must remain deterministic; public-network relay review should be opt-in UAT evidence unless deliberately changed.
 - Existing outbound sync, inbound serving, full-sync, soak, support-bundle, and release-boundary behavior must not regress when future milestones expand relay or production scope.
+- Existing transaction relay, mempool, inbound, sync, support-bundle, and release-boundary behavior must not regress when v2.1 adds block-serving and compact-block relay scope.
 
 ## Session Continuity
 
 Last session: 2026-07-03
-Stopped at: v2.0 milestone archive complete
+Stopped at: v2.1 milestone start; requirements definition next
 Resume file: `.planning/milestones/v2.0-MILESTONE-AUDIT.md`
