@@ -14,7 +14,8 @@ use open_bitcoin_core::{
 };
 use open_bitcoin_mempool::{MempoolOutcome, MempoolRejectionCategory, PolicyConfig};
 use open_bitcoin_network::{
-    InboundAdmissionDecision, InventoryList, RelayActivationConfig, WireNetworkMessage,
+    InboundAdmissionDecision, InboundAdmissionPolicy, InventoryList, RelayActivationConfig,
+    WireNetworkMessage,
 };
 
 use super::{
@@ -94,6 +95,68 @@ fn assert_single_inv_for_peer(
         WireNetworkMessage::Inv(InventoryList { inventory }) if inventory.len() == 1
             && inventory[0].inventory_type == inventory_type
     ));
+}
+
+#[test]
+fn relay_evidence_status_projects_default_off_activation_and_disabled_eligibility() {
+    // Arrange
+    let mut network = ManagedPeerNetwork::new(
+        MemoryChainstateStore::default(),
+        local_config(890),
+        PolicyConfig::default(),
+    );
+    network
+        .connect_outbound_peer(890, 1)
+        .expect("outbound peer");
+
+    // Act
+    let status = network.relay_evidence_status();
+
+    // Assert
+    let RelayEvidenceField::Implemented(activation) = status.activation else {
+        panic!("expected implemented activation evidence");
+    };
+    let RelayEvidenceField::Implemented(eligibility) = status.download_eligibility else {
+        panic!("expected implemented download eligibility evidence");
+    };
+    assert!(!activation.enabled);
+    assert_eq!(eligibility.eligible_peer_count, 0);
+    assert_eq!(eligibility.ineligible_peer_count, 1);
+    assert_eq!(eligibility.relay_disabled_count, 1);
+}
+
+#[test]
+fn relay_evidence_status_projects_enabled_activation_and_eligibility_counts() {
+    // Arrange
+    let (mut network, _coinbase_txids, _spendable) = relay_enabled_network(891);
+    network
+        .connect_outbound_peer(891, 1)
+        .expect("outbound peer");
+    network.set_inbound_admission_policy(InboundAdmissionPolicy::new(4, 1));
+    admit_relay_peer(&mut network, 892);
+    network.add_inbound_peer(893).expect("ordinary inbound");
+    let protected = network.admit_inbound_peer(permissioned_inbound_request(
+        894,
+        "127.0.0.1:18449",
+        &["in", "noban", "forceinbound"],
+    ));
+    assert!(matches!(protected, InboundAdmissionDecision::Admit(_)));
+
+    // Act
+    let status = network.relay_evidence_status();
+
+    // Assert
+    let RelayEvidenceField::Implemented(activation) = status.activation else {
+        panic!("expected implemented activation evidence");
+    };
+    let RelayEvidenceField::Implemented(eligibility) = status.download_eligibility else {
+        panic!("expected implemented download eligibility evidence");
+    };
+    assert!(activation.enabled);
+    assert_eq!(eligibility.eligible_peer_count, 2);
+    assert_eq!(eligibility.ineligible_peer_count, 2);
+    assert_eq!(eligibility.permission_required_count, 1);
+    assert_eq!(eligibility.protected_not_relay_count, 1);
 }
 
 #[test]
@@ -201,7 +264,7 @@ fn managed_fanout_suppresses_origin_ineligible_and_recent_reject_peers() {
     assert_eq!(counters.suppressed_count, 3);
     let json = serde_json::to_string(&status).expect("relay evidence json");
     assert!(!json.contains("origin_peer"));
-    assert!(!json.contains("not_relay_eligible"));
+    assert!(!json.contains("\"not_relay_eligible\""));
     assert!(!json.contains("recent_reject"));
 }
 

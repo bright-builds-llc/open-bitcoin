@@ -103,6 +103,28 @@ public-network relay CI, production service operation, production full-node
 readiness, production-service proof, production full-node readiness proof,
 production-funds wallet use, or production-funds wallet safety proof.
 
+## Phase 107 runtime relay activation and eligibility UAT
+
+Phase 107 records the RPC and CLI evidence for
+`v2-0-runtime-relay-activation-download-eligibility`. The daemon runtime uses
+the resolved `RuntimeConfig.relay` value when constructing managed network
+state, and the deterministic inbound-serving input is resolved
+`config.inbound.enabled`. Operator review uses repo-local Cargo and Bazel
+commands from `docs/operator/runtime-guide.md` for default-off status, explicit
+`-openbitcoinrelay=1`, `openbitcoinnetworkstatus`, redacted support bundle
+review, and `bash scripts/verify.sh`.
+
+`openbitcoinnetworkstatus.relay`, operator `status --format json`, dashboard
+rows, and support bundles expose aggregate sanitized activation and download
+eligibility evidence only. Granular scheduler labels remain internal typed
+test evidence unless reduced to fixed counters. `sendrawtransaction` success
+does not guarantee public propagation.
+
+Phase 107 does not claim public relay by default, compact block relay, package
+relay, bloom/filter serving, public-network relay CI, production service
+operation, production full-node readiness, production-funds wallet safety,
+production-funds wallet use, or durable mempool recovery.
+
 ## Deferred surfaces
 
 - deferred `sendtoaddress` and richer wallet-send RPC ergonomics beyond the current

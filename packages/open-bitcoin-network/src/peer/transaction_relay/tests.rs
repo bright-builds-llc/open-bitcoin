@@ -180,6 +180,11 @@ fn transaction_relay_action_labels_are_fixed() {
             relay_id,
             reason: TxDownloadSuppressionReason::MempoolKnown,
         },
+        TxDownloadAction::Suppress {
+            peer_id: 1,
+            relay_id,
+            reason: TxDownloadSuppressionReason::RelayDisabled,
+        },
         TxDownloadAction::SuppressIdentityMismatch {
             peer_id: 1,
             reason: TxDownloadSuppressionReason::IdentityMismatch,
@@ -224,6 +229,7 @@ fn transaction_relay_action_labels_are_fixed() {
             "suppress_already_have",
             "suppress_recent_reject",
             "suppress_mempool_known",
+            "suppress_relay_disabled",
             "suppress_identity_mismatch",
             "suppress_request_cap",
             "fallback_request",
@@ -233,7 +239,7 @@ fn transaction_relay_action_labels_are_fixed() {
             "peer_cleanup",
         ],
     );
-    assert_eq!(peer_ids, [1; 12]);
+    assert_eq!(peer_ids, [1; 13]);
     assert_eq!(mempool_reason, TxDownloadSuppressionReason::MempoolKnown);
     assert_eq!(mempool_reason.as_str(), "mempool_known");
 }
@@ -278,6 +284,31 @@ fn generic_suppression_labels_cover_all_reasons() {
             relay_id,
             reason: TxDownloadSuppressionReason::NotTransactionInventory,
         },
+        TxDownloadAction::Suppress {
+            peer_id: 1,
+            relay_id,
+            reason: TxDownloadSuppressionReason::RelayDisabled,
+        },
+        TxDownloadAction::Suppress {
+            peer_id: 1,
+            relay_id,
+            reason: TxDownloadSuppressionReason::NotRelayEligible,
+        },
+        TxDownloadAction::Suppress {
+            peer_id: 1,
+            relay_id,
+            reason: TxDownloadSuppressionReason::InboundServingRequired,
+        },
+        TxDownloadAction::Suppress {
+            peer_id: 1,
+            relay_id,
+            reason: TxDownloadSuppressionReason::PermissionRequired,
+        },
+        TxDownloadAction::Suppress {
+            peer_id: 1,
+            relay_id,
+            reason: TxDownloadSuppressionReason::ProtectedNotRelay,
+        },
     ];
 
     // Act
@@ -290,6 +321,11 @@ fn generic_suppression_labels_cover_all_reasons() {
         TxDownloadSuppressionReason::RequestCapReached,
         TxDownloadSuppressionReason::IdentityMismatch,
         TxDownloadSuppressionReason::NotTransactionInventory,
+        TxDownloadSuppressionReason::RelayDisabled,
+        TxDownloadSuppressionReason::NotRelayEligible,
+        TxDownloadSuppressionReason::InboundServingRequired,
+        TxDownloadSuppressionReason::PermissionRequired,
+        TxDownloadSuppressionReason::ProtectedNotRelay,
     ]
     .map(TxDownloadSuppressionReason::as_str);
     let request_inventory = TxDownloadAction::FallbackRequest {
@@ -336,6 +372,11 @@ fn generic_suppression_labels_cover_all_reasons() {
             "suppress_request_cap",
             "suppress_identity_mismatch",
             "suppress_identity_mismatch",
+            "suppress_relay_disabled",
+            "suppress_not_relay_eligible",
+            "suppress_inbound_serving_required",
+            "suppress_permission_required",
+            "suppress_protected_not_relay",
         ],
     );
     assert_eq!(
@@ -348,6 +389,11 @@ fn generic_suppression_labels_cover_all_reasons() {
             "request_cap_reached",
             "identity_mismatch",
             "not_transaction_inventory",
+            "relay_disabled",
+            "not_relay_eligible",
+            "inbound_serving_required",
+            "permission_required",
+            "protected_not_relay",
         ],
     );
     assert_eq!(request_inventory, Some(relay_id.to_inventory_vector()));
@@ -398,6 +444,31 @@ fn wtxid_announcement_requests_witness_transaction_inventory() {
 #[test]
 fn identity_mismatch_suppresses_without_candidate_or_inflight_state() {
     scheduler_cases::identity_mismatch_suppresses_without_candidate_or_inflight_state();
+}
+
+#[test]
+fn disabled_relay_suppresses_announcement_without_request_state() {
+    scheduler_cases::disabled_relay_suppresses_announcement_without_request_state();
+}
+
+#[test]
+fn ineligible_relay_suppressions_are_typed_without_request_state() {
+    scheduler_cases::ineligible_relay_suppressions_are_typed_without_request_state();
+}
+
+#[test]
+fn ineligible_eligible_reason_maps_to_not_relay_eligible() {
+    scheduler_cases::ineligible_eligible_reason_maps_to_not_relay_eligible();
+}
+
+#[test]
+fn disabled_parent_request_suppresses_without_request_state() {
+    scheduler_cases::disabled_parent_request_suppresses_without_request_state();
+}
+
+#[test]
+fn ineligible_first_announcement_does_not_block_eligible_second_announcer() {
+    scheduler_cases::ineligible_first_announcement_does_not_block_eligible_second_announcer();
 }
 
 #[test]

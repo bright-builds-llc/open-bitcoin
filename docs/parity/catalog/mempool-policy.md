@@ -152,6 +152,27 @@ public-network relay CI, production service operation, production full-node
 readiness, production-service proof, production full-node readiness proof,
 production-funds wallet use, and production-funds wallet safety proof.
 
+## Phase 107 runtime activation and download eligibility bridge
+
+The `v2-0-runtime-relay-activation-download-eligibility` surface does not
+change mempool admission or persistence behavior. It documents the integration
+repair that ensures resolved relay activation reaches managed network
+construction and transaction download eligibility is checked before requests
+are scheduled. `sendrawtransaction` success does not guarantee public
+propagation; local admission and queued relay evidence remain bounded by the
+same status and support redaction contracts from Phase 105.
+
+Public/operator evidence for this bridge is aggregate and sanitized:
+`RelayActivationEvidence` and `RelayDownloadEligibilityCounters` use fixed
+labels and numeric counters only. Docs, status, and support evidence must not
+copy peer ids, endpoints, permission strings, class names, txids, wtxids, raw
+transaction hex, credentials, or dynamic labels.
+
+Phase 107 does not claim compact block relay, package relay, bloom/filter
+serving, public relay by default, public-network relay CI, production service
+operation, production full-node readiness, production-funds wallet safety,
+production-funds wallet use, or durable mempool recovery.
+
 ## Known gaps
 
 - package relay beyond single-transaction admission

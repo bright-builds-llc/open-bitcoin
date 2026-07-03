@@ -20,6 +20,7 @@ const REQUIRED_EVIDENCE_ROOTS = [
   "packages/open-bitcoin-network/src/peer/transaction_relay/scheduler.rs",
   "packages/open-bitcoin-network/src/peer/transaction_relay/tests/scheduler_cases.rs",
   "packages/open-bitcoin-network/src/peer.rs",
+  "packages/open-bitcoin-network/src/peer/inventory_state.rs",
   "packages/open-bitcoin-network/src/peer/tests.rs",
   "packages/open-bitcoin-node/src/network/action_translation.rs",
   "packages/open-bitcoin-node/src/network/admission_bridge.rs",
@@ -306,6 +307,7 @@ function fixtureFiles(): Map<TargetFile, string> {
     ["packages/open-bitcoin-network/src/peer/transaction_relay/scheduler.rs", schedulerText()],
     ["packages/open-bitcoin-network/src/peer/transaction_relay/tests/scheduler_cases.rs", schedulerTestsText()],
     ["packages/open-bitcoin-network/src/peer.rs", peerText()],
+    ["packages/open-bitcoin-network/src/peer/inventory_state.rs", peerInventoryStateText()],
     ["packages/open-bitcoin-network/src/peer/tests.rs", peerTestsText()],
     ["packages/open-bitcoin-node/src/network/action_translation.rs", actionTranslationText()],
     ["packages/open-bitcoin-node/src/network/admission_bridge.rs", admissionBridgeText()],
@@ -525,6 +527,10 @@ function schedulerTestsText(): string {
 }
 
 function peerText(): string {
+  return "pub struct PeerManager;";
+}
+
+function peerInventoryStateText(): string {
   return "pub fn request_orphan_parent(peer_id: PeerId, parent_txid: Txid, now_unix_seconds: i64) {}";
 }
 

@@ -74,6 +74,8 @@ pub(crate) fn support_status_for_bundle(
 }
 
 fn redact_relay_mempool_evidence(relay: &mut RelayEvidenceStatus) {
+    sanitize_relay_reason_field(&mut relay.activation);
+    sanitize_relay_reason_field(&mut relay.download_eligibility);
     sanitize_relay_reason_field(&mut relay.outcome_counters);
     sanitize_relay_reason_field(&mut relay.mempool_admission);
     sanitize_relay_reason_field(&mut relay.local_submission);

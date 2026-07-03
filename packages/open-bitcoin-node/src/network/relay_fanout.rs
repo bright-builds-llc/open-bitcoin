@@ -22,8 +22,8 @@ use super::ManagedPeerNetwork;
 use super::relay_serving::ManagedRelayServingInfo;
 use crate::ChainstateStore;
 use crate::status::relay_evidence::{
-    RelayCapabilityEvidence, RelayEvidenceCapability, RelayEvidenceCounters, RelayEvidenceField,
-    RelayEvidenceStatus,
+    RelayActivationEvidence, RelayCapabilityEvidence, RelayDownloadEligibilityCounters,
+    RelayEvidenceCapability, RelayEvidenceCounters, RelayEvidenceField, RelayEvidenceStatus,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -300,7 +300,13 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         let maybe_local_submission = self.latest_local_submission_evidence();
         let fanout_info = self.relay_fanout_info();
         let serving_info = self.relay_serving_info();
+        let activation = RelayActivationEvidence {
+            enabled: self.relay_activation.enabled,
+        };
+        let download_eligibility = self.relay_download_eligibility_counters();
         relay_evidence_status_from_parts(
+            activation,
+            download_eligibility,
             maybe_local_submission.as_ref(),
             &fanout_info,
             &serving_info,
@@ -427,6 +433,8 @@ fn fanout_action_reason(action: &TxFanoutAction) -> Option<&'static str> {
 }
 
 fn relay_evidence_status_from_parts(
+    activation: RelayActivationEvidence,
+    download_eligibility: RelayDownloadEligibilityCounters,
     maybe_local_submission: Option<&LocalRelaySubmissionEvidence>,
     fanout_info: &ManagedRelayFanoutInfo,
     serving_info: &ManagedRelayServingInfo,
@@ -438,7 +446,11 @@ fn relay_evidence_status_from_parts(
     project_fanout_counters(&mut counters, fanout_info);
     project_serving_counters(&mut counters, serving_info);
 
-    let mut status = RelayEvidenceStatus::with_counters(counters);
+    let mut status = RelayEvidenceStatus::with_activation_and_counters(
+        activation,
+        download_eligibility,
+        counters,
+    );
     if maybe_local_submission.is_some() {
         status.mempool_admission =
             implemented_capability(RelayEvidenceCapability::MempoolAdmission);

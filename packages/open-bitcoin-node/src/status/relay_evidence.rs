@@ -75,6 +75,24 @@ pub struct RelayEvidenceCounters {
     pub rebroadcast_deferred_count: u64,
 }
 
+/// Explicit relay activation evidence safe for operator status surfaces.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RelayActivationEvidence {
+    pub enabled: bool,
+}
+
+/// Aggregate transaction download eligibility counters safe for public status.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RelayDownloadEligibilityCounters {
+    pub eligible_peer_count: u64,
+    pub ineligible_peer_count: u64,
+    pub relay_disabled_count: u64,
+    pub not_relay_eligible_count: u64,
+    pub inbound_serving_required_count: u64,
+    pub permission_required_count: u64,
+    pub protected_not_relay_count: u64,
+}
+
 /// Low-cardinality implemented capability labels for relay evidence.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -102,6 +120,10 @@ impl RelayCapabilityEvidence {
 /// Shared status contract for sanitized relay and mempool evidence.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RelayEvidenceStatus {
+    #[serde(default = "activation_default")]
+    pub activation: RelayEvidenceField<RelayActivationEvidence>,
+    #[serde(default = "download_eligibility_default")]
+    pub download_eligibility: RelayEvidenceField<RelayDownloadEligibilityCounters>,
     #[serde(default = "outcome_counters_default")]
     pub outcome_counters: RelayEvidenceField<RelayEvidenceCounters>,
     #[serde(default = "mempool_admission_unavailable")]
@@ -121,6 +143,8 @@ pub struct RelayEvidenceStatus {
 impl RelayEvidenceStatus {
     pub fn default_unavailable() -> Self {
         Self {
+            activation: activation_default(),
+            download_eligibility: download_eligibility_default(),
             outcome_counters: outcome_counters_default(),
             mempool_admission: mempool_admission_unavailable(),
             local_submission: local_submission_deferred(),
@@ -132,7 +156,21 @@ impl RelayEvidenceStatus {
     }
 
     pub fn with_counters(counters: RelayEvidenceCounters) -> Self {
+        Self::with_activation_and_counters(
+            RelayActivationEvidence::default(),
+            RelayDownloadEligibilityCounters::default(),
+            counters,
+        )
+    }
+
+    pub fn with_activation_and_counters(
+        activation: RelayActivationEvidence,
+        download_eligibility: RelayDownloadEligibilityCounters,
+        counters: RelayEvidenceCounters,
+    ) -> Self {
         Self {
+            activation: RelayEvidenceField::implemented(activation),
+            download_eligibility: RelayEvidenceField::implemented(download_eligibility),
             outcome_counters: RelayEvidenceField::implemented(counters),
             ..Self::default_unavailable()
         }
@@ -147,6 +185,14 @@ impl Default for RelayEvidenceStatus {
 
 fn outcome_counters_default() -> RelayEvidenceField<RelayEvidenceCounters> {
     RelayEvidenceField::implemented(RelayEvidenceCounters::default())
+}
+
+fn activation_default() -> RelayEvidenceField<RelayActivationEvidence> {
+    RelayEvidenceField::implemented(RelayActivationEvidence::default())
+}
+
+fn download_eligibility_default() -> RelayEvidenceField<RelayDownloadEligibilityCounters> {
+    RelayEvidenceField::implemented(RelayDownloadEligibilityCounters::default())
 }
 
 fn mempool_admission_unavailable() -> RelayEvidenceField<RelayCapabilityEvidence> {

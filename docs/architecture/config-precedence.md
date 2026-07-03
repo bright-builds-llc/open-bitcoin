@@ -102,6 +102,22 @@ Baseline whitelist and whitebind remain rejected as relay activation aliases;
 whitelist and whitebind remain rejected by the Open Bitcoin-owned config
 boundary rather than silently accepted as Knots compatibility shortcuts.
 
+Phase 107 carries the same resolved `RuntimeConfig.relay` value into managed
+network construction before transaction download eligibility is evaluated.
+This is runtime activation/download eligibility integration only: it proves
+that explicit `relay.enabled` or `-openbitcoinrelay=1` reaches
+`ManagedPeerNetwork`, and that relay-disabled or ineligible peers are
+suppressed before `getdata` scheduling mutates request state. The deterministic
+inbound-serving input for this handoff is the resolved `config.inbound.enabled`
+value. Live listener operation and public-network relay proof remain opt-in
+operator UAT outside default verification.
+
+Phase 107 does not turn `relay.enabled`, `-openbitcoinrelay`, or
+`config.inbound.enabled` into public relay by default, compact block relay,
+package relay, bloom/filter serving, public-network relay CI, production
+service operation, production full-node readiness, durable mempool recovery, or
+production-funds wallet use.
+
 ## Precedence
 
 Configuration precedence is:

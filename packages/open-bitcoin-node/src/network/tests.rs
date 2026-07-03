@@ -393,6 +393,16 @@ fn assert_targeted_getdata(
     );
 }
 
+fn relay_enabled_managed_network(nonce: u64) -> ManagedPeerNetwork<MemoryChainstateStore> {
+    ManagedPeerNetwork::new_with_relay_activation(
+        MemoryChainstateStore::default(),
+        local_config(nonce),
+        PolicyConfig::default(),
+        RelayActivationConfig { enabled: true },
+        true,
+    )
+}
+
 fn assert_request_cap_resource_governance(network: &ManagedPeerNetwork<MemoryChainstateStore>) {
     let info = network.resource_governance_info();
     assert_eq!(info.request_cap_events, 1);
@@ -405,18 +415,49 @@ fn assert_request_cap_resource_governance(network: &ManagedPeerNetwork<MemoryCha
 }
 
 #[test]
-fn managed_network_transaction_relay_inv_translates_request_action_to_getdata() {
+fn managed_network_transaction_relay_default_constructor_suppresses_getdata() {
     // Arrange
     let mut network = ManagedPeerNetwork::new(
         MemoryChainstateStore::default(),
         local_config(501),
         PolicyConfig::default(),
     );
-    network.add_inbound_peer(501).expect("txid peer");
-    network.add_inbound_peer(502).expect("wtxid peer");
+    let transaction = Transaction::default();
+    let inventory = transaction_relay_inventory(&transaction);
+    network
+        .connect_outbound_peer(501, 1)
+        .expect("outbound peer");
+
+    // Act
+    let network_info = network.network_info();
+    let outbound = network
+        .receive_message(
+            501,
+            WireNetworkMessage::Inv(inventory),
+            2,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("default-off transaction inventory");
+
+    // Assert
+    assert!(!network_info.relay);
+    assert!(outbound.is_empty());
+}
+
+#[test]
+fn managed_network_transaction_relay_enabled_outbound_translates_request_action_to_getdata() {
+    // Arrange
+    let mut network = relay_enabled_managed_network(502);
+    network
+        .connect_outbound_peer(502, 1)
+        .expect("txid outbound peer");
+    network
+        .connect_outbound_peer(503, 1)
+        .expect("wtxid outbound peer");
     network
         .receive_message(
-            502,
+            503,
             WireNetworkMessage::WtxidRelay,
             1,
             verify_flags(),
@@ -428,9 +469,10 @@ fn managed_network_transaction_relay_inv_translates_request_action_to_getdata() 
     let wtxid_inventory = witness_transaction_relay_inventory(&transaction);
 
     // Act
+    let network_info = network.network_info();
     let txid_outbound = network
         .receive_message(
-            501,
+            502,
             WireNetworkMessage::Inv(txid_inventory.clone()),
             2,
             verify_flags(),
@@ -439,7 +481,7 @@ fn managed_network_transaction_relay_inv_translates_request_action_to_getdata() 
         .expect("txid inventory");
     let wtxid_outbound = network
         .receive_message(
-            502,
+            503,
             WireNetworkMessage::Inv(wtxid_inventory.clone()),
             3,
             verify_flags(),
@@ -448,26 +490,77 @@ fn managed_network_transaction_relay_inv_translates_request_action_to_getdata() 
         .expect("wtxid inventory");
 
     // Assert
+    assert!(network_info.relay);
     assert_getdata(&txid_outbound, txid_inventory);
     assert_getdata(&wtxid_outbound, wtxid_inventory);
 }
 
 #[test]
+fn managed_network_transaction_relay_enabled_ordinary_inbound_suppresses_getdata() {
+    // Arrange
+    let mut network = relay_enabled_managed_network(504);
+    network
+        .add_inbound_peer(504)
+        .expect("ordinary inbound peer");
+    let inventory = transaction_relay_inventory(&Transaction::default());
+
+    // Act
+    let outbound = network
+        .receive_message(
+            504,
+            WireNetworkMessage::Inv(inventory),
+            1,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("ordinary inbound inventory");
+
+    // Assert
+    assert!(outbound.is_empty());
+}
+
+#[test]
+fn managed_network_transaction_relay_enabled_protected_only_inbound_suppresses_getdata() {
+    // Arrange
+    let mut network = relay_enabled_managed_network(505);
+    network.set_inbound_admission_policy(InboundAdmissionPolicy::new(2, 1));
+    let decision = network.admit_inbound_peer(inbound_request(
+        505,
+        "127.0.0.1:18444",
+        InboundAdmissionSlotClass::Reserved,
+    ));
+    assert!(matches!(decision, InboundAdmissionDecision::Admit(_)));
+    let inventory = transaction_relay_inventory(&Transaction::default());
+
+    // Act
+    let outbound = network
+        .receive_message(
+            505,
+            WireNetworkMessage::Inv(inventory),
+            1,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("protected-only inbound inventory");
+
+    // Assert
+    assert!(outbound.is_empty());
+}
+
+#[test]
 fn managed_network_transaction_relay_duplicate_suppression_emits_no_extra_getdata() {
     // Arrange
-    let mut network = ManagedPeerNetwork::new(
-        MemoryChainstateStore::default(),
-        local_config(503),
-        PolicyConfig::default(),
-    );
-    network.add_inbound_peer(503).expect("first peer");
-    network.add_inbound_peer(504).expect("duplicate peer");
+    let mut network = relay_enabled_managed_network(506);
+    network.connect_outbound_peer(506, 1).expect("first peer");
+    network
+        .connect_outbound_peer(507, 1)
+        .expect("duplicate peer");
     let inventory = transaction_relay_inventory(&Transaction::default());
 
     // Act
     let first_outbound = network
         .receive_message(
-            503,
+            506,
             WireNetworkMessage::Inv(inventory.clone()),
             1,
             verify_flags(),
@@ -476,7 +569,7 @@ fn managed_network_transaction_relay_duplicate_suppression_emits_no_extra_getdat
         .expect("first inventory");
     let duplicate_outbound = network
         .receive_message(
-            504,
+            507,
             WireNetworkMessage::Inv(inventory.clone()),
             2,
             verify_flags(),
@@ -492,17 +585,15 @@ fn managed_network_transaction_relay_duplicate_suppression_emits_no_extra_getdat
 #[test]
 fn managed_network_transaction_relay_timeout_fallback_returns_getdata_for_alternate_peer() {
     // Arrange
-    let mut network = ManagedPeerNetwork::new(
-        MemoryChainstateStore::default(),
-        local_config(505),
-        PolicyConfig::default(),
-    );
-    network.add_inbound_peer(505).expect("first peer");
-    network.add_inbound_peer(506).expect("fallback peer");
+    let mut network = relay_enabled_managed_network(508);
+    network.connect_outbound_peer(508, 1).expect("first peer");
+    network
+        .connect_outbound_peer(509, 1)
+        .expect("fallback peer");
     let inventory = transaction_relay_inventory(&Transaction::default());
     network
         .receive_message(
-            505,
+            508,
             WireNetworkMessage::Inv(inventory.clone()),
             1,
             verify_flags(),
@@ -511,7 +602,7 @@ fn managed_network_transaction_relay_timeout_fallback_returns_getdata_for_altern
         .expect("first inventory");
     network
         .receive_message(
-            506,
+            509,
             WireNetworkMessage::Inv(inventory.clone()),
             2,
             verify_flags(),
@@ -525,23 +616,21 @@ fn managed_network_transaction_relay_timeout_fallback_returns_getdata_for_altern
         .expect("expire requests");
 
     // Assert
-    assert_targeted_getdata(&fallback_messages, 506, inventory);
+    assert_targeted_getdata(&fallback_messages, 509, inventory);
 }
 
 #[test]
 fn managed_network_transaction_relay_notfound_fallback_returns_getdata_for_alternate_peer() {
     // Arrange
-    let mut network = ManagedPeerNetwork::new(
-        MemoryChainstateStore::default(),
-        local_config(507),
-        PolicyConfig::default(),
-    );
-    network.add_inbound_peer(507).expect("first peer");
-    network.add_inbound_peer(508).expect("fallback peer");
+    let mut network = relay_enabled_managed_network(510);
+    network.connect_outbound_peer(510, 1).expect("first peer");
+    network
+        .connect_outbound_peer(511, 1)
+        .expect("fallback peer");
     let inventory = transaction_relay_inventory(&Transaction::default());
     network
         .receive_message(
-            507,
+            510,
             WireNetworkMessage::Inv(inventory.clone()),
             10,
             verify_flags(),
@@ -550,7 +639,7 @@ fn managed_network_transaction_relay_notfound_fallback_returns_getdata_for_alter
         .expect("first inventory");
     network
         .receive_message(
-            508,
+            511,
             WireNetworkMessage::Inv(inventory.clone()),
             11,
             verify_flags(),
@@ -561,7 +650,7 @@ fn managed_network_transaction_relay_notfound_fallback_returns_getdata_for_alter
     // Act
     let result = network
         .receive_sync_message(
-            507,
+            510,
             WireNetworkMessage::NotFound(inventory.clone()),
             12,
             verify_flags(),
@@ -571,23 +660,21 @@ fn managed_network_transaction_relay_notfound_fallback_returns_getdata_for_alter
 
     // Assert
     assert!(result.outbound.is_empty());
-    assert_targeted_getdata(&result.targeted_outbound, 508, inventory);
+    assert_targeted_getdata(&result.targeted_outbound, 511, inventory);
 }
 
 #[test]
 fn managed_network_transaction_relay_disconnect_fallback_returns_getdata_for_alternate_peer() {
     // Arrange
-    let mut network = ManagedPeerNetwork::new(
-        MemoryChainstateStore::default(),
-        local_config(509),
-        PolicyConfig::default(),
-    );
-    network.add_inbound_peer(509).expect("first peer");
-    network.add_inbound_peer(510).expect("fallback peer");
+    let mut network = relay_enabled_managed_network(512);
+    network.connect_outbound_peer(512, 1).expect("first peer");
+    network
+        .connect_outbound_peer(513, 1)
+        .expect("fallback peer");
     let inventory = transaction_relay_inventory(&Transaction::default());
     network
         .receive_message(
-            509,
+            512,
             WireNetworkMessage::Inv(inventory.clone()),
             20,
             verify_flags(),
@@ -596,7 +683,7 @@ fn managed_network_transaction_relay_disconnect_fallback_returns_getdata_for_alt
         .expect("first inventory");
     network
         .receive_message(
-            510,
+            513,
             WireNetworkMessage::Inv(inventory.clone()),
             21,
             verify_flags(),
@@ -606,11 +693,11 @@ fn managed_network_transaction_relay_disconnect_fallback_returns_getdata_for_alt
 
     // Act
     let fallback_messages = network
-        .disconnect_peer_with_transaction_cleanup(509, 22)
+        .disconnect_peer_with_transaction_cleanup(512, 22)
         .expect("disconnect cleanup");
 
     // Assert
-    assert_targeted_getdata(&fallback_messages, 510, inventory);
+    assert_targeted_getdata(&fallback_messages, 513, inventory);
 }
 
 #[test]
@@ -1695,11 +1782,7 @@ fn managed_nodes_sync_blocks_and_relay_transactions_in_memory() {
         RelayActivationConfig { enabled: true },
         true,
     );
-    let mut sink = ManagedPeerNetwork::new(
-        MemoryChainstateStore::default(),
-        local_config(20),
-        PolicyConfig::default(),
-    );
+    let mut sink = relay_enabled_managed_network(20);
 
     let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0, 500_000_000);
     let spendable = build_block(

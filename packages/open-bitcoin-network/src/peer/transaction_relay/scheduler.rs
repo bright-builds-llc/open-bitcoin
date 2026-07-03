@@ -16,6 +16,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use open_bitcoin_primitives::{Hash32, InventoryVector, Txid, Wtxid};
 
 use crate::error::PeerId;
+use crate::{RelayEligibilityDecision, RelayEligibilityReason};
 
 use super::{
     TxDownloadAction, TxDownloadPolicy, TxDownloadSuppressionReason, TxRelayId,
@@ -36,8 +37,18 @@ pub struct TxAnnouncementInput {
     pub peer_mode: TxRelayPeerMode,
     pub now_unix_seconds: i64,
     pub local_facts: TxDownloadLocalFacts,
+    pub relay_eligibility: RelayEligibilityDecision,
     pub preferred_peer: bool,
     pub peer_overloaded: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TxParentRequestInput {
+    pub peer_id: PeerId,
+    pub relay_id: TxRelayId,
+    pub now_unix_seconds: i64,
+    pub local_facts: TxDownloadLocalFacts,
+    pub relay_eligibility: RelayEligibilityDecision,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -109,6 +120,12 @@ impl TxDownloadScheduler {
             return vec![action];
         }
 
+        if let Some(action) =
+            relay_eligibility_suppression(input.peer_id, relay_id, &input.relay_eligibility)
+        {
+            return vec![action];
+        }
+
         if self.has_pending_relay(relay_id) {
             self.record_fallback_candidate_if_allowed(relay_id, &input);
             return vec![TxDownloadAction::SuppressDuplicate {
@@ -142,32 +159,43 @@ impl TxDownloadScheduler {
         Vec::new()
     }
 
-    pub fn request_parent(
-        &mut self,
-        peer_id: PeerId,
-        relay_id: TxRelayId,
-        now_unix_seconds: i64,
-        local_facts: TxDownloadLocalFacts,
-    ) -> Vec<TxDownloadAction> {
-        if let Some(action) = self.local_fact_suppression(peer_id, relay_id, &local_facts) {
+    pub fn request_parent(&mut self, input: TxParentRequestInput) -> Vec<TxDownloadAction> {
+        if let Some(action) =
+            self.local_fact_suppression(input.peer_id, input.relay_id, &input.local_facts)
+        {
             return vec![action];
         }
 
-        if self.has_pending_relay(relay_id) {
+        if let Some(action) =
+            relay_eligibility_suppression(input.peer_id, input.relay_id, &input.relay_eligibility)
+        {
+            return vec![action];
+        }
+
+        if self.has_pending_relay(input.relay_id) {
             self.record_orphan_parent_fallback_candidate_if_allowed(
-                relay_id,
-                peer_id,
-                now_unix_seconds,
+                input.relay_id,
+                input.peer_id,
+                input.now_unix_seconds,
             );
-            return vec![TxDownloadAction::SuppressDuplicate { peer_id, relay_id }];
+            return vec![TxDownloadAction::SuppressDuplicate {
+                peer_id: input.peer_id,
+                relay_id: input.relay_id,
+            }];
         }
 
-        if self.peer_is_at_request_cap(peer_id) {
-            return vec![TxDownloadAction::SuppressRequestCap { peer_id, relay_id }];
+        if self.peer_is_at_request_cap(input.peer_id) {
+            return vec![TxDownloadAction::SuppressRequestCap {
+                peer_id: input.peer_id,
+                relay_id: input.relay_id,
+            }];
         }
 
-        self.insert_in_flight(relay_id, peer_id, now_unix_seconds);
-        vec![TxDownloadAction::RequestGetData { peer_id, relay_id }]
+        self.insert_in_flight(input.relay_id, input.peer_id, input.now_unix_seconds);
+        vec![TxDownloadAction::RequestGetData {
+            peer_id: input.peer_id,
+            relay_id: input.relay_id,
+        }]
     }
 
     pub fn expire_and_schedule(&mut self, now_unix_seconds: i64) -> Vec<TxDownloadAction> {
@@ -533,5 +561,38 @@ impl TxDownloadScheduler {
 
     fn peer_total_count(&self, peer_id: PeerId) -> usize {
         self.peer_candidate_count(peer_id) + self.peer_in_flight_count(peer_id)
+    }
+}
+
+fn relay_eligibility_suppression(
+    peer_id: PeerId,
+    relay_id: TxRelayId,
+    relay_eligibility: &RelayEligibilityDecision,
+) -> Option<TxDownloadAction> {
+    if relay_eligibility.eligible {
+        return None;
+    }
+
+    Some(TxDownloadAction::Suppress {
+        peer_id,
+        relay_id,
+        reason: relay_suppression_reason(relay_eligibility.reason),
+    })
+}
+
+fn relay_suppression_reason(reason: RelayEligibilityReason) -> TxDownloadSuppressionReason {
+    match reason {
+        RelayEligibilityReason::Disabled | RelayEligibilityReason::ActivationRequired => {
+            TxDownloadSuppressionReason::RelayDisabled
+        }
+        RelayEligibilityReason::InboundServingRequired => {
+            TxDownloadSuppressionReason::InboundServingRequired
+        }
+        RelayEligibilityReason::PermissionRequired
+        | RelayEligibilityReason::PermissionEffectInactive => {
+            TxDownloadSuppressionReason::PermissionRequired
+        }
+        RelayEligibilityReason::ProtectedNotRelay => TxDownloadSuppressionReason::ProtectedNotRelay,
+        RelayEligibilityReason::Eligible => TxDownloadSuppressionReason::NotRelayEligible,
     }
 }

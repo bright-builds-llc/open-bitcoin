@@ -505,6 +505,113 @@ public-network relay CI, production-service operation, production full-node
 readiness, production-service proof, production full-node readiness proof,
 production-funds wallet use, or production-funds wallet safety proof.
 
+## Phase 107 Runtime Relay Activation and Download Eligibility Review
+
+Phase 107 documents the bounded runtime integration repair for
+`v2-0-runtime-relay-activation-download-eligibility` across `ACT-01`,
+`ACT-02`, `INV-02`, `INV-03`, `DL-01`, `DL-02`, and `REL-03`. It proves that
+resolved `RuntimeConfig.relay` reaches managed network construction and that
+transaction download scheduling requires relay eligibility before request-state
+mutation. The deterministic inbound-serving input is resolved
+`config.inbound.enabled`; live listener/public-network relay proof remains
+explicit opt-in UAT outside default verification.
+
+Review default-off relay evidence with the repo-local operator status forms:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --network regtest \
+  --datadir=/tmp/open-bitcoin-relay-default-off \
+  status --format json
+
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- \
+  --network regtest \
+  --datadir=/tmp/open-bitcoin-relay-default-off \
+  status --format json
+```
+
+Start an explicit relay-enabled runtime for local review with either daemon
+form:
+
+```bash
+mkdir -p /tmp/open-bitcoin-relay-enabled
+
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --bin open-bitcoind -- \
+  -regtest \
+  -datadir=/tmp/open-bitcoin-relay-enabled \
+  -openbitcoinrelay=1 \
+  -openbitcoininbound=1 \
+  -openbitcoinlisten=127.0.0.1:18444 \
+  -openbitcoininboundpermissionclass=relay_loopback@127.0.0.1=in,relay,forcerelay,mempool \
+  -server=1
+
+bazel run //packages/open-bitcoin-rpc:open_bitcoind -- \
+  -regtest \
+  -datadir=/tmp/open-bitcoin-relay-enabled \
+  -openbitcoinrelay=1 \
+  -openbitcoininbound=1 \
+  -openbitcoinlisten=127.0.0.1:18444 \
+  -openbitcoininboundpermissionclass=relay_loopback@127.0.0.1=in,relay,forcerelay,mempool \
+  -server=1
+```
+
+Inspect the Open Bitcoin-owned status evidence:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin-cli -- \
+  -regtest \
+  -rpcconnect=127.0.0.1 \
+  -rpcport=18443 \
+  openbitcoinnetworkstatus
+
+bazel run //packages/open-bitcoin-cli:open_bitcoin_cli -- \
+  -regtest \
+  -rpcconnect=127.0.0.1 \
+  -rpcport=18443 \
+  openbitcoinnetworkstatus
+```
+
+Collect a redacted support bundle through the repo-local operator forms:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --network regtest \
+  --datadir=/tmp/open-bitcoin-relay-enabled \
+  support bundle --output-dir=/tmp/open-bitcoin-relay-enabled-support
+
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- \
+  --network regtest \
+  --datadir=/tmp/open-bitcoin-relay-enabled \
+  support bundle --output-dir=/tmp/open-bitcoin-relay-enabled-support
+```
+
+Run the default deterministic verifier before treating the evidence as current:
+
+```bash
+bash scripts/verify.sh
+```
+
+Expected Phase 107 evidence is aggregate, sanitized, and fixed-label only:
+
+- `openbitcoinnetworkstatus.relay`, `status --format json`, dashboard rows,
+  and support bundles expose activation and `RelayDownloadEligibilityCounters`
+  as aggregate counters.
+- Granular scheduler labels such as `relay_disabled`,
+  `not_relay_eligible`, `inbound_serving_required`, `permission_required`,
+  and `protected_not_relay` remain internal typed scheduler/test vocabulary
+  unless reduced to aggregate counters.
+- Support evidence must not include peer ids, endpoints, permission strings,
+  class names, txids, wtxids, raw transaction hex, credentials, or dynamic
+  labels.
+- `sendrawtransaction` success does not guarantee public propagation.
+
+Phase 107 is not a public relay expansion. It does not claim public relay by
+default, compact block relay, package relay, bloom/filter serving,
+public-network relay CI, production-service operation, production full-node
+readiness, production-funds wallet safety, production-funds wallet use, or
+durable mempool recovery. Public-network relay review remains opt-in and
+outside default Phase 107 verification.
+
 ## Phase 92 Address Advertisement and Discovery Boundary Review
 
 Phase 92 adds bounded address-boundary evidence to the same explicit loopback

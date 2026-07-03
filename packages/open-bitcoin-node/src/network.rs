@@ -273,7 +273,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             protocol_version: PROTOCOL_VERSION,
             user_agent: self.local_config.user_agent.clone(),
             local_services_bits: self.local_config.services.bits(),
-            relay: self.local_config.relay,
+            relay: self.relay_activation.enabled,
             connected_peers,
             inbound_peers,
             outbound_peers,

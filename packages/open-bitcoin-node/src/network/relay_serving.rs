@@ -17,15 +17,17 @@ use open_bitcoin_core::{
 use open_bitcoin_mempool::PolicyConfig;
 use open_bitcoin_network::{
     ConnectionRole, InboundAdmissionPolicy, LocalPeerConfig, OrphanPolicy, PeerConnectionClass,
-    PeerId, PeerManager, RelayActivationConfig, RelayEligibilityDecision, RelayEligibilityInput,
-    TxOrphanage, TxRelayId, TxRelayPeerMode, TxServeOutcomeLabel, TxServingRecordStatus,
-    classify_relay_eligibility, classify_tx_serve_request,
+    PeerId, PeerManager, RelayActivationConfig, RelayDownloadPolicy, RelayEligibilityDecision,
+    RelayEligibilityInput, RelayEligibilityReason, TxOrphanage, TxRelayId, TxRelayPeerMode,
+    TxServeOutcomeLabel, TxServingRecordStatus, classify_relay_eligibility,
+    classify_tx_serve_request,
 };
 
 use super::{
     ManagedInboundAdmissionInfo, ManagedNetworkError, ManagedPeerNetwork,
     ManagedResourceGovernanceInfo,
 };
+use crate::status::relay_evidence::RelayDownloadEligibilityCounters;
 use crate::{ChainstateStore, ManagedChainstate, ManagedMempool};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -289,6 +291,38 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         self.relay_serving.info()
     }
 
+    pub(super) fn relay_download_eligibility_counters(&self) -> RelayDownloadEligibilityCounters {
+        let mut counters = RelayDownloadEligibilityCounters::default();
+        for peer_id in self.peer_manager.peer_ids() {
+            let (_peer_mode, decision) = self.relay_serving_context_for_peer(peer_id);
+            if decision.eligible {
+                counters.eligible_peer_count += 1;
+                continue;
+            }
+
+            counters.ineligible_peer_count += 1;
+            match decision.reason {
+                RelayEligibilityReason::Disabled | RelayEligibilityReason::ActivationRequired => {
+                    counters.relay_disabled_count += 1;
+                }
+                RelayEligibilityReason::InboundServingRequired => {
+                    counters.inbound_serving_required_count += 1;
+                }
+                RelayEligibilityReason::PermissionRequired
+                | RelayEligibilityReason::PermissionEffectInactive => {
+                    counters.permission_required_count += 1;
+                }
+                RelayEligibilityReason::ProtectedNotRelay => {
+                    counters.protected_not_relay_count += 1;
+                }
+                RelayEligibilityReason::Eligible => {
+                    counters.not_relay_eligible_count += 1;
+                }
+            }
+        }
+        counters
+    }
+
     pub(super) fn relay_serving_context_for_peer(
         &self,
         peer_id: PeerId,
@@ -355,6 +389,10 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     ) -> Self {
         let chainstate = ManagedChainstate::from_store(store);
         peer_manager.seed_local_chain(&chainstate.chainstate().snapshot().active_chain);
+        peer_manager.set_relay_download_policy(RelayDownloadPolicy {
+            activation: relay_activation,
+            inbound_serving_enabled,
+        });
 
         Self {
             chainstate,

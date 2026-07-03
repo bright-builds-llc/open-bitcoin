@@ -10,22 +10,22 @@ Requirements for the current milestone. Each requirement maps to exactly one roa
 
 ### Relay Activation And Permission Boundary
 
-- [ ] **ACT-01**: Operator can enable transaction relay only through explicit relay activation settings that keep public relay off by default.
-- [ ] **ACT-02**: Node classifies peer relay eligibility across outbound, inbound, manual, protected, and permissioned peers without changing service bits or public defaults accidentally.
+- [x] **ACT-01**: Operator can enable transaction relay only through explicit relay activation settings that keep public relay off by default.
+- [x] **ACT-02**: Node classifies peer relay eligibility across outbound, inbound, manual, protected, and permissioned peers without changing service bits or public defaults accidentally.
 - [x] **ACT-03**: Permission effects for `relay`, `forcerelay`, and `mempool` activate only the scoped behavior documented for v2.0.
 - [x] **ACT-04**: Bloom/filter permissions, compact-block behavior, and unrelated peer permissions remain inactive unless a later requirement explicitly activates them.
 
 ### Transaction Inventory And Identity
 
 - [x] **INV-01**: Node handles transaction `inv`, `getdata`, `tx`, and `notfound` messages with typed txid and wtxid identity.
-- [ ] **INV-02**: Node tracks per-peer txid/wtxid negotiation, already-have state, request state, and received-transaction cleanup deterministically.
-- [ ] **INV-03**: Node handles duplicate announcements, identity mismatches, `notfound`, timeout, and disconnect cleanup without stale request state.
+- [x] **INV-02**: Node tracks per-peer txid/wtxid negotiation, already-have state, request state, and received-transaction cleanup deterministically.
+- [x] **INV-03**: Node handles duplicate announcements, identity mismatches, `notfound`, timeout, and disconnect cleanup without stale request state.
 - [x] **INV-04**: Relay decisions emit stable typed actions for announcements, requests, suppressions, fallbacks, and peer cleanup.
 
 ### Bounded Transaction Download
 
-- [ ] **DL-01**: Node schedules transaction downloads with bounded in-flight request caps, expiry, peer fallback, and retry evidence.
-- [ ] **DL-02**: Node suppresses redundant transaction requests through already-have, recent-reject, in-flight, and mempool-state checks.
+- [x] **DL-01**: Node schedules transaction downloads with bounded in-flight request caps, expiry, peer fallback, and retry evidence.
+- [x] **DL-02**: Node suppresses redundant transaction requests through already-have, recent-reject, in-flight, and mempool-state checks.
 - [x] **DL-03**: Node stages missing-parent transactions in a bounded orphan or candidate state and requests eligible parents.
 - [x] **DL-04**: Node reconsiders staged missing-parent transactions after parent acceptance and expires or evicts them with evidence when limits are reached.
 - [x] **DL-05**: Transaction download behavior preserves v1.9 queue, request, timeout, churn, and resource-governance limits under adversarial bursts.
@@ -43,7 +43,7 @@ Requirements for the current milestone. Each requirement maps to exactly one roa
 
 - [ ] **REL-01**: Node serves only relay-eligible transactions in response to peer `getdata` requests and reports unknown, stale, confirmed, rejected, or evicted transactions correctly.
 - [ ] **REL-02**: Node announces accepted transactions to eligible peers using negotiated txid or wtxid identity, per-peer queues, rate limits, and suppression rules.
-- [ ] **REL-03**: Local `sendrawtransaction` submissions enter mempool admission and queued relay evidence without guaranteeing public propagation.
+- [x] **REL-03**: Local `sendrawtransaction` submissions enter mempool admission and queued relay evidence without guaranteeing public propagation.
 - [x] **REL-04**: Rebroadcast behavior is either implemented with bounded scheduling and evidence or explicitly marked deferred across docs, status, and tests.
 
 ### Operator, RPC, Metrics, Logs, And Support Evidence
@@ -105,16 +105,16 @@ Explicitly excluded from v2.0 to prevent scope creep.
 
 | Requirement | Phase | Status |
 | --- | --- | --- |
-| ACT-01 | Phase 107 | Pending |
-| ACT-02 | Phase 107 | Pending |
+| ACT-01 | Phase 107 | Complete |
+| ACT-02 | Phase 107 | Complete |
 | ACT-03 | Phase 100 | Complete |
 | ACT-04 | Phase 100 | Complete |
 | INV-01 | Phase 101 | Complete |
-| INV-02 | Phase 107 | Pending |
-| INV-03 | Phase 107 | Pending |
+| INV-02 | Phase 107 | Complete |
+| INV-03 | Phase 107 | Complete |
 | INV-04 | Phase 101 | Complete |
-| DL-01 | Phase 107 | Pending |
-| DL-02 | Phase 107 | Pending |
+| DL-01 | Phase 107 | Complete |
+| DL-02 | Phase 107 | Complete |
 | DL-03 | Phase 102 | Complete |
 | DL-04 | Phase 102 | Complete |
 | DL-05 | Phase 102 | Complete |
@@ -126,7 +126,7 @@ Explicitly excluded from v2.0 to prevent scope creep.
 | MEM-06 | Phase 108 | Pending |
 | REL-01 | Phase 108 | Pending |
 | REL-02 | Phase 108 | Pending |
-| REL-03 | Phase 107 | Pending |
+| REL-03 | Phase 107 | Complete |
 | REL-04 | Phase 104 | Complete |
 | OBS-01 | Phase 105 | Complete |
 | OBS-02 | Phase 105 | Complete |
@@ -145,4 +145,4 @@ Explicitly excluded from v2.0 to prevent scope creep.
 - Unmapped: 0
 
 *Requirements defined: 2026-06-29*
-*Last updated: 2026-07-03 after gap closure phase planning*
+*Last updated: 2026-07-03 after Phase 107 closeout verification*

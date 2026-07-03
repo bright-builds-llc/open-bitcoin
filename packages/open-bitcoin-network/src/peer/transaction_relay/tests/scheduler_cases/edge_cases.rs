@@ -44,7 +44,7 @@ fn duplicate_orphan_parent_fallback_candidate_respects_peer_candidate_cap() {
     // Arrange
     let mut scheduler = scheduler();
     let relay_id = txid_relay(45);
-    let _ = scheduler.request_parent(45, relay_id, 0, TxDownloadLocalFacts::default());
+    let _ = scheduler.request_parent(parent_request(45, relay_id, 0));
     for byte in 46..49 {
         assert!(
             scheduler
@@ -59,7 +59,7 @@ fn duplicate_orphan_parent_fallback_candidate_respects_peer_candidate_cap() {
     }
 
     // Act
-    let actions = scheduler.request_parent(46, relay_id, 2, TxDownloadLocalFacts::default());
+    let actions = scheduler.request_parent(parent_request(46, relay_id, 2));
 
     // Assert
     assert_eq!(actions, [duplicate(46, relay_id)]);

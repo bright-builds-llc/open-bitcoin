@@ -35,7 +35,7 @@ pub use orphanage::{
 };
 pub use scheduler::{
     TxAnnouncementInput, TxDownloadLocalFacts, TxDownloadScheduler, TxDownloadSnapshot,
-    TxPeerRequestSnapshot,
+    TxParentRequestInput, TxPeerRequestSnapshot,
 };
 pub use serving::{
     TxServeDecision, TxServeOutcomeLabel, TxServingRecordStatus, classify_tx_serve_request,
@@ -141,6 +141,11 @@ pub enum TxDownloadSuppressionReason {
     IdentityMismatch,
     NotTransactionInventory,
     MempoolKnown,
+    RelayDisabled,
+    NotRelayEligible,
+    InboundServingRequired,
+    PermissionRequired,
+    ProtectedNotRelay,
 }
 
 impl TxDownloadSuppressionReason {
@@ -154,6 +159,11 @@ impl TxDownloadSuppressionReason {
             Self::IdentityMismatch => "identity_mismatch",
             Self::NotTransactionInventory => "not_transaction_inventory",
             Self::MempoolKnown => "mempool_known",
+            Self::RelayDisabled => "relay_disabled",
+            Self::NotRelayEligible => "not_relay_eligible",
+            Self::InboundServingRequired => "inbound_serving_required",
+            Self::PermissionRequired => "permission_required",
+            Self::ProtectedNotRelay => "protected_not_relay",
         }
     }
 }
@@ -239,6 +249,26 @@ impl TxDownloadAction {
                 reason: TxDownloadSuppressionReason::MempoolKnown,
                 ..
             } => "suppress_mempool_known",
+            Self::Suppress {
+                reason: TxDownloadSuppressionReason::RelayDisabled,
+                ..
+            } => "suppress_relay_disabled",
+            Self::Suppress {
+                reason: TxDownloadSuppressionReason::NotRelayEligible,
+                ..
+            } => "suppress_not_relay_eligible",
+            Self::Suppress {
+                reason: TxDownloadSuppressionReason::InboundServingRequired,
+                ..
+            } => "suppress_inbound_serving_required",
+            Self::Suppress {
+                reason: TxDownloadSuppressionReason::PermissionRequired,
+                ..
+            } => "suppress_permission_required",
+            Self::Suppress {
+                reason: TxDownloadSuppressionReason::ProtectedNotRelay,
+                ..
+            } => "suppress_protected_not_relay",
             Self::Suppress {
                 reason: TxDownloadSuppressionReason::RequestCapReached,
                 ..

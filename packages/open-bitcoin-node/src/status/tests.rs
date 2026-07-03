@@ -2,8 +2,8 @@
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
 use super::relay_evidence::{
-    RelayCapabilityEvidence, RelayEvidenceCapability, RelayEvidenceCounters, RelayEvidenceField,
-    RelayEvidenceStatus,
+    RelayActivationEvidence, RelayCapabilityEvidence, RelayDownloadEligibilityCounters,
+    RelayEvidenceCapability, RelayEvidenceCounters, RelayEvidenceField, RelayEvidenceStatus,
 };
 use super::{
     BestKnownTipStatus, BuildProvenance, ChainTipStatus, ConfigStatus, FieldAvailability,
@@ -109,6 +109,50 @@ fn relay_evidence_status_serializes_fixed_counter_contract_once() {
 }
 
 #[test]
+fn relay_evidence_status_serializes_activation_and_download_eligibility_contract() {
+    // Arrange
+    let status = RelayEvidenceStatus::with_activation_and_counters(
+        RelayActivationEvidence { enabled: true },
+        RelayDownloadEligibilityCounters {
+            eligible_peer_count: 1,
+            ineligible_peer_count: 2,
+            relay_disabled_count: 3,
+            not_relay_eligible_count: 4,
+            inbound_serving_required_count: 5,
+            permission_required_count: 6,
+            protected_not_relay_count: 7,
+        },
+        RelayEvidenceCounters::default(),
+    );
+
+    // Act
+    let encoded = serde_json::to_value(status).expect("relay evidence json");
+    let eligibility = encoded["download_eligibility"]["value"]
+        .as_object()
+        .expect("download eligibility counters");
+
+    // Assert
+    assert_eq!(encoded["activation"]["state"], "implemented");
+    assert_eq!(encoded["activation"]["value"]["enabled"], true);
+    assert_eq!(encoded["download_eligibility"]["state"], "implemented");
+    assert_eq!(eligibility["eligible_peer_count"], 1);
+    assert_eq!(eligibility["ineligible_peer_count"], 2);
+    assert_eq!(eligibility["relay_disabled_count"], 3);
+    assert_eq!(eligibility["not_relay_eligible_count"], 4);
+    assert_eq!(eligibility["inbound_serving_required_count"], 5);
+    assert_eq!(eligibility["permission_required_count"], 6);
+    assert_eq!(eligibility["protected_not_relay_count"], 7);
+    assert_eq!(
+        eligibility
+            .keys()
+            .filter(|key| key.ends_with("_count"))
+            .count(),
+        7
+    );
+    assert!(encoded.get("reason").is_none());
+}
+
+#[test]
 fn relay_evidence_status_default_reports_truthful_unavailable_and_deferred_states() {
     // Arrange / Act
     let status = RelayEvidenceStatus::default_unavailable();
@@ -117,6 +161,17 @@ fn relay_evidence_status_default_reports_truthful_unavailable_and_deferred_state
     // Assert
     assert_eq!(encoded["outcome_counters"]["state"], "implemented");
     assert_eq!(encoded["outcome_counters"]["value"]["accepted_count"], 0);
+    assert_eq!(encoded["activation"]["state"], "implemented");
+    assert_eq!(encoded["activation"]["value"]["enabled"], false);
+    assert_eq!(encoded["download_eligibility"]["state"], "implemented");
+    assert_eq!(
+        encoded["download_eligibility"]["value"]["eligible_peer_count"],
+        0
+    );
+    assert_eq!(
+        encoded["download_eligibility"]["value"]["protected_not_relay_count"],
+        0
+    );
     assert_eq!(encoded["mempool_admission"]["state"], "unavailable");
     assert_eq!(
         encoded["mempool_admission"]["value"]["reason"],
@@ -177,7 +232,7 @@ fn relay_evidence_status_default_omits_sensitive_material_by_construction() {
         "wtxid",
         "peer_id",
         "endpoint",
-        "permission",
+        "permission_string",
         "credential",
         "label",
     ] {

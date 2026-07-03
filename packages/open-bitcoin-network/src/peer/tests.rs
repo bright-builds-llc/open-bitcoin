@@ -25,9 +25,9 @@ use crate::{
     PHASE94_MAX_INBOUND_TX_REQUESTS_PER_PEER, PHASE101_GETDATA_TX_INTERVAL_SECONDS,
     PHASE101_MAX_TX_REQUESTS_IN_FLIGHT_PER_PEER, ParsedPeerPermissionClass, PeerAction,
     PeerBanEntry, PeerConnectionClass, PeerId, PeerManager, PeerPermissionClassRegistry,
-    PermissionEffectLabel, RequestPressureInput, ResourceGovernanceDecision,
-    ResourceGovernancePolicy, ServiceFlags, TxDownloadAction, TxDownloadSuppressionReason,
-    TxRelayId, WireNetworkMessage,
+    PermissionEffectLabel, RelayActivationConfig, RelayDownloadPolicy, RequestPressureInput,
+    ResourceGovernanceDecision, ResourceGovernancePolicy, ServiceFlags, TxDownloadAction,
+    TxDownloadSuppressionReason, TxRelayId, WireNetworkMessage,
 };
 use open_bitcoin_primitives::{InventoryType, InventoryVector, Txid};
 
@@ -48,6 +48,36 @@ fn local_config() -> LocalPeerConfig {
         relay: true,
         user_agent: "/open-bitcoin:test/".to_string(),
     }
+}
+
+fn relay_download_policy(inbound_serving_enabled: bool) -> RelayDownloadPolicy {
+    RelayDownloadPolicy {
+        activation: RelayActivationConfig { enabled: true },
+        inbound_serving_enabled,
+    }
+}
+
+fn relay_download_manager(inbound_serving_enabled: bool) -> PeerManager {
+    PeerManager::with_relay_download_policy(
+        local_config(),
+        DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER,
+        relay_download_policy(inbound_serving_enabled),
+    )
+}
+
+fn add_relay_outbound_peer(manager: &mut PeerManager, peer_id: PeerId) {
+    let _ = manager
+        .add_outbound_peer(peer_id, 0)
+        .expect("outbound peer should be added");
+}
+
+fn add_relay_permissioned_inbound_peer(manager: &mut PeerManager, peer_id: PeerId) {
+    manager
+        .add_inbound_peer_record(permissioned_inbound_record(
+            peer_id,
+            permission_decision(["in", "relay"]),
+        ))
+        .expect("permissioned inbound peer should be added");
 }
 
 fn protected_permission_decision() -> InboundPermissionDecision {
@@ -934,7 +964,7 @@ fn scoped_relay_permission_effects_remain_policy_only_for_transaction_paths() {
     let transaction = open_bitcoin_primitives::Transaction::default();
     let txid = transaction_txid(&transaction).expect("txid");
     let wtxid = transaction_wtxid(&transaction).expect("wtxid");
-    let mut manager = PeerManager::new(local_config());
+    let mut manager = relay_download_manager(true);
     manager
         .add_inbound_peer_record(permissioned_inbound_record(91, permission_decision))
         .expect("permissioned inbound peer should be added");
@@ -1019,10 +1049,206 @@ fn scoped_relay_permission_effects_remain_policy_only_for_transaction_paths() {
 }
 
 #[test]
-fn peer_manager_transaction_relay_txid_inv_emits_typed_request_action() {
+fn peer_manager_transaction_relay_default_off_download_suppresses_without_state() {
     // Arrange
     let mut manager = PeerManager::new(local_config());
-    manager.add_inbound_peer(201).expect("peer");
+    manager.add_inbound_peer(226).expect("peer");
+    let transaction = open_bitcoin_primitives::Transaction::default();
+    let txid = transaction_txid(&transaction).expect("txid");
+
+    // Act
+    let actions = manager
+        .handle_message(
+            226,
+            WireNetworkMessage::Inv(transaction_relay_inventory(TxRelayId::Txid(txid))),
+            1,
+        )
+        .expect("default-off transaction inventory");
+
+    // Assert
+    assert_transaction_relay_suppression(
+        &actions,
+        226,
+        TxRelayId::Txid(txid),
+        TxDownloadSuppressionReason::RelayDisabled,
+    );
+    let snapshot = manager.transaction_request_snapshot(226);
+    assert_eq!(snapshot.candidate_count, 0);
+    assert_eq!(snapshot.in_flight_count, 0);
+}
+
+#[test]
+fn peer_manager_transaction_relay_enabled_outbound_and_permissioned_inbound_schedule_downloads() {
+    // Arrange
+    let mut manager = relay_download_manager(true);
+    add_relay_outbound_peer(&mut manager, 227);
+    add_relay_permissioned_inbound_peer(&mut manager, 228);
+    let txid = txid_from_byte(106);
+    let wtxid = open_bitcoin_primitives::Wtxid::from_byte_array([107; 32]);
+    manager
+        .handle_message(228, WireNetworkMessage::WtxidRelay, 1)
+        .expect("wtxidrelay");
+
+    // Act
+    let txid_actions = manager
+        .handle_message(
+            227,
+            WireNetworkMessage::Inv(transaction_relay_inventory(TxRelayId::Txid(txid))),
+            2,
+        )
+        .expect("outbound txid inventory");
+    let wtxid_actions = manager
+        .handle_message(
+            228,
+            WireNetworkMessage::Inv(transaction_relay_inventory(TxRelayId::Wtxid(wtxid))),
+            3,
+        )
+        .expect("permissioned inbound wtxid inventory");
+
+    // Assert
+    assert_transaction_relay_request(&txid_actions, 227, TxRelayId::Txid(txid));
+    assert_transaction_relay_request(&wtxid_actions, 228, TxRelayId::Wtxid(wtxid));
+}
+
+#[test]
+fn peer_manager_transaction_relay_enabled_inbound_classes_require_scoped_relay_permission() {
+    // Arrange
+    let mut manager = relay_download_manager(true);
+    manager
+        .add_inbound_peer(229)
+        .expect("ordinary inbound peer");
+    manager
+        .add_inbound_peer_record(permissioned_inbound_record(
+            230,
+            protected_permission_decision(),
+        ))
+        .expect("protected inbound peer");
+    manager
+        .add_inbound_peer_record(permissioned_inbound_record(
+            231,
+            permission_decision(["in", "download"]),
+        ))
+        .expect("permissioned inbound peer without relay scope");
+
+    // Act
+    let ordinary_actions = manager
+        .handle_message(
+            229,
+            WireNetworkMessage::Inv(transaction_relay_inventory(TxRelayId::Txid(
+                txid_from_byte(108),
+            ))),
+            1,
+        )
+        .expect("ordinary inbound inventory");
+    let protected_actions = manager
+        .handle_message(
+            230,
+            WireNetworkMessage::Inv(transaction_relay_inventory(TxRelayId::Txid(
+                txid_from_byte(109),
+            ))),
+            2,
+        )
+        .expect("protected inbound inventory");
+    let no_relay_actions = manager
+        .handle_message(
+            231,
+            WireNetworkMessage::Inv(transaction_relay_inventory(TxRelayId::Txid(
+                txid_from_byte(110),
+            ))),
+            3,
+        )
+        .expect("permissioned inbound without relay inventory");
+
+    // Assert
+    assert_transaction_relay_suppression(
+        &ordinary_actions,
+        229,
+        TxRelayId::Txid(txid_from_byte(108)),
+        TxDownloadSuppressionReason::PermissionRequired,
+    );
+    assert_transaction_relay_suppression(
+        &protected_actions,
+        230,
+        TxRelayId::Txid(txid_from_byte(109)),
+        TxDownloadSuppressionReason::ProtectedNotRelay,
+    );
+    assert_transaction_relay_suppression(
+        &no_relay_actions,
+        231,
+        TxRelayId::Txid(txid_from_byte(110)),
+        TxDownloadSuppressionReason::PermissionRequired,
+    );
+}
+
+#[test]
+fn peer_manager_transaction_relay_inbound_serving_disabled_blocks_permissioned_downloads() {
+    // Arrange
+    let mut manager = relay_download_manager(false);
+    add_relay_permissioned_inbound_peer(&mut manager, 232);
+    let txid = txid_from_byte(111);
+
+    // Act
+    let actions = manager
+        .handle_message(
+            232,
+            WireNetworkMessage::Inv(transaction_relay_inventory(TxRelayId::Txid(txid))),
+            1,
+        )
+        .expect("permissioned inbound inventory");
+
+    // Assert
+    assert_transaction_relay_suppression(
+        &actions,
+        232,
+        TxRelayId::Txid(txid),
+        TxDownloadSuppressionReason::InboundServingRequired,
+    );
+}
+
+#[test]
+fn peer_manager_transaction_relay_ineligible_first_announcement_does_not_block_eligible_second() {
+    // Arrange
+    let mut manager = relay_download_manager(true);
+    manager
+        .add_inbound_peer(233)
+        .expect("ordinary inbound peer");
+    add_relay_outbound_peer(&mut manager, 234);
+    let relay_id = TxRelayId::Txid(txid_from_byte(112));
+
+    // Act
+    let first_actions = manager
+        .handle_message(
+            233,
+            WireNetworkMessage::Inv(transaction_relay_inventory(relay_id)),
+            1,
+        )
+        .expect("ordinary inbound inventory");
+    let second_actions = manager
+        .handle_message(
+            234,
+            WireNetworkMessage::Inv(transaction_relay_inventory(relay_id)),
+            2,
+        )
+        .expect("outbound inventory");
+
+    // Assert
+    assert_transaction_relay_suppression(
+        &first_actions,
+        233,
+        relay_id,
+        TxDownloadSuppressionReason::PermissionRequired,
+    );
+    assert_transaction_relay_request(&second_actions, 234, relay_id);
+    assert_eq!(manager.transaction_request_snapshot(233).candidate_count, 0);
+    assert_eq!(manager.transaction_request_snapshot(233).in_flight_count, 0);
+    assert_eq!(manager.transaction_request_snapshot(234).in_flight_count, 1);
+}
+
+#[test]
+fn peer_manager_transaction_relay_txid_inv_emits_typed_request_action() {
+    // Arrange
+    let mut manager = relay_download_manager(true);
+    add_relay_outbound_peer(&mut manager, 201);
     let transaction = open_bitcoin_primitives::Transaction::default();
     let txid = transaction_txid(&transaction).expect("txid");
 
@@ -1042,8 +1268,8 @@ fn peer_manager_transaction_relay_txid_inv_emits_typed_request_action() {
 #[test]
 fn peer_manager_transaction_relay_wtxid_inv_emits_typed_request_action() {
     // Arrange
-    let mut manager = PeerManager::new(local_config());
-    manager.add_inbound_peer(202).expect("peer");
+    let mut manager = relay_download_manager(true);
+    add_relay_outbound_peer(&mut manager, 202);
     manager
         .handle_message(202, WireNetworkMessage::WtxidRelay, 1)
         .expect("wtxidrelay");
@@ -1102,9 +1328,9 @@ fn peer_manager_transaction_relay_mismatch_emits_suppression_without_state() {
 #[test]
 fn peer_manager_transaction_relay_duplicate_inv_suppresses_second_getdata_but_keeps_fallback() {
     // Arrange
-    let mut manager = PeerManager::new(local_config());
-    manager.add_inbound_peer(205).expect("first peer");
-    manager.add_inbound_peer(206).expect("fallback peer");
+    let mut manager = relay_download_manager(true);
+    add_relay_outbound_peer(&mut manager, 205);
+    add_relay_outbound_peer(&mut manager, 206);
     let transaction = open_bitcoin_primitives::Transaction::default();
     let relay_id = TxRelayId::Txid(transaction_txid(&transaction).expect("txid"));
 
@@ -1204,8 +1430,8 @@ fn peer_manager_transaction_relay_already_have_and_recent_reject_suppress_reques
 #[test]
 fn peer_manager_orphan_parent_request_uses_transaction_scheduler() {
     // Arrange
-    let mut manager = PeerManager::new(local_config());
-    manager.add_inbound_peer(219).expect("peer");
+    let mut manager = relay_download_manager(true);
+    add_relay_outbound_peer(&mut manager, 219);
     let parent_txid = txid_from_byte(101);
 
     // Act
@@ -1219,10 +1445,33 @@ fn peer_manager_orphan_parent_request_uses_transaction_scheduler() {
 }
 
 #[test]
-fn peer_manager_orphan_parent_request_respects_inflight_cap() {
+fn peer_manager_transaction_relay_orphan_parent_request_uses_relay_download_eligibility() {
     // Arrange
     let mut manager = PeerManager::new(local_config());
-    manager.add_inbound_peer(220).expect("peer");
+    manager.add_inbound_peer(235).expect("peer");
+    let parent_txid = txid_from_byte(113);
+
+    // Act
+    let actions = manager
+        .request_orphan_parent(235, parent_txid, 10)
+        .expect("parent request");
+
+    // Assert
+    assert_transaction_relay_suppression(
+        &actions,
+        235,
+        TxRelayId::Txid(parent_txid),
+        TxDownloadSuppressionReason::RelayDisabled,
+    );
+    assert_eq!(manager.transaction_request_snapshot(235).in_flight_count, 0);
+    assert_eq!(manager.transaction_request_snapshot(235).candidate_count, 0);
+}
+
+#[test]
+fn peer_manager_orphan_parent_request_respects_inflight_cap() {
+    // Arrange
+    let mut manager = relay_download_manager(true);
+    add_relay_outbound_peer(&mut manager, 220);
 
     // Act
     for index in 0..PHASE101_MAX_TX_REQUESTS_IN_FLIGHT_PER_PEER {
@@ -1313,8 +1562,8 @@ fn peer_manager_orphan_parent_request_suppresses_already_have_recent_reject_and_
 #[test]
 fn peer_manager_orphan_parent_request_counts_toward_resource_governance() {
     // Arrange
-    let mut manager = PeerManager::new(local_config());
-    manager.add_inbound_peer(224).expect("peer");
+    let mut manager = relay_download_manager(true);
+    add_relay_permissioned_inbound_peer(&mut manager, 224);
     let parent_txid = txid_from_byte(104);
 
     // Act
@@ -1360,9 +1609,9 @@ fn peer_manager_orphan_parent_request_rejects_unknown_peer() {
 #[test]
 fn peer_manager_transaction_relay_notfound_timeout_and_disconnect_cleanup_fallback() {
     // Arrange
-    let mut manager = PeerManager::new(local_config());
+    let mut manager = relay_download_manager(true);
     for peer_id in 209..=214 {
-        manager.add_inbound_peer(peer_id).expect("peer");
+        add_relay_outbound_peer(&mut manager, peer_id);
     }
     let notfound_relay_id = TxRelayId::Txid(Txid::from(Hash32::from_byte_array([91_u8; 32])));
     let timeout_relay_id = TxRelayId::Txid(Txid::from(Hash32::from_byte_array([92_u8; 32])));
@@ -1434,9 +1683,9 @@ fn peer_manager_transaction_relay_notfound_timeout_and_disconnect_cleanup_fallba
 #[test]
 fn peer_manager_transaction_relay_received_transaction_cleanup_waits_for_admission() {
     // Arrange
-    let mut manager = PeerManager::new(local_config());
+    let mut manager = relay_download_manager(true);
     for peer_id in 215..=217 {
-        manager.add_inbound_peer(peer_id).expect("peer");
+        add_relay_outbound_peer(&mut manager, peer_id);
     }
     manager
         .handle_message(217, WireNetworkMessage::WtxidRelay, 1)
@@ -1507,8 +1756,8 @@ fn peer_manager_transaction_relay_received_transaction_cleanup_waits_for_admissi
 fn peer_manager_transaction_relay_received_transaction_mismatch_does_not_satisfy_unrelated_request()
 {
     // Arrange
-    let mut manager = PeerManager::new(local_config());
-    manager.add_inbound_peer(218).expect("peer");
+    let mut manager = relay_download_manager(true);
+    add_relay_outbound_peer(&mut manager, 218);
     let requested_relay_id = TxRelayId::Txid(Txid::from(Hash32::from_byte_array([94_u8; 32])));
     manager
         .handle_message(
@@ -2382,8 +2631,8 @@ fn ping_block_announcement_and_duplicate_add_paths_are_exercised() {
 
 #[test]
 fn inventory_requests_and_notfound_paths_cover_tx_and_block_modes() {
-    let mut manager = PeerManager::new(local_config());
-    manager.add_inbound_peer(6).expect("peer");
+    let mut manager = relay_download_manager(true);
+    add_relay_permissioned_inbound_peer(&mut manager, 6);
     assert_eq!(
         manager
             .handle_message(99, WireNetworkMessage::Inv(InventoryList::default()), 1)
@@ -2825,6 +3074,28 @@ fn assert_transaction_relay_duplicate(
         panic!("expected transaction relay duplicate suppression, got {actions:?}");
     };
     assert_eq!((*peer_id, *relay_id), (expected_peer_id, expected_relay_id));
+}
+
+fn assert_transaction_relay_suppression(
+    actions: &[PeerAction],
+    expected_peer_id: PeerId,
+    expected_relay_id: TxRelayId,
+    expected_reason: TxDownloadSuppressionReason,
+) {
+    let [
+        PeerAction::TransactionRelay(TxDownloadAction::Suppress {
+            peer_id,
+            relay_id,
+            reason,
+        }),
+    ] = actions
+    else {
+        panic!("expected transaction relay suppression, got {actions:?}");
+    };
+    assert_eq!(
+        (*peer_id, *relay_id, *reason),
+        (expected_peer_id, expected_relay_id, expected_reason),
+    );
 }
 
 fn seed_duplicate_announcements(

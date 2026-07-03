@@ -17,7 +17,8 @@ use open_bitcoin_core::{
 };
 use open_bitcoin_mempool::{MempoolError, MempoolOutcome, PolicyConfig};
 use open_bitcoin_network::{
-    InventoryList, OrphanPolicy, PHASE101_MAX_TX_REQUESTS_IN_FLIGHT_PER_PEER, WireNetworkMessage,
+    InventoryList, OrphanPolicy, PHASE101_MAX_TX_REQUESTS_IN_FLIGHT_PER_PEER,
+    RelayActivationConfig, WireNetworkMessage,
 };
 
 use super::{
@@ -46,6 +47,33 @@ fn network_with_chain(
         MemoryChainstateStore::default(),
         local_config(nonce),
         mempool_config,
+    );
+    let mut previous_hash = BlockHash::from_byte_array([0_u8; 32]);
+    let mut coinbase_txids = Vec::new();
+
+    for height in 0..block_count {
+        let block = build_block(previous_hash, height, 500_000_000);
+        coinbase_txids.push(txid(&block.transactions[0]));
+        previous_hash = block_hash(&block.header);
+        network
+            .connect_local_block(&block, verify_flags(), consensus_params())
+            .expect("connect fixture block");
+    }
+
+    (network, coinbase_txids)
+}
+
+fn relay_enabled_network_with_chain(
+    nonce: u64,
+    block_count: u32,
+    mempool_config: PolicyConfig,
+) -> (ManagedPeerNetwork<MemoryChainstateStore>, Vec<Txid>) {
+    let mut network = ManagedPeerNetwork::new_with_relay_activation(
+        MemoryChainstateStore::default(),
+        local_config(nonce),
+        mempool_config,
+        RelayActivationConfig { enabled: true },
+        true,
     );
     let mut previous_hash = BlockHash::from_byte_array([0_u8; 32]);
     let mut coinbase_txids = Vec::new();
@@ -134,8 +162,9 @@ fn assert_not_stored(network: &ManagedPeerNetwork<MemoryChainstateStore>, reject
 #[test]
 fn managed_admission_bridge_peer_tx_uses_download_boundary_before_mempool() {
     // Arrange
-    let (mut network, coinbase_txids) = network_with_chain(610, 2, PolicyConfig::default());
-    network.add_inbound_peer(610).expect("peer");
+    let (mut network, coinbase_txids) =
+        relay_enabled_network_with_chain(610, 2, PolicyConfig::default());
+    network.connect_outbound_peer(610, 0).expect("peer");
     let transaction = spend_transaction(coinbase_txids[0], 499_999_000);
     let inventory = transaction_relay_inventory(&transaction);
 
@@ -171,8 +200,9 @@ fn managed_admission_bridge_peer_tx_uses_download_boundary_before_mempool() {
 #[test]
 fn managed_admission_bridge_peer_missing_parent_stages_orphan_and_requests_parent() {
     // Arrange
-    let (mut network, coinbase_txids) = network_with_chain(611, 2, PolicyConfig::default());
-    network.add_inbound_peer(611).expect("peer");
+    let (mut network, coinbase_txids) =
+        relay_enabled_network_with_chain(611, 2, PolicyConfig::default());
+    network.connect_outbound_peer(611, 0).expect("peer");
     let (parent, child) = parent_and_child(coinbase_txids[0]);
     let parent_txid = txid(&parent);
 
@@ -494,8 +524,9 @@ fn managed_admission_bridge_replacement_removes_replaced_indexes() {
 #[test]
 fn managed_admission_bridge_disconnect_cleans_peer_orphans_and_request_state() {
     // Arrange
-    let (mut network, coinbase_txids) = network_with_chain(619, 2, PolicyConfig::default());
-    network.add_inbound_peer(619).expect("peer");
+    let (mut network, coinbase_txids) =
+        relay_enabled_network_with_chain(619, 2, PolicyConfig::default());
+    network.connect_outbound_peer(619, 0).expect("peer");
     let (parent, child) = parent_and_child(coinbase_txids[0]);
     network
         .process_peer_transaction_admission(619, child, 500, verify_flags(), consensus_params())

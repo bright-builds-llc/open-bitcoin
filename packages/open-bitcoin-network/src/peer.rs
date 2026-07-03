@@ -32,11 +32,13 @@ mod address_boundary;
 mod inbound_state;
 mod inventory_state;
 mod policy_state;
+mod relay_download;
 mod transaction_relay;
 
 pub use address_boundary::{PeerAddressBoundaryDecision, PeerAddressBoundaryEvidence};
 use inbound_state::reject_self_connection;
 use policy_state::{eviction_candidate_input, peer_policy_label, peer_policy_protected};
+pub use relay_download::RelayDownloadPolicy;
 pub use transaction_relay::{
     OrphanAction, OrphanEvidenceLabel, OrphanPolicy, OrphanReconsiderationCandidate,
     OrphanReconsiderationStatus, OrphanStageInput, PHASE101_GETDATA_TX_INTERVAL_SECONDS,
@@ -50,8 +52,9 @@ pub use transaction_relay::{
     TxDownloadScheduler, TxDownloadSnapshot, TxDownloadSuppressionReason, TxFanoutAction,
     TxFanoutAdmission, TxFanoutAdmissionOutcome, TxFanoutCleanupReason, TxFanoutPeerInput,
     TxFanoutPolicy, TxFanoutQueue, TxFanoutSnapshot, TxFanoutSuppressionReason, TxOrphanage,
-    TxPeerRequestSnapshot, TxRelayId, TxRelayIdentityError, TxRelayPeerMode, TxServeDecision,
-    TxServeOutcomeLabel, TxServingRecordStatus, classify_tx_serve_request, defer_local_rebroadcast,
+    TxParentRequestInput, TxPeerRequestSnapshot, TxRelayId, TxRelayIdentityError, TxRelayPeerMode,
+    TxServeDecision, TxServeOutcomeLabel, TxServingRecordStatus, classify_tx_serve_request,
+    defer_local_rebroadcast,
 };
 pub const DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER: usize = 128;
 
@@ -141,6 +144,7 @@ pub struct PeerManager {
     tx_download: TxDownloadScheduler,
     recent_rejects: BTreeSet<TxRelayId>,
     mempool_known: BTreeSet<TxRelayId>,
+    relay_download_policy: RelayDownloadPolicy,
     max_blocks_in_flight_per_peer: usize,
     learned_addresses: LearnedAddressBook,
     local_address_decisions: Vec<LocalAdvertisementDecision>,
@@ -180,6 +184,7 @@ impl PeerManager {
             tx_download: TxDownloadScheduler::new(TxDownloadPolicy::default()),
             recent_rejects: BTreeSet::new(),
             mempool_known: BTreeSet::new(),
+            relay_download_policy: RelayDownloadPolicy::default(),
             max_blocks_in_flight_per_peer,
             learned_addresses: LearnedAddressBook::default(),
             local_address_decisions: Vec::new(),
@@ -302,44 +307,6 @@ impl PeerManager {
             .get(&peer_id)
             .ok_or(NetworkError::UnknownPeer(peer_id))?;
         Ok(peer.requested_blocks.iter().copied().collect())
-    }
-
-    pub fn expire_transaction_requests(
-        &mut self,
-        now_unix_seconds: i64,
-    ) -> Vec<(PeerId, PeerAction)> {
-        self.tx_download
-            .expire_and_schedule(now_unix_seconds)
-            .into_iter()
-            .map(|action| (action.peer_id(), PeerAction::TransactionRelay(action)))
-            .collect()
-    }
-
-    pub fn request_orphan_parent(
-        &mut self,
-        peer_id: PeerId,
-        parent_txid: Txid,
-        now_unix_seconds: i64,
-    ) -> Result<Vec<PeerAction>, NetworkError> {
-        self.request_orphan_parent_relay(peer_id, TxRelayId::Txid(parent_txid), now_unix_seconds)
-    }
-
-    pub fn remove_peer_with_transaction_cleanup(
-        &mut self,
-        peer_id: PeerId,
-        now_unix_seconds: i64,
-    ) -> Result<Vec<PeerAction>, NetworkError> {
-        let Some(_) = self.peers.remove(&peer_id) else {
-            return Err(NetworkError::UnknownPeer(peer_id));
-        };
-        Ok(inventory_state::handle_transaction_relay_actions(
-            self.tx_download.cleanup_peer(peer_id, now_unix_seconds),
-        ))
-    }
-
-    pub fn remove_peer(&mut self, peer_id: PeerId) -> Result<(), NetworkError> {
-        self.remove_peer_with_transaction_cleanup(peer_id, 0)?;
-        Ok(())
     }
 
     pub fn add_outbound_peer(

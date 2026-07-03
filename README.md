@@ -22,10 +22,13 @@ auditable, and modular.
 > for review and operator testing. v2.0 now has bounded transaction relay and
 > mempool participation evidence through local status, RPC extension status,
 > metrics, logs, dashboard rows, redacted support bundles, repo-local UAT
-> commands, and deterministic release-boundary guardrails. It still does not
-> claim public relay defaults, compact block relay, package relay, bloom/filter
-> serving, public-network relay CI, production full-node readiness,
-> production-service operation, or production-funds wallet use.
+> commands, and deterministic release-boundary guardrails. Phase 107 narrows
+> that claim to runtime relay activation and download eligibility integration:
+> resolved relay config reaches the managed network, and transaction downloads
+> require relay eligibility before scheduling. It still does not claim public
+> relay defaults, compact block relay, package relay, bloom/filter serving,
+> public-network relay CI, production full-node readiness, production-service
+> operation, durable mempool recovery, or production-funds wallet use.
 
 ## Parity At A Glance
 
@@ -58,7 +61,7 @@ guardrails.
 | Consensus and validation | Script execution, transaction checks, block checks, PoW, merkle behavior | ✓ done | [`catalog/consensus-validation.md`](./docs/parity/catalog/consensus-validation.md) | Consensus parity includes legacy, segwit-v0, taproot, and parity-closure fixes. |
 | Chainstate and UTXO engine | Connect, disconnect, reorg, UTXO, undo, and best-chain behavior | ✓ done | [`catalog/chainstate.md`](./docs/parity/catalog/chainstate.md) | Disk-backed databases and full manager behavior remain follow-up depth. |
 | Mempool policy | Admission, replacement, fee accounting, ancestor/descendant, eviction | ✓ done | [`catalog/mempool-policy.md`](./docs/parity/catalog/mempool-policy.md) | Long-lived pressure and package-relay depth remain future work. |
-| P2P networking and sync | Handshake, peer lifecycle, headers, blocks, inventory, tx relay | ✓ done | [`catalog/p2p.md`](./docs/parity/catalog/p2p.md) | v2.0 has bounded local relay/mempool evidence for inventory, download, orphan admission, lifecycle, serving/fanout, metrics/logs, and redacted support; compact block relay, package relay, bloom/filter serving, public relay defaults, public-network relay CI, and production full-node readiness remain deferred. |
+| P2P networking and sync | Handshake, peer lifecycle, headers, blocks, inventory, tx relay | ✓ done | [`catalog/p2p.md`](./docs/parity/catalog/p2p.md) | v2.0 has bounded local relay/mempool evidence for activation, download eligibility, inventory, download, orphan admission, lifecycle, serving/fanout, metrics/logs, and redacted support; compact block relay, package relay, bloom/filter serving, public relay defaults, public-network relay CI, and production full-node readiness remain deferred. |
 | Wallet | Descriptors, addresses, balances, UTXOs, coin selection, signing | ✓ done | [`catalog/wallet.md`](./docs/parity/catalog/wallet.md) | HD, multisig, PSBT, encryption, and external signers remain follow-up surfaces. |
 | RPC, CLI, and config | Local JSON-RPC, `bitcoin-cli`-style flags, config, auth, operator flows | ✓ done | [`catalog/rpc-cli-config.md`](./docs/parity/catalog/rpc-cli-config.md) | The supported slice is single-wallet and local-operator focused. |
 | Verification harnesses and property tests | Functional-suite concepts and fuzz/property targets | ✓ done | [`catalog/verification-harnesses.md`](./docs/parity/catalog/verification-harnesses.md) | Managed Knots process spawning and full upstream Python-suite coverage are deferred. |
@@ -127,10 +130,14 @@ boundary through deterministic local traceability, repo-local UAT commands, and
 no-claim guardrails. It covers Phase 100 relay activation, Phase 101 inventory
 and download scheduling, Phase 102 orphan/admission bridging, Phase 103 mempool
 lifecycle and recovery, Phase 104 relay serving/fanout, Phase 105 operator
-evidence, and Phase 106 parity/UAT/release-boundary closeout. It does not claim
-public relay defaults, compact block relay, package relay, bloom/filter serving,
-public-network relay CI, production full-node readiness, production-service
-operation, or production-funds wallet use.
+evidence, Phase 106 parity/UAT/release-boundary closeout, and Phase 107 runtime
+activation/download eligibility integration. Phase 107 is an integration
+repair, not public relay expansion: `sendrawtransaction` success does not
+guarantee public propagation. v2.0 does not claim public relay by default,
+public relay defaults, compact block relay, package relay, bloom/filter
+serving, public-network relay CI, production full-node readiness,
+production-service operation, durable mempool recovery, or production-funds
+wallet use.
 
 v1.9 closes the network participation boundary while preserving the Phase 82
 support terms and evidence gates required before a future production full-node

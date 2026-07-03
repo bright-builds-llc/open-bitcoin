@@ -1026,6 +1026,70 @@ CI, production service operation, production full-node readiness,
 production-service proof, production full-node readiness proof,
 production-funds wallet use, or production-funds wallet safety proof.
 
+## Phase 107 runtime relay activation and download eligibility
+
+The `v2-0-runtime-relay-activation-download-eligibility` surface covers
+`ACT-01`, `ACT-02`, `INV-02`, `INV-03`, `DL-01`, `DL-02`, and `REL-03` for
+the runtime integration repair after the Phase 100 through Phase 106 closeout.
+It proves that resolved relay activation reaches managed network construction
+and that transaction download scheduling requires relay eligibility before
+request-state mutation.
+
+Its Knots anchors are
+[`packages/bitcoin-knots/src/net_permissions.h`](../../../packages/bitcoin-knots/src/net_permissions.h),
+[`packages/bitcoin-knots/src/net_permissions.cpp`](../../../packages/bitcoin-knots/src/net_permissions.cpp),
+[`packages/bitcoin-knots/src/net.cpp`](../../../packages/bitcoin-knots/src/net.cpp),
+[`packages/bitcoin-knots/src/net_processing.cpp`](../../../packages/bitcoin-knots/src/net_processing.cpp),
+[`packages/bitcoin-knots/src/node/txdownloadman.h`](../../../packages/bitcoin-knots/src/node/txdownloadman.h),
+[`packages/bitcoin-knots/src/node/txdownloadman_impl.cpp`](../../../packages/bitcoin-knots/src/node/txdownloadman_impl.cpp),
+[`packages/bitcoin-knots/test/functional/p2p_permissions.py`](../../../packages/bitcoin-knots/test/functional/p2p_permissions.py),
+and
+[`packages/bitcoin-knots/test/functional/p2p_tx_download.py`](../../../packages/bitcoin-knots/test/functional/p2p_tx_download.py).
+
+Open Bitcoin intentionally owns the Phase 107 integration boundary:
+
+- `RuntimeConfig.relay`, `relay.enabled`, and `-openbitcoinrelay` are the
+  resolved activation inputs for `ManagedPeerNetwork`.
+- `config.inbound.enabled` is the deterministic inbound-serving input for
+  managed construction. Live listener and public-network proof remain outside
+  default verification.
+- `RelayDownloadPolicy` carries activation and inbound-serving state into
+  `PeerManager` before transaction download scheduling.
+- `TxDownloadSuppressionReason` keeps fixed internal labels for
+  `relay_disabled`, `not_relay_eligible`, `inbound_serving_required`,
+  `permission_required`, and `protected_not_relay`.
+- `RelayActivationEvidence` and `RelayDownloadEligibilityCounters` expose only
+  aggregate sanitized public/operator evidence through the shared status
+  contract.
+- `sendrawtransaction` success does not guarantee public propagation; local
+  admission and queued relay evidence stay inside the bounded v2.0 claim.
+- Evidence roots include
+  `packages/open-bitcoin-rpc/src/context/network.rs`,
+  `packages/open-bitcoin-node/src/network/relay_serving.rs`,
+  `packages/open-bitcoin-network/src/peer/relay_download.rs`,
+  `packages/open-bitcoin-network/src/peer/transaction_relay.rs`,
+  `packages/open-bitcoin-network/src/peer/transaction_relay/scheduler.rs`,
+  `packages/open-bitcoin-node/src/status/relay_evidence.rs`,
+  `docs/architecture/status-snapshot.md`,
+  `docs/architecture/operator-observability.md`,
+  `docs/operator/runtime-guide.md`,
+  `docs/parity/source-breadcrumbs.json`,
+  `.planning/phases/107-runtime-relay-activation-and-download-eligibility-integration/107-01-SUMMARY.md`,
+  `.planning/phases/107-runtime-relay-activation-and-download-eligibility-integration/107-02-SUMMARY.md`,
+  `.planning/phases/107-runtime-relay-activation-and-download-eligibility-integration/107-03-SUMMARY.md`,
+  `.planning/phases/107-runtime-relay-activation-and-download-eligibility-integration/107-04-SUMMARY.md`,
+  `scripts/check-phase107-runtime-relay-activation-download-eligibility.ts`,
+  `scripts/check-phase107-runtime-relay-activation-download-eligibility.test.ts`,
+  `scripts/verify.sh`, and
+  `.planning/phases/107-runtime-relay-activation-and-download-eligibility-integration/107-VERIFICATION.md`.
+
+Phase 107 is runtime activation/download eligibility integration, not a new
+public relay expansion. It does not claim public relay by default, compact
+block relay, package relay, bloom/filter serving, public-network relay CI,
+production service operation, production full-node readiness,
+production-funds wallet safety, production-funds wallet use, or durable
+mempool recovery.
+
 ## First-party implementation
 
 - [`packages/open-bitcoin-network/src/address.rs`](../../../packages/open-bitcoin-network/src/address.rs)
@@ -1040,6 +1104,9 @@ production-funds wallet use, or production-funds wallet safety proof.
 - [`packages/open-bitcoin-network/src/compatibility.rs`](../../../packages/open-bitcoin-network/src/compatibility.rs)
 - [`packages/open-bitcoin-network/src/header_store.rs`](../../../packages/open-bitcoin-network/src/header_store.rs)
 - [`packages/open-bitcoin-network/src/peer.rs`](../../../packages/open-bitcoin-network/src/peer.rs)
+- [`packages/open-bitcoin-network/src/peer/relay_download.rs`](../../../packages/open-bitcoin-network/src/peer/relay_download.rs)
+- [`packages/open-bitcoin-network/src/peer/transaction_relay.rs`](../../../packages/open-bitcoin-network/src/peer/transaction_relay.rs)
+- [`packages/open-bitcoin-network/src/peer/transaction_relay/scheduler.rs`](../../../packages/open-bitcoin-network/src/peer/transaction_relay/scheduler.rs)
 - [`packages/open-bitcoin-network/src/peer/transaction_relay/serving.rs`](../../../packages/open-bitcoin-network/src/peer/transaction_relay/serving.rs)
 - [`packages/open-bitcoin-network/src/peer/transaction_relay/fanout.rs`](../../../packages/open-bitcoin-network/src/peer/transaction_relay/fanout.rs)
 - [`packages/open-bitcoin-network/src/peer/policy_state.rs`](../../../packages/open-bitcoin-network/src/peer/policy_state.rs)
@@ -1051,9 +1118,11 @@ production-funds wallet use, or production-funds wallet safety proof.
 - [`packages/open-bitcoin-node/src/network.rs`](../../../packages/open-bitcoin-node/src/network.rs)
 - [`packages/open-bitcoin-node/src/network/relay_serving.rs`](../../../packages/open-bitcoin-node/src/network/relay_serving.rs)
 - [`packages/open-bitcoin-node/src/network/relay_fanout.rs`](../../../packages/open-bitcoin-node/src/network/relay_fanout.rs)
+- [`packages/open-bitcoin-node/src/status/relay_evidence.rs`](../../../packages/open-bitcoin-node/src/status/relay_evidence.rs)
 - [`packages/open-bitcoin-node/src/network/tests/relay_serving_cases.rs`](../../../packages/open-bitcoin-node/src/network/tests/relay_serving_cases.rs)
 - [`packages/open-bitcoin-node/src/network/tests/relay_fanout_cases.rs`](../../../packages/open-bitcoin-node/src/network/tests/relay_fanout_cases.rs)
 - [`packages/open-bitcoin-node/src/network/tests/relay_local_submission_cases.rs`](../../../packages/open-bitcoin-node/src/network/tests/relay_local_submission_cases.rs)
+- [`packages/open-bitcoin-rpc/src/context/network.rs`](../../../packages/open-bitcoin-rpc/src/context/network.rs)
 - [`packages/open-bitcoin-rpc/src/dispatch/tests.rs`](../../../packages/open-bitcoin-rpc/src/dispatch/tests.rs)
 - [`packages/open-bitcoin-node/src/status/inbound.rs`](../../../packages/open-bitcoin-node/src/status/inbound.rs)
 - [`packages/open-bitcoin-rpc/src/inbound_listener.rs`](../../../packages/open-bitcoin-rpc/src/inbound_listener.rs)

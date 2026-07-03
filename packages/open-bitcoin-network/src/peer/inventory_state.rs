@@ -21,9 +21,10 @@ use crate::{
     ResourceGovernanceDecision, ResourceGovernancePolicy,
 };
 
+use super::relay_download::relay_download_eligibility;
 use super::{
     PeerAction, PeerManager, PeerState, TxAnnouncementInput, TxDownloadAction,
-    TxDownloadLocalFacts, TxPeerRequestSnapshot, TxRelayId, TxRelayPeerMode,
+    TxDownloadLocalFacts, TxParentRequestInput, TxPeerRequestSnapshot, TxRelayId, TxRelayPeerMode,
 };
 
 impl PeerManager {
@@ -105,6 +106,7 @@ impl PeerManager {
             .get(&peer_id)
             .ok_or(NetworkError::UnknownPeer(peer_id))?;
         let peer_mode = TxRelayPeerMode::from_remote_wtxidrelay(peer.remote_wtxidrelay);
+        let relay_eligibility = relay_download_eligibility(peer, self.relay_download_policy);
         let local_facts = self.transaction_download_local_facts();
 
         for item in &inventory.inventory {
@@ -123,6 +125,7 @@ impl PeerManager {
                         peer_mode,
                         now_unix_seconds: timestamp,
                         local_facts: local_facts.clone(),
+                        relay_eligibility: relay_eligibility.clone(),
                         preferred_peer: true,
                         peer_overloaded: false,
                     });
@@ -306,6 +309,44 @@ fn typed_serve_inventory_vector(item: InventoryVector) -> InventoryVector {
 }
 
 impl PeerManager {
+    pub fn expire_transaction_requests(
+        &mut self,
+        now_unix_seconds: i64,
+    ) -> Vec<(PeerId, PeerAction)> {
+        self.tx_download
+            .expire_and_schedule(now_unix_seconds)
+            .into_iter()
+            .map(|action| (action.peer_id(), PeerAction::TransactionRelay(action)))
+            .collect()
+    }
+
+    pub fn request_orphan_parent(
+        &mut self,
+        peer_id: PeerId,
+        parent_txid: Txid,
+        now_unix_seconds: i64,
+    ) -> Result<Vec<PeerAction>, NetworkError> {
+        self.request_orphan_parent_relay(peer_id, TxRelayId::Txid(parent_txid), now_unix_seconds)
+    }
+
+    pub fn remove_peer_with_transaction_cleanup(
+        &mut self,
+        peer_id: PeerId,
+        now_unix_seconds: i64,
+    ) -> Result<Vec<PeerAction>, NetworkError> {
+        let Some(_) = self.peers.remove(&peer_id) else {
+            return Err(NetworkError::UnknownPeer(peer_id));
+        };
+        Ok(handle_transaction_relay_actions(
+            self.tx_download.cleanup_peer(peer_id, now_unix_seconds),
+        ))
+    }
+
+    pub fn remove_peer(&mut self, peer_id: PeerId) -> Result<(), NetworkError> {
+        self.remove_peer_with_transaction_cleanup(peer_id, 0)?;
+        Ok(())
+    }
+
     pub fn transaction_request_snapshot(&self, peer_id: PeerId) -> TxPeerRequestSnapshot {
         self.tx_download.peer_snapshot(peer_id)
     }
@@ -320,17 +361,20 @@ impl PeerManager {
         relay_id: TxRelayId,
         now_unix_seconds: i64,
     ) -> Result<Vec<PeerAction>, NetworkError> {
-        if !self.peers.contains_key(&peer_id) {
-            return Err(NetworkError::UnknownPeer(peer_id));
-        }
+        let peer = self
+            .peers
+            .get(&peer_id)
+            .ok_or(NetworkError::UnknownPeer(peer_id))?;
+        let relay_eligibility = relay_download_eligibility(peer, self.relay_download_policy);
 
         Ok(handle_transaction_relay_actions(
-            self.tx_download.request_parent(
+            self.tx_download.request_parent(TxParentRequestInput {
                 peer_id,
                 relay_id,
                 now_unix_seconds,
-                self.transaction_download_local_facts(),
-            ),
+                local_facts: self.transaction_download_local_facts(),
+                relay_eligibility,
+            }),
         ))
     }
 

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Transaction Relay and Mempool Participation Boundary
 status: executing
-stopped_at: Completed 105-04-PLAN.md
-last_updated: "2026-07-02T01:59:09.000Z"
-last_activity: 2026-07-02
+stopped_at: Completed 107-06-PLAN.md
+last_updated: "2026-07-03T06:42:28Z"
+last_activity: 2026-07-03 -- Phase 107 complete; Phase 108 pending
 progress:
-  total_phases: 7
-  completed_phases: 6
-  total_plans: 22
-  completed_plans: 22
-  percent: 100
+  total_phases: 9
+  completed_phases: 8
+  total_plans: 30
+  completed_plans: 30
+  percent: 89
 ---
 
 # Project State
@@ -21,17 +21,17 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-29)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 106 — Parity Traceability, UAT, and Release Boundary Guardrails
+**Current focus:** Phase 108 — Durable Mempool Relay State Recovery
 
 ## Current Position
 
 Milestone: v2.0 Transaction Relay and Mempool Participation Boundary
-Phase: 106 (Parity Traceability, UAT, and Release Boundary Guardrails) — READY
+Phase: 108 (Durable Mempool Relay State Recovery) — PENDING
 Plan: Pending discussion
-Status: Ready for discussion
-Last activity: 2026-07-02
+Status: Phase 107 Complete; Phase 108 Pending/next
+Last activity: 2026-07-03 -- Phase 107 closeout verification passed
 
-Progress: [##########] 100% planned milestone progress; Phase 106 is ready for discussion
+Progress: [#########-] 89% planned milestone progress; Phase 107 is complete and Phase 108 is next.
 
 ## Performance Metrics
 
@@ -45,13 +45,15 @@ Progress: [##########] 100% planned milestone progress; Phase 106 is ready for d
 
 | Phase | Name | Requirements | Status |
 |-------|------|--------------|--------|
-| 100 | Relay Activation Boundary and Permission Semantics | ACT-01, ACT-02, ACT-03, ACT-04 | Complete |
-| 101 | Transaction Inventory Identity and Download Scheduling | INV-01, INV-02, INV-03, INV-04, DL-01, DL-02 | Complete |
+| 100 | Relay Activation Boundary and Permission Semantics | ACT-03, ACT-04 | Complete |
+| 101 | Transaction Inventory Identity and Download Scheduling | INV-01, INV-04 | Complete |
 | 102 | Orphan Handling and Admission Outcome Bridge | DL-03, DL-04, DL-05, MEM-01, MEM-02 | Complete |
-| 103 | Mempool Chainstate Lifecycle and Durable Recovery | MEM-03, MEM-04, MEM-05, MEM-06 | Complete |
-| 104 | Relay Serving, Fanout, and Rebroadcast Policy | REL-01, REL-02, REL-03, REL-04 | Complete |
+| 103 | Mempool Chainstate Lifecycle and Durable Recovery | MEM-03 | Complete |
+| 104 | Relay Serving, Fanout, and Rebroadcast Policy | REL-04 | Complete |
 | 105 | Operator, RPC, Metrics, Logs, and Support Evidence | OBS-01, OBS-02, OBS-03, OBS-04 | Complete |
-| 106 | Parity Traceability, UAT, and Release Boundary Guardrails | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05 | Pending |
+| 106 | Parity Traceability, UAT, and Release Boundary Guardrails | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05 | Complete |
+| 107 | Runtime Relay Activation and Download Eligibility Integration | ACT-01, ACT-02, INV-02, INV-03, DL-01, DL-02, REL-03 | Complete |
+| 108 | Durable Mempool Relay State Recovery | MEM-04, MEM-05, MEM-06, REL-01, REL-02 | Pending |
 
 **Recent Trend:**
 
@@ -72,6 +74,8 @@ Progress: [##########] 100% planned milestone progress; Phase 106 is ready for d
 - Phase 103 completed mempool pressure truth, block-connect cleanup, bounded reorg reconsideration, durable mempool snapshot recovery, parity roots, deterministic checker coverage, and passed verification.
 - Phase 104 completed relay serving classification, managed `getdata` serving, fanout queues, local submission relay evidence, explicit `rebroadcast_deferred` evidence, parity roots, deterministic checker coverage, and passed verification.
 - Phase 105 completed shared relay evidence status, RPC projection, operator status, dashboard rows, fixed metrics, structured logs, support-bundle sanitization, parity roots, deterministic checker coverage, and final verification for OBS-01 through OBS-04.
+- Phase 106 completed parity traceability, UAT command evidence, release-boundary guardrails, deterministic checker coverage, and final verification for BOUND-01 through BOUND-05.
+- Phase 107 completed runtime relay activation propagation, download eligibility integration, sanitized status evidence, docs/parity roots, deterministic checker coverage, and final verification for ACT-01, ACT-02, INV-02, INV-03, DL-01, DL-02, and REL-03.
 
 | Phase 91-peer-permissions-and-connection-classes P01 | 27min | 2 tasks | 5 files |
 | Phase 91 P02 | 34min | 2 tasks | 13 files |
@@ -214,7 +218,7 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ### Pending Todos
 
-- Start Phase 106 for parity traceability, UAT, and release-boundary guardrails.
+- Start Phase 108 for durable mempool relay state recovery, including MEM-04, MEM-05, MEM-06, REL-01, and REL-02.
 - Keep v1.9 phase directories numbered 90+ under `.planning/phases/`; historical phase directories remain tracked because verifier scripts still depend on selected phase evidence.
 - Keep repo-local Cargo and Bazel command forms in UAT guidance:
   - `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- ...`
@@ -231,6 +235,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-07-02T01:19:32.000Z
-Stopped at: Completed 105-03-PLAN.md
+Last session: 2026-07-03T06:42:28Z
+Stopped at: Completed 107-06-PLAN.md
 Resume file: None

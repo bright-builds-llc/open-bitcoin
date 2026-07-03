@@ -27,6 +27,7 @@ const TARGET_FILES = [
   "packages/open-bitcoin-network/src/peer/transaction_relay/scheduler.rs",
   "packages/open-bitcoin-network/src/peer/transaction_relay/tests/scheduler_cases.rs",
   "packages/open-bitcoin-network/src/peer.rs",
+  "packages/open-bitcoin-network/src/peer/inventory_state.rs",
   "packages/open-bitcoin-network/src/peer/tests.rs",
   "packages/open-bitcoin-node/src/network/action_translation.rs",
   "packages/open-bitcoin-node/src/network/admission_bridge.rs",
@@ -389,6 +390,7 @@ function verifyOutcomeAndOrphanEvidence(texts: TextCorpus, failures: string[]): 
     texts.get("packages/open-bitcoin-network/src/peer/transaction_relay/tests/orphanage_cases.rs") ?? "",
     texts.get("packages/open-bitcoin-network/src/peer/transaction_relay/scheduler.rs") ?? "",
     texts.get("packages/open-bitcoin-network/src/peer.rs") ?? "",
+    texts.get("packages/open-bitcoin-network/src/peer/inventory_state.rs") ?? "",
     texts.get("packages/open-bitcoin-network/src/peer/tests.rs") ?? "",
     texts.get("packages/open-bitcoin-node/src/network/admission_bridge.rs") ?? "",
     texts.get("docs/parity/checklist.md") ?? "",
@@ -422,6 +424,9 @@ function verifyManagedBridgeEvidence(texts: TextCorpus, failures: string[]): voi
   const actionTranslation = texts.get("packages/open-bitcoin-node/src/network/action_translation.rs") ?? "";
   const admissionBridge = texts.get("packages/open-bitcoin-node/src/network/admission_bridge.rs") ?? "";
   const peerManager = texts.get("packages/open-bitcoin-network/src/peer.rs") ?? "";
+  const peerInventoryState =
+    texts.get("packages/open-bitcoin-network/src/peer/inventory_state.rs") ?? "";
+  const peerManagerBridge = `${peerManager}\n${peerInventoryState}`;
 
   verifyOrderedCommands(
     actionTranslation,
@@ -446,7 +451,7 @@ function verifyManagedBridgeEvidence(texts: TextCorpus, failures: string[]): voi
     failures,
   );
   requireContains(
-    peerManager,
+    peerManagerBridge,
     "request_orphan_parent",
     "Phase 102 PeerManager parent request bridge missing",
     failures,
@@ -458,7 +463,7 @@ function verifyManagedBridgeEvidence(texts: TextCorpus, failures: string[]): voi
     "stage_missing_parent(",
     ".orphanage.cleanup_peer(",
   ]) {
-    if (peerManager.includes(forbidden)) {
+    if (peerManagerBridge.includes(forbidden)) {
       failures.push(`Phase 102 peer/socket code mutates mempool or orphanage directly: ${forbidden}`);
     }
   }

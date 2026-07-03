@@ -1260,7 +1260,7 @@ fn node_info_methods_return_documented_phase_8_fields() {
     assert_eq!(network["connections"], json!(2));
     assert_eq!(network["connections_in"], json!(1));
     assert_eq!(network["connections_out"], json!(1));
-    assert_eq!(network["localrelay"], json!(true));
+    assert_eq!(network["localrelay"], json!(false));
     assert_eq!(blockchain["chain"], json!("regtest"));
     assert_eq!(blockchain["blocks"], json!(1));
     assert_eq!(blockchain["headers"], json!(1));
@@ -2155,6 +2155,14 @@ fn sendrawtransaction_queues_internal_relay_evidence_without_propagation_claim()
     assert!(response.contains_key("txid_hex"));
     assert!(response.contains_key("replaced_txids"));
     assert!(response.contains_key("evicted_txids"));
+    for forbidden_key in [
+        "propagated",
+        "broadcast",
+        "public_relay",
+        "production_ready",
+    ] {
+        assert!(!response.contains_key(forbidden_key));
+    }
     let response_json = success.to_string();
     for forbidden in ["broadcast", "propagation", "public", "guaranteed"] {
         assert!(!response_json.contains(forbidden));
@@ -2182,6 +2190,14 @@ fn sendrawtransaction_queues_internal_relay_evidence_without_propagation_claim()
     );
     assert_eq!(
         status["relay"]["outcome_counters"]["value"]["rebroadcast_deferred_count"],
+        json!(1)
+    );
+    assert_eq!(
+        status["relay"]["activation"]["value"]["enabled"],
+        json!(true)
+    );
+    assert_eq!(
+        status["relay"]["download_eligibility"]["value"]["eligible_peer_count"],
         json!(1)
     );
     assert_eq!(

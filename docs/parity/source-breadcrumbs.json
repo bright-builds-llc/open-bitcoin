@@ -641,6 +641,7 @@
         "packages/open-bitcoin-network/src/peer/transaction_relay/fanout.rs",
         "packages/open-bitcoin-network/src/peer/transaction_relay/orphanage.rs",
         "packages/open-bitcoin-network/src/peer/transaction_relay/serving.rs",
+        "packages/open-bitcoin-network/src/peer/relay_download.rs",
         "packages/open-bitcoin-network/src/peer/transaction_relay/tests/fanout_cases.rs",
         "packages/open-bitcoin-network/src/peer/transaction_relay/tests/orphanage_cases.rs",
         "packages/open-bitcoin-network/src/peer/transaction_relay/tests/serving_cases.rs",

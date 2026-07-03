@@ -93,8 +93,8 @@ test("fails_when_gap_closure_requirement_maps_to_stale_phase", () => {
       replaceInFile(
         files,
         ".planning/REQUIREMENTS.md",
-        "| ACT-01 | Phase 107 | Pending |",
-        "| ACT-01 | Phase 100 | Pending |",
+        "| ACT-01 | Phase 107 | Complete |",
+        "| ACT-01 | Phase 100 | Complete |",
       );
     },
   });

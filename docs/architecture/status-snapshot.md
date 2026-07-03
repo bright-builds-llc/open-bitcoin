@@ -298,6 +298,41 @@ public relay defaults, public-network relay CI, production service operation,
 production full-node readiness, production-readiness proof, or
 production-funds wallet use.
 
+## Phase 107 runtime activation and download eligibility status
+
+Phase 107 extends the same `OpenBitcoinStatusSnapshot.mempool.relay` and
+`openbitcoinnetworkstatus.relay` contract with runtime activation/download
+eligibility evidence. It is an integration repair: the resolved
+`RuntimeConfig.relay` setting reaches the managed network, and transaction
+download scheduling requires relay eligibility before request state is mutated.
+The deterministic inbound-serving input is resolved `config.inbound.enabled`;
+live listener operation and public-network proof remain outside default
+verification.
+
+Public and operator status expose only sanitized aggregate evidence:
+
+- `activation` records whether relay activation is implemented and the resolved
+  activation value.
+- `download_eligibility` records whether aggregate eligibility counters are
+  implemented.
+- `RelayDownloadEligibilityCounters` contains fixed numeric counters for
+  eligible peers, relay-disabled peers, inbound-serving-required peers,
+  permission-required peers, protected-not-relay peers, and other ineligible
+  peers.
+
+Granular scheduler labels such as `relay_disabled`, `not_relay_eligible`,
+`inbound_serving_required`, `permission_required`, and `protected_not_relay`
+remain typed internal scheduler/test vocabulary unless projected as aggregate
+counts. Status consumers and support renderers must not expose peer ids,
+endpoints, permission strings, class names, txids, wtxids, raw transaction hex,
+credentials, or dynamic labels.
+
+Phase 107 does not claim public propagation from `sendrawtransaction`, public
+relay by default, compact block relay, package relay, bloom/filter serving,
+public-network relay CI, production service operation, production full-node
+readiness, production-funds wallet safety, production-funds wallet use, or
+durable mempool recovery.
+
 ## Phase 92 address advertisement and discovery status
 
 Phase 92 extends `OpenBitcoinStatusSnapshot.peers.inbound` with bounded address

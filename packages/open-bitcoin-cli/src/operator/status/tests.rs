@@ -40,8 +40,8 @@ use open_bitcoin_node::status::{
     SyncProgressSignal, SyncStatus, SyncStopReasonStatus, WalletFreshness, WalletScanProgress,
     WalletStatus,
     relay_evidence::{
-        RelayCapabilityEvidence, RelayEvidenceCapability, RelayEvidenceCounters,
-        RelayEvidenceField, RelayEvidenceStatus,
+        RelayActivationEvidence, RelayCapabilityEvidence, RelayDownloadEligibilityCounters,
+        RelayEvidenceCapability, RelayEvidenceCounters, RelayEvidenceField, RelayEvidenceStatus,
     },
 };
 use open_bitcoin_node::storage::FJALL_LOCK_FILE_NAME;
@@ -257,6 +257,18 @@ fn operator_status_renders_relay_evidence_from_open_bitcoin_network_status() {
     assert_eq!(
         decoded["mempool"]["relay"]["outcome_counters"]["value"]["rebroadcast_deferred_count"],
         10
+    );
+    assert_eq!(
+        decoded["mempool"]["relay"]["activation"]["value"]["enabled"],
+        true
+    );
+    assert_eq!(
+        decoded["mempool"]["relay"]["download_eligibility"]["value"]["eligible_peer_count"],
+        1
+    );
+    assert_eq!(
+        decoded["mempool"]["relay"]["download_eligibility"]["value"]["permission_required_count"],
+        4
     );
     assert_eq!(
         decoded["mempool"]["relay"]["mempool_admission"]["state"],
@@ -2296,18 +2308,30 @@ fn inbound_status_response() -> OpenBitcoinNetworkStatusResponse {
 }
 
 fn relay_evidence_status_fixture() -> RelayEvidenceStatus {
-    let mut status = RelayEvidenceStatus::with_counters(RelayEvidenceCounters {
-        accepted_count: 1,
-        rejected_count: 2,
-        orphaned_count: 3,
-        requested_count: 4,
-        served_count: 5,
-        announced_count: 6,
-        suppressed_count: 7,
-        evicted_count: 8,
-        expired_count: 9,
-        rebroadcast_deferred_count: 10,
-    });
+    let mut status = RelayEvidenceStatus::with_activation_and_counters(
+        RelayActivationEvidence { enabled: true },
+        RelayDownloadEligibilityCounters {
+            eligible_peer_count: 1,
+            ineligible_peer_count: 5,
+            relay_disabled_count: 2,
+            not_relay_eligible_count: 3,
+            inbound_serving_required_count: 0,
+            permission_required_count: 4,
+            protected_not_relay_count: 1,
+        },
+        RelayEvidenceCounters {
+            accepted_count: 1,
+            rejected_count: 2,
+            orphaned_count: 3,
+            requested_count: 4,
+            served_count: 5,
+            announced_count: 6,
+            suppressed_count: 7,
+            evicted_count: 8,
+            expired_count: 9,
+            rebroadcast_deferred_count: 10,
+        },
+    );
     status.mempool_admission = RelayEvidenceField::implemented(RelayCapabilityEvidence::new(
         RelayEvidenceCapability::MempoolAdmission,
     ));

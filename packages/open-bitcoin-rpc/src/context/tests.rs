@@ -11,7 +11,7 @@
 
 use open_bitcoin_network::{
     BanReason, BanScope, InboundResourceEvent, MisbehaviorDecision, MisbehaviorKind,
-    MisbehaviorResponse, PeerBanEntry,
+    MisbehaviorResponse, PeerBanEntry, RelayActivationConfig,
 };
 use open_bitcoin_node::{
     core::wallet::AddressNetwork,
@@ -48,8 +48,29 @@ fn managed_rpc_context_builds_from_runtime_config() {
     // Assert
     assert_eq!(context.chain(), AddressNetwork::Regtest);
     assert_eq!(network_info.connected_peers, 0);
+    assert!(!context.network_info().relay);
     assert_eq!(wallet_info.network, AddressNetwork::Regtest);
     assert!(snapshot.active_chain.is_empty());
+}
+
+#[test]
+fn managed_rpc_context_builds_from_runtime_config_with_enabled_relay_activation() {
+    // Arrange
+    let runtime = RuntimeConfig {
+        chain: AddressNetwork::Regtest,
+        relay: RelayActivationConfig { enabled: true },
+        inbound: open_bitcoin_network::InboundListenerConfig {
+            enabled: true,
+            ..Default::default()
+        },
+        ..RuntimeConfig::default()
+    };
+
+    // Act
+    let context = ManagedRpcContext::from_runtime_config(&runtime);
+
+    // Assert
+    assert!(context.network_info().relay);
 }
 
 #[test]

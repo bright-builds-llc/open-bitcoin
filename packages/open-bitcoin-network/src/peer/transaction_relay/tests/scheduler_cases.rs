@@ -16,6 +16,7 @@ use std::collections::BTreeSet;
 use open_bitcoin_primitives::{Hash32, InventoryType, InventoryVector};
 
 use crate::error::PeerId;
+use crate::{RelayEligibilityDecision, RelayEligibilityReason};
 
 use super::*;
 
@@ -65,8 +66,72 @@ fn announcement(
         peer_mode,
         now_unix_seconds,
         local_facts: TxDownloadLocalFacts::default(),
+        relay_eligibility: eligible_relay(),
         preferred_peer: true,
         peer_overloaded: false,
+    }
+}
+
+fn parent_request(
+    peer_id: PeerId,
+    relay_id: TxRelayId,
+    now_unix_seconds: i64,
+) -> TxParentRequestInput {
+    TxParentRequestInput {
+        peer_id,
+        relay_id,
+        now_unix_seconds,
+        local_facts: TxDownloadLocalFacts::default(),
+        relay_eligibility: eligible_relay(),
+    }
+}
+
+fn with_relay_eligibility(
+    mut input: TxAnnouncementInput,
+    relay_eligibility: RelayEligibilityDecision,
+) -> TxAnnouncementInput {
+    input.relay_eligibility = relay_eligibility;
+    input
+}
+
+fn parent_with_relay_eligibility(
+    mut input: TxParentRequestInput,
+    relay_eligibility: RelayEligibilityDecision,
+) -> TxParentRequestInput {
+    input.relay_eligibility = relay_eligibility;
+    input
+}
+
+fn eligible_relay() -> RelayEligibilityDecision {
+    relay_decision(true, RelayEligibilityReason::Eligible)
+}
+
+fn relay_disabled() -> RelayEligibilityDecision {
+    relay_decision(false, RelayEligibilityReason::Disabled)
+}
+
+fn inbound_serving_required() -> RelayEligibilityDecision {
+    relay_decision(false, RelayEligibilityReason::InboundServingRequired)
+}
+
+fn permission_required() -> RelayEligibilityDecision {
+    relay_decision(false, RelayEligibilityReason::PermissionRequired)
+}
+
+fn protected_not_relay() -> RelayEligibilityDecision {
+    relay_decision(false, RelayEligibilityReason::ProtectedNotRelay)
+}
+
+fn ineligible_with_eligible_reason() -> RelayEligibilityDecision {
+    relay_decision(false, RelayEligibilityReason::Eligible)
+}
+
+fn relay_decision(eligible: bool, reason: RelayEligibilityReason) -> RelayEligibilityDecision {
+    RelayEligibilityDecision {
+        eligible,
+        reason,
+        relay_permission_effects: Vec::new(),
+        version_message_relay: eligible,
     }
 }
 
@@ -143,6 +208,18 @@ fn expect_recent_reject(peer_id: PeerId, relay_id: TxRelayId) -> TxDownloadActio
 
 fn request_cap(peer_id: PeerId, relay_id: TxRelayId) -> TxDownloadAction {
     TxDownloadAction::SuppressRequestCap { peer_id, relay_id }
+}
+
+fn suppress(
+    peer_id: PeerId,
+    relay_id: TxRelayId,
+    reason: TxDownloadSuppressionReason,
+) -> TxDownloadAction {
+    TxDownloadAction::Suppress {
+        peer_id,
+        relay_id,
+        reason,
+    }
 }
 
 fn fallback(peer_id: PeerId, relay_id: TxRelayId) -> TxDownloadAction {
@@ -242,6 +319,163 @@ pub(super) fn identity_mismatch_suppresses_without_candidate_or_inflight_state()
     );
 }
 
+pub(super) fn disabled_relay_suppresses_announcement_without_request_state() {
+    // Arrange
+    let mut scheduler = scheduler();
+    let relay_id = txid_relay(22);
+
+    // Act
+    let actions = scheduler.record_announcement(with_relay_eligibility(
+        announcement(22, txid_inventory(22), TxRelayPeerMode::TxidOnly, 0),
+        relay_disabled(),
+    ));
+
+    // Assert
+    assert_eq!(
+        actions,
+        [suppress(
+            22,
+            relay_id,
+            TxDownloadSuppressionReason::RelayDisabled,
+        )],
+    );
+    assert_eq!(
+        scheduler.snapshot(),
+        TxDownloadSnapshot {
+            candidate_count: 0,
+            in_flight_count: 0,
+            already_have_count: 0,
+        },
+    );
+}
+
+pub(super) fn ineligible_relay_suppressions_are_typed_without_request_state() {
+    // Arrange
+    let relay_id = txid_relay(23);
+    let cases = [
+        (
+            inbound_serving_required(),
+            TxDownloadSuppressionReason::InboundServingRequired,
+        ),
+        (
+            permission_required(),
+            TxDownloadSuppressionReason::PermissionRequired,
+        ),
+        (
+            protected_not_relay(),
+            TxDownloadSuppressionReason::ProtectedNotRelay,
+        ),
+    ];
+
+    for (relay_eligibility, expected_reason) in cases {
+        let mut scheduler = scheduler();
+
+        // Act
+        let actions = scheduler.record_announcement(with_relay_eligibility(
+            announcement(23, txid_inventory(23), TxRelayPeerMode::TxidOnly, 0),
+            relay_eligibility,
+        ));
+
+        // Assert
+        assert_eq!(actions, [suppress(23, relay_id, expected_reason)]);
+        assert_eq!(
+            scheduler.snapshot(),
+            TxDownloadSnapshot {
+                candidate_count: 0,
+                in_flight_count: 0,
+                already_have_count: 0,
+            },
+        );
+    }
+}
+
+pub(super) fn ineligible_eligible_reason_maps_to_not_relay_eligible() {
+    // Arrange
+    let mut scheduler = scheduler();
+    let relay_id = txid_relay(26);
+
+    // Act
+    let actions = scheduler.record_announcement(with_relay_eligibility(
+        announcement(26, txid_inventory(26), TxRelayPeerMode::TxidOnly, 0),
+        ineligible_with_eligible_reason(),
+    ));
+
+    // Assert
+    assert_eq!(
+        actions,
+        [suppress(
+            26,
+            relay_id,
+            TxDownloadSuppressionReason::NotRelayEligible,
+        )],
+    );
+    assert_eq!(
+        scheduler.snapshot(),
+        TxDownloadSnapshot {
+            candidate_count: 0,
+            in_flight_count: 0,
+            already_have_count: 0,
+        },
+    );
+}
+
+pub(super) fn disabled_parent_request_suppresses_without_request_state() {
+    // Arrange
+    let mut scheduler = scheduler();
+    let relay_id = txid_relay(24);
+
+    // Act
+    let actions = scheduler.request_parent(parent_with_relay_eligibility(
+        parent_request(24, relay_id, 0),
+        relay_disabled(),
+    ));
+
+    // Assert
+    assert_eq!(
+        actions,
+        [suppress(
+            24,
+            relay_id,
+            TxDownloadSuppressionReason::RelayDisabled,
+        )],
+    );
+    assert_eq!(
+        scheduler.snapshot(),
+        TxDownloadSnapshot {
+            candidate_count: 0,
+            in_flight_count: 0,
+            already_have_count: 0,
+        },
+    );
+}
+
+pub(super) fn ineligible_first_announcement_does_not_block_eligible_second_announcer() {
+    // Arrange
+    let mut scheduler = scheduler();
+    let relay_id = txid_relay(25);
+
+    // Act
+    let first_actions = scheduler.record_announcement(with_relay_eligibility(
+        announcement(25, txid_inventory(25), TxRelayPeerMode::TxidOnly, 0),
+        permission_required(),
+    ));
+    let second_actions = announce_txid(&mut scheduler, 26, 25, 1);
+
+    // Assert
+    assert_eq!(
+        first_actions,
+        [suppress(
+            25,
+            relay_id,
+            TxDownloadSuppressionReason::PermissionRequired,
+        )],
+    );
+    assert_eq!(second_actions, [request(26, relay_id)]);
+    assert_eq!(scheduler.peer_snapshot(25).candidate_count, 0);
+    assert_eq!(scheduler.peer_snapshot(25).in_flight_count, 0);
+    assert_eq!(scheduler.peer_snapshot(26).in_flight_count, 1);
+}
+
 pub(super) fn duplicate_announcement_retains_fallback_candidate_without_second_request() {
     // Arrange
     let mut scheduler = scheduler();
@@ -264,9 +498,8 @@ pub(super) fn orphan_parent_request_suppresses_duplicate_pending_parent_with_fal
     let relay_id = txid_relay(5);
 
     // Act
-    let first_actions = scheduler.request_parent(5, relay_id, 0, TxDownloadLocalFacts::default());
-    let duplicate_actions =
-        scheduler.request_parent(6, relay_id, 1, TxDownloadLocalFacts::default());
+    let first_actions = scheduler.request_parent(parent_request(5, relay_id, 0));
+    let duplicate_actions = scheduler.request_parent(parent_request(6, relay_id, 1));
     let fallback_actions = scheduler.expire_and_schedule(60);
 
     // Assert

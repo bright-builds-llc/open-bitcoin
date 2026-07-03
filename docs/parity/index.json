@@ -664,6 +664,10 @@
     {
       "name": "v2-0-parity-uat-release-boundary",
       "status": "done"
+    },
+    {
+      "name": "v2-0-runtime-relay-activation-download-eligibility",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -2315,6 +2319,72 @@
         ],
         "suspected_unknowns": [
           "Future milestones need fresh implementation, threat models, public-network evidence scope, and deterministic guardrails before any compact block relay, package relay, filter serving, public relay default, production service, production full-node readiness, or production-funds wallet safety claim can be made."
+        ]
+      },
+      {
+        "id": "v2-0-runtime-relay-activation-download-eligibility",
+        "title": "v2.0 Runtime Relay Activation and Download Eligibility Integration",
+        "status": "done",
+        "requirements": [
+          "ACT-01",
+          "ACT-02",
+          "INV-02",
+          "INV-03",
+          "DL-01",
+          "DL-02",
+          "REL-03"
+        ],
+        "evidence": [
+          "README.md",
+          "docs/architecture/config-precedence.md",
+          "docs/architecture/status-snapshot.md",
+          "docs/architecture/operator-observability.md",
+          "docs/operator/runtime-guide.md",
+          "docs/parity/catalog/p2p.md",
+          "docs/parity/catalog/mempool-policy.md",
+          "docs/parity/catalog/rpc-cli-config.md",
+          "docs/parity/checklist.md",
+          "docs/parity/index.json",
+          "docs/parity/source-breadcrumbs.json",
+          "packages/open-bitcoin-rpc/src/context/network.rs",
+          "packages/open-bitcoin-node/src/network/relay_serving.rs",
+          "packages/open-bitcoin-network/src/peer/relay_download.rs",
+          "packages/open-bitcoin-network/src/peer/transaction_relay.rs",
+          "packages/open-bitcoin-network/src/peer/transaction_relay/scheduler.rs",
+          "packages/open-bitcoin-node/src/status/relay_evidence.rs",
+          "scripts/check-phase107-runtime-relay-activation-download-eligibility.ts",
+          "scripts/check-phase107-runtime-relay-activation-download-eligibility.test.ts",
+          "scripts/verify.sh",
+          ".planning/phases/107-runtime-relay-activation-and-download-eligibility-integration/107-CONTEXT.md",
+          ".planning/phases/107-runtime-relay-activation-and-download-eligibility-integration/107-RESEARCH.md",
+          ".planning/phases/107-runtime-relay-activation-and-download-eligibility-integration/107-01-SUMMARY.md",
+          ".planning/phases/107-runtime-relay-activation-and-download-eligibility-integration/107-02-SUMMARY.md",
+          ".planning/phases/107-runtime-relay-activation-and-download-eligibility-integration/107-03-SUMMARY.md",
+          ".planning/phases/107-runtime-relay-activation-and-download-eligibility-integration/107-04-SUMMARY.md",
+          ".planning/phases/107-runtime-relay-activation-and-download-eligibility-integration/107-VERIFICATION.md"
+        ],
+        "rationale": "Phase 107 records the runtime integration repair that carries resolved RuntimeConfig.relay into managed network construction, requires relay eligibility before transaction download scheduling mutates request state, exposes aggregate sanitized activation/download eligibility counters, and preserves repo-local UAT plus deterministic no-claim guardrails.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/net_permissions.h",
+            "packages/bitcoin-knots/src/net_permissions.cpp",
+            "packages/bitcoin-knots/src/net.cpp",
+            "packages/bitcoin-knots/src/net_processing.cpp",
+            "packages/bitcoin-knots/src/node/txdownloadman.h",
+            "packages/bitcoin-knots/src/node/txdownloadman_impl.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/test/functional/p2p_permissions.py",
+            "packages/bitcoin-knots/test/functional/p2p_tx_download.py",
+            "packages/bitcoin-knots/test/functional/p2p_getdata.py",
+            "packages/bitcoin-knots/test/functional/rpc_rawtransaction.py"
+          ]
+        },
+        "known_gaps": [
+          "Phase 107 is runtime activation/download eligibility integration only; it does not claim public relay by default, compact block relay, package relay, bloom/filter serving, public-network relay CI, production service operation, production full-node readiness, production-funds wallet safety, production-funds wallet use, or durable mempool recovery."
+        ],
+        "suspected_unknowns": [
+          "Future phases own checker wiring, full Phase 107 verification evidence, durable mempool recovery, public-network relay UAT, compact block relay, package relay, filter serving, production-service proof, production full-node readiness proof, and production-funds wallet safety proof before any broader relay readiness claim can be made."
         ]
       }
     ]

@@ -287,6 +287,34 @@ production service operation, production full-node readiness,
 production-service proof, production full-node readiness proof, or
 production-funds wallet safety proof. Those remain future scoped surfaces.
 
+## Phase 107 runtime activation and download eligibility evidence
+
+Phase 107 observability keeps runtime relay activation and transaction download
+eligibility in the shared relay evidence contract. The managed runtime reports
+resolved activation and aggregate eligibility counts through
+`OpenBitcoinStatusSnapshot.mempool.relay`, `openbitcoinnetworkstatus.relay`,
+operator status, dashboard rows, support bundles, metrics, and structured logs
+only when those surfaces already consume the shared contract. It does not create
+per-peer public status.
+
+The public/operator vocabulary is aggregate, sanitized, and fixed-label only:
+`activation`, `download_eligibility`, and
+`RelayDownloadEligibilityCounters`. Granular scheduler labels including
+`relay_disabled`, `not_relay_eligible`, `inbound_serving_required`,
+`permission_required`, and `protected_not_relay` remain internal typed
+scheduler/test evidence unless reduced to aggregate counters. Observability
+surfaces must not expose peer ids, endpoints, permission strings, raw class
+names, txids, wtxids, raw transaction hex, credentials, or dynamic labels.
+
+The deterministic inbound-serving input for Phase 107 evidence is resolved
+`config.inbound.enabled`. Live listener/public-network relay proof remains
+explicit opt-in UAT outside default verification. `sendrawtransaction` success
+does not guarantee public propagation, and Phase 107 does not claim public
+relay by default, compact block relay, package relay, bloom/filter serving,
+public-network relay CI, production service operation, production full-node
+readiness, production-funds wallet safety, production-funds wallet use, or
+durable mempool recovery.
+
 ## Phase 92 address advertisement and discovery evidence
 
 Address-boundary observability is sourced from the shared inbound status fields
