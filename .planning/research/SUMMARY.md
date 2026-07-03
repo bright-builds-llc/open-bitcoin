@@ -1,96 +1,101 @@
-# v2.0 Transaction Relay and Mempool Participation Research Summary
+# v2.1 Block Serving and Compact Block Relay Research Summary
 
-**Defined:** 2026-06-29
-**Milestone:** v2.0 Transaction Relay and Mempool Participation Boundary
+**Defined:** 2026-07-03
+**Milestone:** v2.1 Block Serving and Compact Block Relay Boundary
 
 ## Scope Decision
 
-v2.0 should deliberately move Open Bitcoin from "no transaction relay or mempool propagation claim" to a bounded, opt-in transaction relay and mempool participation claim. The milestone should validate, store, announce, request, serve, and relay unconfirmed transactions through explicit activation gates while preserving the existing no-claim boundary for public relay defaults, compact block relay, bloom/filter relay, package relay, production full-node readiness, and production-funds wallet safety.
+v2.1 should add bounded, opt-in block serving and compact-block relay behavior on top of the v1.9 inbound and v2.0 transaction relay foundations. The milestone should serve validated blocks to eligible peers, implement BIP152 wire messages, track compact-block negotiation, reconstruct compact blocks from mempool state, request missing transactions, fall back safely, and expose truthful operator evidence.
 
-The milestone is not a public relay launch. It is a boundary milestone that proves the transaction relay path is internally coherent, resource bounded, observable, and parity-traceable before broader public-network claims are made.
+The milestone is not a public serving launch. It should explicitly avoid production full-node readiness, public serving by default, package relay, bloom/filter serving, compact filters, public-network CI, and production-funds wallet claims.
+
+## Stack Additions
+
+- No new external production dependency is recommended.
+- Add first-party BIP152 payload codecs in `open-bitcoin-codec` and expose them through `open-bitcoin-network::message`.
+- Add a small owned SipHash-2-4 or BIP152 short-ID helper with fixture tests if no existing first-party helper is available.
+- Add pure block-serving and compact-relay policy/state modules under `open-bitcoin-network`.
+- Add node-shell integration in `open-bitcoin-node` for block reads, compact-block construction, mempool reconstruction inputs, partial-state lifecycle, validation handoff, status, metrics, logs, and support evidence.
+- Extend existing RPC/CLI/dashboard/support surfaces through one shared status contract.
+
+## Feature Table Stakes
+
+- Explicit activation and peer eligibility for block serving and compact relay.
+- Full block and witness block serving for validated, available blocks inside the documented boundary.
+- `sendcmpct`, `cmpctblock`, `getblocktxn`, and `blocktxn` encode/decode support.
+- Per-peer compact-block negotiation with high-bandwidth and low-bandwidth semantics.
+- Compact-block announcement only when activation, negotiation, header state, and block availability permit it.
+- Reconstruction from mempool plus bounded extra/recent transaction inputs.
+- Missing transaction requests and `blocktxn` responses matched to expected in-flight partial blocks.
+- Full-block fallback for reconstruction failure, missing/incomplete responses, old/far blocks, timeouts, collisions, or ineligible state.
+- Resource caps and cleanup for serving requests, compact partial state, queues, in-flight blocks, and peer churn.
+- Sanitized RPC, CLI, dashboard, metrics, logs, support bundles, parity docs, UAT, and no-claim guardrails.
 
 ## Architecture Direction
 
-- Keep relay policy in a pure `open-bitcoin-network::tx_relay` decision layer. It should accept peer state, txid/wtxid announcements, `notfound`, received transactions, clock values, and permission effects, then emit typed actions and evidence.
-- Keep mempool truth in `open-bitcoin-mempool`. Extend admission and removal outcomes so relay code reacts to accepted, rejected, duplicate, missing-input, replaced, evicted, confirmed, disconnected, and expired states without parsing display strings.
-- Keep `open-bitcoin-node` as the imperative shell. It should call pure relay and mempool decisions, persist accepted transactions, write metrics/logs/status, and encode or send wire messages.
-- Keep RPC, CLI, dashboard, metrics, logs, and support bundles on one shared relay/mempool status contract. Do not create a separate operator-only truth source.
-- Treat parity docs and checkers as implementation surfaces because v2.0 changes a previously deferred behavior claim.
-
-## Stack And Module Impacts
-
-- No new third-party dependencies are recommended.
-- Extend first-party crates already in use: `open-bitcoin-network`, `open-bitcoin-mempool`, `open-bitcoin-node`, `open-bitcoin-rpc`, and `open-bitcoin-cli`.
-- Reuse v1.9 inbound permission, resource-governance, status, metrics, logging, support-bundle, and deterministic-verifier foundations.
-- Add durable mempool storage only through versioned Open Bitcoin-owned DTOs under the node storage shell.
-- Keep substantial automation in Bun/TypeScript only for verification and docs checkers; keep Bash as thin orchestration.
-
-## v2.0 Table Stakes
-
-- Explicit relay activation that keeps public relay off by default.
-- Permission-aware behavior for `relay`, `forcerelay`, and `mempool` without activating bloom/filter or compact-block behavior.
-- Typed txid/wtxid inventory handling for `inv`, `getdata`, `tx`, and `notfound`.
-- Bounded transaction download scheduling with in-flight caps, expiry, peer fallback, disconnect cleanup, and recent-reject/already-have suppression.
-- Bounded missing-parent and orphan handling with parent requests, reconsideration, cap eviction, and expiry evidence.
-- Stable mempool admission and removal outcomes for local and peer-submitted transactions.
-- Chainstate reconciliation when blocks connect, disconnect, or reorg within the documented v2.0 boundary.
-- Relay serving, announcement, fanout, and rebroadcast policy that uses peer eligibility, negotiated identity, rate limits, and queue limits.
-- RPC, CLI, dashboard, metrics, logs, and support evidence for relay outcomes with strong redaction.
-- Deterministic parity fixtures and release-boundary checks that prevent compact-block, public-relay-default, production-readiness, and production-funds claims from drifting in.
+- Keep BIP152 payload correctness in codec modules.
+- Keep peer negotiation and serving decisions pure in `open-bitcoin-network`.
+- Keep block storage, mempool snapshots, partial compact state, validation handoff, and observability in `open-bitcoin-node`.
+- Keep operator surfaces as projections of one status contract.
+- Keep public-network review outside the default verifier.
 
 ## Watch-Outs
 
-- Do not let permission parsing alone imply activation. Every active effect needs an activation matrix and tests.
-- Do not mix txid and wtxid identity in request maps, already-have sets, `notfound` handling, or received-transaction cleanup.
-- Do not route peer transactions directly into mempool admission from socket code. Relay/download state must remain the policy boundary.
-- Do not create unbounded orphan, request, fanout, or rebroadcast state.
-- Do not serve transactions merely because they exist in local storage. Serving must require relay eligibility.
-- Do not make default verification depend on public-network relay, wall-clock soak, service-manager state, or production deployment.
-- Do not leak raw transaction hex, raw peer endpoints, permission strings, credentials, or dynamic identifiers through support, logs, or metrics.
+- Do not let `sendcmpct` or compact-block capability imply public compact relay by default.
+- Do not serve blocks before classifying peer eligibility and block status.
+- Do not leak peer endpoints, permission strings, raw transaction lists, or dynamic labels through observability.
+- Do not persist partial compact-block reconstruction state.
+- Do not process `blocktxn` without a matching in-flight partial block for that peer.
+- Do not let reconstruction failure create repeated full-block request storms.
+- Do not allow BIP152 work to pull package relay, bloom/filter serving, compact filters, or production readiness into scope.
 
 ## Recommended Phase Order
 
-1. Phase 100: Relay Activation Boundary and Permission Semantics.
-2. Phase 101: Transaction Inventory Identity and Download Scheduling.
-3. Phase 102: Orphan Handling and Admission Outcome Bridge.
-4. Phase 103: Mempool Chainstate Lifecycle and Durable Recovery.
-5. Phase 104: Relay Serving, Fanout, and Rebroadcast Policy.
-6. Phase 105: Operator, RPC, Metrics, Logs, and Support Evidence.
-7. Phase 106: Parity Traceability, UAT, and Release Boundary Guardrails.
+1. Phase 110: Block Serving Activation and Eligibility Boundary.
+2. Phase 111: Full Block Serving Request Path.
+3. Phase 112: BIP152 Wire Codec and Message Semantics.
+4. Phase 113: Compact Relay Negotiation and Announcement Policy.
+5. Phase 114: Compact Block Reconstruction from Mempool State.
+6. Phase 115: Missing Transaction Round Trip, Fallback, and Validation Handoff.
+7. Phase 116: Operator Evidence, Metrics, Logs, and Support Boundary.
+8. Phase 117: Parity Traceability, UAT, and Release Guardrails.
 
-This order starts with pure policy and identity first, then adds mempool integration, durable/runtime shell behavior, operator evidence, and final release guardrails. Daemon socket activation should follow the pure policy work, not lead it.
+This order activates the serving boundary first, then proves the wire format, then adds compact relay negotiation, reconstruction, fallback, operator evidence, and final release guardrails.
 
 ## Deferred Or Out Of Scope
 
-- Compact block relay and related `cmpctblock` or `blocktxn` behavior.
-- BIP37 bloom filters, compact filters, and full filter serving.
-- Broad package relay, cluster mempool policy, and package orphan handling.
-- Public transaction relay by default.
+- Package relay, cluster mempool policy, and package orphan handling.
+- BIP37 bloom filters, compact filters, and filter serving.
+- Public block or compact-block serving by default.
 - Public-network relay UAT as a default CI or pre-commit gate.
 - Production full-node readiness, production service operation, and production-funds wallet safety.
-- GUI, hosted dashboards, packaging, installer, and migration apply mode.
+- GUI, hosted dashboards, packaging, installer, service-manager expansion, and migration apply mode.
 
 ## Verification Implications
 
 - Keep `bash scripts/verify.sh` as the default deterministic verification contract.
-- Add pure tests first for relay decisions, identity handling, request expiry, orphan bounds, and mempool outcomes.
-- Add adapter tests for durable mempool persistence, restart/load/repair behavior, and managed runtime message flows.
-- Add static checkers for no-claim wording, parity breadcrumbs, source anchors, UAT command forms, and verifier order.
-- UAT guidance should provide repo-local Cargo and Bazel commands, default to loopback/regtest-safe workflows, and mark public-network relay review as opt-in evidence.
+- Add pure tests for codecs, short IDs, differential indexes, negotiation, serving eligibility, reconstruction decisions, missing transaction requests, and fallback.
+- Add node-shell tests for block store reads, compact construction, mempool reconstruction inputs, in-flight cleanup, validation handoff, restart cleanup, and status projection.
+- Add static checkers for no-claim wording, parity breadcrumbs, source anchors, UAT command forms, and verifier boundaries.
+- Keep public-network relay review opt-in and documented as non-default evidence.
 
 ## Sources
 
-- `.planning/research/STACK.md`
-- `.planning/research/FEATURES.md`
-- `.planning/research/ARCHITECTURE.md`
-- `.planning/research/PITFALLS.md`
 - `.planning/PROJECT.md`
 - `.planning/milestones/v1.9-REQUIREMENTS.md`
+- `.planning/milestones/v2.0-REQUIREMENTS.md`
+- `packages/bitcoin-knots/src/protocol.h`
+- `packages/bitcoin-knots/src/blockencodings.h`
+- `packages/bitcoin-knots/src/blockencodings.cpp`
 - `packages/bitcoin-knots/src/net_processing.cpp`
-- `packages/bitcoin-knots/src/node/txdownloadman_impl.cpp`
-- `packages/bitcoin-knots/src/node/txdownloadman.h`
-- `packages/bitcoin-knots/src/txmempool.cpp`
-- `packages/bitcoin-knots/src/validation.cpp`
-- `packages/bitcoin-knots/src/policy/`
-- `packages/bitcoin-knots/test/functional/p2p_tx_download.py`
-- `packages/bitcoin-knots/test/functional/feature_rbf.py`
+- `packages/bitcoin-knots/test/functional/p2p_compactblocks.py`
+- `packages/bitcoin-knots/test/functional/p2p_compactblocks_extratxs.py`
+- `packages/bitcoin-knots/test/functional/p2p_compactblocks_blocksonly.py`
+- `packages/bitcoin-knots/test/functional/p2p_compactblocks_hb.py`
+- `packages/bitcoin-knots/test/functional/p2p_mutated_blocks.py`
+- `packages/open-bitcoin-network/src/message.rs`
+- `packages/open-bitcoin-network/src/peer.rs`
+- `packages/open-bitcoin-network/src/peer/relay_download.rs`
+- `packages/open-bitcoin-node/src/network.rs`
+- `packages/open-bitcoin-node/src/network/relay_serving.rs`
+- `packages/open-bitcoin-node/src/status/relay_evidence.rs`

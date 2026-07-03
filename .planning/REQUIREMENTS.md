@@ -1,0 +1,151 @@
+# Requirements: Open Bitcoin v2.1
+
+**Defined:** 2026-07-03
+**Milestone:** v2.1 Block Serving and Compact Block Relay Boundary
+**Core Value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
+
+## v2.1 Requirements
+
+Requirements for the current milestone. Each requirement maps to exactly one roadmap phase after roadmap approval.
+
+### Block Serving Activation And Eligibility
+
+- [ ] **BSRV-01**: Operator can enable block serving and compact-block relay only through explicit activation settings that keep public serving off by default.
+- [ ] **BSRV-02**: Node classifies block-serving eligibility across outbound, inbound, manual, protected, and permissioned peers without changing service bits or public defaults accidentally.
+- [ ] **BSRV-03**: Node serves only validated and available blocks inside the documented active-chain or recent-valid boundary.
+- [ ] **BSRV-04**: Node handles block, witness block, and compact block `getdata` requests with bounded request caps, queue backpressure, and peer cleanup.
+- [ ] **BSRV-05**: Node reports unknown, stale, side-chain, pruned, unavailable, unvalidated, and suppressed block-serving outcomes without leaking prune height or raw peer details.
+- [ ] **BSRV-06**: Block serving preserves existing block download, inbound resource-governance, timeout, churn, ban, discourage, and in-flight cleanup limits under adversarial request bursts.
+
+### BIP152 Wire Messages And Negotiation
+
+- [ ] **CMP-01**: Node encodes, decodes, and validates `sendcmpct` messages with version 2 semantics and documented handling for unsupported versions.
+- [ ] **CMP-02**: Node encodes, decodes, and validates `cmpctblock` payloads with header, nonce, six-byte short IDs, and prefilled transaction differential indexes.
+- [ ] **CMP-03**: Node encodes, decodes, and validates `getblocktxn` and `blocktxn` payloads with differential indexes and witness transaction serialization.
+- [ ] **CMP-04**: Node tracks per-peer compact-block capability, high-bandwidth preference, low-bandwidth preference, and compact-block announcement eligibility deterministically.
+- [ ] **CMP-05**: Node announces compact blocks only when activation, peer negotiation, header state, block availability, and resource limits permit it.
+- [ ] **CMP-06**: Compact-block negotiation remains independent from transaction relay, package relay, bloom/filter permissions, compact filters, and public serving defaults.
+
+### Compact Block Reconstruction And Fallback
+
+- [ ] **RCN-01**: Node validates compact block headers, transaction counts, prefilled ordering, null transactions, short ID bounds, and malformed payloads before accepting partial state.
+- [ ] **RCN-02**: Node reconstructs compact blocks from current mempool state plus bounded extra or recent block transaction inputs using witness-hash short IDs.
+- [ ] **RCN-03**: Node detects short ID collisions, duplicate matches, missing transactions, and reconstruction failures with stable typed outcomes.
+- [ ] **RCN-04**: Node requests missing compact-block transactions with bounded `getblocktxn` indexes only when the peer and in-flight state are eligible.
+- [ ] **RCN-05**: Node accepts `blocktxn` responses only for expected in-flight partial compact blocks from the matching peer and rejects duplicate, unexpected, out-of-bounds, or mismatched responses.
+- [ ] **RCN-06**: Reconstructed blocks enter the existing block validation and connect path without mutating chainstate from partial compact-block state.
+- [ ] **RCN-07**: Node falls back to full block fetch or suppression when reconstruction fails, responses timeout, blocks are old or far from the active tip, or peer/resource state becomes ineligible.
+
+### Resource Governance And Runtime Integration
+
+- [ ] **GOV-01**: Full block serving, compact block serving, partial compact-block state, missing transaction requests, and fallback all participate in existing request, queue, and in-flight resource limits.
+- [ ] **GOV-02**: Malformed compact blocks, invalid compact-block headers, duplicate `blocktxn`, unexpected `blocktxn`, and out-of-bounds indexes produce Knots-aligned misbehavior, disconnect, or suppression decisions.
+- [ ] **GOV-03**: Restart, reconnect, disconnect, timeout, and reorg cleanup remove volatile compact-relay state without deleting validated chainstate or durable block data.
+- [ ] **GOV-04**: Compact block relay integrates with mempool lifecycle, transaction relay, and block connect/disconnect events without activating package relay or filter serving.
+- [ ] **GOV-05**: Historical, pruned, stale, side-chain, and unavailable block serving remains bounded by documented eligibility rules and does not imply archive-node behavior.
+
+### Operator, RPC, Metrics, Logs, And Support Evidence
+
+- [ ] **OBS-01**: RPC and shared network status report block-serving activation, serving eligibility, compact negotiation, reconstruction, fallback, and in-flight compact-block state truthfully.
+- [ ] **OBS-02**: CLI and dashboard surfaces render block-serving and compact-block relay state from the shared status contract without raw peer, permission, credential, or transaction payload leakage.
+- [ ] **OBS-03**: Metrics and structured logs use fixed low-cardinality labels for served, suppressed, compact-announced, reconstructed, missing-requested, fallback, malformed, timeout, and cleanup outcomes.
+- [ ] **OBS-04**: Support bundles sanitize block-serving and compact-relay evidence, including raw transaction lists, raw peer endpoints, permission strings, credentials, and dynamic labels.
+- [ ] **OBS-05**: Operator docs and UAT guidance provide copy-pasteable repo-local Cargo and Bazel commands for block-serving and compact-relay workflows.
+
+### Parity, UAT, And Release Boundary
+
+- [ ] **BOUND-01**: Parity docs, source breadcrumbs, and index entries cite concrete Bitcoin Knots anchors for block serving, BIP152 messages, reconstruction, fallback, peer state, and resource governance.
+- [ ] **BOUND-02**: Deterministic checkers prevent package relay, bloom/filter serving, compact filter serving, public-serving-default, production-readiness, and production-funds claims from entering v2.1 artifacts.
+- [ ] **BOUND-03**: README, operator docs, runtime docs, and release notes describe the bounded v2.1 block-serving and compact-relay claim and list deferred surfaces clearly.
+- [ ] **BOUND-04**: The default `bash scripts/verify.sh` contract remains deterministic and free of public-network, wall-clock soak, service-manager, and production-deployment gates.
+- [ ] **BOUND-05**: Public-network block-serving or compact-relay review remains opt-in UAT evidence and is never required for pre-commit, default CI, or release-boundary verification.
+
+## Deferred Requirements
+
+Deferred to future milestones. These are acknowledged but not part of the v2.1 roadmap.
+
+### Relay Expansion
+
+- **FUT-01**: Node supports broad package relay, cluster mempool policy, and package orphan behavior.
+- **FUT-02**: Node enables public block serving, compact block relay, and transaction relay by default with production-ready abuse, support, service, packaging, and firewall guidance.
+- **FUT-03**: Node runs public-network relay UAT as a CI or release-blocking default gate.
+- **FUT-04**: Node claims archive-node or broad historical block-serving behavior.
+
+### Filters And Additional Protocol Surfaces
+
+- **FUT-05**: Node serves BIP37 bloom-filter behavior.
+- **FUT-06**: Node serves compact filters and related block-filter behavior.
+- **FUT-07**: Node expands address relay beyond the v1.9 bounded address advertisement and discovery claim.
+
+### Product And Operations
+
+- **FUT-08**: Node claims production full-node readiness under the v1.8 production-readiness gate set.
+- **FUT-09**: Wallet behavior is approved for production-funds use.
+- **FUT-10**: Migration apply mode mutates source datadirs, services, configs, or wallets.
+- **FUT-11**: GUI, hosted dashboard, packaging, installer, and managed service deployment are provided.
+
+## Out Of Scope
+
+Explicitly excluded from v2.1 to prevent scope creep.
+
+| Feature | Reason |
+| --- | --- |
+| Package relay and cluster mempool | Requires package policy, orphanage, and parity work beyond compact block relay. |
+| Bloom filters and compact filters | Separate privacy and filter-serving surfaces with different abuse and support risks. |
+| Public serving by default | Requires production abuse, service, packaging, firewall, and support readiness that v2.1 does not claim. |
+| Archive-node historical serving | v2.1 proves bounded block serving, not unbounded historical availability. |
+| Public-network relay CI by default | Would violate the deterministic local verification contract. |
+| Production full-node readiness | Governed by v1.8 readiness gates, not established by compact block relay alone. |
+| Production-funds wallet safety | Wallet safety and support evidence are separate milestones. |
+| GUI, hosted dashboard, packaging, installer, and service deployment | Product and distribution surfaces are deferred while relay internals remain the focus. |
+| Migration apply mode | Migration remains dry-run-first and must not mutate source datadirs, services, configs, or wallets in v2.1. |
+
+## Traceability
+
+Traceability is populated during roadmap creation after the v2.1 requirements are approved.
+
+| Requirement | Phase | Status |
+| --- | --- | --- |
+| BSRV-01 | TBD | Pending |
+| BSRV-02 | TBD | Pending |
+| BSRV-03 | TBD | Pending |
+| BSRV-04 | TBD | Pending |
+| BSRV-05 | TBD | Pending |
+| BSRV-06 | TBD | Pending |
+| CMP-01 | TBD | Pending |
+| CMP-02 | TBD | Pending |
+| CMP-03 | TBD | Pending |
+| CMP-04 | TBD | Pending |
+| CMP-05 | TBD | Pending |
+| CMP-06 | TBD | Pending |
+| RCN-01 | TBD | Pending |
+| RCN-02 | TBD | Pending |
+| RCN-03 | TBD | Pending |
+| RCN-04 | TBD | Pending |
+| RCN-05 | TBD | Pending |
+| RCN-06 | TBD | Pending |
+| RCN-07 | TBD | Pending |
+| GOV-01 | TBD | Pending |
+| GOV-02 | TBD | Pending |
+| GOV-03 | TBD | Pending |
+| GOV-04 | TBD | Pending |
+| GOV-05 | TBD | Pending |
+| OBS-01 | TBD | Pending |
+| OBS-02 | TBD | Pending |
+| OBS-03 | TBD | Pending |
+| OBS-04 | TBD | Pending |
+| OBS-05 | TBD | Pending |
+| BOUND-01 | TBD | Pending |
+| BOUND-02 | TBD | Pending |
+| BOUND-03 | TBD | Pending |
+| BOUND-04 | TBD | Pending |
+| BOUND-05 | TBD | Pending |
+
+**Coverage:**
+
+- v2.1 requirements: 34 total
+- Mapped to phases: 0
+- Unmapped: 34
+
+*Requirements defined: 2026-07-03*
+*Last updated: 2026-07-03 after v2.1 research draft*
