@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Transaction Relay and Mempool Participation Boundary
 status: executing
-stopped_at: Phase 109 archive-readiness cleanup phase created
-last_updated: "2026-07-03T17:54:38.651Z"
-last_activity: 2026-07-03 -- Phase 109 planning complete
+stopped_at: Phase 109 archive-readiness metadata closure complete
+last_updated: "2026-07-03T19:19:42.061Z"
+last_activity: 2026-07-03 -- Phase 109 archive-readiness metadata closure complete
 progress:
   total_phases: 10
-  completed_phases: 9
-  total_plans: 35
-  completed_plans: 35
-  percent: 90
+  completed_phases: 10
+  total_plans: 36
+  completed_plans: 36
+  percent: 100
 ---
 
 # Project State
@@ -26,18 +26,18 @@ See: `.planning/PROJECT.md` (updated 2026-06-29)
 ## Current Position
 
 Milestone: v2.0 Transaction Relay and Mempool Participation Boundary
-Phase: 109 (Milestone Archive Readiness Metadata Closure) — NEEDS PLANNING
-Plan: Not planned; archive-readiness cleanup phase created
-Status: Ready to plan Phase 109
-Last activity: 2026-07-03 -- Phase 109 archive-readiness cleanup phase created
+Phase: 109 (Milestone Archive Readiness Metadata Closure) — COMPLETE
+Plan: 109-01 complete; archive-readiness metadata and audit debt closed
+Status: Ready for v2.0 milestone archive
+Last activity: 2026-07-03 -- Phase 109 archive-readiness metadata closure complete
 
-Progress: [#########-] 90% milestone phase progress; Phase 109 is pending planning.
+Progress: [##########] 100% milestone phase progress; Phase 109 is complete and v2.0 is ready for archive.
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Current milestone now has 10 planned phases: 32 scoped requirements complete through Phase 108, plus Phase 109 archive-readiness audit debt closure.
+- Current milestone now has 10 complete phases: 32 scoped requirements complete through Phase 108, plus Phase 109 archive-readiness audit debt closure.
 - Prior milestone plans completed: 26 in v1.8.
 - Prior milestone summary tasks counted: 49 in v1.8.
 
@@ -54,7 +54,7 @@ Progress: [#########-] 90% milestone phase progress; Phase 109 is pending planni
 | 106 | Parity Traceability, UAT, and Release Boundary Guardrails | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05 | Complete |
 | 107 | Runtime Relay Activation and Download Eligibility Integration | ACT-01, ACT-02, INV-02, INV-03, DL-01, DL-02, REL-03 | Complete |
 | 108 | Durable Mempool Relay State Recovery | MEM-04, MEM-05, MEM-06, REL-01, REL-02 | Complete |
-| 109 | Milestone Archive Readiness Metadata Closure | Audit TD-01, TD-02 | Pending |
+| 109 | Milestone Archive Readiness Metadata Closure | Audit TD-01, TD-02 | Complete |
 
 **Recent Trend:**
 
@@ -78,6 +78,7 @@ Progress: [#########-] 90% milestone phase progress; Phase 109 is pending planni
 - Phase 106 completed parity traceability, UAT command evidence, release-boundary guardrails, deterministic checker coverage, and final verification for BOUND-01 through BOUND-05.
 - Phase 107 completed runtime relay activation propagation, download eligibility integration, sanitized status evidence, docs/parity roots, deterministic checker coverage, and final verification for ACT-01, ACT-02, INV-02, INV-03, DL-01, DL-02, and REL-03.
 - Phase 108 completed durable mempool relay recovery, recovered lifecycle cleanup, sanitized recovery evidence, docs/parity roots, deterministic checker coverage, and final verification for MEM-04, MEM-05, MEM-06, REL-01, and REL-02.
+- Phase 109 completed archive-readiness metadata cleanup, documented Phase 106 original closeout versus Phase 107/108 supplemental extension checker coverage, refreshed the v2.0 audit to passed, and kept all 32 v2.0 requirements mapped exactly once through Phase 108.
 
 | Phase 91-peer-permissions-and-connection-classes P01 | 27min | 2 tasks | 5 files |
 | Phase 91 P02 | 34min | 2 tasks | 13 files |
@@ -123,7 +124,7 @@ Progress: [#########-] 90% milestone phase progress; Phase 109 is pending planni
 - Phase 99 completed: Peer Policy Structured Log Emission.
 - v1.9 archived to `.planning/milestones/v1.9-ROADMAP.md`, `.planning/milestones/v1.9-REQUIREMENTS.md`, and `.planning/milestones/v1.9-MILESTONE-AUDIT.md`.
 - v2.0 started as Transaction Relay and Mempool Participation Boundary, continuing phase numbering after Phase 99.
-- v2.0 requirements were defined in `.planning/REQUIREMENTS.md` and mapped to Phase 100 through Phase 106 in `.planning/ROADMAP.md`.
+- v2.0 requirements were defined in `.planning/REQUIREMENTS.md`, mapped exactly once through Phases 100 through 108 in `.planning/ROADMAP.md`, and closed by Phase 109 archive-readiness audit debt cleanup.
 
 ### Decisions
 
@@ -220,7 +221,7 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ### Pending Todos
 
-- Run the v2.0 milestone audit and archive the milestone if the audit passes.
+- Archive the v2.0 milestone now that the milestone audit passes after Phase 109.
 - Keep v1.9 phase directories numbered 90+ under `.planning/phases/`; historical phase directories remain tracked because verifier scripts still depend on selected phase evidence.
 - Keep repo-local Cargo and Bazel command forms in UAT guidance:
   - `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- ...`
@@ -237,6 +238,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-07-03T17:53:06.936Z
-Stopped at: Phase 109 archive-readiness cleanup phase created
-Resume file: .planning/ROADMAP.md
+Last session: 2026-07-03T19:15:37.114Z
+Stopped at: Phase 109 archive-readiness metadata closure complete
+Resume file: .planning/milestones/v2.0-MILESTONE-AUDIT.md

@@ -2,9 +2,9 @@
 
 ## v2.0 Transaction Relay and Mempool Participation Boundary (Active: started 2026-06-29)
 
-**Planned:** Bounded transaction relay and mempool participation through explicit activation, permission semantics, txid/wtxid inventory, bounded transaction download, orphan handling, mempool admission and lifecycle evidence, relay serving/fanout, operator surfaces, support redaction, parity traceability, and deterministic release-boundary guardrails.
+**Planned:** Bounded transaction relay and mempool participation through explicit activation, permission semantics, txid/wtxid inventory, bounded transaction download, orphan handling, mempool admission and lifecycle evidence, relay serving/fanout, operator surfaces, support redaction, parity traceability, deterministic release-boundary guardrails, and archive-readiness metadata closure.
 
-**Phases planned:** 10 phases, Phase 100 through Phase 109, covering 32 scoped requirements plus archive-readiness audit debt closure.
+**Phases planned:** 10 phases, Phase 100 through Phase 109, covering 32 scoped requirements plus archive-readiness audit debt closure. Implementation requirements are complete through Phase 108; Phase 109 owns audit-debt closure only.
 
 **Key planned outcomes:**
 
@@ -15,15 +15,16 @@
 - Add relay serving, announcement, fanout, local submission, and rebroadcast evidence without guaranteeing public propagation.
 - Align RPC, CLI, dashboard, metrics, logs, and support bundles around shared redacted relay/mempool status.
 - Close the milestone with Knots parity anchors, repo-local UAT commands, deterministic no-claim checkers, and docs that keep public relay defaults, compact blocks, package relay, public-network CI, production service operation, production full-node readiness, and production-funds wallet use deferred.
-- Close Phase 109 archive-readiness metadata debt so project, roadmap, milestone, and checker-ownership notes agree before archive.
+- Closed Phase 109 archive-readiness metadata debt so project, roadmap, milestone, audit, and checker-ownership notes agree before archive.
 
 **Current artifacts:**
 
 - `.planning/REQUIREMENTS.md`
 - `.planning/ROADMAP.md`
+- `.planning/milestones/v2.0-MILESTONE-AUDIT.md`
 - `.planning/research/SUMMARY.md`
 
-**What's next:** Plan Phase 109 with `/gsd-plan-phase 109`.
+**What's next:** Complete/archive v2.0 with `/gsd-complete-milestone v2.0`.
 
 ***
 

@@ -6,7 +6,7 @@
 
 **Boundary:** v2.0 is a bounded transaction relay and mempool participation milestone. It does not claim compact block relay, bloom/filter serving, broad package relay, public transaction relay by default, public-network relay CI, production full-node readiness, production service operation, or production-funds wallet safety.
 
-**Phase numbering:** v2.0 continues after the archived v1.9 Phase 99 work. New phase directories should start at Phase 100.
+**Phase numbering:** v2.0 continues after the archived v1.9 Phase 99 work and spans Phases 100 through 109. Phase 109 is archive-readiness audit debt closure only.
 
 ## Phase Plan
 
@@ -21,7 +21,7 @@
 | 106 | Parity Traceability, UAT, and Release Boundary Guardrails | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05 | Complete |
 | 107 | Runtime Relay Activation and Download Eligibility Integration | ACT-01, ACT-02, INV-02, INV-03, DL-01, DL-02, REL-03 | Complete |
 | 108 | Durable Mempool Relay State Recovery | MEM-04, MEM-05, MEM-06, REL-01, REL-02 | Complete |
-| 109 | Milestone Archive Readiness Metadata Closure | Audit TD-01, TD-02 | Pending |
+| 109 | Milestone Archive Readiness Metadata Closure | Audit TD-01, TD-02 | Complete |
 
 ## Phase Details
 
@@ -269,8 +269,8 @@ Plans:
 
 **Scope:**
 
-- Refresh project and milestone metadata that still describe v2.0 as Phase 100 through Phase 106 only.
-- Document that Phase 106 remains the original release-boundary closeout while Phases 107 and 108 are supplemental gap-closure extension surfaces.
+- Refresh project and milestone metadata that previously described v2.0 as ending before the gap-closure extension phases.
+- Document that Phase 106 remains the original release-boundary closeout while Phases 107 and 108 are supplemental gap-closure extension checker surfaces.
 - Keep all 32 v2.0 requirements mapped to exactly one owning phase in `REQUIREMENTS.md`; Phase 109 owns audit-debt closure only.
 - Re-run the milestone audit and deterministic checker evidence after metadata cleanup.
 
@@ -283,10 +283,10 @@ Plans:
 
 **Verification:** Planning artifact checks, Phase 106/107/108 checker commands, `gsd-tools state validate`, `git diff --check`, and targeted milestone audit rerun.
 
-**Plans:** 0 plans
+**Plans:** 1/1 plan complete
 
 Plans:
-- [ ] 109-01-PLAN.md — Refresh archive metadata, checker ownership notes, and re-audit evidence.
+- [x] 109-01-PLAN.md — Refresh archive metadata, checker ownership notes, and re-audit evidence.
 
 ## Dependencies
 
@@ -325,7 +325,7 @@ Plans:
 - ✅ **v1.7 Full-Sync Soak and Recovery Hardening** - Phases 75 through 81 (shipped 2026-06-20). Archive: [v1.7-ROADMAP.md](milestones/v1.7-ROADMAP.md)
 - ✅ **v1.8 Production Full-Node Readiness Boundary** - Phases 82 through 89 (shipped 2026-06-25). Archive: [v1.8-ROADMAP.md](milestones/v1.8-ROADMAP.md)
 - ✅ **v1.9 Inbound Peer Serving and Network Participation Boundary** - Phases 90 through 99 (shipped 2026-06-29). Archive: [v1.9-ROADMAP.md](milestones/v1.9-ROADMAP.md)
-- 🔄 **v2.0 Transaction Relay and Mempool Participation Boundary** - Phases 100 through 109 (active; archive-readiness cleanup pending).
+- 🔄 **v2.0 Transaction Relay and Mempool Participation Boundary** - Phases 100 through 109 (active; archive-readiness cleanup complete and audit passed).
 
 ## Milestone History
 
@@ -352,8 +352,8 @@ Plans:
 
 ## Next Step
 
-Plan Phase 109 to close archive-readiness audit debt, then re-run the v2.0 milestone audit:
+Complete/archive the v2.0 milestone now that Phase 109 closed archive-readiness audit debt and the v2.0 milestone audit passes:
 
 ```bash
-/gsd-plan-phase 109
+/gsd-complete-milestone v2.0
 ```
