@@ -4,7 +4,7 @@
 
 **Planned:** Bounded transaction relay and mempool participation through explicit activation, permission semantics, txid/wtxid inventory, bounded transaction download, orphan handling, mempool admission and lifecycle evidence, relay serving/fanout, operator surfaces, support redaction, parity traceability, and deterministic release-boundary guardrails.
 
-**Phases planned:** 7 phases, Phase 100 through Phase 106, covering 32 scoped requirements.
+**Phases planned:** 10 phases, Phase 100 through Phase 109, covering 32 scoped requirements plus archive-readiness audit debt closure.
 
 **Key planned outcomes:**
 
@@ -15,6 +15,7 @@
 - Add relay serving, announcement, fanout, local submission, and rebroadcast evidence without guaranteeing public propagation.
 - Align RPC, CLI, dashboard, metrics, logs, and support bundles around shared redacted relay/mempool status.
 - Close the milestone with Knots parity anchors, repo-local UAT commands, deterministic no-claim checkers, and docs that keep public relay defaults, compact blocks, package relay, public-network CI, production service operation, production full-node readiness, and production-funds wallet use deferred.
+- Close Phase 109 archive-readiness metadata debt so project, roadmap, milestone, and checker-ownership notes agree before archive.
 
 **Current artifacts:**
 
@@ -22,7 +23,7 @@
 - `.planning/ROADMAP.md`
 - `.planning/research/SUMMARY.md`
 
-**What's next:** Discuss Phase 100 with `/gsd-discuss-phase 100`.
+**What's next:** Plan Phase 109 with `/gsd-plan-phase 109`.
 
 ***
 

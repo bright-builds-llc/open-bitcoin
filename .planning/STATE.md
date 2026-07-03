@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Transaction Relay and Mempool Participation Boundary
-status: completed
-stopped_at: Completed 108-05-PLAN.md
-last_updated: "2026-07-03T16:21:59Z"
-last_activity: 2026-07-03 -- Phase 108 complete; v2.0 ready for milestone audit/archive
+status: executing
+stopped_at: Phase 109 archive-readiness cleanup phase created
+last_updated: "2026-07-03T17:54:38.651Z"
+last_activity: 2026-07-03 -- Phase 109 planning complete
 progress:
-  total_phases: 9
+  total_phases: 10
   completed_phases: 9
   total_plans: 35
   completed_plans: 35
-  percent: 100
+  percent: 90
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-29)
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 108 — Durable Mempool Relay State Recovery
+**Current focus:** Phase 109 — Milestone Archive Readiness Metadata Closure
 
 ## Current Position
 
 Milestone: v2.0 Transaction Relay and Mempool Participation Boundary
-Phase: 108 (Durable Mempool Relay State Recovery) — COMPLETE
-Plan: 108-05 complete; v2.0 ready for milestone audit/archive
-Status: Phase 108 Complete; v2.0 ready for milestone audit/archive
-Last activity: 2026-07-03 -- Phase 108 closeout verification passed
+Phase: 109 (Milestone Archive Readiness Metadata Closure) — NEEDS PLANNING
+Plan: Not planned; archive-readiness cleanup phase created
+Status: Ready to plan Phase 109
+Last activity: 2026-07-03 -- Phase 109 archive-readiness cleanup phase created
 
-Progress: [##########] 100% planned milestone progress; Phase 108 and all v2.0 planned phases are complete.
+Progress: [#########-] 90% milestone phase progress; Phase 109 is pending planning.
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Current milestone initialized with 7 planned phases and 32 scoped requirements.
+- Current milestone now has 10 planned phases: 32 scoped requirements complete through Phase 108, plus Phase 109 archive-readiness audit debt closure.
 - Prior milestone plans completed: 26 in v1.8.
 - Prior milestone summary tasks counted: 49 in v1.8.
 
@@ -54,6 +54,7 @@ Progress: [##########] 100% planned milestone progress; Phase 108 and all v2.0 p
 | 106 | Parity Traceability, UAT, and Release Boundary Guardrails | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05 | Complete |
 | 107 | Runtime Relay Activation and Download Eligibility Integration | ACT-01, ACT-02, INV-02, INV-03, DL-01, DL-02, REL-03 | Complete |
 | 108 | Durable Mempool Relay State Recovery | MEM-04, MEM-05, MEM-06, REL-01, REL-02 | Complete |
+| 109 | Milestone Archive Readiness Metadata Closure | Audit TD-01, TD-02 | Pending |
 
 **Recent Trend:**
 
@@ -65,7 +66,7 @@ Progress: [##########] 100% planned milestone progress; Phase 108 and all v2.0 p
 - Phase 98 canonical ownership remains archived for INB-01, INB-02, INB-03, INB-04, BOUND-06.
 - Phase 98 preserves the no-claim boundary for transaction relay, compact block relay, mempool propagation, public inbound defaults, production service operation, and production full-node readiness.
 - Phase 99 closed optional audit tech debt for automatic sanitized `inbound_peer_policy` structured-log emission without remapping completed v1.9 requirements.
-- v2.0 is now planned as 7 phases and 32 requirements covering scoped transaction relay and mempool participation while keeping compact block relay, public relay defaults, production service operation, production-funds wallet use, public-network CI, and production full-node readiness deferred.
+- v2.0 is now planned as 10 phases: 32 requirements complete through Phase 108 plus Phase 109 archive-readiness audit debt closure, while keeping compact block relay, public relay defaults, production service operation, production-funds wallet use, public-network CI, and production full-node readiness deferred.
 - Phase 100 Plan 100-01 added scoped relay permission-effect labels and a pure default-off relay activation eligibility policy without changing peer socket, mempool, or service-bit behavior.
 - Phase 100 Plan 100-02 added default-off Open Bitcoin JSONC/CLI relay activation config and typed runtime wiring without changing peer socket, mempool, service-bit, or public status behavior.
 - Phase 100 Plan 100-03 documented the relay activation boundary, registered `v2-0-relay-activation-boundary`, added the deterministic no-claim checker, wired it after Phase 99 in `bash scripts/verify.sh`, and recorded passed verification.
@@ -236,6 +237,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-07-03T16:21:59Z
-Stopped at: Completed 108-05-PLAN.md
-Resume file: None
+Last session: 2026-07-03T17:53:06.936Z
+Stopped at: Phase 109 archive-readiness cleanup phase created
+Resume file: .planning/ROADMAP.md

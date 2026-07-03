@@ -21,6 +21,7 @@
 | 106 | Parity Traceability, UAT, and Release Boundary Guardrails | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05 | Complete |
 | 107 | Runtime Relay Activation and Download Eligibility Integration | ACT-01, ACT-02, INV-02, INV-03, DL-01, DL-02, REL-03 | Complete |
 | 108 | Durable Mempool Relay State Recovery | MEM-04, MEM-05, MEM-06, REL-01, REL-02 | Complete |
+| 109 | Milestone Archive Readiness Metadata Closure | Audit TD-01, TD-02 | Pending |
 
 ## Phase Details
 
@@ -262,6 +263,31 @@ Plans:
 - [x] 108-04-PLAN.md — Phase 108 docs, parity roots, source breadcrumbs, deterministic checker, and verifier wiring.
 - [x] 108-05-PLAN.md — Final verification evidence and Phase 108 requirements/roadmap/state closeout.
 
+### Phase 109: Milestone Archive Readiness Metadata Closure
+
+**Purpose:** Close the v2.0 milestone audit tech debt before archive without changing the already-satisfied requirement ownership model.
+
+**Scope:**
+
+- Refresh project and milestone metadata that still describe v2.0 as Phase 100 through Phase 106 only.
+- Document that Phase 106 remains the original release-boundary closeout while Phases 107 and 108 are supplemental gap-closure extension surfaces.
+- Keep all 32 v2.0 requirements mapped to exactly one owning phase in `REQUIREMENTS.md`; Phase 109 owns audit-debt closure only.
+- Re-run the milestone audit and deterministic checker evidence after metadata cleanup.
+
+**Success criteria:**
+
+- `PROJECT.md`, `MILESTONES.md`, `ROADMAP.md`, and the milestone audit agree that v2.0 spans Phases 100 through 109, with implementation requirements complete through Phase 108 and archive-readiness cleanup in Phase 109.
+- Documentation distinguishes canonical requirement ownership from supplemental Phase 107/108 checker coverage.
+- `REQUIREMENTS.md` still reports 32/32 mapped and complete requirements with no duplicate ownership.
+- Re-audit clears `TD-01` and `TD-02` or records only accepted residual debt.
+
+**Verification:** Planning artifact checks, Phase 106/107/108 checker commands, `gsd-tools state validate`, `git diff --check`, and targeted milestone audit rerun.
+
+**Plans:** 0 plans
+
+Plans:
+- [ ] 109-01-PLAN.md — Refresh archive metadata, checker ownership notes, and re-audit evidence.
+
 ## Dependencies
 
 | Phase | Depends On | Reason |
@@ -275,6 +301,7 @@ Plans:
 | 106 | Phase 105 | Closeout guardrails need all implementation and surface evidence. |
 | 107 | Phase 106 | Gap closure starts from the completed v2.0 implementation and audit evidence. |
 | 108 | Phase 107 | Recovery relay state depends on runtime activation and eligibility wiring being coherent first. |
+| 109 | Phase 108 | Archive-readiness cleanup depends on all implementation and recovery evidence being complete. |
 
 ## Deferred Scope
 
@@ -298,7 +325,7 @@ Plans:
 - ✅ **v1.7 Full-Sync Soak and Recovery Hardening** - Phases 75 through 81 (shipped 2026-06-20). Archive: [v1.7-ROADMAP.md](milestones/v1.7-ROADMAP.md)
 - ✅ **v1.8 Production Full-Node Readiness Boundary** - Phases 82 through 89 (shipped 2026-06-25). Archive: [v1.8-ROADMAP.md](milestones/v1.8-ROADMAP.md)
 - ✅ **v1.9 Inbound Peer Serving and Network Participation Boundary** - Phases 90 through 99 (shipped 2026-06-29). Archive: [v1.9-ROADMAP.md](milestones/v1.9-ROADMAP.md)
-- 🔄 **v2.0 Transaction Relay and Mempool Participation Boundary** - Phases 100 through 108 (active; ready for milestone audit/archive).
+- 🔄 **v2.0 Transaction Relay and Mempool Participation Boundary** - Phases 100 through 109 (active; archive-readiness cleanup pending).
 
 ## Milestone History
 
@@ -314,7 +341,7 @@ Plans:
 | v1.7 Full-Sync Soak and Recovery Hardening | 7 | 37 | Shipped | 2026-06-20 | [roadmap](milestones/v1.7-ROADMAP.md) |
 | v1.8 Production Full-Node Readiness Boundary | 8 | 26 | Shipped | 2026-06-25 | [roadmap](milestones/v1.8-ROADMAP.md) |
 | v1.9 Inbound Peer Serving and Network Participation Boundary | 10 | 56 | Shipped | 2026-06-29 | [roadmap](milestones/v1.9-ROADMAP.md) |
-| v2.0 Transaction Relay and Mempool Participation Boundary | 9 | 35 | Active | - | active |
+| v2.0 Transaction Relay and Mempool Participation Boundary | 10 | 35 | Active | - | active |
 
 ## Traceability
 
@@ -325,8 +352,8 @@ Plans:
 
 ## Next Step
 
-Run the v2.0 milestone audit, then archive the milestone if the audit passes:
+Plan Phase 109 to close archive-readiness audit debt, then re-run the v2.0 milestone audit:
 
 ```bash
-/gsd-audit-milestone
+/gsd-plan-phase 109
 ```

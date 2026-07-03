@@ -144,5 +144,9 @@ Explicitly excluded from v2.0 to prevent scope creep.
 - Mapped to phases: 32
 - Unmapped: 0
 
+Phase 109 is archive-readiness audit debt closure only. It does not own or
+remap any v2.0 requirement ID, so the exactly-one-owner traceability contract
+above remains unchanged.
+
 *Requirements defined: 2026-06-29*
 *Last updated: 2026-07-03 after Phase 108 closeout verification*
