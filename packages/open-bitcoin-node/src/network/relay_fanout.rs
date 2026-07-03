@@ -2,15 +2,19 @@
 // - packages/bitcoin-knots/src/net_processing.cpp
 // - packages/bitcoin-knots/src/node/txdownloadman_impl.cpp
 // - packages/bitcoin-knots/src/node/txdownloadman.h
+// - packages/bitcoin-knots/src/node/mempool_persist.cpp
 // - packages/bitcoin-knots/src/protocol.h
 // - packages/bitcoin-knots/src/txorphanage.cpp
 // - packages/bitcoin-knots/src/validation.cpp
+// - packages/bitcoin-knots/test/functional/mempool_persist.py
+// - packages/bitcoin-knots/test/functional/p2p_getdata.py
 // - packages/bitcoin-knots/test/functional/p2p_orphan_handling.py
+// - packages/bitcoin-knots/test/functional/p2p_tx_download.py
 // - packages/bitcoin-knots/test/functional/mempool_accept.py
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use open_bitcoin_core::primitives::Txid;
+use open_bitcoin_core::primitives::{Txid, Wtxid};
 use open_bitcoin_mempool::MempoolOutcome;
 use open_bitcoin_network::{
     InventoryList, PeerId, TxFanoutAction, TxFanoutAdmission, TxFanoutAdmissionOutcome,
@@ -22,9 +26,12 @@ use super::ManagedPeerNetwork;
 use super::relay_serving::ManagedRelayServingInfo;
 use crate::ChainstateStore;
 use crate::status::relay_evidence::{
-    RelayActivationEvidence, RelayCapabilityEvidence, RelayDownloadEligibilityCounters,
-    RelayEvidenceCapability, RelayEvidenceCounters, RelayEvidenceField, RelayEvidenceStatus,
+    RELAY_RECOVERY_EVIDENCE_UNAVAILABLE_REASON, RelayActivationEvidence, RelayCapabilityEvidence,
+    RelayDownloadEligibilityCounters, RelayEvidenceCapability, RelayEvidenceCounters,
+    RelayEvidenceField, RelayEvidenceStatus, RelayRecoveryCounters,
 };
+
+mod action_info;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ManagedRelayFanoutInfo {
@@ -106,6 +113,10 @@ pub(super) struct ManagedRelayFanoutState {
 }
 
 impl ManagedRelayFanoutState {
+    pub(super) fn seed_recovered_transaction(&mut self, txid: Txid, wtxid: Wtxid) {
+        self.wtxids_by_txid.insert(txid, wtxid);
+    }
+
     pub(super) fn record_admission_outcome(
         &mut self,
         origin_peer: Option<PeerId>,
@@ -278,15 +289,6 @@ impl ManagedRelayFanoutState {
     }
 }
 
-impl From<&TxFanoutAction> for ManagedRelayFanoutActionInfo {
-    fn from(action: &TxFanoutAction) -> Self {
-        Self {
-            label: action.as_str(),
-            reason: fanout_action_reason(action),
-        }
-    }
-}
-
 impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     pub fn relay_fanout_info(&self) -> ManagedRelayFanoutInfo {
         self.relay_fanout.info()
@@ -300,6 +302,16 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         let maybe_local_submission = self.latest_local_submission_evidence();
         let fanout_info = self.relay_fanout_info();
         let serving_info = self.relay_serving_info();
+        let recovery_counters = if self.latest_mempool_recovery_storage_error.is_some() {
+            RelayEvidenceField::unavailable(RELAY_RECOVERY_EVIDENCE_UNAVAILABLE_REASON)
+        } else {
+            RelayEvidenceField::implemented(
+                self.latest_mempool_recovery
+                    .as_ref()
+                    .map(RelayRecoveryCounters::from)
+                    .unwrap_or_default(),
+            )
+        };
         let activation = RelayActivationEvidence {
             enabled: self.relay_activation.enabled,
         };
@@ -307,6 +319,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         relay_evidence_status_from_parts(
             activation,
             download_eligibility,
+            recovery_counters,
             maybe_local_submission.as_ref(),
             &fanout_info,
             &serving_info,
@@ -422,19 +435,10 @@ fn translate_fanout_action(action: TxFanoutAction) -> Option<(PeerId, WireNetwor
     ))
 }
 
-fn fanout_action_reason(action: &TxFanoutAction) -> Option<&'static str> {
-    match action {
-        TxFanoutAction::Suppress { reason, .. } => Some(reason.as_str()),
-        TxFanoutAction::Cleanup { reason, .. } => Some(reason.as_str()),
-        TxFanoutAction::QueueCap { .. } => Some("queue_cap_reached"),
-        TxFanoutAction::RateLimit { .. } => Some("rate_limited"),
-        TxFanoutAction::Announce { .. } | TxFanoutAction::RebroadcastDeferred { .. } => None,
-    }
-}
-
 fn relay_evidence_status_from_parts(
     activation: RelayActivationEvidence,
     download_eligibility: RelayDownloadEligibilityCounters,
+    recovery: RelayEvidenceField<RelayRecoveryCounters>,
     maybe_local_submission: Option<&LocalRelaySubmissionEvidence>,
     fanout_info: &ManagedRelayFanoutInfo,
     serving_info: &ManagedRelayServingInfo,
@@ -451,6 +455,7 @@ fn relay_evidence_status_from_parts(
         download_eligibility,
         counters,
     );
+    status.recovery_counters = recovery;
     if maybe_local_submission.is_some() {
         status.mempool_admission =
             implemented_capability(RelayEvidenceCapability::MempoolAdmission);

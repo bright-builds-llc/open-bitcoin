@@ -1131,6 +1131,32 @@ mempool recovery.
 - [`packages/open-bitcoin-cli/src/operator/support/render/inbound.rs`](../../../packages/open-bitcoin-cli/src/operator/support/render/inbound.rs)
 - [`scripts/run-live-mainnet-smoke.ts`](../../../scripts/run-live-mainnet-smoke.ts)
 
+## Phase 108 durable mempool relay recovery
+
+Phase 108 reconnects Open Bitcoin-owned durable mempool recovery with the
+managed P2P relay-serving boundary. Recovered accepted records repopulate
+managed mempool, `RelayServingCache`, and fanout identity state through
+`ManagedPeerNetwork::recover_mempool_snapshot`; recovery seeding uses
+`seed_recovered_transaction` and does not drain fanout queues, emit `inv`, or
+perform socket I/O during startup replay.
+
+The P2P evidence roots are local and deterministic:
+`packages/open-bitcoin-node/src/network/recovery.rs`,
+`packages/open-bitcoin-node/src/network/tests/recovery_cases.rs`,
+`packages/open-bitcoin-node/src/network/tests/mempool_lifecycle_cases.rs`,
+`packages/open-bitcoin-node/src/network/relay_fanout.rs`, and
+`packages/open-bitcoin-node/src/network/relay_serving.rs`. The operator-facing
+label is `Relay recovery` with fixed counters `recovered_count`,
+`dropped_confirmed_count`, `dropped_duplicate_count`,
+`dropped_missing_parent_count`, `dropped_policy_incompatible_count`, and
+`dropped_evicted_count`.
+
+Phase 108 does not add public relay by default, guaranteed public propagation,
+compact block relay, package relay, bloom/filter serving, public-network relay
+CI, production-service operation, production full-node readiness,
+production-funds wallet safety/use, destructive repair, source datadir
+mutation, compaction, reindexing, store surgery, or automatic support upload.
+
 ## Known gaps
 
 These networking gaps remain deferred or out of scope unless a later phase adds

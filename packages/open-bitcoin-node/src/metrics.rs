@@ -59,10 +59,16 @@ pub enum MetricKind {
     RelayEvictedCount,
     RelayExpiredCount,
     RelayRebroadcastDeferredCount,
+    RelayRecoveryRecoveredCount,
+    RelayRecoveryDroppedConfirmedCount,
+    RelayRecoveryDroppedDuplicateCount,
+    RelayRecoveryDroppedMissingParentCount,
+    RelayRecoveryDroppedPolicyIncompatibleCount,
+    RelayRecoveryDroppedEvictedCount,
 }
 
 impl MetricKind {
-    pub const ALL: [Self; 44] = [
+    pub const ALL: [Self; 50] = [
         Self::SyncHeight,
         Self::HeaderHeight,
         Self::DownloadedBlockHeight,
@@ -107,6 +113,12 @@ impl MetricKind {
         Self::RelayEvictedCount,
         Self::RelayExpiredCount,
         Self::RelayRebroadcastDeferredCount,
+        Self::RelayRecoveryRecoveredCount,
+        Self::RelayRecoveryDroppedConfirmedCount,
+        Self::RelayRecoveryDroppedDuplicateCount,
+        Self::RelayRecoveryDroppedMissingParentCount,
+        Self::RelayRecoveryDroppedPolicyIncompatibleCount,
+        Self::RelayRecoveryDroppedEvictedCount,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -159,6 +171,16 @@ impl MetricKind {
             Self::RelayEvictedCount => "relay_evicted_count",
             Self::RelayExpiredCount => "relay_expired_count",
             Self::RelayRebroadcastDeferredCount => "relay_rebroadcast_deferred_count",
+            Self::RelayRecoveryRecoveredCount => "relay_recovery_recovered_count",
+            Self::RelayRecoveryDroppedConfirmedCount => "relay_recovery_dropped_confirmed_count",
+            Self::RelayRecoveryDroppedDuplicateCount => "relay_recovery_dropped_duplicate_count",
+            Self::RelayRecoveryDroppedMissingParentCount => {
+                "relay_recovery_dropped_missing_parent_count"
+            }
+            Self::RelayRecoveryDroppedPolicyIncompatibleCount => {
+                "relay_recovery_dropped_policy_incompatible_count"
+            }
+            Self::RelayRecoveryDroppedEvictedCount => "relay_recovery_dropped_evicted_count",
         }
     }
 }
@@ -332,14 +354,49 @@ pub fn relay_metric_samples(
     relay: &RelayEvidenceStatus,
     timestamp_unix_seconds: u64,
 ) -> Vec<MetricSample> {
-    match &relay.outcome_counters {
+    let mut samples = match &relay.outcome_counters {
         RelayEvidenceField::Implemented(counters) => {
             relay_counter_metric_samples(*counters, timestamp_unix_seconds)
         }
         RelayEvidenceField::Unavailable { .. }
         | RelayEvidenceField::Deferred { .. }
         | RelayEvidenceField::IntentionallyDifferent { .. } => Vec::new(),
+    };
+    if let RelayEvidenceField::Implemented(counters) = &relay.recovery_counters {
+        samples.extend([
+            MetricSample::new(
+                MetricKind::RelayRecoveryRecoveredCount,
+                counters.recovered_count as f64,
+                timestamp_unix_seconds,
+            ),
+            MetricSample::new(
+                MetricKind::RelayRecoveryDroppedConfirmedCount,
+                counters.dropped_confirmed_count as f64,
+                timestamp_unix_seconds,
+            ),
+            MetricSample::new(
+                MetricKind::RelayRecoveryDroppedDuplicateCount,
+                counters.dropped_duplicate_count as f64,
+                timestamp_unix_seconds,
+            ),
+            MetricSample::new(
+                MetricKind::RelayRecoveryDroppedMissingParentCount,
+                counters.dropped_missing_parent_count as f64,
+                timestamp_unix_seconds,
+            ),
+            MetricSample::new(
+                MetricKind::RelayRecoveryDroppedPolicyIncompatibleCount,
+                counters.dropped_policy_incompatible_count as f64,
+                timestamp_unix_seconds,
+            ),
+            MetricSample::new(
+                MetricKind::RelayRecoveryDroppedEvictedCount,
+                counters.dropped_evicted_count as f64,
+                timestamp_unix_seconds,
+            ),
+        ]);
     }
+    samples
 }
 
 fn relay_counter_metric_samples(

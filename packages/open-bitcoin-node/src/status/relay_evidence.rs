@@ -22,6 +22,9 @@ pub const RELAY_SERVING_EVIDENCE_DEFERRED_REASON: &str = "relay serving evidence
 /// Default reason when rebroadcast evidence has not been projected.
 pub const REBROADCAST_EVIDENCE_DEFERRED_REASON: &str = "rebroadcast relay evidence not projected";
 
+/// Default reason when durable mempool recovery evidence could not be loaded.
+pub const RELAY_RECOVERY_EVIDENCE_UNAVAILABLE_REASON: &str = "relay recovery evidence unavailable";
+
 /// Stable reason for Open Bitcoin's non-promissory public relay boundary.
 pub const PUBLIC_RELAY_INTENTIONALLY_DIFFERENT_REASON: &str =
     "public relay readiness is intentionally not claimed";
@@ -75,6 +78,17 @@ pub struct RelayEvidenceCounters {
     pub rebroadcast_deferred_count: u64,
 }
 
+/// Fixed durable mempool recovery counters safe for every operator surface.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RelayRecoveryCounters {
+    pub recovered_count: u64,
+    pub dropped_confirmed_count: u64,
+    pub dropped_duplicate_count: u64,
+    pub dropped_missing_parent_count: u64,
+    pub dropped_policy_incompatible_count: u64,
+    pub dropped_evicted_count: u64,
+}
+
 /// Explicit relay activation evidence safe for operator status surfaces.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RelayActivationEvidence {
@@ -126,6 +140,8 @@ pub struct RelayEvidenceStatus {
     pub download_eligibility: RelayEvidenceField<RelayDownloadEligibilityCounters>,
     #[serde(default = "outcome_counters_default")]
     pub outcome_counters: RelayEvidenceField<RelayEvidenceCounters>,
+    #[serde(default = "recovery_counters_default")]
+    pub recovery_counters: RelayEvidenceField<RelayRecoveryCounters>,
     #[serde(default = "mempool_admission_unavailable")]
     pub mempool_admission: RelayEvidenceField<RelayCapabilityEvidence>,
     #[serde(default = "local_submission_deferred")]
@@ -146,6 +162,7 @@ impl RelayEvidenceStatus {
             activation: activation_default(),
             download_eligibility: download_eligibility_default(),
             outcome_counters: outcome_counters_default(),
+            recovery_counters: recovery_counters_default(),
             mempool_admission: mempool_admission_unavailable(),
             local_submission: local_submission_deferred(),
             fanout: fanout_deferred(),
@@ -168,10 +185,25 @@ impl RelayEvidenceStatus {
         download_eligibility: RelayDownloadEligibilityCounters,
         counters: RelayEvidenceCounters,
     ) -> Self {
+        Self::with_activation_recovery_and_counters(
+            activation,
+            download_eligibility,
+            RelayRecoveryCounters::default(),
+            counters,
+        )
+    }
+
+    pub fn with_activation_recovery_and_counters(
+        activation: RelayActivationEvidence,
+        download_eligibility: RelayDownloadEligibilityCounters,
+        recovery: RelayRecoveryCounters,
+        counters: RelayEvidenceCounters,
+    ) -> Self {
         Self {
             activation: RelayEvidenceField::implemented(activation),
             download_eligibility: RelayEvidenceField::implemented(download_eligibility),
             outcome_counters: RelayEvidenceField::implemented(counters),
+            recovery_counters: RelayEvidenceField::implemented(recovery),
             ..Self::default_unavailable()
         }
     }
@@ -185,6 +217,10 @@ impl Default for RelayEvidenceStatus {
 
 fn outcome_counters_default() -> RelayEvidenceField<RelayEvidenceCounters> {
     RelayEvidenceField::implemented(RelayEvidenceCounters::default())
+}
+
+fn recovery_counters_default() -> RelayEvidenceField<RelayRecoveryCounters> {
+    RelayEvidenceField::implemented(RelayRecoveryCounters::default())
 }
 
 fn activation_default() -> RelayEvidenceField<RelayActivationEvidence> {

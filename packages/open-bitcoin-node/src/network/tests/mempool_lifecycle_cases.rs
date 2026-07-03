@@ -6,7 +6,7 @@
 use open_bitcoin_core::{
     chainstate::AnchoredBlock,
     consensus::{block_hash, block_merkle_root, transaction_txid, transaction_wtxid},
-    primitives::{Block, BlockHash, BlockHeader, Transaction, Txid},
+    primitives::{Block, BlockHash, BlockHeader, Transaction, Txid, Wtxid},
 };
 use open_bitcoin_mempool::{MempoolCapacityStatus, PolicyConfig, RollingFeeParityStatus};
 
@@ -14,10 +14,30 @@ use super::{
     EASY_BITS, coinbase_transaction, consensus_params, local_config, mine_header,
     spend_transaction, verify_flags,
 };
+use crate::storage::{MempoolSnapshot, MempoolSnapshotRecord};
 use crate::{ManagedPeerNetwork, MemoryChainstateStore};
 
 fn txid(transaction: &Transaction) -> Txid {
     transaction_txid(transaction).expect("txid")
+}
+
+fn wtxid(transaction: &Transaction) -> Wtxid {
+    transaction_wtxid(transaction).expect("wtxid")
+}
+
+fn snapshot_from_transactions(transactions: Vec<Transaction>) -> MempoolSnapshot {
+    MempoolSnapshot {
+        records: transactions
+            .into_iter()
+            .map(|transaction| MempoolSnapshotRecord {
+                txid: txid(&transaction),
+                wtxid: wtxid(&transaction),
+                transaction,
+                fee_sats: 1_000,
+                virtual_size: 100,
+            })
+            .collect(),
+    }
 }
 
 fn build_block_with_transactions(
@@ -111,6 +131,45 @@ fn managed_block_connect_removes_confirmed_mempool_transaction_and_runtime_cache
 }
 
 #[test]
+fn recovered_confirmed_transaction_is_removed_from_serving_and_fanout_after_block_connect() {
+    // Arrange
+    let (mut network, _genesis, spendable, coinbase_txids) = network_with_chain();
+    let transaction = spend_transaction(coinbase_txids[0], 499_999_000);
+    let transaction_txid = txid(&transaction);
+    let transaction_wtxid = wtxid(&transaction);
+    let snapshot = snapshot_from_transactions(vec![transaction.clone()]);
+    network
+        .recover_mempool_snapshot(&snapshot, verify_flags(), consensus_params())
+        .expect("recover transaction");
+    assert_eq!(network.relay_serving_info().serveable_transactions, 1);
+    assert_eq!(network.relay_fanout_info().known_transactions, 1);
+    let connected_block =
+        build_block_with_transactions(block_hash(&spendable.header), 2, vec![transaction]);
+
+    // Act
+    network
+        .connect_local_block(&connected_block, verify_flags(), consensus_params())
+        .expect("connect recovered transaction block");
+
+    // Assert
+    assert!(
+        network
+            .mempool()
+            .mempool()
+            .entry(&transaction_txid)
+            .is_none()
+    );
+    assert!(!network.transactions_by_txid.contains_key(&transaction_txid));
+    assert!(
+        !network
+            .transactions_by_wtxid
+            .contains_key(&transaction_wtxid)
+    );
+    assert_eq!(network.relay_serving_info().serveable_transactions, 0);
+    assert_eq!(network.relay_fanout_info().known_transactions, 0);
+}
+
+#[test]
 fn managed_block_connect_removes_conflict_and_descendant_caches() {
     // Arrange
     let (mut network, _genesis, spendable, coinbase_txids) = network_with_chain();
@@ -145,6 +204,99 @@ fn managed_block_connect_removes_conflict_and_descendant_caches() {
     assert!(!network.transactions_by_txid.contains_key(&original_txid));
     assert!(!network.transactions_by_txid.contains_key(&descendant_txid));
     assert_eq!(network.mempool_info().transaction_count, 0);
+}
+
+#[test]
+fn recovered_conflicting_transaction_removes_descendant_serving_and_fanout_state() {
+    // Arrange
+    let (mut network, _genesis, spendable, coinbase_txids) = network_with_chain();
+    let original = spend_transaction(coinbase_txids[0], 499_999_000);
+    let original_txid = txid(&original);
+    let original_wtxid = wtxid(&original);
+    let descendant = spend_transaction(original_txid, 499_998_000);
+    let descendant_txid = txid(&descendant);
+    let descendant_wtxid = wtxid(&descendant);
+    let replacement = spend_transaction(coinbase_txids[0], 499_997_000);
+    network
+        .recover_mempool_snapshot(
+            &snapshot_from_transactions(vec![original, descendant]),
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("recover parent and descendant");
+    assert_eq!(network.relay_serving_info().serveable_transactions, 2);
+    assert_eq!(network.relay_fanout_info().known_transactions, 2);
+    let connected_block =
+        build_block_with_transactions(block_hash(&spendable.header), 2, vec![replacement]);
+
+    // Act
+    network
+        .connect_local_block(&connected_block, verify_flags(), consensus_params())
+        .expect("connect conflicting block");
+
+    // Assert
+    assert!(network.mempool().mempool().entry(&original_txid).is_none());
+    assert!(
+        network
+            .mempool()
+            .mempool()
+            .entry(&descendant_txid)
+            .is_none()
+    );
+    assert!(!network.transactions_by_txid.contains_key(&original_txid));
+    assert!(!network.transactions_by_txid.contains_key(&descendant_txid));
+    assert!(!network.transactions_by_wtxid.contains_key(&original_wtxid));
+    assert!(
+        !network
+            .transactions_by_wtxid
+            .contains_key(&descendant_wtxid)
+    );
+    assert_eq!(network.relay_serving_info().serveable_transactions, 0);
+    assert_eq!(network.relay_fanout_info().known_transactions, 0);
+}
+
+#[test]
+fn recovered_replacement_cleans_old_txid_and_preserves_new_accepted_identity() {
+    // Arrange
+    let (mut network, _genesis, _spendable, coinbase_txids) = network_with_chain();
+    let original = spend_transaction(coinbase_txids[0], 499_999_000);
+    let original_txid = txid(&original);
+    let original_wtxid = wtxid(&original);
+    let replacement = spend_transaction(coinbase_txids[0], 499_997_000);
+    let replacement_txid = txid(&replacement);
+    let replacement_wtxid = wtxid(&replacement);
+    network
+        .recover_mempool_snapshot(
+            &snapshot_from_transactions(vec![original]),
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("recover original");
+
+    // Act
+    network
+        .submit_local_transaction_outcome(replacement, verify_flags(), consensus_params())
+        .expect("replace recovered transaction");
+
+    // Assert
+    assert!(network.mempool().mempool().entry(&original_txid).is_none());
+    assert!(!network.transactions_by_txid.contains_key(&original_txid));
+    assert!(!network.transactions_by_wtxid.contains_key(&original_wtxid));
+    assert!(
+        network
+            .mempool()
+            .mempool()
+            .entry(&replacement_txid)
+            .is_some()
+    );
+    assert!(network.transactions_by_txid.contains_key(&replacement_txid));
+    assert!(
+        network
+            .transactions_by_wtxid
+            .contains_key(&replacement_wtxid)
+    );
+    assert_eq!(network.relay_serving_info().serveable_transactions, 1);
+    assert_eq!(network.relay_fanout_info().known_transactions, 1);
 }
 
 #[test]

@@ -29,7 +29,7 @@ use open_bitcoin_node::{
         relay_evidence::{
             RelayActivationEvidence, RelayCapabilityEvidence, RelayDownloadEligibilityCounters,
             RelayEvidenceCapability, RelayEvidenceCounters, RelayEvidenceField,
-            RelayEvidenceStatus,
+            RelayEvidenceStatus, RelayRecoveryCounters,
         },
         usage_against_budget,
     },
@@ -895,6 +895,14 @@ fn support_bundle_renders_relay_and_mempool_evidence_from_shared_projection() {
         json!(11)
     );
     assert_eq!(
+        serialized["status"]["mempool"]["relay"]["recovery_counters"]["value"]["recovered_count"],
+        json!(21)
+    );
+    assert_eq!(
+        serialized["status"]["mempool"]["relay"]["recovery_counters"]["value"]["dropped_evicted_count"],
+        json!(26)
+    );
+    assert_eq!(
         serialized["status"]["mempool"]["relay"]["activation"]["value"]["enabled"],
         json!(true)
     );
@@ -910,13 +918,14 @@ fn support_bundle_renders_relay_and_mempool_evidence_from_shared_projection() {
         "## Relay and Mempool Evidence",
         "Mempool: transactions=7",
         "Relay evidence: accepted_count=11 rejected_count=2 orphaned_count=3 requested_count=5 served_count=4 announced_count=13 suppressed_count=8 evicted_count=1 expired_count=6 rebroadcast_deferred_count=9",
+        "Relay recovery: recovered_count=21 dropped_confirmed_count=22 dropped_duplicate_count=23 dropped_missing_parent_count=24 dropped_policy_incompatible_count=25 dropped_evicted_count=26",
         "Mempool evidence: Implemented: mempool_admission",
         "Relay local submission: Implemented: local_submission_relay",
         "Relay fanout: Implemented: relay_fanout",
         "Relay serving: Implemented: relay_serving",
         "Rebroadcast: deferred: Deferred: rebroadcast relay evidence not projected",
         "Public relay: Intentionally different: public relay readiness is intentionally not claimed",
-        "bounded local status only",
+        "bounded local status",
         "local troubleshooting/parity-review evidence only",
         "public propagation",
         "compact-block relay",
@@ -925,6 +934,7 @@ fn support_bundle_renders_relay_and_mempool_evidence_from_shared_projection() {
         "production-service proof",
         "production full-node readiness proof",
         "production-funds wallet safety proof",
+        "authorization for destructive repair",
     ] {
         assert!(markdown.contains(expected), "missing {expected}");
     }
@@ -953,6 +963,10 @@ fn support_bundle_redacts_sensitive_relay_reasons_in_json_and_markdown() {
     );
     assert_eq!(
         serialized["status"]["mempool"]["relay"]["download_eligibility"]["value"]["reason"],
+        json!("redacted_relay_mempool_evidence")
+    );
+    assert_eq!(
+        serialized["status"]["mempool"]["relay"]["recovery_counters"]["value"]["reason"],
         json!("redacted_relay_mempool_evidence")
     );
     assert!(markdown.contains("redacted_relay_mempool_evidence"));
@@ -1832,6 +1846,14 @@ fn phase105_status_with_relay_evidence() -> OpenBitcoinStatusSnapshot {
             expired_count: 6,
             rebroadcast_deferred_count: 9,
         }),
+        recovery_counters: RelayEvidenceField::implemented(RelayRecoveryCounters {
+            recovered_count: 21,
+            dropped_confirmed_count: 22,
+            dropped_duplicate_count: 23,
+            dropped_missing_parent_count: 24,
+            dropped_policy_incompatible_count: 25,
+            dropped_evicted_count: 26,
+        }),
         mempool_admission: RelayEvidenceField::implemented(RelayCapabilityEvidence::new(
             RelayEvidenceCapability::MempoolAdmission,
         )),
@@ -1853,6 +1875,7 @@ fn phase105_status_with_sensitive_relay_reasons() -> OpenBitcoinStatusSnapshot {
     let mut status = phase105_status_with_relay_evidence();
     let sensitive = "raw tx hex 020000000001 txid=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa wtxid=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb 127.0.0.1:18444 198.51.100.105:8333 peer_id=105 permission_string=in,noban credential=phase105 secret=phase105 cookie=phase105 dynamic_label=peer";
     status.mempool.relay.outcome_counters = RelayEvidenceField::unavailable(sensitive);
+    status.mempool.relay.recovery_counters = RelayEvidenceField::unavailable(sensitive);
     status.mempool.relay.activation = RelayEvidenceField::unavailable(sensitive);
     status.mempool.relay.download_eligibility = RelayEvidenceField::unavailable(sensitive);
     status.mempool.relay.mempool_admission = RelayEvidenceField::unavailable(sensitive);

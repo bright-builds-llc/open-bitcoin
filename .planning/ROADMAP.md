@@ -20,7 +20,7 @@
 | 105 | Operator, RPC, Metrics, Logs, and Support Evidence | OBS-01, OBS-02, OBS-03, OBS-04 | Complete |
 | 106 | Parity Traceability, UAT, and Release Boundary Guardrails | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05 | Complete |
 | 107 | Runtime Relay Activation and Download Eligibility Integration | ACT-01, ACT-02, INV-02, INV-03, DL-01, DL-02, REL-03 | Complete |
-| 108 | Durable Mempool Relay State Recovery | MEM-04, MEM-05, MEM-06, REL-01, REL-02 | Pending |
+| 108 | Durable Mempool Relay State Recovery | MEM-04, MEM-05, MEM-06, REL-01, REL-02 | Complete |
 
 ## Phase Details
 
@@ -253,6 +253,15 @@ Plans:
 
 **Verification:** Durable mempool snapshot tests, managed recovery integration tests, relay serving/fanout lifecycle tests, RPC/operator evidence tests, support redaction tests, and `bash scripts/verify.sh`.
 
+**Plans:** 5/5 plans complete
+
+Plans:
+- [x] 108-01-PLAN.md — Managed recovery replay and relay cache/fanout identity rehydration without startup socket I/O.
+- [x] 108-02-PLAN.md — Restart lifecycle cleanup for recovered confirmed, conflicting, replaced, evicted, expired, and reorg-reconsidered records.
+- [x] 108-03-PLAN.md — Sanitized recovered relay evidence across RPC, CLI/dashboard, metrics, logs, and support surfaces.
+- [x] 108-04-PLAN.md — Phase 108 docs, parity roots, source breadcrumbs, deterministic checker, and verifier wiring.
+- [x] 108-05-PLAN.md — Final verification evidence and Phase 108 requirements/roadmap/state closeout.
+
 ## Dependencies
 
 | Phase | Depends On | Reason |
@@ -289,7 +298,7 @@ Plans:
 - ✅ **v1.7 Full-Sync Soak and Recovery Hardening** - Phases 75 through 81 (shipped 2026-06-20). Archive: [v1.7-ROADMAP.md](milestones/v1.7-ROADMAP.md)
 - ✅ **v1.8 Production Full-Node Readiness Boundary** - Phases 82 through 89 (shipped 2026-06-25). Archive: [v1.8-ROADMAP.md](milestones/v1.8-ROADMAP.md)
 - ✅ **v1.9 Inbound Peer Serving and Network Participation Boundary** - Phases 90 through 99 (shipped 2026-06-29). Archive: [v1.9-ROADMAP.md](milestones/v1.9-ROADMAP.md)
-- 🔄 **v2.0 Transaction Relay and Mempool Participation Boundary** - Phases 100 through 108 (active).
+- 🔄 **v2.0 Transaction Relay and Mempool Participation Boundary** - Phases 100 through 108 (active; ready for milestone audit/archive).
 
 ## Milestone History
 
@@ -305,7 +314,7 @@ Plans:
 | v1.7 Full-Sync Soak and Recovery Hardening | 7 | 37 | Shipped | 2026-06-20 | [roadmap](milestones/v1.7-ROADMAP.md) |
 | v1.8 Production Full-Node Readiness Boundary | 8 | 26 | Shipped | 2026-06-25 | [roadmap](milestones/v1.8-ROADMAP.md) |
 | v1.9 Inbound Peer Serving and Network Participation Boundary | 10 | 56 | Shipped | 2026-06-29 | [roadmap](milestones/v1.9-ROADMAP.md) |
-| v2.0 Transaction Relay and Mempool Participation Boundary | 9 | 30 | Active | - | active |
+| v2.0 Transaction Relay and Mempool Participation Boundary | 9 | 35 | Active | - | active |
 
 ## Traceability
 
@@ -316,8 +325,8 @@ Plans:
 
 ## Next Step
 
-Start Phase 108 discussion:
+Run the v2.0 milestone audit, then archive the milestone if the audit passes:
 
 ```bash
-/gsd-discuss-phase 108
+/gsd-audit-milestone
 ```

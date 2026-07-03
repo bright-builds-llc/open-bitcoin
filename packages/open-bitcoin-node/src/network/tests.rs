@@ -2,10 +2,14 @@
 // - packages/bitcoin-knots/src/net_processing.cpp
 // - packages/bitcoin-knots/src/node/txdownloadman_impl.cpp
 // - packages/bitcoin-knots/src/node/txdownloadman.h
+// - packages/bitcoin-knots/src/node/mempool_persist.cpp
 // - packages/bitcoin-knots/src/protocol.h
 // - packages/bitcoin-knots/src/txorphanage.cpp
 // - packages/bitcoin-knots/src/validation.cpp
+// - packages/bitcoin-knots/test/functional/mempool_persist.py
+// - packages/bitcoin-knots/test/functional/p2p_getdata.py
 // - packages/bitcoin-knots/test/functional/p2p_orphan_handling.py
+// - packages/bitcoin-knots/test/functional/p2p_tx_download.py
 // - packages/bitcoin-knots/test/functional/mempool_accept.py
 
 use std::net::IpAddr;
@@ -44,6 +48,7 @@ use crate::{
 
 mod admission_bridge_cases;
 mod mempool_lifecycle_cases;
+mod recovery_cases;
 mod relay_fanout_cases;
 mod relay_local_submission_cases;
 mod relay_serving_cases;

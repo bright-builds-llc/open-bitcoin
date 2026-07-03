@@ -19,7 +19,7 @@ use open_bitcoin_node::{
         SyncRecoveryCategory, SyncReorgEvidence, SyncResourcePressure, SyncStatus,
         SyncStopReasonStatus, TipFreshnessStatus, WalletFreshness, WalletStatus,
         inbound_status_unavailable,
-        relay_evidence::{RelayEvidenceCounters, RelayEvidenceStatus},
+        relay_evidence::{RelayEvidenceCounters, RelayEvidenceStatus, RelayRecoveryCounters},
     },
 };
 
@@ -83,6 +83,7 @@ fn dashboard_metric_labels_cover_all_metric_kinds() {
     assert!(labels.contains(&"Inbound reconnect suppressions"));
     assert!(labels.contains(&"Relay accepted"));
     assert!(labels.contains(&"Relay rebroadcast deferred"));
+    assert!(labels.contains(&"Relay recovery recovered"));
 }
 
 #[test]
@@ -131,6 +132,17 @@ fn dashboard_sections_surface_relay_evidence_rows() {
         expired_count: 9,
         rebroadcast_deferred_count: 10,
     });
+    snapshot.mempool.relay.recovery_counters =
+        open_bitcoin_node::status::relay_evidence::RelayEvidenceField::implemented(
+            RelayRecoveryCounters {
+                recovered_count: 1,
+                dropped_confirmed_count: 2,
+                dropped_duplicate_count: 3,
+                dropped_missing_parent_count: 4,
+                dropped_policy_incompatible_count: 5,
+                dropped_evicted_count: 6,
+            },
+        );
 
     // Act
     let state = DashboardState::from_snapshot(&snapshot);
@@ -143,6 +155,13 @@ fn dashboard_sections_surface_relay_evidence_rows() {
             .expect("relay evidence row")
             .value,
         "accepted_count=1 rejected_count=2 orphaned_count=3 requested_count=4 served_count=5 announced_count=6 suppressed_count=7 evicted_count=8 expired_count=9 rebroadcast_deferred_count=10"
+    );
+    assert_eq!(
+        rows.iter()
+            .find(|row| row.label == "Relay recovery")
+            .expect("relay recovery row")
+            .value,
+        "recovered_count=1 dropped_confirmed_count=2 dropped_duplicate_count=3 dropped_missing_parent_count=4 dropped_policy_incompatible_count=5 dropped_evicted_count=6"
     );
     assert_eq!(
         rows.iter()

@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Transaction Relay and Mempool Participation Boundary
-status: executing
-stopped_at: Completed 107-06-PLAN.md
-last_updated: "2026-07-03T06:42:28Z"
-last_activity: 2026-07-03 -- Phase 107 complete; Phase 108 pending
+status: completed
+stopped_at: Completed 108-05-PLAN.md
+last_updated: "2026-07-03T16:21:59Z"
+last_activity: 2026-07-03 -- Phase 108 complete; v2.0 ready for milestone audit/archive
 progress:
   total_phases: 9
-  completed_phases: 8
-  total_plans: 30
-  completed_plans: 30
-  percent: 89
+  completed_phases: 9
+  total_plans: 35
+  completed_plans: 35
+  percent: 100
 ---
 
 # Project State
@@ -26,12 +26,12 @@ See: `.planning/PROJECT.md` (updated 2026-06-29)
 ## Current Position
 
 Milestone: v2.0 Transaction Relay and Mempool Participation Boundary
-Phase: 108 (Durable Mempool Relay State Recovery) — PENDING
-Plan: Pending discussion
-Status: Phase 107 Complete; Phase 108 Pending/next
-Last activity: 2026-07-03 -- Phase 107 closeout verification passed
+Phase: 108 (Durable Mempool Relay State Recovery) — COMPLETE
+Plan: 108-05 complete; v2.0 ready for milestone audit/archive
+Status: Phase 108 Complete; v2.0 ready for milestone audit/archive
+Last activity: 2026-07-03 -- Phase 108 closeout verification passed
 
-Progress: [#########-] 89% planned milestone progress; Phase 107 is complete and Phase 108 is next.
+Progress: [##########] 100% planned milestone progress; Phase 108 and all v2.0 planned phases are complete.
 
 ## Performance Metrics
 
@@ -53,7 +53,7 @@ Progress: [#########-] 89% planned milestone progress; Phase 107 is complete and
 | 105 | Operator, RPC, Metrics, Logs, and Support Evidence | OBS-01, OBS-02, OBS-03, OBS-04 | Complete |
 | 106 | Parity Traceability, UAT, and Release Boundary Guardrails | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05 | Complete |
 | 107 | Runtime Relay Activation and Download Eligibility Integration | ACT-01, ACT-02, INV-02, INV-03, DL-01, DL-02, REL-03 | Complete |
-| 108 | Durable Mempool Relay State Recovery | MEM-04, MEM-05, MEM-06, REL-01, REL-02 | Pending |
+| 108 | Durable Mempool Relay State Recovery | MEM-04, MEM-05, MEM-06, REL-01, REL-02 | Complete |
 
 **Recent Trend:**
 
@@ -76,6 +76,7 @@ Progress: [#########-] 89% planned milestone progress; Phase 107 is complete and
 - Phase 105 completed shared relay evidence status, RPC projection, operator status, dashboard rows, fixed metrics, structured logs, support-bundle sanitization, parity roots, deterministic checker coverage, and final verification for OBS-01 through OBS-04.
 - Phase 106 completed parity traceability, UAT command evidence, release-boundary guardrails, deterministic checker coverage, and final verification for BOUND-01 through BOUND-05.
 - Phase 107 completed runtime relay activation propagation, download eligibility integration, sanitized status evidence, docs/parity roots, deterministic checker coverage, and final verification for ACT-01, ACT-02, INV-02, INV-03, DL-01, DL-02, and REL-03.
+- Phase 108 completed durable mempool relay recovery, recovered lifecycle cleanup, sanitized recovery evidence, docs/parity roots, deterministic checker coverage, and final verification for MEM-04, MEM-05, MEM-06, REL-01, and REL-02.
 
 | Phase 91-peer-permissions-and-connection-classes P01 | 27min | 2 tasks | 5 files |
 | Phase 91 P02 | 34min | 2 tasks | 13 files |
@@ -218,7 +219,7 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ### Pending Todos
 
-- Start Phase 108 for durable mempool relay state recovery, including MEM-04, MEM-05, MEM-06, REL-01, and REL-02.
+- Run the v2.0 milestone audit and archive the milestone if the audit passes.
 - Keep v1.9 phase directories numbered 90+ under `.planning/phases/`; historical phase directories remain tracked because verifier scripts still depend on selected phase evidence.
 - Keep repo-local Cargo and Bazel command forms in UAT guidance:
   - `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- ...`
@@ -235,6 +236,6 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-07-03T06:42:28Z
-Stopped at: Completed 107-06-PLAN.md
+Last session: 2026-07-03T16:21:59Z
+Stopped at: Completed 108-05-PLAN.md
 Resume file: None

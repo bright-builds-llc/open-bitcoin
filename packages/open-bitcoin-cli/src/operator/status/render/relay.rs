@@ -4,7 +4,8 @@
 use open_bitcoin_node::status::{
     MempoolStatus,
     relay_evidence::{
-        RelayCapabilityEvidence, RelayEvidenceCapability, RelayEvidenceCounters, RelayEvidenceField,
+        RelayCapabilityEvidence, RelayEvidenceCapability, RelayEvidenceCounters,
+        RelayEvidenceField, RelayRecoveryCounters,
     },
 };
 
@@ -13,6 +14,10 @@ pub(super) fn relay_evidence_lines(mempool: &MempoolStatus) -> Vec<String> {
         format!(
             "Relay evidence: {}",
             relay_counters_text(&mempool.relay.outcome_counters)
+        ),
+        format!(
+            "Relay recovery: {}",
+            relay_recovery_counters_text(&mempool.relay.recovery_counters)
         ),
         format!(
             "Mempool evidence: {}",
@@ -55,6 +60,25 @@ fn relay_counters_text(value: &RelayEvidenceField<RelayEvidenceCounters>) -> Str
             counters.evicted_count,
             counters.expired_count,
             counters.rebroadcast_deferred_count
+        ),
+        RelayEvidenceField::Unavailable { reason } => format!("Unavailable: {reason}"),
+        RelayEvidenceField::Deferred { reason } => format!("Deferred: {reason}"),
+        RelayEvidenceField::IntentionallyDifferent { reason } => {
+            format!("Intentionally different: {reason}")
+        }
+    }
+}
+
+fn relay_recovery_counters_text(value: &RelayEvidenceField<RelayRecoveryCounters>) -> String {
+    match value {
+        RelayEvidenceField::Implemented(counters) => format!(
+            "recovered_count={} dropped_confirmed_count={} dropped_duplicate_count={} dropped_missing_parent_count={} dropped_policy_incompatible_count={} dropped_evicted_count={}",
+            counters.recovered_count,
+            counters.dropped_confirmed_count,
+            counters.dropped_duplicate_count,
+            counters.dropped_missing_parent_count,
+            counters.dropped_policy_incompatible_count,
+            counters.dropped_evicted_count
         ),
         RelayEvidenceField::Unavailable { reason } => format!("Unavailable: {reason}"),
         RelayEvidenceField::Deferred { reason } => format!("Deferred: {reason}"),

@@ -608,9 +608,37 @@ Expected Phase 107 evidence is aggregate, sanitized, and fixed-label only:
 Phase 107 is not a public relay expansion. It does not claim public relay by
 default, compact block relay, package relay, bloom/filter serving,
 public-network relay CI, production-service operation, production full-node
-readiness, production-funds wallet safety, production-funds wallet use, or
-durable mempool recovery. Public-network relay review remains opt-in and
+readiness, production-funds wallet safety, or production-funds wallet use.
+Public-network relay review remains opt-in and
 outside default Phase 107 verification.
+
+## Phase 108 Durable Mempool Relay Recovery Review
+
+Phase 108 verifies Open Bitcoin-owned durable mempool recovery as local status
+and troubleshooting evidence. Accepted recovered records rejoin managed mempool,
+relay-serving, and fanout identity state without startup socket I/O or public
+fanout. Confirmed, duplicate, missing-parent, policy-incompatible, and evicted
+records are represented through fixed `Relay recovery` counters only:
+`recovered_count`, `dropped_confirmed_count`, `dropped_duplicate_count`,
+`dropped_missing_parent_count`, `dropped_policy_incompatible_count`, and
+`dropped_evicted_count`.
+
+Repo-local UAT commands:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- status --format human
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- status --format json
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- status --format human
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- status --format json
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- support bundle --output-dir=/tmp/open-bitcoin-recovery-support
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- support bundle --output-dir=/tmp/open-bitcoin-recovery-support
+```
+
+Phase 108 does not add public relay by default, guaranteed public propagation,
+compact block relay, package relay, bloom/filter serving, public-network relay
+CI, production-service operation, production full-node readiness,
+production-funds wallet safety/use, destructive repair, source datadir
+mutation, compaction, reindexing, store surgery, or automatic support upload.
 
 ## Phase 92 Address Advertisement and Discovery Boundary Review
 

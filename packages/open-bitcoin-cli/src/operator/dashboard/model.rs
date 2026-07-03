@@ -520,6 +520,16 @@ fn metric_label(kind: MetricKind) -> &'static str {
         MetricKind::RelayEvictedCount => "Relay evicted",
         MetricKind::RelayExpiredCount => "Relay expired",
         MetricKind::RelayRebroadcastDeferredCount => "Relay rebroadcast deferred",
+        MetricKind::RelayRecoveryRecoveredCount => "Relay recovery recovered",
+        MetricKind::RelayRecoveryDroppedConfirmedCount => "Relay recovery dropped confirmed",
+        MetricKind::RelayRecoveryDroppedDuplicateCount => "Relay recovery dropped duplicate",
+        MetricKind::RelayRecoveryDroppedMissingParentCount => {
+            "Relay recovery dropped missing parent"
+        }
+        MetricKind::RelayRecoveryDroppedPolicyIncompatibleCount => {
+            "Relay recovery dropped policy incompatible"
+        }
+        MetricKind::RelayRecoveryDroppedEvictedCount => "Relay recovery dropped evicted",
     }
 }
 

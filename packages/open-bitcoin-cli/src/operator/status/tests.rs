@@ -42,6 +42,7 @@ use open_bitcoin_node::status::{
     relay_evidence::{
         RelayActivationEvidence, RelayCapabilityEvidence, RelayDownloadEligibilityCounters,
         RelayEvidenceCapability, RelayEvidenceCounters, RelayEvidenceField, RelayEvidenceStatus,
+        RelayRecoveryCounters,
     },
 };
 use open_bitcoin_node::storage::FJALL_LOCK_FILE_NAME;
@@ -259,6 +260,14 @@ fn operator_status_renders_relay_evidence_from_open_bitcoin_network_status() {
         10
     );
     assert_eq!(
+        decoded["mempool"]["relay"]["recovery_counters"]["value"]["recovered_count"],
+        11
+    );
+    assert_eq!(
+        decoded["mempool"]["relay"]["recovery_counters"]["value"]["dropped_evicted_count"],
+        16
+    );
+    assert_eq!(
         decoded["mempool"]["relay"]["activation"]["value"]["enabled"],
         true
     );
@@ -279,6 +288,9 @@ fn operator_status_renders_relay_evidence_from_open_bitcoin_network_status() {
         "deferred"
     );
     assert!(human.contains("Relay evidence: accepted_count=1 rejected_count=2"));
+    assert!(human.contains(
+        "Relay recovery: recovered_count=11 dropped_confirmed_count=12 dropped_duplicate_count=13 dropped_missing_parent_count=14 dropped_policy_incompatible_count=15 dropped_evicted_count=16"
+    ));
     assert!(human.contains("Mempool evidence: Implemented: mempool_admission"));
     assert!(
         human.contains("Rebroadcast: deferred: Deferred: rebroadcast relay evidence not projected")
@@ -2308,7 +2320,7 @@ fn inbound_status_response() -> OpenBitcoinNetworkStatusResponse {
 }
 
 fn relay_evidence_status_fixture() -> RelayEvidenceStatus {
-    let mut status = RelayEvidenceStatus::with_activation_and_counters(
+    let mut status = RelayEvidenceStatus::with_activation_recovery_and_counters(
         RelayActivationEvidence { enabled: true },
         RelayDownloadEligibilityCounters {
             eligible_peer_count: 1,
@@ -2318,6 +2330,14 @@ fn relay_evidence_status_fixture() -> RelayEvidenceStatus {
             inbound_serving_required_count: 0,
             permission_required_count: 4,
             protected_not_relay_count: 1,
+        },
+        RelayRecoveryCounters {
+            recovered_count: 11,
+            dropped_confirmed_count: 12,
+            dropped_duplicate_count: 13,
+            dropped_missing_parent_count: 14,
+            dropped_policy_incompatible_count: 15,
+            dropped_evicted_count: 16,
         },
         RelayEvidenceCounters {
             accepted_count: 1,

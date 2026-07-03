@@ -43,7 +43,7 @@ pub const INBOUND_DASHBOARD_METRIC_CANDIDATES: [MetricKind; 23] = [
     MetricKind::InboundReconnectSuppressedCount,
 ];
 
-pub const RELAY_DASHBOARD_METRIC_CANDIDATES: [MetricKind; 10] = [
+pub const RELAY_DASHBOARD_METRIC_CANDIDATES: [MetricKind; 16] = [
     MetricKind::RelayAcceptedCount,
     MetricKind::RelayRejectedCount,
     MetricKind::RelayOrphanedCount,
@@ -54,6 +54,12 @@ pub const RELAY_DASHBOARD_METRIC_CANDIDATES: [MetricKind; 10] = [
     MetricKind::RelayEvictedCount,
     MetricKind::RelayExpiredCount,
     MetricKind::RelayRebroadcastDeferredCount,
+    MetricKind::RelayRecoveryRecoveredCount,
+    MetricKind::RelayRecoveryDroppedConfirmedCount,
+    MetricKind::RelayRecoveryDroppedDuplicateCount,
+    MetricKind::RelayRecoveryDroppedMissingParentCount,
+    MetricKind::RelayRecoveryDroppedPolicyIncompatibleCount,
+    MetricKind::RelayRecoveryDroppedEvictedCount,
 ];
 
 const OPTIONAL_DASHBOARD_METRIC_KINDS: [MetricKind; 3] = [

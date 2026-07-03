@@ -26,7 +26,7 @@ use open_bitcoin_node::network::{
     LocalRelaySubmissionEvidence, ManagedInboundAdmissionInfo, ManagedMempoolInfo,
     ManagedNetworkInfo,
 };
-use open_bitcoin_node::status::relay_evidence::RelayEvidenceStatus;
+use open_bitcoin_node::status::{SyncRecoveryCategory, relay_evidence::RelayEvidenceStatus};
 use open_bitcoin_node::{DurableSyncState, FjallNodeStore, MetricRetentionPolicy, MetricsStatus};
 use open_bitcoin_node::{
     ManagedNetworkError, ManagedPeerNetwork, ManagedWallet, MemoryChainstateStore,
@@ -104,52 +104,70 @@ impl ManagedRpcContext {
         let maybe_resource_governance_log_dir =
             config.maybe_data_dir.as_ref().map(|dir| dir.join("logs"));
         match build_wallet_state_with_store(config, maybe_store.clone()) {
-            super::wallet_state::WalletState::Local(wallet) => Self {
-                chain: config.chain,
-                consensus_params,
-                verify_flags: default_verify_flags(),
-                network: managed_network,
-                permission_classes: config.inbound.permission_classes.clone(),
-                inbound_permission_validation_failures: config
-                    .inbound_permission_validation_failures,
-                inbound_listener_config: config.inbound.clone(),
-                maybe_inbound_listener_evidence: None,
-                maybe_resource_governance_log_dir: maybe_resource_governance_log_dir.clone(),
-                resource_governance_log_retention: Default::default(),
-                resource_governance_log_write_failures: 0,
-                maybe_metrics_store: maybe_store.clone(),
-                maybe_durable_sync_state: load_durable_sync_state(config, maybe_store.as_ref()),
-                maybe_daemon_sync_control: None,
-                wallet_state: super::wallet_state::WalletState::Local(wallet),
-            },
+            super::wallet_state::WalletState::Local(wallet) => {
+                recover_mempool_snapshot_from_store(
+                    config,
+                    maybe_store.as_ref(),
+                    &mut managed_network,
+                    default_verify_flags(),
+                    consensus_params,
+                );
+                Self {
+                    chain: config.chain,
+                    consensus_params,
+                    verify_flags: default_verify_flags(),
+                    network: managed_network,
+                    permission_classes: config.inbound.permission_classes.clone(),
+                    inbound_permission_validation_failures: config
+                        .inbound_permission_validation_failures,
+                    inbound_listener_config: config.inbound.clone(),
+                    maybe_inbound_listener_evidence: None,
+                    maybe_resource_governance_log_dir: maybe_resource_governance_log_dir.clone(),
+                    resource_governance_log_retention: Default::default(),
+                    resource_governance_log_write_failures: 0,
+                    maybe_metrics_store: maybe_store.clone(),
+                    maybe_durable_sync_state: load_durable_sync_state(config, maybe_store.as_ref()),
+                    maybe_daemon_sync_control: None,
+                    wallet_state: super::wallet_state::WalletState::Local(wallet),
+                }
+            }
             super::wallet_state::WalletState::DurableNamedRegistry {
                 store,
                 maybe_request_wallet_name,
-            } => Self {
-                chain: config.chain,
-                consensus_params,
-                verify_flags: default_verify_flags(),
-                network: managed_network,
-                permission_classes: config.inbound.permission_classes.clone(),
-                inbound_permission_validation_failures: config
-                    .inbound_permission_validation_failures,
-                inbound_listener_config: config.inbound.clone(),
-                maybe_inbound_listener_evidence: None,
-                maybe_resource_governance_log_dir,
-                resource_governance_log_retention: Default::default(),
-                resource_governance_log_write_failures: 0,
-                maybe_metrics_store: Some(store.clone()),
-                maybe_durable_sync_state: store
-                    .load_runtime_metadata()
-                    .ok()
-                    .flatten()
-                    .and_then(|metadata| metadata.maybe_sync_state),
-                maybe_daemon_sync_control: None,
-                wallet_state: super::wallet_state::WalletState::DurableNamedRegistry {
-                    store,
-                    maybe_request_wallet_name,
-                },
-            },
+            } => {
+                recover_mempool_snapshot_from_store(
+                    config,
+                    Some(&store),
+                    &mut managed_network,
+                    default_verify_flags(),
+                    consensus_params,
+                );
+                Self {
+                    chain: config.chain,
+                    consensus_params,
+                    verify_flags: default_verify_flags(),
+                    network: managed_network,
+                    permission_classes: config.inbound.permission_classes.clone(),
+                    inbound_permission_validation_failures: config
+                        .inbound_permission_validation_failures,
+                    inbound_listener_config: config.inbound.clone(),
+                    maybe_inbound_listener_evidence: None,
+                    maybe_resource_governance_log_dir,
+                    resource_governance_log_retention: Default::default(),
+                    resource_governance_log_write_failures: 0,
+                    maybe_metrics_store: Some(store.clone()),
+                    maybe_durable_sync_state: store
+                        .load_runtime_metadata()
+                        .ok()
+                        .flatten()
+                        .and_then(|metadata| metadata.maybe_sync_state),
+                    maybe_daemon_sync_control: None,
+                    wallet_state: super::wallet_state::WalletState::DurableNamedRegistry {
+                        store,
+                        maybe_request_wallet_name,
+                    },
+                }
+            }
         }
     }
 
@@ -375,6 +393,46 @@ fn load_durable_sync_state(
     };
     let metadata = store.load_runtime_metadata().ok()??;
     metadata.maybe_sync_state
+}
+
+fn recover_mempool_snapshot_from_store(
+    config: &RuntimeConfig,
+    maybe_store: Option<&FjallNodeStore>,
+    network: &mut ManagedPeerNetwork<MemoryChainstateStore>,
+    verify_flags: ScriptVerifyFlags,
+    consensus_params: ConsensusParams,
+) {
+    let store;
+    let store = match maybe_store {
+        Some(store) => store,
+        None => {
+            let Some(data_dir) = config.maybe_data_dir.as_ref() else {
+                return;
+            };
+            let opened_store = match FjallNodeStore::open(data_dir) {
+                Ok(store) => store,
+                Err(error) => {
+                    network.record_mempool_recovery_storage_error(&error);
+                    return;
+                }
+            };
+            store = opened_store;
+            &store
+        }
+    };
+
+    match store.load_mempool_snapshot() {
+        Ok(Some(snapshot)) => {
+            if network
+                .recover_mempool_snapshot(&snapshot, verify_flags, consensus_params)
+                .is_err()
+            {
+                network.record_mempool_recovery_unavailable(SyncRecoveryCategory::InvalidPeerData);
+            }
+        }
+        Ok(None) => {}
+        Err(error) => network.record_mempool_recovery_storage_error(&error),
+    }
 }
 
 pub(super) fn default_verify_flags() -> ScriptVerifyFlags {

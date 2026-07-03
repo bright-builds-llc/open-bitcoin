@@ -4,11 +4,12 @@
 use open_bitcoin_node::status::{
     FieldAvailability, MempoolStatus,
     relay_evidence::{
-        RelayCapabilityEvidence, RelayEvidenceCapability, RelayEvidenceCounters, RelayEvidenceField,
+        RelayCapabilityEvidence, RelayEvidenceCapability, RelayEvidenceCounters,
+        RelayEvidenceField, RelayRecoveryCounters,
     },
 };
 
-const RELAY_MEMPOOL_NEXT_ACTION: &str = "Treat relay/mempool evidence as bounded local status only and local troubleshooting/parity-review evidence only; do not treat it as public propagation, compact-block relay, production-readiness proof, a release validator, public-network proof, production-service proof, production full-node readiness proof, or production-funds wallet safety proof.";
+const RELAY_MEMPOOL_NEXT_ACTION: &str = "Treat recovered relay/mempool evidence as bounded local status and local troubleshooting/parity-review evidence only; do not treat it as public propagation, compact-block relay, production-readiness proof, a release validator, public-network proof, production-service proof, production full-node readiness proof, production-funds wallet safety proof, or authorization for destructive repair.";
 
 pub(super) fn push_relay_mempool_evidence(output: &mut String, mempool: &MempoolStatus) {
     output.push_str("\n## Relay and Mempool Evidence\n\n");
@@ -19,6 +20,10 @@ pub(super) fn push_relay_mempool_evidence(output: &mut String, mempool: &Mempool
     output.push_str(&format!(
         "- Relay evidence: {}\n",
         relay_counters_text(&mempool.relay.outcome_counters)
+    ));
+    output.push_str(&format!(
+        "- Relay recovery: {}\n",
+        relay_recovery_counters_text(&mempool.relay.recovery_counters)
     ));
     output.push_str(&format!(
         "- Mempool evidence: {}\n",
@@ -68,6 +73,25 @@ fn relay_counters_text(value: &RelayEvidenceField<RelayEvidenceCounters>) -> Str
             counters.evicted_count,
             counters.expired_count,
             counters.rebroadcast_deferred_count
+        ),
+        RelayEvidenceField::Unavailable { reason } => format!("Unavailable: {reason}"),
+        RelayEvidenceField::Deferred { reason } => format!("Deferred: {reason}"),
+        RelayEvidenceField::IntentionallyDifferent { reason } => {
+            format!("Intentionally different: {reason}")
+        }
+    }
+}
+
+fn relay_recovery_counters_text(value: &RelayEvidenceField<RelayRecoveryCounters>) -> String {
+    match value {
+        RelayEvidenceField::Implemented(counters) => format!(
+            "recovered_count={} dropped_confirmed_count={} dropped_duplicate_count={} dropped_missing_parent_count={} dropped_policy_incompatible_count={} dropped_evicted_count={}",
+            counters.recovered_count,
+            counters.dropped_confirmed_count,
+            counters.dropped_duplicate_count,
+            counters.dropped_missing_parent_count,
+            counters.dropped_policy_incompatible_count,
+            counters.dropped_evicted_count
         ),
         RelayEvidenceField::Unavailable { reason } => format!("Unavailable: {reason}"),
         RelayEvidenceField::Deferred { reason } => format!("Deferred: {reason}"),

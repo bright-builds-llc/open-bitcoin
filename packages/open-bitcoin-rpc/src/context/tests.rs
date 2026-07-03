@@ -13,10 +13,12 @@ use open_bitcoin_network::{
     BanReason, BanScope, InboundResourceEvent, MisbehaviorDecision, MisbehaviorKind,
     MisbehaviorResponse, PeerBanEntry, RelayActivationConfig,
 };
+use open_bitcoin_node::{FjallNodeStore, PersistMode};
 use open_bitcoin_node::{
     core::wallet::AddressNetwork,
     logging::{INBOUND_PEER_POLICY_LOG_SOURCE, StructuredLogLevel, StructuredLogRecord},
     status::{FieldAvailability, InboundPeerPolicyEvent},
+    storage::MempoolSnapshot,
 };
 use std::{
     fs,
@@ -71,6 +73,38 @@ fn managed_rpc_context_builds_from_runtime_config_with_enabled_relay_activation(
 
     // Assert
     assert!(context.network_info().relay);
+}
+
+#[test]
+fn managed_rpc_context_loads_durable_mempool_snapshot_on_startup() {
+    // Arrange
+    let data_dir = test_data_dir("mempool-recovery-load");
+    let store = FjallNodeStore::open(&data_dir).expect("open store");
+    store
+        .save_mempool_snapshot(&MempoolSnapshot::default(), PersistMode::Sync)
+        .expect("save empty mempool snapshot");
+    let runtime = RuntimeConfig {
+        chain: AddressNetwork::Regtest,
+        maybe_data_dir: Some(data_dir),
+        ..RuntimeConfig::default()
+    };
+
+    // Act
+    let context = ManagedRpcContext::from_runtime_config_with_store(&runtime, Some(store));
+
+    // Assert
+    let summary = context
+        .network
+        .latest_mempool_recovery_summary()
+        .expect("startup mempool recovery summary");
+    assert_eq!(summary.recovered_count, 0);
+    assert!(summary.records.is_empty());
+    assert!(
+        context
+            .network
+            .latest_mempool_recovery_storage_error()
+            .is_none()
+    );
 }
 
 #[test]

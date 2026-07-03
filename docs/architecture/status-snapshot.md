@@ -333,6 +333,34 @@ public-network relay CI, production service operation, production full-node
 readiness, production-funds wallet safety, production-funds wallet use, or
 durable mempool recovery.
 
+## Phase 108 durable mempool relay recovery status
+
+Phase 108 extends `OpenBitcoinStatusSnapshot.mempool.relay` and
+`openbitcoinnetworkstatus.relay` with recovered relay-state evidence. Startup
+replay of Open Bitcoin-owned durable mempool snapshots repopulates managed
+mempool, relay-serving, and fanout identity state for accepted records without
+emitting socket messages, `inv`, or public fanout during recovery.
+
+Operator status exposes the recovery result only through the fixed
+`Relay recovery` counters under `recovery_counters`:
+
+- `recovered_count`
+- `dropped_confirmed_count`
+- `dropped_duplicate_count`
+- `dropped_missing_parent_count`
+- `dropped_policy_incompatible_count`
+- `dropped_evicted_count`
+
+Storage or schema failures use fixed unavailable recovery evidence; status,
+support, metrics, and logs must not expose raw transaction hex, txids, wtxids,
+peer ids, endpoints, permission strings, credentials, storage corruption text,
+or dynamic labels. Phase 108 does not claim public relay by default, guaranteed
+public propagation, compact block relay, package relay, bloom/filter serving,
+public-network relay CI, production-service operation, production full-node
+readiness, production-funds wallet safety/use, destructive repair, source
+datadir mutation, compaction, reindexing, store surgery, or automatic support
+upload.
+
 ## Phase 92 address advertisement and discovery status
 
 Phase 92 extends `OpenBitcoinStatusSnapshot.peers.inbound` with bounded address

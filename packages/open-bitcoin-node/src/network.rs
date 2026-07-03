@@ -2,10 +2,14 @@
 // - packages/bitcoin-knots/src/net_processing.cpp
 // - packages/bitcoin-knots/src/node/txdownloadman_impl.cpp
 // - packages/bitcoin-knots/src/node/txdownloadman.h
+// - packages/bitcoin-knots/src/node/mempool_persist.cpp
 // - packages/bitcoin-knots/src/protocol.h
 // - packages/bitcoin-knots/src/txorphanage.cpp
 // - packages/bitcoin-knots/src/validation.cpp
+// - packages/bitcoin-knots/test/functional/mempool_persist.py
+// - packages/bitcoin-knots/test/functional/p2p_getdata.py
 // - packages/bitcoin-knots/test/functional/p2p_orphan_handling.py
+// - packages/bitcoin-knots/test/functional/p2p_tx_download.py
 // - packages/bitcoin-knots/test/functional/mempool_accept.py
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -17,6 +21,7 @@ mod inbound;
 mod inventory;
 mod mempool_lifecycle;
 mod peer_policy;
+mod recovery;
 mod relay_fanout;
 mod relay_serving;
 
@@ -45,6 +50,7 @@ pub use inbound::{
     ManagedAddressBoundaryInfo, ManagedInboundAdmissionInfo, ManagedInboundPermissionDecisionInfo,
     ManagedPeerPolicyInfo, ManagedResourceGovernanceInfo,
 };
+pub use recovery::ManagedMempoolRecoverySummary;
 pub use relay_fanout::{
     LocalRelaySubmissionEvidence, LocalRelaySubmissionLabel, ManagedRelayFanoutInfo,
     RebroadcastEvidenceLabel,
@@ -155,6 +161,8 @@ pub struct ManagedPeerNetwork<S> {
     inbound_serving_enabled: bool,
     relay_fanout: relay_fanout::ManagedRelayFanoutState,
     relay_serving: relay_serving::RelayServingCache,
+    latest_mempool_recovery: Option<ManagedMempoolRecoverySummary>,
+    latest_mempool_recovery_storage_error: Option<crate::status::SyncRecoveryCategory>,
     local_config: LocalPeerConfig,
     blocks_by_hash: BTreeMap<BlockHash, Block>,
     transactions_by_txid: BTreeMap<Txid, Transaction>,

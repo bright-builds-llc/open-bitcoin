@@ -14,7 +14,9 @@ use super::{
 };
 use crate::status::{
     HealthSignalLevel, InboundPeerPolicyEvent, InboundResourceGovernanceEvent,
-    relay_evidence::{RelayEvidenceCounters, RelayEvidenceField, RelayEvidenceStatus},
+    relay_evidence::{
+        RelayEvidenceCounters, RelayEvidenceField, RelayEvidenceStatus, RelayRecoveryCounters,
+    },
 };
 use std::{
     fs,
@@ -216,7 +218,7 @@ fn inbound_peer_policy_log_record_redacts_suspicious_raw_fields() {
 #[test]
 fn relay_mempool_log_record_uses_fixed_outcome_counts() {
     // Arrange
-    let relay = RelayEvidenceStatus::with_counters(RelayEvidenceCounters {
+    let mut relay = RelayEvidenceStatus::with_counters(RelayEvidenceCounters {
         accepted_count: 1,
         rejected_count: 2,
         orphaned_count: 3,
@@ -228,6 +230,14 @@ fn relay_mempool_log_record_uses_fixed_outcome_counts() {
         expired_count: 9,
         rebroadcast_deferred_count: 10,
     });
+    relay.recovery_counters = RelayEvidenceField::implemented(RelayRecoveryCounters {
+        recovered_count: 11,
+        dropped_confirmed_count: 12,
+        dropped_duplicate_count: 13,
+        dropped_missing_parent_count: 14,
+        dropped_policy_incompatible_count: 15,
+        dropped_evicted_count: 16,
+    });
 
     // Act
     let record = relay_mempool_log_record(&relay, 1_777_225_105);
@@ -238,7 +248,7 @@ fn relay_mempool_log_record_uses_fixed_outcome_counts() {
     assert_eq!(record.timestamp_unix_seconds, 1_777_225_105);
     assert_eq!(
         record.message,
-        "accepted=1 rejected=2 orphaned=3 requested=4 served=5 announced=6 suppressed=7 evicted=8 expired=9 rebroadcast_deferred=10"
+        "accepted=1 rejected=2 orphaned=3 requested=4 served=5 announced=6 suppressed=7 evicted=8 expired=9 rebroadcast_deferred=10 recovered=11 dropped_confirmed=12 dropped_duplicate=13 dropped_missing_parent=14 dropped_policy_incompatible=15 dropped_evicted=16"
     );
 }
 
@@ -260,6 +270,8 @@ fn relay_mempool_log_record_omits_sensitive_and_dynamic_material() {
     relay.mempool_admission = RelayEvidenceField::unavailable(
         "txid=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
     );
+    relay.recovery_counters =
+        RelayEvidenceField::unavailable("wtxid=abcdef0123456789 endpoint=127.0.0.1:18444");
     relay.local_submission =
         RelayEvidenceField::deferred("wtxid=abcdef0123456789 endpoint=127.0.0.1:18444");
     relay.fanout =
@@ -275,7 +287,7 @@ fn relay_mempool_log_record_omits_sensitive_and_dynamic_material() {
     assert_eq!(record.source, RELAY_MEMPOOL_LOG_SOURCE);
     assert_eq!(
         record.message,
-        "accepted=1 rejected=0 orphaned=0 requested=0 served=0 announced=0 suppressed=0 evicted=0 expired=0 rebroadcast_deferred=0"
+        "accepted=1 rejected=0 orphaned=0 requested=0 served=0 announced=0 suppressed=0 evicted=0 expired=0 rebroadcast_deferred=0 recovered=0 dropped_confirmed=0 dropped_duplicate=0 dropped_missing_parent=0 dropped_policy_incompatible=0 dropped_evicted=0"
     );
     for raw in [
         "0123456789abcdef",

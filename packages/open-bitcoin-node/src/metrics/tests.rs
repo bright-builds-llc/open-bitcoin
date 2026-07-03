@@ -8,6 +8,7 @@ use super::{
 use crate::status::{
     FieldAvailability, InboundHandshakeStatusCounts, InboundPeerServingStatus,
     relay_evidence::{RelayEvidenceCounters, RelayEvidenceStatus},
+    relay_evidence::{RelayEvidenceField, RelayRecoveryCounters},
 };
 
 #[test]
@@ -151,6 +152,30 @@ fn metric_kind_names_are_stable() {
             MetricKind::RelayRebroadcastDeferredCount,
             "relay_rebroadcast_deferred_count",
         ),
+        (
+            MetricKind::RelayRecoveryRecoveredCount,
+            "relay_recovery_recovered_count",
+        ),
+        (
+            MetricKind::RelayRecoveryDroppedConfirmedCount,
+            "relay_recovery_dropped_confirmed_count",
+        ),
+        (
+            MetricKind::RelayRecoveryDroppedDuplicateCount,
+            "relay_recovery_dropped_duplicate_count",
+        ),
+        (
+            MetricKind::RelayRecoveryDroppedMissingParentCount,
+            "relay_recovery_dropped_missing_parent_count",
+        ),
+        (
+            MetricKind::RelayRecoveryDroppedPolicyIncompatibleCount,
+            "relay_recovery_dropped_policy_incompatible_count",
+        ),
+        (
+            MetricKind::RelayRecoveryDroppedEvictedCount,
+            "relay_recovery_dropped_evicted_count",
+        ),
     ];
 
     // Act / Assert
@@ -195,7 +220,7 @@ fn inbound_metric_kinds_are_low_cardinality_counters() {
         .collect::<Vec<_>>();
 
     // Assert
-    assert_eq!(MetricKind::ALL.len(), 44);
+    assert_eq!(MetricKind::ALL.len(), 50);
     assert_eq!(
         labels,
         vec![
@@ -254,6 +279,12 @@ fn relay_metric_kinds_are_low_cardinality_counters() {
         MetricKind::RelayEvictedCount,
         MetricKind::RelayExpiredCount,
         MetricKind::RelayRebroadcastDeferredCount,
+        MetricKind::RelayRecoveryRecoveredCount,
+        MetricKind::RelayRecoveryDroppedConfirmedCount,
+        MetricKind::RelayRecoveryDroppedDuplicateCount,
+        MetricKind::RelayRecoveryDroppedMissingParentCount,
+        MetricKind::RelayRecoveryDroppedPolicyIncompatibleCount,
+        MetricKind::RelayRecoveryDroppedEvictedCount,
     ];
 
     // Act
@@ -276,6 +307,12 @@ fn relay_metric_kinds_are_low_cardinality_counters() {
             "relay_evicted_count",
             "relay_expired_count",
             "relay_rebroadcast_deferred_count",
+            "relay_recovery_recovered_count",
+            "relay_recovery_dropped_confirmed_count",
+            "relay_recovery_dropped_duplicate_count",
+            "relay_recovery_dropped_missing_parent_count",
+            "relay_recovery_dropped_policy_incompatible_count",
+            "relay_recovery_dropped_evicted_count",
         ]
     );
     for label in labels {
@@ -301,7 +338,7 @@ fn relay_metric_kinds_are_low_cardinality_counters() {
 fn relay_status_maps_to_each_fixed_relay_metric_kind() {
     // Arrange
     let timestamp = 1_777_225_105;
-    let relay = RelayEvidenceStatus::with_counters(RelayEvidenceCounters {
+    let mut relay = RelayEvidenceStatus::with_counters(RelayEvidenceCounters {
         accepted_count: 1,
         rejected_count: 2,
         orphaned_count: 3,
@@ -312,6 +349,14 @@ fn relay_status_maps_to_each_fixed_relay_metric_kind() {
         evicted_count: 8,
         expired_count: 9,
         rebroadcast_deferred_count: 10,
+    });
+    relay.recovery_counters = RelayEvidenceField::implemented(RelayRecoveryCounters {
+        recovered_count: 11,
+        dropped_confirmed_count: 12,
+        dropped_duplicate_count: 13,
+        dropped_missing_parent_count: 14,
+        dropped_policy_incompatible_count: 15,
+        dropped_evicted_count: 16,
     });
 
     // Act
@@ -331,6 +376,32 @@ fn relay_status_maps_to_each_fixed_relay_metric_kind() {
             MetricSample::new(MetricKind::RelayEvictedCount, 8.0, timestamp),
             MetricSample::new(MetricKind::RelayExpiredCount, 9.0, timestamp),
             MetricSample::new(MetricKind::RelayRebroadcastDeferredCount, 10.0, timestamp),
+            MetricSample::new(MetricKind::RelayRecoveryRecoveredCount, 11.0, timestamp),
+            MetricSample::new(
+                MetricKind::RelayRecoveryDroppedConfirmedCount,
+                12.0,
+                timestamp,
+            ),
+            MetricSample::new(
+                MetricKind::RelayRecoveryDroppedDuplicateCount,
+                13.0,
+                timestamp,
+            ),
+            MetricSample::new(
+                MetricKind::RelayRecoveryDroppedMissingParentCount,
+                14.0,
+                timestamp,
+            ),
+            MetricSample::new(
+                MetricKind::RelayRecoveryDroppedPolicyIncompatibleCount,
+                15.0,
+                timestamp,
+            ),
+            MetricSample::new(
+                MetricKind::RelayRecoveryDroppedEvictedCount,
+                16.0,
+                timestamp,
+            ),
         ]
     );
     let serialized = serde_json::to_string(&samples).expect("relay metric samples json");

@@ -4,6 +4,7 @@
 use super::relay_evidence::{
     RelayActivationEvidence, RelayCapabilityEvidence, RelayDownloadEligibilityCounters,
     RelayEvidenceCapability, RelayEvidenceCounters, RelayEvidenceField, RelayEvidenceStatus,
+    RelayRecoveryCounters,
 };
 use super::{
     BestKnownTipStatus, BuildProvenance, ChainTipStatus, ConfigStatus, FieldAvailability,
@@ -153,6 +154,46 @@ fn relay_evidence_status_serializes_activation_and_download_eligibility_contract
 }
 
 #[test]
+fn relay_evidence_status_projects_recovery_counters() {
+    // Arrange
+    let status = RelayEvidenceStatus::with_activation_recovery_and_counters(
+        RelayActivationEvidence { enabled: true },
+        RelayDownloadEligibilityCounters::default(),
+        RelayRecoveryCounters {
+            recovered_count: 1,
+            dropped_confirmed_count: 2,
+            dropped_duplicate_count: 3,
+            dropped_missing_parent_count: 4,
+            dropped_policy_incompatible_count: 5,
+            dropped_evicted_count: 6,
+        },
+        RelayEvidenceCounters::default(),
+    );
+
+    // Act
+    let encoded = serde_json::to_value(status).expect("relay evidence json");
+    let counters = encoded["recovery_counters"]["value"]
+        .as_object()
+        .expect("recovery counters serialize to object");
+
+    // Assert
+    assert_eq!(encoded["recovery_counters"]["state"], "implemented");
+    assert_eq!(counters["recovered_count"], 1);
+    assert_eq!(counters["dropped_confirmed_count"], 2);
+    assert_eq!(counters["dropped_duplicate_count"], 3);
+    assert_eq!(counters["dropped_missing_parent_count"], 4);
+    assert_eq!(counters["dropped_policy_incompatible_count"], 5);
+    assert_eq!(counters["dropped_evicted_count"], 6);
+    assert_eq!(
+        counters
+            .keys()
+            .filter(|key| key.ends_with("_count"))
+            .count(),
+        6
+    );
+}
+
+#[test]
 fn relay_evidence_status_default_reports_truthful_unavailable_and_deferred_states() {
     // Arrange / Act
     let status = RelayEvidenceStatus::default_unavailable();
@@ -161,6 +202,12 @@ fn relay_evidence_status_default_reports_truthful_unavailable_and_deferred_state
     // Assert
     assert_eq!(encoded["outcome_counters"]["state"], "implemented");
     assert_eq!(encoded["outcome_counters"]["value"]["accepted_count"], 0);
+    assert_eq!(encoded["recovery_counters"]["state"], "implemented");
+    assert_eq!(encoded["recovery_counters"]["value"]["recovered_count"], 0);
+    assert_eq!(
+        encoded["recovery_counters"]["value"]["dropped_evicted_count"],
+        0
+    );
     assert_eq!(encoded["activation"]["state"], "implemented");
     assert_eq!(encoded["activation"]["value"]["enabled"], false);
     assert_eq!(encoded["download_eligibility"]["state"], "implemented");

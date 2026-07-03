@@ -123,7 +123,33 @@ does not guarantee public propagation.
 Phase 107 does not claim public relay by default, compact block relay, package
 relay, bloom/filter serving, public-network relay CI, production service
 operation, production full-node readiness, production-funds wallet safety,
-production-funds wallet use, or durable mempool recovery.
+or production-funds wallet use.
+
+## Phase 108 durable mempool relay recovery surfaces
+
+Phase 108 projects recovered mempool relay state through
+`openbitcoinnetworkstatus.relay`, operator status, dashboard rows, metrics,
+structured logs, and support bundles. Baseline-compatible RPC response shapes
+such as `getmempoolinfo`, `getnetworkinfo`, and `sendrawtransaction` do not
+gain recovery fields; Open Bitcoin-specific status surfaces expose only the
+fixed `Relay recovery` counters.
+
+The repo-local operator commands for review are:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- status --format human
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- status --format json
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- status --format human
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- status --format json
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- support bundle --output-dir=/tmp/open-bitcoin-recovery-support
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- support bundle --output-dir=/tmp/open-bitcoin-recovery-support
+```
+
+Phase 108 does not add public relay by default, guaranteed public propagation,
+compact block relay, package relay, bloom/filter serving, public-network relay
+CI, production-service operation, production full-node readiness,
+production-funds wallet safety/use, destructive repair, source datadir
+mutation, compaction, reindexing, store surgery, or automatic support upload.
 
 ## Deferred surfaces
 

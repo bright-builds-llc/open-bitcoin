@@ -315,6 +315,30 @@ public-network relay CI, production service operation, production full-node
 readiness, production-funds wallet safety, production-funds wallet use, or
 durable mempool recovery.
 
+## Phase 108 durable mempool relay recovery evidence
+
+Phase 108 adds recovered relay-state observability to the existing relay and
+mempool evidence surfaces. `RelayRecoveryCounters` are projected as the
+operator label `Relay recovery` with fixed fields `recovered_count`,
+`dropped_confirmed_count`, `dropped_duplicate_count`,
+`dropped_missing_parent_count`, `dropped_policy_incompatible_count`, and
+`dropped_evicted_count`.
+
+Recovered accepted records rehydrate managed mempool, relay-serving, and
+fanout identity state without socket I/O or public fanout during startup.
+Metrics use fixed names such as `relay_recovery_recovered_count`; structured
+logs use fixed keys such as `recovered`, `dropped_confirmed`,
+`dropped_duplicate`, `dropped_missing_parent`,
+`dropped_policy_incompatible`, and `dropped_evicted`. Support bundles redact
+sensitive recovery reasons to `redacted_relay_mempool_evidence`.
+
+Phase 108 does not claim public relay by default, guaranteed public
+propagation, compact block relay, package relay, bloom/filter serving,
+public-network relay CI, production-service operation, production full-node
+readiness, production-funds wallet safety/use, destructive repair, source
+datadir mutation, compaction, reindexing, store surgery, or automatic support
+upload.
+
 ## Phase 92 address advertisement and discovery evidence
 
 Address-boundary observability is sourced from the shared inbound status fields

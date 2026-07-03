@@ -35,14 +35,14 @@ Requirements for the current milestone. Each requirement maps to exactly one roa
 - [x] **MEM-01**: Peer and local transaction submissions flow through one stable mempool outcome contract for accepted, rejected, duplicate, replaced, orphaned, evicted, and expired states.
 - [x] **MEM-02**: Mempool admission tests cover standardness, fees, RBF, ancestor/descendant limits, duplicate handling, and no partial mutation on rejection.
 - [x] **MEM-03**: Mempool pressure and trimming behavior produce truthful relay-facing eviction, fee-floor, and capacity evidence, or explicitly document any deferred Knots parity gap.
-- [ ] **MEM-04**: Block connect removes confirmed and conflicting transactions from mempool and relay-serving caches.
-- [ ] **MEM-05**: Block disconnect or reorg handling reconsiders eligible disconnected transactions within the documented v2.0 boundary.
-- [ ] **MEM-06**: Durable mempool persistence saves accepted transaction state and recovers or repairs stale, corrupt, or incompatible records safely on restart.
+- [x] **MEM-04**: Block connect removes confirmed and conflicting transactions from mempool and relay-serving caches.
+- [x] **MEM-05**: Block disconnect or reorg handling reconsiders eligible disconnected transactions within the documented v2.0 boundary.
+- [x] **MEM-06**: Durable mempool persistence saves accepted transaction state and recovers or repairs stale, corrupt, or incompatible records safely on restart.
 
 ### Relay Serving And Fanout
 
-- [ ] **REL-01**: Node serves only relay-eligible transactions in response to peer `getdata` requests and reports unknown, stale, confirmed, rejected, or evicted transactions correctly.
-- [ ] **REL-02**: Node announces accepted transactions to eligible peers using negotiated txid or wtxid identity, per-peer queues, rate limits, and suppression rules.
+- [x] **REL-01**: Node serves only relay-eligible transactions in response to peer `getdata` requests and reports unknown, stale, confirmed, rejected, or evicted transactions correctly.
+- [x] **REL-02**: Node announces accepted transactions to eligible peers using negotiated txid or wtxid identity, per-peer queues, rate limits, and suppression rules.
 - [x] **REL-03**: Local `sendrawtransaction` submissions enter mempool admission and queued relay evidence without guaranteeing public propagation.
 - [x] **REL-04**: Rebroadcast behavior is either implemented with bounded scheduling and evidence or explicitly marked deferred across docs, status, and tests.
 
@@ -121,11 +121,11 @@ Explicitly excluded from v2.0 to prevent scope creep.
 | MEM-01 | Phase 102 | Complete |
 | MEM-02 | Phase 102 | Complete |
 | MEM-03 | Phase 103 | Complete |
-| MEM-04 | Phase 108 | Pending |
-| MEM-05 | Phase 108 | Pending |
-| MEM-06 | Phase 108 | Pending |
-| REL-01 | Phase 108 | Pending |
-| REL-02 | Phase 108 | Pending |
+| MEM-04 | Phase 108 | Complete |
+| MEM-05 | Phase 108 | Complete |
+| MEM-06 | Phase 108 | Complete |
+| REL-01 | Phase 108 | Complete |
+| REL-02 | Phase 108 | Complete |
 | REL-03 | Phase 107 | Complete |
 | REL-04 | Phase 104 | Complete |
 | OBS-01 | Phase 105 | Complete |
@@ -145,4 +145,4 @@ Explicitly excluded from v2.0 to prevent scope creep.
 - Unmapped: 0
 
 *Requirements defined: 2026-06-29*
-*Last updated: 2026-07-03 after Phase 107 closeout verification*
+*Last updated: 2026-07-03 after Phase 108 closeout verification*

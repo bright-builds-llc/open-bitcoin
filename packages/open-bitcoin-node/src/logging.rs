@@ -9,7 +9,9 @@ use std::{error::Error, fmt, path::PathBuf};
 
 use crate::status::{
     HealthSignal, HealthSignalLevel, InboundPeerPolicyEvent, InboundResourceGovernanceEvent,
-    relay_evidence::{RelayEvidenceCounters, RelayEvidenceField, RelayEvidenceStatus},
+    relay_evidence::{
+        RelayEvidenceCounters, RelayEvidenceField, RelayEvidenceStatus, RelayRecoveryCounters,
+    },
 };
 
 pub mod prune;
@@ -168,8 +170,14 @@ pub fn relay_mempool_log_record(
         | RelayEvidenceField::Deferred { .. }
         | RelayEvidenceField::IntentionallyDifferent { .. } => RelayEvidenceCounters::default(),
     };
+    let recovery = match &relay.recovery_counters {
+        RelayEvidenceField::Implemented(counters) => *counters,
+        RelayEvidenceField::Unavailable { .. }
+        | RelayEvidenceField::Deferred { .. }
+        | RelayEvidenceField::IntentionallyDifferent { .. } => RelayRecoveryCounters::default(),
+    };
     let message = format!(
-        "accepted={} rejected={} orphaned={} requested={} served={} announced={} suppressed={} evicted={} expired={} rebroadcast_deferred={}",
+        "accepted={} rejected={} orphaned={} requested={} served={} announced={} suppressed={} evicted={} expired={} rebroadcast_deferred={} recovered={} dropped_confirmed={} dropped_duplicate={} dropped_missing_parent={} dropped_policy_incompatible={} dropped_evicted={}",
         counters.accepted_count,
         counters.rejected_count,
         counters.orphaned_count,
@@ -179,7 +187,13 @@ pub fn relay_mempool_log_record(
         counters.suppressed_count,
         counters.evicted_count,
         counters.expired_count,
-        counters.rebroadcast_deferred_count
+        counters.rebroadcast_deferred_count,
+        recovery.recovered_count,
+        recovery.dropped_confirmed_count,
+        recovery.dropped_duplicate_count,
+        recovery.dropped_missing_parent_count,
+        recovery.dropped_policy_incompatible_count,
+        recovery.dropped_evicted_count
     );
 
     StructuredLogRecord::new(

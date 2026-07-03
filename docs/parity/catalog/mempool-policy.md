@@ -173,6 +173,31 @@ serving, public relay by default, public-network relay CI, production service
 operation, production full-node readiness, production-funds wallet safety,
 production-funds wallet use, or durable mempool recovery.
 
+## Phase 108 durable mempool relay recovery
+
+Phase 108 completes the durable mempool recovery handoff into managed relay
+state for the local Open Bitcoin snapshot format. `MempoolSnapshot` replay
+still owns recovery classification, while `ManagedMempoolRecoverySummary`
+counts `recovered_count`, `dropped_confirmed_count`,
+`dropped_duplicate_count`, `dropped_missing_parent_count`,
+`dropped_policy_incompatible_count`, and `dropped_evicted_count`.
+
+Accepted recovered records become serveable through the same txid/wtxid
+request path as live accepted records. Confirmed, missing-parent,
+policy-incompatible, evicted, replaced, and block-connected records clean
+through existing shared mempool lifecycle, serving, and fanout cleanup paths.
+The evidence roots include `packages/open-bitcoin-node/src/network/recovery.rs`,
+`packages/open-bitcoin-node/src/network/tests/recovery_cases.rs`,
+`packages/open-bitcoin-node/src/network/tests/mempool_lifecycle_cases.rs`, and
+`packages/open-bitcoin-node/src/storage/mempool_snapshot.rs`.
+
+Phase 108 does not claim Knots `mempool.dat` binary compatibility, public relay
+by default, guaranteed public propagation, compact block relay, package relay,
+bloom/filter serving, public-network relay CI, production-service operation,
+production full-node readiness, production-funds wallet safety/use,
+destructive repair, source datadir mutation, compaction, reindexing, store
+surgery, or automatic support upload.
+
 ## Known gaps
 
 - package relay beyond single-transaction admission

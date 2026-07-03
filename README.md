@@ -22,13 +22,14 @@ auditable, and modular.
 > for review and operator testing. v2.0 now has bounded transaction relay and
 > mempool participation evidence through local status, RPC extension status,
 > metrics, logs, dashboard rows, redacted support bundles, repo-local UAT
-> commands, and deterministic release-boundary guardrails. Phase 107 narrows
-> that claim to runtime relay activation and download eligibility integration:
-> resolved relay config reaches the managed network, and transaction downloads
-> require relay eligibility before scheduling. It still does not claim public
+> commands, deterministic release-boundary guardrails, and Phase 108 durable
+> mempool relay-state recovery evidence. Recovered accepted transactions
+> rehydrate managed mempool, relay-serving, and fanout identity state without
+> startup socket I/O; operator surfaces expose only fixed `Relay recovery`
+> counters. It still does not claim public
 > relay defaults, compact block relay, package relay, bloom/filter serving,
 > public-network relay CI, production full-node readiness, production-service
-> operation, durable mempool recovery, or production-funds wallet use.
+> operation, or production-funds wallet use.
 
 ## Parity At A Glance
 
@@ -130,14 +131,17 @@ boundary through deterministic local traceability, repo-local UAT commands, and
 no-claim guardrails. It covers Phase 100 relay activation, Phase 101 inventory
 and download scheduling, Phase 102 orphan/admission bridging, Phase 103 mempool
 lifecycle and recovery, Phase 104 relay serving/fanout, Phase 105 operator
-evidence, Phase 106 parity/UAT/release-boundary closeout, and Phase 107 runtime
-activation/download eligibility integration. Phase 107 is an integration
-repair, not public relay expansion: `sendrawtransaction` success does not
-guarantee public propagation. v2.0 does not claim public relay by default,
+evidence, Phase 106 parity/UAT/release-boundary closeout, Phase 107 runtime
+activation/download eligibility integration, and Phase 108 durable mempool
+relay-state recovery. Recovered accepted records re-enter managed serving and
+fanout identity state without startup socket I/O, and status/support surfaces
+show fixed `Relay recovery` fields: `recovered_count`,
+`dropped_confirmed_count`, `dropped_duplicate_count`,
+`dropped_missing_parent_count`, `dropped_policy_incompatible_count`, and
+`dropped_evicted_count`. v2.0 does not claim public relay by default,
 public relay defaults, compact block relay, package relay, bloom/filter
 serving, public-network relay CI, production full-node readiness,
-production-service operation, durable mempool recovery, or production-funds
-wallet use.
+production-service operation, or production-funds wallet use.
 
 v1.9 closes the network participation boundary while preserving the Phase 82
 support terms and evidence gates required before a future production full-node
