@@ -86,6 +86,26 @@ test("fails_when_v2_requirement_has_duplicate_surface_owner", () => {
   expect(failures).toContain("BOUND-01 must have exactly one parity surface owner");
 });
 
+test("fails_when_gap_closure_requirement_maps_to_stale_phase", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutateFiles(files) {
+      replaceInFile(
+        files,
+        ".planning/REQUIREMENTS.md",
+        "| ACT-01 | Phase 107 | Pending |",
+        "| ACT-01 | Phase 100 | Pending |",
+      );
+    },
+  });
+
+  // Act
+  const failures = checkPhase106ParityUatReleaseBoundary(root).join("\n");
+
+  // Assert
+  expect(failures).toContain("ACT-01 must map to Phase 107 exactly once");
+});
+
 test("fails_when_uat_command_or_knots_anchor_is_missing", () => {
   // Arrange
   const roots = [
@@ -198,6 +218,15 @@ function removeFromAllFiles(files: Map<TargetFile, string>, needle: string): voi
 
 function removeFromFile(files: Map<TargetFile, string>, filePath: TargetFile, needle: string): void {
   files.set(filePath, (files.get(filePath) ?? "").replaceAll(needle, ""));
+}
+
+function replaceInFile(
+  files: Map<TargetFile, string>,
+  filePath: TargetFile,
+  oldText: string,
+  newText: string,
+): void {
+  files.set(filePath, (files.get(filePath) ?? "").replace(oldText, newText));
 }
 
 function appendToFile(files: Map<TargetFile, string>, filePath: TargetFile, text: string): void {

@@ -12,13 +12,15 @@
 
 | Phase | Name | Requirements | Status |
 | --- | --- | --- | --- |
-| 100 | Relay Activation Boundary and Permission Semantics | ACT-01, ACT-02, ACT-03, ACT-04 | Complete |
-| 101 | Transaction Inventory Identity and Download Scheduling | INV-01, INV-02, INV-03, INV-04, DL-01, DL-02 | Complete |
+| 100 | Relay Activation Boundary and Permission Semantics | ACT-03, ACT-04 | Complete |
+| 101 | Transaction Inventory Identity and Download Scheduling | INV-01, INV-04 | Complete |
 | 102 | Orphan Handling and Admission Outcome Bridge | DL-03, DL-04, DL-05, MEM-01, MEM-02 | Complete |
-| 103 | Mempool Chainstate Lifecycle and Durable Recovery | MEM-03, MEM-04, MEM-05, MEM-06 | Complete |
-| 104 | Relay Serving, Fanout, and Rebroadcast Policy | REL-01, REL-02, REL-03, REL-04 | Complete |
+| 103 | Mempool Chainstate Lifecycle and Durable Recovery | MEM-03 | Complete |
+| 104 | Relay Serving, Fanout, and Rebroadcast Policy | REL-04 | Complete |
 | 105 | Operator, RPC, Metrics, Logs, and Support Evidence | OBS-01, OBS-02, OBS-03, OBS-04 | Complete |
-| 106 | Parity Traceability, UAT, and Release Boundary Guardrails | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05 | Pending |
+| 106 | Parity Traceability, UAT, and Release Boundary Guardrails | BOUND-01, BOUND-02, BOUND-03, BOUND-04, BOUND-05 | Complete |
+| 107 | Runtime Relay Activation and Download Eligibility Integration | ACT-01, ACT-02, INV-02, INV-03, DL-01, DL-02, REL-03 | Pending |
+| 108 | Durable Mempool Relay State Recovery | MEM-04, MEM-05, MEM-06, REL-01, REL-02 | Pending |
 
 ## Phase Details
 
@@ -201,6 +203,46 @@ Plans:
 
 **Verification:** Parity breadcrumb checks, release-boundary checker tests, docs/UAT command checks, roadmap/requirements traceability audit, and `bash scripts/verify.sh`.
 
+### Phase 107: Runtime Relay Activation and Download Eligibility Integration
+
+**Purpose:** Close the broken live relay integration path by carrying explicit runtime relay activation into the managed network and requiring relay eligibility in transaction download scheduling.
+
+**Scope:**
+
+- Pass resolved `RuntimeConfig.relay` settings into `ManagedPeerNetwork` instead of relying on default relay activation.
+- Extend transaction announcement/download scheduling so Phase 100 relay eligibility and activation state participate before requests are scheduled.
+- Prove enabled, disabled, eligible, ineligible, outbound, inbound, manual, protected, and permissioned peer behavior without changing service bits or public defaults.
+- Refresh UAT, runtime docs, and deterministic guardrails so this wiring drift is covered before milestone archive.
+
+**Success criteria:**
+
+- Daemon/runtime construction preserves explicit relay activation config through managed network serving and fanout state.
+- Transaction download scheduling suppresses ineligible or inactive relay peers with stable typed evidence and no stale request state.
+- RPC/status/UAT evidence distinguishes default-off relay, explicitly enabled relay, and eligible peer classes truthfully.
+- Deterministic verification catches dropped activation config and missing download eligibility gates.
+
+**Verification:** Runtime config tests, managed peer network tests, transaction relay scheduler tests, RPC/status projection tests, docs/checker fixtures, and `bash scripts/verify.sh`.
+
+### Phase 108: Durable Mempool Relay State Recovery
+
+**Purpose:** Make recovered accepted mempool state rejoin relay serving, fanout, and operator evidence consistently with live accepted transactions.
+
+**Scope:**
+
+- Replay durable accepted mempool records through a managed recovery path that repopulates relay-serving indexes and evidence without performing socket I/O.
+- Keep confirmed, conflicting, replaced, evicted, expired, and reorg-reconsidered transactions coherent across restart and relay cache lifecycle boundaries.
+- Project recovered relay and mempool evidence through RPC, CLI/dashboard, metrics, logs, and support bundle surfaces without leaking raw transaction or peer material.
+- Add deterministic restart and recovery tests for snapshot replay, stale records, corruption repair, lifecycle cleanup, and evidence projection.
+
+**Success criteria:**
+
+- Recovered accepted transactions are serveable or suppressible through the same typed relay-serving policy as live accepted transactions.
+- Restart recovery does not create false public propagation guarantees, duplicate fanout, stale serving cache entries, or raw-data leaks.
+- Lifecycle cleanup after block connect, conflict removal, replacement, eviction, expiry, and reorg remains coherent after recovery.
+- Operator surfaces and support evidence report recovered relay state with fixed low-cardinality outcomes.
+
+**Verification:** Durable mempool snapshot tests, managed recovery integration tests, relay serving/fanout lifecycle tests, RPC/operator evidence tests, support redaction tests, and `bash scripts/verify.sh`.
+
 ## Dependencies
 
 | Phase | Depends On | Reason |
@@ -212,6 +254,8 @@ Plans:
 | 104 | Phase 103 | Serving and fanout need coherent mempool and relay-cache lifecycle. |
 | 105 | Phase 104 | Operator surfaces need implemented relay serving and fanout state. |
 | 106 | Phase 105 | Closeout guardrails need all implementation and surface evidence. |
+| 107 | Phase 106 | Gap closure starts from the completed v2.0 implementation and audit evidence. |
+| 108 | Phase 107 | Recovery relay state depends on runtime activation and eligibility wiring being coherent first. |
 
 ## Deferred Scope
 
@@ -235,7 +279,7 @@ Plans:
 - ✅ **v1.7 Full-Sync Soak and Recovery Hardening** - Phases 75 through 81 (shipped 2026-06-20). Archive: [v1.7-ROADMAP.md](milestones/v1.7-ROADMAP.md)
 - ✅ **v1.8 Production Full-Node Readiness Boundary** - Phases 82 through 89 (shipped 2026-06-25). Archive: [v1.8-ROADMAP.md](milestones/v1.8-ROADMAP.md)
 - ✅ **v1.9 Inbound Peer Serving and Network Participation Boundary** - Phases 90 through 99 (shipped 2026-06-29). Archive: [v1.9-ROADMAP.md](milestones/v1.9-ROADMAP.md)
-- 🔄 **v2.0 Transaction Relay and Mempool Participation Boundary** - Phases 100 through 106 (active).
+- 🔄 **v2.0 Transaction Relay and Mempool Participation Boundary** - Phases 100 through 108 (active).
 
 ## Milestone History
 
@@ -251,7 +295,7 @@ Plans:
 | v1.7 Full-Sync Soak and Recovery Hardening | 7 | 37 | Shipped | 2026-06-20 | [roadmap](milestones/v1.7-ROADMAP.md) |
 | v1.8 Production Full-Node Readiness Boundary | 8 | 26 | Shipped | 2026-06-25 | [roadmap](milestones/v1.8-ROADMAP.md) |
 | v1.9 Inbound Peer Serving and Network Participation Boundary | 10 | 56 | Shipped | 2026-06-29 | [roadmap](milestones/v1.9-ROADMAP.md) |
-| v2.0 Transaction Relay and Mempool Participation Boundary | 7 | 22 | Active | - | active |
+| v2.0 Transaction Relay and Mempool Participation Boundary | 9 | 22 | Active | - | active |
 
 ## Traceability
 

@@ -10,17 +10,17 @@ Requirements for the current milestone. Each requirement maps to exactly one roa
 
 ### Relay Activation And Permission Boundary
 
-- [x] **ACT-01**: Operator can enable transaction relay only through explicit relay activation settings that keep public relay off by default.
-- [x] **ACT-02**: Node classifies peer relay eligibility across outbound, inbound, manual, protected, and permissioned peers without changing service bits or public defaults accidentally.
+- [ ] **ACT-01**: Operator can enable transaction relay only through explicit relay activation settings that keep public relay off by default.
+- [ ] **ACT-02**: Node classifies peer relay eligibility across outbound, inbound, manual, protected, and permissioned peers without changing service bits or public defaults accidentally.
 - [x] **ACT-03**: Permission effects for `relay`, `forcerelay`, and `mempool` activate only the scoped behavior documented for v2.0.
 - [x] **ACT-04**: Bloom/filter permissions, compact-block behavior, and unrelated peer permissions remain inactive unless a later requirement explicitly activates them.
 
 ### Transaction Inventory And Identity
 
-- [ ] **INV-01**: Node handles transaction `inv`, `getdata`, `tx`, and `notfound` messages with typed txid and wtxid identity.
+- [x] **INV-01**: Node handles transaction `inv`, `getdata`, `tx`, and `notfound` messages with typed txid and wtxid identity.
 - [ ] **INV-02**: Node tracks per-peer txid/wtxid negotiation, already-have state, request state, and received-transaction cleanup deterministically.
 - [ ] **INV-03**: Node handles duplicate announcements, identity mismatches, `notfound`, timeout, and disconnect cleanup without stale request state.
-- [ ] **INV-04**: Relay decisions emit stable typed actions for announcements, requests, suppressions, fallbacks, and peer cleanup.
+- [x] **INV-04**: Relay decisions emit stable typed actions for announcements, requests, suppressions, fallbacks, and peer cleanup.
 
 ### Bounded Transaction Download
 
@@ -35,16 +35,16 @@ Requirements for the current milestone. Each requirement maps to exactly one roa
 - [x] **MEM-01**: Peer and local transaction submissions flow through one stable mempool outcome contract for accepted, rejected, duplicate, replaced, orphaned, evicted, and expired states.
 - [x] **MEM-02**: Mempool admission tests cover standardness, fees, RBF, ancestor/descendant limits, duplicate handling, and no partial mutation on rejection.
 - [x] **MEM-03**: Mempool pressure and trimming behavior produce truthful relay-facing eviction, fee-floor, and capacity evidence, or explicitly document any deferred Knots parity gap.
-- [x] **MEM-04**: Block connect removes confirmed and conflicting transactions from mempool and relay-serving caches.
-- [x] **MEM-05**: Block disconnect or reorg handling reconsiders eligible disconnected transactions within the documented v2.0 boundary.
-- [x] **MEM-06**: Durable mempool persistence saves accepted transaction state and recovers or repairs stale, corrupt, or incompatible records safely on restart.
+- [ ] **MEM-04**: Block connect removes confirmed and conflicting transactions from mempool and relay-serving caches.
+- [ ] **MEM-05**: Block disconnect or reorg handling reconsiders eligible disconnected transactions within the documented v2.0 boundary.
+- [ ] **MEM-06**: Durable mempool persistence saves accepted transaction state and recovers or repairs stale, corrupt, or incompatible records safely on restart.
 
 ### Relay Serving And Fanout
 
 - [ ] **REL-01**: Node serves only relay-eligible transactions in response to peer `getdata` requests and reports unknown, stale, confirmed, rejected, or evicted transactions correctly.
 - [ ] **REL-02**: Node announces accepted transactions to eligible peers using negotiated txid or wtxid identity, per-peer queues, rate limits, and suppression rules.
 - [ ] **REL-03**: Local `sendrawtransaction` submissions enter mempool admission and queued relay evidence without guaranteeing public propagation.
-- [ ] **REL-04**: Rebroadcast behavior is either implemented with bounded scheduling and evidence or explicitly marked deferred across docs, status, and tests.
+- [x] **REL-04**: Rebroadcast behavior is either implemented with bounded scheduling and evidence or explicitly marked deferred across docs, status, and tests.
 
 ### Operator, RPC, Metrics, Logs, And Support Evidence
 
@@ -55,11 +55,11 @@ Requirements for the current milestone. Each requirement maps to exactly one roa
 
 ### Parity, UAT, And Release Boundary
 
-- [ ] **BOUND-01**: Parity docs, source breadcrumbs, and index entries cite concrete Bitcoin Knots anchors for transaction relay, transaction download, mempool admission, validation, and policy behavior.
-- [ ] **BOUND-02**: Deterministic checkers prevent compact block relay, bloom/filter serving, package relay, public-relay-default, production-readiness, and production-funds claims from entering v2.0 artifacts.
-- [ ] **BOUND-03**: UAT guidance provides copy-pasteable repo-local Cargo and Bazel commands and keeps public-network relay review opt-in.
-- [ ] **BOUND-04**: README, operator docs, runtime docs, and release notes describe the bounded v2.0 relay claim and list deferred surfaces clearly.
-- [ ] **BOUND-05**: The default `bash scripts/verify.sh` contract remains deterministic and free of public-network, wall-clock soak, service-manager, and production-deployment gates.
+- [x] **BOUND-01**: Parity docs, source breadcrumbs, and index entries cite concrete Bitcoin Knots anchors for transaction relay, transaction download, mempool admission, validation, and policy behavior.
+- [x] **BOUND-02**: Deterministic checkers prevent compact block relay, bloom/filter serving, package relay, public-relay-default, production-readiness, and production-funds claims from entering v2.0 artifacts.
+- [x] **BOUND-03**: UAT guidance provides copy-pasteable repo-local Cargo and Bazel commands and keeps public-network relay review opt-in.
+- [x] **BOUND-04**: README, operator docs, runtime docs, and release notes describe the bounded v2.0 relay claim and list deferred surfaces clearly.
+- [x] **BOUND-05**: The default `bash scripts/verify.sh` contract remains deterministic and free of public-network, wall-clock soak, service-manager, and production-deployment gates.
 
 ## Deferred Requirements
 
@@ -105,38 +105,38 @@ Explicitly excluded from v2.0 to prevent scope creep.
 
 | Requirement | Phase | Status |
 | --- | --- | --- |
-| ACT-01 | Phase 100 | Complete |
-| ACT-02 | Phase 100 | Complete |
+| ACT-01 | Phase 107 | Pending |
+| ACT-02 | Phase 107 | Pending |
 | ACT-03 | Phase 100 | Complete |
 | ACT-04 | Phase 100 | Complete |
-| INV-01 | Phase 101 | Pending |
-| INV-02 | Phase 101 | Pending |
-| INV-03 | Phase 101 | Pending |
-| INV-04 | Phase 101 | Pending |
-| DL-01 | Phase 101 | Pending |
-| DL-02 | Phase 101 | Pending |
+| INV-01 | Phase 101 | Complete |
+| INV-02 | Phase 107 | Pending |
+| INV-03 | Phase 107 | Pending |
+| INV-04 | Phase 101 | Complete |
+| DL-01 | Phase 107 | Pending |
+| DL-02 | Phase 107 | Pending |
 | DL-03 | Phase 102 | Complete |
 | DL-04 | Phase 102 | Complete |
 | DL-05 | Phase 102 | Complete |
 | MEM-01 | Phase 102 | Complete |
 | MEM-02 | Phase 102 | Complete |
 | MEM-03 | Phase 103 | Complete |
-| MEM-04 | Phase 103 | Complete |
-| MEM-05 | Phase 103 | Complete |
-| MEM-06 | Phase 103 | Complete |
-| REL-01 | Phase 104 | Pending |
-| REL-02 | Phase 104 | Pending |
-| REL-03 | Phase 104 | Pending |
-| REL-04 | Phase 104 | Pending |
+| MEM-04 | Phase 108 | Pending |
+| MEM-05 | Phase 108 | Pending |
+| MEM-06 | Phase 108 | Pending |
+| REL-01 | Phase 108 | Pending |
+| REL-02 | Phase 108 | Pending |
+| REL-03 | Phase 107 | Pending |
+| REL-04 | Phase 104 | Complete |
 | OBS-01 | Phase 105 | Complete |
 | OBS-02 | Phase 105 | Complete |
 | OBS-03 | Phase 105 | Complete |
 | OBS-04 | Phase 105 | Complete |
-| BOUND-01 | Phase 106 | Pending |
-| BOUND-02 | Phase 106 | Pending |
-| BOUND-03 | Phase 106 | Pending |
-| BOUND-04 | Phase 106 | Pending |
-| BOUND-05 | Phase 106 | Pending |
+| BOUND-01 | Phase 106 | Complete |
+| BOUND-02 | Phase 106 | Complete |
+| BOUND-03 | Phase 106 | Complete |
+| BOUND-04 | Phase 106 | Complete |
+| BOUND-05 | Phase 106 | Complete |
 
 **Coverage:**
 
@@ -145,4 +145,4 @@ Explicitly excluded from v2.0 to prevent scope creep.
 - Unmapped: 0
 
 *Requirements defined: 2026-06-29*
-*Last updated: 2026-07-01 after Phase 103 completion*
+*Last updated: 2026-07-03 after gap closure phase planning*

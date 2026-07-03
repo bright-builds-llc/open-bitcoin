@@ -7,10 +7,10 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 481 |
-| Total lines | 194,753 |
-| Code/content lines | 171,853 |
-| Comment-only lines | 6,508 |
-| Blank lines | 16,392 |
+| Total lines | 194,782 |
+| Code/content lines | 171,875 |
+| Comment-only lines | 6,511 |
+| Blank lines | 16,396 |
 
 ## Per-Crate Modules
 
@@ -36,7 +36,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust production | 261 | 74,154 | 64,761 | 2,223 | 7,170 |
 | Rust tests | 79 | 66,782 | 58,314 | 3,514 | 4,954 |
-| TypeScript/Bun scripts | 82 | 37,480 | 33,322 | 709 | 3,449 |
+| TypeScript/Bun scripts | 82 | 37,509 | 33,344 | 712 | 3,453 |
 | Fixture/data | 6 | 8,233 | 8,228 | 5 | 0 |
 | Shell scripts | 13 | 4,028 | 3,600 | 51 | 377 |
 | TOML/config | 16 | 3,460 | 3,094 | 0 | 366 |
@@ -65,7 +65,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase104-relay-serving-fanout.ts | 401 |
 | scripts/check-phase105-operator-relay-evidence.test.ts | 233 |
 | scripts/check-phase105-operator-relay-evidence.ts | 603 |
-| scripts/check-phase106-parity-uat-release-boundary.test.ts | 205 |
+| scripts/check-phase106-parity-uat-release-boundary.test.ts | 234 |
 | scripts/check-phase106-parity-uat-release-boundary.ts | 560 |
 | scripts/check-phase61-resource-recovery-boundaries.ts | 152 |
 | scripts/check-phase62-sync-truth-surfaces.ts | 265 |
@@ -163,7 +163,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 0a2ff3e69d636e7bca569591b93e3cc8fae1af5429b15950c2ab6bd764d0ffb1 |
+| Input fingerprint | 69b6c54beae512e5511a32a2ed50c5083cbe4c96b73f528547b4d2b1611b441f |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |
