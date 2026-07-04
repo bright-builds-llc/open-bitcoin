@@ -87,9 +87,9 @@ Plans:
 
 Plans:
 
-- [ ] 111-01: Full block and witness block `getdata` handling
-- [ ] 111-02: Node-shell block read, serve, suppress, and unavailable outcomes
-- [ ] 111-03: Historical, pruned, and request-pressure test matrix
+- [ ] 111-01-PLAN.md — Full block and witness block `getdata` handling
+- [ ] 111-02-PLAN.md — Node-shell block read, serve, suppress, and unavailable outcomes
+- [ ] 111-03-PLAN.md — Historical, pruned, and request-pressure test matrix
 
 #### Phase 112: BIP152 Wire Codec and Message Semantics
 

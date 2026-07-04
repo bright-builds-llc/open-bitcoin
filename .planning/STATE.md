@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
-status: planning
-stopped_at: Phase 111 context gathered
-last_updated: "2026-07-04T15:19:55.970Z"
+status: planned
+stopped_at: Phase 111 planned
+last_updated: "2026-07-04T16:02:22Z"
 last_activity: 2026-07-04
 progress:
   total_phases: 8
@@ -27,8 +27,8 @@ See: `.planning/PROJECT.md` (updated 2026-07-03 after v2.1 milestone start).
 
 Milestone: v2.1 Block Serving and Compact Block Relay Boundary
 Phase: 111
-Plan: Not started
-Status: Ready to plan
+Plan: 3 plans created
+Status: Ready to execute
 Last activity: 2026-07-04
 
 v2.0 Transaction Relay and Mempool Participation Boundary shipped on 2026-07-03. The archived audit reports 32/32 requirements, 10/10 phases, 8/8 integration checks, 8/8 cross-phase flows, and no tracked tech debt.
@@ -64,7 +64,7 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Pending Todos
 
-- Start Phase 111.
+- Execute Phase 111.
 - Keep historical `.planning/phases/` directories tracked because repo verifier scripts still depend on selected phase evidence.
 - Keep repo-local Cargo and Bazel command forms in UAT guidance:
   - `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- ...`
@@ -80,6 +80,6 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Session Continuity
 
-Last session: 2026-07-04T15:19:55.966Z
-Stopped at: Phase 111 context gathered
-Resume file: .planning/phases/111-full-block-serving-request-path/111-CONTEXT.md
+Last session: 2026-07-04T16:02:22Z
+Stopped at: Phase 111 planned
+Resume file: .planning/phases/111-full-block-serving-request-path/111-01-PLAN.md
