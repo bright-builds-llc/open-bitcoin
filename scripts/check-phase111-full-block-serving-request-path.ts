@@ -22,9 +22,11 @@ const TARGET_FILES = [
   "docs/parity/checklist.md",
   "docs/parity/index.json",
   "docs/parity/source-breadcrumbs.json",
+  "packages/open-bitcoin-network/src/peer/inventory_state.rs",
   "packages/open-bitcoin-node/src/network/block_serving.rs",
   "packages/open-bitcoin-node/src/network/inventory.rs",
   "packages/open-bitcoin-node/src/network/tests.rs",
+  "packages/open-bitcoin-node/src/network/tests/relay_serving_cases.rs",
   "packages/open-bitcoin-network/src/peer/tests.rs",
   "scripts/verify.sh",
 ] as const;
@@ -141,7 +143,6 @@ const NO_CLAIM_MARKERS = [
   "no claim",
   "not claim",
   "not supported",
-  "only",
 ] as const;
 const POSITIVE_CLAIM_PATTERNS = [
   /\bsupports?\b/,
@@ -198,6 +199,7 @@ export function checkPhase111FullBlockServingRequestPath(maybeRepoRoot?: string)
   checkParityRoots(texts, failures);
   checkRequiredTerms(texts, failures);
   checkRequiredTests(texts, failures);
+  checkRequiredEvidenceRoots(texts, failures);
   checkRuntimeGuide(texts.get("docs/operator/runtime-guide.md") ?? "", failures);
   checkNoClaimBoundary(texts, failures);
   checkVerifierWiring(texts.get("scripts/verify.sh") ?? "", failures);
@@ -313,6 +315,28 @@ function checkRequiredTests(texts: Map<TargetFile, string>, failures: string[]):
   for (const testName of REQUIRED_TESTS) {
     requireContains(combinedSource, testName, "Phase 111 regression test", failures);
   }
+}
+
+function checkRequiredEvidenceRoots(texts: Map<TargetFile, string>, failures: string[]): void {
+  const peerGetdataSource = texts.get("packages/open-bitcoin-network/src/peer/inventory_state.rs") ?? "";
+  requireContains(peerGetdataSource, "fn handle_getdata", "Phase 111 peer getdata evidence root", failures);
+  requireContains(peerGetdataSource, "request_pressure_input", "Phase 111 peer getdata pressure gate", failures);
+  requireContains(peerGetdataSource, "PeerAction::ServeInventory", "Phase 111 peer inventory serving action", failures);
+
+  const relayServingCases =
+    texts.get("packages/open-bitcoin-node/src/network/tests/relay_serving_cases.rs") ?? "";
+  requireContains(
+    relayServingCases,
+    "managed_getdata_preserves_block_serving_branch",
+    "Phase 111 relay serving branch regression",
+    failures,
+  );
+  requireContains(
+    relayServingCases,
+    "WireNetworkMessage::Block",
+    "Phase 111 relay serving block response evidence",
+    failures,
+  );
 }
 
 function checkRuntimeGuide(text: string, failures: string[]): void {

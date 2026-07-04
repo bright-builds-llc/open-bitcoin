@@ -18,9 +18,11 @@ const TARGET_FILES = [
   "docs/parity/checklist.md",
   "docs/parity/index.json",
   "docs/parity/source-breadcrumbs.json",
+  "packages/open-bitcoin-network/src/peer/inventory_state.rs",
   "packages/open-bitcoin-node/src/network/block_serving.rs",
   "packages/open-bitcoin-node/src/network/inventory.rs",
   "packages/open-bitcoin-node/src/network/tests.rs",
+  "packages/open-bitcoin-node/src/network/tests/relay_serving_cases.rs",
   "packages/open-bitcoin-network/src/peer/tests.rs",
   "scripts/verify.sh",
 ] as const;
@@ -126,6 +128,25 @@ test("fails_when_docs_claim_compact_block_archive_public_or_production_support",
   }
 });
 
+test("fails_when_only_supports_forbidden_compact_block_claim", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutateFiles(files) {
+      appendToFile(
+        files,
+        "docs/parity/catalog/p2p.md",
+        "Phase 111 only supports BIP152 compact block payload serving.",
+      );
+    },
+  });
+
+  // Act
+  const failures = checkPhase111FullBlockServingRequestPath(root);
+
+  // Assert
+  expect(failures.join("\n")).toContain("forbidden Phase 111 positive claim");
+});
+
 test("allows_explicit_no_claim_wording_for_out_of_scope_surfaces", () => {
   // Arrange
   const root = createFixture({
@@ -143,6 +164,36 @@ test("allows_explicit_no_claim_wording_for_out_of_scope_surfaces", () => {
 
   // Assert
   expect(failures).toEqual([]);
+});
+
+test("fails_when_declared_evidence_roots_lose_phase111_terms", () => {
+  // Arrange
+  const roots = [
+    createFixture({
+      maybeMutateFiles(files) {
+        replaceInFile(files, "packages/open-bitcoin-network/src/peer/inventory_state.rs", "PeerAction::ServeInventory", "");
+      },
+    }),
+    createFixture({
+      maybeMutateFiles(files) {
+        replaceInFile(
+          files,
+          "packages/open-bitcoin-node/src/network/tests/relay_serving_cases.rs",
+          "managed_getdata_preserves_block_serving_branch",
+          "",
+        );
+      },
+    }),
+  ];
+
+  // Act
+  const failureMessages = roots.map((root) =>
+    checkPhase111FullBlockServingRequestPath(root).join("\n"),
+  );
+
+  // Assert
+  expect(failureMessages[0]).toContain("Phase 111 peer inventory serving action");
+  expect(failureMessages[1]).toContain("Phase 111 relay serving branch regression");
 });
 
 test("fails_when_runtime_commands_or_default_verifier_wiring_are_missing", () => {
@@ -204,9 +255,11 @@ function fixtureFiles(): Map<TargetFile, string> {
     ["docs/parity/checklist.md", checklistText()],
     ["docs/parity/index.json", parityIndexText()],
     ["docs/parity/source-breadcrumbs.json", breadcrumbsText()],
+    ["packages/open-bitcoin-network/src/peer/inventory_state.rs", peerInventorySourceText()],
     ["packages/open-bitcoin-node/src/network/block_serving.rs", adapterSourceText()],
     ["packages/open-bitcoin-node/src/network/inventory.rs", inventorySourceText()],
     ["packages/open-bitcoin-node/src/network/tests.rs", nodeTestsText()],
+    ["packages/open-bitcoin-node/src/network/tests/relay_serving_cases.rs", relayServingCasesText()],
     ["packages/open-bitcoin-network/src/peer/tests.rs", peerTestsText()],
     ["scripts/verify.sh", verifyScriptText()],
   ]);
@@ -294,6 +347,15 @@ function inventorySourceText(): string {
   ].join("\n");
 }
 
+function peerInventorySourceText(): string {
+  return [
+    "fn handle_getdata() {",
+    "  let input = request_pressure_input(peer, 0, inventory.inventory.len(), 0, requested_blocks, txids, 0);",
+    "  Ok(vec![PeerAction::ServeInventory(inventory.inventory.into_iter().collect())])",
+    "}",
+  ].join("\n");
+}
+
 function nodeTestsText(): string {
   return [
     "phase111_side_chain_cached_block_is_not_served",
@@ -303,6 +365,14 @@ function nodeTestsText(): string {
     "phase111_managed_getdata_over_request_cap_disconnects_without_block_payload",
     "phase111_permissioned_block_getdata_still_hits_request_cap",
     "WireNetworkMessage::Block WireNetworkMessage::NotFound block_request_cap_reached",
+  ].join("\n");
+}
+
+function relayServingCasesText(): string {
+  return [
+    "fn managed_getdata_preserves_block_serving_branch() {",
+    "  assert_eq!(outbound, vec![WireNetworkMessage::Block(genesis)]);",
+    "}",
   ].join("\n");
 }
 
