@@ -405,6 +405,9 @@ impl PeerManager {
                 peer.remote_prefers_headers = true;
                 Ok(Vec::new())
             }
+            WireNetworkMessage::SendCompact(_) => Ok(Vec::new()),
+            WireNetworkMessage::CompactBlock(_) => Ok(Vec::new()),
+            WireNetworkMessage::GetBlockTxn(_) | WireNetworkMessage::BlockTxn(_) => Ok(Vec::new()),
             WireNetworkMessage::Ping { nonce } => {
                 Ok(vec![PeerAction::Send(WireNetworkMessage::Pong { nonce })])
             }

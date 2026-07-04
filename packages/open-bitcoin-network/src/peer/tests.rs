@@ -11,6 +11,9 @@ use core::net::IpAddr;
 use std::collections::BTreeSet;
 
 use open_bitcoin_chainstate::ChainPosition;
+use open_bitcoin_codec::{
+    BlockTransactions, BlockTransactionsRequest, CompactBlockPayload, SendCompactMessage, ShortId,
+};
 use open_bitcoin_consensus::{check_block_header, transaction_txid, transaction_wtxid};
 use open_bitcoin_primitives::{
     Block, BlockHash, BlockHeader, Hash32, MerkleRoot, MessageCommand, NetworkAddress, NetworkMagic,
@@ -1066,7 +1069,8 @@ fn deferred_relay_commands_remain_absent_from_peer_message_surface() {
     // Arrange
     let deferred_commands = [
         "mempool",
-        concat!("cmpct", "block"),
+        "getcfilters",
+        "cfilter",
         "getcfheaders",
         "getcfcheckpt",
         "filterload",
@@ -2058,6 +2062,44 @@ fn filter_permission_labels_remain_inactive_without_service_bits_or_compact_bloc
         WireNetworkMessage::Inv(InventoryList { inventory })
         if inventory.len() == 1 && inventory[0].inventory_type == InventoryType::Block
     ));
+}
+
+#[test]
+fn phase112_bip152_wire_messages_are_peer_noops() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(112_003, 0).expect("peer");
+    let block_hash = BlockHash::from_byte_array([112_u8; 32]);
+    let messages = [
+        WireNetworkMessage::SendCompact(SendCompactMessage {
+            announce: true,
+            version: 2,
+        }),
+        WireNetworkMessage::CompactBlock(CompactBlockPayload {
+            header: header(BlockHash::from_byte_array([0_u8; 32]), 112),
+            nonce: 1,
+            short_ids: vec![ShortId::from_wire_bytes([1, 2, 3, 4, 5, 6])],
+            prefilled_transactions: Vec::new(),
+        }),
+        WireNetworkMessage::GetBlockTxn(BlockTransactionsRequest {
+            block_hash,
+            index_deltas: vec![0],
+        }),
+        WireNetworkMessage::BlockTxn(BlockTransactions {
+            block_hash,
+            transactions: Vec::new(),
+        }),
+    ];
+
+    for message in messages {
+        // Act
+        let actions = manager
+            .handle_message(112_003, message, 1)
+            .expect("BIP152 message should be accepted");
+
+        // Assert
+        assert!(actions.is_empty());
+    }
 }
 
 #[test]

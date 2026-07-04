@@ -17,6 +17,7 @@
 //! Byte-level Bitcoin codecs for the Open Bitcoin pure core.
 
 pub mod block;
+pub mod compact_block;
 pub mod compact_size;
 pub mod error;
 pub mod network;
@@ -24,6 +25,16 @@ pub mod primitives;
 pub mod transaction;
 
 pub use block::{encode_block, encode_block_header, parse_block, parse_block_header};
+pub use compact_block::{
+    BIP152_COMPACT_BLOCKS_VERSION, BlockTransactions, BlockTransactionsRequest,
+    CompactBlockPayload, PrefilledTransaction, SendCompactMessage, ShortId,
+    decode_block_transactions_payload, decode_compact_block_payload,
+    decode_get_block_transactions_payload, decode_send_compact_payload,
+    encode_block_transactions_payload, encode_compact_block_payload,
+    encode_get_block_transactions_payload, encode_send_compact_payload,
+    expand_block_transaction_indexes, expand_differential_indexes, expand_prefilled_positions,
+    validate_compact_block_structure,
+};
 pub use compact_size::{MAX_SIZE, read_compact_size, write_compact_size};
 pub use error::CodecError;
 pub use network::{

@@ -380,6 +380,20 @@
       ]
     },
     {
+      "label": "codec-bip152-compact-block",
+      "files": [
+        "packages/open-bitcoin-codec/src/compact_block.rs",
+        "packages/open-bitcoin-codec/src/compact_block/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/protocol.h",
+        "packages/bitcoin-knots/src/blockencodings.h",
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/test/functional/p2p_compactblocks.py",
+        "packages/bitcoin-knots/test/functional/test_framework/messages.py"
+      ]
+    },
+    {
       "label": "codec-compact-size",
       "files": [
         "packages/open-bitcoin-codec/src/compact_size.rs",
@@ -591,6 +605,7 @@
     {
       "label": "network-message-codec",
       "files": [
+        "packages/open-bitcoin-network/src/message/cursor.rs",
         "packages/open-bitcoin-network/src/message.rs",
         "packages/open-bitcoin-network/src/message/tests.rs"
       ],

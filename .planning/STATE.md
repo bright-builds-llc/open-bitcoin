@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
 status: ready_to_plan
-stopped_at: Phase 111 complete; ready to plan Phase 112
-last_updated: "2026-07-04T17:46:28Z"
+stopped_at: Phase 112 complete; ready to plan Phase 113
+last_updated: "2026-07-04T21:12:09.661Z"
 last_activity: 2026-07-04
 progress:
   total_phases: 8
-  completed_phases: 2
-  total_plans: 7
-  completed_plans: 7
+  completed_phases: 3
+  total_plans: 11
+  completed_plans: 11
   percent: 100
 ---
 
@@ -21,12 +21,12 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-07-03 after v2.1 milestone start).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 112 — BIP152 Wire Codec and Message Semantics
+**Current focus:** Phase 113 — Compact Relay Negotiation and Announcement Policy
 
 ## Current Position
 
 Milestone: v2.1 Block Serving and Compact Block Relay Boundary
-Phase: 112
+Phase: 113
 Plan: Not started
 Status: Ready to plan
 Last activity: 2026-07-04
@@ -64,7 +64,7 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Pending Todos
 
-- Plan Phase 112.
+- Plan Phase 113.
 - Keep historical `.planning/phases/` directories tracked because repo verifier scripts still depend on selected phase evidence.
 - Keep repo-local Cargo and Bazel command forms in UAT guidance:
   - `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- ...`

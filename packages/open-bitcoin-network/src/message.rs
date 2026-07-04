@@ -3,9 +3,15 @@
 // - packages/bitcoin-knots/src/netaddress.h
 // - packages/bitcoin-knots/src/netbase.h
 
+mod cursor;
+
 use open_bitcoin_codec::{
-    CodecError, MAX_SIZE, encode_block, encode_block_header, encode_block_locator,
-    encode_inventory_vector, encode_message_header, encode_network_address, encode_transaction,
+    BlockTransactions, BlockTransactionsRequest, CodecError, CompactBlockPayload,
+    SendCompactMessage, decode_block_transactions_payload, decode_compact_block_payload,
+    decode_get_block_transactions_payload, decode_send_compact_payload, encode_block,
+    encode_block_header, encode_block_locator, encode_block_transactions_payload,
+    encode_compact_block_payload, encode_get_block_transactions_payload, encode_inventory_vector,
+    encode_message_header, encode_network_address, encode_send_compact_payload, encode_transaction,
     parse_block, parse_block_header, parse_inventory_vector, parse_message_header,
     parse_network_address, parse_transaction, write_compact_size,
 };
@@ -17,6 +23,7 @@ use open_bitcoin_primitives::{
 
 use crate::address::{AddressAnnouncement, AddressList, PHASE92_ADDR_BATCH_LIMIT};
 use crate::error::NetworkError;
+use cursor::{Cursor, compact_size_to_usize};
 
 pub const PROTOCOL_VERSION: i32 = 70_016;
 pub const USER_AGENT: &str = "/open-bitcoin:0.1.0/";
@@ -163,6 +170,10 @@ pub enum WireNetworkMessage {
     Verack,
     WtxidRelay,
     SendHeaders,
+    SendCompact(SendCompactMessage),
+    CompactBlock(CompactBlockPayload),
+    GetBlockTxn(BlockTransactionsRequest),
+    BlockTxn(BlockTransactions),
     GetAddr,
     Ping {
         nonce: u64,
@@ -190,6 +201,10 @@ impl WireNetworkMessage {
             Self::Verack => "verack",
             Self::WtxidRelay => "wtxidrelay",
             Self::SendHeaders => "sendheaders",
+            Self::SendCompact(_) => "sendcmpct",
+            Self::CompactBlock(_) => "cmpctblock",
+            Self::GetBlockTxn(_) => "getblocktxn",
+            Self::BlockTxn(_) => "blocktxn",
             Self::GetAddr => "getaddr",
             Self::Ping { .. } => "ping",
             Self::Pong { .. } => "pong",
@@ -208,6 +223,10 @@ impl WireNetworkMessage {
         match self {
             Self::Version(message) => encode_version_payload(message),
             Self::Verack | Self::WtxidRelay | Self::SendHeaders | Self::GetAddr => Ok(Vec::new()),
+            Self::SendCompact(message) => Ok(encode_send_compact_payload(message)),
+            Self::CompactBlock(message) => Ok(encode_compact_block_payload(message)?),
+            Self::GetBlockTxn(message) => Ok(encode_get_block_transactions_payload(message)?),
+            Self::BlockTxn(message) => Ok(encode_block_transactions_payload(message)?),
             Self::Ping { nonce } | Self::Pong { nonce } => Ok(nonce.to_le_bytes().to_vec()),
             Self::GetHeaders { locator, stop_hash } => {
                 let mut payload = encode_block_locator(locator)?;
@@ -253,6 +272,11 @@ impl WireNetworkMessage {
             "verack" => decode_empty_message(payload, Self::Verack),
             "wtxidrelay" => decode_empty_message(payload, Self::WtxidRelay),
             "sendheaders" => decode_empty_message(payload, Self::SendHeaders),
+            "sendcmpct" => Ok(Self::SendCompact(decode_send_compact_payload(payload)?)),
+            "cmpctblock" => Ok(Self::CompactBlock(decode_compact_block_payload(payload)?)),
+            #[rustfmt::skip]
+            "getblocktxn" => Ok(Self::GetBlockTxn(decode_get_block_transactions_payload(payload)?)),
+            "blocktxn" => Ok(Self::BlockTxn(decode_block_transactions_payload(payload)?)),
             "getaddr" => decode_empty_message(payload, Self::GetAddr),
             "ping" => Ok(Self::Ping {
                 nonce: decode_nonce_payload(payload)?,
@@ -515,112 +539,6 @@ pub(crate) fn zero_address() -> NetworkAddress {
         address_bytes: [0_u8; 16],
         port: 0,
     }
-}
-
-#[derive(Debug, Clone)]
-struct Cursor<'a> {
-    bytes: &'a [u8],
-    offset: usize,
-}
-
-impl<'a> Cursor<'a> {
-    fn new(bytes: &'a [u8]) -> Self {
-        Self { bytes, offset: 0 }
-    }
-
-    fn remaining(&self) -> usize {
-        self.bytes.len().saturating_sub(self.offset)
-    }
-
-    fn finish(self) -> Result<(), CodecError> {
-        if self.remaining() == 0 {
-            return Ok(());
-        }
-        Err(CodecError::TrailingData {
-            remaining: self.remaining(),
-        })
-    }
-
-    fn read_u8(&mut self) -> Result<u8, CodecError> {
-        Ok(self.read_array::<1>()?[0])
-    }
-
-    fn read_u64_le(&mut self) -> Result<u64, CodecError> {
-        Ok(u64::from_le_bytes(self.read_array()?))
-    }
-
-    fn read_u32_le(&mut self) -> Result<u32, CodecError> {
-        Ok(u32::from_le_bytes(self.read_array()?))
-    }
-
-    fn read_i32_le(&mut self) -> Result<i32, CodecError> {
-        Ok(i32::from_le_bytes(self.read_array()?))
-    }
-
-    fn read_i64_le(&mut self) -> Result<i64, CodecError> {
-        Ok(i64::from_le_bytes(self.read_array()?))
-    }
-
-    fn read_array<const N: usize>(&mut self) -> Result<[u8; N], CodecError> {
-        let slice = self.read_slice(N)?;
-        let mut array = [0_u8; N];
-        array.copy_from_slice(slice);
-        Ok(array)
-    }
-
-    fn read_slice(&mut self, len: usize) -> Result<&'a [u8], CodecError> {
-        let remaining = self.remaining();
-        if remaining < len {
-            return Err(CodecError::UnexpectedEof {
-                needed: len,
-                remaining,
-            });
-        }
-        let start = self.offset;
-        self.offset += len;
-        Ok(&self.bytes[start..self.offset])
-    }
-
-    fn read_compact_size(&mut self) -> Result<u64, CodecError> {
-        let first = self.read_u8()?;
-        let value = match first {
-            value @ 0..=252 => u64::from(value),
-            0xfd => {
-                let value = u64::from(u16::from_le_bytes(self.read_array()?));
-                if value < 253 {
-                    return Err(CodecError::NonCanonicalCompactSize { value });
-                }
-                value
-            }
-            0xfe => {
-                let value = u64::from(u32::from_le_bytes(self.read_array()?));
-                if value <= u64::from(u16::MAX) {
-                    return Err(CodecError::NonCanonicalCompactSize { value });
-                }
-                value
-            }
-            0xff => {
-                let value = u64::from_le_bytes(self.read_array()?);
-                if value <= u64::from(u32::MAX) {
-                    return Err(CodecError::NonCanonicalCompactSize { value });
-                }
-                value
-            }
-        };
-
-        if value > MAX_SIZE {
-            return Err(CodecError::CompactSizeTooLarge(value));
-        }
-        Ok(value)
-    }
-}
-
-fn compact_size_to_usize(value: u64, field: &'static str) -> usize {
-    debug_assert!(
-        value <= usize::MAX as u64,
-        "{field} does not fit into usize"
-    );
-    value as usize
 }
 
 #[cfg(test)]

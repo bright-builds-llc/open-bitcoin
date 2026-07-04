@@ -41,7 +41,7 @@ v2.1 Block Serving and Compact Block Relay Boundary is the active milestone afte
 
 - [x] **Phase 110: Block Serving Activation and Eligibility Boundary** - Establish default-off serving activation, peer eligibility, safe block status classification, and resource-bound policy before any storage read. (completed 2026-07-04)
 - [x] **Phase 111: Full Block Serving Request Path** - Serve eligible full and witness block requests from validated local block data with bounded request handling and historical/pruned safeguards. (completed 2026-07-04)
-- [ ] **Phase 112: BIP152 Wire Codec and Message Semantics** - Add first-party `sendcmpct`, `cmpctblock`, `getblocktxn`, and `blocktxn` payload support with Knots-aligned malformed-input behavior.
+- [x] **Phase 112: BIP152 Wire Codec and Message Semantics** - Add first-party `sendcmpct`, `cmpctblock`, `getblocktxn`, and `blocktxn` payload support with Knots-aligned malformed-input behavior. (completed 2026-07-04)
 - [ ] **Phase 113: Compact Relay Negotiation and Announcement Policy** - Track per-peer compact-block negotiation and decide when compact block announcements are allowed.
 - [ ] **Phase 114: Compact Block Reconstruction from Mempool State** - Reconstruct compact blocks from mempool and bounded extra transaction inputs with collision and missing-transaction evidence.
 - [ ] **Phase 115: Missing Transaction Round Trip, Fallback, and Validation Handoff** - Complete `getblocktxn`/`blocktxn`, fallback, volatile-state cleanup, and validation/connect integration.
@@ -103,13 +103,13 @@ Plans:
 3. `getblocktxn` and `blocktxn` payloads encode and decode differential indexes and witness transaction serialization.
 4. Malformed compact-block payloads are rejected before partial reconstruction state is accepted.
 
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
 
-- [ ] 112-01: `sendcmpct` and compact-block message enum support
-- [ ] 112-02: `cmpctblock` codec, short IDs, and prefilled transaction fixtures
-- [ ] 112-03: `getblocktxn`/`blocktxn` codec and malformed-payload tests
+- [x] 112-01: `sendcmpct` and compact-block message enum support
+- [x] 112-02: `cmpctblock` codec, short IDs, and prefilled transaction fixtures
+- [x] 112-03: `getblocktxn`/`blocktxn` codec and malformed-payload tests
 
 #### Phase 113: Compact Relay Negotiation and Announcement Policy
 
@@ -225,7 +225,7 @@ Plans:
 | --- | --- | ---: | --- | --- |
 | 110. Block Serving Activation and Eligibility Boundary | v2.1 | 4/4 | Complete    | 2026-07-04 |
 | 111. Full Block Serving Request Path | v2.1 | 3/3 | Complete    | 2026-07-04 |
-| 112. BIP152 Wire Codec and Message Semantics | v2.1 | 0/3 | Not started | - |
+| 112. BIP152 Wire Codec and Message Semantics | v2.1 | 3/3 | Complete    | 2026-07-04 |
 | 113. Compact Relay Negotiation and Announcement Policy | v2.1 | 0/3 | Not started | - |
 | 114. Compact Block Reconstruction from Mempool State | v2.1 | 0/3 | Not started | - |
 | 115. Missing Transaction Round Trip, Fallback, and Validation Handoff | v2.1 | 0/4 | Not started | - |

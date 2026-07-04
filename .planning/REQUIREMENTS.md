@@ -19,16 +19,16 @@ Requirements for the current milestone. Each requirement maps to exactly one roa
 
 ### BIP152 Wire Messages And Negotiation
 
-- [ ] **CMP-01**: Node encodes, decodes, and validates `sendcmpct` messages with version 2 semantics and documented handling for unsupported versions.
-- [ ] **CMP-02**: Node encodes, decodes, and validates `cmpctblock` payloads with header, nonce, six-byte short IDs, and prefilled transaction differential indexes.
-- [ ] **CMP-03**: Node encodes, decodes, and validates `getblocktxn` and `blocktxn` payloads with differential indexes and witness transaction serialization.
+- [x] **CMP-01**: Node encodes, decodes, and validates `sendcmpct` messages with version 2 semantics and documented handling for unsupported versions.
+- [x] **CMP-02**: Node encodes, decodes, and validates `cmpctblock` payloads with header, nonce, six-byte short IDs, and prefilled transaction differential indexes.
+- [x] **CMP-03**: Node encodes, decodes, and validates `getblocktxn` and `blocktxn` payloads with differential indexes and witness transaction serialization.
 - [ ] **CMP-04**: Node tracks per-peer compact-block capability, high-bandwidth preference, low-bandwidth preference, and compact-block announcement eligibility deterministically.
 - [ ] **CMP-05**: Node announces compact blocks only when activation, peer negotiation, header state, block availability, and resource limits permit it.
 - [ ] **CMP-06**: Compact-block negotiation remains independent from transaction relay, package relay, bloom/filter permissions, compact filters, and public serving defaults.
 
 ### Compact Block Reconstruction And Fallback
 
-- [ ] **RCN-01**: Node validates compact block headers, transaction counts, prefilled ordering, null transactions, short ID bounds, and malformed payloads before accepting partial state.
+- [x] **RCN-01**: Node validates compact block headers, transaction counts, prefilled ordering, null transactions, short ID bounds, and malformed payloads before accepting partial state.
 - [ ] **RCN-02**: Node reconstructs compact blocks from current mempool state plus bounded extra or recent block transaction inputs using witness-hash short IDs.
 - [ ] **RCN-03**: Node detects short ID collisions, duplicate matches, missing transactions, and reconstruction failures with stable typed outcomes.
 - [ ] **RCN-04**: Node requests missing compact-block transactions with bounded `getblocktxn` indexes only when the peer and in-flight state are eligible.
@@ -112,13 +112,13 @@ Traceability is populated by the v2.1 roadmap. Each active requirement maps to e
 | BSRV-04 | Phase 111 | Complete |
 | BSRV-05 | Phase 110 | Complete |
 | BSRV-06 | Phase 110 | Complete |
-| CMP-01 | Phase 112 | Pending |
-| CMP-02 | Phase 112 | Pending |
-| CMP-03 | Phase 112 | Pending |
+| CMP-01 | Phase 112 | Complete |
+| CMP-02 | Phase 112 | Complete |
+| CMP-03 | Phase 112 | Complete |
 | CMP-04 | Phase 113 | Pending |
 | CMP-05 | Phase 113 | Pending |
 | CMP-06 | Phase 113 | Pending |
-| RCN-01 | Phase 112 | Pending |
+| RCN-01 | Phase 112 | Complete |
 | RCN-02 | Phase 114 | Pending |
 | RCN-03 | Phase 114 | Pending |
 | RCN-04 | Phase 115 | Pending |

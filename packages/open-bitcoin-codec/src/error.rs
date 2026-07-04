@@ -7,13 +7,33 @@ use open_bitcoin_primitives::{AmountError, HashLengthError, MessageCommandError,
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CodecError {
-    UnexpectedEof { needed: usize, remaining: usize },
-    LengthOutOfRange { field: &'static str, value: u64 },
+    UnexpectedEof {
+        needed: usize,
+        remaining: usize,
+    },
+    LengthOutOfRange {
+        field: &'static str,
+        value: u64,
+    },
     CompactSizeTooLarge(u64),
-    NonCanonicalCompactSize { value: u64 },
-    TrailingData { remaining: usize },
+    NonCanonicalCompactSize {
+        value: u64,
+    },
+    TrailingData {
+        remaining: usize,
+    },
     InvalidWitnessFlag(u8),
     SuperfluousWitnessRecord,
+    DifferentialIndexOverflow,
+    CompactBlockEmpty,
+    CompactBlockTransactionCountOverflow {
+        count: u64,
+    },
+    PrefilledTransactionOutOfBounds {
+        position: u64,
+        transaction_count: u64,
+    },
+    CompactBlockNullPrefilledTransaction,
     Amount(AmountError),
     HashLength(HashLengthError),
     Script(ScriptError),
@@ -39,6 +59,29 @@ impl fmt::Display for CodecError {
             Self::TrailingData { remaining } => write!(f, "trailing data: {remaining} bytes"),
             Self::InvalidWitnessFlag(flag) => write!(f, "invalid witness flag: {flag}"),
             Self::SuperfluousWitnessRecord => write!(f, "superfluous witness record"),
+            Self::DifferentialIndexOverflow => write!(f, "differential index overflow"),
+            Self::CompactBlockEmpty => {
+                write!(
+                    f,
+                    "compact block has no short ids or prefilled transactions"
+                )
+            }
+            Self::CompactBlockTransactionCountOverflow { count } => {
+                write!(f, "compact block transaction count out of range: {count}")
+            }
+            Self::PrefilledTransactionOutOfBounds {
+                position,
+                transaction_count,
+            } => write!(
+                f,
+                "prefilled transaction position {position} exceeds compact block transaction count {transaction_count}"
+            ),
+            Self::CompactBlockNullPrefilledTransaction => {
+                write!(
+                    f,
+                    "compact block prefilled transaction is structurally null"
+                )
+            }
             Self::Amount(error) => error.fmt(f),
             Self::HashLength(error) => error.fmt(f),
             Self::Script(error) => error.fmt(f),
@@ -116,6 +159,30 @@ mod tests {
         assert_eq!(
             CodecError::SuperfluousWitnessRecord.to_string(),
             "superfluous witness record",
+        );
+        assert_eq!(
+            CodecError::DifferentialIndexOverflow.to_string(),
+            "differential index overflow",
+        );
+        assert_eq!(
+            CodecError::CompactBlockEmpty.to_string(),
+            "compact block has no short ids or prefilled transactions",
+        );
+        assert_eq!(
+            CodecError::CompactBlockTransactionCountOverflow { count: 65_536 }.to_string(),
+            "compact block transaction count out of range: 65536",
+        );
+        assert_eq!(
+            CodecError::PrefilledTransactionOutOfBounds {
+                position: 4,
+                transaction_count: 3,
+            }
+            .to_string(),
+            "prefilled transaction position 4 exceeds compact block transaction count 3",
+        );
+        assert_eq!(
+            CodecError::CompactBlockNullPrefilledTransaction.to_string(),
+            "compact block prefilled transaction is structurally null",
         );
         assert_eq!(
             CodecError::from(AmountError::OutOfRange(-1)).to_string(),
