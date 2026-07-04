@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
-status: Ready for Phase 110
+status: executing
 stopped_at: Phase 110 context gathered
-last_updated: "2026-07-04T03:01:36.910Z"
-last_activity: 2026-07-03 -- v2.1 roadmap approved.
+last_updated: "2026-07-04T03:59:36.260Z"
+last_activity: 2026-07-04 -- Phase 110 execution started
 progress:
   total_phases: 8
   completed_phases: 0
-  total_plans: 27
+  total_plans: 4
   completed_plans: 0
   percent: 0
 ---
@@ -21,15 +21,15 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-07-03 after v2.1 milestone start).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** v2.1 Block Serving and Compact Block Relay Boundary Phase 110 start.
+**Current focus:** Phase 110 — Block Serving Activation and Eligibility Boundary
 
 ## Current Position
 
 Milestone: v2.1 Block Serving and Compact Block Relay Boundary
-Phase: not started
-Plan: Phase 110 context gathering
-Status: Ready for Phase 110
-Last activity: 2026-07-03 -- v2.1 roadmap approved.
+Phase: 110 (Block Serving Activation and Eligibility Boundary) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 110
+Last activity: 2026-07-04 -- Phase 110 execution started
 
 v2.0 Transaction Relay and Mempool Participation Boundary shipped on 2026-07-03. The archived audit reports 32/32 requirements, 10/10 phases, 8/8 integration checks, 8/8 cross-phase flows, and no tracked tech debt.
 

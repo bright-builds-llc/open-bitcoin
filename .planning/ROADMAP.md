@@ -1,6 +1,6 @@
 # Roadmap: Open Bitcoin
 
-## Current Status: v2.1 Ready To Start
+## Current Status
 
 v2.1 Block Serving and Compact Block Relay Boundary is the active milestone after v2.0. The roadmap continues phase numbering after Phase 109 and maps all 34 approved v2.1 requirements exactly once.
 
@@ -62,13 +62,14 @@ v2.1 Block Serving and Compact Block Relay Boundary is the active milestone afte
 3. Block status classification distinguishes validated, available, stale, side-chain, pruned, unavailable, unvalidated, unknown, and suppressed outcomes before storage reads.
 4. Resource-governance tests prove request caps, backpressure, timeouts, churn, ban/discourage, and in-flight cleanup remain active under adversarial block-serving requests.
 
-**Plans:** 3 plans
+**Plans:** 4 plans
 
 Plans:
 
-- [ ] 110-01: Activation settings and peer eligibility policy
-- [ ] 110-02: Block status classification and safe outcome labels
-- [ ] 110-03: Resource-governance integration and default-off guardrails
+- [ ] 110-01-PLAN.md — Activation settings and peer eligibility policy
+- [ ] 110-02-PLAN.md — Block status classification and safe outcome labels
+- [ ] 110-03-PLAN.md — Resource-governance and in-flight cleanup coverage
+- [ ] 110-04-PLAN.md — Docs, parity evidence, and default-off guardrails
 
 #### Phase 111: Full Block Serving Request Path
 
@@ -222,7 +223,7 @@ Plans:
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 | --- | --- | ---: | --- | --- |
-| 110. Block Serving Activation and Eligibility Boundary | v2.1 | 0/3 | Not started | - |
+| 110. Block Serving Activation and Eligibility Boundary | v2.1 | 0/4 | Not started | - |
 | 111. Full Block Serving Request Path | v2.1 | 0/3 | Not started | - |
 | 112. BIP152 Wire Codec and Message Semantics | v2.1 | 0/3 | Not started | - |
 | 113. Compact Relay Negotiation and Announcement Policy | v2.1 | 0/3 | Not started | - |
