@@ -68,15 +68,10 @@ impl PeerManager {
             .peers
             .get(&peer_id)
             .ok_or(NetworkError::UnknownPeer(peer_id))?;
-        let input = request_pressure_input(
-            peer,
-            0,
-            inventory.inventory.len(),
-            0,
-            peer.requested_blocks.len(),
-            self.tx_download.peer_snapshot(peer_id).in_flight_count,
-            0,
-        );
+        let requested_blocks = peer.requested_blocks.len();
+        let txids = self.tx_download.peer_snapshot(peer_id).in_flight_count;
+        #[rustfmt::skip]
+        let input = request_pressure_input(peer, 0, inventory.inventory.len(), 0, requested_blocks, txids, 0);
         if let Some(actions) = resource_limit_disconnect_actions(input) {
             return Ok(actions);
         }

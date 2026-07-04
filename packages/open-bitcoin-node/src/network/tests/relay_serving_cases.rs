@@ -18,7 +18,8 @@ use open_bitcoin_core::{
 };
 use open_bitcoin_mempool::PolicyConfig;
 use open_bitcoin_network::{
-    InventoryList, RelayActivationConfig, TxServingRecordStatus, WireNetworkMessage,
+    BlockRelayActivationPolicy, BlockServingActivationConfig, InventoryList, RelayActivationConfig,
+    TxServingRecordStatus, WireNetworkMessage,
 };
 
 use super::{
@@ -217,10 +218,16 @@ fn managed_getdata_reports_unknown_confirmed_replaced_evicted_expired_notfound()
 #[test]
 fn managed_getdata_preserves_block_serving_branch() {
     // Arrange
-    let mut network = ManagedPeerNetwork::new(
+    let mut network = ManagedPeerNetwork::new_with_block_relay_activation(
         MemoryChainstateStore::default(),
         local_config(803),
         PolicyConfig::default(),
+        RelayActivationConfig::default(),
+        BlockRelayActivationPolicy {
+            block_serving: BlockServingActivationConfig { enabled: true },
+            compact_relay: Default::default(),
+        },
+        false,
     );
     network
         .connect_outbound_peer(803, 1)

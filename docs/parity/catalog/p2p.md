@@ -1215,6 +1215,49 @@ full-node readiness, or production-funds wallet use. Public-network
 block-serving or compact-relay review remains opt-in UAT guidance only and is
 outside `bash scripts/verify.sh`.
 
+## Phase 111 full block-serving request path
+
+Phase 111 adds the `v2-1-full-block-serving-request-path` surface for
+`BSRV-04`, `GOV-01`, and `GOV-05`. It connects Phase 110 block-serving policy
+to the managed `getdata` path for `InventoryType::Block`,
+`InventoryType::WitnessBlock`, and `InventoryType::CompactBlock`.
+
+The Open Bitcoin-owned evidence roots are local and deterministic:
+`docs/architecture/status-snapshot.md`, `docs/operator/runtime-guide.md`,
+`docs/parity/catalog/p2p.md`, `docs/parity/checklist.md`,
+`docs/parity/index.json`, `docs/parity/source-breadcrumbs.json`,
+`packages/open-bitcoin-node/src/network/block_serving.rs`,
+`packages/open-bitcoin-node/src/network/inventory.rs`,
+`packages/open-bitcoin-node/src/network/tests.rs`,
+`packages/open-bitcoin-node/src/network/tests/relay_serving_cases.rs`,
+`packages/open-bitcoin-network/src/peer/inventory_state.rs`,
+`packages/open-bitcoin-network/src/peer/tests.rs`,
+`scripts/check-phase111-full-block-serving-request-path.ts`,
+`scripts/check-phase111-full-block-serving-request-path.test.ts`, and
+`scripts/verify.sh`.
+
+The request-path terms are `ManagedBlockServeInput`,
+`serve_managed_block_request`, lazy `lookup_block`,
+`WireNetworkMessage::Block`, `WireNetworkMessage::NotFound`,
+`block_status_pruned`, `block_status_unavailable`, and
+`block_request_cap_reached`. Active validated local block and witness-block
+payloads can return a block payload after policy gates. Compact-block
+inventory, side-chain cached blocks, pruned active non-tip blocks, missing
+active-tip payloads, stale facts, and request-cap pressure stay bounded to
+notfound or disconnect outcomes.
+
+Knots anchors for this request path are
+`packages/bitcoin-knots/src/net_processing.cpp`,
+`packages/bitcoin-knots/src/node/blockstorage.cpp`,
+`packages/bitcoin-knots/src/validation.cpp`, and
+`packages/bitcoin-knots/test/functional/p2p_getdata.py`.
+
+Phase 111 does not add BIP152 compact block payload serving, compact
+reconstruction, `getblocktxn`, `blocktxn`, archive-node behavior, package
+relay, bloom/filter serving, compact filter serving, public block serving by
+default, public-network CI, production service operation, production full-node
+readiness, production-funds wallet use, or schema/ORM work.
+
 ## Known gaps
 
 These networking gaps remain deferred or out of scope unless a later phase adds

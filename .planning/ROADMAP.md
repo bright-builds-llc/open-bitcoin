@@ -40,7 +40,7 @@ v2.1 Block Serving and Compact Block Relay Boundary is the active milestone afte
 ### Phases
 
 - [x] **Phase 110: Block Serving Activation and Eligibility Boundary** - Establish default-off serving activation, peer eligibility, safe block status classification, and resource-bound policy before any storage read. (completed 2026-07-04)
-- [ ] **Phase 111: Full Block Serving Request Path** - Serve eligible full and witness block requests from validated local block data with bounded request handling and historical/pruned safeguards.
+- [x] **Phase 111: Full Block Serving Request Path** - Serve eligible full and witness block requests from validated local block data with bounded request handling and historical/pruned safeguards. (completed 2026-07-04)
 - [ ] **Phase 112: BIP152 Wire Codec and Message Semantics** - Add first-party `sendcmpct`, `cmpctblock`, `getblocktxn`, and `blocktxn` payload support with Knots-aligned malformed-input behavior.
 - [ ] **Phase 113: Compact Relay Negotiation and Announcement Policy** - Track per-peer compact-block negotiation and decide when compact block announcements are allowed.
 - [ ] **Phase 114: Compact Block Reconstruction from Mempool State** - Reconstruct compact blocks from mempool and bounded extra transaction inputs with collision and missing-transaction evidence.
@@ -83,13 +83,13 @@ Plans:
 3. Full block serving participates in existing queue, request, and in-flight limits.
 4. Historical and pruned block behavior stays bounded by documented eligibility rules and does not imply archive-node availability.
 
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
 
-- [ ] 111-01-PLAN.md — Full block and witness block `getdata` handling
-- [ ] 111-02-PLAN.md — Node-shell block read, serve, suppress, and unavailable outcomes
-- [ ] 111-03-PLAN.md — Historical, pruned, and request-pressure test matrix
+- [x] 111-01-PLAN.md — Full block and witness block `getdata` handling
+- [x] 111-02-PLAN.md — Node-shell block read, serve, suppress, and unavailable outcomes
+- [x] 111-03-PLAN.md — Historical, pruned, and request-pressure test matrix
 
 #### Phase 112: BIP152 Wire Codec and Message Semantics
 
@@ -224,7 +224,7 @@ Plans:
 | Phase | Milestone | Plans Complete | Status | Completed |
 | --- | --- | ---: | --- | --- |
 | 110. Block Serving Activation and Eligibility Boundary | v2.1 | 4/4 | Complete    | 2026-07-04 |
-| 111. Full Block Serving Request Path | v2.1 | 0/3 | Not started | - |
+| 111. Full Block Serving Request Path | v2.1 | 3/3 | Complete    | 2026-07-04 |
 | 112. BIP152 Wire Codec and Message Semantics | v2.1 | 0/3 | Not started | - |
 | 113. Compact Relay Negotiation and Announcement Policy | v2.1 | 0/3 | Not started | - |
 | 114. Compact Block Reconstruction from Mempool State | v2.1 | 0/3 | Not started | - |

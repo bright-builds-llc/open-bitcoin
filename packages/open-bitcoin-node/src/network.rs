@@ -16,6 +16,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 mod action_translation;
 mod admission_bridge;
+mod block_serving;
 mod header_sync;
 mod inbound;
 mod inventory;
@@ -35,10 +36,11 @@ use open_bitcoin_core::{
 };
 use open_bitcoin_mempool::{MempoolCapacityStatus, MempoolError, RollingFeeParityStatus};
 use open_bitcoin_network::{
-    ConnectionRole, DisconnectReason, HeaderEntry, HeaderStore, HeaderSyncPolicy, HeadersMessage,
-    InboundAdmissionPolicy, InboundResourceEvent, InventoryList, LocalAdvertisementDecision,
-    LocalPeerConfig, NetworkError, PROTOCOL_VERSION, ParsedNetworkMessage, PeerAction, PeerId,
-    PeerManager, RelayActivationConfig, TxOrphanage, WireNetworkMessage,
+    BlockRelayActivationPolicy, ConnectionRole, DisconnectReason, HeaderEntry, HeaderStore,
+    HeaderSyncPolicy, HeadersMessage, InboundAdmissionPolicy, InboundResourceEvent, InventoryList,
+    LocalAdvertisementDecision, LocalPeerConfig, NetworkError, PROTOCOL_VERSION,
+    ParsedNetworkMessage, PeerAction, PeerId, PeerManager, RelayActivationConfig, TxOrphanage,
+    WireNetworkMessage,
 };
 
 use crate::{ChainstateStore, ManagedChainstate, ManagedMempool};
@@ -158,6 +160,7 @@ pub struct ManagedPeerNetwork<S> {
     inbound_admission_info: ManagedInboundAdmissionInfo,
     resource_governance_info: ManagedResourceGovernanceInfo,
     relay_activation: RelayActivationConfig,
+    block_relay_activation: BlockRelayActivationPolicy,
     inbound_serving_enabled: bool,
     relay_fanout: relay_fanout::ManagedRelayFanoutState,
     relay_serving: relay_serving::RelayServingCache,

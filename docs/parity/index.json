@@ -676,6 +676,10 @@
     {
       "name": "v2-1-block-serving-activation-eligibility-boundary",
       "status": "done"
+    },
+    {
+      "name": "v2-1-full-block-serving-request-path",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -2521,6 +2525,53 @@
         ],
         "suspected_unknowns": [
           "Future v2.1 phases own full block serving, BIP152 codecs, compact negotiation, compact reconstruction, missing transaction round trips, operator rendering, public-network UAT scope, and release-boundary closeout before any broader block-serving or compact-relay claim can be made."
+        ]
+      },
+      {
+        "id": "v2-1-full-block-serving-request-path",
+        "title": "v2.1 Full Block Serving Request Path",
+        "status": "done",
+        "requirements": [
+          "BSRV-04",
+          "GOV-01",
+          "GOV-05"
+        ],
+        "evidence": [
+          "docs/architecture/status-snapshot.md",
+          "docs/operator/runtime-guide.md",
+          "docs/parity/catalog/p2p.md",
+          "docs/parity/checklist.md",
+          "docs/parity/index.json",
+          "docs/parity/source-breadcrumbs.json",
+          "packages/open-bitcoin-node/src/network/block_serving.rs",
+          "packages/open-bitcoin-node/src/network/inventory.rs",
+          "packages/open-bitcoin-node/src/network/tests.rs",
+          "packages/open-bitcoin-node/src/network/tests/relay_serving_cases.rs",
+          "packages/open-bitcoin-network/src/peer/inventory_state.rs",
+          "packages/open-bitcoin-network/src/peer/tests.rs",
+          "scripts/check-phase111-full-block-serving-request-path.ts",
+          "scripts/check-phase111-full-block-serving-request-path.test.ts",
+          "scripts/verify.sh",
+          ".planning/phases/111-full-block-serving-request-path/111-01-SUMMARY.md",
+          ".planning/phases/111-full-block-serving-request-path/111-02-SUMMARY.md",
+          ".planning/phases/111-full-block-serving-request-path/111-03-SUMMARY.md"
+        ],
+        "rationale": "Phase 111 connects opt-in block-serving policy to the managed request path for InventoryType::Block, InventoryType::WitnessBlock, and InventoryType::CompactBlock through ManagedBlockServeInput, serve_managed_block_request, and lazy lookup_block. Active validated local payloads can return WireNetworkMessage::Block, while compact-block inventory, side-chain cached blocks, pruned active non-tip blocks, active tips missing local payload data, stale facts, and request-cap pressure remain bounded to WireNetworkMessage::NotFound or disconnect outcomes with block_status_pruned, block_status_unavailable, and block_request_cap_reached labels.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/net_processing.cpp",
+            "packages/bitcoin-knots/src/node/blockstorage.cpp",
+            "packages/bitcoin-knots/src/validation.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/test/functional/p2p_getdata.py"
+          ]
+        },
+        "known_gaps": [
+          "Phase 111 does not add BIP152 compact block payload serving, compact reconstruction, getblocktxn, blocktxn, archive-node behavior, package relay, bloom/filter serving, compact filter serving, public block serving by default, public-network CI, production service operation, production full-node readiness, production-funds wallet use, or schema/ORM work."
+        ],
+        "suspected_unknowns": [
+          "Future v2.1 phases own BIP152 compact block payload serving, compact reconstruction, missing transaction round trips, public-network UAT scope, and release-boundary closeout before any broader block-serving or compact-relay claim can be made."
         ]
       }
     ]

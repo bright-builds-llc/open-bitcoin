@@ -394,6 +394,29 @@ filter serving, public block serving by default, public-network CI,
 production-service operation, production full-node readiness, or production-funds wallet
 use. Those remain out of scope for Phase 110.
 
+## Phase 111 full block-serving request-path status
+
+Phase 111 adds the `v2-1-full-block-serving-request-path` surface for
+`BSRV-04`, `GOV-01`, and `GOV-05`. The managed request path keeps Phase 110
+policy labels and now routes `InventoryType::Block`,
+`InventoryType::WitnessBlock`, and `InventoryType::CompactBlock` through
+`ManagedBlockServeInput` and `serve_managed_block_request`.
+
+For active validated local blocks with available payload data, the adapter
+performs lazy `lookup_block` after eligibility and resource gates and returns
+`WireNetworkMessage::Block`. Requests for side-chain cached blocks, pruned
+active non-tip blocks, active tips missing local payload data, stale facts, and
+compact-block inventory return `WireNetworkMessage::NotFound` with fixed labels
+including `block_status_pruned`, `block_status_unavailable`, and
+`block_request_cap_reached`.
+
+Status consumers must keep Phase 111 bounded to the opt-in managed request
+path. Phase 111 does not add BIP152 compact block payload serving, compact
+reconstruction, `getblocktxn`, `blocktxn`, archive-node behavior, package
+relay, bloom/filter serving, compact filter serving, public block serving by
+default, public-network CI, production service operation, production full-node
+readiness, production-funds wallet use, or schema/ORM work.
+
 ## Phase 92 address advertisement and discovery status
 
 Phase 92 extends `OpenBitcoinStatusSnapshot.peers.inbound` with bounded address

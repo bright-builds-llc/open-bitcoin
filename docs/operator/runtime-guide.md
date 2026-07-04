@@ -678,6 +678,36 @@ bloom/filter serving, compact filter serving, public block serving by default,
 public-network CI, production-service operation, production full-node
 readiness, or production-funds wallet use.
 
+## Phase 111 Full Block-Serving Request Path Review
+
+Phase 111 records the opt-in managed request path for
+`v2-1-full-block-serving-request-path`, covering `BSRV-04`, `GOV-01`, and
+`GOV-05`. The serving path evaluates `InventoryType::Block`,
+`InventoryType::WitnessBlock`, and `InventoryType::CompactBlock` through
+`ManagedBlockServeInput` and `serve_managed_block_request`; lazy `lookup_block`
+is reached only after Phase 110 status, eligibility, and resource gates.
+
+Active validated local block and witness-block payloads may return
+`WireNetworkMessage::Block`. Compact-block inventory, side-chain cached blocks,
+pruned active non-tip blocks, missing active-tip payloads, stale facts, and
+request-cap pressure return `WireNetworkMessage::NotFound` or disconnect with
+bounded labels such as `block_status_pruned`, `block_status_unavailable`, and
+`block_request_cap_reached`.
+
+Repo-local review command forms:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- ...
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- ...
+bash scripts/verify.sh
+```
+
+Phase 111 does not add BIP152 compact block payload serving, compact
+reconstruction, `getblocktxn`, `blocktxn`, archive-node behavior, package
+relay, bloom/filter serving, compact filter serving, public block serving by
+default, public-network CI, production-service operation, production full-node
+readiness, production-funds wallet use, or schema/ORM work.
+
 ## Phase 92 Address Advertisement and Discovery Boundary Review
 
 Phase 92 adds bounded address-boundary evidence to the same explicit loopback

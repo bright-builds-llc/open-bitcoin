@@ -20,11 +20,11 @@ use open_bitcoin_core::{
 };
 use open_bitcoin_mempool::PolicyConfig;
 use open_bitcoin_network::{
-    ConnectionRole, InboundAdmissionPolicy, LocalPeerConfig, OrphanPolicy, PeerConnectionClass,
-    PeerId, PeerManager, RelayActivationConfig, RelayDownloadPolicy, RelayEligibilityDecision,
-    RelayEligibilityInput, RelayEligibilityReason, TxOrphanage, TxRelayId, TxRelayPeerMode,
-    TxServeOutcomeLabel, TxServingRecordStatus, classify_relay_eligibility,
-    classify_tx_serve_request,
+    BlockRelayActivationPolicy, ConnectionRole, InboundAdmissionPolicy, LocalPeerConfig,
+    OrphanPolicy, PeerConnectionClass, PeerId, PeerManager, RelayActivationConfig,
+    RelayDownloadPolicy, RelayEligibilityDecision, RelayEligibilityInput, RelayEligibilityReason,
+    TxOrphanage, TxRelayId, TxRelayPeerMode, TxServeOutcomeLabel, TxServingRecordStatus,
+    classify_relay_eligibility, classify_tx_serve_request,
 };
 
 use super::{
@@ -243,12 +243,31 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         relay_activation: RelayActivationConfig,
         inbound_serving_enabled: bool,
     ) -> Self {
+        Self::new_with_block_relay_activation(
+            store,
+            local_config,
+            mempool_config,
+            relay_activation,
+            BlockRelayActivationPolicy::default(),
+            inbound_serving_enabled,
+        )
+    }
+
+    pub fn new_with_block_relay_activation(
+        store: S,
+        local_config: LocalPeerConfig,
+        mempool_config: PolicyConfig,
+        relay_activation: RelayActivationConfig,
+        block_relay_activation: BlockRelayActivationPolicy,
+        inbound_serving_enabled: bool,
+    ) -> Self {
         Self::from_peer_manager(
             store,
             local_config.clone(),
             mempool_config,
             PeerManager::new(local_config),
             relay_activation,
+            block_relay_activation,
             inbound_serving_enabled,
         )
     }
@@ -287,6 +306,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             mempool_config,
             peer_manager,
             relay_activation,
+            BlockRelayActivationPolicy::default(),
             inbound_serving_enabled,
         )
     }
@@ -389,6 +409,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         mempool_config: PolicyConfig,
         mut peer_manager: PeerManager,
         relay_activation: RelayActivationConfig,
+        block_relay_activation: BlockRelayActivationPolicy,
         inbound_serving_enabled: bool,
     ) -> Self {
         let chainstate = ManagedChainstate::from_store(store);
@@ -408,6 +429,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             inbound_admission_info: ManagedInboundAdmissionInfo::default(),
             resource_governance_info: ManagedResourceGovernanceInfo::default(),
             relay_activation,
+            block_relay_activation,
             inbound_serving_enabled,
             relay_fanout: super::relay_fanout::ManagedRelayFanoutState::default(),
             relay_serving: RelayServingCache::default(),

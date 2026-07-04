@@ -17,10 +17,13 @@ use open_bitcoin_core::{
     primitives::{BlockHash, InventoryType, InventoryVector, Transaction, Txid, Wtxid},
 };
 use open_bitcoin_network::{
-    DisconnectReason, InboundResourceEvent, NetworkError, PeerId, TxServeOutcomeLabel,
+    BlockServingChainPosition, BlockServingDataAvailability, BlockServingValidationState,
+    ConnectionRole, DisconnectReason, InactivePermissionEffectLabel, InboundResourceEvent,
+    NetworkError, PeerConnectionClass, PeerId, PermissionEffectLabel, TxServeOutcomeLabel,
     TxServingRecordStatus, WireNetworkMessage,
 };
 
+use super::block_serving::{ManagedBlockServeInput, serve_managed_block_request};
 use super::{ManagedNetworkError, ManagedPeerNetwork, ManagedSyncMessageResult};
 use crate::ChainstateStore;
 
@@ -39,11 +42,28 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             match request.inventory_type {
                 InventoryType::Block | InventoryType::WitnessBlock => {
                     let block_hash = BlockHash::from(request.object_hash);
-                    let Some(block) = self.blocks_by_hash.get(&block_hash) else {
+                    let input =
+                        self.managed_block_serve_input(peer_id, &request, block_hash, false);
+                    let decision = serve_managed_block_request(input, |hash| {
+                        self.blocks_by_hash.get(&hash).cloned()
+                    });
+                    let Some(block) = decision.maybe_block else {
                         missing.push(request);
                         continue;
                     };
+                    if decision.missing_inventory {
+                        missing.push(request);
+                        continue;
+                    }
                     messages.push(WireNetworkMessage::Block(block.clone()));
+                }
+                InventoryType::CompactBlock => {
+                    let block_hash = BlockHash::from(request.object_hash);
+                    let input = self.managed_block_serve_input(peer_id, &request, block_hash, true);
+                    let _decision = serve_managed_block_request(input, |hash| {
+                        self.blocks_by_hash.get(&hash).cloned()
+                    });
+                    missing.push(request);
                 }
                 InventoryType::Transaction | InventoryType::WitnessTransaction => {
                     let decision = self.relay_serving.classify_request(
@@ -66,6 +86,93 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         }
 
         (messages, missing)
+    }
+
+    fn managed_block_serve_input(
+        &self,
+        peer_id: PeerId,
+        request: &InventoryVector,
+        block_hash: BlockHash,
+        suppressed: bool,
+    ) -> ManagedBlockServeInput {
+        let snapshot = self.chainstate.chainstate().snapshot();
+        let maybe_active_index = snapshot
+            .active_chain
+            .iter()
+            .position(|position| position.block_hash == block_hash);
+        let has_local_data = self.blocks_by_hash.contains_key(&block_hash);
+        let is_active = maybe_active_index.is_some();
+        let is_tip =
+            maybe_active_index.is_some_and(|index| index + 1 == snapshot.active_chain.len());
+        let chain_position = if is_active {
+            BlockServingChainPosition::Active
+        } else if has_local_data {
+            BlockServingChainPosition::SideChain
+        } else {
+            BlockServingChainPosition::Unknown
+        };
+        let validation_state = if is_active {
+            BlockServingValidationState::Validated
+        } else {
+            BlockServingValidationState::Unknown
+        };
+        let data_availability = match (is_active, is_tip, has_local_data) {
+            (true, _, true) => BlockServingDataAvailability::Available,
+            (true, false, false) => BlockServingDataAvailability::Pruned,
+            _ => BlockServingDataAvailability::Unavailable,
+        };
+        let (connection_class, active_permission_effects, inactive_permission_effects) =
+            self.block_serving_context_for_peer(peer_id);
+        let request_snapshot = self.peer_manager.transaction_request_snapshot(peer_id);
+        let requested_blocks_in_flight = self
+            .peer_manager
+            .peer_requested_blocks(peer_id)
+            .unwrap_or_default()
+            .len();
+
+        ManagedBlockServeInput {
+            inventory_type: request.inventory_type,
+            block_hash,
+            activation: self.block_relay_activation,
+            inbound_serving_enabled: self.inbound_serving_enabled,
+            connection_class,
+            active_permission_effects,
+            inactive_permission_effects,
+            requested_blocks_in_flight,
+            requested_txids_in_flight: request_snapshot.in_flight_count,
+            requested_wtxids_in_flight: 0,
+            chain_position,
+            validation_state,
+            data_availability,
+            suppressed,
+        }
+    }
+
+    fn block_serving_context_for_peer(
+        &self,
+        peer_id: PeerId,
+    ) -> (
+        PeerConnectionClass,
+        Vec<PermissionEffectLabel>,
+        Vec<InactivePermissionEffectLabel>,
+    ) {
+        let Some(peer) = self.peer_manager.peer_state(peer_id) else {
+            return (PeerConnectionClass::OrdinaryInbound, Vec::new(), Vec::new());
+        };
+
+        match peer.role {
+            ConnectionRole::Outbound => (PeerConnectionClass::Outbound, Vec::new(), Vec::new()),
+            ConnectionRole::Inbound => {
+                let Some(record) = peer.maybe_inbound_record.as_ref() else {
+                    return (PeerConnectionClass::OrdinaryInbound, Vec::new(), Vec::new());
+                };
+                (
+                    record.connection_class,
+                    record.permission_decision.active_effects().to_vec(),
+                    record.permission_decision.inactive_effects().to_vec(),
+                )
+            }
+        }
     }
 
     pub(super) fn store_transaction(

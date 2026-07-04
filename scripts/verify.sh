@@ -250,7 +250,7 @@ run_coverage_report() {
 # Phase 101 is followed by Phase 102. Phase 102 is followed by Phase 103.
 # Phase 103 is followed by Phase 104. Phase 104 is followed by Phase 105.
 # Phase 105 is followed by Phase 106. Phase 106 is followed by Phase 107.
-# Phase 107 is followed by Phase 108. Phase 108 is followed by Phase 110.
+# Phase 107 is followed by Phase 108. Phase 108 is followed by Phase 110 and Phase 111.
 : <<'VERIFY_COMMAND_ORDER'
 bun run scripts/check-v1.3-release-boundaries.ts
 bun run scripts/check-v1.4-release-boundaries.ts
@@ -335,6 +335,8 @@ bun test scripts/check-phase108-durable-mempool-relay-state-recovery.test.ts
 bun run scripts/check-phase108-durable-mempool-relay-state-recovery.ts
 bun test scripts/check-phase110-block-serving-boundary.test.ts
 bun run scripts/check-phase110-block-serving-boundary.ts
+bun test scripts/check-phase111-full-block-serving-request-path.test.ts
+bun run scripts/check-phase111-full-block-serving-request-path.ts
 VERIFY_COMMAND_ORDER
 
 parse_args "$@"
@@ -444,6 +446,8 @@ run_step "test Phase 108 durable mempool relay state recovery checker" bun test 
 run_step "check Phase 108 durable mempool relay state recovery" bun run scripts/check-phase108-durable-mempool-relay-state-recovery.ts
 run_step "test Phase 110 block-serving boundary checker" bun test scripts/check-phase110-block-serving-boundary.test.ts
 run_step "check Phase 110 block-serving boundary" bun run scripts/check-phase110-block-serving-boundary.ts
+run_step "test Phase 111 full block-serving request path checker" bun test scripts/check-phase111-full-block-serving-request-path.test.ts
+run_step "check Phase 111 full block-serving request path" bun run scripts/check-phase111-full-block-serving-request-path.ts
 run_step "check pure-core dependencies" bash scripts/check-pure-core-deps.sh
 run_step "check file lengths" bash scripts/check-file-lengths.sh
 run_step "check panic sites" bash scripts/check-panic-sites.sh
