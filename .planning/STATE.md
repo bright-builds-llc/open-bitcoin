@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
-status: ready_for_phase_110
-stopped_at: v2.1 roadmap approved; ready to start Phase 110
-last_updated: "2026-07-04T01:35:00.000Z"
-last_activity: 2026-07-03 -- v2.1 roadmap approved
+status: Ready for Phase 110
+stopped_at: Phase 110 context gathered
+last_updated: "2026-07-04T03:01:36.910Z"
+last_activity: 2026-07-03 -- v2.1 roadmap approved.
 progress:
   total_phases: 8
   completed_phases: 0
@@ -80,6 +80,6 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Session Continuity
 
-Last session: 2026-07-03
-Stopped at: v2.1 roadmap approved; Phase 110 ready to start
-Resume file: `.planning/milestones/v2.0-MILESTONE-AUDIT.md`
+Last session: 2026-07-04T03:01:36.908Z
+Stopped at: Phase 110 context gathered
+Resume file: .planning/phases/110-block-serving-activation-and-eligibility-boundary/110-CONTEXT.md
