@@ -995,6 +995,8 @@
         "packages/open-bitcoin-node/src/recovery.rs",
         "packages/open-bitcoin-node/src/recovery/tests.rs",
         "packages/open-bitcoin-node/src/status.rs",
+        "packages/open-bitcoin-node/src/status/block_serving.rs",
+        "packages/open-bitcoin-node/src/status/block_serving/tests.rs",
         "packages/open-bitcoin-node/src/status/inbound.rs",
         "packages/open-bitcoin-node/src/status/inbound/tests.rs",
         "packages/open-bitcoin-node/src/status/progress_guarantee.rs",

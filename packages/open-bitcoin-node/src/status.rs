@@ -2,14 +2,14 @@
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
 //! Shared operator status snapshot contracts.
-
+mod block_serving;
 mod inbound;
 mod progress_guarantee;
 mod recovery;
 pub mod relay_evidence;
 mod resource_bounds;
-
 use crate::{LogStatus, MetricsStatus, recovery::RecoveryEvidenceSnapshot};
+pub use block_serving::*;
 pub use inbound::*;
 pub use progress_guarantee::*;
 pub use recovery::SyncRecoveryCategory;

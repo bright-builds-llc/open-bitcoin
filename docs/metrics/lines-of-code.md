@@ -6,11 +6,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Metric | Value |
 | --- | --- |
-| Included files | 492 |
-| Total lines | 199,812 |
-| Code/content lines | 176,140 |
-| Comment-only lines | 6,832 |
-| Blank lines | 16,840 |
+| Included files | 494 |
+| Total lines | 200,095 |
+| Code/content lines | 176,379 |
+| Comment-only lines | 6,851 |
+| Blank lines | 16,865 |
 
 ## Per-Crate Modules
 
@@ -24,7 +24,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | open-bitcoin-core | 3 | 39 | 0 | 36 | 75 | 0.0% |
 | open-bitcoin-mempool | 16 | 2,428 | 2,618 | 30 | 5,076 | 107.8% |
 | open-bitcoin-network | 45 | 9,795 | 10,707 | 30 | 20,532 | 109.3% |
-| open-bitcoin-node | 74 | 16,073 | 17,529 | 36 | 33,638 | 109.1% |
+| open-bitcoin-node | 76 | 16,172 | 17,713 | 36 | 33,921 | 109.5% |
 | open-bitcoin-primitives | 9 | 877 | 0 | 20 | 897 | 0.0% |
 | open-bitcoin-rpc | 43 | 8,780 | 7,112 | 57 | 15,949 | 81.0% |
 | open-bitcoin-test-harness | 7 | 662 | 0 | 28 | 690 | 0.0% |
@@ -34,8 +34,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Category | Files | Total | Code/Content | Comments | Blank |
 | --- | --- | --- | --- | --- | --- |
-| Rust production | 266 | 75,401 | 65,794 | 2,324 | 7,283 |
-| Rust tests | 81 | 69,152 | 60,326 | 3,688 | 5,138 |
+| Rust production | 267 | 75,500 | 65,873 | 2,332 | 7,295 |
+| Rust tests | 82 | 69,336 | 60,486 | 3,699 | 5,151 |
 | TypeScript/Bun scripts | 86 | 38,913 | 34,556 | 757 | 3,600 |
 | Fixture/data | 6 | 8,233 | 8,228 | 5 | 0 |
 | Shell scripts | 13 | 4,037 | 3,608 | 52 | 377 |
@@ -167,7 +167,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 208232de12fa2f22f8235c71a3968267570ee131fc4cefd8104c505ab1c580ad |
+| Input fingerprint | 80ecc6e91a3f3a407cc51f2f332b304666b3604098ccfb55fabb6097c3dd4d86 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |
