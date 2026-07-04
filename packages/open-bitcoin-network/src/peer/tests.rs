@@ -71,6 +71,22 @@ fn add_relay_outbound_peer(manager: &mut PeerManager, peer_id: PeerId) {
         .expect("outbound peer should be added");
 }
 
+fn complete_outbound_handshake(manager: &mut PeerManager, peer_id: PeerId, start_height: i32) {
+    manager
+        .handle_message(
+            peer_id,
+            WireNetworkMessage::Version(crate::VersionMessage {
+                start_height,
+                ..crate::VersionMessage::default()
+            }),
+            11,
+        )
+        .expect("version");
+    manager
+        .handle_message(peer_id, WireNetworkMessage::Verack, 12)
+        .expect("verack");
+}
+
 fn add_relay_permissioned_inbound_peer(manager: &mut PeerManager, peer_id: PeerId) {
     manager
         .add_inbound_peer_record(permissioned_inbound_record(
@@ -777,6 +793,12 @@ fn headers_to_block_requests_never_exceed_phase94_inflight_cap() {
 }
 
 #[test]
+fn phase110_block_inflight_default_matches_phase94_request_cap() {
+    // Arrange / Act / Assert
+    assert_phase94_block_cap_matches_peer_default();
+}
+
+#[test]
 fn request_pressure_input_records_bounded_permission_effect_evidence() {
     // Arrange
     let permission_decision =
@@ -845,7 +867,7 @@ fn deferred_relay_commands_remain_absent_from_peer_message_surface() {
     // Arrange
     let deferred_commands = [
         "mempool",
-        "cmpctblock",
+        concat!("cmpct", "block"),
         "getcfheaders",
         "getcfcheckpt",
         "filterload",
@@ -2440,6 +2462,82 @@ fn request_missing_blocks_skips_known_hashes_and_tracks_requested_inventory() {
 }
 
 #[test]
+fn phase110_block_request_missing_blocks_skips_known_duplicates_and_stops_at_cap() {
+    // Arrange
+    let mut manager = PeerManager::with_max_blocks_in_flight(local_config(), 2);
+    let known_hash = BlockHash::from(hash_from_index(110_000));
+    let first_missing_hash = BlockHash::from(hash_from_index(110_001));
+    let second_missing_hash = BlockHash::from(hash_from_index(110_002));
+    let third_missing_hash = BlockHash::from(hash_from_index(110_003));
+    manager.note_local_block_hash(known_hash);
+    manager.add_outbound_peer(110, 10).expect("peer");
+    complete_outbound_handshake(&mut manager, 110, 3);
+
+    // Act
+    let Some(WireNetworkMessage::GetData(inventory)) = manager
+        .request_missing_blocks(
+            110,
+            &[
+                known_hash,
+                first_missing_hash,
+                first_missing_hash,
+                second_missing_hash,
+                third_missing_hash,
+            ],
+        )
+        .expect("request")
+    else {
+        panic!("expected capped getdata");
+    };
+    let saturated_request = manager
+        .request_missing_blocks(110, &[third_missing_hash])
+        .expect("saturated request");
+
+    // Assert
+    assert_eq!(inventory.inventory.len(), 2);
+    assert_eq!(
+        manager
+            .peer_requested_blocks(110)
+            .expect("requested blocks"),
+        vec![first_missing_hash, second_missing_hash]
+    );
+    assert_eq!(saturated_request, None);
+}
+
+#[test]
+fn phase110_block_getdata_over_inflight_cap_disconnects_with_request_cap_label() {
+    // Arrange
+    let mut manager = PeerManager::with_max_blocks_in_flight(
+        local_config(),
+        PHASE94_MAX_INBOUND_BLOCK_REQUESTS_PER_PEER + 1,
+    );
+    manager.add_outbound_peer(111, 10).expect("peer");
+    complete_outbound_handshake(&mut manager, 111, 128);
+    let requested = (0..=PHASE94_MAX_INBOUND_BLOCK_REQUESTS_PER_PEER)
+        .map(|index| BlockHash::from(hash_from_index(111_000 + index)))
+        .collect::<Vec<_>>();
+    manager
+        .request_missing_blocks(111, &requested)
+        .expect("seed over-cap requested blocks")
+        .expect("over-cap request message");
+
+    // Act
+    let actions = manager
+        .handle_message(111, WireNetworkMessage::GetData(block_inventory(1)), 13)
+        .expect("getdata should map over-cap in-flight state to disconnect");
+
+    // Assert
+    assert_resource_limit_disconnect(&actions);
+    assert_eq!(
+        manager
+            .peer_requested_blocks(111)
+            .expect("requested blocks")
+            .len(),
+        PHASE94_MAX_INBOUND_BLOCK_REQUESTS_PER_PEER + 1
+    );
+}
+
+#[test]
 fn request_missing_blocks_respects_capacity_and_returns_none_when_only_skips_remain() {
     let mut manager = PeerManager::with_max_blocks_in_flight(local_config(), 2);
     let genesis_header = mined_header(BlockHash::from_byte_array([0_u8; 32]), 1);
@@ -2554,6 +2652,115 @@ fn request_missing_blocks_stops_once_capacity_is_filled() {
         manager.peer_requested_blocks(24).expect("requested"),
         vec![first_missing_hash]
     );
+}
+
+#[test]
+fn phase110_block_notfound_releases_requested_block_without_clearing_tx_inflight() {
+    // Arrange
+    let mut manager = relay_download_manager(true);
+    add_relay_outbound_peer(&mut manager, 112);
+    complete_outbound_handshake(&mut manager, 112, 1);
+    let transaction = open_bitcoin_primitives::Transaction::default();
+    let txid = transaction_txid(&transaction).expect("txid");
+    manager
+        .handle_message(
+            112,
+            WireNetworkMessage::Inv(transaction_relay_inventory(TxRelayId::Txid(txid))),
+            13,
+        )
+        .expect("transaction inventory");
+    let block_hash = BlockHash::from(hash_from_index(112_000));
+    manager
+        .request_missing_blocks(112, &[block_hash])
+        .expect("block request")
+        .expect("getdata");
+
+    // Act
+    let actions = manager
+        .handle_message(
+            112,
+            WireNetworkMessage::NotFound(InventoryList::new(vec![InventoryVector {
+                inventory_type: InventoryType::WitnessBlock,
+                object_hash: block_hash.into(),
+            }])),
+            14,
+        )
+        .expect("notfound");
+    let retry = manager
+        .request_missing_blocks(112, &[block_hash])
+        .expect("retry request");
+
+    // Assert
+    assert!(actions.is_empty());
+    assert_eq!(manager.transaction_request_snapshot(112).in_flight_count, 1);
+    assert!(matches!(retry, Some(WireNetworkMessage::GetData(_))));
+}
+
+#[test]
+fn phase110_block_response_clears_requested_block_before_received_action() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(113, 10).expect("peer");
+    complete_outbound_handshake(&mut manager, 113, 1);
+    let block = Block {
+        header: mined_header(BlockHash::from_byte_array([113_u8; 32]), 1),
+        transactions: Vec::new(),
+    };
+    let block_hash = open_bitcoin_consensus::block_hash(&block.header);
+    manager
+        .request_missing_blocks(113, &[block_hash])
+        .expect("block request")
+        .expect("getdata");
+
+    // Act
+    let actions = manager
+        .handle_message(113, WireNetworkMessage::Block(block), 14)
+        .expect("block");
+
+    // Assert
+    assert!(matches!(actions.as_slice(), [PeerAction::ReceivedBlock(_)]));
+    assert!(
+        manager
+            .peer_requested_blocks(113)
+            .expect("requested blocks")
+            .is_empty()
+    );
+}
+
+#[test]
+fn phase110_block_peer_removal_drops_requested_blocks_and_preserves_tx_cleanup() {
+    // Arrange
+    let mut manager = relay_download_manager(true);
+    for peer_id in 114..=115 {
+        add_relay_outbound_peer(&mut manager, peer_id);
+        complete_outbound_handshake(&mut manager, peer_id, 1);
+    }
+    let block_hash = BlockHash::from(hash_from_index(114_000));
+    manager
+        .request_missing_blocks(114, &[block_hash])
+        .expect("block request")
+        .expect("getdata");
+    let txid = TxRelayId::Txid(txid_from_byte(114));
+    seed_duplicate_announcements(&mut manager, 114, 115, txid, 20);
+
+    // Act
+    let actions = manager
+        .remove_peer_with_transaction_cleanup(114, 30)
+        .expect("peer cleanup");
+
+    // Assert
+    assert_eq!(
+        actions,
+        vec![
+            PeerAction::TransactionRelay(TxDownloadAction::PeerCleanup { peer_id: 114 }),
+            PeerAction::TransactionRelay(TxDownloadAction::FallbackRequest {
+                peer_id: 115,
+                relay_id: txid,
+            }),
+        ]
+    );
+    assert!(manager.peer_state(114).is_none());
+    assert!(manager.peer_requested_blocks(114).is_err());
 }
 
 #[test]

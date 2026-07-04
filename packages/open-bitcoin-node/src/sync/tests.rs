@@ -21,7 +21,7 @@ use open_bitcoin_core::{
     },
 };
 use open_bitcoin_network::{
-    HeaderEntry, HeadersMessage, InventoryList, VersionMessage, WireNetworkMessage,
+    HeaderEntry, HeadersMessage, InventoryList, PeerId, VersionMessage, WireNetworkMessage,
 };
 
 use super::types::SyncReconcileProgress;
@@ -427,6 +427,36 @@ fn two_peer_sync_config() -> SyncRuntimeConfig {
         max_peer_retries: 0,
         ..sync_config()
     }
+}
+
+fn connect_runtime_peer(runtime: &mut DurableSyncRuntime, peer_id: PeerId, start_height: i32) {
+    runtime
+        .network
+        .connect_outbound_peer(peer_id, 1_777_225_210)
+        .expect("connect peer");
+    runtime
+        .network
+        .receive_sync_message(
+            peer_id,
+            WireNetworkMessage::Version(VersionMessage {
+                start_height,
+                ..VersionMessage::default()
+            }),
+            1_777_225_210,
+            runtime.verify_flags,
+            runtime.consensus_params,
+        )
+        .expect("receive version");
+    runtime
+        .network
+        .receive_sync_message(
+            peer_id,
+            WireNetworkMessage::Verack,
+            1_777_225_210,
+            runtime.verify_flags,
+            runtime.consensus_params,
+        )
+        .expect("receive verack");
 }
 
 fn version_verack_script(start_height: i32) -> Vec<WireNetworkMessage> {
@@ -1298,6 +1328,110 @@ fn bounded_block_requests_respect_per_peer_and_total_caps() {
 }
 
 #[test]
+fn phase110_block_serving_cleanup_never_exceeds_total_inflight_limit() {
+    // Arrange
+    let path = temp_store_path("phase110-block-serving-cleanup-total-limit");
+    remove_dir_if_exists(&path);
+    let first = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+    let second = build_block(block_hash(&first.header), 1);
+    let third = build_block(block_hash(&second.header), 2);
+    let fourth = build_block(block_hash(&third.header), 3);
+    {
+        let store = FjallNodeStore::open(&path).expect("store");
+        store
+            .save_header_entries(
+                &[
+                    HeaderEntry {
+                        block_hash: block_hash(&first.header),
+                        header: first.header.clone(),
+                        height: 0,
+                        chain_work: 1,
+                    },
+                    HeaderEntry {
+                        block_hash: block_hash(&second.header),
+                        header: second.header.clone(),
+                        height: 1,
+                        chain_work: 2,
+                    },
+                    HeaderEntry {
+                        block_hash: block_hash(&third.header),
+                        header: third.header.clone(),
+                        height: 2,
+                        chain_work: 3,
+                    },
+                    HeaderEntry {
+                        block_hash: block_hash(&fourth.header),
+                        header: fourth.header.clone(),
+                        height: 3,
+                        chain_work: 4,
+                    },
+                ],
+                PersistMode::Sync,
+            )
+            .expect("save headers");
+    }
+    let store = FjallNodeStore::open(&path).expect("reopen store");
+    let mut runtime = DurableSyncRuntime::open(
+        store,
+        SyncRuntimeConfig {
+            max_blocks_in_flight_per_peer: 2,
+            max_blocks_in_flight_total: 3,
+            ..sync_config()
+        },
+    )
+    .expect("runtime");
+    for peer_id in [110, 111, 112] {
+        connect_runtime_peer(&mut runtime, peer_id, 3);
+    }
+
+    // Act
+    let first_peer_messages =
+        super::block_reconcile::request_missing_blocks(&mut runtime, 110).expect("peer one");
+    let second_peer_messages =
+        super::block_reconcile::request_missing_blocks(&mut runtime, 111).expect("peer two");
+    let third_peer_messages =
+        super::block_reconcile::request_missing_blocks(&mut runtime, 112).expect("peer three");
+
+    // Assert
+    assert_eq!(getdata_block_hashes(&first_peer_messages).len(), 2);
+    assert_eq!(getdata_block_hashes(&second_peer_messages).len(), 1);
+    assert!(getdata_block_hashes(&third_peer_messages).is_empty());
+    assert_eq!(runtime.inflight_blocks.len(), 3);
+    assert!(runtime.inflight_blocks.len() <= runtime.config.max_blocks_in_flight_total);
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn phase110_block_serving_cleanup_releases_block_and_notfound_inflight() {
+    // Arrange
+    let path = temp_store_path("phase110-block-serving-cleanup-release-message");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    let block = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+    let block_hash = block_hash(&block.header);
+    let notfound_hash = BlockHash::from_byte_array([110_u8; 32]);
+
+    // Act
+    runtime.inflight_blocks.insert(block_hash);
+    super::block_reconcile::release_inflight_for_message(
+        &mut runtime,
+        &WireNetworkMessage::Block(block),
+    );
+    runtime.inflight_blocks.insert(notfound_hash);
+    super::block_reconcile::release_inflight_for_message(
+        &mut runtime,
+        &notfound_for_block(notfound_hash),
+    );
+
+    // Assert
+    assert!(runtime.inflight_blocks.is_empty());
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
 fn notfound_releases_block_inflight_for_retry() {
     // Arrange
     let path = temp_store_path("block-inflight-notfound");
@@ -1377,6 +1511,64 @@ fn disconnect_clears_runtime_and_peer_block_inflight() {
     assert!(runtime.network.peer_requested_blocks(1).is_err());
     assert_eq!(summary.downloaded_block_height, 0);
     assert_eq!(summary.best_block_height, 0);
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn phase110_block_serving_cleanup_disconnect_releases_peer_and_runtime_inflight() {
+    // Arrange
+    let path = temp_store_path("phase110-block-serving-cleanup-disconnect");
+    remove_dir_if_exists(&path);
+    let block = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+    let block_hash = block_hash(&block.header);
+    let first_peer_script = headers_script(0, vec![block.header.clone()]);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime = DurableSyncRuntime::open(store, two_peer_sync_config()).expect("runtime");
+    let mut transport = ScriptedTransport::new(vec![first_peer_script, version_verack_script(0)]);
+
+    // Act
+    let summary = runtime
+        .sync_once(&mut transport, i64::from(block.header.time))
+        .expect("sync");
+    let requested_hashes = getdata_block_hashes(&transport.sent_messages());
+
+    // Assert
+    assert!(
+        requested_hashes
+            .iter()
+            .filter(|hash| **hash == block_hash)
+            .count()
+            >= 2
+    );
+    assert!(runtime.inflight_blocks.is_empty());
+    assert!(runtime.network.peer_requested_blocks(1).is_err());
+    assert_eq!(summary.best_block_height, 0);
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn phase110_block_serving_cleanup_reopen_starts_without_stale_inflight() {
+    // Arrange
+    let path = temp_store_path("phase110-block-serving-cleanup-stale-reopen");
+    remove_dir_if_exists(&path);
+    let stale_hash = BlockHash::from_byte_array([111_u8; 32]);
+    {
+        let store = FjallNodeStore::open(&path).expect("store");
+        let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+        connect_runtime_peer(&mut runtime, 110, 0);
+        runtime.inflight_blocks.insert(stale_hash);
+        assert!(runtime.network.peer_requested_blocks(110).is_ok());
+    }
+    let store = FjallNodeStore::open(&path).expect("reopen store");
+
+    // Act
+    let runtime = DurableSyncRuntime::open(store, sync_config()).expect("reopen runtime");
+
+    // Assert
+    assert!(runtime.inflight_blocks.is_empty());
+    assert!(runtime.network.peer_requested_blocks(110).is_err());
 
     remove_dir_if_exists(&path);
 }
