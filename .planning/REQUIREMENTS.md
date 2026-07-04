@@ -102,50 +102,50 @@ Explicitly excluded from v2.1 to prevent scope creep.
 
 ## Traceability
 
-Traceability is populated during roadmap creation after the v2.1 requirements are approved.
+Traceability is populated by the v2.1 roadmap. Each active requirement maps to exactly one phase.
 
 | Requirement | Phase | Status |
 | --- | --- | --- |
-| BSRV-01 | TBD | Pending |
-| BSRV-02 | TBD | Pending |
-| BSRV-03 | TBD | Pending |
-| BSRV-04 | TBD | Pending |
-| BSRV-05 | TBD | Pending |
-| BSRV-06 | TBD | Pending |
-| CMP-01 | TBD | Pending |
-| CMP-02 | TBD | Pending |
-| CMP-03 | TBD | Pending |
-| CMP-04 | TBD | Pending |
-| CMP-05 | TBD | Pending |
-| CMP-06 | TBD | Pending |
-| RCN-01 | TBD | Pending |
-| RCN-02 | TBD | Pending |
-| RCN-03 | TBD | Pending |
-| RCN-04 | TBD | Pending |
-| RCN-05 | TBD | Pending |
-| RCN-06 | TBD | Pending |
-| RCN-07 | TBD | Pending |
-| GOV-01 | TBD | Pending |
-| GOV-02 | TBD | Pending |
-| GOV-03 | TBD | Pending |
-| GOV-04 | TBD | Pending |
-| GOV-05 | TBD | Pending |
-| OBS-01 | TBD | Pending |
-| OBS-02 | TBD | Pending |
-| OBS-03 | TBD | Pending |
-| OBS-04 | TBD | Pending |
-| OBS-05 | TBD | Pending |
-| BOUND-01 | TBD | Pending |
-| BOUND-02 | TBD | Pending |
-| BOUND-03 | TBD | Pending |
-| BOUND-04 | TBD | Pending |
-| BOUND-05 | TBD | Pending |
+| BSRV-01 | Phase 110 | Pending |
+| BSRV-02 | Phase 110 | Pending |
+| BSRV-03 | Phase 110 | Pending |
+| BSRV-04 | Phase 111 | Pending |
+| BSRV-05 | Phase 110 | Pending |
+| BSRV-06 | Phase 110 | Pending |
+| CMP-01 | Phase 112 | Pending |
+| CMP-02 | Phase 112 | Pending |
+| CMP-03 | Phase 112 | Pending |
+| CMP-04 | Phase 113 | Pending |
+| CMP-05 | Phase 113 | Pending |
+| CMP-06 | Phase 113 | Pending |
+| RCN-01 | Phase 112 | Pending |
+| RCN-02 | Phase 114 | Pending |
+| RCN-03 | Phase 114 | Pending |
+| RCN-04 | Phase 115 | Pending |
+| RCN-05 | Phase 115 | Pending |
+| RCN-06 | Phase 115 | Pending |
+| RCN-07 | Phase 115 | Pending |
+| GOV-01 | Phase 111 | Pending |
+| GOV-02 | Phase 115 | Pending |
+| GOV-03 | Phase 115 | Pending |
+| GOV-04 | Phase 114 | Pending |
+| GOV-05 | Phase 111 | Pending |
+| OBS-01 | Phase 116 | Pending |
+| OBS-02 | Phase 116 | Pending |
+| OBS-03 | Phase 116 | Pending |
+| OBS-04 | Phase 116 | Pending |
+| OBS-05 | Phase 116 | Pending |
+| BOUND-01 | Phase 117 | Pending |
+| BOUND-02 | Phase 117 | Pending |
+| BOUND-03 | Phase 117 | Pending |
+| BOUND-04 | Phase 117 | Pending |
+| BOUND-05 | Phase 117 | Pending |
 
 **Coverage:**
 
 - v2.1 requirements: 34 total
-- Mapped to phases: 0
-- Unmapped: 34
+- Mapped to phases: 34
+- Unmapped: 0
 
 *Requirements defined: 2026-07-03*
-*Last updated: 2026-07-03 after v2.1 research draft*
+*Last updated: 2026-07-03 after v2.1 roadmap approval*

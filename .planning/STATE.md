@@ -1,16 +1,15 @@
 ---
 gsd_state_version: 1.0
 milestone: v2.1
-milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
-status: defining_requirements
-stopped_at: v2.1 started; defining requirements
-last_updated: "2026-07-03T21:05:00.000Z"
-last_activity: 2026-07-03 -- v2.1 milestone started
+status: ready_for_phase_110
+stopped_at: v2.1 roadmap approved; ready to start Phase 110
+last_updated: "2026-07-04T01:35:00.000Z"
+last_activity: 2026-07-03 -- v2.1 roadmap approved
 progress:
-  total_phases: 0
+  total_phases: 8
   completed_phases: 0
-  total_plans: 0
+  total_plans: 27
   completed_plans: 0
   percent: 0
 ---
@@ -22,19 +21,22 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-07-03 after v2.1 milestone start).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** v2.1 Block Serving and Compact Block Relay Boundary requirements.
+**Current focus:** v2.1 Block Serving and Compact Block Relay Boundary Phase 110 start.
 
 ## Current Position
 
 Milestone: v2.1 Block Serving and Compact Block Relay Boundary
 Phase: not started
-Plan: requirements definition
-Status: Defining requirements
-Last activity: 2026-07-03 -- v2.1 milestone started.
+Plan: Phase 110 context gathering
+Status: Ready for Phase 110
+Last activity: 2026-07-03 -- v2.1 roadmap approved.
 
 v2.0 Transaction Relay and Mempool Participation Boundary shipped on 2026-07-03. The archived audit reports 32/32 requirements, 10/10 phases, 8/8 integration checks, 8/8 cross-phase flows, and no tracked tech debt.
 
 v2.1 focuses on bounded, opt-in block-serving and compact-block relay behavior with Bitcoin Knots parity evidence, deterministic local verification, and explicit no-claim guardrails for package relay, public defaults, public-network CI, production full-node readiness, and production-funds wallet use.
+
+The approved v2.1 roadmap contains 8 phases, 27 plans, and 34 mapped requirements:
+Phase 110 block-serving activation and eligibility, Phase 111 full block serving, Phase 112 BIP152 wire codecs, Phase 113 compact relay negotiation and announcement policy, Phase 114 compact reconstruction, Phase 115 missing transaction/fallback/validation handoff, Phase 116 operator evidence, and Phase 117 parity/UAT/release guardrails.
 
 ## Latest Milestone Archive
 
@@ -62,8 +64,7 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Pending Todos
 
-- Define v2.1 requirements in `.planning/REQUIREMENTS.md`.
-- Create the v2.1 roadmap in `.planning/ROADMAP.md`, continuing phase numbering after Phase 109.
+- Start Phase 110.
 - Keep historical `.planning/phases/` directories tracked because repo verifier scripts still depend on selected phase evidence.
 - Keep repo-local Cargo and Bazel command forms in UAT guidance:
   - `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- ...`
@@ -80,5 +81,5 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 ## Session Continuity
 
 Last session: 2026-07-03
-Stopped at: v2.1 milestone start; requirements definition next
+Stopped at: v2.1 roadmap approved; Phase 110 ready to start
 Resume file: `.planning/milestones/v2.0-MILESTONE-AUDIT.md`
