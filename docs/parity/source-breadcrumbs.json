@@ -690,6 +690,21 @@
       ]
     },
     {
+      "label": "network-block-serving-activation-boundary",
+      "files": [
+        "packages/open-bitcoin-network/src/block_serving.rs",
+        "packages/open-bitcoin-network/src/block_serving/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net_permissions.h",
+        "packages/bitcoin-knots/src/net_permissions.cpp",
+        "packages/bitcoin-knots/src/net.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/test/functional/p2p_permissions.py",
+        "packages/bitcoin-knots/test/functional/p2p_getdata.py"
+      ]
+    },
+    {
       "label": "network-peer-policy",
       "files": [
         "packages/open-bitcoin-network/src/peer/policy_state.rs",

@@ -17,6 +17,7 @@
 //! Pure-core peer lifecycle, wire-message, and sync state for Open Bitcoin.
 
 mod address;
+mod block_serving;
 mod compatibility;
 mod error;
 mod header_store;
@@ -37,6 +38,11 @@ pub use address::{
     PHASE92_MAX_FUTURE_SKEW_SECONDS, RoutabilityClass, classify_network_address,
     maybe_version_sender_address, privacy_network_deferred_classification, select_getaddr_response,
     select_local_advertisement_candidates, unsupported_future_network_classification,
+};
+pub use block_serving::{
+    BlockRelayActivationPolicy, BlockServingActivationConfig, BlockServingEligibilityDecision,
+    BlockServingEligibilityInput, BlockServingEligibilityReason, CompactRelayActivationConfig,
+    classify_block_serving_eligibility,
 };
 pub use compatibility::{
     CompatibilityDiagnosis, CompatibilityReport, TranscriptEvent, TranscriptStep,
