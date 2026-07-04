@@ -39,7 +39,7 @@ v2.1 Block Serving and Compact Block Relay Boundary is the active milestone afte
 
 ### Phases
 
-- [ ] **Phase 110: Block Serving Activation and Eligibility Boundary** - Establish default-off serving activation, peer eligibility, safe block status classification, and resource-bound policy before any storage read.
+- [x] **Phase 110: Block Serving Activation and Eligibility Boundary** - Establish default-off serving activation, peer eligibility, safe block status classification, and resource-bound policy before any storage read. (completed 2026-07-04)
 - [ ] **Phase 111: Full Block Serving Request Path** - Serve eligible full and witness block requests from validated local block data with bounded request handling and historical/pruned safeguards.
 - [ ] **Phase 112: BIP152 Wire Codec and Message Semantics** - Add first-party `sendcmpct`, `cmpctblock`, `getblocktxn`, and `blocktxn` payload support with Knots-aligned malformed-input behavior.
 - [ ] **Phase 113: Compact Relay Negotiation and Announcement Policy** - Track per-peer compact-block negotiation and decide when compact block announcements are allowed.
@@ -62,14 +62,14 @@ v2.1 Block Serving and Compact Block Relay Boundary is the active milestone afte
 3. Block status classification distinguishes validated, available, stale, side-chain, pruned, unavailable, unvalidated, unknown, and suppressed outcomes before storage reads.
 4. Resource-governance tests prove request caps, backpressure, timeouts, churn, ban/discourage, and in-flight cleanup remain active under adversarial block-serving requests.
 
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 
 - [x] 110-01-PLAN.md — Activation settings and peer eligibility policy
 - [x] 110-02-PLAN.md — Block status classification and safe outcome labels
 - [x] 110-03-PLAN.md — Resource-governance and in-flight cleanup coverage
-- [ ] 110-04-PLAN.md — Docs, parity evidence, and default-off guardrails
+- [x] 110-04-PLAN.md — Docs, parity evidence, and default-off guardrails
 
 #### Phase 111: Full Block Serving Request Path
 
@@ -223,7 +223,7 @@ Plans:
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 | --- | --- | ---: | --- | --- |
-| 110. Block Serving Activation and Eligibility Boundary | v2.1 | 3/4 | In Progress|  |
+| 110. Block Serving Activation and Eligibility Boundary | v2.1 | 4/4 | Complete    | 2026-07-04 |
 | 111. Full Block Serving Request Path | v2.1 | 0/3 | Not started | - |
 | 112. BIP152 Wire Codec and Message Semantics | v2.1 | 0/3 | Not started | - |
 | 113. Compact Relay Negotiation and Announcement Policy | v2.1 | 0/3 | Not started | - |
@@ -247,4 +247,4 @@ Plans:
 
 ## Next Step
 
-Begin Phase 110 with `/gsd-discuss-phase 110` or `/gsd-yolo-discuss-plan-execute-commit-and-push 110`.
+Begin Phase 111 with `/gsd-discuss-phase 111` or `/gsd-yolo-discuss-plan-execute-commit-and-push 111`.

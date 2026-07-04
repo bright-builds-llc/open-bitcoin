@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
-status: executing
-stopped_at: Completed 110-03-PLAN.md; next 110-04-PLAN.md
-last_updated: "2026-07-04T07:42:19.639Z"
+status: ready_to_plan
+stopped_at: Phase 110 complete; ready to plan Phase 111
+last_updated: "2026-07-04T08:31:50Z"
 last_activity: 2026-07-04
 progress:
   total_phases: 8
-  completed_phases: 0
-  total_plans: 4
-  completed_plans: 3
-  percent: 75
+  completed_phases: 1
+  total_plans: 27
+  completed_plans: 4
+  percent: 15
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-07-03 after v2.1 milestone start).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 110 — Block Serving Activation and Eligibility Boundary
+**Current focus:** Phase 111 — Full Block Serving Request Path
 
 ## Current Position
 
 Milestone: v2.1 Block Serving and Compact Block Relay Boundary
-Phase: 110 (Block Serving Activation and Eligibility Boundary) — EXECUTING
-Plan: 4 of 4
-Status: Ready to execute
+Phase: 111
+Plan: Not started
+Status: Ready to plan
 Last activity: 2026-07-04
 
 v2.0 Transaction Relay and Mempool Participation Boundary shipped on 2026-07-03. The archived audit reports 32/32 requirements, 10/10 phases, 8/8 integration checks, 8/8 cross-phase flows, and no tracked tech debt.
@@ -64,7 +64,7 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Pending Todos
 
-- Start Phase 110.
+- Start Phase 111.
 - Keep historical `.planning/phases/` directories tracked because repo verifier scripts still depend on selected phase evidence.
 - Keep repo-local Cargo and Bazel command forms in UAT guidance:
   - `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- ...`
@@ -80,6 +80,6 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Session Continuity
 
-Last session: 2026-07-04T07:42:19.637Z
-Stopped at: Completed 110-03-PLAN.md; next 110-04-PLAN.md
-Resume file: .planning/phases/110-block-serving-activation-and-eligibility-boundary/110-04-PLAN.md
+Last session: 2026-07-04T08:31:50Z
+Stopped at: Phase 110 complete; ready to plan Phase 111
+Resume file: None
