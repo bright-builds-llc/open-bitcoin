@@ -15,7 +15,7 @@ Requirements for the current milestone. Each requirement maps to exactly one roa
 - [x] **BSRV-03**: Node serves only validated and available blocks inside the documented active-chain or recent-valid boundary.
 - [ ] **BSRV-04**: Node handles block, witness block, and compact block `getdata` requests with bounded request caps, queue backpressure, and peer cleanup.
 - [x] **BSRV-05**: Node reports unknown, stale, side-chain, pruned, unavailable, unvalidated, and suppressed block-serving outcomes without leaking prune height or raw peer details.
-- [ ] **BSRV-06**: Block serving preserves existing block download, inbound resource-governance, timeout, churn, ban, discourage, and in-flight cleanup limits under adversarial request bursts.
+- [x] **BSRV-06**: Block serving preserves existing block download, inbound resource-governance, timeout, churn, ban, discourage, and in-flight cleanup limits under adversarial request bursts.
 
 ### BIP152 Wire Messages And Negotiation
 
@@ -111,7 +111,7 @@ Traceability is populated by the v2.1 roadmap. Each active requirement maps to e
 | BSRV-03 | Phase 110 | Complete |
 | BSRV-04 | Phase 111 | Pending |
 | BSRV-05 | Phase 110 | Complete |
-| BSRV-06 | Phase 110 | Pending |
+| BSRV-06 | Phase 110 | Complete |
 | CMP-01 | Phase 112 | Pending |
 | CMP-02 | Phase 112 | Pending |
 | CMP-03 | Phase 112 | Pending |
