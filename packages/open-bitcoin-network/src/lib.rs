@@ -40,11 +40,14 @@ pub use address::{
     select_local_advertisement_candidates, unsupported_future_network_classification,
 };
 pub use block_serving::{
+    BlockInFlightCleanupCause, BlockInFlightCleanupDecision, BlockInFlightCleanupInput,
     BlockRelayActivationPolicy, BlockServingActivationConfig, BlockServingChainPosition,
     BlockServingDataAvailability, BlockServingEligibilityDecision, BlockServingEligibilityInput,
-    BlockServingEligibilityReason, BlockServingStatusDecision, BlockServingStatusFacts,
+    BlockServingEligibilityReason, BlockServingOutcomeLabel, BlockServingResourceGateDecision,
+    BlockServingResourceGateInput, BlockServingStatusDecision, BlockServingStatusFacts,
     BlockServingStatusLabel, BlockServingValidationState, CompactRelayActivationConfig,
-    classify_block_serving_eligibility, classify_block_serving_status,
+    classify_block_inflight_cleanup, classify_block_serving_eligibility,
+    classify_block_serving_status, evaluate_block_serving_resource_gate,
 };
 pub use compatibility::{
     CompatibilityDiagnosis, CompatibilityReport, TranscriptEvent, TranscriptStep,
