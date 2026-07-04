@@ -640,6 +640,44 @@ CI, production-service operation, production full-node readiness,
 production-funds wallet safety/use, destructive repair, source datadir
 mutation, compaction, reindexing, store surgery, or automatic support upload.
 
+## Phase 110 Block-Serving Activation Boundary Review
+
+Phase 110 records a default-off block-serving and compact-relay activation
+boundary before any serving adapter reads block storage. It covers
+`block_serving.enabled`, `block_serving.compact_relay_enabled`,
+`-openbitcoinblockserving`, `-openbitcoincompactrelay`,
+`BlockRelayActivationPolicy`, `classify_block_serving_eligibility`,
+`classify_block_serving_status`, `evaluate_block_serving_resource_gate`,
+`classify_block_inflight_cleanup`, and shared `BlockServingEvidenceStatus`.
+
+Expected evidence is aggregate and fixed-label only: eligibility labels
+`eligible`, `disabled`, `activation_required`, `inbound_serving_required`,
+`permission_required`, `protected_not_serving`, `status_unavailable`, and
+`permission_effect_inactive`; the status-label set is defined in
+`docs/architecture/status-snapshot.md` and `docs/parity/index.json`; resource
+label `block_request_cap_reached`; and cleanup labels
+`block_inflight_cleanup_released`,
+`block_inflight_cleanup_peer_removed`, `block_inflight_cleanup_timeout`,
+`block_inflight_cleanup_restart`, and
+`block_inflight_limit_still_reached`.
+
+Repo-local review commands:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- status --format human
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- status --format json
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- status --format human
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- status --format json
+```
+
+Public-network block-serving or compact-relay review is opt-in UAT guidance
+only and remains outside `bash scripts/verify.sh`. Phase 110 does not add full
+block serving responses, BIP152 implementation, compact reconstruction,
+`getblocktxn`, `blocktxn`, archive-node behavior, package relay,
+bloom/filter serving, compact filter serving, public block serving by default,
+public-network CI, production-service operation, production full-node
+readiness, or production-funds wallet use.
+
 ## Phase 92 Address Advertisement and Discovery Boundary Review
 
 Phase 92 adds bounded address-boundary evidence to the same explicit loopback

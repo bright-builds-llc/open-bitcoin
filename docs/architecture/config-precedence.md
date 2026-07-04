@@ -118,6 +118,28 @@ package relay, bloom/filter serving, public-network relay CI, production
 service operation, production full-node readiness, durable mempool recovery, or
 production-funds wallet use.
 
+Phase 110 adds an Open Bitcoin-owned block-serving activation section for the
+v2.1 boundary:
+
+- `block_serving.enabled` is the explicit JSONC block-serving activation switch
+  and remains default-off.
+- `block_serving.compact_relay_enabled` records compact relay activation intent
+  as a default-off policy/config fact only.
+- `-openbitcoinblockserving`, `-openbitcoinblockserving=1`,
+  `-openbitcoinblockserving=0`, and `-noopenbitcoinblockserving` are daemon CLI
+  overrides for the block-serving activation bit.
+- `-openbitcoincompactrelay`, `-openbitcoincompactrelay=1`,
+  `-openbitcoincompactrelay=0`, and `-noopenbitcoincompactrelay` are daemon CLI
+  overrides for the compact-relay activation bit.
+- CLI values keep the existing precedence over environment, Open Bitcoin JSONC,
+  `bitcoin.conf`, cookies, and defaults.
+- These settings feed `BlockRelayActivationPolicy` only. They do not add full
+  block serving responses, BIP152 implementation, compact reconstruction,
+  `getblocktxn`, `blocktxn`, archive-node behavior, package relay,
+  bloom/filter serving, compact filter serving, public block serving by default,
+  public-network CI, production-service operation, production full-node
+  readiness, or production-funds wallet use.
+
 ## Precedence
 
 Configuration precedence is:

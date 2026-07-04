@@ -339,6 +339,36 @@ readiness, production-funds wallet safety/use, destructive repair, source
 datadir mutation, compaction, reindexing, store surgery, or automatic support
 upload.
 
+## Phase 110 block-serving boundary evidence
+
+Phase 110 observability is a default-off policy, status, resource, and cleanup
+boundary only. `BlockServingEvidenceStatus` carries shared aggregate evidence
+for activation, eligibility counters, and status counters. Operator status,
+dashboard, RPC, metrics, logs, and support surfaces should consume that shared
+contract when later phases render it; they must not create renderer-local
+block-serving truth.
+
+The fixed vocabulary includes config keys `block_serving.enabled` and
+`block_serving.compact_relay_enabled`, CLI flags
+`-openbitcoinblockserving` and `-openbitcoincompactrelay`, status labels
+`validated`, `available`, `stale`, `side_chain`, `pruned`, `unavailable`,
+`unvalidated`, `unknown`, and `suppressed`, resource label
+`block_request_cap_reached`, and cleanup labels
+`block_inflight_cleanup_released`,
+`block_inflight_cleanup_peer_removed`, `block_inflight_cleanup_timeout`,
+`block_inflight_cleanup_restart`, and
+`block_inflight_limit_still_reached`.
+
+Observability surfaces must not expose raw peer ids, endpoints, permission
+strings, prune heights, credentials, raw block payloads, transaction payloads,
+or dynamic labels. Public-network block-serving or compact-relay review remains
+explicit opt-in UAT outside `bash scripts/verify.sh`. Phase 110 does not claim
+full block serving responses, BIP152 implementation, compact reconstruction,
+`getblocktxn`, `blocktxn`, archive-node behavior, package relay,
+bloom/filter serving, compact filter serving, public block serving by default,
+public-network CI, production-service operation, production full-node
+readiness, or production-funds wallet use.
+
 ## Phase 92 address advertisement and discovery evidence
 
 Address-boundary observability is sourced from the shared inbound status fields

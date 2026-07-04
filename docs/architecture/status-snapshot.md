@@ -361,6 +361,39 @@ readiness, production-funds wallet safety/use, destructive repair, source
 datadir mutation, compaction, reindexing, store surgery, or automatic support
 upload.
 
+## Phase 110 block-serving boundary status
+
+Phase 110 adds default-off block-serving status evidence without adding a
+serving adapter. The shared evidence contract is
+`BlockServingEvidenceStatus`, with `activation`, `eligibility`, and `status`
+fields. Renderers must consume that shared contract instead of inventing
+surface-local block-serving summaries.
+
+The activation boundary comes from `block_serving.enabled`,
+`block_serving.compact_relay_enabled`, `-openbitcoinblockserving`, and
+`-openbitcoincompactrelay`. The policy and classifier names are
+`BlockRelayActivationPolicy`, `classify_block_serving_eligibility`,
+`classify_block_serving_status`, `evaluate_block_serving_resource_gate`, and
+`classify_block_inflight_cleanup`.
+
+Eligibility labels are `eligible`, `disabled`, `activation_required`,
+`inbound_serving_required`, `permission_required`, `protected_not_serving`,
+`status_unavailable`, and `permission_effect_inactive`. Status labels are
+`validated`, `available`, `stale`, `side_chain`, `pruned`, `unavailable`,
+`unvalidated`, `unknown`, and `suppressed`. Resource and cleanup evidence uses
+fixed labels including `block_request_cap_reached`,
+`block_inflight_cleanup_released`,
+`block_inflight_cleanup_peer_removed`, `block_inflight_cleanup_timeout`,
+`block_inflight_cleanup_restart`, and
+`block_inflight_limit_still_reached`.
+
+Status consumers must not render Phase 110 activation as full block serving
+responses, BIP152 implementation, compact reconstruction, `getblocktxn`,
+`blocktxn`, archive-node behavior, package relay, bloom/filter serving, compact
+filter serving, public block serving by default, public-network CI,
+production-service operation, production full-node readiness, or production-funds wallet
+use. Those remain out of scope for Phase 110.
+
 ## Phase 92 address advertisement and discovery status
 
 Phase 92 extends `OpenBitcoinStatusSnapshot.peers.inbound` with bounded address

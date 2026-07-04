@@ -1157,6 +1157,64 @@ CI, production-service operation, production full-node readiness,
 production-funds wallet safety/use, destructive repair, source datadir
 mutation, compaction, reindexing, store surgery, or automatic support upload.
 
+## Phase 110 block-serving activation and eligibility boundary
+
+Phase 110 adds the `v2-1-block-serving-activation-eligibility-boundary`
+surface for BSRV-01, BSRV-02, BSRV-03, BSRV-05, and BSRV-06. It is a
+default-off activation, eligibility, status, resource-governance, and in-flight
+cleanup boundary before any full block serving adapter or compact-relay runtime
+behavior.
+
+The Open Bitcoin-owned evidence roots are local and deterministic:
+`docs/architecture/config-precedence.md`,
+`docs/architecture/status-snapshot.md`,
+`docs/architecture/operator-observability.md`,
+`docs/operator/runtime-guide.md`, `docs/parity/checklist.md`,
+`docs/parity/index.json`, `packages/open-bitcoin-network/src/block_serving.rs`,
+`packages/open-bitcoin-network/src/block_serving/tests.rs`,
+`packages/open-bitcoin-rpc/src/config/open_bitcoin.rs`,
+`packages/open-bitcoin-rpc/src/config/loader/block_serving.rs`,
+`packages/open-bitcoin-node/src/status/block_serving.rs`,
+`packages/open-bitcoin-node/src/status/block_serving/tests.rs`,
+`packages/open-bitcoin-network/src/peer/tests.rs`,
+`packages/open-bitcoin-node/src/sync/tests.rs`,
+`scripts/check-phase110-block-serving-boundary.ts`,
+`scripts/check-phase110-block-serving-boundary.test.ts`, and
+`scripts/verify.sh`.
+
+The boundary terms are `block_serving.enabled`,
+`block_serving.compact_relay_enabled`, `-openbitcoinblockserving`,
+`-openbitcoincompactrelay`, `BlockRelayActivationPolicy`,
+`classify_block_serving_eligibility`, `classify_block_serving_status`,
+`evaluate_block_serving_resource_gate`,
+`classify_block_inflight_cleanup`, and `BlockServingEvidenceStatus`.
+Eligibility labels are `eligible`, `disabled`, `activation_required`,
+`inbound_serving_required`, `permission_required`, `protected_not_serving`,
+`status_unavailable`, and `permission_effect_inactive`. The status-label set is
+recorded in `docs/architecture/status-snapshot.md` and
+`docs/parity/index.json`. Resource and cleanup labels include
+`block_request_cap_reached`, `block_inflight_cleanup_released`,
+`block_inflight_cleanup_peer_removed`, `block_inflight_cleanup_timeout`,
+`block_inflight_cleanup_restart`, and
+`block_inflight_limit_still_reached`.
+
+Knots anchors for this boundary are `packages/bitcoin-knots/src/net_permissions.h`,
+`packages/bitcoin-knots/src/net_permissions.cpp`,
+`packages/bitcoin-knots/src/net.cpp`,
+`packages/bitcoin-knots/src/net_processing.cpp`,
+`packages/bitcoin-knots/src/validation.cpp`,
+`packages/bitcoin-knots/src/node/blockstorage.cpp`,
+`packages/bitcoin-knots/test/functional/p2p_getdata.py`, and
+`packages/bitcoin-knots/test/functional/p2p_permissions.py`.
+
+Phase 110 does not add full block serving responses, BIP152 implementation,
+compact reconstruction, `getblocktxn`, `blocktxn`, archive-node behavior,
+package relay, bloom/filter serving, compact filter serving, public block
+serving by default, public-network CI, production-service operation, production
+full-node readiness, or production-funds wallet use. Public-network
+block-serving or compact-relay review remains opt-in UAT guidance only and is
+outside `bash scripts/verify.sh`.
+
 ## Known gaps
 
 These networking gaps remain deferred or out of scope unless a later phase adds

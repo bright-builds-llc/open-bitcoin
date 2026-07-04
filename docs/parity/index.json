@@ -672,6 +672,10 @@
     {
       "name": "v2-0-durable-mempool-relay-state-recovery",
       "status": "done"
+    },
+    {
+      "name": "v2-1-block-serving-activation-eligibility-boundary",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -2461,6 +2465,62 @@
         ],
         "suspected_unknowns": [
           "Future phases need fresh implementation and evidence before any public relay default, compact block relay, package relay, filter serving, production service, production full-node readiness, or production-funds wallet safety claim can be made."
+        ]
+      },
+      {
+        "id": "v2-1-block-serving-activation-eligibility-boundary",
+        "title": "v2.1 Block Serving Activation and Eligibility Boundary",
+        "status": "done",
+        "requirements": [
+          "BSRV-01",
+          "BSRV-02",
+          "BSRV-03",
+          "BSRV-05",
+          "BSRV-06"
+        ],
+        "evidence": [
+          "docs/architecture/config-precedence.md",
+          "docs/architecture/status-snapshot.md",
+          "docs/architecture/operator-observability.md",
+          "docs/operator/runtime-guide.md",
+          "docs/parity/catalog/p2p.md",
+          "docs/parity/checklist.md",
+          "docs/parity/index.json",
+          "packages/open-bitcoin-network/src/block_serving.rs",
+          "packages/open-bitcoin-network/src/block_serving/tests.rs",
+          "packages/open-bitcoin-rpc/src/config/open_bitcoin.rs",
+          "packages/open-bitcoin-rpc/src/config/loader/block_serving.rs",
+          "packages/open-bitcoin-node/src/status/block_serving.rs",
+          "packages/open-bitcoin-node/src/status/block_serving/tests.rs",
+          "packages/open-bitcoin-network/src/peer/tests.rs",
+          "packages/open-bitcoin-node/src/sync/tests.rs",
+          "scripts/check-phase110-block-serving-boundary.ts",
+          "scripts/check-phase110-block-serving-boundary.test.ts",
+          "scripts/verify.sh",
+          ".planning/phases/110-block-serving-activation-and-eligibility-boundary/110-01-SUMMARY.md",
+          ".planning/phases/110-block-serving-activation-and-eligibility-boundary/110-02-SUMMARY.md",
+          ".planning/phases/110-block-serving-activation-and-eligibility-boundary/110-03-SUMMARY.md"
+        ],
+        "rationale": "Phase 110 records a default-off block-serving and compact-relay activation boundary before serving effects: block_serving.enabled, block_serving.compact_relay_enabled, -openbitcoinblockserving, -openbitcoincompactrelay, BlockRelayActivationPolicy, classify_block_serving_eligibility, classify_block_serving_status, evaluate_block_serving_resource_gate, classify_block_inflight_cleanup, BlockServingEvidenceStatus, status labels validated, available, stale, side_chain, pruned, unavailable, unvalidated, unknown, suppressed, resource label block_request_cap_reached, and cleanup labels block_inflight_cleanup_released and block_inflight_limit_still_reached.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/net_permissions.h",
+            "packages/bitcoin-knots/src/net_permissions.cpp",
+            "packages/bitcoin-knots/src/net.cpp",
+            "packages/bitcoin-knots/src/net_processing.cpp",
+            "packages/bitcoin-knots/src/validation.cpp",
+            "packages/bitcoin-knots/src/node/blockstorage.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/test/functional/p2p_getdata.py",
+            "packages/bitcoin-knots/test/functional/p2p_permissions.py"
+          ]
+        },
+        "known_gaps": [
+          "Phase 110 is a default-off policy/status/resource/cleanup boundary only; it does not add full block serving responses, BIP152 implementation, compact reconstruction, getblocktxn, blocktxn, archive-node behavior, package relay, bloom/filter serving, compact filter serving, public block serving by default, public-network CI, production service operation, production full-node readiness, or production-funds wallet use."
+        ],
+        "suspected_unknowns": [
+          "Future v2.1 phases own full block serving, BIP152 codecs, compact negotiation, compact reconstruction, missing transaction round trips, operator rendering, public-network UAT scope, and release-boundary closeout before any broader block-serving or compact-relay claim can be made."
         ]
       }
     ]
