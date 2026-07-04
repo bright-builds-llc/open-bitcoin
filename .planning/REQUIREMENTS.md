@@ -12,9 +12,9 @@ Requirements for the current milestone. Each requirement maps to exactly one roa
 
 - [x] **BSRV-01**: Operator can enable block serving and compact-block relay only through explicit activation settings that keep public serving off by default.
 - [x] **BSRV-02**: Node classifies block-serving eligibility across outbound, inbound, manual, protected, and permissioned peers without changing service bits or public defaults accidentally.
-- [ ] **BSRV-03**: Node serves only validated and available blocks inside the documented active-chain or recent-valid boundary.
+- [x] **BSRV-03**: Node serves only validated and available blocks inside the documented active-chain or recent-valid boundary.
 - [ ] **BSRV-04**: Node handles block, witness block, and compact block `getdata` requests with bounded request caps, queue backpressure, and peer cleanup.
-- [ ] **BSRV-05**: Node reports unknown, stale, side-chain, pruned, unavailable, unvalidated, and suppressed block-serving outcomes without leaking prune height or raw peer details.
+- [x] **BSRV-05**: Node reports unknown, stale, side-chain, pruned, unavailable, unvalidated, and suppressed block-serving outcomes without leaking prune height or raw peer details.
 - [ ] **BSRV-06**: Block serving preserves existing block download, inbound resource-governance, timeout, churn, ban, discourage, and in-flight cleanup limits under adversarial request bursts.
 
 ### BIP152 Wire Messages And Negotiation
@@ -108,9 +108,9 @@ Traceability is populated by the v2.1 roadmap. Each active requirement maps to e
 | --- | --- | --- |
 | BSRV-01 | Phase 110 | Complete |
 | BSRV-02 | Phase 110 | Complete |
-| BSRV-03 | Phase 110 | Pending |
+| BSRV-03 | Phase 110 | Complete |
 | BSRV-04 | Phase 111 | Pending |
-| BSRV-05 | Phase 110 | Pending |
+| BSRV-05 | Phase 110 | Complete |
 | BSRV-06 | Phase 110 | Pending |
 | CMP-01 | Phase 112 | Pending |
 | CMP-02 | Phase 112 | Pending |
