@@ -11,7 +11,9 @@ use std::{
     path::PathBuf,
 };
 
-use open_bitcoin_network::{InboundListenerConfig, RelayActivationConfig};
+use open_bitcoin_network::{
+    BlockRelayActivationPolicy, InboundListenerConfig, RelayActivationConfig,
+};
 use open_bitcoin_node::{
     SyncNetwork, SyncRuntimeConfig,
     core::{consensus::ConsensusParams, wallet::AddressNetwork},
@@ -21,9 +23,9 @@ mod loader;
 mod open_bitcoin;
 
 pub use open_bitcoin::{
-    ConfigPrecedence, ConfigSource, DEFAULT_INBOUND_LISTEN_ADDRESS, DEFAULT_MAX_INBOUND_PEERS,
-    InboundConfig, InboundPermissionClassConfig, OPEN_BITCOIN_CONFIG_FILE_NAME, OpenBitcoinConfig,
-    RelayConfig, parse_open_bitcoin_jsonc_config,
+    BlockServingConfig, ConfigPrecedence, ConfigSource, DEFAULT_INBOUND_LISTEN_ADDRESS,
+    DEFAULT_MAX_INBOUND_PEERS, InboundConfig, InboundPermissionClassConfig,
+    OPEN_BITCOIN_CONFIG_FILE_NAME, OpenBitcoinConfig, RelayConfig, parse_open_bitcoin_jsonc_config,
 };
 
 pub const DEFAULT_COOKIE_AUTH_USER: &str = "__cookie__";
@@ -217,6 +219,7 @@ pub struct RuntimeConfig {
     pub sync: DaemonSyncConfig,
     pub inbound: InboundListenerConfig,
     pub relay: RelayActivationConfig,
+    pub block_serving: BlockRelayActivationPolicy,
     pub inbound_permission_validation_failures: u32,
 }
 
@@ -232,6 +235,7 @@ impl Default for RuntimeConfig {
             sync: DaemonSyncConfig::default(),
             inbound: open_bitcoin_defaults.inbound.to_listener_config(),
             relay: open_bitcoin_defaults.relay.to_activation_config(),
+            block_serving: open_bitcoin_defaults.block_serving.to_activation_policy(),
             inbound_permission_validation_failures: 0,
         }
     }

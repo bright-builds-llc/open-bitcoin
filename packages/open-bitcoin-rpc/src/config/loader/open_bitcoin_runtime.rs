@@ -7,9 +7,10 @@
 use std::{collections::BTreeMap, fs, net::IpAddr, path::Path};
 
 use open_bitcoin_network::{
-    INBOUND_PERMISSION_ADDRESSES_FIELD, INBOUND_PERMISSION_CLASS_NAME_FIELD,
-    INBOUND_PERMISSION_TOKENS_FIELD, InboundListenerConfig, ParsedPeerPermissionClass,
-    PeerPermissionClassRegistry, PeerPermissionParseError, RelayActivationConfig,
+    BlockRelayActivationPolicy, INBOUND_PERMISSION_ADDRESSES_FIELD,
+    INBOUND_PERMISSION_CLASS_NAME_FIELD, INBOUND_PERMISSION_TOKENS_FIELD, InboundListenerConfig,
+    ParsedPeerPermissionClass, PeerPermissionClassRegistry, PeerPermissionParseError,
+    RelayActivationConfig,
 };
 use open_bitcoin_node::core::wallet::AddressNetwork;
 use open_bitcoin_node::{SyncPeerAddress, SyncRuntimeConfig};
@@ -126,6 +127,22 @@ pub(super) fn resolve_relay_activation_config(
         relay.enabled = enabled;
     }
     relay
+}
+
+pub(super) fn resolve_block_relay_activation_policy(
+    cli: &CliSettings,
+    maybe_config: Option<&OpenBitcoinConfig>,
+) -> BlockRelayActivationPolicy {
+    let mut block_serving = maybe_config
+        .map(|config| config.block_serving.to_activation_policy())
+        .unwrap_or_default();
+    if let Some(enabled) = cli.maybe_block_serving_enabled {
+        block_serving.block_serving.enabled = enabled;
+    }
+    if let Some(enabled) = cli.maybe_compact_relay_enabled {
+        block_serving.compact_relay.enabled = enabled;
+    }
+    block_serving
 }
 
 fn daemon_sync_config_for_mode(

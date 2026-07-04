@@ -411,6 +411,222 @@ fn open_bitcoin_jsonc_rejects_unknown_relay_fields() {
 }
 
 #[test]
+fn open_bitcoin_jsonc_defaults_block_serving_activation_to_disabled() {
+    // Arrange
+    let sandbox = TestDirectory::new("block-serving-default");
+
+    // Act
+    let config = OpenBitcoinConfig::default();
+    let runtime = load_runtime_config_for_args(&[cli_arg("datadir", &sandbox.path)], &sandbox.path)
+        .expect("default runtime config");
+
+    // Assert
+    assert!(!config.block_serving.enabled);
+    assert!(!config.block_serving.compact_relay_enabled);
+    assert!(
+        !config
+            .block_serving
+            .to_activation_policy()
+            .block_serving
+            .enabled
+    );
+    assert!(
+        !config
+            .block_serving
+            .to_activation_policy()
+            .compact_relay
+            .enabled
+    );
+    assert!(!runtime.block_serving.block_serving.enabled);
+    assert!(!runtime.block_serving.compact_relay.enabled);
+}
+
+#[test]
+fn open_bitcoin_jsonc_accepts_block_serving_activation_enabled() {
+    // Arrange
+    let sandbox = TestDirectory::new("block-serving-jsonc-enabled");
+    let text = r#"
+    {
+      "block_serving": {
+        "enabled": true,
+        "compact_relay_enabled": true
+      }
+    }
+    "#;
+    fs::write(sandbox.child("open-bitcoin.jsonc"), text).expect("open bitcoin config");
+
+    // Act
+    let config = parse_open_bitcoin_jsonc_config(text).expect("jsonc config");
+    let runtime = load_runtime_config_for_args(&[cli_arg("datadir", &sandbox.path)], &sandbox.path)
+        .expect("runtime config");
+
+    // Assert
+    assert!(config.block_serving.enabled);
+    assert!(config.block_serving.compact_relay_enabled);
+    assert!(
+        config
+            .block_serving
+            .to_activation_policy()
+            .block_serving
+            .enabled
+    );
+    assert!(
+        config
+            .block_serving
+            .to_activation_policy()
+            .compact_relay
+            .enabled
+    );
+    assert!(runtime.block_serving.block_serving.enabled);
+    assert!(runtime.block_serving.compact_relay.enabled);
+}
+
+#[test]
+fn open_bitcoin_jsonc_rejects_unknown_block_serving_fields() {
+    // Arrange
+    let text = r#"
+    {
+      "block_serving": {
+        "enabled": false,
+        "archive": true
+      }
+    }
+    "#;
+
+    // Act
+    let error = parse_open_bitcoin_jsonc_config(text).expect_err("unknown field should fail");
+
+    // Assert
+    assert!(error.to_string().contains("unknown field"));
+    assert!(error.to_string().contains("archive"));
+}
+
+#[test]
+fn daemon_block_serving_cli_override_can_enable_or_disable_open_bitcoin_jsonc() {
+    // Arrange
+    let disabled_sandbox = TestDirectory::new("daemon-block-serving-cli-enable");
+    fs::write(
+        disabled_sandbox.child("open-bitcoin.jsonc"),
+        r#"
+        {
+          "block_serving": {
+            "enabled": false,
+            "compact_relay_enabled": false
+          }
+        }
+        "#,
+    )
+    .expect("open bitcoin config");
+    let enabled_sandbox = TestDirectory::new("daemon-block-serving-cli-disable");
+    fs::write(
+        enabled_sandbox.child("open-bitcoin.jsonc"),
+        r#"
+        {
+          "block_serving": {
+            "enabled": true,
+            "compact_relay_enabled": true
+          }
+        }
+        "#,
+    )
+    .expect("open bitcoin config");
+
+    // Act
+    let cli_enabled = load_runtime_config_for_args(
+        &[
+            cli_arg("datadir", &disabled_sandbox.path),
+            os("-openbitcoinblockserving"),
+            os("-openbitcoincompactrelay"),
+        ],
+        &disabled_sandbox.path,
+    )
+    .expect("cli enables block serving");
+    let cli_disabled = load_runtime_config_for_args(
+        &[
+            cli_arg("datadir", &enabled_sandbox.path),
+            os("-openbitcoinblockserving=0"),
+            os("-noopenbitcoincompactrelay"),
+        ],
+        &enabled_sandbox.path,
+    )
+    .expect("cli disables block serving");
+
+    // Assert
+    assert!(cli_enabled.block_serving.block_serving.enabled);
+    assert!(cli_enabled.block_serving.compact_relay.enabled);
+    assert!(!cli_disabled.block_serving.block_serving.enabled);
+    assert!(!cli_disabled.block_serving.compact_relay.enabled);
+}
+
+#[test]
+fn daemon_block_serving_cli_accepts_negated_open_bitcoin_flag() {
+    // Arrange
+    let sandbox = TestDirectory::new("daemon-block-serving-cli-negated");
+    fs::write(
+        sandbox.child("open-bitcoin.jsonc"),
+        r#"
+        {
+          "block_serving": {
+            "enabled": true,
+            "compact_relay_enabled": true
+          }
+        }
+        "#,
+    )
+    .expect("open bitcoin config");
+
+    // Act
+    let runtime = load_runtime_config_for_args(
+        &[
+            cli_arg("datadir", &sandbox.path),
+            os("-noopenbitcoinblockserving"),
+            os("-noopenbitcoincompactrelay"),
+        ],
+        &sandbox.path,
+    )
+    .expect("cli disables block serving");
+
+    // Assert
+    assert!(!runtime.block_serving.block_serving.enabled);
+    assert!(!runtime.block_serving.compact_relay.enabled);
+}
+
+#[test]
+fn daemon_relay_activation_does_not_enable_block_serving() {
+    // Arrange
+    let sandbox = TestDirectory::new("daemon-relay-is-not-block-serving");
+    fs::write(
+        sandbox.child("open-bitcoin.jsonc"),
+        r#"
+        {
+          "relay": {
+            "enabled": true
+          }
+        }
+        "#,
+    )
+    .expect("open bitcoin config");
+
+    // Act
+    let jsonc_runtime =
+        load_runtime_config_for_args(&[cli_arg("datadir", &sandbox.path)], &sandbox.path)
+            .expect("jsonc relay runtime");
+    let cli_runtime = load_runtime_config_for_args(
+        &[cli_arg("datadir", &sandbox.path), os("-openbitcoinrelay")],
+        &sandbox.path,
+    )
+    .expect("cli relay runtime");
+
+    // Assert
+    assert!(jsonc_runtime.relay.enabled);
+    assert!(cli_runtime.relay.enabled);
+    assert!(!jsonc_runtime.block_serving.block_serving.enabled);
+    assert!(!jsonc_runtime.block_serving.compact_relay.enabled);
+    assert!(!cli_runtime.block_serving.block_serving.enabled);
+    assert!(!cli_runtime.block_serving.compact_relay.enabled);
+}
+
+#[test]
 fn daemon_relay_cli_override_can_enable_or_disable_open_bitcoin_jsonc() {
     // Arrange
     let disabled_sandbox = TestDirectory::new("daemon-relay-cli-enable");

@@ -1072,6 +1072,7 @@
       "files": [
         "packages/open-bitcoin-rpc/src/config.rs",
         "packages/open-bitcoin-rpc/src/config/loader.rs",
+        "packages/open-bitcoin-rpc/src/config/loader/block_serving.rs",
         "packages/open-bitcoin-rpc/src/config/loader/chain.rs",
         "packages/open-bitcoin-rpc/src/config/loader/inbound.rs",
         "packages/open-bitcoin-rpc/src/config/loader/rpc_address.rs",

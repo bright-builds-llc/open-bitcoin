@@ -21,6 +21,7 @@ use super::{
     RpcClientConfig, RpcServerConfig, RuntimeConfig, WalletRuntimeConfig, default_rpc_port,
 };
 
+mod block_serving;
 mod chain;
 mod inbound;
 mod open_bitcoin_runtime;
@@ -29,11 +30,7 @@ mod rpc_address;
 use chain::{
     config_section_name, determine_chain, parse_chain_key, parse_chain_name, supported_chain_key,
 };
-use open_bitcoin_runtime::{
-    count_inbound_permission_validation_failures, load_open_bitcoin_config,
-    resolve_daemon_sync_config, resolve_effective_permission_class_configs,
-    resolve_inbound_listener_config, resolve_relay_activation_config,
-};
+use open_bitcoin_runtime as obt;
 use rpc_address::parse_rpc_client_address;
 
 const BITCOIN_CONF_FILE_NAME: &str = "bitcoin.conf";
@@ -53,6 +50,8 @@ struct CliSettings {
     maybe_daemon_sync_mode: Option<DaemonSyncMode>,
     maybe_inbound_enabled: Option<bool>,
     maybe_relay_enabled: Option<bool>,
+    maybe_block_serving_enabled: Option<bool>,
+    maybe_compact_relay_enabled: Option<bool>,
     maybe_inbound_listen_addresses: Option<Vec<String>>,
     maybe_max_inbound_peers: Option<usize>,
     maybe_inbound_reserved_slots: Option<usize>,
@@ -129,22 +128,24 @@ pub(super) fn load_runtime_config_for_args(
         )));
     }
     let open_bitcoin_base_dir = maybe_data_dir.as_deref().unwrap_or(&initial_data_dir);
-    let maybe_open_bitcoin_config = load_open_bitcoin_config(&cli, open_bitcoin_base_dir)?;
+    let maybe_open_bitcoin_config = obt::load_open_bitcoin_config(&cli, open_bitcoin_base_dir)?;
     let inbound_permission_class_configs =
-        resolve_effective_permission_class_configs(&cli, maybe_open_bitcoin_config.as_ref())?;
+        obt::resolve_effective_permission_class_configs(&cli, maybe_open_bitcoin_config.as_ref())?;
     let inbound_permission_validation_failures =
-        count_inbound_permission_validation_failures(&inbound_permission_class_configs);
-    let inbound = resolve_inbound_listener_config(
+        obt::count_inbound_permission_validation_failures(&inbound_permission_class_configs);
+    let inbound = obt::resolve_inbound_listener_config(
         &cli,
         maybe_open_bitcoin_config.as_ref(),
         Some(&inbound_permission_class_configs),
     )?;
-    let sync = resolve_daemon_sync_config(
+    let sync = obt::resolve_daemon_sync_config(
         chain,
         cli.maybe_daemon_sync_mode,
         maybe_open_bitcoin_config.as_ref(),
     )?;
-    let relay = resolve_relay_activation_config(&cli, maybe_open_bitcoin_config.as_ref());
+    let relay = obt::resolve_relay_activation_config(&cli, maybe_open_bitcoin_config.as_ref());
+    let block_serving =
+        obt::resolve_block_relay_activation_policy(&cli, maybe_open_bitcoin_config.as_ref());
 
     let rpc_bind = cli
         .maybe_rpc_bind
@@ -193,6 +194,7 @@ pub(super) fn load_runtime_config_for_args(
         sync,
         inbound,
         relay,
+        block_serving,
         inbound_permission_validation_failures,
     })
 }
@@ -217,6 +219,9 @@ fn parse_cli_args(cli_args: &[OsString]) -> Result<CliSettings, ConfigError> {
             .strip_prefix("no")
             .map_or((raw_key, false), |stripped| (stripped, true));
         if inbound::parse_inbound_cli_arg(&mut settings, key, maybe_value, negated)? {
+            continue;
+        }
+        if block_serving::parse_block_serving_cli_arg(&mut settings, key, maybe_value, negated)? {
             continue;
         }
 

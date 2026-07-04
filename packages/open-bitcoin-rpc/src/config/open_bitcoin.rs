@@ -6,7 +6,10 @@
 
 use std::collections::BTreeMap;
 
-use open_bitcoin_network::{InboundListenerConfig, RelayActivationConfig};
+use open_bitcoin_network::{
+    BlockRelayActivationPolicy, BlockServingActivationConfig, CompactRelayActivationConfig,
+    InboundListenerConfig, RelayActivationConfig,
+};
 use serde::{Deserialize, Serialize};
 
 use super::ConfigError;
@@ -30,6 +33,7 @@ pub struct OpenBitcoinConfig {
     pub sync: SyncConfig,
     pub inbound: InboundConfig,
     pub relay: RelayConfig,
+    pub block_serving: BlockServingConfig,
 }
 
 impl Default for OpenBitcoinConfig {
@@ -46,6 +50,7 @@ impl Default for OpenBitcoinConfig {
             sync: SyncConfig::default(),
             inbound: InboundConfig::default(),
             relay: RelayConfig::default(),
+            block_serving: BlockServingConfig::default(),
         }
     }
 }
@@ -137,6 +142,26 @@ impl RelayConfig {
     pub const fn to_activation_config(&self) -> RelayActivationConfig {
         RelayActivationConfig {
             enabled: self.enabled,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct BlockServingConfig {
+    pub enabled: bool,
+    pub compact_relay_enabled: bool,
+}
+
+impl BlockServingConfig {
+    pub const fn to_activation_policy(&self) -> BlockRelayActivationPolicy {
+        BlockRelayActivationPolicy {
+            block_serving: BlockServingActivationConfig {
+                enabled: self.enabled,
+            },
+            compact_relay: CompactRelayActivationConfig {
+                enabled: self.compact_relay_enabled,
+            },
         }
     }
 }
