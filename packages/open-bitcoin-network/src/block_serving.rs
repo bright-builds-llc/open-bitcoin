@@ -55,6 +55,58 @@ pub enum BlockServingEligibilityReason {
     PermissionEffectInactive,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BlockServingChainPosition {
+    Active,
+    RecentValid,
+    Stale,
+    SideChain,
+    Unknown,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BlockServingValidationState {
+    Validated,
+    Unvalidated,
+    Unknown,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BlockServingDataAvailability {
+    Available,
+    Pruned,
+    Unavailable,
+    Unknown,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BlockServingStatusFacts {
+    pub chain_position: BlockServingChainPosition,
+    pub validation_state: BlockServingValidationState,
+    pub data_availability: BlockServingDataAvailability,
+    pub suppressed: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BlockServingStatusDecision {
+    pub label: BlockServingStatusLabel,
+    pub allow_storage_read: bool,
+    pub may_serve_block: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BlockServingStatusLabel {
+    Validated,
+    Available,
+    Stale,
+    SideChain,
+    Pruned,
+    Unavailable,
+    Unvalidated,
+    Unknown,
+    Suppressed,
+}
+
 impl BlockServingEligibilityReason {
     pub const fn as_str(self) -> &'static str {
         match self {
@@ -66,6 +118,22 @@ impl BlockServingEligibilityReason {
             Self::ProtectedNotServing => "protected_not_serving",
             Self::StatusUnavailable => "status_unavailable",
             Self::PermissionEffectInactive => "permission_effect_inactive",
+        }
+    }
+}
+
+impl BlockServingStatusLabel {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Validated => "validated",
+            Self::Available => "available",
+            Self::Stale => "stale",
+            Self::SideChain => "side_chain",
+            Self::Pruned => "pruned",
+            Self::Unavailable => "unavailable",
+            Self::Unvalidated => "unvalidated",
+            Self::Unknown => "unknown",
+            Self::Suppressed => "suppressed",
         }
     }
 }
@@ -82,6 +150,19 @@ pub fn classify_block_serving_eligibility(
         active_permission_effects: input.active_permission_effects.clone(),
         inactive_permission_effects: input.inactive_permission_effects.clone(),
         advertises_public_service: false,
+    }
+}
+
+pub fn classify_block_serving_status(
+    facts: &BlockServingStatusFacts,
+) -> BlockServingStatusDecision {
+    let label = classify_block_serving_status_label(facts);
+    let may_serve_block = label == BlockServingStatusLabel::Available;
+
+    BlockServingStatusDecision {
+        label,
+        allow_storage_read: may_serve_block,
+        may_serve_block,
     }
 }
 
@@ -136,6 +217,37 @@ fn status_sensitive_reason(input: &BlockServingEligibilityInput) -> BlockServing
     }
 
     BlockServingEligibilityReason::StatusUnavailable
+}
+
+fn classify_block_serving_status_label(facts: &BlockServingStatusFacts) -> BlockServingStatusLabel {
+    if facts.suppressed {
+        return BlockServingStatusLabel::Suppressed;
+    }
+
+    if facts.chain_position == BlockServingChainPosition::Unknown
+        || facts.validation_state == BlockServingValidationState::Unknown
+    {
+        return BlockServingStatusLabel::Unknown;
+    }
+
+    if facts.validation_state == BlockServingValidationState::Unvalidated {
+        return BlockServingStatusLabel::Unvalidated;
+    }
+
+    match facts.chain_position {
+        BlockServingChainPosition::Stale => return BlockServingStatusLabel::Stale,
+        BlockServingChainPosition::SideChain => return BlockServingStatusLabel::SideChain,
+        BlockServingChainPosition::Active
+        | BlockServingChainPosition::RecentValid
+        | BlockServingChainPosition::Unknown => {}
+    }
+
+    match facts.data_availability {
+        BlockServingDataAvailability::Available => BlockServingStatusLabel::Available,
+        BlockServingDataAvailability::Pruned => BlockServingStatusLabel::Pruned,
+        BlockServingDataAvailability::Unavailable => BlockServingStatusLabel::Unavailable,
+        BlockServingDataAvailability::Unknown => BlockServingStatusLabel::Validated,
+    }
 }
 
 #[cfg(test)]

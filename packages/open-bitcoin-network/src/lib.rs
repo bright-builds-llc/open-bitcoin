@@ -40,9 +40,11 @@ pub use address::{
     select_local_advertisement_candidates, unsupported_future_network_classification,
 };
 pub use block_serving::{
-    BlockRelayActivationPolicy, BlockServingActivationConfig, BlockServingEligibilityDecision,
-    BlockServingEligibilityInput, BlockServingEligibilityReason, CompactRelayActivationConfig,
-    classify_block_serving_eligibility,
+    BlockRelayActivationPolicy, BlockServingActivationConfig, BlockServingChainPosition,
+    BlockServingDataAvailability, BlockServingEligibilityDecision, BlockServingEligibilityInput,
+    BlockServingEligibilityReason, BlockServingStatusDecision, BlockServingStatusFacts,
+    BlockServingStatusLabel, BlockServingValidationState, CompactRelayActivationConfig,
+    classify_block_serving_eligibility, classify_block_serving_status,
 };
 pub use compatibility::{
     CompatibilityDiagnosis, CompatibilityReport, TranscriptEvent, TranscriptStep,
