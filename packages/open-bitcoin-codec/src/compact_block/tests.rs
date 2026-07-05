@@ -1,6 +1,7 @@
 // Parity breadcrumbs:
 // - packages/bitcoin-knots/src/protocol.h
 // - packages/bitcoin-knots/src/blockencodings.h
+// - packages/bitcoin-knots/src/blockencodings.cpp
 // - packages/bitcoin-knots/src/net_processing.cpp
 // - packages/bitcoin-knots/test/functional/p2p_compactblocks.py
 // - packages/bitcoin-knots/test/functional/test_framework/messages.py
@@ -18,7 +19,8 @@ use crate::compact_block::{
     decode_get_block_transactions_payload, decode_send_compact_payload,
     encode_block_transactions_payload, encode_compact_block_payload,
     encode_get_block_transactions_payload, encode_send_compact_payload,
-    expand_block_transaction_indexes, expand_prefilled_positions, validate_compact_block_structure,
+    expand_block_transaction_indexes, expand_prefilled_positions, short_id_from_masked_u64,
+    short_id_match_key, short_id_selector_from_header_and_nonce, validate_compact_block_structure,
 };
 use crate::compact_size::write_compact_size;
 use crate::error::CodecError;
@@ -592,4 +594,16 @@ fn phase112_malformed_blocktxn_matrix_rejects_bad_transactions() {
         // Assert
         assert_error_contains(error, expected);
     }
+}
+
+#[test]
+fn phase114_short_id_selector_and_match_key_are_stable() {
+    let header = sample_header();
+    let selector = short_id_selector_from_header_and_nonce(&header, 42);
+    let short_id = short_id_from_masked_u64(0x00aa_bbcc_dd11);
+    let match_key = short_id_match_key(short_id);
+
+    assert_ne!(selector.k0, 0);
+    assert_ne!(selector.k1, 0);
+    assert_eq!(match_key, 0x00aa_bbcc_dd11);
 }

@@ -3,6 +3,9 @@
 // - packages/bitcoin-knots/src/hash.cpp
 // - packages/bitcoin-knots/src/crypto/ripemd160.cpp
 // - packages/bitcoin-knots/src/crypto/sha256.cpp
+// - packages/bitcoin-knots/src/crypto/siphash.h
+// - packages/bitcoin-knots/src/crypto/siphash.cpp
+// - packages/bitcoin-knots/src/blockencodings.cpp
 
 const INITIAL_STATE: [u32; 8] = [
     0x6a09_e667,

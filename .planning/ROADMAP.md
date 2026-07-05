@@ -43,7 +43,7 @@ v2.1 Block Serving and Compact Block Relay Boundary is the active milestone afte
 - [x] **Phase 111: Full Block Serving Request Path** - Serve eligible full and witness block requests from validated local block data with bounded request handling and historical/pruned safeguards. (completed 2026-07-04)
 - [x] **Phase 112: BIP152 Wire Codec and Message Semantics** - Add first-party `sendcmpct`, `cmpctblock`, `getblocktxn`, and `blocktxn` payload support with Knots-aligned malformed-input behavior. (completed 2026-07-04)
 - [x] **Phase 113: Compact Relay Negotiation and Announcement Policy** - Track per-peer compact-block negotiation and decide when compact block announcements are allowed. (completed 2026-07-05)
-- [ ] **Phase 114: Compact Block Reconstruction from Mempool State** - Reconstruct compact blocks from mempool and bounded extra transaction inputs with collision and missing-transaction evidence.
+- [x] **Phase 114: Compact Block Reconstruction from Mempool State** - Reconstruct compact blocks from mempool and bounded extra transaction inputs with collision and missing-transaction evidence. (completed 2026-07-05)
 - [ ] **Phase 115: Missing Transaction Round Trip, Fallback, and Validation Handoff** - Complete `getblocktxn`/`blocktxn`, fallback, volatile-state cleanup, and validation/connect integration.
 - [ ] **Phase 116: Operator Evidence, Metrics, Logs, and Support Boundary** - Project block-serving and compact-relay truth through shared RPC, CLI, dashboard, metrics, logs, and support surfaces.
 - [ ] **Phase 117: Parity Traceability, UAT, and Release Guardrails** - Close parity, UAT, docs, and deterministic no-claim guardrails for the bounded v2.1 release boundary.
@@ -143,13 +143,13 @@ Plans:
 3. Compact reconstruction integrates with mempool lifecycle, transaction relay, and block connect/disconnect events without activating package relay or filter serving.
 4. Partial compact-block state remains volatile and bounded.
 
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
 
-- [ ] 114-01: BIP152 short-ID helper and reconstruction state model
-- [ ] 114-02: Mempool and extra-transaction reconstruction inputs
-- [ ] 114-03: Collision, duplicate, missing, and lifecycle integration tests
+- [x] 114-01-PLAN.md — BIP152 short-ID helper and reconstruction state model
+- [x] 114-02-PLAN.md — Mempool and extra-transaction reconstruction inputs
+- [x] 114-03-PLAN.md — Collision, duplicate, missing, and lifecycle integration tests
 
 #### Phase 115: Missing Transaction Round Trip, Fallback, and Validation Handoff
 

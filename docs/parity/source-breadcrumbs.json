@@ -388,6 +388,7 @@
       "breadcrumbs": [
         "packages/bitcoin-knots/src/protocol.h",
         "packages/bitcoin-knots/src/blockencodings.h",
+        "packages/bitcoin-knots/src/blockencodings.cpp",
         "packages/bitcoin-knots/src/net_processing.cpp",
         "packages/bitcoin-knots/test/functional/p2p_compactblocks.py",
         "packages/bitcoin-knots/test/functional/test_framework/messages.py"
@@ -495,13 +496,17 @@
       "files": [
         "packages/open-bitcoin-consensus/src/crypto.rs",
         "packages/open-bitcoin-consensus/src/crypto/ripemd160.rs",
-        "packages/open-bitcoin-consensus/src/crypto/sha256.rs"
+        "packages/open-bitcoin-consensus/src/crypto/sha256.rs",
+        "packages/open-bitcoin-consensus/src/crypto/siphash.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/hash.h",
         "packages/bitcoin-knots/src/hash.cpp",
         "packages/bitcoin-knots/src/crypto/ripemd160.cpp",
-        "packages/bitcoin-knots/src/crypto/sha256.cpp"
+        "packages/bitcoin-knots/src/crypto/sha256.cpp",
+        "packages/bitcoin-knots/src/crypto/siphash.h",
+        "packages/bitcoin-knots/src/crypto/siphash.cpp",
+        "packages/bitcoin-knots/src/blockencodings.cpp"
       ]
     },
     {
@@ -637,6 +642,19 @@
       "breadcrumbs": [
         "packages/bitcoin-knots/src/net_processing.cpp",
         "packages/bitcoin-knots/src/protocol.h",
+        "packages/bitcoin-knots/test/functional/p2p_compactblocks.py"
+      ]
+    },
+    {
+      "label": "network-compact-block-reconstruction",
+      "files": [
+        "packages/open-bitcoin-network/src/compact_reconstruction.rs",
+        "packages/open-bitcoin-network/src/compact_reconstruction/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/blockencodings.cpp",
+        "packages/bitcoin-knots/src/blockencodings.h",
+        "packages/bitcoin-knots/src/net_processing.cpp",
         "packages/bitcoin-knots/test/functional/p2p_compactblocks.py"
       ]
     },

@@ -41,7 +41,8 @@ pub use context::{
     sequence_locks,
 };
 pub use crypto::{
-    CompactTargetError, block_hash, block_merkle_root, check_proof_of_work, transaction_txid,
+    CompactTargetError, block_hash, block_merkle_root, check_proof_of_work,
+    compact_short_id_for_wtxid, compact_short_id_selector, siphash_uint256, transaction_txid,
     transaction_wtxid,
 };
 pub use script::{

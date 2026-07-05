@@ -18,6 +18,7 @@
 
 mod address;
 mod block_serving;
+mod compact_reconstruction;
 mod compatibility;
 mod error;
 mod header_store;
@@ -48,6 +49,10 @@ pub use block_serving::{
     BlockServingStatusLabel, BlockServingValidationState, CompactRelayActivationConfig,
     classify_block_inflight_cleanup, classify_block_serving_eligibility,
     classify_block_serving_status, evaluate_block_serving_resource_gate,
+};
+pub use compact_reconstruction::{
+    CompactReconstructionFailureReason, CompactReconstructionInvalidReason,
+    CompactReconstructionOutcome, PartialCompactBlock, init_partial_compact_block,
 };
 pub use compatibility::{
     CompatibilityDiagnosis, CompatibilityReport, TranscriptEvent, TranscriptStep,

@@ -3,19 +3,34 @@
 // - packages/bitcoin-knots/src/hash.cpp
 // - packages/bitcoin-knots/src/crypto/ripemd160.cpp
 // - packages/bitcoin-knots/src/crypto/sha256.cpp
+// - packages/bitcoin-knots/src/crypto/siphash.h
+// - packages/bitcoin-knots/src/crypto/siphash.cpp
+// - packages/bitcoin-knots/src/blockencodings.cpp
 
 mod ripemd160;
 mod sha256;
+mod siphash;
 
 use core::cmp::Ordering;
 
 use open_bitcoin_codec::{
-    CodecError, TransactionEncoding, encode_block_header, encode_transaction,
+    CodecError, ShortId, ShortIdSelector, TransactionEncoding, encode_block_header,
+    encode_transaction, short_id_from_masked_u64, short_id_selector_from_header_and_nonce,
 };
 use open_bitcoin_primitives::{BlockHash, BlockHeader, MerkleRoot, Transaction, Txid, Wtxid};
 
 pub use ripemd160::Ripemd160;
 pub use sha256::Sha256;
+pub use siphash::siphash_uint256;
+
+pub fn compact_short_id_selector(header: &BlockHeader, nonce: u64) -> ShortIdSelector {
+    short_id_selector_from_header_and_nonce(header, nonce)
+}
+
+pub fn compact_short_id_for_wtxid(selector: ShortIdSelector, wtxid: &Wtxid) -> ShortId {
+    let digest = siphash::siphash_uint256(selector.k0, selector.k1, wtxid);
+    short_id_from_masked_u64(digest)
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompactTargetError {
@@ -350,5 +365,20 @@ mod tests {
             .expect("genesis bits should decode");
 
         assert!(valid);
+    }
+
+    #[test]
+    fn compact_short_id_helpers_compose_selector_and_wtxid() {
+        use open_bitcoin_primitives::Wtxid;
+
+        use super::{compact_short_id_for_wtxid, compact_short_id_selector};
+
+        let header = parse_block_header(&decode_hex(GENESIS_BLOCK_HEADER_HEX))
+            .expect("genesis header fixture should parse");
+        let selector = compact_short_id_selector(&header, 99);
+        let wtxid = Wtxid::from_byte_array([0xcd; 32]);
+        let short_id = compact_short_id_for_wtxid(selector, &wtxid);
+
+        assert_ne!(short_id.as_wire_bytes(), &[0_u8; 6]);
     }
 }
