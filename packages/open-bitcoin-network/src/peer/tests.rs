@@ -21,7 +21,11 @@ use open_bitcoin_primitives::{
 
 use crate::{
     BanDecision, BanReason, BanScope, BlockInFlightCleanupCause, BlockInFlightCleanupInput,
-    ConnectionRole, DisconnectReason, HeaderStore, HeaderSyncPolicy, HeadersMessage,
+    BlockRelayActivationPolicy, BlockServingActivationConfig, BlockServingOutcomeLabel,
+    BlockServingResourceGateDecision, BlockServingStatusDecision, BlockServingStatusLabel,
+    CompactAnnouncementEligibility, CompactAnnouncementEligibilityReason,
+    CompactRelayActivationConfig, CompactRelayCapability, CompactRelayPreference, ConnectionRole,
+    DisconnectReason, HeaderStore, HeaderSyncPolicy, HeadersMessage,
     InboundAdmissionRejectionReason, InboundAdmissionSlotClass, InboundHandshakeState,
     InboundPeerRecord, InboundPermissionDecision, InventoryList, LocalPeerConfig, NetworkError,
     PHASE94_MAX_HEADER_LOCATOR_HASHES, PHASE94_MAX_INBOUND_BLOCK_REQUESTS_PER_PEER,
@@ -42,6 +46,7 @@ use crate::address::{
 };
 
 use super::DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER;
+use super::compact_relay::{CompactAnnouncementAction, PeerCompactAnnouncementInput};
 
 fn local_config() -> LocalPeerConfig {
     LocalPeerConfig {
@@ -73,6 +78,91 @@ fn add_relay_outbound_peer(manager: &mut PeerManager, peer_id: PeerId) {
     let _ = manager
         .add_outbound_peer(peer_id, 0)
         .expect("outbound peer should be added");
+}
+
+fn compact_announcement_activation(enabled: bool) -> BlockRelayActivationPolicy {
+    BlockRelayActivationPolicy {
+        compact_relay: CompactRelayActivationConfig { enabled },
+        ..BlockRelayActivationPolicy::default()
+    }
+}
+
+fn compact_announcement_input(
+    compact_relay_enabled: bool,
+    peer_has_previous_header: bool,
+    peer_has_current_header: bool,
+    status: BlockServingStatusDecision,
+    resource_gate: BlockServingResourceGateDecision,
+) -> PeerCompactAnnouncementInput {
+    PeerCompactAnnouncementInput {
+        activation: compact_announcement_activation(compact_relay_enabled),
+        peer_has_previous_header,
+        peer_has_current_header,
+        status,
+        resource_gate,
+    }
+}
+
+fn compact_available_status() -> BlockServingStatusDecision {
+    BlockServingStatusDecision {
+        label: BlockServingStatusLabel::Available,
+        allow_storage_read: true,
+        may_serve_block: true,
+    }
+}
+
+fn compact_unavailable_status() -> BlockServingStatusDecision {
+    BlockServingStatusDecision {
+        label: BlockServingStatusLabel::Unavailable,
+        allow_storage_read: false,
+        may_serve_block: false,
+    }
+}
+
+fn compact_available_resource_gate() -> BlockServingResourceGateDecision {
+    BlockServingResourceGateDecision {
+        label: BlockServingOutcomeLabel::BlockServingEligible,
+        allow_storage_read: true,
+        may_serve_block: true,
+        maybe_resource_event: None,
+        maybe_cleanup: None,
+    }
+}
+
+fn compact_limited_resource_gate() -> BlockServingResourceGateDecision {
+    BlockServingResourceGateDecision {
+        label: BlockServingOutcomeLabel::BlockRequestCapReached,
+        allow_storage_read: false,
+        may_serve_block: false,
+        maybe_resource_event: None,
+        maybe_cleanup: None,
+    }
+}
+
+fn process_high_bandwidth_sendcmpct(manager: &mut PeerManager, peer_id: PeerId) {
+    manager
+        .handle_message(
+            peer_id,
+            WireNetworkMessage::SendCompact(SendCompactMessage {
+                announce: true,
+                version: 2,
+            }),
+            1,
+        )
+        .expect("sendcmpct high-bandwidth should process");
+}
+
+fn process_low_bandwidth_sendcmpct(manager: &mut PeerManager, peer_id: PeerId) {
+    manager
+        .handle_message(
+            peer_id,
+            WireNetworkMessage::SendCompact(SendCompactMessage {
+                announce: false,
+                version: 2,
+            }),
+            1,
+        )
+        .expect("sendcmpct low-bandwidth should process");
 }
 
 fn complete_outbound_handshake(manager: &mut PeerManager, peer_id: PeerId, start_height: i32) {
@@ -2100,6 +2190,1122 @@ fn phase112_bip152_wire_messages_are_peer_noops() {
         // Assert
         assert!(actions.is_empty());
     }
+}
+
+#[test]
+fn phase113_sendcmpct_version2_high_bandwidth_updates_peer_compact_state() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(113_001, 0).expect("peer");
+
+    // Act
+    let actions = manager
+        .handle_message(
+            113_001,
+            WireNetworkMessage::SendCompact(SendCompactMessage {
+                announce: true,
+                version: 2,
+            }),
+            1,
+        )
+        .expect("sendcmpct high-bandwidth should process");
+
+    // Assert
+    assert!(actions.is_empty());
+    let compact = &manager.peer_state(113_001).expect("peer").compact_relay;
+    assert_eq!(
+        compact.capability,
+        CompactRelayCapability::Supported { version: 2 }
+    );
+    assert_eq!(
+        compact.high_bandwidth_preference,
+        CompactRelayPreference::Requested
+    );
+    assert_eq!(
+        compact.low_bandwidth_preference,
+        CompactRelayPreference::NotRequested
+    );
+    assert_eq!(
+        compact.announcement_eligibility,
+        CompactAnnouncementEligibility::Unknown
+    );
+}
+
+#[test]
+fn phase113_sendcmpct_version2_low_bandwidth_updates_peer_compact_state() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(113_002, 0).expect("peer");
+
+    // Act
+    let actions = manager
+        .handle_message(
+            113_002,
+            WireNetworkMessage::SendCompact(SendCompactMessage {
+                announce: false,
+                version: 2,
+            }),
+            1,
+        )
+        .expect("sendcmpct low-bandwidth should process");
+
+    // Assert
+    assert!(actions.is_empty());
+    let compact = &manager.peer_state(113_002).expect("peer").compact_relay;
+    assert_eq!(
+        compact.capability,
+        CompactRelayCapability::Supported { version: 2 }
+    );
+    assert_eq!(
+        compact.low_bandwidth_preference,
+        CompactRelayPreference::Requested
+    );
+    assert_eq!(
+        compact.high_bandwidth_preference,
+        CompactRelayPreference::NotRequested
+    );
+    assert_eq!(
+        compact.announcement_eligibility,
+        CompactAnnouncementEligibility::Unknown
+    );
+}
+
+#[test]
+fn phase113_sendcmpct_high_to_low_clears_high_bandwidth_preference() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(113_003, 0).expect("peer");
+
+    // Act
+    manager
+        .handle_message(
+            113_003,
+            WireNetworkMessage::SendCompact(SendCompactMessage {
+                announce: true,
+                version: 2,
+            }),
+            1,
+        )
+        .expect("sendcmpct high-bandwidth should process");
+    manager
+        .handle_message(
+            113_003,
+            WireNetworkMessage::SendCompact(SendCompactMessage {
+                announce: false,
+                version: 2,
+            }),
+            2,
+        )
+        .expect("sendcmpct low-bandwidth should process");
+
+    // Assert
+    let compact = &manager.peer_state(113_003).expect("peer").compact_relay;
+    assert_eq!(
+        compact.high_bandwidth_preference,
+        CompactRelayPreference::NotRequested
+    );
+    assert_eq!(
+        compact.low_bandwidth_preference,
+        CompactRelayPreference::Requested
+    );
+    assert_eq!(
+        compact.announcement_eligibility,
+        CompactAnnouncementEligibility::Unknown
+    );
+}
+
+#[test]
+fn phase113_sendcmpct_low_to_high_clears_low_bandwidth_preference() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(113_004, 0).expect("peer");
+
+    // Act
+    manager
+        .handle_message(
+            113_004,
+            WireNetworkMessage::SendCompact(SendCompactMessage {
+                announce: false,
+                version: 2,
+            }),
+            1,
+        )
+        .expect("sendcmpct low-bandwidth should process");
+    manager
+        .handle_message(
+            113_004,
+            WireNetworkMessage::SendCompact(SendCompactMessage {
+                announce: true,
+                version: 2,
+            }),
+            2,
+        )
+        .expect("sendcmpct high-bandwidth should process");
+
+    // Assert
+    let compact = &manager.peer_state(113_004).expect("peer").compact_relay;
+    assert_eq!(
+        compact.low_bandwidth_preference,
+        CompactRelayPreference::NotRequested
+    );
+    assert_eq!(
+        compact.high_bandwidth_preference,
+        CompactRelayPreference::Requested
+    );
+    assert_eq!(
+        compact.announcement_eligibility,
+        CompactAnnouncementEligibility::Unknown
+    );
+}
+
+#[test]
+fn phase113_sendcmpct_unsupported_version_records_evidence_without_disconnect() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(113_005, 0).expect("peer");
+
+    // Act
+    let actions = manager
+        .handle_message(
+            113_005,
+            WireNetworkMessage::SendCompact(SendCompactMessage {
+                announce: true,
+                version: 3,
+            }),
+            1,
+        )
+        .expect("unsupported sendcmpct should process without disconnecting");
+
+    // Assert
+    assert!(
+        !actions
+            .iter()
+            .any(|action| matches!(action, PeerAction::Disconnect(_)))
+    );
+    let compact = &manager.peer_state(113_005).expect("peer").compact_relay;
+    assert_eq!(
+        compact.capability,
+        CompactRelayCapability::Unsupported { version: 3 }
+    );
+    assert_eq!(
+        compact.high_bandwidth_preference,
+        CompactRelayPreference::Unknown
+    );
+    assert_eq!(
+        compact.low_bandwidth_preference,
+        CompactRelayPreference::Unknown
+    );
+    assert_eq!(
+        compact.announcement_eligibility,
+        CompactAnnouncementEligibility::Unknown
+    );
+    assert_eq!(compact.maybe_unsupported_version, Some(3));
+}
+
+#[test]
+fn phase113_unsupported_sendcmpct_does_not_clear_existing_version2_capability() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(113_006, 0).expect("peer");
+
+    // Act
+    manager
+        .handle_message(
+            113_006,
+            WireNetworkMessage::SendCompact(SendCompactMessage {
+                announce: true,
+                version: 2,
+            }),
+            1,
+        )
+        .expect("sendcmpct high-bandwidth should process");
+    let unsupported_actions = manager
+        .handle_message(
+            113_006,
+            WireNetworkMessage::SendCompact(SendCompactMessage {
+                announce: false,
+                version: 1,
+            }),
+            2,
+        )
+        .expect("unsupported sendcmpct should process");
+
+    // Assert
+    assert!(
+        !unsupported_actions
+            .iter()
+            .any(|action| matches!(action, PeerAction::Disconnect(_)))
+    );
+    let compact = &manager.peer_state(113_006).expect("peer").compact_relay;
+    assert_eq!(
+        compact.capability,
+        CompactRelayCapability::Supported { version: 2 }
+    );
+    assert_eq!(
+        compact.high_bandwidth_preference,
+        CompactRelayPreference::Requested
+    );
+    assert_eq!(
+        compact.low_bandwidth_preference,
+        CompactRelayPreference::NotRequested
+    );
+    assert_eq!(
+        compact.announcement_eligibility,
+        CompactAnnouncementEligibility::Unknown
+    );
+    assert_eq!(compact.maybe_unsupported_version, Some(1));
+}
+
+#[test]
+fn phase113_transaction_relay_messages_do_not_activate_compact_relay_state() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_inbound_peer(113_007).expect("peer");
+    let transaction = open_bitcoin_primitives::Transaction::default();
+    let txid = transaction_txid(&transaction).expect("txid");
+
+    // Act
+    let wtxidrelay_actions = manager
+        .handle_message(113_007, WireNetworkMessage::WtxidRelay, 1)
+        .expect("wtxidrelay should process");
+    let inventory_actions = manager
+        .handle_message(
+            113_007,
+            WireNetworkMessage::Inv(InventoryList::new(vec![InventoryVector {
+                inventory_type: InventoryType::Transaction,
+                object_hash: txid.into(),
+            }])),
+            2,
+        )
+        .expect("transaction inventory should process");
+
+    // Assert
+    assert!(wtxidrelay_actions.is_empty());
+    assert!(!inventory_actions.iter().any(|action| {
+        matches!(
+            action,
+            PeerAction::Send(WireNetworkMessage::CompactBlock(_))
+        )
+    }));
+    let peer = manager.peer_state(113_007).expect("peer");
+    assert!(peer.remote_wtxidrelay);
+    assert_eq!(
+        peer.compact_relay.capability,
+        CompactRelayCapability::Unknown
+    );
+    assert_eq!(
+        peer.compact_relay.announcement_eligibility,
+        CompactAnnouncementEligibility::Unknown
+    );
+}
+
+#[test]
+fn phase113_compact_announcement_all_gates_allow_compact_block() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(113_021, 0).expect("peer");
+    process_high_bandwidth_sendcmpct(&mut manager, 113_021);
+    let input = compact_announcement_input(
+        true,
+        true,
+        false,
+        compact_available_status(),
+        compact_available_resource_gate(),
+    );
+
+    // Act
+    let decision = manager
+        .decide_compact_announcement_for_peer(113_021, input)
+        .expect("compact announcement decision");
+
+    // Assert
+    assert_eq!(
+        decision.action,
+        CompactAnnouncementAction::AnnounceCompactBlock
+    );
+    assert_eq!(decision.reason.as_str(), "compact_announced");
+    assert_eq!(
+        manager
+            .peer_state(113_021)
+            .expect("peer")
+            .compact_relay
+            .announcement_eligibility,
+        CompactAnnouncementEligibility::Eligible
+    );
+}
+
+#[test]
+fn phase113_compact_announcement_disabled_local_activation_uses_inventory_fallback() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(113_022, 0).expect("peer");
+    process_high_bandwidth_sendcmpct(&mut manager, 113_022);
+    let input = compact_announcement_input(
+        false,
+        true,
+        false,
+        compact_available_status(),
+        compact_available_resource_gate(),
+    );
+
+    // Act
+    let decision = manager
+        .decide_compact_announcement_for_peer(113_022, input)
+        .expect("compact announcement decision");
+
+    // Assert
+    assert_eq!(
+        decision.action,
+        CompactAnnouncementAction::AnnounceInventory
+    );
+    assert_eq!(decision.reason.as_str(), "compact_relay_disabled");
+    assert_eq!(
+        manager
+            .peer_state(113_022)
+            .expect("peer")
+            .compact_relay
+            .announcement_eligibility,
+        CompactAnnouncementEligibility::Ineligible {
+            reason: CompactAnnouncementEligibilityReason::LocalActivationDisabled,
+        }
+    );
+}
+
+#[test]
+fn phase113_compact_announcement_missing_previous_header_uses_headers_fallback() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(113_023, 0).expect("peer");
+    process_high_bandwidth_sendcmpct(&mut manager, 113_023);
+    let input = compact_announcement_input(
+        true,
+        false,
+        false,
+        compact_available_status(),
+        compact_available_resource_gate(),
+    );
+
+    // Act
+    let decision = manager
+        .decide_compact_announcement_for_peer(113_023, input)
+        .expect("compact announcement decision");
+
+    // Assert
+    assert_eq!(decision.action, CompactAnnouncementAction::AnnounceHeaders);
+    assert_eq!(
+        decision.reason.as_str(),
+        "compact_header_continuity_missing"
+    );
+    assert_eq!(
+        manager
+            .peer_state(113_023)
+            .expect("peer")
+            .compact_relay
+            .announcement_eligibility,
+        CompactAnnouncementEligibility::Ineligible {
+            reason: CompactAnnouncementEligibilityReason::HeaderContinuityMissing,
+        }
+    );
+}
+
+#[test]
+fn phase113_compact_announcement_unavailable_block_suppresses() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(113_024, 0).expect("peer");
+    process_high_bandwidth_sendcmpct(&mut manager, 113_024);
+    let input = compact_announcement_input(
+        true,
+        true,
+        false,
+        compact_unavailable_status(),
+        compact_available_resource_gate(),
+    );
+
+    // Act
+    let decision = manager
+        .decide_compact_announcement_for_peer(113_024, input)
+        .expect("compact announcement decision");
+
+    // Assert
+    assert_eq!(decision.action, CompactAnnouncementAction::Suppress);
+    assert_eq!(decision.reason.as_str(), "compact_block_unavailable");
+    assert_eq!(
+        manager
+            .peer_state(113_024)
+            .expect("peer")
+            .compact_relay
+            .announcement_eligibility,
+        CompactAnnouncementEligibility::Ineligible {
+            reason: CompactAnnouncementEligibilityReason::BlockUnavailable,
+        }
+    );
+}
+
+#[test]
+fn phase113_compact_announcement_resource_limit_suppresses() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(113_025, 0).expect("peer");
+    process_high_bandwidth_sendcmpct(&mut manager, 113_025);
+    let input = compact_announcement_input(
+        true,
+        true,
+        false,
+        compact_available_status(),
+        compact_limited_resource_gate(),
+    );
+
+    // Act
+    let decision = manager
+        .decide_compact_announcement_for_peer(113_025, input)
+        .expect("compact announcement decision");
+
+    // Assert
+    assert_eq!(decision.action, CompactAnnouncementAction::Suppress);
+    assert_eq!(decision.reason.as_str(), "compact_resource_limited");
+    assert_eq!(
+        manager
+            .peer_state(113_025)
+            .expect("peer")
+            .compact_relay
+            .announcement_eligibility,
+        CompactAnnouncementEligibility::Ineligible {
+            reason: CompactAnnouncementEligibilityReason::ResourceLimited,
+        }
+    );
+}
+
+#[test]
+fn phase113_compact_announcement_refreshes_eligibility_across_high_low_high_toggles() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(113_026, 0).expect("peer");
+    let input = || {
+        compact_announcement_input(
+            true,
+            true,
+            false,
+            compact_available_status(),
+            compact_available_resource_gate(),
+        )
+    };
+
+    // Act
+    process_high_bandwidth_sendcmpct(&mut manager, 113_026);
+    let high_decision = manager
+        .decide_compact_announcement_for_peer(113_026, input())
+        .expect("high bandwidth decision");
+    process_low_bandwidth_sendcmpct(&mut manager, 113_026);
+    let low_decision = manager
+        .decide_compact_announcement_for_peer(113_026, input())
+        .expect("low bandwidth decision");
+    process_high_bandwidth_sendcmpct(&mut manager, 113_026);
+    let restored_high_decision = manager
+        .decide_compact_announcement_for_peer(113_026, input())
+        .expect("restored high bandwidth decision");
+
+    // Assert
+    assert_eq!(
+        high_decision.action,
+        CompactAnnouncementAction::AnnounceCompactBlock
+    );
+    assert_eq!(
+        low_decision.reason.as_str(),
+        "compact_high_bandwidth_not_requested"
+    );
+    assert_eq!(
+        low_decision.eligibility,
+        CompactAnnouncementEligibility::Ineligible {
+            reason: CompactAnnouncementEligibilityReason::HighBandwidthNotRequested,
+        }
+    );
+    assert_eq!(
+        restored_high_decision.action,
+        CompactAnnouncementAction::AnnounceCompactBlock
+    );
+    assert_eq!(
+        manager
+            .peer_state(113_026)
+            .expect("peer")
+            .compact_relay
+            .announcement_eligibility,
+        CompactAnnouncementEligibility::Eligible
+    );
+}
+
+#[test]
+fn phase113_compact_announcement_preserves_supported_preference_after_unsupported_sendcmpct() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(113_027, 0).expect("peer");
+    process_high_bandwidth_sendcmpct(&mut manager, 113_027);
+    manager
+        .handle_message(
+            113_027,
+            WireNetworkMessage::SendCompact(SendCompactMessage {
+                announce: false,
+                version: 1,
+            }),
+            2,
+        )
+        .expect("unsupported sendcmpct should process");
+    let input = compact_announcement_input(
+        true,
+        true,
+        false,
+        compact_available_status(),
+        compact_available_resource_gate(),
+    );
+
+    // Act
+    let decision = manager
+        .decide_compact_announcement_for_peer(113_027, input)
+        .expect("compact announcement decision");
+
+    // Assert
+    assert_eq!(
+        decision.action,
+        CompactAnnouncementAction::AnnounceCompactBlock
+    );
+    assert_eq!(decision.reason.as_str(), "compact_announced");
+    let compact = &manager.peer_state(113_027).expect("peer").compact_relay;
+    assert_eq!(compact.maybe_unsupported_version, Some(1));
+    assert_eq!(
+        compact.high_bandwidth_preference,
+        CompactRelayPreference::Requested
+    );
+}
+
+#[test]
+fn phase113_low_bandwidth_compact_peer_uses_headers_fallback_for_direct_announcement() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(113_031, 0).expect("peer");
+    manager
+        .handle_message(113_031, WireNetworkMessage::SendHeaders, 1)
+        .expect("sendheaders should process");
+    process_low_bandwidth_sendcmpct(&mut manager, 113_031);
+    let input = compact_announcement_input(
+        true,
+        true,
+        false,
+        compact_available_status(),
+        compact_available_resource_gate(),
+    );
+
+    // Act
+    let decision = manager
+        .decide_compact_announcement_for_peer(113_031, input)
+        .expect("compact announcement decision");
+
+    // Assert
+    assert_eq!(decision.action, CompactAnnouncementAction::AnnounceHeaders);
+    assert_eq!(
+        decision.reason.as_str(),
+        "compact_high_bandwidth_not_requested"
+    );
+    let compact = &manager.peer_state(113_031).expect("peer").compact_relay;
+    assert_eq!(
+        compact.low_bandwidth_preference,
+        CompactRelayPreference::Requested
+    );
+    assert_eq!(
+        compact.high_bandwidth_preference,
+        CompactRelayPreference::NotRequested
+    );
+}
+
+#[test]
+fn phase113_low_bandwidth_compact_peer_uses_inventory_fallback_without_sendheaders() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(113_032, 0).expect("peer");
+    process_low_bandwidth_sendcmpct(&mut manager, 113_032);
+    let input = compact_announcement_input(
+        true,
+        true,
+        false,
+        compact_available_status(),
+        compact_available_resource_gate(),
+    );
+
+    // Act
+    let decision = manager
+        .decide_compact_announcement_for_peer(113_032, input)
+        .expect("compact announcement decision");
+
+    // Assert
+    assert_eq!(
+        decision.action,
+        CompactAnnouncementAction::AnnounceInventory
+    );
+    assert_eq!(
+        decision.reason.as_str(),
+        "compact_high_bandwidth_not_requested"
+    );
+    let compact = &manager.peer_state(113_032).expect("peer").compact_relay;
+    assert_eq!(
+        compact.low_bandwidth_preference,
+        CompactRelayPreference::Requested
+    );
+}
+
+#[test]
+fn phase113_high_to_low_toggle_never_announces_compact() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(113_033, 0).expect("peer");
+    process_high_bandwidth_sendcmpct(&mut manager, 113_033);
+    process_low_bandwidth_sendcmpct(&mut manager, 113_033);
+    let input = compact_announcement_input(
+        true,
+        true,
+        false,
+        compact_available_status(),
+        compact_available_resource_gate(),
+    );
+
+    // Act
+    let decision = manager
+        .decide_compact_announcement_for_peer(113_033, input)
+        .expect("compact announcement decision");
+
+    // Assert
+    assert_ne!(
+        decision.action,
+        CompactAnnouncementAction::AnnounceCompactBlock
+    );
+    assert_eq!(
+        decision.reason.as_str(),
+        "compact_high_bandwidth_not_requested"
+    );
+    let compact = &manager.peer_state(113_033).expect("peer").compact_relay;
+    assert_eq!(
+        compact.high_bandwidth_preference,
+        CompactRelayPreference::NotRequested
+    );
+    assert_eq!(
+        compact.low_bandwidth_preference,
+        CompactRelayPreference::Requested
+    );
+}
+
+#[test]
+fn phase113_low_to_high_toggle_all_gates_allow_compact_block() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(113_034, 0).expect("peer");
+    process_low_bandwidth_sendcmpct(&mut manager, 113_034);
+    process_high_bandwidth_sendcmpct(&mut manager, 113_034);
+    let input = compact_announcement_input(
+        true,
+        true,
+        false,
+        compact_available_status(),
+        compact_available_resource_gate(),
+    );
+
+    // Act
+    let decision = manager
+        .decide_compact_announcement_for_peer(113_034, input)
+        .expect("compact announcement decision");
+
+    // Assert
+    assert_eq!(
+        decision.action,
+        CompactAnnouncementAction::AnnounceCompactBlock
+    );
+    assert_eq!(decision.reason.as_str(), "compact_announced");
+    let compact = &manager.peer_state(113_034).expect("peer").compact_relay;
+    assert_eq!(
+        compact.low_bandwidth_preference,
+        CompactRelayPreference::NotRequested
+    );
+    assert_eq!(
+        compact.high_bandwidth_preference,
+        CompactRelayPreference::Requested
+    );
+}
+
+#[test]
+fn phase113_high_low_high_toggle_refreshes_recorded_eligibility() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(113_035, 0).expect("peer");
+    let input = || {
+        compact_announcement_input(
+            true,
+            true,
+            false,
+            compact_available_status(),
+            compact_available_resource_gate(),
+        )
+    };
+
+    // Act
+    process_high_bandwidth_sendcmpct(&mut manager, 113_035);
+    manager
+        .decide_compact_announcement_for_peer(113_035, input())
+        .expect("high-bandwidth decision");
+    let high_eligibility = manager
+        .peer_state(113_035)
+        .expect("peer")
+        .compact_relay
+        .announcement_eligibility;
+    process_low_bandwidth_sendcmpct(&mut manager, 113_035);
+    manager
+        .decide_compact_announcement_for_peer(113_035, input())
+        .expect("low-bandwidth decision");
+    let low_eligibility = manager
+        .peer_state(113_035)
+        .expect("peer")
+        .compact_relay
+        .announcement_eligibility;
+    process_high_bandwidth_sendcmpct(&mut manager, 113_035);
+    manager
+        .decide_compact_announcement_for_peer(113_035, input())
+        .expect("restored high-bandwidth decision");
+    let restored_eligibility = manager
+        .peer_state(113_035)
+        .expect("peer")
+        .compact_relay
+        .announcement_eligibility;
+
+    // Assert
+    assert_eq!(high_eligibility, CompactAnnouncementEligibility::Eligible);
+    assert_eq!(
+        low_eligibility,
+        CompactAnnouncementEligibility::Ineligible {
+            reason: CompactAnnouncementEligibilityReason::HighBandwidthNotRequested,
+        }
+    );
+    assert_eq!(
+        restored_eligibility,
+        CompactAnnouncementEligibility::Eligible
+    );
+}
+
+#[test]
+fn phase113_unsupported_compact_version_without_supported_preference_uses_inventory_fallback_without_disconnect()
+ {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(113_036, 0).expect("peer");
+    let input = compact_announcement_input(
+        true,
+        true,
+        false,
+        compact_available_status(),
+        compact_available_resource_gate(),
+    );
+
+    // Act
+    let actions = manager
+        .handle_message(
+            113_036,
+            WireNetworkMessage::SendCompact(SendCompactMessage {
+                announce: true,
+                version: 3,
+            }),
+            1,
+        )
+        .expect("unsupported sendcmpct should process");
+    let decision = manager
+        .decide_compact_announcement_for_peer(113_036, input)
+        .expect("compact announcement decision");
+
+    // Assert
+    assert!(
+        !actions
+            .iter()
+            .any(|action| matches!(action, PeerAction::Disconnect(_)))
+    );
+    assert_eq!(
+        decision.action,
+        CompactAnnouncementAction::AnnounceInventory
+    );
+    assert_eq!(decision.reason.as_str(), "compact_unsupported_version");
+}
+
+#[test]
+fn phase113_unsupported_compact_version_after_supported_high_bandwidth_still_announces_compact() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(113_037, 0).expect("peer");
+    process_high_bandwidth_sendcmpct(&mut manager, 113_037);
+    let input = compact_announcement_input(
+        true,
+        true,
+        false,
+        compact_available_status(),
+        compact_available_resource_gate(),
+    );
+
+    // Act
+    let actions = manager
+        .handle_message(
+            113_037,
+            WireNetworkMessage::SendCompact(SendCompactMessage {
+                announce: false,
+                version: 1,
+            }),
+            2,
+        )
+        .expect("unsupported sendcmpct should process");
+    let decision = manager
+        .decide_compact_announcement_for_peer(113_037, input)
+        .expect("compact announcement decision");
+
+    // Assert
+    assert!(
+        !actions
+            .iter()
+            .any(|action| matches!(action, PeerAction::Disconnect(_)))
+    );
+    assert_eq!(
+        decision.action,
+        CompactAnnouncementAction::AnnounceCompactBlock
+    );
+    assert_eq!(decision.reason.as_str(), "compact_announced");
+    let compact = &manager.peer_state(113_037).expect("peer").compact_relay;
+    assert_eq!(compact.maybe_unsupported_version, Some(1));
+}
+
+#[test]
+fn phase113_peer_already_has_current_header_uses_headers_fallback() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(113_038, 0).expect("peer");
+    process_high_bandwidth_sendcmpct(&mut manager, 113_038);
+    let input = compact_announcement_input(
+        true,
+        true,
+        true,
+        compact_available_status(),
+        compact_available_resource_gate(),
+    );
+
+    // Act
+    let decision = manager
+        .decide_compact_announcement_for_peer(113_038, input)
+        .expect("compact announcement decision");
+
+    // Assert
+    assert_eq!(decision.action, CompactAnnouncementAction::AnnounceHeaders);
+    assert_eq!(decision.reason.as_str(), "compact_peer_already_has_header");
+}
+
+#[test]
+fn phase113_missing_header_or_unavailable_block_never_announces_compact() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(113_039, 0).expect("peer");
+    manager.add_outbound_peer(113_040, 0).expect("peer");
+    process_high_bandwidth_sendcmpct(&mut manager, 113_039);
+    process_high_bandwidth_sendcmpct(&mut manager, 113_040);
+    let missing_header_input = compact_announcement_input(
+        true,
+        false,
+        false,
+        compact_available_status(),
+        compact_available_resource_gate(),
+    );
+    let unavailable_block_input = compact_announcement_input(
+        true,
+        true,
+        false,
+        compact_unavailable_status(),
+        compact_available_resource_gate(),
+    );
+
+    // Act
+    let missing_header_decision = manager
+        .decide_compact_announcement_for_peer(113_039, missing_header_input)
+        .expect("missing-header compact announcement decision");
+    let unavailable_block_decision = manager
+        .decide_compact_announcement_for_peer(113_040, unavailable_block_input)
+        .expect("unavailable-block compact announcement decision");
+
+    // Assert
+    assert_ne!(
+        missing_header_decision.action,
+        CompactAnnouncementAction::AnnounceCompactBlock
+    );
+    assert_eq!(
+        missing_header_decision.reason.as_str(),
+        "compact_header_continuity_missing"
+    );
+    assert_ne!(
+        unavailable_block_decision.action,
+        CompactAnnouncementAction::AnnounceCompactBlock
+    );
+    assert_eq!(
+        unavailable_block_decision.action,
+        CompactAnnouncementAction::Suppress
+    );
+    assert_eq!(
+        unavailable_block_decision.reason.as_str(),
+        "compact_block_unavailable"
+    );
+}
+
+#[test]
+fn phase113_wtxidrelay_does_not_activate_compact_announcement() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(113_041, 0).expect("peer");
+    let input = compact_announcement_input(
+        true,
+        true,
+        false,
+        compact_available_status(),
+        compact_available_resource_gate(),
+    );
+
+    // Act
+    let actions = manager
+        .handle_message(113_041, WireNetworkMessage::WtxidRelay, 1)
+        .expect("wtxidrelay should process");
+    let decision = manager
+        .decide_compact_announcement_for_peer(113_041, input)
+        .expect("compact announcement decision");
+
+    // Assert
+    assert!(actions.is_empty());
+    assert_ne!(
+        decision.action,
+        CompactAnnouncementAction::AnnounceCompactBlock
+    );
+    assert_eq!(decision.reason.as_str(), "compact_peer_not_negotiated");
+    assert_eq!(
+        manager
+            .peer_state(113_041)
+            .expect("peer")
+            .compact_relay
+            .capability,
+        CompactRelayCapability::Unknown
+    );
+}
+
+#[test]
+fn phase113_block_serving_enabled_without_compact_relay_does_not_announce_compact() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(113_042, 0).expect("peer");
+    process_high_bandwidth_sendcmpct(&mut manager, 113_042);
+    let input = PeerCompactAnnouncementInput {
+        activation: BlockRelayActivationPolicy {
+            block_serving: BlockServingActivationConfig { enabled: true },
+            compact_relay: CompactRelayActivationConfig::default(),
+        },
+        peer_has_previous_header: true,
+        peer_has_current_header: false,
+        status: compact_available_status(),
+        resource_gate: compact_available_resource_gate(),
+    };
+
+    // Act
+    let decision = manager
+        .decide_compact_announcement_for_peer(113_042, input)
+        .expect("compact announcement decision");
+
+    // Assert
+    assert_ne!(
+        decision.action,
+        CompactAnnouncementAction::AnnounceCompactBlock
+    );
+    assert_eq!(decision.reason.as_str(), "compact_relay_disabled");
+}
+
+#[test]
+fn phase113_download_permission_does_not_grant_compact_announcement() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager
+        .add_inbound_peer_record(permissioned_inbound_record(
+            113_043,
+            permission_decision(["in", "download"]),
+        ))
+        .expect("download-permission inbound peer");
+    let input = compact_announcement_input(
+        true,
+        true,
+        false,
+        compact_available_status(),
+        compact_available_resource_gate(),
+    );
+
+    // Act
+    let decision = manager
+        .decide_compact_announcement_for_peer(113_043, input)
+        .expect("compact announcement decision");
+
+    // Assert
+    assert_ne!(
+        decision.action,
+        CompactAnnouncementAction::AnnounceCompactBlock
+    );
+    assert_eq!(decision.reason.as_str(), "compact_peer_not_negotiated");
+}
+
+#[test]
+fn phase113_protected_inbound_permission_does_not_grant_compact_announcement() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager
+        .add_inbound_peer_record(permissioned_inbound_record(
+            113_044,
+            protected_permission_decision(),
+        ))
+        .expect("protected inbound peer");
+    let input = compact_announcement_input(
+        true,
+        true,
+        false,
+        compact_available_status(),
+        compact_available_resource_gate(),
+    );
+
+    // Act
+    let decision = manager
+        .decide_compact_announcement_for_peer(113_044, input)
+        .expect("compact announcement decision");
+
+    // Assert
+    assert_ne!(
+        decision.action,
+        CompactAnnouncementAction::AnnounceCompactBlock
+    );
+    assert_eq!(decision.reason.as_str(), "compact_peer_not_negotiated");
+}
+
+#[test]
+fn phase113_default_activation_policy_suppresses_compact_announcement() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(113_045, 0).expect("peer");
+    process_high_bandwidth_sendcmpct(&mut manager, 113_045);
+    let input = PeerCompactAnnouncementInput {
+        activation: BlockRelayActivationPolicy::default(),
+        peer_has_previous_header: true,
+        peer_has_current_header: false,
+        status: compact_available_status(),
+        resource_gate: compact_available_resource_gate(),
+    };
+
+    // Act
+    let decision = manager
+        .decide_compact_announcement_for_peer(113_045, input)
+        .expect("compact announcement decision");
+
+    // Assert
+    assert!(!BlockRelayActivationPolicy::default().compact_relay.enabled);
+    assert_ne!(
+        decision.action,
+        CompactAnnouncementAction::AnnounceCompactBlock
+    );
+    assert_eq!(decision.reason.as_str(), "compact_relay_disabled");
 }
 
 #[test]

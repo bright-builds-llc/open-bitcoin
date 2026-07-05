@@ -42,7 +42,7 @@ v2.1 Block Serving and Compact Block Relay Boundary is the active milestone afte
 - [x] **Phase 110: Block Serving Activation and Eligibility Boundary** - Establish default-off serving activation, peer eligibility, safe block status classification, and resource-bound policy before any storage read. (completed 2026-07-04)
 - [x] **Phase 111: Full Block Serving Request Path** - Serve eligible full and witness block requests from validated local block data with bounded request handling and historical/pruned safeguards. (completed 2026-07-04)
 - [x] **Phase 112: BIP152 Wire Codec and Message Semantics** - Add first-party `sendcmpct`, `cmpctblock`, `getblocktxn`, and `blocktxn` payload support with Knots-aligned malformed-input behavior. (completed 2026-07-04)
-- [ ] **Phase 113: Compact Relay Negotiation and Announcement Policy** - Track per-peer compact-block negotiation and decide when compact block announcements are allowed.
+- [x] **Phase 113: Compact Relay Negotiation and Announcement Policy** - Track per-peer compact-block negotiation and decide when compact block announcements are allowed. (completed 2026-07-05)
 - [ ] **Phase 114: Compact Block Reconstruction from Mempool State** - Reconstruct compact blocks from mempool and bounded extra transaction inputs with collision and missing-transaction evidence.
 - [ ] **Phase 115: Missing Transaction Round Trip, Fallback, and Validation Handoff** - Complete `getblocktxn`/`blocktxn`, fallback, volatile-state cleanup, and validation/connect integration.
 - [ ] **Phase 116: Operator Evidence, Metrics, Logs, and Support Boundary** - Project block-serving and compact-relay truth through shared RPC, CLI, dashboard, metrics, logs, and support surfaces.
@@ -123,13 +123,13 @@ Plans:
 3. Compact-block negotiation remains independent from transaction relay, package relay, bloom/filter permissions, compact filters, and public serving defaults.
 4. Tests cover unsupported versions, toggled high-bandwidth preference, headers fallback, and default-disabled behavior.
 
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
 
-- [ ] 113-01: Per-peer `sendcmpct` negotiation state
-- [ ] 113-02: Compact block announcement decision policy
-- [ ] 113-03: Header/inventory fallback and scope-isolation guardrails
+- [x] 113-01: Per-peer `sendcmpct` negotiation state
+- [x] 113-02: Compact block announcement decision policy
+- [x] 113-03: Header/inventory fallback and scope-isolation guardrails
 
 #### Phase 114: Compact Block Reconstruction from Mempool State
 
@@ -226,7 +226,7 @@ Plans:
 | 110. Block Serving Activation and Eligibility Boundary | v2.1 | 4/4 | Complete    | 2026-07-04 |
 | 111. Full Block Serving Request Path | v2.1 | 3/3 | Complete    | 2026-07-04 |
 | 112. BIP152 Wire Codec and Message Semantics | v2.1 | 3/3 | Complete    | 2026-07-04 |
-| 113. Compact Relay Negotiation and Announcement Policy | v2.1 | 0/3 | Not started | - |
+| 113. Compact Relay Negotiation and Announcement Policy | v2.1 | 3/3 | Complete    | 2026-07-05 |
 | 114. Compact Block Reconstruction from Mempool State | v2.1 | 0/3 | Not started | - |
 | 115. Missing Transaction Round Trip, Fallback, and Validation Handoff | v2.1 | 0/4 | Not started | - |
 | 116. Operator Evidence, Metrics, Logs, and Support Boundary | v2.1 | 0/4 | Not started | - |

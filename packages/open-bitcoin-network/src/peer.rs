@@ -7,13 +7,6 @@
 // - packages/bitcoin-knots/test/functional/p2p_handshake.py
 // - packages/bitcoin-knots/test/functional/p2p_initial_headers_sync.py
 
-use open_bitcoin_chainstate::ChainPosition;
-use open_bitcoin_consensus::{block_hash, check_block_header, transaction_txid, transaction_wtxid};
-use open_bitcoin_primitives::{
-    Block, BlockHash, BlockHeader, InventoryType, InventoryVector, Transaction, Txid, Wtxid,
-};
-use std::collections::{BTreeMap, BTreeSet};
-
 use crate::address::{
     GetAddrRequestState, GetAddrResponseDecision, LearnedAddressBook, LearnedAddressDecision,
     LocalAdvertisementDecision, maybe_version_sender_address,
@@ -27,8 +20,15 @@ use crate::peer_policy::{
     MisbehaviorObservation, MisbehaviorPolicy, PeerPolicyRuntimeState, select_eviction_candidate,
 };
 use crate::resource::InboundResourceEvent;
+use open_bitcoin_chainstate::ChainPosition;
+use open_bitcoin_consensus::{block_hash, check_block_header, transaction_txid, transaction_wtxid};
+use open_bitcoin_primitives::{
+    Block, BlockHash, BlockHeader, InventoryType, InventoryVector, Transaction, Txid, Wtxid,
+};
+use std::collections::{BTreeMap, BTreeSet};
 
 mod address_boundary;
+mod compact_relay;
 mod inbound_state;
 mod inventory_state;
 mod policy_state;
@@ -36,6 +36,13 @@ mod relay_download;
 mod transaction_relay;
 
 pub use address_boundary::{PeerAddressBoundaryDecision, PeerAddressBoundaryEvidence};
+pub use compact_relay::{
+    CompactAnnouncementAction, CompactAnnouncementDecision, CompactAnnouncementEligibility,
+    CompactAnnouncementEligibilityReason, CompactAnnouncementInput, CompactAnnouncementReason,
+    CompactRelayCapability, CompactRelayNegotiationOutcome, CompactRelayNegotiationReason,
+    CompactRelayPeerState, CompactRelayPreference, PeerCompactAnnouncementInput,
+    decide_compact_announcement,
+};
 use inbound_state::reject_self_connection;
 use policy_state::{eviction_candidate_input, peer_policy_label, peer_policy_protected};
 pub use relay_download::RelayDownloadPolicy;
@@ -89,6 +96,7 @@ pub struct PeerState {
     pub remote_user_agent: String,
     pub remote_wtxidrelay: bool,
     pub remote_prefers_headers: bool,
+    pub compact_relay: CompactRelayPeerState,
     pub remote_version_received: bool,
     pub remote_verack_received: bool,
     pub local_version_sent: bool,
@@ -111,6 +119,7 @@ impl PeerState {
             remote_user_agent: String::new(),
             remote_wtxidrelay: false,
             remote_prefers_headers: false,
+            compact_relay: CompactRelayPeerState::default(),
             remote_version_received: false,
             remote_verack_received: false,
             local_version_sent: false,
@@ -241,6 +250,25 @@ impl PeerManager {
 
     pub fn peer_state(&self, peer_id: PeerId) -> Option<&PeerState> {
         self.peers.get(&peer_id)
+    }
+
+    pub fn decide_compact_announcement_for_peer(
+        &mut self,
+        peer_id: PeerId,
+        input: PeerCompactAnnouncementInput,
+    ) -> Result<CompactAnnouncementDecision, NetworkError> {
+        let peer = Self::peer_mut(&mut self.peers, peer_id)?;
+        let decision = compact_relay::decide_compact_announcement(CompactAnnouncementInput {
+            activation: input.activation,
+            peer_state: peer.compact_relay,
+            peer_prefers_headers: peer.remote_prefers_headers,
+            peer_has_previous_header: input.peer_has_previous_header,
+            peer_has_current_header: input.peer_has_current_header,
+            status: input.status,
+            resource_gate: input.resource_gate,
+        });
+        peer.compact_relay.record_announcement_decision(&decision);
+        Ok(decision)
     }
 
     pub fn peer_ids(&self) -> BTreeSet<PeerId> {
@@ -405,7 +433,11 @@ impl PeerManager {
                 peer.remote_prefers_headers = true;
                 Ok(Vec::new())
             }
-            WireNetworkMessage::SendCompact(_) => Ok(Vec::new()),
+            WireNetworkMessage::SendCompact(message) => {
+                let peer = Self::peer_mut(&mut self.peers, peer_id)?;
+                let _outcome = peer.compact_relay.apply_send_compact(message);
+                Ok(Vec::new())
+            }
             WireNetworkMessage::CompactBlock(_) => Ok(Vec::new()),
             WireNetworkMessage::GetBlockTxn(_) | WireNetworkMessage::BlockTxn(_) => Ok(Vec::new()),
             WireNetworkMessage::Ping { nonce } => {
@@ -549,7 +581,6 @@ impl PeerManager {
                 });
             }
         }
-
         let best_height = self.headers.best_height();
         let locator = self.headers.locator();
         let max_blocks_in_flight_per_peer = self
@@ -592,6 +623,5 @@ impl PeerManager {
         Ok(actions)
     }
 }
-
 #[cfg(test)]
 mod tests;

@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
-status: ready_to_plan
-stopped_at: Phase 112 complete; ready to plan Phase 113
-last_updated: "2026-07-04T21:12:09.661Z"
-last_activity: 2026-07-04
+status: verifying
+stopped_at: Completed 113-03-PLAN.md
+last_updated: "2026-07-05T00:16:55.576Z"
+last_activity: 2026-07-05
 progress:
   total_phases: 8
-  completed_phases: 3
-  total_plans: 11
-  completed_plans: 11
+  completed_phases: 4
+  total_plans: 14
+  completed_plans: 14
   percent: 100
 ---
 
@@ -26,10 +26,10 @@ See: `.planning/PROJECT.md` (updated 2026-07-03 after v2.1 milestone start).
 ## Current Position
 
 Milestone: v2.1 Block Serving and Compact Block Relay Boundary
-Phase: 113
+Phase: 114
 Plan: Not started
-Status: Ready to plan
-Last activity: 2026-07-04
+Status: Phase complete — ready for verification
+Last activity: 2026-07-05
 
 v2.0 Transaction Relay and Mempool Participation Boundary shipped on 2026-07-03. The archived audit reports 32/32 requirements, 10/10 phases, 8/8 integration checks, 8/8 cross-phase flows, and no tracked tech debt.
 
@@ -61,6 +61,10 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 - [v2.0]: Keep compact block relay, bloom/filter serving, package relay, public relay defaults, public-network CI, production service operation, production full-node readiness, and production-funds wallet use deferred.
 - [v2.0]: Keep public-network relay review opt-in and outside default deterministic verification unless a future phase explicitly changes that contract.
 - [v2.0]: Keep Phase 106 as the original BOUND-01 through BOUND-05 release-boundary closeout checker, while Phase 107 and Phase 108 extension checkers provide supplemental runtime activation/download and durable recovery coverage.
+- [Phase 113-compact-relay-negotiation-and-announcement-policy]: Low-bandwidth sendcmpct remains compact relay capability evidence but never authorizes direct compact block announcements.
+- [Phase 113-compact-relay-negotiation-and-announcement-policy]: Adjacent relay, permission, inbound protection, and block-serving state cannot activate compact announcement policy by implication.
+- [Phase 113-compact-relay-negotiation-and-announcement-policy]: Compact getdata stays in the suppressed/missing path; compact reconstruction and missing-transaction behavior remain deferred to later phases.
+- [Phase 113-compact-relay-negotiation-and-announcement-policy]: No git commits were created because the parent wrapper reserves final git mutation for verification-first orchestration.
 
 ## Pending Todos
 
@@ -80,6 +84,6 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Session Continuity
 
-Last session: 2026-07-04T17:46:28Z
-Stopped at: Phase 111 complete; ready to plan Phase 112
+Last session: 2026-07-05T00:01:57.163Z
+Stopped at: Completed 113-03-PLAN.md
 Resume file: None

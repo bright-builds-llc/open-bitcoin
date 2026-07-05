@@ -31,11 +31,11 @@ use open_bitcoin_mempool::PolicyConfig;
 use open_bitcoin_network::{
     AddressAnnouncement, AddressDecisionLabel, AddressDecisionReason, AddressList,
     AddressNetworkKind, AddressSourceKind, BanReason, BanScope, BlockRelayActivationPolicy,
-    BlockServingActivationConfig, InboundAdmissionDecision, InboundAdmissionPolicy,
-    InboundAdmissionRejectionReason, InboundAdmissionRequest, InboundAdmissionSlotClass,
-    InboundPermissionDecision, InventoryList, LearnedAddressDecision, LearnedAddressEntry,
-    LocalAdvertisementDecision, LocalPeerConfig, MisbehaviorDecision, MisbehaviorKind,
-    MisbehaviorResponse, NetworkError, PHASE92_LEARNED_ADDR_BATCH_LIMIT,
+    BlockServingActivationConfig, CompactRelayActivationConfig, InboundAdmissionDecision,
+    InboundAdmissionPolicy, InboundAdmissionRejectionReason, InboundAdmissionRequest,
+    InboundAdmissionSlotClass, InboundPermissionDecision, InventoryList, LearnedAddressDecision,
+    LearnedAddressEntry, LocalAdvertisementDecision, LocalPeerConfig, MisbehaviorDecision,
+    MisbehaviorKind, MisbehaviorResponse, NetworkError, PHASE92_LEARNED_ADDR_BATCH_LIMIT,
     PHASE94_MAX_HEADER_LOCATOR_HASHES, PHASE94_MAX_INBOUND_REQUEST_INVENTORY_ITEMS,
     PHASE94_MAX_INBOUND_TX_REQUESTS_PER_PEER, PHASE101_GETDATA_TX_INTERVAL_SECONDS,
     ParsedPeerPermissionClass, PeerAddressBoundaryDecision, PeerAddressBoundaryEvidence,
@@ -431,6 +431,20 @@ fn block_serving_enabled_managed_network(nonce: u64) -> ManagedPeerNetwork<Memor
     )
 }
 
+fn compact_relay_enabled_managed_network(nonce: u64) -> ManagedPeerNetwork<MemoryChainstateStore> {
+    ManagedPeerNetwork::new_with_block_relay_activation(
+        MemoryChainstateStore::default(),
+        local_config(nonce),
+        PolicyConfig::default(),
+        RelayActivationConfig { enabled: true },
+        BlockRelayActivationPolicy {
+            block_serving: BlockServingActivationConfig { enabled: true },
+            compact_relay: CompactRelayActivationConfig { enabled: true },
+        },
+        true,
+    )
+}
+
 fn assert_request_cap_resource_governance(network: &ManagedPeerNetwork<MemoryChainstateStore>) {
     let info = network.resource_governance_info();
     assert_eq!(info.request_cap_events, 1);
@@ -583,6 +597,50 @@ fn phase111_compact_block_getdata_is_suppressed_without_block_payload() {
             .iter()
             .any(|message| matches!(message, WireNetworkMessage::Block(_)))
     );
+}
+
+#[test]
+fn phase113_compact_getdata_remains_suppressed_after_negotiation_policy() {
+    // Arrange
+    let mut network = compact_relay_enabled_managed_network(113_301);
+    network
+        .connect_outbound_peer(113_301, 1)
+        .expect("connect outbound");
+    let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0, 500_000_000);
+    network
+        .connect_local_block(&genesis, verify_flags(), consensus_params())
+        .expect("connect genesis");
+    let inventory = InventoryList::new(vec![InventoryVector {
+        inventory_type: InventoryType::CompactBlock,
+        object_hash: block_hash(&genesis.header).into(),
+    }]);
+
+    // Act
+    let outbound = network
+        .receive_message(
+            113_301,
+            WireNetworkMessage::GetData(inventory.clone()),
+            2,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("compact block getdata");
+
+    // Assert
+    assert_eq!(outbound, vec![WireNetworkMessage::NotFound(inventory)]);
+    assert!(
+        !outbound
+            .iter()
+            .any(|message| matches!(message, WireNetworkMessage::CompactBlock(_)))
+    );
+    assert!(!outbound.iter().any(|message| {
+        matches!(
+            message,
+            WireNetworkMessage::GetBlockTxn(_) | WireNetworkMessage::BlockTxn(_)
+        )
+    }));
+    assert_eq!(network.mempool_info().transaction_count, 0);
+    assert_eq!(network.maybe_chain_tip().expect("tip").height, 0);
 }
 
 #[test]
