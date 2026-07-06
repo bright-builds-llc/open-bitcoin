@@ -18,6 +18,7 @@
 
 mod address;
 mod block_serving;
+mod compact_download;
 mod compact_reconstruction;
 mod compatibility;
 mod error;
@@ -50,9 +51,24 @@ pub use block_serving::{
     classify_block_inflight_cleanup, classify_block_serving_eligibility,
     classify_block_serving_status, evaluate_block_serving_resource_gate,
 };
+pub use compact_download::{
+    COMPACT_BLOCK_DOWNLOAD_TIMEOUT_SECONDS, CompactBlockDownloadEligibility,
+    CompactBlockDownloadEligibilityInput, CompactBlockInitOutcome, CompactBlockTxnHandleOutcome,
+    CompactDownloadAction, CompactDownloadCleanupCause, CompactDownloadCompletionOutcome,
+    CompactDownloadInFlight, CompactDownloadPeerState, CompactDownloadSuppressionReason,
+    CompactDownloadTimeoutExpired, FullBlockFetch, MAX_COMPACT_BLOCK_DOWNLOAD_DEPTH,
+    ScheduleMissingTransactionOutcome, ScheduleMissingTransactionSuppressionReason,
+    absolute_indexes_to_differential_deltas, build_get_block_transactions_request,
+    cleanup_compact_download_on_block_connected, cleanup_compact_download_peer,
+    compact_download_actions_to_peer_actions, evaluate_compact_block_download_eligibility,
+    expire_stale_compact_downloads, handle_block_transactions, init_compact_block_download,
+    peer_supports_compact_download, schedule_missing_transaction_request,
+    try_complete_compact_download,
+};
 pub use compact_reconstruction::{
-    CompactReconstructionFailureReason, CompactReconstructionInvalidReason,
-    CompactReconstructionOutcome, PartialCompactBlock, init_partial_compact_block,
+    CompactBlockTxnMisbehavior, CompactBlockTxnOutcome, CompactReconstructionFailureReason,
+    CompactReconstructionInvalidReason, CompactReconstructionOutcome, PartialCompactBlock,
+    apply_block_transactions, fill_block, init_partial_compact_block,
 };
 pub use compatibility::{
     CompatibilityDiagnosis, CompatibilityReport, TranscriptEvent, TranscriptStep,
@@ -82,10 +98,11 @@ pub use message::{
 pub use peer::{
     CompactAnnouncementAction, CompactAnnouncementDecision, CompactAnnouncementEligibility,
     CompactAnnouncementEligibilityReason, CompactAnnouncementInput, CompactAnnouncementReason,
-    CompactRelayCapability, CompactRelayNegotiationOutcome, CompactRelayNegotiationReason,
-    CompactRelayPeerState, CompactRelayPreference, ConnectionRole, HeaderSyncPolicy, OrphanAction,
-    OrphanEvidenceLabel, OrphanPolicy, OrphanReconsiderationCandidate, OrphanReconsiderationStatus,
-    OrphanStageInput, PHASE101_GETDATA_TX_INTERVAL_SECONDS, PHASE101_MAX_TX_ANNOUNCEMENTS_PER_PEER,
+    CompactBlockReceiveFacts, CompactRelayCapability, CompactRelayNegotiationOutcome,
+    CompactRelayNegotiationReason, CompactRelayPeerState, CompactRelayPreference, ConnectionRole,
+    HeaderSyncPolicy, OrphanAction, OrphanEvidenceLabel, OrphanPolicy,
+    OrphanReconsiderationCandidate, OrphanReconsiderationStatus, OrphanStageInput,
+    PHASE101_GETDATA_TX_INTERVAL_SECONDS, PHASE101_MAX_TX_ANNOUNCEMENTS_PER_PEER,
     PHASE101_MAX_TX_REQUESTS_IN_FLIGHT_PER_PEER, PHASE101_NONPREF_PEER_TX_DELAY_SECONDS,
     PHASE101_OVERLOADED_PEER_TX_DELAY_SECONDS, PHASE101_TXID_RELAY_DELAY_SECONDS,
     PHASE102_MAX_ORPHAN_TRANSACTIONS, PHASE102_MAX_ORPHANS_PER_PEER,

@@ -44,7 +44,7 @@ v2.1 Block Serving and Compact Block Relay Boundary is the active milestone afte
 - [x] **Phase 112: BIP152 Wire Codec and Message Semantics** - Add first-party `sendcmpct`, `cmpctblock`, `getblocktxn`, and `blocktxn` payload support with Knots-aligned malformed-input behavior. (completed 2026-07-04)
 - [x] **Phase 113: Compact Relay Negotiation and Announcement Policy** - Track per-peer compact-block negotiation and decide when compact block announcements are allowed. (completed 2026-07-05)
 - [x] **Phase 114: Compact Block Reconstruction from Mempool State** - Reconstruct compact blocks from mempool and bounded extra transaction inputs with collision and missing-transaction evidence. (completed 2026-07-05)
-- [ ] **Phase 115: Missing Transaction Round Trip, Fallback, and Validation Handoff** - Complete `getblocktxn`/`blocktxn`, fallback, volatile-state cleanup, and validation/connect integration.
+- [x] **Phase 115: Missing Transaction Round Trip, Fallback, and Validation Handoff** - Complete `getblocktxn`/`blocktxn`, fallback, volatile-state cleanup, and validation/connect integration.
 - [ ] **Phase 116: Operator Evidence, Metrics, Logs, and Support Boundary** - Project block-serving and compact-relay truth through shared RPC, CLI, dashboard, metrics, logs, and support surfaces.
 - [ ] **Phase 117: Parity Traceability, UAT, and Release Guardrails** - Close parity, UAT, docs, and deterministic no-claim guardrails for the bounded v2.1 release boundary.
 
@@ -164,14 +164,14 @@ Plans:
 4. Full-block fallback or suppression handles reconstruction failure, timeout, old/far blocks, peer/resource ineligibility, malformed compact blocks, invalid headers, and cleanup events.
 5. Restart, reconnect, disconnect, timeout, and reorg cleanup remove volatile compact-relay state without deleting validated chainstate or durable block data.
 
-**Plans:** 4 plans
+**Plans:** 4/4 plans complete
 
 Plans:
 
-- [ ] 115-01: Missing transaction request scheduler and in-flight matching
-- [ ] 115-02: `blocktxn` response handling and misbehavior outcomes
-- [ ] 115-03: Validation/connect handoff and full-block fallback
-- [ ] 115-04: Restart, reconnect, timeout, reorg, and duplicate cleanup matrix
+- [x] 115-01-PLAN.md — Missing transaction request scheduler and in-flight matching
+- [x] 115-02-PLAN.md — `blocktxn` response handling and misbehavior outcomes
+- [x] 115-03-PLAN.md — Validation/connect handoff and full-block fallback
+- [x] 115-04-PLAN.md — Restart, reconnect, timeout, reorg, and duplicate cleanup matrix
 
 #### Phase 116: Operator Evidence, Metrics, Logs, and Support Boundary
 

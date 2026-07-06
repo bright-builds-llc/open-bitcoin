@@ -646,6 +646,20 @@
       ]
     },
     {
+      "label": "network-compact-block-download",
+      "files": [
+        "packages/open-bitcoin-network/src/compact_download.rs",
+        "packages/open-bitcoin-network/src/compact_download/tests.rs",
+        "packages/open-bitcoin-network/src/peer/compact_download_state.rs",
+        "packages/open-bitcoin-network/src/peer/message_dispatch.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/blockencodings.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/test/functional/p2p_compactblocks.py"
+      ]
+    },
+    {
       "label": "network-compact-block-reconstruction",
       "files": [
         "packages/open-bitcoin-network/src/compact_reconstruction.rs",

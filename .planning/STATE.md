@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
 status: verifying
-stopped_at: Phase 114 verification passed
-last_updated: "2026-07-05T21:06:55.689Z"
-last_activity: 2026-07-05
+stopped_at: Phase 115 verification gaps documented
+last_updated: "2026-07-06T01:45:00Z"
+last_activity: 2026-07-06
 progress:
   total_phases: 8
-  completed_phases: 5
-  total_plans: 17
-  completed_plans: 17
+  completed_phases: 6
+  total_plans: 21
+  completed_plans: 21
   percent: 100
 ---
 
@@ -21,15 +21,15 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-07-03 after v2.1 milestone start).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 113 — Compact Relay Negotiation and Announcement Policy
+**Current focus:** Phase 116 — Operator Evidence, Metrics, Logs, and Support Boundary
 
 ## Current Position
 
 Milestone: v2.1 Block Serving and Compact Block Relay Boundary
-Phase: 114
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-07-05
+Phase: 115
+Plan: 115-04 complete
+Status: Phase complete — verification found non-blocking gaps (old/far fallback, runtime timeout wiring)
+Last activity: 2026-07-06
 
 v2.0 Transaction Relay and Mempool Participation Boundary shipped on 2026-07-03. The archived audit reports 32/32 requirements, 10/10 phases, 8/8 integration checks, 8/8 cross-phase flows, and no tracked tech debt.
 
@@ -84,6 +84,6 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Session Continuity
 
-Last session: 2026-07-05T21:06:55.686Z
-Stopped at: Phase 114 verification passed
-Resume file: .planning/phases/114-compact-block-reconstruction-from-mempool-state/114-VERIFICATION.md
+Last session: 2026-07-06T01:45:00Z
+Stopped at: Phase 115 verification gaps documented
+Resume file: .planning/phases/115-missing-transaction-round-trip-fallback-and-validation-handoff/115-VERIFICATION.md

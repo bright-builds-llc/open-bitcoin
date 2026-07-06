@@ -279,6 +279,7 @@ impl PeerManager {
 
         let peer = Self::peer_mut(&mut self.peers, peer_id)?;
         peer.requested_blocks.remove(&hash);
+        self.on_compact_download_block_connected(hash);
 
         Ok(vec![PeerAction::ReceivedBlock(block)])
     }
@@ -329,6 +330,7 @@ impl PeerManager {
         peer_id: PeerId,
         now_unix_seconds: i64,
     ) -> Result<Vec<PeerAction>, NetworkError> {
+        self.compact_download_disconnect_cleanup(peer_id);
         let Some(_) = self.peers.remove(&peer_id) else {
             return Err(NetworkError::UnknownPeer(peer_id));
         };

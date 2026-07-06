@@ -12,32 +12,35 @@ use std::collections::BTreeSet;
 
 use open_bitcoin_chainstate::ChainPosition;
 use open_bitcoin_codec::{
-    BlockTransactions, BlockTransactionsRequest, CompactBlockPayload, SendCompactMessage, ShortId,
+    BlockTransactions, BlockTransactionsRequest, CompactBlockPayload, PrefilledTransaction,
+    SendCompactMessage, ShortId,
 };
-use open_bitcoin_consensus::{check_block_header, transaction_txid, transaction_wtxid};
+use open_bitcoin_consensus::{block_hash, check_block_header, transaction_txid, transaction_wtxid};
 use open_bitcoin_primitives::{
-    Block, BlockHash, BlockHeader, Hash32, MerkleRoot, MessageCommand, NetworkAddress, NetworkMagic,
+    Amount, Block, BlockHash, BlockHeader, Hash32, MerkleRoot, MessageCommand, NetworkAddress,
+    NetworkMagic, OutPoint, ScriptBuf, ScriptWitness, Transaction, TransactionInput,
+    TransactionOutput, Txid, Wtxid,
 };
 
 use crate::{
     BanDecision, BanReason, BanScope, BlockInFlightCleanupCause, BlockInFlightCleanupInput,
     BlockRelayActivationPolicy, BlockServingActivationConfig, BlockServingOutcomeLabel,
     BlockServingResourceGateDecision, BlockServingStatusDecision, BlockServingStatusLabel,
-    CompactAnnouncementEligibility, CompactAnnouncementEligibilityReason,
-    CompactRelayActivationConfig, CompactRelayCapability, CompactRelayPreference, ConnectionRole,
-    DisconnectReason, HeaderStore, HeaderSyncPolicy, HeadersMessage,
-    InboundAdmissionRejectionReason, InboundAdmissionSlotClass, InboundHandshakeState,
-    InboundPeerRecord, InboundPermissionDecision, InventoryList, LocalPeerConfig, NetworkError,
-    PHASE94_MAX_HEADER_LOCATOR_HASHES, PHASE94_MAX_INBOUND_BLOCK_REQUESTS_PER_PEER,
-    PHASE94_MAX_INBOUND_REQUEST_INVENTORY_ITEMS, PHASE94_MAX_INBOUND_TX_REQUESTS_PER_PEER,
-    PHASE101_GETDATA_TX_INTERVAL_SECONDS, PHASE101_MAX_TX_REQUESTS_IN_FLIGHT_PER_PEER,
-    ParsedPeerPermissionClass, PeerAction, PeerBanEntry, PeerConnectionClass, PeerId, PeerManager,
-    PeerPermissionClassRegistry, PermissionEffectLabel, RelayActivationConfig, RelayDownloadPolicy,
-    RequestPressureInput, ResourceGovernanceDecision, ResourceGovernancePolicy, ServiceFlags,
-    TxDownloadAction, TxDownloadSuppressionReason, TxRelayId, WireNetworkMessage,
-    classify_block_inflight_cleanup,
+    CompactAnnouncementEligibility, CompactAnnouncementEligibilityReason, CompactBlockReceiveFacts,
+    CompactDownloadCleanupCause, CompactRelayActivationConfig, CompactRelayCapability,
+    CompactRelayPreference, ConnectionRole, DisconnectReason, HeaderStore, HeaderSyncPolicy,
+    HeadersMessage, InboundAdmissionRejectionReason, InboundAdmissionSlotClass,
+    InboundHandshakeState, InboundPeerRecord, InboundPermissionDecision, InventoryList,
+    LocalPeerConfig, NetworkError, PHASE94_MAX_HEADER_LOCATOR_HASHES,
+    PHASE94_MAX_INBOUND_BLOCK_REQUESTS_PER_PEER, PHASE94_MAX_INBOUND_REQUEST_INVENTORY_ITEMS,
+    PHASE94_MAX_INBOUND_TX_REQUESTS_PER_PEER, PHASE101_GETDATA_TX_INTERVAL_SECONDS,
+    PHASE101_MAX_TX_REQUESTS_IN_FLIGHT_PER_PEER, ParsedPeerPermissionClass, PeerAction,
+    PeerBanEntry, PeerConnectionClass, PeerId, PeerManager, PeerPermissionClassRegistry,
+    PermissionEffectLabel, RelayActivationConfig, RelayDownloadPolicy, RequestPressureInput,
+    ResourceGovernanceDecision, ResourceGovernancePolicy, ServiceFlags, TxDownloadAction,
+    TxDownloadSuppressionReason, TxRelayId, WireNetworkMessage, classify_block_inflight_cleanup,
 };
-use open_bitcoin_primitives::{InventoryType, InventoryVector, Txid};
+use open_bitcoin_primitives::{InventoryType, InventoryVector};
 
 use crate::address::{
     AddressAnnouncement, AddressDecisionLabel, AddressDecisionReason, AddressList,
@@ -2497,6 +2500,383 @@ fn phase113_transaction_relay_messages_do_not_activate_compact_relay_state() {
         peer.compact_relay.announcement_eligibility,
         CompactAnnouncementEligibility::Unknown
     );
+}
+
+fn phase115_seed_header_chain(manager: &mut PeerManager, headers: &[BlockHeader]) {
+    let mut store = HeaderStore::default();
+    for header in headers {
+        let _ = store
+            .insert_header(header.clone())
+            .expect("header should insert");
+    }
+    manager.seed_header_store(store);
+}
+
+fn phase115_coinbase_transaction() -> Transaction {
+    Transaction {
+        version: 2,
+        inputs: vec![TransactionInput {
+            previous_output: OutPoint::null(),
+            script_sig: ScriptBuf::from_bytes(vec![0x01, 0x02]).expect("valid script"),
+            sequence: TransactionInput::SEQUENCE_FINAL,
+            witness: ScriptWitness::default(),
+        }],
+        outputs: vec![TransactionOutput {
+            value: Amount::from_sats(50_000_000_000).expect("valid amount"),
+            script_pubkey: ScriptBuf::from_bytes(vec![0x51]).expect("valid script"),
+        }],
+        lock_time: 0,
+    }
+}
+
+fn phase115_sample_transaction(previous_txid_byte: u8) -> Transaction {
+    Transaction {
+        version: 2,
+        inputs: vec![TransactionInput {
+            previous_output: OutPoint {
+                txid: Txid::from_byte_array([previous_txid_byte; 32]),
+                vout: 0,
+            },
+            script_sig: ScriptBuf::from_bytes(Vec::new()).expect("valid script"),
+            sequence: TransactionInput::SEQUENCE_FINAL,
+            witness: ScriptWitness::new(vec![vec![0x01, 0x02]]),
+        }],
+        outputs: vec![TransactionOutput {
+            value: Amount::from_sats(5_000).expect("valid amount"),
+            script_pubkey: ScriptBuf::from_bytes(vec![0x51, 0xac]).expect("valid script"),
+        }],
+        lock_time: 0,
+    }
+}
+
+fn phase115_compact_payload_with_missing_short_id() -> (CompactBlockPayload, Transaction, Wtxid) {
+    let genesis = mined_header(BlockHash::from_byte_array([0_u8; 32]), 1);
+    let tip = mined_header(block_hash(&genesis), 2);
+    let header = mined_header(block_hash(&tip), 3);
+    let coinbase = phase115_coinbase_transaction();
+    let missing = phase115_sample_transaction(0x22);
+    let wtxid = transaction_wtxid(&missing).expect("wtxid");
+    let selector = open_bitcoin_codec::short_id_selector_from_header_and_nonce(&header, 42);
+    let short_id = open_bitcoin_consensus::compact_short_id_for_wtxid(selector, &wtxid);
+
+    let payload = CompactBlockPayload {
+        header,
+        nonce: 42,
+        short_ids: vec![short_id],
+        prefilled_transactions: vec![PrefilledTransaction {
+            index_delta: 0,
+            transaction: coinbase,
+        }],
+    };
+
+    (payload, missing, wtxid)
+}
+
+fn phase115_prepare_compact_download_manager(
+    peer_id: PeerId,
+) -> (PeerManager, CompactBlockPayload, Transaction, BlockHash) {
+    let genesis = mined_header(BlockHash::from_byte_array([0_u8; 32]), 1);
+    let tip = mined_header(block_hash(&genesis), 2);
+    let (payload, missing, _) = phase115_compact_payload_with_missing_short_id();
+    let block_hash = block_hash(&payload.header);
+    let mut manager = PeerManager::new(local_config());
+    manager.set_block_relay_activation_policy(compact_announcement_activation(true));
+    phase115_seed_header_chain(&mut manager, &[genesis, tip]);
+    manager.add_outbound_peer(peer_id, 0).expect("peer");
+    complete_outbound_handshake(&mut manager, peer_id, 2);
+    process_high_bandwidth_sendcmpct(&mut manager, peer_id);
+    (manager, payload, missing, block_hash)
+}
+
+#[test]
+fn phase115_handle_compact_block_download_with_activation_enabled() {
+    let peer_id = 115_001;
+    let (mut manager, payload, _, block_hash) = phase115_prepare_compact_download_manager(peer_id);
+
+    let actions = manager
+        .handle_compact_block_download(peer_id, payload, CompactBlockReceiveFacts::default(), 1_000)
+        .expect("compact block should process");
+
+    assert_eq!(actions.len(), 1);
+    assert!(matches!(
+        actions[0],
+        PeerAction::Send(WireNetworkMessage::GetBlockTxn(_))
+    ));
+    let download_state = manager
+        .compact_download_peer_state(peer_id)
+        .expect("download state");
+    assert!(download_state.in_flight.contains_key(&block_hash));
+    assert_eq!(
+        manager.block_relay_activation_policy(),
+        compact_announcement_activation(true)
+    );
+}
+
+#[test]
+fn phase115_expire_compact_download_timeouts_requests_full_blocks() {
+    let peer_id = 115_002;
+    let (mut manager, payload, _, block_hash) = phase115_prepare_compact_download_manager(peer_id);
+    let _ = manager
+        .handle_compact_block_download(peer_id, payload, CompactBlockReceiveFacts::default(), 100)
+        .expect("compact block should start download");
+
+    let actions = manager
+        .expire_compact_download_timeouts(100 + crate::COMPACT_BLOCK_DOWNLOAD_TIMEOUT_SECONDS + 1);
+
+    assert_eq!(actions.len(), 1);
+    assert!(matches!(
+        &actions[0],
+        PeerAction::Send(WireNetworkMessage::GetData(inventory))
+            if inventory.inventory.len() == 1
+                && inventory.inventory[0].inventory_type == InventoryType::Block
+                && inventory.inventory[0].object_hash == block_hash.into()
+    ));
+    let download_state = manager
+        .compact_download_peer_state(peer_id)
+        .expect("download state");
+    assert!(download_state.in_flight.is_empty());
+}
+
+#[test]
+fn phase115_handle_block_transactions_message_completes_download() {
+    let peer_id = 115_003;
+    let (mut manager, payload, missing, block_hash) =
+        phase115_prepare_compact_download_manager(peer_id);
+    let _ = manager
+        .handle_compact_block_download(peer_id, payload, CompactBlockReceiveFacts::default(), 1_000)
+        .expect("compact block should start download");
+
+    let actions = manager
+        .handle_message(
+            peer_id,
+            WireNetworkMessage::BlockTxn(BlockTransactions {
+                block_hash,
+                transactions: vec![missing],
+            }),
+            1_001,
+        )
+        .expect("blocktxn should process");
+
+    assert_eq!(actions.len(), 1);
+    assert!(matches!(actions[0], PeerAction::ReceivedBlock(_)));
+    assert!(
+        manager.compact_download_peer_state(peer_id).is_none()
+            || manager
+                .compact_download_peer_state(peer_id)
+                .expect("download state")
+                .in_flight
+                .is_empty()
+    );
+}
+
+#[test]
+fn phase115_cleanup_all_compact_downloads() {
+    let peer_a = 115_004;
+    let peer_b = 115_005;
+    let (mut manager, payload_a, _, _) = phase115_prepare_compact_download_manager(peer_a);
+    let (payload_b, _, _) = {
+        let (_, payload, missing, block_hash) = phase115_prepare_compact_download_manager(peer_b);
+        (payload, missing, block_hash)
+    };
+
+    let _ = manager
+        .handle_compact_block_download(
+            peer_a,
+            payload_a,
+            CompactBlockReceiveFacts::default(),
+            1_000,
+        )
+        .expect("peer a compact block");
+    manager.add_outbound_peer(peer_b, 0).expect("peer b");
+    complete_outbound_handshake(&mut manager, peer_b, 2);
+    process_high_bandwidth_sendcmpct(&mut manager, peer_b);
+    let _ = manager
+        .handle_compact_block_download(
+            peer_b,
+            payload_b,
+            CompactBlockReceiveFacts::default(),
+            1_000,
+        )
+        .expect("peer b compact block");
+
+    assert_eq!(
+        manager
+            .cleanup_compact_download_for_peer(peer_a, CompactDownloadCleanupCause::Timeout)
+            .expect("peer a cleanup"),
+        1
+    );
+    manager.cleanup_all_compact_downloads(CompactDownloadCleanupCause::PeerDisconnect);
+    assert!(
+        manager
+            .compact_download_peer_state(peer_a)
+            .is_none_or(|state| state.in_flight.is_empty())
+    );
+    assert!(
+        manager
+            .compact_download_peer_state(peer_b)
+            .is_none_or(|state| state.in_flight.is_empty())
+    );
+}
+
+#[test]
+fn phase115_on_compact_download_block_connected_clears_matching_in_flight() {
+    let peer_id = 115_006;
+    let (mut manager, payload, _, connected_hash) =
+        phase115_prepare_compact_download_manager(peer_id);
+    let _ = manager
+        .handle_compact_block_download(peer_id, payload, CompactBlockReceiveFacts::default(), 1_000)
+        .expect("compact block");
+    manager.on_compact_download_block_connected(connected_hash);
+    let download_state = manager
+        .compact_download_peer_state(peer_id)
+        .expect("download state");
+    assert!(!download_state.in_flight.contains_key(&connected_hash));
+}
+
+#[test]
+fn phase115_cleanup_compact_download_for_peer_without_state_is_noop() {
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(115_007, 0).expect("peer");
+
+    assert_eq!(
+        manager
+            .cleanup_compact_download_for_peer(115_007, CompactDownloadCleanupCause::Timeout)
+            .expect("cleanup should succeed"),
+        0
+    );
+}
+
+#[test]
+fn phase115_block_transactions_without_download_state_is_ignored() {
+    let peer_id = 115_008;
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(peer_id, 0).expect("peer");
+    complete_outbound_handshake(&mut manager, peer_id, 0);
+
+    let actions = manager
+        .handle_message(
+            peer_id,
+            WireNetworkMessage::BlockTxn(BlockTransactions {
+                block_hash: BlockHash::from_byte_array([0x88; 32]),
+                transactions: Vec::new(),
+            }),
+            1,
+        )
+        .expect("blocktxn without download state");
+
+    assert!(actions.is_empty());
+}
+
+#[test]
+fn phase115_compact_download_without_sendcmpct_is_suppressed() {
+    let peer_id = 115_009;
+    let genesis = mined_header(BlockHash::from_byte_array([0_u8; 32]), 1);
+    let tip = mined_header(block_hash(&genesis), 2);
+    let header = mined_header(block_hash(&tip), 3);
+    let coinbase = phase115_coinbase_transaction();
+    let missing = phase115_sample_transaction(0x22);
+    let wtxid = transaction_wtxid(&missing).expect("wtxid");
+    let selector = open_bitcoin_codec::short_id_selector_from_header_and_nonce(&header, 42);
+    let short_id = open_bitcoin_consensus::compact_short_id_for_wtxid(selector, &wtxid);
+    let payload = CompactBlockPayload {
+        header,
+        nonce: 42,
+        short_ids: vec![short_id],
+        prefilled_transactions: vec![PrefilledTransaction {
+            index_delta: 0,
+            transaction: coinbase,
+        }],
+    };
+    let mut manager = PeerManager::new(local_config());
+    manager.set_block_relay_activation_policy(compact_announcement_activation(true));
+    phase115_seed_header_chain(&mut manager, &[genesis, tip]);
+    manager.add_outbound_peer(peer_id, 0).expect("peer");
+    complete_outbound_handshake(&mut manager, peer_id, 2);
+
+    let actions = manager
+        .handle_compact_block_download(peer_id, payload, CompactBlockReceiveFacts::default(), 1_000)
+        .expect("compact block without sendcmpct");
+
+    assert!(actions.is_empty());
+    let download_state = manager
+        .compact_download_peer_state(peer_id)
+        .expect("download state entry");
+    assert!(download_state.in_flight.is_empty());
+    assert!(matches!(
+        manager
+            .peer_state(peer_id)
+            .expect("peer")
+            .compact_relay
+            .capability,
+        CompactRelayCapability::Unknown
+    ));
+}
+
+#[test]
+fn phase115_prefilled_compact_block_completes_without_getblocktxn() {
+    let peer_id = 115_011;
+    let genesis = mined_header(BlockHash::from_byte_array([0_u8; 32]), 1);
+    let tip = mined_header(block_hash(&genesis), 2);
+    let header = mined_header(block_hash(&tip), 3);
+    let payload = CompactBlockPayload {
+        header,
+        nonce: 5,
+        short_ids: Vec::new(),
+        prefilled_transactions: vec![PrefilledTransaction {
+            index_delta: 0,
+            transaction: phase115_coinbase_transaction(),
+        }],
+    };
+    let mut manager = PeerManager::new(local_config());
+    manager.set_block_relay_activation_policy(compact_announcement_activation(true));
+    phase115_seed_header_chain(&mut manager, &[genesis, tip]);
+    manager.add_outbound_peer(peer_id, 0).expect("peer");
+    complete_outbound_handshake(&mut manager, peer_id, 2);
+    process_high_bandwidth_sendcmpct(&mut manager, peer_id);
+
+    let actions = manager
+        .handle_compact_block_download(peer_id, payload, CompactBlockReceiveFacts::default(), 1_000)
+        .expect("prefilled compact block");
+
+    assert_eq!(actions.len(), 1);
+    assert!(matches!(actions[0], PeerAction::ReceivedBlock(_)));
+}
+
+#[test]
+fn phase115_ineligible_compact_block_falls_back_to_full_block_fetch() {
+    let peer_id = 115_012;
+    let genesis = mined_header(BlockHash::from_byte_array([0_u8; 32]), 1);
+    let unknown_tip = mined_header(block_hash(&genesis), 2);
+    let header = mined_header(block_hash(&unknown_tip), 3);
+    let payload = CompactBlockPayload {
+        header,
+        nonce: 42,
+        short_ids: Vec::new(),
+        prefilled_transactions: vec![PrefilledTransaction {
+            index_delta: 0,
+            transaction: phase115_coinbase_transaction(),
+        }],
+    };
+    let block_hash = block_hash(&payload.header);
+    let mut manager = PeerManager::new(local_config());
+    manager.set_block_relay_activation_policy(compact_announcement_activation(true));
+    phase115_seed_header_chain(&mut manager, &[genesis]);
+    manager.add_outbound_peer(peer_id, 0).expect("peer");
+    complete_outbound_handshake(&mut manager, peer_id, 1);
+    process_high_bandwidth_sendcmpct(&mut manager, peer_id);
+
+    let actions = manager
+        .handle_compact_block_download(peer_id, payload, CompactBlockReceiveFacts::default(), 1_000)
+        .expect("far compact block should fall back");
+
+    assert_eq!(actions.len(), 1);
+    assert!(matches!(
+        &actions[0],
+        PeerAction::Send(WireNetworkMessage::GetData(inventory))
+            if inventory.inventory.len() == 1
+                && inventory.inventory[0].inventory_type == InventoryType::Block
+                && inventory.inventory[0].object_hash == block_hash.into()
+    ));
 }
 
 #[test]

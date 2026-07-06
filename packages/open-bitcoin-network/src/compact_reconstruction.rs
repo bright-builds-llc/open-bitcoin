@@ -10,8 +10,10 @@ use open_bitcoin_codec::{
     CompactBlockPayload, expand_prefilled_positions, short_id_match_key,
     short_id_selector_from_header_and_nonce,
 };
-use open_bitcoin_consensus::{MAX_BLOCK_WEIGHT, compact_short_id_for_wtxid, transaction_wtxid};
-use open_bitcoin_primitives::{BlockHeader, Transaction, Wtxid};
+use open_bitcoin_consensus::{
+    MAX_BLOCK_WEIGHT, block_hash, compact_short_id_for_wtxid, transaction_wtxid,
+};
+use open_bitcoin_primitives::{Block, BlockHash, BlockHeader, Transaction, Wtxid};
 
 #[cfg(test)]
 mod tests;
@@ -22,6 +24,8 @@ pub(crate) const MAX_COMPACT_BLOCK_TRANSACTION_COUNT: usize =
 const MAX_SHORT_ID_BUCKET_SIZE: u16 = 12;
 #[cfg(test)]
 const TEST_PREFILLED_WTXID_FAILURE_LOCK_TIME: u32 = 0x0114_1144;
+#[cfg(test)]
+const TEST_APPLY_WTXID_FAILURE_LOCK_TIME: u32 = 0x0115_1155;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PartialCompactBlock {
@@ -48,6 +52,22 @@ pub enum CompactReconstructionInvalidReason {
     NullPrefilledTransaction,
     PrefilledIndexOutOfBounds,
     MalformedPrefilledIndex,
+    IncompleteTransactions,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CompactBlockTxnMisbehavior {
+    UnexpectedBlockHash,
+    DuplicateResponse,
+    OutOfBoundsIndex,
+    TooManyTransactions,
+    NotInitialized,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CompactBlockTxnOutcome {
+    Applied { still_missing: Vec<u16> },
+    Misbehavior(CompactBlockTxnMisbehavior),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -130,6 +150,10 @@ impl PartialCompactBlock {
         self.slot_wtxids.clear();
         self.prefilled_count = 0;
         self.short_id_slots_remaining = 0;
+    }
+
+    pub fn block_hash(&self) -> Option<BlockHash> {
+        self.header.as_ref().map(block_hash)
     }
 }
 
@@ -255,6 +279,109 @@ pub fn init_partial_compact_block<'a>(
 
     let missing_indexes = state.missing_transaction_indexes();
     CompactReconstructionOutcome::Ready { missing_indexes }
+}
+
+pub fn apply_block_transactions(
+    state: &mut PartialCompactBlock,
+    response: &open_bitcoin_codec::BlockTransactions,
+    expected_block_hash: BlockHash,
+) -> CompactBlockTxnOutcome {
+    if !state.is_initialized() {
+        return CompactBlockTxnOutcome::Misbehavior(CompactBlockTxnMisbehavior::NotInitialized);
+    }
+
+    if response.block_hash != expected_block_hash {
+        return CompactBlockTxnOutcome::Misbehavior(
+            CompactBlockTxnMisbehavior::UnexpectedBlockHash,
+        );
+    }
+
+    let missing_indexes = state.missing_transaction_indexes();
+    if missing_indexes.is_empty() && !response.transactions.is_empty() {
+        return CompactBlockTxnOutcome::Misbehavior(CompactBlockTxnMisbehavior::DuplicateResponse);
+    }
+
+    if response.transactions.len() > missing_indexes.len() {
+        return CompactBlockTxnOutcome::Misbehavior(
+            CompactBlockTxnMisbehavior::TooManyTransactions,
+        );
+    }
+
+    for (index, transaction) in missing_indexes
+        .iter()
+        .copied()
+        .zip(response.transactions.iter())
+    {
+        if let Err(reason) = apply_downloaded_transaction_at_index(state, index, transaction) {
+            return CompactBlockTxnOutcome::Misbehavior(reason);
+        }
+    }
+
+    CompactBlockTxnOutcome::Applied {
+        still_missing: state.missing_transaction_indexes(),
+    }
+}
+
+fn apply_downloaded_transaction_at_index(
+    state: &mut PartialCompactBlock,
+    index: u16,
+    transaction: &Transaction,
+) -> Result<(), CompactBlockTxnMisbehavior> {
+    let slot = usize::from(index);
+    if slot >= state.txn_available.len() {
+        return Err(CompactBlockTxnMisbehavior::OutOfBoundsIndex);
+    }
+
+    if state.txn_available[slot].is_some() {
+        return Err(CompactBlockTxnMisbehavior::DuplicateResponse);
+    }
+
+    if transaction.inputs.is_empty() || transaction.outputs.is_empty() {
+        return Err(CompactBlockTxnMisbehavior::OutOfBoundsIndex);
+    }
+
+    let wtxid = decoded_wtxid_for_apply(transaction)?;
+
+    state.txn_available[slot] = Some(transaction.clone());
+    state.slot_wtxids[slot] = Some(wtxid);
+    Ok(())
+}
+
+fn decoded_wtxid_for_apply(transaction: &Transaction) -> Result<Wtxid, CompactBlockTxnMisbehavior> {
+    #[cfg(test)]
+    if transaction.lock_time == TEST_APPLY_WTXID_FAILURE_LOCK_TIME {
+        return Err(CompactBlockTxnMisbehavior::OutOfBoundsIndex);
+    }
+
+    transaction_wtxid(transaction).map_err(|_| CompactBlockTxnMisbehavior::OutOfBoundsIndex)
+}
+
+pub fn fill_block(
+    state: &PartialCompactBlock,
+) -> Result<Block, CompactReconstructionInvalidReason> {
+    let header = state
+        .header
+        .as_ref()
+        .ok_or(CompactReconstructionInvalidReason::NullHeader)?
+        .clone();
+
+    if state.missing_transaction_indexes().is_empty() {
+        let transactions = state
+            .txn_available
+            .iter()
+            .map(|maybe_tx| {
+                maybe_tx
+                    .clone()
+                    .ok_or(CompactReconstructionInvalidReason::IncompleteTransactions)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        return Ok(Block {
+            header,
+            transactions,
+        });
+    }
+
+    Err(CompactReconstructionInvalidReason::IncompleteTransactions)
 }
 
 fn build_short_id_map(
