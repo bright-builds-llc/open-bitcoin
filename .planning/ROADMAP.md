@@ -190,10 +190,10 @@ Plans:
 
 Plans:
 
-- [ ] 116-01: Shared block-relay status contract and RPC projection
-- [ ] 116-02: CLI and dashboard rendering
-- [ ] 116-03: Metrics and structured log labels
-- [ ] 116-04: Support redaction and repo-local UAT command docs
+- [ ] 116-01-PLAN.md — Shared block-relay status contract and RPC projection (OBS-01)
+- [ ] 116-02-PLAN.md — CLI and dashboard block-relay rendering (OBS-02)
+- [ ] 116-03-PLAN.md — Metrics and structured log labels (OBS-03)
+- [ ] 116-04-PLAN.md — Support redaction, checker, docs, and closeout (OBS-04, OBS-05)
 
 #### Phase 117: Parity Traceability, UAT, and Release Guardrails
 
