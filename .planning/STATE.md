@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
 status: verifying
-stopped_at: Phase 115 verification gaps documented
-last_updated: "2026-07-06T01:45:00Z"
+stopped_at: Phase 116 context gathered
+last_updated: "2026-07-06T03:57:03.173Z"
 last_activity: 2026-07-06
 progress:
   total_phases: 8
@@ -84,6 +84,6 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Session Continuity
 
-Last session: 2026-07-06T01:45:00Z
-Stopped at: Phase 115 verification gaps documented
-Resume file: .planning/phases/115-missing-transaction-round-trip-fallback-and-validation-handoff/115-VERIFICATION.md
+Last session: 2026-07-06T03:57:03.167Z
+Stopped at: Phase 116 context gathered
+Resume file: .planning/phases/116-operator-evidence-metrics-logs-and-support-boundary/116-CONTEXT.md
