@@ -16,6 +16,7 @@ For v1.6, `OpenBitcoinStatusSnapshot` is the shared source of truth for status, 
 | `sync` | Sync/runtime collector | `network`, `chain tip`, `sync progress`, lifecycle, phase, progress signal, estimated lag, last successful progress, bounded reorg/reconcile evidence, no-progress diagnosis, resource pressure, recovery guidance, and last error |
 | `peers` | Network collector | `peer counts` plus recent peer telemetry when durable sync state is available |
 | `mempool` | Mempool collector | mempool summary |
+| `block_relay` | Network collector | block-serving activation/eligibility/status plus compact-relay evidence |
 | `wallet` | Wallet collector | `trusted_balance_sats`, `freshness`, and `scan_progress` so balances never imply completeness by themselves |
 | `logs` | Logging collector | log paths and retention |
 | `metrics` | Metrics collector | retention, enabled series, and bounded samples when a metrics snapshot exists |
@@ -416,6 +417,41 @@ reconstruction, `getblocktxn`, `blocktxn`, archive-node behavior, package
 relay, bloom/filter serving, compact filter serving, public block serving by
 default, public-network CI, production service operation, production full-node
 readiness, production-funds wallet use, or schema/ORM work.
+
+## Phase 116 block-relay operator evidence status
+
+Phase 116 makes block-serving and compact-relay operator evidence explicit
+through the shared `OpenBitcoinStatusSnapshot.block_relay` contract and the
+Open Bitcoin RPC extension field `openbitcoinnetworkstatus.block_relay`.
+Renderers, support bundles, metrics, and structured logs must consume this
+shared status contract instead of inventing local block-relay summaries.
+
+`BlockRelayEvidenceStatus` composes the earlier block-serving evidence with
+fixed compact-relay counter groups:
+
+- `block_serving.activation`, `block_serving.eligibility`, and
+  `block_serving.status`
+- `negotiation`
+- `announcement`
+- `reconstruction`
+- `missing_transaction`
+- `fallback`
+- `in_flight`
+- `cleanup`
+
+The fixed counter vocabulary is `block_served_count`,
+`block_serving_suppressed_count`, `compact_announced_count`,
+`compact_reconstructed_count`, `compact_missing_tx_requested_count`,
+`compact_fallback_count`, `compact_malformed_count`,
+`compact_timeout_count`, and `compact_cleanup_count`. Status consumers must
+preserve unavailable reasons exactly as `Unavailable: {reason}` in human
+surfaces and the equivalent unavailable reason in JSON surfaces.
+
+This evidence remains bounded local operator status only. It does not claim
+public block serving by default, BIP152 production readiness, archive-node
+behavior, package relay, bloom/filter serving, compact filter serving,
+public-network CI, production-service operation, production full-node
+readiness, or production-funds wallet use.
 
 ## Phase 92 address advertisement and discovery status
 

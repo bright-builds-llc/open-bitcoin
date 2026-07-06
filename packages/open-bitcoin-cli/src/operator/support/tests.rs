@@ -12,11 +12,11 @@ use open_bitcoin_node::{
     OpenBitcoinStatusSnapshot, RecoveryActionClass, RecoveryCause, RecoveryEvidenceBasis,
     RecoveryEvidenceSnapshot,
     status::{
-        BestKnownTipSource, BestKnownTipStatus, ChainTipStatus, ConfigStatus, FieldAvailability,
-        InboundAddressDecisionEvent, InboundAddressEvidenceEntry, InboundAdmissionEvent,
-        InboundHandshakeStatusCounts, InboundPeerPolicyEvent, InboundPeerServingStatus,
-        InboundPermissionDecisionEvent, InboundResourceGovernanceEvent, MempoolStatus,
-        NoProgressDiagnosis, NoProgressThresholdEvidence, NoProgressThresholdState,
+        BestKnownTipSource, BestKnownTipStatus, BlockRelayEvidenceStatus, ChainTipStatus,
+        ConfigStatus, FieldAvailability, InboundAddressDecisionEvent, InboundAddressEvidenceEntry,
+        InboundAdmissionEvent, InboundHandshakeStatusCounts, InboundPeerPolicyEvent,
+        InboundPeerServingStatus, InboundPermissionDecisionEvent, InboundResourceGovernanceEvent,
+        MempoolStatus, NoProgressDiagnosis, NoProgressThresholdEvidence, NoProgressThresholdState,
         NodeRuntimeState, NodeStatus, PeerContributionEvidence, PeerContributionKind, PeerCounts,
         PeerStatus, PeerTipAgreement, PeerTipAgreementStatus, ProgressCreditEvidence,
         ProgressCreditKind, ProgressWindowEvidence, RejectedProgressActivity,
@@ -107,7 +107,7 @@ fn phase71_support_redaction_names_compact_evidence_bounds() {
             "RPC password and RPC auth values",
             "wallet private material and raw wallet files",
             "raw unbounded log contents",
-            "raw transaction hex, txids, wtxids, peer endpoints, permission strings, credentials, and dynamic relay labels",
+            "raw transaction hex, txids, wtxids, cmpctblock/blocktxn payloads, peer endpoints, permission strings, credentials, and dynamic relay labels",
         ]
     );
     assert_eq!(
@@ -118,6 +118,7 @@ fn phase71_support_redaction_names_compact_evidence_bounds() {
             "logs are limited to existing structured status signals",
             "resource bounds are recorded as compact status summaries only",
             "relay and mempool evidence bounded/redacted",
+            "block relay evidence bounded/redacted",
             "inbound peer endpoints bounded/redacted",
             "inbound permission labels bounded to machine classes/effects",
             "inbound address boundary evidence bounded/redacted",
@@ -126,7 +127,7 @@ fn phase71_support_redaction_names_compact_evidence_bounds() {
         ]
     );
     assert!(omitted.contains(
-        &"raw transaction hex, txids, wtxids, peer endpoints, permission strings, credentials, and dynamic relay labels"
+        &"raw transaction hex, txids, wtxids, cmpctblock/blocktxn payloads, peer endpoints, permission strings, credentials, and dynamic relay labels"
             .to_string()
     ));
 }
@@ -991,6 +992,98 @@ fn support_bundle_redacts_sensitive_relay_reasons_in_json_and_markdown() {
 }
 
 #[test]
+fn support_bundle_renders_block_relay_evidence_from_shared_projection() {
+    // Arrange
+    let temp = TestDirectory::new("phase116-block-relay-support");
+    let status = phase116_status_with_block_relay_evidence();
+    let bundle = phase77_support_bundle_with_status(temp.path(), status);
+
+    // Act
+    let serialized = serde_json::to_value(&bundle).expect("support bundle json");
+    let markdown = render::render_support_markdown(&bundle);
+
+    // Assert
+    assert_eq!(
+        serialized["status"]["block_relay"]["block_serving"]["activation"]["state"],
+        json!("available")
+    );
+    assert_eq!(
+        serialized["status"]["block_relay"]["block_serving"]["activation"]["value"]["block_serving_enabled"],
+        json!(true)
+    );
+    assert_eq!(
+        serialized["status"]["block_relay"]["announcement"]["value"]["compact_announced_count"],
+        json!(6)
+    );
+    assert_eq!(
+        serialized["status"]["block_relay"]["cleanup"]["value"]["compact_cleanup_count"],
+        json!(3)
+    );
+    for expected in [
+        "## Block Relay Evidence",
+        "Block relay activation: block_serving_enabled=true compact_relay_enabled=true",
+        "Block relay eligibility: eligible_peer_count=2",
+        "Compact announcement: compact_announced_count=6",
+        "Compact cleanup: compact_cleanup_count=3",
+        "bounded local troubleshooting/parity-review evidence only",
+        "public block serving by default",
+        "production full-node readiness proof",
+    ] {
+        assert!(markdown.contains(expected), "missing {expected}");
+    }
+}
+
+#[test]
+fn support_bundle_redacts_sensitive_block_relay_reasons_in_json_and_markdown() {
+    // Arrange
+    let temp = TestDirectory::new("phase116-block-relay-redaction");
+    let status = phase116_status_with_sensitive_block_relay_reasons();
+    let bundle = phase77_support_bundle_with_status(temp.path(), status);
+
+    // Act
+    let serialized = serde_json::to_value(&bundle).expect("support bundle json");
+    let json_text = serde_json::to_string_pretty(&bundle).expect("support json");
+    let markdown = render::render_support_markdown(&bundle);
+    let block_relay_json = serde_json::to_string_pretty(&serialized["status"]["block_relay"])
+        .expect("block relay support json");
+    let block_relay_markdown = markdown
+        .split("## Block Relay Evidence")
+        .nth(1)
+        .and_then(|section| section.split("## Inbound Serving").next())
+        .expect("block relay markdown section");
+
+    // Assert
+    assert_eq!(
+        serialized["status"]["block_relay"]["block_serving"]["activation"]["value"]["reason"],
+        json!("redacted_block_relay_evidence")
+    );
+    assert_eq!(
+        serialized["status"]["block_relay"]["negotiation"]["value"]["reason"],
+        json!("redacted_block_relay_evidence")
+    );
+    for rendered in [&block_relay_json, block_relay_markdown] {
+        assert!(rendered.contains("redacted_block_relay_evidence"));
+        for forbidden in [
+            "cmpctblock",
+            "blocktxn",
+            "getblocktxn",
+            "0000000000000000000000000000000000000000000000000000000000000000",
+            "127.0.0.1:",
+            "198.51.100.116:8333",
+            "peer_id=",
+            "permission_string",
+            "credential=phase116",
+            "secret=phase116",
+            "cookie=phase116",
+            "dynamic_label",
+        ] {
+            assert_absent(rendered, forbidden);
+        }
+    }
+    assert!(json_text.contains("block relay evidence bounded/redacted"));
+}
+
+#[test]
 fn support_recovery_evidence_unavailable_status_preserves_reason() {
     // Arrange
     let temp = TestDirectory::new("recovery-unavailable");
@@ -1710,6 +1803,7 @@ fn phase72_status() -> OpenBitcoinStatusSnapshot {
             transactions: FieldAvailability::unavailable("mempool unavailable"),
             relay: RelayEvidenceStatus::default(),
         },
+        block_relay: BlockRelayEvidenceStatus::default_unavailable(),
         wallet: WalletStatus {
             trusted_balance_sats: FieldAvailability::unavailable("wallet unavailable"),
             freshness: FieldAvailability::unavailable("wallet unavailable"),
@@ -1884,6 +1978,92 @@ fn phase105_status_with_sensitive_relay_reasons() -> OpenBitcoinStatusSnapshot {
     status.mempool.relay.serving = RelayEvidenceField::deferred(sensitive);
     status.mempool.relay.rebroadcast = RelayEvidenceField::deferred(sensitive);
     status.mempool.relay.public_relay = RelayEvidenceField::intentionally_different(sensitive);
+    status
+}
+
+fn phase116_status_with_block_relay_evidence() -> OpenBitcoinStatusSnapshot {
+    let mut status = phase72_status();
+    status.block_relay = BlockRelayEvidenceStatus::with_components(
+        open_bitcoin_node::status::BlockServingEvidenceStatus::with_activation_eligibility_and_status(
+            open_bitcoin_node::status::BlockServingActivationEvidence {
+                block_serving_enabled: true,
+                compact_relay_enabled: true,
+            },
+            open_bitcoin_node::status::BlockServingEligibilityCounters {
+                eligible_peer_count: 2,
+                ineligible_peer_count: 3,
+                disabled_count: 1,
+                activation_required_count: 0,
+                inbound_serving_required_count: 1,
+                permission_required_count: 1,
+                protected_not_serving_count: 0,
+                status_unavailable_count: 0,
+                permission_effect_inactive_count: 1,
+            },
+            open_bitcoin_node::status::BlockServingStatusCounters {
+                validated_count: 5,
+                available_count: 4,
+                stale_count: 1,
+                side_chain_count: 2,
+                pruned_count: 1,
+                unavailable_count: 3,
+                unvalidated_count: 0,
+                unknown_count: 1,
+                suppressed_count: 2,
+            },
+        ),
+        open_bitcoin_node::status::CompactRelayNegotiationCounters {
+            version2_high_bandwidth_count: 3,
+            version2_low_bandwidth_count: 1,
+            unsupported_version_count: 1,
+        },
+        open_bitcoin_node::status::CompactRelayAnnouncementCounters {
+            compact_announced_count: 6,
+            compact_headers_fallback_count: 2,
+            compact_inventory_fallback_count: 1,
+            compact_suppressed_count: 2,
+        },
+        open_bitcoin_node::status::CompactRelayReconstructionCounters {
+            compact_reconstructed_count: 4,
+            compact_reconstruction_failed_count: 1,
+            compact_malformed_count: 1,
+        },
+        open_bitcoin_node::status::CompactRelayMissingTransactionCounters {
+            compact_missing_tx_requested_count: 2,
+            compact_missing_tx_suppressed_count: 1,
+        },
+        open_bitcoin_node::status::CompactRelayFallbackCounters {
+            compact_fallback_count: 2,
+            compact_timeout_count: 1,
+        },
+        open_bitcoin_node::status::CompactRelayInFlightCounters {
+            in_flight_count: 3,
+            getblocktxn_in_flight_count: 2,
+            peers_with_in_flight_count: 2,
+        },
+        open_bitcoin_node::status::CompactRelayCleanupCounters {
+            compact_cleanup_count: 3,
+            compact_download_peer_disconnect_count: 1,
+            compact_download_timeout_count: 1,
+            compact_download_reorg_count: 0,
+            compact_download_restart_count: 0,
+            compact_download_block_connected_count: 1,
+        },
+    );
+    status
+}
+
+fn phase116_status_with_sensitive_block_relay_reasons() -> OpenBitcoinStatusSnapshot {
+    let mut status = phase116_status_with_block_relay_evidence();
+    let sensitive = "cmpctblock blocktxn getblocktxn block_hash=0000000000000000000000000000000000000000000000000000000000000000 127.0.0.1:18444 198.51.100.116:8333 peer_id=116 permission_string=in,noban credential=phase116 secret=phase116 cookie=phase116 dynamic_label=peer";
+    status.block_relay.block_serving.activation = FieldAvailability::unavailable(sensitive);
+    status.block_relay.negotiation = FieldAvailability::unavailable(sensitive);
+    status.block_relay.announcement = FieldAvailability::unavailable(sensitive);
+    status.block_relay.reconstruction = FieldAvailability::unavailable(sensitive);
+    status.block_relay.missing_transaction = FieldAvailability::unavailable(sensitive);
+    status.block_relay.fallback = FieldAvailability::unavailable(sensitive);
+    status.block_relay.in_flight = FieldAvailability::unavailable(sensitive);
+    status.block_relay.cleanup = FieldAvailability::unavailable(sensitive);
     status
 }
 

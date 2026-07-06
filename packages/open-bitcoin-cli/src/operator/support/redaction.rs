@@ -6,8 +6,8 @@ use std::net::SocketAddr;
 use open_bitcoin_node::{
     OpenBitcoinStatusSnapshot,
     status::{
-        FieldAvailability, InboundAddressDecisionEvent, InboundPeerPolicyEvent,
-        InboundPeerServingStatus, InboundResourceGovernanceEvent,
+        BlockRelayEvidenceStatus, FieldAvailability, InboundAddressDecisionEvent,
+        InboundPeerPolicyEvent, InboundPeerServingStatus, InboundResourceGovernanceEvent,
         relay_evidence::{RelayEvidenceField, RelayEvidenceStatus},
     },
 };
@@ -23,12 +23,14 @@ const INBOUND_PEER_POLICY_REDACTION_SAFEGUARD: &str =
 const INBOUND_RESOURCE_GOVERNANCE_REDACTION_SAFEGUARD: &str =
     "inbound resource-governance evidence bounded/redacted";
 const RELAY_MEMPOOL_REDACTION_SAFEGUARD: &str = "relay and mempool evidence bounded/redacted";
+const BLOCK_RELAY_REDACTION_SAFEGUARD: &str = "block relay evidence bounded/redacted";
 const REDACTED_PERMISSION_CLASS_LABEL: &str = "redacted_permission_class";
 const REDACTED_PERMISSION_EFFECT_LABEL: &str = "redacted_permission_effect";
 const REDACTED_ADDRESS_EVIDENCE_LABEL: &str = "redacted_address_evidence";
 const REDACTED_PEER_POLICY_LABEL: &str = "redacted_peer_policy_label";
 const REDACTED_RESOURCE_GOVERNANCE_LABEL: &str = "redacted_resource_governance_evidence";
 const REDACTED_RELAY_MEMPOOL_LABEL: &str = "redacted_relay_mempool_evidence";
+const REDACTED_BLOCK_RELAY_LABEL: &str = "redacted_block_relay_evidence";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub(crate) struct RedactionSummary {
@@ -43,7 +45,7 @@ pub(crate) fn redaction_summary() -> RedactionSummary {
             "RPC password and RPC auth values".to_string(),
             "wallet private material and raw wallet files".to_string(),
             "raw unbounded log contents".to_string(),
-            "raw transaction hex, txids, wtxids, peer endpoints, permission strings, credentials, and dynamic relay labels"
+            "raw transaction hex, txids, wtxids, cmpctblock/blocktxn payloads, peer endpoints, permission strings, credentials, and dynamic relay labels"
                 .to_string(),
         ],
         safeguards: vec![
@@ -52,6 +54,7 @@ pub(crate) fn redaction_summary() -> RedactionSummary {
             "logs are limited to existing structured status signals".to_string(),
             "resource bounds are recorded as compact status summaries only".to_string(),
             RELAY_MEMPOOL_REDACTION_SAFEGUARD.to_string(),
+            BLOCK_RELAY_REDACTION_SAFEGUARD.to_string(),
             INBOUND_ENDPOINT_REDACTION_SAFEGUARD.to_string(),
             INBOUND_PERMISSION_REDACTION_SAFEGUARD.to_string(),
             INBOUND_ADDRESS_REDACTION_SAFEGUARD.to_string(),
@@ -65,6 +68,7 @@ pub(crate) fn support_status_for_bundle(
     mut status: OpenBitcoinStatusSnapshot,
 ) -> OpenBitcoinStatusSnapshot {
     redact_relay_mempool_evidence(&mut status.mempool.relay);
+    redact_block_relay_evidence(&mut status.block_relay);
     redact_inbound_endpoint_evidence(&mut status.peers.inbound);
     redact_inbound_permission_evidence(&mut status.peers.inbound);
     redact_inbound_address_evidence(&mut status.peers.inbound);
@@ -95,6 +99,33 @@ fn sanitize_relay_reason_field<T>(field: &mut RelayEvidenceField<T>) {
             *reason = sanitized_relay_evidence_text(reason);
         }
     }
+}
+
+pub(crate) fn redact_block_relay_evidence(block_relay: &mut BlockRelayEvidenceStatus) {
+    sanitize_field_availability_reason(&mut block_relay.block_serving.activation);
+    sanitize_field_availability_reason(&mut block_relay.block_serving.eligibility);
+    sanitize_field_availability_reason(&mut block_relay.block_serving.status);
+    sanitize_field_availability_reason(&mut block_relay.negotiation);
+    sanitize_field_availability_reason(&mut block_relay.announcement);
+    sanitize_field_availability_reason(&mut block_relay.reconstruction);
+    sanitize_field_availability_reason(&mut block_relay.missing_transaction);
+    sanitize_field_availability_reason(&mut block_relay.fallback);
+    sanitize_field_availability_reason(&mut block_relay.in_flight);
+    sanitize_field_availability_reason(&mut block_relay.cleanup);
+}
+
+fn sanitize_field_availability_reason<T>(field: &mut FieldAvailability<T>) {
+    let FieldAvailability::Unavailable { reason } = field else {
+        return;
+    };
+    *reason = sanitized_block_relay_text(reason);
+}
+
+fn sanitized_block_relay_text(value: &str) -> String {
+    if contains_block_relay_sensitive_material(value) {
+        return REDACTED_BLOCK_RELAY_LABEL.to_string();
+    }
+    value.to_string()
 }
 
 fn sanitized_relay_evidence_text(value: &str) -> String {
@@ -382,6 +413,17 @@ fn contains_relay_sensitive_material(value: &str) -> bool {
         || lower_value.contains("metric_label")
         || lower_value.contains("dynamic_label")
         || lower_value.contains("label=")
+}
+
+fn contains_block_relay_sensitive_material(value: &str) -> bool {
+    let lower_value = value.to_ascii_lowercase();
+    contains_relay_sensitive_material(value)
+        || lower_value.contains("cmpctblock")
+        || lower_value.contains("blocktxn")
+        || lower_value.contains("getblocktxn")
+        || lower_value.contains("raw_block")
+        || lower_value.contains("block_hash")
+        || lower_value.contains("inventory")
 }
 
 fn contains_long_hex_token(value: &str) -> bool {

@@ -3,6 +3,7 @@
 
 //! Human and JSON status rendering.
 
+mod block_relay;
 mod inbound;
 mod progress_guarantee;
 mod relay;
@@ -21,6 +22,7 @@ use open_bitcoin_node::{
 };
 use serde::Serialize;
 
+use block_relay::block_relay_evidence_lines;
 use inbound::inbound_status_text;
 use progress_guarantee::progress_guarantee_lines;
 use relay::relay_evidence_lines;
@@ -183,6 +185,7 @@ fn render_human_status(snapshot: &OpenBitcoinStatusSnapshot) -> String {
         u64_availability(&snapshot.mempool.transactions, "transactions")
     ));
     lines.extend(relay_evidence_lines(&snapshot.mempool));
+    lines.extend(block_relay_evidence_lines(&snapshot.block_relay));
     lines.push(format!(
         "Wallet: {}",
         u64_availability(&snapshot.wallet.trusted_balance_sats, "trusted sats")

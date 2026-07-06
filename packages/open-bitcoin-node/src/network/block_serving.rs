@@ -7,11 +7,12 @@
 use open_bitcoin_core::primitives::{Block, BlockHash, InventoryType};
 use open_bitcoin_network::{
     BlockRelayActivationPolicy, BlockServingChainPosition, BlockServingDataAvailability,
-    BlockServingEligibilityInput, BlockServingOutcomeLabel, BlockServingResourceGateInput,
-    BlockServingStatusFacts, BlockServingValidationState, InactivePermissionEffectLabel,
-    PeerConnectionClass, PermissionEffectLabel, QueuePressureInput, ReconnectSuppressionInput,
-    RequestPressureInput, ResourceGovernancePolicy, classify_block_serving_eligibility,
-    classify_block_serving_status, evaluate_block_serving_resource_gate,
+    BlockServingEligibilityInput, BlockServingEligibilityReason, BlockServingOutcomeLabel,
+    BlockServingResourceGateInput, BlockServingStatusFacts, BlockServingStatusLabel,
+    BlockServingValidationState, InactivePermissionEffectLabel, PeerConnectionClass,
+    PermissionEffectLabel, QueuePressureInput, ReconnectSuppressionInput, RequestPressureInput,
+    ResourceGovernancePolicy, classify_block_serving_eligibility, classify_block_serving_status,
+    evaluate_block_serving_resource_gate,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,6 +36,8 @@ pub(super) struct ManagedBlockServeInput {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct ManagedBlockServeDecision {
     pub label: BlockServingOutcomeLabel,
+    pub status_label: BlockServingStatusLabel,
+    pub eligibility_reason: BlockServingEligibilityReason,
     pub maybe_block: Option<Block>,
     pub missing_inventory: bool,
 }
@@ -60,7 +63,7 @@ pub(super) fn serve_managed_block_request(
     let gate = evaluate_block_serving_resource_gate(
         &ResourceGovernancePolicy::default(),
         BlockServingResourceGateInput {
-            eligibility,
+            eligibility: eligibility.clone(),
             status,
             queue_pressure: QueuePressureInput {
                 active_permission_effects: input.active_permission_effects.clone(),
@@ -84,34 +87,54 @@ pub(super) fn serve_managed_block_request(
     );
 
     if input.inventory_type == InventoryType::CompactBlock {
-        return missing(BlockServingOutcomeLabel::BlockServingSuppressed);
+        return missing(
+            BlockServingOutcomeLabel::BlockServingSuppressed,
+            status.label,
+            eligibility.reason,
+        );
     }
 
     if !matches!(
         input.inventory_type,
         InventoryType::Block | InventoryType::WitnessBlock
     ) {
-        return missing(BlockServingOutcomeLabel::BlockStatusUnavailable);
+        return missing(
+            BlockServingOutcomeLabel::BlockStatusUnavailable,
+            status.label,
+            eligibility.reason,
+        );
     }
 
     if !gate.allow_storage_read || !gate.may_serve_block {
-        return missing(gate.label);
+        return missing(gate.label, status.label, eligibility.reason);
     }
 
     let Some(block) = lookup_block(input.block_hash) else {
-        return missing(BlockServingOutcomeLabel::BlockStatusUnavailable);
+        return missing(
+            BlockServingOutcomeLabel::BlockStatusUnavailable,
+            status.label,
+            eligibility.reason,
+        );
     };
 
     ManagedBlockServeDecision {
         label: BlockServingOutcomeLabel::BlockServingEligible,
+        status_label: status.label,
+        eligibility_reason: eligibility.reason,
         maybe_block: Some(block),
         missing_inventory: false,
     }
 }
 
-fn missing(label: BlockServingOutcomeLabel) -> ManagedBlockServeDecision {
+fn missing(
+    label: BlockServingOutcomeLabel,
+    status_label: BlockServingStatusLabel,
+    eligibility_reason: BlockServingEligibilityReason,
+) -> ManagedBlockServeDecision {
     ManagedBlockServeDecision {
         label,
+        status_label,
+        eligibility_reason,
         maybe_block: None,
         missing_inventory: true,
     }

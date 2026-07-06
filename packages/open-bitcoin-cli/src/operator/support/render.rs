@@ -3,6 +3,7 @@
 
 //! Rendering helpers for support bundle command output.
 
+mod block_relay;
 mod inbound;
 mod relay;
 
@@ -90,6 +91,7 @@ pub(super) fn render_support_markdown(bundle: &SupportEvidenceBundle) -> String 
     ));
 
     relay::push_relay_mempool_evidence(&mut output, &bundle.status.mempool);
+    block_relay::push_block_relay_evidence(&mut output, &bundle.status.block_relay);
     inbound::push_inbound_serving(&mut output, &bundle.status.peers.inbound);
     output.push_str("\n## Recovery Evidence\n\n");
     push_recovery_evidence(&mut output, &bundle.recovery_evidence);

@@ -14,6 +14,7 @@
 
 use std::net::IpAddr;
 
+use open_bitcoin_codec::{CompactBlockPayload, PrefilledTransaction, SendCompactMessage};
 use open_bitcoin_core::consensus::crypto::hash160;
 use open_bitcoin_core::{
     codec::{encode_block, parse_block},
@@ -47,6 +48,7 @@ use crate::{
     ManagedAddressBoundaryInfo, ManagedPeerNetwork, MemoryChainstateStore,
     network::BlockConnectDisposition,
 };
+use open_bitcoin_core::primitives::Txid;
 
 mod admission_bridge_cases;
 mod mempool_lifecycle_cases;
@@ -161,6 +163,25 @@ fn build_block(previous_block_hash: BlockHash, height: u32, value: i64) -> Block
     };
     mine_header(&mut block);
     block
+}
+
+fn compact_payload_with_missing_short_id(previous_block_hash: BlockHash) -> CompactBlockPayload {
+    let template = build_block(previous_block_hash, 2, 500_000_000);
+    let missing = spend_transaction(Txid::from_byte_array([0x22_u8; 32]), 10_000);
+    let wtxid = transaction_wtxid(&missing).expect("wtxid");
+    let selector =
+        open_bitcoin_codec::short_id_selector_from_header_and_nonce(&template.header, 42);
+    let short_id = open_bitcoin_core::consensus::compact_short_id_for_wtxid(selector, &wtxid);
+
+    CompactBlockPayload {
+        header: template.header,
+        nonce: 42,
+        short_ids: vec![short_id],
+        prefilled_transactions: vec![PrefilledTransaction {
+            index_delta: 0,
+            transaction: template.transactions[0].clone(),
+        }],
+    }
 }
 
 fn local_config(nonce: u64) -> LocalPeerConfig {
@@ -443,6 +464,134 @@ fn compact_relay_enabled_managed_network(nonce: u64) -> ManagedPeerNetwork<Memor
         },
         true,
     )
+}
+
+#[test]
+fn phase116_block_relay_evidence_status_defaults_to_unavailable_until_observed() {
+    let network = compact_relay_enabled_managed_network(116_001);
+
+    let status = network.block_relay_evidence_status();
+    let encoded = serde_json::to_value(status).expect("block relay evidence");
+
+    assert_eq!(
+        encoded["block_serving"]["activation"]["state"],
+        "unavailable"
+    );
+}
+
+#[test]
+fn phase116_block_relay_evidence_projects_negotiation_serving_download_and_cleanup() {
+    let mut network = compact_relay_enabled_managed_network(116_002);
+    let peer_id = 116_002;
+    network
+        .connect_outbound_peer(peer_id, 1)
+        .expect("connect outbound");
+    network
+        .receive_message(
+            peer_id,
+            WireNetworkMessage::Version(open_bitcoin_network::VersionMessage::default()),
+            1,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("version");
+    network
+        .receive_message(
+            peer_id,
+            WireNetworkMessage::Verack,
+            1,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("verack");
+    network
+        .receive_message(
+            peer_id,
+            WireNetworkMessage::SendCompact(SendCompactMessage {
+                announce: true,
+                version: open_bitcoin_codec::BIP152_COMPACT_BLOCKS_VERSION,
+            }),
+            2,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("sendcmpct");
+
+    let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0, 500_000_000);
+    network
+        .connect_local_block(&genesis, verify_flags(), consensus_params())
+        .expect("connect genesis");
+    network
+        .announce_block(peer_id, &genesis)
+        .expect("announce block");
+
+    let served = network
+        .receive_message(
+            peer_id,
+            WireNetworkMessage::GetData(block_getdata_inventory(&genesis)),
+            3,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("serve block");
+    assert!(
+        served
+            .iter()
+            .any(|message| matches!(message, WireNetworkMessage::Block(_)))
+    );
+
+    let actions = network
+        .peer_manager
+        .handle_compact_block_download(
+            peer_id,
+            compact_payload_with_missing_short_id(block_hash(&genesis.header)),
+            open_bitcoin_network::CompactBlockReceiveFacts::default(),
+            4,
+        )
+        .expect("compact block");
+    network.note_block_relay_observed();
+    network.record_compact_download_evidence(&actions);
+    assert!(actions.iter().any(|action| matches!(
+        action,
+        open_bitcoin_network::PeerAction::Send(WireNetworkMessage::GetBlockTxn(_))
+    )));
+
+    let status = network.block_relay_evidence_status();
+    let encoded = serde_json::to_value(&status).expect("block relay evidence");
+    assert_eq!(
+        encoded["block_serving"]["activation"]["value"]["block_serving_enabled"],
+        true
+    );
+    assert_eq!(
+        encoded["negotiation"]["value"]["version2_high_bandwidth_count"],
+        1
+    );
+    assert_eq!(
+        encoded["announcement"]["value"]["compact_announced_count"],
+        1
+    );
+    assert_eq!(
+        encoded["block_serving"]["eligibility"]["value"]["eligible_peer_count"],
+        1
+    );
+    assert_eq!(
+        encoded["missing_transaction"]["value"]["compact_missing_tx_requested_count"],
+        1
+    );
+    assert_eq!(encoded["in_flight"]["value"]["in_flight_count"], 1);
+    assert_eq!(
+        encoded["in_flight"]["value"]["peers_with_in_flight_count"],
+        1
+    );
+
+    network.disconnect_peer(peer_id).expect("disconnect");
+
+    let cleaned = serde_json::to_value(network.block_relay_evidence_status())
+        .expect("block relay evidence after cleanup");
+    assert_eq!(
+        cleaned["cleanup"]["value"]["compact_download_peer_disconnect_count"],
+        1
+    );
 }
 
 fn assert_request_cap_resource_governance(network: &ManagedPeerNetwork<MemoryChainstateStore>) {

@@ -47,6 +47,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                     let decision = serve_managed_block_request(input, |hash| {
                         self.blocks_by_hash.get(&hash).cloned()
                     });
+                    self.record_block_serving_evidence(request.inventory_type, &decision);
                     let Some(block) = decision.maybe_block else {
                         missing.push(request);
                         continue;
@@ -60,9 +61,10 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                 InventoryType::CompactBlock => {
                     let block_hash = BlockHash::from(request.object_hash);
                     let input = self.managed_block_serve_input(peer_id, &request, block_hash, true);
-                    let _decision = serve_managed_block_request(input, |hash| {
+                    let decision = serve_managed_block_request(input, |hash| {
                         self.blocks_by_hash.get(&hash).cloned()
                     });
+                    self.record_block_serving_evidence(request.inventory_type, &decision);
                     missing.push(request);
                 }
                 InventoryType::Transaction | InventoryType::WitnessTransaction => {
@@ -88,7 +90,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         (messages, missing)
     }
 
-    fn managed_block_serve_input(
+    pub(super) fn managed_block_serve_input(
         &self,
         peer_id: PeerId,
         request: &InventoryVector,

@@ -708,6 +708,68 @@ relay, bloom/filter serving, compact filter serving, public block serving by
 default, public-network CI, production-service operation, production full-node
 readiness, production-funds wallet use, or schema/ORM work.
 
+## Phase 116 Block-Relay Operator Evidence Review
+
+Phase 116 exposes bounded block-serving and compact-relay evidence across
+operator status, dashboard rows, RPC extension status, metrics, structured
+logs, and support bundles. Reviewers should treat this as local
+troubleshooting and parity-review evidence only. It does not prove public
+block serving by default, BIP152 production readiness, package relay,
+public-network CI, production-service operation, production full-node
+readiness, or production-funds wallet use.
+
+Inspect shared operator status:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- status --format human
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- status --format json
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- status --format human
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- status --format json
+```
+
+Inspect the Open Bitcoin-owned RPC extension surface:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin-cli -- -regtest openbitcoinnetworkstatus
+bazel run //packages/open-bitcoin-cli:open_bitcoin_cli -- -regtest openbitcoinnetworkstatus
+```
+
+Collect a redacted block-relay support bundle:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- support bundle --output-dir=/tmp/open-bitcoin-block-relay-support
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- support bundle --output-dir=/tmp/open-bitcoin-block-relay-support
+```
+
+Expected review evidence is bounded:
+
+- `status --format json` and `openbitcoinnetworkstatus` expose `block_relay`
+  with `block_serving`, `negotiation`, `announcement`, `reconstruction`,
+  `missing_transaction`, `fallback`, `in_flight`, and `cleanup`.
+- The fixed block-relay metric vocabulary is `block_served_count`,
+  `block_serving_suppressed_count`, `compact_announced_count`,
+  `compact_reconstructed_count`, `compact_missing_tx_requested_count`,
+  `compact_fallback_count`, `compact_malformed_count`,
+  `compact_timeout_count`, and `compact_cleanup_count`.
+- Structured logs use the `block_relay` source and fixed labels such as
+  `block_serving_eligible`, `block_serving_suppressed`,
+  `compact_announced`, `compact_reconstruction_failed`,
+  `compact_download_timeout`, and `compact_download_peer_disconnect`.
+- Support bundles preserve safe states and counts while redacting raw
+  `cmpctblock`, `blocktxn`, `getblocktxn`, block hashes, endpoints, peer ids,
+  permission strings, credentials, cookies, secrets, and dynamic labels to
+  `redacted_block_relay_evidence` when an unavailable reason crosses the
+  support boundary.
+
+Focused closeout verification uses the Phase 116 checker pair and the
+repo-native contract:
+
+```bash
+bun test scripts/check-phase116-operator-block-relay-evidence.test.ts
+bun run scripts/check-phase116-operator-block-relay-evidence.ts
+bash scripts/verify.sh
+```
+
 ## Phase 92 Address Advertisement and Discovery Boundary Review
 
 Phase 92 adds bounded address-boundary evidence to the same explicit loopback

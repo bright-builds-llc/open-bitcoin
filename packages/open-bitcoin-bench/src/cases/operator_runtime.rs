@@ -25,8 +25,8 @@ use open_bitcoin_cli::operator::{
 use open_bitcoin_node::{
     FjallNodeStore, MetricRetentionPolicy, MetricsStatus, PersistMode,
     status::{
-        FieldAvailability, INBOUND_STATUS_UNAVAILABLE_REASON, InboundPeerServingStatus,
-        relay_evidence::RelayEvidenceStatus,
+        BlockRelayEvidenceStatus, FieldAvailability, INBOUND_STATUS_UNAVAILABLE_REASON,
+        InboundPeerServingStatus, relay_evidence::RelayEvidenceStatus,
     },
 };
 use open_bitcoin_rpc::method::{
@@ -291,6 +291,7 @@ impl StatusRpcClient for RunningStatusRpcClient {
             inbound: FieldAvailability::<InboundPeerServingStatus>::unavailable(
                 INBOUND_STATUS_UNAVAILABLE_REASON,
             ),
+            block_relay: BlockRelayEvidenceStatus::default_unavailable(),
             relay: RelayEvidenceStatus::default(),
             metrics: MetricsStatus::unavailable(
                 MetricRetentionPolicy::default(),

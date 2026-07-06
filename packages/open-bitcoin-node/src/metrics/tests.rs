@@ -3,10 +3,12 @@
 
 use super::{
     MetricKind, MetricRetentionPolicy, MetricSample, MetricsAvailability, MetricsStatus,
-    append_and_prune_metric_samples, inbound_metric_samples, relay_metric_samples,
+    append_and_prune_metric_samples, block_relay_metric_samples, inbound_metric_samples,
+    relay_metric_samples,
 };
 use crate::status::{
-    FieldAvailability, InboundHandshakeStatusCounts, InboundPeerServingStatus,
+    BlockRelayEvidenceStatus, FieldAvailability, InboundHandshakeStatusCounts,
+    InboundPeerServingStatus,
     relay_evidence::{RelayEvidenceCounters, RelayEvidenceStatus},
     relay_evidence::{RelayEvidenceField, RelayRecoveryCounters},
 };
@@ -176,6 +178,24 @@ fn metric_kind_names_are_stable() {
             MetricKind::RelayRecoveryDroppedEvictedCount,
             "relay_recovery_dropped_evicted_count",
         ),
+        (MetricKind::BlockServedCount, "block_served_count"),
+        (
+            MetricKind::BlockServingSuppressedCount,
+            "block_serving_suppressed_count",
+        ),
+        (MetricKind::CompactAnnouncedCount, "compact_announced_count"),
+        (
+            MetricKind::CompactReconstructedCount,
+            "compact_reconstructed_count",
+        ),
+        (
+            MetricKind::CompactMissingTxRequestedCount,
+            "compact_missing_tx_requested_count",
+        ),
+        (MetricKind::CompactFallbackCount, "compact_fallback_count"),
+        (MetricKind::CompactMalformedCount, "compact_malformed_count"),
+        (MetricKind::CompactTimeoutCount, "compact_timeout_count"),
+        (MetricKind::CompactCleanupCount, "compact_cleanup_count"),
     ];
 
     // Act / Assert
@@ -220,7 +240,7 @@ fn inbound_metric_kinds_are_low_cardinality_counters() {
         .collect::<Vec<_>>();
 
     // Assert
-    assert_eq!(MetricKind::ALL.len(), 50);
+    assert_eq!(MetricKind::ALL.len(), 59);
     assert_eq!(
         labels,
         vec![
@@ -411,6 +431,164 @@ fn relay_status_maps_to_each_fixed_relay_metric_kind() {
         "127.0.0.1:18444",
         "peer_id",
         "permission",
+        "credential",
+        "cookie",
+        "secret",
+        "dynamic_label",
+    ] {
+        assert!(!serialized.contains(forbidden));
+    }
+}
+
+#[test]
+fn block_relay_metric_kinds_are_low_cardinality_counters() {
+    // Arrange
+    let block_relay_kinds = [
+        MetricKind::BlockServedCount,
+        MetricKind::BlockServingSuppressedCount,
+        MetricKind::CompactAnnouncedCount,
+        MetricKind::CompactReconstructedCount,
+        MetricKind::CompactMissingTxRequestedCount,
+        MetricKind::CompactFallbackCount,
+        MetricKind::CompactMalformedCount,
+        MetricKind::CompactTimeoutCount,
+        MetricKind::CompactCleanupCount,
+    ];
+
+    // Act
+    let labels = block_relay_kinds
+        .into_iter()
+        .map(MetricKind::as_str)
+        .collect::<Vec<_>>();
+
+    // Assert
+    assert_eq!(
+        labels,
+        vec![
+            "block_served_count",
+            "block_serving_suppressed_count",
+            "compact_announced_count",
+            "compact_reconstructed_count",
+            "compact_missing_tx_requested_count",
+            "compact_fallback_count",
+            "compact_malformed_count",
+            "compact_timeout_count",
+            "compact_cleanup_count",
+        ]
+    );
+    for label in labels {
+        assert!(label.ends_with("_count"));
+        for forbidden in [
+            "peer_id",
+            "endpoint",
+            "block_hash",
+            "txid",
+            "permission",
+            "credential",
+            "cookie",
+            "secret",
+            "dynamic_label",
+        ] {
+            assert!(!label.contains(forbidden));
+        }
+    }
+}
+
+#[test]
+fn block_relay_metric_status_maps_to_each_fixed_metric_kind() {
+    // Arrange
+    let timestamp = 1_777_225_205;
+    let block_relay = BlockRelayEvidenceStatus::with_components(
+        crate::status::BlockServingEvidenceStatus::with_activation_eligibility_and_status(
+            crate::status::BlockServingActivationEvidence {
+                block_serving_enabled: true,
+                compact_relay_enabled: true,
+            },
+            crate::status::BlockServingEligibilityCounters {
+                eligible_peer_count: 2,
+                ineligible_peer_count: 3,
+                disabled_count: 1,
+                activation_required_count: 0,
+                inbound_serving_required_count: 1,
+                permission_required_count: 1,
+                protected_not_serving_count: 0,
+                status_unavailable_count: 0,
+                permission_effect_inactive_count: 1,
+            },
+            crate::status::BlockServingStatusCounters {
+                validated_count: 5,
+                available_count: 4,
+                stale_count: 1,
+                side_chain_count: 2,
+                pruned_count: 1,
+                unavailable_count: 3,
+                unvalidated_count: 0,
+                unknown_count: 1,
+                suppressed_count: 2,
+            },
+        ),
+        crate::status::CompactRelayNegotiationCounters {
+            version2_high_bandwidth_count: 3,
+            version2_low_bandwidth_count: 1,
+            unsupported_version_count: 1,
+        },
+        crate::status::CompactRelayAnnouncementCounters {
+            compact_announced_count: 6,
+            compact_headers_fallback_count: 2,
+            compact_inventory_fallback_count: 1,
+            compact_suppressed_count: 2,
+        },
+        crate::status::CompactRelayReconstructionCounters {
+            compact_reconstructed_count: 4,
+            compact_reconstruction_failed_count: 1,
+            compact_malformed_count: 1,
+        },
+        crate::status::CompactRelayMissingTransactionCounters {
+            compact_missing_tx_requested_count: 2,
+            compact_missing_tx_suppressed_count: 1,
+        },
+        crate::status::CompactRelayFallbackCounters {
+            compact_fallback_count: 2,
+            compact_timeout_count: 1,
+        },
+        crate::status::CompactRelayInFlightCounters {
+            in_flight_count: 3,
+            getblocktxn_in_flight_count: 2,
+            peers_with_in_flight_count: 2,
+        },
+        crate::status::CompactRelayCleanupCounters {
+            compact_cleanup_count: 3,
+            compact_download_peer_disconnect_count: 1,
+            compact_download_timeout_count: 1,
+            compact_download_reorg_count: 0,
+            compact_download_restart_count: 0,
+            compact_download_block_connected_count: 1,
+        },
+    );
+
+    // Act
+    let samples = block_relay_metric_samples(&block_relay, timestamp);
+
+    // Assert
+    assert_eq!(
+        samples,
+        vec![
+            MetricSample::new(MetricKind::BlockServedCount, 2.0, timestamp),
+            MetricSample::new(MetricKind::BlockServingSuppressedCount, 2.0, timestamp),
+            MetricSample::new(MetricKind::CompactAnnouncedCount, 6.0, timestamp),
+            MetricSample::new(MetricKind::CompactReconstructedCount, 4.0, timestamp),
+            MetricSample::new(MetricKind::CompactMissingTxRequestedCount, 2.0, timestamp),
+            MetricSample::new(MetricKind::CompactFallbackCount, 2.0, timestamp),
+            MetricSample::new(MetricKind::CompactMalformedCount, 1.0, timestamp),
+            MetricSample::new(MetricKind::CompactTimeoutCount, 1.0, timestamp),
+            MetricSample::new(MetricKind::CompactCleanupCount, 3.0, timestamp),
+        ]
+    );
+    let serialized = serde_json::to_string(&samples).expect("block relay metric samples json");
+    for forbidden in [
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "127.0.0.1:18444",
+        "peer_id",
         "credential",
         "cookie",
         "secret",

@@ -31,7 +31,7 @@ use crate::operator::{
     },
 };
 use open_bitcoin_node::status::{
-    BestKnownTipStatus, BuildProvenance, ConfigStatus, FieldAvailability,
+    BestKnownTipStatus, BlockRelayEvidenceStatus, BuildProvenance, ConfigStatus, FieldAvailability,
     INBOUND_STATUS_UNAVAILABLE_REASON, InboundAddressDecisionEvent, InboundAddressEvidenceEntry,
     InboundAdmissionEvent, InboundHandshakeStatusCounts, InboundPeerPolicyEvent,
     InboundPeerServingStatus, InboundPermissionDecisionEvent, MempoolStatus, NodeRuntimeState,
@@ -205,6 +205,7 @@ fn fake_live_rpc_maps_metrics_from_open_bitcoin_network_status() {
                 INBOUND_STATUS_UNAVAILABLE_REASON,
             ),
             relay: RelayEvidenceStatus::default(),
+            block_relay: BlockRelayEvidenceStatus::default_unavailable(),
             metrics: MetricsStatus::available_with_samples(
                 MetricRetentionPolicy::default(),
                 vec![MetricSample::new(
@@ -239,6 +240,7 @@ fn operator_status_renders_relay_evidence_from_open_bitcoin_network_status() {
                 INBOUND_STATUS_UNAVAILABLE_REASON,
             ),
             relay: relay_evidence_status_fixture(),
+            block_relay: block_relay_evidence_status_fixture(),
             metrics: MetricsStatus::default(),
         }),
         ..FakeStatusRpcClient::running()
@@ -313,6 +315,106 @@ fn operator_status_renders_relay_evidence_from_open_bitcoin_network_status() {
         assert!(!human.contains(forbidden), "human leaked {forbidden}");
         assert!(!json.contains(forbidden), "json leaked {forbidden}");
     }
+}
+
+#[test]
+fn operator_status_block_relay_maps_shared_contract_and_human_lines() {
+    // Arrange
+    let input = status_input(Vec::new());
+    let rpc = FakeStatusRpcClient {
+        maybe_network_status: Some(OpenBitcoinNetworkStatusResponse {
+            inbound: FieldAvailability::<InboundPeerServingStatus>::unavailable(
+                INBOUND_STATUS_UNAVAILABLE_REASON,
+            ),
+            relay: RelayEvidenceStatus::default(),
+            block_relay: block_relay_evidence_status_fixture(),
+            metrics: MetricsStatus::default(),
+        }),
+        ..FakeStatusRpcClient::running()
+    };
+
+    // Act
+    let snapshot = collect_status_snapshot(&input, Some(&rpc));
+    let human = render_status(&snapshot, StatusRenderMode::Human).expect("human status");
+    let json = render_status(&snapshot, StatusRenderMode::Json).expect("status json");
+    let decoded: serde_json::Value = serde_json::from_str(&json).expect("decode status json");
+
+    // Assert
+    assert_eq!(
+        decoded["block_relay"]["block_serving"]["activation"]["value"]["block_serving_enabled"],
+        true
+    );
+    assert_eq!(
+        decoded["block_relay"]["negotiation"]["value"]["version2_high_bandwidth_count"],
+        3
+    );
+    assert_eq!(
+        decoded["block_relay"]["reconstruction"]["value"]["compact_malformed_count"],
+        1
+    );
+    assert_eq!(
+        decoded["block_relay"]["cleanup"]["value"]["compact_cleanup_count"],
+        3
+    );
+    assert!(human.contains("Block relay evidence"));
+    assert!(
+        human.contains(
+            "Block relay activation: block_serving_enabled=true compact_relay_enabled=true"
+        )
+    );
+    assert!(human.contains(
+        "Compact reconstruction: compact_reconstructed_count=4 compact_reconstruction_failed_count=1 compact_malformed_count=1"
+    ));
+    assert!(human.contains(
+        "Compact cleanup: compact_cleanup_count=3 compact_download_peer_disconnect_count=1 compact_download_timeout_count=1"
+    ));
+    for forbidden in [
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "cmpctblock",
+        "127.0.0.1:18444",
+        "peer_id",
+        "permission_string",
+        "credential",
+        "cookie",
+        "secret",
+        "dynamic_label",
+    ] {
+        assert!(!human.contains(forbidden), "human leaked {forbidden}");
+        assert!(!json.contains(forbidden), "json leaked {forbidden}");
+    }
+}
+
+#[test]
+fn operator_status_block_relay_fallback_uses_default_unavailable_contract() {
+    // Arrange
+    let input = status_input(Vec::new());
+    let rpc = FakeStatusRpcClient::network_status_failing(StatusRpcError::from_rpc_detail(
+        RpcErrorDetail::new(RpcErrorCode::MethodNotFound, "Method not found"),
+    ));
+
+    // Act
+    let snapshot = collect_status_snapshot(&input, Some(&rpc));
+    let human = render_status(&snapshot, StatusRenderMode::Human).expect("human status");
+    let json = render_status(&snapshot, StatusRenderMode::Json).expect("status json");
+    let decoded: serde_json::Value = serde_json::from_str(&json).expect("decode status json");
+
+    // Assert
+    assert_eq!(
+        decoded["block_relay"]["block_serving"]["activation"]["state"],
+        "unavailable"
+    );
+    assert_eq!(
+        decoded["block_relay"]["block_serving"]["activation"]["value"]["reason"],
+        "block serving evidence unavailable"
+    );
+    assert_eq!(
+        decoded["block_relay"]["cleanup"]["value"]["compact_cleanup_count"],
+        0
+    );
+    assert!(human.contains("Block relay evidence"));
+    assert!(
+        human.contains("Block relay activation: Unavailable: block serving evidence unavailable")
+    );
 }
 
 #[test]
@@ -931,6 +1033,7 @@ fn human_and_json_renderers_surface_wallet_freshness_and_scan_reasons() {
             transactions: FieldAvailability::available(3),
             relay: RelayEvidenceStatus::default(),
         },
+        block_relay: BlockRelayEvidenceStatus::default_unavailable(),
         wallet: WalletStatus {
             trusted_balance_sats: FieldAvailability::available(25_000),
             freshness: FieldAvailability::available(WalletFreshness::Scanning),
@@ -2047,6 +2150,7 @@ impl FakeStatusRpcClient {
                     INBOUND_STATUS_UNAVAILABLE_REASON,
                 ),
                 relay: RelayEvidenceStatus::default(),
+                block_relay: BlockRelayEvidenceStatus::default_unavailable(),
                 metrics: MetricsStatus::default(),
             }),
             maybe_wallet_error: None,
@@ -2086,6 +2190,7 @@ impl FakeStatusRpcClient {
                     INBOUND_STATUS_UNAVAILABLE_REASON,
                 ),
                 relay: RelayEvidenceStatus::default(),
+                block_relay: BlockRelayEvidenceStatus::default_unavailable(),
                 metrics: MetricsStatus::default(),
             }),
             maybe_wallet_error: Some(error),
@@ -2142,6 +2247,7 @@ impl StatusRpcClient for FakeStatusRpcClient {
                     INBOUND_STATUS_UNAVAILABLE_REASON,
                 ),
                 relay: RelayEvidenceStatus::default(),
+                block_relay: BlockRelayEvidenceStatus::default_unavailable(),
                 metrics: MetricsStatus::default(),
             }))
     }
@@ -2315,6 +2421,7 @@ fn inbound_status_response() -> OpenBitcoinNetworkStatusResponse {
             ),
         }),
         relay: RelayEvidenceStatus::default(),
+        block_relay: BlockRelayEvidenceStatus::default_unavailable(),
         metrics: MetricsStatus::default(),
     }
 }
@@ -2365,6 +2472,76 @@ fn relay_evidence_status_fixture() -> RelayEvidenceStatus {
         RelayEvidenceCapability::RelayServing,
     ));
     status
+}
+
+fn block_relay_evidence_status_fixture() -> BlockRelayEvidenceStatus {
+    BlockRelayEvidenceStatus::with_components(
+        open_bitcoin_node::status::BlockServingEvidenceStatus::with_activation_eligibility_and_status(
+            open_bitcoin_node::status::BlockServingActivationEvidence {
+                block_serving_enabled: true,
+                compact_relay_enabled: true,
+            },
+            open_bitcoin_node::status::BlockServingEligibilityCounters {
+                eligible_peer_count: 2,
+                ineligible_peer_count: 3,
+                disabled_count: 1,
+                activation_required_count: 0,
+                inbound_serving_required_count: 1,
+                permission_required_count: 1,
+                protected_not_serving_count: 0,
+                status_unavailable_count: 0,
+                permission_effect_inactive_count: 1,
+            },
+            open_bitcoin_node::status::BlockServingStatusCounters {
+                validated_count: 5,
+                available_count: 4,
+                stale_count: 1,
+                side_chain_count: 2,
+                pruned_count: 1,
+                unavailable_count: 3,
+                unvalidated_count: 0,
+                unknown_count: 1,
+                suppressed_count: 2,
+            },
+        ),
+        open_bitcoin_node::status::CompactRelayNegotiationCounters {
+            version2_high_bandwidth_count: 3,
+            version2_low_bandwidth_count: 1,
+            unsupported_version_count: 1,
+        },
+        open_bitcoin_node::status::CompactRelayAnnouncementCounters {
+            compact_announced_count: 6,
+            compact_headers_fallback_count: 2,
+            compact_inventory_fallback_count: 1,
+            compact_suppressed_count: 2,
+        },
+        open_bitcoin_node::status::CompactRelayReconstructionCounters {
+            compact_reconstructed_count: 4,
+            compact_reconstruction_failed_count: 1,
+            compact_malformed_count: 1,
+        },
+        open_bitcoin_node::status::CompactRelayMissingTransactionCounters {
+            compact_missing_tx_requested_count: 2,
+            compact_missing_tx_suppressed_count: 1,
+        },
+        open_bitcoin_node::status::CompactRelayFallbackCounters {
+            compact_fallback_count: 2,
+            compact_timeout_count: 1,
+        },
+        open_bitcoin_node::status::CompactRelayInFlightCounters {
+            in_flight_count: 3,
+            getblocktxn_in_flight_count: 2,
+            peers_with_in_flight_count: 2,
+        },
+        open_bitcoin_node::status::CompactRelayCleanupCounters {
+            compact_cleanup_count: 3,
+            compact_download_peer_disconnect_count: 1,
+            compact_download_timeout_count: 1,
+            compact_download_reorg_count: 0,
+            compact_download_restart_count: 0,
+            compact_download_block_connected_count: 1,
+        },
+    )
 }
 
 fn temp_path(test_name: &str) -> PathBuf {

@@ -16,6 +16,7 @@ use open_bitcoin_node::{
     },
 };
 
+mod block_relay;
 mod metrics;
 mod recovery;
 mod relay;
@@ -24,6 +25,7 @@ mod sync_section;
 #[cfg(test)]
 mod tests;
 
+use block_relay::block_relay_rows;
 use recovery::recovery_category;
 use relay::mempool_and_wallet_rows;
 use sync_section::sync_and_peers_section;
@@ -109,6 +111,9 @@ pub fn derive_metric_points(points: &[MetricSample], width: usize) -> Vec<u64> {
 }
 
 fn dashboard_sections(snapshot: &OpenBitcoinStatusSnapshot) -> Vec<DashboardSection> {
+    let mut mempool_and_wallet = mempool_and_wallet_rows(snapshot);
+    mempool_and_wallet.extend(block_relay_rows(snapshot));
+
     vec![
         DashboardSection {
             title: "Node".to_string(),
@@ -122,7 +127,7 @@ fn dashboard_sections(snapshot: &OpenBitcoinStatusSnapshot) -> Vec<DashboardSect
         sync_and_peers_section(snapshot),
         DashboardSection {
             title: "Mempool and Wallet".to_string(),
-            rows: mempool_and_wallet_rows(snapshot),
+            rows: mempool_and_wallet,
         },
         DashboardSection {
             title: "Service".to_string(),
@@ -530,6 +535,15 @@ fn metric_label(kind: MetricKind) -> &'static str {
             "Relay recovery dropped policy incompatible"
         }
         MetricKind::RelayRecoveryDroppedEvictedCount => "Relay recovery dropped evicted",
+        MetricKind::BlockServedCount => "Block served",
+        MetricKind::BlockServingSuppressedCount => "Block serving suppressed",
+        MetricKind::CompactAnnouncedCount => "Compact announced",
+        MetricKind::CompactReconstructedCount => "Compact reconstructed",
+        MetricKind::CompactMissingTxRequestedCount => "Compact missing tx requested",
+        MetricKind::CompactFallbackCount => "Compact fallback",
+        MetricKind::CompactMalformedCount => "Compact malformed",
+        MetricKind::CompactTimeoutCount => "Compact timeout",
+        MetricKind::CompactCleanupCount => "Compact cleanup",
     }
 }
 

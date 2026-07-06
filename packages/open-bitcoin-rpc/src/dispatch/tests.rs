@@ -735,6 +735,34 @@ fn open_bitcoin_network_status_returns_available_inbound_evidence() {
         status["relay"]["public_relay"]["state"],
         json!("intentionally_different")
     );
+    assert_eq!(
+        status["block_relay"]["block_serving"]["activation"]["state"],
+        json!("unavailable")
+    );
+    assert_eq!(
+        status["block_relay"]["negotiation"]["value"]["version2_high_bandwidth_count"],
+        json!(0)
+    );
+}
+
+#[test]
+fn open_bitcoin_network_status_includes_block_relay_projection() {
+    let mut context = empty_context();
+
+    let status = dispatch(
+        &mut context,
+        MethodCall::OpenBitcoinNetworkStatus(OpenBitcoinNetworkStatusRequest::default()),
+    )
+    .expect("network status");
+
+    assert_eq!(
+        status["block_relay"]["block_serving"]["activation"]["state"],
+        json!("unavailable")
+    );
+    assert_eq!(
+        status["block_relay"]["cleanup"]["value"]["compact_cleanup_count"],
+        json!(0)
+    );
 }
 
 #[test]

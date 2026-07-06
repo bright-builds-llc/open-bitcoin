@@ -337,6 +337,8 @@ bun test scripts/check-phase110-block-serving-boundary.test.ts
 bun run scripts/check-phase110-block-serving-boundary.ts
 bun test scripts/check-phase111-full-block-serving-request-path.test.ts
 bun run scripts/check-phase111-full-block-serving-request-path.ts
+bun test scripts/check-phase116-operator-block-relay-evidence.test.ts
+bun run scripts/check-phase116-operator-block-relay-evidence.ts
 VERIFY_COMMAND_ORDER
 
 parse_args "$@"
@@ -448,6 +450,8 @@ run_step "test Phase 110 block-serving boundary checker" bun test scripts/check-
 run_step "check Phase 110 block-serving boundary" bun run scripts/check-phase110-block-serving-boundary.ts
 run_step "test Phase 111 full block-serving request path checker" bun test scripts/check-phase111-full-block-serving-request-path.test.ts
 run_step "check Phase 111 full block-serving request path" bun run scripts/check-phase111-full-block-serving-request-path.ts
+run_step "test Phase 116 operator block-relay evidence checker" bun test scripts/check-phase116-operator-block-relay-evidence.test.ts
+run_step "check Phase 116 operator block-relay evidence" bun run scripts/check-phase116-operator-block-relay-evidence.ts
 run_step "check pure-core dependencies" bash scripts/check-pure-core-deps.sh
 run_step "check file lengths" bash scripts/check-file-lengths.sh
 run_step "check panic sites" bash scripts/check-panic-sites.sh

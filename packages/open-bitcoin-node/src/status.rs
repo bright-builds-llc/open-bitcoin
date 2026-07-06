@@ -2,15 +2,19 @@
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
 //! Shared operator status snapshot contracts.
+mod block_relay_evidence;
 mod block_serving;
 mod inbound;
+mod observability;
 mod progress_guarantee;
 mod recovery;
 pub mod relay_evidence;
 mod resource_bounds;
 use crate::{LogStatus, MetricsStatus, recovery::RecoveryEvidenceSnapshot};
+pub use block_relay_evidence::*;
 pub use block_serving::*;
 pub use inbound::*;
+pub use observability::*;
 pub use progress_guarantee::*;
 pub use recovery::SyncRecoveryCategory;
 pub use resource_bounds::*;
@@ -549,45 +553,6 @@ pub struct WalletScanProgress {
     pub target_tip_height: u32,
 }
 
-/// Recent operator health signal.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct HealthSignal {
-    pub level: HealthSignalLevel,
-    pub source: String,
-    pub message: String,
-}
-
-/// Severity of a health signal.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum HealthSignalLevel {
-    Info,
-    Warn,
-    Error,
-}
-
-/// Build metadata displayed in status and support output.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BuildProvenance {
-    pub version: String,
-    pub commit: FieldAvailability<String>,
-    pub build_time: FieldAvailability<String>,
-    pub target: FieldAvailability<String>,
-    pub profile: FieldAvailability<String>,
-}
-
-impl BuildProvenance {
-    pub fn unavailable() -> Self {
-        Self {
-            version: env!("CARGO_PKG_VERSION").to_string(),
-            commit: FieldAvailability::unavailable("commit unavailable"),
-            build_time: FieldAvailability::unavailable("build time unavailable"),
-            target: FieldAvailability::unavailable("target unavailable"),
-            profile: FieldAvailability::unavailable("profile unavailable"),
-        }
-    }
-}
-
 /// Durable daemon-sync truth shared between status, dashboard, CLI controls, and RPC.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DurableSyncState {
@@ -612,6 +577,8 @@ pub struct OpenBitcoinStatusSnapshot {
     pub sync: SyncStatus,
     pub peers: PeerStatus,
     pub mempool: MempoolStatus,
+    #[serde(default)]
+    pub block_relay: BlockRelayEvidenceStatus,
     pub wallet: WalletStatus,
     pub logs: LogStatus,
     pub metrics: MetricsStatus,

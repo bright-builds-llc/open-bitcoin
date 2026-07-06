@@ -16,6 +16,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 mod action_translation;
 mod admission_bridge;
+mod block_relay_evidence;
 mod block_serving;
 mod header_sync;
 mod inbound;
@@ -25,22 +26,18 @@ mod peer_policy;
 mod recovery;
 mod relay_fanout;
 mod relay_serving;
+mod types;
 
 use open_bitcoin_core::{
-    chainstate::{
-        AnchoredBlock, ChainPosition, ChainTransition, ChainstateError, ChainstateSnapshot,
-    },
-    codec::CodecError,
+    chainstate::{AnchoredBlock, ChainPosition, ChainTransition, ChainstateSnapshot},
     consensus::{ConsensusParams, ScriptVerifyFlags, block_hash},
-    primitives::{Block, BlockHash, NetworkMagic, Transaction, Txid, Wtxid},
+    primitives::{Block, BlockHash, Transaction, Txid, Wtxid},
 };
-use open_bitcoin_mempool::{MempoolCapacityStatus, MempoolError, RollingFeeParityStatus};
 use open_bitcoin_network::{
     BlockRelayActivationPolicy, ConnectionRole, DisconnectReason, HeaderEntry, HeaderStore,
     HeaderSyncPolicy, HeadersMessage, InboundAdmissionPolicy, InboundResourceEvent, InventoryList,
-    LocalAdvertisementDecision, LocalPeerConfig, NetworkError, PROTOCOL_VERSION,
-    ParsedNetworkMessage, PeerAction, PeerId, PeerManager, RelayActivationConfig, TxOrphanage,
-    WireNetworkMessage,
+    LocalAdvertisementDecision, LocalPeerConfig, PROTOCOL_VERSION, ParsedNetworkMessage,
+    PeerAction, PeerId, PeerManager, RelayActivationConfig, TxOrphanage, WireNetworkMessage,
 };
 
 use crate::{ChainstateStore, ManagedChainstate, ManagedMempool};
@@ -57,97 +54,12 @@ pub use relay_fanout::{
     LocalRelaySubmissionEvidence, LocalRelaySubmissionLabel, ManagedRelayFanoutInfo,
     RebroadcastEvidenceLabel,
 };
-
-#[derive(Debug)]
-pub enum ManagedNetworkError {
-    Network(NetworkError),
-    Chainstate(ChainstateError),
-    Mempool(MempoolError),
-}
-
-impl core::fmt::Display for ManagedNetworkError {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            Self::Network(error) => error.fmt(f),
-            Self::Chainstate(error) => error.fmt(f),
-            Self::Mempool(error) => error.fmt(f),
-        }
-    }
-}
-
-impl std::error::Error for ManagedNetworkError {}
-
-impl From<NetworkError> for ManagedNetworkError {
-    fn from(value: NetworkError) -> Self {
-        Self::Network(value)
-    }
-}
-
-impl From<ChainstateError> for ManagedNetworkError {
-    fn from(value: ChainstateError) -> Self {
-        Self::Chainstate(value)
-    }
-}
-
-impl From<MempoolError> for ManagedNetworkError {
-    fn from(value: MempoolError) -> Self {
-        Self::Mempool(value)
-    }
-}
-
-impl From<CodecError> for ManagedNetworkError {
-    fn from(value: CodecError) -> Self {
-        Self::Network(NetworkError::from(value))
-    }
-}
+pub use types::{
+    BlockConnectDisposition, ManagedMempoolInfo, ManagedNetworkError, ManagedNetworkInfo,
+    ManagedSyncMessageResult,
+};
 
 type ManagedResult<T> = Result<T, ManagedNetworkError>;
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ManagedMempoolInfo {
-    pub transaction_count: usize,
-    pub total_virtual_size: usize,
-    pub total_fee_sats: i64,
-    pub min_relay_feerate_sats_per_kvb: i64,
-    pub incremental_relay_feerate_sats_per_kvb: i64,
-    pub max_mempool_virtual_size: usize,
-    pub capacity_status: MempoolCapacityStatus,
-    pub rolling_fee_parity: RollingFeeParityStatus,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ManagedNetworkInfo {
-    pub network_magic: NetworkMagic,
-    pub protocol_version: i32,
-    pub user_agent: String,
-    pub local_services_bits: u64,
-    pub relay: bool,
-    pub connected_peers: usize,
-    pub inbound_peers: usize,
-    pub outbound_peers: usize,
-    pub wtxidrelay_peers: usize,
-    pub header_preferring_peers: usize,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum BlockConnectDisposition {
-    Connected(ChainPosition),
-    Duplicate(BlockHash),
-    NonExtending {
-        block_hash: BlockHash,
-        previous_block_hash: BlockHash,
-    },
-    Disconnected {
-        block_hash: BlockHash,
-    },
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ManagedSyncMessageResult {
-    pub outbound: Vec<WireNetworkMessage>,
-    pub targeted_outbound: Vec<(PeerId, WireNetworkMessage)>,
-    pub maybe_block_disposition: Option<BlockConnectDisposition>,
-}
 
 #[derive(Debug, Clone)]
 pub struct ManagedPeerNetwork<S> {
@@ -162,6 +74,7 @@ pub struct ManagedPeerNetwork<S> {
     relay_activation: RelayActivationConfig,
     block_relay_activation: BlockRelayActivationPolicy,
     inbound_serving_enabled: bool,
+    block_relay_evidence: block_relay_evidence::ManagedBlockRelayEvidenceState,
     relay_fanout: relay_fanout::ManagedRelayFanoutState,
     relay_serving: relay_serving::RelayServingCache,
     latest_mempool_recovery: Option<ManagedMempoolRecoverySummary>,
@@ -311,9 +224,19 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> Result<Vec<WireNetworkMessage>, ManagedNetworkError> {
+        let observed_block_relay_message = matches!(
+            message,
+            WireNetworkMessage::SendCompact(_)
+                | WireNetworkMessage::CompactBlock(_)
+                | WireNetworkMessage::BlockTxn(_)
+        );
         let actions = self
             .peer_manager
             .handle_message(peer_id, message, timestamp)?;
+        if observed_block_relay_message {
+            self.note_block_relay_observed();
+            self.record_compact_download_evidence(&actions);
+        }
         Ok(self
             .process_actions(peer_id, actions, timestamp, verify_flags, consensus_params)?
             .outbound)
@@ -331,9 +254,22 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             WireNetworkMessage::Headers(headers_message) => {
                 self.handle_headers_message(peer_id, headers_message, timestamp, consensus_params)?
             }
-            other => self
-                .peer_manager
-                .handle_message(peer_id, other, timestamp)?,
+            other => {
+                let observed_block_relay_message = matches!(
+                    other,
+                    WireNetworkMessage::SendCompact(_)
+                        | WireNetworkMessage::CompactBlock(_)
+                        | WireNetworkMessage::BlockTxn(_)
+                );
+                let actions = self
+                    .peer_manager
+                    .handle_message(peer_id, other, timestamp)?;
+                if observed_block_relay_message {
+                    self.note_block_relay_observed();
+                    self.record_compact_download_evidence(&actions);
+                }
+                actions
+            }
         };
         self.process_actions(peer_id, actions, timestamp, verify_flags, consensus_params)
     }
@@ -387,10 +323,70 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     }
 
     pub fn announce_block(
-        &self,
+        &mut self,
         peer_id: PeerId,
         block: &Block,
     ) -> Result<Option<WireNetworkMessage>, ManagedNetworkError> {
+        let block_hash = block_hash(&block.header);
+        let request = open_bitcoin_core::primitives::InventoryVector {
+            inventory_type: open_bitcoin_core::primitives::InventoryType::Block,
+            object_hash: block_hash.into(),
+        };
+        let input = self.managed_block_serve_input(peer_id, &request, block_hash, false);
+        let status = open_bitcoin_network::classify_block_serving_status(
+            &open_bitcoin_network::BlockServingStatusFacts {
+                chain_position: input.chain_position,
+                validation_state: input.validation_state,
+                data_availability: input.data_availability,
+                suppressed: input.suppressed,
+            },
+        );
+        let eligibility = open_bitcoin_network::classify_block_serving_eligibility(
+            &open_bitcoin_network::BlockServingEligibilityInput {
+                activation: input.activation,
+                inbound_serving_enabled: input.inbound_serving_enabled,
+                connection_class: input.connection_class,
+                active_permission_effects: input.active_permission_effects.clone(),
+                inactive_permission_effects: input.inactive_permission_effects.clone(),
+                status_available: status.may_serve_block,
+            },
+        );
+        let gate = open_bitcoin_network::evaluate_block_serving_resource_gate(
+            &open_bitcoin_network::ResourceGovernancePolicy::default(),
+            open_bitcoin_network::BlockServingResourceGateInput {
+                eligibility,
+                status,
+                queue_pressure: open_bitcoin_network::QueuePressureInput {
+                    active_permission_effects: input.active_permission_effects.clone(),
+                    inactive_permission_effects: input.inactive_permission_effects.clone(),
+                    ..Default::default()
+                },
+                request_pressure: open_bitcoin_network::RequestPressureInput {
+                    requested_blocks_in_flight: input.requested_blocks_in_flight,
+                    requested_txids_in_flight: input.requested_txids_in_flight,
+                    requested_wtxids_in_flight: input.requested_wtxids_in_flight,
+                    active_permission_effects: input.active_permission_effects,
+                    inactive_permission_effects: input.inactive_permission_effects,
+                    ..Default::default()
+                },
+                maybe_timeout: None,
+                maybe_churn: None,
+                maybe_repeated_failure: None,
+                reconnect: open_bitcoin_network::ReconnectSuppressionInput::default(),
+                maybe_cleanup: None,
+            },
+        );
+        let announcement = self.peer_manager.decide_compact_announcement_for_peer(
+            peer_id,
+            open_bitcoin_network::PeerCompactAnnouncementInput {
+                activation: self.block_relay_activation,
+                peer_has_previous_header: true,
+                peer_has_current_header: false,
+                status,
+                resource_gate: gate,
+            },
+        )?;
+        self.record_compact_announcement_evidence(announcement.reason);
         self.peer_manager
             .announce_block(peer_id, block)
             .map_err(ManagedNetworkError::from)

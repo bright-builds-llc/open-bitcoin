@@ -8,7 +8,8 @@ use std::borrow::Cow;
 use std::{error::Error, fmt, path::PathBuf};
 
 use crate::status::{
-    HealthSignal, HealthSignalLevel, InboundPeerPolicyEvent, InboundResourceGovernanceEvent,
+    BlockRelayEvidenceStatus, HealthSignal, HealthSignalLevel, InboundPeerPolicyEvent,
+    InboundResourceGovernanceEvent,
     relay_evidence::{
         RelayEvidenceCounters, RelayEvidenceField, RelayEvidenceStatus, RelayRecoveryCounters,
     },
@@ -23,6 +24,7 @@ mod tests;
 pub const INBOUND_RESOURCE_GOVERNANCE_LOG_SOURCE: &str = "inbound_resource_governance";
 pub const INBOUND_PEER_POLICY_LOG_SOURCE: &str = "inbound_peer_policy";
 pub const RELAY_MEMPOOL_LOG_SOURCE: &str = "relay_mempool";
+pub const BLOCK_RELAY_LOG_SOURCE: &str = "block_relay";
 const REDACTED_RESOURCE_FIELD: &str = "redacted_resource_field";
 const REDACTED_PEER_POLICY_FIELD: &str = "redacted_peer_policy_field";
 
@@ -199,6 +201,71 @@ pub fn relay_mempool_log_record(
     StructuredLogRecord::new(
         StructuredLogLevel::Info,
         RELAY_MEMPOOL_LOG_SOURCE,
+        message,
+        timestamp_unix_seconds,
+    )
+}
+
+pub fn block_relay_log_record(
+    block_relay: &BlockRelayEvidenceStatus,
+    timestamp_unix_seconds: u64,
+) -> StructuredLogRecord {
+    let block_served_count = match &block_relay.block_serving.eligibility {
+        crate::status::FieldAvailability::Available(counters) => counters.eligible_peer_count,
+        crate::status::FieldAvailability::Unavailable { .. } => 0,
+    };
+    let block_serving_suppressed_count = match &block_relay.block_serving.status {
+        crate::status::FieldAvailability::Available(counters) => counters.suppressed_count,
+        crate::status::FieldAvailability::Unavailable { .. } => 0,
+    };
+    let compact_announced_count = match &block_relay.announcement {
+        crate::status::FieldAvailability::Available(counters) => counters.compact_announced_count,
+        crate::status::FieldAvailability::Unavailable { .. } => 0,
+    };
+    let compact_reconstructed_count = match &block_relay.reconstruction {
+        crate::status::FieldAvailability::Available(counters) => {
+            counters.compact_reconstructed_count
+        }
+        crate::status::FieldAvailability::Unavailable { .. } => 0,
+    };
+    let compact_missing_tx_requested_count = match &block_relay.missing_transaction {
+        crate::status::FieldAvailability::Available(counters) => {
+            counters.compact_missing_tx_requested_count
+        }
+        crate::status::FieldAvailability::Unavailable { .. } => 0,
+    };
+    let compact_fallback_count = match &block_relay.fallback {
+        crate::status::FieldAvailability::Available(counters) => counters.compact_fallback_count,
+        crate::status::FieldAvailability::Unavailable { .. } => 0,
+    };
+    let compact_malformed_count = match &block_relay.reconstruction {
+        crate::status::FieldAvailability::Available(counters) => counters.compact_malformed_count,
+        crate::status::FieldAvailability::Unavailable { .. } => 0,
+    };
+    let compact_timeout_count = match &block_relay.fallback {
+        crate::status::FieldAvailability::Available(counters) => counters.compact_timeout_count,
+        crate::status::FieldAvailability::Unavailable { .. } => 0,
+    };
+    let compact_cleanup_count = match &block_relay.cleanup {
+        crate::status::FieldAvailability::Available(counters) => counters.compact_cleanup_count,
+        crate::status::FieldAvailability::Unavailable { .. } => 0,
+    };
+    let message = format!(
+        "outcome=projected cause=status_projection label=block_relay serve_label=block_serving_eligible suppress_label=block_serving_suppressed announcement_label=compact_announced reconstruction_label=compact_reconstruction_failed timeout_label=compact_download_timeout cleanup_label=compact_download_peer_disconnect block_served_count={} block_serving_suppressed_count={} compact_announced_count={} compact_reconstructed_count={} compact_missing_tx_requested_count={} compact_fallback_count={} compact_malformed_count={} compact_timeout_count={} compact_cleanup_count={}",
+        block_served_count,
+        block_serving_suppressed_count,
+        compact_announced_count,
+        compact_reconstructed_count,
+        compact_missing_tx_requested_count,
+        compact_fallback_count,
+        compact_malformed_count,
+        compact_timeout_count,
+        compact_cleanup_count
+    );
+
+    StructuredLogRecord::new(
+        StructuredLogLevel::Info,
+        BLOCK_RELAY_LOG_SOURCE,
         message,
         timestamp_unix_seconds,
     )

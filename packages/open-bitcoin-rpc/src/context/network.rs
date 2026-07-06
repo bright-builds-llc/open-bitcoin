@@ -26,7 +26,9 @@ use open_bitcoin_node::network::{
     LocalRelaySubmissionEvidence, ManagedInboundAdmissionInfo, ManagedMempoolInfo,
     ManagedNetworkInfo,
 };
-use open_bitcoin_node::status::{SyncRecoveryCategory, relay_evidence::RelayEvidenceStatus};
+use open_bitcoin_node::status::{
+    BlockRelayEvidenceStatus, SyncRecoveryCategory, relay_evidence::RelayEvidenceStatus,
+};
 use open_bitcoin_node::{DurableSyncState, FjallNodeStore, MetricRetentionPolicy, MetricsStatus};
 use open_bitcoin_node::{
     ManagedNetworkError, ManagedPeerNetwork, ManagedWallet, MemoryChainstateStore,
@@ -229,6 +231,10 @@ impl ManagedRpcContext {
 
     pub fn relay_evidence_status(&self) -> RelayEvidenceStatus {
         self.network.relay_evidence_status()
+    }
+
+    pub fn block_relay_evidence_status(&self) -> BlockRelayEvidenceStatus {
+        self.network.block_relay_evidence_status()
     }
 
     pub fn inbound_admission_info(&self) -> ManagedInboundAdmissionInfo {

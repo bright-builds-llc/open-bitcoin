@@ -4,11 +4,11 @@
 use open_bitcoin_node::{
     BuildProvenance, LogStatus, MetricsStatus,
     status::{
-        BestKnownTipSource, BestKnownTipStatus, ConfigStatus, FieldAvailability,
-        InboundAddressDecisionEvent, InboundAddressEvidenceEntry, InboundAdmissionEvent,
-        InboundHandshakeStatusCounts, InboundPeerPolicyEvent, InboundPeerServingStatus,
-        InboundPermissionDecisionEvent, InboundResourceGovernanceEvent, MempoolStatus,
-        NoProgressDiagnosis, NoProgressThresholdEvidence, NoProgressThresholdState,
+        BestKnownTipSource, BestKnownTipStatus, BlockRelayEvidenceStatus, ConfigStatus,
+        FieldAvailability, InboundAddressDecisionEvent, InboundAddressEvidenceEntry,
+        InboundAdmissionEvent, InboundHandshakeStatusCounts, InboundPeerPolicyEvent,
+        InboundPeerServingStatus, InboundPermissionDecisionEvent, InboundResourceGovernanceEvent,
+        MempoolStatus, NoProgressDiagnosis, NoProgressThresholdEvidence, NoProgressThresholdState,
         NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot, PeerContributionEvidence,
         PeerContributionKind, PeerCounts, PeerStatus, PeerTelemetry, PeerTipAgreement,
         PeerTipAgreementStatus, ProgressCreditEvidence, ProgressCreditKind, ProgressWindowEvidence,
@@ -784,6 +784,7 @@ fn shared_sync_truth_snapshot() -> OpenBitcoinStatusSnapshot {
             transactions: FieldAvailability::unavailable("mempool unavailable"),
             relay: RelayEvidenceStatus::default(),
         },
+        block_relay: BlockRelayEvidenceStatus::default_unavailable(),
         wallet: WalletStatus {
             trusted_balance_sats: FieldAvailability::unavailable("wallet unavailable"),
             freshness: FieldAvailability::unavailable("wallet unavailable"),

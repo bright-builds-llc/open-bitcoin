@@ -3,6 +3,8 @@
 
 //! Serializable metrics retention and status contracts.
 
+mod block_relay;
+
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -10,6 +12,7 @@ use crate::status::{
     FieldAvailability, InboundPeerServingStatus,
     relay_evidence::{RelayEvidenceCounters, RelayEvidenceField, RelayEvidenceStatus},
 };
+pub use block_relay::block_relay_metric_samples;
 
 /// Metric series names exposed to status and dashboard consumers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -65,10 +68,19 @@ pub enum MetricKind {
     RelayRecoveryDroppedMissingParentCount,
     RelayRecoveryDroppedPolicyIncompatibleCount,
     RelayRecoveryDroppedEvictedCount,
+    BlockServedCount,
+    BlockServingSuppressedCount,
+    CompactAnnouncedCount,
+    CompactReconstructedCount,
+    CompactMissingTxRequestedCount,
+    CompactFallbackCount,
+    CompactMalformedCount,
+    CompactTimeoutCount,
+    CompactCleanupCount,
 }
 
 impl MetricKind {
-    pub const ALL: [Self; 50] = [
+    pub const ALL: [Self; 59] = [
         Self::SyncHeight,
         Self::HeaderHeight,
         Self::DownloadedBlockHeight,
@@ -119,6 +131,15 @@ impl MetricKind {
         Self::RelayRecoveryDroppedMissingParentCount,
         Self::RelayRecoveryDroppedPolicyIncompatibleCount,
         Self::RelayRecoveryDroppedEvictedCount,
+        Self::BlockServedCount,
+        Self::BlockServingSuppressedCount,
+        Self::CompactAnnouncedCount,
+        Self::CompactReconstructedCount,
+        Self::CompactMissingTxRequestedCount,
+        Self::CompactFallbackCount,
+        Self::CompactMalformedCount,
+        Self::CompactTimeoutCount,
+        Self::CompactCleanupCount,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -181,6 +202,15 @@ impl MetricKind {
                 "relay_recovery_dropped_policy_incompatible_count"
             }
             Self::RelayRecoveryDroppedEvictedCount => "relay_recovery_dropped_evicted_count",
+            Self::BlockServedCount => "block_served_count",
+            Self::BlockServingSuppressedCount => "block_serving_suppressed_count",
+            Self::CompactAnnouncedCount => "compact_announced_count",
+            Self::CompactReconstructedCount => "compact_reconstructed_count",
+            Self::CompactMissingTxRequestedCount => "compact_missing_tx_requested_count",
+            Self::CompactFallbackCount => "compact_fallback_count",
+            Self::CompactMalformedCount => "compact_malformed_count",
+            Self::CompactTimeoutCount => "compact_timeout_count",
+            Self::CompactCleanupCount => "compact_cleanup_count",
         }
     }
 }

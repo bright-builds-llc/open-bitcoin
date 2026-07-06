@@ -13,7 +13,8 @@
 // - packages/bitcoin-knots/test/functional/mempool_accept.py
 
 use open_bitcoin_network::{
-    InventoryList, PeerAction, PeerId, TxDownloadAction, WireNetworkMessage,
+    CompactDownloadCleanupCause, InventoryList, PeerAction, PeerId, TxDownloadAction,
+    WireNetworkMessage,
 };
 
 use crate::ChainstateStore;
@@ -41,9 +42,14 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         peer_id: PeerId,
         now_unix_seconds: i64,
     ) -> ManagedResult<Vec<(PeerId, WireNetworkMessage)>> {
+        let removed_count = self
+            .peer_manager
+            .compact_download_peer_state(peer_id)
+            .map_or(0, |state| state.in_flight.len());
         let actions = self
             .peer_manager
             .remove_peer_with_transaction_cleanup(peer_id, now_unix_seconds)?;
+        self.record_compact_cleanup(CompactDownloadCleanupCause::PeerDisconnect, removed_count);
         self.orphanage.cleanup_peer(peer_id);
         self.relay_fanout.cleanup_peer(peer_id);
         self.known_peers.remove(&peer_id);

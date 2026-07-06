@@ -7,8 +7,8 @@ use super::relay_evidence::{
     RelayRecoveryCounters,
 };
 use super::{
-    BestKnownTipStatus, BuildProvenance, ChainTipStatus, ConfigStatus, FieldAvailability,
-    HealthSignal, HealthSignalLevel, INBOUND_STATUS_UNAVAILABLE_REASON,
+    BestKnownTipStatus, BlockRelayEvidenceStatus, BuildProvenance, ChainTipStatus, ConfigStatus,
+    FieldAvailability, HealthSignal, HealthSignalLevel, INBOUND_STATUS_UNAVAILABLE_REASON,
     InboundAddressDecisionEvent, InboundAddressEvidenceEntry, InboundHandshakeStatusCounts,
     InboundPeerServingStatus, LAST_PEER_CONTRIBUTION_UNAVAILABLE_REASON,
     LAST_USEFUL_WORK_UNAVAILABLE_REASON, MempoolStatus, NO_PROGRESS_DIAGNOSIS_UNAVAILABLE_REASON,
@@ -1387,6 +1387,7 @@ fn populated_snapshot_serializes_obs_01_fields() {
             transactions: FieldAvailability::available(12),
             relay: RelayEvidenceStatus::default(),
         },
+        block_relay: BlockRelayEvidenceStatus::default_unavailable(),
         wallet: WalletStatus {
             trusted_balance_sats: FieldAvailability::available(25_000),
             freshness: FieldAvailability::available(WalletFreshness::Fresh),
@@ -1733,6 +1734,7 @@ fn stopped_snapshot() -> OpenBitcoinStatusSnapshot {
             transactions: FieldAvailability::unavailable(unavailable),
             relay: RelayEvidenceStatus::default(),
         },
+        block_relay: BlockRelayEvidenceStatus::default_unavailable(),
         wallet: WalletStatus {
             trusted_balance_sats: FieldAvailability::unavailable(unavailable),
             freshness: FieldAvailability::unavailable(unavailable),

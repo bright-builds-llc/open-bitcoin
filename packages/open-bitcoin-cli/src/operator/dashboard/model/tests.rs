@@ -5,19 +5,23 @@ use open_bitcoin_node::{
     MetricKind, MetricRetentionPolicy, MetricSample, MetricsStatus, RecoveryActionClass,
     RecoveryCause, RecoveryEvidenceBasis, RecoveryEvidenceSnapshot,
     status::{
-        BestKnownTipSource, BestKnownTipStatus, BuildProvenance, ConfigStatus, FieldAvailability,
-        HealthSignal, HealthSignalLevel, MempoolStatus, NoProgressDiagnosis,
-        NoProgressThresholdEvidence, NoProgressThresholdState, NodeRuntimeState, NodeStatus,
-        OpenBitcoinStatusSnapshot, PeerContributionEvidence, PeerContributionKind, PeerCounts,
-        PeerStatus, PeerTipAgreement, PeerTipAgreementStatus, ProgressCreditEvidence,
-        ProgressCreditKind, ProgressWindowEvidence, RejectedProgressActivity,
-        RejectedProgressActivityKind, ServiceLifecycleStatus, ServicePriorShutdownStatus,
-        ServiceRestartResumeStatus, ServiceResumeProgressStatus, ServiceStaleInflightStatus,
-        ServiceStatus, StallDiagnosisConfidence, StallDiagnosisEvidence, StalledSubsystem,
-        StayCurrentStatus, SyncAttemptCounters, SyncConfiguredTargets, SyncLagStatus,
-        SyncLifecycleState, SyncProgress, SyncProgressSignal, SyncReconcileProgressStatus,
-        SyncRecoveryCategory, SyncReorgEvidence, SyncResourcePressure, SyncStatus,
-        SyncStopReasonStatus, TipFreshnessStatus, WalletFreshness, WalletStatus,
+        BestKnownTipSource, BestKnownTipStatus, BlockRelayEvidenceStatus,
+        BlockServingActivationEvidence, BlockServingEligibilityCounters,
+        BlockServingStatusCounters, BuildProvenance, CompactRelayAnnouncementCounters,
+        CompactRelayCleanupCounters, CompactRelayFallbackCounters, CompactRelayInFlightCounters,
+        CompactRelayMissingTransactionCounters, CompactRelayNegotiationCounters,
+        CompactRelayReconstructionCounters, ConfigStatus, FieldAvailability, HealthSignal,
+        HealthSignalLevel, MempoolStatus, NoProgressDiagnosis, NoProgressThresholdEvidence,
+        NoProgressThresholdState, NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot,
+        PeerContributionEvidence, PeerContributionKind, PeerCounts, PeerStatus, PeerTipAgreement,
+        PeerTipAgreementStatus, ProgressCreditEvidence, ProgressCreditKind, ProgressWindowEvidence,
+        RejectedProgressActivity, RejectedProgressActivityKind, ServiceLifecycleStatus,
+        ServicePriorShutdownStatus, ServiceRestartResumeStatus, ServiceResumeProgressStatus,
+        ServiceStaleInflightStatus, ServiceStatus, StallDiagnosisConfidence,
+        StallDiagnosisEvidence, StalledSubsystem, StayCurrentStatus, SyncAttemptCounters,
+        SyncConfiguredTargets, SyncLagStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal,
+        SyncReconcileProgressStatus, SyncRecoveryCategory, SyncReorgEvidence, SyncResourcePressure,
+        SyncStatus, SyncStopReasonStatus, TipFreshnessStatus, WalletFreshness, WalletStatus,
         inbound_status_unavailable,
         relay_evidence::{RelayEvidenceCounters, RelayEvidenceStatus, RelayRecoveryCounters},
     },
@@ -225,6 +229,138 @@ fn dashboard_charts_render_retained_relay_metric_samples_without_dynamic_labels(
         "dynamic_label",
     ] {
         assert!(!serialized.contains(forbidden), "leaked {forbidden}");
+    }
+}
+
+#[test]
+fn dashboard_model_block_relay_rows_surface_shared_status_contract() {
+    // Arrange
+    let mut snapshot = test_snapshot();
+    snapshot.block_relay = BlockRelayEvidenceStatus::with_components(
+        open_bitcoin_node::status::BlockServingEvidenceStatus::with_activation_eligibility_and_status(
+            BlockServingActivationEvidence {
+                block_serving_enabled: true,
+                compact_relay_enabled: true,
+            },
+            BlockServingEligibilityCounters {
+                eligible_peer_count: 2,
+                ineligible_peer_count: 3,
+                disabled_count: 1,
+                activation_required_count: 0,
+                inbound_serving_required_count: 1,
+                permission_required_count: 1,
+                protected_not_serving_count: 0,
+                status_unavailable_count: 0,
+                permission_effect_inactive_count: 1,
+            },
+            BlockServingStatusCounters {
+                validated_count: 5,
+                available_count: 4,
+                stale_count: 1,
+                side_chain_count: 2,
+                pruned_count: 1,
+                unavailable_count: 3,
+                unvalidated_count: 0,
+                unknown_count: 1,
+                suppressed_count: 2,
+            },
+        ),
+        CompactRelayNegotiationCounters {
+            version2_high_bandwidth_count: 3,
+            version2_low_bandwidth_count: 1,
+            unsupported_version_count: 1,
+        },
+        CompactRelayAnnouncementCounters {
+            compact_announced_count: 6,
+            compact_headers_fallback_count: 2,
+            compact_inventory_fallback_count: 1,
+            compact_suppressed_count: 2,
+        },
+        CompactRelayReconstructionCounters {
+            compact_reconstructed_count: 4,
+            compact_reconstruction_failed_count: 1,
+            compact_malformed_count: 1,
+        },
+        CompactRelayMissingTransactionCounters {
+            compact_missing_tx_requested_count: 2,
+            compact_missing_tx_suppressed_count: 1,
+        },
+        CompactRelayFallbackCounters {
+            compact_fallback_count: 2,
+            compact_timeout_count: 1,
+        },
+        CompactRelayInFlightCounters {
+            in_flight_count: 3,
+            getblocktxn_in_flight_count: 2,
+            peers_with_in_flight_count: 2,
+        },
+        CompactRelayCleanupCounters {
+            compact_cleanup_count: 3,
+            compact_download_peer_disconnect_count: 1,
+            compact_download_timeout_count: 1,
+            compact_download_reorg_count: 0,
+            compact_download_restart_count: 0,
+            compact_download_block_connected_count: 1,
+        },
+    );
+
+    // Act
+    let state = DashboardState::from_snapshot(&snapshot);
+    let rows = &state.sections[2].rows;
+
+    // Assert
+    assert_eq!(
+        rows.iter()
+            .find(|row| row.label == "Block relay activation")
+            .expect("block relay activation row")
+            .value,
+        "block_serving_enabled=true compact_relay_enabled=true"
+    );
+    assert_eq!(
+        rows.iter()
+            .find(|row| row.label == "Compact announcement")
+            .expect("compact announcement row")
+            .value,
+        "compact_announced_count=6 compact_headers_fallback_count=2 compact_inventory_fallback_count=1 compact_suppressed_count=2"
+    );
+    assert_eq!(
+        rows.iter()
+            .find(|row| row.label == "Compact cleanup")
+            .expect("compact cleanup row")
+            .value,
+        "compact_cleanup_count=3 compact_download_peer_disconnect_count=1 compact_download_timeout_count=1 compact_download_reorg_count=0 compact_download_restart_count=0 compact_download_block_connected_count=1"
+    );
+}
+
+#[test]
+fn dashboard_model_block_relay_rows_preserve_unavailable_reason_without_sensitive_text() {
+    // Arrange
+    let snapshot = test_snapshot();
+
+    // Act
+    let state = DashboardState::from_snapshot(&snapshot);
+    let rows = &state.sections[2].rows;
+    let rendered = format!("{rows:?}");
+
+    // Assert
+    assert_eq!(
+        rows.iter()
+            .find(|row| row.label == "Block relay activation")
+            .expect("block relay activation row")
+            .value,
+        "Unavailable: block serving evidence unavailable"
+    );
+    for forbidden in [
+        "peer_id",
+        "endpoint",
+        "block_hash",
+        "txid",
+        "permission_string",
+        "credential",
+        "cookie",
+        "dynamic_label",
+    ] {
+        assert!(!rendered.contains(forbidden), "leaked {forbidden}");
     }
 }
 
@@ -948,6 +1084,7 @@ fn test_snapshot() -> OpenBitcoinStatusSnapshot {
             transactions: FieldAvailability::available(4),
             relay: RelayEvidenceStatus::default(),
         },
+        block_relay: BlockRelayEvidenceStatus::default_unavailable(),
         wallet: WalletStatus {
             trusted_balance_sats: FieldAvailability::available(50_000),
             freshness: FieldAvailability::available(WalletFreshness::Fresh),

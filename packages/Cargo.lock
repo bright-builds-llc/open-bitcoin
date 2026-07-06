@@ -1502,6 +1502,7 @@ name = "open-bitcoin-node"
 version = "0.1.0"
 dependencies = [
  "fjall",
+ "open-bitcoin-codec",
  "open-bitcoin-core",
  "open-bitcoin-mempool",
  "open-bitcoin-network",

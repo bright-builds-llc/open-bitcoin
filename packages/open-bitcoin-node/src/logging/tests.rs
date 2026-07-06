@@ -2,18 +2,20 @@
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
 use super::{
-    INBOUND_PEER_POLICY_LOG_SOURCE, INBOUND_RESOURCE_GOVERNANCE_LOG_SOURCE, LogPathStatus,
-    LogRetentionPolicy, LogRotation, LogStatus, RELAY_MEMPOOL_LOG_SOURCE, RecentLogSignal,
-    StructuredLogLevel, StructuredLogRecord, health_signals_from_recent_logs,
-    inbound_peer_policy_log_record, inbound_resource_governance_log_record,
-    recent_log_signals_from_records, relay_mempool_log_record,
+    BLOCK_RELAY_LOG_SOURCE, INBOUND_PEER_POLICY_LOG_SOURCE, INBOUND_RESOURCE_GOVERNANCE_LOG_SOURCE,
+    LogPathStatus, LogRetentionPolicy, LogRotation, LogStatus, RELAY_MEMPOOL_LOG_SOURCE,
+    RecentLogSignal, StructuredLogLevel, StructuredLogRecord, block_relay_log_record,
+    health_signals_from_recent_logs, inbound_peer_policy_log_record,
+    inbound_resource_governance_log_record, recent_log_signals_from_records,
+    relay_mempool_log_record,
 };
 use super::{
     prune::{LogFileMetadata, plan_log_retention},
     writer::{append_structured_log_record, load_log_status},
 };
 use crate::status::{
-    HealthSignalLevel, InboundPeerPolicyEvent, InboundResourceGovernanceEvent,
+    BlockRelayEvidenceStatus, HealthSignalLevel, InboundPeerPolicyEvent,
+    InboundResourceGovernanceEvent,
     relay_evidence::{
         RelayEvidenceCounters, RelayEvidenceField, RelayEvidenceStatus, RelayRecoveryCounters,
     },
@@ -300,6 +302,125 @@ fn relay_mempool_log_record_omits_sensitive_and_dynamic_material() {
         "secret",
         "dynamic_label",
         "reject_reason",
+    ] {
+        assert!(!record.message.contains(raw), "leaked {raw}");
+    }
+}
+
+#[test]
+fn block_relay_log_record_uses_fixed_source_labels_and_counts() {
+    // Arrange
+    let block_relay = BlockRelayEvidenceStatus::with_components(
+        crate::status::BlockServingEvidenceStatus::with_activation_eligibility_and_status(
+            crate::status::BlockServingActivationEvidence {
+                block_serving_enabled: true,
+                compact_relay_enabled: true,
+            },
+            crate::status::BlockServingEligibilityCounters {
+                eligible_peer_count: 2,
+                ineligible_peer_count: 3,
+                disabled_count: 1,
+                activation_required_count: 0,
+                inbound_serving_required_count: 1,
+                permission_required_count: 1,
+                protected_not_serving_count: 0,
+                status_unavailable_count: 0,
+                permission_effect_inactive_count: 1,
+            },
+            crate::status::BlockServingStatusCounters {
+                validated_count: 5,
+                available_count: 4,
+                stale_count: 1,
+                side_chain_count: 2,
+                pruned_count: 1,
+                unavailable_count: 3,
+                unvalidated_count: 0,
+                unknown_count: 1,
+                suppressed_count: 2,
+            },
+        ),
+        crate::status::CompactRelayNegotiationCounters {
+            version2_high_bandwidth_count: 3,
+            version2_low_bandwidth_count: 1,
+            unsupported_version_count: 1,
+        },
+        crate::status::CompactRelayAnnouncementCounters {
+            compact_announced_count: 6,
+            compact_headers_fallback_count: 2,
+            compact_inventory_fallback_count: 1,
+            compact_suppressed_count: 2,
+        },
+        crate::status::CompactRelayReconstructionCounters {
+            compact_reconstructed_count: 4,
+            compact_reconstruction_failed_count: 1,
+            compact_malformed_count: 1,
+        },
+        crate::status::CompactRelayMissingTransactionCounters {
+            compact_missing_tx_requested_count: 2,
+            compact_missing_tx_suppressed_count: 1,
+        },
+        crate::status::CompactRelayFallbackCounters {
+            compact_fallback_count: 2,
+            compact_timeout_count: 1,
+        },
+        crate::status::CompactRelayInFlightCounters {
+            in_flight_count: 3,
+            getblocktxn_in_flight_count: 2,
+            peers_with_in_flight_count: 2,
+        },
+        crate::status::CompactRelayCleanupCounters {
+            compact_cleanup_count: 3,
+            compact_download_peer_disconnect_count: 1,
+            compact_download_timeout_count: 1,
+            compact_download_reorg_count: 0,
+            compact_download_restart_count: 0,
+            compact_download_block_connected_count: 1,
+        },
+    );
+
+    // Act
+    let record = block_relay_log_record(&block_relay, 1_777_225_305);
+
+    // Assert
+    assert_eq!(record.level, StructuredLogLevel::Info);
+    assert_eq!(record.source, BLOCK_RELAY_LOG_SOURCE);
+    assert_eq!(record.timestamp_unix_seconds, 1_777_225_305);
+    for expected in [
+        "outcome=projected",
+        "cause=status_projection",
+        "label=block_relay",
+        "serve_label=block_serving_eligible",
+        "suppress_label=block_serving_suppressed",
+        "announcement_label=compact_announced",
+        "reconstruction_label=compact_reconstruction_failed",
+        "timeout_label=compact_download_timeout",
+        "cleanup_label=compact_download_peer_disconnect",
+        "block_served_count=2",
+        "compact_cleanup_count=3",
+    ] {
+        assert!(record.message.contains(expected), "missing {expected}");
+    }
+}
+
+#[test]
+fn block_relay_log_record_omits_sensitive_and_dynamic_material() {
+    // Arrange
+    let block_relay = BlockRelayEvidenceStatus::default_unavailable();
+
+    // Act
+    let record = block_relay_log_record(&block_relay, 1_777_225_306);
+
+    // Assert
+    assert_eq!(record.source, BLOCK_RELAY_LOG_SOURCE);
+    for raw in [
+        "0123456789abcdef",
+        "127.0.0.1:18444",
+        "peer_id",
+        "permission_string",
+        "credential",
+        "cookie",
+        "secret",
+        "dynamic_label",
     ] {
         assert!(!record.message.contains(raw), "leaked {raw}");
     }

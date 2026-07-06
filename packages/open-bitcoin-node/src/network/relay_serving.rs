@@ -418,6 +418,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             activation: relay_activation,
             inbound_serving_enabled,
         });
+        peer_manager.set_block_relay_activation_policy(block_relay_activation);
 
         Self {
             chainstate,
@@ -431,6 +432,8 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             relay_activation,
             block_relay_activation,
             inbound_serving_enabled,
+            block_relay_evidence:
+                super::block_relay_evidence::ManagedBlockRelayEvidenceState::default(),
             relay_fanout: super::relay_fanout::ManagedRelayFanoutState::default(),
             relay_serving: RelayServingCache::default(),
             latest_mempool_recovery: None,

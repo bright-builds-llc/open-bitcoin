@@ -13,9 +13,9 @@ use open_bitcoin_node::{
     LogRetentionPolicy, MetricRetentionPolicy, MetricsStatus,
     logging::writer::load_log_status,
     status::{
-        BuildProvenance, ConfigStatus, FieldAvailability, HealthSignal, HealthSignalLevel,
-        INBOUND_STATUS_UNAVAILABLE_REASON, MempoolStatus, NodeRuntimeState, NodeStatus,
-        OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, WalletStatus,
+        BlockRelayEvidenceStatus, BuildProvenance, ConfigStatus, FieldAvailability, HealthSignal,
+        HealthSignalLevel, INBOUND_STATUS_UNAVAILABLE_REASON, MempoolStatus, NodeRuntimeState,
+        NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, WalletStatus,
         relay_evidence::RelayEvidenceStatus,
     },
 };
@@ -231,6 +231,7 @@ fn collect_live_status_snapshot(
     let network_status = collect_open_bitcoin_network_status(rpc_client);
     let inbound = network_status.inbound;
     let relay = network_status.relay;
+    let block_relay = network_status.block_relay;
     let metrics = network_status.metrics;
 
     OpenBitcoinStatusSnapshot {
@@ -253,6 +254,7 @@ fn collect_live_status_snapshot(
             transactions: FieldAvailability::available(saturating_usize_to_u64(mempool_info.size)),
             relay,
         },
+        block_relay,
         wallet,
         logs: log_status(&input.config_resolution),
         metrics,
@@ -305,6 +307,7 @@ fn stopped_status_snapshot(
             transactions: FieldAvailability::unavailable(reason.clone()),
             relay: RelayEvidenceStatus::default(),
         },
+        block_relay: BlockRelayEvidenceStatus::default_unavailable(),
         wallet: WalletStatus {
             trusted_balance_sats: FieldAvailability::unavailable(reason.clone()),
             freshness: FieldAvailability::unavailable(reason.clone()),
@@ -327,6 +330,7 @@ fn collect_open_bitcoin_network_status(
         Err(error) => OpenBitcoinNetworkStatusResponse {
             inbound: FieldAvailability::unavailable(inbound_status_unavailable_reason(&error)),
             relay: RelayEvidenceStatus::default(),
+            block_relay: BlockRelayEvidenceStatus::default_unavailable(),
             metrics: metrics_status(),
         },
     }
