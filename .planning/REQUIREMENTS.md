@@ -46,19 +46,19 @@ Requirements for the current milestone. Each requirement maps to exactly one roa
 
 ### Operator, RPC, Metrics, Logs, And Support Evidence
 
-- [ ] **OBS-01**: RPC and shared network status report block-serving activation, serving eligibility, compact negotiation, reconstruction, fallback, and in-flight compact-block state truthfully.
-- [ ] **OBS-02**: CLI and dashboard surfaces render block-serving and compact-block relay state from the shared status contract without raw peer, permission, credential, or transaction payload leakage.
-- [ ] **OBS-03**: Metrics and structured logs use fixed low-cardinality labels for served, suppressed, compact-announced, reconstructed, missing-requested, fallback, malformed, timeout, and cleanup outcomes.
-- [ ] **OBS-04**: Support bundles sanitize block-serving and compact-relay evidence, including raw transaction lists, raw peer endpoints, permission strings, credentials, and dynamic labels.
-- [ ] **OBS-05**: Operator docs and UAT guidance provide copy-pasteable repo-local Cargo and Bazel commands for block-serving and compact-relay workflows.
+- [x] **OBS-01**: RPC and shared network status report block-serving activation, serving eligibility, compact negotiation, reconstruction, fallback, and in-flight compact-block state truthfully.
+- [x] **OBS-02**: CLI and dashboard surfaces render block-serving and compact-block relay state from the shared status contract without raw peer, permission, credential, or transaction payload leakage.
+- [x] **OBS-03**: Metrics and structured logs use fixed low-cardinality labels for served, suppressed, compact-announced, reconstructed, missing-requested, fallback, malformed, timeout, and cleanup outcomes.
+- [x] **OBS-04**: Support bundles sanitize block-serving and compact-relay evidence, including raw transaction lists, raw peer endpoints, permission strings, credentials, and dynamic labels.
+- [x] **OBS-05**: Operator docs and UAT guidance provide copy-pasteable repo-local Cargo and Bazel commands for block-serving and compact-relay workflows.
 
 ### Parity, UAT, And Release Boundary
 
-- [ ] **BOUND-01**: Parity docs, source breadcrumbs, and index entries cite concrete Bitcoin Knots anchors for block serving, BIP152 messages, reconstruction, fallback, peer state, and resource governance.
-- [ ] **BOUND-02**: Deterministic checkers prevent package relay, bloom/filter serving, compact filter serving, public-serving-default, production-readiness, and production-funds claims from entering v2.1 artifacts.
-- [ ] **BOUND-03**: README, operator docs, runtime docs, and release notes describe the bounded v2.1 block-serving and compact-relay claim and list deferred surfaces clearly.
-- [ ] **BOUND-04**: The default `bash scripts/verify.sh` contract remains deterministic and free of public-network, wall-clock soak, service-manager, and production-deployment gates.
-- [ ] **BOUND-05**: Public-network block-serving or compact-relay review remains opt-in UAT evidence and is never required for pre-commit, default CI, or release-boundary verification.
+- [x] **BOUND-01**: Parity docs, source breadcrumbs, and index entries cite concrete Bitcoin Knots anchors for block serving, BIP152 messages, reconstruction, fallback, peer state, and resource governance.
+- [x] **BOUND-02**: Deterministic checkers prevent package relay, bloom/filter serving, compact filter serving, public-serving-default, production-readiness, and production-funds claims from entering v2.1 artifacts.
+- [x] **BOUND-03**: README, operator docs, runtime docs, and release notes describe the bounded v2.1 block-serving and compact-relay claim and list deferred surfaces clearly.
+- [x] **BOUND-04**: The default `bash scripts/verify.sh` contract remains deterministic and free of public-network, wall-clock soak, service-manager, and production-deployment gates.
+- [x] **BOUND-05**: Public-network block-serving or compact-relay review remains opt-in UAT evidence and is never required for pre-commit, default CI, or release-boundary verification.
 
 ## Deferred Requirements
 
@@ -130,16 +130,16 @@ Traceability is populated by the v2.1 roadmap. Each active requirement maps to e
 | GOV-03 | Phase 115 | Complete |
 | GOV-04 | Phase 114 | Complete |
 | GOV-05 | Phase 111 | Complete |
-| OBS-01 | Phase 116 | Pending |
-| OBS-02 | Phase 116 | Pending |
-| OBS-03 | Phase 116 | Pending |
-| OBS-04 | Phase 116 | Pending |
-| OBS-05 | Phase 116 | Pending |
-| BOUND-01 | Phase 117 | Pending |
-| BOUND-02 | Phase 117 | Pending |
-| BOUND-03 | Phase 117 | Pending |
-| BOUND-04 | Phase 117 | Pending |
-| BOUND-05 | Phase 117 | Pending |
+| OBS-01 | Phase 116 | Complete |
+| OBS-02 | Phase 116 | Complete |
+| OBS-03 | Phase 116 | Complete |
+| OBS-04 | Phase 116 | Complete |
+| OBS-05 | Phase 116 | Complete |
+| BOUND-01 | Phase 117 | Complete |
+| BOUND-02 | Phase 117 | Complete |
+| BOUND-03 | Phase 117 | Complete |
+| BOUND-04 | Phase 117 | Complete |
+| BOUND-05 | Phase 117 | Complete |
 
 **Coverage:**
 

@@ -170,6 +170,25 @@ test("fails_when_docs_claim_deferred_relay_or_production_surfaces", () => {
   expect(failures).toContain("forbidden positive Phase 103 claim");
 });
 
+test("allows_deferred_surface_claim_owned_by_a_later_phase", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutateFiles(files) {
+      appendToFile(
+        files,
+        "docs/parity/checklist.md",
+        "| later surface | done | Phase 112 provides compact block relay protocol evidence. |",
+      );
+    },
+  });
+
+  // Act
+  const failures = checkPhase103MempoolLifecycle(root);
+
+  // Assert
+  expect(failures).toEqual([]);
+});
+
 function createFixture(options: FixtureOptions = {}): string {
   const root = mkdtempSync(path.join(tmpdir(), "open-bitcoin-phase103-"));
   tempRoots.push(root);

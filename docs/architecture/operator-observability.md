@@ -371,7 +371,8 @@ readiness, or production-funds wallet use.
 
 ## Phase 116 block-relay operator evidence
 
-Phase 116 extends the shared observability contract with
+Phase 116 extends the bounded, explicit, default-off block-serving and
+compact-relay observability contract with
 `OpenBitcoinStatusSnapshot.block_relay` and
 `openbitcoinnetworkstatus.block_relay`. Operator status, dashboard rows,
 support bundles, metrics, and structured logs should all agree on the same
@@ -396,6 +397,21 @@ dynamic labels. This remains local troubleshooting/parity-review evidence only:
 it does not claim public block serving by default, BIP152 production readiness,
 package relay, public-network CI, production-service operation, production
 full-node readiness, or production-funds wallet use.
+
+## Phase 117 v2.1 release-boundary evidence
+
+The v2.1 release boundary keeps `block_relay` evidence aggregate-only across
+status, the RPC extension, dashboard rows, metrics, logs, and support bundles.
+The fixed counters and unavailable reasons may be shared; raw payloads, block
+or transaction hashes, peer identifiers, endpoints, permission strings,
+credentials, secrets, and dynamic labels must be redacted. No projection may
+invent peer-, block-, or transaction-level detail.
+
+This provides bounded, explicit, default-off block-serving and compact-relay
+evidence only. Public-network review is optional UAT outside default
+verification; public serving or relay defaults, archive-node and
+production-scale historical serving, production service/deployment, and
+production readiness remain deferred.
 
 ## Phase 92 address advertisement and discovery evidence
 

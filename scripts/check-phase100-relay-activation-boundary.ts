@@ -139,6 +139,16 @@ const POSITIVE_CLAIM_PATTERNS = [
   /\bis complete\b/,
   /\bis ready\b/,
 ] as const;
+const LATER_PHASE_MARKERS = Array.from({ length: 17 }, (_, index) => `phase ${101 + index}`);
+const LATER_PHASE_OWNED_CLAIMS = new Set([
+  "compact block relay",
+  "compact blocks",
+  "transaction download scheduling",
+  "orphan handling",
+  "mempool admission",
+  "relay serving/fanout",
+  "relay fanout",
+]);
 const WHOLE_UNIT_NO_CLAIM_MARKERS = [
   "does not ",
   "do not ",
@@ -155,6 +165,8 @@ const WHOLE_UNIT_NO_CLAIM_MARKERS = [
   "later phases own",
   "not supported",
   "free of",
+  "require separate evidence",
+  "requires separate evidence",
 ] as const;
 const FORBIDDEN_VERIFY_STRINGS = [
   "openbitcoinlisten=0.0.0.0",
@@ -354,10 +366,16 @@ function verifyNoClaimBoundary(texts: Map<TargetFile, string>, failures: string[
 function verifyNoForbiddenClaim(file: string, unit: string, failures: string[]): void {
   const lower = normalizedLower(unit);
   for (const claim of FORBIDDEN_CLAIM_PHRASES) {
+    if (isExplicitLaterPhaseUnit(lower) && LATER_PHASE_OWNED_CLAIMS.has(claim)) continue;
     if (lower.includes(claim) && isPositiveClaim(lower) && !isNoClaimContext(lower, claim)) {
       failures.push(`ACT-04 forbidden Phase 100 positive claim in ${file}: ${unit}`);
     }
   }
+}
+
+function isExplicitLaterPhaseUnit(lowerUnit: string): boolean {
+  return !lowerUnit.includes("phase 100")
+    && LATER_PHASE_MARKERS.some((marker) => lowerUnit.includes(marker));
 }
 
 function isPositiveClaim(lowerUnit: string): boolean {

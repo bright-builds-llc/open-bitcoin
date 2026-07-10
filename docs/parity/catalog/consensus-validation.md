@@ -65,6 +65,22 @@ Open Bitcoin. The behavioral baseline remains Bitcoin Knots
   witness merkle root and rejects unexpected witness data when segwit is not
   expected.
 
+## Phase 115 compact-block validation handoff
+
+Phase 115 does not create a second validation path for compact blocks.
+`v2-1-missing-transaction-fallback-validation-handoff` keeps partial BIP152
+state inside the network boundary until every transaction is present. Only a
+complete reconstructed block is handed to the existing validation and connect
+logic; partial compact state never mutates chainstate.
+
+The relevant Knots anchors are
+`packages/bitcoin-knots/src/blockencodings.h`,
+`packages/bitcoin-knots/src/blockencodings.cpp`,
+`packages/bitcoin-knots/src/net_processing.cpp`, and
+`packages/bitcoin-knots/src/validation.cpp`. Public compact-relay defaults,
+archive-node behavior, shortcut validation, and production readiness remain
+outside this evidence.
+
 ## Known gaps
 
 - None for the in-scope Phase 3 consensus surface. Later phases still own

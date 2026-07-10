@@ -18,6 +18,11 @@ UAT commands, and no-claim guardrails while keeping public relay defaults,
 compact block relay, package relay, bloom/filter serving, public-network relay
 CI, production service operation, production full-node readiness, and
 production-funds wallet use deferred.
+For v2.1, this handoff records bounded, explicit, default-off block serving and
+compact-block relay with deterministic local evidence and optional
+public-network operator review. It does not promote public serving or relay
+defaults, archive-node behavior, production-scale historical serving, or any
+production readiness claim.
 
 ## Readiness Verdict
 
@@ -97,15 +102,23 @@ relay serving/fanout, Phase 105 operator evidence, and Phase 106 parity/UAT
 guardrails. The canonical surface id is
 `v2-0-parity-uat-release-boundary`.
 
+The current v2.1 Block Serving and Compact Block Relay Boundary closes the
+bounded, explicit, default-off block-serving and compact-block-relay milestone
+through Phase 110 activation and eligibility, Phase 111 full-block request
+handling, Phase 112 BIP152 messages, Phase 113 negotiation and announcement,
+Phase 114 reconstruction, Phase 115 fallback and validation handoff, Phase 116
+aggregate operator evidence, and Phase 117 parity/UAT guardrails. Its canonical
+surface id is `v2-1-parity-uat-release-boundary`.
+
 This is not a production-node or production-funds claim. It does not claim
 public inbound serving by default, public relay defaults, full address relay
-beyond the Phase 92 boundary, block serving, compact block relay, package
-relay, bloom/filter serving, production-funds wallet safety, production-funds
-wallet use, migration apply mode, signed packaging, Windows service support,
-GUI parity, hosted dashboards, public-network default checks, public-network
-relay CI, release-blocking live sync, automatic support-bundle upload,
-destructive repair, production service operation, or broad production-node
-readiness.
+beyond the Phase 92 boundary, package relay, BIP37 bloom-filter serving,
+compact-filter serving, public block-serving or compact-relay defaults,
+archive-node or production-scale historical serving, production-funds wallet
+safety or use, migration apply mode, signed packaging, Windows service support,
+GUI parity, hosted dashboards, public-network default checks or release gates,
+automatic support-bundle upload, destructive repair, production service or
+deployment, or broad production-node readiness.
 
 Treat [`docs/parity/index.json`](index.json) as the machine-readable root,
 [`docs/parity/checklist.md`](checklist.md) as the human checklist view,
@@ -155,6 +168,10 @@ Phase 106 adds the v2.0 parity/UAT/release-boundary guardrail checker without
 making public-network relay review, service-manager operation, production
 deployment, wall-clock soak, or production-funds wallet use part of default
 verification.
+Phase 117 adds the v2.1 aggregate parity/UAT/release-boundary checker without
+making public-network block-relay review, service-manager operation,
+production deployment, wall-clock soak, or production-funds wallet use part of
+default verification.
 
 ## Complete Surfaces
 
@@ -201,6 +218,14 @@ surfaces as `done`:
 - `v2-0-relay-serving-fanout-rebroadcast-policy`
 - `v2-0-operator-rpc-metrics-logs-support-evidence`
 - `v2-0-parity-uat-release-boundary`
+- `v2-1-block-serving-activation-eligibility-boundary`
+- `v2-1-full-block-serving-request-path`
+- `v2-1-bip152-wire-codec-message-semantics`
+- `v2-1-compact-relay-negotiation-announcement-policy`
+- `v2-1-compact-block-reconstruction`
+- `v2-1-missing-transaction-fallback-validation-handoff`
+- `v2-1-operator-block-relay-evidence`
+- `v2-1-parity-uat-release-boundary`
 
 Primary current-cycle evidence:
 
@@ -282,6 +307,36 @@ Primary current-cycle evidence:
   preserves deferred production-adjacent surfaces for review.
 - [`scripts/verify.sh`](../../scripts/verify.sh) provides the repo-owned local
   verification contract for the release surface.
+
+## v2.1 Block Serving and Compact Block Relay Boundary
+
+Open Bitcoin v2.1 provides bounded, explicit, default-off block serving and
+compact-block relay. Deterministic local review follows the Phase 110 through
+117 surfaces in [`index.json`](index.json), [`checklist.md`](checklist.md), and
+[`catalog/p2p.md`](catalog/p2p.md), with consensus-validation handoff evidence
+in [`catalog/consensus-validation.md`](catalog/consensus-validation.md).
+
+Phase 116 exposes aggregate-only `block_relay` evidence across status, the
+`openbitcoinnetworkstatus` RPC extension, metrics, logs, dashboard rows, and
+redacted support bundles. Raw block and transaction payloads, hashes, peer ids,
+endpoints, permission strings, credentials, secrets, and dynamic labels are not
+part of this evidence contract.
+
+Release review uses the Phase 117
+[`checker`](../../scripts/check-phase117-parity-uat-release-boundary.ts),
+[`mutation suite`](../../scripts/check-phase117-parity-uat-release-boundary.test.ts),
+the repo-native [`scripts/verify.sh`](../../scripts/verify.sh), and the
+[`117-UAT.md`](../../.planning/phases/117-parity-traceability-uat-and-release-guardrails/117-UAT.md)
+package. Public-network block-serving or compact-relay review is optional UAT,
+may be recorded as not run, and is outside pre-commit, default CI,
+release-boundary verification, and `bash scripts/verify.sh`.
+
+Package relay, BIP37 bloom-filter serving, compact-filter serving, public
+serving or relay defaults, archive-node and production-scale historical
+serving, public-network CI or release gates, production service/deployment,
+production full-node readiness, production-funds wallet safety or use,
+packaging, GUI and hosted dashboards, migration apply mode, destructive repair,
+and automatic support upload remain deferred or unsupported.
 
 ## v1.8 Production Claim Boundary
 

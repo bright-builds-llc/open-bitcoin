@@ -710,7 +710,8 @@ readiness, production-funds wallet use, or schema/ORM work.
 
 ## Phase 116 Block-Relay Operator Evidence Review
 
-Phase 116 exposes bounded block-serving and compact-relay evidence across
+Phase 116 exposes bounded, explicit, default-off block-serving and
+compact-relay evidence across
 operator status, dashboard rows, RPC extension status, metrics, structured
 logs, and support bundles. Reviewers should treat this as local
 troubleshooting and parity-review evidence only. It does not prove public
@@ -769,6 +770,56 @@ bun test scripts/check-phase116-operator-block-relay-evidence.test.ts
 bun run scripts/check-phase116-operator-block-relay-evidence.ts
 bash scripts/verify.sh
 ```
+
+## Phase 117 v2.1 Release Boundary Review
+
+Open Bitcoin v2.1 provides bounded, explicit, default-off block serving and
+compact-block relay with deterministic local evidence and optional
+public-network operator review. Required local review consumes the shared
+aggregate-only `block_relay` status contract; it does not require a daemon to
+contact public peers.
+
+Inspect human and JSON status through both repo-local operator command forms:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- status --format human
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- status --format json
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- status --format human
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- status --format json
+```
+
+Inspect the Open Bitcoin-owned RPC extension:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin-cli -- -regtest openbitcoinnetworkstatus
+bazel run //packages/open-bitcoin-cli:open_bitcoin_cli -- -regtest openbitcoinnetworkstatus
+```
+
+Collect a redacted support bundle through either build surface:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- support bundle --output-dir=/tmp/open-bitcoin-block-relay-support
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- support bundle --output-dir=/tmp/open-bitcoin-block-relay-support
+```
+
+Run the release-boundary fixtures, repository checker, and full deterministic
+contract:
+
+```bash
+bun test scripts/check-phase117-parity-uat-release-boundary.test.ts
+bun run scripts/check-phase117-parity-uat-release-boundary.ts
+bash scripts/verify.sh
+```
+
+Public-network block-serving or compact-relay review is optional UAT and may be
+recorded as not run. It is never required by pre-commit, default CI,
+release-boundary verification, `bash scripts/verify.sh`, wall-clock soak,
+service-manager, or production-deployment workflows. Package relay, BIP37
+bloom-filter serving, compact-filter serving, public serving or relay defaults,
+archive-node and production-scale historical serving, production
+service/deployment, production full-node readiness, production-funds wallet
+use, packaging, GUI and hosted dashboards, migration apply mode, destructive
+repair, and automatic support upload remain deferred or unsupported.
 
 ## Phase 92 Address Advertisement and Discovery Boundary Review
 

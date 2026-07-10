@@ -18,18 +18,16 @@ consensus, validation, chainstate, mempool, networking, wallet, RPC, CLI, and
 configuration surfaces while keeping the first-party internals strongly typed,
 auditable, and modular.
 
-> Status: the in-scope headless v1 parity surfaces are implemented and ready
-> for review and operator testing. v2.0 now has bounded transaction relay and
-> mempool participation evidence through local status, RPC extension status,
-> metrics, logs, dashboard rows, redacted support bundles, repo-local UAT
-> commands, deterministic release-boundary guardrails, and Phase 108 durable
-> mempool relay-state recovery evidence. Recovered accepted transactions
-> rehydrate managed mempool, relay-serving, and fanout identity state without
-> startup socket I/O; operator surfaces expose only fixed `Relay recovery`
-> counters. It still does not claim public
-> relay defaults, compact block relay, package relay, bloom/filter serving,
-> public-network relay CI, production full-node readiness, production-service
-> operation, or production-funds wallet use.
+> Status: Open Bitcoin v2.1 provides bounded, explicit, default-off block
+> serving and compact-block relay with deterministic local evidence and optional
+> public-network operator review. The release evidence is summarized in
+> [`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md).
+> Package relay, BIP37 bloom-filter serving, compact-filter serving, public
+> serving or relay defaults, archive-node and production-scale historical
+> serving, public-network CI or release gates, production service/deployment,
+> production full-node readiness, production-funds wallet use, packaging, GUI
+> and hosted dashboards, migration apply mode, destructive repair, and
+> automatic support upload remain deferred or unsupported.
 
 ## Parity At A Glance
 
@@ -62,7 +60,7 @@ guardrails.
 | Consensus and validation | Script execution, transaction checks, block checks, PoW, merkle behavior | ✓ done | [`catalog/consensus-validation.md`](./docs/parity/catalog/consensus-validation.md) | Consensus parity includes legacy, segwit-v0, taproot, and parity-closure fixes. |
 | Chainstate and UTXO engine | Connect, disconnect, reorg, UTXO, undo, and best-chain behavior | ✓ done | [`catalog/chainstate.md`](./docs/parity/catalog/chainstate.md) | Disk-backed databases and full manager behavior remain follow-up depth. |
 | Mempool policy | Admission, replacement, fee accounting, ancestor/descendant, eviction | ✓ done | [`catalog/mempool-policy.md`](./docs/parity/catalog/mempool-policy.md) | Long-lived pressure and package-relay depth remain future work. |
-| P2P networking and sync | Handshake, peer lifecycle, headers, blocks, inventory, tx relay | ✓ done | [`catalog/p2p.md`](./docs/parity/catalog/p2p.md) | v2.0 has bounded local relay/mempool evidence for activation, download eligibility, inventory, download, orphan admission, lifecycle, serving/fanout, metrics/logs, and redacted support; compact block relay, package relay, bloom/filter serving, public relay defaults, public-network relay CI, and production full-node readiness remain deferred. |
+| P2P networking and sync | Handshake, peer lifecycle, headers, blocks, inventory, tx relay | ✓ done | [`catalog/p2p.md`](./docs/parity/catalog/p2p.md) | v2.1 adds bounded, explicit, default-off block serving and compact-block relay with aggregate local evidence; package relay, bloom/filter serving, public defaults, archive/production-scale serving, public-network gates, and production readiness remain deferred. |
 | Wallet | Descriptors, addresses, balances, UTXOs, coin selection, signing | ✓ done | [`catalog/wallet.md`](./docs/parity/catalog/wallet.md) | HD, multisig, PSBT, encryption, and external signers remain follow-up surfaces. |
 | RPC, CLI, and config | Local JSON-RPC, `bitcoin-cli`-style flags, config, auth, operator flows | ✓ done | [`catalog/rpc-cli-config.md`](./docs/parity/catalog/rpc-cli-config.md) | The supported slice is single-wallet and local-operator focused. |
 | Verification harnesses and property tests | Functional-suite concepts and fuzz/property targets | ✓ done | [`catalog/verification-harnesses.md`](./docs/parity/catalog/verification-harnesses.md) | Managed Knots process spawning and full upstream Python-suite coverage are deferred. |
@@ -334,5 +332,5 @@ For contributor workflow details beyond those two entrypoints, see [CONTRIBUTING
 - [`docs/parity/README.md`](./docs/parity/README.md) explains the parity ledger and its source-of-truth role.
 - [`docs/parity/index.json`](./docs/parity/index.json) is the machine-readable status index for in-scope surfaces, intentional deviations, catalog entries, checklist state, and audit roots.
 - [`docs/parity/checklist.md`](./docs/parity/checklist.md) is the human-readable parity checklist.
-- [`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md) is the current headless v1 review handoff.
+- [`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md) is the current v2.1 review handoff and historical release-evidence index.
 - [`docs/parity/support-matrix.md`](./docs/parity/support-matrix.md) is the canonical support classification and issue-evidence checklist.

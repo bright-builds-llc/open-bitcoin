@@ -644,6 +644,8 @@
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/net_processing.h",
+        "packages/bitcoin-knots/src/net.h",
         "packages/bitcoin-knots/src/protocol.h",
         "packages/bitcoin-knots/test/functional/p2p_compactblocks.py"
       ]
@@ -657,8 +659,10 @@
         "packages/open-bitcoin-network/src/peer/message_dispatch.rs"
       ],
       "breadcrumbs": [
+        "packages/bitcoin-knots/src/blockencodings.h",
         "packages/bitcoin-knots/src/blockencodings.cpp",
         "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/net_processing.h",
         "packages/bitcoin-knots/test/functional/p2p_compactblocks.py"
       ]
     },
@@ -861,12 +865,24 @@
       ]
     },
     {
+      "label": "node-network-block-relay-evidence-adapter",
+      "files": [
+        "packages/open-bitcoin-node/src/network/block_relay_evidence.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/blockencodings.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/net_processing.h",
+        "packages/bitcoin-knots/src/net.h",
+        "packages/bitcoin-knots/test/functional/p2p_compactblocks.py"
+      ]
+    },
+    {
       "label": "node-network-adapter",
       "files": [
         "packages/open-bitcoin-node/src/network.rs",
         "packages/open-bitcoin-node/src/network/action_translation.rs",
         "packages/open-bitcoin-node/src/network/admission_bridge.rs",
-        "packages/open-bitcoin-node/src/network/block_relay_evidence.rs",
         "packages/open-bitcoin-node/src/network/inbound.rs",
         "packages/open-bitcoin-node/src/network/inventory.rs",
         "packages/open-bitcoin-node/src/network/types.rs",

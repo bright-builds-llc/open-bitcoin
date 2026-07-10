@@ -155,6 +155,44 @@ test("fails_when_docs_claim_default_public_relay_or_deferred_protocol_support", 
   }
 });
 
+test("allows_compact_block_claim_owned_by_a_later_phase", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutateFiles(files) {
+      appendToFile(
+        files,
+        "docs/parity/catalog/p2p.md",
+        "Phase 112 provides compact block relay support through its separately owned surface.",
+      );
+    },
+  });
+
+  // Act
+  const failures = checkPhase100RelayActivationBoundary(root);
+
+  // Assert
+  expect(failures).toEqual([]);
+});
+
+test("rejects_unowned_production_claim_even_when_a_later_phase_is_named", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutateFiles(files) {
+      appendToFile(
+        files,
+        "docs/parity/catalog/p2p.md",
+        "Phase 117 provides production full-node readiness.",
+      );
+    },
+  });
+
+  // Act
+  const failures = checkPhase100RelayActivationBoundary(root).join("\n");
+
+  // Assert
+  expect(failures).toContain("forbidden Phase 100 positive claim");
+});
+
 test("fails_when_default_verifier_wiring_is_missing_or_public_network_scoped", () => {
   // Arrange
   const roots = [

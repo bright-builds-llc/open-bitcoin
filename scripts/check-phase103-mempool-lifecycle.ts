@@ -139,6 +139,8 @@ const NO_CLAIM_MARKERS = [
   "not claim",
   "not supported",
   "only",
+  "require separate evidence",
+  "requires separate evidence",
 ] as const;
 const POSITIVE_CLAIM_PATTERNS = [
   /\bsupports?\b/,
@@ -154,6 +156,16 @@ const POSITIVE_CLAIM_PATTERNS = [
   /\bis complete\b/,
   /\bis ready\b/,
 ] as const;
+const LATER_PHASE_MARKERS = Array.from({ length: 14 }, (_, index) => `phase ${104 + index}`);
+const LATER_PHASE_OWNED_CLAIMS = new Set([
+  "relay serving",
+  "relay fanout",
+  "rebroadcast",
+  "rpc/operator/support evidence",
+  "support-bundle redaction",
+  "release-boundary closeout",
+  "compact block relay",
+]);
 
 type TargetFile = (typeof TARGET_FILES)[number];
 type TextCorpus = Map<TargetFile, string>;
@@ -331,6 +343,9 @@ function checkForbiddenClaims(texts: TextCorpus, failures: string[]): void {
         if (!lowerLine.includes(forbidden)) {
           continue;
         }
+        if (isExplicitLaterPhaseLine(lowerLine) && LATER_PHASE_OWNED_CLAIMS.has(forbidden)) {
+          continue;
+        }
         if (hasNoClaimMarker(lowerLine) || !hasPositiveClaim(lowerLine)) {
           continue;
         }
@@ -338,6 +353,11 @@ function checkForbiddenClaims(texts: TextCorpus, failures: string[]): void {
       }
     }
   }
+}
+
+function isExplicitLaterPhaseLine(lowerLine: string): boolean {
+  return !lowerLine.includes("phase 103")
+    && LATER_PHASE_MARKERS.some((marker) => lowerLine.includes(marker));
 }
 
 function readText(repoRoot: string, filePath: TargetFile, failures: string[]): string {

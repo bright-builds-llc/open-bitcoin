@@ -14,6 +14,16 @@ defaults, transaction relay, compact block relay, mempool propagation, full
 address relay, production-service operation, or production network
 participation.
 
+v2.1 provides bounded, explicit, default-off block serving and compact-block
+relay with deterministic local evidence and optional public-network operator
+review. This scoped capability does not authorize public serving or relay
+defaults, archive-node or production-scale historical serving, production
+service/deployment, production full-node readiness, or production-funds wallet
+use.
+Package relay, BIP37 bloom-filter serving, compact-filter serving, packaging,
+GUI and hosted dashboards, migration apply mode, destructive repair, and
+automatic support upload also remain deferred or unsupported.
+
 For release review, use the v1.8 release-readiness checklist in
 [`release-readiness.md`](release-readiness.md#v18-release-readiness-checklist).
 It maps this boundary and the other current v1.8 requirements to canonical
@@ -24,6 +34,10 @@ For the v1.9 network participation boundary closeout, use
 [`catalog/p2p.md`](catalog/p2p.md), the parity
 [`checklist.md`](checklist.md), and the operator
 [`runtime-guide.md`](../operator/runtime-guide.md).
+For the v2.1 release boundary, use
+[`release-readiness.md`](release-readiness.md#v21-block-serving-and-compact-block-relay-boundary),
+the parity [`checklist.md`](checklist.md), and the operator
+[`runtime-guide.md`](../operator/runtime-guide.md#phase-117-v21-release-boundary-review).
 The v1.8 deterministic claim guardrails prevent overbroad
 production-readiness and deferred-surface claims in the public release/operator
 docs; they do not claim production full-node readiness.
@@ -47,7 +61,8 @@ docs; they do not claim production full-node readiness.
 | Open Bitcoin supports production service operation. | `deferred` | not allowed yet | Runtime guide limitations, `docs/parity/service-operation-expectations.md`, and operator-runtime catalog | No default verifier may prove this in v1.8 | none | Service operation lacks production policy, packaging, and platform evidence | Future service-operation milestone with uptime, install, supervision, rollback, and platform gates |
 | Open Bitcoin supports relay/inbound serving. | `deferred` | not allowed yet | P2P catalog, release-readiness closeout, support matrix, runtime guide, and deferred-surface register | No default verifier may prove this in v1.8 or broad public relay or production inbound serving in v1.9 | bounded opt-in inbound review only | Public inbound defaults, production network participation, transaction relay, compact block relay, mempool propagation, full address relay, and production full-node readiness remain unsatisfied. | Scoped P2P production milestone for public inbound defaults, inbound serving, address relay, block serving, transaction relay, compact block relay, and relay policy |
 | Open Bitcoin has bounded opt-in inbound listener/admission, permission, address-boundary, eviction/ban, and resource-governance evidence for v1.9 loopback or synthetic review. | `opt-in UAT` | allowed as bounded evidence only | `docs/operator/runtime-guide.md`, `docs/parity/catalog/p2p.md`, `docs/parity/release-readiness.md`, `docs/parity/checklist.md`, and `docs/parity/index.json` | `bash scripts/verify.sh` remains the non-regression contract; Plan 04 owns the aggregate Phase 95 checker | loopback or synthetic review only | The evidence does not prove public inbound defaults, production-service operation, production network participation, relay, or production full-node readiness. | Future scoped milestones for public defaults, service operation, relay, packaging, and production readiness |
-| Open Bitcoin has transaction relay, compact block relay, mempool propagation, full address relay, public inbound defaults, production-service operation, or production full-node readiness. | `deferred` | not allowed yet | P2P catalog, release-readiness closeout, support matrix, and deferred-surface register | No default verifier may prove these in v1.9 | none | Relay, full address relay, public exposure by default, service operation, and production-readiness gates are unsatisfied. | Future scoped P2P, service, support, packaging, public-network, and production-readiness milestones |
+| Open Bitcoin provides bounded, explicit, default-off block serving and compact-block relay for v2.1 local review. | `preview` | allowed within the named boundary | Phase 110 through 117 parity surfaces, `docs/parity/release-readiness.md`, and `docs/operator/runtime-guide.md` | `bash scripts/verify.sh` plus the Phase 117 checker pair | optional public-network operator review | Public/default, archive-scale, service, deployment, and production-readiness gates remain unsatisfied. | Separate scoped gates for public defaults, archive behavior, service operation, packaging, support, and production readiness |
+| Open Bitcoin has public serving or relay defaults, archive-node or production-scale historical serving, production-service operation, or production full-node readiness. | `deferred` | not allowed yet | P2P catalog, release-readiness closeout, support matrix, and deferred-surface register | No default verifier may prove these in v2.1 | none | Public exposure, archive scale, service operation, and production-readiness gates are unsatisfied. | Future scoped P2P, service, support, packaging, public-network, and production-readiness milestones |
 | Open Bitcoin supports production wallet use. | `deferred` | not allowed yet | Wallet catalog and runtime guide limitations | No default verifier may prove this in v1.8 | none | Production-funds safety, backups, recovery, and threat model are incomplete | Wallet-production threat model, audit, UAT, and operator rollback gates |
 | Open Bitcoin supports migration apply mode. | `deferred` | not allowed yet | Drop-in audit catalog and deviations register | No default verifier may prove this in v1.8 | none | Current migration is dry-run only | Migration apply safety design, backup, rollback, source-service, and source-datadir mutation gates |
 | Open Bitcoin supports signed distribution. | `deferred` | not allowed yet | Runtime guide and operator-runtime catalog | No default verifier may prove this in v1.8 | none | Release signing, provenance, and package-manager policy are not complete | Release-engineering signing, provenance, reproducibility, and package-manager gates |
@@ -87,9 +102,9 @@ production-service gates.
 | inbound serving | `deferred` | Broad inbound serving remains deferred; v1.9 documents bounded opt-in inbound review evidence only, not public exposure or production network participation. | Scoped P2P production milestone with inbound policy, resource, abuse, support, relay, and UAT evidence. |
 | public inbound defaults and production network participation | `deferred` | v1.9 documents bounded opt-in inbound review evidence only; public exposure by default and production network participation are not scoped. | Scoped production-network milestone with public-default, resource, abuse, support, and UAT evidence. |
 | full address relay | `deferred` | Address-manager and relay governance beyond Phase 92 bounded direct response evidence are not production-scoped. | P2P address-relay milestone with privacy, poisoning, eviction, and parity evidence. |
-| block serving | `deferred` | Current block evidence is validation/download-oriented, not serving policy. | Block-serving gate with serving correctness, resource bounds, peer policy, and production UAT. |
+| public/default, archive-node, or production-scale block serving beyond the bounded v2.1 path | `deferred` | v2.1 provides a bounded default-off path only; public defaults and historical-serving scale are not scoped. | Block-serving gate with public-default policy, archive correctness, resource bounds, support policy, and production UAT. |
 | transaction relay | `deferred` | Mempool relay behavior is not production-scoped. | Transaction-relay milestone with relay policy, DoS controls, and parity fixtures. |
-| compact block relay | `deferred` | Compact-block protocol depth remains follow-up work. | Compact-block relay milestone with protocol fixtures, peer behavior, and recovery evidence. |
+| public/default or production compact-block relay beyond the bounded v2.1 path | `deferred` | v2.1 provides bounded default-off protocol, reconstruction, fallback, validation-handoff, and aggregate-evidence depth only. | Compact-block relay gate with public-default policy, long-run peer behavior, production support, and network evidence. |
 | production-funds wallet use | `deferred` | Current wallet workflows are not approved for production funds. | Wallet-production threat model, backup/restore proof, audit, and operator UAT. |
 | production-funds wallet safety | `deferred` | Key, signing, recovery, and support boundaries need a production wallet review. | Wallet-production safety audit with threat model, failure drills, and regression coverage. |
 | migration apply mode | `deferred` | Migration remains dry-run and does not mutate source services or datadirs. | Migration apply safety design with backup, rollback, consent, and source mutation evidence. |

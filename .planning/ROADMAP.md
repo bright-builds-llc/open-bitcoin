@@ -31,7 +31,7 @@ v2.1 Block Serving and Compact Block Relay Boundary is the active milestone afte
 - ✅ **v1.8 Production Full-Node Readiness Boundary** - Phases 82 through 89 (shipped 2026-06-25). Archive: [v1.8-ROADMAP.md](milestones/v1.8-ROADMAP.md)
 - ✅ **v1.9 Inbound Peer Serving and Network Participation Boundary** - Phases 90 through 99 (shipped 2026-06-29). Archive: [v1.9-ROADMAP.md](milestones/v1.9-ROADMAP.md)
 - ✅ **v2.0 Transaction Relay and Mempool Participation Boundary** - Phases 100 through 109 (shipped 2026-07-03). Archive: [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md)
-- 🚧 **v2.1 Block Serving and Compact Block Relay Boundary** - Phases 110 through 117 (ready to start).
+- 🚧 **v2.1 Block Serving and Compact Block Relay Boundary** - Phases 110 through 117 (phase work complete; ready for milestone audit and archive).
 
 ## Active Milestone: v2.1 Block Serving and Compact Block Relay Boundary
 
@@ -44,9 +44,9 @@ v2.1 Block Serving and Compact Block Relay Boundary is the active milestone afte
 - [x] **Phase 112: BIP152 Wire Codec and Message Semantics** - Add first-party `sendcmpct`, `cmpctblock`, `getblocktxn`, and `blocktxn` payload support with Knots-aligned malformed-input behavior. (completed 2026-07-04)
 - [x] **Phase 113: Compact Relay Negotiation and Announcement Policy** - Track per-peer compact-block negotiation and decide when compact block announcements are allowed. (completed 2026-07-05)
 - [x] **Phase 114: Compact Block Reconstruction from Mempool State** - Reconstruct compact blocks from mempool and bounded extra transaction inputs with collision and missing-transaction evidence. (completed 2026-07-05)
-- [x] **Phase 115: Missing Transaction Round Trip, Fallback, and Validation Handoff** - Complete `getblocktxn`/`blocktxn`, fallback, volatile-state cleanup, and validation/connect integration.
-- [ ] **Phase 116: Operator Evidence, Metrics, Logs, and Support Boundary** - Project block-serving and compact-relay truth through shared RPC, CLI, dashboard, metrics, logs, and support surfaces.
-- [ ] **Phase 117: Parity Traceability, UAT, and Release Guardrails** - Close parity, UAT, docs, and deterministic no-claim guardrails for the bounded v2.1 release boundary.
+- [x] **Phase 115: Missing Transaction Round Trip, Fallback, and Validation Handoff** - Complete `getblocktxn`/`blocktxn`, fallback, volatile-state cleanup, and validation/connect integration. (completed 2026-07-06)
+- [x] **Phase 116: Operator Evidence, Metrics, Logs, and Support Boundary** - Project block-serving and compact-relay truth through shared RPC, CLI, dashboard, metrics, logs, and support surfaces. (completed 2026-07-10)
+- [x] **Phase 117: Parity Traceability, UAT, and Release Guardrails** - Close parity, UAT, docs, and deterministic no-claim guardrails for the bounded v2.1 release boundary. (completed 2026-07-10)
 
 ### Phase Details
 
@@ -83,13 +83,14 @@ Plans:
 3. Full block serving participates in existing queue, request, and in-flight limits.
 4. Historical and pruned block behavior stays bounded by documented eligibility rules and does not imply archive-node availability.
 
-**Plans:** 3/3 plans complete
+**Plans:** 4/4 plans complete
 
 Plans:
 
 - [x] 111-01-PLAN.md — Full block and witness block `getdata` handling
 - [x] 111-02-PLAN.md — Node-shell block read, serve, suppress, and unavailable outcomes
 - [x] 111-03-PLAN.md — Historical, pruned, and request-pressure test matrix
+- [x] 111-04-PLAN.md — Gap closure for checker evidence roots and no-claim guardrails
 
 #### Phase 112: BIP152 Wire Codec and Message Semantics
 
@@ -186,14 +187,14 @@ Plans:
 4. Support bundles redact raw peer, permission, credential, transaction payload, and dynamic-label material.
 5. Operator UAT docs include repo-local Cargo and Bazel command forms.
 
-**Plans:** 4 plans
+**Plans:** 4/4 plans complete
 
 Plans:
 
-- [ ] 116-01-PLAN.md — Shared block-relay status contract and RPC projection (OBS-01)
-- [ ] 116-02-PLAN.md — CLI and dashboard block-relay rendering (OBS-02)
-- [ ] 116-03-PLAN.md — Metrics and structured log labels (OBS-03)
-- [ ] 116-04-PLAN.md — Support redaction, checker, docs, and closeout (OBS-04, OBS-05)
+- [x] 116-01-PLAN.md — Shared block-relay status contract and RPC projection (OBS-01)
+- [x] 116-02-PLAN.md — CLI and dashboard block-relay rendering (OBS-02)
+- [x] 116-03-PLAN.md — Metrics and structured log labels (OBS-03)
+- [x] 116-04-PLAN.md — Support redaction, checker, docs, and closeout (OBS-04, OBS-05)
 
 #### Phase 117: Parity Traceability, UAT, and Release Guardrails
 
@@ -208,14 +209,14 @@ Plans:
 4. `bash scripts/verify.sh` remains deterministic and free of public-network, wall-clock soak, service-manager, and production-deployment gates.
 5. Public-network block-serving or compact-relay review remains opt-in UAT evidence and is not required for pre-commit, default CI, or release-boundary verification.
 
-**Plans:** 4 plans
+**Plans:** 4/4 plans complete
 
 Plans:
 
-- [ ] 117-01: Parity roots, breadcrumbs, and Knots anchor index
-- [ ] 117-02: Deterministic no-claim and verifier-boundary checkers
-- [ ] 117-03: README, operator docs, runtime docs, and release notes
-- [ ] 117-04: UAT package and milestone release-boundary closure
+- [x] 117-01: Parity roots, breadcrumbs, and Knots anchor index
+- [x] 117-02: Deterministic no-claim and verifier-boundary checkers
+- [x] 117-03: README, operator docs, runtime docs, and release notes
+- [x] 117-04: UAT package and milestone release-boundary closure
 
 ## Progress
 
@@ -224,13 +225,13 @@ Plans:
 | Phase | Milestone | Plans Complete | Status | Completed |
 | --- | --- | ---: | --- | --- |
 | 110. Block Serving Activation and Eligibility Boundary | v2.1 | 4/4 | Complete    | 2026-07-04 |
-| 111. Full Block Serving Request Path | v2.1 | 3/3 | Complete    | 2026-07-04 |
+| 111. Full Block Serving Request Path | v2.1 | 4/4 | Complete    | 2026-07-04 |
 | 112. BIP152 Wire Codec and Message Semantics | v2.1 | 3/3 | Complete    | 2026-07-04 |
 | 113. Compact Relay Negotiation and Announcement Policy | v2.1 | 3/3 | Complete    | 2026-07-05 |
-| 114. Compact Block Reconstruction from Mempool State | v2.1 | 0/3 | Not started | - |
-| 115. Missing Transaction Round Trip, Fallback, and Validation Handoff | v2.1 | 0/4 | Not started | - |
-| 116. Operator Evidence, Metrics, Logs, and Support Boundary | v2.1 | 0/4 | Not started | - |
-| 117. Parity Traceability, UAT, and Release Guardrails | v2.1 | 0/4 | Not started | - |
+| 114. Compact Block Reconstruction from Mempool State | v2.1 | 3/3 | Complete    | 2026-07-05 |
+| 115. Missing Transaction Round Trip, Fallback, and Validation Handoff | v2.1 | 4/4 | Complete    | 2026-07-06 |
+| 116. Operator Evidence, Metrics, Logs, and Support Boundary | v2.1 | 4/4 | Complete   | 2026-07-10 |
+| 117. Parity Traceability, UAT, and Release Guardrails | v2.1 | 4/4 | Complete    | 2026-07-10 |
 
 ## Traceability
 
@@ -247,4 +248,4 @@ Plans:
 
 ## Next Step
 
-Begin Phase 111 with `/gsd-discuss-phase 111` or `/gsd-yolo-discuss-plan-execute-commit-and-push 111`.
+Audit v2.1 with `/gsd-audit-milestone`; archive only through the separate milestone-completion workflow after the audit passes.

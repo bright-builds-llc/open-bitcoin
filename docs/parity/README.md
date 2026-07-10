@@ -15,6 +15,17 @@ The ledger exists so contributors and reviewers can answer three questions quick
 2. What is the current status of that surface in Open Bitcoin?
 3. Is any difference from Knots intentional, documented, and reviewable?
 
+The current v2.1 claim is intentionally narrow: Open Bitcoin provides bounded,
+explicit, default-off block serving and compact-block relay with deterministic
+local evidence and optional public-network operator review. The canonical
+handoff is [`release-readiness.md`](release-readiness.md). Package relay, BIP37
+bloom-filter serving, compact-filter serving, public serving or relay defaults,
+archive-node and production-scale historical serving, public-network CI or
+release gates, production service/deployment, production full-node readiness,
+production-funds wallet use, packaging, GUI and hosted dashboards, migration
+apply mode, destructive repair, and automatic support upload remain deferred
+or unsupported.
+
 The current shipped headless v1 surfaces remain marked `done` in
 [`index.json`](index.json) and summarized in [`checklist.md`](checklist.md).
 The v1.1 drop-in audit and migration slice is tracked through the same ledger,
@@ -175,7 +186,7 @@ Deferred and suspected follow-up work remains visible in
 - `upgrade-and-rollback-policy.md` is the canonical v1.8 source-built upgrade, rollback, backup, and state/schema compatibility root.
 - `operator-runbooks.md` is the canonical v1.8 operator runbook for preflight, monitoring, no-progress diagnosis, recovery, support-bundle timelines, and escalation evidence.
 - `service-operation-expectations.md` is the canonical v1.8 service operation expectation root.
-- `release-readiness.md` is the current v1.8 release-readiness checklist and handoff plus historical milestone inspection checklist.
+- `release-readiness.md` is the current v2.1 release-review handoff plus the v1.8 checklist and other historical milestone inspection evidence.
 - `threat-model-v1.6.md` is the historical v1.6 scoped threat model and release-boundary companion for REL-01, REL-02, and REL-03.
 - `threat-model-v1.5.md` is the historical v1.5 scoped threat model and release-boundary companion for REL-01, REL-02, REL-03, and REL-04.
 - `threat-model-v1.4.md` is the historical v1.4 scoped threat model and release-boundary companion for OBS-01, OBS-02, OBS-03, SEC-01, SEC-02, and SEC-03.

@@ -1159,7 +1159,7 @@ mutation, compaction, reindexing, store surgery, or automatic support upload.
 
 ## Phase 110 block-serving activation and eligibility boundary
 
-Phase 110 adds the `v2-1-block-serving-activation-eligibility-boundary`
+Phase 110 adds the bounded, default-off `v2-1-block-serving-activation-eligibility-boundary`
 surface for BSRV-01, BSRV-02, BSRV-03, BSRV-05, and BSRV-06. It is a
 default-off activation, eligibility, status, resource-governance, and in-flight
 cleanup boundary before any full block serving adapter or compact-relay runtime
@@ -1217,7 +1217,7 @@ outside `bash scripts/verify.sh`.
 
 ## Phase 111 full block-serving request path
 
-Phase 111 adds the `v2-1-full-block-serving-request-path` surface for
+Phase 111 adds the bounded, opt-in `v2-1-full-block-serving-request-path` surface for
 `BSRV-04`, `GOV-01`, and `GOV-05`. It connects Phase 110 block-serving policy
 to the managed `getdata` path for `InventoryType::Block`,
 `InventoryType::WitnessBlock`, and `InventoryType::CompactBlock`.
@@ -1258,6 +1258,88 @@ relay, bloom/filter serving, compact filter serving, public block serving by
 default, public-network CI, production service operation, production full-node
 readiness, production-funds wallet use, or schema/ORM work.
 
+## Phase 112 BIP152 wire codec and message semantics
+
+The `v2-1-bip152-wire-codec-message-semantics` surface covers `CMP-01`,
+`CMP-02`, `CMP-03`, and `RCN-01`. First-party codecs implement `sendcmpct`,
+`cmpctblock`, `getblocktxn`, and `blocktxn` with version-2 negotiation data,
+exact six-byte short IDs, checked differential indexes, witness transaction
+serialization, and structural rejection before peer or reconstruction state.
+
+Knots anchors are `packages/bitcoin-knots/src/protocol.h`,
+`packages/bitcoin-knots/src/blockencodings.h`,
+`packages/bitcoin-knots/src/blockencodings.cpp`,
+`packages/bitcoin-knots/src/net_processing.cpp`, and
+`packages/bitcoin-knots/test/functional/p2p_compactblocks.py`.
+
+## Phase 113 compact relay negotiation and announcement policy
+
+The `v2-1-compact-relay-negotiation-announcement-policy` surface covers
+`CMP-04`, `CMP-05`, and `CMP-06`. Only supported version-2 `sendcmpct` state
+can establish compact-relay capability; direct announcements additionally
+require explicit activation, high-bandwidth preference, header continuity,
+block availability, and resource eligibility. Transaction relay, permission,
+inbound-protection, and block-serving state cannot authorize announcements by
+implication.
+
+Knots anchors are `packages/bitcoin-knots/src/net_processing.cpp`,
+`packages/bitcoin-knots/src/net_processing.h`,
+`packages/bitcoin-knots/src/net.h`, and
+`packages/bitcoin-knots/test/functional/p2p_compactblocks.py`.
+
+## Phase 114 compact block reconstruction
+
+The `v2-1-compact-block-reconstruction` surface covers `RCN-02`, `RCN-03`,
+and `GOV-04`. Reconstruction uses witness-hash short IDs over bounded current
+mempool and extra transaction candidates. Collision, duplicate, missing, and
+failure outcomes remain typed, deterministic, and separate from chainstate.
+
+Knots anchors are `packages/bitcoin-knots/src/blockencodings.h`,
+`packages/bitcoin-knots/src/blockencodings.cpp`,
+`packages/bitcoin-knots/src/net_processing.cpp`,
+`packages/bitcoin-knots/src/test/blockencodings_tests.cpp`, and
+`packages/bitcoin-knots/test/functional/p2p_compactblocks_extratxs.py`.
+
+## Phase 115 missing transactions, fallback, and validation handoff
+
+The `v2-1-missing-transaction-fallback-validation-handoff` surface covers
+`RCN-04` through `RCN-07`, `GOV-02`, and `GOV-03`. Open Bitcoin issues bounded
+`getblocktxn` indexes only for eligible in-flight state, accepts `blocktxn`
+only from the matching expected peer, and uses typed full-block fallback or
+suppression on failure, timeout, old/far blocks, or ineligible peer/resource
+state. Disconnect, timeout, restart, reorg, and block-connect cleanup remove
+volatile compact state without deleting validated chainstate or durable block
+data. Complete reconstructed blocks use the existing validation/connect path.
+
+Knots anchors are `packages/bitcoin-knots/src/blockencodings.h`,
+`packages/bitcoin-knots/src/blockencodings.cpp`,
+`packages/bitcoin-knots/src/net_processing.cpp`,
+`packages/bitcoin-knots/src/validation.cpp`, and
+`packages/bitcoin-knots/test/functional/p2p_compactblocks.py`.
+
+## Phase 116 aggregate block-relay operator evidence
+
+The `v2-1-operator-block-relay-evidence` surface covers `OBS-01` through
+`OBS-05`. One shared aggregate-only `block_relay` contract feeds the Open
+Bitcoin RPC extension, CLI, dashboard, fixed metrics, structured logs, and
+redacted support bundles. These surfaces intentionally omit raw peers, block
+hashes, transactions, permission strings, credentials, and dynamic labels.
+
+## Phase 117 parity, UAT, and release guardrails
+
+The `v2-1-parity-uat-release-boundary` surface covers `BOUND-01` through
+`BOUND-05`. It joins the Phase 110 through 116 evidence roots with concrete
+Knots anchors, exactly-once requirement ownership, a deterministic no-claim
+checker, repo-local Cargo/Bazel review commands, and an optional public-network
+UAT boundary.
+
+The supported v2.1 claim is bounded, explicit, and default-off block serving
+and compact-block relay with deterministic local evidence. Package relay,
+BIP37 bloom serving, compact-filter serving, public serving defaults,
+archive-node behavior, public-network CI, production service operation,
+production full-node readiness, and production-funds wallet use remain
+deferred.
+
 ## Known gaps
 
 These networking gaps remain deferred or out of scope unless a later phase adds
@@ -1265,7 +1347,7 @@ fresh implementation, parity roots, and verification evidence.
 
 - address relay, `addrv2`, peer discovery policy, and DNS-seed governance
 - encrypted transport and other non-v1 wire transports
-- compact blocks, blocktxn, filtered blocks, bloom filters, and compact filters
+- filtered blocks, bloom filters, and compact filters
 - resource-governance parity beyond the Phase 94 bounded evidence surface
 - production daemon-integrated full-sync guarantees
 - automatic public-mainnet recovery loops and broad production-node service
@@ -1273,9 +1355,10 @@ fresh implementation, parity roots, and verification evidence.
 - public inbound defaults and transport persistence beyond the current explicit
   listener review surface
 - remain deferred: periodic rebroadcast scheduling beyond
-  `rebroadcast_deferred`, compact block relay, package relay, bloom/filter
-  serving, public relay defaults, public-network relay CI, production service
-  operation, production full-node readiness, and production-funds wallet use
+  `rebroadcast_deferred`, package relay, bloom/filter serving, compact-filter
+  serving, public relay defaults, archive-node behavior, public-network relay
+  CI, production service operation, production full-node readiness, and
+  production-funds wallet use
 
 ## Follow-up triggers
 

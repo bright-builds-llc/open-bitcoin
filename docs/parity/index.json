@@ -680,6 +680,30 @@
     {
       "name": "v2-1-full-block-serving-request-path",
       "status": "done"
+    },
+    {
+      "name": "v2-1-bip152-wire-codec-message-semantics",
+      "status": "done"
+    },
+    {
+      "name": "v2-1-compact-relay-negotiation-announcement-policy",
+      "status": "done"
+    },
+    {
+      "name": "v2-1-compact-block-reconstruction",
+      "status": "done"
+    },
+    {
+      "name": "v2-1-missing-transaction-fallback-validation-handoff",
+      "status": "done"
+    },
+    {
+      "name": "v2-1-operator-block-relay-evidence",
+      "status": "done"
+    },
+    {
+      "name": "v2-1-parity-uat-release-boundary",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -2572,6 +2596,244 @@
         ],
         "suspected_unknowns": [
           "Future v2.1 phases own BIP152 compact block payload serving, compact reconstruction, missing transaction round trips, public-network UAT scope, and release-boundary closeout before any broader block-serving or compact-relay claim can be made."
+        ]
+      },
+      {
+        "id": "v2-1-bip152-wire-codec-message-semantics",
+        "title": "v2.1 BIP152 Wire Codec and Message Semantics",
+        "status": "done",
+        "requirements": [
+          "CMP-01",
+          "CMP-02",
+          "CMP-03",
+          "RCN-01"
+        ],
+        "evidence": [
+          "docs/parity/catalog/p2p.md",
+          "docs/parity/source-breadcrumbs.json",
+          "packages/open-bitcoin-codec/src/compact_block.rs",
+          "packages/open-bitcoin-codec/src/compact_block/tests.rs",
+          "packages/open-bitcoin-network/src/message.rs",
+          "packages/open-bitcoin-network/src/message/tests.rs",
+          ".planning/phases/112-bip152-wire-codec-and-message-semantics/112-03-SUMMARY.md"
+        ],
+        "rationale": "Phase 112 implements first-party sendcmpct, cmpctblock, getblocktxn, and blocktxn wire payloads with exact six-byte short IDs, checked differential indexes, witness transaction serialization, and malformed-input rejection before peer policy or reconstruction state.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/protocol.h",
+            "packages/bitcoin-knots/src/blockencodings.h",
+            "packages/bitcoin-knots/src/blockencodings.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/test/functional/p2p_compactblocks.py",
+            "packages/bitcoin-knots/test/functional/test_framework/messages.py"
+          ]
+        },
+        "known_gaps": [
+          "Phase 112 owns BIP152 wire and structural semantics only; peer negotiation, announcement policy, reconstruction, fallback, public defaults, package relay, and filter serving are separate surfaces."
+        ],
+        "suspected_unknowns": [
+          "Broader BIP152 compatibility requires the bounded runtime and release evidence recorded by Phases 113 through 117."
+        ]
+      },
+      {
+        "id": "v2-1-compact-relay-negotiation-announcement-policy",
+        "title": "v2.1 Compact Relay Negotiation and Announcement Policy",
+        "status": "done",
+        "requirements": [
+          "CMP-04",
+          "CMP-05",
+          "CMP-06"
+        ],
+        "evidence": [
+          "docs/parity/catalog/p2p.md",
+          "docs/parity/source-breadcrumbs.json",
+          "packages/open-bitcoin-network/src/peer/compact_relay.rs",
+          "packages/open-bitcoin-network/src/peer/compact_relay/tests.rs",
+          "packages/open-bitcoin-network/src/peer/tests.rs",
+          ".planning/phases/113-compact-relay-negotiation-and-announcement-policy/113-03-SUMMARY.md"
+        ],
+        "rationale": "Phase 113 records version-2 sendcmpct capability, high- and low-bandwidth preferences, and explicit announcement eligibility without allowing transaction relay, permissions, inbound protection, or block-serving state to activate compact announcements by implication.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/net_processing.cpp",
+            "packages/bitcoin-knots/src/net.h"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/test/functional/p2p_compactblocks.py"
+          ]
+        },
+        "known_gaps": [
+          "Low-bandwidth capability does not authorize direct compact announcements, and public compact-relay defaults remain deferred."
+        ],
+        "suspected_unknowns": [
+          "Future public-default operation needs fresh abuse, service, packaging, firewall, and support evidence."
+        ]
+      },
+      {
+        "id": "v2-1-compact-block-reconstruction",
+        "title": "v2.1 Compact Block Reconstruction from Mempool State",
+        "status": "done",
+        "requirements": [
+          "RCN-02",
+          "RCN-03",
+          "GOV-04"
+        ],
+        "evidence": [
+          "docs/parity/catalog/p2p.md",
+          "docs/parity/catalog/mempool-policy.md",
+          "docs/parity/source-breadcrumbs.json",
+          "packages/open-bitcoin-network/src/compact_block.rs",
+          "packages/open-bitcoin-network/src/compact_block/tests.rs",
+          ".planning/phases/114-compact-block-reconstruction-from-mempool-state/114-03-SUMMARY.md"
+        ],
+        "rationale": "Phase 114 reconstructs compact blocks from witness-hash short IDs over bounded mempool and extra transaction candidates, producing typed collision, duplicate, missing, and failure outcomes without mutating chainstate from partial state.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/blockencodings.h",
+            "packages/bitcoin-knots/src/blockencodings.cpp",
+            "packages/bitcoin-knots/src/net_processing.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/src/test/blockencodings_tests.cpp",
+            "packages/bitcoin-knots/test/functional/p2p_compactblocks_extratxs.py"
+          ]
+        },
+        "known_gaps": [
+          "Phase 114 does not claim package relay, filter serving, public compact-relay defaults, or production-scale reconstruction."
+        ],
+        "suspected_unknowns": [
+          "Public-network behavior remains opt-in operator evidence outside default verification."
+        ]
+      },
+      {
+        "id": "v2-1-missing-transaction-fallback-validation-handoff",
+        "title": "v2.1 Missing Transaction Round Trip, Fallback, and Validation Handoff",
+        "status": "done",
+        "requirements": [
+          "RCN-04",
+          "RCN-05",
+          "RCN-06",
+          "RCN-07",
+          "GOV-02",
+          "GOV-03"
+        ],
+        "evidence": [
+          "docs/parity/catalog/p2p.md",
+          "docs/parity/catalog/consensus-validation.md",
+          "docs/parity/source-breadcrumbs.json",
+          "packages/open-bitcoin-network/src/compact_download.rs",
+          "packages/open-bitcoin-network/src/compact_download/tests.rs",
+          "packages/open-bitcoin-node/src/network/compact_download.rs",
+          ".planning/phases/115-missing-transaction-round-trip-fallback-and-validation-handoff/115-04-SUMMARY.md"
+        ],
+        "rationale": "Phase 115 bounds getblocktxn indexes and in-flight state, accepts blocktxn only from the matching expected peer, falls back or suppresses with typed causes, clears volatile state on lifecycle events, and hands complete blocks to the existing validation/connect path.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/blockencodings.h",
+            "packages/bitcoin-knots/src/blockencodings.cpp",
+            "packages/bitcoin-knots/src/net_processing.cpp",
+            "packages/bitcoin-knots/src/validation.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/test/functional/p2p_compactblocks.py"
+          ]
+        },
+        "known_gaps": [
+          "Fallback is bounded and evidence-driven; it does not imply archive-node availability, public serving defaults, or production readiness."
+        ],
+        "suspected_unknowns": [
+          "Long-running public-network compact-relay review remains optional UAT."
+        ]
+      },
+      {
+        "id": "v2-1-operator-block-relay-evidence",
+        "title": "v2.1 Operator Block-Relay Evidence",
+        "status": "done",
+        "requirements": [
+          "OBS-01",
+          "OBS-02",
+          "OBS-03",
+          "OBS-04",
+          "OBS-05"
+        ],
+        "evidence": [
+          "docs/architecture/status-snapshot.md",
+          "docs/architecture/operator-observability.md",
+          "docs/operator/runtime-guide.md",
+          "docs/parity/source-breadcrumbs.json",
+          "packages/open-bitcoin-node/src/status/block_relay_evidence.rs",
+          "packages/open-bitcoin-node/src/network/block_relay_evidence.rs",
+          "scripts/check-phase116-operator-block-relay-evidence.ts",
+          ".planning/phases/116-operator-evidence-metrics-logs-and-support-boundary/116-SUMMARY.md",
+          ".planning/phases/116-operator-evidence-metrics-logs-and-support-boundary/116-VERIFICATION.md"
+        ],
+        "rationale": "Phase 116 projects one aggregate-only block_relay contract through RPC, CLI, dashboard, fixed metrics, structured logs, and redacted support bundles with explicit unavailable states and no peer, block, transaction, permission, or credential leakage.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/net_processing.cpp",
+            "packages/bitcoin-knots/src/blockencodings.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/test/functional/p2p_compactblocks.py"
+          ]
+        },
+        "known_gaps": [
+          "Operator evidence is aggregate local review evidence, not public-network proof, a release validator by itself, or a production-readiness claim."
+        ],
+        "suspected_unknowns": [
+          "Peer-level and block-level diagnostics remain intentionally unavailable on these operator-facing paths."
+        ]
+      },
+      {
+        "id": "v2-1-parity-uat-release-boundary",
+        "title": "v2.1 Parity Traceability, UAT, and Release Guardrails",
+        "status": "done",
+        "requirements": [
+          "BOUND-01",
+          "BOUND-02",
+          "BOUND-03",
+          "BOUND-04",
+          "BOUND-05"
+        ],
+        "evidence": [
+          "README.md",
+          "docs/parity/index.json",
+          "docs/parity/checklist.md",
+          "docs/parity/source-breadcrumbs.json",
+          "docs/parity/catalog/p2p.md",
+          "docs/parity/release-readiness.md",
+          "docs/parity/production-claim-boundary.md",
+          "docs/operator/runtime-guide.md",
+          "scripts/check-phase117-parity-uat-release-boundary.ts",
+          "scripts/check-phase117-parity-uat-release-boundary.test.ts",
+          "scripts/verify.sh",
+          ".planning/phases/117-parity-traceability-uat-and-release-guardrails/117-UAT.md"
+        ],
+        "rationale": "Phase 117 closes v2.1 with concrete Knots anchors, exactly-once traceability, deterministic claim and verifier-boundary checks, release/operator docs, and an opt-in UAT boundary over the bounded default-off block-serving and compact-relay implementation.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/protocol.h",
+            "packages/bitcoin-knots/src/blockencodings.h",
+            "packages/bitcoin-knots/src/blockencodings.cpp",
+            "packages/bitcoin-knots/src/net_processing.cpp",
+            "packages/bitcoin-knots/src/net_processing.h",
+            "packages/bitcoin-knots/src/net.h",
+            "packages/bitcoin-knots/src/net_permissions.h",
+            "packages/bitcoin-knots/src/validation.cpp",
+            "packages/bitcoin-knots/src/node/blockstorage.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/test/functional/p2p_getdata.py",
+            "packages/bitcoin-knots/test/functional/p2p_compactblocks.py",
+            "packages/bitcoin-knots/test/functional/p2p_permissions.py"
+          ]
+        },
+        "known_gaps": [
+          "v2.1 does not claim package relay, BIP37 bloom serving, compact-filter serving, public serving defaults, archive-node behavior, public-network CI, production service operation, production full-node readiness, or production-funds wallet use."
+        ],
+        "suspected_unknowns": [
+          "Public-network block-serving and compact-relay review remains optional UAT and is not required by default verification."
         ]
       }
     ]

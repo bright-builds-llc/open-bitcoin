@@ -1,6 +1,8 @@
 // Parity breadcrumbs:
+// - packages/bitcoin-knots/src/blockencodings.h
 // - packages/bitcoin-knots/src/blockencodings.cpp
 // - packages/bitcoin-knots/src/net_processing.cpp
+// - packages/bitcoin-knots/src/net_processing.h
 // - packages/bitcoin-knots/test/functional/p2p_compactblocks.py
 
 use open_bitcoin_consensus::check_block_header;

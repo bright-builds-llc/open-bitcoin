@@ -364,7 +364,7 @@ upload.
 
 ## Phase 110 block-serving boundary status
 
-Phase 110 adds default-off block-serving status evidence without adding a
+Phase 110 adds bounded, default-off block-serving status evidence without adding a
 serving adapter. The shared evidence contract is
 `BlockServingEvidenceStatus`, with `activation`, `eligibility`, and `status`
 fields. Renderers must consume that shared contract instead of inventing
@@ -397,7 +397,7 @@ use. Those remain out of scope for Phase 110.
 
 ## Phase 111 full block-serving request-path status
 
-Phase 111 adds the `v2-1-full-block-serving-request-path` surface for
+Phase 111 adds the bounded, opt-in `v2-1-full-block-serving-request-path` surface for
 `BSRV-04`, `GOV-01`, and `GOV-05`. The managed request path keeps Phase 110
 policy labels and now routes `InventoryType::Block`,
 `InventoryType::WitnessBlock`, and `InventoryType::CompactBlock` through
@@ -420,7 +420,8 @@ readiness, production-funds wallet use, or schema/ORM work.
 
 ## Phase 116 block-relay operator evidence status
 
-Phase 116 makes block-serving and compact-relay operator evidence explicit
+Phase 116 makes bounded, explicit, default-off block-serving and compact-relay
+operator evidence available
 through the shared `OpenBitcoinStatusSnapshot.block_relay` contract and the
 Open Bitcoin RPC extension field `openbitcoinnetworkstatus.block_relay`.
 Renderers, support bundles, metrics, and structured logs must consume this
@@ -452,6 +453,21 @@ public block serving by default, BIP152 production readiness, archive-node
 behavior, package relay, bloom/filter serving, compact filter serving,
 public-network CI, production-service operation, production full-node
 readiness, or production-funds wallet use.
+
+## Phase 117 v2.1 release-boundary status
+
+Phase 117 preserves one bounded, explicit, default-off block-serving and
+compact-relay truth source: `OpenBitcoinStatusSnapshot.block_relay`. Human,
+JSON, RPC, dashboard, metrics, logs, and support projections expose only its
+fixed aggregate states and counters. They must not expose raw block or
+transaction payloads, hashes, peer identifiers, endpoints, permission strings,
+credentials, secrets, or dynamic labels, and they do not promise per-peer,
+per-block, or per-transaction evidence.
+
+Public-network review remains optional UAT outside default verification. Public
+serving or relay defaults, archive-node and production-scale historical
+serving, production service/deployment, and production readiness remain
+deferred.
 
 ## Phase 92 address advertisement and discovery status
 
