@@ -235,11 +235,11 @@ Plans:
 3. Compact-announced evidence increments only when a compact payload is actually sent.
 4. Fallback and suppression paths still emit Headers/Inv or no message with stable reasons.
 
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
 
-- [ ] 118-01-PLAN.md — Pure Block→CompactBlockPayload builder (coinbase-only Knots shape) + unit tests
+- [x] 118-01-PLAN.md — Pure Block→CompactBlockPayload builder (coinbase-only Knots shape) + unit tests
 - [ ] 118-02-PLAN.md — PeerManager::announce_block_with_action CompactBlock/Headers/Inv/None emission
 - [ ] 118-03-PLAN.md — ManagedPeerNetwork action honor + evidence-after-emit (close false-positive CompactAnnounced)
 
@@ -314,7 +314,7 @@ Plans:
 | 115. Missing Transaction Round Trip, Fallback, and Validation Handoff | v2.1 | 4/4 | Complete    | 2026-07-06 |
 | 116. Operator Evidence, Metrics, Logs, and Support Boundary | v2.1 | 4/4 | Complete   | 2026-07-10 |
 | 117. Parity Traceability, UAT, and Release Guardrails | v2.1 | 4/4 | Complete    | 2026-07-10 |
-| 118. Outbound Compact Block Announcement Wiring | v2.1 | 0/0 | Pending     | — |
+| 118. Outbound Compact Block Announcement Wiring | v2.1 | 1/3 | In Progress|  |
 | 119. Compact Receive Mempool Candidate Injection | v2.1 | 0/0 | Pending     | — |
 | 120. Compact Download Timeout and Misbehavior Runtime Bridge | v2.1 | 0/0 | Pending     | — |
 | 121. Block Relay Metrics and Log Runtime Projection | v2.1 | 0/0 | Pending     | — |
