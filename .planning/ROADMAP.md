@@ -331,10 +331,10 @@ Plans:
 
 - v2.1 requirements: 34 total
 - Mapped to phases: 34
-- Satisfied: 26
-- Pending gap closure: 8
+- Satisfied: 27
+- Pending gap closure: 7
 - Unmapped: 0
 
 ## Next Step
 
-Plan Phase 118 with `/gsd-plan-phase 118`, then execute gap-closure phases through 121 and re-audit with `/gsd-audit-milestone` before archive.
+Discuss and execute Phase 119 (compact receive mempool candidate injection), then Phases 120–121, and re-audit with `/gsd-audit-milestone` before archive.

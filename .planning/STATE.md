@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
-status: executing
-stopped_at: Completed 118-03-PLAN.md
-last_updated: "2026-07-11T19:13:49.246Z"
+status: verifying
+stopped_at: Phase 118 verification passed
+last_updated: "2026-07-11T20:11:06.091Z"
 last_activity: 2026-07-11
 progress:
   total_phases: 12
   completed_phases: 9
   total_plans: 32
-  completed_plans: 34
-  percent: 100
+  completed_plans: 32
+  percent: 75
 ---
 
 # Project State
@@ -21,19 +21,19 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-07-10 after Phase 117 completed v2.1 implementation and verification).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 118 outbound compact-block announcement wiring (Plan 03 complete — CMP-05 seam closed)
+**Current focus:** Phase 118 verified — next gap-closure Phase 119 (compact receive mempool candidate injection)
 
 ## Current Position
 
 Milestone: v2.1 Block Serving and Compact Block Relay Boundary
 Phase: 118
 Plan: 3 of 3 complete
-Status: Phase plans complete
+Status: Phase complete and verified — ready for Phase 119
 Last activity: 2026-07-11
 
 v2.0 Transaction Relay and Mempool Participation Boundary shipped on 2026-07-03. The archived audit reports 32/32 requirements, 10/10 phases, 8/8 integration checks, 8/8 cross-phase flows, and no tracked tech debt.
 
-v2.1 gap-closure Phase 118 plans are complete after Phase 117 verification. Plans 01–03 delivered the Knots-shaped compact payload builder, PeerManager action-aware announce emission, and ManagedPeerNetwork evidence-after-emit wiring (CMP-05).
+v2.1 gap-closure Phase 118 closed the CMP-05 outbound announce seam: Knots-shaped compact payload builder, PeerManager action-aware announce emission, and ManagedPeerNetwork evidence-after-emit wiring. Phase verification passed 8/8.
 
 ## Latest Milestone Archive
 
@@ -92,6 +92,6 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Session Continuity
 
-Last session: 2026-07-11T19:13:49.242Z
-Stopped at: Completed 118-03-PLAN.md
-Resume file: None
+Last session: 2026-07-11T20:11:06.091Z
+Stopped at: Phase 118 verification passed
+Resume file: .planning/phases/118-outbound-compact-block-announcement-wiring/118-VERIFICATION.md

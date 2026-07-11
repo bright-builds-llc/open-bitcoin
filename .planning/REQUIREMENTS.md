@@ -145,9 +145,9 @@ Traceability is populated by the v2.1 roadmap. Each active requirement maps to e
 
 - v2.1 requirements: 34 total
 - Mapped to phases: 34
-- Complete: 26
-- Pending gap closure: 8
+- Complete: 27
+- Pending gap closure: 7
 - Unmapped: 0
 
 *Requirements defined: 2026-07-03*
-*Last updated: 2026-07-11 after v2.1 milestone audit gap-closure phase assignment*
+*Last updated: 2026-07-11 after Phase 118 closed CMP-05*
