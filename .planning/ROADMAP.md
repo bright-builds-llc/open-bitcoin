@@ -235,11 +235,13 @@ Plans:
 3. Compact-announced evidence increments only when a compact payload is actually sent.
 4. Fallback and suppression paths still emit Headers/Inv or no message with stable reasons.
 
-**Plans:** 0/0 plans complete
+**Plans:** 3 plans
 
 Plans:
 
-- [ ] TBD — plan with `/gsd-plan-phase 118`
+- [ ] 118-01-PLAN.md — Pure Block→CompactBlockPayload builder (coinbase-only Knots shape) + unit tests
+- [ ] 118-02-PLAN.md — PeerManager::announce_block_with_action CompactBlock/Headers/Inv/None emission
+- [ ] 118-03-PLAN.md — ManagedPeerNetwork action honor + evidence-after-emit (close false-positive CompactAnnounced)
 
 #### Phase 119: Compact Receive Mempool Candidate Injection
 
