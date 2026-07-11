@@ -23,7 +23,7 @@ Requirements for the current milestone. Each requirement maps to exactly one roa
 - [x] **CMP-02**: Node encodes, decodes, and validates `cmpctblock` payloads with header, nonce, six-byte short IDs, and prefilled transaction differential indexes.
 - [x] **CMP-03**: Node encodes, decodes, and validates `getblocktxn` and `blocktxn` payloads with differential indexes and witness transaction serialization.
 - [x] **CMP-04**: Node tracks per-peer compact-block capability, high-bandwidth preference, low-bandwidth preference, and compact-block announcement eligibility deterministically.
-- [ ] **CMP-05**: Node announces compact blocks only when activation, peer negotiation, header state, block availability, and resource limits permit it.
+- [x] **CMP-05**: Node announces compact blocks only when activation, peer negotiation, header state, block availability, and resource limits permit it.
 - [x] **CMP-06**: Compact-block negotiation remains independent from transaction relay, package relay, bloom/filter permissions, compact filters, and public serving defaults.
 
 ### Compact Block Reconstruction And Fallback
@@ -116,7 +116,7 @@ Traceability is populated by the v2.1 roadmap. Each active requirement maps to e
 | CMP-02 | Phase 112 | Complete |
 | CMP-03 | Phase 112 | Complete |
 | CMP-04 | Phase 113 | Complete |
-| CMP-05 | Phase 118 | Pending |
+| CMP-05 | Phase 118 | Complete |
 | CMP-06 | Phase 113 | Complete |
 | RCN-01 | Phase 112 | Complete |
 | RCN-02 | Phase 119 | Pending |

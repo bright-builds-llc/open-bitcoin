@@ -47,7 +47,7 @@ v2.1 Block Serving and Compact Block Relay Boundary is the active milestone afte
 - [x] **Phase 115: Missing Transaction Round Trip, Fallback, and Validation Handoff** - Complete `getblocktxn`/`blocktxn`, fallback, volatile-state cleanup, and validation/connect integration. (completed 2026-07-06)
 - [x] **Phase 116: Operator Evidence, Metrics, Logs, and Support Boundary** - Project block-serving and compact-relay truth through shared RPC, CLI, dashboard, metrics, logs, and support surfaces. (completed 2026-07-10)
 - [x] **Phase 117: Parity Traceability, UAT, and Release Guardrails** - Close parity, UAT, docs, and deterministic no-claim guardrails for the bounded v2.1 release boundary. (completed 2026-07-10)
-- [ ] **Phase 118: Outbound Compact Block Announcement Wiring** - Honor compact announcement decisions on the wire by emitting `cmpctblock` (or headers/inventory fallback) without false-positive announce evidence.
+- [x] **Phase 118: Outbound Compact Block Announcement Wiring** - Honor compact announcement decisions on the wire by emitting `cmpctblock` (or headers/inventory fallback) without false-positive announce evidence. (completed 2026-07-11)
 - [ ] **Phase 119: Compact Receive Mempool Candidate Injection** - Feed live mempool and bounded extra candidates into compact-block receive, and hook mempool-remove lifecycle into partial state.
 - [ ] **Phase 120: Compact Download Timeout and Misbehavior Runtime Bridge** - Schedule compact-download timeout expiration from the node runtime and escalate typed compact misbehavior beyond silent suppress.
 - [ ] **Phase 121: Block Relay Metrics and Log Runtime Projection** - Project block-relay metric samples and structured log records through the sync runtime persist/logging path.
@@ -235,13 +235,13 @@ Plans:
 3. Compact-announced evidence increments only when a compact payload is actually sent.
 4. Fallback and suppression paths still emit Headers/Inv or no message with stable reasons.
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 
 - [x] 118-01-PLAN.md — Pure Block→CompactBlockPayload builder (coinbase-only Knots shape) + unit tests
 - [x] 118-02-PLAN.md — PeerManager::announce_block_with_action CompactBlock/Headers/Inv/None emission
-- [ ] 118-03-PLAN.md — ManagedPeerNetwork action honor + evidence-after-emit (close false-positive CompactAnnounced)
+- [x] 118-03-PLAN.md — ManagedPeerNetwork action honor + evidence-after-emit (close false-positive CompactAnnounced)
 
 #### Phase 119: Compact Receive Mempool Candidate Injection
 
@@ -314,7 +314,7 @@ Plans:
 | 115. Missing Transaction Round Trip, Fallback, and Validation Handoff | v2.1 | 4/4 | Complete    | 2026-07-06 |
 | 116. Operator Evidence, Metrics, Logs, and Support Boundary | v2.1 | 4/4 | Complete   | 2026-07-10 |
 | 117. Parity Traceability, UAT, and Release Guardrails | v2.1 | 4/4 | Complete    | 2026-07-10 |
-| 118. Outbound Compact Block Announcement Wiring | v2.1 | 2/3 | In Progress|  |
+| 118. Outbound Compact Block Announcement Wiring | v2.1 | 3/3 | Complete   | 2026-07-11 |
 | 119. Compact Receive Mempool Candidate Injection | v2.1 | 0/0 | Pending     | — |
 | 120. Compact Download Timeout and Misbehavior Runtime Bridge | v2.1 | 0/0 | Pending     | — |
 | 121. Block Relay Metrics and Log Runtime Projection | v2.1 | 0/0 | Pending     | — |

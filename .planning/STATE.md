@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
 status: executing
-stopped_at: Completed 118-02-PLAN.md
-last_updated: "2026-07-11T18:46:01.889Z"
+stopped_at: Completed 118-03-PLAN.md
+last_updated: "2026-07-11T19:13:49.246Z"
 last_activity: 2026-07-11
 progress:
   total_phases: 12
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 32
-  completed_plans: 33
+  completed_plans: 34
   percent: 100
 ---
 
@@ -21,19 +21,19 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-07-10 after Phase 117 completed v2.1 implementation and verification).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 118 outbound compact-block announcement wiring (Plan 02 complete)
+**Current focus:** Phase 118 outbound compact-block announcement wiring (Plan 03 complete — CMP-05 seam closed)
 
 ## Current Position
 
 Milestone: v2.1 Block Serving and Compact Block Relay Boundary
 Phase: 118
-Plan: 2 of 3 complete
-Status: Ready to execute
+Plan: 3 of 3 complete
+Status: Phase plans complete
 Last activity: 2026-07-11
 
 v2.0 Transaction Relay and Mempool Participation Boundary shipped on 2026-07-03. The archived audit reports 32/32 requirements, 10/10 phases, 8/8 integration checks, 8/8 cross-phase flows, and no tracked tech debt.
 
-v2.1 gap-closure Phase 118 is in progress after Phase 117 verification. Phase 118 Plans 01–02 delivered the Knots-shaped compact payload builder and PeerManager action-aware announce emission; Plan 03 still wires ManagedPeerNetwork evidence-after-emit.
+v2.1 gap-closure Phase 118 plans are complete after Phase 117 verification. Plans 01–03 delivered the Knots-shaped compact payload builder, PeerManager action-aware announce emission, and ManagedPeerNetwork evidence-after-emit wiring (CMP-05).
 
 ## Latest Milestone Archive
 
@@ -70,6 +70,9 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 - [Phase 118]: New announce_block_with_action API; legacy announce_block signature unchanged (D-02)
 - [Phase 118]: announce_block delegates to Headers/Inv actions for DRY without compact path
 - [Phase 118]: CMP-05 left Pending until Plan 03 closes evidence-after-emit
+- [Phase 118]: Evidence recorded after emission from actual message (D-05)
+- [Phase 118]: Hash-derived deterministic nonce: first 8 LE bytes of block hash
+- [Phase 118]: CMP-05 satisfied by Plan 03 closing the runtime seam
 
 ## Pending Todos
 
@@ -89,6 +92,6 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Session Continuity
 
-Last session: 2026-07-11T18:46:01.886Z
-Stopped at: Completed 118-02-PLAN.md
+Last session: 2026-07-11T19:13:49.242Z
+Stopped at: Completed 118-03-PLAN.md
 Resume file: None
