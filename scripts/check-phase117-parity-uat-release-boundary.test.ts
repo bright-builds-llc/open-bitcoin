@@ -541,6 +541,25 @@ function createBreadcrumbs(): string {
   });
 }
 
+test("fails_when_gap_closure_requirement_maps_to_stale_phase", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutate(files) {
+      const current = files.get(".planning/REQUIREMENTS.md") ?? "";
+      files.set(
+        ".planning/REQUIREMENTS.md",
+        current.replace("| CMP-05 | Phase 118 |", "| CMP-05 | Phase 113 |"),
+      );
+    },
+  });
+
+  // Act
+  const failures = checkPhase117ParityUatReleaseBoundary(root).join("\n");
+
+  // Assert
+  expect(failures).toContain("CMP-05 must map to Phase 118 exactly once");
+});
+
 function createRequirements(): string {
   return Object.entries(requirementPhases())
     .map(([requirement, phase]) => `| ${requirement} | Phase ${phase} | Complete |`)
@@ -601,11 +620,14 @@ function requirementPhases(): Record<string, string> {
   const result: Record<string, string> = {};
   for (const requirements of Object.values(SURFACES)) {
     for (const requirement of requirements) {
-      if (requirement.startsWith("BSRV")) result[requirement] = requirement === "BSRV-04" ? "111" : "110";
+      if (requirement === "CMP-05") result[requirement] = "118";
+      else if (["RCN-02", "RCN-03", "GOV-04"].includes(requirement)) result[requirement] = "119";
+      else if (["RCN-07", "GOV-02", "GOV-03"].includes(requirement)) result[requirement] = "120";
+      else if (requirement === "OBS-03") result[requirement] = "121";
+      else if (requirement.startsWith("BSRV")) result[requirement] = requirement === "BSRV-04" ? "111" : "110";
       else if (["CMP-01", "CMP-02", "CMP-03", "RCN-01"].includes(requirement)) result[requirement] = "112";
       else if (requirement.startsWith("CMP")) result[requirement] = "113";
-      else if (["RCN-02", "RCN-03", "GOV-04"].includes(requirement)) result[requirement] = "114";
-      else if (requirement.startsWith("RCN") || ["GOV-02", "GOV-03"].includes(requirement)) result[requirement] = "115";
+      else if (requirement.startsWith("RCN")) result[requirement] = "115";
       else if (requirement.startsWith("GOV")) result[requirement] = "111";
       else if (requirement.startsWith("OBS")) result[requirement] = "116";
       else result[requirement] = "117";

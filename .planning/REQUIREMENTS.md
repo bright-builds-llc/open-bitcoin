@@ -23,32 +23,32 @@ Requirements for the current milestone. Each requirement maps to exactly one roa
 - [x] **CMP-02**: Node encodes, decodes, and validates `cmpctblock` payloads with header, nonce, six-byte short IDs, and prefilled transaction differential indexes.
 - [x] **CMP-03**: Node encodes, decodes, and validates `getblocktxn` and `blocktxn` payloads with differential indexes and witness transaction serialization.
 - [x] **CMP-04**: Node tracks per-peer compact-block capability, high-bandwidth preference, low-bandwidth preference, and compact-block announcement eligibility deterministically.
-- [x] **CMP-05**: Node announces compact blocks only when activation, peer negotiation, header state, block availability, and resource limits permit it.
+- [ ] **CMP-05**: Node announces compact blocks only when activation, peer negotiation, header state, block availability, and resource limits permit it.
 - [x] **CMP-06**: Compact-block negotiation remains independent from transaction relay, package relay, bloom/filter permissions, compact filters, and public serving defaults.
 
 ### Compact Block Reconstruction And Fallback
 
 - [x] **RCN-01**: Node validates compact block headers, transaction counts, prefilled ordering, null transactions, short ID bounds, and malformed payloads before accepting partial state.
-- [x] **RCN-02**: Node reconstructs compact blocks from current mempool state plus bounded extra or recent block transaction inputs using witness-hash short IDs.
-- [x] **RCN-03**: Node detects short ID collisions, duplicate matches, missing transactions, and reconstruction failures with stable typed outcomes.
+- [ ] **RCN-02**: Node reconstructs compact blocks from current mempool state plus bounded extra or recent block transaction inputs using witness-hash short IDs.
+- [ ] **RCN-03**: Node detects short ID collisions, duplicate matches, missing transactions, and reconstruction failures with stable typed outcomes.
 - [x] **RCN-04**: Node requests missing compact-block transactions with bounded `getblocktxn` indexes only when the peer and in-flight state are eligible.
 - [x] **RCN-05**: Node accepts `blocktxn` responses only for expected in-flight partial compact blocks from the matching peer and rejects duplicate, unexpected, out-of-bounds, or mismatched responses.
 - [x] **RCN-06**: Reconstructed blocks enter the existing block validation and connect path without mutating chainstate from partial compact-block state.
-- [x] **RCN-07**: Node falls back to full block fetch or suppression when reconstruction fails, responses timeout, blocks are old or far from the active tip, or peer/resource state becomes ineligible.
+- [ ] **RCN-07**: Node falls back to full block fetch or suppression when reconstruction fails, responses timeout, blocks are old or far from the active tip, or peer/resource state becomes ineligible.
 
 ### Resource Governance And Runtime Integration
 
 - [x] **GOV-01**: Full block serving, compact block serving, partial compact-block state, missing transaction requests, and fallback all participate in existing request, queue, and in-flight resource limits.
-- [x] **GOV-02**: Malformed compact blocks, invalid compact-block headers, duplicate `blocktxn`, unexpected `blocktxn`, and out-of-bounds indexes produce Knots-aligned misbehavior, disconnect, or suppression decisions.
-- [x] **GOV-03**: Restart, reconnect, disconnect, timeout, and reorg cleanup remove volatile compact-relay state without deleting validated chainstate or durable block data.
-- [x] **GOV-04**: Compact block relay integrates with mempool lifecycle, transaction relay, and block connect/disconnect events without activating package relay or filter serving.
+- [ ] **GOV-02**: Malformed compact blocks, invalid compact-block headers, duplicate `blocktxn`, unexpected `blocktxn`, and out-of-bounds indexes produce Knots-aligned misbehavior, disconnect, or suppression decisions.
+- [ ] **GOV-03**: Restart, reconnect, disconnect, timeout, and reorg cleanup remove volatile compact-relay state without deleting validated chainstate or durable block data.
+- [ ] **GOV-04**: Compact block relay integrates with mempool lifecycle, transaction relay, and block connect/disconnect events without activating package relay or filter serving.
 - [x] **GOV-05**: Historical, pruned, stale, side-chain, and unavailable block serving remains bounded by documented eligibility rules and does not imply archive-node behavior.
 
 ### Operator, RPC, Metrics, Logs, And Support Evidence
 
 - [x] **OBS-01**: RPC and shared network status report block-serving activation, serving eligibility, compact negotiation, reconstruction, fallback, and in-flight compact-block state truthfully.
 - [x] **OBS-02**: CLI and dashboard surfaces render block-serving and compact-block relay state from the shared status contract without raw peer, permission, credential, or transaction payload leakage.
-- [x] **OBS-03**: Metrics and structured logs use fixed low-cardinality labels for served, suppressed, compact-announced, reconstructed, missing-requested, fallback, malformed, timeout, and cleanup outcomes.
+- [ ] **OBS-03**: Metrics and structured logs use fixed low-cardinality labels for served, suppressed, compact-announced, reconstructed, missing-requested, fallback, malformed, timeout, and cleanup outcomes.
 - [x] **OBS-04**: Support bundles sanitize block-serving and compact-relay evidence, including raw transaction lists, raw peer endpoints, permission strings, credentials, and dynamic labels.
 - [x] **OBS-05**: Operator docs and UAT guidance provide copy-pasteable repo-local Cargo and Bazel commands for block-serving and compact-relay workflows.
 
@@ -116,23 +116,23 @@ Traceability is populated by the v2.1 roadmap. Each active requirement maps to e
 | CMP-02 | Phase 112 | Complete |
 | CMP-03 | Phase 112 | Complete |
 | CMP-04 | Phase 113 | Complete |
-| CMP-05 | Phase 113 | Complete |
+| CMP-05 | Phase 118 | Pending |
 | CMP-06 | Phase 113 | Complete |
 | RCN-01 | Phase 112 | Complete |
-| RCN-02 | Phase 114 | Complete |
-| RCN-03 | Phase 114 | Complete |
+| RCN-02 | Phase 119 | Pending |
+| RCN-03 | Phase 119 | Pending |
 | RCN-04 | Phase 115 | Complete |
 | RCN-05 | Phase 115 | Complete |
 | RCN-06 | Phase 115 | Complete |
-| RCN-07 | Phase 115 | Complete |
+| RCN-07 | Phase 120 | Pending |
 | GOV-01 | Phase 111 | Complete |
-| GOV-02 | Phase 115 | Complete |
-| GOV-03 | Phase 115 | Complete |
-| GOV-04 | Phase 114 | Complete |
+| GOV-02 | Phase 120 | Pending |
+| GOV-03 | Phase 120 | Pending |
+| GOV-04 | Phase 119 | Pending |
 | GOV-05 | Phase 111 | Complete |
 | OBS-01 | Phase 116 | Complete |
 | OBS-02 | Phase 116 | Complete |
-| OBS-03 | Phase 116 | Complete |
+| OBS-03 | Phase 121 | Pending |
 | OBS-04 | Phase 116 | Complete |
 | OBS-05 | Phase 116 | Complete |
 | BOUND-01 | Phase 117 | Complete |
@@ -145,7 +145,9 @@ Traceability is populated by the v2.1 roadmap. Each active requirement maps to e
 
 - v2.1 requirements: 34 total
 - Mapped to phases: 34
+- Complete: 26
+- Pending gap closure: 8
 - Unmapped: 0
 
 *Requirements defined: 2026-07-03*
-*Last updated: 2026-07-06 after Phase 115 verification*
+*Last updated: 2026-07-11 after v2.1 milestone audit gap-closure phase assignment*

@@ -403,11 +403,16 @@ function allRequirements(): string[] {
 }
 
 function expectedPhase(requirement: string): string {
+  // Gap-closure remaps from the v2.1 milestone audit keep canonical ownership
+  // on Phases 118-121 while parity surfaces retain original implementation roots.
+  if (requirement === "CMP-05") return "118";
+  if (["RCN-02", "RCN-03", "GOV-04"].includes(requirement)) return "119";
+  if (["RCN-07", "GOV-02", "GOV-03"].includes(requirement)) return "120";
+  if (requirement === "OBS-03") return "121";
   if (requirement.startsWith("BSRV")) return requirement === "BSRV-04" ? "111" : "110";
   if (["CMP-01", "CMP-02", "CMP-03", "RCN-01"].includes(requirement)) return "112";
   if (requirement.startsWith("CMP")) return "113";
-  if (["RCN-02", "RCN-03", "GOV-04"].includes(requirement)) return "114";
-  if (requirement.startsWith("RCN") || ["GOV-02", "GOV-03"].includes(requirement)) return "115";
+  if (requirement.startsWith("RCN")) return "115";
   if (requirement.startsWith("GOV")) return "111";
   if (requirement.startsWith("OBS")) return "116";
   return "117";
