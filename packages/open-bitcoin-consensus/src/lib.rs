@@ -18,6 +18,7 @@
 
 pub mod block;
 pub mod classify;
+pub mod compact_block_build;
 pub mod context;
 pub mod crypto;
 pub mod script;
@@ -34,6 +35,7 @@ pub use classify::{
     ScriptPubKeyType, classify_script_pubkey, extract_redeem_script, extract_script_sig_pushes,
     is_push_only,
 };
+pub use compact_block_build::build_compact_block_payload;
 pub use context::{
     BlockValidationContext, ConsensusParams, PrecomputedTransactionData, ScriptExecutionData,
     ScriptVerifyFlags, SpentOutput, TransactionInputContext, TransactionValidationContext,

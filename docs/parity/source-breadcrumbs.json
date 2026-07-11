@@ -513,6 +513,17 @@
       ]
     },
     {
+      "label": "consensus-compact-block-build",
+      "files": [
+        "packages/open-bitcoin-consensus/src/compact_block_build.rs",
+        "packages/open-bitcoin-consensus/src/compact_block_build/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/blockencodings.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp"
+      ]
+    },
+    {
       "label": "consensus-script-execution",
       "files": [
         "packages/open-bitcoin-consensus/src/script.rs"
