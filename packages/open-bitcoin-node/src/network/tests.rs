@@ -521,9 +521,13 @@ fn phase116_block_relay_evidence_projects_negotiation_serving_download_and_clean
     network
         .connect_local_block(&genesis, verify_flags(), consensus_params())
         .expect("connect genesis");
-    network
+    let maybe_announce = network
         .announce_block(peer_id, &genesis)
         .expect("announce block");
+    assert!(
+        matches!(maybe_announce, Some(WireNetworkMessage::CompactBlock(_))),
+        "HB-eligible announce must emit CompactBlock, got {maybe_announce:?}"
+    );
 
     let served = network
         .receive_message(
@@ -591,6 +595,75 @@ fn phase116_block_relay_evidence_projects_negotiation_serving_download_and_clean
     assert_eq!(
         cleaned["cleanup"]["value"]["compact_download_peer_disconnect_count"],
         1
+    );
+}
+
+#[test]
+fn phase118_low_bandwidth_announce_does_not_increment_compact_announced_count() {
+    // Arrange
+    let mut network = compact_relay_enabled_managed_network(118_003);
+    let peer_id = 118_003;
+    network
+        .connect_outbound_peer(peer_id, 1)
+        .expect("connect outbound");
+    network
+        .receive_message(
+            peer_id,
+            WireNetworkMessage::Version(open_bitcoin_network::VersionMessage::default()),
+            1,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("version");
+    network
+        .receive_message(
+            peer_id,
+            WireNetworkMessage::Verack,
+            1,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("verack");
+    network
+        .receive_message(
+            peer_id,
+            WireNetworkMessage::SendCompact(SendCompactMessage {
+                announce: false,
+                version: open_bitcoin_codec::BIP152_COMPACT_BLOCKS_VERSION,
+            }),
+            2,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("sendcmpct low-bandwidth");
+
+    let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0, 500_000_000);
+    network
+        .connect_local_block(&genesis, verify_flags(), consensus_params())
+        .expect("connect genesis");
+
+    // Act
+    let maybe_announce = network
+        .announce_block(peer_id, &genesis)
+        .expect("announce block");
+
+    // Assert
+    assert!(
+        !matches!(maybe_announce, Some(WireNetworkMessage::CompactBlock(_))),
+        "low-bandwidth path must not emit CompactBlock, got {maybe_announce:?}"
+    );
+    assert!(
+        matches!(
+            maybe_announce,
+            Some(WireNetworkMessage::Headers(_)) | Some(WireNetworkMessage::Inv(_))
+        ),
+        "low-bandwidth path should fall back to Headers or Inv, got {maybe_announce:?}"
+    );
+    let encoded =
+        serde_json::to_value(network.block_relay_evidence_status()).expect("block relay evidence");
+    assert_eq!(
+        encoded["announcement"]["value"]["compact_announced_count"],
+        0
     );
 }
 

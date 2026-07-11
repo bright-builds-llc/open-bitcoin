@@ -8,8 +8,8 @@
 use open_bitcoin_core::primitives::InventoryType;
 use open_bitcoin_network::{
     BlockRelayActivationPolicy, BlockServingEligibilityReason, BlockServingStatusLabel,
-    CompactAnnouncementReason, CompactDownloadCleanupCause, PeerAction, PeerManager,
-    WireNetworkMessage,
+    CompactAnnouncementAction, CompactAnnouncementDecision, CompactAnnouncementReason,
+    CompactDownloadCleanupCause, PeerAction, PeerManager, WireNetworkMessage,
 };
 
 use crate::{
@@ -304,6 +304,30 @@ fn fallback_counters(
     counters
 }
 
+/// Map announcement decision + actually emitted wire message to evidence reason (D-05/D-06).
+///
+/// `CompactAnnounced` is recorded only when the outbound message is `CompactBlock`.
+/// Construction fallbacks from `AnnounceCompactBlock` map to Headers/Inv fallback reasons.
+pub(super) fn compact_announce_evidence_reason(
+    decision: CompactAnnouncementDecision,
+    maybe_message: Option<&WireNetworkMessage>,
+) -> CompactAnnouncementReason {
+    match maybe_message {
+        Some(WireNetworkMessage::CompactBlock(_)) => CompactAnnouncementReason::CompactAnnounced,
+        Some(WireNetworkMessage::Headers(_))
+            if decision.action == CompactAnnouncementAction::AnnounceCompactBlock =>
+        {
+            CompactAnnouncementReason::CompactHeadersFallback
+        }
+        Some(WireNetworkMessage::Inv(_))
+            if decision.action == CompactAnnouncementAction::AnnounceCompactBlock =>
+        {
+            CompactAnnouncementReason::CompactInventoryFallback
+        }
+        _ => decision.reason,
+    }
+}
+
 impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     pub fn block_relay_evidence_status(&self) -> BlockRelayEvidenceStatus {
         self.block_relay_evidence
@@ -342,5 +366,178 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     ) {
         self.block_relay_evidence
             .record_cleanup(cause, removed_count);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use open_bitcoin_codec::CompactBlockPayload;
+    use open_bitcoin_core::primitives::{
+        BlockHash, BlockHeader, InventoryType, InventoryVector, MerkleRoot,
+    };
+    use open_bitcoin_network::{
+        CompactAnnouncementAction, CompactAnnouncementDecision, CompactAnnouncementEligibility,
+        CompactAnnouncementEligibilityReason, CompactAnnouncementReason, HeadersMessage,
+        InventoryList, WireNetworkMessage,
+    };
+
+    use super::compact_announce_evidence_reason;
+
+    fn decision(
+        action: CompactAnnouncementAction,
+        reason: CompactAnnouncementReason,
+    ) -> CompactAnnouncementDecision {
+        let eligibility = match reason {
+            CompactAnnouncementReason::CompactAnnounced => CompactAnnouncementEligibility::Eligible,
+            CompactAnnouncementReason::CompactHeadersFallback
+            | CompactAnnouncementReason::CompactInventoryFallback => {
+                CompactAnnouncementEligibility::Eligible
+            }
+            CompactAnnouncementReason::CompactHighBandwidthNotRequested => {
+                CompactAnnouncementEligibility::Ineligible {
+                    reason: CompactAnnouncementEligibilityReason::HighBandwidthNotRequested,
+                }
+            }
+            CompactAnnouncementReason::CompactRelayDisabled => {
+                CompactAnnouncementEligibility::Ineligible {
+                    reason: CompactAnnouncementEligibilityReason::LocalActivationDisabled,
+                }
+            }
+            CompactAnnouncementReason::CompactBlockUnavailable => {
+                CompactAnnouncementEligibility::Ineligible {
+                    reason: CompactAnnouncementEligibilityReason::BlockUnavailable,
+                }
+            }
+            _ => CompactAnnouncementEligibility::Unknown,
+        };
+        CompactAnnouncementDecision {
+            action,
+            reason,
+            eligibility,
+        }
+    }
+
+    fn empty_compact_block_message() -> WireNetworkMessage {
+        WireNetworkMessage::CompactBlock(CompactBlockPayload {
+            header: BlockHeader {
+                version: 1,
+                previous_block_hash: BlockHash::from_byte_array([0_u8; 32]),
+                merkle_root: MerkleRoot::from_byte_array([0_u8; 32]),
+                time: 0,
+                bits: 0,
+                nonce: 0,
+            },
+            nonce: 1,
+            short_ids: Vec::new(),
+            prefilled_transactions: Vec::new(),
+        })
+    }
+
+    #[test]
+    fn compact_announce_evidence_reason_maps_compact_block_to_announced() {
+        // Arrange
+        let decided = decision(
+            CompactAnnouncementAction::AnnounceCompactBlock,
+            CompactAnnouncementReason::CompactAnnounced,
+        );
+        let message = empty_compact_block_message();
+
+        // Act
+        let reason = compact_announce_evidence_reason(decided, Some(&message));
+
+        // Assert
+        assert_eq!(reason, CompactAnnouncementReason::CompactAnnounced);
+    }
+
+    #[test]
+    fn compact_announce_evidence_reason_maps_construction_headers_fallback() {
+        // Arrange
+        let decided = decision(
+            CompactAnnouncementAction::AnnounceCompactBlock,
+            CompactAnnouncementReason::CompactAnnounced,
+        );
+        let message = WireNetworkMessage::Headers(HeadersMessage {
+            headers: Vec::new(),
+        });
+
+        // Act
+        let reason = compact_announce_evidence_reason(decided, Some(&message));
+
+        // Assert
+        assert_eq!(reason, CompactAnnouncementReason::CompactHeadersFallback);
+    }
+
+    #[test]
+    fn compact_announce_evidence_reason_maps_construction_inventory_fallback() {
+        // Arrange
+        let decided = decision(
+            CompactAnnouncementAction::AnnounceCompactBlock,
+            CompactAnnouncementReason::CompactAnnounced,
+        );
+        let message = WireNetworkMessage::Inv(InventoryList::new(vec![InventoryVector {
+            inventory_type: InventoryType::Block,
+            object_hash: BlockHash::from_byte_array([1_u8; 32]).into(),
+        }]));
+
+        // Act
+        let reason = compact_announce_evidence_reason(decided, Some(&message));
+
+        // Assert
+        assert_eq!(reason, CompactAnnouncementReason::CompactInventoryFallback);
+    }
+
+    #[test]
+    fn compact_announce_evidence_reason_preserves_policy_headers_reason() {
+        // Arrange
+        let decided = decision(
+            CompactAnnouncementAction::AnnounceHeaders,
+            CompactAnnouncementReason::CompactHighBandwidthNotRequested,
+        );
+        let message = WireNetworkMessage::Headers(HeadersMessage {
+            headers: Vec::new(),
+        });
+
+        // Act
+        let reason = compact_announce_evidence_reason(decided, Some(&message));
+
+        // Assert
+        assert_eq!(
+            reason,
+            CompactAnnouncementReason::CompactHighBandwidthNotRequested
+        );
+    }
+
+    #[test]
+    fn compact_announce_evidence_reason_preserves_policy_inventory_reason() {
+        // Arrange
+        let decided = decision(
+            CompactAnnouncementAction::AnnounceInventory,
+            CompactAnnouncementReason::CompactRelayDisabled,
+        );
+        let message = WireNetworkMessage::Inv(InventoryList::new(vec![InventoryVector {
+            inventory_type: InventoryType::Block,
+            object_hash: BlockHash::from_byte_array([2_u8; 32]).into(),
+        }]));
+
+        // Act
+        let reason = compact_announce_evidence_reason(decided, Some(&message));
+
+        // Assert
+        assert_eq!(reason, CompactAnnouncementReason::CompactRelayDisabled);
+    }
+
+    #[test]
+    fn compact_announce_evidence_reason_preserves_suppress_reason_for_none() {
+        // Arrange
+        let decided = decision(
+            CompactAnnouncementAction::Suppress,
+            CompactAnnouncementReason::CompactBlockUnavailable,
+        );
+
+        // Act
+        let reason = compact_announce_evidence_reason(decided, None);
+
+        // Assert
+        assert_eq!(reason, CompactAnnouncementReason::CompactBlockUnavailable);
     }
 }

@@ -386,10 +386,28 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                 resource_gate: gate,
             },
         )?;
-        self.record_compact_announcement_evidence(announcement.reason);
-        self.peer_manager
-            .announce_block(peer_id, block)
-            .map_err(ManagedNetworkError::from)
+        // Deterministic stand-in for Knots FastRandomContext nonce (first 8 LE bytes of block hash).
+        let hash_bytes = block_hash.to_byte_array();
+        let compact_nonce = u64::from_le_bytes([
+            hash_bytes[0],
+            hash_bytes[1],
+            hash_bytes[2],
+            hash_bytes[3],
+            hash_bytes[4],
+            hash_bytes[5],
+            hash_bytes[6],
+            hash_bytes[7],
+        ]);
+        let maybe_message = self
+            .peer_manager
+            .announce_block_with_action(peer_id, block, announcement.action, compact_nonce)
+            .map_err(ManagedNetworkError::from)?;
+        let evidence_reason = block_relay_evidence::compact_announce_evidence_reason(
+            announcement,
+            maybe_message.as_ref(),
+        );
+        self.record_compact_announcement_evidence(evidence_reason);
+        Ok(maybe_message)
     }
 
     pub fn announce_transaction(
