@@ -4815,6 +4815,209 @@ fn ping_block_announcement_and_duplicate_add_paths_are_exercised() {
     assert!(manager.peer_state(5).is_none());
 }
 
+fn announce_with_action_coinbase_block() -> Block {
+    Block {
+        header: mined_header(BlockHash::from_byte_array([0_u8; 32]), 4),
+        transactions: vec![phase115_coinbase_transaction()],
+    }
+}
+
+#[test]
+fn announce_block_with_action_emits_compact_block_for_valid_coinbase_block() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(50, 0).expect("peer");
+    let block = announce_with_action_coinbase_block();
+    let compact_nonce = 0x1122_3344_5566_7788_u64;
+
+    // Act
+    let message = manager
+        .announce_block_with_action(
+            50,
+            &block,
+            CompactAnnouncementAction::AnnounceCompactBlock,
+            compact_nonce,
+        )
+        .expect("announce")
+        .expect("message");
+
+    // Assert
+    let WireNetworkMessage::CompactBlock(payload) = message else {
+        panic!("expected CompactBlock, got {message:?}");
+    };
+    assert_eq!(payload.header, block.header);
+    assert_eq!(payload.nonce, compact_nonce);
+    assert_eq!(payload.prefilled_transactions.len(), 1);
+    assert_eq!(payload.prefilled_transactions[0].index_delta, 0);
+    assert!(payload.short_ids.is_empty());
+}
+
+#[test]
+fn announce_block_with_action_emits_headers_when_action_is_headers() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(51, 0).expect("peer");
+    // Peer prefers inv by default; action must still force Headers.
+    assert!(
+        !manager
+            .peer_state(51)
+            .expect("state")
+            .remote_prefers_headers
+    );
+    let block = announce_with_action_coinbase_block();
+
+    // Act
+    let message = manager
+        .announce_block_with_action(51, &block, CompactAnnouncementAction::AnnounceHeaders, 0)
+        .expect("announce")
+        .expect("message");
+
+    // Assert
+    assert!(matches!(
+        message,
+        WireNetworkMessage::Headers(HeadersMessage { headers }) if headers.len() == 1
+            && headers[0] == block.header
+    ));
+}
+
+#[test]
+fn announce_block_with_action_emits_inventory_when_action_is_inventory() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(52, 0).expect("peer");
+    manager
+        .handle_message(52, WireNetworkMessage::SendHeaders, 1)
+        .expect("sendheaders");
+    assert!(
+        manager
+            .peer_state(52)
+            .expect("state")
+            .remote_prefers_headers
+    );
+    let block = announce_with_action_coinbase_block();
+    let expected_hash = block_hash(&block.header);
+
+    // Act
+    let message = manager
+        .announce_block_with_action(52, &block, CompactAnnouncementAction::AnnounceInventory, 0)
+        .expect("announce")
+        .expect("message");
+
+    // Assert
+    assert!(matches!(
+        message,
+        WireNetworkMessage::Inv(InventoryList { inventory })
+        if inventory.len() == 1
+            && inventory[0].inventory_type == InventoryType::Block
+            && inventory[0].object_hash == expected_hash.into()
+    ));
+}
+
+#[test]
+fn announce_block_with_action_suppress_returns_none() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(53, 0).expect("peer");
+    let block = announce_with_action_coinbase_block();
+
+    // Act
+    let maybe_message = manager
+        .announce_block_with_action(53, &block, CompactAnnouncementAction::Suppress, 0)
+        .expect("announce");
+
+    // Assert
+    assert!(maybe_message.is_none());
+}
+
+#[test]
+fn announce_block_with_action_unknown_peer_returns_error() {
+    // Arrange
+    let manager = PeerManager::new(local_config());
+    let block = announce_with_action_coinbase_block();
+
+    // Act
+    let error = manager
+        .announce_block_with_action(99, &block, CompactAnnouncementAction::AnnounceHeaders, 0)
+        .expect_err("unknown peer");
+
+    // Assert
+    assert_eq!(error, NetworkError::UnknownPeer(99));
+}
+
+#[test]
+fn announce_block_with_action_construction_failure_falls_back_to_inv() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(54, 0).expect("peer");
+    assert!(
+        !manager
+            .peer_state(54)
+            .expect("state")
+            .remote_prefers_headers
+    );
+    let block = Block {
+        header: mined_header(BlockHash::from_byte_array([0_u8; 32]), 4),
+        transactions: Vec::new(),
+    };
+
+    // Act
+    let message = manager
+        .announce_block_with_action(
+            54,
+            &block,
+            CompactAnnouncementAction::AnnounceCompactBlock,
+            7,
+        )
+        .expect("announce")
+        .expect("fallback message");
+
+    // Assert
+    assert!(matches!(
+        message,
+        WireNetworkMessage::Inv(InventoryList { ref inventory })
+        if inventory.len() == 1 && inventory[0].inventory_type == InventoryType::Block
+    ));
+    assert!(!matches!(message, WireNetworkMessage::CompactBlock(_)));
+}
+
+#[test]
+fn announce_block_with_action_construction_failure_falls_back_to_headers() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(55, 0).expect("peer");
+    manager
+        .handle_message(55, WireNetworkMessage::SendHeaders, 1)
+        .expect("sendheaders");
+    assert!(
+        manager
+            .peer_state(55)
+            .expect("state")
+            .remote_prefers_headers
+    );
+    let block = Block {
+        header: mined_header(BlockHash::from_byte_array([0_u8; 32]), 4),
+        transactions: Vec::new(),
+    };
+
+    // Act
+    let message = manager
+        .announce_block_with_action(
+            55,
+            &block,
+            CompactAnnouncementAction::AnnounceCompactBlock,
+            7,
+        )
+        .expect("announce")
+        .expect("fallback message");
+
+    // Assert
+    assert!(matches!(
+        message,
+        WireNetworkMessage::Headers(HeadersMessage { ref headers }) if headers.len() == 1
+    ));
+    assert!(!matches!(message, WireNetworkMessage::CompactBlock(_)));
+}
+
 #[test]
 fn inventory_requests_and_notfound_paths_cover_tx_and_block_modes() {
     let mut manager = relay_download_manager(true);

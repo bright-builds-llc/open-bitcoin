@@ -23,7 +23,9 @@ use crate::peer_policy::{
 };
 use crate::resource::InboundResourceEvent;
 use open_bitcoin_chainstate::ChainPosition;
-use open_bitcoin_consensus::{block_hash, transaction_txid, transaction_wtxid};
+use open_bitcoin_consensus::{
+    block_hash, build_compact_block_payload, transaction_txid, transaction_wtxid,
+};
 use open_bitcoin_primitives::{
     Block, BlockHash, InventoryType, InventoryVector, Transaction, Txid, Wtxid,
 };
@@ -380,18 +382,62 @@ impl PeerManager {
         let Some(peer) = self.peers.get(&peer_id) else {
             return Err(NetworkError::UnknownPeer(peer_id));
         };
-        let block_hash = block_hash(&block.header);
-        if peer.remote_prefers_headers {
-            return Ok(Some(WireNetworkMessage::Headers(HeadersMessage {
-                headers: vec![block.header.clone()],
-            })));
+        let action = if peer.remote_prefers_headers {
+            CompactAnnouncementAction::AnnounceHeaders
+        } else {
+            CompactAnnouncementAction::AnnounceInventory
+        };
+        self.announce_block_with_action(peer_id, block, action, 0)
+    }
+
+    pub fn announce_block_with_action(
+        &self,
+        peer_id: PeerId,
+        block: &Block,
+        action: CompactAnnouncementAction,
+        compact_nonce: u64,
+    ) -> Result<Option<WireNetworkMessage>, NetworkError> {
+        let Some(peer) = self.peers.get(&peer_id) else {
+            return Err(NetworkError::UnknownPeer(peer_id));
+        };
+
+        match action {
+            CompactAnnouncementAction::Suppress => Ok(None),
+            CompactAnnouncementAction::AnnounceHeaders => {
+                Ok(Some(WireNetworkMessage::Headers(HeadersMessage {
+                    headers: vec![block.header.clone()],
+                })))
+            }
+            CompactAnnouncementAction::AnnounceInventory => {
+                let block_hash = block_hash(&block.header);
+                Ok(Some(WireNetworkMessage::Inv(InventoryList::new(vec![
+                    InventoryVector {
+                        inventory_type: InventoryType::Block,
+                        object_hash: block_hash.into(),
+                    },
+                ]))))
+            }
+            CompactAnnouncementAction::AnnounceCompactBlock => {
+                match build_compact_block_payload(block, compact_nonce) {
+                    Ok(payload) => Ok(Some(WireNetworkMessage::CompactBlock(payload))),
+                    Err(_) => {
+                        if peer.remote_prefers_headers {
+                            Ok(Some(WireNetworkMessage::Headers(HeadersMessage {
+                                headers: vec![block.header.clone()],
+                            })))
+                        } else {
+                            let block_hash = block_hash(&block.header);
+                            Ok(Some(WireNetworkMessage::Inv(InventoryList::new(vec![
+                                InventoryVector {
+                                    inventory_type: InventoryType::Block,
+                                    object_hash: block_hash.into(),
+                                },
+                            ]))))
+                        }
+                    }
+                }
+            }
         }
-        Ok(Some(WireNetworkMessage::Inv(InventoryList::new(vec![
-            InventoryVector {
-                inventory_type: InventoryType::Block,
-                object_hash: block_hash.into(),
-            },
-        ]))))
     }
 
     pub fn announce_transaction(
