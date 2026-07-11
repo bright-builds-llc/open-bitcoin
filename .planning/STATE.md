@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
-status: in_progress
-stopped_at: Completed 118-01-PLAN.md
-last_updated: "2026-07-11T17:40:36.912Z"
+status: executing
+stopped_at: Completed 118-02-PLAN.md
+last_updated: "2026-07-11T18:46:01.889Z"
 last_activity: 2026-07-11
 progress:
   total_phases: 12
   completed_phases: 8
   total_plans: 32
-  completed_plans: 30
-  percent: 94
+  completed_plans: 33
+  percent: 100
 ---
 
 # Project State
@@ -21,19 +21,19 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-07-10 after Phase 117 completed v2.1 implementation and verification).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 118 outbound compact-block announcement wiring (Plan 01 complete)
+**Current focus:** Phase 118 outbound compact-block announcement wiring (Plan 02 complete)
 
 ## Current Position
 
 Milestone: v2.1 Block Serving and Compact Block Relay Boundary
 Phase: 118
-Plan: 1 of 3 complete
-Status: Executing Phase 118 — outbound compact announce wiring
+Plan: 2 of 3 complete
+Status: Ready to execute
 Last activity: 2026-07-11
 
 v2.0 Transaction Relay and Mempool Participation Boundary shipped on 2026-07-03. The archived audit reports 32/32 requirements, 10/10 phases, 8/8 integration checks, 8/8 cross-phase flows, and no tracked tech debt.
 
-v2.1 gap-closure Phase 118 is in progress after Phase 117 verification. Phase 118 Plan 01 delivered the pure Knots-shaped `build_compact_block_payload` builder; Plans 02–03 still wire PeerManager emission and ManagedPeerNetwork evidence-after-emit.
+v2.1 gap-closure Phase 118 is in progress after Phase 117 verification. Phase 118 Plans 01–02 delivered the Knots-shaped compact payload builder and PeerManager action-aware announce emission; Plan 03 still wires ManagedPeerNetwork evidence-after-emit.
 
 ## Latest Milestone Archive
 
@@ -67,6 +67,9 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 - [Phase 117-parity-traceability-uat-and-release-guardrails]: Five code-review warnings in the aggregate guardrails were fixed before final verification; the post-review repository contract passed.
 - [Phase 118]: Builder lives in open-bitcoin-consensus beside short-ID helpers (D-03)
 - [Phase 118]: Empty transactions return CodecError::CompactBlockEmpty; no unwrap/panic
+- [Phase 118]: New announce_block_with_action API; legacy announce_block signature unchanged (D-02)
+- [Phase 118]: announce_block delegates to Headers/Inv actions for DRY without compact path
+- [Phase 118]: CMP-05 left Pending until Plan 03 closes evidence-after-emit
 
 ## Pending Todos
 
@@ -86,6 +89,6 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Session Continuity
 
-Last session: 2026-07-11T17:40:36.909Z
-Stopped at: Completed 118-01-PLAN.md
+Last session: 2026-07-11T18:46:01.886Z
+Stopped at: Completed 118-02-PLAN.md
 Resume file: None
