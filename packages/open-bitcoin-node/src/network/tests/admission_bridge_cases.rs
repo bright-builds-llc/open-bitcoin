@@ -649,3 +649,97 @@ fn managed_admission_bridge_resource_caps_preserved_under_orphan_burst() {
     assert!(evicted_count >= 2);
     assert!(request_snapshot.in_flight_count <= PHASE101_MAX_TX_REQUESTS_IN_FLIGHT_PER_PEER);
 }
+
+#[test]
+fn managed_admission_bridge_orphaned_peer_tx_feeds_compact_extra_txn() {
+    // Arrange
+    let (mut network, coinbase_txids) =
+        relay_enabled_network_with_chain(119_301, 2, PolicyConfig::default());
+    network.connect_outbound_peer(119_301, 0).expect("peer");
+    let (_parent, child) = parent_and_child(coinbase_txids[0]);
+    assert_eq!(network.compact_extra_txn_len(), 0);
+
+    // Act
+    let result = network
+        .process_peer_transaction_admission(
+            119_301,
+            child,
+            10,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("orphan outcome");
+
+    // Assert
+    assert!(matches!(result.outcome, MempoolOutcome::Orphaned { .. }));
+    assert_eq!(
+        network.compact_extra_txn_len(),
+        1,
+        "orphaned staged body must push into CompactExtraTxnBuffer"
+    );
+}
+
+#[test]
+fn managed_admission_bridge_rejected_peer_tx_feeds_compact_extra_txn_gated() {
+    // Arrange
+    let (mut network, coinbase_txids) = network_with_chain(119_302, 3, PolicyConfig::default());
+    network.add_inbound_peer(119_302).expect("peer");
+    let rejected = low_fee_spend(coinbase_txids[1]);
+    assert_eq!(network.compact_extra_txn_len(), 0);
+
+    // Act
+    let result = network
+        .process_peer_transaction_admission(
+            119_302,
+            rejected,
+            20,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("rejected");
+
+    // Assert
+    assert!(matches!(result.outcome, MempoolOutcome::Rejected { .. }));
+    assert_eq!(
+        network.compact_extra_txn_len(),
+        1,
+        "rejected body under per-tx size gate must push_gated into CompactExtraTxnBuffer"
+    );
+}
+
+#[test]
+fn managed_admission_bridge_replaced_victims_feed_compact_extra_txn() {
+    // Arrange
+    let (mut network, coinbase_txids) = network_with_chain(119_303, 2, PolicyConfig::default());
+    network.add_inbound_peer(119_303).expect("peer");
+    let original = spend_transaction(coinbase_txids[0], 499_999_000);
+    let replacement = spend_transaction(coinbase_txids[0], 499_996_000);
+    network
+        .process_peer_transaction_admission(
+            119_303,
+            original,
+            30,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("original");
+    let len_before_replace = network.compact_extra_txn_len();
+
+    // Act
+    let result = network
+        .process_peer_transaction_admission(
+            119_303,
+            replacement,
+            31,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("replacement");
+
+    // Assert
+    assert!(matches!(result.outcome, MempoolOutcome::Replaced { .. }));
+    assert!(
+        network.compact_extra_txn_len() > len_before_replace,
+        "replaced victim bodies must push into CompactExtraTxnBuffer before demotion"
+    );
+}
