@@ -119,20 +119,25 @@ impl PeerManager {
         Ok(compact_block_init_actions(outcome))
     }
 
-    pub fn expire_compact_download_timeouts(&mut self, now_unix_seconds: i64) -> Vec<PeerAction> {
+    pub fn expire_compact_download_timeouts(
+        &mut self,
+        now_unix_seconds: i64,
+    ) -> Vec<(PeerId, PeerAction)> {
         let mut actions = Vec::new();
-        for state in self.compact_download_states.values_mut() {
+        for (peer_id, state) in self.compact_download_states.iter_mut() {
             let expired = expire_stale_compact_downloads(
                 state,
                 now_unix_seconds,
                 COMPACT_BLOCK_DOWNLOAD_TIMEOUT_SECONDS,
             );
             for item in expired {
-                actions.extend(compact_download_actions_to_peer_actions(vec![
+                for action in compact_download_actions_to_peer_actions(vec![
                     CompactDownloadAction::RequestFullBlock(FullBlockFetch {
                         block_hash: item.block_hash,
                     }),
-                ]));
+                ]) {
+                    actions.push((*peer_id, action));
+                }
             }
         }
         actions

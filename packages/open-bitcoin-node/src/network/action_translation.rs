@@ -82,6 +82,32 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             .collect())
     }
 
+    /// Expire stale compact-block downloads and return peer-targeted full-block `GetData` fallbacks.
+    ///
+    /// Caller supplies `now_unix_seconds` (same clock contract as transaction request expiry).
+    /// Unlike `expire_transaction_requests`, this keeps `PeerAction::Send` — compact timeout
+    /// fallbacks are wire `GetData(Block)` messages, not `TransactionRelay` actions.
+    pub fn expire_compact_download_timeouts(
+        &mut self,
+        now_unix_seconds: i64,
+    ) -> ManagedResult<Vec<(PeerId, WireNetworkMessage)>> {
+        let expired_pairs = self
+            .peer_manager
+            .expire_compact_download_timeouts(now_unix_seconds);
+        let expired_count = expired_pairs.len();
+        let outbound = expired_pairs
+            .into_iter()
+            .filter_map(|(peer_id, action)| match action {
+                PeerAction::Send(message) => Some((peer_id, message)),
+                _ => None,
+            })
+            .collect();
+        if expired_count > 0 {
+            self.record_compact_cleanup(CompactDownloadCleanupCause::Timeout, expired_count);
+        }
+        Ok(outbound)
+    }
+
     pub(super) fn collect_outbound(
         &mut self,
         actions: Vec<PeerAction>,

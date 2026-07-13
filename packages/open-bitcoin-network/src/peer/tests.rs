@@ -2626,10 +2626,13 @@ fn phase115_expire_compact_download_timeouts_requests_full_blocks() {
     assert_eq!(actions.len(), 1);
     assert!(matches!(
         &actions[0],
-        PeerAction::Send(WireNetworkMessage::GetData(inventory))
-            if inventory.inventory.len() == 1
-                && inventory.inventory[0].inventory_type == InventoryType::Block
-                && inventory.inventory[0].object_hash == block_hash.into()
+        (
+            returned_peer_id,
+            PeerAction::Send(WireNetworkMessage::GetData(inventory))
+        ) if *returned_peer_id == peer_id
+            && inventory.inventory.len() == 1
+            && inventory.inventory[0].inventory_type == InventoryType::Block
+            && inventory.inventory[0].object_hash == block_hash.into()
     ));
     let download_state = manager
         .compact_download_peer_state(peer_id)
