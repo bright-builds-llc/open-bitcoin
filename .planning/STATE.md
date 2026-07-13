@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
-status: completed
-stopped_at: Phase 120 context gathered
-last_updated: "2026-07-13T20:14:19.919Z"
+status: in_progress
+stopped_at: Completed 120-01-PLAN.md
+last_updated: "2026-07-13T21:49:15.797Z"
 last_activity: 2026-07-13
 progress:
   total_phases: 12
   completed_phases: 10
-  total_plans: 35
-  completed_plans: 37
-  percent: 100
+  total_plans: 40
+  completed_plans: 38
+  percent: 95
 ---
 
 # Project State
@@ -21,19 +21,19 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-07-10 after Phase 117 completed v2.1 implementation and verification).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 119 complete — ready for Phase 120 (compact-download timeouts) or milestone verification
+**Current focus:** Phase 120 Plan 01 complete — next Plan 02 (compact misbehavior escalation)
 
 ## Current Position
 
 Milestone: v2.1 Block Serving and Compact Block Relay Boundary
 Phase: 120
-Plan: Not started
-Status: Phase complete
+Plan: 2 of 3
+Status: In progress
 Last activity: 2026-07-13
 
 v2.0 Transaction Relay and Mempool Participation Boundary shipped on 2026-07-03. The archived audit reports 32/32 requirements, 10/10 phases, 8/8 integration checks, 8/8 cross-phase flows, and no tracked tech debt.
 
-v2.1 gap-closure Phase 119 closed live CompactBlock mempool+extra inject, admission extra feeds, and mempool-removal lifecycle hooks with runtime proofs.
+v2.1 gap-closure Phase 120 Plan 01 wired peer-scoped compact-download timeout expiry onto ManagedPeerNetwork receive paths with Timeout cleanup evidence.
 
 ## Latest Milestone Archive
 
@@ -81,6 +81,10 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 - [Phase 119]: Forward removal.wtxid before TxServing demotion on connected-block lifecycle (D-07)
 - [Phase 119]: Evicted/Expired and replaced victims forward wtxid; never hook admitted Replaced wtxid as removal
 - [Phase 119]: Explicit duplicate short-id typed-failure test on injected receive path (D-09.2)
+- [Phase 120]: PeerManager expire returns peer-scoped Vec<(PeerId, PeerAction)> like TX expire
+- [Phase 120]: ManagedPeerNetwork compact expire keeps PeerAction::Send; never copies TX TransactionRelay filter
+- [Phase 120]: receive_message returns ManagedSyncMessageResult so other-peer timeout GetData is preserved
+- [Phase 120]: Timeout tick piggybacks on receive_* message timestamps; no Tokio timer
 
 ## Pending Todos
 
@@ -100,6 +104,6 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Session Continuity
 
-Last session: 2026-07-13T20:14:19.916Z
-Stopped at: Phase 120 context gathered
-Resume file: .planning/phases/120-compact-download-timeout-and-misbehavior-runtime-bridge/120-CONTEXT.md
+Last session: 2026-07-13T21:49:15.788Z
+Stopped at: Completed 120-01-PLAN.md
+Resume file: None

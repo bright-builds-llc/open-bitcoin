@@ -277,11 +277,11 @@ Plans:
 3. Disconnect/timeout/reorg cleanup still remove only volatile compact-relay state.
 4. Typed compact misbehavior maps to Knots-aligned disconnect, score, or suppression decisions rather than empty-action silence only.
 
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
 
-- [ ] 120-01-PLAN.md — Timeout tick forwarder + receive_* piggyback + Timeout cleanup evidence (RCN-07, GOV-03)
+- [x] 120-01-PLAN.md — Timeout tick forwarder + receive_* piggyback + Timeout cleanup evidence (RCN-07, GOV-03)
 - [ ] 120-02-PLAN.md — Misbehavior escalation beyond silent suppress (GOV-02)
 - [ ] 120-03-PLAN.md — ReceivedBlock volatile cleanup + runtime proofs + parity breadcrumbs (GOV-03)
 
@@ -320,7 +320,7 @@ Plans:
 | 117. Parity Traceability, UAT, and Release Guardrails | v2.1 | 4/4 | Complete    | 2026-07-10 |
 | 118. Outbound Compact Block Announcement Wiring | v2.1 | 3/3 | Complete   | 2026-07-11 |
 | 119. Compact Receive Mempool Candidate Injection | v2.1 | 3/3 | Complete   | 2026-07-13 |
-| 120. Compact Download Timeout and Misbehavior Runtime Bridge | v2.1 | 0/0 | Pending     | — |
+| 120. Compact Download Timeout and Misbehavior Runtime Bridge | v2.1 | 1/3 | In Progress|  |
 | 121. Block Relay Metrics and Log Runtime Projection | v2.1 | 0/0 | Pending     | — |
 
 ## Traceability

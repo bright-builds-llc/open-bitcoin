@@ -34,13 +34,13 @@ Requirements for the current milestone. Each requirement maps to exactly one roa
 - [x] **RCN-04**: Node requests missing compact-block transactions with bounded `getblocktxn` indexes only when the peer and in-flight state are eligible.
 - [x] **RCN-05**: Node accepts `blocktxn` responses only for expected in-flight partial compact blocks from the matching peer and rejects duplicate, unexpected, out-of-bounds, or mismatched responses.
 - [x] **RCN-06**: Reconstructed blocks enter the existing block validation and connect path without mutating chainstate from partial compact-block state.
-- [ ] **RCN-07**: Node falls back to full block fetch or suppression when reconstruction fails, responses timeout, blocks are old or far from the active tip, or peer/resource state becomes ineligible.
+- [x] **RCN-07**: Node falls back to full block fetch or suppression when reconstruction fails, responses timeout, blocks are old or far from the active tip, or peer/resource state becomes ineligible.
 
 ### Resource Governance And Runtime Integration
 
 - [x] **GOV-01**: Full block serving, compact block serving, partial compact-block state, missing transaction requests, and fallback all participate in existing request, queue, and in-flight resource limits.
 - [ ] **GOV-02**: Malformed compact blocks, invalid compact-block headers, duplicate `blocktxn`, unexpected `blocktxn`, and out-of-bounds indexes produce Knots-aligned misbehavior, disconnect, or suppression decisions.
-- [ ] **GOV-03**: Restart, reconnect, disconnect, timeout, and reorg cleanup remove volatile compact-relay state without deleting validated chainstate or durable block data.
+- [x] **GOV-03**: Restart, reconnect, disconnect, timeout, and reorg cleanup remove volatile compact-relay state without deleting validated chainstate or durable block data.
 - [x] **GOV-04**: Compact block relay integrates with mempool lifecycle, transaction relay, and block connect/disconnect events without activating package relay or filter serving.
 - [x] **GOV-05**: Historical, pruned, stale, side-chain, and unavailable block serving remains bounded by documented eligibility rules and does not imply archive-node behavior.
 
@@ -124,10 +124,10 @@ Traceability is populated by the v2.1 roadmap. Each active requirement maps to e
 | RCN-04 | Phase 115 | Complete |
 | RCN-05 | Phase 115 | Complete |
 | RCN-06 | Phase 115 | Complete |
-| RCN-07 | Phase 120 | Pending |
+| RCN-07 | Phase 120 | Complete |
 | GOV-01 | Phase 111 | Complete |
 | GOV-02 | Phase 120 | Pending |
-| GOV-03 | Phase 120 | Pending |
+| GOV-03 | Phase 120 | Complete |
 | GOV-04 | Phase 119 | Complete |
 | GOV-05 | Phase 111 | Complete |
 | OBS-01 | Phase 116 | Complete |
