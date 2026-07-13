@@ -78,6 +78,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                 wtxid,
                 missing_parents,
             } => {
+                self.compact_extra_txn.push(*wtxid, transaction.clone());
                 let actions = self.orphanage.stage_missing_parent(OrphanStageInput {
                     peer_id,
                     transaction,
@@ -88,9 +89,14 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                 });
                 self.apply_orphan_actions(actions, timestamp, &mut result)?;
             }
-            MempoolOutcome::Rejected { .. }
-            | MempoolOutcome::Duplicate { .. }
-            | MempoolOutcome::Evicted { .. } => {
+            MempoolOutcome::Rejected { wtxid, .. } => {
+                let _ = self
+                    .compact_extra_txn
+                    .push_gated(*wtxid, transaction.clone());
+                self.remove_evicted_outcome(&outcome)?;
+                self.note_recent_reject_for_outcome(&outcome, Some(&transaction))?;
+            }
+            MempoolOutcome::Duplicate { .. } | MempoolOutcome::Evicted { .. } => {
                 self.remove_evicted_outcome(&outcome)?;
                 self.note_recent_reject_for_outcome(&outcome, Some(&transaction))?;
             }
@@ -242,6 +248,8 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                 wtxid,
                 missing_parents,
             } => {
+                self.compact_extra_txn
+                    .push(*wtxid, candidate.transaction.clone());
                 self.orphanage
                     .record_reconsideration_outcome(candidate.wtxid, status);
                 let actions = self.orphanage.stage_missing_parent(OrphanStageInput {
@@ -254,9 +262,14 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                 });
                 self.apply_orphan_actions(actions, timestamp, result)?;
             }
-            MempoolOutcome::Rejected { .. }
-            | MempoolOutcome::Duplicate { .. }
-            | MempoolOutcome::Evicted { .. } => {
+            MempoolOutcome::Rejected { wtxid, .. } => {
+                let _ = self
+                    .compact_extra_txn
+                    .push_gated(*wtxid, candidate.transaction.clone());
+                self.remove_evicted_outcome(&outcome)?;
+                self.note_recent_reject_for_outcome(&outcome, Some(&candidate.transaction))?;
+            }
+            MempoolOutcome::Duplicate { .. } | MempoolOutcome::Evicted { .. } => {
                 self.remove_evicted_outcome(&outcome)?;
                 self.note_recent_reject_for_outcome(&outcome, Some(&candidate.transaction))?;
             }
@@ -281,6 +294,9 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         transaction: Transaction,
     ) -> Result<(), ManagedNetworkError> {
         let removed = outcome.replaced().to_vec();
+        if matches!(outcome, MempoolOutcome::Replaced { .. }) {
+            self.feed_replaced_victims_to_compact_extra(&removed);
+        }
         self.remove_stored_transactions_with_status(&removed, TxServingRecordStatus::Replaced)?;
         self.remove_stored_transactions_with_status(
             outcome.evicted(),
@@ -292,6 +308,26 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         }
         self.store_transaction(transaction)?;
         Ok(())
+    }
+
+    /// Push replaced-victim bodies into the compact extra ring before demotion (D-05).
+    ///
+    /// Does not push the admitted Replaced wtxid — only prior victim bodies.
+    fn feed_replaced_victims_to_compact_extra(&mut self, victim_txids: &[Txid]) {
+        for victim_txid in victim_txids {
+            let maybe_from_relay = self
+                .relay_serving
+                .maybe_accepted_wtxid_and_transaction(*victim_txid);
+            let maybe_pair = maybe_from_relay.or_else(|| {
+                let transaction = self.transactions_by_txid.get(victim_txid)?.clone();
+                let wtxid = transaction_wtxid(&transaction).ok()?;
+                Some((wtxid, transaction))
+            });
+            let Some((wtxid, transaction)) = maybe_pair else {
+                continue;
+            };
+            self.compact_extra_txn.push(wtxid, transaction);
+        }
     }
 
     fn remove_evicted_outcome(

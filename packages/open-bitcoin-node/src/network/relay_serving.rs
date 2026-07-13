@@ -137,6 +137,14 @@ impl RelayServingCache {
         Ok(())
     }
 
+    pub(super) fn maybe_accepted_wtxid_and_transaction(
+        &self,
+        txid: Txid,
+    ) -> Option<(Wtxid, Transaction)> {
+        let record = self.records_by_txid.get(&txid)?;
+        Some((record.wtxid, record.transaction.clone()))
+    }
+
     pub(super) fn clear_latest_outcomes(&mut self) {
         self.latest_outcomes.clear();
     }

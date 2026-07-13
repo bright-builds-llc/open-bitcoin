@@ -179,15 +179,6 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     pub(super) fn compact_extra_txn_len(&self) -> usize {
         self.compact_extra_txn.to_owned_pairs().len()
     }
-
-    #[cfg(test)]
-    pub(super) fn push_compact_extra_txn_for_test(
-        &mut self,
-        wtxid: Wtxid,
-        transaction: Transaction,
-    ) {
-        self.compact_extra_txn.push(wtxid, transaction);
-    }
 }
 
 #[cfg(test)]
