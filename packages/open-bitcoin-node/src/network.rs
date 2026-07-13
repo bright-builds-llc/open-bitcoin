@@ -78,6 +78,7 @@ pub struct ManagedPeerNetwork<S> {
     block_relay_evidence: block_relay_evidence::ManagedBlockRelayEvidenceState,
     relay_fanout: relay_fanout::ManagedRelayFanoutState,
     relay_serving: relay_serving::RelayServingCache,
+    compact_extra_txn: compact_receive_candidates::CompactExtraTxnBuffer,
     latest_mempool_recovery: Option<ManagedMempoolRecoverySummary>,
     latest_mempool_recovery_storage_error: Option<crate::status::SyncRecoveryCategory>,
     local_config: LocalPeerConfig,
@@ -226,14 +227,19 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         consensus_params: ConsensusParams,
     ) -> Result<Vec<WireNetworkMessage>, ManagedNetworkError> {
         let observed_block_relay_message = matches!(
-            message,
+            &message,
             WireNetworkMessage::SendCompact(_)
                 | WireNetworkMessage::CompactBlock(_)
                 | WireNetworkMessage::BlockTxn(_)
         );
-        let actions = self
-            .peer_manager
-            .handle_message(peer_id, message, timestamp)?;
+        let actions = match message {
+            WireNetworkMessage::CompactBlock(payload) => {
+                self.handle_compact_block_receive(peer_id, payload, timestamp)?
+            }
+            other => self
+                .peer_manager
+                .handle_message(peer_id, other, timestamp)?,
+        };
         if observed_block_relay_message {
             self.note_block_relay_observed();
             self.record_compact_download_evidence(&actions);
@@ -255,12 +261,16 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             WireNetworkMessage::Headers(headers_message) => {
                 self.handle_headers_message(peer_id, headers_message, timestamp, consensus_params)?
             }
+            WireNetworkMessage::CompactBlock(payload) => {
+                let actions = self.handle_compact_block_receive(peer_id, payload, timestamp)?;
+                self.note_block_relay_observed();
+                self.record_compact_download_evidence(&actions);
+                actions
+            }
             other => {
                 let observed_block_relay_message = matches!(
-                    other,
-                    WireNetworkMessage::SendCompact(_)
-                        | WireNetworkMessage::CompactBlock(_)
-                        | WireNetworkMessage::BlockTxn(_)
+                    &other,
+                    WireNetworkMessage::SendCompact(_) | WireNetworkMessage::BlockTxn(_)
                 );
                 let actions = self
                     .peer_manager

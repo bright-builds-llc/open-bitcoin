@@ -125,11 +125,12 @@ fn live_compact_receive_uses_mempool_candidates_not_empty_facts() {
     handshake_and_sendcmpct(&mut network, peer_id);
 
     // Act — live ManagedPeerNetwork receive must inject mempool candidates
+    let receive_time = i64::from(announced.header.time) + 60;
     let outbound = network
         .receive_message(
             peer_id,
             WireNetworkMessage::CompactBlock(payload),
-            10,
+            receive_time,
             verify_flags(),
             consensus_params(),
         )
@@ -171,11 +172,12 @@ fn live_compact_receive_sync_message_also_injects_mempool_candidates() {
     handshake_and_sendcmpct(&mut network, peer_id);
 
     // Act
+    let receive_time = i64::from(announced.header.time) + 60;
     let result = network
         .receive_sync_message(
             peer_id,
             WireNetworkMessage::CompactBlock(payload),
-            10,
+            receive_time,
             verify_flags(),
             consensus_params(),
         )

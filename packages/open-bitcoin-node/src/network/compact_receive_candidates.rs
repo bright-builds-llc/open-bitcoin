@@ -6,6 +6,11 @@
 
 use open_bitcoin_core::primitives::{Transaction, Wtxid};
 use open_bitcoin_mempool::{Mempool, transaction_weight_and_virtual_size};
+use open_bitcoin_network::{CompactBlockReceiveFacts, PeerAction, PeerId};
+
+use super::{ManagedNetworkError, ManagedPeerNetwork};
+use crate::ChainstateStore;
+use open_bitcoin_codec::CompactBlockPayload;
 
 /// Knots `DEFAULT_BLOCK_RECONSTRUCTION_EXTRA_TXN` (`net_processing.h`).
 pub const DEFAULT_BLOCK_RECONSTRUCTION_EXTRA_TXN: usize = 32_768;
@@ -134,6 +139,54 @@ fn approximate_tx_bytes(transaction: &Transaction) -> usize {
     match transaction_weight_and_virtual_size(transaction) {
         Ok((_, virtual_size)) => virtual_size,
         Err(_) => 0,
+    }
+}
+
+impl<S: ChainstateStore> ManagedPeerNetwork<S> {
+    /// Snapshot mempool + extra buffer as owned pairs before borrowing PeerManager (D-02/D-04).
+    pub(super) fn collect_compact_receive_owned(
+        &self,
+    ) -> (Vec<(Wtxid, Transaction)>, Vec<(Wtxid, Transaction)>) {
+        let candidates = mempool_compact_candidate_owned(self.mempool.mempool());
+        let extras = compact_extra_owned(&self.compact_extra_txn);
+        (candidates, extras)
+    }
+
+    /// Live CompactBlock receive: inject mempool + extras into `handle_compact_block_download`.
+    pub(super) fn handle_compact_block_receive(
+        &mut self,
+        peer_id: PeerId,
+        payload: CompactBlockPayload,
+        timestamp: i64,
+    ) -> Result<Vec<PeerAction>, ManagedNetworkError> {
+        let (candidate_owned, extra_owned) = self.collect_compact_receive_owned();
+        let candidate_refs: Vec<(&Wtxid, &Transaction)> = candidate_owned
+            .iter()
+            .map(|(wtxid, tx)| (wtxid, tx))
+            .collect();
+        let extra_refs: Vec<(&Wtxid, &Transaction)> =
+            extra_owned.iter().map(|(wtxid, tx)| (wtxid, tx)).collect();
+        let facts = CompactBlockReceiveFacts {
+            candidates: &candidate_refs,
+            extra: &extra_refs,
+        };
+        Ok(self
+            .peer_manager
+            .handle_compact_block_download(peer_id, payload, facts, timestamp)?)
+    }
+
+    #[cfg(test)]
+    pub(super) fn compact_extra_txn_len(&self) -> usize {
+        self.compact_extra_txn.to_owned_pairs().len()
+    }
+
+    #[cfg(test)]
+    pub(super) fn push_compact_extra_txn_for_test(
+        &mut self,
+        wtxid: Wtxid,
+        transaction: Transaction,
+    ) {
+        self.compact_extra_txn.push(wtxid, transaction);
     }
 }
 

@@ -436,6 +436,8 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                 super::block_relay_evidence::ManagedBlockRelayEvidenceState::default(),
             relay_fanout: super::relay_fanout::ManagedRelayFanoutState::default(),
             relay_serving: RelayServingCache::default(),
+            compact_extra_txn:
+                super::compact_receive_candidates::CompactExtraTxnBuffer::with_defaults(),
             latest_mempool_recovery: None,
             latest_mempool_recovery_storage_error: None,
             local_config,
