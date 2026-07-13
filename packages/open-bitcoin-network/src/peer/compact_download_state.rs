@@ -69,10 +69,17 @@ impl PeerManager {
         }
     }
 
-    pub fn on_compact_download_block_connected(&mut self, block_hash: BlockHash) {
+    /// Clear matching volatile compact in-flight slots across all peers.
+    ///
+    /// Returns the number of peers that had an in-flight entry removed for `block_hash`.
+    pub fn on_compact_download_block_connected(&mut self, block_hash: BlockHash) -> usize {
+        let mut removed_count = 0;
         for state in self.compact_download_states.values_mut() {
-            let _ = cleanup_compact_download_on_block_connected(state, block_hash);
+            if cleanup_compact_download_on_block_connected(state, block_hash) {
+                removed_count += 1;
+            }
         }
+        removed_count
     }
 
     /// Clear volatile partial-compact slots that matched a mempool transaction by wtxid.

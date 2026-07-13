@@ -12,7 +12,7 @@
 // - packages/bitcoin-knots/test/functional/p2p_tx_download.py
 // - packages/bitcoin-knots/test/functional/mempool_accept.py
 
-use open_bitcoin_core::consensus::{ConsensusParams, ScriptVerifyFlags};
+use open_bitcoin_core::consensus::{ConsensusParams, ScriptVerifyFlags, block_hash};
 use open_bitcoin_network::{
     CompactDownloadCleanupCause, DisconnectReason, InventoryList, MisbehaviorDecision,
     MisbehaviorKind, MisbehaviorPolicy, MisbehaviorResponse, PeerAction, PeerId, TxDownloadAction,
@@ -184,6 +184,18 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                     }
                 }
                 PeerAction::ReceivedBlock(block) => {
+                    // Clear matching volatile compact in-flight across all peers before
+                    // connect so a connect failure cannot leave stale multi-peer slots (D-08).
+                    let connected_hash = block_hash(&block.header);
+                    let removed_count = self
+                        .peer_manager
+                        .on_compact_download_block_connected(connected_hash);
+                    if removed_count > 0 {
+                        self.record_compact_cleanup(
+                            CompactDownloadCleanupCause::BlockConnected,
+                            removed_count,
+                        );
+                    }
                     maybe_block_disposition = Some(self.connect_stored_block(
                         &block,
                         self.next_chain_work(),
