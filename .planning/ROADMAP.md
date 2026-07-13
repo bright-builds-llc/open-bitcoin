@@ -48,7 +48,7 @@ v2.1 Block Serving and Compact Block Relay Boundary is the active milestone afte
 - [x] **Phase 116: Operator Evidence, Metrics, Logs, and Support Boundary** - Project block-serving and compact-relay truth through shared RPC, CLI, dashboard, metrics, logs, and support surfaces. (completed 2026-07-10)
 - [x] **Phase 117: Parity Traceability, UAT, and Release Guardrails** - Close parity, UAT, docs, and deterministic no-claim guardrails for the bounded v2.1 release boundary. (completed 2026-07-10)
 - [x] **Phase 118: Outbound Compact Block Announcement Wiring** - Honor compact announcement decisions on the wire by emitting `cmpctblock` (or headers/inventory fallback) without false-positive announce evidence. (completed 2026-07-11)
-- [ ] **Phase 119: Compact Receive Mempool Candidate Injection** - Feed live mempool and bounded extra candidates into compact-block receive, and hook mempool-remove lifecycle into partial state.
+- [x] **Phase 119: Compact Receive Mempool Candidate Injection** - Feed live mempool and bounded extra candidates into compact-block receive, and hook mempool-remove lifecycle into partial state. (completed 2026-07-13)
 - [ ] **Phase 120: Compact Download Timeout and Misbehavior Runtime Bridge** - Schedule compact-download timeout expiration from the node runtime and escalate typed compact misbehavior beyond silent suppress.
 - [ ] **Phase 121: Block Relay Metrics and Log Runtime Projection** - Project block-relay metric samples and structured log records through the sync runtime persist/logging path.
 
@@ -256,13 +256,13 @@ Plans:
 3. `on_mempool_transaction_removed` is hooked from mempool lifecycle without activating package relay or filters.
 4. Runtime tests cover reconstruction, collision, duplicate, missing, and lifecycle cleanup outcomes.
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 
 - [x] 119-01-PLAN.md — PeerManager mempool-removal forwarder + CompactExtraTxnBuffer helpers
 - [x] 119-02-PLAN.md — Shell CompactBlock intercept with mempool/extra facts + admission feeds
-- [ ] 119-03-PLAN.md — Lifecycle hooks + runtime injected-path tests + parity breadcrumbs
+- [x] 119-03-PLAN.md — Lifecycle hooks + runtime injected-path tests + parity breadcrumbs
 
 #### Phase 120: Compact Download Timeout and Misbehavior Runtime Bridge
 
@@ -317,7 +317,7 @@ Plans:
 | 116. Operator Evidence, Metrics, Logs, and Support Boundary | v2.1 | 4/4 | Complete   | 2026-07-10 |
 | 117. Parity Traceability, UAT, and Release Guardrails | v2.1 | 4/4 | Complete    | 2026-07-10 |
 | 118. Outbound Compact Block Announcement Wiring | v2.1 | 3/3 | Complete   | 2026-07-11 |
-| 119. Compact Receive Mempool Candidate Injection | v2.1 | 2/3 | In Progress|  |
+| 119. Compact Receive Mempool Candidate Injection | v2.1 | 3/3 | Complete   | 2026-07-13 |
 | 120. Compact Download Timeout and Misbehavior Runtime Bridge | v2.1 | 0/0 | Pending     | — |
 | 121. Block Relay Metrics and Log Runtime Projection | v2.1 | 0/0 | Pending     | — |
 

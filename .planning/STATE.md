@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
 status: executing
-stopped_at: Completed 119-02-PLAN.md
-last_updated: "2026-07-13T18:46:30.493Z"
+stopped_at: Completed 119-03-PLAN.md
+last_updated: "2026-07-13T19:02:16.033Z"
 last_activity: 2026-07-13
 progress:
   total_phases: 12
-  completed_phases: 9
+  completed_phases: 10
   total_plans: 35
-  completed_plans: 36
+  completed_plans: 37
   percent: 100
 ---
 
@@ -21,19 +21,19 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-07-10 after Phase 117 completed v2.1 implementation and verification).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 119 Plan 02 complete — ready for Plan 03 (mempool lifecycle hook)
+**Current focus:** Phase 119 complete — ready for Phase 120 (compact-download timeouts) or milestone verification
 
 ## Current Position
 
 Milestone: v2.1 Block Serving and Compact Block Relay Boundary
 Phase: 119-compact-receive-mempool-candidate-injection
-Plan: 2 of 3 complete
-Status: Plan 02 complete — ready for Plan 03
+Plan: 3 of 3 complete
+Status: Phase complete
 Last activity: 2026-07-13
 
 v2.0 Transaction Relay and Mempool Participation Boundary shipped on 2026-07-03. The archived audit reports 32/32 requirements, 10/10 phases, 8/8 integration checks, 8/8 cross-phase flows, and no tracked tech debt.
 
-v2.1 gap-closure Phase 119 Plan 02 wired live CompactBlock mempool+extra inject and admission extra-buffer feeds. Plan 03 remains for mempool lifecycle hook wiring.
+v2.1 gap-closure Phase 119 closed live CompactBlock mempool+extra inject, admission extra feeds, and mempool-removal lifecycle hooks with runtime proofs.
 
 ## Latest Milestone Archive
 
@@ -78,6 +78,9 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 - [Phase 119]: CompactExtraTxnBuffer uses virtual size for Knots-aligned byte budget approximation
 - [Phase 119]: Live CompactBlock intercepts in receive_* call handle_compact_block_download with shell-built mempool+extra facts
 - [Phase 119]: Admission orphan/reject/replaced-victim bodies feed CompactExtraTxnBuffer; admitted Replaced wtxid is not an extras-removal feed
+- [Phase 119]: Forward removal.wtxid before TxServing demotion on connected-block lifecycle (D-07)
+- [Phase 119]: Evicted/Expired and replaced victims forward wtxid; never hook admitted Replaced wtxid as removal
+- [Phase 119]: Explicit duplicate short-id typed-failure test on injected receive path (D-09.2)
 
 ## Pending Todos
 
@@ -97,6 +100,6 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Session Continuity
 
-Last session: 2026-07-13T18:46:30.489Z
-Stopped at: Completed 119-02-PLAN.md
+Last session: 2026-07-13T19:02:16.030Z
+Stopped at: Completed 119-03-PLAN.md
 Resume file: None

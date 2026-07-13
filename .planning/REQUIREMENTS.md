@@ -30,7 +30,7 @@ Requirements for the current milestone. Each requirement maps to exactly one roa
 
 - [x] **RCN-01**: Node validates compact block headers, transaction counts, prefilled ordering, null transactions, short ID bounds, and malformed payloads before accepting partial state.
 - [x] **RCN-02**: Node reconstructs compact blocks from current mempool state plus bounded extra or recent block transaction inputs using witness-hash short IDs.
-- [ ] **RCN-03**: Node detects short ID collisions, duplicate matches, missing transactions, and reconstruction failures with stable typed outcomes.
+- [x] **RCN-03**: Node detects short ID collisions, duplicate matches, missing transactions, and reconstruction failures with stable typed outcomes.
 - [x] **RCN-04**: Node requests missing compact-block transactions with bounded `getblocktxn` indexes only when the peer and in-flight state are eligible.
 - [x] **RCN-05**: Node accepts `blocktxn` responses only for expected in-flight partial compact blocks from the matching peer and rejects duplicate, unexpected, out-of-bounds, or mismatched responses.
 - [x] **RCN-06**: Reconstructed blocks enter the existing block validation and connect path without mutating chainstate from partial compact-block state.
@@ -41,7 +41,7 @@ Requirements for the current milestone. Each requirement maps to exactly one roa
 - [x] **GOV-01**: Full block serving, compact block serving, partial compact-block state, missing transaction requests, and fallback all participate in existing request, queue, and in-flight resource limits.
 - [ ] **GOV-02**: Malformed compact blocks, invalid compact-block headers, duplicate `blocktxn`, unexpected `blocktxn`, and out-of-bounds indexes produce Knots-aligned misbehavior, disconnect, or suppression decisions.
 - [ ] **GOV-03**: Restart, reconnect, disconnect, timeout, and reorg cleanup remove volatile compact-relay state without deleting validated chainstate or durable block data.
-- [ ] **GOV-04**: Compact block relay integrates with mempool lifecycle, transaction relay, and block connect/disconnect events without activating package relay or filter serving.
+- [x] **GOV-04**: Compact block relay integrates with mempool lifecycle, transaction relay, and block connect/disconnect events without activating package relay or filter serving.
 - [x] **GOV-05**: Historical, pruned, stale, side-chain, and unavailable block serving remains bounded by documented eligibility rules and does not imply archive-node behavior.
 
 ### Operator, RPC, Metrics, Logs, And Support Evidence
@@ -120,7 +120,7 @@ Traceability is populated by the v2.1 roadmap. Each active requirement maps to e
 | CMP-06 | Phase 113 | Complete |
 | RCN-01 | Phase 112 | Complete |
 | RCN-02 | Phase 119 | Complete |
-| RCN-03 | Phase 119 | Pending |
+| RCN-03 | Phase 119 | Complete |
 | RCN-04 | Phase 115 | Complete |
 | RCN-05 | Phase 115 | Complete |
 | RCN-06 | Phase 115 | Complete |
@@ -128,7 +128,7 @@ Traceability is populated by the v2.1 roadmap. Each active requirement maps to e
 | GOV-01 | Phase 111 | Complete |
 | GOV-02 | Phase 120 | Pending |
 | GOV-03 | Phase 120 | Pending |
-| GOV-04 | Phase 119 | Pending |
+| GOV-04 | Phase 119 | Complete |
 | GOV-05 | Phase 111 | Complete |
 | OBS-01 | Phase 116 | Complete |
 | OBS-02 | Phase 116 | Complete |
