@@ -77,7 +77,7 @@ Each task was committed atomically:
 2. **Task 2: Runtime injected-path reconstruction and RCN-03 outcomes** - `68f3bfd9` (test)
 3. **Task 3: Parity breadcrumbs and focused verification** - `5078b7c8` (chore)
 
-**Plan metadata:** `73b6ed02` (docs: complete plan)
+**Plan metadata:** `7b513bd9` (docs: complete plan)
 
 _Note: Task 1 used TDD RED → GREEN. Task 2 tests landed against the Plan 02 inject path plus Task 1 hooks._
 
@@ -131,5 +131,5 @@ Phase 119 complete. Ready for Phase 120 (compact-download timeout scheduling / m
 ## Self-Check: PASSED
 
 - Modified key files present on disk
-- Commits `5c7b0662`, `f77f99ec`, `68f3bfd9`, `5078b7c8`, `73b6ed02` present in git log
+- Commits `5c7b0662`, `f77f99ec`, `68f3bfd9`, `5078b7c8`, `7b513bd9` present in git log
 - Acceptance must_haves verified (lifecycle wtxid hook, runtime suite, breadcrumbs, deferred surfaces untouched)
