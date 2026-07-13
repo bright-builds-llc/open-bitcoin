@@ -68,6 +68,21 @@ impl PeerManager {
         }
     }
 
+    /// Clear volatile partial-compact slots that matched a mempool transaction by wtxid.
+    ///
+    /// Walks every peer's in-flight compact downloads. Does not schedule timeouts or
+    /// mutate chainstate. The node shell supplies removed wtxids; this crate stays free
+    /// of mempool types.
+    pub fn on_mempool_transaction_removed(&mut self, removed_wtxid: &Wtxid) {
+        for state in self.compact_download_states.values_mut() {
+            for in_flight in state.in_flight.values_mut() {
+                in_flight
+                    .partial
+                    .on_mempool_transaction_removed(removed_wtxid);
+            }
+        }
+    }
+
     pub fn handle_compact_block_download(
         &mut self,
         peer_id: PeerId,

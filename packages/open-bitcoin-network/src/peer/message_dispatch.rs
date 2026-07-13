@@ -45,6 +45,10 @@ impl PeerManager {
                 let _outcome = peer.compact_relay.apply_send_compact(message);
                 Ok(Vec::new())
             }
+            // Empty-facts CompactBlock path: kept callable for PeerManager-only tests.
+            // Production live receive must inject mempool/extra candidates via the node
+            // shell (`ManagedPeerNetwork::receive_*`) per Phase 119 D-03 — do not treat
+            // this branch as the production reconstruct seam.
             WireNetworkMessage::CompactBlock(payload) => self.handle_compact_block_download(
                 peer_id,
                 payload,
