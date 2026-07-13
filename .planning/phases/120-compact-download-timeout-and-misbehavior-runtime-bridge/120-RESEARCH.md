@@ -332,22 +332,16 @@ peer.m_should_discourage = true;
 
 **If empty:** N/A — assumptions listed above for discretion items only.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Tick call-site breadth**
+1. **Tick call-site breadth** — RESOLVED: Do both. Public `ManagedPeerNetwork::expire_compact_download_timeouts` **and** call it from `receive_message` / `receive_sync_message` so any live traffic advances expiry without a new daemon loop (Plans 01).
    - What we know: TX expire forwarder exists but has **no production caller** under node/sync/rpc (only tests). [VERIFIED: ripgrep]
-   - What's unclear: Whether operators/sync loops are expected to call a public expire method, or receive-path piggyback alone satisfies “node/sync runtime” success criteria.
-   - Recommendation: Do both — public `ManagedPeerNetwork::expire_compact_download_timeouts` **and** call it from `receive_*` so any live traffic advances expiry without a new daemon loop.
+   - Recommendation locked by Plan 01: public API + receive_* piggyback.
 
-2. **Invalid init: Fallback vs Misbehavior**
+2. **Invalid init: Fallback vs Misbehavior** — RESOLVED: Change Invalid → Disconnect/misbehavior escalate; keep Failed (collision) → Fallback (Plan 02). Document any remaining OB-vs-Knots differences in parity docs if needed.
    - What we know: Current code Fallbacks; Knots Misbehaves on InitData invalid; GOV-02 lists malformed/invalid headers.
-   - What's unclear: Whether any intentional OB divergence was locked in Phase 115 (checklist still claims GOV-02 done, audit marks partial).
-   - Recommendation: Change Invalid → escalate; keep Failed → Fallback. Document any remaining OB-vs-Knots differences in parity docs if needed.
 
-3. **Peer-targeted vs unscoped Send on expire**
-   - What we know: `expire_compact_download_timeouts` aggregates actions across peers without attaching `PeerId` to `PeerAction::Send`. [VERIFIED: compact_download_state.rs]
-   - What's unclear: Whether fallback GetData must be sent to the peer that timed out vs broadcast/first peer.
-   - Recommendation: Prefer attaching peer id in expiry (return `Vec<(PeerId, PeerAction)>` like TX expire) if live path needs targeted send; smallest fix may be changing PeerManager expire to peer-scoped pairs. Flag for planner as implementation detail with HIGH parity impact.
+3. **Peer-targeted vs unscoped Send on expire** — RESOLVED: PeerManager expire returns peer-scoped `Vec<(PeerId, PeerAction)>` pairs (like TX expire) so fallback GetData targets the peer that timed out (Plan 01).
 
 ## Environment Availability
 
