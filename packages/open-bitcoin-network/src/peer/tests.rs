@@ -2868,6 +2868,210 @@ fn phase115_block_transactions_without_download_state_is_ignored() {
 }
 
 #[test]
+fn phase120_compact_block_duplicate_blocktxn_disconnects_peer() {
+    let peer_id = 120_201;
+    let (mut manager, payload, missing, block_hash) =
+        phase115_prepare_compact_download_manager(peer_id);
+    let _ = manager
+        .handle_compact_block_download(peer_id, payload, CompactBlockReceiveFacts::default(), 1_000)
+        .expect("compact block should start download");
+
+    let in_flight = manager
+        .compact_download_states
+        .get_mut(&peer_id)
+        .expect("download state")
+        .in_flight
+        .get_mut(&block_hash)
+        .expect("in-flight entry");
+    in_flight.getblocktxn_in_flight = false;
+
+    let actions = manager
+        .handle_message(
+            peer_id,
+            WireNetworkMessage::BlockTxn(BlockTransactions {
+                block_hash,
+                transactions: vec![missing],
+            }),
+            1_001,
+        )
+        .expect("duplicate blocktxn should process");
+
+    assert_eq!(
+        actions,
+        vec![PeerAction::Disconnect(
+            DisconnectReason::CompactBlockMisbehavior
+        )]
+    );
+}
+
+#[test]
+fn phase120_compact_block_out_of_bounds_blocktxn_disconnects_peer() {
+    let peer_id = 120_202;
+    let (mut manager, payload, _, block_hash) = phase115_prepare_compact_download_manager(peer_id);
+    let _ = manager
+        .handle_compact_block_download(peer_id, payload, CompactBlockReceiveFacts::default(), 1_000)
+        .expect("compact block should start download");
+
+    let null_transaction = Transaction {
+        version: 2,
+        inputs: Vec::new(),
+        outputs: vec![TransactionOutput {
+            value: Amount::from_sats(1).expect("valid amount"),
+            script_pubkey: ScriptBuf::from_bytes(vec![0x51]).expect("valid script"),
+        }],
+        lock_time: 0,
+    };
+    let actions = manager
+        .handle_message(
+            peer_id,
+            WireNetworkMessage::BlockTxn(BlockTransactions {
+                block_hash,
+                transactions: vec![null_transaction],
+            }),
+            1_001,
+        )
+        .expect("oob blocktxn should process");
+
+    assert_eq!(
+        actions,
+        vec![PeerAction::Disconnect(
+            DisconnectReason::CompactBlockMisbehavior
+        )]
+    );
+}
+
+#[test]
+fn phase120_compact_block_invalid_init_disconnects_peer() {
+    let peer_id = 120_203;
+    let genesis = mined_header(BlockHash::from_byte_array([0_u8; 32]), 1);
+    let tip = mined_header(block_hash(&genesis), 2);
+    let header = mined_header(block_hash(&tip), 3);
+    let payload = CompactBlockPayload {
+        header,
+        nonce: 1,
+        short_ids: Vec::new(),
+        prefilled_transactions: Vec::new(),
+    };
+    let mut manager = PeerManager::new(local_config());
+    manager.set_block_relay_activation_policy(compact_announcement_activation(true));
+    phase115_seed_header_chain(&mut manager, &[genesis, tip]);
+    manager.add_outbound_peer(peer_id, 0).expect("peer");
+    complete_outbound_handshake(&mut manager, peer_id, 2);
+    process_high_bandwidth_sendcmpct(&mut manager, peer_id);
+
+    let actions = manager
+        .handle_compact_block_download(peer_id, payload, CompactBlockReceiveFacts::default(), 1_000)
+        .expect("invalid compact should process");
+
+    assert_eq!(
+        actions,
+        vec![PeerAction::Disconnect(
+            DisconnectReason::CompactBlockMisbehavior
+        )]
+    );
+}
+
+#[test]
+fn phase120_compact_block_short_id_collision_falls_back_to_getdata() {
+    let peer_id = 120_204;
+    let genesis = mined_header(BlockHash::from_byte_array([0_u8; 32]), 1);
+    let tip = mined_header(block_hash(&genesis), 2);
+    let header = mined_header(block_hash(&tip), 3);
+    let colliding = ShortId::from_wire_bytes([0xaa, 0xbb, 0xcc, 0xdd, 0x11, 0x00]);
+    let payload = CompactBlockPayload {
+        header: header.clone(),
+        nonce: 1,
+        short_ids: vec![colliding, colliding],
+        prefilled_transactions: vec![PrefilledTransaction {
+            index_delta: 0,
+            transaction: phase115_coinbase_transaction(),
+        }],
+    };
+    let block_hash = block_hash(&header);
+    let mut manager = PeerManager::new(local_config());
+    manager.set_block_relay_activation_policy(compact_announcement_activation(true));
+    phase115_seed_header_chain(&mut manager, &[genesis, tip]);
+    manager.add_outbound_peer(peer_id, 0).expect("peer");
+    complete_outbound_handshake(&mut manager, peer_id, 2);
+    process_high_bandwidth_sendcmpct(&mut manager, peer_id);
+
+    let actions = manager
+        .handle_compact_block_download(peer_id, payload, CompactBlockReceiveFacts::default(), 1_000)
+        .expect("collision should process");
+
+    assert_eq!(actions.len(), 1);
+    assert!(matches!(
+        &actions[0],
+        PeerAction::Send(WireNetworkMessage::GetData(inventory))
+            if inventory.inventory.len() == 1
+                && inventory.inventory[0].inventory_type == InventoryType::Block
+                && inventory.inventory[0].object_hash == block_hash.into()
+    ));
+}
+
+#[test]
+fn phase120_compact_block_no_matching_in_flight_blocktxn_stays_silent() {
+    let peer_id = 120_205;
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(peer_id, 0).expect("peer");
+    complete_outbound_handshake(&mut manager, peer_id, 0);
+
+    let actions = manager
+        .handle_message(
+            peer_id,
+            WireNetworkMessage::BlockTxn(BlockTransactions {
+                block_hash: BlockHash::from_byte_array([0x77; 32]),
+                transactions: Vec::new(),
+            }),
+            1,
+        )
+        .expect("stray blocktxn");
+
+    assert!(actions.is_empty());
+}
+
+#[test]
+fn phase120_compact_block_unexpected_block_hash_disconnects_peer() {
+    let peer_id = 120_206;
+    let (mut manager, payload, missing, block_hash) =
+        phase115_prepare_compact_download_manager(peer_id);
+    let _ = manager
+        .handle_compact_block_download(peer_id, payload, CompactBlockReceiveFacts::default(), 1_000)
+        .expect("compact block should start download");
+
+    // Key in_flight under a different hash than the partial's block hash so apply reports
+    // UnexpectedBlockHash (GOV-02 unexpected blocktxn / non-matching path).
+    let lookup_hash = BlockHash::from_byte_array([0xde; 32]);
+    let download_state = manager
+        .compact_download_states
+        .get_mut(&peer_id)
+        .expect("download state");
+    let in_flight = download_state
+        .in_flight
+        .remove(&block_hash)
+        .expect("in-flight entry");
+    download_state.in_flight.insert(lookup_hash, in_flight);
+
+    let actions = manager
+        .handle_message(
+            peer_id,
+            WireNetworkMessage::BlockTxn(BlockTransactions {
+                block_hash: lookup_hash,
+                transactions: vec![missing],
+            }),
+            1_001,
+        )
+        .expect("unexpected hash blocktxn should process");
+
+    assert_eq!(
+        actions,
+        vec![PeerAction::Disconnect(
+            DisconnectReason::CompactBlockMisbehavior
+        )]
+    );
+}
+
+#[test]
 fn phase115_compact_download_without_sendcmpct_is_suppressed() {
     let peer_id = 115_009;
     let genesis = mined_header(BlockHash::from_byte_array([0_u8; 32]), 1);

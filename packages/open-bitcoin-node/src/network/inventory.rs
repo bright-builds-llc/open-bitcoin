@@ -236,5 +236,6 @@ pub(super) fn disconnect_network_error(peer_id: PeerId, reason: DisconnectReason
         DisconnectReason::SelfConnection => NetworkError::SelfConnection(peer_id),
         DisconnectReason::ResourceLimit => NetworkError::ResourceLimit(peer_id),
         DisconnectReason::MissingHeaderAncestor(hash) => NetworkError::MissingHeaderAncestor(hash),
+        DisconnectReason::CompactBlockMisbehavior => NetworkError::CompactBlockMisbehavior(peer_id),
     }
 }

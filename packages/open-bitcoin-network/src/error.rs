@@ -14,6 +14,7 @@ pub enum DisconnectReason {
     SelfConnection,
     ResourceLimit,
     MissingHeaderAncestor(BlockHash),
+    CompactBlockMisbehavior,
 }
 
 impl fmt::Display for DisconnectReason {
@@ -24,6 +25,9 @@ impl fmt::Display for DisconnectReason {
             Self::ResourceLimit => write!(f, "resource limit reached"),
             Self::MissingHeaderAncestor(hash) => {
                 write!(f, "missing header ancestor: {:?}", hash.to_byte_array(),)
+            }
+            Self::CompactBlockMisbehavior => {
+                write!(f, "compact block misbehavior")
             }
         }
     }
@@ -49,6 +53,7 @@ pub enum NetworkError {
     DuplicateVersion(PeerId),
     SelfConnection(PeerId),
     ResourceLimit(PeerId),
+    CompactBlockMisbehavior(PeerId),
 }
 
 impl fmt::Display for NetworkError {
@@ -90,6 +95,9 @@ impl fmt::Display for NetworkError {
             }
             Self::ResourceLimit(peer_id) => {
                 write!(f, "peer {peer_id} reached resource limit")
+            }
+            Self::CompactBlockMisbehavior(peer_id) => {
+                write!(f, "peer {peer_id} compact block misbehavior")
             }
         }
     }
@@ -156,6 +164,10 @@ mod tests {
             "resource limit reached",
         );
         assert_eq!(
+            DisconnectReason::CompactBlockMisbehavior.to_string(),
+            "compact block misbehavior",
+        );
+        assert_eq!(
             NetworkError::InvalidUserAgentEncoding.to_string(),
             "version message user agent is not valid UTF-8",
         );
@@ -195,6 +207,10 @@ mod tests {
         assert_eq!(
             NetworkError::ResourceLimit(9).to_string(),
             "peer 9 reached resource limit",
+        );
+        assert_eq!(
+            NetworkError::CompactBlockMisbehavior(10).to_string(),
+            "peer 10 compact block misbehavior",
         );
     }
 }

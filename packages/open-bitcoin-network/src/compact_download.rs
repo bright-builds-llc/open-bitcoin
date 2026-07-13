@@ -141,6 +141,7 @@ pub enum CompactBlockInitOutcome {
         block: Block,
     },
     Fallback(FullBlockFetch),
+    Misbehavior(CompactReconstructionInvalidReason),
     Suppressed(CompactDownloadSuppressionReason),
 }
 
@@ -392,8 +393,8 @@ pub fn init_compact_block_download<'a>(
 
             finalize_ready_init(block_hash, peer_state, schedule)
         }
-        CompactReconstructionOutcome::Invalid(_) => {
-            CompactBlockInitOutcome::Fallback(FullBlockFetch { block_hash })
+        CompactReconstructionOutcome::Invalid(reason) => {
+            CompactBlockInitOutcome::Misbehavior(reason)
         }
         CompactReconstructionOutcome::Failed(
             CompactReconstructionFailureReason::ShortIdCollision,

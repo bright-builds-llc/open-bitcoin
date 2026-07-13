@@ -19,7 +19,7 @@ use crate::compact_download::{
     compact_download_actions_to_peer_actions, expire_stale_compact_downloads,
     handle_block_transactions, init_compact_block_download,
 };
-use crate::error::{NetworkError, PeerId};
+use crate::error::{DisconnectReason, NetworkError, PeerId};
 
 use super::{CompactRelayCapability, PeerManager, PeerState};
 
@@ -184,6 +184,11 @@ fn compact_block_init_actions(outcome: CompactBlockInitOutcome) -> Vec<PeerActio
         CompactBlockInitOutcome::Fallback(fetch) => compact_download_actions_to_peer_actions(vec![
             crate::compact_download::CompactDownloadAction::RequestFullBlock(fetch),
         ]),
+        CompactBlockInitOutcome::Misbehavior(_) => {
+            vec![PeerAction::Disconnect(
+                DisconnectReason::CompactBlockMisbehavior,
+            )]
+        }
         CompactBlockInitOutcome::Suppressed(_) => Vec::new(),
     }
 }
@@ -194,7 +199,11 @@ fn compact_block_txn_actions(outcome: CompactBlockTxnHandleOutcome) -> Vec<PeerA
             compact_download_actions_to_peer_actions(actions)
         }
         CompactBlockTxnHandleOutcome::Misbehavior(_)
-        | CompactBlockTxnHandleOutcome::UnexpectedBlockHash
-        | CompactBlockTxnHandleOutcome::NoMatchingInFlight => Vec::new(),
+        | CompactBlockTxnHandleOutcome::UnexpectedBlockHash => {
+            vec![PeerAction::Disconnect(
+                DisconnectReason::CompactBlockMisbehavior,
+            )]
+        }
+        CompactBlockTxnHandleOutcome::NoMatchingInFlight => Vec::new(),
     }
 }

@@ -17,8 +17,9 @@ use open_bitcoin_primitives::{
 
 use crate::block_serving::{BlockRelayActivationPolicy, CompactRelayActivationConfig};
 use crate::compact_reconstruction::{
-    CompactBlockTxnMisbehavior, CompactBlockTxnOutcome, CompactReconstructionOutcome,
-    PartialCompactBlock, apply_block_transactions, fill_block, init_partial_compact_block,
+    CompactBlockTxnMisbehavior, CompactBlockTxnOutcome, CompactReconstructionInvalidReason,
+    CompactReconstructionOutcome, PartialCompactBlock, apply_block_transactions, fill_block,
+    init_partial_compact_block,
 };
 
 use super::{
@@ -766,9 +767,8 @@ fn init_compact_block_download_completes_prefilled_only_blocks() {
 }
 
 #[test]
-fn init_compact_block_download_falls_back_on_invalid_or_failed_reconstruction() {
+fn init_compact_block_download_misbehaves_on_invalid_reconstruction() {
     let header = sample_header();
-    let expected_block_hash = block_hash(&header);
     let mut peer_state = CompactDownloadPeerState::new();
 
     let empty_payload = CompactBlockPayload {
@@ -787,10 +787,18 @@ fn init_compact_block_download_falls_back_on_invalid_or_failed_reconstruction() 
         std::iter::empty::<(&Wtxid, &Transaction)>(),
         std::iter::empty(),
     );
-    assert!(matches!(
+    assert_eq!(
         invalid,
-        CompactBlockInitOutcome::Fallback(fetch) if fetch.block_hash == expected_block_hash
-    ));
+        CompactBlockInitOutcome::Misbehavior(CompactReconstructionInvalidReason::EmptyCompactBlock)
+    );
+    assert!(peer_state.in_flight.is_empty());
+}
+
+#[test]
+fn init_compact_block_download_falls_back_on_short_id_collision() {
+    let header = sample_header();
+    let expected_block_hash = block_hash(&header);
+    let mut peer_state = CompactDownloadPeerState::new();
 
     let colliding_short_id = short_id_from_masked_u64(0x00aa_bbcc_dd11);
     let collision_payload = CompactBlockPayload {
