@@ -15,6 +15,7 @@ pub enum DisconnectReason {
     ResourceLimit,
     MissingHeaderAncestor(BlockHash),
     CompactBlockMisbehavior,
+    CompactBlockHeaderViolation,
 }
 
 impl fmt::Display for DisconnectReason {
@@ -28,6 +29,9 @@ impl fmt::Display for DisconnectReason {
             }
             Self::CompactBlockMisbehavior => {
                 write!(f, "compact block misbehavior")
+            }
+            Self::CompactBlockHeaderViolation => {
+                write!(f, "compact block header violation")
             }
         }
     }
@@ -54,6 +58,7 @@ pub enum NetworkError {
     SelfConnection(PeerId),
     ResourceLimit(PeerId),
     CompactBlockMisbehavior(PeerId),
+    CompactBlockHeaderViolation(PeerId),
 }
 
 impl fmt::Display for NetworkError {
@@ -98,6 +103,9 @@ impl fmt::Display for NetworkError {
             }
             Self::CompactBlockMisbehavior(peer_id) => {
                 write!(f, "peer {peer_id} compact block misbehavior")
+            }
+            Self::CompactBlockHeaderViolation(peer_id) => {
+                write!(f, "peer {peer_id} compact block header violation")
             }
         }
     }
@@ -168,6 +176,10 @@ mod tests {
             "compact block misbehavior",
         );
         assert_eq!(
+            DisconnectReason::CompactBlockHeaderViolation.to_string(),
+            "compact block header violation",
+        );
+        assert_eq!(
             NetworkError::InvalidUserAgentEncoding.to_string(),
             "version message user agent is not valid UTF-8",
         );
@@ -211,6 +223,10 @@ mod tests {
         assert_eq!(
             NetworkError::CompactBlockMisbehavior(10).to_string(),
             "peer 10 compact block misbehavior",
+        );
+        assert_eq!(
+            NetworkError::CompactBlockHeaderViolation(11).to_string(),
+            "peer 11 compact block header violation",
         );
     }
 }

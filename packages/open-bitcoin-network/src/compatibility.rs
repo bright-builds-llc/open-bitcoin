@@ -224,7 +224,8 @@ fn diagnose_actions(actions: &[PeerAction]) -> CompatibilityDiagnosis {
         Some(DisconnectReason::SelfConnection) => CompatibilityDiagnosis::VersionRejected,
         Some(DisconnectReason::ResourceLimit) => CompatibilityDiagnosis::VersionRejected,
         Some(DisconnectReason::MissingHeaderAncestor(_))
-        | Some(DisconnectReason::CompactBlockMisbehavior) => {
+        | Some(DisconnectReason::CompactBlockMisbehavior)
+        | Some(DisconnectReason::CompactBlockHeaderViolation) => {
             CompatibilityDiagnosis::MalformedPayload
         }
         None => CompatibilityDiagnosis::Compatible,

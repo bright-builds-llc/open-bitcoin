@@ -96,6 +96,9 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     #[rustfmt::skip]
     pub fn peer_manager(&self) -> &PeerManager { &self.peer_manager }
 
+    #[rustfmt::skip]
+    pub fn peer_manager_mut(&mut self) -> &mut PeerManager { &mut self.peer_manager }
+
     pub fn set_local_address_decisions(&mut self, decisions: Vec<LocalAdvertisementDecision>) {
         self.peer_manager.set_local_address_decisions(decisions);
     }

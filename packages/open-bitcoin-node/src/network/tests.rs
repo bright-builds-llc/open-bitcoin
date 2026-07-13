@@ -51,6 +51,7 @@ use crate::{
 use open_bitcoin_core::primitives::Txid;
 
 mod admission_bridge_cases;
+mod compact_misbehavior_cases;
 mod compact_receive_cases;
 mod compact_timeout_cases;
 mod mempool_lifecycle_cases;

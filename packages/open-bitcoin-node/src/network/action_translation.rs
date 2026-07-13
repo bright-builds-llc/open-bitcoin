@@ -14,8 +14,9 @@
 
 use open_bitcoin_core::consensus::{ConsensusParams, ScriptVerifyFlags};
 use open_bitcoin_network::{
-    CompactDownloadCleanupCause, DisconnectReason, InventoryList, PeerAction, PeerId,
-    TxDownloadAction, WireNetworkMessage,
+    CompactDownloadCleanupCause, DisconnectReason, InventoryList, MisbehaviorDecision,
+    MisbehaviorKind, MisbehaviorPolicy, MisbehaviorResponse, PeerAction, PeerId, TxDownloadAction,
+    WireNetworkMessage,
 };
 
 use crate::ChainstateStore;
@@ -195,6 +196,9 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                     if reason == DisconnectReason::SelfConnection {
                         self.record_runtime_self_connection_rejection(peer_id);
                     }
+                    if let Some(decision) = compact_misbehavior_decision(peer_id, &reason) {
+                        self.record_peer_policy_misbehavior(decision);
+                    }
                     self.disconnect_peer(peer_id)?;
                     return Err(inventory::disconnect_network_error(peer_id, reason).into());
                 }
@@ -222,4 +226,22 @@ fn transaction_relay_targeted_messages(
             _ => None,
         })
         .collect()
+}
+
+fn compact_misbehavior_decision(
+    peer_id: PeerId,
+    reason: &DisconnectReason,
+) -> Option<MisbehaviorDecision> {
+    let kind = match reason {
+        DisconnectReason::CompactBlockMisbehavior => MisbehaviorKind::MalformedMessage,
+        DisconnectReason::CompactBlockHeaderViolation => MisbehaviorKind::HeaderViolation,
+        _ => return None,
+    };
+    let policy = MisbehaviorPolicy::default();
+    Some(MisbehaviorDecision {
+        peer_label: format!("peer-{peer_id}"),
+        kind,
+        score: policy.discourage_threshold,
+        response: MisbehaviorResponse::Disconnect,
+    })
 }

@@ -2877,8 +2877,7 @@ fn phase120_compact_block_duplicate_blocktxn_disconnects_peer() {
         .expect("compact block should start download");
 
     let in_flight = manager
-        .compact_download_states
-        .get_mut(&peer_id)
+        .compact_download_peer_state_mut(peer_id)
         .expect("download state")
         .in_flight
         .get_mut(&block_hash)
@@ -2966,7 +2965,7 @@ fn phase120_compact_block_invalid_init_disconnects_peer() {
     assert_eq!(
         actions,
         vec![PeerAction::Disconnect(
-            DisconnectReason::CompactBlockMisbehavior
+            DisconnectReason::CompactBlockHeaderViolation
         )]
     );
 }
@@ -3043,8 +3042,7 @@ fn phase120_compact_block_unexpected_block_hash_disconnects_peer() {
     // UnexpectedBlockHash (GOV-02 unexpected blocktxn / non-matching path).
     let lookup_hash = BlockHash::from_byte_array([0xde; 32]);
     let download_state = manager
-        .compact_download_states
-        .get_mut(&peer_id)
+        .compact_download_peer_state_mut(peer_id)
         .expect("download state");
     let in_flight = download_state
         .in_flight

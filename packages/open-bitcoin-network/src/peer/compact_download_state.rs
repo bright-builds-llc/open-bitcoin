@@ -45,6 +45,13 @@ impl PeerManager {
         self.compact_download_states.get(&peer_id)
     }
 
+    pub fn compact_download_peer_state_mut(
+        &mut self,
+        peer_id: PeerId,
+    ) -> Option<&mut CompactDownloadPeerState> {
+        self.compact_download_states.get_mut(&peer_id)
+    }
+
     pub fn cleanup_compact_download_for_peer(
         &mut self,
         peer_id: PeerId,
@@ -186,7 +193,7 @@ fn compact_block_init_actions(outcome: CompactBlockInitOutcome) -> Vec<PeerActio
         ]),
         CompactBlockInitOutcome::Misbehavior(_) => {
             vec![PeerAction::Disconnect(
-                DisconnectReason::CompactBlockMisbehavior,
+                DisconnectReason::CompactBlockHeaderViolation,
             )]
         }
         CompactBlockInitOutcome::Suppressed(_) => Vec::new(),
