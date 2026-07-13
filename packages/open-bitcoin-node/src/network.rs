@@ -18,6 +18,7 @@ mod action_translation;
 mod admission_bridge;
 mod block_relay_evidence;
 mod block_serving;
+mod compact_receive_candidates;
 mod header_sync;
 mod inbound;
 mod inventory;
