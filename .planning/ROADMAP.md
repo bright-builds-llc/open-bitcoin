@@ -277,11 +277,13 @@ Plans:
 3. Disconnect/timeout/reorg cleanup still remove only volatile compact-relay state.
 4. Typed compact misbehavior maps to Knots-aligned disconnect, score, or suppression decisions rather than empty-action silence only.
 
-**Plans:** 0/0 plans complete
+**Plans:** 3 plans
 
 Plans:
 
-- [ ] TBD — plan with `/gsd-plan-phase 120`
+- [ ] 120-01-PLAN.md — Timeout tick forwarder + receive_* piggyback + Timeout cleanup evidence (RCN-07, GOV-03)
+- [ ] 120-02-PLAN.md — Misbehavior escalation beyond silent suppress (GOV-02)
+- [ ] 120-03-PLAN.md — ReceivedBlock volatile cleanup + runtime proofs + parity breadcrumbs (GOV-03)
 
 #### Phase 121: Block Relay Metrics and Log Runtime Projection
 
