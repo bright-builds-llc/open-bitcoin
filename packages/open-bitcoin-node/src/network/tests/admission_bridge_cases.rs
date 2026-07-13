@@ -181,7 +181,8 @@ fn managed_admission_bridge_peer_tx_uses_download_boundary_before_mempool() {
             verify_flags(),
             consensus_params(),
         )
-        .expect("inventory");
+        .expect("inventory")
+        .outbound;
     let count_before_tx = network.mempool_info().transaction_count;
     let result = network
         .receive_sync_message(

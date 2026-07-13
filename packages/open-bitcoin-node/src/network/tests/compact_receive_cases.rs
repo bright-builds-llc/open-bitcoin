@@ -190,7 +190,8 @@ fn live_compact_receive_uses_mempool_candidates_not_empty_facts() {
             verify_flags(),
             consensus_params(),
         )
-        .expect("live compact receive");
+        .expect("live compact receive")
+        .outbound;
 
     // Assert — injected facts reconstruct without GetBlockTxn for the mempool-supplied short ID.
     // Empty-facts live receive would always request every unmatched short-id index.
@@ -273,7 +274,8 @@ fn phase119_live_receive_with_mempool_candidates_reconstructs_or_requests_missin
             verify_flags(),
             consensus_params(),
         )
-        .expect("live receive");
+        .expect("live receive")
+        .outbound;
 
     // Assert — Ready path requests only the unmatched short-id index (not both)
     let getblocktxn = outbound.iter().find_map(|message| match message {
@@ -311,7 +313,8 @@ fn phase119_live_receive_short_id_collision_is_typed() {
             verify_flags(),
             consensus_params(),
         )
-        .expect("live receive collision");
+        .expect("live receive collision")
+        .outbound;
 
     // Assert — typed failure maps to full-block fallback, not silent Completed success
     assert!(
@@ -349,7 +352,8 @@ fn phase119_live_receive_duplicate_short_ids_are_typed_not_silent() {
             verify_flags(),
             consensus_params(),
         )
-        .expect("live receive duplicate short ids");
+        .expect("live receive duplicate short ids")
+        .outbound;
 
     // Assert
     let typed_fallback = outbound
@@ -386,7 +390,8 @@ fn phase119_live_receive_missing_short_ids_request_getblocktxn() {
             verify_flags(),
             consensus_params(),
         )
-        .expect("live receive missing");
+        .expect("live receive missing")
+        .outbound;
 
     // Assert
     assert!(
@@ -426,7 +431,8 @@ fn phase119_mempool_removal_clears_matched_partial_slot() {
             verify_flags(),
             consensus_params(),
         )
-        .expect("seed partial");
+        .expect("seed partial")
+        .outbound;
     assert!(
         outbound
             .iter()

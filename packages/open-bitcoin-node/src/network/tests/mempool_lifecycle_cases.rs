@@ -457,7 +457,8 @@ fn connected_block_mempool_removal_clears_matched_compact_partial_slot() {
             verify_flags(),
             consensus_params(),
         )
-        .expect("live compact receive with one match + one missing");
+        .expect("live compact receive with one match + one missing")
+        .outbound;
     assert!(
         outbound
             .iter()

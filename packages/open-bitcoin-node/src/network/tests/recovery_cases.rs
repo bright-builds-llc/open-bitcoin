@@ -181,7 +181,8 @@ fn managed_recovery_serves_recovered_txid_and_wtxid_for_eligible_peers() {
             verify_flags(),
             consensus_params(),
         )
-        .expect("txid getdata");
+        .expect("txid getdata")
+        .outbound;
     let wtxid_response = network
         .receive_message(
             1_082,
@@ -190,7 +191,8 @@ fn managed_recovery_serves_recovered_txid_and_wtxid_for_eligible_peers() {
             verify_flags(),
             consensus_params(),
         )
-        .expect("wtxid getdata");
+        .expect("wtxid getdata")
+        .outbound;
 
     // Assert
     assert_eq!(

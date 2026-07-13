@@ -108,7 +108,8 @@ fn managed_getdata_serves_only_accepted_relay_eligible_transaction() {
             verify_flags(),
             consensus_params(),
         )
-        .expect("getdata");
+        .expect("getdata")
+        .outbound;
 
     // Assert
     assert_eq!(outbound, vec![WireNetworkMessage::Tx(transaction)]);
@@ -180,7 +181,8 @@ fn managed_getdata_reports_unknown_confirmed_replaced_evicted_expired_notfound()
             verify_flags(),
             consensus_params(),
         )
-        .expect("getdata");
+        .expect("getdata")
+        .outbound;
 
     // Assert
     assert_eq!(outbound.len(), 1);
@@ -246,7 +248,8 @@ fn managed_getdata_preserves_block_serving_branch() {
             verify_flags(),
             consensus_params(),
         )
-        .expect("block getdata");
+        .expect("block getdata")
+        .outbound;
 
     // Assert
     assert_eq!(outbound, vec![WireNetworkMessage::Block(genesis)]);

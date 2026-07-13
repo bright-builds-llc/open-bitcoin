@@ -343,13 +343,16 @@ impl ManagedRpcContext {
         message: WireNetworkMessage,
         timestamp: i64,
     ) -> Result<Vec<WireNetworkMessage>, ManagedNetworkError> {
-        self.network.receive_message(
-            peer_id,
-            message,
-            timestamp,
-            self.verify_flags,
-            self.consensus_params,
-        )
+        Ok(self
+            .network
+            .receive_message(
+                peer_id,
+                message,
+                timestamp,
+                self.verify_flags,
+                self.consensus_params,
+            )?
+            .outbound)
     }
 
     pub fn connect_local_block(

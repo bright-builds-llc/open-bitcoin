@@ -224,7 +224,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         timestamp: i64,
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
-    ) -> Result<Vec<WireNetworkMessage>, ManagedNetworkError> {
+    ) -> Result<ManagedSyncMessageResult, ManagedNetworkError> {
         let observed_block_relay_message = matches!(
             &message,
             WireNetworkMessage::SendCompact(_)
@@ -243,9 +243,11 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             self.note_block_relay_observed();
             self.record_compact_download_evidence(&actions);
         }
-        Ok(self
-            .process_actions(peer_id, actions, timestamp, verify_flags, consensus_params)?
-            .outbound)
+        let mut result =
+            self.process_actions(peer_id, actions, timestamp, verify_flags, consensus_params)?;
+        let expired = self.expire_compact_download_timeouts(timestamp)?;
+        merge_compact_timeout_outbound(peer_id, expired, &mut result);
+        Ok(result)
     }
 
     pub fn receive_sync_message(
@@ -281,7 +283,11 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                 actions
             }
         };
-        self.process_actions(peer_id, actions, timestamp, verify_flags, consensus_params)
+        let mut result =
+            self.process_actions(peer_id, actions, timestamp, verify_flags, consensus_params)?;
+        let expired = self.expire_compact_download_timeouts(timestamp)?;
+        merge_compact_timeout_outbound(peer_id, expired, &mut result);
+        Ok(result)
     }
 
     pub fn receive_wire_message(
@@ -291,7 +297,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         timestamp: i64,
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
-    ) -> Result<Vec<WireNetworkMessage>, ManagedNetworkError> {
+    ) -> Result<ManagedSyncMessageResult, ManagedNetworkError> {
         let parsed = ParsedNetworkMessage::decode_wire(bytes)?;
         self.receive_message(
             peer_id,
@@ -533,6 +539,20 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                 },
             )
             .map_err(ManagedNetworkError::from)
+    }
+}
+
+fn merge_compact_timeout_outbound(
+    peer_id: PeerId,
+    expired: Vec<(PeerId, WireNetworkMessage)>,
+    result: &mut ManagedSyncMessageResult,
+) {
+    for (expire_peer_id, message) in expired {
+        if expire_peer_id == peer_id {
+            result.outbound.push(message);
+        } else {
+            result.targeted_outbound.push((expire_peer_id, message));
+        }
     }
 }
 

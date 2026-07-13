@@ -52,6 +52,7 @@ use open_bitcoin_core::primitives::Txid;
 
 mod admission_bridge_cases;
 mod compact_receive_cases;
+mod compact_timeout_cases;
 mod mempool_lifecycle_cases;
 mod recovery_cases;
 mod relay_fanout_cases;
@@ -356,7 +357,8 @@ fn deliver(
                     verify_flags(),
                     consensus_params(),
                 )
-                .expect("receive"),
+                .expect("receive")
+                .outbound,
         );
     }
     outbound
@@ -538,7 +540,8 @@ fn phase116_block_relay_evidence_projects_negotiation_serving_download_and_clean
             verify_flags(),
             consensus_params(),
         )
-        .expect("serve block");
+        .expect("serve block")
+        .outbound;
     assert!(
         served
             .iter()
@@ -704,7 +707,8 @@ fn phase111_disabled_block_serving_suppresses_cached_active_block() {
             verify_flags(),
             consensus_params(),
         )
-        .expect("block getdata");
+        .expect("block getdata")
+        .outbound;
 
     // Assert
     assert_eq!(
@@ -736,7 +740,8 @@ fn phase111_block_getdata_serves_active_validated_block_when_enabled() {
             verify_flags(),
             consensus_params(),
         )
-        .expect("block getdata");
+        .expect("block getdata")
+        .outbound;
 
     // Assert
     assert_eq!(outbound, vec![WireNetworkMessage::Block(genesis)]);
@@ -772,7 +777,8 @@ fn phase111_witness_block_getdata_preserves_witness_payload() {
             verify_flags(),
             consensus_params(),
         )
-        .expect("witness block getdata");
+        .expect("witness block getdata")
+        .outbound;
 
     // Assert
     let [WireNetworkMessage::Block(served)] = outbound.as_slice() else {
@@ -811,7 +817,8 @@ fn phase111_compact_block_getdata_is_suppressed_without_block_payload() {
             verify_flags(),
             consensus_params(),
         )
-        .expect("compact block getdata");
+        .expect("compact block getdata")
+        .outbound;
 
     // Assert
     assert_eq!(outbound, vec![WireNetworkMessage::NotFound(inventory)]);
@@ -847,7 +854,8 @@ fn phase113_compact_getdata_remains_suppressed_after_negotiation_policy() {
             verify_flags(),
             consensus_params(),
         )
-        .expect("compact block getdata");
+        .expect("compact block getdata")
+        .outbound;
 
     // Assert
     assert_eq!(outbound, vec![WireNetworkMessage::NotFound(inventory)]);
@@ -901,7 +909,8 @@ fn phase111_side_chain_cached_block_is_not_served() {
             verify_flags(),
             consensus_params(),
         )
-        .expect("side-chain getdata");
+        .expect("side-chain getdata")
+        .outbound;
 
     // Assert
     assert_eq!(outbound, vec![WireNetworkMessage::NotFound(inventory)]);
@@ -934,7 +943,8 @@ fn phase111_active_chain_non_tip_missing_local_block_returns_pruned_notfound() {
             verify_flags(),
             consensus_params(),
         )
-        .expect("pruned non-tip getdata");
+        .expect("pruned non-tip getdata")
+        .outbound;
 
     // Assert
     assert_eq!(outbound, vec![WireNetworkMessage::NotFound(inventory)]);
@@ -963,7 +973,8 @@ fn phase111_active_tip_missing_local_block_returns_unavailable_notfound() {
             verify_flags(),
             consensus_params(),
         )
-        .expect("unavailable tip getdata");
+        .expect("unavailable tip getdata")
+        .outbound;
 
     // Assert
     assert_eq!(outbound, vec![WireNetworkMessage::NotFound(inventory)]);
@@ -1004,7 +1015,8 @@ fn phase111_cached_old_block_outside_active_chain_is_not_archive_served() {
             verify_flags(),
             consensus_params(),
         )
-        .expect("old disconnected block getdata");
+        .expect("old disconnected block getdata")
+        .outbound;
 
     // Assert
     assert_eq!(outbound, vec![WireNetworkMessage::NotFound(inventory)]);
@@ -1106,7 +1118,8 @@ fn phase111_mixed_getdata_preserves_transaction_relay_serving() {
             verify_flags(),
             consensus_params(),
         )
-        .expect("mixed getdata");
+        .expect("mixed getdata")
+        .outbound;
 
     // Assert
     assert_eq!(
@@ -1142,7 +1155,8 @@ fn managed_network_transaction_relay_default_constructor_suppresses_getdata() {
             verify_flags(),
             consensus_params(),
         )
-        .expect("default-off transaction inventory");
+        .expect("default-off transaction inventory")
+        .outbound;
 
     // Assert
     assert!(!network_info.relay);
@@ -1182,7 +1196,8 @@ fn managed_network_transaction_relay_enabled_outbound_translates_request_action_
             verify_flags(),
             consensus_params(),
         )
-        .expect("txid inventory");
+        .expect("txid inventory")
+        .outbound;
     let wtxid_outbound = network
         .receive_message(
             503,
@@ -1191,7 +1206,8 @@ fn managed_network_transaction_relay_enabled_outbound_translates_request_action_
             verify_flags(),
             consensus_params(),
         )
-        .expect("wtxid inventory");
+        .expect("wtxid inventory")
+        .outbound;
 
     // Assert
     assert!(network_info.relay);
@@ -1217,7 +1233,8 @@ fn managed_network_transaction_relay_enabled_ordinary_inbound_suppresses_getdata
             verify_flags(),
             consensus_params(),
         )
-        .expect("ordinary inbound inventory");
+        .expect("ordinary inbound inventory")
+        .outbound;
 
     // Assert
     assert!(outbound.is_empty());
@@ -1245,7 +1262,8 @@ fn managed_network_transaction_relay_enabled_protected_only_inbound_suppresses_g
             verify_flags(),
             consensus_params(),
         )
-        .expect("protected-only inbound inventory");
+        .expect("protected-only inbound inventory")
+        .outbound;
 
     // Assert
     assert!(outbound.is_empty());
@@ -1270,7 +1288,8 @@ fn managed_network_transaction_relay_duplicate_suppression_emits_no_extra_getdat
             verify_flags(),
             consensus_params(),
         )
-        .expect("first inventory");
+        .expect("first inventory")
+        .outbound;
     let duplicate_outbound = network
         .receive_message(
             507,
@@ -1279,7 +1298,8 @@ fn managed_network_transaction_relay_duplicate_suppression_emits_no_extra_getdat
             verify_flags(),
             consensus_params(),
         )
-        .expect("duplicate inventory");
+        .expect("duplicate inventory")
+        .outbound;
 
     // Assert
     assert_getdata(&first_outbound, inventory);
@@ -1501,7 +1521,8 @@ fn managed_address_boundary_info_projects_peer_manager_evidence() {
             verify_flags(),
             consensus_params(),
         )
-        .expect("first getaddr should be served");
+        .expect("first getaddr should be served")
+        .outbound;
     let suppressed = network
         .receive_message(
             301,
@@ -1510,7 +1531,8 @@ fn managed_address_boundary_info_projects_peer_manager_evidence() {
             verify_flags(),
             consensus_params(),
         )
-        .expect("second getaddr should be suppressed");
+        .expect("second getaddr should be suppressed")
+        .outbound;
 
     // Act
     let info = network.address_boundary_info();
@@ -1717,7 +1739,8 @@ fn managed_address_boundary_info_projects_over_cap_addr_rejections() {
             verify_flags(),
             consensus_params(),
         )
-        .expect("over-cap addr batch should be evidence only");
+        .expect("over-cap addr batch should be evidence only")
+        .outbound;
     let info = network.address_boundary_info();
 
     // Assert
