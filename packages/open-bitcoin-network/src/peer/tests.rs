@@ -2733,6 +2733,103 @@ fn phase115_on_compact_download_block_connected_clears_matching_in_flight() {
     assert!(!download_state.in_flight.contains_key(&connected_hash));
 }
 
+fn phase119_compact_payload_with_one_matched_and_one_missing()
+-> (CompactBlockPayload, Transaction, Wtxid, Transaction, Wtxid) {
+    let genesis = mined_header(BlockHash::from_byte_array([0_u8; 32]), 1);
+    let tip = mined_header(block_hash(&genesis), 2);
+    let header = mined_header(block_hash(&tip), 3);
+    let coinbase = phase115_coinbase_transaction();
+    let matched = phase115_sample_transaction(0x31);
+    let still_missing = phase115_sample_transaction(0x32);
+    let matched_wtxid = transaction_wtxid(&matched).expect("matched wtxid");
+    let missing_wtxid = transaction_wtxid(&still_missing).expect("missing wtxid");
+    let selector = open_bitcoin_codec::short_id_selector_from_header_and_nonce(&header, 42);
+    let matched_short_id =
+        open_bitcoin_consensus::compact_short_id_for_wtxid(selector, &matched_wtxid);
+    let missing_short_id =
+        open_bitcoin_consensus::compact_short_id_for_wtxid(selector, &missing_wtxid);
+
+    let payload = CompactBlockPayload {
+        header,
+        nonce: 42,
+        short_ids: vec![matched_short_id, missing_short_id],
+        prefilled_transactions: vec![PrefilledTransaction {
+            index_delta: 0,
+            transaction: coinbase,
+        }],
+    };
+
+    (
+        payload,
+        matched,
+        matched_wtxid,
+        still_missing,
+        missing_wtxid,
+    )
+}
+
+#[test]
+fn peer_manager_on_mempool_transaction_removed_clears_matching_partial_slots() {
+    // Arrange
+    let peer_id = 119_001;
+    let genesis = mined_header(BlockHash::from_byte_array([0_u8; 32]), 1);
+    let tip = mined_header(block_hash(&genesis), 2);
+    let (payload, matched, matched_wtxid, _, _) =
+        phase119_compact_payload_with_one_matched_and_one_missing();
+    let block_hash = block_hash(&payload.header);
+    let mut manager = PeerManager::new(local_config());
+    manager.set_block_relay_activation_policy(compact_announcement_activation(true));
+    phase115_seed_header_chain(&mut manager, &[genesis, tip]);
+    manager.add_outbound_peer(peer_id, 0).expect("peer");
+    complete_outbound_handshake(&mut manager, peer_id, 2);
+    process_high_bandwidth_sendcmpct(&mut manager, peer_id);
+
+    let facts = CompactBlockReceiveFacts {
+        candidates: &[(&matched_wtxid, &matched)],
+        extra: &[],
+    };
+    let _ = manager
+        .handle_compact_block_download(peer_id, payload, facts, 1_000)
+        .expect("compact block with one candidate match");
+
+    let download_state = manager
+        .compact_download_peer_state(peer_id)
+        .expect("download state");
+    let in_flight = download_state
+        .in_flight
+        .get(&block_hash)
+        .expect("in-flight partial");
+    assert!(in_flight.partial.is_transaction_available(1));
+    assert!(!in_flight.partial.is_transaction_available(2));
+
+    let unrelated_wtxid = Wtxid::from_byte_array([0xaa; 32]);
+
+    // Act — unrelated wtxid leaves matched slot unchanged
+    manager.on_mempool_transaction_removed(&unrelated_wtxid);
+    let download_state = manager
+        .compact_download_peer_state(peer_id)
+        .expect("download state");
+    let in_flight = download_state
+        .in_flight
+        .get(&block_hash)
+        .expect("in-flight partial");
+    assert!(in_flight.partial.is_transaction_available(1));
+
+    // Act — matching wtxid clears the volatile slot
+    manager.on_mempool_transaction_removed(&matched_wtxid);
+
+    // Assert
+    let download_state = manager
+        .compact_download_peer_state(peer_id)
+        .expect("download state");
+    let in_flight = download_state
+        .in_flight
+        .get(&block_hash)
+        .expect("in-flight partial");
+    assert!(!in_flight.partial.is_transaction_available(1));
+    assert_eq!(in_flight.partial.missing_transaction_indexes(), vec![1, 2]);
+}
+
 #[test]
 fn phase115_cleanup_compact_download_for_peer_without_state_is_noop() {
     let mut manager = PeerManager::new(local_config());
