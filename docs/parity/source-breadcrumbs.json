@@ -925,6 +925,18 @@
       ]
     },
     {
+      "label": "node-compact-cleanup-volatile",
+      "files": [
+        "packages/open-bitcoin-node/src/network/tests/compact_cleanup_cases.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/net_processing.h",
+        "packages/bitcoin-knots/src/blockencodings.cpp",
+        "packages/bitcoin-knots/test/functional/p2p_compactblocks.py"
+      ]
+    },
+    {
       "label": "node-network-adapter",
       "files": [
         "packages/open-bitcoin-node/src/network.rs",
