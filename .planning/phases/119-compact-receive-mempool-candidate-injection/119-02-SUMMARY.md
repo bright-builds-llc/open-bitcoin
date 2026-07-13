@@ -76,7 +76,7 @@ Each task was committed atomically:
 1. **Task 1: Shell CompactBlock intercept with mempool+extra facts** - `8be8cd2d` (test) → `d9e85b0b` (feat)
 2. **Task 2: Feed CompactExtraTxnBuffer from admission outcomes** - `721cad8e` (test) → `800ef65e` (feat) → `27682cc4` (style)
 
-**Plan metadata:** (see final docs commit)
+**Plan metadata:** `e5c0b038` (docs: complete plan)
 
 _Note: TDD tasks used RED → GREEN commits_
 
