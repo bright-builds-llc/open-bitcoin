@@ -661,13 +661,7 @@ fn managed_admission_bridge_orphaned_peer_tx_feeds_compact_extra_txn() {
 
     // Act
     let result = network
-        .process_peer_transaction_admission(
-            119_301,
-            child,
-            10,
-            verify_flags(),
-            consensus_params(),
-        )
+        .process_peer_transaction_admission(119_301, child, 10, verify_flags(), consensus_params())
         .expect("orphan outcome");
 
     // Assert
