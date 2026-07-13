@@ -296,7 +296,9 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         let removed = outcome.replaced().to_vec();
         if matches!(outcome, MempoolOutcome::Replaced { .. }) {
             self.feed_replaced_victims_to_compact_extra(&removed);
+            self.forward_mempool_removal_wtxids_for_txids(&removed);
         }
+        self.forward_mempool_removal_wtxids_for_txids(outcome.evicted());
         self.remove_stored_transactions_with_status(&removed, TxServingRecordStatus::Replaced)?;
         self.remove_stored_transactions_with_status(
             outcome.evicted(),
@@ -330,12 +332,37 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         }
     }
 
+    /// Forward leaving victim/evicted txids into PeerManager compact partial cleanup (D-07).
+    ///
+    /// Never call this with a Replaced admitted wtxid — that tx remains in the mempool.
+    fn forward_mempool_removal_wtxids_for_txids(&mut self, txids: &[Txid]) {
+        for txid in txids {
+            let maybe_wtxid = self
+                .relay_serving
+                .maybe_accepted_wtxid_and_transaction(*txid)
+                .map(|(wtxid, _)| wtxid)
+                .or_else(|| {
+                    let transaction = self.transactions_by_txid.get(txid)?;
+                    transaction_wtxid(transaction).ok()
+                });
+            let Some(removed_wtxid) = maybe_wtxid else {
+                continue;
+            };
+            self.peer_manager
+                .on_mempool_transaction_removed(&removed_wtxid);
+        }
+    }
+
     fn remove_evicted_outcome(
         &mut self,
         outcome: &MempoolOutcome,
     ) -> Result<(), ManagedNetworkError> {
         match outcome {
             MempoolOutcome::Evicted { txid, .. } | MempoolOutcome::Expired { txid, .. } => {
+                if let Some(removed_wtxid) = outcome.maybe_wtxid() {
+                    self.peer_manager
+                        .on_mempool_transaction_removed(&removed_wtxid);
+                }
                 let status = match outcome {
                     MempoolOutcome::Evicted { .. } => TxServingRecordStatus::Evicted,
                     MempoolOutcome::Expired { .. } => TxServingRecordStatus::Expired,

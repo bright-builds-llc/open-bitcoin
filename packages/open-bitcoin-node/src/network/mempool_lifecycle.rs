@@ -29,6 +29,10 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             .mempool
             .mempool_mut()
             .remove_for_connected_block(block)?;
+        for removal in &summary.removed {
+            self.peer_manager
+                .on_mempool_transaction_removed(&removal.wtxid);
+        }
         let removed_txids = summary
             .removed
             .iter()
@@ -68,6 +72,10 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                         self.apply_admitted_outcome(&outcome, transaction.clone())?;
                     }
                     MempoolOutcome::Evicted { txid, .. } | MempoolOutcome::Expired { txid, .. } => {
+                        if let Some(removed_wtxid) = outcome.maybe_wtxid() {
+                            self.peer_manager
+                                .on_mempool_transaction_removed(&removed_wtxid);
+                        }
                         let status = match outcome {
                             MempoolOutcome::Evicted { .. } => TxServingRecordStatus::Evicted,
                             MempoolOutcome::Expired { .. } => TxServingRecordStatus::Expired,
