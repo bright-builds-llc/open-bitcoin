@@ -891,7 +891,8 @@
     {
       "label": "node-compact-receive-candidates",
       "files": [
-        "packages/open-bitcoin-node/src/network/compact_receive_candidates.rs"
+        "packages/open-bitcoin-node/src/network/compact_receive_candidates.rs",
+        "packages/open-bitcoin-node/src/network/tests/compact_receive_cases.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/net_processing.cpp",
@@ -915,7 +916,6 @@
         "packages/open-bitcoin-node/src/network/relay_serving.rs",
         "packages/open-bitcoin-node/src/network/tests.rs",
         "packages/open-bitcoin-node/src/network/tests/admission_bridge_cases.rs",
-        "packages/open-bitcoin-node/src/network/tests/compact_receive_cases.rs",
         "packages/open-bitcoin-node/src/network/tests/recovery_cases.rs",
         "packages/open-bitcoin-node/src/network/tests/relay_fanout_cases.rs",
         "packages/open-bitcoin-node/src/network/tests/relay_local_submission_cases.rs",
@@ -945,7 +945,10 @@
       "breadcrumbs": [
         "packages/bitcoin-knots/src/validation.cpp",
         "packages/bitcoin-knots/src/txmempool.cpp",
-        "packages/bitcoin-knots/src/kernel/disconnected_transactions.cpp"
+        "packages/bitcoin-knots/src/kernel/disconnected_transactions.cpp",
+        "packages/bitcoin-knots/src/blockencodings.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/test/functional/p2p_compactblocks.py"
       ]
     },
     {

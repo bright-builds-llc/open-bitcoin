@@ -2,6 +2,9 @@
 // - packages/bitcoin-knots/src/validation.cpp
 // - packages/bitcoin-knots/src/txmempool.cpp
 // - packages/bitcoin-knots/src/kernel/disconnected_transactions.cpp
+// - packages/bitcoin-knots/src/blockencodings.cpp
+// - packages/bitcoin-knots/src/net_processing.cpp
+// - packages/bitcoin-knots/test/functional/p2p_compactblocks.py
 
 use open_bitcoin_codec::{CompactBlockPayload, PrefilledTransaction, SendCompactMessage};
 use open_bitcoin_core::{
