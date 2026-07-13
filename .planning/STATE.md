@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
 status: verifying
-stopped_at: Phase 119 context gathered
-last_updated: "2026-07-13T16:21:42.352Z"
-last_activity: 2026-07-11
+stopped_at: Completed 119-01-PLAN.md
+last_updated: "2026-07-13T18:22:14.114Z"
+last_activity: 2026-07-13
 progress:
   total_phases: 12
   completed_phases: 9
-  total_plans: 32
-  completed_plans: 34
-  percent: 100
+  total_plans: 35
+  completed_plans: 33
+  percent: 94
 ---
 
 # Project State
@@ -21,19 +21,19 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-07-10 after Phase 117 completed v2.1 implementation and verification).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 118 verified — next gap-closure Phase 119 (compact receive mempool candidate injection)
+**Current focus:** Phase 119 Plan 01 complete — ready for Plan 02 (shell CompactBlock intercept)
 
 ## Current Position
 
 Milestone: v2.1 Block Serving and Compact Block Relay Boundary
-Phase: 118
-Plan: 3 of 3 complete
-Status: Phase complete and verified — ready for Phase 119
-Last activity: 2026-07-11
+Phase: 119-compact-receive-mempool-candidate-injection
+Plan: 1 of 3 complete
+Status: Plan 01 complete — ready for Plan 02
+Last activity: 2026-07-13
 
 v2.0 Transaction Relay and Mempool Participation Boundary shipped on 2026-07-03. The archived audit reports 32/32 requirements, 10/10 phases, 8/8 integration checks, 8/8 cross-phase flows, and no tracked tech debt.
 
-v2.1 gap-closure Phase 118 closed the CMP-05 outbound announce seam: Knots-shaped compact payload builder, PeerManager action-aware announce emission, and ManagedPeerNetwork evidence-after-emit wiring. Phase verification passed 8/8.
+v2.1 gap-closure Phase 119 Plan 01 added PeerManager mempool-removal forwarder and Knots-shaped CompactExtraTxnBuffer helpers. Plans 02–03 remain for live shell inject and lifecycle wiring.
 
 ## Latest Milestone Archive
 
@@ -73,6 +73,9 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 - [Phase 118]: Evidence recorded after emission from actual message (D-05)
 - [Phase 118]: Hash-derived deterministic nonce: first 8 LE bytes of block hash
 - [Phase 118]: CMP-05 satisfied by Plan 03 closing the runtime seam
+- [Phase 119]: PeerManager forwarder walks compact_download_states by wtxid only; no mempool coupling
+- [Phase 119]: Empty-facts CompactBlock dispatch kept for tests; production inject via ManagedPeerNetwork shell
+- [Phase 119]: CompactExtraTxnBuffer uses virtual size for Knots-aligned byte budget approximation
 
 ## Pending Todos
 
@@ -92,6 +95,6 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Session Continuity
 
-Last session: 2026-07-13T16:21:42.348Z
-Stopped at: Phase 119 context gathered
-Resume file: .planning/phases/119-compact-receive-mempool-candidate-injection/119-CONTEXT.md
+Last session: 2026-07-13T18:22:14.111Z
+Stopped at: Completed 119-01-PLAN.md
+Resume file: None

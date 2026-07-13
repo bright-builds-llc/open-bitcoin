@@ -139,15 +139,15 @@ fn approximate_tx_bytes(transaction: &Transaction) -> usize {
 
 #[cfg(test)]
 mod tests {
+    use open_bitcoin_core::chainstate::Chainstate;
     use open_bitcoin_core::consensus::{
-        ConsensusParams, ScriptVerifyFlags, block_merkle_root, check_block_header, transaction_txid,
-        transaction_wtxid,
+        ConsensusParams, ScriptVerifyFlags, block_merkle_root, check_block_header,
+        transaction_txid, transaction_wtxid,
     };
     use open_bitcoin_core::primitives::{
         Amount, Block, BlockHash, BlockHeader, OutPoint, ScriptBuf, ScriptWitness, Transaction,
         TransactionInput, TransactionOutput, Txid, Wtxid,
     };
-    use open_bitcoin_core::chainstate::Chainstate;
     use open_bitcoin_mempool::Mempool;
 
     use super::{
@@ -285,7 +285,10 @@ mod tests {
 
         // Assert
         assert_eq!(buffer.max_slots(), DEFAULT_BLOCK_RECONSTRUCTION_EXTRA_TXN);
-        assert_eq!(buffer.max_bytes(), DEFAULT_BLOCK_RECONSTRUCTION_EXTRA_TXN_SIZE);
+        assert_eq!(
+            buffer.max_bytes(),
+            DEFAULT_BLOCK_RECONSTRUCTION_EXTRA_TXN_SIZE
+        );
         assert_eq!(
             buffer.per_tx_size_limit(),
             BLOCK_RECONSTRUCTION_EXTRA_TXN_PER_TXN_SIZE_LIMIT

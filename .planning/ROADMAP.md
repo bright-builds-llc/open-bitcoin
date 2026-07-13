@@ -256,11 +256,11 @@ Plans:
 3. `on_mempool_transaction_removed` is hooked from mempool lifecycle without activating package relay or filters.
 4. Runtime tests cover reconstruction, collision, duplicate, missing, and lifecycle cleanup outcomes.
 
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
 
-- [ ] 119-01-PLAN.md — PeerManager mempool-removal forwarder + CompactExtraTxnBuffer helpers
+- [x] 119-01-PLAN.md — PeerManager mempool-removal forwarder + CompactExtraTxnBuffer helpers
 - [ ] 119-02-PLAN.md — Shell CompactBlock intercept with mempool/extra facts + admission feeds
 - [ ] 119-03-PLAN.md — Lifecycle hooks + runtime injected-path tests + parity breadcrumbs
 
@@ -317,7 +317,7 @@ Plans:
 | 116. Operator Evidence, Metrics, Logs, and Support Boundary | v2.1 | 4/4 | Complete   | 2026-07-10 |
 | 117. Parity Traceability, UAT, and Release Guardrails | v2.1 | 4/4 | Complete    | 2026-07-10 |
 | 118. Outbound Compact Block Announcement Wiring | v2.1 | 3/3 | Complete   | 2026-07-11 |
-| 119. Compact Receive Mempool Candidate Injection | v2.1 | 0/0 | Pending     | — |
+| 119. Compact Receive Mempool Candidate Injection | v2.1 | 1/3 | In Progress|  |
 | 120. Compact Download Timeout and Misbehavior Runtime Bridge | v2.1 | 0/0 | Pending     | — |
 | 121. Block Relay Metrics and Log Runtime Projection | v2.1 | 0/0 | Pending     | — |
 
