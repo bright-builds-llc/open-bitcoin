@@ -3,16 +3,18 @@
 // - packages/bitcoin-knots/src/txmempool.cpp
 // - packages/bitcoin-knots/src/kernel/disconnected_transactions.cpp
 
+use open_bitcoin_codec::{CompactBlockPayload, PrefilledTransaction, SendCompactMessage};
 use open_bitcoin_core::{
     chainstate::AnchoredBlock,
     consensus::{block_hash, block_merkle_root, transaction_txid, transaction_wtxid},
     primitives::{Block, BlockHash, BlockHeader, Transaction, Txid, Wtxid},
 };
-use open_bitcoin_mempool::{MempoolCapacityStatus, PolicyConfig, RollingFeeParityStatus};
+use open_bitcoin_mempool::{MempoolCapacityStatus, MempoolOutcome, PolicyConfig, RollingFeeParityStatus};
+use open_bitcoin_network::WireNetworkMessage;
 
 use super::{
-    EASY_BITS, coinbase_transaction, consensus_params, local_config, mine_header,
-    spend_transaction, verify_flags,
+    EASY_BITS, build_block, coinbase_transaction, compact_relay_enabled_managed_network,
+    consensus_params, local_config, mine_header, spend_transaction, verify_flags,
 };
 use crate::storage::{MempoolSnapshot, MempoolSnapshotRecord};
 use crate::{ManagedPeerNetwork, MemoryChainstateStore};
@@ -347,5 +349,153 @@ fn managed_reorg_reconsiders_eligible_disconnected_transaction() {
         network
             .transactions_by_txid
             .contains_key(&disconnected_txid)
+    );
+}
+
+fn compact_payload_matched_and_missing(
+    announced: &Block,
+    matched: &Transaction,
+    missing: &Transaction,
+    nonce: u64,
+) -> CompactBlockPayload {
+    let matched_wtxid = transaction_wtxid(matched).expect("matched wtxid");
+    let missing_wtxid = transaction_wtxid(missing).expect("missing wtxid");
+    let selector =
+        open_bitcoin_codec::short_id_selector_from_header_and_nonce(&announced.header, nonce);
+    let matched_short_id =
+        open_bitcoin_core::consensus::compact_short_id_for_wtxid(selector, &matched_wtxid);
+    let missing_short_id =
+        open_bitcoin_core::consensus::compact_short_id_for_wtxid(selector, &missing_wtxid);
+
+    CompactBlockPayload {
+        header: announced.header.clone(),
+        nonce,
+        short_ids: vec![matched_short_id, missing_short_id],
+        prefilled_transactions: vec![PrefilledTransaction {
+            index_delta: 0,
+            transaction: announced.transactions[0].clone(),
+        }],
+    }
+}
+
+fn handshake_and_sendcmpct(network: &mut ManagedPeerNetwork<MemoryChainstateStore>, peer_id: u64) {
+    network
+        .connect_outbound_peer(peer_id, 1)
+        .expect("connect outbound");
+    network
+        .receive_message(
+            peer_id,
+            WireNetworkMessage::Version(open_bitcoin_network::VersionMessage::default()),
+            1,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("version");
+    network
+        .receive_message(
+            peer_id,
+            WireNetworkMessage::Verack,
+            1,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("verack");
+    network
+        .receive_message(
+            peer_id,
+            WireNetworkMessage::SendCompact(SendCompactMessage {
+                announce: true,
+                version: open_bitcoin_codec::BIP152_COMPACT_BLOCKS_VERSION,
+            }),
+            2,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("sendcmpct");
+}
+
+#[test]
+fn connected_block_mempool_removal_clears_matched_compact_partial_slot() {
+    // Arrange — live CompactBlock leaves an in-flight partial with one mempool-matched slot
+    let mut network = compact_relay_enabled_managed_network(119_301);
+    let peer_id = 119_301;
+    let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0, 500_000_000);
+    let spendable = build_block(block_hash(&genesis.header), 1, 500_000_000);
+    network
+        .connect_local_block(&genesis, verify_flags(), consensus_params())
+        .expect("connect genesis");
+    network
+        .connect_local_block(&spendable, verify_flags(), consensus_params())
+        .expect("connect spendable");
+
+    let matched = spend_transaction(txid(&spendable.transactions[0]), 499_999_000);
+    let matched_wtxid = wtxid(&matched);
+    // Missing short-id body is not in the announced merkle tree; we never complete reconstruction.
+    let still_missing = spend_transaction(txid(&genesis.transactions[0]), 499_998_000);
+    let announced =
+        build_block_with_transactions(block_hash(&spendable.header), 2, vec![matched.clone()]);
+    let announced_hash = block_hash(&announced.header);
+    let payload = compact_payload_matched_and_missing(&announced, &matched, &still_missing, 42);
+
+    let outcome = network
+        .submit_local_transaction_outcome(matched.clone(), verify_flags(), consensus_params())
+        .expect("admit matched tx");
+    assert!(matches!(outcome, MempoolOutcome::Accepted { .. }));
+
+    handshake_and_sendcmpct(&mut network, peer_id);
+    let receive_time = i64::from(announced.header.time) + 60;
+    let outbound = network
+        .receive_message(
+            peer_id,
+            WireNetworkMessage::CompactBlock(payload),
+            receive_time,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("live compact receive with one match + one missing");
+    assert!(
+        outbound
+            .iter()
+            .any(|message| matches!(message, WireNetworkMessage::GetBlockTxn(_))),
+        "expected GetBlockTxn so partial stays in-flight; outbound={outbound:?}"
+    );
+
+    let download_state = network
+        .peer_manager()
+        .compact_download_peer_state(peer_id)
+        .expect("download state after receive");
+    let in_flight = download_state
+        .in_flight
+        .get(&announced_hash)
+        .expect("in-flight partial");
+    assert!(in_flight.partial.is_transaction_available(1));
+    assert!(!in_flight.partial.is_transaction_available(2));
+
+    // Conflict block confirms removal of the matched mempool tx without connecting announced
+    let conflict = spend_transaction(txid(&spendable.transactions[0]), 499_997_000);
+    let conflict_block =
+        build_block_with_transactions(block_hash(&spendable.header), 2, vec![conflict]);
+
+    // Act — connected-block lifecycle must forward removal.wtxid into PeerManager
+    network
+        .connect_local_block(&conflict_block, verify_flags(), consensus_params())
+        .expect("connect conflict block removing matched mempool tx");
+
+    // Assert — matched volatile slot cleared; missing index remains
+    let download_state = network
+        .peer_manager()
+        .compact_download_peer_state(peer_id)
+        .expect("download state after lifecycle");
+    let in_flight = download_state
+        .in_flight
+        .get(&announced_hash)
+        .expect("in-flight partial retained");
+    assert!(
+        !in_flight.partial.is_transaction_available(1),
+        "matched slot for wtxid {matched_wtxid:?} must clear after connected-block removal"
+    );
+    assert_eq!(
+        in_flight.partial.missing_transaction_indexes(),
+        vec![1, 2]
     );
 }
