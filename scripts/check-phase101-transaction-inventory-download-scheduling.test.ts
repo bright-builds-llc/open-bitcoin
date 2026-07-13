@@ -32,6 +32,7 @@ const TARGET_FILES = [
   "packages/open-bitcoin-network/src/peer/inventory_state.rs",
   "packages/open-bitcoin-network/src/peer/tests.rs",
   "packages/open-bitcoin-node/src/network.rs",
+  "packages/open-bitcoin-node/src/network/action_translation.rs",
   "packages/open-bitcoin-node/src/network/tests.rs",
   "scripts/verify.sh",
 ] as const;
@@ -266,6 +267,10 @@ function fixtureFiles(): Map<TargetFile, string> {
     ["packages/open-bitcoin-network/src/peer/inventory_state.rs", inventoryStateText()],
     ["packages/open-bitcoin-network/src/peer/tests.rs", peerTestsText()],
     ["packages/open-bitcoin-node/src/network.rs", managedNetworkText()],
+    [
+      "packages/open-bitcoin-node/src/network/action_translation.rs",
+      actionTranslationText(),
+    ],
     ["packages/open-bitcoin-node/src/network/tests.rs", managedNetworkTestsText()],
     ["scripts/verify.sh", verifyScriptText()],
   ]);
@@ -466,6 +471,10 @@ function peerTestsText(): string {
 }
 
 function managedNetworkText(): string {
+  return ["PeerAction::TransactionRelay(action)"].join("\n");
+}
+
+function actionTranslationText(): string {
   return [
     "fn process_transaction_relay_action(action: TxDownloadAction) {}",
     "PeerAction::TransactionRelay(action)",

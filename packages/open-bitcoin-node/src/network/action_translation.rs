@@ -12,14 +12,17 @@
 // - packages/bitcoin-knots/test/functional/p2p_tx_download.py
 // - packages/bitcoin-knots/test/functional/mempool_accept.py
 
+use open_bitcoin_core::consensus::{ConsensusParams, ScriptVerifyFlags};
 use open_bitcoin_network::{
-    CompactDownloadCleanupCause, InventoryList, PeerAction, PeerId, TxDownloadAction,
-    WireNetworkMessage,
+    CompactDownloadCleanupCause, DisconnectReason, InventoryList, PeerAction, PeerId,
+    TxDownloadAction, WireNetworkMessage,
 };
 
 use crate::ChainstateStore;
 
-use super::{ManagedNetworkError, ManagedPeerNetwork, ManagedResult};
+use super::{
+    ManagedNetworkError, ManagedPeerNetwork, ManagedResult, ManagedSyncMessageResult, inventory,
+};
 
 pub(super) fn process_transaction_relay_action(
     action: TxDownloadAction,
@@ -90,6 +93,96 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                 _ => None,
             })
             .collect())
+    }
+
+    pub(super) fn process_actions(
+        &mut self,
+        peer_id: PeerId,
+        actions: Vec<PeerAction>,
+        timestamp: i64,
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+    ) -> Result<ManagedSyncMessageResult, ManagedNetworkError> {
+        let mut outbound = Vec::new();
+        let mut targeted_outbound = Vec::new();
+        let mut maybe_block_disposition = None;
+
+        for action in actions {
+            match action {
+                PeerAction::Send(message) => outbound.push(message),
+                PeerAction::ServeInventory(requests) => {
+                    let (messages, missing) = self.serve_inventory(peer_id, requests);
+                    outbound.extend(messages);
+                    if !missing.is_empty() {
+                        outbound.push(WireNetworkMessage::NotFound(InventoryList::new(missing)));
+                    }
+                }
+                PeerAction::ReceivedTransaction(transaction) => {
+                    let bridge = self.process_peer_transaction_admission(
+                        peer_id,
+                        transaction,
+                        timestamp,
+                        verify_flags,
+                        consensus_params,
+                    )?;
+                    for (target_peer_id, message) in self.record_relay_fanout_for_outcome(
+                        Some(peer_id),
+                        &bridge.outcome,
+                        timestamp,
+                    ) {
+                        if target_peer_id == peer_id {
+                            outbound.push(message);
+                        } else {
+                            targeted_outbound.push((target_peer_id, message));
+                        }
+                    }
+                    let _reconsidered = bridge.reconsidered;
+                    for (target_peer_id, message) in bridge.targeted_outbound {
+                        if target_peer_id == peer_id {
+                            outbound.push(message);
+                        } else {
+                            targeted_outbound.push((target_peer_id, message));
+                        }
+                    }
+                }
+                PeerAction::TransactionRelay(action) => {
+                    if let Some((target_peer_id, message)) =
+                        process_transaction_relay_action(action)
+                    {
+                        if target_peer_id == peer_id {
+                            outbound.push(message);
+                        } else {
+                            targeted_outbound.push((target_peer_id, message));
+                        }
+                    }
+                }
+                PeerAction::ReceivedBlock(block) => {
+                    maybe_block_disposition = Some(self.connect_stored_block(
+                        &block,
+                        self.next_chain_work(),
+                        timestamp,
+                        verify_flags,
+                        consensus_params,
+                    )?);
+                }
+                PeerAction::Disconnect(reason) => {
+                    if reason == DisconnectReason::SelfConnection {
+                        self.record_runtime_self_connection_rejection(peer_id);
+                    }
+                    self.disconnect_peer(peer_id)?;
+                    return Err(inventory::disconnect_network_error(peer_id, reason).into());
+                }
+                PeerAction::ResourceGovernanceDisconnect(event) => {
+                    return self.disconnect_for_resource_governance(peer_id, event);
+                }
+            }
+        }
+
+        Ok(ManagedSyncMessageResult {
+            outbound,
+            targeted_outbound,
+            maybe_block_disposition,
+        })
     }
 }
 

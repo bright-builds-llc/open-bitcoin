@@ -26,6 +26,7 @@ const TARGET_FILES = [
   "packages/open-bitcoin-network/src/peer/inventory_state.rs",
   "packages/open-bitcoin-network/src/peer/tests.rs",
   "packages/open-bitcoin-node/src/network.rs",
+  "packages/open-bitcoin-node/src/network/action_translation.rs",
   "packages/open-bitcoin-node/src/network/tests.rs",
   "scripts/verify.sh",
 ] as const;
@@ -321,6 +322,7 @@ function verifySchedulerEvidence(texts: TextCorpus, failures: string[]): void {
     texts.get("packages/open-bitcoin-network/src/peer.rs") ?? "",
     texts.get("packages/open-bitcoin-network/src/peer/inventory_state.rs") ?? "",
     texts.get("packages/open-bitcoin-node/src/network.rs") ?? "",
+    texts.get("packages/open-bitcoin-node/src/network/action_translation.rs") ?? "",
     texts.get("docs/parity/checklist.md") ?? "",
     texts.get("docs/parity/index.json") ?? "",
   ].join("\n");

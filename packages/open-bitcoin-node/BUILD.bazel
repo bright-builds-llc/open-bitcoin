@@ -6,6 +6,7 @@ rust_library(
     crate_name = "open_bitcoin_node",
     edition = "2024",
     deps = [
+        "//packages/open-bitcoin-codec:open_bitcoin_codec_lib",
         "//packages/open-bitcoin-core:open_bitcoin_core_lib",
         "//packages/open-bitcoin-mempool:open_bitcoin_mempool_lib",
         "//packages/open-bitcoin-network:open_bitcoin_network_lib",

@@ -4,13 +4,13 @@
 // - packages/bitcoin-knots/src/blockencodings.cpp
 // - packages/bitcoin-knots/test/functional/p2p_compactblocks.py
 
+use open_bitcoin_codec::CompactBlockPayload;
 use open_bitcoin_core::primitives::{Transaction, Wtxid};
 use open_bitcoin_mempool::{Mempool, transaction_weight_and_virtual_size};
 use open_bitcoin_network::{CompactBlockReceiveFacts, PeerAction, PeerId};
 
 use super::{ManagedNetworkError, ManagedPeerNetwork};
 use crate::ChainstateStore;
-use open_bitcoin_codec::CompactBlockPayload;
 
 /// Knots `DEFAULT_BLOCK_RECONSTRUCTION_EXTRA_TXN` (`net_processing.h`).
 pub const DEFAULT_BLOCK_RECONSTRUCTION_EXTRA_TXN: usize = 32_768;
@@ -93,18 +93,22 @@ impl CompactExtraTxnBuffer {
         self.iter_available().cloned().collect()
     }
 
+    #[cfg(test)]
     pub fn approximate_bytes(&self) -> usize {
         self.approximate_bytes
     }
 
+    #[cfg(test)]
     pub fn max_slots(&self) -> usize {
         self.max_slots
     }
 
+    #[cfg(test)]
     pub fn max_bytes(&self) -> usize {
         self.max_bytes
     }
 
+    #[cfg(test)]
     pub fn per_tx_size_limit(&self) -> usize {
         self.per_tx_size_limit
     }
@@ -142,11 +146,13 @@ fn approximate_tx_bytes(transaction: &Transaction) -> usize {
     }
 }
 
+type OwnedCompactTxnPairs = Vec<(Wtxid, Transaction)>;
+
 impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     /// Snapshot mempool + extra buffer as owned pairs before borrowing PeerManager (D-02/D-04).
     pub(super) fn collect_compact_receive_owned(
         &self,
-    ) -> (Vec<(Wtxid, Transaction)>, Vec<(Wtxid, Transaction)>) {
+    ) -> (OwnedCompactTxnPairs, OwnedCompactTxnPairs) {
         let candidates = mempool_compact_candidate_owned(self.mempool.mempool());
         let extras = compact_extra_owned(&self.compact_extra_txn);
         (candidates, extras)

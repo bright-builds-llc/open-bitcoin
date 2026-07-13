@@ -149,9 +149,7 @@ fn handshake_and_sendcmpct(network: &mut ManagedPeerNetwork<MemoryChainstateStor
         .expect("sendcmpct");
 }
 
-fn tip_chain(
-    network: &mut ManagedPeerNetwork<MemoryChainstateStore>,
-) -> (Block, Block) {
+fn tip_chain(network: &mut ManagedPeerNetwork<MemoryChainstateStore>) -> (Block, Block) {
     let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0, 500_000_000);
     let spendable = build_block(block_hash(&genesis.header), 1, 500_000_000);
     network
@@ -282,7 +280,8 @@ fn phase119_live_receive_with_mempool_candidates_reconstructs_or_requests_missin
         WireNetworkMessage::GetBlockTxn(request) => Some(request),
         _ => None,
     });
-    let request = getblocktxn.expect("injected path with one missing short-id must request GetBlockTxn");
+    let request =
+        getblocktxn.expect("injected path with one missing short-id must request GetBlockTxn");
     let indexes = open_bitcoin_codec::expand_block_transaction_indexes(request)
         .expect("expand getblocktxn indexes");
     assert_eq!(
@@ -373,8 +372,7 @@ fn phase119_live_receive_missing_short_ids_request_getblocktxn() {
     let peer_id = 119_213;
     let (_genesis, spendable) = tip_chain(&mut network);
     let absent = spend_transaction(txid(&spendable.transactions[0]), 499_999_000);
-    let announced =
-        build_block_with_transactions(block_hash(&spendable.header), 2, vec![absent]);
+    let announced = build_block_with_transactions(block_hash(&spendable.header), 2, vec![absent]);
     let payload = compact_payload_from_block(&announced, 13);
     handshake_and_sendcmpct(&mut network, peer_id);
 
@@ -493,7 +491,10 @@ fn phase119_package_filter_surfaces_untouched() {
 
     // Compact/block-serving evidence stays unavailable until observed — no package/filter keys
     let encoded = serde_json::to_value(network.block_relay_evidence_status()).expect("evidence");
-    assert_eq!(encoded["block_serving"]["activation"]["state"], "unavailable");
+    assert_eq!(
+        encoded["block_serving"]["activation"]["state"],
+        "unavailable"
+    );
     let encoded_text = encoded.to_string();
     assert!(
         !encoded_text.contains("package_relay")

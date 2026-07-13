@@ -12,7 +12,9 @@ use open_bitcoin_core::{
     consensus::{block_hash, block_merkle_root, transaction_txid, transaction_wtxid},
     primitives::{Block, BlockHash, BlockHeader, Transaction, Txid, Wtxid},
 };
-use open_bitcoin_mempool::{MempoolCapacityStatus, MempoolOutcome, PolicyConfig, RollingFeeParityStatus};
+use open_bitcoin_mempool::{
+    MempoolCapacityStatus, MempoolOutcome, PolicyConfig, RollingFeeParityStatus,
+};
 use open_bitcoin_network::WireNetworkMessage;
 
 use super::{
@@ -497,8 +499,5 @@ fn connected_block_mempool_removal_clears_matched_compact_partial_slot() {
         !in_flight.partial.is_transaction_available(1),
         "matched slot for wtxid {matched_wtxid:?} must clear after connected-block removal"
     );
-    assert_eq!(
-        in_flight.partial.missing_transaction_indexes(),
-        vec![1, 2]
-    );
+    assert_eq!(in_flight.partial.missing_transaction_indexes(), vec![1, 2]);
 }
