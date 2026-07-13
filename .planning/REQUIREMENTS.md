@@ -29,7 +29,7 @@ Requirements for the current milestone. Each requirement maps to exactly one roa
 ### Compact Block Reconstruction And Fallback
 
 - [x] **RCN-01**: Node validates compact block headers, transaction counts, prefilled ordering, null transactions, short ID bounds, and malformed payloads before accepting partial state.
-- [ ] **RCN-02**: Node reconstructs compact blocks from current mempool state plus bounded extra or recent block transaction inputs using witness-hash short IDs.
+- [x] **RCN-02**: Node reconstructs compact blocks from current mempool state plus bounded extra or recent block transaction inputs using witness-hash short IDs.
 - [ ] **RCN-03**: Node detects short ID collisions, duplicate matches, missing transactions, and reconstruction failures with stable typed outcomes.
 - [x] **RCN-04**: Node requests missing compact-block transactions with bounded `getblocktxn` indexes only when the peer and in-flight state are eligible.
 - [x] **RCN-05**: Node accepts `blocktxn` responses only for expected in-flight partial compact blocks from the matching peer and rejects duplicate, unexpected, out-of-bounds, or mismatched responses.
@@ -119,7 +119,7 @@ Traceability is populated by the v2.1 roadmap. Each active requirement maps to e
 | CMP-05 | Phase 118 | Complete |
 | CMP-06 | Phase 113 | Complete |
 | RCN-01 | Phase 112 | Complete |
-| RCN-02 | Phase 119 | Pending |
+| RCN-02 | Phase 119 | Complete |
 | RCN-03 | Phase 119 | Pending |
 | RCN-04 | Phase 115 | Complete |
 | RCN-05 | Phase 115 | Complete |
