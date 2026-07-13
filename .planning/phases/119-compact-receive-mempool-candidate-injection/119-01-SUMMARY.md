@@ -77,7 +77,7 @@ Each task was committed atomically:
 1. **Task 1: PeerManager mempool-removal forwarder** - `d591797d` (test) → `42885519` (feat)
 2. **Task 2: CompactExtraTxnBuffer and mempool snapshot helpers** - `c644da44` (test) → `80ac4cf0` (feat)
 
-**Plan metadata:** _(pending final docs commit)_
+**Plan metadata:** `62427fec` (docs: complete plan)
 
 _Note: TDD tasks used RED → GREEN commits_
 
