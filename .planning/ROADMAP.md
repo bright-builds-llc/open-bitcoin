@@ -256,11 +256,13 @@ Plans:
 3. `on_mempool_transaction_removed` is hooked from mempool lifecycle without activating package relay or filters.
 4. Runtime tests cover reconstruction, collision, duplicate, missing, and lifecycle cleanup outcomes.
 
-**Plans:** 0/0 plans complete
+**Plans:** 3 plans
 
 Plans:
 
-- [ ] TBD — plan with `/gsd-plan-phase 119`
+- [ ] 119-01-PLAN.md — PeerManager mempool-removal forwarder + CompactExtraTxnBuffer helpers
+- [ ] 119-02-PLAN.md — Shell CompactBlock intercept with mempool/extra facts + admission feeds
+- [ ] 119-03-PLAN.md — Lifecycle hooks + runtime injected-path tests + parity breadcrumbs
 
 #### Phase 120: Compact Download Timeout and Misbehavior Runtime Bridge
 
