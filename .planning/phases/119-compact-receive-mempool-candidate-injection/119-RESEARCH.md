@@ -10,7 +10,7 @@ Phase 119 is a **runtime seam gap-closure**, not a reconstruction rewrite. Phase
 
 Locked decisions D-01..D-11 require the **node shell** (`ManagedPeerNetwork`) to gather mempool `(Wtxid, Transaction)` views and a **Knots-shaped bounded extra ring buffer**, pass them as `CompactBlockReceiveFacts` into `handle_compact_block_download`, keep `PeerManager` free of `open-bitcoin-mempool`, and hook removal cleanup via wtxid. Prefer intercepting `CompactBlock` in `receive_message` / `receive_sync_message` over baking mempool into `message_dispatch`. [VERIFIED: `119-CONTEXT.md`; Phase 114 D-08]
 
-**Primary recommendation:** Intercept `CompactBlock` in the node shell, adapt `Mempool::entries()` plus a node-owned `CompactExtraTxnBuffer` (Knots `DEFAULT_BLOCK_RECONSTRUCTION_EXTRA_TXN` / size limits) into `CompactBlockReceiveFacts`, call `PeerManager::handle_compact_block_download` directly, and add a PeerManager forwarder that walks `compact_download_states` and calls `partial.on_mempool_transaction_removed` from `apply_connected_block_mempool_lifecycle` (and other wtxid-bearing removal outcomes).
+**Primary recommendation:** Intercept `CompactBlock` in the node shell, adapt `Mempool::entries()` plus a node-owned `CompactExtraTxnBuffer` (Knots `DEFAULT_BLOCK_RECONSTRUCTION_EXTRA_TXN` / size limits) into `CompactBlockReceiveFacts`, call `PeerManager::handle_compact_block_download` directly, and add a PeerManager forwarder that walks `compact_download_states[*].in_flight[*].partial` and calls `partial.on_mempool_transaction_removed` from `apply_connected_block_mempool_lifecycle` (and other wtxid-bearing removal outcomes).
 
 <user_constraints>
 ## User Constraints (from CONTEXT.md)
@@ -95,7 +95,7 @@ No `.cursor/rules/` or `CLAUDE.md` present in this repo. Actionable project cons
 | Instead of | Could Use | Tradeoff |
 |------------|-----------|----------|
 | Shell CompactBlock intercept | Teach `message_dispatch` to accept facts | Would require mempool into network crate or awkward callbacks — **rejected by D-02** |
-| Orphanage as sole extra source | Dedicated ring buffer | Orphanage lacks public `(wtxid, tx)` iteration API and is not a Knots `vExtraTxnForCompact` ring — use dedicated buffer, optionally **push** orphans into it [VERIFIED: `TxOrphanage` private `orphans` map] |
+| Orphanage as sole extra source | Dedicated ring buffer | Orphanage lacks public `(wtxid, tx)` iteration API and is not a Knots `vExtraTxnForCompact` ring — use dedicated buffer, optionally **push** orphans into it [VERIFIED: `TxOrphanage` private map; Knots `net_processing.h` comment] |
 | Full Knots 32768-slot buffer in tests | Tiny test buffer | Use Knots constants as production defaults; tests may construct small buffers via constructor override |
 
 **Installation:** N/A — first-party Rust crates only; no new crates.
@@ -124,14 +124,14 @@ packages/open-bitcoin-network/src/peer/
 
 **What:** Match `WireNetworkMessage::CompactBlock` in `ManagedPeerNetwork::receive_message` and `receive_sync_message` before `peer_manager.handle_message`. Build facts, call `handle_compact_block_download`, then continue existing evidence/`process_actions` path.
 
-**When to use:** Always for production receive (D-01, D-02, D-03).
+**When to use:** Always for production receive (D-01, D-02, D-03). Both `receive_message` and `receive_sync_message` currently forward CompactBlock through `handle_message` — both need the intercept. [VERIFIED: `network.rs` lines ~219–275]
 
 **Example:**
 
 ```rust
 // Source: recommended pattern from verified ManagedPeerNetwork + CompactBlockReceiveFacts APIs
 WireNetworkMessage::CompactBlock(payload) => {
-    let (candidate_owned, extra_owned) = self.collect_compact_receive_owned()?;
+    let (candidate_owned, extra_owned) = self.collect_compact_receive_owned();
     let candidate_refs: Vec<(&Wtxid, &Transaction)> = candidate_owned
         .iter()
         .map(|(wtxid, tx)| (wtxid, tx))
@@ -152,7 +152,7 @@ WireNetworkMessage::CompactBlock(payload) => {
     )?;
     self.note_block_relay_observed();
     self.record_compact_download_evidence(&actions);
-    self.process_actions(peer_id, actions, timestamp, verify_flags, consensus_params)
+    // then existing process_actions / ManagedSyncMessageResult path
 }
 ```
 
@@ -164,15 +164,23 @@ WireNetworkMessage::CompactBlock(payload) => {
 
 ### Pattern 3: PeerManager mempool-removal forwarder
 
-**What:** Add `PeerManager::on_mempool_transaction_removed(&mut self, removed_wtxid: &Wtxid)` that iterates `compact_download_states[*].in_flight[*].partial` and calls `partial.on_mempool_transaction_removed`. No mempool types in the network crate.
+**What:** Add `PeerManager::on_mempool_transaction_removed(&mut self, removed_wtxid: &Wtxid)` that iterates:
 
-**When to use:** From `apply_connected_block_mempool_lifecycle` after `remove_for_connected_block`, and from admission/evict/expire paths when `MempoolOutcome::maybe_wtxid()` is `Some`. [VERIFIED: `MempoolLifecycleRemoval.wtxid` exists; PeerManager forwarder currently **missing**]
+```text
+compact_download_states.values_mut()
+  → in_flight.values_mut()
+  → partial.on_mempool_transaction_removed(removed_wtxid)
+```
+
+No mempool types in the network crate. Path types: `CompactDownloadPeerState.in_flight: BTreeMap<BlockHash, CompactDownloadInFlight>` where `CompactDownloadInFlight.partial: PartialCompactBlock`. [VERIFIED: `compact_download.rs`]
+
+**When to use:** From `apply_connected_block_mempool_lifecycle` after `remove_for_connected_block`, and from admission/evict/expire paths when a **leaving** wtxid is available (see Wtxid resolution below).
 
 ### Pattern 4: Knots-shaped extra ring buffer
 
 **What:** Node-owned ring matching Knots `vExtraTxnForCompact` / `AddToCompactExtraTransactions`.
 
-**Knots bounds (use as named constants):** [VERIFIED: `packages/bitcoin-knots/src/net_processing.h`]
+**Knots bounds (use as named constants):** [VERIFIED: `packages/bitcoin-knots/src/net_processing.h:29–33`]
 
 | Constant | Value | Meaning |
 |----------|-------|---------|
@@ -180,20 +188,34 @@ WireNetworkMessage::CompactBlock(payload) => {
 | `DEFAULT_BLOCK_RECONSTRUCTION_EXTRA_TXN_SIZE` | `10_000_000` | Max aggregate dynamic usage bytes |
 | `BLOCK_RECONSTRUCTION_EXTRA_TXN_PER_TXN_SIZE_LIMIT` | `100_000` | Per-tx size gate on reject path |
 
-**Feed sources (Knots):** rejected (first-time failure) and replaced victims in `ProcessInvalidTx` / `ProcessValidTx`; comments also list orphans. [VERIFIED: `net_processing.cpp` ~3031–3059, ~31–33]
+**Knots insert algorithm:** resize to `max_extra_txs`; overwrite at `vExtraTxnForCompactIt`; advance `% capacity`; while memusage > max size: clear next slot and advance. [VERIFIED: `net_processing.cpp` `AddToCompactExtraTransactions` ~1770–1790]
+
+**Knots feed sources (comment + call sites):** orphan, replaced, and rejected transactions. [VERIFIED: `net_processing.h:31–32`; `net_processing.cpp` ~3031–3059]
 
 **Recommended OB feeds (smallest shell-aligned set):**
 1. Orphaned transaction body when staged in `admission_bridge`
-2. Rejected transaction body when rejection outcome has a body
+2. Rejected transaction body when rejection outcome has a body (gate with per-tx size limit)
 3. Replaced victim bodies looked up from TxServing records **before** status demotion (Knots adds replaced txs)
 
 Do **not** invent package-relay surfaces (D-08 / deferred).
+
+### Pattern 5: Wtxid resolution for lifecycle (D-07)
+
+| Exit path | Wtxid source | Action |
+|-----------|--------------|--------|
+| `remove_for_connected_block` | `MempoolLifecycleRemoval.wtxid` | **Must hook** (D-07 minimum) [VERIFIED: `lifecycle.rs`] |
+| `MempoolOutcome::Evicted` / `Expired` | Outcome carries `wtxid` | Hook via `maybe_wtxid()` |
+| `MempoolOutcome::Accepted` / `Replaced` **victims** | Outcome lists **txids only** (`replaced()`, `evicted()`) | Resolve wtxid from `relay_serving.records_by_txid` / `status_wtxid_for_txid` **before** `remove_stored_transactions_with_status`; skip if unavailable |
+| `MempoolOutcome::Replaced` admitted tx | `maybe_wtxid()` is the **new** still-in-mempool tx | **Do not** call removal hook with this wtxid |
+
+[VERIFIED: `outcome.rs` `replaced()`/`evicted()` return `&[Txid]`; `relay_serving.rs` stores wtxid per record]
 
 ### Anti-Patterns to Avoid
 
 - **Baking mempool into `message_dispatch`:** Violates D-02 / Phase 114 D-08.
 - **Reimplementing InitData / short-ID matching:** Already in `compact_reconstruction.rs`.
 - **Calling lifecycle hook with txid instead of wtxid:** Slots are keyed by witness hash (Phase 114 D-11). [VERIFIED: `on_mempool_transaction_removed(&Wtxid)`]
+- **Calling removal hook with Replaced admitted wtxid:** That tx just entered the pool — would clear the wrong (or future) slots.
 - **Mutating chainstate from partial compact state:** Forbidden by D-06 / RCN-06.
 - **Scheduling `expire_compact_download_timeouts`:** Phase 120 only.
 - **Treating empty-facts `handle_message` as production receive:** Live path must inject (D-01).
@@ -207,6 +229,7 @@ Do **not** invent package-relay surfaces (D-08 / deferred).
 | Extra buffer policy | Unbounded Vec | Knots-capacity ring + byte budget | DoS / memory parity |
 | Package/filter activation | New relay surfaces | No-op: leave CMP-06 / deferred surfaces untouched | GOV-04 + milestone boundary |
 | Orphanage scan as extra pool | Public orphan iteration | Push into dedicated extra buffer at stage time | Orphan map is private; Knots uses separate ring |
+| Victim wtxid on Replaced | New mempool outcome fields (unless tiny) | Lookup from TxServing before demotion | Victims already recorded with wtxid |
 
 **Key insight:** The gap is **wiring**, not algorithms. Planner tasks should be thin adapters + lifecycle forwarder + runtime tests.
 
@@ -232,11 +255,11 @@ Do **not** invent package-relay surfaces (D-08 / deferred).
 **Why it happens:** `apply_connected_block_mempool_lifecycle` currently maps `removal.txid` for TxServing cleanup only. [VERIFIED: `mempool_lifecycle.rs`]
 **How to avoid:** Use `removal.wtxid` for compact forwarder; keep txid path for serving status.
 
-### Pitfall 4: Forgetting non-block removal paths
+### Pitfall 4: Forgetting non-block removal paths / mis-hooking Replaced
 
-**What goes wrong:** Evict/expire leave stale matched slots until block connect.
-**Why it happens:** D-07 minimum is connected-block lifecycle; other exits are easy to miss.
-**How to avoid:** Also forward `MempoolOutcome::Evicted` / `Expired` (and replaced victims exiting the pool) via `maybe_wtxid()` in admission/reorg paths that already treat them as mempool exits.
+**What goes wrong:** Evict/expire leave stale matched slots; or Replaced admitted wtxid clears slots incorrectly.
+**Why it happens:** D-07 minimum is connected-block lifecycle; other exits and Replaced semantics are easy to miss.
+**How to avoid:** Forward Evicted/Expired via outcome wtxid; for replaced/evicted **victims**, resolve wtxid from TxServing before demotion; never hook the admitted Replaced wtxid as a removal.
 
 ### Pitfall 5: Scope creep into Phase 120/121
 
@@ -248,6 +271,11 @@ Do **not** invent package-relay surfaces (D-08 / deferred).
 
 **What goes wrong:** `scripts/check-parity-breadcrumbs.ts` fails verify.
 **How to avoid:** Breadcrumb new/touched files to Knots `blockencodings.cpp` / `net_processing.cpp` (extra-txn ring + InitData).
+
+### Pitfall 7: RCN-03 tests only on empty-facts PeerManager path
+
+**What goes wrong:** Collision/duplicate/missing remain proven only in network-crate unit tests; audit still marks runtime RCN-03 partial.
+**How to avoid:** At least one node-shell test that injects colliding or incomplete candidate sets through live receive and asserts typed outcomes/actions.
 
 ## Code Examples
 
@@ -293,14 +321,46 @@ pub struct MempoolLifecycleRemoval {
 }
 ```
 
-### Partial slot clear API
+### Partial slot clear + PeerManager forwarder shape
 
 ```rust
 // Source: packages/open-bitcoin-network/src/compact_reconstruction.rs
 pub fn on_mempool_transaction_removed(&mut self, removed_wtxid: &Wtxid) {
     // clears matching txn_available / slot_wtxids entries
 }
+
+// Recommended PeerManager addition (network crate, no mempool types):
+pub fn on_mempool_transaction_removed(&mut self, removed_wtxid: &Wtxid) {
+    for state in self.compact_download_states.values_mut() {
+        for in_flight in state.in_flight.values_mut() {
+            in_flight.partial.on_mempool_transaction_removed(removed_wtxid);
+        }
+    }
+}
 ```
+
+### RCN-03 typed outcomes already present
+
+```rust
+// Source: packages/open-bitcoin-network/src/compact_reconstruction.rs
+// CompactReconstructionOutcome::Ready { missing_indexes }
+// CompactReconstructionOutcome::Failed(ShortIdCollision | ShortIdBucketOverload)
+// CompactReconstructionOutcome::Invalid(...)
+// CompactBlockTxnMisbehavior::DuplicateResponse (blocktxn path — Phase 115)
+```
+
+Live injected-path tests should assert Ready-with-missing and Failed(ShortIdCollision) when candidates cause those outcomes; duplicate blocktxn remains covered by existing Phase 115 tests unless an injected-path regression is cheap.
+
+### Knots InitData ordering (parity model)
+
+```cpp
+// Source: packages/bitcoin-knots/src/blockencodings.cpp InitData
+// 1) walk mempool (pool->txns_randomized) by GetWitnessHash short IDs
+// 2) walk extra_txn (vExtraTxnForCompact), skipping nulls
+// Collision with different witness hash clears slot (request missing)
+```
+
+OB already mirrors this as `candidates` then `extra` iterators in `init_partial_compact_block`. Shell must supply both slices; do not merge extras into candidates.
 
 ### Knots extra ring insert (parity model)
 
@@ -309,6 +369,8 @@ pub fn on_mempool_transaction_removed(&mut self, removed_wtxid: &Wtxid) {
 // resize to max_extra_txs; overwrite at vExtraTxnForCompactIt; advance % capacity;
 // while memusage > max_extra_txs_size: clear next slot and advance
 ```
+
+Byte accounting: Knots uses `RecursiveDynamicUsage`. For OB, approximate with serialized/virtual size of stored txs — document as Knots-aligned bound, not byte-identical memusage. [ASSUMED: exact RecursiveDynamicUsage parity not required for RCN-02 closeout]
 
 ## State of the Art
 
@@ -327,17 +389,19 @@ pub fn on_mempool_transaction_removed(&mut self, removed_wtxid: &Wtxid) {
 |-----------------|----------------|------------|
 | Helper placement | Shell intercept in `receive_*` + `compact_receive_candidates.rs` helper; do **not** add mempool to network | HIGH |
 | Extra buffer | New `CompactExtraTxnBuffer` on `ManagedPeerNetwork` with Knots defaults; constructor override for tests | HIGH |
-| Wtxid source | Prefer `MempoolLifecycleRemoval.wtxid`; for outcomes use `MempoolOutcome::maybe_wtxid()` | HIGH |
+| Extra byte budget | Track approximate serialized/virtual size; match Knots slot+byte gates; do not require RecursiveDynamicUsage identity | MEDIUM |
+| Wtxid source | Prefer `MempoolLifecycleRemoval.wtxid`; Evicted/Expired via outcome; victims via TxServing lookup before demotion | HIGH |
 | Test injection | Prefer live `receive_message` with real mempool admits; extras via buffer `push` in Arrange | HIGH |
-| Empty-facts `handle_message` | Keep for PeerManager-only tests; document as non-production | MEDIUM |
+| Empty-facts `handle_message` | Keep for PeerManager-only tests; add comment that production receive must inject via shell | HIGH |
+| Task wave split | (1) network forwarder + shell intercept + mempool candidates, (2) extra ring + admission pushes, (3) lifecycle hooks + runtime tests + breadcrumbs | HIGH |
 
 ## Assumptions Log
 
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
-| — | *(none)* | — | All critical claims verified against codebase or Knots sources |
+| A1 | Exact Knots `RecursiveDynamicUsage` byte accounting is not required for RCN-02; approximate size budget is enough | Pattern 4 / Code Examples | Planner may over-scope memusage fidelity; discuss only if parity reviewers insist |
 
-Notes tagged as recommendations (clone-on-inject, exact extra feed set) are engineering choices within Claude's Discretion, not unverified facts.
+**If wrong:** Keep Knots slot count + per-txn size limit exact; treat aggregate byte budget as approximate until a later parity polish.
 
 ## Open Questions
 
@@ -349,11 +413,15 @@ Notes tagged as recommendations (clone-on-inject, exact extra feed set) are engi
 2. **How complete must extra feeds be vs Knots in Phase 119?**
    - What we know: D-05 requires a Knots-shaped bounded buffer; Knots feeds orphans/replaced/rejected.
    - What's unclear: Whether all three feeds are required for requirement closeout vs buffer existence + at least one feed + test injection.
-   - Recommendation: Implement ring + push orphans/rejects/replaced-victims when bodies are available; tests may push synthetic extras. Do not block on perfect Knots memusage accounting if a byte-budget approximation is used.
+   - Recommendation: Implement ring + push orphans/rejects/replaced-victims when bodies are available; tests may push synthetic extras. Do not block on perfect Knots memusage accounting.
 
 3. **Forward `on_compact_download_block_connected` now?**
    - What we know: API exists; shell never calls it; D-07 focuses on mempool-removal slot clear.
    - Recommendation: Out of Phase 119 unless a D-09 test needs it; note for Phase 120 / GOV-03.
+
+4. **Should `MempoolOutcome::Replaced` grow victim wtxid vectors?**
+   - What we know: Victims are txid-only today; TxServing can resolve wtxid for stored txs.
+   - Recommendation: Prefer TxServing lookup for Phase 119; only extend mempool outcome shape if lookup proves insufficient for D-09 tests.
 
 ## Environment Availability
 
@@ -386,7 +454,7 @@ Step 2.6: External deps limited to existing Rust toolchain and repo tools — no
 
 | Pattern | STRIDE | Standard Mitigation |
 |---------|--------|---------------------|
-| Oversized extra buffer memory growth | Denial of Service | Cap slots + byte budget to Knots defaults |
+| Oversized extra buffer memory growth | Denial of Service | Cap slots + byte budget to Knots defaults; per-tx size gate on reject feed |
 | Untrusted CompactBlock malformed payload | Tampering | Existing InitData Invalid/Failed outcomes before chainstate mutation |
 | Stale mempool match after eviction | Tampering / Integrity | Lifecycle wtxid clear on removal |
 | Accidental package/filter activation | Elevation of Privilege (scope) | Explicit no-touch of package/filter/public defaults (D-08) |
@@ -399,9 +467,10 @@ Step 2.6: External deps limited to existing Rust toolchain and repo tools — no
 - `.planning/v2.1-MILESTONE-AUDIT.md` — RCN-02/RCN-03/GOV-04 gap evidence
 - `packages/open-bitcoin-network/src/peer/message_dispatch.rs` — empty-facts CompactBlock branch
 - `packages/open-bitcoin-network/src/peer/compact_download_state.rs` — `CompactBlockReceiveFacts` / `handle_compact_block_download`
-- `packages/open-bitcoin-network/src/compact_reconstruction.rs` — `on_mempool_transaction_removed`, InitData scan
-- `packages/open-bitcoin-mempool/src/pool.rs` / `lifecycle.rs` / `types.rs` — entries + removal wtxid
-- `packages/open-bitcoin-node/src/network.rs` / `mempool_lifecycle.rs` — receive + missing hook
+- `packages/open-bitcoin-network/src/compact_download.rs` — `CompactDownloadPeerState` / `CompactDownloadInFlight.partial` / `init_compact_block_download`
+- `packages/open-bitcoin-network/src/compact_reconstruction.rs` — `on_mempool_transaction_removed`, InitData scan, typed outcomes
+- `packages/open-bitcoin-mempool/src/pool.rs` / `lifecycle.rs` / `types.rs` / `outcome.rs` — entries + removal wtxid + victim txid-only lists
+- `packages/open-bitcoin-node/src/network.rs` / `mempool_lifecycle.rs` / `admission_bridge.rs` / `relay_serving.rs` — receive + missing hook + TxServing wtxid lookup
 - `packages/bitcoin-knots/src/net_processing.h` — extra-txn defaults
 - `packages/bitcoin-knots/src/net_processing.cpp` — `AddToCompactExtraTransactions`, InitData call sites
 - `packages/bitcoin-knots/src/blockencodings.cpp` — `PartiallyDownloadedBlock::InitData`
@@ -422,7 +491,7 @@ Step 2.6: External deps limited to existing Rust toolchain and repo tools — no
 **Confidence breakdown:**
 - Standard stack: HIGH — first-party crates and Knots anchors verified in-tree
 - Architecture: HIGH — intercept + forwarder pattern matches locked decisions and existing types
-- Pitfalls: HIGH — borrow conflict, empty-facts trap, and wtxid hook gap verified in code
+- Pitfalls: HIGH — borrow conflict, empty-facts trap, wtxid hook gap, and Replaced-victim txid-only caveat verified in code
 
 **Research date:** 2026-07-13
 **Valid until:** 2026-08-12 (stable internal APIs; re-check if Phase 120 starts overlapping cleanup hooks)
