@@ -298,11 +298,12 @@ Plans:
 3. Runtime tests prove projection beyond helper-only unit coverage.
 4. No raw peer, permission, credential, or transaction payload leakage is introduced.
 
-**Plans:** 0/0 plans complete
+**Plans:** 2 plans
 
 Plans:
 
-- [ ] TBD — plan with `/gsd-plan-phase 121`
+- [ ] 121-01-PLAN.md — Runtime provider + persist_metrics + structured log emission + Rust tests
+- [ ] 121-02-PLAN.md — open-bitcoind wiring + Phase 121 Bun checker + verify.sh + OBS-03 closeout
 
 ## Progress
 
