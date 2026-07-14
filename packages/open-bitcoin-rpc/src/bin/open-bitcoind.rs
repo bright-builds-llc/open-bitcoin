@@ -31,8 +31,9 @@ use std::{
 
 use open_bitcoin_network::{InboundPreflightDiagnostic, InboundPreflightReason};
 use open_bitcoin_node::{
-    DurableSyncRuntime, FjallNodeStore, SyncLifecycleState, SyncRunSummary, SyncRuntimeError,
-    SyncStopReason, TcpPeerTransport, status::inbound_status_unavailable,
+    DurableSyncRuntime, FieldAvailability, FjallNodeStore, SyncLifecycleState, SyncRunSummary,
+    SyncRuntimeError, SyncStopReason, TcpPeerTransport,
+    status::{BLOCK_SERVING_EVIDENCE_UNAVAILABLE_REASON, inbound_status_unavailable},
 };
 use open_bitcoin_rpc::{
     DaemonSyncControl, ManagedRpcContext,
@@ -46,8 +47,11 @@ use open_bitcoin_rpc::{
 
 #[path = "open_bitcoind/inbound_metrics.rs"]
 mod inbound_metrics;
+#[path = "open_bitcoind/sync_seed.rs"]
+mod sync_seed;
 
 use inbound_metrics::start_inbound_metrics_worker;
+use sync_seed::seed_initial_sync_state;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -372,11 +376,24 @@ fn start_daemon_sync_worker(
             "open-bitcoind daemon sync failed to construct durable sync runtime: {error}"
         ))
     })?;
+    let block_relay_context = Arc::clone(&shared_context);
     sync_runtime.set_inbound_metric_status_provider(move || {
         let Ok(context) = shared_context.try_lock() else {
             return inbound_status_unavailable();
         };
         context.current_inbound_status()
+    });
+    sync_runtime.set_block_relay_metric_status_provider(move || {
+        let Ok(context) = block_relay_context.try_lock() else {
+            return FieldAvailability::unavailable(BLOCK_SERVING_EVIDENCE_UNAVAILABLE_REASON);
+        };
+        let status = context.block_relay_evidence_status();
+        match &status.block_serving.activation {
+            FieldAvailability::Available(_) => FieldAvailability::available(status),
+            FieldAvailability::Unavailable { .. } => {
+                FieldAvailability::unavailable(BLOCK_SERVING_EVIDENCE_UNAVAILABLE_REASON)
+            }
+        }
     });
     seed_initial_sync_state(&sync_runtime)?;
     let (shutdown_sender, shutdown_receiver) = mpsc::channel();
@@ -387,34 +404,6 @@ fn start_daemon_sync_worker(
         control,
         metrics_store,
     }))
-}
-
-fn seed_initial_sync_state(
-    sync_runtime: &DurableSyncRuntime,
-) -> Result<(), DaemonSyncPreflightError> {
-    let timestamp = current_timestamp_unix_seconds();
-    let lifecycle = if sync_runtime
-        .load_sync_control()
-        .map_err(|error| DaemonSyncPreflightError::new(error.to_string()))?
-        .paused
-    {
-        SyncLifecycleState::Paused
-    } else if sync_runtime
-        .store()
-        .load_recovery_marker()
-        .map_err(|error| DaemonSyncPreflightError::new(error.to_string()))?
-        .is_some()
-    {
-        SyncLifecycleState::Recovering
-    } else {
-        SyncLifecycleState::Active
-    };
-    let state = sync_runtime
-        .durable_sync_state(lifecycle, None, timestamp)
-        .map_err(|error| DaemonSyncPreflightError::new(error.to_string()))?;
-    sync_runtime
-        .persist_durable_sync_state(state)
-        .map_err(|error| DaemonSyncPreflightError::new(error.to_string()))
 }
 
 fn daemon_sync_worker(mut sync_runtime: DurableSyncRuntime, shutdown_receiver: mpsc::Receiver<()>) {

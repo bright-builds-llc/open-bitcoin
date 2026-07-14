@@ -398,6 +398,24 @@ it does not claim public block serving by default, BIP152 production readiness,
 package relay, public-network CI, production-service operation, production
 full-node readiness, or production-funds wallet use.
 
+## Phase 121 block-relay runtime projection
+
+Phase 121 closes the OBS-03 runtime seam by projecting the Phase 116 helpers
+through `DurableSyncRuntime`. When a provider returns Available
+`BlockRelayEvidenceStatus` (activation-gated from ManagedRpcContext in
+`open-bitcoind`), the same sync tick that runs `persist_metrics` and summary
+structured logs also appends `block_relay_metric_samples` into retained metrics
+history and emits `block_relay_log_record` via `append_structured_record`.
+
+Closed flow:
+`BlockRelayEvidenceStatus -> block_relay_metric_samples / block_relay_log_record -> DurableSyncRuntime persist_metrics / structured logs`.
+
+Unavailable status omits the block-relay family entirely (no zero-valued
+availability samples). Helpers, MetricKinds, and fixed log labels stay
+unchanged. This is retained local observability only: it does not claim public
+block serving by default, package relay, public inbound defaults, or production
+full-node readiness.
+
 ## Phase 117 v2.1 release-boundary evidence
 
 The v2.1 release boundary keeps `block_relay` evidence aggregate-only across

@@ -339,6 +339,8 @@ bun test scripts/check-phase111-full-block-serving-request-path.test.ts
 bun run scripts/check-phase111-full-block-serving-request-path.ts
 bun test scripts/check-phase116-operator-block-relay-evidence.test.ts
 bun run scripts/check-phase116-operator-block-relay-evidence.ts
+bun test scripts/check-phase121-block-relay-metrics-log-runtime.test.ts
+bun run scripts/check-phase121-block-relay-metrics-log-runtime.ts
 bun test scripts/check-phase117-parity-uat-release-boundary.test.ts
 bun run scripts/check-phase117-parity-uat-release-boundary.ts
 bash scripts/check-pure-core-deps.sh
@@ -455,6 +457,8 @@ run_step "test Phase 111 full block-serving request path checker" bun test scrip
 run_step "check Phase 111 full block-serving request path" bun run scripts/check-phase111-full-block-serving-request-path.ts
 run_step "test Phase 116 operator block-relay evidence checker" bun test scripts/check-phase116-operator-block-relay-evidence.test.ts
 run_step "check Phase 116 operator block-relay evidence" bun run scripts/check-phase116-operator-block-relay-evidence.ts
+run_step "test Phase 121 block-relay metrics and log runtime checker" bun test scripts/check-phase121-block-relay-metrics-log-runtime.test.ts
+run_step "check Phase 121 block-relay metrics and log runtime" bun run scripts/check-phase121-block-relay-metrics-log-runtime.ts
 run_step "test Phase 117 parity UAT release boundary checker" bun test scripts/check-phase117-parity-uat-release-boundary.test.ts
 run_step "check Phase 117 parity UAT release boundary" bun run scripts/check-phase117-parity-uat-release-boundary.ts
 run_step "check pure-core dependencies" bash scripts/check-pure-core-deps.sh

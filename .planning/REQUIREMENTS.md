@@ -48,7 +48,7 @@ Requirements for the current milestone. Each requirement maps to exactly one roa
 
 - [x] **OBS-01**: RPC and shared network status report block-serving activation, serving eligibility, compact negotiation, reconstruction, fallback, and in-flight compact-block state truthfully.
 - [x] **OBS-02**: CLI and dashboard surfaces render block-serving and compact-block relay state from the shared status contract without raw peer, permission, credential, or transaction payload leakage.
-- [ ] **OBS-03**: Metrics and structured logs use fixed low-cardinality labels for served, suppressed, compact-announced, reconstructed, missing-requested, fallback, malformed, timeout, and cleanup outcomes.
+- [x] **OBS-03**: Metrics and structured logs use fixed low-cardinality labels for served, suppressed, compact-announced, reconstructed, missing-requested, fallback, malformed, timeout, and cleanup outcomes.
 - [x] **OBS-04**: Support bundles sanitize block-serving and compact-relay evidence, including raw transaction lists, raw peer endpoints, permission strings, credentials, and dynamic labels.
 - [x] **OBS-05**: Operator docs and UAT guidance provide copy-pasteable repo-local Cargo and Bazel commands for block-serving and compact-relay workflows.
 
@@ -132,7 +132,7 @@ Traceability is populated by the v2.1 roadmap. Each active requirement maps to e
 | GOV-05 | Phase 111 | Complete |
 | OBS-01 | Phase 116 | Complete |
 | OBS-02 | Phase 116 | Complete |
-| OBS-03 | Phase 121 | Pending |
+| OBS-03 | Phase 121 | Complete |
 | OBS-04 | Phase 116 | Complete |
 | OBS-05 | Phase 116 | Complete |
 | BOUND-01 | Phase 117 | Complete |
