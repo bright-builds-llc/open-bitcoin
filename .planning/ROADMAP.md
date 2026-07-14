@@ -50,7 +50,7 @@ v2.1 Block Serving and Compact Block Relay Boundary is the active milestone afte
 - [x] **Phase 118: Outbound Compact Block Announcement Wiring** - Honor compact announcement decisions on the wire by emitting `cmpctblock` (or headers/inventory fallback) without false-positive announce evidence. (completed 2026-07-11)
 - [x] **Phase 119: Compact Receive Mempool Candidate Injection** - Feed live mempool and bounded extra candidates into compact-block receive, and hook mempool-remove lifecycle into partial state. (completed 2026-07-13)
 - [x] **Phase 120: Compact Download Timeout and Misbehavior Runtime Bridge** - Schedule compact-download timeout expiration from the node runtime and escalate typed compact misbehavior beyond silent suppress. (completed 2026-07-14)
-- [ ] **Phase 121: Block Relay Metrics and Log Runtime Projection** - Project block-relay metric samples and structured log records through the sync runtime persist/logging path.
+- [x] **Phase 121: Block Relay Metrics and Log Runtime Projection** - Project block-relay metric samples and structured log records through the sync runtime persist/logging path. (completed 2026-07-14)
 
 ### Phase Details
 
@@ -298,12 +298,12 @@ Plans:
 3. Runtime tests prove projection beyond helper-only unit coverage.
 4. No raw peer, permission, credential, or transaction payload leakage is introduced.
 
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 
 - [x] 121-01-PLAN.md — Runtime provider + persist_metrics + structured log emission + Rust tests
-- [ ] 121-02-PLAN.md — open-bitcoind wiring + Phase 121 Bun checker + verify.sh + OBS-03 closeout
+- [x] 121-02-PLAN.md — open-bitcoind wiring + Phase 121 Bun checker + verify.sh + OBS-03 closeout
 
 ## Progress
 
@@ -322,7 +322,7 @@ Plans:
 | 118. Outbound Compact Block Announcement Wiring | v2.1 | 3/3 | Complete   | 2026-07-11 |
 | 119. Compact Receive Mempool Candidate Injection | v2.1 | 3/3 | Complete   | 2026-07-13 |
 | 120. Compact Download Timeout and Misbehavior Runtime Bridge | v2.1 | 3/3 | Complete    | 2026-07-14 |
-| 121. Block Relay Metrics and Log Runtime Projection | v2.1 | 1/2 | In Progress|  |
+| 121. Block Relay Metrics and Log Runtime Projection | v2.1 | 2/2 | Complete   | 2026-07-14 |
 
 ## Traceability
 

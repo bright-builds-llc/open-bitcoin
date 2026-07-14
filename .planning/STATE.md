@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
-status: executing
-stopped_at: Completed 121-01-PLAN.md
-last_updated: "2026-07-14T06:11:59.885Z"
+status: verifying
+stopped_at: Completed 121-02-PLAN.md
+last_updated: "2026-07-14T07:57:49.742Z"
 last_activity: 2026-07-14
 progress:
   total_phases: 12
-  completed_phases: 11
+  completed_phases: 12
   total_plans: 40
-  completed_plans: 41
+  completed_plans: 42
   percent: 100
 ---
 
@@ -28,7 +28,7 @@ See: `.planning/PROJECT.md` (updated 2026-07-10 after Phase 117 completed v2.1 i
 Milestone: v2.1 Block Serving and Compact Block Relay Boundary
 Phase: 121
 Plan: 2 of 2
-Status: Executing
+Status: Phase complete — ready for verification
 Last activity: 2026-07-14
 
 v2.0 Transaction Relay and Mempool Participation Boundary shipped on 2026-07-03. The archived audit reports 32/32 requirements, 10/10 phases, 8/8 integration checks, 8/8 cross-phase flows, and no tracked tech debt.
@@ -87,6 +87,8 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 - [Phase 120]: Timeout tick piggybacks on receive_* message timestamps; no Tokio timer
 - [Phase 121]: One shared block-relay provider for metrics and structured logs
 - [Phase 121]: Available-gate block_relay_metric_samples at call site (never on Unavailable)
+- [Phase 121]: Production block-relay metrics/logs use ManagedRpcContext evidence with activation outer Available gate
+- [Phase 121]: No sync-disabled twin block-relay metrics worker in Phase 121
 
 ## Pending Todos
 
@@ -106,6 +108,6 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Session Continuity
 
-Last session: 2026-07-14T06:11:59.882Z
-Stopped at: Completed 121-01-PLAN.md
+Last session: 2026-07-14T07:57:49.740Z
+Stopped at: Completed 121-02-PLAN.md
 Resume file: None
