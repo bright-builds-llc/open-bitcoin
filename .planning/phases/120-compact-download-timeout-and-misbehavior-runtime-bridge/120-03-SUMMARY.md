@@ -78,7 +78,7 @@ Each task was committed atomically:
 1. **Task 1: Wire ReceivedBlock → on_compact_download_block_connected** - `928e34f5` (feat)
 2. **Task 2: GOV-03 runtime proofs + parity breadcrumbs + Phase 121 isolation** - `9b30abec` (feat)
 
-**Plan metadata:** pending final docs commit
+**Plan metadata:**  (docs: complete plan)
 
 ## Files Created/Modified
 
