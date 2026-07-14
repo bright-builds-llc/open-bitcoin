@@ -78,7 +78,7 @@ Each task was committed atomically:
 1. **Task 1: Wire ReceivedBlock → on_compact_download_block_connected** - `928e34f5` (feat)
 2. **Task 2: GOV-03 runtime proofs + parity breadcrumbs + Phase 121 isolation** - `9b30abec` (feat)
 
-**Plan metadata:**  (docs: complete plan)
+**Plan metadata:** `6b87aa54` (docs: complete plan); follow-up `84da645c` recorded this hash
 
 ## Files Created/Modified
 
