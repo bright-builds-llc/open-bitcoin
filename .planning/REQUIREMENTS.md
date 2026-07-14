@@ -39,7 +39,7 @@ Requirements for the current milestone. Each requirement maps to exactly one roa
 ### Resource Governance And Runtime Integration
 
 - [x] **GOV-01**: Full block serving, compact block serving, partial compact-block state, missing transaction requests, and fallback all participate in existing request, queue, and in-flight resource limits.
-- [ ] **GOV-02**: Malformed compact blocks, invalid compact-block headers, duplicate `blocktxn`, unexpected `blocktxn`, and out-of-bounds indexes produce Knots-aligned misbehavior, disconnect, or suppression decisions.
+- [x] **GOV-02**: Malformed compact blocks, invalid compact-block headers, duplicate `blocktxn`, unexpected `blocktxn`, and out-of-bounds indexes produce Knots-aligned misbehavior, disconnect, or suppression decisions.
 - [x] **GOV-03**: Restart, reconnect, disconnect, timeout, and reorg cleanup remove volatile compact-relay state without deleting validated chainstate or durable block data.
 - [x] **GOV-04**: Compact block relay integrates with mempool lifecycle, transaction relay, and block connect/disconnect events without activating package relay or filter serving.
 - [x] **GOV-05**: Historical, pruned, stale, side-chain, and unavailable block serving remains bounded by documented eligibility rules and does not imply archive-node behavior.
@@ -126,7 +126,7 @@ Traceability is populated by the v2.1 roadmap. Each active requirement maps to e
 | RCN-06 | Phase 115 | Complete |
 | RCN-07 | Phase 120 | Complete |
 | GOV-01 | Phase 111 | Complete |
-| GOV-02 | Phase 120 | Pending |
+| GOV-02 | Phase 120 | Complete |
 | GOV-03 | Phase 120 | Complete |
 | GOV-04 | Phase 119 | Complete |
 | GOV-05 | Phase 111 | Complete |

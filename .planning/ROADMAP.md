@@ -49,7 +49,7 @@ v2.1 Block Serving and Compact Block Relay Boundary is the active milestone afte
 - [x] **Phase 117: Parity Traceability, UAT, and Release Guardrails** - Close parity, UAT, docs, and deterministic no-claim guardrails for the bounded v2.1 release boundary. (completed 2026-07-10)
 - [x] **Phase 118: Outbound Compact Block Announcement Wiring** - Honor compact announcement decisions on the wire by emitting `cmpctblock` (or headers/inventory fallback) without false-positive announce evidence. (completed 2026-07-11)
 - [x] **Phase 119: Compact Receive Mempool Candidate Injection** - Feed live mempool and bounded extra candidates into compact-block receive, and hook mempool-remove lifecycle into partial state. (completed 2026-07-13)
-- [ ] **Phase 120: Compact Download Timeout and Misbehavior Runtime Bridge** - Schedule compact-download timeout expiration from the node runtime and escalate typed compact misbehavior beyond silent suppress.
+- [x] **Phase 120: Compact Download Timeout and Misbehavior Runtime Bridge** - Schedule compact-download timeout expiration from the node runtime and escalate typed compact misbehavior beyond silent suppress. (completed 2026-07-14)
 - [ ] **Phase 121: Block Relay Metrics and Log Runtime Projection** - Project block-relay metric samples and structured log records through the sync runtime persist/logging path.
 
 ### Phase Details
@@ -277,13 +277,13 @@ Plans:
 3. Disconnect/timeout/reorg cleanup still remove only volatile compact-relay state.
 4. Typed compact misbehavior maps to Knots-aligned disconnect, score, or suppression decisions rather than empty-action silence only.
 
-**Plans:** 1/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 
 - [x] 120-01-PLAN.md — Timeout tick forwarder + receive_* piggyback + Timeout cleanup evidence (RCN-07, GOV-03)
-- [ ] 120-02-PLAN.md — Misbehavior escalation beyond silent suppress (GOV-02)
-- [ ] 120-03-PLAN.md — ReceivedBlock volatile cleanup + runtime proofs + parity breadcrumbs (GOV-03)
+- [x] 120-02-PLAN.md — Misbehavior escalation beyond silent suppress (GOV-02)
+- [x] 120-03-PLAN.md — ReceivedBlock volatile cleanup + runtime proofs + parity breadcrumbs (GOV-03)
 
 #### Phase 121: Block Relay Metrics and Log Runtime Projection
 
@@ -320,7 +320,7 @@ Plans:
 | 117. Parity Traceability, UAT, and Release Guardrails | v2.1 | 4/4 | Complete    | 2026-07-10 |
 | 118. Outbound Compact Block Announcement Wiring | v2.1 | 3/3 | Complete   | 2026-07-11 |
 | 119. Compact Receive Mempool Candidate Injection | v2.1 | 3/3 | Complete   | 2026-07-13 |
-| 120. Compact Download Timeout and Misbehavior Runtime Bridge | v2.1 | 1/3 | In Progress|  |
+| 120. Compact Download Timeout and Misbehavior Runtime Bridge | v2.1 | 3/3 | Complete    | 2026-07-14 |
 | 121. Block Relay Metrics and Log Runtime Projection | v2.1 | 0/0 | Pending     | — |
 
 ## Traceability
