@@ -377,17 +377,19 @@ fn write_block_relay_log_emits_when_status_available() {
 
 **If A1 needs confirmation:** Prefer documenting the activation-based gate in PLAN.md acceptance criteria; it matches `default_unavailable()` shape verified in status code.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should unavailable reason be a new constant?**
    - What we know: Inbound uses `INBOUND_STATUS_UNAVAILABLE_REASON`; block serving uses `BLOCK_SERVING_EVIDENCE_UNAVAILABLE_REASON`.
    - What's unclear: Whether checkers/docs should mention a block-relay-specific reason string.
    - Recommendation: Reuse `BLOCK_SERVING_EVIDENCE_UNAVAILABLE_REASON` for lock-failure / default-unavailable mapping unless a one-line new constant improves clarity; do not invent dynamic reasons.
+   - RESOLVED: Reuse `BLOCK_SERVING_EVIDENCE_UNAVAILABLE_REASON` for lock-failure / default-unavailable mapping; do not invent a dynamic or block-relay-specific reason string unless a one-line constant clearly improves clarity without changing gate semantics.
 
 2. **Is a separate open-bitcoind worker needed (like inbound metrics worker)?**
    - What we know: Inbound has both DurableSyncRuntime provider and `start_inbound_metrics_worker` for sync-disabled persistence. [VERIFIED: open_bitcoind/inbound_metrics.rs]
    - What's unclear: Whether block-relay must also persist when sync is disabled.
    - Recommendation: Phase 121 success criteria name DurableSyncRuntime persist/log path only — do **not** require a twin sync-disabled worker unless discuss-phase expands scope. Sync tick + provider wiring satisfies the audit seam.
+   - RESOLVED: No sync-disabled twin worker in Phase 121 — DurableSyncRuntime persist/log path + provider wiring closes OBS-03; expand only if a future discuss-phase adds sync-disabled scope.
 
 ## Environment Availability
 
