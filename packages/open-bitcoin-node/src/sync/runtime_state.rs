@@ -11,7 +11,7 @@ use open_bitcoin_network::{MAX_HEADERS_RESULTS, PeerId};
 use crate::{
     LogRetentionPolicy, RuntimeMetadata,
     logging::{
-        StructuredLogError, StructuredLogLevel, StructuredLogRecord,
+        StructuredLogError, StructuredLogLevel, StructuredLogRecord, block_relay_log_record,
         writer::append_structured_log_record,
     },
     status::{
@@ -25,7 +25,10 @@ use super::{
     SyncPeerAddress, SyncPeerResolver, SyncRunSummary, SyncRuntimeError, tip,
 };
 
+mod helpers;
 mod recovery;
+
+use helpers::{maybe_available_ref, progress_ratio};
 
 const MAX_HEADER_REQUESTS_IN_FLIGHT_PER_PEER: u64 = 1;
 
@@ -106,6 +109,22 @@ impl DurableSyncRuntime {
                     .push(super::progress::log_write_failed_signal(&error));
                 break;
             }
+        }
+    }
+
+    pub(super) fn write_block_relay_log(&self, summary: &mut SyncRunSummary, timestamp: i64) {
+        let Some(provider) = self.maybe_block_relay_metric_status_provider.as_ref() else {
+            return;
+        };
+        let FieldAvailability::Available(status) = provider() else {
+            return;
+        };
+        let timestamp = u64::try_from(timestamp).unwrap_or(0);
+        let record = block_relay_log_record(&status, timestamp);
+        if let Err(error) = self.append_structured_record(&record) {
+            summary
+                .health_signals
+                .push(super::progress::log_write_failed_signal(&error));
         }
     }
 
@@ -594,19 +613,4 @@ impl DurableSyncRuntime {
     fn load_runtime_metadata(&self) -> Result<RuntimeMetadata, SyncRuntimeError> {
         Ok(self.store.load_runtime_metadata()?.unwrap_or_default())
     }
-}
-
-fn maybe_available_ref<T>(field: &FieldAvailability<T>) -> Option<&T> {
-    match field {
-        FieldAvailability::Available(value) => Some(value),
-        FieldAvailability::Unavailable { .. } => None,
-    }
-}
-
-fn progress_ratio(block_height: u64, header_height: u64) -> f64 {
-    if header_height == 0 {
-        return 1.0;
-    }
-
-    (block_height as f64 / header_height as f64).min(1.0)
 }

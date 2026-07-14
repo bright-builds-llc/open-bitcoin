@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
 status: executing
-stopped_at: Phase 121 context gathered
-last_updated: "2026-07-14T04:56:34.191Z"
+stopped_at: Completed 121-01-PLAN.md
+last_updated: "2026-07-14T06:11:59.885Z"
 last_activity: 2026-07-14
 progress:
   total_phases: 12
   completed_phases: 11
-  total_plans: 38
-  completed_plans: 40
+  total_plans: 40
+  completed_plans: 41
   percent: 100
 ---
 
@@ -21,19 +21,19 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-07-10 after Phase 117 completed v2.1 implementation and verification).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 120 Plan 01 complete — next Plan 02 (compact misbehavior escalation)
+**Current focus:** Phase 121 Plan 01 complete — next Plan 02 (open-bitcoind wiring + Phase 121 checker)
 
 ## Current Position
 
 Milestone: v2.1 Block Serving and Compact Block Relay Boundary
 Phase: 121
-Plan: Not started
-Status: Ready to execute
+Plan: 2 of 2
+Status: Executing
 Last activity: 2026-07-14
 
 v2.0 Transaction Relay and Mempool Participation Boundary shipped on 2026-07-03. The archived audit reports 32/32 requirements, 10/10 phases, 8/8 integration checks, 8/8 cross-phase flows, and no tracked tech debt.
 
-v2.1 gap-closure Phase 120 Plan 01 wired peer-scoped compact-download timeout expiry onto ManagedPeerNetwork receive paths with Timeout cleanup evidence.
+v2.1 gap-closure Phase 121 Plan 01 wired DurableSyncRuntime block-relay provider, Available-gated persist_metrics, and write_block_relay_log on the sync tick.
 
 ## Latest Milestone Archive
 
@@ -85,6 +85,8 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 - [Phase 120]: ManagedPeerNetwork compact expire keeps PeerAction::Send; never copies TX TransactionRelay filter
 - [Phase 120]: receive_message returns ManagedSyncMessageResult so other-peer timeout GetData is preserved
 - [Phase 120]: Timeout tick piggybacks on receive_* message timestamps; no Tokio timer
+- [Phase 121]: One shared block-relay provider for metrics and structured logs
+- [Phase 121]: Available-gate block_relay_metric_samples at call site (never on Unavailable)
 
 ## Pending Todos
 
@@ -104,6 +106,6 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Session Continuity
 
-Last session: 2026-07-14T04:56:34.187Z
-Stopped at: Phase 121 context gathered
-Resume file: .planning/phases/121-block-relay-metrics-and-log-runtime-projection/121-CONTEXT.md
+Last session: 2026-07-14T06:11:59.882Z
+Stopped at: Completed 121-01-PLAN.md
+Resume file: None

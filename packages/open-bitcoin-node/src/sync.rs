@@ -25,6 +25,7 @@ mod tcp;
 mod tests;
 mod tip;
 mod types;
+mod waiting;
 mod wallet_rescan;
 
 use open_bitcoin_core::{
@@ -46,7 +47,7 @@ pub use wallet_rescan::WalletRescanRuntime;
 use crate::{
     ChainstateStore, FieldAvailability, FjallNodeStore, InboundPeerServingStatus,
     ManagedPeerNetwork, MemoryChainstateStore, SyncLifecycleState,
-    network::BlockConnectDisposition,
+    network::BlockConnectDisposition, status::BlockRelayEvidenceStatus,
 };
 use progress::{PeerFailure, PeerProgress};
 use types::SyncReconcileProgress;
@@ -69,6 +70,8 @@ pub struct DurableSyncRuntime {
     maybe_reconcile_progress: Option<SyncReconcileProgress>,
     maybe_inbound_metric_status_provider:
         Option<Arc<dyn Fn() -> FieldAvailability<InboundPeerServingStatus> + Send + Sync>>,
+    maybe_block_relay_metric_status_provider:
+        Option<Arc<dyn Fn() -> FieldAvailability<BlockRelayEvidenceStatus> + Send + Sync>>,
 }
 
 impl DurableSyncRuntime {
@@ -104,6 +107,7 @@ impl DurableSyncRuntime {
             inflight_blocks: BTreeSet::new(),
             maybe_reconcile_progress: None,
             maybe_inbound_metric_status_provider: None,
+            maybe_block_relay_metric_status_provider: None,
         })
     }
 
@@ -212,6 +216,7 @@ impl DurableSyncRuntime {
             return Err(error);
         }
         self.write_summary_logs(&mut summary, timestamp);
+        self.write_block_relay_log(&mut summary, timestamp);
         let mut state = self.durable_sync_state_from_summary(
             &summary,
             SyncLifecycleState::Active,
@@ -587,41 +592,5 @@ impl DurableSyncRuntime {
                 }
             }
         }
-    }
-
-    fn record_waiting_outcome(
-        &self,
-        summary: &mut SyncRunSummary,
-        peer: &ResolvedSyncPeerAddress,
-        backoff: PeerRetryState,
-        timestamp: i64,
-    ) {
-        let wait_seconds = backoff
-            .next_attempt_unix_seconds
-            .saturating_sub(timestamp)
-            .max(0);
-        summary.health_signals.push(progress::waiting_peer_signal());
-        summary.peer_outcomes.push(PeerSyncOutcome {
-            peer: peer.peer.clone(),
-            maybe_resolved_endpoint: Some(peer.endpoint.to_string()),
-            network: self.config.network,
-            state: PeerSyncState::Waiting,
-            attempts: 0,
-            contribution: PeerContribution {
-                messages_processed: 0,
-                headers_received: 0,
-                blocks_received: 0,
-            },
-            maybe_tip_height: None,
-            maybe_tip_hash: None,
-            maybe_tip_work: None,
-            maybe_last_activity_unix_seconds: None,
-            maybe_capabilities: None,
-            maybe_failure_reason: Some(PeerFailureReason::RetryBackoff),
-            maybe_error: Some(format!(
-                "retry backoff wait_seconds={wait_seconds} consecutive_failures={} next_attempt_unix_seconds={}",
-                backoff.consecutive_failures, backoff.next_attempt_unix_seconds
-            )),
-        });
     }
 }

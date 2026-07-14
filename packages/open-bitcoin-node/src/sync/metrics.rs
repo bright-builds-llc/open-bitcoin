@@ -8,7 +8,8 @@
 use std::sync::Arc;
 
 use crate::{
-    FieldAvailability, InboundPeerServingStatus, MetricRetentionPolicy, inbound_metric_samples,
+    FieldAvailability, InboundPeerServingStatus, MetricRetentionPolicy, block_relay_metric_samples,
+    inbound_metric_samples, status::BlockRelayEvidenceStatus,
 };
 
 use super::{DurableSyncRuntime, SyncRunSummary, SyncRuntimeError};
@@ -21,6 +22,13 @@ impl DurableSyncRuntime {
         self.maybe_inbound_metric_status_provider = Some(Arc::new(provider));
     }
 
+    pub fn set_block_relay_metric_status_provider<F>(&mut self, provider: F)
+    where
+        F: Fn() -> FieldAvailability<BlockRelayEvidenceStatus> + Send + Sync + 'static,
+    {
+        self.maybe_block_relay_metric_status_provider = Some(Arc::new(provider));
+    }
+
     pub(super) fn persist_metrics(
         &self,
         summary: &SyncRunSummary,
@@ -31,6 +39,11 @@ impl DurableSyncRuntime {
         let mut samples = summary.metric_samples(timestamp);
         if let Some(provider) = self.maybe_inbound_metric_status_provider.as_ref() {
             samples.extend(inbound_metric_samples(&provider(), timestamp));
+        }
+        if let Some(provider) = self.maybe_block_relay_metric_status_provider.as_ref()
+            && let FieldAvailability::Available(status) = provider()
+        {
+            samples.extend(block_relay_metric_samples(&status, timestamp));
         }
         self.store.append_metric_samples(
             &samples,

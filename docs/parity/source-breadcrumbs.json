@@ -1021,8 +1021,10 @@
         "packages/open-bitcoin-node/src/sync/metrics.rs",
         "packages/open-bitcoin-node/src/sync/reconcile_status.rs",
         "packages/open-bitcoin-node/src/sync/runtime_state.rs",
+        "packages/open-bitcoin-node/src/sync/runtime_state/helpers.rs",
         "packages/open-bitcoin-node/src/sync/runtime_state/recovery.rs",
         "packages/open-bitcoin-node/src/sync/session.rs",
+        "packages/open-bitcoin-node/src/sync/waiting.rs",
         "packages/open-bitcoin-node/src/sync/wallet_rescan.rs"
       ],
       "breadcrumbs": [

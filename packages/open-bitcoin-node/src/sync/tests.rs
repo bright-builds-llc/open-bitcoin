@@ -35,9 +35,16 @@ use crate::{
     FieldAvailability, FjallNodeStore, LogRetentionPolicy, MetricKind, MetricRetentionPolicy,
     MetricSample, PersistMode, RuntimeMetadata, StorageError, StorageNamespace,
     StorageRecoveryAction,
-    logging::{StructuredLogLevel, StructuredLogRecord, writer::load_log_status},
+    logging::{
+        BLOCK_RELAY_LOG_SOURCE, StructuredLogLevel, StructuredLogRecord, writer::load_log_status,
+    },
     status::{
-        BestKnownTipSource, BestKnownTipStatus, DurableSyncState, HealthSignal, HealthSignalLevel,
+        BLOCK_SERVING_EVIDENCE_UNAVAILABLE_REASON, BestKnownTipSource, BestKnownTipStatus,
+        BlockRelayEvidenceStatus, BlockServingActivationEvidence, BlockServingEligibilityCounters,
+        BlockServingEvidenceStatus, BlockServingStatusCounters, CompactRelayAnnouncementCounters,
+        CompactRelayCleanupCounters, CompactRelayFallbackCounters, CompactRelayInFlightCounters,
+        CompactRelayMissingTransactionCounters, CompactRelayNegotiationCounters,
+        CompactRelayReconstructionCounters, DurableSyncState, HealthSignal, HealthSignalLevel,
         InboundHandshakeStatusCounts, InboundPeerServingStatus, NoProgressDiagnosis,
         PeerContributionEvidence, PeerContributionKind, PeerTipAgreement, PeerTipAgreementStatus,
         ProgressCreditEvidence, ProgressCreditKind, RejectedProgressActivityKind,
@@ -4416,6 +4423,305 @@ fn persist_metrics_omits_inbound_samples_when_status_unavailable() {
             | MetricKind::InboundChurnRejectedCount
             | MetricKind::InboundReconnectSuppressedCount
     )));
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn persist_metrics_appends_block_relay_status_samples_with_sync_samples() {
+    // Arrange
+    let path = temp_store_path("metrics-block-relay");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    let block_relay = block_relay_status_for_metrics();
+    runtime.set_block_relay_metric_status_provider(move || {
+        FieldAvailability::available(block_relay.clone())
+    });
+    let summary = runtime.snapshot_summary();
+
+    // Act
+    runtime
+        .persist_metrics(&summary, 1_777_225_022)
+        .expect("persist metrics");
+
+    // Assert
+    let metrics = runtime
+        .store()
+        .load_metrics_snapshot()
+        .expect("load metrics")
+        .expect("metrics snapshot");
+    assert!(metrics.samples.iter().any(|sample| {
+        sample.kind == MetricKind::SyncHeight && sample.timestamp_unix_seconds == 1_777_225_022
+    }));
+    assert!(metrics.samples.iter().any(|sample| {
+        sample.kind == MetricKind::CompactAnnouncedCount
+            && sample.value == 6.0
+            && sample.timestamp_unix_seconds == 1_777_225_022
+    }));
+    assert!(metrics.samples.iter().any(|sample| {
+        sample.kind == MetricKind::BlockServedCount
+            && sample.value == 2.0
+            && sample.timestamp_unix_seconds == 1_777_225_022
+    }));
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn persist_metrics_omits_block_relay_samples_when_status_unavailable() {
+    // Arrange
+    let path = temp_store_path("metrics-block-relay-unavailable");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    runtime.set_block_relay_metric_status_provider(|| {
+        FieldAvailability::unavailable(BLOCK_SERVING_EVIDENCE_UNAVAILABLE_REASON)
+    });
+    let summary = runtime.snapshot_summary();
+
+    // Act
+    runtime
+        .persist_metrics(&summary, 1_777_225_022)
+        .expect("persist metrics");
+
+    // Assert
+    let metrics = runtime
+        .store()
+        .load_metrics_snapshot()
+        .expect("load metrics")
+        .expect("metrics snapshot");
+    assert!(
+        metrics
+            .samples
+            .iter()
+            .any(|sample| sample.kind == MetricKind::SyncHeight)
+    );
+    assert!(!metrics.samples.iter().any(|sample| matches!(
+        sample.kind,
+        MetricKind::BlockServedCount
+            | MetricKind::BlockServingSuppressedCount
+            | MetricKind::CompactAnnouncedCount
+            | MetricKind::CompactReconstructedCount
+            | MetricKind::CompactMissingTxRequestedCount
+            | MetricKind::CompactFallbackCount
+            | MetricKind::CompactMalformedCount
+            | MetricKind::CompactTimeoutCount
+            | MetricKind::CompactCleanupCount
+    )));
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn persist_metrics_omits_block_relay_samples_when_provider_unset() {
+    // Arrange
+    let path = temp_store_path("metrics-block-relay-unset");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    let summary = runtime.snapshot_summary();
+
+    // Act
+    runtime
+        .persist_metrics(&summary, 1_777_225_022)
+        .expect("persist metrics");
+
+    // Assert
+    let metrics = runtime
+        .store()
+        .load_metrics_snapshot()
+        .expect("load metrics")
+        .expect("metrics snapshot");
+    assert!(
+        metrics
+            .samples
+            .iter()
+            .any(|sample| sample.kind == MetricKind::SyncHeight)
+    );
+    assert!(!metrics.samples.iter().any(|sample| matches!(
+        sample.kind,
+        MetricKind::BlockServedCount
+            | MetricKind::BlockServingSuppressedCount
+            | MetricKind::CompactAnnouncedCount
+            | MetricKind::CompactReconstructedCount
+            | MetricKind::CompactMissingTxRequestedCount
+            | MetricKind::CompactFallbackCount
+            | MetricKind::CompactMalformedCount
+            | MetricKind::CompactTimeoutCount
+            | MetricKind::CompactCleanupCount
+    )));
+
+    remove_dir_if_exists(&path);
+}
+
+fn block_relay_status_for_metrics() -> BlockRelayEvidenceStatus {
+    BlockRelayEvidenceStatus::with_components(
+        BlockServingEvidenceStatus::with_activation_eligibility_and_status(
+            BlockServingActivationEvidence {
+                block_serving_enabled: true,
+                compact_relay_enabled: true,
+            },
+            BlockServingEligibilityCounters {
+                eligible_peer_count: 2,
+                ineligible_peer_count: 3,
+                disabled_count: 1,
+                activation_required_count: 0,
+                inbound_serving_required_count: 1,
+                permission_required_count: 1,
+                protected_not_serving_count: 0,
+                status_unavailable_count: 0,
+                permission_effect_inactive_count: 1,
+            },
+            BlockServingStatusCounters {
+                validated_count: 5,
+                available_count: 4,
+                stale_count: 1,
+                side_chain_count: 2,
+                pruned_count: 1,
+                unavailable_count: 3,
+                unvalidated_count: 0,
+                unknown_count: 1,
+                suppressed_count: 2,
+            },
+        ),
+        CompactRelayNegotiationCounters {
+            version2_high_bandwidth_count: 3,
+            version2_low_bandwidth_count: 1,
+            unsupported_version_count: 1,
+        },
+        CompactRelayAnnouncementCounters {
+            compact_announced_count: 6,
+            compact_headers_fallback_count: 2,
+            compact_inventory_fallback_count: 1,
+            compact_suppressed_count: 2,
+        },
+        CompactRelayReconstructionCounters {
+            compact_reconstructed_count: 4,
+            compact_reconstruction_failed_count: 1,
+            compact_malformed_count: 1,
+        },
+        CompactRelayMissingTransactionCounters {
+            compact_missing_tx_requested_count: 2,
+            compact_missing_tx_suppressed_count: 1,
+        },
+        CompactRelayFallbackCounters {
+            compact_fallback_count: 2,
+            compact_timeout_count: 1,
+        },
+        CompactRelayInFlightCounters {
+            in_flight_count: 3,
+            getblocktxn_in_flight_count: 2,
+            peers_with_in_flight_count: 2,
+        },
+        CompactRelayCleanupCounters {
+            compact_cleanup_count: 3,
+            compact_download_peer_disconnect_count: 1,
+            compact_download_timeout_count: 1,
+            compact_download_reorg_count: 0,
+            compact_download_restart_count: 0,
+            compact_download_block_connected_count: 1,
+        },
+    )
+}
+
+#[test]
+fn write_block_relay_log_emits_when_status_available() {
+    // Arrange
+    let path = temp_store_path("block-relay-log-available");
+    let log_dir = path.join("logs");
+    remove_dir_if_exists(&path);
+    fs::create_dir_all(&log_dir).expect("create log dir");
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime =
+        DurableSyncRuntime::open(store, sync_config_with_log_dir(&log_dir)).expect("runtime");
+    let block_relay = block_relay_status_for_metrics();
+    runtime.set_block_relay_metric_status_provider(move || {
+        FieldAvailability::available(block_relay.clone())
+    });
+    let mut summary = runtime.snapshot_summary();
+
+    // Act
+    runtime.write_block_relay_log(&mut summary, 1_777_225_305);
+
+    // Assert
+    let records = load_structured_log_records(&log_dir);
+    let maybe_block_relay = records
+        .iter()
+        .find(|record| record.source == BLOCK_RELAY_LOG_SOURCE);
+    let record = maybe_block_relay.expect("block_relay log record");
+    assert!(record.message.contains("outcome=projected"));
+    assert!(record.message.contains("cause=status_projection"));
+    assert!(record.message.contains("label=block_relay"));
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn write_block_relay_log_omits_when_status_unavailable() {
+    // Arrange
+    let path = temp_store_path("block-relay-log-unavailable");
+    let log_dir = path.join("logs");
+    remove_dir_if_exists(&path);
+    fs::create_dir_all(&log_dir).expect("create log dir");
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime =
+        DurableSyncRuntime::open(store, sync_config_with_log_dir(&log_dir)).expect("runtime");
+    runtime.set_block_relay_metric_status_provider(|| {
+        FieldAvailability::unavailable(BLOCK_SERVING_EVIDENCE_UNAVAILABLE_REASON)
+    });
+    let mut summary = runtime.snapshot_summary();
+
+    // Act
+    runtime.write_block_relay_log(&mut summary, 1_777_225_306);
+
+    // Assert
+    let records = load_structured_log_records(&log_dir);
+    assert!(
+        !records
+            .iter()
+            .any(|record| record.source == BLOCK_RELAY_LOG_SOURCE)
+    );
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn write_block_relay_log_omits_sensitive_markers() {
+    // Arrange
+    let path = temp_store_path("block-relay-log-leakage");
+    let log_dir = path.join("logs");
+    remove_dir_if_exists(&path);
+    fs::create_dir_all(&log_dir).expect("create log dir");
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime =
+        DurableSyncRuntime::open(store, sync_config_with_log_dir(&log_dir)).expect("runtime");
+    let block_relay = block_relay_status_for_metrics();
+    runtime.set_block_relay_metric_status_provider(move || {
+        FieldAvailability::available(block_relay.clone())
+    });
+    let mut summary = runtime.snapshot_summary();
+
+    // Act
+    runtime.write_block_relay_log(&mut summary, 1_777_225_307);
+
+    // Assert
+    let records = load_structured_log_records(&log_dir);
+    let maybe_block_relay = records
+        .iter()
+        .find(|record| record.source == BLOCK_RELAY_LOG_SOURCE);
+    let record = maybe_block_relay.expect("block_relay log record");
+    for raw in [
+        "127.0.0.1",
+        "peer_id",
+        "permission_string",
+        "credential",
+        "cookie",
+        "secret",
+        "0123456789abcdef",
+    ] {
+        assert!(!record.message.contains(raw), "leaked {raw}");
+    }
 
     remove_dir_if_exists(&path);
 }

@@ -32,8 +32,8 @@ pub use chainstate::{ChainstateStore, ManagedChainstate, MemoryChainstateStore};
 pub use logging::{LogRetentionPolicy, LogStatus};
 pub use mempool::ManagedMempool;
 pub use metrics::{
-    MetricKind, MetricRetentionPolicy, MetricSample, MetricsStatus, inbound_metric_samples,
-    relay_metric_samples,
+    MetricKind, MetricRetentionPolicy, MetricSample, MetricsStatus, block_relay_metric_samples,
+    inbound_metric_samples, relay_metric_samples,
 };
 pub use network::{
     ManagedAddressBoundaryInfo, ManagedInboundAdmissionInfo, ManagedInboundPermissionDecisionInfo,

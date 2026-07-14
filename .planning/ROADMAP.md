@@ -298,11 +298,11 @@ Plans:
 3. Runtime tests prove projection beyond helper-only unit coverage.
 4. No raw peer, permission, credential, or transaction payload leakage is introduced.
 
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
 
-- [ ] 121-01-PLAN.md — Runtime provider + persist_metrics + structured log emission + Rust tests
+- [x] 121-01-PLAN.md — Runtime provider + persist_metrics + structured log emission + Rust tests
 - [ ] 121-02-PLAN.md — open-bitcoind wiring + Phase 121 Bun checker + verify.sh + OBS-03 closeout
 
 ## Progress
@@ -322,7 +322,7 @@ Plans:
 | 118. Outbound Compact Block Announcement Wiring | v2.1 | 3/3 | Complete   | 2026-07-11 |
 | 119. Compact Receive Mempool Candidate Injection | v2.1 | 3/3 | Complete   | 2026-07-13 |
 | 120. Compact Download Timeout and Misbehavior Runtime Bridge | v2.1 | 3/3 | Complete    | 2026-07-14 |
-| 121. Block Relay Metrics and Log Runtime Projection | v2.1 | 0/0 | Pending     | — |
+| 121. Block Relay Metrics and Log Runtime Projection | v2.1 | 1/2 | In Progress|  |
 
 ## Traceability
 
