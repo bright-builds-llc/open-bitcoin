@@ -1340,6 +1340,45 @@ archive-node behavior, public-network CI, production service operation,
 production full-node readiness, and production-funds wallet use remain
 deferred.
 
+## Phase 122 compact relay peer completion
+
+The `v2-1-compact-relay-peer-completion` surface closes `HARD-01` by retaining
+an eleven-hash FIFO membership window for compact blocks actually announced to
+each peer session. A valid `getblocktxn` for a retained hash expands indexes
+once and reaches the existing activation, eligibility, request-pressure, and
+block-availability gates. An eligible request returns `blocktxn` transactions
+in request order with stored witness data preserved. Unannounced, evicted,
+unavailable, or currently ineligible requests are silent; overflowing or
+out-of-bounds indexes disconnect through typed compact-block misbehavior.
+
+The Open Bitcoin evidence roots are
+`packages/open-bitcoin-network/src/peer/compact_relay.rs`,
+`packages/open-bitcoin-network/src/peer/message_dispatch.rs`,
+`packages/open-bitcoin-network/src/peer/tests.rs`,
+`packages/open-bitcoin-node/src/network.rs`,
+`packages/open-bitcoin-node/src/network/action_translation.rs`,
+`packages/open-bitcoin-node/src/network/block_serving.rs`,
+`packages/open-bitcoin-node/src/network/tests/relay_serving_cases.rs`,
+`packages/open-bitcoin-node/src/network/tests/compact_cleanup_cases.rs`,
+`packages/open-bitcoin-node/src/network/tests/compact_misbehavior_cases.rs`,
+`scripts/check-phase122-compact-relay-peer-completion.ts`, and
+`scripts/check-phase122-compact-relay-peer-completion.test.ts`.
+
+Pinned Knots anchors are `MAX_BLOCKTXN_DEPTH`, the `GETBLOCKTXN` handler, and
+`SendBlockTransactions` in `packages/bitcoin-knots/src/net_processing.cpp`;
+`BlockTransactionsRequest` and `BlockTransactions` in
+`packages/bitcoin-knots/src/blockencodings.h`; and
+`test_getblocktxn_handler` in
+`packages/bitcoin-knots/test/functional/p2p_compactblocks.py`.
+
+As a scoped parity deviation, Knots' behavior is recorded explicitly:
+old-block full-witness-block fallback is intentionally omitted.
+Open Bitcoin serves this path only for locally available blocks that this live
+peer session was actually sent as
+`cmpctblock`; it does not turn an old or untracked `getblocktxn` into a full
+block response. This does not claim archive-node availability, public compact
+relay defaults, public-network CI, or production full-node readiness.
+
 ## Known gaps
 
 These networking gaps remain deferred or out of scope unless a later phase adds

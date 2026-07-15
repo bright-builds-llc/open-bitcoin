@@ -22,7 +22,11 @@ use open_bitcoin_network::{
 use crate::ChainstateStore;
 
 use super::{
-    ManagedNetworkError, ManagedPeerNetwork, ManagedResult, ManagedSyncMessageResult, inventory,
+    ManagedNetworkError, ManagedPeerNetwork, ManagedResult, ManagedSyncMessageResult,
+    block_serving::{
+        ManagedCompactBlockTxnServeDecision, serve_managed_compact_block_transactions,
+    },
+    inventory,
 };
 
 pub(super) fn process_transaction_relay_action(
@@ -142,6 +146,39 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                     outbound.extend(messages);
                     if !missing.is_empty() {
                         outbound.push(WireNetworkMessage::NotFound(InventoryList::new(missing)));
+                    }
+                }
+                PeerAction::ServeCompactBlockTransactions(request) => {
+                    let inventory = open_bitcoin_core::primitives::InventoryVector {
+                        inventory_type: open_bitcoin_core::primitives::InventoryType::Block,
+                        object_hash: request.block_hash.into(),
+                    };
+                    let input = self.managed_block_serve_input(
+                        peer_id,
+                        &inventory,
+                        request.block_hash,
+                        false,
+                    );
+                    let decision =
+                        serve_managed_compact_block_transactions(input, &request.indexes, |hash| {
+                            self.blocks_by_hash.get(&hash).cloned()
+                        });
+                    self.record_compact_block_txn_serve_outcome(decision.outcome());
+                    match decision {
+                        ManagedCompactBlockTxnServeDecision::Served(response) => {
+                            outbound.push(WireNetworkMessage::BlockTxn(response));
+                        }
+                        ManagedCompactBlockTxnServeDecision::Suppressed(_) => {}
+                        ManagedCompactBlockTxnServeDecision::Malformed(_) => {
+                            let reason = DisconnectReason::CompactBlockMisbehavior;
+                            if let Some(policy_decision) =
+                                compact_misbehavior_decision(peer_id, &reason)
+                            {
+                                self.record_peer_policy_misbehavior(policy_decision);
+                            }
+                            self.disconnect_peer(peer_id)?;
+                            return Err(inventory::disconnect_network_error(peer_id, reason).into());
+                        }
                     }
                 }
                 PeerAction::ReceivedTransaction(transaction) => {

@@ -5,11 +5,58 @@
 // - packages/bitcoin-knots/src/protocol.h
 // - packages/bitcoin-knots/test/functional/p2p_compactblocks.py
 
+use std::collections::{BTreeSet, VecDeque};
+
 use open_bitcoin_codec::{BIP152_COMPACT_BLOCKS_VERSION, SendCompactMessage};
+use open_bitcoin_primitives::BlockHash;
 
 use crate::block_serving::{
     BlockRelayActivationPolicy, BlockServingResourceGateDecision, BlockServingStatusDecision,
 };
+
+pub const MAX_COMPACT_ANNOUNCEMENT_PROVENANCE: usize = 11;
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct CompactAnnouncementProvenance {
+    ordered_hashes: VecDeque<BlockHash>,
+    hash_membership: BTreeSet<BlockHash>,
+}
+
+impl CompactAnnouncementProvenance {
+    pub fn record(&mut self, block_hash: BlockHash) {
+        if self.hash_membership.contains(&block_hash) {
+            return;
+        }
+
+        self.ordered_hashes.push_back(block_hash);
+        self.hash_membership.insert(block_hash);
+        if self.ordered_hashes.len() <= MAX_COMPACT_ANNOUNCEMENT_PROVENANCE {
+            return;
+        }
+
+        if let Some(evicted_hash) = self.ordered_hashes.pop_front() {
+            self.hash_membership.remove(&evicted_hash);
+        }
+    }
+
+    pub fn contains(&self, block_hash: &BlockHash) -> bool {
+        self.hash_membership.contains(block_hash)
+    }
+
+    pub fn len(&self) -> usize {
+        self.ordered_hashes.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.ordered_hashes.is_empty()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CompactBlockTransactionsRequest {
+    pub block_hash: BlockHash,
+    pub indexes: Vec<u16>,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CompactRelayPeerState {

@@ -97,10 +97,11 @@ pub use message::{
 };
 pub use peer::{
     CompactAnnouncementAction, CompactAnnouncementDecision, CompactAnnouncementEligibility,
-    CompactAnnouncementEligibilityReason, CompactAnnouncementInput, CompactAnnouncementReason,
-    CompactBlockReceiveFacts, CompactRelayCapability, CompactRelayNegotiationOutcome,
-    CompactRelayNegotiationReason, CompactRelayPeerState, CompactRelayPreference, ConnectionRole,
-    HeaderSyncPolicy, OrphanAction, OrphanEvidenceLabel, OrphanPolicy,
+    CompactAnnouncementEligibilityReason, CompactAnnouncementInput, CompactAnnouncementProvenance,
+    CompactAnnouncementReason, CompactBlockReceiveFacts, CompactBlockTransactionsRequest,
+    CompactRelayCapability, CompactRelayNegotiationOutcome, CompactRelayNegotiationReason,
+    CompactRelayPeerState, CompactRelayPreference, ConnectionRole, HeaderSyncPolicy,
+    MAX_COMPACT_ANNOUNCEMENT_PROVENANCE, OrphanAction, OrphanEvidenceLabel, OrphanPolicy,
     OrphanReconsiderationCandidate, OrphanReconsiderationStatus, OrphanStageInput,
     PHASE101_GETDATA_TX_INTERVAL_SECONDS, PHASE101_MAX_TX_ANNOUNCEMENTS_PER_PEER,
     PHASE101_MAX_TX_REQUESTS_IN_FLIGHT_PER_PEER, PHASE101_NONPREF_PEER_TX_DELAY_SECONDS,

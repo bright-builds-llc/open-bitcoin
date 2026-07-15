@@ -403,7 +403,7 @@ pub(super) fn permission_effect_vectors(
     )
 }
 
-fn request_pressure_input(
+pub(super) fn request_pressure_input(
     peer: &PeerState,
     inventory_items: usize,
     getdata_items: usize,
@@ -425,7 +425,9 @@ fn request_pressure_input(
     }
 }
 
-fn resource_limit_disconnect_actions(input: RequestPressureInput) -> Option<Vec<PeerAction>> {
+pub(super) fn resource_limit_disconnect_actions(
+    input: RequestPressureInput,
+) -> Option<Vec<PeerAction>> {
     resource_limit_disconnect_actions_from_decision(
         ResourceGovernancePolicy::default().decide_request(input),
     )

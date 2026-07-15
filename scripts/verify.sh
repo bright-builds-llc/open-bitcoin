@@ -394,6 +394,8 @@ bun test scripts/check-phase116-operator-block-relay-evidence.test.ts
 bun run scripts/check-phase116-operator-block-relay-evidence.ts
 bun test scripts/check-phase121-block-relay-metrics-log-runtime.test.ts
 bun run scripts/check-phase121-block-relay-metrics-log-runtime.ts
+bun test scripts/check-phase122-compact-relay-peer-completion.test.ts
+bun run scripts/check-phase122-compact-relay-peer-completion.ts
 bun test scripts/check-phase117-parity-uat-release-boundary.test.ts
 bun run scripts/check-phase117-parity-uat-release-boundary.ts
 bun test scripts/command-timings.test.ts
@@ -526,6 +528,8 @@ run_step "test Phase 116 operator block-relay evidence checker" bun test scripts
 run_step "check Phase 116 operator block-relay evidence" bun run scripts/check-phase116-operator-block-relay-evidence.ts
 run_step "test Phase 121 block-relay metrics and log runtime checker" bun test scripts/check-phase121-block-relay-metrics-log-runtime.test.ts
 run_step "check Phase 121 block-relay metrics and log runtime" bun run scripts/check-phase121-block-relay-metrics-log-runtime.ts
+run_step "test Phase 122 compact relay peer completion checker" bun test scripts/check-phase122-compact-relay-peer-completion.test.ts
+run_step "check Phase 122 compact relay peer completion" bun run scripts/check-phase122-compact-relay-peer-completion.ts
 run_step "test Phase 117 parity UAT release boundary checker" bun test scripts/check-phase117-parity-uat-release-boundary.test.ts
 run_step "check Phase 117 parity UAT release boundary" bun run scripts/check-phase117-parity-uat-release-boundary.ts
 run_step "test local command timing tooling" bun test scripts/command-timings.test.ts

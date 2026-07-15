@@ -4,6 +4,7 @@
 // - packages/bitcoin-knots/src/validation.cpp
 // - packages/bitcoin-knots/test/functional/p2p_getdata.py
 
+use open_bitcoin_codec::BlockTransactions;
 use open_bitcoin_core::primitives::{Block, BlockHash, InventoryType};
 use open_bitcoin_network::{
     BlockRelayActivationPolicy, BlockServingChainPosition, BlockServingDataAvailability,
@@ -40,6 +41,113 @@ pub(super) struct ManagedBlockServeDecision {
     pub eligibility_reason: BlockServingEligibilityReason,
     pub maybe_block: Option<Block>,
     pub missing_inventory: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum CompactBlockTxnServeOutcome {
+    Served,
+    Suppressed(CompactBlockTxnServeCause),
+    Malformed(CompactBlockTxnServeCause),
+}
+
+impl CompactBlockTxnServeOutcome {
+    pub(super) const fn label(self) -> &'static str {
+        match self {
+            Self::Served => "compact_missing_tx_served",
+            Self::Suppressed(_) => "compact_missing_tx_serve_suppressed",
+            Self::Malformed(_) => "compact_missing_tx_malformed",
+        }
+    }
+
+    pub(super) const fn cause(self) -> &'static str {
+        match self {
+            Self::Served => "compact_getblocktxn_served",
+            Self::Suppressed(cause) | Self::Malformed(cause) => cause.as_str(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum CompactBlockTxnServeCause {
+    Ineligible,
+    Unavailable,
+    RequestLimited,
+    IndexOutOfBounds,
+}
+
+impl CompactBlockTxnServeCause {
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::Ineligible => "compact_getblocktxn_ineligible",
+            Self::Unavailable => "compact_getblocktxn_unavailable",
+            Self::RequestLimited => "compact_getblocktxn_request_limited",
+            Self::IndexOutOfBounds => "compact_getblocktxn_index_out_of_bounds",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) enum ManagedCompactBlockTxnServeDecision {
+    Served(BlockTransactions),
+    Suppressed(CompactBlockTxnServeCause),
+    Malformed(CompactBlockTxnServeCause),
+}
+
+impl ManagedCompactBlockTxnServeDecision {
+    pub(super) const fn outcome(&self) -> CompactBlockTxnServeOutcome {
+        match self {
+            Self::Served(_) => CompactBlockTxnServeOutcome::Served,
+            Self::Suppressed(cause) => CompactBlockTxnServeOutcome::Suppressed(*cause),
+            Self::Malformed(cause) => CompactBlockTxnServeOutcome::Malformed(*cause),
+        }
+    }
+}
+
+pub(super) fn serve_managed_compact_block_transactions(
+    input: ManagedBlockServeInput,
+    indexes: &[u16],
+    lookup_block: impl FnOnce(BlockHash) -> Option<Block>,
+) -> ManagedCompactBlockTxnServeDecision {
+    if !input.activation.compact_relay.enabled {
+        return compact_block_txn_missing(CompactBlockTxnServeCause::Ineligible);
+    }
+
+    let block_hash = input.block_hash;
+    let decision = serve_managed_block_request(input, lookup_block);
+    let Some(block) = decision.maybe_block else {
+        let cause = match decision.label {
+            BlockServingOutcomeLabel::BlockStatusUnavailable => {
+                CompactBlockTxnServeCause::Unavailable
+            }
+            BlockServingOutcomeLabel::BlockRequestCapReached
+            | BlockServingOutcomeLabel::BlockInFlightLimitStillReached => {
+                CompactBlockTxnServeCause::RequestLimited
+            }
+            _ => CompactBlockTxnServeCause::Ineligible,
+        };
+        return compact_block_txn_missing(cause);
+    };
+
+    let mut transactions = Vec::with_capacity(indexes.len());
+    for index in indexes {
+        let Some(transaction) = block.transactions.get(usize::from(*index)) else {
+            return ManagedCompactBlockTxnServeDecision::Malformed(
+                CompactBlockTxnServeCause::IndexOutOfBounds,
+            );
+        };
+        transactions.push(transaction.clone());
+    }
+
+    ManagedCompactBlockTxnServeDecision::Served(BlockTransactions {
+        block_hash,
+        transactions,
+    })
+}
+
+fn compact_block_txn_missing(
+    cause: CompactBlockTxnServeCause,
+) -> ManagedCompactBlockTxnServeDecision {
+    ManagedCompactBlockTxnServeDecision::Suppressed(cause)
 }
 
 pub(super) fn serve_managed_block_request(
