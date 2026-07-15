@@ -54,7 +54,7 @@ jobs:
           cache-save: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
 
       - name: Run repo verification
-        run: bash scripts/verify.sh
+        run: bash scripts/verify.sh --profile
 
       - name: Upload parity reports
         if: always()

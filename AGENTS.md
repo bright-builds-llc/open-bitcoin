@@ -45,6 +45,8 @@ Use this routing map when deciding what to load next:
 - Record intentional in-scope behavior differences from Bitcoin Knots in `docs/parity/index.json` and companion docs under `docs/parity/`.
 - When adding first-party Rust source or test files under `packages/open-bitcoin-*/src` or `packages/open-bitcoin-*/tests`, add the required parity breadcrumb block through `docs/parity/source-breadcrumbs.json` and `scripts/check-parity-breadcrumbs.ts`; use the explicit `none` breadcrumb only when no defensible Bitcoin Knots source anchor exists.
 - After substantial feature, parity, operator-surface, or workflow changes, check whether the relevant README files need updates so contributor-facing status stays current.
+- Run ad-hoc Cargo and Bazel work through `bun run scripts/command-timings.ts run --key <stable-key> -- <command>` so local duration history and the checkout-scoped cooperative build lock stay effective. Do not overlap Cargo jobs against the same target directory.
+- Treat a quiet command, tool yield, or client polling interval as different from a command timeout. Poll resumable verification sessions at least every 60 seconds, do not interrupt solely because an estimate was exceeded, and capture liveness evidence before terminating an apparently stalled build or test.
 
 <!-- GSD:project-start source:PROJECT.md -->
 

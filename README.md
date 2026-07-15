@@ -118,6 +118,53 @@ Run the repo-native verification flow:
 bash scripts/verify.sh
 ```
 
+Local verification records overall and per-step durations under the disposable,
+gitignored `.local/open-bitcoin-dev/` directory. Inspect the current runs and
+median, p90, p95, and maximum history with:
+
+```bash
+bun run scripts/command-timings.ts report
+```
+
+Use the same timing wrapper for ad-hoc Cargo or Bazel work. A checkout-scoped
+cooperative lock serializes commands that share the Cargo target directory;
+waiting and running commands emit a heartbeat every 60 seconds.
+
+```bash
+bun run scripts/command-timings.ts run --key cargo-test-workspace -- \
+  cargo test --manifest-path packages/Cargo.toml --workspace --all-features
+```
+
+Historical durations are advisory, not hard timeouts. Quiet output or a polling
+yield is not evidence that a command is stuck. When a compiled Rust test appears
+to stall before its harness starts, compile the selected target and run the
+exact emitted executable with `--list` five times while retaining macOS
+`sample`, `lsof`, process, and disk evidence after a 10-second soft threshold:
+
+```bash
+bun run scripts/diagnose-rust-test-stall.ts
+```
+
+The clean reproduction refuses to start with less than 100 GiB of filesystem
+headroom. The diagnostic never terminates a process at the soft threshold.
+Supply an explicit `--stop-after-ms <milliseconds>` only when an operator wants
+a hard stop. Dead cooperative locks are preserved under
+`.local/open-bitcoin-dev/locks/abandoned/` and recovered automatically. If a
+shared artifact tree is confirmed stale or corrupt, stop only this checkout's
+build processes, then reclaim only its regenerable caches:
+
+```bash
+bazel shutdown
+cargo clean --manifest-path packages/Cargo.toml
+bazel clean --expunge
+df -h .
+```
+
+Do not begin the clean reproduction until the final command reports at least
+100 GiB available on the active Cargo target filesystem. An isolated
+`CARGO_TARGET_DIR` on another volume is supported and receives a separate lock
+and timing history classification.
+
 `docs/metrics/lines-of-code.md` is an intentionally tracked generated artifact.
 Hook and verification flows may refresh it when first-party code, scripts, or
 tracked hook content changes.

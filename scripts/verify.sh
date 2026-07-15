@@ -1,13 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+verify_command=(bash scripts/verify.sh)
+if [[ "$#" -gt 0 ]]; then
+  verify_command+=("$@")
+fi
 verify_start_milliseconds=""
 coverage_report=""
 verify_mode="full"
+verify_invocation="full"
 print_timings=0
 step_labels=()
 step_durations=()
 step_statuses=()
+timing_batch_file=""
+current_step_label=""
+current_step_started_milliseconds=""
 
 usage() {
   cat >&2 <<'EOF'
@@ -75,6 +83,17 @@ finish_verify() {
   local elapsed_milliseconds=0
   local elapsed_display=""
 
+  if [[ -n "$current_step_label" && -n "$current_step_started_milliseconds" ]]; then
+    verify_end_milliseconds="$(current_time_milliseconds)"
+    record_step_timing \
+      "$current_step_label" \
+      "$((verify_end_milliseconds - current_step_started_milliseconds))" \
+      "$exit_status" \
+      "$current_step_started_milliseconds"
+    current_step_label=""
+    current_step_started_milliseconds=""
+  fi
+
   if [[ -n "$coverage_report" ]]; then
     rm -f "$coverage_report"
   fi
@@ -97,6 +116,20 @@ finish_verify() {
   if [[ "$print_timings" -eq 1 && "${#step_labels[@]}" -gt 0 ]]; then
     print_step_timings >&2
   fi
+
+  if [[ -n "$timing_batch_file" && -s "$timing_batch_file" ]]; then
+    if ! bun run scripts/command-timings.ts record-batch \
+      --file "$timing_batch_file" \
+      --source verify \
+      --verify-mode "$verify_invocation"; then
+      echo "warning: failed to persist local verifier timing history" >&2
+    fi
+  fi
+  if [[ -n "$timing_batch_file" ]]; then
+    rm -f "$timing_batch_file"
+  fi
+
+  return "$exit_status"
 }
 
 trap 'finish_verify $?' EXIT
@@ -128,6 +161,7 @@ parse_args() {
         exit 2
       fi
       verify_mode="full"
+      verify_invocation="full"
       mode_seen=1
       shift
       ;;
@@ -138,6 +172,7 @@ parse_args() {
         exit 2
       fi
       verify_mode="full"
+      verify_invocation="profile"
       print_timings=1
       mode_seen=1
       shift
@@ -149,6 +184,7 @@ parse_args() {
         exit 2
       fi
       verify_mode="fast"
+      verify_invocation="fast"
       mode_seen=1
       shift
       ;;
@@ -173,10 +209,23 @@ record_step_timing() {
   local label="$1"
   local duration_milliseconds="$2"
   local status="$3"
+  local started_at_milliseconds="${4:-0}"
+  local timing_key=""
 
   step_labels+=("$label")
   step_durations+=("$duration_milliseconds")
   step_statuses+=("$status")
+
+  if [[ -n "$timing_batch_file" ]]; then
+    timing_key="$(printf '%s' "$label" \
+      | tr '[:upper:]' '[:lower:]' \
+      | sed -E 's/[^a-z0-9._-]+/-/g; s/^-+//; s/-+$//')"
+    printf 'verify-step-%s\t%s\t%s\t%s\n' \
+      "$timing_key" \
+      "$started_at_milliseconds" \
+      "$duration_milliseconds" \
+      "$status" >>"$timing_batch_file"
+  fi
 }
 
 print_step_timings() {
@@ -205,13 +254,17 @@ run_step() {
   local status=0
 
   step_start_milliseconds="$(current_time_milliseconds)"
+  current_step_label="$label"
+  current_step_started_milliseconds="$step_start_milliseconds"
   set +e
   "$@"
   status="$?"
   set -e
   step_end_milliseconds="$(current_time_milliseconds)"
   step_duration_milliseconds=$((step_end_milliseconds - step_start_milliseconds))
-  record_step_timing "$label" "$step_duration_milliseconds" "$status"
+  record_step_timing "$label" "$step_duration_milliseconds" "$status" "$step_start_milliseconds"
+  current_step_label=""
+  current_step_started_milliseconds=""
   return "$status"
 }
 
@@ -343,6 +396,8 @@ bun test scripts/check-phase121-block-relay-metrics-log-runtime.test.ts
 bun run scripts/check-phase121-block-relay-metrics-log-runtime.ts
 bun test scripts/check-phase117-parity-uat-release-boundary.test.ts
 bun run scripts/check-phase117-parity-uat-release-boundary.ts
+bun test scripts/command-timings.test.ts
+bun test scripts/diagnose-rust-test-stall.test.ts
 bash scripts/check-pure-core-deps.sh
 VERIFY_COMMAND_ORDER
 
@@ -352,12 +407,24 @@ require_command git
 require_command grep
 require_command bun
 
+if [[ -z "${CI:-}" && "${OPEN_BITCOIN_TIMING_WRAPPED:-}" != "1" ]]; then
+  exec bun run scripts/command-timings.ts run \
+    --key "verify-${verify_invocation}" \
+    --source verify \
+    --verify-mode "$verify_invocation" \
+    -- "${verify_command[@]}"
+fi
+
 if [[ "$verify_mode" == "full" ]]; then
   require_command cargo-llvm-cov "install it with: cargo install cargo-llvm-cov --locked"
   require_command bazel "install Bazelisk or Bazel and ensure \`bazel\` is on PATH"
 fi
 
 verify_start_milliseconds="$(current_time_milliseconds)"
+export OPEN_BITCOIN_VERIFY_MODE="$verify_invocation"
+if [[ -z "${CI:-}" ]]; then
+  timing_batch_file="$(mktemp)"
+fi
 export OPEN_BITCOIN_PARITY_REPORT_DIR="${OPEN_BITCOIN_PARITY_REPORT_DIR:-$PWD/packages/target/parity-reports}"
 export OPEN_BITCOIN_BENCHMARK_REPORT_DIR="${OPEN_BITCOIN_BENCHMARK_REPORT_DIR:-$PWD/packages/target/benchmark-reports}"
 export OPEN_BITCOIN_LOC_REPORT_SOURCE="${OPEN_BITCOIN_LOC_REPORT_SOURCE:-worktree}"
@@ -461,6 +528,8 @@ run_step "test Phase 121 block-relay metrics and log runtime checker" bun test s
 run_step "check Phase 121 block-relay metrics and log runtime" bun run scripts/check-phase121-block-relay-metrics-log-runtime.ts
 run_step "test Phase 117 parity UAT release boundary checker" bun test scripts/check-phase117-parity-uat-release-boundary.test.ts
 run_step "check Phase 117 parity UAT release boundary" bun run scripts/check-phase117-parity-uat-release-boundary.ts
+run_step "test local command timing tooling" bun test scripts/command-timings.test.ts
+run_step "test Rust pre-harness stall diagnostic" bun test scripts/diagnose-rust-test-stall.test.ts
 run_step "check pure-core dependencies" bash scripts/check-pure-core-deps.sh
 run_step "check file lengths" bash scripts/check-file-lengths.sh
 run_step "check panic sites" bash scripts/check-panic-sites.sh

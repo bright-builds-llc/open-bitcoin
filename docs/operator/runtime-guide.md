@@ -2716,6 +2716,38 @@ The generated reports now record:
 - the measurement focus, fixture type, and durability level for each case
 - the relevant Knots benchmark names or source anchors when they exist
 
+## Local Verification Timing And Stall Diagnosis
+
+Local verifier runs retain disposable timing history under the gitignored
+`.local/open-bitcoin-dev/` directory. Use
+`bun run scripts/command-timings.ts report` for current runs and median, p90,
+p95, and maximum estimates. Run ad-hoc Cargo or Bazel commands through
+`bun run scripts/command-timings.ts run --key <stable-key> -- <command>` so the
+checkout's cooperative target lock, wait heartbeat, and run heartbeat apply.
+These estimates are advisory; quiet output or a polling yield is not a timeout.
+
+For a suspected pre-harness Rust test stall, run
+`bun run scripts/diagnose-rust-test-stall.ts`. It launches the exact Cargo JSON
+artifact with `--list` five times, captures bounded process, Cargo, `lsof`, disk,
+and macOS `sample` evidence after 10 seconds, and does not kill the executable
+unless an explicit `--stop-after-ms` is supplied.
+
+If evidence confirms stale or corrupt workspace artifacts, stop only this
+checkout's build processes and reclaim only its regenerable caches:
+
+```bash
+bazel shutdown
+cargo clean --manifest-path packages/Cargo.toml
+bazel clean --expunge
+df -h .
+```
+
+Do not start the clean reproduction until at least 100 GiB is available on the
+active Cargo target filesystem. An isolated `CARGO_TARGET_DIR` on another
+volume is supported and receives a separate lock and timing classification.
+Dead cooperative locks are preserved under
+`.local/open-bitcoin-dev/locks/abandoned/` and recovered automatically.
+
 ## Known Limitations
 
 Open Bitcoin does not currently claim all of the following:
