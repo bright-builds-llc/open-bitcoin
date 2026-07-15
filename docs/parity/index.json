@@ -704,6 +704,10 @@
     {
       "name": "v2-1-parity-uat-release-boundary",
       "status": "done"
+    },
+    {
+      "name": "v2-1-compact-relay-peer-completion",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -2834,6 +2838,47 @@
         ],
         "suspected_unknowns": [
           "Public-network block-serving and compact-relay review remains optional UAT and is not required by default verification."
+        ]
+      },
+      {
+        "id": "v2-1-compact-relay-peer-completion",
+        "title": "v2.1 Compact Relay Peer Completion",
+        "status": "done",
+        "requirements": [
+          "HARD-01"
+        ],
+        "evidence": [
+          "docs/parity/index.json",
+          "docs/parity/checklist.md",
+          "docs/parity/catalog/p2p.md",
+          "packages/open-bitcoin-network/src/peer/compact_relay.rs",
+          "packages/open-bitcoin-network/src/peer/message_dispatch.rs",
+          "packages/open-bitcoin-network/src/peer/tests.rs",
+          "packages/open-bitcoin-node/src/network.rs",
+          "packages/open-bitcoin-node/src/network/action_translation.rs",
+          "packages/open-bitcoin-node/src/network/block_serving.rs",
+          "packages/open-bitcoin-node/src/network/tests/relay_serving_cases.rs",
+          "packages/open-bitcoin-node/src/network/tests/compact_cleanup_cases.rs",
+          "packages/open-bitcoin-node/src/network/tests/compact_misbehavior_cases.rs",
+          "scripts/check-phase122-compact-relay-peer-completion.ts",
+          "scripts/check-phase122-compact-relay-peer-completion.test.ts",
+          "scripts/verify.sh"
+        ],
+        "rationale": "Phase 122 closes HARD-01 with an eleven-hash peer-session announcement window, post-construction provenance recording, typed getblocktxn dispatch, and policy-aware ordered witness-preserving blocktxn responses. Unannounced, evicted, unavailable, and currently ineligible requests are silent; overflowing or out-of-bounds indexes disconnect through typed compact-block misbehavior.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/net_processing.cpp",
+            "packages/bitcoin-knots/src/blockencodings.h"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/test/functional/p2p_compactblocks.py#test_getblocktxn_handler"
+          ]
+        },
+        "known_gaps": [
+          "As a scoped Knots deviation, old-block full-witness-block fallback is intentionally omitted; the live response path is restricted to locally available blocks actually announced as cmpctblock to that peer session."
+        ],
+        "suspected_unknowns": [
+          "Archive behavior, public compact-relay defaults, public-network CI, and production full-node readiness require separate evidence and remain deferred."
         ]
       }
     ]
