@@ -102,6 +102,18 @@ impl PeerManager {
             .peers
             .get(&peer_id)
             .ok_or(NetworkError::UnknownPeer(peer_id))?;
+        let pressure = request_pressure_input(
+            peer,
+            0,
+            request.index_deltas.len(),
+            0,
+            peer.requested_blocks.len(),
+            self.tx_download.peer_snapshot(peer_id).in_flight_count,
+            0,
+        );
+        if let Some(actions) = resource_limit_disconnect_actions(pressure) {
+            return Ok(actions);
+        }
         if !peer.compact_announcements.contains(&request.block_hash) {
             return Ok(Vec::new());
         }
@@ -111,19 +123,6 @@ impl PeerManager {
                 DisconnectReason::CompactBlockMisbehavior,
             )]);
         };
-
-        let pressure = request_pressure_input(
-            peer,
-            0,
-            indexes.len(),
-            0,
-            peer.requested_blocks.len(),
-            self.tx_download.peer_snapshot(peer_id).in_flight_count,
-            0,
-        );
-        if let Some(actions) = resource_limit_disconnect_actions(pressure) {
-            return Ok(actions);
-        }
 
         Ok(vec![PeerAction::ServeCompactBlockTransactions(
             CompactBlockTransactionsRequest {

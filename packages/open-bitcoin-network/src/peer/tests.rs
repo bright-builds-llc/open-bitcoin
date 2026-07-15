@@ -2197,6 +2197,13 @@ fn phase122_compact_announcement_provenance_is_idempotent_and_bounded() {
     let mut manager = PeerManager::new(local_config());
     let peer_id = 122_001;
     manager.add_outbound_peer(peer_id, 0).expect("peer");
+    assert!(
+        manager
+            .peer_state(peer_id)
+            .expect("peer")
+            .compact_announcements
+            .is_empty()
+    );
     let hashes = (0..=super::MAX_COMPACT_ANNOUNCEMENT_PROVENANCE)
         .map(|index| BlockHash::from_byte_array([index as u8; 32]))
         .collect::<Vec<_>>();
@@ -2262,6 +2269,31 @@ fn phase122_compact_announced_getblocktxn_dispatches_ordered_absolute_indexes_fo
         )]
     );
     assert!(other_actions.is_empty());
+}
+
+#[test]
+fn phase122_unannounced_getblocktxn_over_request_cap_disconnects_before_suppression() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    let peer_id = 122_005;
+    manager.add_outbound_peer(peer_id, 0).expect("peer");
+    let request = WireNetworkMessage::GetBlockTxn(BlockTransactionsRequest {
+        block_hash: BlockHash::from_byte_array([0x45; 32]),
+        index_deltas: vec![0; PHASE94_MAX_INBOUND_REQUEST_INVENTORY_ITEMS + 1],
+    });
+
+    // Act
+    let actions = manager
+        .handle_message(peer_id, request, 1)
+        .expect("request pressure should produce a disconnect action");
+
+    // Assert
+    assert_resource_limit_disconnect(&actions);
+    assert!(
+        !actions
+            .iter()
+            .any(|action| { matches!(action, PeerAction::ServeCompactBlockTransactions(_)) })
+    );
 }
 
 #[test]

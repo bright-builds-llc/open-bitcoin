@@ -3,14 +3,14 @@ gsd_state_version: "1.0"
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
 status: executing
-stopped_at: Phase 122 context gathered
-last_updated: "2026-07-15T15:56:07.993Z"
-last_activity: 2026-07-15 -- Phase 122 planning complete
+stopped_at: Phase 122 complete; Phase 123 ready for planning
+last_updated: "2026-07-15T16:41:14.432Z"
+last_activity: "2026-07-15"
 progress:
   total_phases: 15
-  completed_phases: 12
+  completed_phases: 13
   total_plans: 41
-  completed_plans: 42
+  completed_plans: 43
   percent: 100
 ---
 
@@ -21,15 +21,15 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-07-10 after Phase 117 completed v2.1 implementation and verification).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 121 Plan 01 complete — next Plan 02 (open-bitcoind wiring + Phase 121 checker)
+**Current focus:** Phase 123 — Runtime Timing and Evidence Integrity
 
 ## Current Position
 
 Milestone: v2.1 Block Serving and Compact Block Relay Boundary
-Phase: 121
-Plan: 2 of 2
-Status: Ready to execute
-Last activity: 2026-07-15 -- Phase 122 planning complete
+Phase: 123
+Plan: Not started
+Status: Executing Phase 122
+Last activity: 2026-07-15
 
 v2.0 Transaction Relay and Mempool Participation Boundary shipped on 2026-07-03. The archived audit reports 32/32 requirements, 10/10 phases, 8/8 integration checks, 8/8 cross-phase flows, and no tracked tech debt.
 
@@ -108,6 +108,6 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Session Continuity
 
-Last session: 2026-07-15T15:28:11.885Z
-Stopped at: Phase 122 context gathered
-Resume file: .planning/phases/122-compact-relay-peer-completion/122-CONTEXT.md
+Last session: 2026-07-15T16:41:14.428Z
+Stopped at: Phase 122 complete; Phase 123 ready for planning
+Resume file: .planning/ROADMAP.md

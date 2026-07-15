@@ -66,6 +66,16 @@ test.each([
     mutate("packages/open-bitcoin-node/src/network/action_translation.rs", "WireNetworkMessage::BlockTxn(response)", "WireNetworkMessage::NotFound(response)"),
   ],
   [
+    "request pressure before provenance suppression",
+    "P122 request pressure before provenance suppression has if !peer.compact_announcements.contains(&request.block_hash) out of order",
+    (files: Map<TargetFile, string>) => {
+      files.set(
+        "packages/open-bitcoin-network/src/peer/message_dispatch.rs",
+        "if !peer.compact_announcements.contains(&request.block_hash) request.index_deltas.len() resource_limit_disconnect_actions(pressure)",
+      );
+    },
+  ],
+  [
     "witness-preserving order test",
     "P122 witness/order test missing transactions: vec![expected_first, expected_second]",
     mutate("packages/open-bitcoin-node/src/network/tests/relay_serving_cases.rs", "transactions: vec![expected_first, expected_second]", "transactions: vec![expected_second, expected_first]"),
@@ -172,11 +182,11 @@ function completeFiles(): Map<TargetFile, string> {
     ],
     [
       "packages/open-bitcoin-network/src/peer/message_dispatch.rs",
-      "self.handle_get_block_transactions(peer_id, request)",
+      "self.handle_get_block_transactions(peer_id, request) request.index_deltas.len() resource_limit_disconnect_actions(pressure) if !peer.compact_announcements.contains(&request.block_hash)",
     ],
     [
       "packages/open-bitcoin-network/src/peer/tests.rs",
-      "phase122_compact_announcement_provenance_is_idempotent_and_bounded phase122_compact_overflowing_getblocktxn_disconnects_and_peer_cleanup_drops_provenance",
+      "phase122_compact_announcement_provenance_is_idempotent_and_bounded phase122_unannounced_getblocktxn_over_request_cap_disconnects_before_suppression phase122_compact_overflowing_getblocktxn_disconnects_and_peer_cleanup_drops_provenance",
     ],
     [
       "packages/open-bitcoin-node/src/network.rs",

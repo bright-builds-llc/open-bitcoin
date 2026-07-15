@@ -51,7 +51,7 @@ v2.1 Block Serving and Compact Block Relay Boundary is the active milestone afte
 - [x] **Phase 119: Compact Receive Mempool Candidate Injection** - Feed live mempool and bounded extra candidates into compact-block receive, and hook mempool-remove lifecycle into partial state. (completed 2026-07-13)
 - [x] **Phase 120: Compact Download Timeout and Misbehavior Runtime Bridge** - Schedule compact-download timeout expiration from the node runtime and escalate typed compact misbehavior beyond silent suppress. (completed 2026-07-14)
 - [x] **Phase 121: Block Relay Metrics and Log Runtime Projection** - Project block-relay metric samples and structured log records through the sync runtime persist/logging path. (completed 2026-07-14)
-- [ ] **Phase 122: Compact Relay Peer Completion** - Serve eligible inbound `getblocktxn` requests after local compact announcements and align the protocol-path test vocabulary.
+- [x] **Phase 122: Compact Relay Peer Completion** - Serve eligible inbound `getblocktxn` requests after local compact announcements and align the protocol-path test vocabulary. (completed 2026-07-15)
 - [ ] **Phase 123: Runtime Timing and Evidence Integrity** - Make timeout scheduling independent of receives and derive relay evidence from actual runtime emissions and the authoritative network instance.
 - [ ] **Phase 124: Milestone Closeout Reconciliation** - Reconcile milestone metadata, re-audit the completed hardening work, and establish archive readiness.
 
@@ -321,7 +321,7 @@ Plans:
 3. Invalid, unavailable, or ineligible requests produce stable suppression or misbehavior outcomes without leaking sensitive peer or transaction data.
 4. Protocol-path tests and parity evidence cover the new response path, and stale no-op terminology is removed.
 
-**Plans:** TBD
+**Plans:** 1/1 plans complete
 
 Plans:
 
@@ -383,7 +383,7 @@ Plans:
 | 119. Compact Receive Mempool Candidate Injection | v2.1 | 3/3 | Complete   | 2026-07-13 |
 | 120. Compact Download Timeout and Misbehavior Runtime Bridge | v2.1 | 3/3 | Complete    | 2026-07-14 |
 | 121. Block Relay Metrics and Log Runtime Projection | v2.1 | 2/2 | Complete   | 2026-07-14 |
-| 122. Compact Relay Peer Completion | v2.1 | 0/TBD | Not started | - |
+| 122. Compact Relay Peer Completion | v2.1 | 1/1 | Complete    | 2026-07-15 |
 | 123. Runtime Timing and Evidence Integrity | v2.1 | 0/TBD | Not started | - |
 | 124. Milestone Closeout Reconciliation | v2.1 | 0/TBD | Not started | - |
 

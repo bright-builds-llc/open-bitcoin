@@ -58,6 +58,7 @@ export function checkPhase122CompactRelayPeerCompletion(
 
   verifyBoundedProvenance(texts, failures);
   verifyPostConstructionRecording(texts, failures);
+  verifyRequestPressurePrecedesProvenance(texts, failures);
   verifyTypedLiveResponse(texts, failures);
   verifyWitnessAndOrderTests(texts, failures);
   verifyMalformedDisconnect(texts, failures);
@@ -66,6 +67,31 @@ export function checkPhase122CompactRelayPeerCompletion(
   verifyParityEvidence(texts, failures);
   verifyVerifierWiring(texts.get("scripts/verify.sh") ?? "", failures);
   return failures;
+}
+
+function verifyRequestPressurePrecedesProvenance(
+  texts: Map<TargetFile, string>,
+  failures: string[],
+): void {
+  const dispatch =
+    texts.get("packages/open-bitcoin-network/src/peer/message_dispatch.rs") ?? "";
+  const tests = texts.get("packages/open-bitcoin-network/src/peer/tests.rs") ?? "";
+  requireOrdered(
+    dispatch,
+    [
+      "request.index_deltas.len()",
+      "resource_limit_disconnect_actions(pressure)",
+      "if !peer.compact_announcements.contains(&request.block_hash)",
+    ],
+    "P122 request pressure before provenance suppression",
+    failures,
+  );
+  requireContains(
+    tests,
+    "phase122_unannounced_getblocktxn_over_request_cap_disconnects_before_suppression",
+    "P122 unannounced request pressure test",
+    failures,
+  );
 }
 
 function readText(repoRoot: string, file: TargetFile, failures: string[]): string {
