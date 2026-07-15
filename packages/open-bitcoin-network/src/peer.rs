@@ -45,9 +45,10 @@ pub use address_boundary::{PeerAddressBoundaryDecision, PeerAddressBoundaryEvide
 pub use compact_download_state::CompactBlockReceiveFacts;
 pub use compact_relay::{
     CompactAnnouncementAction, CompactAnnouncementDecision, CompactAnnouncementEligibility,
-    CompactAnnouncementEligibilityReason, CompactAnnouncementInput, CompactAnnouncementReason,
-    CompactRelayCapability, CompactRelayNegotiationOutcome, CompactRelayNegotiationReason,
-    CompactRelayPeerState, CompactRelayPreference, PeerCompactAnnouncementInput,
+    CompactAnnouncementEligibilityReason, CompactAnnouncementInput, CompactAnnouncementProvenance,
+    CompactAnnouncementReason, CompactBlockTransactionsRequest, CompactRelayCapability,
+    CompactRelayNegotiationOutcome, CompactRelayNegotiationReason, CompactRelayPeerState,
+    CompactRelayPreference, MAX_COMPACT_ANNOUNCEMENT_PROVENANCE, PeerCompactAnnouncementInput,
     decide_compact_announcement,
 };
 use policy_state::{eviction_candidate_input, peer_policy_label, peer_policy_protected};
@@ -90,6 +91,7 @@ pub enum PeerAction {
     TransactionRelay(TxDownloadAction),
     ReceivedTransaction(Transaction),
     ReceivedBlock(Block),
+    ServeCompactBlockTransactions(CompactBlockTransactionsRequest),
     Disconnect(DisconnectReason),
     ResourceGovernanceDisconnect(InboundResourceEvent),
 }
@@ -103,6 +105,7 @@ pub struct PeerState {
     pub remote_wtxidrelay: bool,
     pub remote_prefers_headers: bool,
     pub compact_relay: CompactRelayPeerState,
+    pub compact_announcements: CompactAnnouncementProvenance,
     pub remote_version_received: bool,
     pub remote_verack_received: bool,
     pub local_version_sent: bool,
@@ -126,6 +129,7 @@ impl PeerState {
             remote_wtxidrelay: false,
             remote_prefers_headers: false,
             compact_relay: CompactRelayPeerState::default(),
+            compact_announcements: CompactAnnouncementProvenance::default(),
             remote_version_received: false,
             remote_verack_received: false,
             local_version_sent: false,
@@ -260,6 +264,16 @@ impl PeerManager {
 
     pub fn peer_state(&self, peer_id: PeerId) -> Option<&PeerState> {
         self.peers.get(&peer_id)
+    }
+
+    pub fn record_compact_block_announcement(
+        &mut self,
+        peer_id: PeerId,
+        block_hash: BlockHash,
+    ) -> Result<(), NetworkError> {
+        let peer = Self::peer_mut(&mut self.peers, peer_id)?;
+        peer.compact_announcements.record(block_hash);
+        Ok(())
     }
 
     pub fn decide_compact_announcement_for_peer(

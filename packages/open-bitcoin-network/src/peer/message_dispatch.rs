@@ -5,6 +5,7 @@
 // - packages/bitcoin-knots/src/net_processing.h
 // - packages/bitcoin-knots/test/functional/p2p_compactblocks.py
 
+use open_bitcoin_codec::expand_block_transaction_indexes;
 use open_bitcoin_consensus::check_block_header;
 use open_bitcoin_primitives::{BlockHash, BlockHeader, InventoryType, InventoryVector};
 
@@ -16,7 +17,9 @@ use crate::message::{HeadersMessage, InventoryList, WireNetworkMessage};
 
 use super::compact_download_state;
 use super::inbound_state::reject_self_connection;
-use super::{ConnectionRole, HeaderSyncPolicy, PeerAction, PeerManager};
+use super::{
+    CompactBlockTransactionsRequest, ConnectionRole, HeaderSyncPolicy, PeerAction, PeerManager,
+};
 
 impl PeerManager {
     pub fn handle_message(
@@ -55,7 +58,9 @@ impl PeerManager {
                 compact_download_state::CompactBlockReceiveFacts::default(),
                 timestamp,
             ),
-            WireNetworkMessage::GetBlockTxn(_) => Ok(Vec::new()),
+            WireNetworkMessage::GetBlockTxn(request) => {
+                self.handle_get_block_transactions(peer_id, request)
+            }
             WireNetworkMessage::BlockTxn(response) => {
                 self.handle_block_transactions_message(peer_id, response)
             }
@@ -85,6 +90,33 @@ impl PeerManager {
             WireNetworkMessage::Tx(transaction) => self.handle_transaction(peer_id, transaction),
             WireNetworkMessage::Block(block) => self.handle_block(peer_id, block),
         }
+    }
+
+    fn handle_get_block_transactions(
+        &self,
+        peer_id: PeerId,
+        request: open_bitcoin_codec::BlockTransactionsRequest,
+    ) -> Result<Vec<PeerAction>, NetworkError> {
+        let peer = self
+            .peers
+            .get(&peer_id)
+            .ok_or(NetworkError::UnknownPeer(peer_id))?;
+        if !peer.compact_announcements.contains(&request.block_hash) {
+            return Ok(Vec::new());
+        }
+
+        let Ok(indexes) = expand_block_transaction_indexes(&request) else {
+            return Ok(vec![PeerAction::Disconnect(
+                DisconnectReason::CompactBlockMisbehavior,
+            )]);
+        };
+
+        Ok(vec![PeerAction::ServeCompactBlockTransactions(
+            CompactBlockTransactionsRequest {
+                block_hash: request.block_hash,
+                indexes,
+            },
+        )])
     }
 
     fn handle_version(
