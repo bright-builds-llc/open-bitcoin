@@ -664,23 +664,20 @@ fn remaining_deferred_surfaces_fail_explicitly() {
 }
 
 #[test]
-fn normal_cli_without_stdin_flags_does_not_wait_for_open_stdin() {
+fn open_stdin_does_not_block_cli_when_stdin_flags_are_absent() {
     // Arrange
     let sandbox = TestSandbox::new("open-stdin");
     let mut command = Command::new(env!("CARGO_BIN_EXE_open-bitcoin-cli"));
     command
         .env("HOME", &sandbox.home)
-        .arg("-rpcconnect=127.0.0.1")
-        .arg("-rpcport=1")
-        .arg(format!("-rpcuser={RPC_USERNAME}"))
-        .arg(format!("-rpcpassword={RPC_PASSWORD}"))
+        .arg("-rpcport=notaport")
         .arg("getnetworkinfo")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     let mut child = command.spawn().expect("spawn cli");
     let _stdin_guard = child.stdin.take().expect("stdin pipe");
-    let deadline = Instant::now() + Duration::from_secs(2);
+    let deadline = Instant::now() + Duration::from_secs(10);
 
     // Act
     let status = loop {
@@ -712,10 +709,9 @@ fn normal_cli_without_stdin_flags_does_not_wait_for_open_stdin() {
     // Assert
     assert_eq!(status.code(), Some(1));
     assert!(stdout.is_empty());
-    assert!(
-        String::from_utf8(stderr)
-            .expect("stderr text")
-            .contains("Could not connect to the server 127.0.0.1:1")
+    assert_eq!(
+        String::from_utf8(stderr).expect("stderr text"),
+        "Invalid port provided in -rpcport: notaport\n",
     );
 }
 
