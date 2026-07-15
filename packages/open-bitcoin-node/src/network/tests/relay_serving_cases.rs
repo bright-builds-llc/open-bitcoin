@@ -12,14 +12,17 @@
 // - packages/bitcoin-knots/test/functional/p2p_tx_download.py
 // - packages/bitcoin-knots/test/functional/mempool_accept.py
 
+use open_bitcoin_codec::{BlockTransactionsRequest, SendCompactMessage};
 use open_bitcoin_core::{
     consensus::{block_hash, block_merkle_root, transaction_txid},
-    primitives::{Block, BlockHash, InventoryType, InventoryVector, Transaction, Txid},
+    primitives::{
+        Block, BlockHash, InventoryType, InventoryVector, ScriptWitness, Transaction, Txid,
+    },
 };
 use open_bitcoin_mempool::PolicyConfig;
 use open_bitcoin_network::{
-    BlockRelayActivationPolicy, BlockServingActivationConfig, InventoryList, RelayActivationConfig,
-    TxServingRecordStatus, WireNetworkMessage,
+    BlockRelayActivationPolicy, BlockServingActivationConfig, CompactRelayActivationConfig,
+    InventoryList, RelayActivationConfig, TxServingRecordStatus, WireNetworkMessage,
 };
 
 use super::{
@@ -58,6 +61,52 @@ fn build_block_with_transactions(
     block.header.merkle_root = merkle_root;
     mine_header(&mut block);
     block
+}
+
+fn compact_serving_network(
+    nonce: u64,
+) -> (ManagedPeerNetwork<MemoryChainstateStore>, Block, Block) {
+    let mut network = ManagedPeerNetwork::new_with_block_relay_activation(
+        MemoryChainstateStore::default(),
+        local_config(nonce),
+        PolicyConfig::default(),
+        RelayActivationConfig::default(),
+        BlockRelayActivationPolicy {
+            block_serving: BlockServingActivationConfig { enabled: true },
+            compact_relay: CompactRelayActivationConfig { enabled: true },
+        },
+        false,
+    );
+    let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0, 500_000_000);
+    let spendable = build_block(block_hash(&genesis.header), 1, 500_000_000);
+    network
+        .connect_local_block(&genesis, verify_flags(), consensus_params())
+        .expect("connect genesis");
+    network
+        .connect_local_block(&spendable, verify_flags(), consensus_params())
+        .expect("connect spendable");
+    (network, genesis, spendable)
+}
+
+fn negotiate_compact_serving_peer(
+    network: &mut ManagedPeerNetwork<MemoryChainstateStore>,
+    peer_id: u64,
+) {
+    network
+        .connect_outbound_peer(peer_id, 1)
+        .expect("connect outbound");
+    network
+        .receive_message(
+            peer_id,
+            WireNetworkMessage::SendCompact(SendCompactMessage {
+                announce: true,
+                version: open_bitcoin_codec::BIP152_COMPACT_BLOCKS_VERSION,
+            }),
+            2,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("negotiate compact relay");
 }
 
 fn relay_enabled_network(
@@ -254,4 +303,143 @@ fn managed_getdata_preserves_block_serving_branch() {
     // Assert
     assert_eq!(outbound, vec![WireNetworkMessage::Block(genesis)]);
     assert!(network.relay_serving_info().latest_outcomes.is_empty());
+}
+
+#[test]
+fn phase122_compact_announcement_then_getblocktxn_serves_ordered_witness_transactions() {
+    // Arrange
+    let peer_id = 122_101;
+    let (mut network, genesis, spendable) = compact_serving_network(peer_id);
+    negotiate_compact_serving_peer(&mut network, peer_id);
+    let first = spend_transaction(txid(&genesis.transactions[0]), 499_999_000);
+    let second = spend_transaction(txid(&spendable.transactions[0]), 499_998_000);
+    let third = spend_transaction(txid(&first), 499_997_000);
+    let announced = build_block_with_transactions(
+        block_hash(&spendable.header),
+        2,
+        vec![first.clone(), second.clone(), third],
+    );
+    let announced_hash = block_hash(&announced.header);
+    network
+        .connect_local_block(&announced, verify_flags(), consensus_params())
+        .expect("connect announced block");
+    let mut witness_bearing_store_block = announced.clone();
+    witness_bearing_store_block.transactions[1].inputs[0].witness =
+        ScriptWitness::new(vec![vec![0xaa, 0xbb]]);
+    witness_bearing_store_block.transactions[2].inputs[0].witness =
+        ScriptWitness::new(vec![vec![0xcc], vec![0xdd, 0xee]]);
+    let expected_first = witness_bearing_store_block.transactions[1].clone();
+    let expected_second = witness_bearing_store_block.transactions[2].clone();
+    network
+        .blocks_by_hash
+        .insert(announced_hash, witness_bearing_store_block);
+    let announcement = network
+        .announce_block(peer_id, &announced)
+        .expect("announce block")
+        .expect("compact message");
+    assert!(matches!(announcement, WireNetworkMessage::CompactBlock(_)));
+
+    // Act
+    let result = network
+        .receive_message(
+            peer_id,
+            WireNetworkMessage::GetBlockTxn(BlockTransactionsRequest {
+                block_hash: announced_hash,
+                index_deltas: vec![1, 0],
+            }),
+            3,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("serve compact transactions");
+
+    // Assert
+    assert_eq!(
+        result.outbound,
+        vec![WireNetworkMessage::BlockTxn(
+            open_bitcoin_codec::BlockTransactions {
+                block_hash: announced_hash,
+                transactions: vec![expected_first, expected_second],
+            }
+        )]
+    );
+}
+
+#[test]
+fn phase122_compact_getblocktxn_is_silent_for_other_peer_or_unavailable_block() {
+    // Arrange
+    let peer_id = 122_102;
+    let other_peer_id = 122_103;
+    let (mut network, _genesis, spendable) = compact_serving_network(peer_id);
+    negotiate_compact_serving_peer(&mut network, peer_id);
+    negotiate_compact_serving_peer(&mut network, other_peer_id);
+    let announced = build_block(block_hash(&spendable.header), 2, 500_000_000);
+    let announced_hash = block_hash(&announced.header);
+    network
+        .connect_local_block(&announced, verify_flags(), consensus_params())
+        .expect("connect announced block");
+    let message = network
+        .announce_block(peer_id, &announced)
+        .expect("announce block")
+        .expect("compact message");
+    assert!(matches!(message, WireNetworkMessage::CompactBlock(_)));
+    let request = WireNetworkMessage::GetBlockTxn(BlockTransactionsRequest {
+        block_hash: announced_hash,
+        index_deltas: vec![0],
+    });
+
+    // Act
+    let other_result = network
+        .receive_message(
+            other_peer_id,
+            request.clone(),
+            3,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("other peer request");
+    network.blocks_by_hash.remove(&announced_hash);
+    let unavailable_result = network
+        .receive_message(peer_id, request, 4, verify_flags(), consensus_params())
+        .expect("unavailable request");
+
+    // Assert
+    assert!(other_result.outbound.is_empty());
+    assert!(unavailable_result.outbound.is_empty());
+}
+
+#[test]
+fn phase122_compact_getblocktxn_is_silent_when_serving_becomes_ineligible() {
+    // Arrange
+    let peer_id = 122_104;
+    let (mut network, _genesis, spendable) = compact_serving_network(peer_id);
+    negotiate_compact_serving_peer(&mut network, peer_id);
+    let announced = build_block(block_hash(&spendable.header), 2, 500_000_000);
+    let announced_hash = block_hash(&announced.header);
+    network
+        .connect_local_block(&announced, verify_flags(), consensus_params())
+        .expect("connect announced block");
+    let message = network
+        .announce_block(peer_id, &announced)
+        .expect("announce block")
+        .expect("compact message");
+    assert!(matches!(message, WireNetworkMessage::CompactBlock(_)));
+    network.block_relay_activation.compact_relay.enabled = false;
+
+    // Act
+    let result = network
+        .receive_message(
+            peer_id,
+            WireNetworkMessage::GetBlockTxn(BlockTransactionsRequest {
+                block_hash: announced_hash,
+                index_deltas: vec![0],
+            }),
+            3,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("ineligible request");
+
+    // Assert
+    assert!(result.outbound.is_empty());
 }

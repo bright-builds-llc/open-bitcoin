@@ -23,7 +23,10 @@ use crate::{
     },
 };
 
-use super::{ManagedPeerNetwork, block_serving::ManagedBlockServeDecision};
+use super::{
+    ManagedPeerNetwork,
+    block_serving::{CompactBlockTxnServeOutcome, ManagedBlockServeDecision},
+};
 
 #[derive(Debug, Clone, Default)]
 pub(super) struct ManagedBlockRelayEvidenceState {
@@ -183,6 +186,20 @@ impl ManagedBlockRelayEvidenceState {
                     self.reconstruction.compact_reconstructed_count += 1;
                 }
                 _ => {}
+            }
+        }
+    }
+
+    fn record_compact_block_txn_serve_outcome(&mut self, outcome: CompactBlockTxnServeOutcome) {
+        self.note_observed();
+        let _stable_evidence = (outcome.label(), outcome.cause());
+        match outcome {
+            CompactBlockTxnServeOutcome::Served => {}
+            CompactBlockTxnServeOutcome::Suppressed(_) => {
+                self.missing_transaction.compact_missing_tx_suppressed_count += 1;
+            }
+            CompactBlockTxnServeOutcome::Malformed(_) => {
+                self.reconstruction.compact_malformed_count += 1;
             }
         }
     }
@@ -353,6 +370,14 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     pub(super) fn record_compact_download_evidence(&mut self, actions: &[PeerAction]) {
         self.block_relay_evidence
             .record_compact_download_actions(actions);
+    }
+
+    pub(super) fn record_compact_block_txn_serve_outcome(
+        &mut self,
+        outcome: CompactBlockTxnServeOutcome,
+    ) {
+        self.block_relay_evidence
+            .record_compact_block_txn_serve_outcome(outcome);
     }
 
     pub(super) fn note_block_relay_observed(&mut self) {

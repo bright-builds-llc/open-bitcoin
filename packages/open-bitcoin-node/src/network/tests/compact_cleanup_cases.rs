@@ -9,7 +9,8 @@
 //! package/filter public-default isolation.
 
 use open_bitcoin_codec::{
-    BlockTransactions, CompactBlockPayload, PrefilledTransaction, SendCompactMessage,
+    BlockTransactions, BlockTransactionsRequest, CompactBlockPayload, PrefilledTransaction,
+    SendCompactMessage,
 };
 use open_bitcoin_core::{
     consensus::{block_hash, block_merkle_root, transaction_txid, transaction_wtxid},
@@ -431,5 +432,57 @@ fn phase120_package_filter_and_phase121_surfaces_untouched() {
     assert!(
         !this_source.contains(phase121_persist) && !this_source.contains(phase121_log),
         "Phase 120 cleanup proofs must not invoke Phase 121 metric/log projection helpers"
+    );
+}
+
+#[test]
+fn phase122_disconnect_drops_compact_announcement_provenance_for_reconnected_peer() {
+    // Arrange
+    let mut network = compact_relay_enabled_managed_network(122_401);
+    let peer_id = 122_401;
+    let (_genesis, spendable) = tip_chain(&mut network);
+    handshake_and_sendcmpct(&mut network, peer_id);
+    let spendable_hash = block_hash(&spendable.header);
+    let message = network
+        .announce_block(peer_id, &spendable)
+        .expect("announce block")
+        .expect("compact message");
+    assert!(matches!(message, WireNetworkMessage::CompactBlock(_)));
+    assert!(
+        network
+            .peer_manager()
+            .peer_state(peer_id)
+            .expect("peer")
+            .compact_announcements
+            .contains(&spendable_hash)
+    );
+
+    // Act
+    network.disconnect_peer(peer_id).expect("disconnect peer");
+    network
+        .connect_outbound_peer(peer_id, 3)
+        .expect("reconnect peer");
+    let result = network
+        .receive_message(
+            peer_id,
+            WireNetworkMessage::GetBlockTxn(BlockTransactionsRequest {
+                block_hash: spendable_hash,
+                index_deltas: vec![0],
+            }),
+            4,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("reconnected request");
+
+    // Assert
+    assert!(result.outbound.is_empty());
+    assert!(
+        network
+            .peer_manager()
+            .peer_state(peer_id)
+            .expect("reconnected peer")
+            .compact_announcements
+            .is_empty()
     );
 }

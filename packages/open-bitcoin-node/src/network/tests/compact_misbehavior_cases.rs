@@ -7,7 +7,8 @@
 //! ManagedPeerNetwork live-path proofs for Phase 120 GOV-02 compact misbehavior escalation.
 
 use open_bitcoin_codec::{
-    BlockTransactions, CompactBlockPayload, PrefilledTransaction, SendCompactMessage, ShortId,
+    BlockTransactions, BlockTransactionsRequest, CompactBlockPayload, PrefilledTransaction,
+    SendCompactMessage, ShortId,
 };
 use open_bitcoin_core::{
     consensus::{block_hash, block_merkle_root, transaction_txid, transaction_wtxid},
@@ -375,4 +376,42 @@ fn live_compact_misbehavior_does_not_touch_package_or_filter_defaults() {
     // Compact announcement remains independent of package/filter serving — no package relay
     // activation field exists on BlockRelayActivationPolicy in this milestone.
     let _ = network.peer_policy_info();
+}
+
+#[test]
+fn phase122_live_compact_getblocktxn_out_of_bounds_index_disconnects() {
+    // Arrange
+    let mut network = compact_relay_enabled_managed_network(122_301);
+    let peer_id = 122_301;
+    let (_genesis, spendable) = tip_chain(&mut network);
+    handshake_and_sendcmpct(&mut network, peer_id);
+    let announced = build_block(block_hash(&spendable.header), 2, 500_000_000);
+    let announced_hash = block_hash(&announced.header);
+    network
+        .connect_local_block(&announced, verify_flags(), consensus_params())
+        .expect("connect announced block");
+    let message = network
+        .announce_block(peer_id, &announced)
+        .expect("announce block")
+        .expect("compact message");
+    assert!(matches!(message, WireNetworkMessage::CompactBlock(_)));
+
+    // Act
+    let error = network
+        .receive_message(
+            peer_id,
+            WireNetworkMessage::GetBlockTxn(BlockTransactionsRequest {
+                block_hash: announced_hash,
+                index_deltas: vec![1],
+            }),
+            3,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect_err("out-of-bounds getblocktxn must disconnect");
+
+    // Assert
+    assert_compact_disconnect(error, peer_id);
+    assert_peer_removed(&network, peer_id);
+    assert_eq!(network.peer_policy_info().misbehavior_observations, 1);
 }

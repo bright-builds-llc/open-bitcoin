@@ -447,6 +447,7 @@ fn transaction_relay_messages(actions: Vec<PeerAction>) -> Vec<(PeerId, WireNetw
             PeerAction::TransactionRelay(action) => process_transaction_relay_action(action),
             PeerAction::Send(_)
             | PeerAction::ServeInventory(_)
+            | PeerAction::ServeCompactBlockTransactions(_)
             | PeerAction::ReceivedTransaction(_)
             | PeerAction::ReceivedBlock(_)
             | PeerAction::Disconnect(_)
