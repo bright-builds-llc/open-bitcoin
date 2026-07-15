@@ -60,6 +60,14 @@ Requirements for the current milestone. Each requirement maps to exactly one roa
 - [x] **BOUND-04**: The default `bash scripts/verify.sh` contract remains deterministic and free of public-network, wall-clock soak, service-manager, and production-deployment gates.
 - [x] **BOUND-05**: Public-network block-serving or compact-relay review remains opt-in UAT evidence and is never required for pre-commit, default CI, or release-boundary verification.
 
+### Milestone Hardening And Closeout
+
+- [ ] **HARD-01**: Node serves eligible inbound `getblocktxn` requests for locally announced compact blocks through a bounded, parity-auditable peer path.
+- [ ] **HARD-02**: Compact-download timeout expiration advances on a deterministic runtime schedule even when no further peer message is received.
+- [ ] **HARD-03**: Served-block evidence derives from successful `WireNetworkMessage::Block` emission rather than eligible-peer proxy counts.
+- [ ] **HARD-04**: Runtime block-relay metrics and logs sample the authoritative network instance used by `DurableSyncRuntime`.
+- [ ] **HARD-05**: Roadmap, requirement coverage, phase status, and the final milestone audit agree and route v2.1 directly to archival.
+
 ## Deferred Requirements
 
 Deferred to future milestones. These are acknowledged but not part of the v2.1 roadmap.
@@ -140,14 +148,19 @@ Traceability is populated by the v2.1 roadmap. Each active requirement maps to e
 | BOUND-03 | Phase 117 | Complete |
 | BOUND-04 | Phase 117 | Complete |
 | BOUND-05 | Phase 117 | Complete |
+| HARD-01 | Phase 122 | Pending |
+| HARD-02 | Phase 123 | Pending |
+| HARD-03 | Phase 123 | Pending |
+| HARD-04 | Phase 123 | Pending |
+| HARD-05 | Phase 124 | Pending |
 
 **Coverage:**
 
-- v2.1 requirements: 34 total
-- Mapped to phases: 34
-- Complete: 27
-- Pending gap closure: 7
+- v2.1 requirements: 39 total
+- Mapped to phases: 39
+- Complete: 34
+- Pending hardening and closeout: 5
 - Unmapped: 0
 
 *Requirements defined: 2026-07-03*
-*Last updated: 2026-07-11 after Phase 118 closed CMP-05*
+*Last updated: 2026-07-14 after approval of hardening and closeout Phases 122–124*

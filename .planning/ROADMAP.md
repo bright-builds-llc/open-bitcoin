@@ -2,7 +2,7 @@
 
 ## Current Status
 
-v2.1 Block Serving and Compact Block Relay Boundary is the active milestone after v2.0. Phases 110–117 completed implementation and phase verification; the v2.1 milestone audit found runtime wiring gaps, so gap-closure Phases 118–121 are now open before archive.
+v2.1 Block Serving and Compact Block Relay Boundary is the active milestone after v2.0. Phases 110–121 completed the milestone definition of done; the milestone audit found six non-critical debt items, so approved hardening and closeout Phases 122–124 remain before archive.
 
 ## Latest Completed Milestone: v2.0 Transaction Relay and Mempool Participation Boundary
 
@@ -31,7 +31,7 @@ v2.1 Block Serving and Compact Block Relay Boundary is the active milestone afte
 - ✅ **v1.8 Production Full-Node Readiness Boundary** - Phases 82 through 89 (shipped 2026-06-25). Archive: [v1.8-ROADMAP.md](milestones/v1.8-ROADMAP.md)
 - ✅ **v1.9 Inbound Peer Serving and Network Participation Boundary** - Phases 90 through 99 (shipped 2026-06-29). Archive: [v1.9-ROADMAP.md](milestones/v1.9-ROADMAP.md)
 - ✅ **v2.0 Transaction Relay and Mempool Participation Boundary** - Phases 100 through 109 (shipped 2026-07-03). Archive: [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md)
-- 🚧 **v2.1 Block Serving and Compact Block Relay Boundary** - Phases 110 through 121 (110–117 complete; 118–121 gap closure from [v2.1-MILESTONE-AUDIT.md](v2.1-MILESTONE-AUDIT.md)).
+- 🚧 **v2.1 Block Serving and Compact Block Relay Boundary** - Phases 110 through 124 (110–121 complete; 122–124 optional hardening and closeout from [v2.1-MILESTONE-AUDIT.md](v2.1-MILESTONE-AUDIT.md)).
 
 ## Active Milestone: v2.1 Block Serving and Compact Block Relay Boundary
 
@@ -51,6 +51,9 @@ v2.1 Block Serving and Compact Block Relay Boundary is the active milestone afte
 - [x] **Phase 119: Compact Receive Mempool Candidate Injection** - Feed live mempool and bounded extra candidates into compact-block receive, and hook mempool-remove lifecycle into partial state. (completed 2026-07-13)
 - [x] **Phase 120: Compact Download Timeout and Misbehavior Runtime Bridge** - Schedule compact-download timeout expiration from the node runtime and escalate typed compact misbehavior beyond silent suppress. (completed 2026-07-14)
 - [x] **Phase 121: Block Relay Metrics and Log Runtime Projection** - Project block-relay metric samples and structured log records through the sync runtime persist/logging path. (completed 2026-07-14)
+- [ ] **Phase 122: Compact Relay Peer Completion** - Serve eligible inbound `getblocktxn` requests after local compact announcements and align the protocol-path test vocabulary.
+- [ ] **Phase 123: Runtime Timing and Evidence Integrity** - Make timeout scheduling independent of receives and derive relay evidence from actual runtime emissions and the authoritative network instance.
+- [ ] **Phase 124: Milestone Closeout Reconciliation** - Reconcile milestone metadata, re-audit the completed hardening work, and establish archive readiness.
 
 ### Phase Details
 
@@ -305,9 +308,66 @@ Plans:
 - [x] 121-01-PLAN.md — Runtime provider + persist_metrics + structured log emission + Rust tests
 - [x] 121-02-PLAN.md — open-bitcoind wiring + Phase 121 Bun checker + verify.sh + OBS-03 closeout
 
+#### Phase 122: Compact Relay Peer Completion
+
+**Goal:** Complete the peer-facing BIP152 request/response symmetry so a remote peer can request missing transactions after a locally originated compact announcement.
+**Depends on:** Phase 121
+**Requirements:** HARD-01
+**Gap Closure:** Closes non-critical debt from [v2.1-MILESTONE-AUDIT.md](v2.1-MILESTONE-AUDIT.md) (inbound `GetBlockTxn` serving and stale Phase 112 test naming)
+**Success Criteria** (what must be TRUE):
+
+1. Inbound `GetBlockTxn` reaches a bounded live serving path instead of remaining a peer-dispatch no-op.
+2. The node serves only eligible, validated, available transactions for the matching locally announced compact block.
+3. Invalid, unavailable, or ineligible requests produce stable suppression or misbehavior outcomes without leaking sensitive peer or transaction data.
+4. Protocol-path tests and parity evidence cover the new response path, and stale no-op terminology is removed.
+
+**Plans:** TBD
+
+Plans:
+
+- [ ] Pending `/gsd-plan-phase 122`
+
+#### Phase 123: Runtime Timing and Evidence Integrity
+
+**Goal:** Make compact-relay timing and operator evidence reflect authoritative live runtime events rather than receive activity or proxy counts.
+**Depends on:** Phase 122
+**Requirements:** HARD-02, HARD-03, HARD-04
+**Gap Closure:** Closes non-critical debt from [v2.1-MILESTONE-AUDIT.md](v2.1-MILESTONE-AUDIT.md) (idle timeout scheduling, successful block-emission counting, and authoritative runtime metric projection)
+**Success Criteria** (what must be TRUE):
+
+1. Compact-download timeouts expire on a deterministic runtime schedule even when the peer connection is otherwise idle.
+2. `BlockServedCount` increments only after a successful `WireNetworkMessage::Block` emission.
+3. Block-relay metric and log projection samples the same authoritative network instance used by `DurableSyncRuntime`.
+4. Focused runtime tests prove idle expiry, post-emission counting, and projection of sync-runtime compact activity.
+
+**Plans:** TBD
+
+Plans:
+
+- [ ] Pending `/gsd-plan-phase 123`
+
+#### Phase 124: Milestone Closeout Reconciliation
+
+**Goal:** Reconcile planning metadata with completed implementation evidence and produce an archive-ready v2.1 audit.
+**Depends on:** Phase 123
+**Requirements:** HARD-05
+**Gap Closure:** Closes non-critical debt from [v2.1-MILESTONE-AUDIT.md](v2.1-MILESTONE-AUDIT.md) (stale roadmap and requirements coverage plus final hardening re-audit)
+**Success Criteria** (what must be TRUE):
+
+1. ROADMAP and REQUIREMENTS status, traceability, and coverage agree with the completed phase artifacts.
+2. The milestone audit is rerun after Phases 122–123 and records no unresolved approved hardening item.
+3. The default deterministic verifier and changed-path milestone checks pass without weakening no-claim guardrails.
+4. The active milestone points directly to archival through `/gsd-complete-milestone v2.1`.
+
+**Plans:** TBD
+
+Plans:
+
+- [ ] Pending `/gsd-plan-phase 124`
+
 ## Progress
 
-**Execution Order:** 110 -> 111 -> 112 -> 113 -> 114 -> 115 -> 116 -> 117 -> 118 -> 119 -> 120 -> 121
+**Execution Order:** 110 -> 111 -> 112 -> 113 -> 114 -> 115 -> 116 -> 117 -> 118 -> 119 -> 120 -> 121 -> 122 -> 123 -> 124
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 | --- | --- | ---: | --- | --- |
@@ -323,6 +383,9 @@ Plans:
 | 119. Compact Receive Mempool Candidate Injection | v2.1 | 3/3 | Complete   | 2026-07-13 |
 | 120. Compact Download Timeout and Misbehavior Runtime Bridge | v2.1 | 3/3 | Complete    | 2026-07-14 |
 | 121. Block Relay Metrics and Log Runtime Projection | v2.1 | 2/2 | Complete   | 2026-07-14 |
+| 122. Compact Relay Peer Completion | v2.1 | 0/TBD | Not started | - |
+| 123. Runtime Timing and Evidence Integrity | v2.1 | 0/TBD | Not started | - |
+| 124. Milestone Closeout Reconciliation | v2.1 | 0/TBD | Not started | - |
 
 ## Traceability
 
@@ -334,12 +397,12 @@ Plans:
 
 **Coverage:**
 
-- v2.1 requirements: 34 total
-- Mapped to phases: 34
-- Satisfied: 27
-- Pending gap closure: 7
+- v2.1 requirements: 39 total
+- Mapped to phases: 39
+- Satisfied: 34
+- Pending hardening and closeout: 5
 - Unmapped: 0
 
 ## Next Step
 
-Discuss and execute Phase 119 (compact receive mempool candidate injection), then Phases 120–121, and re-audit with `/gsd-audit-milestone` before archive.
+Plan Phase 122 with `/gsd-plan-phase 122`, then execute Phases 122–124 and re-audit before archiving v2.1.
