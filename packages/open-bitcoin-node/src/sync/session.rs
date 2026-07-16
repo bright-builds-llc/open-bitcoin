@@ -16,8 +16,6 @@ use super::{
     tip,
 };
 
-pub(super) const MAX_CONSECUTIVE_IDLE_WAKES_PER_SESSION: usize = 2;
-
 impl DurableSyncRuntime {
     #[cfg(test)]
     pub(super) fn sync_connected_peer<S: SyncPeerSession, C: FnMut() -> i64>(
@@ -61,8 +59,6 @@ impl DurableSyncRuntime {
             self.send_all(&mut session, &outbound)?;
 
             let mut messages_received = 0_usize;
-            let mut current_timestamp = timestamp;
-            let mut consecutive_idle_wakes = 0_usize;
             while messages_received < self.config.max_messages_per_peer {
                 if (controls.1)() {
                     self.complete_peer_session_progress(&mut progress, peer_id);
@@ -79,14 +75,14 @@ impl DurableSyncRuntime {
                         return Err(error);
                     }
                 };
-                let message = match receive_outcome {
+                let (message, current_timestamp) = match receive_outcome {
                     SyncPeerReceiveOutcome::Message(message) => {
+                        let current_timestamp = (controls.0)();
                         messages_received = messages_received.saturating_add(1);
-                        consecutive_idle_wakes = 0;
-                        message
+                        (message, current_timestamp)
                     }
                     SyncPeerReceiveOutcome::Idle => {
-                        current_timestamp = (controls.0)();
+                        let current_timestamp = (controls.0)();
                         if (controls.1)() {
                             self.complete_peer_session_progress(&mut progress, peer_id);
                             return Ok(());
@@ -109,8 +105,7 @@ impl DurableSyncRuntime {
                             .map(|(_target_peer_id, message)| message)
                             .collect::<Vec<_>>();
                         self.send_all(&mut session, &outbound)?;
-                        consecutive_idle_wakes = consecutive_idle_wakes.saturating_add(1);
-                        if consecutive_idle_wakes >= MAX_CONSECUTIVE_IDLE_WAKES_PER_SESSION {
+                        if !self.peer_has_compact_download_in_flight(peer_id) {
                             self.complete_peer_session_progress(&mut progress, peer_id);
                             return Ok(());
                         }
@@ -319,6 +314,13 @@ impl DurableSyncRuntime {
                     && peer.local_verack_sent
                     && peer.remote_verack_received
             })
+    }
+
+    fn peer_has_compact_download_in_flight(&self, peer_id: PeerId) -> bool {
+        self.network
+            .peer_manager()
+            .compact_download_peer_state(peer_id)
+            .is_some_and(|state| !state.in_flight.is_empty())
     }
 
     pub(super) fn complete_peer_session_progress(
