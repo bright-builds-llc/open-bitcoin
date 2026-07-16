@@ -28,9 +28,16 @@ use super::{
     block_serving::{CompactBlockTxnServeOutcome, ManagedBlockServeDecision},
 };
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct BlockRelayRuntimeEvidenceSnapshot {
+    pub(crate) status: BlockRelayEvidenceStatus,
+    pub(crate) served_count: u64,
+}
+
 #[derive(Debug, Clone, Default)]
 pub(super) struct ManagedBlockRelayEvidenceState {
     observed: bool,
+    served_count: u64,
     block_serving_eligibility: BlockServingEligibilityCounters,
     block_serving_status: BlockServingStatusCounters,
     announcement: CompactRelayAnnouncementCounters,
@@ -41,6 +48,17 @@ pub(super) struct ManagedBlockRelayEvidenceState {
 }
 
 impl ManagedBlockRelayEvidenceState {
+    fn runtime_snapshot(
+        &self,
+        peer_manager: &PeerManager,
+        block_relay_activation: BlockRelayActivationPolicy,
+    ) -> super::BlockRelayRuntimeEvidenceSnapshot {
+        BlockRelayRuntimeEvidenceSnapshot {
+            status: self.observed_status(peer_manager, block_relay_activation),
+            served_count: self.served_count,
+        }
+    }
+
     fn observed_status(
         &self,
         peer_manager: &PeerManager,
@@ -73,6 +91,15 @@ impl ManagedBlockRelayEvidenceState {
 
     fn note_observed(&mut self) {
         self.observed = true;
+    }
+
+    fn record_wire_message_written(&mut self, message: &WireNetworkMessage) {
+        if !matches!(message, WireNetworkMessage::Block(_)) {
+            return;
+        }
+
+        self.note_observed();
+        self.served_count += 1;
     }
 
     fn record_block_serving(
@@ -347,8 +374,23 @@ pub(super) fn compact_announce_evidence_reason(
 
 impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     pub fn block_relay_evidence_status(&self) -> BlockRelayEvidenceStatus {
+        self.block_relay_runtime_evidence_snapshot().status
+    }
+
+    pub(crate) fn block_relay_runtime_evidence_snapshot(
+        &self,
+    ) -> super::BlockRelayRuntimeEvidenceSnapshot {
         self.block_relay_evidence
-            .observed_status(&self.peer_manager, self.block_relay_activation)
+            .runtime_snapshot(&self.peer_manager, self.block_relay_activation)
+    }
+
+    pub fn block_served_write_count(&self) -> u64 {
+        self.block_relay_runtime_evidence_snapshot().served_count
+    }
+
+    pub fn acknowledge_wire_message_written(&mut self, message: &WireNetworkMessage) {
+        self.block_relay_evidence
+            .record_wire_message_written(message);
     }
 
     pub(super) fn record_block_serving_evidence(
