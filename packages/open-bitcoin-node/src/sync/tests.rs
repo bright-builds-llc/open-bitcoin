@@ -56,6 +56,7 @@ use crate::{
 };
 
 mod runtime_timing_cases;
+mod runtime_write_evidence_cases;
 mod soak;
 
 const EASY_BITS: u32 = 0x207f_ffff;
