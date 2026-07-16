@@ -304,6 +304,8 @@ run_coverage_report() {
 # Phase 103 is followed by Phase 104. Phase 104 is followed by Phase 105.
 # Phase 105 is followed by Phase 106. Phase 106 is followed by Phase 107.
 # Phase 107 is followed by Phase 108. Phase 108 is followed by Phase 110 and Phase 111.
+# Phase 123 is followed by Phase 124. Phase 124 is followed by Phase 117, which
+# remains the final changed-path release-boundary and no-claim gate.
 : <<'VERIFY_COMMAND_ORDER'
 bun run scripts/check-v1.3-release-boundaries.ts
 bun run scripts/check-v1.4-release-boundaries.ts
@@ -398,6 +400,8 @@ bun test scripts/check-phase122-compact-relay-peer-completion.test.ts
 bun run scripts/check-phase122-compact-relay-peer-completion.ts
 bun test scripts/check-phase123-runtime-timing-evidence-integrity.test.ts
 bun run scripts/check-phase123-runtime-timing-evidence-integrity.ts
+bun test scripts/check-phase124-milestone-closeout-reconciliation.test.ts
+bun run scripts/check-phase124-milestone-closeout-reconciliation.ts
 bun test scripts/check-phase117-parity-uat-release-boundary.test.ts
 bun run scripts/check-phase117-parity-uat-release-boundary.ts
 bun test scripts/command-timings.test.ts
@@ -534,6 +538,8 @@ run_step "test Phase 122 compact relay peer completion checker" bun test scripts
 run_step "check Phase 122 compact relay peer completion" bun run scripts/check-phase122-compact-relay-peer-completion.ts
 run_step "test Phase 123 runtime timing and evidence integrity checker" bun test scripts/check-phase123-runtime-timing-evidence-integrity.test.ts
 run_step "check Phase 123 runtime timing and evidence integrity" bun run scripts/check-phase123-runtime-timing-evidence-integrity.ts
+run_step "test Phase 124 milestone closeout reconciliation checker" bun test scripts/check-phase124-milestone-closeout-reconciliation.test.ts
+run_step "check Phase 124 milestone closeout reconciliation" bun run scripts/check-phase124-milestone-closeout-reconciliation.ts
 run_step "test Phase 117 parity UAT release boundary checker" bun test scripts/check-phase117-parity-uat-release-boundary.test.ts
 run_step "check Phase 117 parity UAT release boundary" bun run scripts/check-phase117-parity-uat-release-boundary.ts
 run_step "test local command timing tooling" bun test scripts/command-timings.test.ts
