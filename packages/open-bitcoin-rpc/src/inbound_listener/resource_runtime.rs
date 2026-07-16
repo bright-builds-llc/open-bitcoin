@@ -4,7 +4,11 @@
 
 //! Resource-governed socket I/O helpers for the inbound listener.
 
-use std::{io, time::Duration};
+use std::{
+    io,
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
 use open_bitcoin_codec::parse_message_header;
 use open_bitcoin_network::{
@@ -14,6 +18,7 @@ use open_bitcoin_network::{
     ResourceGovernanceDecision, ResourceGovernancePolicy, ResourceTimeoutInput, WireNetworkMessage,
 };
 
+use super::InboundListenerEvidence;
 #[cfg(test)]
 use super::current_timestamp;
 
@@ -23,6 +28,24 @@ pub(super) struct InboundRuntimeCounters {
     connection_attempts_in_window: usize,
     failure_window_started_unix_seconds: i64,
     failures_in_window: usize,
+}
+
+pub(super) fn lock_evidence(
+    evidence: &Arc<Mutex<InboundListenerEvidence>>,
+) -> std::sync::MutexGuard<'_, InboundListenerEvidence> {
+    match evidence.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    }
+}
+
+pub(super) fn lock_runtime_counters(
+    counters: &Arc<Mutex<InboundRuntimeCounters>>,
+) -> std::sync::MutexGuard<'_, InboundRuntimeCounters> {
+    match counters.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    }
 }
 
 impl InboundRuntimeCounters {

@@ -1099,6 +1099,16 @@
       ]
     },
     {
+      "label": "node-sync-runtime-write-evidence-tests",
+      "files": [
+        "packages/open-bitcoin-node/src/sync/tests/runtime_write_evidence_cases.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp"
+      ]
+    },
+    {
       "label": "node-wallet-adapter",
       "files": [
         "packages/open-bitcoin-node/src/wallet.rs",

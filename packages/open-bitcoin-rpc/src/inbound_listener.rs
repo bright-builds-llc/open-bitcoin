@@ -28,9 +28,9 @@ use crate::{ManagedRpcContext, context::EncodedWireResponse};
 mod resource_runtime;
 use resource_runtime::{
     InboundRuntimeCounters, ReadWireMessageOutcome, RuntimeQueuePressureState,
-    WriteWireMessageOutcome, next_handshake_state, queue_pressure_event,
-    read_wire_message_for_state, resource_event_from_decision, resource_timeout_event,
-    write_all_for_state,
+    WriteWireMessageOutcome, lock_evidence, lock_runtime_counters, next_handshake_state,
+    queue_pressure_event, read_wire_message_for_state, resource_event_from_decision,
+    resource_timeout_event, write_all_for_state,
 };
 #[cfg(test)]
 use resource_runtime::{read_wire_message, read_wire_message_with_timeout_duration, write_all};
@@ -601,24 +601,6 @@ async fn disconnect_admitted_peer(
     if let Err(_error) = context.disconnect_peer(peer_id) {
         // The message loop may already have removed the peer, for example after
         // a runtime self-connection rejection.
-    }
-}
-
-fn lock_evidence(
-    evidence: &Arc<Mutex<InboundListenerEvidence>>,
-) -> std::sync::MutexGuard<'_, InboundListenerEvidence> {
-    match evidence.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    }
-}
-
-fn lock_runtime_counters(
-    counters: &Arc<Mutex<InboundRuntimeCounters>>,
-) -> std::sync::MutexGuard<'_, InboundRuntimeCounters> {
-    match counters.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
     }
 }
 
