@@ -29,6 +29,8 @@ mod relay_fanout;
 mod relay_serving;
 mod types;
 
+pub(crate) use block_relay_evidence::BlockRelayRuntimeEvidenceSnapshot;
+
 use open_bitcoin_core::{
     chainstate::{AnchoredBlock, ChainPosition, ChainTransition, ChainstateSnapshot},
     consensus::{ConsensusParams, ScriptVerifyFlags, block_hash},

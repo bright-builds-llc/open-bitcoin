@@ -493,9 +493,16 @@ fn phase123_block_acknowledgement_increments_private_served_count() {
 
     // Act
     network.acknowledge_wire_message_written(&message);
+    let snapshot: crate::network::BlockRelayRuntimeEvidenceSnapshot =
+        network.block_relay_runtime_evidence_snapshot();
 
     // Assert
     assert_eq!(network.block_served_write_count(), 1);
+    assert_eq!(snapshot.served_count, 1);
+    assert!(matches!(
+        snapshot.status.block_serving.activation,
+        crate::status::FieldAvailability::Available(_)
+    ));
 }
 
 #[test]
