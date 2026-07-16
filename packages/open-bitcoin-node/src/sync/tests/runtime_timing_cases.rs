@@ -81,6 +81,11 @@ struct TimingSession {
     sent: Rc<RefCell<Vec<WireNetworkMessage>>>,
 }
 
+#[derive(Debug)]
+struct PerpetualIdleSession {
+    receive_calls: Rc<RefCell<usize>>,
+}
+
 impl SyncTransport for TimingTransport {
     type Session = TimingSession;
 
@@ -114,6 +119,29 @@ impl SyncPeerSession for TimingSession {
             .outcomes
             .pop_front()
             .unwrap_or(SyncPeerReceiveOutcome::Closed))
+    }
+}
+
+impl SyncPeerSession for PerpetualIdleSession {
+    fn send(
+        &mut self,
+        _message: &WireNetworkMessage,
+        _magic: open_bitcoin_core::primitives::NetworkMagic,
+    ) -> Result<(), SyncRuntimeError> {
+        Ok(())
+    }
+
+    fn receive(
+        &mut self,
+        _magic: open_bitcoin_core::primitives::NetworkMagic,
+    ) -> Result<SyncPeerReceiveOutcome, SyncRuntimeError> {
+        let call = *self.receive_calls.borrow();
+        *self.receive_calls.borrow_mut() = call.saturating_add(1);
+        Ok(match call {
+            0 => SyncPeerReceiveOutcome::Message(version_message()),
+            1 => SyncPeerReceiveOutcome::Message(WireNetworkMessage::Verack),
+            _ => SyncPeerReceiveOutcome::Idle,
+        })
     }
 }
 
@@ -309,6 +337,31 @@ fn phase123_idle_wake_does_not_consume_message_budget() {
     // Assert
     assert_eq!(summary.messages_processed, 2);
     assert_eq!(summary.peer_outcomes[0].state, PeerSyncState::Connected);
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn phase123_perpetual_idle_session_returns_after_bounded_wakes() {
+    // Arrange
+    let path = temp_store_path("phase123-bounded-idle-session");
+    remove_dir_if_exists(&path);
+    let mut runtime = timing_runtime(&path, 8);
+    let receive_calls = Rc::new(RefCell::new(0_usize));
+    let session = PerpetualIdleSession {
+        receive_calls: Rc::clone(&receive_calls),
+    };
+    let peer = resolved_manual_peer("127.0.0.1", 18_444);
+    let mut clock = || 3_500;
+
+    // Act
+    let progress = runtime
+        .sync_connected_peer(session, &peer, 1, 1, 3_500, &mut clock)
+        .expect("bounded idle session");
+
+    // Assert
+    assert_eq!(*receive_calls.borrow(), 4);
+    assert_eq!(progress.state, PeerSyncState::Connected);
+    assert_eq!(progress.messages_processed, 2);
     remove_dir_if_exists(&path);
 }
 

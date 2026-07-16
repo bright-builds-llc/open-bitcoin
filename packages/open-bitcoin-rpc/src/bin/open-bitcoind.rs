@@ -401,8 +401,15 @@ fn start_daemon_sync_worker(
     }))
 }
 
-fn daemon_sync_worker(mut sync_runtime: DurableSyncRuntime, shutdown_receiver: mpsc::Receiver<()>) {
-    let mut transport = TcpPeerTransport;
+fn daemon_sync_worker(sync_runtime: DurableSyncRuntime, shutdown_receiver: mpsc::Receiver<()>) {
+    daemon_sync_worker_with_transport(sync_runtime, TcpPeerTransport, shutdown_receiver);
+}
+
+fn daemon_sync_worker_with_transport<T: open_bitcoin_node::SyncTransport>(
+    mut sync_runtime: DurableSyncRuntime,
+    mut transport: T,
+    shutdown_receiver: mpsc::Receiver<()>,
+) {
     let policy = DaemonSyncLoopPolicy::from_runtime(&sync_runtime);
 
     loop {
@@ -417,6 +424,7 @@ fn daemon_sync_worker(mut sync_runtime: DurableSyncRuntime, shutdown_receiver: m
             break;
         }
 
+        let mut shutdown_latched = false;
         let decision = run_daemon_sync_loop_cycle(
             &mut sync_runtime,
             policy,
@@ -424,9 +432,29 @@ fn daemon_sync_worker(mut sync_runtime: DurableSyncRuntime, shutdown_receiver: m
             false,
             |runtime, timestamp| {
                 let mut clock = current_timestamp_unix_seconds;
-                runtime.sync_until_idle_with_clock(&mut transport, timestamp, &mut clock)
+                let mut should_cancel = || {
+                    shutdown_latched =
+                        shutdown_latched || daemon_sync_shutdown_requested(&shutdown_receiver);
+                    shutdown_latched
+                };
+                runtime.sync_until_idle_with_clock_and_cancel(
+                    &mut transport,
+                    timestamp,
+                    &mut clock,
+                    &mut should_cancel,
+                )
             },
         );
+        if shutdown_latched {
+            let _ = run_daemon_sync_loop_cycle(
+                &mut sync_runtime,
+                policy,
+                current_timestamp_unix_seconds(),
+                true,
+                |runtime, _timestamp| Ok(runtime.snapshot_summary()),
+            );
+            break;
+        }
         if matches!(decision, DaemonSyncLoopDecision::Stopped) {
             break;
         }

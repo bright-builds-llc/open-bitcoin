@@ -12,14 +12,21 @@ use super::{
     progress::{self, PeerFailure, PeerProgress},
 };
 
+pub(super) const MAX_CONSECUTIVE_IDLE_WAKES_PER_SESSION: usize = 2;
+
 impl DurableSyncRuntime {
-    pub(super) fn sync_peer_with_retries<T: SyncTransport, C: FnMut() -> i64>(
+    pub(super) fn sync_peer_with_retries<
+        T: SyncTransport,
+        C: FnMut() -> i64,
+        K: FnMut() -> bool,
+    >(
         &mut self,
         transport: &mut T,
         peer: &ResolvedSyncPeerAddress,
         peer_id: PeerId,
         timestamp: i64,
         clock: &mut C,
+        should_cancel: &mut K,
     ) -> Result<PeerProgress, Box<PeerFailure>> {
         let mut attempts = 0_u8;
         let max_attempts = self.config.max_peer_retries.saturating_add(1);
@@ -27,8 +34,14 @@ impl DurableSyncRuntime {
             attempts = attempts.saturating_add(1);
             match transport.connect(peer, &self.config) {
                 Ok(session) => {
-                    return self
-                        .sync_connected_peer(session, peer, peer_id, attempts, timestamp, clock);
+                    return self.sync_connected_peer_with_cancel(
+                        session,
+                        peer,
+                        peer_id,
+                        attempts,
+                        timestamp,
+                        (clock, should_cancel),
+                    );
                 }
                 Err(error) if attempts < max_attempts => {
                     let _ = error;
@@ -68,5 +81,17 @@ impl DurableSyncRuntime {
                     && peer.local_verack_sent
                     && peer.remote_verack_received
             })
+    }
+
+    pub(super) fn complete_peer_session_progress(
+        &self,
+        progress: &mut PeerProgress,
+        peer_id: PeerId,
+    ) {
+        progress.maybe_capabilities = self.peer_capabilities(peer_id);
+        if !self.peer_handshake_complete(peer_id) {
+            progress.state = super::PeerSyncState::Stalled;
+            progress.maybe_failure_reason = Some(super::PeerFailureReason::Stall);
+        }
     }
 }

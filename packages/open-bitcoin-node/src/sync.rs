@@ -194,6 +194,29 @@ impl DurableSyncRuntime {
         timestamp: i64,
         clock: &mut C,
     ) -> Result<SyncRunSummary, SyncRuntimeError> {
+        let mut never_cancel = || false;
+        self.sync_once_with_resolver_clock_and_cancel(
+            transport,
+            resolver,
+            timestamp,
+            clock,
+            &mut never_cancel,
+        )
+    }
+
+    fn sync_once_with_resolver_clock_and_cancel<
+        T: SyncTransport,
+        R: SyncPeerResolver,
+        C: FnMut() -> i64,
+        K: FnMut() -> bool,
+    >(
+        &mut self,
+        transport: &mut T,
+        resolver: &mut R,
+        timestamp: i64,
+        clock: &mut C,
+        should_cancel: &mut K,
+    ) -> Result<SyncRunSummary, SyncRuntimeError> {
         self.maybe_reconcile_progress = None;
         block_reconcile::validate_block_limits(self)?;
         block_reconcile::reconcile_and_persist_best_chain(self, timestamp)?;
@@ -222,7 +245,7 @@ impl DurableSyncRuntime {
         let resolved_peers = self.resolve_candidates(peers, resolver, &mut summary);
         let mut completed_outbound_slots = 0_usize;
         for peer in resolved_peers {
-            if completed_outbound_slots >= self.config.target_outbound_peers {
+            if should_cancel() || completed_outbound_slots >= self.config.target_outbound_peers {
                 break;
             }
             if let Some(backoff) = self.maybe_peer_backoff(&peer, timestamp) {
@@ -231,7 +254,14 @@ impl DurableSyncRuntime {
             }
             summary.attempted_peers += 1;
             let peer_id = self.allocate_peer_id();
-            let outcome = self.sync_peer_with_retries(transport, &peer, peer_id, timestamp, clock);
+            let outcome = self.sync_peer_with_retries(
+                transport,
+                &peer,
+                peer_id,
+                timestamp,
+                clock,
+                should_cancel,
+            );
             if let Ok(progress) = &outcome
                 && progress.state == PeerSyncState::Connected
                 && progress.is_successful_outbound_slot()
@@ -292,8 +322,30 @@ impl DurableSyncRuntime {
         timestamp: i64,
         clock: &mut C,
     ) -> Result<SyncRunSummary, SyncRuntimeError> {
+        let mut never_cancel = || false;
+        self.sync_until_idle_with_clock_and_cancel(transport, timestamp, clock, &mut never_cancel)
+    }
+
+    /// Runs bounded sync rounds while allowing the caller to cancel a live idle session.
+    pub fn sync_until_idle_with_clock_and_cancel<
+        T: SyncTransport,
+        C: FnMut() -> i64,
+        K: FnMut() -> bool,
+    >(
+        &mut self,
+        transport: &mut T,
+        timestamp: i64,
+        clock: &mut C,
+        should_cancel: &mut K,
+    ) -> Result<SyncRunSummary, SyncRuntimeError> {
         let mut resolver = SystemSyncPeerResolver;
-        self.sync_until_idle_with_resolver_and_clock(transport, &mut resolver, timestamp, clock)
+        self.sync_until_idle_with_resolver_clock_and_cancel(
+            transport,
+            &mut resolver,
+            timestamp,
+            clock,
+            should_cancel,
+        )
     }
 
     pub fn sync_until_idle_with_resolver<T: SyncTransport, R: SyncPeerResolver>(
@@ -317,9 +369,40 @@ impl DurableSyncRuntime {
         timestamp: i64,
         clock: &mut C,
     ) -> Result<SyncRunSummary, SyncRuntimeError> {
+        let mut never_cancel = || false;
+        self.sync_until_idle_with_resolver_clock_and_cancel(
+            transport,
+            resolver,
+            timestamp,
+            clock,
+            &mut never_cancel,
+        )
+    }
+
+    fn sync_until_idle_with_resolver_clock_and_cancel<
+        T: SyncTransport,
+        R: SyncPeerResolver,
+        C: FnMut() -> i64,
+        K: FnMut() -> bool,
+    >(
+        &mut self,
+        transport: &mut T,
+        resolver: &mut R,
+        timestamp: i64,
+        clock: &mut C,
+        should_cancel: &mut K,
+    ) -> Result<SyncRunSummary, SyncRuntimeError> {
         let mut current_timestamp = timestamp;
-        let mut last_summary =
-            self.sync_once_with_resolver_and_clock(transport, resolver, current_timestamp, clock)?;
+        let mut last_summary = self.sync_once_with_resolver_clock_and_cancel(
+            transport,
+            resolver,
+            current_timestamp,
+            clock,
+            should_cancel,
+        )?;
+        if should_cancel() {
+            return Ok(last_summary);
+        }
         if let Some(stop_reason) = self.maybe_target_header_stop_reason(&last_summary) {
             self.record_until_idle_stop(&mut last_summary, stop_reason, current_timestamp)?;
             return Ok(last_summary);
@@ -329,12 +412,16 @@ impl DurableSyncRuntime {
         let mut rounds_completed = 1_usize;
         for _ in 1..self.config.max_rounds {
             current_timestamp = current_timestamp.saturating_add(retry_backoff_seconds);
-            let current_summary = self.sync_once_with_resolver_and_clock(
+            let current_summary = self.sync_once_with_resolver_clock_and_cancel(
                 transport,
                 resolver,
                 current_timestamp,
                 clock,
+                should_cancel,
             )?;
+            if should_cancel() {
+                return Ok(current_summary);
+            }
             rounds_completed = rounds_completed.saturating_add(1);
             let current_progress = progress::sync_progress_marker(&current_summary);
             let is_idle = current_progress == previous_progress;
@@ -365,14 +452,39 @@ impl DurableSyncRuntime {
         Ok(last_summary)
     }
 
+    #[cfg(test)]
     fn sync_connected_peer<S: SyncPeerSession, C: FnMut() -> i64>(
+        &mut self,
+        session: S,
+        peer: &ResolvedSyncPeerAddress,
+        peer_id: PeerId,
+        attempts: u8,
+        timestamp: i64,
+        clock: &mut C,
+    ) -> Result<PeerProgress, Box<PeerFailure>> {
+        let mut never_cancel = || false;
+        self.sync_connected_peer_with_cancel(
+            session,
+            peer,
+            peer_id,
+            attempts,
+            timestamp,
+            (clock, &mut never_cancel),
+        )
+    }
+
+    fn sync_connected_peer_with_cancel<
+        S: SyncPeerSession,
+        C: FnMut() -> i64,
+        K: FnMut() -> bool,
+    >(
         &mut self,
         mut session: S,
         peer: &ResolvedSyncPeerAddress,
         peer_id: PeerId,
         attempts: u8,
         timestamp: i64,
-        clock: &mut C,
+        controls: (&mut C, &mut K),
     ) -> Result<PeerProgress, Box<PeerFailure>> {
         let mut progress = PeerProgress::new(peer.clone(), self.config.network, attempts);
         let mut maybe_failure_reason_override = None;
@@ -383,7 +495,12 @@ impl DurableSyncRuntime {
 
             let mut messages_received = 0_usize;
             let mut current_timestamp = timestamp;
+            let mut consecutive_idle_wakes = 0_usize;
             while messages_received < self.config.max_messages_per_peer {
+                if (controls.1)() {
+                    self.complete_peer_session_progress(&mut progress, peer_id);
+                    return Ok(());
+                }
                 let receive_outcome = match session.receive(self.config.network.magic()) {
                     Ok(receive_outcome) => receive_outcome,
                     Err(error) => {
@@ -398,10 +515,15 @@ impl DurableSyncRuntime {
                 let message = match receive_outcome {
                     SyncPeerReceiveOutcome::Message(message) => {
                         messages_received = messages_received.saturating_add(1);
+                        consecutive_idle_wakes = 0;
                         message
                     }
                     SyncPeerReceiveOutcome::Idle => {
-                        current_timestamp = clock();
+                        current_timestamp = (controls.0)();
+                        if (controls.1)() {
+                            self.complete_peer_session_progress(&mut progress, peer_id);
+                            return Ok(());
+                        }
                         let targeted = self
                             .network
                             .expire_compact_download_timeouts(current_timestamp)?;
@@ -420,14 +542,16 @@ impl DurableSyncRuntime {
                             .map(|(_target_peer_id, message)| message)
                             .collect::<Vec<_>>();
                         self.send_all(&mut session, &outbound)?;
+                        consecutive_idle_wakes = consecutive_idle_wakes.saturating_add(1);
+                        if consecutive_idle_wakes >= session::MAX_CONSECUTIVE_IDLE_WAKES_PER_SESSION
+                        {
+                            self.complete_peer_session_progress(&mut progress, peer_id);
+                            return Ok(());
+                        }
                         continue;
                     }
                     SyncPeerReceiveOutcome::Closed => {
-                        progress.maybe_capabilities = self.peer_capabilities(peer_id);
-                        if !self.peer_handshake_complete(peer_id) {
-                            progress.state = PeerSyncState::Stalled;
-                            progress.maybe_failure_reason = Some(PeerFailureReason::Stall);
-                        }
+                        self.complete_peer_session_progress(&mut progress, peer_id);
                         return Ok(());
                     }
                 };
