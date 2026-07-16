@@ -382,6 +382,7 @@ impl DurableSyncRuntime {
             self.send_all(&mut session, &outbound)?;
 
             let mut messages_received = 0_usize;
+            let mut current_timestamp = timestamp;
             while messages_received < self.config.max_messages_per_peer {
                 let receive_outcome = match session.receive(self.config.network.magic()) {
                     Ok(receive_outcome) => receive_outcome,
@@ -400,10 +401,10 @@ impl DurableSyncRuntime {
                         message
                     }
                     SyncPeerReceiveOutcome::Idle => {
-                        let now_unix_seconds = clock();
+                        current_timestamp = clock();
                         let targeted = self
                             .network
-                            .expire_compact_download_timeouts(now_unix_seconds)?;
+                            .expire_compact_download_timeouts(current_timestamp)?;
                         if targeted
                             .iter()
                             .any(|(target_peer_id, _message)| *target_peer_id != peer_id)
@@ -430,7 +431,7 @@ impl DurableSyncRuntime {
                         return Ok(());
                     }
                 };
-                progress.record_activity(timestamp);
+                progress.record_activity(current_timestamp);
                 let maybe_header_count = match &message {
                     WireNetworkMessage::Headers(headers) => Some(headers.headers.len()),
                     _ => None,
@@ -470,7 +471,7 @@ impl DurableSyncRuntime {
                 let sync_result = match self.network.receive_sync_message(
                     peer_id,
                     message,
-                    timestamp,
+                    current_timestamp,
                     self.verify_flags,
                     self.consensus_params,
                 ) {
@@ -507,7 +508,8 @@ impl DurableSyncRuntime {
                         block_response_is_best_chain,
                     )?;
                 }
-                let reconcile_progress = block_reconcile::reconcile_best_chain(self, timestamp)?;
+                let reconcile_progress =
+                    block_reconcile::reconcile_best_chain(self, current_timestamp)?;
                 should_persist_progress |= reconcile_progress.should_persist_progress();
                 self.record_reconcile_progress(reconcile_progress);
                 if should_persist_progress {

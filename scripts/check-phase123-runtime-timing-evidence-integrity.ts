@@ -211,8 +211,8 @@ function verifyIdleMaintenance(
     sync,
     [
       "SyncPeerReceiveOutcome::Idle =>",
-      "let now_unix_seconds = clock();",
-      ".expire_compact_download_timeouts(now_unix_seconds)?",
+      "current_timestamp = clock();",
+      ".expire_compact_download_timeouts(current_timestamp)?",
       ".any(|(target_peer_id, _message)| *target_peer_id != peer_id)",
       ".map(|(_target_peer_id, message)| message)",
       "self.send_all(&mut session, &outbound)?;",
@@ -232,6 +232,14 @@ function verifyIdleMaintenance(
     "P123 Message-only progress",
     failures,
   );
+  const normalizedSync = normalizeWhitespace(sync);
+  for (const needle of [
+    "progress.record_activity(current_timestamp);",
+    "self.network.receive_sync_message( peer_id, message, current_timestamp, self.verify_flags",
+    "block_reconcile::reconcile_best_chain(self, current_timestamp)?",
+  ]) {
+    requireContains(normalizedSync, needle, "P123 session timestamp propagation", failures);
+  }
 }
 
 function verifySuccessfulWriteEvidence(
@@ -388,6 +396,7 @@ function verifyFocusedTests(texts: Map<TargetFile, string>, failures: string[]):
     "phase123_idle_before_timeout_retains_session_without_fallback_or_progress",
     "phase123_idle_after_fake_clock_emits_same_peer_full_block_fallback",
     "phase123_idle_wake_does_not_consume_message_budget",
+    "phase123_message_after_idle_uses_session_clock_for_compact_timeout",
     "phase123_closed_receive_ends_session",
     "phase123_target_mismatch_is_not_written_to_current_session",
   ]) requireContains(timing, needle, "P123 runtime timing tests", failures);

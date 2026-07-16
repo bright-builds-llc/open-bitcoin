@@ -73,13 +73,22 @@ test.each([
   ],
   [
     "idle clock removed",
-    "P123 idle clock target send order missing or out of order let now_unix_seconds = clock();",
-    mutate("packages/open-bitcoin-node/src/sync.rs", "let now_unix_seconds = clock();", "let now_unix_seconds = timestamp;"),
+    "P123 idle clock target send order missing or out of order current_timestamp = clock();",
+    mutate("packages/open-bitcoin-node/src/sync.rs", "current_timestamp = clock();", "current_timestamp = timestamp;"),
   ],
   [
     "idle target guard removed",
     "P123 idle clock target send order missing or out of order .any(|(target_peer_id, _message)| *target_peer_id != peer_id)",
     mutate("packages/open-bitcoin-node/src/sync.rs", ".any(|(target_peer_id, _message)| *target_peer_id != peer_id)", ".is_empty()"),
+  ],
+  [
+    "session timestamp propagation removed",
+    "P123 session timestamp propagation missing progress.record_activity(current_timestamp);",
+    mutate(
+      "packages/open-bitcoin-node/src/sync.rs",
+      "progress.record_activity(current_timestamp);",
+      "progress.record_activity(timestamp);",
+    ),
   ],
   [
     "bench restores old Option receive",
@@ -218,6 +227,7 @@ function completeFiles(): Map<TargetFile, string> {
     "phase123_idle_before_timeout_retains_session_without_fallback_or_progress",
     "phase123_idle_after_fake_clock_emits_same_peer_full_block_fallback",
     "phase123_idle_wake_does_not_consume_message_budget",
+    "phase123_message_after_idle_uses_session_clock_for_compact_timeout",
     "phase123_closed_receive_ends_session",
     "phase123_target_mismatch_is_not_written_to_current_session",
   ].join(" ");
@@ -277,7 +287,7 @@ bun test scripts/check-phase117-parity-uat-release-boundary.test.ts`;
   return new Map<TargetFile, string>([
     ["packages/open-bitcoin-node/src/sync/types.rs", "pub enum SyncPeerReceiveOutcome { Message(WireNetworkMessage), Idle, Closed } fn receive() -> Result<SyncPeerReceiveOutcome, SyncRuntimeError>"],
     ["packages/open-bitcoin-node/src/sync/tcp.rs", "fn receive() -> Result<SyncPeerReceiveOutcome, SyncRuntimeError> { Ok(0) if allow_clean_idle && filled == 0 => return Ok(ReadStageOutcome::Closed); allow_clean_idle filled == 0 io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut return Ok(ReadStageOutcome::Idle); unexpected EOF after {filled} of {} frame bytes payload read ended without a complete frame }"],
-    ["packages/open-bitcoin-node/src/sync.rs", `pub fn open_with_block_relay_activation ManagedPeerNetwork::with_sync_limits_and_block_relay_activation block_relay_activation maybe_inbound_metric_status_provider self.network.block_relay_runtime_evidence_snapshot() let maybe_block_relay_snapshot = self.maybe_authoritative_block_relay_snapshot(); self.persist_metrics(&summary, maybe_block_relay_snapshot.as_ref(), timestamp); self.write_block_relay_log(&mut summary, maybe_block_relay_snapshot.as_ref(), timestamp); SyncPeerReceiveOutcome::Message(message) => messages_received = messages_received.saturating_add(1); SyncPeerReceiveOutcome::Idle => let now_unix_seconds = clock(); .expire_compact_download_timeouts(now_unix_seconds)? .any(|(target_peer_id, _message)| *target_peer_id != peer_id) .map(|(_target_peer_id, message)| message) self.send_all(&mut session, &outbound)?; continue; SyncPeerReceiveOutcome::Closed =>`],
+    ["packages/open-bitcoin-node/src/sync.rs", `pub fn open_with_block_relay_activation ManagedPeerNetwork::with_sync_limits_and_block_relay_activation block_relay_activation maybe_inbound_metric_status_provider self.network.block_relay_runtime_evidence_snapshot() let maybe_block_relay_snapshot = self.maybe_authoritative_block_relay_snapshot(); self.persist_metrics(&summary, maybe_block_relay_snapshot.as_ref(), timestamp); self.write_block_relay_log(&mut summary, maybe_block_relay_snapshot.as_ref(), timestamp); SyncPeerReceiveOutcome::Message(message) => messages_received = messages_received.saturating_add(1); SyncPeerReceiveOutcome::Idle => current_timestamp = clock(); .expire_compact_download_timeouts(current_timestamp)? .any(|(target_peer_id, _message)| *target_peer_id != peer_id) .map(|(_target_peer_id, message)| message) self.send_all(&mut session, &outbound)?; continue; SyncPeerReceiveOutcome::Closed => progress.record_activity(current_timestamp); self.network.receive_sync_message( peer_id, message, current_timestamp, self.verify_flags block_reconcile::reconcile_best_chain(self, current_timestamp)?`],
     ["packages/open-bitcoin-node/src/sync/session.rs", "session.send(message, self.config.network.magic())?; self.network.acknowledge_wire_message_written(message);"],
     ["packages/open-bitcoin-node/src/lib.rs", "SyncPeerReceiveOutcome"],
     ["packages/open-bitcoin-bench/src/runtime_fixtures.rs", "Result<SyncPeerReceiveOutcome, SyncRuntimeError>"],
