@@ -1379,6 +1379,54 @@ peer session was actually sent as
 block response. This does not claim archive-node availability, public compact
 relay defaults, public-network CI, or production full-node readiness.
 
+## Phase 123 runtime timing and evidence integrity
+
+The `v2-1-runtime-timing-evidence-integrity` surface closes `HARD-02`,
+`HARD-03`, and `HARD-04` without expanding the public relay boundary. The
+blocking sync session distinguishes messages, idle wakes, and clean closure so
+receive-independent idle expiration runs from a caller clock, retains the live
+session, validates targeted fallback, and does not manufacture message progress.
+Both transport seams retain typed messages through successful typed Block writes;
+failed encoding, failed or rejected writes, and non-block messages do not advance
+the private served counter.
+
+The Open Bitcoin evidence roots are
+`packages/open-bitcoin-node/src/sync/types.rs`,
+`packages/open-bitcoin-node/src/sync/tcp.rs`,
+`packages/open-bitcoin-node/src/sync.rs`,
+`packages/open-bitcoin-node/src/sync/session.rs`,
+`packages/open-bitcoin-node/src/lib.rs`,
+`packages/open-bitcoin-bench/src/runtime_fixtures.rs`,
+`packages/open-bitcoin-node/src/network/block_relay_evidence.rs`,
+`packages/open-bitcoin-node/src/metrics/block_relay.rs`,
+`packages/open-bitcoin-node/src/logging.rs`,
+`packages/open-bitcoin-rpc/src/context.rs`,
+`packages/open-bitcoin-rpc/src/context/network.rs`,
+`packages/open-bitcoin-rpc/src/inbound_listener.rs`,
+`packages/open-bitcoin-rpc/src/inbound_listener/tests.rs`,
+`packages/open-bitcoin-node/src/sync/tests/runtime_timing_cases.rs`,
+`packages/open-bitcoin-node/src/sync/tests/runtime_write_evidence_cases.rs`,
+`packages/open-bitcoin-node/src/sync/tests/runtime_projection_cases.rs`,
+`scripts/check-phase121-block-relay-metrics-log-runtime.ts`,
+`scripts/check-phase123-runtime-timing-evidence-integrity.ts`, and
+`scripts/check-phase123-runtime-timing-evidence-integrity.test.ts`.
+
+The runtime-only served evidence is not serialized, leaving unchanged public
+status, RPC, CLI, dashboard, and support schemas. One authoritative sync-network
+snapshot is sampled after peer processing and shared by retained metrics and
+structured logs; unavailable evidence is omitted rather than projected as zero.
+Pinned maintenance and send-lifecycle anchors are
+`packages/bitcoin-knots/src/net.cpp` and
+`packages/bitcoin-knots/src/net_processing.cpp`; compact timeout and fallback
+coverage is anchored in
+`packages/bitcoin-knots/test/functional/p2p_compactblocks.py`.
+
+As a scoped parity deviation, Open Bitcoin keeps its blocking runtime and
+existing timeout constant rather than claiming Bitcoin Knots thread cadence.
+Block serving and compact relay remain default-off. Archive behavior, package
+relay, bloom/filter serving, public-network CI, production service operation,
+production full-node readiness, and production-funds wallet use remain deferred.
+
 ## Known gaps
 
 These networking gaps remain deferred or out of scope unless a later phase adds
