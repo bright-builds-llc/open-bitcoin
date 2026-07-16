@@ -152,6 +152,15 @@ test.each([
     ),
   ],
   [
+    "inbound block-serving activation removed",
+    "P123 inbound production activation wiring missing or out of order config.block_serving",
+    mutate(
+      "packages/open-bitcoin-rpc/src/context/network.rs",
+      "config.block_serving",
+      "BlockRelayActivationPolicy::default()",
+    ),
+  ],
+  [
     "structured log resamples",
     "P123 shared metric/log snapshot missing or out of order self.write_block_relay_log(&mut summary, maybe_block_relay_snapshot.as_ref(), timestamp);",
     mutate("packages/open-bitcoin-node/src/sync.rs", "self.write_block_relay_log(&mut summary, maybe_block_relay_snapshot.as_ref(), timestamp);", "let second = self.maybe_authoritative_block_relay_snapshot(); self.write_block_relay_log(&mut summary, second.as_ref(), timestamp);"),
@@ -277,9 +286,9 @@ bun test scripts/check-phase117-parity-uat-release-boundary.test.ts`;
     ["packages/open-bitcoin-node/src/logging.rs", "pub fn block_relay_log_record served_count: u64 served_count,"],
     ["packages/open-bitcoin-node/src/status/block_relay_evidence.rs", "pub struct BlockRelayEvidenceStatus {}"],
     ["packages/open-bitcoin-rpc/src/context.rs", "pub(crate) struct EncodedWireResponse { pub(crate) message: WireNetworkMessage, pub(crate) bytes: Vec<u8> }"],
-    ["packages/open-bitcoin-rpc/src/context/network.rs", "let encoded = self.network.encode_messages(&responses)?; .into_iter() .zip(encoded) EncodedWireResponse { message, bytes }"],
+    ["packages/open-bitcoin-rpc/src/context/network.rs", "ManagedPeerNetwork::new_with_block_relay_activation( config.block_serving let encoded = self.network.encode_messages(&responses)?; .into_iter() .zip(encoded) EncodedWireResponse { message, bytes }"],
     ["packages/open-bitcoin-rpc/src/inbound_listener.rs", "let Ok(WriteWireMessageOutcome::Written) = write_result else { return; }; .acknowledge_wire_message_written(&response.message)"],
-    ["packages/open-bitcoin-rpc/src/inbound_listener/tests.rs", "phase123_inbound_encoding_failure_does_not_increment_served"],
+    ["packages/open-bitcoin-rpc/src/inbound_listener/tests.rs", "phase123_inbound_encoding_failure_does_not_increment_served phase123_enabled_runtime_config_serves_and_acknowledges_inbound_block phase123_disabled_runtime_config_does_not_serve_inbound_block"],
     ["packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs", "DurableSyncRuntime::open_with_block_relay_activation( runtime.block_serving set_inbound_metric_status_provider"],
     ["packages/open-bitcoin-node/src/sync/tests/runtime_timing_cases.rs", `DurableSyncRuntime::open_with_block_relay_activation( Result<SyncPeerReceiveOutcome, SyncRuntimeError> ${timingTests}`],
     ["packages/open-bitcoin-node/src/sync/tests/runtime_write_evidence_cases.rs", `Result<SyncPeerReceiveOutcome, SyncRuntimeError> ${writeTests}`],

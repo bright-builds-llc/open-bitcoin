@@ -119,6 +119,21 @@ function verifyProductionActivation(
       failures,
     );
   }
+
+  const rpcNetwork = texts.get("packages/open-bitcoin-rpc/src/context/network.rs") ?? "";
+  requireOrdered(
+    rpcNetwork,
+    ["ManagedPeerNetwork::new_with_block_relay_activation(", "config.block_serving"],
+    "P123 inbound production activation wiring",
+    failures,
+  );
+  const inboundTests = texts.get("packages/open-bitcoin-rpc/src/inbound_listener/tests.rs") ?? "";
+  for (const needle of [
+    "phase123_enabled_runtime_config_serves_and_acknowledges_inbound_block",
+    "phase123_disabled_runtime_config_does_not_serve_inbound_block",
+  ]) {
+    requireContains(inboundTests, needle, "P123 inbound production activation tests", failures);
+  }
 }
 
 function readText(repoRoot: string, file: TargetFile, failures: string[]): string {

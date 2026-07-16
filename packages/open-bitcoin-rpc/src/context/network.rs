@@ -92,11 +92,12 @@ impl ManagedRpcContext {
             relay: true,
             user_agent: "/open-bitcoin:0.1.0/".to_string(),
         };
-        let mut managed_network = ManagedPeerNetwork::new_with_relay_activation(
+        let mut managed_network = ManagedPeerNetwork::new_with_block_relay_activation(
             MemoryChainstateStore::default(),
             local_config,
             PolicyConfig::default(),
             config.relay,
+            config.block_serving,
             config.inbound.enabled,
         );
         managed_network.set_inbound_admission_policy(InboundAdmissionPolicy::new(
