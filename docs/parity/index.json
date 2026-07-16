@@ -708,6 +708,10 @@
     {
       "name": "v2-1-compact-relay-peer-completion",
       "status": "done"
+    },
+    {
+      "name": "v2-1-runtime-timing-evidence-integrity",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -2879,6 +2883,59 @@
         ],
         "suspected_unknowns": [
           "Archive behavior, public compact-relay defaults, public-network CI, and production full-node readiness require separate evidence and remain deferred."
+        ]
+      },
+      {
+        "id": "v2-1-runtime-timing-evidence-integrity",
+        "title": "v2.1 Runtime Timing and Evidence Integrity",
+        "status": "done",
+        "requirements": [
+          "HARD-02",
+          "HARD-03",
+          "HARD-04"
+        ],
+        "evidence": [
+          "docs/parity/index.json",
+          "docs/parity/checklist.md",
+          "docs/parity/catalog/p2p.md",
+          "docs/parity/source-breadcrumbs.json",
+          "docs/architecture/operator-observability.md",
+          "packages/open-bitcoin-node/src/sync/types.rs",
+          "packages/open-bitcoin-node/src/sync/tcp.rs",
+          "packages/open-bitcoin-node/src/sync.rs",
+          "packages/open-bitcoin-node/src/sync/session.rs",
+          "packages/open-bitcoin-node/src/lib.rs",
+          "packages/open-bitcoin-bench/src/runtime_fixtures.rs",
+          "packages/open-bitcoin-node/src/network/block_relay_evidence.rs",
+          "packages/open-bitcoin-node/src/metrics/block_relay.rs",
+          "packages/open-bitcoin-node/src/logging.rs",
+          "packages/open-bitcoin-rpc/src/context.rs",
+          "packages/open-bitcoin-rpc/src/context/network.rs",
+          "packages/open-bitcoin-rpc/src/inbound_listener.rs",
+          "packages/open-bitcoin-rpc/src/inbound_listener/tests.rs",
+          "packages/open-bitcoin-node/src/sync/tests/runtime_timing_cases.rs",
+          "packages/open-bitcoin-node/src/sync/tests/runtime_write_evidence_cases.rs",
+          "packages/open-bitcoin-node/src/sync/tests/runtime_projection_cases.rs",
+          "scripts/check-phase121-block-relay-metrics-log-runtime.ts",
+          "scripts/check-phase123-runtime-timing-evidence-integrity.ts",
+          "scripts/check-phase123-runtime-timing-evidence-integrity.test.ts",
+          "scripts/verify.sh"
+        ],
+        "rationale": "Phase 123 closes HARD-02 through HARD-04 with receive-independent idle expiration, successful typed Block writes as the only served-count effect, runtime-only served evidence with unchanged public status, and one authoritative sync-network snapshot shared by metrics and structured logs.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/net.cpp",
+            "packages/bitcoin-knots/src/net_processing.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/test/functional/p2p_compactblocks.py"
+          ]
+        },
+        "known_gaps": [
+          "Open Bitcoin keeps its blocking runtime and existing timeout constant rather than claiming Bitcoin Knots thread cadence; block serving and compact relay remain default-off."
+        ],
+        "suspected_unknowns": [
+          "Archive behavior, package relay, bloom/filter serving, public-network CI, production service operation, production full-node readiness, and production-funds wallet use remain deferred and require separate evidence."
         ]
       }
     ]
