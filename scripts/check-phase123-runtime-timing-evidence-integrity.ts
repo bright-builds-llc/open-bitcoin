@@ -31,6 +31,7 @@ const TARGET_FILES = [
   "packages/open-bitcoin-rpc/src/inbound_listener.rs",
   "packages/open-bitcoin-rpc/src/inbound_listener/tests.rs",
   "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
+  "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests.rs",
   "packages/open-bitcoin-node/src/sync/tests/runtime_timing_cases.rs",
   "packages/open-bitcoin-node/src/sync/tests/runtime_write_evidence_cases.rs",
   "packages/open-bitcoin-node/src/sync/tests/runtime_projection_cases.rs",
@@ -76,6 +77,7 @@ export function checkPhase123RuntimeTimingEvidenceIntegrity(
   }
 
   verifyTypedReceiveAndTcp(texts, failures);
+  verifyProductionActivation(texts, failures);
   verifyIdleMaintenance(texts, failures);
   verifySuccessfulWriteEvidence(texts, failures);
   verifyPrivateProjection(texts, failures);
@@ -86,6 +88,53 @@ export function checkPhase123RuntimeTimingEvidenceIntegrity(
   verifyBreadcrumbs(texts.get("docs/parity/source-breadcrumbs.json") ?? "", failures);
   verifyVerifierWiring(texts.get("scripts/verify.sh") ?? "", failures);
   return failures;
+}
+
+function verifyProductionActivation(
+  texts: Map<TargetFile, string>,
+  failures: string[],
+): void {
+  const sync = texts.get("packages/open-bitcoin-node/src/sync.rs") ?? "";
+  for (const needle of [
+    "pub fn open_with_block_relay_activation",
+    "ManagedPeerNetwork::with_sync_limits_and_block_relay_activation",
+    "block_relay_activation",
+  ]) {
+    requireContains(sync, needle, "P123 sync production activation", failures);
+  }
+  const daemon = texts.get("packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs") ?? "";
+  requireOrdered(
+    daemon,
+    ["DurableSyncRuntime::open_with_block_relay_activation(", "runtime.block_serving"],
+    "P123 daemon sync activation wiring",
+    failures,
+  );
+  for (const file of [
+    "packages/open-bitcoin-node/src/sync/tests/runtime_timing_cases.rs",
+    "packages/open-bitcoin-node/src/sync/tests/runtime_projection_cases.rs",
+  ] as const) {
+    requireContains(
+      texts.get(file) ?? "",
+      "DurableSyncRuntime::open_with_block_relay_activation(",
+      `P123 production activation test path ${file}`,
+      failures,
+    );
+  }
+
+  const rpcNetwork = texts.get("packages/open-bitcoin-rpc/src/context/network.rs") ?? "";
+  requireOrdered(
+    rpcNetwork,
+    ["ManagedPeerNetwork::new_with_block_relay_activation(", "config.block_serving"],
+    "P123 inbound production activation wiring",
+    failures,
+  );
+  const inboundTests = texts.get("packages/open-bitcoin-rpc/src/inbound_listener/tests.rs") ?? "";
+  for (const needle of [
+    "phase123_enabled_runtime_config_serves_and_acknowledges_inbound_block",
+    "phase123_disabled_runtime_config_does_not_serve_inbound_block",
+  ]) {
+    requireContains(inboundTests, needle, "P123 inbound production activation tests", failures);
+  }
 }
 
 function readText(repoRoot: string, file: TargetFile, failures: string[]): string {
@@ -159,12 +208,14 @@ function verifyIdleMaintenance(
   failures: string[],
 ): void {
   const sync = texts.get("packages/open-bitcoin-node/src/sync.rs") ?? "";
+  const session = texts.get("packages/open-bitcoin-node/src/sync/session.rs") ?? "";
+  const syncSession = `${sync}\n${session}`;
   requireOrdered(
-    sync,
+    syncSession,
     [
       "SyncPeerReceiveOutcome::Idle =>",
-      "let now_unix_seconds = clock();",
-      ".expire_compact_download_timeouts(now_unix_seconds)?",
+      "current_timestamp = (controls.0)();",
+      ".expire_compact_download_timeouts(current_timestamp)?",
       ".any(|(target_peer_id, _message)| *target_peer_id != peer_id)",
       ".map(|(_target_peer_id, message)| message)",
       "self.send_all(&mut session, &outbound)?;",
@@ -175,13 +226,52 @@ function verifyIdleMaintenance(
     failures,
   );
   requireOrdered(
-    sync,
+    syncSession,
     [
       "SyncPeerReceiveOutcome::Message(message) =>",
       "messages_received = messages_received.saturating_add(1);",
       "SyncPeerReceiveOutcome::Idle =>",
     ],
     "P123 Message-only progress",
+    failures,
+  );
+  const normalizedSync = normalizeWhitespace(syncSession);
+  for (const needle of [
+    "progress.record_activity(current_timestamp);",
+    "self.network.receive_sync_message( peer_id, message, current_timestamp, self.verify_flags",
+    "block_reconcile::reconcile_best_chain(self, current_timestamp)?",
+  ]) {
+    requireContains(normalizedSync, needle, "P123 session timestamp propagation", failures);
+  }
+  requireContains(
+    session,
+    "MAX_CONSECUTIVE_IDLE_WAKES_PER_SESSION: usize = 2",
+    "P123 bounded idle policy",
+    failures,
+  );
+  requireContains(
+    normalizedSync,
+    ">= MAX_CONSECUTIVE_IDLE_WAKES_PER_SESSION",
+    "P123 bounded idle enforcement",
+    failures,
+  );
+  requireContains(
+    sync,
+    "pub fn sync_until_idle_with_clock_and_cancel",
+    "P123 cancellation-aware sync API",
+    failures,
+  );
+  const daemon = texts.get("packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs") ?? "";
+  requireOrdered(
+    daemon,
+    [
+      "let mut shutdown_latched = false;",
+      "let mut should_cancel = ||",
+      "daemon_sync_shutdown_requested(&shutdown_receiver)",
+      "sync_until_idle_with_clock_and_cancel(",
+      "if shutdown_latched",
+    ],
+    "P123 daemon live-session cancellation",
     failures,
   );
 }
@@ -340,9 +430,20 @@ function verifyFocusedTests(texts: Map<TargetFile, string>, failures: string[]):
     "phase123_idle_before_timeout_retains_session_without_fallback_or_progress",
     "phase123_idle_after_fake_clock_emits_same_peer_full_block_fallback",
     "phase123_idle_wake_does_not_consume_message_budget",
+    "phase123_message_after_idle_uses_session_clock_for_compact_timeout",
+    "phase123_perpetual_idle_session_returns_after_bounded_wakes",
     "phase123_closed_receive_ends_session",
     "phase123_target_mismatch_is_not_written_to_current_session",
   ]) requireContains(timing, needle, "P123 runtime timing tests", failures);
+
+  const daemonTests =
+    texts.get("packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests.rs") ?? "";
+  requireContains(
+    daemonTests,
+    "phase123_daemon_shutdown_cancels_live_silent_peer_session",
+    "P123 daemon cancellation test",
+    failures,
+  );
 
   const write = texts.get("packages/open-bitcoin-node/src/sync/tests/runtime_write_evidence_cases.rs") ?? "";
   for (const needle of [

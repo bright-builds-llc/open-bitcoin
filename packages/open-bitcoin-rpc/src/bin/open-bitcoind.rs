@@ -222,12 +222,16 @@ fn preflight_daemon_sync(
             data_dir.display()
         ))
     })?;
-    let sync_runtime =
-        DurableSyncRuntime::open(store, runtime.sync.runtime.clone()).map_err(|error| {
-            DaemonSyncPreflightError::new(format!(
-                "open-bitcoind mainnet sync preflight failed to construct durable sync runtime: {error}"
-            ))
-        })?;
+    let sync_runtime = DurableSyncRuntime::open_with_block_relay_activation(
+        store,
+        runtime.sync.runtime.clone(),
+        runtime.block_serving,
+    )
+    .map_err(|error| {
+        DaemonSyncPreflightError::new(format!(
+            "open-bitcoind mainnet sync preflight failed to construct durable sync runtime: {error}"
+        ))
+    })?;
     let summary = sync_runtime.snapshot_summary();
 
     Ok(Some(DaemonSyncPreflight {
@@ -370,7 +374,12 @@ fn start_daemon_sync_worker(
     let sync_config = runtime.sync.runtime.clone();
     let control = DaemonSyncControl::store_backed(store.clone(), sync_config.persist_mode);
     let metrics_store = store.clone();
-    let mut sync_runtime = DurableSyncRuntime::open(store, sync_config).map_err(|error| {
+    let mut sync_runtime = DurableSyncRuntime::open_with_block_relay_activation(
+        store,
+        sync_config,
+        runtime.block_serving,
+    )
+    .map_err(|error| {
         DaemonSyncPreflightError::new(format!(
             "open-bitcoind daemon sync failed to construct durable sync runtime: {error}"
         ))
@@ -385,15 +394,20 @@ fn start_daemon_sync_worker(
     let (shutdown_sender, shutdown_receiver) = mpsc::channel();
 
     Ok(Some(DaemonSyncWorker {
-        join_handle: thread::spawn(move || daemon_sync_worker(sync_runtime, shutdown_receiver)),
+        join_handle: thread::spawn(move || {
+            daemon_sync_worker_with_transport(sync_runtime, TcpPeerTransport, shutdown_receiver)
+        }),
         shutdown_sender,
         control,
         metrics_store,
     }))
 }
 
-fn daemon_sync_worker(mut sync_runtime: DurableSyncRuntime, shutdown_receiver: mpsc::Receiver<()>) {
-    let mut transport = TcpPeerTransport;
+fn daemon_sync_worker_with_transport<T: open_bitcoin_node::SyncTransport>(
+    mut sync_runtime: DurableSyncRuntime,
+    mut transport: T,
+    shutdown_receiver: mpsc::Receiver<()>,
+) {
     let policy = DaemonSyncLoopPolicy::from_runtime(&sync_runtime);
 
     loop {
@@ -408,6 +422,7 @@ fn daemon_sync_worker(mut sync_runtime: DurableSyncRuntime, shutdown_receiver: m
             break;
         }
 
+        let mut shutdown_latched = false;
         let decision = run_daemon_sync_loop_cycle(
             &mut sync_runtime,
             policy,
@@ -415,9 +430,29 @@ fn daemon_sync_worker(mut sync_runtime: DurableSyncRuntime, shutdown_receiver: m
             false,
             |runtime, timestamp| {
                 let mut clock = current_timestamp_unix_seconds;
-                runtime.sync_until_idle_with_clock(&mut transport, timestamp, &mut clock)
+                let mut should_cancel = || {
+                    shutdown_latched =
+                        shutdown_latched || daemon_sync_shutdown_requested(&shutdown_receiver);
+                    shutdown_latched
+                };
+                runtime.sync_until_idle_with_clock_and_cancel(
+                    &mut transport,
+                    timestamp,
+                    &mut clock,
+                    &mut should_cancel,
+                )
             },
         );
+        if shutdown_latched {
+            let _ = run_daemon_sync_loop_cycle(
+                &mut sync_runtime,
+                policy,
+                current_timestamp_unix_seconds(),
+                true,
+                |runtime, _timestamp| Ok(runtime.snapshot_summary()),
+            );
+            break;
+        }
         if matches!(decision, DaemonSyncLoopDecision::Stopped) {
             break;
         }
@@ -563,10 +598,7 @@ fn persist_daemon_loop_failure(
 }
 
 fn daemon_sync_shutdown_requested(receiver: &mpsc::Receiver<()>) -> bool {
-    match receiver.try_recv() {
-        Ok(()) | Err(mpsc::TryRecvError::Disconnected) => true,
-        Err(mpsc::TryRecvError::Empty) => false,
-    }
+    !matches!(receiver.try_recv(), Err(mpsc::TryRecvError::Empty))
 }
 
 fn daemon_sync_wait_or_shutdown(receiver: &mpsc::Receiver<()>, duration: Duration) -> bool {

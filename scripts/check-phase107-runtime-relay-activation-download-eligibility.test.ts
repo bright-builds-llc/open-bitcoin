@@ -99,7 +99,7 @@ test("fails_when_runtime_context_uses_default_managed_network_constructor", () =
       replaceInFile(
         files,
         "packages/open-bitcoin-rpc/src/context/network.rs",
-        "ManagedPeerNetwork::new_with_relay_activation(",
+        "ManagedPeerNetwork::new_with_block_relay_activation(",
         "ManagedPeerNetwork::new(",
       );
     },
@@ -109,7 +109,7 @@ test("fails_when_runtime_context_uses_default_managed_network_constructor", () =
   const failures = checkPhase107RuntimeRelayActivationDownloadEligibility(root).join("\n");
 
   // Assert
-  expect(failures).toContain("new_with_relay_activation");
+  expect(failures).toContain("new_with_block_relay_activation");
 });
 
 test("fails_when_a_required_scheduler_suppression_label_is_missing", () => {

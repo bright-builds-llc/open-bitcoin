@@ -29,11 +29,11 @@ mod waiting;
 mod wallet_rescan;
 
 use open_bitcoin_core::{
-    consensus::{ConsensusParams, ScriptVerifyFlags, block_hash},
+    consensus::{ConsensusParams, ScriptVerifyFlags},
     primitives::BlockHash,
 };
 use open_bitcoin_mempool::PolicyConfig;
-use open_bitcoin_network::{PeerId, WireNetworkMessage};
+use open_bitcoin_network::{BlockRelayActivationPolicy, PeerId, RelayActivationConfig};
 
 pub use resolver::{SyncPeerResolver, SystemSyncPeerResolver};
 pub use tcp::{TcpPeerSession, TcpPeerTransport};
@@ -78,17 +78,29 @@ impl DurableSyncRuntime {
         store: FjallNodeStore,
         config: SyncRuntimeConfig,
     ) -> Result<Self, SyncRuntimeError> {
+        Self::open_with_block_relay_activation(store, config, BlockRelayActivationPolicy::default())
+    }
+
+    /// Opens a durable runtime with the resolved block-relay activation policy.
+    pub fn open_with_block_relay_activation(
+        store: FjallNodeStore,
+        config: SyncRuntimeConfig,
+        block_relay_activation: BlockRelayActivationPolicy,
+    ) -> Result<Self, SyncRuntimeError> {
         let mut memory_store = MemoryChainstateStore::default();
         if let Some(snapshot) = store.load_chainstate_snapshot()? {
             memory_store.save_snapshot(snapshot);
         }
 
         let local_config = progress::local_peer_config(&config);
-        let mut network = ManagedPeerNetwork::with_sync_limits(
+        let mut network = ManagedPeerNetwork::with_sync_limits_and_block_relay_activation(
             memory_store,
             local_config,
             PolicyConfig::default(),
             config.max_blocks_in_flight_per_peer,
+            RelayActivationConfig::default(),
+            block_relay_activation,
+            false,
         );
         if let Some(header_store) = store.load_header_store()? {
             network.seed_header_store(header_store);
@@ -180,6 +192,29 @@ impl DurableSyncRuntime {
         timestamp: i64,
         clock: &mut C,
     ) -> Result<SyncRunSummary, SyncRuntimeError> {
+        let mut never_cancel = || false;
+        self.sync_once_with_resolver_clock_and_cancel(
+            transport,
+            resolver,
+            timestamp,
+            clock,
+            &mut never_cancel,
+        )
+    }
+
+    fn sync_once_with_resolver_clock_and_cancel<
+        T: SyncTransport,
+        R: SyncPeerResolver,
+        C: FnMut() -> i64,
+        K: FnMut() -> bool,
+    >(
+        &mut self,
+        transport: &mut T,
+        resolver: &mut R,
+        timestamp: i64,
+        clock: &mut C,
+        should_cancel: &mut K,
+    ) -> Result<SyncRunSummary, SyncRuntimeError> {
         self.maybe_reconcile_progress = None;
         block_reconcile::validate_block_limits(self)?;
         block_reconcile::reconcile_and_persist_best_chain(self, timestamp)?;
@@ -208,7 +243,7 @@ impl DurableSyncRuntime {
         let resolved_peers = self.resolve_candidates(peers, resolver, &mut summary);
         let mut completed_outbound_slots = 0_usize;
         for peer in resolved_peers {
-            if completed_outbound_slots >= self.config.target_outbound_peers {
+            if should_cancel() || completed_outbound_slots >= self.config.target_outbound_peers {
                 break;
             }
             if let Some(backoff) = self.maybe_peer_backoff(&peer, timestamp) {
@@ -217,7 +252,14 @@ impl DurableSyncRuntime {
             }
             summary.attempted_peers += 1;
             let peer_id = self.allocate_peer_id();
-            let outcome = self.sync_peer_with_retries(transport, &peer, peer_id, timestamp, clock);
+            let outcome = self.sync_peer_with_retries(
+                transport,
+                &peer,
+                peer_id,
+                timestamp,
+                clock,
+                should_cancel,
+            );
             if let Ok(progress) = &outcome
                 && progress.state == PeerSyncState::Connected
                 && progress.is_successful_outbound_slot()
@@ -278,8 +320,30 @@ impl DurableSyncRuntime {
         timestamp: i64,
         clock: &mut C,
     ) -> Result<SyncRunSummary, SyncRuntimeError> {
+        let mut never_cancel = || false;
+        self.sync_until_idle_with_clock_and_cancel(transport, timestamp, clock, &mut never_cancel)
+    }
+
+    /// Runs bounded sync rounds while allowing the caller to cancel a live idle session.
+    pub fn sync_until_idle_with_clock_and_cancel<
+        T: SyncTransport,
+        C: FnMut() -> i64,
+        K: FnMut() -> bool,
+    >(
+        &mut self,
+        transport: &mut T,
+        timestamp: i64,
+        clock: &mut C,
+        should_cancel: &mut K,
+    ) -> Result<SyncRunSummary, SyncRuntimeError> {
         let mut resolver = SystemSyncPeerResolver;
-        self.sync_until_idle_with_resolver_and_clock(transport, &mut resolver, timestamp, clock)
+        self.sync_until_idle_with_resolver_clock_and_cancel(
+            transport,
+            &mut resolver,
+            timestamp,
+            clock,
+            should_cancel,
+        )
     }
 
     pub fn sync_until_idle_with_resolver<T: SyncTransport, R: SyncPeerResolver>(
@@ -303,9 +367,40 @@ impl DurableSyncRuntime {
         timestamp: i64,
         clock: &mut C,
     ) -> Result<SyncRunSummary, SyncRuntimeError> {
+        let mut never_cancel = || false;
+        self.sync_until_idle_with_resolver_clock_and_cancel(
+            transport,
+            resolver,
+            timestamp,
+            clock,
+            &mut never_cancel,
+        )
+    }
+
+    fn sync_until_idle_with_resolver_clock_and_cancel<
+        T: SyncTransport,
+        R: SyncPeerResolver,
+        C: FnMut() -> i64,
+        K: FnMut() -> bool,
+    >(
+        &mut self,
+        transport: &mut T,
+        resolver: &mut R,
+        timestamp: i64,
+        clock: &mut C,
+        should_cancel: &mut K,
+    ) -> Result<SyncRunSummary, SyncRuntimeError> {
         let mut current_timestamp = timestamp;
-        let mut last_summary =
-            self.sync_once_with_resolver_and_clock(transport, resolver, current_timestamp, clock)?;
+        let mut last_summary = self.sync_once_with_resolver_clock_and_cancel(
+            transport,
+            resolver,
+            current_timestamp,
+            clock,
+            should_cancel,
+        )?;
+        if should_cancel() {
+            return Ok(last_summary);
+        }
         if let Some(stop_reason) = self.maybe_target_header_stop_reason(&last_summary) {
             self.record_until_idle_stop(&mut last_summary, stop_reason, current_timestamp)?;
             return Ok(last_summary);
@@ -315,12 +410,16 @@ impl DurableSyncRuntime {
         let mut rounds_completed = 1_usize;
         for _ in 1..self.config.max_rounds {
             current_timestamp = current_timestamp.saturating_add(retry_backoff_seconds);
-            let current_summary = self.sync_once_with_resolver_and_clock(
+            let current_summary = self.sync_once_with_resolver_clock_and_cancel(
                 transport,
                 resolver,
                 current_timestamp,
                 clock,
+                should_cancel,
             )?;
+            if should_cancel() {
+                return Ok(current_summary);
+            }
             rounds_completed = rounds_completed.saturating_add(1);
             let current_progress = progress::sync_progress_marker(&current_summary);
             let is_idle = current_progress == previous_progress;
@@ -349,202 +448,6 @@ impl DurableSyncRuntime {
         }
 
         Ok(last_summary)
-    }
-
-    fn sync_connected_peer<S: SyncPeerSession, C: FnMut() -> i64>(
-        &mut self,
-        mut session: S,
-        peer: &ResolvedSyncPeerAddress,
-        peer_id: PeerId,
-        attempts: u8,
-        timestamp: i64,
-        clock: &mut C,
-    ) -> Result<PeerProgress, Box<PeerFailure>> {
-        let mut progress = PeerProgress::new(peer.clone(), self.config.network, attempts);
-        let mut maybe_failure_reason_override = None;
-        let result = (|| -> Result<(), SyncRuntimeError> {
-            let mut outbound = self.network.connect_outbound_peer(peer_id, timestamp)?;
-            outbound.extend(block_reconcile::request_missing_blocks(self, peer_id)?);
-            self.send_all(&mut session, &outbound)?;
-
-            let mut messages_received = 0_usize;
-            while messages_received < self.config.max_messages_per_peer {
-                let receive_outcome = match session.receive(self.config.network.magic()) {
-                    Ok(receive_outcome) => receive_outcome,
-                    Err(error) => {
-                        let reason = progress::peer_failure_reason_for_error(&error);
-                        if reason == PeerFailureReason::MalformedBlock {
-                            progress.record_malformed_block();
-                            maybe_failure_reason_override = Some(reason);
-                        }
-                        return Err(error);
-                    }
-                };
-                let message = match receive_outcome {
-                    SyncPeerReceiveOutcome::Message(message) => {
-                        messages_received = messages_received.saturating_add(1);
-                        message
-                    }
-                    SyncPeerReceiveOutcome::Idle => {
-                        let now_unix_seconds = clock();
-                        let targeted = self
-                            .network
-                            .expire_compact_download_timeouts(now_unix_seconds)?;
-                        if targeted
-                            .iter()
-                            .any(|(target_peer_id, _message)| *target_peer_id != peer_id)
-                        {
-                            return Err(SyncRuntimeError::Network {
-                                message:
-                                    "compact timeout action target does not match connected session"
-                                        .to_string(),
-                            });
-                        }
-                        let outbound = targeted
-                            .into_iter()
-                            .map(|(_target_peer_id, message)| message)
-                            .collect::<Vec<_>>();
-                        self.send_all(&mut session, &outbound)?;
-                        continue;
-                    }
-                    SyncPeerReceiveOutcome::Closed => {
-                        progress.maybe_capabilities = self.peer_capabilities(peer_id);
-                        if !self.peer_handshake_complete(peer_id) {
-                            progress.state = PeerSyncState::Stalled;
-                            progress.maybe_failure_reason = Some(PeerFailureReason::Stall);
-                        }
-                        return Ok(());
-                    }
-                };
-                progress.record_activity(timestamp);
-                let maybe_header_count = match &message {
-                    WireNetworkMessage::Headers(headers) => Some(headers.headers.len()),
-                    _ => None,
-                };
-                let maybe_terminal_header_hash = match &message {
-                    WireNetworkMessage::Headers(headers) => headers.headers.last().map(block_hash),
-                    _ => None,
-                };
-                let maybe_block = match &message {
-                    WireNetworkMessage::Block(block) => Some(block.clone()),
-                    _ => None,
-                };
-                let maybe_block_hash = maybe_block.as_ref().map(|block| block_hash(&block.header));
-                let block_response_was_requested = maybe_block_hash
-                    .as_ref()
-                    .is_some_and(|hash| self.peer_requested_block(peer_id, *hash));
-                let block_response_is_best_chain = maybe_block_hash
-                    .as_ref()
-                    .is_some_and(|hash| self.block_has_best_chain_header(*hash));
-                let notfound_was_requested =
-                    self.message_reports_requested_block_notfound(peer_id, &message);
-                block_reconcile::release_inflight_for_message(self, &message);
-
-                if let Some(block) = maybe_block.as_ref()
-                    && !block_response_was_requested
-                {
-                    self.record_unrequested_block_response(
-                        &mut progress,
-                        block,
-                        block_response_is_best_chain,
-                    )?;
-                    let outbound = block_reconcile::request_missing_blocks(self, peer_id)?;
-                    self.send_all(&mut session, &outbound)?;
-                    continue;
-                }
-
-                let sync_result = match self.network.receive_sync_message(
-                    peer_id,
-                    message,
-                    timestamp,
-                    self.verify_flags,
-                    self.consensus_params,
-                ) {
-                    Ok(result) => result,
-                    Err(error) => {
-                        if maybe_block_hash.is_some() {
-                            progress.record_invalid_block();
-                            maybe_failure_reason_override = Some(PeerFailureReason::InvalidBlock);
-                        }
-                        return Err(error.into());
-                    }
-                };
-                let mut outbound = sync_result.outbound;
-                if let Some(header_count) = maybe_header_count {
-                    progress.record_validated_headers(header_count);
-                    tip::record_peer_terminal_tip(
-                        &mut progress,
-                        self.network.peer_manager().header_store(),
-                        maybe_terminal_header_hash,
-                    );
-                }
-                if notfound_was_requested {
-                    progress.record_block_notfound();
-                }
-                let mut should_persist_progress = maybe_header_count.is_some_and(|count| count > 0);
-                if let Some(disposition) = sync_result.maybe_block_disposition {
-                    should_persist_progress =
-                        matches!(disposition, BlockConnectDisposition::Connected(_));
-                    self.record_block_disposition(
-                        &mut progress,
-                        maybe_block.as_ref(),
-                        disposition,
-                        block_response_was_requested,
-                        block_response_is_best_chain,
-                    )?;
-                }
-                let reconcile_progress = block_reconcile::reconcile_best_chain(self, timestamp)?;
-                should_persist_progress |= reconcile_progress.should_persist_progress();
-                self.record_reconcile_progress(reconcile_progress);
-                if should_persist_progress {
-                    self.persist_progress()?;
-                }
-                outbound.extend(block_reconcile::request_missing_blocks(self, peer_id)?);
-                self.send_all(&mut session, &outbound)?;
-            }
-            progress.state = PeerSyncState::Connected;
-            progress.maybe_capabilities = self.peer_capabilities(peer_id);
-
-            Ok(())
-        })();
-        let outstanding_blocks = self
-            .network
-            .peer_requested_blocks(peer_id)
-            .unwrap_or_default();
-        for block_hash in outstanding_blocks {
-            self.inflight_blocks.remove(&block_hash);
-        }
-        let disconnect_result = self.network.disconnect_peer(peer_id);
-        match (result, disconnect_result) {
-            (Ok(()), Ok(())) => Ok(progress),
-            (Ok(()), Err(error)) => {
-                let error = SyncRuntimeError::from(error);
-                if progress.maybe_capabilities.is_none() {
-                    progress.maybe_capabilities = self.peer_capabilities(peer_id);
-                }
-                Err(Box::new(PeerFailure {
-                    peer: peer.clone(),
-                    reason: progress::peer_failure_reason_for_error(&error),
-                    error,
-                    attempts,
-                    maybe_progress: Some(progress),
-                }))
-            }
-            (Err(error), _) => {
-                if progress.maybe_capabilities.is_none() {
-                    progress.maybe_capabilities = self.peer_capabilities(peer_id);
-                }
-                Err(Box::new(PeerFailure {
-                    peer: peer.clone(),
-                    reason: maybe_failure_reason_override
-                        .clone()
-                        .unwrap_or_else(|| progress::peer_failure_reason_for_error(&error)),
-                    error,
-                    attempts,
-                    maybe_progress: Some(progress),
-                }))
-            }
-        }
     }
 
     fn record_outcome(

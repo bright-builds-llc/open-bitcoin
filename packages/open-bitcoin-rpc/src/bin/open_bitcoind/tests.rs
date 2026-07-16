@@ -12,14 +12,22 @@
 use std::{
     fs, io,
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+        mpsc,
+    },
+    thread,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-use open_bitcoin_network::{InboundListenerConfig, InboundPreflightReason};
+use open_bitcoin_network::{
+    InboundListenerConfig, InboundPreflightReason, VersionMessage, WireNetworkMessage,
+};
 use open_bitcoin_node::{
-    DurableSyncRuntime, FieldAvailability, FjallNodeStore, MetricKind, SyncLifecycleState,
-    SyncRunSummary, SyncRuntimeConfig, SyncRuntimeError, SyncStopReason,
+    DurableSyncRuntime, FieldAvailability, FjallNodeStore, MetricKind, ResolvedSyncPeerAddress,
+    SyncLifecycleState, SyncPeerAddress, SyncPeerReceiveOutcome, SyncPeerSession, SyncRunSummary,
+    SyncRuntimeConfig, SyncRuntimeError, SyncStopReason, SyncTransport,
 };
 use open_bitcoin_rpc::inbound_listener::InboundListenerState;
 use open_bitcoin_rpc::{
@@ -29,9 +37,10 @@ use open_bitcoin_rpc::{
 
 use super::{
     DaemonSyncLoopDecision, DaemonSyncLoopPolicy, DaemonSyncPreflight,
-    daemon_sync_preflight_message, inbound_listener_startup_message, preflight_daemon_sync,
-    run_daemon_sync_loop_cycle, start_inbound_listener_for_runtime,
-    start_inbound_listener_for_runtime_with_context, start_inbound_metrics_worker,
+    daemon_sync_preflight_message, daemon_sync_worker_with_transport,
+    inbound_listener_startup_message, preflight_daemon_sync, run_daemon_sync_loop_cycle,
+    start_inbound_listener_for_runtime, start_inbound_listener_for_runtime_with_context,
+    start_inbound_metrics_worker,
 };
 
 fn temp_store_path(label: &str) -> PathBuf {
@@ -68,6 +77,75 @@ fn test_sync_runtime(label: &str) -> DurableSyncRuntime {
         },
     )
     .expect("test sync runtime")
+}
+
+#[derive(Debug)]
+struct SilentPeerTransport {
+    receive_calls: Arc<AtomicUsize>,
+}
+
+#[derive(Debug)]
+struct SilentPeerSession {
+    receive_calls: Arc<AtomicUsize>,
+}
+
+impl SyncTransport for SilentPeerTransport {
+    type Session = SilentPeerSession;
+
+    fn connect(
+        &mut self,
+        _peer: &ResolvedSyncPeerAddress,
+        _config: &SyncRuntimeConfig,
+    ) -> Result<Self::Session, SyncRuntimeError> {
+        Ok(SilentPeerSession {
+            receive_calls: Arc::clone(&self.receive_calls),
+        })
+    }
+}
+
+impl SyncPeerSession for SilentPeerSession {
+    fn send(
+        &mut self,
+        _message: &WireNetworkMessage,
+        _magic: open_bitcoin_node::core::primitives::NetworkMagic,
+    ) -> Result<(), SyncRuntimeError> {
+        Ok(())
+    }
+
+    fn receive(
+        &mut self,
+        _magic: open_bitcoin_node::core::primitives::NetworkMagic,
+    ) -> Result<SyncPeerReceiveOutcome, SyncRuntimeError> {
+        let call = self.receive_calls.fetch_add(1, Ordering::SeqCst);
+        Ok(match call {
+            0 => SyncPeerReceiveOutcome::Message(WireNetworkMessage::Version(
+                VersionMessage::default(),
+            )),
+            1 => SyncPeerReceiveOutcome::Message(WireNetworkMessage::Verack),
+            _ => {
+                thread::sleep(Duration::from_millis(25));
+                SyncPeerReceiveOutcome::Idle
+            }
+        })
+    }
+}
+
+fn silent_peer_sync_runtime(label: &str) -> DurableSyncRuntime {
+    let data_dir = temp_store_path(label);
+    remove_dir_if_exists(&data_dir);
+    let store = FjallNodeStore::open(&data_dir).expect("test store");
+    DurableSyncRuntime::open(
+        store,
+        SyncRuntimeConfig {
+            manual_peers: vec![SyncPeerAddress::manual("127.0.0.1", 18_444)],
+            dns_seeds: Vec::new(),
+            target_outbound_peers: 1,
+            max_peer_retries: 0,
+            retry_backoff_ms: 25,
+            ..SyncRuntimeConfig::default()
+        },
+    )
+    .expect("silent-peer sync runtime")
 }
 
 #[test]
@@ -244,6 +322,40 @@ fn daemon_sync_loop_shutdown_cycle_persists_stopped_state() {
             .message
             .contains("daemon shutdown requested for unattended sync loop")
     }));
+}
+
+#[test]
+fn phase123_daemon_shutdown_cancels_live_silent_peer_session() {
+    // Arrange
+    let runtime = silent_peer_sync_runtime("daemon-live-silent-shutdown");
+    let receive_calls = Arc::new(AtomicUsize::new(0));
+    let transport = SilentPeerTransport {
+        receive_calls: Arc::clone(&receive_calls),
+    };
+    let (shutdown_sender, shutdown_receiver) = mpsc::channel();
+    let (done_sender, done_receiver) = mpsc::channel();
+    let worker = thread::spawn(move || {
+        daemon_sync_worker_with_transport(runtime, transport, shutdown_receiver);
+        done_sender.send(()).expect("report worker completion");
+    });
+    let wait_started = std::time::Instant::now();
+    while receive_calls.load(Ordering::SeqCst) < 3 {
+        assert!(
+            wait_started.elapsed() < Duration::from_secs(1),
+            "silent peer did not reach its first idle receive"
+        );
+        thread::yield_now();
+    }
+
+    // Act
+    shutdown_sender.send(()).expect("request worker shutdown");
+    done_receiver
+        .recv_timeout(Duration::from_secs(1))
+        .expect("silent peer worker should observe shutdown");
+    worker.join().expect("join silent peer worker");
+
+    // Assert
+    assert_eq!(receive_calls.load(Ordering::SeqCst), 3);
 }
 
 #[test]

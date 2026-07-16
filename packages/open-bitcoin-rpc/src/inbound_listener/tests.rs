@@ -8,7 +8,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use open_bitcoin_network::{
-    BanReason, BanScope, INBOUND_MESSAGE_HEADER_LEN, InboundAdmissionSlotClass,
+    BanReason, BanScope, BlockRelayActivationPolicy, BlockServingActivationConfig,
+    CompactRelayActivationConfig, INBOUND_MESSAGE_HEADER_LEN, InboundAdmissionSlotClass,
     InboundEnvelopePolicy, InboundHandshakeState, InboundListenerConfig, InboundPreflightReason,
     InboundResourceEvent, InventoryList, MAX_INV_SIZE, PHASE94_MAX_CONNECTIONS_PER_CHURN_WINDOW,
     PHASE94_MAX_INBOUND_RUNTIME_PAYLOAD_BYTES, PHASE94_MAX_PEER_READ_QUEUE_BYTES,
@@ -17,10 +18,14 @@ use open_bitcoin_network::{
     PeerConnectionClass, PeerPermissionClassRegistry, ReconnectSuppressionInput,
     ResourceGovernanceDecision, ResourceGovernancePolicy, VersionMessage, WireNetworkMessage,
 };
-use open_bitcoin_node::core::primitives::{
-    Block, BlockHash, InventoryType, InventoryVector, NetworkMagic,
-};
 use open_bitcoin_node::core::wallet::AddressNetwork;
+use open_bitcoin_node::core::{
+    consensus::{block_hash, block_merkle_root, check_block_header},
+    primitives::{
+        Amount, Block, BlockHash, BlockHeader, InventoryType, InventoryVector, NetworkMagic,
+        OutPoint, ScriptBuf, ScriptWitness, Transaction, TransactionInput, TransactionOutput,
+    },
+};
 use open_bitcoin_node::status::{FieldAvailability, InboundPeerServingStatus};
 use open_bitcoin_test_harness::PortReservation;
 use tokio::net::TcpStream;
@@ -31,6 +36,8 @@ use super::{
     InboundListenerEvidence, InboundListenerState, ReadWireMessageOutcome, WriteWireMessageOutcome,
     acknowledge_inbound_response_write, activate_inbound_listener, start_inbound_accept_loop,
 };
+
+const PHASE123_EASY_BITS: u32 = 0x207f_ffff;
 
 fn block_response() -> EncodedWireResponse {
     EncodedWireResponse {
@@ -44,6 +51,95 @@ fn non_block_response() -> EncodedWireResponse {
         message: WireNetworkMessage::Verack,
         bytes: Vec::new(),
     }
+}
+
+fn phase123_block_serving_context(enabled: bool) -> (ManagedRpcContext, Block) {
+    let permission_classes = loopback_permission_registry(&["in", "download"]);
+    let mut context = ManagedRpcContext::from_runtime_config(&RuntimeConfig {
+        chain: AddressNetwork::Regtest,
+        inbound: InboundListenerConfig {
+            enabled: true,
+            max_peers: 2,
+            reserved_slots: 1,
+            permission_classes,
+            ..InboundListenerConfig::default()
+        },
+        block_serving: BlockRelayActivationPolicy {
+            block_serving: BlockServingActivationConfig { enabled },
+            compact_relay: CompactRelayActivationConfig::default(),
+        },
+        ..RuntimeConfig::default()
+    });
+    let block = phase123_mined_block();
+    context.connect_local_block(&block).expect("connect block");
+    let admission = context.record_inbound_admission_for_remote_addr(
+        123,
+        "127.0.0.1:18444".parse().expect("loopback address"),
+        false,
+    );
+    assert!(matches!(
+        admission,
+        open_bitcoin_network::InboundAdmissionDecision::Admit(_)
+    ));
+    for message in [
+        WireNetworkMessage::Version(VersionMessage {
+            nonce: 123_456,
+            ..VersionMessage::default()
+        }),
+        WireNetworkMessage::Verack,
+    ] {
+        context
+            .receive_network_message(123, message, 1)
+            .expect("complete inbound handshake");
+    }
+    (context, block)
+}
+
+fn phase123_mined_block() -> Block {
+    let script_sig = ScriptBuf::from_bytes(vec![0x00, 0x51]).expect("coinbase script");
+    let script_pubkey = ScriptBuf::from_bytes(vec![0x51]).expect("output script");
+    let transaction = Transaction {
+        version: 1,
+        inputs: vec![TransactionInput {
+            previous_output: OutPoint::null(),
+            script_sig,
+            sequence: TransactionInput::SEQUENCE_FINAL,
+            witness: ScriptWitness::default(),
+        }],
+        outputs: vec![TransactionOutput {
+            value: Amount::from_sats(5_000_000_000).expect("coinbase amount"),
+            script_pubkey,
+        }],
+        lock_time: 0,
+    };
+    let (merkle_root, maybe_mutated) =
+        block_merkle_root(core::slice::from_ref(&transaction)).expect("coinbase merkle root");
+    assert!(!maybe_mutated);
+    let mut block = Block {
+        header: BlockHeader {
+            version: 1,
+            previous_block_hash: BlockHash::default(),
+            merkle_root,
+            time: 1_231_006_500,
+            bits: PHASE123_EASY_BITS,
+            nonce: 0,
+        },
+        transactions: vec![transaction],
+    };
+    block.header.nonce = (0..=u32::MAX)
+        .find(|nonce| {
+            block.header.nonce = *nonce;
+            check_block_header(&block.header).is_ok()
+        })
+        .expect("mined nonce");
+    block
+}
+
+fn phase123_block_request(block: &Block) -> WireNetworkMessage {
+    WireNetworkMessage::GetData(InventoryList::new(vec![InventoryVector {
+        inventory_type: InventoryType::Block,
+        object_hash: block_hash(&block.header).into(),
+    }]))
 }
 
 fn rejected_write_result() -> io::Result<WriteWireMessageOutcome> {
@@ -91,6 +187,48 @@ async fn phase123_inbound_written_block_increments_served_once() {
 
     // Assert
     assert_eq!(served_count, 1);
+}
+
+#[tokio::test]
+async fn phase123_enabled_runtime_config_serves_and_acknowledges_inbound_block() {
+    // Arrange
+    let (mut context, block) = phase123_block_serving_context(true);
+    let responses = context
+        .receive_inbound_wire_message(123, phase123_block_request(&block), 2)
+        .expect("serve enabled block request");
+    let response = responses
+        .into_iter()
+        .find(|response| matches!(response.message, WireNetworkMessage::Block(_)))
+        .expect("enabled runtime should produce a typed Block response");
+    let context = Arc::new(tokio::sync::Mutex::new(context));
+    let write_result = Ok(WriteWireMessageOutcome::Written);
+
+    // Act
+    acknowledge_inbound_response_write(&write_result, &response, &context).await;
+    let served_count = context.lock().await.block_served_write_count();
+
+    // Assert
+    assert_eq!(served_count, 1);
+}
+
+#[tokio::test]
+async fn phase123_disabled_runtime_config_does_not_serve_inbound_block() {
+    // Arrange
+    let (mut context, block) = phase123_block_serving_context(false);
+
+    // Act
+    let responses = context
+        .receive_inbound_wire_message(123, phase123_block_request(&block), 2)
+        .expect("handle disabled block request");
+    let served_count = context.block_served_write_count();
+
+    // Assert
+    assert!(
+        !responses
+            .iter()
+            .any(|response| matches!(response.message, WireNetworkMessage::Block(_)))
+    );
+    assert_eq!(served_count, 0);
 }
 
 #[tokio::test]

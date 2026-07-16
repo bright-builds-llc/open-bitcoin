@@ -81,6 +81,11 @@ struct TimingSession {
     sent: Rc<RefCell<Vec<WireNetworkMessage>>>,
 }
 
+#[derive(Debug)]
+struct PerpetualIdleSession {
+    receive_calls: Rc<RefCell<usize>>,
+}
+
 impl SyncTransport for TimingTransport {
     type Session = TimingSession;
 
@@ -114,6 +119,29 @@ impl SyncPeerSession for TimingSession {
             .outcomes
             .pop_front()
             .unwrap_or(SyncPeerReceiveOutcome::Closed))
+    }
+}
+
+impl SyncPeerSession for PerpetualIdleSession {
+    fn send(
+        &mut self,
+        _message: &WireNetworkMessage,
+        _magic: open_bitcoin_core::primitives::NetworkMagic,
+    ) -> Result<(), SyncRuntimeError> {
+        Ok(())
+    }
+
+    fn receive(
+        &mut self,
+        _magic: open_bitcoin_core::primitives::NetworkMagic,
+    ) -> Result<SyncPeerReceiveOutcome, SyncRuntimeError> {
+        let call = *self.receive_calls.borrow();
+        *self.receive_calls.borrow_mut() = call.saturating_add(1);
+        Ok(match call {
+            0 => SyncPeerReceiveOutcome::Message(version_message()),
+            1 => SyncPeerReceiveOutcome::Message(WireNetworkMessage::Verack),
+            _ => SyncPeerReceiveOutcome::Idle,
+        })
     }
 }
 
@@ -211,7 +239,6 @@ fn phase123_idle_after_fake_clock_emits_same_peer_full_block_fallback() {
     let path = temp_store_path("phase123-idle-after-timeout");
     remove_dir_if_exists(&path);
     let mut runtime = timing_runtime(&path, 8);
-    enable_compact_downloads(&mut runtime);
     let compact_block = compact_block_fixture(&mut runtime);
     let expected_hash = block_hash(&compact_block.header);
     let mut transport = TimingTransport::new(compact_download_script(&compact_block));
@@ -230,6 +257,59 @@ fn phase123_idle_after_fake_clock_emits_same_peer_full_block_fallback() {
             .sent_messages()
             .iter()
             .any(|message| { is_full_block_getdata_for_hash(message, expected_hash) })
+    );
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn phase123_message_after_idle_uses_session_clock_for_compact_timeout() {
+    // Arrange
+    let path = temp_store_path("phase123-message-after-idle-clock");
+    remove_dir_if_exists(&path);
+    let mut runtime = timing_runtime(&path, 8);
+    let compact_block = compact_block_fixture(&mut runtime);
+    let expected_hash = block_hash(&compact_block.header);
+    let mut transport = TimingTransport::new(vec![
+        SyncPeerReceiveOutcome::Message(version_message()),
+        SyncPeerReceiveOutcome::Message(WireNetworkMessage::Verack),
+        SyncPeerReceiveOutcome::Message(send_compact_message()),
+        SyncPeerReceiveOutcome::Idle,
+        SyncPeerReceiveOutcome::Message(WireNetworkMessage::CompactBlock(compact_payload(
+            &compact_block,
+        ))),
+        SyncPeerReceiveOutcome::Idle,
+        SyncPeerReceiveOutcome::Idle,
+        SyncPeerReceiveOutcome::Closed,
+    ]);
+    let sent = Rc::clone(&transport.sent);
+    let mut resolver = timing_resolver();
+    let compact_received_at = 7_000;
+    let mut clock_values = [
+        compact_received_at,
+        compact_received_at + COMPACT_BLOCK_DOWNLOAD_TIMEOUT_SECONDS - 1,
+        compact_received_at + COMPACT_BLOCK_DOWNLOAD_TIMEOUT_SECONDS + 1,
+    ]
+    .into_iter();
+    let mut clock = || {
+        let now = clock_values.next().expect("scripted clock value");
+        if now > compact_received_at + COMPACT_BLOCK_DOWNLOAD_TIMEOUT_SECONDS {
+            assert!(!sent.borrow().iter().any(is_full_block_getdata));
+        }
+        now
+    };
+
+    // Act
+    let summary = runtime
+        .sync_once_with_resolver_and_clock(&mut transport, &mut resolver, 6_000, &mut clock)
+        .expect("late compact sync summary");
+
+    // Assert
+    assert_eq!(summary.messages_processed, 4);
+    assert!(
+        transport
+            .sent_messages()
+            .iter()
+            .any(|message| is_full_block_getdata_for_hash(message, expected_hash))
     );
     remove_dir_if_exists(&path);
 }
@@ -261,6 +341,31 @@ fn phase123_idle_wake_does_not_consume_message_budget() {
 }
 
 #[test]
+fn phase123_perpetual_idle_session_returns_after_bounded_wakes() {
+    // Arrange
+    let path = temp_store_path("phase123-bounded-idle-session");
+    remove_dir_if_exists(&path);
+    let mut runtime = timing_runtime(&path, 8);
+    let receive_calls = Rc::new(RefCell::new(0_usize));
+    let session = PerpetualIdleSession {
+        receive_calls: Rc::clone(&receive_calls),
+    };
+    let peer = resolved_manual_peer("127.0.0.1", 18_444);
+    let mut clock = || 3_500;
+
+    // Act
+    let progress = runtime
+        .sync_connected_peer(session, &peer, 1, 1, 3_500, &mut clock)
+        .expect("bounded idle session");
+
+    // Assert
+    assert_eq!(*receive_calls.borrow(), 4);
+    assert_eq!(progress.state, PeerSyncState::Connected);
+    assert_eq!(progress.messages_processed, 2);
+    remove_dir_if_exists(&path);
+}
+
+#[test]
 fn phase123_closed_receive_ends_session() {
     // Arrange
     let path = temp_store_path("phase123-closed-session");
@@ -287,7 +392,6 @@ fn phase123_target_mismatch_is_not_written_to_current_session() {
     let path = temp_store_path("phase123-target-mismatch");
     remove_dir_if_exists(&path);
     let mut runtime = timing_runtime(&path, 8);
-    enable_compact_downloads(&mut runtime);
     let compact_block = compact_block_fixture(&mut runtime);
     let expected_hash = block_hash(&compact_block.header);
     start_other_peer_compact_download(&mut runtime, 99, &compact_block, 5_000);
@@ -320,13 +424,14 @@ fn phase123_target_mismatch_is_not_written_to_current_session() {
 
 fn timing_runtime(path: &std::path::Path, max_messages_per_peer: usize) -> DurableSyncRuntime {
     let store = FjallNodeStore::open(path).expect("store");
-    DurableSyncRuntime::open(
+    DurableSyncRuntime::open_with_block_relay_activation(
         store,
         SyncRuntimeConfig {
             max_messages_per_peer,
             max_peer_retries: 0,
             ..sync_config()
         },
+        enabled_block_relay_activation(),
     )
     .expect("runtime")
 }
@@ -339,14 +444,11 @@ fn version_message() -> WireNetworkMessage {
     WireNetworkMessage::Version(VersionMessage::default())
 }
 
-fn enable_compact_downloads(runtime: &mut DurableSyncRuntime) {
-    runtime
-        .network
-        .peer_manager_mut()
-        .set_block_relay_activation_policy(BlockRelayActivationPolicy {
-            block_serving: BlockServingActivationConfig { enabled: true },
-            compact_relay: CompactRelayActivationConfig { enabled: true },
-        });
+fn enabled_block_relay_activation() -> BlockRelayActivationPolicy {
+    BlockRelayActivationPolicy {
+        block_serving: BlockServingActivationConfig { enabled: true },
+        compact_relay: CompactRelayActivationConfig { enabled: true },
+    }
 }
 
 fn compact_block_fixture(runtime: &mut DurableSyncRuntime) -> Block {
