@@ -3,8 +3,12 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
+import {
+  PHASE124_SUMMARY_FILE,
+  verifyPhase124CloseoutLifecycle,
+} from "./check-phase124-milestone-closeout-lifecycle";
+
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
-const LIFECYCLE_ID = "124-2026-07-16T20-19-53";
 const PHASE123_TEST =
   "bun test scripts/check-phase123-runtime-timing-evidence-integrity.test.ts";
 const PHASE123_CHECK =
@@ -30,10 +34,6 @@ const REQUIRED_FILES = [
   "docs/parity/production-claim-boundary.md",
   "scripts/verify.sh",
 ] as const;
-const VERIFICATION_FILE =
-  ".planning/phases/124-milestone-closeout-reconciliation/124-VERIFICATION.md";
-const SUMMARY_FILE =
-  ".planning/phases/124-milestone-closeout-reconciliation/124-02-SUMMARY.md";
 const HARDENING_REQUIREMENTS = [
   "HARD-01",
   "HARD-02",
@@ -114,11 +114,11 @@ export function checkPhase124MilestoneCloseoutReconciliation(
   verifyRoadmapStage(finalStage, phaseComplete, roadmap, failures);
   if (finalStage) {
     verifyFinalAudit(texts.get(".planning/v2.1-MILESTONE-AUDIT.md") ?? "", failures);
-    verifyRequiredVerification(repoRoot, failures);
+    verifyPhase124CloseoutLifecycle(repoRoot, phaseComplete, failures);
     if (phaseComplete) {
       verifyFinalRoute(texts, failures);
     } else {
-      if (existsSync(path.join(repoRoot, SUMMARY_FILE))) {
+      if (existsSync(path.join(repoRoot, PHASE124_SUMMARY_FILE))) {
         failures.push("P124 promoted pre-summary stage requires the current plan summary to be absent");
       }
       verifyPromotedRoute(texts.get(".planning/v2.1-MILESTONE-AUDIT.md") ?? "", failures);
@@ -334,22 +334,6 @@ function verifyPromotedRoute(audit: string, failures: string[]): void {
   }
 }
 
-function verifyRequiredVerification(repoRoot: string, failures: string[]): void {
-  const absolutePath = path.join(repoRoot, VERIFICATION_FILE);
-  if (!existsSync(absolutePath)) {
-    failures.push(`P124 final verification provenance missing ${VERIFICATION_FILE}`);
-    return;
-  }
-  const verification = readFileSync(absolutePath, "utf8");
-  for (const needle of [
-    "status: passed",
-    "lifecycle_validated: true",
-    `phase_lifecycle_id: ${LIFECYCLE_ID}`,
-  ]) {
-    requireContains(verification, needle, "P124 final verification provenance", failures);
-  }
-}
-
 function verifyNoClaimBoundary(texts: TextCorpus, failures: string[]): void {
   for (const file of [
     ".planning/PROJECT.md",
@@ -361,23 +345,53 @@ function verifyNoClaimBoundary(texts: TextCorpus, failures: string[]): void {
   ] as const) {
     const text = (texts.get(file) ?? "").toLowerCase();
     for (const line of text.split("\n")) {
-      if (
-        line.trim().startsWith("|") &&
-        (line.includes("| `deferred` |") || line.includes("not allowed yet"))
-      ) {
-        continue;
-      }
-      for (const sentence of line.split(/(?<=[.!?])\s+/)) {
-        if (!POSITIVE_CLAIM.test(sentence)) continue;
-        if (NO_CLAIM_MARKERS.some((marker) => sentence.includes(marker))) continue;
-        for (const topic of CLAIM_TOPICS) {
-          if (sentence.includes(topic)) {
-            failures.push(`P124 no-claim boundary ${file} has positive claim: ${topic}`);
+      const tableNoClaim = tableRowHasNoClaimStatus(line);
+      const rowTopics = CLAIM_TOPICS.filter((topic) => line.includes(topic));
+      for (const clause of claimClauses(line)) {
+        for (const segment of dangerousClaimSegments(clause)) {
+          if (!POSITIVE_CLAIM.test(segment)) continue;
+          if (NO_CLAIM_MARKERS.some((marker) => segment.includes(marker))) continue;
+          if (tableNoClaim && rowTopics.length === 1) continue;
+          for (const topic of CLAIM_TOPICS) {
+            if (segment.includes(topic)) {
+              failures.push(`P124 no-claim boundary ${file} has positive claim: ${topic}`);
+            }
           }
         }
       }
     }
   }
+}
+
+function tableRowHasNoClaimStatus(line: string): boolean {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith("|") || !trimmed.endsWith("|")) return false;
+  return trimmed
+    .slice(1, -1)
+    .split("|")
+    .map((value) => value.trim().replaceAll("`", ""))
+    .some((value) => ["deferred", "unsupported", "not allowed", "not allowed yet"].includes(value));
+}
+
+function claimClauses(line: string): string[] {
+  const trimmed = line.trim();
+  if (trimmed.startsWith("|") && trimmed.endsWith("|")) {
+    return trimmed
+      .slice(1, -1)
+      .split("|")
+      .map((value) => value.trim())
+      .filter((value) => value !== "");
+  }
+  return trimmed.split(/(?<=[.!?])\s+/).filter((value) => value !== "");
+}
+
+function dangerousClaimSegments(clause: string): string[] {
+  return clause
+    .split(
+      /\s*;\s*|,?\s+while\s+|,?\s+but\s+|\s+whereas\s+|\s+and\s+(?=(?:open bitcoin\s+)?(?:package relay|filter serving|public|archive|production))/,
+    )
+    .map((value) => value.trim())
+    .filter((value) => value !== "");
 }
 
 function verifyVerifierOrder(verifyScript: string, failures: string[]): void {
@@ -410,6 +424,22 @@ function verifyVerifierOrder(verifyScript: string, failures: string[]): void {
     "P124 verifier live command count",
     failures,
   );
+  requireFinalPhaseChecker(visible, "P124 visible verifier final gate", failures);
+  requireFinalPhaseChecker(
+    executableCommands.join("\n"),
+    "P124 executable verifier final gate",
+    failures,
+  );
+}
+
+function requireFinalPhaseChecker(text: string, label: string, failures: string[]): void {
+  const phaseCommands = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => /\bbun (?:test|run) scripts\/check-phase\d+/.test(line));
+  if (!phaseCommands.at(-1)?.includes(PHASE117_CHECK)) {
+    failures.push(`${label} must end with ${PHASE117_CHECK}`);
+  }
 }
 
 function visibleCommandOrder(text: string): string {
@@ -422,11 +452,21 @@ function visibleCommandOrder(text: string): string {
 }
 
 function executableRunStepCommands(text: string): string[] {
-  return text
-    .split("\n")
-    .map((line) => line.match(/^run_step\s+"[^"]+"\s+(.+)$/))
-    .filter((maybeMatch): maybeMatch is RegExpMatchArray => maybeMatch !== null)
-    .map((match) => match[1] ?? "");
+  const commands: string[] = [];
+  let current = "";
+  for (const rawLine of text.split("\n")) {
+    const line = rawLine.trim();
+    if (current === "" && !line.startsWith("run_step")) continue;
+    current = `${current} ${line}`.trim();
+    if (current.endsWith("\\")) {
+      current = current.slice(0, -1).trim();
+      continue;
+    }
+    commands.push(current.replace(/\s+/g, " "));
+    current = "";
+  }
+  if (current !== "") commands.push(current.replace(/\s+/g, " "));
+  return commands;
 }
 
 function requireContains(

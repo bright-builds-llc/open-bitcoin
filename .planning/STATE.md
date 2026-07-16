@@ -3,14 +3,14 @@ gsd_state_version: "1.0"
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
 status: executing
-stopped_at: Phase 124 promoted; post-summary completion pending
-last_updated: "2026-07-16T21:48:49.300Z"
+stopped_at: Phase 124 verified; run /gsd-complete-milestone v2.1
+last_updated: "2026-07-16T21:56:48.280Z"
 last_activity: "2026-07-16"
 progress:
   total_phases: 15
-  completed_phases: 14
+  completed_phases: 15
   total_plans: 50
-  completed_plans: 51
+  completed_plans: 52
   percent: 100
 ---
 
@@ -26,8 +26,8 @@ See: `.planning/PROJECT.md` (updated 2026-07-10 after Phase 117 completed v2.1 i
 ## Current Position
 
 Milestone: v2.1 Block Serving and Compact Block Relay Boundary
-Phase: 124 (Milestone Closeout Reconciliation) — EXECUTING
-Plan: 2 of 2
+Phase: 124
+Plan: Not started
 Status: Ready to execute
 Last activity: 2026-07-16
 
@@ -108,6 +108,6 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Session Continuity
 
-Last session: 2026-07-16T21:48:49.297Z
-Stopped at: Phase 124 promoted; post-summary completion pending
-Resume file: .planning/phases/124-milestone-closeout-reconciliation/124-02-PLAN.md
+Last session: 2026-07-16T21:56:48.278Z
+Stopped at: Phase 124 verified; run /gsd-complete-milestone v2.1
+Resume file: .planning/phases/124-milestone-closeout-reconciliation/124-VERIFICATION.md

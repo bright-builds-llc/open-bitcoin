@@ -53,7 +53,7 @@ v2.1 Block Serving and Compact Block Relay Boundary is the active milestone afte
 - [x] **Phase 121: Block Relay Metrics and Log Runtime Projection** - Project block-relay metric samples and structured log records through the sync runtime persist/logging path. (completed 2026-07-14)
 - [x] **Phase 122: Compact Relay Peer Completion** - Serve eligible inbound `getblocktxn` requests after local compact announcements and align the protocol-path test vocabulary. (completed 2026-07-15)
 - [x] **Phase 123: Runtime Timing and Evidence Integrity** - Make timeout scheduling independent of receives and derive relay evidence from actual runtime emissions and the authoritative network instance. (completed 2026-07-16)
-- [ ] **Phase 124: Milestone Closeout Reconciliation** - Reconcile milestone metadata, re-audit the completed hardening work, and establish archive readiness.
+- [x] **Phase 124: Milestone Closeout Reconciliation** - Reconcile milestone metadata, re-audit the completed hardening work, and establish archive readiness. (completed 2026-07-16)
 
 ### Phase Details
 
@@ -365,12 +365,12 @@ Plans:
 3. The default deterministic verifier and changed-path milestone checks pass without weakening no-claim guardrails.
 4. The active milestone points directly to archival through `/gsd-complete-milestone v2.1`.
 
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 
 - [x] 124-01-PLAN.md — Evidence reconciliation and deterministic closeout guard
-- [ ] 124-02-PLAN.md — Canonical audit refresh and archive-ready handoff
+- [x] 124-02-PLAN.md — Canonical audit refresh and archive-ready handoff
 
 ## Progress
 
@@ -392,7 +392,7 @@ Plans:
 | 121. Block Relay Metrics and Log Runtime Projection | v2.1 | 2/2 | Complete   | 2026-07-14 |
 | 122. Compact Relay Peer Completion | v2.1 | 1/1 | Complete   | 2026-07-16 |
 | 123. Runtime Timing and Evidence Integrity | v2.1 | 7/7 | Complete   | 2026-07-16 |
-| 124. Milestone Closeout Reconciliation | v2.1 | 1/2 | In Progress|  |
+| 124. Milestone Closeout Reconciliation | v2.1 | 2/2 | Complete   | 2026-07-16 |
 
 ## Traceability
 
@@ -406,10 +406,10 @@ Plans:
 
 - v2.1 requirements: 39 total
 - Mapped to phases: 39
-- Satisfied: 38
-- Pending hardening and closeout: 1
+- Satisfied: 39
+- Pending hardening and closeout: 0
 - Unmapped: 0
 
 ## Next Step
 
-Execute Phase 124 to reconcile the final audit and close `HARD-05`; do not archive v2.1 before Phase 124 verification passes.
+Run `/gsd-complete-milestone v2.1` to archive the verified milestone.

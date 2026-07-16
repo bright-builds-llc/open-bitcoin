@@ -1,67 +1,30 @@
 import { afterEach, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { spawnSync } from "node:child_process";
+import { rmSync } from "node:fs";
 import path from "node:path";
 
 import { checkPhase124MilestoneCloseoutReconciliation } from "./check-phase124-milestone-closeout-reconciliation";
-
-const PHASE123_TEST =
-  "bun test scripts/check-phase123-runtime-timing-evidence-integrity.test.ts";
-const PHASE123_CHECK =
-  "bun run scripts/check-phase123-runtime-timing-evidence-integrity.ts";
-const PHASE124_TEST =
-  "bun test scripts/check-phase124-milestone-closeout-reconciliation.test.ts";
-const PHASE124_CHECK =
-  "bun run scripts/check-phase124-milestone-closeout-reconciliation.ts";
-const PHASE117_TEST =
-  "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts";
-const PHASE117_CHECK =
-  "bun run scripts/check-phase117-parity-uat-release-boundary.ts";
-const LIFECYCLE_ID = "124-2026-07-16T20-19-53";
-const ARCHIVE_ROUTE = "/gsd-complete-milestone v2.1";
-const VERIFICATION_FILE =
-  ".planning/phases/124-milestone-closeout-reconciliation/124-VERIFICATION.md";
-const SUMMARY_FILE =
-  ".planning/phases/124-milestone-closeout-reconciliation/124-02-SUMMARY.md";
-const REQUIRED_FILES = [
-  ".planning/REQUIREMENTS.md",
-  ".planning/ROADMAP.md",
-  ".planning/STATE.md",
-  ".planning/v2.1-MILESTONE-AUDIT.md",
-  ".planning/PROJECT.md",
-  "README.md",
-  "docs/parity/release-readiness.md",
-  "docs/parity/production-claim-boundary.md",
-  "scripts/verify.sh",
-] as const;
-const REQUIREMENT_IDS = [
-  ...range("BSRV", 6),
-  ...range("CMP", 6),
-  ...range("RCN", 7),
-  ...range("GOV", 5),
-  ...range("OBS", 5),
-  ...range("BOUND", 5),
-  ...range("HARD", 5),
-] as const;
-const RESOLVED_DEBT_IDS = [
-  "DEBT-01-INBOUND-GETBLOCKTXN",
-  "DEBT-02-PHASE112-TEST-VOCABULARY",
-  "DEBT-03-SUCCESSFUL-BLOCK-WRITE-EVIDENCE",
-  "DEBT-04-RECEIVE-INDEPENDENT-TIMEOUT",
-  "DEBT-05-AUTHORITATIVE-RUNTIME-PROJECTION",
-  "DEBT-06-MILESTONE-METADATA-RECONCILIATION",
-] as const;
-
-type RequiredFile = (typeof REQUIRED_FILES)[number];
-type FixtureFile = RequiredFile | typeof SUMMARY_FILE | typeof VERIFICATION_FILE;
-type FixtureOptions = {
-  finalStage?: boolean;
-  includeVerification?: boolean;
-  maybeMutate?: (files: Map<FixtureFile, string>) => void;
-  promotedStage?: boolean;
-};
+import {
+  append,
+  ARCHIVE_ROUTE,
+  CONTEXT_FILE,
+  createFixture as createPhase124Fixture,
+  LIFECYCLE_ID,
+  PHASE117_CHECK,
+  PHASE117_TEST,
+  PHASE124_CHECK,
+  PHASE124_TEST,
+  replace,
+  RESOLVED_DEBT_IDS,
+  SUMMARY_FILE,
+  VERIFICATION_FILE,
+} from "./check-phase124-milestone-closeout-reconciliation.fixtures";
 
 const tempRoots: string[] = [];
+
+const createFixture = (
+  options?: Parameters<typeof createPhase124Fixture>[1],
+): string => createPhase124Fixture(tempRoots, options);
 
 afterEach(() => {
   for (const root of tempRoots.splice(0)) {
@@ -374,6 +337,125 @@ test("fails_each_optional_verification_provenance_mutation", () => {
   for (const message of messages) expect(message).toContain("verification provenance");
 });
 
+test("fails_archive_ready_stage_when_verification_is_stale", () => {
+  // Arrange
+  const root = createFixture({
+    finalStage: true,
+    includeVerification: true,
+    maybeMutate(files) {
+      replace(
+        files,
+        VERIFICATION_FILE,
+        'generated_at: "2026-07-16T22:21:10Z"',
+        'generated_at: "2026-07-16T20:00:00Z"',
+      );
+    },
+  });
+
+  // Act
+  const failures = checkPhase124MilestoneCloseoutReconciliation({ rootDir: root }).join("\n");
+
+  // Assert
+  expect(failures).toContain("lifecycle verification is stale relative to");
+});
+
+test("fails_archive_ready_stage_with_wrong_input_lifecycle_identity", () => {
+  // Arrange
+  const root = createFixture({
+    finalStage: true,
+    includeVerification: true,
+    maybeMutate(files) {
+      replace(files, CONTEXT_FILE, "lifecycle_mode: yolo", "lifecycle_mode: manual");
+      replace(files, CONTEXT_FILE, `phase_lifecycle_id: ${LIFECYCLE_ID}`, "phase_lifecycle_id: stale");
+    },
+  });
+
+  // Act
+  const failures = checkPhase124MilestoneCloseoutReconciliation({ rootDir: root }).join("\n");
+
+  // Assert
+  expect(failures).toContain(`${CONTEXT_FILE} requires exactly one lifecycle_mode: yolo`);
+  expect(failures).toContain(`${CONTEXT_FILE} requires exactly one phase_lifecycle_id`);
+});
+
+test("real_archive_ready_path_does_not_depend_on_home_local_tools", () => {
+  // Arrange
+  const repoRoot = path.resolve(import.meta.dir, "..");
+
+  // Act
+  const result = spawnSync(
+    "bun",
+    ["run", "scripts/check-phase124-milestone-closeout-reconciliation.ts"],
+    {
+      cwd: repoRoot,
+      encoding: "utf8",
+      env: { ...process.env, HOME: "/tmp/open-bitcoin-phase124-empty-home" },
+    },
+  );
+
+  // Assert
+  expect(result.status).toBe(0);
+  expect(`${result.stdout}${result.stderr}`).not.toContain(".codex/get-shit-done");
+});
+
+test("fails_archive_ready_stage_without_final_summary", () => {
+  // Arrange
+  const root = createFixture({
+    finalStage: true,
+    includeVerification: true,
+    maybeMutate(files) {
+      files.delete(SUMMARY_FILE);
+    },
+  });
+
+  // Act
+  const failures = checkPhase124MilestoneCloseoutReconciliation({ rootDir: root }).join("\n");
+
+  // Assert
+  expect(failures).toContain(`archive-ready lifecycle missing ${SUMMARY_FILE}`);
+});
+
+test("fails_duplicate_or_body_only_verification_frontmatter_values", () => {
+  // Arrange
+  const duplicateRoot = createFixture({
+    finalStage: true,
+    includeVerification: true,
+    maybeMutate(files) {
+      replace(files, VERIFICATION_FILE, "status: passed", "status: passed\nstatus: gaps_found");
+    },
+  });
+  const bodyOnlyRoot = createFixture({
+    finalStage: true,
+    includeVerification: true,
+    maybeMutate(files) {
+      files.set(
+        VERIFICATION_FILE,
+        [
+          "---",
+          "phase: 124-milestone-closeout-reconciliation",
+          "---",
+          "status: passed",
+          "lifecycle_validated: true",
+          `phase_lifecycle_id: ${LIFECYCLE_ID}`,
+        ].join("\n"),
+      );
+    },
+  });
+
+  // Act
+  const duplicateFailures = checkPhase124MilestoneCloseoutReconciliation({
+    rootDir: duplicateRoot,
+  }).join("\n");
+  const bodyOnlyFailures = checkPhase124MilestoneCloseoutReconciliation({
+    rootDir: bodyOnlyRoot,
+  }).join("\n");
+
+  // Assert
+  expect(duplicateFailures).toContain("exactly one status: passed");
+  expect(bodyOnlyFailures).toContain("exactly one status: passed");
+  expect(bodyOnlyFailures).toContain("exactly one lifecycle_validated: true");
+});
+
 test("fails_each_positive_no_claim_boundary_mutation", () => {
   // Arrange
   const topics = [
@@ -390,6 +472,32 @@ test("fails_each_positive_no_claim_boundary_mutation", () => {
     createFixture({
       maybeMutate(files) {
         append(files, "README.md", `Open Bitcoin supports ${topic}.`);
+      },
+    }),
+  );
+
+  // Act
+  const messages = roots.map((root) =>
+    checkPhase124MilestoneCloseoutReconciliation({ rootDir: root }).join("\n"),
+  );
+
+  // Assert
+  for (const message of messages) expect(message).toContain("no-claim boundary");
+});
+
+test("fails_mixed_deferred_and_positive_claims_across_planning_only_surfaces", () => {
+  // Arrange
+  const mutations = [
+    [".planning/PROJECT.md", "Package relay remains deferred, but Open Bitcoin supports production full-node readiness."],
+    [".planning/ROADMAP.md", "Package relay remains deferred, while Open Bitcoin supports production-funds wallet."],
+    [".planning/v2.1-MILESTONE-AUDIT.md", "Package relay remains deferred whereas Open Bitcoin provides archive-node."],
+    [".planning/PROJECT.md", "Package relay remains deferred; Open Bitcoin enables filter serving."],
+    [".planning/ROADMAP.md", "| Package relay remains deferred | Open Bitcoin ships public-network CI |"],
+  ] as const;
+  const roots = mutations.map(([file, claim]) =>
+    createFixture({
+      maybeMutate(files) {
+        append(files, file, claim);
       },
     }),
   );
@@ -439,7 +547,7 @@ test("fails_visible_and_executable_verifier_order_mutations", () => {
   expect(executableFailures).toContain("executable verifier order");
 });
 
-test("fails_missing_checker_command_or_phase117_final_gate", () => {
+test("fails_missing_checker_command_or_phase_checker_after_phase117", () => {
   // Arrange
   const missingRoot = createFixture({
     maybeMutate(files) {
@@ -452,7 +560,37 @@ test("fails_missing_checker_command_or_phase117_final_gate", () => {
         files,
         "scripts/verify.sh",
         `${PHASE117_CHECK}\nVERIFY_COMMAND_ORDER`,
-        `${PHASE117_CHECK}\n${PHASE124_CHECK}\nVERIFY_COMMAND_ORDER`,
+        `${PHASE117_CHECK}\nbun test scripts/check-phase125-synthetic.test.ts\nbun run scripts/check-phase125-synthetic.ts\nVERIFY_COMMAND_ORDER`,
+      );
+      append(
+        files,
+        "scripts/verify.sh",
+        'run_step "test Phase 125" bun test scripts/check-phase125-synthetic.test.ts',
+      );
+      append(
+        files,
+        "scripts/verify.sh",
+        'run_step "check Phase 125" bun run scripts/check-phase125-synthetic.ts',
+      );
+    },
+  });
+  const multilineGateRoot = createFixture({
+    maybeMutate(files) {
+      append(
+        files,
+        "scripts/verify.sh",
+        [
+          "run_step \\",
+          '  "test Phase 125" \\',
+          "  bun \\",
+          "  test \\",
+          "  scripts/check-phase125-synthetic.test.ts",
+          "run_step \\",
+          '  "check Phase 125" \\',
+          "  bun \\",
+          "  run \\",
+          "  scripts/check-phase125-synthetic.ts",
+        ].join("\n"),
       );
     },
   });
@@ -464,179 +602,13 @@ test("fails_missing_checker_command_or_phase117_final_gate", () => {
   const finalGateFailures = checkPhase124MilestoneCloseoutReconciliation({
     rootDir: finalGateRoot,
   }).join("\n");
+  const multilineGateFailures = checkPhase124MilestoneCloseoutReconciliation({
+    rootDir: multilineGateRoot,
+  }).join("\n");
 
   // Assert
   expect(missingFailures).toContain("verifier mutation command count");
-  expect(finalGateFailures).toContain("verifier live command count");
+  expect(finalGateFailures).toContain("visible verifier final gate");
+  expect(finalGateFailures).toContain("executable verifier final gate");
+  expect(multilineGateFailures).toContain("executable verifier final gate");
 });
-
-function createFixture(options: FixtureOptions = {}): string {
-  const phaseComplete = options.finalStage ?? false;
-  const finalStage = phaseComplete || (options.promotedStage ?? false);
-  const root = mkdtempSync(path.join(tmpdir(), "open-bitcoin-phase124-"));
-  tempRoots.push(root);
-  const noClaim =
-    "Package relay, filter serving, public-network CI, archive-node behavior, production full-node readiness, and production-funds wallet use remain deferred.";
-  const files = new Map<FixtureFile, string>([
-    [".planning/REQUIREMENTS.md", createRequirements(finalStage)],
-    [".planning/ROADMAP.md", createRoadmap(phaseComplete)],
-    [".planning/STATE.md", createState(phaseComplete)],
-    [".planning/v2.1-MILESTONE-AUDIT.md", createAudit(finalStage)],
-    [".planning/PROJECT.md", noClaim],
-    ["README.md", noClaim],
-    ["docs/parity/release-readiness.md", noClaim],
-    ["docs/parity/production-claim-boundary.md", noClaim],
-    ["scripts/verify.sh", createVerifyScript()],
-  ]);
-  if (options.includeVerification) {
-    files.set(
-      VERIFICATION_FILE,
-      [
-        "---",
-        "phase: 124-milestone-closeout-reconciliation",
-        "status: passed",
-        "lifecycle_validated: true",
-        `phase_lifecycle_id: ${LIFECYCLE_ID}`,
-        "---",
-      ].join("\n"),
-    );
-  }
-  options.maybeMutate?.(files);
-  for (const [file, text] of files) {
-    const absolutePath = path.join(root, file);
-    mkdirSync(path.dirname(absolutePath), { recursive: true });
-    writeFileSync(absolutePath, `${text}\n`);
-  }
-  return root;
-}
-
-function createRequirements(finalStage: boolean): string {
-  const completeCount = finalStage ? 39 : 38;
-  const pendingCount = finalStage ? 0 : 1;
-  const checklist = REQUIREMENT_IDS.map((id) => {
-    const checked = id !== "HARD-05" || finalStage;
-    return `- [${checked ? "x" : " "}] **${id}**: fixture requirement`;
-  });
-  const traceability = REQUIREMENT_IDS.map((id) => {
-    const status = id === "HARD-05" && !finalStage ? "Pending" : "Complete";
-    return `| ${id} | Phase ${phaseFor(id)} | ${status} |`;
-  });
-  return [
-    ...checklist,
-    ...traceability,
-    "- v2.1 requirements: 39 total",
-    "- Mapped to phases: 39",
-    `- Complete: ${completeCount}`,
-    `- Pending hardening and closeout: ${pendingCount}`,
-    "- Unmapped: 0",
-  ].join("\n");
-}
-
-function createRoadmap(phaseComplete: boolean): string {
-  const completeCount = phaseComplete ? 39 : 38;
-  const pendingCount = phaseComplete ? 0 : 1;
-  const phase124State = phaseComplete ? "x" : " ";
-  const phase124Plans = phaseComplete ? "2/2 plans complete" : "1/2 plans executed";
-  const maybeRoute = phaseComplete ? `\n## Next Step\n${ARCHIVE_ROUTE}` : "";
-  return [
-    `- [${phase124State}] **Phase 124: Milestone Closeout Reconciliation**`,
-    "#### Phase 122: Compact Relay Peer Completion",
-    "**Plans:** 1/1 plans complete",
-    "#### Phase 123: Runtime Timing and Evidence Integrity",
-    "**Plans:** 7/7 plans complete",
-    "#### Phase 124: Milestone Closeout Reconciliation",
-    `**Plans:** ${phase124Plans}`,
-    "- v2.1 requirements: 39 total",
-    "- Mapped to phases: 39",
-    `- Satisfied: ${completeCount}`,
-    `- Pending hardening and closeout: ${pendingCount}`,
-    "- Unmapped: 0",
-    maybeRoute,
-  ].join("\n");
-}
-
-function createState(finalStage: boolean): string {
-  if (finalStage) return `Phase 124 verified. Next action: ${ARCHIVE_ROUTE}`;
-  return "Phase 124 evidence reconciled; HARD-05 pending";
-}
-
-function createAudit(finalStage: boolean): string {
-  if (!finalStage) {
-    return [
-      "---",
-      "status: tech_debt",
-      "scores:",
-      '  requirements: "34/34"',
-      '  phases: "12/12"',
-      "---",
-      "Phase 124 closeout verification pending; do not archive.",
-    ].join("\n");
-  }
-  return [
-    "---",
-    "status: passed",
-    "scores:",
-    '  requirements: "39/39"',
-    '  phases: "15/15"',
-    "gaps:",
-    "  requirements: []",
-    "  integration: []",
-    "  flows: []",
-    "tech_debt: []",
-    "---",
-    "## Resolved Hardening Debt",
-    ...RESOLVED_DEBT_IDS.map((id) => `- ${id}: resolved with current evidence.`),
-    `## Next Step\n${ARCHIVE_ROUTE}`,
-  ].join("\n");
-}
-
-function createVerifyScript(): string {
-  const commands = [
-    PHASE123_TEST,
-    PHASE123_CHECK,
-    PHASE124_TEST,
-    PHASE124_CHECK,
-    PHASE117_TEST,
-    PHASE117_CHECK,
-  ];
-  return [
-    ": <<'VERIFY_COMMAND_ORDER'",
-    ...commands,
-    "VERIFY_COMMAND_ORDER",
-    `run_step "test Phase 123" ${PHASE123_TEST}`,
-    `run_step "check Phase 123" ${PHASE123_CHECK}`,
-    `run_step "test Phase 124" ${PHASE124_TEST}`,
-    `run_step "check Phase 124" ${PHASE124_CHECK}`,
-    `run_step "test Phase 117" ${PHASE117_TEST}`,
-    `run_step "check Phase 117" ${PHASE117_CHECK}`,
-  ].join("\n");
-}
-
-function phaseFor(id: string): number {
-  if (id === "HARD-05") return 124;
-  if (id === "HARD-01") return 122;
-  if (id.startsWith("HARD-")) return 123;
-  if (id.startsWith("BOUND-")) return 117;
-  if (id.startsWith("OBS-")) return id === "OBS-03" ? 121 : 116;
-  if (id.startsWith("GOV-")) return 111;
-  if (id.startsWith("RCN-")) return 115;
-  if (id.startsWith("CMP-")) return 113;
-  return 110;
-}
-
-function range(prefix: string, count: number): string[] {
-  return Array.from({ length: count }, (_, index) => `${prefix}-${String(index + 1).padStart(2, "0")}`);
-}
-
-function replace(
-  files: Map<FixtureFile, string>,
-  file: FixtureFile,
-  needle: string,
-  replacement: string,
-): void {
-  files.set(file, (files.get(file) ?? "").replace(needle, replacement));
-}
-
-function append(files: Map<FixtureFile, string>, file: FixtureFile, value: string): void {
-  files.set(file, `${files.get(file) ?? ""}\n${value}`);
-}
