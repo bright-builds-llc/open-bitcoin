@@ -10,13 +10,12 @@ use std::time::Duration;
 use open_bitcoin_network::{
     BanReason, BanScope, INBOUND_MESSAGE_HEADER_LEN, InboundAdmissionSlotClass,
     InboundEnvelopePolicy, InboundHandshakeState, InboundListenerConfig, InboundPreflightReason,
-    InboundResourceEvent, InventoryList, MAX_INV_SIZE,
-    PHASE94_MAX_CONNECTIONS_PER_CHURN_WINDOW, PHASE94_MAX_INBOUND_RUNTIME_PAYLOAD_BYTES,
-    PHASE94_MAX_PEER_READ_QUEUE_BYTES, PHASE94_MAX_PEER_WRITE_QUEUE_BYTES,
-    PHASE94_MAX_REPEATED_FAILURES_PER_WINDOW, PHASE94_SLOW_HANDSHAKE_TIMEOUT_SECONDS,
-    ParsedPeerPermissionClass, PeerBanEntry, PeerConnectionClass, PeerPermissionClassRegistry,
-    ReconnectSuppressionInput, ResourceGovernanceDecision, ResourceGovernancePolicy,
-    VersionMessage, WireNetworkMessage,
+    InboundResourceEvent, InventoryList, MAX_INV_SIZE, PHASE94_MAX_CONNECTIONS_PER_CHURN_WINDOW,
+    PHASE94_MAX_INBOUND_RUNTIME_PAYLOAD_BYTES, PHASE94_MAX_PEER_READ_QUEUE_BYTES,
+    PHASE94_MAX_PEER_WRITE_QUEUE_BYTES, PHASE94_MAX_REPEATED_FAILURES_PER_WINDOW,
+    PHASE94_SLOW_HANDSHAKE_TIMEOUT_SECONDS, ParsedPeerPermissionClass, PeerBanEntry,
+    PeerConnectionClass, PeerPermissionClassRegistry, ReconnectSuppressionInput,
+    ResourceGovernanceDecision, ResourceGovernancePolicy, VersionMessage, WireNetworkMessage,
 };
 use open_bitcoin_node::core::primitives::{
     Block, BlockHash, InventoryType, InventoryVector, NetworkMagic,
@@ -26,12 +25,11 @@ use open_bitcoin_node::status::{FieldAvailability, InboundPeerServingStatus};
 use open_bitcoin_test_harness::PortReservation;
 use tokio::net::TcpStream;
 
-use crate::{EncodedWireResponse, ManagedRpcContext, RuntimeConfig};
+use crate::{ManagedRpcContext, RuntimeConfig, context::EncodedWireResponse};
 
 use super::{
-    InboundListenerEvidence, InboundListenerState, ReadWireMessageOutcome,
-    WriteWireMessageOutcome, acknowledge_inbound_response_write, activate_inbound_listener,
-    start_inbound_accept_loop,
+    InboundListenerEvidence, InboundListenerState, ReadWireMessageOutcome, WriteWireMessageOutcome,
+    acknowledge_inbound_response_write, activate_inbound_listener, start_inbound_accept_loop,
 };
 
 fn block_response() -> EncodedWireResponse {
@@ -171,15 +169,12 @@ async fn phase123_inbound_two_blocks_before_later_failure_count_two() {
 #[tokio::test]
 async fn phase123_inbound_encoding_failure_does_not_increment_served() {
     // Arrange
-    let mut context = ManagedRpcContext::for_local_operator(AddressNetwork::Regtest);
+    let context = ManagedRpcContext::for_local_operator(AddressNetwork::Regtest);
     let inventory = InventoryVector {
         inventory_type: InventoryType::Block,
         object_hash: BlockHash::default().into(),
     };
-    let oversized = WireNetworkMessage::Inv(InventoryList::new(vec![
-        inventory;
-        MAX_INV_SIZE + 1
-    ]));
+    let oversized = WireNetworkMessage::Inv(InventoryList::new(vec![inventory; MAX_INV_SIZE + 1]));
 
     // Act
     let result = context.encode_wire_responses(vec![oversized]);

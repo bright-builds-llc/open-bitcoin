@@ -9,7 +9,9 @@
 // - packages/bitcoin-knots/src/rpc/rawtransaction.cpp
 // - packages/bitcoin-knots/test/functional/interface_rpc.py
 
-use open_bitcoin_network::{InboundListenerConfig, PeerPermissionClassRegistry};
+use open_bitcoin_network::{
+    InboundListenerConfig, PeerPermissionClassRegistry, WireNetworkMessage,
+};
 use open_bitcoin_node::LogRetentionPolicy;
 use open_bitcoin_node::MemoryChainstateStore;
 use open_bitcoin_node::core::consensus::{ConsensusParams, ScriptVerifyFlags};
@@ -52,6 +54,11 @@ pub struct ManagedRpcContext {
     maybe_durable_sync_state: Option<DurableSyncState>,
     maybe_daemon_sync_control: Option<DaemonSyncControl>,
     wallet_state: WalletState,
+}
+
+pub(crate) struct EncodedWireResponse {
+    pub(crate) message: WireNetworkMessage,
+    pub(crate) bytes: Vec<u8>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
