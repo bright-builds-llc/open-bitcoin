@@ -341,7 +341,7 @@ fn phase123_idle_wake_does_not_consume_message_budget() {
 }
 
 #[test]
-fn phase123_perpetual_idle_session_returns_after_bounded_wakes() {
+fn phase123_idle_session_without_compact_work_yields_after_first_wake() {
     // Arrange
     let path = temp_store_path("phase123-bounded-idle-session");
     remove_dir_if_exists(&path);
@@ -359,9 +359,55 @@ fn phase123_perpetual_idle_session_returns_after_bounded_wakes() {
         .expect("bounded idle session");
 
     // Assert
-    assert_eq!(*receive_calls.borrow(), 4);
+    assert_eq!(*receive_calls.borrow(), 3);
     assert_eq!(progress.state, PeerSyncState::Connected);
     assert_eq!(progress.messages_processed, 2);
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn phase123_compact_download_survives_five_second_idle_cadence_until_timeout() {
+    // Arrange
+    let path = temp_store_path("phase123-compact-default-idle-cadence");
+    remove_dir_if_exists(&path);
+    let mut runtime = timing_runtime(&path, 8);
+    let compact_block = compact_block_fixture(&mut runtime);
+    let expected_hash = block_hash(&compact_block.header);
+    let started_at = 8_000;
+    let mut outcomes = vec![
+        SyncPeerReceiveOutcome::Message(version_message()),
+        SyncPeerReceiveOutcome::Message(WireNetworkMessage::Verack),
+        SyncPeerReceiveOutcome::Message(send_compact_message()),
+        SyncPeerReceiveOutcome::Message(WireNetworkMessage::CompactBlock(compact_payload(
+            &compact_block,
+        ))),
+    ];
+    outcomes.extend((0..13).map(|_| SyncPeerReceiveOutcome::Idle));
+    let mut transport = TimingTransport::new(outcomes);
+    let sent = Rc::clone(&transport.sent);
+    let mut resolver = timing_resolver();
+    let mut elapsed = 0_i64;
+    let mut clock = || {
+        elapsed += 5;
+        assert!(!sent.borrow().iter().any(is_full_block_getdata));
+        started_at + elapsed
+    };
+
+    // Act
+    let summary = runtime
+        .sync_once_with_resolver_and_clock(&mut transport, &mut resolver, started_at, &mut clock)
+        .expect("compact cadence sync summary");
+
+    // Assert
+    assert_eq!(elapsed, COMPACT_BLOCK_DOWNLOAD_TIMEOUT_SECONDS + 5);
+    assert_eq!(summary.messages_processed, 4);
+    assert_eq!(summary.peer_outcomes[0].state, PeerSyncState::Connected);
+    assert!(
+        transport
+            .sent_messages()
+            .iter()
+            .any(|message| is_full_block_getdata_for_hash(message, expected_hash))
+    );
     remove_dir_if_exists(&path);
 }
 

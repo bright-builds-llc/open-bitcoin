@@ -219,6 +219,9 @@ function verifyIdleMaintenance(
       ".any(|(target_peer_id, _message)| *target_peer_id != peer_id)",
       ".map(|(_target_peer_id, message)| message)",
       "self.send_all(&mut session, &outbound)?;",
+      "if !self.peer_has_compact_download_in_flight(peer_id)",
+      "self.complete_peer_session_progress(&mut progress, peer_id);",
+      "return Ok(());",
       "continue;",
       "SyncPeerReceiveOutcome::Closed =>",
     ],
@@ -243,18 +246,19 @@ function verifyIdleMaintenance(
   ]) {
     requireContains(normalizedSync, needle, "P123 session timestamp propagation", failures);
   }
-  requireContains(
+  requireAbsent(
     session,
-    "MAX_CONSECUTIVE_IDLE_WAKES_PER_SESSION: usize = 2",
-    "P123 bounded idle policy",
+    "MAX_CONSECUTIVE_IDLE_WAKES_PER_SESSION",
+    "P123 no fixed idle-wake cutoff",
     failures,
   );
-  requireContains(
-    normalizedSync,
-    ">= MAX_CONSECUTIVE_IDLE_WAKES_PER_SESSION",
-    "P123 bounded idle enforcement",
-    failures,
-  );
+  for (const needle of [
+    "fn peer_has_compact_download_in_flight",
+    ".compact_download_peer_state(peer_id)",
+    ".is_some_and(|state| !state.in_flight.is_empty())",
+  ]) {
+    requireContains(session, needle, "P123 compact-work-aware idle yield", failures);
+  }
   requireContains(
     sync,
     "pub fn sync_until_idle_with_clock_and_cancel",
@@ -431,7 +435,8 @@ function verifyFocusedTests(texts: Map<TargetFile, string>, failures: string[]):
     "phase123_idle_after_fake_clock_emits_same_peer_full_block_fallback",
     "phase123_idle_wake_does_not_consume_message_budget",
     "phase123_message_after_idle_uses_session_clock_for_compact_timeout",
-    "phase123_perpetual_idle_session_returns_after_bounded_wakes",
+    "phase123_idle_session_without_compact_work_yields_after_first_wake",
+    "phase123_compact_download_survives_five_second_idle_cadence_until_timeout",
     "phase123_closed_receive_ends_session",
     "phase123_target_mismatch_is_not_written_to_current_session",
   ]) requireContains(timing, needle, "P123 runtime timing tests", failures);
