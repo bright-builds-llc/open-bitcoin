@@ -27,9 +27,9 @@ use open_bitcoin_network::{
 use super::types::SyncReconcileProgress;
 use super::{
     DurableSyncRuntime, PeerContribution, PeerFailureReason, PeerSyncOutcome, PeerSyncState,
-    ResolvedSyncPeerAddress, SyncNetwork, SyncPeerAddress, SyncPeerResolver, SyncPeerSession,
-    SyncPeerSource, SyncRunSummary, SyncRuntimeConfig, SyncRuntimeError, SyncStopReason,
-    SyncTransport, TcpPeerTransport,
+    ResolvedSyncPeerAddress, SyncNetwork, SyncPeerAddress, SyncPeerReceiveOutcome,
+    SyncPeerResolver, SyncPeerSession, SyncPeerSource, SyncRunSummary, SyncRuntimeConfig,
+    SyncRuntimeError, SyncStopReason, SyncTransport, TcpPeerTransport,
 };
 use crate::{
     FieldAvailability, FjallNodeStore, LogRetentionPolicy, MetricKind, MetricRetentionPolicy,
@@ -55,6 +55,7 @@ use crate::{
     },
 };
 
+mod runtime_timing_cases;
 mod soak;
 
 const EASY_BITS: u32 = 0x207f_ffff;
