@@ -485,6 +485,57 @@ fn phase116_block_relay_evidence_status_defaults_to_unavailable_until_observed()
 }
 
 #[test]
+fn phase123_block_acknowledgement_increments_private_served_count() {
+    // Arrange
+    let mut network = compact_relay_enabled_managed_network(123_201);
+    let block = build_block(BlockHash::from_byte_array([0_u8; 32]), 0, 500_000_000);
+    let message = WireNetworkMessage::Block(block);
+
+    // Act
+    network.acknowledge_wire_message_written(&message);
+
+    // Assert
+    assert_eq!(network.block_served_write_count(), 1);
+}
+
+#[test]
+fn phase123_non_block_acknowledgement_does_not_increment_private_served_count() {
+    // Arrange
+    let mut network = compact_relay_enabled_managed_network(123_202);
+    let message = WireNetworkMessage::Verack;
+
+    // Act
+    network.acknowledge_wire_message_written(&message);
+
+    // Assert
+    assert_eq!(network.block_served_write_count(), 0);
+}
+
+#[test]
+fn phase123_public_block_relay_status_omits_runtime_served_count() {
+    // Arrange
+    let mut network = compact_relay_enabled_managed_network(123_203);
+    let block = build_block(BlockHash::from_byte_array([0_u8; 32]), 0, 500_000_000);
+    let message = WireNetworkMessage::Block(block);
+    network.acknowledge_wire_message_written(&message);
+
+    // Act
+    let encoded = serde_json::to_value(network.block_relay_evidence_status())
+        .expect("serialize public block-relay status");
+
+    // Assert
+    assert!(!encoded.to_string().contains("served_count"));
+    assert_eq!(
+        encoded["block_serving"]["eligibility"]["value"]["eligible_peer_count"],
+        0
+    );
+    assert_eq!(
+        encoded["block_serving"]["status"]["value"]["validated_count"],
+        0
+    );
+}
+
+#[test]
 fn phase116_block_relay_evidence_projects_negotiation_serving_download_and_cleanup() {
     let mut network = compact_relay_enabled_managed_network(116_002);
     let peer_id = 116_002;
