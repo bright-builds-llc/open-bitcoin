@@ -365,11 +365,11 @@ Plans:
 3. The default deterministic verifier and changed-path milestone checks pass without weakening no-claim guardrails.
 4. The active milestone points directly to archival through `/gsd-complete-milestone v2.1`.
 
-**Plans:** 0/2 plans executed
+**Plans:** 1/2 plans executed
 
 Plans:
 
-- [ ] 124-01-PLAN.md — Evidence reconciliation and deterministic closeout guard
+- [x] 124-01-PLAN.md — Evidence reconciliation and deterministic closeout guard
 - [ ] 124-02-PLAN.md — Canonical audit refresh and archive-ready handoff
 
 ## Progress
@@ -392,7 +392,7 @@ Plans:
 | 121. Block Relay Metrics and Log Runtime Projection | v2.1 | 2/2 | Complete   | 2026-07-14 |
 | 122. Compact Relay Peer Completion | v2.1 | 1/1 | Complete   | 2026-07-16 |
 | 123. Runtime Timing and Evidence Integrity | v2.1 | 7/7 | Complete   | 2026-07-16 |
-| 124. Milestone Closeout Reconciliation | v2.1 | 0/2 | Planned    |  |
+| 124. Milestone Closeout Reconciliation | v2.1 | 1/2 | In Progress|  |
 
 ## Traceability
 

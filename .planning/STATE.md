@@ -3,14 +3,14 @@ gsd_state_version: "1.0"
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
 status: executing
-stopped_at: Phase 124 evidence reconciled; HARD-05 pending
-last_updated: "2026-07-16T21:11:03.018Z"
-last_activity: 2026-07-16 -- Phase 124 planning complete
+stopped_at: Completed 124-01-PLAN.md; HARD-05 pending
+last_updated: "2026-07-16T21:26:30.665Z"
+last_activity: "2026-07-16"
 progress:
   total_phases: 15
   completed_phases: 14
   total_plans: 50
-  completed_plans: 50
+  completed_plans: 51
   percent: 100
 ---
 
@@ -27,9 +27,9 @@ See: `.planning/PROJECT.md` (updated 2026-07-10 after Phase 117 completed v2.1 i
 
 Milestone: v2.1 Block Serving and Compact Block Relay Boundary
 Phase: 124 (Milestone Closeout Reconciliation) — EXECUTING
-Plan: 1 of ?
+Plan: 2 of 2
 Status: Ready to execute
-Last activity: 2026-07-16 -- Phase 124 planning complete
+Last activity: 2026-07-16
 
 v2.0 Transaction Relay and Mempool Participation Boundary shipped on 2026-07-03. The archived audit reports 32/32 requirements, 10/10 phases, 8/8 integration checks, 8/8 cross-phase flows, and no tracked tech debt.
 
@@ -108,6 +108,6 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Session Continuity
 
-Last session: 2026-07-16T21:11:03.015Z
-Stopped at: Phase 124 evidence reconciled; HARD-05 pending
-Resume file: .planning/phases/124-milestone-closeout-reconciliation/124-01-PLAN.md
+Last session: 2026-07-16T21:26:30.663Z
+Stopped at: Completed 124-01-PLAN.md; HARD-05 pending
+Resume file: .planning/phases/124-milestone-closeout-reconciliation/124-02-PLAN.md
