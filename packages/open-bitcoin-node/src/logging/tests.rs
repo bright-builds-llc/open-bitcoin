@@ -308,7 +308,7 @@ fn relay_mempool_log_record_omits_sensitive_and_dynamic_material() {
 }
 
 #[test]
-fn block_relay_log_record_uses_fixed_source_labels_and_counts() {
+fn phase123_block_served_log_uses_runtime_count() {
     // Arrange
     let block_relay = BlockRelayEvidenceStatus::with_components(
         crate::status::BlockServingEvidenceStatus::with_activation_eligibility_and_status(
@@ -377,9 +377,10 @@ fn block_relay_log_record_uses_fixed_source_labels_and_counts() {
             compact_download_block_connected_count: 1,
         },
     );
+    let served_count = 9_u64;
 
     // Act
-    let record = block_relay_log_record(&block_relay, 1_777_225_305);
+    let record = block_relay_log_record(&block_relay, served_count, 1_777_225_305);
 
     // Assert
     assert_eq!(record.level, StructuredLogLevel::Info);
@@ -395,7 +396,7 @@ fn block_relay_log_record_uses_fixed_source_labels_and_counts() {
         "reconstruction_label=compact_reconstruction_failed",
         "timeout_label=compact_download_timeout",
         "cleanup_label=compact_download_peer_disconnect",
-        "block_served_count=2",
+        "block_served_count=9",
         "compact_cleanup_count=3",
     ] {
         assert!(record.message.contains(expected), "missing {expected}");
@@ -408,7 +409,7 @@ fn block_relay_log_record_omits_sensitive_and_dynamic_material() {
     let block_relay = BlockRelayEvidenceStatus::default_unavailable();
 
     // Act
-    let record = block_relay_log_record(&block_relay, 1_777_225_306);
+    let record = block_relay_log_record(&block_relay, 0, 1_777_225_306);
 
     // Assert
     assert_eq!(record.source, BLOCK_RELAY_LOG_SOURCE);

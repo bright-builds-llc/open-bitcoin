@@ -208,12 +208,9 @@ pub fn relay_mempool_log_record(
 
 pub fn block_relay_log_record(
     block_relay: &BlockRelayEvidenceStatus,
+    served_count: u64,
     timestamp_unix_seconds: u64,
 ) -> StructuredLogRecord {
-    let block_served_count = match &block_relay.block_serving.eligibility {
-        crate::status::FieldAvailability::Available(counters) => counters.eligible_peer_count,
-        crate::status::FieldAvailability::Unavailable { .. } => 0,
-    };
     let block_serving_suppressed_count = match &block_relay.block_serving.status {
         crate::status::FieldAvailability::Available(counters) => counters.suppressed_count,
         crate::status::FieldAvailability::Unavailable { .. } => 0,
@@ -252,7 +249,7 @@ pub fn block_relay_log_record(
     };
     let message = format!(
         "outcome=projected cause=status_projection label=block_relay serve_label=block_serving_eligible suppress_label=block_serving_suppressed announcement_label=compact_announced reconstruction_label=compact_reconstruction_failed timeout_label=compact_download_timeout cleanup_label=compact_download_peer_disconnect block_served_count={} block_serving_suppressed_count={} compact_announced_count={} compact_reconstructed_count={} compact_missing_tx_requested_count={} compact_fallback_count={} compact_malformed_count={} compact_timeout_count={} compact_cleanup_count={}",
-        block_served_count,
+        served_count,
         block_serving_suppressed_count,
         compact_announced_count,
         compact_reconstructed_count,

@@ -8,13 +8,10 @@ use super::{MetricKind, MetricSample};
 /// Project block-relay evidence counters into fixed low-cardinality metric samples.
 pub fn block_relay_metric_samples(
     block_relay: &BlockRelayEvidenceStatus,
+    served_count: u64,
     timestamp_unix_seconds: u64,
 ) -> Vec<MetricSample> {
     let block_serving = &block_relay.block_serving;
-    let block_served_count = match &block_serving.eligibility {
-        FieldAvailability::Available(counters) => counters.eligible_peer_count,
-        FieldAvailability::Unavailable { .. } => 0,
-    };
     let block_serving_suppressed_count = match &block_serving.status {
         FieldAvailability::Available(counters) => counters.suppressed_count,
         FieldAvailability::Unavailable { .. } => 0,
@@ -51,7 +48,7 @@ pub fn block_relay_metric_samples(
     vec![
         MetricSample::new(
             MetricKind::BlockServedCount,
-            block_served_count as f64,
+            served_count as f64,
             timestamp_unix_seconds,
         ),
         MetricSample::new(

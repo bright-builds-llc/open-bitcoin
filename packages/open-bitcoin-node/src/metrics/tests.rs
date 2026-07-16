@@ -495,9 +495,10 @@ fn block_relay_metric_kinds_are_low_cardinality_counters() {
 }
 
 #[test]
-fn block_relay_metric_status_maps_to_each_fixed_metric_kind() {
+fn phase123_block_served_metric_uses_runtime_count() {
     // Arrange
     let timestamp = 1_777_225_205;
+    let served_count = 9_u64;
     let block_relay = BlockRelayEvidenceStatus::with_components(
         crate::status::BlockServingEvidenceStatus::with_activation_eligibility_and_status(
             crate::status::BlockServingActivationEvidence {
@@ -567,13 +568,13 @@ fn block_relay_metric_status_maps_to_each_fixed_metric_kind() {
     );
 
     // Act
-    let samples = block_relay_metric_samples(&block_relay, timestamp);
+    let samples = block_relay_metric_samples(&block_relay, served_count, timestamp);
 
     // Assert
     assert_eq!(
         samples,
         vec![
-            MetricSample::new(MetricKind::BlockServedCount, 2.0, timestamp),
+            MetricSample::new(MetricKind::BlockServedCount, 9.0, timestamp),
             MetricSample::new(MetricKind::BlockServingSuppressedCount, 2.0, timestamp),
             MetricSample::new(MetricKind::CompactAnnouncedCount, 6.0, timestamp),
             MetricSample::new(MetricKind::CompactReconstructedCount, 4.0, timestamp),
