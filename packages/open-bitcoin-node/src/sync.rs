@@ -39,8 +39,9 @@ pub use resolver::{SyncPeerResolver, SystemSyncPeerResolver};
 pub use tcp::{TcpPeerSession, TcpPeerTransport};
 pub use types::{
     PeerCapabilitySummary, PeerContribution, PeerFailureReason, PeerSyncOutcome, PeerSyncState,
-    ResolvedSyncPeerAddress, SyncNetwork, SyncPeerAddress, SyncPeerSession, SyncPeerSource,
-    SyncRunSummary, SyncRuntimeConfig, SyncRuntimeError, SyncStopReason, SyncTransport,
+    ResolvedSyncPeerAddress, SyncNetwork, SyncPeerAddress, SyncPeerReceiveOutcome, SyncPeerSession,
+    SyncPeerSource, SyncRunSummary, SyncRuntimeConfig, SyncRuntimeError, SyncStopReason,
+    SyncTransport,
 };
 pub use wallet_rescan::WalletRescanRuntime;
 
@@ -147,7 +148,8 @@ impl DurableSyncRuntime {
         timestamp: i64,
     ) -> Result<SyncRunSummary, SyncRuntimeError> {
         let mut resolver = SystemSyncPeerResolver;
-        self.sync_once_with_resolver(transport, &mut resolver, timestamp)
+        let mut clock = || timestamp;
+        self.sync_once_with_resolver_and_clock(transport, &mut resolver, timestamp, &mut clock)
     }
 
     pub fn sync_once_with_resolver<T: SyncTransport, R: SyncPeerResolver>(
@@ -155,6 +157,21 @@ impl DurableSyncRuntime {
         transport: &mut T,
         resolver: &mut R,
         timestamp: i64,
+    ) -> Result<SyncRunSummary, SyncRuntimeError> {
+        let mut clock = || timestamp;
+        self.sync_once_with_resolver_and_clock(transport, resolver, timestamp, &mut clock)
+    }
+
+    fn sync_once_with_resolver_and_clock<
+        T: SyncTransport,
+        R: SyncPeerResolver,
+        C: FnMut() -> i64,
+    >(
+        &mut self,
+        transport: &mut T,
+        resolver: &mut R,
+        timestamp: i64,
+        clock: &mut C,
     ) -> Result<SyncRunSummary, SyncRuntimeError> {
         self.maybe_reconcile_progress = None;
         block_reconcile::validate_block_limits(self)?;
@@ -193,7 +210,7 @@ impl DurableSyncRuntime {
             }
             summary.attempted_peers += 1;
             let peer_id = self.allocate_peer_id();
-            let outcome = self.sync_peer_with_retries(transport, &peer, peer_id, timestamp);
+            let outcome = self.sync_peer_with_retries(transport, &peer, peer_id, timestamp, clock);
             if let Ok(progress) = &outcome
                 && progress.state == PeerSyncState::Connected
                 && progress.is_successful_outbound_slot()
@@ -235,7 +252,24 @@ impl DurableSyncRuntime {
         timestamp: i64,
     ) -> Result<SyncRunSummary, SyncRuntimeError> {
         let mut resolver = SystemSyncPeerResolver;
-        self.sync_until_idle_with_resolver(transport, &mut resolver, timestamp)
+        let mut clock = || timestamp;
+        self.sync_until_idle_with_resolver_and_clock(
+            transport,
+            &mut resolver,
+            timestamp,
+            &mut clock,
+        )
+    }
+
+    /// Runs sync rounds with a caller clock sampled once for each live-session idle wake.
+    pub fn sync_until_idle_with_clock<T: SyncTransport, C: FnMut() -> i64>(
+        &mut self,
+        transport: &mut T,
+        timestamp: i64,
+        clock: &mut C,
+    ) -> Result<SyncRunSummary, SyncRuntimeError> {
+        let mut resolver = SystemSyncPeerResolver;
+        self.sync_until_idle_with_resolver_and_clock(transport, &mut resolver, timestamp, clock)
     }
 
     pub fn sync_until_idle_with_resolver<T: SyncTransport, R: SyncPeerResolver>(
@@ -244,9 +278,24 @@ impl DurableSyncRuntime {
         resolver: &mut R,
         timestamp: i64,
     ) -> Result<SyncRunSummary, SyncRuntimeError> {
+        let mut clock = || timestamp;
+        self.sync_until_idle_with_resolver_and_clock(transport, resolver, timestamp, &mut clock)
+    }
+
+    fn sync_until_idle_with_resolver_and_clock<
+        T: SyncTransport,
+        R: SyncPeerResolver,
+        C: FnMut() -> i64,
+    >(
+        &mut self,
+        transport: &mut T,
+        resolver: &mut R,
+        timestamp: i64,
+        clock: &mut C,
+    ) -> Result<SyncRunSummary, SyncRuntimeError> {
         let mut current_timestamp = timestamp;
         let mut last_summary =
-            self.sync_once_with_resolver(transport, resolver, current_timestamp)?;
+            self.sync_once_with_resolver_and_clock(transport, resolver, current_timestamp, clock)?;
         if let Some(stop_reason) = self.maybe_target_header_stop_reason(&last_summary) {
             self.record_until_idle_stop(&mut last_summary, stop_reason, current_timestamp)?;
             return Ok(last_summary);
@@ -256,8 +305,12 @@ impl DurableSyncRuntime {
         let mut rounds_completed = 1_usize;
         for _ in 1..self.config.max_rounds {
             current_timestamp = current_timestamp.saturating_add(retry_backoff_seconds);
-            let current_summary =
-                self.sync_once_with_resolver(transport, resolver, current_timestamp)?;
+            let current_summary = self.sync_once_with_resolver_and_clock(
+                transport,
+                resolver,
+                current_timestamp,
+                clock,
+            )?;
             rounds_completed = rounds_completed.saturating_add(1);
             let current_progress = progress::sync_progress_marker(&current_summary);
             let is_idle = current_progress == previous_progress;
@@ -329,12 +382,13 @@ impl DurableSyncRuntime {
         Ok(())
     }
 
-    fn sync_peer_with_retries<T: SyncTransport>(
+    fn sync_peer_with_retries<T: SyncTransport, C: FnMut() -> i64>(
         &mut self,
         transport: &mut T,
         peer: &ResolvedSyncPeerAddress,
         peer_id: PeerId,
         timestamp: i64,
+        clock: &mut C,
     ) -> Result<PeerProgress, Box<PeerFailure>> {
         let mut attempts = 0_u8;
         let max_attempts = self.config.max_peer_retries.saturating_add(1);
@@ -342,7 +396,8 @@ impl DurableSyncRuntime {
             attempts = attempts.saturating_add(1);
             match transport.connect(peer, &self.config) {
                 Ok(session) => {
-                    return self.sync_connected_peer(session, peer, peer_id, attempts, timestamp);
+                    return self
+                        .sync_connected_peer(session, peer, peer_id, attempts, timestamp, clock);
                 }
                 Err(error) if attempts < max_attempts => {
                     let _ = error;
@@ -360,13 +415,14 @@ impl DurableSyncRuntime {
         }
     }
 
-    fn sync_connected_peer<S: SyncPeerSession>(
+    fn sync_connected_peer<S: SyncPeerSession, C: FnMut() -> i64>(
         &mut self,
         mut session: S,
         peer: &ResolvedSyncPeerAddress,
         peer_id: PeerId,
         attempts: u8,
         timestamp: i64,
+        clock: &mut C,
     ) -> Result<PeerProgress, Box<PeerFailure>> {
         let mut progress = PeerProgress::new(peer.clone(), self.config.network, attempts);
         let mut maybe_failure_reason_override = None;
@@ -375,9 +431,10 @@ impl DurableSyncRuntime {
             outbound.extend(block_reconcile::request_missing_blocks(self, peer_id)?);
             self.send_all(&mut session, &outbound)?;
 
-            for _ in 0..self.config.max_messages_per_peer {
-                let maybe_message = match session.receive(self.config.network.magic()) {
-                    Ok(maybe_message) => maybe_message,
+            let mut messages_received = 0_usize;
+            while messages_received < self.config.max_messages_per_peer {
+                let receive_outcome = match session.receive(self.config.network.magic()) {
+                    Ok(receive_outcome) => receive_outcome,
                     Err(error) => {
                         let reason = progress::peer_failure_reason_for_error(&error);
                         if reason == PeerFailureReason::MalformedBlock {
@@ -387,13 +444,41 @@ impl DurableSyncRuntime {
                         return Err(error);
                     }
                 };
-                let Some(message) = maybe_message else {
-                    progress.maybe_capabilities = self.peer_capabilities(peer_id);
-                    if !self.peer_handshake_complete(peer_id) {
-                        progress.state = PeerSyncState::Stalled;
-                        progress.maybe_failure_reason = Some(PeerFailureReason::Stall);
+                let message = match receive_outcome {
+                    SyncPeerReceiveOutcome::Message(message) => {
+                        messages_received = messages_received.saturating_add(1);
+                        message
                     }
-                    return Ok(());
+                    SyncPeerReceiveOutcome::Idle => {
+                        let now_unix_seconds = clock();
+                        let targeted = self
+                            .network
+                            .expire_compact_download_timeouts(now_unix_seconds)?;
+                        if targeted
+                            .iter()
+                            .any(|(target_peer_id, _message)| *target_peer_id != peer_id)
+                        {
+                            return Err(SyncRuntimeError::Network {
+                                message:
+                                    "compact timeout action target does not match connected session"
+                                        .to_string(),
+                            });
+                        }
+                        let outbound = targeted
+                            .into_iter()
+                            .map(|(_target_peer_id, message)| message)
+                            .collect::<Vec<_>>();
+                        self.send_all(&mut session, &outbound)?;
+                        continue;
+                    }
+                    SyncPeerReceiveOutcome::Closed => {
+                        progress.maybe_capabilities = self.peer_capabilities(peer_id);
+                        if !self.peer_handshake_complete(peer_id) {
+                            progress.state = PeerSyncState::Stalled;
+                            progress.maybe_failure_reason = Some(PeerFailureReason::Stall);
+                        }
+                        return Ok(());
+                    }
                 };
                 progress.record_activity(timestamp);
                 let maybe_header_count = match &message {

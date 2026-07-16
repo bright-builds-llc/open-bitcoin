@@ -225,9 +225,12 @@ fn phase123_idle_after_fake_clock_emits_same_peer_full_block_fallback() {
 
     // Assert
     assert_eq!(summary.messages_processed, 4);
-    assert!(transport.sent_messages().iter().any(|message| {
-        is_full_block_getdata_for_hash(message, expected_hash)
-    }));
+    assert!(
+        transport
+            .sent_messages()
+            .iter()
+            .any(|message| { is_full_block_getdata_for_hash(message, expected_hash) })
+    );
     remove_dir_if_exists(&path);
 }
 
@@ -288,23 +291,30 @@ fn phase123_target_mismatch_is_not_written_to_current_session() {
     let compact_block = compact_block_fixture(&mut runtime);
     let expected_hash = block_hash(&compact_block.header);
     start_other_peer_compact_download(&mut runtime, 99, &compact_block, 5_000);
-    let mut transport = TimingTransport::new(vec![SyncPeerReceiveOutcome::Idle]);
-    let mut resolver = timing_resolver();
+    let sent = Rc::new(RefCell::new(Vec::new()));
+    let session = TimingSession {
+        outcomes: vec![SyncPeerReceiveOutcome::Idle].into(),
+        sent: Rc::clone(&sent),
+    };
+    let peer = resolved_manual_peer("127.0.0.1", 18_444);
     let mut clock = || 5_000 + COMPACT_BLOCK_DOWNLOAD_TIMEOUT_SECONDS + 1;
 
     // Act
-    let summary = runtime
-        .sync_once_with_resolver_and_clock(&mut transport, &mut resolver, 5_000, &mut clock)
-        .expect("mismatch recorded in summary");
+    let result = runtime.sync_connected_peer(session, &peer, 1, 1, 5_000, &mut clock);
 
     // Assert
-    assert_eq!(summary.failed_peers, 1);
-    assert!(summary.peer_outcomes[0].maybe_error.as_ref().is_some_and(|message| {
-        message.contains("compact timeout action target does not match connected session")
-    }));
-    assert!(!transport.sent_messages().iter().any(|message| {
-        is_full_block_getdata_for_hash(message, expected_hash)
-    }));
+    let failure = result.expect_err("target mismatch must fail");
+    assert!(matches!(
+        failure.error,
+        SyncRuntimeError::Network { ref message }
+            if message == "compact timeout action target does not match connected session"
+    ));
+    assert!(
+        !sent
+            .borrow()
+            .iter()
+            .any(|message| { is_full_block_getdata_for_hash(message, expected_hash) })
+    );
     remove_dir_if_exists(&path);
 }
 
@@ -322,10 +332,7 @@ fn timing_runtime(path: &std::path::Path, max_messages_per_peer: usize) -> Durab
 }
 
 fn timing_resolver() -> ScriptedResolver {
-    ScriptedResolver::new(vec![Ok(vec![resolved_manual_peer(
-        "127.0.0.1",
-        18_444,
-    )])])
+    ScriptedResolver::new(vec![Ok(vec![resolved_manual_peer("127.0.0.1", 18_444)])])
 }
 
 fn version_message() -> WireNetworkMessage {
@@ -384,7 +391,8 @@ fn send_compact_message() -> WireNetworkMessage {
 
 fn compact_payload(block: &Block) -> CompactBlockPayload {
     let nonce = 17;
-    let selector = open_bitcoin_codec::short_id_selector_from_header_and_nonce(&block.header, nonce);
+    let selector =
+        open_bitcoin_codec::short_id_selector_from_header_and_nonce(&block.header, nonce);
     let wtxid = transaction_wtxid(&block.transactions[1]).expect("wtxid");
     CompactBlockPayload {
         header: block.header.clone(),
@@ -409,7 +417,11 @@ fn start_other_peer_compact_download(
         .network
         .connect_outbound_peer(peer_id, timestamp)
         .expect("connect other peer");
-    for message in [version_message(), WireNetworkMessage::Verack, send_compact_message()] {
+    for message in [
+        version_message(),
+        WireNetworkMessage::Verack,
+        send_compact_message(),
+    ] {
         runtime
             .network
             .receive_sync_message(
@@ -432,9 +444,11 @@ fn start_other_peer_compact_download(
         )
         .expect("other peer compact download")
         .outbound;
-    assert!(outbound.iter().any(|message| {
-        matches!(message, WireNetworkMessage::GetBlockTxn(_))
-    }));
+    assert!(
+        outbound
+            .iter()
+            .any(|message| { matches!(message, WireNetworkMessage::GetBlockTxn(_)) })
+    );
 }
 
 fn is_full_block_getdata(message: &WireNetworkMessage) -> bool {

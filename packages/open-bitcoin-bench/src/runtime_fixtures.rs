@@ -14,8 +14,8 @@ use std::{
 use open_bitcoin_network::{HeaderEntry, HeadersMessage, VersionMessage, WireNetworkMessage};
 use open_bitcoin_node::{
     MetricKind, MetricSample, MetricsStorageSnapshot, PersistMode, ResolvedSyncPeerAddress,
-    RuntimeMetadata, SyncNetwork, SyncPeerAddress, SyncPeerSession, SyncRuntimeConfig,
-    SyncRuntimeError, SyncTransport,
+    RuntimeMetadata, SyncNetwork, SyncPeerAddress, SyncPeerReceiveOutcome, SyncPeerSession,
+    SyncRuntimeConfig, SyncRuntimeError, SyncTransport,
     core::{
         chainstate::{ChainPosition, ChainstateSnapshot, Coin},
         consensus::{block_hash, block_merkle_root, check_block_header},
@@ -114,8 +114,11 @@ impl SyncPeerSession for ScriptedSession {
     fn receive(
         &mut self,
         _magic: open_bitcoin_node::core::primitives::NetworkMagic,
-    ) -> Result<Option<WireNetworkMessage>, SyncRuntimeError> {
-        Ok(self.inbound.pop_front())
+    ) -> Result<SyncPeerReceiveOutcome, SyncRuntimeError> {
+        Ok(self.inbound.pop_front().map_or(
+            SyncPeerReceiveOutcome::Closed,
+            SyncPeerReceiveOutcome::Message,
+        ))
     }
 }
 

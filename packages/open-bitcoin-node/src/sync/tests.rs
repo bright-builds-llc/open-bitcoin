@@ -358,8 +358,11 @@ impl SyncPeerSession for ScriptedSession {
     fn receive(
         &mut self,
         _magic: open_bitcoin_core::primitives::NetworkMagic,
-    ) -> Result<Option<WireNetworkMessage>, SyncRuntimeError> {
-        Ok(self.inbound.pop_front())
+    ) -> Result<SyncPeerReceiveOutcome, SyncRuntimeError> {
+        Ok(self.inbound.pop_front().map_or(
+            SyncPeerReceiveOutcome::Closed,
+            SyncPeerReceiveOutcome::Message,
+        ))
     }
 }
 
@@ -376,15 +379,15 @@ impl SyncPeerSession for ErrorAfterMessagesSession {
     fn receive(
         &mut self,
         _magic: open_bitcoin_core::primitives::NetworkMagic,
-    ) -> Result<Option<WireNetworkMessage>, SyncRuntimeError> {
+    ) -> Result<SyncPeerReceiveOutcome, SyncRuntimeError> {
         let maybe_message = self.inbound.pop_front();
-        if maybe_message.is_some() {
-            return Ok(maybe_message);
+        if let Some(message) = maybe_message {
+            return Ok(SyncPeerReceiveOutcome::Message(message));
         }
         if let Some(error) = self.maybe_error.take() {
             return Err(error);
         }
-        Ok(None)
+        Ok(SyncPeerReceiveOutcome::Closed)
     }
 }
 

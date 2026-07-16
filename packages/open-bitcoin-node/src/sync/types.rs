@@ -487,6 +487,17 @@ impl SyncStopReason {
     }
 }
 
+/// Result of one peer-session receive attempt.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SyncPeerReceiveOutcome {
+    /// A complete wire message was received.
+    Message(WireNetworkMessage),
+    /// No frame bytes arrived before the configured read timeout.
+    Idle,
+    /// The peer closed cleanly before starting another frame.
+    Closed,
+}
+
 pub trait SyncPeerSession {
     fn send(
         &mut self,
@@ -494,10 +505,7 @@ pub trait SyncPeerSession {
         magic: NetworkMagic,
     ) -> Result<(), SyncRuntimeError>;
 
-    fn receive(
-        &mut self,
-        magic: NetworkMagic,
-    ) -> Result<Option<WireNetworkMessage>, SyncRuntimeError>;
+    fn receive(&mut self, magic: NetworkMagic) -> Result<SyncPeerReceiveOutcome, SyncRuntimeError>;
 }
 
 pub trait SyncTransport {

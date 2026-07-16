@@ -17,7 +17,8 @@ use open_bitcoin_core::{
 use open_bitcoin_network::{ParsedNetworkMessage, WireNetworkMessage};
 
 use super::{
-    ResolvedSyncPeerAddress, SyncPeerSession, SyncRuntimeConfig, SyncRuntimeError, SyncTransport,
+    ResolvedSyncPeerAddress, SyncPeerReceiveOutcome, SyncPeerSession, SyncRuntimeConfig,
+    SyncRuntimeError, SyncTransport,
 };
 
 const WIRE_HEADER_LEN: usize = 24;
@@ -28,6 +29,19 @@ pub struct TcpPeerTransport;
 pub struct TcpPeerSession {
     peer: String,
     stream: TcpStream,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum ReadStageOutcome {
+    Complete,
+    Idle,
+    Closed,
+}
+
+enum MessageHeaderOutcome {
+    Complete(MessageHeader),
+    Idle,
+    Closed,
 }
 
 impl SyncTransport for TcpPeerTransport {
@@ -73,12 +87,11 @@ impl SyncPeerSession for TcpPeerSession {
             .map_err(|error| io_error(self.peer.clone(), error))
     }
 
-    fn receive(
-        &mut self,
-        magic: NetworkMagic,
-    ) -> Result<Option<WireNetworkMessage>, SyncRuntimeError> {
-        let Some(header) = read_message_header(&mut self.stream, &self.peer, magic)? else {
-            return Ok(None);
+    fn receive(&mut self, magic: NetworkMagic) -> Result<SyncPeerReceiveOutcome, SyncRuntimeError> {
+        let header = match read_message_header(&mut self.stream, &self.peer, magic)? {
+            MessageHeaderOutcome::Complete(header) => header,
+            MessageHeaderOutcome::Idle => return Ok(SyncPeerReceiveOutcome::Idle),
+            MessageHeaderOutcome::Closed => return Ok(SyncPeerReceiveOutcome::Closed),
         };
         let payload_len = header.payload_size as usize;
         if payload_len as u64 > MAX_SIZE {
@@ -92,13 +105,21 @@ impl SyncPeerSession for TcpPeerSession {
         }
 
         let mut payload = vec![0_u8; payload_len];
-        let Some(()) = read_exact_or_stall(&mut self.stream, &mut payload, &self.peer)? else {
-            return Ok(None);
-        };
+        match read_stage_for_peer(&mut self.stream, &mut payload, false, &self.peer)? {
+            ReadStageOutcome::Complete => {}
+            ReadStageOutcome::Idle | ReadStageOutcome::Closed => {
+                return Err(io_message(
+                    self.peer.clone(),
+                    "payload read ended without a complete frame".to_string(),
+                ));
+            }
+        }
         let mut wire = Vec::with_capacity(WIRE_HEADER_LEN + payload.len());
         wire.extend_from_slice(&open_bitcoin_core::codec::encode_message_header(&header));
         wire.extend_from_slice(&payload);
-        Ok(Some(ParsedNetworkMessage::decode_wire(&wire)?.message))
+        Ok(SyncPeerReceiveOutcome::Message(
+            ParsedNetworkMessage::decode_wire(&wire)?.message,
+        ))
     }
 }
 
@@ -106,11 +127,13 @@ fn read_message_header(
     stream: &mut TcpStream,
     peer: &str,
     expected_magic: NetworkMagic,
-) -> Result<Option<MessageHeader>, SyncRuntimeError> {
+) -> Result<MessageHeaderOutcome, SyncRuntimeError> {
     let mut header_bytes = [0_u8; WIRE_HEADER_LEN];
-    let Some(()) = read_exact_or_stall(stream, &mut header_bytes, peer)? else {
-        return Ok(None);
-    };
+    match read_stage_for_peer(stream, &mut header_bytes, true, peer)? {
+        ReadStageOutcome::Complete => {}
+        ReadStageOutcome::Idle => return Ok(MessageHeaderOutcome::Idle),
+        ReadStageOutcome::Closed => return Ok(MessageHeaderOutcome::Closed),
+    }
     let header =
         parse_message_header(&header_bytes).map_err(|error| SyncRuntimeError::Network {
             message: error.to_string(),
@@ -122,31 +145,62 @@ fn read_message_header(
         });
     }
 
-    Ok(Some(header))
+    Ok(MessageHeaderOutcome::Complete(header))
 }
 
-fn read_exact_or_stall(
-    stream: &mut TcpStream,
+pub(super) fn read_stage<R: Read>(
+    reader: &mut R,
     buffer: &mut [u8],
-    peer: &str,
-) -> Result<Option<()>, SyncRuntimeError> {
-    match stream.read_exact(buffer) {
-        Ok(()) => Ok(Some(())),
-        Err(error)
-            if matches!(
-                error.kind(),
-                io::ErrorKind::UnexpectedEof | io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut
-            ) =>
-        {
-            Ok(None)
+    allow_clean_idle: bool,
+) -> Result<ReadStageOutcome, SyncRuntimeError> {
+    let mut filled = 0_usize;
+    while filled < buffer.len() {
+        match reader.read(&mut buffer[filled..]) {
+            Ok(0) if allow_clean_idle && filled == 0 => return Ok(ReadStageOutcome::Closed),
+            Ok(0) => {
+                return Err(io_message(
+                    "peer stream".to_string(),
+                    format!(
+                        "unexpected EOF after {filled} of {} frame bytes",
+                        buffer.len()
+                    ),
+                ));
+            }
+            Ok(read_count) => filled = filled.saturating_add(read_count),
+            Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
+            Err(error)
+                if allow_clean_idle
+                    && filled == 0
+                    && matches!(
+                        error.kind(),
+                        io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut
+                    ) =>
+            {
+                return Ok(ReadStageOutcome::Idle);
+            }
+            Err(error) => return Err(io_error("peer stream".to_string(), error)),
         }
-        Err(error) => Err(io_error(peer.to_string(), error)),
+    }
+
+    Ok(ReadStageOutcome::Complete)
+}
+
+fn read_stage_for_peer<R: Read>(
+    reader: &mut R,
+    buffer: &mut [u8],
+    allow_clean_idle: bool,
+    peer: &str,
+) -> Result<ReadStageOutcome, SyncRuntimeError> {
+    match read_stage(reader, buffer, allow_clean_idle) {
+        Err(SyncRuntimeError::Io { message, .. }) => Err(io_message(peer.to_string(), message)),
+        result => result,
     }
 }
 
 fn io_error(peer: String, error: io::Error) -> SyncRuntimeError {
-    SyncRuntimeError::Io {
-        peer,
-        message: error.to_string(),
-    }
+    io_message(peer, error.to_string())
+}
+
+fn io_message(peer: String, message: String) -> SyncRuntimeError {
+    SyncRuntimeError::Io { peer, message }
 }

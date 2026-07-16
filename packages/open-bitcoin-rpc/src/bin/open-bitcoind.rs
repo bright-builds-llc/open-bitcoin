@@ -427,7 +427,10 @@ fn daemon_sync_worker(mut sync_runtime: DurableSyncRuntime, shutdown_receiver: m
             policy,
             current_timestamp_unix_seconds(),
             false,
-            |runtime, timestamp| runtime.sync_until_idle(&mut transport, timestamp),
+            |runtime, timestamp| {
+                let mut clock = current_timestamp_unix_seconds;
+                runtime.sync_until_idle_with_clock(&mut transport, timestamp, &mut clock)
+            },
         );
         if matches!(decision, DaemonSyncLoopDecision::Stopped) {
             break;
