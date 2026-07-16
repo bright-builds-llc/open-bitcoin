@@ -5,7 +5,10 @@
 // - packages/bitcoin-knots/src/sync.cpp
 // - packages/bitcoin-knots/src/node/blockstorage.cpp
 
-use open_bitcoin_core::consensus::block_hash;
+use open_bitcoin_core::{
+    consensus::block_hash,
+    primitives::{BlockHash, InventoryType},
+};
 use open_bitcoin_network::{PeerId, WireNetworkMessage};
 
 use super::{
@@ -100,12 +103,30 @@ impl DurableSyncRuntime {
                                         .to_string(),
                             });
                         }
-                        let outbound = targeted
-                            .into_iter()
-                            .map(|(_target_peer_id, message)| message)
+                        let fallback_block_hashes = targeted
+                            .iter()
+                            .filter_map(|(_target_peer_id, message)| match message {
+                                WireNetworkMessage::GetData(inventory) => {
+                                    Some(&inventory.inventory)
+                                }
+                                _ => None,
+                            })
+                            .flatten()
+                            .filter(|item| {
+                                matches!(
+                                    item.inventory_type,
+                                    InventoryType::Block | InventoryType::WitnessBlock
+                                )
+                            })
+                            .map(|item| BlockHash::from(item.object_hash))
                             .collect::<Vec<_>>();
+                        let outbound = block_reconcile::request_tracked_blocks(
+                            self,
+                            peer_id,
+                            &fallback_block_hashes,
+                        )?;
                         self.send_all(&mut session, &outbound)?;
-                        if !self.peer_has_compact_download_in_flight(peer_id) {
+                        if !self.peer_has_pending_download_work(peer_id) {
                             self.complete_peer_session_progress(&mut progress, peer_id);
                             return Ok(());
                         }
@@ -133,9 +154,10 @@ impl DurableSyncRuntime {
                 let block_response_was_requested = maybe_block_hash
                     .as_ref()
                     .is_some_and(|hash| self.peer_requested_block(peer_id, *hash));
-                let block_response_is_best_chain = maybe_block_hash
-                    .as_ref()
-                    .is_some_and(|hash| self.block_has_best_chain_header(*hash));
+                let block_response_is_best_chain = maybe_block.as_ref().is_some_and(|block| {
+                    self.block_has_best_chain_header(block_hash(&block.header))
+                        || self.block_extends_active_tip(block)
+                });
                 let notfound_was_requested =
                     self.message_reports_requested_block_notfound(peer_id, &message);
                 block_reconcile::release_inflight_for_message(self, &message);
@@ -316,11 +338,21 @@ impl DurableSyncRuntime {
             })
     }
 
-    fn peer_has_compact_download_in_flight(&self, peer_id: PeerId) -> bool {
-        self.network
+    fn peer_has_pending_download_work(&self, peer_id: PeerId) -> bool {
+        let compact_download_in_flight = self
+            .network
             .peer_manager()
             .compact_download_peer_state(peer_id)
-            .is_some_and(|state| !state.in_flight.is_empty())
+            .is_some_and(|state| !state.in_flight.is_empty());
+        let full_block_response_pending =
+            self.network
+                .peer_requested_blocks(peer_id)
+                .is_ok_and(|blocks| {
+                    blocks
+                        .iter()
+                        .any(|block_hash| self.inflight_blocks.contains(block_hash))
+                });
+        compact_download_in_flight || full_block_response_pending
     }
 
     pub(super) fn complete_peer_session_progress(

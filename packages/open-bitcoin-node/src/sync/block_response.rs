@@ -47,6 +47,12 @@ impl DurableSyncRuntime {
             .any(|entry| entry.block_hash == block_hash)
     }
 
+    pub(super) fn block_extends_active_tip(&self, block: &Block) -> bool {
+        self.network
+            .maybe_chain_tip()
+            .is_some_and(|tip| tip.block_hash == block.header.previous_block_hash)
+    }
+
     pub(super) fn classify_unrequested_block(
         &self,
         block_hash: BlockHash,

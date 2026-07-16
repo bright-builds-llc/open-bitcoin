@@ -20,6 +20,8 @@ const TARGET_FILES = [
   "packages/open-bitcoin-node/src/sync/tcp.rs",
   "packages/open-bitcoin-node/src/sync.rs",
   "packages/open-bitcoin-node/src/sync/session.rs",
+  "packages/open-bitcoin-node/src/sync/block_reconcile.rs",
+  "packages/open-bitcoin-node/src/sync/block_response.rs",
   "packages/open-bitcoin-node/src/lib.rs",
   "packages/open-bitcoin-bench/src/runtime_fixtures.rs",
   "packages/open-bitcoin-node/src/network/block_relay_evidence.rs",
@@ -209,6 +211,8 @@ function verifyIdleMaintenance(
 ): void {
   const sync = texts.get("packages/open-bitcoin-node/src/sync.rs") ?? "";
   const session = texts.get("packages/open-bitcoin-node/src/sync/session.rs") ?? "";
+  const blockReconcile = texts.get("packages/open-bitcoin-node/src/sync/block_reconcile.rs") ?? "";
+  const blockResponse = texts.get("packages/open-bitcoin-node/src/sync/block_response.rs") ?? "";
   const syncSession = `${sync}\n${session}`;
   requireOrdered(
     syncSession,
@@ -217,9 +221,10 @@ function verifyIdleMaintenance(
       "current_timestamp = (controls.0)();",
       ".expire_compact_download_timeouts(current_timestamp)?",
       ".any(|(target_peer_id, _message)| *target_peer_id != peer_id)",
-      ".map(|(_target_peer_id, message)| message)",
+      "let fallback_block_hashes = targeted",
+      "block_reconcile::request_tracked_blocks(",
       "self.send_all(&mut session, &outbound)?;",
-      "if !self.peer_has_compact_download_in_flight(peer_id)",
+      "if !self.peer_has_pending_download_work(peer_id)",
       "self.complete_peer_session_progress(&mut progress, peer_id);",
       "return Ok(());",
       "continue;",
@@ -254,12 +259,46 @@ function verifyIdleMaintenance(
     failures,
   );
   for (const needle of [
-    "fn peer_has_compact_download_in_flight",
+    "fn peer_has_pending_download_work",
     ".compact_download_peer_state(peer_id)",
     ".is_some_and(|state| !state.in_flight.is_empty())",
+    ".peer_requested_blocks(peer_id)",
+    ".any(|block_hash| self.inflight_blocks.contains(block_hash))",
   ]) {
-    requireContains(session, needle, "P123 compact-work-aware idle yield", failures);
+    requireContains(session, needle, "P123 response-work-aware idle yield", failures);
   }
+  for (const needle of [
+    "pub(super) fn request_tracked_blocks",
+    ".request_missing_blocks(peer_id, &requested)?",
+    ".inflight_blocks",
+    ".insert(BlockHash::from(item.object_hash))",
+  ]) {
+    requireContains(blockReconcile, needle, "P123 tracked compact fallback", failures);
+  }
+  requireOrdered(
+    syncSession,
+    [
+      "let block_response_was_requested =",
+      "block_reconcile::release_inflight_for_message(self, &message);",
+      "self.network.receive_sync_message(",
+      "self.record_block_disposition(",
+      "self.persist_progress()?;",
+    ],
+    "P123 requested fallback response consumption",
+    failures,
+  );
+  requireContains(
+    blockResponse,
+    "fn block_extends_active_tip",
+    "P123 compact fallback active-tip classification",
+    failures,
+  );
+  requireContains(
+    session,
+    "|| self.block_extends_active_tip(block)",
+    "P123 compact fallback active-tip response classification",
+    failures,
+  );
   requireContains(
     sync,
     "pub fn sync_until_idle_with_clock_and_cancel",
@@ -438,10 +477,25 @@ function verifyFocusedTests(texts: Map<TargetFile, string>, failures: string[]):
     "phase123_message_after_idle_uses_session_clock_for_compact_timeout",
     "phase123_idle_session_without_compact_work_yields_after_first_wake",
     "phase123_compact_download_survives_five_second_idle_cadence_until_timeout",
+    "phase123_compact_timeout_fallback_consumes_matching_block_before_yield",
     "phase123_slow_messages_without_idle_timestamp_compact_at_receipt",
     "phase123_closed_receive_ends_session",
     "phase123_target_mismatch_is_not_written_to_current_session",
   ]) requireContains(timing, needle, "P123 runtime timing tests", failures);
+  const normalizedTiming = normalizeWhitespace(timing);
+  for (const needle of [
+    "outcomes.extend((0..13)",
+    "WireNetworkMessage::Block( compact_block.clone(), )",
+    "summary.peer_outcomes[0].contribution.blocks_received, 1",
+    ".load_block(expected_hash)",
+  ]) {
+    requireContains(
+      normalizedTiming,
+      needle,
+      "P123 compact fallback response regression",
+      failures,
+    );
+  }
 
   const daemonTests =
     texts.get("packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests.rs") ?? "";
