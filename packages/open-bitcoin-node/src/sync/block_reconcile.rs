@@ -70,6 +70,24 @@ pub(super) fn request_missing_blocks(
         requested.push(entry.block_hash);
     }
 
+    request_tracked_blocks(runtime, peer_id, &requested)
+}
+
+pub(super) fn request_tracked_blocks(
+    runtime: &mut DurableSyncRuntime,
+    peer_id: PeerId,
+    block_hashes: &[BlockHash],
+) -> Result<Vec<WireNetworkMessage>, SyncRuntimeError> {
+    let available_global = runtime
+        .config
+        .max_blocks_in_flight_total
+        .saturating_sub(runtime.inflight_blocks.len());
+    let requested = block_hashes
+        .iter()
+        .copied()
+        .filter(|block_hash| !runtime.inflight_blocks.contains(block_hash))
+        .take(available_global)
+        .collect::<Vec<_>>();
     let outbound = runtime
         .network
         .request_missing_blocks(peer_id, &requested)?;

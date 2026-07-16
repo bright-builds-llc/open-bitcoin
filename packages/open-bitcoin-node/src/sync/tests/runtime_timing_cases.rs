@@ -13,7 +13,9 @@ use std::{
 use open_bitcoin_codec::{
     BIP152_COMPACT_BLOCKS_VERSION, CompactBlockPayload, PrefilledTransaction, SendCompactMessage,
 };
-use open_bitcoin_core::consensus::{block_hash, block_merkle_root, transaction_wtxid};
+use open_bitcoin_core::consensus::{
+    block_hash, block_merkle_root, transaction_txid, transaction_wtxid,
+};
 use open_bitcoin_network::{
     BlockRelayActivationPolicy, BlockServingActivationConfig,
     COMPACT_BLOCK_DOWNLOAD_TIMEOUT_SECONDS, CompactRelayActivationConfig,
@@ -437,6 +439,73 @@ fn phase123_compact_download_survives_five_second_idle_cadence_until_timeout() {
 }
 
 #[test]
+fn phase123_compact_timeout_fallback_consumes_matching_block_before_yield() {
+    // Arrange
+    let path = temp_store_path("phase123-compact-fallback-response");
+    remove_dir_if_exists(&path);
+    let mut runtime = timing_runtime(&path, 8);
+    let compact_block = connectable_compact_block_fixture(&mut runtime);
+    let expected_hash = block_hash(&compact_block.header);
+    let expected_hash_hex = block_hash_hex(expected_hash);
+    let started_at = i64::from(compact_block.header.time) + 1;
+    let mut outcomes = vec![
+        SyncPeerReceiveOutcome::Message(version_message()),
+        SyncPeerReceiveOutcome::Message(WireNetworkMessage::Verack),
+        SyncPeerReceiveOutcome::Message(send_compact_message()),
+        SyncPeerReceiveOutcome::Message(WireNetworkMessage::CompactBlock(compact_payload(
+            &compact_block,
+        ))),
+    ];
+    outcomes.extend((0..13).map(|_| SyncPeerReceiveOutcome::Idle));
+    outcomes.push(SyncPeerReceiveOutcome::Message(WireNetworkMessage::Block(
+        compact_block.clone(),
+    )));
+    outcomes.push(SyncPeerReceiveOutcome::Idle);
+    let mut transport = TimingTransport::new(outcomes);
+    let sent = Rc::clone(&transport.sent);
+    let mut resolver = timing_resolver();
+    let mut clock_calls = 0_usize;
+    let mut elapsed = 0_i64;
+    let mut clock = || {
+        clock_calls += 1;
+        if clock_calls <= 4 {
+            return started_at;
+        }
+        elapsed += 5;
+        if clock_calls <= 17 {
+            assert!(!sent.borrow().iter().any(is_full_block_getdata));
+        } else {
+            assert!(sent.borrow().iter().any(is_full_block_getdata));
+        }
+        started_at + elapsed
+    };
+
+    // Act
+    let summary = runtime
+        .sync_once_with_resolver_and_clock(&mut transport, &mut resolver, started_at, &mut clock)
+        .expect("compact fallback response summary");
+
+    // Assert
+    assert_eq!(clock_calls, 19);
+    assert_eq!(summary.messages_processed, 5);
+    assert_eq!(summary.peer_outcomes[0].contribution.blocks_received, 1);
+    assert_eq!(
+        summary.maybe_downloaded_block_hash,
+        Some(expected_hash_hex.clone())
+    );
+    assert_eq!(summary.maybe_connected_block_hash, Some(expected_hash_hex));
+    assert!(runtime.inflight_blocks.is_empty());
+    assert!(
+        runtime
+            .store()
+            .load_block(expected_hash)
+            .expect("load fallback block")
+            .is_some()
+    );
+    remove_dir_if_exists(&path);
+}
+
+#[test]
 fn phase123_slow_messages_without_idle_timestamp_compact_at_receipt() {
     // Arrange
     let path = temp_store_path("phase123-slow-message-clock");
@@ -574,6 +643,47 @@ fn compact_block_fixture(runtime: &mut DurableSyncRuntime) -> Block {
 
     let mut announced = build_block(block_hash(&spendable.header), 2);
     announced.transactions.push(coinbase_transaction(3, 25));
+    let (merkle_root, maybe_mutated) =
+        block_merkle_root(&announced.transactions).expect("merkle root");
+    assert!(!maybe_mutated);
+    announced.header.merkle_root = merkle_root;
+    mine_header(&mut announced);
+    announced
+}
+
+fn connectable_compact_block_fixture(runtime: &mut DurableSyncRuntime) -> Block {
+    runtime.consensus_params.coinbase_maturity = 1;
+    let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+    let spendable = build_block(block_hash(&genesis.header), 1);
+    runtime
+        .network
+        .connect_local_block(&genesis, runtime.verify_flags, runtime.consensus_params)
+        .expect("connect genesis");
+    runtime
+        .network
+        .connect_local_block(&spendable, runtime.verify_flags, runtime.consensus_params)
+        .expect("connect spendable");
+
+    let previous_txid = transaction_txid(&spendable.transactions[0]).expect("coinbase txid");
+    let spend = Transaction {
+        version: 1,
+        inputs: vec![TransactionInput {
+            previous_output: OutPoint {
+                txid: previous_txid,
+                vout: 0,
+            },
+            script_sig: script(&[]),
+            sequence: TransactionInput::SEQUENCE_FINAL,
+            witness: ScriptWitness::default(),
+        }],
+        outputs: vec![TransactionOutput {
+            value: Amount::from_sats(25).expect("valid amount"),
+            script_pubkey: script(&[0x51]),
+        }],
+        lock_time: 0,
+    };
+    let mut announced = build_block(block_hash(&spendable.header), 2);
+    announced.transactions.push(spend);
     let (merkle_root, maybe_mutated) =
         block_merkle_root(&announced.transactions).expect("merkle root");
     assert!(!maybe_mutated);
