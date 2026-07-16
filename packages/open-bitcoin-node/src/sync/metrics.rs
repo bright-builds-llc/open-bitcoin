@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use crate::{
     FieldAvailability, InboundPeerServingStatus, MetricRetentionPolicy, block_relay_metric_samples,
-    inbound_metric_samples, status::BlockRelayEvidenceStatus,
+    inbound_metric_samples, network::BlockRelayRuntimeEvidenceSnapshot,
 };
 
 use super::{DurableSyncRuntime, SyncRunSummary, SyncRuntimeError};
@@ -22,16 +22,10 @@ impl DurableSyncRuntime {
         self.maybe_inbound_metric_status_provider = Some(Arc::new(provider));
     }
 
-    pub fn set_block_relay_metric_status_provider<F>(&mut self, provider: F)
-    where
-        F: Fn() -> FieldAvailability<BlockRelayEvidenceStatus> + Send + Sync + 'static,
-    {
-        self.maybe_block_relay_metric_status_provider = Some(Arc::new(provider));
-    }
-
     pub(super) fn persist_metrics(
         &self,
         summary: &SyncRunSummary,
+        maybe_block_relay_snapshot: Option<&BlockRelayRuntimeEvidenceSnapshot>,
         timestamp: i64,
     ) -> Result<(), SyncRuntimeError> {
         let timestamp = u64::try_from(timestamp).unwrap_or(0);
@@ -40,10 +34,12 @@ impl DurableSyncRuntime {
         if let Some(provider) = self.maybe_inbound_metric_status_provider.as_ref() {
             samples.extend(inbound_metric_samples(&provider(), timestamp));
         }
-        if let Some(provider) = self.maybe_block_relay_metric_status_provider.as_ref()
-            && let FieldAvailability::Available(status) = provider()
-        {
-            samples.extend(block_relay_metric_samples(&status, timestamp));
+        if let Some(snapshot) = maybe_block_relay_snapshot {
+            samples.extend(block_relay_metric_samples(
+                &snapshot.status,
+                snapshot.served_count,
+                timestamp,
+            ));
         }
         self.store.append_metric_samples(
             &samples,

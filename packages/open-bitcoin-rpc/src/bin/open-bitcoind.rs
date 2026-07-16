@@ -31,9 +31,8 @@ use std::{
 
 use open_bitcoin_network::{InboundPreflightDiagnostic, InboundPreflightReason};
 use open_bitcoin_node::{
-    DurableSyncRuntime, FieldAvailability, FjallNodeStore, SyncLifecycleState, SyncRunSummary,
-    SyncRuntimeError, SyncStopReason, TcpPeerTransport,
-    status::{BLOCK_SERVING_EVIDENCE_UNAVAILABLE_REASON, inbound_status_unavailable},
+    DurableSyncRuntime, FjallNodeStore, SyncLifecycleState, SyncRunSummary, SyncRuntimeError,
+    SyncStopReason, TcpPeerTransport, status::inbound_status_unavailable,
 };
 use open_bitcoin_rpc::{
     DaemonSyncControl, ManagedRpcContext,
@@ -376,24 +375,11 @@ fn start_daemon_sync_worker(
             "open-bitcoind daemon sync failed to construct durable sync runtime: {error}"
         ))
     })?;
-    let block_relay_context = Arc::clone(&shared_context);
     sync_runtime.set_inbound_metric_status_provider(move || {
         let Ok(context) = shared_context.try_lock() else {
             return inbound_status_unavailable();
         };
         context.current_inbound_status()
-    });
-    sync_runtime.set_block_relay_metric_status_provider(move || {
-        let Ok(context) = block_relay_context.try_lock() else {
-            return FieldAvailability::unavailable(BLOCK_SERVING_EVIDENCE_UNAVAILABLE_REASON);
-        };
-        let status = context.block_relay_evidence_status();
-        match &status.block_serving.activation {
-            FieldAvailability::Available(_) => FieldAvailability::available(status),
-            FieldAvailability::Unavailable { .. } => {
-                FieldAvailability::unavailable(BLOCK_SERVING_EVIDENCE_UNAVAILABLE_REASON)
-            }
-        }
     });
     seed_initial_sync_state(&sync_runtime)?;
     let (shutdown_sender, shutdown_receiver) = mpsc::channel();

@@ -48,7 +48,7 @@ pub use wallet_rescan::WalletRescanRuntime;
 use crate::{
     ChainstateStore, FieldAvailability, FjallNodeStore, InboundPeerServingStatus,
     ManagedPeerNetwork, MemoryChainstateStore, SyncLifecycleState,
-    network::BlockConnectDisposition, status::BlockRelayEvidenceStatus,
+    network::{BlockConnectDisposition, BlockRelayRuntimeEvidenceSnapshot},
 };
 use progress::{PeerFailure, PeerProgress};
 use types::SyncReconcileProgress;
@@ -71,8 +71,6 @@ pub struct DurableSyncRuntime {
     maybe_reconcile_progress: Option<SyncReconcileProgress>,
     maybe_inbound_metric_status_provider:
         Option<Arc<dyn Fn() -> FieldAvailability<InboundPeerServingStatus> + Send + Sync>>,
-    maybe_block_relay_metric_status_provider:
-        Option<Arc<dyn Fn() -> FieldAvailability<BlockRelayEvidenceStatus> + Send + Sync>>,
 }
 
 impl DurableSyncRuntime {
@@ -108,7 +106,6 @@ impl DurableSyncRuntime {
             inflight_blocks: BTreeSet::new(),
             maybe_reconcile_progress: None,
             maybe_inbound_metric_status_provider: None,
-            maybe_block_relay_metric_status_provider: None,
         })
     }
 
@@ -140,6 +137,16 @@ impl DurableSyncRuntime {
         }
         summary.maybe_reconcile_progress = self.maybe_reconcile_progress.clone();
         summary
+    }
+
+    fn maybe_authoritative_block_relay_snapshot(
+        &self,
+    ) -> Option<BlockRelayRuntimeEvidenceSnapshot> {
+        let snapshot = self.network.block_relay_runtime_evidence_snapshot();
+        match snapshot.status.block_serving.activation {
+            FieldAvailability::Available(_) => Some(snapshot),
+            FieldAvailability::Unavailable { .. } => None,
+        }
     }
 
     pub fn sync_once<T: SyncTransport>(
@@ -221,7 +228,10 @@ impl DurableSyncRuntime {
         }
         self.refresh_summary_progress(&mut summary)?;
         summary.maybe_reconcile_progress = self.maybe_reconcile_progress.clone();
-        if let Err(error) = self.persist_metrics(&summary, timestamp) {
+        let maybe_block_relay_snapshot = self.maybe_authoritative_block_relay_snapshot();
+        if let Err(error) =
+            self.persist_metrics(&summary, maybe_block_relay_snapshot.as_ref(), timestamp)
+        {
             self.write_runtime_error_log(&error, timestamp);
             let state = self.durable_sync_state_from_summary(
                 &summary,
@@ -233,7 +243,7 @@ impl DurableSyncRuntime {
             return Err(error);
         }
         self.write_summary_logs(&mut summary, timestamp);
-        self.write_block_relay_log(&mut summary, timestamp);
+        self.write_block_relay_log(&mut summary, maybe_block_relay_snapshot.as_ref(), timestamp);
         let mut state = self.durable_sync_state_from_summary(
             &summary,
             SyncLifecycleState::Active,

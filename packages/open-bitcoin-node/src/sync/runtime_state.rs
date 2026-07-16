@@ -14,6 +14,7 @@ use crate::{
         StructuredLogError, StructuredLogLevel, StructuredLogRecord, block_relay_log_record,
         writer::append_structured_log_record,
     },
+    network::BlockRelayRuntimeEvidenceSnapshot,
     status::{
         DurableSyncState, FieldAvailability, SyncAttemptCounters, SyncConfiguredTargets,
         SyncControlState, SyncLifecycleState, SyncResourcePressure,
@@ -112,15 +113,17 @@ impl DurableSyncRuntime {
         }
     }
 
-    pub(super) fn write_block_relay_log(&self, summary: &mut SyncRunSummary, timestamp: i64) {
-        let Some(provider) = self.maybe_block_relay_metric_status_provider.as_ref() else {
-            return;
-        };
-        let FieldAvailability::Available(status) = provider() else {
+    pub(super) fn write_block_relay_log(
+        &self,
+        summary: &mut SyncRunSummary,
+        maybe_block_relay_snapshot: Option<&BlockRelayRuntimeEvidenceSnapshot>,
+        timestamp: i64,
+    ) {
+        let Some(snapshot) = maybe_block_relay_snapshot else {
             return;
         };
         let timestamp = u64::try_from(timestamp).unwrap_or(0);
-        let record = block_relay_log_record(&status, timestamp);
+        let record = block_relay_log_record(&snapshot.status, snapshot.served_count, timestamp);
         if let Err(error) = self.append_structured_record(&record) {
             summary
                 .health_signals

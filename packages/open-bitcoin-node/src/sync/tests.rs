@@ -39,8 +39,8 @@ use crate::{
         BLOCK_RELAY_LOG_SOURCE, StructuredLogLevel, StructuredLogRecord, writer::load_log_status,
     },
     status::{
-        BLOCK_SERVING_EVIDENCE_UNAVAILABLE_REASON, BestKnownTipSource, BestKnownTipStatus,
-        BlockRelayEvidenceStatus, BlockServingActivationEvidence, BlockServingEligibilityCounters,
+        BestKnownTipSource, BestKnownTipStatus, BlockRelayEvidenceStatus,
+        BlockServingActivationEvidence, BlockServingEligibilityCounters,
         BlockServingEvidenceStatus, BlockServingStatusCounters, CompactRelayAnnouncementCounters,
         CompactRelayCleanupCounters, CompactRelayFallbackCounters, CompactRelayInFlightCounters,
         CompactRelayMissingTransactionCounters, CompactRelayNegotiationCounters,
@@ -55,6 +55,7 @@ use crate::{
     },
 };
 
+mod runtime_projection_cases;
 mod runtime_timing_cases;
 mod runtime_write_evidence_cases;
 mod soak;
@@ -4354,7 +4355,7 @@ fn persist_metrics_appends_inbound_status_samples_with_sync_samples() {
 
     // Act
     runtime
-        .persist_metrics(&summary, 1_777_225_022)
+        .persist_metrics(&summary, None, 1_777_225_022)
         .expect("persist metrics");
 
     // Assert
@@ -4387,7 +4388,7 @@ fn persist_metrics_omits_inbound_samples_when_status_unavailable() {
 
     // Act
     runtime
-        .persist_metrics(&summary, 1_777_225_022)
+        .persist_metrics(&summary, None, 1_777_225_022)
         .expect("persist metrics");
 
     // Assert
@@ -4438,16 +4439,17 @@ fn persist_metrics_appends_block_relay_status_samples_with_sync_samples() {
     let path = temp_store_path("metrics-block-relay");
     remove_dir_if_exists(&path);
     let store = FjallNodeStore::open(&path).expect("store");
-    let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    let runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
     let block_relay = block_relay_status_for_metrics();
-    runtime.set_block_relay_metric_status_provider(move || {
-        FieldAvailability::available(block_relay.clone())
-    });
+    let snapshot = crate::network::BlockRelayRuntimeEvidenceSnapshot {
+        status: block_relay,
+        served_count: 9,
+    };
     let summary = runtime.snapshot_summary();
 
     // Act
     runtime
-        .persist_metrics(&summary, 1_777_225_022)
+        .persist_metrics(&summary, Some(&snapshot), 1_777_225_022)
         .expect("persist metrics");
 
     // Assert
@@ -4466,7 +4468,7 @@ fn persist_metrics_appends_block_relay_status_samples_with_sync_samples() {
     }));
     assert!(metrics.samples.iter().any(|sample| {
         sample.kind == MetricKind::BlockServedCount
-            && sample.value == 2.0
+            && sample.value == 9.0
             && sample.timestamp_unix_seconds == 1_777_225_022
     }));
 
@@ -4474,54 +4476,9 @@ fn persist_metrics_appends_block_relay_status_samples_with_sync_samples() {
 }
 
 #[test]
-fn persist_metrics_omits_block_relay_samples_when_status_unavailable() {
+fn persist_metrics_omits_block_relay_samples_without_snapshot() {
     // Arrange
     let path = temp_store_path("metrics-block-relay-unavailable");
-    remove_dir_if_exists(&path);
-    let store = FjallNodeStore::open(&path).expect("store");
-    let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
-    runtime.set_block_relay_metric_status_provider(|| {
-        FieldAvailability::unavailable(BLOCK_SERVING_EVIDENCE_UNAVAILABLE_REASON)
-    });
-    let summary = runtime.snapshot_summary();
-
-    // Act
-    runtime
-        .persist_metrics(&summary, 1_777_225_022)
-        .expect("persist metrics");
-
-    // Assert
-    let metrics = runtime
-        .store()
-        .load_metrics_snapshot()
-        .expect("load metrics")
-        .expect("metrics snapshot");
-    assert!(
-        metrics
-            .samples
-            .iter()
-            .any(|sample| sample.kind == MetricKind::SyncHeight)
-    );
-    assert!(!metrics.samples.iter().any(|sample| matches!(
-        sample.kind,
-        MetricKind::BlockServedCount
-            | MetricKind::BlockServingSuppressedCount
-            | MetricKind::CompactAnnouncedCount
-            | MetricKind::CompactReconstructedCount
-            | MetricKind::CompactMissingTxRequestedCount
-            | MetricKind::CompactFallbackCount
-            | MetricKind::CompactMalformedCount
-            | MetricKind::CompactTimeoutCount
-            | MetricKind::CompactCleanupCount
-    )));
-
-    remove_dir_if_exists(&path);
-}
-
-#[test]
-fn persist_metrics_omits_block_relay_samples_when_provider_unset() {
-    // Arrange
-    let path = temp_store_path("metrics-block-relay-unset");
     remove_dir_if_exists(&path);
     let store = FjallNodeStore::open(&path).expect("store");
     let runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
@@ -4529,7 +4486,7 @@ fn persist_metrics_omits_block_relay_samples_when_provider_unset() {
 
     // Act
     runtime
-        .persist_metrics(&summary, 1_777_225_022)
+        .persist_metrics(&summary, None, 1_777_225_022)
         .expect("persist metrics");
 
     // Assert
@@ -4638,16 +4595,17 @@ fn write_block_relay_log_emits_when_status_available() {
     remove_dir_if_exists(&path);
     fs::create_dir_all(&log_dir).expect("create log dir");
     let store = FjallNodeStore::open(&path).expect("store");
-    let mut runtime =
+    let runtime =
         DurableSyncRuntime::open(store, sync_config_with_log_dir(&log_dir)).expect("runtime");
     let block_relay = block_relay_status_for_metrics();
-    runtime.set_block_relay_metric_status_provider(move || {
-        FieldAvailability::available(block_relay.clone())
-    });
+    let snapshot = crate::network::BlockRelayRuntimeEvidenceSnapshot {
+        status: block_relay,
+        served_count: 9,
+    };
     let mut summary = runtime.snapshot_summary();
 
     // Act
-    runtime.write_block_relay_log(&mut summary, 1_777_225_305);
+    runtime.write_block_relay_log(&mut summary, Some(&snapshot), 1_777_225_305);
 
     // Assert
     let records = load_structured_log_records(&log_dir);
@@ -4670,15 +4628,12 @@ fn write_block_relay_log_omits_when_status_unavailable() {
     remove_dir_if_exists(&path);
     fs::create_dir_all(&log_dir).expect("create log dir");
     let store = FjallNodeStore::open(&path).expect("store");
-    let mut runtime =
+    let runtime =
         DurableSyncRuntime::open(store, sync_config_with_log_dir(&log_dir)).expect("runtime");
-    runtime.set_block_relay_metric_status_provider(|| {
-        FieldAvailability::unavailable(BLOCK_SERVING_EVIDENCE_UNAVAILABLE_REASON)
-    });
     let mut summary = runtime.snapshot_summary();
 
     // Act
-    runtime.write_block_relay_log(&mut summary, 1_777_225_306);
+    runtime.write_block_relay_log(&mut summary, None, 1_777_225_306);
 
     // Assert
     let records = load_structured_log_records(&log_dir);
@@ -4699,16 +4654,17 @@ fn write_block_relay_log_omits_sensitive_markers() {
     remove_dir_if_exists(&path);
     fs::create_dir_all(&log_dir).expect("create log dir");
     let store = FjallNodeStore::open(&path).expect("store");
-    let mut runtime =
+    let runtime =
         DurableSyncRuntime::open(store, sync_config_with_log_dir(&log_dir)).expect("runtime");
     let block_relay = block_relay_status_for_metrics();
-    runtime.set_block_relay_metric_status_provider(move || {
-        FieldAvailability::available(block_relay.clone())
-    });
+    let snapshot = crate::network::BlockRelayRuntimeEvidenceSnapshot {
+        status: block_relay,
+        served_count: 0,
+    };
     let mut summary = runtime.snapshot_summary();
 
     // Act
-    runtime.write_block_relay_log(&mut summary, 1_777_225_307);
+    runtime.write_block_relay_log(&mut summary, Some(&snapshot), 1_777_225_307);
 
     // Assert
     let records = load_structured_log_records(&log_dir);
