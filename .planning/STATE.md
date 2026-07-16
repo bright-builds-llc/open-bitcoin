@@ -2,16 +2,16 @@
 gsd_state_version: "1.0"
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
-status: executing
-stopped_at: Phase 123 context gathered
-last_updated: "2026-07-16T01:40:58.465Z"
-last_activity: 2026-07-16 -- Phase 123 execution started
+status: ready
+stopped_at: Phase 123 verified; Phase 124 ready for planning
+last_updated: "2026-07-16T06:59:37.308Z"
+last_activity: "2026-07-16"
 progress:
   total_phases: 15
-  completed_phases: 13
+  completed_phases: 14
   total_plans: 48
-  completed_plans: 43
-  percent: 90
+  completed_plans: 48
+  percent: 100
 ---
 
 # Project State
@@ -21,19 +21,19 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-07-10 after Phase 117 completed v2.1 implementation and verification).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 123 — Runtime Timing and Evidence Integrity
+**Current focus:** Phase 124 — Milestone Closeout Reconciliation
 
 ## Current Position
 
 Milestone: v2.1 Block Serving and Compact Block Relay Boundary
-Phase: 123 (Runtime Timing and Evidence Integrity) — EXECUTING
-Plan: 1 of 7
-Status: Executing Phase 123
-Last activity: 2026-07-16 -- Phase 123 execution started
+Phase: 124
+Plan: Not started
+Status: Ready to plan Phase 124
+Last activity: 2026-07-16
 
 v2.0 Transaction Relay and Mempool Participation Boundary shipped on 2026-07-03. The archived audit reports 32/32 requirements, 10/10 phases, 8/8 integration checks, 8/8 cross-phase flows, and no tracked tech debt.
 
-v2.1 gap-closure Phase 121 Plan 01 wired DurableSyncRuntime block-relay provider, Available-gated persist_metrics, and write_block_relay_log on the sync tick.
+Phase 123 verified receive-independent compact timeout fallback, successful-write-only served evidence, and one authoritative sync-owned block-relay snapshot for metrics and logs. Phase 124 owns the remaining milestone metadata and audit reconciliation.
 
 ## Latest Milestone Archive
 
@@ -108,6 +108,6 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Session Continuity
 
-Last session: 2026-07-15T23:59:23.205Z
-Stopped at: Phase 123 context gathered
-Resume file: .planning/phases/123-runtime-timing-and-evidence-integrity/123-CONTEXT.md
+Last session: 2026-07-16T06:59:37.308Z
+Stopped at: Phase 123 verified; Phase 124 ready for planning
+Resume file: None

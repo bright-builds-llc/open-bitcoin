@@ -52,7 +52,7 @@ v2.1 Block Serving and Compact Block Relay Boundary is the active milestone afte
 - [x] **Phase 120: Compact Download Timeout and Misbehavior Runtime Bridge** - Schedule compact-download timeout expiration from the node runtime and escalate typed compact misbehavior beyond silent suppress. (completed 2026-07-14)
 - [x] **Phase 121: Block Relay Metrics and Log Runtime Projection** - Project block-relay metric samples and structured log records through the sync runtime persist/logging path. (completed 2026-07-14)
 - [x] **Phase 122: Compact Relay Peer Completion** - Serve eligible inbound `getblocktxn` requests after local compact announcements and align the protocol-path test vocabulary. (completed 2026-07-15)
-- [ ] **Phase 123: Runtime Timing and Evidence Integrity** - Make timeout scheduling independent of receives and derive relay evidence from actual runtime emissions and the authoritative network instance.
+- [x] **Phase 123: Runtime Timing and Evidence Integrity** - Make timeout scheduling independent of receives and derive relay evidence from actual runtime emissions and the authoritative network instance. (completed 2026-07-16)
 - [ ] **Phase 124: Milestone Closeout Reconciliation** - Reconcile milestone metadata, re-audit the completed hardening work, and establish archive readiness.
 
 ### Phase Details
@@ -340,7 +340,7 @@ Plans:
 3. Block-relay metric and log projection samples the same authoritative network instance used by `DurableSyncRuntime`.
 4. Focused runtime tests prove idle expiry, post-emission counting, and projection of sync-runtime compact activity.
 
-**Plans:** 6/7 plans executed
+**Plans:** 7/7 plans complete
 
 Plans:
 
@@ -384,7 +384,7 @@ Plans:
 | 120. Compact Download Timeout and Misbehavior Runtime Bridge | v2.1 | 3/3 | Complete    | 2026-07-14 |
 | 121. Block Relay Metrics and Log Runtime Projection | v2.1 | 2/2 | Complete   | 2026-07-14 |
 | 122. Compact Relay Peer Completion | v2.1 | 1/1 | Complete    | 2026-07-15 |
-| 123. Runtime Timing and Evidence Integrity | v2.1 | 6/7 | In Progress|  |
+| 123. Runtime Timing and Evidence Integrity | v2.1 | 7/7 | Complete    | 2026-07-16 |
 | 124. Milestone Closeout Reconciliation | v2.1 | 0/TBD | Not started | - |
 
 ## Traceability

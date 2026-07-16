@@ -63,9 +63,9 @@ Requirements for the current milestone. Each requirement maps to exactly one roa
 ### Milestone Hardening And Closeout
 
 - [x] **HARD-01**: Node serves eligible inbound `getblocktxn` requests for locally announced compact blocks through a bounded, parity-auditable peer path.
-- [ ] **HARD-02**: Compact-download timeout expiration advances on a deterministic runtime schedule even when no further peer message is received.
-- [ ] **HARD-03**: Served-block evidence derives from successful `WireNetworkMessage::Block` emission rather than eligible-peer proxy counts.
-- [ ] **HARD-04**: Runtime block-relay metrics and logs sample the authoritative network instance used by `DurableSyncRuntime`.
+- [x] **HARD-02**: Compact-download timeout expiration advances on a deterministic runtime schedule even when no further peer message is received.
+- [x] **HARD-03**: Served-block evidence derives from successful `WireNetworkMessage::Block` emission rather than eligible-peer proxy counts.
+- [x] **HARD-04**: Runtime block-relay metrics and logs sample the authoritative network instance used by `DurableSyncRuntime`.
 - [ ] **HARD-05**: Roadmap, requirement coverage, phase status, and the final milestone audit agree and route v2.1 directly to archival.
 
 ## Deferred Requirements
@@ -149,9 +149,9 @@ Traceability is populated by the v2.1 roadmap. Each active requirement maps to e
 | BOUND-04 | Phase 117 | Complete |
 | BOUND-05 | Phase 117 | Complete |
 | HARD-01 | Phase 122 | Complete |
-| HARD-02 | Phase 123 | Pending |
-| HARD-03 | Phase 123 | Pending |
-| HARD-04 | Phase 123 | Pending |
+| HARD-02 | Phase 123 | Complete |
+| HARD-03 | Phase 123 | Complete |
+| HARD-04 | Phase 123 | Complete |
 | HARD-05 | Phase 124 | Pending |
 
 **Coverage:**
