@@ -89,9 +89,7 @@ test("fails when direct sync-network sampling is removed", () => {
   const failures = checkPhase121BlockRelayMetricsLogRuntime({ rootDir: root });
 
   // Assert
-  expect(failures.join("\n")).toContain(
-    "P121 authoritative snapshot missing self.network.block_relay_runtime_evidence_snapshot()",
-  );
+  expect(failures.join("\n")).toContain("P121 authoritative snapshot");
 });
 
 test("fails when structured logging uses a second sample", () => {
@@ -111,9 +109,7 @@ test("fails when structured logging uses a second sample", () => {
   const failures = checkPhase121BlockRelayMetricsLogRuntime({ rootDir: root });
 
   // Assert
-  expect(failures.join("\n")).toContain(
-    "P121 same snapshot log argument missing maybe_block_relay_snapshot.as_ref()",
-  );
+  expect(failures.join("\n")).toContain("P121 same snapshot log argument");
 });
 
 test("fails when unavailable evidence is projected", () => {
@@ -392,7 +388,7 @@ ${CLOSED_FLOW}.
 The snapshot combines the unchanged sanitized BlockRelayEvidenceStatus with a
 runtime-only, non-serialized served_count. ManagedRpcContext owns a separate network
 instance and is not the sync projection source. Unavailable evidence is omitted.
-Aggregate-only redaction remains in force. This does not claim public block serving
+The aggregate-only redaction remains in force. This does not claim public block serving
 by default, package relay, public inbound defaults, or production full-node readiness.
 `,
     ],

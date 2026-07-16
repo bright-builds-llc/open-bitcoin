@@ -13,13 +13,14 @@ const PHASE121_TEST_COMMAND =
 const PHASE121_CHECKER_COMMAND =
   "bun run scripts/check-phase121-block-relay-metrics-log-runtime.ts";
 const CLOSED_FLOW =
-  "BlockRelayEvidenceStatus -> block_relay_metric_samples / block_relay_log_record -> DurableSyncRuntime persist_metrics / structured logs";
+  "DurableSyncRuntime::network -> one availability-gated BlockRelayRuntimeEvidenceSnapshot -> block_relay_metric_samples / block_relay_log_record -> retained metrics / structured logs";
 
 const TARGET_FILES = [
   "packages/open-bitcoin-node/src/sync.rs",
   "packages/open-bitcoin-node/src/sync/metrics.rs",
   "packages/open-bitcoin-node/src/sync/runtime_state.rs",
   "packages/open-bitcoin-node/src/sync/tests.rs",
+  "packages/open-bitcoin-node/src/sync/tests/runtime_projection_cases.rs",
   "packages/open-bitcoin-node/src/metrics/block_relay.rs",
   "packages/open-bitcoin-node/src/logging.rs",
   "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
@@ -42,11 +43,10 @@ export function checkPhase121BlockRelayMetricsLogRuntime(
     texts.set(file, readText(repoRoot, file, failures));
   }
 
-  verifyProviderAndPersist(texts, failures);
-  verifyLogEmission(texts, failures);
+  verifyAuthoritativeSnapshotAndPersist(texts, failures);
   verifyRuntimeTests(texts, failures);
   verifyHelperReuse(texts, failures);
-  verifyDaemonWiring(texts, failures);
+  verifyObsoleteProviderAbsent(texts, failures);
   verifyDocs(texts, failures);
   verifyVerifierWiring(texts.get("scripts/verify.sh") ?? "", failures);
   verifyNoClaimCreep(texts, failures);
@@ -64,53 +64,108 @@ function readText(repoRoot: string, relativePath: TargetFile, failures: string[]
   return readFileSync(absolutePath, "utf8");
 }
 
-function verifyProviderAndPersist(
+function verifyAuthoritativeSnapshotAndPersist(
   texts: Map<TargetFile, string>,
   failures: string[],
 ): void {
-  const sync = `${texts.get("packages/open-bitcoin-node/src/sync.rs") ?? ""}\n${
-    texts.get("packages/open-bitcoin-node/src/sync/metrics.rs") ?? ""
-  }`;
-  const metrics = texts.get("packages/open-bitcoin-node/src/sync/metrics.rs") ?? "";
-  for (const needle of [
-    "set_block_relay_metric_status_provider",
-    "FieldAvailability<BlockRelayEvidenceStatus>",
-  ]) {
-    requireContains(sync, needle, "P121 runtime provider hook", failures);
-  }
-  for (const needle of [
-    "block_relay_metric_samples",
-    "samples.extend",
-    "append_metric_samples",
-    "FieldAvailability::Available(status)",
-  ]) {
-    requireContains(metrics, needle, "P121 runtime metrics append", failures);
-  }
-}
-
-function verifyLogEmission(texts: Map<TargetFile, string>, failures: string[]): void {
-  const runtime = texts.get("packages/open-bitcoin-node/src/sync/runtime_state.rs") ?? "";
   const sync = texts.get("packages/open-bitcoin-node/src/sync.rs") ?? "";
+  const metrics = texts.get("packages/open-bitcoin-node/src/sync/metrics.rs") ?? "";
+  const runtime = texts.get("packages/open-bitcoin-node/src/sync/runtime_state.rs") ?? "";
+
+  requireExactCount(
+    sync,
+    "self.network.block_relay_runtime_evidence_snapshot()",
+    1,
+    "P121 authoritative snapshot",
+    failures,
+  );
   for (const needle of [
-    "write_block_relay_log",
-    "block_relay_log_record",
-    "append_structured_record",
+    "match snapshot.status.block_serving.activation",
+    "FieldAvailability::Available(_) => Some(snapshot)",
+    "FieldAvailability::Unavailable { .. } => None",
   ]) {
-    requireContains(runtime, needle, "P121 structured log emission", failures);
+    requireContains(sync, needle, "P121 activation omission", failures);
   }
-  requireContains(sync, "write_block_relay_log", "P121 sync tick log wiring", failures);
+  requireContains(
+    sync,
+    "let maybe_block_relay_snapshot = self.maybe_authoritative_block_relay_snapshot();",
+    "P121 authoritative snapshot local",
+    failures,
+  );
+  requireContains(
+    sync,
+    "self.persist_metrics(&summary, maybe_block_relay_snapshot.as_ref(), timestamp)",
+    "P121 same snapshot metrics argument",
+    failures,
+  );
+  requireContains(
+    sync,
+    "self.write_block_relay_log(&mut summary, maybe_block_relay_snapshot.as_ref(), timestamp);",
+    "P121 same snapshot log argument",
+    failures,
+  );
+  requireExactCount(
+    sync,
+    "maybe_block_relay_snapshot.as_ref()",
+    2,
+    "P121 same snapshot reuse",
+    failures,
+  );
+  requireOrdered(
+    sync,
+    [
+      "let maybe_block_relay_snapshot = self.maybe_authoritative_block_relay_snapshot();",
+      "self.persist_metrics(&summary, maybe_block_relay_snapshot.as_ref(), timestamp)",
+      "self.write_block_relay_log(&mut summary, maybe_block_relay_snapshot.as_ref(), timestamp);",
+    ],
+    "P121 authoritative projection order",
+    failures,
+  );
+
+  for (const needle of [
+    "if let Some(snapshot) = maybe_block_relay_snapshot",
+    "samples.extend(block_relay_metric_samples(",
+    "snapshot.served_count",
+  ]) {
+    requireContains(metrics, needle, "P121 runtime metrics projection", failures);
+  }
+  requireContains(metrics, "append_metric_samples", "P121 retained metrics append", failures);
+
+  for (const needle of [
+    "let Some(snapshot) = maybe_block_relay_snapshot else",
+    "block_relay_log_record(&snapshot.status, snapshot.served_count",
+  ]) {
+    requireContains(runtime, needle, "P121 structured log projection", failures);
+  }
+  requireContains(
+    runtime,
+    "append_structured_record",
+    "P121 structured log append",
+    failures,
+  );
 }
 
 function verifyRuntimeTests(texts: Map<TargetFile, string>, failures: string[]): void {
-  const tests = texts.get("packages/open-bitcoin-node/src/sync/tests.rs") ?? "";
+  const legacyTests = texts.get("packages/open-bitcoin-node/src/sync/tests.rs") ?? "";
   for (const needle of [
     "persist_metrics_appends_block_relay_status_samples_with_sync_samples",
-    "persist_metrics_omits_block_relay_samples_when_status_unavailable",
+    "persist_metrics_omits_block_relay_samples_without_snapshot",
     "write_block_relay_log_emits_when_status_available",
     "write_block_relay_log_omits_when_status_unavailable",
     "write_block_relay_log_omits_sensitive_markers",
   ]) {
-    requireContains(tests, needle, "P121 runtime tests", failures);
+    requireContains(legacyTests, needle, "P121 runtime tests", failures);
+  }
+
+  const projectionTests =
+    texts.get("packages/open-bitcoin-node/src/sync/tests/runtime_projection_cases.rs") ?? "";
+  for (const needle of [
+    "phase123_unobserved_authoritative_network_omits_block_relay_metrics_and_log",
+    "phase123_sync_network_compact_activity_projects_same_snapshot_to_metrics_and_log",
+    "eligibility.eligible_peer_count, 2",
+    "block_served_write_count(), 9",
+  ]) {
+    requireContains(projectionTests, needle, "P121 authoritative projection tests", failures);
   }
 }
 
@@ -131,28 +186,46 @@ function verifyHelperReuse(texts: Map<TargetFile, string>, failures: string[]): 
   );
 }
 
-function verifyDaemonWiring(texts: Map<TargetFile, string>, failures: string[]): void {
+function verifyObsoleteProviderAbsent(
+  texts: Map<TargetFile, string>,
+  failures: string[],
+): void {
+  const syncRuntime = [
+    texts.get("packages/open-bitcoin-node/src/sync.rs") ?? "",
+    texts.get("packages/open-bitcoin-node/src/sync/metrics.rs") ?? "",
+    texts.get("packages/open-bitcoin-node/src/sync/runtime_state.rs") ?? "",
+  ].join("\n");
   const daemon = texts.get("packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs") ?? "";
-  for (const needle of [
+  for (const token of [
     "set_block_relay_metric_status_provider",
-    "block_relay_evidence_status",
-    "BLOCK_SERVING_EVIDENCE_UNAVAILABLE_REASON",
+    "maybe_block_relay_metric_status_provider",
   ]) {
-    requireContains(daemon, needle, "P121 open-bitcoind provider", failures);
+    requireAbsent(syncRuntime, token, "P121 obsolete provider wiring", failures);
+    requireAbsent(daemon, token, "P121 obsolete daemon provider wiring", failures);
   }
+  requireAbsent(daemon, "block_relay_context", "P121 obsolete daemon provider wiring", failures);
 }
 
 function verifyDocs(texts: Map<TargetFile, string>, failures: string[]): void {
-  const docs = texts.get("docs/architecture/operator-observability.md") ?? "";
+  const docs = normalizeWhitespace(
+    texts.get("docs/architecture/operator-observability.md") ?? "",
+  );
   for (const needle of [
     "Phase 121",
-    "DurableSyncRuntime",
-    "persist_metrics",
-    "block_relay_metric_samples",
     CLOSED_FLOW,
+    "runtime-only",
+    "non-serialized",
+    "ManagedRpcContext",
+    "separate network",
+    "not the sync projection source",
+    "aggregate-only",
   ]) {
     requireContains(docs, needle, "P121 operator-observability docs", failures);
   }
+}
+
+function normalizeWhitespace(text: string): string {
+  return text.replaceAll(/\s+/g, " ").trim();
 }
 
 function verifyVerifierWiring(verifyScript: string, failures: string[]): void {
@@ -184,6 +257,11 @@ function verifyNoClaimCreep(texts: Map<TargetFile, string>, failures: string[]):
     "enables public inbound default",
     "proves production full-node readiness",
     "enables compact block relay",
+    "adds a new RPC",
+    "adds a new CLI",
+    "adds a new dashboard",
+    "adds a new support field",
+    "unified mutable network",
   ]) {
     requireAbsent(docs, phrase, "P121 no-claim boundary", failures);
   }
@@ -215,6 +293,19 @@ function requireAbsent(
 ): void {
   if (text.includes(needle)) {
     failures.push(`${label} must not contain ${needle}`);
+  }
+}
+
+function requireExactCount(
+  text: string,
+  needle: string,
+  expected: number,
+  label: string,
+  failures: string[],
+): void {
+  const actual = text.split(needle).length - 1;
+  if (actual !== expected) {
+    failures.push(`${label} expected ${expected} occurrence(s) of ${needle}, found ${actual}`);
   }
 }
 
