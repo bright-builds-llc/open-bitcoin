@@ -76,6 +76,7 @@ export function checkPhase123RuntimeTimingEvidenceIntegrity(
   }
 
   verifyTypedReceiveAndTcp(texts, failures);
+  verifyProductionActivation(texts, failures);
   verifyIdleMaintenance(texts, failures);
   verifySuccessfulWriteEvidence(texts, failures);
   verifyPrivateProjection(texts, failures);
@@ -86,6 +87,38 @@ export function checkPhase123RuntimeTimingEvidenceIntegrity(
   verifyBreadcrumbs(texts.get("docs/parity/source-breadcrumbs.json") ?? "", failures);
   verifyVerifierWiring(texts.get("scripts/verify.sh") ?? "", failures);
   return failures;
+}
+
+function verifyProductionActivation(
+  texts: Map<TargetFile, string>,
+  failures: string[],
+): void {
+  const sync = texts.get("packages/open-bitcoin-node/src/sync.rs") ?? "";
+  for (const needle of [
+    "pub fn open_with_block_relay_activation",
+    "ManagedPeerNetwork::with_sync_limits_and_block_relay_activation",
+    "block_relay_activation",
+  ]) {
+    requireContains(sync, needle, "P123 sync production activation", failures);
+  }
+  const daemon = texts.get("packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs") ?? "";
+  requireOrdered(
+    daemon,
+    ["DurableSyncRuntime::open_with_block_relay_activation(", "runtime.block_serving"],
+    "P123 daemon sync activation wiring",
+    failures,
+  );
+  for (const file of [
+    "packages/open-bitcoin-node/src/sync/tests/runtime_timing_cases.rs",
+    "packages/open-bitcoin-node/src/sync/tests/runtime_projection_cases.rs",
+  ] as const) {
+    requireContains(
+      texts.get(file) ?? "",
+      "DurableSyncRuntime::open_with_block_relay_activation(",
+      `P123 production activation test path ${file}`,
+      failures,
+    );
+  }
 }
 
 function readText(repoRoot: string, file: TargetFile, failures: string[]): string {

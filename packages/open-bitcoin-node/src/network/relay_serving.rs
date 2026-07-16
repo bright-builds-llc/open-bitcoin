@@ -304,6 +304,26 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         relay_activation: RelayActivationConfig,
         inbound_serving_enabled: bool,
     ) -> Self {
+        Self::with_sync_limits_and_block_relay_activation(
+            store,
+            local_config,
+            mempool_config,
+            max_blocks_in_flight_per_peer,
+            relay_activation,
+            BlockRelayActivationPolicy::default(),
+            inbound_serving_enabled,
+        )
+    }
+
+    pub(crate) fn with_sync_limits_and_block_relay_activation(
+        store: S,
+        local_config: LocalPeerConfig,
+        mempool_config: PolicyConfig,
+        max_blocks_in_flight_per_peer: usize,
+        relay_activation: RelayActivationConfig,
+        block_relay_activation: BlockRelayActivationPolicy,
+        inbound_serving_enabled: bool,
+    ) -> Self {
         let peer_manager = PeerManager::with_max_blocks_in_flight(
             local_config.clone(),
             max_blocks_in_flight_per_peer,
@@ -314,7 +334,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             mempool_config,
             peer_manager,
             relay_activation,
-            BlockRelayActivationPolicy::default(),
+            block_relay_activation,
             inbound_serving_enabled,
         )
     }

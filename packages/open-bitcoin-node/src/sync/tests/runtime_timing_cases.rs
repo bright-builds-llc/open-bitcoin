@@ -211,7 +211,6 @@ fn phase123_idle_after_fake_clock_emits_same_peer_full_block_fallback() {
     let path = temp_store_path("phase123-idle-after-timeout");
     remove_dir_if_exists(&path);
     let mut runtime = timing_runtime(&path, 8);
-    enable_compact_downloads(&mut runtime);
     let compact_block = compact_block_fixture(&mut runtime);
     let expected_hash = block_hash(&compact_block.header);
     let mut transport = TimingTransport::new(compact_download_script(&compact_block));
@@ -287,7 +286,6 @@ fn phase123_target_mismatch_is_not_written_to_current_session() {
     let path = temp_store_path("phase123-target-mismatch");
     remove_dir_if_exists(&path);
     let mut runtime = timing_runtime(&path, 8);
-    enable_compact_downloads(&mut runtime);
     let compact_block = compact_block_fixture(&mut runtime);
     let expected_hash = block_hash(&compact_block.header);
     start_other_peer_compact_download(&mut runtime, 99, &compact_block, 5_000);
@@ -320,13 +318,14 @@ fn phase123_target_mismatch_is_not_written_to_current_session() {
 
 fn timing_runtime(path: &std::path::Path, max_messages_per_peer: usize) -> DurableSyncRuntime {
     let store = FjallNodeStore::open(path).expect("store");
-    DurableSyncRuntime::open(
+    DurableSyncRuntime::open_with_block_relay_activation(
         store,
         SyncRuntimeConfig {
             max_messages_per_peer,
             max_peer_retries: 0,
             ..sync_config()
         },
+        enabled_block_relay_activation(),
     )
     .expect("runtime")
 }
@@ -339,14 +338,11 @@ fn version_message() -> WireNetworkMessage {
     WireNetworkMessage::Version(VersionMessage::default())
 }
 
-fn enable_compact_downloads(runtime: &mut DurableSyncRuntime) {
-    runtime
-        .network
-        .peer_manager_mut()
-        .set_block_relay_activation_policy(BlockRelayActivationPolicy {
-            block_serving: BlockServingActivationConfig { enabled: true },
-            compact_relay: CompactRelayActivationConfig { enabled: true },
-        });
+fn enabled_block_relay_activation() -> BlockRelayActivationPolicy {
+    BlockRelayActivationPolicy {
+        block_serving: BlockServingActivationConfig { enabled: true },
+        compact_relay: CompactRelayActivationConfig { enabled: true },
+    }
 }
 
 fn compact_block_fixture(runtime: &mut DurableSyncRuntime) -> Block {

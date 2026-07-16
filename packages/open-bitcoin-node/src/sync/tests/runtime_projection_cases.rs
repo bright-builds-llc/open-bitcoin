@@ -3,14 +3,11 @@
 // - packages/bitcoin-knots/src/net_processing.cpp
 // - packages/bitcoin-knots/test/functional/p2p_compactblocks.py
 
-use open_bitcoin_mempool::PolicyConfig;
 use open_bitcoin_network::{
     BlockRelayActivationPolicy, BlockServingActivationConfig, CompactRelayActivationConfig,
-    RelayActivationConfig,
 };
 
 use super::*;
-use crate::{ManagedPeerNetwork, MemoryChainstateStore};
 
 const PROJECTION_TIMESTAMP: i64 = 1_777_225_405;
 
@@ -36,19 +33,19 @@ fn run_one_sync_tick(runtime: &mut DurableSyncRuntime) -> SyncRunSummary {
         .expect("sync tick")
 }
 
-fn enable_authoritative_block_relay(runtime: &mut DurableSyncRuntime) {
-    let local_config = super::super::progress::local_peer_config(&runtime.config);
-    runtime.network = ManagedPeerNetwork::new_with_block_relay_activation(
-        MemoryChainstateStore::default(),
-        local_config,
-        PolicyConfig::default(),
-        RelayActivationConfig::default(),
+fn open_authoritative_block_relay_runtime(
+    store: FjallNodeStore,
+    config: SyncRuntimeConfig,
+) -> DurableSyncRuntime {
+    DurableSyncRuntime::open_with_block_relay_activation(
+        store,
+        config,
         BlockRelayActivationPolicy {
             block_serving: BlockServingActivationConfig { enabled: true },
             compact_relay: CompactRelayActivationConfig { enabled: true },
         },
-        true,
-    );
+    )
+    .expect("runtime")
 }
 
 fn record_compact_activity_and_nine_block_writes(runtime: &mut DurableSyncRuntime) {
@@ -171,8 +168,7 @@ fn phase123_sync_network_compact_activity_projects_same_snapshot_to_metrics_and_
     remove_dir_if_exists(&path);
     let store = FjallNodeStore::open(&path).expect("store");
     let mut runtime =
-        DurableSyncRuntime::open(store, sync_config_with_log_dir(&log_dir)).expect("runtime");
-    enable_authoritative_block_relay(&mut runtime);
+        open_authoritative_block_relay_runtime(store, sync_config_with_log_dir(&log_dir));
     record_compact_activity_and_nine_block_writes(&mut runtime);
     let status = runtime.network.block_relay_evidence_status();
     let FieldAvailability::Available(eligibility) = status.block_serving.eligibility else {

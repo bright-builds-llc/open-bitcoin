@@ -143,6 +143,15 @@ test.each([
     append("packages/open-bitcoin-node/src/sync.rs", "set_block_relay_metric_status_provider(provider);"),
   ],
   [
+    "daemon sync activation removed",
+    "P123 daemon sync activation wiring missing or out of order runtime.block_serving",
+    mutate(
+      "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
+      "runtime.block_serving",
+      "BlockRelayActivationPolicy::default()",
+    ),
+  ],
+  [
     "structured log resamples",
     "P123 shared metric/log snapshot missing or out of order self.write_block_relay_log(&mut summary, maybe_block_relay_snapshot.as_ref(), timestamp);",
     mutate("packages/open-bitcoin-node/src/sync.rs", "self.write_block_relay_log(&mut summary, maybe_block_relay_snapshot.as_ref(), timestamp);", "let second = self.maybe_authoritative_block_relay_snapshot(); self.write_block_relay_log(&mut summary, second.as_ref(), timestamp);"),
@@ -259,7 +268,7 @@ bun test scripts/check-phase117-parity-uat-release-boundary.test.ts`;
   return new Map<TargetFile, string>([
     ["packages/open-bitcoin-node/src/sync/types.rs", "pub enum SyncPeerReceiveOutcome { Message(WireNetworkMessage), Idle, Closed } fn receive() -> Result<SyncPeerReceiveOutcome, SyncRuntimeError>"],
     ["packages/open-bitcoin-node/src/sync/tcp.rs", "fn receive() -> Result<SyncPeerReceiveOutcome, SyncRuntimeError> { Ok(0) if allow_clean_idle && filled == 0 => return Ok(ReadStageOutcome::Closed); allow_clean_idle filled == 0 io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut return Ok(ReadStageOutcome::Idle); unexpected EOF after {filled} of {} frame bytes payload read ended without a complete frame }"],
-    ["packages/open-bitcoin-node/src/sync.rs", `maybe_inbound_metric_status_provider self.network.block_relay_runtime_evidence_snapshot() let maybe_block_relay_snapshot = self.maybe_authoritative_block_relay_snapshot(); self.persist_metrics(&summary, maybe_block_relay_snapshot.as_ref(), timestamp); self.write_block_relay_log(&mut summary, maybe_block_relay_snapshot.as_ref(), timestamp); SyncPeerReceiveOutcome::Message(message) => messages_received = messages_received.saturating_add(1); SyncPeerReceiveOutcome::Idle => let now_unix_seconds = clock(); .expire_compact_download_timeouts(now_unix_seconds)? .any(|(target_peer_id, _message)| *target_peer_id != peer_id) .map(|(_target_peer_id, message)| message) self.send_all(&mut session, &outbound)?; continue; SyncPeerReceiveOutcome::Closed =>`],
+    ["packages/open-bitcoin-node/src/sync.rs", `pub fn open_with_block_relay_activation ManagedPeerNetwork::with_sync_limits_and_block_relay_activation block_relay_activation maybe_inbound_metric_status_provider self.network.block_relay_runtime_evidence_snapshot() let maybe_block_relay_snapshot = self.maybe_authoritative_block_relay_snapshot(); self.persist_metrics(&summary, maybe_block_relay_snapshot.as_ref(), timestamp); self.write_block_relay_log(&mut summary, maybe_block_relay_snapshot.as_ref(), timestamp); SyncPeerReceiveOutcome::Message(message) => messages_received = messages_received.saturating_add(1); SyncPeerReceiveOutcome::Idle => let now_unix_seconds = clock(); .expire_compact_download_timeouts(now_unix_seconds)? .any(|(target_peer_id, _message)| *target_peer_id != peer_id) .map(|(_target_peer_id, message)| message) self.send_all(&mut session, &outbound)?; continue; SyncPeerReceiveOutcome::Closed =>`],
     ["packages/open-bitcoin-node/src/sync/session.rs", "session.send(message, self.config.network.magic())?; self.network.acknowledge_wire_message_written(message);"],
     ["packages/open-bitcoin-node/src/lib.rs", "SyncPeerReceiveOutcome"],
     ["packages/open-bitcoin-bench/src/runtime_fixtures.rs", "Result<SyncPeerReceiveOutcome, SyncRuntimeError>"],
@@ -271,10 +280,10 @@ bun test scripts/check-phase117-parity-uat-release-boundary.test.ts`;
     ["packages/open-bitcoin-rpc/src/context/network.rs", "let encoded = self.network.encode_messages(&responses)?; .into_iter() .zip(encoded) EncodedWireResponse { message, bytes }"],
     ["packages/open-bitcoin-rpc/src/inbound_listener.rs", "let Ok(WriteWireMessageOutcome::Written) = write_result else { return; }; .acknowledge_wire_message_written(&response.message)"],
     ["packages/open-bitcoin-rpc/src/inbound_listener/tests.rs", "phase123_inbound_encoding_failure_does_not_increment_served"],
-    ["packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs", "set_inbound_metric_status_provider"],
-    ["packages/open-bitcoin-node/src/sync/tests/runtime_timing_cases.rs", `Result<SyncPeerReceiveOutcome, SyncRuntimeError> ${timingTests}`],
+    ["packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs", "DurableSyncRuntime::open_with_block_relay_activation( runtime.block_serving set_inbound_metric_status_provider"],
+    ["packages/open-bitcoin-node/src/sync/tests/runtime_timing_cases.rs", `DurableSyncRuntime::open_with_block_relay_activation( Result<SyncPeerReceiveOutcome, SyncRuntimeError> ${timingTests}`],
     ["packages/open-bitcoin-node/src/sync/tests/runtime_write_evidence_cases.rs", `Result<SyncPeerReceiveOutcome, SyncRuntimeError> ${writeTests}`],
-    ["packages/open-bitcoin-node/src/sync/tests/runtime_projection_cases.rs", projectionTests],
+    ["packages/open-bitcoin-node/src/sync/tests/runtime_projection_cases.rs", `DurableSyncRuntime::open_with_block_relay_activation( ${projectionTests}`],
     ["scripts/check-phase121-block-relay-metrics-log-runtime.ts", "P121 authoritative snapshot P121 activation omission P121 same snapshot reuse P121 obsolete provider wiring P121 no-claim boundary"],
     ["docs/architecture/operator-observability.md", "runtime-only non-serialized not the sync projection source"],
     ["docs/parity/index.json", parityIndex],

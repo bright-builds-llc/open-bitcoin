@@ -33,7 +33,9 @@ use open_bitcoin_core::{
     primitives::BlockHash,
 };
 use open_bitcoin_mempool::PolicyConfig;
-use open_bitcoin_network::{PeerId, WireNetworkMessage};
+use open_bitcoin_network::{
+    BlockRelayActivationPolicy, PeerId, RelayActivationConfig, WireNetworkMessage,
+};
 
 pub use resolver::{SyncPeerResolver, SystemSyncPeerResolver};
 pub use tcp::{TcpPeerSession, TcpPeerTransport};
@@ -78,17 +80,29 @@ impl DurableSyncRuntime {
         store: FjallNodeStore,
         config: SyncRuntimeConfig,
     ) -> Result<Self, SyncRuntimeError> {
+        Self::open_with_block_relay_activation(store, config, BlockRelayActivationPolicy::default())
+    }
+
+    /// Opens a durable runtime with the resolved block-relay activation policy.
+    pub fn open_with_block_relay_activation(
+        store: FjallNodeStore,
+        config: SyncRuntimeConfig,
+        block_relay_activation: BlockRelayActivationPolicy,
+    ) -> Result<Self, SyncRuntimeError> {
         let mut memory_store = MemoryChainstateStore::default();
         if let Some(snapshot) = store.load_chainstate_snapshot()? {
             memory_store.save_snapshot(snapshot);
         }
 
         let local_config = progress::local_peer_config(&config);
-        let mut network = ManagedPeerNetwork::with_sync_limits(
+        let mut network = ManagedPeerNetwork::with_sync_limits_and_block_relay_activation(
             memory_store,
             local_config,
             PolicyConfig::default(),
             config.max_blocks_in_flight_per_peer,
+            RelayActivationConfig::default(),
+            block_relay_activation,
+            false,
         );
         if let Some(header_store) = store.load_header_store()? {
             network.seed_header_store(header_store);

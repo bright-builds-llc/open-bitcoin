@@ -222,12 +222,16 @@ fn preflight_daemon_sync(
             data_dir.display()
         ))
     })?;
-    let sync_runtime =
-        DurableSyncRuntime::open(store, runtime.sync.runtime.clone()).map_err(|error| {
-            DaemonSyncPreflightError::new(format!(
-                "open-bitcoind mainnet sync preflight failed to construct durable sync runtime: {error}"
-            ))
-        })?;
+    let sync_runtime = DurableSyncRuntime::open_with_block_relay_activation(
+        store,
+        runtime.sync.runtime.clone(),
+        runtime.block_serving,
+    )
+    .map_err(|error| {
+        DaemonSyncPreflightError::new(format!(
+            "open-bitcoind mainnet sync preflight failed to construct durable sync runtime: {error}"
+        ))
+    })?;
     let summary = sync_runtime.snapshot_summary();
 
     Ok(Some(DaemonSyncPreflight {
@@ -370,7 +374,12 @@ fn start_daemon_sync_worker(
     let sync_config = runtime.sync.runtime.clone();
     let control = DaemonSyncControl::store_backed(store.clone(), sync_config.persist_mode);
     let metrics_store = store.clone();
-    let mut sync_runtime = DurableSyncRuntime::open(store, sync_config).map_err(|error| {
+    let mut sync_runtime = DurableSyncRuntime::open_with_block_relay_activation(
+        store,
+        sync_config,
+        runtime.block_serving,
+    )
+    .map_err(|error| {
         DaemonSyncPreflightError::new(format!(
             "open-bitcoind daemon sync failed to construct durable sync runtime: {error}"
         ))
