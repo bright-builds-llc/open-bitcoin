@@ -401,20 +401,28 @@ full-node readiness, or production-funds wallet use.
 ## Phase 121 block-relay runtime projection
 
 Phase 121 closes the OBS-03 runtime seam by projecting the Phase 116 helpers
-through `DurableSyncRuntime`. When a provider returns Available
-`BlockRelayEvidenceStatus` (activation-gated from ManagedRpcContext in
-`open-bitcoind`), the same sync tick that runs `persist_metrics` and summary
-structured logs also appends `block_relay_metric_samples` into retained metrics
-history and emits `block_relay_log_record` via `append_structured_record`.
+through `DurableSyncRuntime`. The sync runtime samples its own
+`DurableSyncRuntime::network` once after peer processing and keeps the result
+only when block-serving activation evidence is available. That private
+`BlockRelayRuntimeEvidenceSnapshot` combines the unchanged, sanitized
+`BlockRelayEvidenceStatus` with a runtime-only, non-serialized `served_count`.
+The same borrowed snapshot then appends `block_relay_metric_samples` through
+`persist_metrics` into retained metrics history and emits
+`block_relay_log_record` via `append_structured_record` into structured logs.
 
 Closed flow:
-`BlockRelayEvidenceStatus -> block_relay_metric_samples / block_relay_log_record -> DurableSyncRuntime persist_metrics / structured logs`.
+`DurableSyncRuntime::network -> one availability-gated BlockRelayRuntimeEvidenceSnapshot -> block_relay_metric_samples / block_relay_log_record -> retained metrics / structured logs`.
 
-Unavailable status omits the block-relay family entirely (no zero-valued
-availability samples). Helpers, MetricKinds, and fixed log labels stay
-unchanged. This is retained local observability only: it does not claim public
-block serving by default, package relay, public inbound defaults, or production
-full-node readiness.
+`ManagedRpcContext` owns a separate network instance and is not the sync
+projection source. Its inbound-status provider remains independent; it does not
+bridge block-relay evidence into `DurableSyncRuntime`.
+
+Unavailable or unobserved sync-network evidence omits the block-relay family
+entirely (no zero-valued availability samples or log record). Helpers,
+MetricKinds, fixed log labels, aggregate-only redaction, and sensitive-marker
+guards stay unchanged. This is retained local observability only: it does not
+claim public block serving by default, package relay, public inbound defaults,
+or production full-node readiness.
 
 ## Phase 117 v2.1 release-boundary evidence
 
