@@ -32,6 +32,8 @@ const REQUIRED_FILES = [
 ] as const;
 const VERIFICATION_FILE =
   ".planning/phases/124-milestone-closeout-reconciliation/124-VERIFICATION.md";
+const SUMMARY_FILE =
+  ".planning/phases/124-milestone-closeout-reconciliation/124-02-SUMMARY.md";
 const HARDENING_REQUIREMENTS = [
   "HARD-01",
   "HARD-02",
@@ -97,14 +99,30 @@ export function checkPhase124MilestoneCloseoutReconciliation(
   const traceability = parseTraceabilityEntries(requirements);
   const maybeHard05 = entries.find((entry) => entry.id === "HARD-05");
   const finalStage = maybeHard05?.checked === true;
+  const phaseComplete = roadmap.includes("- [x] **Phase 124:");
 
   verifyRequirementOwnership(entries, traceability, failures);
-  verifyStageCounts(finalStage, entries, traceability, requirements, roadmap, failures);
-  verifyRoadmapStage(finalStage, roadmap, failures);
+  verifyStageCounts(
+    finalStage,
+    phaseComplete,
+    entries,
+    traceability,
+    requirements,
+    roadmap,
+    failures,
+  );
+  verifyRoadmapStage(finalStage, phaseComplete, roadmap, failures);
   if (finalStage) {
     verifyFinalAudit(texts.get(".planning/v2.1-MILESTONE-AUDIT.md") ?? "", failures);
-    verifyFinalRoute(texts, failures);
-    verifyOptionalVerification(repoRoot, failures);
+    verifyRequiredVerification(repoRoot, failures);
+    if (phaseComplete) {
+      verifyFinalRoute(texts, failures);
+    } else {
+      if (existsSync(path.join(repoRoot, SUMMARY_FILE))) {
+        failures.push("P124 promoted pre-summary stage requires the current plan summary to be absent");
+      }
+      verifyPromotedRoute(texts.get(".planning/v2.1-MILESTONE-AUDIT.md") ?? "", failures);
+    }
   }
   verifyNoClaimBoundary(texts, failures);
   verifyVerifierOrder(texts.get("scripts/verify.sh") ?? "", failures);
@@ -171,6 +189,7 @@ function verifyRequirementOwnership(
 
 function verifyStageCounts(
   finalStage: boolean,
+  phaseComplete: boolean,
   entries: RequirementEntry[],
   traceability: TraceabilityEntry[],
   requirements: string,
@@ -212,15 +231,15 @@ function verifyStageCounts(
   if (maybeHard05Trace?.status !== expectedHard05Status) {
     failures.push(`P124 ${stage} HARD-05 traceability must be ${expectedHard05Status}`);
   }
-  for (const [text, label, completeLabel] of [
-    [requirements, "requirements", "Complete"],
-    [roadmap, "roadmap", "Satisfied"],
+  for (const [text, label, completeLabel, projectedComplete, projectedPending] of [
+    [requirements, "requirements", "Complete", expectedComplete, expectedPending],
+    [roadmap, "roadmap", "Satisfied", phaseComplete ? 39 : 38, phaseComplete ? 0 : 1],
   ] as const) {
     for (const line of [
       "v2.1 requirements: 39 total",
       "Mapped to phases: 39",
-      `${completeLabel}: ${expectedComplete}`,
-      `Pending hardening and closeout: ${expectedPending}`,
+      `${completeLabel}: ${projectedComplete}`,
+      `Pending hardening and closeout: ${projectedPending}`,
       "Unmapped: 0",
     ]) {
       requireContains(text, line, `P124 ${stage} ${label} counts`, failures);
@@ -230,6 +249,7 @@ function verifyStageCounts(
 
 function verifyRoadmapStage(
   finalStage: boolean,
+  phaseComplete: boolean,
   roadmap: string,
   failures: string[],
 ): void {
@@ -240,12 +260,25 @@ function verifyRoadmapStage(
   requireContains(phase123, "**Plans:** 7/7 plans complete", "P124 Phase 123 evidence", failures);
   requireAbsent(roadmap, "Plan Phase 122", "P124 stale Phase 122 route", failures);
   requireAbsent(roadmap, "/gsd-plan-phase 122", "P124 stale Phase 122 route", failures);
-  if (finalStage) {
+  if (phaseComplete) {
+    if (!finalStage) {
+      failures.push("P124 completed phase requires checked HARD-05");
+    }
     requireContains(roadmap, "- [x] **Phase 124:", "P124 final phase state", failures);
     requireContains(phase124, "**Plans:** 2/2 plans complete", "P124 final plan state", failures);
     return;
   }
-  requireContains(roadmap, "- [ ] **Phase 124:", "P124 intermediate phase state", failures);
+  const stage = finalStage ? "promoted pre-summary" : "intermediate";
+  requireContains(roadmap, "- [ ] **Phase 124:", `P124 ${stage} phase state`, failures);
+  if (finalStage) {
+    requireContains(
+      phase124,
+      "**Plans:** 1/2 plans executed",
+      "P124 promoted pre-summary plan state",
+      failures,
+    );
+    return;
+  }
   if (!/\*\*Plans:\*\* [01]\/2 plans executed/.test(phase124)) {
     failures.push("P124 intermediate Phase 124 plans must be 0/2 or 1/2 executed");
   }
@@ -294,9 +327,19 @@ function verifyFinalRoute(texts: TextCorpus, failures: string[]): void {
   }
 }
 
-function verifyOptionalVerification(repoRoot: string, failures: string[]): void {
+function verifyPromotedRoute(audit: string, failures: string[]): void {
+  requireContains(audit, ARCHIVE_ROUTE, "P124 promoted archive route", failures);
+  for (const staleRoute of ["/gsd-plan-phase", "/gsd-execute-phase"]) {
+    requireAbsent(audit, staleRoute, "P124 promoted stale route", failures);
+  }
+}
+
+function verifyRequiredVerification(repoRoot: string, failures: string[]): void {
   const absolutePath = path.join(repoRoot, VERIFICATION_FILE);
-  if (!existsSync(absolutePath)) return;
+  if (!existsSync(absolutePath)) {
+    failures.push(`P124 final verification provenance missing ${VERIFICATION_FILE}`);
+    return;
+  }
   const verification = readFileSync(absolutePath, "utf8");
   for (const needle of [
     "status: passed",

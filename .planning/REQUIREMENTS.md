@@ -66,7 +66,7 @@ Requirements for the current milestone. Each requirement maps to exactly one roa
 - [x] **HARD-02**: Compact-download timeout expiration advances on a deterministic runtime schedule even when no further peer message is received.
 - [x] **HARD-03**: Served-block evidence derives from successful `WireNetworkMessage::Block` emission rather than eligible-peer proxy counts.
 - [x] **HARD-04**: Runtime block-relay metrics and logs sample the authoritative network instance used by `DurableSyncRuntime`.
-- [ ] **HARD-05**: Roadmap, requirement coverage, phase status, and the final milestone audit agree and route v2.1 directly to archival.
+- [x] **HARD-05**: Roadmap, requirement coverage, phase status, and the final milestone audit agree and route v2.1 directly to archival.
 
 ## Deferred Requirements
 
@@ -152,15 +152,15 @@ Traceability is populated by the v2.1 roadmap. Each active requirement maps to e
 | HARD-02 | Phase 123 | Complete |
 | HARD-03 | Phase 123 | Complete |
 | HARD-04 | Phase 123 | Complete |
-| HARD-05 | Phase 124 | Pending |
+| HARD-05 | Phase 124 | Complete |
 
 **Coverage:**
 
 - v2.1 requirements: 39 total
 - Mapped to phases: 39
-- Complete: 38
-- Pending hardening and closeout: 1
+- Complete: 39
+- Pending hardening and closeout: 0
 - Unmapped: 0
 
 *Requirements defined: 2026-07-03*
-*Last updated: 2026-07-16 after Phase 122 and Phase 123 verification evidence reconciliation*
+*Last updated: 2026-07-16 after Phase 124 lifecycle-valid milestone closeout reconciliation*

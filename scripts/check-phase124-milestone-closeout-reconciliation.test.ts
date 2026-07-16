@@ -21,6 +21,8 @@ const LIFECYCLE_ID = "124-2026-07-16T20-19-53";
 const ARCHIVE_ROUTE = "/gsd-complete-milestone v2.1";
 const VERIFICATION_FILE =
   ".planning/phases/124-milestone-closeout-reconciliation/124-VERIFICATION.md";
+const SUMMARY_FILE =
+  ".planning/phases/124-milestone-closeout-reconciliation/124-02-SUMMARY.md";
 const REQUIRED_FILES = [
   ".planning/REQUIREMENTS.md",
   ".planning/ROADMAP.md",
@@ -51,11 +53,12 @@ const RESOLVED_DEBT_IDS = [
 ] as const;
 
 type RequiredFile = (typeof REQUIRED_FILES)[number];
-type FixtureFile = RequiredFile | typeof VERIFICATION_FILE;
+type FixtureFile = RequiredFile | typeof SUMMARY_FILE | typeof VERIFICATION_FILE;
 type FixtureOptions = {
   finalStage?: boolean;
   includeVerification?: boolean;
   maybeMutate?: (files: Map<FixtureFile, string>) => void;
+  promotedStage?: boolean;
 };
 
 const tempRoots: string[] = [];
@@ -97,6 +100,45 @@ test("passes_the_final_archive_ready_stage", () => {
 
   // Assert
   expect(failures).toEqual([]);
+});
+
+test("passes_the_promoted_pre_summary_stage", () => {
+  // Arrange
+  const root = createFixture({ promotedStage: true, includeVerification: true });
+
+  // Act
+  const failures = checkPhase124MilestoneCloseoutReconciliation({ rootDir: root });
+
+  // Assert
+  expect(failures).toEqual([]);
+});
+
+test("fails_the_promoted_pre_summary_stage_without_verification", () => {
+  // Arrange
+  const root = createFixture({ promotedStage: true });
+
+  // Act
+  const failures = checkPhase124MilestoneCloseoutReconciliation({ rootDir: root }).join("\n");
+
+  // Assert
+  expect(failures).toContain("verification provenance missing");
+});
+
+test("fails_the_promoted_pre_summary_stage_after_summary_exists", () => {
+  // Arrange
+  const root = createFixture({
+    promotedStage: true,
+    includeVerification: true,
+    maybeMutate(files) {
+      files.set(SUMMARY_FILE, "summary exists");
+    },
+  });
+
+  // Act
+  const failures = checkPhase124MilestoneCloseoutReconciliation({ rootDir: root }).join("\n");
+
+  // Assert
+  expect(failures).toContain("current plan summary to be absent");
 });
 
 test("fails_each_intermediate_count_mutation", () => {
@@ -429,15 +471,16 @@ test("fails_missing_checker_command_or_phase117_final_gate", () => {
 });
 
 function createFixture(options: FixtureOptions = {}): string {
-  const finalStage = options.finalStage ?? false;
+  const phaseComplete = options.finalStage ?? false;
+  const finalStage = phaseComplete || (options.promotedStage ?? false);
   const root = mkdtempSync(path.join(tmpdir(), "open-bitcoin-phase124-"));
   tempRoots.push(root);
   const noClaim =
     "Package relay, filter serving, public-network CI, archive-node behavior, production full-node readiness, and production-funds wallet use remain deferred.";
   const files = new Map<FixtureFile, string>([
     [".planning/REQUIREMENTS.md", createRequirements(finalStage)],
-    [".planning/ROADMAP.md", createRoadmap(finalStage)],
-    [".planning/STATE.md", createState(finalStage)],
+    [".planning/ROADMAP.md", createRoadmap(phaseComplete)],
+    [".planning/STATE.md", createState(phaseComplete)],
     [".planning/v2.1-MILESTONE-AUDIT.md", createAudit(finalStage)],
     [".planning/PROJECT.md", noClaim],
     ["README.md", noClaim],
@@ -489,12 +532,12 @@ function createRequirements(finalStage: boolean): string {
   ].join("\n");
 }
 
-function createRoadmap(finalStage: boolean): string {
-  const completeCount = finalStage ? 39 : 38;
-  const pendingCount = finalStage ? 0 : 1;
-  const phase124State = finalStage ? "x" : " ";
-  const phase124Plans = finalStage ? "2/2 plans complete" : "1/2 plans executed";
-  const maybeRoute = finalStage ? `\n## Next Step\n${ARCHIVE_ROUTE}` : "";
+function createRoadmap(phaseComplete: boolean): string {
+  const completeCount = phaseComplete ? 39 : 38;
+  const pendingCount = phaseComplete ? 0 : 1;
+  const phase124State = phaseComplete ? "x" : " ";
+  const phase124Plans = phaseComplete ? "2/2 plans complete" : "1/2 plans executed";
+  const maybeRoute = phaseComplete ? `\n## Next Step\n${ARCHIVE_ROUTE}` : "";
   return [
     `- [${phase124State}] **Phase 124: Milestone Closeout Reconciliation**`,
     "#### Phase 122: Compact Relay Peer Completion",
