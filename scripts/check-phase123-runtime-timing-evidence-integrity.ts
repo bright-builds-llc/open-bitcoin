@@ -374,10 +374,16 @@ function verifyPhase121Compatibility(
     "P121 obsolete provider wiring",
     "P121 no-claim boundary",
   ]) requireContains(checker, needle, "P123 migrated Phase 121 guarantees", failures);
-  const docs = texts.get("docs/architecture/operator-observability.md") ?? "";
+  const docs = normalizeWhitespace(
+    texts.get("docs/architecture/operator-observability.md") ?? "",
+  );
   for (const needle of ["runtime-only", "non-serialized", "not the sync projection source"]) {
     requireContains(docs, needle, "P123 operator evidence provenance", failures);
   }
+}
+
+function normalizeWhitespace(text: string): string {
+  return text.replaceAll(/\s+/g, " ").trim();
 }
 
 function verifyParity(texts: Map<TargetFile, string>, failures: string[]): void {

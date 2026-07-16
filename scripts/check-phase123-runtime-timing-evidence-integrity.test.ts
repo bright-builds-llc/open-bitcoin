@@ -52,6 +52,19 @@ test("complete synthetic Phase 123 corpus passes", () => {
   expect(failures).toEqual([]);
 });
 
+test("phase123_real_repository_corpus_passes", () => {
+  // Arrange
+  const repositoryRoot = path.resolve(import.meta.dir, "..");
+
+  // Act
+  const failures = checkPhase123RuntimeTimingEvidenceIntegrity({
+    rootDir: repositoryRoot,
+  });
+
+  // Assert
+  expect(failures).toEqual([]);
+});
+
 test.each([
   [
     "Idle collapsed into Closed",
