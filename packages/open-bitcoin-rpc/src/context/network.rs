@@ -37,9 +37,9 @@ use open_bitcoin_node::{
 
 use crate::{config::RuntimeConfig, inbound_listener::InboundListenerEvidence};
 
-use super::ManagedRpcContext;
 use super::address_boundary::local_advertisement_decisions;
 use super::wallet_state::build_wallet_state_with_store;
+use super::{EncodedWireResponse, ManagedRpcContext};
 
 impl ManagedRpcContext {
     pub fn new(
@@ -311,14 +311,35 @@ impl ManagedRpcContext {
         self.permission_classes.resolve_inbound(remote_addr.ip())
     }
 
-    pub fn receive_inbound_wire_message(
+    pub(crate) fn receive_inbound_wire_message(
         &mut self,
         peer_id: u64,
         message: WireNetworkMessage,
         timestamp: i64,
-    ) -> Result<Vec<Vec<u8>>, ManagedNetworkError> {
+    ) -> Result<Vec<EncodedWireResponse>, ManagedNetworkError> {
         let responses = self.receive_network_message(peer_id, message, timestamp)?;
-        self.network.encode_messages(&responses)
+        self.encode_wire_responses(responses)
+    }
+
+    pub(crate) fn encode_wire_responses(
+        &self,
+        responses: Vec<WireNetworkMessage>,
+    ) -> Result<Vec<EncodedWireResponse>, ManagedNetworkError> {
+        let encoded = self.network.encode_messages(&responses)?;
+        Ok(responses
+            .into_iter()
+            .zip(encoded)
+            .map(|(message, bytes)| EncodedWireResponse { message, bytes })
+            .collect())
+    }
+
+    pub(crate) fn acknowledge_wire_message_written(&mut self, message: &WireNetworkMessage) {
+        self.network.acknowledge_wire_message_written(message);
+    }
+
+    #[cfg(test)]
+    pub(crate) fn block_served_write_count(&self) -> u64 {
+        self.network.block_served_write_count()
     }
 
     pub fn add_inbound_peer(&mut self, peer_id: u64) -> Result<(), ManagedNetworkError> {

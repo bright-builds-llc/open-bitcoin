@@ -2,6 +2,7 @@
 // - packages/bitcoin-knots/src/net.cpp
 // - packages/bitcoin-knots/src/net_processing.cpp
 
+use std::io;
 use std::net::IpAddr;
 use std::sync::Arc;
 use std::time::Duration;
@@ -9,25 +10,180 @@ use std::time::Duration;
 use open_bitcoin_network::{
     BanReason, BanScope, INBOUND_MESSAGE_HEADER_LEN, InboundAdmissionSlotClass,
     InboundEnvelopePolicy, InboundHandshakeState, InboundListenerConfig, InboundPreflightReason,
-    PHASE94_MAX_CONNECTIONS_PER_CHURN_WINDOW, PHASE94_MAX_INBOUND_RUNTIME_PAYLOAD_BYTES,
-    PHASE94_MAX_PEER_READ_QUEUE_BYTES, PHASE94_MAX_PEER_WRITE_QUEUE_BYTES,
-    PHASE94_MAX_REPEATED_FAILURES_PER_WINDOW, PHASE94_SLOW_HANDSHAKE_TIMEOUT_SECONDS,
-    ParsedPeerPermissionClass, PeerBanEntry, PeerConnectionClass, PeerPermissionClassRegistry,
-    ReconnectSuppressionInput, ResourceGovernanceDecision, ResourceGovernancePolicy,
-    VersionMessage, WireNetworkMessage,
+    InboundResourceEvent, InventoryList, MAX_INV_SIZE, PHASE94_MAX_CONNECTIONS_PER_CHURN_WINDOW,
+    PHASE94_MAX_INBOUND_RUNTIME_PAYLOAD_BYTES, PHASE94_MAX_PEER_READ_QUEUE_BYTES,
+    PHASE94_MAX_PEER_WRITE_QUEUE_BYTES, PHASE94_MAX_REPEATED_FAILURES_PER_WINDOW,
+    PHASE94_SLOW_HANDSHAKE_TIMEOUT_SECONDS, ParsedPeerPermissionClass, PeerBanEntry,
+    PeerConnectionClass, PeerPermissionClassRegistry, ReconnectSuppressionInput,
+    ResourceGovernanceDecision, ResourceGovernancePolicy, VersionMessage, WireNetworkMessage,
 };
-use open_bitcoin_node::core::primitives::NetworkMagic;
+use open_bitcoin_node::core::primitives::{
+    Block, BlockHash, InventoryType, InventoryVector, NetworkMagic,
+};
 use open_bitcoin_node::core::wallet::AddressNetwork;
 use open_bitcoin_node::status::{FieldAvailability, InboundPeerServingStatus};
 use open_bitcoin_test_harness::PortReservation;
 use tokio::net::TcpStream;
 
-use crate::{ManagedRpcContext, RuntimeConfig};
+use crate::{ManagedRpcContext, RuntimeConfig, context::EncodedWireResponse};
 
 use super::{
-    InboundListenerEvidence, InboundListenerState, ReadWireMessageOutcome,
-    activate_inbound_listener, start_inbound_accept_loop,
+    InboundListenerEvidence, InboundListenerState, ReadWireMessageOutcome, WriteWireMessageOutcome,
+    acknowledge_inbound_response_write, activate_inbound_listener, start_inbound_accept_loop,
 };
+
+fn block_response() -> EncodedWireResponse {
+    EncodedWireResponse {
+        message: WireNetworkMessage::Block(Block::default()),
+        bytes: Vec::new(),
+    }
+}
+
+fn non_block_response() -> EncodedWireResponse {
+    EncodedWireResponse {
+        message: WireNetworkMessage::Verack,
+        bytes: Vec::new(),
+    }
+}
+
+fn rejected_write_result() -> io::Result<WriteWireMessageOutcome> {
+    Ok(WriteWireMessageOutcome::Rejected(InboundResourceEvent {
+        outcome: "resource_governance".to_string(),
+        reason: "scripted rejection".to_string(),
+        label: "scripted_rejection".to_string(),
+        source: "source_runtime_write".to_string(),
+        message: "inbound_resource_governance".to_string(),
+        next_action: "timeout_disconnect".to_string(),
+    }))
+}
+
+async fn acknowledged_block_count(
+    responses: Vec<EncodedWireResponse>,
+    write_results: Vec<io::Result<WriteWireMessageOutcome>>,
+) -> u64 {
+    let context = Arc::new(tokio::sync::Mutex::new(
+        ManagedRpcContext::for_local_operator(AddressNetwork::Regtest),
+    ));
+    for (response, write_result) in responses.iter().zip(write_results.iter()) {
+        acknowledge_inbound_response_write(write_result, response, &context).await;
+    }
+    context.lock().await.block_served_write_count()
+}
+
+#[tokio::test]
+async fn phase123_inbound_written_block_increments_served_once() {
+    // Arrange
+    let context = Arc::new(tokio::sync::Mutex::new(
+        ManagedRpcContext::for_local_operator(AddressNetwork::Regtest),
+    ));
+    let mut responses = context
+        .lock()
+        .await
+        .encode_wire_responses(vec![WireNetworkMessage::Block(Block::default())])
+        .expect("block response should encode");
+    let response = responses.pop().expect("one encoded block response");
+    assert!(matches!(response.message, WireNetworkMessage::Block(_)));
+    let write_result = Ok(WriteWireMessageOutcome::Written);
+
+    // Act
+    acknowledge_inbound_response_write(&write_result, &response, &context).await;
+    let served_count = context.lock().await.block_served_write_count();
+
+    // Assert
+    assert_eq!(served_count, 1);
+}
+
+#[tokio::test]
+async fn phase123_inbound_rejected_block_does_not_increment_served() {
+    // Arrange
+    let responses = vec![block_response()];
+    let write_results = vec![rejected_write_result()];
+
+    // Act
+    let served_count = acknowledged_block_count(responses, write_results).await;
+
+    // Assert
+    assert_eq!(served_count, 0);
+}
+
+#[tokio::test]
+async fn phase123_inbound_write_error_block_does_not_increment_served() {
+    // Arrange
+    let responses = vec![block_response()];
+    let write_results = vec![Err(io::Error::other("scripted write failure"))];
+
+    // Act
+    let served_count = acknowledged_block_count(responses, write_results).await;
+
+    // Assert
+    assert_eq!(served_count, 0);
+}
+
+#[tokio::test]
+async fn phase123_inbound_written_non_block_does_not_increment_served() {
+    // Arrange
+    let responses = vec![non_block_response()];
+    let write_results = vec![Ok(WriteWireMessageOutcome::Written)];
+
+    // Act
+    let served_count = acknowledged_block_count(responses, write_results).await;
+
+    // Assert
+    assert_eq!(served_count, 0);
+}
+
+#[tokio::test]
+async fn phase123_inbound_partial_batch_counts_successful_block_prefix() {
+    // Arrange
+    let responses = vec![block_response(), non_block_response(), block_response()];
+    let write_results = vec![
+        Ok(WriteWireMessageOutcome::Written),
+        Ok(WriteWireMessageOutcome::Written),
+        Err(io::Error::other("scripted later write failure")),
+    ];
+
+    // Act
+    let served_count = acknowledged_block_count(responses, write_results).await;
+
+    // Assert
+    assert_eq!(served_count, 1);
+}
+
+#[tokio::test]
+async fn phase123_inbound_two_blocks_before_later_failure_count_two() {
+    // Arrange
+    let responses = vec![block_response(), block_response(), non_block_response()];
+    let write_results = vec![
+        Ok(WriteWireMessageOutcome::Written),
+        Ok(WriteWireMessageOutcome::Written),
+        Err(io::Error::other("scripted later write failure")),
+    ];
+
+    // Act
+    let served_count = acknowledged_block_count(responses, write_results).await;
+
+    // Assert
+    assert_eq!(served_count, 2);
+}
+
+#[tokio::test]
+async fn phase123_inbound_encoding_failure_does_not_increment_served() {
+    // Arrange
+    let context = ManagedRpcContext::for_local_operator(AddressNetwork::Regtest);
+    let inventory = InventoryVector {
+        inventory_type: InventoryType::Block,
+        object_hash: BlockHash::default().into(),
+    };
+    let oversized = WireNetworkMessage::Inv(InventoryList::new(vec![inventory; MAX_INV_SIZE + 1]));
+
+    // Act
+    let result = context.encode_wire_responses(vec![oversized]);
+    let served_count = context.block_served_write_count();
+
+    // Assert
+    assert!(result.is_err());
+    assert_eq!(served_count, 0);
+}
 
 fn loopback_config(max_peers: usize) -> InboundListenerConfig {
     loopback_config_with_permission_classes(max_peers, 0, PeerPermissionClassRegistry::default())

@@ -472,6 +472,8 @@ fn decode_empty_message(
 }
 
 fn encode_inventory_payload(payload: &InventoryList) -> Result<Vec<u8>, NetworkError> {
+    validate_inventory_count(payload.inventory.len())?;
+
     let mut encoded = Vec::new();
     write_compact_size(&mut encoded, payload.inventory.len() as u64)?;
     for inventory in &payload.inventory {
@@ -483,13 +485,7 @@ fn encode_inventory_payload(payload: &InventoryList) -> Result<Vec<u8>, NetworkE
 fn decode_inventory_payload(payload: &[u8]) -> Result<InventoryList, NetworkError> {
     let mut cursor = Cursor::new(payload);
     let count = compact_size_to_usize(cursor.read_compact_size()?, "inventory count");
-    if count > MAX_INV_SIZE {
-        return Err(CodecError::LengthOutOfRange {
-            field: "inventory count",
-            value: count as u64,
-        }
-        .into());
-    }
+    validate_inventory_count(count)?;
 
     let mut inventory = Vec::with_capacity(count);
     for _ in 0..count {
@@ -499,6 +495,18 @@ fn decode_inventory_payload(payload: &[u8]) -> Result<InventoryList, NetworkErro
     }
     cursor.finish()?;
     Ok(InventoryList { inventory })
+}
+
+fn validate_inventory_count(count: usize) -> Result<(), NetworkError> {
+    if count <= MAX_INV_SIZE {
+        return Ok(());
+    }
+
+    Err(CodecError::LengthOutOfRange {
+        field: "inventory count",
+        value: count as u64,
+    }
+    .into())
 }
 
 fn decode_getheaders_payload(payload: &[u8]) -> Result<WireNetworkMessage, NetworkError> {

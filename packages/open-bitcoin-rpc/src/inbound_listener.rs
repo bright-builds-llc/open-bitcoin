@@ -23,7 +23,7 @@ use open_bitcoin_network::{
 };
 use tokio::{net::TcpListener, task::JoinHandle};
 
-use crate::ManagedRpcContext;
+use crate::{ManagedRpcContext, context::EncodedWireResponse};
 
 mod resource_runtime;
 use resource_runtime::{
@@ -536,7 +536,7 @@ async fn handle_inbound_stream(
             break;
         };
         for response in encoded_responses {
-            queue_pressure.record_pending_write(response.len());
+            queue_pressure.record_pending_write(response.bytes.len());
             if let Some(event) = queue_pressure_event(
                 &resource_policy,
                 &queue_pressure,
@@ -550,7 +550,7 @@ async fn handle_inbound_stream(
             }
             let write_result = write_all_for_state(
                 &stream,
-                &response,
+                &response.bytes,
                 &resource_policy,
                 connected_at_unix_seconds,
                 last_activity_unix_seconds,
@@ -558,6 +558,7 @@ async fn handle_inbound_stream(
             )
             .await;
             queue_pressure.clear_pending_write();
+            acknowledge_inbound_response_write(&write_result, &response, &context).await;
             match write_result {
                 Ok(WriteWireMessageOutcome::Written) => {}
                 Ok(WriteWireMessageOutcome::Rejected(event)) => {
@@ -575,6 +576,21 @@ async fn handle_inbound_stream(
         }
     }
     disconnect_admitted_peer(&context, peer_id).await;
+}
+
+async fn acknowledge_inbound_response_write(
+    write_result: &io::Result<WriteWireMessageOutcome>,
+    response: &EncodedWireResponse,
+    context: &Arc<tokio::sync::Mutex<ManagedRpcContext>>,
+) {
+    let Ok(WriteWireMessageOutcome::Written) = write_result else {
+        return;
+    };
+
+    context
+        .lock()
+        .await
+        .acknowledge_wire_message_written(&response.message);
 }
 
 async fn disconnect_admitted_peer(
