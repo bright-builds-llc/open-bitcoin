@@ -7,10 +7,56 @@
 
 use super::{
     DurableSyncRuntime, PeerContribution, PeerFailureReason, PeerRetryState, PeerSyncOutcome,
-    PeerSyncState, ResolvedSyncPeerAddress, SyncRunSummary, progress,
+    PeerSyncState, ResolvedSyncPeerAddress, SyncRunSummary, SyncRuntimeError, SyncStopReason,
+    progress, tip,
 };
+use crate::SyncLifecycleState;
 
 impl DurableSyncRuntime {
+    pub(super) fn maybe_target_header_stop_reason(
+        &self,
+        summary: &SyncRunSummary,
+    ) -> Option<SyncStopReason> {
+        let target_header_height = self.config.maybe_target_header_height?;
+        if summary.best_header_height < target_header_height {
+            return None;
+        }
+        Some(SyncStopReason::TargetHeaderReached {
+            target_header_height,
+            best_header_height: summary.best_header_height,
+        })
+    }
+
+    pub(super) fn maybe_current_at_best_known_tip_stop_reason(
+        &self,
+        timestamp: i64,
+    ) -> Option<SyncStopReason> {
+        tip::current_at_best_known_tip_stop_reason_from_evidence(
+            self.network.peer_manager().header_store().best_tip(),
+            self.connected_block(),
+            u64::try_from(timestamp).unwrap_or(0),
+            self.config.tip_freshness_threshold_seconds,
+        )
+    }
+
+    pub(super) fn record_until_idle_stop(
+        &self,
+        summary: &mut SyncRunSummary,
+        stop_reason: SyncStopReason,
+        timestamp: i64,
+    ) -> Result<(), SyncRuntimeError> {
+        summary.maybe_stop_reason = Some(stop_reason);
+        summary.health_signals.push(stop_reason.health_signal());
+        let state = self.durable_sync_state_from_summary(
+            summary,
+            SyncLifecycleState::Active,
+            summary.latest_error_message(),
+            timestamp,
+        )?;
+        self.persist_durable_sync_state(state)?;
+        Ok(())
+    }
+
     pub(super) fn record_waiting_outcome(
         &self,
         summary: &mut SyncRunSummary,

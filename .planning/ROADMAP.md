@@ -340,7 +340,7 @@ Plans:
 3. Block-relay metric and log projection samples the same authoritative network instance used by `DurableSyncRuntime`.
 4. Focused runtime tests prove idle expiry, post-emission counting, and projection of sync-runtime compact activity.
 
-**Plans:** TBD
+**Plans:** 2/7 plans executed
 
 Plans:
 
@@ -384,7 +384,7 @@ Plans:
 | 120. Compact Download Timeout and Misbehavior Runtime Bridge | v2.1 | 3/3 | Complete    | 2026-07-14 |
 | 121. Block Relay Metrics and Log Runtime Projection | v2.1 | 2/2 | Complete   | 2026-07-14 |
 | 122. Compact Relay Peer Completion | v2.1 | 1/1 | Complete    | 2026-07-15 |
-| 123. Runtime Timing and Evidence Integrity | v2.1 | 0/TBD | Not started | - |
+| 123. Runtime Timing and Evidence Integrity | v2.1 | 2/7 | In Progress|  |
 | 124. Milestone Closeout Reconciliation | v2.1 | 0/TBD | Not started | - |
 
 ## Traceability

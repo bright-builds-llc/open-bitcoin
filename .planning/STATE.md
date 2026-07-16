@@ -4,8 +4,8 @@ milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
 status: executing
 stopped_at: Phase 123 context gathered
-last_updated: "2026-07-16T01:36:34.048Z"
-last_activity: 2026-07-16 -- Phase 123 planning complete
+last_updated: "2026-07-16T01:40:58.465Z"
+last_activity: 2026-07-16 -- Phase 123 execution started
 progress:
   total_phases: 15
   completed_phases: 13
@@ -26,10 +26,10 @@ See: `.planning/PROJECT.md` (updated 2026-07-10 after Phase 117 completed v2.1 i
 ## Current Position
 
 Milestone: v2.1 Block Serving and Compact Block Relay Boundary
-Phase: 123
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-07-16 -- Phase 123 planning complete
+Phase: 123 (Runtime Timing and Evidence Integrity) — EXECUTING
+Plan: 1 of 7
+Status: Executing Phase 123
+Last activity: 2026-07-16 -- Phase 123 execution started
 
 v2.0 Transaction Relay and Mempool Participation Boundary shipped on 2026-07-03. The archived audit reports 32/32 requirements, 10/10 phases, 8/8 integration checks, 8/8 cross-phase flows, and no tracked tech debt.
 
