@@ -268,13 +268,14 @@ function checkRuntimeConfigPropagation(texts: TextCorpus, failures: string[]): v
   const context = texts.get("packages/open-bitcoin-rpc/src/context/network.rs") ?? "";
   if (
     !orderedIndexes(context, [
-      "ManagedPeerNetwork::new_with_relay_activation(",
+      "ManagedPeerNetwork::new_with_block_relay_activation(",
       "config.relay",
+      "config.block_serving",
       "config.inbound.enabled",
     ])
   ) {
     failures.push(
-      "runtime-config: ManagedRpcContext must call new_with_relay_activation with config.relay and config.inbound.enabled",
+      "runtime-config: ManagedRpcContext must call new_with_block_relay_activation with config.relay, config.block_serving, and config.inbound.enabled",
     );
   }
   if (context.includes("ManagedPeerNetwork::new(")) {

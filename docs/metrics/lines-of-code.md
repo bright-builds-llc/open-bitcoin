@@ -7,8 +7,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 550 |
-| Total lines | 228,967 |
-| Code/content lines | 201,487 |
+| Total lines | 228,968 |
+| Code/content lines | 201,488 |
 | Comment-only lines | 8,091 |
 | Blank lines | 19,389 |
 
@@ -36,7 +36,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 95 | 82,828 | 72,100 | 4,415 | 6,313 |
 | Rust production | 289 | 82,121 | 71,621 | 2,583 | 7,917 |
-| TypeScript/Bun scripts | 107 | 47,451 | 42,098 | 1,030 | 4,323 |
+| TypeScript/Bun scripts | 107 | 47,452 | 42,099 | 1,030 | 4,323 |
 | Fixture/data | 6 | 8,233 | 8,228 | 5 | 0 |
 | Shell scripts | 13 | 4,251 | 3,805 | 52 | 394 |
 | TOML/config | 16 | 3,462 | 3,096 | 0 | 366 |
@@ -68,7 +68,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase106-parity-uat-release-boundary.test.ts | 234 |
 | scripts/check-phase106-parity-uat-release-boundary.ts | 560 |
 | scripts/check-phase107-runtime-relay-activation-download-eligibility.test.ts | 338 |
-| scripts/check-phase107-runtime-relay-activation-download-eligibility.ts | 685 |
+| scripts/check-phase107-runtime-relay-activation-download-eligibility.ts | 686 |
 | scripts/check-phase108-durable-mempool-relay-state-recovery.test.ts | 140 |
 | scripts/check-phase108-durable-mempool-relay-state-recovery.ts | 230 |
 | scripts/check-phase110-block-serving-boundary.test.ts | 353 |
@@ -188,7 +188,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 03239d014aa3650b748473defca8978c655e804da75f91800f7930c48447ca1b |
+| Input fingerprint | 94a3d3f681bafc061084225589448f999286b0fe368e762dfdad68aa31a51345 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |
