@@ -158,9 +158,9 @@ Traceability is populated by the v2.1 roadmap. Each active requirement maps to e
 
 - v2.1 requirements: 39 total
 - Mapped to phases: 39
-- Complete: 34
-- Pending hardening and closeout: 5
+- Complete: 38
+- Pending hardening and closeout: 1
 - Unmapped: 0
 
 *Requirements defined: 2026-07-03*
-*Last updated: 2026-07-14 after approval of hardening and closeout Phases 122–124*
+*Last updated: 2026-07-16 after Phase 122 and Phase 123 verification evidence reconciliation*

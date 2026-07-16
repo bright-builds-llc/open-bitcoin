@@ -35,7 +35,7 @@ Milestone archives live under `.planning/milestones/`, including shipped roadmap
 
 **Goal:** Add bounded, opt-in block-serving and compact-block relay behavior with auditable Bitcoin Knots parity while preserving deterministic default verification and avoiding public-default or production-readiness claims.
 
-**Status:** All eight phases and 34 requirements completed on 2026-07-10; ready for milestone audit and archive.
+**Status:** Fourteen of fifteen phases and 38 of 39 requirements are complete. Phase 124 owns the sole pending closeout requirement, `HARD-05`; milestone audit and archive remain blocked until its verification passes.
 
 **Target features:**
 - Serve validated blocks to eligible peers with bounded request, resource, and peer-policy controls.
@@ -99,7 +99,7 @@ Milestone archives live under `.planning/milestones/`, including shipped roadmap
 - ✓ v1.8 validated all 23 production-readiness boundary requirements across production terminology, support boundaries, upgrade policy, runbooks, service expectations, release-readiness evidence, deterministic claim guardrails, parity roots, and no-claim release boundaries. Archive: `.planning/milestones/v1.8-REQUIREMENTS.md`
 - ✓ v1.9 validated all 28 inbound peer serving and network participation boundary requirements across opt-in listener admission, peer permissions, address advertisement, eviction/ban policy, DoS/resource governance, retained inbound metrics, peer-policy runtime evidence, structured logs, traceability closure, and release-boundary no-claim guardrails. Archive: `.planning/milestones/v1.9-REQUIREMENTS.md`
 - ✓ v2.0 validated all 32 transaction relay and mempool participation boundary requirements across explicit relay activation, txid/wtxid inventory, bounded download/orphan handling, mempool admission and durable recovery, relay serving/fanout, sanitized operator evidence, parity roots, UAT, and deterministic no-claim guardrails. Archive: `.planning/milestones/v2.0-REQUIREMENTS.md`
-- ✓ v2.1 validated all 34 block-serving and compact-block relay boundary requirements across default-off activation, validated block serving, BIP152 codecs, negotiation, reconstruction, missing-transaction fallback, validation handoff, sanitized operator evidence, parity traceability, UAT, and deterministic no-claim guardrails. Milestone audit and archive remain pending.
+- ✓ v2.1 validated 38 of 39 block-serving, compact-relay, and approved hardening requirements across default-off activation, validated block serving, BIP152 codecs, negotiation, reconstruction, missing-transaction fallback, validation handoff, sanitized operator evidence, parity traceability, UAT, deterministic no-claim guardrails, inbound `getblocktxn`, receive-independent timing, successful-write-only served evidence, and authoritative runtime projection. `HARD-05`, milestone audit, and archive remain pending.
 
 ### Active
 
@@ -170,7 +170,7 @@ Milestone archives live under `.planning/milestones/`, including shipped roadmap
 | Scope v1.8 to production full-node readiness boundary | v1.7 left production-node readiness deferred, so the next safe step is defining support, upgrade, service, runbook, release-readiness, and evidence gates before any production claim | Shipped in v1.8 with Phase 89 gap closure, deterministic claim guardrails, and a `tech_debt` audit limited to closeout metadata and checker hardening |
 | Scope v1.9 to inbound peer serving and network participation boundaries | v1.8 defined claim gates, so the next safe expansion is opt-in inbound serving with admission, permissions, address, eviction/ban, and DoS governance before relay or production participation claims | Shipped in v1.9 with 28/28 requirements, 10/10 integration categories, and 8/8 flows passing; transaction relay, compact blocks, mempool propagation, public inbound defaults, and production readiness remain deferred |
 | Scope v2.0 to transaction relay and mempool participation boundaries | v1.9 created opt-in inbound serving and left relay-like permission labels inert, so the next fundamental node capability is bounded transaction relay and mempool propagation before compact blocks or production full-node readiness | Shipped on 2026-07-03 with 32/32 requirements complete through Phases 100 through 108 and Phase 109 archive-readiness audit debt closure |
-| Scope v2.1 to block serving and compact block relay boundaries | v2.0 shipped bounded transaction relay and mempool participation, so the next safe node-participation expansion is serving validated blocks and compact-block relay before package relay, public defaults, or production full-node readiness | Completed with 34/34 requirements and deterministic release guardrails; milestone audit/archive pending |
+| Scope v2.1 to block serving and compact block relay boundaries | v2.0 shipped bounded transaction relay and mempool participation, so the next safe node-participation expansion is serving validated blocks and compact-block relay before package relay, public defaults, or production full-node readiness | 38/39 requirements complete after Phase 122/123 hardening; Phase 124 audit reconciliation and archive remain pending |
 
 ## Evolution
 
@@ -210,4 +210,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ***
-*Last updated: 2026-07-16 after Phase 123 verified runtime timing and authoritative evidence integrity*
+*Last updated: 2026-07-16 after reconciling Phase 122 and Phase 123 verification evidence into the v2.1 rollup*
