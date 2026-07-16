@@ -47,12 +47,13 @@ impl DurableSyncRuntime {
     }
 
     pub(super) fn send_all<S: SyncPeerSession>(
-        &self,
+        &mut self,
         session: &mut S,
         messages: &[WireNetworkMessage],
     ) -> Result<(), SyncRuntimeError> {
         for message in messages {
             session.send(message, self.config.network.magic())?;
+            self.network.acknowledge_wire_message_written(message);
         }
         Ok(())
     }
