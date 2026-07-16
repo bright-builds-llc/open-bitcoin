@@ -232,10 +232,11 @@ function verifyIdleMaintenance(
     syncSession,
     [
       "SyncPeerReceiveOutcome::Message(message) =>",
+      "current_timestamp = (controls.0)();",
       "messages_received = messages_received.saturating_add(1);",
       "SyncPeerReceiveOutcome::Idle =>",
     ],
-    "P123 Message-only progress",
+    "P123 message receive clock",
     failures,
   );
   const normalizedSync = normalizeWhitespace(syncSession);
@@ -437,6 +438,7 @@ function verifyFocusedTests(texts: Map<TargetFile, string>, failures: string[]):
     "phase123_message_after_idle_uses_session_clock_for_compact_timeout",
     "phase123_idle_session_without_compact_work_yields_after_first_wake",
     "phase123_compact_download_survives_five_second_idle_cadence_until_timeout",
+    "phase123_slow_messages_without_idle_timestamp_compact_at_receipt",
     "phase123_closed_receive_ends_session",
     "phase123_target_mismatch_is_not_written_to_current_session",
   ]) requireContains(timing, needle, "P123 runtime timing tests", failures);

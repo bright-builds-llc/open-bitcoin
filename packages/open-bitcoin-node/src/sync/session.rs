@@ -59,7 +59,6 @@ impl DurableSyncRuntime {
             self.send_all(&mut session, &outbound)?;
 
             let mut messages_received = 0_usize;
-            let mut current_timestamp = timestamp;
             while messages_received < self.config.max_messages_per_peer {
                 if (controls.1)() {
                     self.complete_peer_session_progress(&mut progress, peer_id);
@@ -76,13 +75,14 @@ impl DurableSyncRuntime {
                         return Err(error);
                     }
                 };
-                let message = match receive_outcome {
+                let (message, current_timestamp) = match receive_outcome {
                     SyncPeerReceiveOutcome::Message(message) => {
+                        let current_timestamp = (controls.0)();
                         messages_received = messages_received.saturating_add(1);
-                        message
+                        (message, current_timestamp)
                     }
                     SyncPeerReceiveOutcome::Idle => {
-                        current_timestamp = (controls.0)();
+                        let current_timestamp = (controls.0)();
                         if (controls.1)() {
                             self.complete_peer_session_progress(&mut progress, peer_id);
                             return Ok(());
