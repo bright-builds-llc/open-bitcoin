@@ -208,8 +208,10 @@ function verifyIdleMaintenance(
   failures: string[],
 ): void {
   const sync = texts.get("packages/open-bitcoin-node/src/sync.rs") ?? "";
+  const session = texts.get("packages/open-bitcoin-node/src/sync/session.rs") ?? "";
+  const syncSession = `${sync}\n${session}`;
   requireOrdered(
-    sync,
+    syncSession,
     [
       "SyncPeerReceiveOutcome::Idle =>",
       "current_timestamp = (controls.0)();",
@@ -224,7 +226,7 @@ function verifyIdleMaintenance(
     failures,
   );
   requireOrdered(
-    sync,
+    syncSession,
     [
       "SyncPeerReceiveOutcome::Message(message) =>",
       "messages_received = messages_received.saturating_add(1);",
@@ -233,7 +235,7 @@ function verifyIdleMaintenance(
     "P123 Message-only progress",
     failures,
   );
-  const normalizedSync = normalizeWhitespace(sync);
+  const normalizedSync = normalizeWhitespace(syncSession);
   for (const needle of [
     "progress.record_activity(current_timestamp);",
     "self.network.receive_sync_message( peer_id, message, current_timestamp, self.verify_flags",
@@ -241,7 +243,6 @@ function verifyIdleMaintenance(
   ]) {
     requireContains(normalizedSync, needle, "P123 session timestamp propagation", failures);
   }
-  const session = texts.get("packages/open-bitcoin-node/src/sync/session.rs") ?? "";
   requireContains(
     session,
     "MAX_CONSECUTIVE_IDLE_WAKES_PER_SESSION: usize = 2",
@@ -250,7 +251,7 @@ function verifyIdleMaintenance(
   );
   requireContains(
     normalizedSync,
-    ">= session::MAX_CONSECUTIVE_IDLE_WAKES_PER_SESSION",
+    ">= MAX_CONSECUTIVE_IDLE_WAKES_PER_SESSION",
     "P123 bounded idle enforcement",
     failures,
   );

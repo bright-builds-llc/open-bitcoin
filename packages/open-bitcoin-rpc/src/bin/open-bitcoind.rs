@@ -394,15 +394,13 @@ fn start_daemon_sync_worker(
     let (shutdown_sender, shutdown_receiver) = mpsc::channel();
 
     Ok(Some(DaemonSyncWorker {
-        join_handle: thread::spawn(move || daemon_sync_worker(sync_runtime, shutdown_receiver)),
+        join_handle: thread::spawn(move || {
+            daemon_sync_worker_with_transport(sync_runtime, TcpPeerTransport, shutdown_receiver)
+        }),
         shutdown_sender,
         control,
         metrics_store,
     }))
-}
-
-fn daemon_sync_worker(sync_runtime: DurableSyncRuntime, shutdown_receiver: mpsc::Receiver<()>) {
-    daemon_sync_worker_with_transport(sync_runtime, TcpPeerTransport, shutdown_receiver);
 }
 
 fn daemon_sync_worker_with_transport<T: open_bitcoin_node::SyncTransport>(
@@ -600,10 +598,7 @@ fn persist_daemon_loop_failure(
 }
 
 fn daemon_sync_shutdown_requested(receiver: &mpsc::Receiver<()>) -> bool {
-    match receiver.try_recv() {
-        Ok(()) | Err(mpsc::TryRecvError::Disconnected) => true,
-        Err(mpsc::TryRecvError::Empty) => false,
-    }
+    !matches!(receiver.try_recv(), Err(mpsc::TryRecvError::Empty))
 }
 
 fn daemon_sync_wait_or_shutdown(receiver: &mpsc::Receiver<()>, duration: Duration) -> bool {
