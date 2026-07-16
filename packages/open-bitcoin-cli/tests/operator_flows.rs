@@ -667,7 +667,19 @@ fn remaining_deferred_surfaces_fail_explicitly() {
 fn open_stdin_does_not_block_cli_when_stdin_flags_are_absent() {
     // Arrange
     let sandbox = TestSandbox::new("open-stdin");
-    let mut command = Command::new(env!("CARGO_BIN_EXE_open-bitcoin-cli"));
+    let cli_binary = env!("CARGO_BIN_EXE_open-bitcoin-cli");
+    let warmup_status = Command::new(cli_binary)
+        .env("HOME", &sandbox.home)
+        .arg("-rpcport=notaport")
+        .arg("getnetworkinfo")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .expect("warm cli binary before timing stdin behavior");
+    assert_eq!(warmup_status.code(), Some(1));
+
+    let mut command = Command::new(cli_binary);
     command
         .env("HOME", &sandbox.home)
         .arg("-rpcport=notaport")
