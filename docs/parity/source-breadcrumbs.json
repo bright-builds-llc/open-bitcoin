@@ -1109,6 +1109,17 @@
       ]
     },
     {
+      "label": "node-sync-runtime-projection-tests",
+      "files": [
+        "packages/open-bitcoin-node/src/sync/tests/runtime_projection_cases.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/test/functional/p2p_compactblocks.py"
+      ]
+    },
+    {
       "label": "node-wallet-adapter",
       "files": [
         "packages/open-bitcoin-node/src/wallet.rs",
