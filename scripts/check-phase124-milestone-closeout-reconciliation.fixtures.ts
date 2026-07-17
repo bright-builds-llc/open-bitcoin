@@ -2,6 +2,8 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import type { Phase125LifecycleStage } from "./check-phase124-milestone-gap-closure";
+
 export const PHASE123_TEST =
   "bun test scripts/check-phase123-runtime-timing-evidence-integrity.test.ts";
 export const PHASE123_CHECK =
@@ -15,7 +17,10 @@ export const PHASE117_TEST =
 export const PHASE117_CHECK =
   "bun run scripts/check-phase117-parity-uat-release-boundary.ts";
 export const LIFECYCLE_ID = "124-2026-07-16T20-19-53";
+export const PHASE125_LIFECYCLE_ID = "125-2026-07-17T13-21-01";
 export const ARCHIVE_ROUTE = "/gsd-complete-milestone v2.1";
+export const PHASE125_ROUTE = "/gsd-execute-phase 125";
+export const PHASE126_ROUTE = "/gsd-execute-phase 126";
 export const VERIFICATION_FILE =
   ".planning/phases/124-milestone-closeout-reconciliation/124-VERIFICATION.md";
 export const SUMMARY_FILE =
@@ -28,7 +33,15 @@ export const PLAN_02_FILE =
   ".planning/phases/124-milestone-closeout-reconciliation/124-02-PLAN.md";
 export const SUMMARY_01_FILE =
   ".planning/phases/124-milestone-closeout-reconciliation/124-01-SUMMARY.md";
+export const PHASE125_CONTEXT_FILE =
+  ".planning/phases/125-compact-download-verification-traceability-closure/125-CONTEXT.md";
+export const PHASE125_VERIFICATION_FILE =
+  ".planning/phases/125-compact-download-verification-traceability-closure/125-VERIFICATION.md";
 
+const PHASE125_DIRECTORY =
+  ".planning/phases/125-compact-download-verification-traceability-closure";
+const PHASE126_DIRECTORY =
+  ".planning/phases/126-compact-relay-residual-hardening";
 const REQUIRED_FILES = [
   ".planning/REQUIREMENTS.md",
   ".planning/ROADMAP.md",
@@ -49,6 +62,15 @@ const REQUIREMENT_IDS = [
   ...range("BOUND", 5),
   ...range("HARD", 5),
 ] as const;
+const PHASE125_REQUIREMENTS = ["RCN-04", "RCN-05", "RCN-06"] as const;
+const PHASE126_REQUIREMENTS = [
+  "CMP-05",
+  "RCN-02",
+  "RCN-03",
+  "GOV-04",
+  "BOUND-01",
+  "HARD-05",
+] as const;
 export const RESOLVED_DEBT_IDS = [
   "DEBT-01-INBOUND-GETBLOCKTXN",
   "DEBT-02-PHASE112-TEST-VOCABULARY",
@@ -59,6 +81,7 @@ export const RESOLVED_DEBT_IDS = [
 ] as const;
 
 type RequiredFile = (typeof REQUIRED_FILES)[number];
+type Phase125PlanNumber = "01" | "02" | "03" | "04";
 export type FixtureFile =
   | RequiredFile
   | typeof CONTEXT_FILE
@@ -66,17 +89,22 @@ export type FixtureFile =
   | typeof PLAN_02_FILE
   | typeof SUMMARY_01_FILE
   | typeof SUMMARY_FILE
-  | typeof VERIFICATION_FILE;
+  | typeof VERIFICATION_FILE
+  | typeof PHASE125_CONTEXT_FILE
+  | typeof PHASE125_VERIFICATION_FILE
+  | `${typeof PHASE125_DIRECTORY}/125-${Phase125PlanNumber}-PLAN.md`
+  | `${typeof PHASE125_DIRECTORY}/125-${Phase125PlanNumber}-SUMMARY.md`;
 type FixtureOptions = {
   finalStage?: boolean;
-  gapClosureStage?: boolean;
   includeVerification?: boolean;
   maybeMutate?: (files: Map<FixtureFile, string>) => void;
+  maybePhase125Stage?: Phase125LifecycleStage["kind"];
   promotedStage?: boolean;
 };
 
 export function createFixture(tempRoots: string[], options: FixtureOptions = {}): string {
-  const gapClosureStage = options.gapClosureStage ?? false;
+  const maybePhase125Stage = options.maybePhase125Stage;
+  const gapClosureStage = maybePhase125Stage !== undefined;
   const phaseComplete = (options.finalStage ?? false) || gapClosureStage;
   const finalStage = phaseComplete || (options.promotedStage ?? false);
   const root = mkdtempSync(path.join(tmpdir(), "open-bitcoin-phase124-"));
@@ -86,18 +114,30 @@ export function createFixture(tempRoots: string[], options: FixtureOptions = {})
   const files = new Map<FixtureFile, string>([
     [
       ".planning/REQUIREMENTS.md",
-      gapClosureStage ? createGapClosureRequirements() : createRequirements(finalStage),
+      gapClosureStage
+        ? createGapClosureRequirements(maybePhase125Stage)
+        : createRequirements(finalStage),
     ],
     [
       ".planning/ROADMAP.md",
-      gapClosureStage ? createGapClosureRoadmap() : createRoadmap(phaseComplete),
+      gapClosureStage
+        ? createGapClosureRoadmap(maybePhase125Stage)
+        : createRoadmap(phaseComplete),
     ],
-    [".planning/STATE.md", createState(phaseComplete)],
+    [
+      ".planning/STATE.md",
+      gapClosureStage ? createGapClosureRouting(maybePhase125Stage) : createState(phaseComplete),
+    ],
     [
       ".planning/v2.1-MILESTONE-AUDIT.md",
-      gapClosureStage ? createGapClosureAudit() : createAudit(finalStage),
+      gapClosureStage ? createGapClosureAudit(maybePhase125Stage) : createAudit(finalStage),
     ],
-    [".planning/PROJECT.md", noClaim],
+    [
+      ".planning/PROJECT.md",
+      gapClosureStage
+        ? `${noClaim}\n${createGapClosureRouting(maybePhase125Stage)}`
+        : noClaim,
+    ],
     ["README.md", noClaim],
     ["docs/parity/release-readiness.md", noClaim],
     ["docs/parity/production-claim-boundary.md", noClaim],
@@ -135,6 +175,9 @@ export function createFixture(tempRoots: string[], options: FixtureOptions = {})
       lifecycleArtifact("gsd-execute-plan", "2026-07-16T21:56:00Z"),
     );
   }
+  if (maybePhase125Stage !== undefined) {
+    addPhase125Artifacts(files, maybePhase125Stage);
+  }
   options.maybeMutate?.(files);
   for (const [file, text] of files) {
     const absolutePath = path.join(root, file);
@@ -142,13 +185,7 @@ export function createFixture(tempRoots: string[], options: FixtureOptions = {})
     writeFileSync(absolutePath, `${text}\n`);
   }
   if (gapClosureStage) {
-    mkdirSync(
-      path.join(root, ".planning/phases/125-compact-download-verification-traceability-closure"),
-      { recursive: true },
-    );
-    mkdirSync(path.join(root, ".planning/phases/126-compact-relay-residual-hardening"), {
-      recursive: true,
-    });
+    mkdirSync(path.join(root, PHASE126_DIRECTORY), { recursive: true });
   }
   return root;
 }
@@ -160,6 +197,61 @@ function lifecycleArtifact(generatedBy: string, generatedAt: string): string {
     "lifecycle_mode: yolo",
     `phase_lifecycle_id: ${LIFECYCLE_ID}`,
     `generated_at: "${generatedAt}"`,
+    "---",
+    "fixture artifact",
+  ].join("\n");
+}
+
+function addPhase125Artifacts(
+  files: Map<FixtureFile, string>,
+  stage: Phase125LifecycleStage["kind"],
+): void {
+  files.set(
+    PHASE125_CONTEXT_FILE,
+    phase125Artifact(["generated_by: gsd-discuss-phase"]),
+  );
+  for (const planNumber of phase125PlanNumbers()) {
+    files.set(
+      `${PHASE125_DIRECTORY}/125-${planNumber}-PLAN.md`,
+      phase125Artifact([
+        "phase: 125-compact-download-verification-traceability-closure",
+        `plan: "${planNumber}"`,
+        "generated_by: gsd-plan-phase",
+      ]),
+    );
+  }
+  const summaryCount = phase125SummaryCount(stage);
+  for (const planNumber of phase125PlanNumbers().slice(0, summaryCount)) {
+    files.set(
+      `${PHASE125_DIRECTORY}/125-${planNumber}-SUMMARY.md`,
+      phase125Artifact([
+        "phase: 125-compact-download-verification-traceability-closure",
+        `plan: "${planNumber}"`,
+        "requirements-completed: []",
+        "generated_by: gsd-execute-plan",
+      ]),
+    );
+  }
+  if (phase125VerificationPresent(stage)) {
+    files.set(
+      PHASE125_VERIFICATION_FILE,
+      phase125Artifact([
+        "phase: 125-compact-download-verification-traceability-closure",
+        "status: passed",
+        "lifecycle_validated: true",
+        "generated_by: gsd-verifier",
+      ]),
+    );
+  }
+}
+
+function phase125Artifact(fields: readonly string[]): string {
+  return [
+    "---",
+    ...fields,
+    "lifecycle_mode: yolo",
+    `phase_lifecycle_id: ${PHASE125_LIFECYCLE_ID}`,
+    'generated_at: "2026-07-17T15:00:00Z"',
     "---",
     "fixture artifact",
   ].join("\n");
@@ -187,30 +279,27 @@ function createRequirements(finalStage: boolean): string {
   ].join("\n");
 }
 
-function createGapClosureRequirements(): string {
-  const gapPhases = new Map([
-    ["RCN-04", 125],
-    ["RCN-05", 125],
-    ["RCN-06", 125],
-    ["CMP-05", 126],
-    ["RCN-02", 126],
-    ["RCN-03", 126],
-    ["GOV-04", 126],
-    ["BOUND-01", 126],
-    ["HARD-05", 126],
-  ]);
+function createGapClosureRequirements(stage: Phase125LifecycleStage["kind"]): string {
+  const promoted = phase125Promoted(stage);
+  const pending = new Set<string>(PHASE126_REQUIREMENTS);
+  if (!promoted) {
+    for (const requirement of PHASE125_REQUIREMENTS) {
+      pending.add(requirement);
+    }
+  }
+  const completeCount = promoted ? 33 : 30;
   return [
     ...REQUIREMENT_IDS.map(
-      (id) => `- [${gapPhases.has(id) ? " " : "x"}] **${id}**: fixture requirement`,
+      (id) => `- [${pending.has(id) ? " " : "x"}] **${id}**: fixture requirement`,
     ),
     ...REQUIREMENT_IDS.map((id) => {
-      const maybePhase = gapPhases.get(id);
-      return `| ${id} | Phase ${maybePhase ?? phaseFor(id)} | ${maybePhase ? "Pending" : "Complete"} |`;
+      const maybePhase = phase125GapPhase(id);
+      return `| ${id} | Phase ${maybePhase ?? phaseFor(id)} | ${pending.has(id) ? "Pending" : "Complete"} |`;
     }),
     "- v2.1 requirements: 39 total",
     "- Mapped to phases: 39",
-    "- Complete: 30",
-    "- Pending hardening and closeout: 9",
+    `- Complete: ${completeCount}`,
+    `- Pending hardening and closeout: ${39 - completeCount}`,
     "- Unmapped: 0",
   ].join("\n");
 }
@@ -238,10 +327,20 @@ function createRoadmap(phaseComplete: boolean): string {
   ].join("\n");
 }
 
-function createGapClosureRoadmap(): string {
+function createGapClosureRoadmap(stage: Phase125LifecycleStage["kind"]): string {
+  const promoted = phase125Promoted(stage);
+  const phase125Complete = stage === "post_summary";
+  const summaryCount = phase125SummaryCount(stage);
+  const plans =
+    stage === "planned"
+      ? "4 plans"
+      : phase125Complete
+        ? "4/4 plans complete"
+        : `${summaryCount}/4 plans executed`;
+  const completeCount = promoted ? 33 : 30;
   return [
     "- [x] **Phase 124: Milestone Closeout Reconciliation**",
-    "- [ ] **Phase 125: Compact Download Verification Traceability Closure**",
+    `- [${phase125Complete ? "x" : " "}] **Phase 125: Compact Download Verification Traceability Closure**`,
     "- [ ] **Phase 126: Compact Relay Residual Hardening**",
     "#### Phase 122: Compact Relay Peer Completion",
     "**Plans:** 1/1 plans complete",
@@ -252,24 +351,28 @@ function createGapClosureRoadmap(): string {
     "#### Phase 125: Compact Download Verification Traceability Closure",
     "**Depends on:** Phase 124",
     "**Requirements:** RCN-04, RCN-05, RCN-06",
-    "**Plans:** 0 plans",
+    `**Plans:** ${plans}`,
     "#### Phase 126: Compact Relay Residual Hardening",
     "**Depends on:** Phase 125",
     "**Requirements:** CMP-05, RCN-02, RCN-03, GOV-04, BOUND-01, HARD-05",
     "**Plans:** 0 plans",
     "- v2.1 requirements: 39 total",
     "- Mapped to phases: 39",
-    "- Satisfied: 30",
-    "- Pending hardening and closeout: 9",
+    `- Satisfied: ${completeCount}`,
+    `- Pending hardening and closeout: ${39 - completeCount}`,
     "- Unmapped: 0",
     "## Next Step",
-    "/gsd-plan-phase 125",
+    createGapClosureRouting(stage),
   ].join("\n");
 }
 
 function createState(finalStage: boolean): string {
   if (finalStage) return `Phase 124 verified. Next action: ${ARCHIVE_ROUTE}`;
   return "Phase 124 evidence reconciled; HARD-05 pending";
+}
+
+function createGapClosureRouting(stage: Phase125LifecycleStage["kind"]): string {
+  return phase125Promoted(stage) ? PHASE126_ROUTE : PHASE125_ROUTE;
 }
 
 function createAudit(finalStage: boolean): string {
@@ -302,21 +405,22 @@ function createAudit(finalStage: boolean): string {
   ].join("\n");
 }
 
-function createGapClosureAudit(): string {
+function createGapClosureAudit(stage: Phase125LifecycleStage["kind"]): string {
+  const promoted = phase125Promoted(stage);
   return [
     "---",
     "status: gaps_found",
     "scores:",
-    '  requirements: "36/39"',
-    '  phases: "15/15"',
+    `  requirements: "${promoted ? 33 : 30}/39"`,
+    `  phases: "${promoted ? 16 : 15}/17"`,
     "gaps:",
     "  requirements:",
-    "    - id: RCN-04",
-    "    - id: RCN-05",
-    "    - id: RCN-06",
+    ...(promoted ? [] : PHASE125_REQUIREMENTS.map((id) => `    - id: ${id}`)),
     "  integration: []",
     "  flows: []",
     "---",
+    "## Next Action",
+    createGapClosureRouting(stage),
   ].join("\n");
 }
 
@@ -340,6 +444,35 @@ function createVerifyScript(): string {
     `run_step "test Phase 117" ${PHASE117_TEST}`,
     `run_step "check Phase 117" ${PHASE117_CHECK}`,
   ].join("\n");
+}
+
+function phase125SummaryCount(stage: Phase125LifecycleStage["kind"]): number {
+  if (stage === "planned") return 0;
+  if (stage === "pre_verification") return 2;
+  if (stage === "post_summary") return 4;
+  return 3;
+}
+
+function phase125VerificationPresent(stage: Phase125LifecycleStage["kind"]): boolean {
+  return !["planned", "pre_verification"].includes(stage);
+}
+
+function phase125Promoted(stage: Phase125LifecycleStage["kind"]): boolean {
+  return stage === "post_verification" || stage === "post_summary";
+}
+
+function phase125GapPhase(id: string): number | undefined {
+  if (PHASE125_REQUIREMENTS.includes(id as (typeof PHASE125_REQUIREMENTS)[number])) {
+    return 125;
+  }
+  if (PHASE126_REQUIREMENTS.includes(id as (typeof PHASE126_REQUIREMENTS)[number])) {
+    return 126;
+  }
+  return undefined;
+}
+
+function phase125PlanNumbers(): Phase125PlanNumber[] {
+  return ["01", "02", "03", "04"];
 }
 
 function phaseFor(id: string): number {
