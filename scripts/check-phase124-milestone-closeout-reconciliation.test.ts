@@ -19,6 +19,7 @@ import {
   SUMMARY_FILE,
   VERIFICATION_FILE,
 } from "./check-phase124-milestone-closeout-reconciliation.fixtures";
+import "./check-phase124-milestone-gap-closure.test";
 
 const tempRoots: string[] = [];
 
@@ -172,7 +173,6 @@ test("fails_duplicate_or_wrong_HARD_05_ownership", () => {
       );
     },
   });
-
   // Act
   const duplicateFailures = checkPhase124MilestoneCloseoutReconciliation({
     rootDir: duplicateRoot,
@@ -180,7 +180,6 @@ test("fails_duplicate_or_wrong_HARD_05_ownership", () => {
   const wrongPhaseFailures = checkPhase124MilestoneCloseoutReconciliation({
     rootDir: wrongPhaseRoot,
   }).join("\n");
-
   // Assert
   expect(duplicateFailures).toContain("exactly one traceability owner");
   expect(wrongPhaseFailures).toContain("owned exactly once by Phase 124");

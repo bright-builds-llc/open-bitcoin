@@ -55,7 +55,10 @@ const TARGET_FILES = [
 ] as const;
 
 type TargetFile = (typeof TARGET_FILES)[number];
-type FixtureOptions = { maybeMutate?: (files: Map<TargetFile, string>) => void };
+type FixtureOptions = {
+  gapClosureStage?: boolean;
+  maybeMutate?: (files: Map<TargetFile, string>) => void;
+};
 
 const tempRoots: string[] = [];
 
@@ -68,12 +71,15 @@ afterEach(() => {
 test("passes_when_phase117_closeout_evidence_is_complete", () => {
   // Arrange
   const root = createFixture();
+  const gapRoot = createFixture({ gapClosureStage: true });
 
   // Act
   const failures = checkPhase117ParityUatReleaseBoundary(root);
+  const gapFailures = checkPhase117ParityUatReleaseBoundary(gapRoot);
 
   // Assert
   expect(failures).toEqual([]);
+  expect(gapFailures).toEqual([]);
 });
 
 test("fails_when_a_required_v2_1_surface_is_missing", () => {
@@ -481,7 +487,7 @@ function createFixture(options: FixtureOptions = {}): string {
   const files = new Map<TargetFile, string>(TARGET_FILES.map((file) => [file, commonText]));
   files.set("docs/parity/index.json", JSON.stringify(createParityIndex(), null, 2));
   files.set("docs/parity/source-breadcrumbs.json", createBreadcrumbs());
-  files.set(".planning/REQUIREMENTS.md", createRequirements());
+  files.set(".planning/REQUIREMENTS.md", createRequirements(options.gapClosureStage ?? false));
   files.set("docs/operator/runtime-guide.md", `${commonText}\n${requiredCommands().join("\n")}`);
   files.set("scripts/verify.sh", createVerifyScript());
   options.maybeMutate?.(files);
@@ -552,17 +558,43 @@ test("fails_when_gap_closure_requirement_maps_to_stale_phase", () => {
       );
     },
   });
+  const gapRoot = createFixture({
+    gapClosureStage: true,
+    maybeMutate(files) {
+      replace(
+        files,
+        ".planning/REQUIREMENTS.md",
+        "| CMP-05 | Phase 126 | Pending |",
+        "| CMP-05 | Phase 118 | Pending |",
+      );
+    },
+  });
 
   // Act
   const failures = checkPhase117ParityUatReleaseBoundary(root).join("\n");
+  const gapFailures = checkPhase117ParityUatReleaseBoundary(gapRoot).join("\n");
 
   // Assert
   expect(failures).toContain("CMP-05 must map to Phase 118 exactly once");
+  expect(gapFailures).toContain("CMP-05 must map to Phase 126 exactly once");
 });
 
-function createRequirements(): string {
+function createRequirements(gapClosureStage: boolean): string {
+  const gapPhases = new Map([
+    ["RCN-04", "125"],
+    ["RCN-05", "125"],
+    ["RCN-06", "125"],
+    ["CMP-05", "126"],
+    ["RCN-02", "126"],
+    ["RCN-03", "126"],
+    ["GOV-04", "126"],
+    ["BOUND-01", "126"],
+  ]);
   return Object.entries(requirementPhases())
-    .map(([requirement, phase]) => `| ${requirement} | Phase ${phase} | Complete |`)
+    .map(([requirement, phase]) => {
+      const maybeGapPhase = gapClosureStage ? gapPhases.get(requirement) : undefined;
+      return `| ${requirement} | Phase ${maybeGapPhase ?? phase} | ${maybeGapPhase ? "Pending" : "Complete"} |`;
+    })
     .join("\n");
 }
 

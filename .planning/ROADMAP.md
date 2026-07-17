@@ -2,7 +2,7 @@
 
 ## Current Status
 
-v2.1 Block Serving and Compact Block Relay Boundary is the active milestone after v2.0. Phases 110–121 completed the milestone definition of done; the milestone audit found six non-critical debt items, so approved hardening and closeout Phases 122–124 remain before archive.
+v2.1 Block Serving and Compact Block Relay Boundary is the active milestone after v2.0. Phases 110–124 are complete, but the latest milestone audit found three blocking verification-orphan gaps plus approved compact-relay debt, so gap-closure Phases 125–126 remain before archive.
 
 ## Latest Completed Milestone: v2.0 Transaction Relay and Mempool Participation Boundary
 
@@ -31,7 +31,7 @@ v2.1 Block Serving and Compact Block Relay Boundary is the active milestone afte
 - ✅ **v1.8 Production Full-Node Readiness Boundary** - Phases 82 through 89 (shipped 2026-06-25). Archive: [v1.8-ROADMAP.md](milestones/v1.8-ROADMAP.md)
 - ✅ **v1.9 Inbound Peer Serving and Network Participation Boundary** - Phases 90 through 99 (shipped 2026-06-29). Archive: [v1.9-ROADMAP.md](milestones/v1.9-ROADMAP.md)
 - ✅ **v2.0 Transaction Relay and Mempool Participation Boundary** - Phases 100 through 109 (shipped 2026-07-03). Archive: [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md)
-- 🚧 **v2.1 Block Serving and Compact Block Relay Boundary** - Phases 110 through 124 (110–121 complete; 122–124 optional hardening and closeout from [v2.1-MILESTONE-AUDIT.md](v2.1-MILESTONE-AUDIT.md)).
+- 🚧 **v2.1 Block Serving and Compact Block Relay Boundary** - Phases 110 through 126 (110–124 complete; 125–126 close blocking verification gaps and approved residual debt from [v2.1-MILESTONE-AUDIT.md](v2.1-MILESTONE-AUDIT.md)).
 
 ## Active Milestone: v2.1 Block Serving and Compact Block Relay Boundary
 
@@ -54,6 +54,8 @@ v2.1 Block Serving and Compact Block Relay Boundary is the active milestone afte
 - [x] **Phase 122: Compact Relay Peer Completion** - Serve eligible inbound `getblocktxn` requests after local compact announcements and align the protocol-path test vocabulary. (completed 2026-07-15)
 - [x] **Phase 123: Runtime Timing and Evidence Integrity** - Make timeout scheduling independent of receives and derive relay evidence from actual runtime emissions and the authoritative network instance. (completed 2026-07-16)
 - [x] **Phase 124: Milestone Closeout Reconciliation** - Reconcile milestone metadata, re-audit the completed hardening work, and establish archive readiness. (completed 2026-07-16)
+- [ ] **Phase 125: Compact Download Verification Traceability Closure** - Restore explicit lifecycle-valid verification ownership for the three Phase 115 compact-download requirements and prevent future verification orphans.
+- [ ] **Phase 126: Compact Relay Residual Hardening** - Remove the residual empty-candidate bypass, align compact nonce generation with the Knots boundary, and perform final archive reconciliation.
 
 ### Phase Details
 
@@ -372,9 +374,38 @@ Plans:
 - [x] 124-01-PLAN.md — Evidence reconciliation and deterministic closeout guard
 - [x] 124-02-PLAN.md — Canonical audit refresh and archive-ready handoff
 
+#### Phase 125: Compact Download Verification Traceability Closure
+
+**Goal:** Restore explicit, lifecycle-valid verification coverage for the already implemented compact-download request, response, and validation-handoff requirements.
+**Depends on:** Phase 124
+**Requirements:** RCN-04, RCN-05, RCN-06
+**Gap Closure:** Closes blocking requirement-orphan gaps from [v2.1-MILESTONE-AUDIT.md](v2.1-MILESTONE-AUDIT.md)
+**Success Criteria** (what must be TRUE):
+
+1. Lifecycle-valid verification evidence names `RCN-04`, `RCN-05`, and `RCN-06` explicitly and maps each requirement to the existing Phase 115 runtime and test evidence.
+2. A deterministic checker fails when any active requirement is assigned and summary-complete but absent from all phase verification artifacts.
+3. Requirement traceability and milestone coverage reflect the new gap-closure ownership without weakening or duplicating the underlying runtime claims.
+
+**Plans:** 0 plans
+
+#### Phase 126: Compact Relay Residual Hardening
+
+**Goal:** Close the approved compact-relay runtime and parity debt, then reconcile the complete v2.1 corpus for a fresh archive decision.
+**Depends on:** Phase 125
+**Requirements:** CMP-05, RCN-02, RCN-03, GOV-04, BOUND-01, HARD-05
+**Gap Closure:** Closes non-critical debt from [v2.1-MILESTONE-AUDIT.md](v2.1-MILESTONE-AUDIT.md) (empty-candidate fallback, deterministic compact nonce, and stale closeout metadata)
+**Success Criteria** (what must be TRUE):
+
+1. Production-capable compact-block receive adapters cannot bypass live mempool and bounded extra-candidate injection through the generic empty-facts fallback.
+2. Outbound compact-block nonce generation uses a Knots-aligned randomized shell source with deterministic injection for tests.
+3. Parity evidence, breadcrumbs, and deterministic regressions cover the hardened receive and announcement boundaries.
+4. ROADMAP, REQUIREMENTS, STATE, the Phase 124 closeout guard, and the rerun milestone audit agree on the final Phase 126 result and archive route.
+
+**Plans:** 0 plans
+
 ## Progress
 
-**Execution Order:** 110 -> 111 -> 112 -> 113 -> 114 -> 115 -> 116 -> 117 -> 118 -> 119 -> 120 -> 121 -> 122 -> 123 -> 124
+**Execution Order:** 110 -> 111 -> 112 -> 113 -> 114 -> 115 -> 116 -> 117 -> 118 -> 119 -> 120 -> 121 -> 122 -> 123 -> 124 -> 125 -> 126
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 | --- | --- | ---: | --- | --- |
@@ -393,6 +424,8 @@ Plans:
 | 122. Compact Relay Peer Completion | v2.1 | 1/1 | Complete   | 2026-07-16 |
 | 123. Runtime Timing and Evidence Integrity | v2.1 | 7/7 | Complete   | 2026-07-16 |
 | 124. Milestone Closeout Reconciliation | v2.1 | 2/2 | Complete   | 2026-07-16 |
+| 125. Compact Download Verification Traceability Closure | v2.1 | 0/0 | Not started | - |
+| 126. Compact Relay Residual Hardening | v2.1 | 0/0 | Not started | - |
 
 ## Traceability
 
@@ -406,10 +439,10 @@ Plans:
 
 - v2.1 requirements: 39 total
 - Mapped to phases: 39
-- Satisfied: 39
-- Pending hardening and closeout: 0
+- Satisfied: 30
+- Pending hardening and closeout: 9
 - Unmapped: 0
 
 ## Next Step
 
-Run `/gsd-complete-milestone v2.1` to archive the verified milestone.
+Run `/gsd-plan-phase 125` to plan the first gap-closure phase.

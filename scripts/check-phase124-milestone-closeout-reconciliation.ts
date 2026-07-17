@@ -7,6 +7,10 @@ import {
   PHASE124_SUMMARY_FILE,
   verifyPhase124CloseoutLifecycle,
 } from "./check-phase124-milestone-closeout-lifecycle";
+import {
+  isPhase124GapClosureStage,
+  verifyPhase124GapClosureStage,
+} from "./check-phase124-milestone-gap-closure";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
 const PHASE123_TEST =
@@ -100,20 +104,27 @@ export function checkPhase124MilestoneCloseoutReconciliation(
   const maybeHard05 = entries.find((entry) => entry.id === "HARD-05");
   const finalStage = maybeHard05?.checked === true;
   const phaseComplete = roadmap.includes("- [x] **Phase 124:");
+  const audit = texts.get(".planning/v2.1-MILESTONE-AUDIT.md") ?? "";
+  const gapClosureStage = isPhase124GapClosureStage(roadmap, audit);
 
-  verifyRequirementOwnership(entries, traceability, failures);
-  verifyStageCounts(
-    finalStage,
-    phaseComplete,
-    entries,
-    traceability,
-    requirements,
-    roadmap,
-    failures,
-  );
-  verifyRoadmapStage(finalStage, phaseComplete, roadmap, failures);
-  if (finalStage) {
-    verifyFinalAudit(texts.get(".planning/v2.1-MILESTONE-AUDIT.md") ?? "", failures);
+  if (gapClosureStage) {
+    verifyPhase124GapClosureStage(repoRoot, requirements, roadmap, audit, failures);
+    verifyPhase124CloseoutLifecycle(repoRoot, phaseComplete, failures);
+  } else {
+    verifyRequirementOwnership(entries, traceability, failures);
+    verifyStageCounts(
+      finalStage,
+      phaseComplete,
+      entries,
+      traceability,
+      requirements,
+      roadmap,
+      failures,
+    );
+    verifyRoadmapStage(finalStage, phaseComplete, roadmap, failures);
+  }
+  if (!gapClosureStage && finalStage) {
+    verifyFinalAudit(audit, failures);
     verifyPhase124CloseoutLifecycle(repoRoot, phaseComplete, failures);
     if (phaseComplete) {
       verifyFinalRoute(texts, failures);

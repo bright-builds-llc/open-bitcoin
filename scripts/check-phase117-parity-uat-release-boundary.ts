@@ -281,8 +281,9 @@ function checkSurfaceOwnership(index: ParityIndex, failures: string[]): void {
 }
 
 function checkRequirementTraceability(raw: string, failures: string[]): void {
+  const gapClosureStage = /\|\s*[A-Z]+-\d+\s*\|\s*Phase\s+12[56]\s*\|\s*Pending\s*\|/.test(raw);
   for (const requirement of allRequirements()) {
-    const phase = expectedPhase(requirement);
+    const phase = expectedPhase(requirement, gapClosureStage);
     const needle = `| ${requirement} | Phase ${phase} |`;
     if (countOccurrences(raw, needle) !== 1) {
       failures.push(`requirement traceability: ${requirement} must map to Phase ${phase} exactly once`);
@@ -402,9 +403,15 @@ function allRequirements(): string[] {
   return Object.values(REQUIREMENTS_BY_SURFACE).flatMap((requirements) => [...requirements]);
 }
 
-function expectedPhase(requirement: string): string {
-  // Gap-closure remaps from the v2.1 milestone audit keep canonical ownership
-  // on Phases 118-121 while parity surfaces retain original implementation roots.
+function expectedPhase(requirement: string, gapClosureStage: boolean): string {
+  if (gapClosureStage) {
+    if (["RCN-04", "RCN-05", "RCN-06"].includes(requirement)) return "125";
+    if (["CMP-05", "RCN-02", "RCN-03", "GOV-04", "BOUND-01"].includes(requirement)) {
+      return "126";
+    }
+  }
+  // Parity surfaces retain the original implementation roots while traceability
+  // moves to the exact active gap-closure owner only during that lifecycle stage.
   if (requirement === "CMP-05") return "118";
   if (["RCN-02", "RCN-03", "GOV-04"].includes(requirement)) return "119";
   if (["RCN-07", "GOV-02", "GOV-03"].includes(requirement)) return "120";

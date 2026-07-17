@@ -69,23 +69,34 @@ export type FixtureFile =
   | typeof VERIFICATION_FILE;
 type FixtureOptions = {
   finalStage?: boolean;
+  gapClosureStage?: boolean;
   includeVerification?: boolean;
   maybeMutate?: (files: Map<FixtureFile, string>) => void;
   promotedStage?: boolean;
 };
 
 export function createFixture(tempRoots: string[], options: FixtureOptions = {}): string {
-  const phaseComplete = options.finalStage ?? false;
+  const gapClosureStage = options.gapClosureStage ?? false;
+  const phaseComplete = (options.finalStage ?? false) || gapClosureStage;
   const finalStage = phaseComplete || (options.promotedStage ?? false);
   const root = mkdtempSync(path.join(tmpdir(), "open-bitcoin-phase124-"));
   tempRoots.push(root);
   const noClaim =
     "Package relay, filter serving, public-network CI, archive-node behavior, production full-node readiness, and production-funds wallet use remain deferred.";
   const files = new Map<FixtureFile, string>([
-    [".planning/REQUIREMENTS.md", createRequirements(finalStage)],
-    [".planning/ROADMAP.md", createRoadmap(phaseComplete)],
+    [
+      ".planning/REQUIREMENTS.md",
+      gapClosureStage ? createGapClosureRequirements() : createRequirements(finalStage),
+    ],
+    [
+      ".planning/ROADMAP.md",
+      gapClosureStage ? createGapClosureRoadmap() : createRoadmap(phaseComplete),
+    ],
     [".planning/STATE.md", createState(phaseComplete)],
-    [".planning/v2.1-MILESTONE-AUDIT.md", createAudit(finalStage)],
+    [
+      ".planning/v2.1-MILESTONE-AUDIT.md",
+      gapClosureStage ? createGapClosureAudit() : createAudit(finalStage),
+    ],
     [".planning/PROJECT.md", noClaim],
     ["README.md", noClaim],
     ["docs/parity/release-readiness.md", noClaim],
@@ -130,6 +141,15 @@ export function createFixture(tempRoots: string[], options: FixtureOptions = {})
     mkdirSync(path.dirname(absolutePath), { recursive: true });
     writeFileSync(absolutePath, `${text}\n`);
   }
+  if (gapClosureStage) {
+    mkdirSync(
+      path.join(root, ".planning/phases/125-compact-download-verification-traceability-closure"),
+      { recursive: true },
+    );
+    mkdirSync(path.join(root, ".planning/phases/126-compact-relay-residual-hardening"), {
+      recursive: true,
+    });
+  }
   return root;
 }
 
@@ -167,6 +187,34 @@ function createRequirements(finalStage: boolean): string {
   ].join("\n");
 }
 
+function createGapClosureRequirements(): string {
+  const gapPhases = new Map([
+    ["RCN-04", 125],
+    ["RCN-05", 125],
+    ["RCN-06", 125],
+    ["CMP-05", 126],
+    ["RCN-02", 126],
+    ["RCN-03", 126],
+    ["GOV-04", 126],
+    ["BOUND-01", 126],
+    ["HARD-05", 126],
+  ]);
+  return [
+    ...REQUIREMENT_IDS.map(
+      (id) => `- [${gapPhases.has(id) ? " " : "x"}] **${id}**: fixture requirement`,
+    ),
+    ...REQUIREMENT_IDS.map((id) => {
+      const maybePhase = gapPhases.get(id);
+      return `| ${id} | Phase ${maybePhase ?? phaseFor(id)} | ${maybePhase ? "Pending" : "Complete"} |`;
+    }),
+    "- v2.1 requirements: 39 total",
+    "- Mapped to phases: 39",
+    "- Complete: 30",
+    "- Pending hardening and closeout: 9",
+    "- Unmapped: 0",
+  ].join("\n");
+}
+
 function createRoadmap(phaseComplete: boolean): string {
   const completeCount = phaseComplete ? 39 : 38;
   const pendingCount = phaseComplete ? 0 : 1;
@@ -187,6 +235,35 @@ function createRoadmap(phaseComplete: boolean): string {
     `- Pending hardening and closeout: ${pendingCount}`,
     "- Unmapped: 0",
     maybeRoute,
+  ].join("\n");
+}
+
+function createGapClosureRoadmap(): string {
+  return [
+    "- [x] **Phase 124: Milestone Closeout Reconciliation**",
+    "- [ ] **Phase 125: Compact Download Verification Traceability Closure**",
+    "- [ ] **Phase 126: Compact Relay Residual Hardening**",
+    "#### Phase 122: Compact Relay Peer Completion",
+    "**Plans:** 1/1 plans complete",
+    "#### Phase 123: Runtime Timing and Evidence Integrity",
+    "**Plans:** 7/7 plans complete",
+    "#### Phase 124: Milestone Closeout Reconciliation",
+    "**Plans:** 2/2 plans complete",
+    "#### Phase 125: Compact Download Verification Traceability Closure",
+    "**Depends on:** Phase 124",
+    "**Requirements:** RCN-04, RCN-05, RCN-06",
+    "**Plans:** 0 plans",
+    "#### Phase 126: Compact Relay Residual Hardening",
+    "**Depends on:** Phase 125",
+    "**Requirements:** CMP-05, RCN-02, RCN-03, GOV-04, BOUND-01, HARD-05",
+    "**Plans:** 0 plans",
+    "- v2.1 requirements: 39 total",
+    "- Mapped to phases: 39",
+    "- Satisfied: 30",
+    "- Pending hardening and closeout: 9",
+    "- Unmapped: 0",
+    "## Next Step",
+    "/gsd-plan-phase 125",
   ].join("\n");
 }
 
@@ -222,6 +299,24 @@ function createAudit(finalStage: boolean): string {
     "## Resolved Hardening Debt",
     ...RESOLVED_DEBT_IDS.map((id) => `- ${id}: resolved with current evidence.`),
     `## Next Step\n${ARCHIVE_ROUTE}`,
+  ].join("\n");
+}
+
+function createGapClosureAudit(): string {
+  return [
+    "---",
+    "status: gaps_found",
+    "scores:",
+    '  requirements: "36/39"',
+    '  phases: "15/15"',
+    "gaps:",
+    "  requirements:",
+    "    - id: RCN-04",
+    "    - id: RCN-05",
+    "    - id: RCN-06",
+    "  integration: []",
+    "  flows: []",
+    "---",
   ].join("\n");
 }
 
