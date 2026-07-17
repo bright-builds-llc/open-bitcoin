@@ -1,12 +1,12 @@
 ---
 phase: 125-compact-download-verification-traceability-closure
-verified: 2026-07-17T16:14:38Z
+verified: 2026-07-17T16:38:53Z
 status: passed
 score: "3/3 requirements verified"
 generated_by: gsd-verifier
 lifecycle_mode: yolo
 phase_lifecycle_id: 125-2026-07-17T13-21-01
-generated_at: 2026-07-17T16:14:38Z
+generated_at: 2026-07-17T16:38:53Z
 lifecycle_validated: true
 overrides_applied: 0
 ---
@@ -14,22 +14,29 @@ overrides_applied: 0
 # Phase 125: Compact Download Verification Traceability Closure Verification Report
 
 **Phase Goal:** Restore explicit, lifecycle-valid verification coverage for the already implemented compact-download request, response, and validation-handoff requirements.
-**Verified:** 2026-07-17T16:14:38Z
+**Verified:** 2026-07-17T16:38:53Z
 **Status:** passed
-**Re-verification:** No — initial independent verification replacing the executor-authored draft
-**Lifecycle stage:** `verification_written_pre_promotion`
+**Re-verification:** Yes — independent verification preserved and augmented with executor-observed promotion gates
+**Lifecycle stage:** `post_verification`
 
 ## Verification Boundary
 
-This report verifies the three Phase 125 requirement claims without promoting them. Phase 115 remains immutable implementation evidence; Phase 125 supplies the lifecycle-valid requirement-to-evidence mapping and does not claim new Rust implementation.
+This report verifies the three Phase 125 requirement claims and records their later, gated metadata promotion. Phase 115 remains immutable implementation evidence; Phase 125 supplies the lifecycle-valid requirement-to-evidence mapping and does not claim new Rust implementation.
 
-The pre-promotion projection is intentionally retained:
+The lifecycle-valid pre-promotion projection passed before any requirement changed:
 
-- Requirements: **30/39 complete**, with `RCN-04`, `RCN-05`, and `RCN-06` still unchecked and `Pending`.
-- Roadmap phases: **15/17 complete**.
+- Requirements: **30/39 complete**, with `RCN-04`, `RCN-05`, and `RCN-06` unchecked and `Pending`.
+- Audit phases: **15/17 verified**.
 - Phase 125: **3/4 plans executed**, with exactly three summaries and no Plan 04 summary.
-- Requirement promotion: **not performed**.
+- Full verifier: passed in **2m 38.422s** before promotion.
+
+The current promoted-pre-summary projection is:
+
+- Requirements: **33/39 complete**, with only `RCN-04`, `RCN-05`, and `RCN-06` newly checked and `Complete`.
+- Audit phases: **16/17 verified**.
+- Phase 125: still unchecked at **3/4 plans executed** until Plan 04 summary bookkeeping exists.
 - Phase 126: exactly `CMP-05`, `RCN-02`, `RCN-03`, `GOV-04`, `BOUND-01`, and `HARD-05` remain pending.
+- Canonical route: `/gsd-execute-phase 126`; milestone archival remains blocked.
 
 ## Goal Achievement
 
@@ -39,7 +46,7 @@ The pre-promotion projection is intentionally retained:
 | ---: | --- | --- | --- |
 | 1 | Lifecycle-valid verification names `RCN-04`, `RCN-05`, and `RCN-06` and maps each to existing Phase 115 runtime and test evidence. | VERIFIED | This report has one evidence row per ID; frontmatter matches Phase 125 CONTEXT and is accepted by lifecycle and stage checkers. |
 | 2 | A deterministic checker rejects an active, assigned, summary-complete requirement that lacks lifecycle-valid verification coverage. | VERIFIED | `check-active-milestone-verification-traceability.ts` derives active ownership and summary activation, requires passed matching lifecycle metadata, and uses exact-token coverage; 18 focused tests pass. |
-| 3 | Gap-closure ownership is explicit without weakening or duplicating the runtime claims. | VERIFIED | REQUIREMENTS maps all three IDs to Phase 125 while they remain Pending; Phase 115 summaries, verification, and Rust paths have no worktree diff; Phase 126 ownership remains separate. |
+| 3 | Gap-closure ownership is explicit without weakening or duplicating the runtime claims. | VERIFIED | REQUIREMENTS maps all three IDs to Phase 125 as Complete after gated promotion; Phase 115 summaries, verification, and Rust paths have no worktree diff; Phase 126 ownership remains separate. |
 
 ### Requirement Verification Matrix
 
@@ -93,15 +100,36 @@ The pre-promotion projection is intentionally retained:
 | Five-stage reconciliation mutations | `bun test scripts/check-phase124-milestone-gap-closure.test.ts` | 27 passed; 0 failed | PASS |
 | Verification-orphan mutations and real corpus | `bun test scripts/check-active-milestone-verification-traceability.test.ts` | 18 passed; 0 failed | PASS |
 
+## Promotion and Repository Gates
+
+| Command or assertion | Result | Status |
+| --- | --- | --- |
+| `bun test scripts/check-phase124-milestone-gap-closure.test.ts` | 27 passed; 0 failed | PASS |
+| `bun test scripts/check-phase124-milestone-closeout-reconciliation.test.ts` | 51 passed; 0 failed | PASS |
+| `bun run scripts/check-phase124-milestone-closeout-reconciliation.ts` | Live corpus classified as lifecycle-valid `post_verification` | PASS |
+| `bun test scripts/check-active-milestone-verification-traceability.test.ts` | 18 passed; 0 failed | PASS |
+| `bun run scripts/check-active-milestone-verification-traceability.ts` | Active milestone verification traceability passed | PASS |
+| `bun test scripts/check-phase117-parity-uat-release-boundary.test.ts` | 23 passed; 0 failed | PASS |
+| `bun run scripts/check-phase117-parity-uat-release-boundary.ts` | Final Phase 117 no-claim boundary passed | PASS |
+| `node /Users/peterryszkiewicz/.codex/get-shit-done/bin/gsd-tools.cjs roadmap analyze` | 17 phases analyzed; Phase 125 partial and Phase 126 next | PASS |
+| `node /Users/peterryszkiewicz/.codex/get-shit-done/bin/gsd-tools.cjs state validate --raw` | Valid with no warnings or drift | PASS |
+| `node /Users/peterryszkiewicz/.codex/get-shit-done/bin/gsd-tools.cjs verify lifecycle 125 --require-plans --require-verification --raw` | `valid` | PASS |
+| Route-presence loop over PROJECT, STATE, ROADMAP, and audit | All four contain `/gsd-execute-phase 126` | PASS |
+| Negative route scan | No `/gsd-execute-phase 125` or `/gsd-complete-milestone v2.1` in the canonical routing corpus | PASS |
+| `bun run scripts/generate-loc-report.ts --source=worktree --output=docs/metrics/lines-of-code.md --check` | Current at 233,911 total lines | PASS |
+| `git diff --check` | No whitespace errors | PASS |
+| `bun run scripts/command-timings.ts run --key phase125-task2-prepromotion-verifier -- bash scripts/verify.sh` | Passed in 2m 38.422s at 30/39 | PASS |
+| `bun run scripts/command-timings.ts run --key phase125-task2-postverification-verifier -- bash scripts/verify.sh` | Passed in 2m 25.785s at 33/39 | PASS |
+
 ## Requirements Coverage
 
 | Requirement | Source plan | Current metadata | Verification status | Evidence |
 | --- | --- | --- | --- | --- |
-| `RCN-04` | `125-04-PLAN.md` | unchecked / Phase 125 / Pending | SATISFIED pre-promotion | Requirement matrix row 1 and focused scheduler evidence. |
-| `RCN-05` | `125-04-PLAN.md` | unchecked / Phase 125 / Pending | SATISFIED pre-promotion | Requirement matrix row 2 and focused response evidence. |
-| `RCN-06` | `125-04-PLAN.md` | unchecked / Phase 125 / Pending | SATISFIED pre-promotion | Requirement matrix row 3 and focused validation-handoff evidence. |
+| `RCN-04` | `125-04-PLAN.md` | checked / Phase 125 / Complete | SATISFIED | Requirement matrix row 1 and focused scheduler evidence. |
+| `RCN-05` | `125-04-PLAN.md` | checked / Phase 125 / Complete | SATISFIED | Requirement matrix row 2 and focused response evidence. |
+| `RCN-06` | `125-04-PLAN.md` | checked / Phase 125 / Complete | SATISFIED | Requirement matrix row 3 and focused validation-handoff evidence. |
 
-No Phase 125 requirement is orphaned from a plan. The unchecked/Pending metadata is the required `verification_written_pre_promotion` state, not an implementation gap.
+No Phase 125 requirement is orphaned from a plan or lifecycle-valid verification. Promotion occurred only after the required `verification_written_pre_promotion` state passed focused, lifecycle, LOC, diff, and full-repository gates.
 
 ## Anti-Patterns and Disconfirmation
 
@@ -119,9 +147,9 @@ The following remain pending by explicit later-phase ownership and are not Phase
 
 ## Gaps Summary
 
-No gaps block the three Phase 125 verification-traceability requirements. Promotion, Plan 04 summary bookkeeping, verifier wiring, and the Phase 126 handoff remain subsequent executor/orchestrator actions and were not performed by this verifier.
+No gaps block the three Phase 125 verification-traceability requirements. Promotion, verifier wiring, and the Phase 126 handoff passed. Plan 04 summary bookkeeping remains intentionally absent from this `post_verification` projection and is reserved for wrapper-level closeout.
 
 ***
 
-_Verified: 2026-07-17T16:14:38Z_
+_Verified: 2026-07-17T16:38:53Z_
 _Verifier: the agent (gsd-verifier)_

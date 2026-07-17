@@ -2,7 +2,7 @@
 
 ## Current Status
 
-v2.1 Block Serving and Compact Block Relay Boundary is the active milestone after v2.0. Phases 110–124 are complete, but the latest milestone audit found three blocking verification-orphan gaps plus approved compact-relay debt, so gap-closure Phases 125–126 remain before archive.
+v2.1 Block Serving and Compact Block Relay Boundary is the active milestone after v2.0. Phases 110–124 are complete, Phase 125 verification traceability has passed and awaits summary bookkeeping, and Phase 126 retains six residual-hardening requirements before archive.
 
 ## Latest Completed Milestone: v2.0 Transaction Relay and Mempool Participation Boundary
 
@@ -386,13 +386,13 @@ Plans:
 2. A deterministic checker fails when any active requirement is assigned and summary-complete but absent from all phase verification artifacts.
 3. Requirement traceability and milestone coverage reflect the new gap-closure ownership without weakening or duplicating the underlying runtime claims.
 
-**Plans:** 2/4 plans executed
+**Plans:** 3/4 plans executed
 
 Plans:
 
 - [x] 125-01-PLAN.md — Active-milestone verification-orphan checker and mutation suite
 - [x] 125-02-PLAN.md — Truthful pre-closure project, state, and audit projection
-- [ ] 125-03-PLAN.md — Five-stage reconciliation model and pre-verification compatibility proof
+- [x] 125-03-PLAN.md — Five-stage reconciliation model and pre-verification compatibility proof
 - [ ] 125-04-PLAN.md — Lifecycle-valid evidence, verifier wiring, exact requirement promotion, and Phase 126 handoff
 
 #### Phase 126: Compact Relay Residual Hardening
@@ -431,7 +431,7 @@ Plans:
 | 122. Compact Relay Peer Completion | v2.1 | 1/1 | Complete   | 2026-07-16 |
 | 123. Runtime Timing and Evidence Integrity | v2.1 | 7/7 | Complete   | 2026-07-16 |
 | 124. Milestone Closeout Reconciliation | v2.1 | 2/2 | Complete   | 2026-07-16 |
-| 125. Compact Download Verification Traceability Closure | v2.1 | 2/4 | In Progress|  |
+| 125. Compact Download Verification Traceability Closure | v2.1 | 3/4 | In Progress|  |
 | 126. Compact Relay Residual Hardening | v2.1 | 0/0 | Not started | - |
 
 ## Traceability
@@ -446,10 +446,10 @@ Plans:
 
 - v2.1 requirements: 39 total
 - Mapped to phases: 39
-- Satisfied: 30
-- Pending hardening and closeout: 9
+- Satisfied: 33
+- Pending hardening and closeout: 6
 - Unmapped: 0
 
 ## Next Step
 
-Run `/gsd-execute-phase 125` to continue the four-plan verification-traceability closure lifecycle.
+Run `/gsd-execute-phase 126` to close the six remaining residual-hardening requirements. Phase 125 remains unchecked at 3/4 plans executed until its summary bookkeeping is complete.

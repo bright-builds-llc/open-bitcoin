@@ -31,9 +31,9 @@ Requirements for the current milestone. Each requirement maps to exactly one roa
 - [x] **RCN-01**: Node validates compact block headers, transaction counts, prefilled ordering, null transactions, short ID bounds, and malformed payloads before accepting partial state.
 - [ ] **RCN-02**: Node reconstructs compact blocks from current mempool state plus bounded extra or recent block transaction inputs using witness-hash short IDs.
 - [ ] **RCN-03**: Node detects short ID collisions, duplicate matches, missing transactions, and reconstruction failures with stable typed outcomes.
-- [ ] **RCN-04**: Node requests missing compact-block transactions with bounded `getblocktxn` indexes only when the peer and in-flight state are eligible.
-- [ ] **RCN-05**: Node accepts `blocktxn` responses only for expected in-flight partial compact blocks from the matching peer and rejects duplicate, unexpected, out-of-bounds, or mismatched responses.
-- [ ] **RCN-06**: Reconstructed blocks enter the existing block validation and connect path without mutating chainstate from partial compact-block state.
+- [x] **RCN-04**: Node requests missing compact-block transactions with bounded `getblocktxn` indexes only when the peer and in-flight state are eligible.
+- [x] **RCN-05**: Node accepts `blocktxn` responses only for expected in-flight partial compact blocks from the matching peer and rejects duplicate, unexpected, out-of-bounds, or mismatched responses.
+- [x] **RCN-06**: Reconstructed blocks enter the existing block validation and connect path without mutating chainstate from partial compact-block state.
 - [x] **RCN-07**: Node falls back to full block fetch or suppression when reconstruction fails, responses timeout, blocks are old or far from the active tip, or peer/resource state becomes ineligible.
 
 ### Resource Governance And Runtime Integration
@@ -129,9 +129,9 @@ Traceability is populated by the v2.1 roadmap. Each active requirement maps to e
 | RCN-01 | Phase 112 | Complete |
 | RCN-02 | Phase 126 | Pending |
 | RCN-03 | Phase 126 | Pending |
-| RCN-04 | Phase 125 | Pending |
-| RCN-05 | Phase 125 | Pending |
-| RCN-06 | Phase 125 | Pending |
+| RCN-04 | Phase 125 | Complete |
+| RCN-05 | Phase 125 | Complete |
+| RCN-06 | Phase 125 | Complete |
 | RCN-07 | Phase 120 | Complete |
 | GOV-01 | Phase 111 | Complete |
 | GOV-02 | Phase 120 | Complete |
@@ -158,8 +158,8 @@ Traceability is populated by the v2.1 roadmap. Each active requirement maps to e
 
 - v2.1 requirements: 39 total
 - Mapped to phases: 39
-- Complete: 30
-- Pending hardening and closeout: 9
+- Complete: 33
+- Pending hardening and closeout: 6
 - Unmapped: 0
 
 *Requirements defined: 2026-07-03*
