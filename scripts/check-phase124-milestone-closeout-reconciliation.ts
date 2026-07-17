@@ -21,10 +21,16 @@ const PHASE124_TEST =
   "bun test scripts/check-phase124-milestone-closeout-reconciliation.test.ts";
 const PHASE124_CHECK =
   "bun run scripts/check-phase124-milestone-closeout-reconciliation.ts";
+const ACTIVE_TRACEABILITY_TEST =
+  "bun test scripts/check-active-milestone-verification-traceability.test.ts";
+const ACTIVE_TRACEABILITY_CHECK =
+  "bun run scripts/check-active-milestone-verification-traceability.ts";
 const PHASE117_TEST =
   "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts";
 const PHASE117_CHECK =
   "bun run scripts/check-phase117-parity-uat-release-boundary.ts";
+const PHASE125_VERIFICATION_FILE =
+  ".planning/phases/125-compact-download-verification-traceability-closure/125-VERIFICATION.md";
 const ARCHIVE_ROUTE = "/gsd-complete-milestone v2.1";
 
 const REQUIRED_FILES = [
@@ -136,7 +142,14 @@ export function checkPhase124MilestoneCloseoutReconciliation(
     }
   }
   verifyNoClaimBoundary(texts, failures);
-  verifyVerifierOrder(texts.get("scripts/verify.sh") ?? "", failures);
+  const activeTraceabilityRequired =
+    gapClosureStage &&
+    existsSync(path.join(repoRoot, PHASE125_VERIFICATION_FILE));
+  verifyVerifierOrder(
+    texts.get("scripts/verify.sh") ?? "",
+    activeTraceabilityRequired,
+    failures,
+  );
 
   return failures;
 }
@@ -405,20 +418,28 @@ function dangerousClaimSegments(clause: string): string[] {
     .filter((value) => value !== "");
 }
 
-function verifyVerifierOrder(verifyScript: string, failures: string[]): void {
+function verifyVerifierOrder(
+  verifyScript: string,
+  activeTraceabilityRequired: boolean,
+  failures: string[],
+): void {
   const expected = [
     PHASE123_TEST,
     PHASE123_CHECK,
     PHASE124_TEST,
     PHASE124_CHECK,
+    ...(activeTraceabilityRequired
+      ? [ACTIVE_TRACEABILITY_TEST, ACTIVE_TRACEABILITY_CHECK]
+      : []),
     PHASE117_TEST,
     PHASE117_CHECK,
   ];
   const visible = visibleCommandOrder(verifyScript);
   requireOrdered(visible, expected, "P124 visible verifier order", failures);
   const executableCommands = executableRunStepCommands(verifyScript);
+  const executable = executableCommands.join("\n");
   requireOrdered(
-    executableCommands.join("\n"),
+    executable,
     expected,
     "P124 executable verifier order",
     failures,
@@ -435,9 +456,27 @@ function verifyVerifierOrder(verifyScript: string, failures: string[]): void {
     "P124 verifier live command count",
     failures,
   );
+  const expectedActiveCommandCount = activeTraceabilityRequired ? 1 : 0;
+  for (const [command, label] of [
+    [ACTIVE_TRACEABILITY_TEST, "test"],
+    [ACTIVE_TRACEABILITY_CHECK, "check"],
+  ] as const) {
+    requireExactNumber(
+      countOccurrences(visible, command),
+      expectedActiveCommandCount,
+      `P124 visible active traceability ${label} command count`,
+      failures,
+    );
+    requireExactNumber(
+      countOccurrences(executable, command),
+      expectedActiveCommandCount,
+      `P124 executable active traceability ${label} command count`,
+      failures,
+    );
+  }
   requireFinalPhaseChecker(visible, "P124 visible verifier final gate", failures);
   requireFinalPhaseChecker(
-    executableCommands.join("\n"),
+    executable,
     "P124 executable verifier final gate",
     failures,
   );

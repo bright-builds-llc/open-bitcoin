@@ -12,6 +12,10 @@ export const PHASE124_TEST =
   "bun test scripts/check-phase124-milestone-closeout-reconciliation.test.ts";
 export const PHASE124_CHECK =
   "bun run scripts/check-phase124-milestone-closeout-reconciliation.ts";
+export const ACTIVE_TRACEABILITY_TEST =
+  "bun test scripts/check-active-milestone-verification-traceability.test.ts";
+export const ACTIVE_TRACEABILITY_CHECK =
+  "bun run scripts/check-active-milestone-verification-traceability.ts";
 export const PHASE117_TEST =
   "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts";
 export const PHASE117_CHECK =
@@ -141,7 +145,7 @@ export function createFixture(tempRoots: string[], options: FixtureOptions = {})
     ["README.md", noClaim],
     ["docs/parity/release-readiness.md", noClaim],
     ["docs/parity/production-claim-boundary.md", noClaim],
-    ["scripts/verify.sh", createVerifyScript()],
+    ["scripts/verify.sh", createVerifyScript(maybePhase125Stage)],
   ]);
   if (options.includeVerification || gapClosureStage) {
     files.set(
@@ -424,12 +428,20 @@ function createGapClosureAudit(stage: Phase125LifecycleStage["kind"]): string {
   ].join("\n");
 }
 
-function createVerifyScript(): string {
+function createVerifyScript(
+  maybePhase125Stage?: Phase125LifecycleStage["kind"],
+): string {
+  const maybeActiveTraceabilityCommands =
+    maybePhase125Stage !== undefined &&
+    phase125VerificationPresent(maybePhase125Stage)
+      ? [ACTIVE_TRACEABILITY_TEST, ACTIVE_TRACEABILITY_CHECK]
+      : [];
   const commands = [
     PHASE123_TEST,
     PHASE123_CHECK,
     PHASE124_TEST,
     PHASE124_CHECK,
+    ...maybeActiveTraceabilityCommands,
     PHASE117_TEST,
     PHASE117_CHECK,
   ];
@@ -441,6 +453,12 @@ function createVerifyScript(): string {
     `run_step "check Phase 123" ${PHASE123_CHECK}`,
     `run_step "test Phase 124" ${PHASE124_TEST}`,
     `run_step "check Phase 124" ${PHASE124_CHECK}`,
+    ...(maybeActiveTraceabilityCommands.length === 0
+      ? []
+      : [
+          `run_step "test active traceability" ${ACTIVE_TRACEABILITY_TEST}`,
+          `run_step "check active traceability" ${ACTIVE_TRACEABILITY_CHECK}`,
+        ]),
     `run_step "test Phase 117" ${PHASE117_TEST}`,
     `run_step "check Phase 117" ${PHASE117_CHECK}`,
   ].join("\n");
