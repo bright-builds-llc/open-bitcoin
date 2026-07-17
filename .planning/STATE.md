@@ -3,11 +3,11 @@ gsd_state_version: "1.0"
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
 status: executing
-stopped_at: Phase 124 verified; run /gsd-complete-milestone v2.1
-last_updated: "2026-07-16T21:56:48.280Z"
+stopped_at: Phase 125 context gathered
+last_updated: "2026-07-17T13:31:45.950Z"
 last_activity: "2026-07-16"
 progress:
-  total_phases: 15
+  total_phases: 17
   completed_phases: 15
   total_plans: 50
   completed_plans: 52
@@ -108,6 +108,6 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Session Continuity
 
-Last session: 2026-07-16T21:56:48.278Z
-Stopped at: Phase 124 verified; run /gsd-complete-milestone v2.1
-Resume file: .planning/phases/124-milestone-closeout-reconciliation/124-VERIFICATION.md
+Last session: 2026-07-17T13:31:45.944Z
+Stopped at: Phase 125 context gathered
+Resume file: .planning/phases/125-compact-download-verification-traceability-closure/125-CONTEXT.md
