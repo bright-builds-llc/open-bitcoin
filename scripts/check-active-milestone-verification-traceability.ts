@@ -22,12 +22,14 @@ export type CheckActiveMilestoneVerificationTraceabilityOptions = {
 };
 
 type ActiveRequirement = {
+  checked: boolean;
   id: string;
 };
 
 type TraceabilityRow = {
   id: string;
   phase: number;
+  status: "Complete" | "Pending";
 };
 
 type LifecycleIdentity = {
@@ -80,6 +82,13 @@ export function checkActiveMilestoneVerificationTraceability(
   const activatedIds = activatedRequirementIds(
     phaseCorpora,
     ownedRequirementIds,
+    failures,
+  );
+  verifyCompletedRequirementsActivated(
+    activeRequirements,
+    traceabilityRows,
+    ownedRequirementIds,
+    activatedIds,
     failures,
   );
   const coveredIds = lifecycleValidCoverage(
@@ -166,12 +175,15 @@ function parseActiveRequirements(
 
   const entries: ActiveRequirement[] = [];
   const checklistPattern = new RegExp(
-    `^- \\[[ x]\\] \\*\\*(${REQUIREMENT_ID_PATTERN})\\*\\*:`,
+    `^- \\[([ x])\\] \\*\\*(${REQUIREMENT_ID_PATTERN})\\*\\*:`,
   );
   for (const [index, line] of maybeSection.split("\n").entries()) {
     const maybeMatch = line.match(checklistPattern);
     if (maybeMatch) {
-      entries.push({ id: maybeMatch[1] ?? "" });
+      entries.push({
+        checked: maybeMatch[1] === "x",
+        id: maybeMatch[2] ?? "",
+      });
       continue;
     }
     if (/^- \[[ x]\] \*\*[A-Z]+-\d+\*\*/.test(line)) {
@@ -196,7 +208,7 @@ function parseTraceabilityRows(
 ): TraceabilityRow[] {
   const rows: TraceabilityRow[] = [];
   const rowPattern = new RegExp(
-    `^\\|\\s*(${REQUIREMENT_ID_PATTERN})\\s*\\|\\s*Phase\\s+(\\d+)\\s*\\|\\s*(?:Complete|Pending)\\s*\\|$`,
+    `^\\|\\s*(${REQUIREMENT_ID_PATTERN})\\s*\\|\\s*Phase\\s+(\\d+)\\s*\\|\\s*(Complete|Pending)\\s*\\|$`,
   );
   const candidatePattern = new RegExp(
     `^\\|\\s*(${REQUIREMENT_ID_PATTERN})\\s*\\|`,
@@ -208,6 +220,7 @@ function parseTraceabilityRows(
       rows.push({
         id: maybeMatch[1] ?? "",
         phase: Number(maybeMatch[2]),
+        status: maybeMatch[3] === "Complete" ? "Complete" : "Pending",
       });
       continue;
     }
@@ -253,6 +266,27 @@ function verifyTraceabilityOwnership(
     }
   }
   return ownedIds;
+}
+
+function verifyCompletedRequirementsActivated(
+  requirements: ActiveRequirement[],
+  rows: TraceabilityRow[],
+  ownedRequirementIds: Set<string>,
+  activatedIds: Set<string>,
+  failures: string[],
+): void {
+  for (const requirement of requirements) {
+    if (!ownedRequirementIds.has(requirement.id) || !requirement.checked) {
+      continue;
+    }
+    const owner = rows.find((row) => row.id === requirement.id);
+    if (owner?.status !== "Complete" || activatedIds.has(requirement.id)) {
+      continue;
+    }
+    failures.push(
+      `completed active requirement ${requirement.id} has no requirements-completed summary activation`,
+    );
+  }
 }
 
 function loadPhaseCorpora(
