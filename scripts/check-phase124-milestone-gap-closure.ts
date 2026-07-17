@@ -726,6 +726,41 @@ function verifyRouting(
       failures,
     );
   }
+  if (stage.kind === "post_summary") {
+    verifyPostSummaryNarrative(texts, failures);
+  }
+}
+
+function verifyPostSummaryNarrative(
+  texts: ReadonlyMap<string, string>,
+  failures: string[],
+): void {
+  const staleNarratives = [
+    {
+      pattern: /\b3\/4\s+plans?\s+(?:complete|executed)\b/i,
+      label: "3/4 progress",
+    },
+    {
+      pattern:
+        /\b(?:awaits?|awaiting)\b[^\n]{0,80}\bsummary bookkeeping\b|\bsummary bookkeeping\b[^\n]{0,80}\b(?:pending|still pending)\b/i,
+      label: "summary bookkeeping pending",
+    },
+    { pattern: /\bpromoted-pre-summary\b/i, label: "promoted-pre-summary projection" },
+    {
+      pattern: /\bcurrent focus:\*{0,2}\s*phase 125\b/i,
+      label: "Phase 125 current focus",
+    },
+  ] as const;
+
+  for (const [relativePath, text] of texts) {
+    for (const staleNarrative of staleNarratives) {
+      if (staleNarrative.pattern.test(text)) {
+        failures.push(
+          `P124 post_summary contradictory Phase 125 narrative ${relativePath}: ${staleNarrative.label}`,
+        );
+      }
+    }
+  }
 }
 
 function verifyPhaseDirectories(repoRoot: string, failures: string[]): void {

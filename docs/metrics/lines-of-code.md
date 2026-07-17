@@ -7,10 +7,10 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 558 |
-| Total lines | 234,182 |
-| Code/content lines | 206,024 |
-| Comment-only lines | 8,329 |
-| Blank lines | 19,829 |
+| Total lines | 234,236 |
+| Code/content lines | 206,070 |
+| Comment-only lines | 8,332 |
+| Blank lines | 19,834 |
 
 ## Per-Crate Modules
 
@@ -36,7 +36,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 95 | 83,047 | 72,298 | 4,425 | 6,324 |
 | Rust production | 289 | 82,175 | 71,674 | 2,583 | 7,918 |
-| TypeScript/Bun scripts | 115 | 52,382 | 46,376 | 1,255 | 4,751 |
+| TypeScript/Bun scripts | 115 | 52,436 | 46,422 | 1,258 | 4,756 |
 | Fixture/data | 6 | 8,233 | 8,228 | 5 | 0 |
 | Shell scripts | 13 | 4,262 | 3,813 | 55 | 394 |
 | TOML/config | 16 | 3,462 | 3,096 | 0 | 366 |
@@ -91,8 +91,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase124-milestone-closeout-reconciliation.fixtures.ts | 529 |
 | scripts/check-phase124-milestone-closeout-reconciliation.test.ts | 613 |
 | scripts/check-phase124-milestone-closeout-reconciliation.ts | 575 |
-| scripts/check-phase124-milestone-gap-closure.test.ts | 572 |
-| scripts/check-phase124-milestone-gap-closure.ts | 860 |
+| scripts/check-phase124-milestone-gap-closure.test.ts | 591 |
+| scripts/check-phase124-milestone-gap-closure.ts | 895 |
 | scripts/check-phase61-resource-recovery-boundaries.ts | 152 |
 | scripts/check-phase62-sync-truth-surfaces.ts | 265 |
 | scripts/check-phase63-service-lifecycle.ts | 308 |
@@ -196,7 +196,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 88d7b9516ead0a05296dd7d53d1306386e55ec7156560cbdc46cf33d8e3d5c19 |
+| Input fingerprint | c9da73e35e3cad35ff37004278f6f8f2d5b7e717aa813e907425c6ba2672e28a |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

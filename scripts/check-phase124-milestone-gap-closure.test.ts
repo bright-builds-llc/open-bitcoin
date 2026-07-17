@@ -230,6 +230,25 @@ test("post_summary_rejects_three_of_four_progress", () => {
   expect(failures).toContain("post_summary Phase 125 plans");
 });
 
+test("post_summary_rejects_mixed_complete_and_stale_progress_narratives", () => {
+  // Arrange
+  const root = stageFixture("post_summary", (files) => {
+    append(
+      files,
+      ".planning/ROADMAP.md",
+      "Phase 125 remains at 3/4 plans executed and awaits summary bookkeeping.",
+    );
+  });
+
+  // Act
+  const failures = check(root).join("\n");
+
+  // Assert
+  expect(failures).toContain(
+    "post_summary contradictory Phase 125 narrative .planning/ROADMAP.md",
+  );
+});
+
 test("post_summary_rejects_stale_phase125_routing", () => {
   // Arrange
   const root = stageFixture("post_summary", (files) => {

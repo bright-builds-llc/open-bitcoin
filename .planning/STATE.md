@@ -3,14 +3,14 @@ gsd_state_version: "1.0"
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
 status: executing
-stopped_at: Phase 125 verified; execute Phase 126 next with /gsd-execute-phase 126
-last_updated: "2026-07-17T16:34:37.915Z"
+stopped_at: Phase 125 complete; execute Phase 126 next with /gsd-execute-phase 126
+last_updated: "2026-07-17T16:47:19.728Z"
 last_activity: "2026-07-17"
 progress:
   total_phases: 17
-  completed_phases: 15
+  completed_phases: 16
   total_plans: 54
-  completed_plans: 55
+  completed_plans: 56
   percent: 100
 ---
 
@@ -21,19 +21,19 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-07-10 after Phase 117 completed v2.1 implementation and verification).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 125 — Compact Download Verification Traceability Closure
+**Current focus:** Phase 126 — Compact Relay Residual Hardening
 
 ## Current Position
 
 Milestone: v2.1 Block Serving and Compact Block Relay Boundary
-Phase: 125 (Compact Download Verification Traceability Closure) — EXECUTING
-Plan: 2 of 4
+Phase: 126
+Plan: Not started
 Status: Ready to execute
 Last activity: 2026-07-17
 
 v2.0 Transaction Relay and Mempool Participation Boundary shipped on 2026-07-03. The archived audit reports 32/32 requirements, 10/10 phases, 8/8 integration checks, 8/8 cross-phase flows, and no tracked tech debt.
 
-Phase 123 verified receive-independent compact timeout fallback, successful-write-only served evidence, and one authoritative sync-owned block-relay snapshot for metrics and logs. Phase 124 owns the remaining milestone metadata and audit reconciliation.
+Phase 125 completed lifecycle-valid verification-traceability closure at 4/4 plans for `RCN-04`, `RCN-05`, and `RCN-06`. Phase 126 owns the six remaining residual-hardening requirements and final archive reconciliation.
 
 ## Latest Milestone Archive
 
@@ -108,6 +108,6 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Session Continuity
 
-Last session: 2026-07-17T16:34:37.912Z
-Stopped at: Phase 125 verified; execute Phase 126 next with /gsd-execute-phase 126
+Last session: 2026-07-17T16:47:19.725Z
+Stopped at: Phase 125 complete; execute Phase 126 next with /gsd-execute-phase 126
 Resume file: .planning/ROADMAP.md
