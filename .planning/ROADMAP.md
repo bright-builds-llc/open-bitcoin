@@ -386,12 +386,12 @@ Plans:
 2. A deterministic checker fails when any active requirement is assigned and summary-complete but absent from all phase verification artifacts.
 3. Requirement traceability and milestone coverage reflect the new gap-closure ownership without weakening or duplicating the underlying runtime claims.
 
-**Plans:** 1/4 plans executed
+**Plans:** 2/4 plans executed
 
 Plans:
 
 - [x] 125-01-PLAN.md — Active-milestone verification-orphan checker and mutation suite
-- [ ] 125-02-PLAN.md — Truthful pre-closure project, state, and audit projection
+- [x] 125-02-PLAN.md — Truthful pre-closure project, state, and audit projection
 - [ ] 125-03-PLAN.md — Five-stage reconciliation model and pre-verification compatibility proof
 - [ ] 125-04-PLAN.md — Lifecycle-valid evidence, verifier wiring, exact requirement promotion, and Phase 126 handoff
 
@@ -431,7 +431,7 @@ Plans:
 | 122. Compact Relay Peer Completion | v2.1 | 1/1 | Complete   | 2026-07-16 |
 | 123. Runtime Timing and Evidence Integrity | v2.1 | 7/7 | Complete   | 2026-07-16 |
 | 124. Milestone Closeout Reconciliation | v2.1 | 2/2 | Complete   | 2026-07-16 |
-| 125. Compact Download Verification Traceability Closure | v2.1 | 1/4 | In Progress | - |
+| 125. Compact Download Verification Traceability Closure | v2.1 | 2/4 | In Progress|  |
 | 126. Compact Relay Residual Hardening | v2.1 | 0/0 | Not started | - |
 
 ## Traceability
