@@ -7,10 +7,10 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 558 |
-| Total lines | 234,115 |
-| Code/content lines | 205,969 |
-| Comment-only lines | 8,323 |
-| Blank lines | 19,823 |
+| Total lines | 234,182 |
+| Code/content lines | 206,024 |
+| Comment-only lines | 8,329 |
+| Blank lines | 19,829 |
 
 ## Per-Crate Modules
 
@@ -36,7 +36,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 95 | 83,047 | 72,298 | 4,425 | 6,324 |
 | Rust production | 289 | 82,175 | 71,674 | 2,583 | 7,918 |
-| TypeScript/Bun scripts | 115 | 52,315 | 46,321 | 1,249 | 4,745 |
+| TypeScript/Bun scripts | 115 | 52,382 | 46,376 | 1,255 | 4,751 |
 | Fixture/data | 6 | 8,233 | 8,228 | 5 | 0 |
 | Shell scripts | 13 | 4,262 | 3,813 | 55 | 394 |
 | TOML/config | 16 | 3,462 | 3,096 | 0 | 366 |
@@ -50,8 +50,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | File | Lines |
 | --- | --- |
-| scripts/check-active-milestone-verification-traceability.test.ts | 646 |
-| scripts/check-active-milestone-verification-traceability.ts | 742 |
+| scripts/check-active-milestone-verification-traceability.test.ts | 706 |
+| scripts/check-active-milestone-verification-traceability.ts | 749 |
 | scripts/check-bazel-build-provenance.ts | 187 |
 | scripts/check-benchmark-report.ts | 210 |
 | scripts/check-parity-breadcrumbs.ts | 427 |
@@ -196,7 +196,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | feffb5f1c0f3fd58f19858205092ba5793fc91d9c7816d58145f613a31ca59f1 |
+| Input fingerprint | 88d7b9516ead0a05296dd7d53d1306386e55ec7156560cbdc46cf33d8e3d5c19 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

@@ -178,6 +178,66 @@ test("completed unsummarized requirement fails independently", () => {
   ]);
 });
 
+test("checked requirement with pending traceability fails independently", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutateFiles(files) {
+      replaceInFile(
+        files,
+        REQUIREMENTS_FILE,
+        "- [ ] **RCN-04**",
+        "- [x] **RCN-04**",
+      );
+      replaceInFile(
+        files,
+        PHASE115_SUMMARY,
+        "requirements-completed: [RCN-04, RCN-05, RCN-06]",
+        "requirements-completed: [RCN-05, RCN-06]",
+      );
+    },
+  });
+
+  // Act
+  const failures = checkActiveMilestoneVerificationTraceability({
+    maybeRootDir: root,
+  });
+
+  // Assert
+  expect(failures).toEqual([
+    "active requirement RCN-04 has inconsistent checklist and traceability completion state",
+  ]);
+});
+
+test("unchecked requirement with complete traceability fails independently", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutateFiles(files) {
+      replaceInFile(
+        files,
+        REQUIREMENTS_FILE,
+        "| RCN-04 | Phase 125 | Pending |",
+        "| RCN-04 | Phase 125 | Complete |",
+      );
+      replaceInFile(
+        files,
+        PHASE115_SUMMARY,
+        "requirements-completed: [RCN-04, RCN-05, RCN-06]",
+        "requirements-completed: [RCN-05, RCN-06]",
+      );
+    },
+  });
+
+  // Act
+  const failures = checkActiveMilestoneVerificationTraceability({
+    maybeRootDir: root,
+  });
+
+  // Assert
+  expect(failures).toEqual([
+    "active requirement RCN-04 has inconsistent checklist and traceability completion state",
+  ]);
+});
+
 test("deferred FUT summary collision remains excluded", () => {
   // Arrange
   const root = createFixture({

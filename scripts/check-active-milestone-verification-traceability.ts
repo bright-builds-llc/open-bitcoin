@@ -276,11 +276,18 @@ function verifyCompletedRequirementsActivated(
   failures: string[],
 ): void {
   for (const requirement of requirements) {
-    if (!ownedRequirementIds.has(requirement.id) || !requirement.checked) {
+    if (!ownedRequirementIds.has(requirement.id)) {
       continue;
     }
     const owner = rows.find((row) => row.id === requirement.id);
-    if (owner?.status !== "Complete" || activatedIds.has(requirement.id)) {
+    const traceabilityComplete = owner?.status === "Complete";
+    if (requirement.checked !== traceabilityComplete) {
+      failures.push(
+        `active requirement ${requirement.id} has inconsistent checklist and traceability completion state`,
+      );
+      continue;
+    }
+    if (!requirement.checked || activatedIds.has(requirement.id)) {
       continue;
     }
     failures.push(
