@@ -6,11 +6,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Metric | Value |
 | --- | --- |
-| Included files | 556 |
-| Total lines | 231,377 |
-| Code/content lines | 203,627 |
-| Comment-only lines | 8,187 |
-| Blank lines | 19,563 |
+| Included files | 558 |
+| Total lines | 232,695 |
+| Code/content lines | 204,763 |
+| Comment-only lines | 8,241 |
+| Blank lines | 19,691 |
 
 ## Per-Crate Modules
 
@@ -36,7 +36,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 95 | 83,047 | 72,298 | 4,425 | 6,324 |
 | Rust production | 289 | 82,175 | 71,674 | 2,583 | 7,918 |
-| TypeScript/Bun scripts | 113 | 49,582 | 43,983 | 1,114 | 4,485 |
+| TypeScript/Bun scripts | 115 | 50,900 | 45,119 | 1,168 | 4,613 |
 | Fixture/data | 6 | 8,233 | 8,228 | 5 | 0 |
 | Shell scripts | 13 | 4,257 | 3,809 | 54 | 394 |
 | TOML/config | 16 | 3,462 | 3,096 | 0 | 366 |
@@ -50,6 +50,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | File | Lines |
 | --- | --- |
+| scripts/check-active-milestone-verification-traceability.test.ts | 610 |
+| scripts/check-active-milestone-verification-traceability.ts | 708 |
 | scripts/check-bazel-build-provenance.ts | 187 |
 | scripts/check-benchmark-report.ts | 210 |
 | scripts/check-parity-breadcrumbs.ts | 427 |
@@ -194,7 +196,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 0d62bda77274edbf6f8de39cda2c202bf6d4a66ec93f24c356a2542451263215 |
+| Input fingerprint | e1a73369ad1ebca163d4786a523972042ecf8cb3b9e1e422ae6366d1b247228c |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

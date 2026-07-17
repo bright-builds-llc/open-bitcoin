@@ -69,7 +69,7 @@ export function checkActiveMilestoneVerificationTraceability(
   );
   const traceabilityRows = parseTraceabilityRows(requirements, failures);
 
-  verifyTraceabilityOwnership(
+  const ownedRequirementIds = verifyTraceabilityOwnership(
     activeRequirements,
     traceabilityRows,
     activePhases,
@@ -79,7 +79,7 @@ export function checkActiveMilestoneVerificationTraceability(
   const phaseCorpora = loadPhaseCorpora(rootDir, activePhases, failures);
   const activatedIds = activatedRequirementIds(
     phaseCorpora,
-    activeRequirements,
+    ownedRequirementIds,
     failures,
   );
   const coveredIds = lifecycleValidCoverage(
@@ -126,14 +126,16 @@ function parseActiveRoadmapPhases(
   }
 
   const phases: number[] = [];
-  for (const line of maybeSection.split("\n")) {
+  for (const [index, line] of maybeSection.split("\n").entries()) {
     const maybeMatch = line.match(/^- \[[ x]\] \*\*Phase (\d+):/);
     if (maybeMatch) {
       phases.push(Number(maybeMatch[1]));
       continue;
     }
     if (/^- \[[ x]\] \*\*Phase\b/.test(line)) {
-      failures.push(`malformed active roadmap phase entry: ${line.trim()}`);
+      failures.push(
+        `malformed active roadmap phase entry at ${ROADMAP_FILE}:${index + 1}`,
+      );
     }
   }
 
@@ -166,14 +168,16 @@ function parseActiveRequirements(
   const checklistPattern = new RegExp(
     `^- \\[[ x]\\] \\*\\*(${REQUIREMENT_ID_PATTERN})\\*\\*:`,
   );
-  for (const line of maybeSection.split("\n")) {
+  for (const [index, line] of maybeSection.split("\n").entries()) {
     const maybeMatch = line.match(checklistPattern);
     if (maybeMatch) {
       entries.push({ id: maybeMatch[1] ?? "" });
       continue;
     }
     if (/^- \[[ x]\] \*\*[A-Z]+-\d+\*\*/.test(line)) {
-      failures.push(`malformed active requirement checklist row: ${line.trim()}`);
+      failures.push(
+        `malformed active requirement checklist row at ${REQUIREMENTS_FILE}:${index + 1}`,
+      );
     }
   }
 
@@ -198,7 +202,7 @@ function parseTraceabilityRows(
     `^\\|\\s*(${REQUIREMENT_ID_PATTERN})\\s*\\|`,
   );
 
-  for (const line of requirements.split("\n")) {
+  for (const [index, line] of requirements.split("\n").entries()) {
     const maybeMatch = line.match(rowPattern);
     if (maybeMatch) {
       rows.push({
@@ -208,7 +212,9 @@ function parseTraceabilityRows(
       continue;
     }
     if (candidatePattern.test(line)) {
-      failures.push(`malformed traceability row: ${line.trim()}`);
+      failures.push(
+        `malformed traceability row at ${REQUIREMENTS_FILE}:${index + 1}`,
+      );
     }
   }
   return rows;
@@ -219,8 +225,15 @@ function verifyTraceabilityOwnership(
   rows: TraceabilityRow[],
   activePhases: Set<number>,
   failures: string[],
-): void {
+): Set<string> {
+  const ownedIds = new Set<string>();
+  const checklistCounts = countValues(
+    requirements.map((requirement) => requirement.id),
+  );
   for (const requirement of requirements) {
+    if (checklistCounts.get(requirement.id) !== 1) {
+      continue;
+    }
     const owners = rows.filter((row) => row.id === requirement.id);
     if (owners.length !== 1) {
       failures.push(
@@ -233,8 +246,13 @@ function verifyTraceabilityOwnership(
       failures.push(
         `active requirement ${requirement.id} traceability owner Phase ${owner.phase} is not in the active roadmap`,
       );
+      continue;
+    }
+    if (owner) {
+      ownedIds.add(requirement.id);
     }
   }
+  return ownedIds;
 }
 
 function loadPhaseCorpora(
@@ -340,12 +358,9 @@ function loadArtifact(
 
 function activatedRequirementIds(
   corpora: PhaseCorpus[],
-  activeRequirements: ActiveRequirement[],
+  ownedRequirementIds: Set<string>,
   failures: string[],
 ): Set<string> {
-  const activeIds = new Set(
-    activeRequirements.map((requirement) => requirement.id),
-  );
   const activated = new Set<string>();
 
   for (const corpus of corpora) {
@@ -355,7 +370,7 @@ function activatedRequirementIds(
       }
       verifyArtifactLifecycle(summary, corpus.lifecycle, failures);
       for (const id of parseRequirementsCompleted(summary, failures)) {
-        if (activeIds.has(id)) {
+        if (ownedRequirementIds.has(id)) {
           activated.add(id);
         }
       }
@@ -539,9 +554,7 @@ function parseRequirementIdList(
       continue;
     }
     if (!idPattern.test(value)) {
-      failures.push(
-        `${relativePath} has malformed requirements-completed ID ${value}`,
-      );
+      failures.push(`${relativePath} has malformed requirements-completed ID`);
       continue;
     }
     ids.push(value);
@@ -658,6 +671,14 @@ function duplicateValues<T extends string | number>(values: T[]): T[] {
     seen.add(value);
   }
   return [...duplicates];
+}
+
+function countValues<T extends string | number>(values: T[]): Map<T, number> {
+  const counts = new Map<T, number>();
+  for (const value of values) {
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+  return counts;
 }
 
 function stripYamlQuotes(value: string): string {
