@@ -101,7 +101,7 @@ test("planned_rejects_a_summary", () => {
   const failures = check(root).join("\n");
 
   // Assert
-  expect(failures).toContain("artifact combination does not match a legal lifecycle stage");
+  expect(failures).toContain("pre_verification Phase 125 plans");
 });
 
 test("pre_verification_rejects_a_fourth_summary_without_verification", () => {
@@ -126,7 +126,7 @@ test("verification_written_pre_promotion_rejects_promoted_counts", () => {
   const failures = check(root).join("\n");
 
   // Assert
-  expect(failures).toContain("verification-written pre-promotion");
+  expect(failures).toContain("post_verification");
 });
 
 test("every_pre_promotion_stage_rejects_premature_phase126_routing", () => {

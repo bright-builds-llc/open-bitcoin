@@ -143,7 +143,7 @@ export function createFixture(tempRoots: string[], options: FixtureOptions = {})
     ["docs/parity/production-claim-boundary.md", noClaim],
     ["scripts/verify.sh", createVerifyScript()],
   ]);
-  if (options.includeVerification) {
+  if (options.includeVerification || gapClosureStage) {
     files.set(
       VERIFICATION_FILE,
       [
