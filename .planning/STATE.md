@@ -3,15 +3,15 @@ gsd_state_version: "1.0"
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
 status: executing
-stopped_at: Phase 125 context gathered
-last_updated: "2026-07-17T13:31:45.950Z"
-last_activity: "2026-07-16"
+stopped_at: Phase 125 traceability closure executing; requirements remain pending
+last_updated: "2026-07-17T15:35:19.242Z"
+last_activity: 2026-07-17 -- Phase 125 execution started
 progress:
   total_phases: 17
   completed_phases: 15
-  total_plans: 50
-  completed_plans: 52
-  percent: 100
+  total_plans: 54
+  completed_plans: 53
+  percent: 98
 ---
 
 # Project State
@@ -21,15 +21,15 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-07-10 after Phase 117 completed v2.1 implementation and verification).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 124 — Milestone Closeout Reconciliation
+**Current focus:** Phase 125 — Compact Download Verification Traceability Closure
 
 ## Current Position
 
 Milestone: v2.1 Block Serving and Compact Block Relay Boundary
-Phase: 124
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-07-16
+Phase: 125 (Compact Download Verification Traceability Closure) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 125
+Last activity: 2026-07-17 -- Phase 125 execution started
 
 v2.0 Transaction Relay and Mempool Participation Boundary shipped on 2026-07-03. The archived audit reports 32/32 requirements, 10/10 phases, 8/8 integration checks, 8/8 cross-phase flows, and no tracked tech debt.
 
@@ -108,6 +108,6 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Session Continuity
 
-Last session: 2026-07-17T13:31:45.944Z
-Stopped at: Phase 125 context gathered
-Resume file: .planning/phases/125-compact-download-verification-traceability-closure/125-CONTEXT.md
+Last session: 2026-07-17T15:35:19.239Z
+Stopped at: Phase 125 traceability closure executing; requirements remain pending
+Resume file: .planning/phases/125-compact-download-verification-traceability-closure/125-02-PLAN.md

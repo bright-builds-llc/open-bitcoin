@@ -365,7 +365,7 @@ Plans:
 1. ROADMAP and REQUIREMENTS status, traceability, and coverage agree with the completed phase artifacts.
 2. The milestone audit is rerun after Phases 122–123 and records no unresolved approved hardening item.
 3. The default deterministic verifier and changed-path milestone checks pass without weakening no-claim guardrails.
-4. The active milestone points directly to archival through `/gsd-complete-milestone v2.1`.
+4. The then-current archival projection is retained only as superseded historical closeout evidence.
 
 **Plans:** 2/2 plans complete
 
@@ -386,7 +386,14 @@ Plans:
 2. A deterministic checker fails when any active requirement is assigned and summary-complete but absent from all phase verification artifacts.
 3. Requirement traceability and milestone coverage reflect the new gap-closure ownership without weakening or duplicating the underlying runtime claims.
 
-**Plans:** 0 plans
+**Plans:** 1/4 plans executed
+
+Plans:
+
+- [x] 125-01-PLAN.md — Active-milestone verification-orphan checker and mutation suite
+- [ ] 125-02-PLAN.md — Truthful pre-closure project, state, and audit projection
+- [ ] 125-03-PLAN.md — Five-stage reconciliation model and pre-verification compatibility proof
+- [ ] 125-04-PLAN.md — Lifecycle-valid evidence, verifier wiring, exact requirement promotion, and Phase 126 handoff
 
 #### Phase 126: Compact Relay Residual Hardening
 
@@ -399,7 +406,7 @@ Plans:
 1. Production-capable compact-block receive adapters cannot bypass live mempool and bounded extra-candidate injection through the generic empty-facts fallback.
 2. Outbound compact-block nonce generation uses a Knots-aligned randomized shell source with deterministic injection for tests.
 3. Parity evidence, breadcrumbs, and deterministic regressions cover the hardened receive and announcement boundaries.
-4. ROADMAP, REQUIREMENTS, STATE, the Phase 124 closeout guard, and the rerun milestone audit agree on the final Phase 126 result and archive route.
+4. ROADMAP, REQUIREMENTS, STATE, the Phase 124 closeout guard, and the rerun milestone audit agree on the final Phase 126 result before any fresh archive decision.
 
 **Plans:** 0 plans
 
@@ -424,7 +431,7 @@ Plans:
 | 122. Compact Relay Peer Completion | v2.1 | 1/1 | Complete   | 2026-07-16 |
 | 123. Runtime Timing and Evidence Integrity | v2.1 | 7/7 | Complete   | 2026-07-16 |
 | 124. Milestone Closeout Reconciliation | v2.1 | 2/2 | Complete   | 2026-07-16 |
-| 125. Compact Download Verification Traceability Closure | v2.1 | 0/0 | Not started | - |
+| 125. Compact Download Verification Traceability Closure | v2.1 | 1/4 | In Progress | - |
 | 126. Compact Relay Residual Hardening | v2.1 | 0/0 | Not started | - |
 
 ## Traceability
@@ -445,4 +452,4 @@ Plans:
 
 ## Next Step
 
-Run `/gsd-plan-phase 125` to plan the first gap-closure phase.
+Run `/gsd-execute-phase 125` to continue the four-plan verification-traceability closure lifecycle.
