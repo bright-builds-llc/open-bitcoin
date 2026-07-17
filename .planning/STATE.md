@@ -3,8 +3,8 @@ gsd_state_version: "1.0"
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
 status: executing
-stopped_at: Phase 125 complete; execute Phase 126 next with /gsd-execute-phase 126
-last_updated: "2026-07-17T16:47:19.728Z"
+stopped_at: Phase 126 context gathered; continue with /gsd-execute-phase 126
+last_updated: "2026-07-17T20:20:34.583Z"
 last_activity: "2026-07-17"
 progress:
   total_phases: 17
@@ -108,6 +108,6 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Session Continuity
 
-Last session: 2026-07-17T16:47:19.725Z
-Stopped at: Phase 125 complete; execute Phase 126 next with /gsd-execute-phase 126
-Resume file: .planning/ROADMAP.md
+Last session: 2026-07-17T20:20:34.575Z
+Stopped at: Phase 126 context gathered; continue with /gsd-execute-phase 126
+Resume file: .planning/phases/126-compact-relay-residual-hardening/126-CONTEXT.md
