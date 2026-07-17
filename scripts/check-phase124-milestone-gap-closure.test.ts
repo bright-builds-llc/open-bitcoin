@@ -149,6 +149,27 @@ test("every_pre_promotion_stage_rejects_premature_phase126_routing", () => {
   }
 });
 
+test("pre_promotion_rejects_missing_primary_route_in_each_canonical_file", () => {
+  // Arrange
+  const roots = ROUTING_FILES.map((file) => ({
+    file,
+    root: stageFixture("planned", (files) => {
+      replace(files, file, PHASE125_ROUTE, "Primary route intentionally absent.");
+    }),
+  }));
+
+  // Act
+  const results = roots.map(({ file, root }) => ({
+    failures: check(root).join("\n"),
+    file,
+  }));
+
+  // Assert
+  for (const { failures, file } of results) {
+    expect(failures).toContain(`Phase 125 primary route ${file}`);
+  }
+});
+
 test("post_verification_rejects_a_missing_verification", () => {
   // Arrange
   const root = stageFixture("post_verification", (files) => {

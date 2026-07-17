@@ -717,26 +717,12 @@ function verifyRouting(
         : `P124 ${stage.kind} premature Phase 126 route ${relativePath}`,
       failures,
     );
-    if (promoted) {
-      requireContains(
-        text,
-        expectedRoute,
-        `P124 ${stage.kind} Phase 126 primary route ${relativePath}`,
-        failures,
-      );
-    }
-  }
-  if (!promoted) {
     requireContains(
-      roadmap,
+      text,
       expectedRoute,
-      `P124 ${stage.kind} Phase 125 primary route .planning/ROADMAP.md`,
-      failures,
-    );
-    requireContains(
-      audit,
-      expectedRoute,
-      `P124 ${stage.kind} Phase 125 primary route .planning/v2.1-MILESTONE-AUDIT.md`,
+      promoted
+        ? `P124 ${stage.kind} Phase 126 primary route ${relativePath}`
+        : `P124 ${stage.kind} Phase 125 primary route ${relativePath}`,
       failures,
     );
   }
