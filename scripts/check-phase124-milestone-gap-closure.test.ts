@@ -1,7 +1,10 @@
 import { afterEach, expect, test } from "bun:test";
 import { rmSync } from "node:fs";
 
-import type { Phase125LifecycleStage } from "./check-phase124-milestone-gap-closure";
+import type {
+  Phase125LifecycleStage,
+  Phase126CloseoutStage,
+} from "./check-phase124-milestone-gap-closure";
 import { checkPhase124MilestoneCloseoutReconciliation } from "./check-phase124-milestone-closeout-reconciliation";
 import {
   ACTIVE_TRACEABILITY_CHECK,
@@ -14,6 +17,8 @@ import {
   PHASE125_ROUTE,
   PHASE125_VERIFICATION_FILE,
   PHASE126_ROUTE,
+  PHASE126_LIFECYCLE_ID,
+  PHASE126_VERIFICATION_FILE,
   replace,
 } from "./check-phase124-milestone-closeout-reconciliation.fixtures";
 
@@ -92,6 +97,121 @@ test("passes_the_post_summary_stage", () => {
 
   // Assert
   expect(failures).toEqual([]);
+});
+
+for (const stage of [
+  "candidate",
+  "verified_pre_promotion",
+  "promoted_pre_summary",
+  "archive_ready",
+] as const) {
+  test(`passes_the_phase126_${stage}_stage`, () => {
+    // Arrange
+    const root = phase126StageFixture(stage);
+
+    // Act
+    const failures = check(root);
+
+    // Assert
+    expect(failures).toEqual([]);
+  });
+}
+
+test("phase126_rejects_mixed_requirement_counts", () => {
+  // Arrange
+  const root = phase126StageFixture("candidate", (files) => {
+    replace(files, ".planning/REQUIREMENTS.md", "- [ ] **CMP-05**", "- [x] **CMP-05**");
+  });
+
+  // Act
+  const failures = check(root).join("\n");
+
+  // Assert
+  expect(failures).toContain(
+    "P124 Phase 126 requirement projection must be uniformly pending or promoted",
+  );
+});
+
+test("phase126_rejects_verification_lifecycle_mismatch", () => {
+  // Arrange
+  const root = phase126StageFixture("verified_pre_promotion", (files) => {
+    replace(
+      files,
+      PHASE126_VERIFICATION_FILE,
+      `phase_lifecycle_id: ${PHASE126_LIFECYCLE_ID}`,
+      "phase_lifecycle_id: stale-lifecycle",
+    );
+  });
+
+  // Act
+  const failures = check(root).join("\n");
+
+  // Assert
+  expect(failures).toContain(
+    "phase_lifecycle_id must match Phase 126 CONTEXT",
+  );
+});
+
+test("phase126_rejects_premature_promotion", () => {
+  // Arrange
+  const root = phase126StageFixture("candidate", promotePhase126Requirements);
+
+  // Act
+  const failures = check(root).join("\n");
+
+  // Assert
+  expect(failures).toContain(
+    "P124 Phase 126 promoted projection requires lifecycle-valid verification",
+  );
+});
+
+test("phase126_rejects_stale_plan_progress", () => {
+  // Arrange
+  const root = phase126StageFixture("promoted_pre_summary", (files) => {
+    replace(files, ".planning/ROADMAP.md", "3/4 plans executed", "4/4 plans complete");
+  });
+
+  // Act
+  const failures = check(root).join("\n");
+
+  // Assert
+  expect(failures).toContain("P124 promoted_pre_summary Phase 126 plans");
+});
+
+test("phase126_rejects_stale_phase_progress", () => {
+  // Arrange
+  const root = phase126StageFixture("archive_ready", (files) => {
+    replace(
+      files,
+      ".planning/ROADMAP.md",
+      "- [x] **Phase 126:",
+      "- [ ] **Phase 126:",
+    );
+  });
+
+  // Act
+  const failures = check(root).join("\n");
+
+  // Assert
+  expect(failures).toContain("P124 archive_ready Phase 126 state");
+});
+
+test("phase126_rejects_stale_routes", () => {
+  // Arrange
+  const candidateRoot = phase126StageFixture("candidate", (files) => {
+    append(files, ".planning/STATE.md", PHASE125_ROUTE);
+  });
+  const archiveRoot = phase126StageFixture("archive_ready", (files) => {
+    append(files, ".planning/STATE.md", PHASE126_ROUTE);
+  });
+
+  // Act
+  const candidateFailures = check(candidateRoot).join("\n");
+  const archiveFailures = check(archiveRoot).join("\n");
+
+  // Assert
+  expect(candidateFailures).toContain("P124 candidate stale Phase 125 route");
+  expect(archiveFailures).toContain("P124 archive_ready stale Phase 126 route");
 });
 
 test("planned_rejects_a_summary", () => {
@@ -542,6 +662,16 @@ function stageFixture(
   });
 }
 
+function phase126StageFixture(
+  stage: Phase126CloseoutStage["kind"],
+  maybeMutate?: (files: Map<FixtureFile, string>) => void,
+): string {
+  return createFixture(tempRoots, {
+    maybePhase126Stage: stage,
+    maybeMutate,
+  });
+}
+
 function check(root: string): string[] {
   return checkPhase124MilestoneCloseoutReconciliation({ rootDir: root });
 }
@@ -572,6 +702,37 @@ function promoteRequirements(files: Map<FixtureFile, string>): void {
     ".planning/REQUIREMENTS.md",
     "Pending hardening and closeout: 9",
     "Pending hardening and closeout: 6",
+  );
+}
+
+function promotePhase126Requirements(files: Map<FixtureFile, string>): void {
+  for (const requirement of [
+    "CMP-05",
+    "RCN-02",
+    "RCN-03",
+    "GOV-04",
+    "BOUND-01",
+    "HARD-05",
+  ]) {
+    replace(
+      files,
+      ".planning/REQUIREMENTS.md",
+      `- [ ] **${requirement}**`,
+      `- [x] **${requirement}**`,
+    );
+    replace(
+      files,
+      ".planning/REQUIREMENTS.md",
+      `| ${requirement} | Phase 126 | Pending |`,
+      `| ${requirement} | Phase 126 | Complete |`,
+    );
+  }
+  replace(files, ".planning/REQUIREMENTS.md", "Complete: 33", "Complete: 39");
+  replace(
+    files,
+    ".planning/REQUIREMENTS.md",
+    "Pending hardening and closeout: 6",
+    "Pending hardening and closeout: 0",
   );
 }
 

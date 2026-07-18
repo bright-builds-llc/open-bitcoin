@@ -7,6 +7,8 @@ const PHASE126_DIRECTORY =
   ".planning/phases/126-compact-relay-residual-hardening";
 const PHASE125_CONTEXT = `${PHASE125_DIRECTORY}/125-CONTEXT.md`;
 const PHASE125_VERIFICATION = `${PHASE125_DIRECTORY}/125-VERIFICATION.md`;
+const PHASE126_CONTEXT = `${PHASE126_DIRECTORY}/126-CONTEXT.md`;
+const PHASE126_VERIFICATION = `${PHASE126_DIRECTORY}/126-VERIFICATION.md`;
 const PHASE125_NAME = "Compact Download Verification Traceability Closure";
 const PHASE126_NAME = "Compact Relay Residual Hardening";
 const PHASE125_REQUIREMENTS = ["RCN-04", "RCN-05", "RCN-06"] as const;
@@ -65,6 +67,32 @@ export type Phase125LifecycleStage =
       verificationPresent: true;
     };
 
+export type Phase126CloseoutStage =
+  | {
+      kind: "candidate";
+      planCount: 4;
+      summaryCount: 1 | 2 | 3;
+      verificationPresent: false;
+    }
+  | {
+      kind: "verified_pre_promotion";
+      planCount: 4;
+      summaryCount: 3;
+      verificationPresent: true;
+    }
+  | {
+      kind: "promoted_pre_summary";
+      planCount: 4;
+      summaryCount: 3;
+      verificationPresent: true;
+    }
+  | {
+      kind: "archive_ready";
+      planCount: 4;
+      summaryCount: 4;
+      verificationPresent: true;
+    };
+
 type RequirementEntry = { checked: boolean; id: string };
 type TraceabilityEntry = { id: string; phase: number; status: string };
 type LifecycleIdentity = { mode: string; phaseLifecycleId: string };
@@ -105,8 +133,582 @@ export function verifyPhase124GapClosureStage(
     return;
   }
 
+  if (maybeStage.kind === "post_summary" && phase126LifecycleStarted(repoRoot)) {
+    verifyPhase126CloseoutStage(
+      repoRoot,
+      requirements,
+      roadmap,
+      audit,
+      entries,
+      traceability,
+      failures,
+    );
+    return;
+  }
+
   verifyProjection(maybeStage, requirements, roadmap, audit, entries, traceability, failures);
   verifyRouting(repoRoot, maybeStage, roadmap, audit, failures);
+}
+
+function phase126LifecycleStarted(repoRoot: string): boolean {
+  const absoluteDirectory = path.join(repoRoot, PHASE126_DIRECTORY);
+  if (!existsSync(absoluteDirectory)) return false;
+  return readdirSync(absoluteDirectory).some((name) =>
+    /^126-\d{2}-(?:PLAN|SUMMARY)\.md$/.test(name),
+  );
+}
+
+function verifyPhase126CloseoutStage(
+  repoRoot: string,
+  requirements: string,
+  roadmap: string,
+  audit: string,
+  entries: RequirementEntry[],
+  traceability: TraceabilityEntry[],
+  failures: string[],
+): void {
+  const maybeProjection = maybeParsePhase126Projection(entries, traceability, failures);
+  const maybeArtifacts = maybeParsePhase126Artifacts(repoRoot, failures);
+  if (maybeProjection === null || maybeArtifacts === null) return;
+
+  const maybeStage = maybeParsePhase126Stage(maybeProjection, maybeArtifacts, failures);
+  if (maybeStage === null) return;
+
+  verifyPhase126Projection(
+    maybeStage,
+    requirements,
+    roadmap,
+    audit,
+    entries,
+    traceability,
+    failures,
+  );
+  verifyPhase126Routing(repoRoot, maybeStage, roadmap, audit, failures);
+}
+
+function maybeParsePhase126Projection(
+  entries: RequirementEntry[],
+  traceability: TraceabilityEntry[],
+  failures: string[],
+): ProjectionState | null {
+  const checklistStates = PHASE126_REQUIREMENTS.map((id) =>
+    entries.find((entry) => entry.id === id)?.checked,
+  );
+  const traceabilityStates = PHASE126_REQUIREMENTS.map(
+    (id) => traceability.find((entry) => entry.id === id)?.status,
+  );
+  const pending =
+    checklistStates.every((checked) => checked === false) &&
+    traceabilityStates.every((status) => status === "Pending");
+  const promoted =
+    checklistStates.every((checked) => checked === true) &&
+    traceabilityStates.every((status) => status === "Complete");
+
+  if (pending) return "pending";
+  if (promoted) return "promoted";
+  failures.push(
+    "P124 Phase 126 requirement projection must be uniformly pending or promoted",
+  );
+  return null;
+}
+
+function maybeParsePhase126Artifacts(
+  repoRoot: string,
+  failures: string[],
+): Phase125Artifacts | null {
+  const absoluteDirectory = path.join(repoRoot, PHASE126_DIRECTORY);
+  if (!existsSync(absoluteDirectory)) {
+    failures.push(`P124 gap-closure missing phase directory ${PHASE126_DIRECTORY}`);
+    return null;
+  }
+
+  const names = readdirSync(absoluteDirectory).sort();
+  const planNames = names.filter((name) => /^126-\d{2}-PLAN\.md$/.test(name));
+  const summaryNames = names.filter((name) => /^126-\d{2}-SUMMARY\.md$/.test(name));
+  for (const name of names) {
+    if (
+      /^126-.*-(?:PLAN|SUMMARY)\.md$/.test(name) &&
+      !/^126-\d{2}-(?:PLAN|SUMMARY)\.md$/.test(name)
+    ) {
+      failures.push(`P124 Phase 126 has malformed lifecycle artifact ${name}`);
+    }
+  }
+
+  const maybeContextIdentity = maybeReadLifecycleIdentity(
+    repoRoot,
+    PHASE126_CONTEXT,
+    "gsd-discuss-phase",
+    failures,
+  );
+  if (maybeContextIdentity === null) return null;
+
+  verifyExactPhase126PlanSet(planNames, failures);
+  for (const planName of planNames) {
+    verifyPhase126NumberedArtifact(
+      repoRoot,
+      path.join(PHASE126_DIRECTORY, planName),
+      planName,
+      "PLAN",
+      "gsd-plan-phase",
+      maybeContextIdentity,
+      failures,
+    );
+  }
+  for (const summaryName of summaryNames) {
+    verifyPhase126NumberedArtifact(
+      repoRoot,
+      path.join(PHASE126_DIRECTORY, summaryName),
+      summaryName,
+      "SUMMARY",
+      "gsd-execute-plan",
+      maybeContextIdentity,
+      failures,
+    );
+  }
+
+  const verificationPresent = names.includes("126-VERIFICATION.md");
+  if (verificationPresent) {
+    verifyPhase126VerificationArtifact(repoRoot, maybeContextIdentity, failures);
+  }
+
+  return {
+    planCount: planNames.length,
+    summaryCount: summaryNames.length,
+    verificationPresent,
+  };
+}
+
+function verifyExactPhase126PlanSet(planNames: string[], failures: string[]): void {
+  const expected = EXPECTED_PLAN_NUMBERS.map((number) => `126-${number}-PLAN.md`);
+  for (const name of expected) {
+    requireExactNumber(
+      planNames.filter((candidate) => candidate === name).length,
+      1,
+      `P124 Phase 126 plan artifact ${name}`,
+      failures,
+    );
+  }
+  for (const name of planNames) {
+    if (!expected.includes(name)) {
+      failures.push(`P124 Phase 126 plan number is outside 01 through 04: ${name}`);
+    }
+  }
+}
+
+function verifyPhase126NumberedArtifact(
+  repoRoot: string,
+  relativePath: string,
+  name: string,
+  kind: "PLAN" | "SUMMARY",
+  expectedGenerator: string,
+  expectedLifecycle: LifecycleIdentity,
+  failures: string[],
+): void {
+  const maybeMatch = name.match(/^126-(\d{2})-(?:PLAN|SUMMARY)\.md$/);
+  const planNumber = maybeMatch?.[1] ?? "";
+  if (!EXPECTED_PLAN_NUMBERS.includes(planNumber as (typeof EXPECTED_PLAN_NUMBERS)[number])) {
+    failures.push(`P124 Phase 126 ${kind.toLowerCase()} number is outside 01 through 04: ${name}`);
+  }
+  const maybeFrontmatter = maybeReadFrontmatter(repoRoot, relativePath, failures);
+  if (maybeFrontmatter === null) return;
+
+  requireScalar(
+    maybeFrontmatter,
+    "phase",
+    "126-compact-relay-residual-hardening",
+    relativePath,
+    failures,
+  );
+  const maybeArtifactPlan = maybeExactScalar(
+    maybeFrontmatter,
+    "plan",
+    relativePath,
+    failures,
+  );
+  if (maybeArtifactPlan !== null && maybeArtifactPlan !== planNumber) {
+    failures.push(`${relativePath} plan number must match its filename`);
+  }
+  verifyPhase126LifecycleMatches(
+    maybeFrontmatter,
+    relativePath,
+    expectedGenerator,
+    expectedLifecycle,
+    failures,
+  );
+}
+
+function verifyPhase126VerificationArtifact(
+  repoRoot: string,
+  expectedLifecycle: LifecycleIdentity,
+  failures: string[],
+): void {
+  const maybeFrontmatter = maybeReadFrontmatter(repoRoot, PHASE126_VERIFICATION, failures);
+  if (maybeFrontmatter === null) return;
+
+  requireScalar(
+    maybeFrontmatter,
+    "phase",
+    "126-compact-relay-residual-hardening",
+    PHASE126_VERIFICATION,
+    failures,
+  );
+  requireScalar(maybeFrontmatter, "status", "passed", PHASE126_VERIFICATION, failures);
+  requireScalar(
+    maybeFrontmatter,
+    "lifecycle_validated",
+    "true",
+    PHASE126_VERIFICATION,
+    failures,
+  );
+  verifyPhase126LifecycleMatches(
+    maybeFrontmatter,
+    PHASE126_VERIFICATION,
+    "gsd-verifier",
+    expectedLifecycle,
+    failures,
+  );
+}
+
+function verifyPhase126LifecycleMatches(
+  frontmatter: string,
+  relativePath: string,
+  expectedGenerator: string,
+  expectedLifecycle: LifecycleIdentity,
+  failures: string[],
+): void {
+  requireScalar(frontmatter, "generated_by", expectedGenerator, relativePath, failures);
+  const maybeMode = maybeExactScalar(frontmatter, "lifecycle_mode", relativePath, failures);
+  const maybePhaseLifecycleId = maybeExactScalar(
+    frontmatter,
+    "phase_lifecycle_id",
+    relativePath,
+    failures,
+  );
+  if (maybeMode !== null && maybeMode !== expectedLifecycle.mode) {
+    failures.push(`${relativePath} lifecycle_mode must match Phase 126 CONTEXT`);
+  }
+  if (
+    maybePhaseLifecycleId !== null &&
+    maybePhaseLifecycleId !== expectedLifecycle.phaseLifecycleId
+  ) {
+    failures.push(`${relativePath} phase_lifecycle_id must match Phase 126 CONTEXT`);
+  }
+}
+
+function maybeParsePhase126Stage(
+  projection: ProjectionState,
+  artifacts: Phase125Artifacts,
+  failures: string[],
+): Phase126CloseoutStage | null {
+  const { planCount, summaryCount, verificationPresent } = artifacts;
+  if (planCount !== 4) {
+    failures.push(
+      `P124 Phase 126 lifecycle requires exactly four plans; found ${planCount}`,
+    );
+    return null;
+  }
+
+  if (
+    projection === "pending" &&
+    !verificationPresent &&
+    isPhase126CandidateSummaryCount(summaryCount)
+  ) {
+    return {
+      kind: "candidate",
+      planCount: 4,
+      summaryCount,
+      verificationPresent: false,
+    };
+  }
+  if (projection === "pending" && verificationPresent && summaryCount === 3) {
+    return {
+      kind: "verified_pre_promotion",
+      planCount: 4,
+      summaryCount: 3,
+      verificationPresent: true,
+    };
+  }
+  if (projection === "promoted" && verificationPresent && summaryCount === 3) {
+    return {
+      kind: "promoted_pre_summary",
+      planCount: 4,
+      summaryCount: 3,
+      verificationPresent: true,
+    };
+  }
+  if (projection === "promoted" && verificationPresent && summaryCount === 4) {
+    return {
+      kind: "archive_ready",
+      planCount: 4,
+      summaryCount: 4,
+      verificationPresent: true,
+    };
+  }
+
+  if (projection === "promoted" && !verificationPresent) {
+    failures.push(
+      "P124 Phase 126 promoted projection requires lifecycle-valid verification",
+    );
+  }
+  failures.push(
+    `P124 Phase 126 artifact combination does not match a legal closeout state: ${planCount} plans, ${summaryCount} summaries, verification ${verificationPresent ? "present" : "absent"}, projection ${projection}`,
+  );
+  return null;
+}
+
+function verifyPhase126Projection(
+  stage: Phase126CloseoutStage,
+  requirements: string,
+  roadmap: string,
+  audit: string,
+  entries: RequirementEntry[],
+  traceability: TraceabilityEntry[],
+  failures: string[],
+): void {
+  const promoted = isPhase126Promoted(stage);
+  const expectedComplete = promoted ? 39 : 33;
+  const expectedPending = 39 - expectedComplete;
+  requireExactNumber(
+    entries.filter((entry) => entry.checked).length,
+    expectedComplete,
+    `P124 ${stage.kind} checked requirement count`,
+    failures,
+  );
+  requireExactNumber(
+    traceability.filter((entry) => entry.status === "Complete").length,
+    expectedComplete,
+    `P124 ${stage.kind} complete traceability count`,
+    failures,
+  );
+  requireExactNumber(
+    traceability.filter((entry) => entry.status === "Pending").length,
+    expectedPending,
+    `P124 ${stage.kind} pending traceability count`,
+    failures,
+  );
+
+  for (const entry of entries) {
+    const expectedChecked =
+      !PHASE126_REQUIREMENTS.includes(
+        entry.id as (typeof PHASE126_REQUIREMENTS)[number],
+      ) || promoted;
+    if (entry.checked !== expectedChecked) {
+      failures.push(`P124 ${stage.kind} checklist state is invalid for ${entry.id}`);
+    }
+  }
+  for (const entry of traceability) {
+    const expectedStatus =
+      !PHASE126_REQUIREMENTS.includes(
+        entry.id as (typeof PHASE126_REQUIREMENTS)[number],
+      ) || promoted
+        ? "Complete"
+        : "Pending";
+    if (entry.status !== expectedStatus) {
+      failures.push(
+        `P124 ${stage.kind} traceability status is invalid for ${entry.id}`,
+      );
+    }
+  }
+
+  verifyPhase126CoverageCounts(
+    requirements,
+    "Complete",
+    expectedComplete,
+    expectedPending,
+    "requirements",
+    failures,
+  );
+  verifyPhase126CoverageCounts(
+    roadmap,
+    "Satisfied",
+    expectedComplete,
+    expectedPending,
+    "roadmap",
+    failures,
+  );
+  verifyPhase126Roadmap(stage, roadmap, failures);
+  verifyPhase126Audit(stage, audit, failures);
+}
+
+function verifyPhase126CoverageCounts(
+  text: string,
+  completeLabel: "Complete" | "Satisfied",
+  completeCount: number,
+  pendingCount: number,
+  corpusLabel: string,
+  failures: string[],
+): void {
+  for (const line of [
+    "v2.1 requirements: 39 total",
+    "Mapped to phases: 39",
+    `${completeLabel}: ${completeCount}`,
+    `Pending hardening and closeout: ${pendingCount}`,
+    "Unmapped: 0",
+  ]) {
+    requireContains(
+      text,
+      line,
+      `P124 Phase 126 ${corpusLabel} coverage counts`,
+      failures,
+    );
+  }
+}
+
+function verifyPhase126Roadmap(
+  stage: Phase126CloseoutStage,
+  roadmap: string,
+  failures: string[],
+): void {
+  const phase125 = phaseSection(roadmap, 125);
+  const phase126 = phaseSection(roadmap, 126);
+  requireContains(
+    roadmap,
+    `- [x] **Phase 125: ${PHASE125_NAME}**`,
+    `P124 ${stage.kind} Phase 125 state`,
+    failures,
+  );
+  requireContains(
+    phase125,
+    "**Plans:** 4/4 plans complete",
+    `P124 ${stage.kind} Phase 125 plans`,
+    failures,
+  );
+
+  const archiveReady = stage.kind === "archive_ready";
+  requireContains(
+    roadmap,
+    `- [${archiveReady ? "x" : " "}] **Phase 126: ${PHASE126_NAME}**`,
+    `P124 ${stage.kind} Phase 126 state`,
+    failures,
+  );
+  requireContains(
+    phase126,
+    "**Depends on:** Phase 125",
+    `P124 ${stage.kind} Phase 126 dependency`,
+    failures,
+  );
+  requireContains(
+    phase126,
+    "**Requirements:** CMP-05, RCN-02, RCN-03, GOV-04, BOUND-01, HARD-05",
+    `P124 ${stage.kind} Phase 126 requirements`,
+    failures,
+  );
+  const expectedProgress = archiveReady
+    ? "**Plans:** 4/4 plans complete"
+    : `**Plans:** ${stage.summaryCount}/4 plans executed`;
+  requireContains(
+    phase126,
+    expectedProgress,
+    `P124 ${stage.kind} Phase 126 plans`,
+    failures,
+  );
+}
+
+function verifyPhase126Audit(
+  stage: Phase126CloseoutStage,
+  audit: string,
+  failures: string[],
+): void {
+  const relativePath = ".planning/v2.1-MILESTONE-AUDIT.md";
+  const promoted = isPhase126Promoted(stage);
+  const maybeFrontmatter = maybeExtractFrontmatter(audit, relativePath, failures);
+  if (maybeFrontmatter !== null) {
+    requireScalar(
+      maybeFrontmatter,
+      "status",
+      promoted ? "passed" : "gaps_found",
+      relativePath,
+      failures,
+    );
+  }
+  requireContains(
+    audit,
+    `requirements: "${promoted ? 39 : 33}/39"`,
+    `P124 ${stage.kind} audit requirements`,
+    failures,
+  );
+  requireContains(
+    audit,
+    `phases: "${promoted ? 17 : 16}/17"`,
+    `P124 ${stage.kind} audit phases`,
+    failures,
+  );
+  requireContains(audit, "integration: []", `P124 ${stage.kind} audit`, failures);
+  requireContains(audit, "flows: []", `P124 ${stage.kind} audit`, failures);
+  if (promoted) {
+    requireContains(
+      audit,
+      "requirements: []",
+      `P124 ${stage.kind} audit requirement gaps`,
+      failures,
+    );
+    requireContains(audit, "tech_debt: []", `P124 ${stage.kind} audit debt`, failures);
+  }
+  for (const requirement of PHASE126_REQUIREMENTS) {
+    requireExactNumber(
+      countOccurrences(audit, `- id: ${requirement}`),
+      promoted ? 0 : 1,
+      `P124 ${stage.kind} audit gap ${requirement}`,
+      failures,
+    );
+  }
+}
+
+function verifyPhase126Routing(
+  repoRoot: string,
+  stage: Phase126CloseoutStage,
+  roadmap: string,
+  audit: string,
+  failures: string[],
+): void {
+  const texts = new Map<string, string>([
+    [".planning/ROADMAP.md", roadmap],
+    [".planning/v2.1-MILESTONE-AUDIT.md", audit],
+  ]);
+  for (const relativePath of [".planning/PROJECT.md", ".planning/STATE.md"] as const) {
+    const absolutePath = path.join(repoRoot, relativePath);
+    if (!existsSync(absolutePath)) {
+      failures.push(`P124 Phase 126 routing missing ${relativePath}`);
+      texts.set(relativePath, "");
+      continue;
+    }
+    texts.set(relativePath, readFileSync(absolutePath, "utf8"));
+  }
+
+  const archiveReady = stage.kind === "archive_ready";
+  const expectedRoute = archiveReady ? ARCHIVE_ROUTE : PHASE126_ROUTE;
+  const forbiddenRoutes = archiveReady
+    ? [PHASE125_ROUTE, PHASE126_ROUTE]
+    : [PHASE125_ROUTE, ARCHIVE_ROUTE];
+  for (const relativePath of ROUTING_FILES) {
+    const text = texts.get(relativePath) ?? "";
+    for (const forbiddenRoute of forbiddenRoutes) {
+      requireAbsent(
+        text,
+        forbiddenRoute,
+        `P124 ${stage.kind} stale ${routeLabel(forbiddenRoute)} route ${relativePath}`,
+        failures,
+      );
+    }
+  }
+
+  const routeRequiredIn = archiveReady
+    ? [".planning/ROADMAP.md", ".planning/STATE.md", ".planning/v2.1-MILESTONE-AUDIT.md"]
+    : [".planning/ROADMAP.md", ".planning/PROJECT.md", ".planning/v2.1-MILESTONE-AUDIT.md"];
+  for (const relativePath of routeRequiredIn) {
+    requireContains(
+      texts.get(relativePath) ?? "",
+      expectedRoute,
+      `P124 ${stage.kind} primary route ${relativePath}`,
+      failures,
+    );
+  }
+}
+
+function routeLabel(route: string): string {
+  if (route === PHASE125_ROUTE) return "Phase 125";
+  if (route === PHASE126_ROUTE) return "Phase 126";
+  return "milestone completion";
 }
 
 function maybeParsePhase125LifecycleStage(
@@ -840,8 +1442,16 @@ function isPreVerificationSummaryCount(value: number): value is 1 | 2 | 3 {
   return value === 1 || value === 2 || value === 3;
 }
 
+function isPhase126CandidateSummaryCount(value: number): value is 1 | 2 | 3 {
+  return value === 1 || value === 2 || value === 3;
+}
+
 function isPromoted(stage: Phase125LifecycleStage): boolean {
   return stage.kind === "post_verification" || stage.kind === "post_summary";
+}
+
+function isPhase126Promoted(stage: Phase126CloseoutStage): boolean {
+  return stage.kind === "promoted_pre_summary" || stage.kind === "archive_ready";
 }
 
 function phaseSection(roadmap: string, phase: number): string {
