@@ -1,6 +1,7 @@
 ---
 phase: 126-compact-relay-residual-hardening
 reviewed: 2026-07-18T22:36:40Z
+resolved: 2026-07-18T22:54:41Z
 depth: standard
 files_reviewed: 24
 files_reviewed_list:
@@ -30,12 +31,13 @@ files_reviewed_list:
   - scripts/verify.sh
 findings:
   critical: 0
-  warning: 1
+  warning: 0
   info: 0
-  total: 1
-status: issues_found
-verdict: findings
+  total: 0
+status: clean
+verdict: clean
 generated_by: gsd-code-reviewer
+resolved_by: gsd-code-fixer
 lifecycle_mode: yolo
 phase_lifecycle_id: 126-2026-07-18T16-09-20
 ---
@@ -43,9 +45,10 @@ phase_lifecycle_id: 126-2026-07-18T16-09-20
 # Phase 126: Code Review Report
 
 **Reviewed:** 2026-07-18T22:36:40Z
+**Resolved:** 2026-07-18T22:54:41Z
 **Depth:** standard
 **Files Reviewed:** 24
-**Status:** issues found
+**Status:** clean
 
 ## Summary
 
@@ -56,38 +59,25 @@ outbound compact nonces are obtained lazily from system entropy, and entropy
 failure falls back without recording a compact announcement. Cargo and Bazel
 dependency declarations agree, and the Phase 117/124/126 regression guards pass.
 
-One documentation-consistency warning remains. Two parity catalog sections still
-describe Phase 126 as a pending candidate even though the same reviewed change
-set promotes the phase to independently verified and archive-ready. The current
-guards do not detect this contradiction.
+The documentation-consistency warning is resolved. Both parity catalogs now
+report the archive-ready 39/39 requirements, 17/17 phases, and Phase 126 4/4
+state while retaining their explicit deferred and no-claim boundaries. The Phase
+126 checker now guards those lifecycle claims only in `archive_ready`, preserving
+the earlier legal lifecycle fixtures.
 
-## Warnings
+## Resolved Findings
 
 ### WR-01: Archive-ready parity catalogs still claim Phase 126 is pending
 
-**Files:**
+**Resolution:** Fixed by `d95220ff` after the mutation-only RED commit
+`96d64660`.
 
-- `docs/parity/catalog/mempool-policy.md:201-224`
-- `docs/parity/catalog/p2p.md:1430-1463`
-- `scripts/check-phase126-compact-relay-residual-hardening.ts:14-25`
-- `scripts/check-phase126-compact-relay-residual-hardening.ts:187-232`
-
-**Issue:** The mempool catalog calls the implementation a “runtime candidate”
-and states that all Phase 126 requirements remain pending. The P2P catalog
-likewise labels it “candidate evidence only” and says all six requirements
-remain pending. Those claims contradict the reviewed `README.md`,
-`docs/parity/release-readiness.md`, lifecycle artifacts, and requirement
-reconciliation, which identify Phase 126 as independently verified and the
-milestone as archive-ready. The Phase 126 verifier's target corpus omits both
-catalog files, while its parity check validates only `index.json` and source
-breadcrumbs. Consequently, all current Phase 117, Phase 124, and Phase 126
-checks pass while the contributor-facing parity catalogs remain stale.
-
-**Fix:** Promote both catalog sections from candidate/pending wording to
-verified/archive-ready wording while preserving their explicit deferred and
-no-claim boundaries. Add both catalog files to the Phase 126 or milestone
-closeout verifier corpus, reject candidate/pending Phase 126 wording after
-promotion, and add mutation tests proving each stale statement fails closed.
+**Applied fix:** Promoted both catalog sections to verified/archive-ready
+wording, added both catalogs plus `.planning/STATE.md` to the deterministic
+Phase 126 corpus, and rejected either stale lifecycle claim when the active state
+is `archive_ready`. Separate mutations prove the mempool and P2P claims fail
+closed, while a pre-archive fixture proves candidate wording remains legal
+before promotion.
 
 ## Confirmed Behavior
 
@@ -104,20 +94,24 @@ promotion, and add mutation tests proving each stale statement fails closed.
 
 ## Verification
 
-- `bun test scripts/check-phase126-compact-relay-residual-hardening.test.ts scripts/check-phase117-parity-uat-release-boundary.test.ts` — 37 passed, 0 failed.
-- `bun run scripts/check-phase126-compact-relay-residual-hardening.ts` — passed.
-- `bun run scripts/check-phase117-parity-uat-release-boundary.ts` — passed.
-- `bun test scripts/check-phase124-milestone-gap-closure.test.ts` — 41 passed, 0 failed.
-- `bun run scripts/check-phase124-milestone-closeout-reconciliation.ts` — passed.
-- Targeted Cargo tests for the factless-dispatch guard and three Phase 126
-  announcement cases — 4 passed, 0 failed.
-- `bazel build //packages/open-bitcoin-node:open_bitcoin_node_lib` — passed.
-- `bash scripts/verify.sh --fast` through the repo command-timing wrapper —
-  passed in 2m 39s, including guard suites, formatting/lint checks, workspace
-  tests, and doctests.
+- Phase 126 test/live checker — 16 passed, 0 failed; live checker passed.
+- Phase 117 test/live checker — 24 passed, 0 failed; live checker passed.
+- Phase 124 closeout test/live checker — 65 passed, 0 failed across candidate,
+  verified-pre-promotion, promoted-pre-summary, and archive-ready fixtures; live
+  checker passed.
+- Active milestone traceability test/live checker — 21 passed, 0 failed; live
+  checker passed.
+- Parity breadcrumb checker — passed for 383 Rust files.
+- Phase 126 lifecycle validation — `valid`.
+- LOC freshness and `git diff --check` — passed.
+- Default `bash scripts/verify.sh` through the repo command-timing wrapper —
+  passed in 3m 19.062s, including deterministic guards, Rust formatting, clippy,
+  all-target build, tests, coverage, and Bazel build/run smoke.
 
 ______________________________________________________________________
 
 _Reviewed: 2026-07-18T22:36:40Z_
+_Resolved: 2026-07-18T22:54:41Z_
 _Reviewer: the agent (gsd-code-reviewer)_
+_Fixer: the agent (gsd-code-fixer)_
 _Depth: standard_
