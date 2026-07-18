@@ -3,15 +3,15 @@ gsd_state_version: "1.0"
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
 status: executing
-stopped_at: Phase 126 planned; continue with /gsd-execute-phase 126
-last_updated: "2026-07-18T19:03:06.508Z"
-last_activity: 2026-07-18 -- Phase 126 planning complete
+stopped_at: Completed 126-01-PLAN.md
+last_updated: "2026-07-18T19:39:44.029Z"
+last_activity: 2026-07-18 -- Completed Plan 126-01 compact relay runtime seam hardening
 progress:
   total_phases: 17
   completed_phases: 16
   total_plans: 58
-  completed_plans: 56
-  percent: 97
+  completed_plans: 57
+  percent: 98
 ---
 
 # Project State
@@ -27,13 +27,19 @@ See: `.planning/PROJECT.md` (updated 2026-07-10 after Phase 117 completed v2.1 i
 
 Milestone: v2.1 Block Serving and Compact Block Relay Boundary
 Phase: 126
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-07-18 -- Phase 126 planning complete
+Plan: 1 of 4
+Status: In progress
+Last activity: 2026-07-18 -- Completed Plan 126-01 compact relay runtime seam hardening
 
 v2.0 Transaction Relay and Mempool Participation Boundary shipped on 2026-07-03. The archived audit reports 32/32 requirements, 10/10 phases, 8/8 integration checks, 8/8 cross-phase flows, and no tracked tech debt.
 
 Phase 125 completed lifecycle-valid verification-traceability closure at 4/4 plans for `RCN-04`, `RCN-05`, and `RCN-06`. Phase 126 owns the six remaining residual-hardening requirements and final archive reconciliation.
+
+## Performance Metrics
+
+| Plan | Duration | Tasks | Files |
+| --- | ---: | ---: | ---: |
+| Phase 126 P01 | 31m | 2 tasks | 12 files |
 
 ## Latest Milestone Archive
 
@@ -89,6 +95,9 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 - [Phase 121]: Available-gate block_relay_metric_samples at call site (never on Unavailable)
 - [Phase 121]: Production block-relay metrics/logs use ManagedRpcContext evidence with activation outer Available gate
 - [Phase 121]: No sync-disabled twin block-relay metrics worker in Phase 121
+- [Phase 126]: Factless generic CompactBlock dispatch is a peer-neutral adapter routing error before reconstruction.
+- [Phase 126]: Compact announcement entropy is acquired lazily only after compact selection, with peer-safe fallback on failure.
+- [Phase 126]: Compact provenance and achieved-effect evidence follow only an actually emitted CompactBlock.
 
 ## Pending Todos
 
@@ -108,6 +117,6 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Session Continuity
 
-Last session: 2026-07-18T19:03:06.505Z
-Stopped at: Phase 126 planned; continue with /gsd-execute-phase 126
-Resume file: .planning/phases/126-compact-relay-residual-hardening/126-01-PLAN.md
+Last session: 2026-07-18T19:39:44.026Z
+Stopped at: Completed 126-01-PLAN.md
+Resume file: None
