@@ -408,7 +408,7 @@ Plans:
 3. Parity evidence, breadcrumbs, and deterministic regressions cover the hardened receive and announcement boundaries.
 4. ROADMAP, REQUIREMENTS, STATE, the Phase 124 closeout guard, and the rerun milestone audit agree on the final Phase 126 result before any fresh archive decision.
 
-**Plans:** 2/4 plans executed
+**Plans:** 3/4 plans executed
 
 ## Progress
 
@@ -432,7 +432,7 @@ Plans:
 | 123. Runtime Timing and Evidence Integrity | v2.1 | 7/7 | Complete   | 2026-07-16 |
 | 124. Milestone Closeout Reconciliation | v2.1 | 2/2 | Complete   | 2026-07-16 |
 | 125. Compact Download Verification Traceability Closure | v2.1 | 4/4 | Complete   | 2026-07-17 |
-| 126. Compact Relay Residual Hardening | v2.1 | 2/4 | In Progress | 2026-07-18 |
+| 126. Compact Relay Residual Hardening | v2.1 | 3/4 | In Progress | 2026-07-18 |
 
 ## Traceability
 

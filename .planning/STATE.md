@@ -3,15 +3,15 @@ gsd_state_version: "1.0"
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
 status: executing
-stopped_at: Completed 126-02-PLAN.md
-last_updated: "2026-07-18T20:28:16.573Z"
-last_activity: 2026-07-18 -- Completed Plan 126-02 compact relay audit and closeout guard
+stopped_at: Completed 126-03-PLAN.md
+last_updated: "2026-07-18T20:41:56.323Z"
+last_activity: 2026-07-18 -- Completed Plan 126-03 pre-promotion candidate evidence
 progress:
   total_phases: 17
   completed_phases: 16
   total_plans: 58
-  completed_plans: 58
-  percent: 100
+  completed_plans: 57
+  percent: 98
 ---
 
 # Project State
@@ -27,9 +27,9 @@ See: `.planning/PROJECT.md` (updated 2026-07-10 after Phase 117 completed v2.1 i
 
 Milestone: v2.1 Block Serving and Compact Block Relay Boundary
 Phase: 126
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
-Last activity: 2026-07-18 -- Completed Plan 126-02 compact relay audit and closeout guard
+Last activity: 2026-07-18 -- Completed Plan 126-03 pre-promotion candidate evidence
 
 v2.0 Transaction Relay and Mempool Participation Boundary shipped on 2026-07-03. The archived audit reports 32/32 requirements, 10/10 phases, 8/8 integration checks, 8/8 cross-phase flows, and no tracked tech debt.
 
@@ -41,6 +41,7 @@ Phase 125 completed lifecycle-valid verification-traceability closure at 4/4 pla
 | --- | ---: | ---: | ---: |
 | Phase 126 P01 | 31m | 2 tasks | 12 files |
 | Phase 126 P02 | 21m | 3 tasks | 11 files |
+| Phase 126 P03 | 7m | 1 task | 3 files |
 
 ## Latest Milestone Archive
 
@@ -102,6 +103,8 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 - [Phase 126]: Guard compact receive facts, nonce entropy, achieved-effect evidence, dependency agreement, and parity roots with a fixed local corpus.
 - [Phase 126]: Run the Phase 126 guard after Phase 124 plus active traceability and before the unchanged Phase 117 final no-claim gate.
 - [Phase 126]: Model candidate, verified pre-promotion, promoted pre-summary, and archive-ready as the only legal Phase 126 closeout states.
+- [Phase 126]: Keep executor candidate evidence distinct from independent gsd-verifier ownership.
+- [Phase 126]: Retain all six Phase 126 requirements pending until the verifier revision gate passes.
 
 ## Pending Todos
 
@@ -121,6 +124,6 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Session Continuity
 
-Last session: 2026-07-18T20:28:16.570Z
-Stopped at: Completed 126-02-PLAN.md
+Last session: 2026-07-18T20:41:56.319Z
+Stopped at: Completed 126-03-PLAN.md
 Resume file: None
