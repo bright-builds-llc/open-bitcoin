@@ -1,13 +1,13 @@
 ---
 generated_by: gsd-discuss-phase
 lifecycle_mode: yolo
-phase_lifecycle_id: 126-2026-07-17T20-08-24
-generated_at: 2026-07-17T20:13:44.089Z
+phase_lifecycle_id: 126-2026-07-18T16-09-20
+generated_at: 2026-07-18T16:09:20.458Z
 ---
 
 # Phase 126: Compact Relay Residual Hardening - Context
 
-**Gathered:** 2026-07-17
+**Gathered:** 2026-07-18
 **Status:** Ready for planning
 **Mode:** Yolo
 
@@ -26,9 +26,9 @@ This phase does not expand compact-relay scope, add public relay defaults, activ
 ### Production Receive Invariant
 
 - **D-01:** The invariant is that production-capable compact receive explicitly supplies a snapshot of live mempool and bounded extra candidates. The slices may legitimately be empty when both live sources are empty; non-emptiness is not the invariant.
-- **D-02:** Make generic `PeerManager::handle_message` compact-block dispatch fail closed instead of constructing `CompactBlockReceiveFacts::default()`. A `WireNetworkMessage::CompactBlock` reaching the generic dispatcher must produce a stable adapter-routing error or equivalent typed failure that cannot be mistaken for peer misbehavior.
+- **D-02:** Make generic `PeerManager::handle_message` compact-block dispatch fail closed instead of constructing `CompactBlockReceiveFacts::default()`. A `WireNetworkMessage::CompactBlock` reaching the generic dispatcher must produce a stable typed adapter-routing failure that is classified separately from peer misbehavior.
 - **D-03:** Keep `ManagedPeerNetwork` as the authoritative production shell for both `receive_message` and `receive_sync_message`. It must continue snapshotting the current mempool and bounded `CompactExtraTxnBuffer`, then pass explicit facts to `handle_compact_block_download`.
-- **D-04:** Preserve focused pure tests through direct factful APIs or a clearly named test-only empty-facts helper. Remove `Default` from `CompactBlockReceiveFacts` if that is the smallest structural guard against accidental production fallback.
+- **D-04:** Remove `Default` from `CompactBlockReceiveFacts` as the structural guard against accidental production fallback. Preserve focused pure tests through direct factful APIs or a clearly named test-only explicit-empty-facts helper.
 - **D-05:** Do not inject a mempool provider into `PeerManager` or couple `open-bitcoin-network` to `open-bitcoin-mempool`; retain the Phase 114 iterator/slice boundary and the functional-core/imperative-shell split.
 
 ### Compact-Block Nonce Source
@@ -36,7 +36,7 @@ This phase does not expand compact-relay scope, add public relay defaults, activ
 - **D-06:** Keep `build_compact_block_payload(block, nonce)` pure. Randomness belongs in the `open-bitcoin-node` announcement shell, matching the Knots boundary where `net_processing.cpp` supplies `FastRandomContext().rand64()` to the compact payload constructor.
 - **D-07:** Use a call-scoped system-entropy adapter for a fresh production `u64` compact nonce. Prefer the already workspace-used `getrandom` crate over a larger stateful RNG dependency; add the direct Cargo and Bazel dependency only where the node shell needs it.
 - **D-08:** Acquire entropy only for `CompactAnnouncementAction::AnnounceCompactBlock`. Headers, inventory, and suppression paths must not consume the compact nonce source.
-- **D-09:** Provide a narrow deterministic injection seam for fixed and failing nonce sources in tests without storing RNG state on `ManagedPeerNetwork` or changing the pure consensus builder.
+- **D-09:** Provide a lazy, call-scoped fallible nonce closure (or equivalently narrow function seam) for fixed, failing, and invocation-counting tests without storing RNG state on `ManagedPeerNetwork` or changing the pure consensus builder.
 - **D-10:** Entropy failure must fall back through the existing typed headers/inventory behavior or suppress safely. It must never emit a compact block, increment `compact_announced_count`, or record `CompactAnnounced`.
 
 ### Evidence And Final Reconciliation
@@ -44,7 +44,7 @@ This phase does not expand compact-relay scope, add public relay defaults, activ
 - **D-11:** Use a staged Phase 126 closeout: runtime/parity candidate state, lifecycle-valid verified promotion, then archive-ready projection. Keep the canonical audit non-passed, all six Phase 126 requirements pending, and archival routing absent until runtime, parity, deterministic checker, lifecycle, and full-verifier gates pass.
 - **D-12:** Add focused deterministic regressions for the fail-closed generic receive path, factful live receive path, randomized production nonce boundary, deterministic/failing nonce injection, and achieved-effect evidence. Include mutation coverage in a Phase 126 Bun checker and keep default verification public-network-free.
 - **D-13:** Update exact parity index entries and source breadcrumbs for the receive and announcement seams, citing the pinned Knots `PartiallyDownloadedBlock::InitData`, compact extra-transaction, `CBlockHeaderAndShortTxIDs`, and `FastRandomContext().rand64()` anchors.
-- **D-14:** Extend the Phase 124 closeout guard to recognize legal Phase 126 intermediate and final states without weakening earlier Phase 124 or Phase 125 evidence. Continue using the generic active-milestone verification-orphan checker for lifecycle-valid requirement coverage.
+- **D-14:** Extend the Phase 124 closeout guard to recognize explicit Phase 126 candidate, verified-pre-promotion, promoted-pre-summary, and archive-ready states without weakening earlier Phase 124 or Phase 125 evidence. Continue using the generic active-milestone verification-orphan checker for lifecycle-valid requirement coverage.
 - **D-15:** Only after Phase 126 verification is lifecycle-valid and the full default `bash scripts/verify.sh` contract passes may `CMP-05`, `RCN-02`, `RCN-03`, `GOV-04`, `BOUND-01`, and `HARD-05` become complete, the canonical `.planning/v2.1-MILESTONE-AUDIT.md` be refreshed to `passed`, and `/gsd-complete-milestone v2.1` become the sole primary route.
 - **D-16:** If the fresh audit finds a genuine remaining gap, keep the audit non-passed and archive routing blocked. Do not hide the gap, split ownership into a competing active audit, or create Phase 127 merely to avoid the staged Phase 126 lifecycle.
 
@@ -167,4 +167,4 @@ The planner may choose the exact typed routing error, the test-only fact constru
 ***
 
 *Phase: 126-compact-relay-residual-hardening*
-*Context gathered: 2026-07-17*
+*Context gathered: 2026-07-18*
