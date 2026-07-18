@@ -12,7 +12,7 @@
 // - packages/bitcoin-knots/test/functional/p2p_tx_download.py
 // - packages/bitcoin-knots/test/functional/mempool_accept.py
 
-use std::net::IpAddr;
+use std::{cell::Cell, net::IpAddr};
 
 use open_bitcoin_codec::{CompactBlockPayload, PrefilledTransaction, SendCompactMessage};
 use open_bitcoin_core::consensus::crypto::hash160;
@@ -32,7 +32,9 @@ use open_bitcoin_mempool::PolicyConfig;
 use open_bitcoin_network::{
     AddressAnnouncement, AddressDecisionLabel, AddressDecisionReason, AddressList,
     AddressNetworkKind, AddressSourceKind, BanReason, BanScope, BlockRelayActivationPolicy,
-    BlockServingActivationConfig, CompactRelayActivationConfig, InboundAdmissionDecision,
+    BlockServingActivationConfig, CompactAnnouncementAction, CompactAnnouncementDecision,
+    CompactAnnouncementEligibility, CompactAnnouncementEligibilityReason,
+    CompactAnnouncementReason, CompactRelayActivationConfig, InboundAdmissionDecision,
     InboundAdmissionPolicy, InboundAdmissionRejectionReason, InboundAdmissionRequest,
     InboundAdmissionSlotClass, InboundPermissionDecision, InventoryList, LearnedAddressDecision,
     LearnedAddressEntry, LocalAdvertisementDecision, LocalPeerConfig, MisbehaviorDecision,
@@ -469,6 +471,157 @@ fn compact_relay_enabled_managed_network(nonce: u64) -> ManagedPeerNetwork<Memor
         },
         true,
     )
+}
+
+fn phase126_compact_announcement_decision() -> CompactAnnouncementDecision {
+    CompactAnnouncementDecision {
+        action: CompactAnnouncementAction::AnnounceCompactBlock,
+        reason: CompactAnnouncementReason::CompactAnnounced,
+        eligibility: CompactAnnouncementEligibility::Eligible,
+    }
+}
+
+#[test]
+fn phase126_compact_announcement_uses_injected_nonce_once() {
+    // Arrange
+    let peer_id = 126_101;
+    let mut network = compact_relay_enabled_managed_network(peer_id);
+    network
+        .connect_outbound_peer(peer_id, 1)
+        .expect("connect outbound");
+    let block = build_block(BlockHash::from_byte_array([0_u8; 32]), 0, 500_000_000);
+    let nonce_calls = Cell::new(0);
+    let expected_nonce = 0x0123_4567_89ab_cdef;
+
+    // Act
+    let maybe_message = network
+        .announce_block_with_nonce(
+            peer_id,
+            &block,
+            phase126_compact_announcement_decision(),
+            || {
+                nonce_calls.set(nonce_calls.get() + 1);
+                Ok::<u64, ()>(expected_nonce)
+            },
+        )
+        .expect("compact announcement");
+
+    // Assert
+    let Some(WireNetworkMessage::CompactBlock(payload)) = maybe_message else {
+        panic!("expected compact block announcement");
+    };
+    assert_eq!(payload.nonce, expected_nonce);
+    assert_eq!(nonce_calls.get(), 1);
+}
+
+#[test]
+fn phase126_compact_announcement_entropy_failure_uses_safe_fallback_without_compact_evidence() {
+    // Arrange
+    let peer_id = 126_102;
+    let mut network = compact_relay_enabled_managed_network(peer_id);
+    network
+        .connect_outbound_peer(peer_id, 1)
+        .expect("connect outbound");
+    let block = build_block(BlockHash::from_byte_array([0_u8; 32]), 0, 500_000_000);
+
+    // Act
+    let maybe_message = network
+        .announce_block_with_nonce(
+            peer_id,
+            &block,
+            phase126_compact_announcement_decision(),
+            || Err::<u64, ()>(()),
+        )
+        .expect("safe fallback");
+
+    // Assert
+    assert!(matches!(maybe_message, Some(WireNetworkMessage::Inv(_))));
+    assert!(
+        network
+            .peer_manager()
+            .peer_state(peer_id)
+            .expect("peer")
+            .compact_announcements
+            .is_empty()
+    );
+    let encoded =
+        serde_json::to_value(network.block_relay_evidence_status()).expect("block relay evidence");
+    assert_eq!(
+        encoded["announcement"]["value"]["compact_announced_count"],
+        0
+    );
+    assert_eq!(
+        encoded["announcement"]["value"]["compact_inventory_fallback_count"],
+        1
+    );
+}
+
+#[test]
+fn phase126_non_compact_announcement_actions_do_not_request_entropy() {
+    // Arrange
+    let peer_id = 126_103;
+    let mut network = compact_relay_enabled_managed_network(peer_id);
+    network
+        .connect_outbound_peer(peer_id, 1)
+        .expect("connect outbound");
+    let block = build_block(BlockHash::from_byte_array([0_u8; 32]), 0, 500_000_000);
+    let cases = [
+        (
+            CompactAnnouncementDecision {
+                action: CompactAnnouncementAction::AnnounceHeaders,
+                reason: CompactAnnouncementReason::CompactHighBandwidthNotRequested,
+                eligibility: CompactAnnouncementEligibility::Ineligible {
+                    reason: CompactAnnouncementEligibilityReason::HighBandwidthNotRequested,
+                },
+            },
+            "headers",
+        ),
+        (
+            CompactAnnouncementDecision {
+                action: CompactAnnouncementAction::AnnounceInventory,
+                reason: CompactAnnouncementReason::CompactRelayDisabled,
+                eligibility: CompactAnnouncementEligibility::Ineligible {
+                    reason: CompactAnnouncementEligibilityReason::LocalActivationDisabled,
+                },
+            },
+            "inventory",
+        ),
+        (
+            CompactAnnouncementDecision {
+                action: CompactAnnouncementAction::Suppress,
+                reason: CompactAnnouncementReason::CompactBlockUnavailable,
+                eligibility: CompactAnnouncementEligibility::Ineligible {
+                    reason: CompactAnnouncementEligibilityReason::BlockUnavailable,
+                },
+            },
+            "suppression",
+        ),
+    ];
+
+    // Act
+    let outcomes: Vec<_> = cases
+        .into_iter()
+        .map(|(decision, label)| {
+            let nonce_calls = Cell::new(0);
+            let maybe_message = network
+                .announce_block_with_nonce(peer_id, &block, decision, || {
+                    nonce_calls.set(nonce_calls.get() + 1);
+                    Ok::<u64, ()>(0)
+                })
+                .expect("non-compact announcement");
+            (label, nonce_calls.get(), maybe_message)
+        })
+        .collect();
+
+    // Assert
+    assert!(matches!(
+        outcomes.as_slice(),
+        [
+            ("headers", 0, Some(WireNetworkMessage::Headers(_))),
+            ("inventory", 0, Some(WireNetworkMessage::Inv(_))),
+            ("suppression", 0, None),
+        ]
+    ));
 }
 
 #[test]

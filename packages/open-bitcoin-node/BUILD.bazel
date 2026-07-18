@@ -12,6 +12,7 @@ rust_library(
         "//packages/open-bitcoin-network:open_bitcoin_network_lib",
         "//packages/open-bitcoin-wallet:open_bitcoin_wallet_lib",
         "@crate_index//:fjall",
+        "@crate_index//:getrandom",
         "@crate_index//:serde",
         "@crate_index//:serde_json",
     ],

@@ -37,10 +37,11 @@ use open_bitcoin_core::{
     primitives::{Block, BlockHash, Transaction, Txid, Wtxid},
 };
 use open_bitcoin_network::{
-    BlockRelayActivationPolicy, ConnectionRole, HeaderEntry, HeaderStore, HeaderSyncPolicy,
-    HeadersMessage, InboundAdmissionPolicy, InboundResourceEvent, LocalAdvertisementDecision,
-    LocalPeerConfig, PROTOCOL_VERSION, ParsedNetworkMessage, PeerAction, PeerId, PeerManager,
-    RelayActivationConfig, TxOrphanage, WireNetworkMessage,
+    BlockRelayActivationPolicy, CompactAnnouncementAction, CompactAnnouncementDecision,
+    ConnectionRole, HeaderEntry, HeaderStore, HeaderSyncPolicy, HeadersMessage,
+    InboundAdmissionPolicy, InboundResourceEvent, LocalAdvertisementDecision, LocalPeerConfig,
+    PROTOCOL_VERSION, ParsedNetworkMessage, PeerAction, PeerId, PeerManager, RelayActivationConfig,
+    TxOrphanage, WireNetworkMessage,
 };
 
 use crate::{ChainstateStore, ManagedChainstate, ManagedMempool};
@@ -407,23 +408,39 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                 resource_gate: gate,
             },
         )?;
-        // Deterministic stand-in for Knots FastRandomContext nonce (first 8 LE bytes of block hash).
-        let hash_bytes = block_hash.to_byte_array();
-        let compact_nonce = u64::from_le_bytes([
-            hash_bytes[0],
-            hash_bytes[1],
-            hash_bytes[2],
-            hash_bytes[3],
-            hash_bytes[4],
-            hash_bytes[5],
-            hash_bytes[6],
-            hash_bytes[7],
-        ]);
-        let maybe_message = self
-            .peer_manager
-            .announce_block_with_action(peer_id, block, announcement.action, compact_nonce)
-            .map_err(ManagedNetworkError::from)?;
+        self.announce_block_with_nonce(peer_id, block, announcement, || {
+            let mut nonce_bytes = [0_u8; 8];
+            getrandom::fill(&mut nonce_bytes)?;
+            Ok::<u64, getrandom::Error>(u64::from_le_bytes(nonce_bytes))
+        })
+    }
+
+    fn announce_block_with_nonce<F, E>(
+        &mut self,
+        peer_id: PeerId,
+        block: &Block,
+        announcement: CompactAnnouncementDecision,
+        compact_nonce: F,
+    ) -> Result<Option<WireNetworkMessage>, ManagedNetworkError>
+    where
+        F: FnOnce() -> Result<u64, E>,
+    {
+        let maybe_message = match announcement.action {
+            CompactAnnouncementAction::AnnounceCompactBlock => match compact_nonce() {
+                Ok(nonce) => self.peer_manager.announce_block_with_action(
+                    peer_id,
+                    block,
+                    announcement.action,
+                    nonce,
+                )?,
+                Err(_) => self.peer_manager.announce_block(peer_id, block)?,
+            },
+            action => self
+                .peer_manager
+                .announce_block_with_action(peer_id, block, action, 0)?,
+        };
         if matches!(maybe_message, Some(WireNetworkMessage::CompactBlock(_))) {
+            let block_hash = block_hash(&block.header);
             self.peer_manager
                 .record_compact_block_announcement(peer_id, block_hash)?;
         }

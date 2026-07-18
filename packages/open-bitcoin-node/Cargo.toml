@@ -10,6 +10,7 @@ path = "src/lib.rs"
 
 [dependencies]
 fjall = { version = "3.1.4", default-features = false }
+getrandom = "0.3.4"
 open-bitcoin-codec = { path = "../open-bitcoin-codec" }
 open-bitcoin-core = { path = "../open-bitcoin-core" }
 open-bitcoin-mempool = { path = "../open-bitcoin-mempool" }
