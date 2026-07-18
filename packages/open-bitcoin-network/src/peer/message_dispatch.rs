@@ -15,7 +15,6 @@ use crate::header_store::{HeaderStore, InsertedHeader};
 use crate::inbound::InboundHandshakeState;
 use crate::message::{HeadersMessage, InventoryList, WireNetworkMessage};
 
-use super::compact_download_state;
 use super::inbound_state::reject_self_connection;
 use super::inventory_state::{request_pressure_input, resource_limit_disconnect_actions};
 use super::{
@@ -49,16 +48,9 @@ impl PeerManager {
                 let _outcome = peer.compact_relay.apply_send_compact(message);
                 Ok(Vec::new())
             }
-            // Empty-facts CompactBlock path: kept callable for PeerManager-only tests.
-            // Production live receive must inject mempool/extra candidates via the node
-            // shell (`ManagedPeerNetwork::receive_*`) per Phase 119 D-03 — do not treat
-            // this branch as the production reconstruct seam.
-            WireNetworkMessage::CompactBlock(payload) => self.handle_compact_block_download(
-                peer_id,
-                payload,
-                compact_download_state::CompactBlockReceiveFacts::default(),
-                timestamp,
-            ),
+            WireNetworkMessage::CompactBlock(_) => {
+                Err(NetworkError::CompactBlockReceiveFactsRequired)
+            }
             WireNetworkMessage::GetBlockTxn(request) => {
                 self.handle_get_block_transactions(peer_id, request)
             }

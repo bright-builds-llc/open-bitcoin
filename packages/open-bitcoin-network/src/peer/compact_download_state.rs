@@ -23,7 +23,7 @@ use crate::error::{DisconnectReason, NetworkError, PeerId};
 
 use super::{CompactRelayCapability, PeerManager, PeerState};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CompactBlockReceiveFacts<'a> {
     pub candidates: &'a [(&'a Wtxid, &'a Transaction)],
     pub extra: &'a [(&'a Wtxid, &'a Transaction)],

@@ -613,7 +613,10 @@ fn phase116_block_relay_evidence_projects_negotiation_serving_download_and_clean
         .handle_compact_block_download(
             peer_id,
             compact_payload_with_missing_short_id(block_hash(&genesis.header)),
-            open_bitcoin_network::CompactBlockReceiveFacts::default(),
+            open_bitcoin_network::CompactBlockReceiveFacts {
+                candidates: &[],
+                extra: &[],
+            },
             4,
         )
         .expect("compact block");

@@ -2158,7 +2158,7 @@ fn filter_permission_labels_remain_inactive_without_service_bits_or_compact_bloc
 }
 
 #[test]
-fn phase112_bip152_baseline_dispatch_emits_no_unconditional_actions() {
+fn phase112_bip152_non_compact_dispatch_emits_no_unconditional_actions() {
     // Arrange
     let mut manager = PeerManager::new(local_config());
     manager.add_outbound_peer(112_003, 0).expect("peer");
@@ -2167,12 +2167,6 @@ fn phase112_bip152_baseline_dispatch_emits_no_unconditional_actions() {
         WireNetworkMessage::SendCompact(SendCompactMessage {
             announce: true,
             version: 2,
-        }),
-        WireNetworkMessage::CompactBlock(CompactBlockPayload {
-            header: header(BlockHash::from_byte_array([0_u8; 32]), 112),
-            nonce: 1,
-            short_ids: vec![ShortId::from_wire_bytes([1, 2, 3, 4, 5, 6])],
-            prefilled_transactions: Vec::new(),
         }),
         WireNetworkMessage::BlockTxn(BlockTransactions {
             block_hash,
@@ -2723,13 +2717,52 @@ fn phase115_prepare_compact_download_manager(
     (manager, payload, missing, block_hash)
 }
 
+fn explicit_empty_compact_receive_facts() -> CompactBlockReceiveFacts<'static> {
+    CompactBlockReceiveFacts {
+        candidates: &[],
+        extra: &[],
+    }
+}
+
+#[test]
+fn generic_compact_block_dispatch_requires_adapter_receive_facts() {
+    // Arrange
+    let peer_id = 126_001;
+    let mut manager = PeerManager::new(local_config());
+    manager.add_outbound_peer(peer_id, 0).expect("peer");
+    let payload = CompactBlockPayload {
+        header: header(BlockHash::from_byte_array([0_u8; 32]), 126),
+        nonce: 1,
+        short_ids: Vec::new(),
+        prefilled_transactions: Vec::new(),
+    };
+
+    // Act
+    let error = manager
+        .handle_message(peer_id, WireNetworkMessage::CompactBlock(payload), 1)
+        .expect_err("generic compact dispatch must require adapter facts");
+
+    // Assert
+    assert_eq!(error, NetworkError::CompactBlockReceiveFactsRequired);
+    assert!(
+        manager
+            .compact_download_peer_state(peer_id)
+            .is_none_or(|state| state.in_flight.is_empty())
+    );
+}
+
 #[test]
 fn phase115_handle_compact_block_download_with_activation_enabled() {
     let peer_id = 115_001;
     let (mut manager, payload, _, block_hash) = phase115_prepare_compact_download_manager(peer_id);
 
     let actions = manager
-        .handle_compact_block_download(peer_id, payload, CompactBlockReceiveFacts::default(), 1_000)
+        .handle_compact_block_download(
+            peer_id,
+            payload,
+            explicit_empty_compact_receive_facts(),
+            1_000,
+        )
         .expect("compact block should process");
 
     assert_eq!(actions.len(), 1);
@@ -2752,7 +2785,12 @@ fn phase115_expire_compact_download_timeouts_requests_full_blocks() {
     let peer_id = 115_002;
     let (mut manager, payload, _, block_hash) = phase115_prepare_compact_download_manager(peer_id);
     let _ = manager
-        .handle_compact_block_download(peer_id, payload, CompactBlockReceiveFacts::default(), 100)
+        .handle_compact_block_download(
+            peer_id,
+            payload,
+            explicit_empty_compact_receive_facts(),
+            100,
+        )
         .expect("compact block should start download");
 
     let actions = manager
@@ -2781,7 +2819,12 @@ fn phase115_handle_block_transactions_message_completes_download() {
     let (mut manager, payload, missing, block_hash) =
         phase115_prepare_compact_download_manager(peer_id);
     let _ = manager
-        .handle_compact_block_download(peer_id, payload, CompactBlockReceiveFacts::default(), 1_000)
+        .handle_compact_block_download(
+            peer_id,
+            payload,
+            explicit_empty_compact_receive_facts(),
+            1_000,
+        )
         .expect("compact block should start download");
 
     let actions = manager
@@ -2821,7 +2864,7 @@ fn phase115_cleanup_all_compact_downloads() {
         .handle_compact_block_download(
             peer_a,
             payload_a,
-            CompactBlockReceiveFacts::default(),
+            explicit_empty_compact_receive_facts(),
             1_000,
         )
         .expect("peer a compact block");
@@ -2832,7 +2875,7 @@ fn phase115_cleanup_all_compact_downloads() {
         .handle_compact_block_download(
             peer_b,
             payload_b,
-            CompactBlockReceiveFacts::default(),
+            explicit_empty_compact_receive_facts(),
             1_000,
         )
         .expect("peer b compact block");
@@ -2862,7 +2905,12 @@ fn phase115_on_compact_download_block_connected_clears_matching_in_flight() {
     let (mut manager, payload, _, connected_hash) =
         phase115_prepare_compact_download_manager(peer_id);
     let _ = manager
-        .handle_compact_block_download(peer_id, payload, CompactBlockReceiveFacts::default(), 1_000)
+        .handle_compact_block_download(
+            peer_id,
+            payload,
+            explicit_empty_compact_receive_facts(),
+            1_000,
+        )
         .expect("compact block");
     manager.on_compact_download_block_connected(connected_hash);
     let download_state = manager
@@ -3008,7 +3056,12 @@ fn phase120_compact_block_duplicate_blocktxn_disconnects_peer() {
     let (mut manager, payload, missing, block_hash) =
         phase115_prepare_compact_download_manager(peer_id);
     let _ = manager
-        .handle_compact_block_download(peer_id, payload, CompactBlockReceiveFacts::default(), 1_000)
+        .handle_compact_block_download(
+            peer_id,
+            payload,
+            explicit_empty_compact_receive_facts(),
+            1_000,
+        )
         .expect("compact block should start download");
 
     let in_flight = manager
@@ -3043,7 +3096,12 @@ fn phase120_compact_block_out_of_bounds_blocktxn_disconnects_peer() {
     let peer_id = 120_202;
     let (mut manager, payload, _, block_hash) = phase115_prepare_compact_download_manager(peer_id);
     let _ = manager
-        .handle_compact_block_download(peer_id, payload, CompactBlockReceiveFacts::default(), 1_000)
+        .handle_compact_block_download(
+            peer_id,
+            payload,
+            explicit_empty_compact_receive_facts(),
+            1_000,
+        )
         .expect("compact block should start download");
 
     let null_transaction = Transaction {
@@ -3094,7 +3152,12 @@ fn phase120_compact_block_invalid_init_disconnects_peer() {
     process_high_bandwidth_sendcmpct(&mut manager, peer_id);
 
     let actions = manager
-        .handle_compact_block_download(peer_id, payload, CompactBlockReceiveFacts::default(), 1_000)
+        .handle_compact_block_download(
+            peer_id,
+            payload,
+            explicit_empty_compact_receive_facts(),
+            1_000,
+        )
         .expect("invalid compact should process");
 
     assert_eq!(
@@ -3130,7 +3193,12 @@ fn phase120_compact_block_short_id_collision_falls_back_to_getdata() {
     process_high_bandwidth_sendcmpct(&mut manager, peer_id);
 
     let actions = manager
-        .handle_compact_block_download(peer_id, payload, CompactBlockReceiveFacts::default(), 1_000)
+        .handle_compact_block_download(
+            peer_id,
+            payload,
+            explicit_empty_compact_receive_facts(),
+            1_000,
+        )
         .expect("collision should process");
 
     assert_eq!(actions.len(), 1);
@@ -3145,11 +3213,20 @@ fn phase120_compact_block_short_id_collision_falls_back_to_getdata() {
 
 #[test]
 fn phase120_compact_block_no_matching_in_flight_blocktxn_stays_silent() {
+    // Arrange
     let peer_id = 120_205;
-    let mut manager = PeerManager::new(local_config());
-    manager.add_outbound_peer(peer_id, 0).expect("peer");
-    complete_outbound_handshake(&mut manager, peer_id, 0);
+    let (mut manager, payload, _, expected_block_hash) =
+        phase115_prepare_compact_download_manager(peer_id);
+    let _ = manager
+        .handle_compact_block_download(
+            peer_id,
+            payload,
+            explicit_empty_compact_receive_facts(),
+            1_000,
+        )
+        .expect("compact block should start download");
 
+    // Act
     let actions = manager
         .handle_message(
             peer_id,
@@ -3161,7 +3238,15 @@ fn phase120_compact_block_no_matching_in_flight_blocktxn_stays_silent() {
         )
         .expect("stray blocktxn");
 
+    // Assert
     assert!(actions.is_empty());
+    assert!(
+        manager
+            .compact_download_peer_state(peer_id)
+            .expect("download state")
+            .in_flight
+            .contains_key(&expected_block_hash)
+    );
 }
 
 #[test]
@@ -3170,7 +3255,12 @@ fn phase120_compact_block_unexpected_block_hash_disconnects_peer() {
     let (mut manager, payload, missing, block_hash) =
         phase115_prepare_compact_download_manager(peer_id);
     let _ = manager
-        .handle_compact_block_download(peer_id, payload, CompactBlockReceiveFacts::default(), 1_000)
+        .handle_compact_block_download(
+            peer_id,
+            payload,
+            explicit_empty_compact_receive_facts(),
+            1_000,
+        )
         .expect("compact block should start download");
 
     // Key in_flight under a different hash than the partial's block hash so apply reports
@@ -3231,7 +3321,12 @@ fn phase115_compact_download_without_sendcmpct_is_suppressed() {
     complete_outbound_handshake(&mut manager, peer_id, 2);
 
     let actions = manager
-        .handle_compact_block_download(peer_id, payload, CompactBlockReceiveFacts::default(), 1_000)
+        .handle_compact_block_download(
+            peer_id,
+            payload,
+            explicit_empty_compact_receive_facts(),
+            1_000,
+        )
         .expect("compact block without sendcmpct");
 
     assert!(actions.is_empty());
@@ -3272,7 +3367,12 @@ fn phase115_prefilled_compact_block_completes_without_getblocktxn() {
     process_high_bandwidth_sendcmpct(&mut manager, peer_id);
 
     let actions = manager
-        .handle_compact_block_download(peer_id, payload, CompactBlockReceiveFacts::default(), 1_000)
+        .handle_compact_block_download(
+            peer_id,
+            payload,
+            explicit_empty_compact_receive_facts(),
+            1_000,
+        )
         .expect("prefilled compact block");
 
     assert_eq!(actions.len(), 1);
@@ -3303,7 +3403,12 @@ fn phase115_ineligible_compact_block_falls_back_to_full_block_fetch() {
     process_high_bandwidth_sendcmpct(&mut manager, peer_id);
 
     let actions = manager
-        .handle_compact_block_download(peer_id, payload, CompactBlockReceiveFacts::default(), 1_000)
+        .handle_compact_block_download(
+            peer_id,
+            payload,
+            explicit_empty_compact_receive_facts(),
+            1_000,
+        )
         .expect("far compact block should fall back");
 
     assert_eq!(actions.len(), 1);

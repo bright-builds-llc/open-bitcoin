@@ -57,6 +57,7 @@ pub enum NetworkError {
     DuplicateVersion(PeerId),
     SelfConnection(PeerId),
     ResourceLimit(PeerId),
+    CompactBlockReceiveFactsRequired,
     CompactBlockMisbehavior(PeerId),
     CompactBlockHeaderViolation(PeerId),
 }
@@ -100,6 +101,9 @@ impl fmt::Display for NetworkError {
             }
             Self::ResourceLimit(peer_id) => {
                 write!(f, "peer {peer_id} reached resource limit")
+            }
+            Self::CompactBlockReceiveFactsRequired => {
+                write!(f, "compact block requires adapter-supplied receive facts")
             }
             Self::CompactBlockMisbehavior(peer_id) => {
                 write!(f, "peer {peer_id} compact block misbehavior")
@@ -219,6 +223,10 @@ mod tests {
         assert_eq!(
             NetworkError::ResourceLimit(9).to_string(),
             "peer 9 reached resource limit",
+        );
+        assert_eq!(
+            NetworkError::CompactBlockReceiveFactsRequired.to_string(),
+            "compact block requires adapter-supplied receive facts",
         );
         assert_eq!(
             NetworkError::CompactBlockMisbehavior(10).to_string(),
