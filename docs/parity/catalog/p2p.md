@@ -1427,15 +1427,16 @@ Block serving and compact relay remain default-off. Archive behavior, package
 relay, bloom/filter serving, public-network CI, production service operation,
 production full-node readiness, and production-funds wallet use remain deferred.
 
-## Phase 126 compact relay residual hardening candidate
+## Phase 126 verified compact relay residual hardening
 
-The Phase 126 runtime candidate hardens the existing `CMP-05`, `RCN-02`,
-`RCN-03`, and `GOV-04` seams without expanding the supported v2.1 boundary.
-Generic `PeerManager::handle_message` compact-block dispatch now fails with the
-peer-neutral typed `CompactBlockReceiveFactsRequired` adapter error instead of
-constructing empty receive facts. Both managed receive entrypoints remain the
-authoritative shell: they snapshot the live mempool and bounded recent-extra
-buffer and pass explicit `CompactBlockReceiveFacts` to reconstruction.
+The independently verified Phase 126 runtime hardens the existing `CMP-05`,
+`RCN-02`, `RCN-03`, and `GOV-04` seams without expanding the supported v2.1
+boundary. Generic `PeerManager::handle_message` compact-block dispatch now
+fails with the peer-neutral typed `CompactBlockReceiveFactsRequired` adapter
+error instead of constructing empty receive facts. Both managed receive
+entrypoints remain the authoritative shell: they snapshot the live mempool and
+bounded recent-extra buffer and pass explicit `CompactBlockReceiveFacts` to
+reconstruction.
 
 Outbound compact construction remains pure after the shell chooses
 `AnnounceCompactBlock`. The shell then lazily fills a fresh `u64` from system
@@ -1456,11 +1457,12 @@ consumption by `CBlockHeaderAndShortTxIDs` in both block-encoding files.
 `packages/bitcoin-knots/test/functional/p2p_compactblocks.py` remains the
 behavioral compact-announcement and mempool-assisted reconstruction reference.
 
-This is candidate evidence only: all six Phase 126 requirements remain pending
-until lifecycle-valid verification and final reconciliation. It does not add
-a public serving default, archive-node guarantee, public-network CI gate,
-production service claim, production full-node readiness claim, or
-production-funds wallet claim.
+Lifecycle-valid verification and final reconciliation completed all six Phase
+126 requirements. The v2.1 milestone is archive-ready at 39/39 independently
+verified requirements and 17/17 complete implementation phases, with Phase 126
+complete at 4/4 plans. This verified boundary does not add a public serving
+default, archive-node guarantee, public-network CI gate, production service
+claim, production full-node readiness claim, or production-funds wallet claim.
 
 ## Known gaps
 

@@ -18,6 +18,9 @@ const TARGET_FILES = [
   "packages/open-bitcoin-node/src/network/compact_receive_candidates.rs",
   "packages/open-bitcoin-node/Cargo.toml",
   "packages/open-bitcoin-node/BUILD.bazel",
+  ".planning/STATE.md",
+  "docs/parity/catalog/mempool-policy.md",
+  "docs/parity/catalog/p2p.md",
   "docs/parity/index.json",
   "docs/parity/source-breadcrumbs.json",
   "scripts/check-phase126-compact-relay-residual-hardening.ts",
@@ -31,6 +34,9 @@ const COMPACT_KNOTS_ANCHORS = [
   "packages/bitcoin-knots/src/net_processing.h",
   "packages/bitcoin-knots/test/functional/p2p_compactblocks.py",
 ] as const;
+
+const ARCHIVE_READY_CATALOG_LIFECYCLE =
+  "The v2.1 milestone is archive-ready at 39/39 independently verified requirements and 17/17 complete implementation phases, with Phase 126 complete at 4/4 plans.";
 
 type TargetFile = (typeof TARGET_FILES)[number];
 type TextCorpus = Map<TargetFile, string>;
@@ -53,6 +59,7 @@ export function checkPhase126CompactRelayResidualHardening(maybeRepoRoot?: strin
   checkNonceAndEvidence(texts.get("packages/open-bitcoin-node/src/network.rs") ?? "", failures);
   checkDependencies(texts, failures);
   checkParityAnchors(texts, failures);
+  checkArchiveReadyCatalogLifecycle(texts, failures);
   checkVerifier(texts, failures);
   return failures;
 }
@@ -228,6 +235,48 @@ function checkParityAnchors(texts: TextCorpus, failures: string[]): void {
       failures,
       "P126 breadcrumb anchors: compact download group must retain exact Knots anchors",
     );
+  }
+}
+
+function checkArchiveReadyCatalogLifecycle(texts: TextCorpus, failures: string[]): void {
+  const state = texts.get(".planning/STATE.md") ?? "";
+  if (!/^status:\s*archive_ready\s*$/m.test(state)) return;
+
+  checkArchiveReadyCatalog(
+    texts.get("docs/parity/catalog/mempool-policy.md") ?? "",
+    [
+      "The Phase 126 runtime candidate",
+      "All Phase 126 requirements remain pending",
+    ],
+    "P126 archive-ready mempool catalog lifecycle: requires 39/39 requirements, 17/17 phases, and Phase 126 4/4",
+    failures,
+  );
+  checkArchiveReadyCatalog(
+    texts.get("docs/parity/catalog/p2p.md") ?? "",
+    [
+      "The Phase 126 runtime candidate",
+      "This is candidate evidence only",
+      "all six Phase 126 requirements remain pending",
+    ],
+    "P126 archive-ready P2P catalog lifecycle: requires 39/39 requirements, 17/17 phases, and Phase 126 4/4",
+    failures,
+  );
+}
+
+function checkArchiveReadyCatalog(
+  catalog: string,
+  forbiddenLifecycleClaims: readonly string[],
+  failure: string,
+  failures: string[],
+): void {
+  const normalizedCatalog = catalog.replace(/\s+/g, " ").trim();
+  const hasArchiveReadyLifecycle =
+    countOccurrences(normalizedCatalog, ARCHIVE_READY_CATALOG_LIFECYCLE) === 1;
+  const hasStaleLifecycle = forbiddenLifecycleClaims.some((claim) =>
+    normalizedCatalog.includes(claim),
+  );
+  if (!hasArchiveReadyLifecycle || hasStaleLifecycle) {
+    failures.push(failure);
   }
 }
 

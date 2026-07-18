@@ -198,15 +198,15 @@ production full-node readiness, production-funds wallet safety/use,
 destructive repair, source datadir mutation, compaction, reindexing, store
 surgery, or automatic support upload.
 
-## Phase 126 compact reconstruction candidate supply
+## Phase 126 verified compact reconstruction inputs
 
-The Phase 126 runtime candidate does not change mempool admission, persistence,
-replacement, or eviction policy. It hardens the adapter boundary that supplies
-compact reconstruction candidates: `ManagedPeerNetwork` takes an explicit
-snapshot of the current mempool and bounded `CompactExtraTxnBuffer` for both
-managed receive entrypoints, while the generic factless dispatcher fails with
-a typed peer-neutral routing error. An explicitly supplied pair of empty
-slices remains valid when both live sources are genuinely empty.
+The independently verified Phase 126 runtime does not change mempool admission,
+persistence, replacement, or eviction policy. It hardens the adapter boundary
+that supplies compact reconstruction candidates: `ManagedPeerNetwork` takes an
+explicit snapshot of the current mempool and bounded `CompactExtraTxnBuffer`
+for both managed receive entrypoints, while the generic factless dispatcher
+fails with a typed peer-neutral routing error. An explicitly supplied pair of
+empty slices remains valid when both live sources are genuinely empty.
 
 This matches the pinned Knots split between live `m_mempool` lookup and
 `vExtraTxnForCompact` supply in
@@ -218,10 +218,13 @@ limits in `packages/bitcoin-knots/src/net_processing.h`, and
 behavior remains anchored in
 `packages/bitcoin-knots/test/functional/p2p_compactblocks.py`.
 
-All Phase 126 requirements remain pending until lifecycle-valid verification
-and final reconciliation. This candidate does not add package relay, public relay
-default, archive-node behavior, public-network gate, production service
-operation, production full-node readiness, or production-funds wallet claim.
+Lifecycle-valid verification and final reconciliation completed all six Phase
+126 requirements. The v2.1 milestone is archive-ready at 39/39 independently
+verified requirements and 17/17 complete implementation phases, with Phase 126
+complete at 4/4 plans. This verified boundary does not add package relay,
+public relay default, archive-node behavior, public-network gate, production
+service operation, production full-node readiness, or production-funds wallet
+claim.
 
 ## Known gaps
 

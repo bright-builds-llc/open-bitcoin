@@ -341,6 +341,31 @@ test("fails_when_archive_ready_p2p_catalog_reverts_to_all_six_pending_language",
   );
 });
 
+test("allows_candidate_catalog_language_before_archive_ready", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutate(files) {
+      replace(files, ".planning/STATE.md", "status: archive_ready", "status: executing");
+      append(
+        files,
+        "docs/parity/catalog/mempool-policy.md",
+        "All Phase 126 requirements remain pending until lifecycle-valid verification and final reconciliation.",
+      );
+      append(
+        files,
+        "docs/parity/catalog/p2p.md",
+        "This is candidate evidence only: all six Phase 126 requirements remain pending until lifecycle-valid verification and final reconciliation.",
+      );
+    },
+  });
+
+  // Act
+  const failures = checkPhase126CompactRelayResidualHardening(root);
+
+  // Assert
+  expect(failures.filter((failure) => failure.includes("catalog lifecycle"))).toEqual([]);
+});
+
 test("fails_when_verifier_wiring_is_out_of_order_or_nonlocal", () => {
   // Arrange
   const orderRoot = createFixture({
