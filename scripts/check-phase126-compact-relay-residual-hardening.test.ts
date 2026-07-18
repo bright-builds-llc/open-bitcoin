@@ -13,6 +13,9 @@ const TARGET_FILES = [
   "packages/open-bitcoin-node/src/network/compact_receive_candidates.rs",
   "packages/open-bitcoin-node/Cargo.toml",
   "packages/open-bitcoin-node/BUILD.bazel",
+  ".planning/STATE.md",
+  "docs/parity/catalog/mempool-policy.md",
+  "docs/parity/catalog/p2p.md",
   "docs/parity/index.json",
   "docs/parity/source-breadcrumbs.json",
   "scripts/check-phase126-compact-relay-residual-hardening.ts",
@@ -294,6 +297,48 @@ test("fails_when_required_parity_or_breadcrumb_anchors_are_missing", () => {
   // Assert
   expect(parityFailures).toContain("P126 parity anchors: compact relay surfaces must retain exact Knots anchors");
   expect(breadcrumbFailures).toContain("P126 breadcrumb anchors: compact download group must retain exact Knots anchors");
+});
+
+test("fails_when_archive_ready_mempool_catalog_reverts_to_pending_candidate_language", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutate(files) {
+      append(
+        files,
+        "docs/parity/catalog/mempool-policy.md",
+        "All Phase 126 requirements remain pending until lifecycle-valid verification and final reconciliation.",
+      );
+    },
+  });
+
+  // Act
+  const failures = checkPhase126CompactRelayResidualHardening(root);
+
+  // Assert
+  expect(failures).toContain(
+    "P126 archive-ready mempool catalog lifecycle: requires 39/39 requirements, 17/17 phases, and Phase 126 4/4",
+  );
+});
+
+test("fails_when_archive_ready_p2p_catalog_reverts_to_all_six_pending_language", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutate(files) {
+      append(
+        files,
+        "docs/parity/catalog/p2p.md",
+        "This is candidate evidence only: all six Phase 126 requirements remain pending until lifecycle-valid verification and final reconciliation.",
+      );
+    },
+  });
+
+  // Act
+  const failures = checkPhase126CompactRelayResidualHardening(root);
+
+  // Assert
+  expect(failures).toContain(
+    "P126 archive-ready P2P catalog lifecycle: requires 39/39 requirements, 17/17 phases, and Phase 126 4/4",
+  );
 });
 
 test("fails_when_verifier_wiring_is_out_of_order_or_nonlocal", () => {
