@@ -664,10 +664,10 @@
     {
       "label": "network-compact-block-download",
       "files": [
-        "packages/open-bitcoin-network/src/compact_download.rs",
-        "packages/open-bitcoin-network/src/compact_download/tests.rs",
         "packages/open-bitcoin-network/src/peer/compact_download_state.rs",
-        "packages/open-bitcoin-network/src/peer/message_dispatch.rs"
+        "packages/open-bitcoin-network/src/peer/message_dispatch.rs",
+        "packages/open-bitcoin-network/src/compact_download.rs",
+        "packages/open-bitcoin-network/src/compact_download/tests.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/blockencodings.h",

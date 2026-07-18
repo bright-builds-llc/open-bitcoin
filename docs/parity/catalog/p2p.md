@@ -1427,6 +1427,41 @@ Block serving and compact relay remain default-off. Archive behavior, package
 relay, bloom/filter serving, public-network CI, production service operation,
 production full-node readiness, and production-funds wallet use remain deferred.
 
+## Phase 126 compact relay residual hardening candidate
+
+The Phase 126 runtime candidate hardens the existing `CMP-05`, `RCN-02`,
+`RCN-03`, and `GOV-04` seams without expanding the supported v2.1 boundary.
+Generic `PeerManager::handle_message` compact-block dispatch now fails with the
+peer-neutral typed `CompactBlockReceiveFactsRequired` adapter error instead of
+constructing empty receive facts. Both managed receive entrypoints remain the
+authoritative shell: they snapshot the live mempool and bounded recent-extra
+buffer and pass explicit `CompactBlockReceiveFacts` to reconstruction.
+
+Outbound compact construction remains pure after the shell chooses
+`AnnounceCompactBlock`. The shell then lazily fills a fresh `u64` from system
+entropy and passes it to the nonce-consuming compact payload builder. Entropy
+failure falls back through the existing peer-safe announcement action and
+cannot emit `cmpctblock`, record compact provenance, or increment
+`CompactAnnounced` achieved-effect evidence.
+
+The exact Knots receive anchors are the live `m_mempool` plus
+`vExtraTxnForCompact` inputs to `PartiallyDownloadedBlock::InitData` in
+`packages/bitcoin-knots/src/net_processing.cpp`, the bounded extra-transaction
+configuration in `packages/bitcoin-knots/src/net_processing.h`, and the
+candidate matching implementation and contract in
+`packages/bitcoin-knots/src/blockencodings.cpp` and
+`packages/bitcoin-knots/src/blockencodings.h`. The announcement boundary is
+anchored by `FastRandomContext().rand64()` in `net_processing.cpp` and nonce
+consumption by `CBlockHeaderAndShortTxIDs` in both block-encoding files.
+`packages/bitcoin-knots/test/functional/p2p_compactblocks.py` remains the
+behavioral compact-announcement and mempool-assisted reconstruction reference.
+
+This is candidate evidence only: all six Phase 126 requirements remain pending
+until lifecycle-valid verification and final reconciliation. It does not add
+a public serving default, archive-node guarantee, public-network CI gate,
+production service claim, production full-node readiness claim, or
+production-funds wallet claim.
+
 ## Known gaps
 
 These networking gaps remain deferred or out of scope unless a later phase adds

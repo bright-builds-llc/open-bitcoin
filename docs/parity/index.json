@@ -2659,12 +2659,16 @@
           "packages/open-bitcoin-network/src/peer/compact_relay.rs",
           "packages/open-bitcoin-network/src/peer/compact_relay/tests.rs",
           "packages/open-bitcoin-network/src/peer/tests.rs",
+          "packages/open-bitcoin-node/src/network.rs",
           ".planning/phases/113-compact-relay-negotiation-and-announcement-policy/113-03-SUMMARY.md"
         ],
-        "rationale": "Phase 113 records version-2 sendcmpct capability, high- and low-bandwidth preferences, and explicit announcement eligibility without allowing transaction relay, permissions, inbound protection, or block-serving state to activate compact announcements by implication.",
+        "rationale": "Phase 113 records version-2 sendcmpct capability, high- and low-bandwidth preferences, and explicit announcement eligibility without allowing transaction relay, permissions, inbound protection, or block-serving state to activate compact announcements by implication. The Phase 126 runtime candidate acquires a fresh fallible nonce in the node shell only after compact selection and records compact provenance and achieved-effect evidence only after an actual cmpctblock emission.",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/src/net_processing.cpp",
+            "packages/bitcoin-knots/src/net_processing.h",
+            "packages/bitcoin-knots/src/blockencodings.cpp",
+            "packages/bitcoin-knots/src/blockencodings.h",
             "packages/bitcoin-knots/src/net.h"
           ],
           "tests": [
@@ -2693,17 +2697,23 @@
           "docs/parity/source-breadcrumbs.json",
           "packages/open-bitcoin-network/src/compact_block.rs",
           "packages/open-bitcoin-network/src/compact_block/tests.rs",
+          "packages/open-bitcoin-network/src/peer/compact_download_state.rs",
+          "packages/open-bitcoin-network/src/peer/message_dispatch.rs",
+          "packages/open-bitcoin-node/src/network.rs",
+          "packages/open-bitcoin-node/src/network/compact_receive_candidates.rs",
           ".planning/phases/114-compact-block-reconstruction-from-mempool-state/114-03-SUMMARY.md"
         ],
-        "rationale": "Phase 114 reconstructs compact blocks from witness-hash short IDs over bounded mempool and extra transaction candidates, producing typed collision, duplicate, missing, and failure outcomes without mutating chainstate from partial state.",
+        "rationale": "Phase 114 reconstructs compact blocks from witness-hash short IDs over bounded mempool and extra transaction candidates, producing typed collision, duplicate, missing, and failure outcomes without mutating chainstate from partial state. The Phase 126 runtime candidate makes the generic factless route a typed adapter error while both managed receive entrypoints supply explicit live mempool and bounded recent-extra snapshots.",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/src/blockencodings.h",
             "packages/bitcoin-knots/src/blockencodings.cpp",
-            "packages/bitcoin-knots/src/net_processing.cpp"
+            "packages/bitcoin-knots/src/net_processing.cpp",
+            "packages/bitcoin-knots/src/net_processing.h"
           ],
           "tests": [
             "packages/bitcoin-knots/src/test/blockencodings_tests.cpp",
+            "packages/bitcoin-knots/test/functional/p2p_compactblocks.py",
             "packages/bitcoin-knots/test/functional/p2p_compactblocks_extratxs.py"
           ]
         },

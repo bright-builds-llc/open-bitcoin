@@ -198,6 +198,31 @@ production full-node readiness, production-funds wallet safety/use,
 destructive repair, source datadir mutation, compaction, reindexing, store
 surgery, or automatic support upload.
 
+## Phase 126 compact reconstruction candidate supply
+
+The Phase 126 runtime candidate does not change mempool admission, persistence,
+replacement, or eviction policy. It hardens the adapter boundary that supplies
+compact reconstruction candidates: `ManagedPeerNetwork` takes an explicit
+snapshot of the current mempool and bounded `CompactExtraTxnBuffer` for both
+managed receive entrypoints, while the generic factless dispatcher fails with
+a typed peer-neutral routing error. An explicitly supplied pair of empty
+slices remains valid when both live sources are genuinely empty.
+
+This matches the pinned Knots split between live `m_mempool` lookup and
+`vExtraTxnForCompact` supply in
+`packages/bitcoin-knots/src/net_processing.cpp`, the bounded extra-transaction
+limits in `packages/bitcoin-knots/src/net_processing.h`, and
+`PartiallyDownloadedBlock::InitData` candidate consumption in
+`packages/bitcoin-knots/src/blockencodings.cpp` and
+`packages/bitcoin-knots/src/blockencodings.h`. Mempool-assisted reconstruction
+behavior remains anchored in
+`packages/bitcoin-knots/test/functional/p2p_compactblocks.py`.
+
+All Phase 126 requirements remain pending until lifecycle-valid verification
+and final reconciliation. This candidate adds no package relay, public relay
+default, archive-node behavior, public-network gate, production service
+operation, production full-node readiness, or production-funds wallet claim.
+
 ## Known gaps
 
 - package relay beyond single-transaction admission
