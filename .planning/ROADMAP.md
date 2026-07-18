@@ -2,7 +2,7 @@
 
 ## Current Status
 
-v2.1 Block Serving and Compact Block Relay Boundary is the active milestone after v2.0. All 39 requirements have passed independent verification and are promoted; Phase 126 remains at 3/4 plans until its final summary materializes the archive-ready projection.
+v2.1 Block Serving and Compact Block Relay Boundary is complete and archive-ready after v2.0. All 39 requirements have passed independent verification, all 17 phases are complete, and Phase 126 is complete at 4/4 plans.
 
 ## Latest Completed Milestone: v2.0 Transaction Relay and Mempool Participation Boundary
 
@@ -31,7 +31,7 @@ v2.1 Block Serving and Compact Block Relay Boundary is the active milestone afte
 - ✅ **v1.8 Production Full-Node Readiness Boundary** - Phases 82 through 89 (shipped 2026-06-25). Archive: [v1.8-ROADMAP.md](milestones/v1.8-ROADMAP.md)
 - ✅ **v1.9 Inbound Peer Serving and Network Participation Boundary** - Phases 90 through 99 (shipped 2026-06-29). Archive: [v1.9-ROADMAP.md](milestones/v1.9-ROADMAP.md)
 - ✅ **v2.0 Transaction Relay and Mempool Participation Boundary** - Phases 100 through 109 (shipped 2026-07-03). Archive: [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md)
-- 🚧 **v2.1 Block Serving and Compact Block Relay Boundary** - Phases 110 through 126 (110–125 complete; Phase 126 requirements independently verified and promoted, with the final summary still pending).
+- ✅ **v2.1 Block Serving and Compact Block Relay Boundary** - Phases 110 through 126 complete and ready for milestone archival.
 
 ## Active Milestone: v2.1 Block Serving and Compact Block Relay Boundary
 
@@ -55,7 +55,7 @@ v2.1 Block Serving and Compact Block Relay Boundary is the active milestone afte
 - [x] **Phase 123: Runtime Timing and Evidence Integrity** - Make timeout scheduling independent of receives and derive relay evidence from actual runtime emissions and the authoritative network instance. (completed 2026-07-16)
 - [x] **Phase 124: Milestone Closeout Reconciliation** - Reconcile milestone metadata, re-audit the completed hardening work, and establish archive readiness. (completed 2026-07-16)
 - [x] **Phase 125: Compact Download Verification Traceability Closure** - Restore explicit lifecycle-valid verification ownership for the three Phase 115 compact-download requirements and prevent future verification orphans. (completed 2026-07-17)
-- [ ] **Phase 126: Compact Relay Residual Hardening** - Remove the residual empty-candidate bypass, align compact nonce generation with the Knots boundary, and perform final archive reconciliation.
+- [x] **Phase 126: Compact Relay Residual Hardening** - Remove the residual empty-candidate bypass, align compact nonce generation with the Knots boundary, and perform final archive reconciliation. (completed 2026-07-18)
 
 ### Phase Details
 
@@ -408,7 +408,7 @@ Plans:
 3. Parity evidence, breadcrumbs, and deterministic regressions cover the hardened receive and announcement boundaries.
 4. ROADMAP, REQUIREMENTS, STATE, the Phase 124 closeout guard, and the rerun milestone audit agree on the final Phase 126 result before any fresh archive decision.
 
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 ## Progress
 
@@ -432,7 +432,7 @@ Plans:
 | 123. Runtime Timing and Evidence Integrity | v2.1 | 7/7 | Complete   | 2026-07-16 |
 | 124. Milestone Closeout Reconciliation | v2.1 | 2/2 | Complete   | 2026-07-16 |
 | 125. Compact Download Verification Traceability Closure | v2.1 | 4/4 | Complete   | 2026-07-17 |
-| 126. Compact Relay Residual Hardening | v2.1 | 3/4 | In Progress | 2026-07-18 |
+| 126. Compact Relay Residual Hardening | v2.1 | 4/4 | Complete   | 2026-07-18 |
 
 ## Traceability
 
@@ -452,4 +452,4 @@ Plans:
 
 ## Next Step
 
-Run `/gsd-execute-phase 126` to materialize the final Phase 126 summary and archive-ready projection. Phase 126 remains at 3/4 plans until that summary exists.
+Run `/gsd-complete-milestone v2.1`.

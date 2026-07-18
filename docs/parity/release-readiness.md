@@ -115,9 +115,9 @@ requirements after removing the factless receive route, aligning compact
 announcement nonce generation with the randomized Knots shell boundary, and
 refreshing exact parity and deterministic regression evidence. The canonical
 audit now passes at 39/39 requirements and 17/17 implementation phases. The
-current legal state remains promoted-pre-summary: Phase 126 is 3/4 and
-`/gsd-execute-phase 126` remains the only primary route until the final summary
-exists.
+final lifecycle-valid summary now records Phase 126 at 4/4 plans, so the active
+milestone is archive-ready and routes to `/gsd-complete-milestone v2.1` after
+the fresh post-summary verifier handoff.
 
 This is not a production-node or production-funds claim. It does not claim
 public inbound serving by default, public relay defaults, full address relay
@@ -327,8 +327,8 @@ in [`catalog/consensus-validation.md`](catalog/consensus-validation.md).
 
 All 39 v2.1 requirements have lifecycle-valid verification coverage and are
 complete. The passed canonical audit covers all 17 implementation phases.
-Phase 126 remains at 3/4 plans only because the final execution summary is the
-required gate before archive-ready routing.
+Phase 126 is complete at 4/4 plans, and the active milestone is ready for
+`/gsd-complete-milestone v2.1` after fresh post-summary verification.
 
 Phase 116 exposes aggregate-only `block_relay` evidence across status, the
 `openbitcoinnetworkstatus` RPC extension, metrics, logs, dashboard rows, and

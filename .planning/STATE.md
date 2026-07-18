@@ -2,16 +2,16 @@
 gsd_state_version: "1.0"
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
-status: executing
-stopped_at: Phase 126 requirements promoted; final summary pending
-last_updated: "2026-07-18T21:29:19Z"
-last_activity: 2026-07-18 -- Promoted six independently verified Phase 126 requirements
+status: archive_ready
+stopped_at: Phase 126 complete; awaiting fresh post-summary verification
+last_updated: "2026-07-18T21:53:17Z"
+last_activity: 2026-07-18 -- Prepared Phase 126 archive-ready verifier handoff
 progress:
   total_phases: 17
-  completed_phases: 16
+  completed_phases: 17
   total_plans: 58
-  completed_plans: 57
-  percent: 98
+  completed_plans: 58
+  percent: 100
 ---
 
 # Project State
@@ -21,19 +21,21 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-07-10 after Phase 117 completed v2.1 implementation and verification).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 126 — Compact Relay Residual Hardening
+**Current focus:** Phase 126 post-summary verification handoff
 
 ## Current Position
 
 Milestone: v2.1 Block Serving and Compact Block Relay Boundary
 Phase: 126
-Plan: 3 of 4
-Status: Promoted; final summary pending
-Last activity: 2026-07-18 -- Promoted six independently verified Phase 126 requirements
+Plan: 4 of 4
+Status: Archive-ready; fresh verifier pending
+Last activity: 2026-07-18 -- Prepared Phase 126 archive-ready verifier handoff
 
 v2.0 Transaction Relay and Mempool Participation Boundary shipped on 2026-07-03. The archived audit reports 32/32 requirements, 10/10 phases, 8/8 integration checks, 8/8 cross-phase flows, and no tracked tech debt.
 
-Phase 125 completed lifecycle-valid verification-traceability closure at 4/4 plans for `RCN-04`, `RCN-05`, and `RCN-06`. Phase 126 independently verified and promoted `CMP-05`, `RCN-02`, `RCN-03`, `GOV-04`, `BOUND-01`, and `HARD-05`; the final summary remains the archive-projection gate.
+Phase 125 completed lifecycle-valid verification-traceability closure at 4/4 plans for `RCN-04`, `RCN-05`, and `RCN-06`. Phase 126 independently verified and promoted `CMP-05`, `RCN-02`, `RCN-03`, `GOV-04`, `BOUND-01`, and `HARD-05`, then completed its final summary and archive-ready projection at 4/4 plans. A fresh post-summary verifier must replace the stale pre-summary verification artifact before final lifecycle and full repository gates.
+
+Next action after fresh verification: Run `/gsd-complete-milestone v2.1`.
 
 ## Performance Metrics
 
@@ -42,6 +44,7 @@ Phase 125 completed lifecycle-valid verification-traceability closure at 4/4 pla
 | Phase 126 P01 | 31m | 2 tasks | 12 files |
 | Phase 126 P02 | 21m | 3 tasks | 11 files |
 | Phase 126 P03 | 7m | 1 task | 3 files |
+| Phase 126 P04 | 64m | 3 tasks | 10 files |
 
 ## Latest Milestone Archive
 
@@ -108,7 +111,7 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Pending Todos
 
-- Materialize the Phase 126 Plan 04 summary before projecting archive readiness.
+- Complete the fresh post-summary verifier handoff before final lifecycle and repository verification.
 - Keep historical `.planning/phases/` directories tracked because repo verifier scripts still depend on selected phase evidence.
 - Keep repo-local Cargo and Bazel command forms in UAT guidance:
   - `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- ...`
@@ -124,6 +127,6 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Session Continuity
 
-Last session: 2026-07-18T21:29:19Z
-Stopped at: Phase 126 requirements promoted; final summary pending
+Last session: 2026-07-18T21:53:17Z
+Stopped at: Phase 126 complete; awaiting fresh post-summary verification
 Resume file: None

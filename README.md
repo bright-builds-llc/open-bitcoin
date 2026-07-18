@@ -22,8 +22,10 @@ auditable, and modular.
 > serving and compact-block relay with deterministic local evidence and optional
 > public-network operator review. The release evidence is summarized in
 > [`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md).
-> All 39 v2.1 requirements are independently verified and complete; the final
-> Phase 126 summary remains the required gate before archive-ready routing.
+> All 39 v2.1 requirements are independently verified and complete, all 17
+> phases are complete, and Phase 126 is complete at 4/4 plans. The active
+> milestone is ready for `/gsd-complete-milestone v2.1` after the fresh
+> post-summary verification handoff.
 > Package relay, BIP37 bloom-filter serving, compact-filter serving, public
 > serving or relay defaults, archive-node and production-scale historical
 > serving, public-network CI or release gates, production service/deployment,

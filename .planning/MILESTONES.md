@@ -1,5 +1,36 @@
 # Milestones: Open Bitcoin
 
+## v2.1 Block Serving and Compact Block Relay Boundary (Completed: 2026-07-18; Awaiting Archive)
+
+**Delivered:** Bounded, explicit, default-off validated block serving and
+compact-block relay through BIP152 codecs, negotiation, reconstruction,
+missing-transaction response, timeout fallback, validation handoff, sanitized
+operator evidence, exact Knots parity anchors, and deterministic no-claim
+guardrails.
+
+**Completion projection:**
+
+- 39/39 v2.1 requirements are independently verified and complete.
+- 17/17 implementation phases and 58/58 plans are complete.
+- Phase 126 is complete at 4/4 plans with a lifecycle-valid final summary.
+- The canonical milestone audit passed at 13/13 integration links and 11/11
+  end-to-end flows with no tracked technical debt.
+- The archive-ready corpus awaits fresh post-summary verification before final
+  lifecycle and repository gates.
+- v2.1 remains the active, unarchived milestone until the completion workflow
+  creates its archive artifacts.
+
+**Residual boundary:** Package relay, bloom/filter serving, compact-filter
+serving, public serving or relay defaults, public-network CI, archive-node and
+production-scale historical serving, production service/deployment, production
+full-node readiness, production-funds wallet use, migration apply mode,
+packaging, hosted services, and GUI work remain future scope.
+
+**What's next:** After fresh post-summary verification, run
+`/gsd-complete-milestone v2.1`.
+
+***
+
 ## v2.0 Transaction Relay and Mempool Participation Boundary (Shipped: 2026-07-03)
 
 **Delivered:** Bounded transaction relay and mempool participation through explicit activation, permission-aware txid/wtxid download, orphan and admission outcomes, durable mempool recovery, relay serving/fanout, sanitized operator evidence, and deterministic no-claim guardrails. The milestone deliberately does not claim compact block relay, bloom/filter serving, broad package relay, public relay by default, public-network relay CI, production service operation, production full-node readiness, or production-funds wallet safety.
