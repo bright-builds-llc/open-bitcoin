@@ -249,22 +249,41 @@ test("fails_when_required_parity_or_breadcrumb_anchors_are_missing", () => {
   // Arrange
   const parityRoot = createFixture({
     maybeMutate(files) {
-      replaceFirst(
-        files,
-        "docs/parity/index.json",
-        '"packages/bitcoin-knots/src/blockencodings.h",',
-        "",
+      const index = JSON.parse(files.get("docs/parity/index.json") ?? "{}") as {
+        checklist?: {
+          surfaces?: Array<{
+            id?: string;
+            upstream?: { sources?: string[] };
+          }>;
+        };
+      };
+      const maybeSurface = index.checklist?.surfaces?.find(
+        (surface) => surface.id === "v2-1-compact-relay-negotiation-announcement-policy",
       );
+      if (maybeSurface?.upstream?.sources) {
+        maybeSurface.upstream.sources = maybeSurface.upstream.sources.filter(
+          (anchor) => anchor !== "packages/bitcoin-knots/src/blockencodings.h",
+        );
+      }
+      files.set("docs/parity/index.json", JSON.stringify(index, null, 2));
     },
   });
   const breadcrumbRoot = createFixture({
     maybeMutate(files) {
-      replaceFirst(
-        files,
-        "docs/parity/source-breadcrumbs.json",
-        '"packages/bitcoin-knots/src/blockencodings.h",',
-        "",
+      const breadcrumbs = JSON.parse(
+        files.get("docs/parity/source-breadcrumbs.json") ?? "{}",
+      ) as {
+        groups?: Array<{ breadcrumbs?: string[]; label?: string }>;
+      };
+      const maybeGroup = breadcrumbs.groups?.find(
+        (group) => group.label === "network-compact-block-download",
       );
+      if (maybeGroup?.breadcrumbs) {
+        maybeGroup.breadcrumbs = maybeGroup.breadcrumbs.filter(
+          (anchor) => anchor !== "packages/bitcoin-knots/src/blockencodings.h",
+        );
+      }
+      files.set("docs/parity/source-breadcrumbs.json", JSON.stringify(breadcrumbs, null, 2));
     },
   });
 

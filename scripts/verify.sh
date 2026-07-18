@@ -405,6 +405,8 @@ bun test scripts/check-phase124-milestone-closeout-reconciliation.test.ts
 bun run scripts/check-phase124-milestone-closeout-reconciliation.ts
 bun test scripts/check-active-milestone-verification-traceability.test.ts
 bun run scripts/check-active-milestone-verification-traceability.ts
+bun test scripts/check-phase126-compact-relay-residual-hardening.test.ts
+bun run scripts/check-phase126-compact-relay-residual-hardening.ts
 bun test scripts/check-phase117-parity-uat-release-boundary.test.ts
 bun run scripts/check-phase117-parity-uat-release-boundary.ts
 bun test scripts/command-timings.test.ts
@@ -545,6 +547,8 @@ run_step "test Phase 124 milestone closeout reconciliation checker" bun test scr
 run_step "check Phase 124 milestone closeout reconciliation" bun run scripts/check-phase124-milestone-closeout-reconciliation.ts
 run_step "test active milestone verification traceability checker" bun test scripts/check-active-milestone-verification-traceability.test.ts
 run_step "check active milestone verification traceability" bun run scripts/check-active-milestone-verification-traceability.ts
+run_step "test Phase 126 compact relay residual hardening checker" bun test scripts/check-phase126-compact-relay-residual-hardening.test.ts
+run_step "check Phase 126 compact relay residual hardening" bun run scripts/check-phase126-compact-relay-residual-hardening.ts
 run_step "test Phase 117 parity UAT release boundary checker" bun test scripts/check-phase117-parity-uat-release-boundary.test.ts
 run_step "check Phase 117 parity UAT release boundary" bun run scripts/check-phase117-parity-uat-release-boundary.ts
 run_step "test local command timing tooling" bun test scripts/command-timings.test.ts
