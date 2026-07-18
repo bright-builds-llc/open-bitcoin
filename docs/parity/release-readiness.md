@@ -110,6 +110,15 @@ Phase 114 reconstruction, Phase 115 fallback and validation handoff, Phase 116
 aggregate operator evidence, and Phase 117 parity/UAT guardrails. Its canonical
 surface id is `v2-1-parity-uat-release-boundary`.
 
+Phase 126 independently verified and promoted the six residual-hardening
+requirements after removing the factless receive route, aligning compact
+announcement nonce generation with the randomized Knots shell boundary, and
+refreshing exact parity and deterministic regression evidence. The canonical
+audit now passes at 39/39 requirements and 17/17 implementation phases. The
+current legal state remains promoted-pre-summary: Phase 126 is 3/4 and
+`/gsd-execute-phase 126` remains the only primary route until the final summary
+exists.
+
 This is not a production-node or production-funds claim. It does not claim
 public inbound serving by default, public relay defaults, full address relay
 beyond the Phase 92 boundary, package relay, BIP37 bloom-filter serving,
@@ -315,6 +324,11 @@ compact-block relay. Deterministic local review follows the Phase 110 through
 117 surfaces in [`index.json`](index.json), [`checklist.md`](checklist.md), and
 [`catalog/p2p.md`](catalog/p2p.md), with consensus-validation handoff evidence
 in [`catalog/consensus-validation.md`](catalog/consensus-validation.md).
+
+All 39 v2.1 requirements have lifecycle-valid verification coverage and are
+complete. The passed canonical audit covers all 17 implementation phases.
+Phase 126 remains at 3/4 plans only because the final execution summary is the
+required gate before archive-ready routing.
 
 Phase 116 exposes aggregate-only `block_relay` evidence across status, the
 `openbitcoinnetworkstatus` RPC extension, metrics, logs, dashboard rows, and

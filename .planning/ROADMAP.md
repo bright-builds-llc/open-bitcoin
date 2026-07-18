@@ -2,7 +2,7 @@
 
 ## Current Status
 
-v2.1 Block Serving and Compact Block Relay Boundary is the active milestone after v2.0. Phases 110–125 are complete, and Phase 126 retains six residual-hardening requirements before archive.
+v2.1 Block Serving and Compact Block Relay Boundary is the active milestone after v2.0. All 39 requirements have passed independent verification and are promoted; Phase 126 remains at 3/4 plans until its final summary materializes the archive-ready projection.
 
 ## Latest Completed Milestone: v2.0 Transaction Relay and Mempool Participation Boundary
 
@@ -31,7 +31,7 @@ v2.1 Block Serving and Compact Block Relay Boundary is the active milestone afte
 - ✅ **v1.8 Production Full-Node Readiness Boundary** - Phases 82 through 89 (shipped 2026-06-25). Archive: [v1.8-ROADMAP.md](milestones/v1.8-ROADMAP.md)
 - ✅ **v1.9 Inbound Peer Serving and Network Participation Boundary** - Phases 90 through 99 (shipped 2026-06-29). Archive: [v1.9-ROADMAP.md](milestones/v1.9-ROADMAP.md)
 - ✅ **v2.0 Transaction Relay and Mempool Participation Boundary** - Phases 100 through 109 (shipped 2026-07-03). Archive: [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md)
-- 🚧 **v2.1 Block Serving and Compact Block Relay Boundary** - Phases 110 through 126 (110–124 complete; 125–126 close blocking verification gaps and approved residual debt from [v2.1-MILESTONE-AUDIT.md](v2.1-MILESTONE-AUDIT.md)).
+- 🚧 **v2.1 Block Serving and Compact Block Relay Boundary** - Phases 110 through 126 (110–125 complete; Phase 126 requirements independently verified and promoted, with the final summary still pending).
 
 ## Active Milestone: v2.1 Block Serving and Compact Block Relay Boundary
 
@@ -446,10 +446,10 @@ Plans:
 
 - v2.1 requirements: 39 total
 - Mapped to phases: 39
-- Satisfied: 33
-- Pending hardening and closeout: 6
+- Satisfied: 39
+- Pending hardening and closeout: 0
 - Unmapped: 0
 
 ## Next Step
 
-Run `/gsd-execute-phase 126` to close the six remaining residual-hardening requirements. Phase 125 is complete at 4/4 plans.
+Run `/gsd-execute-phase 126` to materialize the final Phase 126 summary and archive-ready projection. Phase 126 remains at 3/4 plans until that summary exists.

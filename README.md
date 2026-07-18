@@ -22,6 +22,8 @@ auditable, and modular.
 > serving and compact-block relay with deterministic local evidence and optional
 > public-network operator review. The release evidence is summarized in
 > [`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md).
+> All 39 v2.1 requirements are independently verified and complete; the final
+> Phase 126 summary remains the required gate before archive-ready routing.
 > Package relay, BIP37 bloom-filter serving, compact-filter serving, public
 > serving or relay defaults, archive-node and production-scale historical
 > serving, public-network CI or release gates, production service/deployment,

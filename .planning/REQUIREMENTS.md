@@ -23,14 +23,14 @@ Requirements for the current milestone. Each requirement maps to exactly one roa
 - [x] **CMP-02**: Node encodes, decodes, and validates `cmpctblock` payloads with header, nonce, six-byte short IDs, and prefilled transaction differential indexes.
 - [x] **CMP-03**: Node encodes, decodes, and validates `getblocktxn` and `blocktxn` payloads with differential indexes and witness transaction serialization.
 - [x] **CMP-04**: Node tracks per-peer compact-block capability, high-bandwidth preference, low-bandwidth preference, and compact-block announcement eligibility deterministically.
-- [ ] **CMP-05**: Node announces compact blocks only when activation, peer negotiation, header state, block availability, and resource limits permit it.
+- [x] **CMP-05**: Node announces compact blocks only when activation, peer negotiation, header state, block availability, and resource limits permit it.
 - [x] **CMP-06**: Compact-block negotiation remains independent from transaction relay, package relay, bloom/filter permissions, compact filters, and public serving defaults.
 
 ### Compact Block Reconstruction And Fallback
 
 - [x] **RCN-01**: Node validates compact block headers, transaction counts, prefilled ordering, null transactions, short ID bounds, and malformed payloads before accepting partial state.
-- [ ] **RCN-02**: Node reconstructs compact blocks from current mempool state plus bounded extra or recent block transaction inputs using witness-hash short IDs.
-- [ ] **RCN-03**: Node detects short ID collisions, duplicate matches, missing transactions, and reconstruction failures with stable typed outcomes.
+- [x] **RCN-02**: Node reconstructs compact blocks from current mempool state plus bounded extra or recent block transaction inputs using witness-hash short IDs.
+- [x] **RCN-03**: Node detects short ID collisions, duplicate matches, missing transactions, and reconstruction failures with stable typed outcomes.
 - [x] **RCN-04**: Node requests missing compact-block transactions with bounded `getblocktxn` indexes only when the peer and in-flight state are eligible.
 - [x] **RCN-05**: Node accepts `blocktxn` responses only for expected in-flight partial compact blocks from the matching peer and rejects duplicate, unexpected, out-of-bounds, or mismatched responses.
 - [x] **RCN-06**: Reconstructed blocks enter the existing block validation and connect path without mutating chainstate from partial compact-block state.
@@ -41,7 +41,7 @@ Requirements for the current milestone. Each requirement maps to exactly one roa
 - [x] **GOV-01**: Full block serving, compact block serving, partial compact-block state, missing transaction requests, and fallback all participate in existing request, queue, and in-flight resource limits.
 - [x] **GOV-02**: Malformed compact blocks, invalid compact-block headers, duplicate `blocktxn`, unexpected `blocktxn`, and out-of-bounds indexes produce Knots-aligned misbehavior, disconnect, or suppression decisions.
 - [x] **GOV-03**: Restart, reconnect, disconnect, timeout, and reorg cleanup remove volatile compact-relay state without deleting validated chainstate or durable block data.
-- [ ] **GOV-04**: Compact block relay integrates with mempool lifecycle, transaction relay, and block connect/disconnect events without activating package relay or filter serving.
+- [x] **GOV-04**: Compact block relay integrates with mempool lifecycle, transaction relay, and block connect/disconnect events without activating package relay or filter serving.
 - [x] **GOV-05**: Historical, pruned, stale, side-chain, and unavailable block serving remains bounded by documented eligibility rules and does not imply archive-node behavior.
 
 ### Operator, RPC, Metrics, Logs, And Support Evidence
@@ -54,7 +54,7 @@ Requirements for the current milestone. Each requirement maps to exactly one roa
 
 ### Parity, UAT, And Release Boundary
 
-- [ ] **BOUND-01**: Parity docs, source breadcrumbs, and index entries cite concrete Bitcoin Knots anchors for block serving, BIP152 messages, reconstruction, fallback, peer state, and resource governance.
+- [x] **BOUND-01**: Parity docs, source breadcrumbs, and index entries cite concrete Bitcoin Knots anchors for block serving, BIP152 messages, reconstruction, fallback, peer state, and resource governance.
 - [x] **BOUND-02**: Deterministic checkers prevent package relay, bloom/filter serving, compact filter serving, public-serving-default, production-readiness, and production-funds claims from entering v2.1 artifacts.
 - [x] **BOUND-03**: README, operator docs, runtime docs, and release notes describe the bounded v2.1 block-serving and compact-relay claim and list deferred surfaces clearly.
 - [x] **BOUND-04**: The default `bash scripts/verify.sh` contract remains deterministic and free of public-network, wall-clock soak, service-manager, and production-deployment gates.
@@ -66,7 +66,7 @@ Requirements for the current milestone. Each requirement maps to exactly one roa
 - [x] **HARD-02**: Compact-download timeout expiration advances on a deterministic runtime schedule even when no further peer message is received.
 - [x] **HARD-03**: Served-block evidence derives from successful `WireNetworkMessage::Block` emission rather than eligible-peer proxy counts.
 - [x] **HARD-04**: Runtime block-relay metrics and logs sample the authoritative network instance used by `DurableSyncRuntime`.
-- [ ] **HARD-05**: Roadmap, requirement coverage, phase status, and the final milestone audit agree and route v2.1 directly to archival.
+- [x] **HARD-05**: Roadmap, requirement coverage, phase status, and the final milestone audit agree and route v2.1 directly to archival.
 
 ## Deferred Requirements
 
@@ -124,11 +124,11 @@ Traceability is populated by the v2.1 roadmap. Each active requirement maps to e
 | CMP-02 | Phase 112 | Complete |
 | CMP-03 | Phase 112 | Complete |
 | CMP-04 | Phase 113 | Complete |
-| CMP-05 | Phase 126 | Pending |
+| CMP-05 | Phase 126 | Complete |
 | CMP-06 | Phase 113 | Complete |
 | RCN-01 | Phase 112 | Complete |
-| RCN-02 | Phase 126 | Pending |
-| RCN-03 | Phase 126 | Pending |
+| RCN-02 | Phase 126 | Complete |
+| RCN-03 | Phase 126 | Complete |
 | RCN-04 | Phase 125 | Complete |
 | RCN-05 | Phase 125 | Complete |
 | RCN-06 | Phase 125 | Complete |
@@ -136,14 +136,14 @@ Traceability is populated by the v2.1 roadmap. Each active requirement maps to e
 | GOV-01 | Phase 111 | Complete |
 | GOV-02 | Phase 120 | Complete |
 | GOV-03 | Phase 120 | Complete |
-| GOV-04 | Phase 126 | Pending |
+| GOV-04 | Phase 126 | Complete |
 | GOV-05 | Phase 111 | Complete |
 | OBS-01 | Phase 116 | Complete |
 | OBS-02 | Phase 116 | Complete |
 | OBS-03 | Phase 121 | Complete |
 | OBS-04 | Phase 116 | Complete |
 | OBS-05 | Phase 116 | Complete |
-| BOUND-01 | Phase 126 | Pending |
+| BOUND-01 | Phase 126 | Complete |
 | BOUND-02 | Phase 117 | Complete |
 | BOUND-03 | Phase 117 | Complete |
 | BOUND-04 | Phase 117 | Complete |
@@ -152,15 +152,15 @@ Traceability is populated by the v2.1 roadmap. Each active requirement maps to e
 | HARD-02 | Phase 123 | Complete |
 | HARD-03 | Phase 123 | Complete |
 | HARD-04 | Phase 123 | Complete |
-| HARD-05 | Phase 126 | Pending |
+| HARD-05 | Phase 126 | Complete |
 
 **Coverage:**
 
 - v2.1 requirements: 39 total
 - Mapped to phases: 39
-- Complete: 33
-- Pending hardening and closeout: 6
+- Complete: 39
+- Pending hardening and closeout: 0
 - Unmapped: 0
 
 *Requirements defined: 2026-07-03*
-*Last updated: 2026-07-17 after adding audit gap-closure Phases 125–126*
+*Last updated: 2026-07-18 after independently verified Phase 126 promotion*
