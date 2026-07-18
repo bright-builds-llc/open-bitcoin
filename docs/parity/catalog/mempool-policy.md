@@ -219,7 +219,7 @@ behavior remains anchored in
 `packages/bitcoin-knots/test/functional/p2p_compactblocks.py`.
 
 All Phase 126 requirements remain pending until lifecycle-valid verification
-and final reconciliation. This candidate adds no package relay, public relay
+and final reconciliation. This candidate does not add package relay, public relay
 default, archive-node behavior, public-network gate, production service
 operation, production full-node readiness, or production-funds wallet claim.
 
