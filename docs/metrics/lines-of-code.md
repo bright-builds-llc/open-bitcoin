@@ -7,10 +7,10 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 560 |
-| Total lines | 236,187 |
-| Code/content lines | 207,795 |
-| Comment-only lines | 8,402 |
-| Blank lines | 19,990 |
+| Total lines | 236,210 |
+| Code/content lines | 207,812 |
+| Comment-only lines | 8,405 |
+| Blank lines | 19,993 |
 
 ## Per-Crate Modules
 
@@ -36,7 +36,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 95 | 83,308 | 72,530 | 4,440 | 6,338 |
 | Rust production | 289 | 82,192 | 71,695 | 2,578 | 7,919 |
-| TypeScript/Bun scripts | 117 | 54,102 | 47,887 | 1,318 | 4,897 |
+| TypeScript/Bun scripts | 117 | 54,125 | 47,904 | 1,321 | 4,900 |
 | Fixture/data | 6 | 8,233 | 8,228 | 5 | 0 |
 | Shell scripts | 13 | 4,266 | 3,817 | 55 | 394 |
 | TOML/config | 16 | 3,464 | 3,098 | 0 | 366 |
@@ -79,8 +79,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase111-full-block-serving-request-path.ts | 581 |
 | scripts/check-phase116-operator-block-relay-evidence.test.ts | 242 |
 | scripts/check-phase116-operator-block-relay-evidence.ts | 466 |
-| scripts/check-phase117-parity-uat-release-boundary.test.ts | 689 |
-| scripts/check-phase117-parity-uat-release-boundary.ts | 545 |
+| scripts/check-phase117-parity-uat-release-boundary.test.ts | 711 |
+| scripts/check-phase117-parity-uat-release-boundary.ts | 546 |
 | scripts/check-phase121-block-relay-metrics-log-runtime.test.ts | 432 |
 | scripts/check-phase121-block-relay-metrics-log-runtime.ts | 343 |
 | scripts/check-phase122-compact-relay-peer-completion.test.ts | 234 |
@@ -198,7 +198,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 05f4633fd70721bb518e5a388943c89678e7d9a6a91e0b34fcb3173182953064 |
+| Input fingerprint | 7ffb43e718ac7e43585774d8e497a2155c64cd9cb7be20a286ccb834c7b1a60f |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

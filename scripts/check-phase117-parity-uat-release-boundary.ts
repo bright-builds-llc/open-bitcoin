@@ -281,9 +281,10 @@ function checkSurfaceOwnership(index: ParityIndex, failures: string[]): void {
 }
 
 function checkRequirementTraceability(raw: string, failures: string[]): void {
-  const gapClosureStage = /\|\s*[A-Z]+-\d+\s*\|\s*Phase\s+12[56]\s*\|\s*Pending\s*\|/.test(raw);
+  const gapClosureOwnership =
+    /\|\s*[A-Z]+-\d+\s*\|\s*Phase\s+12[56]\s*\|/.test(raw);
   for (const requirement of allRequirements()) {
-    const phase = expectedPhase(requirement, gapClosureStage);
+    const phase = expectedPhase(requirement, gapClosureOwnership);
     const needle = `| ${requirement} | Phase ${phase} |`;
     if (countOccurrences(raw, needle) !== 1) {
       failures.push(`requirement traceability: ${requirement} must map to Phase ${phase} exactly once`);
@@ -403,8 +404,8 @@ function allRequirements(): string[] {
   return Object.values(REQUIREMENTS_BY_SURFACE).flatMap((requirements) => [...requirements]);
 }
 
-function expectedPhase(requirement: string, gapClosureStage: boolean): string {
-  if (gapClosureStage) {
+function expectedPhase(requirement: string, gapClosureOwnership: boolean): string {
+  if (gapClosureOwnership) {
     if (["RCN-04", "RCN-05", "RCN-06"].includes(requirement)) return "125";
     if (["CMP-05", "RCN-02", "RCN-03", "GOV-04", "BOUND-01"].includes(requirement)) {
       return "126";
