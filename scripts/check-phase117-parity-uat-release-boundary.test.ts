@@ -56,6 +56,7 @@ const TARGET_FILES = [
 
 type TargetFile = (typeof TARGET_FILES)[number];
 type FixtureOptions = {
+  completedGapClosure?: boolean;
   gapClosureStage?: boolean;
   maybeMutate?: (files: Map<TargetFile, string>) => void;
 };
@@ -80,6 +81,20 @@ test("passes_when_phase117_closeout_evidence_is_complete", () => {
   // Assert
   expect(failures).toEqual([]);
   expect(gapFailures).toEqual([]);
+});
+
+test("passes_when_completed_gap_closure_retains_phase125_and_phase126_ownership", () => {
+  // Arrange
+  const root = createFixture({
+    completedGapClosure: true,
+    gapClosureStage: true,
+  });
+
+  // Act
+  const failures = checkPhase117ParityUatReleaseBoundary(root);
+
+  // Assert
+  expect(failures).toEqual([]);
 });
 
 test("fails_when_a_required_v2_1_surface_is_missing", () => {
@@ -487,7 +502,13 @@ function createFixture(options: FixtureOptions = {}): string {
   const files = new Map<TargetFile, string>(TARGET_FILES.map((file) => [file, commonText]));
   files.set("docs/parity/index.json", JSON.stringify(createParityIndex(), null, 2));
   files.set("docs/parity/source-breadcrumbs.json", createBreadcrumbs());
-  files.set(".planning/REQUIREMENTS.md", createRequirements(options.gapClosureStage ?? false));
+  files.set(
+    ".planning/REQUIREMENTS.md",
+    createRequirements(
+      options.gapClosureStage ?? false,
+      options.completedGapClosure ?? false,
+    ),
+  );
   files.set("docs/operator/runtime-guide.md", `${commonText}\n${requiredCommands().join("\n")}`);
   files.set("scripts/verify.sh", createVerifyScript());
   options.maybeMutate?.(files);
@@ -579,7 +600,7 @@ test("fails_when_gap_closure_requirement_maps_to_stale_phase", () => {
   expect(gapFailures).toContain("CMP-05 must map to Phase 126 exactly once");
 });
 
-function createRequirements(gapClosureStage: boolean): string {
+function createRequirements(gapClosureStage: boolean, completedGapClosure: boolean): string {
   const gapPhases = new Map([
     ["RCN-04", "125"],
     ["RCN-05", "125"],
@@ -593,7 +614,8 @@ function createRequirements(gapClosureStage: boolean): string {
   return Object.entries(requirementPhases())
     .map(([requirement, phase]) => {
       const maybeGapPhase = gapClosureStage ? gapPhases.get(requirement) : undefined;
-      return `| ${requirement} | Phase ${maybeGapPhase ?? phase} | ${maybeGapPhase ? "Pending" : "Complete"} |`;
+      const gapStatus = completedGapClosure ? "Complete" : "Pending";
+      return `| ${requirement} | Phase ${maybeGapPhase ?? phase} | ${maybeGapPhase ? gapStatus : "Complete"} |`;
     })
     .join("\n");
 }
