@@ -1,12 +1,12 @@
 ---
 phase: 126-compact-relay-residual-hardening
-verified: 2026-07-18T22:07:46Z
+verified: 2026-07-18T23:11:35Z
 status: passed
 score: 11/11 must-haves verified
 generated_by: gsd-verifier
 lifecycle_mode: yolo
 phase_lifecycle_id: 126-2026-07-18T16-09-20
-generated_at: 2026-07-18T22:07:46Z
+generated_at: 2026-07-18T23:11:35Z
 lifecycle_validated: true
 overrides_applied: 0
 requirements_verified:
@@ -20,9 +20,9 @@ canonical_requirement_state: complete
 canonical_audit_state: passed
 re_verification:
   previous_status: passed
-  previous_score: 10/10
+  previous_score: 11/11
   gaps_closed:
-    - "The final 126-04 summary now exists and the canonical corpus is coherently projected to archive-ready."
+    - "WR-01 is closed: both archive-ready parity catalogs now carry current 39/39, 17/17, and Phase 126 4/4 lifecycle claims, and separate fail-closed mutations guard each catalog."
   gaps_remaining: []
   regressions: []
 ---
@@ -30,9 +30,9 @@ re_verification:
 # Phase 126: Compact Relay Residual Hardening Verification Report
 
 **Phase Goal:** Close the approved compact-relay runtime and parity debt, then reconcile the complete v2.1 corpus for a fresh archive decision.
-**Verified:** 2026-07-18T22:07:46Z
+**Verified:** 2026-07-18T23:11:35Z
 **Status:** passed
-**Re-verification:** Yes — fresh post-summary archive-ready verification
+**Re-verification:** Yes — final post-review-fix archive-ready verification
 
 ## Verdict
 
@@ -46,8 +46,12 @@ mutation guards cover both hardened seams.
 The final summary is present. Requirements, roadmap, project state, milestone
 ledger, audit, README, and release-readiness now agree at 39/39 requirements,
 17/17 implementation phases, Phase 126 at 4/4 plans, and the sole primary route
-`/gsd-complete-milestone v2.1`. This report is newer than every Phase 126
-summary and supplies the required final archive-ready verifier handoff.
+`/gsd-complete-milestone v2.1`. The WR-01 repair commits `96d64660`,
+`d95220ff`, and `c994849a` are present at HEAD: the RED commit reproduces both
+stale catalog claims, the GREEN commit fixes and guards them while retaining a
+legal pre-archive fixture, and the final review artifact is clean with zero
+findings. This report is newer than every Phase 126 summary and supplies the
+required final archive-ready verifier handoff.
 
 ## Goal Achievement
 
@@ -61,11 +65,11 @@ summary and supplies the required final archive-ready verifier handoff.
 | 4 | Production compact-announcement nonce generation is randomized in the node shell and deterministically injectable in tests. | ✓ VERIFIED | `ManagedPeerNetwork::announce_block` uses a call-scoped `[u8; 8]`, `getrandom::fill`, and `u64::from_le_bytes`; the pure peer/consensus path still receives an explicit nonce. Fixed-nonce tests prove exact propagation and one invocation. |
 | 5 | Entropy is lazy and consumed only after `AnnounceCompactBlock` is selected. | ✓ VERIFIED | The fallible closure is invoked only in the compact action branch. Headers, inventory, and suppression prove zero nonce calls. Cargo and Bazel declare the node-shell dependency; network and consensus do not acquire entropy. |
 | 6 | Entropy failure cannot emit `cmpctblock` or record false compact provenance/evidence. | ✓ VERIFIED | Failure delegates to the peer's headers/inventory fallback. Provenance and evidence derive from the actual emitted message. The failure regression proves inventory fallback, no compact provenance, compact count 0, and fallback count 1. |
-| 7 | Parity evidence names concrete receive-candidate and randomized-nonce Knots anchors. | ✓ VERIFIED | Index, breadcrumbs, and catalogs cite exact `net_processing.cpp/.h`, `blockencodings.cpp/.h`, and `p2p_compactblocks.py` roots containing `FastRandomContext().rand64()`, live mempool/recent-extra supply, short-ID reconstruction, and fallback behavior. |
-| 8 | Deterministic local mutations guard every hardened runtime and parity boundary. | ✓ VERIFIED | The Phase 126 suite passes 13/13 mutations covering factless routing, `Default`, both managed routes, live facts, lazy/fallible and hash-derived nonce mutations, failure emission, provenance, achieved-effect evidence, build dependency agreement, parity roots, and verifier order. |
+| 7 | Parity evidence names concrete receive-candidate and randomized-nonce Knots anchors and carries truthful archive-ready catalog lifecycle claims. | ✓ VERIFIED | Index, breadcrumbs, and catalogs cite exact `net_processing.cpp/.h`, `blockencodings.cpp/.h`, and `p2p_compactblocks.py` roots. Both catalogs now state 39/39 requirements, 17/17 phases, and Phase 126 4/4 while retaining explicit no-claim/deferred boundaries. |
+| 8 | Deterministic local mutations guard every hardened runtime, parity, and lifecycle boundary. | ✓ VERIFIED | The Phase 126 suite passes 16/16 tests: the original structural mutations plus independent stale-mempool-catalog and stale-P2P-catalog failures and a pre-archive compatibility case. |
 | 9 | The closeout guard preserves exactly four coherent Phase 126 lifecycle states and rejects mixed projections. | ✓ VERIFIED | Candidate, verified-pre-promotion, promoted-pre-summary, and archive-ready fixtures pass; lifecycle mismatch, premature promotion, mixed counts, stale progress, stale verification, and stale routing mutations fail. The live archive-ready corpus passes. |
 | 10 | The exact six requirements are complete with auditable implementation and verification evidence. | ✓ VERIFIED | `CMP-05`, `RCN-02`, `RCN-03`, `GOV-04`, `BOUND-01`, and `HARD-05` are checked, mapped exactly once to Phase 126, listed in the final summary, and satisfied in the passed audit. |
-| 11 | The complete v2.1 corpus is coherent and routes directly to archival. | ✓ VERIFIED | Requirements show 39/39 complete; roadmap and milestone artifacts show 17/17 phases and Phase 126 at 4/4; audit is passed with 13/13 requirements links and 11/11 integration flows; canonical and release-facing files use only `/gsd-complete-milestone v2.1`. |
+| 11 | The complete v2.1 corpus is coherent, review-clean, and routes directly to archival. | ✓ VERIFIED | Requirements show 39/39 complete; roadmap and milestone artifacts show 17/17 phases and Phase 126 at 4/4; audit is passed with 13/13 integration links and 11/11 flows; the review is clean at 0 findings; canonical and release-facing files use only `/gsd-complete-milestone v2.1`. |
 
 **Score:** 11/11 truths verified
 
@@ -77,8 +81,8 @@ summary and supplies the required final archive-ready verifier handoff.
 | `RCN-02` | ✓ SATISFIED | Generic compact dispatch fails closed. Both managed receive paths snapshot current mempool candidates plus bounded extras and pass witness-hash-keyed facts into reconstruction. Live and sync-receive candidate tests pass. |
 | `RCN-03` | ✓ SATISFIED | The factful route preserves stable typed collision, duplicate, missing, invalid, fallback, and completion outcomes. Focused network/node compact suites exercise each case. |
 | `GOV-04` | ✓ SATISFIED | Managed mempool and bounded-extra candidates feed receive; connected-block and mempool-removal hooks clear volatile matched state; default package/filter activation remains off. |
-| `BOUND-01` | ✓ SATISFIED | Machine-readable index, source breadcrumbs, human catalogs, and mutation guards cite concrete pinned Knots receive, reconstruction, nonce, fallback, peer-state, and resource-governance anchors. |
-| `HARD-05` | ✓ SATISFIED | Requirements, roadmap, project, state, milestones, audit, final summary, README, and release-readiness agree at 39/39, 17/17, 4/4, passed, archive-ready, with direct milestone-completion routing. |
+| `BOUND-01` | ✓ SATISFIED | Machine-readable index, source breadcrumbs, human catalogs, and mutation guards cite concrete pinned Knots receive, reconstruction, nonce, fallback, peer-state, and resource-governance anchors. WR-01's two catalog lifecycle regressions now fail independently. |
+| `HARD-05` | ✓ SATISFIED | Requirements, roadmap, project, state, milestones, audit, final summary, README, release-readiness, and both parity catalogs agree at 39/39, 17/17, 4/4, passed, archive-ready, with direct milestone-completion routing. |
 
 **Requirement score:** 6/6 exact Phase 126 requirements satisfied.
 
@@ -92,7 +96,7 @@ summary and supplies the required final archive-ready verifier handoff.
 | `packages/open-bitcoin-node/src/network/compact_receive_candidates.rs` | Live mempool and bounded-extra snapshots | ✓ VERIFIED | Real managed data is snapshotted into owned pairs and explicit borrowed facts. |
 | `packages/open-bitcoin-node/src/network/tests.rs` and split compact tests | Runtime behavior regressions | ✓ VERIFIED | Fixed/failing/counting nonce, both receive entrypoints, empty/live facts, typed outcomes, lifecycle, and no-scope-expansion cases pass under the repository test contract. |
 | `scripts/check-phase126-compact-relay-residual-hardening.ts` | Fixed-corpus deterministic guard | ✓ VERIFIED | Substantive local-file checker, exported for mutation tests and wired into `scripts/verify.sh`. |
-| `scripts/check-phase126-compact-relay-residual-hardening.test.ts` | One-concern mutation coverage | ✓ VERIFIED | 13/13 mutations pass with stable Phase 126 diagnostics. |
+| `scripts/check-phase126-compact-relay-residual-hardening.test.ts` | One-concern mutation coverage | ✓ VERIFIED | 16/16 tests pass with stable Phase 126 diagnostics, including the two WR-01 stale-catalog failures and candidate-state compatibility. |
 | `scripts/check-phase124-milestone-gap-closure.ts` and fixtures/tests | Four-stage closeout state machine | ✓ VERIFIED | Four legal Phase 126 stages pass and incoherent projections fail. |
 | `docs/parity/index.json` and `docs/parity/source-breadcrumbs.json` | Exact machine-readable Knots anchors | ✓ VERIFIED | Receive and announcement surfaces retain all required source and functional-test roots; 383 Rust breadcrumbs verify. |
 | `.planning/phases/126-compact-relay-residual-hardening/126-04-SUMMARY.md` | Lifecycle-valid final summary | ✓ VERIFIED | Exists, declares the exact six completed requirements, shares the phase lifecycle identity, and authorizes the archive-ready projection. |
@@ -122,7 +126,7 @@ plans.
 
 | Behavior | Command | Result | Status |
 | --- | --- | --- | --- |
-| Phase 126 structural/mutation guard | `bun test scripts/check-phase126-compact-relay-residual-hardening.test.ts` | 13 passed, 0 failed | ✓ PASS |
+| Phase 126 structural/mutation guard | `bun test scripts/check-phase126-compact-relay-residual-hardening.test.ts` | 16 passed, 0 failed | ✓ PASS |
 | Live Phase 126 corpus | `bun run scripts/check-phase126-compact-relay-residual-hardening.ts` | Validated | ✓ PASS |
 | Four-state closeout compatibility | `bun test scripts/check-phase124-milestone-gap-closure.test.ts` | 41 passed, 0 failed | ✓ PASS |
 | Live four-state closeout guard | `bun run scripts/check-phase124-milestone-gap-closure.ts` | Exit 0 | ✓ PASS |
@@ -131,8 +135,11 @@ plans.
 | Active milestone lifecycle traceability | `bun test scripts/check-active-milestone-verification-traceability.test.ts` and live checker | 21 passed, 0 failed; live checker passed | ✓ PASS |
 | Release no-claim and ownership boundary | `bun test scripts/check-phase117-parity-uat-release-boundary.test.ts` and live checker | 24 passed, 0 failed; live checker passed | ✓ PASS |
 | Parity breadcrumb integrity | `bun run scripts/check-parity-breadcrumbs.ts --check` | 383 Rust files verified | ✓ PASS |
-| Phase lifecycle provenance | `gsd-tools verify lifecycle 126 --require-plans --require-verification --raw` | `valid`, exit 0 | ✓ PASS |
-| Full repository contract | `bash scripts/verify.sh` | Exit 0 in 3m 19.158s | ✓ PASS |
+| Focused fail-closed runtime | `cargo test ... -p open-bitcoin-network generic_compact_block_dispatch_requires_adapter_receive_facts` | 1 passed, 0 failed | ✓ PASS |
+| Focused announcement runtime | `cargo test ... -p open-bitcoin-node phase126_compact_announcement` | 2 passed, 0 failed | ✓ PASS |
+| Focused managed receive runtime | `cargo test ... -p open-bitcoin-node live_compact_receive` | 2 passed, 0 failed | ✓ PASS |
+| Phase lifecycle provenance | `gsd-tools verify lifecycle 126 --require-plans --require-verification --raw` | `valid`, exit 0 against the refreshed report | ✓ PASS |
+| Full repository contract | `bash scripts/verify.sh` | Exit 0 in 3m 18.921s against the refreshed report | ✓ PASS |
 
 ## Requirements Coverage
 
@@ -143,7 +150,7 @@ plans.
 | `RCN-03` | 126-01, 126-02, 126-04 | Stable typed collision, duplicate, missing, and failure outcomes | ✓ SATISFIED | Factful core and focused typed-outcome regressions |
 | `GOV-04` | 126-01, 126-02, 126-04 | Mempool/relay/connect-disconnect integration without package/filter activation | ✓ SATISFIED | Managed candidates, lifecycle cleanup hooks, default-off regression |
 | `BOUND-01` | 126-02, 126-04 | Concrete Knots anchors for all compact-relay boundaries | ✓ SATISFIED | Index, breadcrumbs, catalogs, checker mutations, 383-file audit |
-| `HARD-05` | 126-02, 126-04 | Canonical coverage, phase, audit, and archival route agreement | ✓ SATISFIED | Four-stage checker, 39/39, 17/17, 4/4, passed audit, sole completion route |
+| `HARD-05` | 126-02, 126-04 | Canonical coverage, phase, audit, and archival route agreement | ✓ SATISFIED | Four-stage checker, 39/39, 17/17, 4/4, passed audit, sole completion route, clean review |
 
 No Phase 126 requirement is orphaned. Each exact requirement is owned once in
 traceability and appears in the final summary and passed audit.
@@ -156,7 +163,17 @@ traceability and appears in the final summary and passed audit.
 | `scripts/check-phase124-milestone-gap-closure.ts` is 1,505 lines after adding the four-stage model. | ⚠ Warning | Above the managed code-shape refactor trigger. It is substantive and extensively mutation-tested, so this is maintainability debt rather than a phase-goal gap. |
 | Focused non-compact nonce tests inject announcement decisions and therefore do not alone prove policy selection. | ℹ Info | Independent Phase 113/118 policy and managed-announcement regressions cover activation, negotiation, header, availability, and resource selection; Phase 126 correctly exercises the effect seam. |
 | Actual operating-system entropy failure is not induced through `getrandom::fill`. | ℹ Info | The call-scoped fallible seam deterministically exercises the identical fallback/provenance branch. A live entropy-failure test would be platform-dependent and unsuitable for the deterministic default contract. |
-| Historical text still names earlier promoted-pre-summary states. | ℹ Info | Matches occur only in the final summary and audit as chronology/state-model descriptions. Current-state prose consistently says archive-ready and uses the milestone-completion route. |
+| The parity index rationales retain the implementation-stage phrase `Phase 126 runtime candidate`. | ℹ Info | Both surfaces are machine-marked `done`; current lifecycle claims live in the now-guarded catalogs and canonical corpus. The phrase is historical technical rationale, not a pending requirement or broadened claim. |
+
+## Review-Fix Verification
+
+| Evidence | Status | Details |
+| --- | --- | --- |
+| `96d64660` | ✓ VERIFIED | Mutation-only RED commit adds independent stale lifecycle failures for the mempool and P2P catalogs. |
+| `d95220ff` | ✓ VERIFIED | GREEN commit updates both catalogs, adds `.planning/STATE.md` plus both catalogs to the checker corpus, enforces archive-ready lifecycle text, and preserves candidate-stage compatibility. |
+| `c994849a` | ✓ VERIFIED | Review-resolution commit records `status: clean`, `verdict: clean`, and 0 critical/warning/info findings. |
+| Commit ancestry and scope | ✓ VERIFIED | All three commits are ancestors of HEAD; their changed-file scopes match the RED, GREEN, and review-only responsibilities. |
+| No-claim/deferred boundaries | ✓ VERIFIED | Phase 117 passes 24/24 plus live. Both repaired catalogs still defer package/filter relay, public defaults/network gates, archive-node behavior, production readiness/funds, and unattended public-mainnet operation. |
 
 ## Lifecycle and Canonical Projection
 
@@ -204,7 +221,8 @@ claim.
 
 No gaps remain. All eleven observable must-haves and all six exact Phase 126
 requirements have substantive, wired, data-flowing, behaviorally exercised,
-and archive-consistent evidence.
+review-clean, and archive-consistent evidence. WR-01 is closed by independently
+failing catalog mutations and current archive-ready catalog text.
 
-_Verified: 2026-07-18T22:07:46Z_
+_Verified: 2026-07-18T23:11:35Z_
 _Verifier: the agent (gsd-verifier)_
