@@ -30,11 +30,11 @@ use crate::{
 };
 
 use super::{
-    BlockConnectDisposition, BlockRelayRuntimeEvidenceSnapshot, LocalRelaySubmissionEvidence,
-    ManagedAddressBoundaryInfo, ManagedBlockServeCompletion, ManagedInboundAdmissionInfo,
-    ManagedMempoolInfo, ManagedMempoolRecoverySummary, ManagedNetworkError, ManagedNetworkInfo,
-    ManagedPeerNetwork, ManagedPeerPolicyInfo, ManagedResourceGovernanceInfo,
-    ManagedSyncMessageResult,
+    BlockConnectDisposition, LocalRelaySubmissionEvidence, ManagedAddressBoundaryInfo,
+    ManagedBlockServeCompletion, ManagedInboundAdmissionInfo, ManagedMempoolInfo,
+    ManagedMempoolRecoverySummary, ManagedNetworkError, ManagedNetworkInfo,
+    ManagedNetworkOperatorSnapshot, ManagedPeerNetwork, ManagedPeerPolicyInfo,
+    ManagedResourceGovernanceInfo, ManagedSyncMessageResult,
 };
 
 type AuthoritativeNetwork = ManagedPeerNetwork<MemoryChainstateStore>;
@@ -187,6 +187,9 @@ impl ManagedNetworkHandle {
     pub fn network_info(&self) -> Result<ManagedNetworkInfo, ManagedNetworkAuthorityError> {
         self.read(ManagedPeerNetwork::network_info)
     }
+
+    #[rustfmt::skip]
+    pub fn operator_snapshot(&self) -> Result<ManagedNetworkOperatorSnapshot, ManagedNetworkAuthorityError> { self.read(ManagedPeerNetwork::operator_snapshot) }
 
     pub fn mempool_info(&self) -> Result<ManagedMempoolInfo, ManagedNetworkAuthorityError> {
         self.read(ManagedPeerNetwork::mempool_info)
@@ -442,12 +445,6 @@ impl ManagedNetworkHandle {
         self.mutate(|network| network.note_local_block_hash(block_hash))
     }
 
-    pub(crate) fn block_relay_runtime_evidence_snapshot(
-        &self,
-    ) -> Result<BlockRelayRuntimeEvidenceSnapshot, ManagedNetworkAuthorityError> {
-        self.read(ManagedPeerNetwork::block_relay_runtime_evidence_snapshot)
-    }
-
     pub fn block_relay_evidence_status(
         &self,
     ) -> Result<BlockRelayEvidenceStatus, ManagedNetworkAuthorityError> {
@@ -612,7 +609,7 @@ mod tests {
         handle.poison_for_test();
 
         // Act
-        let result = handle.network_info();
+        let result = handle.operator_snapshot();
 
         // Assert
         assert!(matches!(

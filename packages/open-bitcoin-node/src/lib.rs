@@ -38,7 +38,7 @@ pub use metrics::{
 pub use network::{
     ManagedAddressBoundaryInfo, ManagedInboundAdmissionInfo, ManagedInboundPermissionDecisionInfo,
     ManagedNetworkAuthorityError, ManagedNetworkError, ManagedNetworkHandle, ManagedNetworkInfo,
-    ManagedPeerNetwork, ManagedPeerPolicyInfo,
+    ManagedNetworkOperatorSnapshot, ManagedPeerNetwork, ManagedPeerPolicyInfo,
 };
 pub use open_bitcoin_core as core;
 pub use recovery::{

@@ -47,6 +47,7 @@ mod resource_governance;
 mod tests;
 mod wallet_state;
 
+pub use inbound_status::AuthoritativeOperatorSnapshot;
 pub use rescan::{WalletFreshnessKind, WalletFreshnessView, WalletRescanExecution};
 use wallet_state::WalletState;
 

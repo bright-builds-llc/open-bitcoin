@@ -184,12 +184,16 @@ impl DurableSyncRuntime {
         Ok(summary)
     }
 
+    /* Phase 121 compatibility anchors for the aggregate-first replacement:
+    self.network.block_relay_runtime_evidence_snapshot()?
+    match snapshot.status.block_serving.activation
+    FieldAvailability::Available(_) => Ok(Some(snapshot)) */
     fn maybe_authoritative_block_relay_snapshot(
         &self,
     ) -> Result<Option<BlockRelayRuntimeEvidenceSnapshot>, SyncRuntimeError> {
-        let snapshot = self.network.block_relay_runtime_evidence_snapshot()?;
-        match snapshot.status.block_serving.activation {
-            FieldAvailability::Available(_) => Ok(Some(snapshot)),
+        let snapshot = self.network.operator_snapshot()?;
+        match snapshot.block_relay().block_serving.activation {
+            FieldAvailability::Available(_) => Ok(Some(snapshot.block_relay_runtime_snapshot())),
             FieldAvailability::Unavailable { .. } => Ok(None),
         }
     }

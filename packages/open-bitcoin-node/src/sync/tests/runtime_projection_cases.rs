@@ -223,6 +223,48 @@ fn phase123_sync_network_compact_activity_projects_same_snapshot_to_metrics_and_
 }
 
 #[test]
+fn authoritative_operator_snapshot_feeds_block_relay_metrics_and_log() {
+    // Arrange
+    let path = temp_store_path("phase127-authoritative-operator-projection");
+    let log_dir = path.join("logs");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime =
+        open_authoritative_block_relay_runtime(store, sync_config_with_log_dir(&log_dir));
+    record_compact_activity_and_nine_block_writes(&mut runtime);
+    let snapshot = runtime
+        .network
+        .operator_snapshot()
+        .expect("authoritative operator snapshot");
+
+    // Act
+    run_one_sync_tick(&mut runtime);
+    let metrics = runtime
+        .store()
+        .load_metrics_snapshot()
+        .expect("load metrics")
+        .expect("metrics snapshot");
+    let records = load_structured_log_records(&log_dir);
+    let block_relay_record = records
+        .iter()
+        .find(|record| record.source == BLOCK_RELAY_LOG_SOURCE)
+        .expect("block relay log");
+
+    // Assert
+    assert_eq!(snapshot.block_served_count(), 9);
+    assert!(metrics.samples.iter().any(|sample| {
+        sample.kind == MetricKind::BlockServedCount
+            && sample.value == snapshot.block_served_count() as f64
+    }));
+    assert!(block_relay_record.message.contains(&format!(
+        "block_served_count={}",
+        snapshot.block_served_count()
+    )));
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
 fn phase123_inbound_metric_provider_remains_unchanged() {
     // Arrange
     let path = temp_store_path("phase123-inbound-provider-unchanged");

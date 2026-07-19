@@ -20,7 +20,12 @@ use open_bitcoin_core::{
 use open_bitcoin_mempool::{MempoolCapacityStatus, MempoolError, RollingFeeParityStatus};
 use open_bitcoin_network::{NetworkError, PeerId, WireNetworkMessage};
 
-use super::ManagedBlockServeIntent;
+use crate::status::{BlockRelayEvidenceStatus, relay_evidence::RelayEvidenceStatus};
+
+use super::{
+    ManagedAddressBoundaryInfo, ManagedBlockServeIntent, ManagedInboundAdmissionInfo,
+    ManagedPeerPolicyInfo, ManagedResourceGovernanceInfo,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ManagedBlockSerializationMode {
@@ -103,6 +108,65 @@ pub struct ManagedNetworkInfo {
     pub outbound_peers: usize,
     pub wtxidrelay_peers: usize,
     pub header_preferring_peers: usize,
+}
+
+/// Owned, sanitized network state captured under one authoritative read guard.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ManagedNetworkOperatorSnapshot {
+    pub(super) network: ManagedNetworkInfo,
+    pub(super) mempool: ManagedMempoolInfo,
+    pub(super) relay: RelayEvidenceStatus,
+    pub(super) block_relay: BlockRelayEvidenceStatus,
+    pub(super) block_served_count: u64,
+    pub(super) inbound_admission: ManagedInboundAdmissionInfo,
+    pub(super) address_boundary: ManagedAddressBoundaryInfo,
+    pub(super) peer_policy: ManagedPeerPolicyInfo,
+    pub(super) resource_governance: ManagedResourceGovernanceInfo,
+}
+
+impl ManagedNetworkOperatorSnapshot {
+    pub fn network(&self) -> &ManagedNetworkInfo {
+        &self.network
+    }
+
+    pub fn mempool(&self) -> &ManagedMempoolInfo {
+        &self.mempool
+    }
+
+    pub fn relay(&self) -> &RelayEvidenceStatus {
+        &self.relay
+    }
+
+    pub fn block_relay(&self) -> &BlockRelayEvidenceStatus {
+        &self.block_relay
+    }
+
+    pub const fn block_served_count(&self) -> u64 {
+        self.block_served_count
+    }
+
+    pub(crate) fn block_relay_runtime_snapshot(&self) -> super::BlockRelayRuntimeEvidenceSnapshot {
+        super::BlockRelayRuntimeEvidenceSnapshot {
+            status: self.block_relay.clone(),
+            served_count: self.block_served_count,
+        }
+    }
+
+    pub fn inbound_admission(&self) -> &ManagedInboundAdmissionInfo {
+        &self.inbound_admission
+    }
+
+    pub fn address_boundary(&self) -> &ManagedAddressBoundaryInfo {
+        &self.address_boundary
+    }
+
+    pub fn peer_policy(&self) -> &ManagedPeerPolicyInfo {
+        &self.peer_policy
+    }
+
+    pub fn resource_governance(&self) -> &ManagedResourceGovernanceInfo {
+        &self.resource_governance
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

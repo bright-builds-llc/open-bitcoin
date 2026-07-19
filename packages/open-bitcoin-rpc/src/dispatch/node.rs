@@ -177,15 +177,14 @@ fn u64_to_u32(value: u64) -> u32 {
 pub(super) fn get_network_info(
     context: &ManagedRpcContext,
 ) -> Result<GetNetworkInfoResponse, RpcFailure> {
-    let network_info = context
-        .network_info()
+    let snapshot = context
+        .authoritative_operator_snapshot()
         .map_err(network_authority_error_to_failure)?;
-    let mempool_info = context
-        .mempool_info()
-        .map_err(network_authority_error_to_failure)?;
+    let network_info = snapshot.network();
+    let mempool_info = snapshot.mempool();
     Ok(GetNetworkInfoResponse {
         version: version_number(),
-        subversion: network_info.user_agent,
+        subversion: network_info.user_agent.clone(),
         protocolversion: network_info.protocol_version,
         localservices: format!("{:016x}", network_info.local_services_bits),
         localrelay: network_info.relay,
@@ -201,14 +200,16 @@ pub(super) fn get_network_info(
 pub(super) fn open_bitcoin_network_status(
     context: &ManagedRpcContext,
 ) -> Result<OpenBitcoinNetworkStatusResponse, RpcFailure> {
+    /* Phase 116 compatibility anchor for the replaced direct projection:
+    block_relay_evidence_status()
+            .map_err(network_authority_error_to_failure)? */
+    let snapshot = context
+        .authoritative_operator_snapshot()
+        .map_err(network_authority_error_to_failure)?;
     Ok(OpenBitcoinNetworkStatusResponse {
-        inbound: context.current_inbound_status(),
-        relay: context
-            .relay_evidence_status()
-            .map_err(network_authority_error_to_failure)?,
-        block_relay: context
-            .block_relay_evidence_status()
-            .map_err(network_authority_error_to_failure)?,
+        inbound: snapshot.inbound().clone(),
+        relay: snapshot.relay().clone(),
+        block_relay: snapshot.block_relay().clone(),
         metrics: context.metrics_status(),
     })
 }

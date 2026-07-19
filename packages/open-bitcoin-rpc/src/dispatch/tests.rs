@@ -754,6 +754,47 @@ fn open_bitcoin_network_status_returns_available_inbound_evidence() {
 }
 
 #[test]
+fn authoritative_operator_snapshot_preserves_network_status_schema_and_provenance() {
+    // Arrange
+    let mut context = inbound_context(4, 0);
+    context
+        .record_inbound_admission(7, "127.0.0.1:18444".to_string(), false)
+        .expect("authoritative inbound admission");
+
+    // Act
+    let snapshot = context
+        .authoritative_operator_snapshot()
+        .expect("owned authoritative operator snapshot");
+    let status = dispatch(
+        &mut context,
+        MethodCall::OpenBitcoinNetworkStatus(OpenBitcoinNetworkStatusRequest::default()),
+    )
+    .expect("network status");
+
+    // Assert
+    assert_eq!(
+        status
+            .as_object()
+            .expect("status object")
+            .keys()
+            .collect::<Vec<_>>(),
+        vec!["block_relay", "inbound", "metrics", "relay"]
+    );
+    assert_eq!(
+        status["inbound"],
+        serde_json::to_value(snapshot.inbound()).expect("inbound snapshot")
+    );
+    assert_eq!(
+        status["relay"],
+        serde_json::to_value(snapshot.relay()).expect("relay snapshot")
+    );
+    assert_eq!(
+        status["block_relay"],
+        serde_json::to_value(snapshot.block_relay()).expect("block-relay snapshot")
+    );
+}
+
+#[test]
 fn open_bitcoin_network_status_includes_block_relay_projection() {
     let mut context = empty_context();
 

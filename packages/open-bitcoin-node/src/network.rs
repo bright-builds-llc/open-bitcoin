@@ -62,7 +62,8 @@ pub use relay_fanout::{
 pub use runtime_authority::{ManagedNetworkAuthorityError, ManagedNetworkHandle};
 pub use types::{
     BlockConnectDisposition, ManagedBlockSerializationMode, ManagedBlockServeCompletionOutcome,
-    ManagedMempoolInfo, ManagedNetworkError, ManagedNetworkInfo, ManagedSyncMessageResult,
+    ManagedMempoolInfo, ManagedNetworkError, ManagedNetworkInfo, ManagedNetworkOperatorSnapshot,
+    ManagedSyncMessageResult,
 };
 
 type ManagedResult<T> = Result<T, ManagedNetworkError>;
@@ -213,6 +214,21 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             outbound_peers,
             wtxidrelay_peers,
             header_preferring_peers,
+        }
+    }
+
+    pub fn operator_snapshot(&self) -> ManagedNetworkOperatorSnapshot {
+        let block_relay = self.block_relay_runtime_evidence_snapshot();
+        ManagedNetworkOperatorSnapshot {
+            network: self.network_info(),
+            mempool: self.mempool_info(),
+            relay: self.relay_evidence_status(),
+            block_relay: block_relay.status,
+            block_served_count: block_relay.served_count,
+            inbound_admission: self.inbound_admission_info().clone(),
+            address_boundary: self.address_boundary_info(),
+            peer_policy: self.peer_policy_info(),
+            resource_governance: self.resource_governance_info(),
         }
     }
 

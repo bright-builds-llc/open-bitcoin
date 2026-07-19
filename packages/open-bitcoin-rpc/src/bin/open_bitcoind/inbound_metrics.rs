@@ -105,14 +105,16 @@ fn persist_inbound_metrics_once(
 ) {
     let timestamp = current_timestamp_unix_seconds();
     let context = shared_context.blocking_lock();
-    let inbound = context.current_inbound_status();
-    let maybe_relay = context.relay_evidence_status().ok();
+    let maybe_snapshot = context.authoritative_operator_snapshot().ok();
     drop(context);
+    let Some(snapshot) = maybe_snapshot else {
+        return;
+    };
     let timestamp = u64::try_from(timestamp).unwrap_or(0);
+    let inbound = snapshot.inbound().clone();
+    let relay = snapshot.relay().clone();
     let mut samples = inbound_metric_samples(&inbound, timestamp);
-    if let Some(relay) = maybe_relay.as_ref() {
-        samples.extend(relay_metric_samples(relay, timestamp));
-    }
+    samples.extend(relay_metric_samples(&relay, timestamp));
     if samples.is_empty() {
         return;
     }

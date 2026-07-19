@@ -11,6 +11,7 @@
 
 use open_bitcoin_network::InboundAdmissionSlotClass;
 use open_bitcoin_node::{
+    ManagedNetworkAuthorityError, ManagedNetworkOperatorSnapshot,
     network::{ManagedAddressBoundaryInfo, ManagedInboundAdmissionInfo, ManagedPeerPolicyInfo},
     status::{
         FieldAvailability, INBOUND_ADDRESS_DECISION_UNAVAILABLE_REASON,
@@ -29,22 +30,61 @@ use super::{
     resource_governance::{latest_resource_governance_decision, resource_governance_info},
 };
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct AuthoritativeOperatorSnapshot {
+    network: ManagedNetworkOperatorSnapshot,
+    inbound: FieldAvailability<InboundPeerServingStatus>,
+}
+
+impl AuthoritativeOperatorSnapshot {
+    pub fn network(&self) -> &open_bitcoin_node::ManagedNetworkInfo {
+        self.network.network()
+    }
+
+    pub fn mempool(&self) -> &open_bitcoin_node::network::ManagedMempoolInfo {
+        self.network.mempool()
+    }
+
+    pub fn inbound(&self) -> &FieldAvailability<InboundPeerServingStatus> {
+        &self.inbound
+    }
+
+    pub fn relay(&self) -> &open_bitcoin_node::status::relay_evidence::RelayEvidenceStatus {
+        self.network.relay()
+    }
+
+    pub fn block_relay(&self) -> &open_bitcoin_node::status::BlockRelayEvidenceStatus {
+        self.network.block_relay()
+    }
+}
+
 impl ManagedRpcContext {
+    pub fn authoritative_operator_snapshot(
+        &self,
+    ) -> Result<AuthoritativeOperatorSnapshot, ManagedNetworkAuthorityError> {
+        let network = self.network.operator_snapshot()?;
+        let inbound = self.inbound_status_from_snapshot(&network);
+        Ok(AuthoritativeOperatorSnapshot { network, inbound })
+    }
+
     pub fn current_inbound_status(&self) -> FieldAvailability<InboundPeerServingStatus> {
-        let Ok(admission) = self.inbound_admission_info() else {
-            return inbound_status_unavailable();
-        };
-        let Ok(address_info) = self.network.address_boundary_info() else {
-            return inbound_status_unavailable();
-        };
-        let Ok(peer_policy_info) = self.network.peer_policy_info() else {
-            return inbound_status_unavailable();
-        };
+        self.authoritative_operator_snapshot()
+            .map(|snapshot| snapshot.inbound)
+            .unwrap_or_else(|_| inbound_status_unavailable())
+    }
+
+    fn inbound_status_from_snapshot(
+        &self,
+        snapshot: &ManagedNetworkOperatorSnapshot,
+    ) -> FieldAvailability<InboundPeerServingStatus> {
+        let admission = snapshot.inbound_admission();
+        let address_info = snapshot.address_boundary();
+        let peer_policy_info = snapshot.peer_policy();
         let maybe_listener_evidence = self.maybe_inbound_listener_evidence.as_ref();
-        let Ok(resource_info) = self.network.resource_governance_info() else {
-            return inbound_status_unavailable();
-        };
-        let resource_info = resource_governance_info(resource_info, maybe_listener_evidence);
+        let resource_info = resource_governance_info(
+            snapshot.resource_governance().clone(),
+            maybe_listener_evidence,
+        );
         if admission.admitted_inbound_peers == 0
             && admission.rejected_inbound_peers == 0
             && maybe_listener_evidence.is_none()
@@ -56,18 +96,16 @@ impl ManagedRpcContext {
             return inbound_status_unavailable();
         }
 
-        let Ok(network_info) = self.network_info() else {
-            return inbound_status_unavailable();
-        };
-        let permission_evidence = inbound_permission_evidence(&admission);
-        let latest_address_decision = latest_inbound_address_decision(&address_info);
-        let latest_peer_policy_decision = latest_inbound_peer_policy_decision(&peer_policy_info);
+        let network_info = snapshot.network();
+        let permission_evidence = inbound_permission_evidence(admission);
+        let latest_address_decision = latest_inbound_address_decision(address_info);
+        let latest_peer_policy_decision = latest_inbound_peer_policy_decision(peer_policy_info);
         let latest_resource_governance_decision =
             latest_resource_governance_decision(&resource_info);
         FieldAvailability::available(InboundPeerServingStatus {
-            listener_state: listener_state(&admission, maybe_listener_evidence),
+            listener_state: listener_state(admission, maybe_listener_evidence),
             bound_endpoints: bound_endpoints(maybe_listener_evidence),
-            preflight_reason: preflight_reason(&admission, maybe_listener_evidence),
+            preflight_reason: preflight_reason(admission, maybe_listener_evidence),
             admitted_inbound_peers: usize_to_u32(admission.admitted_inbound_peers),
             rejected_inbound_peers: usize_to_u32(admission.rejected_inbound_peers),
             handshake: InboundHandshakeStatusCounts {
@@ -83,7 +121,7 @@ impl ManagedRpcContext {
             cap_rejects: usize_to_u32(admission.cap_rejections),
             reserved_slot_rejects: usize_to_u32(admission.reserved_slot_rejections),
             latest_admission_event: latest_inbound_admission_event(
-                &admission,
+                admission,
                 maybe_listener_evidence,
             ),
             permissioned_inbound_peers: usize_to_u32(admission.permissioned_inbound_admits),
@@ -95,9 +133,9 @@ impl ManagedRpcContext {
                 admission.inactive_permission_effect_observations,
             ),
             permission_validation_failures: self.inbound_permission_validation_failures,
-            latest_permission_decision: latest_inbound_permission_decision(&admission),
-            local_advertisement_candidates: address_info.local_advertisement_candidates,
-            suppressed_advertisements: address_info.suppressed_advertisements,
+            latest_permission_decision: latest_inbound_permission_decision(admission),
+            local_advertisement_candidates: address_info.local_advertisement_candidates.clone(),
+            suppressed_advertisements: address_info.suppressed_advertisements.clone(),
             getaddr_responses_served: address_info.getaddr_responses_served,
             getaddr_requests_suppressed: address_info.getaddr_requests_suppressed,
             learned_address_entries: address_info.learned_address_entries,
