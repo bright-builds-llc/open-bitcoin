@@ -2,7 +2,7 @@
 
 ## Current Status
 
-v2.1 Block Serving and Compact Block Relay Boundary is complete and archive-ready after v2.0. All 39 requirements have passed independent verification, all 17 phases are complete, and Phase 126 is complete at 4/4 plans.
+v2.1 Block Serving and Compact Block Relay Boundary remains active after an independent integration audit found three production-boundary gaps affecting 10 requirements and four end-to-end flows. Phases 110 through 126 remain locally complete; Phases 127 through 129 are planned to close authoritative network-state, production compact-transport, and final reconciliation gaps.
 
 ## Latest Completed Milestone: v2.0 Transaction Relay and Mempool Participation Boundary
 
@@ -31,7 +31,7 @@ v2.1 Block Serving and Compact Block Relay Boundary is complete and archive-read
 - ✅ **v1.8 Production Full-Node Readiness Boundary** - Phases 82 through 89 (shipped 2026-06-25). Archive: [v1.8-ROADMAP.md](milestones/v1.8-ROADMAP.md)
 - ✅ **v1.9 Inbound Peer Serving and Network Participation Boundary** - Phases 90 through 99 (shipped 2026-06-29). Archive: [v1.9-ROADMAP.md](milestones/v1.9-ROADMAP.md)
 - ✅ **v2.0 Transaction Relay and Mempool Participation Boundary** - Phases 100 through 109 (shipped 2026-07-03). Archive: [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md)
-- ✅ **v2.1 Block Serving and Compact Block Relay Boundary** - Phases 110 through 126 complete and ready for milestone archival.
+- 🚧 **v2.1 Block Serving and Compact Block Relay Boundary** - Phases 110 through 126 complete; Phases 127 through 129 planned for integration gap closure.
 
 ## Active Milestone: v2.1 Block Serving and Compact Block Relay Boundary
 
@@ -56,6 +56,9 @@ v2.1 Block Serving and Compact Block Relay Boundary is complete and archive-read
 - [x] **Phase 124: Milestone Closeout Reconciliation** - Reconcile milestone metadata, re-audit the completed hardening work, and establish archive readiness. (completed 2026-07-16)
 - [x] **Phase 125: Compact Download Verification Traceability Closure** - Restore explicit lifecycle-valid verification ownership for the three Phase 115 compact-download requirements and prevent future verification orphans. (completed 2026-07-17)
 - [x] **Phase 126: Compact Relay Residual Hardening** - Remove the residual empty-candidate bypass, align compact nonce generation with the Knots boundary, and perform final archive reconciliation. (completed 2026-07-18)
+- [ ] **Phase 127: Authoritative Network State Unification** - Make durable sync, inbound serving, RPC, CLI, dashboard, and support evidence share one authoritative network and chainstate view.
+- [ ] **Phase 128: Production Compact Announcement Transport** - Complete bilateral compact negotiation and send compact announcements through the production transport with post-write evidence.
+- [ ] **Phase 129: Integration Guardrails and Milestone Reconciliation** - Guard the repaired production seams, prove all four end-to-end flows, and reconcile v2.1 for a fresh audit.
 
 ### Phase Details
 
@@ -410,9 +413,54 @@ Plans:
 
 **Plans:** 4/4 plans complete
 
+#### Phase 127: Authoritative Network State Unification
+
+**Goal:** Unify the authoritative network, chainstate, durable block, and evidence sources used by durable sync, inbound serving, RPC, and operator surfaces.
+**Depends on:** Phase 126
+**Requirements:** BSRV-03, BSRV-04, OBS-02, OBS-04
+**Gap Closure:** Closes GAP-01, FLOW-01, and FLOW-04 from [v2.1-MILESTONE-AUDIT.md](v2.1-MILESTONE-AUDIT.md)
+**Success Criteria** (what must be TRUE):
+
+1. `open-bitcoind` shares one authoritative `ManagedPeerNetwork` and chainstate source across durable sync, inbound peer handling, and RPC status.
+2. Inbound block and compact-block serving reads validated, available durable blocks and preserves the existing bounded request and cleanup policies.
+3. RPC status, CLI, dashboard, and support bundles project block-relay truth from the same authoritative runtime without leaking sensitive peer or transaction details.
+4. Production-path integration tests and deterministic guards fail if durable sync, inbound serving, or operator status diverge onto separate state.
+
+**Plans:** 0 plans
+
+#### Phase 128: Production Compact Announcement Transport
+
+**Goal:** Complete production compact-block negotiation and announcement from handshake through successful transport emission and achieved-effect evidence.
+**Depends on:** Phase 127
+**Requirements:** CMP-04, CMP-05, OBS-03
+**Gap Closure:** Closes GAP-02, GAP-03, FLOW-02, and FLOW-03 from [v2.1-MILESTONE-AUDIT.md](v2.1-MILESTONE-AUDIT.md)
+**Success Criteria** (what must be TRUE):
+
+1. Production handshakes send the local version-2 `sendcmpct` preference and retain the peer's negotiated compact-relay state.
+2. A production block-connect or equivalent validated-block event invokes compact announcement policy with live peer header facts and authoritative block availability.
+3. Selected compact, header, and inventory announcements are written through the real peer transport while preserving resource and fallback policy.
+4. Compact-announcement metrics, logs, and provenance are recorded only after a successful transport write, with end-to-end tests covering success and failure.
+
+**Plans:** 0 plans
+
+#### Phase 129: Integration Guardrails and Milestone Reconciliation
+
+**Goal:** Make the repaired production integrations fail closed, independently verify the reassigned requirements, and reconcile the active milestone for a fresh archival decision.
+**Depends on:** Phase 128
+**Requirements:** OBS-01, BOUND-02, HARD-05
+**Gap Closure:** Closes the remaining cross-cutting verification and reconciliation findings from [v2.1-MILESTONE-AUDIT.md](v2.1-MILESTONE-AUDIT.md)
+**Success Criteria** (what must be TRUE):
+
+1. Deterministic guards cover shared authoritative state, local `sendcmpct`, production announcement invocation, live header facts, transport emission, and post-write evidence.
+2. Repository verification exercises all four repaired end-to-end flows and preserves the bounded v2.1 no-claim boundary.
+3. Independent verification explicitly closes all 10 reassigned requirements against production-path evidence.
+4. ROADMAP, REQUIREMENTS, PROJECT, STATE, MILESTONES, and the rerun milestone audit agree before routing v2.1 to archival.
+
+**Plans:** 0 plans
+
 ## Progress
 
-**Execution Order:** 110 -> 111 -> 112 -> 113 -> 114 -> 115 -> 116 -> 117 -> 118 -> 119 -> 120 -> 121 -> 122 -> 123 -> 124 -> 125 -> 126
+**Execution Order:** 110 -> 111 -> 112 -> 113 -> 114 -> 115 -> 116 -> 117 -> 118 -> 119 -> 120 -> 121 -> 122 -> 123 -> 124 -> 125 -> 126 -> 127 -> 128 -> 129
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 | --- | --- | ---: | --- | --- |
@@ -433,6 +481,9 @@ Plans:
 | 124. Milestone Closeout Reconciliation | v2.1 | 2/2 | Complete   | 2026-07-16 |
 | 125. Compact Download Verification Traceability Closure | v2.1 | 4/4 | Complete   | 2026-07-17 |
 | 126. Compact Relay Residual Hardening | v2.1 | 4/4 | Complete   | 2026-07-18 |
+| 127. Authoritative Network State Unification | v2.1 | 0/0 | Not started | - |
+| 128. Production Compact Announcement Transport | v2.1 | 0/0 | Not started | - |
+| 129. Integration Guardrails and Milestone Reconciliation | v2.1 | 0/0 | Not started | - |
 
 ## Traceability
 
@@ -446,10 +497,10 @@ Plans:
 
 - v2.1 requirements: 39 total
 - Mapped to phases: 39
-- Satisfied: 39
-- Pending hardening and closeout: 0
+- Satisfied: 29
+- Pending integration gap closure: 10
 - Unmapped: 0
 
 ## Next Step
 
-Run `/gsd-complete-milestone v2.1`.
+Run `/gsd-plan-phase 127`.

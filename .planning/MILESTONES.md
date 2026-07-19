@@ -1,22 +1,23 @@
 # Milestones: Open Bitcoin
 
-## v2.1 Block Serving and Compact Block Relay Boundary (Completed: 2026-07-18; Awaiting Archive)
+## v2.1 Block Serving and Compact Block Relay Boundary (Integration Gap Closure Active)
 
-**Delivered:** Bounded, explicit, default-off validated block serving and
-compact-block relay through BIP152 codecs, negotiation, reconstruction,
-missing-transaction response, timeout fallback, validation handoff, sanitized
-operator evidence, exact Knots parity anchors, and deterministic no-claim
-guardrails.
+**Locally delivered to date:** Bounded, explicit, default-off validated block
+serving and compact-block relay through BIP152 codecs, negotiation,
+reconstruction, missing-transaction response, timeout fallback, validation
+handoff, sanitized operator evidence, exact Knots parity anchors, and
+deterministic no-claim guardrails.
 
-**Completion projection:**
+**Current projection:**
 
-- 39/39 v2.1 requirements are independently verified and complete.
-- 17/17 implementation phases and 58/58 plans are complete.
-- Phase 126 is complete at 4/4 plans with a lifecycle-valid final summary.
-- The canonical milestone audit passed at 13/13 integration links and 11/11
-  end-to-end flows with no tracked technical debt.
-- The archive-ready corpus awaits fresh post-summary verification before final
-  lifecycle and repository gates.
+- 29/39 v2.1 requirements remain complete; 10 are pending production-boundary
+  integration closure.
+- Phases 110 through 126 and 58/58 existing plans remain complete.
+- The canonical milestone audit found three integration gaps, scoring 9/13
+  integration links and 7/11 end-to-end flows.
+- Phases 127 through 129 are planned for authoritative runtime state,
+  production compact-announcement transport, and final guardrail/reconciliation
+  work.
 - v2.1 remains the active, unarchived milestone until the completion workflow
   creates its archive artifacts.
 
@@ -26,8 +27,7 @@ production-scale historical serving, production service/deployment, production
 full-node readiness, production-funds wallet use, migration apply mode,
 packaging, hosted services, and GUI work remain future scope.
 
-**What's next:** After fresh post-summary verification, run
-`/gsd-complete-milestone v2.1`.
+**What's next:** Run `/gsd-plan-phase 127`.
 
 ***
 

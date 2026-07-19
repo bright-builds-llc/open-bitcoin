@@ -2,40 +2,40 @@
 gsd_state_version: "1.0"
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
-status: archive_ready
-stopped_at: Phase 126 complete; awaiting fresh post-summary verification
-last_updated: "2026-07-18T21:53:17Z"
-last_activity: 2026-07-18 -- Prepared Phase 126 archive-ready verifier handoff
+status: planning
+stopped_at: Audit gaps grouped into Phases 127-129; Phase 127 requires planning
+last_updated: "2026-07-19T13:44:52Z"
+last_activity: 2026-07-19 -- Unblocked and committed v2.1 integration gap planning
 progress:
-  total_phases: 17
+  total_phases: 20
   completed_phases: 17
   total_plans: 58
   completed_plans: 58
-  percent: 100
+  percent: 85
 ---
 
 # Project State
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-07-10 after Phase 117 completed v2.1 implementation and verification).
+See: `.planning/PROJECT.md` (updated 2026-07-19 after the v2.1 integration audit and gap planning).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 126 post-summary verification handoff
+**Current focus:** Plan Phase 127 authoritative network-state unification
 
 ## Current Position
 
 Milestone: v2.1 Block Serving and Compact Block Relay Boundary
-Phase: 126
-Plan: 4 of 4
-Status: Archive-ready; fresh verifier pending
-Last activity: 2026-07-18 -- Prepared Phase 126 archive-ready verifier handoff
+Phase: 127
+Plan: 0 of 0
+Status: Not planned
+Last activity: 2026-07-19 -- Unblocked and committed v2.1 integration gap planning
 
 v2.0 Transaction Relay and Mempool Participation Boundary shipped on 2026-07-03. The archived audit reports 32/32 requirements, 10/10 phases, 8/8 integration checks, 8/8 cross-phase flows, and no tracked tech debt.
 
-Phase 125 completed lifecycle-valid verification-traceability closure at 4/4 plans for `RCN-04`, `RCN-05`, and `RCN-06`. Phase 126 independently verified and promoted `CMP-05`, `RCN-02`, `RCN-03`, `GOV-04`, `BOUND-01`, and `HARD-05`, then completed its final summary and archive-ready projection at 4/4 plans. A fresh post-summary verifier must replace the stale pre-summary verification artifact before final lifecycle and full repository gates.
+Phases 110 through 126 remain locally complete at 58/58 plans. A fresh independent integration audit found three production-boundary gaps that leave 10 requirements partial and break four end-to-end flows. Approved Phases 127 through 129 will unify authoritative runtime state, complete production compact-announcement transport, add cross-cutting guards, and reconcile the milestone before a fresh archival decision.
 
-Next action after fresh verification: Run `/gsd-complete-milestone v2.1`.
+Next action: Run `/gsd-plan-phase 127`.
 
 ## Performance Metrics
 
@@ -60,7 +60,7 @@ Next action after fresh verification: Run `/gsd-complete-milestone v2.1`.
 - v1.9 shipped opt-in inbound peer serving while keeping transaction relay, compact blocks, mempool propagation, production-funds wallet use, migration apply mode, packaging, hosted dashboard, GUI, public-network CI, and production full-node readiness deferred.
 - Phase 98 canonical ownership remains archived for INB-01, INB-02, INB-03, INB-04, BOUND-06.
 - v2.0 shipped bounded transaction relay and mempool participation through explicit activation, txid/wtxid inventory/download, orphan handling, mempool admission and durable recovery, relay serving/fanout, sanitized operator evidence, parity roots, UAT guidance, and deterministic no-claim guardrails.
-- v2.1 completed bounded, explicit, default-off validated block serving and compact-block relay with BIP152 codecs, reconstruction/fallback, sanitized operator evidence, exact parity roots, five-test UAT, and hardened deterministic no-claim guardrails.
+- v2.1 completed 17 local phases for bounded, explicit, default-off validated block serving and compact-block relay, then reopened integration work after an independent audit found authoritative-state and production compact-transport gaps.
 
 ## Decisions
 
@@ -108,10 +108,11 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 - [Phase 126]: Model candidate, verified pre-promotion, promoted pre-summary, and archive-ready as the only legal Phase 126 closeout states.
 - [Phase 126]: Keep executor candidate evidence distinct from independent gsd-verifier ownership.
 - [Phase 126]: Promote exactly the six Phase 126 requirements only after the independent verifier and lifecycle gates pass.
+- [Milestone gap planning]: Use Phase 127 for authoritative runtime state, Phase 128 for production compact transport, and Phase 129 for integration guardrails plus final reconciliation.
 
 ## Pending Todos
 
-- Complete the fresh post-summary verifier handoff before final lifecycle and repository verification.
+- Plan and execute Phases 127 through 129 before rerunning the v2.1 milestone audit.
 - Keep historical `.planning/phases/` directories tracked because repo verifier scripts still depend on selected phase evidence.
 - Keep repo-local Cargo and Bazel command forms in UAT guidance:
   - `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- ...`
@@ -125,8 +126,14 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 - Existing outbound sync, inbound serving, full-sync, soak, support-bundle, and release-boundary behavior must not regress when future milestones expand relay or production scope.
 - Existing transaction relay, mempool, inbound, sync, support-bundle, and release-boundary behavior must not regress in future work built on v2.1 block-serving and compact-block relay scope.
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+| --- | --- | --- | --- | --- |
+| 260719-bbh | Accept the approved v2.1 post-audit gap-planning state in closeout verification | 2026-07-19 | `e02bae71` | [260719-bbh](./quick/260719-bbh-teach-the-phase-124-closeout-checker-to-/) |
+
 ## Session Continuity
 
-Last session: 2026-07-18T21:53:17Z
-Stopped at: Phase 126 complete; awaiting fresh post-summary verification
+Last session: 2026-07-19T13:44:52Z
+Stopped at: Audit gaps grouped into Phases 127-129; Phase 127 requires planning
 Resume file: None
