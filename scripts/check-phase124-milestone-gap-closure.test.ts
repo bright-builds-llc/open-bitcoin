@@ -1,5 +1,6 @@
 import { afterEach, expect, test } from "bun:test";
-import { rmSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import path from "node:path";
 
 import type {
   Phase125LifecycleStage,
@@ -31,6 +32,10 @@ const PHASE125_SUMMARY_03 =
   `${PHASE125_DIRECTORY}/125-03-SUMMARY.md` as const;
 const PHASE125_SUMMARY_04 =
   `${PHASE125_DIRECTORY}/125-04-SUMMARY.md` as const;
+const PHASE127_DIRECTORY =
+  ".planning/phases/127-authoritative-network-state-unification";
+const PHASE127_LIFECYCLE_ID = "127-2026-07-19T15-09-40";
+const PHASE128_ROUTE = "/gsd-plan-phase 128";
 const ROUTING_FILES = [
   ".planning/ROADMAP.md",
   ".planning/PROJECT.md",
@@ -127,6 +132,123 @@ test("passes_the_post_audit_gap_planning_stage", () => {
 
   // Assert
   expect(failures).toEqual([]);
+});
+
+test("passes_the_active_phase127_execution_stage", () => {
+  // Arrange
+  const root = postAuditGapPlanningFixture();
+  addPhase127Artifacts(root, 3, false);
+  replaceRootFile(
+    root,
+    ".planning/ROADMAP.md",
+    "**Plans:** 0 plans",
+    "**Plans:** 3/4 plans executed",
+  );
+
+  // Act
+  const failures = check(root);
+
+  // Assert
+  expect(failures).toEqual([]);
+});
+
+test("passes_the_completed_phase127_stage_and_routes_to_phase128", () => {
+  // Arrange
+  const root = postAuditGapPlanningFixture();
+  addPhase127Artifacts(root, 4, true);
+  replaceRootFile(
+    root,
+    ".planning/ROADMAP.md",
+    "**Plans:** 0 plans",
+    "**Plans:** 4/4 plans complete",
+  );
+  replaceRootFile(
+    root,
+    ".planning/ROADMAP.md",
+    "- [ ] **Phase 127: Authoritative Network State Unification**",
+    "- [x] **Phase 127: Authoritative Network State Unification**",
+  );
+  promotePhase127Requirements(root);
+  for (const file of [
+    ".planning/ROADMAP.md",
+    ".planning/PROJECT.md",
+    ".planning/STATE.md",
+    ".planning/MILESTONES.md",
+  ]) {
+    replaceRootFile(root, file, PHASE127_ROUTE, PHASE128_ROUTE);
+  }
+
+  // Act
+  const failures = check(root);
+
+  // Assert
+  expect(failures).toEqual([]);
+});
+
+test("phase127_rejects_stale_summary_lifecycle_identity", () => {
+  // Arrange
+  const root = postAuditGapPlanningFixture();
+  addPhase127Artifacts(root, 3, false);
+  replaceRootFile(
+    root,
+    ".planning/ROADMAP.md",
+    "**Plans:** 0 plans",
+    "**Plans:** 3/4 plans executed",
+  );
+  replaceRootFile(
+    root,
+    `${PHASE127_DIRECTORY}/127-03-SUMMARY.md`,
+    `phase_lifecycle_id: ${PHASE127_LIFECYCLE_ID}`,
+    "phase_lifecycle_id: stale-lifecycle",
+  );
+
+  // Act
+  const failures = check(root).join("\n");
+
+  // Assert
+  expect(failures).toContain(
+    "phase_lifecycle_id must match Phase 127 CONTEXT",
+  );
+});
+
+test("completed_phase127_rejects_a_stale_primary_route", () => {
+  // Arrange
+  const root = postAuditGapPlanningFixture();
+  addPhase127Artifacts(root, 4, true);
+  replaceRootFile(
+    root,
+    ".planning/ROADMAP.md",
+    "**Plans:** 0 plans",
+    "**Plans:** 4/4 plans complete",
+  );
+  replaceRootFile(
+    root,
+    ".planning/ROADMAP.md",
+    "- [ ] **Phase 127: Authoritative Network State Unification**",
+    "- [x] **Phase 127: Authoritative Network State Unification**",
+  );
+  promotePhase127Requirements(root);
+  for (const file of [
+    ".planning/ROADMAP.md",
+    ".planning/PROJECT.md",
+    ".planning/STATE.md",
+    ".planning/MILESTONES.md",
+  ]) {
+    replaceRootFile(root, file, PHASE127_ROUTE, PHASE128_ROUTE);
+  }
+  writeRootFile(
+    root,
+    ".planning/STATE.md",
+    `${readFileSync(path.join(root, ".planning/STATE.md"), "utf8")}\n${PHASE127_ROUTE}`,
+  );
+
+  // Act
+  const failures = check(root).join("\n");
+
+  // Assert
+  expect(failures).toContain(
+    "completed Phase 127 routing .planning/STATE.md must not retain",
+  );
 });
 
 test("post_audit_gap_planning_rejects_wrong_ownership_and_counts", () => {
@@ -839,4 +961,114 @@ function phase125Summary(planNumber: "01" | "03" | "04"): string {
     "---",
     "fixture summary",
   ].join("\n");
+}
+
+function addPhase127Artifacts(
+  root: string,
+  summaryCount: number,
+  includeVerification: boolean,
+): void {
+  writeRootFile(
+    root,
+    `${PHASE127_DIRECTORY}/127-CONTEXT.md`,
+    phase127Artifact(["generated_by: gsd-discuss-phase"]),
+  );
+  for (const planNumber of ["01", "02", "03", "04"]) {
+    writeRootFile(
+      root,
+      `${PHASE127_DIRECTORY}/127-${planNumber}-PLAN.md`,
+      phase127Artifact([
+        "phase: 127-authoritative-network-state-unification",
+        `plan: "${planNumber}"`,
+        "generated_by: gsd-plan-phase",
+      ]),
+    );
+  }
+  for (const planNumber of ["01", "02", "03", "04"].slice(0, summaryCount)) {
+    writeRootFile(
+      root,
+      `${PHASE127_DIRECTORY}/127-${planNumber}-SUMMARY.md`,
+      phase127Artifact([
+        "phase: 127-authoritative-network-state-unification",
+        `plan: "${planNumber}"`,
+        "requirements-completed: []",
+        "generated_by: gsd-execute-plan",
+      ]),
+    );
+  }
+  if (includeVerification) {
+    writeRootFile(
+      root,
+      `${PHASE127_DIRECTORY}/127-VERIFICATION.md`,
+      phase127Artifact([
+        "phase: 127-authoritative-network-state-unification",
+        "status: passed",
+        "lifecycle_validated: true",
+        "generated_by: gsd-verifier",
+      ]),
+    );
+  }
+}
+
+function phase127Artifact(fields: readonly string[]): string {
+  return [
+    "---",
+    ...fields,
+    "lifecycle_mode: yolo",
+    `phase_lifecycle_id: ${PHASE127_LIFECYCLE_ID}`,
+    'generated_at: "2026-07-19T20:00:00Z"',
+    "---",
+    "fixture artifact",
+  ].join("\n");
+}
+
+function promotePhase127Requirements(root: string): void {
+  for (const requirement of ["BSRV-03", "BSRV-04", "OBS-02", "OBS-04"]) {
+    replaceRootFile(
+      root,
+      ".planning/REQUIREMENTS.md",
+      `- [ ] **${requirement}**`,
+      `- [x] **${requirement}**`,
+    );
+    replaceRootFile(
+      root,
+      ".planning/REQUIREMENTS.md",
+      `| ${requirement} | Phase 127 | Pending |`,
+      `| ${requirement} | Phase 127 | Complete |`,
+    );
+  }
+  for (const file of [".planning/REQUIREMENTS.md", ".planning/ROADMAP.md"]) {
+    replaceRootFile(
+      root,
+      file,
+      file.endsWith("REQUIREMENTS.md") ? "Complete: 29" : "Satisfied: 29",
+      file.endsWith("REQUIREMENTS.md") ? "Complete: 33" : "Satisfied: 33",
+    );
+    replaceRootFile(
+      root,
+      file,
+      "Pending integration gap closure: 10",
+      "Pending integration gap closure: 6",
+    );
+  }
+}
+
+function writeRootFile(root: string, relativePath: string, text: string): void {
+  const absolutePath = path.join(root, relativePath);
+  mkdirSync(path.dirname(absolutePath), { recursive: true });
+  writeFileSync(absolutePath, text);
+}
+
+function replaceRootFile(
+  root: string,
+  relativePath: string,
+  needle: string,
+  replacement: string,
+): void {
+  const absolutePath = path.join(root, relativePath);
+  const text = readFileSync(absolutePath, "utf8");
+  if (!text.includes(needle)) {
+    throw new Error(`fixture needle missing in ${relativePath}: ${needle}`);
+  }
+  writeFileSync(absolutePath, text.replace(needle, replacement));
 }

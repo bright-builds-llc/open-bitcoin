@@ -6,11 +6,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Metric | Value |
 | --- | --- |
-| Included files | 562 |
-| Total lines | 240,021 |
-| Code/content lines | 211,249 |
-| Comment-only lines | 8,497 |
-| Blank lines | 20,275 |
+| Included files | 564 |
+| Total lines | 241,057 |
+| Code/content lines | 212,189 |
+| Comment-only lines | 8,524 |
+| Blank lines | 20,344 |
 
 ## Per-Crate Modules
 
@@ -36,9 +36,9 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 95 | 84,593 | 73,717 | 4,475 | 6,401 |
 | Rust production | 290 | 83,929 | 73,240 | 2,608 | 8,081 |
-| TypeScript/Bun scripts | 118 | 54,914 | 48,609 | 1,348 | 4,957 |
+| TypeScript/Bun scripts | 120 | 55,946 | 49,545 | 1,375 | 5,026 |
 | Fixture/data | 6 | 8,233 | 8,228 | 5 | 0 |
-| Shell scripts | 13 | 4,266 | 3,817 | 55 | 394 |
+| Shell scripts | 13 | 4,270 | 3,821 | 55 | 394 |
 | TOML/config | 16 | 3,464 | 3,098 | 0 | 366 |
 | Bazel/Starlark | 18 | 413 | 378 | 0 | 35 |
 | YAML | 2 | 145 | 117 | 4 | 24 |
@@ -91,11 +91,13 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase124-milestone-closeout-reconciliation.fixtures.ts | 854 |
 | scripts/check-phase124-milestone-closeout-reconciliation.test.ts | 613 |
 | scripts/check-phase124-milestone-closeout-reconciliation.ts | 591 |
-| scripts/check-phase124-milestone-gap-closure.test.ts | 842 |
+| scripts/check-phase124-milestone-gap-closure.test.ts | 1,074 |
 | scripts/check-phase124-milestone-gap-closure.ts | 1,528 |
-| scripts/check-phase124-post-audit-gap-planning.ts | 301 |
+| scripts/check-phase124-post-audit-gap-planning.ts | 586 |
 | scripts/check-phase126-compact-relay-residual-hardening.test.ts | 445 |
 | scripts/check-phase126-compact-relay-residual-hardening.ts | 403 |
+| scripts/check-phase127-authoritative-network-state-unification.test.ts | 183 |
+| scripts/check-phase127-authoritative-network-state-unification.ts | 332 |
 | scripts/check-phase61-resource-recovery-boundaries.ts | 152 |
 | scripts/check-phase62-sync-truth-surfaces.ts | 265 |
 | scripts/check-phase63-service-lifecycle.ts | 308 |
@@ -199,7 +201,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 551b28d2b1d332f6bc0087af60df4ec9217e2147ae85914def68bbc8f7653644 |
+| Input fingerprint | b945e27ecc4c11371e038a0a43e383ec5d10a6f5a29adf7e644c1d162ebc5334 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |
