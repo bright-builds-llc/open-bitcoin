@@ -1084,6 +1084,40 @@ fn support_bundle_redacts_sensitive_block_relay_reasons_in_json_and_markdown() {
 }
 
 #[test]
+fn authoritative_operator_support_snapshot_excludes_every_forbidden_material_class() {
+    // Arrange
+    let status = phase127_authoritative_status_with_sensitive_operator_evidence();
+
+    // Act
+    let sanitized = support_status_for_bundle(status);
+    let rendered = serde_json::to_string_pretty(&sanitized).expect("support status json");
+
+    // Assert
+    for forbidden in [
+        "127.0.0.1:18444",
+        "198.51.100.127:8333",
+        "permission_string=in,noban",
+        "rpcpassword=phase127-secret",
+        "020000000001",
+        "txid=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "peer-127-dynamic-label",
+    ] {
+        assert_absent(&rendered, forbidden);
+    }
+    for expected in [
+        "redacted_relay_mempool_evidence",
+        "redacted_block_relay_evidence",
+        "redacted_permission_class",
+        "redacted_permission_effect",
+        "redacted_address_evidence",
+        "redacted_peer_policy_label",
+        "redacted_resource_governance_evidence",
+    ] {
+        assert!(rendered.contains(expected), "missing {expected}");
+    }
+}
+
+#[test]
 fn support_recovery_evidence_unavailable_status_preserves_reason() {
     // Arrange
     let temp = TestDirectory::new("recovery-unavailable");
@@ -2064,6 +2098,63 @@ fn phase116_status_with_sensitive_block_relay_reasons() -> OpenBitcoinStatusSnap
     status.block_relay.fallback = FieldAvailability::unavailable(sensitive);
     status.block_relay.in_flight = FieldAvailability::unavailable(sensitive);
     status.block_relay.cleanup = FieldAvailability::unavailable(sensitive);
+    status
+}
+
+fn phase127_authoritative_status_with_sensitive_operator_evidence() -> OpenBitcoinStatusSnapshot {
+    let mut status = phase116_status_with_sensitive_block_relay_reasons();
+    status.mempool.relay = phase105_status_with_sensitive_relay_reasons().mempool.relay;
+    let sensitive = "raw tx hex 020000000001 txid=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 127.0.0.1:18444 198.51.100.127:8333 permission_string=in,noban rpcpassword=phase127-secret peer-127-dynamic-label";
+    status.mempool.relay.activation = RelayEvidenceField::unavailable(sensitive);
+    status.block_relay.negotiation = FieldAvailability::unavailable(sensitive);
+
+    status.peers.inbound = phase94_status_with_resource_governance_evidence()
+        .peers
+        .inbound;
+    let FieldAvailability::Available(inbound) = &mut status.peers.inbound else {
+        panic!("phase127 authoritative inbound fixture should be available");
+    };
+    inbound.bound_endpoints = vec![
+        "127.0.0.1:18444".to_string(),
+        "198.51.100.127:8333".to_string(),
+    ];
+    inbound.permission_class = "permission_string=in,noban".to_string();
+    inbound.active_permission_effects = vec!["peer-127-dynamic-label".to_string()];
+    inbound.inactive_permission_effects = vec!["rpcpassword=phase127-secret".to_string()];
+    inbound.latest_permission_decision =
+        FieldAvailability::available(InboundPermissionDecisionEvent {
+            outcome: "admitted".to_string(),
+            reason: "admitted".to_string(),
+            permission_class: "permission_string=in,noban".to_string(),
+            active_permission_effects: vec!["peer-127-dynamic-label".to_string()],
+            inactive_permission_effects: vec!["rpcpassword=phase127-secret".to_string()],
+            message: sensitive.to_string(),
+        });
+    inbound.local_advertisement_candidates[0].source = sensitive.to_string();
+    inbound.suppressed_advertisements[0].message = sensitive.to_string();
+    inbound.latest_address_decision = FieldAvailability::available(InboundAddressDecisionEvent {
+        outcome: "suppressed".to_string(),
+        reason: "permission_policy_denied".to_string(),
+        label: "getaddr_suppressed".to_string(),
+        source: "source_inbound_addr".to_string(),
+        message: sensitive.to_string(),
+    });
+    inbound.latest_peer_policy_decision = FieldAvailability::available(InboundPeerPolicyEvent {
+        outcome: "peer-127-dynamic-label".to_string(),
+        reason: "permission_string=in,noban".to_string(),
+        label: "rpcpassword=phase127-secret".to_string(),
+        source: "198.51.100.127:8333".to_string(),
+        message: sensitive.to_string(),
+    });
+    inbound.latest_resource_governance_decision =
+        FieldAvailability::available(InboundResourceGovernanceEvent {
+            outcome: "rejected".to_string(),
+            reason: "peer-127-dynamic-label".to_string(),
+            label: "permission_string=in,noban".to_string(),
+            source: "198.51.100.127:8333".to_string(),
+            message: "rpcpassword=phase127-secret".to_string(),
+            next_action: sensitive.to_string(),
+        });
     status
 }
 
