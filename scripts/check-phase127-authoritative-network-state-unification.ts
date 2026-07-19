@@ -69,22 +69,28 @@ function loadCorpus(repoRoot: string, failures: string[]): TextCorpus {
 function checkProductionAuthority(texts: TextCorpus, failures: string[]): void {
   const daemon =
     texts.get("packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs") ?? "";
+  const main = rustFunction(
+    daemon,
+    "async fn main() -> Result<(), Box<dyn std::error::Error>>",
+  );
   if (
     countOccurrences(
-      daemon,
+      main,
       "open_authoritative_network_runtime(&runtime, maybe_runtime_store.clone())?",
     ) !== 1 ||
-    !daemon.includes("network: sync_runtime.network_handle(),") ||
-    !daemon.includes(
+    !main.includes(
       "ManagedRpcContext::from_runtime_config_with_network_handle(",
     ) ||
-    !daemon.includes("authoritative_runtime.network.clone(),")
+    !main.includes("authoritative_runtime.network.clone(),") ||
+    main.includes("ManagedNetworkHandle::transient_runtime(") ||
+    main.includes("ManagedNetworkHandle::from_network_fixture(") ||
+    main.includes("ManagedPeerNetwork::")
   ) {
     failures.push(
       "P127 production authority: daemon must compose sync, inbound, and RPC from one authoritative runtime",
     );
   }
-  if (daemon.includes("MemoryChainstateStore")) {
+  if (main.includes("MemoryChainstateStore")) {
     failures.push(
       "P127 fresh RPC chainstate: daemon production composition must not allocate MemoryChainstateStore",
     );
@@ -92,14 +98,19 @@ function checkProductionAuthority(texts: TextCorpus, failures: string[]): void {
 
   const context =
     texts.get("packages/open-bitcoin-rpc/src/context/network.rs") ?? "";
-  const injected = functionSection(
+  const injected = rustFunction(
     context,
     "pub fn from_runtime_config_with_network_handle(",
-    "pub fn set_inbound_listener_evidence(",
   );
   if (
     !injected.includes("network: ManagedNetworkHandle") ||
-    injected.includes("MemoryChainstateStore::default()")
+    !injected.includes("network,") ||
+    [
+      "MemoryChainstateStore",
+      "ManagedPeerNetwork::new",
+      "ManagedNetworkHandle::transient_runtime(",
+      "ManagedNetworkHandle::from_network_fixture(",
+    ].some((forbidden) => injected.includes(forbidden))
   ) {
     failures.push(
       "P127 fresh RPC chainstate: injected production context must retain the supplied network handle",
@@ -109,26 +120,33 @@ function checkProductionAuthority(texts: TextCorpus, failures: string[]): void {
 
 function checkDurableServing(texts: TextCorpus, failures: string[]): void {
   const context = texts.get("packages/open-bitcoin-rpc/src/context.rs") ?? "";
+  const contextCode = stripRustNonCode(context);
   const store =
     texts.get("packages/open-bitcoin-node/src/storage/fjall_store.rs") ?? "";
-  const resolve = functionSection(
-    context,
-    "fn resolve_block_intent(",
-    "fn push_encoded(",
-  );
+  const storeLoad = rustFunction(store, "pub fn load_block(");
+  const resolve = rustFunction(context, "fn resolve_block_intent(");
   if (
-    !context.includes("trait DurableBlockSource: Send + Sync") ||
-    !context.includes("impl DurableBlockSource for FjallNodeStore") ||
-    !context.includes("FjallNodeStore::load_block(self, block_hash)") ||
-    !resolve.includes("source.load_block(intent.block_hash())")
+    !contextCode.includes("trait DurableBlockSource: Send + Sync") ||
+    !contextCode.includes("impl DurableBlockSource for FjallNodeStore") ||
+    !contextCode.includes("FjallNodeStore::load_block(self, block_hash)") ||
+    !resolve.includes("source.load_block(intent.block_hash())") ||
+    [
+      "lookup_block(",
+      "blocks_by_hash",
+      "block_cache",
+      "cached_block",
+      "lookup_cached",
+    ].some((forbidden) => resolve.includes(forbidden))
   ) {
     failures.push(
       "P127 durable serving: production block resolution must use the request-scoped durable source",
     );
   }
   if (
-    !store.includes("pub fn load_block(&self, block_hash: BlockHash)") ||
-    !store.includes("self.get_bytes(StorageNamespace::BlockIndex, &block_key(block_hash))?")
+    !storeLoad.includes("pub fn load_block(&self, block_hash: BlockHash)") ||
+    !storeLoad.includes(
+      "self.get_bytes(StorageNamespace::BlockIndex, &block_key(block_hash))?",
+    )
   ) {
     failures.push(
       "P127 durable serving store: Fjall must remain the persisted block-body authority",
@@ -144,20 +162,55 @@ function checkOperatorProjection(texts: TextCorpus, failures: string[]): void {
     texts.get("packages/open-bitcoin-rpc/src/context/inbound_status.rs") ?? "";
   const dispatch =
     texts.get("packages/open-bitcoin-rpc/src/dispatch/node.rs") ?? "";
+  const authoritySnapshot = rustFunction(
+    authority,
+    "pub fn operator_snapshot(&self)",
+  );
+  const inboundProjection = rustFunction(
+    inbound,
+    "pub fn authoritative_operator_snapshot(",
+  );
+  const networkInfoProjection = rustFunction(
+    dispatch,
+    "pub(super) fn get_network_info(",
+  );
+  const networkStatusProjection = rustFunction(
+    dispatch,
+    "pub(super) fn open_bitcoin_network_status(",
+  );
   if (
-    !authority.includes(
-      "pub fn operator_snapshot(&self) -> Result<ManagedNetworkOperatorSnapshot",
+    !authoritySnapshot.includes(
+      "self.read(ManagedPeerNetwork::operator_snapshot)",
     ) ||
-    !inbound.includes("let network = self.network.operator_snapshot()?;") ||
-    countOccurrences(dispatch, ".authoritative_operator_snapshot()") < 2
+    !inboundProjection.includes(
+      "let network = self.network.operator_snapshot()?;",
+    ) ||
+    !inboundProjection.includes(
+      "let inbound = self.inbound_status_from_snapshot(&network);",
+    ) ||
+    !inboundProjection.includes(
+      "Ok(AuthoritativeOperatorSnapshot { network, inbound })",
+    ) ||
+    !networkInfoProjection.includes(".authoritative_operator_snapshot()") ||
+    !networkInfoProjection.includes("let network_info = snapshot.network();") ||
+    !networkInfoProjection.includes("let mempool_info = snapshot.mempool();") ||
+    !networkStatusProjection.includes(".authoritative_operator_snapshot()") ||
+    !networkStatusProjection.includes("inbound: snapshot.inbound().clone()") ||
+    !networkStatusProjection.includes("relay: snapshot.relay().clone()") ||
+    !networkStatusProjection.includes(
+      "block_relay: snapshot.block_relay().clone()",
+    )
   ) {
     failures.push(
       "P127 authoritative projection: RPC and operator status must use one owned network snapshot",
     );
   }
   if (
-    dispatch.includes("block_relay_evidence_status()\n        .map_err") &&
-    !dispatch.includes("Phase 116 compatibility anchor")
+    [inboundProjection, networkInfoProjection, networkStatusProjection].some(
+      (projection) =>
+        projection.includes("ManagedNetworkOperatorSnapshot::default()") ||
+        projection.includes("block_relay_evidence_status()"),
+    )
   ) {
     failures.push(
       "P127 authoritative projection: direct block-relay projection must not bypass the owned snapshot",
@@ -286,11 +339,149 @@ function checkVerifier(texts: TextCorpus, failures: string[]): void {
   }
 }
 
-function functionSection(text: string, startNeedle: string, endNeedle: string): string {
-  const start = text.indexOf(startNeedle);
+function rustFunction(text: string, signatureNeedle: string): string {
+  const code = stripRustNonCode(text);
+  const start = code.indexOf(signatureNeedle);
   if (start === -1) return "";
-  const end = text.indexOf(endNeedle, start + startNeedle.length);
-  return text.slice(start, end === -1 ? text.length : end);
+  const bodyStart = code.indexOf("{", start + signatureNeedle.length);
+  if (bodyStart === -1) return "";
+  let depth = 0;
+  for (let cursor = bodyStart; cursor < code.length; cursor += 1) {
+    if (code[cursor] === "{") depth += 1;
+    if (code[cursor] !== "}") continue;
+    depth -= 1;
+    if (depth === 0) return code.slice(start, cursor + 1);
+  }
+  return "";
+}
+
+function stripRustNonCode(text: string): string {
+  const stripped = text.split("");
+  let cursor = 0;
+  while (cursor < text.length) {
+    if (text.startsWith("//", cursor)) {
+      cursor = blankThrough(text, stripped, cursor, "\n");
+      continue;
+    }
+    if (text.startsWith("/*", cursor)) {
+      cursor = blankNestedBlockComment(text, stripped, cursor);
+      continue;
+    }
+    const maybeRawStringEnd = rawStringEnd(text, cursor);
+    if (maybeRawStringEnd !== null) {
+      blankRange(text, stripped, cursor, maybeRawStringEnd);
+      cursor = maybeRawStringEnd;
+      continue;
+    }
+    if (
+      text[cursor] === '"' ||
+      (text[cursor] === "b" && text[cursor + 1] === '"')
+    ) {
+      const quote = text[cursor] === '"' ? cursor : cursor + 1;
+      const end = quotedLiteralEnd(text, quote, '"');
+      blankRange(text, stripped, cursor, end);
+      cursor = end;
+      continue;
+    }
+    if (text[cursor] === "'" && looksLikeCharLiteral(text, cursor)) {
+      const end = quotedLiteralEnd(text, cursor, "'");
+      blankRange(text, stripped, cursor, end);
+      cursor = end;
+      continue;
+    }
+    cursor += 1;
+  }
+  return stripped.join("");
+}
+
+function blankThrough(
+  text: string,
+  stripped: string[],
+  start: number,
+  terminator: string,
+): number {
+  const maybeEnd = text.indexOf(terminator, start);
+  const end = maybeEnd === -1 ? text.length : maybeEnd;
+  blankRange(text, stripped, start, end);
+  return end;
+}
+
+function blankNestedBlockComment(
+  text: string,
+  stripped: string[],
+  start: number,
+): number {
+  let cursor = start;
+  let depth = 0;
+  while (cursor < text.length) {
+    if (text.startsWith("/*", cursor)) {
+      depth += 1;
+      cursor += 2;
+      continue;
+    }
+    if (text.startsWith("*/", cursor)) {
+      depth -= 1;
+      cursor += 2;
+      if (depth === 0) {
+        blankRange(text, stripped, start, cursor);
+        return cursor;
+      }
+      continue;
+    }
+    cursor += 1;
+  }
+  blankRange(text, stripped, start, text.length);
+  return text.length;
+}
+
+function rawStringEnd(text: string, start: number): number | null {
+  let cursor = start;
+  if (text[cursor] === "b") cursor += 1;
+  if (text[cursor] !== "r") return null;
+  cursor += 1;
+  const hashesStart = cursor;
+  while (text[cursor] === "#") cursor += 1;
+  if (cursor - hashesStart > 255 || text[cursor] !== '"') return null;
+  const hashes = text.slice(hashesStart, cursor);
+  const terminator = `"${hashes}`;
+  const bodyStart = cursor + 1;
+  const maybeEnd = text.indexOf(terminator, bodyStart);
+  return maybeEnd === -1 ? text.length : maybeEnd + terminator.length;
+}
+
+function quotedLiteralEnd(
+  text: string,
+  quote: number,
+  delimiter: '"' | "'",
+): number {
+  let cursor = quote + 1;
+  while (cursor < text.length) {
+    if (text[cursor] === "\\") {
+      cursor += 2;
+      continue;
+    }
+    if (text[cursor] === delimiter) return cursor + 1;
+    cursor += 1;
+  }
+  return text.length;
+}
+
+function looksLikeCharLiteral(text: string, start: number): boolean {
+  const maybeEnd = quotedLiteralEnd(text, start, "'");
+  return maybeEnd - start <= 12 && text[maybeEnd - 1] === "'";
+}
+
+function blankRange(
+  text: string,
+  stripped: string[],
+  start: number,
+  end: number,
+): void {
+  for (let cursor = start; cursor < end; cursor += 1) {
+    if (text[cursor] !== "\n" && text[cursor] !== "\r") {
+      stripped[cursor] = " ";
+    }
+  }
 }
 
 function visibleCommandOrder(text: string): string {
