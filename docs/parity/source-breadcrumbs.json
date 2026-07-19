@@ -1324,6 +1324,28 @@
       ]
     },
     {
+      "label": "rpc-phase127-production-parity",
+      "files": [
+        "packages/open-bitcoin-rpc/tests/black_box_parity.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/bitcoind.cpp",
+        "packages/bitcoin-knots/src/rpc/protocol.h",
+        "packages/bitcoin-knots/src/rpc/request.cpp",
+        "packages/bitcoin-knots/src/rpc/server.cpp",
+        "packages/bitcoin-knots/src/rpc/blockchain.cpp",
+        "packages/bitcoin-knots/src/rpc/mempool.cpp",
+        "packages/bitcoin-knots/src/rpc/net.cpp",
+        "packages/bitcoin-knots/src/rpc/rawtransaction.cpp",
+        "packages/bitcoin-knots/src/node/context.h",
+        "packages/bitcoin-knots/src/rpc/server_util.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp",
+        "packages/bitcoin-knots/test/functional/interface_rpc.py"
+      ]
+    },
+    {
       "label": "rpc-surface",
       "files": [
         "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
@@ -1346,8 +1368,7 @@
         "packages/open-bitcoin-rpc/src/http.rs",
         "packages/open-bitcoin-rpc/src/http/tests.rs",
         "packages/open-bitcoin-rpc/src/method.rs",
-        "packages/open-bitcoin-rpc/src/method/tests.rs",
-        "packages/open-bitcoin-rpc/tests/black_box_parity.rs"
+        "packages/open-bitcoin-rpc/src/method/tests.rs"
       ],
       "patterns": [
         "packages/open-bitcoin-rpc/src/dispatch/*.rs",

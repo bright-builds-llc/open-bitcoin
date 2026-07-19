@@ -1465,6 +1465,49 @@ a public serving default, archive-node guarantee, public-network CI gate,
 production service claim, production full-node readiness claim, or
 production-funds wallet claim.
 
+## Phase 127 authoritative network state unification
+
+The `v2-1-authoritative-network-state-unification` surface covers the
+production-composition repair for `BSRV-03`, `BSRV-04`, `OBS-02`, and
+`OBS-04`. One node-owned `ManagedNetworkHandle` now supplies durable sync,
+inbound peer handling, RPC, metrics/log projections, dashboard-compatible
+status, and support-compatible aggregate evidence. The authority returns owned
+snapshots and typed mutations; Fjall reads, wire serialization, socket writes,
+RPC serialization, logging, and rendering occur after its short synchronous
+critical sections have ended.
+
+Inbound block serving keeps validation, active-chain eligibility, request caps,
+queue backpressure, peer cleanup, and achieved-effect accounting in the
+authoritative network. Only an eligible owned serve intent reaches the
+request-scoped `FjallNodeStore::load_block` boundary. Missing, corrupt, or
+backend-failed reads remain redacted as unavailable, and a successful served
+effect is recorded only after the socket write succeeds. A public-network-free
+production-composition test drives a validated block through
+`DurableSyncRuntime`, reopens the same datadir without cache hydration, serves
+that durable body through the real loopback inbound listener, and observes the
+same tip and aggregate status through HTTP RPC.
+
+The corresponding Knots authority anchors are the centralized `NodeContext`
+`peerman` and `chainman` owners in
+`packages/bitcoin-knots/src/node/context.h`; RPC resolution through
+`EnsureAnyNodeContext`, `EnsureChainman`, and `EnsurePeerman` in
+`packages/bitcoin-knots/src/rpc/server_util.cpp`; validation-aware
+`PeerManagerImpl::ProcessGetBlockData` in
+`packages/bitcoin-knots/src/net_processing.cpp`; block acceptance and active
+chain activation in `packages/bitcoin-knots/src/validation.cpp`; and durable
+`BlockManager::ReadBlock` in
+`packages/bitcoin-knots/src/node/blockstorage.cpp`.
+
+This bounded Phase 127 claim changes authority provenance, not the frozen RPC,
+CLI, dashboard, metrics/log, or support schemas. Production compact
+negotiation, announcement construction, transport emission, and post-write
+compact-announcement evidence remain Phase 128 work. Aggregate four-flow
+integration guards, requirement promotion, milestone audit reconciliation,
+and archive routing remain Phase 129 work. Phase 127 does not claim public
+serving defaults, archive-node availability, public-network CI, production
+service operation, production full-node readiness, or production-funds wallet
+use.
+
 ## Known gaps
 
 These networking gaps remain deferred or out of scope unless a later phase adds

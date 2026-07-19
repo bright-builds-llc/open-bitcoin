@@ -2947,6 +2947,53 @@
         "suspected_unknowns": [
           "Archive behavior, package relay, bloom/filter serving, public-network CI, production service operation, production full-node readiness, and production-funds wallet use remain deferred and require separate evidence."
         ]
+      },
+      {
+        "id": "v2-1-authoritative-network-state-unification",
+        "title": "v2.1 Authoritative Network State Unification",
+        "status": "done",
+        "requirements": [],
+        "evidence": [
+          "docs/parity/catalog/p2p.md",
+          "docs/parity/source-breadcrumbs.json",
+          "packages/open-bitcoin-node/src/network/runtime_authority.rs",
+          "packages/open-bitcoin-node/src/network/block_serving.rs",
+          "packages/open-bitcoin-node/src/storage/fjall_store.rs",
+          "packages/open-bitcoin-node/src/sync.rs",
+          "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
+          "packages/open-bitcoin-rpc/src/context.rs",
+          "packages/open-bitcoin-rpc/src/context/network.rs",
+          "packages/open-bitcoin-rpc/src/context/inbound_status.rs",
+          "packages/open-bitcoin-rpc/src/inbound_listener.rs",
+          "packages/open-bitcoin-rpc/tests/black_box_parity.rs",
+          "packages/open-bitcoin-cli/src/operator/dashboard/model/tests.rs",
+          "packages/open-bitcoin-cli/src/operator/support/tests.rs",
+          ".planning/phases/127-authoritative-network-state-unification/127-CONTEXT.md",
+          ".planning/phases/127-authoritative-network-state-unification/127-01-SUMMARY.md",
+          ".planning/phases/127-authoritative-network-state-unification/127-02-SUMMARY.md",
+          ".planning/phases/127-authoritative-network-state-unification/127-03-SUMMARY.md"
+        ],
+        "rationale": "Phase 127 supplies integration evidence for BSRV-03, BSRV-04, OBS-02, and OBS-04 without creating duplicate canonical requirement owners: it establishes one node-owned network authority for durable sync, inbound serving, RPC, and operator projections; performs request-scoped Fjall block reads outside the authority lock; records served effects only after successful writes; and proves restart-shaped durable serving plus unchanged aggregate schemas with a deterministic loopback integration fixture.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/node/context.h",
+            "packages/bitcoin-knots/src/rpc/server_util.cpp",
+            "packages/bitcoin-knots/src/net_processing.cpp",
+            "packages/bitcoin-knots/src/validation.cpp",
+            "packages/bitcoin-knots/src/node/blockstorage.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/test/functional/p2p_getdata.py",
+            "packages/bitcoin-knots/test/functional/interface_rpc.py"
+          ]
+        },
+        "known_gaps": [
+          "Phase 128 retains production compact negotiation, announcement construction, transport emission, and post-write compact-announcement evidence.",
+          "Phase 129 retains aggregate four-flow integration guards, requirement promotion, milestone audit reconciliation, and archive routing."
+        ],
+        "suspected_unknowns": [
+          "Public serving defaults, archive-node availability, public-network CI, production service operation, production full-node readiness, and production-funds wallet use remain deferred and require separate evidence."
+        ]
       }
     ]
   },
