@@ -2,16 +2,16 @@
 gsd_state_version: "1.0"
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
-status: planning
-stopped_at: Audit gaps grouped into Phases 127-129; Phase 127 requires planning
-last_updated: "2026-07-19T13:44:52Z"
+status: Not planned
+stopped_at: Phase 127 context gathered
+last_updated: "2026-07-19T15:21:30.749Z"
 last_activity: 2026-07-19 -- Unblocked and committed v2.1 integration gap planning
 progress:
   total_phases: 20
   completed_phases: 17
   total_plans: 58
-  completed_plans: 58
-  percent: 85
+  completed_plans: 60
+  percent: 100
 ---
 
 # Project State
@@ -134,6 +134,6 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Session Continuity
 
-Last session: 2026-07-19T13:44:52Z
-Stopped at: Audit gaps grouped into Phases 127-129; Phase 127 requires planning
-Resume file: None
+Last session: 2026-07-19T15:21:30.745Z
+Stopped at: Phase 127 context gathered
+Resume file: .planning/phases/127-authoritative-network-state-unification/127-CONTEXT.md
