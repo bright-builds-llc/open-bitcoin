@@ -17,7 +17,7 @@ use open_bitcoin_node::{
     PersistMode, WalletRescanFreshness, WalletRescanJob, WalletRescanJobState,
 };
 
-use crate::error::RpcFailure;
+use crate::{dispatch::network_authority_error_to_failure, error::RpcFailure};
 
 use super::ManagedRpcContext;
 use super::wallet_state::{
@@ -79,7 +79,10 @@ impl ManagedRpcContext {
         }
 
         let maybe_wallet_tip_height = self.wallet_snapshot()?.maybe_tip_height;
-        let maybe_chain_tip_height = self.maybe_chain_tip().map(|tip| tip.height);
+        let maybe_chain_tip_height = self
+            .maybe_chain_tip()
+            .map_err(network_authority_error_to_failure)?
+            .map(|tip| tip.height);
         let freshness = match (maybe_wallet_tip_height, maybe_chain_tip_height) {
             (_, None) => WalletFreshnessKind::Fresh,
             (Some(wallet_tip_height), Some(chain_tip_height))
@@ -104,7 +107,9 @@ impl ManagedRpcContext {
         maybe_start_height: Option<u32>,
         maybe_stop_height: Option<u32>,
     ) -> Result<WalletRescanExecution, RpcFailure> {
-        let snapshot = self.blockchain_snapshot();
+        let snapshot = self
+            .blockchain_snapshot()
+            .map_err(network_authority_error_to_failure)?;
         let tip_height = snapshot.tip().map_or(0, |tip| tip.height);
         let current_wallet_tip = self.wallet_snapshot()?.maybe_tip_height;
         let start_height = maybe_start_height

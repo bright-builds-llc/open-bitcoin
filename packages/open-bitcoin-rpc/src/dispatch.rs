@@ -11,11 +11,11 @@
 
 use serde_json::Value;
 
-use open_bitcoin_node::ManagedNetworkError;
 use open_bitcoin_node::core::{
     codec::{TransactionEncoding, encode_transaction},
     wallet::WalletError,
 };
+use open_bitcoin_node::{ManagedNetworkAuthorityError, ManagedNetworkError};
 
 use crate::{
     ManagedRpcContext,
@@ -32,19 +32,19 @@ mod wallet;
 pub fn dispatch(context: &mut ManagedRpcContext, call: MethodCall) -> Result<Value, RpcFailure> {
     match call {
         MethodCall::GetBlockchainInfo(_request) => {
-            serde_json::to_value(node::get_blockchain_info(context))
+            serde_json::to_value(node::get_blockchain_info(context)?)
                 .map_err(|error| RpcFailure::internal_error(error.to_string()))
         }
         MethodCall::GetMempoolInfo(_request) => {
-            serde_json::to_value(node::get_mempool_info(context))
+            serde_json::to_value(node::get_mempool_info(context)?)
                 .map_err(|error| RpcFailure::internal_error(error.to_string()))
         }
         MethodCall::GetNetworkInfo(_request) => {
-            serde_json::to_value(node::get_network_info(context))
+            serde_json::to_value(node::get_network_info(context)?)
                 .map_err(|error| RpcFailure::internal_error(error.to_string()))
         }
         MethodCall::OpenBitcoinNetworkStatus(_request) => {
-            serde_json::to_value(node::open_bitcoin_network_status(context))
+            serde_json::to_value(node::open_bitcoin_network_status(context)?)
                 .map_err(|error| RpcFailure::internal_error(error.to_string()))
         }
         MethodCall::OpenBitcoinSyncStatus(_request) => {
@@ -167,6 +167,21 @@ pub(super) fn network_error_to_failure(error: ManagedNetworkError) -> RpcFailure
             )),
         ),
         ManagedNetworkError::Network(error) => RpcFailure::internal_error(error.to_string()),
+    }
+}
+
+pub(super) fn network_authority_error_to_failure(
+    error: ManagedNetworkAuthorityError,
+) -> RpcFailure {
+    match error {
+        ManagedNetworkAuthorityError::Poisoned => RpcFailure::new(
+            crate::error::RpcFailureKind::ClientNotConnected,
+            Some(RpcErrorDetail::new(
+                RpcErrorCode::ClientNotConnected,
+                "authoritative network state is unavailable",
+            )),
+        ),
+        ManagedNetworkAuthorityError::Operation(error) => network_error_to_failure(error),
     }
 }
 

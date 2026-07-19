@@ -31,8 +31,8 @@ use open_bitcoin_node::status::{
 };
 use open_bitcoin_node::{DurableSyncState, FjallNodeStore, MetricRetentionPolicy, MetricsStatus};
 use open_bitcoin_node::{
-    ManagedNetworkError, ManagedPeerNetwork, ManagedWallet, MemoryChainstateStore,
-    MemoryWalletStore,
+    ManagedNetworkAuthorityError, ManagedNetworkHandle, ManagedPeerNetwork, ManagedWallet,
+    MemoryChainstateStore, MemoryWalletStore,
 };
 
 use crate::{config::RuntimeConfig, inbound_listener::InboundListenerEvidence};
@@ -53,7 +53,7 @@ impl ManagedRpcContext {
             chain,
             consensus_params,
             verify_flags,
-            network,
+            network: ManagedNetworkHandle::from_network_fixture(network),
             permission_classes: Default::default(),
             inbound_permission_validation_failures: 0,
             inbound_listener_config: InboundListenerConfig::default(),
@@ -119,7 +119,7 @@ impl ManagedRpcContext {
                     chain: config.chain,
                     consensus_params,
                     verify_flags: default_verify_flags(),
-                    network: managed_network,
+                    network: ManagedNetworkHandle::from_network_fixture(managed_network),
                     permission_classes: config.inbound.permission_classes.clone(),
                     inbound_permission_validation_failures: config
                         .inbound_permission_validation_failures,
@@ -149,7 +149,7 @@ impl ManagedRpcContext {
                     chain: config.chain,
                     consensus_params,
                     verify_flags: default_verify_flags(),
-                    network: managed_network,
+                    network: ManagedNetworkHandle::from_network_fixture(managed_network),
                     permission_classes: config.inbound.permission_classes.clone(),
                     inbound_permission_validation_failures: config
                         .inbound_permission_validation_failures,
@@ -172,6 +172,56 @@ impl ManagedRpcContext {
                 }
             }
         }
+    }
+
+    pub fn from_runtime_config_with_network_handle(
+        config: &RuntimeConfig,
+        network: ManagedNetworkHandle,
+        maybe_store: Option<FjallNodeStore>,
+    ) -> Result<Self, ManagedNetworkAuthorityError> {
+        network.set_inbound_admission_policy(InboundAdmissionPolicy::new(
+            config.inbound.max_peers,
+            config.inbound.reserved_slots,
+        ))?;
+        let consensus_params = ConsensusParams {
+            coinbase_maturity: config.wallet.coinbase_maturity,
+            ..ConsensusParams::default()
+        };
+        let maybe_resource_governance_log_dir =
+            config.maybe_data_dir.as_ref().map(|dir| dir.join("logs"));
+        let wallet_state = build_wallet_state_with_store(config, maybe_store.clone());
+        let effective_store = match &wallet_state {
+            super::wallet_state::WalletState::Local(_) => maybe_store.clone(),
+            super::wallet_state::WalletState::DurableNamedRegistry { store, .. } => {
+                Some(store.clone())
+            }
+        };
+        recover_mempool_snapshot_from_store_handle(
+            config,
+            effective_store.as_ref(),
+            &network,
+            default_verify_flags(),
+            consensus_params,
+        )?;
+        let maybe_durable_sync_state = load_durable_sync_state(config, effective_store.as_ref());
+
+        Ok(Self {
+            chain: config.chain,
+            consensus_params,
+            verify_flags: default_verify_flags(),
+            network,
+            permission_classes: config.inbound.permission_classes.clone(),
+            inbound_permission_validation_failures: config.inbound_permission_validation_failures,
+            inbound_listener_config: config.inbound.clone(),
+            maybe_inbound_listener_evidence: None,
+            maybe_resource_governance_log_dir,
+            resource_governance_log_retention: Default::default(),
+            resource_governance_log_write_failures: 0,
+            maybe_metrics_store: effective_store,
+            maybe_durable_sync_state,
+            maybe_daemon_sync_control: None,
+            wallet_state,
+        })
     }
 
     pub fn for_local_operator(network: AddressNetwork) -> Self {
@@ -206,11 +256,16 @@ impl ManagedRpcContext {
         self.consensus_params.coinbase_maturity
     }
 
-    pub fn blockchain_snapshot(&self) -> ChainstateSnapshot {
+    pub fn blockchain_snapshot(&self) -> Result<ChainstateSnapshot, ManagedNetworkAuthorityError> {
         self.network.chainstate_snapshot()
     }
 
-    pub fn maybe_chain_tip(&self) -> Option<open_bitcoin_node::core::chainstate::ChainPosition> {
+    pub fn maybe_chain_tip(
+        &self,
+    ) -> Result<
+        Option<open_bitcoin_node::core::chainstate::ChainPosition>,
+        ManagedNetworkAuthorityError,
+    > {
         self.network.maybe_chain_tip()
     }
 
@@ -222,39 +277,49 @@ impl ManagedRpcContext {
         self.maybe_metrics_store = Some(store);
     }
 
-    pub fn mempool_info(&self) -> ManagedMempoolInfo {
+    pub fn mempool_info(&self) -> Result<ManagedMempoolInfo, ManagedNetworkAuthorityError> {
         self.network.mempool_info()
     }
 
-    pub fn network_info(&self) -> ManagedNetworkInfo {
+    pub fn network_info(&self) -> Result<ManagedNetworkInfo, ManagedNetworkAuthorityError> {
         self.network.network_info()
     }
 
-    pub fn relay_evidence_status(&self) -> RelayEvidenceStatus {
+    pub fn relay_evidence_status(
+        &self,
+    ) -> Result<RelayEvidenceStatus, ManagedNetworkAuthorityError> {
         self.network.relay_evidence_status()
     }
 
-    pub fn block_relay_evidence_status(&self) -> BlockRelayEvidenceStatus {
+    pub fn block_relay_evidence_status(
+        &self,
+    ) -> Result<BlockRelayEvidenceStatus, ManagedNetworkAuthorityError> {
         self.network.block_relay_evidence_status()
     }
 
-    pub fn inbound_admission_info(&self) -> ManagedInboundAdmissionInfo {
-        self.network.inbound_admission_info().clone()
+    pub fn inbound_admission_info(
+        &self,
+    ) -> Result<ManagedInboundAdmissionInfo, ManagedNetworkAuthorityError> {
+        self.network.inbound_admission_info()
     }
 
-    pub fn set_inbound_listener_evidence(&mut self, evidence: InboundListenerEvidence) {
-        let services = ServiceFlags::from_bits(self.network_info().local_services_bits);
+    pub fn set_inbound_listener_evidence(
+        &mut self,
+        evidence: InboundListenerEvidence,
+    ) -> Result<(), ManagedNetworkAuthorityError> {
+        let services = ServiceFlags::from_bits(self.network_info()?.local_services_bits);
         let decisions =
             local_advertisement_decisions(&self.inbound_listener_config, &evidence, services);
-        self.network.set_local_address_decisions(decisions);
+        self.network.set_local_address_decisions(decisions)?;
         self.maybe_inbound_listener_evidence = Some(evidence);
+        Ok(())
     }
 
     pub fn reconnect_suppression_input_for_remote_addr(
         &self,
         remote_addr: SocketAddr,
         now_unix_seconds: i64,
-    ) -> ReconnectSuppressionInput {
+    ) -> Result<ReconnectSuppressionInput, ManagedNetworkAuthorityError> {
         self.network
             .reconnect_suppression_input_for_ip(remote_addr.ip(), now_unix_seconds)
     }
@@ -283,7 +348,7 @@ impl ManagedRpcContext {
         peer_id: u64,
         remote_endpoint: String,
         is_shutdown_requested: bool,
-    ) -> InboundAdmissionDecision {
+    ) -> Result<InboundAdmissionDecision, ManagedNetworkAuthorityError> {
         let mut request = InboundAdmissionRequest::ordinary(peer_id, remote_endpoint);
         request.is_shutdown_requested = is_shutdown_requested;
         self.network.admit_inbound_peer(request)
@@ -294,7 +359,7 @@ impl ManagedRpcContext {
         peer_id: u64,
         remote_addr: SocketAddr,
         is_shutdown_requested: bool,
-    ) -> InboundAdmissionDecision {
+    ) -> Result<InboundAdmissionDecision, ManagedNetworkAuthorityError> {
         let permission_decision = self.permission_decision_for_remote_addr(remote_addr);
         let mut request = InboundAdmissionRequest::from_permission_decision(
             peer_id,
@@ -317,7 +382,7 @@ impl ManagedRpcContext {
         peer_id: u64,
         message: WireNetworkMessage,
         timestamp: i64,
-    ) -> Result<Vec<EncodedWireResponse>, ManagedNetworkError> {
+    ) -> Result<Vec<EncodedWireResponse>, ManagedNetworkAuthorityError> {
         let responses = self.receive_network_message(peer_id, message, timestamp)?;
         self.encode_wire_responses(responses)
     }
@@ -325,7 +390,7 @@ impl ManagedRpcContext {
     pub(crate) fn encode_wire_responses(
         &self,
         responses: Vec<WireNetworkMessage>,
-    ) -> Result<Vec<EncodedWireResponse>, ManagedNetworkError> {
+    ) -> Result<Vec<EncodedWireResponse>, ManagedNetworkAuthorityError> {
         let encoded = self.network.encode_messages(&responses)?;
         Ok(responses
             .into_iter()
@@ -334,20 +399,23 @@ impl ManagedRpcContext {
             .collect())
     }
 
-    pub(crate) fn acknowledge_wire_message_written(&mut self, message: &WireNetworkMessage) {
-        self.network.acknowledge_wire_message_written(message);
+    pub(crate) fn acknowledge_wire_message_written(
+        &mut self,
+        message: &WireNetworkMessage,
+    ) -> Result<(), ManagedNetworkAuthorityError> {
+        self.network.acknowledge_wire_message_written(message)
     }
 
     #[cfg(test)]
-    pub(crate) fn block_served_write_count(&self) -> u64 {
+    pub(crate) fn block_served_write_count(&self) -> Result<u64, ManagedNetworkAuthorityError> {
         self.network.block_served_write_count()
     }
 
-    pub fn add_inbound_peer(&mut self, peer_id: u64) -> Result<(), ManagedNetworkError> {
+    pub fn add_inbound_peer(&mut self, peer_id: u64) -> Result<(), ManagedNetworkAuthorityError> {
         self.network.add_inbound_peer(peer_id)
     }
 
-    pub fn disconnect_peer(&mut self, peer_id: u64) -> Result<(), ManagedNetworkError> {
+    pub fn disconnect_peer(&mut self, peer_id: u64) -> Result<(), ManagedNetworkAuthorityError> {
         self.network.disconnect_peer(peer_id)
     }
 
@@ -355,7 +423,7 @@ impl ManagedRpcContext {
         &mut self,
         peer_id: u64,
         timestamp: i64,
-    ) -> Result<Vec<WireNetworkMessage>, ManagedNetworkError> {
+    ) -> Result<Vec<WireNetworkMessage>, ManagedNetworkAuthorityError> {
         self.network.connect_outbound_peer(peer_id, timestamp)
     }
 
@@ -364,7 +432,7 @@ impl ManagedRpcContext {
         peer_id: u64,
         message: WireNetworkMessage,
         timestamp: i64,
-    ) -> Result<Vec<WireNetworkMessage>, ManagedNetworkError> {
+    ) -> Result<Vec<WireNetworkMessage>, ManagedNetworkAuthorityError> {
         Ok(self
             .network
             .receive_message(
@@ -380,7 +448,8 @@ impl ManagedRpcContext {
     pub fn connect_local_block(
         &mut self,
         block: &Block,
-    ) -> Result<open_bitcoin_node::core::chainstate::ChainPosition, ManagedNetworkError> {
+    ) -> Result<open_bitcoin_node::core::chainstate::ChainPosition, ManagedNetworkAuthorityError>
+    {
         self.network
             .connect_local_block(block, self.verify_flags, self.consensus_params)
     }
@@ -388,7 +457,7 @@ impl ManagedRpcContext {
     pub fn submit_local_transaction(
         &mut self,
         transaction: Transaction,
-    ) -> Result<AdmissionResult, ManagedNetworkError> {
+    ) -> Result<AdmissionResult, ManagedNetworkAuthorityError> {
         self.network
             .submit_local_transaction(transaction, self.verify_flags, self.consensus_params)
     }
@@ -396,7 +465,7 @@ impl ManagedRpcContext {
     pub fn submit_local_transaction_with_relay_evidence(
         &mut self,
         transaction: Transaction,
-    ) -> Result<MempoolOutcome, ManagedNetworkError> {
+    ) -> Result<MempoolOutcome, ManagedNetworkAuthorityError> {
         self.network.submit_local_transaction_outcome(
             transaction,
             self.verify_flags,
@@ -404,7 +473,9 @@ impl ManagedRpcContext {
         )
     }
 
-    pub fn latest_local_submission_evidence(&self) -> Option<LocalRelaySubmissionEvidence> {
+    pub fn latest_local_submission_evidence(
+        &self,
+    ) -> Result<Option<LocalRelaySubmissionEvidence>, ManagedNetworkAuthorityError> {
         self.network.latest_local_submission_evidence()
     }
 }
@@ -464,6 +535,48 @@ fn recover_mempool_snapshot_from_store(
         Ok(None) => {}
         Err(error) => network.record_mempool_recovery_storage_error(&error),
     }
+}
+
+fn recover_mempool_snapshot_from_store_handle(
+    config: &RuntimeConfig,
+    maybe_store: Option<&FjallNodeStore>,
+    network: &ManagedNetworkHandle,
+    verify_flags: ScriptVerifyFlags,
+    consensus_params: ConsensusParams,
+) -> Result<(), ManagedNetworkAuthorityError> {
+    let store;
+    let store = match maybe_store {
+        Some(store) => store,
+        None => {
+            let Some(data_dir) = config.maybe_data_dir.as_ref() else {
+                return Ok(());
+            };
+            let opened_store = match FjallNodeStore::open(data_dir) {
+                Ok(store) => store,
+                Err(error) => {
+                    network.record_mempool_recovery_storage_error(&error)?;
+                    return Ok(());
+                }
+            };
+            store = opened_store;
+            &store
+        }
+    };
+
+    match store.load_mempool_snapshot() {
+        Ok(Some(snapshot)) => {
+            if network
+                .recover_mempool_snapshot(&snapshot, verify_flags, consensus_params)
+                .is_err()
+            {
+                network
+                    .record_mempool_recovery_unavailable(SyncRecoveryCategory::InvalidPeerData)?;
+            }
+        }
+        Ok(None) => {}
+        Err(error) => network.record_mempool_recovery_storage_error(&error)?,
+    }
+    Ok(())
 }
 
 pub(super) fn default_verify_flags() -> ScriptVerifyFlags {

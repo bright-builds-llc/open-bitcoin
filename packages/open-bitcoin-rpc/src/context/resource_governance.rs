@@ -44,12 +44,23 @@ impl ManagedRpcContext {
         if let Some(evidence) = &mut self.maybe_inbound_listener_evidence {
             evidence.record_resource_event(event.clone());
         }
-        self.network.record_resource_governance_event(event);
-        let Some(record) = self
+        if self
             .network
-            .resource_governance_info()
-            .maybe_structured_log_record(timestamp_unix_seconds)
-        else {
+            .record_resource_governance_event(event)
+            .is_err()
+        {
+            self.resource_governance_log_write_failures = self
+                .resource_governance_log_write_failures
+                .saturating_add(1);
+            return Ok(());
+        }
+        let Ok(resource_info) = self.network.resource_governance_info() else {
+            self.resource_governance_log_write_failures = self
+                .resource_governance_log_write_failures
+                .saturating_add(1);
+            return Ok(());
+        };
+        let Some(record) = resource_info.maybe_structured_log_record(timestamp_unix_seconds) else {
             return Ok(());
         };
         let Some(log_dir) = &self.maybe_resource_governance_log_dir else {

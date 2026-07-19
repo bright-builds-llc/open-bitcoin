@@ -72,11 +72,13 @@ fn phase123_block_serving_context(enabled: bool) -> (ManagedRpcContext, Block) {
     });
     let block = phase123_mined_block();
     context.connect_local_block(&block).expect("connect block");
-    let admission = context.record_inbound_admission_for_remote_addr(
-        123,
-        "127.0.0.1:18444".parse().expect("loopback address"),
-        false,
-    );
+    let admission = context
+        .record_inbound_admission_for_remote_addr(
+            123,
+            "127.0.0.1:18444".parse().expect("loopback address"),
+            false,
+        )
+        .expect("authoritative inbound admission");
     assert!(matches!(
         admission,
         open_bitcoin_network::InboundAdmissionDecision::Admit(_)
@@ -161,9 +163,13 @@ async fn acknowledged_block_count(
         ManagedRpcContext::for_local_operator(AddressNetwork::Regtest),
     ));
     for (response, write_result) in responses.iter().zip(write_results.iter()) {
-        acknowledge_inbound_response_write(write_result, response, &context).await;
+        assert!(acknowledge_inbound_response_write(write_result, response, &context).await);
     }
-    context.lock().await.block_served_write_count()
+    context
+        .lock()
+        .await
+        .block_served_write_count()
+        .expect("authoritative block write count")
 }
 
 #[tokio::test]
@@ -182,8 +188,12 @@ async fn phase123_inbound_written_block_increments_served_once() {
     let write_result = Ok(WriteWireMessageOutcome::Written);
 
     // Act
-    acknowledge_inbound_response_write(&write_result, &response, &context).await;
-    let served_count = context.lock().await.block_served_write_count();
+    assert!(acknowledge_inbound_response_write(&write_result, &response, &context).await);
+    let served_count = context
+        .lock()
+        .await
+        .block_served_write_count()
+        .expect("authoritative block write count");
 
     // Assert
     assert_eq!(served_count, 1);
@@ -204,8 +214,12 @@ async fn phase123_enabled_runtime_config_serves_and_acknowledges_inbound_block()
     let write_result = Ok(WriteWireMessageOutcome::Written);
 
     // Act
-    acknowledge_inbound_response_write(&write_result, &response, &context).await;
-    let served_count = context.lock().await.block_served_write_count();
+    assert!(acknowledge_inbound_response_write(&write_result, &response, &context).await);
+    let served_count = context
+        .lock()
+        .await
+        .block_served_write_count()
+        .expect("authoritative block write count");
 
     // Assert
     assert_eq!(served_count, 1);
@@ -220,7 +234,9 @@ async fn phase123_disabled_runtime_config_does_not_serve_inbound_block() {
     let responses = context
         .receive_inbound_wire_message(123, phase123_block_request(&block), 2)
         .expect("handle disabled block request");
-    let served_count = context.block_served_write_count();
+    let served_count = context
+        .block_served_write_count()
+        .expect("authoritative block write count");
 
     // Assert
     assert!(
@@ -316,7 +332,9 @@ async fn phase123_inbound_encoding_failure_does_not_increment_served() {
 
     // Act
     let result = context.encode_wire_responses(vec![oversized]);
-    let served_count = context.block_served_write_count();
+    let served_count = context
+        .block_served_write_count()
+        .expect("authoritative block write count");
 
     // Assert
     assert!(result.is_err());
@@ -421,16 +439,20 @@ fn peer_policy_entry(scope: BanScope, expires_at_unix_seconds: i64) -> PeerBanEn
 fn reconnect_suppression_uses_matching_remote_policy_state() {
     // Arrange
     let mut context = ManagedRpcContext::for_local_operator(AddressNetwork::Regtest);
-    context.record_peer_policy_ban(
-        peer_policy_entry(BanScope::Address(IpAddr::from([127, 0, 0, 2])), 300),
-        150,
-    );
+    context
+        .record_peer_policy_ban(
+            peer_policy_entry(BanScope::Address(IpAddr::from([127, 0, 0, 2])), 300),
+            150,
+        )
+        .expect("authoritative peer policy");
 
     // Act
-    let reconnect = context.reconnect_suppression_input_for_remote_addr(
-        "127.0.0.2:18444".parse().expect("valid remote addr"),
-        150,
-    );
+    let reconnect = context
+        .reconnect_suppression_input_for_remote_addr(
+            "127.0.0.2:18444".parse().expect("valid remote addr"),
+            150,
+        )
+        .expect("authoritative reconnect state");
 
     // Assert
     assert!(reconnect.banned);
@@ -441,16 +463,20 @@ fn reconnect_suppression_uses_matching_remote_policy_state() {
 fn reconnect_suppression_ignores_non_matching_remote_policy_state() {
     // Arrange
     let mut context = ManagedRpcContext::for_local_operator(AddressNetwork::Regtest);
-    context.record_peer_policy_ban(
-        peer_policy_entry(BanScope::Address(IpAddr::from([127, 0, 0, 2])), 300),
-        150,
-    );
+    context
+        .record_peer_policy_ban(
+            peer_policy_entry(BanScope::Address(IpAddr::from([127, 0, 0, 2])), 300),
+            150,
+        )
+        .expect("authoritative peer policy");
 
     // Act
-    let reconnect = context.reconnect_suppression_input_for_remote_addr(
-        "127.0.0.3:18444".parse().expect("valid remote addr"),
-        150,
-    );
+    let reconnect = context
+        .reconnect_suppression_input_for_remote_addr(
+            "127.0.0.3:18444".parse().expect("valid remote addr"),
+            150,
+        )
+        .expect("authoritative reconnect state");
 
     // Assert
     assert!(!reconnect.banned);
@@ -461,15 +487,19 @@ fn reconnect_suppression_ignores_non_matching_remote_policy_state() {
 fn listener_records_scoped_banned_reconnect_suppression() {
     // Arrange
     let mut context = ManagedRpcContext::for_local_operator(AddressNetwork::Regtest);
-    context.record_peer_policy_ban(
-        peer_policy_entry(BanScope::Address(IpAddr::from([127, 0, 0, 1])), 300),
-        150,
-    );
+    context
+        .record_peer_policy_ban(
+            peer_policy_entry(BanScope::Address(IpAddr::from([127, 0, 0, 1])), 300),
+            150,
+        )
+        .expect("authoritative peer policy");
     let mut evidence = listener_evidence(&["127.0.0.1:18444"]);
-    let reconnect = context.reconnect_suppression_input_for_remote_addr(
-        "127.0.0.1:18444".parse().expect("valid remote addr"),
-        150,
-    );
+    let reconnect = context
+        .reconnect_suppression_input_for_remote_addr(
+            "127.0.0.1:18444".parse().expect("valid remote addr"),
+            150,
+        )
+        .expect("authoritative reconnect state");
     let event = match ResourceGovernancePolicy::default().decide_reconnect(reconnect) {
         ResourceGovernanceDecision::Disconnect(event) => event,
         other => panic!("expected reconnect_suppressed_banned event, got {other:?}"),
@@ -493,15 +523,19 @@ fn listener_records_scoped_banned_reconnect_suppression() {
 fn listener_records_scoped_discouraged_reconnect_suppression() {
     // Arrange
     let mut context = ManagedRpcContext::for_local_operator(AddressNetwork::Regtest);
-    context.record_peer_policy_discouragement(
-        peer_policy_entry(BanScope::Address(IpAddr::from([127, 0, 0, 1])), 300),
-        150,
-    );
+    context
+        .record_peer_policy_discouragement(
+            peer_policy_entry(BanScope::Address(IpAddr::from([127, 0, 0, 1])), 300),
+            150,
+        )
+        .expect("authoritative peer policy");
     let mut evidence = listener_evidence(&["127.0.0.1:18444"]);
-    let reconnect = context.reconnect_suppression_input_for_remote_addr(
-        "127.0.0.1:18444".parse().expect("valid remote addr"),
-        150,
-    );
+    let reconnect = context
+        .reconnect_suppression_input_for_remote_addr(
+            "127.0.0.1:18444".parse().expect("valid remote addr"),
+            150,
+        )
+        .expect("authoritative reconnect state");
     let event = match ResourceGovernancePolicy::default().decide_reconnect(reconnect) {
         ResourceGovernanceDecision::Backpressure(event) => event,
         other => panic!("expected reconnect_suppressed_discouraged event, got {other:?}"),
@@ -607,7 +641,12 @@ async fn wait_for_inbound_peers(
     expected: usize,
 ) {
     for _ in 0..100 {
-        if context.lock().await.network_info().inbound_peers == expected {
+        if context
+            .lock()
+            .await
+            .network_info()
+            .is_ok_and(|info| info.inbound_peers == expected)
+        {
             return;
         }
         tokio::task::yield_now().await;
@@ -623,8 +662,7 @@ async fn wait_for_reserved_slot_rejections(
             .lock()
             .await
             .inbound_admission_info()
-            .reserved_slot_rejections
-            == expected
+            .is_ok_and(|info| info.reserved_slot_rejections == expected)
         {
             return;
         }
@@ -765,7 +803,9 @@ fn loopback_listener_evidence_is_suppressed_for_public_advertisement() {
     let mut context = ManagedRpcContext::from_runtime_config(&runtime);
 
     // Act
-    context.set_inbound_listener_evidence(listener_evidence(&["127.0.0.1:18444"]));
+    context
+        .set_inbound_listener_evidence(listener_evidence(&["127.0.0.1:18444"]))
+        .expect("authoritative listener evidence");
     let status = inbound_status(&context);
 
     // Assert
@@ -798,7 +838,9 @@ fn public_literal_listener_evidence_can_be_advertisement_candidate_when_allowed(
     let mut context = ManagedRpcContext::from_runtime_config(&runtime);
 
     // Act
-    context.set_inbound_listener_evidence(listener_evidence(&["8.8.8.8:8333"]));
+    context
+        .set_inbound_listener_evidence(listener_evidence(&["8.8.8.8:8333"]))
+        .expect("authoritative listener evidence");
     let status = inbound_status(&context);
 
     // Assert
@@ -837,7 +879,9 @@ fn invalid_runtime_bound_evidence_is_suppressed_without_falling_back_to_configur
     let mut context = ManagedRpcContext::from_runtime_config(&runtime);
 
     // Act
-    context.set_inbound_listener_evidence(listener_evidence(&["not-a-socket-address"]));
+    context
+        .set_inbound_listener_evidence(listener_evidence(&["not-a-socket-address"]))
+        .expect("authoritative listener evidence");
     let status = inbound_status(&context);
 
     // Assert
@@ -896,7 +940,11 @@ async fn ordinary_loopback_inbound_cannot_consume_reserved_capacity() {
         .expect("connect second ordinary loopback peer");
     drop(second);
     wait_for_reserved_slot_rejections(&context, 1).await;
-    let admission = context.lock().await.inbound_admission_info();
+    let admission = context
+        .lock()
+        .await
+        .inbound_admission_info()
+        .expect("authoritative inbound admission");
 
     // Assert
     assert_eq!(admission.ordinary_inbound_admits, 1);
@@ -928,7 +976,11 @@ async fn protected_loopback_inbound_consumes_reserved_capacity() {
         .lock()
         .await
         .permission_decision_for_remote_addr("127.0.0.1:50000".parse().expect("remote address"));
-    let admission = context.lock().await.inbound_admission_info();
+    let admission = context
+        .lock()
+        .await
+        .inbound_admission_info()
+        .expect("authoritative inbound admission");
 
     // Assert
     assert_eq!(
@@ -982,8 +1034,16 @@ async fn permissioned_loopback_inbound_uses_ordinary_capacity_with_scoped_filter
         .lock()
         .await
         .permission_decision_for_remote_addr("127.0.0.1:50000".parse().expect("remote address"));
-    let admission = context.lock().await.inbound_admission_info();
-    let network_info = context.lock().await.network_info();
+    let admission = context
+        .lock()
+        .await
+        .inbound_admission_info()
+        .expect("authoritative inbound admission");
+    let network_info = context
+        .lock()
+        .await
+        .network_info()
+        .expect("authoritative network info");
 
     // Assert
     assert_eq!(
@@ -1028,7 +1088,11 @@ async fn loopback_inbound_peer_handshake_increments_inbound_without_outbound() {
         receive_message(&stream).await,
     ];
     send_message(&stream, WireNetworkMessage::Verack).await;
-    let network_info = context.lock().await.network_info();
+    let network_info = context
+        .lock()
+        .await
+        .network_info()
+        .expect("authoritative network info");
 
     // Assert
     assert!(matches!(responses[0], WireNetworkMessage::Version(_)));
@@ -1056,7 +1120,12 @@ async fn dropped_loopback_inbound_releases_capacity_for_next_peer() {
     )
     .await;
     for _ in 0..100 {
-        if context.lock().await.network_info().inbound_peers == 1 {
+        if context
+            .lock()
+            .await
+            .network_info()
+            .is_ok_and(|info| info.inbound_peers == 1)
+        {
             break;
         }
         tokio::task::yield_now().await;
@@ -1077,8 +1146,16 @@ async fn dropped_loopback_inbound_releases_capacity_for_next_peer() {
     )
     .await;
     wait_for_inbound_peers(&context, 1).await;
-    let network_info = context.lock().await.network_info();
-    let admission = context.lock().await.inbound_admission_info();
+    let network_info = context
+        .lock()
+        .await
+        .network_info()
+        .expect("authoritative network info");
+    let admission = context
+        .lock()
+        .await
+        .inbound_admission_info()
+        .expect("authoritative inbound admission");
     let evidence = worker.evidence();
 
     // Assert
@@ -1146,7 +1223,11 @@ async fn unsupported_command_records_evidence_without_receive_inbound_wire_messa
         tokio::task::yield_now().await;
     }
     let evidence = worker.evidence();
-    let network_info = context.lock().await.network_info();
+    let network_info = context
+        .lock()
+        .await
+        .network_info()
+        .expect("authoritative network info");
 
     // Assert
     assert_eq!(
@@ -1313,7 +1394,9 @@ fn aggregate_queue_pressure_records_shared_resource_evidence() {
         .expect("aggregate queue pressure event");
     let mut evidence = listener_evidence(&["127.0.0.1:18444"]);
     let mut context = ManagedRpcContext::for_local_operator(AddressNetwork::Regtest);
-    context.set_inbound_listener_evidence(listener_evidence(&["127.0.0.1:18444"]));
+    context
+        .set_inbound_listener_evidence(listener_evidence(&["127.0.0.1:18444"]))
+        .expect("authoritative listener evidence");
 
     // Act
     evidence.record_resource_event(event.clone());
@@ -1432,7 +1515,9 @@ async fn read_wire_message_times_out_across_partial_header_bytes() {
 fn context_records_inbound_resource_event_for_managed_evidence() {
     // Arrange
     let mut context = ManagedRpcContext::for_local_operator(AddressNetwork::Regtest);
-    context.set_inbound_listener_evidence(listener_evidence(&["127.0.0.1:18444"]));
+    context
+        .set_inbound_listener_evidence(listener_evidence(&["127.0.0.1:18444"]))
+        .expect("authoritative listener evidence");
     let policy = ResourceGovernancePolicy::default();
     let reconnect = match policy.decide_reconnect(ReconnectSuppressionInput {
         banned: false,

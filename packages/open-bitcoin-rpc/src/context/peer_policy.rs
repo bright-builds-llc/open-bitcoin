@@ -8,6 +8,7 @@ use open_bitcoin_network::{
     BanDecision, BanScope, MisbehaviorDecision, PeerBanEntry, UnbanDecision,
 };
 use open_bitcoin_node::{
+    ManagedNetworkAuthorityError,
     logging::{
         StructuredLogError, inbound_peer_policy_log_record, writer::append_structured_log_record,
     },
@@ -59,43 +60,48 @@ impl ManagedRpcContext {
         &mut self,
         entry: PeerBanEntry,
         now_unix_seconds: i64,
-    ) -> BanDecision {
-        let decision = self.network.record_peer_policy_ban(entry, now_unix_seconds);
+    ) -> Result<BanDecision, ManagedNetworkAuthorityError> {
+        let decision = self
+            .network
+            .record_peer_policy_ban(entry, now_unix_seconds)?;
         self.record_inbound_peer_policy_event(peer_policy_event_from_ban_decision(&decision));
-        decision
+        Ok(decision)
     }
 
     pub fn record_peer_policy_discouragement(
         &mut self,
         entry: PeerBanEntry,
         now_unix_seconds: i64,
-    ) -> BanDecision {
+    ) -> Result<BanDecision, ManagedNetworkAuthorityError> {
         let decision = self
             .network
-            .record_peer_policy_discouragement(entry, now_unix_seconds);
+            .record_peer_policy_discouragement(entry, now_unix_seconds)?;
         self.record_inbound_peer_policy_event(peer_policy_event_from_discouragement_decision(
             &decision,
         ));
-        decision
+        Ok(decision)
     }
 
     pub fn record_peer_policy_unban(
         &mut self,
         scope: &BanScope,
         now_unix_seconds: i64,
-    ) -> UnbanDecision {
+    ) -> Result<UnbanDecision, ManagedNetworkAuthorityError> {
         let decision = self
             .network
-            .record_peer_policy_unban(scope, now_unix_seconds);
+            .record_peer_policy_unban(scope, now_unix_seconds)?;
         self.record_inbound_peer_policy_event(peer_policy_event_from_unban_decision(&decision));
-        decision
+        Ok(decision)
     }
 
-    pub fn record_peer_policy_misbehavior(&mut self, decision: MisbehaviorDecision) {
+    pub fn record_peer_policy_misbehavior(
+        &mut self,
+        decision: MisbehaviorDecision,
+    ) -> Result<(), ManagedNetworkAuthorityError> {
         self.record_inbound_peer_policy_event(peer_policy_event_from_misbehavior_decision(
             &decision,
         ));
-        self.network.record_peer_policy_misbehavior(decision);
+        self.network.record_peer_policy_misbehavior(decision)
     }
 }
 

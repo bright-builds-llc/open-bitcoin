@@ -38,9 +38,9 @@ use open_bitcoin_rpc::{
 use super::{
     DaemonSyncLoopDecision, DaemonSyncLoopPolicy, DaemonSyncPreflight,
     daemon_sync_preflight_message, daemon_sync_worker_with_transport,
-    inbound_listener_startup_message, preflight_daemon_sync, run_daemon_sync_loop_cycle,
-    start_inbound_listener_for_runtime, start_inbound_listener_for_runtime_with_context,
-    start_inbound_metrics_worker,
+    inbound_listener_startup_message, open_authoritative_network_runtime, preflight_daemon_sync,
+    run_daemon_sync_loop_cycle, start_inbound_listener_for_runtime,
+    start_inbound_listener_for_runtime_with_context, start_inbound_metrics_worker,
 };
 
 fn temp_store_path(label: &str) -> PathBuf {
@@ -154,7 +154,7 @@ fn disabled_sync_skips_daemon_preflight() {
     let runtime = RuntimeConfig::default();
 
     // Act
-    let preflight = preflight_daemon_sync(&runtime).expect("disabled preflight");
+    let preflight = preflight_daemon_sync(&runtime, None).expect("disabled preflight");
 
     // Assert
     assert_eq!(preflight, None);
@@ -170,17 +170,61 @@ fn enabled_sync_preflight_opens_durable_runtime_before_worker_startup() {
         sync: DaemonSyncConfig::mainnet_ibd(),
         ..RuntimeConfig::default()
     };
+    let store = FjallNodeStore::open(&data_dir).expect("authoritative store");
+    let authoritative_runtime =
+        open_authoritative_network_runtime(&runtime, Some(store)).expect("authoritative runtime");
 
     // Act
-    let preflight = preflight_daemon_sync(&runtime)
-        .expect("enabled preflight")
-        .expect("preflight summary");
+    let preflight =
+        preflight_daemon_sync(&runtime, authoritative_runtime.maybe_sync_runtime.as_ref())
+            .expect("enabled preflight")
+            .expect("preflight summary");
 
     // Assert
     assert_eq!(preflight.data_dir, data_dir);
     assert_eq!(preflight.mode, runtime.sync.mode);
     assert_eq!(preflight.best_header_height, 0);
     assert_eq!(preflight.best_block_height, 0);
+}
+
+#[test]
+fn authoritative_network_daemon_composition_shares_runtime_handle_with_rpc() {
+    // Arrange
+    let data_dir = temp_store_path("authoritative-network-composition");
+    remove_dir_if_exists(&data_dir);
+    let runtime = RuntimeConfig {
+        maybe_data_dir: Some(data_dir.clone()),
+        ..RuntimeConfig::default()
+    };
+    let store = FjallNodeStore::open(&data_dir).expect("authoritative store");
+    let authoritative_runtime = open_authoritative_network_runtime(&runtime, Some(store.clone()))
+        .expect("authoritative runtime");
+    let sync_network = authoritative_runtime.network.clone();
+    let context = ManagedRpcContext::from_runtime_config_with_network_handle(
+        &runtime,
+        authoritative_runtime.network,
+        Some(store),
+    )
+    .expect("RPC authoritative context");
+
+    // Act
+    sync_network
+        .connect_outbound_peer(42, 1_777_225_210)
+        .expect("sync mutation");
+    let network_info = context.network_info().expect("RPC authoritative snapshot");
+
+    // Assert
+    assert_eq!(network_info.outbound_peers, 1);
+    let daemon_source = include_str!("../open-bitcoind.rs");
+    assert!(!daemon_source.contains("ManagedPeerNetwork::"));
+    assert!(!daemon_source.contains("MemoryChainstateStore::"));
+    assert_eq!(
+        daemon_source
+            .matches("ManagedRpcContext::from_runtime_config_with_network_handle(")
+            .count(),
+        1
+    );
+    remove_dir_if_exists(&data_dir);
 }
 
 #[test]
@@ -219,7 +263,7 @@ fn enabled_sync_requires_datadir_before_daemon_binds_rpc() {
     };
 
     // Act
-    let error = preflight_daemon_sync(&runtime).expect_err("missing datadir should fail");
+    let error = preflight_daemon_sync(&runtime, None).expect_err("missing datadir should fail");
 
     // Assert
     assert_eq!(

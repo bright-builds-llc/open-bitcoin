@@ -227,7 +227,7 @@ function verifyRuntimeAppendAndProvider(
     "set_inbound_metric_status_provider",
     "try_lock()",
     "current_inbound_status()",
-    "ManagedRpcContext::from_runtime_config_with_store",
+    "ManagedRpcContext::from_runtime_config_with_network_handle",
     "fn start_inbound_metrics_worker",
     "fn persist_inbound_metrics_once",
     "inbound_metric_samples(&inbound, timestamp)",

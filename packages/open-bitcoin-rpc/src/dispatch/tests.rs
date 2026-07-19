@@ -481,7 +481,9 @@ fn spendable_send_context() -> ManagedRpcContext {
     let funding = build_block(block_hash(&genesis.header), 1, 75_000, receive_script);
     context.connect_local_block(&genesis).expect("genesis");
     context.connect_local_block(&funding).expect("funding");
-    let snapshot = context.blockchain_snapshot();
+    let snapshot = context
+        .blockchain_snapshot()
+        .expect("authoritative chainstate snapshot");
     context.rescan_wallet(&snapshot).expect("rescan");
     context
 }
@@ -670,9 +672,15 @@ fn permission_context_resolves_protected_literal_ip_without_raw_class_leak() {
 fn open_bitcoin_network_status_returns_available_inbound_evidence() {
     // Arrange
     let mut context = inbound_context(4, 0);
-    context.record_inbound_admission(7, "127.0.0.1:18444".to_string(), false);
-    context.record_inbound_admission(8, "127.0.0.1:18444".to_string(), false);
-    context.record_inbound_admission(7, "127.0.0.1:18445".to_string(), false);
+    context
+        .record_inbound_admission(7, "127.0.0.1:18444".to_string(), false)
+        .expect("authoritative inbound admission");
+    context
+        .record_inbound_admission(8, "127.0.0.1:18444".to_string(), false)
+        .expect("authoritative inbound admission");
+    context
+        .record_inbound_admission(7, "127.0.0.1:18445".to_string(), false)
+        .expect("authoritative inbound admission");
 
     // Act
     let status = dispatch(
@@ -769,20 +777,22 @@ fn open_bitcoin_network_status_includes_block_relay_projection() {
 fn open_bitcoin_network_status_projects_listener_activation_before_admissions() {
     // Arrange
     let mut context = empty_context();
-    context.set_inbound_listener_evidence(InboundListenerEvidence {
-        listener_state: "listening".to_string(),
-        preflight_reason: "ready".to_string(),
-        bound_endpoints: vec!["127.0.0.1:18444".to_string()],
-        admitted_inbound_peers: 0,
-        rejected_inbound_peers: 0,
-        resource_rejections: 0,
-        timeout_disconnects: 0,
-        churn_rejections: 0,
-        reconnect_suppressions: 0,
-        maybe_admission_reject_reason: None,
-        maybe_latest_admission_event: Some("ready".to_string()),
-        maybe_latest_resource_event: None,
-    });
+    context
+        .set_inbound_listener_evidence(InboundListenerEvidence {
+            listener_state: "listening".to_string(),
+            preflight_reason: "ready".to_string(),
+            bound_endpoints: vec!["127.0.0.1:18444".to_string()],
+            admitted_inbound_peers: 0,
+            rejected_inbound_peers: 0,
+            resource_rejections: 0,
+            timeout_disconnects: 0,
+            churn_rejections: 0,
+            reconnect_suppressions: 0,
+            maybe_admission_reject_reason: None,
+            maybe_latest_admission_event: Some("ready".to_string()),
+            maybe_latest_resource_event: None,
+        })
+        .expect("authoritative listener evidence");
 
     // Act
     let status = dispatch(
@@ -814,25 +824,29 @@ fn open_bitcoin_network_status_projects_address_boundary_evidence_without_raw_de
     let mut context = address_boundary_context();
     let peer_id = 9_206_101;
     let now_unix_seconds = 1_700_000_000;
-    context.set_inbound_listener_evidence(InboundListenerEvidence {
-        listener_state: "listening".to_string(),
-        preflight_reason: "ready".to_string(),
-        bound_endpoints: vec!["8.8.8.8:18444".to_string(), "127.0.0.1:18445".to_string()],
-        admitted_inbound_peers: 0,
-        rejected_inbound_peers: 0,
-        resource_rejections: 0,
-        timeout_disconnects: 0,
-        churn_rejections: 0,
-        reconnect_suppressions: 0,
-        maybe_admission_reject_reason: None,
-        maybe_latest_admission_event: Some("ready".to_string()),
-        maybe_latest_resource_event: None,
-    });
-    context.record_inbound_admission_for_remote_addr(
-        peer_id,
-        "127.0.0.1:52061".parse().expect("permissioned remote"),
-        false,
-    );
+    context
+        .set_inbound_listener_evidence(InboundListenerEvidence {
+            listener_state: "listening".to_string(),
+            preflight_reason: "ready".to_string(),
+            bound_endpoints: vec!["8.8.8.8:18444".to_string(), "127.0.0.1:18445".to_string()],
+            admitted_inbound_peers: 0,
+            rejected_inbound_peers: 0,
+            resource_rejections: 0,
+            timeout_disconnects: 0,
+            churn_rejections: 0,
+            reconnect_suppressions: 0,
+            maybe_admission_reject_reason: None,
+            maybe_latest_admission_event: Some("ready".to_string()),
+            maybe_latest_resource_event: None,
+        })
+        .expect("authoritative listener evidence");
+    context
+        .record_inbound_admission_for_remote_addr(
+            peer_id,
+            "127.0.0.1:52061".parse().expect("permissioned remote"),
+            false,
+        )
+        .expect("authoritative inbound admission");
     context
         .receive_network_message(
             peer_id,
@@ -989,16 +1003,20 @@ fn open_bitcoin_network_status_reports_permission_evidence_without_raw_class_nam
             &["in", "noban", "forceinbound"],
         ),
     ]);
-    context.record_inbound_admission_for_remote_addr(
-        31,
-        "127.0.0.1:50031".parse().expect("permissioned remote"),
-        false,
-    );
-    context.record_inbound_admission_for_remote_addr(
-        32,
-        "127.0.0.2:50032".parse().expect("protected remote"),
-        false,
-    );
+    context
+        .record_inbound_admission_for_remote_addr(
+            31,
+            "127.0.0.1:50031".parse().expect("permissioned remote"),
+            false,
+        )
+        .expect("authoritative inbound admission");
+    context
+        .record_inbound_admission_for_remote_addr(
+            32,
+            "127.0.0.2:50032".parse().expect("protected remote"),
+            false,
+        )
+        .expect("authoritative inbound admission");
 
     // Act
     let status = dispatch(
@@ -1052,11 +1070,19 @@ fn open_bitcoin_network_status_reports_permission_evidence_without_raw_class_nam
 fn open_bitcoin_network_status_reports_cap_and_reserved_slot_rejections() {
     // Arrange
     let mut cap_context = inbound_context(1, 0);
-    cap_context.record_inbound_admission(11, "127.0.0.1:18444".to_string(), false);
-    cap_context.record_inbound_admission(12, "127.0.0.1:18445".to_string(), false);
+    cap_context
+        .record_inbound_admission(11, "127.0.0.1:18444".to_string(), false)
+        .expect("authoritative inbound admission");
+    cap_context
+        .record_inbound_admission(12, "127.0.0.1:18445".to_string(), false)
+        .expect("authoritative inbound admission");
     let mut reserved_context = inbound_context(2, 1);
-    reserved_context.record_inbound_admission(21, "127.0.0.1:18444".to_string(), false);
-    reserved_context.record_inbound_admission(22, "127.0.0.1:18445".to_string(), false);
+    reserved_context
+        .record_inbound_admission(21, "127.0.0.1:18444".to_string(), false)
+        .expect("authoritative inbound admission");
+    reserved_context
+        .record_inbound_admission(22, "127.0.0.1:18445".to_string(), false)
+        .expect("authoritative inbound admission");
     let mut protected_reserved_context = permission_context_with_limits(
         vec![parsed_permission_class(
             "operator-loopback-protected",
@@ -1066,16 +1092,20 @@ fn open_bitcoin_network_status_reports_cap_and_reserved_slot_rejections() {
         1,
         1,
     );
-    protected_reserved_context.record_inbound_admission_for_remote_addr(
-        31,
-        "127.0.0.1:50031".parse().expect("first protected peer"),
-        false,
-    );
-    protected_reserved_context.record_inbound_admission_for_remote_addr(
-        32,
-        "127.0.0.1:50032".parse().expect("second protected peer"),
-        false,
-    );
+    protected_reserved_context
+        .record_inbound_admission_for_remote_addr(
+            31,
+            "127.0.0.1:50031".parse().expect("first protected peer"),
+            false,
+        )
+        .expect("authoritative inbound admission");
+    protected_reserved_context
+        .record_inbound_admission_for_remote_addr(
+            32,
+            "127.0.0.1:50032".parse().expect("second protected peer"),
+            false,
+        )
+        .expect("authoritative inbound admission");
 
     // Act
     let cap_status = dispatch(
@@ -1130,9 +1160,15 @@ fn open_bitcoin_network_status_reports_cap_and_reserved_slot_rejections() {
 fn open_bitcoin_network_status_latest_event_updates_after_rejection_then_admission() {
     // Arrange
     let mut context = inbound_context(2, 0);
-    context.record_inbound_admission(41, "127.0.0.1:18444".to_string(), false);
-    context.record_inbound_admission(42, "127.0.0.1:18444".to_string(), false);
-    context.record_inbound_admission(43, "127.0.0.1:18445".to_string(), false);
+    context
+        .record_inbound_admission(41, "127.0.0.1:18444".to_string(), false)
+        .expect("authoritative inbound admission");
+    context
+        .record_inbound_admission(42, "127.0.0.1:18444".to_string(), false)
+        .expect("authoritative inbound admission");
+    context
+        .record_inbound_admission(43, "127.0.0.1:18445".to_string(), false)
+        .expect("authoritative inbound admission");
 
     // Act
     let status = dispatch(
@@ -1159,7 +1195,9 @@ fn open_bitcoin_network_status_latest_event_updates_after_rejection_then_admissi
 fn open_bitcoin_network_status_records_runtime_self_connection_rejection() {
     // Arrange
     let mut context = inbound_context(2, 0);
-    context.record_inbound_admission(51, "127.0.0.1:18451".to_string(), false);
+    context
+        .record_inbound_admission(51, "127.0.0.1:18451".to_string(), false)
+        .expect("authoritative inbound admission");
 
     // Act
     let error = context
@@ -1205,7 +1243,9 @@ fn open_bitcoin_network_status_records_runtime_self_connection_rejection() {
 fn open_bitcoin_network_status_get_network_info_omits_open_bitcoin_inbound_status_details() {
     // Arrange
     let mut context = node_context_with_chain_and_mempool();
-    context.record_inbound_admission(17, "127.0.0.1:18447".to_string(), false);
+    context
+        .record_inbound_admission(17, "127.0.0.1:18447".to_string(), false)
+        .expect("authoritative inbound admission");
     let regression_scope =
         "getnetworkinfo local_advertisement_candidates latest_address_decision regression";
 
@@ -2197,6 +2237,7 @@ fn sendrawtransaction_queues_internal_relay_evidence_without_propagation_claim()
     }
     let evidence = context
         .latest_local_submission_evidence()
+        .expect("authoritative relay evidence")
         .expect("relay evidence");
     assert_eq!(evidence.queued_count, 1);
     assert_eq!(
@@ -2292,6 +2333,7 @@ fn sendrawtransaction_duplicate_does_not_queue_new_fanout() {
     );
     let evidence = context
         .latest_local_submission_evidence()
+        .expect("authoritative relay evidence")
         .expect("relay evidence");
     assert_eq!(evidence.queued_count, 0);
     assert_eq!(

@@ -30,7 +30,7 @@ use crate::{
 };
 
 use super::{
-    decode, map_built_transaction, map_wallet_freshness, network_error_to_failure,
+    decode, map_built_transaction, map_wallet_freshness, network_authority_error_to_failure,
     rpc_failure_message, wallet_error_to_failure,
 };
 
@@ -62,7 +62,7 @@ pub(super) fn send_to_address(
 
     let submitted = context
         .submit_local_transaction(built.transaction)
-        .map_err(network_error_to_failure)?;
+        .map_err(network_authority_error_to_failure)?;
     Ok(decode::encode_hex(submitted.accepted.as_bytes()))
 }
 
@@ -174,7 +174,10 @@ pub(super) fn list_unspent(
     context: &ManagedRpcContext,
     request: ListUnspentRequest,
 ) -> Result<ListUnspentResponse, RpcFailure> {
-    let tip_height = context.maybe_chain_tip().map_or(0, |tip| tip.height);
+    let tip_height = context
+        .maybe_chain_tip()
+        .map_err(network_authority_error_to_failure)?
+        .map_or(0, |tip| tip.height);
     let mut entries = Vec::new();
     let mut total_amount_sats = 0_i64;
 

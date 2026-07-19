@@ -320,7 +320,7 @@ permission_validation_failures: self.inbound_permission_validation_failures,
     [
       "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
       `
-ManagedRpcContext::from_runtime_config_with_store();
+ManagedRpcContext::from_runtime_config_with_network_handle();
 sync_runtime.set_inbound_metric_status_provider(|| { shared_context.try_lock(); context.current_inbound_status() });
 `,
     ],

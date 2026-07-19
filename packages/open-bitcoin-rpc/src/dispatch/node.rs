@@ -29,20 +29,24 @@ use crate::{
     },
 };
 
-use super::{decode, network_error_to_failure, version_number, wallet_error_to_failure};
+use super::{decode, network_authority_error_to_failure, version_number, wallet_error_to_failure};
 
 const UNSUPPORTED_MAX_FEE_RATE_MESSAGE: &str =
     "sendrawtransaction maxfeerate enforcement is not supported in Phase 8; omit maxfeerate";
 const UNSUPPORTED_MAX_BURN_AMOUNT_MESSAGE: &str =
     "sendrawtransaction maxburnamount enforcement is not supported in Phase 8; omit maxburnamount";
 
-pub(super) fn get_blockchain_info(context: &ManagedRpcContext) -> GetBlockchainInfoResponse {
+pub(super) fn get_blockchain_info(
+    context: &ManagedRpcContext,
+) -> Result<GetBlockchainInfoResponse, RpcFailure> {
     if let Some(durable_sync_state) = context.maybe_durable_sync_state() {
         return durable_blockchain_info(context, durable_sync_state);
     }
 
-    let maybe_tip = context.maybe_chain_tip();
-    GetBlockchainInfoResponse {
+    let maybe_tip = context
+        .maybe_chain_tip()
+        .map_err(network_authority_error_to_failure)?;
+    Ok(GetBlockchainInfoResponse {
         chain: context.chain_name().to_string(),
         blocks: maybe_tip.as_ref().map_or(0, |tip| tip.height),
         headers: maybe_tip.as_ref().map_or(0, |tip| tip.height),
@@ -53,14 +57,16 @@ pub(super) fn get_blockchain_info(context: &ManagedRpcContext) -> GetBlockchainI
         verificationprogress: if maybe_tip.is_some() { 1.0 } else { 0.0 },
         initialblockdownload: false,
         warnings: Vec::new(),
-    }
+    })
 }
 
 fn durable_blockchain_info(
     context: &ManagedRpcContext,
     durable_sync_state: &open_bitcoin_node::DurableSyncState,
-) -> GetBlockchainInfoResponse {
-    let maybe_tip = context.maybe_chain_tip();
+) -> Result<GetBlockchainInfoResponse, RpcFailure> {
+    let maybe_tip = context
+        .maybe_chain_tip()
+        .map_err(network_authority_error_to_failure)?;
     let maybe_sync_progress = match &durable_sync_state.sync.sync_progress {
         FieldAvailability::Available(value) => Some(value),
         FieldAvailability::Unavailable { .. } => None,
@@ -72,7 +78,7 @@ fn durable_blockchain_info(
         FieldAvailability::Unavailable { .. } => None,
     };
 
-    GetBlockchainInfoResponse {
+    Ok(GetBlockchainInfoResponse {
         chain: context.chain_name().to_string(),
         blocks,
         headers,
@@ -83,12 +89,16 @@ fn durable_blockchain_info(
         verificationprogress: durable_verification_progress(maybe_sync_progress),
         initialblockdownload: durable_initial_block_download(headers, blocks, lifecycle),
         warnings: durable_warnings(durable_sync_state),
-    }
+    })
 }
 
-pub(super) fn get_mempool_info(context: &ManagedRpcContext) -> GetMempoolInfoResponse {
-    let info = context.mempool_info();
-    GetMempoolInfoResponse {
+pub(super) fn get_mempool_info(
+    context: &ManagedRpcContext,
+) -> Result<GetMempoolInfoResponse, RpcFailure> {
+    let info = context
+        .mempool_info()
+        .map_err(network_authority_error_to_failure)?;
+    Ok(GetMempoolInfoResponse {
         size: info.transaction_count,
         bytes: info.total_virtual_size,
         usage: info.total_virtual_size,
@@ -97,7 +107,7 @@ pub(super) fn get_mempool_info(context: &ManagedRpcContext) -> GetMempoolInfoRes
         mempoolminfee: info.min_relay_feerate_sats_per_kvb,
         minrelaytxfee: info.min_relay_feerate_sats_per_kvb,
         loaded: true,
-    }
+    })
 }
 
 fn durable_verification_progress(maybe_sync_progress: Option<&SyncProgress>) -> f64 {
@@ -164,10 +174,16 @@ fn u64_to_u32(value: u64) -> u32 {
     u32::try_from(value).unwrap_or(u32::MAX)
 }
 
-pub(super) fn get_network_info(context: &ManagedRpcContext) -> GetNetworkInfoResponse {
-    let network_info = context.network_info();
-    let mempool_info = context.mempool_info();
-    GetNetworkInfoResponse {
+pub(super) fn get_network_info(
+    context: &ManagedRpcContext,
+) -> Result<GetNetworkInfoResponse, RpcFailure> {
+    let network_info = context
+        .network_info()
+        .map_err(network_authority_error_to_failure)?;
+    let mempool_info = context
+        .mempool_info()
+        .map_err(network_authority_error_to_failure)?;
+    Ok(GetNetworkInfoResponse {
         version: version_number(),
         subversion: network_info.user_agent,
         protocolversion: network_info.protocol_version,
@@ -179,18 +195,22 @@ pub(super) fn get_network_info(context: &ManagedRpcContext) -> GetNetworkInfoRes
         relayfee: mempool_info.min_relay_feerate_sats_per_kvb,
         incrementalfee: mempool_info.incremental_relay_feerate_sats_per_kvb,
         warnings: Vec::new(),
-    }
+    })
 }
 
 pub(super) fn open_bitcoin_network_status(
     context: &ManagedRpcContext,
-) -> OpenBitcoinNetworkStatusResponse {
-    OpenBitcoinNetworkStatusResponse {
+) -> Result<OpenBitcoinNetworkStatusResponse, RpcFailure> {
+    Ok(OpenBitcoinNetworkStatusResponse {
         inbound: context.current_inbound_status(),
-        relay: context.relay_evidence_status(),
-        block_relay: context.block_relay_evidence_status(),
+        relay: context
+            .relay_evidence_status()
+            .map_err(network_authority_error_to_failure)?,
+        block_relay: context
+            .block_relay_evidence_status()
+            .map_err(network_authority_error_to_failure)?,
         metrics: context.metrics_status(),
-    }
+    })
 }
 
 pub(super) fn open_bitcoin_sync_status(
@@ -250,7 +270,7 @@ pub(super) fn send_raw_transaction(
         .map_err(|error| RpcFailure::invalid_params(error.to_string()))?;
     let outcome = context
         .submit_local_transaction_with_relay_evidence(transaction.clone())
-        .map_err(network_error_to_failure)?;
+        .map_err(network_authority_error_to_failure)?;
 
     send_raw_transaction_response(outcome, &transaction)
 }

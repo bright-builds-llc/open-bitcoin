@@ -3,21 +3,37 @@
 
 use std::{
     fmt,
+    net::IpAddr,
     sync::{Arc, Mutex},
 };
 
 use open_bitcoin_core::{
     chainstate::{AnchoredBlock, ChainPosition, ChainTransition, ChainstateSnapshot},
     consensus::{ConsensusParams, ScriptVerifyFlags},
-    primitives::{Block, BlockHash},
+    mempool::{AdmissionResult, MempoolOutcome},
+    primitives::{Block, BlockHash, NetworkAddress, NetworkMagic, Transaction},
 };
-use open_bitcoin_network::{HeaderEntry, PeerId, PeerManager, WireNetworkMessage};
+use open_bitcoin_mempool::PolicyConfig;
+use open_bitcoin_network::{
+    BanDecision, BanScope, BlockRelayActivationPolicy, HeaderEntry, InboundAdmissionDecision,
+    InboundAdmissionPolicy, InboundAdmissionRequest, InboundResourceEvent,
+    LocalAdvertisementDecision, LocalPeerConfig, MisbehaviorDecision, PeerBanEntry, PeerId,
+    PeerManager, ReconnectSuppressionInput, RelayActivationConfig, ServiceFlags, UnbanDecision,
+    WireNetworkMessage,
+};
 
-use crate::{MemoryChainstateStore, status::BlockRelayEvidenceStatus, sync::SyncRuntimeError};
+use crate::{
+    MemoryChainstateStore, StorageError,
+    status::{BlockRelayEvidenceStatus, SyncRecoveryCategory, relay_evidence::RelayEvidenceStatus},
+    storage::MempoolSnapshot,
+    sync::SyncRuntimeError,
+};
 
 use super::{
-    BlockConnectDisposition, BlockRelayRuntimeEvidenceSnapshot, ManagedNetworkError,
-    ManagedNetworkInfo, ManagedPeerNetwork, ManagedSyncMessageResult,
+    BlockConnectDisposition, BlockRelayRuntimeEvidenceSnapshot, LocalRelaySubmissionEvidence,
+    ManagedAddressBoundaryInfo, ManagedInboundAdmissionInfo, ManagedMempoolInfo,
+    ManagedMempoolRecoverySummary, ManagedNetworkError, ManagedNetworkInfo, ManagedPeerNetwork,
+    ManagedPeerPolicyInfo, ManagedResourceGovernanceInfo, ManagedSyncMessageResult,
 };
 
 type AuthoritativeNetwork = ManagedPeerNetwork<MemoryChainstateStore>;
@@ -75,6 +91,42 @@ impl ManagedNetworkHandle {
         }
     }
 
+    /// Wraps an explicitly constructed in-memory network for tests and benchmarks.
+    pub fn from_network_fixture(network: AuthoritativeNetwork) -> Self {
+        Self::new(network)
+    }
+
+    /// Creates a transient production authority when no durable store is configured.
+    pub fn transient_runtime(
+        magic: NetworkMagic,
+        port: u16,
+        relay_activation: RelayActivationConfig,
+        block_relay_activation: BlockRelayActivationPolicy,
+        inbound_enabled: bool,
+    ) -> Self {
+        let local_config = LocalPeerConfig {
+            magic,
+            services: ServiceFlags::NETWORK | ServiceFlags::WITNESS,
+            address: NetworkAddress {
+                services: 0,
+                address_bytes: [0_u8; 16],
+                port,
+            },
+            nonce: 0,
+            relay: true,
+            user_agent: "/open-bitcoin:0.1.0/".to_string(),
+        };
+        let network = ManagedPeerNetwork::new_with_block_relay_activation(
+            MemoryChainstateStore::default(),
+            local_config,
+            PolicyConfig::default(),
+            relay_activation,
+            block_relay_activation,
+            inbound_enabled,
+        );
+        Self::new(network)
+    }
+
     fn read<T>(
         &self,
         snapshot: impl FnOnce(&AuthoritativeNetwork) -> T,
@@ -104,6 +156,13 @@ impl ManagedNetworkHandle {
         self.mutate(command)?.map_err(Into::into)
     }
 
+    fn try_read<T>(
+        &self,
+        snapshot: impl FnOnce(&AuthoritativeNetwork) -> Result<T, ManagedNetworkError>,
+    ) -> Result<T, ManagedNetworkAuthorityError> {
+        self.read(snapshot)?.map_err(Into::into)
+    }
+
     pub fn chainstate_snapshot(&self) -> Result<ChainstateSnapshot, ManagedNetworkAuthorityError> {
         self.read(ManagedPeerNetwork::chainstate_snapshot)
     }
@@ -126,6 +185,109 @@ impl ManagedNetworkHandle {
 
     pub fn network_info(&self) -> Result<ManagedNetworkInfo, ManagedNetworkAuthorityError> {
         self.read(ManagedPeerNetwork::network_info)
+    }
+
+    pub fn mempool_info(&self) -> Result<ManagedMempoolInfo, ManagedNetworkAuthorityError> {
+        self.read(ManagedPeerNetwork::mempool_info)
+    }
+
+    pub fn relay_evidence_status(
+        &self,
+    ) -> Result<RelayEvidenceStatus, ManagedNetworkAuthorityError> {
+        self.read(ManagedPeerNetwork::relay_evidence_status)
+    }
+
+    pub fn inbound_admission_info(
+        &self,
+    ) -> Result<ManagedInboundAdmissionInfo, ManagedNetworkAuthorityError> {
+        self.read(|network| network.inbound_admission_info().clone())
+    }
+
+    pub fn address_boundary_info(
+        &self,
+    ) -> Result<ManagedAddressBoundaryInfo, ManagedNetworkAuthorityError> {
+        self.read(ManagedPeerNetwork::address_boundary_info)
+    }
+
+    pub fn peer_policy_info(&self) -> Result<ManagedPeerPolicyInfo, ManagedNetworkAuthorityError> {
+        self.read(ManagedPeerNetwork::peer_policy_info)
+    }
+
+    pub fn resource_governance_info(
+        &self,
+    ) -> Result<ManagedResourceGovernanceInfo, ManagedNetworkAuthorityError> {
+        self.read(ManagedPeerNetwork::resource_governance_info)
+    }
+
+    pub fn record_resource_governance_event(
+        &self,
+        event: InboundResourceEvent,
+    ) -> Result<(), ManagedNetworkAuthorityError> {
+        self.mutate(|network| network.record_resource_governance_event(event))
+    }
+
+    pub fn record_peer_policy_ban(
+        &self,
+        entry: PeerBanEntry,
+        now_unix_seconds: i64,
+    ) -> Result<BanDecision, ManagedNetworkAuthorityError> {
+        self.mutate(|network| network.record_peer_policy_ban(entry, now_unix_seconds))
+    }
+
+    pub fn record_peer_policy_discouragement(
+        &self,
+        entry: PeerBanEntry,
+        now_unix_seconds: i64,
+    ) -> Result<BanDecision, ManagedNetworkAuthorityError> {
+        self.mutate(|network| network.record_peer_policy_discouragement(entry, now_unix_seconds))
+    }
+
+    pub fn record_peer_policy_unban(
+        &self,
+        scope: &BanScope,
+        now_unix_seconds: i64,
+    ) -> Result<UnbanDecision, ManagedNetworkAuthorityError> {
+        self.mutate(|network| network.record_peer_policy_unban(scope, now_unix_seconds))
+    }
+
+    pub fn record_peer_policy_misbehavior(
+        &self,
+        decision: MisbehaviorDecision,
+    ) -> Result<(), ManagedNetworkAuthorityError> {
+        self.mutate(|network| network.record_peer_policy_misbehavior(decision))
+    }
+
+    pub fn set_inbound_admission_policy(
+        &self,
+        policy: InboundAdmissionPolicy,
+    ) -> Result<(), ManagedNetworkAuthorityError> {
+        self.mutate(|network| network.set_inbound_admission_policy(policy))
+    }
+
+    pub fn set_local_address_decisions(
+        &self,
+        decisions: Vec<LocalAdvertisementDecision>,
+    ) -> Result<(), ManagedNetworkAuthorityError> {
+        self.mutate(|network| network.set_local_address_decisions(decisions))
+    }
+
+    pub fn reconnect_suppression_input_for_ip(
+        &self,
+        remote_ip: IpAddr,
+        now_unix_seconds: i64,
+    ) -> Result<ReconnectSuppressionInput, ManagedNetworkAuthorityError> {
+        self.read(|network| network.reconnect_suppression_input_for_ip(remote_ip, now_unix_seconds))
+    }
+
+    pub fn admit_inbound_peer(
+        &self,
+        request: InboundAdmissionRequest,
+    ) -> Result<InboundAdmissionDecision, ManagedNetworkAuthorityError> {
+        self.mutate(|network| network.admit_inbound_peer(request))
+    }
+
+    pub fn add_inbound_peer(&self, peer_id: PeerId) -> Result<(), ManagedNetworkAuthorityError> {
+        self.try_mutate(|network| network.add_inbound_peer(peer_id))
     }
 
     pub fn connect_outbound_peer(
@@ -153,6 +315,26 @@ impl ManagedNetworkHandle {
                 consensus_params,
             )
         })
+    }
+
+    pub fn receive_message(
+        &self,
+        peer_id: PeerId,
+        message: WireNetworkMessage,
+        timestamp: i64,
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+    ) -> Result<ManagedSyncMessageResult, ManagedNetworkAuthorityError> {
+        self.try_mutate(|network| {
+            network.receive_message(peer_id, message, timestamp, verify_flags, consensus_params)
+        })
+    }
+
+    pub fn encode_messages(
+        &self,
+        messages: &[WireNetworkMessage],
+    ) -> Result<Vec<Vec<u8>>, ManagedNetworkAuthorityError> {
+        self.try_read(|network| network.encode_messages(messages))
     }
 
     pub fn expire_compact_download_timeouts(
@@ -256,6 +438,71 @@ impl ManagedNetworkHandle {
         self.try_mutate(|network| {
             network.connect_local_block(block, verify_flags, consensus_params)
         })
+    }
+
+    pub fn submit_local_transaction(
+        &self,
+        transaction: Transaction,
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+    ) -> Result<AdmissionResult, ManagedNetworkAuthorityError> {
+        self.try_mutate(|network| {
+            network.submit_local_transaction(transaction, verify_flags, consensus_params)
+        })
+    }
+
+    pub fn submit_local_transaction_outcome(
+        &self,
+        transaction: Transaction,
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+    ) -> Result<MempoolOutcome, ManagedNetworkAuthorityError> {
+        self.try_mutate(|network| {
+            network.submit_local_transaction_outcome(transaction, verify_flags, consensus_params)
+        })
+    }
+
+    pub fn latest_local_submission_evidence(
+        &self,
+    ) -> Result<Option<LocalRelaySubmissionEvidence>, ManagedNetworkAuthorityError> {
+        self.read(ManagedPeerNetwork::latest_local_submission_evidence)
+    }
+
+    pub fn recover_mempool_snapshot(
+        &self,
+        snapshot: &MempoolSnapshot,
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+    ) -> Result<ManagedMempoolRecoverySummary, ManagedNetworkAuthorityError> {
+        self.try_mutate(|network| {
+            network.recover_mempool_snapshot(snapshot, verify_flags, consensus_params)
+        })
+    }
+
+    pub fn record_mempool_recovery_storage_error(
+        &self,
+        error: &StorageError,
+    ) -> Result<(), ManagedNetworkAuthorityError> {
+        self.mutate(|network| network.record_mempool_recovery_storage_error(error))
+    }
+
+    pub fn record_mempool_recovery_unavailable(
+        &self,
+        category: SyncRecoveryCategory,
+    ) -> Result<(), ManagedNetworkAuthorityError> {
+        self.mutate(|network| network.record_mempool_recovery_unavailable(category))
+    }
+
+    pub fn latest_mempool_recovery_summary(
+        &self,
+    ) -> Result<Option<ManagedMempoolRecoverySummary>, ManagedNetworkAuthorityError> {
+        self.read(ManagedPeerNetwork::latest_mempool_recovery_summary)
+    }
+
+    pub fn latest_mempool_recovery_storage_error(
+        &self,
+    ) -> Result<Option<SyncRecoveryCategory>, ManagedNetworkAuthorityError> {
+        self.read(ManagedPeerNetwork::latest_mempool_recovery_storage_error)
     }
 
     pub fn announce_block(

@@ -11,7 +11,6 @@ use std::{
         Arc, Mutex,
         atomic::{AtomicBool, AtomicU64, Ordering},
     },
-    time::{SystemTime, UNIX_EPOCH},
 };
 
 use open_bitcoin_network::{
@@ -28,9 +27,10 @@ use crate::{ManagedRpcContext, context::EncodedWireResponse};
 mod resource_runtime;
 use resource_runtime::{
     InboundRuntimeCounters, ReadWireMessageOutcome, RuntimeQueuePressureState,
-    WriteWireMessageOutcome, lock_evidence, lock_runtime_counters, next_handshake_state,
-    queue_pressure_event, read_wire_message_for_state, resource_event_from_decision,
-    resource_timeout_event, write_all_for_state,
+    WriteWireMessageOutcome, current_timestamp, disconnect_admitted_peer, lock_evidence,
+    lock_runtime_counters, next_handshake_state, queue_pressure_event, read_wire_message_for_state,
+    record_shared_resource_event, resource_event_from_decision, resource_timeout_event,
+    write_all_for_state,
 };
 #[cfg(test)]
 use resource_runtime::{read_wire_message, read_wire_message_with_timeout_duration, write_all};
@@ -378,11 +378,15 @@ fn activation_bind_diagnostic(
 }
 
 async fn accept_loop(bound_listener: BoundInboundListener, shared: InboundAcceptLoopShared) {
-    shared
+    if shared
         .context
         .lock()
         .await
-        .set_inbound_listener_evidence(shared.initial_evidence.clone());
+        .set_inbound_listener_evidence(shared.initial_evidence.clone())
+        .is_err()
+    {
+        return;
+    }
     let resource_policy = ResourceGovernancePolicy::default();
     loop {
         if shared.shutdown_requested.load(Ordering::Relaxed) {
@@ -409,11 +413,16 @@ async fn accept_loop(bound_listener: BoundInboundListener, shared: InboundAccept
             continue;
         }
 
-        let reconnect_input = shared
+        let Ok(reconnect_input) = shared
             .context
             .lock()
             .await
-            .reconnect_suppression_input_for_remote_addr(remote_addr, now_unix_seconds);
+            .reconnect_suppression_input_for_remote_addr(remote_addr, now_unix_seconds)
+        else {
+            lock_runtime_counters(&shared.runtime_counters)
+                .record_failure(&resource_policy, now_unix_seconds);
+            continue;
+        };
         if let Some(event) =
             resource_event_from_decision(resource_policy.decide_reconnect(reconnect_input))
         {
@@ -455,12 +464,17 @@ async fn handle_inbound_stream(
         context.record_inbound_admission_for_remote_addr(peer_id, remote_addr, false)
     };
     let permission_decision = match decision {
-        InboundAdmissionDecision::Admit(record) => {
+        Ok(InboundAdmissionDecision::Admit(record)) => {
             lock_evidence(&evidence).record_admitted();
             record.permission_decision
         }
-        InboundAdmissionDecision::Reject(rejection) => {
+        Ok(InboundAdmissionDecision::Reject(rejection)) => {
             lock_evidence(&evidence).record_rejected(rejection.reason);
+            lock_runtime_counters(&runtime_counters)
+                .record_failure(&resource_policy, current_timestamp());
+            return;
+        }
+        Err(_error) => {
             lock_runtime_counters(&runtime_counters)
                 .record_failure(&resource_policy, current_timestamp());
             return;
@@ -468,8 +482,10 @@ async fn handle_inbound_stream(
     };
     let mut queue_pressure = RuntimeQueuePressureState::default();
 
-    let envelope_policy =
-        InboundEnvelopePolicy::new(context.lock().await.network_info().network_magic);
+    let Ok(network_info) = context.lock().await.network_info() else {
+        return;
+    };
+    let envelope_policy = InboundEnvelopePolicy::new(network_info.network_magic);
 
     'message_loop: loop {
         if let Some(event) = resource_timeout_event(
@@ -558,7 +574,11 @@ async fn handle_inbound_stream(
             )
             .await;
             queue_pressure.clear_pending_write();
-            acknowledge_inbound_response_write(&write_result, &response, &context).await;
+            if !acknowledge_inbound_response_write(&write_result, &response, &context).await {
+                lock_runtime_counters(&runtime_counters)
+                    .record_failure(&resource_policy, current_timestamp());
+                break 'message_loop;
+            }
             match write_result {
                 Ok(WriteWireMessageOutcome::Written) => {}
                 Ok(WriteWireMessageOutcome::Rejected(event)) => {
@@ -582,42 +602,16 @@ async fn acknowledge_inbound_response_write(
     write_result: &io::Result<WriteWireMessageOutcome>,
     response: &EncodedWireResponse,
     context: &Arc<tokio::sync::Mutex<ManagedRpcContext>>,
-) {
+) -> bool {
     let Ok(WriteWireMessageOutcome::Written) = write_result else {
-        return;
+        return true;
     };
 
     context
         .lock()
         .await
-        .acknowledge_wire_message_written(&response.message);
-}
-
-async fn disconnect_admitted_peer(
-    context: &Arc<tokio::sync::Mutex<ManagedRpcContext>>,
-    peer_id: u64,
-) {
-    let mut context = context.lock().await;
-    if let Err(_error) = context.disconnect_peer(peer_id) {
-        // The message loop may already have removed the peer, for example after
-        // a runtime self-connection rejection.
-    }
-}
-
-async fn record_shared_resource_event(
-    context: &Arc<tokio::sync::Mutex<ManagedRpcContext>>,
-    evidence: &Arc<Mutex<InboundListenerEvidence>>,
-    event: InboundResourceEvent,
-) {
-    lock_evidence(evidence).record_resource_event(event.clone());
-    context.lock().await.record_inbound_resource_event(event);
-}
-
-fn current_timestamp() -> i64 {
-    let Ok(duration) = SystemTime::now().duration_since(UNIX_EPOCH) else {
-        return 0;
-    };
-    i64::try_from(duration.as_secs()).unwrap_or(i64::MAX)
+        .acknowledge_wire_message_written(&response.message)
+        .is_ok()
 }
 
 #[cfg(test)]

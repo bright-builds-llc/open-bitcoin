@@ -13,13 +13,12 @@ use open_bitcoin_network::{
     InboundListenerConfig, PeerPermissionClassRegistry, WireNetworkMessage,
 };
 use open_bitcoin_node::LogRetentionPolicy;
-use open_bitcoin_node::MemoryChainstateStore;
 use open_bitcoin_node::core::consensus::{ConsensusParams, ScriptVerifyFlags};
 use open_bitcoin_node::core::wallet::AddressNetwork;
 use std::{path::PathBuf, sync::mpsc, time::Duration};
 
 use open_bitcoin_node::{
-    DurableSyncState, FjallNodeStore, ManagedPeerNetwork, PersistMode, RuntimeMetadata,
+    DurableSyncState, FjallNodeStore, ManagedNetworkHandle, PersistMode, RuntimeMetadata,
 };
 
 use crate::inbound_listener::InboundListenerEvidence;
@@ -42,7 +41,7 @@ pub struct ManagedRpcContext {
     chain: AddressNetwork,
     consensus_params: ConsensusParams,
     verify_flags: ScriptVerifyFlags,
-    network: ManagedPeerNetwork<MemoryChainstateStore>,
+    network: ManagedNetworkHandle,
     permission_classes: PeerPermissionClassRegistry,
     inbound_permission_validation_failures: u32,
     inbound_listener_config: InboundListenerConfig,

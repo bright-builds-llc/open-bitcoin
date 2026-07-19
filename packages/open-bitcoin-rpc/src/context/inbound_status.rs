@@ -31,14 +31,20 @@ use super::{
 
 impl ManagedRpcContext {
     pub fn current_inbound_status(&self) -> FieldAvailability<InboundPeerServingStatus> {
-        let admission = self.inbound_admission_info();
-        let address_info = self.network.address_boundary_info();
-        let peer_policy_info = self.network.peer_policy_info();
+        let Ok(admission) = self.inbound_admission_info() else {
+            return inbound_status_unavailable();
+        };
+        let Ok(address_info) = self.network.address_boundary_info() else {
+            return inbound_status_unavailable();
+        };
+        let Ok(peer_policy_info) = self.network.peer_policy_info() else {
+            return inbound_status_unavailable();
+        };
         let maybe_listener_evidence = self.maybe_inbound_listener_evidence.as_ref();
-        let resource_info = resource_governance_info(
-            self.network.resource_governance_info(),
-            maybe_listener_evidence,
-        );
+        let Ok(resource_info) = self.network.resource_governance_info() else {
+            return inbound_status_unavailable();
+        };
+        let resource_info = resource_governance_info(resource_info, maybe_listener_evidence);
         if admission.admitted_inbound_peers == 0
             && admission.rejected_inbound_peers == 0
             && maybe_listener_evidence.is_none()
@@ -50,7 +56,9 @@ impl ManagedRpcContext {
             return inbound_status_unavailable();
         }
 
-        let network_info = self.network_info();
+        let Ok(network_info) = self.network_info() else {
+            return inbound_status_unavailable();
+        };
         let permission_evidence = inbound_permission_evidence(&admission);
         let latest_address_decision = latest_inbound_address_decision(&address_info);
         let latest_peer_policy_decision = latest_inbound_peer_policy_decision(&peer_policy_info);

@@ -107,7 +107,7 @@ function verifyProductionActivation(
   const daemon = texts.get("packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs") ?? "";
   requireOrdered(
     daemon,
-    ["DurableSyncRuntime::open_with_block_relay_activation(", "runtime.block_serving"],
+    ["DurableSyncRuntime::open_with_runtime_activation(", "runtime.block_serving"],
     "P123 daemon sync activation wiring",
     failures,
   );

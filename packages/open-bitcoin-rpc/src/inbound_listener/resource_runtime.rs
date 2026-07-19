@@ -7,7 +7,7 @@
 use std::{
     io,
     sync::{Arc, Mutex},
-    time::Duration,
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use open_bitcoin_codec::parse_message_header;
@@ -18,9 +18,36 @@ use open_bitcoin_network::{
     ResourceGovernanceDecision, ResourceGovernancePolicy, ResourceTimeoutInput, WireNetworkMessage,
 };
 
+use crate::ManagedRpcContext;
+
 use super::InboundListenerEvidence;
-#[cfg(test)]
-use super::current_timestamp;
+
+pub(super) fn current_timestamp() -> i64 {
+    let Ok(duration) = SystemTime::now().duration_since(UNIX_EPOCH) else {
+        return 0;
+    };
+    i64::try_from(duration.as_secs()).unwrap_or(i64::MAX)
+}
+
+pub(super) async fn disconnect_admitted_peer(
+    context: &Arc<tokio::sync::Mutex<ManagedRpcContext>>,
+    peer_id: u64,
+) {
+    let mut context = context.lock().await;
+    if let Err(_error) = context.disconnect_peer(peer_id) {
+        // The message loop may already have removed the peer, for example after
+        // a runtime self-connection rejection.
+    }
+}
+
+pub(super) async fn record_shared_resource_event(
+    context: &Arc<tokio::sync::Mutex<ManagedRpcContext>>,
+    evidence: &Arc<Mutex<InboundListenerEvidence>>,
+    event: InboundResourceEvent,
+) {
+    lock_evidence(evidence).record_resource_event(event.clone());
+    context.lock().await.record_inbound_resource_event(event);
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct InboundRuntimeCounters {

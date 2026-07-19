@@ -87,6 +87,23 @@ impl DurableSyncRuntime {
         config: SyncRuntimeConfig,
         block_relay_activation: BlockRelayActivationPolicy,
     ) -> Result<Self, SyncRuntimeError> {
+        Self::open_with_runtime_activation(
+            store,
+            config,
+            RelayActivationConfig::default(),
+            block_relay_activation,
+            false,
+        )
+    }
+
+    /// Opens a durable runtime with all resolved network activation policies.
+    pub fn open_with_runtime_activation(
+        store: FjallNodeStore,
+        config: SyncRuntimeConfig,
+        relay_activation: RelayActivationConfig,
+        block_relay_activation: BlockRelayActivationPolicy,
+        inbound_enabled: bool,
+    ) -> Result<Self, SyncRuntimeError> {
         let mut memory_store = MemoryChainstateStore::default();
         if let Some(snapshot) = store.load_chainstate_snapshot()? {
             memory_store.save_snapshot(snapshot);
@@ -98,9 +115,9 @@ impl DurableSyncRuntime {
             local_config,
             PolicyConfig::default(),
             config.max_blocks_in_flight_per_peer,
-            RelayActivationConfig::default(),
+            relay_activation,
             block_relay_activation,
-            false,
+            inbound_enabled,
         );
         if let Some(header_store) = store.load_header_store()? {
             network.seed_header_store(header_store);
@@ -152,7 +169,7 @@ impl DurableSyncRuntime {
             best_block_height,
             self.config.target_outbound_peers,
         );
-        if let Some(downloaded_block) = self.downloaded_block().ok().flatten() {
+        if let Some(downloaded_block) = self.downloaded_block()? {
             summary.downloaded_block_height = downloaded_block.height;
             summary.maybe_downloaded_block_hash =
                 Some(tip::block_hash_hex(downloaded_block.block_hash));

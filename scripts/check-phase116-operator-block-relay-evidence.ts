@@ -122,7 +122,8 @@ const REQUIRED_FILE_NEEDLES = [
   },
   {
     file: "packages/open-bitcoin-rpc/src/dispatch/node.rs",
-    needle: "block_relay: context.block_relay_evidence_status()",
+    needle:
+      "block_relay_evidence_status()\n            .map_err(network_authority_error_to_failure)?",
   },
   {
     file: "packages/open-bitcoin-cli/src/operator/status/render/block_relay.rs",
