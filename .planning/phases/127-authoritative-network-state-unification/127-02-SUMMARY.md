@@ -167,6 +167,7 @@ Each task was committed atomically:
 - Task 2's final hook completed in 11m33.427s.
 - `rg` confirmed production `load_block` usage is confined to the unlocked inbound response-resolution path and its Fjall implementation.
 - `git diff --check`, focused compatibility guards, unmerged-path checks, stash checks, and all isolation hash comparisons passed.
+- Final unisolated `bash scripts/verify.sh` reached the Phase 124 repository-state guard after 25.232s; all earlier checks passed, then the known active-Phase-127 mismatch failed because the legacy closeout corpus still requires `**Plans:** 0 plans`.
 
 ## Authentication Gates
 
@@ -178,7 +179,7 @@ None.
 
 ## Deferred Issues
 
-None.
+- The Phase 124 real-repository fixture cannot yet represent active Phase 127 plans and summaries. Its two expected live-tree failures report `P124 post-audit Phase 127 plan state is missing **Plans:** 0 plans`; Plan 127-04 owns the planned static-verification evolution.
 
 ## Next Phase Readiness
 
@@ -193,6 +194,7 @@ None.
 - Verified the summary has exactly one top-of-file YAML frontmatter block.
 - Verified modified-file stub scans found no placeholders that prevent the plan goal.
 - Verified no unmerged paths or stashes remain and the original three tracked planning edits plus six untracked Phase 127 artifacts are preserved.
+- Verified the final live-tree failure is confined to the documented Phase 124 active-planning-state guard and not a source, Cargo, Bazel, parity, or behavioral regression.
 
 *Phase: 127-authoritative-network-state-unification*
 *Completed: 2026-07-19*
