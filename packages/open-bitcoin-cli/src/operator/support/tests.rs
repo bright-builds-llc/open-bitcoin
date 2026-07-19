@@ -34,9 +34,14 @@ use open_bitcoin_node::{
         usage_against_budget,
     },
 };
+use open_bitcoin_rpc::method::{
+    GetBalancesResponse, GetBlockchainInfoResponse, GetMempoolInfoResponse, GetNetworkInfoResponse,
+    GetWalletInfoResponse, OpenBitcoinNetworkStatusResponse,
+};
 use serde_json::json;
 
 use crate::operator::{
+    OperatorOutputFormat, SupportArgs, SupportBundleArgs, SupportCommand,
     config::OperatorConfigResolution,
     soak::{
         SoakBounds, SoakPeerPolicy, SoakRunId, SoakStopCondition,
@@ -47,6 +52,10 @@ use crate::operator::{
         outcome::SoakOutcomeLabel,
         report::write_soak_reports,
     },
+    status::{
+        StatusCollectorInput, StatusDetectionEvidence, StatusRenderMode, StatusRequest,
+        StatusRpcClient, StatusRpcError, StatusWalletRpcAccess, collect_status_snapshot,
+    },
 };
 
 use super::{
@@ -54,8 +63,8 @@ use super::{
     RecoverySupportEvidence, RuntimeMetadataEvidence, StoreHealthEvidence, SupportEvidenceBundle,
     SupportEvidenceOutput, collect_resource_bound_support_evidence, collect_soak_support_evidence,
     collect_store_health, derive_full_sync_evidence, evidence::SupportEvidenceVerdict,
-    forensics::SupportForensicsEvidence, redaction_summary, render, soak_outcome_label,
-    support_status_for_bundle,
+    execute_support_command, forensics::SupportForensicsEvidence, redaction_summary, render,
+    soak_outcome_label, support_status_for_bundle,
 };
 
 const PHASE96_PEER_POLICY_RUNTIME_BRIDGE_NEXT_ACTION: &str = "Treat Phase 96 as scoped runtime peer policy bridge evidence only; review ban, discourage, unban, and misbehavior labels before changing listener exposure or peer policy.";
@@ -1084,16 +1093,27 @@ fn support_bundle_redacts_sensitive_block_relay_reasons_in_json_and_markdown() {
 }
 
 #[test]
-fn authoritative_operator_support_snapshot_excludes_every_forbidden_material_class() {
+fn authoritative_rpc_status_support_bundle_redacts_every_forbidden_material_class_in_json_and_markdown()
+ {
     // Arrange
+    let temp = TestDirectory::new("phase127-authoritative-rpc-redaction");
+    let output_dir = temp.path().join("bundle");
     let status = phase127_authoritative_status_with_sensitive_operator_evidence();
-
-    // Act
-    let sanitized = support_status_for_bundle(status);
-    let rendered = serde_json::to_string_pretty(&sanitized).expect("support status json");
-
-    // Assert
-    for forbidden in [
+    let network_status = OpenBitcoinNetworkStatusResponse {
+        inbound: status.peers.inbound,
+        relay: status.mempool.relay,
+        block_relay: status.block_relay,
+        metrics: status.metrics,
+    };
+    let rpc = Phase127SensitiveStatusRpc { network_status };
+    let input = phase127_status_collector_input(temp.path());
+    let args = SupportArgs {
+        command: SupportCommand::Bundle(SupportBundleArgs {
+            maybe_output_dir: Some(output_dir.clone()),
+            maybe_live_smoke_report: None,
+        }),
+    };
+    let forbidden = [
         "127.0.0.1:18444",
         "198.51.100.127:8333",
         "permission_string=in,noban",
@@ -1101,8 +1121,36 @@ fn authoritative_operator_support_snapshot_excludes_every_forbidden_material_cla
         "020000000001",
         "txid=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "peer-127-dynamic-label",
-    ] {
-        assert_absent(&rendered, forbidden);
+    ];
+    let raw_rpc_json =
+        serde_json::to_string_pretty(&rpc.network_status).expect("raw network status RPC json");
+    for marker in forbidden {
+        assert!(
+            raw_rpc_json.contains(marker),
+            "phase 127 raw RPC fixture must seed {marker}"
+        );
+    }
+
+    // Act
+    let collected = collect_status_snapshot(&input, Some(&rpc));
+    let outcome = execute_support_command(
+        &args,
+        OperatorOutputFormat::Json,
+        &input.config_resolution,
+        collected,
+    )
+    .expect("production support command should write redacted evidence");
+    let json_text =
+        fs::read_to_string(output_dir.join("support-evidence.json")).expect("support JSON output");
+    let markdown = fs::read_to_string(output_dir.join("support-evidence.md"))
+        .expect("support Markdown output");
+
+    // Assert
+    assert_eq!(outcome.exit_code.code(), 0);
+    for rendered in [&json_text, &markdown] {
+        for marker in forbidden {
+            assert_absent(rendered, marker);
+        }
     }
     for expected in [
         "redacted_relay_mempool_evidence",
@@ -1113,7 +1161,8 @@ fn authoritative_operator_support_snapshot_excludes_every_forbidden_material_cla
         "redacted_peer_policy_label",
         "redacted_resource_governance_evidence",
     ] {
-        assert!(rendered.contains(expected), "missing {expected}");
+        assert!(json_text.contains(expected), "JSON missing {expected}");
+        assert!(markdown.contains(expected), "Markdown missing {expected}");
     }
 }
 
@@ -2156,6 +2205,90 @@ fn phase127_authoritative_status_with_sensitive_operator_evidence() -> OpenBitco
             next_action: sensitive.to_string(),
         });
     status
+}
+
+#[derive(Debug)]
+struct Phase127SensitiveStatusRpc {
+    network_status: OpenBitcoinNetworkStatusResponse,
+}
+
+impl StatusRpcClient for Phase127SensitiveStatusRpc {
+    fn get_network_info(&self) -> Result<GetNetworkInfoResponse, StatusRpcError> {
+        Ok(GetNetworkInfoResponse {
+            version: 29_300,
+            subversion: "/Satoshi:29.3.0/".to_string(),
+            protocolversion: 70_016,
+            localservices: "0000000000000409".to_string(),
+            localrelay: true,
+            connections: 7,
+            connections_in: 2,
+            connections_out: 5,
+            relayfee: 1_000,
+            incrementalfee: 1_000,
+            warnings: Vec::new(),
+        })
+    }
+
+    fn get_open_bitcoin_network_status(
+        &self,
+    ) -> Result<OpenBitcoinNetworkStatusResponse, StatusRpcError> {
+        Ok(self.network_status.clone())
+    }
+
+    fn get_blockchain_info(&self) -> Result<GetBlockchainInfoResponse, StatusRpcError> {
+        Ok(GetBlockchainInfoResponse {
+            chain: "regtest".to_string(),
+            blocks: 144,
+            headers: 144,
+            maybe_best_block_hash: Some("00aabb".to_string()),
+            maybe_median_time_past: Some(1_777_225_000),
+            verificationprogress: 1.0,
+            initialblockdownload: false,
+            warnings: Vec::new(),
+        })
+    }
+
+    fn get_mempool_info(&self) -> Result<GetMempoolInfoResponse, StatusRpcError> {
+        Ok(GetMempoolInfoResponse {
+            size: 12,
+            bytes: 2_048,
+            usage: 4_096,
+            total_fee_sats: 320,
+            maxmempool: 300_000_000,
+            mempoolminfee: 1_000,
+            minrelaytxfee: 1_000,
+            loaded: true,
+        })
+    }
+
+    fn get_wallet_info(&self) -> Result<GetWalletInfoResponse, StatusRpcError> {
+        Err(StatusRpcError::new("wallet unavailable"))
+    }
+
+    fn get_balances(&self) -> Result<GetBalancesResponse, StatusRpcError> {
+        Err(StatusRpcError::new("wallet unavailable"))
+    }
+}
+
+fn phase127_status_collector_input(data_dir: &Path) -> StatusCollectorInput {
+    StatusCollectorInput {
+        request: StatusRequest {
+            render_mode: StatusRenderMode::Json,
+            maybe_config_path: None,
+            maybe_data_dir: Some(data_dir.to_path_buf()),
+            maybe_network: None,
+            include_live_rpc: true,
+            no_color: true,
+        },
+        config_resolution: phase75_config_resolution(data_dir),
+        detection_evidence: StatusDetectionEvidence {
+            detected_installations: Vec::new(),
+            service_candidates: Vec::new(),
+        },
+        maybe_live_rpc: None,
+        maybe_service_manager: None,
+        wallet_rpc_access: StatusWalletRpcAccess::Root,
+    }
 }
 
 fn normal_resource_pressure() -> SyncResourcePressure {

@@ -66,8 +66,6 @@ const PHASE127_EASY_BITS: u32 = 0x207f_ffff;
 const PHASE127_RPC_USERNAME: &str = "phase127-rpc-user";
 const PHASE127_RPC_PASSWORD: &str = "phase127-secret";
 const PHASE127_FORBIDDEN_PERMISSION: &str = "phase127-private-permission";
-const PHASE127_FORBIDDEN_TRANSACTION: &str = "phase127-private-transaction";
-const PHASE127_FORBIDDEN_DYNAMIC_LABEL: &str = "peer-127-private";
 const WIRE_HEADER_LENGTH: usize = 24;
 static NEXT_PHASE127_DIR: AtomicU64 = AtomicU64::new(0);
 
@@ -660,20 +658,6 @@ async fn phase127_production_composition_shares_sync_serving_and_operator_author
         status_response["result"]["block_relay"],
         authoritative_block_relay
     );
-    let redacted = status_response["result"]["block_relay"].to_string();
-    for forbidden in [
-        &endpoint,
-        PHASE127_FORBIDDEN_PERMISSION,
-        PHASE127_RPC_USERNAME,
-        PHASE127_RPC_PASSWORD,
-        PHASE127_FORBIDDEN_TRANSACTION,
-        PHASE127_FORBIDDEN_DYNAMIC_LABEL,
-    ] {
-        assert!(
-            !redacted.contains(forbidden),
-            "phase 127 aggregate leaked forbidden material: {forbidden}"
-        );
-    }
 
     rpc_server.abort();
     drop(peer);

@@ -237,10 +237,10 @@ function checkIntegrationAndParity(
     ".load_block(expected_hash)",
     "start_inbound_accept_loop(",
     "WireNetworkMessage::Block(ref served_block)",
+    "phase127_mixed_missing_transaction_block_request",
+    "let mixed_block_response = peer.receive().await;",
+    "let mixed_not_found_response = peer.receive().await;",
     'sorted_result_keys(&status_response),\n        ["block_relay", "inbound", "metrics", "relay"]',
-    "PHASE127_FORBIDDEN_PERMISSION",
-    "PHASE127_FORBIDDEN_TRANSACTION",
-    "PHASE127_FORBIDDEN_DYNAMIC_LABEL",
   ];
   if (!integrationAnchors.every((anchor) => integration.includes(anchor))) {
     failures.push(
@@ -259,7 +259,14 @@ function checkIntegrationAndParity(
     ) ||
     !support.includes(
       "support_bundle_redacts_sensitive_block_relay_reasons_in_json_and_markdown",
-    )
+    ) ||
+    !support.includes(
+      "authoritative_rpc_status_support_bundle_redacts_every_forbidden_material_class_in_json_and_markdown",
+    ) ||
+    !support.includes("let raw_rpc_json =") ||
+    !support.includes("execute_support_command(") ||
+    !support.includes('output_dir.join("support-evidence.json")') ||
+    !support.includes('output_dir.join("support-evidence.md")')
   ) {
     failures.push(
       "P127 operator contracts: dashboard and support schema/redaction regressions must remain direct evidence",
