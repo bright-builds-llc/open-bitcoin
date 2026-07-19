@@ -40,6 +40,7 @@ use open_bitcoin_node::{
         primitives::{
             Amount, Block, BlockHash, BlockHeader, InventoryType, InventoryVector, NetworkMagic,
             OutPoint, ScriptBuf, ScriptWitness, Transaction, TransactionInput, TransactionOutput,
+            Txid,
         },
         wallet::AddressNetwork,
     },
@@ -324,6 +325,19 @@ fn phase127_block_request(block: &Block) -> WireNetworkMessage {
     }]))
 }
 
+fn phase127_mixed_missing_transaction_block_request(block: &Block) -> WireNetworkMessage {
+    WireNetworkMessage::GetData(InventoryList::new(vec![
+        InventoryVector {
+            inventory_type: InventoryType::Transaction,
+            object_hash: Txid::from_byte_array([127_u8; 32]).into(),
+        },
+        InventoryVector {
+            inventory_type: InventoryType::Block,
+            object_hash: block_hash(&block.header).into(),
+        },
+    ]))
+}
+
 fn sorted_result_keys(response: &serde_json::Value) -> Vec<String> {
     let mut keys = response["result"]
         .as_object()
@@ -526,10 +540,26 @@ async fn phase127_production_composition_shares_sync_serving_and_operator_author
         WireNetworkMessage::Block(ref served_block)
             if block_hash(&served_block.header) == expected_hash
     ));
+    peer.send(
+        phase127_mixed_missing_transaction_block_request(&block),
+        magic,
+    )
+    .await;
+    let mixed_block_response = peer.receive().await;
+    let mixed_not_found_response = peer.receive().await;
+    assert!(matches!(
+        mixed_block_response,
+        WireNetworkMessage::Block(ref served_block)
+            if block_hash(&served_block.header) == expected_hash
+    ));
+    assert!(matches!(
+        mixed_not_found_response,
+        WireNetworkMessage::NotFound(_)
+    ));
     for _ in 0..100 {
         if restarted_handle
             .block_served_write_count()
-            .is_ok_and(|count| count == 1)
+            .is_ok_and(|count| count == 2)
         {
             break;
         }
@@ -539,7 +569,7 @@ async fn phase127_production_composition_shares_sync_serving_and_operator_author
         restarted_handle
             .block_served_write_count()
             .expect("phase 127 served evidence should remain authoritative"),
-        1
+        2
     );
 
     let rpc_listener = tokio::net::TcpListener::bind("127.0.0.1:0")

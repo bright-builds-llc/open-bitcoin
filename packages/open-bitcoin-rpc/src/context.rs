@@ -78,6 +78,7 @@ pub(crate) struct InboundWireResponsePlan {
     network_magic: NetworkMagic,
     responses: Vec<WireNetworkMessage>,
     block_serve_intents: Vec<ManagedBlockServeIntent>,
+    deferred_not_found_responses: Vec<WireNetworkMessage>,
     maybe_block_source: Option<Arc<dyn DurableBlockSource>>,
     peer_id: u64,
     timestamp: i64,
@@ -124,6 +125,9 @@ impl InboundWireResponsePlan {
         }
         for intent in core::mem::take(&mut self.block_serve_intents) {
             self.resolve_block_intent(intent, &mut resolved);
+        }
+        for response in core::mem::take(&mut self.deferred_not_found_responses) {
+            resolved.push_encoded(response, None, self.network_magic);
         }
         resolved
     }
@@ -526,10 +530,15 @@ impl ManagedRpcContext {
             self.verify_flags,
             self.consensus_params,
         )?;
+        let (deferred_not_found_responses, responses) = result
+            .outbound
+            .into_iter()
+            .partition(|response| matches!(response, WireNetworkMessage::NotFound(_)));
         Ok(InboundWireResponsePlan {
             network_magic: network::network_magic(self.chain),
-            responses: result.outbound,
+            responses,
             block_serve_intents: result.block_serve_intents,
+            deferred_not_found_responses,
             maybe_block_source: self.maybe_block_source.clone(),
             peer_id,
             timestamp,
