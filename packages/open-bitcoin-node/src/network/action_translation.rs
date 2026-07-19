@@ -196,17 +196,16 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         let mut outbound = Vec::new();
         let mut targeted_outbound = Vec::new();
         let mut maybe_block_disposition = None;
-        let mut block_serve_intents = Vec::new();
+        let mut inbound_response_plan = Vec::new();
 
         for action in actions {
             match action {
                 PeerAction::Send(message) => outbound.push(message),
                 PeerAction::ServeInventory(requests) => {
                     let (messages, missing) = if defer_block_serving {
-                        let (messages, missing, intents) =
-                            self.gate_inventory_for_durable_serving(peer_id, requests);
-                        block_serve_intents.extend(intents);
-                        (messages, missing)
+                        inbound_response_plan
+                            .extend(self.gate_inventory_for_durable_serving(peer_id, requests));
+                        (Vec::new(), Vec::new())
                     } else {
                         self.serve_inventory(peer_id, requests)
                     };
@@ -329,7 +328,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             outbound,
             targeted_outbound,
             maybe_block_disposition,
-            block_serve_intents,
+            inbound_response_plan,
         })
     }
 }

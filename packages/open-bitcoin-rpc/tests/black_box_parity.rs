@@ -28,7 +28,8 @@ use std::{
 use open_bitcoin_network::{
     BlockRelayActivationPolicy, BlockServingActivationConfig, CompactRelayActivationConfig,
     HeadersMessage, InboundListenerConfig, InventoryList, ParsedNetworkMessage,
-    ParsedPeerPermissionClass, PeerPermissionClassRegistry, VersionMessage, WireNetworkMessage,
+    ParsedPeerPermissionClass, PeerPermissionClassRegistry, RelayActivationConfig, VersionMessage,
+    WireNetworkMessage,
 };
 use open_bitcoin_node::{
     DurableSyncRuntime, FieldAvailability, FjallNodeStore, ResolvedSyncPeerAddress,
@@ -36,7 +37,9 @@ use open_bitcoin_node::{
     SyncRuntimeConfig, SyncRuntimeError, SyncTransport,
     core::{
         codec::parse_message_header,
-        consensus::{block_hash, block_merkle_root, check_block_header},
+        consensus::{
+            block_hash, block_merkle_root, check_block_header, crypto::hash160, transaction_txid,
+        },
         primitives::{
             Amount, Block, BlockHash, BlockHeader, InventoryType, InventoryVector, NetworkMagic,
             OutPoint, ScriptBuf, ScriptWitness, Transaction, TransactionInput, TransactionOutput,
@@ -228,7 +231,7 @@ fn phase127_runtime_config(data_dir: PathBuf) -> RuntimeConfig {
     let permission_classes = PeerPermissionClassRegistry::new([ParsedPeerPermissionClass::parse(
         PHASE127_FORBIDDEN_PERMISSION,
         ["127.0.0.1"],
-        ["in", "download"],
+        ["in", "download", "relay"],
     )
     .expect("phase 127 loopback permission should parse")]);
     RuntimeConfig {
@@ -246,6 +249,7 @@ fn phase127_runtime_config(data_dir: PathBuf) -> RuntimeConfig {
             block_serving: BlockServingActivationConfig { enabled: true },
             compact_relay: CompactRelayActivationConfig { enabled: true },
         },
+        relay: RelayActivationConfig { enabled: true },
         ..RuntimeConfig::default()
     }
 }
@@ -262,18 +266,45 @@ fn phase127_sync_config() -> SyncRuntimeConfig {
     }
 }
 
-fn phase127_mined_block() -> Block {
+fn phase127_serialized_script_num(value: u32) -> Vec<u8> {
+    if value == 0 {
+        return vec![0x00];
+    }
+
+    let mut magnitude = value;
+    let mut encoded = Vec::new();
+    while magnitude > 0 {
+        encoded.push((magnitude & 0xff) as u8);
+        magnitude >>= 8;
+    }
+    let mut script = Vec::with_capacity(encoded.len() + 1);
+    script.push(encoded.len() as u8);
+    script.extend(encoded);
+    script
+}
+
+fn phase127_p2sh_script() -> ScriptBuf {
+    let redeem_hash = hash160(&[0x51]);
+    let mut bytes = vec![0xa9, 20];
+    bytes.extend_from_slice(&redeem_hash);
+    bytes.push(0x87);
+    ScriptBuf::from_bytes(bytes).expect("phase 127 p2sh script")
+}
+
+fn phase127_mined_block_after(previous_block_hash: BlockHash, height: u32) -> Block {
+    let mut coinbase_script = phase127_serialized_script_num(height);
+    coinbase_script.push(0x51);
     let transaction = Transaction {
         version: 1,
         inputs: vec![TransactionInput {
             previous_output: OutPoint::null(),
-            script_sig: ScriptBuf::from_bytes(vec![0x00, 0x51]).expect("phase 127 coinbase script"),
+            script_sig: ScriptBuf::from_bytes(coinbase_script).expect("phase 127 coinbase script"),
             sequence: TransactionInput::SEQUENCE_FINAL,
             witness: ScriptWitness::default(),
         }],
         outputs: vec![TransactionOutput {
             value: Amount::from_sats(5_000_000_000).expect("phase 127 coinbase amount"),
-            script_pubkey: ScriptBuf::from_bytes(vec![0x51]).expect("phase 127 output script"),
+            script_pubkey: phase127_p2sh_script(),
         }],
         lock_time: 0,
     };
@@ -283,9 +314,9 @@ fn phase127_mined_block() -> Block {
     let mut block = Block {
         header: BlockHeader {
             version: 1,
-            previous_block_hash: BlockHash::default(),
+            previous_block_hash,
             merkle_root,
-            time: 1_231_006_500,
+            time: 1_231_006_500 + height,
             bits: PHASE127_EASY_BITS,
             nonce: 0,
         },
@@ -298,6 +329,30 @@ fn phase127_mined_block() -> Block {
         })
         .expect("phase 127 easy target should be mineable");
     block
+}
+
+fn phase127_mined_block() -> Block {
+    phase127_mined_block_after(BlockHash::default(), 0)
+}
+
+fn phase127_spend_transaction(previous_txid: Txid) -> Transaction {
+    Transaction {
+        version: 2,
+        inputs: vec![TransactionInput {
+            previous_output: OutPoint {
+                txid: previous_txid,
+                vout: 0,
+            },
+            script_sig: ScriptBuf::from_bytes(vec![0x01, 0x51]).expect("phase 127 redeem script"),
+            sequence: TransactionInput::SEQUENCE_FINAL,
+            witness: ScriptWitness::default(),
+        }],
+        outputs: vec![TransactionOutput {
+            value: Amount::from_sats(4_999_999_000).expect("phase 127 spend amount"),
+            script_pubkey: phase127_p2sh_script(),
+        }],
+        lock_time: 0,
+    }
 }
 
 fn phase127_transport(block: &Block) -> Phase127ScriptedTransport {
@@ -332,6 +387,75 @@ fn phase127_mixed_missing_transaction_block_request(block: &Block) -> WireNetwor
         InventoryVector {
             inventory_type: InventoryType::Block,
             object_hash: block_hash(&block.header).into(),
+        },
+    ]))
+}
+
+fn phase127_mixed_available_transaction_block_request(
+    block: &Block,
+    transaction: &Transaction,
+) -> WireNetworkMessage {
+    WireNetworkMessage::GetData(InventoryList::new(vec![
+        InventoryVector {
+            inventory_type: InventoryType::Transaction,
+            object_hash: transaction_txid(transaction)
+                .expect("phase 127 available transaction id")
+                .into(),
+        },
+        InventoryVector {
+            inventory_type: InventoryType::Block,
+            object_hash: block_hash(&block.header).into(),
+        },
+    ]))
+}
+
+fn phase127_mixed_block_available_transaction_request(
+    block: &Block,
+    transaction: &Transaction,
+) -> WireNetworkMessage {
+    WireNetworkMessage::GetData(InventoryList::new(vec![
+        InventoryVector {
+            inventory_type: InventoryType::Block,
+            object_hash: block_hash(&block.header).into(),
+        },
+        InventoryVector {
+            inventory_type: InventoryType::Transaction,
+            object_hash: transaction_txid(transaction)
+                .expect("phase 127 available transaction id")
+                .into(),
+        },
+    ]))
+}
+
+fn phase127_two_block_request(block: &Block) -> WireNetworkMessage {
+    let block_inventory = InventoryVector {
+        inventory_type: InventoryType::Block,
+        object_hash: block_hash(&block.header).into(),
+    };
+    WireNetworkMessage::GetData(InventoryList::new(vec![
+        block_inventory.clone(),
+        block_inventory,
+    ]))
+}
+
+fn phase127_mixed_cycle_request(
+    block: &Block,
+    available_transaction: &Transaction,
+) -> WireNetworkMessage {
+    WireNetworkMessage::GetData(InventoryList::new(vec![
+        InventoryVector {
+            inventory_type: InventoryType::Transaction,
+            object_hash: Txid::from_byte_array([126_u8; 32]).into(),
+        },
+        InventoryVector {
+            inventory_type: InventoryType::Block,
+            object_hash: block_hash(&block.header).into(),
+        },
+        InventoryVector {
+            inventory_type: InventoryType::Transaction,
+            object_hash: transaction_txid(available_transaction)
+                .expect("phase 127 available transaction id")
+                .into(),
         },
     ]))
 }
@@ -497,6 +621,20 @@ async fn phase127_production_composition_shares_sync_serving_and_operator_author
         Some(restarted_store),
     )
     .expect("phase 127 restarted context should compose");
+    let mut previous_block_hash = expected_hash;
+    for height in 1..=restarted_context.coinbase_maturity() {
+        let maturity_block = phase127_mined_block_after(previous_block_hash, height);
+        previous_block_hash = block_hash(&maturity_block.header);
+        restarted_context
+            .connect_local_block(&maturity_block)
+            .expect("phase 127 coinbase maturity block should connect");
+    }
+    let available_transaction = phase127_spend_transaction(
+        transaction_txid(&block.transactions[0]).expect("phase 127 coinbase transaction id"),
+    );
+    restarted_context
+        .submit_local_transaction(available_transaction.clone())
+        .expect("phase 127 transaction should be available for relay serving");
     let activation = activate_inbound_listener(&runtime_config.inbound).await;
     let endpoint = activation
         .bound_endpoints()
@@ -552,12 +690,84 @@ async fn phase127_production_composition_shares_sync_serving_and_operator_author
     ));
     assert!(matches!(
         mixed_not_found_response,
-        WireNetworkMessage::NotFound(_)
+        WireNetworkMessage::NotFound(ref inventory)
+            if inventory.inventory.len() == 1
+                && inventory.inventory[0].object_hash
+                    == Txid::from_byte_array([127_u8; 32]).into()
     ));
+    peer.send(
+        phase127_mixed_available_transaction_block_request(&block, &available_transaction),
+        magic,
+    )
+    .await;
+    let available_then_block = [peer.receive().await, peer.receive().await];
+    assert!(matches!(
+        available_then_block[0],
+        WireNetworkMessage::Tx(ref transaction)
+            if transaction_txid(transaction)
+                == transaction_txid(&available_transaction)
+    ));
+    assert!(matches!(
+        available_then_block[1],
+        WireNetworkMessage::Block(ref served_block)
+            if block_hash(&served_block.header) == expected_hash
+    ));
+    peer.send(
+        phase127_mixed_block_available_transaction_request(&block, &available_transaction),
+        magic,
+    )
+    .await;
+    let block_then_available = [peer.receive().await, peer.receive().await];
+    assert!(matches!(
+        block_then_available[0],
+        WireNetworkMessage::Block(ref served_block)
+            if block_hash(&served_block.header) == expected_hash
+    ));
+    assert!(matches!(
+        block_then_available[1],
+        WireNetworkMessage::Tx(ref transaction)
+            if transaction_txid(transaction)
+                == transaction_txid(&available_transaction)
+    ));
+    peer.send(
+        phase127_mixed_cycle_request(&block, &available_transaction),
+        magic,
+    )
+    .await;
+    let mixed_cycles = [
+        peer.receive().await,
+        peer.receive().await,
+        peer.receive().await,
+    ];
+    assert!(matches!(
+        mixed_cycles[0],
+        WireNetworkMessage::Block(ref served_block)
+            if block_hash(&served_block.header) == expected_hash
+    ));
+    assert!(matches!(
+        mixed_cycles[1],
+        WireNetworkMessage::NotFound(ref inventory)
+            if inventory.inventory.len() == 1
+                && inventory.inventory[0].object_hash
+                    == Txid::from_byte_array([126_u8; 32]).into()
+    ));
+    assert!(matches!(
+        mixed_cycles[2],
+        WireNetworkMessage::Tx(ref transaction)
+            if transaction_txid(transaction)
+                == transaction_txid(&available_transaction)
+    ));
+    peer.send(phase127_two_block_request(&block), magic).await;
+    let two_blocks = [peer.receive().await, peer.receive().await];
+    assert!(two_blocks.iter().all(|message| matches!(
+        message,
+        WireNetworkMessage::Block(served_block)
+            if block_hash(&served_block.header) == expected_hash
+    )));
     for _ in 0..100 {
         if restarted_handle
             .block_served_write_count()
-            .is_ok_and(|count| count == 2)
+            .is_ok_and(|count| count == 7)
         {
             break;
         }
@@ -567,7 +777,7 @@ async fn phase127_production_composition_shares_sync_serving_and_operator_author
         restarted_handle
             .block_served_write_count()
             .expect("phase 127 served evidence should remain authoritative"),
-        2
+        7
     );
 
     let rpc_listener = tokio::net::TcpListener::bind("127.0.0.1:0")
@@ -619,7 +829,7 @@ async fn phase127_production_composition_shares_sync_serving_and_operator_author
     // Assert
     assert_eq!(
         chain_response["result"]["bestblockhash"],
-        json!(encoded_hash(expected_hash))
+        json!(encoded_hash(previous_block_hash))
     );
     assert_eq!(
         sorted_result_keys(&chain_response),

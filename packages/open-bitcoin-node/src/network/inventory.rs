@@ -24,10 +24,13 @@ use open_bitcoin_network::{
 };
 
 use super::block_serving::{
-    ManagedBlockServeGateDecision, ManagedBlockServeInput, ManagedBlockServeIntent,
-    gate_managed_block_request, serve_managed_block_request,
+    ManagedBlockServeGateDecision, ManagedBlockServeInput, gate_managed_block_request,
+    serve_managed_block_request,
 };
-use super::{ManagedNetworkError, ManagedPeerNetwork, ManagedSyncMessageResult};
+use super::{
+    ManagedInboundResponsePlanItem, ManagedNetworkError, ManagedPeerNetwork,
+    ManagedSyncMessageResult,
+};
 use crate::ChainstateStore;
 
 impl<S: ChainstateStore> ManagedPeerNetwork<S> {
@@ -98,56 +101,83 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         &mut self,
         peer_id: PeerId,
         requests: Vec<InventoryVector>,
-    ) -> (
-        Vec<WireNetworkMessage>,
-        Vec<InventoryVector>,
-        Vec<ManagedBlockServeIntent>,
-    ) {
-        let mut messages = Vec::new();
-        let mut missing = Vec::new();
-        let mut block_serve_intents = Vec::new();
+    ) -> Vec<ManagedInboundResponsePlanItem> {
+        let mut response_plan = Vec::new();
+        let mut requests = requests.into_iter().peekable();
         let (peer_mode, relay_eligibility) = self.relay_serving_context_for_peer(peer_id);
         self.relay_serving.clear_latest_outcomes();
 
-        for request in requests {
-            match request.inventory_type {
-                InventoryType::Block
-                | InventoryType::WitnessBlock
-                | InventoryType::CompactBlock => {
-                    let block_hash = BlockHash::from(request.object_hash);
-                    let input =
-                        self.managed_block_serve_input(peer_id, &request, block_hash, false, true);
-                    match gate_managed_block_request(input) {
-                        ManagedBlockServeGateDecision::Serve(intent) => {
-                            block_serve_intents.push(intent);
-                        }
-                        ManagedBlockServeGateDecision::Deny(decision) => {
-                            self.record_block_serving_evidence(request.inventory_type, &decision);
-                            missing.push(request);
+        while requests.peek().is_some() {
+            let mut missing_transactions = Vec::new();
+            while requests.peek().is_some_and(|request| {
+                matches!(
+                    request.inventory_type,
+                    InventoryType::Transaction | InventoryType::WitnessTransaction
+                )
+            }) {
+                let Some(request) = requests.next() else {
+                    break;
+                };
+                let decision =
+                    self.relay_serving
+                        .classify_request(&request, peer_mode, &relay_eligibility);
+                let Some(transaction) = decision.maybe_transaction else {
+                    missing_transactions.push(request);
+                    continue;
+                };
+                if decision.label != TxServeOutcomeLabel::Served {
+                    missing_transactions.push(request);
+                    continue;
+                }
+                response_plan.push(ManagedInboundResponsePlanItem::Immediate(
+                    WireNetworkMessage::Tx(transaction.clone()),
+                ));
+            }
+
+            if let Some(request) = requests.next() {
+                match request.inventory_type {
+                    InventoryType::Block
+                    | InventoryType::WitnessBlock
+                    | InventoryType::CompactBlock => {
+                        let block_hash = BlockHash::from(request.object_hash);
+                        let input = self
+                            .managed_block_serve_input(peer_id, &request, block_hash, false, true);
+                        match gate_managed_block_request(input) {
+                            ManagedBlockServeGateDecision::Serve(intent) => {
+                                response_plan
+                                    .push(ManagedInboundResponsePlanItem::DurableBlock(intent));
+                            }
+                            ManagedBlockServeGateDecision::Deny(decision) => {
+                                self.record_block_serving_evidence(
+                                    request.inventory_type,
+                                    &decision,
+                                );
+                                response_plan.push(ManagedInboundResponsePlanItem::Immediate(
+                                    WireNetworkMessage::NotFound(
+                                        open_bitcoin_network::InventoryList::new(vec![request]),
+                                    ),
+                                ));
+                            }
                         }
                     }
+                    _ => response_plan.push(ManagedInboundResponsePlanItem::Immediate(
+                        WireNetworkMessage::NotFound(open_bitcoin_network::InventoryList::new(
+                            vec![request],
+                        )),
+                    )),
                 }
-                InventoryType::Transaction | InventoryType::WitnessTransaction => {
-                    let decision = self.relay_serving.classify_request(
-                        &request,
-                        peer_mode,
-                        &relay_eligibility,
-                    );
-                    let Some(transaction) = decision.maybe_transaction else {
-                        missing.push(request);
-                        continue;
-                    };
-                    if decision.label != TxServeOutcomeLabel::Served {
-                        missing.push(request);
-                        continue;
-                    }
-                    messages.push(WireNetworkMessage::Tx(transaction.clone()));
-                }
-                _ => missing.push(request),
+            }
+
+            if !missing_transactions.is_empty() {
+                response_plan.push(ManagedInboundResponsePlanItem::Immediate(
+                    WireNetworkMessage::NotFound(open_bitcoin_network::InventoryList::new(
+                        missing_transactions,
+                    )),
+                ));
             }
         }
 
-        (messages, missing, block_serve_intents)
+        response_plan
     }
 
     pub(super) fn managed_block_serve_input(

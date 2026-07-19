@@ -27,6 +27,13 @@ use super::{
     ManagedPeerPolicyInfo, ManagedResourceGovernanceInfo,
 };
 
+/// One response step in the exact peer-request order chosen under the network authority.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ManagedInboundResponsePlanItem {
+    Immediate(WireNetworkMessage),
+    DurableBlock(ManagedBlockServeIntent),
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ManagedBlockSerializationMode {
     Block,
@@ -187,5 +194,5 @@ pub struct ManagedSyncMessageResult {
     pub outbound: Vec<WireNetworkMessage>,
     pub targeted_outbound: Vec<(PeerId, WireNetworkMessage)>,
     pub maybe_block_disposition: Option<BlockConnectDisposition>,
-    pub block_serve_intents: Vec<ManagedBlockServeIntent>,
+    pub inbound_response_plan: Vec<ManagedInboundResponsePlanItem>,
 }

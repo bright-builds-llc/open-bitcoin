@@ -62,8 +62,8 @@ pub use relay_fanout::{
 pub use runtime_authority::{ManagedNetworkAuthorityError, ManagedNetworkHandle};
 pub use types::{
     BlockConnectDisposition, ManagedBlockSerializationMode, ManagedBlockServeCompletionOutcome,
-    ManagedMempoolInfo, ManagedNetworkError, ManagedNetworkInfo, ManagedNetworkOperatorSnapshot,
-    ManagedSyncMessageResult,
+    ManagedInboundResponsePlanItem, ManagedMempoolInfo, ManagedNetworkError, ManagedNetworkInfo,
+    ManagedNetworkOperatorSnapshot, ManagedSyncMessageResult,
 };
 
 type ManagedResult<T> = Result<T, ManagedNetworkError>;
