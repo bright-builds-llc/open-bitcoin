@@ -1815,7 +1815,12 @@ fn get_blockchain_info_uses_durable_connected_block_height_not_downloaded_height
         maybe_data_dir: Some(path),
         ..RuntimeConfig::default()
     });
-    assert!(context.maybe_durable_sync_state().is_some());
+    assert!(
+        context
+            .current_durable_sync_state()
+            .expect("current durable sync state")
+            .is_some()
+    );
 
     // Act
     let blockchain = dispatch(

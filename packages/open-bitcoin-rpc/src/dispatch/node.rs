@@ -39,7 +39,10 @@ const UNSUPPORTED_MAX_BURN_AMOUNT_MESSAGE: &str =
 pub(super) fn get_blockchain_info(
     context: &ManagedRpcContext,
 ) -> Result<GetBlockchainInfoResponse, RpcFailure> {
-    if let Some(durable_sync_state) = context.maybe_durable_sync_state() {
+    let maybe_durable_sync_state = context
+        .current_durable_sync_state()
+        .map_err(|_| RpcFailure::client_not_connected("durable sync metadata unavailable"))?;
+    if let Some(durable_sync_state) = maybe_durable_sync_state.as_ref() {
         return durable_blockchain_info(context, durable_sync_state);
     }
 

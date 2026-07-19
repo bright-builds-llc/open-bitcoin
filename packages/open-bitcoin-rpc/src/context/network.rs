@@ -63,7 +63,7 @@ impl ManagedRpcContext {
             resource_governance_log_write_failures: 0,
             maybe_block_source: None,
             maybe_metrics_store: None,
-            maybe_durable_sync_state: None,
+            maybe_runtime_metadata_source: None,
             maybe_daemon_sync_control: None,
             wallet_state: super::wallet_state::WalletState::Local(wallet),
         }
@@ -131,7 +131,7 @@ impl ManagedRpcContext {
                     resource_governance_log_write_failures: 0,
                     maybe_block_source: super::durable_block_source(maybe_store.clone()),
                     maybe_metrics_store: maybe_store.clone(),
-                    maybe_durable_sync_state: load_durable_sync_state(config, maybe_store.as_ref()),
+                    maybe_runtime_metadata_source: maybe_store,
                     maybe_daemon_sync_control: None,
                     wallet_state: super::wallet_state::WalletState::Local(wallet),
                 }
@@ -162,11 +162,7 @@ impl ManagedRpcContext {
                     resource_governance_log_write_failures: 0,
                     maybe_block_source: super::durable_block_source(Some(store.clone())),
                     maybe_metrics_store: Some(store.clone()),
-                    maybe_durable_sync_state: store
-                        .load_runtime_metadata()
-                        .ok()
-                        .flatten()
-                        .and_then(|metadata| metadata.maybe_sync_state),
+                    maybe_runtime_metadata_source: Some(store.clone()),
                     maybe_daemon_sync_control: None,
                     wallet_state: super::wallet_state::WalletState::DurableNamedRegistry {
                         store,
@@ -206,8 +202,6 @@ impl ManagedRpcContext {
             default_verify_flags(),
             consensus_params,
         )?;
-        let maybe_durable_sync_state = load_durable_sync_state(config, effective_store.as_ref());
-
         Ok(Self {
             chain: config.chain,
             consensus_params,
@@ -221,8 +215,8 @@ impl ManagedRpcContext {
             resource_governance_log_retention: Default::default(),
             resource_governance_log_write_failures: 0,
             maybe_block_source: super::durable_block_source(effective_store.clone()),
-            maybe_metrics_store: effective_store,
-            maybe_durable_sync_state,
+            maybe_metrics_store: effective_store.clone(),
+            maybe_runtime_metadata_source: effective_store,
             maybe_daemon_sync_control: None,
             wallet_state,
         })
@@ -273,8 +267,16 @@ impl ManagedRpcContext {
         self.network.maybe_chain_tip()
     }
 
-    pub fn maybe_durable_sync_state(&self) -> Option<&DurableSyncState> {
-        self.maybe_durable_sync_state.as_ref()
+    pub fn current_durable_sync_state(
+        &self,
+    ) -> Result<Option<DurableSyncState>, open_bitcoin_node::StorageError> {
+        let Some(source) = self.maybe_runtime_metadata_source.as_ref() else {
+            return Ok(None);
+        };
+
+        source
+            .load_runtime_metadata()
+            .map(|maybe_metadata| maybe_metadata.and_then(|metadata| metadata.maybe_sync_state))
     }
 
     pub fn set_metrics_store(&mut self, store: FjallNodeStore) {
@@ -489,23 +491,6 @@ impl ManagedRpcContext {
     ) -> Result<Option<LocalRelaySubmissionEvidence>, ManagedNetworkAuthorityError> {
         self.network.latest_local_submission_evidence()
     }
-}
-
-fn load_durable_sync_state(
-    config: &RuntimeConfig,
-    maybe_store: Option<&FjallNodeStore>,
-) -> Option<DurableSyncState> {
-    let store;
-    let store = match maybe_store {
-        Some(store) => store,
-        None => {
-            let data_dir = config.maybe_data_dir.as_ref()?;
-            store = FjallNodeStore::open(data_dir).ok()?;
-            &store
-        }
-    };
-    let metadata = store.load_runtime_metadata().ok()??;
-    metadata.maybe_sync_state
 }
 
 fn recover_mempool_snapshot_from_store(

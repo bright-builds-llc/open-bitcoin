@@ -31,8 +31,9 @@ use open_bitcoin_network::{
     ParsedPeerPermissionClass, PeerPermissionClassRegistry, VersionMessage, WireNetworkMessage,
 };
 use open_bitcoin_node::{
-    DurableSyncRuntime, FjallNodeStore, ResolvedSyncPeerAddress, SyncNetwork, SyncPeerAddress,
-    SyncPeerReceiveOutcome, SyncPeerSession, SyncRuntimeConfig, SyncRuntimeError, SyncTransport,
+    DurableSyncRuntime, FieldAvailability, FjallNodeStore, ResolvedSyncPeerAddress,
+    SyncLifecycleState, SyncNetwork, SyncPeerAddress, SyncPeerReceiveOutcome, SyncPeerSession,
+    SyncRuntimeConfig, SyncRuntimeError, SyncTransport,
     core::{
         codec::parse_message_header,
         consensus::{block_hash, block_merkle_root, check_block_header},
@@ -45,8 +46,10 @@ use open_bitcoin_node::{
 };
 use open_bitcoin_rpc::{
     ManagedRpcContext, RpcAuthConfig, RuntimeConfig,
+    dispatch::dispatch,
     http::{build_http_state, build_http_state_with_shared_context, router},
     inbound_listener::{activate_inbound_listener, start_inbound_accept_loop},
+    method::{GetBlockchainInfoRequest, MethodCall},
 };
 use open_bitcoin_test_harness::{
     ExpectedOutcome, FunctionalCase, HarnessTarget, RpcHttpTarget, run_suite, skipped_suite,
@@ -393,6 +396,23 @@ async fn phase127_production_composition_shares_sync_serving_and_operator_author
         true,
     )
     .expect("phase 127 durable runtime should open");
+    let mut preexisting_sync_state = runtime
+        .durable_sync_state(
+            SyncLifecycleState::Recovering,
+            Some("phase 127 stale startup warning".to_string()),
+            1_231_006_499,
+        )
+        .expect("phase 127 startup sync metadata should project");
+    let FieldAvailability::Available(preexisting_progress) =
+        &mut preexisting_sync_state.sync.sync_progress
+    else {
+        panic!("phase 127 startup sync progress should be available");
+    };
+    preexisting_progress.header_height = 9;
+    preexisting_progress.block_height = 4;
+    runtime
+        .persist_durable_sync_state(preexisting_sync_state)
+        .expect("phase 127 startup sync metadata should persist");
     let shared_handle = runtime.network_handle();
     let pre_sync_context = ManagedRpcContext::from_runtime_config_with_network_handle(
         &runtime_config,
@@ -416,6 +436,26 @@ async fn phase127_production_composition_shares_sync_serving_and_operator_author
     assert_eq!(
         summary.maybe_connected_block_hash,
         Some(encoded_hash(expected_hash))
+    );
+    let mut pre_sync_context = pre_sync_context;
+    let live_chain_info = dispatch(
+        &mut pre_sync_context,
+        MethodCall::GetBlockchainInfo(GetBlockchainInfoRequest::default()),
+    )
+    .expect("phase 127 pre-existing RPC context should load current durable sync metadata");
+    assert_eq!(live_chain_info["blocks"], json!(summary.best_block_height));
+    assert_eq!(
+        live_chain_info["headers"],
+        json!(summary.best_header_height)
+    );
+    assert_eq!(live_chain_info["verificationprogress"], json!(0.0));
+    assert_eq!(live_chain_info["initialblockdownload"], json!(false));
+    assert!(
+        live_chain_info["warnings"]
+            .as_array()
+            .is_some_and(|warnings| warnings
+                .iter()
+                .all(|warning| { warning != "phase 127 stale startup warning" }))
     );
     assert!(
         store

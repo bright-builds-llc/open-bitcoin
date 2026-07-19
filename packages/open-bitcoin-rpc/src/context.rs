@@ -30,9 +30,7 @@ use std::{
     time::Duration,
 };
 
-use open_bitcoin_node::{
-    DurableSyncState, FjallNodeStore, ManagedNetworkHandle, PersistMode, RuntimeMetadata,
-};
+use open_bitcoin_node::{FjallNodeStore, ManagedNetworkHandle, PersistMode, RuntimeMetadata};
 
 use crate::inbound_listener::InboundListenerEvidence;
 use crate::{RpcFailure, RpcFailureKind};
@@ -65,7 +63,7 @@ pub struct ManagedRpcContext {
     resource_governance_log_write_failures: u64,
     maybe_block_source: Option<Arc<dyn DurableBlockSource>>,
     maybe_metrics_store: Option<FjallNodeStore>,
-    maybe_durable_sync_state: Option<DurableSyncState>,
+    maybe_runtime_metadata_source: Option<FjallNodeStore>,
     maybe_daemon_sync_control: Option<DaemonSyncControl>,
     wallet_state: WalletState,
 }
@@ -486,8 +484,8 @@ impl core::fmt::Debug for ManagedRpcContext {
             .field("consensus_params", &self.consensus_params)
             .field("verify_flags", &self.verify_flags)
             .field(
-                "has_durable_sync_state",
-                &self.maybe_durable_sync_state.is_some(),
+                "has_runtime_metadata_source",
+                &self.maybe_runtime_metadata_source.is_some(),
             )
             .field(
                 "has_daemon_sync_control",
