@@ -22,7 +22,12 @@ use open_bitcoin_network::{
 };
 use tokio::{net::TcpListener, task::JoinHandle};
 
-use crate::{ManagedRpcContext, context::EncodedWireResponse};
+use crate::{
+    ManagedRpcContext,
+    context::{
+        EncodedWireResponse, acknowledge_encoded_wire_response, resolve_inbound_wire_responses,
+    },
+};
 
 mod resource_runtime;
 use resource_runtime::{
@@ -538,15 +543,14 @@ async fn handle_inbound_stream(
         last_activity_unix_seconds = current_timestamp();
         handshake_state = next_handshake_state(handshake_state, &parsed.message);
         lock_evidence(&evidence).record_handshake(&parsed.message);
-        let responses = {
-            let mut context = context.lock().await;
-            context.receive_inbound_wire_message(
-                peer_id,
-                parsed.message,
-                last_activity_unix_seconds,
-            )
-        };
-        let Ok(encoded_responses) = responses else {
+        let Some(encoded_responses) = resolve_inbound_wire_responses(
+            &context,
+            peer_id,
+            parsed.message,
+            last_activity_unix_seconds,
+        )
+        .await
+        else {
             lock_runtime_counters(&runtime_counters)
                 .record_failure(&resource_policy, current_timestamp());
             break;
@@ -559,6 +563,7 @@ async fn handle_inbound_stream(
                 permission_decision.active_effects().to_vec(),
                 permission_decision.inactive_effects().to_vec(),
             ) {
+                acknowledge_encoded_wire_response(false, &response, &context).await;
                 record_shared_resource_event(&context, &evidence, event).await;
                 lock_runtime_counters(&runtime_counters)
                     .record_failure(&resource_policy, current_timestamp());
@@ -604,9 +609,11 @@ async fn acknowledge_inbound_response_write(
     context: &Arc<tokio::sync::Mutex<ManagedRpcContext>>,
 ) -> bool {
     let Ok(WriteWireMessageOutcome::Written) = write_result else {
-        return true;
+        return acknowledge_encoded_wire_response(false, response, context).await;
     };
-
+    if response.maybe_block_serve_intent.is_some() {
+        return acknowledge_encoded_wire_response(true, response, context).await;
+    }
     context
         .lock()
         .await

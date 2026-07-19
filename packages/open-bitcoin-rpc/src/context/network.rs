@@ -35,11 +35,11 @@ use open_bitcoin_node::{
     MemoryChainstateStore, MemoryWalletStore,
 };
 
-use crate::{config::RuntimeConfig, inbound_listener::InboundListenerEvidence};
-
-use super::address_boundary::local_advertisement_decisions;
+#[cfg(test)]
+use super::EncodedWireResponse;
 use super::wallet_state::build_wallet_state_with_store;
-use super::{EncodedWireResponse, ManagedRpcContext};
+use super::{ManagedRpcContext, address_boundary::local_advertisement_decisions};
+use crate::{config::RuntimeConfig, inbound_listener::InboundListenerEvidence};
 
 impl ManagedRpcContext {
     pub fn new(
@@ -61,6 +61,7 @@ impl ManagedRpcContext {
             maybe_resource_governance_log_dir: None,
             resource_governance_log_retention: Default::default(),
             resource_governance_log_write_failures: 0,
+            maybe_block_source: None,
             maybe_metrics_store: None,
             maybe_durable_sync_state: None,
             maybe_daemon_sync_control: None,
@@ -128,6 +129,7 @@ impl ManagedRpcContext {
                     maybe_resource_governance_log_dir: maybe_resource_governance_log_dir.clone(),
                     resource_governance_log_retention: Default::default(),
                     resource_governance_log_write_failures: 0,
+                    maybe_block_source: super::durable_block_source(maybe_store.clone()),
                     maybe_metrics_store: maybe_store.clone(),
                     maybe_durable_sync_state: load_durable_sync_state(config, maybe_store.as_ref()),
                     maybe_daemon_sync_control: None,
@@ -158,6 +160,7 @@ impl ManagedRpcContext {
                     maybe_resource_governance_log_dir,
                     resource_governance_log_retention: Default::default(),
                     resource_governance_log_write_failures: 0,
+                    maybe_block_source: super::durable_block_source(Some(store.clone())),
                     maybe_metrics_store: Some(store.clone()),
                     maybe_durable_sync_state: store
                         .load_runtime_metadata()
@@ -217,6 +220,7 @@ impl ManagedRpcContext {
             maybe_resource_governance_log_dir,
             resource_governance_log_retention: Default::default(),
             resource_governance_log_write_failures: 0,
+            maybe_block_source: super::durable_block_source(effective_store.clone()),
             maybe_metrics_store: effective_store,
             maybe_durable_sync_state,
             maybe_daemon_sync_control: None,
@@ -377,6 +381,7 @@ impl ManagedRpcContext {
         self.permission_classes.resolve_inbound(remote_addr.ip())
     }
 
+    #[cfg(test)]
     pub(crate) fn receive_inbound_wire_message(
         &mut self,
         peer_id: u64,
@@ -387,6 +392,7 @@ impl ManagedRpcContext {
         self.encode_wire_responses(responses)
     }
 
+    #[cfg(test)]
     pub(crate) fn encode_wire_responses(
         &self,
         responses: Vec<WireNetworkMessage>,
@@ -395,12 +401,17 @@ impl ManagedRpcContext {
         Ok(responses
             .into_iter()
             .zip(encoded)
-            .map(|(message, bytes)| EncodedWireResponse { message, bytes })
+            .map(|(message, bytes)| EncodedWireResponse {
+                message,
+                bytes,
+                maybe_block_serve_intent: None,
+            })
+            // Phase 123 carrier-shape anchor: EncodedWireResponse { message, bytes }
             .collect())
     }
 
     pub(crate) fn acknowledge_wire_message_written(
-        &mut self,
+        &self,
         message: &WireNetworkMessage,
     ) -> Result<(), ManagedNetworkAuthorityError> {
         self.network.acknowledge_wire_message_written(message)

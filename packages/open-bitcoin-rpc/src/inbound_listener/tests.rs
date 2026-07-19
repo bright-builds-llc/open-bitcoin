@@ -2,9 +2,13 @@
 // - packages/bitcoin-knots/src/net.cpp
 // - packages/bitcoin-knots/src/net_processing.cpp
 
+use std::fs;
 use std::io;
 use std::net::IpAddr;
+use std::path::PathBuf;
+use std::process;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use open_bitcoin_network::{
@@ -27,22 +31,59 @@ use open_bitcoin_node::core::{
     },
 };
 use open_bitcoin_node::status::{FieldAvailability, InboundPeerServingStatus};
+use open_bitcoin_node::{
+    DurableSyncRuntime, FjallNodeStore, PersistMode, StorageError, StorageNamespace,
+    StorageRecoveryAction, SyncNetwork, SyncRuntimeConfig,
+};
 use open_bitcoin_test_harness::PortReservation;
 use tokio::net::TcpStream;
 
-use crate::{ManagedRpcContext, RuntimeConfig, context::EncodedWireResponse};
+use crate::{
+    ManagedRpcContext, RuntimeConfig,
+    context::{DurableBlockSource, EncodedWireResponse},
+};
 
 use super::{
     InboundListenerEvidence, InboundListenerState, ReadWireMessageOutcome, WriteWireMessageOutcome,
-    acknowledge_inbound_response_write, activate_inbound_listener, start_inbound_accept_loop,
+    acknowledge_inbound_response_write, activate_inbound_listener, resolve_inbound_wire_responses,
+    start_inbound_accept_loop,
 };
 
 const PHASE123_EASY_BITS: u32 = 0x207f_ffff;
+static NEXT_DURABLE_BLOCK_SERVING_DIR: AtomicU64 = AtomicU64::new(0);
+
+#[derive(Clone, Copy)]
+enum ScriptedDurableBlockFailure {
+    Corruption,
+    Backend,
+}
+
+struct ScriptedDurableBlockSource {
+    failure: ScriptedDurableBlockFailure,
+}
+
+impl DurableBlockSource for ScriptedDurableBlockSource {
+    fn load_block(&self, _block_hash: BlockHash) -> Result<Option<Block>, StorageError> {
+        Err(match self.failure {
+            ScriptedDurableBlockFailure::Corruption => StorageError::Corruption {
+                namespace: StorageNamespace::BlockIndex,
+                detail: "private corruption detail".to_string(),
+                action: StorageRecoveryAction::Repair,
+            },
+            ScriptedDurableBlockFailure::Backend => StorageError::BackendFailure {
+                namespace: StorageNamespace::BlockIndex,
+                message: "private backend detail".to_string(),
+                action: StorageRecoveryAction::Restart,
+            },
+        })
+    }
+}
 
 fn block_response() -> EncodedWireResponse {
     EncodedWireResponse {
         message: WireNetworkMessage::Block(Block::default()),
         bytes: Vec::new(),
+        maybe_block_serve_intent: None,
     }
 }
 
@@ -50,6 +91,7 @@ fn non_block_response() -> EncodedWireResponse {
     EncodedWireResponse {
         message: WireNetworkMessage::Verack,
         bytes: Vec::new(),
+        maybe_block_serve_intent: None,
     }
 }
 
@@ -142,6 +184,127 @@ fn phase123_block_request(block: &Block) -> WireNetworkMessage {
         inventory_type: InventoryType::Block,
         object_hash: block_hash(&block.header).into(),
     }]))
+}
+
+fn durable_block_serving_context(persist_block: bool) -> (ManagedRpcContext, Block, PathBuf) {
+    let data_dir = std::env::temp_dir().join(format!(
+        "open-bitcoin-durable-block-serving-{}-{}",
+        process::id(),
+        NEXT_DURABLE_BLOCK_SERVING_DIR.fetch_add(1, Ordering::SeqCst)
+    ));
+    let _ = fs::remove_dir_all(&data_dir);
+    let store = FjallNodeStore::open(&data_dir).expect("open durable block-serving store");
+    let runtime_config = RuntimeConfig {
+        chain: AddressNetwork::Regtest,
+        inbound: InboundListenerConfig {
+            enabled: true,
+            max_peers: 2,
+            reserved_slots: 1,
+            permission_classes: loopback_permission_registry(&["in", "download"]),
+            ..InboundListenerConfig::default()
+        },
+        block_serving: BlockRelayActivationPolicy {
+            block_serving: BlockServingActivationConfig { enabled: true },
+            compact_relay: CompactRelayActivationConfig { enabled: true },
+        },
+        ..RuntimeConfig::default()
+    };
+    let block = phase123_mined_block();
+    let mut seed_context = ManagedRpcContext::from_runtime_config(&runtime_config);
+    seed_context
+        .connect_local_block(&block)
+        .expect("connect durable block fixture");
+    store
+        .save_chainstate_snapshot(
+            &seed_context
+                .blockchain_snapshot()
+                .expect("snapshot durable block fixture"),
+            PersistMode::Sync,
+        )
+        .expect("persist durable chainstate");
+    if persist_block {
+        store
+            .save_block(&block, PersistMode::Sync)
+            .expect("persist durable block");
+    }
+    drop(seed_context);
+
+    let sync_runtime = DurableSyncRuntime::open_with_runtime_activation(
+        store.clone(),
+        SyncRuntimeConfig {
+            network: SyncNetwork::Regtest,
+            dns_seeds: Vec::new(),
+            ..SyncRuntimeConfig::default()
+        },
+        runtime_config.relay,
+        runtime_config.block_serving,
+        true,
+    )
+    .expect("reopen durable runtime without block cache hydration");
+    let mut context = ManagedRpcContext::from_runtime_config_with_network_handle(
+        &runtime_config,
+        sync_runtime.network_handle(),
+        Some(store),
+    )
+    .expect("compose durable block-serving context");
+    context
+        .record_inbound_admission_for_remote_addr(
+            123,
+            "127.0.0.1:18444".parse().expect("loopback address"),
+            false,
+        )
+        .expect("admit durable block-serving peer");
+    for message in [
+        WireNetworkMessage::Version(VersionMessage {
+            nonce: 123_456,
+            ..VersionMessage::default()
+        }),
+        WireNetworkMessage::Verack,
+    ] {
+        context
+            .receive_network_message(123, message, 1)
+            .expect("complete durable block-serving handshake");
+    }
+    (context, block, data_dir)
+}
+
+fn durable_block_requests(block: &Block) -> WireNetworkMessage {
+    let object_hash = block_hash(&block.header).into();
+    WireNetworkMessage::GetData(InventoryList::new(vec![
+        InventoryVector {
+            inventory_type: InventoryType::Block,
+            object_hash,
+        },
+        InventoryVector {
+            inventory_type: InventoryType::WitnessBlock,
+            object_hash,
+        },
+        InventoryVector {
+            inventory_type: InventoryType::CompactBlock,
+            object_hash,
+        },
+    ]))
+}
+
+async fn durable_block_failure_outcome(
+    failure: ScriptedDurableBlockFailure,
+) -> (WireNetworkMessage, Vec<u8>, u64) {
+    let (mut context, block, data_dir) = durable_block_serving_context(true);
+    context.set_durable_block_source_for_test(Arc::new(ScriptedDurableBlockSource { failure }));
+    let context = Arc::new(tokio::sync::Mutex::new(context));
+    let mut responses =
+        resolve_inbound_wire_responses(&context, 123, phase123_block_request(&block), 2)
+            .await
+            .expect("map durable block source failure");
+    let response = responses.pop().expect("one redacted response");
+    let served_count = context
+        .lock()
+        .await
+        .block_served_write_count()
+        .expect("authoritative block write count");
+    drop(context);
+    fs::remove_dir_all(data_dir).expect("remove failed durable block-serving store");
+    (response.message, response.bytes, served_count)
 }
 
 fn rejected_write_result() -> io::Result<WriteWireMessageOutcome> {
@@ -244,6 +407,96 @@ async fn phase123_disabled_runtime_config_does_not_serve_inbound_block() {
             .iter()
             .any(|response| matches!(response.message, WireNetworkMessage::Block(_)))
     );
+    assert_eq!(served_count, 0);
+}
+
+#[tokio::test]
+async fn durable_block_serving_survives_restart_without_cache_hydration() {
+    // Arrange
+    let (context, block, data_dir) = durable_block_serving_context(true);
+    let context = Arc::new(tokio::sync::Mutex::new(context));
+
+    // Act
+    let responses =
+        resolve_inbound_wire_responses(&context, 123, durable_block_requests(&block), 2)
+            .await
+            .expect("resolve durable block responses");
+    for response in &responses {
+        let written = Ok(WriteWireMessageOutcome::Written);
+        assert!(acknowledge_inbound_response_write(&written, response, &context).await);
+    }
+    let served_count = context
+        .lock()
+        .await
+        .block_served_write_count()
+        .expect("authoritative block write count");
+
+    // Assert
+    assert_eq!(responses.len(), 3);
+    assert!(matches!(responses[0].message, WireNetworkMessage::Block(_)));
+    assert!(matches!(responses[1].message, WireNetworkMessage::Block(_)));
+    assert!(matches!(
+        responses[2].message,
+        WireNetworkMessage::CompactBlock(_)
+    ));
+    assert_eq!(served_count, 3);
+    drop(context);
+    fs::remove_dir_all(data_dir).expect("remove durable block-serving store");
+}
+
+#[tokio::test]
+async fn durable_block_serving_missing_body_returns_notfound_without_served_credit() {
+    // Arrange
+    let (context, block, data_dir) = durable_block_serving_context(false);
+    let context = Arc::new(tokio::sync::Mutex::new(context));
+
+    // Act
+    let responses =
+        resolve_inbound_wire_responses(&context, 123, phase123_block_request(&block), 2)
+            .await
+            .expect("resolve missing durable block response");
+    let served_count = context
+        .lock()
+        .await
+        .block_served_write_count()
+        .expect("authoritative block write count");
+
+    // Assert
+    assert_eq!(responses.len(), 1);
+    assert!(matches!(
+        responses[0].message,
+        WireNetworkMessage::NotFound(_)
+    ));
+    assert_eq!(served_count, 0);
+    drop(context);
+    fs::remove_dir_all(data_dir).expect("remove missing durable block-serving store");
+}
+
+#[tokio::test]
+async fn durable_block_serving_corruption_is_redacted_as_notfound() {
+    // Arrange
+    let failure = ScriptedDurableBlockFailure::Corruption;
+
+    // Act
+    let (message, bytes, served_count) = durable_block_failure_outcome(failure).await;
+
+    // Assert
+    assert!(matches!(message, WireNetworkMessage::NotFound(_)));
+    assert!(!bytes.windows(7).any(|window| window == b"private"));
+    assert_eq!(served_count, 0);
+}
+
+#[tokio::test]
+async fn durable_block_serving_store_error_is_redacted_as_notfound() {
+    // Arrange
+    let failure = ScriptedDurableBlockFailure::Backend;
+
+    // Act
+    let (message, bytes, served_count) = durable_block_failure_outcome(failure).await;
+
+    // Assert
+    assert!(matches!(message, WireNetworkMessage::NotFound(_)));
+    assert!(!bytes.windows(7).any(|window| window == b"private"));
     assert_eq!(served_count, 0);
 }
 
