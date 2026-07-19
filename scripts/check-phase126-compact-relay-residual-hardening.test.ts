@@ -13,7 +13,7 @@ const TARGET_FILES = [
   "packages/open-bitcoin-node/src/network/compact_receive_candidates.rs",
   "packages/open-bitcoin-node/Cargo.toml",
   "packages/open-bitcoin-node/BUILD.bazel",
-  ".planning/STATE.md",
+  ".planning/ROADMAP.md",
   "docs/parity/catalog/mempool-policy.md",
   "docs/parity/catalog/p2p.md",
   "docs/parity/index.json",
@@ -299,7 +299,7 @@ test("fails_when_required_parity_or_breadcrumb_anchors_are_missing", () => {
   expect(breadcrumbFailures).toContain("P126 breadcrumb anchors: compact download group must retain exact Knots anchors");
 });
 
-test("fails_when_archive_ready_mempool_catalog_reverts_to_pending_candidate_language", () => {
+test("fails_when_completed_phase126_mempool_catalog_reverts_to_pending_candidate_language", () => {
   // Arrange
   const root = createFixture({
     maybeMutate(files) {
@@ -316,11 +316,11 @@ test("fails_when_archive_ready_mempool_catalog_reverts_to_pending_candidate_lang
 
   // Assert
   expect(failures).toContain(
-    "P126 archive-ready mempool catalog lifecycle: requires 39/39 requirements, 17/17 phases, and Phase 126 4/4",
+    "P126 completed Phase 126 mempool catalog lifecycle must retain the current post-audit projection",
   );
 });
 
-test("fails_when_archive_ready_p2p_catalog_reverts_to_all_six_pending_language", () => {
+test("fails_when_completed_phase126_p2p_catalog_reverts_to_all_six_pending_language", () => {
   // Arrange
   const root = createFixture({
     maybeMutate(files) {
@@ -337,15 +337,20 @@ test("fails_when_archive_ready_p2p_catalog_reverts_to_all_six_pending_language",
 
   // Assert
   expect(failures).toContain(
-    "P126 archive-ready P2P catalog lifecycle: requires 39/39 requirements, 17/17 phases, and Phase 126 4/4",
+    "P126 completed Phase 126 P2P catalog lifecycle must retain the current post-audit projection",
   );
 });
 
-test("allows_candidate_catalog_language_before_archive_ready", () => {
+test("allows_candidate_catalog_language_before_phase126_completion", () => {
   // Arrange
   const root = createFixture({
     maybeMutate(files) {
-      replace(files, ".planning/STATE.md", "status: archive_ready", "status: executing");
+      replace(
+        files,
+        ".planning/ROADMAP.md",
+        "- [x] **Phase 126: Compact Relay Residual Hardening**",
+        "- [ ] **Phase 126: Compact Relay Residual Hardening**",
+      );
       append(
         files,
         "docs/parity/catalog/mempool-policy.md",

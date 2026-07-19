@@ -58,6 +58,7 @@ type TargetFile = (typeof TARGET_FILES)[number];
 type FixtureOptions = {
   completedGapClosure?: boolean;
   gapClosureStage?: boolean;
+  postAuditGapPlanning?: boolean;
   maybeMutate?: (files: Map<TargetFile, string>) => void;
 };
 
@@ -89,6 +90,17 @@ test("passes_when_completed_gap_closure_retains_phase125_and_phase126_ownership"
     completedGapClosure: true,
     gapClosureStage: true,
   });
+
+  // Act
+  const failures = checkPhase117ParityUatReleaseBoundary(root);
+
+  // Assert
+  expect(failures).toEqual([]);
+});
+
+test("passes_when_post_audit_gap_planning_uses_phase127_through_phase129_ownership", () => {
+  // Arrange
+  const root = createFixture({ postAuditGapPlanning: true });
 
   // Act
   const failures = checkPhase117ParityUatReleaseBoundary(root);
@@ -507,6 +519,7 @@ function createFixture(options: FixtureOptions = {}): string {
     createRequirements(
       options.gapClosureStage ?? false,
       options.completedGapClosure ?? false,
+      options.postAuditGapPlanning ?? false,
     ),
   );
   files.set("docs/operator/runtime-guide.md", `${commonText}\n${requiredCommands().join("\n")}`);
@@ -600,7 +613,32 @@ test("fails_when_gap_closure_requirement_maps_to_stale_phase", () => {
   expect(gapFailures).toContain("CMP-05 must map to Phase 126 exactly once");
 });
 
-function createRequirements(gapClosureStage: boolean, completedGapClosure: boolean): string {
+test("fails_when_post_audit_gap_planning_retains_stale_requirement_ownership", () => {
+  // Arrange
+  const root = createFixture({
+    postAuditGapPlanning: true,
+    maybeMutate(files) {
+      replace(
+        files,
+        ".planning/REQUIREMENTS.md",
+        "| BSRV-03 | Phase 127 | Pending |",
+        "| BSRV-03 | Phase 110 | Pending |",
+      );
+    },
+  });
+
+  // Act
+  const failures = checkPhase117ParityUatReleaseBoundary(root).join("\n");
+
+  // Assert
+  expect(failures).toContain("BSRV-03 must map to Phase 127 exactly once");
+});
+
+function createRequirements(
+  gapClosureStage: boolean,
+  completedGapClosure: boolean,
+  postAuditGapPlanning: boolean,
+): string {
   const gapPhases = new Map([
     ["RCN-04", "125"],
     ["RCN-05", "125"],
@@ -611,9 +649,26 @@ function createRequirements(gapClosureStage: boolean, completedGapClosure: boole
     ["GOV-04", "126"],
     ["BOUND-01", "126"],
   ]);
+  const postAuditGapPhases = new Map([
+    ["BSRV-03", "127"],
+    ["BSRV-04", "127"],
+    ["OBS-02", "127"],
+    ["OBS-04", "127"],
+    ["CMP-04", "128"],
+    ["CMP-05", "128"],
+    ["OBS-03", "128"],
+    ["OBS-01", "129"],
+    ["BOUND-02", "129"],
+  ]);
   return Object.entries(requirementPhases())
     .map(([requirement, phase]) => {
-      const maybeGapPhase = gapClosureStage ? gapPhases.get(requirement) : undefined;
+      const maybePostAuditGapPhase = postAuditGapPlanning
+        ? postAuditGapPhases.get(requirement)
+        : undefined;
+      const maybeGapPhase =
+        maybePostAuditGapPhase ?? (gapClosureStage || postAuditGapPlanning
+          ? gapPhases.get(requirement)
+          : undefined);
       const gapStatus = completedGapClosure ? "Complete" : "Pending";
       return `| ${requirement} | Phase ${maybeGapPhase ?? phase} | ${maybeGapPhase ? gapStatus : "Complete"} |`;
     })

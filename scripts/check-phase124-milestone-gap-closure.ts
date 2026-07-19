@@ -150,6 +150,29 @@ export function verifyPhase124GapClosureStage(
   verifyRouting(repoRoot, maybeStage, roadmap, audit, failures);
 }
 
+export function verifyCompletedGapClosureLifecycleArtifacts(
+  repoRoot: string,
+  failures: string[],
+): void {
+  const maybePhase125Artifacts = maybeParsePhase125Artifacts(repoRoot, failures);
+  const maybePhase126Artifacts = maybeParsePhase126Artifacts(repoRoot, failures);
+  for (const [phase, maybeArtifacts] of [
+    [125, maybePhase125Artifacts],
+    [126, maybePhase126Artifacts],
+  ] as const) {
+    if (maybeArtifacts === null) continue;
+    if (
+      maybeArtifacts.planCount !== 4 ||
+      maybeArtifacts.summaryCount !== 4 ||
+      !maybeArtifacts.verificationPresent
+    ) {
+      failures.push(
+        `P124 post-audit Phase ${phase} lifecycle must remain complete at 4 plans, 4 summaries, and passed verification`,
+      );
+    }
+  }
+}
+
 function phase126LifecycleStarted(repoRoot: string): boolean {
   const absoluteDirectory = path.join(repoRoot, PHASE126_DIRECTORY);
   if (!existsSync(absoluteDirectory)) return false;

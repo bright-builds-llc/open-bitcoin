@@ -19,6 +19,7 @@ import {
   PHASE126_ROUTE,
   PHASE126_LIFECYCLE_ID,
   PHASE126_VERIFICATION_FILE,
+  PHASE127_ROUTE,
   replace,
 } from "./check-phase124-milestone-closeout-reconciliation.fixtures";
 
@@ -116,6 +117,86 @@ for (const stage of [
     expect(failures).toEqual([]);
   });
 }
+
+test("passes_the_post_audit_gap_planning_stage", () => {
+  // Arrange
+  const root = postAuditGapPlanningFixture();
+
+  // Act
+  const failures = check(root);
+
+  // Assert
+  expect(failures).toEqual([]);
+});
+
+test("post_audit_gap_planning_rejects_wrong_ownership_and_counts", () => {
+  // Arrange
+  const ownershipRoot = postAuditGapPlanningFixture((files) => {
+    replace(
+      files,
+      ".planning/REQUIREMENTS.md",
+      "| BSRV-03 | Phase 127 | Pending |",
+      "| BSRV-03 | Phase 128 | Pending |",
+    );
+  });
+  const countRoot = postAuditGapPlanningFixture((files) => {
+    replace(files, ".planning/REQUIREMENTS.md", "Complete: 29", "Complete: 28");
+  });
+
+  // Act
+  const ownershipFailures = check(ownershipRoot).join("\n");
+  const countFailures = check(countRoot).join("\n");
+
+  // Assert
+  expect(ownershipFailures).toContain("BSRV-03 must be owned by Phase 127");
+  expect(countFailures).toContain("post-audit requirements coverage");
+});
+
+test("post_audit_gap_planning_rejects_topology_audit_and_route_drift", () => {
+  // Arrange
+  const topologyRoot = postAuditGapPlanningFixture((files) => {
+    replace(
+      files,
+      ".planning/ROADMAP.md",
+      "#### Phase 128: Production Compact Announcement Transport\n**Depends on:** Phase 127",
+      "#### Phase 128: Production Compact Announcement Transport\n**Depends on:** Phase 126",
+    );
+  });
+  const auditRoot = postAuditGapPlanningFixture((files) => {
+    replace(
+      files,
+      ".planning/v2.1-MILESTONE-AUDIT.md",
+      "status: gaps_found",
+      "status: passed",
+    );
+  });
+  const routeRoot = postAuditGapPlanningFixture((files) => {
+    replace(files, ".planning/STATE.md", PHASE127_ROUTE, PHASE126_ROUTE);
+  });
+
+  // Act
+  const topologyFailures = check(topologyRoot).join("\n");
+  const auditFailures = check(auditRoot).join("\n");
+  const routeFailures = check(routeRoot).join("\n");
+
+  // Assert
+  expect(topologyFailures).toContain("post-audit Phase 128 dependency");
+  expect(auditFailures).toContain("post-audit audit score");
+  expect(routeFailures).toContain("post-audit primary route .planning/STATE.md");
+});
+
+test("post_audit_gap_planning_keeps_the_no_claim_boundary", () => {
+  // Arrange
+  const root = postAuditGapPlanningFixture((files) => {
+    append(files, ".planning/PROJECT.md", "Open Bitcoin supports package relay.");
+  });
+
+  // Act
+  const failures = check(root).join("\n");
+
+  // Assert
+  expect(failures).toContain("no-claim boundary");
+});
 
 test("phase126_rejects_mixed_requirement_counts", () => {
   // Arrange
@@ -668,6 +749,15 @@ function phase126StageFixture(
 ): string {
   return createFixture(tempRoots, {
     maybePhase126Stage: stage,
+    maybeMutate,
+  });
+}
+
+function postAuditGapPlanningFixture(
+  maybeMutate?: (files: Map<FixtureFile, string>) => void,
+): string {
+  return createFixture(tempRoots, {
+    postAuditGapPlanning: true,
     maybeMutate,
   });
 }

@@ -218,13 +218,13 @@ limits in `packages/bitcoin-knots/src/net_processing.h`, and
 behavior remains anchored in
 `packages/bitcoin-knots/test/functional/p2p_compactblocks.py`.
 
-Lifecycle-valid verification and final reconciliation completed all six Phase
-126 requirements. The v2.1 milestone is archive-ready at 39/39 independently
-verified requirements and 17/17 complete implementation phases, with Phase 126
-complete at 4/4 plans. This verified boundary does not add package relay,
-public relay default, archive-node behavior, public-network gate, production
-service operation, production full-node readiness, or production-funds wallet
-claim.
+Lifecycle-valid verification completed all six Phase 126 requirements, and
+Phase 126 remains locally complete at 4/4 plans. The canonical v2.1 integration
+audit reports 29/39 requirements complete and routes gap closure through Phases
+127–129 before any fresh archive decision. This verified boundary does not add
+package relay, public relay default, archive-node behavior, public-network
+gate, production service operation, production full-node readiness, or
+production-funds wallet claim.
 
 ## Known gaps
 

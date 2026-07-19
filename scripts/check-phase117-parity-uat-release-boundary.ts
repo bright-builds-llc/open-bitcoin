@@ -206,6 +206,7 @@ type ParitySurface = {
   upstream?: { sources?: unknown; tests?: unknown };
 };
 type ParityIndex = { surfaces?: unknown; checklist?: { surfaces?: unknown } };
+type TraceabilityStage = "implementation" | "gap-closure" | "post-audit-gap-planning";
 
 export function checkPhase117ParityUatReleaseBoundary(maybeRepoRoot?: string): string[] {
   const repoRoot = path.resolve(
@@ -281,10 +282,9 @@ function checkSurfaceOwnership(index: ParityIndex, failures: string[]): void {
 }
 
 function checkRequirementTraceability(raw: string, failures: string[]): void {
-  const gapClosureOwnership =
-    /\|\s*[A-Z]+-\d+\s*\|\s*Phase\s+12[56]\s*\|/.test(raw);
+  const stage = traceabilityStage(raw);
   for (const requirement of allRequirements()) {
-    const phase = expectedPhase(requirement, gapClosureOwnership);
+    const phase = expectedPhase(requirement, stage);
     const needle = `| ${requirement} | Phase ${phase} |`;
     if (countOccurrences(raw, needle) !== 1) {
       failures.push(`requirement traceability: ${requirement} must map to Phase ${phase} exactly once`);
@@ -404,12 +404,28 @@ function allRequirements(): string[] {
   return Object.values(REQUIREMENTS_BY_SURFACE).flatMap((requirements) => [...requirements]);
 }
 
-function expectedPhase(requirement: string, gapClosureOwnership: boolean): string {
-  if (gapClosureOwnership) {
+function traceabilityStage(raw: string): TraceabilityStage {
+  if (/\|\s*[A-Z]+-\d+\s*\|\s*Phase\s+12[789]\s*\|/.test(raw)) {
+    return "post-audit-gap-planning";
+  }
+  if (/\|\s*[A-Z]+-\d+\s*\|\s*Phase\s+12[56]\s*\|/.test(raw)) {
+    return "gap-closure";
+  }
+  return "implementation";
+}
+
+function expectedPhase(requirement: string, stage: TraceabilityStage): string {
+  if (stage === "post-audit-gap-planning") {
+    if (["BSRV-03", "BSRV-04", "OBS-02", "OBS-04"].includes(requirement)) return "127";
+    if (["CMP-04", "CMP-05", "OBS-03"].includes(requirement)) return "128";
+    if (["OBS-01", "BOUND-02"].includes(requirement)) return "129";
+  }
+  if (stage !== "implementation") {
     if (["RCN-04", "RCN-05", "RCN-06"].includes(requirement)) return "125";
-    if (["CMP-05", "RCN-02", "RCN-03", "GOV-04", "BOUND-01"].includes(requirement)) {
+    if (["RCN-02", "RCN-03", "GOV-04", "BOUND-01"].includes(requirement)) {
       return "126";
     }
+    if (stage === "gap-closure" && requirement === "CMP-05") return "126";
   }
   // Parity surfaces retain the original implementation roots while traceability
   // moves to the exact active gap-closure owner only during that lifecycle stage.

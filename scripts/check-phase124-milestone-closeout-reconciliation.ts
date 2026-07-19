@@ -9,8 +9,13 @@ import {
 } from "./check-phase124-milestone-closeout-lifecycle";
 import {
   isPhase124GapClosureStage,
+  verifyCompletedGapClosureLifecycleArtifacts,
   verifyPhase124GapClosureStage,
 } from "./check-phase124-milestone-gap-closure";
+import {
+  isPostAuditGapPlanningStage,
+  verifyPostAuditGapPlanningStage,
+} from "./check-phase124-post-audit-gap-planning";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
 const PHASE123_TEST =
@@ -112,8 +117,19 @@ export function checkPhase124MilestoneCloseoutReconciliation(
   const phaseComplete = roadmap.includes("- [x] **Phase 124:");
   const audit = texts.get(".planning/v2.1-MILESTONE-AUDIT.md") ?? "";
   const gapClosureStage = isPhase124GapClosureStage(roadmap, audit);
+  const postAuditGapPlanningStage = isPostAuditGapPlanningStage(roadmap);
 
-  if (gapClosureStage) {
+  if (postAuditGapPlanningStage) {
+    verifyPostAuditGapPlanningStage(
+      repoRoot,
+      requirements,
+      roadmap,
+      audit,
+      failures,
+    );
+    verifyCompletedGapClosureLifecycleArtifacts(repoRoot, failures);
+    verifyPhase124CloseoutLifecycle(repoRoot, phaseComplete, failures);
+  } else if (gapClosureStage) {
     verifyPhase124GapClosureStage(repoRoot, requirements, roadmap, audit, failures);
     verifyPhase124CloseoutLifecycle(repoRoot, phaseComplete, failures);
   } else {

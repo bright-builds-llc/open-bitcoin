@@ -28,6 +28,7 @@ export const PHASE125_LIFECYCLE_ID = "125-2026-07-17T13-21-01";
 export const ARCHIVE_ROUTE = "/gsd-complete-milestone v2.1";
 export const PHASE125_ROUTE = "/gsd-execute-phase 125";
 export const PHASE126_ROUTE = "/gsd-execute-phase 126";
+export const PHASE127_ROUTE = "/gsd-plan-phase 127";
 export const PHASE126_LIFECYCLE_ID = "126-2026-07-18T16-09-20";
 export const VERIFICATION_FILE =
   ".planning/phases/124-milestone-closeout-reconciliation/124-VERIFICATION.md";
@@ -54,6 +55,11 @@ const PHASE125_DIRECTORY =
   ".planning/phases/125-compact-download-verification-traceability-closure";
 const PHASE126_DIRECTORY =
   ".planning/phases/126-compact-relay-residual-hardening";
+const POST_AUDIT_PHASE_DIRECTORIES = [
+  ".planning/phases/127-authoritative-network-state-unification",
+  ".planning/phases/128-production-compact-announcement-transport",
+  ".planning/phases/129-integration-guardrails-and-milestone-reconciliation",
+] as const;
 const REQUIRED_FILES = [
   ".planning/REQUIREMENTS.md",
   ".planning/ROADMAP.md",
@@ -97,6 +103,7 @@ type Phase125PlanNumber = "01" | "02" | "03" | "04";
 type Phase126PlanNumber = Phase125PlanNumber;
 export type FixtureFile =
   | RequiredFile
+  | ".planning/MILESTONES.md"
   | typeof CONTEXT_FILE
   | typeof PLAN_01_FILE
   | typeof PLAN_02_FILE
@@ -115,6 +122,7 @@ type FixtureOptions = {
   finalStage?: boolean;
   includeVerification?: boolean;
   maybeMutate?: (files: Map<FixtureFile, string>) => void;
+  postAuditGapPlanning?: boolean;
   maybePhase125Stage?: Phase125LifecycleStage["kind"];
   maybePhase126Stage?: Phase126CloseoutStage["kind"];
   promotedStage?: boolean;
@@ -123,8 +131,11 @@ type FixtureOptions = {
 export function createFixture(tempRoots: string[], options: FixtureOptions = {}): string {
   const maybePhase125Stage = options.maybePhase125Stage;
   const maybePhase126Stage = options.maybePhase126Stage;
+  const postAuditGapPlanning = options.postAuditGapPlanning ?? false;
   const gapClosureStage =
-    maybePhase125Stage !== undefined || maybePhase126Stage !== undefined;
+    postAuditGapPlanning ||
+    maybePhase125Stage !== undefined ||
+    maybePhase126Stage !== undefined;
   const phaseComplete = (options.finalStage ?? false) || gapClosureStage;
   const finalStage = phaseComplete || (options.promotedStage ?? false);
   const root = mkdtempSync(path.join(tmpdir(), "open-bitcoin-phase124-"));
@@ -134,7 +145,9 @@ export function createFixture(tempRoots: string[], options: FixtureOptions = {})
   const files = new Map<FixtureFile, string>([
     [
       ".planning/REQUIREMENTS.md",
-      maybePhase126Stage !== undefined
+      postAuditGapPlanning
+        ? createPostAuditGapPlanningRequirements()
+        : maybePhase126Stage !== undefined
         ? createPhase126Requirements(maybePhase126Stage)
         : gapClosureStage
         ? createGapClosureRequirements(maybePhase125Stage)
@@ -142,7 +155,9 @@ export function createFixture(tempRoots: string[], options: FixtureOptions = {})
     ],
     [
       ".planning/ROADMAP.md",
-      maybePhase126Stage !== undefined
+      postAuditGapPlanning
+        ? createPostAuditGapPlanningRoadmap()
+        : maybePhase126Stage !== undefined
         ? createPhase126Roadmap(maybePhase126Stage)
         : gapClosureStage
         ? createGapClosureRoadmap(maybePhase125Stage)
@@ -150,7 +165,9 @@ export function createFixture(tempRoots: string[], options: FixtureOptions = {})
     ],
     [
       ".planning/STATE.md",
-      maybePhase126Stage !== undefined
+      postAuditGapPlanning
+        ? `status: planning\nNext action: Run \`${PHASE127_ROUTE}\`.`
+        : maybePhase126Stage !== undefined
         ? createPhase126State(maybePhase126Stage)
         : gapClosureStage
           ? createGapClosureRouting(maybePhase125Stage)
@@ -158,7 +175,9 @@ export function createFixture(tempRoots: string[], options: FixtureOptions = {})
     ],
     [
       ".planning/v2.1-MILESTONE-AUDIT.md",
-      maybePhase126Stage !== undefined
+      postAuditGapPlanning
+        ? createPostAuditGapPlanningAudit()
+        : maybePhase126Stage !== undefined
         ? createPhase126Audit(maybePhase126Stage)
         : gapClosureStage
           ? createGapClosureAudit(maybePhase125Stage)
@@ -166,12 +185,20 @@ export function createFixture(tempRoots: string[], options: FixtureOptions = {})
     ],
     [
       ".planning/PROJECT.md",
-      gapClosureStage
+      postAuditGapPlanning
+        ? `${noClaim}\nNext action: Run \`${PHASE127_ROUTE}\`.`
+        : gapClosureStage
         ? `${noClaim}\n${
             maybePhase126Stage !== undefined
               ? createPhase126Routing(maybePhase126Stage)
               : createGapClosureRouting(maybePhase125Stage)
           }`
+        : noClaim,
+    ],
+    [
+      ".planning/MILESTONES.md",
+      postAuditGapPlanning
+        ? `${noClaim}\n**What's next:** Run \`${PHASE127_ROUTE}\`.`
         : noClaim,
     ],
     ["README.md", noClaim],
@@ -180,7 +207,10 @@ export function createFixture(tempRoots: string[], options: FixtureOptions = {})
     [
       "scripts/verify.sh",
       createVerifyScript(
-        maybePhase125Stage ?? (maybePhase126Stage === undefined ? undefined : "post_summary"),
+        postAuditGapPlanning
+          ? "post_summary"
+          : maybePhase125Stage ??
+              (maybePhase126Stage === undefined ? undefined : "post_summary"),
       ),
     ],
   ]);
@@ -223,6 +253,10 @@ export function createFixture(tempRoots: string[], options: FixtureOptions = {})
     addPhase125Artifacts(files, "post_summary");
     addPhase126Artifacts(files, maybePhase126Stage);
   }
+  if (postAuditGapPlanning) {
+    addPhase125Artifacts(files, "post_summary");
+    addPhase126Artifacts(files, "archive_ready");
+  }
   options.maybeMutate?.(files);
   for (const [file, text] of files) {
     const absolutePath = path.join(root, file);
@@ -231,6 +265,11 @@ export function createFixture(tempRoots: string[], options: FixtureOptions = {})
   }
   if (gapClosureStage) {
     mkdirSync(path.join(root, PHASE126_DIRECTORY), { recursive: true });
+  }
+  if (postAuditGapPlanning) {
+    for (const directory of POST_AUDIT_PHASE_DIRECTORIES) {
+      mkdirSync(path.join(root, directory), { recursive: true });
+    }
   }
   return root;
 }
@@ -369,6 +408,24 @@ function createPhase126Requirements(stage: Phase126CloseoutStage["kind"]): strin
   ].join("\n");
 }
 
+function createPostAuditGapPlanningRequirements(): string {
+  const gapOwners = postAuditGapOwners();
+  return [
+    ...REQUIREMENT_IDS.map(
+      (id) => `- [${gapOwners.has(id) ? " " : "x"}] **${id}**: fixture requirement`,
+    ),
+    ...REQUIREMENT_IDS.map((id) => {
+      const maybeOwner = gapOwners.get(id);
+      return `| ${id} | Phase ${maybeOwner ?? phase125GapPhase(id) ?? phaseFor(id)} | ${maybeOwner === undefined ? "Complete" : "Pending"} |`;
+    }),
+    "- v2.1 requirements: 39 total",
+    "- Mapped to phases: 39",
+    "- Complete: 29",
+    "- Pending integration gap closure: 10",
+    "- Unmapped: 0",
+  ].join("\n");
+}
+
 function createRoadmap(phaseComplete: boolean): string {
   const completeCount = phaseComplete ? 39 : 38;
   const pendingCount = phaseComplete ? 0 : 1;
@@ -455,6 +512,44 @@ function createPhase126Roadmap(stage: Phase126CloseoutStage["kind"]): string {
     "- Unmapped: 0",
     "## Next Step",
     createPhase126Routing(stage),
+  ].join("\n");
+}
+
+function createPostAuditGapPlanningRoadmap(): string {
+  return [
+    "- [x] **Phase 124: Milestone Closeout Reconciliation**",
+    "- [x] **Phase 125: Compact Download Verification Traceability Closure**",
+    "- [x] **Phase 126: Compact Relay Residual Hardening**",
+    "- [ ] **Phase 127: Authoritative Network State Unification**",
+    "- [ ] **Phase 128: Production Compact Announcement Transport**",
+    "- [ ] **Phase 129: Integration Guardrails and Milestone Reconciliation**",
+    "#### Phase 124: Milestone Closeout Reconciliation",
+    "**Plans:** 2/2 plans complete",
+    "#### Phase 125: Compact Download Verification Traceability Closure",
+    "**Plans:** 4/4 plans complete",
+    "#### Phase 126: Compact Relay Residual Hardening",
+    "**Plans:** 4/4 plans complete",
+    "#### Phase 127: Authoritative Network State Unification",
+    "**Depends on:** Phase 126",
+    "**Requirements:** BSRV-03, BSRV-04, OBS-02, OBS-04",
+    "**Plans:** 0 plans",
+    "#### Phase 128: Production Compact Announcement Transport",
+    "**Depends on:** Phase 127",
+    "**Requirements:** CMP-04, CMP-05, OBS-03",
+    "**Plans:** 0 plans",
+    "#### Phase 129: Integration Guardrails and Milestone Reconciliation",
+    "**Depends on:** Phase 128",
+    "**Requirements:** OBS-01, BOUND-02, HARD-05",
+    "**Plans:** 0 plans",
+    "**Execution Order:** 110 -> 126 -> 127 -> 128 -> 129",
+    "- v2.1 requirements: 39 total",
+    "- Mapped to phases: 39",
+    "- Satisfied: 29",
+    "- Pending integration gap closure: 10",
+    "- Unmapped: 0",
+    "## Next Step",
+    "",
+    `Run \`${PHASE127_ROUTE}\`.`,
   ].join("\n");
 }
 
@@ -548,6 +643,34 @@ function createPhase126Audit(stage: Phase126CloseoutStage["kind"]): string {
     "---",
     "## Next Action",
     createPhase126Routing(stage),
+  ].join("\n");
+}
+
+function createPostAuditGapPlanningAudit(): string {
+  return [
+    "---",
+    "status: gaps_found",
+    "scores:",
+    '  requirements: "29/39"',
+    '  phases: "17/17"',
+    '  integration: "9/13"',
+    '  flows: "7/11"',
+    "gaps:",
+    "  requirements:",
+    ...Array.from(postAuditGapOwners().keys(), (id) => `    - id: ${id}`),
+    "  integration:",
+    "    - id: GAP-01",
+    "    - id: GAP-02",
+    "    - id: GAP-03",
+    "  flows:",
+    "    - id: FLOW-01",
+    "    - id: FLOW-02",
+    "    - id: FLOW-03",
+    "    - id: FLOW-04",
+    "---",
+    "## Next Action",
+    "",
+    `Run \`${PHASE127_ROUTE}\` to begin gap closure.`,
   ].join("\n");
 }
 
@@ -674,6 +797,21 @@ function phase125GapPhase(id: string): number | undefined {
     return 126;
   }
   return undefined;
+}
+
+function postAuditGapOwners(): Map<string, number> {
+  return new Map([
+    ["BSRV-03", 127],
+    ["BSRV-04", 127],
+    ["OBS-02", 127],
+    ["OBS-04", 127],
+    ["CMP-04", 128],
+    ["CMP-05", 128],
+    ["OBS-03", 128],
+    ["OBS-01", 129],
+    ["BOUND-02", 129],
+    ["HARD-05", 129],
+  ]);
 }
 
 function phase125PlanNumbers(): Phase125PlanNumber[] {
