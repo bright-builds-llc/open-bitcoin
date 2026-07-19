@@ -329,7 +329,7 @@ function verifySuccessfulWriteEvidence(
     session,
     [
       "session.send(message, self.config.network.magic())?;",
-      "self.network.acknowledge_wire_message_written(message);",
+      "self.network.acknowledge_wire_message_written(message)?;",
     ],
     "P123 sync send-before-ack",
     failures,
@@ -426,15 +426,15 @@ function verifyAuthoritativeRuntime(
   const sync = texts.get("packages/open-bitcoin-node/src/sync.rs") ?? "";
   requireExactCount(
     sync,
-    "self.network.block_relay_runtime_evidence_snapshot()",
+    "self.network.block_relay_runtime_evidence_snapshot()?",
     1,
-    "P123 one authoritative runtime snapshot",
+    "P123 one typed authoritative runtime snapshot",
     failures,
   );
   requireOrdered(
     sync,
     [
-      "let maybe_block_relay_snapshot = self.maybe_authoritative_block_relay_snapshot();",
+      "let maybe_block_relay_snapshot = self.maybe_authoritative_block_relay_snapshot()?;",
       "self.persist_metrics(&summary, maybe_block_relay_snapshot.as_ref(), timestamp)",
       "self.write_block_relay_log(&mut summary, maybe_block_relay_snapshot.as_ref(), timestamp);",
     ],

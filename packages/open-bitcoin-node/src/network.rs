@@ -27,6 +27,7 @@ mod peer_policy;
 mod recovery;
 mod relay_fanout;
 mod relay_serving;
+mod runtime_authority;
 mod types;
 
 pub(crate) use block_relay_evidence::BlockRelayRuntimeEvidenceSnapshot;
@@ -57,6 +58,7 @@ pub use relay_fanout::{
     LocalRelaySubmissionEvidence, LocalRelaySubmissionLabel, ManagedRelayFanoutInfo,
     RebroadcastEvidenceLabel,
 };
+pub use runtime_authority::{ManagedNetworkAuthorityError, ManagedNetworkHandle};
 pub use types::{
     BlockConnectDisposition, ManagedMempoolInfo, ManagedNetworkError, ManagedNetworkInfo,
     ManagedSyncMessageResult,

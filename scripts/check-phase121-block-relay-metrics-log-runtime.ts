@@ -74,21 +74,21 @@ function verifyAuthoritativeSnapshotAndPersist(
 
   requireExactCount(
     sync,
-    "self.network.block_relay_runtime_evidence_snapshot()",
+    "self.network.block_relay_runtime_evidence_snapshot()?",
     1,
-    "P121 authoritative snapshot",
+    "P121 authoritative typed snapshot",
     failures,
   );
   for (const needle of [
     "match snapshot.status.block_serving.activation",
-    "FieldAvailability::Available(_) => Some(snapshot)",
-    "FieldAvailability::Unavailable { .. } => None",
+    "FieldAvailability::Available(_) => Ok(Some(snapshot))",
+    "FieldAvailability::Unavailable { .. } => Ok(None)",
   ]) {
     requireContains(sync, needle, "P121 activation omission", failures);
   }
   requireContains(
     sync,
-    "let maybe_block_relay_snapshot = self.maybe_authoritative_block_relay_snapshot();",
+    "let maybe_block_relay_snapshot = self.maybe_authoritative_block_relay_snapshot()?;",
     "P121 authoritative snapshot local",
     failures,
   );
@@ -114,7 +114,7 @@ function verifyAuthoritativeSnapshotAndPersist(
   requireOrdered(
     sync,
     [
-      "let maybe_block_relay_snapshot = self.maybe_authoritative_block_relay_snapshot();",
+      "let maybe_block_relay_snapshot = self.maybe_authoritative_block_relay_snapshot()?;",
       "self.persist_metrics(&summary, maybe_block_relay_snapshot.as_ref(), timestamp)",
       "self.write_block_relay_log(&mut summary, maybe_block_relay_snapshot.as_ref(), timestamp);",
     ],
@@ -163,7 +163,8 @@ function verifyRuntimeTests(texts: Map<TargetFile, string>, failures: string[]):
     "phase123_unobserved_authoritative_network_omits_block_relay_metrics_and_log",
     "phase123_sync_network_compact_activity_projects_same_snapshot_to_metrics_and_log",
     "eligibility.eligible_peer_count, 2",
-    "block_served_write_count(), 9",
+    "block_served_write_count()",
+    '.expect("authoritative block write count")',
   ]) {
     requireContains(projectionTests, needle, "P121 authoritative projection tests", failures);
   }

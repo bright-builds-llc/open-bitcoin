@@ -81,7 +81,13 @@ fn phase123_sync_block_write_success_increments_served_once() {
 
     // Assert
     assert!(result.is_ok());
-    assert_eq!(runtime.network.block_served_write_count(), 1);
+    assert_eq!(
+        runtime
+            .network
+            .block_served_write_count()
+            .expect("authoritative block write count"),
+        1
+    );
     remove_dir_if_exists(&path);
 }
 
@@ -97,7 +103,13 @@ fn phase123_sync_block_write_failure_does_not_increment_served() {
 
     // Assert
     assert!(matches!(result, Err(SyncRuntimeError::Io { .. })));
-    assert_eq!(runtime.network.block_served_write_count(), 0);
+    assert_eq!(
+        runtime
+            .network
+            .block_served_write_count()
+            .expect("authoritative block write count"),
+        0
+    );
     remove_dir_if_exists(&path);
 }
 
@@ -113,7 +125,13 @@ fn phase123_sync_non_block_write_does_not_increment_served() {
 
     // Assert
     assert!(result.is_ok());
-    assert_eq!(runtime.network.block_served_write_count(), 0);
+    assert_eq!(
+        runtime
+            .network
+            .block_served_write_count()
+            .expect("authoritative block write count"),
+        0
+    );
     remove_dir_if_exists(&path);
 }
 
@@ -133,7 +151,13 @@ fn phase123_sync_partial_batch_counts_each_successful_block_before_failure() {
 
     // Assert
     assert!(matches!(result, Err(SyncRuntimeError::Io { .. })));
-    assert_eq!(runtime.network.block_served_write_count(), 1);
+    assert_eq!(
+        runtime
+            .network
+            .block_served_write_count()
+            .expect("authoritative block write count"),
+        1
+    );
     remove_dir_if_exists(&path);
 }
 
@@ -153,6 +177,12 @@ fn phase123_sync_two_successful_blocks_before_later_failure_count_two() {
 
     // Assert
     assert!(matches!(result, Err(SyncRuntimeError::Io { .. })));
-    assert_eq!(runtime.network.block_served_write_count(), 2);
+    assert_eq!(
+        runtime
+            .network
+            .block_served_write_count()
+            .expect("authoritative block write count"),
+        2
+    );
     remove_dir_if_exists(&path);
 }

@@ -30,13 +30,14 @@ impl DurableSyncRuntime {
     pub(super) fn maybe_current_at_best_known_tip_stop_reason(
         &self,
         timestamp: i64,
-    ) -> Option<SyncStopReason> {
-        tip::current_at_best_known_tip_stop_reason_from_evidence(
-            self.network.peer_manager().header_store().best_tip(),
-            self.connected_block(),
+    ) -> Result<Option<SyncStopReason>, SyncRuntimeError> {
+        let peer_manager = self.network.peer_manager_snapshot()?;
+        Ok(tip::current_at_best_known_tip_stop_reason_from_evidence(
+            peer_manager.header_store().best_tip(),
+            self.connected_block()?,
             u64::try_from(timestamp).unwrap_or(0),
             self.config.tip_freshness_threshold_seconds,
-        )
+        ))
     }
 
     pub(super) fn record_until_idle_stop(

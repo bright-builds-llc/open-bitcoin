@@ -115,7 +115,8 @@ fn record_compact_activity_and_nine_block_writes(runtime: &mut DurableSyncRuntim
     for _ in 0..9 {
         runtime
             .network
-            .acknowledge_wire_message_written(&block_message);
+            .acknowledge_wire_message_written(&block_message)
+            .expect("authoritative block-write acknowledgement");
     }
 }
 
@@ -170,12 +171,21 @@ fn phase123_sync_network_compact_activity_projects_same_snapshot_to_metrics_and_
     let mut runtime =
         open_authoritative_block_relay_runtime(store, sync_config_with_log_dir(&log_dir));
     record_compact_activity_and_nine_block_writes(&mut runtime);
-    let status = runtime.network.block_relay_evidence_status();
+    let status = runtime
+        .network
+        .block_relay_evidence_status()
+        .expect("authoritative block-relay status");
     let FieldAvailability::Available(eligibility) = status.block_serving.eligibility else {
         panic!("block-serving eligibility should be observed");
     };
     assert_eq!(eligibility.eligible_peer_count, 2);
-    assert_eq!(runtime.network.block_served_write_count(), 9);
+    assert_eq!(
+        runtime
+            .network
+            .block_served_write_count()
+            .expect("authoritative block write count"),
+        9
+    );
 
     // Act
     run_one_sync_tick(&mut runtime);

@@ -1010,6 +1010,15 @@
       ]
     },
     {
+      "label": "node-network-runtime-authority",
+      "files": [
+        "packages/open-bitcoin-node/src/network/runtime_authority.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/node/context.h"
+      ]
+    },
+    {
       "label": "node-sync-runtime",
       "files": [
         "packages/open-bitcoin-node/src/sync.rs",

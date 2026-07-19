@@ -72,14 +72,14 @@ test("fails when obsolete block-relay provider wiring returns", () => {
   expect(failures.join("\n")).toContain("P121 obsolete provider wiring");
 });
 
-test("fails when direct sync-network sampling is removed", () => {
+test("fails when typed authoritative sync-network sampling is removed", () => {
   // Arrange
   const root = createFixture({
     maybeMutateFiles(files) {
       replaceInFile(
         files,
         "packages/open-bitcoin-node/src/sync.rs",
-        "self.network.block_relay_runtime_evidence_snapshot()",
+        "self.network.block_relay_runtime_evidence_snapshot()?",
         "rpc_context.block_relay_runtime_evidence_snapshot()",
       );
     },
@@ -89,7 +89,7 @@ test("fails when direct sync-network sampling is removed", () => {
   const failures = checkPhase121BlockRelayMetricsLogRuntime({ rootDir: root });
 
   // Assert
-  expect(failures.join("\n")).toContain("P121 authoritative snapshot");
+  expect(failures.join("\n")).toContain("P121 authoritative typed snapshot");
 });
 
 test("fails when structured logging uses a second sample", () => {
@@ -119,8 +119,8 @@ test("fails when unavailable evidence is projected", () => {
       replaceInFile(
         files,
         "packages/open-bitcoin-node/src/sync.rs",
-        "FieldAvailability::Unavailable { .. } => None",
-        "FieldAvailability::Unavailable { .. } => Some(snapshot)",
+        "FieldAvailability::Unavailable { .. } => Ok(None)",
+        "FieldAvailability::Unavailable { .. } => Ok(Some(snapshot))",
       );
     },
   });
@@ -292,14 +292,16 @@ function completeFiles(): Map<TargetFile, string> {
     [
       "packages/open-bitcoin-node/src/sync.rs",
       `
-fn maybe_authoritative_block_relay_snapshot(&self) -> Option<BlockRelayRuntimeEvidenceSnapshot> {
-  let snapshot = self.network.block_relay_runtime_evidence_snapshot();
+fn maybe_authoritative_block_relay_snapshot(
+  &self,
+) -> Result<Option<BlockRelayRuntimeEvidenceSnapshot>, SyncRuntimeError> {
+  let snapshot = self.network.block_relay_runtime_evidence_snapshot()?;
   match snapshot.status.block_serving.activation {
-    FieldAvailability::Available(_) => Some(snapshot),
-    FieldAvailability::Unavailable { .. } => None,
+    FieldAvailability::Available(_) => Ok(Some(snapshot)),
+    FieldAvailability::Unavailable { .. } => Ok(None),
   }
 }
-let maybe_block_relay_snapshot = self.maybe_authoritative_block_relay_snapshot();
+let maybe_block_relay_snapshot = self.maybe_authoritative_block_relay_snapshot()?;
 self.persist_metrics(&summary, maybe_block_relay_snapshot.as_ref(), timestamp);
 self.write_summary_logs(&mut summary, timestamp);
 self.write_block_relay_log(&mut summary, maybe_block_relay_snapshot.as_ref(), timestamp);
@@ -347,7 +349,13 @@ fn write_block_relay_log_omits_sensitive_markers() {}
 fn phase123_unobserved_authoritative_network_omits_block_relay_metrics_and_log() {}
 fn phase123_sync_network_compact_activity_projects_same_snapshot_to_metrics_and_log() {
   assert_eq!(eligibility.eligible_peer_count, 2);
-  assert_eq!(runtime.network.block_served_write_count(), 9);
+  assert_eq!(
+    runtime
+      .network
+      .block_served_write_count()
+      .expect("authoritative block write count"),
+    9
+  );
 }
 `,
     ],

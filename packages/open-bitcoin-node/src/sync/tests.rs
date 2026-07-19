@@ -1777,7 +1777,11 @@ mod block_response {
         let summary = runtime
             .sync_once(&mut transport, i64::from(genesis.header.time))
             .expect("sync");
-        let active_chain = runtime.network.chainstate_snapshot().active_chain;
+        let active_chain = runtime
+            .network
+            .chainstate_snapshot()
+            .expect("authoritative chainstate snapshot")
+            .active_chain;
 
         // Assert
         assert_eq!(summary.blocks_received, 0);
@@ -2023,7 +2027,8 @@ mod block_response {
         assert_eq!(
             runtime
                 .network
-                .peer_manager()
+                .peer_manager_snapshot()
+                .expect("authoritative peer-manager snapshot")
                 .header_store()
                 .best_tip()
                 .map(|entry| entry.block_hash),
@@ -2050,7 +2055,8 @@ mod block_response {
         assert_eq!(
             runtime
                 .network
-                .peer_manager()
+                .peer_manager_snapshot()
+                .expect("authoritative peer-manager snapshot")
                 .header_store()
                 .best_tip()
                 .map(|entry| entry.block_hash),
@@ -2215,7 +2221,11 @@ mod block_response {
         let summary = runtime
             .sync_once(&mut transport, i64::from(child.header.time))
             .expect("sync");
-        let active_chain = runtime.network.chainstate_snapshot().active_chain;
+        let active_chain = runtime
+            .network
+            .chainstate_snapshot()
+            .expect("authoritative chainstate snapshot")
+            .active_chain;
 
         // Assert
         assert_eq!(summary.blocks_received, 0);
@@ -2262,6 +2272,7 @@ mod block_response {
             runtime
                 .network
                 .chainstate_snapshot()
+                .expect("authoritative chainstate snapshot")
                 .active_chain
                 .is_empty()
         );
@@ -2301,7 +2312,11 @@ mod block_response {
         let summary = runtime
             .sync_once(&mut transport, i64::from(side_block.header.time))
             .expect("sync");
-        let active_chain = runtime.network.chainstate_snapshot().active_chain;
+        let active_chain = runtime
+            .network
+            .chainstate_snapshot()
+            .expect("authoritative chainstate snapshot")
+            .active_chain;
 
         // Assert
         assert_eq!(summary.blocks_received, 0);

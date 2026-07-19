@@ -16,8 +16,8 @@ use open_bitcoin_network::{PeerId, WireNetworkMessage};
 
 use super::{DurableSyncRuntime, SyncRuntimeError, tip, types::SyncReconcileProgress};
 use crate::{
-    ManagedNetworkError, StorageError, StorageNamespace, StorageRecoveryAction,
-    network::BlockConnectDisposition,
+    ManagedNetworkAuthorityError, ManagedNetworkError, StorageError, StorageNamespace,
+    StorageRecoveryAction, network::BlockConnectDisposition,
 };
 
 pub(super) fn validate_block_limits(runtime: &DurableSyncRuntime) -> Result<(), SyncRuntimeError> {
@@ -50,13 +50,13 @@ pub(super) fn request_missing_blocks(
 
     let active_chain_hashes = runtime
         .network
-        .chainstate_snapshot()
+        .chainstate_snapshot()?
         .active_chain
         .into_iter()
         .map(|position| position.block_hash)
         .collect::<BTreeSet<_>>();
     let mut requested = Vec::new();
-    for entry in runtime.network.best_chain_entries() {
+    for entry in runtime.network.best_chain_entries()? {
         if requested.len() >= available_global
             || active_chain_hashes.contains(&entry.block_hash)
             || runtime.inflight_blocks.contains(&entry.block_hash)
@@ -64,7 +64,7 @@ pub(super) fn request_missing_blocks(
             continue;
         }
         if runtime.store.load_block(entry.block_hash)?.is_some() {
-            runtime.network.note_local_block_hash(entry.block_hash);
+            runtime.network.note_local_block_hash(entry.block_hash)?;
             continue;
         }
         requested.push(entry.block_hash);
@@ -148,8 +148,8 @@ pub(super) fn reconcile_best_chain(
     runtime: &mut DurableSyncRuntime,
     timestamp: i64,
 ) -> Result<SyncReconcileProgress, SyncRuntimeError> {
-    let active_chain = runtime.network.chainstate_snapshot().active_chain;
-    let best_chain = runtime.network.best_chain_entries();
+    let active_chain = runtime.network.chainstate_snapshot()?.active_chain;
+    let best_chain = runtime.network.best_chain_entries()?;
     if best_chain.is_empty() {
         return Ok(SyncReconcileProgress::NoChange);
     }
@@ -168,7 +168,7 @@ pub(super) fn reconcile_best_chain(
             let Some(block) = runtime.store.load_block(entry.block_hash)? else {
                 break;
             };
-            runtime.network.note_local_block_hash(entry.block_hash);
+            runtime.network.note_local_block_hash(entry.block_hash)?;
             let disposition = runtime.network.connect_stored_block(
                 &block,
                 entry.chain_work,
@@ -199,7 +199,7 @@ pub(super) fn reconcile_best_chain(
             }
             continue;
         };
-        runtime.network.note_local_block_hash(entry.block_hash);
+        runtime.network.note_local_block_hash(entry.block_hash)?;
         replacement_branch.push(AnchoredBlock {
             block,
             chain_work: entry.chain_work,
@@ -259,7 +259,7 @@ pub(super) fn reconcile_best_chain(
     let Some(common_ancestor) = common_ancestor else {
         return Ok(SyncReconcileProgress::NoChange);
     };
-    let Some(final_active_tip) = runtime.network.maybe_chain_tip() else {
+    let Some(final_active_tip) = runtime.network.maybe_chain_tip()? else {
         return Ok(SyncReconcileProgress::NoChange);
     };
 
@@ -270,15 +270,15 @@ pub(super) fn reconcile_best_chain(
     )))
 }
 
-fn reorg_runtime_error(error: ManagedNetworkError) -> SyncRuntimeError {
+fn reorg_runtime_error(error: ManagedNetworkAuthorityError) -> SyncRuntimeError {
     match error {
-        ManagedNetworkError::Chainstate(ChainstateError::MissingUndo { block_hash }) => {
-            SyncRuntimeError::Storage(StorageError::Corruption {
-                namespace: StorageNamespace::Chainstate,
-                detail: format!("missing undo data for active chain block {block_hash:?}"),
-                action: StorageRecoveryAction::Repair,
-            })
-        }
+        ManagedNetworkAuthorityError::Operation(ManagedNetworkError::Chainstate(
+            ChainstateError::MissingUndo { block_hash },
+        )) => SyncRuntimeError::Storage(StorageError::Corruption {
+            namespace: StorageNamespace::Chainstate,
+            detail: format!("missing undo data for active chain block {block_hash:?}"),
+            action: StorageRecoveryAction::Repair,
+        }),
         other => other.into(),
     }
 }

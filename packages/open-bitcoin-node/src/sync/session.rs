@@ -151,15 +151,19 @@ impl DurableSyncRuntime {
                     _ => None,
                 };
                 let maybe_block_hash = maybe_block.as_ref().map(|block| block_hash(&block.header));
-                let block_response_was_requested = maybe_block_hash
-                    .as_ref()
-                    .is_some_and(|hash| self.peer_requested_block(peer_id, *hash));
-                let block_response_is_best_chain = maybe_block.as_ref().is_some_and(|block| {
-                    self.block_has_best_chain_header(block_hash(&block.header))
-                        || self.block_extends_active_tip(block)
-                });
+                let block_response_was_requested = match maybe_block_hash {
+                    Some(block_hash) => self.peer_requested_block(peer_id, block_hash)?,
+                    None => false,
+                };
+                let block_response_is_best_chain = match maybe_block.as_ref() {
+                    Some(block) => {
+                        self.block_has_best_chain_header(block_hash(&block.header))?
+                            || self.block_extends_active_tip(block)?
+                    }
+                    None => false,
+                };
                 let notfound_was_requested =
-                    self.message_reports_requested_block_notfound(peer_id, &message);
+                    self.message_reports_requested_block_notfound(peer_id, &message)?;
                 block_reconcile::release_inflight_for_message(self, &message);
 
                 if let Some(block) = maybe_block.as_ref()
@@ -194,9 +198,10 @@ impl DurableSyncRuntime {
                 let mut outbound = sync_result.outbound;
                 if let Some(header_count) = maybe_header_count {
                     progress.record_validated_headers(header_count);
+                    let peer_manager = self.network.peer_manager_snapshot()?;
                     tip::record_peer_terminal_tip(
                         &mut progress,
-                        self.network.peer_manager().header_store(),
+                        peer_manager.header_store(),
                         maybe_terminal_header_hash,
                     );
                 }
@@ -321,15 +326,17 @@ impl DurableSyncRuntime {
     ) -> Result<(), SyncRuntimeError> {
         for message in messages {
             session.send(message, self.config.network.magic())?;
-            self.network.acknowledge_wire_message_written(message);
+            self.network.acknowledge_wire_message_written(message)?;
         }
         Ok(())
     }
 
     pub(super) fn peer_handshake_complete(&self, peer_id: open_bitcoin_network::PeerId) -> bool {
         self.network
-            .peer_manager()
-            .peer_state(peer_id)
+            .peer_manager_snapshot()
+            .ok()
+            .as_ref()
+            .and_then(|peer_manager| peer_manager.peer_state(peer_id))
             .is_some_and(|peer| {
                 peer.local_version_sent
                     && peer.remote_version_received
@@ -341,8 +348,9 @@ impl DurableSyncRuntime {
     fn peer_has_pending_download_work(&self, peer_id: PeerId) -> bool {
         let compact_download_in_flight = self
             .network
-            .peer_manager()
-            .compact_download_peer_state(peer_id)
+            .peer_manager_snapshot()
+            .ok()
+            .and_then(|peer_manager| peer_manager.compact_download_peer_state(peer_id).cloned())
             .is_some_and(|state| !state.in_flight.is_empty());
         let full_block_response_pending =
             self.network

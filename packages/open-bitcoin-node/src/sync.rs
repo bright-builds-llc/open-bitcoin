@@ -47,7 +47,7 @@ pub use wallet_rescan::WalletRescanRuntime;
 
 use crate::{
     ChainstateStore, FieldAvailability, FjallNodeStore, InboundPeerServingStatus,
-    ManagedPeerNetwork, MemoryChainstateStore, SyncLifecycleState,
+    ManagedNetworkHandle, ManagedPeerNetwork, MemoryChainstateStore, SyncLifecycleState,
     network::{BlockConnectDisposition, BlockRelayRuntimeEvidenceSnapshot},
 };
 use progress::{PeerFailure, PeerProgress};
@@ -61,7 +61,7 @@ struct PeerRetryState {
 
 pub struct DurableSyncRuntime {
     store: FjallNodeStore,
-    network: ManagedPeerNetwork<MemoryChainstateStore>,
+    network: ManagedNetworkHandle,
     config: SyncRuntimeConfig,
     verify_flags: ScriptVerifyFlags,
     consensus_params: ConsensusParams,
@@ -105,6 +105,7 @@ impl DurableSyncRuntime {
         if let Some(header_store) = store.load_header_store()? {
             network.seed_header_store(header_store);
         }
+        let network = ManagedNetworkHandle::new(network);
 
         let consensus_params = config.network.consensus_params();
         Ok(Self {
@@ -129,8 +130,23 @@ impl DurableSyncRuntime {
         &self.store
     }
 
+    pub fn network_handle(&self) -> ManagedNetworkHandle {
+        self.network.clone()
+    }
+
     pub fn snapshot_summary(&self) -> SyncRunSummary {
-        let (best_header_height, best_block_height) = self.best_heights();
+        match self.try_snapshot_summary() {
+            Ok(summary) => summary,
+            Err(error) => {
+                let mut summary = SyncRunSummary::empty(0, 0, self.config.target_outbound_peers);
+                summary.health_signals.push(error.health_signal());
+                summary
+            }
+        }
+    }
+
+    fn try_snapshot_summary(&self) -> Result<SyncRunSummary, SyncRuntimeError> {
+        let (best_header_height, best_block_height) = self.best_heights()?;
         let mut summary = SyncRunSummary::empty(
             best_header_height,
             best_block_height,
@@ -141,23 +157,23 @@ impl DurableSyncRuntime {
             summary.maybe_downloaded_block_hash =
                 Some(tip::block_hash_hex(downloaded_block.block_hash));
         }
-        if let Some(connected_block) = self.connected_block() {
+        if let Some(connected_block) = self.connected_block()? {
             summary.maybe_connected_block_hash =
                 Some(tip::block_hash_hex(connected_block.block_hash));
             summary.maybe_validated_active_chain_work =
                 Some(connected_block.chain_work.to_string());
         }
         summary.maybe_reconcile_progress = self.maybe_reconcile_progress.clone();
-        summary
+        Ok(summary)
     }
 
     fn maybe_authoritative_block_relay_snapshot(
         &self,
-    ) -> Option<BlockRelayRuntimeEvidenceSnapshot> {
-        let snapshot = self.network.block_relay_runtime_evidence_snapshot();
+    ) -> Result<Option<BlockRelayRuntimeEvidenceSnapshot>, SyncRuntimeError> {
+        let snapshot = self.network.block_relay_runtime_evidence_snapshot()?;
         match snapshot.status.block_serving.activation {
-            FieldAvailability::Available(_) => Some(snapshot),
-            FieldAvailability::Unavailable { .. } => None,
+            FieldAvailability::Available(_) => Ok(Some(snapshot)),
+            FieldAvailability::Unavailable { .. } => Ok(None),
         }
     }
 
@@ -232,7 +248,7 @@ impl DurableSyncRuntime {
             return Err(error);
         }
 
-        let (best_header_height, best_block_height) = self.best_heights();
+        let (best_header_height, best_block_height) = self.best_heights()?;
         let mut summary = SyncRunSummary::empty(
             best_header_height,
             best_block_height,
@@ -266,11 +282,11 @@ impl DurableSyncRuntime {
             {
                 completed_outbound_slots += 1;
             }
-            self.record_outcome(&mut summary, outcome, timestamp);
+            self.record_outcome(&mut summary, outcome, timestamp)?;
         }
         self.refresh_summary_progress(&mut summary)?;
         summary.maybe_reconcile_progress = self.maybe_reconcile_progress.clone();
-        let maybe_block_relay_snapshot = self.maybe_authoritative_block_relay_snapshot();
+        let maybe_block_relay_snapshot = self.maybe_authoritative_block_relay_snapshot()?;
         if let Err(error) =
             self.persist_metrics(&summary, maybe_block_relay_snapshot.as_ref(), timestamp)
         {
@@ -430,7 +446,7 @@ impl DurableSyncRuntime {
             }
             if is_idle {
                 let stop_reason = self
-                    .maybe_current_at_best_known_tip_stop_reason(current_timestamp)
+                    .maybe_current_at_best_known_tip_stop_reason(current_timestamp)?
                     .unwrap_or(SyncStopReason::NoProgress { rounds_completed });
                 self.record_until_idle_stop(&mut last_summary, stop_reason, current_timestamp)?;
                 break;
@@ -455,7 +471,7 @@ impl DurableSyncRuntime {
         summary: &mut SyncRunSummary,
         outcome: Result<PeerProgress, Box<PeerFailure>>,
         timestamp: i64,
-    ) {
+    ) -> Result<(), SyncRuntimeError> {
         match outcome {
             Ok(progress) => {
                 let is_successful_outbound_slot = progress.is_successful_outbound_slot();
@@ -469,7 +485,7 @@ impl DurableSyncRuntime {
                 summary.messages_processed += progress.messages_processed;
                 summary.headers_received += progress.headers_received;
                 summary.blocks_received += progress.blocks_received;
-                let (best_header_height, best_block_height) = self.best_heights();
+                let (best_header_height, best_block_height) = self.best_heights()?;
                 summary.best_header_height = best_header_height;
                 summary.best_block_height = best_block_height;
                 if progress.state == PeerSyncState::Stalled {
@@ -487,7 +503,7 @@ impl DurableSyncRuntime {
                     summary.messages_processed += progress.messages_processed;
                     summary.headers_received += progress.headers_received;
                     summary.blocks_received += progress.blocks_received;
-                    let (best_header_height, best_block_height) = self.best_heights();
+                    let (best_header_height, best_block_height) = self.best_heights()?;
                     summary.best_header_height = best_header_height;
                     summary.best_block_height = best_block_height;
                     summary
@@ -516,5 +532,6 @@ impl DurableSyncRuntime {
                 }
             }
         }
+        Ok(())
     }
 }

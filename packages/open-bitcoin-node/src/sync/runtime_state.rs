@@ -59,7 +59,7 @@ impl DurableSyncRuntime {
         maybe_last_error: Option<String>,
         timestamp: i64,
     ) -> Result<DurableSyncState, SyncRuntimeError> {
-        let summary = self.snapshot_summary();
+        let summary = self.try_snapshot_summary()?;
         self.durable_sync_state_from_summary(&summary, lifecycle, maybe_last_error, timestamp)
     }
 
@@ -86,12 +86,12 @@ impl DurableSyncRuntime {
     }
 
     pub(super) fn persist_progress(&self) -> Result<(), SyncRuntimeError> {
+        let header_entries = self.network.header_entries()?;
+        let chainstate_snapshot = self.network.chainstate_snapshot()?;
         self.store
-            .save_header_entries(&self.network.header_entries(), self.config.persist_mode)?;
-        self.store.save_chainstate_snapshot(
-            &self.network.chainstate_snapshot(),
-            self.config.persist_mode,
-        )?;
+            .save_header_entries(&header_entries, self.config.persist_mode)?;
+        self.store
+            .save_chainstate_snapshot(&chainstate_snapshot, self.config.persist_mode)?;
         let mut metadata = self.load_runtime_metadata()?;
         metadata.last_clean_shutdown = false;
         self.store
@@ -173,28 +173,28 @@ impl DurableSyncRuntime {
         }
     }
 
-    pub(super) fn best_heights(&self) -> (u64, u64) {
+    pub(super) fn best_heights(&self) -> Result<(u64, u64), SyncRuntimeError> {
         let best_header_height = self
             .network
-            .peer_manager()
+            .peer_manager_snapshot()?
             .header_store()
             .best_tip()
             .map_or(0, |entry| u64::from(entry.height));
         let best_block_height = self
             .network
-            .maybe_chain_tip()
+            .maybe_chain_tip()?
             .map_or(0, |tip| u64::from(tip.height));
 
-        (best_header_height, best_block_height)
+        Ok((best_header_height, best_block_height))
     }
 
     pub(super) fn refresh_summary_progress(
         &self,
         summary: &mut SyncRunSummary,
     ) -> Result<(), SyncRuntimeError> {
-        let (best_header_height, best_block_height) = self.best_heights();
+        let (best_header_height, best_block_height) = self.best_heights()?;
         let maybe_downloaded_block = self.downloaded_block()?;
-        let maybe_connected_block = self.connected_block();
+        let maybe_connected_block = self.connected_block()?;
         summary.best_header_height = best_header_height;
         summary.best_block_height = best_block_height;
         summary.downloaded_block_height = maybe_downloaded_block.map_or(0, |block| block.height);
@@ -207,19 +207,20 @@ impl DurableSyncRuntime {
         Ok(())
     }
 
-    pub(super) fn connected_block(&self) -> Option<BlockProgressPoint> {
-        self.network
-            .maybe_chain_tip()
+    pub(super) fn connected_block(&self) -> Result<Option<BlockProgressPoint>, SyncRuntimeError> {
+        Ok(self
+            .network
+            .maybe_chain_tip()?
             .map(|tip| BlockProgressPoint {
                 height: u64::from(tip.height),
                 block_hash: tip.block_hash,
                 chain_work: tip.chain_work,
-            })
+            }))
     }
 
     pub(super) fn downloaded_block(&self) -> Result<Option<BlockProgressPoint>, SyncRuntimeError> {
-        let active_chain = self.network.chainstate_snapshot().active_chain;
-        let best_chain = self.network.best_chain_entries();
+        let active_chain = self.network.chainstate_snapshot()?.active_chain;
+        let best_chain = self.network.best_chain_entries()?;
         if best_chain.is_empty() {
             return Ok(active_chain.last().map(|position| BlockProgressPoint {
                 height: u64::from(position.height),
@@ -327,7 +328,8 @@ impl DurableSyncRuntime {
     }
 
     pub(super) fn peer_capabilities(&self, peer_id: PeerId) -> Option<PeerCapabilitySummary> {
-        let peer = self.network.peer_manager().peer_state(peer_id)?;
+        let peer_manager = self.network.peer_manager_snapshot().ok()?;
+        let peer = peer_manager.peer_state(peer_id)?;
         Some(PeerCapabilitySummary {
             services_bits: peer.remote_services_bits,
             user_agent: peer.remote_user_agent.clone(),
@@ -412,7 +414,7 @@ impl DurableSyncRuntime {
         }
         if let FieldAvailability::Available(progress) = &mut sync.sync_progress {
             let maybe_downloaded_block = self.downloaded_block()?;
-            let maybe_connected_block = self.connected_block();
+            let maybe_connected_block = self.connected_block()?;
             progress.downloaded_block_height =
                 maybe_downloaded_block.map_or(0, |block| block.height);
             progress.connected_block_height = maybe_connected_block.map_or(0, |block| block.height);
@@ -440,7 +442,7 @@ impl DurableSyncRuntime {
                 FieldAvailability::Unavailable { .. } => "steady_state".to_string(),
             },
         });
-        self.project_reconcile_status(&mut sync, &summary, &metadata);
+        self.project_reconcile_status(&mut sync, &summary, &metadata)?;
         let maybe_recovery_category = recovery::recovery_category_for_durable_state(
             &metadata,
             &summary,
@@ -501,7 +503,7 @@ impl DurableSyncRuntime {
             });
         let maybe_best_tip = self
             .network
-            .peer_manager()
+            .peer_manager_snapshot()?
             .header_store()
             .best_tip()
             .map(tip::best_tip_from_header_entry);
@@ -512,7 +514,9 @@ impl DurableSyncRuntime {
             .collect::<Vec<_>>();
         let tip_input = tip::TipEvidenceInput {
             maybe_best_tip,
-            maybe_connected_tip: self.connected_block().map(tip::connected_tip_from_progress),
+            maybe_connected_tip: self
+                .connected_block()?
+                .map(tip::connected_tip_from_progress),
             observed_at_unix_seconds,
             tip_freshness_threshold_seconds: self.config.tip_freshness_threshold_seconds,
             lifecycle,
