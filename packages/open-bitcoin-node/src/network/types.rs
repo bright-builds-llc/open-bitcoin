@@ -20,6 +20,22 @@ use open_bitcoin_core::{
 use open_bitcoin_mempool::{MempoolCapacityStatus, MempoolError, RollingFeeParityStatus};
 use open_bitcoin_network::{NetworkError, PeerId, WireNetworkMessage};
 
+use super::ManagedBlockServeIntent;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ManagedBlockSerializationMode {
+    Block,
+    WitnessBlock,
+    CompactBlock,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ManagedBlockServeCompletionOutcome {
+    LookupUnavailable,
+    TransportFailed,
+    Written,
+}
+
 #[derive(Debug)]
 pub enum ManagedNetworkError {
     Network(NetworkError),
@@ -107,4 +123,5 @@ pub struct ManagedSyncMessageResult {
     pub outbound: Vec<WireNetworkMessage>,
     pub targeted_outbound: Vec<(PeerId, WireNetworkMessage)>,
     pub maybe_block_disposition: Option<BlockConnectDisposition>,
+    pub block_serve_intents: Vec<ManagedBlockServeIntent>,
 }

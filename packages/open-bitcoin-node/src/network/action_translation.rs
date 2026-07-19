@@ -41,6 +41,64 @@ pub(super) fn process_transaction_relay_action(
 }
 
 impl<S: ChainstateStore> ManagedPeerNetwork<S> {
+    pub fn receive_message_for_durable_serving(
+        &mut self,
+        peer_id: PeerId,
+        message: WireNetworkMessage,
+        timestamp: i64,
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+    ) -> Result<ManagedSyncMessageResult, ManagedNetworkError> {
+        self.receive_message_with_block_serving_mode(
+            peer_id,
+            message,
+            timestamp,
+            verify_flags,
+            consensus_params,
+            true,
+        )
+    }
+
+    pub(super) fn receive_message_with_block_serving_mode(
+        &mut self,
+        peer_id: PeerId,
+        message: WireNetworkMessage,
+        timestamp: i64,
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+        defer_block_serving: bool,
+    ) -> Result<ManagedSyncMessageResult, ManagedNetworkError> {
+        let observed_block_relay_message = matches!(
+            &message,
+            WireNetworkMessage::SendCompact(_)
+                | WireNetworkMessage::CompactBlock(_)
+                | WireNetworkMessage::BlockTxn(_)
+        );
+        let actions = match message {
+            WireNetworkMessage::CompactBlock(payload) => {
+                self.handle_compact_block_receive(peer_id, payload, timestamp)?
+            }
+            other => self
+                .peer_manager
+                .handle_message(peer_id, other, timestamp)?,
+        };
+        if observed_block_relay_message {
+            self.note_block_relay_observed();
+            self.record_compact_download_evidence(&actions);
+        }
+        let mut result = self.process_actions(
+            peer_id,
+            actions,
+            timestamp,
+            verify_flags,
+            consensus_params,
+            defer_block_serving,
+        )?;
+        let expired = self.expire_compact_download_timeouts(timestamp)?;
+        super::merge_compact_timeout_outbound(peer_id, expired, &mut result);
+        Ok(result)
+    }
+
     pub fn disconnect_peer(&mut self, peer_id: PeerId) -> Result<(), ManagedNetworkError> {
         self.disconnect_peer_at(peer_id, 0).map(|_| ())
     }
@@ -133,16 +191,25 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         timestamp: i64,
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
+        defer_block_serving: bool,
     ) -> Result<ManagedSyncMessageResult, ManagedNetworkError> {
         let mut outbound = Vec::new();
         let mut targeted_outbound = Vec::new();
         let mut maybe_block_disposition = None;
+        let mut block_serve_intents = Vec::new();
 
         for action in actions {
             match action {
                 PeerAction::Send(message) => outbound.push(message),
                 PeerAction::ServeInventory(requests) => {
-                    let (messages, missing) = self.serve_inventory(peer_id, requests);
+                    let (messages, missing) = if defer_block_serving {
+                        let (messages, missing, intents) =
+                            self.gate_inventory_for_durable_serving(peer_id, requests);
+                        block_serve_intents.extend(intents);
+                        (messages, missing)
+                    } else {
+                        self.serve_inventory(peer_id, requests)
+                    };
                     outbound.extend(messages);
                     if !missing.is_empty() {
                         outbound.push(WireNetworkMessage::NotFound(InventoryList::new(missing)));
@@ -157,6 +224,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                         peer_id,
                         &inventory,
                         request.block_hash,
+                        false,
                         false,
                     );
                     let decision =
@@ -261,6 +329,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             outbound,
             targeted_outbound,
             maybe_block_disposition,
+            block_serve_intents,
         })
     }
 }

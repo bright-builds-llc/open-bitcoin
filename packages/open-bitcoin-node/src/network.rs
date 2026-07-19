@@ -31,6 +31,7 @@ mod runtime_authority;
 mod types;
 
 pub(crate) use block_relay_evidence::BlockRelayRuntimeEvidenceSnapshot;
+pub use block_serving::{ManagedBlockServeCompletion, ManagedBlockServeIntent};
 
 use open_bitcoin_core::{
     chainstate::{AnchoredBlock, ChainPosition, ChainTransition, ChainstateSnapshot},
@@ -60,8 +61,8 @@ pub use relay_fanout::{
 };
 pub use runtime_authority::{ManagedNetworkAuthorityError, ManagedNetworkHandle};
 pub use types::{
-    BlockConnectDisposition, ManagedMempoolInfo, ManagedNetworkError, ManagedNetworkInfo,
-    ManagedSyncMessageResult,
+    BlockConnectDisposition, ManagedBlockSerializationMode, ManagedBlockServeCompletionOutcome,
+    ManagedMempoolInfo, ManagedNetworkError, ManagedNetworkInfo, ManagedSyncMessageResult,
 };
 
 type ManagedResult<T> = Result<T, ManagedNetworkError>;
@@ -251,8 +252,14 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             self.note_block_relay_observed();
             self.record_compact_download_evidence(&actions);
         }
-        let mut result =
-            self.process_actions(peer_id, actions, timestamp, verify_flags, consensus_params)?;
+        let mut result = self.process_actions(
+            peer_id,
+            actions,
+            timestamp,
+            verify_flags,
+            consensus_params,
+            false,
+        )?;
         let expired = self.expire_compact_download_timeouts(timestamp)?;
         merge_compact_timeout_outbound(peer_id, expired, &mut result);
         Ok(result)
@@ -291,8 +298,14 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                 actions
             }
         };
-        let mut result =
-            self.process_actions(peer_id, actions, timestamp, verify_flags, consensus_params)?;
+        let mut result = self.process_actions(
+            peer_id,
+            actions,
+            timestamp,
+            verify_flags,
+            consensus_params,
+            false,
+        )?;
         let expired = self.expire_compact_download_timeouts(timestamp)?;
         merge_compact_timeout_outbound(peer_id, expired, &mut result);
         Ok(result)
@@ -356,7 +369,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             inventory_type: open_bitcoin_core::primitives::InventoryType::Block,
             object_hash: block_hash.into(),
         };
-        let input = self.managed_block_serve_input(peer_id, &request, block_hash, false);
+        let input = self.managed_block_serve_input(peer_id, &request, block_hash, false, false);
         let status = open_bitcoin_network::classify_block_serving_status(
             &open_bitcoin_network::BlockServingStatusFacts {
                 chain_position: input.chain_position,

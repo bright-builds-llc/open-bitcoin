@@ -23,7 +23,10 @@ use open_bitcoin_network::{
     TxServingRecordStatus, WireNetworkMessage,
 };
 
-use super::block_serving::{ManagedBlockServeInput, serve_managed_block_request};
+use super::block_serving::{
+    ManagedBlockServeGateDecision, ManagedBlockServeInput, ManagedBlockServeIntent,
+    gate_managed_block_request, serve_managed_block_request,
+};
 use super::{ManagedNetworkError, ManagedPeerNetwork, ManagedSyncMessageResult};
 use crate::ChainstateStore;
 
@@ -43,7 +46,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                 InventoryType::Block | InventoryType::WitnessBlock => {
                     let block_hash = BlockHash::from(request.object_hash);
                     let input =
-                        self.managed_block_serve_input(peer_id, &request, block_hash, false);
+                        self.managed_block_serve_input(peer_id, &request, block_hash, false, false);
                     let decision = serve_managed_block_request(input, |hash| {
                         self.blocks_by_hash.get(&hash).cloned()
                     });
@@ -60,7 +63,8 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                 }
                 InventoryType::CompactBlock => {
                     let block_hash = BlockHash::from(request.object_hash);
-                    let input = self.managed_block_serve_input(peer_id, &request, block_hash, true);
+                    let input =
+                        self.managed_block_serve_input(peer_id, &request, block_hash, true, false);
                     let decision = serve_managed_block_request(input, |hash| {
                         self.blocks_by_hash.get(&hash).cloned()
                     });
@@ -90,12 +94,69 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         (messages, missing)
     }
 
+    pub(super) fn gate_inventory_for_durable_serving(
+        &mut self,
+        peer_id: PeerId,
+        requests: Vec<InventoryVector>,
+    ) -> (
+        Vec<WireNetworkMessage>,
+        Vec<InventoryVector>,
+        Vec<ManagedBlockServeIntent>,
+    ) {
+        let mut messages = Vec::new();
+        let mut missing = Vec::new();
+        let mut block_serve_intents = Vec::new();
+        let (peer_mode, relay_eligibility) = self.relay_serving_context_for_peer(peer_id);
+        self.relay_serving.clear_latest_outcomes();
+
+        for request in requests {
+            match request.inventory_type {
+                InventoryType::Block
+                | InventoryType::WitnessBlock
+                | InventoryType::CompactBlock => {
+                    let block_hash = BlockHash::from(request.object_hash);
+                    let input =
+                        self.managed_block_serve_input(peer_id, &request, block_hash, false, true);
+                    match gate_managed_block_request(input) {
+                        ManagedBlockServeGateDecision::Serve(intent) => {
+                            block_serve_intents.push(intent);
+                        }
+                        ManagedBlockServeGateDecision::Deny(decision) => {
+                            self.record_block_serving_evidence(request.inventory_type, &decision);
+                            missing.push(request);
+                        }
+                    }
+                }
+                InventoryType::Transaction | InventoryType::WitnessTransaction => {
+                    let decision = self.relay_serving.classify_request(
+                        &request,
+                        peer_mode,
+                        &relay_eligibility,
+                    );
+                    let Some(transaction) = decision.maybe_transaction else {
+                        missing.push(request);
+                        continue;
+                    };
+                    if decision.label != TxServeOutcomeLabel::Served {
+                        missing.push(request);
+                        continue;
+                    }
+                    messages.push(WireNetworkMessage::Tx(transaction.clone()));
+                }
+                _ => missing.push(request),
+            }
+        }
+
+        (messages, missing, block_serve_intents)
+    }
+
     pub(super) fn managed_block_serve_input(
         &self,
         peer_id: PeerId,
         request: &InventoryVector,
         block_hash: BlockHash,
         suppressed: bool,
+        durable_availability: bool,
     ) -> ManagedBlockServeInput {
         let snapshot = self.chainstate.chainstate().snapshot();
         let maybe_active_index = snapshot
@@ -118,7 +179,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         } else {
             BlockServingValidationState::Unknown
         };
-        let data_availability = match (is_active, is_tip, has_local_data) {
+        let data_availability = match (is_active, is_tip, has_local_data || durable_availability) {
             (true, _, true) => BlockServingDataAvailability::Available,
             (true, false, false) => BlockServingDataAvailability::Pruned,
             _ => BlockServingDataAvailability::Unavailable,

@@ -31,9 +31,10 @@ use crate::{
 
 use super::{
     BlockConnectDisposition, BlockRelayRuntimeEvidenceSnapshot, LocalRelaySubmissionEvidence,
-    ManagedAddressBoundaryInfo, ManagedInboundAdmissionInfo, ManagedMempoolInfo,
-    ManagedMempoolRecoverySummary, ManagedNetworkError, ManagedNetworkInfo, ManagedPeerNetwork,
-    ManagedPeerPolicyInfo, ManagedResourceGovernanceInfo, ManagedSyncMessageResult,
+    ManagedAddressBoundaryInfo, ManagedBlockServeCompletion, ManagedInboundAdmissionInfo,
+    ManagedMempoolInfo, ManagedMempoolRecoverySummary, ManagedNetworkError, ManagedNetworkInfo,
+    ManagedPeerNetwork, ManagedPeerPolicyInfo, ManagedResourceGovernanceInfo,
+    ManagedSyncMessageResult,
 };
 
 type AuthoritativeNetwork = ManagedPeerNetwork<MemoryChainstateStore>;
@@ -330,6 +331,25 @@ impl ManagedNetworkHandle {
         })
     }
 
+    pub fn receive_message_for_durable_serving(
+        &self,
+        peer_id: PeerId,
+        message: WireNetworkMessage,
+        timestamp: i64,
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+    ) -> Result<ManagedSyncMessageResult, ManagedNetworkAuthorityError> {
+        self.try_mutate(|network| {
+            network.receive_message_for_durable_serving(
+                peer_id,
+                message,
+                timestamp,
+                verify_flags,
+                consensus_params,
+            )
+        })
+    }
+
     pub fn encode_messages(
         &self,
         messages: &[WireNetworkMessage],
@@ -368,6 +388,15 @@ impl ManagedNetworkHandle {
         message: &WireNetworkMessage,
     ) -> Result<(), ManagedNetworkAuthorityError> {
         self.mutate(|network| network.acknowledge_wire_message_written(message))
+    }
+
+    pub fn complete_block_serve(
+        &self,
+        completion: &ManagedBlockServeCompletion,
+    ) -> Result<(), ManagedNetworkAuthorityError> {
+        self.mutate(|network| {
+            network.complete_block_serve(completion);
+        })
     }
 
     pub fn connect_stored_block(

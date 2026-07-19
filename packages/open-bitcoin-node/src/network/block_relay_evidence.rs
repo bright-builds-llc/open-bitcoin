@@ -25,7 +25,9 @@ use crate::{
 
 use super::{
     ManagedPeerNetwork,
-    block_serving::{CompactBlockTxnServeOutcome, ManagedBlockServeDecision},
+    block_serving::{
+        CompactBlockTxnServeOutcome, ManagedBlockServeCompletion, ManagedBlockServeDecision,
+    },
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -98,6 +100,11 @@ impl ManagedBlockRelayEvidenceState {
             return;
         }
 
+        self.note_observed();
+        self.served_count += 1;
+    }
+
+    fn record_block_served(&mut self) {
         self.note_observed();
         self.served_count += 1;
     }
@@ -391,6 +398,16 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     pub fn acknowledge_wire_message_written(&mut self, message: &WireNetworkMessage) {
         self.block_relay_evidence
             .record_wire_message_written(message);
+    }
+
+    pub fn complete_block_serve(&mut self, completion: &ManagedBlockServeCompletion) {
+        self.record_block_serving_evidence(
+            completion.request().inventory_type,
+            completion.decision(),
+        );
+        if completion.records_served_effect() {
+            self.block_relay_evidence.record_block_served();
+        }
     }
 
     pub(super) fn record_block_serving_evidence(
