@@ -145,6 +145,7 @@ impl PeerManager {
         }
 
         peer.remote_version_received = true;
+        peer.maybe_remote_protocol_version = Some(version.version);
         peer.remote_start_height = version.start_height;
         peer.remote_services_bits = version.services.bits();
         peer.remote_user_agent = version.user_agent.clone();
@@ -176,24 +177,32 @@ impl PeerManager {
     fn handle_verack(&mut self, peer_id: PeerId) -> Result<Vec<PeerAction>, NetworkError> {
         let locator = self.headers.locator();
         let best_height = self.headers.best_height();
-        let peer = Self::peer_mut(&mut self.peers, peer_id)?;
-        peer.remote_verack_received = true;
-        if let Some(record) = peer.maybe_inbound_record.as_mut()
-            && peer.remote_version_received
-            && peer.local_verack_sent
-        {
-            record.handshake_state = InboundHandshakeState::Established;
-        }
+        let mut actions = {
+            let peer = Self::peer_mut(&mut self.peers, peer_id)?;
+            peer.remote_verack_received = true;
+            if let Some(record) = peer.maybe_inbound_record.as_mut()
+                && peer.remote_version_received
+                && peer.local_verack_sent
+            {
+                record.handshake_state = InboundHandshakeState::Established;
+            }
 
-        if peer.remote_start_height > best_height && !peer.getheaders_in_flight {
-            peer.getheaders_in_flight = true;
-            peer.sync_started = true;
-            return Ok(vec![PeerAction::Send(WireNetworkMessage::GetHeaders {
-                locator,
-                stop_hash: BlockHash::from_byte_array([0_u8; 32]),
-            })]);
+            let mut actions = Vec::new();
+            if peer.remote_start_height > best_height && !peer.getheaders_in_flight {
+                peer.getheaders_in_flight = true;
+                peer.sync_started = true;
+                actions.push(PeerAction::Send(WireNetworkMessage::GetHeaders {
+                    locator,
+                    stop_hash: BlockHash::from_byte_array([0_u8; 32]),
+                }));
+            }
+            actions
+        };
+
+        if let Some(message) = self.maybe_schedule_local_compact_offer(peer_id)? {
+            actions.push(PeerAction::Send(WireNetworkMessage::SendCompact(message)));
         }
-        Ok(Vec::new())
+        Ok(actions)
     }
 
     fn handle_headers(

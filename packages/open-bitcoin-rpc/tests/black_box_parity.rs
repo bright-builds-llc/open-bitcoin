@@ -25,6 +25,7 @@ use std::{
     },
 };
 
+use open_bitcoin_codec::BIP152_COMPACT_BLOCKS_VERSION;
 use open_bitcoin_network::{
     BlockRelayActivationPolicy, BlockServingActivationConfig, CompactRelayActivationConfig,
     HeadersMessage, InboundListenerConfig, InventoryList, ParsedNetworkMessage,
@@ -707,6 +708,12 @@ async fn phase127_production_composition_shares_sync_serving_and_operator_author
     assert!(matches!(handshake[2], WireNetworkMessage::Verack));
     assert!(matches!(handshake[3], WireNetworkMessage::SendHeaders));
     peer.send(WireNetworkMessage::Verack, magic).await;
+    let compact_offer = peer.receive().await;
+    assert!(matches!(
+        compact_offer,
+        WireNetworkMessage::SendCompact(ref message)
+            if !message.announce && message.version == BIP152_COMPACT_BLOCKS_VERSION
+    ));
     peer.send(phase127_block_request(&block), magic).await;
     let served = peer.receive().await;
     assert!(matches!(
