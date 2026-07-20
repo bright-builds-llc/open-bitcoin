@@ -220,12 +220,14 @@ impl DurableSyncRuntime {
                         block_response_is_best_chain,
                     )?;
                 }
-                let reconcile_progress =
-                    block_reconcile::reconcile_best_chain(self, current_timestamp)?;
+                let reconcile_progress = block_reconcile::reconcile_best_chain_for_live_session(
+                    self,
+                    current_timestamp,
+                )?;
                 should_persist_progress |= reconcile_progress.should_persist_progress();
                 self.record_reconcile_progress(reconcile_progress);
                 if should_persist_progress {
-                    self.persist_progress()?;
+                    self.persist_progress_and_dispatch_tip()?;
                 }
                 outbound.extend(block_reconcile::request_missing_blocks(self, peer_id)?);
                 self.send_all(&mut session, &outbound)?;

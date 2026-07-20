@@ -136,17 +136,33 @@ pub(super) fn reconcile_and_persist_best_chain(
     runtime: &mut DurableSyncRuntime,
     timestamp: i64,
 ) -> Result<SyncReconcileProgress, SyncRuntimeError> {
-    let progress = reconcile_best_chain(runtime, timestamp)?;
+    let progress = reconcile_best_chain_inner(runtime, timestamp, false)?;
     if progress.should_persist_progress() {
-        runtime.persist_progress()?;
+        runtime.persist_progress_and_dispatch_tip()?;
     }
     runtime.record_reconcile_progress(progress.clone());
     Ok(progress)
 }
 
+#[cfg(test)]
 pub(super) fn reconcile_best_chain(
     runtime: &mut DurableSyncRuntime,
     timestamp: i64,
+) -> Result<SyncReconcileProgress, SyncRuntimeError> {
+    reconcile_best_chain_inner(runtime, timestamp, false)
+}
+
+pub(super) fn reconcile_best_chain_for_live_session(
+    runtime: &mut DurableSyncRuntime,
+    timestamp: i64,
+) -> Result<SyncReconcileProgress, SyncRuntimeError> {
+    reconcile_best_chain_inner(runtime, timestamp, true)
+}
+
+fn reconcile_best_chain_inner(
+    runtime: &mut DurableSyncRuntime,
+    timestamp: i64,
+    queue_durable_tip: bool,
 ) -> Result<SyncReconcileProgress, SyncRuntimeError> {
     let active_chain = runtime.network.chainstate_snapshot()?.active_chain;
     let best_chain = runtime.network.best_chain_entries()?;
@@ -164,6 +180,7 @@ pub(super) fn reconcile_best_chain(
 
     if common_prefix_len == active_chain.len() {
         let mut connected_count = 0_u64;
+        let mut maybe_final_connected_block = None;
         for entry in best_chain.iter().skip(common_prefix_len) {
             let Some(block) = runtime.store.load_block(entry.block_hash)? else {
                 break;
@@ -178,11 +195,15 @@ pub(super) fn reconcile_best_chain(
             )?;
             if matches!(disposition, BlockConnectDisposition::Connected(_)) {
                 connected_count = connected_count.saturating_add(1);
+                maybe_final_connected_block = Some(block);
                 continue;
             }
             break;
         }
         if connected_count > 0 {
+            if queue_durable_tip && let Some(block) = maybe_final_connected_block {
+                runtime.queue_durable_tip_advanced(block);
+            }
             return Ok(SyncReconcileProgress::ExtendedActiveChain { connected_count });
         }
         return Ok(SyncReconcileProgress::NoChange);
@@ -262,6 +283,9 @@ pub(super) fn reconcile_best_chain(
     let Some(final_active_tip) = runtime.network.maybe_chain_tip()? else {
         return Ok(SyncReconcileProgress::NoChange);
     };
+    if queue_durable_tip && let Some(final_block) = replacement_branch.last() {
+        runtime.queue_durable_tip_advanced(final_block.block.clone());
+    }
 
     Ok(SyncReconcileProgress::ReorgPersisted(reorg_evidence(
         common_ancestor,

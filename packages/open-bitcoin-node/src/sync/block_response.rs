@@ -11,7 +11,7 @@ use open_bitcoin_core::{
 };
 use open_bitcoin_network::{PeerId, WireNetworkMessage};
 
-use super::{DurableSyncRuntime, SyncRuntimeError, progress::PeerProgress};
+use super::{DurableSyncRuntime, DurableTipAdvanced, SyncRuntimeError, progress::PeerProgress};
 use crate::network::BlockConnectDisposition;
 
 impl DurableSyncRuntime {
@@ -124,6 +124,9 @@ impl DurableSyncRuntime {
                     self.network
                         .note_local_block_hash(block_hash(&block.header))?;
                     progress.record_accepted_block();
+                    if self.block_is_current_best_tip(block)? {
+                        self.queue_durable_tip_advanced(block.clone());
+                    }
                 }
             }
             BlockConnectDisposition::Duplicate(_) => progress.record_duplicate_block(),
@@ -131,5 +134,41 @@ impl DurableSyncRuntime {
             BlockConnectDisposition::NonExtending { .. } => progress.record_non_extending_block(),
         }
         Ok(())
+    }
+
+    fn block_is_current_best_tip(&self, block: &Block) -> Result<bool, SyncRuntimeError> {
+        let block_hash = block_hash(&block.header);
+        let maybe_active_tip = self.network.maybe_chain_tip()?;
+        let maybe_best_header = self.network.best_chain_entries()?.last().cloned();
+        Ok(
+            maybe_active_tip.is_some_and(|tip| tip.block_hash == block_hash)
+                && maybe_best_header.is_some_and(|entry| entry.block_hash == block_hash),
+        )
+    }
+
+    pub(super) fn queue_durable_tip_advanced(&mut self, block: Block) {
+        self.maybe_pending_durable_tip = Some(DurableTipAdvanced::new(block));
+    }
+
+    pub(super) fn clear_pending_durable_tip(&mut self) {
+        self.maybe_pending_durable_tip = None;
+    }
+
+    pub(super) fn dispatch_pending_durable_tip(&mut self) -> Result<(), SyncRuntimeError> {
+        let Some(event) = self.maybe_pending_durable_tip.take() else {
+            return Ok(());
+        };
+        let Some(sink) = self.maybe_durable_tip_announcement_sink.as_ref() else {
+            return Ok(());
+        };
+        sink(event)
+    }
+
+    pub(super) fn persist_progress_and_dispatch_tip(&mut self) -> Result<(), SyncRuntimeError> {
+        if let Err(error) = self.persist_progress() {
+            self.clear_pending_durable_tip();
+            return Err(error);
+        }
+        self.dispatch_pending_durable_tip()
     }
 }

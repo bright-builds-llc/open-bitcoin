@@ -30,7 +30,7 @@ mod wallet_rescan;
 
 use open_bitcoin_core::{
     consensus::{ConsensusParams, ScriptVerifyFlags},
-    primitives::BlockHash,
+    primitives::{Block, BlockHash},
 };
 use open_bitcoin_mempool::PolicyConfig;
 use open_bitcoin_network::{BlockRelayActivationPolicy, PeerId, RelayActivationConfig};
@@ -53,6 +53,25 @@ use crate::{
 use progress::{PeerFailure, PeerProgress};
 use types::SyncReconcileProgress;
 
+/// A validated best-tip block whose body and chainstate are durably available.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DurableTipAdvanced {
+    block: Block,
+}
+
+impl DurableTipAdvanced {
+    fn new(block: Block) -> Self {
+        Self { block }
+    }
+
+    pub const fn block(&self) -> &Block {
+        &self.block
+    }
+}
+
+type DurableTipAnnouncementSink =
+    Arc<dyn Fn(DurableTipAdvanced) -> Result<(), SyncRuntimeError> + Send + Sync>;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct PeerRetryState {
     consecutive_failures: u8,
@@ -69,6 +88,8 @@ pub struct DurableSyncRuntime {
     peer_backoff: BTreeMap<String, PeerRetryState>,
     inflight_blocks: BTreeSet<BlockHash>,
     maybe_reconcile_progress: Option<SyncReconcileProgress>,
+    maybe_pending_durable_tip: Option<DurableTipAdvanced>,
+    maybe_durable_tip_announcement_sink: Option<DurableTipAnnouncementSink>,
     maybe_inbound_metric_status_provider:
         Option<Arc<dyn Fn() -> FieldAvailability<InboundPeerServingStatus> + Send + Sync>>,
 }
@@ -135,6 +156,8 @@ impl DurableSyncRuntime {
             peer_backoff: BTreeMap::new(),
             inflight_blocks: BTreeSet::new(),
             maybe_reconcile_progress: None,
+            maybe_pending_durable_tip: None,
+            maybe_durable_tip_announcement_sink: None,
             maybe_inbound_metric_status_provider: None,
         })
     }
@@ -149,6 +172,14 @@ impl DurableSyncRuntime {
 
     pub fn network_handle(&self) -> ManagedNetworkHandle {
         self.network.clone()
+    }
+
+    /// Installs the production sink that routes post-durable tip events to peer outboxes.
+    pub fn set_durable_tip_announcement_sink<F>(&mut self, sink: F)
+    where
+        F: Fn(DurableTipAdvanced) -> Result<(), SyncRuntimeError> + Send + Sync + 'static,
+    {
+        self.maybe_durable_tip_announcement_sink = Some(Arc::new(sink));
     }
 
     pub fn snapshot_summary(&self) -> SyncRunSummary {
