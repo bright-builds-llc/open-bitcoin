@@ -5,11 +5,19 @@
 // - packages/bitcoin-knots/src/sync.cpp
 // - packages/bitcoin-knots/src/node/blockstorage.cpp
 
+use std::{
+    collections::{BTreeMap, VecDeque},
+    sync::{Arc, Mutex},
+};
+
 use open_bitcoin_core::{
     consensus::block_hash,
     primitives::{BlockHash, InventoryType},
 };
-use open_bitcoin_network::{PeerId, WireNetworkMessage};
+use open_bitcoin_network::{
+    PHASE94_MAX_AGGREGATE_QUEUED_MESSAGES, PHASE94_MAX_PEER_QUEUED_MESSAGES, PeerId,
+    WireNetworkMessage,
+};
 
 use super::{
     BlockConnectDisposition, DurableSyncRuntime, PeerFailureReason, PeerSyncState,
@@ -18,6 +26,86 @@ use super::{
     progress::{self, PeerFailure, PeerProgress},
     tip,
 };
+use crate::network::{AnnouncementPreparationOutcome, PeerEmission, PeerOutboxSnapshot};
+
+#[derive(Clone, Default)]
+pub struct AnnouncementOutboxRegistry {
+    outboxes: Arc<Mutex<BTreeMap<PeerId, VecDeque<PeerEmission>>>>,
+}
+
+impl AnnouncementOutboxRegistry {
+    /// Makes one live peer eligible to receive prepared announcement emissions.
+    pub fn register_peer(&self, peer_id: PeerId) -> Result<(), SyncRuntimeError> {
+        self.lock_outboxes()?.entry(peer_id).or_default();
+        Ok(())
+    }
+
+    /// Removes one peer and discards only its bounded volatile announcement queue.
+    pub fn unregister_peer(&self, peer_id: PeerId) -> Result<(), SyncRuntimeError> {
+        self.lock_outboxes()?.remove(&peer_id);
+        Ok(())
+    }
+
+    /// Captures queue pressure without retaining the registry lock during preparation.
+    pub fn snapshots(&self) -> Result<Vec<PeerOutboxSnapshot>, SyncRuntimeError> {
+        Ok(self
+            .lock_outboxes()?
+            .iter()
+            .map(|(peer_id, outbox)| {
+                PeerOutboxSnapshot::new(*peer_id, outbox.len(), PHASE94_MAX_PEER_QUEUED_MESSAGES)
+            })
+            .collect())
+    }
+
+    /// Enqueues prepared emissions while preserving per-peer and aggregate bounds.
+    pub fn enqueue_prepared(
+        &self,
+        outcomes: Vec<AnnouncementPreparationOutcome>,
+    ) -> Result<(), SyncRuntimeError> {
+        let mut outboxes = self.lock_outboxes()?;
+        let mut aggregate_queued = outboxes.values().map(VecDeque::len).sum::<usize>();
+        for outcome in outcomes {
+            let AnnouncementPreparationOutcome::Ready(emission) = outcome else {
+                continue;
+            };
+            if aggregate_queued >= PHASE94_MAX_AGGREGATE_QUEUED_MESSAGES {
+                break;
+            }
+            let Some(outbox) = outboxes.get_mut(&emission.peer_id()) else {
+                continue;
+            };
+            if outbox.len() >= PHASE94_MAX_PEER_QUEUED_MESSAGES {
+                continue;
+            }
+            outbox.push_back(emission);
+            aggregate_queued = aggregate_queued.saturating_add(1);
+        }
+        Ok(())
+    }
+
+    /// Takes the current FIFO batch for exactly one peer.
+    pub fn take_peer_emissions(
+        &self,
+        peer_id: PeerId,
+    ) -> Result<Vec<PeerEmission>, SyncRuntimeError> {
+        let mut outboxes = self.lock_outboxes()?;
+        let Some(outbox) = outboxes.get_mut(&peer_id) else {
+            return Ok(Vec::new());
+        };
+        Ok(outbox.drain(..).collect())
+    }
+
+    fn lock_outboxes(
+        &self,
+    ) -> Result<std::sync::MutexGuard<'_, BTreeMap<PeerId, VecDeque<PeerEmission>>>, SyncRuntimeError>
+    {
+        self.outboxes
+            .lock()
+            .map_err(|_error| SyncRuntimeError::Network {
+                message: "announcement outbox registry is unavailable".to_string(),
+            })
+    }
+}
 
 impl DurableSyncRuntime {
     #[cfg(test)]
@@ -57,9 +145,10 @@ impl DurableSyncRuntime {
         let mut progress = PeerProgress::new(peer.clone(), self.config.network, attempts);
         let mut maybe_failure_reason_override = None;
         let result = (|| -> Result<(), SyncRuntimeError> {
+            self.announcement_outboxes.register_peer(peer_id)?;
             let mut outbound = self.network.connect_outbound_peer(peer_id, timestamp)?;
             outbound.extend(block_reconcile::request_missing_blocks(self, peer_id)?);
-            self.send_all(&mut session, &outbound)?;
+            self.send_all_for_peer(&mut session, peer_id, &outbound)?;
 
             let mut messages_received = 0_usize;
             while messages_received < self.config.max_messages_per_peer {
@@ -125,7 +214,7 @@ impl DurableSyncRuntime {
                             peer_id,
                             &fallback_block_hashes,
                         )?;
-                        self.send_all(&mut session, &outbound)?;
+                        self.send_all_for_peer(&mut session, peer_id, &outbound)?;
                         if !self.peer_has_pending_download_work(peer_id) {
                             self.complete_peer_session_progress(&mut progress, peer_id);
                             return Ok(());
@@ -175,7 +264,7 @@ impl DurableSyncRuntime {
                         block_response_is_best_chain,
                     )?;
                     let outbound = block_reconcile::request_missing_blocks(self, peer_id)?;
-                    self.send_all(&mut session, &outbound)?;
+                    self.send_all_for_peer(&mut session, peer_id, &outbound)?;
                     continue;
                 }
 
@@ -230,7 +319,7 @@ impl DurableSyncRuntime {
                     self.persist_progress_and_dispatch_tip()?;
                 }
                 outbound.extend(block_reconcile::request_missing_blocks(self, peer_id)?);
-                self.send_all(&mut session, &outbound)?;
+                self.send_all_for_peer(&mut session, peer_id, &outbound)?;
             }
             progress.state = PeerSyncState::Connected;
             progress.maybe_capabilities = self.peer_capabilities(peer_id);
@@ -244,11 +333,12 @@ impl DurableSyncRuntime {
         for block_hash in outstanding_blocks {
             self.inflight_blocks.remove(&block_hash);
         }
+        let outbox_cleanup_result = self.announcement_outboxes.unregister_peer(peer_id);
         let disconnect_result = self.network.disconnect_peer(peer_id);
-        match (result, disconnect_result) {
-            (Ok(()), Ok(())) => Ok(progress),
-            (Ok(()), Err(error)) => {
-                let error = SyncRuntimeError::from(error);
+        let disconnect_result = disconnect_result.map_err(SyncRuntimeError::from);
+        match (result, outbox_cleanup_result, disconnect_result) {
+            (Ok(()), Ok(()), Ok(())) => Ok(progress),
+            (Ok(()), Err(error), _) | (Ok(()), Ok(()), Err(error)) => {
                 if progress.maybe_capabilities.is_none() {
                     progress.maybe_capabilities = self.peer_capabilities(peer_id);
                 }
@@ -260,7 +350,7 @@ impl DurableSyncRuntime {
                     maybe_progress: Some(progress),
                 }))
             }
-            (Err(error), _) => {
+            (Err(error), _, _) => {
                 if progress.maybe_capabilities.is_none() {
                     progress.maybe_capabilities = self.peer_capabilities(peer_id);
                 }
@@ -329,6 +419,28 @@ impl DurableSyncRuntime {
         for message in messages {
             session.send(message, self.config.network.magic())?;
             self.network.acknowledge_wire_message_written(message)?;
+        }
+        Ok(())
+    }
+
+    pub(super) fn send_all_for_peer<S: SyncPeerSession>(
+        &mut self,
+        session: &mut S,
+        peer_id: PeerId,
+        messages: &[WireNetworkMessage],
+    ) -> Result<(), SyncRuntimeError> {
+        self.send_all(session, messages)?;
+        let emissions = self.announcement_outboxes.take_peer_emissions(peer_id)?;
+        for emission in emissions {
+            let (target_peer_id, message, receipt) = emission.into_parts();
+            if target_peer_id != peer_id {
+                return Err(SyncRuntimeError::Network {
+                    message: "announcement outbox target does not match connected session"
+                        .to_string(),
+                });
+            }
+            session.send(&message, self.config.network.magic())?;
+            self.network.complete_peer_emission(receipt)?;
         }
         Ok(())
     }

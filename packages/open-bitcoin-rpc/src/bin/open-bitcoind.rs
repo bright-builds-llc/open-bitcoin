@@ -32,6 +32,7 @@ use open_bitcoin_network::{InboundPreflightDiagnostic, InboundPreflightReason};
 use open_bitcoin_node::{
     DurableSyncRuntime, FjallNodeStore, ManagedNetworkHandle, SyncLifecycleState, SyncRunSummary,
     SyncRuntimeError, SyncStopReason, TcpPeerTransport, status::inbound_status_unavailable,
+    sync::AnnouncementOutboxRegistry,
 };
 use open_bitcoin_rpc::{
     DaemonSyncControl, ManagedRpcContext,
@@ -39,7 +40,7 @@ use open_bitcoin_rpc::{
     http,
     inbound_listener::{
         InboundListenerState, InboundListenerWorker, activate_inbound_listener,
-        start_inbound_accept_loop,
+        start_inbound_accept_loop, start_inbound_accept_loop_with_announcements,
     },
 };
 
@@ -87,9 +88,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let state = http::build_http_state_with_shared_context(auth, Arc::clone(&shared_context))?;
     let listener = tokio::net::TcpListener::bind(bind_address).await?;
-    let mut inbound_listener =
-        start_inbound_listener_for_runtime_with_context(&runtime, Arc::clone(&shared_context))
-            .await;
+    let mut inbound_listener = start_inbound_listener_for_runtime_with_context_and_announcements(
+        &runtime,
+        Arc::clone(&shared_context),
+        authoritative_runtime.announcement_outboxes,
+        authoritative_runtime.network,
+    )
+    .await;
     let maybe_inbound_metrics_worker =
         start_inbound_metrics_worker(&runtime, Arc::clone(&shared_context), maybe_runtime_store)?;
     if let Some(worker) = maybe_inbound_metrics_worker.as_ref() {
@@ -128,6 +133,7 @@ struct DaemonSyncWorker {
 
 struct AuthoritativeNetworkRuntime {
     network: ManagedNetworkHandle,
+    announcement_outboxes: AnnouncementOutboxRegistry,
     maybe_sync_runtime: Option<DurableSyncRuntime>,
 }
 
@@ -227,6 +233,7 @@ fn open_authoritative_network_runtime(
         })?;
         return Ok(AuthoritativeNetworkRuntime {
             network: sync_runtime.network_handle(),
+            announcement_outboxes: sync_runtime.announcement_outboxes(),
             maybe_sync_runtime: Some(sync_runtime),
         });
     }
@@ -245,6 +252,7 @@ fn open_authoritative_network_runtime(
             runtime.block_serving,
             runtime.inbound.enabled,
         ),
+        announcement_outboxes: AnnouncementOutboxRegistry::default(),
         maybe_sync_runtime: None,
     })
 }
@@ -280,9 +288,32 @@ async fn start_inbound_listener_for_runtime(runtime: &RuntimeConfig) -> InboundD
     start_inbound_listener_for_runtime_with_context(runtime, context).await
 }
 
+#[cfg(test)]
 async fn start_inbound_listener_for_runtime_with_context(
     runtime: &RuntimeConfig,
     context: Arc<tokio::sync::Mutex<ManagedRpcContext>>,
+) -> InboundDaemonListener {
+    start_inbound_listener_for_runtime_with_context_inner(runtime, context, None).await
+}
+
+async fn start_inbound_listener_for_runtime_with_context_and_announcements(
+    runtime: &RuntimeConfig,
+    context: Arc<tokio::sync::Mutex<ManagedRpcContext>>,
+    outboxes: AnnouncementOutboxRegistry,
+    network: ManagedNetworkHandle,
+) -> InboundDaemonListener {
+    start_inbound_listener_for_runtime_with_context_inner(
+        runtime,
+        context,
+        Some((outboxes, network)),
+    )
+    .await
+}
+
+async fn start_inbound_listener_for_runtime_with_context_inner(
+    runtime: &RuntimeConfig,
+    context: Arc<tokio::sync::Mutex<ManagedRpcContext>>,
+    maybe_announcement_transport: Option<(AnnouncementOutboxRegistry, ManagedNetworkHandle)>,
 ) -> InboundDaemonListener {
     let activation = activate_inbound_listener(&runtime.inbound).await;
     let mut state = activation.state();
@@ -311,7 +342,12 @@ async fn start_inbound_listener_for_runtime_with_context(
         });
     }
     let maybe_worker = if state == InboundListenerState::Listening && authority_available {
-        start_inbound_accept_loop(activation, context)
+        match maybe_announcement_transport {
+            Some((outboxes, network)) => {
+                start_inbound_accept_loop_with_announcements(activation, context, outboxes, network)
+            }
+            None => start_inbound_accept_loop(activation, context),
+        }
     } else {
         None
     };

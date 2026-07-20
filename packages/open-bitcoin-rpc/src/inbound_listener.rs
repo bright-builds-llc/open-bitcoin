@@ -14,11 +14,15 @@ use std::{
 };
 
 use open_bitcoin_network::{
-    INBOUND_MESSAGE_HEADER_LEN, InboundAdmissionDecision, InboundAdmissionRejectionReason,
-    InboundEnvelopePolicy, InboundHandshakeState, InboundListenerActivationDiagnostic,
-    InboundListenerConfig, InboundListenerEndpoint, InboundPreflightDiagnostic,
-    InboundPreflightReason, InboundResourceEvent, ResourceGovernancePolicy, WireNetworkMessage,
+    INBOUND_MESSAGE_HEADER_LEN, InactivePermissionEffectLabel, InboundAdmissionDecision,
+    InboundAdmissionRejectionReason, InboundEnvelopePolicy, InboundHandshakeState,
+    InboundListenerActivationDiagnostic, InboundListenerConfig, InboundListenerEndpoint,
+    InboundPreflightDiagnostic, InboundPreflightReason, InboundResourceEvent,
+    PermissionEffectLabel, ResourceGovernancePolicy, WireNetworkMessage,
     classify_inbound_preflight,
+};
+use open_bitcoin_node::{
+    ManagedNetworkHandle, core::primitives::NetworkMagic, sync::AnnouncementOutboxRegistry,
 };
 use tokio::{net::TcpListener, task::JoinHandle};
 
@@ -275,6 +279,13 @@ struct InboundAcceptLoopShared {
     next_peer_id: Arc<AtomicU64>,
     runtime_counters: Arc<Mutex<InboundRuntimeCounters>>,
     connection_handles: Arc<tokio::sync::Mutex<Vec<JoinHandle<()>>>>,
+    maybe_announcement_transport: Option<InboundAnnouncementTransport>,
+}
+
+#[derive(Clone)]
+struct InboundAnnouncementTransport {
+    outboxes: AnnouncementOutboxRegistry,
+    network: ManagedNetworkHandle,
 }
 
 pub async fn activate_inbound_listener(
@@ -318,6 +329,27 @@ pub fn start_inbound_accept_loop(
     activation: InboundListenerActivation,
     context: Arc<tokio::sync::Mutex<ManagedRpcContext>>,
 ) -> Option<InboundListenerWorker> {
+    start_inbound_accept_loop_inner(activation, context, None)
+}
+
+pub fn start_inbound_accept_loop_with_announcements(
+    activation: InboundListenerActivation,
+    context: Arc<tokio::sync::Mutex<ManagedRpcContext>>,
+    outboxes: AnnouncementOutboxRegistry,
+    network: ManagedNetworkHandle,
+) -> Option<InboundListenerWorker> {
+    start_inbound_accept_loop_inner(
+        activation,
+        context,
+        Some(InboundAnnouncementTransport { outboxes, network }),
+    )
+}
+
+fn start_inbound_accept_loop_inner(
+    activation: InboundListenerActivation,
+    context: Arc<tokio::sync::Mutex<ManagedRpcContext>>,
+    maybe_announcement_transport: Option<InboundAnnouncementTransport>,
+) -> Option<InboundListenerWorker> {
     if activation.state != InboundListenerState::Listening {
         return None;
     }
@@ -335,6 +367,7 @@ pub fn start_inbound_accept_loop(
         next_peer_id: Arc::clone(&next_peer_id),
         runtime_counters: Arc::clone(&runtime_counters),
         connection_handles: Arc::clone(&connection_handles),
+        maybe_announcement_transport,
     };
     let mut handles = Vec::with_capacity(activation.listeners.len());
 
@@ -445,6 +478,7 @@ async fn accept_loop(bound_listener: BoundInboundListener, shared: InboundAccept
             Arc::clone(&shared.context),
             Arc::clone(&shared.evidence),
             Arc::clone(&shared.runtime_counters),
+            shared.maybe_announcement_transport.clone(),
         ));
         let mut connection_handles = shared.connection_handles.lock().await;
         connection_handles.retain(|handle| !handle.is_finished());
@@ -459,6 +493,7 @@ async fn handle_inbound_stream(
     context: Arc<tokio::sync::Mutex<ManagedRpcContext>>,
     evidence: Arc<Mutex<InboundListenerEvidence>>,
     runtime_counters: Arc<Mutex<InboundRuntimeCounters>>,
+    maybe_announcement_transport: Option<InboundAnnouncementTransport>,
 ) {
     let resource_policy = ResourceGovernancePolicy::default();
     let connected_at_unix_seconds = current_timestamp();
@@ -486,13 +521,40 @@ async fn handle_inbound_stream(
         }
     };
     let mut queue_pressure = RuntimeQueuePressureState::default();
+    if let Some(transport) = maybe_announcement_transport.as_ref()
+        && transport.outboxes.register_peer(peer_id).is_err()
+    {
+        disconnect_admitted_peer(&context, peer_id).await;
+        return;
+    }
 
     let Ok(network_info) = context.lock().await.network_info() else {
+        unregister_announcement_peer(&maybe_announcement_transport, peer_id);
         return;
     };
     let envelope_policy = InboundEnvelopePolicy::new(network_info.network_magic);
 
     'message_loop: loop {
+        if !drain_inbound_announcements(
+            maybe_announcement_transport.as_ref(),
+            peer_id,
+            &stream,
+            network_info.network_magic,
+            &resource_policy,
+            connected_at_unix_seconds,
+            last_activity_unix_seconds,
+            handshake_state,
+            &mut queue_pressure,
+            permission_decision.active_effects().to_vec(),
+            permission_decision.inactive_effects().to_vec(),
+            &context,
+            &evidence,
+            &runtime_counters,
+        )
+        .await
+        {
+            break;
+        }
         if let Some(event) = resource_timeout_event(
             &resource_policy,
             connected_at_unix_seconds,
@@ -599,8 +661,114 @@ async fn handle_inbound_stream(
                 }
             }
         }
+        if !drain_inbound_announcements(
+            maybe_announcement_transport.as_ref(),
+            peer_id,
+            &stream,
+            network_info.network_magic,
+            &resource_policy,
+            connected_at_unix_seconds,
+            last_activity_unix_seconds,
+            handshake_state,
+            &mut queue_pressure,
+            permission_decision.active_effects().to_vec(),
+            permission_decision.inactive_effects().to_vec(),
+            &context,
+            &evidence,
+            &runtime_counters,
+        )
+        .await
+        {
+            break;
+        }
     }
+    unregister_announcement_peer(&maybe_announcement_transport, peer_id);
     disconnect_admitted_peer(&context, peer_id).await;
+}
+
+fn unregister_announcement_peer(
+    maybe_transport: &Option<InboundAnnouncementTransport>,
+    peer_id: u64,
+) {
+    if let Some(transport) = maybe_transport {
+        let _ = transport.outboxes.unregister_peer(peer_id);
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn drain_inbound_announcements(
+    maybe_transport: Option<&InboundAnnouncementTransport>,
+    peer_id: u64,
+    stream: &tokio::net::TcpStream,
+    network_magic: NetworkMagic,
+    resource_policy: &ResourceGovernancePolicy,
+    connected_at_unix_seconds: i64,
+    last_activity_unix_seconds: i64,
+    handshake_state: InboundHandshakeState,
+    queue_pressure: &mut RuntimeQueuePressureState,
+    active_permission_effects: Vec<PermissionEffectLabel>,
+    inactive_permission_effects: Vec<InactivePermissionEffectLabel>,
+    context: &Arc<tokio::sync::Mutex<ManagedRpcContext>>,
+    evidence: &Arc<Mutex<InboundListenerEvidence>>,
+    runtime_counters: &Arc<Mutex<InboundRuntimeCounters>>,
+) -> bool {
+    let Some(transport) = maybe_transport else {
+        return true;
+    };
+    let Ok(emissions) = transport.outboxes.take_peer_emissions(peer_id) else {
+        return false;
+    };
+    for emission in emissions {
+        let (target_peer_id, message, receipt) = emission.into_parts();
+        if target_peer_id != peer_id {
+            return false;
+        }
+        let Ok(bytes) = message.encode_wire(network_magic) else {
+            return false;
+        };
+        queue_pressure.record_pending_write(bytes.len());
+        if let Some(event) = queue_pressure_event(
+            resource_policy,
+            queue_pressure,
+            active_permission_effects.clone(),
+            inactive_permission_effects.clone(),
+        ) {
+            queue_pressure.clear_pending_write();
+            record_shared_resource_event(context, evidence, event).await;
+            lock_runtime_counters(runtime_counters)
+                .record_failure(resource_policy, current_timestamp());
+            return false;
+        }
+        let write_result = write_all_for_state(
+            stream,
+            &bytes,
+            resource_policy,
+            connected_at_unix_seconds,
+            last_activity_unix_seconds,
+            handshake_state,
+        )
+        .await;
+        queue_pressure.clear_pending_write();
+        match write_result {
+            Ok(WriteWireMessageOutcome::Written) => {
+                if transport.network.complete_peer_emission(receipt).is_err() {
+                    return false;
+                }
+            }
+            Ok(WriteWireMessageOutcome::Rejected(event)) => {
+                record_shared_resource_event(context, evidence, event).await;
+                lock_runtime_counters(runtime_counters)
+                    .record_failure(resource_policy, current_timestamp());
+                return false;
+            }
+            Err(_error) => {
+                lock_runtime_counters(runtime_counters)
+                    .record_failure(resource_policy, current_timestamp());
+                return false;
+            }
+        }
+    }
+    true
 }
 
 async fn acknowledge_inbound_response_write(
@@ -623,3 +791,25 @@ async fn acknowledge_inbound_response_write(
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod announcement_transport_tests {
+    use super::AnnouncementOutboxRegistry;
+
+    #[test]
+    fn announcement_transport_disconnect_cleanup_is_peer_scoped() {
+        // Arrange
+        let outboxes = AnnouncementOutboxRegistry::default();
+        outboxes.register_peer(41).expect("register first peer");
+        outboxes.register_peer(42).expect("register second peer");
+
+        // Act
+        outboxes.unregister_peer(41).expect("unregister first peer");
+        let snapshots = outboxes.snapshots().expect("outbox snapshots");
+
+        // Assert
+        assert_eq!(snapshots.len(), 1);
+        assert_eq!(snapshots[0].peer_id(), 42);
+        assert_eq!(snapshots[0].queued_messages(), 0);
+    }
+}

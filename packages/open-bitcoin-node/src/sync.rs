@@ -36,6 +36,7 @@ use open_bitcoin_mempool::PolicyConfig;
 use open_bitcoin_network::{BlockRelayActivationPolicy, PeerId, RelayActivationConfig};
 
 pub use resolver::{SyncPeerResolver, SystemSyncPeerResolver};
+pub use session::AnnouncementOutboxRegistry;
 pub use tcp::{TcpPeerSession, TcpPeerTransport};
 pub use types::{
     PeerCapabilitySummary, PeerContribution, PeerFailureReason, PeerSyncOutcome, PeerSyncState,
@@ -90,6 +91,7 @@ pub struct DurableSyncRuntime {
     maybe_reconcile_progress: Option<SyncReconcileProgress>,
     maybe_pending_durable_tip: Option<DurableTipAdvanced>,
     maybe_durable_tip_announcement_sink: Option<DurableTipAnnouncementSink>,
+    announcement_outboxes: AnnouncementOutboxRegistry,
     maybe_inbound_metric_status_provider:
         Option<Arc<dyn Fn() -> FieldAvailability<InboundPeerServingStatus> + Send + Sync>>,
 }
@@ -144,6 +146,15 @@ impl DurableSyncRuntime {
             network.seed_header_store(header_store);
         }
         let network = ManagedNetworkHandle::new(network);
+        let announcement_outboxes = AnnouncementOutboxRegistry::default();
+        let announcement_network = network.clone();
+        let announcement_outboxes_for_sink = announcement_outboxes.clone();
+        let durable_tip_announcement_sink: DurableTipAnnouncementSink = Arc::new(move |event| {
+            let outboxes = announcement_outboxes_for_sink.snapshots()?;
+            let outcomes =
+                announcement_network.prepare_block_announcements(event.block(), &outboxes)?;
+            announcement_outboxes_for_sink.enqueue_prepared(outcomes)
+        });
 
         let consensus_params = config.network.consensus_params();
         Ok(Self {
@@ -157,7 +168,8 @@ impl DurableSyncRuntime {
             inflight_blocks: BTreeSet::new(),
             maybe_reconcile_progress: None,
             maybe_pending_durable_tip: None,
-            maybe_durable_tip_announcement_sink: None,
+            maybe_durable_tip_announcement_sink: Some(durable_tip_announcement_sink),
+            announcement_outboxes,
             maybe_inbound_metric_status_provider: None,
         })
     }
@@ -172,6 +184,11 @@ impl DurableSyncRuntime {
 
     pub fn network_handle(&self) -> ManagedNetworkHandle {
         self.network.clone()
+    }
+
+    /// Returns the process-wide bounded announcement outboxes shared by live sessions.
+    pub fn announcement_outboxes(&self) -> AnnouncementOutboxRegistry {
+        self.announcement_outboxes.clone()
     }
 
     /// Installs the production sink that routes post-durable tip events to peer outboxes.
