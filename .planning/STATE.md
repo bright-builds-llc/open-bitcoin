@@ -4,8 +4,8 @@ milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
 status: planning
 stopped_at: Completed 128-04-PLAN.md
-last_updated: "2026-07-20T06:48:12.893Z"
-last_activity: 2026-07-20 -- Phase 128 production compact-announcement transport complete
+last_updated: "2026-07-20T10:04:16.346Z"
+last_activity: 2026-07-20 -- Phase 128 production compact-announcement transport verified and complete
 progress:
   total_phases: 20
   completed_phases: 19
@@ -29,7 +29,7 @@ Milestone: v2.1 Block Serving and Compact Block Relay Boundary
 Phase: 129
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-07-20 -- Phase 128 production compact-announcement transport complete
+Last activity: 2026-07-20 -- Phase 128 production compact-announcement transport verified and complete
 
 v2.0 Transaction Relay and Mempool Participation Boundary shipped on 2026-07-03. The archived audit reports 32/32 requirements, 10/10 phases, 8/8 integration checks, 8/8 cross-phase flows, and no tracked tech debt.
 
