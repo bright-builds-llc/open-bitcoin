@@ -245,6 +245,7 @@ pub struct InboundListenerWorker {
     connection_handles: Arc<tokio::sync::Mutex<Vec<JoinHandle<()>>>>,
     evidence: Arc<Mutex<InboundListenerEvidence>>,
     shutdown_requested: Arc<AtomicBool>,
+    shutdown_notify: Arc<tokio::sync::Notify>,
 }
 
 impl InboundListenerWorker {
@@ -254,6 +255,7 @@ impl InboundListenerWorker {
 
     pub async fn shutdown(self) {
         self.shutdown_requested.store(true, Ordering::Relaxed);
+        self.shutdown_notify.notify_waiters();
         for handle in self.handles {
             handle.abort();
             let _ = handle.await;
@@ -272,6 +274,7 @@ struct InboundAcceptLoopShared {
     evidence: Arc<Mutex<InboundListenerEvidence>>,
     initial_evidence: InboundListenerEvidence,
     shutdown_requested: Arc<AtomicBool>,
+    shutdown_notify: Arc<tokio::sync::Notify>,
     next_peer_id: Arc<AtomicU64>,
     runtime_counters: Arc<Mutex<InboundRuntimeCounters>>,
     connection_handles: Arc<tokio::sync::Mutex<Vec<JoinHandle<()>>>>,
@@ -282,6 +285,13 @@ struct InboundAcceptLoopShared {
 struct InboundAnnouncementTransport {
     outboxes: AnnouncementOutboxRegistry,
     network: ManagedNetworkHandle,
+}
+
+#[derive(Clone)]
+struct InboundConnectionControl {
+    shutdown_requested: Arc<AtomicBool>,
+    shutdown_notify: Arc<tokio::sync::Notify>,
+    maybe_announcement_transport: Option<InboundAnnouncementTransport>,
 }
 
 pub async fn activate_inbound_listener(
@@ -352,6 +362,7 @@ fn start_inbound_accept_loop_inner(
 
     let evidence = Arc::new(Mutex::new(activation.evidence.clone()));
     let shutdown_requested = Arc::new(AtomicBool::new(false));
+    let shutdown_notify = Arc::new(tokio::sync::Notify::new());
     let connection_handles = Arc::new(tokio::sync::Mutex::new(Vec::new()));
     let next_peer_id = Arc::new(AtomicU64::new(1));
     let runtime_counters = Arc::new(Mutex::new(InboundRuntimeCounters::new(current_timestamp())));
@@ -360,6 +371,7 @@ fn start_inbound_accept_loop_inner(
         evidence: Arc::clone(&evidence),
         initial_evidence: activation.evidence.clone(),
         shutdown_requested: Arc::clone(&shutdown_requested),
+        shutdown_notify: Arc::clone(&shutdown_notify),
         next_peer_id: Arc::clone(&next_peer_id),
         runtime_counters: Arc::clone(&runtime_counters),
         connection_handles: Arc::clone(&connection_handles),
@@ -376,6 +388,7 @@ fn start_inbound_accept_loop_inner(
         connection_handles,
         evidence,
         shutdown_requested,
+        shutdown_notify,
     })
 }
 
@@ -467,6 +480,11 @@ async fn accept_loop(bound_listener: BoundInboundListener, shared: InboundAccept
         }
 
         let peer_id = shared.next_peer_id.fetch_add(1, Ordering::Relaxed);
+        let connection_control = InboundConnectionControl {
+            shutdown_requested: Arc::clone(&shared.shutdown_requested),
+            shutdown_notify: Arc::clone(&shared.shutdown_notify),
+            maybe_announcement_transport: shared.maybe_announcement_transport.clone(),
+        };
         let handle = tokio::spawn(handle_inbound_stream(
             peer_id,
             remote_addr,
@@ -474,7 +492,7 @@ async fn accept_loop(bound_listener: BoundInboundListener, shared: InboundAccept
             Arc::clone(&shared.context),
             Arc::clone(&shared.evidence),
             Arc::clone(&shared.runtime_counters),
-            shared.maybe_announcement_transport.clone(),
+            connection_control,
         ));
         let mut connection_handles = shared.connection_handles.lock().await;
         connection_handles.retain(|handle| !handle.is_finished());

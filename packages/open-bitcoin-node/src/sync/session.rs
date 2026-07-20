@@ -7,7 +7,12 @@
 
 use std::{
     collections::{BTreeMap, VecDeque},
-    sync::{Arc, Mutex},
+    future::poll_fn,
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicU64, Ordering},
+    },
+    task::{Poll, Waker},
 };
 
 use open_bitcoin_core::{
@@ -28,16 +33,90 @@ use super::{
 };
 use crate::network::{AnnouncementPreparationOutcome, PeerEmission, PeerOutboxSnapshot};
 
+struct AnnouncementOutbox {
+    emissions: VecDeque<PeerEmission>,
+    readiness: Arc<AnnouncementOutboxReadiness>,
+}
+
+impl Default for AnnouncementOutbox {
+    fn default() -> Self {
+        Self {
+            emissions: VecDeque::new(),
+            readiness: Arc::new(AnnouncementOutboxReadiness::default()),
+        }
+    }
+}
+
+#[derive(Default)]
+struct AnnouncementOutboxReadiness {
+    generation: AtomicU64,
+    maybe_waker: Mutex<Option<Waker>>,
+}
+
+impl AnnouncementOutboxReadiness {
+    fn notify(&self) {
+        self.generation.fetch_add(1, Ordering::Release);
+        let maybe_waker = self
+            .maybe_waker
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .take();
+        if let Some(waker) = maybe_waker {
+            waker.wake();
+        }
+    }
+}
+
+/// A cancellation-safe readiness cursor for one live peer announcement outbox.
+pub struct AnnouncementOutboxNotification {
+    readiness: Arc<AnnouncementOutboxReadiness>,
+    observed_generation: u64,
+}
+
+impl AnnouncementOutboxNotification {
+    /// Waits until at least one enqueue occurred after the last observed generation.
+    pub async fn notified(&mut self) {
+        poll_fn(|context| {
+            let generation = self.readiness.generation.load(Ordering::Acquire);
+            if generation != self.observed_generation {
+                self.observed_generation = generation;
+                return Poll::Ready(());
+            }
+
+            let mut maybe_waker = self
+                .readiness
+                .maybe_waker
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            let generation = self.readiness.generation.load(Ordering::Acquire);
+            if generation != self.observed_generation {
+                self.observed_generation = generation;
+                return Poll::Ready(());
+            }
+            *maybe_waker = Some(context.waker().clone());
+            Poll::Pending
+        })
+        .await
+    }
+}
+
 #[derive(Clone, Default)]
 pub struct AnnouncementOutboxRegistry {
-    outboxes: Arc<Mutex<BTreeMap<PeerId, VecDeque<PeerEmission>>>>,
+    outboxes: Arc<Mutex<BTreeMap<PeerId, AnnouncementOutbox>>>,
 }
 
 impl AnnouncementOutboxRegistry {
     /// Makes one live peer eligible to receive prepared announcement emissions.
-    pub fn register_peer(&self, peer_id: PeerId) -> Result<(), SyncRuntimeError> {
-        self.lock_outboxes()?.entry(peer_id).or_default();
-        Ok(())
+    pub fn register_peer(
+        &self,
+        peer_id: PeerId,
+    ) -> Result<AnnouncementOutboxNotification, SyncRuntimeError> {
+        let mut outboxes = self.lock_outboxes()?;
+        let outbox = outboxes.entry(peer_id).or_default();
+        Ok(AnnouncementOutboxNotification {
+            observed_generation: outbox.readiness.generation.load(Ordering::Acquire),
+            readiness: Arc::clone(&outbox.readiness),
+        })
     }
 
     /// Removes one peer and discards only its bounded volatile announcement queue.
@@ -52,7 +131,11 @@ impl AnnouncementOutboxRegistry {
             .lock_outboxes()?
             .iter()
             .map(|(peer_id, outbox)| {
-                PeerOutboxSnapshot::new(*peer_id, outbox.len(), PHASE94_MAX_PEER_QUEUED_MESSAGES)
+                PeerOutboxSnapshot::new(
+                    *peer_id,
+                    outbox.emissions.len(),
+                    PHASE94_MAX_PEER_QUEUED_MESSAGES,
+                )
             })
             .collect())
     }
@@ -63,7 +146,11 @@ impl AnnouncementOutboxRegistry {
         outcomes: Vec<AnnouncementPreparationOutcome>,
     ) -> Result<(), SyncRuntimeError> {
         let mut outboxes = self.lock_outboxes()?;
-        let mut aggregate_queued = outboxes.values().map(VecDeque::len).sum::<usize>();
+        let mut aggregate_queued = outboxes
+            .values()
+            .map(|outbox| outbox.emissions.len())
+            .sum::<usize>();
+        let mut readiness_notifications = Vec::new();
         for outcome in outcomes {
             let AnnouncementPreparationOutcome::Ready(emission) = outcome else {
                 continue;
@@ -74,11 +161,16 @@ impl AnnouncementOutboxRegistry {
             let Some(outbox) = outboxes.get_mut(&emission.peer_id()) else {
                 continue;
             };
-            if outbox.len() >= PHASE94_MAX_PEER_QUEUED_MESSAGES {
+            if outbox.emissions.len() >= PHASE94_MAX_PEER_QUEUED_MESSAGES {
                 continue;
             }
-            outbox.push_back(emission);
+            outbox.emissions.push_back(emission);
+            readiness_notifications.push(Arc::clone(&outbox.readiness));
             aggregate_queued = aggregate_queued.saturating_add(1);
+        }
+        drop(outboxes);
+        for readiness in readiness_notifications {
+            readiness.notify();
         }
         Ok(())
     }
@@ -92,12 +184,12 @@ impl AnnouncementOutboxRegistry {
         let Some(outbox) = outboxes.get_mut(&peer_id) else {
             return Ok(Vec::new());
         };
-        Ok(outbox.drain(..).collect())
+        Ok(outbox.emissions.drain(..).collect())
     }
 
     fn lock_outboxes(
         &self,
-    ) -> Result<std::sync::MutexGuard<'_, BTreeMap<PeerId, VecDeque<PeerEmission>>>, SyncRuntimeError>
+    ) -> Result<std::sync::MutexGuard<'_, BTreeMap<PeerId, AnnouncementOutbox>>, SyncRuntimeError>
     {
         self.outboxes
             .lock()

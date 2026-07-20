@@ -11,6 +11,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
+use open_bitcoin_codec::parse_message_header;
 use open_bitcoin_network::{
     BanReason, BanScope, BlockRelayActivationPolicy, BlockServingActivationConfig,
     CompactRelayActivationConfig, INBOUND_MESSAGE_HEADER_LEN, InboundAdmissionSlotClass,
@@ -18,8 +19,8 @@ use open_bitcoin_network::{
     InboundResourceEvent, InventoryList, MAX_INV_SIZE, PHASE94_MAX_CONNECTIONS_PER_CHURN_WINDOW,
     PHASE94_MAX_INBOUND_RUNTIME_PAYLOAD_BYTES, PHASE94_MAX_PEER_READ_QUEUE_BYTES,
     PHASE94_MAX_PEER_WRITE_QUEUE_BYTES, PHASE94_MAX_REPEATED_FAILURES_PER_WINDOW,
-    PHASE94_SLOW_HANDSHAKE_TIMEOUT_SECONDS, ParsedPeerPermissionClass, PeerBanEntry,
-    PeerConnectionClass, PeerPermissionClassRegistry, ReconnectSuppressionInput,
+    PHASE94_SLOW_HANDSHAKE_TIMEOUT_SECONDS, ParsedNetworkMessage, ParsedPeerPermissionClass,
+    PeerBanEntry, PeerConnectionClass, PeerPermissionClassRegistry, ReconnectSuppressionInput,
     ResourceGovernanceDecision, ResourceGovernancePolicy, VersionMessage, WireNetworkMessage,
 };
 use open_bitcoin_node::core::wallet::AddressNetwork;
@@ -32,8 +33,9 @@ use open_bitcoin_node::core::{
 };
 use open_bitcoin_node::status::{FieldAvailability, InboundPeerServingStatus};
 use open_bitcoin_node::{
-    DurableSyncRuntime, FjallNodeStore, PersistMode, StorageError, StorageNamespace,
-    StorageRecoveryAction, SyncNetwork, SyncRuntimeConfig,
+    DurableSyncRuntime, FjallNodeStore, ManagedNetworkHandle, PersistMode, StorageError,
+    StorageNamespace, StorageRecoveryAction, SyncNetwork, SyncRuntimeConfig,
+    sync::AnnouncementOutboxRegistry,
 };
 use open_bitcoin_test_harness::PortReservation;
 use tokio::net::TcpStream;
@@ -46,7 +48,7 @@ use crate::{
 use super::{
     InboundListenerEvidence, InboundListenerState, ReadWireMessageOutcome, WriteWireMessageOutcome,
     acknowledge_inbound_response_write, activate_inbound_listener, resolve_inbound_wire_responses,
-    start_inbound_accept_loop,
+    start_inbound_accept_loop, start_inbound_accept_loop_with_announcements,
 };
 
 const PHASE123_EASY_BITS: u32 = 0x207f_ffff;
@@ -649,6 +651,50 @@ async fn running_loopback_listener_with_config(
     (context, worker, endpoint)
 }
 
+async fn running_loopback_listener_with_announcements() -> (
+    Arc<tokio::sync::Mutex<ManagedRpcContext>>,
+    super::InboundListenerWorker,
+    String,
+    AnnouncementOutboxRegistry,
+    ManagedNetworkHandle,
+) {
+    let runtime = RuntimeConfig {
+        inbound: loopback_config(2),
+        block_serving: BlockRelayActivationPolicy {
+            block_serving: BlockServingActivationConfig { enabled: true },
+            compact_relay: CompactRelayActivationConfig { enabled: true },
+        },
+        ..RuntimeConfig::default()
+    };
+    let network = ManagedNetworkHandle::transient_runtime(
+        NetworkMagic::MAINNET,
+        8_333,
+        runtime.relay,
+        runtime.block_serving,
+        true,
+    );
+    let context = Arc::new(tokio::sync::Mutex::new(
+        ManagedRpcContext::from_runtime_config_with_network_handle(&runtime, network.clone(), None)
+            .expect("compose announcement listener context"),
+    ));
+    let outboxes = AnnouncementOutboxRegistry::default();
+    let activation = activate_inbound_listener(&runtime.inbound).await;
+    let endpoint = activation
+        .bound_endpoints()
+        .first()
+        .expect("bound announcement loopback endpoint")
+        .bound_endpoint
+        .clone();
+    let worker = start_inbound_accept_loop_with_announcements(
+        activation,
+        Arc::clone(&context),
+        outboxes.clone(),
+        network.clone(),
+    )
+    .expect("announcement listener worker should start");
+    (context, worker, endpoint, outboxes, network)
+}
+
 fn loopback_permission_registry(permissions: &[&str]) -> PeerPermissionClassRegistry {
     PeerPermissionClassRegistry::new([ParsedPeerPermissionClass::parse(
         "loopback-permission",
@@ -835,6 +881,34 @@ async fn receive_message(stream: &TcpStream) -> WireNetworkMessage {
         ReadWireMessageOutcome::Message(parsed) => parsed.message,
         ReadWireMessageOutcome::Rejected(event) => {
             panic!("expected inbound response message, got {}", event.label)
+        }
+    }
+}
+
+async fn receive_any_message(stream: &TcpStream) -> WireNetworkMessage {
+    let mut buffered = Vec::new();
+    loop {
+        if buffered.len() >= INBOUND_MESSAGE_HEADER_LEN {
+            let header = parse_message_header(&buffered[..INBOUND_MESSAGE_HEADER_LEN])
+                .expect("response header should decode");
+            let frame_len = INBOUND_MESSAGE_HEADER_LEN + header.payload_size as usize;
+            if buffered.len() >= frame_len {
+                return ParsedNetworkMessage::decode_wire(&buffered[..frame_len])
+                    .expect("response should decode")
+                    .message;
+            }
+        }
+
+        stream
+            .readable()
+            .await
+            .expect("response stream should become readable");
+        let mut bytes = [0_u8; 4_096];
+        match stream.try_read(&mut bytes) {
+            Ok(0) => panic!("listener closed before a complete response"),
+            Ok(count) => buffered.extend_from_slice(&bytes[..count]),
+            Err(error) if error.kind() == io::ErrorKind::WouldBlock => {}
+            Err(error) => panic!("response read failed: {error}"),
         }
     }
 }
@@ -1354,6 +1428,68 @@ async fn loopback_inbound_peer_handshake_increments_inbound_without_outbound() {
     assert!(matches!(responses[3], WireNetworkMessage::SendHeaders));
     assert_eq!(network_info.inbound_peers, 1);
     assert_eq!(network_info.outbound_peers, 0);
+    worker.shutdown().await;
+}
+
+#[tokio::test]
+async fn idle_inbound_peer_wakes_for_queued_announcement_and_credits_once() {
+    // Arrange
+    let (_context, worker, endpoint, outboxes, network) =
+        running_loopback_listener_with_announcements().await;
+    let stream = TcpStream::connect(&endpoint)
+        .await
+        .expect("connect announcement loopback peer");
+    send_message(
+        &stream,
+        WireNetworkMessage::Version(VersionMessage {
+            nonce: 128,
+            ..VersionMessage::default()
+        }),
+    )
+    .await;
+    for _ in 0..4 {
+        let _ = receive_message(&stream).await;
+    }
+    send_message(&stream, WireNetworkMessage::Verack).await;
+    let compact_offer = receive_any_message(&stream).await;
+    assert!(matches!(compact_offer, WireNetworkMessage::SendCompact(_)));
+    let snapshots = outboxes.snapshots().expect("registered inbound outbox");
+    let peer_id = snapshots
+        .first()
+        .expect("one registered inbound outbox")
+        .peer_id();
+    let block = Block::default();
+    let outcomes = network
+        .prepare_block_announcements(&block, &snapshots)
+        .expect("prepare idle inbound announcement");
+
+    // Act
+    outboxes
+        .enqueue_prepared(outcomes)
+        .expect("enqueue idle inbound announcement");
+    let announcement = tokio::time::timeout(Duration::from_secs(1), receive_any_message(&stream))
+        .await
+        .expect("idle inbound peer should wake without another socket message");
+    tokio::task::yield_now().await;
+    let evidence = serde_json::to_value(
+        network
+            .block_relay_evidence_status()
+            .expect("announcement evidence"),
+    )
+    .expect("serialize announcement evidence");
+
+    // Assert
+    assert!(matches!(announcement, WireNetworkMessage::Inv(_)));
+    assert_eq!(
+        evidence["announcement"]["value"]["compact_inventory_fallback_count"],
+        1
+    );
+    assert!(
+        outboxes
+            .take_peer_emissions(peer_id)
+            .expect("drained inbound outbox")
+            .is_empty()
+    );
     worker.shutdown().await;
 }
 

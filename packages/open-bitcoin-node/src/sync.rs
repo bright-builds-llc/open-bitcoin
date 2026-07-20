@@ -36,7 +36,7 @@ use open_bitcoin_mempool::PolicyConfig;
 use open_bitcoin_network::{BlockRelayActivationPolicy, PeerId, RelayActivationConfig};
 
 pub use resolver::{SyncPeerResolver, SystemSyncPeerResolver};
-pub use session::AnnouncementOutboxRegistry;
+pub use session::{AnnouncementOutboxNotification, AnnouncementOutboxRegistry};
 pub use tcp::{TcpPeerSession, TcpPeerTransport};
 pub use types::{
     PeerCapabilitySummary, PeerContribution, PeerFailureReason, PeerSyncOutcome, PeerSyncState,

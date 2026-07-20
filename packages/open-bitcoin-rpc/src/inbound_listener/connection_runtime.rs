@@ -3,16 +3,17 @@
 // - packages/bitcoin-knots/src/net_processing.cpp
 
 use std::{
+    future::pending,
     io,
     net::SocketAddr,
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, atomic::Ordering},
 };
 
 use open_bitcoin_network::{
     INBOUND_MESSAGE_HEADER_LEN, InactivePermissionEffectLabel, InboundAdmissionDecision,
     InboundEnvelopePolicy, InboundHandshakeState, PermissionEffectLabel, ResourceGovernancePolicy,
 };
-use open_bitcoin_node::core::primitives::NetworkMagic;
+use open_bitcoin_node::{core::primitives::NetworkMagic, sync::AnnouncementOutboxNotification};
 
 use crate::{
     ManagedRpcContext,
@@ -22,7 +23,7 @@ use crate::{
 };
 
 use super::{
-    InboundAnnouncementTransport, InboundListenerEvidence,
+    InboundAnnouncementTransport, InboundConnectionControl, InboundListenerEvidence,
     resource_runtime::{
         InboundRuntimeCounters, ReadWireMessageOutcome, RuntimeQueuePressureState,
         WriteWireMessageOutcome, current_timestamp, disconnect_admitted_peer, lock_evidence,
@@ -39,8 +40,13 @@ pub(super) async fn handle_inbound_stream(
     context: Arc<tokio::sync::Mutex<ManagedRpcContext>>,
     evidence: Arc<Mutex<InboundListenerEvidence>>,
     runtime_counters: Arc<Mutex<InboundRuntimeCounters>>,
-    maybe_announcement_transport: Option<InboundAnnouncementTransport>,
+    connection_control: InboundConnectionControl,
 ) {
+    let InboundConnectionControl {
+        shutdown_requested,
+        shutdown_notify,
+        maybe_announcement_transport,
+    } = connection_control;
     let resource_policy = ResourceGovernancePolicy::default();
     let connected_at_unix_seconds = current_timestamp();
     let mut last_activity_unix_seconds = connected_at_unix_seconds;
@@ -67,12 +73,16 @@ pub(super) async fn handle_inbound_stream(
         }
     };
     let mut queue_pressure = RuntimeQueuePressureState::default();
-    if let Some(transport) = maybe_announcement_transport.as_ref()
-        && transport.outboxes.register_peer(peer_id).is_err()
-    {
-        disconnect_admitted_peer(&context, peer_id).await;
-        return;
-    }
+    let mut maybe_outbox_notification = match maybe_announcement_transport.as_ref() {
+        Some(transport) => match transport.outboxes.register_peer(peer_id) {
+            Ok(notification) => Some(notification),
+            Err(_error) => {
+                disconnect_admitted_peer(&context, peer_id).await;
+                return;
+            }
+        },
+        None => None,
+    };
 
     let Ok(network_info) = context.lock().await.network_info() else {
         unregister_announcement_peer(&maybe_announcement_transport, peer_id);
@@ -81,6 +91,9 @@ pub(super) async fn handle_inbound_stream(
     let envelope_policy = InboundEnvelopePolicy::new(network_info.network_magic);
 
     'message_loop: loop {
+        if shutdown_requested.load(Ordering::Relaxed) {
+            break;
+        }
         if !drain_inbound_announcements(
             maybe_announcement_transport.as_ref(),
             peer_id,
@@ -125,16 +138,49 @@ pub(super) async fn handle_inbound_stream(
                 .record_failure(&resource_policy, current_timestamp());
             break;
         }
-        let read_result = read_wire_message_for_state(
+        let read_future = read_wire_message_for_state(
             &stream,
             &envelope_policy,
             &resource_policy,
             connected_at_unix_seconds,
             last_activity_unix_seconds,
             handshake_state,
-        )
-        .await;
+        );
+        tokio::pin!(read_future);
+        let maybe_read_result = loop {
+            tokio::select! {
+                read_result = &mut read_future => break Some(read_result),
+                () = wait_for_outbox_notification(&mut maybe_outbox_notification) => {
+                    queue_pressure.clear_pending_read();
+                    if !drain_inbound_announcements(
+                        maybe_announcement_transport.as_ref(),
+                        peer_id,
+                        &stream,
+                        network_info.network_magic,
+                        &resource_policy,
+                        connected_at_unix_seconds,
+                        last_activity_unix_seconds,
+                        handshake_state,
+                        &mut queue_pressure,
+                        permission_decision.active_effects().to_vec(),
+                        permission_decision.inactive_effects().to_vec(),
+                        &context,
+                        &evidence,
+                        &runtime_counters,
+                    )
+                    .await
+                    {
+                        break 'message_loop;
+                    }
+                    queue_pressure.record_pending_read(INBOUND_MESSAGE_HEADER_LEN);
+                }
+                () = shutdown_notify.notified() => break None,
+            }
+        };
         queue_pressure.clear_pending_read();
+        let Some(read_result) = maybe_read_result else {
+            break;
+        };
         let outcome = match read_result {
             Ok(outcome) => outcome,
             Err(_error) => break,
@@ -230,6 +276,16 @@ pub(super) async fn handle_inbound_stream(
     }
     unregister_announcement_peer(&maybe_announcement_transport, peer_id);
     disconnect_admitted_peer(&context, peer_id).await;
+}
+
+async fn wait_for_outbox_notification(
+    maybe_notification: &mut Option<AnnouncementOutboxNotification>,
+) {
+    let Some(notification) = maybe_notification else {
+        pending::<()>().await;
+        return;
+    };
+    notification.notified().await;
 }
 
 fn unregister_announcement_peer(

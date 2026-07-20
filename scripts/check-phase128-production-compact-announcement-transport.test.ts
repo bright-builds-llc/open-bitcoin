@@ -120,6 +120,15 @@ test.each([
     ),
   ],
   [
+    "bounded session outbox",
+    "P128 bounded transport: preparation and session outboxes must enforce queue limits",
+    replace(
+      "packages/open-bitcoin-node/src/sync/session.rs",
+      "if outbox.emissions.len() >= PHASE94_MAX_PEER_QUEUED_MESSAGES",
+      "if false",
+    ),
+  ],
+  [
     "outbound post-write receipt",
     "P128 outbound write boundary: receipt completion must follow the session send",
     replace(

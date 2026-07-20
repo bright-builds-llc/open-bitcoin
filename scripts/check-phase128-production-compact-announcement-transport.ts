@@ -255,9 +255,10 @@ function checkLiveFactsAndBoundedEmissions(
   if (
     !transport.includes("PHASE94_MAX_PEER_QUEUED_MESSAGES") ||
     !transport.includes("if outbox.is_full() {") ||
-    !session.includes("BTreeMap<PeerId, VecDeque<PeerEmission>>") ||
+    !session.includes("BTreeMap<PeerId, AnnouncementOutbox>") ||
+    !session.includes("emissions: VecDeque<PeerEmission>") ||
     !session.includes(
-      "if outbox.len() >= PHASE94_MAX_PEER_QUEUED_MESSAGES",
+      "if outbox.emissions.len() >= PHASE94_MAX_PEER_QUEUED_MESSAGES",
     )
   ) {
     failures.push(
