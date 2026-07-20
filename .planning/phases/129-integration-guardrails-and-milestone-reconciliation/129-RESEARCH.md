@@ -400,14 +400,19 @@ Not an ecosystem-facing phase; the relevant "state of the art" is the repo's own
 | A3 | Phase 129 plan/summary artifacts will use `generated_by: gsd-plan-phase` / `gsd-execute-plan` like Phases 127/128 (verified for 127/128; assumed the same generator versions produce 129's) | Architecture Patterns | Low — the new lifecycle assertions should be authored after the first real plan file exists, so drift self-corrects |
 | A4 | gsd-verifier will produce `129-VERIFICATION.md` with `lifecycle_validated: true` (it did for 127/128) | Pitfall 6 | Low — if absent, the traceability checker fails; re-run verifier with lifecycle validation |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+All three questions were resolved during planning; the adopted answers are recorded inline and implemented by the committed plans.
 
 1. **Which intermediate Phase 129 states does the stage machine legalize?**
    - What we know: 127 modeled a rich ladder (0/4 → n/4 → 4/4); 128 modeled only the three states it actually passed through, with a custom roadmap route string for the executing window.
    - What's unclear: the Phase 129 plan count (planner's discretion) and whether execution updates ROADMAP plan counts per-plan or only at checkpoints.
    - Recommendation: follow the 128 minimal-ladder approach — legalize exactly the states the plan structure will pass through, extending the checker in the same commits (Pitfall 1). Decide the plan count first, then hard-code it like `verifyPhase127Lifecycle` does.
+   - **RESOLVED (Plan 129-03):** the stage machine legalizes exactly three fail-closed states per D-10 — gaps-open (current post-audit pins), Phase 129 verified pre-promotion, and reconciled archive-ready — with mixture rejection between them. Plan count is fixed at 4, hard-coded in the lifecycle assertions.
 2. **`tech_debt` in the passed audit:** keep the two current entries (1,505-line file, cross-cutting-verification note — the latter is arguably *resolved by this phase* and should be closed or reworded) or empty the list per v2.0 precedent. Recommendation: mark the cross-cutting-verification debt resolved (Phase 129 delivers exactly those guards), carry only the 1,505-line maintainability item, and pin whichever shape is chosen in the archive-ready assertion.
+   - **RESOLVED (Plans 129-03/129-04):** the passed audit carries only the 1,505-line `check-phase124-milestone-gap-closure.ts` maintainability entry; the cross-cutting-verification debt is recorded as resolved by Phase 129's guards. The archive-ready assertion pins this exact shape.
 3. **D-06 fallback-counter call** (document vs. fix) — genuinely open until flow verification runs; both paths are researched (Pitfall 11) with the fix path carrying breadcrumb + checker-projection follow-through.
+   - **RESOLVED (Plan 129-02):** adopted as an evidence-driven decision procedure executed inside Plan 02 — flow verification first; if the mixed counter misreports, apply the minimal Rust fix with parity breadcrumbs and regression tests; otherwise document the semantics in `docs/parity/`. Both outcomes are legal plan endpoints.
 
 ## Environment Availability
 
