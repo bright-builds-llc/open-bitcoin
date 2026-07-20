@@ -303,7 +303,11 @@ test("post_audit_gap_planning_rejects_topology_audit_and_route_drift", () => {
 
   // Assert
   expect(topologyFailures).toContain("post-audit Phase 128 dependency");
-  expect(auditFailures).toContain("post-audit audit score");
+  // An audit flipped to passed now claims the Phase 129 archive-ready stage,
+  // whose full condition set rejects the gaps-open mixture fail-closed.
+  expect(auditFailures).toContain(
+    "P124 archive-ready checked requirement count must be 39; found 29",
+  );
   expect(routeFailures).toContain("post-audit primary route .planning/STATE.md");
 });
 

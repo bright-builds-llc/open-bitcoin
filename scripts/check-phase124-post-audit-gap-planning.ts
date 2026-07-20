@@ -1,6 +1,12 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 
+import {
+  detectPhase129ReconciliationStage,
+  verifyArchiveReady,
+  verifyVerifiedPrePromotion,
+} from "./check-phase124-archive-ready";
+
 const GAP_PHASES = [
   {
     number: 127,
@@ -62,6 +68,7 @@ export function verifyPostAuditGapPlanningStage(
   audit: string,
   failures: string[],
 ): void {
+  const phase129Stage = detectPhase129ReconciliationStage(repoRoot, failures);
   const entries = parseRequirementEntries(requirements);
   const traceability = parseTraceabilityEntries(requirements);
   const lifecycle = verifyPhase127Lifecycle(
@@ -72,6 +79,10 @@ export function verifyPostAuditGapPlanningStage(
     failures,
   );
   const phase128Stage = phase128LifecycleStage(roadmap, failures);
+  if (phase129Stage === "archive_ready") {
+    verifyArchiveReady(repoRoot, failures);
+    return;
+  }
 
   verifyRequirementProjection(
     entries,
@@ -84,6 +95,9 @@ export function verifyPostAuditGapPlanningStage(
   verifyRoadmapTopology(repoRoot, roadmap, lifecycle, phase128Stage, failures);
   verifyAudit(audit, failures);
   verifyRouting(repoRoot, roadmap, audit, lifecycle.complete, phase128Stage, failures);
+  if (phase129Stage === "verified_pre_promotion") {
+    verifyVerifiedPrePromotion(repoRoot, failures);
+  }
 }
 
 function verifyRequirementProjection(
