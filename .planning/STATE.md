@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
-status: planning
+status: executing
 stopped_at: Phase 129 context gathered
-last_updated: "2026-07-20T19:39:27.996Z"
-last_activity: 2026-07-20 -- Phase 128 production compact-announcement transport verified and complete
+last_updated: "2026-07-20T20:56:00.329Z"
+last_activity: 2026-07-20 -- Phase 129 planning complete
 progress:
   total_phases: 20
   completed_phases: 19
-  total_plans: 66
+  total_plans: 70
   completed_plans: 68
-  percent: 100
+  percent: 97
 ---
 
 # Project State
@@ -28,8 +28,8 @@ See: `.planning/PROJECT.md` (updated 2026-07-20 after Phase 127 authoritative-st
 Milestone: v2.1 Block Serving and Compact Block Relay Boundary
 Phase: 129
 Plan: Not started
-Status: Ready to plan
-Last activity: 2026-07-20 -- Phase 128 production compact-announcement transport verified and complete
+Status: Ready to execute
+Last activity: 2026-07-20 -- Phase 129 planning complete
 
 v2.0 Transaction Relay and Mempool Participation Boundary shipped on 2026-07-03. The archived audit reports 32/32 requirements, 10/10 phases, 8/8 integration checks, 8/8 cross-phase flows, and no tracked tech debt.
 
