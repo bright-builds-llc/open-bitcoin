@@ -393,22 +393,70 @@ pub(super) async fn acknowledge_inbound_response_write(
 
 #[cfg(test)]
 mod tests {
-    use open_bitcoin_node::sync::AnnouncementOutboxRegistry;
+    use std::{
+        sync::{Arc, Barrier},
+        thread,
+    };
+
+    use open_bitcoin_node::{
+        PeerIdentityAuthority, SyncRuntimeError, sync::AnnouncementOutboxRegistry,
+    };
 
     #[test]
-    fn announcement_transport_disconnect_cleanup_is_peer_scoped() {
+    fn concurrent_inbound_and_outbound_sessions_have_distinct_scoped_outboxes() {
         // Arrange
+        let authority = PeerIdentityAuthority::default();
         let outboxes = AnnouncementOutboxRegistry::default();
-        outboxes.register_peer(41).expect("register first peer");
-        outboxes.register_peer(42).expect("register second peer");
+        let barrier = Arc::new(Barrier::new(3));
+        let inbound_thread = {
+            let authority = authority.clone();
+            let outboxes = outboxes.clone();
+            let barrier = Arc::clone(&barrier);
+            thread::spawn(move || {
+                barrier.wait();
+                let peer_id = authority.allocate().expect("allocate inbound peer");
+                outboxes
+                    .register_peer(peer_id)
+                    .expect("register inbound peer");
+                peer_id
+            })
+        };
+        let outbound_thread = {
+            let authority = authority.clone();
+            let outboxes = outboxes.clone();
+            let barrier = Arc::clone(&barrier);
+            thread::spawn(move || {
+                barrier.wait();
+                let peer_id = authority.allocate().expect("allocate outbound peer");
+                outboxes
+                    .register_peer(peer_id)
+                    .expect("register outbound peer");
+                peer_id
+            })
+        };
 
         // Act
-        outboxes.unregister_peer(41).expect("unregister first peer");
+        barrier.wait();
+        let inbound_peer_id = inbound_thread.join().expect("join inbound allocation");
+        let outbound_peer_id = outbound_thread.join().expect("join outbound allocation");
+        let duplicate_error = match outboxes.register_peer(outbound_peer_id) {
+            Ok(_notification) => panic!("duplicate live peer registration must fail"),
+            Err(error) => error,
+        };
+        outboxes
+            .unregister_peer(inbound_peer_id)
+            .expect("unregister inbound peer");
         let snapshots = outboxes.snapshots().expect("outbox snapshots");
 
         // Assert
+        assert_ne!(inbound_peer_id, outbound_peer_id);
+        assert!(matches!(
+            duplicate_error,
+            SyncRuntimeError::Network { message }
+                if message.contains("already registered")
+        ));
         assert_eq!(snapshots.len(), 1);
-        assert_eq!(snapshots[0].peer_id(), 42);
+        assert_eq!(snapshots[0].peer_id(), outbound_peer_id);
         assert_eq!(snapshots[0].queued_messages(), 0);
     }
 }

@@ -9,10 +9,18 @@ pub(super) mod recovery;
 mod summary;
 pub use error::SyncRuntimeError;
 
-use std::{fmt, net::SocketAddr, path::PathBuf};
+use std::{
+    fmt,
+    net::SocketAddr,
+    path::PathBuf,
+    sync::{
+        Arc,
+        atomic::{AtomicU64, Ordering},
+    },
+};
 
 use open_bitcoin_core::{consensus::ConsensusParams, primitives::NetworkMagic};
-use open_bitcoin_network::WireNetworkMessage;
+use open_bitcoin_network::{PeerId, WireNetworkMessage};
 
 use crate::{
     PersistMode,
@@ -29,6 +37,37 @@ const DEFAULT_RETRY_BACKOFF_MS: u64 = 1_000;
 const DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER: usize = 16;
 const DEFAULT_MAX_BLOCKS_IN_FLIGHT_TOTAL: usize = 64;
 const DEFAULT_TIP_FRESHNESS_THRESHOLD_SECONDS: u64 = 1_200;
+
+/// Allocates collision-free peer identities across all process network directions.
+#[derive(Clone, Debug)]
+pub struct PeerIdentityAuthority {
+    next_peer_id: Arc<AtomicU64>,
+}
+
+impl Default for PeerIdentityAuthority {
+    fn default() -> Self {
+        Self {
+            next_peer_id: Arc::new(AtomicU64::new(1)),
+        }
+    }
+}
+
+impl PeerIdentityAuthority {
+    /// Allocates the next nonzero peer identity, failing once the identifier space is exhausted.
+    pub fn allocate(&self) -> Result<PeerId, SyncRuntimeError> {
+        self.next_peer_id
+            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |peer_id| {
+                if peer_id == 0 {
+                    return None;
+                }
+                Some(peer_id.checked_add(1).unwrap_or(0))
+            })
+            .map_err(|_peer_id| SyncRuntimeError::Network {
+                message: "process peer identity space is exhausted".to_string(),
+            })
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SyncNetwork {
     Mainnet,

@@ -33,8 +33,8 @@ use open_bitcoin_node::core::{
 };
 use open_bitcoin_node::status::{FieldAvailability, InboundPeerServingStatus};
 use open_bitcoin_node::{
-    DurableSyncRuntime, FjallNodeStore, ManagedNetworkHandle, PersistMode, StorageError,
-    StorageNamespace, StorageRecoveryAction, SyncNetwork, SyncRuntimeConfig,
+    DurableSyncRuntime, FjallNodeStore, ManagedNetworkHandle, PeerIdentityAuthority, PersistMode,
+    StorageError, StorageNamespace, StorageRecoveryAction, SyncNetwork, SyncRuntimeConfig,
     sync::AnnouncementOutboxRegistry,
 };
 use open_bitcoin_test_harness::PortReservation;
@@ -688,6 +688,7 @@ async fn running_loopback_listener_with_announcements() -> (
     let worker = start_inbound_accept_loop_with_announcements(
         activation,
         Arc::clone(&context),
+        PeerIdentityAuthority::default(),
         outboxes.clone(),
         network.clone(),
     )

@@ -69,10 +69,10 @@ pub use storage::{
 };
 pub use sync::{
     DurableSyncRuntime, PeerCapabilitySummary, PeerContribution, PeerFailureReason,
-    PeerSyncOutcome, PeerSyncState, ResolvedSyncPeerAddress, SyncNetwork, SyncPeerAddress,
-    SyncPeerReceiveOutcome, SyncPeerResolver, SyncPeerSession, SyncPeerSource, SyncRunSummary,
-    SyncRuntimeConfig, SyncRuntimeError, SyncStopReason, SyncTransport, SystemSyncPeerResolver,
-    TcpPeerTransport, WalletRescanRuntime,
+    PeerIdentityAuthority, PeerSyncOutcome, PeerSyncState, ResolvedSyncPeerAddress, SyncNetwork,
+    SyncPeerAddress, SyncPeerReceiveOutcome, SyncPeerResolver, SyncPeerSession, SyncPeerSource,
+    SyncRunSummary, SyncRuntimeConfig, SyncRuntimeError, SyncStopReason, SyncTransport,
+    SystemSyncPeerResolver, TcpPeerTransport, WalletRescanRuntime,
 };
 pub use wallet::{ManagedWallet, MemoryWalletStore, WalletStore};
 pub use wallet_registry::{

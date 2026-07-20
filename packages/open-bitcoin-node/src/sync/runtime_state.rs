@@ -273,10 +273,8 @@ impl DurableSyncRuntime {
         Ok(maybe_downloaded_block)
     }
 
-    pub(super) fn allocate_peer_id(&mut self) -> PeerId {
-        let peer_id = self.next_peer_id;
-        self.next_peer_id = self.next_peer_id.saturating_add(1);
-        peer_id
+    pub(super) fn allocate_peer_id(&self) -> Result<PeerId, SyncRuntimeError> {
+        self.peer_identity_authority.allocate()
     }
 
     pub(super) fn resolve_candidates<R: SyncPeerResolver>(

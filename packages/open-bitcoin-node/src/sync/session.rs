@@ -112,6 +112,11 @@ impl AnnouncementOutboxRegistry {
         peer_id: PeerId,
     ) -> Result<AnnouncementOutboxNotification, SyncRuntimeError> {
         let mut outboxes = self.lock_outboxes()?;
+        if outboxes.contains_key(&peer_id) {
+            return Err(SyncRuntimeError::Network {
+                message: format!("announcement outbox peer {peer_id} is already registered"),
+            });
+        }
         let outbox = outboxes.entry(peer_id).or_default();
         Ok(AnnouncementOutboxNotification {
             observed_generation: outbox.readiness.generation.load(Ordering::Acquire),
@@ -236,9 +241,13 @@ impl DurableSyncRuntime {
     ) -> Result<PeerProgress, Box<PeerFailure>> {
         let mut progress = PeerProgress::new(peer.clone(), self.config.network, attempts);
         let mut maybe_failure_reason_override = None;
+        let mut outbox_registered = false;
+        let mut network_connected = false;
         let result = (|| -> Result<(), SyncRuntimeError> {
             self.announcement_outboxes.register_peer(peer_id)?;
+            outbox_registered = true;
             let mut outbound = self.network.connect_outbound_peer(peer_id, timestamp)?;
+            network_connected = true;
             outbound.extend(block_reconcile::request_missing_blocks(self, peer_id)?);
             self.send_all_for_peer(&mut session, peer_id, &outbound)?;
 
@@ -418,15 +427,26 @@ impl DurableSyncRuntime {
 
             Ok(())
         })();
-        let outstanding_blocks = self
-            .network
-            .peer_requested_blocks(peer_id)
-            .unwrap_or_default();
+        let outstanding_blocks = if network_connected {
+            self.network
+                .peer_requested_blocks(peer_id)
+                .unwrap_or_default()
+        } else {
+            Vec::new()
+        };
         for block_hash in outstanding_blocks {
             self.inflight_blocks.remove(&block_hash);
         }
-        let outbox_cleanup_result = self.announcement_outboxes.unregister_peer(peer_id);
-        let disconnect_result = self.network.disconnect_peer(peer_id);
+        let outbox_cleanup_result = if outbox_registered {
+            self.announcement_outboxes.unregister_peer(peer_id)
+        } else {
+            Ok(())
+        };
+        let disconnect_result = if network_connected {
+            self.network.disconnect_peer(peer_id)
+        } else {
+            Ok(())
+        };
         let disconnect_result = disconnect_result.map_err(SyncRuntimeError::from);
         match (result, outbox_cleanup_result, disconnect_result) {
             (Ok(()), Ok(()), Ok(())) => Ok(progress),

@@ -1627,6 +1627,48 @@ fn disconnect_clears_runtime_and_peer_block_inflight() {
 }
 
 #[test]
+fn duplicate_outbox_registration_does_not_disconnect_an_existing_peer() {
+    // Arrange
+    let path = temp_store_path("duplicate-outbox-registration-cleanup");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("store");
+    let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    let peer_id = 128_402;
+    connect_runtime_peer(&mut runtime, peer_id, 0);
+    runtime
+        .announcement_outboxes
+        .register_peer(peer_id)
+        .expect("register existing peer outbox");
+    let session = ScriptedSession {
+        inbound: VecDeque::new(),
+        sent: Rc::new(RefCell::new(Vec::new())),
+    };
+    let peer = resolved_manual_peer("127.0.0.1", 18_444);
+    let mut clock = || 1_777_225_211;
+
+    // Act
+    let failure = runtime
+        .sync_connected_peer(session, &peer, peer_id, 1, 1_777_225_210, &mut clock)
+        .expect_err("duplicate outbox ownership should reject the session");
+    let snapshots = runtime
+        .announcement_outboxes
+        .snapshots()
+        .expect("outbox snapshots");
+
+    // Assert
+    assert!(matches!(
+        failure.error,
+        SyncRuntimeError::Network { ref message }
+            if message.contains("already registered")
+    ));
+    assert!(runtime.network.peer_requested_blocks(peer_id).is_ok());
+    assert_eq!(snapshots.len(), 1);
+    assert_eq!(snapshots[0].peer_id(), peer_id);
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
 fn phase110_block_serving_cleanup_disconnect_releases_peer_and_runtime_inflight() {
     // Arrange
     let path = temp_store_path("phase110-block-serving-cleanup-disconnect");

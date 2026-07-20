@@ -33,16 +33,16 @@ use open_bitcoin_core::{
     primitives::{Block, BlockHash},
 };
 use open_bitcoin_mempool::PolicyConfig;
-use open_bitcoin_network::{BlockRelayActivationPolicy, PeerId, RelayActivationConfig};
+use open_bitcoin_network::{BlockRelayActivationPolicy, RelayActivationConfig};
 
 pub use resolver::{SyncPeerResolver, SystemSyncPeerResolver};
 pub use session::{AnnouncementOutboxNotification, AnnouncementOutboxRegistry};
 pub use tcp::{TcpPeerSession, TcpPeerTransport};
 pub use types::{
-    PeerCapabilitySummary, PeerContribution, PeerFailureReason, PeerSyncOutcome, PeerSyncState,
-    ResolvedSyncPeerAddress, SyncNetwork, SyncPeerAddress, SyncPeerReceiveOutcome, SyncPeerSession,
-    SyncPeerSource, SyncRunSummary, SyncRuntimeConfig, SyncRuntimeError, SyncStopReason,
-    SyncTransport,
+    PeerCapabilitySummary, PeerContribution, PeerFailureReason, PeerIdentityAuthority,
+    PeerSyncOutcome, PeerSyncState, ResolvedSyncPeerAddress, SyncNetwork, SyncPeerAddress,
+    SyncPeerReceiveOutcome, SyncPeerSession, SyncPeerSource, SyncRunSummary, SyncRuntimeConfig,
+    SyncRuntimeError, SyncStopReason, SyncTransport,
 };
 pub use wallet_rescan::WalletRescanRuntime;
 
@@ -85,7 +85,7 @@ pub struct DurableSyncRuntime {
     config: SyncRuntimeConfig,
     verify_flags: ScriptVerifyFlags,
     consensus_params: ConsensusParams,
-    next_peer_id: PeerId,
+    peer_identity_authority: PeerIdentityAuthority,
     peer_backoff: BTreeMap<String, PeerRetryState>,
     inflight_blocks: BTreeSet<BlockHash>,
     maybe_reconcile_progress: Option<SyncReconcileProgress>,
@@ -163,7 +163,7 @@ impl DurableSyncRuntime {
             config,
             verify_flags: ScriptVerifyFlags::P2SH,
             consensus_params,
-            next_peer_id: 1,
+            peer_identity_authority: PeerIdentityAuthority::default(),
             peer_backoff: BTreeMap::new(),
             inflight_blocks: BTreeSet::new(),
             maybe_reconcile_progress: None,
@@ -189,6 +189,11 @@ impl DurableSyncRuntime {
     /// Returns the process-wide bounded announcement outboxes shared by live sessions.
     pub fn announcement_outboxes(&self) -> AnnouncementOutboxRegistry {
         self.announcement_outboxes.clone()
+    }
+
+    /// Returns the process-wide identity authority shared by inbound and outbound sessions.
+    pub fn peer_identity_authority(&self) -> PeerIdentityAuthority {
+        self.peer_identity_authority.clone()
     }
 
     /// Installs the production sink that routes post-durable tip events to peer outboxes.
@@ -336,7 +341,7 @@ impl DurableSyncRuntime {
                 continue;
             }
             summary.attempted_peers += 1;
-            let peer_id = self.allocate_peer_id();
+            let peer_id = self.allocate_peer_id()?;
             let outcome = self.sync_peer_with_retries(
                 transport,
                 &peer,

@@ -8,7 +8,7 @@ use std::{
     io,
     sync::{
         Arc, Mutex,
-        atomic::{AtomicBool, AtomicU64, Ordering},
+        atomic::{AtomicBool, Ordering},
     },
 };
 
@@ -17,7 +17,9 @@ use open_bitcoin_network::{
     InboundListenerEndpoint, InboundPreflightDiagnostic, InboundPreflightReason,
     InboundResourceEvent, ResourceGovernancePolicy, WireNetworkMessage, classify_inbound_preflight,
 };
-use open_bitcoin_node::{ManagedNetworkHandle, sync::AnnouncementOutboxRegistry};
+use open_bitcoin_node::{
+    ManagedNetworkHandle, PeerIdentityAuthority, sync::AnnouncementOutboxRegistry,
+};
 use tokio::{net::TcpListener, task::JoinHandle};
 
 use crate::ManagedRpcContext;
@@ -275,7 +277,7 @@ struct InboundAcceptLoopShared {
     initial_evidence: InboundListenerEvidence,
     shutdown_requested: Arc<AtomicBool>,
     shutdown_notify: Arc<tokio::sync::Notify>,
-    next_peer_id: Arc<AtomicU64>,
+    peer_identity_authority: PeerIdentityAuthority,
     runtime_counters: Arc<Mutex<InboundRuntimeCounters>>,
     connection_handles: Arc<tokio::sync::Mutex<Vec<JoinHandle<()>>>>,
     maybe_announcement_transport: Option<InboundAnnouncementTransport>,
@@ -335,18 +337,20 @@ pub fn start_inbound_accept_loop(
     activation: InboundListenerActivation,
     context: Arc<tokio::sync::Mutex<ManagedRpcContext>>,
 ) -> Option<InboundListenerWorker> {
-    start_inbound_accept_loop_inner(activation, context, None)
+    start_inbound_accept_loop_inner(activation, context, PeerIdentityAuthority::default(), None)
 }
 
 pub fn start_inbound_accept_loop_with_announcements(
     activation: InboundListenerActivation,
     context: Arc<tokio::sync::Mutex<ManagedRpcContext>>,
+    peer_identity_authority: PeerIdentityAuthority,
     outboxes: AnnouncementOutboxRegistry,
     network: ManagedNetworkHandle,
 ) -> Option<InboundListenerWorker> {
     start_inbound_accept_loop_inner(
         activation,
         context,
+        peer_identity_authority,
         Some(InboundAnnouncementTransport { outboxes, network }),
     )
 }
@@ -354,6 +358,7 @@ pub fn start_inbound_accept_loop_with_announcements(
 fn start_inbound_accept_loop_inner(
     activation: InboundListenerActivation,
     context: Arc<tokio::sync::Mutex<ManagedRpcContext>>,
+    peer_identity_authority: PeerIdentityAuthority,
     maybe_announcement_transport: Option<InboundAnnouncementTransport>,
 ) -> Option<InboundListenerWorker> {
     if activation.state != InboundListenerState::Listening {
@@ -364,7 +369,6 @@ fn start_inbound_accept_loop_inner(
     let shutdown_requested = Arc::new(AtomicBool::new(false));
     let shutdown_notify = Arc::new(tokio::sync::Notify::new());
     let connection_handles = Arc::new(tokio::sync::Mutex::new(Vec::new()));
-    let next_peer_id = Arc::new(AtomicU64::new(1));
     let runtime_counters = Arc::new(Mutex::new(InboundRuntimeCounters::new(current_timestamp())));
     let shared = InboundAcceptLoopShared {
         context: Arc::clone(&context),
@@ -372,7 +376,7 @@ fn start_inbound_accept_loop_inner(
         initial_evidence: activation.evidence.clone(),
         shutdown_requested: Arc::clone(&shutdown_requested),
         shutdown_notify: Arc::clone(&shutdown_notify),
-        next_peer_id: Arc::clone(&next_peer_id),
+        peer_identity_authority,
         runtime_counters: Arc::clone(&runtime_counters),
         connection_handles: Arc::clone(&connection_handles),
         maybe_announcement_transport,
@@ -479,7 +483,11 @@ async fn accept_loop(bound_listener: BoundInboundListener, shared: InboundAccept
             continue;
         }
 
-        let peer_id = shared.next_peer_id.fetch_add(1, Ordering::Relaxed);
+        let Ok(peer_id) = shared.peer_identity_authority.allocate() else {
+            lock_runtime_counters(&shared.runtime_counters)
+                .record_failure(&resource_policy, now_unix_seconds);
+            continue;
+        };
         let connection_control = InboundConnectionControl {
             shutdown_requested: Arc::clone(&shared.shutdown_requested),
             shutdown_notify: Arc::clone(&shared.shutdown_notify),
