@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
 status: executing
-stopped_at: Phase 129 context gathered
-last_updated: "2026-07-20T20:56:00.329Z"
-last_activity: 2026-07-20 -- Phase 129 planning complete
+stopped_at: Completed 129-01-PLAN.md
+last_updated: "2026-07-20T21:42:51.159Z"
+last_activity: 2026-07-20
 progress:
   total_phases: 20
   completed_phases: 19
   total_plans: 70
-  completed_plans: 68
-  percent: 97
+  completed_plans: 69
+  percent: 99
 ---
 
 # Project State
@@ -21,15 +21,15 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-07-20 after Phase 127 authoritative-state verification).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Plan Phase 129 integration guardrails and milestone reconciliation
+**Current focus:** Phase 129 — Integration Guardrails and Milestone Reconciliation
 
 ## Current Position
 
 Milestone: v2.1 Block Serving and Compact Block Relay Boundary
-Phase: 129
-Plan: Not started
+Phase: 129 (Integration Guardrails and Milestone Reconciliation) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-07-20 -- Phase 129 planning complete
+Last activity: 2026-07-20
 
 v2.0 Transaction Relay and Mempool Participation Boundary shipped on 2026-07-03. The archived audit reports 32/32 requirements, 10/10 phases, 8/8 integration checks, 8/8 cross-phase flows, and no tracked tech debt.
 
@@ -116,6 +116,7 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 - [Phase 128]: Preserve default-off and deferred public/production claims while recording production composition evidence.
 - [Phase 128]: Model Phase 128 Plan 04 execution and completed routing to Phase 129 as distinct fail-closed lifecycle states.
 - [Phase 128]: Extract focused RPC connection and runtime-control modules to preserve the 628-line production source limit.
+- [Phase 129]: Compose the Phase 127/128 checker exports inside the Phase 129 aggregate guard and keep the guard stage-independent of volatile planning artifacts.
 
 ## Pending Todos
 
@@ -140,9 +141,10 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 | 260719-bbh | Accept the approved v2.1 post-audit gap-planning state in closeout verification | 2026-07-19 | `e02bae71` | [260719-bbh](./quick/260719-bbh-teach-the-phase-124-closeout-checker-to-/) |
 | Phase 128 P03 | 51m | 3 tasks | 9 files |
 | Phase 128 P04 | 57min | 3 tasks | 25 files |
+| Phase 129 P01 | 27m | 3 tasks | 5 files |
 
 ## Session Continuity
 
-Last session: 2026-07-20T19:39:27.987Z
-Stopped at: Phase 129 context gathered
-Resume file: .planning/phases/129-integration-guardrails-and-milestone-reconciliation/129-CONTEXT.md
+Last session: 2026-07-20T21:42:51.154Z
+Stopped at: Completed 129-01-PLAN.md
+Resume file: None
