@@ -1149,6 +1149,7 @@
       "breadcrumbs": [
         "packages/bitcoin-knots/src/net.cpp",
         "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/validationinterface.cpp",
         "packages/bitcoin-knots/test/functional/p2p_compactblocks.py"
       ]
     },

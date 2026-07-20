@@ -1499,14 +1499,50 @@ chain activation in `packages/bitcoin-knots/src/validation.cpp`; and durable
 `packages/bitcoin-knots/src/node/blockstorage.cpp`.
 
 This bounded Phase 127 claim changes authority provenance, not the frozen RPC,
-CLI, dashboard, metrics/log, or support schemas. Production compact
-negotiation, announcement construction, transport emission, and post-write
-compact-announcement evidence remain Phase 128 work. Aggregate four-flow
-integration guards, requirement promotion, milestone audit reconciliation,
-and archive routing remain Phase 129 work. Phase 127 does not claim public
-serving defaults, archive-node availability, public-network CI, production
-service operation, production full-node readiness, or production-funds wallet
-use.
+CLI, dashboard, metrics/log, or support schemas. Phase 128 now closes the
+production compact negotiation, announcement construction, transport emission,
+and post-write compact-announcement evidence retained by this phase. Aggregate
+four-flow integration guards, requirement promotion, milestone audit
+reconciliation, and archive routing remain Phase 129 work. Phase 127 does not
+claim public serving defaults, archive-node availability, public-network CI,
+production service operation, production full-node readiness, or
+production-funds wallet use.
+
+## Phase 128 production compact announcement transport
+
+The `v2-1-compact-relay-negotiation-announcement-policy` and
+`v2-1-operator-block-relay-evidence` surfaces now cover the production
+integration for `CMP-04`, `CMP-05`, and `OBS-03`. The managed peer handshake
+queues Open Bitcoin's version-2 low-bandwidth `sendcmpct` offer only after
+Verack, while the remote peer's latest supported high- or low-bandwidth
+preference remains authoritative for announcement selection.
+
+`DurableSyncRuntime` invokes the announcement caller only after block bytes and
+metadata are durably persisted and final active-tip reconciliation has
+completed. That caller snapshots live per-peer header knowledge from the single
+network authority, builds bounded owned `PeerEmission` values, and hands each
+message plus destination peer, block hash, write kind, and consuming receipt to
+the transport shell. Both the outbound sync session and inbound listener
+complete the receipt only after their real socket write succeeds. A failed
+suffix is not credited, so the fixed metrics and structured logs report only
+the successfully written prefix and retain the existing aggregate redaction
+boundary.
+
+The exact Knots negotiation and fanout anchors are the post-Verack
+low-bandwidth `SENDCMPCT`, remote preference processing, `PeerHasHeader`, and
+`PushMessage` paths in `packages/bitcoin-knots/src/net_processing.cpp`.
+Validation-driven tip notification is anchored by `UpdatedBlockTip` and
+`NewPoWValidBlock` in
+`packages/bitcoin-knots/src/validationinterface.cpp`, and the concrete write
+boundary by `PushMessage` and `SocketSendData` in
+`packages/bitcoin-knots/src/net.cpp`.
+`packages/bitcoin-knots/test/functional/p2p_compactblocks.py` remains the
+behavioral negotiation and compact-announcement reference.
+
+This achieved behavior remains bounded and default-off. It does not add package
+relay, bloom/filter or compact-filter serving, public compact-relay or inbound
+defaults, public-network CI, archive-node guarantees, production service
+operation, production full-node readiness, or production-funds wallet use.
 
 ## Known gaps
 

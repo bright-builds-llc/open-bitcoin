@@ -2657,16 +2657,33 @@
           "docs/parity/catalog/p2p.md",
           "docs/parity/source-breadcrumbs.json",
           "packages/open-bitcoin-network/src/peer/compact_relay.rs",
+          "packages/open-bitcoin-network/src/peer/message_dispatch.rs",
           "packages/open-bitcoin-network/src/peer/compact_relay/tests.rs",
           "packages/open-bitcoin-network/src/peer/tests.rs",
           "packages/open-bitcoin-node/src/network.rs",
-          ".planning/phases/113-compact-relay-negotiation-and-announcement-policy/113-03-SUMMARY.md"
+          "packages/open-bitcoin-node/src/network/announcement_transport.rs",
+          "packages/open-bitcoin-node/src/network/runtime_authority.rs",
+          "packages/open-bitcoin-node/src/network/tests/announcement_transport_cases.rs",
+          "packages/open-bitcoin-node/src/sync.rs",
+          "packages/open-bitcoin-node/src/sync/block_response.rs",
+          "packages/open-bitcoin-node/src/sync/block_reconcile.rs",
+          "packages/open-bitcoin-node/src/sync/session.rs",
+          "packages/open-bitcoin-node/src/sync/tests/production_announcement_transport_cases.rs",
+          "packages/open-bitcoin-rpc/src/inbound_listener.rs",
+          "scripts/check-phase128-production-compact-announcement-transport.ts",
+          "scripts/check-phase128-production-compact-announcement-transport.test.ts",
+          ".planning/phases/113-compact-relay-negotiation-and-announcement-policy/113-03-SUMMARY.md",
+          ".planning/phases/128-production-compact-announcement-transport/128-01-SUMMARY.md",
+          ".planning/phases/128-production-compact-announcement-transport/128-02-SUMMARY.md",
+          ".planning/phases/128-production-compact-announcement-transport/128-03-SUMMARY.md"
         ],
-        "rationale": "Phase 113 records version-2 sendcmpct capability, high- and low-bandwidth preferences, and explicit announcement eligibility without allowing transaction relay, permissions, inbound protection, or block-serving state to activate compact announcements by implication. The Phase 126 runtime candidate acquires a fresh fallible nonce in the node shell only after compact selection and records compact provenance and achieved-effect evidence only after an actual cmpctblock emission.",
+        "rationale": "Phase 113 records version-2 sendcmpct capability, high- and low-bandwidth preferences, and explicit announcement eligibility without allowing transaction relay, permissions, inbound protection, or block-serving state to activate compact announcements by implication. Phase 128 sends the local version-2 low-bandwidth offer only after Verack, retains each remote peer's latest high- or low-bandwidth preference as authoritative, and invokes the compact announcement caller only after the block is durably persisted and the final active tip is known. The node shell constructs an owned, bounded PeerEmission from live per-peer header facts and a fresh fallible nonce; the outbound sync session and inbound listener consume its receipt only after the real wire write succeeds, so compact provenance and achieved-effect evidence cannot precede transport.",
         "upstream": {
           "sources": [
+            "packages/bitcoin-knots/src/net.cpp",
             "packages/bitcoin-knots/src/net_processing.cpp",
             "packages/bitcoin-knots/src/net_processing.h",
+            "packages/bitcoin-knots/src/validationinterface.cpp",
             "packages/bitcoin-knots/src/blockencodings.cpp",
             "packages/bitcoin-knots/src/blockencodings.h",
             "packages/bitcoin-knots/src/net.h"
@@ -2782,14 +2799,25 @@
           "docs/parity/source-breadcrumbs.json",
           "packages/open-bitcoin-node/src/status/block_relay_evidence.rs",
           "packages/open-bitcoin-node/src/network/block_relay_evidence.rs",
+          "packages/open-bitcoin-node/src/network/announcement_transport.rs",
+          "packages/open-bitcoin-node/src/network/runtime_authority.rs",
+          "packages/open-bitcoin-node/src/sync/session.rs",
+          "packages/open-bitcoin-node/src/sync/tests/production_announcement_transport_cases.rs",
+          "packages/open-bitcoin-rpc/src/inbound_listener.rs",
           "scripts/check-phase116-operator-block-relay-evidence.ts",
+          "scripts/check-phase128-production-compact-announcement-transport.ts",
+          "scripts/check-phase128-production-compact-announcement-transport.test.ts",
           ".planning/phases/116-operator-evidence-metrics-logs-and-support-boundary/116-SUMMARY.md",
-          ".planning/phases/116-operator-evidence-metrics-logs-and-support-boundary/116-VERIFICATION.md"
+          ".planning/phases/116-operator-evidence-metrics-logs-and-support-boundary/116-VERIFICATION.md",
+          ".planning/phases/128-production-compact-announcement-transport/128-02-SUMMARY.md",
+          ".planning/phases/128-production-compact-announcement-transport/128-03-SUMMARY.md"
         ],
-        "rationale": "Phase 116 projects one aggregate-only block_relay contract through RPC, CLI, dashboard, fixed metrics, structured logs, and redacted support bundles with explicit unavailable states and no peer, block, transaction, permission, or credential leakage.",
+        "rationale": "Phase 116 projects one aggregate-only block_relay contract through RPC, CLI, dashboard, fixed metrics, structured logs, and redacted support bundles with explicit unavailable states and no peer, block, transaction, permission, or credential leakage. Phase 128 binds each compact-block wire message, destination peer, block hash, and write kind into a non-cloneable receipt. The outbound sync session and inbound listener consume that receipt only after a successful real socket write; partial failures credit only the successfully written prefix, while the fixed metrics, structured logs, and support boundary remain aggregate and redacted.",
         "upstream": {
           "sources": [
+            "packages/bitcoin-knots/src/net.cpp",
             "packages/bitcoin-knots/src/net_processing.cpp",
+            "packages/bitcoin-knots/src/validationinterface.cpp",
             "packages/bitcoin-knots/src/blockencodings.cpp"
           ],
           "tests": [

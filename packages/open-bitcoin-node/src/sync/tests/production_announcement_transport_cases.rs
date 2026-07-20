@@ -1,6 +1,7 @@
 // Parity breadcrumbs:
 // - packages/bitcoin-knots/src/net.cpp
 // - packages/bitcoin-knots/src/net_processing.cpp
+// - packages/bitcoin-knots/src/validationinterface.cpp
 // - packages/bitcoin-knots/test/functional/p2p_compactblocks.py
 
 use open_bitcoin_codec::{BIP152_COMPACT_BLOCKS_VERSION, SendCompactMessage};
