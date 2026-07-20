@@ -49,7 +49,10 @@ use crate::address::{
 };
 
 use super::DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER;
-use super::compact_relay::{CompactAnnouncementAction, PeerCompactAnnouncementInput};
+use super::compact_relay::{
+    BIP152_MIN_PROTOCOL_VERSION, CompactAnnouncementAction, LocalCompactRelayOfferState,
+    PeerCompactAnnouncementInput, maybe_schedule_local_compact_offer,
+};
 
 fn local_config() -> LocalPeerConfig {
     LocalPeerConfig {
@@ -140,6 +143,118 @@ fn compact_limited_resource_gate() -> BlockServingResourceGateDecision {
         maybe_resource_event: None,
         maybe_cleanup: None,
     }
+}
+
+#[test]
+fn phase128_compact_relay_local_offer_defaults_to_not_offered() {
+    // Arrange / Act
+    let state = LocalCompactRelayOfferState::default();
+
+    // Assert
+    assert_eq!(state, LocalCompactRelayOfferState::NotOffered);
+}
+
+#[test]
+fn phase128_compact_relay_local_offer_schedules_exact_version2_low_bandwidth_message() {
+    // Arrange
+    let mut state = LocalCompactRelayOfferState::default();
+
+    // Act
+    let maybe_message = maybe_schedule_local_compact_offer(
+        &mut state,
+        compact_announcement_activation(true),
+        true,
+        Some(BIP152_MIN_PROTOCOL_VERSION),
+    );
+
+    // Assert
+    assert_eq!(
+        maybe_message,
+        Some(SendCompactMessage {
+            announce: false,
+            version: 2,
+        })
+    );
+    assert_eq!(state, LocalCompactRelayOfferState::Scheduled { version: 2 });
+}
+
+#[test]
+fn phase128_compact_relay_local_offer_is_one_shot() {
+    // Arrange
+    let mut state = LocalCompactRelayOfferState::default();
+    let first = maybe_schedule_local_compact_offer(
+        &mut state,
+        compact_announcement_activation(true),
+        true,
+        Some(BIP152_MIN_PROTOCOL_VERSION),
+    );
+
+    // Act
+    let second = maybe_schedule_local_compact_offer(
+        &mut state,
+        compact_announcement_activation(true),
+        true,
+        Some(BIP152_MIN_PROTOCOL_VERSION),
+    );
+
+    // Assert
+    assert!(first.is_some());
+    assert_eq!(second, None);
+    assert_eq!(state, LocalCompactRelayOfferState::Scheduled { version: 2 });
+}
+
+#[test]
+fn phase128_compact_relay_local_offer_fails_closed_when_activation_is_disabled() {
+    // Arrange
+    let mut state = LocalCompactRelayOfferState::default();
+
+    // Act
+    let maybe_message = maybe_schedule_local_compact_offer(
+        &mut state,
+        compact_announcement_activation(false),
+        true,
+        Some(BIP152_MIN_PROTOCOL_VERSION),
+    );
+
+    // Assert
+    assert_eq!(maybe_message, None);
+    assert_eq!(state, LocalCompactRelayOfferState::NotOffered);
+}
+
+#[test]
+fn phase128_compact_relay_local_offer_fails_closed_before_established_handshake() {
+    // Arrange
+    let mut state = LocalCompactRelayOfferState::default();
+
+    // Act
+    let maybe_message = maybe_schedule_local_compact_offer(
+        &mut state,
+        compact_announcement_activation(true),
+        false,
+        Some(BIP152_MIN_PROTOCOL_VERSION),
+    );
+
+    // Assert
+    assert_eq!(maybe_message, None);
+    assert_eq!(state, LocalCompactRelayOfferState::NotOffered);
+}
+
+#[test]
+fn phase128_compact_relay_local_offer_fails_closed_for_unsupported_protocol() {
+    // Arrange
+    let mut state = LocalCompactRelayOfferState::default();
+
+    // Act
+    let maybe_message = maybe_schedule_local_compact_offer(
+        &mut state,
+        compact_announcement_activation(true),
+        true,
+        Some(BIP152_MIN_PROTOCOL_VERSION - 1),
+    );
+
+    // Assert
+    assert_eq!(maybe_message, None);
+    assert_eq!(state, LocalCompactRelayOfferState::NotOffered);
 }
 
 fn process_high_bandwidth_sendcmpct(manager: &mut PeerManager, peer_id: PeerId) {

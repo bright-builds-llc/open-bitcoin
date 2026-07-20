@@ -15,6 +15,43 @@ use crate::block_serving::{
 };
 
 pub const MAX_COMPACT_ANNOUNCEMENT_PROVENANCE: usize = 11;
+pub const BIP152_MIN_PROTOCOL_VERSION: i32 = 70_014;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum LocalCompactRelayOfferState {
+    #[default]
+    NotOffered,
+    Scheduled {
+        version: u64,
+    },
+}
+
+pub fn maybe_schedule_local_compact_offer(
+    state: &mut LocalCompactRelayOfferState,
+    activation: BlockRelayActivationPolicy,
+    handshake_established: bool,
+    maybe_remote_protocol_version: Option<i32>,
+) -> Option<SendCompactMessage> {
+    if !activation.compact_relay.enabled || !handshake_established {
+        return None;
+    }
+
+    let remote_protocol_version = maybe_remote_protocol_version?;
+    if remote_protocol_version < BIP152_MIN_PROTOCOL_VERSION {
+        return None;
+    }
+    if *state != LocalCompactRelayOfferState::NotOffered {
+        return None;
+    }
+
+    *state = LocalCompactRelayOfferState::Scheduled {
+        version: BIP152_COMPACT_BLOCKS_VERSION,
+    };
+    Some(SendCompactMessage {
+        announce: false,
+        version: BIP152_COMPACT_BLOCKS_VERSION,
+    })
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct CompactAnnouncementProvenance {

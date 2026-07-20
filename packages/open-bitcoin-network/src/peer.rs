@@ -48,8 +48,8 @@ pub use compact_relay::{
     CompactAnnouncementEligibilityReason, CompactAnnouncementInput, CompactAnnouncementProvenance,
     CompactAnnouncementReason, CompactBlockTransactionsRequest, CompactRelayCapability,
     CompactRelayNegotiationOutcome, CompactRelayNegotiationReason, CompactRelayPeerState,
-    CompactRelayPreference, MAX_COMPACT_ANNOUNCEMENT_PROVENANCE, PeerCompactAnnouncementInput,
-    decide_compact_announcement,
+    CompactRelayPreference, LocalCompactRelayOfferState, MAX_COMPACT_ANNOUNCEMENT_PROVENANCE,
+    PeerCompactAnnouncementInput, decide_compact_announcement,
 };
 use policy_state::{eviction_candidate_input, peer_policy_label, peer_policy_protected};
 pub use relay_download::RelayDownloadPolicy;
@@ -104,6 +104,8 @@ pub struct PeerState {
     pub remote_user_agent: String,
     pub remote_wtxidrelay: bool,
     pub remote_prefers_headers: bool,
+    pub maybe_remote_protocol_version: Option<i32>,
+    pub local_compact_relay_offer: LocalCompactRelayOfferState,
     pub compact_relay: CompactRelayPeerState,
     pub compact_announcements: CompactAnnouncementProvenance,
     pub remote_version_received: bool,
@@ -128,6 +130,8 @@ impl PeerState {
             remote_user_agent: String::new(),
             remote_wtxidrelay: false,
             remote_prefers_headers: false,
+            maybe_remote_protocol_version: None,
+            local_compact_relay_offer: LocalCompactRelayOfferState::default(),
             compact_relay: CompactRelayPeerState::default(),
             compact_announcements: CompactAnnouncementProvenance::default(),
             remote_version_received: false,
@@ -149,6 +153,10 @@ impl PeerState {
         let mut state = Self::new(ConnectionRole::Inbound);
         state.maybe_inbound_record = Some(record);
         state
+    }
+
+    fn handshake_established(&self) -> bool {
+        self.remote_version_received && self.local_verack_sent && self.remote_verack_received
     }
 }
 
@@ -264,6 +272,21 @@ impl PeerManager {
 
     pub fn peer_state(&self, peer_id: PeerId) -> Option<&PeerState> {
         self.peers.get(&peer_id)
+    }
+
+    pub fn maybe_schedule_local_compact_offer(
+        &mut self,
+        peer_id: PeerId,
+    ) -> Result<Option<open_bitcoin_codec::SendCompactMessage>, NetworkError> {
+        let activation = self.block_relay_activation;
+        let peer = Self::peer_mut(&mut self.peers, peer_id)?;
+        let handshake_established = peer.handshake_established();
+        Ok(compact_relay::maybe_schedule_local_compact_offer(
+            &mut peer.local_compact_relay_offer,
+            activation,
+            handshake_established,
+            peer.maybe_remote_protocol_version,
+        ))
     }
 
     pub fn record_compact_block_announcement(
