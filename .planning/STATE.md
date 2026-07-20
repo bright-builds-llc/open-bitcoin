@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
 status: executing
-stopped_at: Completed 129-02-PLAN.md
-last_updated: "2026-07-20T22:21:34.978Z"
+stopped_at: Completed 129-03-PLAN.md
+last_updated: "2026-07-20T23:07:25.016Z"
 last_activity: 2026-07-20
 progress:
   total_phases: 20
   completed_phases: 19
   total_plans: 70
-  completed_plans: 70
+  completed_plans: 71
   percent: 100
 ---
 
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-07-20 after Phase 127 authoritative-st
 
 Milestone: v2.1 Block Serving and Compact Block Relay Boundary
 Phase: 129 (Integration Guardrails and Milestone Reconciliation) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-07-20
 
@@ -118,6 +118,8 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 - [Phase 128]: Extract focused RPC connection and runtime-control modules to preserve the 628-line production source limit.
 - [Phase 129]: Compose the Phase 127/128 checker exports inside the Phase 129 aggregate guard and keep the guard stage-independent of volatile planning artifacts.
 - [Phase 129]: D-06 resolved on the fix path: fallback compact_timeout_count counts only real Timeout cleanups; live in-flight getblocktxn facts project solely through the in-flight facet.
+- [Phase 129]: Model gaps-open, verified pre-promotion, and reconciled archive-ready as the only legal Phase 129 states with evidence-claimed fail-closed mixture rejection.
+- [Phase 129]: Pin HARD-05, OBS-01, and BOUND-02 archive-ready ownership to Phase 129 and keep the legacy Phase 124 final-audit path unreachable via the Phase 125/126 roadmap headings.
 
 ## Pending Todos
 
@@ -144,9 +146,10 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 | Phase 128 P04 | 57min | 3 tasks | 25 files |
 | Phase 129 P01 | 27m | 3 tasks | 5 files |
 | Phase 129 P02 | 28m | 2 tasks | 5 files |
+| Phase 129 P03 | 30m | 2 tasks | 6 files |
 
 ## Session Continuity
 
-Last session: 2026-07-20T22:21:34.973Z
-Stopped at: Completed 129-02-PLAN.md
+Last session: 2026-07-20T23:07:25.013Z
+Stopped at: Completed 129-03-PLAN.md
 Resume file: None
