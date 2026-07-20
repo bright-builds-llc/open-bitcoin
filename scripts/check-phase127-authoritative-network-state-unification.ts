@@ -1,7 +1,16 @@
 #!/usr/bin/env bun
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
+
+import {
+  normalizeRust,
+  rustCallArguments,
+  rustFieldInitializers,
+  rustFunction,
+  rustLetInitializers,
+  stripRustNonCode,
+} from "./rust-source-invariants";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
 const PHASE127_TEST =
@@ -15,6 +24,8 @@ const PHASE117_TEST =
 
 const TARGET_FILES = [
   "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
+  "packages/open-bitcoin-rpc/src/bin/open_bitcoind/inbound_metrics.rs",
+  "packages/open-bitcoin-rpc/src/bin/open_bitcoind/sync_seed.rs",
   "packages/open-bitcoin-rpc/src/context.rs",
   "packages/open-bitcoin-rpc/src/context/network.rs",
   "packages/open-bitcoin-rpc/src/context/inbound_status.rs",
@@ -28,6 +39,7 @@ const TARGET_FILES = [
   "docs/parity/catalog/p2p.md",
   "docs/parity/index.json",
   "scripts/check-phase127-authoritative-network-state-unification.ts",
+  "scripts/rust-source-invariants.ts",
   "scripts/verify.sh",
 ] as const;
 
@@ -44,7 +56,7 @@ export function checkPhase127AuthoritativeNetworkStateUnification(
   );
   const failures: string[] = [];
   const texts = loadCorpus(repoRoot, failures);
-  checkProductionAuthority(texts, failures);
+  checkProductionAuthority(repoRoot, texts, failures);
   checkDurableServing(texts, failures);
   checkOperatorProjection(texts, failures);
   checkIntegrationAndParity(texts, failures);
@@ -66,25 +78,51 @@ function loadCorpus(repoRoot: string, failures: string[]): TextCorpus {
   return texts;
 }
 
-function checkProductionAuthority(texts: TextCorpus, failures: string[]): void {
+function checkProductionAuthority(
+  repoRoot: string,
+  texts: TextCorpus,
+  failures: string[],
+): void {
   const daemon =
     texts.get("packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs") ?? "";
   const main = rustFunction(
     daemon,
     "async fn main() -> Result<(), Box<dyn std::error::Error>>",
   );
+  const authoritativeRuntimeInitializers = rustLetInitializers(
+    main,
+    "authoritative_runtime",
+  );
+  const contextConstructorCalls = rustCallArguments(
+    main,
+    "ManagedRpcContext::from_runtime_config_with_network_handle",
+  );
+  const authorityFactory = rustFunction(
+    daemon,
+    "fn open_authoritative_network_runtime(",
+  );
+  const daemonCodeWithoutAuthorityFactory = stripRustNonCode(daemon).replace(
+    authorityFactory,
+    "",
+  );
+  const productionDaemonCode = [
+    daemonCodeWithoutAuthorityFactory,
+    ...productionDaemonHelperSources(repoRoot).map(stripRustNonCode),
+  ].join("\n");
   if (
-    countOccurrences(
-      main,
-      "open_authoritative_network_runtime(&runtime, maybe_runtime_store.clone())?",
-    ) !== 1 ||
-    !main.includes(
-      "ManagedRpcContext::from_runtime_config_with_network_handle(",
-    ) ||
-    !main.includes("authoritative_runtime.network.clone(),") ||
-    main.includes("ManagedNetworkHandle::transient_runtime(") ||
-    main.includes("ManagedNetworkHandle::from_network_fixture(") ||
-    main.includes("ManagedPeerNetwork::")
+    authoritativeRuntimeInitializers.length !== 1 ||
+    normalizeRust(authoritativeRuntimeInitializers[0] ?? "") !==
+      "open_authoritative_network_runtime(&runtime,maybe_runtime_store.clone())?" ||
+    countOccurrences(main, "open_authoritative_network_runtime(") !== 1 ||
+    contextConstructorCalls.length !== 1 ||
+    contextConstructorCalls[0]?.length !== 3 ||
+    normalizeRust(contextConstructorCalls[0]?.[1] ?? "") !==
+      "authoritative_runtime.network.clone()" ||
+    [
+      "ManagedNetworkHandle::transient_runtime(",
+      "ManagedNetworkHandle::from_network_fixture(",
+      "ManagedPeerNetwork::",
+    ].some((forbidden) => productionDaemonCode.includes(forbidden))
   ) {
     failures.push(
       "P127 production authority: daemon must compose sync, inbound, and RPC from one authoritative runtime",
@@ -125,11 +163,14 @@ function checkDurableServing(texts: TextCorpus, failures: string[]): void {
     texts.get("packages/open-bitcoin-node/src/storage/fjall_store.rs") ?? "";
   const storeLoad = rustFunction(store, "pub fn load_block(");
   const resolve = rustFunction(context, "fn resolve_block_intent(");
+  const maybeBlockInitializers = rustLetInitializers(resolve, "maybe_block");
   if (
     !contextCode.includes("trait DurableBlockSource: Send + Sync") ||
     !contextCode.includes("impl DurableBlockSource for FjallNodeStore") ||
     !contextCode.includes("FjallNodeStore::load_block(self, block_hash)") ||
-    !resolve.includes("source.load_block(intent.block_hash())") ||
+    maybeBlockInitializers.length !== 1 ||
+    normalizeRust(maybeBlockInitializers[0] ?? "") !==
+      "self.maybe_block_source.as_ref().map(|source|source.load_block(intent.block_hash()))" ||
     [
       "lookup_block(",
       "blocks_by_hash",
@@ -182,23 +223,53 @@ function checkOperatorProjection(texts: TextCorpus, failures: string[]): void {
     !authoritySnapshot.includes(
       "self.read(ManagedPeerNetwork::operator_snapshot)",
     ) ||
-    !inboundProjection.includes(
-      "let network = self.network.operator_snapshot()?;",
+    !hasSingleRustLetInitializer(
+      inboundProjection,
+      "network",
+      "self.network.operator_snapshot()?",
     ) ||
-    !inboundProjection.includes(
-      "let inbound = self.inbound_status_from_snapshot(&network);",
+    !hasSingleRustLetInitializer(
+      inboundProjection,
+      "inbound",
+      "self.inbound_status_from_snapshot(&network)",
     ) ||
     !inboundProjection.includes(
       "Ok(AuthoritativeOperatorSnapshot { network, inbound })",
     ) ||
-    !networkInfoProjection.includes(".authoritative_operator_snapshot()") ||
-    !networkInfoProjection.includes("let network_info = snapshot.network();") ||
-    !networkInfoProjection.includes("let mempool_info = snapshot.mempool();") ||
-    !networkStatusProjection.includes(".authoritative_operator_snapshot()") ||
-    !networkStatusProjection.includes("inbound: snapshot.inbound().clone()") ||
-    !networkStatusProjection.includes("relay: snapshot.relay().clone()") ||
-    !networkStatusProjection.includes(
-      "block_relay: snapshot.block_relay().clone()",
+    !hasSingleRustLetInitializer(
+      networkInfoProjection,
+      "snapshot",
+      "context.authoritative_operator_snapshot().map_err(network_authority_error_to_failure)?",
+    ) ||
+    !hasSingleRustLetInitializer(
+      networkInfoProjection,
+      "network_info",
+      "snapshot.network()",
+    ) ||
+    !hasSingleRustLetInitializer(
+      networkInfoProjection,
+      "mempool_info",
+      "snapshot.mempool()",
+    ) ||
+    !hasSingleRustLetInitializer(
+      networkStatusProjection,
+      "snapshot",
+      "context.authoritative_operator_snapshot().map_err(network_authority_error_to_failure)?",
+    ) ||
+    !hasSingleRustFieldInitializer(
+      networkStatusProjection,
+      "inbound",
+      "snapshot.inbound().clone()",
+    ) ||
+    !hasSingleRustFieldInitializer(
+      networkStatusProjection,
+      "relay",
+      "snapshot.relay().clone()",
+    ) ||
+    !hasSingleRustFieldInitializer(
+      networkStatusProjection,
+      "block_relay",
+      "snapshot.block_relay().clone()",
     )
   ) {
     failures.push(
@@ -346,149 +417,52 @@ function checkVerifier(texts: TextCorpus, failures: string[]): void {
   }
 }
 
-function rustFunction(text: string, signatureNeedle: string): string {
-  const code = stripRustNonCode(text);
-  const start = code.indexOf(signatureNeedle);
-  if (start === -1) return "";
-  const bodyStart = code.indexOf("{", start + signatureNeedle.length);
-  if (bodyStart === -1) return "";
-  let depth = 0;
-  for (let cursor = bodyStart; cursor < code.length; cursor += 1) {
-    if (code[cursor] === "{") depth += 1;
-    if (code[cursor] !== "}") continue;
-    depth -= 1;
-    if (depth === 0) return code.slice(start, cursor + 1);
+function productionDaemonHelperSources(repoRoot: string): string[] {
+  const helperRoot = path.join(
+    repoRoot,
+    "packages/open-bitcoin-rpc/src/bin/open_bitcoind",
+  );
+  if (!existsSync(helperRoot)) return [];
+  return rustSourcePaths(helperRoot)
+    .filter((sourcePath) => path.basename(sourcePath) !== "tests.rs")
+    .map((sourcePath) => readFileSync(sourcePath, "utf8"));
+}
+
+function rustSourcePaths(directory: string): string[] {
+  const paths: string[] = [];
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const entryPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      paths.push(...rustSourcePaths(entryPath));
+      continue;
+    }
+    if (entry.isFile() && entry.name.endsWith(".rs")) paths.push(entryPath);
   }
-  return "";
+  return paths;
 }
 
-function stripRustNonCode(text: string): string {
-  const stripped = text.split("");
-  let cursor = 0;
-  while (cursor < text.length) {
-    if (text.startsWith("//", cursor)) {
-      cursor = blankThrough(text, stripped, cursor, "\n");
-      continue;
-    }
-    if (text.startsWith("/*", cursor)) {
-      cursor = blankNestedBlockComment(text, stripped, cursor);
-      continue;
-    }
-    const maybeRawStringEnd = rawStringEnd(text, cursor);
-    if (maybeRawStringEnd !== null) {
-      blankRange(text, stripped, cursor, maybeRawStringEnd);
-      cursor = maybeRawStringEnd;
-      continue;
-    }
-    if (
-      text[cursor] === '"' ||
-      (text[cursor] === "b" && text[cursor + 1] === '"')
-    ) {
-      const quote = text[cursor] === '"' ? cursor : cursor + 1;
-      const end = quotedLiteralEnd(text, quote, '"');
-      blankRange(text, stripped, cursor, end);
-      cursor = end;
-      continue;
-    }
-    if (text[cursor] === "'" && looksLikeCharLiteral(text, cursor)) {
-      const end = quotedLiteralEnd(text, cursor, "'");
-      blankRange(text, stripped, cursor, end);
-      cursor = end;
-      continue;
-    }
-    cursor += 1;
-  }
-  return stripped.join("");
+function hasSingleRustLetInitializer(
+  functionText: string,
+  binding: string,
+  expected: string,
+): boolean {
+  const initializers = rustLetInitializers(functionText, binding);
+  return (
+    initializers.length === 1 &&
+    normalizeRust(initializers[0] ?? "") === normalizeRust(expected)
+  );
 }
 
-function blankThrough(
-  text: string,
-  stripped: string[],
-  start: number,
-  terminator: string,
-): number {
-  const maybeEnd = text.indexOf(terminator, start);
-  const end = maybeEnd === -1 ? text.length : maybeEnd;
-  blankRange(text, stripped, start, end);
-  return end;
-}
-
-function blankNestedBlockComment(
-  text: string,
-  stripped: string[],
-  start: number,
-): number {
-  let cursor = start;
-  let depth = 0;
-  while (cursor < text.length) {
-    if (text.startsWith("/*", cursor)) {
-      depth += 1;
-      cursor += 2;
-      continue;
-    }
-    if (text.startsWith("*/", cursor)) {
-      depth -= 1;
-      cursor += 2;
-      if (depth === 0) {
-        blankRange(text, stripped, start, cursor);
-        return cursor;
-      }
-      continue;
-    }
-    cursor += 1;
-  }
-  blankRange(text, stripped, start, text.length);
-  return text.length;
-}
-
-function rawStringEnd(text: string, start: number): number | null {
-  let cursor = start;
-  if (text[cursor] === "b") cursor += 1;
-  if (text[cursor] !== "r") return null;
-  cursor += 1;
-  const hashesStart = cursor;
-  while (text[cursor] === "#") cursor += 1;
-  if (cursor - hashesStart > 255 || text[cursor] !== '"') return null;
-  const hashes = text.slice(hashesStart, cursor);
-  const terminator = `"${hashes}`;
-  const bodyStart = cursor + 1;
-  const maybeEnd = text.indexOf(terminator, bodyStart);
-  return maybeEnd === -1 ? text.length : maybeEnd + terminator.length;
-}
-
-function quotedLiteralEnd(
-  text: string,
-  quote: number,
-  delimiter: '"' | "'",
-): number {
-  let cursor = quote + 1;
-  while (cursor < text.length) {
-    if (text[cursor] === "\\") {
-      cursor += 2;
-      continue;
-    }
-    if (text[cursor] === delimiter) return cursor + 1;
-    cursor += 1;
-  }
-  return text.length;
-}
-
-function looksLikeCharLiteral(text: string, start: number): boolean {
-  const maybeEnd = quotedLiteralEnd(text, start, "'");
-  return maybeEnd - start <= 12 && text[maybeEnd - 1] === "'";
-}
-
-function blankRange(
-  text: string,
-  stripped: string[],
-  start: number,
-  end: number,
-): void {
-  for (let cursor = start; cursor < end; cursor += 1) {
-    if (text[cursor] !== "\n" && text[cursor] !== "\r") {
-      stripped[cursor] = " ";
-    }
-  }
+function hasSingleRustFieldInitializer(
+  functionText: string,
+  field: string,
+  expected: string,
+): boolean {
+  const initializers = rustFieldInitializers(functionText, field);
+  return (
+    initializers.length === 1 &&
+    normalizeRust(initializers[0] ?? "") === normalizeRust(expected)
+  );
 }
 
 function visibleCommandOrder(text: string): string {
@@ -524,7 +498,5 @@ if (import.meta.main) {
     for (const failure of failures) console.error(`- ${failure}`);
     process.exit(1);
   }
-  console.log(
-    "Phase 127 authoritative network state unification validated.",
-  );
+  console.log("Phase 127 authoritative network state unification validated.");
 }

@@ -14,6 +14,8 @@ import { checkPhase127AuthoritativeNetworkStateUnification } from "./check-phase
 const REPO_ROOT = path.resolve(import.meta.dir, "..");
 const TARGET_FILES = [
   "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
+  "packages/open-bitcoin-rpc/src/bin/open_bitcoind/inbound_metrics.rs",
+  "packages/open-bitcoin-rpc/src/bin/open_bitcoind/sync_seed.rs",
   "packages/open-bitcoin-rpc/src/context.rs",
   "packages/open-bitcoin-rpc/src/context/network.rs",
   "packages/open-bitcoin-rpc/src/context/inbound_status.rs",
@@ -27,6 +29,7 @@ const TARGET_FILES = [
   "docs/parity/catalog/p2p.md",
   "docs/parity/index.json",
   "scripts/check-phase127-authoritative-network-state-unification.ts",
+  "scripts/rust-source-invariants.ts",
   "scripts/verify.sh",
 ] as const;
 
@@ -105,6 +108,91 @@ test("fails_when_production_substitutes_a_transient_network_but_retains_the_old_
   );
 });
 
+test("fails_when_production_hides_the_old_authority_anchor_and_constructs_in_a_helper", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutate(files) {
+      replace(
+        files,
+        "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
+        "authoritative_runtime.network.clone(),",
+        [
+          "{",
+          "            if false {",
+          "                let _anchor = (authoritative_runtime.network.clone(),);",
+          "            }",
+          "            duplicate_authority(&runtime)",
+          "        },",
+        ].join("\n"),
+      );
+      const daemon =
+        files.get("packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs") ?? "";
+      files.set(
+        "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
+        [
+          daemon,
+          "",
+          "fn duplicate_authority(runtime: &RuntimeConfig) -> ManagedNetworkHandle {",
+          "    ManagedNetworkHandle::transient_runtime(",
+          "        runtime.sync.runtime.network.magic(),",
+          "        runtime.sync.runtime.network.default_port(),",
+          "        runtime.relay,",
+          "        runtime.block_serving,",
+          "        runtime.inbound.enabled,",
+          "    )",
+          "}",
+          "",
+        ].join("\n"),
+      );
+    },
+  });
+
+  // Act
+  const failures = checkPhase127AuthoritativeNetworkStateUnification(root);
+
+  // Assert
+  expect(failures).toContain(
+    "P127 production authority: daemon must compose sync, inbound, and RPC from one authoritative runtime",
+  );
+});
+
+test("fails_when_a_daemon_helper_constructs_a_duplicate_network_authority", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutate(files) {
+      const helper =
+        files.get(
+          "packages/open-bitcoin-rpc/src/bin/open_bitcoind/sync_seed.rs",
+        ) ?? "";
+      files.set(
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/sync_seed.rs",
+        [
+          helper,
+          "",
+          "fn duplicate_authority(runtime: &RuntimeConfig) -> ManagedNetworkHandle {",
+          "    ManagedNetworkHandle::transient_runtime(",
+          "        runtime.sync.runtime.network.magic(),",
+          "        runtime.sync.runtime.network.default_port(),",
+          "        runtime.relay,",
+          "        runtime.block_serving,",
+          "        runtime.inbound.enabled,",
+          "    )",
+          "}",
+          "",
+        ].join("\n"),
+      );
+    },
+  });
+
+  // Act
+  const failures = checkPhase127AuthoritativeNetworkStateUnification(root);
+
+  // Assert
+  expect(failures).toContain(
+    "P127 production authority: daemon must compose sync, inbound, and RPC from one authoritative runtime",
+  );
+});
+
 test("fails_when_production_serving_uses_cache_while_retaining_the_durable_anchor", () => {
   // Arrange
   const root = createFixture({
@@ -130,6 +218,35 @@ test("fails_when_production_serving_uses_cache_while_retaining_the_durable_ancho
   );
 });
 
+test("fails_when_durable_serving_keeps_its_anchor_only_in_unreachable_code", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutate(files) {
+      replace(
+        files,
+        "packages/open-bitcoin-rpc/src/context.rs",
+        ".map(|source| source.load_block(intent.block_hash()));",
+        [
+          ".map(|source| {",
+          "                if false {",
+          "                    return source.load_block(intent.block_hash());",
+          "                }",
+          "                Ok(None)",
+          "            });",
+        ].join("\n"),
+      );
+    },
+  });
+
+  // Act
+  const failures = checkPhase127AuthoritativeNetworkStateUnification(root);
+
+  // Assert
+  expect(failures).toContain(
+    "P127 durable serving: production block resolution must use the request-scoped durable source",
+  );
+});
+
 test("fails_when_operator_projection_defaults_while_retaining_the_snapshot_anchor", () => {
   // Arrange
   const root = createFixture({
@@ -141,6 +258,33 @@ test("fails_when_operator_projection_defaults_while_retaining_the_snapshot_ancho
         [
           "let network = ManagedNetworkOperatorSnapshot::default();",
           "        // let network = self.network.operator_snapshot()?;",
+        ].join("\n"),
+      );
+    },
+  });
+
+  // Act
+  const failures = checkPhase127AuthoritativeNetworkStateUnification(root);
+
+  // Assert
+  expect(failures).toContain(
+    "P127 authoritative projection: RPC and operator status must use one owned network snapshot",
+  );
+});
+
+test("fails_when_operator_projection_keeps_its_anchor_only_in_unreachable_code", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutate(files) {
+      replace(
+        files,
+        "packages/open-bitcoin-rpc/src/context/inbound_status.rs",
+        "let network = self.network.operator_snapshot()?;",
+        [
+          "let network = replacement_operator_snapshot()?;",
+          "        if false {",
+          "            let _anchor = self.network.operator_snapshot()?;",
+          "        }",
         ].join("\n"),
       );
     },
@@ -202,6 +346,42 @@ test("fails_when_network_status_directly_reads_block_relay_while_retaining_the_p
   // Assert
   expect(failures).toContain(
     "P127 authoritative projection: direct block-relay projection must not bypass the owned snapshot",
+  );
+});
+
+test("fails_when_network_status_keeps_a_field_anchor_only_in_unreachable_code", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutate(files) {
+      replace(
+        files,
+        "packages/open-bitcoin-rpc/src/dispatch/node.rs",
+        "let snapshot = context\n        .authoritative_operator_snapshot()\n        .map_err(network_authority_error_to_failure)?;\n    Ok(OpenBitcoinNetworkStatusResponse {",
+        [
+          "let snapshot = context",
+          "        .authoritative_operator_snapshot()",
+          "        .map_err(network_authority_error_to_failure)?;",
+          "    if false {",
+          "        let _anchor = snapshot.block_relay().clone();",
+          "    }",
+          "    Ok(OpenBitcoinNetworkStatusResponse {",
+        ].join("\n"),
+      );
+      replace(
+        files,
+        "packages/open-bitcoin-rpc/src/dispatch/node.rs",
+        "block_relay: snapshot.block_relay().clone(),",
+        "block_relay: replacement_block_relay(),",
+      );
+    },
+  });
+
+  // Act
+  const failures = checkPhase127AuthoritativeNetworkStateUnification(root);
+
+  // Assert
+  expect(failures).toContain(
+    "P127 authoritative projection: RPC and operator status must use one owned network snapshot",
   );
 });
 
