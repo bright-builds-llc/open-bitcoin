@@ -20,6 +20,8 @@ const TARGET_FILES = [
   "packages/open-bitcoin-network/src/peer/message_dispatch.rs",
   "packages/open-bitcoin-network/src/peer/tests.rs",
   "packages/open-bitcoin-node/src/network.rs",
+  "packages/open-bitcoin-node/src/network/announcement_transport.rs",
+  "packages/open-bitcoin-node/src/network/block_relay_evidence.rs",
   "packages/open-bitcoin-node/src/network/action_translation.rs",
   "packages/open-bitcoin-node/src/network/block_serving.rs",
   "packages/open-bitcoin-node/src/network/tests/relay_serving_cases.rs",
@@ -57,7 +59,7 @@ export function checkPhase122CompactRelayPeerCompletion(
   }
 
   verifyBoundedProvenance(texts, failures);
-  verifyPostConstructionRecording(texts, failures);
+  verifyPostWriteRecording(texts, failures);
   verifyRequestPressurePrecedesProvenance(texts, failures);
   verifyTypedLiveResponse(texts, failures);
   verifyWitnessAndOrderTests(texts, failures);
@@ -124,19 +126,45 @@ function verifyBoundedProvenance(
   );
 }
 
-function verifyPostConstructionRecording(
+function verifyPostWriteRecording(
   texts: Map<TargetFile, string>,
   failures: string[],
 ): void {
   const network = texts.get("packages/open-bitcoin-node/src/network.rs") ?? "";
+  const transport =
+    texts.get("packages/open-bitcoin-node/src/network/announcement_transport.rs") ?? "";
+  const evidence =
+    texts.get("packages/open-bitcoin-node/src/network/block_relay_evidence.rs") ?? "";
   requireOrdered(
-    network,
+    transport,
     [
       "announce_block_with_action",
-      "matches!(maybe_message, Some(WireNetworkMessage::CompactBlock(_)))",
-      ".record_compact_block_announcement(peer_id, block_hash)",
+      "PeerEmission::new(peer_id, message, block_hash)",
+      "AnnouncementPreparationOutcome::Ready(emission)",
     ],
-    "P122 post-construction announcement record",
+    "P122 bound announcement emission",
+    failures,
+  );
+  requireOrdered(
+    evidence,
+    [
+      "pub fn complete_peer_emission(",
+      ".record_compact_block_announcement(receipt.peer_id(), receipt.block_hash())?;",
+      ".record_announcement(receipt.evidence_reason());",
+    ],
+    "P122 consuming post-write announcement record",
+    failures,
+  );
+  requireAbsent(
+    network,
+    ".record_compact_block_announcement(",
+    "P122 pre-write announcement record",
+    failures,
+  );
+  requireAbsent(
+    transport,
+    ".record_compact_block_announcement(",
+    "P122 preparation-time announcement record",
     failures,
   );
 }

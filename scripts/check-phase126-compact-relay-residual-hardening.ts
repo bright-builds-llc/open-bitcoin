@@ -15,6 +15,8 @@ const TARGET_FILES = [
   "packages/open-bitcoin-network/src/peer/message_dispatch.rs",
   "packages/open-bitcoin-network/src/peer/compact_download_state.rs",
   "packages/open-bitcoin-node/src/network.rs",
+  "packages/open-bitcoin-node/src/network/announcement_transport.rs",
+  "packages/open-bitcoin-node/src/network/block_relay_evidence.rs",
   "packages/open-bitcoin-node/src/network/compact_receive_candidates.rs",
   "packages/open-bitcoin-node/Cargo.toml",
   "packages/open-bitcoin-node/BUILD.bazel",
@@ -56,7 +58,7 @@ export function checkPhase126CompactRelayResidualHardening(maybeRepoRoot?: strin
   const failures: string[] = [];
   const texts = loadCorpus(repoRoot, failures);
   checkFactInjection(texts, failures);
-  checkNonceAndEvidence(texts.get("packages/open-bitcoin-node/src/network.rs") ?? "", failures);
+  checkNonceAndEvidence(texts, failures);
   checkDependencies(texts, failures);
   checkParityAnchors(texts, failures);
   checkCompletedPhase126CatalogLifecycle(texts, failures);
@@ -126,7 +128,8 @@ function checkFactInjection(texts: TextCorpus, failures: string[]): void {
   }
 }
 
-function checkNonceAndEvidence(network: string, failures: string[]): void {
+function checkNonceAndEvidence(texts: TextCorpus, failures: string[]): void {
+  const network = texts.get("packages/open-bitcoin-node/src/network.rs") ?? "";
   const announceStart = network.indexOf("pub fn announce_block(");
   const helperEnd = network.indexOf("pub fn announce_transaction(", announceStart);
   const announceSection =
@@ -158,24 +161,33 @@ function checkNonceAndEvidence(network: string, failures: string[]): void {
       "P126 entropy failure emission: entropy failure must fall back without cmpctblock",
     );
   }
+  const transport =
+    texts.get("packages/open-bitcoin-node/src/network/announcement_transport.rs") ?? "";
   if (
-    !announceSection.includes(
-      "if matches!(maybe_message, Some(WireNetworkMessage::CompactBlock(_))) {",
-    ) ||
-    !announceSection.includes(".record_compact_block_announcement(peer_id, block_hash)?;")
+    !orderedFragments(transport, [
+      "let Ok(Some(message)) = maybe_message else {",
+      "PeerEmission::new(peer_id, message, block_hash)",
+      "AnnouncementPreparationOutcome::Ready(emission)",
+    ]) ||
+    network.includes(".record_compact_block_announcement(") ||
+    transport.includes(".record_compact_block_announcement(")
   ) {
-    failures.push("P126 compact provenance: provenance must require an emitted cmpctblock");
+    failures.push(
+      "P126 compact provenance: bound emission must require an actual wire message",
+    );
   }
+
+  const evidence =
+    texts.get("packages/open-bitcoin-node/src/network/block_relay_evidence.rs") ?? "";
   if (
-    !orderedFragments(announceSection, [
-      "let evidence_reason = block_relay_evidence::compact_announce_evidence_reason(",
-      "announcement,",
-      "maybe_message.as_ref(),",
-      "self.record_compact_announcement_evidence(evidence_reason);",
+    !orderedFragments(evidence, [
+      "pub fn complete_peer_emission(",
+      ".record_compact_block_announcement(receipt.peer_id(), receipt.block_hash())?;",
+      ".record_announcement(receipt.evidence_reason());",
     ])
   ) {
     failures.push(
-      "P126 achieved effect evidence: evidence must derive from the emitted message",
+      "P126 achieved effect evidence: consuming completion must derive from the written emission",
     );
   }
 }

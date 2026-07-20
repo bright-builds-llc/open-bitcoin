@@ -11,6 +11,8 @@ const TARGET_FILES = [
   "packages/open-bitcoin-network/src/peer/message_dispatch.rs",
   "packages/open-bitcoin-network/src/peer/tests.rs",
   "packages/open-bitcoin-node/src/network.rs",
+  "packages/open-bitcoin-node/src/network/announcement_transport.rs",
+  "packages/open-bitcoin-node/src/network/block_relay_evidence.rs",
   "packages/open-bitcoin-node/src/network/action_translation.rs",
   "packages/open-bitcoin-node/src/network/block_serving.rs",
   "packages/open-bitcoin-node/src/network/tests/relay_serving_cases.rs",
@@ -51,12 +53,17 @@ test.each([
     mutate("packages/open-bitcoin-network/src/peer/compact_relay.rs", "MAX_COMPACT_ANNOUNCEMENT_PROVENANCE: usize = 11", "MAX_COMPACT_ANNOUNCEMENT_PROVENANCE: usize = 12"),
   ],
   [
-    "post-construction recording",
-    "P122 post-construction announcement record has .record_compact_block_announcement(peer_id, block_hash) out of order",
+    "consuming post-write recording",
+    "P122 consuming post-write announcement record missing .record_compact_block_announcement(receipt.peer_id(), receipt.block_hash())?;",
     (files: Map<TargetFile, string>) => {
+      const file =
+        "packages/open-bitcoin-node/src/network/block_relay_evidence.rs";
       files.set(
-        "packages/open-bitcoin-node/src/network.rs",
-        ".record_compact_block_announcement(peer_id, block_hash) announce_block_with_action matches!(maybe_message, Some(WireNetworkMessage::CompactBlock(_)))",
+        file,
+        (files.get(file) ?? "").replace(
+          ".record_compact_block_announcement(receipt.peer_id(), receipt.block_hash())?;",
+          ".record_compact_block_announcement(peer_id, block_hash)?;",
+        ),
       );
     },
   ],
@@ -190,7 +197,15 @@ function completeFiles(): Map<TargetFile, string> {
     ],
     [
       "packages/open-bitcoin-node/src/network.rs",
-      "announce_block_with_action matches!(maybe_message, Some(WireNetworkMessage::CompactBlock(_))) .record_compact_block_announcement(peer_id, block_hash)",
+      "announce_block_with_action",
+    ],
+    [
+      "packages/open-bitcoin-node/src/network/announcement_transport.rs",
+      "announce_block_with_action PeerEmission::new(peer_id, message, block_hash) AnnouncementPreparationOutcome::Ready(emission)",
+    ],
+    [
+      "packages/open-bitcoin-node/src/network/block_relay_evidence.rs",
+      "pub fn complete_peer_emission( .record_compact_block_announcement(receipt.peer_id(), receipt.block_hash())?; .record_announcement(receipt.evidence_reason());",
     ],
     [
       "packages/open-bitcoin-node/src/network/action_translation.rs",

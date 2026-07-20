@@ -10,6 +10,8 @@ const TARGET_FILES = [
   "packages/open-bitcoin-network/src/peer/message_dispatch.rs",
   "packages/open-bitcoin-network/src/peer/compact_download_state.rs",
   "packages/open-bitcoin-node/src/network.rs",
+  "packages/open-bitcoin-node/src/network/announcement_transport.rs",
+  "packages/open-bitcoin-node/src/network/block_relay_evidence.rs",
   "packages/open-bitcoin-node/src/network/compact_receive_candidates.rs",
   "packages/open-bitcoin-node/Cargo.toml",
   "packages/open-bitcoin-node/BUILD.bazel",
@@ -186,15 +188,15 @@ test("fails_when_entropy_failure_can_emit_a_compact_block", () => {
   expect(failures).toContain("P126 entropy failure emission: entropy failure must fall back without cmpctblock");
 });
 
-test("fails_when_compact_provenance_is_recorded_without_actual_emission", () => {
+test("fails_when_compact_provenance_is_not_bound_to_the_actual_emission", () => {
   // Arrange
   const root = createFixture({
     maybeMutate(files) {
       replace(
         files,
-        "packages/open-bitcoin-node/src/network.rs",
-        "if matches!(maybe_message, Some(WireNetworkMessage::CompactBlock(_))) {",
-        "if announcement.action == CompactAnnouncementAction::AnnounceCompactBlock {",
+        "packages/open-bitcoin-node/src/network/announcement_transport.rs",
+        "PeerEmission::new(peer_id, message, block_hash)",
+        "PeerEmission::new(peer_id, WireNetworkMessage::Inv(Default::default()), block_hash)",
       );
     },
   });
@@ -203,18 +205,20 @@ test("fails_when_compact_provenance_is_recorded_without_actual_emission", () => 
   const failures = checkPhase126CompactRelayResidualHardening(root);
 
   // Assert
-  expect(failures).toContain("P126 compact provenance: provenance must require an emitted cmpctblock");
+  expect(failures).toContain(
+    "P126 compact provenance: bound emission must require an actual wire message",
+  );
 });
 
-test("fails_when_achieved_effect_evidence_ignores_the_emitted_message", () => {
+test("fails_when_achieved_effect_evidence_ignores_the_written_receipt", () => {
   // Arrange
   const root = createFixture({
     maybeMutate(files) {
       replace(
         files,
-        "packages/open-bitcoin-node/src/network.rs",
-        "maybe_message.as_ref(),",
-        "None,",
+        "packages/open-bitcoin-node/src/network/block_relay_evidence.rs",
+        ".record_announcement(receipt.evidence_reason());",
+        ".record_announcement(CompactAnnouncementReason::CompactAnnounced);",
       );
     },
   });
@@ -223,7 +227,9 @@ test("fails_when_achieved_effect_evidence_ignores_the_emitted_message", () => {
   const failures = checkPhase126CompactRelayResidualHardening(root);
 
   // Assert
-  expect(failures).toContain("P126 achieved effect evidence: evidence must derive from the emitted message");
+  expect(failures).toContain(
+    "P126 achieved effect evidence: consuming completion must derive from the written emission",
+  );
 });
 
 test("fails_when_cargo_and_bazel_entropy_dependencies_diverge", () => {
