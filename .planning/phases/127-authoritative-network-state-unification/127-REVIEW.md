@@ -1,6 +1,6 @@
 ---
 phase: 127-authoritative-network-state-unification
-reviewed: 2026-07-19T22:05:07Z
+reviewed: 2026-07-20T00:24:00Z
 depth: standard
 files_reviewed: 24
 files_reviewed_list:
@@ -30,78 +30,59 @@ files_reviewed_list:
   - scripts/verify.sh
 findings:
   critical: 0
-  warning: 4
+  warning: 2
   info: 0
-  total: 4
+  total: 2
 status: issues_found
 ---
 
 # Phase 127: Code Review Report
 
-**Reviewed:** 2026-07-19T22:05:07Z
+**Reviewed:** 2026-07-20T00:24:00Z
 **Depth:** standard
 **Files Reviewed:** 24
 **Status:** issues_found
 
 ## Summary
 
-The shared `ManagedNetworkHandle` keeps its mutex guard private, returns owned snapshots, and the inbound durable-serving path performs Fjall lookup, serialization, and socket writes after releasing the authoritative-network guard. Authority poison failures also fail closed through typed errors. Four correctness and verification weaknesses remain: durable sync metadata is cached in RPC, mixed `getdata` responses are reordered relative to Knots, the structural checker is anchor-spoofable, and the production-shaped redaction assertion does not exercise the data it claims to protect.
+This final auto re-review inspected the persisted original 24-file Phase 127 scope, the six review-fix commits through `f609d446`, and `scripts/rust-source-invariants.ts` as direct dependency context. WR-01 remains resolved: a pre-existing RPC context reloads current durable metadata per `getblockchaininfo` request and maps storage-read failure to unavailable. WR-04 remains resolved: the production support command consumes the authoritative raw RPC status and the regression inspects both generated JSON and Markdown for every forbidden material class.
 
-The review applied the repo-local authority/parity and verifier guidance from `AGENTS.md`, plus `standards/core/architecture.md`, `standards/core/code-shape.md`, `standards/core/testing.md`, `standards/core/verification.md`, `standards/core/operability.md`, `standards/languages/rust.md`, and `standards/languages/typescript-javascript.md`. No active standards override applies.
+The ordered response enum in `21b3c906` fixes the tested transaction/block permutations, including two-block and multi-cycle batches. One Knots queue case remains incorrect: an unknown inventory item produces `notfound` instead of being silently consumed. The `f609d446` parser extraction also remains bypassable at each protected data-flow boundary. Separate deterministic temporary-corpus mutations replaced production authority, durable lookup output, and operator projection while retaining dead or unused anchors; all three incorrectly returned an empty checker failure list.
+
+The review applied repo-local authority, parity, generated-artifact, and verification guidance from `AGENTS.md`, the Bright Builds sidecar, and `standards/core/architecture.md`, `standards/core/code-shape.md`, `standards/core/operability.md`, `standards/core/testing.md`, `standards/core/verification.md`, `standards/languages/rust.md`, and `standards/languages/typescript-javascript.md`. No active standards override applies.
 
 ## Warnings
 
-### WR-01: Restarted RPC contexts retain stale durable sync metadata
+### WR-02: Unknown `getdata` inventory now receives a response that Knots never sends
 
-**File:** `packages/open-bitcoin-rpc/src/context/network.rs:209`
+**File:** `/Users/peterryszkiewicz/Repos/open-bitcoin/packages/open-bitcoin-node/src/network/inventory.rs:163-167`
 
-**Issue:** `from_runtime_config_with_network_handle` loads `DurableSyncState` once and stores it in `ManagedRpcContext`; `maybe_durable_sync_state` at lines 276-278 only returns that cached value. The daemon then starts a sync worker that continues updating runtime metadata in Fjall, but no path refreshes the context field. `getblockchaininfo` in `dispatch/node.rs:42-90` therefore takes `blocks`, `headers`, lifecycle, progress, and warnings from stale startup metadata while taking `bestblockhash` and median time from the live authoritative chain tip. After a restart with existing metadata, subsequent sync progress can produce a self-contradictory RPC response indefinitely. The Phase 127 black-box test constructs its restarted context only after sync has finished and asserts the best hash and schema keys, not live height or warning updates, so it does not catch this case.
+**Issue:** The ordered queue loop correctly processes leading transactions, at most one following block-like item, and accumulated transaction misses. However, its fallback branch emits a one-item `WireNetworkMessage::NotFound` for `InventoryType::Unknown(_)`. The pinned Knots `ProcessGetData` implementation consumes a non-transaction queue head and explicitly erases an unknown type without responding (`packages/bitcoin-knots/src/net_processing.cpp:2465-2471`). Consequently, `[Unknown(U), available Transaction(T)]` emits `notfound(U), tx(T)` here but only `tx(T)` in Knots; `[missing Transaction(M), Unknown(U), available Transaction(T)]` also gains an extra response and changes the observable response sequence.
 
-**Fix:** Keep a clonable durable metadata source in the context and load the latest runtime metadata for each `getblockchaininfo` projection outside the network critical section, or explicitly publish every sync-state update into a shared typed snapshot. Build the response from one current live chainstate snapshot plus the latest durable metadata, and fail unavailable rather than falling back to an older cached value. Add a regression that opens a context with pre-existing metadata, advances sync through the shared runtime after context construction, and asserts updated `blocks`, `headers`, progress, lifecycle, and warnings.
+**Fix:** Handle `InventoryType::Unknown(_)` by consuming it without adding a response-plan item, while keeping the ordered cycle boundary. Add exact wire-response regressions for `[Unknown, available tx]` and `[missing tx, Unknown, available tx]` against the pinned `ProcessGetData` behavior.
 
-### WR-02: Mixed durable `getdata` batches emit `notfound` before block responses
+### WR-03: The Phase 127 checker still validates anchors rather than the executed data flow
 
-**File:** `packages/open-bitcoin-rpc/src/context.rs:124-129`
+**File:** `/Users/peterryszkiewicz/Repos/open-bitcoin/scripts/check-phase127-authoritative-network-state-unification.ts:92-125`
 
-**Issue:** The call chain loses response ordering. `gate_inventory_for_durable_serving` in `network/inventory.rs:97-150` separates block intents from ordinary messages and missing inventory. `process_actions` in `network/action_translation.rs:205-215` appends the aggregate `NotFound` to `outbound`, while `InboundWireResponsePlan::resolve` emits every `outbound` response before resolving any block intent. For a request batch containing a missing transaction followed by an eligible durable block, Open Bitcoin therefore writes `notfound` and then the block. The pinned Knots path in `net_processing.cpp:2438-2491` processes the block before sending the accumulated `notfound`. This is externally observable parity drift and can affect peers that use response order to retire queued requests. Current tests cover three successful block variants together and a single missing block, but no mixed missing-transaction/durable-block batch.
+**Issue:** The extracted scanner improves literal/comment handling, but the checker still treats matching syntax anywhere in an extracted function as proof of the executed path. Production authority accepts one exact constructor call in an unreachable branch while the live context is built by a helper using an aliased duplicate-authority constructor; the global rejection is a string search that does not resolve aliases. Durable serving validates the initializer of `maybe_block` but not that the subsequent `match` consumes that binding, so an unused durable read plus a replacement lookup result passes. Operator projection uses `rustFieldInitializers` from `scripts/rust-source-invariants.ts:26-36` across the entire function, so an exact field in an unreachable decoy struct plus shorthand on the real returned field also passes. Each of those three separate temporary-corpus mutations returned `[]`, demonstrating that the checker can accept the split authority, durable-source bypass, and stale/default projection it is meant to prevent.
 
-**Fix:** Preserve a single ordered response-plan sequence, for example:
-
-```rust
-enum PlannedInboundResponse {
-    Immediate(WireNetworkMessage),
-    DurableBlock(ManagedBlockServeIntent),
-}
-```
-
-Translate each action into this sequence and resolve it in order, while retaining the Knots rule that accumulated transaction `notfound` is emitted after the processed block item. Add a loopback regression for a mixed missing transaction plus durable block and assert the exact wire order.
-
-### WR-03: The Phase 127 checker can be satisfied by dead textual anchors
-
-**File:** `scripts/check-phase127-authoritative-network-state-unification.ts:69-165`
-
-**Issue:** The production-authority, durable-serving, and operator-projection checks use exact `includes`, occurrence counts, and broad function slicing rather than verifying the executed data flow. A split regression can retain all required strings while replacing `authoritative_runtime.network` with a fresh `ManagedNetworkHandle::transient_runtime`; a cache-only resolver can retain `source.load_block(intent.block_hash())` in dead code or a comment; and a direct projection can retain an unused `operator_snapshot` call. All would pass the checker. The mutation suite at `check-phase127-authoritative-network-state-unification.test.ts:57-146` only deletes or replaces the exact anchors the checker searches for, so it demonstrates sensitivity to anchor removal rather than resistance to semantic spoofing.
-
-**Fix:** Parse the Rust source into syntax-aware function bodies or combine narrower negative invariants with behavioral integration checks. At minimum, reject reassignment/reconstruction of the authority after `open_authoritative_network_runtime`, reject cache lookup anywhere in the production block-intent resolver, and require the returned projection values to derive from the snapshot binding. Add adversarial mutations that keep every current anchor present while introducing each prohibited executed path.
-
-### WR-04: The black-box redaction assertion is largely vacuous
-
-**File:** `packages/open-bitcoin-rpc/tests/black_box_parity.rs:540-605`
-
-**Issue:** The test serializes only `authoritative_operator_snapshot().block_relay()` and compares it with `status_response["result"]["block_relay"]`, then checks that this block-relay-only JSON lacks the listener endpoint, RPC credentials, permission string, transaction marker, and dynamic label. The endpoint and permission live on the inbound/config side, the credentials live only in HTTP auth, and the transaction and dynamic-label constants are never inserted into the serialized block-relay value. The assertions therefore pass even if the authoritative inbound or support projection leaks those values. This does not prove the Plan 127 production-path claim that support-compatible evidence from the shared authority preserves the disclosure boundary.
-
-**Fix:** Drive the actual authoritative RPC snapshot through the same support-bundle sanitization adapter used in production, seed every forbidden value into the corresponding inbound, relay, peer-policy, resource, and transaction-bearing fields, and assert absence in both JSON and Markdown support outputs. If the crate dependency direction prevents importing CLI support code, move the sanitization contract to a lower shared crate or add an integration test in the CLI crate that consumes the live RPC response. Remove forbidden constants that are not injected into the value under test.
+**Fix:** Parse and validate the concrete expressions that feed the live result: require the `context` initializer to be the authoritative constructor and resolve helper/alias origins; require the block-resolution `match` discriminant to be the exact durable-source binding; and inspect the fields of the actual returned `OpenBitcoinNetworkStatusResponse`, excluding nested or unreachable decoys. Prefer a compiler-backed Rust syntax tree if the lexical scanner cannot represent binding/use relationships. Add the three demonstrated mutations as regressions and require each to produce the corresponding Phase 127 failure.
 
 ## Verification
 
-- `bun test scripts/check-phase127-authoritative-network-state-unification.test.ts` — passed, 5 tests.
-- `bun run scripts/check-phase127-authoritative-network-state-unification.ts` — passed.
-- `cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --test black_box_parity phase127` through the repo timing wrapper — passed, 1 test.
-- `git diff --check` — passed.
+- `bun test scripts/check-phase127-authoritative-network-state-unification.test.ts` — passed, 12 tests.
+- `bun run scripts/check-phase127-authoritative-network-state-unification.ts` — passed against the live repository.
+- Deterministic pinned-source comparison — confirmed Open Bitcoin's unknown branch emits `NotFound` while Knots explicitly erases unknown queue heads silently.
+- Three independent temporary-corpus authority/durable/projection bypass mutations — checker incorrectly returned `[]` for each.
+- `cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --test black_box_parity phase127` through the timing wrapper — passed, 1 test.
+- `cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-rpc durable_block_serving` through the timing wrapper — passed, 4 tests.
+- `cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-cli authoritative_rpc_status_support_bundle_redacts_every_forbidden_material_class_in_json_and_markdown` through the timing wrapper — passed, 1 test.
+- `git diff --check` — passed before writing this report.
 - Source files were not modified.
 
-______________________________________________________________________
+***
 
-_Reviewed: 2026-07-19T22:05:07Z_
+_Reviewed: 2026-07-20T00:24:00Z_
 _Reviewer: the agent (gsd-code-reviewer)_
 _Depth: standard_
