@@ -16,6 +16,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 mod action_translation;
 mod admission_bridge;
+mod announcement_transport;
 mod block_relay_evidence;
 mod block_serving;
 mod compact_receive_candidates;
@@ -30,6 +31,9 @@ mod relay_serving;
 mod runtime_authority;
 mod types;
 
+pub use announcement_transport::{
+    AnnouncementPreparationOutcome, PeerEmission, PeerEmissionReceipt, PeerOutboxSnapshot,
+};
 pub(crate) use block_relay_evidence::BlockRelayRuntimeEvidenceSnapshot;
 pub use block_serving::{ManagedBlockServeCompletion, ManagedBlockServeIntent};
 

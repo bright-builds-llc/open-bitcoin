@@ -889,6 +889,18 @@
       ]
     },
     {
+      "label": "node-network-announcement-transport",
+      "files": [
+        "packages/open-bitcoin-node/src/network/announcement_transport.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/net_processing.h",
+        "packages/bitcoin-knots/test/functional/p2p_compactblocks.py"
+      ]
+    },
+    {
       "label": "node-compact-receive-candidates",
       "files": [
         "packages/open-bitcoin-node/src/network/compact_receive_candidates.rs",

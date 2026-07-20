@@ -30,11 +30,11 @@ use crate::{
 };
 
 use super::{
-    BlockConnectDisposition, LocalRelaySubmissionEvidence, ManagedAddressBoundaryInfo,
-    ManagedBlockServeCompletion, ManagedInboundAdmissionInfo, ManagedMempoolInfo,
-    ManagedMempoolRecoverySummary, ManagedNetworkError, ManagedNetworkInfo,
+    AnnouncementPreparationOutcome, BlockConnectDisposition, LocalRelaySubmissionEvidence,
+    ManagedAddressBoundaryInfo, ManagedBlockServeCompletion, ManagedInboundAdmissionInfo,
+    ManagedMempoolInfo, ManagedMempoolRecoverySummary, ManagedNetworkError, ManagedNetworkInfo,
     ManagedNetworkOperatorSnapshot, ManagedPeerNetwork, ManagedPeerPolicyInfo,
-    ManagedResourceGovernanceInfo, ManagedSyncMessageResult,
+    ManagedResourceGovernanceInfo, ManagedSyncMessageResult, PeerOutboxSnapshot,
 };
 
 type AuthoritativeNetwork = ManagedPeerNetwork<MemoryChainstateStore>;
@@ -537,6 +537,12 @@ impl ManagedNetworkHandle {
         block: &Block,
     ) -> Result<Option<WireNetworkMessage>, ManagedNetworkAuthorityError> {
         self.try_mutate(|network| network.announce_block(peer_id, block))
+    }
+
+    #[rustfmt::skip]
+    pub fn prepare_block_announcements(&self, block: &Block, outboxes: &[PeerOutboxSnapshot]) -> Result<Vec<AnnouncementPreparationOutcome>, ManagedNetworkAuthorityError> {
+        let compact_nonces = super::announcement_transport::compact_nonces(outboxes);
+        self.mutate(|network| network.prepare_block_announcements(block, outboxes, &compact_nonces))
     }
 
     #[cfg(test)]
