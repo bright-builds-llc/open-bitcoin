@@ -2,7 +2,7 @@
 
 ## Current Status
 
-v2.1 Block Serving and Compact Block Relay Boundary remains active after an independent integration audit found three production-boundary gaps affecting 10 requirements and four end-to-end flows. Phases 110 through 126 remain locally complete; Phases 127 through 129 are planned to close authoritative network-state, production compact-transport, and final reconciliation gaps.
+v2.1 Block Serving and Compact Block Relay Boundary remains active after Phases 127 and 128 closed authoritative network-state and production compact-transport gaps. Phase 129 remains for final integration guardrails and milestone reconciliation.
 
 ## Latest Completed Milestone: v2.0 Transaction Relay and Mempool Participation Boundary
 
@@ -31,7 +31,7 @@ v2.1 Block Serving and Compact Block Relay Boundary remains active after an inde
 - ✅ **v1.8 Production Full-Node Readiness Boundary** - Phases 82 through 89 (shipped 2026-06-25). Archive: [v1.8-ROADMAP.md](milestones/v1.8-ROADMAP.md)
 - ✅ **v1.9 Inbound Peer Serving and Network Participation Boundary** - Phases 90 through 99 (shipped 2026-06-29). Archive: [v1.9-ROADMAP.md](milestones/v1.9-ROADMAP.md)
 - ✅ **v2.0 Transaction Relay and Mempool Participation Boundary** - Phases 100 through 109 (shipped 2026-07-03). Archive: [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md)
-- 🚧 **v2.1 Block Serving and Compact Block Relay Boundary** - Phases 110 through 126 complete; Phases 127 through 129 planned for integration gap closure.
+- 🚧 **v2.1 Block Serving and Compact Block Relay Boundary** - Phases 110 through 128 complete; Phase 129 remains for final integration gap closure.
 
 ## Active Milestone: v2.1 Block Serving and Compact Block Relay Boundary
 
@@ -57,7 +57,7 @@ v2.1 Block Serving and Compact Block Relay Boundary remains active after an inde
 - [x] **Phase 125: Compact Download Verification Traceability Closure** - Restore explicit lifecycle-valid verification ownership for the three Phase 115 compact-download requirements and prevent future verification orphans. (completed 2026-07-17)
 - [x] **Phase 126: Compact Relay Residual Hardening** - Remove the residual empty-candidate bypass, align compact nonce generation with the Knots boundary, and perform final archive reconciliation. (completed 2026-07-18)
 - [x] **Phase 127: Authoritative Network State Unification** - Make durable sync, inbound serving, RPC, CLI, dashboard, and support evidence share one authoritative network and chainstate view. (completed 2026-07-20)
-- [ ] **Phase 128: Production Compact Announcement Transport** - Complete bilateral compact negotiation and send compact announcements through the production transport with post-write evidence.
+- [x] **Phase 128: Production Compact Announcement Transport** - Complete bilateral compact negotiation and send compact announcements through the production transport with post-write evidence. (completed 2026-07-20)
 - [ ] **Phase 129: Integration Guardrails and Milestone Reconciliation** - Guard the repaired production seams, prove all four end-to-end flows, and reconcile v2.1 for a fresh audit.
 
 ### Phase Details
@@ -448,7 +448,7 @@ Plans:
 3. Selected compact, header, and inventory announcements are written through the real peer transport while preserving resource and fallback policy.
 4. Compact-announcement metrics, logs, and provenance are recorded only after a successful transport write, with end-to-end tests covering success and failure.
 
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 #### Phase 129: Integration Guardrails and Milestone Reconciliation
 
@@ -489,7 +489,7 @@ Plans:
 | 125. Compact Download Verification Traceability Closure | v2.1 | 4/4 | Complete   | 2026-07-17 |
 | 126. Compact Relay Residual Hardening | v2.1 | 4/4 | Complete   | 2026-07-18 |
 | 127. Authoritative Network State Unification | v2.1 | 4/4 | Complete    | 2026-07-20 |
-| 128. Production Compact Announcement Transport | v2.1 | 3/4 | In Progress|  |
+| 128. Production Compact Announcement Transport | v2.1 | 4/4 | Complete   | 2026-07-20 |
 | 129. Integration Guardrails and Milestone Reconciliation | v2.1 | 0/0 | Not started | - |
 
 ## Traceability
@@ -510,4 +510,4 @@ Plans:
 
 ## Next Step
 
-Execute Phase 128 Plan 04 aggregate guardrails and parity closure.
+Run `/gsd-plan-phase 129`.

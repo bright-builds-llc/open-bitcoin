@@ -2,16 +2,16 @@
 gsd_state_version: "1.0"
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
-status: executing
-stopped_at: Completed 128-03-PLAN.md
-last_updated: "2026-07-20T05:43:01.490Z"
-last_activity: 2026-07-20 -- Phase 128 Plan 03 production transport complete
+status: planning
+stopped_at: Completed 128-04-PLAN.md
+last_updated: "2026-07-20T06:48:12.893Z"
+last_activity: 2026-07-20 -- Phase 128 production compact-announcement transport complete
 progress:
   total_phases: 20
-  completed_phases: 18
+  completed_phases: 19
   total_plans: 66
-  completed_plans: 65
-  percent: 98
+  completed_plans: 66
+  percent: 100
 ---
 
 # Project State
@@ -21,21 +21,21 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-07-20 after Phase 127 authoritative-state verification).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Plan Phase 128 production compact-announcement transport
+**Current focus:** Plan Phase 129 integration guardrails and milestone reconciliation
 
 ## Current Position
 
 Milestone: v2.1 Block Serving and Compact Block Relay Boundary
-Phase: 128
-Plan: 4 of 4
-Status: In progress
-Last activity: 2026-07-20 -- Phase 128 Plan 03 production transport complete
+Phase: 129
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-07-20 -- Phase 128 production compact-announcement transport complete
 
 v2.0 Transaction Relay and Mempool Participation Boundary shipped on 2026-07-03. The archived audit reports 32/32 requirements, 10/10 phases, 8/8 integration checks, 8/8 cross-phase flows, and no tracked tech debt.
 
-Phases 110 through 127 are locally complete at 62/62 plans. Phase 127 unified authoritative network and chainstate ownership across durable sync, inbound serving, RPC, CLI, dashboard, and support evidence, promoting four requirements to 33/39 complete. Phases 128 and 129 remain to complete production compact-announcement transport, add cross-cutting guards, and reconcile the milestone before a fresh archival decision.
+Phases 110 through 128 are locally complete at 66/66 plans. Phase 128 completed production compact-announcement transport, aggregate guardrails, and parity evidence, promoting three additional requirements to 36/39 complete. Phase 129 remains to add final integration guardrails and reconcile the milestone before a fresh archival decision.
 
-Next action: Execute Phase 128 Plan 04 aggregate guardrails and parity closure.
+Next action: Run `/gsd-plan-phase 129`.
 
 ## Performance Metrics
 
@@ -60,7 +60,7 @@ Next action: Execute Phase 128 Plan 04 aggregate guardrails and parity closure.
 - v1.9 shipped opt-in inbound peer serving while keeping transaction relay, compact blocks, mempool propagation, production-funds wallet use, migration apply mode, packaging, hosted dashboard, GUI, public-network CI, and production full-node readiness deferred.
 - Phase 98 canonical ownership remains archived for INB-01, INB-02, INB-03, INB-04, BOUND-06.
 - v2.0 shipped bounded transaction relay and mempool participation through explicit activation, txid/wtxid inventory/download, orphan handling, mempool admission and durable recovery, relay serving/fanout, sanitized operator evidence, parity roots, UAT guidance, and deterministic no-claim guardrails.
-- v2.1 completed 18 local phases after Phase 127 closed the authoritative-state gap; production compact transport and final reconciliation remain.
+- v2.1 completed 19 local phases after Phase 128 closed production compact transport; final integration and reconciliation remain.
 
 ## Decisions
 
@@ -112,10 +112,14 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 - [Phase 128]: Collapse multi-block reconciliation to one final DurableTipAdvanced event after persistence.
 - [Phase 128]: Share bounded volatile outboxes across durable sync and inbound sessions without authority locks crossing I/O.
 - [Phase 128]: Credit each successful FIFO prefix immediately and drop failed or unsent suffixes without implicit retry.
+- [Phase 128]: Guard the production compact-announcement path from bilateral negotiation through durable trigger, real writes, consuming receipts, and fixed observability.
+- [Phase 128]: Preserve default-off and deferred public/production claims while recording production composition evidence.
+- [Phase 128]: Model Phase 128 Plan 04 execution and completed routing to Phase 129 as distinct fail-closed lifecycle states.
+- [Phase 128]: Extract focused RPC connection and runtime-control modules to preserve the 628-line production source limit.
 
 ## Pending Todos
 
-- Plan and execute Phases 128 and 129 before rerunning the v2.1 milestone audit.
+- Plan and execute Phase 129 before rerunning the v2.1 milestone audit.
 - Keep historical `.planning/phases/` directories tracked because repo verifier scripts still depend on selected phase evidence.
 - Keep repo-local Cargo and Bazel command forms in UAT guidance:
   - `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- ...`
@@ -135,9 +139,10 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 | --- | --- | --- | --- | --- |
 | 260719-bbh | Accept the approved v2.1 post-audit gap-planning state in closeout verification | 2026-07-19 | `e02bae71` | [260719-bbh](./quick/260719-bbh-teach-the-phase-124-closeout-checker-to-/) |
 | Phase 128 P03 | 51m | 3 tasks | 9 files |
+| Phase 128 P04 | 57min | 3 tasks | 25 files |
 
 ## Session Continuity
 
-Last session: 2026-07-20T05:43:01.487Z
-Stopped at: Completed 128-03-PLAN.md
+Last session: 2026-07-20T06:48:12.890Z
+Stopped at: Completed 128-04-PLAN.md
 Resume file: None
