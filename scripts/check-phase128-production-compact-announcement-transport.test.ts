@@ -132,7 +132,7 @@ test.each([
     "inbound post-write receipt",
     "P128 inbound write boundary: receipt completion must occur only after Written",
     replace(
-      "packages/open-bitcoin-rpc/src/inbound_listener.rs",
+      "packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs",
       "transport.network.complete_peer_emission(receipt).is_err()",
       "false",
     ),

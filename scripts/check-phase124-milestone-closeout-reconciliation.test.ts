@@ -10,6 +10,8 @@ import {
   CONTEXT_FILE,
   createFixture as createPhase124Fixture,
   LIFECYCLE_ID,
+  PHASE128_EXECUTION_ROUTE,
+  PHASE129_ROUTE,
   PHASE117_CHECK,
   PHASE117_TEST,
   PHASE124_CHECK,
@@ -42,6 +44,99 @@ test("phase124_real_repository_corpus_passes", () => {
 
   // Assert
   expect(failures).toEqual([]);
+});
+
+test("passes_the_phase128_plan04_execution_stage", () => {
+  // Arrange
+  const root = createFixture({ maybePhase128Stage: "executing_plan_04" });
+
+  // Act
+  const failures = checkPhase124MilestoneCloseoutReconciliation({ rootDir: root });
+
+  // Assert
+  expect(failures).toEqual([]);
+});
+
+test("passes_the_completed_phase128_route_to_phase129", () => {
+  // Arrange
+  const root = createFixture({ maybePhase128Stage: "complete" });
+
+  // Act
+  const failures = checkPhase124MilestoneCloseoutReconciliation({ rootDir: root });
+
+  // Assert
+  expect(failures).toEqual([]);
+});
+
+test("phase128_plan04_execution_rejects_count_and_route_drift", () => {
+  // Arrange
+  const countRoot = createFixture({
+    maybePhase128Stage: "executing_plan_04",
+    maybeMutate(files) {
+      replace(files, ".planning/REQUIREMENTS.md", "Complete: 36", "Complete: 35");
+    },
+  });
+  const routeRoot = createFixture({
+    maybePhase128Stage: "executing_plan_04",
+    maybeMutate(files) {
+      replace(
+        files,
+        ".planning/ROADMAP.md",
+        PHASE128_EXECUTION_ROUTE,
+        `Run \`${PHASE129_ROUTE}\`.`,
+      );
+    },
+  });
+
+  // Act
+  const countFailures = checkPhase124MilestoneCloseoutReconciliation({
+    rootDir: countRoot,
+  }).join("\n");
+  const routeFailures = checkPhase124MilestoneCloseoutReconciliation({
+    rootDir: routeRoot,
+  }).join("\n");
+
+  // Assert
+  expect(countFailures).toContain("requirements coverage");
+  expect(routeFailures).toContain("Phase 128 execution route");
+});
+
+test("completed_phase128_rejects_lifecycle_and_phase129_route_drift", () => {
+  // Arrange
+  const lifecycleRoot = createFixture({
+    maybePhase128Stage: "complete",
+    maybeMutate(files) {
+      replace(
+        files,
+        ".planning/ROADMAP.md",
+        "- [x] **Phase 128: Production Compact Announcement Transport**",
+        "- [ ] **Phase 128: Production Compact Announcement Transport**",
+      );
+    },
+  });
+  const routeRoot = createFixture({
+    maybePhase128Stage: "complete",
+    maybeMutate(files) {
+      replace(
+        files,
+        ".planning/STATE.md",
+        PHASE129_ROUTE,
+        PHASE128_EXECUTION_ROUTE,
+      );
+    },
+  });
+
+  // Act
+  const lifecycleFailures = checkPhase124MilestoneCloseoutReconciliation({
+    rootDir: lifecycleRoot,
+  }).join("\n");
+  const routeFailures = checkPhase124MilestoneCloseoutReconciliation({
+    rootDir: routeRoot,
+  }).join("\n");
+
+  // Assert
+  expect(lifecycleFailures).toContain("Phase 128 lifecycle state");
+  expect(routeFailures).toContain("primary route");
 });
 
 test("passes_the_evidence_reconciled_stage", () => {

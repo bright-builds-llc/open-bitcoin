@@ -31,6 +31,7 @@ const TARGET_FILES = [
   "packages/open-bitcoin-rpc/src/context.rs",
   "packages/open-bitcoin-rpc/src/context/network.rs",
   "packages/open-bitcoin-rpc/src/inbound_listener.rs",
+  "packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs",
   "packages/open-bitcoin-rpc/src/inbound_listener/tests.rs",
   "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
   "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests.rs",
@@ -223,7 +224,7 @@ function verifyIdleMaintenance(
       ".any(|(target_peer_id, _message)| *target_peer_id != peer_id)",
       "let fallback_block_hashes = targeted",
       "block_reconcile::request_tracked_blocks(",
-      "self.send_all(&mut session, &outbound)?;",
+      "self.send_all_for_peer(&mut session, peer_id, &outbound)?;",
       "if !self.peer_has_pending_download_work(peer_id)",
       "self.complete_peer_session_progress(&mut progress, peer_id);",
       "return Ok(());",
@@ -248,7 +249,7 @@ function verifyIdleMaintenance(
   for (const needle of [
     "progress.record_activity(current_timestamp);",
     "self.network.receive_sync_message( peer_id, message, current_timestamp, self.verify_flags",
-    "block_reconcile::reconcile_best_chain(self, current_timestamp)?",
+    "block_reconcile::reconcile_best_chain_for_live_session( self, current_timestamp, )?",
   ]) {
     requireContains(normalizedSync, needle, "P123 session timestamp propagation", failures);
   }
@@ -282,9 +283,23 @@ function verifyIdleMaintenance(
       "block_reconcile::release_inflight_for_message(self, &message);",
       "self.network.receive_sync_message(",
       "self.record_block_disposition(",
-      "self.persist_progress()?;",
+      "let reconcile_progress = block_reconcile::reconcile_best_chain_for_live_session(",
+      "self.record_reconcile_progress(reconcile_progress);",
+      "self.persist_progress_and_dispatch_tip()?;",
     ],
     "P123 requested fallback response consumption",
+    failures,
+  );
+  requireOrdered(
+    session,
+    [
+      "pub(super) fn send_all_for_peer",
+      "self.send_all(session, messages)?;",
+      "let emissions = self.announcement_outboxes.take_peer_emissions(peer_id)?;",
+      "session.send(&message, self.config.network.magic())?;",
+      "self.network.complete_peer_emission(receipt)?;",
+    ],
+    "P123 sync peer emission post-write completion",
     failures,
   );
   requireContains(
@@ -356,7 +371,12 @@ function verifySuccessfulWriteEvidence(
     failures,
   );
 
-  const listener = texts.get("packages/open-bitcoin-rpc/src/inbound_listener.rs") ?? "";
+  const listener = [
+    texts.get("packages/open-bitcoin-rpc/src/inbound_listener.rs") ?? "",
+    texts.get(
+      "packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs",
+    ) ?? "",
+  ].join("\n");
   requireOrdered(
     listener,
     [

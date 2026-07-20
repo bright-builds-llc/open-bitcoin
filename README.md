@@ -22,10 +22,11 @@ auditable, and modular.
 > serving and compact-block relay with deterministic local evidence and optional
 > public-network operator review. The release evidence is summarized in
 > [`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md).
-> All 39 v2.1 requirements are independently verified and complete, all 17
-> phases are complete, and Phase 126 is complete at 4/4 plans. The active
-> milestone is ready for `/gsd-complete-milestone v2.1` after the fresh
-> post-summary verification handoff.
+> Phase 128 closes the production composition for compact negotiation,
+> durable-tip announcement fanout, real transport writes, and post-write
+> aggregate evidence. Phase 129 retains four-flow integration, soak and parity
+> closure, requirement promotion, and the milestone audit/release handoff; the
+> milestone is not yet archive-ready.
 > Package relay, BIP37 bloom-filter serving, compact-filter serving, public
 > serving or relay defaults, archive-node and production-scale historical
 > serving, public-network CI or release gates, production service/deployment,

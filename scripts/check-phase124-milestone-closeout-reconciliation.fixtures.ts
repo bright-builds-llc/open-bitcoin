@@ -29,7 +29,11 @@ export const ARCHIVE_ROUTE = "/gsd-complete-milestone v2.1";
 export const PHASE125_ROUTE = "/gsd-execute-phase 125";
 export const PHASE126_ROUTE = "/gsd-execute-phase 126";
 export const PHASE127_ROUTE = "/gsd-plan-phase 127";
+export const PHASE129_ROUTE = "/gsd-plan-phase 129";
+export const PHASE128_EXECUTION_ROUTE =
+  "Execute Phase 128 Plan 04 aggregate guardrails and parity closure.";
 export const PHASE126_LIFECYCLE_ID = "126-2026-07-18T16-09-20";
+const PHASE127_LIFECYCLE_ID = "127-2026-07-19T17-54-42";
 export const VERIFICATION_FILE =
   ".planning/phases/124-milestone-closeout-reconciliation/124-VERIFICATION.md";
 export const SUMMARY_FILE =
@@ -101,6 +105,10 @@ export const RESOLVED_DEBT_IDS = [
 type RequiredFile = (typeof REQUIRED_FILES)[number];
 type Phase125PlanNumber = "01" | "02" | "03" | "04";
 type Phase126PlanNumber = Phase125PlanNumber;
+type Phase127PlanNumber = Phase125PlanNumber;
+type Phase128FixtureStage = "executing_plan_04" | "complete";
+const PHASE127_DIRECTORY =
+  ".planning/phases/127-authoritative-network-state-unification";
 export type FixtureFile =
   | RequiredFile
   | ".planning/MILESTONES.md"
@@ -117,7 +125,11 @@ export type FixtureFile =
   | `${typeof PHASE125_DIRECTORY}/125-${Phase125PlanNumber}-PLAN.md`
   | `${typeof PHASE125_DIRECTORY}/125-${Phase125PlanNumber}-SUMMARY.md`
   | `${typeof PHASE126_DIRECTORY}/126-${Phase126PlanNumber}-PLAN.md`
-  | `${typeof PHASE126_DIRECTORY}/126-${Phase126PlanNumber}-SUMMARY.md`;
+  | `${typeof PHASE126_DIRECTORY}/126-${Phase126PlanNumber}-SUMMARY.md`
+  | `${typeof PHASE127_DIRECTORY}/127-CONTEXT.md`
+  | `${typeof PHASE127_DIRECTORY}/127-VERIFICATION.md`
+  | `${typeof PHASE127_DIRECTORY}/127-${Phase127PlanNumber}-PLAN.md`
+  | `${typeof PHASE127_DIRECTORY}/127-${Phase127PlanNumber}-SUMMARY.md`;
 type FixtureOptions = {
   finalStage?: boolean;
   includeVerification?: boolean;
@@ -125,13 +137,16 @@ type FixtureOptions = {
   postAuditGapPlanning?: boolean;
   maybePhase125Stage?: Phase125LifecycleStage["kind"];
   maybePhase126Stage?: Phase126CloseoutStage["kind"];
+  maybePhase128Stage?: Phase128FixtureStage;
   promotedStage?: boolean;
 };
 
 export function createFixture(tempRoots: string[], options: FixtureOptions = {}): string {
   const maybePhase125Stage = options.maybePhase125Stage;
   const maybePhase126Stage = options.maybePhase126Stage;
-  const postAuditGapPlanning = options.postAuditGapPlanning ?? false;
+  const maybePhase128Stage = options.maybePhase128Stage;
+  const postAuditGapPlanning =
+    (options.postAuditGapPlanning ?? false) || maybePhase128Stage !== undefined;
   const gapClosureStage =
     postAuditGapPlanning ||
     maybePhase125Stage !== undefined ||
@@ -145,7 +160,9 @@ export function createFixture(tempRoots: string[], options: FixtureOptions = {})
   const files = new Map<FixtureFile, string>([
     [
       ".planning/REQUIREMENTS.md",
-      postAuditGapPlanning
+      maybePhase128Stage !== undefined
+        ? createPhase128Requirements()
+        : postAuditGapPlanning
         ? createPostAuditGapPlanningRequirements()
         : maybePhase126Stage !== undefined
         ? createPhase126Requirements(maybePhase126Stage)
@@ -155,7 +172,9 @@ export function createFixture(tempRoots: string[], options: FixtureOptions = {})
     ],
     [
       ".planning/ROADMAP.md",
-      postAuditGapPlanning
+      maybePhase128Stage !== undefined
+        ? createPhase128Roadmap(maybePhase128Stage)
+        : postAuditGapPlanning
         ? createPostAuditGapPlanningRoadmap()
         : maybePhase126Stage !== undefined
         ? createPhase126Roadmap(maybePhase126Stage)
@@ -165,7 +184,9 @@ export function createFixture(tempRoots: string[], options: FixtureOptions = {})
     ],
     [
       ".planning/STATE.md",
-      postAuditGapPlanning
+      maybePhase128Stage !== undefined
+        ? createPhase128State(maybePhase128Stage)
+        : postAuditGapPlanning
         ? `status: planning\nNext action: Run \`${PHASE127_ROUTE}\`.`
         : maybePhase126Stage !== undefined
         ? createPhase126State(maybePhase126Stage)
@@ -256,6 +277,9 @@ export function createFixture(tempRoots: string[], options: FixtureOptions = {})
   if (postAuditGapPlanning) {
     addPhase125Artifacts(files, "post_summary");
     addPhase126Artifacts(files, "archive_ready");
+  }
+  if (maybePhase128Stage !== undefined) {
+    addPhase127Artifacts(files);
   }
   options.maybeMutate?.(files);
   for (const [file, text] of files) {
@@ -426,6 +450,32 @@ function createPostAuditGapPlanningRequirements(): string {
   ].join("\n");
 }
 
+function createPhase128Requirements(): string {
+  let requirements = createPostAuditGapPlanningRequirements();
+  for (const requirement of [
+    "BSRV-03",
+    "BSRV-04",
+    "OBS-02",
+    "OBS-04",
+    "CMP-04",
+    "CMP-05",
+    "OBS-03",
+  ]) {
+    requirements = requirements
+      .replace(`- [ ] **${requirement}**`, `- [x] **${requirement}**`)
+      .replace(
+        new RegExp(`\\| ${requirement} \\| Phase (127|128) \\| Pending \\|`),
+        (row) => row.replace("Pending", "Complete"),
+      );
+  }
+  return requirements
+    .replace("- Complete: 29", "- Complete: 36")
+    .replace(
+      "- Pending integration gap closure: 10",
+      "- Pending integration gap closure: 3",
+    );
+}
+
 function createRoadmap(phaseComplete: boolean): string {
   const completeCount = phaseComplete ? 39 : 38;
   const pendingCount = phaseComplete ? 0 : 1;
@@ -553,9 +603,54 @@ function createPostAuditGapPlanningRoadmap(): string {
   ].join("\n");
 }
 
+function createPhase128Roadmap(stage: Phase128FixtureStage): string {
+  const complete = stage === "complete";
+  return [
+    "- [x] **Phase 124: Milestone Closeout Reconciliation**",
+    "- [x] **Phase 125: Compact Download Verification Traceability Closure**",
+    "- [x] **Phase 126: Compact Relay Residual Hardening**",
+    "- [x] **Phase 127: Authoritative Network State Unification**",
+    `- [${complete ? "x" : " "}] **Phase 128: Production Compact Announcement Transport**`,
+    "- [ ] **Phase 129: Integration Guardrails and Milestone Reconciliation**",
+    "#### Phase 124: Milestone Closeout Reconciliation",
+    "**Plans:** 2/2 plans complete",
+    "#### Phase 125: Compact Download Verification Traceability Closure",
+    "**Plans:** 4/4 plans complete",
+    "#### Phase 126: Compact Relay Residual Hardening",
+    "**Plans:** 4/4 plans complete",
+    "#### Phase 127: Authoritative Network State Unification",
+    "**Depends on:** Phase 126",
+    "**Requirements:** BSRV-03, BSRV-04, OBS-02, OBS-04",
+    "**Plans:** 4/4 plans complete",
+    "#### Phase 128: Production Compact Announcement Transport",
+    "**Depends on:** Phase 127",
+    "**Requirements:** CMP-04, CMP-05, OBS-03",
+    `**Plans:** ${complete ? "4/4 plans complete" : "3/4 plans executed"}`,
+    "#### Phase 129: Integration Guardrails and Milestone Reconciliation",
+    "**Depends on:** Phase 128",
+    "**Requirements:** OBS-01, BOUND-02, HARD-05",
+    "**Plans:** 0 plans",
+    "**Execution Order:** 110 -> 126 -> 127 -> 128 -> 129",
+    "- v2.1 requirements: 39 total",
+    "- Mapped to phases: 39",
+    "- Satisfied: 36",
+    "- Pending integration gap closure: 3",
+    "- Unmapped: 0",
+    "## Next Step",
+    "",
+    complete ? `Run \`${PHASE129_ROUTE}\`.` : PHASE128_EXECUTION_ROUTE,
+  ].join("\n");
+}
+
 function createState(finalStage: boolean): string {
   if (finalStage) return `Phase 124 verified. Next action: ${ARCHIVE_ROUTE}`;
   return "Phase 124 evidence reconciled; HARD-05 pending";
+}
+
+function createPhase128State(stage: Phase128FixtureStage): string {
+  return stage === "complete"
+    ? `Phase: 129\nNext action: Run \`${PHASE129_ROUTE}\`.`
+    : `Phase: 128\nPlan: 4 of 4\nStatus: In progress\nNext action: ${PHASE128_EXECUTION_ROUTE}`;
 }
 
 function createGapClosureRouting(stage: Phase125LifecycleStage["kind"]): string {
@@ -765,6 +860,53 @@ function addPhase126Artifacts(
       ]),
     );
   }
+}
+
+function addPhase127Artifacts(files: Map<FixtureFile, string>): void {
+  files.set(
+    `${PHASE127_DIRECTORY}/127-CONTEXT.md`,
+    phase127Artifact(["generated_by: gsd-discuss-phase"]),
+  );
+  for (const planNumber of phase125PlanNumbers()) {
+    files.set(
+      `${PHASE127_DIRECTORY}/127-${planNumber}-PLAN.md`,
+      phase127Artifact([
+        "phase: 127-authoritative-network-state-unification",
+        `plan: "${planNumber}"`,
+        "generated_by: gsd-plan-phase",
+      ]),
+    );
+    files.set(
+      `${PHASE127_DIRECTORY}/127-${planNumber}-SUMMARY.md`,
+      phase127Artifact([
+        "phase: 127-authoritative-network-state-unification",
+        `plan: "${planNumber}"`,
+        "requirements-completed: []",
+        "generated_by: gsd-execute-plan",
+      ]),
+    );
+  }
+  files.set(
+    `${PHASE127_DIRECTORY}/127-VERIFICATION.md`,
+    phase127Artifact([
+      "phase: 127-authoritative-network-state-unification",
+      "status: passed",
+      "lifecycle_validated: true",
+      "generated_by: gsd-verifier",
+    ]),
+  );
+}
+
+function phase127Artifact(fields: readonly string[]): string {
+  return [
+    "---",
+    ...fields,
+    "lifecycle_mode: yolo",
+    `phase_lifecycle_id: ${PHASE127_LIFECYCLE_ID}`,
+    'generated_at: "2026-07-19T20:00:00Z"',
+    "---",
+    "fixture artifact",
+  ].join("\n");
 }
 
 function phase126Artifact(fields: readonly string[]): string {

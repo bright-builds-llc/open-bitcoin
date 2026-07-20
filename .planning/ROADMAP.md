@@ -504,10 +504,10 @@ Plans:
 
 - v2.1 requirements: 39 total
 - Mapped to phases: 39
-- Satisfied: 33
-- Pending integration gap closure: 6
+- Satisfied: 36
+- Pending integration gap closure: 3
 - Unmapped: 0
 
 ## Next Step
 
-Run `/gsd-plan-phase 128`.
+Execute Phase 128 Plan 04 aggregate guardrails and parity closure.

@@ -33,6 +33,9 @@ const ROUTING_FILES = [
 ] as const;
 const PHASE127_ROUTE = "/gsd-plan-phase 127";
 const PHASE128_ROUTE = "/gsd-plan-phase 128";
+const PHASE129_ROUTE = "/gsd-plan-phase 129";
+const PHASE128_EXECUTION_ROUTE =
+  "Execute Phase 128 Plan 04 aggregate guardrails and parity closure.";
 const PHASE127_DIRECTORY =
   ".planning/phases/127-authoritative-network-state-unification";
 const PHASE127_REQUIREMENTS = GAP_PHASES[0].requirements;
@@ -44,6 +47,7 @@ type Phase127Lifecycle = {
   promoted: boolean;
   summaryCount: number;
 };
+type Phase128LifecycleStage = "planned" | "executing_plan_04" | "complete";
 
 export function isPostAuditGapPlanningStage(roadmap: string): boolean {
   return GAP_PHASES.some((phase) =>
@@ -67,18 +71,26 @@ export function verifyPostAuditGapPlanningStage(
     traceability,
     failures,
   );
+  const phase128Stage = phase128LifecycleStage(roadmap, failures);
 
-  verifyRequirementProjection(entries, traceability, lifecycle.promoted, failures);
-  verifyCoverage(requirements, roadmap, lifecycle.promoted, failures);
-  verifyRoadmapTopology(repoRoot, roadmap, lifecycle, failures);
+  verifyRequirementProjection(
+    entries,
+    traceability,
+    lifecycle.promoted,
+    phase128Stage,
+    failures,
+  );
+  verifyCoverage(requirements, roadmap, lifecycle.promoted, phase128Stage, failures);
+  verifyRoadmapTopology(repoRoot, roadmap, lifecycle, phase128Stage, failures);
   verifyAudit(audit, failures);
-  verifyRouting(repoRoot, roadmap, audit, lifecycle.complete, failures);
+  verifyRouting(repoRoot, roadmap, audit, lifecycle.complete, phase128Stage, failures);
 }
 
 function verifyRequirementProjection(
   entries: RequirementEntry[],
   traceability: TraceabilityEntry[],
   phase127Promoted: boolean,
+  phase128Stage: Phase128LifecycleStage,
   failures: string[],
 ): void {
   requireCount(entries.length, 39, "post-audit checklist total", failures);
@@ -98,22 +110,28 @@ function verifyRequirementProjection(
   }
   requireCount(
     entries.filter((entry) => entry.checked).length,
-    phase127Promoted ? 33 : 29,
+    phase128Stage === "planned" ? (phase127Promoted ? 33 : 29) : 36,
     "post-audit checked requirement count",
     failures,
   );
   requireCount(
     traceability.filter((entry) => entry.status === "Complete").length,
-    phase127Promoted ? 33 : 29,
+    phase128Stage === "planned" ? (phase127Promoted ? 33 : 29) : 36,
     "post-audit complete traceability count",
     failures,
   );
+  if (phase128Stage !== "planned" && !phase127Promoted) {
+    failures.push("P124 Phase 128 execution requires promoted Phase 127 requirements");
+  }
 
   for (const entry of entries) {
     const maybeGapOwner = GAP_REQUIREMENTS.get(entry.id);
     const shouldBePending =
       maybeGapOwner !== undefined &&
-      !(phase127Promoted && maybeGapOwner === 127);
+      !(
+        (phase127Promoted && maybeGapOwner === 127) ||
+        (phase128Stage !== "planned" && maybeGapOwner === 128)
+      );
     if (entry.checked === shouldBePending) {
       failures.push(`P124 post-audit checklist state is invalid for ${entry.id}`);
     }
@@ -122,7 +140,8 @@ function verifyRequirementProjection(
     const maybeGapOwner = GAP_REQUIREMENTS.get(entry.id);
     const expectedStatus =
       maybeGapOwner === undefined ||
-      (phase127Promoted && maybeGapOwner === 127)
+      (phase127Promoted && maybeGapOwner === 127) ||
+      (phase128Stage !== "planned" && maybeGapOwner === 128)
         ? "Complete"
         : "Pending";
     if (entry.status !== expectedStatus) {
@@ -148,10 +167,12 @@ function verifyCoverage(
   requirements: string,
   roadmap: string,
   phase127Promoted: boolean,
+  phase128Stage: Phase128LifecycleStage,
   failures: string[],
 ): void {
-  const complete = phase127Promoted ? 33 : 29;
-  const pending = phase127Promoted ? 6 : 10;
+  const complete =
+    phase128Stage === "planned" ? (phase127Promoted ? 33 : 29) : 36;
+  const pending = 39 - complete;
   for (const [text, completeLabel, label] of [
     [requirements, "Complete", "requirements"],
     [roadmap, "Satisfied", "roadmap"],
@@ -172,6 +193,7 @@ function verifyRoadmapTopology(
   repoRoot: string,
   roadmap: string,
   lifecycle: Phase127Lifecycle,
+  phase128Stage: Phase128LifecycleStage,
   failures: string[],
 ): void {
   requireContains(
@@ -183,6 +205,14 @@ function verifyRoadmapTopology(
   for (const phase of GAP_PHASES) {
     if (phase.number === 127) {
       const expected = lifecycle.complete ? "x" : " ";
+      requireContains(
+        roadmap,
+        `- [${expected}] **Phase ${phase.number}: ${phase.name}**`,
+        `post-audit Phase ${phase.number} lifecycle state`,
+        failures,
+      );
+    } else if (phase.number === 128) {
+      const expected = phase128Stage === "complete" ? "x" : " ";
       requireContains(
         roadmap,
         `- [${expected}] **Phase ${phase.number}: ${phase.name}**`,
@@ -210,7 +240,20 @@ function verifyRoadmapTopology(
       `post-audit Phase ${phase.number} requirements`,
       failures,
     );
-    if (phase.number !== 127) {
+    if (phase.number === 128) {
+      const expectedProgress =
+        phase128Stage === "planned"
+          ? "**Plans:** 0 plans"
+          : phase128Stage === "executing_plan_04"
+            ? "**Plans:** 3/4 plans executed"
+            : "**Plans:** 4/4 plans complete";
+      requireContains(
+        section,
+        expectedProgress,
+        "post-audit Phase 128 plan state",
+        failures,
+      );
+    } else if (phase.number !== 127) {
       requireContains(
         section,
         "**Plans:** 0 plans",
@@ -258,12 +301,22 @@ function verifyRouting(
   roadmap: string,
   audit: string,
   phase127Complete: boolean,
+  phase128Stage: Phase128LifecycleStage,
   failures: string[],
 ): void {
-  const primaryRoute = phase127Complete ? PHASE128_ROUTE : PHASE127_ROUTE;
+  const primaryRoute =
+    phase128Stage === "complete"
+      ? PHASE129_ROUTE
+      : phase127Complete
+        ? PHASE128_ROUTE
+        : PHASE127_ROUTE;
+  const roadmapRoute =
+    phase128Stage === "executing_plan_04"
+      ? PHASE128_EXECUTION_ROUTE
+      : `Run \`${primaryRoute}\`.`;
   requireContains(
     roadmap,
-    `## Next Step\n\nRun \`${primaryRoute}\`.`,
+    `## Next Step\n\n${roadmapRoute}`,
     "post-audit roadmap route",
     failures,
   );
@@ -273,7 +326,31 @@ function verifyRouting(
     "post-audit audit route",
     failures,
   );
-  for (const relativePath of ROUTING_FILES) {
+  if (phase128Stage === "executing_plan_04") {
+    for (const relativePath of [".planning/ROADMAP.md", ".planning/STATE.md"] as const) {
+      const text = readFileSync(path.join(repoRoot, relativePath), "utf8");
+      requireContains(
+        text,
+        PHASE128_EXECUTION_ROUTE,
+        `post-audit Phase 128 execution route ${relativePath}`,
+        failures,
+      );
+      for (const staleRoute of [PHASE127_ROUTE, PHASE128_ROUTE, PHASE129_ROUTE]) {
+        requireAbsent(
+          text,
+          staleRoute,
+          `post-audit Phase 128 execution route ${relativePath}`,
+          failures,
+        );
+      }
+    }
+    return;
+  }
+  const routingFiles =
+    phase128Stage === "complete"
+      ? [".planning/ROADMAP.md", ".planning/STATE.md"] as const
+      : ROUTING_FILES;
+  for (const relativePath of routingFiles) {
     const absolutePath = path.join(repoRoot, relativePath);
     if (!existsSync(absolutePath)) {
       failures.push(`P124 post-audit routing missing ${relativePath}`);
@@ -292,6 +369,24 @@ function verifyRouting(
       );
     }
   }
+}
+
+function phase128LifecycleStage(
+  roadmap: string,
+  failures: string[],
+): Phase128LifecycleStage {
+  const section = phaseSection(roadmap, 128);
+  const stages = [
+    ["planned", section.includes("**Plans:** 0 plans")],
+    ["executing_plan_04", section.includes("**Plans:** 3/4 plans executed")],
+    ["complete", section.includes("**Plans:** 4/4 plans complete")],
+  ] as const;
+  const matches = stages.filter(([, matchesStage]) => matchesStage);
+  if (matches.length !== 1) {
+    failures.push("P124 Phase 128 lifecycle must match exactly one supported stage");
+    return "planned";
+  }
+  return matches[0]?.[0] ?? "planned";
 }
 
 function verifyPhase127Lifecycle(
@@ -568,6 +663,15 @@ function requireContains(
   failures: string[],
 ): void {
   if (!text.includes(needle)) failures.push(`P124 ${label} is missing ${needle}`);
+}
+
+function requireAbsent(
+  text: string,
+  needle: string,
+  label: string,
+  failures: string[],
+): void {
+  if (text.includes(needle)) failures.push(`P124 ${label} must not contain ${needle}`);
 }
 
 function requireCount(

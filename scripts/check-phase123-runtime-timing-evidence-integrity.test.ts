@@ -21,6 +21,7 @@ const TARGET_FILES = [
   "packages/open-bitcoin-rpc/src/context.rs",
   "packages/open-bitcoin-rpc/src/context/network.rs",
   "packages/open-bitcoin-rpc/src/inbound_listener.rs",
+  "packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs",
   "packages/open-bitcoin-rpc/src/inbound_listener/tests.rs",
   "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
   "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests.rs",
@@ -121,6 +122,42 @@ test.each([
     ),
   ],
   [
+    "peer-targeted fallback send removed",
+    "P123 idle clock target send order missing or out of order self.send_all_for_peer(&mut session, peer_id, &outbound)?;",
+    mutate(
+      "packages/open-bitcoin-node/src/sync/session.rs",
+      "self.send_all_for_peer(&mut session, peer_id, &outbound)?;",
+      "self.send_all(&mut session, &outbound)?;",
+    ),
+  ],
+  [
+    "live-session reconciliation removed",
+    "P123 session timestamp propagation missing block_reconcile::reconcile_best_chain_for_live_session( self, current_timestamp, )?",
+    mutate(
+      "packages/open-bitcoin-node/src/sync/session.rs",
+      "block_reconcile::reconcile_best_chain_for_live_session( self, current_timestamp, )?",
+      "block_reconcile::reconcile_best_chain(self, current_timestamp)?",
+    ),
+  ],
+  [
+    "post-durable progress dispatch removed",
+    "P123 requested fallback response consumption missing or out of order self.persist_progress_and_dispatch_tip()?;",
+    mutate(
+      "packages/open-bitcoin-node/src/sync/session.rs",
+      "self.persist_progress_and_dispatch_tip()?;",
+      "self.persist_progress()?;",
+    ),
+  ],
+  [
+    "peer emission completion moved before write",
+    "P123 sync peer emission post-write completion missing or out of order self.network.complete_peer_emission(receipt)?;",
+    mutate(
+      "packages/open-bitcoin-node/src/sync/session.rs",
+      "session.send(&message, self.config.network.magic())?; self.network.complete_peer_emission(receipt)?;",
+      "self.network.complete_peer_emission(receipt)?; session.send(&message, self.config.network.magic())?;",
+    ),
+  ],
+  [
     "ordinary response retention removed",
     "P123 response-work-aware idle yield missing .peer_requested_blocks(peer_id)",
     mutate(
@@ -204,7 +241,7 @@ test.each([
   [
     "inbound Written acknowledgement removed",
     "P123 inbound Written-only acknowledgement missing or out of order .acknowledge_wire_message_written(&response.message)",
-    mutate("packages/open-bitcoin-rpc/src/inbound_listener.rs", ".acknowledge_wire_message_written(&response.message)", ".record_response_intent(&response.message)"),
+    mutate("packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs", ".acknowledge_wire_message_written(&response.message)", ".record_response_intent(&response.message)"),
   ],
   [
     "encoding bypassed with fabricated bytes before write",
@@ -227,7 +264,7 @@ test.each([
   [
     "encoded bytes are decoded at acknowledgement",
     "P123 inbound byte decoding must not contain decode_wire(&response.bytes)",
-    append("packages/open-bitcoin-rpc/src/inbound_listener.rs", "decode_wire(&response.bytes);"),
+    append("packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs", "decode_wire(&response.bytes);"),
   ],
   [
     "eligible peer proxy restored",
@@ -385,7 +422,7 @@ bun test scripts/check-phase117-parity-uat-release-boundary.test.ts`;
     ["packages/open-bitcoin-node/src/sync/types.rs", "pub enum SyncPeerReceiveOutcome { Message(WireNetworkMessage), Idle, Closed } fn receive() -> Result<SyncPeerReceiveOutcome, SyncRuntimeError>"],
     ["packages/open-bitcoin-node/src/sync/tcp.rs", "fn receive() -> Result<SyncPeerReceiveOutcome, SyncRuntimeError> { Ok(0) if allow_clean_idle && filled == 0 => return Ok(ReadStageOutcome::Closed); allow_clean_idle filled == 0 io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut return Ok(ReadStageOutcome::Idle); unexpected EOF after {filled} of {} frame bytes payload read ended without a complete frame }"],
     ["packages/open-bitcoin-node/src/sync.rs", `pub fn open_with_block_relay_activation ManagedPeerNetwork::with_sync_limits_and_block_relay_activation block_relay_activation maybe_inbound_metric_status_provider self.network.block_relay_runtime_evidence_snapshot()? let maybe_block_relay_snapshot = self.maybe_authoritative_block_relay_snapshot()?; self.persist_metrics(&summary, maybe_block_relay_snapshot.as_ref(), timestamp); self.write_block_relay_log(&mut summary, maybe_block_relay_snapshot.as_ref(), timestamp); pub fn sync_until_idle_with_clock_and_cancel`],
-    ["packages/open-bitcoin-node/src/sync/session.rs", `session.send(message, self.config.network.magic())?; self.network.acknowledge_wire_message_written(message)?; SyncPeerReceiveOutcome::Message(message) => current_timestamp = (controls.0)(); messages_received = messages_received.saturating_add(1); SyncPeerReceiveOutcome::Idle => current_timestamp = (controls.0)(); .expire_compact_download_timeouts(current_timestamp)? .any(|(target_peer_id, _message)| *target_peer_id != peer_id) let fallback_block_hashes = targeted block_reconcile::request_tracked_blocks( self.send_all(&mut session, &outbound)?; if !self.peer_has_pending_download_work(peer_id) self.complete_peer_session_progress(&mut progress, peer_id); return Ok(()); continue; SyncPeerReceiveOutcome::Closed => progress.record_activity(current_timestamp); let block_response_was_requested = || self.block_extends_active_tip(block) block_reconcile::release_inflight_for_message(self, &message); self.network.receive_sync_message( peer_id, message, current_timestamp, self.verify_flags self.record_block_disposition( self.persist_progress()?; block_reconcile::reconcile_best_chain(self, current_timestamp)? fn peer_has_pending_download_work .compact_download_peer_state(peer_id) .is_some_and(|state| !state.in_flight.is_empty()) .peer_requested_blocks(peer_id) .any(|block_hash| self.inflight_blocks.contains(block_hash))`],
+    ["packages/open-bitcoin-node/src/sync/session.rs", `session.send(message, self.config.network.magic())?; self.network.acknowledge_wire_message_written(message)?; SyncPeerReceiveOutcome::Message(message) => current_timestamp = (controls.0)(); messages_received = messages_received.saturating_add(1); SyncPeerReceiveOutcome::Idle => current_timestamp = (controls.0)(); .expire_compact_download_timeouts(current_timestamp)? .any(|(target_peer_id, _message)| *target_peer_id != peer_id) let fallback_block_hashes = targeted block_reconcile::request_tracked_blocks( self.send_all_for_peer(&mut session, peer_id, &outbound)?; if !self.peer_has_pending_download_work(peer_id) self.complete_peer_session_progress(&mut progress, peer_id); return Ok(()); continue; SyncPeerReceiveOutcome::Closed => progress.record_activity(current_timestamp); let block_response_was_requested = || self.block_extends_active_tip(block) block_reconcile::release_inflight_for_message(self, &message); self.network.receive_sync_message( peer_id, message, current_timestamp, self.verify_flags self.record_block_disposition( let reconcile_progress = block_reconcile::reconcile_best_chain_for_live_session( self, current_timestamp, )?; self.record_reconcile_progress(reconcile_progress); self.persist_progress_and_dispatch_tip()?; fn peer_has_pending_download_work .compact_download_peer_state(peer_id) .is_some_and(|state| !state.in_flight.is_empty()) .peer_requested_blocks(peer_id) .any(|block_hash| self.inflight_blocks.contains(block_hash)) pub(super) fn send_all_for_peer self.send_all(session, messages)?; let emissions = self.announcement_outboxes.take_peer_emissions(peer_id)?; session.send(&message, self.config.network.magic())?; self.network.complete_peer_emission(receipt)?;`],
     ["packages/open-bitcoin-node/src/sync/block_reconcile.rs", `pub(super) fn request_tracked_blocks .request_missing_blocks(peer_id, &requested)? .inflight_blocks .insert(BlockHash::from(item.object_hash))`],
     ["packages/open-bitcoin-node/src/sync/block_response.rs", `fn block_extends_active_tip`],
     ["packages/open-bitcoin-node/src/lib.rs", "SyncPeerReceiveOutcome"],
@@ -396,7 +433,8 @@ bun test scripts/check-phase117-parity-uat-release-boundary.test.ts`;
     ["packages/open-bitcoin-node/src/status/block_relay_evidence.rs", "pub struct BlockRelayEvidenceStatus {}"],
     ["packages/open-bitcoin-rpc/src/context.rs", "pub(crate) struct EncodedWireResponse { pub(crate) message: WireNetworkMessage, pub(crate) bytes: Vec<u8> }"],
     ["packages/open-bitcoin-rpc/src/context/network.rs", "ManagedPeerNetwork::new_with_block_relay_activation( config.block_serving let encoded = self.network.encode_messages(&responses)?; .into_iter() .zip(encoded) EncodedWireResponse { message, bytes }"],
-    ["packages/open-bitcoin-rpc/src/inbound_listener.rs", "let Ok(WriteWireMessageOutcome::Written) = write_result else { return; }; .acknowledge_wire_message_written(&response.message)"],
+    ["packages/open-bitcoin-rpc/src/inbound_listener.rs", ""],
+    ["packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs", "let Ok(WriteWireMessageOutcome::Written) = write_result else { return; }; .acknowledge_wire_message_written(&response.message)"],
     ["packages/open-bitcoin-rpc/src/inbound_listener/tests.rs", "phase123_inbound_encoding_failure_does_not_increment_served phase123_enabled_runtime_config_serves_and_acknowledges_inbound_block phase123_disabled_runtime_config_does_not_serve_inbound_block"],
     ["packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs", "DurableSyncRuntime::open_with_runtime_activation( runtime.block_serving set_inbound_metric_status_provider let mut shutdown_latched = false; let mut should_cancel = || daemon_sync_shutdown_requested(&shutdown_receiver) sync_until_idle_with_clock_and_cancel( if shutdown_latched"],
     ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests.rs", "phase123_daemon_shutdown_cancels_live_silent_peer_session"],

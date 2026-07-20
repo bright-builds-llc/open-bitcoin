@@ -28,6 +28,7 @@ export const PHASE128_TARGET_FILES = [
   "packages/open-bitcoin-node/src/sync/session.rs",
   "packages/open-bitcoin-node/src/sync/tests/production_announcement_transport_cases.rs",
   "packages/open-bitcoin-rpc/src/inbound_listener.rs",
+  "packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs",
   "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
   ".planning/ROADMAP.md",
   ".planning/PROJECT.md",
@@ -289,7 +290,9 @@ function checkProductionWriteBoundaries(
   }
 
   const inbound =
-    texts.get("packages/open-bitcoin-rpc/src/inbound_listener.rs") ?? "";
+    texts.get(
+      "packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs",
+    ) ?? "";
   const drain = section(
     inbound,
     "async fn drain_inbound_announcements(",
