@@ -1,8 +1,8 @@
 ---
 phase: 128-production-compact-announcement-transport
-reviewed: 2026-07-20T04:35:00Z
+reviewed: 2026-07-20T09:41:18Z
 depth: standard
-files_reviewed: 27
+files_reviewed: 32
 files_reviewed_list:
   - docs/parity/catalog/p2p.md
   - docs/parity/index.json
@@ -11,6 +11,7 @@ files_reviewed_list:
   - packages/open-bitcoin-network/src/peer/compact_relay.rs
   - packages/open-bitcoin-network/src/peer/message_dispatch.rs
   - packages/open-bitcoin-network/src/peer/tests.rs
+  - packages/open-bitcoin-node/src/lib.rs
   - packages/open-bitcoin-node/src/network.rs
   - packages/open-bitcoin-node/src/network/announcement_transport.rs
   - packages/open-bitcoin-node/src/network/block_relay_evidence.rs
@@ -20,12 +21,16 @@ files_reviewed_list:
   - packages/open-bitcoin-node/src/sync.rs
   - packages/open-bitcoin-node/src/sync/block_reconcile.rs
   - packages/open-bitcoin-node/src/sync/block_response.rs
+  - packages/open-bitcoin-node/src/sync/runtime_state.rs
   - packages/open-bitcoin-node/src/sync/session.rs
+  - packages/open-bitcoin-node/src/sync/tests.rs
   - packages/open-bitcoin-node/src/sync/tests/production_announcement_transport_cases.rs
+  - packages/open-bitcoin-node/src/sync/types.rs
   - packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs
   - packages/open-bitcoin-rpc/src/bin/open_bitcoind/runtime_control.rs
   - packages/open-bitcoin-rpc/src/inbound_listener.rs
   - packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs
+  - packages/open-bitcoin-rpc/src/inbound_listener/tests.rs
   - packages/open-bitcoin-rpc/tests/black_box_parity.rs
   - scripts/check-phase124-post-audit-gap-planning.ts
   - scripts/check-phase128-production-compact-announcement-transport.test.ts
@@ -33,47 +38,53 @@ files_reviewed_list:
   - scripts/verify.sh
 findings:
   critical: 0
-  warning: 2
+  warning: 0
   info: 0
-  total: 2
-status: issues_found
+  total: 0
+status: clean
 ---
 
 # Phase 128: Code Review Report
 
-**Reviewed:** 2026-07-20T04:35:00Z
+**Reviewed:** 2026-07-20T09:41:18Z
 **Depth:** standard
-**Files Reviewed:** 27
-**Status:** issues_found
+**Files Reviewed:** 32
+**Status:** clean
 
 ## Summary
 
-The review covered the committed Phase 128 diff from `f3bdae46`, including bilateral negotiation, durable-tip dispatch, bounded peer outboxes, both production socket adapters, post-write evidence, tests, parity metadata, and the deterministic checker. The functional-core/effect boundary and consuming-receipt design are generally sound, and no false-positive evidence mutation was found before a successful write.
+The fresh review covered the original Phase 128 source scope plus every reviewable
+file changed by fixes `89d6b813` and `77ccae7d`, with the implementation diff
+inspected from `f134693b..77ccae7d`.
 
-Two production concurrency defects remain. An idle inbound session has no wakeup path for a newly enqueued announcement, and inbound/outbound peer IDs are allocated from independent overlapping namespaces even though the authoritative peer map and new outbox registry use the ID as a process-wide key.
+WR-01 is resolved. Each inbound peer now owns a generation-tracked,
+cancellation-safe outbox readiness cursor. Enqueue publishes readiness only
+after releasing the registry lock, and the inbound loop keeps the same pinned
+socket-read future alive while servicing notifications, so partial frames are
+not discarded and enqueues cannot be lost between draining and waiting.
+Announcements are removed under the short registry lock, written without that
+lock, and credited only after `WriteWireMessageOutcome::Written`.
 
-This review applied the repo-local guidance in `AGENTS.md`, the Bright Builds sidecar and standards pages for architecture, code shape, testing, verification, Rust, and TypeScript/JavaScript, with no applicable active override in `standards-overrides.md`.
+WR-02 is resolved. Production composition now gives inbound accepts and
+outbound sync one shared `PeerIdentityAuthority`. Its atomic allocation is
+unique across clones, reserves zero as the exhausted sentinel, returns the
+final nonzero identifier once, and then fails closed without wrapping into a
+collision. Duplicate live outbox registration fails atomically. Outbound
+cleanup is guarded by explicit acquisition flags, so a failed setup cannot
+unregister an existing outbox or disconnect a peer it did not connect.
 
-## Warnings
+No new races, missed wakeups, notification loss, peer-ID collision or
+exhaustion bugs, cleanup-ownership defects, lock-across-effect violations, or
+false post-write receipt evidence were found. All reviewed files meet the
+project's quality standards.
 
-### WR-01: Idle inbound sessions do not wake for queued announcements
-
-**File:** `/Users/peterryszkiewicz/Repos/open-bitcoin/packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs:83-140`
-
-**Issue:** The inbound loop drains the announcement outbox immediately before entering `read_wire_message_for_state`, then awaits that socket read without also waiting for outbox readiness. A newly durable tip enqueued while the peer is idle cannot be written until the remote peer sends another message. If it remains idle, the read waits for the established-peer timeout (currently 1,800 seconds) and then disconnects, so the queued compact/header/inventory announcement is never sent. The existing production test calls `send_all_for_peer` directly with a fake outbound session and therefore does not exercise this inbound socket path.
-
-**Fix:** Give each peer outbox a notification primitive and select between socket readability, shutdown/timeout, and outbox notification. On notification, drain the bounded queue through the existing post-write receipt path, then resume reading. Add a loopback inbound test that completes the handshake, remains otherwise idle, enqueues a durable-tip announcement, and observes the wire message and exactly-once evidence before the idle timeout.
-
-### WR-02: Shared authority and outbox registry use colliding peer-ID allocators
-
-**File:** `/Users/peterryszkiewicz/Repos/open-bitcoin/packages/open-bitcoin-rpc/src/inbound_listener.rs:353-366`
-
-**Issue:** The inbound listener starts its allocator at `1`, while `DurableSyncRuntime` independently starts its outbound allocator at `1` (`packages/open-bitcoin-node/src/sync.rs:160-167`). Both directions now share the same authoritative `PeerManager` and `AnnouncementOutboxRegistry`, keyed only by `PeerId`. A simultaneous first inbound and first outbound connection therefore collide. In the outbound path, `register_peer` silently reuses the inbound queue, `connect_outbound_peer` returns `PeerAlreadyExists`, and unconditional cleanup unregisters/disconnects that ID, dropping the active inbound peer and its queued announcements. The reverse ordering rejects the inbound peer as a duplicate.
-
-**Fix:** Allocate peer IDs from one process-wide authority shared by both accept and sync paths, or use a typed/disjoint connection identity that cannot collide by direction. Make `register_peer` reject an already-registered live owner rather than silently aliasing it, and ensure failed outbound setup only cleans up resources that attempt actually acquired. Add a concurrent inbound/outbound regression test proving distinct IDs, distinct queues, and peer-scoped cleanup.
+This review applied the repo-local guidance in `AGENTS.md`, the Bright Builds
+sidecar, and the managed architecture, code-shape, testing, verification, Rust,
+and TypeScript/JavaScript standards. The tracked LOC report is generated and
+was therefore excluded from the reviewable source count.
 
 ______________________________________________________________________
 
-_Reviewed: 2026-07-20T04:35:00Z_
+_Reviewed: 2026-07-20T09:41:18Z_
 _Reviewer: the agent (gsd-code-reviewer)_
 _Depth: standard_
