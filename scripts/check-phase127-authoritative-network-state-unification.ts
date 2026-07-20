@@ -24,7 +24,10 @@ const PHASE126_CHECK =
 const PHASE117_TEST =
   "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts";
 
-const TARGET_FILES = [
+export const PHASE127_DAEMON_HELPER_DIR =
+  "packages/open-bitcoin-rpc/src/bin/open_bitcoind";
+
+export const PHASE127_TARGET_FILES = [
   "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
   "packages/open-bitcoin-rpc/src/bin/open_bitcoind/inbound_metrics.rs",
   "packages/open-bitcoin-rpc/src/bin/open_bitcoind/sync_seed.rs",
@@ -45,7 +48,7 @@ const TARGET_FILES = [
   "scripts/verify.sh",
 ] as const;
 
-type TargetFile = (typeof TARGET_FILES)[number];
+type TargetFile = (typeof PHASE127_TARGET_FILES)[number];
 type TextCorpus = Map<TargetFile, string>;
 
 export function checkPhase127AuthoritativeNetworkStateUnification(
@@ -68,7 +71,7 @@ export function checkPhase127AuthoritativeNetworkStateUnification(
 
 function loadCorpus(repoRoot: string, failures: string[]): TextCorpus {
   const texts = new Map<TargetFile, string>();
-  for (const file of TARGET_FILES) {
+  for (const file of PHASE127_TARGET_FILES) {
     const absolutePath = path.join(repoRoot, file);
     if (!existsSync(absolutePath)) {
       failures.push(`P127 missing target: ${file}`);
