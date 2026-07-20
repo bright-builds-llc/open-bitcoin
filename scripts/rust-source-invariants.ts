@@ -61,6 +61,80 @@ export function rustCallArguments(text: string, callee: string): string[][] {
 }
 
 /**
+ * Returns the methods called on a Rust type or any local alias of that type.
+ */
+export function rustAssociatedCallMethods(
+  text: string,
+  targetType: string,
+): string[] {
+  const code = stripRustNonCode(text);
+  const typeNames = rustTypeAliases(code, targetType);
+  const methods: string[] = [];
+  for (const typeName of typeNames) {
+    const escapedType = escapeRegExp(typeName);
+    const associatedCall = new RegExp(
+      String.raw`\b${escapedType}\s*(?:::<[^;{}()]*>)?::\s*([A-Za-z_]\w*)\s*\(`,
+      "g",
+    );
+    for (const match of code.matchAll(associatedCall)) {
+      methods.push(match[1] ?? "");
+    }
+  }
+  return methods;
+}
+
+/**
+ * Returns every top-level `match` discriminant in a Rust expression.
+ */
+export function rustMatchDiscriminants(text: string): string[] {
+  const code = stripRustNonCode(text);
+  const discriminants: string[] = [];
+  for (const match of code.matchAll(/\bmatch\b/g)) {
+    const start = (match.index ?? 0) + match[0].length;
+    const delimiters: string[] = [];
+    for (let cursor = start; cursor < code.length; cursor += 1) {
+      const character = code[cursor] ?? "";
+      if (character === "(" || character === "[") {
+        delimiters.push(character);
+        continue;
+      }
+      if (character === ")" || character === "]") {
+        if (delimiters.length === 0) break;
+        delimiters.pop();
+        continue;
+      }
+      if (character === "{" && delimiters.length === 0) {
+        discriminants.push(code.slice(start, cursor).trim());
+        break;
+      }
+    }
+  }
+  return discriminants;
+}
+
+/**
+ * Returns one field's top-level initializers from an exact Rust struct literal.
+ */
+export function rustStructLiteralFieldInitializers(
+  expression: string,
+  structType: string,
+  field: string,
+): string[] {
+  const code = stripRustNonCode(expression).trim();
+  const literalStart = new RegExp(`^${escapeRegExp(structType)}\\s*\\{`).exec(
+    code,
+  );
+  if (literalStart === null) return [];
+  const open = code.indexOf("{", literalStart.index);
+  const maybeClose = rustClosingDelimiter(code, open);
+  if (maybeClose === null || code.slice(maybeClose + 1).trim() !== "") return [];
+  const fieldStart = new RegExp(`^${escapeRegExp(field)}\\s*:`);
+  return splitTopLevelRustArguments(code.slice(open + 1, maybeClose))
+    .filter((entry) => fieldStart.test(entry))
+    .map((entry) => entry.slice(entry.indexOf(":") + 1).trim());
+}
+
+/**
  * Extracts one Rust function from its signature through its balanced body.
  */
 export function rustFunction(text: string, signatureNeedle: string): string {
@@ -126,6 +200,43 @@ export function stripRustNonCode(text: string): string {
  */
 export function normalizeRust(text: string): string {
   return text.replace(/\s+/g, "");
+}
+
+function rustTypeAliases(code: string, targetType: string): Set<string> {
+  const typeNames = new Set([targetType]);
+  const aliases = [
+    ...code.matchAll(
+      /\btype\s+([A-Za-z_]\w*)(?:\s*<[^;=]+>)?\s*=\s*([^;]+);/g,
+    ),
+    ...code.matchAll(/\buse\s+([^;]+)\s+as\s+([A-Za-z_]\w*)\s*;/g),
+  ].map((match) =>
+    match[0].trimStart().startsWith("type ")
+      ? { alias: match[1] ?? "", target: match[2] ?? "" }
+      : { alias: match[2] ?? "", target: match[1] ?? "" },
+  );
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const alias of aliases) {
+      if (
+        ![...typeNames].some((typeName) =>
+          new RegExp(`(?:^|::)${escapeRegExp(typeName)}(?:<|$)`).test(
+            normalizeRust(alias.target),
+          ),
+        ) ||
+        typeNames.has(alias.alias)
+      ) {
+        continue;
+      }
+      typeNames.add(alias.alias);
+      changed = true;
+    }
+  }
+  return typeNames;
+}
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function splitTopLevelRustArguments(argumentsText: string): string[] {

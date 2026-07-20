@@ -7,10 +7,10 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 565 |
-| Total lines | 242,265 |
-| Code/content lines | 213,294 |
-| Comment-only lines | 8,567 |
-| Blank lines | 20,404 |
+| Total lines | 242,557 |
+| Code/content lines | 213,554 |
+| Comment-only lines | 8,585 |
+| Blank lines | 20,418 |
 
 ## Per-Crate Modules
 
@@ -36,7 +36,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 95 | 85,080 | 74,184 | 4,475 | 6,421 |
 | Rust production | 290 | 83,961 | 73,269 | 2,609 | 8,083 |
-| TypeScript/Bun scripts | 121 | 56,635 | 50,154 | 1,417 | 5,064 |
+| TypeScript/Bun scripts | 121 | 56,927 | 50,414 | 1,435 | 5,078 |
 | Fixture/data | 6 | 8,233 | 8,228 | 5 | 0 |
 | Shell scripts | 13 | 4,270 | 3,821 | 55 | 394 |
 | TOML/config | 16 | 3,464 | 3,098 | 0 | 366 |
@@ -96,8 +96,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase124-post-audit-gap-planning.ts | 586 |
 | scripts/check-phase126-compact-relay-residual-hardening.test.ts | 445 |
 | scripts/check-phase126-compact-relay-residual-hardening.ts | 403 |
-| scripts/check-phase127-authoritative-network-state-unification.test.ts | 415 |
-| scripts/check-phase127-authoritative-network-state-unification.ts | 502 |
+| scripts/check-phase127-authoritative-network-state-unification.test.ts | 560 |
+| scripts/check-phase127-authoritative-network-state-unification.ts | 538 |
 | scripts/check-phase61-resource-recovery-boundaries.ts | 152 |
 | scripts/check-phase62-sync-truth-surfaces.ts | 265 |
 | scripts/check-phase63-service-lifecycle.ts | 308 |
@@ -170,7 +170,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/generate-loc-report.ts | 571 |
 | scripts/process-liveness.ts | 53 |
 | scripts/run-live-mainnet-smoke.ts | 3,816 |
-| scripts/rust-source-invariants.ts | 287 |
+| scripts/rust-source-invariants.ts | 398 |
 
 ## Largest Included Files
 
@@ -202,7 +202,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 507d758c209394d5eb8ce5ebeb1efa8106815b236263914c0bcf0fcd2081bcba |
+| Input fingerprint | b7f6fe4dce8ac3c5c7706533eb0fcc579a44ef53115c3904f7e588018fc744c7 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

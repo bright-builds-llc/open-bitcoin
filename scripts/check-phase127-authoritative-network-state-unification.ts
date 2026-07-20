@@ -5,10 +5,12 @@ import path from "node:path";
 
 import {
   normalizeRust,
+  rustAssociatedCallMethods,
   rustCallArguments,
-  rustFieldInitializers,
   rustFunction,
   rustLetInitializers,
+  rustMatchDiscriminants,
+  rustStructLiteralFieldInitializers,
   stripRustNonCode,
 } from "./rust-source-invariants";
 
@@ -93,10 +95,12 @@ function checkProductionAuthority(
     main,
     "authoritative_runtime",
   );
-  const contextConstructorCalls = rustCallArguments(
-    main,
-    "ManagedRpcContext::from_runtime_config_with_network_handle",
+  const sharedContextStart = main.indexOf("let shared_context");
+  const contextInitializers = rustLetInitializers(
+    sharedContextStart === -1 ? "" : main.slice(0, sharedContextStart),
+    "context",
   );
+  const sharedContextInitializers = rustLetInitializers(main, "shared_context");
   const authorityFactory = rustFunction(
     daemon,
     "fn open_authoritative_network_runtime(",
@@ -109,20 +113,29 @@ function checkProductionAuthority(
     daemonCodeWithoutAuthorityFactory,
     ...productionDaemonHelperSources(repoRoot).map(stripRustNonCode),
   ].join("\n");
+  const handleConstructors = rustAssociatedCallMethods(
+    productionDaemonCode,
+    "ManagedNetworkHandle",
+  );
+  const peerNetworkMethods = rustAssociatedCallMethods(
+    productionDaemonCode,
+    "ManagedPeerNetwork",
+  );
   if (
     authoritativeRuntimeInitializers.length !== 1 ||
     normalizeRust(authoritativeRuntimeInitializers[0] ?? "") !==
       "open_authoritative_network_runtime(&runtime,maybe_runtime_store.clone())?" ||
     countOccurrences(main, "open_authoritative_network_runtime(") !== 1 ||
-    contextConstructorCalls.length !== 1 ||
-    contextConstructorCalls[0]?.length !== 3 ||
-    normalizeRust(contextConstructorCalls[0]?.[1] ?? "") !==
-      "authoritative_runtime.network.clone()" ||
-    [
-      "ManagedNetworkHandle::transient_runtime(",
-      "ManagedNetworkHandle::from_network_fixture(",
-      "ManagedPeerNetwork::",
-    ].some((forbidden) => productionDaemonCode.includes(forbidden))
+    contextInitializers.length !== 1 ||
+    normalizeRust(contextInitializers[0] ?? "") !==
+      "ManagedRpcContext::from_runtime_config_with_network_handle(&runtime,authoritative_runtime.network.clone(),maybe_runtime_store.clone(),)?" ||
+    sharedContextInitializers.length !== 1 ||
+    normalizeRust(sharedContextInitializers[0] ?? "") !==
+      "Arc::new(tokio::sync::Mutex::new(context))" ||
+    handleConstructors.some((method) =>
+      ["transient_runtime", "from_network_fixture"].includes(method),
+    ) ||
+    peerNetworkMethods.length !== 0
   ) {
     failures.push(
       "P127 production authority: daemon must compose sync, inbound, and RPC from one authoritative runtime",
@@ -164,6 +177,11 @@ function checkDurableServing(texts: TextCorpus, failures: string[]): void {
   const storeLoad = rustFunction(store, "pub fn load_block(");
   const resolve = rustFunction(context, "fn resolve_block_intent(");
   const maybeBlockInitializers = rustLetInitializers(resolve, "maybe_block");
+  const blockInitializers = rustLetInitializers(resolve, "block");
+  const blockMatchDiscriminants = blockInitializers.flatMap(
+    rustMatchDiscriminants,
+  );
+  const blockResponseCalls = rustCallArguments(resolve, "block_serve_response");
   if (
     !contextCode.includes("trait DurableBlockSource: Send + Sync") ||
     !contextCode.includes("impl DurableBlockSource for FjallNodeStore") ||
@@ -171,6 +189,11 @@ function checkDurableServing(texts: TextCorpus, failures: string[]): void {
     maybeBlockInitializers.length !== 1 ||
     normalizeRust(maybeBlockInitializers[0] ?? "") !==
       "self.maybe_block_source.as_ref().map(|source|source.load_block(intent.block_hash()))" ||
+    blockInitializers.length !== 1 ||
+    blockMatchDiscriminants.length !== 1 ||
+    normalizeRust(blockMatchDiscriminants[0] ?? "") !== "maybe_block" ||
+    blockResponseCalls.length !== 1 ||
+    normalizeRust(blockResponseCalls[0]?.[0] ?? "") !== "block" ||
     [
       "lookup_block(",
       "blocks_by_hash",
@@ -219,6 +242,11 @@ function checkOperatorProjection(texts: TextCorpus, failures: string[]): void {
     dispatch,
     "pub(super) fn open_bitcoin_network_status(",
   );
+  const statusResultCalls = rustCallArguments(networkStatusProjection, "Ok");
+  const returnedStatus =
+    statusResultCalls.length === 1 && statusResultCalls[0]?.length === 1
+      ? (statusResultCalls[0]?.[0] ?? "")
+      : "";
   if (
     !authoritySnapshot.includes(
       "self.read(ManagedPeerNetwork::operator_snapshot)",
@@ -256,18 +284,21 @@ function checkOperatorProjection(texts: TextCorpus, failures: string[]): void {
       "snapshot",
       "context.authoritative_operator_snapshot().map_err(network_authority_error_to_failure)?",
     ) ||
-    !hasSingleRustFieldInitializer(
-      networkStatusProjection,
+    !hasSingleRustStructFieldInitializer(
+      returnedStatus,
+      "OpenBitcoinNetworkStatusResponse",
       "inbound",
       "snapshot.inbound().clone()",
     ) ||
-    !hasSingleRustFieldInitializer(
-      networkStatusProjection,
+    !hasSingleRustStructFieldInitializer(
+      returnedStatus,
+      "OpenBitcoinNetworkStatusResponse",
       "relay",
       "snapshot.relay().clone()",
     ) ||
-    !hasSingleRustFieldInitializer(
-      networkStatusProjection,
+    !hasSingleRustStructFieldInitializer(
+      returnedStatus,
+      "OpenBitcoinNetworkStatusResponse",
       "block_relay",
       "snapshot.block_relay().clone()",
     )
@@ -453,12 +484,17 @@ function hasSingleRustLetInitializer(
   );
 }
 
-function hasSingleRustFieldInitializer(
-  functionText: string,
+function hasSingleRustStructFieldInitializer(
+  expression: string,
+  structType: string,
   field: string,
   expected: string,
 ): boolean {
-  const initializers = rustFieldInitializers(functionText, field);
+  const initializers = rustStructLiteralFieldInitializers(
+    expression,
+    structType,
+    field,
+  );
   return (
     initializers.length === 1 &&
     normalizeRust(initializers[0] ?? "") === normalizeRust(expected)
