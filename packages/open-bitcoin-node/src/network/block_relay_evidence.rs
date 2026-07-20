@@ -85,7 +85,7 @@ impl ManagedBlockRelayEvidenceState {
             self.announcement,
             self.reconstruction,
             self.missing_transaction,
-            fallback_counters(peer_manager, self.fallback),
+            self.fallback,
             in_flight_counters(peer_manager),
             self.cleanup,
         )
@@ -337,21 +337,6 @@ fn in_flight_counters(peer_manager: &PeerManager) -> CompactRelayInFlightCounter
             .filter(|entry| entry.getblocktxn_in_flight)
             .count() as u64;
     }
-    counters
-}
-
-fn fallback_counters(
-    peer_manager: &PeerManager,
-    mut counters: CompactRelayFallbackCounters,
-) -> CompactRelayFallbackCounters {
-    let timed_out = peer_manager
-        .peer_ids()
-        .into_iter()
-        .filter_map(|peer_id| peer_manager.compact_download_peer_state(peer_id))
-        .flat_map(|state| state.in_flight.values())
-        .filter(|entry| entry.getblocktxn_in_flight)
-        .count() as u64;
-    counters.compact_timeout_count += timed_out;
     counters
 }
 

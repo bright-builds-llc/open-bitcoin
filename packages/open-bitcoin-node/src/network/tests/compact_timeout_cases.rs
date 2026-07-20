@@ -266,6 +266,60 @@ fn receive_message_preserves_other_peer_timeout_getdata() {
 }
 
 #[test]
+fn snapshot_with_live_getblocktxn_in_flight_reports_zero_fallback_timeouts() {
+    // Arrange — one live getblocktxn in flight, zero recorded Timeout cleanups
+    let mut network = compact_relay_enabled_managed_network(120_106);
+    let peer_id = 120_106;
+    let _block_hash = start_in_flight_compact_download(&mut network, peer_id, 5_000);
+
+    // Act
+    let status = network.block_relay_evidence_status();
+
+    // Assert — live in-flight requests surface only through the in-flight facet
+    let fallback = match status.fallback {
+        FieldAvailability::Available(fallback) => fallback,
+        FieldAvailability::Unavailable { reason } => {
+            panic!("fallback evidence unavailable with live in-flight state: {reason}")
+        }
+    };
+    let in_flight = match status.in_flight {
+        FieldAvailability::Available(in_flight) => in_flight,
+        FieldAvailability::Unavailable { reason } => {
+            panic!("in-flight evidence unavailable with live in-flight state: {reason}")
+        }
+    };
+    assert_eq!(
+        fallback.compact_timeout_count, 0,
+        "live getblocktxn in flight is not a timeout; fallback={fallback:?}"
+    );
+    assert_eq!(in_flight.getblocktxn_in_flight_count, 1);
+}
+
+#[test]
+fn timeout_cleanup_increments_fallback_timeout_and_fallback_counts() {
+    // Arrange
+    let mut network = compact_relay_enabled_managed_network(120_107);
+    let peer_id = 120_107;
+    let start_time = 6_000;
+    let _block_hash = start_in_flight_compact_download(&mut network, peer_id, start_time);
+
+    // Act
+    let _expired = network
+        .expire_compact_download_timeouts(start_time + COMPACT_BLOCK_DOWNLOAD_TIMEOUT_SECONDS + 1)
+        .expect("expire compact downloads");
+
+    // Assert — one real Timeout cleanup drives both durable fallback counters
+    let fallback = match network.block_relay_evidence_status().fallback {
+        FieldAvailability::Available(fallback) => fallback,
+        FieldAvailability::Unavailable { reason } => {
+            panic!("fallback evidence unavailable after timeout cleanup: {reason}")
+        }
+    };
+    assert_eq!(fallback.compact_timeout_count, 1);
+    assert_eq!(fallback.compact_fallback_count, 1);
+}
+
+#[test]
 fn compact_timeout_cleanup_leaves_durable_chainstate_unchanged() {
     // Arrange
     let mut network = compact_relay_enabled_managed_network(120_105);

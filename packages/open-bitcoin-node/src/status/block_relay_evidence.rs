@@ -49,6 +49,8 @@ pub struct CompactRelayMissingTransactionCounters {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CompactRelayFallbackCounters {
     pub compact_fallback_count: u64,
+    /// Count of compact downloads that fell back after a real timeout cleanup;
+    /// live in-flight getblocktxn requests are reported only by the in-flight facet.
     pub compact_timeout_count: u64,
 }
 

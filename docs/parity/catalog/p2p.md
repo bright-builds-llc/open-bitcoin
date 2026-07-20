@@ -1324,6 +1324,9 @@ The `v2-1-operator-block-relay-evidence` surface covers `OBS-01` through
 Bitcoin RPC extension, CLI, dashboard, fixed metrics, structured logs, and
 redacted support bundles. These surfaces intentionally omit raw peers, block
 hashes, transactions, permission strings, credentials, and dynamic labels.
+The operator fallback facet's `compact_timeout_count` counts only real
+timeout cleanups; live in-flight `getblocktxn` requests are reported by the
+in-flight facet, not mixed into fallback timeouts at snapshot time.
 
 ## Phase 117 parity, UAT, and release guardrails
 
