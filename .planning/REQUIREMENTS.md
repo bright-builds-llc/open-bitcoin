@@ -22,8 +22,8 @@ Requirements for the current milestone. Each requirement maps to exactly one roa
 - [x] **CMP-01**: Node encodes, decodes, and validates `sendcmpct` messages with version 2 semantics and documented handling for unsupported versions.
 - [x] **CMP-02**: Node encodes, decodes, and validates `cmpctblock` payloads with header, nonce, six-byte short IDs, and prefilled transaction differential indexes.
 - [x] **CMP-03**: Node encodes, decodes, and validates `getblocktxn` and `blocktxn` payloads with differential indexes and witness transaction serialization.
-- [ ] **CMP-04**: Node tracks per-peer compact-block capability, high-bandwidth preference, low-bandwidth preference, and compact-block announcement eligibility deterministically.
-- [ ] **CMP-05**: Node announces compact blocks only when activation, peer negotiation, header state, block availability, and resource limits permit it.
+- [x] **CMP-04**: Node tracks per-peer compact-block capability, high-bandwidth preference, low-bandwidth preference, and compact-block announcement eligibility deterministically.
+- [x] **CMP-05**: Node announces compact blocks only when activation, peer negotiation, header state, block availability, and resource limits permit it.
 - [x] **CMP-06**: Compact-block negotiation remains independent from transaction relay, package relay, bloom/filter permissions, compact filters, and public serving defaults.
 
 ### Compact Block Reconstruction And Fallback
@@ -48,7 +48,7 @@ Requirements for the current milestone. Each requirement maps to exactly one roa
 
 - [ ] **OBS-01**: RPC and shared network status report block-serving activation, serving eligibility, compact negotiation, reconstruction, fallback, and in-flight compact-block state truthfully.
 - [x] **OBS-02**: CLI and dashboard surfaces render block-serving and compact-block relay state from the shared status contract without raw peer, permission, credential, or transaction payload leakage.
-- [ ] **OBS-03**: Metrics and structured logs use fixed low-cardinality labels for served, suppressed, compact-announced, reconstructed, missing-requested, fallback, malformed, timeout, and cleanup outcomes.
+- [x] **OBS-03**: Metrics and structured logs use fixed low-cardinality labels for served, suppressed, compact-announced, reconstructed, missing-requested, fallback, malformed, timeout, and cleanup outcomes.
 - [x] **OBS-04**: Support bundles sanitize block-serving and compact-relay evidence, including raw transaction lists, raw peer endpoints, permission strings, credentials, and dynamic labels.
 - [x] **OBS-05**: Operator docs and UAT guidance provide copy-pasteable repo-local Cargo and Bazel commands for block-serving and compact-relay workflows.
 
@@ -123,8 +123,8 @@ Traceability is populated by the v2.1 roadmap. Each active requirement maps to e
 | CMP-01 | Phase 112 | Complete |
 | CMP-02 | Phase 112 | Complete |
 | CMP-03 | Phase 112 | Complete |
-| CMP-04 | Phase 128 | Pending |
-| CMP-05 | Phase 128 | Pending |
+| CMP-04 | Phase 128 | Complete |
+| CMP-05 | Phase 128 | Complete |
 | CMP-06 | Phase 113 | Complete |
 | RCN-01 | Phase 112 | Complete |
 | RCN-02 | Phase 126 | Complete |
@@ -140,7 +140,7 @@ Traceability is populated by the v2.1 roadmap. Each active requirement maps to e
 | GOV-05 | Phase 111 | Complete |
 | OBS-01 | Phase 129 | Pending |
 | OBS-02 | Phase 127 | Complete |
-| OBS-03 | Phase 128 | Pending |
+| OBS-03 | Phase 128 | Complete |
 | OBS-04 | Phase 127 | Complete |
 | OBS-05 | Phase 116 | Complete |
 | BOUND-01 | Phase 126 | Complete |

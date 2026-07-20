@@ -448,7 +448,7 @@ Plans:
 3. Selected compact, header, and inventory announcements are written through the real peer transport while preserving resource and fallback policy.
 4. Compact-announcement metrics, logs, and provenance are recorded only after a successful transport write, with end-to-end tests covering success and failure.
 
-**Plans:** 0 plans
+**Plans:** 3/4 plans executed
 
 #### Phase 129: Integration Guardrails and Milestone Reconciliation
 
@@ -489,7 +489,7 @@ Plans:
 | 125. Compact Download Verification Traceability Closure | v2.1 | 4/4 | Complete   | 2026-07-17 |
 | 126. Compact Relay Residual Hardening | v2.1 | 4/4 | Complete   | 2026-07-18 |
 | 127. Authoritative Network State Unification | v2.1 | 4/4 | Complete    | 2026-07-20 |
-| 128. Production Compact Announcement Transport | v2.1 | 0/0 | Not started | - |
+| 128. Production Compact Announcement Transport | v2.1 | 3/4 | In Progress|  |
 | 129. Integration Guardrails and Milestone Reconciliation | v2.1 | 0/0 | Not started | - |
 
 ## Traceability

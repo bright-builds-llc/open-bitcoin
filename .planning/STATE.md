@@ -3,15 +3,15 @@ gsd_state_version: "1.0"
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
 status: executing
-stopped_at: Phase 128 context gathered
-last_updated: "2026-07-20T03:02:07.819Z"
-last_activity: 2026-07-20 -- Phase 128 planning complete
+stopped_at: Completed 128-03-PLAN.md
+last_updated: "2026-07-20T05:43:01.490Z"
+last_activity: 2026-07-20 -- Phase 128 Plan 03 production transport complete
 progress:
   total_phases: 20
   completed_phases: 18
   total_plans: 66
-  completed_plans: 64
-  percent: 97
+  completed_plans: 65
+  percent: 98
 ---
 
 # Project State
@@ -27,15 +27,15 @@ See: `.planning/PROJECT.md` (updated 2026-07-20 after Phase 127 authoritative-st
 
 Milestone: v2.1 Block Serving and Compact Block Relay Boundary
 Phase: 128
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-07-20 -- Phase 128 planning complete
+Plan: 4 of 4
+Status: In progress
+Last activity: 2026-07-20 -- Phase 128 Plan 03 production transport complete
 
 v2.0 Transaction Relay and Mempool Participation Boundary shipped on 2026-07-03. The archived audit reports 32/32 requirements, 10/10 phases, 8/8 integration checks, 8/8 cross-phase flows, and no tracked tech debt.
 
 Phases 110 through 127 are locally complete at 62/62 plans. Phase 127 unified authoritative network and chainstate ownership across durable sync, inbound serving, RPC, CLI, dashboard, and support evidence, promoting four requirements to 33/39 complete. Phases 128 and 129 remain to complete production compact-announcement transport, add cross-cutting guards, and reconcile the milestone before a fresh archival decision.
 
-Next action: Run `/gsd-plan-phase 128`.
+Next action: Execute Phase 128 Plan 04 aggregate guardrails and parity closure.
 
 ## Performance Metrics
 
@@ -109,6 +109,9 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 - [Phase 126]: Keep executor candidate evidence distinct from independent gsd-verifier ownership.
 - [Phase 126]: Promote exactly the six Phase 126 requirements only after the independent verifier and lifecycle gates pass.
 - [Milestone gap planning]: Use Phase 127 for authoritative runtime state, Phase 128 for production compact transport, and Phase 129 for integration guardrails plus final reconciliation.
+- [Phase 128]: Collapse multi-block reconciliation to one final DurableTipAdvanced event after persistence.
+- [Phase 128]: Share bounded volatile outboxes across durable sync and inbound sessions without authority locks crossing I/O.
+- [Phase 128]: Credit each successful FIFO prefix immediately and drop failed or unsent suffixes without implicit retry.
 
 ## Pending Todos
 
@@ -131,9 +134,10 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 | # | Description | Date | Commit | Directory |
 | --- | --- | --- | --- | --- |
 | 260719-bbh | Accept the approved v2.1 post-audit gap-planning state in closeout verification | 2026-07-19 | `e02bae71` | [260719-bbh](./quick/260719-bbh-teach-the-phase-124-closeout-checker-to-/) |
+| Phase 128 P03 | 51m | 3 tasks | 9 files |
 
 ## Session Continuity
 
-Last session: 2026-07-20T02:09:25.370Z
-Stopped at: Phase 128 context gathered
-Resume file: .planning/phases/128-production-compact-announcement-transport/128-CONTEXT.md
+Last session: 2026-07-20T05:43:01.487Z
+Stopped at: Completed 128-03-PLAN.md
+Resume file: None
