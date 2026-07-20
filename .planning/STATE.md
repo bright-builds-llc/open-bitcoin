@@ -2,15 +2,15 @@
 gsd_state_version: "1.0"
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
-status: Not planned
-stopped_at: Phase 127 context gathered
-last_updated: "2026-07-19T15:21:30.749Z"
-last_activity: 2026-07-19 -- Unblocked and committed v2.1 integration gap planning
+status: planning
+stopped_at: Phase 127 verified and complete
+last_updated: "2026-07-20T01:42:00.506Z"
+last_activity: "2026-07-20"
 progress:
   total_phases: 20
-  completed_phases: 17
-  total_plans: 58
-  completed_plans: 60
+  completed_phases: 18
+  total_plans: 62
+  completed_plans: 64
   percent: 100
 ---
 
@@ -18,24 +18,24 @@ progress:
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-07-19 after the v2.1 integration audit and gap planning).
+See: `.planning/PROJECT.md` (updated 2026-07-20 after Phase 127 authoritative-state verification).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Plan Phase 127 authoritative network-state unification
+**Current focus:** Plan Phase 128 production compact-announcement transport
 
 ## Current Position
 
 Milestone: v2.1 Block Serving and Compact Block Relay Boundary
-Phase: 127
-Plan: 0 of 0
-Status: Not planned
-Last activity: 2026-07-19 -- Unblocked and committed v2.1 integration gap planning
+Phase: 128
+Plan: Not started
+Status: Ready for planning
+Last activity: 2026-07-20
 
 v2.0 Transaction Relay and Mempool Participation Boundary shipped on 2026-07-03. The archived audit reports 32/32 requirements, 10/10 phases, 8/8 integration checks, 8/8 cross-phase flows, and no tracked tech debt.
 
-Phases 110 through 126 remain locally complete at 58/58 plans. A fresh independent integration audit found three production-boundary gaps that leave 10 requirements partial and break four end-to-end flows. Approved Phases 127 through 129 will unify authoritative runtime state, complete production compact-announcement transport, add cross-cutting guards, and reconcile the milestone before a fresh archival decision.
+Phases 110 through 127 are locally complete at 62/62 plans. Phase 127 unified authoritative network and chainstate ownership across durable sync, inbound serving, RPC, CLI, dashboard, and support evidence, promoting four requirements to 33/39 complete. Phases 128 and 129 remain to complete production compact-announcement transport, add cross-cutting guards, and reconcile the milestone before a fresh archival decision.
 
-Next action: Run `/gsd-plan-phase 127`.
+Next action: Run `/gsd-plan-phase 128`.
 
 ## Performance Metrics
 
@@ -60,7 +60,7 @@ Next action: Run `/gsd-plan-phase 127`.
 - v1.9 shipped opt-in inbound peer serving while keeping transaction relay, compact blocks, mempool propagation, production-funds wallet use, migration apply mode, packaging, hosted dashboard, GUI, public-network CI, and production full-node readiness deferred.
 - Phase 98 canonical ownership remains archived for INB-01, INB-02, INB-03, INB-04, BOUND-06.
 - v2.0 shipped bounded transaction relay and mempool participation through explicit activation, txid/wtxid inventory/download, orphan handling, mempool admission and durable recovery, relay serving/fanout, sanitized operator evidence, parity roots, UAT guidance, and deterministic no-claim guardrails.
-- v2.1 completed 17 local phases for bounded, explicit, default-off validated block serving and compact-block relay, then reopened integration work after an independent audit found authoritative-state and production compact-transport gaps.
+- v2.1 completed 18 local phases after Phase 127 closed the authoritative-state gap; production compact transport and final reconciliation remain.
 
 ## Decisions
 
@@ -112,7 +112,7 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Pending Todos
 
-- Plan and execute Phases 127 through 129 before rerunning the v2.1 milestone audit.
+- Plan and execute Phases 128 and 129 before rerunning the v2.1 milestone audit.
 - Keep historical `.planning/phases/` directories tracked because repo verifier scripts still depend on selected phase evidence.
 - Keep repo-local Cargo and Bazel command forms in UAT guidance:
   - `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- ...`
@@ -134,6 +134,6 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Session Continuity
 
-Last session: 2026-07-19T15:21:30.745Z
-Stopped at: Phase 127 context gathered
-Resume file: .planning/phases/127-authoritative-network-state-unification/127-CONTEXT.md
+Last session: 2026-07-20T01:42:00.506Z
+Stopped at: Phase 127 verified and complete
+Resume file: None

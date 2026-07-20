@@ -56,7 +56,7 @@ v2.1 Block Serving and Compact Block Relay Boundary remains active after an inde
 - [x] **Phase 124: Milestone Closeout Reconciliation** - Reconcile milestone metadata, re-audit the completed hardening work, and establish archive readiness. (completed 2026-07-16)
 - [x] **Phase 125: Compact Download Verification Traceability Closure** - Restore explicit lifecycle-valid verification ownership for the three Phase 115 compact-download requirements and prevent future verification orphans. (completed 2026-07-17)
 - [x] **Phase 126: Compact Relay Residual Hardening** - Remove the residual empty-candidate bypass, align compact nonce generation with the Knots boundary, and perform final archive reconciliation. (completed 2026-07-18)
-- [ ] **Phase 127: Authoritative Network State Unification** - Make durable sync, inbound serving, RPC, CLI, dashboard, and support evidence share one authoritative network and chainstate view.
+- [x] **Phase 127: Authoritative Network State Unification** - Make durable sync, inbound serving, RPC, CLI, dashboard, and support evidence share one authoritative network and chainstate view. (completed 2026-07-20)
 - [ ] **Phase 128: Production Compact Announcement Transport** - Complete bilateral compact negotiation and send compact announcements through the production transport with post-write evidence.
 - [ ] **Phase 129: Integration Guardrails and Milestone Reconciliation** - Guard the repaired production seams, prove all four end-to-end flows, and reconcile v2.1 for a fresh audit.
 
@@ -426,7 +426,14 @@ Plans:
 3. RPC status, CLI, dashboard, and support bundles project block-relay truth from the same authoritative runtime without leaking sensitive peer or transaction details.
 4. Production-path integration tests and deterministic guards fail if durable sync, inbound serving, or operator status diverge onto separate state.
 
-**Plans:** 0 plans
+**Plans:** 4/4 plans complete
+
+Plans:
+
+- [x] 127-01-PLAN.md — Shared handle and single authoritative production network
+- [x] 127-02-PLAN.md — Durable validated block serving through the shared authority
+- [x] 127-03-PLAN.md — Unchanged operator RPC, dashboard, and support projections
+- [x] 127-04-PLAN.md — Production integration, parity evidence, and deterministic guards
 
 #### Phase 128: Production Compact Announcement Transport
 
@@ -481,7 +488,7 @@ Plans:
 | 124. Milestone Closeout Reconciliation | v2.1 | 2/2 | Complete   | 2026-07-16 |
 | 125. Compact Download Verification Traceability Closure | v2.1 | 4/4 | Complete   | 2026-07-17 |
 | 126. Compact Relay Residual Hardening | v2.1 | 4/4 | Complete   | 2026-07-18 |
-| 127. Authoritative Network State Unification | v2.1 | 0/0 | Not started | - |
+| 127. Authoritative Network State Unification | v2.1 | 4/4 | Complete    | 2026-07-20 |
 | 128. Production Compact Announcement Transport | v2.1 | 0/0 | Not started | - |
 | 129. Integration Guardrails and Milestone Reconciliation | v2.1 | 0/0 | Not started | - |
 
@@ -497,10 +504,10 @@ Plans:
 
 - v2.1 requirements: 39 total
 - Mapped to phases: 39
-- Satisfied: 29
-- Pending integration gap closure: 10
+- Satisfied: 33
+- Pending integration gap closure: 6
 - Unmapped: 0
 
 ## Next Step
 
-Run `/gsd-plan-phase 127`.
+Run `/gsd-plan-phase 128`.

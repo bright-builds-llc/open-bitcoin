@@ -10,13 +10,13 @@ deterministic no-claim guardrails.
 
 **Current projection:**
 
-- 29/39 v2.1 requirements remain complete; 10 are pending production-boundary
+- 33/39 v2.1 requirements are complete; 6 remain pending production-boundary
   integration closure.
-- Phases 110 through 126 and 58/58 existing plans remain complete.
+- Phases 110 through 127 and 62/62 existing plans remain complete.
 - The canonical milestone audit found three integration gaps, scoring 9/13
   integration links and 7/11 end-to-end flows.
-- Phases 127 through 129 are planned for authoritative runtime state,
-  production compact-announcement transport, and final guardrail/reconciliation
+- Phase 127 unified authoritative runtime state. Phases 128 and 129 remain for
+  production compact-announcement transport and final guardrail/reconciliation
   work.
 - v2.1 remains the active, unarchived milestone until the completion workflow
   creates its archive artifacts.
@@ -27,7 +27,7 @@ production-scale historical serving, production service/deployment, production
 full-node readiness, production-funds wallet use, migration apply mode,
 packaging, hosted services, and GUI work remain future scope.
 
-**What's next:** Run `/gsd-plan-phase 127`.
+**What's next:** Run `/gsd-plan-phase 128`.
 
 ***
 
