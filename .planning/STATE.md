@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
 status: executing
-stopped_at: Completed 129-01-PLAN.md
-last_updated: "2026-07-20T21:42:51.159Z"
+stopped_at: Completed 129-02-PLAN.md
+last_updated: "2026-07-20T22:21:34.978Z"
 last_activity: 2026-07-20
 progress:
   total_phases: 20
   completed_phases: 19
   total_plans: 70
-  completed_plans: 69
-  percent: 99
+  completed_plans: 70
+  percent: 100
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-07-20 after Phase 127 authoritative-st
 
 Milestone: v2.1 Block Serving and Compact Block Relay Boundary
 Phase: 129 (Integration Guardrails and Milestone Reconciliation) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-07-20
 
@@ -117,6 +117,7 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 - [Phase 128]: Model Phase 128 Plan 04 execution and completed routing to Phase 129 as distinct fail-closed lifecycle states.
 - [Phase 128]: Extract focused RPC connection and runtime-control modules to preserve the 628-line production source limit.
 - [Phase 129]: Compose the Phase 127/128 checker exports inside the Phase 129 aggregate guard and keep the guard stage-independent of volatile planning artifacts.
+- [Phase 129]: D-06 resolved on the fix path: fallback compact_timeout_count counts only real Timeout cleanups; live in-flight getblocktxn facts project solely through the in-flight facet.
 
 ## Pending Todos
 
@@ -142,9 +143,10 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 | Phase 128 P03 | 51m | 3 tasks | 9 files |
 | Phase 128 P04 | 57min | 3 tasks | 25 files |
 | Phase 129 P01 | 27m | 3 tasks | 5 files |
+| Phase 129 P02 | 28m | 2 tasks | 5 files |
 
 ## Session Continuity
 
-Last session: 2026-07-20T21:42:51.154Z
-Stopped at: Completed 129-01-PLAN.md
+Last session: 2026-07-20T22:21:34.973Z
+Stopped at: Completed 129-02-PLAN.md
 Resume file: None
