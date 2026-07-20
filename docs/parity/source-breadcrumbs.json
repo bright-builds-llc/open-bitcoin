@@ -891,7 +891,8 @@
     {
       "label": "node-network-announcement-transport",
       "files": [
-        "packages/open-bitcoin-node/src/network/announcement_transport.rs"
+        "packages/open-bitcoin-node/src/network/announcement_transport.rs",
+        "packages/open-bitcoin-node/src/network/tests/announcement_transport_cases.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/net.cpp",

@@ -8,6 +8,7 @@ use open_bitcoin_network::{
 };
 
 use super::*;
+use crate::network::PeerEmission;
 
 const PROJECTION_TIMESTAMP: i64 = 1_777_225_405;
 
@@ -82,11 +83,16 @@ fn record_compact_activity_and_nine_block_writes(runtime: &mut DurableSyncRuntim
     let announcement = runtime
         .network
         .announce_block(peer_id, &block)
-        .expect("announce compact block");
-    assert!(matches!(
-        announcement,
-        Some(WireNetworkMessage::CompactBlock(_))
-    ));
+        .expect("announce compact block")
+        .expect("compact message");
+    assert!(matches!(announcement, WireNetworkMessage::CompactBlock(_)));
+    let (_, _, receipt) = PeerEmission::new(peer_id, announcement, block_hash(&block.header))
+        .expect("compact emission")
+        .into_parts();
+    runtime
+        .network
+        .complete_peer_emission(receipt)
+        .expect("complete compact write");
 
     let inventory = InventoryList::new(vec![InventoryVector {
         inventory_type: InventoryType::Block,

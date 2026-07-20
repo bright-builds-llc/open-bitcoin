@@ -474,16 +474,6 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                 .peer_manager
                 .announce_block_with_action(peer_id, block, action, 0)?,
         };
-        if matches!(maybe_message, Some(WireNetworkMessage::CompactBlock(_))) {
-            let block_hash = block_hash(&block.header);
-            self.peer_manager
-                .record_compact_block_announcement(peer_id, block_hash)?;
-        }
-        let evidence_reason = block_relay_evidence::compact_announce_evidence_reason(
-            announcement,
-            maybe_message.as_ref(),
-        );
-        self.record_compact_announcement_evidence(evidence_reason);
         Ok(maybe_message)
     }
 

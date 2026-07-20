@@ -8,8 +8,8 @@
 use open_bitcoin_core::primitives::InventoryType;
 use open_bitcoin_network::{
     BlockRelayActivationPolicy, BlockServingEligibilityReason, BlockServingStatusLabel,
-    CompactAnnouncementAction, CompactAnnouncementDecision, CompactAnnouncementReason,
-    CompactDownloadCleanupCause, PeerAction, PeerManager, WireNetworkMessage,
+    CompactAnnouncementReason, CompactDownloadCleanupCause, PeerAction, PeerManager,
+    WireNetworkMessage,
 };
 
 use crate::{
@@ -24,7 +24,7 @@ use crate::{
 };
 
 use super::{
-    ManagedPeerNetwork,
+    ManagedNetworkError, ManagedPeerNetwork, PeerEmissionReceipt,
     block_serving::{
         CompactBlockTxnServeOutcome, ManagedBlockServeCompletion, ManagedBlockServeDecision,
     },
@@ -355,27 +355,15 @@ fn fallback_counters(
     counters
 }
 
-/// Map announcement decision + actually emitted wire message to evidence reason (D-05/D-06).
-///
-/// `CompactAnnounced` is recorded only when the outbound message is `CompactBlock`.
-/// Construction fallbacks from `AnnounceCompactBlock` map to Headers/Inv fallback reasons.
-pub(super) fn compact_announce_evidence_reason(
-    decision: CompactAnnouncementDecision,
-    maybe_message: Option<&WireNetworkMessage>,
-) -> CompactAnnouncementReason {
-    match maybe_message {
-        Some(WireNetworkMessage::CompactBlock(_)) => CompactAnnouncementReason::CompactAnnounced,
-        Some(WireNetworkMessage::Headers(_))
-            if decision.action == CompactAnnouncementAction::AnnounceCompactBlock =>
-        {
-            CompactAnnouncementReason::CompactHeadersFallback
-        }
-        Some(WireNetworkMessage::Inv(_))
-            if decision.action == CompactAnnouncementAction::AnnounceCompactBlock =>
-        {
-            CompactAnnouncementReason::CompactInventoryFallback
-        }
-        _ => decision.reason,
+/// Derive achieved-effect evidence solely from the bound wire-message variant.
+pub(super) const fn compact_announce_evidence_reason(
+    message: &WireNetworkMessage,
+) -> Option<CompactAnnouncementReason> {
+    match message {
+        WireNetworkMessage::CompactBlock(_) => Some(CompactAnnouncementReason::CompactAnnounced),
+        WireNetworkMessage::Headers(_) => Some(CompactAnnouncementReason::CompactHeadersFallback),
+        WireNetworkMessage::Inv(_) => Some(CompactAnnouncementReason::CompactInventoryFallback),
+        _ => None,
     }
 }
 
@@ -419,11 +407,19 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             .record_block_serving(inventory_type, decision);
     }
 
-    pub(super) fn record_compact_announcement_evidence(
+    pub fn complete_peer_emission(
         &mut self,
-        reason: CompactAnnouncementReason,
-    ) {
-        self.block_relay_evidence.record_announcement(reason);
+        receipt: PeerEmissionReceipt,
+    ) -> Result<(), ManagedNetworkError> {
+        if receipt.records_header_provenance()
+            && self.peer_manager.peer_state(receipt.peer_id()).is_some()
+        {
+            self.peer_manager
+                .record_compact_block_announcement(receipt.peer_id(), receipt.block_hash())?;
+        }
+        self.block_relay_evidence
+            .record_announcement(receipt.evidence_reason());
+        Ok(())
     }
 
     pub(super) fn record_compact_download_evidence(&mut self, actions: &[PeerAction]) {
@@ -460,46 +456,10 @@ mod tests {
         BlockHash, BlockHeader, InventoryType, InventoryVector, MerkleRoot,
     };
     use open_bitcoin_network::{
-        CompactAnnouncementAction, CompactAnnouncementDecision, CompactAnnouncementEligibility,
-        CompactAnnouncementEligibilityReason, CompactAnnouncementReason, HeadersMessage,
-        InventoryList, WireNetworkMessage,
+        CompactAnnouncementReason, HeadersMessage, InventoryList, WireNetworkMessage,
     };
 
     use super::compact_announce_evidence_reason;
-
-    fn decision(
-        action: CompactAnnouncementAction,
-        reason: CompactAnnouncementReason,
-    ) -> CompactAnnouncementDecision {
-        let eligibility = match reason {
-            CompactAnnouncementReason::CompactAnnounced => CompactAnnouncementEligibility::Eligible,
-            CompactAnnouncementReason::CompactHeadersFallback
-            | CompactAnnouncementReason::CompactInventoryFallback => {
-                CompactAnnouncementEligibility::Eligible
-            }
-            CompactAnnouncementReason::CompactHighBandwidthNotRequested => {
-                CompactAnnouncementEligibility::Ineligible {
-                    reason: CompactAnnouncementEligibilityReason::HighBandwidthNotRequested,
-                }
-            }
-            CompactAnnouncementReason::CompactRelayDisabled => {
-                CompactAnnouncementEligibility::Ineligible {
-                    reason: CompactAnnouncementEligibilityReason::LocalActivationDisabled,
-                }
-            }
-            CompactAnnouncementReason::CompactBlockUnavailable => {
-                CompactAnnouncementEligibility::Ineligible {
-                    reason: CompactAnnouncementEligibilityReason::BlockUnavailable,
-                }
-            }
-            _ => CompactAnnouncementEligibility::Unknown,
-        };
-        CompactAnnouncementDecision {
-            action,
-            reason,
-            eligibility,
-        }
-    }
 
     fn empty_compact_block_message() -> WireNetworkMessage {
         WireNetworkMessage::CompactBlock(CompactBlockPayload {
@@ -520,108 +480,50 @@ mod tests {
     #[test]
     fn compact_announce_evidence_reason_maps_compact_block_to_announced() {
         // Arrange
-        let decided = decision(
-            CompactAnnouncementAction::AnnounceCompactBlock,
-            CompactAnnouncementReason::CompactAnnounced,
-        );
         let message = empty_compact_block_message();
 
         // Act
-        let reason = compact_announce_evidence_reason(decided, Some(&message));
+        let reason = compact_announce_evidence_reason(&message);
 
         // Assert
-        assert_eq!(reason, CompactAnnouncementReason::CompactAnnounced);
+        assert_eq!(reason, Some(CompactAnnouncementReason::CompactAnnounced));
     }
 
     #[test]
-    fn compact_announce_evidence_reason_maps_construction_headers_fallback() {
+    fn compact_announce_evidence_reason_maps_header_and_inventory_writes_to_fallbacks() {
         // Arrange
-        let decided = decision(
-            CompactAnnouncementAction::AnnounceCompactBlock,
-            CompactAnnouncementReason::CompactAnnounced,
-        );
-        let message = WireNetworkMessage::Headers(HeadersMessage {
+        let headers = WireNetworkMessage::Headers(HeadersMessage {
             headers: Vec::new(),
         });
-
-        // Act
-        let reason = compact_announce_evidence_reason(decided, Some(&message));
-
-        // Assert
-        assert_eq!(reason, CompactAnnouncementReason::CompactHeadersFallback);
-    }
-
-    #[test]
-    fn compact_announce_evidence_reason_maps_construction_inventory_fallback() {
-        // Arrange
-        let decided = decision(
-            CompactAnnouncementAction::AnnounceCompactBlock,
-            CompactAnnouncementReason::CompactAnnounced,
-        );
-        let message = WireNetworkMessage::Inv(InventoryList::new(vec![InventoryVector {
+        let inventory = WireNetworkMessage::Inv(InventoryList::new(vec![InventoryVector {
             inventory_type: InventoryType::Block,
             object_hash: BlockHash::from_byte_array([1_u8; 32]).into(),
         }]));
 
         // Act
-        let reason = compact_announce_evidence_reason(decided, Some(&message));
-
-        // Assert
-        assert_eq!(reason, CompactAnnouncementReason::CompactInventoryFallback);
-    }
-
-    #[test]
-    fn compact_announce_evidence_reason_preserves_policy_headers_reason() {
-        // Arrange
-        let decided = decision(
-            CompactAnnouncementAction::AnnounceHeaders,
-            CompactAnnouncementReason::CompactHighBandwidthNotRequested,
-        );
-        let message = WireNetworkMessage::Headers(HeadersMessage {
-            headers: Vec::new(),
-        });
-
-        // Act
-        let reason = compact_announce_evidence_reason(decided, Some(&message));
+        let headers_reason = compact_announce_evidence_reason(&headers);
+        let inventory_reason = compact_announce_evidence_reason(&inventory);
 
         // Assert
         assert_eq!(
-            reason,
-            CompactAnnouncementReason::CompactHighBandwidthNotRequested
+            headers_reason,
+            Some(CompactAnnouncementReason::CompactHeadersFallback)
+        );
+        assert_eq!(
+            inventory_reason,
+            Some(CompactAnnouncementReason::CompactInventoryFallback)
         );
     }
 
     #[test]
-    fn compact_announce_evidence_reason_preserves_policy_inventory_reason() {
+    fn compact_announce_evidence_reason_rejects_non_announcement_messages() {
         // Arrange
-        let decided = decision(
-            CompactAnnouncementAction::AnnounceInventory,
-            CompactAnnouncementReason::CompactRelayDisabled,
-        );
-        let message = WireNetworkMessage::Inv(InventoryList::new(vec![InventoryVector {
-            inventory_type: InventoryType::Block,
-            object_hash: BlockHash::from_byte_array([2_u8; 32]).into(),
-        }]));
+        let message = WireNetworkMessage::Verack;
 
         // Act
-        let reason = compact_announce_evidence_reason(decided, Some(&message));
+        let reason = compact_announce_evidence_reason(&message);
 
         // Assert
-        assert_eq!(reason, CompactAnnouncementReason::CompactRelayDisabled);
-    }
-
-    #[test]
-    fn compact_announce_evidence_reason_preserves_suppress_reason_for_none() {
-        // Arrange
-        let decided = decision(
-            CompactAnnouncementAction::Suppress,
-            CompactAnnouncementReason::CompactBlockUnavailable,
-        );
-
-        // Act
-        let reason = compact_announce_evidence_reason(decided, None);
-
-        // Assert
-        assert_eq!(reason, CompactAnnouncementReason::CompactBlockUnavailable);
+        assert_eq!(reason, None);
     }
 }

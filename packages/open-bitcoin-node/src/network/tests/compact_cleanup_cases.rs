@@ -27,6 +27,7 @@ use super::{
     build_block, compact_relay_enabled_managed_network, consensus_params, local_config,
     mine_header, spend_transaction, verify_flags,
 };
+use crate::network::PeerEmission;
 use crate::status::FieldAvailability;
 use crate::status::relay_evidence::RelayEvidenceField;
 use crate::{ManagedPeerNetwork, MemoryChainstateStore};
@@ -448,6 +449,12 @@ fn phase122_disconnect_drops_compact_announcement_provenance_for_reconnected_pee
         .expect("announce block")
         .expect("compact message");
     assert!(matches!(message, WireNetworkMessage::CompactBlock(_)));
+    let (_, _, receipt) = PeerEmission::new(peer_id, message, spendable_hash)
+        .expect("compact emission")
+        .into_parts();
+    network
+        .complete_peer_emission(receipt)
+        .expect("complete compact write");
     assert!(
         network
             .peer_manager()

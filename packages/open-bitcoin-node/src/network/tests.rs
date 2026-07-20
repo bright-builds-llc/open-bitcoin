@@ -53,6 +53,7 @@ use crate::{
 use open_bitcoin_core::primitives::Txid;
 
 mod admission_bridge_cases;
+mod announcement_transport_cases;
 mod compact_cleanup_cases;
 mod compact_misbehavior_cases;
 mod compact_receive_cases;
@@ -552,7 +553,7 @@ fn phase126_compact_announcement_entropy_failure_uses_safe_fallback_without_comp
     );
     assert_eq!(
         encoded["announcement"]["value"]["compact_inventory_fallback_count"],
-        1
+        0
     );
 }
 
@@ -741,9 +742,22 @@ fn phase116_block_relay_evidence_projects_negotiation_serving_download_and_clean
         .announce_block(peer_id, &genesis)
         .expect("announce block");
     assert!(
-        matches!(maybe_announce, Some(WireNetworkMessage::CompactBlock(_))),
+        matches!(
+            maybe_announce.as_ref(),
+            Some(WireNetworkMessage::CompactBlock(_))
+        ),
         "HB-eligible announce must emit CompactBlock, got {maybe_announce:?}"
     );
+    let emission = crate::network::PeerEmission::new(
+        peer_id,
+        maybe_announce.expect("compact announcement"),
+        block_hash(&genesis.header),
+    )
+    .expect("supported compact emission");
+    let (_, _, receipt) = emission.into_parts();
+    network
+        .complete_peer_emission(receipt)
+        .expect("complete compact write");
 
     let served = network
         .receive_message(

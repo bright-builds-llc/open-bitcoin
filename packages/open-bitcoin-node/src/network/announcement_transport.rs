@@ -72,21 +72,24 @@ pub struct PeerEmission {
     message: WireNetworkMessage,
     block_hash: BlockHash,
     evidence_reason: CompactAnnouncementReason,
+    write_kind: PeerEmissionWriteKind,
 }
 
 impl PeerEmission {
-    pub(crate) const fn new(
+    pub(crate) fn new(
         peer_id: PeerId,
         message: WireNetworkMessage,
         block_hash: BlockHash,
-        evidence_reason: CompactAnnouncementReason,
-    ) -> Self {
-        Self {
+    ) -> Option<Self> {
+        let write_kind = PeerEmissionWriteKind::for_message(&message)?;
+        let evidence_reason = block_relay_evidence::compact_announce_evidence_reason(&message)?;
+        Some(Self {
             peer_id,
             message,
             block_hash,
             evidence_reason,
-        }
+            write_kind,
+        })
     }
 
     pub const fn peer_id(&self) -> PeerId {
@@ -103,6 +106,7 @@ impl PeerEmission {
             message,
             block_hash,
             evidence_reason,
+            write_kind,
         } = self;
         (
             peer_id,
@@ -111,17 +115,25 @@ impl PeerEmission {
                 peer_id,
                 block_hash,
                 evidence_reason,
+                write_kind,
             },
         )
     }
 }
 
 /// A non-replayable acknowledgement capability bound to one prepared emission.
+///
+/// ```compile_fail
+/// fn replay(receipt: open_bitcoin_node::network::PeerEmissionReceipt) {
+///     let _duplicate = receipt.clone();
+/// }
+/// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct PeerEmissionReceipt {
     peer_id: PeerId,
     block_hash: BlockHash,
     evidence_reason: CompactAnnouncementReason,
+    write_kind: PeerEmissionWriteKind,
 }
 
 impl PeerEmissionReceipt {
@@ -135,6 +147,31 @@ impl PeerEmissionReceipt {
 
     pub const fn evidence_reason(&self) -> CompactAnnouncementReason {
         self.evidence_reason
+    }
+
+    pub(crate) const fn records_header_provenance(&self) -> bool {
+        matches!(
+            self.write_kind,
+            PeerEmissionWriteKind::CompactBlock | PeerEmissionWriteKind::Headers
+        )
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PeerEmissionWriteKind {
+    CompactBlock,
+    Headers,
+    Inventory,
+}
+
+impl PeerEmissionWriteKind {
+    const fn for_message(message: &WireNetworkMessage) -> Option<Self> {
+        match message {
+            WireNetworkMessage::CompactBlock(_) => Some(Self::CompactBlock),
+            WireNetworkMessage::Headers(_) => Some(Self::Headers),
+            WireNetworkMessage::Inv(_) => Some(Self::Inventory),
+            _ => None,
+        }
     }
 }
 
@@ -296,14 +333,10 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         let Ok(Some(message)) = maybe_message else {
             return AnnouncementPreparationOutcome::ConstructionFailed { peer_id };
         };
-        let evidence_reason =
-            block_relay_evidence::compact_announce_evidence_reason(decision, Some(&message));
-        AnnouncementPreparationOutcome::Ready(PeerEmission::new(
-            peer_id,
-            message,
-            block_hash,
-            evidence_reason,
-        ))
+        let Some(emission) = PeerEmission::new(peer_id, message, block_hash) else {
+            return AnnouncementPreparationOutcome::ConstructionFailed { peer_id };
+        };
+        AnnouncementPreparationOutcome::Ready(emission)
     }
 
     fn announcement_status_and_gate(
@@ -370,7 +403,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
 mod tests {
     use open_bitcoin_core::primitives::BlockHash;
     use open_bitcoin_network::{
-        CompactAnnouncementReason, PHASE94_MAX_PEER_QUEUED_MESSAGES, PeerId, WireNetworkMessage,
+        InventoryList, PHASE94_MAX_PEER_QUEUED_MESSAGES, PeerId, WireNetworkMessage,
     };
 
     use super::{PeerEmission, PeerOutboxSnapshot};
@@ -382,17 +415,17 @@ mod tests {
         let block_hash = BlockHash::from_byte_array([0x21; 32]);
         let emission = PeerEmission::new(
             peer_id,
-            WireNetworkMessage::Verack,
+            WireNetworkMessage::Inv(InventoryList::new(Vec::new())),
             block_hash,
-            CompactAnnouncementReason::CompactInventoryFallback,
-        );
+        )
+        .expect("inventory emission");
 
         // Act
         let (actual_peer_id, message, receipt) = emission.into_parts();
 
         // Assert
         assert_eq!(actual_peer_id, peer_id);
-        assert_eq!(message, WireNetworkMessage::Verack);
+        assert!(matches!(message, WireNetworkMessage::Inv(_)));
         assert_eq!(receipt.block_hash(), block_hash);
     }
 
