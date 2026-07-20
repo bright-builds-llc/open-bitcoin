@@ -160,6 +160,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                             }
                         }
                     }
+                    InventoryType::Unknown(_) => {}
                     _ => response_plan.push(ManagedInboundResponsePlanItem::Immediate(
                         WireNetworkMessage::NotFound(open_bitcoin_network::InventoryList::new(
                             vec![request],

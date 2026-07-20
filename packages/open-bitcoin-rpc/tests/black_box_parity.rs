@@ -460,6 +460,44 @@ fn phase127_mixed_cycle_request(
     ]))
 }
 
+fn phase127_unknown_available_transaction_request(
+    available_transaction: &Transaction,
+) -> WireNetworkMessage {
+    WireNetworkMessage::GetData(InventoryList::new(vec![
+        InventoryVector {
+            inventory_type: InventoryType::Unknown(127),
+            object_hash: Txid::from_byte_array([125_u8; 32]).into(),
+        },
+        InventoryVector {
+            inventory_type: InventoryType::Transaction,
+            object_hash: transaction_txid(available_transaction)
+                .expect("phase 127 available transaction id")
+                .into(),
+        },
+    ]))
+}
+
+fn phase127_missing_unknown_available_transaction_request(
+    available_transaction: &Transaction,
+) -> WireNetworkMessage {
+    WireNetworkMessage::GetData(InventoryList::new(vec![
+        InventoryVector {
+            inventory_type: InventoryType::Transaction,
+            object_hash: Txid::from_byte_array([124_u8; 32]).into(),
+        },
+        InventoryVector {
+            inventory_type: InventoryType::Unknown(127),
+            object_hash: Txid::from_byte_array([123_u8; 32]).into(),
+        },
+        InventoryVector {
+            inventory_type: InventoryType::Transaction,
+            object_hash: transaction_txid(available_transaction)
+                .expect("phase 127 available transaction id")
+                .into(),
+        },
+    ]))
+}
+
 fn sorted_result_keys(response: &serde_json::Value) -> Vec<String> {
     let mut keys = response["result"]
         .as_object()
@@ -764,6 +802,53 @@ async fn phase127_production_composition_shares_sync_serving_and_operator_author
         WireNetworkMessage::Block(served_block)
             if block_hash(&served_block.header) == expected_hash
     )));
+    peer.send(
+        phase127_unknown_available_transaction_request(&available_transaction),
+        magic,
+    )
+    .await;
+    peer.send(WireNetworkMessage::Ping { nonce: 127 }, magic)
+        .await;
+    let unknown_then_available = [peer.receive().await, peer.receive().await];
+    assert!(matches!(
+        unknown_then_available[0],
+        WireNetworkMessage::Tx(ref transaction)
+            if transaction_txid(transaction)
+                == transaction_txid(&available_transaction)
+    ));
+    assert!(matches!(
+        unknown_then_available[1],
+        WireNetworkMessage::Pong { nonce: 127 }
+    ));
+    peer.send(
+        phase127_missing_unknown_available_transaction_request(&available_transaction),
+        magic,
+    )
+    .await;
+    peer.send(WireNetworkMessage::Ping { nonce: 128 }, magic)
+        .await;
+    let missing_unknown_available = [
+        peer.receive().await,
+        peer.receive().await,
+        peer.receive().await,
+    ];
+    assert!(matches!(
+        missing_unknown_available[0],
+        WireNetworkMessage::NotFound(ref inventory)
+            if inventory.inventory.len() == 1
+                && inventory.inventory[0].object_hash
+                    == Txid::from_byte_array([124_u8; 32]).into()
+    ));
+    assert!(matches!(
+        missing_unknown_available[1],
+        WireNetworkMessage::Tx(ref transaction)
+            if transaction_txid(transaction)
+                == transaction_txid(&available_transaction)
+    ));
+    assert!(matches!(
+        missing_unknown_available[2],
+        WireNetworkMessage::Pong { nonce: 128 }
+    ));
     for _ in 0..100 {
         if restarted_handle
             .block_served_write_count()
