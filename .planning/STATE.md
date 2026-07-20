@@ -1,16 +1,16 @@
 ---
-gsd_state_version: "1.0"
+gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
 status: planning
-stopped_at: Completed 128-04-PLAN.md
-last_updated: "2026-07-20T10:04:16.346Z"
+stopped_at: Phase 129 context gathered
+last_updated: "2026-07-20T19:39:27.996Z"
 last_activity: 2026-07-20 -- Phase 128 production compact-announcement transport verified and complete
 progress:
   total_phases: 20
   completed_phases: 19
   total_plans: 66
-  completed_plans: 66
+  completed_plans: 68
   percent: 100
 ---
 
@@ -143,6 +143,6 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Session Continuity
 
-Last session: 2026-07-20T06:48:12.890Z
-Stopped at: Completed 128-04-PLAN.md
-Resume file: None
+Last session: 2026-07-20T19:39:27.987Z
+Stopped at: Phase 129 context gathered
+Resume file: .planning/phases/129-integration-guardrails-and-milestone-reconciliation/129-CONTEXT.md
