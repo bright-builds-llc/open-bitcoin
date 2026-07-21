@@ -162,7 +162,7 @@ The planner may choose the exact stage names and fixture shapes for the Phase 12
 
 </deferred>
 
----
+***
 
 *Phase: 129-integration-guardrails-and-milestone-reconciliation*
 *Context gathered: 2026-07-20*

@@ -24,9 +24,11 @@ auditable, and modular.
 > [`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md).
 > Phase 128 closes the production composition for compact negotiation,
 > durable-tip announcement fanout, real transport writes, and post-write
-> aggregate evidence. Phase 129 retains four-flow integration, soak and parity
-> closure, requirement promotion, and the milestone audit/release handoff; the
-> milestone is not yet archive-ready.
+> aggregate evidence. Phase 129 completed the aggregate integration guard over
+> the four repaired flows, independent verification of the reassigned
+> requirements, and the final milestone reconciliation; the rerun v2.1
+> milestone audit passed and the milestone is archive-ready pending the
+> completion workflow.
 > Package relay, BIP37 bloom-filter serving, compact-filter serving, public
 > serving or relay defaults, archive-node and production-scale historical
 > serving, public-network CI or release gates, production service/deployment,

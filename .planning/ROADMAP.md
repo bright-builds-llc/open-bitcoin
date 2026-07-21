@@ -2,7 +2,7 @@
 
 ## Current Status
 
-v2.1 Block Serving and Compact Block Relay Boundary remains active after Phases 127 and 128 closed authoritative network-state and production compact-transport gaps. Phase 129 remains for final integration guardrails and milestone reconciliation.
+v2.1 Block Serving and Compact Block Relay Boundary is reconciled and archive-ready. Phase 129 closed the final integration guardrails, independent verification re-attested all reassigned requirements, and the rerun milestone audit passed with empty gap inventories. All 20 phases and 39 requirements are complete; the milestone routes to the completion workflow.
 
 ## Latest Completed Milestone: v2.0 Transaction Relay and Mempool Participation Boundary
 
@@ -31,7 +31,7 @@ v2.1 Block Serving and Compact Block Relay Boundary remains active after Phases 
 - ✅ **v1.8 Production Full-Node Readiness Boundary** - Phases 82 through 89 (shipped 2026-06-25). Archive: [v1.8-ROADMAP.md](milestones/v1.8-ROADMAP.md)
 - ✅ **v1.9 Inbound Peer Serving and Network Participation Boundary** - Phases 90 through 99 (shipped 2026-06-29). Archive: [v1.9-ROADMAP.md](milestones/v1.9-ROADMAP.md)
 - ✅ **v2.0 Transaction Relay and Mempool Participation Boundary** - Phases 100 through 109 (shipped 2026-07-03). Archive: [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md)
-- 🚧 **v2.1 Block Serving and Compact Block Relay Boundary** - Phases 110 through 128 complete; Phase 129 remains for final integration gap closure.
+- ✅ **v2.1 Block Serving and Compact Block Relay Boundary** - Phases 110 through 129 complete; reconciled and archive-ready pending `/gsd-complete-milestone v2.1`.
 
 ## Active Milestone: v2.1 Block Serving and Compact Block Relay Boundary
 
@@ -58,7 +58,7 @@ v2.1 Block Serving and Compact Block Relay Boundary remains active after Phases 
 - [x] **Phase 126: Compact Relay Residual Hardening** - Remove the residual empty-candidate bypass, align compact nonce generation with the Knots boundary, and perform final archive reconciliation. (completed 2026-07-18)
 - [x] **Phase 127: Authoritative Network State Unification** - Make durable sync, inbound serving, RPC, CLI, dashboard, and support evidence share one authoritative network and chainstate view. (completed 2026-07-20)
 - [x] **Phase 128: Production Compact Announcement Transport** - Complete bilateral compact negotiation and send compact announcements through the production transport with post-write evidence. (completed 2026-07-20)
-- [ ] **Phase 129: Integration Guardrails and Milestone Reconciliation** - Guard the repaired production seams, prove all four end-to-end flows, and reconcile v2.1 for a fresh audit.
+- [x] **Phase 129: Integration Guardrails and Milestone Reconciliation** - Guard the repaired production seams, prove all four end-to-end flows, and reconcile v2.1 for a fresh audit. (completed 2026-07-20)
 
 ### Phase Details
 
@@ -463,7 +463,14 @@ Plans:
 3. Independent verification explicitly closes all 10 reassigned requirements against production-path evidence.
 4. ROADMAP, REQUIREMENTS, PROJECT, STATE, MILESTONES, and the rerun milestone audit agree before routing v2.1 to archival.
 
-**Plans:** 0 plans
+**Plans:** 4/4 plans complete
+
+Plans:
+
+- [x] 129-01-PLAN.md — Aggregate integration guard
+- [x] 129-02-PLAN.md — OBS-01 fallback-counter truthfulness
+- [x] 129-03-PLAN.md — Archive-ready stage machine
+- [x] 129-04-PLAN.md — Milestone reconciliation and promotion
 
 ## Progress
 
@@ -490,7 +497,7 @@ Plans:
 | 126. Compact Relay Residual Hardening | v2.1 | 4/4 | Complete   | 2026-07-18 |
 | 127. Authoritative Network State Unification | v2.1 | 4/4 | Complete    | 2026-07-20 |
 | 128. Production Compact Announcement Transport | v2.1 | 4/4 | Complete   | 2026-07-20 |
-| 129. Integration Guardrails and Milestone Reconciliation | v2.1 | 0/0 | Not started | - |
+| 129. Integration Guardrails and Milestone Reconciliation | v2.1 | 4/4 | Complete | 2026-07-20 |
 
 ## Traceability
 
@@ -504,10 +511,10 @@ Plans:
 
 - v2.1 requirements: 39 total
 - Mapped to phases: 39
-- Satisfied: 36
-- Pending integration gap closure: 3
+- Satisfied: 39
+- Pending integration gap closure: 0
 - Unmapped: 0
 
 ## Next Step
 
-Run `/gsd-plan-phase 129`.
+Run `/gsd-complete-milestone v2.1`.

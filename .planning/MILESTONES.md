@@ -1,23 +1,26 @@
 # Milestones: Open Bitcoin
 
-## v2.1 Block Serving and Compact Block Relay Boundary (Integration Gap Closure Active)
+## v2.1 Block Serving and Compact Block Relay Boundary (Reconciled and Archive-Ready)
 
-**Locally delivered to date:** Bounded, explicit, default-off validated block
+**Locally delivered:** Bounded, explicit, default-off validated block
 serving and compact-block relay through BIP152 codecs, negotiation,
 reconstruction, missing-transaction response, timeout fallback, validation
-handoff, sanitized operator evidence, exact Knots parity anchors, and
-deterministic no-claim guardrails.
+handoff, production authoritative-state unification, production compact
+announcement transport with post-write evidence, sanitized operator evidence,
+exact Knots parity anchors, and deterministic no-claim guardrails.
 
 **Current projection:**
 
-- 33/39 v2.1 requirements are complete; 6 remain pending production-boundary
-  integration closure.
-- Phases 110 through 127 and 62/62 existing plans remain complete.
-- The canonical milestone audit found three integration gaps, scoring 9/13
-  integration links and 7/11 end-to-end flows.
-- Phase 127 unified authoritative runtime state. Phases 128 and 129 remain for
-  production compact-announcement transport and final guardrail/reconciliation
-  work.
+- 39/39 v2.1 requirements are complete after independent lifecycle-valid
+  Phase 129 verification.
+- Phases 110 through 129 and 70/70 plans are complete.
+- The rerun canonical milestone audit passed with 13/13 integration links,
+  11/11 end-to-end flows, and empty gap inventories; the previously projected
+  three integration gaps were closed by Phases 127 through 129.
+- Phase 127 unified authoritative runtime state, Phase 128 completed
+  production compact-announcement transport, and Phase 129 added the
+  aggregate integration guard, the fail-closed archive-ready stage machine,
+  and the final milestone reconciliation.
 - v2.1 remains the active, unarchived milestone until the completion workflow
   creates its archive artifacts.
 
@@ -27,7 +30,7 @@ production-scale historical serving, production service/deployment, production
 full-node readiness, production-funds wallet use, migration apply mode,
 packaging, hosted services, and GUI work remain future scope.
 
-**What's next:** Run `/gsd-plan-phase 128`.
+**What's next:** Run `/gsd-complete-milestone v2.1`.
 
 ***
 

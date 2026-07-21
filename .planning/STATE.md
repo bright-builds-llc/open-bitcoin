@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
-status: executing
-stopped_at: Completed 129-03-PLAN.md
-last_updated: "2026-07-20T23:07:25.016Z"
-last_activity: 2026-07-20
+status: milestone-reconciled
+stopped_at: Completed 129-04-PLAN.md
+last_updated: "2026-07-21T04:03:12Z"
+last_activity: 2026-07-21
 progress:
   total_phases: 20
-  completed_phases: 19
+  completed_phases: 20
   total_plans: 70
-  completed_plans: 71
+  completed_plans: 70
   percent: 100
 ---
 
@@ -21,21 +21,21 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-07-20 after Phase 127 authoritative-state verification).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 129 — Integration Guardrails and Milestone Reconciliation
+**Current focus:** v2.1 milestone completion and archival
 
 ## Current Position
 
 Milestone: v2.1 Block Serving and Compact Block Relay Boundary
-Phase: 129 (Integration Guardrails and Milestone Reconciliation) — EXECUTING
-Plan: 4 of 4
-Status: Ready to execute
-Last activity: 2026-07-20
+Phase: 129 (Integration Guardrails and Milestone Reconciliation) — COMPLETE
+Plan: 4 of 4 complete
+Status: Milestone reconciled and archive-ready
+Last activity: 2026-07-21
 
 v2.0 Transaction Relay and Mempool Participation Boundary shipped on 2026-07-03. The archived audit reports 32/32 requirements, 10/10 phases, 8/8 integration checks, 8/8 cross-phase flows, and no tracked tech debt.
 
-Phases 110 through 128 are locally complete at 66/66 plans. Phase 128 completed production compact-announcement transport, aggregate guardrails, and parity evidence, promoting three additional requirements to 36/39 complete. Phase 129 remains to add final integration guardrails and reconcile the milestone before a fresh archival decision.
+Phases 110 through 129 are complete at 70/70 plans. Phase 129 added the aggregate integration guard over the repaired production seams, resolved the D-06 fallback-counter truthfulness defect, landed the fail-closed archive-ready stage machine, and reconciled REQUIREMENTS, ROADMAP, PROJECT, STATE, MILESTONES, and the rerun v2.1 milestone audit at 39/39 complete after independent lifecycle-valid verification.
 
-Next action: Run `/gsd-plan-phase 129`.
+Next action: Run `/gsd-complete-milestone v2.1`.
 
 ## Performance Metrics
 
@@ -60,7 +60,7 @@ Next action: Run `/gsd-plan-phase 129`.
 - v1.9 shipped opt-in inbound peer serving while keeping transaction relay, compact blocks, mempool propagation, production-funds wallet use, migration apply mode, packaging, hosted dashboard, GUI, public-network CI, and production full-node readiness deferred.
 - Phase 98 canonical ownership remains archived for INB-01, INB-02, INB-03, INB-04, BOUND-06.
 - v2.0 shipped bounded transaction relay and mempool participation through explicit activation, txid/wtxid inventory/download, orphan handling, mempool admission and durable recovery, relay serving/fanout, sanitized operator evidence, parity roots, UAT guidance, and deterministic no-claim guardrails.
-- v2.1 completed 19 local phases after Phase 128 closed production compact transport; final integration and reconciliation remain.
+- v2.1 completed all 20 phases after Phase 129 closed integration guardrails and milestone reconciliation; the rerun audit passed and the milestone is archive-ready.
 
 ## Decisions
 
@@ -120,10 +120,10 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 - [Phase 129]: D-06 resolved on the fix path: fallback compact_timeout_count counts only real Timeout cleanups; live in-flight getblocktxn facts project solely through the in-flight facet.
 - [Phase 129]: Model gaps-open, verified pre-promotion, and reconciled archive-ready as the only legal Phase 129 states with evidence-claimed fail-closed mixture rejection.
 - [Phase 129]: Pin HARD-05, OBS-01, and BOUND-02 archive-ready ownership to Phase 129 and keep the legacy Phase 124 final-audit path unreachable via the Phase 125/126 roadmap headings.
+- [Phase 129]: Promote OBS-01, BOUND-02, and HARD-05 only after independent lifecycle-valid gsd-verifier evidence, land all six reconciled planning artifacts plus the activation summary in one atomic commit, and rerun the v2.1 audit in place to passed with archive routing.
 
 ## Pending Todos
 
-- Plan and execute Phase 129 before rerunning the v2.1 milestone audit.
 - Keep historical `.planning/phases/` directories tracked because repo verifier scripts still depend on selected phase evidence.
 - Keep repo-local Cargo and Bazel command forms in UAT guidance:
   - `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- ...`
@@ -147,9 +147,10 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 | Phase 129 P01 | 27m | 3 tasks | 5 files |
 | Phase 129 P02 | 28m | 2 tasks | 5 files |
 | Phase 129 P03 | 30m | 2 tasks | 6 files |
+| Phase 129 P04 | 45m | 3 tasks | 9 files |
 
 ## Session Continuity
 
-Last session: 2026-07-20T23:07:25.013Z
-Stopped at: Completed 129-03-PLAN.md
+Last session: 2026-07-21T04:03:12Z
+Stopped at: Completed 129-04-PLAN.md
 Resume file: None
