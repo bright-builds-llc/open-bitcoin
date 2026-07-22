@@ -16,11 +16,24 @@ v2.1 Block Serving and Compact Block Relay Boundary shipped and was archived on 
 
 The repository now includes durable Fjall-backed runtime storage, real-network sync foundations, bounded metrics and structured logs, the terminal-first operator surface, opt-in inbound serving and transaction relay, validated block serving, first-party BIP152 codecs, compact negotiation/reconstruction/fallback, authoritative production network state, real compact-announcement transport, sanitized operator evidence, and deterministic guardrails that keep public-network and production claims scoped.
 
-No milestone is currently active. Historical phase directories remain tracked because repository verifiers reference selected evidence. Start the next milestone with `/gsd-new-milestone` to define fresh requirements and a roadmap.
+Milestone v2.2 is active after initialization through `/gsd-new-milestone` and is defining requirements for package relay and long-lived mempool policy. Historical phase directories remain tracked because repository verifiers reference selected evidence.
+
+## Current Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
+
+**Goal:** Extend the bounded v2.0 relay and mempool foundation with Knots-aligned package admission and relay plus durable, observable policy behavior during long-running and sustained-pressure operation.
+
+**Target features:**
+
+- Package-aware transaction admission, validation, and relay with auditable Bitcoin Knots parity.
+- Rolling minimum-fee behavior covering pressure-driven adjustment, decay, persistence and recovery boundaries, and operator evidence.
+- Periodic transaction rebroadcast with bounded scheduling, peer-policy integration, restart behavior, and no accidental public-default claim.
+- Sustained mempool-pressure handling covering eviction, descendant and package consistency, resource bounds, relay consequences, and diagnostics.
 
 ## Latest Completed Milestone: v2.1 Block Serving and Compact Block Relay Boundary
 
 **Status:** Shipped and archived on 2026-07-22 after Phase 129 closed integration guardrails and milestone reconciliation.
+
+At the v2.1 archive boundary, package relay, bloom/filter serving, public relay defaults, public-network CI, production full-node readiness, and production-funds wallet use deferred to later milestones; v2.2 now activates only the package-relay and long-lived mempool-policy portion of that historical inventory.
 
 **Goal:** Add bounded, opt-in block-serving and compact-block relay behavior with auditable Bitcoin Knots parity while preserving deterministic default verification and avoiding public-default or production-readiness claims.
 
@@ -31,10 +44,6 @@ No milestone is currently active. Historical phase directories remain tracked be
 - One authoritative network and chainstate view shared by durable sync, inbound serving, RPC, CLI, dashboard, metrics, logs, and support evidence.
 - Production compact/header/inventory announcement transport with successful-write-only achieved-effect evidence.
 - Sanitized operator evidence, exact Knots parity roots, local UAT commands, and deterministic no-claim and integration guards.
-
-## Next Milestone Goals
-
-No next milestone scope has been approved. Use `/gsd-new-milestone` to review the deferred inventory, define fresh requirements, and create the next roadmap. Candidate areas remain package relay, filter serving, production-readiness evidence, production-funds wallet safety, migration apply mode, packaging, hosted services, and GUI work; none is active until explicitly selected.
 
 ## Completed Milestone: v1.9 Inbound Peer Serving and Network Participation Boundary
 
@@ -94,11 +103,14 @@ No next milestone scope has been approved. Use `/gsd-new-milestone` to review th
 - ✓ v2.1 validated all 39 block-serving and compact-relay requirements across explicit activation, validated durable serving, BIP152 codecs and negotiation, reconstruction and fallback, authoritative runtime state, production announcement transport, sanitized operator evidence, parity roots, UAT, and deterministic no-claim/integration guardrails. Archive: `.planning/milestones/v2.1-REQUIREMENTS.md`
 ### Active
 
-- (None — start the next milestone with `/gsd-new-milestone`.)
+- [ ] Package-aware transaction admission, validation, and relay preserve in-scope Knots behavior and existing bounded relay activation.
+- [ ] Rolling minimum-fee behavior adjusts and decays deterministically under sustained mempool pressure and survives supported recovery boundaries.
+- [ ] Periodic transaction rebroadcast is bounded, policy-aware, restart-safe, observable, and does not broaden public/default relay claims.
+- [ ] Sustained mempool pressure preserves eviction, descendant, package, relay, resource, and diagnostic invariants.
 
 ### Out of Scope
 
-The boundary keeps package relay, bloom/filter serving, public relay defaults, public-network CI, production full-node readiness, and production-funds wallet use deferred beyond v2.1.
+The boundary keeps bloom/filter serving, public relay defaults, public-network CI, production full-node readiness, and production-funds wallet use deferred beyond v2.2.
 
 - Faithful Qt GUI parity or porting the upstream GUI code - shipped milestones remain terminal-first and headless.
 - Windows service integration - still deferred until a later milestone.
@@ -106,7 +118,7 @@ The boundary keeps package relay, bloom/filter serving, public relay defaults, p
 - Broad unsupported drop-in replacement claims beyond the audited evidence surface - parity claims remain scoped to shipped artifacts and documented deviations.
 - Public marketing sites or hosted dashboards - completed milestones prioritize local operator surfaces and node correctness.
 - Replacing `bitcoin.conf` compatibility with an Open Bitcoin-only config format - JSONC layers on top of, not instead of, baseline config behavior.
-- Production full-node readiness, production-funds wallet use, package relay, migration apply mode, signed packaging, hosted dashboards, GUI parity, public-network CI, destructive repair, automatic support-bundle upload, and release-blocking live sync - these remain deferred to future milestones.
+- Production full-node readiness, production-funds wallet use, migration apply mode, signed packaging, hosted dashboards, GUI parity, public-network CI, destructive repair, automatic support-bundle upload, and release-blocking live sync - these remain deferred to future milestones.
 - Public relay by default or unbounded public-network relay participation - v2.0 should keep relay activation scoped, observable, and evidence-backed until a later production-readiness milestone deliberately changes that boundary.
 - Public compact-block relay defaults or production-scale block-serving claims - v2.1 should keep block-serving and compact-block relay scoped, observable, and evidence-backed until production-readiness and public-default requirements deliberately change that boundary.
 - Public inbound serving by default - inbound participation remains opt-in unless a later milestone deliberately changes that boundary with evidence.
@@ -131,6 +143,7 @@ The boundary keeps package relay, bloom/filter serving, public relay defaults, p
 - Pinned Knots anchors for v1.9 include `net.cpp`, `net_processing.cpp`, `addrman.cpp`, `banman.cpp`, and `net_permissions.cpp`; future network-participation work should cite these anchors or explain intentional behavior differences in `docs/parity/`.
 - Future relay, mempool, and peer-participation work should continue citing pinned Knots anchors such as `net_processing.cpp`, `txmempool.cpp`, `validation.cpp`, `policy/`, and related relay tests, or document intentional behavior differences in `docs/parity/`.
 - v2.1 block-serving and compact-block relay work should cite pinned Knots anchors for block inventory, `sendcmpct`, `cmpctblock`, `getblocktxn`, `blocktxn`, compact-block reconstruction, block serving, validation, peer state, and resource-governance behavior, or document intentional behavior differences in `docs/parity/`.
+- v2.2 package relay and long-lived mempool policy should reuse v2.0 admission, lifecycle, recovery, and relay foundations plus v2.1 authoritative peer transport and observability, while citing pinned Knots package-policy, rolling-fee, rebroadcast, eviction, and mempool-pressure anchors.
 
 ## Constraints
 
@@ -164,6 +177,7 @@ The boundary keeps package relay, bloom/filter serving, public relay defaults, p
 | Scope v1.9 to inbound peer serving and network participation boundaries | v1.8 defined claim gates, so the next safe expansion is opt-in inbound serving with admission, permissions, address, eviction/ban, and DoS governance before relay or production participation claims | Shipped in v1.9 with 28/28 requirements, 10/10 integration categories, and 8/8 flows passing; transaction relay, compact blocks, mempool propagation, public inbound defaults, and production readiness remain deferred |
 | Scope v2.0 to transaction relay and mempool participation boundaries | v1.9 created opt-in inbound serving and left relay-like permission labels inert, so the next fundamental node capability is bounded transaction relay and mempool propagation before compact blocks or production full-node readiness | Shipped on 2026-07-03 with 32/32 requirements complete through Phases 100 through 108 and Phase 109 archive-readiness audit debt closure |
 | Scope v2.1 to block serving and compact block relay boundaries | v2.0 shipped bounded transaction relay and mempool participation, so the next safe node-participation expansion is serving validated blocks and compact-block relay before package relay, public defaults, or production full-node readiness | Shipped and archived on 2026-07-22 with 39/39 requirements, 13/13 integration links, and 11/11 flows passing |
+| Scope v2.2 to package relay and long-lived mempool policy | v2.0 established bounded mempool and transaction relay while v2.1 supplied authoritative peer transport and observability, making package policy, rolling fees, rebroadcast, and sustained-pressure behavior the next coherent parity boundary | — Pending |
 
 ## Evolution
 
@@ -204,4 +218,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ***
-*Last updated: 2026-07-22 after v2.1 milestone archival*
+*Last updated: 2026-07-22 after starting milestone v2.2*

@@ -1,39 +1,39 @@
 ---
 gsd_state_version: "1.0"
-milestone: v2.1
-milestone_name: Block Serving and Compact Block Relay Boundary
-status: Milestone complete
-stopped_at: Milestone v2.1 archived
-last_updated: "2026-07-22T03:26:48.243Z"
+milestone: v2.2
+milestone_name: Package Relay and Long-Lived Mempool Policy
+status: Defining requirements
+stopped_at: Defining milestone v2.2 requirements
+last_updated: "2026-07-22T15:30:00Z"
 last_activity: "2026-07-22"
 progress:
-  total_phases: 20
-  completed_phases: 20
-  total_plans: 70
-  completed_plans: 70
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-07-22 after v2.1 milestone archival).
+See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Planning the next milestone
+**Current focus:** Defining v2.2 package relay and long-lived mempool policy requirements
 
 ## Current Position
 
-Milestone: v2.1 Block Serving and Compact Block Relay Boundary — SHIPPED AND ARCHIVED
-Phase: None active
-Plan: None active
-Status: Milestone complete
+Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
 Last activity: 2026-07-22
 
-Phases 110 through 129 completed 70/70 plans. All 39 v2.1 requirements passed lifecycle-valid verification, and the final audit passed with 13/13 integration links, 11/11 flows, and no blocking gaps.
+The milestone was initialized through `/gsd-new-milestone` and will close explicit gaps around package admission and relay, rolling minimum-fee behavior, periodic rebroadcast, and sustained mempool pressure by reusing v2.0 mempool and relay foundations plus v2.1 peer transport and observability.
 
-Next action: Run `/gsd-new-milestone`.
+Next action: Define v2.2 requirements and create the roadmap, continuing phase numbering after Phase 129.
 
 ## Performance Metrics
 
@@ -54,8 +54,8 @@ Next action: Run `/gsd-new-milestone`.
 
 - v2.1 shipped bounded, default-off validated block serving and compact-block relay through Phases 110–129.
 - Production runtime state, inbound serving, RPC/operator evidence, and compact announcement transport now share authoritative state and successful-write-only evidence.
-- The archive retains three non-blocking maintenance observations: an oversized Phase 124 checker, stale GSD milestone initializer metadata, and historical phase-detail ownership wording.
-- No next milestone scope is active.
+- v2.2 is now active for package relay, rolling minimum-fee behavior, periodic rebroadcast, and sustained mempool-pressure policy.
+- Historical phase directories remain tracked because deterministic verifier scripts still consume selected evidence.
 
 ## Decisions
 
@@ -124,6 +124,7 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
   - `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- ...`
   - `bazel run //packages/open-bitcoin-cli:open_bitcoin -- ...`
 - Keep public-network relay exposure opt-in and outside default deterministic verification unless a future phase explicitly changes that contract.
+- Keep v2.2 package relay and rebroadcast bounded and evidence-backed without promoting public/default/production relay scope.
 
 ## Blockers/Concerns
 
@@ -131,6 +132,7 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 - Default local verification must remain deterministic; public-network relay review should be opt-in UAT evidence unless deliberately changed.
 - Existing outbound sync, inbound serving, full-sync, soak, support-bundle, and release-boundary behavior must not regress when future milestones expand relay or production scope.
 - Existing transaction relay, mempool, inbound, sync, support-bundle, and release-boundary behavior must not regress in future work built on v2.1 block-serving and compact-block relay scope.
+- Package admission, rolling-fee decay, rebroadcast scheduling, and sustained-pressure behavior need exact Knots anchors and deterministic long-lived tests before any support claim is promoted.
 
 ### Quick Tasks Completed
 
@@ -147,5 +149,5 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 ## Session Continuity
 
 Last session: 2026-07-22
-Stopped at: Milestone v2.1 archived locally
+Stopped at: Defining milestone v2.2 requirements
 Resume file: None
