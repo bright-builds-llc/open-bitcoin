@@ -413,7 +413,11 @@ function createFixture(options: FixtureOptions = {}): string {
   tempRoots.push(root);
   const files = new Map<TargetFile, string>();
   for (const file of TARGET_FILES) {
-    files.set(file, readFileSync(path.join(REPO_ROOT, file), "utf8"));
+    const sourceFile =
+      file === ".planning/ROADMAP.md"
+        ? ".planning/milestones/v2.1-ROADMAP.md"
+        : file;
+    files.set(file, readFileSync(path.join(REPO_ROOT, sourceFile), "utf8"));
   }
   options.maybeMutate?.(files);
   for (const [file, text] of files) {

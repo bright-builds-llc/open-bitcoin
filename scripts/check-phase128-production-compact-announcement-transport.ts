@@ -12,6 +12,7 @@ const PHASE128_CHECK =
   "bun run scripts/check-phase128-production-compact-announcement-transport.ts";
 const PHASE117_TEST =
   "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts";
+const ARCHIVED_V21_ROADMAP = ".planning/milestones/v2.1-ROADMAP.md";
 
 export const PHASE128_TARGET_FILES = [
   "packages/open-bitcoin-network/src/peer.rs",
@@ -63,7 +64,12 @@ export function checkPhase128ProductionCompactAnnouncementTransport(
 function loadCorpus(repoRoot: string, failures: string[]): TextCorpus {
   const texts = new Map<TargetFile, string>();
   for (const file of PHASE128_TARGET_FILES) {
-    const absolutePath = path.join(repoRoot, file);
+    const sourceFile =
+      file === ".planning/ROADMAP.md" &&
+      existsSync(path.join(repoRoot, ARCHIVED_V21_ROADMAP))
+        ? ARCHIVED_V21_ROADMAP
+        : file;
+    const absolutePath = path.join(repoRoot, sourceFile);
     if (!existsSync(absolutePath)) {
       failures.push(`P128 missing target: ${file}`);
       texts.set(file, "");
@@ -414,8 +420,16 @@ function checkBoundedScope(texts: TextCorpus, failures: string[]): void {
     "v2.1 does not imply public relay defaults, production service operation, production-funds wallet use, public-network CI, or production full-node readiness.",
     "package relay, bloom/filter serving, public relay defaults, public-network CI, production full-node readiness, and production-funds wallet use deferred",
   ];
+  const archivedRoadmapClaims = [
+    "v2.1 Block Serving and Compact Block Relay Boundary shipped",
+    "[v2.1-ROADMAP.md](milestones/v2.1-ROADMAP.md)",
+    "[v2.1-REQUIREMENTS.md](milestones/v2.1-REQUIREMENTS.md)",
+  ];
   if (
-    !requiredRoadmapClaims.every((claim) => roadmap.includes(claim)) ||
+    !(
+      requiredRoadmapClaims.every((claim) => roadmap.includes(claim)) ||
+      archivedRoadmapClaims.every((claim) => roadmap.includes(claim))
+    ) ||
     !requiredProjectClaims.every((claim) => project.includes(claim))
   ) {
     failures.push(

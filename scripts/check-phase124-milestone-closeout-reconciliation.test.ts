@@ -362,7 +362,7 @@ test("fails_each_single_field_archive_ready_end_state_mutation", () => {
     ],
     [
       ".planning/v2.1-MILESTONE-AUDIT.md",
-      "scripts/check-phase124-milestone-gap-closure.ts is 1,505 lines and concentrates unrelated lifecycle assertions.",
+      "scripts/check-phase124-milestone-gap-closure.ts exceeds 1,500 lines and concentrates unrelated lifecycle assertions.",
       "no retained maintainability debt",
       "P124 archive-ready audit is missing scripts/check-phase124-milestone-gap-closure.ts",
     ],

@@ -1,11 +1,11 @@
 ---
-gsd_state_version: 1.0
+gsd_state_version: "1.0"
 milestone: v2.1
 milestone_name: Block Serving and Compact Block Relay Boundary
-status: milestone-reconciled
-stopped_at: Completed 129-04-PLAN.md
-last_updated: "2026-07-21T04:03:12Z"
-last_activity: 2026-07-21
+status: Milestone complete
+stopped_at: Milestone v2.1 archived
+last_updated: "2026-07-22T03:26:48.243Z"
+last_activity: "2026-07-22"
 progress:
   total_phases: 20
   completed_phases: 20
@@ -18,24 +18,22 @@ progress:
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-07-20 after Phase 127 authoritative-state verification).
+See: `.planning/PROJECT.md` (updated 2026-07-22 after v2.1 milestone archival).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** v2.1 milestone completion and archival
+**Current focus:** Planning the next milestone
 
 ## Current Position
 
-Milestone: v2.1 Block Serving and Compact Block Relay Boundary
-Phase: 129 (Integration Guardrails and Milestone Reconciliation) — COMPLETE
-Plan: 4 of 4 complete
-Status: Milestone reconciled and archive-ready
-Last activity: 2026-07-21
+Milestone: v2.1 Block Serving and Compact Block Relay Boundary — SHIPPED AND ARCHIVED
+Phase: None active
+Plan: None active
+Status: Milestone complete
+Last activity: 2026-07-22
 
-v2.0 Transaction Relay and Mempool Participation Boundary shipped on 2026-07-03. The archived audit reports 32/32 requirements, 10/10 phases, 8/8 integration checks, 8/8 cross-phase flows, and no tracked tech debt.
+Phases 110 through 129 completed 70/70 plans. All 39 v2.1 requirements passed lifecycle-valid verification, and the final audit passed with 13/13 integration links, 11/11 flows, and no blocking gaps.
 
-Phases 110 through 129 are complete at 70/70 plans. Phase 129 added the aggregate integration guard over the repaired production seams, resolved the D-06 fallback-counter truthfulness defect, landed the fail-closed archive-ready stage machine, and reconciled REQUIREMENTS, ROADMAP, PROJECT, STATE, MILESTONES, and the rerun v2.1 milestone audit at 39/39 complete after independent lifecycle-valid verification.
-
-Next action: Run `/gsd-complete-milestone v2.1`.
+Next action: Run `/gsd-new-milestone`.
 
 ## Performance Metrics
 
@@ -48,19 +46,16 @@ Next action: Run `/gsd-complete-milestone v2.1`.
 
 ## Latest Milestone Archive
 
-- Roadmap: `.planning/milestones/v2.0-ROADMAP.md`
-- Requirements: `.planning/milestones/v2.0-REQUIREMENTS.md`
-- Audit: `.planning/milestones/v2.0-MILESTONE-AUDIT.md`
+- Roadmap: `.planning/milestones/v2.1-ROADMAP.md`
+- Requirements: `.planning/milestones/v2.1-REQUIREMENTS.md`
+- Audit: `.planning/milestones/v2.1-MILESTONE-AUDIT.md`
 
 ## Recent Trend
 
-- v1.6 completed explicit opt-in mainnet full-sync completion evidence.
-- v1.7 hardened multi-day full-sync soak, bounded resources, recovery diagnosis, progress guarantees, and support-bundle forensics.
-- v1.8 defined production-readiness claim gates, support/update/runbook/service policies, release-readiness evidence, and deterministic no-claim guardrails.
-- v1.9 shipped opt-in inbound peer serving while keeping transaction relay, compact blocks, mempool propagation, production-funds wallet use, migration apply mode, packaging, hosted dashboard, GUI, public-network CI, and production full-node readiness deferred.
-- Phase 98 canonical ownership remains archived for INB-01, INB-02, INB-03, INB-04, BOUND-06.
-- v2.0 shipped bounded transaction relay and mempool participation through explicit activation, txid/wtxid inventory/download, orphan handling, mempool admission and durable recovery, relay serving/fanout, sanitized operator evidence, parity roots, UAT guidance, and deterministic no-claim guardrails.
-- v2.1 completed all 20 phases after Phase 129 closed integration guardrails and milestone reconciliation; the rerun audit passed and the milestone is archive-ready.
+- v2.1 shipped bounded, default-off validated block serving and compact-block relay through Phases 110–129.
+- Production runtime state, inbound serving, RPC/operator evidence, and compact announcement transport now share authoritative state and successful-write-only evidence.
+- The archive retains three non-blocking maintenance observations: an oversized Phase 124 checker, stale GSD milestone initializer metadata, and historical phase-detail ownership wording.
+- No next milestone scope is active.
 
 ## Decisions
 
@@ -151,6 +146,6 @@ Recent decisions are logged in `PROJECT.md`. The latest milestone-level decision
 
 ## Session Continuity
 
-Last session: 2026-07-21T04:03:12Z
-Stopped at: Completed 129-04-PLAN.md
+Last session: 2026-07-22
+Stopped at: Milestone v2.1 archived locally
 Resume file: None

@@ -49,6 +49,32 @@ test("complete fixture succeeds", () => {
   expect(failures).toEqual([]);
 });
 
+test("completed milestone archive needs no active traceability corpus", () => {
+  // Arrange
+  const root = createFixture();
+  writeFileSync(
+    path.join(root, ".planning/ROADMAP.md"),
+    "# Roadmap\n\n## Current Status\n\nNo active milestone.\n",
+  );
+  for (const name of [
+    "v2.1-ROADMAP.md",
+    "v2.1-REQUIREMENTS.md",
+    "v2.1-MILESTONE-AUDIT.md",
+  ]) {
+    const directory = path.join(root, ".planning/milestones");
+    mkdirSync(directory, { recursive: true });
+    writeFileSync(path.join(directory, name), "archived\n");
+  }
+
+  // Act
+  const failures = checkActiveMilestoneVerificationTraceability({
+    maybeRootDir: root,
+  });
+
+  // Assert
+  expect(failures).toEqual([]);
+});
+
 test("missing RCN-04 verification fails independently", () => {
   // Arrange
   const root = createFixture({

@@ -8,6 +8,11 @@ const ARCHIVE_ROUTE = "/gsd-complete-milestone v2.1";
 const REQUIREMENTS_FILE = ".planning/REQUIREMENTS.md";
 const ROADMAP_FILE = ".planning/ROADMAP.md";
 const AUDIT_FILE = ".planning/v2.1-MILESTONE-AUDIT.md";
+const ARCHIVED_MILESTONE_FILES = {
+  [REQUIREMENTS_FILE]: ".planning/milestones/v2.1-REQUIREMENTS.md",
+  [ROADMAP_FILE]: ".planning/milestones/v2.1-ROADMAP.md",
+  [AUDIT_FILE]: ".planning/milestones/v2.1-MILESTONE-AUDIT.md",
+} as const;
 const PHASE129_REQUIREMENTS = ["OBS-01", "BOUND-02", "HARD-05"] as const;
 const PHASE129_ROW_CHECKED =
   "- [x] **Phase 129: Integration Guardrails and Milestone Reconciliation**";
@@ -46,7 +51,7 @@ const PHASE129_VERIFICATION_FRONTMATTER = [
   ["phase_lifecycle_id", PHASE129_LIFECYCLE_ID],
 ] as const;
 const RETAINED_TECH_DEBT_ITEM =
-  "scripts/check-phase124-milestone-gap-closure.ts is 1,505 lines and concentrates unrelated lifecycle assertions.";
+  "scripts/check-phase124-milestone-gap-closure.ts exceeds 1,500 lines and concentrates unrelated lifecycle assertions.";
 const RESOLVED_TECH_DEBT_ENTRY = "phase: cross-cutting-verification";
 
 export type Phase129ReconciliationStage =
@@ -252,6 +257,7 @@ function verifyArchiveReadyAudit(audit: string, failures: string[]): void {
 }
 
 function verifyArchiveReadyRouting(repoRoot: string, failures: string[]): void {
+  const milestoneArchived = milestoneArchivePresent(repoRoot);
   for (const relativePath of ARCHIVE_READY_ROUTED_FILES) {
     const absolutePath = path.join(repoRoot, relativePath);
     if (!existsSync(absolutePath)) {
@@ -259,6 +265,15 @@ function verifyArchiveReadyRouting(repoRoot: string, failures: string[]): void {
       continue;
     }
     const text = readFileSync(absolutePath, "utf8");
+    if (milestoneArchived) {
+      requireContains(
+        text,
+        "/gsd-new-milestone",
+        `archived milestone routing ${relativePath}`,
+        failures,
+      );
+      continue;
+    }
     requireContains(
       text,
       ARCHIVE_ROUTE,
@@ -430,8 +445,19 @@ function requirementsCompletedBlock(frontmatter: string): string {
 }
 
 function readOptional(repoRoot: string, relativePath: string): string {
-  const absolutePath = path.join(repoRoot, relativePath);
+  const sourcePath = milestoneArchivePresent(repoRoot)
+    ? ARCHIVED_MILESTONE_FILES[
+        relativePath as keyof typeof ARCHIVED_MILESTONE_FILES
+      ] ?? relativePath
+    : relativePath;
+  const absolutePath = path.join(repoRoot, sourcePath);
   return existsSync(absolutePath) ? readFileSync(absolutePath, "utf8") : "";
+}
+
+function milestoneArchivePresent(repoRoot: string): boolean {
+  return Object.values(ARCHIVED_MILESTONE_FILES).every((file) =>
+    existsSync(path.join(repoRoot, file)),
+  );
 }
 
 function extractFrontmatter(

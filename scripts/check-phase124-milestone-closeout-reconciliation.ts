@@ -8,6 +8,9 @@ import {
   verifyPhase124CloseoutLifecycle,
 } from "./check-phase124-milestone-closeout-lifecycle";
 import {
+  verifyArchiveReady,
+} from "./check-phase124-archive-ready";
+import {
   isPhase124GapClosureStage,
   verifyCompletedGapClosureLifecycleArtifacts,
   verifyPhase124GapClosureStage,
@@ -37,6 +40,12 @@ const PHASE117_CHECK =
 const PHASE125_VERIFICATION_FILE =
   ".planning/phases/125-compact-download-verification-traceability-closure/125-VERIFICATION.md";
 const ARCHIVE_ROUTE = "/gsd-complete-milestone v2.1";
+const ARCHIVED_MILESTONE_FILES = {
+  ".planning/REQUIREMENTS.md": ".planning/milestones/v2.1-REQUIREMENTS.md",
+  ".planning/ROADMAP.md": ".planning/milestones/v2.1-ROADMAP.md",
+  ".planning/v2.1-MILESTONE-AUDIT.md":
+    ".planning/milestones/v2.1-MILESTONE-AUDIT.md",
+} as const;
 
 const REQUIRED_FILES = [
   ".planning/REQUIREMENTS.md",
@@ -108,6 +117,16 @@ export function checkPhase124MilestoneCloseoutReconciliation(
   const repoRoot = path.resolve(options.rootDir ?? DEFAULT_REPO_ROOT);
   const failures: string[] = [];
   const texts = loadCorpus(repoRoot, failures);
+  if (milestoneArchivePresent(repoRoot)) {
+    verifyArchiveReady(repoRoot, failures);
+    verifyNoClaimBoundary(texts, failures);
+    verifyVerifierOrder(
+      texts.get("scripts/verify.sh") ?? "",
+      true,
+      failures,
+    );
+    return failures;
+  }
   const requirements = texts.get(".planning/REQUIREMENTS.md") ?? "";
   const roadmap = texts.get(".planning/ROADMAP.md") ?? "";
   const entries = parseRequirementEntries(requirements);
@@ -173,7 +192,12 @@ export function checkPhase124MilestoneCloseoutReconciliation(
 function loadCorpus(repoRoot: string, failures: string[]): TextCorpus {
   const texts = new Map<RequiredFile, string>();
   for (const file of REQUIRED_FILES) {
-    const absolutePath = path.join(repoRoot, file);
+    const sourceFile = milestoneArchivePresent(repoRoot)
+      ? ARCHIVED_MILESTONE_FILES[
+          file as keyof typeof ARCHIVED_MILESTONE_FILES
+        ] ?? file
+      : file;
+    const absolutePath = path.join(repoRoot, sourceFile);
     if (!existsSync(absolutePath)) {
       failures.push(`P124 missing required corpus file: ${file}`);
       texts.set(file, "");
@@ -182,6 +206,12 @@ function loadCorpus(repoRoot: string, failures: string[]): TextCorpus {
     texts.set(file, readFileSync(absolutePath, "utf8"));
   }
   return texts;
+}
+
+function milestoneArchivePresent(repoRoot: string): boolean {
+  return Object.values(ARCHIVED_MILESTONE_FILES).every((file) =>
+    existsSync(path.join(repoRoot, file)),
+  );
 }
 
 function parseRequirementEntries(text: string): RequirementEntry[] {

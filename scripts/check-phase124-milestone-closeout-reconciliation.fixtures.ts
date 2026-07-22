@@ -743,7 +743,7 @@ function createArchiveReadyAudit(): string {
     "tech_debt:",
     "  - phase: 124-milestone-closeout-reconciliation",
     "    items:",
-    '      - "scripts/check-phase124-milestone-gap-closure.ts is 1,505 lines and concentrates unrelated lifecycle assertions."',
+    '      - "scripts/check-phase124-milestone-gap-closure.ts exceeds 1,500 lines and concentrates unrelated lifecycle assertions."',
     "---",
     "## Next Action",
     "",

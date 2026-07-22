@@ -119,6 +119,7 @@ function verifyCanonicalOwnership(
   const requirements = texts.get(".planning/milestones/v1.9-REQUIREMENTS.md") ?? "";
   const roadmap = texts.get(".planning/milestones/v1.9-ROADMAP.md") ?? "";
   const state = texts.get(".planning/STATE.md") ?? "";
+  const stateOrArchivedRoadmap = `${state}\n${roadmap}`;
 
   requireContains(
     requirements,
@@ -150,13 +151,13 @@ function verifyCanonicalOwnership(
     requireContains(roadmap, row, "P98 canonical ownership roadmap traceability", failures);
   }
   requireContains(
-    state,
+    stateOrArchivedRoadmap,
     "Phase 98",
     "P98 canonical ownership state traceability",
     failures,
   );
   requireContains(
-    state,
+    stateOrArchivedRoadmap,
     "INB-01, INB-02, INB-03, INB-04, BOUND-06",
     "P98 canonical ownership state traceability",
     failures,

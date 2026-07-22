@@ -1,36 +1,48 @@
 # Milestones: Open Bitcoin
 
-## v2.1 Block Serving and Compact Block Relay Boundary (Reconciled and Archive-Ready)
+## v2.1 Block Serving and Compact Block Relay Boundary (Shipped: 2026-07-22)
 
-**Locally delivered:** Bounded, explicit, default-off validated block
-serving and compact-block relay through BIP152 codecs, negotiation,
-reconstruction, missing-transaction response, timeout fallback, validation
-handoff, production authoritative-state unification, production compact
-announcement transport with post-write evidence, sanitized operator evidence,
-exact Knots parity anchors, and deterministic no-claim guardrails.
+**Delivered:** Bounded, explicit, default-off validated block serving and compact-block relay through BIP152 negotiation, reconstruction, missing-transaction recovery, production transport, authoritative runtime state, sanitized operator evidence, Knots parity roots, and deterministic no-claim guardrails.
 
-**Current projection:**
+**Phases completed:** 20 phases, 70 plans, 121 counted summary tasks
 
-- 39/39 v2.1 requirements are complete after independent lifecycle-valid
-  Phase 129 verification.
-- Phases 110 through 129 and 70/70 plans are complete.
-- The rerun canonical milestone audit passed with 13/13 integration links,
-  11/11 end-to-end flows, and empty gap inventories; the previously projected
-  three integration gaps were closed by Phases 127 through 129.
-- Phase 127 unified authoritative runtime state, Phase 128 completed
-  production compact-announcement transport, and Phase 129 added the
-  aggregate integration guard, the fail-closed archive-ready stage machine,
-  and the final milestone reconciliation.
-- v2.1 remains the active, unarchived milestone until the completion workflow
-  creates its archive artifacts.
+**Key accomplishments:**
 
-**Residual boundary:** Package relay, bloom/filter serving, compact-filter
-serving, public serving or relay defaults, public-network CI, archive-node and
-production-scale historical serving, production service/deployment, production
-full-node readiness, production-funds wallet use, migration apply mode,
-packaging, hosted services, and GUI work remain future scope.
+- Added explicit default-off block-serving and compact-relay activation with deterministic peer eligibility, validated durable-block availability checks, bounded request pressure, and cleanup policy.
+- Added first-party BIP152 `sendcmpct`, `cmpctblock`, `getblocktxn`, and `blocktxn` codecs plus bilateral per-peer negotiation and policy-gated compact announcements.
+- Added live mempool and bounded-extra compact reconstruction, collision and malformed-input outcomes, missing-transaction round trips, validation handoff, receive-independent timeout fallback, and volatile-state cleanup.
+- Unified durable sync, inbound serving, RPC, CLI, dashboard, metrics, logs, and support bundles on one authoritative network and chainstate view.
+- Sent compact, header, and inventory announcements through real peer transports while recording achieved-effect evidence only after successful writes.
+- Closed all parity, breadcrumb, UAT, sanitization, no-claim, requirement-traceability, and production-seam guardrails; the final audit passed with no blocking gaps.
 
-**What's next:** Run `/gsd-complete-milestone v2.1`.
+**Stats:**
+
+- 39/39 requirements complete.
+- 20 phases, 70 plans, and 121 counted summary tasks complete.
+- 247,855 tracked first-party lines at archive time, including 218,250 code/content lines.
+- 468 files changed across the post-v2.0 delivery range, with 92,934 insertions and 3,668 deletions before archive.
+- Git range after the v2.0 tag: `0e5f482a` → `eaa7e49c` (280 commits).
+- Timeline: 2026-07-03 through 2026-07-22.
+- Milestone audit status: `passed` with 39/39 requirements, 20/20 phases, 13/13 integration links, and 11/11 end-to-end flows.
+- Full repo-native verification passed during the final audit and archive closeout.
+
+**Archived artifacts:**
+
+- `.planning/milestones/v2.1-ROADMAP.md`
+- `.planning/milestones/v2.1-REQUIREMENTS.md`
+- `.planning/milestones/v2.1-MILESTONE-AUDIT.md`
+
+**Technical debt:**
+
+- The Phase 124 gap-closure checker remains over 1,500 lines and combines unrelated lifecycle assertions.
+- The GSD milestone initializer still prefers stale v2.0 PROJECT metadata over the authoritative active ROADMAP scope.
+- Historical phase-detail requirement lists preserve pre-reassignment ownership even though final traceability tables correctly map all 39 requirements.
+
+**Residual boundary:**
+
+Package relay, bloom/filter serving, compact-filter serving, public serving or relay defaults, public-network CI, archive-node behavior, production service/deployment, production full-node readiness, production-funds wallet use, migration apply mode, packaging, hosted services, and GUI work remain future scope.
+
+**What's next:** Start the next milestone with `/gsd-new-milestone`.
 
 ***
 
@@ -116,7 +128,7 @@ packaging, hosted services, and GUI work remain future scope.
 
 **What's next:** v2.0 has shipped; see the latest milestone entry above.
 
----
+***
 
 ## v1.8 Production Full-Node Readiness Boundary (Shipped: 2026-06-25)
 
@@ -157,7 +169,7 @@ packaging, hosted services, and GUI work remain future scope.
 
 **What's next:** v1.9 has shipped. Start the next milestone with `/gsd-new-milestone`.
 
----
+***
 
 ## v1.7 Full-Sync Soak and Recovery Hardening (Shipped: 2026-06-20)
 
@@ -198,7 +210,7 @@ packaging, hosted services, and GUI work remain future scope.
 
 **What's next:** Start the next milestone with `/gsd-new-milestone`.
 
----
+***
 
 ## v1.6 Mainnet Full-Sync Completion (Shipped: 2026-06-14)
 
@@ -232,7 +244,7 @@ packaging, hosted services, and GUI work remain future scope.
 
 **What's next:** Start the next milestone with `/gsd-new-milestone`.
 
----
+***
 
 ## v1.5 Unattended Mainnet Node Operation Readiness (Shipped: 2026-06-10)
 
@@ -274,7 +286,7 @@ packaging, hosted services, and GUI work remain future scope.
 
 **What's next:** Start the next milestone with `/gsd-new-milestone`.
 
----
+***
 
 ## v1.4 Mainnet IBD Convergence and Peer Compatibility (Shipped: 2026-06-05)
 
@@ -319,7 +331,7 @@ packaging, hosted services, and GUI work remain future scope.
 
 **What's next:** Start the next milestone with `/gsd-new-milestone`.
 
----
+***
 
 ## v1.3 Public Mainnet Sync Proof and Node Hardening (Shipped: 2026-06-02)
 
@@ -355,7 +367,7 @@ packaging, hosted services, and GUI work remain future scope.
 
 **What's next:** Start the next milestone with `/gsd-new-milestone`.
 
----
+***
 
 ## v1.2 Full Mainnet Network Syncing (Shipped: 2026-05-23)
 
@@ -391,7 +403,7 @@ packaging, hosted services, and GUI work remain future scope.
 
 **What's next:** Start the next milestone with `/gsd-new-milestone`.
 
----
+***
 
 ## v1.1 Operator Runtime and Real-Network Sync (Shipped: 2026-04-30)
 
@@ -424,7 +436,7 @@ packaging, hosted services, and GUI work remain future scope.
 
 **What's next:** v1.2 Full Mainnet Network Syncing shipped on 2026-05-23; see the entry above.
 
----
+***
 
 ## v1.0 Headless Parity (Shipped: 2026-04-26)
 
@@ -456,4 +468,4 @@ packaging, hosted services, and GUI work remain future scope.
 
 **What's next:** v1.1 and v1.2 have shipped; see the newer entries above.
 
----
+***

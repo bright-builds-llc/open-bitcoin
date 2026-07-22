@@ -11,6 +11,11 @@ import path from "node:path";
 const DEFAULT_ROOT_DIR = path.resolve(import.meta.dir, "..");
 const ROADMAP_FILE = ".planning/ROADMAP.md";
 const REQUIREMENTS_FILE = ".planning/REQUIREMENTS.md";
+const ARCHIVED_V21_FILES = [
+  ".planning/milestones/v2.1-ROADMAP.md",
+  ".planning/milestones/v2.1-REQUIREMENTS.md",
+  ".planning/milestones/v2.1-MILESTONE-AUDIT.md",
+] as const;
 const PHASES_DIR = ".planning/phases";
 const ACTIVE_MILESTONE_HEADING = "## Active Milestone:";
 const ACTIVE_REQUIREMENTS_HEADING = "## v2.1 Requirements";
@@ -59,6 +64,12 @@ export function checkActiveMilestoneVerificationTraceability(
   );
   const failures: string[] = [];
   const roadmap = readRequiredText(rootDir, ROADMAP_FILE, failures);
+  if (
+    !roadmap.includes(ACTIVE_MILESTONE_HEADING) &&
+    ARCHIVED_V21_FILES.every((file) => existsSync(path.join(rootDir, file)))
+  ) {
+    return failures;
+  }
   const requirements = readRequiredText(
     rootDir,
     REQUIREMENTS_FILE,

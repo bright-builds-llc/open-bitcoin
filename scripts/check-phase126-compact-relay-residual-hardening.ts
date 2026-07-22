@@ -10,6 +10,7 @@ const PHASE126_TEST = "bun test scripts/check-phase126-compact-relay-residual-ha
 const PHASE126_CHECK = "bun run scripts/check-phase126-compact-relay-residual-hardening.ts";
 const PHASE117_TEST = "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts";
 const PHASE117_CHECK = "bun run scripts/check-phase117-parity-uat-release-boundary.ts";
+const ARCHIVED_V21_ROADMAP = ".planning/milestones/v2.1-ROADMAP.md";
 
 const TARGET_FILES = [
   "packages/open-bitcoin-network/src/peer/message_dispatch.rs",
@@ -69,7 +70,12 @@ export function checkPhase126CompactRelayResidualHardening(maybeRepoRoot?: strin
 function loadCorpus(repoRoot: string, failures: string[]): TextCorpus {
   const texts = new Map<TargetFile, string>();
   for (const file of TARGET_FILES) {
-    const absolutePath = path.join(repoRoot, file);
+    const sourceFile =
+      file === ".planning/ROADMAP.md" &&
+      existsSync(path.join(repoRoot, ARCHIVED_V21_ROADMAP))
+        ? ARCHIVED_V21_ROADMAP
+        : file;
+    const absolutePath = path.join(repoRoot, sourceFile);
     if (!existsSync(absolutePath)) {
       failures.push(`P126 missing target: ${file}`);
       texts.set(file, "");

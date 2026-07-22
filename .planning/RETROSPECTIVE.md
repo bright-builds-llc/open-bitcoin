@@ -44,7 +44,7 @@
 - Sessions: multiple GSD planning, execution, UAT, security, audit, and archive turns.
 - Notable: late artifact reconciliation was cheaper than changing runtime code, but would have been smaller if roadmap progress updates had stayed current after each inserted phase.
 
----
+***
 
 ## Milestone: v1.1 - Operator Runtime and Real-Network Sync
 
@@ -89,7 +89,7 @@
 - Sessions: multiple GSD execution, audit, cleanup, and archive turns across the v1.1 milestone.
 - Notable: cleanup phases were cheaper than reopening the main milestone scope, but earlier end-to-end operator-flow checks would likely have avoided some late archive work.
 
----
+***
 
 ## Milestone: v1.2 - Full Mainnet Network Syncing
 
@@ -134,7 +134,7 @@
 - Sessions: multiple GSD execution, UAT, security, closeout, and archive turns across the v1.2 milestone.
 - Notable: late closeout was mostly documentation and evidence reconciliation, but stale requirement bookkeeping added avoidable archive work.
 
----
+***
 
 ## Milestone: v1.3 - Public Mainnet Sync Proof and Node Hardening
 
@@ -179,7 +179,7 @@
 - Sessions: multiple GSD execution, audit, cleanup, live UAT, and archive turns across the v1.3 milestone.
 - Notable: explicit diagnosed-blocker acceptance avoided broadening the claim boundary just to make the archive look more successful.
 
----
+***
 
 ## Milestone: v1.4 - Mainnet IBD Convergence and Peer Compatibility
 
@@ -224,7 +224,7 @@
 - Sessions: multiple GSD yolo execution, verification, audit, and archive turns across the v1.4 milestone.
 - Notable: the final archive mostly required planning-control cleanup, not runtime code changes, because phase verification had already closed implementation risk.
 
----
+***
 
 ## Milestone: v1.7 - Full-Sync Soak and Recovery Hardening
 
@@ -270,7 +270,7 @@
 - Sessions: multiple GSD yolo execution, code-review, verification, audit, gap-closure, and archive turns across the v1.7 milestone.
 - Notable: Phase 81 was mostly evidence-control work, confirming that late audit failures can be cheaper to close when implementation evidence is already stable and requirement-mapped.
 
----
+***
 
 ## Milestone: v1.8 - Production Full-Node Readiness Boundary
 
@@ -316,7 +316,7 @@
 - Sessions: multiple GSD execution, audit, gap-closure, archive, and manual planning-curation turns across the v1.8 milestone.
 - Notable: the remaining audit debt is checker hardening only; all requirement, integration, and release-flow blockers were closed before archive.
 
----
+***
 
 ## Milestone: v1.9 - Inbound Peer Serving and Network Participation Boundary
 
@@ -362,7 +362,7 @@
 - Sessions: multiple GSD yolo execution, code-review, verification, audit, gap-closure, and archive turns across the v1.9 milestone.
 - Notable: the late archive work was mostly evidence lifecycle and planning-control cleanup; the shipped runtime behavior was already verified before archival.
 
----
+***
 
 ## Milestone: v2.0 - Transaction Relay and Mempool Participation Boundary
 
@@ -408,7 +408,58 @@
 - Sessions: multiple GSD yolo execution, code-review, verification, audit, gap-closure, milestone audit, and archive turns across the v2.0 milestone.
 - Notable: late Phase 107 through Phase 109 work was integration and evidence-control cleanup, not scope expansion; it preserved the milestone boundary while making the shipped claim auditable.
 
----
+***
+
+## Milestone: v2.1 - Block Serving and Compact Block Relay Boundary
+
+**Shipped:** 2026-07-22
+**Phases:** 20
+**Plans:** 70
+**Tasks:** 121
+
+### What Was Built
+
+- Default-off block serving with bounded eligibility, durable validation, resource governance, and disconnect cleanup.
+- BIP152 compact-block codecs, negotiation, reconstruction, missing-transaction round trips, validation handoff, and safe fallback behavior.
+- One authoritative network-state projection shared by durable sync, inbound serving, RPC, CLI, dashboard, metrics, logs, and support evidence.
+- Production compact/header/inventory announcement transport with post-write-only achieved-effect evidence.
+- Sanitized block-relay metrics, structured logs, parity documentation, and no-claim boundaries.
+- Deterministic traceability, lifecycle, integration, and release guards supporting a 39/39 passed milestone audit.
+
+### What Worked
+
+- Small, explicit phases let codec, policy, reconstruction, governance, observability, and production composition evolve without widening the public claim.
+- Independent phase verification and a rerun milestone audit exposed composition gaps that phase-local tests did not reveal.
+- Shared authoritative state handles and consuming write receipts made production behavior auditable across runtime and operator surfaces.
+- The default verifier stayed deterministic while opt-in public-network review remained outside the shipped claim.
+
+### What Was Inefficient
+
+- Early verification proved helpers and adapters independently but did not fully prove their production composition, requiring Phases 127 through 129.
+- Requirement ownership and final integration evidence were reconciled late, which expanded closeout work.
+- The generic archive helper produced noisy milestone prose, miscounted summaries as plans in state, and left historical checkers coupled to active milestone paths.
+
+### Patterns Established
+
+- Treat one shared runtime-state authority as the source for sync, serving, RPC, and operator evidence.
+- Credit achieved effects only from consuming receipts returned after successful transport writes.
+- Model integration and traceability closeout as fail-closed lifecycle stages rather than loosely related document checks.
+- Keep historical phase evidence tracked while moving milestone control documents into immutable versioned archives.
+
+### Key Lessons
+
+1. Audit production composition, not merely the presence of correct helpers and adapters.
+2. Make historical milestone checkers archive-aware before removing active control files.
+3. Reconcile requirement ownership continuously so milestone completion remains packaging rather than evidence reconstruction.
+4. Curate generated archive summaries before committing them as durable project history.
+
+### Cost Observations
+
+- Model mix and session count were not measured in repository artifacts.
+- The milestone spanned 20 phases, 70 plans, and 121 recorded tasks.
+- The largest late cost was integration-proof and archive-readiness repair, not feature-scope expansion.
+
+***
 
 ## Cross-Milestone Trends
 
@@ -427,6 +478,7 @@
 | v1.8 | 8 | Added production-readiness claim gates, support/update/runbook/service policies, release-readiness evidence, and deterministic no-claim guardrails. |
 | v1.9 | 10 | Added opt-in inbound peer serving, permission/address/peer-policy/resource governance, retained inbound metrics, structured peer-policy logs, and release-boundary no-claim checks. |
 | v2.0 | 10 | Added bounded transaction relay and mempool participation, explicit relay activation, txid/wtxid download, orphan/admission outcomes, durable recovery, relay evidence surfaces, and release-boundary no-claim checks. |
+| v2.1 | 20 | Added bounded block serving and compact-block relay, BIP152 reconstruction, authoritative runtime state, real post-write announcement evidence, operator observability, and archive-aware integration guardrails. |
 
 ### Cumulative Quality
 
@@ -443,6 +495,7 @@
 | v1.8 | 23/23 complete | Tech-debt audit with zero requirement, integration, or flow blockers after Phase 89 closure | Repo-native `scripts/verify.sh`, production no-claim guardrails, support/update/runbook/service policy checks, release-readiness evidence, opt-in UAT docs, and 23/23 integration plus 8/8 flow audit checks. |
 | v1.9 | 28/28 complete | Passed with zero critical gaps after Phase 99 closed structured-log tech debt | Repo-native `scripts/verify.sh`, Phase 90-99 deterministic checkers, inbound listener/permission/address/peer-policy/resource metrics evidence, and 10/10 integration plus 8/8 flow audit checks. |
 | v2.0 | 32/32 complete | Passed with zero critical gaps after Phase 109 closed archive-readiness metadata debt | Repo-native `scripts/verify.sh`, Phase 100-108 deterministic checkers, transaction relay/mempool/orphan/durable recovery/operator evidence, archived requirements and roadmap checks, and 8/8 integration plus 8/8 flow audit checks. |
+| v2.1 | 39/39 complete | Passed with zero requirement, integration, or flow gaps after Phase 129 reconciliation | Repo-native `scripts/verify.sh`, Phase 110-129 deterministic checkers, lifecycle-valid requirement traceability, production composition tests, and 13/13 integration plus 11/11 flow audit checks. |
 
 ### Top Lessons
 
@@ -454,3 +507,4 @@
 6. Archive helpers need a final human sanity pass until they can safely evolve state, roadmap, project, milestones, and retrospective artifacts together.
 7. Verification reports should name the requirement IDs they satisfy; prose-only evidence creates avoidable audit ambiguity.
 8. Production-adjacent docs need deterministic guardrails as soon as the project introduces terms that sound stronger than the evidence actually supports.
+9. Historical verification must resolve versioned milestone archives after active control files are retired.
