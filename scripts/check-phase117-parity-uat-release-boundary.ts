@@ -14,6 +14,8 @@ const PHASE116_CHECK_STEP = `run_step "check Phase 116 operator block-relay evid
 const PHASE117_TEST_STEP = `run_step "test Phase 117 parity UAT release boundary checker" ${PHASE117_TEST}`;
 const PHASE117_CHECK_STEP = `run_step "check Phase 117 parity UAT release boundary" ${PHASE117_CHECK}`;
 const PURE_CORE_STEP = `run_step "check pure-core dependencies" ${PURE_CORE_CHECK}`;
+const ARCHIVED_V21_REQUIREMENTS =
+  ".planning/milestones/v2.1-REQUIREMENTS.md";
 
 const REQUIREMENTS_BY_SURFACE = {
   "v2-1-block-serving-activation-eligibility-boundary": [
@@ -226,7 +228,13 @@ export function checkPhase117ParityUatReleaseBoundary(maybeRepoRoot?: string): s
 function loadCorpus(repoRoot: string, failures: string[]): TextCorpus {
   const texts = new Map<TargetFile, string>();
   for (const file of TARGET_FILES) {
-    const absolutePath = path.join(repoRoot, file);
+    const sourceFile =
+      file === ".planning/REQUIREMENTS.md" &&
+      !existsSync(path.join(repoRoot, file)) &&
+      existsSync(path.join(repoRoot, ARCHIVED_V21_REQUIREMENTS))
+        ? ARCHIVED_V21_REQUIREMENTS
+        : file;
+    const absolutePath = path.join(repoRoot, sourceFile);
     if (!existsSync(absolutePath)) {
       failures.push(`missing target file ${file}`);
       texts.set(file, "");

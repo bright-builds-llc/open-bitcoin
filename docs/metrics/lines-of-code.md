@@ -7,8 +7,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 575 |
-| Total lines | 247,973 |
-| Code/content lines | 218,360 |
+| Total lines | 247,981 |
+| Code/content lines | 218,368 |
 | Comment-only lines | 8,809 |
 | Blank lines | 20,804 |
 
@@ -36,7 +36,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 97 | 86,360 | 75,260 | 4,570 | 6,530 |
 | Rust production | 293 | 85,172 | 74,341 | 2,656 | 8,175 |
-| TypeScript/Bun scripts | 126 | 59,762 | 53,003 | 1,516 | 5,243 |
+| TypeScript/Bun scripts | 126 | 59,770 | 53,011 | 1,516 | 5,243 |
 | Fixture/data | 6 | 8,233 | 8,228 | 5 | 0 |
 | Shell scripts | 13 | 4,348 | 3,881 | 56 | 411 |
 | TOML/config | 16 | 3,464 | 3,098 | 0 | 366 |
@@ -80,7 +80,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase116-operator-block-relay-evidence.test.ts | 242 |
 | scripts/check-phase116-operator-block-relay-evidence.ts | 467 |
 | scripts/check-phase117-parity-uat-release-boundary.test.ts | 766 |
-| scripts/check-phase117-parity-uat-release-boundary.ts | 562 |
+| scripts/check-phase117-parity-uat-release-boundary.ts | 570 |
 | scripts/check-phase121-block-relay-metrics-log-runtime.test.ts | 440 |
 | scripts/check-phase121-block-relay-metrics-log-runtime.ts | 344 |
 | scripts/check-phase122-compact-relay-peer-completion.test.ts | 249 |
@@ -207,7 +207,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 1ce86ab5054542053f416a8674be10a6aba2443d826467c7381f5e7c68df7d41 |
+| Input fingerprint | 61f5d259c4dbdecafc85d7370f080fb6c9979b19666fcc4263980b4ecf3db1d6 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |
