@@ -58,6 +58,7 @@ type TargetFile = (typeof TARGET_FILES)[number];
 type FixtureOptions = {
   completedGapClosure?: boolean;
   gapClosureStage?: boolean;
+  newerMilestoneRequirements?: boolean;
   postAuditGapPlanning?: boolean;
   maybeMutate?: (files: Map<TargetFile, string>) => void;
 };
@@ -101,6 +102,17 @@ test("passes_when_completed_gap_closure_retains_phase125_and_phase126_ownership"
 test("passes_when_post_audit_gap_planning_uses_phase127_through_phase129_ownership", () => {
   // Arrange
   const root = createFixture({ postAuditGapPlanning: true });
+
+  // Act
+  const failures = checkPhase117ParityUatReleaseBoundary(root);
+
+  // Assert
+  expect(failures).toEqual([]);
+});
+
+test("uses_archived_v2_1_traceability_when_live_requirements_belong_to_a_later_milestone", () => {
+  // Arrange
+  const root = createFixture({ newerMilestoneRequirements: true });
 
   // Act
   const failures = checkPhase117ParityUatReleaseBoundary(root);
@@ -514,13 +526,16 @@ function createFixture(options: FixtureOptions = {}): string {
   const files = new Map<TargetFile, string>(TARGET_FILES.map((file) => [file, commonText]));
   files.set("docs/parity/index.json", JSON.stringify(createParityIndex(), null, 2));
   files.set("docs/parity/source-breadcrumbs.json", createBreadcrumbs());
+  const v21Requirements = createRequirements(
+    options.gapClosureStage ?? false,
+    options.completedGapClosure ?? false,
+    options.postAuditGapPlanning ?? false,
+  );
   files.set(
     ".planning/REQUIREMENTS.md",
-    createRequirements(
-      options.gapClosureStage ?? false,
-      options.completedGapClosure ?? false,
-      options.postAuditGapPlanning ?? false,
-    ),
+    options.newerMilestoneRequirements
+      ? "# Requirements: Open Bitcoin\n\n**Milestone:** v2.2 Package Relay and Long-Lived Mempool Policy"
+      : v21Requirements,
   );
   files.set("docs/operator/runtime-guide.md", `${commonText}\n${requiredCommands().join("\n")}`);
   files.set("scripts/verify.sh", createVerifyScript());
@@ -529,6 +544,11 @@ function createFixture(options: FixtureOptions = {}): string {
     const absolutePath = path.join(root, file);
     mkdirSync(path.dirname(absolutePath), { recursive: true });
     writeFileSync(absolutePath, `${text}\n`);
+  }
+  if (options.newerMilestoneRequirements) {
+    const archivedPath = path.join(root, ".planning/milestones/v2.1-REQUIREMENTS.md");
+    mkdirSync(path.dirname(archivedPath), { recursive: true });
+    writeFileSync(archivedPath, `${v21Requirements}\n`);
   }
   return root;
 }

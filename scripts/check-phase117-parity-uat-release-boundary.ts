@@ -229,11 +229,7 @@ function loadCorpus(repoRoot: string, failures: string[]): TextCorpus {
   const texts = new Map<TargetFile, string>();
   for (const file of TARGET_FILES) {
     const sourceFile =
-      file === ".planning/REQUIREMENTS.md" &&
-      !existsSync(path.join(repoRoot, file)) &&
-      existsSync(path.join(repoRoot, ARCHIVED_V21_REQUIREMENTS))
-        ? ARCHIVED_V21_REQUIREMENTS
-        : file;
+      file === ".planning/REQUIREMENTS.md" ? v21RequirementsSource(repoRoot) : file;
     const absolutePath = path.join(repoRoot, sourceFile);
     if (!existsSync(absolutePath)) {
       failures.push(`missing target file ${file}`);
@@ -243,6 +239,20 @@ function loadCorpus(repoRoot: string, failures: string[]): TextCorpus {
     texts.set(file, readFileSync(absolutePath, "utf8"));
   }
   return texts;
+}
+
+function v21RequirementsSource(repoRoot: string): string {
+  const livePath = path.join(repoRoot, ".planning/REQUIREMENTS.md");
+  if (existsSync(livePath)) {
+    const liveRequirements = readFileSync(livePath, "utf8");
+    if (liveRequirements.includes("**Milestone:** v2.1 ")) {
+      return ".planning/REQUIREMENTS.md";
+    }
+  }
+
+  return existsSync(path.join(repoRoot, ARCHIVED_V21_REQUIREMENTS))
+    ? ARCHIVED_V21_REQUIREMENTS
+    : ".planning/REQUIREMENTS.md";
 }
 
 function parseParityIndex(raw: string, failures: string[]): ParityIndex | null {
