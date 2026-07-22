@@ -106,16 +106,57 @@ Deferred beyond v2.2 and not mapped to the current roadmap.
 
 ## Traceability
 
-Roadmap creation maps every v2.2 requirement to exactly one phase.
+Every v2.2 requirement maps to exactly one roadmap phase.
 
 | Requirement | Phase | Status |
 | --- | --- | --- |
+| FEEP-01 | Phase 130 | Pending |
+| FEEP-02 | Phase 130 | Pending |
+| FEEP-03 | Phase 130 | Pending |
+| FEEP-04 | Phase 130 | Pending |
+| FEEP-05 | Phase 130 | Pending |
+| PRESS-01 | Phase 131 | Pending |
+| PRESS-02 | Phase 131 | Pending |
+| PRESS-03 | Phase 131 | Pending |
+| PRESS-04 | Phase 131 | Pending |
+| PRESS-05 | Phase 131 | Pending |
+| PACK-01 | Phase 132 | Pending |
+| PACK-02 | Phase 132 | Pending |
+| PACK-03 | Phase 132 | Pending |
+| PACK-04 | Phase 132 | Pending |
+| PACK-05 | Phase 132 | Pending |
+| PACK-06 | Phase 132 | Pending |
+| PACK-07 | Phase 132 | Pending |
+| PPKG-01 | Phase 133 | Pending |
+| PPKG-02 | Phase 133 | Pending |
+| PPKG-03 | Phase 133 | Pending |
+| PPKG-04 | Phase 136 | Pending |
+| MPLIFE-01 | Phase 134 | Pending |
+| MPLIFE-02 | Phase 134 | Pending |
+| MPLIFE-03 | Phase 134 | Pending |
+| MPLIFE-04 | Phase 134 | Pending |
+| MPDUR-01 | Phase 135 | Pending |
+| MPDUR-02 | Phase 135 | Pending |
+| MPDUR-03 | Phase 135 | Pending |
+| MPDUR-04 | Phase 135 | Pending |
+| IBR-01 | Phase 136 | Pending |
+| IBR-02 | Phase 136 | Pending |
+| IBR-03 | Phase 136 | Pending |
+| IBR-04 | Phase 136 | Pending |
+| MPOBS-01 | Phase 137 | Pending |
+| MPOBS-02 | Phase 137 | Pending |
+| MPOBS-03 | Phase 137 | Pending |
+| MPVFY-01 | Phase 138 | Pending |
+| MPVFY-02 | Phase 138 | Pending |
+| MPVFY-03 | Phase 138 | Pending |
+| MPVFY-04 | Phase 138 | Pending |
 
 **Coverage:**
 - v2.2 requirements: 40 total
-- Mapped to phases: 0
-- Unmapped: 40 ⚠️
+- Mapped to phases: 40
+- Unmapped: 0 ✓
+- Duplicate mappings: 0 ✓
 
 ***
 *Requirements defined: 2026-07-22*
-*Last updated: 2026-07-22 after initial v2.2 definition*
+*Last updated: 2026-07-22 after v2.2 roadmap creation*

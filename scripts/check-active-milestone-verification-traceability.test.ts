@@ -49,6 +49,47 @@ test("complete fixture succeeds", () => {
   expect(failures).toEqual([]);
 });
 
+test("current milestone headings and sibling phases section succeed", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutateFiles(files) {
+      files.set(
+        ".planning/ROADMAP.md",
+        [
+          "# Roadmap",
+          "## Active Milestone: v2.2 Fixture",
+          "Fixture goal and boundary.",
+          "## Phases",
+          "- [x] **Phase 115: Missing Transaction Round Trip** - Historical implementation.",
+          "- [ ] **Phase 125: Verification Traceability Closure** - Active closure.",
+          "## Phase Details",
+          "Fixture details.",
+        ].join("\n"),
+      );
+      replaceInFile(
+        files,
+        REQUIREMENTS_FILE,
+        "## v2.1 Requirements",
+        "## v2.2 Requirements",
+      );
+      replaceInFile(
+        files,
+        REQUIREMENTS_FILE,
+        "## Deferred Requirements",
+        "## Future Requirements",
+      );
+    },
+  });
+
+  // Act
+  const failures = checkActiveMilestoneVerificationTraceability({
+    maybeRootDir: root,
+  });
+
+  // Assert
+  expect(failures).toEqual([]);
+});
+
 test("completed milestone archive needs no active traceability corpus", () => {
   // Arrange
   const root = createFixture();

@@ -15,6 +15,7 @@ import {
 } from "./check-phase128-production-compact-announcement-transport";
 
 const REPO_ROOT = path.resolve(import.meta.dir, "..");
+const ARCHIVED_V21_ROADMAP = ".planning/milestones/v2.1-ROADMAP.md";
 type TargetFile = (typeof PHASE128_TARGET_FILES)[number];
 type Mutator = (files: Map<TargetFile, string>) => void;
 const tempRoots: string[] = [];
@@ -226,6 +227,12 @@ function createFixture(maybeMutate?: Mutator): string {
     mkdirSync(path.dirname(absolutePath), { recursive: true });
     writeFileSync(absolutePath, text);
   }
+  const archivedRoadmapPath = path.join(root, ARCHIVED_V21_ROADMAP);
+  mkdirSync(path.dirname(archivedRoadmapPath), { recursive: true });
+  writeFileSync(
+    archivedRoadmapPath,
+    readFileSync(path.join(REPO_ROOT, ARCHIVED_V21_ROADMAP), "utf8"),
+  );
   return root;
 }
 

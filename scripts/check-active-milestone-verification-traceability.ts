@@ -18,8 +18,6 @@ const ARCHIVED_V21_FILES = [
 ] as const;
 const PHASES_DIR = ".planning/phases";
 const ACTIVE_MILESTONE_HEADING = "## Active Milestone:";
-const ACTIVE_REQUIREMENTS_HEADING = "## v2.1 Requirements";
-const DEFERRED_REQUIREMENTS_HEADING = "## Deferred Requirements";
 const REQUIREMENT_ID_PATTERN = "[A-Z]+-\\d+";
 
 export type CheckActiveMilestoneVerificationTraceabilityOptions = {
@@ -136,10 +134,11 @@ function parseActiveRoadmapPhases(
   roadmap: string,
   failures: string[],
 ): Set<number> {
-  const maybeSection = sectionBetweenSecondLevelHeadings(
-    roadmap,
-    ACTIVE_MILESTONE_HEADING,
-  );
+  const maybeSection =
+    secondLevelSection(roadmap, (line) => line === "## Phases") ??
+    secondLevelSection(roadmap, (line) =>
+      line.startsWith(ACTIVE_MILESTONE_HEADING),
+    );
   if (maybeSection === null) {
     failures.push(`roadmap missing ${ACTIVE_MILESTONE_HEADING} section`);
     return new Set();
@@ -172,14 +171,13 @@ function parseActiveRequirements(
   requirements: string,
   failures: string[],
 ): ActiveRequirement[] {
-  const maybeSection = sectionBetweenExactHeadings(
+  const maybeSection = secondLevelSection(
     requirements,
-    ACTIVE_REQUIREMENTS_HEADING,
-    DEFERRED_REQUIREMENTS_HEADING,
+    (line) => /^## v\d+\.\d+ Requirements$/.test(line),
   );
   if (maybeSection === null) {
     failures.push(
-      `requirements missing ${ACTIVE_REQUIREMENTS_HEADING} to ${DEFERRED_REQUIREMENTS_HEADING} boundary`,
+      "requirements missing active milestone requirements section",
     );
     return [];
   }
@@ -678,12 +676,14 @@ function requireExactScalar(
   return true;
 }
 
-function sectionBetweenSecondLevelHeadings(
+function secondLevelSection(
   text: string,
-  headingPrefix: string,
+  isHeading: (line: string) => boolean,
 ): string | null {
   const lines = text.split("\n");
-  const start = lines.findIndex((line) => line.startsWith(headingPrefix));
+  const start = lines.findIndex(
+    (line) => /^## (?!#)/.test(line) && isHeading(line),
+  );
   if (start === -1) {
     return null;
   }
@@ -691,19 +691,6 @@ function sectionBetweenSecondLevelHeadings(
     (line, index) => index > start && /^## (?!#)/.test(line),
   );
   return lines.slice(start + 1, maybeEnd === -1 ? undefined : maybeEnd).join("\n");
-}
-
-function sectionBetweenExactHeadings(
-  text: string,
-  startHeading: string,
-  endHeading: string,
-): string | null {
-  const start = text.indexOf(startHeading);
-  const end = text.indexOf(endHeading, start + startHeading.length);
-  if (start === -1 || end === -1 || end <= start) {
-    return null;
-  }
-  return text.slice(start + startHeading.length, end);
 }
 
 function containsRequirementToken(text: string, requirementId: string): boolean {
