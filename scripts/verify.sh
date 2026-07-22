@@ -306,7 +306,8 @@ run_coverage_report() {
 # Phase 107 is followed by Phase 108. Phase 108 is followed by Phase 110 and Phase 111.
 # Phase 123 is followed by Phase 124. Phase 124 is followed by the active-milestone
 # verification-traceability guard, then Phase 117 remains the final changed-path
-# release-boundary and no-claim gate.
+# release-boundary and no-claim gate. The current-documentation reconciliation
+# test/check pair runs immediately after that final Phase 117 gate.
 # Phase 128 is followed by Phase 129, and Phase 129 precedes the final Phase 117 gate.
 : <<'VERIFY_COMMAND_ORDER'
 bun run scripts/check-v1.3-release-boundaries.ts
@@ -416,6 +417,8 @@ bun test scripts/check-phase129-integration-guardrails-and-milestone-reconciliat
 bun run scripts/check-phase129-integration-guardrails-and-milestone-reconciliation.ts
 bun test scripts/check-phase117-parity-uat-release-boundary.test.ts
 bun run scripts/check-phase117-parity-uat-release-boundary.ts
+bun test scripts/check-current-documentation-reconciliation.test.ts
+bun run scripts/check-current-documentation-reconciliation.ts
 bun test scripts/command-timings.test.ts
 bun test scripts/diagnose-rust-test-stall.test.ts
 bash scripts/check-pure-core-deps.sh
@@ -564,6 +567,8 @@ run_step "test Phase 129 integration guardrails and milestone reconciliation che
 run_step "check Phase 129 integration guardrails and milestone reconciliation" bun run scripts/check-phase129-integration-guardrails-and-milestone-reconciliation.ts
 run_step "test Phase 117 parity UAT release boundary checker" bun test scripts/check-phase117-parity-uat-release-boundary.test.ts
 run_step "check Phase 117 parity UAT release boundary" bun run scripts/check-phase117-parity-uat-release-boundary.ts
+run_step "test current documentation reconciliation checker" bun test scripts/check-current-documentation-reconciliation.test.ts
+run_step "check current documentation reconciliation" bun run scripts/check-current-documentation-reconciliation.ts
 run_step "test local command timing tooling" bun test scripts/command-timings.test.ts
 run_step "test Rust pre-harness stall diagnostic" bun test scripts/diagnose-rust-test-stall.test.ts
 run_step "check pure-core dependencies" bash scripts/check-pure-core-deps.sh

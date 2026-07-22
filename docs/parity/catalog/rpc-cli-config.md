@@ -15,11 +15,13 @@ adapters can back honestly.
   `-getinfo`, and `-color`
 - supported baseline-backed RPC methods:
   `getblockchaininfo`, `getmempoolinfo`, `getnetworkinfo`, `sendrawtransaction`,
-  `deriveaddresses`, `getwalletinfo`, `getbalances`, `listunspent`,
+  `deriveaddresses`, `sendtoaddress`, `getnewaddress`, `getrawchangeaddress`,
+  `listdescriptors`, `getwalletinfo`, `getbalances`, `listunspent`,
   `importdescriptors`, and `rescanblockchain`
 - supported Open Bitcoin extension RPC methods:
-  `buildtransaction`, `buildandsigntransaction`, `openbitcoinsyncstatus`,
-  `openbitcoinsyncpause`, and `openbitcoinsyncresume`
+  `openbitcoinnetworkstatus`, `openbitcoinsyncstatus`,
+  `openbitcoinsyncpause`, `openbitcoinsyncresume`, `buildtransaction`, and
+  `buildandsigntransaction`
 - deterministic machine-readable CLI output for `-getinfo --json` and JSON
   result rendering for object or array RPC responses
 - hermetic single-wallet operator workflow:
@@ -53,6 +55,11 @@ adapters can back honestly.
 - `buildtransaction` and `buildandsigntransaction` are repo-owned extension
   methods that provide deterministic build or sign flows over the managed
   wallet slice.
+- `sendtoaddress` is baseline-backed for the implemented managed-wallet subset;
+  richer `send` RPC semantics remain outside this catalog claim.
+- Wallet-scoped methods honor `-rpcwallet=<name>` by routing to
+  `/wallet/<name>` for the implemented wallet subset. This does not claim
+  multiwallet lifecycle parity.
 - `openbitcoinsyncstatus`, `openbitcoinsyncpause`, and
   `openbitcoinsyncresume` are repo-owned extension methods that let the
   operator CLI inspect or update daemon-owned durable sync control without
@@ -153,10 +160,11 @@ mutation, compaction, reindexing, store surgery, or automatic support upload.
 
 ## Deferred surfaces
 
-- deferred `sendtoaddress` and richer wallet-send RPC ergonomics beyond the current
-  deterministic build or sign extensions
+- deferred richer `send` RPC semantics and wallet-send ergonomics beyond the
+  implemented `sendtoaddress` and deterministic build/sign paths
 - deferred `getpeerinfo` and the human `-netinfo` dashboard that depends on it
-- deferred `rpcwallet` / `-rpcwallet` and broader multiwallet endpoint selection
+- deferred `loadwallet`, `unloadwallet`, and `listwallets` multiwallet lifecycle
+  parity beyond the implemented `-rpcwallet` / `/wallet/<name>` routing subset
 - deferred `rpcauth`, `rpcwhitelist`, and other remote-operator auth or ACL
   features
 - deferred `rpcwait`, daemon supervision, and broader process-control CLI

@@ -1,6 +1,9 @@
 # Open Bitcoin Architecture
 
-Last updated: 2026-05-01
+Last updated: 2026-07-22
+
+Open Bitcoin v2.1 shipped and was archived on 2026-07-22. Future milestone
+work starts with `/gsd-new-milestone`.
 
 ## Architectural Shape
 
@@ -54,16 +57,15 @@ auditable.
 
 ## Sync Boundary
 
-`DurableSyncRuntime` provides real-network sync foundations, durable state
-integration, TCP peer transport, telemetry, and benchmarkable runtime behavior.
-Phase 35 wires it into `open-bitcoind` as an explicit mainnet sync activation
-and durable preflight path: the daemon can validate opt-in config, open
-`FjallNodeStore`, construct `DurableSyncRuntime`, and report durable best
-header/block heights before RPC bind. It is not yet an unattended
-public-mainnet full-sync daemon loop because peer discovery, outbound lifecycle,
-header-first IBD, block download/connect, and live mainnet smoke validation
-remain later v1.2 phases. Docs and parity claims must preserve that boundary
-until those phases are implemented and verified.
+`DurableSyncRuntime` now provides the explicit opt-in full-sync path with
+durable state integration, peer lifecycle, header-first IBD, block
+download/connect, telemetry, restart/resume evidence, and live-mainnet smoke
+review. The same shell composes bounded, explicit, default-off inbound serving,
+v2.0 transaction relay, v2.1 block serving, and v2.1 compact-block relay.
+These are review boundaries, not public defaults: unattended public-network
+operation, public serving or relay defaults, production service/deployment,
+production full-node readiness, and production-funds wallet use remain outside
+the current claim.
 
 ## Migration Boundary
 

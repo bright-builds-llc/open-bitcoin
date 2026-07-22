@@ -18,11 +18,11 @@ UAT commands, and no-claim guardrails while keeping public relay defaults,
 compact block relay, package relay, bloom/filter serving, public-network relay
 CI, production service operation, production full-node readiness, and
 production-funds wallet use deferred.
-For v2.1, this handoff records bounded, explicit, default-off block serving and
-compact-block relay with deterministic local evidence and optional
-public-network operator review. It does not promote public serving or relay
-defaults, archive-node behavior, production-scale historical serving, or any
-production readiness claim.
+For v2.1, this handoff records the milestone shipped and archived on 2026-07-22
+with bounded, explicit, default-off block serving and compact-block relay,
+deterministic local evidence, and optional public-network operator review. It
+does not promote public serving or relay defaults, archive-node behavior,
+production-scale historical serving, or any production readiness claim.
 
 ## Readiness Verdict
 
@@ -102,7 +102,7 @@ relay serving/fanout, Phase 105 operator evidence, and Phase 106 parity/UAT
 guardrails. The canonical surface id is
 `v2-0-parity-uat-release-boundary`.
 
-The current v2.1 Block Serving and Compact Block Relay Boundary closes the
+The shipped v2.1 Block Serving and Compact Block Relay Boundary closes the
 bounded, explicit, default-off block-serving and compact-block-relay milestone
 through Phase 110 activation and eligibility, Phase 111 full-block request
 handling, Phase 112 BIP152 messages, Phase 113 negotiation and announcement,
@@ -113,11 +113,12 @@ surface id is `v2-1-parity-uat-release-boundary`.
 Phase 126 independently verified and promoted the six residual-hardening
 requirements after removing the factless receive route, aligning compact
 announcement nonce generation with the randomized Knots shell boundary, and
-refreshing exact parity and deterministic regression evidence. The canonical
-audit now passes at 39/39 requirements and 17/17 implementation phases. The
-final lifecycle-valid summary now records Phase 126 at 4/4 plans, so the active
-milestone is archive-ready and routes to `/gsd-complete-milestone v2.1` after
-the fresh post-summary verifier handoff.
+refreshing exact parity and deterministic regression evidence. Phases 127
+through 129 then closed the remaining production integration gaps. The
+[`v2.1 milestone audit`](../../.planning/milestones/v2.1-MILESTONE-AUDIT.md)
+passed at 39/39 requirements, 20/20 phases, 13/13 integration links, and 11/11
+end-to-end flows. v2.1 shipped and was archived on 2026-07-22. The only next
+workflow route is `/gsd-new-milestone`.
 
 This is not a production-node or production-funds claim. It does not claim
 public inbound serving by default, public relay defaults, full address relay
@@ -319,16 +320,17 @@ Primary current-cycle evidence:
 
 ## v2.1 Block Serving and Compact Block Relay Boundary
 
-Open Bitcoin v2.1 provides bounded, explicit, default-off block serving and
-compact-block relay. Deterministic local review follows the Phase 110 through
-117 surfaces in [`index.json`](index.json), [`checklist.md`](checklist.md), and
+Open Bitcoin v2.1 shipped and was archived on 2026-07-22. It provides bounded,
+explicit, default-off block serving and compact-block relay. Deterministic
+local review follows the Phase 110 through 117 surfaces in
+[`index.json`](index.json), [`checklist.md`](checklist.md), and
 [`catalog/p2p.md`](catalog/p2p.md), with consensus-validation handoff evidence
 in [`catalog/consensus-validation.md`](catalog/consensus-validation.md).
 
-All 39 v2.1 requirements have lifecycle-valid verification coverage and are
-complete. The passed canonical audit covers all 17 implementation phases.
-Phase 126 is complete at 4/4 plans, and the active milestone is ready for
-`/gsd-complete-milestone v2.1` after fresh post-summary verification.
+The passed
+[`v2.1 milestone audit`](../../.planning/milestones/v2.1-MILESTONE-AUDIT.md)
+covers 39/39 requirements, 20/20 phases, 13/13 integration links, and 11/11
+end-to-end flows. Future work starts only with `/gsd-new-milestone`.
 
 Phase 116 exposes aggregate-only `block_relay` evidence across status, the
 `openbitcoinnetworkstatus` RPC extension, metrics, logs, dashboard rows, and

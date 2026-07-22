@@ -260,11 +260,12 @@ deterministic claim guardrails prevent overbroad production-readiness and
 deferred-surface claims in the public release/operator docs; they do not claim
 production full-node readiness.
 
-The current v2.1 boundary supersedes the historical all-deferred description
-for block serving and compact-block relay. It provides bounded, explicit,
-default-off behavior with deterministic local evidence and optional
-public-network operator review; only the broader public-default, archive-scale,
-service/deployment, and production forms remain deferred below.
+The current v2.0 and v2.1 boundaries supersede the historical all-deferred
+description for transaction relay, block serving, and compact-block relay. They
+provide bounded, explicit, default-off behavior with deterministic local
+evidence and optional public-network operator review; only the broader
+public-default, archive-scale, service/deployment, and production forms remain
+deferred below.
 Package relay, BIP37 bloom-filter serving, compact-filter serving,
 production-funds wallet safety/use, packaging, GUI and hosted dashboards,
 migration apply mode, destructive repair, automatic support upload, and
@@ -275,7 +276,8 @@ public-network CI or release gates remain deferred or unsupported.
 | inbound serving | `deferred` | Current P2P evidence is outbound review and does not prove production inbound policy. | Scoped P2P production milestone with inbound policy, resource, abuse, and UAT evidence. |
 | address relay | `deferred` | Address-manager and relay governance are not production-scoped. | P2P address-relay milestone with privacy, poisoning, eviction, and parity evidence. |
 | public/default, archive-node, or production-scale block serving beyond the bounded v2.1 path | `deferred` | v2.1 provides a bounded default-off request path; public defaults and historical-serving scale remain outside scope. | Block-serving gate with public-default policy, archive correctness, resource bounds, support policy, and production UAT. |
-| transaction relay | `deferred` | Mempool relay behavior is not production-scoped. | Transaction-relay milestone with relay policy, DoS controls, and parity fixtures. |
+| bounded, explicit, default-off v2.0 transaction relay | `preview` | v2.0 ships deterministic local activation, inventory/download, admission, lifecycle, serving/fanout, recovery, operator-evidence, and release-boundary coverage. | Preserve the bounded review contract and its deterministic Phase 100 through 108 evidence. |
+| public/default or production transaction relay beyond the bounded v2.0 path | `deferred` | Guaranteed public propagation, public defaults, service operation, and production relay are not scoped. | Transaction-relay gate with public-default policy, long-run peer behavior, DoS controls, service support, and production evidence. |
 | public/default or production compact-block relay beyond the bounded v2.1 path | `deferred` | v2.1 provides bounded default-off protocol, reconstruction, fallback, validation-handoff, and aggregate evidence only. | Compact-block relay gate with public-default policy, long-run network behavior, support policy, and production evidence. |
 | production-funds wallet use | `deferred` | Current wallet workflows are not approved for production funds. | Wallet-production threat model, backup/restore proof, audit, and operator UAT. |
 | production-funds wallet safety | `deferred` | Key, signing, recovery, and support boundaries need a production wallet review. | Wallet-production safety audit with threat model, failure drills, and regression coverage. |

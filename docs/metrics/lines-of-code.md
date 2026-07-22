@@ -6,11 +6,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Metric | Value |
 | --- | --- |
-| Included files | 575 |
-| Total lines | 247,981 |
-| Code/content lines | 218,368 |
-| Comment-only lines | 8,809 |
-| Blank lines | 20,804 |
+| Included files | 577 |
+| Total lines | 248,710 |
+| Code/content lines | 218,959 |
+| Comment-only lines | 8,858 |
+| Blank lines | 20,893 |
 
 ## Per-Crate Modules
 
@@ -36,9 +36,9 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 97 | 86,360 | 75,260 | 4,570 | 6,530 |
 | Rust production | 293 | 85,172 | 74,341 | 2,656 | 8,175 |
-| TypeScript/Bun scripts | 126 | 59,770 | 53,011 | 1,516 | 5,243 |
+| TypeScript/Bun scripts | 128 | 60,494 | 53,598 | 1,564 | 5,332 |
 | Fixture/data | 6 | 8,233 | 8,228 | 5 | 0 |
-| Shell scripts | 13 | 4,348 | 3,881 | 56 | 411 |
+| Shell scripts | 13 | 4,353 | 3,885 | 57 | 411 |
 | TOML/config | 16 | 3,464 | 3,098 | 0 | 366 |
 | Bazel/Starlark | 18 | 413 | 378 | 0 | 35 |
 | YAML | 2 | 157 | 126 | 4 | 27 |
@@ -54,6 +54,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-active-milestone-verification-traceability.ts | 760 |
 | scripts/check-bazel-build-provenance.ts | 187 |
 | scripts/check-benchmark-report.ts | 210 |
+| scripts/check-current-documentation-reconciliation.test.ts | 313 |
+| scripts/check-current-documentation-reconciliation.ts | 411 |
 | scripts/check-parity-breadcrumbs.ts | 427 |
 | scripts/check-phase100-relay-activation-boundary.test.ts | 431 |
 | scripts/check-phase100-relay-activation-boundary.ts | 584 |
@@ -207,7 +209,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 61f5d259c4dbdecafc85d7370f080fb6c9979b19666fcc4263980b4ecf3db1d6 |
+| Input fingerprint | 46c1283eec39e88baefc0adfbb40ab8c7c6f65f6f8d625f7e09237d34c3adc23 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

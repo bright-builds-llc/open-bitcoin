@@ -1,6 +1,9 @@
 # Open Bitcoin Conventions
 
-Last updated: 2026-05-01
+Last updated: 2026-07-22
+
+Open Bitcoin v2.1 shipped and was archived on 2026-07-22. Future milestone
+work starts with `/gsd-new-milestone`.
 
 ## Parity And Evidence
 
@@ -31,8 +34,10 @@ Last updated: 2026-05-01
 - Preview or dry-run behavior must be explicit for migration and service
   actions that could affect local machine state.
 - Public-network mainnet sync behavior must stay explicitly opt-in. Current
-  `open-bitcoind` activation/preflight copy must not imply unattended full-sync
-  support until the later v1.2 daemon-sync phases land.
+  full-sync, bounded inbound, transaction-relay, block-serving, and
+  compact-block-relay paths must not imply public defaults, unattended
+  production operation, production service/deployment, production full-node
+  readiness, or production-funds wallet use.
 
 ## Tooling
 

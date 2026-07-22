@@ -27,8 +27,9 @@ auditable, and modular.
 > aggregate evidence. Phase 129 completed the aggregate integration guard over
 > the four repaired flows, independent verification of the reassigned
 > requirements, and the final milestone reconciliation; the rerun v2.1
-> milestone audit passed and the milestone is archive-ready pending the
-> completion workflow.
+> milestone audit passed at 39/39 requirements, 20/20 phases, 13/13 integration
+> links, and 11/11 end-to-end flows. v2.1 shipped and was archived on
+> 2026-07-22. Start future work with `/gsd-new-milestone`.
 > Package relay, BIP37 bloom-filter serving, compact-filter serving, public
 > serving or relay defaults, archive-node and production-scale historical
 > serving, public-network CI or release gates, production service/deployment,
@@ -386,5 +387,5 @@ For contributor workflow details beyond those two entrypoints, see [CONTRIBUTING
 - [`docs/parity/README.md`](./docs/parity/README.md) explains the parity ledger and its source-of-truth role.
 - [`docs/parity/index.json`](./docs/parity/index.json) is the machine-readable status index for in-scope surfaces, intentional deviations, catalog entries, checklist state, and audit roots.
 - [`docs/parity/checklist.md`](./docs/parity/checklist.md) is the human-readable parity checklist.
-- [`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md) is the current v2.1 review handoff and historical release-evidence index.
+- [`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md) is the shipped-and-archived v2.1 handoff and historical release-evidence index.
 - [`docs/parity/support-matrix.md`](./docs/parity/support-matrix.md) is the canonical support classification and issue-evidence checklist.
