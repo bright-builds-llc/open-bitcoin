@@ -15,9 +15,10 @@ use open_bitcoin_consensus::{
 use open_bitcoin_primitives::{OutPoint, Transaction, Txid};
 
 use crate::{
-    AdmissionResult, LimitDirection, LimitKind, MEMPOOL_HEIGHT, MempoolEntry, MempoolError,
-    MempoolOutcome, MempoolResourceLedger, PolicyConfig, RbfPolicy, ResourceAccountingError,
-    TransactionVirtualSize, build_resource_ledger, signals_opt_in_rbf, transaction_sigops_cost,
+    AdmissionResult, EffectiveAdmissionFeeRate, LimitDirection, LimitKind, MEMPOOL_HEIGHT,
+    MempoolEntry, MempoolError, MempoolOutcome, MempoolResourceLedger, PolicyConfig, RbfPolicy,
+    ResourceAccountingError, RollingMempoolFeeRate, TransactionVirtualSize, build_resource_ledger,
+    effective_admission_fee_rate, signals_opt_in_rbf, transaction_sigops_cost,
     transaction_weight_and_virtual_size, validate_standard_transaction,
 };
 
@@ -40,6 +41,7 @@ struct MempoolState {
 #[derive(Debug, Clone)]
 pub struct Mempool {
     config: PolicyConfig,
+    rolling_mempool_fee_rate: RollingMempoolFeeRate,
     entries: HashMap<Txid, MempoolEntry>,
     spent_outpoints: HashMap<OutPoint, Txid>,
     resource_ledger: MempoolResourceLedger,
@@ -55,6 +57,7 @@ impl Mempool {
     pub fn new(config: PolicyConfig) -> Self {
         Self {
             config,
+            rolling_mempool_fee_rate: RollingMempoolFeeRate::ZERO,
             entries: HashMap::new(),
             spent_outpoints: HashMap::new(),
             resource_ledger: MempoolResourceLedger::ZERO,
@@ -83,6 +86,10 @@ impl Mempool {
 
     pub const fn accounted_memory(&self) -> crate::AccountedMempoolMemory {
         self.resource_ledger.accounted_memory()
+    }
+
+    pub const fn rolling_mempool_fee_rate(&self) -> RollingMempoolFeeRate {
+        self.rolling_mempool_fee_rate
     }
 
     pub fn accept_transaction(
@@ -117,8 +124,12 @@ impl Mempool {
                 reason: source.to_string(),
             },
         )?;
-        enforce_min_relay_fee(&self.config, fee.to_sats(), virtual_size_bytes)?;
-        let replace_set = self.replacement_set(&transaction, fee.to_sats(), virtual_size_bytes)?;
+        let effective_fee_rate = effective_admission_fee_rate(
+            self.config.static_relay_fee_rate,
+            self.rolling_mempool_fee_rate,
+        );
+        enforce_min_relay_fee(effective_fee_rate, fee.to_sats(), virtual_size)?;
+        let replace_set = self.replacement_set(&transaction, fee.to_sats(), virtual_size)?;
 
         let wtxid = transaction_wtxid(&transaction)
             .map_err(|source| serialization_validation_error("transaction wtxid", source))?;
@@ -172,7 +183,7 @@ impl Mempool {
         &self,
         transaction: &Transaction,
         candidate_fee_sats: i64,
-        virtual_size: usize,
+        virtual_size: TransactionVirtualSize,
     ) -> Result<BTreeSet<Txid>, MempoolError> {
         let direct_conflicts = self.direct_conflicts(transaction);
         if direct_conflicts.is_empty() {
@@ -204,7 +215,7 @@ impl Mempool {
         transaction: &Transaction,
         direct_conflicts: &BTreeSet<Txid>,
         candidate_fee_sats: i64,
-        virtual_size: usize,
+        virtual_size: TransactionVirtualSize,
     ) -> Result<BTreeSet<Txid>, MempoolError> {
         if self.config.rbf_policy == RbfPolicy::Never {
             return Err(MempoolError::ConflictNotAllowed {
@@ -363,12 +374,11 @@ fn build_validation_context(
 }
 
 fn enforce_min_relay_fee(
-    config: &PolicyConfig,
+    effective_fee_rate: EffectiveAdmissionFeeRate,
     fee_sats: i64,
-    virtual_size: usize,
+    virtual_size: TransactionVirtualSize,
 ) -> Result<(), MempoolError> {
-    let required_fee_sats = config
-        .static_relay_fee_rate
+    let required_fee_sats = effective_fee_rate
         .fee_rate()
         .fee_for_virtual_size(virtual_size);
     if fee_sats < required_fee_sats {
@@ -376,7 +386,7 @@ fn enforce_min_relay_fee(
         return Err(MempoolError::RelayFeeTooLow {
             fee,
             required_fee_sats,
-            virtual_size,
+            virtual_size: virtual_size.as_usize(),
         });
     }
 

@@ -7,6 +7,8 @@
 
 //! Fee-rate arithmetic and compile-time-distinct mempool policy roles.
 
+use crate::resource::TransactionVirtualSize;
+
 const SATOSHIS_PER_KILOVBYTE: i64 = 1_000;
 const FEE_RATE_ROUNDING_ADJUSTMENT: i64 = SATOSHIS_PER_KILOVBYTE - 1;
 
@@ -26,12 +28,12 @@ impl FeeRate {
     }
 
     /// Derives a rounded-up rate from a fee and virtual size.
-    pub fn from_fee_sats_and_vbytes(fee_sats: i64, virtual_size: usize) -> Self {
-        if virtual_size == 0 {
+    pub fn from_fee_sats_and_vbytes(fee_sats: i64, virtual_size: TransactionVirtualSize) -> Self {
+        if virtual_size == TransactionVirtualSize::ZERO {
             return Self::ZERO;
         }
 
-        let virtual_size = i64::try_from(virtual_size).unwrap_or(i64::MAX);
+        let virtual_size = i64::try_from(virtual_size.as_usize()).unwrap_or(i64::MAX);
         let sats_per_kvb =
             (fee_sats.saturating_mul(SATOSHIS_PER_KILOVBYTE) + virtual_size - 1) / virtual_size;
         Self { sats_per_kvb }
@@ -43,12 +45,12 @@ impl FeeRate {
     }
 
     /// Calculates the rounded-up fee for a virtual size.
-    pub fn fee_for_virtual_size(self, virtual_size: usize) -> i64 {
-        if virtual_size == 0 {
+    pub fn fee_for_virtual_size(self, virtual_size: TransactionVirtualSize) -> i64 {
+        if virtual_size == TransactionVirtualSize::ZERO {
             return 0;
         }
 
-        let virtual_size = i64::try_from(virtual_size).unwrap_or(i64::MAX);
+        let virtual_size = i64::try_from(virtual_size.as_usize()).unwrap_or(i64::MAX);
         (self.sats_per_kvb.saturating_mul(virtual_size) + FEE_RATE_ROUNDING_ADJUSTMENT)
             / SATOSHIS_PER_KILOVBYTE
     }

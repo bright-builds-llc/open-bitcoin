@@ -527,8 +527,14 @@ fn direct_helper_paths_cover_internal_edge_branches() {
     assert_eq!(context.spend_height, 0);
     assert_eq!(context.block_time, 0);
 
-    let relay_error = super::enforce_min_relay_fee(&PolicyConfig::default(), 0, 100)
-        .expect_err("fee floor should fail");
+    let config = PolicyConfig::default();
+    let effective_fee_rate = crate::effective_admission_fee_rate(
+        config.static_relay_fee_rate,
+        crate::RollingMempoolFeeRate::ZERO,
+    );
+    let relay_error =
+        super::enforce_min_relay_fee(effective_fee_rate, 0, TransactionVirtualSize::new(100))
+            .expect_err("fee floor should fail");
     assert!(matches!(relay_error, MempoolError::RelayFeeTooLow { .. }));
 
     let invalid_fee = super::amount_from_fee_sats(-1).expect_err("negative fee should fail");
@@ -615,7 +621,7 @@ fn admission_maps_validation_errors_and_replacement_policy_edges() {
             ),
             &BTreeSet::from([conflict_txid]),
             1_000,
-            1,
+            TransactionVirtualSize::new(1),
         )
         .expect_err("absolute fee should fail");
     assert!(matches!(
@@ -634,7 +640,7 @@ fn admission_maps_validation_errors_and_replacement_policy_edges() {
             ),
             &BTreeSet::from([conflict_txid]),
             2_000,
-            2_000,
+            TransactionVirtualSize::new(2_000),
         )
         .expect_err("feerate should fail");
     assert!(matches!(
@@ -653,7 +659,7 @@ fn admission_maps_validation_errors_and_replacement_policy_edges() {
             ),
             &BTreeSet::from([conflict_txid]),
             1_001,
-            10,
+            TransactionVirtualSize::new(10),
         )
         .expect_err("incremental relay bump should fail");
     assert!(matches!(
@@ -671,7 +677,7 @@ fn admission_maps_validation_errors_and_replacement_policy_edges() {
         ),
         &BTreeSet::from([Txid::from_byte_array([42_u8; 32])]),
         2_000,
-        100,
+        TransactionVirtualSize::new(100),
     );
     assert!(stale_conflict.is_ok());
 }

@@ -98,8 +98,10 @@ pub struct ManagedMempoolInfo {
     pub accounted_memory: usize,
     pub mempool_capacity: usize,
     pub total_fee_sats: i64,
-    pub min_relay_feerate_sats_per_kvb: i64,
-    pub incremental_relay_feerate_sats_per_kvb: i64,
+    pub static_relay_fee_rate_sats_per_kvb: i64,
+    pub incremental_relay_fee_rate_sats_per_kvb: i64,
+    pub rolling_mempool_fee_rate_sats_per_kvb: i64,
+    pub effective_admission_fee_rate_sats_per_kvb: i64,
     pub capacity_status: MempoolCapacityStatus,
     pub rolling_fee_parity: RollingFeeParityStatus,
 }

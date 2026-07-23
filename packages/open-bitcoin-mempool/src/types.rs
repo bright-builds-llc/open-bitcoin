@@ -145,14 +145,14 @@ impl MempoolEntry {
     }
 
     pub fn fee_rate(&self) -> FeeRate {
-        FeeRate::from_fee_sats_and_vbytes(self.fee_sats(), self.virtual_size.as_usize())
+        FeeRate::from_fee_sats_and_vbytes(self.fee_sats(), self.virtual_size)
     }
 
     pub fn descendant_score(&self) -> FeeRate {
         let self_rate = self.fee_rate();
         let descendant_rate = FeeRate::from_fee_sats_and_vbytes(
             self.descendant_stats.total_fee_sats,
-            self.descendant_stats.virtual_size.as_usize(),
+            self.descendant_stats.virtual_size,
         );
         if descendant_rate > self_rate {
             descendant_rate
@@ -201,10 +201,13 @@ mod tests {
 
     #[test]
     fn fee_rate_round_trips_expected_values() {
-        let rate = FeeRate::from_fee_sats_and_vbytes(250, 125);
+        let rate = FeeRate::from_fee_sats_and_vbytes(250, TransactionVirtualSize::new(125));
 
         assert_eq!(rate, FeeRate::from_sats_per_kvb(2000));
-        assert_eq!(rate.fee_for_virtual_size(125), 250);
+        assert_eq!(
+            rate.fee_for_virtual_size(TransactionVirtualSize::new(125)),
+            250
+        );
     }
 
     #[test]
@@ -243,11 +246,11 @@ mod tests {
 
     #[test]
     fn fee_rate_handles_zero_virtual_size_and_formats_cleanly() {
-        let zero = FeeRate::from_fee_sats_and_vbytes(25, 0);
+        let zero = FeeRate::from_fee_sats_and_vbytes(25, TransactionVirtualSize::ZERO);
 
         assert_eq!(zero, FeeRate::ZERO);
         assert_eq!(zero.sats_per_kvb(), 0);
-        assert_eq!(zero.fee_for_virtual_size(0), 0);
+        assert_eq!(zero.fee_for_virtual_size(TransactionVirtualSize::ZERO), 0);
         assert_eq!(zero.to_string(), "0 sat/kvB");
     }
 
@@ -267,7 +270,7 @@ mod tests {
 
         assert_eq!(
             entry.descendant_score(),
-            FeeRate::from_fee_sats_and_vbytes(600, 150)
+            FeeRate::from_fee_sats_and_vbytes(600, TransactionVirtualSize::new(150))
         );
     }
 }

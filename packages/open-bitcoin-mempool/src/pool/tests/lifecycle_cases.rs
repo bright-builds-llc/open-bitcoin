@@ -40,8 +40,22 @@ fn lifecycle_pressure_summary_reports_capacity_and_fee_floor() {
     assert_eq!(summary.total_virtual_size, TransactionVirtualSize::ZERO);
     assert_eq!(summary.accounted_memory, AccountedMempoolMemory::ZERO);
     assert_eq!(summary.mempool_capacity, MempoolCapacity::new(12_345));
-    assert_eq!(summary.min_relay_feerate_sats_per_kvb, 2_000);
-    assert_eq!(summary.incremental_relay_feerate_sats_per_kvb, 3_000);
+    assert_eq!(
+        summary.static_relay_fee_rate,
+        crate::StaticRelayFeeRate::new(crate::FeeRate::from_sats_per_kvb(2_000))
+    );
+    assert_eq!(
+        summary.incremental_relay_fee_rate,
+        crate::IncrementalRelayFeeRate::new(crate::FeeRate::from_sats_per_kvb(3_000))
+    );
+    assert_eq!(
+        summary.rolling_mempool_fee_rate,
+        crate::RollingMempoolFeeRate::ZERO
+    );
+    assert_eq!(
+        summary.effective_admission_fee_rate.fee_rate(),
+        crate::FeeRate::from_sats_per_kvb(2_000)
+    );
     assert_eq!(summary.capacity_status, MempoolCapacityStatus::Empty);
     assert_eq!(summary.capacity_status.as_str(), "empty");
     assert_eq!(summary.rolling_fee_parity, RollingFeeParityStatus::Deferred);
@@ -314,8 +328,17 @@ fn lifecycle_public_types_cover_debug_clone_and_equality_contracts() {
         total_virtual_size: TransactionVirtualSize::new(2),
         accounted_memory: AccountedMempoolMemory::new(3),
         mempool_capacity: MempoolCapacity::new(4),
-        min_relay_feerate_sats_per_kvb: 5,
-        incremental_relay_feerate_sats_per_kvb: 6,
+        static_relay_fee_rate: crate::StaticRelayFeeRate::new(crate::FeeRate::from_sats_per_kvb(5)),
+        incremental_relay_fee_rate: crate::IncrementalRelayFeeRate::new(
+            crate::FeeRate::from_sats_per_kvb(6),
+        ),
+        rolling_mempool_fee_rate: crate::RollingMempoolFeeRate::new(
+            crate::FeeRate::from_sats_per_kvb(7),
+        ),
+        effective_admission_fee_rate: crate::effective_admission_fee_rate(
+            crate::StaticRelayFeeRate::new(crate::FeeRate::from_sats_per_kvb(5)),
+            crate::RollingMempoolFeeRate::new(crate::FeeRate::from_sats_per_kvb(7)),
+        ),
         capacity_status: MempoolCapacityStatus::OverCapacity,
         rolling_fee_parity: RollingFeeParityStatus::Deferred,
     };

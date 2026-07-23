@@ -107,8 +107,8 @@ pub(super) fn get_mempool_info(
         usage: info.accounted_memory,
         total_fee_sats: info.total_fee_sats,
         maxmempool: info.mempool_capacity,
-        mempoolminfee: info.min_relay_feerate_sats_per_kvb,
-        minrelaytxfee: info.min_relay_feerate_sats_per_kvb,
+        mempoolminfee: info.effective_admission_fee_rate_sats_per_kvb,
+        minrelaytxfee: info.static_relay_fee_rate_sats_per_kvb,
         loaded: true,
     })
 }
@@ -194,8 +194,8 @@ pub(super) fn get_network_info(
         connections: network_info.connected_peers,
         connections_in: network_info.inbound_peers,
         connections_out: network_info.outbound_peers,
-        relayfee: mempool_info.min_relay_feerate_sats_per_kvb,
-        incrementalfee: mempool_info.incremental_relay_feerate_sats_per_kvb,
+        relayfee: mempool_info.static_relay_fee_rate_sats_per_kvb,
+        incrementalfee: mempool_info.incremental_relay_fee_rate_sats_per_kvb,
         warnings: Vec::new(),
     })
 }

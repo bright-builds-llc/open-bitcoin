@@ -168,8 +168,22 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             accounted_memory: pressure.accounted_memory.as_usize(),
             mempool_capacity: pressure.mempool_capacity.as_usize(),
             total_fee_sats,
-            min_relay_feerate_sats_per_kvb: pressure.min_relay_feerate_sats_per_kvb,
-            incremental_relay_feerate_sats_per_kvb: pressure.incremental_relay_feerate_sats_per_kvb,
+            static_relay_fee_rate_sats_per_kvb: pressure
+                .static_relay_fee_rate
+                .fee_rate()
+                .sats_per_kvb(),
+            incremental_relay_fee_rate_sats_per_kvb: pressure
+                .incremental_relay_fee_rate
+                .fee_rate()
+                .sats_per_kvb(),
+            rolling_mempool_fee_rate_sats_per_kvb: pressure
+                .rolling_mempool_fee_rate
+                .fee_rate()
+                .sats_per_kvb(),
+            effective_admission_fee_rate_sats_per_kvb: pressure
+                .effective_admission_fee_rate
+                .fee_rate()
+                .sats_per_kvb(),
             capacity_status: pressure.capacity_status,
             rolling_fee_parity: pressure.rolling_fee_parity,
         }

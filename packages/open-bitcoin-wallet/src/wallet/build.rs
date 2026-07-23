@@ -11,7 +11,9 @@ use core::cmp::Ordering;
 use open_bitcoin_consensus::{
     ConsensusParams, SpentOutput, TransactionInputContext, TransactionValidationContext,
 };
-use open_bitcoin_mempool::{FeeRate, dust_threshold_sats, transaction_weight_and_virtual_size};
+use open_bitcoin_mempool::{
+    FeeRate, TransactionVirtualSize, dust_threshold_sats, transaction_weight_and_virtual_size,
+};
 use open_bitcoin_primitives::{
     Amount, ScriptBuf, ScriptWitness, Transaction, TransactionInput, TransactionOutput,
 };
@@ -59,7 +61,9 @@ pub(super) fn build_transaction(
 
         let no_change_vsize =
             estimate_vsize(wallet, &selected, &request.recipients, None, request)?;
-        let no_change_fee = request.fee_rate.fee_for_virtual_size(no_change_vsize);
+        let no_change_fee = request
+            .fee_rate
+            .fee_for_virtual_size(TransactionVirtualSize::new(no_change_vsize));
         if available_sats < recipients_total + no_change_fee {
             continue;
         }
@@ -236,7 +240,9 @@ fn build_change_output(
     let recipients = request.recipients.as_slice();
     let with_change_vsize =
         estimate_change_vsize(wallet, selected_inputs, recipients, &placeholder, request)?;
-    let change_fee = request.fee_rate.fee_for_virtual_size(with_change_vsize);
+    let change_fee = request
+        .fee_rate
+        .fee_for_virtual_size(TransactionVirtualSize::new(with_change_vsize));
     let available_sats = selected_inputs
         .iter()
         .fold(0_i64, |sum, utxo| sum + utxo.output.value.to_sats());
@@ -342,19 +348,19 @@ pub(super) fn compare_effective_value(
     right: &WalletUtxo,
 ) -> Ordering {
     let left_effective = left.output.value.to_sats()
-        - fee_rate.fee_for_virtual_size(
+        - fee_rate.fee_for_virtual_size(TransactionVirtualSize::new(
             wallet
                 .descriptor(left.descriptor_id)
                 .map(|record| record.descriptor.estimated_input_vbytes())
                 .unwrap_or(0),
-        );
+        ));
     let right_effective = right.output.value.to_sats()
-        - fee_rate.fee_for_virtual_size(
+        - fee_rate.fee_for_virtual_size(TransactionVirtualSize::new(
             wallet
                 .descriptor(right.descriptor_id)
                 .map(|record| record.descriptor.estimated_input_vbytes())
                 .unwrap_or(0),
-        );
+        ));
 
     right_effective
         .cmp(&left_effective)

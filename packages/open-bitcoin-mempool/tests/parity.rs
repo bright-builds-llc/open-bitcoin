@@ -11,10 +11,11 @@ use open_bitcoin_consensus::{
     ConsensusParams, ScriptVerifyFlags, block_merkle_root, check_block_header, transaction_txid,
 };
 use open_bitcoin_mempool::{
-    AccountedMempoolMemory, LimitDirection, LimitKind, Mempool, MempoolCapacity,
-    MempoolCapacityStatus, MempoolError, MempoolLifecycleRemoval, MempoolLifecycleRemovalReason,
-    MempoolLifecycleSummary, MempoolPressureSummary, PolicyConfig, RbfPolicy,
-    RollingFeeParityStatus, TransactionVirtualSize,
+    AccountedMempoolMemory, FeeRate, IncrementalRelayFeeRate, LimitDirection, LimitKind, Mempool,
+    MempoolCapacity, MempoolCapacityStatus, MempoolError, MempoolLifecycleRemoval,
+    MempoolLifecycleRemovalReason, MempoolLifecycleSummary, MempoolPressureSummary, PolicyConfig,
+    RbfPolicy, RollingFeeParityStatus, RollingMempoolFeeRate, StaticRelayFeeRate,
+    TransactionVirtualSize, effective_admission_fee_rate,
 };
 use open_bitcoin_primitives::{
     Amount, Block, BlockHash, BlockHeader, OutPoint, ScriptBuf, ScriptWitness, Transaction,
@@ -372,8 +373,13 @@ fn lifecycle_cleanup_and_pressure_truths_hold_through_public_api() {
         total_virtual_size: TransactionVirtualSize::new(2),
         accounted_memory: AccountedMempoolMemory::new(3),
         mempool_capacity: MempoolCapacity::new(1),
-        min_relay_feerate_sats_per_kvb: 1_000,
-        incremental_relay_feerate_sats_per_kvb: 1_000,
+        static_relay_fee_rate: StaticRelayFeeRate::new(FeeRate::from_sats_per_kvb(1_000)),
+        incremental_relay_fee_rate: IncrementalRelayFeeRate::new(FeeRate::from_sats_per_kvb(1_000)),
+        rolling_mempool_fee_rate: RollingMempoolFeeRate::ZERO,
+        effective_admission_fee_rate: effective_admission_fee_rate(
+            StaticRelayFeeRate::new(FeeRate::from_sats_per_kvb(1_000)),
+            RollingMempoolFeeRate::ZERO,
+        ),
         capacity_status: MempoolCapacityStatus::OverCapacity,
         rolling_fee_parity: RollingFeeParityStatus::Deferred,
     };

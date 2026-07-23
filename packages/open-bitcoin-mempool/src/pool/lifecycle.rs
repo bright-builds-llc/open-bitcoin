@@ -13,7 +13,11 @@ use super::{
     Mempool, MempoolEntry, MempoolError, collect_conflicts_and_descendants, recompute_state,
     resource_invariant_error,
 };
-use crate::{AccountedMempoolMemory, MempoolCapacity, TransactionVirtualSize};
+use crate::{
+    AccountedMempoolMemory, EffectiveAdmissionFeeRate, IncrementalRelayFeeRate, MempoolCapacity,
+    RollingMempoolFeeRate, StaticRelayFeeRate, TransactionVirtualSize,
+    effective_admission_fee_rate,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MempoolLifecycleRemovalReason {
@@ -72,8 +76,10 @@ pub struct MempoolPressureSummary {
     pub total_virtual_size: TransactionVirtualSize,
     pub accounted_memory: AccountedMempoolMemory,
     pub mempool_capacity: MempoolCapacity,
-    pub min_relay_feerate_sats_per_kvb: i64,
-    pub incremental_relay_feerate_sats_per_kvb: i64,
+    pub static_relay_fee_rate: StaticRelayFeeRate,
+    pub incremental_relay_fee_rate: IncrementalRelayFeeRate,
+    pub rolling_mempool_fee_rate: RollingMempoolFeeRate,
+    pub effective_admission_fee_rate: EffectiveAdmissionFeeRate,
     pub capacity_status: MempoolCapacityStatus,
     pub rolling_fee_parity: RollingFeeParityStatus,
 }
@@ -95,21 +101,19 @@ impl Mempool {
     pub fn pressure_summary(&self) -> MempoolPressureSummary {
         let capacity_status =
             capacity_status(self.accounted_memory(), self.config.mempool_capacity);
+        let effective_admission_fee_rate = effective_admission_fee_rate(
+            self.config.static_relay_fee_rate,
+            self.rolling_mempool_fee_rate,
+        );
         MempoolPressureSummary {
             transaction_count: self.entries.len(),
             total_virtual_size: self.total_virtual_size(),
             accounted_memory: self.accounted_memory(),
             mempool_capacity: self.config.mempool_capacity,
-            min_relay_feerate_sats_per_kvb: self
-                .config
-                .static_relay_fee_rate
-                .fee_rate()
-                .sats_per_kvb(),
-            incremental_relay_feerate_sats_per_kvb: self
-                .config
-                .incremental_relay_fee_rate
-                .fee_rate()
-                .sats_per_kvb(),
+            static_relay_fee_rate: self.config.static_relay_fee_rate,
+            incremental_relay_fee_rate: self.config.incremental_relay_fee_rate,
+            rolling_mempool_fee_rate: self.rolling_mempool_fee_rate,
+            effective_admission_fee_rate,
             capacity_status,
             rolling_fee_parity: RollingFeeParityStatus::Deferred,
         }
