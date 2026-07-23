@@ -52,17 +52,21 @@ v2.2 Package Relay and Long-Lived Mempool Policy is planned across Phases 130–
 3. Expiry, recovery, and retry outcomes consistently use explicit acceptance time plus typed local-origin and relay-request metadata.
 4. Contributors can reproduce admission, replacement, expiry, pressure, block, reorg, and retry decisions from explicit time, block, occupancy, and jitter inputs with stable typed outcomes.
 
-**Plans**: 8 plans
+**Plans**: 12 plans
 
 Plans:
 - [ ] 130-01-PLAN.md — Define distinct resource values, a versioned accounted-memory formula, cached ledger, and recomputation oracle.
 - [ ] 130-02-PLAN.md — Define static, incremental, rolling, and effective fee roles with correct individual/package floor boundaries.
-- [ ] 130-03-PLAN.md — Add canonical entry metadata plus explicit admission, pressure, block, reorg, and retry inputs.
+- [ ] 130-03-PLAN.md — Add canonical entry metadata plus explicit admission, pressure, block, and reorg inputs.
 - [ ] 130-04-PLAN.md — Define deterministic committed lifecycle deltas with independent removal cause and role.
-- [ ] 130-05-PLAN.md — Carry exact peer/local metadata and lifecycle deltas through live admission shells.
+- [ ] 130-05-PLAN.md — Carry exact peer/local metadata and lifecycle deltas through the managed node admission authority.
 - [ ] 130-06-PLAN.md — Route explicit block/reorg contexts and semantic deltas through the runtime authority.
 - [ ] 130-07-PLAN.md — Preserve known snapshot metadata and decode legacy records through a fail-closed compatibility contract.
-- [ ] 130-08-PLAN.md — Correct operator resource/fee evidence and install parity and deterministic verification guardrails.
+- [ ] 130-08-PLAN.md — Correct authoritative operator resource and fee evidence with unequal-value RPC tests.
+- [ ] 130-09-PLAN.md — Define bounded injected retry time and jitter inputs in the pure network crate.
+- [ ] 130-10-PLAN.md — Sample local admission time safely in the RPC shell and preserve direct/shared evidence boundaries.
+- [ ] 130-11-PLAN.md — Register complete parity evidence and refresh contributor-facing README surfaces.
+- [ ] 130-12-PLAN.md — Install mutation-tested Phase 130 guardrails in the default repository verifier.
 
 ### Phase 131: Rolling Fee, Expiry, and Descendant Eviction Core
 

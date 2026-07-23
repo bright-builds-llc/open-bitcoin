@@ -541,19 +541,23 @@ These commands follow the repository's cooperative timing/lock and final verific
 | --- | --- | --- | --- |
 | — | No training-only factual claims drive this research; design choices are marked `[RECOMMENDED]`, and implementation facts are verified from local primary sources. | All | None identified. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **How should legacy snapshots without acceptance metadata recover during the Phase 130-to-135 interval?**
-   - What we know: the current DTO has transaction, fee, and vsize only; locked D-10 forbids guessed origin/time; full recovery schema remains Phase 135. [VERIFIED: `snapshot_codec.rs:122-134`; locked context]
-   - Recommendation: add explicit legacy-metadata classification, preserve transaction recovery without labeling it local, and make it retry-ineligible. If expiry requires a known timestamp before Phase 135, fail closed with typed evidence rather than substituting restart time. [RECOMMENDED]
+**Status: RESOLVED by the Phase 130 plan set.**
 
-2. **Where should raw rolling-floor evidence be public before Phase 137?**
-   - What we know: pinned `getmempoolinfo` exposes effective `mempoolminfee`, static `minrelaytxfee`, and `incrementalrelayfee`, but not a separately named raw rolling value. [VERIFIED: `packages/bitcoin-knots/src/rpc/mempool.cpp:893-895`]
-   - Recommendation: keep Knots field meanings, add missing `incrementalrelayfee`, and expose raw rolling plus effective admission through the existing Open Bitcoin-specific authoritative status contract or a clearly documented extension field. Do not redefine `mempoolminfee`. [RECOMMENDED]
+1. **Legacy snapshot metadata compatibility — resolved in Plan 130-07.**
+   - Keep the repository-wide `SchemaVersion::CURRENT` unchanged.
+   - Add optional `accepted_at_unix_seconds`, `origin`, and `relay_requested` DTO fields and decode them all-or-none.
+   - All three present restore exact known metadata; all three absent become `LegacyUnknown` + `RecoveryUnknown` + `NotRequested`; partial or invalid metadata is typed mempool corruption.
+   - Never substitute restart time or infer local origin. Phase 135 may add mempool-local versioning/checkpoint behavior but must preserve this classification.
 
-3. **What exact legacy vsize limit name should survive until Phase 131?**
-   - What we know: enforcement cannot switch in Phase 130, but one field cannot represent both vsize and capacity. [VERIFIED: locked D-01/D-03]
-   - Recommendation: use an explicitly temporary/private `legacy_vsize_trim_limit` and add a removal task to the Phase 131 plan. [RECOMMENDED]
+2. **Raw rolling-floor evidence — resolved in Plan 130-08.**
+   - Preserve Knots field meanings: `mempoolminfee` remains the derived effective `max(static, rolling)`, `minrelaytxfee` remains static, and `incrementalrelayfee` remains incremental.
+   - Expose raw rolling and explicitly derived effective admission through Open Bitcoin extension fields `rollingmempoolfee` and `effectiveadmissionfee`; do not redefine a Knots field.
+
+3. **Transitional vsize trim limit — resolved in Plan 130-01.**
+   - Use the explicit `legacy_vsize_trim_limit: TransactionVirtualSize` field beside the distinct `mempool_capacity: MempoolCapacity`.
+   - Phase 130 trimming reads only `legacy_vsize_trim_limit`; Phase 131 removes that seam when accounted-memory enforcement lands.
 
 ## Sources
 
