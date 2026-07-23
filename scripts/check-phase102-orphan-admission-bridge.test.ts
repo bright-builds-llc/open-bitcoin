@@ -154,6 +154,25 @@ test("fails_when_cap_constant_or_bridge_symbol_is_missing", () => {
   expect(failureMessages[1]).toContain("required bridge symbol");
 });
 
+test("fails_when_transition_admission_command_is_missing", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutateFiles(files) {
+      removeFromFile(
+        files,
+        "packages/open-bitcoin-node/src/network/admission_bridge.rs",
+        "submit_transaction_transition_with_context",
+      );
+    },
+  });
+
+  // Act
+  const failures = checkPhase102OrphanAdmissionBridge(root).join("\n");
+
+  // Assert
+  expect(failures).toContain("outcome or transition admission command");
+});
+
 test("fails_when_required_behavior_test_is_missing", () => {
   // Arrange
   const missingTests = [
@@ -551,7 +570,7 @@ function actionTranslationText(): string {
 function admissionBridgeText(): string {
   return [
     "pub fn process_peer_transaction_admission() {",
-    "  self.mempool.submit_transaction_outcome();",
+    "  self.mempool.submit_transaction_transition_with_context();",
     "  self.orphanage.stage_missing_parent();",
     "  self.peer_manager.request_orphan_parent();",
     "}",

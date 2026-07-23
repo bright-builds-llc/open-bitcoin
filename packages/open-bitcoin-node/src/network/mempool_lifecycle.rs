@@ -11,7 +11,7 @@ use open_bitcoin_core::{
     consensus::{ConsensusParams, ScriptVerifyFlags},
     primitives::Block,
 };
-use open_bitcoin_mempool::{MempoolLifecycleSummary, MempoolOutcome};
+use open_bitcoin_mempool::{AdmissionContext, MempoolLifecycleSummary, MempoolOutcome};
 use open_bitcoin_network::TxServingRecordStatus;
 
 use super::{ManagedNetworkError, ManagedPeerNetwork};
@@ -65,22 +65,23 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         let mut reconsidered = Vec::new();
         for block in disconnect_blocks.iter().rev() {
             for transaction in block.transactions.iter().skip(1) {
-                let outcome = self.mempool.submit_transaction_outcome(
+                let transition = self.mempool.submit_transaction_transition_with_context(
                     &self.chainstate,
                     transaction.clone(),
                     verify_flags,
                     consensus_params,
+                    AdmissionContext::legacy_unknown(),
                 )?;
-                match &outcome {
+                match &transition.outcome {
                     MempoolOutcome::Accepted { .. } | MempoolOutcome::Replaced { .. } => {
-                        self.apply_admitted_outcome(&outcome, transaction.clone())?;
+                        self.apply_admitted_transition(&transition, transaction.clone())?;
                     }
                     MempoolOutcome::Evicted { txid, .. } | MempoolOutcome::Expired { txid, .. } => {
-                        if let Some(removed_wtxid) = outcome.maybe_wtxid() {
+                        if let Some(removed_wtxid) = transition.outcome.maybe_wtxid() {
                             self.peer_manager
                                 .on_mempool_transaction_removed(&removed_wtxid);
                         }
-                        let status = match outcome {
+                        let status = match transition.outcome {
                             MempoolOutcome::Evicted { .. } => TxServingRecordStatus::Evicted,
                             MempoolOutcome::Expired { .. } => TxServingRecordStatus::Expired,
                             _ => TxServingRecordStatus::Stale,
@@ -91,7 +92,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                     | MempoolOutcome::Duplicate { .. }
                     | MempoolOutcome::Orphaned { .. } => {}
                 }
-                reconsidered.push(outcome);
+                reconsidered.push(transition.outcome);
             }
         }
 

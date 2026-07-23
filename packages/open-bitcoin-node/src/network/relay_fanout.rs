@@ -15,7 +15,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use open_bitcoin_core::primitives::{Txid, Wtxid};
-use open_bitcoin_mempool::MempoolOutcome;
+use open_bitcoin_mempool::{MempoolOutcome, RelayIntent};
 use open_bitcoin_network::{
     InventoryList, PeerId, TxFanoutAction, TxFanoutAdmission, TxFanoutAdmissionOutcome,
     TxFanoutCleanupReason, TxFanoutPeerInput, TxFanoutQueue, TxFanoutSuppressionReason, TxRelayId,
@@ -329,12 +329,18 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     pub(super) fn record_local_submission_outcome(
         &mut self,
         outcome: &MempoolOutcome,
-        _now_unix_seconds: i64,
+        relay_intent: RelayIntent,
     ) -> Vec<TxFanoutAction> {
         let maybe_admission = tx_fanout_admission_from_outcome(outcome);
-        let peer_inputs = self.relay_fanout_peer_inputs(None, maybe_admission);
-        self.relay_fanout
-            .record_local_submission_outcome(outcome, &peer_inputs, true)
+        let peer_inputs = match relay_intent {
+            RelayIntent::Requested => self.relay_fanout_peer_inputs(None, maybe_admission),
+            RelayIntent::NotRequested => Vec::new(),
+        };
+        self.relay_fanout.record_local_submission_outcome(
+            outcome,
+            &peer_inputs,
+            relay_intent == RelayIntent::Requested,
+        )
     }
 
     pub(super) fn record_relay_fanout_for_outcome(

@@ -19,7 +19,10 @@ use open_bitcoin_core::{
         TransactionInput, TransactionOutput, Txid,
     },
 };
-use open_bitcoin_mempool::{MempoolError, MempoolOutcome, PolicyConfig};
+use open_bitcoin_mempool::{
+    FinalMempoolMembership, MempoolAcceptanceTime, MempoolError, MempoolOrigin, MempoolOutcome,
+    MempoolRemovalCause, MempoolRemovalRole, PolicyConfig, PolicyTime, RelayIntent,
+};
 use open_bitcoin_network::{
     InventoryList, OrphanPolicy, PHASE101_MAX_TX_REQUESTS_IN_FLIGHT_PER_PEER,
     RelayActivationConfig, WireNetworkMessage,
@@ -260,6 +263,114 @@ fn managed_admission_bridge_parent_acceptance_reconsiders_child() {
     assert_eq!(network.orphan_count(), 0);
     assert_mempool_contains(&network, parent_txid);
     assert_mempool_contains(&network, child_txid);
+}
+
+#[test]
+fn managed_admission_bridge_peer_admission_preserves_receive_metadata() {
+    // Arrange
+    let (mut network, coinbase_txids) = network_with_chain(623, 2, PolicyConfig::default());
+    network.add_inbound_peer(623).expect("peer");
+    let transaction = spend_transaction(coinbase_txids[0], 499_999_000);
+    let transaction_txid = txid(&transaction);
+
+    // Act
+    network
+        .process_peer_transaction_admission(
+            623,
+            transaction,
+            42,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("peer admission");
+
+    // Assert
+    let metadata = network
+        .mempool()
+        .mempool()
+        .entry(&transaction_txid)
+        .expect("accepted peer transaction")
+        .metadata;
+    assert_eq!(
+        metadata.accepted_at,
+        MempoolAcceptanceTime::Known(PolicyTime::new(42))
+    );
+    assert_eq!(metadata.origin, MempoolOrigin::Peer);
+    assert_eq!(metadata.relay_intent, RelayIntent::NotRequested);
+}
+
+#[test]
+fn managed_admission_bridge_reconsidered_orphan_uses_reconsideration_metadata() {
+    // Arrange
+    let (mut network, coinbase_txids) = network_with_chain(624, 2, PolicyConfig::default());
+    network.add_inbound_peer(624).expect("peer");
+    let (parent, child) = parent_and_child(coinbase_txids[0]);
+    let child_txid = txid(&child);
+    network
+        .process_peer_transaction_admission(624, child, 41, verify_flags(), consensus_params())
+        .expect("stage child");
+
+    // Act
+    network
+        .process_peer_transaction_admission(624, parent, 43, verify_flags(), consensus_params())
+        .expect("accept parent and reconsider child");
+
+    // Assert
+    let metadata = network
+        .mempool()
+        .mempool()
+        .entry(&child_txid)
+        .expect("reconsidered child")
+        .metadata;
+    assert_eq!(
+        metadata.accepted_at,
+        MempoolAcceptanceTime::Known(PolicyTime::new(43))
+    );
+    assert_eq!(metadata.origin, MempoolOrigin::Peer);
+    assert_eq!(metadata.relay_intent, RelayIntent::NotRequested);
+}
+
+#[test]
+fn managed_admission_bridge_peer_duplicate_preserves_first_metadata() {
+    // Arrange
+    let (mut network, coinbase_txids) = network_with_chain(625, 2, PolicyConfig::default());
+    network.add_inbound_peer(625).expect("peer");
+    let transaction = spend_transaction(coinbase_txids[0], 499_999_000);
+    let transaction_txid = txid(&transaction);
+    network
+        .process_peer_transaction_admission(
+            625,
+            transaction.clone(),
+            42,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("first admission");
+
+    // Act
+    network
+        .process_peer_transaction_admission(
+            625,
+            transaction,
+            44,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("duplicate admission");
+
+    // Assert
+    let metadata = network
+        .mempool()
+        .mempool()
+        .entry(&transaction_txid)
+        .expect("original peer transaction")
+        .metadata;
+    assert_eq!(
+        metadata.accepted_at,
+        MempoolAcceptanceTime::Known(PolicyTime::new(42))
+    );
+    assert_eq!(metadata.origin, MempoolOrigin::Peer);
+    assert_eq!(metadata.relay_intent, RelayIntent::NotRequested);
 }
 
 #[test]
@@ -524,6 +635,17 @@ fn managed_admission_bridge_replacement_removes_replaced_indexes() {
     assert_not_stored(&network, original_txid);
     assert_mempool_contains(&network, replacement_txid);
     assert!(network.transactions_by_txid.contains_key(&replacement_txid));
+    assert!(result.delta.removed.iter().any(|removal| {
+        removal.member.txid == original_txid
+            && removal.cause == MempoolRemovalCause::Replacement
+            && removal.role == MempoolRemovalRole::Direct
+    }));
+    assert!(result.delta.final_membership.iter().any(|state| {
+        state.member.txid == original_txid && state.membership == FinalMempoolMembership::Absent
+    }));
+    assert!(result.delta.final_membership.iter().any(|state| {
+        state.member.txid == replacement_txid && state.membership == FinalMempoolMembership::Present
+    }));
 }
 
 #[test]
@@ -582,6 +704,145 @@ fn managed_admission_bridge_local_submission_uses_same_outcome_contract() {
     );
     assert!(matches!(orphan_outcome, MempoolOutcome::Orphaned { .. }));
     assert_eq!(network.orphan_count(), 0);
+}
+
+#[test]
+fn managed_admission_bridge_legacy_local_adapter_fails_closed() {
+    // Arrange
+    let (mut network, coinbase_txids) = network_with_chain(629, 2, PolicyConfig::default());
+    let transaction = spend_transaction(coinbase_txids[0], 499_999_000);
+    let transaction_txid = txid(&transaction);
+
+    // Act
+    network
+        .submit_local_transaction_outcome(transaction, verify_flags(), consensus_params())
+        .expect("legacy local admission");
+
+    // Assert
+    let metadata = network
+        .mempool()
+        .mempool()
+        .entry(&transaction_txid)
+        .expect("accepted compatibility transaction")
+        .metadata;
+    assert_eq!(metadata.accepted_at, MempoolAcceptanceTime::LegacyUnknown);
+    assert_eq!(metadata.origin, MempoolOrigin::RecoveryUnknown);
+    assert_eq!(metadata.relay_intent, RelayIntent::NotRequested);
+}
+
+#[test]
+fn managed_admission_bridge_local_requested_admission_preserves_metadata() {
+    // Arrange
+    let (mut network, coinbase_txids) =
+        relay_enabled_network_with_chain(626, 2, PolicyConfig::default());
+    let transaction = spend_transaction(coinbase_txids[0], 499_999_000);
+    let transaction_txid = txid(&transaction);
+
+    // Act
+    network
+        .submit_local_transaction_outcome_at(
+            transaction,
+            verify_flags(),
+            consensus_params(),
+            50,
+            RelayIntent::Requested,
+        )
+        .expect("local admission");
+
+    // Assert
+    let metadata = network
+        .mempool()
+        .mempool()
+        .entry(&transaction_txid)
+        .expect("accepted local transaction")
+        .metadata;
+    assert_eq!(
+        metadata.accepted_at,
+        MempoolAcceptanceTime::Known(PolicyTime::new(50))
+    );
+    assert_eq!(metadata.origin, MempoolOrigin::Local);
+    assert_eq!(metadata.relay_intent, RelayIntent::Requested);
+}
+
+#[test]
+fn managed_admission_bridge_local_not_requested_admission_preserves_metadata() {
+    // Arrange
+    let (mut network, coinbase_txids) =
+        relay_enabled_network_with_chain(627, 2, PolicyConfig::default());
+    network
+        .connect_outbound_peer(630, 1)
+        .expect("eligible peer");
+    let transaction = spend_transaction(coinbase_txids[0], 499_999_000);
+    let transaction_txid = txid(&transaction);
+
+    // Act
+    network
+        .submit_local_transaction_outcome_at(
+            transaction,
+            verify_flags(),
+            consensus_params(),
+            50,
+            RelayIntent::NotRequested,
+        )
+        .expect("local admission without relay");
+
+    // Assert
+    let metadata = network
+        .mempool()
+        .mempool()
+        .entry(&transaction_txid)
+        .expect("accepted local transaction")
+        .metadata;
+    assert_eq!(
+        metadata.accepted_at,
+        MempoolAcceptanceTime::Known(PolicyTime::new(50))
+    );
+    assert_eq!(metadata.origin, MempoolOrigin::Local);
+    assert_eq!(metadata.relay_intent, RelayIntent::NotRequested);
+    assert_eq!(network.relay_fanout_info().queued_transactions, 0);
+}
+
+#[test]
+fn managed_admission_bridge_local_duplicate_preserves_first_metadata() {
+    // Arrange
+    let (mut network, coinbase_txids) =
+        relay_enabled_network_with_chain(628, 2, PolicyConfig::default());
+    let transaction = spend_transaction(coinbase_txids[0], 499_999_000);
+    let transaction_txid = txid(&transaction);
+    network
+        .submit_local_transaction_outcome_at(
+            transaction.clone(),
+            verify_flags(),
+            consensus_params(),
+            50,
+            RelayIntent::Requested,
+        )
+        .expect("first local admission");
+
+    // Act
+    network
+        .submit_local_transaction_outcome_at(
+            transaction,
+            verify_flags(),
+            consensus_params(),
+            51,
+            RelayIntent::NotRequested,
+        )
+        .expect("duplicate local admission");
+
+    // Assert
+    let metadata = network
+        .mempool()
+        .mempool()
+        .entry(&transaction_txid)
+        .expect("original local transaction")
+        .metadata;
+    assert_eq!(
+        metadata.accepted_at,
+        MempoolAcceptanceTime::Known(PolicyTime::new(50))
+    );
+    assert_eq!(metadata.origin, MempoolOrigin::Local);
+    assert_eq!(metadata.relay_intent, RelayIntent::Requested);
 }
 
 #[test]

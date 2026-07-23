@@ -623,4 +623,5 @@ fn merge_compact_timeout_outbound(
 }
 
 #[cfg(test)]
+#[allow(deprecated)] // Plan 130-06 migrates node-owned compatibility callers.
 mod tests;

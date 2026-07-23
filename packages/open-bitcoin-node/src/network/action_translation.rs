@@ -267,6 +267,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                             targeted_outbound.push((target_peer_id, message));
                         }
                     }
+                    let _admission_delta = bridge.delta;
                     let _reconsidered = bridge.reconsidered;
                     for (target_peer_id, message) in bridge.targeted_outbound {
                         if target_peer_id == peer_id {

@@ -439,17 +439,27 @@ function verifyManagedBridgeEvidence(texts: TextCorpus, failures: string[]): voi
     "Phase 102 managed disconnect cleanup order",
     failures,
   );
-  verifyOrderedCommands(
-    admissionBridge,
-    [
-      "process_peer_transaction_admission",
-      "submit_transaction_outcome",
-      "stage_missing_parent",
-      "request_orphan_parent",
-    ],
-    "Phase 102 admission bridge must stage before scheduler-mediated parent requests",
-    failures,
-  );
+  const maybeAdmissionCommand = [
+    "submit_transaction_transition_with_context",
+    "submit_transaction_outcome",
+  ].find((command) => admissionBridge.includes(command));
+  if (maybeAdmissionCommand === undefined) {
+    failures.push(
+      "Phase 102 admission bridge must use an outcome or transition admission command",
+    );
+  } else {
+    verifyOrderedCommands(
+      admissionBridge,
+      [
+        "process_peer_transaction_admission",
+        maybeAdmissionCommand,
+        "stage_missing_parent",
+        "request_orphan_parent",
+      ],
+      "Phase 102 admission bridge must stage before scheduler-mediated parent requests",
+      failures,
+    );
+  }
   requireContains(
     peerManagerBridge,
     "request_orphan_parent",
@@ -457,6 +467,7 @@ function verifyManagedBridgeEvidence(texts: TextCorpus, failures: string[]): voi
     failures,
   );
   for (const forbidden of [
+    "submit_transaction_transition_with_context",
     "submit_transaction_outcome",
     "accept_transaction_outcome",
     "process_peer_transaction_admission",

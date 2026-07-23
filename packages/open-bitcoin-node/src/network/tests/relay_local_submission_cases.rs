@@ -16,7 +16,7 @@ use open_bitcoin_core::{
     consensus::{block_hash, transaction_txid},
     primitives::{Amount, BlockHash, Transaction, TransactionOutput, Txid},
 };
-use open_bitcoin_mempool::{MempoolOutcome, PolicyConfig};
+use open_bitcoin_mempool::{MempoolOutcome, PolicyConfig, RelayIntent};
 use open_bitcoin_network::RelayActivationConfig;
 
 use super::{build_block, consensus_params, local_config, script, spend_transaction, verify_flags};
@@ -81,7 +81,13 @@ fn local_submission_records_queued_internal_relay_evidence() {
 
     // Act
     let outcome = network
-        .submit_local_transaction_outcome_at(transaction, verify_flags(), consensus_params(), 20)
+        .submit_local_transaction_outcome_at(
+            transaction,
+            verify_flags(),
+            consensus_params(),
+            20,
+            RelayIntent::Requested,
+        )
         .expect("local accepted outcome");
 
     // Assert
@@ -135,21 +141,40 @@ fn local_submission_duplicate_rejected_or_orphaned_does_not_enqueue_fanout() {
             verify_flags(),
             consensus_params(),
             30,
+            RelayIntent::Requested,
         )
         .expect("accepted setup");
     let queued_before = network.relay_fanout_info().queued_transactions;
 
     // Act
     let duplicate_outcome = network
-        .submit_local_transaction_outcome_at(accepted, verify_flags(), consensus_params(), 31)
+        .submit_local_transaction_outcome_at(
+            accepted,
+            verify_flags(),
+            consensus_params(),
+            31,
+            RelayIntent::Requested,
+        )
         .expect("duplicate outcome");
     let duplicate_labels = evidence_labels(&network);
     let rejected_outcome = network
-        .submit_local_transaction_outcome_at(rejected, verify_flags(), consensus_params(), 32)
+        .submit_local_transaction_outcome_at(
+            rejected,
+            verify_flags(),
+            consensus_params(),
+            32,
+            RelayIntent::Requested,
+        )
         .expect("rejected outcome");
     let rejected_labels = evidence_labels(&network);
     let orphaned_outcome = network
-        .submit_local_transaction_outcome_at(orphaned, verify_flags(), consensus_params(), 33)
+        .submit_local_transaction_outcome_at(
+            orphaned,
+            verify_flags(),
+            consensus_params(),
+            33,
+            RelayIntent::Requested,
+        )
         .expect("orphaned outcome");
     let orphaned_labels = evidence_labels(&network);
 
@@ -190,7 +215,13 @@ fn local_submission_records_rebroadcast_deferred_without_timer() {
 
     // Act
     let outcome = network
-        .submit_local_transaction_outcome_at(transaction, verify_flags(), consensus_params(), 40)
+        .submit_local_transaction_outcome_at(
+            transaction,
+            verify_flags(),
+            consensus_params(),
+            40,
+            RelayIntent::Requested,
+        )
         .expect("local accepted outcome");
 
     // Assert

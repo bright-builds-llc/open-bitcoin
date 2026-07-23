@@ -311,3 +311,38 @@ fn operation_contexts_preserve_all_explicit_inputs() {
     assert_eq!(block.height, 900_000);
     assert_eq!(reorg.occurred_at, reorg_time);
 }
+
+#[test]
+fn admission_context_constructors_map_trusted_source_facts() {
+    // Arrange
+    let peer_time = PolicyTime::from_unix_seconds(std::hint::black_box(42));
+    let local_time = PolicyTime::from_unix_seconds(std::hint::black_box(50));
+
+    // Act
+    let peer = AdmissionContext::peer(peer_time);
+    let local_requested = AdmissionContext::local(local_time, RelayIntent::Requested);
+    let local_not_requested = AdmissionContext::local(local_time, RelayIntent::NotRequested);
+
+    // Assert
+    assert_eq!(
+        peer.metadata.accepted_at,
+        MempoolAcceptanceTime::Known(peer_time)
+    );
+    assert_eq!(peer.metadata.origin, MempoolOrigin::Peer);
+    assert_eq!(peer.metadata.relay_intent, RelayIntent::NotRequested);
+    assert_eq!(
+        local_requested.metadata.accepted_at,
+        MempoolAcceptanceTime::Known(local_time)
+    );
+    assert_eq!(local_requested.metadata.origin, MempoolOrigin::Local);
+    assert_eq!(
+        local_requested.metadata.relay_intent,
+        RelayIntent::Requested
+    );
+    assert_eq!(
+        local_not_requested.metadata.relay_intent,
+        RelayIntent::NotRequested
+    );
+    assert_eq!(peer_time.unix_seconds(), 42);
+    assert_eq!(local_time.unix_seconds(), 50);
+}

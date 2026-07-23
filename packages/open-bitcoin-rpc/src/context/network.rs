@@ -467,6 +467,7 @@ impl ManagedRpcContext {
             .connect_local_block(block, self.verify_flags, self.consensus_params)
     }
 
+    #[allow(deprecated)] // Plan 130-11 samples RPC time and removes this adapter.
     pub fn submit_local_transaction(
         &mut self,
         transaction: Transaction,
@@ -475,6 +476,7 @@ impl ManagedRpcContext {
             .submit_local_transaction(transaction, self.verify_flags, self.consensus_params)
     }
 
+    #[allow(deprecated)] // Plan 130-11 samples RPC time and removes this adapter.
     pub fn submit_local_transaction_with_relay_evidence(
         &mut self,
         transaction: Transaction,

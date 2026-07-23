@@ -7,7 +7,10 @@ use open_bitcoin_core::{
     consensus::{ConsensusParams, ScriptVerifyFlags},
     primitives::Transaction,
 };
-use open_bitcoin_mempool::{AdmissionResult, Mempool, MempoolError, MempoolOutcome, PolicyConfig};
+use open_bitcoin_mempool::{
+    AdmissionContext, AdmissionResult, Mempool, MempoolError, MempoolOutcome, MempoolTransition,
+    PolicyConfig,
+};
 
 use crate::{ChainstateStore, ManagedChainstate};
 
@@ -37,8 +40,49 @@ impl ManagedMempool {
         &mut self.mempool
     }
 
-    /// Compatibility admission that remains fail closed until Plan 130-05
-    /// supplies truthful node metadata and Plan 130-11 removes no-time callers.
+    /// Submits a transaction with canonical metadata supplied by the node shell.
+    pub fn submit_transaction_with_context<S: ChainstateStore>(
+        &mut self,
+        chainstate: &ManagedChainstate<S>,
+        transaction: Transaction,
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+        context: AdmissionContext,
+    ) -> Result<AdmissionResult, MempoolError> {
+        self.mempool.accept_transaction_with_context(
+            transaction,
+            &chainstate.chainstate().snapshot(),
+            verify_flags,
+            consensus_params,
+            context,
+        )
+    }
+
+    /// Submits a transaction and returns attempt details plus committed lifecycle facts.
+    pub fn submit_transaction_transition_with_context<S: ChainstateStore>(
+        &mut self,
+        chainstate: &ManagedChainstate<S>,
+        transaction: Transaction,
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+        context: AdmissionContext,
+    ) -> Result<MempoolTransition, MempoolError> {
+        self.mempool.accept_transaction_transition_with_context(
+            transaction,
+            &chainstate.chainstate().snapshot(),
+            verify_flags,
+            consensus_params,
+            context,
+        )
+    }
+
+    /// Fail-closed no-context admission retained for intermediate workspace compatibility.
+    ///
+    /// Plan 130-06 migrates remaining node callers. Plan 130-11 removes this adapter
+    /// after the final RPC caller has migrated.
+    #[deprecated(
+        note = "Plan 130-06 migrates node callers; Plan 130-11 migrates the final RPC caller and removes this fail-closed adapter"
+    )]
     #[allow(deprecated)]
     pub fn submit_transaction<S: ChainstateStore>(
         &mut self,
@@ -55,8 +99,13 @@ impl ManagedMempool {
         )
     }
 
-    /// Compatibility outcome admission that remains fail closed until Plan
-    /// 130-05 supplies truthful node metadata and Plan 130-11 removes no-time callers.
+    /// Fail-closed no-context outcome retained for intermediate workspace compatibility.
+    ///
+    /// Plan 130-07 migrates reorg callers. Plan 130-11 removes this adapter
+    /// after the final RPC caller has migrated.
+    #[deprecated(
+        note = "Plan 130-07 migrates reorg callers; Plan 130-11 removes this fail-closed adapter"
+    )]
     #[allow(deprecated)]
     pub fn submit_transaction_outcome<S: ChainstateStore>(
         &mut self,
@@ -87,6 +136,7 @@ mod tests {
             TransactionInput, TransactionOutput,
         },
     };
+    use open_bitcoin_mempool::{AdmissionContext, MempoolOrigin, MempoolOutcome, PolicyTime};
 
     use crate::{ManagedChainstate, ManagedMempool, MemoryChainstateStore};
 
@@ -199,6 +249,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)] // Verifies the fail-closed adapter retained through Plan 130-11.
     fn managed_mempool_submits_against_managed_chainstate() {
         let mut chainstate = ManagedChainstate::from_store(MemoryChainstateStore::default());
         let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0, 500_000_000);
@@ -251,7 +302,48 @@ mod tests {
                 },
             )
             .expect("transaction should be admitted");
+        let contextual_transaction = spend_transaction(
+            transaction_txid(&spendable.transactions[0]).expect("txid"),
+            499_999_000,
+        );
+        let contextual_result = mempool
+            .submit_transaction_with_context(
+                &chainstate,
+                contextual_transaction.clone(),
+                ScriptVerifyFlags::P2SH
+                    | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
+                    | ScriptVerifyFlags::CHECKSEQUENCEVERIFY,
+                ConsensusParams {
+                    coinbase_maturity: 1,
+                    ..ConsensusParams::default()
+                },
+                AdmissionContext::peer(PolicyTime::from_unix_seconds(42)),
+            )
+            .expect("contextual transaction should be admitted");
+        let duplicate = mempool
+            .submit_transaction_outcome(
+                &chainstate,
+                contextual_transaction,
+                ScriptVerifyFlags::P2SH
+                    | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
+                    | ScriptVerifyFlags::CHECKSEQUENCEVERIFY,
+                ConsensusParams {
+                    coinbase_maturity: 1,
+                    ..ConsensusParams::default()
+                },
+            )
+            .expect("duplicate outcome");
 
         assert!(mempool.mempool().entry(&result.accepted).is_some());
+        assert_eq!(
+            mempool
+                .mempool()
+                .entry(&contextual_result.accepted)
+                .expect("contextual entry")
+                .metadata
+                .origin,
+            MempoolOrigin::Peer
+        );
+        assert!(matches!(duplicate, MempoolOutcome::Duplicate { .. }));
     }
 }

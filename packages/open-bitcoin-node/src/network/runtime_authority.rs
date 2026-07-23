@@ -13,7 +13,7 @@ use open_bitcoin_core::{
     mempool::{AdmissionResult, MempoolOutcome},
     primitives::{Block, BlockHash, NetworkAddress, NetworkMagic, Transaction},
 };
-use open_bitcoin_mempool::PolicyConfig;
+use open_bitcoin_mempool::{PolicyConfig, RelayIntent};
 use open_bitcoin_network::{
     BanDecision, BanScope, BlockRelayActivationPolicy, HeaderEntry, InboundAdmissionDecision,
     InboundAdmissionPolicy, InboundAdmissionRequest, InboundResourceEvent,
@@ -467,6 +467,14 @@ impl ManagedNetworkHandle {
         })
     }
 
+    /// Fail-closed no-time admission retained for intermediate workspace compatibility.
+    ///
+    /// Plan 130-06 migrates node callers. Plan 130-11 migrates the final RPC caller
+    /// and removes this adapter.
+    #[deprecated(
+        note = "Plan 130-06 migrates node callers; Plan 130-11 migrates the final RPC caller and removes this fail-closed adapter"
+    )]
+    #[allow(deprecated)]
     pub fn submit_local_transaction(
         &self,
         transaction: Transaction,
@@ -478,6 +486,14 @@ impl ManagedNetworkHandle {
         })
     }
 
+    /// Fail-closed no-time outcome retained for intermediate workspace compatibility.
+    ///
+    /// Plan 130-06 migrates node callers. Plan 130-11 migrates the final RPC caller
+    /// and removes this adapter.
+    #[deprecated(
+        note = "Plan 130-06 migrates node callers; Plan 130-11 migrates the final RPC caller and removes this fail-closed adapter"
+    )]
+    #[allow(deprecated)]
     pub fn submit_local_transaction_outcome(
         &self,
         transaction: Transaction,
@@ -486,6 +502,26 @@ impl ManagedNetworkHandle {
     ) -> Result<MempoolOutcome, ManagedNetworkAuthorityError> {
         self.try_mutate(|network| {
             network.submit_local_transaction_outcome(transaction, verify_flags, consensus_params)
+        })
+    }
+
+    /// Submits a local transaction with shell-sampled time and resolved relay intent.
+    pub fn submit_local_transaction_outcome_at(
+        &self,
+        transaction: Transaction,
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+        now_unix_seconds: i64,
+        relay_intent: RelayIntent,
+    ) -> Result<MempoolOutcome, ManagedNetworkAuthorityError> {
+        self.try_mutate(|network| {
+            network.submit_local_transaction_outcome_at(
+                transaction,
+                verify_flags,
+                consensus_params,
+                now_unix_seconds,
+                relay_intent,
+            )
         })
     }
 
@@ -559,69 +595,4 @@ impl ManagedNetworkHandle {
 }
 
 #[cfg(test)]
-mod tests {
-    use open_bitcoin_mempool::PolicyConfig;
-    use open_bitcoin_network::LocalPeerConfig;
-
-    use crate::{ManagedPeerNetwork, MemoryChainstateStore};
-
-    use super::{ManagedNetworkAuthorityError, ManagedNetworkHandle};
-
-    fn test_handle() -> ManagedNetworkHandle {
-        let network = ManagedPeerNetwork::new(
-            MemoryChainstateStore::default(),
-            LocalPeerConfig::default(),
-            PolicyConfig::default(),
-        );
-        ManagedNetworkHandle::new(network)
-    }
-
-    #[test]
-    fn cloned_handles_share_mutations() {
-        // Arrange
-        let mutating_handle = test_handle();
-        let snapshot_handle = mutating_handle.clone();
-
-        // Act
-        mutating_handle
-            .connect_outbound_peer(1, 1_777_225_210)
-            .expect("shared authority should accept the peer");
-        let snapshot = snapshot_handle
-            .network_info()
-            .expect("shared authority should return an owned snapshot");
-
-        // Assert
-        assert_eq!(snapshot.outbound_peers, 1);
-    }
-
-    #[test]
-    fn owned_snapshot_survives_authority_drop() {
-        // Arrange
-        let handle = test_handle();
-
-        // Act
-        let snapshot = handle
-            .chainstate_snapshot()
-            .expect("shared authority should return an owned snapshot");
-        drop(handle);
-
-        // Assert
-        assert!(snapshot.active_chain.is_empty());
-    }
-
-    #[test]
-    fn poisoned_authority_returns_typed_error() {
-        // Arrange
-        let handle = test_handle();
-        handle.poison_for_test();
-
-        // Act
-        let result = handle.operator_snapshot();
-
-        // Assert
-        assert!(matches!(
-            result,
-            Err(ManagedNetworkAuthorityError::Poisoned)
-        ));
-    }
-}
+mod tests;

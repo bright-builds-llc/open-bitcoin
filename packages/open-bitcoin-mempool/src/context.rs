@@ -16,6 +16,11 @@ impl PolicyTime {
         Self(unix_seconds)
     }
 
+    /// Creates a policy timestamp from explicit Unix seconds.
+    pub const fn from_unix_seconds(unix_seconds: i64) -> Self {
+        Self::new(unix_seconds)
+    }
+
     /// Returns the signed Unix-seconds representation.
     pub const fn unix_seconds(self) -> i64 {
         self.0
@@ -111,6 +116,24 @@ impl AdmissionContext {
     /// Creates the fail-closed context used only by migration adapters.
     pub const fn legacy_unknown() -> Self {
         Self::new(MempoolEntryMetadata::legacy_unknown())
+    }
+
+    /// Creates peer admission facts from the trusted receive or reconsideration time.
+    pub const fn peer(accepted_at: PolicyTime) -> Self {
+        Self::new(MempoolEntryMetadata::new(
+            MempoolAcceptanceTime::Known(accepted_at),
+            MempoolOrigin::Peer,
+            RelayIntent::NotRequested,
+        ))
+    }
+
+    /// Creates local admission facts from the shell-sampled time and resolved relay intent.
+    pub const fn local(accepted_at: PolicyTime, relay_intent: RelayIntent) -> Self {
+        Self::new(MempoolEntryMetadata::new(
+            MempoolAcceptanceTime::Known(accepted_at),
+            MempoolOrigin::Local,
+            relay_intent,
+        ))
     }
 }
 

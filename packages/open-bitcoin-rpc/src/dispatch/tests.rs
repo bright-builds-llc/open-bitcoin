@@ -2285,14 +2285,16 @@ fn sendrawtransaction_queues_internal_relay_evidence_without_propagation_claim()
         .latest_local_submission_evidence()
         .expect("authoritative relay evidence")
         .expect("relay evidence");
-    assert_eq!(evidence.queued_count, 1);
+    // Plan 130-11 supplies explicit time and relay intent; this no-time
+    // compatibility path must remain fail closed until then.
+    assert_eq!(evidence.queued_count, 0);
     assert_eq!(
         evidence
             .labels
             .iter()
             .map(|label| label.as_str())
             .collect::<Vec<_>>(),
-        vec!["accepted", "queued", "rebroadcast_deferred"],
+        vec!["accepted"],
     );
     let status = dispatch(
         &mut context,
@@ -2305,7 +2307,7 @@ fn sendrawtransaction_queues_internal_relay_evidence_without_propagation_claim()
     );
     assert_eq!(
         status["relay"]["outcome_counters"]["value"]["rebroadcast_deferred_count"],
-        json!(1)
+        json!(0)
     );
     assert_eq!(
         status["relay"]["activation"]["value"]["enabled"],
@@ -2319,10 +2321,7 @@ fn sendrawtransaction_queues_internal_relay_evidence_without_propagation_claim()
         status["relay"]["local_submission"]["state"],
         json!("implemented")
     );
-    assert_eq!(
-        status["relay"]["rebroadcast"]["state"],
-        json!("implemented")
-    );
+    assert_eq!(status["relay"]["rebroadcast"]["state"], json!("deferred"));
     let status_json = serde_json::to_string(&status).expect("network status json");
     assert!(!status_json.contains(&submitted_transaction_hex));
     assert!(!status_json.contains(&expected_txid));

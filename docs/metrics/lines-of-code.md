@@ -6,11 +6,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Metric | Value |
 | --- | --- |
-| Included files | 585 |
-| Total lines | 252,067 |
-| Code/content lines | 221,667 |
-| Comment-only lines | 9,213 |
-| Blank lines | 21,187 |
+| Included files | 586 |
+| Total lines | 252,707 |
+| Code/content lines | 222,207 |
+| Comment-only lines | 9,270 |
+| Blank lines | 21,230 |
 
 ## Per-Crate Modules
 
@@ -22,11 +22,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | open-bitcoin-codec | 15 | 1,811 | 779 | 28 | 2,621 | 43.0% |
 | open-bitcoin-consensus | 33 | 6,549 | 7,665 | 28 | 14,242 | 117.0% |
 | open-bitcoin-core | 3 | 39 | 0 | 36 | 75 | 0.0% |
-| open-bitcoin-mempool | 24 | 3,816 | 4,465 | 30 | 8,311 | 117.0% |
+| open-bitcoin-mempool | 24 | 3,839 | 4,500 | 30 | 8,369 | 117.2% |
 | open-bitcoin-network | 54 | 12,075 | 17,963 | 30 | 30,068 | 148.8% |
-| open-bitcoin-node | 97 | 20,967 | 23,971 | 40 | 44,978 | 114.3% |
+| open-bitcoin-node | 98 | 21,112 | 24,377 | 40 | 45,529 | 115.5% |
 | open-bitcoin-primitives | 9 | 877 | 0 | 20 | 897 | 0.0% |
-| open-bitcoin-rpc | 46 | 9,884 | 9,091 | 57 | 19,032 | 92.0% |
+| open-bitcoin-rpc | 46 | 9,886 | 9,090 | 57 | 19,033 | 91.9% |
 | open-bitcoin-test-harness | 7 | 662 | 0 | 28 | 690 | 0.0% |
 | open-bitcoin-wallet | 16 | 3,529 | 2,467 | 34 | 6,030 | 69.9% |
 
@@ -34,9 +34,9 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Category | Files | Total | Code/Content | Comments | Blank |
 | --- | --- | --- | --- | --- | --- |
-| Rust tests | 101 | 88,209 | 76,770 | 4,740 | 6,699 |
-| Rust production | 297 | 86,595 | 75,467 | 2,835 | 8,293 |
-| TypeScript/Bun scripts | 128 | 60,579 | 53,670 | 1,570 | 5,339 |
+| Rust tests | 102 | 88,649 | 77,129 | 4,780 | 6,740 |
+| Rust production | 297 | 86,765 | 75,624 | 2,849 | 8,292 |
+| TypeScript/Bun scripts | 128 | 60,609 | 53,694 | 1,573 | 5,342 |
 | Fixture/data | 6 | 8,233 | 8,228 | 5 | 0 |
 | Shell scripts | 13 | 4,353 | 3,885 | 57 | 411 |
 | TOML/config | 16 | 3,464 | 3,098 | 0 | 366 |
@@ -61,8 +61,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase100-relay-activation-boundary.ts | 584 |
 | scripts/check-phase101-transaction-inventory-download-scheduling.test.ts | 509 |
 | scripts/check-phase101-transaction-inventory-download-scheduling.ts | 587 |
-| scripts/check-phase102-orphan-admission-bridge.test.ts | 588 |
-| scripts/check-phase102-orphan-admission-bridge.ts | 687 |
+| scripts/check-phase102-orphan-admission-bridge.test.ts | 607 |
+| scripts/check-phase102-orphan-admission-bridge.ts | 698 |
 | scripts/check-phase103-mempool-lifecycle.test.ts | 233 |
 | scripts/check-phase103-mempool-lifecycle.ts | 397 |
 | scripts/check-phase104-relay-serving-fanout.test.ts | 215 |
@@ -193,7 +193,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | 8 | packages/open-bitcoin-node/src/network/tests.rs | Rust tests | 2,831 |
 | 9 | packages/open-bitcoin-cli/tests/operator_binary.rs | Rust tests | 2,687 |
 | 10 | packages/open-bitcoin-cli/src/operator/status/tests.rs | Rust tests | 2,585 |
-| 11 | packages/open-bitcoin-rpc/src/dispatch/tests.rs | Rust tests | 2,532 |
+| 11 | packages/open-bitcoin-rpc/src/dispatch/tests.rs | Rust tests | 2,531 |
 | 12 | scripts/test-run-live-mainnet-smoke.sh | Shell scripts | 2,081 |
 | 13 | packages/open-bitcoin-rpc/src/inbound_listener/tests.rs | Rust tests | 1,936 |
 | 14 | packages/open-bitcoin-node/src/status/tests.rs | Rust tests | 1,750 |
@@ -209,7 +209,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 555e5c1a9799a149af3f84b356a73e9fd9410dd7bc337d21f2b56235dacf9c8b |
+| Input fingerprint | 486062cc0746666e3d66ca75d022d3825312b8511f7b5762c677d72bf9c85614 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

@@ -1054,7 +1054,8 @@
     {
       "label": "node-network-runtime-authority",
       "files": [
-        "packages/open-bitcoin-node/src/network/runtime_authority.rs"
+        "packages/open-bitcoin-node/src/network/runtime_authority.rs",
+        "packages/open-bitcoin-node/src/network/runtime_authority/tests.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/node/context.h"
