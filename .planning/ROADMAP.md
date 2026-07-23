@@ -2,7 +2,7 @@
 
 ## Current Status
 
-v2.2 Package Relay and Long-Lived Mempool Policy is planned across Phases 130–138. All 40 requirements are mapped exactly once; Phase 130 has 13 planned, 5 completed, and Plan 130-06 is next.
+v2.2 Package Relay and Long-Lived Mempool Policy is planned across Phases 130–138. All 40 requirements are mapped exactly once; Phase 130 has 13 planned, 6 completed, and Plan 130-06 is next.
 
 ## Milestones
 
@@ -64,7 +64,7 @@ Plans:
 - [ ] 130-07-PLAN.md — Route explicit block/reorg contexts and semantic deltas through the runtime authority.
 - [ ] 130-08-PLAN.md — Preserve known snapshot metadata and decode legacy records through a fail-closed compatibility contract.
 - [ ] 130-09-PLAN.md — Correct authoritative operator resource and fee evidence with unequal-value RPC tests.
-- [ ] 130-10-PLAN.md — Define bounded injected retry time and jitter inputs in the pure network crate.
+- [x] 130-10-PLAN.md — Define bounded injected retry time and jitter inputs in the pure network crate.
 - [ ] 130-11-PLAN.md — Migrate the RPC caller, sample local admission time safely, then remove no-time authority adapters.
 - [ ] 130-12-PLAN.md — Register complete parity evidence and refresh contributor-facing README surfaces.
 - [ ] 130-13-PLAN.md — Install mutation-tested Phase 130 guardrails in the default repository verifier.
@@ -189,7 +189,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 | --- | ---: | --- | --- |
-| 130. Resource, Time, and Fee Primitives | 5/13 | In Progress|  |
+| 130. Resource, Time, and Fee Primitives | 6/13 | In Progress|  |
 | 131. Rolling Fee, Expiry, and Descendant Eviction Core | 0/TBD | Not started | - |
 | 132. Typed Package Vocabulary and Staged Admission | 0/TBD | Not started | - |
 | 133. Package-Aware Download and Orphan Bridge | 0/TBD | Not started | - |

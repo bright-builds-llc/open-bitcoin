@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Completed 130-05-PLAN.md
-last_updated: "2026-07-23T23:05:40.236Z"
-last_activity: 2026-07-23 -- Completed Plan 130-05 managed admission authority integration
+stopped_at: Completed 130-10-PLAN.md
+last_updated: "2026-07-23T23:38:38.430Z"
+last_activity: 2026-07-23 -- Completed Plan 130-10 injected network retry inputs
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 13
-  completed_plans: 5
-  percent: 38
+  completed_plans: 6
+  percent: 46
 ---
 
 # Project State
@@ -29,9 +29,9 @@ Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 130 (Resource, Time, and Fee Primitives) — EXECUTING
 Plan: 6 of 13
 Status: Ready to execute
-Last activity: 2026-07-23 -- Completed Plan 130-05 managed admission authority integration
+Last activity: 2026-07-23 -- Completed Plan 130-10 injected network retry inputs
 
-Progress: [████░░░░░░] 38%
+Progress: [█████░░░░░] 46%
 
 Next action: Execute Plan 130-06
 
@@ -39,13 +39,13 @@ Next action: Execute Plan 130-06
 
 **Current milestone:**
 
-- Total plans completed: 5
-- Average duration: 50 min
-- Total execution time: 4h 10m
+- Total plans completed: 6
+- Average duration: 45 min
+- Total execution time: 4h 31m
 
 | Phase | Plans | Total | Avg/Plan |
 | --- | ---: | ---: | ---: |
-| 130–138 | 5 | 4h 10m | 50 min |
+| 130–138 | 6 | 4h 31m | 45 min |
 
 ## Accumulated Context
 
@@ -72,6 +72,8 @@ Next action: Execute Plan 130-06
 - [Phase 130]: Peer admission uses exact receive or reconsideration time with Peer and NotRequested metadata.
 - [Phase 130]: No-time local admission remains LegacyUnknown, RecoveryUnknown, and NotRequested until Plan 130-11 removes compatibility.
 - [Phase 130]: Bridge-owned admission cache effects consume lifecycle delta cause, role, identities, and final membership.
+- [Phase 130]: Model only the injected variable retry delay in Phase 130; Phase 136 owns scheduling, fanout, receipts, and clearing.
+- [Phase 130]: Require fallible 0-to-300-second jitter construction before creating a retry decision context.
 
 ### Pending Todos
 
@@ -94,6 +96,6 @@ Next action: Execute Plan 130-06
 
 ## Session Continuity
 
-Last session: 2026-07-23T23:05:40.233Z
-Stopped at: Completed 130-05-PLAN.md
+Last session: 2026-07-23T23:38:38.426Z
+Stopped at: Completed 130-10-PLAN.md
 Resume file: None
