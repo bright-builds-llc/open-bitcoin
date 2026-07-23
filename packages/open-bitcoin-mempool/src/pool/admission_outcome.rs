@@ -11,7 +11,10 @@ use open_bitcoin_consensus::{
 };
 use open_bitcoin_primitives::{Transaction, TransactionInput, Txid, Wtxid};
 
-use crate::{AdmissionContext, MempoolError, MempoolOutcome, MempoolRejectionCategory};
+use crate::{
+    AdmissionContext, MempoolError, MempoolLifecycleDelta, MempoolOutcome,
+    MempoolRejectionCategory, MempoolTransition,
+};
 
 use super::{Mempool, serialization_validation_error};
 
@@ -22,42 +25,60 @@ pub(super) fn accept(
     verify_flags: ScriptVerifyFlags,
     consensus_params: ConsensusParams,
     context: AdmissionContext,
-) -> Result<MempoolOutcome, MempoolError> {
+) -> Result<MempoolTransition, MempoolError> {
     let txid = transaction_txid(&transaction)
         .map_err(|source| serialization_validation_error("transaction txid", source))?;
     let wtxid = transaction_wtxid(&transaction)
         .map_err(|source| serialization_validation_error("transaction wtxid", source))?;
     let missing_parents = missing_parent_txids(mempool, &transaction, chainstate);
 
-    let admission = mempool.accept_transaction_with_context(
+    let admission = mempool.commit_transaction_with_context(
         transaction,
         chainstate,
         verify_flags,
         consensus_params,
         context,
     );
-    let outcome = match admission {
-        Ok(result) if result.replaced.is_empty() => MempoolOutcome::Accepted {
-            txid: result.accepted,
-            wtxid,
-            evicted: result.evicted,
+    let transition = match admission {
+        Ok(committed) if committed.result.replaced.is_empty() => MempoolTransition {
+            outcome: MempoolOutcome::Accepted {
+                txid: committed.result.accepted,
+                wtxid,
+                evicted: committed.result.evicted,
+            },
+            delta: committed.delta,
         },
-        Ok(result) => MempoolOutcome::Replaced {
-            txid: result.accepted,
-            wtxid,
-            replaced: result.replaced,
-            evicted: result.evicted,
+        Ok(committed) => MempoolTransition {
+            outcome: MempoolOutcome::Replaced {
+                txid: committed.result.accepted,
+                wtxid,
+                replaced: committed.result.replaced,
+                evicted: committed.result.evicted,
+            },
+            delta: committed.delta,
         },
-        Err(MempoolError::DuplicateTransaction { txid }) => MempoolOutcome::Duplicate { txid },
-        Err(MempoolError::MissingInput { .. }) => MempoolOutcome::Orphaned {
-            txid,
-            wtxid,
-            missing_parents,
+        Err(MempoolError::DuplicateTransaction { txid }) => MempoolTransition {
+            outcome: MempoolOutcome::Duplicate { txid },
+            delta: MempoolLifecycleDelta::empty(),
         },
-        Err(MempoolError::CandidateEvicted { txid }) => MempoolOutcome::Evicted { txid, wtxid },
-        Err(error) => rejected_outcome(txid, wtxid, &error),
+        Err(MempoolError::MissingInput { .. }) => MempoolTransition {
+            outcome: MempoolOutcome::Orphaned {
+                txid,
+                wtxid,
+                missing_parents,
+            },
+            delta: MempoolLifecycleDelta::empty(),
+        },
+        Err(MempoolError::CandidateEvicted { txid }) => MempoolTransition {
+            outcome: MempoolOutcome::Evicted { txid, wtxid },
+            delta: MempoolLifecycleDelta::empty(),
+        },
+        Err(error) => MempoolTransition {
+            outcome: rejected_outcome(txid, wtxid, &error),
+            delta: MempoolLifecycleDelta::empty(),
+        },
     };
-    Ok(outcome)
+    Ok(transition)
 }
 fn missing_parent_txids(
     mempool: &Mempool,

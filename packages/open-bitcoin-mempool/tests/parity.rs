@@ -331,10 +331,10 @@ fn lifecycle_cleanup_and_pressure_truths_hold_through_public_api() {
     submit(&mut mempool, &snapshot, child).expect("child");
     let initial_pressure = mempool.pressure_summary();
     let empty_cleanup = mempool
-        .remove_for_connected_transactions(std::iter::empty::<&Transaction>())
+        .remove_for_connected_transactions_transition(std::iter::empty::<&Transaction>())
         .expect("empty cleanup");
     let conflict_cleanup = mempool
-        .remove_for_connected_transactions([&replacement])
+        .remove_for_connected_transactions_transition([&replacement])
         .expect("conflict cleanup");
 
     assert_eq!(

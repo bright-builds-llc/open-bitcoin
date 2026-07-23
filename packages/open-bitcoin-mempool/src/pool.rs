@@ -401,8 +401,14 @@ fn validate_limits(
 fn trim_to_size(
     mut state: MempoolState,
     config: &PolicyConfig,
-) -> Result<(MempoolState, BTreeSet<Txid>), MempoolError> {
-    let mut evicted = BTreeSet::new();
+) -> Result<
+    (
+        MempoolState,
+        std::collections::BTreeMap<MempoolMemberIdentity, MempoolRemovalRole>,
+    ),
+    MempoolError,
+> {
+    let mut evicted = std::collections::BTreeMap::new();
 
     while state.resource_ledger.total_virtual_size() > config.legacy_vsize_trim_limit {
         let Some(victim_txid) = select_eviction_candidate(&state.entries) else {
@@ -410,9 +416,23 @@ fn trim_to_size(
         };
         let mut remove_set = collect_descendants(&state.entries, victim_txid);
         remove_set.insert(victim_txid);
-        for txid in &remove_set {
-            state.entries.remove(txid);
-            evicted.insert(*txid);
+        let removed_members = state
+            .entries
+            .iter()
+            .filter(|(txid, _entry)| remove_set.contains(txid))
+            .map(|(txid, entry)| MempoolMemberIdentity {
+                txid: *txid,
+                wtxid: entry.wtxid,
+            })
+            .collect::<Vec<_>>();
+        for member in removed_members {
+            state.entries.remove(&member.txid);
+            let role = if member.txid == victim_txid {
+                MempoolRemovalRole::Direct
+            } else {
+                MempoolRemovalRole::Descendant
+            };
+            evicted.insert(member, role);
         }
         state = recompute_state(state.entries).map_err(resource_invariant_error)?;
     }

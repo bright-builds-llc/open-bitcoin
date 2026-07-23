@@ -71,6 +71,7 @@ impl MempoolSnapshot {
         Self { records }
     }
 
+    #[allow(deprecated)] // Plan 130-08 migrates recovery; Plan 130-11 removes the projection.
     pub fn replay_into_mempool(
         &self,
         mempool: &mut Mempool,

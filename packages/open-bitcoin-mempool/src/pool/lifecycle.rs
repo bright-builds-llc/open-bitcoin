@@ -4,7 +4,7 @@
 // - packages/bitcoin-knots/src/txmempool.cpp
 // - packages/bitcoin-knots/src/validation.cpp
 
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
 use open_bitcoin_codec::CodecError;
@@ -12,7 +12,7 @@ use open_bitcoin_consensus::transaction_txid;
 use open_bitcoin_primitives::{Block, Transaction, Txid, Wtxid};
 
 use super::{
-    Mempool, MempoolEntry, MempoolError, collect_conflicts_and_descendants, recompute_state,
+    Mempool, MempoolError, collect_conflicts_and_descendants, recompute_state,
     resource_invariant_error,
 };
 use crate::{
@@ -418,17 +418,49 @@ impl Mempool {
         }
     }
 
+    /// Compatibility summary projection retained until Plan 130-07 migrates lifecycle consumers.
+    #[deprecated(
+        note = "Plan 130-07 migrates block lifecycle consumers and removes this transition-derived summary projection"
+    )]
     pub fn remove_for_connected_block(
         &mut self,
         block: &Block,
     ) -> Result<MempoolLifecycleSummary, MempoolError> {
-        self.remove_for_connected_transactions(block.transactions.iter())
+        let delta = self.remove_for_connected_block_transition(block)?;
+        Ok(MempoolLifecycleSummary {
+            removed: delta.removed,
+            pressure: self.pressure_summary(),
+        })
     }
 
+    /// Removes block-confirmed and conflicting members and returns committed semantic facts.
+    pub fn remove_for_connected_block_transition(
+        &mut self,
+        block: &Block,
+    ) -> Result<MempoolLifecycleDelta, MempoolError> {
+        self.remove_for_connected_transactions_transition(block.transactions.iter())
+    }
+
+    /// Compatibility summary projection retained until Plan 130-07 migrates lifecycle consumers.
+    #[deprecated(
+        note = "Plan 130-07 migrates block lifecycle consumers and removes this transition-derived summary projection"
+    )]
     pub fn remove_for_connected_transactions<'a>(
         &mut self,
         transactions: impl IntoIterator<Item = &'a Transaction>,
     ) -> Result<MempoolLifecycleSummary, MempoolError> {
+        let delta = self.remove_for_connected_transactions_transition(transactions)?;
+        Ok(MempoolLifecycleSummary {
+            removed: delta.removed,
+            pressure: self.pressure_summary(),
+        })
+    }
+
+    /// Removes confirmed and conflicting transactions and returns committed semantic facts.
+    pub fn remove_for_connected_transactions_transition<'a>(
+        &mut self,
+        transactions: impl IntoIterator<Item = &'a Transaction>,
+    ) -> Result<MempoolLifecycleDelta, MempoolError> {
         let mut removals = BTreeMap::new();
 
         for transaction in transactions {
@@ -471,15 +503,27 @@ impl Mempool {
         }
 
         if removals.is_empty() {
-            return Ok(MempoolLifecycleSummary {
-                removed: Vec::new(),
-                pressure: self.pressure_summary(),
-            });
+            return Ok(MempoolLifecycleDelta::empty());
         }
 
-        let mut removed = Vec::with_capacity(removals.len());
-        for (txid, fact) in removals {
-            removed.extend(remove_lifecycle_entry(&mut self.entries, txid, fact));
+        let mut delta_builder = MempoolLifecycleDelta::builder();
+        let removal_members = removals.into_iter().filter_map(|(txid, fact)| {
+            self.entries.get(&txid).map(|entry| {
+                (
+                    MempoolMemberIdentity {
+                        txid,
+                        wtxid: entry.wtxid,
+                    },
+                    fact,
+                )
+            })
+        });
+        for (member, fact) in removal_members {
+            record_delta_removal(&mut delta_builder, member, fact)?;
+        }
+        let delta = delta_builder.build().map_err(lifecycle_invariant_error)?;
+        for removal in &delta.removed {
+            self.entries.remove(&removal.member.txid);
         }
 
         let state =
@@ -488,10 +532,7 @@ impl Mempool {
         self.spent_outpoints = state.spent_outpoints;
         self.resource_ledger = state.resource_ledger;
 
-        Ok(MempoolLifecycleSummary {
-            removed,
-            pressure: self.pressure_summary(),
-        })
+        Ok(delta)
     }
 }
 
@@ -540,17 +581,34 @@ pub(super) fn txid_serialization_error(source: CodecError) -> MempoolError {
     super::serialization_validation_error("transaction txid", source)
 }
 
-fn remove_lifecycle_entry(
-    entries: &mut HashMap<Txid, MempoolEntry>,
-    txid: Txid,
+fn record_delta_removal(
+    builder: &mut MempoolLifecycleDeltaBuilder,
+    member: MempoolMemberIdentity,
     fact: MempoolRemovalFact,
-) -> Option<MempoolLifecycleRemoval> {
-    entries.remove(&txid).map(|entry| MempoolLifecycleRemoval {
-        member: MempoolMemberIdentity {
-            txid,
-            wtxid: entry.wtxid,
-        },
-        cause: fact.cause,
-        role: fact.role,
-    })
+) -> Result<(), MempoolError> {
+    builder
+        .record_removal(MempoolLifecycleRemoval {
+            member,
+            cause: fact.cause,
+            role: fact.role,
+        })
+        .map_err(lifecycle_invariant_error)?;
+    builder
+        .record_final_membership(MempoolMemberState {
+            member,
+            membership: FinalMempoolMembership::Absent,
+        })
+        .map_err(lifecycle_invariant_error)?;
+    builder
+        .record_retry_clear(MempoolRetryClear {
+            member,
+            cause: MempoolRetryClearCause::LifecycleRemoval,
+        })
+        .map_err(lifecycle_invariant_error)
+}
+
+pub(super) fn lifecycle_invariant_error(source: MempoolLifecycleInvariantError) -> MempoolError {
+    MempoolError::InternalInvariant {
+        reason: source.to_string(),
+    }
 }

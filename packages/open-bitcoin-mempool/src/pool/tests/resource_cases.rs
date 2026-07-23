@@ -351,7 +351,7 @@ fn cached_resource_ledger_matches_recomputation_oracle() {
     assert_ledger_matches_oracle(&mempool);
     submit(&mut mempool, &snapshot, confirmed.clone()).expect("confirmed candidate");
     mempool
-        .remove_for_connected_transactions([&confirmed])
+        .remove_for_connected_transactions_transition([&confirmed])
         .expect("block removal");
 
     // Assert

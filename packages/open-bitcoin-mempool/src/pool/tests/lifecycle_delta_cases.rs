@@ -4,12 +4,22 @@
 // - packages/bitcoin-knots/src/txmempool.cpp
 // - packages/bitcoin-knots/src/validation.cpp
 
-use open_bitcoin_primitives::{Txid, Wtxid};
+use open_bitcoin_consensus::{
+    ConsensusParams, ScriptVerifyFlags, transaction_txid, transaction_wtxid,
+};
+use open_bitcoin_primitives::{BlockHash, Transaction, TransactionInput, Txid, Wtxid};
 
 use crate::{
-    FinalMempoolMembership, MempoolLifecycleDelta, MempoolLifecycleInvariantError,
-    MempoolLifecycleRemoval, MempoolMemberIdentity, MempoolMemberState, MempoolRemovalCause,
-    MempoolRemovalRole, MempoolRetryClear, MempoolRetryClearCause,
+    AdmissionContext, FinalMempoolMembership, Mempool, MempoolEntryMetadata, MempoolError,
+    MempoolLifecycleDelta, MempoolLifecycleInvariantError, MempoolLifecycleRemoval,
+    MempoolMemberIdentity, MempoolMemberState, MempoolOrigin, MempoolOutcome, MempoolRemovalCause,
+    MempoolRemovalRole, MempoolRetryClear, MempoolRetryClearCause, PolicyConfig, PolicyTime,
+    RelayIntent, RollingMempoolFeeRate, TransactionVirtualSize,
+    transaction_weight_and_virtual_size,
+};
+
+use super::{
+    build_block, non_standard_spend, sample_chainstate_snapshot, spend_transaction, submit,
 };
 
 fn identity(value: u8) -> MempoolMemberIdentity {
@@ -17,6 +27,28 @@ fn identity(value: u8) -> MempoolMemberIdentity {
         txid: Txid::from_byte_array([value; 32]),
         wtxid: Wtxid::from_byte_array([value.saturating_add(32); 32]),
     }
+}
+
+fn submit_transition(
+    mempool: &mut Mempool,
+    snapshot: &open_bitcoin_chainstate::ChainstateSnapshot,
+    transaction: Transaction,
+    context: AdmissionContext,
+) -> crate::MempoolTransition {
+    mempool
+        .accept_transaction_transition_with_context(
+            transaction,
+            snapshot,
+            ScriptVerifyFlags::P2SH
+                | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
+                | ScriptVerifyFlags::CHECKSEQUENCEVERIFY,
+            ConsensusParams {
+                coinbase_maturity: 1,
+                ..ConsensusParams::default()
+            },
+            context,
+        )
+        .expect("transition outcome")
 }
 
 fn build_retry_delta(
@@ -430,4 +462,312 @@ fn lifecycle_delta_requires_final_membership_for_every_affected_identity() {
         MempoolLifecycleInvariantError::MissingFinalMembership { member }
     );
     assert!(error.to_string().contains("has no final membership"));
+}
+
+#[test]
+fn lifecycle_invariant_errors_map_to_internal_mempool_errors() {
+    // Arrange
+    let source = MempoolLifecycleInvariantError::MissingFinalMembership {
+        member: identity(9),
+    };
+
+    // Act
+    let admission_error = super::super::admission::lifecycle_invariant_error(source);
+    let lifecycle_error = super::super::lifecycle::lifecycle_invariant_error(source);
+
+    // Assert
+    assert!(matches!(
+        admission_error,
+        MempoolError::InternalInvariant { .. }
+    ));
+    assert!(matches!(
+        lifecycle_error,
+        MempoolError::InternalInvariant { .. }
+    ));
+    assert!(admission_error.to_string().contains("final membership"));
+    assert!(lifecycle_error.to_string().contains("final membership"));
+}
+
+#[test]
+fn accepted_admission_transition_reports_present_member() {
+    // Arrange
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(2);
+    let transaction = spend_transaction(
+        coinbase_txids[0],
+        0,
+        499_999_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let txid = transaction_txid(&transaction).expect("txid");
+    let wtxid = transaction_wtxid(&transaction).expect("wtxid");
+    let member = MempoolMemberIdentity { txid, wtxid };
+    let mut mempool = Mempool::default();
+
+    // Act
+    let transition = submit_transition(
+        &mut mempool,
+        &snapshot,
+        transaction,
+        AdmissionContext::legacy_unknown(),
+    );
+
+    // Assert
+    assert!(matches!(
+        transition.outcome,
+        MempoolOutcome::Accepted { .. }
+    ));
+    assert_eq!(transition.delta.admitted, vec![member]);
+    assert_eq!(
+        transition.delta.final_membership,
+        vec![MempoolMemberState {
+            member,
+            membership: FinalMempoolMembership::Present,
+        }]
+    );
+    assert!(transition.delta.removed.is_empty());
+}
+
+#[test]
+fn replacement_transition_preserves_direct_and_descendant_roles() {
+    // Arrange
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(2);
+    let original = spend_transaction(
+        coinbase_txids[0],
+        0,
+        499_999_000,
+        TransactionInput::MAX_SEQUENCE_NONFINAL - 1,
+    );
+    let original_txid = transaction_txid(&original).expect("original txid");
+    let descendant = spend_transaction(
+        original_txid,
+        0,
+        499_998_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let descendant_txid = transaction_txid(&descendant).expect("descendant txid");
+    let replacement = spend_transaction(
+        coinbase_txids[0],
+        0,
+        499_996_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let replacement_txid = transaction_txid(&replacement).expect("replacement txid");
+    let mut mempool = Mempool::default();
+    submit(&mut mempool, &snapshot, original).expect("original admission");
+    submit(&mut mempool, &snapshot, descendant).expect("descendant admission");
+
+    // Act
+    let transition = submit_transition(
+        &mut mempool,
+        &snapshot,
+        replacement,
+        AdmissionContext::legacy_unknown(),
+    );
+
+    // Assert
+    assert!(matches!(
+        transition.outcome,
+        MempoolOutcome::Replaced { .. }
+    ));
+    assert!(transition.delta.removed.iter().any(|removal| {
+        removal.member.txid == original_txid
+            && removal.cause == MempoolRemovalCause::Replacement
+            && removal.role == MempoolRemovalRole::Direct
+    }));
+    assert!(transition.delta.removed.iter().any(|removal| {
+        removal.member.txid == descendant_txid
+            && removal.cause == MempoolRemovalCause::Replacement
+            && removal.role == MempoolRemovalRole::Descendant
+    }));
+    assert!(transition.delta.final_membership.iter().any(|state| {
+        state.member.txid == replacement_txid && state.membership == FinalMempoolMembership::Present
+    }));
+}
+
+#[test]
+fn legacy_trim_transition_reports_pressure_without_rolling_fee_change() {
+    // Arrange
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(3);
+    let low_fee_parent = spend_transaction(
+        coinbase_txids[0],
+        0,
+        499_999_900,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let low_fee_parent_txid = transaction_txid(&low_fee_parent).expect("low fee parent txid");
+    let low_fee_child = spend_transaction(
+        low_fee_parent_txid,
+        0,
+        499_998_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let low_fee_child_txid = transaction_txid(&low_fee_child).expect("low fee child txid");
+    let (_parent_weight, parent_vsize) =
+        transaction_weight_and_virtual_size(&low_fee_parent).expect("parent size");
+    let (_child_weight, child_vsize) =
+        transaction_weight_and_virtual_size(&low_fee_child).expect("child size");
+    let high_fee = spend_transaction(
+        coinbase_txids[1],
+        0,
+        499_997_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let mut mempool = Mempool::new(PolicyConfig {
+        legacy_vsize_trim_limit: TransactionVirtualSize::new(parent_vsize + child_vsize),
+        ..PolicyConfig::default()
+    });
+    submit(&mut mempool, &snapshot, low_fee_parent).expect("low fee parent admission");
+    submit(&mut mempool, &snapshot, low_fee_child).expect("low fee child admission");
+
+    // Act
+    let transition = submit_transition(
+        &mut mempool,
+        &snapshot,
+        high_fee,
+        AdmissionContext::legacy_unknown(),
+    );
+
+    // Assert
+    assert!(transition.delta.removed.iter().any(|removal| {
+        removal.member.txid == low_fee_parent_txid
+            && removal.cause == MempoolRemovalCause::Pressure
+            && removal.role == MempoolRemovalRole::Direct
+    }));
+    assert!(transition.delta.removed.iter().any(|removal| {
+        removal.member.txid == low_fee_child_txid
+            && removal.cause == MempoolRemovalCause::Pressure
+            && removal.role == MempoolRemovalRole::Descendant
+    }));
+    assert_eq!(
+        mempool.rolling_mempool_fee_rate(),
+        RollingMempoolFeeRate::ZERO
+    );
+}
+
+#[test]
+fn connected_block_transition_distinguishes_confirmation_from_conflict_descendants() {
+    // Arrange
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(2);
+    let confirmed = spend_transaction(
+        coinbase_txids[0],
+        0,
+        499_999_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let confirmed_txid = transaction_txid(&confirmed).expect("confirmed txid");
+    let conflict = spend_transaction(
+        coinbase_txids[1],
+        0,
+        499_999_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let conflict_txid = transaction_txid(&conflict).expect("conflict txid");
+    let descendant = spend_transaction(
+        conflict_txid,
+        0,
+        499_998_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let descendant_txid = transaction_txid(&descendant).expect("descendant txid");
+    let in_block_conflict = spend_transaction(
+        coinbase_txids[1],
+        0,
+        499_997_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let mut block = build_block(BlockHash::from_byte_array([0; 32]), 3, 499_999_000);
+    block.transactions.push(confirmed.clone());
+    block.transactions.push(in_block_conflict);
+    let mut mempool = Mempool::default();
+    submit(&mut mempool, &snapshot, confirmed).expect("confirmed admission");
+    submit(&mut mempool, &snapshot, conflict).expect("conflict admission");
+    submit(&mut mempool, &snapshot, descendant).expect("descendant admission");
+
+    // Act
+    let delta = mempool
+        .remove_for_connected_block_transition(&block)
+        .expect("block transition");
+
+    // Assert
+    assert!(delta.removed.iter().any(|removal| {
+        removal.member.txid == confirmed_txid
+            && removal.cause == MempoolRemovalCause::BlockConfirmation
+            && removal.role == MempoolRemovalRole::Direct
+    }));
+    assert!(delta.removed.iter().any(|removal| {
+        removal.member.txid == conflict_txid
+            && removal.cause == MempoolRemovalCause::BlockConflict
+            && removal.role == MempoolRemovalRole::Direct
+    }));
+    assert!(delta.removed.iter().any(|removal| {
+        removal.member.txid == descendant_txid
+            && removal.cause == MempoolRemovalCause::BlockConflict
+            && removal.role == MempoolRemovalRole::Descendant
+    }));
+}
+
+#[test]
+fn noncommitting_attempts_return_empty_delta_and_preserve_metadata() {
+    // Arrange
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(2);
+    let transaction = spend_transaction(
+        coinbase_txids[0],
+        0,
+        499_999_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let txid = transaction_txid(&transaction).expect("txid");
+    let initial_metadata = MempoolEntryMetadata::legacy_unknown();
+    let mut mempool = Mempool::default();
+    submit_transition(
+        &mut mempool,
+        &snapshot,
+        transaction.clone(),
+        AdmissionContext::new(initial_metadata),
+    );
+    let changed_metadata = MempoolEntryMetadata::new(
+        crate::MempoolAcceptanceTime::Known(PolicyTime::new(123)),
+        MempoolOrigin::Local,
+        RelayIntent::Requested,
+    );
+
+    // Act
+    let duplicate = submit_transition(
+        &mut mempool,
+        &snapshot,
+        transaction,
+        AdmissionContext::new(changed_metadata),
+    );
+    let orphan = submit_transition(
+        &mut mempool,
+        &snapshot,
+        spend_transaction(
+            Txid::from_byte_array([99; 32]),
+            0,
+            499_999_000,
+            TransactionInput::SEQUENCE_FINAL,
+        ),
+        AdmissionContext::new(changed_metadata),
+    );
+    let rejected = submit_transition(
+        &mut Mempool::default(),
+        &snapshot,
+        non_standard_spend(coinbase_txids[1]),
+        AdmissionContext::new(changed_metadata),
+    );
+
+    // Assert
+    assert!(matches!(
+        duplicate.outcome,
+        MempoolOutcome::Duplicate { .. }
+    ));
+    assert!(duplicate.delta.is_empty());
+    assert!(matches!(orphan.outcome, MempoolOutcome::Orphaned { .. }));
+    assert!(orphan.delta.is_empty());
+    assert!(matches!(rejected.outcome, MempoolOutcome::Rejected { .. }));
+    assert!(rejected.delta.is_empty());
+    assert_eq!(
+        mempool.entry(&txid).expect("original entry").metadata,
+        initial_metadata
+    );
 }

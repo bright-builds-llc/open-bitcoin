@@ -7,8 +7,10 @@
 
 mod context_cases;
 mod fee_cases;
+#[allow(deprecated)] // Compatibility summary regressions remain until Plan 130-07.
 mod lifecycle_cases;
 mod lifecycle_delta_cases;
+#[allow(deprecated)] // Compatibility projection regressions remain until Plans 130-05/130-11.
 mod outcome_cases;
 mod resource_cases;
 

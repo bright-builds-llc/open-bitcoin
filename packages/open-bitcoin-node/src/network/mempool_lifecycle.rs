@@ -24,6 +24,7 @@ pub(super) struct ManagedMempoolReorgLifecycle {
 }
 
 impl<S: ChainstateStore> ManagedPeerNetwork<S> {
+    #[allow(deprecated)] // Plan 130-07 migrates this block lifecycle projection to the delta API.
     pub(super) fn apply_connected_block_mempool_lifecycle(
         &mut self,
         block: &Block,
