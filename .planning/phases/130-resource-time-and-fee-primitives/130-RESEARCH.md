@@ -269,6 +269,8 @@ Delta invariants should be:
 - removals are deduplicated by identity and ordered deterministically;
 - direct role wins over descendant role for the same cause;
 - final membership is recorded for every affected identity after all mutation/trimming;
+- retry clears contain exactly one fact per identity per delta, with deterministic cause precedence `LifecycleRemoval > TransportWritten > EligibleServe`;
+- exact duplicate retry-clear facts collapse, while inconsistent txid/wtxid identity pairs are rejected;
 - shared labels derive only from enums;
 - detailed identities stay internal or in authenticated direct responses.
 
@@ -406,31 +408,25 @@ The current bridge already receives the timestamp; this change carries it into t
 | Attempt outcomes and lifecycle summaries are separate but incomplete and node adapters reclassify them. [VERIFIED: `outcome.rs`; `pool/lifecycle.rs`; `admission_bridge.rs`] | Attempt outcome plus committed semantic delta | Phase 134 receives a stable projection contract. |
 | `getmempoolinfo.usage` equals vsize. [VERIFIED: `rpc/dispatch/node.rs:104-112`] | `bytes=vsize`, `usage=accounted`, `maxmempool=capacity` | Matches pinned field meaning. [VERIFIED: Knots `rpc/mempool.cpp:889-895`] |
 
-## Recommended Plan Structure
+## Final Plan Ownership
 
-### Plan 130-01: Resource and Fee Domain Types
+The corrective plan set uses the following exact owners and commit-safe dependency boundaries:
 
-Create `resource.rs` and `fee.rs`; migrate `PolicyConfig`, `AggregateStats`, `MempoolEntry`, `MempoolState`, and pressure summaries to typed values. Add the documented accounted-memory formula, cached ledger, independent oracle, and focused unit tests. Preserve explicitly named legacy vsize trimming until Phase 131. [RECOMMENDED]
+1. **Plan 130-01** owns distinct resource values, versioned accounted-memory formula, cached ledger, independent oracle, and the explicitly legacy vsize enforcement seam.
+2. **Plan 130-02** owns semantic fee roles, effective-floor derivation, and ordinary/member-versus-package aggregate boundary contracts.
+3. **Plan 130-03** owns canonical entry metadata plus admission, pressure, block, and reorg input contexts.
+4. **Plan 130-04** owns `MempoolLifecycleDelta`, cause/role/final-membership facts, and the exactly-one retry-clear invariant with `LifecycleRemoval > TransportWritten > EligibleServe` precedence.
+5. **Plan 130-05** owns managed peer/local admission contexts and admission-side delta consumption while introducing fail-closed compatibility APIs.
+6. **Plan 130-06** migrates node-owned callers but deliberately retains the no-time compatibility method because `open-bitcoin-rpc` still calls it; a workspace check proves this intermediate commit compiles.
+7. **Plan 130-07** owns block/reorg contexts and lifecycle consumers, including its serialized changes to `runtime_authority.rs`.
+8. **Plan 130-08** owns current snapshot metadata compatibility, fail-closed legacy decode, and recovery replay.
+9. **Plan 130-10** owns the independent pure-network retry time/jitter vocabulary and may execute after Plans 130-03 and 130-04.
+10. **Plan 130-11** executes after Plan 130-07, owns `runtime_authority.rs`, migrates the remaining RPC compatibility caller, and only then removes the no-time methods in the same workspace-compilable commit.
+11. **Plan 130-09** owns authoritative operator/RPC resource and fee evidence after Plans 130-08 and 130-11.
+12. **Plan 130-12** owns parity catalog/index/breadcrumb reconciliation and concrete updates to all three README surfaces.
+13. **Plan 130-13** owns the `string[]` Phase 129-style checker contract, independent three-README stale-wording mutations, default verifier wiring, and full repository verification.
 
-Likely files: `open-bitcoin-mempool/src/{lib.rs,types.rs,pool.rs,pool/lifecycle.rs,resource.rs,fee.rs}` and existing/focused tests. Register any new files in `docs/parity/source-breadcrumbs.json`. [VERIFIED seam: current breadcrumb groups at `source-breadcrumbs.json:583-614`]
-
-### Plan 130-02: Entry Metadata and Explicit Contexts
-
-Add acceptance time, origin, and relay intent to canonical entries. Require typed contexts through mempool, managed mempool, peer admission, local admission, block, and reorg paths. Add only narrow snapshot metadata/compatibility handling needed to avoid guessed recovery facts; do not implement Phase 135 checkpoint orchestration. Define retry context/jitter vocabulary without scheduling it. [RECOMMENDED]
-
-Likely files: `open-bitcoin-mempool/src/{context.rs,types.rs,pool.rs}`, `open-bitcoin-node/src/{mempool.rs,network/admission_bridge.rs,network/mempool_lifecycle.rs,storage/mempool_snapshot.rs}`, and potentially the existing snapshot DTO if required for new metadata. [VERIFIED seams: listed source files]
-
-### Plan 130-03: Committed Lifecycle Delta
-
-Define cause/role/final-membership/admission/retry-clear facts and deterministic ordering/dedup invariants. Return `MempoolTransition { outcome, delta }` from committed paths. Migrate current node lifecycle consumers to use the delta without claiming complete Phase 134 projection. [RECOMMENDED]
-
-Likely files: `open-bitcoin-mempool/src/{outcome.rs,pool.rs,pool/lifecycle.rs}`, `open-bitcoin-node/src/network/{admission_bridge.rs,mempool_lifecycle.rs}`, and focused lifecycle tests. [VERIFIED seams: current files]
-
-### Plan 130-04: RPC Evidence, Parity, and Guardrails
-
-Correct `ManagedMempoolInfo` and `getmempoolinfo`; add static, incremental, rolling, and effective fee evidence with fixed labels; update `docs/parity/catalog/mempool-policy.md` and parity index/breadcrumbs; add a Phase 130 checker only if required by the repository's established phase-evidence pattern; close with full verification. [RECOMMENDED]
-
-Keep claims explicit that accounted enforcement/rolling behavior are Phase 131 and complete cross-cache projection is Phase 134. [VERIFIED boundary: locked D-03/D-16]
+This ownership keeps claims explicit that accounted enforcement/rolling behavior are Phase 131 and complete cross-cache projection is Phase 134. [VERIFIED boundary: locked D-03/D-16]
 
 ## Environment Availability
 
@@ -545,13 +541,13 @@ These commands follow the repository's cooperative timing/lock and final verific
 
 **Status: RESOLVED by the Phase 130 plan set.**
 
-1. **Legacy snapshot metadata compatibility — resolved in Plan 130-07.**
+1. **Legacy snapshot metadata compatibility — resolved in Plan 130-08.**
    - Keep the repository-wide `SchemaVersion::CURRENT` unchanged.
    - Add optional `accepted_at_unix_seconds`, `origin`, and `relay_requested` DTO fields and decode them all-or-none.
    - All three present restore exact known metadata; all three absent become `LegacyUnknown` + `RecoveryUnknown` + `NotRequested`; partial or invalid metadata is typed mempool corruption.
    - Never substitute restart time or infer local origin. Phase 135 may add mempool-local versioning/checkpoint behavior but must preserve this classification.
 
-2. **Raw rolling-floor evidence — resolved in Plan 130-08.**
+2. **Raw rolling-floor evidence — resolved in Plan 130-09.**
    - Preserve Knots field meanings: `mempoolminfee` remains the derived effective `max(static, rolling)`, `minrelaytxfee` remains static, and `incrementalrelayfee` remains incremental.
    - Expose raw rolling and explicitly derived effective admission through Open Bitcoin extension fields `rollingmempoolfee` and `effectiveadmissionfee`; do not redefine a Knots field.
 

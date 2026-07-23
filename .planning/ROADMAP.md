@@ -60,12 +60,12 @@ Plans:
 - [ ] 130-03-PLAN.md — Add canonical entry metadata plus explicit admission, pressure, block, and reorg inputs.
 - [ ] 130-04-PLAN.md — Define deterministic committed lifecycle deltas with independent removal cause and role.
 - [ ] 130-05-PLAN.md — Establish exact peer/local metadata and lifecycle-delta handling in the managed node admission authority.
-- [ ] 130-06-PLAN.md — Migrate every node admission caller/test to explicit time and relay intent, then remove no-time adapters.
+- [ ] 130-06-PLAN.md — Migrate node-owned admission callers/tests to explicit time while retaining fail-closed RPC compatibility.
 - [ ] 130-07-PLAN.md — Route explicit block/reorg contexts and semantic deltas through the runtime authority.
 - [ ] 130-08-PLAN.md — Preserve known snapshot metadata and decode legacy records through a fail-closed compatibility contract.
 - [ ] 130-09-PLAN.md — Correct authoritative operator resource and fee evidence with unequal-value RPC tests.
 - [ ] 130-10-PLAN.md — Define bounded injected retry time and jitter inputs in the pure network crate.
-- [ ] 130-11-PLAN.md — Sample local admission time safely in the RPC shell and preserve direct/shared evidence boundaries.
+- [ ] 130-11-PLAN.md — Migrate the RPC caller, sample local admission time safely, then remove no-time authority adapters.
 - [ ] 130-12-PLAN.md — Register complete parity evidence and refresh contributor-facing README surfaces.
 - [ ] 130-13-PLAN.md — Install mutation-tested Phase 130 guardrails in the default repository verifier.
 
