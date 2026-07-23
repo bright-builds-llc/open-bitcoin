@@ -9,6 +9,7 @@ use std::collections::BTreeSet;
 
 use open_bitcoin_primitives::{Amount, Transaction, Txid, Wtxid};
 
+use crate::context::MempoolEntryMetadata;
 use crate::fee::{FeeRate, IncrementalRelayFeeRate, StaticRelayFeeRate};
 use crate::resource::{MempoolCapacity, TransactionVirtualSize};
 
@@ -104,6 +105,7 @@ pub struct MempoolEntry {
     pub transaction: Transaction,
     pub txid: Txid,
     pub wtxid: Wtxid,
+    pub metadata: MempoolEntryMetadata,
     pub fee: Amount,
     pub virtual_size: TransactionVirtualSize,
     pub weight: usize,
@@ -115,6 +117,8 @@ pub struct MempoolEntry {
 }
 
 impl MempoolEntry {
+    /// Creates a canonical entry from validated transaction and admission facts.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         transaction: Transaction,
         txid: Txid,
@@ -123,12 +127,14 @@ impl MempoolEntry {
         virtual_size: TransactionVirtualSize,
         weight: usize,
         sigops_cost: usize,
+        metadata: MempoolEntryMetadata,
     ) -> Self {
         let stats = AggregateStats::new(1, virtual_size, fee.to_sats());
         Self {
             transaction,
             txid,
             wtxid,
+            metadata,
             fee,
             virtual_size,
             weight,
@@ -234,6 +240,7 @@ mod tests {
             TransactionVirtualSize::new(100),
             400,
             4,
+            crate::MempoolEntryMetadata::legacy_unknown(),
         );
 
         assert_eq!(entry.ancestor_stats.count, 1);
@@ -265,6 +272,7 @@ mod tests {
             TransactionVirtualSize::new(100),
             400,
             4,
+            crate::MempoolEntryMetadata::legacy_unknown(),
         );
         entry.descendant_stats = AggregateStats::new(2, TransactionVirtualSize::new(150), 600);
 

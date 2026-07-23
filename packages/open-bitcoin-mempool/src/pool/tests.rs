@@ -5,6 +5,7 @@
 // - packages/bitcoin-knots/src/policy/rbf.cpp
 // - packages/bitcoin-knots/src/policy/packages.cpp
 
+mod context_cases;
 mod fee_cases;
 mod lifecycle_cases;
 mod outcome_cases;
@@ -182,7 +183,7 @@ pub(super) fn submit(
     snapshot: &ChainstateSnapshot,
     transaction: Transaction,
 ) -> Result<crate::AdmissionResult, MempoolError> {
-    mempool.accept_transaction(
+    mempool.accept_transaction_with_context(
         transaction,
         snapshot,
         ScriptVerifyFlags::P2SH
@@ -192,6 +193,7 @@ pub(super) fn submit(
             coinbase_maturity: 1,
             ..ConsensusParams::default()
         },
+        crate::AdmissionContext::legacy_unknown(),
     )
 }
 
@@ -563,6 +565,7 @@ fn direct_helper_paths_cover_internal_edge_branches() {
         TransactionVirtualSize::new(100),
         400,
         0,
+        crate::MempoolEntryMetadata::legacy_unknown(),
     );
     let missing_candidate = super::validate_limits(
         &HashMap::from([(candidate_txid, candidate_entry)]),
@@ -703,6 +706,7 @@ fn helper_functions_cover_missing_vout_and_limit_branches() {
             TransactionVirtualSize::new(100),
             400,
             0,
+            crate::MempoolEntryMetadata::legacy_unknown(),
         ),
     )]);
     let missing_vout = super::derive_input_contexts(
@@ -738,6 +742,7 @@ fn helper_functions_cover_missing_vout_and_limit_branches() {
         TransactionVirtualSize::new(100),
         400,
         0,
+        crate::MempoolEntryMetadata::legacy_unknown(),
     );
     let mut descendant_parent = candidate.clone();
     descendant_parent.descendant_stats =
@@ -844,6 +849,7 @@ fn trim_and_graph_helpers_cover_remaining_internal_branches() {
                 TransactionVirtualSize::new(100),
                 400,
                 0,
+                crate::MempoolEntryMetadata::legacy_unknown(),
             ),
         ),
         (
@@ -856,6 +862,7 @@ fn trim_and_graph_helpers_cover_remaining_internal_branches() {
                 TransactionVirtualSize::new(100),
                 400,
                 0,
+                crate::MempoolEntryMetadata::legacy_unknown(),
             ),
         ),
         (
@@ -868,6 +875,7 @@ fn trim_and_graph_helpers_cover_remaining_internal_branches() {
                 TransactionVirtualSize::new(100),
                 400,
                 0,
+                crate::MempoolEntryMetadata::legacy_unknown(),
             ),
         ),
         (
@@ -880,6 +888,7 @@ fn trim_and_graph_helpers_cover_remaining_internal_branches() {
                 TransactionVirtualSize::new(100),
                 400,
                 0,
+                crate::MempoolEntryMetadata::legacy_unknown(),
             ),
         ),
     ]);
@@ -912,6 +921,7 @@ fn recompute_state_skips_invalid_parent_links_and_candidate_eviction_is_reported
         TransactionVirtualSize::new(100),
         400,
         0,
+        crate::MempoolEntryMetadata::legacy_unknown(),
     );
     let state = super::recompute_state(HashMap::from([(txid, invalid_parent)])).expect("recompute");
     assert!(state.entries.get(&txid).expect("entry").parents.is_empty());
@@ -971,6 +981,7 @@ fn validate_limits_reports_missing_ancestor_as_internal_invariant() {
         TransactionVirtualSize::new(100),
         400,
         0,
+        crate::MempoolEntryMetadata::legacy_unknown(),
     );
     entry.parents.insert(missing_ancestor_txid);
     let entries = HashMap::from([(candidate_txid, entry)]);

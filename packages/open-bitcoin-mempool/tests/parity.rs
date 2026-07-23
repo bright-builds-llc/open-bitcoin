@@ -11,11 +11,11 @@ use open_bitcoin_consensus::{
     ConsensusParams, ScriptVerifyFlags, block_merkle_root, check_block_header, transaction_txid,
 };
 use open_bitcoin_mempool::{
-    AccountedMempoolMemory, FeeRate, IncrementalRelayFeeRate, LimitDirection, LimitKind, Mempool,
-    MempoolCapacity, MempoolCapacityStatus, MempoolError, MempoolLifecycleRemoval,
-    MempoolLifecycleRemovalReason, MempoolLifecycleSummary, MempoolPressureSummary, PolicyConfig,
-    RbfPolicy, RollingFeeParityStatus, RollingMempoolFeeRate, StaticRelayFeeRate,
-    TransactionVirtualSize, effective_admission_fee_rate,
+    AccountedMempoolMemory, AdmissionContext, FeeRate, IncrementalRelayFeeRate, LimitDirection,
+    LimitKind, Mempool, MempoolCapacity, MempoolCapacityStatus, MempoolError,
+    MempoolLifecycleRemoval, MempoolLifecycleRemovalReason, MempoolLifecycleSummary,
+    MempoolPressureSummary, PolicyConfig, RbfPolicy, RollingFeeParityStatus, RollingMempoolFeeRate,
+    StaticRelayFeeRate, TransactionVirtualSize, effective_admission_fee_rate,
 };
 use open_bitcoin_primitives::{
     Amount, Block, BlockHash, BlockHeader, OutPoint, ScriptBuf, ScriptWitness, Transaction,
@@ -167,7 +167,7 @@ fn submit(
     snapshot: &ChainstateSnapshot,
     transaction: Transaction,
 ) -> Result<open_bitcoin_mempool::AdmissionResult, MempoolError> {
-    mempool.accept_transaction(
+    mempool.accept_transaction_with_context(
         transaction,
         snapshot,
         ScriptVerifyFlags::P2SH
@@ -177,6 +177,7 @@ fn submit(
             coinbase_maturity: 1,
             ..ConsensusParams::default()
         },
+        AdmissionContext::legacy_unknown(),
     )
 }
 

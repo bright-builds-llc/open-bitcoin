@@ -16,6 +16,7 @@
 
 //! Pure-core mempool and policy domain models for Open Bitcoin.
 
+pub mod context;
 pub mod error;
 pub mod fee;
 pub mod outcome;
@@ -24,6 +25,10 @@ pub mod pool;
 pub mod resource;
 pub mod types;
 
+pub use context::{
+    AdmissionContext, BlockLifecycleContext, MempoolAcceptanceTime, MempoolEntryMetadata,
+    MempoolOrigin, PolicyTime, PressureDecisionContext, RelayIntent, ReorgLifecycleContext,
+};
 pub use error::{LimitDirection, LimitKind, MempoolError};
 pub use fee::{
     EffectiveAdmissionFeeRate, FeeRate, IncrementalRelayFeeRate, PackageFeeFloorAssessment,

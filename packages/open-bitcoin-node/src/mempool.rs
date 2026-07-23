@@ -37,6 +37,9 @@ impl ManagedMempool {
         &mut self.mempool
     }
 
+    /// Compatibility admission that remains fail closed until Plan 130-05
+    /// supplies truthful node metadata and Plan 130-11 removes no-time callers.
+    #[allow(deprecated)]
     pub fn submit_transaction<S: ChainstateStore>(
         &mut self,
         chainstate: &ManagedChainstate<S>,
@@ -52,6 +55,9 @@ impl ManagedMempool {
         )
     }
 
+    /// Compatibility outcome admission that remains fail closed until Plan
+    /// 130-05 supplies truthful node metadata and Plan 130-11 removes no-time callers.
+    #[allow(deprecated)]
     pub fn submit_transaction_outcome<S: ChainstateStore>(
         &mut self,
         chainstate: &ManagedChainstate<S>,

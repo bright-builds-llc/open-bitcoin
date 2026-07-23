@@ -55,6 +55,7 @@ fn sample_entry(witness: ScriptWitness, virtual_size: usize) -> MempoolEntry {
         TransactionVirtualSize::new(virtual_size),
         400,
         1,
+        crate::MempoolEntryMetadata::legacy_unknown(),
     )
 }
 

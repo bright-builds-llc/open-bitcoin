@@ -5,7 +5,7 @@
 // - packages/bitcoin-knots/src/policy/policy.cpp
 
 use open_bitcoin_mempool::{
-    Mempool, transaction_sigops_cost, transaction_weight_and_virtual_size,
+    AdmissionContext, Mempool, transaction_sigops_cost, transaction_weight_and_virtual_size,
     validate_standard_transaction,
 };
 
@@ -50,11 +50,12 @@ fn run_once() -> Result<(), BenchError> {
     )
     .map_err(|error| BenchError::case_failed(CASE_ID, error.to_string()))?;
     let result = mempool
-        .accept_transaction(
+        .accept_transaction_with_context(
             transaction,
             &fixtures.mempool.snapshot,
             verify_flags(),
             consensus_params(),
+            AdmissionContext::legacy_unknown(),
         )
         .map_err(|error| BenchError::case_failed(CASE_ID, error.to_string()))?;
 

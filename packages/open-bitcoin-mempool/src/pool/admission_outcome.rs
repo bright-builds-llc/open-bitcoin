@@ -11,7 +11,7 @@ use open_bitcoin_consensus::{
 };
 use open_bitcoin_primitives::{Transaction, TransactionInput, Txid, Wtxid};
 
-use crate::{MempoolError, MempoolOutcome, MempoolRejectionCategory};
+use crate::{AdmissionContext, MempoolError, MempoolOutcome, MempoolRejectionCategory};
 
 use super::{Mempool, serialization_validation_error};
 
@@ -21,6 +21,7 @@ pub(super) fn accept(
     chainstate: &ChainstateSnapshot,
     verify_flags: ScriptVerifyFlags,
     consensus_params: ConsensusParams,
+    context: AdmissionContext,
 ) -> Result<MempoolOutcome, MempoolError> {
     let txid = transaction_txid(&transaction)
         .map_err(|source| serialization_validation_error("transaction txid", source))?;
@@ -28,8 +29,13 @@ pub(super) fn accept(
         .map_err(|source| serialization_validation_error("transaction wtxid", source))?;
     let missing_parents = missing_parent_txids(mempool, &transaction, chainstate);
 
-    let admission =
-        mempool.accept_transaction(transaction, chainstate, verify_flags, consensus_params);
+    let admission = mempool.accept_transaction_with_context(
+        transaction,
+        chainstate,
+        verify_flags,
+        consensus_params,
+        context,
+    );
     let outcome = match admission {
         Ok(result) if result.replaced.is_empty() => MempoolOutcome::Accepted {
             txid: result.accepted,

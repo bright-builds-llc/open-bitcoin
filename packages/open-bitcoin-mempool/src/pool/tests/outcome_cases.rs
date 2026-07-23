@@ -384,7 +384,7 @@ fn accepted_duplicate_orphan_replaced_evicted_and_rejected_outcomes_are_typed() 
 
     // Act
     let accepted = mempool
-        .accept_transaction_outcome(
+        .accept_transaction_outcome_with_context(
             original,
             &snapshot,
             ScriptVerifyFlags::P2SH
@@ -394,10 +394,11 @@ fn accepted_duplicate_orphan_replaced_evicted_and_rejected_outcomes_are_typed() 
                 coinbase_maturity: 1,
                 ..ConsensusParams::default()
             },
+            crate::AdmissionContext::legacy_unknown(),
         )
         .expect("accepted outcome");
     let duplicate = mempool
-        .accept_transaction_outcome(
+        .accept_transaction_outcome_with_context(
             duplicate,
             &snapshot,
             ScriptVerifyFlags::P2SH
@@ -407,10 +408,11 @@ fn accepted_duplicate_orphan_replaced_evicted_and_rejected_outcomes_are_typed() 
                 coinbase_maturity: 1,
                 ..ConsensusParams::default()
             },
+            crate::AdmissionContext::legacy_unknown(),
         )
         .expect("duplicate outcome");
     let replaced = mempool
-        .accept_transaction_outcome(
+        .accept_transaction_outcome_with_context(
             replacement,
             &snapshot,
             ScriptVerifyFlags::P2SH
@@ -420,10 +422,11 @@ fn accepted_duplicate_orphan_replaced_evicted_and_rejected_outcomes_are_typed() 
                 coinbase_maturity: 1,
                 ..ConsensusParams::default()
             },
+            crate::AdmissionContext::legacy_unknown(),
         )
         .expect("replaced outcome");
     let orphaned = Mempool::default()
-        .accept_transaction_outcome(
+        .accept_transaction_outcome_with_context(
             orphan,
             &snapshot,
             ScriptVerifyFlags::P2SH
@@ -433,10 +436,11 @@ fn accepted_duplicate_orphan_replaced_evicted_and_rejected_outcomes_are_typed() 
                 coinbase_maturity: 1,
                 ..ConsensusParams::default()
             },
+            crate::AdmissionContext::legacy_unknown(),
         )
         .expect("orphan outcome");
     let rejection = Mempool::default()
-        .accept_transaction_outcome(
+        .accept_transaction_outcome_with_context(
             rejected,
             &snapshot,
             ScriptVerifyFlags::P2SH
@@ -446,10 +450,11 @@ fn accepted_duplicate_orphan_replaced_evicted_and_rejected_outcomes_are_typed() 
                 coinbase_maturity: 1,
                 ..ConsensusParams::default()
             },
+            crate::AdmissionContext::legacy_unknown(),
         )
         .expect("rejected outcome");
     let evicted = evicting_mempool
-        .accept_transaction_outcome(
+        .accept_transaction_outcome_with_context(
             spend_transaction(
                 coinbase_txids[2],
                 0,
@@ -464,6 +469,7 @@ fn accepted_duplicate_orphan_replaced_evicted_and_rejected_outcomes_are_typed() 
                 coinbase_maturity: 1,
                 ..ConsensusParams::default()
             },
+            crate::AdmissionContext::legacy_unknown(),
         )
         .expect("evicted outcome");
 
@@ -559,7 +565,7 @@ fn missing_parent_outcome_collects_unique_parent_txids() {
 
     // Act
     let outcome = mempool
-        .accept_transaction_outcome(
+        .accept_transaction_outcome_with_context(
             transaction,
             &snapshot,
             ScriptVerifyFlags::P2SH
@@ -569,6 +575,7 @@ fn missing_parent_outcome_collects_unique_parent_txids() {
                 coinbase_maturity: 1,
                 ..ConsensusParams::default()
             },
+            crate::AdmissionContext::legacy_unknown(),
         )
         .expect("orphan outcome");
 
@@ -625,7 +632,7 @@ fn replacement_outcome_distinguishes_replaced_and_evicted_transactions() {
 
     // Act
     let outcome = mempool
-        .accept_transaction_outcome(
+        .accept_transaction_outcome_with_context(
             replacement,
             &snapshot,
             ScriptVerifyFlags::P2SH
@@ -635,6 +642,7 @@ fn replacement_outcome_distinguishes_replaced_and_evicted_transactions() {
                 coinbase_maturity: 1,
                 ..ConsensusParams::default()
             },
+            crate::AdmissionContext::legacy_unknown(),
         )
         .expect("replacement outcome");
 
@@ -912,7 +920,7 @@ fn submit_outcome(
     transaction: Transaction,
 ) -> MempoolOutcome {
     mempool
-        .accept_transaction_outcome(
+        .accept_transaction_outcome_with_context(
             transaction,
             snapshot,
             ScriptVerifyFlags::P2SH
@@ -922,6 +930,7 @@ fn submit_outcome(
                 coinbase_maturity: 1,
                 ..ConsensusParams::default()
             },
+            crate::AdmissionContext::legacy_unknown(),
         )
         .expect("outcome")
 }

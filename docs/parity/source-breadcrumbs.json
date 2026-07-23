@@ -603,6 +603,18 @@
       ]
     },
     {
+      "label": "mempool-entry-context",
+      "files": [
+        "packages/open-bitcoin-mempool/src/context.rs",
+        "packages/open-bitcoin-mempool/src/pool/admission.rs",
+        "packages/open-bitcoin-mempool/src/pool/tests/context_cases.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/kernel/mempool_entry.h",
+        "packages/bitcoin-knots/src/node/mempool_persist.cpp"
+      ]
+    },
+    {
       "label": "mempool-resource-accounting",
       "files": [
         "packages/open-bitcoin-mempool/src/pool/tests/resource_cases.rs",

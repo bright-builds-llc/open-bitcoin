@@ -441,7 +441,7 @@ mod tests {
         let expected_tx = transaction.clone();
         let mut mempool = Mempool::default();
         mempool
-            .accept_transaction(
+            .accept_transaction_with_context(
                 transaction,
                 &snapshot,
                 ScriptVerifyFlags::P2SH
@@ -451,6 +451,7 @@ mod tests {
                     coinbase_maturity: 1,
                     ..ConsensusParams::default()
                 },
+                open_bitcoin_mempool::AdmissionContext::legacy_unknown(),
             )
             .expect("admit");
 

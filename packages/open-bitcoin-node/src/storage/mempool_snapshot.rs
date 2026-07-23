@@ -8,7 +8,7 @@ use open_bitcoin_core::{
     consensus::{ConsensusParams, ScriptVerifyFlags},
     primitives::{OutPoint, Transaction, Txid, Wtxid},
 };
-use open_bitcoin_mempool::{Mempool, MempoolOutcome};
+use open_bitcoin_mempool::{AdmissionContext, Mempool, MempoolOutcome};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MempoolSnapshotRecord {
@@ -84,11 +84,12 @@ impl MempoolSnapshot {
                 let status = if transaction_is_confirmed(record, chainstate) {
                     MempoolRecoveryStatus::DroppedConfirmed
                 } else {
-                    recovery_status_from_outcome(mempool.accept_transaction_outcome(
+                    recovery_status_from_outcome(mempool.accept_transaction_outcome_with_context(
                         record.transaction.clone(),
                         chainstate,
                         verify_flags,
                         consensus_params,
+                        AdmissionContext::legacy_unknown(),
                     ))
                 };
                 MempoolRecoveryRecord {
