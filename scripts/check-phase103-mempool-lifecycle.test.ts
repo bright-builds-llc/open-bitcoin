@@ -81,6 +81,16 @@ test("fails_when_lifecycle_or_storage_symbol_is_missing", () => {
     }),
     createFixture({
       maybeMutateFiles(files) {
+        removeFromAllFiles(files, "MempoolRemovalCause");
+      },
+    }),
+    createFixture({
+      maybeMutateFiles(files) {
+        removeFromAllFiles(files, "MempoolRemovalRole");
+      },
+    }),
+    createFixture({
+      maybeMutateFiles(files) {
         removeFromAllFiles(files, "StorageNamespace::Mempool");
       },
     }),
@@ -92,6 +102,8 @@ test("fails_when_lifecycle_or_storage_symbol_is_missing", () => {
   // Assert
   expect(failureMessages[0]).toContain("required Phase 103 symbol");
   expect(failureMessages[1]).toContain("required Phase 103 symbol");
+  expect(failureMessages[2]).toContain("required Phase 103 symbol");
+  expect(failureMessages[3]).toContain("required Phase 103 symbol");
 });
 
 test("fails_when_required_behavior_test_is_missing", () => {

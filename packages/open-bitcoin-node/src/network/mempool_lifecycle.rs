@@ -34,12 +34,12 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             .remove_for_connected_block(block)?;
         for removal in &summary.removed {
             self.peer_manager
-                .on_mempool_transaction_removed(&removal.wtxid);
+                .on_mempool_transaction_removed(&removal.member.wtxid);
         }
         let removed_txids = summary
             .removed
             .iter()
-            .map(|removal| removal.txid)
+            .map(|removal| removal.member.txid)
             .collect::<Vec<_>>();
         self.remove_stored_transactions_with_status(
             &removed_txids,

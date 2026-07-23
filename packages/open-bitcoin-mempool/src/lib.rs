@@ -41,8 +41,11 @@ pub use policy::{
     transaction_weight_and_virtual_size, validate_standard_transaction,
 };
 pub use pool::{
-    Mempool, MempoolCapacityStatus, MempoolLifecycleRemoval, MempoolLifecycleRemovalReason,
-    MempoolLifecycleSummary, MempoolPressureSummary, RollingFeeParityStatus,
+    FinalMempoolMembership, Mempool, MempoolCapacityStatus, MempoolLifecycleDelta,
+    MempoolLifecycleDeltaBuilder, MempoolLifecycleInvariantError, MempoolLifecycleRemoval,
+    MempoolLifecycleSummary, MempoolMemberIdentity, MempoolMemberState, MempoolPressureSummary,
+    MempoolRemovalCause, MempoolRemovalRole, MempoolRetryClear, MempoolRetryClearCause,
+    MempoolTransition, RollingFeeParityStatus,
 };
 pub use resource::{
     AccountedMempoolMemory, MEMPOOL_RESOURCE_ACCOUNTING_VERSION, MempoolCapacity,

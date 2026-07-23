@@ -632,9 +632,11 @@
       "files": [
         "packages/open-bitcoin-mempool/src/pool/lifecycle.rs",
         "packages/open-bitcoin-mempool/src/pool/topology.rs",
-        "packages/open-bitcoin-mempool/src/pool/tests/lifecycle_cases.rs"
+        "packages/open-bitcoin-mempool/src/pool/tests/lifecycle_cases.rs",
+        "packages/open-bitcoin-mempool/src/pool/tests/lifecycle_delta_cases.rs"
       ],
       "breadcrumbs": [
+        "packages/bitcoin-knots/src/kernel/mempool_removal_reason.h",
         "packages/bitcoin-knots/src/txmempool.h",
         "packages/bitcoin-knots/src/txmempool.cpp",
         "packages/bitcoin-knots/src/validation.cpp"

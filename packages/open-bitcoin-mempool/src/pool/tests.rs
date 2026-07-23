@@ -8,6 +8,7 @@
 mod context_cases;
 mod fee_cases;
 mod lifecycle_cases;
+mod lifecycle_delta_cases;
 mod outcome_cases;
 mod resource_cases;
 

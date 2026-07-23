@@ -13,9 +13,10 @@ use open_bitcoin_consensus::{
 use open_bitcoin_mempool::{
     AccountedMempoolMemory, AdmissionContext, FeeRate, IncrementalRelayFeeRate, LimitDirection,
     LimitKind, Mempool, MempoolCapacity, MempoolCapacityStatus, MempoolError,
-    MempoolLifecycleRemoval, MempoolLifecycleRemovalReason, MempoolLifecycleSummary,
-    MempoolPressureSummary, PolicyConfig, RbfPolicy, RollingFeeParityStatus, RollingMempoolFeeRate,
-    StaticRelayFeeRate, TransactionVirtualSize, effective_admission_fee_rate,
+    MempoolLifecycleRemoval, MempoolLifecycleSummary, MempoolMemberIdentity,
+    MempoolPressureSummary, MempoolRemovalCause, MempoolRemovalRole, PolicyConfig, RbfPolicy,
+    RollingFeeParityStatus, RollingMempoolFeeRate, StaticRelayFeeRate, TransactionVirtualSize,
+    effective_admission_fee_rate,
 };
 use open_bitcoin_primitives::{
     Amount, Block, BlockHash, BlockHeader, OutPoint, ScriptBuf, ScriptWitness, Transaction,
@@ -348,26 +349,33 @@ fn lifecycle_cleanup_and_pressure_truths_hold_through_public_api() {
     assert_eq!(initial_pressure.rolling_fee_parity.as_str(), "deferred");
     assert!(empty_cleanup.removed.is_empty());
     assert!(conflict_cleanup.removed.iter().any(|removal| {
-        removal.txid == parent_txid && removal.reason == MempoolLifecycleRemovalReason::Conflict
+        removal.member.txid == parent_txid
+            && removal.cause == MempoolRemovalCause::BlockConflict
+            && removal.role == MempoolRemovalRole::Direct
     }));
     assert!(conflict_cleanup.removed.iter().any(|removal| {
-        removal.txid == child_txid && removal.reason == MempoolLifecycleRemovalReason::Descendant
+        removal.member.txid == child_txid
+            && removal.cause == MempoolRemovalCause::BlockConflict
+            && removal.role == MempoolRemovalRole::Descendant
     }));
     assert_eq!(
-        MempoolLifecycleRemovalReason::Confirmed.as_str(),
-        "confirmed"
+        MempoolRemovalCause::BlockConfirmation.as_str(),
+        "block_confirmation"
     );
-    assert_eq!(MempoolLifecycleRemovalReason::Conflict.as_str(), "conflict");
     assert_eq!(
-        MempoolLifecycleRemovalReason::Descendant.as_str(),
-        "descendant"
+        MempoolRemovalCause::BlockConflict.as_str(),
+        "block_conflict"
     );
-    assert_eq!(MempoolLifecycleRemovalReason::Trimmed.as_str(), "trimmed");
+    assert_eq!(MempoolRemovalRole::Descendant.as_str(), "descendant");
+    assert_eq!(MempoolRemovalCause::Pressure.as_str(), "pressure");
 
     let removal = MempoolLifecycleRemoval {
-        txid: Txid::from_byte_array([4_u8; 32]),
-        wtxid: Wtxid::from_byte_array([5_u8; 32]),
-        reason: MempoolLifecycleRemovalReason::Trimmed,
+        member: MempoolMemberIdentity {
+            txid: Txid::from_byte_array([4_u8; 32]),
+            wtxid: Wtxid::from_byte_array([5_u8; 32]),
+        },
+        cause: MempoolRemovalCause::Pressure,
+        role: MempoolRemovalRole::Direct,
     };
     let pressure = MempoolPressureSummary {
         transaction_count: 1,
@@ -395,6 +403,6 @@ fn lifecycle_cleanup_and_pressure_truths_hold_through_public_api() {
         MempoolCapacityStatus::OverCapacity.as_str(),
         "over_capacity"
     );
-    assert!(format!("{removal:?}{pressure:?}{summary:?}").contains("Trimmed"));
+    assert!(format!("{removal:?}{pressure:?}{summary:?}").contains("Pressure"));
     assert_eq!(summary.clone(), summary);
 }

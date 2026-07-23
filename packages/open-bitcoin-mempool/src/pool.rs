@@ -26,9 +26,20 @@ mod topology;
 use self::admission_outcome::accept as accept_outcome;
 use self::topology::{collect_ancestors, collect_conflicts_and_descendants, collect_descendants};
 pub use lifecycle::{
-    MempoolCapacityStatus, MempoolLifecycleRemoval, MempoolLifecycleRemovalReason,
-    MempoolLifecycleSummary, MempoolPressureSummary, RollingFeeParityStatus,
+    FinalMempoolMembership, MempoolCapacityStatus, MempoolLifecycleDelta,
+    MempoolLifecycleDeltaBuilder, MempoolLifecycleInvariantError, MempoolLifecycleRemoval,
+    MempoolLifecycleSummary, MempoolMemberIdentity, MempoolMemberState, MempoolPressureSummary,
+    MempoolRemovalCause, MempoolRemovalRole, MempoolRetryClear, MempoolRetryClearCause,
+    RollingFeeParityStatus,
 };
+
+/// Separates one admission attempt result from facts that were actually committed.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MempoolTransition {
+    pub outcome: crate::MempoolOutcome,
+    pub delta: MempoolLifecycleDelta,
+}
+
 #[derive(Debug, Clone)]
 struct MempoolState {
     entries: HashMap<Txid, MempoolEntry>,

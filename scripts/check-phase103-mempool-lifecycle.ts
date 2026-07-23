@@ -64,7 +64,8 @@ const REQUIRED_KNOTS_ANCHORS = [
 ] as const;
 const REQUIRED_SYMBOLS = [
   "MempoolPressureSummary",
-  "MempoolLifecycleRemovalReason",
+  "MempoolRemovalCause",
+  "MempoolRemovalRole",
   "RollingFeeParityStatus",
   "MempoolCapacityStatus",
   "remove_for_connected_block",

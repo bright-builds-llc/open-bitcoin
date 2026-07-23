@@ -1,9 +1,11 @@
 // Parity breadcrumbs:
+// - packages/bitcoin-knots/src/kernel/mempool_removal_reason.h
 // - packages/bitcoin-knots/src/txmempool.h
 // - packages/bitcoin-knots/src/txmempool.cpp
 // - packages/bitcoin-knots/src/validation.cpp
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::fmt;
 
 use open_bitcoin_codec::CodecError;
 use open_bitcoin_consensus::transaction_txid;
@@ -19,22 +21,319 @@ use crate::{
     effective_admission_fee_rate,
 };
 
+/// Stable semantic reason for removing a transaction from the mempool.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum MempoolLifecycleRemovalReason {
-    Confirmed,
-    Conflict,
-    Descendant,
-    Trimmed,
+pub enum MempoolRemovalCause {
+    Replacement,
+    Expiry,
+    Pressure,
+    BlockConfirmation,
+    BlockConflict,
+    Reorg,
 }
 
-impl MempoolLifecycleRemovalReason {
-    pub fn as_str(self) -> &'static str {
+impl MempoolRemovalCause {
+    /// Returns the fixed low-cardinality evidence label.
+    pub const fn as_str(self) -> &'static str {
         match self {
-            Self::Confirmed => "confirmed",
-            Self::Conflict => "conflict",
-            Self::Descendant => "descendant",
-            Self::Trimmed => "trimmed",
+            Self::Replacement => "replacement",
+            Self::Expiry => "expiry",
+            Self::Pressure => "pressure",
+            Self::BlockConfirmation => "block_confirmation",
+            Self::BlockConflict => "block_conflict",
+            Self::Reorg => "reorg",
         }
+    }
+
+    /// Resolves contradictory duplicate causes without depending on insertion order.
+    ///
+    /// Block facts outrank admission and maintenance facts, followed by replacement,
+    /// expiry, pressure, and reorg. Real transitions should normally provide only one
+    /// cause; this precedence keeps aggregation deterministic when affected sets overlap.
+    const fn priority(self) -> u8 {
+        match self {
+            Self::BlockConfirmation => 0,
+            Self::BlockConflict => 1,
+            Self::Replacement => 2,
+            Self::Expiry => 3,
+            Self::Pressure => 4,
+            Self::Reorg => 5,
+        }
+    }
+}
+
+/// Whether a removal was selected directly or followed from an affected ancestor.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MempoolRemovalRole {
+    Direct,
+    Descendant,
+}
+
+impl MempoolRemovalRole {
+    /// Returns the fixed low-cardinality evidence label.
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Direct => "direct",
+            Self::Descendant => "descendant",
+        }
+    }
+}
+
+/// Canonical txid/wtxid pair for one lifecycle member.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct MempoolMemberIdentity {
+    pub txid: Txid,
+    pub wtxid: Wtxid,
+}
+
+/// Final authoritative mempool membership after a committed transition.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FinalMempoolMembership {
+    Present,
+    Absent,
+}
+
+impl FinalMempoolMembership {
+    /// Returns the fixed low-cardinality evidence label.
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Present => "present",
+            Self::Absent => "absent",
+        }
+    }
+}
+
+/// Final state for one affected member.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MempoolMemberState {
+    pub member: MempoolMemberIdentity,
+    pub membership: FinalMempoolMembership,
+}
+
+/// Semantic reason that initial-broadcast retry state may be cleared.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MempoolRetryClearCause {
+    LifecycleRemoval,
+    EligibleServe,
+    TransportWritten,
+}
+
+impl MempoolRetryClearCause {
+    /// Returns the fixed low-cardinality evidence label.
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::LifecycleRemoval => "lifecycle_removal",
+            Self::EligibleServe => "eligible_serve",
+            Self::TransportWritten => "transport_written",
+        }
+    }
+
+    const fn priority(self) -> u8 {
+        match self {
+            Self::LifecycleRemoval => 0,
+            Self::TransportWritten => 1,
+            Self::EligibleServe => 2,
+        }
+    }
+}
+
+/// One committed retry-clear fact.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MempoolRetryClear {
+    pub member: MempoolMemberIdentity,
+    pub cause: MempoolRetryClearCause,
+}
+
+/// A typed contradiction encountered while assembling a lifecycle delta.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MempoolLifecycleInvariantError {
+    IdentityConflict { txid: Txid, wtxid: Wtxid },
+    MissingFinalMembership { member: MempoolMemberIdentity },
+}
+
+impl fmt::Display for MempoolLifecycleInvariantError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::IdentityConflict { txid, wtxid } => write!(
+                formatter,
+                "mempool lifecycle identity pair txid={txid:?}, wtxid={wtxid:?} conflicts with a prior pair"
+            ),
+            Self::MissingFinalMembership { member } => {
+                write!(
+                    formatter,
+                    "mempool lifecycle member {member:?} has no final membership"
+                )
+            }
+        }
+    }
+}
+
+impl std::error::Error for MempoolLifecycleInvariantError {}
+
+/// Cache-agnostic facts produced by one committed mempool transition.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct MempoolLifecycleDelta {
+    /// Admitted members in supplied transition or topological order.
+    pub admitted: Vec<MempoolMemberIdentity>,
+    /// Deterministically ordered, identity-deduplicated removals.
+    pub removed: Vec<MempoolLifecycleRemoval>,
+    /// Deterministically ordered final state for every affected member.
+    pub final_membership: Vec<MempoolMemberState>,
+    /// Deterministically ordered, identity-deduplicated retry-clear facts.
+    pub retry_clears: Vec<MempoolRetryClear>,
+}
+
+impl MempoolLifecycleDelta {
+    /// Starts a checked deterministic delta builder.
+    pub fn builder() -> MempoolLifecycleDeltaBuilder {
+        MempoolLifecycleDeltaBuilder::default()
+    }
+
+    /// Returns an empty delta for an attempt that committed no membership change.
+    pub const fn empty() -> Self {
+        Self {
+            admitted: Vec::new(),
+            removed: Vec::new(),
+            final_membership: Vec::new(),
+            retry_clears: Vec::new(),
+        }
+    }
+
+    /// Returns whether the attempt committed no lifecycle facts.
+    pub fn is_empty(&self) -> bool {
+        self.admitted.is_empty()
+            && self.removed.is_empty()
+            && self.final_membership.is_empty()
+            && self.retry_clears.is_empty()
+    }
+}
+
+/// Checked assembler for deterministic lifecycle facts.
+#[derive(Debug, Default)]
+pub struct MempoolLifecycleDeltaBuilder {
+    admitted: Vec<MempoolMemberIdentity>,
+    admitted_seen: BTreeSet<MempoolMemberIdentity>,
+    removed: BTreeMap<MempoolMemberIdentity, MempoolLifecycleRemoval>,
+    final_membership: BTreeMap<MempoolMemberIdentity, MempoolMemberState>,
+    retry_clears: BTreeMap<MempoolMemberIdentity, MempoolRetryClear>,
+    txid_identities: BTreeMap<Txid, MempoolMemberIdentity>,
+    wtxid_identities: BTreeMap<Wtxid, MempoolMemberIdentity>,
+}
+
+impl MempoolLifecycleDeltaBuilder {
+    /// Records an admitted identity while preserving first-supplied order.
+    pub fn record_admitted(
+        &mut self,
+        member: MempoolMemberIdentity,
+    ) -> Result<(), MempoolLifecycleInvariantError> {
+        self.record_identity(member)?;
+        if self.admitted_seen.insert(member) {
+            self.admitted.push(member);
+        }
+        Ok(())
+    }
+
+    /// Records one removal using stable cause precedence and direct-role precedence.
+    pub fn record_removal(
+        &mut self,
+        removal: MempoolLifecycleRemoval,
+    ) -> Result<(), MempoolLifecycleInvariantError> {
+        let member = removal.member;
+        self.record_identity(member)?;
+        self.removed
+            .entry(member)
+            .and_modify(|existing| {
+                if removal.cause.priority() < existing.cause.priority() {
+                    existing.cause = removal.cause;
+                }
+                if removal.role == MempoolRemovalRole::Direct {
+                    existing.role = MempoolRemovalRole::Direct;
+                }
+            })
+            .or_insert(removal);
+        Ok(())
+    }
+
+    /// Records one final state; absent wins contradictory duplicates deterministically.
+    pub fn record_final_membership(
+        &mut self,
+        state: MempoolMemberState,
+    ) -> Result<(), MempoolLifecycleInvariantError> {
+        self.record_identity(state.member)?;
+        self.final_membership
+            .entry(state.member)
+            .and_modify(|existing| {
+                if state.membership == FinalMempoolMembership::Absent {
+                    existing.membership = FinalMempoolMembership::Absent;
+                }
+            })
+            .or_insert(state);
+        Ok(())
+    }
+
+    /// Records one retry-clear fact with LifecycleRemoval > TransportWritten > EligibleServe.
+    pub fn record_retry_clear(
+        &mut self,
+        clear: MempoolRetryClear,
+    ) -> Result<(), MempoolLifecycleInvariantError> {
+        self.record_identity(clear.member)?;
+        self.retry_clears
+            .entry(clear.member)
+            .and_modify(|existing| {
+                if clear.cause.priority() < existing.cause.priority() {
+                    existing.cause = clear.cause;
+                }
+            })
+            .or_insert(clear);
+        Ok(())
+    }
+
+    /// Validates completeness and emits deterministic collections.
+    pub fn build(self) -> Result<MempoolLifecycleDelta, MempoolLifecycleInvariantError> {
+        for member in self
+            .admitted
+            .iter()
+            .copied()
+            .chain(self.removed.keys().copied())
+            .chain(self.retry_clears.keys().copied())
+        {
+            if !self.final_membership.contains_key(&member) {
+                return Err(MempoolLifecycleInvariantError::MissingFinalMembership { member });
+            }
+        }
+
+        Ok(MempoolLifecycleDelta {
+            admitted: self.admitted,
+            removed: self.removed.into_values().collect(),
+            final_membership: self.final_membership.into_values().collect(),
+            retry_clears: self.retry_clears.into_values().collect(),
+        })
+    }
+
+    fn record_identity(
+        &mut self,
+        identity: MempoolMemberIdentity,
+    ) -> Result<(), MempoolLifecycleInvariantError> {
+        if let Some(conflicting) = self.txid_identities.get(&identity.txid).copied()
+            && conflicting != identity
+        {
+            return Err(MempoolLifecycleInvariantError::IdentityConflict {
+                txid: identity.txid,
+                wtxid: identity.wtxid,
+            });
+        }
+        if let Some(conflicting) = self.wtxid_identities.get(&identity.wtxid).copied()
+            && conflicting != identity
+        {
+            return Err(MempoolLifecycleInvariantError::IdentityConflict {
+                txid: identity.txid,
+                wtxid: identity.wtxid,
+            });
+        }
+
+        self.txid_identities.insert(identity.txid, identity);
+        self.wtxid_identities.insert(identity.wtxid, identity);
+        Ok(())
     }
 }
 
@@ -86,9 +385,9 @@ pub struct MempoolPressureSummary {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MempoolLifecycleRemoval {
-    pub txid: Txid,
-    pub wtxid: Wtxid,
-    pub reason: MempoolLifecycleRemovalReason,
+    pub member: MempoolMemberIdentity,
+    pub cause: MempoolRemovalCause,
+    pub role: MempoolRemovalRole,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -130,12 +429,19 @@ impl Mempool {
         &mut self,
         transactions: impl IntoIterator<Item = &'a Transaction>,
     ) -> Result<MempoolLifecycleSummary, MempoolError> {
-        let mut reasons = BTreeMap::new();
+        let mut removals = BTreeMap::new();
 
         for transaction in transactions {
             let txid = transaction_txid(transaction).map_err(txid_serialization_error)?;
             if self.entries.contains_key(&txid) {
-                record_reason(&mut reasons, txid, MempoolLifecycleRemovalReason::Confirmed);
+                record_removal_fact(
+                    &mut removals,
+                    txid,
+                    MempoolRemovalFact {
+                        cause: MempoolRemovalCause::BlockConfirmation,
+                        role: MempoolRemovalRole::Direct,
+                    },
+                );
             }
 
             let mut direct_conflicts = self.direct_conflicts(transaction);
@@ -143,31 +449,37 @@ impl Mempool {
             let conflict_package =
                 collect_conflicts_and_descendants(&self.entries, &direct_conflicts);
             for conflict_txid in direct_conflicts {
-                record_reason(
-                    &mut reasons,
+                record_removal_fact(
+                    &mut removals,
                     conflict_txid,
-                    MempoolLifecycleRemovalReason::Conflict,
+                    MempoolRemovalFact {
+                        cause: MempoolRemovalCause::BlockConflict,
+                        role: MempoolRemovalRole::Direct,
+                    },
                 );
             }
             for package_txid in conflict_package {
-                record_reason(
-                    &mut reasons,
+                record_removal_fact(
+                    &mut removals,
                     package_txid,
-                    MempoolLifecycleRemovalReason::Descendant,
+                    MempoolRemovalFact {
+                        cause: MempoolRemovalCause::BlockConflict,
+                        role: MempoolRemovalRole::Descendant,
+                    },
                 );
             }
         }
 
-        if reasons.is_empty() {
+        if removals.is_empty() {
             return Ok(MempoolLifecycleSummary {
                 removed: Vec::new(),
                 pressure: self.pressure_summary(),
             });
         }
 
-        let mut removed = Vec::with_capacity(reasons.len());
-        for (txid, reason) in reasons {
-            removed.extend(remove_lifecycle_entry(&mut self.entries, txid, reason));
+        let mut removed = Vec::with_capacity(removals.len());
+        for (txid, fact) in removals {
+            removed.extend(remove_lifecycle_entry(&mut self.entries, txid, fact));
         }
 
         let state =
@@ -200,42 +512,45 @@ pub(super) fn capacity_status(
     MempoolCapacityStatus::OverCapacity
 }
 
-pub(super) fn record_reason(
-    reasons: &mut BTreeMap<Txid, MempoolLifecycleRemovalReason>,
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct MempoolRemovalFact {
+    pub cause: MempoolRemovalCause,
+    pub role: MempoolRemovalRole,
+}
+
+pub(super) fn record_removal_fact(
+    removals: &mut BTreeMap<Txid, MempoolRemovalFact>,
     txid: Txid,
-    reason: MempoolLifecycleRemovalReason,
+    fact: MempoolRemovalFact,
 ) {
-    let maybe_existing = reasons.get(&txid).copied();
-    let should_replace =
-        maybe_existing.is_none_or(|existing| reason.priority() < existing.priority());
-    if should_replace {
-        reasons.insert(txid, reason);
-    }
+    removals
+        .entry(txid)
+        .and_modify(|existing| {
+            if fact.cause.priority() < existing.cause.priority() {
+                existing.cause = fact.cause;
+            }
+            if fact.role == MempoolRemovalRole::Direct {
+                existing.role = MempoolRemovalRole::Direct;
+            }
+        })
+        .or_insert(fact);
 }
 
 pub(super) fn txid_serialization_error(source: CodecError) -> MempoolError {
     super::serialization_validation_error("transaction txid", source)
 }
 
-impl MempoolLifecycleRemovalReason {
-    pub(super) fn priority(self) -> u8 {
-        match self {
-            Self::Confirmed => 0,
-            Self::Conflict => 1,
-            Self::Descendant => 2,
-            Self::Trimmed => 3,
-        }
-    }
-}
-
 fn remove_lifecycle_entry(
     entries: &mut HashMap<Txid, MempoolEntry>,
     txid: Txid,
-    reason: MempoolLifecycleRemovalReason,
+    fact: MempoolRemovalFact,
 ) -> Option<MempoolLifecycleRemoval> {
     entries.remove(&txid).map(|entry| MempoolLifecycleRemoval {
-        txid,
-        wtxid: entry.wtxid,
-        reason,
+        member: MempoolMemberIdentity {
+            txid,
+            wtxid: entry.wtxid,
+        },
+        cause: fact.cause,
+        role: fact.role,
     })
 }
