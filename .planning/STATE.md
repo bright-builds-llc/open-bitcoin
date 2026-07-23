@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Completed 130-01-PLAN.md
-last_updated: "2026-07-23T18:28:54.353Z"
-last_activity: 2026-07-23 -- Completed Plan 130-01 resource accounting primitives
+stopped_at: Completed 130-02-PLAN.md
+last_updated: "2026-07-23T19:16:58.138Z"
+last_activity: 2026-07-23 -- Completed Plan 130-02 semantic fee roles and admission floors
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 13
-  completed_plans: 1
-  percent: 8
+  completed_plans: 2
+  percent: 15
 ---
 
 # Project State
@@ -27,25 +27,25 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 130 (Resource, Time, and Fee Primitives) — EXECUTING
-Plan: 2 of 13
-Status: Ready to execute Plan 130-02
-Last activity: 2026-07-23 -- Completed Plan 130-01 resource accounting primitives
+Plan: 3 of 13
+Status: Ready to execute Plan 130-03
+Last activity: 2026-07-23 -- Completed Plan 130-02 semantic fee roles and admission floors
 
-Progress: [█░░░░░░░░░] 8%
+Progress: [██░░░░░░░░] 15%
 
-Next action: Execute Plan 130-02
+Next action: Execute Plan 130-03
 
 ## Performance Metrics
 
 **Current milestone:**
 
-- Total plans completed: 1
-- Average duration: 50 min
-- Total execution time: 50 min
+- Total plans completed: 2
+- Average duration: 39 min
+- Total execution time: 1h 18m
 
 | Phase | Plans | Total | Avg/Plan |
 | --- | ---: | ---: | ---: |
-| 130–138 | 1 | 50 min | 50 min |
+| 130–138 | 2 | 1h 18m | 39 min |
 
 ## Accumulated Context
 
@@ -60,6 +60,9 @@ Next action: Execute Plan 130-02
 - [Phase 130]: Use deterministic Rust-owned logical mempool accounting rather than C++ allocator estimates.
 - [Phase 130]: Keep Phase 130 trimming exclusively on legacy vsize while reporting distinct accounted usage and capacity.
 - [Phase 130]: Map resource arithmetic failures to MempoolError::InternalInvariant at mutation boundaries.
+- [Phase 130]: Keep FeeRate role-neutral for wallet arithmetic while requiring semantic wrappers at mempool policy boundaries.
+- [Phase 130]: Initialize the rolling floor to zero and derive effective admission from static and rolling values at decision and summary boundaries.
+- [Phase 130]: Keep package member-static and eligible aggregate-rolling obligations independent without a generic exception switch.
 
 ### Pending Todos
 
@@ -82,6 +85,6 @@ Next action: Execute Plan 130-02
 
 ## Session Continuity
 
-Last session: 2026-07-23T18:28:54.351Z
-Stopped at: Completed 130-01-PLAN.md
+Last session: 2026-07-23T19:16:58.135Z
+Stopped at: Completed 130-02-PLAN.md
 Resume file: None
