@@ -23,8 +23,12 @@ fn lifecycle_pressure_summary_reports_capacity_and_fee_floor() {
     // Arrange
     let mempool = Mempool::new(PolicyConfig {
         mempool_capacity: MempoolCapacity::new(12_345),
-        min_relay_feerate: crate::FeeRate::from_sats_per_kvb(2_000),
-        incremental_relay_feerate: crate::FeeRate::from_sats_per_kvb(3_000),
+        static_relay_fee_rate: crate::StaticRelayFeeRate::new(crate::FeeRate::from_sats_per_kvb(
+            2_000,
+        )),
+        incremental_relay_fee_rate: crate::IncrementalRelayFeeRate::new(
+            crate::FeeRate::from_sats_per_kvb(3_000),
+        ),
         ..PolicyConfig::default()
     });
 

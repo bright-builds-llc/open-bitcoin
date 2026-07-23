@@ -100,10 +100,15 @@ impl Mempool {
             total_virtual_size: self.total_virtual_size(),
             accounted_memory: self.accounted_memory(),
             mempool_capacity: self.config.mempool_capacity,
-            min_relay_feerate_sats_per_kvb: self.config.min_relay_feerate.sats_per_kvb(),
+            min_relay_feerate_sats_per_kvb: self
+                .config
+                .static_relay_fee_rate
+                .fee_rate()
+                .sats_per_kvb(),
             incremental_relay_feerate_sats_per_kvb: self
                 .config
-                .incremental_relay_feerate
+                .incremental_relay_fee_rate
+                .fee_rate()
                 .sats_per_kvb(),
             capacity_status,
             rolling_fee_parity: RollingFeeParityStatus::Deferred,

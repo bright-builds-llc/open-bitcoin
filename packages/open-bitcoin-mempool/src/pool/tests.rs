@@ -5,6 +5,7 @@
 // - packages/bitcoin-knots/src/policy/rbf.cpp
 // - packages/bitcoin-knots/src/policy/packages.cpp
 
+mod fee_cases;
 mod lifecycle_cases;
 mod outcome_cases;
 mod resource_cases;
@@ -596,7 +597,9 @@ fn admission_maps_validation_errors_and_replacement_policy_edges() {
         TransactionInput::MAX_SEQUENCE_NONFINAL - 1,
     );
     let mut mempool = Mempool::new(PolicyConfig {
-        incremental_relay_feerate: crate::FeeRate::from_sats_per_kvb(10_000),
+        incremental_relay_fee_rate: crate::IncrementalRelayFeeRate::new(
+            crate::FeeRate::from_sats_per_kvb(10_000),
+        ),
         ..PolicyConfig::default()
     });
     submit(&mut mempool, &snapshot, original).expect("original");

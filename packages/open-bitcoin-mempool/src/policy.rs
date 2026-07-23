@@ -173,7 +173,7 @@ mod tests {
         transaction_weight_and_virtual_size, validate_standard_output,
         validate_standard_transaction,
     };
-    use crate::{PolicyConfig, types::FeeRate};
+    use crate::{FeeRate, PolicyConfig, StaticRelayFeeRate};
 
     fn script(bytes: &[u8]) -> ScriptBuf {
         ScriptBuf::from_bytes(bytes.to_vec()).expect("valid script")
@@ -297,8 +297,8 @@ mod tests {
 
         assert!(error.to_string().contains("dust"));
         assert_eq!(
-            FeeRate::from_sats_per_kvb(1000),
-            PolicyConfig::default().min_relay_feerate
+            StaticRelayFeeRate::new(FeeRate::from_sats_per_kvb(1000)),
+            PolicyConfig::default().static_relay_fee_rate
         );
     }
 

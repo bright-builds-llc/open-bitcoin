@@ -9,13 +9,11 @@ use std::collections::BTreeSet;
 
 use open_bitcoin_primitives::{Amount, Transaction, Txid, Wtxid};
 
+use crate::fee::{FeeRate, IncrementalRelayFeeRate, StaticRelayFeeRate};
 use crate::resource::{MempoolCapacity, TransactionVirtualSize};
 
-const SATOSHIS_PER_KILOVBYTE: i64 = 1_000;
-const FEE_RATE_ROUNDING_ADJUSTMENT: i64 = SATOSHIS_PER_KILOVBYTE - 1;
-
-const DEFAULT_MIN_RELAY_FEERATE_SATS_PER_KVB: i64 = SATOSHIS_PER_KILOVBYTE;
-const DEFAULT_INCREMENTAL_RELAY_FEERATE_SATS_PER_KVB: i64 = SATOSHIS_PER_KILOVBYTE;
+const DEFAULT_STATIC_RELAY_FEE_RATE_SATS_PER_KVB: i64 = 1_000;
+const DEFAULT_INCREMENTAL_RELAY_FEE_RATE_SATS_PER_KVB: i64 = 1_000;
 const DEFAULT_MAX_STANDARD_TX_WEIGHT: usize = 400_000;
 const DEFAULT_MAX_STANDARD_SIGOPS_COST: usize = 20_000;
 const DEFAULT_MAX_SCRIPT_SIG_SIZE: usize = 1_650;
@@ -27,50 +25,6 @@ const DEFAULT_MAX_DESCENDANT_VIRTUAL_SIZE: usize = 101_000;
 const DEFAULT_MEMPOOL_CAPACITY: usize = 300_000_000;
 const DEFAULT_LEGACY_VSIZE_TRIM_LIMIT: usize = 300_000_000;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct FeeRate {
-    sats_per_kvb: i64,
-}
-
-impl FeeRate {
-    pub const ZERO: Self = Self { sats_per_kvb: 0 };
-
-    pub const fn from_sats_per_kvb(sats_per_kvb: i64) -> Self {
-        Self { sats_per_kvb }
-    }
-
-    pub fn from_fee_sats_and_vbytes(fee_sats: i64, virtual_size: usize) -> Self {
-        if virtual_size == 0 {
-            return Self::ZERO;
-        }
-
-        let virtual_size = i64::try_from(virtual_size).unwrap_or(i64::MAX);
-        let sats_per_kvb =
-            (fee_sats.saturating_mul(SATOSHIS_PER_KILOVBYTE) + virtual_size - 1) / virtual_size;
-        Self { sats_per_kvb }
-    }
-
-    pub const fn sats_per_kvb(self) -> i64 {
-        self.sats_per_kvb
-    }
-
-    pub fn fee_for_virtual_size(self, virtual_size: usize) -> i64 {
-        if virtual_size == 0 {
-            return 0;
-        }
-
-        let virtual_size = i64::try_from(virtual_size).unwrap_or(i64::MAX);
-        (self.sats_per_kvb.saturating_mul(virtual_size) + FEE_RATE_ROUNDING_ADJUSTMENT)
-            / SATOSHIS_PER_KILOVBYTE
-    }
-}
-
-impl core::fmt::Display for FeeRate {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{} sat/kvB", self.sats_per_kvb)
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RbfPolicy {
     Never,
@@ -80,8 +34,8 @@ pub enum RbfPolicy {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PolicyConfig {
-    pub min_relay_feerate: FeeRate,
-    pub incremental_relay_feerate: FeeRate,
+    pub static_relay_fee_rate: StaticRelayFeeRate,
+    pub incremental_relay_fee_rate: IncrementalRelayFeeRate,
     pub rbf_policy: RbfPolicy,
     pub max_standard_tx_weight: usize,
     pub max_standard_sigops_cost: usize,
@@ -101,10 +55,12 @@ pub struct PolicyConfig {
 impl Default for PolicyConfig {
     fn default() -> Self {
         Self {
-            min_relay_feerate: FeeRate::from_sats_per_kvb(DEFAULT_MIN_RELAY_FEERATE_SATS_PER_KVB),
-            incremental_relay_feerate: FeeRate::from_sats_per_kvb(
-                DEFAULT_INCREMENTAL_RELAY_FEERATE_SATS_PER_KVB,
-            ),
+            static_relay_fee_rate: StaticRelayFeeRate::new(FeeRate::from_sats_per_kvb(
+                DEFAULT_STATIC_RELAY_FEE_RATE_SATS_PER_KVB,
+            )),
+            incremental_relay_fee_rate: IncrementalRelayFeeRate::new(FeeRate::from_sats_per_kvb(
+                DEFAULT_INCREMENTAL_RELAY_FEE_RATE_SATS_PER_KVB,
+            )),
             rbf_policy: RbfPolicy::Always,
             max_standard_tx_weight: DEFAULT_MAX_STANDARD_TX_WEIGHT,
             max_standard_sigops_cost: DEFAULT_MAX_STANDARD_SIGOPS_COST,
@@ -221,7 +177,7 @@ mod tests {
     };
 
     use super::{AggregateStats, FeeRate, MempoolEntry, PolicyConfig, RbfPolicy};
-    use crate::TransactionVirtualSize;
+    use crate::{StaticRelayFeeRate, TransactionVirtualSize};
 
     fn sample_transaction() -> Transaction {
         Transaction {
@@ -256,7 +212,10 @@ mod tests {
         let config = PolicyConfig::default();
 
         assert_eq!(config.rbf_policy, RbfPolicy::Always);
-        assert_eq!(config.min_relay_feerate, FeeRate::from_sats_per_kvb(1000));
+        assert_eq!(
+            config.static_relay_fee_rate,
+            StaticRelayFeeRate::new(FeeRate::from_sats_per_kvb(1000))
+        );
         assert_eq!(config.max_ancestor_count, 25);
         assert_eq!(config.max_descendant_virtual_size, 101_000);
     }

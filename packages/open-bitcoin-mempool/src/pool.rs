@@ -239,7 +239,7 @@ impl Mempool {
         }
 
         let candidate_feerate =
-            crate::types::FeeRate::from_fee_sats_and_vbytes(candidate_fee_sats, virtual_size);
+            crate::FeeRate::from_fee_sats_and_vbytes(candidate_fee_sats, virtual_size);
         for conflicting_txid in direct_conflicts {
             let Some(entry) = self.entries.get(conflicting_txid) else {
                 continue;
@@ -258,7 +258,8 @@ impl Mempool {
 
         let required_bump = self
             .config
-            .incremental_relay_feerate
+            .incremental_relay_fee_rate
+            .fee_rate()
             .fee_for_virtual_size(virtual_size);
         let additional_fee = candidate_fee_sats - conflicting_fee_sats;
         if additional_fee < required_bump {
@@ -366,7 +367,10 @@ fn enforce_min_relay_fee(
     fee_sats: i64,
     virtual_size: usize,
 ) -> Result<(), MempoolError> {
-    let required_fee_sats = config.min_relay_feerate.fee_for_virtual_size(virtual_size);
+    let required_fee_sats = config
+        .static_relay_fee_rate
+        .fee_rate()
+        .fee_for_virtual_size(virtual_size);
     if fee_sats < required_fee_sats {
         let fee = amount_from_fee_sats(fee_sats)?;
         return Err(MempoolError::RelayFeeTooLow {

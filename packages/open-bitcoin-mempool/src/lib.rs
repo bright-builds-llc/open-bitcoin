@@ -17,6 +17,7 @@
 //! Pure-core mempool and policy domain models for Open Bitcoin.
 
 pub mod error;
+pub mod fee;
 pub mod outcome;
 pub mod policy;
 pub mod pool;
@@ -24,6 +25,11 @@ pub mod resource;
 pub mod types;
 
 pub use error::{LimitDirection, LimitKind, MempoolError};
+pub use fee::{
+    EffectiveAdmissionFeeRate, FeeRate, IncrementalRelayFeeRate, PackageFeeFloorAssessment,
+    RollingMempoolFeeRate, StaticRelayFeeRate, effective_admission_fee_rate,
+    evaluate_package_fee_floors,
+};
 pub use outcome::{MempoolOutcome, MempoolOutcomeLabel, MempoolRejectionCategory};
 pub use policy::{
     dust_threshold_sats, signals_opt_in_rbf, transaction_sigops_cost,
@@ -38,7 +44,7 @@ pub use resource::{
     MempoolResourceLedger, ResourceAccountingError, TransactionVirtualSize,
     accounted_memory_for_entry, build_resource_ledger, recompute_resource_ledger,
 };
-pub use types::{AdmissionResult, AggregateStats, FeeRate, MempoolEntry, PolicyConfig, RbfPolicy};
+pub use types::{AdmissionResult, AggregateStats, MempoolEntry, PolicyConfig, RbfPolicy};
 
 /// Synthetic height used for in-mempool parents.
 pub const MEMPOOL_HEIGHT: u32 = 0x7fff_ffff;
