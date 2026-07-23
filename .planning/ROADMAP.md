@@ -2,7 +2,7 @@
 
 ## Current Status
 
-v2.2 Package Relay and Long-Lived Mempool Policy is planned across Phases 130–138. All 40 requirements are mapped exactly once; Phase 130 has 13 planned, 0 completed, and is ready to execute.
+v2.2 Package Relay and Long-Lived Mempool Policy is planned across Phases 130–138. All 40 requirements are mapped exactly once; Phase 130 has 13 planned, 1 completed, and Plan 130-02 is next.
 
 ## Milestones
 
@@ -55,7 +55,7 @@ v2.2 Package Relay and Long-Lived Mempool Policy is planned across Phases 130–
 **Plans**: 13 plans
 
 Plans:
-- [ ] 130-01-PLAN.md — Define distinct resource values, a versioned accounted-memory formula, cached ledger, and recomputation oracle.
+- [x] 130-01-PLAN.md — Define distinct resource values, a versioned accounted-memory formula, cached ledger, and recomputation oracle.
 - [ ] 130-02-PLAN.md — Define static, incremental, rolling, and effective fee roles with correct individual/package floor boundaries.
 - [ ] 130-03-PLAN.md — Add canonical entry metadata plus explicit admission, pressure, block, and reorg inputs.
 - [ ] 130-04-PLAN.md — Define deterministic committed lifecycle deltas with independent removal cause and role.
@@ -189,7 +189,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 | --- | ---: | --- | --- |
-| 130. Resource, Time, and Fee Primitives | 0/13 | Planned    |  |
+| 130. Resource, Time, and Fee Primitives | 1/13 | In Progress|  |
 | 131. Rolling Fee, Expiry, and Descendant Eviction Core | 0/TBD | Not started | - |
 | 132. Typed Package Vocabulary and Staged Admission | 0/TBD | Not started | - |
 | 133. Package-Aware Download and Orphan Bridge | 0/TBD | Not started | - |
