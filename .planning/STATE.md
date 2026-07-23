@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Completed 130-04-PLAN.md
-last_updated: "2026-07-23T21:54:06.426Z"
-last_activity: 2026-07-23 -- Completed Plan 130-04 deterministic committed lifecycle deltas
+stopped_at: Completed 130-05-PLAN.md
+last_updated: "2026-07-23T23:05:40.236Z"
+last_activity: 2026-07-23 -- Completed Plan 130-05 managed admission authority integration
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 13
-  completed_plans: 4
-  percent: 31
+  completed_plans: 5
+  percent: 38
 ---
 
 # Project State
@@ -27,25 +27,25 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 130 (Resource, Time, and Fee Primitives) — EXECUTING
-Plan: 5 of 13
+Plan: 6 of 13
 Status: Ready to execute
-Last activity: 2026-07-23 -- Completed Plan 130-04 deterministic committed lifecycle deltas
+Last activity: 2026-07-23 -- Completed Plan 130-05 managed admission authority integration
 
-Progress: [██░░░░░░░░] 15%
+Progress: [████░░░░░░] 38%
 
-Next action: Execute Plan 130-05
+Next action: Execute Plan 130-06
 
 ## Performance Metrics
 
 **Current milestone:**
 
-- Total plans completed: 2
-- Average duration: 39 min
-- Total execution time: 1h 18m
+- Total plans completed: 5
+- Average duration: 50 min
+- Total execution time: 4h 10m
 
 | Phase | Plans | Total | Avg/Plan |
 | --- | ---: | ---: | ---: |
-| 130–138 | 2 | 1h 18m | 39 min |
+| 130–138 | 5 | 4h 10m | 50 min |
 
 ## Accumulated Context
 
@@ -69,6 +69,9 @@ Next action: Execute Plan 130-05
 - [Phase 130]: Keep MempoolOutcome as attempt vocabulary and MempoolLifecycleDelta as committed fact vocabulary.
 - [Phase 130]: Resolve retry clears with LifecycleRemoval > TransportWritten > EligibleServe precedence.
 - [Phase 130]: Keep removal cause independent from direct-versus-descendant role.
+- [Phase 130]: Peer admission uses exact receive or reconsideration time with Peer and NotRequested metadata.
+- [Phase 130]: No-time local admission remains LegacyUnknown, RecoveryUnknown, and NotRequested until Plan 130-11 removes compatibility.
+- [Phase 130]: Bridge-owned admission cache effects consume lifecycle delta cause, role, identities, and final membership.
 
 ### Pending Todos
 
@@ -91,6 +94,6 @@ Next action: Execute Plan 130-05
 
 ## Session Continuity
 
-Last session: 2026-07-23T21:52:47.011Z
-Stopped at: Completed 130-04-PLAN.md
+Last session: 2026-07-23T23:05:40.233Z
+Stopped at: Completed 130-05-PLAN.md
 Resume file: None
