@@ -58,7 +58,7 @@ Plans:
 - [x] 130-01-PLAN.md — Define distinct resource values, a versioned accounted-memory formula, cached ledger, and recomputation oracle.
 - [x] 130-02-PLAN.md — Define static, incremental, rolling, and effective fee roles with correct individual/package floor boundaries.
 - [x] 130-03-PLAN.md — Add canonical entry metadata plus explicit admission, pressure, block, and reorg inputs.
-- [ ] 130-04-PLAN.md — Define deterministic committed lifecycle deltas with independent removal cause and role.
+- [x] 130-04-PLAN.md — Define deterministic committed lifecycle deltas with independent removal cause and role.
 - [ ] 130-05-PLAN.md — Establish exact peer/local metadata and lifecycle-delta handling in the managed node admission authority.
 - [ ] 130-06-PLAN.md — Migrate node-owned admission callers/tests to explicit time while retaining fail-closed RPC compatibility.
 - [ ] 130-07-PLAN.md — Route explicit block/reorg contexts and semantic deltas through the runtime authority.
@@ -189,7 +189,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 | --- | ---: | --- | --- |
-| 130. Resource, Time, and Fee Primitives | 3/13 | In Progress|  |
+| 130. Resource, Time, and Fee Primitives | 4/13 | In Progress|  |
 | 131. Rolling Fee, Expiry, and Descendant Eviction Core | 0/TBD | Not started | - |
 | 132. Typed Package Vocabulary and Staged Admission | 0/TBD | Not started | - |
 | 133. Package-Aware Download and Orphan Bridge | 0/TBD | Not started | - |

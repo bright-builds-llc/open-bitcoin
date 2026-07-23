@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Completed 130-03-PLAN.md
-last_updated: "2026-07-23T20:11:32.858Z"
-last_activity: 2026-07-23 -- Completed Plan 130-03 canonical entry metadata and explicit operation contexts
+stopped_at: Completed 130-04-PLAN.md
+last_updated: "2026-07-23T21:54:06.426Z"
+last_activity: 2026-07-23 -- Completed Plan 130-04 deterministic committed lifecycle deltas
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 13
-  completed_plans: 3
-  percent: 23
+  completed_plans: 4
+  percent: 31
 ---
 
 # Project State
@@ -27,13 +27,13 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 130 (Resource, Time, and Fee Primitives) — EXECUTING
-Plan: 4 of 13
+Plan: 5 of 13
 Status: Ready to execute
-Last activity: 2026-07-23 -- Completed Plan 130-03 canonical entry metadata and explicit operation contexts
+Last activity: 2026-07-23 -- Completed Plan 130-04 deterministic committed lifecycle deltas
 
 Progress: [██░░░░░░░░] 15%
 
-Next action: Execute Plan 130-04
+Next action: Execute Plan 130-05
 
 ## Performance Metrics
 
@@ -66,6 +66,9 @@ Next action: Execute Plan 130-04
 - [Phase 130]: Classify missing legacy metadata only as LegacyUnknown, RecoveryUnknown, and NotRequested; never infer local origin or current time.
 - [Phase 130]: Require local origin, requested relay intent, and current authoritative membership together for retry eligibility.
 - [Phase 130]: Keep no-context admission as a deprecated fail-closed adapter owned by Plans 130-05 and 130-11.
+- [Phase 130]: Keep MempoolOutcome as attempt vocabulary and MempoolLifecycleDelta as committed fact vocabulary.
+- [Phase 130]: Resolve retry clears with LifecycleRemoval > TransportWritten > EligibleServe precedence.
+- [Phase 130]: Keep removal cause independent from direct-versus-descendant role.
 
 ### Pending Todos
 
@@ -88,6 +91,6 @@ Next action: Execute Plan 130-04
 
 ## Session Continuity
 
-Last session: 2026-07-23T20:08:21.192Z
-Stopped at: Completed 130-03-PLAN.md
+Last session: 2026-07-23T21:52:47.011Z
+Stopped at: Completed 130-04-PLAN.md
 Resume file: None
