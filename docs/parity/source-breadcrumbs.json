@@ -601,6 +601,19 @@
       ]
     },
     {
+      "label": "mempool-resource-accounting",
+      "files": [
+        "packages/open-bitcoin-mempool/src/pool/tests/resource_cases.rs",
+        "packages/open-bitcoin-mempool/src/resource.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/txmempool.h",
+        "packages/bitcoin-knots/src/txmempool.cpp",
+        "packages/bitcoin-knots/src/rpc/mempool.cpp",
+        "packages/bitcoin-knots/test/functional/mempool_limit.py"
+      ]
+    },
+    {
       "label": "mempool-lifecycle",
       "files": [
         "packages/open-bitcoin-mempool/src/pool/lifecycle.rs",

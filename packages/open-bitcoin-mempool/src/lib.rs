@@ -20,6 +20,7 @@ pub mod error;
 pub mod outcome;
 pub mod policy;
 pub mod pool;
+pub mod resource;
 pub mod types;
 
 pub use error::{LimitDirection, LimitKind, MempoolError};
@@ -31,6 +32,11 @@ pub use policy::{
 pub use pool::{
     Mempool, MempoolCapacityStatus, MempoolLifecycleRemoval, MempoolLifecycleRemovalReason,
     MempoolLifecycleSummary, MempoolPressureSummary, RollingFeeParityStatus,
+};
+pub use resource::{
+    AccountedMempoolMemory, MEMPOOL_RESOURCE_ACCOUNTING_VERSION, MempoolCapacity,
+    MempoolResourceLedger, ResourceAccountingError, TransactionVirtualSize,
+    accounted_memory_for_entry, build_resource_ledger, recompute_resource_ledger,
 };
 pub use types::{AdmissionResult, AggregateStats, FeeRate, MempoolEntry, PolicyConfig, RbfPolicy};
 

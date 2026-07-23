@@ -7,6 +7,7 @@
 
 mod lifecycle_cases;
 mod outcome_cases;
+mod resource_cases;
 
 use open_bitcoin_chainstate::{Chainstate, ChainstateSnapshot};
 use std::collections::{BTreeSet, HashMap};
