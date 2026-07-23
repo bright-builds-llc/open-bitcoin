@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
-status: Ready to discuss
-stopped_at: Phase 130 context gathered
-last_updated: "2026-07-23T14:48:49.167Z"
-last_activity: 2026-07-22 — Created the nine-phase v2.2 roadmap and mapped all 40 requirements exactly once.
+status: ready_to_execute
+stopped_at: Phase 130 planned — 13 plans ready
+last_updated: "2026-07-23T17:05:13.364Z"
+last_activity: 2026-07-23 — Revised Phase 130 planning blockers; 13 plans ready to execute.
 progress:
   total_phases: 9
   completed_phases: 0
-  total_plans: 0
+  total_plans: 13
   completed_plans: 0
   percent: 0
 ---
@@ -27,13 +27,13 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 130 of 138 (1 of 9 milestone phases)
-Plan: —
-Status: Ready to discuss
-Last activity: 2026-07-22 — Created the nine-phase v2.2 roadmap and mapped all 40 requirements exactly once.
+Plan: 0 of 13
+Status: Ready to execute
+Last activity: 2026-07-23 -- Phase 130 planning complete
 
 Progress: [░░░░░░░░░░] 0%
 
-Next action: Run `/gsd-discuss-phase 130`.
+Next action: Run /gsd-execute-phase 130
 
 ## Performance Metrics
 

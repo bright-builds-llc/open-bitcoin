@@ -2,7 +2,7 @@
 
 ## Current Status
 
-v2.2 Package Relay and Long-Lived Mempool Policy is planned across Phases 130–138. All 40 requirements are mapped exactly once; Phase 130 is ready for discussion.
+v2.2 Package Relay and Long-Lived Mempool Policy is planned across Phases 130–138. All 40 requirements are mapped exactly once; Phase 130 has 13 planned, 0 completed, and is ready to execute.
 
 ## Milestones
 
@@ -189,7 +189,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 | --- | ---: | --- | --- |
-| 130. Resource, Time, and Fee Primitives | 0/TBD | Not started | - |
+| 130. Resource, Time, and Fee Primitives | 0/13 | Planned    |  |
 | 131. Rolling Fee, Expiry, and Descendant Eviction Core | 0/TBD | Not started | - |
 | 132. Typed Package Vocabulary and Staged Admission | 0/TBD | Not started | - |
 | 133. Package-Aware Download and Orphan Bridge | 0/TBD | Not started | - |
