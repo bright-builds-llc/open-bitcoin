@@ -52,7 +52,17 @@ v2.2 Package Relay and Long-Lived Mempool Policy is planned across Phases 130–
 3. Expiry, recovery, and retry outcomes consistently use explicit acceptance time plus typed local-origin and relay-request metadata.
 4. Contributors can reproduce admission, replacement, expiry, pressure, block, reorg, and retry decisions from explicit time, block, occupancy, and jitter inputs with stable typed outcomes.
 
-**Plans**: TBD
+**Plans**: 8 plans
+
+Plans:
+- [ ] 130-01-PLAN.md — Define distinct resource values, a versioned accounted-memory formula, cached ledger, and recomputation oracle.
+- [ ] 130-02-PLAN.md — Define static, incremental, rolling, and effective fee roles with correct individual/package floor boundaries.
+- [ ] 130-03-PLAN.md — Add canonical entry metadata plus explicit admission, pressure, block, reorg, and retry inputs.
+- [ ] 130-04-PLAN.md — Define deterministic committed lifecycle deltas with independent removal cause and role.
+- [ ] 130-05-PLAN.md — Carry exact peer/local metadata and lifecycle deltas through live admission shells.
+- [ ] 130-06-PLAN.md — Route explicit block/reorg contexts and semantic deltas through the runtime authority.
+- [ ] 130-07-PLAN.md — Preserve known snapshot metadata and decode legacy records through a fail-closed compatibility contract.
+- [ ] 130-08-PLAN.md — Correct operator resource/fee evidence and install parity and deterministic verification guardrails.
 
 ### Phase 131: Rolling Fee, Expiry, and Descendant Eviction Core
 
