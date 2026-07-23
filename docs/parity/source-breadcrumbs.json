@@ -772,6 +772,15 @@
       ]
     },
     {
+      "label": "network-initial-broadcast-retry-inputs",
+      "files": [
+        "packages/open-bitcoin-network/src/peer/transaction_relay/retry.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net_processing.cpp"
+      ]
+    },
+    {
       "label": "network-peer-permissions",
       "files": [
         "packages/open-bitcoin-network/src/inbound/permissions.rs",

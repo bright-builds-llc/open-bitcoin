@@ -62,13 +62,13 @@ pub use transaction_relay::{
     PHASE102_MAX_ORPHANS_PER_PEER, PHASE102_MAX_RECONSIDERATIONS_PER_PARENT,
     PHASE102_ORPHAN_TTL_SECONDS, PHASE104_MAX_TX_FANOUT_DRAIN_PER_PEER,
     PHASE104_MAX_TX_FANOUT_QUEUE_PER_PEER, PHASE104_TX_FANOUT_MIN_INTERVAL_SECONDS,
-    TxAnnouncementInput, TxDownloadAction, TxDownloadLocalFacts, TxDownloadPolicy,
-    TxDownloadScheduler, TxDownloadSnapshot, TxDownloadSuppressionReason, TxFanoutAction,
-    TxFanoutAdmission, TxFanoutAdmissionOutcome, TxFanoutCleanupReason, TxFanoutPeerInput,
-    TxFanoutPolicy, TxFanoutQueue, TxFanoutSnapshot, TxFanoutSuppressionReason, TxOrphanage,
-    TxParentRequestInput, TxPeerRequestSnapshot, TxRelayId, TxRelayIdentityError, TxRelayPeerMode,
-    TxServeDecision, TxServeOutcomeLabel, TxServingRecordStatus, classify_tx_serve_request,
-    defer_local_rebroadcast,
+    RetryDecisionContext, RetryJitterRangeError, RetryJitterSeconds, TxAnnouncementInput,
+    TxDownloadAction, TxDownloadLocalFacts, TxDownloadPolicy, TxDownloadScheduler,
+    TxDownloadSnapshot, TxDownloadSuppressionReason, TxFanoutAction, TxFanoutAdmission,
+    TxFanoutAdmissionOutcome, TxFanoutCleanupReason, TxFanoutPeerInput, TxFanoutPolicy,
+    TxFanoutQueue, TxFanoutSnapshot, TxFanoutSuppressionReason, TxOrphanage, TxParentRequestInput,
+    TxPeerRequestSnapshot, TxRelayId, TxRelayIdentityError, TxRelayPeerMode, TxServeDecision,
+    TxServeOutcomeLabel, TxServingRecordStatus, classify_tx_serve_request, defer_local_rebroadcast,
 };
 pub const DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER: usize = 128;
 

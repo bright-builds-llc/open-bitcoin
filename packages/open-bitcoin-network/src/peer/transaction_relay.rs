@@ -16,6 +16,7 @@ use open_bitcoin_primitives::{Hash32, InventoryType, InventoryVector, Txid, Wtxi
 use crate::error::PeerId;
 
 mod fanout;
+mod retry;
 mod scheduler;
 mod serving;
 
@@ -33,6 +34,7 @@ pub use orphanage::{
     PHASE102_MAX_ORPHANS_PER_PEER, PHASE102_MAX_RECONSIDERATIONS_PER_PARENT,
     PHASE102_ORPHAN_TTL_SECONDS, TxOrphanage,
 };
+pub use retry::{RetryDecisionContext, RetryJitterRangeError, RetryJitterSeconds};
 pub use scheduler::{
     TxAnnouncementInput, TxDownloadLocalFacts, TxDownloadScheduler, TxDownloadSnapshot,
     TxParentRequestInput, TxPeerRequestSnapshot,
