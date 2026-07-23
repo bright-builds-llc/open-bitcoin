@@ -95,10 +95,11 @@ impl From<CodecError> for ManagedNetworkError {
 pub struct ManagedMempoolInfo {
     pub transaction_count: usize,
     pub total_virtual_size: usize,
+    pub accounted_memory: usize,
+    pub mempool_capacity: usize,
     pub total_fee_sats: i64,
     pub min_relay_feerate_sats_per_kvb: i64,
     pub incremental_relay_feerate_sats_per_kvb: i64,
-    pub max_mempool_virtual_size: usize,
     pub capacity_status: MempoolCapacityStatus,
     pub rolling_fee_parity: RollingFeeParityStatus,
 }

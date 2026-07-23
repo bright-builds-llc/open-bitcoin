@@ -11,7 +11,9 @@ use open_bitcoin_primitives::{Block, Transaction, Txid, Wtxid};
 
 use super::{
     Mempool, MempoolEntry, MempoolError, collect_conflicts_and_descendants, recompute_state,
+    resource_invariant_error,
 };
+use crate::{AccountedMempoolMemory, MempoolCapacity, TransactionVirtualSize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MempoolLifecycleRemovalReason {
@@ -67,8 +69,9 @@ impl RollingFeeParityStatus {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MempoolPressureSummary {
     pub transaction_count: usize,
-    pub total_virtual_size: usize,
-    pub max_mempool_virtual_size: usize,
+    pub total_virtual_size: TransactionVirtualSize,
+    pub accounted_memory: AccountedMempoolMemory,
+    pub mempool_capacity: MempoolCapacity,
     pub min_relay_feerate_sats_per_kvb: i64,
     pub incremental_relay_feerate_sats_per_kvb: i64,
     pub capacity_status: MempoolCapacityStatus,
@@ -90,14 +93,13 @@ pub struct MempoolLifecycleSummary {
 
 impl Mempool {
     pub fn pressure_summary(&self) -> MempoolPressureSummary {
-        let capacity_status = capacity_status(
-            self.total_virtual_size,
-            self.config.max_mempool_virtual_size,
-        );
+        let capacity_status =
+            capacity_status(self.accounted_memory(), self.config.mempool_capacity);
         MempoolPressureSummary {
             transaction_count: self.entries.len(),
-            total_virtual_size: self.total_virtual_size,
-            max_mempool_virtual_size: self.config.max_mempool_virtual_size,
+            total_virtual_size: self.total_virtual_size(),
+            accounted_memory: self.accounted_memory(),
+            mempool_capacity: self.config.mempool_capacity,
             min_relay_feerate_sats_per_kvb: self.config.min_relay_feerate.sats_per_kvb(),
             incremental_relay_feerate_sats_per_kvb: self
                 .config
@@ -159,10 +161,11 @@ impl Mempool {
             removed.extend(remove_lifecycle_entry(&mut self.entries, txid, reason));
         }
 
-        let state = recompute_state(std::mem::take(&mut self.entries));
+        let state =
+            recompute_state(std::mem::take(&mut self.entries)).map_err(resource_invariant_error)?;
         self.entries = state.entries;
         self.spent_outpoints = state.spent_outpoints;
-        self.total_virtual_size = state.total_virtual_size;
+        self.resource_ledger = state.resource_ledger;
 
         Ok(MempoolLifecycleSummary {
             removed,
@@ -172,16 +175,16 @@ impl Mempool {
 }
 
 pub(super) fn capacity_status(
-    total_virtual_size: usize,
-    max_mempool_virtual_size: usize,
+    accounted_memory: AccountedMempoolMemory,
+    mempool_capacity: MempoolCapacity,
 ) -> MempoolCapacityStatus {
-    if total_virtual_size == 0 {
+    if accounted_memory == AccountedMempoolMemory::ZERO {
         return MempoolCapacityStatus::Empty;
     }
-    if total_virtual_size < max_mempool_virtual_size {
+    if accounted_memory.as_usize() < mempool_capacity.as_usize() {
         return MempoolCapacityStatus::UnderCapacity;
     }
-    if total_virtual_size == max_mempool_virtual_size {
+    if accounted_memory.as_usize() == mempool_capacity.as_usize() {
         return MempoolCapacityStatus::AtCapacity;
     }
 

@@ -15,10 +15,13 @@ use open_bitcoin_primitives::{
 
 use crate::resource::{checked_product, checked_sum};
 use crate::{
-    AccountedMempoolMemory, MEMPOOL_RESOURCE_ACCOUNTING_VERSION, MempoolCapacity, MempoolEntry,
-    MempoolResourceLedger, ResourceAccountingError, TransactionVirtualSize,
-    accounted_memory_for_entry, build_resource_ledger, recompute_resource_ledger,
+    AccountedMempoolMemory, MEMPOOL_RESOURCE_ACCOUNTING_VERSION, Mempool, MempoolCapacity,
+    MempoolEntry, MempoolError, MempoolResourceLedger, PolicyConfig, ResourceAccountingError,
+    TransactionVirtualSize, accounted_memory_for_entry, build_resource_ledger,
+    recompute_resource_ledger,
 };
+
+use super::{sample_chainstate_snapshot, spend_transaction, submit};
 
 fn sample_transaction(witness: ScriptWitness) -> Transaction {
     Transaction {
@@ -49,7 +52,7 @@ fn sample_entry(witness: ScriptWitness, virtual_size: usize) -> MempoolEntry {
         txid,
         wtxid,
         Amount::from_sats(1_000).expect("valid amount"),
-        virtual_size,
+        TransactionVirtualSize::new(virtual_size),
         400,
         1,
     )
@@ -82,7 +85,7 @@ fn witness_and_script_payloads_increase_accounted_memory() {
     let accounted = accounted_memory_for_entry(&entry).expect("entry accounts");
 
     // Assert
-    assert!(accounted.as_usize() > entry.virtual_size);
+    assert!(accounted.as_usize() > entry.virtual_size.as_usize());
 }
 
 #[test]
@@ -305,4 +308,112 @@ fn spent_index_count_overflow_fails_closed() {
             component: "total spent-outpoint accounted memory"
         }
     ));
+}
+
+#[test]
+fn cached_resource_ledger_matches_recomputation_oracle() {
+    // Arrange
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(3);
+    let original = spend_transaction(
+        coinbase_txids[0],
+        0,
+        499_999_000,
+        TransactionInput::MAX_SEQUENCE_NONFINAL - 1,
+    );
+    let original_txid = transaction_txid(&original).expect("original txid");
+    let child = spend_transaction(
+        original_txid,
+        0,
+        499_998_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let replacement = spend_transaction(
+        coinbase_txids[0],
+        0,
+        499_997_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let confirmed = spend_transaction(
+        coinbase_txids[1],
+        0,
+        499_999_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let mut mempool = Mempool::default();
+
+    // Act
+    submit(&mut mempool, &snapshot, original).expect("original");
+    assert_ledger_matches_oracle(&mempool);
+    submit(&mut mempool, &snapshot, child).expect("child");
+    assert_ledger_matches_oracle(&mempool);
+    submit(&mut mempool, &snapshot, replacement).expect("replacement");
+    assert_ledger_matches_oracle(&mempool);
+    submit(&mut mempool, &snapshot, confirmed.clone()).expect("confirmed candidate");
+    mempool
+        .remove_for_connected_transactions([&confirmed])
+        .expect("block removal");
+
+    // Assert
+    assert_ledger_matches_oracle(&mempool);
+}
+
+#[test]
+fn legacy_vsize_trim_limit_is_independent_from_accounted_capacity() {
+    // Arrange
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(3);
+    let low_fee = spend_transaction(
+        coinbase_txids[0],
+        0,
+        499_999_200,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let high_fee = spend_transaction(
+        coinbase_txids[1],
+        0,
+        499_998_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let config = PolicyConfig {
+        mempool_capacity: MempoolCapacity::new(1),
+        legacy_vsize_trim_limit: TransactionVirtualSize::new(140),
+        ..PolicyConfig::default()
+    };
+    let mut mempool = Mempool::new(config);
+
+    // Act
+    let low_fee_result = submit(&mut mempool, &snapshot, low_fee).expect("low fee");
+    let high_fee_result = submit(&mut mempool, &snapshot, high_fee).expect("high fee");
+
+    // Assert
+    assert_eq!(high_fee_result.evicted, vec![low_fee_result.accepted]);
+    assert_ledger_matches_oracle(&mempool);
+    assert_eq!(
+        PolicyConfig::default().mempool_capacity,
+        MempoolCapacity::new(300_000_000)
+    );
+    assert_eq!(
+        PolicyConfig::default().legacy_vsize_trim_limit,
+        TransactionVirtualSize::new(300_000_000)
+    );
+}
+
+fn assert_ledger_matches_oracle(mempool: &Mempool) {
+    let oracle = recompute_resource_ledger(mempool.entries(), &mempool.spent_outpoints)
+        .expect("oracle recomputation");
+    assert_eq!(mempool.resource_ledger(), oracle);
+}
+
+#[test]
+fn accounting_failure_maps_to_internal_invariant() {
+    // Arrange
+    let source = ResourceAccountingError::Overflow {
+        component: "test mapping",
+    };
+
+    // Act
+    let error = super::super::resource_invariant_error(source);
+
+    // Assert
+    assert!(matches!(error, MempoolError::InternalInvariant { .. }));
+    assert!(error.to_string().contains("test mapping"));
 }

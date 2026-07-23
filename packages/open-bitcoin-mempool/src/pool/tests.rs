@@ -22,7 +22,10 @@ use open_bitcoin_primitives::{
 };
 
 use super::Mempool;
-use crate::{LimitDirection, LimitKind, MempoolEntry, MempoolError, PolicyConfig, RbfPolicy};
+use crate::{
+    AccountedMempoolMemory, LimitDirection, LimitKind, MempoolEntry, MempoolError,
+    MempoolResourceLedger, PolicyConfig, RbfPolicy, TransactionVirtualSize,
+};
 
 const EASY_BITS: u32 = 0x207f_ffff;
 
@@ -473,7 +476,7 @@ fn evicts_lowest_descendant_score_package_when_size_limit_is_exceeded() {
         TransactionInput::SEQUENCE_FINAL,
     );
     let mut mempool = Mempool::new(PolicyConfig {
-        max_mempool_virtual_size: 140,
+        legacy_vsize_trim_limit: TransactionVirtualSize::new(140),
         ..PolicyConfig::default()
     });
 
@@ -550,7 +553,7 @@ fn direct_helper_paths_cover_internal_edge_branches() {
         candidate_txid,
         open_bitcoin_consensus::transaction_wtxid(&candidate_transaction).expect("wtxid"),
         Amount::from_sats(100).expect("amount"),
-        100,
+        TransactionVirtualSize::new(100),
         400,
         0,
     );
@@ -688,7 +691,7 @@ fn helper_functions_cover_missing_vout_and_limit_branches() {
             parent_txid,
             parent_wtxid,
             Amount::from_sats(1000).expect("amount"),
-            100,
+            TransactionVirtualSize::new(100),
             400,
             0,
         ),
@@ -723,12 +726,13 @@ fn helper_functions_cover_missing_vout_and_limit_branches() {
         ))
         .expect("wtxid"),
         Amount::from_sats(1000).expect("amount"),
-        100,
+        TransactionVirtualSize::new(100),
         400,
         0,
     );
     let mut descendant_parent = candidate.clone();
-    descendant_parent.descendant_stats = crate::AggregateStats::new(2, 200, 2_000);
+    descendant_parent.descendant_stats =
+        crate::AggregateStats::new(2, TransactionVirtualSize::new(200), 2_000);
     let oversized_ancestor = super::validate_limits(
         &HashMap::from([(candidate_txid, candidate.clone())]),
         &PolicyConfig {
@@ -758,7 +762,8 @@ fn helper_functions_cover_missing_vout_and_limit_branches() {
     ));
 
     let mut descendant_size_parent = candidate;
-    descendant_size_parent.descendant_stats = crate::AggregateStats::new(1, 200, 1_000);
+    descendant_size_parent.descendant_stats =
+        crate::AggregateStats::new(1, TransactionVirtualSize::new(200), 1_000);
     let descendant_size = super::validate_limits(
         &HashMap::from([(candidate_txid, descendant_size_parent)]),
         &PolicyConfig {
@@ -780,14 +785,17 @@ fn trim_and_graph_helpers_cover_remaining_internal_branches() {
         super::MempoolState {
             entries: HashMap::new(),
             spent_outpoints: HashMap::new(),
-            total_virtual_size: 1,
+            resource_ledger: MempoolResourceLedger::new(
+                TransactionVirtualSize::new(1),
+                AccountedMempoolMemory::ZERO,
+            ),
         },
         &PolicyConfig {
-            max_mempool_virtual_size: 0,
+            legacy_vsize_trim_limit: TransactionVirtualSize::ZERO,
             ..PolicyConfig::default()
         },
     );
-    assert!(empty_trimmed.1.is_empty());
+    assert!(empty_trimmed.expect("empty trim").1.is_empty());
 
     let base = spend_transaction(
         Txid::from_byte_array([1_u8; 32]),
@@ -824,7 +832,7 @@ fn trim_and_graph_helpers_cover_remaining_internal_branches() {
                 base_txid,
                 base_wtxid,
                 Amount::from_sats(1000).expect("amount"),
-                100,
+                TransactionVirtualSize::new(100),
                 400,
                 0,
             ),
@@ -836,7 +844,7 @@ fn trim_and_graph_helpers_cover_remaining_internal_branches() {
                 left_txid,
                 left_wtxid,
                 Amount::from_sats(1000).expect("amount"),
-                100,
+                TransactionVirtualSize::new(100),
                 400,
                 0,
             ),
@@ -848,7 +856,7 @@ fn trim_and_graph_helpers_cover_remaining_internal_branches() {
                 right_txid,
                 right_wtxid,
                 Amount::from_sats(1000).expect("amount"),
-                100,
+                TransactionVirtualSize::new(100),
                 400,
                 0,
             ),
@@ -860,13 +868,13 @@ fn trim_and_graph_helpers_cover_remaining_internal_branches() {
                 leaf_txid,
                 leaf_wtxid,
                 Amount::from_sats(1000).expect("amount"),
-                100,
+                TransactionVirtualSize::new(100),
                 400,
                 0,
             ),
         ),
     ]);
-    let recomputed = super::recompute_state(entries);
+    let recomputed = super::recompute_state(entries).expect("recompute");
     let ancestors = super::collect_ancestors(&recomputed.entries, leaf_txid);
     let descendants = super::collect_descendants(&recomputed.entries, base_txid);
     assert!(ancestors.contains(&base_txid));
@@ -892,16 +900,16 @@ fn recompute_state_skips_invalid_parent_links_and_candidate_eviction_is_reported
         ))
         .expect("wtxid"),
         Amount::from_sats(100).expect("amount"),
-        100,
+        TransactionVirtualSize::new(100),
         400,
         0,
     );
-    let state = super::recompute_state(HashMap::from([(txid, invalid_parent)]));
+    let state = super::recompute_state(HashMap::from([(txid, invalid_parent)])).expect("recompute");
     assert!(state.entries.get(&txid).expect("entry").parents.is_empty());
 
     let (snapshot, coinbase_txids) = sample_chainstate_snapshot(2);
     let mut mempool = Mempool::new(PolicyConfig {
-        max_mempool_virtual_size: 1,
+        legacy_vsize_trim_limit: TransactionVirtualSize::new(1),
         ..PolicyConfig::default()
     });
     let error = submit(
@@ -951,7 +959,7 @@ fn validate_limits_reports_missing_ancestor_as_internal_invariant() {
         candidate_txid,
         open_bitcoin_consensus::transaction_wtxid(&transaction).expect("wtxid"),
         Amount::from_sats(100).expect("amount"),
-        100,
+        TransactionVirtualSize::new(100),
         400,
         0,
     );

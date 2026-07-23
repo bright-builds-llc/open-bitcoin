@@ -9,6 +9,8 @@ use std::collections::BTreeSet;
 
 use open_bitcoin_primitives::{Amount, Transaction, Txid, Wtxid};
 
+use crate::resource::{MempoolCapacity, TransactionVirtualSize};
+
 const SATOSHIS_PER_KILOVBYTE: i64 = 1_000;
 const FEE_RATE_ROUNDING_ADJUSTMENT: i64 = SATOSHIS_PER_KILOVBYTE - 1;
 
@@ -22,7 +24,8 @@ const DEFAULT_MAX_ANCESTOR_COUNT: usize = 25;
 const DEFAULT_MAX_ANCESTOR_VIRTUAL_SIZE: usize = 101_000;
 const DEFAULT_MAX_DESCENDANT_COUNT: usize = 25;
 const DEFAULT_MAX_DESCENDANT_VIRTUAL_SIZE: usize = 101_000;
-const DEFAULT_MAX_MEMPOOL_VIRTUAL_SIZE: usize = 300_000_000;
+const DEFAULT_MEMPOOL_CAPACITY: usize = 300_000_000;
+const DEFAULT_LEGACY_VSIZE_TRIM_LIMIT: usize = 300_000_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FeeRate {
@@ -90,7 +93,9 @@ pub struct PolicyConfig {
     pub max_ancestor_virtual_size: usize,
     pub max_descendant_count: usize,
     pub max_descendant_virtual_size: usize,
-    pub max_mempool_virtual_size: usize,
+    pub mempool_capacity: MempoolCapacity,
+    /// Transitional vsize enforcement seam removed by Phase 131.
+    pub legacy_vsize_trim_limit: TransactionVirtualSize,
 }
 
 impl Default for PolicyConfig {
@@ -111,7 +116,8 @@ impl Default for PolicyConfig {
             max_ancestor_virtual_size: DEFAULT_MAX_ANCESTOR_VIRTUAL_SIZE,
             max_descendant_count: DEFAULT_MAX_DESCENDANT_COUNT,
             max_descendant_virtual_size: DEFAULT_MAX_DESCENDANT_VIRTUAL_SIZE,
-            max_mempool_virtual_size: DEFAULT_MAX_MEMPOOL_VIRTUAL_SIZE,
+            mempool_capacity: MempoolCapacity::new(DEFAULT_MEMPOOL_CAPACITY),
+            legacy_vsize_trim_limit: TransactionVirtualSize::new(DEFAULT_LEGACY_VSIZE_TRIM_LIMIT),
         }
     }
 }
@@ -119,12 +125,16 @@ impl Default for PolicyConfig {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AggregateStats {
     pub count: usize,
-    pub virtual_size: usize,
+    pub virtual_size: TransactionVirtualSize,
     pub total_fee_sats: i64,
 }
 
 impl AggregateStats {
-    pub const fn new(count: usize, virtual_size: usize, total_fee_sats: i64) -> Self {
+    pub const fn new(
+        count: usize,
+        virtual_size: TransactionVirtualSize,
+        total_fee_sats: i64,
+    ) -> Self {
         Self {
             count,
             virtual_size,
@@ -139,7 +149,7 @@ pub struct MempoolEntry {
     pub txid: Txid,
     pub wtxid: Wtxid,
     pub fee: Amount,
-    pub virtual_size: usize,
+    pub virtual_size: TransactionVirtualSize,
     pub weight: usize,
     pub sigops_cost: usize,
     pub parents: BTreeSet<Txid>,
@@ -154,7 +164,7 @@ impl MempoolEntry {
         txid: Txid,
         wtxid: Wtxid,
         fee: Amount,
-        virtual_size: usize,
+        virtual_size: TransactionVirtualSize,
         weight: usize,
         sigops_cost: usize,
     ) -> Self {
@@ -179,14 +189,14 @@ impl MempoolEntry {
     }
 
     pub fn fee_rate(&self) -> FeeRate {
-        FeeRate::from_fee_sats_and_vbytes(self.fee_sats(), self.virtual_size)
+        FeeRate::from_fee_sats_and_vbytes(self.fee_sats(), self.virtual_size.as_usize())
     }
 
     pub fn descendant_score(&self) -> FeeRate {
         let self_rate = self.fee_rate();
         let descendant_rate = FeeRate::from_fee_sats_and_vbytes(
             self.descendant_stats.total_fee_sats,
-            self.descendant_stats.virtual_size,
+            self.descendant_stats.virtual_size.as_usize(),
         );
         if descendant_rate > self_rate {
             descendant_rate
@@ -211,6 +221,7 @@ mod tests {
     };
 
     use super::{AggregateStats, FeeRate, MempoolEntry, PolicyConfig, RbfPolicy};
+    use crate::TransactionVirtualSize;
 
     fn sample_transaction() -> Transaction {
         Transaction {
@@ -258,13 +269,16 @@ mod tests {
             Txid::from_byte_array([2_u8; 32]),
             Wtxid::from_byte_array([3_u8; 32]),
             fee,
-            100,
+            TransactionVirtualSize::new(100),
             400,
             4,
         );
 
         assert_eq!(entry.ancestor_stats.count, 1);
-        assert_eq!(entry.descendant_stats.virtual_size, 100);
+        assert_eq!(
+            entry.descendant_stats.virtual_size,
+            TransactionVirtualSize::new(100)
+        );
         assert_eq!(entry.descendant_score(), FeeRate::from_sats_per_kvb(2000));
     }
 
@@ -286,11 +300,11 @@ mod tests {
             Txid::from_byte_array([4_u8; 32]),
             Wtxid::from_byte_array([5_u8; 32]),
             fee,
-            100,
+            TransactionVirtualSize::new(100),
             400,
             4,
         );
-        entry.descendant_stats = AggregateStats::new(2, 150, 600);
+        entry.descendant_stats = AggregateStats::new(2, TransactionVirtualSize::new(150), 600);
 
         assert_eq!(
             entry.descendant_score(),

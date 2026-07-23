@@ -64,7 +64,7 @@ fn run_once() -> Result<(), BenchError> {
             "accepted transaction was not stored in the mempool",
         ));
     }
-    if mempool.total_virtual_size() != virtual_size {
+    if mempool.total_virtual_size().as_usize() != virtual_size {
         return Err(BenchError::case_failed(
             CASE_ID,
             "mempool virtual size did not match policy calculation",

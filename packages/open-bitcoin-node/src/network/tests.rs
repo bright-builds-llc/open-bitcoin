@@ -2722,6 +2722,8 @@ fn managed_network_info_exposes_rpc_projection_helpers() {
     assert_eq!(maybe_tip.expect("tip").height, 1);
     assert_eq!(mempool_info.transaction_count, 1);
     assert_eq!(mempool_info.total_virtual_size, expected_virtual_size);
+    assert!(mempool_info.accounted_memory > mempool_info.total_virtual_size);
+    assert_eq!(mempool_info.mempool_capacity, 300_000_000);
     assert_eq!(mempool_info.total_fee_sats, 1_000);
     assert_eq!(network_info.connected_peers, 2);
     assert_eq!(network_info.inbound_peers, 1);

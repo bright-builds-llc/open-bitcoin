@@ -188,7 +188,7 @@ impl MempoolResourceLedger {
     ) -> Result<(), ResourceAccountingError> {
         let vsize_component = "total transaction virtual size";
         let memory_component = "total entry accounted memory";
-        let virtual_size = TransactionVirtualSize::new(entry.virtual_size);
+        let virtual_size = entry.virtual_size;
         self.total_virtual_size = self
             .total_virtual_size
             .checked_add(virtual_size, vsize_component)?;
@@ -307,7 +307,7 @@ fn checked_oracle_entry(
     totals: (TransactionVirtualSize, AccountedMempoolMemory),
     entry: &MempoolEntry,
 ) -> Result<(TransactionVirtualSize, AccountedMempoolMemory), ResourceAccountingError> {
-    let virtual_size = TransactionVirtualSize::new(entry.virtual_size);
+    let virtual_size = entry.virtual_size;
     let total_virtual_size = totals
         .0
         .checked_add(virtual_size, "oracle total transaction virtual size")?;

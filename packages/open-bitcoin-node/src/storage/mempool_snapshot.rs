@@ -63,7 +63,7 @@ impl MempoolSnapshot {
                 wtxid: entry.wtxid,
                 transaction: entry.transaction.clone(),
                 fee_sats: entry.fee_sats(),
-                virtual_size: entry.virtual_size,
+                virtual_size: entry.virtual_size.as_usize(),
             })
             .collect::<Vec<_>>();
         records.sort_by_key(|record| record.txid);

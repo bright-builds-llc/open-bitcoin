@@ -13,7 +13,7 @@ use open_bitcoin_primitives::{
 use super::{non_standard_spend, sample_chainstate_snapshot, script, spend_transaction, submit};
 use crate::{
     LimitDirection, LimitKind, Mempool, MempoolError, MempoolOutcome, MempoolOutcomeLabel,
-    MempoolRejectionCategory, PolicyConfig, RbfPolicy,
+    MempoolRejectionCategory, PolicyConfig, RbfPolicy, TransactionVirtualSize,
 };
 
 #[test]
@@ -378,7 +378,7 @@ fn accepted_duplicate_orphan_replaced_evicted_and_rejected_outcomes_are_typed() 
         transaction
     };
     let mut evicting_mempool = Mempool::new(PolicyConfig {
-        max_mempool_virtual_size: 1,
+        legacy_vsize_trim_limit: TransactionVirtualSize::new(1),
         ..PolicyConfig::default()
     });
 
@@ -586,7 +586,7 @@ fn replacement_outcome_distinguishes_replaced_and_evicted_transactions() {
     let (snapshot, coinbase_txids) = sample_chainstate_snapshot(4);
     let mut mempool = Mempool::new(PolicyConfig {
         rbf_policy: RbfPolicy::Always,
-        max_mempool_virtual_size: 190,
+        legacy_vsize_trim_limit: TransactionVirtualSize::new(190),
         ..PolicyConfig::default()
     });
     let original = spend_transaction(
@@ -834,7 +834,7 @@ fn no_partial_mutation_for_candidate_evicted() {
     // Arrange
     let (snapshot, coinbase_txids) = sample_chainstate_snapshot(1);
     let mut mempool = Mempool::new(PolicyConfig {
-        max_mempool_virtual_size: 1,
+        legacy_vsize_trim_limit: TransactionVirtualSize::new(1),
         ..PolicyConfig::default()
     });
     let candidate = spend_transaction(
@@ -901,7 +901,7 @@ impl MempoolAdmissionSnapshot {
             parents,
             children,
             spent_outpoints,
-            total_virtual_size: mempool.total_virtual_size(),
+            total_virtual_size: mempool.total_virtual_size().as_usize(),
         }
     }
 }

@@ -11,9 +11,10 @@ use open_bitcoin_consensus::{
     ConsensusParams, ScriptVerifyFlags, block_merkle_root, check_block_header, transaction_txid,
 };
 use open_bitcoin_mempool::{
-    LimitDirection, LimitKind, Mempool, MempoolCapacityStatus, MempoolError,
-    MempoolLifecycleRemoval, MempoolLifecycleRemovalReason, MempoolLifecycleSummary,
-    MempoolPressureSummary, PolicyConfig, RbfPolicy, RollingFeeParityStatus,
+    AccountedMempoolMemory, LimitDirection, LimitKind, Mempool, MempoolCapacity,
+    MempoolCapacityStatus, MempoolError, MempoolLifecycleRemoval, MempoolLifecycleRemovalReason,
+    MempoolLifecycleSummary, MempoolPressureSummary, PolicyConfig, RbfPolicy,
+    RollingFeeParityStatus, TransactionVirtualSize,
 };
 use open_bitcoin_primitives::{
     Amount, Block, BlockHash, BlockHeader, OutPoint, ScriptBuf, ScriptWitness, Transaction,
@@ -278,7 +279,7 @@ fn ancestor_limit_and_eviction_truths_hold_through_public_api() {
     ));
 
     let mut trim_mempool = Mempool::new(PolicyConfig {
-        max_mempool_virtual_size: 140,
+        legacy_vsize_trim_limit: TransactionVirtualSize::new(140),
         ..PolicyConfig::default()
     });
     let low_fee_result = submit(
@@ -368,8 +369,9 @@ fn lifecycle_cleanup_and_pressure_truths_hold_through_public_api() {
     };
     let pressure = MempoolPressureSummary {
         transaction_count: 1,
-        total_virtual_size: 2,
-        max_mempool_virtual_size: 1,
+        total_virtual_size: TransactionVirtualSize::new(2),
+        accounted_memory: AccountedMempoolMemory::new(3),
+        mempool_capacity: MempoolCapacity::new(1),
         min_relay_feerate_sats_per_kvb: 1_000,
         incremental_relay_feerate_sats_per_kvb: 1_000,
         capacity_status: MempoolCapacityStatus::OverCapacity,

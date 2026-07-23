@@ -16,7 +16,7 @@ use open_bitcoin_core::{
     consensus::{block_hash, block_merkle_root, transaction_txid, transaction_wtxid},
     primitives::{Block, BlockHash, InventoryType, InventoryVector, Transaction, Txid, Wtxid},
 };
-use open_bitcoin_mempool::PolicyConfig;
+use open_bitcoin_mempool::{PolicyConfig, TransactionVirtualSize};
 use open_bitcoin_network::{InventoryList, RelayActivationConfig, WireNetworkMessage};
 
 use super::{
@@ -239,7 +239,7 @@ fn managed_recovery_drops_non_accepted_records_from_serving_and_fanout() {
             1_084,
             2,
             PolicyConfig {
-                max_mempool_virtual_size: 1,
+                legacy_vsize_trim_limit: TransactionVirtualSize::new(1),
                 ..PolicyConfig::default()
             },
         );

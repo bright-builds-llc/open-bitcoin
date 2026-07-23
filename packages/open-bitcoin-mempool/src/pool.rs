@@ -16,7 +16,8 @@ use open_bitcoin_primitives::{OutPoint, Transaction, Txid};
 
 use crate::{
     AdmissionResult, LimitDirection, LimitKind, MEMPOOL_HEIGHT, MempoolEntry, MempoolError,
-    MempoolOutcome, PolicyConfig, RbfPolicy, signals_opt_in_rbf, transaction_sigops_cost,
+    MempoolOutcome, MempoolResourceLedger, PolicyConfig, RbfPolicy, ResourceAccountingError,
+    TransactionVirtualSize, build_resource_ledger, signals_opt_in_rbf, transaction_sigops_cost,
     transaction_weight_and_virtual_size, validate_standard_transaction,
 };
 
@@ -33,7 +34,7 @@ pub use lifecycle::{
 struct MempoolState {
     entries: HashMap<Txid, MempoolEntry>,
     spent_outpoints: HashMap<OutPoint, Txid>,
-    total_virtual_size: usize,
+    resource_ledger: MempoolResourceLedger,
 }
 
 #[derive(Debug, Clone)]
@@ -41,7 +42,7 @@ pub struct Mempool {
     config: PolicyConfig,
     entries: HashMap<Txid, MempoolEntry>,
     spent_outpoints: HashMap<OutPoint, Txid>,
-    total_virtual_size: usize,
+    resource_ledger: MempoolResourceLedger,
 }
 
 impl Default for Mempool {
@@ -56,7 +57,7 @@ impl Mempool {
             config,
             entries: HashMap::new(),
             spent_outpoints: HashMap::new(),
-            total_virtual_size: 0,
+            resource_ledger: MempoolResourceLedger::ZERO,
         }
     }
 
@@ -72,8 +73,16 @@ impl Mempool {
         self.entries.get(txid)
     }
 
-    pub fn total_virtual_size(&self) -> usize {
-        self.total_virtual_size
+    pub const fn resource_ledger(&self) -> MempoolResourceLedger {
+        self.resource_ledger
+    }
+
+    pub const fn total_virtual_size(&self) -> TransactionVirtualSize {
+        self.resource_ledger.total_virtual_size()
+    }
+
+    pub const fn accounted_memory(&self) -> crate::AccountedMempoolMemory {
+        self.resource_ledger.accounted_memory()
     }
 
     pub fn accept_transaction(
@@ -90,7 +99,8 @@ impl Mempool {
         }
 
         let input_contexts = derive_input_contexts(&transaction, chainstate, &self.entries)?;
-        let (weight, virtual_size) = transaction_weight_and_virtual_size(&transaction)?;
+        let (weight, virtual_size_bytes) = transaction_weight_and_virtual_size(&transaction)?;
+        let virtual_size = TransactionVirtualSize::new(virtual_size_bytes);
         let sigops_cost = transaction_sigops_cost(&transaction, &input_contexts)?;
         validate_standard_transaction(
             &transaction,
@@ -107,8 +117,8 @@ impl Mempool {
                 reason: source.to_string(),
             },
         )?;
-        enforce_min_relay_fee(&self.config, fee.to_sats(), virtual_size)?;
-        let replace_set = self.replacement_set(&transaction, fee.to_sats(), virtual_size)?;
+        enforce_min_relay_fee(&self.config, fee.to_sats(), virtual_size_bytes)?;
+        let replace_set = self.replacement_set(&transaction, fee.to_sats(), virtual_size_bytes)?;
 
         let wtxid = transaction_wtxid(&transaction)
             .map_err(|source| serialization_validation_error("transaction wtxid", source))?;
@@ -129,16 +139,17 @@ impl Mempool {
             ),
         );
 
-        let prospective_state = recompute_state(prospective_entries);
+        let prospective_state =
+            recompute_state(prospective_entries).map_err(resource_invariant_error)?;
         validate_limits(&prospective_state.entries, &self.config, txid)?;
-        let (trimmed_state, evicted) = trim_to_size(prospective_state, &self.config);
+        let (trimmed_state, evicted) = trim_to_size(prospective_state, &self.config)?;
         if !trimmed_state.entries.contains_key(&txid) {
             return Err(MempoolError::CandidateEvicted { txid });
         }
 
         self.entries = trimmed_state.entries;
         self.spent_outpoints = trimmed_state.spent_outpoints;
-        self.total_virtual_size = trimmed_state.total_virtual_size;
+        self.resource_ledger = trimmed_state.resource_ledger;
 
         Ok(AdmissionResult {
             accepted: txid,
@@ -407,12 +418,12 @@ fn validate_limits(
             max: config.max_ancestor_count,
         });
     }
-    if candidate_entry.ancestor_stats.virtual_size > config.max_ancestor_virtual_size {
+    if candidate_entry.ancestor_stats.virtual_size.as_usize() > config.max_ancestor_virtual_size {
         return Err(MempoolError::LimitExceeded {
             direction: LimitDirection::Ancestor,
             kind: LimitKind::VirtualSize,
             txid: None,
-            attempted: candidate_entry.ancestor_stats.virtual_size,
+            attempted: candidate_entry.ancestor_stats.virtual_size.as_usize(),
             max: config.max_ancestor_virtual_size,
         });
     }
@@ -437,12 +448,12 @@ fn validate_limits(
                 max: config.max_descendant_count,
             });
         }
-        if entry.descendant_stats.virtual_size > config.max_descendant_virtual_size {
+        if entry.descendant_stats.virtual_size.as_usize() > config.max_descendant_virtual_size {
             return Err(MempoolError::LimitExceeded {
                 direction: LimitDirection::Descendant,
                 kind: LimitKind::VirtualSize,
                 txid: Some(ancestor_txid),
-                attempted: entry.descendant_stats.virtual_size,
+                attempted: entry.descendant_stats.virtual_size.as_usize(),
                 max: config.max_descendant_virtual_size,
             });
         }
@@ -451,10 +462,13 @@ fn validate_limits(
     Ok(())
 }
 
-fn trim_to_size(mut state: MempoolState, config: &PolicyConfig) -> (MempoolState, BTreeSet<Txid>) {
+fn trim_to_size(
+    mut state: MempoolState,
+    config: &PolicyConfig,
+) -> Result<(MempoolState, BTreeSet<Txid>), MempoolError> {
     let mut evicted = BTreeSet::new();
 
-    while state.total_virtual_size > config.max_mempool_virtual_size {
+    while state.resource_ledger.total_virtual_size() > config.legacy_vsize_trim_limit {
         let Some(victim_txid) = select_eviction_candidate(&state.entries) else {
             break;
         };
@@ -464,10 +478,10 @@ fn trim_to_size(mut state: MempoolState, config: &PolicyConfig) -> (MempoolState
             state.entries.remove(txid);
             evicted.insert(*txid);
         }
-        state = recompute_state(state.entries);
+        state = recompute_state(state.entries).map_err(resource_invariant_error)?;
     }
 
-    (state, evicted)
+    Ok((state, evicted))
 }
 
 fn select_eviction_candidate(entries: &HashMap<Txid, MempoolEntry>) -> Option<Txid> {
@@ -482,7 +496,9 @@ fn select_eviction_candidate(entries: &HashMap<Txid, MempoolEntry>) -> Option<Tx
         .map(|(txid, _entry)| *txid)
 }
 
-fn recompute_state(mut entries: HashMap<Txid, MempoolEntry>) -> MempoolState {
+fn recompute_state(
+    mut entries: HashMap<Txid, MempoolEntry>,
+) -> Result<MempoolState, ResourceAccountingError> {
     for entry in entries.values_mut() {
         entry.parents.clear();
         entry.children.clear();
@@ -519,40 +535,36 @@ fn recompute_state(mut entries: HashMap<Txid, MempoolEntry>) -> MempoolState {
         }
     }
 
-    let total_virtual_size = entries
-        .values()
-        .map(|entry| entry.virtual_size)
-        .sum::<usize>();
     let updates = entries
         .iter()
         .map(|(txid, existing_entry)| {
             let ancestors = collect_ancestors(&entries, *txid);
             let descendants = collect_descendants(&entries, *txid);
-            let ancestor_virtual_size = existing_entry.virtual_size
-                + ancestors
-                    .iter()
-                    .filter_map(|ancestor_txid| entries.get(ancestor_txid))
-                    .map(|ancestor| ancestor.virtual_size)
-                    .sum::<usize>();
+            let ancestor_virtual_size = ancestors
+                .iter()
+                .filter_map(|ancestor_txid| entries.get(ancestor_txid))
+                .try_fold(existing_entry.virtual_size, |total, ancestor| {
+                    total.checked_add(ancestor.virtual_size, "ancestor aggregate virtual size")
+                })?;
             let ancestor_fee_sats = existing_entry.fee_sats()
                 + ancestors
                     .iter()
                     .filter_map(|ancestor_txid| entries.get(ancestor_txid))
                     .map(MempoolEntry::fee_sats)
                     .sum::<i64>();
-            let descendant_virtual_size = existing_entry.virtual_size
-                + descendants
-                    .iter()
-                    .filter_map(|descendant_txid| entries.get(descendant_txid))
-                    .map(|descendant| descendant.virtual_size)
-                    .sum::<usize>();
+            let descendant_virtual_size = descendants
+                .iter()
+                .filter_map(|descendant_txid| entries.get(descendant_txid))
+                .try_fold(existing_entry.virtual_size, |total, descendant| {
+                    total.checked_add(descendant.virtual_size, "descendant aggregate virtual size")
+                })?;
             let descendant_fee_sats = existing_entry.fee_sats()
                 + descendants
                     .iter()
                     .filter_map(|descendant_txid| entries.get(descendant_txid))
                     .map(MempoolEntry::fee_sats)
                     .sum::<i64>();
-            (
+            Ok((
                 *txid,
                 crate::AggregateStats::new(
                     ancestors.len().saturating_add(1),
@@ -564,9 +576,9 @@ fn recompute_state(mut entries: HashMap<Txid, MempoolEntry>) -> MempoolState {
                     descendant_virtual_size,
                     descendant_fee_sats,
                 ),
-            )
+            ))
         })
-        .collect::<Vec<_>>();
+        .collect::<Result<Vec<_>, ResourceAccountingError>>()?;
     for (txid, ancestor_stats, descendant_stats) in updates {
         entries.entry(txid).and_modify(|entry| {
             entry.ancestor_stats = ancestor_stats;
@@ -574,10 +586,17 @@ fn recompute_state(mut entries: HashMap<Txid, MempoolEntry>) -> MempoolState {
         });
     }
 
-    MempoolState {
+    let resource_ledger = build_resource_ledger(&entries, &spent_outpoints)?;
+    Ok(MempoolState {
         entries,
         spent_outpoints,
-        total_virtual_size,
+        resource_ledger,
+    })
+}
+
+pub(super) fn resource_invariant_error(source: ResourceAccountingError) -> MempoolError {
+    MempoolError::InternalInvariant {
+        reason: source.to_string(),
     }
 }
 

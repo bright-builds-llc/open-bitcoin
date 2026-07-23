@@ -104,9 +104,9 @@ pub(super) fn get_mempool_info(
     Ok(GetMempoolInfoResponse {
         size: info.transaction_count,
         bytes: info.total_virtual_size,
-        usage: info.total_virtual_size,
+        usage: info.accounted_memory,
         total_fee_sats: info.total_fee_sats,
-        maxmempool: info.max_mempool_virtual_size,
+        maxmempool: info.mempool_capacity,
         mempoolminfee: info.min_relay_feerate_sats_per_kvb,
         minrelaytxfee: info.min_relay_feerate_sats_per_kvb,
         loaded: true,

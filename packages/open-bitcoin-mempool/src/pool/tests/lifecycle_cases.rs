@@ -13,15 +13,16 @@ use open_bitcoin_primitives::{BlockHash, TransactionInput, Txid};
 use super::super::lifecycle::{capacity_status, record_reason, txid_serialization_error};
 use super::{build_block, sample_chainstate_snapshot, spend_transaction, submit};
 use crate::{
-    Mempool, MempoolCapacityStatus, MempoolError, MempoolLifecycleRemovalReason, PolicyConfig,
-    RollingFeeParityStatus, transaction_weight_and_virtual_size,
+    AccountedMempoolMemory, Mempool, MempoolCapacity, MempoolCapacityStatus, MempoolError,
+    MempoolLifecycleRemovalReason, PolicyConfig, RollingFeeParityStatus, TransactionVirtualSize,
+    transaction_weight_and_virtual_size,
 };
 
 #[test]
 fn lifecycle_pressure_summary_reports_capacity_and_fee_floor() {
     // Arrange
     let mempool = Mempool::new(PolicyConfig {
-        max_mempool_virtual_size: 12_345,
+        mempool_capacity: MempoolCapacity::new(12_345),
         min_relay_feerate: crate::FeeRate::from_sats_per_kvb(2_000),
         incremental_relay_feerate: crate::FeeRate::from_sats_per_kvb(3_000),
         ..PolicyConfig::default()
@@ -32,8 +33,9 @@ fn lifecycle_pressure_summary_reports_capacity_and_fee_floor() {
 
     // Assert
     assert_eq!(summary.transaction_count, 0);
-    assert_eq!(summary.total_virtual_size, 0);
-    assert_eq!(summary.max_mempool_virtual_size, 12_345);
+    assert_eq!(summary.total_virtual_size, TransactionVirtualSize::ZERO);
+    assert_eq!(summary.accounted_memory, AccountedMempoolMemory::ZERO);
+    assert_eq!(summary.mempool_capacity, MempoolCapacity::new(12_345));
     assert_eq!(summary.min_relay_feerate_sats_per_kvb, 2_000);
     assert_eq!(summary.incremental_relay_feerate_sats_per_kvb, 3_000);
     assert_eq!(summary.capacity_status, MempoolCapacityStatus::Empty);
@@ -67,7 +69,10 @@ fn lifecycle_labels_and_capacity_statuses_are_stable() {
     let capacity_results = capacities
         .into_iter()
         .map(|(total, max, expected, label)| {
-            let status = capacity_status(black_box(total), black_box(max));
+            let status = capacity_status(
+                AccountedMempoolMemory::new(black_box(total)),
+                MempoolCapacity::new(black_box(max)),
+            );
             (status, expected, label)
         })
         .collect::<Vec<_>>();
@@ -190,7 +195,7 @@ fn block_connect_removes_conflict_and_descendants() {
     }));
     assert!(mempool.entry(&original_txid).is_none());
     assert!(mempool.entry(&descendant_txid).is_none());
-    assert_eq!(mempool.total_virtual_size(), 0);
+    assert_eq!(mempool.total_virtual_size(), TransactionVirtualSize::ZERO);
     assert_eq!(
         summary.pressure.capacity_status,
         MempoolCapacityStatus::Empty
@@ -227,7 +232,7 @@ fn block_connect_without_matches_returns_empty_summary() {
 }
 
 #[test]
-fn lifecycle_pressure_summary_reports_at_capacity_after_admission() {
+fn lifecycle_pressure_summary_uses_accounted_capacity_after_admission() {
     // Arrange
     let (snapshot, coinbase_txids) = sample_chainstate_snapshot(1);
     let transaction = spend_transaction(
@@ -239,7 +244,7 @@ fn lifecycle_pressure_summary_reports_at_capacity_after_admission() {
     let (_weight, virtual_size) =
         transaction_weight_and_virtual_size(&transaction).expect("transaction size");
     let mut mempool = Mempool::new(PolicyConfig {
-        max_mempool_virtual_size: virtual_size,
+        legacy_vsize_trim_limit: TransactionVirtualSize::new(virtual_size),
         ..PolicyConfig::default()
     });
 
@@ -248,7 +253,10 @@ fn lifecycle_pressure_summary_reports_at_capacity_after_admission() {
     let summary = mempool.pressure_summary();
 
     // Assert
-    assert_eq!(summary.capacity_status, MempoolCapacityStatus::AtCapacity);
+    assert_eq!(
+        summary.capacity_status,
+        MempoolCapacityStatus::UnderCapacity
+    );
 }
 
 #[test]
@@ -299,10 +307,11 @@ fn lifecycle_public_types_cover_debug_clone_and_equality_contracts() {
     };
     let pressure = crate::MempoolPressureSummary {
         transaction_count: 1,
-        total_virtual_size: 2,
-        max_mempool_virtual_size: 3,
-        min_relay_feerate_sats_per_kvb: 4,
-        incremental_relay_feerate_sats_per_kvb: 5,
+        total_virtual_size: TransactionVirtualSize::new(2),
+        accounted_memory: AccountedMempoolMemory::new(3),
+        mempool_capacity: MempoolCapacity::new(4),
+        min_relay_feerate_sats_per_kvb: 5,
+        incremental_relay_feerate_sats_per_kvb: 6,
         capacity_status: MempoolCapacityStatus::OverCapacity,
         rolling_fee_parity: RollingFeeParityStatus::Deferred,
     };
