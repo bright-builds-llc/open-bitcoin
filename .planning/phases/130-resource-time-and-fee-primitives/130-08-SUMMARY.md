@@ -75,7 +75,7 @@ completed: 2026-07-24
 1. **Task 1: Preserve metadata through snapshot capture and replay** - `def8a2df` (feat)
 2. **Task 2: Add all-or-none backward-compatible metadata decoding** - `60abc7f3` (feat)
 
-**Plan metadata:** pending final docs commit
+**Plan metadata:** `21535884` (docs: complete plan)
 
 ## Files Created/Modified
 
