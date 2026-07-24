@@ -18,17 +18,17 @@ use open_bitcoin_network::{
 use open_bitcoin_node::core::chainstate::ChainstateSnapshot;
 use open_bitcoin_node::core::consensus::{ConsensusParams, ScriptVerifyFlags};
 use open_bitcoin_node::core::mempool::PolicyConfig;
-use open_bitcoin_node::core::mempool::{AdmissionResult, MempoolOutcome};
+use open_bitcoin_node::core::mempool::{
+    AdmissionResult, MempoolEntryMetadata, MempoolOutcome, RelayIntent,
+};
 use open_bitcoin_node::core::network::{LocalPeerConfig, ServiceFlags, WireNetworkMessage};
-use open_bitcoin_node::core::primitives::{Block, NetworkAddress, NetworkMagic, Transaction};
+use open_bitcoin_node::core::primitives::{Block, NetworkAddress, NetworkMagic, Transaction, Txid};
 use open_bitcoin_node::core::wallet::AddressNetwork;
 use open_bitcoin_node::network::{
     LocalRelaySubmissionEvidence, ManagedInboundAdmissionInfo, ManagedMempoolInfo,
     ManagedNetworkInfo,
 };
-use open_bitcoin_node::status::{
-    BlockRelayEvidenceStatus, SyncRecoveryCategory, relay_evidence::RelayEvidenceStatus,
-};
+use open_bitcoin_node::status::{BlockRelayEvidenceStatus, relay_evidence::RelayEvidenceStatus};
 use open_bitcoin_node::{DurableSyncState, FjallNodeStore, MetricRetentionPolicy, MetricsStatus};
 use open_bitcoin_node::{
     ManagedNetworkAuthorityError, ManagedNetworkHandle, ManagedPeerNetwork, ManagedWallet,
@@ -37,6 +37,9 @@ use open_bitcoin_node::{
 
 #[cfg(test)]
 use super::EncodedWireResponse;
+use super::mempool_recovery::{
+    recover_mempool_snapshot_from_store, recover_mempool_snapshot_from_store_handle,
+};
 use super::wallet_state::build_wallet_state_with_store;
 use super::{ManagedRpcContext, address_boundary::local_advertisement_decisions};
 use crate::{config::RuntimeConfig, inbound_listener::InboundListenerEvidence};
@@ -467,7 +470,7 @@ impl ManagedRpcContext {
             .connect_local_block(block, self.verify_flags, self.consensus_params)
     }
 
-    #[allow(deprecated)] // Plan 130-11 samples RPC time and removes this adapter.
+    #[allow(deprecated)] // Wallet still uses the AdmissionResult path.
     pub fn submit_local_transaction(
         &mut self,
         transaction: Transaction,
@@ -476,16 +479,31 @@ impl ManagedRpcContext {
             .submit_local_transaction(transaction, self.verify_flags, self.consensus_params)
     }
 
-    #[allow(deprecated)] // Plan 130-11 samples RPC time and removes this adapter.
-    pub fn submit_local_transaction_with_relay_evidence(
+    /// Explicit-time local submission; relay intent follows activation.
+    pub fn submit_local_transaction_with_relay_evidence_at(
         &mut self,
         transaction: Transaction,
+        now_unix_seconds: i64,
     ) -> Result<MempoolOutcome, ManagedNetworkAuthorityError> {
-        self.network.submit_local_transaction_outcome(
+        let relay_intent = if self.network.relay_activation_enabled()? {
+            RelayIntent::Requested
+        } else {
+            RelayIntent::NotRequested
+        };
+        self.network.submit_local_transaction_outcome_at(
             transaction,
             self.verify_flags,
             self.consensus_params,
+            now_unix_seconds,
+            relay_intent,
         )
+    }
+
+    pub fn mempool_entry_metadata(
+        &self,
+        txid: &Txid,
+    ) -> Result<Option<MempoolEntryMetadata>, ManagedNetworkAuthorityError> {
+        self.network.mempool_entry_metadata(txid)
     }
 
     pub fn latest_local_submission_evidence(
@@ -493,88 +511,6 @@ impl ManagedRpcContext {
     ) -> Result<Option<LocalRelaySubmissionEvidence>, ManagedNetworkAuthorityError> {
         self.network.latest_local_submission_evidence()
     }
-}
-
-fn recover_mempool_snapshot_from_store(
-    config: &RuntimeConfig,
-    maybe_store: Option<&FjallNodeStore>,
-    network: &mut ManagedPeerNetwork<MemoryChainstateStore>,
-    verify_flags: ScriptVerifyFlags,
-    consensus_params: ConsensusParams,
-) {
-    let store;
-    let store = match maybe_store {
-        Some(store) => store,
-        None => {
-            let Some(data_dir) = config.maybe_data_dir.as_ref() else {
-                return;
-            };
-            let opened_store = match FjallNodeStore::open(data_dir) {
-                Ok(store) => store,
-                Err(error) => {
-                    network.record_mempool_recovery_storage_error(&error);
-                    return;
-                }
-            };
-            store = opened_store;
-            &store
-        }
-    };
-
-    match store.load_mempool_snapshot() {
-        Ok(Some(snapshot)) => {
-            if network
-                .recover_mempool_snapshot(&snapshot, verify_flags, consensus_params)
-                .is_err()
-            {
-                network.record_mempool_recovery_unavailable(SyncRecoveryCategory::InvalidPeerData);
-            }
-        }
-        Ok(None) => {}
-        Err(error) => network.record_mempool_recovery_storage_error(&error),
-    }
-}
-
-fn recover_mempool_snapshot_from_store_handle(
-    config: &RuntimeConfig,
-    maybe_store: Option<&FjallNodeStore>,
-    network: &ManagedNetworkHandle,
-    verify_flags: ScriptVerifyFlags,
-    consensus_params: ConsensusParams,
-) -> Result<(), ManagedNetworkAuthorityError> {
-    let store;
-    let store = match maybe_store {
-        Some(store) => store,
-        None => {
-            let Some(data_dir) = config.maybe_data_dir.as_ref() else {
-                return Ok(());
-            };
-            let opened_store = match FjallNodeStore::open(data_dir) {
-                Ok(store) => store,
-                Err(error) => {
-                    network.record_mempool_recovery_storage_error(&error)?;
-                    return Ok(());
-                }
-            };
-            store = opened_store;
-            &store
-        }
-    };
-
-    match store.load_mempool_snapshot() {
-        Ok(Some(snapshot)) => {
-            if network
-                .recover_mempool_snapshot(&snapshot, verify_flags, consensus_params)
-                .is_err()
-            {
-                network
-                    .record_mempool_recovery_unavailable(SyncRecoveryCategory::InvalidPeerData)?;
-            }
-        }
-        Ok(None) => {}
-        Err(error) => network.record_mempool_recovery_storage_error(&error)?,
-    }
-    Ok(())
 }
 
 pub(super) fn default_verify_flags() -> ScriptVerifyFlags {

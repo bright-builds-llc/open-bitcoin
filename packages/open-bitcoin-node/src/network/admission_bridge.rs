@@ -167,12 +167,9 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         self.orphanage = open_bitcoin_network::TxOrphanage::new(policy);
     }
 
-    /// Fail-closed no-time admission retained for intermediate workspace compatibility.
-    ///
-    /// Plan 130-06 migrates node callers. Plan 130-11 migrates the final RPC caller
-    /// and removes this adapter.
+    /// Fail-closed no-time admission retained for wallet and other AdmissionResult callers.
     #[deprecated(
-        note = "Plan 130-06 migrates node callers; Plan 130-11 migrates the final RPC caller and removes this fail-closed adapter"
+        note = "prefer submit_local_transaction_outcome_at with shell-sampled time and typed relay intent"
     )]
     pub fn submit_local_transaction(
         &mut self,
@@ -187,29 +184,6 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             AdmissionContext::legacy_unknown(),
         )?;
         admission_result_from_transition(&transaction, transition)
-    }
-
-    /// Fail-closed no-time outcome retained for intermediate workspace compatibility.
-    ///
-    /// Plan 130-06 migrates node callers while Plan 130-11 migrates the final RPC
-    /// caller and removes this adapter.
-    #[deprecated(
-        note = "Plan 130-06 migrates node callers; Plan 130-11 migrates the final RPC caller and removes this fail-closed adapter"
-    )]
-    pub fn submit_local_transaction_outcome(
-        &mut self,
-        transaction: Transaction,
-        verify_flags: ScriptVerifyFlags,
-        consensus_params: ConsensusParams,
-    ) -> Result<MempoolOutcome, ManagedNetworkError> {
-        let transition = self.submit_local_transaction_transition_with_context(
-            transaction,
-            verify_flags,
-            consensus_params,
-            AdmissionContext::legacy_unknown(),
-        )?;
-        self.record_local_submission_outcome(&transition.outcome, RelayIntent::NotRequested);
-        Ok(transition.outcome)
     }
 
     pub fn submit_local_transaction_outcome_at(

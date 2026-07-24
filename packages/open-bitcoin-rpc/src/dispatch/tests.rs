@@ -14,7 +14,7 @@ use std::{
     fs, io,
     path::{Path, PathBuf},
     thread,
-    time::{SystemTime, UNIX_EPOCH},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use serde_json::json;
@@ -34,7 +34,7 @@ use open_bitcoin_node::{
             ConsensusParams, ScriptVerifyFlags, block_hash, block_merkle_root, check_block_header,
             crypto::hash160, transaction_txid,
         },
-        mempool::PolicyConfig,
+        mempool::{MempoolAcceptanceTime, MempoolOrigin, PolicyConfig, PolicyTime, RelayIntent},
         network::{LocalPeerConfig, ServiceFlags, WireNetworkMessage},
         primitives::{
             Amount, Block, BlockHash, BlockHeader, NetworkAddress, NetworkMagic, OutPoint,
@@ -2285,17 +2285,26 @@ fn sendrawtransaction_queues_internal_relay_evidence_without_propagation_claim()
         .latest_local_submission_evidence()
         .expect("authoritative relay evidence")
         .expect("relay evidence");
-    // Plan 130-11 supplies explicit time and relay intent; this no-time
-    // compatibility path must remain fail closed until then.
-    assert_eq!(evidence.queued_count, 0);
+    assert_eq!(evidence.queued_count, 1);
     assert_eq!(
         evidence
             .labels
             .iter()
             .map(|label| label.as_str())
             .collect::<Vec<_>>(),
-        vec!["accepted"],
+        vec!["accepted", "queued", "rebroadcast_deferred"],
     );
+    let txid = transaction_txid(&transaction).expect("txid");
+    let metadata = context
+        .mempool_entry_metadata(&txid)
+        .expect("authoritative metadata")
+        .expect("accepted entry metadata");
+    let MempoolAcceptanceTime::Known(accepted_at) = metadata.accepted_at else {
+        panic!("expected known local acceptance time");
+    };
+    assert_ne!(accepted_at.unix_seconds(), 0);
+    assert_eq!(metadata.origin, MempoolOrigin::Local);
+    assert_eq!(metadata.relay_intent, RelayIntent::Requested);
     let status = dispatch(
         &mut context,
         MethodCall::OpenBitcoinNetworkStatus(OpenBitcoinNetworkStatusRequest::default()),
@@ -2307,7 +2316,7 @@ fn sendrawtransaction_queues_internal_relay_evidence_without_propagation_claim()
     );
     assert_eq!(
         status["relay"]["outcome_counters"]["value"]["rebroadcast_deferred_count"],
-        json!(0)
+        json!(1)
     );
     assert_eq!(
         status["relay"]["activation"]["value"]["enabled"],
@@ -2321,7 +2330,10 @@ fn sendrawtransaction_queues_internal_relay_evidence_without_propagation_claim()
         status["relay"]["local_submission"]["state"],
         json!("implemented")
     );
-    assert_eq!(status["relay"]["rebroadcast"]["state"], json!("deferred"));
+    assert_eq!(
+        status["relay"]["rebroadcast"]["state"],
+        json!("implemented")
+    );
     let status_json = serde_json::to_string(&status).expect("network status json");
     assert!(!status_json.contains(&submitted_transaction_hex));
     assert!(!status_json.contains(&expected_txid));
@@ -2388,6 +2400,79 @@ fn sendrawtransaction_duplicate_does_not_queue_new_fanout() {
             .map(|label| label.as_str())
             .collect::<Vec<_>>(),
         vec!["duplicate"],
+    );
+}
+
+#[test]
+fn sendrawtransaction_explicit_time_stores_local_requested_metadata() {
+    // Arrange
+    let mut context = relay_enabled_context(46);
+    let genesis = build_block(
+        BlockHash::from_byte_array([0_u8; 32]),
+        0,
+        500_000_000,
+        p2sh_script(),
+    );
+    let spendable = build_block(block_hash(&genesis.header), 1, 500_000_000, p2sh_script());
+    context.connect_local_block(&genesis).expect("genesis");
+    context.connect_local_block(&spendable).expect("spendable");
+    let transaction = spend_transaction(
+        transaction_txid(&genesis.transactions[0]).expect("txid"),
+        499_999_000,
+    );
+    let txid = transaction_txid(&transaction).expect("txid");
+    let expected_txid = encode_hex(txid.as_bytes());
+
+    // Act
+    let outcome = context
+        .submit_local_transaction_with_relay_evidence_at(transaction, 60)
+        .expect("explicit-time local submit");
+
+    // Assert
+    assert!(matches!(
+        outcome,
+        open_bitcoin_node::core::mempool::MempoolOutcome::Accepted { .. }
+    ));
+    let metadata = context
+        .mempool_entry_metadata(&txid)
+        .expect("authoritative metadata")
+        .expect("accepted entry metadata");
+    assert_eq!(
+        metadata.accepted_at,
+        MempoolAcceptanceTime::Known(PolicyTime::new(60))
+    );
+    assert_eq!(metadata.origin, MempoolOrigin::Local);
+    assert_eq!(metadata.relay_intent, RelayIntent::Requested);
+    let status = dispatch(
+        &mut context,
+        MethodCall::OpenBitcoinNetworkStatus(OpenBitcoinNetworkStatusRequest::default()),
+    )
+    .expect("network status");
+    let status_json = serde_json::to_string(&status).expect("network status json");
+    assert!(!status_json.contains(&expected_txid));
+    assert!(!status_json.contains("accepted_at"));
+    assert!(!status_json.contains("relay_intent"));
+    assert!(!status_json.contains("MempoolOrigin"));
+}
+
+#[test]
+fn sendrawtransaction_clock_before_epoch_returns_typed_internal_error() {
+    // Arrange
+    let before_epoch = UNIX_EPOCH
+        .checked_sub(Duration::from_secs(1))
+        .expect("construct pre-epoch clock");
+
+    // Act
+    let failure = super::node::timestamp_unix_seconds_from_system_time(before_epoch)
+        .expect_err("pre-epoch clock must fail closed");
+
+    // Assert
+    assert_eq!(failure.kind, RpcFailureKind::InternalError);
+    let detail = failure.maybe_detail.expect("internal detail");
+    assert_eq!(detail.code, RpcErrorCode::InternalError);
+    assert_eq!(
+        detail.message,
+        "system clock is unavailable for local transaction acceptance",
     );
 }
 

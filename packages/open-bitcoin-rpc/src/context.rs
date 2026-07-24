@@ -37,6 +37,7 @@ use crate::{RpcFailure, RpcFailureKind};
 
 mod address_boundary;
 mod inbound_status;
+mod mempool_recovery;
 mod network;
 mod peer_policy;
 mod rescan;

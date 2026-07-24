@@ -1422,6 +1422,7 @@
         "packages/open-bitcoin-rpc/src/context.rs",
         "packages/open-bitcoin-rpc/src/context/address_boundary.rs",
         "packages/open-bitcoin-rpc/src/context/inbound_status.rs",
+        "packages/open-bitcoin-rpc/src/context/mempool_recovery.rs",
         "packages/open-bitcoin-rpc/src/context/network.rs",
         "packages/open-bitcoin-rpc/src/context/rescan.rs",
         "packages/open-bitcoin-rpc/src/context/resource_governance.rs",

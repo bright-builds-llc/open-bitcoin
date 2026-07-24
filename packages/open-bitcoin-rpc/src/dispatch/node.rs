@@ -9,6 +9,8 @@
 // - packages/bitcoin-knots/src/rpc/rawtransaction.cpp
 // - packages/bitcoin-knots/test/functional/interface_rpc.py
 
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use open_bitcoin_node::core::{
     codec::parse_transaction,
     mempool::{MempoolError, MempoolOutcome},
@@ -30,6 +32,9 @@ use crate::{
 };
 
 use super::{decode, network_authority_error_to_failure, version_number, wallet_error_to_failure};
+
+const CLOCK_SAMPLE_FAILURE_MESSAGE: &str =
+    "system clock is unavailable for local transaction acceptance";
 
 const UNSUPPORTED_MAX_FEE_RATE_MESSAGE: &str =
     "sendrawtransaction maxfeerate enforcement is not supported in Phase 8; omit maxfeerate";
@@ -272,11 +277,25 @@ pub(super) fn send_raw_transaction(
         .map_err(|error| RpcFailure::invalid_params(error.to_string()))?;
     let transaction = parse_transaction(&transaction_bytes)
         .map_err(|error| RpcFailure::invalid_params(error.to_string()))?;
+    let now_unix_seconds = current_timestamp_unix_seconds()?;
     let outcome = context
-        .submit_local_transaction_with_relay_evidence(transaction.clone())
+        .submit_local_transaction_with_relay_evidence_at(transaction.clone(), now_unix_seconds)
         .map_err(network_authority_error_to_failure)?;
 
     send_raw_transaction_response(outcome, &transaction)
+}
+
+/// Samples wall-clock Unix seconds at the local RPC shell boundary.
+pub(super) fn current_timestamp_unix_seconds() -> Result<i64, RpcFailure> {
+    timestamp_unix_seconds_from_system_time(SystemTime::now())
+}
+
+pub(super) fn timestamp_unix_seconds_from_system_time(now: SystemTime) -> Result<i64, RpcFailure> {
+    let Ok(duration) = now.duration_since(UNIX_EPOCH) else {
+        return Err(RpcFailure::internal_error(CLOCK_SAMPLE_FAILURE_MESSAGE));
+    };
+    i64::try_from(duration.as_secs())
+        .map_err(|_| RpcFailure::internal_error(CLOCK_SAMPLE_FAILURE_MESSAGE))
 }
 
 fn send_raw_transaction_response(

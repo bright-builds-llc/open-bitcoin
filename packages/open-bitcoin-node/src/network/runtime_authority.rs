@@ -10,8 +10,8 @@ use std::{
 use open_bitcoin_core::{
     chainstate::{AnchoredBlock, ChainPosition, ChainTransition, ChainstateSnapshot},
     consensus::{ConsensusParams, ScriptVerifyFlags},
-    mempool::{AdmissionResult, MempoolOutcome},
-    primitives::{Block, BlockHash, NetworkAddress, NetworkMagic, Transaction},
+    mempool::{AdmissionResult, MempoolEntryMetadata, MempoolOutcome},
+    primitives::{Block, BlockHash, NetworkAddress, NetworkMagic, Transaction, Txid},
 };
 use open_bitcoin_mempool::{PolicyConfig, RelayIntent, ReorgLifecycleContext};
 use open_bitcoin_network::{
@@ -469,12 +469,11 @@ impl ManagedNetworkHandle {
         })
     }
 
-    /// Fail-closed no-time admission retained for intermediate workspace compatibility.
+    /// Fail-closed no-time admission retained for wallet and other non-outcome callers.
     ///
-    /// Plan 130-06 migrates node callers. Plan 130-11 migrates the final RPC caller
-    /// and removes this adapter.
+    /// Local RPC `sendrawtransaction` uses [`Self::submit_local_transaction_outcome_at`].
     #[deprecated(
-        note = "Plan 130-06 migrates node callers; Plan 130-11 migrates the final RPC caller and removes this fail-closed adapter"
+        note = "prefer submit_local_transaction_outcome_at with shell-sampled time and typed relay intent"
     )]
     #[allow(deprecated)]
     pub fn submit_local_transaction(
@@ -485,25 +484,6 @@ impl ManagedNetworkHandle {
     ) -> Result<AdmissionResult, ManagedNetworkAuthorityError> {
         self.try_mutate(|network| {
             network.submit_local_transaction(transaction, verify_flags, consensus_params)
-        })
-    }
-
-    /// Fail-closed no-time outcome retained for intermediate workspace compatibility.
-    ///
-    /// Plan 130-06 migrates node callers. Plan 130-11 migrates the final RPC caller
-    /// and removes this adapter.
-    #[deprecated(
-        note = "Plan 130-06 migrates node callers; Plan 130-11 migrates the final RPC caller and removes this fail-closed adapter"
-    )]
-    #[allow(deprecated)]
-    pub fn submit_local_transaction_outcome(
-        &self,
-        transaction: Transaction,
-        verify_flags: ScriptVerifyFlags,
-        consensus_params: ConsensusParams,
-    ) -> Result<MempoolOutcome, ManagedNetworkAuthorityError> {
-        self.try_mutate(|network| {
-            network.submit_local_transaction_outcome(transaction, verify_flags, consensus_params)
         })
     }
 
@@ -525,6 +505,31 @@ impl ManagedNetworkHandle {
                 relay_intent,
             )
         })
+    }
+
+    /// Reads canonical entry metadata for an accepted mempool transaction.
+    pub fn mempool_entry_metadata(
+        &self,
+        txid: &Txid,
+    ) -> Result<Option<MempoolEntryMetadata>, ManagedNetworkAuthorityError> {
+        self.read(|network| {
+            network
+                .mempool()
+                .mempool()
+                .entry(txid)
+                .map(|entry| entry.metadata)
+        })
+    }
+
+    /// Returns whether transaction relay activation is currently enabled.
+    pub fn relay_activation_enabled(&self) -> Result<bool, ManagedNetworkAuthorityError> {
+        self.read(|network| network.relay_evidence_status())
+            .map(|status| match status.activation {
+                crate::status::relay_evidence::RelayEvidenceField::Implemented(evidence) => {
+                    evidence.enabled
+                }
+                _ => false,
+            })
     }
 
     pub fn latest_local_submission_evidence(
