@@ -20,7 +20,7 @@ use open_bitcoin_core::{
     },
 };
 use open_bitcoin_mempool::{
-    FinalMempoolMembership, MempoolAcceptanceTime, MempoolError, MempoolOrigin, MempoolOutcome,
+    FinalMempoolMembership, MempoolAcceptanceTime, MempoolOrigin, MempoolOutcome,
     MempoolRemovalCause, MempoolRemovalRole, PolicyConfig, PolicyTime, RelayIntent,
 };
 use open_bitcoin_network::{
@@ -32,7 +32,7 @@ use super::{
     assert_getdata, assert_targeted_getdata, build_block, consensus_params, local_config,
     p2sh_script, script, spend_transaction, transaction_relay_inventory, verify_flags,
 };
-use crate::{ManagedNetworkError, ManagedPeerNetwork, MemoryChainstateStore};
+use crate::{ManagedPeerNetwork, MemoryChainstateStore};
 
 fn txid(transaction: &Transaction) -> Txid {
     transaction_txid(transaction).expect("txid")
@@ -686,13 +686,31 @@ fn managed_admission_bridge_local_submission_uses_same_outcome_contract() {
 
     // Act
     let accepted_outcome = network
-        .submit_local_transaction_outcome(accepted.clone(), verify_flags(), consensus_params())
+        .submit_local_transaction_outcome_at(
+            accepted.clone(),
+            verify_flags(),
+            consensus_params(),
+            40,
+            RelayIntent::NotRequested,
+        )
         .expect("accepted outcome");
     let duplicate_outcome = network
-        .submit_local_transaction_outcome(accepted, verify_flags(), consensus_params())
+        .submit_local_transaction_outcome_at(
+            accepted,
+            verify_flags(),
+            consensus_params(),
+            41,
+            RelayIntent::NotRequested,
+        )
         .expect("duplicate outcome");
     let orphan_outcome = network
-        .submit_local_transaction_outcome(orphan, verify_flags(), consensus_params())
+        .submit_local_transaction_outcome_at(
+            orphan,
+            verify_flags(),
+            consensus_params(),
+            42,
+            RelayIntent::NotRequested,
+        )
         .expect("orphan outcome");
 
     // Assert
@@ -707,7 +725,7 @@ fn managed_admission_bridge_local_submission_uses_same_outcome_contract() {
 }
 
 #[test]
-fn managed_admission_bridge_legacy_local_adapter_fails_closed() {
+fn managed_admission_bridge_local_not_requested_preserves_explicit_time() {
     // Arrange
     let (mut network, coinbase_txids) = network_with_chain(629, 2, PolicyConfig::default());
     let transaction = spend_transaction(coinbase_txids[0], 499_999_000);
@@ -715,18 +733,27 @@ fn managed_admission_bridge_legacy_local_adapter_fails_closed() {
 
     // Act
     network
-        .submit_local_transaction_outcome(transaction, verify_flags(), consensus_params())
-        .expect("legacy local admission");
+        .submit_local_transaction_outcome_at(
+            transaction,
+            verify_flags(),
+            consensus_params(),
+            45,
+            RelayIntent::NotRequested,
+        )
+        .expect("explicit local admission");
 
     // Assert
     let metadata = network
         .mempool()
         .mempool()
         .entry(&transaction_txid)
-        .expect("accepted compatibility transaction")
+        .expect("accepted explicit transaction")
         .metadata;
-    assert_eq!(metadata.accepted_at, MempoolAcceptanceTime::LegacyUnknown);
-    assert_eq!(metadata.origin, MempoolOrigin::RecoveryUnknown);
+    assert_eq!(
+        metadata.accepted_at,
+        MempoolAcceptanceTime::Known(PolicyTime::new(45))
+    );
+    assert_eq!(metadata.origin, MempoolOrigin::Local);
     assert_eq!(metadata.relay_intent, RelayIntent::NotRequested);
 }
 
@@ -846,7 +873,7 @@ fn managed_admission_bridge_local_duplicate_preserves_first_metadata() {
 }
 
 #[test]
-fn managed_admission_bridge_existing_local_submission_preserves_admission_result_compatibility() {
+fn managed_admission_bridge_explicit_local_submission_preserves_outcome_contract() {
     // Arrange
     let (mut network, coinbase_txids) = network_with_chain(621, 3, PolicyConfig::default());
     let accepted = spend_transaction(coinbase_txids[0], 499_999_000);
@@ -854,20 +881,31 @@ fn managed_admission_bridge_existing_local_submission_preserves_admission_result
     let (parent, orphan) = parent_and_child(coinbase_txids[1]);
 
     // Act
-    let result = network
-        .submit_local_transaction(accepted, verify_flags(), consensus_params())
-        .expect("legacy admission result");
-    let orphan_error = network
-        .submit_local_transaction(orphan, verify_flags(), consensus_params())
-        .expect_err("legacy missing parent error");
+    let accepted_outcome = network
+        .submit_local_transaction_outcome_at(
+            accepted,
+            verify_flags(),
+            consensus_params(),
+            52,
+            RelayIntent::NotRequested,
+        )
+        .expect("explicit accepted outcome");
+    let orphan_outcome = network
+        .submit_local_transaction_outcome_at(
+            orphan,
+            verify_flags(),
+            consensus_params(),
+            53,
+            RelayIntent::NotRequested,
+        )
+        .expect("explicit orphan outcome");
 
     // Assert
-    assert_eq!(result.accepted, accepted_txid);
-    assert!(result.replaced.is_empty());
     assert!(matches!(
-        orphan_error,
-        ManagedNetworkError::Mempool(MempoolError::MissingInput { .. })
+        accepted_outcome,
+        MempoolOutcome::Accepted { txid, .. } if txid == accepted_txid
     ));
+    assert!(matches!(orphan_outcome, MempoolOutcome::Orphaned { .. }));
     assert_not_stored(&network, txid(&parent));
 }
 

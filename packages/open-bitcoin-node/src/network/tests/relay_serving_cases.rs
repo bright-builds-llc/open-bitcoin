@@ -19,7 +19,7 @@ use open_bitcoin_core::{
         Block, BlockHash, InventoryType, InventoryVector, ScriptWitness, Transaction, Txid,
     },
 };
-use open_bitcoin_mempool::PolicyConfig;
+use open_bitcoin_mempool::{PolicyConfig, RelayIntent};
 use open_bitcoin_network::{
     BlockRelayActivationPolicy, BlockServingActivationConfig, CompactRelayActivationConfig,
     InventoryList, RelayActivationConfig, TxServingRecordStatus, WireNetworkMessage,
@@ -146,7 +146,13 @@ fn managed_getdata_serves_only_accepted_relay_eligible_transaction() {
     let transaction = spend_transaction(coinbase_txids[0], 499_999_000);
     let transaction_txid = txid(&transaction);
     network
-        .submit_local_transaction_outcome(transaction.clone(), verify_flags(), consensus_params())
+        .submit_local_transaction_outcome_at(
+            transaction.clone(),
+            verify_flags(),
+            consensus_params(),
+            10,
+            RelayIntent::Requested,
+        )
         .expect("accepted transaction");
 
     // Act
@@ -186,7 +192,13 @@ fn managed_getdata_reports_unknown_confirmed_replaced_evicted_expired_notfound()
     let confirmed = spend_transaction(coinbase_txids[0], 499_999_000);
     let confirmed_txid = txid(&confirmed);
     network
-        .submit_local_transaction_outcome(confirmed.clone(), verify_flags(), consensus_params())
+        .submit_local_transaction_outcome_at(
+            confirmed.clone(),
+            verify_flags(),
+            consensus_params(),
+            20,
+            RelayIntent::Requested,
+        )
         .expect("accepted confirmed fixture");
     let block_with_confirmed =
         build_block_with_transactions(block_hash(&spendable.header), 2, vec![confirmed]);
@@ -197,10 +209,22 @@ fn managed_getdata_reports_unknown_confirmed_replaced_evicted_expired_notfound()
     let replacement = spend_transaction(coinbase_txids[1], 499_996_000);
     let original_txid = txid(&original);
     network
-        .submit_local_transaction_outcome(original, verify_flags(), consensus_params())
+        .submit_local_transaction_outcome_at(
+            original,
+            verify_flags(),
+            consensus_params(),
+            21,
+            RelayIntent::Requested,
+        )
         .expect("original accepted");
     network
-        .submit_local_transaction_outcome(replacement, verify_flags(), consensus_params())
+        .submit_local_transaction_outcome_at(
+            replacement,
+            verify_flags(),
+            consensus_params(),
+            22,
+            RelayIntent::Requested,
+        )
         .expect("replacement accepted");
     let evicted = Txid::from_byte_array([43_u8; 32]);
     let expired = Txid::from_byte_array([44_u8; 32]);

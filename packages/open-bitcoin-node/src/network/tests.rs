@@ -28,7 +28,7 @@ use open_bitcoin_core::{
         TransactionInput, TransactionOutput,
     },
 };
-use open_bitcoin_mempool::PolicyConfig;
+use open_bitcoin_mempool::{PolicyConfig, RelayIntent};
 use open_bitcoin_network::{
     AddressAnnouncement, AddressDecisionLabel, AddressDecisionReason, AddressList,
     AddressNetworkKind, AddressSourceKind, BanReason, BanScope, BlockRelayActivationPolicy,
@@ -2645,7 +2645,13 @@ fn managed_network_requests_transactions_using_wtxidrelay_when_negotiated() {
         499_999_000,
     );
     network
-        .submit_local_transaction(transaction.clone(), verify_flags(), consensus_params())
+        .submit_local_transaction_outcome_at(
+            transaction.clone(),
+            verify_flags(),
+            consensus_params(),
+            2,
+            RelayIntent::Requested,
+        )
         .expect("admit");
 
     let message = network
@@ -2708,7 +2714,13 @@ fn managed_network_info_exposes_rpc_projection_helpers() {
             .expect("weight")
             .1;
     network
-        .submit_local_transaction(transaction, verify_flags(), consensus_params())
+        .submit_local_transaction_outcome_at(
+            transaction,
+            verify_flags(),
+            consensus_params(),
+            3,
+            RelayIntent::NotRequested,
+        )
         .expect("submit");
 
     // Act
@@ -2778,7 +2790,13 @@ fn managed_nodes_sync_blocks_and_relay_transactions_in_memory() {
         499_999_000,
     );
     source
-        .submit_local_transaction(transaction.clone(), verify_flags(), consensus_params())
+        .submit_local_transaction_outcome_at(
+            transaction.clone(),
+            verify_flags(),
+            consensus_params(),
+            7,
+            RelayIntent::Requested,
+        )
         .expect("source admit");
 
     let announced = source

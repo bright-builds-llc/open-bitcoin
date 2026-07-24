@@ -15,7 +15,7 @@ use open_bitcoin_core::{
     consensus::{block_hash, block_merkle_root, transaction_txid, transaction_wtxid},
     primitives::{Block, BlockHash, Transaction, Txid, Wtxid},
 };
-use open_bitcoin_mempool::{MempoolOutcome, PolicyConfig};
+use open_bitcoin_mempool::{MempoolOutcome, PolicyConfig, RelayIntent};
 use open_bitcoin_network::{
     BlockRelayActivationPolicy, CompactRelayActivationConfig, RelayActivationConfig,
     WireNetworkMessage,
@@ -174,7 +174,13 @@ fn live_compact_receive_uses_mempool_candidates_not_empty_facts() {
     let payload = compact_payload_from_block(&announced, 42);
 
     let outcome = network
-        .submit_local_transaction_outcome(mempool_tx, verify_flags(), consensus_params())
+        .submit_local_transaction_outcome_at(
+            mempool_tx,
+            verify_flags(),
+            consensus_params(),
+            10,
+            RelayIntent::NotRequested,
+        )
         .expect("admit mempool tx");
     assert!(matches!(outcome, MempoolOutcome::Accepted { .. }));
 
@@ -216,7 +222,13 @@ fn live_compact_receive_sync_message_also_injects_mempool_candidates() {
         build_block_with_transactions(block_hash(&spendable.header), 2, vec![mempool_tx.clone()]);
     let payload = compact_payload_from_block(&announced, 42);
     let outcome = network
-        .submit_local_transaction_outcome(mempool_tx, verify_flags(), consensus_params())
+        .submit_local_transaction_outcome_at(
+            mempool_tx,
+            verify_flags(),
+            consensus_params(),
+            20,
+            RelayIntent::NotRequested,
+        )
         .expect("admit mempool tx");
     assert!(matches!(outcome, MempoolOutcome::Accepted { .. }));
     handshake_and_sendcmpct(&mut network, peer_id);
@@ -258,7 +270,13 @@ fn phase119_live_receive_with_mempool_candidates_reconstructs_or_requests_missin
     let payload = compact_payload_matched_and_missing(&announced, &matched, &still_missing, 7);
     assert!(matches!(
         network
-            .submit_local_transaction_outcome(matched, verify_flags(), consensus_params())
+            .submit_local_transaction_outcome_at(
+                matched,
+                verify_flags(),
+                consensus_params(),
+                30,
+                RelayIntent::NotRequested,
+            )
             .expect("admit"),
         MempoolOutcome::Accepted { .. }
     ));
@@ -417,7 +435,13 @@ fn phase119_mempool_removal_clears_matched_partial_slot() {
     let payload = compact_payload_matched_and_missing(&announced, &matched, &still_missing, 15);
     assert!(matches!(
         network
-            .submit_local_transaction_outcome(matched, verify_flags(), consensus_params())
+            .submit_local_transaction_outcome_at(
+                matched,
+                verify_flags(),
+                consensus_params(),
+                40,
+                RelayIntent::NotRequested,
+            )
             .expect("admit"),
         MempoolOutcome::Accepted { .. }
     ));

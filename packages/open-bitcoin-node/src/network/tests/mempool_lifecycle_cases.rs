@@ -13,7 +13,7 @@ use open_bitcoin_core::{
     primitives::{Block, BlockHash, BlockHeader, Transaction, Txid, Wtxid},
 };
 use open_bitcoin_mempool::{
-    MempoolCapacityStatus, MempoolOutcome, PolicyConfig, RollingFeeParityStatus,
+    MempoolCapacityStatus, MempoolOutcome, PolicyConfig, RelayIntent, RollingFeeParityStatus,
 };
 use open_bitcoin_network::WireNetworkMessage;
 
@@ -107,7 +107,13 @@ fn managed_block_connect_removes_confirmed_mempool_transaction_and_runtime_cache
     let transaction_txid = txid(&transaction);
     let transaction_wtxid = transaction_wtxid(&transaction).expect("wtxid");
     network
-        .submit_local_transaction(transaction.clone(), verify_flags(), consensus_params())
+        .submit_local_transaction_outcome_at(
+            transaction.clone(),
+            verify_flags(),
+            consensus_params(),
+            10,
+            RelayIntent::NotRequested,
+        )
         .expect("submit local transaction");
     let connected_block =
         build_block_with_transactions(block_hash(&spendable.header), 2, vec![transaction]);
@@ -186,10 +192,22 @@ fn managed_block_connect_removes_conflict_and_descendant_caches() {
     let descendant_txid = txid(&descendant);
     let replacement = spend_transaction(coinbase_txids[0], 499_997_000);
     network
-        .submit_local_transaction(original, verify_flags(), consensus_params())
+        .submit_local_transaction_outcome_at(
+            original,
+            verify_flags(),
+            consensus_params(),
+            20,
+            RelayIntent::NotRequested,
+        )
         .expect("submit original");
     network
-        .submit_local_transaction(descendant, verify_flags(), consensus_params())
+        .submit_local_transaction_outcome_at(
+            descendant,
+            verify_flags(),
+            consensus_params(),
+            21,
+            RelayIntent::NotRequested,
+        )
         .expect("submit descendant");
     let connected_block =
         build_block_with_transactions(block_hash(&spendable.header), 2, vec![replacement]);
@@ -282,7 +300,13 @@ fn recovered_replacement_cleans_old_txid_and_preserves_new_accepted_identity() {
 
     // Act
     network
-        .submit_local_transaction_outcome(replacement, verify_flags(), consensus_params())
+        .submit_local_transaction_outcome_at(
+            replacement,
+            verify_flags(),
+            consensus_params(),
+            30,
+            RelayIntent::NotRequested,
+        )
         .expect("replace recovered transaction");
 
     // Assert
@@ -443,7 +467,13 @@ fn connected_block_mempool_removal_clears_matched_compact_partial_slot() {
     let payload = compact_payload_matched_and_missing(&announced, &matched, &still_missing, 42);
 
     let outcome = network
-        .submit_local_transaction_outcome(matched.clone(), verify_flags(), consensus_params())
+        .submit_local_transaction_outcome_at(
+            matched.clone(),
+            verify_flags(),
+            consensus_params(),
+            40,
+            RelayIntent::NotRequested,
+        )
         .expect("admit matched tx");
     assert!(matches!(outcome, MempoolOutcome::Accepted { .. }));
 
