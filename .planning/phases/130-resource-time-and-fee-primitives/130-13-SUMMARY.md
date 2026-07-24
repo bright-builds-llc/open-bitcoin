@@ -64,7 +64,7 @@ completed: 2026-07-24
 1. **Task 1 (RED): Install mutation-tested Phase 130 verification guardrails** - `7a50f1c9` (test)
 2. **Task 1 (GREEN): Implement checker and verifier wiring** - `094a4dcf` (feat)
 
-**Plan metadata:** pending final docs commit
+**Plan metadata:** `c39c1bbf` (docs: complete plan)
 
 ## Files Created/Modified
 
