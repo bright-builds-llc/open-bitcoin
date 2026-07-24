@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Completed 130-10-PLAN.md
-last_updated: "2026-07-23T23:38:38.430Z"
-last_activity: 2026-07-23 -- Completed Plan 130-10 injected network retry inputs
+stopped_at: Completed 130-06-PLAN.md
+last_updated: "2026-07-24T00:12:22.500Z"
+last_activity: 2026-07-24 -- Completed Plan 130-06 explicit-time node admission callers
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 13
-  completed_plans: 6
-  percent: 46
+  completed_plans: 7
+  percent: 54
 ---
 
 # Project State
@@ -27,25 +27,25 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 130 (Resource, Time, and Fee Primitives) — EXECUTING
-Plan: 6 of 13
+Plan: 7 of 13
 Status: Ready to execute
-Last activity: 2026-07-23 -- Completed Plan 130-10 injected network retry inputs
+Last activity: 2026-07-24 -- Completed Plan 130-06 explicit-time node admission callers
 
-Progress: [█████░░░░░] 46%
+Progress: [█████░░░░░] 54%
 
-Next action: Execute Plan 130-06
+Next action: Execute Plan 130-07
 
 ## Performance Metrics
 
 **Current milestone:**
 
-- Total plans completed: 6
-- Average duration: 45 min
-- Total execution time: 4h 31m
+- Total plans completed: 7
+- Average duration: 41 min
+- Total execution time: 4h 45m
 
 | Phase | Plans | Total | Avg/Plan |
 | --- | ---: | ---: | ---: |
-| 130–138 | 6 | 4h 31m | 45 min |
+| 130–138 | 7 | 4h 45m | 41 min |
 
 ## Accumulated Context
 
@@ -74,6 +74,8 @@ Next action: Execute Plan 130-06
 - [Phase 130]: Bridge-owned admission cache effects consume lifecycle delta cause, role, identities, and final membership.
 - [Phase 130]: Model only the injected variable retry delay in Phase 130; Phase 136 owns scheduling, fanout, receipts, and clearing.
 - [Phase 130]: Require fallible 0-to-300-second jitter construction before creating a retry decision context.
+- [Phase 130]: Use requested relay intent only for local relay and serving fixtures; non-relay admission setup remains explicitly not requested.
+- [Phase 130]: Keep deterministic fixture time authoritative while deferring live RPC clock sampling and compatibility removal to Plan 130-11.
 
 ### Pending Todos
 
@@ -96,6 +98,6 @@ Next action: Execute Plan 130-06
 
 ## Session Continuity
 
-Last session: 2026-07-23T23:38:38.426Z
-Stopped at: Completed 130-10-PLAN.md
+Last session: 2026-07-24T00:12:22.497Z
+Stopped at: Completed 130-06-PLAN.md
 Resume file: None
