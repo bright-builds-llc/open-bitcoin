@@ -26,11 +26,11 @@ key-files:
 key-decisions:
   - "Reuse the Phase 129 string[] failure-list contract with no separate result alias."
   - "Validate README freshness through three independent readTarget calls and dedicated stale-wording failures."
-  - "Keep FEEP requirements Pending until Phase 130 VERIFICATION.md exists for milestone traceability."
+  - "Promote FEEP-01 through FEEP-05 to requirements-completed only after Phase 130 VERIFICATION.md reports status: passed."
 patterns-established:
   - "Phase-numbered checker pairs insert before the final Phase 117 release gate and update prior-phase mutation needles when adjacency changes."
   - "High-risk FEEP, privacy, compatibility, and deferred-boundary anchors each fail under an independent corpus mutation."
-requirements-completed: []
+requirements-completed: [FEEP-01, FEEP-02, FEEP-03, FEEP-04, FEEP-05]
 requirements-addressed: [FEEP-01, FEEP-02, FEEP-03, FEEP-04, FEEP-05]
 generated_by: gsd-execute-plan
 lifecycle_mode: yolo
@@ -77,7 +77,7 @@ completed: 2026-07-24
 
 - Keep the Phase 129 `string[]` checker contract exactly; do not introduce a result alias.
 - Treat each README path as an independent freshness surface with its own exact stale-wording failure message.
-- Leave FEEP-01..05 Pending in REQUIREMENTS until Phase 130 has lifecycle-valid VERIFICATION.md coverage.
+- Promote FEEP-01..05 to Complete/`requirements-completed` only after Phase 130 has lifecycle-valid VERIFICATION.md coverage.
 
 ## Deviations from Plan
 

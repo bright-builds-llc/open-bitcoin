@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
-status: phase_complete
-stopped_at: Completed 130-13-PLAN.md
-last_updated: "2026-07-24T08:05:59.438Z"
+status: ready
+stopped_at: "Phase 130 verified and closed"
+last_updated: "2026-07-24T16:36:23.308Z"
 last_activity: 2026-07-24
 progress:
   total_phases: 9
   completed_phases: 1
   total_plans: 13
   completed_plans: 13
-  percent: 100
+  percent: 11
 ---
 
 # Project State
@@ -21,31 +21,32 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 130 — Resource, Time, and Fee Primitives
+**Current focus:** Phase 131 — Rolling Fee, Expiry, and Descendant Eviction Core
 
 ## Current Position
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
-Phase: 130 (Resource, Time, and Fee Primitives) — COMPLETE
-Plan: 13 of 13 complete
-Status: Phase complete; ready for verification/closeout
+Phase: 131
+Plan: Not started
+Status: Ready to plan
 Last activity: 2026-07-24
 
-Progress: [██████████] 100%
+Progress: [█░░░░░░░░░] 11%
 
-Next action: Run Phase 130 verification/closeout
+Next action: `/gsd-discuss-phase 131` (or YOLO chain for Phase 131)
 
 ## Performance Metrics
 
 **Current milestone:**
 
-- Total plans completed: 13
+- Total plans completed: 26
 - Average duration: 42 min
 - Total execution time: 9h 4m
 
 | Phase | Plans | Total | Avg/Plan |
 | --- | ---: | ---: | ---: |
 | 130–138 | 13 | 9h 4m | 42 min |
+| 130 | 13 | - | - |
 
 ## Accumulated Context
 

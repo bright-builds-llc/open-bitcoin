@@ -120,9 +120,7 @@ completed: 2026-07-24
 - **Files modified:** `packages/open-bitcoin-mempool/src/pool/tests/fee_cases.rs`, `lifecycle_cases.rs`, `tests/parity.rs`
 - **Verification:** Focused mempool pressure tests and full verify coverage step
 - **Committed in:** `a3e75105`
-
----
-
+***
 **Total deviations:** 3 auto-fixed (1 Rule 1, 2 Rule 2)
 **Impact on plan:** Required for correctness, caller completeness, and the repository coverage gate. No scope creep.
 
@@ -144,7 +142,6 @@ None - no external service configuration required.
 
 - FOUND: `.planning/phases/130-resource-time-and-fee-primitives/130-09-SUMMARY.md`
 - FOUND: commit `a3e75105`
-
----
+***
 *Phase: 130-resource-time-and-fee-primitives*
 *Completed: 2026-07-24*

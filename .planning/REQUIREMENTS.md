@@ -10,11 +10,11 @@ Requirements for package admission and relay, rolling minimum-fee behavior, init
 
 ### Resource, Time, and Fee Primitives
 
-- [ ] **FEEP-01**: Operator evidence distinguishes transaction virtual size from accounted mempool memory usage and its configured capacity.
-- [ ] **FEEP-02**: Node policy distinguishes the configured static relay floor, incremental relay fee, rolling mempool floor, and effective admission floor without allowing package fees to bypass the wrong boundary.
-- [ ] **FEEP-03**: Mempool entries carry explicit acceptance time and typed local-origin and relay-request metadata needed by expiry, recovery, and initial broadcast retry.
-- [ ] **FEEP-04**: Pure mempool and network policy accepts explicit time, block, occupancy, and jitter inputs without reading wall-clock time or randomness directly.
-- [ ] **FEEP-05**: Admission, replacement, expiry, pressure eviction, block connection, reorg, and retry clearing use stable typed outcomes suitable for deterministic lifecycle and operator evidence.
+- [x] **FEEP-01**: Operator evidence distinguishes transaction virtual size from accounted mempool memory usage and its configured capacity.
+- [x] **FEEP-02**: Node policy distinguishes the configured static relay floor, incremental relay fee, rolling mempool floor, and effective admission floor without allowing package fees to bypass the wrong boundary.
+- [x] **FEEP-03**: Mempool entries carry explicit acceptance time and typed local-origin and relay-request metadata needed by expiry, recovery, and initial broadcast retry.
+- [x] **FEEP-04**: Pure mempool and network policy accepts explicit time, block, occupancy, and jitter inputs without reading wall-clock time or randomness directly.
+- [x] **FEEP-05**: Admission, replacement, expiry, pressure eviction, block connection, reorg, and retry clearing use stable typed outcomes suitable for deterministic lifecycle and operator evidence.
 
 ### Rolling Fee and Sustained Pressure
 
@@ -110,11 +110,11 @@ Every v2.2 requirement maps to exactly one roadmap phase.
 
 | Requirement | Phase | Status |
 | --- | --- | --- |
-| FEEP-01 | Phase 130 | Pending |
-| FEEP-02 | Phase 130 | Pending |
-| FEEP-03 | Phase 130 | Pending |
-| FEEP-04 | Phase 130 | Pending |
-| FEEP-05 | Phase 130 | Pending |
+| FEEP-01 | Phase 130 | Complete |
+| FEEP-02 | Phase 130 | Complete |
+| FEEP-03 | Phase 130 | Complete |
+| FEEP-04 | Phase 130 | Complete |
+| FEEP-05 | Phase 130 | Complete |
 | PRESS-01 | Phase 131 | Pending |
 | PRESS-02 | Phase 131 | Pending |
 | PRESS-03 | Phase 131 | Pending |

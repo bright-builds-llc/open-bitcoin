@@ -122,9 +122,7 @@ The TDD RED runs failed on the missing relay-intent API and on unintended fanout
 - **Files modified:** `packages/open-bitcoin-node/src/network/runtime_authority.rs`, `packages/open-bitcoin-node/src/network/runtime_authority/tests.rs`, `docs/parity/source-breadcrumbs.json`
 - **Verification:** The production file-length guard and parity breadcrumb checker passed in the full verifier.
 - **Committed in:** `10c5b493`
-
----
-
+***
 **Total deviations:** 3 auto-fixed (1 bug, 2 blocking)
 **Impact on plan:** All fixes were required for privacy correctness and repository compatibility; no Phase 131 pressure policy or Phase 134 complete cross-cache projection was added.
 
@@ -161,7 +159,6 @@ None - no external service configuration required.
 - Summary and extracted runtime-authority test file exist.
 - Task commit `10c5b493` exists.
 - Lifecycle mode, lifecycle ID, addressed requirements, verification claims, and changed-file metrics match the committed work.
-
----
+***
 *Phase: 130-resource-time-and-fee-primitives*
 *Completed: 2026-07-23*

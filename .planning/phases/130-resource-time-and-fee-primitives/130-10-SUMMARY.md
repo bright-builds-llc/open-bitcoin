@@ -97,9 +97,7 @@ The TDD RED run failed on the intentionally absent retry types. The completed GR
 - **Files modified:** `packages/open-bitcoin-network/src/peer.rs`
 - **Verification:** Focused tests and the exact timed workspace all-target compile gate passed.
 - **Committed in:** `091b5041`
-
----
-
+***
 **Total deviations:** 1 auto-fixed (1 blocking)
 **Impact on plan:** The required intermediary preserves the planned public API and introduces no scheduling or transport behavior.
 
@@ -137,7 +135,6 @@ None - no external service configuration required.
 - Task commit `091b5041` exists.
 - Three named retry tests, focused parity registration, the exact timed workspace all-target compile gate, and the full repository verifier pass.
 - Lifecycle ID, yolo mode, FEEP-04 ownership, and no-effects boundary match the committed implementation.
-
----
+***
 *Phase: 130-resource-time-and-fee-primitives*
 *Completed: 2026-07-23*
