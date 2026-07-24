@@ -72,7 +72,7 @@ completed: 2026-07-24
 
 1. **Task 1: Project authoritative resource and fee evidence** - `a3e75105` (feat)
 
-**Plan metadata:** pending final docs commit
+**Plan metadata:**  (docs: complete plan)
 
 ## Files Created/Modified
 
