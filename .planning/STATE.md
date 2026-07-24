@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Completed 130-09-PLAN.md
-last_updated: "2026-07-24T05:22:03.165Z"
+stopped_at: Completed 130-12-PLAN.md
+last_updated: "2026-07-24T06:43:13.042Z"
 last_activity: 2026-07-24
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 13
-  completed_plans: 11
-  percent: 85
+  completed_plans: 12
+  percent: 92
 ---
 
 # Project State
@@ -27,25 +27,25 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 130 (Resource, Time, and Fee Primitives) — EXECUTING
-Plan: 11 of 13 complete; next incomplete is 12
+Plan: 12 of 13 complete; next incomplete is 13
 Status: Ready to execute
-Last activity: 2026-07-24 -- Completed Plan 130-09 authoritative mempool RPC evidence
+Last activity: 2026-07-24 -- Completed Plan 130-12 parity evidence and README truth
 
-Progress: [█████████░] 85%
+Progress: [█████████░] 92%
 
-Next action: Execute Plan 130-12
+Next action: Execute Plan 130-13
 
 ## Performance Metrics
 
 **Current milestone:**
 
-- Total plans completed: 11
+- Total plans completed: 12
 - Average duration: 42 min
-- Total execution time: 7h 45m
+- Total execution time: 8h 25m
 
 | Phase | Plans | Total | Avg/Plan |
 | --- | ---: | ---: | ---: |
-| 130–138 | 11 | 7h 45m | 42 min |
+| 130–138 | 12 | 8h 25m | 42 min |
 
 ## Accumulated Context
 
@@ -88,6 +88,9 @@ Next action: Execute Plan 130-12
 - [Phase 130]: Keep getmempoolinfo.bytes=vsize, usage=accounted memory, maxmempool=accounted capacity, and mempoolminfee=effective max(static, rolling).
 - [Phase 130]: Serialize capacityenforcement as fixed legacy_vsize during Phase 130 without claiming accounted-capacity enforcement.
 - [Phase 130]: Expose rollingmempoolfee, effectiveadmissionfee, and incrementalrelayfee as distinct exact fields so incremental never contaminates mempoolminfee.
+- [Phase 130]: Register unique FEEP-01 through FEEP-05 ownership under v2-2-resource-time-fee-primitives with exact later-phase boundaries.
+- [Phase 130]: Document intentional Rust-owned accounting difference from C++ allocator estimates while preserving Knots RPC meanings.
+- [Phase 130]: Align documentation reconciliation with active v2.2 README truth instead of requiring /gsd-new-milestone in the root status block.
 
 ### Pending Todos
 
@@ -110,6 +113,6 @@ Next action: Execute Plan 130-12
 
 ## Session Continuity
 
-Last session: 2026-07-24T05:22:03.162Z
-Stopped at: Completed 130-09-PLAN.md
+Last session: 2026-07-24T06:43:13.039Z
+Stopped at: Completed 130-12-PLAN.md
 Resume file: None
