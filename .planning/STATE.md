@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Completed 130-06-PLAN.md
-last_updated: "2026-07-24T00:12:22.500Z"
-last_activity: 2026-07-24 -- Completed Plan 130-06 explicit-time node admission callers
+stopped_at: Completed 130-07-PLAN.md
+last_updated: "2026-07-24T01:10:20.094Z"
+last_activity: 2026-07-24 -- Completed Plan 130-07 explicit block and reorg lifecycle integration
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 13
-  completed_plans: 7
-  percent: 54
+  completed_plans: 8
+  percent: 62
 ---
 
 # Project State
@@ -27,25 +27,25 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 130 (Resource, Time, and Fee Primitives) — EXECUTING
-Plan: 7 of 13
+Plan: 8 of 13
 Status: Ready to execute
-Last activity: 2026-07-24 -- Completed Plan 130-06 explicit-time node admission callers
+Last activity: 2026-07-24 -- Completed Plan 130-07 explicit block and reorg lifecycle integration
 
-Progress: [█████░░░░░] 54%
+Progress: [██████░░░░] 62%
 
-Next action: Execute Plan 130-07
+Next action: Execute Plan 130-08
 
 ## Performance Metrics
 
 **Current milestone:**
 
-- Total plans completed: 7
-- Average duration: 41 min
-- Total execution time: 4h 45m
+- Total plans completed: 8
+- Average duration: 42 min
+- Total execution time: 5h 32m
 
 | Phase | Plans | Total | Avg/Plan |
 | --- | ---: | ---: | ---: |
-| 130–138 | 7 | 4h 45m | 41 min |
+| 130–138 | 8 | 5h 32m | 42 min |
 
 ## Accumulated Context
 
@@ -76,6 +76,9 @@ Next action: Execute Plan 130-07
 - [Phase 130]: Require fallible 0-to-300-second jitter construction before creating a retry decision context.
 - [Phase 130]: Use requested relay intent only for local relay and serving fixtures; non-relay admission setup remains explicitly not requested.
 - [Phase 130]: Keep deterministic fixture time authoritative while deferring live RPC clock sampling and compatibility removal to Plan 130-11.
+- [Phase 130]: Use stored-block receive time and connected height while direct local blocks use explicit header time and connected height.
+- [Phase 130]: Use one explicit reorg operation time for replacement-block cleanup and disconnected transaction reacceptance.
+- [Phase 130]: Apply every reorg admission attempt through its semantic lifecycle delta without expanding Phase 134 cross-cache scope.
 
 ### Pending Todos
 
@@ -98,6 +101,6 @@ Next action: Execute Plan 130-07
 
 ## Session Continuity
 
-Last session: 2026-07-24T00:12:22.497Z
-Stopped at: Completed 130-06-PLAN.md
+Last session: 2026-07-24T01:10:20.090Z
+Stopped at: Completed 130-07-PLAN.md
 Resume file: None
