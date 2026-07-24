@@ -65,7 +65,12 @@ test("reconciled live corpus fixture passes", () => {
 test("README rejects the completed-milestone route", () => {
   // Arrange
   const root = createFixture();
-  replaceInFixture(root, "README.md", "/gsd-new-milestone", "/gsd-complete-milestone v2.1");
+  replaceInFixture(
+    root,
+    "README.md",
+    "Active milestone: v2.2",
+    "/gsd-complete-milestone v2.1",
+  );
 
   // Act
   const failures = checkCurrentDocumentationReconciliation(root).join("\n");

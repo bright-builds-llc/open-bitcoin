@@ -80,7 +80,7 @@ function loadCorpus(repoRoot: string, failures: string[]): Corpus {
 
 function verifyArchivedProjectState(corpus: Corpus, failures: string[]): void {
   const readmeCurrent = sectionBefore(corpus.get("readme") ?? "", "## Parity At A Glance");
-  verifyArchivedStateText("README archived milestone state", readmeCurrent, failures);
+  verifyActiveReadmeState(readmeCurrent, failures);
   requireAll(
     "README final audit counts",
     normalized(readmeCurrent),
@@ -118,6 +118,34 @@ function verifyArchivedProjectState(corpus: Corpus, failures: string[]): void {
     ],
     failures,
   );
+}
+
+function verifyActiveReadmeState(text: string, failures: string[]): void {
+  const value = normalized(text);
+  const required = [
+    "active milestone: v2.2",
+    "phase 130",
+    "v2.1 remains the latest shipped release",
+    "[mempool parity catalog](./docs/parity/catalog/mempool-policy.md)",
+    "v2.1 shipped and was archived on 2026-07-22",
+  ];
+  const forbidden = [
+    "> status: open bitcoin v2.1",
+    "start future work with `/gsd-new-milestone`.",
+    "/gsd-complete-milestone v2.1",
+    "archive-ready",
+    "archive ready",
+    "pending completion",
+    "pending the completion",
+  ];
+  if (required.some((needle) => !value.includes(needle))) {
+    failures.push(
+      "README archived milestone state: missing active v2.2 Phase 130 anchors or shipped v2.1 archive date",
+    );
+  }
+  if (forbidden.some((needle) => value.includes(needle))) {
+    failures.push("README archived milestone state: contains pre-archive or stale active-status language");
+  }
 }
 
 function verifyArchivedStateText(label: string, text: string, failures: string[]): void {

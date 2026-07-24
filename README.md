@@ -18,20 +18,19 @@ consensus, validation, chainstate, mempool, networking, wallet, RPC, CLI, and
 configuration surfaces while keeping the first-party internals strongly typed,
 auditable, and modular.
 
-> Status: Open Bitcoin v2.1 provides bounded, explicit, default-off block
-> serving and compact-block relay with deterministic local evidence and optional
-> public-network operator review. The release evidence is summarized in
+> Status: Active milestone: v2.2 — Package Relay and Long-Lived Mempool Policy.
+> Phase 130 is registering resource, time, and fee primitives with distinct
+> accounted-memory evidence, four fee roles, and explicit metadata, context, and
+> lifecycle contracts. Canonical evidence lives in the
+> [mempool parity catalog](./docs/parity/catalog/mempool-policy.md).
+> v2.1 remains the latest shipped release: bounded, explicit, default-off block
+> serving and compact-block relay with deterministic local evidence. The rerun
+> v2.1 milestone audit passed at 39/39 requirements, 20/20 phases, 13/13
+> integration links, and 11/11 end-to-end flows. v2.1 shipped and was archived
+> on 2026-07-22; see
 > [`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md).
-> Phase 128 closes the production composition for compact negotiation,
-> durable-tip announcement fanout, real transport writes, and post-write
-> aggregate evidence. Phase 129 completed the aggregate integration guard over
-> the four repaired flows, independent verification of the reassigned
-> requirements, and the final milestone reconciliation; the rerun v2.1
-> milestone audit passed at 39/39 requirements, 20/20 phases, 13/13 integration
-> links, and 11/11 end-to-end flows. v2.1 shipped and was archived on
-> 2026-07-22. Start future work with `/gsd-new-milestone`.
-> Package relay, BIP37 bloom-filter serving, compact-filter serving, public
-> serving or relay defaults, archive-node and production-scale historical
+> Package relay execution, BIP37 bloom-filter serving, compact-filter serving,
+> public serving or relay defaults, archive-node and production-scale historical
 > serving, public-network CI or release gates, production service/deployment,
 > production full-node readiness, production-funds wallet use, packaging, GUI
 > and hosted dashboards, migration apply mode, destructive repair, and

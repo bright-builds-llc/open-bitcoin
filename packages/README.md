@@ -9,11 +9,11 @@ Open Bitcoin crates.
 - `open-bitcoin-core/` re-exports the first-party pure-core surface for downstream package boundaries.
 - `open-bitcoin-consensus/` owns script execution, transaction checks, block checks, proof-of-work, merkle behavior, and typed validation errors.
 - `open-bitcoin-chainstate/` owns pure-core UTXO state, undo data, active-chain mutation, and reorg behavior.
-- `open-bitcoin-mempool/` owns policy admission, replacement, ancestor/descendant accounting, and eviction behavior.
-- `open-bitcoin-network/` owns peer lifecycle, wire-message handling, sync planning, and relay state.
+- `open-bitcoin-mempool/` owns policy admission, replacement, ancestor/descendant accounting, eviction behavior, and typed resource, fee, metadata, and lifecycle contracts.
+- `open-bitcoin-network/` owns peer lifecycle, wire-message handling, sync planning, relay state, and injected retry-input contracts.
 - `open-bitcoin-wallet/` owns descriptor parsing, address derivation, balance tracking, coin selection, transaction building, and signing.
-- `open-bitcoin-node/` owns adapter-facing orchestration over chainstate, mempool, networking, and wallet state.
-- `open-bitcoin-rpc/` owns JSON-RPC envelopes, config loading, method dispatch, HTTP serving, and the `open-bitcoind` binary.
+- `open-bitcoin-node/` owns adapter-facing orchestration over chainstate, mempool, networking, and wallet state, including the authoritative admission and lifecycle shell.
+- `open-bitcoin-rpc/` owns JSON-RPC envelopes, config loading, method dispatch, HTTP serving, the `open-bitcoind` binary, and truthful resource and fee RPC projection.
 - `open-bitcoin-cli/` owns the `open-bitcoin-cli` command-line client and supported `bitcoin-cli`-style startup behavior.
 - `open-bitcoin-test-harness/` owns reusable black-box parity cases, target adapters, isolation helpers, and parity report generation.
 - `open-bitcoin-bench/` owns deterministic benchmark groups and JSON/Markdown report generation.

@@ -15,10 +15,14 @@ The ledger exists so contributors and reviewers can answer three questions quick
 2. What is the current status of that surface in Open Bitcoin?
 3. Is any difference from Knots intentional, documented, and reviewable?
 
-The current v2.1 claim is intentionally narrow: Open Bitcoin provides bounded,
-explicit, default-off block serving and compact-block relay with deterministic
-local evidence and optional public-network operator review. The canonical
-handoff is [`release-readiness.md`](release-readiness.md). Package relay, BIP37
+Active v2.2 evidence root: Phase 130
+(`v2-2-resource-time-fee-primitives`) documents resource, fee, metadata,
+context, and lifecycle primitives in the
+[mempool policy catalog](catalog/mempool-policy.md). v2.1 remains the latest shipped release:
+Open Bitcoin provides bounded, explicit, default-off block serving and
+compact-block relay with deterministic local evidence and optional
+public-network operator review. The canonical shipped handoff is
+[`release-readiness.md`](release-readiness.md). Package relay execution, BIP37
 bloom-filter serving, compact-filter serving, public serving or relay defaults,
 archive-node and production-scale historical serving, public-network CI or
 release gates, production service/deployment, production full-node readiness,
