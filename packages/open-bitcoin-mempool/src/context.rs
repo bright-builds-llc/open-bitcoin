@@ -1,6 +1,7 @@
 // Parity breadcrumbs:
 // - packages/bitcoin-knots/src/kernel/mempool_entry.h
 // - packages/bitcoin-knots/src/node/mempool_persist.cpp
+// - packages/bitcoin-knots/src/validation.cpp
 
 //! Canonical mempool entry metadata and explicit operation inputs.
 

@@ -1,6 +1,7 @@
 // Parity breadcrumbs:
 // - packages/bitcoin-knots/src/kernel/mempool_entry.h
 // - packages/bitcoin-knots/src/node/mempool_persist.cpp
+// - packages/bitcoin-knots/src/validation.cpp
 
 use open_bitcoin_consensus::{ConsensusParams, ScriptVerifyFlags, transaction_txid};
 use open_bitcoin_primitives::{Transaction, TransactionInput};

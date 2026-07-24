@@ -226,18 +226,171 @@ package relay, public relay default, archive-node behavior, public-network
 gate, production service operation, production full-node readiness, or
 production-funds wallet claim.
 
+## Phase 130 resource, time, and fee primitives
+
+The `v2-2-resource-time-fee-primitives` surface uniquely owns `FEEP-01` through
+`FEEP-05`. Phase 130 establishes deterministic, non-overloaded contracts for
+mempool resource accounting, fee roles, acceptance and relay metadata, explicit
+operation contexts, committed lifecycle facts, injected retry inputs, and
+truthful RPC projection. It does not activate accounted-capacity enforcement,
+package execution, complete cross-cache projection, full snapshot schema
+evolution, or retry scheduling.
+
+### Version-1 Rust-owned accounting formula
+
+`MEMPOOL_RESOURCE_ACCOUNTING_VERSION = 1` counts only logical state owned by the
+Rust mempool (`packages/open-bitcoin-mempool/src/resource.rs`):
+
+- each entry-map `Txid` key and fixed `MempoolEntry` value;
+- fixed transaction input and output elements;
+- scriptSig, scriptPubKey, and witness payload bytes;
+- one Rust `Vec<u8>` header for every witness item;
+- direct parent and child `Txid` identities; and
+- each spent-outpoint `OutPoint` key and `Txid` value.
+
+`TransactionVirtualSize`, `AccountedMempoolMemory`, and `MempoolCapacity` remain
+compile-time distinct. The cached ledger and independent recomputation oracle
+must agree; overflow maps to a typed invariant error.
+
+### Intentional difference from Knots allocator estimates
+
+Knots `DynamicUsage` estimates C++ allocator and container behavior. Open
+Bitcoin intentionally uses a deterministic Rust-owned logical formula instead of
+imitating allocator capacity, hash-table bucket slack, C++ pointer estimates, or
+network/node caches. Observable RPC meanings stay Knots-compatible while the
+byte totals may differ from Knots `usage` on identical transaction sets.
+
+### Fee roles
+
+Four compile-time-distinct fee roles are required at mempool policy boundaries
+(`packages/open-bitcoin-mempool/src/fee.rs`):
+
+- `StaticRelayFeeRate` — ordinary per-transaction anti-free-relay floor;
+- `IncrementalRelayFeeRate` — replacement and pressure-bump input only;
+- `RollingMempoolFeeRate` — pressure-driven rolling floor (raw state; Phase 131
+  owns bump/decay mechanics);
+- `EffectiveAdmissionFeeRate` — derived `max(static, rolling)` at decision and
+  summary boundaries, never an independent mutable store.
+
+Eligible package aggregates may satisfy the rolling floor while ordinary members
+must still satisfy the static floor individually. Incremental never contaminates
+ordinary admission or `mempoolminfee`.
+
+### Metadata, recovery compatibility, and explicit contexts
+
+Canonical entries carry typed acceptance time plus origin and relay-intent
+metadata (`packages/open-bitcoin-mempool/src/context.rs`). Missing legacy
+metadata classifies only as `LegacyUnknown`, `RecoveryUnknown`, and
+`NotRequested`; recovery never invents local origin or current time. Known
+capture and recovery pass metadata through `AdmissionContext::recovery` without
+substituting restart time.
+
+Operation-specific immutable contexts cover admission, pressure, block, reorg,
+and retry decisions. Pure mempool and network policy never read wall-clock time
+or randomness; shells inject exact values.
+
+### Lifecycle delta invariants
+
+`MempoolLifecycleDelta` is committed-fact vocabulary separate from
+`MempoolOutcome` attempt results (`packages/open-bitcoin-mempool/src/pool/lifecycle.rs`).
+Deltas record admitted members, final post-transition membership, and typed
+removals that keep cause independent from direct-versus-descendant role. Retry
+clears resolve with `LifecycleRemoval` > `TransportWritten` > `EligibleServe`
+precedence. Stable enum-derived labels are the only shared evidence projection;
+transaction identities stay on authenticated direct responses.
+
+### RPC resource and fee mappings
+
+Authoritative `getmempoolinfo` projection preserves Knots field meanings and
+exposes Open Bitcoin extensions without redefining baseline fields:
+
+| Field | Meaning |
+| --- | --- |
+| `bytes` | total `TransactionVirtualSize` |
+| `usage` | `AccountedMempoolMemory` |
+| `maxmempool` | configured `MempoolCapacity` |
+| `mempoolminfee` | derived `EffectiveAdmissionFeeRate` |
+| `minrelaytxfee` | static relay floor |
+| `incrementalrelayfee` | incremental replacement/pressure bump |
+| `rollingmempoolfee` | raw rolling floor (extension) |
+| `effectiveadmissionfee` | explicit effective admission (extension) |
+| `capacityenforcement` | fixed `legacy_vsize` during Phase 130 |
+
+Phase 130 trimming still uses `legacy_vsize_trim_limit` only; accounted capacity
+is reported and classified but does not reject or evict yet.
+
+### Injected retry inputs
+
+`RetryJitterSeconds` (`0..=300`) and `RetryDecisionContext` carry exact injected
+Unix seconds and validated jitter
+(`packages/open-bitcoin-network/src/peer/transaction_relay/retry.rs`). Phase 130
+models only those inputs; it does not schedule retries, fan out, or clear
+unbroadcast membership from transport receipts.
+
+### Exact later-phase boundaries
+
+Without weakening Phase 130:
+
+- **Phase 131** owns accounted-memory enforcement, trimming against accounted
+  capacity, rolling-fee bump/decay mechanics, and parity tolerances.
+- **Phase 132** owns package execution and pinned package-policy exceptions
+  (including TRUC) beyond the fee-role vocabulary already fixed here.
+- **Phase 134** owns complete cross-cache projection of lifecycle deltas through
+  the runtime authority.
+- **Phase 135** owns full snapshot/checkpoint/recovery schema evolution beyond
+  the Phase 130 optional metadata fields on the existing schema version.
+- **Phase 136** owns retry scheduling, fanout, receipts, and clearing.
+
+Phase 130 does not claim general package wire relay, whole-mempool rebroadcast,
+public or default relay, guaranteed propagation, public-network default CI,
+production readiness, or production-funds wallet use.
+
+### Knots sources for this surface
+
+- [`packages/bitcoin-knots/src/txmempool.h`](../../../packages/bitcoin-knots/src/txmempool.h)
+- [`packages/bitcoin-knots/src/txmempool.cpp`](../../../packages/bitcoin-knots/src/txmempool.cpp)
+- [`packages/bitcoin-knots/src/rpc/mempool.cpp`](../../../packages/bitcoin-knots/src/rpc/mempool.cpp)
+- [`packages/bitcoin-knots/src/kernel/mempool_entry.h`](../../../packages/bitcoin-knots/src/kernel/mempool_entry.h)
+- [`packages/bitcoin-knots/src/kernel/mempool_removal_reason.h`](../../../packages/bitcoin-knots/src/kernel/mempool_removal_reason.h)
+- [`packages/bitcoin-knots/src/node/mempool_persist.cpp`](../../../packages/bitcoin-knots/src/node/mempool_persist.cpp)
+- [`packages/bitcoin-knots/src/validation.cpp`](../../../packages/bitcoin-knots/src/validation.cpp)
+- [`packages/bitcoin-knots/src/net_processing.cpp`](../../../packages/bitcoin-knots/src/net_processing.cpp)
+- [`packages/bitcoin-knots/src/policy/policy.h`](../../../packages/bitcoin-knots/src/policy/policy.h)
+- [`packages/bitcoin-knots/doc/policy/packages.md`](../../../packages/bitcoin-knots/doc/policy/packages.md)
+
+### First-party evidence roots
+
+- [`packages/open-bitcoin-mempool/src/resource.rs`](../../../packages/open-bitcoin-mempool/src/resource.rs)
+- [`packages/open-bitcoin-mempool/src/fee.rs`](../../../packages/open-bitcoin-mempool/src/fee.rs)
+- [`packages/open-bitcoin-mempool/src/context.rs`](../../../packages/open-bitcoin-mempool/src/context.rs)
+- [`packages/open-bitcoin-mempool/src/pool/lifecycle.rs`](../../../packages/open-bitcoin-mempool/src/pool/lifecycle.rs)
+- [`packages/open-bitcoin-mempool/src/pool/tests/resource_cases.rs`](../../../packages/open-bitcoin-mempool/src/pool/tests/resource_cases.rs)
+- [`packages/open-bitcoin-mempool/src/pool/tests/fee_cases.rs`](../../../packages/open-bitcoin-mempool/src/pool/tests/fee_cases.rs)
+- [`packages/open-bitcoin-mempool/src/pool/tests/context_cases.rs`](../../../packages/open-bitcoin-mempool/src/pool/tests/context_cases.rs)
+- [`packages/open-bitcoin-mempool/src/pool/tests/lifecycle_delta_cases.rs`](../../../packages/open-bitcoin-mempool/src/pool/tests/lifecycle_delta_cases.rs)
+- [`packages/open-bitcoin-network/src/peer/transaction_relay/retry.rs`](../../../packages/open-bitcoin-network/src/peer/transaction_relay/retry.rs)
+- [`packages/open-bitcoin-node/src/storage/snapshot_codec.rs`](../../../packages/open-bitcoin-node/src/storage/snapshot_codec.rs)
+- [`packages/open-bitcoin-rpc/src/dispatch/node.rs`](../../../packages/open-bitcoin-rpc/src/dispatch/node.rs)
+- [`.planning/phases/130-resource-time-and-fee-primitives/`](../../../.planning/phases/130-resource-time-and-fee-primitives/)
+
 ## Known gaps
 
-- package relay beyond single-transaction admission
-- rolling minimum-fee decay and long-lived relay-fee state
+- accounted-memory capacity enforcement and rolling-fee bump/decay (Phase 131)
+- package execution beyond fee-role vocabulary, including pinned TRUC exceptions
+  (Phase 132)
+- complete lifecycle-delta projection across every dependent cache (Phase 134)
+- full snapshot/checkpoint/recovery schema beyond optional metadata fields
+  (Phase 135)
+- retry scheduling, fanout, receipts, and unbroadcast clearing (Phase 136)
 - Knots `mempool.dat` binary compatibility
-- periodic rebroadcast scheduling beyond `rebroadcast_deferred` evidence
-- public-network relay readiness evidence beyond the bounded Phase 105 operator
-  presentation and Phase 106 deterministic closeout surfaces
+- general package wire relay, whole-mempool rebroadcast, public/default relay,
+  guaranteed propagation, public-network default CI, production readiness, and
+  production-funds wallet use
 
 ## Follow-up triggers
 
-Update this entry when later phases add package relay, dynamic rolling-min-fee
-behavior, rebroadcast scheduling, broad operator-facing mempool interfaces, or
-Knots-compatible mempool file import/export that materially changes the
-externally visible policy surface.
+Update this entry when later phases add accounted-capacity enforcement, dynamic
+rolling-min-fee behavior, package execution, complete cross-cache projection,
+checkpoint/recovery schema changes, retry scheduling, broad operator-facing
+mempool interfaces, or Knots-compatible mempool file import/export that
+materially changes the externally visible policy surface.

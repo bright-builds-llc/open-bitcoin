@@ -4,6 +4,8 @@
 // - packages/bitcoin-knots/src/policy/policy.h
 // - packages/bitcoin-knots/src/policy/rbf.cpp
 // - packages/bitcoin-knots/src/policy/packages.cpp
+// - packages/bitcoin-knots/src/rpc/mempool.cpp
+// - packages/bitcoin-knots/doc/policy/packages.md
 
 mod context_cases;
 mod fee_cases;

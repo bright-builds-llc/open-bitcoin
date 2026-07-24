@@ -599,7 +599,9 @@
         "packages/bitcoin-knots/src/txmempool.cpp",
         "packages/bitcoin-knots/src/policy/policy.h",
         "packages/bitcoin-knots/src/policy/rbf.cpp",
-        "packages/bitcoin-knots/src/policy/packages.cpp"
+        "packages/bitcoin-knots/src/policy/packages.cpp",
+        "packages/bitcoin-knots/src/rpc/mempool.cpp",
+        "packages/bitcoin-knots/doc/policy/packages.md"
       ]
     },
     {
@@ -611,7 +613,8 @@
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/kernel/mempool_entry.h",
-        "packages/bitcoin-knots/src/node/mempool_persist.cpp"
+        "packages/bitcoin-knots/src/node/mempool_persist.cpp",
+        "packages/bitcoin-knots/src/validation.cpp"
       ]
     },
     {

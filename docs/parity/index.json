@@ -712,6 +712,10 @@
     {
       "name": "v2-1-runtime-timing-evidence-integrity",
       "status": "done"
+    },
+    {
+      "name": "v2-2-resource-time-fee-primitives",
+      "status": "in_progress"
     }
   ],
   "checklist": {
@@ -3024,6 +3028,71 @@
         ],
         "suspected_unknowns": [
           "Public serving defaults, archive-node availability, public-network CI, production service operation, production full-node readiness, and production-funds wallet use remain deferred and require separate evidence."
+        ]
+      },
+      {
+        "id": "v2-2-resource-time-fee-primitives",
+        "title": "v2.2 Resource, Time, and Fee Primitives",
+        "status": "in_progress",
+        "requirements": [
+          "FEEP-01",
+          "FEEP-02",
+          "FEEP-03",
+          "FEEP-04",
+          "FEEP-05"
+        ],
+        "evidence": [
+          "docs/parity/catalog/mempool-policy.md",
+          "docs/parity/checklist.md",
+          "docs/parity/index.json",
+          "docs/parity/source-breadcrumbs.json",
+          "packages/open-bitcoin-mempool/src/resource.rs",
+          "packages/open-bitcoin-mempool/src/fee.rs",
+          "packages/open-bitcoin-mempool/src/context.rs",
+          "packages/open-bitcoin-mempool/src/pool/lifecycle.rs",
+          "packages/open-bitcoin-mempool/src/pool/tests/resource_cases.rs",
+          "packages/open-bitcoin-mempool/src/pool/tests/fee_cases.rs",
+          "packages/open-bitcoin-mempool/src/pool/tests/context_cases.rs",
+          "packages/open-bitcoin-mempool/src/pool/tests/lifecycle_delta_cases.rs",
+          "packages/open-bitcoin-network/src/peer/transaction_relay/retry.rs",
+          "packages/open-bitcoin-node/src/storage/snapshot_codec.rs",
+          "packages/open-bitcoin-rpc/src/dispatch/node.rs",
+          ".planning/phases/130-resource-time-and-fee-primitives/130-CONTEXT.md",
+          ".planning/phases/130-resource-time-and-fee-primitives/130-01-SUMMARY.md",
+          ".planning/phases/130-resource-time-and-fee-primitives/130-09-SUMMARY.md",
+          ".planning/phases/130-resource-time-and-fee-primitives/130-10-SUMMARY.md",
+          ".planning/phases/130-resource-time-and-fee-primitives/130-11-SUMMARY.md"
+        ],
+        "rationale": "Phase 130 uniquely owns FEEP-01 through FEEP-05 with distinct resource newtypes, a version-1 Rust-owned accounted-memory formula intentionally different from C++ allocator estimates, four fee roles with derived effective admission, typed acceptance/origin/relay metadata, explicit operation contexts, MempoolLifecycleDelta committed-fact vocabulary, injected retry jitter/time inputs, and Knots-compatible getmempoolinfo bytes/usage/maxmempool/mempoolminfee mappings plus Open Bitcoin extensions. Later phases own accounted enforcement (131), package execution (132), complete cross-cache projection (134), full snapshot schema (135), and retry scheduling/receipts (136).",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/txmempool.h",
+            "packages/bitcoin-knots/src/txmempool.cpp",
+            "packages/bitcoin-knots/src/rpc/mempool.cpp",
+            "packages/bitcoin-knots/src/kernel/mempool_entry.h",
+            "packages/bitcoin-knots/src/kernel/mempool_removal_reason.h",
+            "packages/bitcoin-knots/src/node/mempool_persist.cpp",
+            "packages/bitcoin-knots/src/validation.cpp",
+            "packages/bitcoin-knots/src/net_processing.cpp",
+            "packages/bitcoin-knots/src/policy/policy.h",
+            "packages/bitcoin-knots/doc/policy/packages.md"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/test/functional/mempool_limit.py",
+            "packages/bitcoin-knots/test/functional/mempool_persist.py",
+            "packages/bitcoin-knots/src/test/txpackage_tests.cpp"
+          ]
+        },
+        "known_gaps": [
+          "Phase 131 owns accounted-memory enforcement, rolling-fee bump/decay mechanics, and parity tolerances.",
+          "Phase 132 owns package execution and pinned package-policy exceptions beyond fee-role vocabulary.",
+          "Phase 134 owns complete cross-cache projection of lifecycle deltas.",
+          "Phase 135 owns full snapshot/checkpoint/recovery schema evolution.",
+          "Phase 136 owns retry scheduling, fanout, receipts, and clearing.",
+          "Phase 130 does not claim general package wire relay, whole-mempool rebroadcast, public/default relay, guaranteed propagation, public-network default CI, production readiness, or production-funds wallet use."
+        ],
+        "suspected_unknowns": [
+          "Accounted-memory parity tolerance against the Phase 130 ledger remains a Phase 131 planning decision."
         ]
       }
     ]
