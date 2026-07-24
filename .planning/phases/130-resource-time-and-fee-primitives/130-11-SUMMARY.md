@@ -76,7 +76,7 @@ completed: 2026-07-24
 
 1. **Task 1: Sample local acceptance time in the RPC shell** - `ea59457f` (feat)
 
-**Plan metadata:** pending
+**Plan metadata:** `63080d3f` (docs: complete plan)
 
 ## Files Created/Modified
 
