@@ -2276,6 +2276,10 @@ impl StatusRpcClient for FakeStatusRpcClient {
             maxmempool: 300_000_000,
             mempoolminfee: 1_000,
             minrelaytxfee: 1_000,
+            incrementalrelayfee: 1_000,
+            rollingmempoolfee: 0,
+            effectiveadmissionfee: 1_000,
+            capacityenforcement: "legacy_vsize".to_string(),
             loaded: true,
         })
     }

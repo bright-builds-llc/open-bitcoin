@@ -13,10 +13,11 @@ use open_bitcoin_consensus::{
 use open_bitcoin_mempool::{
     AccountedMempoolMemory, AdmissionContext, BlockLifecycleContext, FeeRate,
     IncrementalRelayFeeRate, LimitDirection, LimitKind, Mempool, MempoolCapacity,
-    MempoolCapacityStatus, MempoolError, MempoolLifecycleRemoval, MempoolLifecycleSummary,
-    MempoolMemberIdentity, MempoolPressureSummary, MempoolRemovalCause, MempoolRemovalRole,
-    PolicyConfig, PolicyTime, RbfPolicy, RollingFeeParityStatus, RollingMempoolFeeRate,
-    StaticRelayFeeRate, TransactionVirtualSize, effective_admission_fee_rate,
+    MempoolCapacityEnforcement, MempoolCapacityStatus, MempoolError, MempoolLifecycleRemoval,
+    MempoolLifecycleSummary, MempoolMemberIdentity, MempoolPressureSummary, MempoolRemovalCause,
+    MempoolRemovalRole, PolicyConfig, PolicyTime, RbfPolicy, RollingFeeParityStatus,
+    RollingMempoolFeeRate, StaticRelayFeeRate, TransactionVirtualSize,
+    effective_admission_fee_rate,
 };
 use open_bitcoin_primitives::{
     Amount, Block, BlockHash, BlockHeader, OutPoint, ScriptBuf, ScriptWitness, Transaction,
@@ -399,6 +400,7 @@ fn lifecycle_cleanup_and_pressure_truths_hold_through_public_api() {
             RollingMempoolFeeRate::ZERO,
         ),
         capacity_status: MempoolCapacityStatus::OverCapacity,
+        capacity_enforcement: MempoolCapacityEnforcement::LegacyVsize,
         rolling_fee_parity: RollingFeeParityStatus::Deferred,
     };
     let summary = MempoolLifecycleSummary {
@@ -406,6 +408,10 @@ fn lifecycle_cleanup_and_pressure_truths_hold_through_public_api() {
         pressure: pressure.clone(),
     };
 
+    assert_eq!(
+        MempoolCapacityEnforcement::LegacyVsize.as_str(),
+        "legacy_vsize"
+    );
     assert_eq!(MempoolCapacityStatus::Empty.as_str(), "empty");
     assert_eq!(MempoolCapacityStatus::AtCapacity.as_str(), "at_capacity");
     assert_eq!(

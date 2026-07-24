@@ -26,11 +26,11 @@ mod topology;
 use self::admission_outcome::accept as accept_outcome;
 use self::topology::{collect_ancestors, collect_conflicts_and_descendants, collect_descendants};
 pub use lifecycle::{
-    FinalMempoolMembership, MempoolCapacityStatus, MempoolLifecycleDelta,
-    MempoolLifecycleDeltaBuilder, MempoolLifecycleInvariantError, MempoolLifecycleRemoval,
-    MempoolLifecycleSummary, MempoolMemberIdentity, MempoolMemberState, MempoolPressureSummary,
-    MempoolRemovalCause, MempoolRemovalRole, MempoolRetryClear, MempoolRetryClearCause,
-    RollingFeeParityStatus,
+    FinalMempoolMembership, MempoolCapacityEnforcement, MempoolCapacityStatus,
+    MempoolLifecycleDelta, MempoolLifecycleDeltaBuilder, MempoolLifecycleInvariantError,
+    MempoolLifecycleRemoval, MempoolLifecycleSummary, MempoolMemberIdentity, MempoolMemberState,
+    MempoolPressureSummary, MempoolRemovalCause, MempoolRemovalRole, MempoolRetryClear,
+    MempoolRetryClearCause, RollingFeeParityStatus,
 };
 
 /// Separates one admission attempt result from facts that were actually committed.
@@ -99,6 +99,11 @@ impl Mempool {
 
     pub const fn rolling_mempool_fee_rate(&self) -> RollingMempoolFeeRate {
         self.rolling_mempool_fee_rate
+    }
+
+    /// Installs a rolling floor for operator evidence and Phase-131 pressure seams.
+    pub fn set_rolling_mempool_fee_rate(&mut self, rate: RollingMempoolFeeRate) {
+        self.rolling_mempool_fee_rate = rate;
     }
 
     fn replacement_set(

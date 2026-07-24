@@ -47,6 +47,10 @@ pub struct GetMempoolInfoResponse {
     pub maxmempool: usize,
     pub mempoolminfee: i64,
     pub minrelaytxfee: i64,
+    pub incrementalrelayfee: i64,
+    pub rollingmempoolfee: i64,
+    pub effectiveadmissionfee: i64,
+    pub capacityenforcement: String,
     pub loaded: bool,
 }
 

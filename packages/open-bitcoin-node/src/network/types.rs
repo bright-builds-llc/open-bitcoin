@@ -17,7 +17,9 @@ use open_bitcoin_core::{
     codec::CodecError,
     primitives::{BlockHash, NetworkMagic},
 };
-use open_bitcoin_mempool::{MempoolCapacityStatus, MempoolError, RollingFeeParityStatus};
+use open_bitcoin_mempool::{
+    MempoolCapacityEnforcement, MempoolCapacityStatus, MempoolError, RollingFeeParityStatus,
+};
 use open_bitcoin_network::{NetworkError, PeerId, WireNetworkMessage};
 
 use crate::status::{BlockRelayEvidenceStatus, relay_evidence::RelayEvidenceStatus};
@@ -103,6 +105,7 @@ pub struct ManagedMempoolInfo {
     pub rolling_mempool_fee_rate_sats_per_kvb: i64,
     pub effective_admission_fee_rate_sats_per_kvb: i64,
     pub capacity_status: MempoolCapacityStatus,
+    pub capacity_enforcement: MempoolCapacityEnforcement,
     pub rolling_fee_parity: RollingFeeParityStatus,
 }
 

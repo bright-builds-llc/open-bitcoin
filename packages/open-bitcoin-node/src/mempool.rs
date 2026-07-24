@@ -9,7 +9,7 @@ use open_bitcoin_core::{
 };
 use open_bitcoin_mempool::{
     AdmissionContext, AdmissionResult, Mempool, MempoolError, MempoolOutcome, MempoolTransition,
-    PolicyConfig,
+    PolicyConfig, RollingMempoolFeeRate,
 };
 
 use crate::{ChainstateStore, ManagedChainstate};
@@ -38,6 +38,11 @@ impl ManagedMempool {
 
     pub(crate) fn mempool_mut(&mut self) -> &mut Mempool {
         &mut self.mempool
+    }
+
+    /// Installs a rolling floor for operator evidence and Phase-131 pressure seams.
+    pub fn set_rolling_mempool_fee_rate(&mut self, rate: RollingMempoolFeeRate) {
+        self.mempool.set_rolling_mempool_fee_rate(rate);
     }
 
     /// Submits a transaction with canonical metadata supplied by the node shell.

@@ -114,6 +114,10 @@ pub(super) fn get_mempool_info(
         maxmempool: info.mempool_capacity,
         mempoolminfee: info.effective_admission_fee_rate_sats_per_kvb,
         minrelaytxfee: info.static_relay_fee_rate_sats_per_kvb,
+        incrementalrelayfee: info.incremental_relay_fee_rate_sats_per_kvb,
+        rollingmempoolfee: info.rolling_mempool_fee_rate_sats_per_kvb,
+        effectiveadmissionfee: info.effective_admission_fee_rate_sats_per_kvb,
+        capacityenforcement: info.capacity_enforcement.as_str().to_string(),
         loaded: true,
     })
 }

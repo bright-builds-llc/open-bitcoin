@@ -16,10 +16,10 @@ use super::super::lifecycle::{
 };
 use super::{build_block, sample_chainstate_snapshot, spend_transaction, submit};
 use crate::{
-    AccountedMempoolMemory, BlockLifecycleContext, Mempool, MempoolCapacity, MempoolCapacityStatus,
-    MempoolError, MempoolMemberIdentity, MempoolRemovalCause, MempoolRemovalRole, PolicyConfig,
-    PolicyTime, RollingFeeParityStatus, TransactionVirtualSize,
-    transaction_weight_and_virtual_size,
+    AccountedMempoolMemory, BlockLifecycleContext, Mempool, MempoolCapacity,
+    MempoolCapacityEnforcement, MempoolCapacityStatus, MempoolError, MempoolMemberIdentity,
+    MempoolRemovalCause, MempoolRemovalRole, PolicyConfig, PolicyTime, RollingFeeParityStatus,
+    TransactionVirtualSize, transaction_weight_and_virtual_size,
 };
 
 #[test]
@@ -62,6 +62,11 @@ fn lifecycle_pressure_summary_reports_capacity_and_fee_floor() {
     );
     assert_eq!(summary.capacity_status, MempoolCapacityStatus::Empty);
     assert_eq!(summary.capacity_status.as_str(), "empty");
+    assert_eq!(
+        summary.capacity_enforcement,
+        MempoolCapacityEnforcement::LegacyVsize
+    );
+    assert_eq!(summary.capacity_enforcement.as_str(), "legacy_vsize");
     assert_eq!(summary.rolling_fee_parity, RollingFeeParityStatus::Deferred);
     assert_eq!(summary.rolling_fee_parity.as_str(), "deferred");
 }
@@ -371,6 +376,7 @@ fn lifecycle_public_types_cover_debug_clone_and_equality_contracts() {
             crate::RollingMempoolFeeRate::new(crate::FeeRate::from_sats_per_kvb(7)),
         ),
         capacity_status: MempoolCapacityStatus::OverCapacity,
+        capacity_enforcement: crate::MempoolCapacityEnforcement::LegacyVsize,
         rolling_fee_parity: RollingFeeParityStatus::Deferred,
     };
     let summary = crate::MempoolLifecycleSummary {

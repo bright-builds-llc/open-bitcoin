@@ -259,6 +259,10 @@ impl RunningStatusRpcClient {
                 maxmempool: 300_000_000,
                 mempoolminfee: 1,
                 minrelaytxfee: 1,
+                incrementalrelayfee: 1,
+                rollingmempoolfee: 0,
+                effectiveadmissionfee: 1,
+                capacityenforcement: "legacy_vsize".to_string(),
                 loaded: true,
             },
             wallet_info: GetWalletInfoResponse {

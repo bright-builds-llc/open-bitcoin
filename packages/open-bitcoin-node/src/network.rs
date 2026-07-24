@@ -157,6 +157,13 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         Ok(maybe_message.into_iter().collect())
     }
 
+    pub fn set_rolling_mempool_fee_rate(
+        &mut self,
+        rate: open_bitcoin_mempool::RollingMempoolFeeRate,
+    ) {
+        self.mempool.set_rolling_mempool_fee_rate(rate);
+    }
+
     pub fn mempool_info(&self) -> ManagedMempoolInfo {
         let entries = self.mempool.mempool().entries();
         let total_fee_sats = entries.values().map(|entry| entry.fee_sats()).sum();
@@ -185,6 +192,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                 .fee_rate()
                 .sats_per_kvb(),
             capacity_status: pressure.capacity_status,
+            capacity_enforcement: pressure.capacity_enforcement,
             rolling_fee_parity: pressure.rolling_fee_parity,
         }
     }

@@ -2526,6 +2526,10 @@ fn handle_rpc_connection(
             "maxmempool": 300000000,
             "mempoolminfee": 1000,
             "minrelaytxfee": 1000,
+            "incrementalrelayfee": 1000,
+            "rollingmempoolfee": 0,
+            "effectiveadmissionfee": 1000,
+            "capacityenforcement": "legacy_vsize",
             "loaded": true
         })
     } else if has_rpc_method(&request_methods, "buildandsigntransaction") {

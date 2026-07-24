@@ -28,7 +28,10 @@ use open_bitcoin_core::{
         TransactionInput, TransactionOutput,
     },
 };
-use open_bitcoin_mempool::{PolicyConfig, RelayIntent};
+use open_bitcoin_mempool::{
+    FeeRate, IncrementalRelayFeeRate, MempoolCapacity, MempoolCapacityEnforcement, PolicyConfig,
+    RelayIntent, RollingMempoolFeeRate, StaticRelayFeeRate,
+};
 use open_bitcoin_network::{
     AddressAnnouncement, AddressDecisionLabel, AddressDecisionReason, AddressList,
     AddressNetworkKind, AddressSourceKind, BanReason, BanScope, BlockRelayActivationPolicy,
@@ -139,6 +142,37 @@ fn spend_transaction(
             value: Amount::from_sats(value).expect("valid amount"),
             script_pubkey: p2sh_script(),
         }],
+        lock_time: 0,
+    }
+}
+
+fn script_heavy_spend_transaction(
+    previous_txid: open_bitcoin_core::primitives::Txid,
+    value: i64,
+) -> Transaction {
+    let mut datacarrier = vec![0x6a, 80];
+    datacarrier.extend(std::iter::repeat_n(0xab_u8, 80));
+    Transaction {
+        version: 2,
+        inputs: vec![TransactionInput {
+            previous_output: OutPoint {
+                txid: previous_txid,
+                vout: 0,
+            },
+            script_sig: script(&[0x01, 0x51]),
+            sequence: TransactionInput::SEQUENCE_FINAL,
+            witness: ScriptWitness::default(),
+        }],
+        outputs: vec![
+            TransactionOutput {
+                value: Amount::from_sats(value).expect("valid amount"),
+                script_pubkey: p2sh_script(),
+            },
+            TransactionOutput {
+                value: Amount::from_sats(0).expect("zero amount"),
+                script_pubkey: script(&datacarrier),
+            },
+        ],
         lock_time: 0,
     }
 }
@@ -2737,11 +2771,100 @@ fn managed_network_info_exposes_rpc_projection_helpers() {
     assert!(mempool_info.accounted_memory > mempool_info.total_virtual_size);
     assert_eq!(mempool_info.mempool_capacity, 300_000_000);
     assert_eq!(mempool_info.total_fee_sats, 1_000);
+    assert_eq!(
+        mempool_info.capacity_enforcement,
+        MempoolCapacityEnforcement::LegacyVsize
+    );
     assert_eq!(network_info.connected_peers, 2);
     assert_eq!(network_info.inbound_peers, 1);
     assert_eq!(network_info.outbound_peers, 1);
     assert_eq!(network_info.wtxidrelay_peers, 1);
     assert_eq!(network_info.header_preferring_peers, 1);
+}
+
+#[test]
+fn mempool_info_exposes_truthful_resource_and_fee_roles() {
+    // Arrange
+    let policy = PolicyConfig {
+        mempool_capacity: MempoolCapacity::new(12_345_678),
+        static_relay_fee_rate: StaticRelayFeeRate::new(FeeRate::from_sats_per_kvb(1_000)),
+        incremental_relay_fee_rate: IncrementalRelayFeeRate::new(FeeRate::from_sats_per_kvb(7_000)),
+        ..PolicyConfig::default()
+    };
+    let mut network =
+        ManagedPeerNetwork::new(MemoryChainstateStore::default(), local_config(91), policy);
+    let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0, 500_000_000);
+    let spendable = build_block(block_hash(&genesis.header), 1, 500_000_000);
+    network
+        .connect_local_block(&genesis, verify_flags(), consensus_params())
+        .expect("genesis");
+    network
+        .connect_local_block(&spendable, verify_flags(), consensus_params())
+        .expect("spendable");
+    let transaction = script_heavy_spend_transaction(
+        transaction_txid(&genesis.transactions[0]).expect("txid"),
+        499_998_000,
+    );
+    let expected_virtual_size =
+        open_bitcoin_mempool::transaction_weight_and_virtual_size(&transaction)
+            .expect("weight")
+            .1;
+    network
+        .submit_local_transaction_outcome_at(
+            transaction,
+            verify_flags(),
+            consensus_params(),
+            3,
+            RelayIntent::NotRequested,
+        )
+        .expect("submit");
+    network.set_rolling_mempool_fee_rate(RollingMempoolFeeRate::new(FeeRate::from_sats_per_kvb(
+        3_000,
+    )));
+
+    // Act
+    let info = network.mempool_info();
+    let serialized = format!("{info:?}");
+
+    // Assert
+    assert_eq!(info.transaction_count, 1);
+    assert_eq!(info.total_virtual_size, expected_virtual_size);
+    assert!(info.accounted_memory > info.total_virtual_size);
+    assert_eq!(info.mempool_capacity, 12_345_678);
+    assert_ne!(info.total_virtual_size, info.accounted_memory);
+    assert_ne!(info.accounted_memory, info.mempool_capacity);
+    assert_ne!(info.total_virtual_size, info.mempool_capacity);
+    assert_eq!(info.static_relay_fee_rate_sats_per_kvb, 1_000);
+    assert_eq!(info.incremental_relay_fee_rate_sats_per_kvb, 7_000);
+    assert_eq!(info.rolling_mempool_fee_rate_sats_per_kvb, 3_000);
+    assert_eq!(info.effective_admission_fee_rate_sats_per_kvb, 3_000);
+    assert_eq!(
+        info.effective_admission_fee_rate_sats_per_kvb,
+        info.static_relay_fee_rate_sats_per_kvb
+            .max(info.rolling_mempool_fee_rate_sats_per_kvb)
+    );
+    assert_ne!(
+        info.effective_admission_fee_rate_sats_per_kvb,
+        info.incremental_relay_fee_rate_sats_per_kvb
+    );
+    assert_eq!(
+        info.capacity_enforcement,
+        MempoolCapacityEnforcement::LegacyVsize
+    );
+    assert_eq!(info.capacity_enforcement.as_str(), "legacy_vsize");
+    for forbidden in [
+        "txid",
+        "wtxid",
+        "peer_id",
+        "127.0.0.1",
+        "script_sig",
+        "transaction_hex",
+    ] {
+        assert!(
+            !serialized.to_lowercase().contains(forbidden),
+            "shared evidence leaked {forbidden}: {serialized}"
+        );
+    }
 }
 
 #[test]

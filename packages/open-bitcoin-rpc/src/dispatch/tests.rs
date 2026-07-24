@@ -34,7 +34,11 @@ use open_bitcoin_node::{
             ConsensusParams, ScriptVerifyFlags, block_hash, block_merkle_root, check_block_header,
             crypto::hash160, transaction_txid,
         },
-        mempool::{MempoolAcceptanceTime, MempoolOrigin, PolicyConfig, PolicyTime, RelayIntent},
+        mempool::{
+            FeeRate, IncrementalRelayFeeRate, MempoolAcceptanceTime, MempoolCapacity,
+            MempoolOrigin, PolicyConfig, PolicyTime, RelayIntent, RollingMempoolFeeRate,
+            StaticRelayFeeRate,
+        },
         network::{LocalPeerConfig, ServiceFlags, WireNetworkMessage},
         primitives::{
             Amount, Block, BlockHash, BlockHeader, NetworkAddress, NetworkMagic, OutPoint,
@@ -238,6 +242,106 @@ fn spend_transaction(previous_txid: Txid, value: i64) -> Transaction {
         }],
         lock_time: 0,
     }
+}
+
+fn script_heavy_spend_transaction(previous_txid: Txid, value: i64) -> Transaction {
+    let mut datacarrier = vec![0x6a, 80];
+    datacarrier.extend(std::iter::repeat_n(0xab_u8, 80));
+    Transaction {
+        version: 2,
+        inputs: vec![TransactionInput {
+            previous_output: OutPoint {
+                txid: previous_txid,
+                vout: 0,
+            },
+            script_sig: script(&[0x01, 0x51]),
+            sequence: TransactionInput::SEQUENCE_FINAL,
+            witness: ScriptWitness::default(),
+        }],
+        outputs: vec![
+            TransactionOutput {
+                value: Amount::from_sats(value).expect("amount"),
+                script_pubkey: p2sh_script(),
+            },
+            TransactionOutput {
+                value: Amount::from_sats(0).expect("zero"),
+                script_pubkey: script(&datacarrier),
+            },
+        ],
+        lock_time: 0,
+    }
+}
+
+fn resource_fee_evidence_context() -> (ManagedRpcContext, usize) {
+    let local_config = LocalPeerConfig {
+        magic: NetworkMagic::MAINNET,
+        services: ServiceFlags::NETWORK | ServiceFlags::WITNESS,
+        address: NetworkAddress {
+            services: 0,
+            address_bytes: [0_u8; 16],
+            port: 18_444,
+        },
+        nonce: 13_009,
+        relay: true,
+        user_agent: "/open-bitcoin:rpc-mempool-evidence/".to_string(),
+    };
+    let policy = PolicyConfig {
+        mempool_capacity: MempoolCapacity::new(12_345_678),
+        static_relay_fee_rate: StaticRelayFeeRate::new(FeeRate::from_sats_per_kvb(1_000)),
+        incremental_relay_fee_rate: IncrementalRelayFeeRate::new(FeeRate::from_sats_per_kvb(7_000)),
+        ..PolicyConfig::default()
+    };
+    let mut network =
+        ManagedPeerNetwork::new(MemoryChainstateStore::default(), local_config, policy);
+    let consensus = ConsensusParams {
+        coinbase_maturity: 1,
+        ..ConsensusParams::default()
+    };
+    let genesis = build_block(
+        BlockHash::from_byte_array([0_u8; 32]),
+        0,
+        500_000_000,
+        p2sh_script(),
+    );
+    let spendable = build_block(block_hash(&genesis.header), 1, 500_000_000, p2sh_script());
+    network
+        .connect_local_block(&genesis, rpc_verify_flags(), consensus)
+        .expect("genesis");
+    network
+        .connect_local_block(&spendable, rpc_verify_flags(), consensus)
+        .expect("spendable");
+    let transaction = script_heavy_spend_transaction(
+        transaction_txid(&genesis.transactions[0]).expect("txid"),
+        499_998_000,
+    );
+    let expected_virtual_size =
+        open_bitcoin_node::core::mempool::transaction_weight_and_virtual_size(&transaction)
+            .expect("weight")
+            .1;
+    network
+        .submit_local_transaction_outcome_at(
+            transaction,
+            rpc_verify_flags(),
+            consensus,
+            60,
+            RelayIntent::NotRequested,
+        )
+        .expect("submit");
+    network.set_rolling_mempool_fee_rate(RollingMempoolFeeRate::new(FeeRate::from_sats_per_kvb(
+        3_000,
+    )));
+    let wallet = ManagedWallet::from_store(
+        MemoryWalletStore::default(),
+        Wallet::new(AddressNetwork::Regtest),
+    );
+    let context = ManagedRpcContext::new(
+        AddressNetwork::Regtest,
+        consensus,
+        rpc_verify_flags(),
+        network,
+        wallet,
+    );
+    (context, expected_virtual_size)
 }
 
 fn encode_hex(bytes: &[u8]) -> String {
@@ -1339,6 +1443,65 @@ fn open_bitcoin_network_status_get_network_info_omits_open_bitcoin_inbound_statu
         assert!(
             !serialized.contains(forbidden),
             "{regression_scope}: baseline method exposed {forbidden}"
+        );
+    }
+}
+
+#[test]
+fn get_mempool_info_exposes_truthful_resource_and_fee_evidence() {
+    // Arrange
+    let (mut context, expected_virtual_size) = resource_fee_evidence_context();
+
+    // Act
+    let mempool = dispatch(
+        &mut context,
+        MethodCall::GetMempoolInfo(GetMempoolInfoRequest::default()),
+    )
+    .expect("mempool");
+    let serialized = mempool.to_string();
+
+    // Assert
+    assert_eq!(mempool["size"], json!(1));
+    assert_eq!(mempool["bytes"], json!(expected_virtual_size));
+    let usage = mempool["usage"].as_u64().expect("usage") as usize;
+    let bytes = mempool["bytes"].as_u64().expect("bytes") as usize;
+    let maxmempool = mempool["maxmempool"].as_u64().expect("maxmempool") as usize;
+    assert!(usage > bytes);
+    assert_eq!(maxmempool, 12_345_678);
+    assert_ne!(bytes, usage);
+    assert_ne!(usage, maxmempool);
+    assert_ne!(bytes, maxmempool);
+    assert_eq!(mempool["minrelaytxfee"], json!(1_000));
+    assert_eq!(mempool["incrementalrelayfee"], json!(7_000));
+    assert_eq!(mempool["rollingmempoolfee"], json!(3_000));
+    assert_eq!(mempool["mempoolminfee"], json!(3_000));
+    assert_eq!(mempool["effectiveadmissionfee"], json!(3_000));
+    assert_eq!(mempool["mempoolminfee"], mempool["effectiveadmissionfee"]);
+    let static_fee = mempool["minrelaytxfee"].as_i64().expect("static");
+    let rolling_fee = mempool["rollingmempoolfee"].as_i64().expect("rolling");
+    let effective = mempool["mempoolminfee"].as_i64().expect("effective");
+    assert_eq!(effective, static_fee.max(rolling_fee));
+    assert_ne!(
+        effective,
+        mempool["incrementalrelayfee"]
+            .as_i64()
+            .expect("incremental")
+    );
+    assert_eq!(mempool["capacityenforcement"], json!("legacy_vsize"));
+    assert_eq!(mempool["loaded"], json!(true));
+    for forbidden in [
+        "txid",
+        "wtxid",
+        "peer_id",
+        "peerid",
+        "127.0.0.1",
+        "script_sig",
+        "transaction_hex",
+        "hexstring",
+    ] {
+        assert!(
+            !serialized.to_lowercase().contains(forbidden),
+            "shared evidence leaked {forbidden}: {serialized}"
         );
     }
 }
