@@ -82,7 +82,14 @@ Plans:
 4. Expiry and pressure removal leave no stale descendants or derived indexes and preserve graph and fee-aggregate invariants.
 5. Deterministic fill, trim, block, decay, expiry, refill, and reorg scenarios remain within documented resource and performance bounds and agree with recomputation.
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 131-01-PLAN.md — Accounted-capacity trim + descendant-package rolling bump (PRESS-01, PRESS-02)
+- [ ] 131-02-PLAN.md — Block-gated occupancy-sensitive rolling decay (PRESS-03)
+- [ ] 131-03-PLAN.md — Pure expiry API + ManagedNetworkHandle hook (PRESS-04)
+- [ ] 131-04-PLAN.md — Evidence label flip + delete legacy_vsize seam
+- [ ] 131-05-PLAN.md — Sustained oracle/perf, breadcrumbs, Phase 131 verifier (PRESS-05)
 
 ### Phase 132: Typed Package Vocabulary and Staged Admission
 
