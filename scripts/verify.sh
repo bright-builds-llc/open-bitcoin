@@ -415,6 +415,8 @@ bun test scripts/check-phase128-production-compact-announcement-transport.test.t
 bun run scripts/check-phase128-production-compact-announcement-transport.ts
 bun test scripts/check-phase129-integration-guardrails-and-milestone-reconciliation.test.ts
 bun run scripts/check-phase129-integration-guardrails-and-milestone-reconciliation.ts
+bun test scripts/check-phase130-resource-time-fee-primitives.test.ts
+bun run scripts/check-phase130-resource-time-fee-primitives.ts
 bun test scripts/check-phase117-parity-uat-release-boundary.test.ts
 bun run scripts/check-phase117-parity-uat-release-boundary.ts
 bun test scripts/check-current-documentation-reconciliation.test.ts
@@ -565,6 +567,8 @@ run_step "test Phase 128 production compact announcement transport checker" bun 
 run_step "check Phase 128 production compact announcement transport" bun run scripts/check-phase128-production-compact-announcement-transport.ts
 run_step "test Phase 129 integration guardrails and milestone reconciliation checker" bun test scripts/check-phase129-integration-guardrails-and-milestone-reconciliation.test.ts
 run_step "check Phase 129 integration guardrails and milestone reconciliation" bun run scripts/check-phase129-integration-guardrails-and-milestone-reconciliation.ts
+run_step "test Phase 130 resource time and fee primitives checker" bun test scripts/check-phase130-resource-time-fee-primitives.test.ts
+run_step "check Phase 130 resource time and fee primitives" bun run scripts/check-phase130-resource-time-fee-primitives.ts
 run_step "test Phase 117 parity UAT release boundary checker" bun test scripts/check-phase117-parity-uat-release-boundary.test.ts
 run_step "check Phase 117 parity UAT release boundary" bun run scripts/check-phase117-parity-uat-release-boundary.ts
 run_step "test current documentation reconciliation checker" bun test scripts/check-current-documentation-reconciliation.test.ts

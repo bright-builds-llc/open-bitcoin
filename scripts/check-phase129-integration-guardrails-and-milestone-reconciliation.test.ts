@@ -109,8 +109,8 @@ test.each([
     "P129 verifier heredoc: Phase 129 pair must run between Phase 128 and the Phase 117 gate",
     replace(
       "scripts/verify.sh",
-      "bun run scripts/check-phase129-integration-guardrails-and-milestone-reconciliation.ts\nbun test scripts/check-phase117-parity-uat-release-boundary.test.ts",
-      "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts",
+      "bun run scripts/check-phase129-integration-guardrails-and-milestone-reconciliation.ts\nbun test scripts/check-phase130-resource-time-fee-primitives.test.ts",
+      "bun test scripts/check-phase130-resource-time-fee-primitives.test.ts",
     ),
   ],
   [
@@ -127,7 +127,7 @@ test.each([
     "P129 final gate run_step order must end with bun run scripts/check-phase117-parity-uat-release-boundary.ts",
     append(
       "scripts/verify.sh",
-      'run_step "check Phase 130 placeholder" bun run scripts/check-phase130-placeholder.ts',
+      'run_step "check Phase 131 placeholder" bun run scripts/check-phase131-placeholder.ts',
     ),
   ],
   [
