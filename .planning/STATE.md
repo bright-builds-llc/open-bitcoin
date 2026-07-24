@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Completed 130-08-PLAN.md
-last_updated: "2026-07-24T03:02:06.117Z"
+stopped_at: Completed 130-11-PLAN.md
+last_updated: "2026-07-24T04:01:25.793Z"
 last_activity: 2026-07-24
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 13
-  completed_plans: 9
-  percent: 69
+  completed_plans: 10
+  percent: 77
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 130 (Resource, Time, and Fee Primitives) — EXECUTING
-Plan: 9 of 13
+Plan: 11 of 13 complete; next incomplete is 09
 Status: Ready to execute
-Last activity: 2026-07-24 -- Completed Plan 130-08 legacy snapshot compatibility
+Last activity: 2026-07-24 -- Completed Plan 130-11 local RPC admission timing
 
-Progress: [███████░░░] 69%
+Progress: [████████░░] 77%
 
 Next action: Execute Plan 130-09
 
@@ -39,13 +39,13 @@ Next action: Execute Plan 130-09
 
 **Current milestone:**
 
-- Total plans completed: 9
-- Average duration: 44 min
-- Total execution time: 6h 33m
+- Total plans completed: 10
+- Average duration: 42 min
+- Total execution time: 6h 58m
 
 | Phase | Plans | Total | Avg/Plan |
 | --- | ---: | ---: | ---: |
-| 130–138 | 9 | 6h 33m | 44 min |
+| 130–138 | 10 | 6h 58m | 42 min |
 
 ## Accumulated Context
 
@@ -65,23 +65,26 @@ Next action: Execute Plan 130-09
 - [Phase 130]: Keep package member-static and eligible aggregate-rolling obligations independent without a generic exception switch.
 - [Phase 130]: Classify missing legacy metadata only as LegacyUnknown, RecoveryUnknown, and NotRequested; never infer local origin or current time.
 - [Phase 130]: Require local origin, requested relay intent, and current authoritative membership together for retry eligibility.
-- [Phase 130]: Keep no-context admission as a deprecated fail-closed adapter owned by Plans 130-05 and 130-11.
+- [Phase 130]: No-time local outcome adapters are removed; wallet AdmissionResult no-time path remains deprecated separately.
 - [Phase 130]: Keep MempoolOutcome as attempt vocabulary and MempoolLifecycleDelta as committed fact vocabulary.
 - [Phase 130]: Resolve retry clears with LifecycleRemoval > TransportWritten > EligibleServe precedence.
 - [Phase 130]: Keep removal cause independent from direct-versus-descendant role.
 - [Phase 130]: Peer admission uses exact receive or reconsideration time with Peer and NotRequested metadata.
-- [Phase 130]: No-time local admission remains LegacyUnknown, RecoveryUnknown, and NotRequested until Plan 130-11 removes compatibility.
+- [Phase 130]: Local RPC admission now samples checked shell time with Local origin and activation-resolved relay intent.
 - [Phase 130]: Bridge-owned admission cache effects consume lifecycle delta cause, role, identities, and final membership.
 - [Phase 130]: Model only the injected variable retry delay in Phase 130; Phase 136 owns scheduling, fanout, receipts, and clearing.
 - [Phase 130]: Require fallible 0-to-300-second jitter construction before creating a retry decision context.
 - [Phase 130]: Use requested relay intent only for local relay and serving fixtures; non-relay admission setup remains explicitly not requested.
-- [Phase 130]: Keep deterministic fixture time authoritative while deferring live RPC clock sampling and compatibility removal to Plan 130-11.
+- [Phase 130]: Deterministic fixture time remains authoritative in tests; live RPC clock sampling is owned by Plan 130-11 and is complete.
 - [Phase 130]: Use stored-block receive time and connected height while direct local blocks use explicit header time and connected height.
 - [Phase 130]: Use one explicit reorg operation time for replacement-block cleanup and disconnected transaction reacceptance.
 - [Phase 130]: Apply every reorg admission attempt through its semantic lifecycle delta without expanding Phase 134 cross-cache scope.
 - [Phase 130]: Keep SchemaVersion::CURRENT unchanged and encode metadata as three optional mempool-record fields.
 - [Phase 130]: All-absent decodes to LegacyUnknown, RecoveryUnknown, and NotRequested; any partial set is StorageError::Corruption in Mempool.
 - [Phase 130]: Known capture and recovery pass metadata through AdmissionContext::recovery without substituting restart time or local origin.
+- [Phase 130]: Sample SystemTime only in sendrawtransaction with checked conversion; never unwrap_or(0).
+- [Phase 130]: Resolve RelayIntent::Requested from relay activation enabled; otherwise NotRequested.
+- [Phase 130]: Migrate the final RPC caller and delete both no-time outcome adapters in one commit.
 
 ### Pending Todos
 
@@ -104,6 +107,6 @@ Next action: Execute Plan 130-09
 
 ## Session Continuity
 
-Last session: 2026-07-24T03:02:06.113Z
-Stopped at: Completed 130-08-PLAN.md
+Last session: 2026-07-24T04:01:25.789Z
+Stopped at: Completed 130-11-PLAN.md
 Resume file: None
